@@ -842,6 +842,9 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       layoutHints,
       edgeDirections,
       collapsedCategories,
+      groupBy,
+      collapsedGroups,
+      edgeDiffState,
     );
   }
 
@@ -1365,6 +1368,9 @@ function layoutMultipleSystems(
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
   collapsedCategories?: ReadonlySet<CategoryId>,
+  groupBy?: "team",
+  collapsedGroups?: ReadonlySet<string>,
+  edgeDiffState?: ReadonlyMap<string, string>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Multi-system view places only services (one nesting level), and a system's
@@ -1373,6 +1379,9 @@ function layoutMultipleSystems(
   const allLayoutNodes = new Map<string, LayoutNode>();
   const allContainers: ContainerRect[] = [];
   const allEdges: LayoutEdge[] = [];
+  // Group-by-team (#1884): diff-state re-keyed onto collapsed-group stub edges,
+  // accumulated across systems (empty unless a team collapses in diff mode).
+  const foldedEdgeDiffState = new Map<string, string>();
 
   let offsetX = CONTAINER_PADDING;
   const offsetY = CONTAINER_PADDING;
@@ -1389,19 +1398,73 @@ function layoutMultipleSystems(
       si === 0 ? viewSlice.childNodes : sys.children,
       collapsedCategories,
     );
-    const nodeIds = rawNodes.map((n) => n.id);
+
+    // Group-by-team (#1884): apply the P2a grouping *inside this system's frame*
+    // (per-(system, team) frames — a team that owns members in two systems shows
+    // one frame in each; cross-system spanning frames stay out of scope, see
+    // docs/design/system-view-grouping.md). Reuses the single-system machinery:
+    // fold collapsed teams to `<Team> (N)` stubs, then band nodes by team via
+    // `assignGroupedLayers`. Gated on group-by so ungrouped output is unchanged.
+    let workNodes = rawNodes;
+    let workEdges: KrsEdge[] = sys.edges;
+    let groupedLayers: Map<string, number> | null = null;
+    let groupBandsS: Map<string, GroupBand> | null = null;
+    let groupOrderS: string[] = [];
+    let groupIdOf: (id: string) => string | null = () => null;
+    if (groupBy === "team" && ownerIndex && ownerIndex.size > 0) {
+      const collapsed = collapseGroups(
+        rawNodes,
+        sys.edges,
+        ownerIndex,
+        collapsedGroups,
+        edgeDiffState,
+      );
+      const stubGroup = collapsed.stubGroup;
+      const gidOf = (id: string): string | null => ownerIndex.get(id) ?? stubGroup.get(id) ?? null;
+      const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => ({
+        id: n.id,
+        groupId: gidOf(n.id),
+        ungroupedRank: systemTier(n),
+      }));
+      // Team declaration order (first-appearance in `ownerIndex`); `assignGroupedLayers`
+      // filters to the groups actually present in this system.
+      const declaredGroupOrder = [...new Set(ownerIndex.values())];
+      const grouped = assignGroupedLayers(
+        groupedNodes,
+        collapsed.edges.map((e) => ({ from: e.from, to: e.to })),
+        declaredGroupOrder,
+      );
+      if (grouped) {
+        workNodes = collapsed.nodes;
+        workEdges = collapsed.edges;
+        groupedLayers = grouped.layers;
+        groupBandsS = grouped.groupBands;
+        groupOrderS = grouped.groupOrder;
+        groupIdOf = gidOf;
+        for (const [k, v] of collapsed.foldedEdgeDiffState) foldedEdgeDiffState.set(k, v);
+      }
+    }
+
+    const nodeIds = workNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
-    // Only include intra-system edges for layout ordering
-    const forcedLayers = assignForcedSystemLayers(rawNodes, sys.edges);
+    // Only include intra-system edges for layout ordering. In group-by mode the
+    // team bands come from `assignGroupedLayers` (non-null `groupedLayers`) and
+    // win over the kind-tier layering.
+    const forcedLayers = groupedLayers ?? assignForcedSystemLayers(workNodes, workEdges);
     let layers: Map<string, number>;
     if (forcedLayers) {
       layers = forcedLayers;
     } else {
-      const { adj, inDegree } = buildGraph(nodeIds, sys.edges, edgeDirections);
+      const { adj, inDegree } = buildGraph(nodeIds, workEdges, edgeDirections);
       layers = assignLayers(nodeIds, adj, inDegree);
     }
     if (edgeDirections) {
-      layers = applyDirectionHintsToForcedLayers(layers, sys.edges, edgeDirections);
+      layers = applyDirectionHintsToForcedLayers(layers, workEdges, edgeDirections);
+    }
+    // Group bands start a new titled frame; reserve vertical room for the title.
+    const groupStartLayer = new Map<number, string>();
+    if (groupBandsS) {
+      for (const [gid, band] of groupBandsS) groupStartLayer.set(band.min, gid);
     }
 
     const nodesByLayer = new Map<number, string[]>();
@@ -1410,14 +1473,14 @@ function layoutMultipleSystems(
       nodesByLayer.get(layer)!.push(id);
     }
     const nodeMap = new Map<string, KrsNode>();
-    for (const node of rawNodes) nodeMap.set(node.id, node);
+    for (const node of workNodes) nodeMap.set(node.id, node);
 
     const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
     // Build predecessors map for barycenter heuristic
     const predecessorsMap = new Map<string, string[]>();
     for (const id of nodeIds) predecessorsMap.set(id, []);
-    for (const edge of sys.edges) {
+    for (const edge of workEdges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         predecessorsMap.get(edge.to)!.push(edge.from);
       }
@@ -1449,7 +1512,7 @@ function layoutMultipleSystems(
           : innerSorted;
       const sortedLayer = applyEdgeDirectionWithinLayer(
         bucketed.map((item) => item.id),
-        sys.edges,
+        workEdges,
         edgeDirections,
         layers,
       ).map((id) => ({ id }));
@@ -1474,6 +1537,8 @@ function layoutMultipleSystems(
       } else {
         subRowY = NODE_GAP;
       }
+      // Reserve room above a group band's first layer for its frame title.
+      if (groupStartLayer.has(layerIdx)) subRowY += GROUP_FRAME_TITLE_GAP;
 
       for (const item of sortedLayer) {
         const nid = item.id;
@@ -1569,20 +1634,50 @@ function layoutMultipleSystems(
       allLayoutNodes.set(id, node);
     }
 
-    // Move [external] services to side columns for this system (#1728).
-    // Run per-system so each system's externals are placed relative to that
-    // system's own in-boundary nodes, not the global figure.
-    const sideExternals = placeExternalServicesOnSides(
-      rawNodes,
-      new Set([sys.id]),
-      allLayoutNodes,
-      allContainers,
-      sys.edges,
-      layoutHints,
-    );
+    // Group boundary frames (#1884): one dashed titled frame per team, enclosing
+    // that team's members *within this system's frame* (per-(system, team)). Band
+    // contiguity from `assignGroupedLayers` keeps each team's members in a
+    // contiguous row range, so frames are disjoint. Built from final (offset)
+    // node positions, mirroring the single-system path.
+    if (groupBandsS) {
+      for (const groupId of groupOrderS) {
+        const members = [...localNodes.values()].filter((n) => groupIdOf(n.id) === groupId);
+        if (members.length === 0) continue;
+        const minX = Math.min(...members.map((n) => n.x));
+        const minY = Math.min(...members.map((n) => n.y));
+        const maxX = Math.max(...members.map((n) => n.x + n.width));
+        const maxY = Math.max(...members.map((n) => n.y + n.height));
+        allContainers.push({
+          id: `__group_${groupId}__`,
+          label: groupId,
+          x: minX - GROUP_FRAME_PAD_X,
+          y: minY - GROUP_FRAME_PAD_TOP,
+          width: maxX - minX + GROUP_FRAME_PAD_X * 2,
+          height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
+          ghost: false,
+          group: true,
+          groupId,
+        });
+      }
+    }
+
+    // Move [external] services to side columns for this system (#1728). Skipped
+    // in group-by mode: externals belong to their group's frame (or the trailing
+    // un-grouped band), so pulling them to the canvas sides would break that
+    // placement (mirrors the single-system path).
+    const sideExternals = groupBandsS
+      ? new Map<string, "left" | "right">()
+      : placeExternalServicesOnSides(
+          workNodes,
+          new Set([sys.id]),
+          allLayoutNodes,
+          allContainers,
+          sys.edges,
+          layoutHints,
+        );
 
     // Intra-system edges
-    for (const edge of sys.edges) {
+    for (const edge of workEdges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
@@ -1637,6 +1732,7 @@ function layoutMultipleSystems(
     containers: allContainers,
     width: totalWidth,
     height: totalHeight,
+    foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
   };
 }
 

@@ -151,3 +151,114 @@ system Shop {
     expect(fwdEdge![0]).not.toContain("stroke-dasharray");
   });
 });
+
+// #1884: grouping was silently dropped in the multi-system *root* view (two or
+// more systems). Because a cross-system (ghost) edge requires a second system,
+// its presence coincided exactly with "the root now has ≥2 systems", so from the
+// user's side group-by-team looked like it "stopped working whenever there is a
+// ghost edge". Grouping must apply per-(system, team) inside each system frame.
+const MULTI = `
+system Shop {
+  service Billing { label "Billing" }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+
+  Billing -> Wallet "debit"
+  Search -> PaymentGateway.PaymentService "charge"
+}
+
+system PaymentGateway {
+  service PaymentService { label "Payment Service" }
+}
+
+organization Org {
+  team "payments" {
+    label "Payments"
+    owns Billing
+    owns Wallet
+  }
+  team "catalog" {
+    label "Catalog"
+    owns Search
+  }
+}
+`;
+
+describe("compile() with groupBy: team — multi-system root view (#1884)", () => {
+  const grouped = (src = MULTI, collapsedGroups?: Set<string>): string => {
+    const r = compile(src, { diagramType: "system", groupBy: "team", collapsedGroups });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    return r.svg;
+  };
+
+  it("draws the team frames at the root (was 0 frames before the fix)", () => {
+    // The repro: a cross-system charge edge makes Shop + PaymentGateway both
+    // appear at the root. payments/catalog own services only in Shop, so two
+    // frames are drawn — inside the Shop system frame.
+    const svg = grouped();
+    expect(svg).toContain('data-container-id="__group_payments__"');
+    expect(svg).toContain('data-container-id="__group_catalog__"');
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    // PaymentService is un-owned → no frame minted for it.
+    expect(svg).toContain('data-node-id="PaymentService"');
+  });
+
+  it("still lays every node out exactly once (TPL-20260624-02: totality)", () => {
+    const svg = grouped();
+    for (const id of ["Billing", "Wallet", "Search", "PaymentService"]) {
+      expect(svg.match(new RegExp(`data-node-id="${id}"`, "g"))?.length).toBe(1);
+    }
+  });
+
+  it("leaves the root ungrouped output byte-identical when group-by is off", () => {
+    const off = compile(MULTI, { diagramType: "system" });
+    const optedOut = compile(MULTI, { diagramType: "system", groupBy: undefined });
+    if (off.diagramType !== "system" || optedOut.diagramType !== "system") {
+      throw new Error("expected system view");
+    }
+    expect(optedOut.svg).toBe(off.svg);
+    expect(off.svg).not.toContain('data-group="true"');
+  });
+
+  it("collapses a team to a stub at the root, folding its members (#1858 slice B)", () => {
+    const svg = grouped(MULTI, new Set(["payments"]));
+    expect(svg).not.toContain('data-node-id="Billing"');
+    expect(svg).not.toContain('data-node-id="Wallet"');
+    expect(svg).toContain('data-node-id="__group_collapsed_payments__"');
+    expect(svg).toContain("payments (2)");
+    // catalog stays expanded and framed.
+    expect(svg).toContain('data-node-id="Search"');
+    expect(svg).toContain('data-container-id="__group_catalog__"');
+  });
+
+  it("frames a team that owns members in two systems once per system", () => {
+    // `payments` owns Billing (Shop) and PaymentService (PaymentGateway): a team
+    // may `owns` across systems. Per-(system, team) means one payments frame is
+    // drawn inside each system's frame — same label, two disjoint frames.
+    const spanning = `
+system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  Search -> PaymentGateway.PaymentService "charge"
+}
+
+system PaymentGateway {
+  service PaymentService { label "Payment Service" }
+}
+
+organization Org {
+  team "payments" {
+    label "Payments"
+    owns Billing
+    owns PaymentService
+  }
+}
+`;
+    const svg = grouped(spanning);
+    // Two payments frames (one per system), plus Billing & PaymentService each once.
+    expect(svg.match(/data-container-id="__group_payments__"/g)?.length).toBe(2);
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    expect(svg.match(/data-node-id="Billing"/g)?.length).toBe(1);
+    expect(svg.match(/data-node-id="PaymentService"/g)?.length).toBe(1);
+  });
+});
