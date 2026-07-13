@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1830](https://github.com/kompiro/karasu/issues/1830)（permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826) の子）
+  - Design Doc PR: [#1913](https://github.com/kompiro/karasu/pull/1913)
   - governing ADR: [ADR-20260702-01](../adr/20260702-01-adr-permalink-convention.md)（permalink 規約 — taka 短縮 + 必須 `source`。本検証を #1830 に申し送り）
   - 前提 ADR: [ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)（deep permalink アンカー文法 `#krs-<view>-<id>`）
   - アンカー contract: `docs/spec/permalink.md`（+ `.ja.md`）
