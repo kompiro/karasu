@@ -298,7 +298,7 @@ experimental notation を v1.0-stable へ昇格させる判断の規律（決定
 - **既定 = experimental 据え置き**。追加しない/据え置くコストは低く、削除コストは高い。昇格に渋く、open/既存構文での表現に寛容に、灰色は experimental に留める。問いは「**stable へ昇格するに足る実利用証拠があるか**」であって「廃止すべきか」ではない。
 - **トリガー**: (i) その notation に触れるリリースの直前（v1.0 はリリース済みのため、載せる版が v1.x minor（追加互換）か v2.0 major（破壊的変更を伴う昇格）かの判断も含む）、(ii) 実利用データが溜まった時、(iii) 混乱/bug Issue の再発時。
 - **証拠源 = karasu-nest の共有 corpus**。実 OSS を書いた `.krs` が watch tier の必要とする「実利用 pain」の観測装置になる。
-- 配置は **ADR（決定）+ 本書（生きた適用状態）**。`docs/process.md`（日々の開発サイクル）には置かない。
+- 配置は **三点配線** — **[ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md)（決定）+ 本書（生きた適用状態）+ [`docs/process.md` リリース運用](process.md#リリース運用)（発火 touchpoint）**。gate を実際に invoke するのは process.md 側（experimental notation に触れる changeset・リリース前の版番号/CHANGELOG 目視）で、これにより決定が絵に描いた餅にならないようにする。
 
 ### 独立 candidate（未 Issue 化 — issue が生えたら Milestone 化）
 

@@ -31,7 +31,7 @@ related_to:
 
 ## 決定
 
-experimental notation の評価は **promotion gate** を通す。**既定は experimental 据え置き**とし、証拠に基づくトリガーが引かれたときにのみ「freeze で定義した v1.0-stable 層（後方互換を約束する層）へ昇格するに足るか」を評価する。昇格すると決めた場合、**どのリリースに載せるか**も gate の判断に含める — v1.0 は既にリリース済みなので、昇格は既存 v1.0 への後付けではなく将来リリースへの搭載になる。既存構文への後方互換な追加なら **v1.x minor**、既存構文の変更・再設計を伴い破壊的になるなら **v2.0（major）** に載せ、「v2.0 とすべきか」を昇格判断とセットで問う。gate の**決定**は本 ADR（ガバナンス）に、**生きた適用状態**（watch item ごとの昇格トリガー）は `docs/roadmap.md` に置く。`docs/process.md`（日々の開発サイクル）には置かない。
+experimental notation の評価は **promotion gate** を通す。**既定は experimental 据え置き**とし、証拠に基づくトリガーが引かれたときにのみ「freeze で定義した v1.0-stable 層（後方互換を約束する層）へ昇格するに足るか」を評価する。昇格すると決めた場合、**どのリリースに載せるか**も gate の判断に含める — v1.0 は既にリリース済みなので、昇格は既存 v1.0 への後付けではなく将来リリースへの搭載になる。既存構文への後方互換な追加なら **v1.x minor**、既存構文の変更・再設計を伴い破壊的になるなら **v2.0（major）** に載せ、「v2.0 とすべきか」を昇格判断とセットで問う。配置は**三点で配線**する — gate の**決定**（セマンティクス・既定・証拠源）は本 ADR、**生きた適用状態**（watch item ごとの昇格トリガー）は `docs/roadmap.md`、そして gate を実際に**発火させる touchpoint** は `docs/process.md` の「リリース運用」（experimental notation に触れる changeset を書くとき／リリース前の版番号・CHANGELOG 目視確認）に組み込む。決定を実プロセスに紐づけないと、ADR は誰にも invoke されず絵に描いた餅になるため、発火点の明記までを本決定に含める。
 
 ## 理由
 
@@ -42,10 +42,10 @@ experimental notation の評価は **promotion gate** を通す。**既定は ex
   - (iii) その notation に対する混乱 / bug Issue が再発した時 — 痛みが surface したシグナル。
 - **証拠源 = karasu-nest の共有 corpus**: 実 OSS を書いた `.krs` が、watch tier の必要とする「実利用 pain」の観測装置になる。ホスト型サービス（#1783）を notation 評価の計測器として位置づける。
 - **昇格のリリース版も判断対象**: v1.0-stable は既にリリース済み（[#1317](https://github.com/kompiro/karasu/issues/1317) / [#1764](https://github.com/kompiro/karasu/issues/1764)）。ゆえに「stable 層へ昇格」は既存 v1.0 への後付けではなく、将来リリースへの搭載を意味する。gate は昇格の可否だけでなく **どの版で互換を約束するか**（後方互換な追加なら v1.x minor、既存構文の変更・再設計を伴うなら v2.0 major）も決める。この分岐を明示することで、破壊的な昇格が minor に紛れ込むのを防ぐ。
-- **配置の分離**: 決定（gate のセマンティクス・既定 experimental・証拠源）は不変度が高いので ADR。watch item ごとの昇格判断は状態が動くので roadmap（living）。両者は altitude が異なるため混ぜない。`process.md` は開発サイクルであって notation ガバナンスではない。
+- **配置の分離と発火の紐づけ**: 決定（gate のセマンティクス・既定 experimental・証拠源）は不変度が高いので ADR。watch item ごとの昇格判断は状態が動くので roadmap（living）。両者は altitude が異なるため混ぜない。**加えて**、gate が実際に invoke されるよう、発火 touchpoint を `docs/process.md` のリリース運用（changeset 作成・リリース前目視）に組み込む — トリガー (i)（リリース直前）と (iii)（bug/混乱 Issue）が発生する実プロセスの場に置くことで、決定が絵に描いた餅にならないようにする。
 
 ## 却下した案
 
 - **カレンダーベースの定期レビュー**（例: 四半期ごとに全 experimental を棚卸し）: 証拠が溜まっていない notation まで機械的に俎上に載せ、昇格圧を生む。既定「据え置き」の思想と噛み合わないため却下。トリガーは時間ではなく証拠（利用・痛み・互換約束の直前）に結ぶ。
 - **既定で昇格（experimental を暫定とみなし積極的に stable 化）**: 削除コストの非対称性を無視する。stable 化＝後方互換の約束であり、証拠なき昇格は将来の major でしか外せない負債になる。既定は逆（据え置き）に置く。
-- **gate を `docs/process.md` に書く**: process.md は日々の開発サイクル（PR フロー等）の altitude。notation ガバナンスは別 altitude であり、混在させると両方が読みにくくなる。決定は ADR、適用は roadmap に分けた。
+- **gate の決定本体を `docs/process.md` に書く**: process.md は日々の開発サイクル（PR フロー等）の altitude で、gate のセマンティクス全体を置くと両方が読みにくくなる。よって**決定本体は ADR**に置く。ただし決定を ADR だけに閉じるのも誤り — 発火 touchpoint が実プロセスに無ければ誰も invoke しない。したがって**決定＝ADR / 適用状態＝roadmap / 発火 touchpoint＝process.md（リリース運用）** の三点に分けて配線する（どれか一点だけに寄せる案はいずれも却下）。
