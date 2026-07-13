@@ -15,6 +15,7 @@ import {
 } from "@karasu-tools/core";
 import { useCallback, useMemo, useState } from "react";
 import type { GroupByMode } from "../state/preview-context.js";
+import { useCollapsibleSet } from "./useCollapsibleSet.js";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
 import clientSvg from "@karasu-tools/core/icons/client.svg?raw";
@@ -179,18 +180,12 @@ export function useSystemView(
   // Collapsed external/infra categories (Issue #1821). Owned here because a
   // toggle recompiles the system view with the core `collapsedCategories`
   // option (the collapse is a layout transform, not a client-side re-render).
-  const [collapsedCategories, setCollapsedCategories] = useState<ReadonlySet<CategoryId>>(
-    new Set(),
-  );
-  const toggleCategory = useCallback((category: CategoryId) => {
-    setCollapsedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
-      return next;
-    });
-  }, []);
-  const collapsedKey = [...collapsedCategories].sort().join(",");
+  // The set/toggle/key idiom is shared with the group axis via
+  // `useCollapsibleSet` (Issue #1876).
+  const categories = useCollapsibleSet<CategoryId>();
+  const collapsedCategories = categories.set;
+  const toggleCategory = categories.toggle;
+  const collapsedKey = categories.key;
 
   // System-view grouping axis (Issue #1858). "team" recompiles with the core
   // `groupBy` option so the diagram re-lays-out into team bands with boundary
@@ -201,16 +196,10 @@ export function useSystemView(
   // Collapsed teams in Group-by mode (Issue #1858 slice B). Each folds to a
   // `<Team> (N)` stub, toggled via the on-SVG ⊖/⊕ control (per group). View
   // state, like `collapsedCategories` — recompiles via the core option.
-  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
-  const toggleGroup = useCallback((groupId: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
-  }, []);
-  const groupsKey = [...collapsedGroups].sort().join(",");
+  const groups = useCollapsibleSet<string>();
+  const collapsedGroups = groups.set;
+  const toggleGroup = groups.toggle;
+  const groupsKey = groups.key;
 
   // Structural key for `viewPath` so that a fresh `[]` from `SET_ACTIVE_VIEW`
   // does not restart the in-flight debounce when the previous value was also
@@ -348,15 +337,17 @@ export function useSystemView(
     anyCollapsible &&
     groupIds.every((id) => collapsedGroups.has(id)) &&
     categoryIds.every((c) => collapsedCategories.has(c));
+  const collapseGroupsAll = groups.replace;
+  const collapseCategoriesAll = categories.replace;
   const onCollapseAllToggle = useCallback(() => {
     if (allCollapsed) {
-      setCollapsedGroups(new Set());
-      setCollapsedCategories(new Set());
+      collapseGroupsAll();
+      collapseCategoriesAll();
     } else {
-      setCollapsedGroups(new Set(groupIds));
-      setCollapsedCategories(new Set(categoryIds));
+      collapseGroupsAll(groupIds);
+      collapseCategoriesAll(categoryIds);
     }
-  }, [allCollapsed, groupIds, categoryIds]);
+  }, [allCollapsed, groupIds, categoryIds, collapseGroupsAll, collapseCategoriesAll]);
 
   return {
     ...result,

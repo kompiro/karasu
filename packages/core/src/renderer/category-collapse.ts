@@ -1,5 +1,5 @@
 import { INFRA_KIND_SET, type KrsNode, type KrsEdge } from "../types/ast.js";
-import type { SourceRange } from "../types/tokens.js";
+import { makeStubNode } from "./collapse-stub.js";
 
 /**
  * Collapsible node categories on the system view (Issue #1821, design
@@ -20,11 +20,6 @@ export type CategoryId = "external" | "infra";
  * (⊕ + count) instead of a normal card when it sees this tag (Issue #1821).
  */
 export const CATEGORY_STUB_TAG = "__category_stub__";
-
-const ZERO_LOC: SourceRange = {
-  start: { line: 0, column: 0, offset: 0 },
-  end: { line: 0, column: 0, offset: 0 },
-};
 
 /**
  * Which collapsible category a system-view node belongs to, or `null`.
@@ -50,24 +45,20 @@ export function stubId(category: CategoryId): string {
  * the ⊕ placeholder. The count is encoded in the label (e.g. `Infra (4)`).
  */
 function stubNode(category: CategoryId, count: number): KrsNode {
-  const base = {
-    id: stubId(category),
-    annotations: [] as string[],
-    children: [] as KrsNode[],
-    edges: [],
-    loc: ZERO_LOC,
-    properties: { links: [] },
-  };
   if (category === "infra") {
-    return { ...base, kind: "database", label: `Infra (${count})`, tags: [CATEGORY_STUB_TAG] };
+    return makeStubNode({
+      id: stubId(category),
+      kind: "database",
+      label: `Infra (${count})`,
+      tags: [CATEGORY_STUB_TAG],
+    });
   }
-  return {
-    ...base,
+  return makeStubNode({
+    id: stubId(category),
     kind: "service",
     label: `External (${count})`,
     tags: [CATEGORY_STUB_TAG, "external"],
-    properties: { links: [] },
-  };
+  });
 }
 
 interface CategoryCollapseResult {
