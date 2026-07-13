@@ -70,15 +70,16 @@ function rightPort(n: LayoutNode): Point {
   return { x: n.x + n.width, y: n.y + n.height / 2 };
 }
 
-export function routeGroupedEdges(
-  layoutNodes: Map<string, LayoutNode>,
-  layoutEdges: LayoutEdge[],
+/**
+ * Content bounds (leftmost / rightmost x over every card and frame). The gutter
+ * and trunk/single lane x's are all derived from these, so the three routing
+ * passes MUST agree on the basis for their lane numbering to align — hence one
+ * shared helper rather than three inline copies.
+ */
+function contentBounds(
+  nodes: LayoutNode[],
   frames: ContainerRect[],
-): void {
-  const nodes = [...layoutNodes.values()];
-  if (nodes.length === 0) return;
-
-  // Content bounds → gutter x on each side, outside every frame and card.
+): { minLeft: number; maxRight: number } {
   let minLeft = Infinity;
   let maxRight = -Infinity;
   for (const n of nodes) {
@@ -89,6 +90,19 @@ export function routeGroupedEdges(
     minLeft = Math.min(minLeft, f.x);
     maxRight = Math.max(maxRight, f.x + f.width);
   }
+  return { minLeft, maxRight };
+}
+
+export function routeGroupedEdges(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  // Content bounds → gutter x on each side, outside every frame and card.
+  const { minLeft, maxRight } = contentBounds(nodes, frames);
   const rightGutter: Gutter = { x: maxRight + GUTTER_GAP, side: "right" };
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
 
@@ -181,9 +195,7 @@ export function aggregateGroupTrunks(
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
-  let maxRight = -Infinity;
-  for (const n of nodes) maxRight = Math.max(maxRight, n.x + n.width);
-  for (const f of frames) maxRight = Math.max(maxRight, f.x + f.width);
+  const { maxRight } = contentBounds(nodes, frames);
 
   const frameOfNode = buildFrameOfNode(layoutNodes, frames);
 
