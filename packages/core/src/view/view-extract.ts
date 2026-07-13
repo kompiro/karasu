@@ -339,6 +339,37 @@ function nodeId(node: KrsNode): string {
   return node.id;
 }
 
+/**
+ * Build an empty {@link ViewSlice}. Callers that already resolved the
+ * model-level resource maps pass them in; the rest default to empty maps.
+ * Single-sources the empty-slice shape shared by {@link extractView} and
+ * {@link extractEntityView} so a new field cannot be forgotten in one of them.
+ */
+function emptySlice(
+  resourceLabelMap: Map<string, string> = new Map(),
+  resourceInferredTagsMap: Map<string, string> = new Map(),
+): ViewSlice {
+  return {
+    containerNode: null,
+    childNodes: [],
+    childEdges: [],
+    ancestorChain: [],
+    ghostUsers: [],
+    ghostUserEdges: [],
+    systems: [],
+    crossSystemEdges: [],
+    ghostSystems: [],
+    ghostSystemEdges: [],
+    callerGhostSystems: [],
+    callerGhostSystemEdges: [],
+    ghostDomains: [],
+    ghostDomainEdges: [],
+    resourceLabelMap,
+    resourceInferredTagsMap,
+    implicitEdgeDetails: new Map(),
+  };
+}
+
 /** Maps infra sub-resource kind to the style tag used in resource[tag] rules. */
 const KIND_TO_INFERRED_TAG: Partial<Record<string, string>> = {
   table: "table",
@@ -562,25 +593,7 @@ export function extractView(
   const resourceLabelMap = buildResourceLabelMap(systems);
   const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
 
-  const empty: ViewSlice = {
-    containerNode: null,
-    childNodes: [],
-    childEdges: [],
-    ancestorChain: [],
-    ghostUsers: [],
-    ghostUserEdges: [],
-    systems: [],
-    crossSystemEdges: [],
-    ghostSystems: [],
-    ghostSystemEdges: [],
-    callerGhostSystems: [],
-    callerGhostSystemEdges: [],
-    ghostDomains: [],
-    ghostDomainEdges: [],
-    resourceLabelMap,
-    resourceInferredTagsMap,
-    implicitEdgeDetails: new Map(),
-  };
+  const empty = emptySlice(resourceLabelMap, resourceInferredTagsMap);
 
   const orphans = [...unassignedServices, ...unassignedDomains];
 
@@ -897,25 +910,7 @@ function resolveContainerChain(
  * `layoutNode.ghost` muting mechanism.
  */
 export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice {
-  const empty: ViewSlice = {
-    containerNode: null,
-    childNodes: [],
-    childEdges: [],
-    ancestorChain: [],
-    ghostUsers: [],
-    ghostUserEdges: [],
-    systems: [],
-    crossSystemEdges: [],
-    ghostSystems: [],
-    ghostSystemEdges: [],
-    callerGhostSystems: [],
-    callerGhostSystemEdges: [],
-    ghostDomains: [],
-    ghostDomainEdges: [],
-    resourceLabelMap: new Map(),
-    resourceInferredTagsMap: new Map(),
-    implicitEdgeDetails: new Map(),
-  };
+  const empty = emptySlice();
 
   const resolved = resolveContainerChain(systems, path);
   if (!resolved) return empty;

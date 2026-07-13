@@ -608,6 +608,39 @@ system EC {
     expect(svg).not.toContain(`id="${anchorId("entity", "D")}"`);
   });
 
+  it("does not emit a dead drill link to an entity-only domain", () => {
+    // An entity-only domain renders an empty usecase view, so no
+    // #krs-system-<domain> level is emitted. The parent system view must not
+    // advertise a drill link to it (clicking would bounce back to root).
+    const krsFile = Parser.parse(`
+system Shop {
+  service Catalog {
+    domain Products {
+      entity Product {}
+      entity Category {}
+    }
+    domain Orders {
+      usecase PlaceOrder {}
+      entity Order {}
+    }
+  }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    const linkTargets = new Set(
+      [...svg.matchAll(/href="#(krs-[A-Za-z0-9_-]+)"/g)].map((m) => m[1]),
+    );
+    const gIds = new Set([...svg.matchAll(/<g id="(krs-[A-Za-z0-9_-]+)"/g)].map((m) => m[1]));
+    // No drill link points at the entity-only domain's (never-emitted) level.
+    expect(linkTargets.has(anchorId("system", "Products"))).toBe(false);
+    // Every drill link resolves to a real level.
+    for (const target of linkTargets) {
+      expect(gIds.has(target)).toBe(true);
+    }
+    // The entity view itself is still emitted (reachable via the fragment).
+    expect(gIds.has(anchorId("entity", "Products"))).toBe(true);
+  });
+
   it("does not change the bundle canvas size vs the same model without entities", () => {
     // Entity views are fragment-only in v1 and must not rescale shipped views.
     // The two models share an identical usecase/system view (entities are

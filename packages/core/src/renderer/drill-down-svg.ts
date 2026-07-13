@@ -55,7 +55,14 @@ function collectDrillDownLevelsGeneric<S>(
   if (!callbacks.hasContent(slice)) return;
 
   const children = callbacks.getChildren(slice);
-  const drillable = children.filter((c) => c.children.length > 0);
+  // A child is drillable only if it actually emits a level. Having children is
+  // necessary but not sufficient: a domain whose only children are entities
+  // renders an empty usecase view (entities live in the separate
+  // #krs-entity-<id> view), so `hasContent` is false and no #krs-system-<id>
+  // level is emitted. Linking to it would dead-end and bounce back to root.
+  const drillable = children.filter(
+    (c) => c.children.length > 0 && callbacks.hasContent(callbacks.getSlice([...path, c.id])),
+  );
   const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
 
   const svg = callbacks.render(slice, childLevelLinks);
@@ -224,7 +231,14 @@ function collectDrillDownLevelsWithDimensions<S>(
   if (!callbacks.hasContent(slice)) return;
 
   const children = callbacks.getChildren(slice);
-  const drillable = children.filter((c) => c.children.length > 0);
+  // A child is drillable only if it actually emits a level. Having children is
+  // necessary but not sufficient: a domain whose only children are entities
+  // renders an empty usecase view (entities live in the separate
+  // #krs-entity-<id> view), so `hasContent` is false and no #krs-system-<id>
+  // level is emitted. Linking to it would dead-end and bounce back to root.
+  const drillable = children.filter(
+    (c) => c.children.length > 0 && callbacks.hasContent(callbacks.getSlice([...path, c.id])),
+  );
   const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
 
   const svg = callbacks.render(slice, childLevelLinks);
@@ -253,7 +267,9 @@ function collectDrillDownLevelsWithDimensions<S>(
  * domain that owns entities gets one `<g id="krs-entity-<domainId>">` level (a
  * flat view, no further drill), reachable via the `#krs-entity-<domainId>`
  * fragment. Back navigation returns to the domain's usecase view
- * (`#krs-system-<domainId>`). The interactive toggle that links to these
+ * (`#krs-system-<domainId>`) when it exists; an entity-only domain has no
+ * usecase level, so it falls back to the parent drill level (or the system
+ * root) to avoid a dead back-link. The interactive toggle that links to these
  * levels lands with the app integration.
  */
 function collectEntityLevels(
