@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractView } from "./view-extract.js";
+import { extractView, extractEntityView } from "./view-extract.js";
 import { Parser } from "../parser/parser.js";
 import type { KrsNode } from "../types/ast.js";
 
@@ -806,6 +806,85 @@ system EC {
       const view = extractView(systems, ["EC", "OrderService", "Ordering"]);
       const edgeKeys = view.childEdges.map((e) => `${e.from}->${e.to}`);
       expect(edgeKeys).not.toContain("Order->Customer");
+    });
+  });
+
+  describe("extractEntityView (#1870)", () => {
+    const KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> LineItem "has"
+        Order -> Customer "placed by"
+      }
+      entity LineItem {}
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`;
+    it("returns the domain's entities and intra-domain relations", () => {
+      const systems = parseSystem(KRS);
+      const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
+      expect(slice.containerNode?.id).toBe("Ordering");
+      const ids = slice.childNodes.map((n) => n.id);
+      expect(ids).toContain("Order");
+      expect(ids).toContain("LineItem");
+      // usecases are not entities — excluded
+      expect(ids).not.toContain("PlaceOrder");
+      const edgeKeys = slice.childEdges.map((e) => `${e.from}->${e.to}`);
+      expect(edgeKeys).toContain("Order->LineItem");
+    });
+
+    it("drops cross-domain relations in v1 (ghost surfacing lands with the toggle)", () => {
+      const systems = parseSystem(KRS);
+      const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
+      // The Customer entity lives in another domain — not pulled into this view.
+      expect(slice.childNodes.map((n) => n.id)).not.toContain("Customer");
+      const edgeKeys = slice.childEdges.map((e) => `${e.from}->${e.to}`);
+      expect(edgeKeys).not.toContain("Order->Customer");
+    });
+
+    it("resolves a domain nested below a service→domain path (deep nesting)", () => {
+      const systems = parseSystem(`
+system EC {
+  domain Sales {
+    domain Ordering {
+      entity Order {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "Sales", "Ordering"]);
+      expect(slice.containerNode?.id).toBe("Ordering");
+      expect(slice.childNodes.map((n) => n.id)).toContain("Order");
+    });
+
+    it("returns an empty slice for a non-domain path", () => {
+      const systems = parseSystem(KRS);
+      const slice = extractEntityView(systems, ["EC", "OrderService"]);
+      expect(slice.containerNode).toBeNull();
+      expect(slice.childNodes).toHaveLength(0);
+    });
+
+    it("returns an empty slice for a domain with no entities", () => {
+      const systems = parseSystem(`
+system EC {
+  service S {
+    domain D {
+      usecase U {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "S", "D"]);
+      expect(slice.childNodes).toHaveLength(0);
     });
   });
 

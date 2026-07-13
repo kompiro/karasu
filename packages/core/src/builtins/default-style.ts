@@ -123,6 +123,15 @@ usecase {
   font-size: 12;
 }
 
+entity {
+  background-color: #3B2F63;
+  color: #EDE9FE;
+  border-color: #7C3AED;
+  border-width: 1;
+  shape: box;
+  font-size: 12;
+}
+
 resource {
   background-color: #1E3A5F;
   color: #E0F2FE;
@@ -362,6 +371,15 @@ usecase {
   background-color: #F0F9FF;
   color: #0C4A6E;
   border-color: #BAE6FD;
+  border-width: 1;
+  shape: box;
+  font-size: 12;
+}
+
+entity {
+  background-color: #F5F3FF;
+  color: #4C1D95;
+  border-color: #C4B5FD;
   border-width: 1;
   shape: box;
   font-size: 12;

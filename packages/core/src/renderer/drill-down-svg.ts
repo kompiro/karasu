@@ -1,7 +1,7 @@
-import type { KrsFile, TeamNode } from "../types/ast.js";
+import type { KrsFile, KrsNode, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout-types.js";
-import { extractView } from "../view/view-extract.js";
+import { extractView, extractEntityView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
@@ -55,7 +55,14 @@ function collectDrillDownLevelsGeneric<S>(
   if (!callbacks.hasContent(slice)) return;
 
   const children = callbacks.getChildren(slice);
-  const drillable = children.filter((c) => c.children.length > 0);
+  // A child is drillable only if it actually emits a level. Having children is
+  // necessary but not sufficient: a domain whose only children are entities
+  // renders an empty usecase view (entities live in the separate
+  // #krs-entity-<id> view), so `hasContent` is false and no #krs-system-<id>
+  // level is emitted. Linking to it would dead-end and bounce back to root.
+  const drillable = children.filter(
+    (c) => c.children.length > 0 && callbacks.hasContent(callbacks.getSlice([...path, c.id])),
+  );
   const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
 
   const svg = callbacks.render(slice, childLevelLinks);
@@ -131,6 +138,21 @@ export function buildDrillDownSvg(
     levels,
     "system",
   );
+
+  // Per-domain entity views (#krs-entity-<domainId>): the same levels the
+  // all-views bundle emits, reachable in the standalone system drill-down
+  // export too (the app's "-drilldown.svg"). They share the system levels'
+  // CSS :target mechanism, stay hidden by default (class krs-view, not
+  // krs-root-level), and each carries its own back button.
+  const entityLevels = collectEntityLevels(
+    effectiveSystems,
+    sheets,
+    ownerIndex,
+    displayMode,
+    theme,
+    legendOptions,
+  );
+  for (const level of entityLevels) levels.push(level.element);
 
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.join("")}</svg>`,
@@ -224,7 +246,14 @@ function collectDrillDownLevelsWithDimensions<S>(
   if (!callbacks.hasContent(slice)) return;
 
   const children = callbacks.getChildren(slice);
-  const drillable = children.filter((c) => c.children.length > 0);
+  // A child is drillable only if it actually emits a level. Having children is
+  // necessary but not sufficient: a domain whose only children are entities
+  // renders an empty usecase view (entities live in the separate
+  // #krs-entity-<id> view), so `hasContent` is false and no #krs-system-<id>
+  // level is emitted. Linking to it would dead-end and bounce back to root.
+  const drillable = children.filter(
+    (c) => c.children.length > 0 && callbacks.hasContent(callbacks.getSlice([...path, c.id])),
+  );
   const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
 
   const svg = callbacks.render(slice, childLevelLinks);
@@ -246,6 +275,72 @@ function collectDrillDownLevelsWithDimensions<S>(
       viewPrefix,
     );
   }
+}
+
+/**
+ * Collect the per-domain **entity view** levels for the all-views bundle. Each
+ * domain that owns entities gets one `<g id="krs-entity-<domainId>">` level (a
+ * flat view, no further drill), reachable via the `#krs-entity-<domainId>`
+ * fragment. Back navigation returns to the domain's usecase view
+ * (`#krs-system-<domainId>`) when it exists; an entity-only domain has no
+ * usecase level, so it falls back to the parent drill level (or the system
+ * root) to avoid a dead back-link. The interactive toggle that links to these
+ * levels lands with the app integration.
+ */
+function collectEntityLevels(
+  effectiveSystems: KrsNode[],
+  sheets: StyleSheet[],
+  ownerIndex: Map<string, string>,
+  displayMode: DisplayMode | undefined,
+  theme: DiagramTheme | undefined,
+  legendOptions: ReturnType<typeof buildLegendRenderOptions>,
+): BundledLevel[] {
+  const levels: BundledLevel[] = [];
+  const styles = resolveStyles(effectiveSystems, sheets, []);
+
+  // Enumerate every domain at any depth (domain under system / service, or a
+  // nested sub-domain) with its full drill path, mirroring how the system view
+  // recurses into any child that has children.
+  const domainsWithPath: { domain: KrsNode; path: string[] }[] = [];
+  const walk = (node: KrsNode, path: string[]): void => {
+    const here = [...path, node.id];
+    if (node.kind === "domain") domainsWithPath.push({ domain: node, path: here });
+    for (const child of node.children) walk(child, here);
+  };
+  for (const system of effectiveSystems) {
+    for (const child of system.children) walk(child, [system.id]);
+  }
+
+  for (const { domain, path } of domainsWithPath) {
+    const slice = extractEntityView(effectiveSystems, path);
+    if (slice.childNodes.length === 0) continue;
+    const svg = render(slice, styles, undefined, ownerIndex, displayMode, new Map(), {
+      theme,
+      ...legendOptions,
+      viewScope: legendScopeForLogicalSlice(slice),
+    });
+    const { viewBox, innerContent } = extractSvgParts(svg);
+    // Back target: the domain's usecase view when it exists (the domain has
+    // non-entity children, so extractView emits a #krs-system-<domainId>
+    // level), otherwise the parent drill level (always emitted). This avoids a
+    // dead back-link for entity-only domains.
+    const hasUsecaseView = domain.children.some((c) => c.kind !== "entity");
+    const backTarget = hasUsecaseView
+      ? domain.id
+      : path.length >= 3
+        ? path[path.length - 2]
+        : "root";
+    const backButton = renderBackButton(backTarget, "system");
+    const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
+    levels.push({
+      // Entity levels do not contribute to the shared canvas dimensions (they
+      // are fragment-only in v1); they scale to fit the bundle viewBox.
+      element: `<g id="${anchorId("entity", domain.id)}" class="krs-view">${innerSvg}</g>`,
+      width: 0,
+      height: 0,
+    });
+  }
+  return levels;
 }
 
 function renderTabBar(enabledViews: Set<ViewType>): string {
@@ -371,6 +466,17 @@ export function buildAllViewsSvg(
     );
   }
 
+  // Collect per-domain entity views (hidden levels reachable via
+  // #krs-entity-<domainId>; the interactive toggle lands with the app).
+  const entityLevels = collectEntityLevels(
+    effectiveSystems,
+    sheets,
+    krsFile.ownerIndex ?? new Map(),
+    displayMode,
+    theme,
+    legendOptions,
+  );
+
   // Collect deploy level
   const deployLevel = collectDeployLevel(krsFile, sheets, legendOptions, displayMode, theme);
 
@@ -412,7 +518,9 @@ export function buildAllViewsSvg(
     };
   }
 
-  // Compute SVG dimensions
+  // Compute SVG dimensions from the reachable tab views only. Entity views are
+  // fragment-only in v1 (no tab / toggle yet), so they must not inflate the
+  // shared canvas and rescale the system/deploy/org views.
   const allLevels = [...systemLevels, ...(deployLevel ? [deployLevel] : []), ...orgLevels];
   const maxWidth = Math.max(...allLevels.map((l) => l.width));
   const maxHeight = Math.max(...allLevels.map((l) => l.height));
@@ -420,9 +528,12 @@ export function buildAllViewsSvg(
   const totalHeight = TAB_HEIGHT + maxHeight;
 
   // Build panes
+  // Entity views live inside the system pane — they are drilled from a domain
+  // in the system view, so they share its pane visibility.
+  const systemPaneLevels = [...systemLevels, ...entityLevels];
   const systemPane =
-    systemLevels.length > 0
-      ? `<g class="krs-pane krs-pane--system" transform="translate(0, ${TAB_HEIGHT})">${systemLevels.map((l) => l.element).join("")}</g>`
+    systemPaneLevels.length > 0
+      ? `<g class="krs-pane krs-pane--system" transform="translate(0, ${TAB_HEIGHT})">${systemPaneLevels.map((l) => l.element).join("")}</g>`
       : "";
   const deployPane = deployLevel
     ? `<g class="krs-pane krs-pane--deploy" transform="translate(0, ${TAB_HEIGHT})">${deployLevel.element}</g>`

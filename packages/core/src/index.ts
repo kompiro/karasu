@@ -60,7 +60,7 @@ export { serializeStyleSheet } from "./style/serialize.js";
 export { validateStyleValues } from "./style/value-validator.js";
 
 export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-extract.js";
-export { extractView } from "./view/view-extract.js";
+export { extractView, extractEntityView } from "./view/view-extract.js";
 export type {
   CrudMatrix,
   CrudMatrixRow,

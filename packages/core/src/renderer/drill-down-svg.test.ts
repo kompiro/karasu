@@ -547,6 +547,151 @@ system ECommerce {
 }
 `;
 
+describe("buildAllViewsSvg entity views (#1870)", () => {
+  const ENTITY_KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> Customer "placed by"
+      }
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`;
+  it("emits a per-domain entity view level anchored #krs-entity-<domainId>", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    expect(svg).toContain(`id="${anchorId("entity", "Ordering")}"`);
+    expect(svg).toContain(`id="${anchorId("entity", "Customers")}"`);
+  });
+
+  it("emits the entity view in the standalone system drill-down export too", () => {
+    // The app exports a standalone system drill-down SVG (`-drilldown.svg`) via
+    // buildDrillDownSvg; the #krs-entity-<domainId> fragment must resolve there,
+    // not only in the all-views bundle.
+    const svg = buildDrillDownSvg(Parser.parse(ENTITY_KRS).value).svg;
+    const gIds = new Set([...svg.matchAll(/<g id="(krs-[A-Za-z0-9_-]+)"/g)].map((m) => m[1]));
+    expect(gIds.has(anchorId("entity", "Ordering"))).toBe(true);
+    // Back navigation target resolves within the same standalone SVG.
+    expect(gIds.has(anchorId("system", "Ordering"))).toBe(true);
+    // The entity nodes render inside the entity level.
+    const start = svg.indexOf(`id="${anchorId("entity", "Ordering")}"`);
+    expect(svg.slice(start, start + 6000)).toContain('data-node-id="Order"');
+  });
+
+  it("renders the domain's entities inside its entity view", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    const start = svg.indexOf(`id="${anchorId("entity", "Ordering")}"`);
+    const segment = svg.slice(start, start + 4000);
+    expect(segment).toContain('data-node-id="Order"');
+  });
+
+  it("emits an entity view for a domain nested below another domain (deep nesting)", () => {
+    const krsFile = Parser.parse(`
+system EC {
+  domain Sales {
+    domain Ordering {
+      entity Order {}
+    }
+  }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    expect(svg).toContain(`id="${anchorId("entity", "Ordering")}"`);
+  });
+
+  it("does not emit an entity view for a domain with no entities", () => {
+    const krsFile = Parser.parse(`
+system EC {
+  service S {
+    domain D {
+      usecase U {}
+    }
+  }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    expect(svg).not.toContain(`id="${anchorId("entity", "D")}"`);
+  });
+
+  it("does not emit a dead drill link to an entity-only domain", () => {
+    // An entity-only domain renders an empty usecase view, so no
+    // #krs-system-<domain> level is emitted. The parent system view must not
+    // advertise a drill link to it (clicking would bounce back to root).
+    const krsFile = Parser.parse(`
+system Shop {
+  service Catalog {
+    domain Products {
+      entity Product {}
+      entity Category {}
+    }
+    domain Orders {
+      usecase PlaceOrder {}
+      entity Order {}
+    }
+  }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    const linkTargets = new Set(
+      [...svg.matchAll(/href="#(krs-[A-Za-z0-9_-]+)"/g)].map((m) => m[1]),
+    );
+    const gIds = new Set([...svg.matchAll(/<g id="(krs-[A-Za-z0-9_-]+)"/g)].map((m) => m[1]));
+    // No drill link points at the entity-only domain's (never-emitted) level.
+    expect(linkTargets.has(anchorId("system", "Products"))).toBe(false);
+    // Every drill link resolves to a real level.
+    for (const target of linkTargets) {
+      expect(gIds.has(target)).toBe(true);
+    }
+    // The entity view itself is still emitted (reachable via the fragment).
+    expect(gIds.has(anchorId("entity", "Products"))).toBe(true);
+  });
+
+  it("does not change the bundle canvas size vs the same model without entities", () => {
+    // Entity views are fragment-only in v1 and must not rescale shipped views.
+    // The two models share an identical usecase/system view (entities are
+    // excluded from it), so only the entity levels differ.
+    const withEntities = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> LineItem "has"
+      }
+      entity LineItem {}
+    }
+  }
+}
+`).value;
+    const withoutEntities = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+    }
+  }
+}
+`).value;
+    const dims = (svg: string) =>
+      svg
+        .match(/viewBox="0 0 (\d+) (\d+)"/)
+        ?.slice(1, 3)
+        .join("x");
+    expect(dims(buildAllViewsSvg(withEntities).svg)).toBe(
+      dims(buildAllViewsSvg(withoutEntities).svg),
+    );
+  });
+});
+
 describe("buildAllViewsSvg", () => {
   it("returns placeholder for empty file", () => {
     const krsFile = Parser.parse("system Empty {}").value;

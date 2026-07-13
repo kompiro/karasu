@@ -339,6 +339,37 @@ function nodeId(node: KrsNode): string {
   return node.id;
 }
 
+/**
+ * Build an empty {@link ViewSlice}. Callers that already resolved the
+ * model-level resource maps pass them in; the rest default to empty maps.
+ * Single-sources the empty-slice shape shared by {@link extractView} and
+ * {@link extractEntityView} so a new field cannot be forgotten in one of them.
+ */
+function emptySlice(
+  resourceLabelMap: Map<string, string> = new Map(),
+  resourceInferredTagsMap: Map<string, string> = new Map(),
+): ViewSlice {
+  return {
+    containerNode: null,
+    childNodes: [],
+    childEdges: [],
+    ancestorChain: [],
+    ghostUsers: [],
+    ghostUserEdges: [],
+    systems: [],
+    crossSystemEdges: [],
+    ghostSystems: [],
+    ghostSystemEdges: [],
+    callerGhostSystems: [],
+    callerGhostSystemEdges: [],
+    ghostDomains: [],
+    ghostDomainEdges: [],
+    resourceLabelMap,
+    resourceInferredTagsMap,
+    implicitEdgeDetails: new Map(),
+  };
+}
+
 /** Maps infra sub-resource kind to the style tag used in resource[tag] rules. */
 const KIND_TO_INFERRED_TAG: Partial<Record<string, string>> = {
   table: "table",
@@ -562,25 +593,7 @@ export function extractView(
   const resourceLabelMap = buildResourceLabelMap(systems);
   const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
 
-  const empty: ViewSlice = {
-    containerNode: null,
-    childNodes: [],
-    childEdges: [],
-    ancestorChain: [],
-    ghostUsers: [],
-    ghostUserEdges: [],
-    systems: [],
-    crossSystemEdges: [],
-    ghostSystems: [],
-    ghostSystemEdges: [],
-    callerGhostSystems: [],
-    callerGhostSystemEdges: [],
-    ghostDomains: [],
-    ghostDomainEdges: [],
-    resourceLabelMap,
-    resourceInferredTagsMap,
-    implicitEdgeDetails: new Map(),
-  };
+  const empty = emptySlice(resourceLabelMap, resourceInferredTagsMap);
 
   const orphans = [...unassignedServices, ...unassignedDomains];
 
@@ -711,41 +724,16 @@ export function extractView(
     };
   }
 
-  // Determine the active system.
+  // Determine the active system and walk the path to the container.
   // path[0] is the system ID when it matches a known system. Otherwise the
   // caller omitted the system prefix (e.g. drilling into a child shown at the
-  // multi-system root, including the "Unassigned" pseudo-system) — search
-  // every system for a direct child whose id matches so the correct owning
-  // system becomes the drill-down root.
-  const systemNode = systems.find((s) => s.id === path[0]);
-  let system: KrsNode;
-  let startIndex: number;
-  if (systemNode) {
-    system = systemNode;
-    startIndex = 1;
-  } else {
-    const owningSystem = systems.find((s) => s.children.some((c) => c.id === path[0]));
-    system = owningSystem ?? systems[0];
-    startIndex = 0;
-  }
-
-  // Walk the path to find the container
-  const ancestorChain: KrsNode[] = [system];
-  let current: KrsNode = system;
-
-  for (let i = startIndex; i < path.length; i++) {
-    const segment = path[i];
-    let child = current.children.find((c) => nodeId(c) === segment);
-    // At the first level within the system, also search unassigned services/domains
-    if (!child && i === startIndex) {
-      child =
-        unassignedServices.find((c) => nodeId(c) === segment) ??
-        unassignedDomains.find((c) => nodeId(c) === segment);
-    }
-    if (!child) return empty;
-    ancestorChain.push(child);
-    current = child;
-  }
+  // multi-system root, including the "Unassigned" pseudo-system) — the shared
+  // helper searches every system for a direct child whose id matches so the
+  // correct owning system becomes the drill-down root.
+  const resolved = resolveContainerChain(systems, path, unassignedServices, unassignedDomains);
+  if (!resolved) return empty;
+  const { ancestorChain, startIndex } = resolved;
+  const system = ancestorChain[0];
 
   // The last node in ancestorChain is the container; ancestors are everything before it
   const containerNode = ancestorChain.pop()!;
@@ -867,4 +855,81 @@ export function extractView(
     resourceInferredTagsMap,
     implicitEdgeDetails: new Map(),
   };
+}
+
+/**
+ * Walk `path` to its container node, returning the ancestor chain (the
+ * container is the last element) or `null` when the path does not resolve.
+ * Shared by {@link extractView} and {@link extractEntityView} so the two views
+ * of the same node always resolve to the same container.
+ */
+function resolveContainerChain(
+  systems: KrsNode[],
+  path: ViewPath,
+  unassignedServices: KrsNode[] = [],
+  unassignedDomains: KrsNode[] = [],
+): { ancestorChain: KrsNode[]; startIndex: number } | null {
+  if (systems.length === 0 || path.length === 0) return null;
+  const systemNode = systems.find((s) => s.id === path[0]);
+  let system: KrsNode;
+  let startIndex: number;
+  if (systemNode) {
+    system = systemNode;
+    startIndex = 1;
+  } else {
+    const owningSystem = systems.find((s) => s.children.some((c) => c.id === path[0]));
+    system = owningSystem ?? systems[0];
+    startIndex = 0;
+  }
+  const ancestorChain: KrsNode[] = [system];
+  let current: KrsNode = system;
+  for (let i = startIndex; i < path.length; i++) {
+    const segment = path[i];
+    let child = current.children.find((c) => nodeId(c) === segment);
+    if (!child && i === startIndex) {
+      child =
+        unassignedServices.find((c) => nodeId(c) === segment) ??
+        unassignedDomains.find((c) => nodeId(c) === segment);
+    }
+    if (!child) return null;
+    ancestorChain.push(child);
+    current = child;
+  }
+  return { ancestorChain, startIndex };
+}
+
+/**
+ * Extract the **entity view** of a domain: its `entity` children and the
+ * relation edges between them — an alternative drill-down to the domain's
+ * usecase view. Returns an empty slice when the path does not resolve to a
+ * domain or the domain owns no entities.
+ *
+ * v1 scope: relations whose target is not a local entity (cross-domain
+ * relations) are dropped; surfacing the foreign entity as a ghost lands with
+ * the interactive toggle, which wires the ghost through the renderer's
+ * `layoutNode.ghost` muting mechanism.
+ */
+export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice {
+  const empty = emptySlice();
+
+  const resolved = resolveContainerChain(systems, path);
+  if (!resolved) return empty;
+  const { ancestorChain } = resolved;
+  const domain = ancestorChain.pop()!;
+  if (domain.kind !== "domain") return empty;
+
+  const entities = domain.children.filter((c) => c.kind === "entity");
+  if (entities.length === 0) return empty;
+  const localEntityIds = new Set(entities.map((e) => e.id));
+
+  const childNodes: KrsNode[] = [...entities];
+  const childEdges: KrsEdge[] = [];
+  for (const entity of entities) {
+    for (const edge of entity.edges) {
+      // Intra-domain relations only in v1; cross-domain ghosts land with the toggle.
+      if (localEntityIds.has(edge.to)) childEdges.push(edge);
+    }
+  }
+
+  return { ...empty, containerNode: domain, childNodes, childEdges, ancestorChain };
 }

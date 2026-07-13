@@ -24,7 +24,15 @@ fragment you copy from a rendered SVG resolves in the app, and vice versa.
 ```
 
 - **`<view>`** — one of `system` · `deploy` · `org` · `matrix` (the app's
-  `ActiveView`; mirrored by `ShareTargetView` in `@karasu-tools/core`).
+  `ActiveView`; mirrored by `ShareTargetView` in `@karasu-tools/core`), plus
+  `entity`. The `entity` token addresses a **per-domain entity view**: `<id>` is
+  a domain id and `#krs-entity-<domainId>` opens that domain's entity view (its
+  entities and their intra-domain relations; cross-domain ghost targets land
+  with the interactive toggle). Entity views are
+  emitted into the static all-views bundle (`drill-down-svg.ts`) and live inside
+  the system pane, since they are drilled from a domain in the system view; the
+  interactive toggle and `ShareTargetView` / SPA-hash registration land with the
+  app integration.
 - **`<id>`** — the **author-given `id`** of the element to drill to, passed
   through `sanitizeId` (non-`[A-Za-z0-9_-]` → `_`). The literal `root` denotes
   the view's top level. Identity is always the `id`, never a `label` or any
