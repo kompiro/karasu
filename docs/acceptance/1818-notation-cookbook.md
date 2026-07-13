@@ -29,13 +29,13 @@
 
   > ✅ Automated（リンク） — `docs/guide/reverse-engineering-with-ai.md` / `.ja.md` の内部リンクは `check-links` が解決性を検証する
 
-- [x] AT-D: entry #1（KV store）が leaf-less `database` + ノード粒度エッジ（`Service --> Store`）+ 物理層 `store { type … }` を示し、`resource` dot-path ではなくエッジで参照する理由（leaf が無いと未割り当て warning になる）と `@kv` 却下の理由を説明している
+- [ ] AT-D: entry #1（KV store）が leaf-less `database` + ノード粒度エッジ（`Service --> Store`）+ 物理層 `store { type … }` を示し、`resource` dot-path ではなくエッジで参照する理由（leaf が無いと未割り当て warning になる）と `@kv` 却下の理由を説明している（レビュー確認 — `docs/guide/notation-cookbook.md` idiom #1）
 
-  > ✅ Verified — クックブックの idiom #1 スニペットを `render --view system` / `--view deploy` で描画し、warning ゼロ・edge が描画されることを確認済み（`resource SessionStore` 形は `not assigned to any database` warning + orphan になることも確認）
+  > 実装時に CLI で検証済み（CI ゲートではない）: idiom #1 スニペットを `render --view system` / `--view deploy` で描画し warning ゼロ・edge 描画を確認。`resource SessionStore` 形は `not assigned to any database` warning + orphan になることも確認した。
 
-- [x] AT-E: entry #4（shared-infra fan-in）が `resource <Db>.<Leaf>` dot-path による共有と `shared-infra-fan-in` info 診断を示す
+- [ ] AT-E: entry #4（shared-infra fan-in）が `resource <Db>.<Leaf>` dot-path による共有と `shared-infra-fan-in` info 診断を示す（レビュー確認 — `docs/guide/notation-cookbook.md` idiom #4）
 
-  > ✅ Verified — idiom #4 スニペットを `render` で描画し `Info: database "ArticleDB" is shared by 2 services` が出ることを確認済み
+  > 実装時に CLI で検証済み（CI ゲートではない）: idiom #4 スニペットを `render` で描画し `Info: database "ArticleDB" is shared by 2 services` が出ることを確認した。
 
 ### 手動確認（CI で検証できない項目）
 

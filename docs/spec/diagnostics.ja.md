@@ -132,7 +132,7 @@ resource への operation / CRUD decoration の文法。
 | `unassigned-database` | warning | database が team 割り当てなしにトップレベルに置かれる。 |
 | `unassigned-queue` | warning | queue が team 割り当てなしにトップレベルに置かれる。 |
 | `unassigned-storage` | warning | storage が team 割り当てなしにトップレベルに置かれる。 |
-| `unassigned-resource` | warning | resource が dot-notation の割り当てなしにインラインで宣言される。 |
+| `unassigned-resource` | warning | bare `resource <id>` がどのストアにも解決しない（dot-notation でも `[external]` でも一意な `entity` でもない）。parser ではなく resolver がモデル全体で判定するため、一致する `entity` が宣言されると編集ゼロで昇格し警告は消える。曖昧（一致する entity が複数）な bare id は未解決のまま残り、衝突自体は `entity-anchor-collision` が報告する。 |
 | `domain-dispersal` | info | 1 つの domain id が scope 内の複数 service にまたがる（事実）。 |
 | `missing-realizes` | info | deploy node に `realizes` プロパティが無い。 |
 | `missing-runtime` | info | deploy node に `runtime` プロパティが無い。 |

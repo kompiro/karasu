@@ -81,8 +81,6 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.linkUrlSchemeNotAllowed.message", d.params);
     case "edge-source-mismatch":
       return t("diagnostic.edgeSourceMismatch.message", d.params);
-    case "unassigned-resource":
-      return t("diagnostic.unassignedResource.message", d.params);
     case "client-resource-invalid-kind":
       return t("diagnostic.clientResourceInvalidKind.message", d.params);
     case "unknown-resource-operation":

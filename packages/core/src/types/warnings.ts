@@ -16,6 +16,7 @@ export type WarningKind =
   | "unassigned-queue"
   | "unassigned-storage"
   | "unassigned-usecase"
+  | "unassigned-resource"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
   | "unresolved-edge-endpoint"
@@ -90,6 +91,7 @@ export interface WarningParamsByKind {
   "unassigned-queue": { queueId: string; label?: string };
   "unassigned-storage": { storageId: string; label?: string };
   "unassigned-usecase": { usecaseId: string };
+  "unassigned-resource": { resourceId: string };
   "cross-system-ref-implicit-external": {
     ref: string;
     sourceSystemId: string;

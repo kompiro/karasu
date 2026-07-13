@@ -229,6 +229,8 @@ export const ja: Partial<Translations> = {
     `domain "${display}" はどの service にも割り当てられていません`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>
     `usecase "${usecaseId}" はどの domain にも割り当てられていません`,
+  "warning.unassignedResource.message": ({ resourceId }) =>
+    `resource "${resourceId}" はどの database にも entity にも解決されていません`,
   "warning.entityAnchorCollision.message": ({ id }) =>
     `entity anchor id "${id}" が複数の domain / entity に使われています。#krs-entity-${id} の deep-link が曖昧になります`,
   "warning.unassignedService.message": ({ display }) =>
@@ -352,8 +354,6 @@ export const ja: Partial<Translations> = {
       : `link URL "${url}" は http / https / mailto の絶対 URL ではありません。このリンクは無視されます`,
   "diagnostic.edgeSourceMismatch.message": ({ from, parentId }) =>
     `エッジ source "${from}" は所属するブロック id "${parentId}" と一致する必要があります`,
-  "diagnostic.unassignedResource.message": ({ resourceId }) =>
-    `resource "${resourceId}" はどの database にも割り当てられていません`,
   "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
     `client の resource "${name}" の種別 "${kind}" は無効です。利用可能な種別: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
   "diagnostic.unknownResourceOperation.message": ({ operation, resourceId }) =>
