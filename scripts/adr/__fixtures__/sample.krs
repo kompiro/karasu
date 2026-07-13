@@ -1,0 +1,13 @@
+// Fixture for check-permalinks.test.ts. Emits deep anchors
+// `krs-system-Payments` and `krs-system-Ledger` (author ids preserved).
+system Shop {
+  label "Sample shop"
+
+  service Payments {
+    label "Payments"
+    domain Ledger {
+      label "Ledger"
+      usecase Charge { label "Charge a card" }
+    }
+  }
+}

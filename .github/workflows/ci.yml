@@ -67,6 +67,15 @@ jobs:
       - name: Check ADR assumptions against the working tree
         run: pnpm exec adr check-assumptions --quiet
 
+      # `adr:check-permalinks` validates each ADR `permalink:` (required
+      # `source` .krs exists + deep `#krs-<view>-<id>` anchor resolves) — an
+      # ADR↔.krs consistency check. Like check-assumptions it runs unfiltered
+      # in the already-Required `Check` job so it fires on the .krs-side
+      # changes (a rename) that a `docs/adr/**` path filter would skip.
+      # Issue #1830 / TPL-20260520-02.
+      - name: Check ADR permalinks against the working tree
+        run: pnpm run adr:check-permalinks
+
       # The reference-docs drift guard lives in its own workflow
       # (`reference-docs-check.yml`), mirroring the ADR setup, so it also runs
       # on docs-only PRs that `ci.yml`'s `paths-ignore` filters out. Issue #1342.

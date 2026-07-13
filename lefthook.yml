@@ -42,6 +42,15 @@ pre-push:
       # alongside format / lint / typecheck. Mirrors the step in ci.yml's
       # Check job. Issue #1480.
       run: pnpm exec adr check-assumptions --quiet
+    adr-check-permalinks:
+      # No `glob` on purpose (same rationale as adr-check-assumptions): this
+      # validates an ADR `permalink:` against the `.krs` it points at, so a
+      # rename inside a `.krs` — a push that touches no `docs/adr/**` — can
+      # dangle the anchor. Gating on ADR paths would skip exactly those
+      # pushes. It parses only the .krs referenced by a permalink, so it is
+      # cheap. Mirrors the step in ci.yml's Check job. Issue #1830 /
+      # TPL-20260520-02.
+      run: pnpm run adr:check-permalinks
     tpl-validate:
       glob: "{docs/test-perspectives/**,adr.config.json}"
       run: pnpm run tpl:validate
