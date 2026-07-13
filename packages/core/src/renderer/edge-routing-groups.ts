@@ -70,15 +70,16 @@ function rightPort(n: LayoutNode): Point {
   return { x: n.x + n.width, y: n.y + n.height / 2 };
 }
 
-export function routeGroupedEdges(
-  layoutNodes: Map<string, LayoutNode>,
-  layoutEdges: LayoutEdge[],
+/**
+ * Content bounds (leftmost / rightmost x over every card and frame). The gutter
+ * and trunk/single lane x's are all derived from these, so the three routing
+ * passes MUST agree on the basis for their lane numbering to align — hence one
+ * shared helper rather than three inline copies.
+ */
+function contentBounds(
+  nodes: LayoutNode[],
   frames: ContainerRect[],
-): void {
-  const nodes = [...layoutNodes.values()];
-  if (nodes.length === 0) return;
-
-  // Content bounds → gutter x on each side, outside every frame and card.
+): { minLeft: number; maxRight: number } {
   let minLeft = Infinity;
   let maxRight = -Infinity;
   for (const n of nodes) {
@@ -89,6 +90,19 @@ export function routeGroupedEdges(
     minLeft = Math.min(minLeft, f.x);
     maxRight = Math.max(maxRight, f.x + f.width);
   }
+  return { minLeft, maxRight };
+}
+
+export function routeGroupedEdges(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  // Content bounds → gutter x on each side, outside every frame and card.
+  const { minLeft, maxRight } = contentBounds(nodes, frames);
   const rightGutter: Gutter = { x: maxRight + GUTTER_GAP, side: "right" };
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
 
@@ -181,9 +195,7 @@ export function aggregateGroupTrunks(
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
-  let maxRight = -Infinity;
-  for (const n of nodes) maxRight = Math.max(maxRight, n.x + n.width);
-  for (const f of frames) maxRight = Math.max(maxRight, f.x + f.width);
+  const { maxRight } = contentBounds(nodes, frames);
 
   const frameOfNode = buildFrameOfNode(layoutNodes, frames);
 
@@ -263,16 +275,19 @@ export function aggregateGroupTrunks(
  * ones get distinct lanes. Lane order is coordinate-derived (sorted by y then id),
  * so snapshots stay stable.
  *
- * Right-side lanes are numbered clear of the trunk lanes (P2c-B): trunks occupy
- * `maxRight + GUTTER_GAP + (1..T)·TRUNK_LANE_GAP`, so overflow single-edge lanes
- * start *beyond* them at `+ (T + j)·TRUNK_LANE_GAP`. Lane 0 keeps the base gutter x
- * (`maxRight + GUTTER_GAP`), which no trunk uses — so an edge that never collided
- * does not move. Left-side lanes step further left (trunks are right-only).
+ * Right-side lanes are numbered clear of the trunk lanes (P2c-B): overflow
+ * single-edge lanes start *beyond* the rightmost trunk x actually allocated
+ * (`maxTrunkX`), so a single-edge lane can never collide with a trunk spine. Lane 0
+ * keeps the base gutter x (`maxRight + GUTTER_GAP`), which no trunk uses — so an edge
+ * that never collided does not move. Left-side lanes step further left (trunks are
+ * right-only).
  *
  * Penetration-safe by construction: every lane x lies beyond `maxRight` (or before
  * `minLeft`), where no card or frame exists, so widening a corridor never crosses an
  * obstacle — the horizontal stub only extends into already-empty territory, and the
- * vertical stays outside all obstacles (AC-1 preserved, never worse).
+ * vertical stays outside all obstacles (AC-1 preserved, never worse). Left-side lanes
+ * can push x negative; `normalizeCoordinates` (layout.ts) folds edge waypoints into
+ * its min and shifts every point non-negative, so they never clip on the left.
  */
 export function distributeGutterLanes(
   layoutNodes: Map<string, LayoutNode>,
@@ -282,26 +297,21 @@ export function distributeGutterLanes(
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
-  let minLeft = Infinity;
-  let maxRight = -Infinity;
-  for (const n of nodes) {
-    minLeft = Math.min(minLeft, n.x);
-    maxRight = Math.max(maxRight, n.x + n.width);
-  }
-  for (const f of frames) {
-    minLeft = Math.min(minLeft, f.x);
-    maxRight = Math.max(maxRight, f.x + f.width);
-  }
+  const { minLeft, maxRight } = contentBounds(nodes, frames);
   const rightBase = maxRight + GUTTER_GAP;
   const leftBase = minLeft - GUTTER_GAP;
 
-  // Existing trunk lanes (right-only, P2c-B) so overflow single-edge lanes can be
-  // numbered clear of them — no lane-x collision between trunks and single edges.
-  const trunkXs = new Set<number>();
+  // Rightmost trunk lane x actually allocated (P2c-B, right-only), so overflow
+  // single-edge lanes can start *beyond* every trunk — no lane-x collision. Derived
+  // from the real trunk geometry (not a lane count), so it stays correct even if
+  // trunk lanes were ever allocated non-contiguously. Lane 0 keeps the base gutter
+  // x, which no trunk uses (trunks sit at rightBase + (lane+1)·TRUNK_LANE_GAP).
+  let maxTrunkX = rightBase;
   for (const e of layoutEdges) {
-    if (e.trunkId && e.waypoints && e.waypoints.length === 2) trunkXs.add(e.waypoints[0].x);
+    if (e.trunkId && e.waypoints && e.waypoints.length === 2) {
+      maxTrunkX = Math.max(maxTrunkX, e.waypoints[0].x);
+    }
   }
-  const trunkLanes = trunkXs.size;
 
   // Collect non-trunked gutter corridors set by `routeGroupedEdges`, split by side.
   const right: LayoutEdge[] = [];
@@ -315,9 +325,7 @@ export function distributeGutterLanes(
     else if (x < minLeft) left.push(e);
   }
 
-  assignGutterLanes(right, (lane) =>
-    lane === 0 ? rightBase : rightBase + (trunkLanes + lane) * TRUNK_LANE_GAP,
-  );
+  assignGutterLanes(right, (lane) => (lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP));
   assignGutterLanes(left, (lane) => leftBase - lane * TRUNK_LANE_GAP);
 }
 
