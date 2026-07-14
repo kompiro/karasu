@@ -76,8 +76,9 @@ root で開く。開く際、app は history hook の mount より前に URL を
 
 アンカーは要素を `id` で固定する。**要素の `id` を rename するとアンカーは壊れる**
 （stale な `#krs-…` は view root にフォールバックする）。これは安定 identity で
-アドレスすることに内在する制約で、ADR → karasu permalink を rename に対して検証
-する仕組みは別途追跡している（`adr:check-assumptions` 拡張、#1830）。`label` に
+アドレスすることに内在する制約で、ADR → karasu permalink の rename に対する検証は
+`pnpm adr:check-permalinks`（`@kompiro/adr-tools` の `krs` kind）が担い、`permalink:`
+の anchor が解決しなくなると CI を落とす（#1830）。`label` に
 アンカーして回避してはならない — label は表示 / i18n 文字列であり identity では
 ない。
 

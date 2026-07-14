@@ -154,6 +154,10 @@ export function useSystemView(
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
   toggleGroup: (groupId: string) => void;
+  /** Service ids currently expanded in place (#1921). At most one (Phase 1). */
+  expandedContainers: ReadonlySet<string>;
+  /** Expand/collapse a service in place; expanding one collapses any other (#1921). */
+  toggleExpand: (serviceId: string) => void;
   /** Ids of every collapsible team boundary frame in the current render (#1872). */
   groupIds: string[];
   /**
@@ -201,12 +205,22 @@ export function useSystemView(
   const toggleGroup = groups.toggle;
   const groupsKey = groups.key;
 
+  // Containers expanded in place (Issue #1921). Each shows its domain children
+  // inside a boundary frame while siblings stay collapsed; toggled via the
+  // on-SVG ⊕/⊖ `data-expand-node` control. `single` keeps at most one expanded
+  // so the scoped-glance node budget stays bounded (Phase 1). View state, like
+  // the collapse axes — the `.krs` is untouched.
+  const expansions = useCollapsibleSet<string>(true);
+  const expandedContainers = expansions.set;
+  const toggleExpand = expansions.toggle;
+  const expandKey = expansions.key;
+
   // Structural key for `viewPath` so that a fresh `[]` from `SET_ACTIVE_VIEW`
   // does not restart the in-flight debounce when the previous value was also
   // empty. Without this, switching view tabs while the initial compile is
   // pending keeps resetting the 300ms timer and never renders an SVG. See #1171.
   const viewPathKey = viewPath.join("/");
-  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}:collapsed=${collapsedKey}:groupBy=${groupBy}:groups=${groupsKey}`;
+  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}:collapsed=${collapsedKey}:groupBy=${groupBy}:groups=${groupsKey}:expanded=${expandKey}`;
 
   const compile = async (): Promise<CompileOutcome<SystemViewState> | null> => {
     if (!entryPath || !fs) return null;
@@ -229,6 +243,9 @@ export function useSystemView(
       // See docs/design/group-by-bulk-collapse.md (B2).
       groupBy: groupBy === "team" ? "team" : undefined,
       collapsedGroups: groupBy === "team" ? collapsedGroups : undefined,
+      // In-place expansion is Phase 1-scoped to the ungrouped system view
+      // (#1921); suppressed under Group by: team.
+      expandedContainers: groupBy === "team" ? undefined : expandedContainers,
       interactive: true,
     });
 
@@ -251,6 +268,7 @@ export function useSystemView(
           collapsedCategories,
           groupBy: groupBy === "team" ? "team" : undefined,
           collapsedGroups: groupBy === "team" ? collapsedGroups : undefined,
+          expandedContainers: groupBy === "team" ? undefined : expandedContainers,
           interactive: true,
         }),
       ]);
@@ -322,6 +340,7 @@ export function useSystemView(
       collapsedKey,
       groupBy,
       groupsKey,
+      expandKey,
     ],
   });
   // Bulk collapse (#1872). Both id lists come from the rendered SVG in one pass,
@@ -356,6 +375,8 @@ export function useSystemView(
     groupBy,
     setGroupBy,
     toggleGroup,
+    expandedContainers,
+    toggleExpand,
     groupIds,
     anyCollapsible,
     allCollapsed,

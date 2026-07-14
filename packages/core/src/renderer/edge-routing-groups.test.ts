@@ -564,3 +564,114 @@ organization Org {
     expect(totalPenetrations(res)).toBe(0);
   });
 });
+
+/**
+ * Every strict-interior right-angle crossing between two *different* edges,
+ * as {x, y}. This is the set P2c-C must mark with a hop (TPL-20260711-02:
+ * assert every crossing carries a mark, not that the crossing count is zero).
+ */
+function rightAngleCrossings(res: LayoutResult): Point[] {
+  const EPS = 1e-6;
+  interface Seg {
+    a: number;
+    b: number;
+    fixed: number;
+    edge: number;
+    horizontal: boolean;
+  }
+  const segs: Seg[] = [];
+  res.edges.forEach((e, edgeIdx) => {
+    if (e.ghost || e.cyclic) return;
+    const pts: Point[] = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i];
+      const q = pts[i + 1];
+      if (Math.abs(p.y - q.y) < EPS && Math.abs(p.x - q.x) >= EPS) {
+        segs.push({
+          a: Math.min(p.x, q.x),
+          b: Math.max(p.x, q.x),
+          fixed: p.y,
+          edge: edgeIdx,
+          horizontal: true,
+        });
+      } else if (Math.abs(p.x - q.x) < EPS && Math.abs(p.y - q.y) >= EPS) {
+        segs.push({
+          a: Math.min(p.y, q.y),
+          b: Math.max(p.y, q.y),
+          fixed: p.x,
+          edge: edgeIdx,
+          horizontal: false,
+        });
+      }
+    }
+  });
+  const out: Point[] = [];
+  for (const h of segs.filter((s) => s.horizontal)) {
+    for (const v of segs.filter((s) => !s.horizontal)) {
+      if (h.edge === v.edge) continue;
+      if (
+        v.fixed > h.a + EPS &&
+        v.fixed < h.b - EPS &&
+        h.fixed > v.a + EPS &&
+        h.fixed < v.b - EPS
+      ) {
+        out.push({ x: v.fixed, y: h.fixed });
+      }
+    }
+  }
+  return out;
+}
+
+describe("computeCrossingMarks (#1859, P2c-C)", () => {
+  it("sets crossingMarks in the grouped view and leaves it undefined ungrouped (AC-5)", () => {
+    expect(layoutOf(TRUNKS, TRUNKS_OWNER, "team").crossingMarks).toBeDefined();
+    expect(layoutOf(TRUNKS, TRUNKS_OWNER).crossingMarks).toBeUndefined();
+  });
+
+  it("marks a junction dot only at real trunk merges, not at the trunk head (AC-2)", () => {
+    const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
+    const junctions = res.crossingMarks!.junctions;
+    // Group trunked edges by spine (trunkId @ elbow x). Each spine's *topmost*
+    // stub is the head (an L-corner, no dot); every lower stub is a T-merge (dot).
+    const spines = new Map<string, number[]>();
+    for (const e of res.edges.filter((x) => x.trunkId !== undefined)) {
+      const wp0 = e.waypoints![0];
+      const key = `${e.trunkId}@${wp0.x}`;
+      const ys = spines.get(key);
+      if (ys) ys.push(wp0.y);
+      else spines.set(key, [wp0.y]);
+    }
+    const merges: Point[] = [];
+    const heads: Point[] = [];
+    for (const [key, ys] of spines) {
+      const x = Number(key.split("@")[1]);
+      const minY = Math.min(...ys);
+      for (const y of ys) (y > minY ? merges : heads).push({ x, y });
+    }
+    expect(spines.size).toBeGreaterThanOrEqual(1);
+    expect(merges.length).toBeGreaterThanOrEqual(1);
+    // Every real merge is dotted; no trunk head is.
+    expect(merges.every((m) => junctions.some((j) => j.x === m.x && j.y === m.y))).toBe(true);
+    expect(heads.some((h) => junctions.some((j) => j.x === h.x && j.y === h.y))).toBe(false);
+  });
+
+  it("draws a hop over every right-angle crossing — none can be misread as a connection (AC-3, TPL-20260711-02)", () => {
+    const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
+    const hops = res.crossingMarks!.hops;
+    const crossings = rightAngleCrossings(res);
+    // Dual metric: crossings are *observed* (not asserted to zero); each must be
+    // covered by a hop arc so the crossing reads as "not connected".
+    const uncovered = crossings.filter(
+      (c) =>
+        !hops.some(
+          (m) =>
+            Math.abs(m.y - c.y) < 1e-6 &&
+            c.x >= m.x - m.halfWidth - 1e-6 &&
+            c.x <= m.x + m.halfWidth + 1e-6,
+        ),
+    );
+    expect(uncovered).toEqual([]);
+    // And no hop is invented where there is no crossing.
+    expect(hops.length).toBeLessThanOrEqual(crossings.length);
+  });
+});

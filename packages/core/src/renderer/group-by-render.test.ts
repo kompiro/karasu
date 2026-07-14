@@ -308,3 +308,77 @@ organization Org {
     expect(svg).not.toContain('data-node-id="PaymentService"');
   });
 });
+
+// Two teams (alpha, beta) both call a shared infra DB and a shared external EXT,
+// placed in the bottom tier so both calls cross bands → two trunks form (junction
+// dots on merge), and the cross-band stubs cross verticals (hop arcs).
+const TRUNKS = `
+system Shop {
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  database DB { label "DB" }
+  service EXT [external] { label "EXT" }
+  A -> DB "w"
+  B -> DB "w"
+  A -> EXT "call"
+  B -> EXT "call"
+}
+organization Org {
+  team "alpha" { label "Alpha" owns A }
+  team "beta" { label "Beta" owns B }
+  team "gamma" { label "Gamma" owns C }
+}
+`;
+
+describe("crossing marks layer (#1859 P2c-C)", () => {
+  const trunksSvg = (groupBy?: "team"): string => {
+    const r = compile(TRUNKS, { diagramType: "system", groupBy });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    return r.svg;
+  };
+
+  it("emits a crossing-marks layer with junction dots when grouped", () => {
+    const svg = trunksSvg("team");
+    expect(svg).toContain('class="crossing-marks"');
+    // Trunk merges render as connection dots.
+    expect(svg).toContain("<circle");
+  });
+
+  it("emits no crossing-marks layer when ungrouped (AC-5)", () => {
+    expect(trunksSvg(undefined)).not.toContain('class="crossing-marks"');
+  });
+
+  it("orders the crossing-marks layer after the edges layer (marks on top)", () => {
+    const svg = trunksSvg("team");
+    expect(svg.indexOf('class="edges"')).toBeLessThan(svg.indexOf('class="crossing-marks"'));
+  });
+
+  it("colours marks with their owning edge's stroke, not a fixed default (#1859 review #3)", () => {
+    // Colour every edge crimson; the crossing marks must follow, not stay slate.
+    const r = compile(TRUNKS, {
+      diagramType: "system",
+      groupBy: "team",
+      styleSource: `edge { color: #dc143c; }`,
+    });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    const layer = r.svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    expect(layer).toContain("<circle"); // trunk merge dots present
+    expect(layer).toContain('fill="#dc143c"'); // dot in the edge colour
+    expect(layer).not.toContain("#94A3B8"); // not the default slate
+  });
+
+  // #1859 review #1: crossing marks are scoped to right-angle crossings in the
+  // single-system Group-by view. These pin the boundary so it is explicit, not
+  // silent — extending coverage is a separate follow-up.
+  it("does not emit marks for the multi-system grouped view (out of P2c scope)", () => {
+    const TWO_SYSTEMS = `
+system Shop { service A { label "A" } service B { label "B" } A -> B }
+system Pay { service C { label "C" } }
+organization Org { team "t1" { owns A } team "t2" { owns B owns C } }
+`;
+    const r = compile(TWO_SYSTEMS, { diagramType: "system", groupBy: "team" });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    expect(r.svg).not.toContain('class="crossing-marks"');
+  });
+});

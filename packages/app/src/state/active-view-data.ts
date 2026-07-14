@@ -39,6 +39,8 @@ interface ActiveViewData {
   onCategoryToggle?: (category: CategoryId) => void;
   /** system: click a group ⊖/⊕ control (#1858). */
   onGroupToggle?: (groupId: string) => void;
+  /** system: click a ⊕/⊖ in-place expansion control on a service (#1921). */
+  onExpandToggle?: (serviceId: string) => void;
   /** system: current Group-by axis (#1858). */
   groupBy?: GroupByMode;
   /** system: change the Group-by axis (#1858). */
@@ -116,6 +118,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         onTeamButtonClick: systemView.onTeamButtonClick,
         onCategoryToggle: systemView.onCategoryToggle,
         onGroupToggle: systemView.onGroupToggle,
+        onExpandToggle: systemView.onExpandToggle,
         groupBy: systemView.groupBy,
         onGroupByChange: systemView.onGroupByChange,
         groupByAvailable: systemView.groupByAvailable,

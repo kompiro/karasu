@@ -842,13 +842,15 @@ system EC {
       expect(edgeKeys).toContain("Order->LineItem");
     });
 
-    it("drops cross-domain relations in v1 (ghost surfacing lands with the toggle)", () => {
+    it("drops a bare cross-domain relation (only qualified DomainId.EntityId is a ghost)", () => {
       const systems = parseSystem(KRS);
       const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
-      // The Customer entity lives in another domain — not pulled into this view.
+      // `Order -> Customer` is a bare id pointing at another domain's entity — it
+      // is neither an intra-domain edge nor a qualified cross-domain reference,
+      // so it is dropped (not surfaced as a ghost). #1911.
       expect(slice.childNodes.map((n) => n.id)).not.toContain("Customer");
-      const edgeKeys = slice.childEdges.map((e) => `${e.from}->${e.to}`);
-      expect(edgeKeys).not.toContain("Order->Customer");
+      expect(slice.childEdges.map((e) => `${e.from}->${e.to}`)).not.toContain("Order->Customer");
+      expect(slice.ghostEntities).toHaveLength(0);
     });
 
     it("resolves a domain nested below a service→domain path (deep nesting)", () => {
@@ -885,6 +887,162 @@ system EC {
 `);
       const slice = extractEntityView(systems, ["EC", "S", "D"]);
       expect(slice.childNodes).toHaveLength(0);
+    });
+  });
+
+  describe("cross-domain ghost entities (#1911)", () => {
+    const KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        Order -> LineItem "has"
+        Order -> Customers.Customer "placed by"
+      }
+      entity LineItem {}
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer {
+        Customer -> Ordering.Order "has many"
+      }
+    }
+  }
+}
+`;
+
+    it("surfaces an outgoing qualified reference as a ghost, keyed DomainId.EntityId", () => {
+      const systems = parseSystem(KRS);
+      const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
+      // Foreign entity is NOT a local child node.
+      expect(slice.childNodes.map((n) => n.id)).not.toContain("Customer");
+      // It is a ghost, keyed by the qualified id, sub-labelled with its domain.
+      const ghost = slice.ghostEntities.find((g) => g.key === "Customers.Customer");
+      expect(ghost).toBeDefined();
+      expect(ghost?.node.id).toBe("Customer");
+      expect(ghost?.parentDomainLabel).toBe("Customers");
+      // The outgoing edge is normalized: local endpoint bare, foreign endpoint qualified.
+      expect(slice.ghostEntityEdges.map((e) => `${e.from}->${e.to}`)).toContain(
+        "Order->Customers.Customer",
+      );
+    });
+
+    it("surfaces an incoming qualified reference (foreign entity → this domain) as a ghost", () => {
+      const systems = parseSystem(KRS);
+      // Drill into Customers: Ordering.Order points INTO Customers via Customer.
+      const slice = extractEntityView(systems, ["EC", "CustomerService", "Customers"]);
+      const ghost = slice.ghostEntities.find((g) => g.key === "Ordering.Order");
+      expect(ghost).toBeDefined();
+      expect(ghost?.node.id).toBe("Order");
+      // Incoming edge normalized: foreign endpoint qualified, local endpoint bare.
+      expect(slice.ghostEntityEdges.map((e) => `${e.from}->${e.to}`)).toContain(
+        "Ordering.Order->Customer",
+      );
+    });
+
+    it("dedups a foreign entity referenced in both directions into one ghost", () => {
+      const systems = parseSystem(KRS);
+      // Ordering: Order → Customers.Customer (outgoing) AND Customer → Ordering.Order
+      // (incoming) both involve the Customer entity. It appears once as a ghost,
+      // but both relation edges are kept.
+      const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
+      expect(slice.ghostEntities.filter((g) => g.key === "Customers.Customer")).toHaveLength(1);
+      const edges = slice.ghostEntityEdges.map((e) => `${e.from}->${e.to}`).sort();
+      expect(edges).toEqual(["Customers.Customer->Order", "Order->Customers.Customer"]);
+    });
+
+    it("does not ghost a qualified reference to a resource / unknown target", () => {
+      const systems = parseSystem(`
+system EC {
+  service S {
+    domain D {
+      entity Order {
+        Order -> OrderDB.orders "persisted in"
+        Order -> Nope.Ghost "dangling"
+      }
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "S", "D"]);
+      expect(slice.ghostEntities).toHaveLength(0);
+      expect(slice.ghostEntityEdges).toHaveLength(0);
+    });
+
+    it("does not resolve a qualified reference across a system boundary (v1 scope)", () => {
+      // Domain resolution is scoped to the owning system, because DomainId is
+      // only error-level unique within a system. A qualified target naming a
+      // domain in another system is not a ghost (cross-system is out of scope). #1911
+      const systems = parseSystem(`
+system A {
+  service SA {
+    domain Ordering {
+      entity Order {
+        Order -> Customers.Customer "cross-system"
+      }
+    }
+  }
+}
+system B {
+  service SB {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["A", "SA", "Ordering"]);
+      expect(slice.ghostEntities).toHaveLength(0);
+      expect(slice.ghostEntityEdges).toHaveLength(0);
+    });
+
+    it("resolves same-named domains independently per system (no cross-system bleed)", () => {
+      // Both systems have `domain Payments` with different entities. Drilling into
+      // system A's Ordering resolves `Payments.Invoice` to A's Payments only.
+      const systems = parseSystem(`
+system A {
+  service SA {
+    domain Ordering {
+      entity Order {
+        Order -> Payments.Invoice "billed by"
+      }
+    }
+    domain Payments {
+      entity Invoice {}
+    }
+  }
+}
+system B {
+  service SB {
+    domain Payments {
+      entity Receipt {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["A", "SA", "Ordering"]);
+      expect(slice.ghostEntities.map((g) => g.key)).toEqual(["Payments.Invoice"]);
+      expect(slice.ghostEntities[0]?.node.id).toBe("Invoice");
+    });
+
+    it("treats a qualified reference to a local entity as an intra-domain edge", () => {
+      const systems = parseSystem(`
+system EC {
+  service S {
+    domain Ordering {
+      entity Order {
+        Order -> Ordering.LineItem "has"
+      }
+      entity LineItem {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "S", "Ordering"]);
+      expect(slice.ghostEntities).toHaveLength(0);
+      // Normalized to the bare local id so it lays out against the local child.
+      expect(slice.childEdges.map((e) => `${e.from}->${e.to}`)).toContain("Order->LineItem");
     });
   });
 

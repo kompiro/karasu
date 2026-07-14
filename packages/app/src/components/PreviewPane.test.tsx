@@ -634,3 +634,19 @@ describe("PreviewPane group collapse controls (#1858)", () => {
     expect(onGroupToggle).toHaveBeenCalledWith("payments");
   });
 });
+
+describe("PreviewPane in-place expansion controls (#1921)", () => {
+  it("calls onExpandToggle with the service id when a ⊕/⊖ expand control is clicked", () => {
+    const onExpandToggle = vi.fn<(s: string) => void>();
+    const svg = `<div data-expand-node="OrderService"></div>`;
+    const { container } = render(
+      <PreviewPane {...baseProps()} svg={svg} onExpandToggle={onExpandToggle} />,
+    );
+    const previewContainer = container.querySelector(".preview-container")!;
+    click(
+      previewContainer as HTMLElement,
+      () => container.querySelector(`[data-expand-node='OrderService']`)!,
+    );
+    expect(onExpandToggle).toHaveBeenCalledWith("OrderService");
+  });
+});
