@@ -170,12 +170,12 @@ in-place expansion は本質的に「一度に見せる量を増やす」機能�
 
 ### フェーズ分割
 
-| Phase | 中身 | 対応 Issue | 依存 |
+| Phase | 中身 | 対応 Issue | 状態 |
 | --- | --- | --- | --- |
-| **Phase 1** | 単一ノードの in-frame 展開（同時展開数 ≤ 1）。案1 のレイアウト機構を最小ケースで実装し B1–B3 を計測 | [#1921](https://github.com/kompiro/karasu/issues/1921)（案3） | — |
-| **Phase 2** | 同時展開数の制約を外した一般 true mixed-LOD（案1）。scoped-glance ガード（戻す affordance・ソフト上限）を設計要件に含む | [#1923](https://github.com/kompiro/karasu/issues/1923)（案1） | Phase 1 |
+| **Phase 1** | 単一ノードの in-frame 展開（同時展開数 ≤ 1）。案1 のレイアウト機構を最小ケースで実装し B1–B3 を計測 | [#1921](https://github.com/kompiro/karasu/issues/1921)（案3） | **実装済** (PR #1928) |
+| **Phase 2** | 同時展開数の制約を外した一般 true mixed-LOD（案1）。scoped-glance ガード（戻す affordance・ソフト警告）を含む | [#1923](https://github.com/kompiro/karasu/issues/1923)（案1） | **実装済** (本 PR) |
 
-親 tracking は [#1815](https://github.com/kompiro/karasu/issues/1815)。Phase 2 は Phase 1 の計測結果を gate にして着手する。
+親 tracking は [#1815](https://github.com/kompiro/karasu/issues/1815)。Phase 2 は Phase 1 の計測結果を gate にして着手した。両 Phase 完了により、本 doc は ADR へ昇格する（cleanup 時、別 `docs(adr):` PR）。
 
 ### 実装の指針（Phase 1 — 単一ノード in-frame 展開 / 案3）
 
@@ -219,13 +219,18 @@ in-place expansion は本質的に「一度に見せる量を増やす」機能�
 **gate 判断: 案3（Phase 1）は B1–B3 を満たし、レイアウト複雑度は許容範囲。案1
 （Phase 2, #1923）へ進んでよい。**
 
-### 実装の指針（Phase 2 — 一般 true mixed-LOD / 案1）
+### 実装の指針（Phase 2 — 一般 true mixed-LOD / 案1）【実装済】
 
-1. `expandedContainers` の **size ≤ 1 制約を外す**（複数コンテナを同時に in-frame 展開）。同一系列の展開ノードが複数あるときの band 配置・レイヤ割り当て・越境エッジ再ルートを一般化する。
-2. **scoped-glance ガード（TPL-20260510-21 対応）**: 「すべて畳んで俯瞰へ戻る」affordance（bulk collapse の既存 UI 系譜）、1 画面ノード数がしきい値を超えたときの警告/抑制を設計要件にする。無制限展開が既定にならないようにする。
-3. 深い入れ子展開（展開ノードの中の子をさらに展開）を扱うかを Phase 1 の計測を見て判断する。
-4. AT: Phase 2 用に別記録。複数同時展開・戻り導線・ノード数ガードを TC に含める。
-5. ADR 昇格: Phase 1 / Phase 2 が揃った時点（または各 Phase 完了時）に `docs/adr/<issue>-expand-container-in-place.md` として昇格し、本 Design Doc は同 PR で削除する。段階昇格する場合は `docs/design/system-view-grouping.md` の部分昇格運用に倣う。
+1. **size ≤ 1 制約を撤廃**: app 側 `useCollapsibleSet` の `single` を外すだけ。core のレイアウト機構（`assignGroupedLayers` は複数 group を、`buildGroupFrames` は複数フレームを既に扱える）は Phase 1 でそのまま一般化されており、**core 変更ゼロで N 同時展開が成立**した。
+2. **越境エッジ再ルート（本 Phase の核心）**: Phase 1 は expansion を orthogonal router に流していたため、複数フレームでは通過エッジが各フレームを貫通した。Phase 2 で **`routeGroupedEdges` を frame 端点対応に拡張**し、expansion を group router に戻した:
+   - `routeGroupedEdges(..., expandedFrames)` に展開フレーム矩形（container id → rect）を渡す。node でない frame 端点（service レベルのエッジ）を frame rect として解決し、その frame を当該エッジの障害物集合から除外する（内部 domain 端点が自分のフレームに入れるのと同じ扱い）。
+   - 結果: 各フレームのエッジは自分のフレーム/domain に接続し、**他のフレームは side gutter で迂回**する。Phase 1 の「通過エッジがフレームを貫通する」残課題も同時に解消した（group router は #1859 で frame を障害物として扱うため）。
+3. **scoped-glance ガード（TPL-20260510-21）— ソフト（警告のみ）**:
+   - **戻る導線**: 既存「Collapse all」が展開も畳む（`expandedContainers` を clear）。展開が 1 つでもあれば `anyCollapsible` が立ち、ワンクリックで俯瞰へ戻れる。
+   - **ソフト警告**: 同時展開が閾値（`EXPANSION_OVERLOAD_THRESHOLD = 4`）以上でツールバーに `⚠ Many containers expanded — Collapse all …` のヒント（i18n `preview.expansion.overloadHint`）。**ハード上限は設けない**（ユーザー選択）。
+4. **深い入れ子展開は不採用**（Phase 1 計測後の判断）: 展開ノードの中の子をさらに展開するのは drill-down の領域。モデルを平坦に保ち scoped-glance を守るため Phase 2 では扱わない（将来 #1817 pillar で再検討可）。
+5. AT: `docs/acceptance/1923-multi-container-expansion.md`。
+6. ADR 昇格: 両 Phase 完了により、cleanup 時に別 `docs(adr):` PR で `docs/adr/1921-expand-container-in-place.md` へ昇格し本 doc を削除する（`system-view-grouping.md` の運用に倣う）。
 
 ### 影響範囲・マイグレーション
 

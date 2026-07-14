@@ -40,6 +40,7 @@ interface UsePreviewContextValueArgs {
     groupByAvailable: boolean;
     anyCollapsible: boolean;
     allCollapsed: boolean;
+    expansionOverload: boolean;
     onCollapseAllToggle: () => void;
   };
   deploy: {
@@ -163,6 +164,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         groupByAvailable: system.groupByAvailable,
         anyCollapsible: system.anyCollapsible,
         allCollapsed: system.allCollapsed,
+        expansionOverload: system.expansionOverload,
         onCollapseAllToggle: system.onCollapseAllToggle,
         highlightedNodeId,
         onClearHighlight: nav.clearHighlight,
@@ -247,6 +249,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.groupByAvailable,
       system.anyCollapsible,
       system.allCollapsed,
+      system.expansionOverload,
       system.onCollapseAllToggle,
       org.orgTreeExportSvg,
       viewPath,

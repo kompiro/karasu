@@ -1445,24 +1445,26 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // node or frame interior (#1859, P2c-A). Ungrouped keeps the skip-layer
   // channel router unchanged, so "Group by: none" stays byte-identical.
   // See ADR-20260429-01 and docs/design/system-view-grouping.md § "P2c 実装設計".
-  if (groupBands && !isExpanding) {
+  if (groupBands) {
     const groupFrames = containers.filter((c) => c.group);
-    routeGroupedEdges(layoutNodes, layoutEdges, groupFrames);
+    // In-place expansion (#1921/#1923) shares the group router: passing the
+    // expanded frame rects lets a service-level edge anchor on the frame border
+    // and detour around the *other* frames, while an edge to an interior domain
+    // still enters its own frame. With multiple expansions this keeps every
+    // frame's edges connected instead of piercing the neighbours.
+    routeGroupedEdges(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
     // Merge edges sharing an infra/external target onto one trunk lane per
     // target so distinct targets' spines no longer overlap (#1859 P2c-B).
-    aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames);
+    // `expandedFrameRects` lets frame-anchored expansion edges trunk/fan-out too.
+    aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
     // Give the remaining non-trunked gutter corridors distinct lanes so two
     // single-incoming edges no longer share a collinear vertical segment (#1927).
+    // Waypoint-based, so it already covers frame-anchored edges.
     distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
-    // Fan out the anchors of edges leaving *or entering* one node on the same
-    // side, so their horizontal stubs no longer overlap into one line (#1927).
-    fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames);
+    // Fan out the anchors of edges leaving *or entering* one node/frame on the
+    // same side, so their horizontal stubs no longer overlap into one line (#1927).
+    fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
   } else {
-    // In-place expansion (#1921) keeps the band layout but routes edges with the
-    // plain orthogonal router: a single expansion frame's own domains are the
-    // edge *targets* inside it, so the group router's route-around-frames rule
-    // (built for many team frames, #1859) would push those edges into the gutter
-    // — leaving them disconnected from the domains or piercing the frame border.
     routeOrthogonalEdges(layoutNodes, layoutEdges);
   }
 

@@ -183,6 +183,7 @@ export const ja: Partial<Translations> = {
   "preview.groupBy.team": "チーム",
   "preview.groupBy.collapseAll": "すべて畳む",
   "preview.groupBy.expandAll": "すべて展開",
+  "preview.expansion.overloadHint": "多くのコンテナを展開中 — Collapse all で俯瞰に戻れます",
 
   // 共有（inline URL 共有、karasu-nest）
   "preview.share.label": "🔗 Share",

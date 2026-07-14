@@ -309,6 +309,7 @@ export function AppShell({
       groupByAvailable: views.system.groupByAvailable,
       anyCollapsible: views.system.anyCollapsible,
       allCollapsed: views.system.allCollapsed,
+      expansionOverload: views.system.expansionOverload,
       onCollapseAllToggle: views.system.onCollapseAllToggle,
     },
     deploy: {

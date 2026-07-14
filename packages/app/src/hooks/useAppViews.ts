@@ -86,6 +86,7 @@ interface SystemViewBundle {
   anyCollapsible: boolean;
   /** True when every team frame AND external/infra category is collapsed (#1872). */
   allCollapsed: boolean;
+  expansionOverload: boolean;
   /** Collapse everything (frames + categories) if anything is open, else expand all (#1872). */
   onCollapseAllToggle: () => void;
   /** System-view grouping axis and its setter (Issue #1858). */
@@ -213,6 +214,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleExpand,
     anyCollapsible,
     allCollapsed,
+    expansionOverload,
     onCollapseAllToggle,
     nodeDiff: systemNodeDiff,
   } = useSystemView(
@@ -351,6 +353,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       toggleExpand,
       anyCollapsible,
       allCollapsed,
+      expansionOverload,
       onCollapseAllToggle,
     },
     deploy: {

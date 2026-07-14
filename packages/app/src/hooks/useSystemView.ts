@@ -106,6 +106,13 @@ resolveIconManifest(
   true,
 );
 
+/**
+ * Simultaneous in-place expansions past which the UI shows a soft scoped-glance
+ * nudge (#1923). Not a hard cap — the user can open more; the hint just points
+ * them at Collapse all (TPL-20260510-21).
+ */
+const EXPANSION_OVERLOAD_THRESHOLD = 4;
+
 /** Reverse `svg-builder`'s `escapeXml` — the only 4 entities it emits, `&amp;` last. */
 function decodeXmlEntities(s: string): string {
   return s
@@ -154,10 +161,12 @@ export function useSystemView(
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
   toggleGroup: (groupId: string) => void;
-  /** Service ids currently expanded in place (#1921). At most one (Phase 1). */
+  /** Service ids currently expanded in place (#1921/#1923). Several at once in Phase 2. */
   expandedContainers: ReadonlySet<string>;
-  /** Expand/collapse a service in place; expanding one collapses any other (#1921). */
+  /** Expand/collapse a service in place; multiple may be open at once (#1923). */
   toggleExpand: (serviceId: string) => void;
+  /** True when enough containers are expanded to warrant the soft scoped-glance hint (#1923). */
+  expansionOverload: boolean;
   /** Ids of every collapsible team boundary frame in the current render (#1872). */
   groupIds: string[];
   /**
@@ -205,12 +214,14 @@ export function useSystemView(
   const toggleGroup = groups.toggle;
   const groupsKey = groups.key;
 
-  // Containers expanded in place (Issue #1921). Each shows its domain children
-  // inside a boundary frame while siblings stay collapsed; toggled via the
-  // on-SVG ⊕/⊖ `data-expand-node` control. `single` keeps at most one expanded
-  // so the scoped-glance node budget stays bounded (Phase 1). View state, like
-  // the collapse axes — the `.krs` is untouched.
-  const expansions = useCollapsibleSet<string>(true);
+  // Containers expanded in place (Issue #1921 / #1923). Each shows its domain
+  // children inside a boundary frame while siblings stay collapsed; toggled via
+  // the on-SVG ⊕/⊖ `data-expand-node` control. Phase 2 lifts the single-expand
+  // cap so several can be open at once (true mixed-LOD); the scoped-glance guard
+  // is soft — "Collapse all" clears them and a warning fires when many are open
+  // (TPL-20260510-21). View state, like the collapse axes — the `.krs` is
+  // untouched.
+  const expansions = useCollapsibleSet<string>();
   const expandedContainers = expansions.set;
   const toggleExpand = expansions.toggle;
   const expandKey = expansions.key;
@@ -351,13 +362,18 @@ export function useSystemView(
   // only category bands). The per-axis state / controls stay orthogonal
   // (ADR-20260711-03 §3); only this convenience toggle bridges them.
   const { groupIds, categoryIds } = useMemo(() => extractCollapsibles(result.svg), [result.svg]);
-  const anyCollapsible = groupIds.length > 0 || categoryIds.length > 0;
+  // In-place expansions count as "collapsible" too: Collapse all clears them,
+  // giving a one-click return to the scoped-glance overview (#1923).
+  const anyCollapsible =
+    groupIds.length > 0 || categoryIds.length > 0 || expandedContainers.size > 0;
   const allCollapsed =
     anyCollapsible &&
+    expandedContainers.size === 0 &&
     groupIds.every((id) => collapsedGroups.has(id)) &&
     categoryIds.every((c) => collapsedCategories.has(c));
   const collapseGroupsAll = groups.replace;
   const collapseCategoriesAll = categories.replace;
+  const clearExpansions = expansions.replace;
   const onCollapseAllToggle = useCallback(() => {
     if (allCollapsed) {
       collapseGroupsAll();
@@ -365,8 +381,16 @@ export function useSystemView(
     } else {
       collapseGroupsAll(groupIds);
       collapseCategoriesAll(categoryIds);
+      clearExpansions(); // fold every expanded container back to the overview
     }
-  }, [allCollapsed, groupIds, categoryIds, collapseGroupsAll, collapseCategoriesAll]);
+  }, [
+    allCollapsed,
+    groupIds,
+    categoryIds,
+    collapseGroupsAll,
+    collapseCategoriesAll,
+    clearExpansions,
+  ]);
 
   return {
     ...result,
@@ -377,6 +401,10 @@ export function useSystemView(
     toggleGroup,
     expandedContainers,
     toggleExpand,
+    // Soft scoped-glance guard (#1923 / TPL-20260510-21): many simultaneous
+    // expansions push past the "limit what's shown at once" principle, so the
+    // UI nudges the viewer to Collapse all — no hard cap.
+    expansionOverload: expandedContainers.size >= EXPANSION_OVERLOAD_THRESHOLD,
     groupIds,
     anyCollapsible,
     allCollapsed,

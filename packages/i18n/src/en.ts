@@ -184,6 +184,8 @@ export const en: Translations = {
   "preview.groupBy.team": "Team",
   "preview.groupBy.collapseAll": "Collapse all",
   "preview.groupBy.expandAll": "Expand all",
+  "preview.expansion.overloadHint":
+    "Many containers expanded — Collapse all to return to the overview",
 
   // Share (inline URL sharing, karasu-nest)
   "preview.share.label": "🔗 Share",
