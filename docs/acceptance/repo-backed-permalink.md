@@ -9,7 +9,7 @@
   - `packages/app/src/render/repo-permalink.ts`（フレームワーク非依存の resolver + GitHub-raw FileSystemProvider）
   - `functions/r/[[path]].ts`（Cloudflare Pages Function アダプタ、`/r/*` にスコープ）
 
-> `<owner>/<repo>[/<path>]@<ref>` の permalink から、その repo の committed `.krs` を pinned ref 時点で GitHub raw から取得・合成（import inline）し、既存の inline-share payload に畳んで `/s?s=` へ 302 する。**public repo のみ**・**whole-model open**（deep anchor と SHA-keyed cache は後続スライス）。SPA を shadow しないよう resolver は `/r/` prefix にスコープする。
+> `<owner>/<repo>[/<path>][@<ref>]` の permalink から、その repo の committed `.krs` を GitHub raw から取得・合成（import inline）し、既存の inline-share payload に畳んで `/s?s=` へ 302 する。**`@<ref>` は任意**（省略時 = default branch `HEAD`、`raw` の `HEAD` literal で API hop なし。`@<sha>` = immutable。immutability の強制は ADR 執筆規約 + #1830 の責務）。**public repo のみ**・**whole-model open**（deep anchor と SHA-keyed cache は後続スライス）。SPA を shadow しないよう resolver は `/r/` prefix にスコープする。
 
 ## 受け入れ条件
 
@@ -27,7 +27,11 @@
 
   > ✅ Automated — `repo-permalink.test.ts` › `parseRepoPermalink` › `splits the ref on the LAST @`
 
-- [x] AT-D: 不正な入力（`@ref` 欠落 / segment 不足 / ref に空白 / path traversal / 非 `.krs` path / owner charset 違反）を 400 で拒否する
+- [x] AT-C2: `@<ref>` 省略時は ref を `HEAD`（default branch）に既定する（path 省略/明示の両方）
+
+  > ✅ Automated — `repo-permalink.test.ts` › `parseRepoPermalink` › `defaults ref to HEAD when @ is omitted (default branch)` / `defaults ref to HEAD with an explicit path and no @`
+
+- [x] AT-D: 不正な入力（`@` の後が空 / segment 不足 / ref に空白 / path traversal / 非 `.krs` path / owner charset 違反）を 400 で拒否する（`@` を付けたら ref 必須）
 
   > ✅ Automated — `repo-permalink.test.ts` › `parseRepoPermalink` › `rejects %s (%s)`（6 ケース）
 
@@ -50,6 +54,10 @@
 - [x] AT-H: single-file repo を default `index.krs` 経由で解決し 200 + payload を返す
 
   > ✅ Automated — `repo-permalink.test.ts` › `resolveRepoPermalink` › `resolves a single-file repo via the default index.krs (200)`
+
+- [x] AT-H2: `@<ref>` 省略時は `HEAD` ref で raw を取得する（default branch を API hop なしで解決）
+
+  > ✅ Automated — `repo-permalink.test.ts` › `resolveRepoPermalink` › `resolves the default branch (HEAD) when @ is omitted`
 
 - [x] AT-I: `index.krs` 不在時は `karasu.krs` にフォールバックする
 
@@ -83,3 +91,4 @@
 - [ ] M-2: 存在しない ref / repo は 404、不正な permalink は 400、明示 path 不在は 404 のプレーンテキストを返す（プレビューで `curl` 確認済み）
 - [ ] M-3: `/r/` 以外のパス（`/render`・SPA ルート `/`）は従来どおり配信される — resolver が `_redirects` の `/*` フォールバックや静的アセットを shadow しない（`/`→200、`/render`→400（`s` 欠落の正常挙動）を確認）
 - [ ] M-4: PR プレビュー（preview.yml）でも `/r/...@<sha>` が 302 で動作する（本 verification 自体がプレビュー deployment 上で実施）
+- [ ] M-5: ref-less 形 `/r/kompiro/karasu/examples/en/deploy-org/index.krs`（`@` 省略）が default branch HEAD を解決して 302 する（`raw` の `HEAD` literal が default branch を解決することは別途 `curl` で実測: `raw.githubusercontent.com/kompiro/karasu/HEAD/...`→200・内容 `main` 一致）

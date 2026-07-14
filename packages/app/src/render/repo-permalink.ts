@@ -26,9 +26,11 @@ import { encodeShare } from "../utils/inline-share.js";
  * Scope (v1, per the design doc's decided points):
  * - **public repos only** — the service holds no GitHub token (BYOK,
  *   ADR-20260407-04); private repos are a follow-up.
- * - **SHA-required for ADR permalinks** — a branch/tag ref also renders, but
- *   resolution is a single raw fetch; no GitHub API hop is taken (avoids the
- *   unauthenticated 60 req/h/IP rate limit).
+ * - **`@<ref>` optional** — omitted → default branch `HEAD` (mutable, "read this
+ *   repo now"); `@<branch>` / `@<sha>` pin a ref (`@<sha>` = immutable, the ADR
+ *   permalink form). Every form is a single raw fetch — no GitHub API hop (avoids
+ *   the unauthenticated 60 req/h/IP rate limit). Immutability for ADR permalinks
+ *   is an authoring-convention + `adr:check-permalinks` concern, not enforced here.
  * - **whole-model open** — the deep `#krs-<view>-<id>` anchor and the
  *   SHA-keyed cache are separate follow-up slices (c). This slice opens the
  *   whole model.
@@ -76,29 +78,47 @@ interface ParsedRepoPermalink {
 
 type ParseResult = { ok: true; value: ParsedRepoPermalink } | { ok: false; message: string };
 
+/** Literal ref that GitHub raw resolves to the repo's default branch. */
+const DEFAULT_REF = "HEAD";
+
 /**
  * Parse a permalink path (the part after the `/r/` route prefix), e.g.
- * `kompiro/karasu@<sha>` or `kompiro/karasu/docs/arch.krs@main`.
+ * `kompiro/karasu` (default branch), `kompiro/karasu@<sha>`, or
+ * `kompiro/karasu/docs/arch.krs@main`.
  *
- * The ref is split on the LAST `@` so an `@` never appears in owner/repo/path
- * (validated charsets exclude it anyway). Returns a typed error (never throws)
- * so the caller maps it to a 400.
+ * `@<ref>` is **optional**: when omitted the ref defaults to `HEAD` (the repo's
+ * default branch — `raw.githubusercontent.com/<owner>/<repo>/HEAD/…` resolves it
+ * with no GitHub API hop). This is the mutable "read this repo now" form; an ADR
+ * permalink should pin `@<sha>` for immutability (enforced by the ADR authoring
+ * convention + `adr:check-permalinks`, not here). When `@` IS present the ref is
+ * required (an empty ref after `@` is an error). The ref is split on the LAST
+ * `@`. Returns a typed error (never throws) so the caller maps it to a 400.
  */
 export function parseRepoPermalink(rawPath: string): ParseResult {
   const path = rawPath.replace(/^\/+/, "").replace(/\/+$/, "");
   if (path === "") return { ok: false, message: "Empty permalink." };
 
   const at = path.lastIndexOf("@");
+  let left: string;
+  let ref: string;
   if (at === -1) {
-    return { ok: false, message: "Missing '@<ref>' — a repo permalink must pin a ref." };
-  }
-  const left = path.slice(0, at);
-  const ref = path.slice(at + 1);
-  if (!REF_RE.test(ref)) {
-    return {
-      ok: false,
-      message: `Invalid ref "${ref}". Use a commit SHA, or a slash-free branch/tag name.`,
-    };
+    left = path;
+    ref = DEFAULT_REF; // no `@` → default branch HEAD
+  } else {
+    left = path.slice(0, at);
+    ref = path.slice(at + 1);
+    if (ref === "") {
+      return {
+        ok: false,
+        message: "Empty ref after '@' — give a branch/tag/SHA, or omit '@' for the default branch.",
+      };
+    }
+    if (!REF_RE.test(ref)) {
+      return {
+        ok: false,
+        message: `Invalid ref "${ref}". Use a commit SHA, or a slash-free branch/tag name.`,
+      };
+    }
   }
 
   const segments = left.split("/");

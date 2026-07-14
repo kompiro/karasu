@@ -48,6 +48,18 @@ describe("parseRepoPermalink", () => {
     });
   });
 
+  it("defaults ref to HEAD when @ is omitted (default branch)", () => {
+    expect(parseRepoPermalink("kompiro/karasu")).toEqual({
+      ok: true,
+      value: { owner: "kompiro", repo: "karasu", filePath: null, ref: "HEAD" },
+    });
+  });
+
+  it("defaults ref to HEAD with an explicit path and no @", () => {
+    const r = parseRepoPermalink("kompiro/karasu/docs/arch.krs");
+    expect(r.ok && r.value).toMatchObject({ filePath: "docs/arch.krs", ref: "HEAD" });
+  });
+
   it("splits the ref on the LAST @", () => {
     const r = parseRepoPermalink("o/r/a@b.krs@sha1");
     expect(r.ok && r.value.ref).toBe("sha1");
@@ -55,7 +67,7 @@ describe("parseRepoPermalink", () => {
   });
 
   it.each([
-    ["kompiro/karasu", "missing @ref"],
+    ["kompiro/karasu@", "empty ref after @"],
     ["kompiro@main", "only one segment"],
     ["kompiro/karasu@bad ref", "space in ref"],
     ["kompiro/karasu/../secret.krs@main", "path traversal"],
@@ -99,6 +111,19 @@ describe("resolveRepoPermalink", () => {
     expect(payload?.krs).toContain("system Shop");
   });
 
+  it("resolves the default branch (HEAD) when @ is omitted", async () => {
+    // No `@ref` → the provider fetches raw at the `HEAD` ref (default branch).
+    let seenRef: string | undefined;
+    const fetchImpl = (async (input: string | URL | Request) => {
+      const m = String(input).match(/raw\.githubusercontent\.com\/o\/r\/([^/]+)\//);
+      seenRef = m?.[1];
+      return new Response(SINGLE_KRS, { status: 200 });
+    }) as typeof fetch;
+    const res = await resolveRepoPermalink("o/r", fetchImpl);
+    expect(res.status).toBe(200);
+    expect(seenRef).toBe("HEAD");
+  });
+
   it("falls back to karasu.krs when index.krs is absent", async () => {
     const res = await resolveRepoPermalink("o/r@sha", stubFetch({ "karasu.krs": SINGLE_KRS }));
     expect(res.status).toBe(200);
@@ -134,8 +159,13 @@ describe("resolveRepoPermalink", () => {
     expect(res.status).toBe(404);
   });
 
-  it("400s on a malformed permalink", async () => {
-    const res = await resolveRepoPermalink("o/r", stubFetch({}));
+  it("400s on a malformed permalink (single segment)", async () => {
+    const res = await resolveRepoPermalink("o", stubFetch({}));
+    expect(res.status).toBe(400);
+  });
+
+  it("400s on an empty ref after '@'", async () => {
+    const res = await resolveRepoPermalink("o/r@", stubFetch({}));
     expect(res.status).toBe(400);
   });
 
