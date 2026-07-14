@@ -308,3 +308,49 @@ organization Org {
     expect(svg).not.toContain('data-node-id="PaymentService"');
   });
 });
+
+// Two teams (alpha, beta) both call a shared infra DB and a shared external EXT,
+// placed in the bottom tier so both calls cross bands → two trunks form (junction
+// dots on merge), and the cross-band stubs cross verticals (hop arcs).
+const TRUNKS = `
+system Shop {
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  database DB { label "DB" }
+  service EXT [external] { label "EXT" }
+  A -> DB "w"
+  B -> DB "w"
+  A -> EXT "call"
+  B -> EXT "call"
+}
+organization Org {
+  team "alpha" { label "Alpha" owns A }
+  team "beta" { label "Beta" owns B }
+  team "gamma" { label "Gamma" owns C }
+}
+`;
+
+describe("crossing marks layer (#1859 P2c-C)", () => {
+  const trunksSvg = (groupBy?: "team"): string => {
+    const r = compile(TRUNKS, { diagramType: "system", groupBy });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    return r.svg;
+  };
+
+  it("emits a crossing-marks layer with junction dots when grouped", () => {
+    const svg = trunksSvg("team");
+    expect(svg).toContain('class="crossing-marks"');
+    // Trunk merges render as connection dots.
+    expect(svg).toContain("<circle");
+  });
+
+  it("emits no crossing-marks layer when ungrouped (AC-5)", () => {
+    expect(trunksSvg(undefined)).not.toContain('class="crossing-marks"');
+  });
+
+  it("orders the crossing-marks layer after the edges layer (marks on top)", () => {
+    const svg = trunksSvg("team");
+    expect(svg.indexOf('class="edges"')).toBeLessThan(svg.indexOf('class="crossing-marks"'));
+  });
+});

@@ -2,9 +2,16 @@ import type { EdgeDirection, ResolvedNodeStyle, ResolvedStyles } from "../types/
 import type { ViewSlice } from "../view/view-extract.js";
 import { layout } from "./layout.js";
 import { CATEGORY_STUB_TAG, categoryOf, type CategoryId } from "./category-collapse.js";
-import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./layout-types.js";
+import type {
+  ContainerRect,
+  CrossingMarks,
+  DisplayMode,
+  LayoutNode,
+  LayoutResult,
+} from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
+import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
 import { badgeChildren } from "./badge.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef } from "../shapes/shape-registry.js";
@@ -331,6 +338,16 @@ export function renderFromLayout(
   }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
+  // Crossing marks on top of the edges (#1859 P2c-C): hop arcs neutralise
+  // right-angle crossings and junction dots mark trunk merges. Present only in
+  // the Group-by view (ungrouped leaves `crossingMarks` undefined — AC-5).
+  if (layoutResult.crossingMarks) {
+    const { hops, junctions } = layoutResult.crossingMarks;
+    if (hops.length > 0 || junctions.length > 0) {
+      parts.push(renderCrossingMarks(layoutResult.crossingMarks, styles.defaultEdgeStyle.color));
+    }
+  }
+
   // Nodes (ghost users first, then normal children). As with edges, a ghost
   // node that is diff-tagged (added / removed / changed) gets promoted to the
   // normal group so the diff colors are not flattened by the wrapper opacity.
@@ -468,6 +485,41 @@ function collapseGlyph(
     );
   }
   return parts;
+}
+
+/**
+ * Render the Group-by crossing marks layer (#1859 P2c-C). Emitted above the edge
+ * layer so marks sit on top of the lines.
+ *
+ * - **hop**: a `<path>` where a horizontal stub arcs *over* the vertical it
+ *   crosses (crossing = NOT connected). Elliptical (`rx = halfWidth`,
+ *   `ry = HOP_RADIUS`) so a clustered wide hop stays a shallow bump; `sweep = 1`
+ *   arcs the bump upward.
+ * - **junction**: a `<circle>` dot at each trunk merge (merge = connected).
+ *
+ * Coordinates are rounded to 2 decimals so tiny float noise never destabilises
+ * the SVG snapshot.
+ */
+function renderCrossingMarks(marks: CrossingMarks, color: string): string {
+  const r = (n: number): number => Number(n.toFixed(2));
+  const parts: string[] = [];
+  for (const hop of marks.hops) {
+    const left = r(hop.x - hop.halfWidth);
+    const right = r(hop.x + hop.halfWidth);
+    const y = r(hop.y);
+    parts.push(
+      el("path", {
+        d: `M ${left} ${y} A ${r(hop.halfWidth)} ${HOP_RADIUS} 0 0 1 ${right} ${y}`,
+        fill: "none",
+        stroke: color,
+        "stroke-width": 1.5,
+      }),
+    );
+  }
+  for (const j of marks.junctions) {
+    parts.push(el("circle", { cx: r(j.x), cy: r(j.y), r: JUNCTION_RADIUS, fill: color }));
+  }
+  return el("g", { class: "crossing-marks" }, ...parts);
 }
 
 /**
