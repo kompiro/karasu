@@ -29,7 +29,13 @@ export async function onRequestGet(context: {
   const rest = Array.isArray(raw) ? raw.join("/") : raw;
   const permalink = decodeURIComponent(rest);
 
-  const result = await resolveRepoPermalink(permalink, fetch);
+  // Bind `fetch` to the global scope before handing it off: the Workers runtime
+  // throws "Illegal invocation" if the global `fetch` is later called as a bare
+  // reference (detached `this`), which is exactly what the resolver's provider
+  // does (`this.fetchImpl(url)`). Node's fetch tolerates this, so the unit tests
+  // don't catch it — the wrapper is the boundary guard.
+  const boundFetch: typeof fetch = (input, init) => fetch(input, init);
+  const result = await resolveRepoPermalink(permalink, boundFetch);
 
   if (result.status === 200 && result.encodedPayload) {
     const target = `${url.origin}/s?s=${result.encodedPayload}`;
