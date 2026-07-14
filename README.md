@@ -301,6 +301,25 @@ karasu matrix arch.krs --format svg --output docs/crud.svg
 karasu matrix arch.krs --format csv --writes-only > writes.csv
 ```
 
+### Coverage and subtree
+
+```bash
+# Report per-domain density and flag thinly-modeled domains
+karasu coverage arch.krs
+karasu coverage arch.krs --format json          # machine-readable, for tooling
+karasu coverage arch.krs --threshold 0.3        # override the thin-score threshold
+
+# Extract one node's sub-tree as standalone .krs (e.g. hand a domain to a tool)
+karasu subtree Order arch.krs                    # minimal wrap (just the domain)
+karasu subtree Order arch.krs --with-ancestors   # keep the system/service context
+```
+
+`coverage` and `subtree` are the structural primitives behind the
+architecture-reverse workflow: they statically analyze the produced `.krs`
+model — `coverage` measures per-domain depth (usecases / entities / resources /
+edges) so a thin domain is detected quantitatively, and `subtree` slices the
+model to one node so it can be re-fed for focused refinement.
+
 ## VS Code extension
 
 > **Status: experimental**

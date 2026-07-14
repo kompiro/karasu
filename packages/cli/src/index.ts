@@ -12,6 +12,8 @@ import { tidyStyle } from "./tidy-style.js";
 import { lintStyle } from "./lint-style.js";
 import { diff } from "./diff.js";
 import { matrix } from "./matrix.js";
+import { coverage } from "./coverage.js";
+import { subtree } from "./subtree.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
 
@@ -508,6 +510,55 @@ Examples:
       writesOnly: options.writesOnly,
       omitEmpty: options.omitEmpty,
       noTotals: options.totals === false,
+    });
+  });
+
+program
+  .command("coverage <file>")
+  .description("Report per-domain density to detect thinly-modeled domains")
+  .option("-o, --output <path>", "Write output to file (default: stdout)")
+  .option("--format <format>", "Output format: md | json (default: md)", "md")
+  .option("--threshold <score>", "Override the thin-score threshold (0..1)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Markdown density table to terminal (default)
+  $ karasu coverage index.krs
+
+  # JSON for a harness / repair loop to consume
+  $ karasu coverage index.krs --format json
+
+  # Flag domains below an explicit score threshold
+  $ karasu coverage index.krs --threshold 0.3`,
+  )
+  .action((file: string, options) => {
+    coverage(file, {
+      output: options.output,
+      format: options.format,
+      threshold: options.threshold,
+    });
+  });
+
+program
+  .command("subtree <node-id> <file>")
+  .description("Extract one node's sub-tree from a .krs project as standalone .krs")
+  .option("-o, --output <path>", "Write output to file (default: stdout)")
+  .option("--with-ancestors", "Keep the full system → node ancestor chain (default: minimal wrap)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Emit just the Order domain's interior
+  $ karasu subtree Order index.krs
+
+  # Keep the enclosing system/service context
+  $ karasu subtree Order index.krs --with-ancestors -o order-slice.krs`,
+  )
+  .action((nodeId: string, file: string, options) => {
+    subtree(nodeId, file, {
+      output: options.output,
+      withAncestors: options.withAncestors === true,
     });
   });
 

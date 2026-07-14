@@ -263,7 +263,7 @@ P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 �
 | --- | --- | --- | --- |
 | **P2a** | 二段 topo + 枠 + 折り畳み（team=`ownerIndex` 軸） | ゼロ | ✅ 実装済み（ADR-20260711-03） |
 | **P2b** | `group`（または `boundary`）宣言構文 + `groupIndex` | あり（#1820 gate 経由） | 検討中 |
-| **P2c** | 直交ルーティング + 集約 + hop/junction（#1859） | ゼロ | 実装中（下記「P2c 実装設計」）— A: 直交ルーティング ✅ / B: 集約トランク ✅ / C: hop/junction |
+| **P2c** | 直交ルーティング + 集約 + hop/junction（#1859） | ゼロ | 実装中（下記「P2c 実装設計」）— A: 直交ルーティング ✅ / B: 集約トランク ✅ / C: hop/junction（#1926, 下記「P2c-C 詳細設計」で設計済） |
 
 ## P2c 実装設計（#1859）
 
@@ -319,6 +319,32 @@ P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 �
 
 各 PR に changeset（`@karasu-tools/core` + `karasu` minor）と AT を付す。
 
+### P2c-C 詳細設計（hop / junction）— #1926
+
+P2c-A（#1894）/ P2c-B（#1901）マージ後の最終スライス。直交ルーティングで全交差が直角になった前提で、**交差＝非接続 / 合流＝接続**を表現で明示し、残る交差の「接続との誤読」を消す。**文法変更ゼロ・view-mode 局所**（A/B と同じ）。
+
+#### 実行位置とデータフロー
+
+- `layout.ts` の `if (groupBands)` gate 内、**全ジオメトリ pass（`distributeChannelLanes` / パラレル束ね等）の後**に `computeCrossingMarks(layoutEdges)` を呼び、結果を `LayoutResult.crossingMarks?` に格納する。marks は**最終座標のみ**から決定論的に導出する（snapshot 安定）。
+- ungrouped 経路（`else` 枝）は `crossingMarks` を**設定しない** → renderer は何も描かない。**AC-5「Group by: none 不変」を構成的に保証**（既存 snapshot は byte-identical）。
+- 新モジュール `crossing-marks.ts` に純関数 `computeCrossingMarks` と型（`HopMark` / `JunctionMark` / `CrossingMarks`）を置き、交差判定は `edge-geometry.ts` の strict-interior 規約（`1e-6` epsilon）を共有する（ルーターの貫通判定と同一定義 — TPL-20260711-02）。
+
+#### hop 検出
+
+1. **セグメント収集**: 各 grouped edge の `[fromPoint, ...waypoints, toPoint]` を軸整列セグメントに分解し H（横）/ V（縦）に分類。`ghost` / `cyclic` は除外。各セグメントに所有エッジ index を付ける。
+2. **交差判定**: 異なるエッジの H × V ペアで、`V.x` が H の x 区間の **strict-interior** かつ `H.y` が V の y 区間の **strict-interior** のとき交差とみなし、`(V.x, H.y)` に hop を記録する。
+   - **strict-interior が要**: stub が spine の**端点**で合流する点（トランク合流）や、エッジ自身の曲がり角（elbow）は端点であって内部ではないため hop にならない → それらは junction（合流）か無印（自分の折れ）に正しく振り分けられる。
+3. **向き**: **横セグメントが縦セグメントを跨ぐ**（縦＝ガター回廊 / トランク spine は直通線のまま、横 stub 側にアークを描く）。多数のエッジを載せる縦線を清潔に保つ選択（ユーザー確認済み）。
+4. **クラスタ化**: 同一横セグメント上の hop を x でソートし、間隔が `HOP_CLUSTER_GAP`（hop 半径由来の定数）以内のものを **1 つの幅広アーク**に統合する（`[minX−r, maxX+r]` を張る）。座標由来なので決定論。
+
+#### junction 検出
+
+- `trunkId` を持つ各エッジの spine 合流 elbow（`waypoints[0]` = 横 stub が spine に接する点）に接続ドットを 1 つ置く。同一座標は dedupe。トランク合流「＝接続」を明示する（AC-2 の junction dot 部分）。
+
+#### 描画
+
+- `svg-renderer.ts` に `renderCrossingMarks(marks)` を足し、`edges` グループの**後**に `crossing-marks` レイヤ（`<g class="crossing-marks">`）を emit する（marks が線の上に載る）。hop = `<path>`（横線上の半円バンプ、cluster 時は幅広アーク）、junction = `<circle>`。既定エッジ stroke の色に合わせる。
+
 ### 正しさの柵
 
 [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) の不変条件を継承しつつ、P2c 固有の**二重計測**を柵にする（proactive [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)）:
@@ -335,12 +361,12 @@ P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 �
 - **A\* / ELK による障害物回避**（ADR-20260429-01 案 B1/B3 と同型）: 帯構造では overkill。帯 + ガター + 回廊の stub-and-bend で貫通ゼロが構成的に取れる。
 - **交差数の最小化を追う**: 交差は表現で無害化できるので、総数最小化より直角交差 + 明示表現が費用対効果で優る（計測 5 所見）。
 
-### P2c の未解決の問い（各スライス PR で確定）
+### P2c の未解決の問い
 
-- **逆流破線と `cyclic` / author `stroke-style` の優先順位** — P2c-A 実装時。
-- **hop アークの向き** — 横 over 縦で固定するか、トランク spine を主線にして横エッジを跨がせるか。第一候補は後者。P2c-C で確定。
-- **hop クラスタ化の近接閾値** — 座標由来で決定論に。P2c-C で確定。
-- **エクスポート面（Show All Layers / drill-down）への波及** — #1879（PR #1888）が grouping frames をエクスポートに通した follow-up。P2c ルーティング/marks をエクスポートに通すかは #1879 マージ後に別途判断（本 P2c の範囲外）。
+- ~~**逆流破線と `cyclic` / author `stroke-style` の優先順位**~~ — P2c-A（#1894）で確定: author が `stroke-style` 未指定のときのみ dashed（`cyclic` は別クラスで独立）。
+- ~~**hop アークの向き**~~ — #1926（P2c-C）で確定: **横 over 縦**（縦＝ガター回廊 / トランク spine を直通線に保ち、横 stub 側にアーク）。
+- ~~**hop クラスタ化の近接閾値**~~ — #1926（P2c-C）で確定: `HOP_CLUSTER_GAP`（hop 半径由来の定数）以内の同一横線上の交差を 1 幅広アークに統合。座標由来で決定論。
+- **エクスポート面（Show All Layers / drill-down）への波及** — #1879（PR #1888）が grouping frames をエクスポートに通した follow-up。P2c ルーティング/marks をエクスポートに通すかは #1879 マージ後に別途判断（本 P2c の範囲外）。**未解決（本 P2c の範囲外）。**
 
 ## 差分モードの grouping — 除去ノード配置と集約エッジ diff state（#1886）
 

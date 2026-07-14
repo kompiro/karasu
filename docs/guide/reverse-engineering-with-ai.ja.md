@@ -34,6 +34,11 @@ n8n）をリバースした経験では、得意・不得意が分かれます:
   [`docs/spec/style.md`](../spec/style.md)）をプロジェクトの知識として追加。
 - **単発チャット**: `syntax.md` の内容を貼り付ける。URL 取得できるツールならリンクでも可。
 
+文法と一緒に[記法クックブック](notation-cookbook.md)も渡すこと: KV ストア・共有
+データストア・外部依存などを**どう表現するか**の worked idiom を示すので、モデルが
+独自の形を発明せず karasu 慣用の形を選ぶ。設計上コンパクトで、`syntax.md` に数段落
+足すだけ。
+
 ### 2. モデルにプロジェクトを渡す
 
 構造が分かる手がかりを与えます — リポジトリ全体は通常不要です:
@@ -95,5 +100,6 @@ n8n）をリバースした経験では、得意・不得意が分かれます:
 ## 関連
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — モデルに渡す `.krs` 文法
+- [記法クックブック](notation-cookbook.md) — 文法と一緒に渡す worked idiom 集
 - [`docs/spec/style.md`](../spec/style.md) — `.krs.style` リファレンス（エッジ色・テーマ）
 - [オンボーディングガイド](02-onboarding.ja.md) — 既存システムを図に読み下す（インフラ設定は `translate` で）

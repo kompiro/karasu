@@ -37,6 +37,11 @@ The model needs karasu's grammar. Use whichever fits your tool:
 - **One-shot chat**: paste the contents of `syntax.md`, or link it if your tool
   can fetch URLs.
 
+Also feed the [notation cookbook](notation-cookbook.md) alongside the grammar: it
+shows worked **idioms** (how to model a KV store, a shared datastore, an external
+dependency, …), so the model picks karasu-idiomatic shapes instead of inventing
+them. It is compact by design — a few extra paragraphs on top of `syntax.md`.
+
 ### 2. Give the model the project
 
 Feed it the signals that reveal structure — you rarely need the whole repo:
@@ -99,5 +104,6 @@ preview it with drill-down. Then:
 ## See also
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — the precise `.krs` grammar to give the model
+- [Notation cookbook](notation-cookbook.md) — worked idioms to feed alongside the grammar
 - [`docs/spec/style.md`](../spec/style.md) — `.krs.style` reference (edge colors, themes)
 - [Onboarding guide](02-onboarding.md) — reading an existing system down into diagrams (with `translate` for infra configs)
