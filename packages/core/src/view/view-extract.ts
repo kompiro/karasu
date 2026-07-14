@@ -332,6 +332,19 @@ export interface GhostDomain {
   parentServiceLabel: string;
 }
 
+export interface GhostEntity {
+  /** The foreign entity node (its `id` is the bare entity id). */
+  node: KrsNode;
+  /** Label of the domain that owns this entity — shown as sub-label on the ghost node. */
+  parentDomainLabel: string;
+  /**
+   * Qualified `<domainId>.<entityId>` key. Ghost entities are keyed and laid out
+   * by this (not the bare id) because entity ids are only warning-level unique
+   * (`entity-anchor-collision`), so two foreign entities could share a bare id.
+   */
+  key: string;
+}
+
 export interface ViewSlice {
   containerNode: KrsNode | null;
   childNodes: KrsNode[];
@@ -364,6 +377,20 @@ export interface ViewSlice {
    * to ghost domains in other services (both outgoing and incoming).
    */
   ghostDomainEdges: KrsEdge[];
+  /**
+   * Entity view only: entities in other domains connected to this domain's
+   * entities via a cross-domain relation (both outgoing and incoming), rendered
+   * as muted ghosts. Cross-domain relations use qualified `DomainId.EntityId`
+   * targets (bare ids are intra-domain only).
+   */
+  ghostEntities: GhostEntity[];
+  /**
+   * Entity view only: the cross-domain relation edges to/from ghost entities.
+   * Endpoints are normalized so the foreign endpoint is the qualified
+   * `DomainId.EntityId` key and the local endpoint is the bare local entity id,
+   * matching how {@link GhostEntity} and local child nodes are keyed in layout.
+   */
+  ghostEntityEdges: KrsEdge[];
   /**
    * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
    * resolved label of the referenced infra sub-resource (e.g. "注文テーブル").
@@ -432,6 +459,8 @@ function emptySlice(
     callerGhostSystemEdges: [],
     ghostDomains: [],
     ghostDomainEdges: [],
+    ghostEntities: [],
+    ghostEntityEdges: [],
     resourceLabelMap,
     resourceInferredTagsMap,
     implicitEdgeDetails: new Map(),
@@ -852,6 +881,8 @@ export function extractView(
       callerGhostSystemEdges: [],
       ghostDomains: [],
       ghostDomainEdges: [],
+      ghostEntities: [],
+      ghostEntityEdges: [],
       resourceLabelMap,
       resourceInferredTagsMap,
       implicitEdgeDetails,
@@ -987,6 +1018,9 @@ export function extractView(
     callerGhostSystemEdges,
     ghostDomains,
     ghostDomainEdges,
+    // Entity-view only; the usecase/service view never has ghost entities.
+    ghostEntities: [],
+    ghostEntityEdges: [],
     resourceLabelMap,
     resourceInferredTagsMap,
     implicitEdgeDetails: new Map(),
@@ -1046,12 +1080,88 @@ function resolveContainerChain(
  * the interactive toggle, which wires the ghost through the renderer's
  * `layoutNode.ghost` muting mechanism.
  */
+interface DomainEntityEntry {
+  domain: KrsNode;
+  entities: Map<string, KrsNode>;
+}
+
+const domainEntityIndexCache = new WeakMap<KrsNode, Map<string, DomainEntityEntry>>();
+
+/**
+ * Index every domain (at any depth) **within one system** by id, with its
+ * `entity` children. Resolves qualified `DomainId.EntityId` cross-domain relation
+ * targets in the entity view.
+ *
+ * Scoped to a single system on purpose: `DomainId` is only error-level unique
+ * *within* a system, so a model-wide index could not disambiguate a domain id
+ * shared by two systems. Cross-**system** entity references are out of scope in
+ * v1 (this view is per-domain, cross-**domain**). Memoized per system node so the
+ * static bundle (which extracts the entity view of every domain) builds it once.
+ */
+function buildDomainEntityIndex(system: KrsNode): Map<string, DomainEntityEntry> {
+  const cached = domainEntityIndexCache.get(system);
+  if (cached) return cached;
+  const index = new Map<string, DomainEntityEntry>();
+  const walk = (node: KrsNode): void => {
+    if (node.kind === "domain" && !index.has(node.id)) {
+      const entities = new Map<string, KrsNode>();
+      for (const child of node.children) {
+        if (child.kind === "entity") entities.set(child.id, child);
+      }
+      index.set(node.id, { domain: node, entities });
+    }
+    for (const child of node.children) walk(child);
+  };
+  for (const child of system.children) walk(child);
+  domainEntityIndexCache.set(system, index);
+  return index;
+}
+
+/**
+ * Resolve a qualified `DomainId.EntityId` relation target to its domain + entity.
+ * Returns `null` for a bare id (no dot) or an unresolved reference. Splits on the
+ * first `.`; nested-domain qualifiers (`Parent.Child.Entity`) are out of scope in
+ * v1 and resolve to `null`.
+ */
+function resolveQualifiedEntity(
+  target: string,
+  index: Map<string, DomainEntityEntry>,
+): { domain: KrsNode; entity: KrsNode; domainId: string; entityId: string } | null {
+  const dot = target.indexOf(".");
+  if (dot <= 0 || dot === target.length - 1) return null;
+  const domainId = target.slice(0, dot);
+  const entityId = target.slice(dot + 1);
+  const entry = index.get(domainId);
+  const entity = entry?.entities.get(entityId);
+  if (!entry || !entity) return null;
+  return { domain: entry.domain, entity, domainId, entityId };
+}
+
+/**
+ * Extract the **entity view** of a domain: its `entity` children and their
+ * relation edges — an alternative drill-down to the domain's usecase view.
+ * Returns an empty slice when the path does not resolve to a domain or the
+ * domain owns no entities.
+ *
+ * Relations:
+ * - **intra-domain** — a bare `edge.to` matching a local entity id.
+ * - **cross-domain** — a qualified `DomainId.EntityId` target. The foreign
+ *   entity is surfaced as a muted **ghost** ({@link GhostEntity}), keyed by the
+ *   qualified id (entity ids are only warning-level unique, so a bare id can't
+ *   disambiguate). Both outgoing (this domain → foreign) and incoming (foreign →
+ *   this domain) directions are collected, mirroring the ghost-domain view
+ *   (ADR-20260411-05). Bare cross-domain references, and qualified references to
+ *   a resource / unknown target, are dropped.
+ */
 export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice {
   const empty = emptySlice();
 
   const resolved = resolveContainerChain(systems, path);
   if (!resolved) return empty;
   const { ancestorChain } = resolved;
+  // ancestorChain[0] is the owning system (resolveContainerChain always seeds it
+  // first). Cross-domain resolution is scoped to it — see buildDomainEntityIndex.
+  const owningSystem = ancestorChain[0];
   const domain = ancestorChain.pop()!;
   if (domain.kind !== "domain") return empty;
 
@@ -1061,12 +1171,65 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
 
   const childNodes: KrsNode[] = [...entities];
   const childEdges: KrsEdge[] = [];
+
+  const index = buildDomainEntityIndex(owningSystem);
+  const ghostMap = new Map<string, GhostEntity>();
+  const ghostEntityEdges: KrsEdge[] = [];
+  const addGhost = (foreignDomain: KrsNode, foreignEntity: KrsNode, key: string): void => {
+    if (!ghostMap.has(key)) {
+      ghostMap.set(key, {
+        node: foreignEntity,
+        parentDomainLabel: foreignDomain.label ?? foreignDomain.id,
+        key,
+      });
+    }
+  };
+
+  // Outgoing: this domain's entities → other-domain entities. Bare targets are
+  // intra-domain (or dropped); qualified `Other.Foreign` targets become ghosts.
   for (const entity of entities) {
     for (const edge of entity.edges) {
-      // Intra-domain relations only in v1; cross-domain ghosts land with the toggle.
-      if (localEntityIds.has(edge.to)) childEdges.push(edge);
+      if (localEntityIds.has(edge.to)) {
+        childEdges.push(edge); // intra-domain (bare local id)
+        continue;
+      }
+      const foreign = resolveQualifiedEntity(edge.to, index);
+      if (!foreign) continue; // bare non-local / resource / unresolved → drop
+      if (foreign.domain === domain) {
+        // Qualified reference to a local entity — treat as intra-domain.
+        if (localEntityIds.has(foreign.entityId)) {
+          childEdges.push({ ...edge, to: foreign.entityId });
+        }
+        continue;
+      }
+      const key = `${foreign.domainId}.${foreign.entityId}`;
+      addGhost(foreign.domain, foreign.entity, key);
+      ghostEntityEdges.push({ ...edge, from: entity.id, to: key });
     }
   }
 
-  return { ...empty, containerNode: domain, childNodes, childEdges, ancestorChain };
+  // Incoming: other-domain entities → this domain's entities (qualified `D.local`).
+  for (const [domainId, entry] of index) {
+    if (entry.domain === domain) continue; // node identity, robust to id collisions
+    for (const foreignEntity of entry.entities.values()) {
+      for (const edge of foreignEntity.edges) {
+        const target = resolveQualifiedEntity(edge.to, index);
+        if (!target || target.domain !== domain) continue;
+        if (!localEntityIds.has(target.entityId)) continue;
+        const key = `${domainId}.${foreignEntity.id}`;
+        addGhost(entry.domain, foreignEntity, key);
+        ghostEntityEdges.push({ ...edge, from: key, to: target.entityId });
+      }
+    }
+  }
+
+  return {
+    ...empty,
+    containerNode: domain,
+    childNodes,
+    childEdges,
+    ancestorChain,
+    ghostEntities: Array.from(ghostMap.values()),
+    ghostEntityEdges,
+  };
 }

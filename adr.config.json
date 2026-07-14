@@ -25,5 +25,8 @@
       "graph": "graph.md",
       "graphByTopic": "graph/"
     }
+  },
+  "permalink": {
+    "kind": "krs"
   }
 }
