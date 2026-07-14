@@ -970,6 +970,62 @@ system EC {
       expect(slice.ghostEntityEdges).toHaveLength(0);
     });
 
+    it("does not resolve a qualified reference across a system boundary (v1 scope)", () => {
+      // Domain resolution is scoped to the owning system, because DomainId is
+      // only error-level unique within a system. A qualified target naming a
+      // domain in another system is not a ghost (cross-system is out of scope). #1911
+      const systems = parseSystem(`
+system A {
+  service SA {
+    domain Ordering {
+      entity Order {
+        Order -> Customers.Customer "cross-system"
+      }
+    }
+  }
+}
+system B {
+  service SB {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["A", "SA", "Ordering"]);
+      expect(slice.ghostEntities).toHaveLength(0);
+      expect(slice.ghostEntityEdges).toHaveLength(0);
+    });
+
+    it("resolves same-named domains independently per system (no cross-system bleed)", () => {
+      // Both systems have `domain Payments` with different entities. Drilling into
+      // system A's Ordering resolves `Payments.Invoice` to A's Payments only.
+      const systems = parseSystem(`
+system A {
+  service SA {
+    domain Ordering {
+      entity Order {
+        Order -> Payments.Invoice "billed by"
+      }
+    }
+    domain Payments {
+      entity Invoice {}
+    }
+  }
+}
+system B {
+  service SB {
+    domain Payments {
+      entity Receipt {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["A", "SA", "Ordering"]);
+      expect(slice.ghostEntities.map((g) => g.key)).toEqual(["Payments.Invoice"]);
+      expect(slice.ghostEntities[0]?.node.id).toBe("Invoice");
+    });
+
     it("treats a qualified reference to a local entity as an intra-domain edge", () => {
       const systems = parseSystem(`
 system EC {

@@ -978,13 +978,22 @@ interface DomainEntityEntry {
   entities: Map<string, KrsNode>;
 }
 
+const domainEntityIndexCache = new WeakMap<KrsNode, Map<string, DomainEntityEntry>>();
+
 /**
- * Model-wide index of every domain (at any depth) by id, with its `entity`
- * children. Resolves qualified `DomainId.EntityId` cross-domain relation targets
- * in the entity view. First definition wins on a duplicate domain id (the
- * collision is reported separately as a warning).
+ * Index every domain (at any depth) **within one system** by id, with its
+ * `entity` children. Resolves qualified `DomainId.EntityId` cross-domain relation
+ * targets in the entity view.
+ *
+ * Scoped to a single system on purpose: `DomainId` is only error-level unique
+ * *within* a system, so a model-wide index could not disambiguate a domain id
+ * shared by two systems. Cross-**system** entity references are out of scope in
+ * v1 (this view is per-domain, cross-**domain**). Memoized per system node so the
+ * static bundle (which extracts the entity view of every domain) builds it once.
  */
-function buildDomainEntityIndex(systems: KrsNode[]): Map<string, DomainEntityEntry> {
+function buildDomainEntityIndex(system: KrsNode): Map<string, DomainEntityEntry> {
+  const cached = domainEntityIndexCache.get(system);
+  if (cached) return cached;
   const index = new Map<string, DomainEntityEntry>();
   const walk = (node: KrsNode): void => {
     if (node.kind === "domain" && !index.has(node.id)) {
@@ -996,7 +1005,8 @@ function buildDomainEntityIndex(systems: KrsNode[]): Map<string, DomainEntityEnt
     }
     for (const child of node.children) walk(child);
   };
-  for (const system of systems) for (const child of system.children) walk(child);
+  for (const child of system.children) walk(child);
+  domainEntityIndexCache.set(system, index);
   return index;
 }
 
@@ -1042,6 +1052,9 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
   const resolved = resolveContainerChain(systems, path);
   if (!resolved) return empty;
   const { ancestorChain } = resolved;
+  // ancestorChain[0] is the owning system (resolveContainerChain always seeds it
+  // first). Cross-domain resolution is scoped to it — see buildDomainEntityIndex.
+  const owningSystem = ancestorChain[0];
   const domain = ancestorChain.pop()!;
   if (domain.kind !== "domain") return empty;
 
@@ -1052,7 +1065,7 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
   const childNodes: KrsNode[] = [...entities];
   const childEdges: KrsEdge[] = [];
 
-  const index = buildDomainEntityIndex(systems);
+  const index = buildDomainEntityIndex(owningSystem);
   const ghostMap = new Map<string, GhostEntity>();
   const ghostEntityEdges: KrsEdge[] = [];
   const addGhost = (foreignDomain: KrsNode, foreignEntity: KrsNode, key: string): void => {
@@ -1075,7 +1088,7 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
       }
       const foreign = resolveQualifiedEntity(edge.to, index);
       if (!foreign) continue; // bare non-local / resource / unresolved → drop
-      if (foreign.domainId === domain.id) {
+      if (foreign.domain === domain) {
         // Qualified reference to a local entity — treat as intra-domain.
         if (localEntityIds.has(foreign.entityId)) {
           childEdges.push({ ...edge, to: foreign.entityId });
@@ -1090,11 +1103,11 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
 
   // Incoming: other-domain entities → this domain's entities (qualified `D.local`).
   for (const [domainId, entry] of index) {
-    if (domainId === domain.id) continue;
+    if (entry.domain === domain) continue; // node identity, robust to id collisions
     for (const foreignEntity of entry.entities.values()) {
       for (const edge of foreignEntity.edges) {
         const target = resolveQualifiedEntity(edge.to, index);
-        if (!target || target.domain.id !== domain.id) continue;
+        if (!target || target.domain !== domain) continue;
         if (!localEntityIds.has(target.entityId)) continue;
         const key = `${domainId}.${foreignEntity.id}`;
         addGhost(entry.domain, foreignEntity, key);

@@ -298,37 +298,45 @@ function placeGhostUsers(
   }
 }
 
-function placeGhostDomains(
-  viewSlice: ViewSlice,
+/**
+ * Place a row of muted ghost nodes below the main container, then grow the
+ * outermost container to include them. Shared by {@link placeGhostDomains} and
+ * {@link placeGhostEntities}: each item carries the layout `key` to store under
+ * (bare id for domains, qualified `DomainId.EntityId` for entities) and the
+ * `subLabel` (owning service / domain) to show muted. `ghost: true` drives the
+ * muting in svg-renderer; no renderer change is needed.
+ */
+function placeGhostRow(
+  items: { node: KrsNode; key: string; subLabel: string }[],
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   effectiveAnnotations: (n: KrsNode) => string[],
-  displayMode?: DisplayMode,
+  displayMode: DisplayMode | undefined,
+  gap: number,
 ): void {
-  const GHOST_DOMAIN_GAP = 60;
-  if (viewSlice.ghostDomains.length === 0 || containers.length === 0) return;
+  if (items.length === 0 || containers.length === 0) return;
   const { NODE_GAP } = getLayoutConstants(displayMode);
 
   const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-  const ghostY = mainContainer.y + mainContainer.height + GHOST_DOMAIN_GAP;
+  const ghostY = mainContainer.y + mainContainer.height + gap;
   let ghostX = mainContainer.x + CONTAINER_PADDING;
 
-  for (const gd of viewSlice.ghostDomains) {
-    const dims = measureNode(gd.node, undefined, displayMode);
-    layoutNodes.set(gd.node.id, {
-      kind: gd.node.kind,
-      tags: gd.node.tags,
-      id: gd.node.id,
-      label: gd.node.label ?? gd.node.id,
-      annotations: effectiveAnnotations(gd.node),
-      subLabel: gd.parentServiceLabel,
-      properties: extractLayoutProperties(gd.node, undefined),
-      descriptionSummary: gd.node.properties.description
-        ? summarizeDescription(gd.node.properties.description)
+  for (const { node, key, subLabel } of items) {
+    const dims = measureNode(node, undefined, displayMode);
+    layoutNodes.set(key, {
+      kind: node.kind,
+      tags: node.tags,
+      id: key,
+      label: node.label ?? node.id,
+      annotations: effectiveAnnotations(node),
+      subLabel,
+      properties: extractLayoutProperties(node, undefined),
+      descriptionSummary: node.properties.description
+        ? summarizeDescription(node.properties.description)
         : undefined,
-      linkCount: gd.node.properties.links.length,
-      hasChildren: gd.node.children.length > 0,
-      hasDescription: !!gd.node.properties.description,
+      linkCount: node.properties.links.length,
+      hasChildren: node.children.length > 0,
+      hasDescription: !!node.properties.description,
       x: ghostX,
       y: ghostY,
       width: dims.width,
@@ -338,13 +346,13 @@ function placeGhostDomains(
     ghostX += dims.width + NODE_GAP;
   }
 
-  // Expand outermost container to include ghost domains (both height and width)
-  const ghostDomainNodes = viewSlice.ghostDomains
-    .map((gd) => layoutNodes.get(gd.node.id))
+  // Expand outermost container to include the ghost row (both height and width)
+  const placed = items
+    .map(({ key }) => layoutNodes.get(key))
     .filter((n): n is LayoutNode => n !== undefined);
-  if (ghostDomainNodes.length > 0) {
-    const maxGhostY = Math.max(...ghostDomainNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const maxGhostX = Math.max(...ghostDomainNodes.map((n) => n.x + n.width)) + GHOST_MARGIN;
+  if (placed.length > 0) {
+    const maxGhostY = Math.max(...placed.map((n) => n.y + n.height)) + GHOST_MARGIN;
+    const maxGhostX = Math.max(...placed.map((n) => n.x + n.width)) + GHOST_MARGIN;
     const outermost = containers[0];
     if (maxGhostY > outermost.y + outermost.height) {
       outermost.height = maxGhostY - outermost.y;
@@ -355,13 +363,34 @@ function placeGhostDomains(
   }
 }
 
+const GHOST_ROW_GAP = 60;
+
+function placeGhostDomains(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  effectiveAnnotations: (n: KrsNode) => string[],
+  displayMode?: DisplayMode,
+): void {
+  placeGhostRow(
+    viewSlice.ghostDomains.map((gd) => ({
+      node: gd.node,
+      key: gd.node.id,
+      subLabel: gd.parentServiceLabel,
+    })),
+    layoutNodes,
+    containers,
+    effectiveAnnotations,
+    displayMode,
+    GHOST_ROW_GAP,
+  );
+}
+
 /**
- * Place cross-domain ghost entities below the entity view's main container
- * (mirrors {@link placeGhostDomains}). Keyed by the qualified
- * `DomainId.EntityId` (not the bare id) because entity ids are only
- * warning-level unique — the matching `ghostEntityEdges` endpoints use the same
- * qualified key for foreign endpoints. `ghost: true` drives the muting in
- * svg-renderer; no renderer change is needed.
+ * Place cross-domain ghost entities below the entity view's main container.
+ * Keyed by the qualified `DomainId.EntityId` (not the bare id) because entity
+ * ids are only warning-level unique — the matching `ghostEntityEdges` endpoints
+ * use the same qualified key for foreign endpoints.
  */
 function placeGhostEntities(
   viewSlice: ViewSlice,
@@ -370,54 +399,18 @@ function placeGhostEntities(
   effectiveAnnotations: (n: KrsNode) => string[],
   displayMode?: DisplayMode,
 ): void {
-  const GHOST_ENTITY_GAP = 60;
-  if (viewSlice.ghostEntities.length === 0 || containers.length === 0) return;
-  const { NODE_GAP } = getLayoutConstants(displayMode);
-
-  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-  const ghostY = mainContainer.y + mainContainer.height + GHOST_ENTITY_GAP;
-  let ghostX = mainContainer.x + CONTAINER_PADDING;
-
-  for (const ge of viewSlice.ghostEntities) {
-    const dims = measureNode(ge.node, undefined, displayMode);
-    layoutNodes.set(ge.key, {
-      kind: ge.node.kind,
-      tags: ge.node.tags,
-      id: ge.key,
-      label: ge.node.label ?? ge.node.id,
-      annotations: effectiveAnnotations(ge.node),
+  placeGhostRow(
+    viewSlice.ghostEntities.map((ge) => ({
+      node: ge.node,
+      key: ge.key,
       subLabel: ge.parentDomainLabel,
-      properties: extractLayoutProperties(ge.node, undefined),
-      descriptionSummary: ge.node.properties.description
-        ? summarizeDescription(ge.node.properties.description)
-        : undefined,
-      linkCount: ge.node.properties.links.length,
-      hasChildren: ge.node.children.length > 0,
-      hasDescription: !!ge.node.properties.description,
-      x: ghostX,
-      y: ghostY,
-      width: dims.width,
-      height: dims.height,
-      ghost: true,
-    });
-    ghostX += dims.width + NODE_GAP;
-  }
-
-  // Expand outermost container to include ghost entities (both height and width)
-  const ghostEntityNodes = viewSlice.ghostEntities
-    .map((ge) => layoutNodes.get(ge.key))
-    .filter((n): n is LayoutNode => n !== undefined);
-  if (ghostEntityNodes.length > 0) {
-    const maxGhostY = Math.max(...ghostEntityNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const maxGhostX = Math.max(...ghostEntityNodes.map((n) => n.x + n.width)) + GHOST_MARGIN;
-    const outermost = containers[0];
-    if (maxGhostY > outermost.y + outermost.height) {
-      outermost.height = maxGhostY - outermost.y;
-    }
-    if (maxGhostX > outermost.x + outermost.width) {
-      outermost.width = maxGhostX - outermost.x;
-    }
-  }
+    })),
+    layoutNodes,
+    containers,
+    effectiveAnnotations,
+    displayMode,
+    GHOST_ROW_GAP,
+  );
 }
 
 function placeCallerGhostSystems(
@@ -631,34 +624,29 @@ function computeLayoutEdges(
 
   // Ghost domain edges. A team can `owns` a domain (docs/spec), so a collapsed
   // domain endpoint must re-anchor to its stub like the service ones (#1874).
-  for (const edge of viewSlice.ghostDomainEdges) {
-    const from = remapGhostEndpoint(edge.from);
-    const to = remapGhostEndpoint(edge.to);
-    const fromNode = layoutNodes.get(from);
-    const toNode = layoutNodes.get(to);
-    if (!fromNode || !toNode) continue;
-
-    const fromIsAbove = fromNode.y + fromNode.height / 2 < toNode.y + toNode.height / 2;
-    layoutEdges.push({
-      from,
-      to,
-      label: edge.label,
-      fromPoint: {
-        x: fromNode.x + fromNode.width / 2,
-        y: fromIsAbove ? fromNode.y + fromNode.height : fromNode.y,
-      },
-      toPoint: {
-        x: toNode.x + toNode.width / 2,
-        y: fromIsAbove ? toNode.y : toNode.y + toNode.height,
-      },
-      ghost: true,
-    });
-  }
+  pushGhostEdges(viewSlice.ghostDomainEdges, layoutNodes, layoutEdges, remapGhostEndpoint);
 
   // Ghost entity edges (entity view). Endpoints are pre-normalized in
   // extractEntityView: the foreign endpoint is the qualified `DomainId.EntityId`
   // key (matching the ghost node), the local endpoint is the bare entity id.
-  for (const edge of viewSlice.ghostEntityEdges) {
+  pushGhostEdges(viewSlice.ghostEntityEdges, layoutNodes, layoutEdges, remapGhostEndpoint);
+
+  return layoutEdges;
+}
+
+/**
+ * Append muted (top/bottom-anchored) ghost edges to `layoutEdges`. Shared by the
+ * ghost-domain and ghost-entity edge lists; both are laid out identically (a
+ * short vertical connector between the main content and the ghost row below).
+ * Endpoints missing from `layoutNodes` are skipped.
+ */
+function pushGhostEdges(
+  edges: KrsEdge[],
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  remapGhostEndpoint: (id: string) => string,
+): void {
+  for (const edge of edges) {
     const from = remapGhostEndpoint(edge.from);
     const to = remapGhostEndpoint(edge.to);
     const fromNode = layoutNodes.get(from);
@@ -681,8 +669,6 @@ function computeLayoutEdges(
       ghost: true,
     });
   }
-
-  return layoutEdges;
 }
 
 function normalizeCoordinates(

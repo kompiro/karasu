@@ -594,7 +594,10 @@ target is resolved by scope:
   `SystemId.ServiceId`). Qualification is required because entity ids are only
   *warning*-level unique (see **Anchor namespace** below), so a bare id cannot
   disambiguate a foreign entity. `DomainId` is error-level unique within a
-  system, so `DomainId.EntityId` resolves unambiguously.
+  system, so `DomainId.EntityId` resolves unambiguously **within the owning
+  system**. Cross-**system** entity references are out of scope in v1: resolution
+  is scoped to the domain's own system, so a `DomainId.EntityId` naming a domain
+  in another system does not resolve (and is dropped from the entity view).
 
 In the per-domain **entity view**, a qualified cross-domain target is drawn as a
 muted **ghost** of the foreign entity (both directions: this domain's entities →
