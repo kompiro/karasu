@@ -175,6 +175,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260511-01](20260511-01-parallel-edge-bundling.md) — 同一ペア間の並列エッジ束ね
 - [ADR-20260610-01](20260610-01-stroke-style-canonical-edge-property.md) — stroke-style をエッジ線スタイルの正準プロパティとして採用する
 - [ADR-20260613-01](20260613-01-edge-label-in-context-menu.md) — エッジコンテキストメニューへの authored ラベル表示と data-edge-label の authored 専用化
+- [ADR-20260714-01](20260714-01-cross-domain-ghost-entities.md) — エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する
 
 ## navigation
 
