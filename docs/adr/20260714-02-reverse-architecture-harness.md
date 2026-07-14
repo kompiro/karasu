@@ -1,5 +1,5 @@
 ---
-id: ADR-20260714-01
+id: ADR-20260714-02
 title: アーキテクチャリバースハーネス — multi-subagent fan-out + CLI spine で repo を .krs 化する
 status: accepted
 date: 2026-07-14
@@ -17,7 +17,7 @@ assumptions:
   - "symbol: packages/core/src/formatter/formatter.ts :: serializeKrsFile"
 ---
 
-# ADR-20260714-01: アーキテクチャリバースハーネス — multi-subagent fan-out + CLI spine で repo を .krs 化する
+# ADR-20260714-02: アーキテクチャリバースハーネス — multi-subagent fan-out + CLI spine で repo を .krs 化する
 
 ## 背景
 

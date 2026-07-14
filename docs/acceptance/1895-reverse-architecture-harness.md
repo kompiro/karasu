@@ -15,7 +15,7 @@ type: product
   - `packages/cli/src/subtree.test.ts`
   - `packages/cli/src/index.ts`（`coverage` / `subtree` command 登録）
   - `.claude/skills/reverse-architecture/SKILL.md`
-- **関連 ADR**: [ADR-20260714-01](../adr/20260714-01-reverse-architecture-harness.md)（元 Design Doc `reverse-architecture-skill.md` / `repo-reverse-engineer-harness.md` を集約）
+- **関連 ADR**: [ADR-20260714-02](../adr/20260714-02-reverse-architecture-harness.md)（元 Design Doc `reverse-architecture-skill.md` / `repo-reverse-engineer-harness.md` を集約）
 - **関連 TPL**: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（round-trip）, [TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md)（暗黙フィルタ）, [TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)（id 同一性）
 
 ## 受け入れ条件

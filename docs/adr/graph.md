@@ -119,7 +119,7 @@ flowchart TD
     ADR_20260420_03["ADR-20260420-03<br/>i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
     ADR_20260422_02["ADR-20260422-02<br/>Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統"]
     ADR_20260616_01["ADR-20260616-01<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
-    ADR_20260714_01["ADR-20260714-01<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
+    ADR_20260714_02["ADR-20260714-02<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
   end
   subgraph cli["cli"]
     ADR_20260328_04["ADR-20260328-04<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
@@ -639,7 +639,7 @@ flowchart TD
   class ADR_20260712_01 accepted
   class ADR_20260713_01 accepted
   class ADR_20260713_02 accepted
-  class ADR_20260714_01 accepted
+  class ADR_20260714_02 accepted
 ```
 
 ## Per-topic detail

@@ -122,7 +122,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260420-03](20260420-03-i18n-rollout.md) — i18n ロールアウト — 英語 / 日本語の UI・診断・Chat
 - [ADR-20260422-02](20260422-02-chat-ui-design-review.md) — Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統
 - [ADR-20260616-01](20260616-01-org-graph-in-chat-prompt.md) — 組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする
-- [ADR-20260714-01](20260714-01-reverse-architecture-harness.md) — アーキテクチャリバースハーネス — multi-subagent fan-out + CLI spine で repo を .krs 化する
+- [ADR-20260714-02](20260714-02-reverse-architecture-harness.md) — アーキテクチャリバースハーネス — multi-subagent fan-out + CLI spine で repo を .krs 化する
 
 ## cli
 
