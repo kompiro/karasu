@@ -227,6 +227,35 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     expect(hops).toEqual([{ x: 50, y: 50, halfWidth: HOP_RADIUS, angle: 45, edge: 0 }]);
   });
 
+  it("collapses 3+ edges concurrent at one point to a single hop (no stacked arcs)", () => {
+    // A horizontal, a vertical, and a diagonal all pass through (50, 50). The
+    // three pairwise crossings share that point; dedup keeps one arc, not three.
+    const h = poly(
+      [
+        [0, 50],
+        [100, 50],
+      ],
+      { from: "A", to: "B" },
+    );
+    const v = poly(
+      [
+        [50, 0],
+        [50, 100],
+      ],
+      { from: "C", to: "D" },
+    );
+    const d = poly(
+      [
+        [0, 0],
+        [100, 100],
+      ],
+      { from: "E", to: "F" },
+    );
+    const { hops } = computeCrossingMarks([h, v, d]);
+    expect(hops).toHaveLength(1);
+    expect(hops[0]).toMatchObject({ x: 50, y: 50 });
+  });
+
   it("does not mark an edge crossing its own segments", () => {
     // A single L-shaped edge: its own H and V meet at the corner (endpoint), so
     // no self-hop.

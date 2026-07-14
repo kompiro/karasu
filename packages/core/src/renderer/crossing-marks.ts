@@ -58,8 +58,11 @@ interface Seg {
 
 /**
  * Strict-interior intersection point of segments `s1` and `s2`, or null. Parallel
- * / collinear segments never intersect at a point (no crossing to mark). Touching
- * at an endpoint (t or u at 0/1) is excluded — that is a connection, not a cross.
+ * / collinear segments never intersect at a point (no crossing to mark). A
+ * crossing within `EPS` **px** of either segment's endpoint is excluded — that is
+ * a connection (trunk join / shared corner), not a cross. The endpoint test is in
+ * absolute pixels (not a parametric `t` fraction) so it matches the pre-#1939
+ * axis-aligned epsilon exactly and keeps that output byte-identical.
  */
 function segIntersection(s1: Seg, s2: Seg): Point | null {
   const rx = s1.b.x - s1.a.x;
@@ -72,7 +75,14 @@ function segIntersection(s1: Seg, s2: Seg): Point | null {
   const qpy = s2.a.y - s1.a.y;
   const t = (qpx * sy - qpy * sx) / denom;
   const u = (qpx * ry - qpy * rx) / denom;
-  if (t <= EPS || t >= 1 - EPS || u <= EPS || u >= 1 - EPS) return null;
+  const len1 = Math.hypot(rx, ry);
+  const len2 = Math.hypot(sx, sy);
+  // Distance from the crossing to each endpoint = t·len / (1−t)·len etc. A
+  // negative value (out-of-segment) is also ≤ EPS, so this rejects both
+  // endpoint-touches and off-segment intersections in one test.
+  if (t * len1 <= EPS || (1 - t) * len1 <= EPS || u * len2 <= EPS || (1 - u) * len2 <= EPS) {
+    return null;
+  }
   return { x: s1.a.x + t * rx, y: s1.a.y + t * ry };
 }
 
@@ -130,6 +140,16 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const s1 = segs[i];
       const s2 = segs[j];
       if (s1.edge === s2.edge) continue;
+      // Cheap AABB reject before the intersection maths: segments whose bounding
+      // boxes don't overlap can't cross. Prunes most of the O(n²) pairs.
+      if (
+        Math.min(s1.a.x, s1.b.x) > Math.max(s2.a.x, s2.b.x) ||
+        Math.max(s1.a.x, s1.b.x) < Math.min(s2.a.x, s2.b.x) ||
+        Math.min(s1.a.y, s1.b.y) > Math.max(s2.a.y, s2.b.y) ||
+        Math.max(s1.a.y, s1.b.y) < Math.min(s2.a.y, s2.b.y)
+      ) {
+        continue;
+      }
       const p = segIntersection(s1, s2);
       if (!p) continue;
       const host =
@@ -142,11 +162,12 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   }
 
   // Cluster crossings that sit close along one host segment into a single wide
-  // hop, oriented along the host. Dedup identical arcs (collinear hosts crossing
-  // at the same point), keeping the widest.
+  // hop, oriented along the host. Dedup by **point** (not point+angle), keeping
+  // the widest: collinear hosts crossing at the same spot, and 3+ edges
+  // concurrent at one point, collapse to a single arc instead of stacking.
   const hopByKey = new Map<string, HopMark>();
   const addHop = (mark: HopMark) => {
-    const key = `${mark.x},${mark.y},${mark.angle}`;
+    const key = `${mark.x},${mark.y}`;
     const existing = hopByKey.get(key);
     if (!existing || mark.halfWidth > existing.halfWidth) hopByKey.set(key, mark);
   };
