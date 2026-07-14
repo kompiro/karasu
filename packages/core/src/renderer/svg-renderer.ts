@@ -295,7 +295,7 @@ export function renderFromLayout(
     if (!container.ghost) {
       const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
       const diffState = options?.containerDiffState?.get(container.id);
-      parts.push(renderContainer(container, containerStyle, false, diffState));
+      parts.push(renderContainer(container, containerStyle, false, diffState, palette));
     }
   }
 
@@ -745,18 +745,26 @@ function renderContainer(
   style: ResolvedNodeStyle,
   ghost: boolean,
   diffState?: string,
+  palette?: DiagramPalette,
 ): string {
   const children: string[] = [];
+  // An in-place-expanded container is an active user action (#1921): render it
+  // prominently — a solid accent border with a faint accent fill — so the opened
+  // service reads as a highlighted region rather than the muted, dashed team
+  // frame it reuses geometry from. Without this it disappears into a busy diagram.
+  const expanded = container.expanded === true;
+  const accent = palette?.accent;
   children.push(
     el("rect", {
       x: container.x,
       y: container.y,
       width: container.width,
       height: container.height,
-      fill: "transparent",
-      stroke: style.borderColor,
-      "stroke-width": style.borderWidth,
-      "stroke-dasharray": ghost || container.group ? "8 4" : undefined,
+      fill: expanded && accent ? accent : "transparent",
+      "fill-opacity": expanded && accent ? "0.06" : undefined,
+      stroke: expanded && accent ? accent : style.borderColor,
+      "stroke-width": expanded ? 2 : style.borderWidth,
+      "stroke-dasharray": !expanded && (ghost || container.group) ? "8 4" : undefined,
       rx: style.borderRadius,
     }),
   );
@@ -766,11 +774,11 @@ function renderContainer(
       {
         x: container.x + 12,
         y: container.y + 18,
-        fill: style.color,
+        fill: expanded && accent ? accent : style.color,
         "font-size": "12px",
         "font-family": style.fontFamily,
         "font-weight": "bold",
-        opacity: 0.7,
+        opacity: expanded ? undefined : 0.7,
       },
       escapeXml(container.label),
     ),
@@ -782,6 +790,7 @@ function renderContainer(
       "data-container-id": container.id,
       "data-kind-band": container.kindBand,
       "data-group": container.group ? "true" : undefined,
+      "data-expanded": expanded ? "true" : undefined,
       "data-diff-state": diffState,
       opacity: ghost ? GHOST_OPACITY : undefined,
     },

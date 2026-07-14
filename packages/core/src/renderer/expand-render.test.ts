@@ -64,6 +64,23 @@ system B {
     expect(r.svg).not.toContain("data-expand-node");
   });
 
+  it("renders the expanded frame prominently (solid accent border, not a muted dashed team frame)", () => {
+    // #1921 feedback: on a busy diagram the reused dashed team-frame style is
+    // easy to miss ("frame not shown"); the opened service must stand out.
+    const svg = systemSvg({
+      diagramType: "system",
+      expandedContainers: new Set(["BillingService"]),
+    });
+    const i = svg.indexOf('data-container-id="__group_BillingService__"');
+    expect(i).toBeGreaterThan(-1);
+    const group = svg.slice(i - 40, i + 300);
+    expect(group).toContain('data-expanded="true"');
+    // The frame rect is solid (no dashed team-frame stroke).
+    const rect = group.match(/<rect [^>]*\/>/)![0];
+    expect(rect).not.toContain("stroke-dasharray");
+    expect(rect).toContain("fill-opacity"); // faint accent tint
+  });
+
   it("shows a ⊖ (collapse) control on the expanded frame and no ⊕ for it", () => {
     const liveSvg = systemSvg({
       diagramType: "system",
