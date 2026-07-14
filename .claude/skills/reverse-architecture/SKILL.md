@@ -52,6 +52,11 @@ source — that is why they are deterministic.
    - a k8s manifest → `karasu translate --from k8s <file>`
    - OpenAPI → `karasu translate --from openapi <file>` (usecases under a service)
    - DB schema → `karasu translate --from db <file>` (database / table blocks)
+   - **No compose/k8s (serverless)?** For a Cloudflare Workers / Lambda-style app,
+     `translate` has no adapter — read the deploy manifest (`wrangler.toml`,
+     `serverless.yml`, `*.tf`) yourself and model each backing binding as an infra
+     block: a SQL/D1 store → `database`, a KV / cache / vector index → `database`,
+     an object store (S3 / R2 / GCS) → `storage`, a message queue → `queue`.
 3. **Enumerate the logical domains (primary axis).** Use the physical output
    (containers / services) and the directory / module tree as *seam hints* to
    infer bounded contexts. For a ball-of-mud that resists decomposition, split
@@ -71,8 +76,14 @@ subagent:
   is what buys uniform depth);
 - writes that domain's `usecase` / `entity` / `resource` into a `.krs` fragment:
   - a `usecase` holds the `resource`s it touches (`resource InfraId.SubId
-    { operations ... }`);
-  - an `entity` expresses relations as edges (no attributes);
+    { operations create, read }`). **`operations` verbs are comma-separated** —
+    `operations read, delete`, never `operations read delete` (space-separated
+    fails to parse; normalize it in synthesis if an agent slips).
+  - an `entity` carries identity **and its relations** (no attributes). Do not
+    stop at identity-only — derive relations from the schema's foreign keys and
+    write each inside the reference-holding entity, starting at that entity:
+    `Message -> Chat "belongs to"` inside `entity Message { … }`. A relation may
+    cross domains (the target entity may live in another fragment).
   - resources **reference the physical declaration** (the logical side is a
     reference; the physical declaration is canonical);
 - validates its own fragment with `karasu lint-style <fragment>` before returning.
@@ -88,6 +99,17 @@ Domains are independent, so launch the subagents in parallel.
 3. Match identity by `id`, never by `label`.
 4. Resolve resource-location conflicts structurally: the physical declaration
    lives in one place; every domain references it.
+5. **Cross-domain entity relations — one roster pass.** A per-domain subagent
+   only knows its own entity ids, so cross-domain foreign keys risk id mismatch.
+   After merging, run **one** relations agent over the *full entity roster*
+   (every entity id + its domain) plus the schema; it emits FK-derived relations
+   (`{from, to, label}`, both ids in the roster) that you inject into each
+   reference-holding entity block. Seeing all ids at once is what makes
+   cross-domain relations resolve consistently.
+6. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
+   uneven indentation (a closing `}` can land under-indented and *look* like a
+   missing brace even though it parses). Always finish synthesis — and any
+   mechanical node injection — with `karasu fmt <file>`.
 
 ### Phase 4: Validate & repair loop
 
@@ -102,8 +124,15 @@ Domains are independent, so launch the subagents in parallel.
 4. **Stop condition**: every domain is `thin: false` (coverage target reached).
    If a domain stays thin after a few rounds, note it as "the source is
    genuinely thin here" rather than padding it.
-5. Record any un-modelable idioms (notation gaps) for the cookbook (#1818) /
-   notation watch (#1816).
+5. **Re-measure after any enrichment.** `coverage` scores are *relative* across
+   domains, so enriching one dimension (e.g. adding entity relations) raises the
+   normalization baseline and can newly flag a domain that has none of that
+   dimension. A domain that turns thin only after enrichment (e.g. a
+   singleton-store domain with no foreign keys) is usually genuinely thin — do
+   not pad it; record why.
+6. Record any un-modelable idioms (notation gaps) for the cookbook (#1818) /
+   notation watch (#1816). (Real runs surfaced e.g. async **message-queue /
+   background-job** pipelines that the four infra kinds don't capture cleanly.)
 
 ## Deliverables
 
@@ -113,8 +142,12 @@ Domains are independent, so launch the subagents in parallel.
 
 ## Notes
 
-- **Never fabricate the physical layer** (use `translate`). **Match identity by
-  `id`**, not `label`. **Never silently drop thin domains** (surface them via
-  `coverage`). **Do not introduce new `.krs` syntax** (v1 is frozen).
+- **Never fabricate the physical layer** (use `translate`, or model deploy-manifest
+  bindings as infra blocks). **Match identity by `id`**, not `label`. **Never
+  silently drop thin domains** (surface them via `coverage`). **Do not introduce
+  new `.krs` syntax** (v1 is frozen).
 - Tell each subagent explicitly to read **only its domain's source slice** —
   letting it read the whole repo destroys the uniform depth.
+- **Always `karasu fmt` after any machine generation or injection**, and
+  keep `operations` verbs **comma-separated** — these are the two mechanical
+  slips that real runs hit most.
