@@ -466,3 +466,129 @@ database CatalogDB {
 > Soft FKs support both `_id` and `_code` column suffixes. This lets schemas
 > that use domain-readable keys (product SKUs, currency codes, etc.) still
 > benefit from aggregate grouping without declaring explicit foreign keys.
+
+---
+
+### AT-0053-15: Aggregate output scaffolds conceptual entities + relations, Soft FK tagged `[inferred]`
+
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-15: aggregate output scaffolds entities + relations, soft FK tagged [inferred]`
+
+**Input** `schema.sql`:
+```sql
+CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE products ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id),
+  product_id BIGINT NOT NULL
+);
+```
+
+**Command:**
+```bash
+karasu translate --from db schema.sql --database OrderDB
+```
+
+**Expected output** (stdout):
+```krs
+database OrderDB {
+  table CustomersTable { label "customers" }
+  table ProductsTable { label "products" }
+  table OrdersTable { label "orders" }
+}
+
+domain OrderDB {
+  // TODO: provisional per-database domain from `translate --from db`.
+  // Rename/split this domain, move entities to their real domains, and give
+  // relations semantic labels. Delete `[inferred]` once a relation is confirmed.
+  entity Customers {
+    table OrderDB.CustomersTable
+  }
+  entity Products {
+    table OrderDB.ProductsTable
+  }
+  entity Orders {
+    table OrderDB.OrdersTable
+    Orders -> Customers
+    Orders -> Products [inferred]
+  }
+}
+```
+
+> In the default (aggregate) granularity, `translate --from db` now emits, after
+> the physical `database` block, a **provisional per-database `domain`** with one
+> `entity` per aggregate root (mapped back to its table). Cross-aggregate FK
+> links become entity relations: `orders.customer_id REFERENCES customers` is a
+> declared FK, so `Orders -> Customers` is **confirmed** (untagged); `product_id`
+> has no `REFERENCES`, so `Orders -> Products` is a Soft-FK guess and carries the
+> auto-assigned `[inferred]` tag. Rename the domain, reassign entities, label the
+> relations, and delete `[inferred]` once confirmed. Use `--granularity table`
+> (AT-0053-17) to suppress the entity scaffold.
+
+---
+
+### AT-0053-16: All-FK junction table becomes an entity with a relation to each parent
+
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-16: all-FK junction table becomes an entity with a relation to each parent`
+
+**Input** `schema.sql`:
+```sql
+CREATE TABLE users (id BIGINT PRIMARY KEY);
+CREATE TABLE roles (id BIGINT PRIMARY KEY);
+CREATE TABLE user_roles (
+  user_id BIGINT NOT NULL REFERENCES users(id),
+  role_id BIGINT NOT NULL REFERENCES roles(id),
+  PRIMARY KEY (user_id, role_id)
+);
+```
+
+**Command:**
+```bash
+karasu translate --from db schema.sql --database AuthDB
+```
+
+**Expected** (entity portion): `user_roles` is a pure junction (not folded), so
+it becomes its own entity with a relation to each parent:
+```krs
+  entity UserRoles {
+    table AuthDB.UserRolesTable
+    UserRoles -> Users
+    UserRoles -> Roles
+  }
+```
+
+> Both FKs are explicit (`REFERENCES`), so neither relation is `[inferred]`. This
+> mirrors the junction handling of the physical block (AT-0053-13): a junction is
+> a first-class M:N fact, so it surfaces as an entity rather than folding away.
+
+---
+
+### AT-0053-17: `--granularity table` emits no entity scaffold
+
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-17: --granularity table emits no entity scaffold (output stays flat)`
+
+**Input** `schema.sql`:
+```sql
+CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id)
+);
+```
+
+**Command:**
+```bash
+karasu translate --from db schema.sql --database OrderDB --granularity table
+```
+
+**Expected output**:
+```krs
+database OrderDB {
+  table CustomersTable { label "customers" }
+  table OrdersTable { label "orders" }
+}
+```
+
+> `--granularity table` means "give me the raw per-table surface"; the conceptual
+> entity scaffold (which is keyed on aggregate roots) is suppressed, so the output
+> stays the flat `database` block. Backward-compatible with the pre-#1909 output.

@@ -190,11 +190,16 @@ They can be referenced and overridden via tag selectors in `.krs.style`.
 | `[cyclic]` | Detected as part of a cyclic dependency | Red (`#EF4444`) solid |
 | `[write]` | A synthesized usecase→resource edge whose target resource declares any of `create` / `update` / `delete` in its `operations` | `stroke-width: 2`, label `"W"` |
 | `[read]` | A synthesized usecase→resource edge classified as read-only (no write verbs, or `operations` omitted) | `stroke-width: 1.5`, label `"R"` |
+| `[inferred]` | An entity relation `translate --from db` derived from a **Soft FK** (a `<stem>_id` / `<stem>_code` column with no declared `REFERENCES` / `FOREIGN KEY`). Relations from an explicit FK are left untagged (confirmed) | Muted grey (`#94A3B8` dark / `#64748B` light). **Colour only** — line style stays owned by `[sync]` / `[async]`, so an inferred async relation still reads as dashed |
 
 > `[implicit]` uses color (amber) to signal "derived," while the line style distinguishes sync from async.
 > When both sync and async domain edges exist between the same service pair, they are derived as separate implicit edges, one per kind.
 >
 > `[write]` / `[read]` are auto-injected on synthesized usecase→resource edges only. **Do not write them by hand on explicit edges** — the resolver will accept them syntactically, but the semantics (write-dominates classification of the target resource's `operations`) only make sense for the synthesized edges. The width hierarchy is intentionally `read (1.5) < write (2) < cyclic (2.5)` so that cyclic remains the most attention-grabbing axis.
+>
+> `[inferred]` is different in kind from the others in this table: `[implicit]` / `[read]` / `[write]` / `[cyclic]` are synthesized by the resolver at render time and **never appear in `.krs` source**, whereas `[inferred]` is stamped **into the emitted source** by `translate --from db` and then persists — it marks a relation the tool guessed from a naming convention rather than a declared FK. Curation is by hand: once you have confirmed the relation is real, delete the single `[inferred]` tag and it becomes a confirmed edge. Its colour is deliberately kept orthogonal to `[sync]` / `[async]` line style so that stamping it never hides the sync/async distinction ([TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md)).
+
+> Related TPLs: [TPL-20260714-02](../test-perspectives/TPL-20260714-02-inferred-tag-only-soft-fk.md) — `translate --from db` assigns `[inferred]` to a relation only when every contributing FK is a Soft FK; a single explicit FK leaves the relation untagged (confirmed), and the tag must render with an effect. [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — a derived auto-tag must stay orthogonal to the `kind` (`[sync]` / `[async]`) dimension it does not own.
 
 ### Customization example
 

@@ -657,6 +657,86 @@ CREATE TABLE user_roles (
     expect(out).toContain('table UsersTable { label "users" }');
     expect(out).toContain('table RolesTable { label "roles" }');
     expect(out).toContain('table UserRolesTable { label "user_roles" }');
-    expect(out).not.toContain("description");
+  });
+
+  it("AT-0053-15: aggregate output scaffolds entities + relations, soft FK tagged [inferred]", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE products ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id),
+  product_id BIGINT NOT NULL
+);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "OrderDB" });
+    capture.restore();
+
+    const out = capture.stdout();
+    // Physical block still emitted, plus a provisional per-database domain.
+    expect(out).toContain("database OrderDB {");
+    expect(out).toContain("domain OrderDB {");
+    expect(out).toContain("  entity Orders {");
+    expect(out).toContain("    table OrderDB.OrdersTable");
+    expect(out).toContain("  entity Customers {");
+    // Explicit FK (customer_id REFERENCES) → confirmed relation, no tag.
+    expect(out).toContain("    Orders -> Customers");
+    expect(out).not.toContain("Orders -> Customers [inferred]");
+    // Soft FK (product_id, no REFERENCES) → inferred relation.
+    expect(out).toContain("    Orders -> Products [inferred]");
+  });
+
+  it("AT-0053-16: all-FK junction table becomes an entity with a relation to each parent", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE users (id BIGINT PRIMARY KEY);
+CREATE TABLE roles (id BIGINT PRIMARY KEY);
+CREATE TABLE user_roles (
+  user_id BIGINT NOT NULL REFERENCES users(id),
+  role_id BIGINT NOT NULL REFERENCES roles(id),
+  PRIMARY KEY (user_id, role_id)
+);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "AuthDB" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("  entity UserRoles {");
+    expect(out).toContain("    UserRoles -> Users");
+    expect(out).toContain("    UserRoles -> Roles");
+    // Both FKs explicit → neither relation inferred.
+    expect(out).not.toContain("-> Users [inferred]");
+    expect(out).not.toContain("-> Roles [inferred]");
+  });
+
+  it("AT-0053-17: --granularity table emits no entity scaffold (output stays flat)", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id)
+);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "OrderDB", granularity: "table" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain('table OrdersTable { label "orders" }');
+    expect(out).not.toContain("domain OrderDB {");
+    expect(out).not.toContain("entity");
   });
 });

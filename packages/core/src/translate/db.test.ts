@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { DbTranslator } from "./db.js";
 import type { TranslatorContext } from "./translator.js";
+import { Parser } from "../parser/parser.js";
+import { analyze } from "../resolver/warnings.js";
 
 const ctx: TranslatorContext = {
   inputName: "schema",
@@ -275,6 +277,146 @@ CREATE TABLE invoice_taxes (
       expect(result).toContain("      - invoice_taxes — composite PK with FK to invoices");
       expect(result).not.toContain("table InvoiceLinesTable");
       expect(result).not.toContain("table InvoiceTaxesTable");
+    });
+  });
+
+  describe("entity scaffold (aggregate granularity)", () => {
+    it("emits a provisional per-database domain with one entity per aggregate root", async () => {
+      const input = `
+CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id)
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "OrderDB" });
+      expect(result).toContain("domain OrderDB {");
+      expect(result).toContain(
+        "  // TODO: provisional per-database domain from `translate --from db`.",
+      );
+      // entity id keeps the PascalCase table name (traceability); distinct from the table id.
+      expect(result).toContain("  entity Customers {");
+      expect(result).toContain("    table OrderDB.CustomersTable");
+      expect(result).toContain("  entity Orders {");
+      expect(result).toContain("    table OrderDB.OrdersTable");
+    });
+
+    it("emits an explicit-FK relation without a tag (confirmed)", async () => {
+      const input = `
+CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id)
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "OrderDB" });
+      expect(result).toContain("    Orders -> Customers");
+      // The confirmed relation must NOT carry the inferred tag.
+      expect(result).not.toContain("Orders -> Customers [inferred]");
+    });
+
+    it("tags a soft-FK-derived relation with [inferred]", async () => {
+      const input = `
+CREATE TABLE products ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  product_id BIGINT NOT NULL
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "ShopDB" });
+      // product_id has no REFERENCES — soft FK by column convention.
+      expect(result).toContain("    Orders -> Products [inferred]");
+    });
+
+    it("rolls a folded child's FK up to the aggregate root entity", async () => {
+      const input = `
+CREATE TABLE products ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders ( id BIGINT PRIMARY KEY );
+CREATE TABLE order_items (
+  id BIGINT PRIMARY KEY,
+  order_id BIGINT NOT NULL REFERENCES orders(id),
+  product_id BIGINT NOT NULL
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "ShopDB" });
+      // order_items folds into Orders; its soft product_id FK surfaces on Orders.
+      expect(result).toContain("  entity Orders {");
+      expect(result).toContain("    Orders -> Products [inferred]");
+      // No entity for the folded child, and the internal child→root FK is not a relation.
+      expect(result).not.toContain("entity OrderItems");
+      expect(result).not.toContain("Orders -> Orders");
+    });
+
+    it("makes an all-FK junction table an entity with a relation to each parent", async () => {
+      const input = `
+CREATE TABLE users ( id BIGINT PRIMARY KEY );
+CREATE TABLE roles ( id BIGINT PRIMARY KEY );
+CREATE TABLE user_roles (
+  user_id BIGINT NOT NULL REFERENCES users(id),
+  role_id BIGINT NOT NULL REFERENCES roles(id),
+  PRIMARY KEY (user_id, role_id)
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "AuthDB" });
+      expect(result).toContain("  entity UserRoles {");
+      expect(result).toContain("    UserRoles -> Users");
+      expect(result).toContain("    UserRoles -> Roles");
+      // Both FKs are explicit — neither relation is inferred (the TODO comment
+      // mentions the tag, so assert on the relation lines specifically).
+      expect(result).not.toContain("-> Users [inferred]");
+      expect(result).not.toContain("-> Roles [inferred]");
+    });
+
+    it("does not emit a domain block in --granularity table mode", async () => {
+      const input = `
+CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id)
+);
+`;
+      const result = await translator.translate(input, {
+        ...ctx,
+        database: "OrderDB",
+        granularity: "table",
+      });
+      expect(result).not.toContain("domain OrderDB {");
+      expect(result).not.toContain("entity");
+    });
+
+    it("does not emit a domain block for an empty schema", async () => {
+      const result = await translator.translate("-- no tables here", {
+        ...ctx,
+        database: "EmptyDB",
+      });
+      expect(result).toBe("database EmptyDB {\n}\n");
+    });
+
+    it("emits a scaffold that parses and resolves without entity-specific warnings", async () => {
+      const input = `
+CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE products ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id),
+  product_id BIGINT NOT NULL
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "OrderDB" });
+      const parsed = Parser.parse(result);
+      expect(parsed.diagnostics).toEqual([]);
+
+      const warnings = analyze(parsed.value, []);
+      const kinds = warnings.map((w) => w.kind);
+      // The provisional domain + its entities must not raise resolution problems.
+      // (The only warnings expected are the inherent standalone-scaffold ones:
+      // unassigned-domain / unassigned-database — this is meant to be pasted
+      // into a system.)
+      expect(kinds).not.toContain("entity-anchor-collision");
+      expect(kinds).not.toContain("entity-not-in-domain");
+      expect(kinds).not.toContain("unassigned-resource");
+      expect(kinds).not.toContain("edge-source-mismatch");
+      expect(kinds).not.toContain("duplicate-node-id-parent");
     });
   });
 });
