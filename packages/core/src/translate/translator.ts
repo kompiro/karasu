@@ -22,6 +22,13 @@ export interface TranslatorContext {
   mapFile?: string;
   /** Service name for openapi format. Falls back to info.title when omitted. */
   service?: string;
+  /**
+   * System wrapper name for formats that emit their own `system { ... }` block
+   * (wrangler). Overrides the name derived from the input. Formats that rely on
+   * {@link TranslateInfraOptions.system} + `wrapInSystem` (openapi / db) ignore
+   * this field.
+   */
+  system?: string;
   /** Database name for db format. Falls back to inputName when omitted. */
   database?: string;
   /**

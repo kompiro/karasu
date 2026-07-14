@@ -523,6 +523,145 @@ paths:
   });
 });
 
+describe("translate E2E — wrangler", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-e2e-wrangler-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const FULL = `
+name = "hato"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hato-db"
+
+[[r2_buckets]]
+binding = "EXPORTS"
+bucket_name = "hato-exports"
+
+[[queues.producers]]
+binding = "TASKS"
+queue = "ingestion"
+
+[[vectorize]]
+binding = "SEARCH"
+index_name = "hato-vectors"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "abc123"
+
+[ai]
+binding = "AI"
+
+[[durable_objects.bindings]]
+name = "SESSIONS"
+class_name = "SessionActor"
+
+[[services]]
+binding = "AUTH"
+service = "auth-worker"
+`;
+
+  it("AT-1943-01: maps D1/R2/Queues to engine-neutral infra with tech only in the physical store", async () => {
+    const inputPath = join(tmpDir, "wrangler.toml");
+    writeFileSync(inputPath, FULL);
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "wrangler" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("system Hato {");
+    expect(out).toContain("database DB {");
+    expect(out).toContain("storage EXPORTS {");
+    expect(out).toContain("queue TASKS {");
+    // Concrete tech lives in the physical layer, not in logical labels.
+    expect(out).not.toMatch(/label\s+"Cloudflare/);
+    expect(out).toContain('deploy "hato" {');
+    expect(out).toContain('function "hato" {');
+    expect(out).toContain('runtime "cloudflare-workers"');
+    expect(out).toContain('type "Cloudflare D1"');
+    expect(out).toContain("realizes DB");
+  });
+
+  it("AT-1943-02: maps Vectorize to database [index] and KV to plain database", async () => {
+    const inputPath = join(tmpDir, "wrangler.toml");
+    writeFileSync(inputPath, FULL);
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "wrangler" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("database SEARCH [index] {");
+    expect(out).toContain('type "Cloudflare Vectorize"');
+    expect(out).toContain("database CACHE {");
+    expect(out).not.toContain("[cache]");
+  });
+
+  it("AT-1943-03: maps Workers AI, Durable Objects, and service bindings to external service edges", async () => {
+    const inputPath = join(tmpDir, "wrangler.toml");
+    writeFileSync(inputPath, FULL);
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "wrangler" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("service AI [external] {");
+    expect(out).toContain("service SessionActor [external] {");
+    expect(out).toContain("Hato -> AI");
+    expect(out).toContain("Hato -> SessionActor");
+    expect(out).toContain("Hato -> AuthWorker");
+    // Owned infra uses -->.
+    expect(out).toContain("Hato --> DB");
+  });
+
+  it("AT-1943-04: --system overrides the derived system name", async () => {
+    const inputPath = join(tmpDir, "wrangler.toml");
+    writeFileSync(inputPath, `name = "hato"\n`);
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "wrangler", system: "MyApp" });
+    capture.restore();
+
+    expect(capture.stdout()).toContain("system MyApp {");
+  });
+
+  it("AT-1943-05: warns on an unsupported binding kind without emitting a node", async () => {
+    const inputPath = join(tmpDir, "wrangler.toml");
+    writeFileSync(
+      inputPath,
+      `
+name = "edge"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "db"
+
+[[hyperdrive]]
+binding = "HYPER"
+id = "xyz"
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "wrangler" });
+    capture.restore();
+
+    expect(capture.stdout()).toContain("database DB {");
+    expect(capture.stdout()).not.toContain("HYPER");
+    expect(capture.stderr()).toContain('Warning: Unsupported wrangler binding "hyperdrive"');
+  });
+});
+
 describe("translate E2E — db", () => {
   let tmpDir: string;
 

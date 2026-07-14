@@ -75,6 +75,7 @@ export const ja: Partial<Translations> = {
   "translateDialog.format.k8s": "Kubernetes マニフェスト",
   "translateDialog.format.openapi": "OpenAPI spec",
   "translateDialog.format.db": "DB スキーマ (SQL)",
+  "translateDialog.format.wrangler": "Cloudflare wrangler.toml",
   "translateDialog.loadHint": "下に貼り付けるか、ファイルを読み込んでください:",
   "translateDialog.loadFile": "📂 ファイルを読み込む…",
   "translateDialog.loadFile.aria": "ファイルを読み込む",

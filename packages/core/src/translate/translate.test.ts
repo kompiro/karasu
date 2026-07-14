@@ -135,6 +135,12 @@ paths:
     expect(result.krs).toContain("database");
     expect(result.krs).toContain("table OrdersTable");
   });
+
+  it("dispatches wrangler format to WranglerTranslator", async () => {
+    const result = await translateInfraConfig(`name = "hato"\n`, { from: "wrangler" });
+    expect(result.krs).toContain("system Hato {");
+    expect(result.krs).toContain('deploy "hato" {');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -200,7 +206,7 @@ spec:
     expect(result.krs).not.toContain("system Orders {");
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toContain(
-      "--system is only supported with --from openapi or --from db",
+      "--system is only supported with --from openapi, db, or wrangler",
     );
   });
 
@@ -212,13 +218,22 @@ spec:
     expect(result.krs).not.toContain("system Orders {");
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toContain(
-      "--system is only supported with --from openapi or --from db",
+      "--system is only supported with --from openapi, db, or wrangler",
     );
   });
 
   it("does not wrap when system is undefined", async () => {
     const result = await translateInfraConfig(OPENAPI_INPUT, { from: "openapi" });
     expect(result.krs.startsWith("service")).toBe(true);
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("lets wrangler self-wrap: system overrides the derived name without a warning", async () => {
+    const result = await translateInfraConfig(`name = "hato"\n`, {
+      from: "wrangler",
+      system: "MyApp",
+    });
+    expect(result.krs.startsWith("system MyApp {")).toBe(true);
     expect(result.warnings).toHaveLength(0);
   });
 });

@@ -215,6 +215,50 @@ renders standalone. See the
 [`multi-file-system`](https://github.com/kompiro/karasu/tree/main/examples/en/multi-file-system)
 example.
 
+## 7. Cloudflare Workers — from `wrangler.toml`
+
+**When** — a serverless Cloudflare Workers app whose physical layer lives in a
+`wrangler.toml`. There is no compose / k8s file, so hand-modeling the bindings
+risks leaking the concrete tech ("D1 (SQLite)") into logical labels.
+
+**Pattern** — let `karasu translate --from wrangler` extract it deterministically.
+The adapter emits a logical `system` (engine-neutral infra + the Worker `service`
++ edges) and a physical `deploy` where the concrete Cloudflare technology lands in
+`store { type ... }`, never in a logical label:
+
+```krs
+system Hato {
+  service Hato { label "hato" }
+
+  database DB { }                  // D1
+  storage EXPORTS { }              // R2
+  queue TASKS { }                  // Queues
+  database SEARCH [index] { }      // Vectorize — a derived vector index (idiom #2)
+  database CACHE { }               // KV
+  service AI [external] { }        // Workers AI — an external model service (idiom #3)
+  service SessionActor [external] { }  // Durable Object — opaque stateful actor
+
+  Hato --> DB                      // owned infra uses -->
+  Hato -> AI                       // external / other Workers use ->
+  Hato -> AuthWorker               // service binding = Worker→Worker RPC edge
+}
+
+deploy "hato" {
+  function "hato" { runtime "cloudflare-workers"; realizes Hato }
+  store DBStore     { type "Cloudflare D1";       realizes DB }
+  store SEARCHStore { type "Cloudflare Vectorize"; realizes SEARCH }
+}
+```
+
+**Why** — the binding→karasu mapping reuses existing idioms rather than minting
+new syntax: **Vectorize → `database [index]`** (idiom #2, a derived index), **Workers
+AI and Durable Objects → `service [external]`** (idiom #3, opaque to this adapter),
+and a **service binding → a `->` communication edge**. KV maps to a plain `database`
+(a dedicated `[cache]` role is a
+[notation-watch item](https://github.com/kompiro/karasu/issues/1816), not yet
+notation). Unknown binding kinds are skipped with a warning — never guessed. Run
+`karasu translate --from wrangler wrangler.toml > index.krs`.
+
 ## See also
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — the precise `.krs` grammar (feed this first)

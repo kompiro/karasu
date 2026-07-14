@@ -106,7 +106,7 @@ program
   .description(
     "Translate an infra config or API spec file to a .krs scaffold (deploy, service, or database block)",
   )
-  .requiredOption("--from <format>", "Input format: compose | k8s | openapi | db")
+  .requiredOption("--from <format>", "Input format: compose | k8s | openapi | db | wrangler")
   .option("--map <path>", "Path to karasu.map.yaml (default: same directory as input file)")
   .option("--service <name>", "Service name for openapi format (default: derived from info.title)")
   .option("--database <name>", "Database name for db format (default: derived from file name)")
@@ -122,7 +122,10 @@ program
     "--emit-crud-decoration",
     "Decorate emitted operations with <verb>:<crud> (ADR-20260503-01). Implies --emit-bindings.",
   )
-  .option("--system <name>", "Wrap emitted blocks in `system <name> { ... }` (openapi / db only)")
+  .option(
+    "--system <name>",
+    "Wrap emitted blocks in `system <name> { ... }` (openapi / db). For wrangler, overrides the system name derived from the worker name.",
+  )
   .option("-o, --output <path>", "Write .krs to file (default: stdout)")
   .addHelpText(
     "after",
@@ -154,7 +157,10 @@ Examples:
 
   # Wrap output in a logical system block (openapi / db only)
   $ karasu translate --from openapi orders.yaml  --system Orders  > out.krs
-  $ karasu translate --from openapi billing.yaml --system Billing >> out.krs`,
+  $ karasu translate --from openapi billing.yaml --system Billing >> out.krs
+
+  # Extract a Cloudflare Workers app's physical layer from wrangler.toml
+  $ karasu translate --from wrangler wrangler.toml > index.krs`,
   )
   .action(
     (
@@ -175,9 +181,12 @@ Examples:
         options.from !== "compose" &&
         options.from !== "k8s" &&
         options.from !== "openapi" &&
-        options.from !== "db"
+        options.from !== "db" &&
+        options.from !== "wrangler"
       ) {
-        process.stderr.write(`Error: --from must be "compose", "k8s", "openapi", or "db"\n`);
+        process.stderr.write(
+          `Error: --from must be "compose", "k8s", "openapi", "db", or "wrangler"\n`,
+        );
         process.exit(1);
       }
       let granularity: "resource" | "operation" | "aggregate" | "table" | undefined;
