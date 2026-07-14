@@ -2,10 +2,11 @@ import { ComposeTranslator } from "./compose.js";
 import { DbTranslator } from "./db.js";
 import { K8sTranslator } from "./k8s.js";
 import { OpenApiTranslator } from "./openapi.js";
+import { WranglerTranslator } from "./wrangler.js";
 import type { Translator, TranslatorContext } from "./translator.js";
 
 /** Input formats accepted by {@link translateInfraConfig}. */
-export type TranslateFormat = "compose" | "k8s" | "openapi" | "db";
+export type TranslateFormat = "compose" | "k8s" | "openapi" | "db" | "wrangler";
 
 /** A valid `.krs` identifier — used to validate the `system` wrapper name. */
 export const SYSTEM_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -75,6 +76,8 @@ function translatorFor(format: TranslateFormat): Translator {
       return new OpenApiTranslator();
     case "db":
       return new DbTranslator();
+    case "wrangler":
+      return new WranglerTranslator();
   }
 }
 
@@ -95,6 +98,9 @@ export async function translateInfraConfig(
     inputName: options.inputName,
     mapFile: options.mapFile,
     service: options.service,
+    // wrangler emits its own `system { ... }` block, so it consumes the name
+    // directly rather than via wrapInSystem below.
+    system: options.from === "wrangler" ? options.system : undefined,
     database: options.database,
     granularity: options.granularity,
     emitBindings: options.emitBindings,
@@ -107,8 +113,9 @@ export async function translateInfraConfig(
   if (options.system !== undefined) {
     if (options.from === "openapi" || options.from === "db") {
       krs = wrapInSystem(krs, options.system);
-    } else {
-      warnings.push("--system is only supported with --from openapi or --from db; ignoring.");
+    } else if (options.from !== "wrangler") {
+      // wrangler already applied the name to its self-emitted system block.
+      warnings.push("--system is only supported with --from openapi, db, or wrangler; ignoring.");
     }
   }
 
