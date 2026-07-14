@@ -70,15 +70,25 @@ function rightPort(n: LayoutNode): Point {
   return { x: n.x + n.width, y: n.y + n.height / 2 };
 }
 
-export function routeGroupedEdges(
-  layoutNodes: Map<string, LayoutNode>,
-  layoutEdges: LayoutEdge[],
-  frames: ContainerRect[],
-): void {
-  const nodes = [...layoutNodes.values()];
-  if (nodes.length === 0) return;
+/**
+ * Deterministic, locale-independent edge order by author id (`from` then `to`).
+ * Used as the stable tie-break wherever gutter edges are sorted, so snapshots
+ * don't depend on `Array.sort` stability or the host locale.
+ */
+function cmpEdgeId(a: LayoutEdge, b: LayoutEdge): number {
+  return a.from < b.from ? -1 : a.from > b.from ? 1 : a.to < b.to ? -1 : a.to > b.to ? 1 : 0;
+}
 
-  // Content bounds → gutter x on each side, outside every frame and card.
+/**
+ * Content bounds (leftmost / rightmost x over every card and frame). The gutter
+ * and trunk/single lane x's are all derived from these, so the three routing
+ * passes MUST agree on the basis for their lane numbering to align — hence one
+ * shared helper rather than three inline copies.
+ */
+function contentBounds(
+  nodes: LayoutNode[],
+  frames: ContainerRect[],
+): { minLeft: number; maxRight: number } {
   let minLeft = Infinity;
   let maxRight = -Infinity;
   for (const n of nodes) {
@@ -89,6 +99,19 @@ export function routeGroupedEdges(
     minLeft = Math.min(minLeft, f.x);
     maxRight = Math.max(maxRight, f.x + f.width);
   }
+  return { minLeft, maxRight };
+}
+
+export function routeGroupedEdges(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  // Content bounds → gutter x on each side, outside every frame and card.
+  const { minLeft, maxRight } = contentBounds(nodes, frames);
   const rightGutter: Gutter = { x: maxRight + GUTTER_GAP, side: "right" };
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
 
@@ -181,9 +204,7 @@ export function aggregateGroupTrunks(
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
-  let maxRight = -Infinity;
-  for (const n of nodes) maxRight = Math.max(maxRight, n.x + n.width);
-  for (const f of frames) maxRight = Math.max(maxRight, f.x + f.width);
+  const { maxRight } = contentBounds(nodes, frames);
 
   const frameOfNode = buildFrameOfNode(layoutNodes, frames);
 
@@ -246,6 +267,237 @@ export function aggregateGroupTrunks(
       edge.groupBackward = false;
     }
   });
+}
+
+/**
+ * Lane-separate non-trunked gutter corridors (Issue #1927, follow-up to #1859
+ * P2c-B). `routeGroupedEdges` sends every non-trunked cross-band edge to *one*
+ * shared gutter x (`maxRight + GUTTER_GAP`), so two edges with overlapping
+ * y-ranges lay collinear vertical corridors on the identical x — they render as
+ * one indistinguishable line (and read as a false connection). `aggregateGroupTrunks`
+ * disambiguates only fan-in (≥ 2 incoming) targets; single-incoming gutter edges
+ * keep colliding on the default gutter x. Runs *after* `aggregateGroupTrunks`.
+ *
+ * Each colliding corridor gets its own lane x, allocated by greedy interval
+ * partitioning on the corridor y-range: corridors whose y-ranges are disjoint may
+ * share a lane (no visual overlap → minimal width and snapshot churn); overlapping
+ * ones get distinct lanes. Lane order is coordinate-derived (sorted by y then id),
+ * so snapshots stay stable.
+ *
+ * Right-side lanes are numbered clear of the trunk lanes (P2c-B): overflow
+ * single-edge lanes start *beyond* the rightmost trunk x actually allocated
+ * (`maxTrunkX`), so a single-edge lane can never collide with a trunk spine. Lane 0
+ * keeps the base gutter x (`maxRight + GUTTER_GAP`), which no trunk uses — so an edge
+ * that never collided does not move. Left-side lanes step further left (trunks are
+ * right-only).
+ *
+ * Penetration-safe by construction: every lane x lies beyond `maxRight` (or before
+ * `minLeft`), where no card or frame exists, so widening a corridor never crosses an
+ * obstacle — the horizontal stub only extends into already-empty territory, and the
+ * vertical stays outside all obstacles (AC-1 preserved, never worse). Left-side lanes
+ * can push x negative; `normalizeCoordinates` (layout.ts) folds edge waypoints into
+ * its min and shifts every point non-negative, so they never clip on the left.
+ */
+export function distributeGutterLanes(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  const { minLeft, maxRight } = contentBounds(nodes, frames);
+  const rightBase = maxRight + GUTTER_GAP;
+  const leftBase = minLeft - GUTTER_GAP;
+
+  // Rightmost trunk lane x actually allocated (P2c-B, right-only), so overflow
+  // single-edge lanes can start *beyond* every trunk — no lane-x collision. Derived
+  // from the real trunk geometry (not a lane count), so it stays correct even if
+  // trunk lanes were ever allocated non-contiguously. Lane 0 keeps the base gutter
+  // x, which no trunk uses (trunks sit at rightBase + (lane+1)·TRUNK_LANE_GAP).
+  let maxTrunkX = rightBase;
+  for (const e of layoutEdges) {
+    if (e.trunkId && e.waypoints && e.waypoints.length === 2) {
+      maxTrunkX = Math.max(maxTrunkX, e.waypoints[0].x);
+    }
+  }
+
+  // Collect non-trunked gutter corridors set by `routeGroupedEdges`, split by side.
+  const right: LayoutEdge[] = [];
+  const left: LayoutEdge[] = [];
+  for (const e of layoutEdges) {
+    if (e.ghost || e.cyclic) continue;
+    if (e.trunkId) continue;
+    if (!isVerticalGutterRoute(e)) continue;
+    const x = e.waypoints![0].x;
+    if (x > maxRight) right.push(e);
+    else if (x < minLeft) left.push(e);
+  }
+
+  assignGutterLanes(right, (lane) => (lane === 0 ? rightBase : maxTrunkX + lane * TRUNK_LANE_GAP));
+  assignGutterLanes(left, (lane) => leftBase - lane * TRUNK_LANE_GAP);
+}
+
+/**
+ * Greedy interval partitioning of gutter corridors into lanes: corridors with
+ * overlapping y-ranges land on distinct lanes, disjoint ones may share. `laneX`
+ * maps a lane index to its gutter x. Rewrites each edge's two corridor waypoints
+ * to the assigned lane x (ports and corridor y are untouched).
+ */
+function assignGutterLanes(edges: LayoutEdge[], laneX: (lane: number) => number): void {
+  if (edges.length === 0) return;
+  const ranges = edges.map((e) => {
+    const y0 = e.waypoints![0].y;
+    const y1 = e.waypoints![1].y;
+    return { e, lo: Math.min(y0, y1), hi: Math.max(y0, y1) };
+  });
+  // Deterministic order: by corridor start, then end, then edge identity.
+  ranges.sort((a, b) => a.lo - b.lo || a.hi - b.hi || cmpEdgeId(a.e, b.e));
+  const laneEnds: number[] = []; // last-assigned corridor `hi` per lane
+  for (const r of ranges) {
+    // First lane whose corridor ends at or before this one starts (no overlap;
+    // touching at a single point is not a visual overlap, so `<=`).
+    let lane = laneEnds.findIndex((end) => end <= r.lo);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(r.hi);
+    } else {
+      laneEnds[lane] = r.hi;
+    }
+    const x = laneX(lane);
+    r.e.waypoints = [
+      { x, y: r.e.waypoints![0].y },
+      { x, y: r.e.waypoints![1].y },
+    ];
+  }
+}
+
+/**
+ * One attachment of a gutter corridor to a node's edge: the source end of an
+ * outgoing edge, the target end of an incoming edge, or — for a trunk — the one
+ * shared target entry of all its siblings (moved together, staying merged).
+ */
+interface GutterAttach {
+  edges: LayoutEdge[];
+  /** Which end of each edge attaches here. */
+  end: "source" | "target";
+  /** Corridor far-end y — orders the fan so it nests (fewest crossings). */
+  sortY: number;
+}
+
+/**
+ * Fan out the anchors of gutter corridors that touch the same node on the same
+ * side (Issue #1927). `routeGroupedEdges` / `aggregateGroupTrunks` attach *every*
+ * gutter edge to the node's mid-edge port (`y + height/2`), so two edges leaving
+ * **or entering** one node on one side share that point and their horizontal stubs
+ * run **collinearly** — near the node they render as one line, not N. This
+ * distributes every attachment on a node/side across the node's edge height so each
+ * edge gets its own stub.
+ *
+ * Trunk siblings (same `trunkId`) share ONE target entry by design (the P2c-B
+ * merge) — they count as a single attachment and move together, staying merged.
+ *
+ * Runs *after* `distributeGutterLanes` so the lane x's are final. Only a node/side
+ * with >= 2 attachments moves; a lone one keeps its mid-edge port (no churn).
+ * Attachments are ordered by corridor far-end y so the fan nests, minimising
+ * stub/vertical crossings (crossings are right-angle and harmless; only penetration
+ * is a hard fail).
+ *
+ * Penetration-safe: each restubbed route is verified against the obstacle set and a
+ * move is applied only if every edge in the attachment stays clear, else the anchor
+ * is left at mid-edge (never worse — AC-1 preserved).
+ */
+export function fanOutGutterPorts(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+  const frameOfNode = buildFrameOfNode(layoutNodes, frames);
+
+  const sideOf = (corridorX: number, node: LayoutNode): "left" | "right" =>
+    corridorX >= node.x + node.width ? "right" : "left";
+
+  // Collect attachments per (node, side). Trunk target-entries are merged per
+  // `trunkId` so all siblings share one slot (and one moved entry point). Keyed
+  // by node object (not a delimited string), so ids containing spaces are safe.
+  const bySide = new Map<LayoutNode, { left: GutterAttach[]; right: GutterAttach[] }>();
+  const trunkSlot = new Map<string, GutterAttach>(); // by `trunkId` (unique per target)
+  const push = (node: LayoutNode, side: "left" | "right", a: GutterAttach) => {
+    let rec = bySide.get(node);
+    if (!rec) bySide.set(node, (rec = { left: [], right: [] }));
+    rec[side].push(a);
+  };
+
+  for (const e of layoutEdges) {
+    if (e.ghost || e.cyclic) continue;
+    if (!isVerticalGutterRoute(e)) continue;
+    const from = layoutNodes.get(e.from);
+    const to = layoutNodes.get(e.to);
+    if (!from || !to) continue;
+    const corridorX = e.waypoints![0].x;
+    // Source end: corridor leaves `from` toward its target y (waypoints[1].y).
+    push(from, sideOf(corridorX, from), { edges: [e], end: "source", sortY: e.waypoints![1].y });
+    // Target end: corridor enters `to` coming from its source y (waypoints[0].y).
+    // A trunk's siblings share one entry (unique per `trunkId`), so merge them.
+    if (e.trunkId) {
+      const slot = trunkSlot.get(e.trunkId);
+      if (slot) slot.edges.push(e);
+      else {
+        const a: GutterAttach = { edges: [e], end: "target", sortY: e.waypoints![0].y };
+        trunkSlot.set(e.trunkId, a);
+        push(to, sideOf(corridorX, to), a);
+      }
+    } else {
+      push(to, sideOf(corridorX, to), { edges: [e], end: "target", sortY: e.waypoints![0].y });
+    }
+  }
+
+  // Obstacle sets depend only on an edge's endpoints/frames, not on the fanned y,
+  // so compute each once and reuse across a node's (and both nodes') attachments.
+  const obstacleCache = new Map<LayoutEdge, Rect[]>();
+  const obstaclesOf = (e: LayoutEdge): Rect[] => {
+    let o = obstacleCache.get(e);
+    if (!o) obstacleCache.set(e, (o = obstaclesFor(e, nodes, frames, frameOfNode)));
+    return o;
+  };
+
+  for (const [node, rec] of bySide) {
+    for (const side of ["left", "right"] as const) {
+      const attaches = rec[side];
+      if (attaches.length < 2) continue;
+      const portX = side === "right" ? node.x + node.width : node.x;
+      // Nest the fan by corridor far-end y (deterministic tie-break on edge id).
+      attaches.sort((a, b) => a.sortY - b.sortY || cmpEdgeId(a.edges[0], b.edges[0]));
+      const n = attaches.length;
+      attaches.forEach((a, i) => {
+        const y = node.y + (node.height * (i + 1)) / (n + 1);
+        const anchor: Point = { x: portX, y };
+        // Restub every edge in the attachment, verify all clear, then apply
+        // atomically (a trunk moves all its siblings' shared entry together).
+        const moved = a.edges.map((e) => {
+          const wps = [...e.waypoints!];
+          if (a.end === "source") {
+            wps[0] = { x: wps[0].x, y };
+            return { e, fromPoint: anchor, toPoint: e.toPoint, waypoints: wps };
+          }
+          wps[wps.length - 1] = { x: wps[wps.length - 1].x, y };
+          return { e, fromPoint: e.fromPoint, toPoint: anchor, waypoints: wps };
+        });
+        const allClear = moved.every((m) =>
+          polylineClearOf([m.fromPoint, ...m.waypoints, m.toPoint], obstaclesOf(m.e)),
+        );
+        if (allClear) {
+          for (const m of moved) {
+            m.e.fromPoint = m.fromPoint;
+            m.e.toPoint = m.toPoint;
+            m.e.waypoints = m.waypoints;
+          }
+        }
+      });
+    }
+  }
 }
 
 /** The right-side trunk polyline for one source→target edge at column `x`. */
