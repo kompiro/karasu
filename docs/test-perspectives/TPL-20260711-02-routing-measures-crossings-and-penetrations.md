@@ -50,7 +50,11 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 
 したがって **相異なるエッジ対で「同一 x かつ y 区間が正の長さで重なる縦セグメント」の数 == 0 を assert する**のが第3の柵。ただし**意図的な集約トランク（同一 `trunkId` の兄弟エッジが1本の spine を共有）は接続の明示**（junction dot）なので除外する — 除外対象は「偶然同じガター x に載っただけの無関係エッジ」。
 
-対処は**レーン分離**: 衝突する回廊に区間分割（interval partitioning）で別々のレーン x を割り当てる。既存のレーン割り当て（トランクレーン P2c-B / チャネルレーン）と x が衝突しないよう採番を協調させる。
+**縦だけでなく横も同型**: 同じノードの同じ辺から出る複数エッジが**同一のアンカー点**（辺の中点ポート）に付くと、**横スタブが共線オーバーラップ**して source 付近で1本に見える（#1927 の source-exit。縦のレーン分離だけでは残る）。対処の計測軸は縦と対称で、**同一 y かつ x 区間が正長で重なる横セグメント == 0** も assert する。
+
+対処は 2 段:
+- **縦**: 衝突する回廊に区間分割（interval partitioning）で別々のレーン x を割り当てる（`distributeGutterLanes`）。既存のレーン割り当て（トランクレーン P2c-B / チャネルレーン）と x が衝突しないよう採番を協調させる。
+- **横（source fan-out）**: 同一ノード・同一辺から出るガターエッジのアンカー y を辺の高さに沿って分散させ、各スタブを独立させる（`fanOutGutterSources`）。penetration-safe に verify し、ダメなら中点ポートに戻す。
 
 この観点は [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md)（ティア分割で中間カードを貫通しない）を **2 点で拡張**する:
 
@@ -71,7 +75,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 
 - [ ] 可読性の検証で**交差数と貫通数を両方測る**テストを書いた（片方だけにしない）。
 - [ ] **ノード/フレーム貫通数 == 0** を厳密に assert した（「救済される」の定性確認で済ませない）。
-- [ ] **相異なるエッジの共線オーバーラップ数 == 0** を assert した（同一 x + y 区間の正長オーバーラップ。意図的な集約トランク兄弟は同一 `trunkId` で除外）。単一 x にレーンを共有させる実装では特に必須（#1927）。
+- [ ] **相異なるエッジの共線オーバーラップ数 == 0** を assert した（**縦**＝同一 x + y 区間の正長オーバーラップ／**横**＝同一 y + x 区間の正長オーバーラップの両方。意図的な集約トランク兄弟は同一 `trunkId` で除外）。単一 x にレーンを共有させる／単一アンカーに複数エッジを付ける実装では特に必須（#1927）。
 - [ ] 貫通判定の障害物集合に**ノードカードとフレーム矩形の両方**を含めた（grouped/framed view）。
 - [ ] 交差を hop/junction 等の**表現で無害化**する設計なら、交差数の残存を欠陥と誤認せず、代わりに「全交差が mark 付き（非接続/接続が明示）」を assert した。
 - [ ] 退化ケース（グループ 1 つ / 枠なし / infra・external なし）で貫通ゼロが保たれることを確認した。
@@ -88,7 +92,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 ## 関連テスト
 
 - `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング — ノードカード貫通の既存ガード）
-- `packages/core/src/renderer/edge-routing-groups.test.ts`（grouped view のルーティング — `totalPenetrations == 0` と `collinearVerticalOverlaps == 0` を assert。#1859 / #1927）
+- `packages/core/src/renderer/edge-routing-groups.test.ts`（grouped view のルーティング — `totalPenetrations == 0`・`collinearVerticalOverlaps == 0`・`collinearHorizontalOverlaps == 0` を assert。#1859 / #1927）
 
 ## 派生元 spec / 設計
 

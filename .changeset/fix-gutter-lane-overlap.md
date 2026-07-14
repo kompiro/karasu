@@ -3,4 +3,4 @@
 "karasu": patch
 ---
 
-fix(core): give single-incoming edges in the expanded "Group by" view their own gutter lane so two distinct edges no longer render as one overlapping (collinear) vertical corridor — previously they read as a false connection (#1927, follow-up to #1859 P2c-B). Lanes stay clear of aggregation-trunk lanes and outside every card/frame (no node/frame penetration).
+fix(core): stop distinct edges overlapping in the expanded "Group by" view (#1927, follow-up to #1859 P2c-B). Single-incoming gutter edges now get their own lane so two corridors no longer render as one collinear vertical line (a false connection), and the edges leaving one node on the same side are fanned across the node's edge so their horizontal stubs no longer overlap into one line at the source. Lanes stay clear of aggregation-trunk lanes and every route stays outside all cards/frames (no node/frame penetration).

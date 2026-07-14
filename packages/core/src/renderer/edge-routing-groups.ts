@@ -376,6 +376,72 @@ function assignGutterLanes(edges: LayoutEdge[], laneX: (lane: number) => number)
   }
 }
 
+/**
+ * Fan out the source anchors of gutter corridors that leave the same node on the
+ * same side (Issue #1927, source-exit follow-up). `routeGroupedEdges` /
+ * `aggregateGroupTrunks` attach *every* gutter edge to the node's mid-edge port
+ * (`from.y + height/2`), so two edges leaving one node share that point and their
+ * horizontal stubs run **collinearly** until each peels off to its own lane — near
+ * the source they render as one line, not N. This pass distributes those edges
+ * across the node's edge height so each gets its own stub from the source onward.
+ *
+ * Runs *after* `distributeGutterLanes` so the lane x's are final. Only groups with
+ * ≥ 2 edges on one side move; a lone edge keeps its mid-edge port (no churn). Ports
+ * are ordered by lane x so the outermost corridor takes the lowest anchor — the fan
+ * stays nested, minimising stub/vertical crossings (crossings are right-angle and
+ * harmless; only penetration is a hard fail).
+ *
+ * Penetration-safe: each restubbed polyline is verified against the obstacle set and
+ * the move is applied only if it stays clear, else the edge keeps its mid-edge port
+ * (never worse — AC-1 preserved).
+ */
+export function fanOutGutterSources(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+  const frameOfNode = buildFrameOfNode(layoutNodes, frames);
+
+  // Group gutter corridors by (source node, gutter side).
+  const groups = new Map<string, LayoutEdge[]>();
+  for (const e of layoutEdges) {
+    if (e.ghost || e.cyclic) continue;
+    if (!isVerticalGutterRoute(e)) continue;
+    const from = layoutNodes.get(e.from);
+    if (!from) continue;
+    const side = e.waypoints![0].x >= from.x + from.width ? "right" : "left";
+    const key = `${e.from} ${side}`;
+    const list = groups.get(key);
+    if (list) list.push(e);
+    else groups.set(key, [e]);
+  }
+
+  for (const edges of groups.values()) {
+    if (edges.length < 2) continue;
+    const from = layoutNodes.get(edges[0].from)!;
+    const side = edges[0].waypoints![0].x >= from.x + from.width ? "right" : "left";
+    const portX = side === "right" ? from.x + from.width : from.x;
+    // Outermost lane → lowest anchor: keeps the fan nested. Deterministic.
+    edges.sort(
+      (a, b) => a.waypoints![0].x - b.waypoints![0].x || (a.to < b.to ? -1 : a.to > b.to ? 1 : 0),
+    );
+    const n = edges.length;
+    edges.forEach((e, i) => {
+      const y = from.y + (from.height * (i + 1)) / (n + 1);
+      const staggered: Point = { x: portX, y };
+      const elbow: Point = { x: e.waypoints![0].x, y };
+      const obstacles = obstaclesFor(e, nodes, frames, frameOfNode);
+      // Apply only if the restubbed route stays obstacle-free (never worse).
+      if (polylineClearOf([staggered, elbow, e.waypoints![1], e.toPoint], obstacles)) {
+        e.fromPoint = staggered;
+        e.waypoints = [elbow, e.waypoints![1]];
+      }
+    });
+  }
+}
+
 /** The right-side trunk polyline for one source→target edge at column `x`. */
 function trunkPath(from: LayoutNode, target: LayoutNode, x: number): Point[] {
   const sourcePort = rightPort(from);

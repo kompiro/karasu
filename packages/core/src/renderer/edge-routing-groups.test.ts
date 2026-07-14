@@ -170,6 +170,46 @@ function collinearVerticalOverlaps(res: LayoutResult): number {
   return n;
 }
 
+/**
+ * #1927 source-exit metric: count pairs of *distinct* edges whose *horizontal*
+ * segments are collinear (share a y) and overlap on a sub-segment of positive
+ * length — e.g. two gutter edges leaving one node on the same mid-edge port, whose
+ * stubs run as one line before branching. Must be 0 after source fan-out. Trunk
+ * siblings share a target-entry stub by design, so they are excluded.
+ */
+function collinearHorizontalOverlaps(res: LayoutResult): number {
+  interface HSeg {
+    edge: LayoutEdge;
+    y: number;
+    lo: number;
+    hi: number;
+  }
+  const horizontals: HSeg[] = [];
+  for (const e of res.edges) {
+    if (e.ghost || e.cyclic) continue;
+    const pts: Point[] = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i];
+      const q = pts[i + 1];
+      if (p.y === q.y && p.x !== q.x) {
+        horizontals.push({ edge: e, y: p.y, lo: Math.min(p.x, q.x), hi: Math.max(p.x, q.x) });
+      }
+    }
+  }
+  let n = 0;
+  for (let i = 0; i < horizontals.length; i++) {
+    for (let j = i + 1; j < horizontals.length; j++) {
+      const a = horizontals[i];
+      const b = horizontals[j];
+      if (a.edge === b.edge) continue;
+      if (a.edge.trunkId && a.edge.trunkId === b.edge.trunkId) continue;
+      if (a.y !== b.y) continue;
+      if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 0) n++;
+    }
+  }
+  return n;
+}
+
 function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
   const o = (p: Point, q: Point, r: Point) =>
     Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
@@ -341,15 +381,65 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
       expect(e.trunkId).toBeUndefined();
       expect(e.waypoints).toHaveLength(2);
     }
-    // The overlap precondition: all three corridors start at the same source y.
-    expect(eCat.waypoints![0].y).toBe(eDb.waypoints![0].y);
-    expect(eCat.waypoints![0].y).toBe(eStr.waypoints![0].y);
-    // Fix: each colliding corridor gets its own lane x → three distinct columns.
+    // Each colliding corridor gets its own lane x → three distinct columns.
     const xs = new Set([eCat.waypoints![0].x, eDb.waypoints![0].x, eStr.waypoints![0].x]);
     expect(xs.size).toBe(3);
     // No two distinct edges render a collinear (overlapping) vertical corridor.
     expect(collinearVerticalOverlaps(res)).toBe(0);
     // AC-1 preserved: still zero node/frame penetrations after laning.
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("fans out the source anchors of edges leaving one node, so their stubs don't overlap (#1927 source-exit)", () => {
+    // Billing → {Catalog, ShopDB, Stripe} all leave Billing on the right gutter.
+    // Without fan-out they share Billing's mid-right port and their horizontal
+    // stubs are collinear (render as one line until they branch).
+    const res = layoutOf(SYS, OWNER, "team");
+    const eCat = edge(res, "Billing", "Catalog");
+    const eDb = edge(res, "Billing", "ShopDB");
+    const eStr = edge(res, "Billing", "Stripe");
+    // Fanned: the three source anchors are now at distinct y (own stub each).
+    const ys = new Set([eCat.fromPoint.y, eDb.fromPoint.y, eStr.fromPoint.y]);
+    expect(ys.size).toBe(3);
+    // The corridor top elbow follows the anchor y (the stub is truly horizontal).
+    for (const e of [eCat, eDb, eStr]) expect(e.waypoints![0].y).toBe(e.fromPoint.y);
+    // Anchors stay on Billing's right edge (same x), inside its height.
+    const from = res.nodes.get("Billing")!;
+    for (const e of [eCat, eDb, eStr]) {
+      expect(e.fromPoint.x).toBe(from.x + from.width);
+      expect(e.fromPoint.y).toBeGreaterThan(from.y);
+      expect(e.fromPoint.y).toBeLessThan(from.y + from.height);
+    }
+    // No two distinct edges share a collinear horizontal (source-stub) segment,
+    // and the vertical corridors and penetration guard still hold.
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("leaves a lone gutter edge on its mid-edge port (no needless fan-out)", () => {
+    // Only Billing → Stripe leaves Billing to the far right on its own here (the
+    // single-source case): the port stays at mid-height, no churn.
+    const oneFar = `
+system Shop {
+  service Billing { label "Billing" }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Catalog { label "Catalog" }
+  service Stripe [external] { label "Stripe" }
+  Billing -> Wallet "debit"
+  Search -> Catalog "read"
+  Billing -> Stripe "authorize"
+}
+organization Org {
+  team "payments" { label "Payments" owns Billing owns Wallet }
+  team "catalog" { label "Catalog" owns Search owns Catalog }
+}`;
+    const res = layoutOf(oneFar, OWNER, "team");
+    const e = edge(res, "Billing", "Stripe");
+    const from = res.nodes.get("Billing")!;
+    expect(e.waypoints).toHaveLength(2);
+    expect(e.fromPoint.y).toBe(from.y + from.height / 2); // untouched mid-edge port
     expect(totalPenetrations(res)).toBe(0);
   });
 
