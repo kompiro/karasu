@@ -9,8 +9,8 @@ const ctx: TranslatorContext = { inputName: "wrangler" };
 function assertRoundTrips(krs: string): void {
   const result = Parser.parse(krs);
   const errors = result.diagnostics.filter((d) => d.severity === "error");
-  // Map to {code, message} so a failure surfaces which diagnostic fired.
-  expect(errors.map((d) => ({ code: d.code, message: d.message }))).toEqual([]);
+  // Map to the diagnostic codes so a failure surfaces which rule fired.
+  expect(errors.map((d) => d.code)).toEqual([]);
 }
 
 const FULL = `
