@@ -117,7 +117,20 @@ function buildDomainServiceMap(services: KrsNode[]): Map<string, string> {
 function deriveImplicitServiceEdges(
   services: KrsNode[],
   explicitKeys: Set<string>,
-): { edges: KrsEdge[]; details: Map<string, DomainEdgeDetail[]> } {
+  /**
+   * Service ids expanded in place (#1921). A domain whose owning service is
+   * expanded keeps its own id as the cross-boundary endpoint (so the edge lands
+   * on the exact internal domain, not the aggregated service), while an endpoint
+   * in a collapsed sibling stays at the service id. When both endpoints are
+   * inside the *same* expanded service the edge is a real internal domain edge,
+   * returned via `internalEdges` (not implicit-tagged, not aggregated).
+   */
+  expanded?: ReadonlySet<string>,
+): {
+  edges: KrsEdge[];
+  details: Map<string, DomainEdgeDetail[]>;
+  internalEdges: KrsEdge[];
+} {
   const domainServiceMap = buildDomainServiceMap(services);
 
   // Build a map from domain ID → domain label for display in the detail panel
@@ -131,11 +144,19 @@ function deriveImplicitServiceEdges(
     }
   }
 
-  // Collect all cross-service domain edges grouped by (service pair, kind)
+  // The visible cross-boundary endpoint for a domain: its own id when its owning
+  // service is expanded in place, otherwise the aggregated owning-service id.
+  const endpointOf = (domainId: string, ownerServiceId: string): string =>
+    expanded?.has(ownerServiceId) ? domainId : ownerServiceId;
+
+  // Collect all cross-boundary domain edges grouped by (endpoint pair, kind)
   const grouped = new Map<
     string,
     { edge: KrsEdge; count: number; label: string | undefined; details: DomainEdgeDetail[] }
   >();
+  // Real domain→domain edges internal to an expanded service (both ends inside
+  // the same expanded service): shown as first-class edges, not aggregated.
+  const internalEdges: KrsEdge[] = [];
 
   for (const service of services) {
     if (service.kind !== "service") continue;
@@ -143,10 +164,21 @@ function deriveImplicitServiceEdges(
       if (domain.kind !== "domain") continue;
       for (const edge of domain.edges) {
         const targetServiceId = domainServiceMap.get(edge.to);
-        if (!targetServiceId || targetServiceId === service.id) continue;
-        const pairKey = `${service.id}->${targetServiceId}`;
-        if (explicitKeys.has(pairKey)) continue;
-        const groupKey = `${pairKey}#${edge.kind}`;
+        if (!targetServiceId) continue;
+        if (targetServiceId === service.id) {
+          // Same-service domain edge: only surfaced when that service is
+          // expanded in place (otherwise it stays hidden inside the box).
+          if (expanded?.has(service.id)) internalEdges.push(edge);
+          continue;
+        }
+        // Suppression stays keyed on the *service* pair even under expansion:
+        // an authored explicit serviceA→serviceB edge should still hide the
+        // derived edge, whichever granularity the endpoints render at (#1921).
+        const servicePairKey = `${service.id}->${targetServiceId}`;
+        if (explicitKeys.has(servicePairKey)) continue;
+        const fromEndpoint = endpointOf(domain.id, service.id);
+        const toEndpoint = endpointOf(edge.to, targetServiceId);
+        const groupKey = `${fromEndpoint}->${toEndpoint}#${edge.kind}`;
         const detail: DomainEdgeDetail = {
           fromDomainId: domain.id,
           fromDomainLabel: domainLabelMap.get(domain.id) ?? domain.id,
@@ -161,7 +193,7 @@ function deriveImplicitServiceEdges(
           existing.details.push(detail);
         } else {
           grouped.set(groupKey, {
-            edge: { ...edge, from: service.id, to: targetServiceId, tags: ["implicit"] },
+            edge: { ...edge, from: fromEndpoint, to: toEndpoint, tags: ["implicit"] },
             count: 1,
             label: edge.label,
             details: [detail],
@@ -187,7 +219,7 @@ function deriveImplicitServiceEdges(
     }
   }
 
-  return { edges, details };
+  return { edges, details, internalEdges };
 }
 
 /**
@@ -378,6 +410,24 @@ export interface ViewSlice {
    * Only populated for pairs with 2 or more domain edges.
    */
   implicitEdgeDetails: Map<string, DomainEdgeDetail[]>;
+  /**
+   * Containers expanded in place (#1921): each entry names a service whose
+   * domain children were spliced into `childNodes` as a boundary-frame band.
+   * The layout bands the members contiguously and draws a titled frame; empty
+   * on every view except the root system view with expansion active.
+   */
+  expandedFrames: ExpandedFrame[];
+}
+
+/**
+ * One container expanded in place in the system view (#1921). Its `memberIds`
+ * are the domain child ids spliced into the sibling grid; `label` titles the
+ * boundary frame the layout draws around that contiguous band.
+ */
+export interface ExpandedFrame {
+  containerId: string;
+  label: string;
+  memberIds: string[];
 }
 
 function nodeId(node: KrsNode): string {
@@ -414,6 +464,7 @@ function emptySlice(
     resourceLabelMap,
     resourceInferredTagsMap,
     implicitEdgeDetails: new Map(),
+    expandedFrames: [],
   };
 }
 
@@ -636,6 +687,14 @@ export function extractView(
   path: ViewPath,
   unassignedDomains: KrsNode[] = [],
   unassignedServices: KrsNode[] = [],
+  /**
+   * Service ids to expand in place in the root system view (#1921). Each named
+   * service is replaced by its domain children (spliced as a boundary-frame
+   * band) while siblings stay collapsed; cross-boundary edges re-anchor to the
+   * exact internal domain. Only honoured on the root system view; ignored on
+   * drill-down levels and multi-system roots (Phase 1 scope).
+   */
+  expandedContainers?: ReadonlySet<string>,
 ): ViewSlice {
   const resourceLabelMap = buildResourceLabelMap(systems);
   const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
@@ -739,16 +798,62 @@ export function extractView(
     const derivedEdges = deriveInfraEdges(allChildren, entityResolver);
     // Merge derived edges, skipping any already covered by explicit edges
     const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
-    const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
-      deriveImplicitServiceEdges(
-        allChildren.filter((c) => c.kind === "service"),
-        explicitKeys,
-      );
+
+    // In-place expansion (#1921): a service named in `expandedContainers` that
+    // actually has domain children is replaced by those domains as a boundary
+    // frame band; cross-boundary edges re-anchor to the exact internal domain.
+    const expandedServices = new Map<string, KrsNode>();
+    if (expandedContainers && expandedContainers.size > 0) {
+      for (const child of allChildren) {
+        if (
+          child.kind === "service" &&
+          expandedContainers.has(child.id) &&
+          child.children.some((c) => c.kind === "domain")
+        ) {
+          expandedServices.set(child.id, child);
+        }
+      }
+    }
+    const expandedSet = expandedServices.size > 0 ? new Set(expandedServices.keys()) : undefined;
+
+    const {
+      edges: implicitServiceEdges,
+      details: implicitEdgeDetails,
+      internalEdges,
+    } = deriveImplicitServiceEdges(
+      allChildren.filter((c) => c.kind === "service"),
+      explicitKeys,
+      expandedSet,
+    );
     const deliversEdges = deriveDeliversEdges(allChildren);
+
+    // Splice each expanded service's domains into the sibling grid, and record
+    // the frame band the layout draws around them.
+    const expandedFrames: ExpandedFrame[] = [];
+    const childNodes: KrsNode[] = [];
+    for (const child of allChildren) {
+      const expanded = expandedServices.get(nodeId(child));
+      if (expanded) {
+        const domains = applyInferredTags(
+          expanded.children.filter((c) => c.kind === "domain"),
+          resourceInferredTagsMap,
+        );
+        childNodes.push(...domains);
+        expandedFrames.push({
+          containerId: expanded.id,
+          label: expanded.label ?? expanded.id,
+          memberIds: domains.map(nodeId),
+        });
+      } else {
+        childNodes.push(child);
+      }
+    }
+
     const childEdges = [
       ...explicitEdges,
       ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
       ...implicitServiceEdges,
+      ...internalEdges,
       ...deliversEdges,
     ];
 
@@ -763,7 +868,7 @@ export function extractView(
 
     return {
       containerNode: system,
-      childNodes: allChildren,
+      childNodes,
       childEdges,
       ancestorChain: [],
       ghostUsers: [],
@@ -781,6 +886,7 @@ export function extractView(
       resourceLabelMap,
       resourceInferredTagsMap,
       implicitEdgeDetails,
+      expandedFrames,
     };
   }
 
@@ -918,6 +1024,7 @@ export function extractView(
     resourceLabelMap,
     resourceInferredTagsMap,
     implicitEdgeDetails: new Map(),
+    expandedFrames: [],
   };
 }
 

@@ -303,6 +303,7 @@ export function AppShell({
       resolvedSystems: views.system.resolvedSystems,
       toggleCategory: views.system.toggleCategory,
       toggleGroup: views.system.toggleGroup,
+      toggleExpand: views.system.toggleExpand,
       groupBy: views.system.groupBy,
       setGroupBy: views.system.setGroupBy,
       groupByAvailable: views.system.groupByAvailable,

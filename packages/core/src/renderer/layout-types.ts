@@ -120,6 +120,17 @@ export interface ContainerRect {
    * `data-collapse-group` so the app can toggle this group.
    */
   groupId?: string;
+  /**
+   * In-place expansion marker (#1921). Set together with `group` when this frame
+   * is a container expanded in place (its domain children shown inside). Drives
+   * the ⊖ collapse control's `data-expand-node` so the app can un-expand it.
+   */
+  expanded?: boolean;
+  /**
+   * The expanded container's own node id (#1921). Set together with `expanded`;
+   * the value the `data-expand-node` control carries.
+   */
+  nodeId?: string;
 }
 
 export interface LayoutResult {

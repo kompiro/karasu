@@ -9,8 +9,15 @@ import { useCallback, useMemo, useState } from "react";
  * blocks in `useSystemView`.
  *
  * `T extends string` so the ids sort and join deterministically into `key`.
+ *
+ * `single` (#1921) enforces an at-most-one invariant: toggling a new id clears
+ * any other member first, so the set never holds more than one element. Used by
+ * the in-place expansion axis, where expanding a second container collapses the
+ * first (keeping the scoped-glance node budget bounded — TPL-20260510-21).
  */
-export function useCollapsibleSet<T extends string>(): {
+export function useCollapsibleSet<T extends string>(
+  single = false,
+): {
   /** The current collapsed set. */
   set: ReadonlySet<T>;
   /** Add `item` if absent, remove it if present (clone-before-mutate). */
@@ -21,14 +28,20 @@ export function useCollapsibleSet<T extends string>(): {
   key: string;
 } {
   const [set, setSet] = useState<ReadonlySet<T>>(new Set());
-  const toggle = useCallback((item: T) => {
-    setSet((prev) => {
-      const next = new Set(prev);
-      if (next.has(item)) next.delete(item);
-      else next.add(item);
-      return next;
-    });
-  }, []);
+  const toggle = useCallback(
+    (item: T) => {
+      setSet((prev) => {
+        const next = new Set(prev);
+        if (next.has(item)) next.delete(item);
+        else {
+          if (single) next.clear();
+          next.add(item);
+        }
+        return next;
+      });
+    },
+    [single],
+  );
   const replace = useCallback((items?: Iterable<T>) => {
     setSet(new Set(items));
   }, []);

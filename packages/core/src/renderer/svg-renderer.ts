@@ -140,6 +140,13 @@ export interface RenderOptions {
    */
   groupBy?: "team";
   collapsedGroups?: ReadonlySet<string>;
+  /**
+   * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).
+   * `render()` sets it from the slice's system count so the affordance only
+   * appears on the single-system root, where expansion is actually derived.
+   * Internal — set by `render()`, not a public compile option.
+   */
+  expandable?: boolean;
 }
 
 /**
@@ -194,7 +201,10 @@ export function render(
     serviceIdsWithDeploy,
     displayMode,
     childLevelLinks,
-    options,
+    // Expansion controls only make sense on the single-system root, where view
+    // extraction actually derives expansion (#1921). Drill-down levels have an
+    // empty `systems` list and no service nodes, so they never draw one either.
+    { ...options, expandable: viewSlice.systems.length <= 1 },
   );
 }
 
@@ -292,7 +302,7 @@ export function renderFromLayout(
     if (!container.ghost) {
       const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
       const diffState = options?.containerDiffState?.get(container.id);
-      parts.push(renderContainer(container, containerStyle, false, diffState));
+      parts.push(renderContainer(container, containerStyle, false, diffState, palette));
     }
   }
 
@@ -414,6 +424,15 @@ export function renderFromLayout(
     if (categoryControls) parts.push(categoryControls);
     const groupControls = renderGroupControls(layoutResult, palette, options?.collapsedGroups);
     if (groupControls) parts.push(groupControls);
+    // In-place expansion is orthogonal to Group by: team and Phase 1 targets the
+    // ungrouped, single-system view (view extraction only derives expansion for
+    // the single-system root — #1921), so the ⊕/⊖ controls only appear there.
+    // `render()` sets `expandable` from the slice's system count; a multi-system
+    // root gets no expand affordance (the ⊕ would be a no-op there).
+    if (!options?.groupBy && options?.expandable) {
+      const expandControls = renderExpandControls(layoutResult, palette);
+      if (expandControls) parts.push(expandControls);
+    }
   }
 
   // Legend footer (Issue #887) — rendered as a band below the diagram so
@@ -716,6 +735,9 @@ function renderGroupControls(
   const buttons: string[] = [];
   for (const container of layoutResult.containers) {
     if (!container.group || container.groupId === undefined) continue;
+    // In-place expansion frames are their own control axis (`data-expand-node`,
+    // renderExpandControls) — never a team collapse target (#1921).
+    if (container.expanded) continue;
     // Collapsed → ⊕ (click expands); expanded → ⊖ (click collapses).
     const collapsed = collapsedGroups?.has(container.groupId) ?? false;
     const bx = container.x + container.width - 2;
@@ -739,23 +761,85 @@ function renderGroupControls(
   return el("g", { class: "krs-group-controls" }, style, ...buttons);
 }
 
+/**
+ * In-place expansion controls (#1921): a ⊕ on every collapsed service box that
+ * has domain children (click expands it in place) and a ⊖ on each expanded
+ * container's boundary frame (click collapses it back). Both carry
+ * `data-expand-node=<serviceId>` for the app's click delegation. Interactive
+ * chrome only — never emitted in static output (mirrors renderGroupControls).
+ */
+function renderExpandControls(layoutResult: LayoutResult, palette: DiagramPalette): string {
+  const buttons: string[] = [];
+  // ⊖ on expanded frames (click collapses).
+  for (const container of layoutResult.containers) {
+    if (!container.expanded || container.nodeId === undefined) continue;
+    const bx = container.x + container.width - 2;
+    const by = container.y + 2;
+    buttons.push(
+      el(
+        "g",
+        {
+          class: "krs-expand-control",
+          "data-expand-node": container.nodeId,
+          role: "button",
+          tabindex: "0",
+          transform: `translate(${bx},${by})`,
+        },
+        // expanded → ⊖
+        ...collapseGlyph(0, 0, false, palette),
+      ),
+    );
+  }
+  // ⊕ on collapsed, drillable service boxes (click expands).
+  for (const node of layoutResult.nodes.values()) {
+    if (node.kind !== "service" || !node.hasChildren) continue;
+    const bx = node.x + node.width - 2;
+    const by = node.y + 2;
+    buttons.push(
+      el(
+        "g",
+        {
+          class: "krs-expand-control",
+          "data-expand-node": node.id,
+          role: "button",
+          tabindex: "0",
+          transform: `translate(${bx},${by})`,
+        },
+        // collapsed → ⊕
+        ...collapseGlyph(0, 0, true, palette),
+      ),
+    );
+  }
+  if (buttons.length === 0) return "";
+  const style = el("style", {}, ".krs-expand-control{cursor:pointer}");
+  return el("g", { class: "krs-expand-controls" }, style, ...buttons);
+}
+
 function renderContainer(
   container: ContainerRect,
   style: ResolvedNodeStyle,
   ghost: boolean,
   diffState?: string,
+  palette?: DiagramPalette,
 ): string {
   const children: string[] = [];
+  // An in-place-expanded container is an active user action (#1921): render it
+  // prominently — a solid accent border with a faint accent fill — so the opened
+  // service reads as a highlighted region rather than the muted, dashed team
+  // frame it reuses geometry from. Without this it disappears into a busy diagram.
+  const expanded = container.expanded === true;
+  const accent = palette?.accent;
   children.push(
     el("rect", {
       x: container.x,
       y: container.y,
       width: container.width,
       height: container.height,
-      fill: "transparent",
-      stroke: style.borderColor,
-      "stroke-width": style.borderWidth,
-      "stroke-dasharray": ghost || container.group ? "8 4" : undefined,
+      fill: expanded && accent ? accent : "transparent",
+      "fill-opacity": expanded && accent ? "0.06" : undefined,
+      stroke: expanded && accent ? accent : style.borderColor,
+      "stroke-width": expanded ? 2 : style.borderWidth,
+      "stroke-dasharray": !expanded && (ghost || container.group) ? "8 4" : undefined,
       rx: style.borderRadius,
     }),
   );
@@ -765,11 +849,11 @@ function renderContainer(
       {
         x: container.x + 12,
         y: container.y + 18,
-        fill: style.color,
+        fill: expanded && accent ? accent : style.color,
         "font-size": "12px",
         "font-family": style.fontFamily,
         "font-weight": "bold",
-        opacity: 0.7,
+        opacity: expanded ? undefined : 0.7,
       },
       escapeXml(container.label),
     ),
@@ -781,6 +865,7 @@ function renderContainer(
       "data-container-id": container.id,
       "data-kind-band": container.kindBand,
       "data-group": container.group ? "true" : undefined,
+      "data-expanded": expanded ? "true" : undefined,
       "data-diff-state": diffState,
       opacity: ghost ? GHOST_OPACITY : undefined,
     },

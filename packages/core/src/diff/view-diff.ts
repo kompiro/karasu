@@ -246,6 +246,7 @@ export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): Diffe
     resourceLabelMap: after.resourceLabelMap,
     resourceInferredTagsMap: after.resourceInferredTagsMap,
     implicitEdgeDetails: diffImplicitEdgeDetails(before, after, edgeDiff),
+    expandedFrames: after.expandedFrames,
   };
 
   return { slice, nodes: nodeDiff, edges: edgeDiff };
