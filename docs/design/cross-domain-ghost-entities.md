@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1911](https://github.com/kompiro/karasu/issues/1911)（PR 2b-2）、親 [#1870](https://github.com/kompiro/karasu/issues/1870)
+  - PR: [#1932](https://github.com/kompiro/karasu/pull/1932)
   - 関連 ADR: [ADR-20260411-05](../adr/20260411-05-ghost-domain-edges.md)（ghost domain エッジ：両方向・bottom 配置・subLabel。ドメイン ID の error 級一意性を前提にしている）、[ADR-20260405-07](../adr/20260405-07-ghost-system-rendering.md)（ghost 描画の基本）
   - 関連ドキュメント: [`docs/design/domain-entity-modeling.md`](domain-entity-modeling.md)、[`docs/spec/permalink.md`](../spec/permalink.md) entity view 節
   - コード: `packages/core/src/view/view-extract.ts`（`extractEntityView` / `buildGhostDomains`）、`packages/core/src/renderer/layout.ts`（`placeGhostDomains` / ghost edge）
