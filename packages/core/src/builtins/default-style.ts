@@ -307,6 +307,10 @@ edge[implicit] {
   color: #F59E0B;
 }
 
+edge[inferred] {
+  color: #94A3B8;
+}
+
 edge[delivers] {
   color: #8B5CF6;
   border-style: dashed;
@@ -564,6 +568,10 @@ edge[cyclic] {
 
 edge[implicit] {
   color: #D97706;
+}
+
+edge[inferred] {
+  color: #64748B;
 }
 
 edge[delivers] {
