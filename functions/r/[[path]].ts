@@ -27,7 +27,17 @@ export async function onRequestGet(context: {
 
   const raw = context.params.path;
   const rest = Array.isArray(raw) ? raw.join("/") : raw;
-  const permalink = decodeURIComponent(rest);
+  let permalink: string;
+  try {
+    permalink = decodeURIComponent(rest);
+  } catch {
+    // Malformed percent-encoding (e.g. a stray `%`) — decodeURIComponent throws
+    // URIError. Return a clean 400 instead of letting it bubble to a generic 500.
+    return new Response("Invalid permalink encoding.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
 
   // Bind `fetch` to the global scope before handing it off: the Workers runtime
   // throws "Illegal invocation" if the global `fetch` is later called as a bare

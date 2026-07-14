@@ -143,4 +143,14 @@ describe("resolveRepoPermalink", () => {
     const res = await resolveRepoPermalink("o/r@sha", stubFetch({ "index.krs": "__500__" }));
     expect(res.status).toBe(502);
   });
+
+  it("degrades gracefully (200, not 500) on an unsupported directory import", async () => {
+    // A directory import drives the resolver to `readDir` (unsupported in v1).
+    // ImportResolver catches that, emits a diagnostic, and continues — so the
+    // model still resolves to 200 (without the directory's files), never 500.
+    const entry = `import "./domains/"\nsystem Shop { service Web { label "Web" } }`;
+    const res = await resolveRepoPermalink("o/r@sha", stubFetch({ "index.krs": entry }));
+    expect(res.status).toBe(200);
+    expect(decodeShare(res.encodedPayload!)?.krs).toContain("system Shop");
+  });
 });

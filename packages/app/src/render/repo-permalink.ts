@@ -144,33 +144,47 @@ export class GitHubRawFileSystemProvider implements FileSystemProvider {
     private readonly fetchImpl: typeof fetch,
   ) {}
 
-  private rawUrl(path: string): string {
+  /**
+   * Canonicalize a repo-relative path (fold `.`/`..`, strip leading slashes),
+   * rejecting anything that escapes the repo root (defense in depth — a resolved
+   * import must stay inside the repo).
+   */
+  private normalizeRepoPath(path: string): string {
     const normalized = normalizePath(path).replace(/^\/+/, "");
-    // Defense in depth: a resolved import must never escape the repo root.
     if (normalized === ".." || normalized.startsWith("../")) {
       throw new FileNotFoundError(`Path escapes repository root: ${path}`);
     }
-    return `${RAW_HOST}/${this.owner}/${this.repo}/${this.ref}/${normalized}`;
+    return normalized;
+  }
+
+  private rawUrl(normalized: string): string {
+    // Percent-encode each segment so a path with spaces / reserved chars still
+    // forms a valid URL (owner/repo/ref are already charset-validated). `/`
+    // stays a separator because encoding is per-segment.
+    const encoded = normalized.split("/").map(encodeURIComponent).join("/");
+    return `${RAW_HOST}/${this.owner}/${this.repo}/${this.ref}/${encoded}`;
   }
 
   async readFile(path: string): Promise<string> {
-    let pending = this.cache.get(path);
+    // Key the memo on the normalized path so `./x.krs` and `x.krs` share a fetch.
+    const normalized = this.normalizeRepoPath(path);
+    let pending = this.cache.get(normalized);
     if (!pending) {
-      pending = this.fetchRaw(path);
-      this.cache.set(path, pending);
+      pending = this.fetchRaw(normalized);
+      this.cache.set(normalized, pending);
     }
     return pending;
   }
 
-  private async fetchRaw(path: string): Promise<string> {
-    const res = await this.fetchImpl(this.rawUrl(path));
+  private async fetchRaw(normalized: string): Promise<string> {
+    const res = await this.fetchImpl(this.rawUrl(normalized));
     if (res.status === 404) {
-      throw new FileNotFoundError(`Not found: ${path}`);
+      throw new FileNotFoundError(`Not found: ${normalized}`);
     }
     if (!res.ok) {
       // Non-404 upstream failure (e.g. GitHub 5xx / rate limit) — distinct from
       // a genuinely missing file so the caller can return 502, not 404.
-      const err = new Error(`GitHub raw fetch failed (${res.status}) for ${path}`);
+      const err = new Error(`GitHub raw fetch failed (${res.status}) for ${normalized}`);
       (err as Error & { upstreamStatus?: number }).upstreamStatus = res.status;
       throw err;
     }
@@ -198,9 +212,11 @@ export class GitHubRawFileSystemProvider implements FileSystemProvider {
     throw new Error("GitHubRawFileSystemProvider is read-only.");
   }
   async readDir(): Promise<DirEntry[]> {
-    throw new Error(
-      "Directory / wildcard imports are not supported for repo-backed permalinks (v1).",
-    );
+    // Directory / wildcard imports need a listing, which GitHub only exposes via
+    // a rate-limited API hop — out of v1 scope. `ImportResolver` catches this,
+    // emits a `directory-not-found` diagnostic, and continues, so such a model
+    // degrades gracefully (opens without the directory's files) rather than 500.
+    throw new Error("Directory listing is not supported for repo-backed permalinks (v1).");
   }
 }
 
@@ -220,7 +236,8 @@ interface ResolveResult {
  * @param fetchImpl injected fetch (the Workers runtime passes global `fetch`)
  *
  * Status: 200 (payload), 400 (bad permalink), 404 (no `.krs` at the ref),
- * 502 (upstream GitHub failure), 500 (unexpected).
+ * 502 (upstream GitHub failure), 500 (unexpected). A directory/wildcard import
+ * degrades gracefully (opens without those files), not an error.
  */
 export async function resolveRepoPermalink(
   rawPath: string,
