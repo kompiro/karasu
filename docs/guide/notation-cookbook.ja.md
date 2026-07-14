@@ -210,6 +210,49 @@ system Blog {
 [`multi-file-system`](https://github.com/kompiro/karasu/tree/main/examples/en/multi-file-system)
 例を参照。
 
+## 7. Cloudflare Workers — `wrangler.toml` から
+
+**いつ** — 物理層が `wrangler.toml` にある Cloudflare Workers のサーバーレスアプリ。
+compose / k8s ファイルが無いため、binding を手でモデル化すると具体技術（"D1 (SQLite)"）が
+論理ラベルに漏れやすい。
+
+**パターン** — `karasu translate --from wrangler` に決定的に抽出させる。adapter は
+論理 `system`（engine-neutral な infra + Worker の `service` + edge）と物理 `deploy` を出力し、
+具体的な Cloudflare 技術は論理ラベルではなく `store { type ... }` に落ちる:
+
+```krs
+system Hato {
+  service Hato { label "hato" }
+
+  database DB { }                  // D1
+  storage EXPORTS { }              // R2
+  queue TASKS { }                  // Queues
+  database SEARCH [index] { }      // Vectorize — 派生ベクトルインデックス（イディオム #2）
+  database CACHE { }               // KV
+  service AI [external] { }        // Workers AI — 外部モデルサービス（イディオム #3）
+  service SessionActor [external] { }  // Durable Object — 不透明な stateful actor
+
+  Hato --> DB                      // 所有 infra は -->
+  Hato -> AI                       // 外部 / 他 Worker は ->
+  Hato -> AuthWorker               // service binding = Worker→Worker RPC edge
+}
+
+deploy "hato" {
+  function "hato" { runtime "cloudflare-workers"; realizes Hato }
+  store DBStore     { type "Cloudflare D1";       realizes DB }
+  store SEARCHStore { type "Cloudflare Vectorize"; realizes SEARCH }
+}
+```
+
+**なぜ** — binding→karasu のマッピングは新構文を作らず既存イディオムを再利用する:
+**Vectorize → `database [index]`**（イディオム #2 の派生インデックス）、**Workers AI /
+Durable Object → `service [external]`**（イディオム #3、この adapter からは不透明）、
+**service binding → `->` の communication edge**。KV は素の `database` にマップする
+（専用の `[cache]` role は
+[notation-watch 項目](https://github.com/kompiro/karasu/issues/1816)であり、まだ notation ではない）。
+未知の binding 種別は warning を出して skip する — 決して推測しない。実行は
+`karasu translate --from wrangler wrangler.toml > index.krs`。
+
 ## 関連
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — 厳密な `.krs` 文法（まずこれを渡す）
