@@ -48,6 +48,35 @@ describe("compile — in-place expansion end-to-end (#1921)", () => {
     expect(liveSvg).toContain('data-expand-node="ECommerce"');
   });
 
+  it("draws the expansion frame even when the model has team ownership (owns)", () => {
+    // Regression: an `owns` model populates ownerIndex; the expansion band must
+    // group by the expanded container, not the team, or the frame goes missing
+    // (#1921 feedback — "frame not shown" on org/system.krs).
+    const OWNS = `
+system S {
+  service ECommerce {
+    label "EC Site"
+    domain Order { label "Orders" }
+    domain Catalog { label "Product Catalog" }
+  }
+  service Payment { domain Billing { usecase Charge } }
+  ECommerce -> Payment "pay"
+}
+organization Corp {
+  team "ec" {
+    owns ECommerce
+    owns Order
+    owns Catalog
+  }
+}
+`;
+    const r = compile(OWNS, { diagramType: "system", expandedContainers: new Set(["ECommerce"]) });
+    if (r.diagramType !== "system") throw new Error("expected system diagram");
+    expect(r.svg).toContain('data-container-id="__group_ECommerce__"');
+    expect(r.svg).toContain('data-expanded="true"');
+    expect(r.svg).toContain('data-node-id="Order"');
+  });
+
   it("does not draw expand controls in a multi-system root", () => {
     // Regression for #1921 review finding 2: expansion is only derived for the
     // single-system root, so a multi-system view must not show a dead ⊕.

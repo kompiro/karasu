@@ -954,6 +954,14 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const groupIdOf = (id: string): string | null =>
     ownerIndex?.get(id) ?? stubGroup.get(id) ?? expandMembership.get(id) ?? null;
 
+  // Expansion groups *only* by the expanded container — never by team owner
+  // (#1921). A model with `owns` populates `ownerIndex`, and the shared
+  // `groupIdOf` prefers it, which would bucket the expanded domains into their
+  // team and leave the expansion band empty (no frame). In ungrouped mode
+  // (the only mode expansion runs in) teams do not form bands, so expansion
+  // must use its own membership exclusively.
+  const expandGroupIdOf = (id: string): string | null => expandMembership.get(id) ?? null;
+
   // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
   // bucket nodes into their owning team instead of the kind tiers, stacking each
   // team as a dependency-ordered band that a boundary frame can enclose. Falls
@@ -990,7 +998,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   if (isExpanding && !groupedLayers) {
     const groupedNodes: GroupedNode[] = allNodes.map((n) => ({
       id: n.id,
-      groupId: groupIdOf(n.id),
+      groupId: expandGroupIdOf(n.id),
       ungroupedRank: systemTier(n),
     }));
     const declaredGroupOrder = viewSlice.expandedFrames.map((f) => f.containerId);
@@ -1280,7 +1288,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
             : undefined;
         }
       : undefined;
-    buildGroupFrames([...layoutNodes.values()], groupOrder, groupIdOf, containers, expandMeta);
+    // Expansion frames enclose their own members (by container), not the team
+    // buckets `groupIdOf` would report for an `owns` model (#1921).
+    const frameGroupIdOf = isExpanding ? expandGroupIdOf : groupIdOf;
+    buildGroupFrames([...layoutNodes.values()], groupOrder, frameGroupIdOf, containers, expandMeta);
   }
 
   // Place ghost nodes
