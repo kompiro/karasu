@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { layout } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
+import { countPolylinePenetrations } from "./edge-geometry.js";
 
 const KRS = `
 system ECPlatform {
@@ -122,6 +123,29 @@ system S {
     // Endpoints anchor on their respective frame boxes (connected, not dropped).
     expect(within(edge!.fromPoint.x, fa.x, fa.x + fa.width)).toBe(true);
     expect(within(edge!.toPoint.x, fb.x, fb.x + fb.width)).toBe(true);
+  });
+
+  it("routes an edge around a non-endpoint expanded frame (no penetration, #1923)", () => {
+    // A → C with B stacked between them, all three expanded. The A→C edge must
+    // detour around B's frame via the gutter, never crossing its interior.
+    const KRS_THREE = `
+system S {
+  service A { label "A" domain Da { usecase U } }
+  service B { label "B" domain Db { usecase V } }
+  service C { label "C" domain Dc { usecase W } }
+  A -> C "x"
+}
+`;
+    const systems = Parser.parse(KRS_THREE).value.systems;
+    const slice = extractView(systems, [], [], [], new Set(["A", "B", "C"]));
+    const result = layout(slice);
+    const frameB = result.containers.find((c) => c.nodeId === "B")!;
+    expect(frameB).toBeDefined();
+    const edge = result.edges.find((e) => e.from === "A" && e.to === "C")!;
+    expect(edge).toBeDefined();
+    // Full rendered polyline (endpoints + waypoints) must not pierce B's frame.
+    const poly = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+    expect(countPolylinePenetrations(poly, [frameB])).toBe(0);
   });
 
   it("connects a cross-boundary edge to the exact interior domain (not gutter-routed away)", () => {

@@ -43,6 +43,26 @@ import { type Point, type Rect, segmentCrossesAnyRect, polylineClearOf } from ".
  */
 type EdgeBox = { id: string; x: number; y: number; width: number; height: number };
 
+/**
+ * Resolve edge endpoints to boxes and containing frames, treating each in-place-
+ * expanded container (#1923) as its own box (the frame) that belongs to its own
+ * frame. Shared by all group-routing passes so a service-level edge whose
+ * endpoint is an expanded container is handled the same everywhere — routed,
+ * lane-separated, fanned out, and trunked — not just by `routeGroupedEdges`.
+ */
+function resolveGroupBoxes(
+  layoutNodes: Map<string, LayoutNode>,
+  frames: ContainerRect[],
+  expandedFrames?: Map<string, ContainerRect>,
+): { boxOf: (id: string) => EdgeBox | undefined; frameOfNode: Map<string, string> } {
+  const boxOf = (id: string): EdgeBox | undefined => layoutNodes.get(id) ?? expandedFrames?.get(id);
+  const frameOfNode = buildFrameOfNode(layoutNodes, frames);
+  if (expandedFrames) {
+    for (const [cid, rect] of expandedFrames) frameOfNode.set(cid, rect.id);
+  }
+  return { boxOf, frameOfNode };
+}
+
 /** Horizontal gap between the outermost frame/node edge and a routing gutter. */
 const GUTTER_GAP = 28;
 /** Horizontal spacing between distinct aggregation-trunk lanes (P2c-B). */
@@ -124,20 +144,12 @@ export function routeGroupedEdges(
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
-  const boxOf = (id: string): EdgeBox | undefined => layoutNodes.get(id) ?? expandedFrames?.get(id);
+  const { boxOf, frameOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
 
   // Content bounds → gutter x on each side, outside every frame and card.
   const { minLeft, maxRight } = contentBounds(nodes, frames);
   const rightGutter: Gutter = { x: maxRight + GUTTER_GAP, side: "right" };
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
-
-  const frameOfNode = buildFrameOfNode(layoutNodes, frames);
-  // An expanded container endpoint belongs to its own frame, so exclude that
-  // frame from its edges' obstacles (#1923) — mirrors how a node inside a frame
-  // is allowed to enter it.
-  if (expandedFrames) {
-    for (const [cid, rect] of expandedFrames) frameOfNode.set(cid, rect.id);
-  }
 
   for (const edge of layoutEdges) {
     if (edge.ghost || edge.cyclic) continue;
@@ -222,13 +234,14 @@ export function aggregateGroupTrunks(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
+  expandedFrames?: Map<string, ContainerRect>,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
 
   const { maxRight } = contentBounds(nodes, frames);
 
-  const frameOfNode = buildFrameOfNode(layoutNodes, frames);
+  const { boxOf, frameOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
 
   // Group the gutter-routed edges (set by routeGroupedEdges) by their target.
   const byTarget = new Map<string, LayoutEdge[]>();
@@ -244,17 +257,17 @@ export function aggregateGroupTrunks(
   // be cleanly re-routed onto a right-side spine. Clearance is lane-independent
   // (any x beyond maxRight has a clear vertical), so probe with a nominal x.
   const nominalX = maxRight + GUTTER_GAP;
-  const eligible: { target: LayoutNode; edges: LayoutEdge[] }[] = [];
+  const eligible: { target: EdgeBox; edges: LayoutEdge[] }[] = [];
   for (const [targetId, edges] of byTarget) {
     if (edges.length < 2) continue;
-    const target = layoutNodes.get(targetId);
+    const target = boxOf(targetId);
     if (!target) continue;
     // Trunk the subset that can be cleanly re-routed onto the right spine. An
     // edge whose stub is blocked keeps its `routeGroupedEdges` result instead of
     // suppressing the trunk for every sibling — the resolvable edges still get
     // merged, and the blocked one is never worse than before (AC-1 preserved).
     const clear = edges.filter((e) => {
-      const from = layoutNodes.get(e.from);
+      const from = boxOf(e.from);
       if (!from) return false;
       const path = trunkPath(from, target, nominalX);
       return polylineClearOf(path, obstaclesFor(e, nodes, frames, frameOfNode));
@@ -272,7 +285,7 @@ export function aggregateGroupTrunks(
     const trunkX = maxRight + GUTTER_GAP + (lane + 1) * TRUNK_LANE_GAP;
     const targetPort = rightPort(target);
     for (const edge of edges) {
-      const from = layoutNodes.get(edge.from)!;
+      const from = boxOf(edge.from)!;
       const sourcePort = rightPort(from);
       edge.fromPoint = sourcePort;
       edge.toPoint = targetPort;
@@ -433,20 +446,24 @@ export function fanOutGutterPorts(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
+  expandedFrames?: Map<string, ContainerRect>,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
-  const frameOfNode = buildFrameOfNode(layoutNodes, frames);
+  const { boxOf, frameOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
 
-  const sideOf = (corridorX: number, node: LayoutNode): "left" | "right" =>
+  const sideOf = (corridorX: number, node: EdgeBox): "left" | "right" =>
     corridorX >= node.x + node.width ? "right" : "left";
 
-  // Collect attachments per (node, side). Trunk target-entries are merged per
-  // `trunkId` so all siblings share one slot (and one moved entry point). Keyed
-  // by node object (not a delimited string), so ids containing spaces are safe.
-  const bySide = new Map<LayoutNode, { left: GutterAttach[]; right: GutterAttach[] }>();
+  // Collect attachments per (box, side). A box is a node card or an expanded
+  // container frame (#1923), so several service-level edges leaving one frame on
+  // one side get fanned out just like a node's edges. Trunk target-entries are
+  // merged per `trunkId` so all siblings share one slot (and one moved entry
+  // point). Keyed by box object (not a delimited string), so ids with spaces are
+  // safe.
+  const bySide = new Map<EdgeBox, { left: GutterAttach[]; right: GutterAttach[] }>();
   const trunkSlot = new Map<string, GutterAttach>(); // by `trunkId` (unique per target)
-  const push = (node: LayoutNode, side: "left" | "right", a: GutterAttach) => {
+  const push = (node: EdgeBox, side: "left" | "right", a: GutterAttach) => {
     let rec = bySide.get(node);
     if (!rec) bySide.set(node, (rec = { left: [], right: [] }));
     rec[side].push(a);
@@ -455,8 +472,8 @@ export function fanOutGutterPorts(
   for (const e of layoutEdges) {
     if (e.ghost || e.cyclic) continue;
     if (!isVerticalGutterRoute(e)) continue;
-    const from = layoutNodes.get(e.from);
-    const to = layoutNodes.get(e.to);
+    const from = boxOf(e.from);
+    const to = boxOf(e.to);
     if (!from || !to) continue;
     const corridorX = e.waypoints![0].x;
     // Source end: corridor leaves `from` toward its target y (waypoints[1].y).
@@ -523,7 +540,7 @@ export function fanOutGutterPorts(
 }
 
 /** The right-side trunk polyline for one source→target edge at column `x`. */
-function trunkPath(from: LayoutNode, target: LayoutNode, x: number): Point[] {
+function trunkPath(from: EdgeBox, target: EdgeBox, x: number): Point[] {
   const sourcePort = rightPort(from);
   const targetPort = rightPort(target);
   return [sourcePort, { x, y: sourcePort.y }, { x, y: targetPort.y }, targetPort];

@@ -1455,13 +1455,15 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     routeGroupedEdges(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
     // Merge edges sharing an infra/external target onto one trunk lane per
     // target so distinct targets' spines no longer overlap (#1859 P2c-B).
-    aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames);
+    // `expandedFrameRects` lets frame-anchored expansion edges trunk/fan-out too.
+    aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
     // Give the remaining non-trunked gutter corridors distinct lanes so two
     // single-incoming edges no longer share a collinear vertical segment (#1927).
+    // Waypoint-based, so it already covers frame-anchored edges.
     distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
-    // Fan out the anchors of edges leaving *or entering* one node on the same
-    // side, so their horizontal stubs no longer overlap into one line (#1927).
-    fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames);
+    // Fan out the anchors of edges leaving *or entering* one node/frame on the
+    // same side, so their horizontal stubs no longer overlap into one line (#1927).
+    fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
   } else {
     routeOrthogonalEdges(layoutNodes, layoutEdges);
   }
