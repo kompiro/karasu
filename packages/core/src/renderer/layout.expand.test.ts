@@ -98,6 +98,38 @@ system S {
     expect(edge!.fromPoint.x).toBeLessThanOrEqual(frame.x + frame.width);
   });
 
+  it("connects a cross-boundary edge to the exact interior domain (not gutter-routed away)", () => {
+    // #1921 feedback: with the group edge-router, edges to a domain *inside* the
+    // expanded frame were pushed to the side gutter and left disconnected. The
+    // expansion path uses direct orthogonal routing so the edge terminates on
+    // the target domain.
+    const KRS_CROSS = `
+system S {
+  service A {
+    label "A"
+    domain Da { usecase U }
+    domain Db2 { usecase V }
+  }
+  service B {
+    domain Db {
+      Db -> Da "calls"
+    }
+  }
+}
+`;
+    const systems = Parser.parse(KRS_CROSS).value.systems;
+    const slice = extractView(systems, [], [], [], new Set(["A"]));
+    const result = layout(slice);
+    const da = result.nodes.get("Da")!;
+    expect(da).toBeDefined();
+    // B (collapsed) -> Da (interior domain of expanded A)
+    const edge = result.edges.find((e) => e.to === "Da");
+    expect(edge).toBeDefined();
+    // The edge's terminal point lands on the Da node box, not off in a gutter.
+    expect(edge!.toPoint.x).toBeGreaterThanOrEqual(da.x - 1);
+    expect(edge!.toPoint.x).toBeLessThanOrEqual(da.x + da.width + 1);
+  });
+
   it("anchors a top-tier edge into the expanded frame on its top border, not its side", () => {
     // Regression for the frame-not-in-`layers` mis-route (#1921 review finding 1):
     // a user→expanded-service edge must run top-to-bottom, landing on the frame top.
