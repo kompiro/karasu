@@ -35,6 +35,14 @@
 import type { LayoutEdge, LayoutNode, ContainerRect } from "./layout-types.js";
 import { type Point, type Rect, segmentCrossesAnyRect, polylineClearOf } from "./edge-geometry.js";
 
+/**
+ * A routable endpoint box — a laid-out node card or an in-place-expanded
+ * container's boundary frame (#1923). Both carry the geometry the router needs,
+ * so a service-level edge whose endpoint is an expanded container can anchor on
+ * the frame border and be gutter-routed like any other edge.
+ */
+type EdgeBox = { id: string; x: number; y: number; width: number; height: number };
+
 /** Horizontal gap between the outermost frame/node edge and a routing gutter. */
 const GUTTER_GAP = 28;
 /** Horizontal spacing between distinct aggregation-trunk lanes (P2c-B). */
@@ -66,7 +74,7 @@ function obstaclesFor(
 }
 
 /** Right-side anchor point (mid-height) of a node. */
-function rightPort(n: LayoutNode): Point {
+function rightPort(n: EdgeBox): Point {
   return { x: n.x + n.width, y: n.y + n.height / 2 };
 }
 
@@ -74,9 +82,17 @@ export function routeGroupedEdges(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
+  /**
+   * In-place-expanded container frames keyed by container id (#1923). Lets an
+   * edge whose endpoint is an expanded service anchor on the frame border and
+   * route around the *other* frames — the same way a node endpoint enters its
+   * own frame. Omitted for Group-by team (no frame endpoints there).
+   */
+  expandedFrames?: Map<string, ContainerRect>,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
+  const boxOf = (id: string): EdgeBox | undefined => layoutNodes.get(id) ?? expandedFrames?.get(id);
 
   // Content bounds → gutter x on each side, outside every frame and card.
   let minLeft = Infinity;
@@ -93,13 +109,19 @@ export function routeGroupedEdges(
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
 
   const frameOfNode = buildFrameOfNode(layoutNodes, frames);
+  // An expanded container endpoint belongs to its own frame, so exclude that
+  // frame from its edges' obstacles (#1923) — mirrors how a node inside a frame
+  // is allowed to enter it.
+  if (expandedFrames) {
+    for (const [cid, rect] of expandedFrames) frameOfNode.set(cid, rect.id);
+  }
 
   for (const edge of layoutEdges) {
     if (edge.ghost || edge.cyclic) continue;
     if (edge.waypoints && edge.waypoints.length > 0) continue;
 
-    const from = layoutNodes.get(edge.from);
-    const to = layoutNodes.get(edge.to);
+    const from = boxOf(edge.from);
+    const to = boxOf(edge.to);
     if (!from || !to) continue;
 
     // Against-flow (target band above source) → dash it. Independent of whether
@@ -130,8 +152,8 @@ export function routeGroupedEdges(
  */
 function tryGutterRoute(
   edge: LayoutEdge,
-  from: LayoutNode,
-  to: LayoutNode,
+  from: EdgeBox,
+  to: EdgeBox,
   gutter: Gutter,
   obstacles: Rect[],
 ): boolean {

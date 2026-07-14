@@ -98,6 +98,32 @@ system S {
     expect(edge!.fromPoint.x).toBeLessThanOrEqual(frame.x + frame.width);
   });
 
+  it("routes a service-level edge between two expanded frames (frame endpoints, #1923)", () => {
+    // The group router previously skipped edges whose endpoint is a frame (not a
+    // node). Phase 2 resolves frame-anchored endpoints so a service→service edge
+    // between two expanded containers connects to both frame borders.
+    const KRS_TWO = `
+system S {
+  service A { label "A" domain Da { usecase U } }
+  service B { label "B" domain Db { usecase V } }
+  A -> B "calls"
+}
+`;
+    const systems = Parser.parse(KRS_TWO).value.systems;
+    const slice = extractView(systems, [], [], [], new Set(["A", "B"]));
+    const result = layout(slice);
+    const fa = result.containers.find((c) => c.nodeId === "A")!;
+    const fb = result.containers.find((c) => c.nodeId === "B")!;
+    expect(fa).toBeDefined();
+    expect(fb).toBeDefined();
+    const edge = result.edges.find((e) => e.from === "A" && e.to === "B");
+    expect(edge).toBeDefined();
+    const within = (v: number, lo: number, hi: number) => v >= lo - 1 && v <= hi + 1;
+    // Endpoints anchor on their respective frame boxes (connected, not dropped).
+    expect(within(edge!.fromPoint.x, fa.x, fa.x + fa.width)).toBe(true);
+    expect(within(edge!.toPoint.x, fb.x, fb.x + fb.width)).toBe(true);
+  });
+
   it("connects a cross-boundary edge to the exact interior domain (not gutter-routed away)", () => {
     // #1921 feedback: with the group edge-router, edges to a domain *inside* the
     // expanded frame were pushed to the side gutter and left disconnected. The

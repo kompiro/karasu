@@ -320,6 +320,14 @@ export function PreviewColumn() {
               : `⊖ ${t("preview.groupBy.collapseAll")}`}
           </Button>
         )}
+        {activeView === "system" && view.expansionOverload && (
+          <span
+            role="status"
+            className="preview-expansion-hint text-[11px] text-amber-500/90 self-center"
+          >
+            ⚠ {t("preview.expansion.overloadHint")}
+          </span>
+        )}
         {activeView === "org" && (
           <Button
             variant="actionable"

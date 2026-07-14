@@ -51,6 +51,7 @@ interface ActiveViewData {
   anyCollapsible?: boolean;
   /** system: true when every team frame AND external/infra category is collapsed (#1872). */
   allCollapsed?: boolean;
+  expansionOverload?: boolean;
   /** system: collapse everything (frames + categories) if anything is open, else expand all (#1872). */
   onCollapseAllToggle?: () => void;
   /** deploy: click a container group → highlight it as a system node. */
@@ -124,6 +125,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         groupByAvailable: systemView.groupByAvailable,
         anyCollapsible: systemView.anyCollapsible,
         allCollapsed: systemView.allCollapsed,
+        expansionOverload: systemView.expansionOverload,
         onCollapseAllToggle: systemView.onCollapseAllToggle,
         nodeDiff: systemView.nodeDiff,
         styleTargetPath: ctx.styleTargetPath,
