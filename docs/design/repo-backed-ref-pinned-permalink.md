@@ -2,6 +2,7 @@
 
 - **日付**: 2026-07-14
 - **Issue**: #1828（親エピック #1826 permalink layer）
+- **PR**: #1940
 - **ステータス**: 検討中
 - **関連**:
   - PRD [`docs/prd/keystone-primary-path.md`](../prd/keystone-primary-path.md)（#1825）
