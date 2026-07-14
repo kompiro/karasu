@@ -550,10 +550,11 @@ service OrderService {
   domain Ordering {
     entity Order {
       label "Order"
-      table OrderDB.orders          // optional physical mapping (dot notation)
-      Order -> Customer "placed by"  // relation (Customer may be owned by another domain)
-      Order -> Product  "line item"
+      table OrderDB.orders               // optional physical mapping (dot notation)
+      Order -> LineItem "line item"       // intra-domain relation (bare id)
+      Order -> Customers.Customer "placed by" // cross-domain relation (qualified DomainId.EntityId)
     }
+    entity LineItem {}
     entity Payment {}
   }
 }
@@ -571,9 +572,9 @@ reference-holding entity's block. Unlike dependency edges between services /
 domains, an entity relation is a single fact read in both directions, so it is
 written **once**, on the side that holds the reference:
 
-- `Order -> Customer` means Order holds the reference (AR: `Order belongs_to
-  :customer`; physically `orders.customer_id`). The reverse navigation
-  (`Customer has_many :orders`) is implied — do **not** write a second edge.
+- `Order -> LineItem` means Order holds the reference (AR: `Order belongs_to
+  :line_item`; physically `orders.line_item_id`). The reverse navigation
+  (`LineItem has_many :orders`) is implied — do **not** write a second edge.
 - The **edge origin scope** rule applies: an explicit relation inside
   `entity Order { … }` must start at `Order`; writing `Customer -> Order` there
   raises `edge-source-mismatch`. This is how the direction rule (origin = the
@@ -581,6 +582,28 @@ written **once**, on the side that holds the reference:
 - Cardinality tags (`[n:1]`, `[n:m]`) and roll-up of entity relations into
   domain-level edges are **out of scope for v1** — relations are label-only for
   now.
+
+**Intra- vs cross-domain targets — bare id vs `DomainId.EntityId`.** A relation
+target is resolved by scope:
+
+- A **bare id** (`Order -> LineItem`) is an **intra-domain** relation — it must
+  name an entity owned by the same `domain`.
+- A **cross-domain** relation references the target with a **qualified
+  `DomainId.EntityId`** (`Order -> Customers.Customer`), the same dot-notation
+  used elsewhere for crossing a boundary (`table OrderDB.orders`, cross-system
+  `SystemId.ServiceId`). Qualification is required because entity ids are only
+  *warning*-level unique (see **Anchor namespace** below), so a bare id cannot
+  disambiguate a foreign entity. `DomainId` is error-level unique within a
+  system, so `DomainId.EntityId` resolves unambiguously.
+
+In the per-domain **entity view**, a qualified cross-domain target is drawn as a
+muted **ghost** of the foreign entity (both directions: this domain's entities →
+foreign, and foreign → this domain's entities), sub-labelled with its owning
+domain. A **bare** id that does not match a local entity is **not** resolved
+cross-domain — it is dropped from the entity view (write it qualified to surface
+the relation).
+
+> Related TPLs: [TPL-20260714-01](../test-perspectives/TPL-20260714-01-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target; a bare id is intra-domain only and is dropped (not ghosted) across a domain boundary.
 
 **Placement.** `entity` is valid **only** as a `domain` child. Declaring one
 elsewhere raises `entity-not-in-domain` and the stray entity is dropped.
