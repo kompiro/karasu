@@ -157,14 +157,18 @@ export interface LayoutResult {
 }
 
 /**
- * A hop arc bumping over a vertical at `(x, y)`, spanning `[x-halfWidth, x+halfWidth]`
- * (#1859 P2c-C). `edge` is the index (into `LayoutResult.edges`) of the horizontal
- * edge the arc sits on, so the renderer can colour the mark like its own edge.
+ * A hop arc centred at `(x, y)`, spanning `halfWidth` px either side along the
+ * host segment's direction (#1859 P2c-C, oriented in #1939). `angle` is the host
+ * segment's direction in **degrees** (0 = horizontal, so an axis-aligned hop
+ * renders exactly as before); the arc bumps perpendicular to it. `edge` is the
+ * index (into `LayoutResult.edges`) of the host edge, so the renderer can colour
+ * the mark like its own edge.
  */
 export interface HopMark {
   x: number;
   y: number;
   halfWidth: number;
+  angle: number;
   edge: number;
 }
 

@@ -1,27 +1,29 @@
 /**
- * Crossing marks for the Group-by system view (#1859 P2c-C).
+ * Crossing marks for the Group-by system view (#1859 P2c-C, generalised in #1939).
  *
- * After the grouped router (`routeGroupedEdges` / `aggregateGroupTrunks`) makes
- * every edge segment axis-aligned, `computeCrossingMarks` derives two marks that
- * disambiguate line meetings *by representation* (the circuit-diagram
- * convention), so a crossing can never be misread as a connection:
+ * `computeCrossingMarks` derives two marks that disambiguate line meetings *by
+ * representation* (the circuit-diagram convention), so a crossing can never be
+ * misread as a connection:
  *
- *   - **hop (◠)**: a horizontal segment that crosses a vertical segment of a
- *     *different* edge at a right angle arcs *over* it — "crossing, NOT
- *     connected". The vertical (gutter corridor / trunk spine — the high-traffic
- *     through-line) stays a clean straight line; the horizontal stub bumps over.
+ *   - **hop (◠)**: where a segment crosses a segment of a *different* edge, an
+ *     arc bumps *over* the crossing — "crossing, NOT connected". The arc rides
+ *     the **more horizontal** of the two segments and is oriented along it, so a
+ *     vertical gutter corridor / trunk spine stays a clean straight through-line.
+ *     Axis-aligned right-angle crossings (the common case after orthogonal
+ *     routing) render exactly as before — a flat horizontal bump (angle 0).
+ *     Diagonal crossings (rare "clear" intra-band edges left straight) now also
+ *     get an oriented hop (#1939 Part 1, approach C — no routing change).
  *   - **junction (●)**: a trunk stub-join elbow (`waypoints[0]`) gets a connection
  *     dot — "merge = connected" — but only where the spine continues past it (a
  *     T/＋). The topmost stub of a trunk is the spine head, a plain L-corner, and
  *     gets no dot (circuit convention: dots mark connections, not bends).
  *
- * Crossings are detected with the same **strict-interior** test the routers use
- * (`edge-geometry.ts`, `1e-6` epsilon) so a stub *ending* on a spine (a trunk
- * join) or an edge's own corner — both endpoints, not interior — is correctly
- * NOT a hop. Marks are derived from final coordinates only, so they are
- * deterministic and snapshot-stable.
+ * Crossings use a **strict-interior** segment intersection (`1e-6` epsilon) so a
+ * stub *ending* on a spine (a trunk join) or an edge's own corner — both
+ * endpoints, not interior — is correctly NOT a hop. Marks are derived from final
+ * coordinates only, so they are deterministic and snapshot-stable.
  *
- * See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
+ * See docs/design/system-view-grouping.md § "P2c-C 詳細設計" / "P2c カバレッジ拡張（#1939）".
  */
 
 import type { CrossingMarks, HopMark, JunctionMark, LayoutEdge } from "./layout-types.js";
@@ -30,7 +32,7 @@ import type { Point } from "./edge-geometry.js";
 /** Radius of a single hop arc's bump (px). */
 export const HOP_RADIUS = 4;
 /**
- * Crossings on the same horizontal line whose x positions are within this gap
+ * Crossings on the same host segment closer than this (in px along the segment)
  * merge into one wide hop (design doc: `HOP_CLUSTER_GAP`, hop-radius-derived).
  * Coordinate-derived so the mark set stays deterministic.
  */
@@ -40,18 +42,38 @@ export const JUNCTION_RADIUS = 2.5;
 
 const EPS = 1e-6;
 
-interface HSeg {
-  x0: number;
-  x1: number;
-  y: number;
+/**
+ * A drawable edge segment with a **canonical** unit direction (`ux > 0`, or
+ * pointing down for a vertical). Canonicalising the direction — independent of
+ * which way the edge was drawn — keeps a horizontal segment at angle 0 so its
+ * hop renders byte-identically to the pre-#1939 axis-aligned output.
+ */
+interface Seg {
+  a: Point;
+  b: Point;
   edge: number;
+  ux: number;
+  uy: number;
 }
 
-interface VSeg {
-  y0: number;
-  y1: number;
-  x: number;
-  edge: number;
+/**
+ * Strict-interior intersection point of segments `s1` and `s2`, or null. Parallel
+ * / collinear segments never intersect at a point (no crossing to mark). Touching
+ * at an endpoint (t or u at 0/1) is excluded — that is a connection, not a cross.
+ */
+function segIntersection(s1: Seg, s2: Seg): Point | null {
+  const rx = s1.b.x - s1.a.x;
+  const ry = s1.b.y - s1.a.y;
+  const sx = s2.b.x - s2.a.x;
+  const sy = s2.b.y - s2.a.y;
+  const denom = rx * sy - ry * sx;
+  if (Math.abs(denom) < EPS) return null; // parallel / collinear
+  const qpx = s2.a.x - s1.a.x;
+  const qpy = s2.a.y - s1.a.y;
+  const t = (qpx * sy - qpy * sx) / denom;
+  const u = (qpx * ry - qpy * rx) / denom;
+  if (t <= EPS || t >= 1 - EPS || u <= EPS || u >= 1 - EPS) return null;
+  return { x: s1.a.x + t * rx, y: s1.a.y + t * ry };
 }
 
 /**
@@ -60,8 +82,7 @@ interface VSeg {
  * so the ungrouped SVG stays byte-identical — AC-5).
  */
 export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
-  const hSegs: HSeg[] = [];
-  const vSegs: VSeg[] = [];
+  const segs: Seg[] = [];
   // Trunk stub-join elbows grouped by spine (`trunkId` @ spine x). Each edge's
   // `waypoints[0]` is where its stub joins the shared vertical spine; `edge` is
   // that stub's index so its junction dot can be coloured like the edge.
@@ -76,14 +97,17 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i];
       const b = pts[i + 1];
-      const horizontal = Math.abs(a.y - b.y) < EPS && Math.abs(a.x - b.x) >= EPS;
-      const vertical = Math.abs(a.x - b.x) < EPS && Math.abs(a.y - b.y) >= EPS;
-      if (horizontal) {
-        hSegs.push({ x0: Math.min(a.x, b.x), x1: Math.max(a.x, b.x), y: a.y, edge: edgeIdx });
-      } else if (vertical) {
-        vSegs.push({ y0: Math.min(a.y, b.y), y1: Math.max(a.y, b.y), x: a.x, edge: edgeIdx });
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (len < EPS) continue; // zero-length
+      // Canonical unit direction: ux > 0, or (vertical) uy > 0. Independent of
+      // draw order, so a horizontal segment is always (1, 0) → angle 0.
+      let ux = (b.x - a.x) / len;
+      let uy = (b.y - a.y) / len;
+      if (ux < -EPS || (Math.abs(ux) < EPS && uy < 0)) {
+        ux = -ux;
+        uy = -uy;
       }
-      // Diagonal / zero-length segments carry no right-angle crossing; skip.
+      segs.push({ a, b, edge: edgeIdx, ux, uy });
     }
 
     // Junction candidate: the elbow where a trunked edge's stub joins the spine.
@@ -96,57 +120,63 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
     }
   });
 
-  // Collect strict-interior crossing xs per horizontal segment. A crossing needs
-  // the vertical's x strictly inside the horizontal's span AND the horizontal's y
-  // strictly inside the vertical's span — so shared endpoints (trunk joins,
-  // corners) do not count.
-  const crossingXsPerH = new Map<HSeg, number[]>();
-  for (const h of hSegs) {
-    for (const v of vSegs) {
-      if (h.edge === v.edge) continue;
-      const xInterior = v.x > h.x0 + EPS && v.x < h.x1 - EPS;
-      const yInterior = h.y > v.y0 + EPS && h.y < v.y1 - EPS;
-      if (xInterior && yInterior) {
-        const list = crossingXsPerH.get(h);
-        if (list) list.push(v.x);
-        else crossingXsPerH.set(h, [v.x]);
-      }
+  // Assign each strict-interior crossing to the **more horizontal** of the two
+  // segments (larger |ux|; tie → smaller edge index, then segment order), so the
+  // arc rides the flatter line and steep spines stay clean. `coord` is the
+  // crossing's 1-D position along the host's canonical direction, for clustering.
+  const crossingsPerHost = new Map<Seg, { coord: number; point: Point }[]>();
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const s1 = segs[i];
+      const s2 = segs[j];
+      if (s1.edge === s2.edge) continue;
+      const p = segIntersection(s1, s2);
+      if (!p) continue;
+      const host =
+        s1.ux > s2.ux + EPS || (Math.abs(s1.ux - s2.ux) < EPS && s1.edge <= s2.edge) ? s1 : s2;
+      const coord = p.x * host.ux + p.y * host.uy;
+      const list = crossingsPerHost.get(host);
+      if (list) list.push({ coord, point: p });
+      else crossingsPerHost.set(host, [{ coord, point: p }]);
     }
   }
 
-  // Cluster crossings on the same horizontal line into one wide hop. Distinct
-  // horizontal segments can be collinear (same y, different edges) and cross the
-  // same vertical, so dedup identical arcs, keeping the widest at each point.
-  const hopByPoint = new Map<string, HopMark>();
+  // Cluster crossings that sit close along one host segment into a single wide
+  // hop, oriented along the host. Dedup identical arcs (collinear hosts crossing
+  // at the same point), keeping the widest.
+  const hopByKey = new Map<string, HopMark>();
   const addHop = (mark: HopMark) => {
-    const key = `${mark.x},${mark.y}`;
-    const existing = hopByPoint.get(key);
-    if (!existing || mark.halfWidth > existing.halfWidth) hopByPoint.set(key, mark);
+    const key = `${mark.x},${mark.y},${mark.angle}`;
+    const existing = hopByKey.get(key);
+    if (!existing || mark.halfWidth > existing.halfWidth) hopByKey.set(key, mark);
   };
-  for (const [h, xs] of crossingXsPerH) {
-    xs.sort((a, b) => a - b);
-    let clusterMin = xs[0];
-    let clusterMax = xs[0];
-    const flush = () => {
+  // Round away 1e-14 float noise from the intersection maths so marks are stable
+  // and, for clean axis-aligned inputs, byte-identical to the pre-#1939 values.
+  const round = (n: number): number => Math.round(n * 1e6) / 1e6;
+  for (const [host, crossings] of crossingsPerHost) {
+    crossings.sort((a, b) => a.coord - b.coord);
+    const angle = round((Math.atan2(host.uy, host.ux) * 180) / Math.PI);
+    let lo = 0;
+    const flush = (hi: number) => {
+      const pMin = crossings[lo].point;
+      const pMax = crossings[hi].point;
       addHop({
-        x: (clusterMin + clusterMax) / 2,
-        y: h.y,
-        halfWidth: (clusterMax - clusterMin) / 2 + HOP_RADIUS,
-        edge: h.edge,
+        x: round((pMin.x + pMax.x) / 2),
+        y: round((pMin.y + pMax.y) / 2),
+        halfWidth: round(Math.hypot(pMax.x - pMin.x, pMax.y - pMin.y) / 2 + HOP_RADIUS),
+        angle,
+        edge: host.edge,
       });
     };
-    for (let i = 1; i < xs.length; i++) {
-      if (xs[i] - clusterMax <= HOP_CLUSTER_GAP) {
-        clusterMax = xs[i];
-      } else {
-        flush();
-        clusterMin = xs[i];
-        clusterMax = xs[i];
+    for (let k = 1; k < crossings.length; k++) {
+      if (crossings[k].coord - crossings[k - 1].coord > HOP_CLUSTER_GAP) {
+        flush(k - 1);
+        lo = k;
       }
     }
-    flush();
+    flush(crossings.length - 1);
   }
-  const hops = [...hopByPoint.values()];
+  const hops = [...hopByKey.values()];
 
   // Junction dots: a dot belongs only where the shared spine actually *continues
   // past* the elbow — a T/＋ where another stub joins above (circuit convention).

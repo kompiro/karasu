@@ -517,10 +517,11 @@ function collapseGlyph(
  * Render the Group-by crossing marks layer (#1859 P2c-C). Emitted above the edge
  * layer so marks sit on top of the lines.
  *
- * - **hop**: a `<path>` where a horizontal stub arcs *over* the vertical it
- *   crosses (crossing = NOT connected). Elliptical (`rx = halfWidth`,
- *   `ry = HOP_RADIUS`) so a clustered wide hop stays a shallow bump; `sweep = 1`
- *   arcs the bump upward.
+ * - **hop**: a `<path>` arc that bumps *over* the crossing (crossing = NOT
+ *   connected), centred at `(x, y)` and oriented along the host segment via
+ *   `angle` (degrees). Elliptical (`rx = halfWidth`, `ry = HOP_RADIUS`) so a
+ *   clustered wide hop stays a shallow bump; `sweep = 1` bumps to one side. An
+ *   axis-aligned hop (`angle = 0`) renders exactly as the pre-#1939 flat bump.
  * - **junction**: a `<circle>` dot at each trunk merge (merge = connected).
  *
  * Each mark is drawn in its owning edge's resolved colour (and the hop in that
@@ -529,10 +530,9 @@ function collapseGlyph(
  * out-of-range index. Coordinates are rounded to 2 decimals so tiny float noise
  * never destabilises the SVG snapshot.
  *
- * Scope: only right-angle (axis-aligned) crossings in the *single-system*
- * Group-by view carry marks. Diagonal "clear" intra-band edges and the
- * multi-system grouped view (straight-line edges, no orthogonal routing) are out
- * of scope by design — see docs/design/system-view-grouping.md § "P2c-C 詳細設計".
+ * Scope: crossings in the *single-system* Group-by view (right-angle and, since
+ * #1939, diagonal). The multi-system grouped view is extended separately
+ * (#1939 Part 2) — see docs/design/system-view-grouping.md § "P2c カバレッジ拡張（#1939）".
  */
 function renderCrossingMarks(
   marks: CrossingMarks,
@@ -543,13 +543,17 @@ function renderCrossingMarks(
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
   const parts: string[] = [];
   for (const hop of marks.hops) {
-    const left = r(hop.x - hop.halfWidth);
-    const right = r(hop.x + hop.halfWidth);
-    const y = r(hop.y);
+    const rad = (hop.angle * Math.PI) / 180;
+    const c = Math.cos(rad);
+    const s = Math.sin(rad);
+    const x0 = r(hop.x - hop.halfWidth * c);
+    const y0 = r(hop.y - hop.halfWidth * s);
+    const x1 = r(hop.x + hop.halfWidth * c);
+    const y1 = r(hop.y + hop.halfWidth * s);
     const stroke = strokeOf(hop.edge);
     parts.push(
       el("path", {
-        d: `M ${left} ${y} A ${r(hop.halfWidth)} ${HOP_RADIUS} 0 0 1 ${right} ${y}`,
+        d: `M ${x0} ${y0} A ${r(hop.halfWidth)} ${HOP_RADIUS} ${r(hop.angle)} 0 1 ${x1} ${y1}`,
         fill: "none",
         stroke: stroke.color,
         "stroke-width": stroke.strokeWidth,

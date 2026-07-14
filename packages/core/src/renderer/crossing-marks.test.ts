@@ -177,8 +177,9 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
       { from: "E", to: "F" },
     );
     const { hops } = computeCrossingMarks([h1, h2, v]);
-    // Kept once, tagged with the first horizontal's edge index (h1 = 0).
-    expect(hops).toEqual([{ x: 50, y: 30, halfWidth: HOP_RADIUS, edge: 0 }]);
+    // Kept once, tagged with the first horizontal's edge index (h1 = 0); a
+    // horizontal host is angle 0 (axis-aligned hops render as before #1939).
+    expect(hops).toEqual([{ x: 50, y: 30, halfWidth: HOP_RADIUS, angle: 0, edge: 0 }]);
   });
 
   it("ignores ghost and cyclic edges", () => {
@@ -207,10 +208,10 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     expect(computeCrossingMarks([cyclic, v]).hops).toHaveLength(0);
   });
 
-  it("does not mark a diagonal crossing (right-angle scope only — #1859 review #1)", () => {
-    // A diagonal edge crossing a vertical is a real crossing, but the hop
-    // convention only covers right angles, so it is intentionally left unmarked.
-    // This pins the scope boundary explicitly rather than leaving it silent.
+  it("marks a diagonal crossing with an oriented hop (#1939 Part 1)", () => {
+    // A diagonal edge crossing a vertical is a real crossing. The hop rides the
+    // more horizontal segment (the 45° diagonal, |ux| > 0 vs the vertical's 0)
+    // and is oriented along it (angle 45°) — generalises the axis-aligned case.
     const diagonal = poly([
       [0, 0],
       [100, 100],
@@ -222,7 +223,8 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
       ],
       { from: "C", to: "D" },
     );
-    expect(computeCrossingMarks([diagonal, v]).hops).toHaveLength(0);
+    const { hops } = computeCrossingMarks([diagonal, v]);
+    expect(hops).toEqual([{ x: 50, y: 50, halfWidth: HOP_RADIUS, angle: 45, edge: 0 }]);
   });
 
   it("does not mark an edge crossing its own segments", () => {

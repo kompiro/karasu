@@ -368,10 +368,27 @@ describe("crossing marks layer (#1859 P2c-C)", () => {
     expect(layer).not.toContain("#94A3B8"); // not the default slate
   });
 
-  // #1859 review #1: crossing marks are scoped to right-angle crossings in the
-  // single-system Group-by view. These pin the boundary so it is explicit, not
-  // silent — extending coverage is a separate follow-up.
-  it("does not emit marks for the multi-system grouped view (out of P2c scope)", () => {
+  it("marks a diagonal crossing with an oriented (rotated) hop (#1939 Part 1)", () => {
+    // A "clear" intra-band edge left straight can be diagonal and cross another
+    // edge; the hop now rides that diagonal and is drawn rotated along it.
+    const DIAG = `
+system S {
+  service A {} service B {} service C {}
+  service X {} service Y {}
+  A -> X  B -> Y  C -> X  A -> Y
+}
+organization O { team "t1" { owns A owns B owns C } team "t2" { owns X owns Y } }`;
+    const r = compile(DIAG, { diagramType: "system", groupBy: "team" });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    const layer = r.svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    expect(layer).toContain("<path");
+    // The arc's x-axis-rotation field (5th token after `A rx ry`) is non-zero.
+    expect(layer).toMatch(/ A [\d.]+ [\d.]+ -?\d*\.?\d*[1-9]\d* 0 1 /);
+  });
+
+  // Multi-system marks are a separate slice (#1939 Part 2). Until then the
+  // multi-system grouped view emits no marks — pinned so it stays explicit.
+  it("does not emit marks for the multi-system grouped view (#1939 Part 2, not yet)", () => {
     const TWO_SYSTEMS = `
 system Shop { service A { label "A" } service B { label "B" } A -> B }
 system Pay { service C { label "C" } }
