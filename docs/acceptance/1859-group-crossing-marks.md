@@ -41,13 +41,16 @@ Group by: team の P2c 最終 slice。P2c-A（直交ルーティング）/ P2c-B
 
 - [x] grouped view で `crossing-marks` レイヤを **edges レイヤの後**に emit（marks が線の上）。hop = `<path>`（アーク）、junction = `<circle>`
 - [x] hop / junction がどちらも無いときはレイヤを emit しない
+- [x] 各 mark は所有エッジの色/線幅で描く（`edge { color: … }` で色付けした図では marks もその色になり、既定 slate にならない）
 
-### AC-4: Group by: none 不変（回帰, #1859 AC-5）
+### AC-4: Group by: none 不変 / scope 境界（回帰, #1859 AC-5・review #1）
 
 > ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` (suite-wide)
 
 - [x] ungrouped では `LayoutResult.crossingMarks` が undefined（renderer は何も描かない）→ SVG は byte-identical
-- [x] 既存 core スイート（2211 tests）が全通過（回帰なし）
+- [x] 既存 core スイート（2216 tests）が全通過（回帰なし）
+- [x] multi-system の Group-by ビューは marks を emit しない（P2c scope 外を明示）
+- [x] 斜めエッジの交差は hop 対象外（直角 scope のみ）— `crossing-marks.test.ts` で境界を固定
 
 ## 手動検証
 

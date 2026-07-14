@@ -343,7 +343,15 @@ P2c-A（#1894）/ P2c-B（#1901）マージ後の最終スライス。直交ル�
 
 #### 描画
 
-- `svg-renderer.ts` に `renderCrossingMarks(marks)` を足し、`edges` グループの**後**に `crossing-marks` レイヤ（`<g class="crossing-marks">`）を emit する（marks が線の上に載る）。hop = `<path>`（横線上の半円バンプ、cluster 時は幅広アーク）、junction = `<circle>`。既定エッジ stroke の色に合わせる。
+- `svg-renderer.ts` に `renderCrossingMarks(marks)` を足し、`edges` グループの**後**に `crossing-marks` レイヤ（`<g class="crossing-marks">`）を emit する（marks が線の上に載る）。hop = `<path>`（横線上の半円バンプ、cluster 時は幅広アーク）、junction = `<circle>`。
+- **各 mark は所有エッジの色/線幅で描く**（`HopMark.edge` / `JunctionMark.edge` = `LayoutResult.edges` の index。hop は跨ぐ横エッジ、junction は合流する stub エッジ）。色付きの図でも marks が線から浮かないようにする。index 外は既定エッジ stroke にフォールバック。
+
+#### 既知の制限（scope）
+
+marks は **単一 system の Group-by ビューの直角（軸整列）交差**のみを対象とする。以下は本 P2c の範囲外（silent にせずテストで境界を固定する）:
+
+- **斜めエッジの交差**: P2c-A が「素通り可能な帯内エッジ」を直線のまま残すため、稀に斜めセグメントが生じ、その交差は hop 対象外（hop アークは直角前提）。全 grouped エッジの直交化は P2c-A 側の別スライスに委ねる。
+- **multi-system の Group-by ビュー**（`layoutMultipleSystems`）: そもそも直線エッジで orthogonal routing を使わないため marks を付けない（本 doc 「P2c ルーティングの multi-system への適用」節と整合）。
 
 ### 正しさの柵
 

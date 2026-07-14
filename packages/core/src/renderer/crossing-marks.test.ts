@@ -57,8 +57,9 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     expect(hops).toHaveLength(0);
     // Only the *lower* stub (y=80) is a real merge: the shared spine continues
     // above it (A joins at y=50 and runs down). The topmost stub (y=50) is the
-    // trunk head — a plain L-corner — so it gets NO junction dot.
-    expect(junctions).toEqual([{ x: 50, y: 80 }]);
+    // trunk head — a plain L-corner — so it gets NO junction dot. `edge` is the
+    // joining stub's index (b = 1) so the dot is coloured like that edge.
+    expect(junctions).toEqual([{ x: 50, y: 80, edge: 1 }]);
   });
 
   it("does not dot the trunk head (topmost stub is an L-corner, not a merge)", () => {
@@ -75,8 +76,8 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
       );
     const { junctions } = computeCrossingMarks([mk(20, "A"), mk(70, "B"), mk(120, "C")]);
     expect(junctions).toEqual([
-      { x: 60, y: 70 },
-      { x: 60, y: 120 },
+      { x: 60, y: 70, edge: 1 },
+      { x: 60, y: 120, edge: 2 },
     ]);
   });
 
@@ -98,7 +99,7 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
       { from: "B", to: "DB", trunkId: "DB" },
     );
     const { junctions } = computeCrossingMarks([a, b]);
-    expect(junctions).toEqual([{ x: 50, y: 50 }]);
+    expect(junctions).toEqual([{ x: 50, y: 50, edge: 0 }]);
   });
 
   it("clusters nearby crossings on one horizontal into a single wide hop", () => {
@@ -176,7 +177,8 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
       { from: "E", to: "F" },
     );
     const { hops } = computeCrossingMarks([h1, h2, v]);
-    expect(hops).toEqual([{ x: 50, y: 30, halfWidth: HOP_RADIUS }]);
+    // Kept once, tagged with the first horizontal's edge index (h1 = 0).
+    expect(hops).toEqual([{ x: 50, y: 30, halfWidth: HOP_RADIUS, edge: 0 }]);
   });
 
   it("ignores ghost and cyclic edges", () => {
@@ -203,6 +205,24 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     );
     expect(computeCrossingMarks([ghost, v]).hops).toHaveLength(0);
     expect(computeCrossingMarks([cyclic, v]).hops).toHaveLength(0);
+  });
+
+  it("does not mark a diagonal crossing (right-angle scope only — #1859 review #1)", () => {
+    // A diagonal edge crossing a vertical is a real crossing, but the hop
+    // convention only covers right angles, so it is intentionally left unmarked.
+    // This pins the scope boundary explicitly rather than leaving it silent.
+    const diagonal = poly([
+      [0, 0],
+      [100, 100],
+    ]);
+    const v = poly(
+      [
+        [50, 0],
+        [50, 100],
+      ],
+      { from: "C", to: "D" },
+    );
+    expect(computeCrossingMarks([diagonal, v]).hops).toHaveLength(0);
   });
 
   it("does not mark an edge crossing its own segments", () => {

@@ -145,17 +145,26 @@ export interface LayoutResult {
   crossingMarks?: CrossingMarks;
 }
 
-/** A hop arc bumping over a vertical at `(x, y)`, spanning `[x-halfWidth, x+halfWidth]` (#1859 P2c-C). */
+/**
+ * A hop arc bumping over a vertical at `(x, y)`, spanning `[x-halfWidth, x+halfWidth]`
+ * (#1859 P2c-C). `edge` is the index (into `LayoutResult.edges`) of the horizontal
+ * edge the arc sits on, so the renderer can colour the mark like its own edge.
+ */
 export interface HopMark {
   x: number;
   y: number;
   halfWidth: number;
+  edge: number;
 }
 
-/** A connection dot at a trunk merge point (#1859 P2c-C). */
+/**
+ * A connection dot at a trunk merge point (#1859 P2c-C). `edge` is the index of
+ * the joining stub edge, so the dot is coloured like the edge that merges there.
+ */
 export interface JunctionMark {
   x: number;
   y: number;
+  edge: number;
 }
 
 /** Crossing marks for the Group-by view: hops (crossing = not connected) + junctions (merge = connected). */

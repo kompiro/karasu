@@ -63,8 +63,9 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   const hSegs: HSeg[] = [];
   const vSegs: VSeg[] = [];
   // Trunk stub-join elbows grouped by spine (`trunkId` @ spine x). Each edge's
-  // `waypoints[0]` is where its stub joins the shared vertical spine.
-  const trunkElbows = new Map<string, { x: number; ys: number[] }>();
+  // `waypoints[0]` is where its stub joins the shared vertical spine; `edge` is
+  // that stub's index so its junction dot can be coloured like the edge.
+  const trunkElbows = new Map<string, { x: number; entries: { y: number; edge: number }[] }>();
 
   edges.forEach((edge, edgeIdx) => {
     // Ghost/cyclic edges are peripheral (dimmed / nudged perpendicular) and are
@@ -90,8 +91,8 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const elbow = edge.waypoints[0];
       const key = `${edge.trunkId}@${elbow.x}`;
       const group = trunkElbows.get(key);
-      if (group) group.ys.push(elbow.y);
-      else trunkElbows.set(key, { x: elbow.x, ys: [elbow.y] });
+      if (group) group.entries.push({ y: elbow.y, edge: edgeIdx });
+      else trunkElbows.set(key, { x: elbow.x, entries: [{ y: elbow.y, edge: edgeIdx }] });
     }
   });
 
@@ -131,6 +132,7 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
         x: (clusterMin + clusterMax) / 2,
         y: h.y,
         halfWidth: (clusterMax - clusterMin) / 2 + HOP_RADIUS,
+        edge: h.edge,
       });
     };
     for (let i = 1; i < xs.length; i++) {
@@ -153,10 +155,10 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   // dotting them all would put ● on plain corners.)
   const junctionSeen = new Set<string>();
   const junctions: JunctionMark[] = [];
-  for (const { x, ys } of trunkElbows.values()) {
-    const minY = Math.min(...ys);
-    const headCount = ys.filter((y) => Math.abs(y - minY) < EPS).length;
-    for (const y of ys) {
+  for (const { x, entries } of trunkElbows.values()) {
+    const minY = Math.min(...entries.map((e) => e.y));
+    const headCount = entries.filter((e) => Math.abs(e.y - minY) < EPS).length;
+    for (const { y, edge } of entries) {
       // A merge if the spine extends above this elbow (some stub joins higher),
       // or two stubs meet at the head itself (still a T, not a lone corner).
       const isMerge = y > minY + EPS || (Math.abs(y - minY) < EPS && headCount >= 2);
@@ -164,7 +166,7 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       const key = `${x},${y}`;
       if (junctionSeen.has(key)) continue;
       junctionSeen.add(key);
-      junctions.push({ x, y });
+      junctions.push({ x, y, edge });
     }
   }
 
