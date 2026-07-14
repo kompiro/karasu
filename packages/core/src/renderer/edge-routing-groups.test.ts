@@ -521,6 +521,46 @@ organization Org {
     expect(sawMixedNode).toBe(true);
   });
 
+  it("fans out a collapsed stub whose team name contains a space (no id-key mis-parse)", () => {
+    // A team named with a space collapses to `__group_collapsed_<name>__` — an id
+    // that contains a space. Grouping attachments by a delimited string key would
+    // mis-split it and skip the node, leaving its stubs overlapping.
+    const spaced = `
+system Shop {
+  service Checkout { label "Checkout" }
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+  service Gateway { label "API Gateway" }
+  service Notifications { label "Notifications" }
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> Notifications "order placed"
+}
+organization Org {
+  team "payments" { owns Checkout owns Billing }
+  team "catalog" { owns Search owns Inventory }
+  team "Data Platform" { owns Gateway owns Notifications }
+}`;
+    const owner = new Map([
+      ["Checkout", "payments"],
+      ["Billing", "payments"],
+      ["Search", "catalog"],
+      ["Inventory", "catalog"],
+      ["Gateway", "Data Platform"],
+      ["Notifications", "Data Platform"],
+    ]);
+    const res = layoutOf(spaced, owner, "team", new Set(["Data Platform"]));
+    // The collapsed stub (space in its id) still gets its incoming/outgoing stubs
+    // fanned apart — no collinear overlap anywhere.
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
   it("keeps single-edge lanes distinct from trunk lanes — no lane-x collision (#1927, AC-3)", () => {
     // Adding Wallet → ShopDB makes ShopDB fan-in (Billing + Wallet) → a trunk,
     // while Billing → {Catalog, Stripe} stay single-incoming gutter edges — so a

@@ -71,6 +71,15 @@ function rightPort(n: LayoutNode): Point {
 }
 
 /**
+ * Deterministic, locale-independent edge order by author id (`from` then `to`).
+ * Used as the stable tie-break wherever gutter edges are sorted, so snapshots
+ * don't depend on `Array.sort` stability or the host locale.
+ */
+function cmpEdgeId(a: LayoutEdge, b: LayoutEdge): number {
+  return a.from < b.from ? -1 : a.from > b.from ? 1 : a.to < b.to ? -1 : a.to > b.to ? 1 : 0;
+}
+
+/**
  * Content bounds (leftmost / rightmost x over every card and frame). The gutter
  * and trunk/single lane x's are all derived from these, so the three routing
  * passes MUST agree on the basis for their lane numbering to align — hence one
@@ -343,20 +352,7 @@ function assignGutterLanes(edges: LayoutEdge[], laneX: (lane: number) => number)
     return { e, lo: Math.min(y0, y1), hi: Math.max(y0, y1) };
   });
   // Deterministic order: by corridor start, then end, then edge identity.
-  ranges.sort(
-    (a, b) =>
-      a.lo - b.lo ||
-      a.hi - b.hi ||
-      (a.e.from < b.e.from
-        ? -1
-        : a.e.from > b.e.from
-          ? 1
-          : a.e.to < b.e.to
-            ? -1
-            : a.e.to > b.e.to
-              ? 1
-              : 0),
-  );
+  ranges.sort((a, b) => a.lo - b.lo || a.hi - b.hi || cmpEdgeId(a.e, b.e));
   const laneEnds: number[] = []; // last-assigned corridor `hi` per lane
   for (const r of ranges) {
     // First lane whose corridor ends at or before this one starts (no overlap;
@@ -424,14 +420,14 @@ export function fanOutGutterPorts(
     corridorX >= node.x + node.width ? "right" : "left";
 
   // Collect attachments per (node, side). Trunk target-entries are merged per
-  // `trunkId` so all siblings share one slot (and one moved entry point).
-  const byNodeSide = new Map<string, GutterAttach[]>();
-  const trunkSlot = new Map<string, GutterAttach>();
-  const push = (nodeId: string, side: string, a: GutterAttach) => {
-    const key = `${nodeId} ${side}`;
-    const list = byNodeSide.get(key);
-    if (list) list.push(a);
-    else byNodeSide.set(key, [a]);
+  // `trunkId` so all siblings share one slot (and one moved entry point). Keyed
+  // by node object (not a delimited string), so ids containing spaces are safe.
+  const bySide = new Map<LayoutNode, { left: GutterAttach[]; right: GutterAttach[] }>();
+  const trunkSlot = new Map<string, GutterAttach>(); // by `trunkId` (unique per target)
+  const push = (node: LayoutNode, side: "left" | "right", a: GutterAttach) => {
+    let rec = bySide.get(node);
+    if (!rec) bySide.set(node, (rec = { left: [], right: [] }));
+    rec[side].push(a);
   };
 
   for (const e of layoutEdges) {
@@ -442,72 +438,65 @@ export function fanOutGutterPorts(
     if (!from || !to) continue;
     const corridorX = e.waypoints![0].x;
     // Source end: corridor leaves `from` toward its target y (waypoints[1].y).
-    push(e.from, sideOf(corridorX, from), { edges: [e], end: "source", sortY: e.waypoints![1].y });
+    push(from, sideOf(corridorX, from), { edges: [e], end: "source", sortY: e.waypoints![1].y });
     // Target end: corridor enters `to` coming from its source y (waypoints[0].y).
+    // A trunk's siblings share one entry (unique per `trunkId`), so merge them.
     if (e.trunkId) {
-      const tk = `${e.to} ${sideOf(corridorX, to)} ${e.trunkId}`;
-      const slot = trunkSlot.get(tk);
+      const slot = trunkSlot.get(e.trunkId);
       if (slot) slot.edges.push(e);
       else {
         const a: GutterAttach = { edges: [e], end: "target", sortY: e.waypoints![0].y };
-        trunkSlot.set(tk, a);
-        push(e.to, sideOf(corridorX, to), a);
+        trunkSlot.set(e.trunkId, a);
+        push(to, sideOf(corridorX, to), a);
       }
     } else {
-      push(e.to, sideOf(corridorX, to), { edges: [e], end: "target", sortY: e.waypoints![0].y });
+      push(to, sideOf(corridorX, to), { edges: [e], end: "target", sortY: e.waypoints![0].y });
     }
   }
 
-  for (const [key, attaches] of byNodeSide) {
-    if (attaches.length < 2) continue;
-    const sep = key.indexOf(" ");
-    const node = layoutNodes.get(key.slice(0, sep));
-    if (!node) continue;
-    const side = key.slice(sep + 1);
-    const portX = side === "right" ? node.x + node.width : node.x;
-    // Nest the fan by corridor far-end y (deterministic tie-break on edge id).
-    attaches.sort(
-      (a, b) =>
-        a.sortY - b.sortY ||
-        (a.edges[0].from < b.edges[0].from
-          ? -1
-          : a.edges[0].from > b.edges[0].from
-            ? 1
-            : a.edges[0].to < b.edges[0].to
-              ? -1
-              : a.edges[0].to > b.edges[0].to
-                ? 1
-                : 0),
-    );
-    const n = attaches.length;
-    attaches.forEach((a, i) => {
-      const y = node.y + (node.height * (i + 1)) / (n + 1);
-      const anchor: Point = { x: portX, y };
-      // Restub every edge in the attachment, verify all clear, then apply
-      // atomically (a trunk moves all its siblings' shared entry together).
-      const moved = a.edges.map((e) => {
-        const wps = [...e.waypoints!];
-        if (a.end === "source") {
-          wps[0] = { x: wps[0].x, y };
-          return { e, fromPoint: anchor, toPoint: e.toPoint, waypoints: wps };
+  // Obstacle sets depend only on an edge's endpoints/frames, not on the fanned y,
+  // so compute each once and reuse across a node's (and both nodes') attachments.
+  const obstacleCache = new Map<LayoutEdge, Rect[]>();
+  const obstaclesOf = (e: LayoutEdge): Rect[] => {
+    let o = obstacleCache.get(e);
+    if (!o) obstacleCache.set(e, (o = obstaclesFor(e, nodes, frames, frameOfNode)));
+    return o;
+  };
+
+  for (const [node, rec] of bySide) {
+    for (const side of ["left", "right"] as const) {
+      const attaches = rec[side];
+      if (attaches.length < 2) continue;
+      const portX = side === "right" ? node.x + node.width : node.x;
+      // Nest the fan by corridor far-end y (deterministic tie-break on edge id).
+      attaches.sort((a, b) => a.sortY - b.sortY || cmpEdgeId(a.edges[0], b.edges[0]));
+      const n = attaches.length;
+      attaches.forEach((a, i) => {
+        const y = node.y + (node.height * (i + 1)) / (n + 1);
+        const anchor: Point = { x: portX, y };
+        // Restub every edge in the attachment, verify all clear, then apply
+        // atomically (a trunk moves all its siblings' shared entry together).
+        const moved = a.edges.map((e) => {
+          const wps = [...e.waypoints!];
+          if (a.end === "source") {
+            wps[0] = { x: wps[0].x, y };
+            return { e, fromPoint: anchor, toPoint: e.toPoint, waypoints: wps };
+          }
+          wps[wps.length - 1] = { x: wps[wps.length - 1].x, y };
+          return { e, fromPoint: e.fromPoint, toPoint: anchor, waypoints: wps };
+        });
+        const allClear = moved.every((m) =>
+          polylineClearOf([m.fromPoint, ...m.waypoints, m.toPoint], obstaclesOf(m.e)),
+        );
+        if (allClear) {
+          for (const m of moved) {
+            m.e.fromPoint = m.fromPoint;
+            m.e.toPoint = m.toPoint;
+            m.e.waypoints = m.waypoints;
+          }
         }
-        wps[wps.length - 1] = { x: wps[wps.length - 1].x, y };
-        return { e, fromPoint: e.fromPoint, toPoint: anchor, waypoints: wps };
       });
-      const allClear = moved.every((m) =>
-        polylineClearOf(
-          [m.fromPoint, ...m.waypoints, m.toPoint],
-          obstaclesFor(m.e, nodes, frames, frameOfNode),
-        ),
-      );
-      if (allClear) {
-        for (const m of moved) {
-          m.e.fromPoint = m.fromPoint;
-          m.e.toPoint = m.toPoint;
-          m.e.waypoints = m.waypoints;
-        }
-      }
-    });
+    }
   }
 }
 
