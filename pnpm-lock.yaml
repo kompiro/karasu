@@ -37,8 +37,8 @@ importers:
         specifier: workspace:*
         version: link:packages/core
       '@kompiro/adr-tools':
-        specifier: ^0.0.7
-        version: 0.0.7(@karasu-tools/core@packages+core)
+        specifier: ^0.0.8
+        version: 0.0.8(@karasu-tools/core@packages+core)
       '@kompiro/tpl-tools':
         specifier: ^0.0.6
         version: 0.0.6
@@ -1004,8 +1004,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@kompiro/adr-tools@0.0.7':
-    resolution: {integrity: sha512-OjNTyYwWvJxa12y89ju9yWTpw0s1KZYeBfvSOqaKwgoUB9mgjqOEdvLnWzhV5yqwgvr2+KdslPzaImpdbrSWhA==}
+  '@kompiro/adr-tools@0.0.8':
+    resolution: {integrity: sha512-8kQUdJ7De3yJVgVlxPPkDKqpiA7gKBGenKX/JavWt6XRbW/GRswG9mu+rOcLWW7ihecKpG20XilfxrNUIvBfyA==}
     engines: {node: '>=20.0.0'}
     hasBin: true
     peerDependencies:
@@ -7204,7 +7204,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@kompiro/adr-tools@0.0.7(@karasu-tools/core@packages+core)':
+  '@kompiro/adr-tools@0.0.8(@karasu-tools/core@packages+core)':
     dependencies:
       js-yaml: 4.2.0
     optionalDependencies:
