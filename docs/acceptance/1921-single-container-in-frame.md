@@ -49,6 +49,8 @@ system view で 1 つの service コンテナをその場で展開（in-place ex
 > ✅ Automated by `packages/app/src/hooks/useCollapsibleSet.test.ts`
 - [x] 展開状態は app の view-state で `.krs` を変更しない（round-trip 保持、TPL-20260510-02）
 > ✅ Automated — 展開は compile option のみで AST/シリアライズに触れない（`packages/core/src/renderer/expand-render.test.ts` が SVG 差分のみを確認）
+- [x] live app で ⊕ が service をその場展開し、フレームの ⊖ で畳み直せる（開いた後ちゃんと閉じられる）
+> ✅ Automated by `packages/e2e/tests/at-1921-expand-in-place.spec.ts` › `⊕ expands a service in place; ⊖ collapses it back (AT-1921-01)`
 
 ### AC-5: scoped glance を壊さない（B1–B3、TPL-20260510-21）
 
@@ -60,4 +62,6 @@ system view で 1 つの service コンテナをその場で展開（in-place ex
 > ✅ Automated by `packages/core/src/renderer/layout.expand.test.ts`
 - [x] B3: 全ノードちょうど一度だけ配置される（重複・drop なし、TPL-20260624-02）
 > ✅ Automated by `packages/core/src/view/view-extract.expand.test.ts`
-- [ ] **[人間確認]** live app で大きめの図の 1 service を ⊕ 展開し、「内部を兄弟との関係のなかで読めるか」の主観的可読性（受け入れバー B1/B2）と、別 service を展開すると前の展開が畳まれること（C1）を確認する
+- [x] B2: 展開した service のフレームと、それに接続する edge（例: `Customer -> OrderService`）が展開中も描かれる
+> ✅ Automated by `packages/e2e/tests/at-1921-expand-in-place.spec.ts` › `⊕ expands a service in place; ⊖ collapses it back (AT-1921-01)`
+- [ ] **[人間確認]** live app で大きめの生成図の 1 service を ⊕ 展開し、「内部を兄弟との関係のなかで読めるか」の主観的可読性（受け入れバー B1）を確認する
