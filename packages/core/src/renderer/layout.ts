@@ -355,6 +355,71 @@ function placeGhostDomains(
   }
 }
 
+/**
+ * Place cross-domain ghost entities below the entity view's main container
+ * (mirrors {@link placeGhostDomains}). Keyed by the qualified
+ * `DomainId.EntityId` (not the bare id) because entity ids are only
+ * warning-level unique — the matching `ghostEntityEdges` endpoints use the same
+ * qualified key for foreign endpoints. `ghost: true` drives the muting in
+ * svg-renderer; no renderer change is needed.
+ */
+function placeGhostEntities(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  effectiveAnnotations: (n: KrsNode) => string[],
+  displayMode?: DisplayMode,
+): void {
+  const GHOST_ENTITY_GAP = 60;
+  if (viewSlice.ghostEntities.length === 0 || containers.length === 0) return;
+  const { NODE_GAP } = getLayoutConstants(displayMode);
+
+  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
+  const ghostY = mainContainer.y + mainContainer.height + GHOST_ENTITY_GAP;
+  let ghostX = mainContainer.x + CONTAINER_PADDING;
+
+  for (const ge of viewSlice.ghostEntities) {
+    const dims = measureNode(ge.node, undefined, displayMode);
+    layoutNodes.set(ge.key, {
+      kind: ge.node.kind,
+      tags: ge.node.tags,
+      id: ge.key,
+      label: ge.node.label ?? ge.node.id,
+      annotations: effectiveAnnotations(ge.node),
+      subLabel: ge.parentDomainLabel,
+      properties: extractLayoutProperties(ge.node, undefined),
+      descriptionSummary: ge.node.properties.description
+        ? summarizeDescription(ge.node.properties.description)
+        : undefined,
+      linkCount: ge.node.properties.links.length,
+      hasChildren: ge.node.children.length > 0,
+      hasDescription: !!ge.node.properties.description,
+      x: ghostX,
+      y: ghostY,
+      width: dims.width,
+      height: dims.height,
+      ghost: true,
+    });
+    ghostX += dims.width + NODE_GAP;
+  }
+
+  // Expand outermost container to include ghost entities (both height and width)
+  const ghostEntityNodes = viewSlice.ghostEntities
+    .map((ge) => layoutNodes.get(ge.key))
+    .filter((n): n is LayoutNode => n !== undefined);
+  if (ghostEntityNodes.length > 0) {
+    const maxGhostY = Math.max(...ghostEntityNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
+    const maxGhostX = Math.max(...ghostEntityNodes.map((n) => n.x + n.width)) + GHOST_MARGIN;
+    const outermost = containers[0];
+    if (maxGhostY > outermost.y + outermost.height) {
+      outermost.height = maxGhostY - outermost.y;
+    }
+    if (maxGhostX > outermost.x + outermost.width) {
+      outermost.width = maxGhostX - outermost.x;
+    }
+  }
+}
+
 function placeCallerGhostSystems(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
@@ -567,6 +632,33 @@ function computeLayoutEdges(
   // Ghost domain edges. A team can `owns` a domain (docs/spec), so a collapsed
   // domain endpoint must re-anchor to its stub like the service ones (#1874).
   for (const edge of viewSlice.ghostDomainEdges) {
+    const from = remapGhostEndpoint(edge.from);
+    const to = remapGhostEndpoint(edge.to);
+    const fromNode = layoutNodes.get(from);
+    const toNode = layoutNodes.get(to);
+    if (!fromNode || !toNode) continue;
+
+    const fromIsAbove = fromNode.y + fromNode.height / 2 < toNode.y + toNode.height / 2;
+    layoutEdges.push({
+      from,
+      to,
+      label: edge.label,
+      fromPoint: {
+        x: fromNode.x + fromNode.width / 2,
+        y: fromIsAbove ? fromNode.y + fromNode.height : fromNode.y,
+      },
+      toPoint: {
+        x: toNode.x + toNode.width / 2,
+        y: fromIsAbove ? toNode.y : toNode.y + toNode.height,
+      },
+      ghost: true,
+    });
+  }
+
+  // Ghost entity edges (entity view). Endpoints are pre-normalized in
+  // extractEntityView: the foreign endpoint is the qualified `DomainId.EntityId`
+  // key (matching the ghost node), the local endpoint is the bare entity id.
+  for (const edge of viewSlice.ghostEntityEdges) {
     const from = remapGhostEndpoint(edge.from);
     const to = remapGhostEndpoint(edge.to);
     const fromNode = layoutNodes.get(from);
@@ -1230,6 +1322,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // Place ghost nodes
   placeGhostUsers(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
   placeGhostDomains(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
+  placeGhostEntities(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
   placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
   placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
 
