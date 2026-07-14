@@ -77,6 +77,29 @@ function asArray(value: unknown): Record<string, unknown>[] {
 }
 
 /**
+ * Reserve a unique node id: append a numeric suffix while `candidate` is taken,
+ * warn on rename, and record it in `used`. Every emitted node id (infra,
+ * external service, Worker) goes through here so two bindings never declare the
+ * same id — which the parser would reject as a duplicate.
+ */
+function dedupe(
+  candidate: string,
+  used: Set<string>,
+  onWarning?: (message: string) => void,
+): string {
+  let id = candidate;
+  let n = 2;
+  while (used.has(id)) {
+    id = `${candidate}${n++}`;
+  }
+  if (id !== candidate) {
+    onWarning?.(`Duplicate binding name "${candidate}"; renamed to "${id}".`);
+  }
+  used.add(id);
+  return id;
+}
+
+/**
  * Resolve the identifier for a binding, preferring the env-var `binding` name
  * (stable in code), falling back to a resource-name field, then to `fallback`.
  */
@@ -88,16 +111,7 @@ function bindingId(
   onWarning?: (message: string) => void,
 ): string {
   const candidate = toIdentifier(entry.binding) ?? toIdentifier(entry[resourceNameKey]) ?? fallback;
-  let id = candidate;
-  let n = 2;
-  while (used.has(id)) {
-    id = `${candidate}${n++}`;
-  }
-  if (id !== candidate) {
-    onWarning?.(`Duplicate binding name "${candidate}"; renamed to "${id}".`);
-  }
-  used.add(id);
-  return id;
+  return dedupe(candidate, used, onWarning);
 }
 
 export class WranglerTranslator implements Translator {
@@ -166,9 +180,8 @@ export class WranglerTranslator implements Translator {
     }
     // Workers AI → external model service
     if (doc.ai && typeof doc.ai === "object") {
-      const id = toIdentifier((doc.ai as Record<string, unknown>).binding) ?? "WorkersAi";
-      if (!used.has(id)) used.add(id);
-      externals.push({ id });
+      const candidate = toIdentifier((doc.ai as Record<string, unknown>).binding) ?? "WorkersAi";
+      externals.push({ id: dedupe(candidate, used, onWarning) });
     }
     // Durable Objects → service [external] (opaque stateful actor; notation-watch)
     const durableObjects = doc.durable_objects as { bindings?: unknown } | undefined;

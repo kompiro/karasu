@@ -135,6 +135,30 @@ id = "xyz"
     expect(krs).not.toContain("HYPER");
   });
 
+  it("renames an external id that collides with an infra id (no duplicate node)", async () => {
+    const warnings: string[] = [];
+    // A KV binding and the Workers AI binding both named "AI" would declare the
+    // same id; the AI external must be renamed rather than duplicated.
+    const input = `
+name = "edge"
+
+[[kv_namespaces]]
+binding = "AI"
+id = "k1"
+
+[ai]
+binding = "AI"
+`;
+    const krs = await translator.translate(input, {
+      inputName: "wrangler",
+      onWarning: (m) => warnings.push(m),
+    });
+    expect(krs).toContain("database AI {");
+    expect(krs).toContain("service AI2 [external] {");
+    expect(warnings.some((w) => w.includes("renamed to"))).toBe(true);
+    assertRoundTrips(krs);
+  });
+
   it("overrides the system name with context.system", async () => {
     const krs = await translator.translate(`name = "hato"\n`, { ...ctx, system: "MyApp" });
     expect(krs).toContain("system MyApp {");
