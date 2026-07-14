@@ -20,6 +20,7 @@ import { routeGroupedEdges, aggregateGroupTrunks } from "./edge-routing-groups.j
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
+import { computeCrossingMarks } from "./crossing-marks.js";
 import type {
   LayoutNode,
   LayoutNodeProperties,
@@ -1380,6 +1381,12 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     displayMode,
   );
 
+  // Crossing marks (#1859 P2c-C). Grouped view only, from final coordinates —
+  // hop arcs neutralise right-angle crossings ("not connected") and junction
+  // dots mark trunk merges ("connected"). Ungrouped leaves this undefined so its
+  // SVG stays byte-identical (AC-5). See docs/design/system-view-grouping.md.
+  const crossingMarks = groupBands ? computeCrossingMarks(layoutEdges) : undefined;
+
   return {
     nodes: layoutNodes,
     edges: layoutEdges,
@@ -1387,6 +1394,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     width: totalWidth,
     height: totalHeight,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
+    crossingMarks,
   };
 }
 

@@ -135,6 +135,42 @@ export interface LayoutResult {
    * so a re-targeted stub edge keeps its diff decoration.
    */
   foldedEdgeDiffState?: Map<string, string>;
+  /**
+   * Hop/junction crossing marks for the Group-by view (#1859 P2c-C). Set only by
+   * the grouped layout branch (after all geometry passes, from final
+   * coordinates); the ungrouped branch never sets it, so the ungrouped SVG stays
+   * byte-identical (AC-5). The renderer emits a `crossing-marks` layer on top of
+   * the edges when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
+   */
+  crossingMarks?: CrossingMarks;
+}
+
+/**
+ * A hop arc bumping over a vertical at `(x, y)`, spanning `[x-halfWidth, x+halfWidth]`
+ * (#1859 P2c-C). `edge` is the index (into `LayoutResult.edges`) of the horizontal
+ * edge the arc sits on, so the renderer can colour the mark like its own edge.
+ */
+export interface HopMark {
+  x: number;
+  y: number;
+  halfWidth: number;
+  edge: number;
+}
+
+/**
+ * A connection dot at a trunk merge point (#1859 P2c-C). `edge` is the index of
+ * the joining stub edge, so the dot is coloured like the edge that merges there.
+ */
+export interface JunctionMark {
+  x: number;
+  y: number;
+  edge: number;
+}
+
+/** Crossing marks for the Group-by view: hops (crossing = not connected) + junctions (merge = connected). */
+export interface CrossingMarks {
+  hops: HopMark[];
+  junctions: JunctionMark[];
 }
 
 export type DisplayMode = "shape" | "icon";

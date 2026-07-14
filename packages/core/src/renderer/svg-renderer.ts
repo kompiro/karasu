@@ -2,9 +2,16 @@ import type { EdgeDirection, ResolvedNodeStyle, ResolvedStyles } from "../types/
 import type { ViewSlice } from "../view/view-extract.js";
 import { layout } from "./layout.js";
 import { CATEGORY_STUB_TAG, categoryOf, type CategoryId } from "./category-collapse.js";
-import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./layout-types.js";
+import type {
+  ContainerRect,
+  CrossingMarks,
+  DisplayMode,
+  LayoutNode,
+  LayoutResult,
+} from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
+import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
 import { badgeChildren } from "./badge.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef } from "../shapes/shape-registry.js";
@@ -306,6 +313,10 @@ export function renderFromLayout(
         ...layoutResult.foldedEdgeDiffState,
       ])
     : options?.edgeDiffState;
+  // Resolved stroke of each edge, indexed to match `layoutResult.edges` — so a
+  // crossing mark can be drawn in its own edge's colour/width (#1859 P2c-C),
+  // not a fixed default that detaches from a coloured diagram.
+  const edgeStroke: { color: string; strokeWidth: number }[] = [];
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     // Prefer the kind-qualified style entry so parallel sync/async edges between
@@ -315,6 +326,7 @@ export function renderFromLayout(
       styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
       styles.edges.get(edgeKey) ??
       styles.defaultEdgeStyle;
+    edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     const diffState = effectiveEdgeDiffState?.get(edgeKey);
     const rendered = renderEdge(edgeLayout, edgeStyle, markerId, diffState);
@@ -330,6 +342,18 @@ export function renderFromLayout(
     parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
   }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
+
+  // Crossing marks on top of the edges (#1859 P2c-C): hop arcs neutralise
+  // right-angle crossings and junction dots mark trunk merges. Present only in
+  // the Group-by view (ungrouped leaves `crossingMarks` undefined — AC-5).
+  if (layoutResult.crossingMarks) {
+    const { hops, junctions } = layoutResult.crossingMarks;
+    if (hops.length > 0 || junctions.length > 0) {
+      parts.push(
+        renderCrossingMarks(layoutResult.crossingMarks, edgeStroke, styles.defaultEdgeStyle),
+      );
+    }
+  }
 
   // Nodes (ghost users first, then normal children). As with edges, a ghost
   // node that is diff-tagged (added / removed / changed) gets promoted to the
@@ -468,6 +492,57 @@ function collapseGlyph(
     );
   }
   return parts;
+}
+
+/**
+ * Render the Group-by crossing marks layer (#1859 P2c-C). Emitted above the edge
+ * layer so marks sit on top of the lines.
+ *
+ * - **hop**: a `<path>` where a horizontal stub arcs *over* the vertical it
+ *   crosses (crossing = NOT connected). Elliptical (`rx = halfWidth`,
+ *   `ry = HOP_RADIUS`) so a clustered wide hop stays a shallow bump; `sweep = 1`
+ *   arcs the bump upward.
+ * - **junction**: a `<circle>` dot at each trunk merge (merge = connected).
+ *
+ * Each mark is drawn in its owning edge's resolved colour (and the hop in that
+ * edge's stroke width) via `edgeStroke[mark.edge]`, so marks stay visually part
+ * of the lines they annotate on a colour-styled diagram; `fallback` covers an
+ * out-of-range index. Coordinates are rounded to 2 decimals so tiny float noise
+ * never destabilises the SVG snapshot.
+ *
+ * Scope: only right-angle (axis-aligned) crossings in the *single-system*
+ * Group-by view carry marks. Diagonal "clear" intra-band edges and the
+ * multi-system grouped view (straight-line edges, no orthogonal routing) are out
+ * of scope by design — see docs/design/system-view-grouping.md § "P2c-C 詳細設計".
+ */
+function renderCrossingMarks(
+  marks: CrossingMarks,
+  edgeStroke: { color: string; strokeWidth: number }[],
+  fallback: { color: string; strokeWidth: number },
+): string {
+  const r = (n: number): number => Number(n.toFixed(2));
+  const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
+  const parts: string[] = [];
+  for (const hop of marks.hops) {
+    const left = r(hop.x - hop.halfWidth);
+    const right = r(hop.x + hop.halfWidth);
+    const y = r(hop.y);
+    const stroke = strokeOf(hop.edge);
+    parts.push(
+      el("path", {
+        d: `M ${left} ${y} A ${r(hop.halfWidth)} ${HOP_RADIUS} 0 0 1 ${right} ${y}`,
+        fill: "none",
+        stroke: stroke.color,
+        "stroke-width": stroke.strokeWidth,
+      }),
+    );
+  }
+  for (const j of marks.junctions) {
+    parts.push(
+      el("circle", { cx: r(j.x), cy: r(j.y), r: JUNCTION_RADIUS, fill: strokeOf(j.edge).color }),
+    );
+  }
+  return el("g", { class: "crossing-marks" }, ...parts);
 }
 
 /**
