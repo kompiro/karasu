@@ -19,8 +19,7 @@ resources) thins out. This skill uses **per-domain subagent fan-out** to give
 each domain its own attention budget, and the **karasu CLI as a deterministic
 spine** (physical extraction, slicing, measurement, validation, rendering).
 
-Design rationale: `docs/design/reverse-architecture-skill.md` and
-`docs/design/repo-reverse-engineer-harness.md`.
+Design rationale: ADR-20260714-01 (`docs/adr/20260714-01-reverse-architecture-harness.md`).
 
 ## Prerequisites
 
