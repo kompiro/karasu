@@ -368,16 +368,31 @@ describe("computeCrossingMarks (#1859, P2c-C)", () => {
     expect(layoutOf(TRUNKS, TRUNKS_OWNER).crossingMarks).toBeUndefined();
   });
 
-  it("marks a junction dot at every trunk stub-join elbow (AC-2)", () => {
+  it("marks a junction dot only at real trunk merges, not at the trunk head (AC-2)", () => {
     const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
     const junctions = res.crossingMarks!.junctions;
-    // Each trunked edge's waypoints[0] is a merge point; all four are distinct.
-    const trunked = res.edges.filter((e) => e.trunkId !== undefined);
-    expect(trunked.length).toBeGreaterThanOrEqual(2);
-    for (const e of trunked) {
+    // Group trunked edges by spine (trunkId @ elbow x). Each spine's *topmost*
+    // stub is the head (an L-corner, no dot); every lower stub is a T-merge (dot).
+    const spines = new Map<string, number[]>();
+    for (const e of res.edges.filter((x) => x.trunkId !== undefined)) {
       const wp0 = e.waypoints![0];
-      expect(junctions).toContainEqual({ x: wp0.x, y: wp0.y });
+      const key = `${e.trunkId}@${wp0.x}`;
+      const ys = spines.get(key);
+      if (ys) ys.push(wp0.y);
+      else spines.set(key, [wp0.y]);
     }
+    const merges: Point[] = [];
+    const heads: Point[] = [];
+    for (const [key, ys] of spines) {
+      const x = Number(key.split("@")[1]);
+      const minY = Math.min(...ys);
+      for (const y of ys) (y > minY ? merges : heads).push({ x, y });
+    }
+    expect(spines.size).toBeGreaterThanOrEqual(1);
+    expect(merges.length).toBeGreaterThanOrEqual(1);
+    // Every real merge is dotted; no trunk head is.
+    expect(merges.every((m) => junctions.some((j) => j.x === m.x && j.y === m.y))).toBe(true);
+    expect(heads.some((h) => junctions.some((j) => j.x === h.x && j.y === h.y))).toBe(false);
   });
 
   it("draws a hop over every right-angle crossing — none can be misread as a connection (AC-3, TPL-20260711-02)", () => {

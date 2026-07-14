@@ -339,7 +339,7 @@ P2c-A（#1894）/ P2c-B（#1901）マージ後の最終スライス。直交ル�
 
 #### junction 検出
 
-- `trunkId` を持つ各エッジの spine 合流 elbow（`waypoints[0]` = 横 stub が spine に接する点）に接続ドットを 1 つ置く。同一座標は dedupe。トランク合流「＝接続」を明示する（AC-2 の junction dot 部分）。
+- `trunkId` を持つエッジの spine 合流 elbow（`waypoints[0]` = 横 stub が spine に接する点）のうち、**spine がその点より上へ延びている（＝別の stub が上で合流している）T/＋ 点にだけ**接続ドットを置く。トランク最上段の stub（spine の頭）は 1 本が曲がるだけの L コーナーなので**ドットを打たない**（回路図慣習: ● は接続点のみ、単線の曲がり角には付けない）。hop の strict-interior 判定と同型の「端点 vs 内部」の区別を junction にも効かせる。同一座標は dedupe。
 
 #### 描画
 

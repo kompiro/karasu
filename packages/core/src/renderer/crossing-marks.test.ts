@@ -55,10 +55,28 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     );
     const { hops, junctions } = computeCrossingMarks([a, b]);
     expect(hops).toHaveLength(0);
-    // One junction dot per stub-join elbow (waypoints[0]).
+    // Only the *lower* stub (y=80) is a real merge: the shared spine continues
+    // above it (A joins at y=50 and runs down). The topmost stub (y=50) is the
+    // trunk head — a plain L-corner — so it gets NO junction dot.
+    expect(junctions).toEqual([{ x: 50, y: 80 }]);
+  });
+
+  it("does not dot the trunk head (topmost stub is an L-corner, not a merge)", () => {
+    // Three stubs into one spine at x=60: only the two lower elbows are T-merges;
+    // the head (y=20) is a lone corner.
+    const mk = (fromY: number, from: string) =>
+      poly(
+        [
+          [0, fromY],
+          [60, fromY],
+          [60, 200],
+        ],
+        { from, to: "DB", trunkId: "DB" },
+      );
+    const { junctions } = computeCrossingMarks([mk(20, "A"), mk(70, "B"), mk(120, "C")]);
     expect(junctions).toEqual([
-      { x: 50, y: 50 },
-      { x: 50, y: 80 },
+      { x: 60, y: 70 },
+      { x: 60, y: 120 },
     ]);
   });
 
@@ -131,6 +149,34 @@ describe("computeCrossingMarks (#1859 P2c-C)", () => {
     const { hops } = computeCrossingMarks([h, near, far]);
     expect(hops).toHaveLength(2);
     expect(hops.map((m) => m.x)).toEqual([50, 150]);
+  });
+
+  it("dedups identical hops from two collinear horizontals crossing one vertical", () => {
+    // Two different edges' horizontals lie on the same y and are both crossed by
+    // one vertical at x=50 → one arc, not two stacked identical <path>s.
+    const h1 = poly(
+      [
+        [0, 30],
+        [100, 30],
+      ],
+      { from: "A", to: "B" },
+    );
+    const h2 = poly(
+      [
+        [0, 30],
+        [100, 30],
+      ],
+      { from: "C", to: "D" },
+    );
+    const v = poly(
+      [
+        [50, 0],
+        [50, 60],
+      ],
+      { from: "E", to: "F" },
+    );
+    const { hops } = computeCrossingMarks([h1, h2, v]);
+    expect(hops).toEqual([{ x: 50, y: 30, halfWidth: HOP_RADIUS }]);
   });
 
   it("ignores ghost and cyclic edges", () => {

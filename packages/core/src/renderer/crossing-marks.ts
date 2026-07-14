@@ -10,8 +10,10 @@
  *     *different* edge at a right angle arcs *over* it — "crossing, NOT
  *     connected". The vertical (gutter corridor / trunk spine — the high-traffic
  *     through-line) stays a clean straight line; the horizontal stub bumps over.
- *   - **junction (●)**: the elbow where a trunked edge's horizontal stub joins
- *     the shared spine (`waypoints[0]`) gets a connection dot — "merge = connected".
+ *   - **junction (●)**: a trunk stub-join elbow (`waypoints[0]`) gets a connection
+ *     dot — "merge = connected" — but only where the spine continues past it (a
+ *     T/＋). The topmost stub of a trunk is the spine head, a plain L-corner, and
+ *     gets no dot (circuit convention: dots mark connections, not bends).
  *
  * Crossings are detected with the same **strict-interior** test the routers use
  * (`edge-geometry.ts`, `1e-6` epsilon) so a stub *ending* on a spine (a trunk
@@ -60,7 +62,9 @@ interface VSeg {
 export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   const hSegs: HSeg[] = [];
   const vSegs: VSeg[] = [];
-  const junctions: JunctionMark[] = [];
+  // Trunk stub-join elbows grouped by spine (`trunkId` @ spine x). Each edge's
+  // `waypoints[0]` is where its stub joins the shared vertical spine.
+  const trunkElbows = new Map<string, { x: number; ys: number[] }>();
 
   edges.forEach((edge, edgeIdx) => {
     // Ghost/cyclic edges are peripheral (dimmed / nudged perpendicular) and are
@@ -81,9 +85,13 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
       // Diagonal / zero-length segments carry no right-angle crossing; skip.
     }
 
-    // Junction: the elbow where a trunked edge's stub joins the shared spine.
+    // Junction candidate: the elbow where a trunked edge's stub joins the spine.
     if (edge.trunkId !== undefined && edge.waypoints && edge.waypoints.length > 0) {
-      junctions.push({ x: edge.waypoints[0].x, y: edge.waypoints[0].y });
+      const elbow = edge.waypoints[0];
+      const key = `${edge.trunkId}@${elbow.x}`;
+      const group = trunkElbows.get(key);
+      if (group) group.ys.push(elbow.y);
+      else trunkElbows.set(key, { x: elbow.x, ys: [elbow.y] });
     }
   });
 
@@ -105,14 +113,21 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
     }
   }
 
-  // Cluster crossings on the same horizontal line into one wide hop.
-  const hops: HopMark[] = [];
+  // Cluster crossings on the same horizontal line into one wide hop. Distinct
+  // horizontal segments can be collinear (same y, different edges) and cross the
+  // same vertical, so dedup identical arcs, keeping the widest at each point.
+  const hopByPoint = new Map<string, HopMark>();
+  const addHop = (mark: HopMark) => {
+    const key = `${mark.x},${mark.y}`;
+    const existing = hopByPoint.get(key);
+    if (!existing || mark.halfWidth > existing.halfWidth) hopByPoint.set(key, mark);
+  };
   for (const [h, xs] of crossingXsPerH) {
     xs.sort((a, b) => a - b);
     let clusterMin = xs[0];
     let clusterMax = xs[0];
     const flush = () => {
-      hops.push({
+      addHop({
         x: (clusterMin + clusterMax) / 2,
         y: h.y,
         halfWidth: (clusterMax - clusterMin) / 2 + HOP_RADIUS,
@@ -129,21 +144,33 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
     }
     flush();
   }
+  const hops = [...hopByPoint.values()];
 
-  // Dedup junctions by coordinate (siblings on one spine differ in y, so all
-  // survive; identical points collapse).
-  const seen = new Set<string>();
-  const uniqueJunctions: JunctionMark[] = [];
-  for (const j of junctions) {
-    const key = `${j.x},${j.y}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    uniqueJunctions.push(j);
+  // Junction dots: a dot belongs only where the shared spine actually *continues
+  // past* the elbow — a T/＋ where another stub joins above (circuit convention).
+  // The topmost stub of each trunk is just the spine head, an L-corner, and gets
+  // no dot. (`waypoints[0]` for every trunked edge is a right-angle elbow, so
+  // dotting them all would put ● on plain corners.)
+  const junctionSeen = new Set<string>();
+  const junctions: JunctionMark[] = [];
+  for (const { x, ys } of trunkElbows.values()) {
+    const minY = Math.min(...ys);
+    const headCount = ys.filter((y) => Math.abs(y - minY) < EPS).length;
+    for (const y of ys) {
+      // A merge if the spine extends above this elbow (some stub joins higher),
+      // or two stubs meet at the head itself (still a T, not a lone corner).
+      const isMerge = y > minY + EPS || (Math.abs(y - minY) < EPS && headCount >= 2);
+      if (!isMerge) continue;
+      const key = `${x},${y}`;
+      if (junctionSeen.has(key)) continue;
+      junctionSeen.add(key);
+      junctions.push({ x, y });
+    }
   }
 
   // Stable order → deterministic SVG output.
   hops.sort((a, b) => a.y - b.y || a.x - b.x);
-  uniqueJunctions.sort((a, b) => a.y - b.y || a.x - b.x);
+  junctions.sort((a, b) => a.y - b.y || a.x - b.x);
 
-  return { hops, junctions: uniqueJunctions };
+  return { hops, junctions };
 }

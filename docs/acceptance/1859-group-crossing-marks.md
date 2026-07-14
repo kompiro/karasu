@@ -32,7 +32,7 @@ Group by: team の P2c 最終 slice。P2c-A（直交ルーティング）/ P2c-B
 
 > ✅ Automated by `packages/core/src/renderer/crossing-marks.test.ts` (suite-wide)
 
-- [x] `trunkId` を持つ各エッジの `waypoints[0]`（spine 合流 elbow）に junction を 1 つ置く
+- [x] `trunkId` を持つエッジの `waypoints[0]` のうち、spine がその点より上へ延びる **T/＋ 合流点にだけ** junction を置く（最上段 stub ＝ spine の頭 = L コーナーには打たない）
 - [x] 同一座標の junction は dedupe
 
 ### AC-3: 描画レイヤ（core）
