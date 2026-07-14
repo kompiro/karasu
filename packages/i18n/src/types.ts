@@ -78,6 +78,7 @@ export type Translations = {
   "translateDialog.format.k8s": string;
   "translateDialog.format.openapi": string;
   "translateDialog.format.db": string;
+  "translateDialog.format.wrangler": string;
   "translateDialog.loadHint": string;
   "translateDialog.loadFile": string;
   "translateDialog.loadFile.aria": string;
