@@ -416,6 +416,32 @@ CREATE TABLE order_items (id BIGINT PRIMARY KEY, order_id BIGINT NOT NULL);
     expect(content).toContain("      - order_items — name suffix + inferred FK column to orders");
   });
 
+  // AT-0060-19: the entity scaffold (a top-level `domain` sharing the database id)
+  // must survive apply alongside the physical `database` block. Because the output
+  // mixes top-level infra, apply keeps the whole content together (whole-append).
+  it("preserves the entity-scaffold domain alongside the database block on apply", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE customers (id BIGINT PRIMARY KEY);
+CREATE TABLE orders (id BIGINT PRIMARY KEY, customer_id BIGINT NOT NULL REFERENCES customers(id));`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "OrderDB" });
+    capture.restore();
+
+    const targetPath = join(tmpDir, "arch.krs");
+    writeFileSync(targetPath, applyIncoming("", capture.stdout()), "utf-8");
+
+    const content = readFileSync(targetPath, "utf-8");
+    // Both the physical block and the provisional entity domain are present.
+    expect(content).toContain("database OrderDB {");
+    expect(content).toContain("domain OrderDB {");
+    expect(content).toContain("  entity Orders {");
+    expect(content).toContain("    Orders -> Customers");
+  });
+
   // AT-0060-17
   // NOTE: `database` blocks are not valid top-level KRS nodes (only system/service/domain/deploy
   // are). The parser does not recognise them, so applyIncoming cannot auto-detect the ID and

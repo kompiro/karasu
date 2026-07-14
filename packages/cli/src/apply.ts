@@ -43,8 +43,19 @@ export function applyIncoming(existing: string, incoming: string): string {
     ...incomingParsed.value.deploys,
   ];
 
-  if (incomingTopLevel.length === 0) {
-    // No recognizable top-level nodes — append as-is
+  // Top-level infra (database / queue / storage) is not a target of the per-node
+  // structured merge (krs-patch resolves ids in the logical/deploy/org trees, not
+  // the infra collections). When the incoming output carries such a block, append
+  // the whole content verbatim so paired blocks stay together — notably
+  // `translate --from db`, which emits a `database` block plus a provisional
+  // `domain` scaffold sharing the same id that must land side by side.
+  const incomingHasTopLevelInfra =
+    incomingParsed.value.databases.length > 0 ||
+    incomingParsed.value.queues.length > 0 ||
+    incomingParsed.value.storages.length > 0;
+
+  if (incomingTopLevel.length === 0 || incomingHasTopLevelInfra) {
+    // No recognizable structured top-level nodes (or infra present) — append as-is
     const result = applyKrsPatch(existing, "append", undefined, incoming);
     return result.ok ? result.source : existing;
   }
