@@ -1,6 +1,6 @@
 # ADR Topic: cli
 
-11 ADRs in this topic. Solid nodes belong to `cli`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+12 ADRs in this topic. Solid nodes belong to `cli`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -17,6 +17,7 @@ flowchart TD
     ADR_20260430_02["ADR-20260430-02<br/>`karasu diff` の bundled all-views 出力"]
     ADR_20260502_01["ADR-20260502-01<br/>CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして..."]
     ADR_20260506_05["ADR-20260506-05<br/>translate adapter で usecase → resource バインディング ..."]
+    ADR_20260714_03["ADR-20260714-03<br/>--from wrangler translate adapter と「adapter を採る基準」"]
   end
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   ADR_20260401_02["ADR-20260401-02<br/>[renderer] 全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -45,6 +46,7 @@ flowchart TD
   class ADR_20260430_02 accepted
   class ADR_20260502_01 accepted
   class ADR_20260506_05 accepted
+  class ADR_20260714_03 accepted
   class ADR_20260317_02 ghost
   class ADR_20260401_02 ghost
 ```

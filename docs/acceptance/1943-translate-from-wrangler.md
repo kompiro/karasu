@@ -3,7 +3,7 @@
 - **日付**: 2026-07-14
 - **Issue**: #1943（設計方向 #1935 / design doc #1941）
 - **PR**: feat/translate-from-wrangler
-- **設計**: [docs/design/wrangler-translate-adapter.md](../design/wrangler-translate-adapter.md)
+- **設計**: [ADR-20260714-03](../adr/20260714-03-wrangler-translate-adapter.md)（元 Design Doc `wrangler-translate-adapter.md` を昇格・集約）
 - **Related TPLs**: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（生成 `.krs` が round-trip する）, [TPL-20260510-16](../test-perspectives/TPL-20260510-16-convenience-vs-principled-api.md)（round-trip は parser 経由の principled API で検証）, [TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)（id 同一性 — binding 名から id を導出）
 - **対象**: `packages/core/src/translate/wrangler.ts` / `wrangler.test.ts`、`packages/core/src/translate/translate.ts`（format 登録・self-wrap）、`packages/cli/src/index.ts`（`--from wrangler`）、`packages/cli/src/translate/translate.e2e.test.ts`、`packages/app/src/components/TranslateDialog.tsx`、`packages/i18n`（format label）
 
