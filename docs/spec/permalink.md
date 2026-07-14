@@ -79,8 +79,9 @@ throws.
 
 An anchor pins an element by `id`. **Renaming the element's `id` breaks the
 anchor** (a stale `#krs-…` falls back to the view root). This is inherent to
-addressing by stable identity; validating ADR → karasu permalinks against
-renames is tracked separately (the `adr:check-assumptions` extension, #1830).
+addressing by stable identity; ADR → karasu permalinks are validated against
+renames by `pnpm adr:check-permalinks` (the `@kompiro/adr-tools` `krs` kind),
+which fails CI when a `permalink:` anchor no longer resolves (#1830).
 Do not work around it by anchoring on `label` — labels are display/i18n strings
 and are explicitly not identity.
 

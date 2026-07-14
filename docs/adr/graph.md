@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-251 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+254 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -10,6 +10,7 @@ flowchart TD
     ADR_20260502_02["ADR-20260502-02<br/>ADR ツール用語彙の adr.config.json への外部化"]
     ADR_20260513_01["ADR-20260513-01<br/>TPL ツールを `@kompiro/tpl-tools` として外出しし、karasu から..."]
     ADR_20260702_01["ADR-20260702-01<br/>ADR から karasu 構造へリンクする permalink 規約（taka 短縮 + 必..."]
+    ADR_20260713_02["ADR-20260713-02<br/>ADR→karasu permalink の検証は adr-tools の krs kind ..."]
   end
   subgraph app-ui["app-ui"]
     ADR_20260323_02["ADR-20260323-02<br/>ツールバーボタンはアイコン+テキストラベル必須"]
@@ -118,6 +119,7 @@ flowchart TD
     ADR_20260420_03["ADR-20260420-03<br/>i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
     ADR_20260422_02["ADR-20260422-02<br/>Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統"]
     ADR_20260616_01["ADR-20260616-01<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
+    ADR_20260714_02["ADR-20260714-02<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
   end
   subgraph cli["cli"]
     ADR_20260328_04["ADR-20260328-04<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
@@ -167,6 +169,7 @@ flowchart TD
     ADR_20260511_01["ADR-20260511-01<br/>同一ペア間の並列エッジ束ね"]
     ADR_20260610_01["ADR-20260610-01<br/>stroke-style をエッジ線スタイルの正準プロパティとして採用する"]
     ADR_20260613_01["ADR-20260613-01<br/>エッジコンテキストメニューへの authored ラベル表示と data-edge-label..."]
+    ADR_20260714_01["ADR-20260714-01<br/>エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する"]
   end
   subgraph navigation["navigation"]
     ADR_20260330_04["ADR-20260330-04<br/>Permanent Link — `nodePathIndex` と URL hash の 2..."]
@@ -375,6 +378,7 @@ flowchart TD
   ADR_20260615_05 --> ADR_20260615_01
   ADR_20260616_01 --> ADR_20260615_05
   ADR_20260713_01 --> ADR_20260616_06
+  ADR_20260714_01 --> ADR_20260411_05
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260508_01 -.supersedes.-> ADR_20260506_01
@@ -636,17 +640,20 @@ flowchart TD
   class ADR_20260711_03 accepted
   class ADR_20260712_01 accepted
   class ADR_20260713_01 accepted
+  class ADR_20260713_02 accepted
+  class ADR_20260714_01 accepted
+  class ADR_20260714_02 accepted
 ```
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 6 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 7 ADRs
 - [`app-ui`](graph/app-ui.md) — 39 ADRs
 - [`build`](graph/build.md) — 54 ADRs
-- [`chat-ai`](graph/chat-ai.md) — 9 ADRs
+- [`chat-ai`](graph/chat-ai.md) — 10 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 18 ADRs
-- [`edges`](graph/edges.md) — 14 ADRs
+- [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 10 ADRs
 - [`parser`](graph/parser.md) — 17 ADRs
 - [`project`](graph/project.md) — 8 ADRs

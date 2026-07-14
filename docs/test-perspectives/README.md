@@ -456,3 +456,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260711-01](TPL-20260711-01-entity-carries-no-attributes.md) | `entity` は名前・関連・物理対応のみを受け付け、属性（カラム・型・主キー）を持たせない | parser | #1870 |
 | [TPL-20260711-02](TPL-20260711-02-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-20260711-03, #1859 |
 | [TPL-20260712-01](TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md) | 端点 id を書き換える集約/畳み込み変換は、元 id にキーされた per-要素の装飾（diff state 等）を再導出する（retarget 後も装飾が残ることを assert） | renderer | #1886 |
+| [TPL-20260714-01](TPL-20260714-01-cross-domain-entity-reference-qualified.md) | cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照し、bare id は intra-domain 専用（cross-domain へ勝手に解決しない） | edges | #1911 |
