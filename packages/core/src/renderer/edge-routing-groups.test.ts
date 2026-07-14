@@ -35,10 +35,15 @@ const OWNER = new Map([
   ["Catalog", "catalog"],
 ]);
 
-function layoutOf(krs: string, ownerIndex: Map<string, string>, groupBy?: "team"): LayoutResult {
+function layoutOf(
+  krs: string,
+  ownerIndex: Map<string, string>,
+  groupBy?: "team",
+  collapsedGroups?: ReadonlySet<string>,
+): LayoutResult {
   const parsed = Parser.parse(krs);
   const slice = extractView(parsed.value.systems, []);
-  return layout(slice, { ownerIndex, groupBy });
+  return layout(slice, { ownerIndex, groupBy, collapsedGroups });
 }
 
 /** The group boundary frames in a layout result. */
@@ -441,6 +446,79 @@ organization Org {
     expect(e.waypoints).toHaveLength(2);
     expect(e.fromPoint.y).toBe(from.y + from.height / 2); // untouched mid-edge port
     expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("fans out incoming edges too — a node's entry anchors don't overlap outgoing stubs (#1927 entry-side)", () => {
+    // Checkout both sends to platform (order placed → Notifications) and receives
+    // from it (route ← Gateway). Collapsing `platform` re-targets both onto the
+    // stub, so `route` now *enters* Checkout on its right gutter alongside its
+    // outgoing edges — without entry-side fan-out the incoming stub sits on top of
+    // an outgoing stub at Checkout's mid-edge port.
+    const BIDIR = `
+system Shop {
+  service Checkout { label "Checkout" }
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+  service Gateway { label "API Gateway" }
+  service Notifications { label "Notifications" }
+  database OrderDB { label "Order DB" }
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> OrderDB "persist"
+  Checkout -> Notifications "order placed"
+}
+organization Org {
+  team "payments" { label "Payments" owns Checkout owns Billing }
+  team "catalog" { label "Catalog" owns Search owns Inventory }
+  team "platform" { label "Platform" owns Gateway owns Notifications }
+}`;
+    const owner = new Map([
+      ["Checkout", "payments"],
+      ["Billing", "payments"],
+      ["Search", "catalog"],
+      ["Inventory", "catalog"],
+      ["Gateway", "platform"],
+      ["Notifications", "platform"],
+    ]);
+    const res = layoutOf(BIDIR, owner, "team", new Set(["platform"]));
+    // No two distinct edges share a collinear horizontal (stub) segment anywhere,
+    // and the vertical corridors and penetration guard still hold with a collapse.
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
+    // Find a node that carries BOTH an incoming and an outgoing gutter edge on
+    // the same side — that is the entry-vs-exit collision this pass fixes — and
+    // assert their anchors are at distinct y (trunk shared-entries excluded, since
+    // those legitimately merge at one point).
+    let sawMixedNode = false;
+    for (const n of res.nodes.values()) {
+      const attachYs: number[] = [];
+      let hasIn = false;
+      let hasOut = false;
+      for (const e of res.edges) {
+        if (e.ghost || e.cyclic || !e.waypoints || e.waypoints.length !== 2) continue;
+        if (e.waypoints[0].x !== e.waypoints[1].x) continue;
+        const cx = e.waypoints[0].x;
+        if (!(cx >= n.x + n.width || cx <= n.x)) continue; // gutter side of n
+        if (e.from === n.id) {
+          attachYs.push(e.fromPoint.y);
+          hasOut = true;
+        }
+        if (e.to === n.id && !e.trunkId) {
+          attachYs.push(e.toPoint.y);
+          hasIn = true;
+        }
+      }
+      // Distinct anchors ⇒ no two stubs collinear at this node's edge.
+      expect(new Set(attachYs).size).toBe(attachYs.length);
+      if (hasIn && hasOut) sawMixedNode = true;
+    }
+    // Guard that the collapsed fixture actually exercises the entry-vs-exit case.
+    expect(sawMixedNode).toBe(true);
   });
 
   it("keeps single-edge lanes distinct from trunk lanes — no lane-x collision (#1927, AC-3)", () => {

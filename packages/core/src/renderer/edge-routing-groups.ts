@@ -377,25 +377,41 @@ function assignGutterLanes(edges: LayoutEdge[], laneX: (lane: number) => number)
 }
 
 /**
- * Fan out the source anchors of gutter corridors that leave the same node on the
- * same side (Issue #1927, source-exit follow-up). `routeGroupedEdges` /
- * `aggregateGroupTrunks` attach *every* gutter edge to the node's mid-edge port
- * (`from.y + height/2`), so two edges leaving one node share that point and their
- * horizontal stubs run **collinearly** until each peels off to its own lane — near
- * the source they render as one line, not N. This pass distributes those edges
- * across the node's edge height so each gets its own stub from the source onward.
- *
- * Runs *after* `distributeGutterLanes` so the lane x's are final. Only groups with
- * ≥ 2 edges on one side move; a lone edge keeps its mid-edge port (no churn). Ports
- * are ordered by lane x so the outermost corridor takes the lowest anchor — the fan
- * stays nested, minimising stub/vertical crossings (crossings are right-angle and
- * harmless; only penetration is a hard fail).
- *
- * Penetration-safe: each restubbed polyline is verified against the obstacle set and
- * the move is applied only if it stays clear, else the edge keeps its mid-edge port
- * (never worse — AC-1 preserved).
+ * One attachment of a gutter corridor to a node's edge: the source end of an
+ * outgoing edge, the target end of an incoming edge, or — for a trunk — the one
+ * shared target entry of all its siblings (moved together, staying merged).
  */
-export function fanOutGutterSources(
+interface GutterAttach {
+  edges: LayoutEdge[];
+  /** Which end of each edge attaches here. */
+  end: "source" | "target";
+  /** Corridor far-end y — orders the fan so it nests (fewest crossings). */
+  sortY: number;
+}
+
+/**
+ * Fan out the anchors of gutter corridors that touch the same node on the same
+ * side (Issue #1927). `routeGroupedEdges` / `aggregateGroupTrunks` attach *every*
+ * gutter edge to the node's mid-edge port (`y + height/2`), so two edges leaving
+ * **or entering** one node on one side share that point and their horizontal stubs
+ * run **collinearly** — near the node they render as one line, not N. This
+ * distributes every attachment on a node/side across the node's edge height so each
+ * edge gets its own stub.
+ *
+ * Trunk siblings (same `trunkId`) share ONE target entry by design (the P2c-B
+ * merge) — they count as a single attachment and move together, staying merged.
+ *
+ * Runs *after* `distributeGutterLanes` so the lane x's are final. Only a node/side
+ * with >= 2 attachments moves; a lone one keeps its mid-edge port (no churn).
+ * Attachments are ordered by corridor far-end y so the fan nests, minimising
+ * stub/vertical crossings (crossings are right-angle and harmless; only penetration
+ * is a hard fail).
+ *
+ * Penetration-safe: each restubbed route is verified against the obstacle set and a
+ * move is applied only if every edge in the attachment stays clear, else the anchor
+ * is left at mid-edge (never worse — AC-1 preserved).
+ */
+export function fanOutGutterPorts(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
@@ -404,39 +420,92 @@ export function fanOutGutterSources(
   if (nodes.length === 0) return;
   const frameOfNode = buildFrameOfNode(layoutNodes, frames);
 
-  // Group gutter corridors by (source node, gutter side).
-  const groups = new Map<string, LayoutEdge[]>();
+  const sideOf = (corridorX: number, node: LayoutNode): "left" | "right" =>
+    corridorX >= node.x + node.width ? "right" : "left";
+
+  // Collect attachments per (node, side). Trunk target-entries are merged per
+  // `trunkId` so all siblings share one slot (and one moved entry point).
+  const byNodeSide = new Map<string, GutterAttach[]>();
+  const trunkSlot = new Map<string, GutterAttach>();
+  const push = (nodeId: string, side: string, a: GutterAttach) => {
+    const key = `${nodeId} ${side}`;
+    const list = byNodeSide.get(key);
+    if (list) list.push(a);
+    else byNodeSide.set(key, [a]);
+  };
+
   for (const e of layoutEdges) {
     if (e.ghost || e.cyclic) continue;
     if (!isVerticalGutterRoute(e)) continue;
     const from = layoutNodes.get(e.from);
-    if (!from) continue;
-    const side = e.waypoints![0].x >= from.x + from.width ? "right" : "left";
-    const key = `${e.from} ${side}`;
-    const list = groups.get(key);
-    if (list) list.push(e);
-    else groups.set(key, [e]);
+    const to = layoutNodes.get(e.to);
+    if (!from || !to) continue;
+    const corridorX = e.waypoints![0].x;
+    // Source end: corridor leaves `from` toward its target y (waypoints[1].y).
+    push(e.from, sideOf(corridorX, from), { edges: [e], end: "source", sortY: e.waypoints![1].y });
+    // Target end: corridor enters `to` coming from its source y (waypoints[0].y).
+    if (e.trunkId) {
+      const tk = `${e.to} ${sideOf(corridorX, to)} ${e.trunkId}`;
+      const slot = trunkSlot.get(tk);
+      if (slot) slot.edges.push(e);
+      else {
+        const a: GutterAttach = { edges: [e], end: "target", sortY: e.waypoints![0].y };
+        trunkSlot.set(tk, a);
+        push(e.to, sideOf(corridorX, to), a);
+      }
+    } else {
+      push(e.to, sideOf(corridorX, to), { edges: [e], end: "target", sortY: e.waypoints![0].y });
+    }
   }
 
-  for (const edges of groups.values()) {
-    if (edges.length < 2) continue;
-    const from = layoutNodes.get(edges[0].from)!;
-    const side = edges[0].waypoints![0].x >= from.x + from.width ? "right" : "left";
-    const portX = side === "right" ? from.x + from.width : from.x;
-    // Outermost lane → lowest anchor: keeps the fan nested. Deterministic.
-    edges.sort(
-      (a, b) => a.waypoints![0].x - b.waypoints![0].x || (a.to < b.to ? -1 : a.to > b.to ? 1 : 0),
+  for (const [key, attaches] of byNodeSide) {
+    if (attaches.length < 2) continue;
+    const sep = key.indexOf(" ");
+    const node = layoutNodes.get(key.slice(0, sep));
+    if (!node) continue;
+    const side = key.slice(sep + 1);
+    const portX = side === "right" ? node.x + node.width : node.x;
+    // Nest the fan by corridor far-end y (deterministic tie-break on edge id).
+    attaches.sort(
+      (a, b) =>
+        a.sortY - b.sortY ||
+        (a.edges[0].from < b.edges[0].from
+          ? -1
+          : a.edges[0].from > b.edges[0].from
+            ? 1
+            : a.edges[0].to < b.edges[0].to
+              ? -1
+              : a.edges[0].to > b.edges[0].to
+                ? 1
+                : 0),
     );
-    const n = edges.length;
-    edges.forEach((e, i) => {
-      const y = from.y + (from.height * (i + 1)) / (n + 1);
-      const staggered: Point = { x: portX, y };
-      const elbow: Point = { x: e.waypoints![0].x, y };
-      const obstacles = obstaclesFor(e, nodes, frames, frameOfNode);
-      // Apply only if the restubbed route stays obstacle-free (never worse).
-      if (polylineClearOf([staggered, elbow, e.waypoints![1], e.toPoint], obstacles)) {
-        e.fromPoint = staggered;
-        e.waypoints = [elbow, e.waypoints![1]];
+    const n = attaches.length;
+    attaches.forEach((a, i) => {
+      const y = node.y + (node.height * (i + 1)) / (n + 1);
+      const anchor: Point = { x: portX, y };
+      // Restub every edge in the attachment, verify all clear, then apply
+      // atomically (a trunk moves all its siblings' shared entry together).
+      const moved = a.edges.map((e) => {
+        const wps = [...e.waypoints!];
+        if (a.end === "source") {
+          wps[0] = { x: wps[0].x, y };
+          return { e, fromPoint: anchor, toPoint: e.toPoint, waypoints: wps };
+        }
+        wps[wps.length - 1] = { x: wps[wps.length - 1].x, y };
+        return { e, fromPoint: e.fromPoint, toPoint: anchor, waypoints: wps };
+      });
+      const allClear = moved.every((m) =>
+        polylineClearOf(
+          [m.fromPoint, ...m.waypoints, m.toPoint],
+          obstaclesFor(m.e, nodes, frames, frameOfNode),
+        ),
+      );
+      if (allClear) {
+        for (const m of moved) {
+          m.e.fromPoint = m.fromPoint;
+          m.e.toPoint = m.toPoint;
+          m.e.waypoints = m.waypoints;
+        }
       }
     });
   }

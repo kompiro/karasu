@@ -54,7 +54,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 
 対処は 2 段:
 - **縦**: 衝突する回廊に区間分割（interval partitioning）で別々のレーン x を割り当てる（`distributeGutterLanes`）。既存のレーン割り当て（トランクレーン P2c-B / チャネルレーン）と x が衝突しないよう採番を協調させる。
-- **横（source fan-out）**: 同一ノード・同一辺から出るガターエッジのアンカー y を辺の高さに沿って分散させ、各スタブを独立させる（`fanOutGutterSources`）。penetration-safe に verify し、ダメなら中点ポートに戻す。
+- **横（port fan-out）**: 同一ノード・同一辺に付くガターエッジのアンカー y を辺の高さに沿って分散させ、各スタブを独立させる（`fanOutGutterPorts`）。**出る辺（source）だけでなく入る辺（target）も同じ辺に集まれば衝突する**（例: グループ collapse で入出両方が同じ側に来る）ので、source/target を**まとめて**分散させる。集約トランクの共有エントリ（同一 `trunkId`）は 1 スロットとして扱い、兄弟をまとめて動かして merge を保つ。penetration-safe に verify し、ダメなら中点ポートに戻す。
 
 この観点は [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md)（ティア分割で中間カードを貫通しない）を **2 点で拡張**する:
 

@@ -20,7 +20,7 @@ import {
   routeGroupedEdges,
   aggregateGroupTrunks,
   distributeGutterLanes,
-  fanOutGutterSources,
+  fanOutGutterPorts,
 } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
@@ -1285,9 +1285,9 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     // Give the remaining non-trunked gutter corridors distinct lanes so two
     // single-incoming edges no longer share a collinear vertical segment (#1927).
     distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
-    // Fan out the source anchors of edges leaving one node on the same side, so
-    // their horizontal stubs no longer overlap into one line at the source (#1927).
-    fanOutGutterSources(layoutNodes, layoutEdges, groupFrames);
+    // Fan out the anchors of edges leaving *or entering* one node on the same
+    // side, so their horizontal stubs no longer overlap into one line (#1927).
+    fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames);
   } else {
     routeOrthogonalEdges(layoutNodes, layoutEdges);
   }
