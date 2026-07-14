@@ -15,7 +15,7 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 
 ### AC-1: engine-neutral な論理 infra + 物理 store（技術はラベルに漏らさない）
 
-> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-1943-01`、`packages/core/src/translate/wrangler.test.ts`
+> ✅ Automated by `packages/core/src/translate/wrangler.test.ts` (suite-wide)
 
 - [x] D1 → `database` / R2 → `storage` / Queues（producers）→ `queue` に落ちる
 - [x] 具体 Cloudflare 技術は `deploy` の `store { type "Cloudflare ..." }` に置かれ、論理 `label` には `"Cloudflare ..."` が出ない
@@ -24,7 +24,7 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 
 ### AC-2: 既存語彙へのマッピング（新構文なし）
 
-> ✅ Automated — `translate.e2e.test.ts` › `AT-1943-02` / `AT-1943-03`、`wrangler.test.ts`
+> ✅ Automated by `packages/core/src/translate/wrangler.test.ts` (suite-wide)
 
 - [x] Vectorize → `database [index]`（既存 `[index]` role を再利用）
 - [x] KV → 素の `database`（`[cache]` は付けない — notation-watch #1816）
@@ -35,14 +35,14 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 
 ### AC-3: 未知 binding の安全な degrade（推測しない）
 
-> ✅ Automated — `translate.e2e.test.ts` › `AT-1943-05`、`wrangler.test.ts`
+> ✅ Automated by `packages/cli/src/translate/translate.e2e.test.ts` (suite-wide)
 
 - [x] 未対応の binding 種別（例: `hyperdrive`）はノードを出さず、`Warning: Unsupported wrangler binding "..."` を stderr に出す（silent drop しない）
 - [x] 同じファイル内の対応済み binding はそのまま出力される
 
 ### AC-4: CLI / system 名 / round-trip
 
-> ✅ Automated — `translate.e2e.test.ts` › `AT-1943-04`、`translate.test.ts`、`wrangler.test.ts`
+> ✅ Automated by `packages/core/src/translate/translate.test.ts` (suite-wide)
 
 - [x] `--from wrangler` が受理される（不正値は `--from must be "compose", "k8s", "openapi", "db", or "wrangler"`）
 - [x] `--system <Name>` は wrangler が自己 wrap した `system` 名を override し、warning を出さない
@@ -53,8 +53,8 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 
 > ✅ Manual — App の Translate ダイアログで "Cloudflare wrangler.toml" を選択
 
-- [] format ドロップダウンに "Cloudflare wrangler.toml" が出る（en/ja）
-- [] wrangler 選択時は system 名フィールドが表示され、mapFile / granularity / bindings は隠れる
+- [ ] format ドロップダウンに "Cloudflare wrangler.toml" が出る（en/ja）
+- [ ] wrangler 選択時は system 名フィールドが表示され、mapFile / granularity / bindings は隠れる
 
 ## 手動確認
 
