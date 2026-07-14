@@ -348,10 +348,10 @@ P2c-A（#1894）/ P2c-B（#1901）マージ後の最終スライス。直交ル�
 
 #### 既知の制限（scope）
 
-marks は **単一 system の Group-by ビューの直角（軸整列）交差**のみを対象とする。以下は本 P2c の範囲外（silent にせずテストで境界を固定する）:
+marks は **単一 system の Group-by ビューの直角（軸整列）交差**のみを対象とする（#1926 時点）。以下は #1926 の範囲外だったが、**[#1939](https://github.com/kompiro/karasu/issues/1939) で拡張する**（下記「P2c カバレッジ拡張（#1939）」節）:
 
-- **斜めエッジの交差**: P2c-A が「素通り可能な帯内エッジ」を直線のまま残すため、稀に斜めセグメントが生じ、その交差は hop 対象外（hop アークは直角前提）。全 grouped エッジの直交化は P2c-A 側の別スライスに委ねる。
-- **multi-system の Group-by ビュー**（`layoutMultipleSystems`）: そもそも直線エッジで orthogonal routing を使わないため marks を付けない（本 doc 「P2c ルーティングの multi-system への適用」節と整合）。
+- **斜めエッジの交差**: P2c-A が「素通り可能な帯内エッジ」を直線のまま残すため、稀に斜めセグメントが生じ、#1926 では hop 対象外だった。→ #1939 Part 1（案C）で marks 側を一般線分交差に拡張して被覆する。
+- **multi-system の Group-by ビュー**（`layoutMultipleSystems`）: #1926 では直線エッジのまま marks なし。→ #1939 Part 2 で grouped パイプラインを適用する。
 
 ### 正しさの柵
 
@@ -375,6 +375,65 @@ marks は **単一 system の Group-by ビューの直角（軸整列）交差**
 - ~~**hop アークの向き**~~ — #1926（P2c-C）で確定: **横 over 縦**（縦＝ガター回廊 / トランク spine を直通線に保ち、横 stub 側にアーク）。
 - ~~**hop クラスタ化の近接閾値**~~ — #1926（P2c-C）で確定: `HOP_CLUSTER_GAP`（hop 半径由来の定数）以内の同一横線上の交差を 1 幅広アークに統合。座標由来で決定論。
 - **エクスポート面（Show All Layers / drill-down）への波及** — #1879（PR #1888）が grouping frames をエクスポートに通した follow-up。P2c ルーティング/marks をエクスポートに通すかは #1879 マージ後に別途判断（本 P2c の範囲外）。**未解決（本 P2c の範囲外）。**
+
+## P2c カバレッジ拡張（#1939）
+
+#1926（P2c-C）で marks は **単一 system の Group-by ビューの直角交差**のみを対象とした。`#1926` レビューで 2 つの scope 境界（斜めエッジ交差・multi-system）を「silent にせず explicit＋テスト固定」にし、拡張は本 Issue #1939 に切り出した。ここでその 2 gap を閉じる設計を確定する。
+
+### Related TPLs
+
+- [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測る／交差は「全交差 marked」を assert）。本拡張の柵はこれを継承する。新規 proactive TPL は不要（本拡張は既存原則の適用範囲を広げるだけで、新しい原則を導入しない）。
+
+### Part 1 — 斜め交差の被覆（案C: marks 側で対応、routing 不変）
+
+**現状の gap**: `routeGroupedEdges` は「素通り可能な帯内エッジ」を直線のまま残す（`edge-routing-groups.ts` の `segmentCrossesAnyRect` が false のとき `continue`）。この直線は斜めになりうる。`computeCrossingMarks` は **H×V の軸整列交差**しか検出しないため、斜めセグメントが別エッジを横切っても hop が付かない → 「交差か接続か」が曖昧なまま残る。
+
+**検討した選択肢**:
+
+| 案 | 内容 | 判定 |
+| --- | --- | --- |
+| **A: clear 帯内エッジを直交化** | `routeGroupedEdges` を変更し clear エッジに L 字を付与 | ❌ snapshot churn 大／L が塞がれると直線に fallback（保証 soft）／単純隣接が L 字化して不細工化／新たな交差・貫通を生みうる（clearance 再検証要）／PR #1930 と routing 衝突 |
+| **B: 交差する clear エッジのみ直交化** | 2-pass で斜め交差エッジだけ直交化 | ❌ 直交化が新交差を生む反復・非決定的になりがち・複雑 |
+| **C: marks 側で斜めも印（採用）** | `computeCrossingMarks` を一般線分交差に拡張し、跨ぐ線に沿った向きの hop を描く | ✅ routing 不変（churn ゼロ・snapshot 安定・#1930 と独立）／目的「全交差 marked」を最小コストで達成 |
+
+**採用 = 案C**（見た目の直角統一が目的ではなく、交差の「非接続」明示が目的。実図は marks 自体が稀なので routing churn の対効果が低い）。
+
+**設計**:
+
+- `computeCrossingMarks` の内部セグメントモデルを、軸整列専用（`HSeg{x0,x1,y}` / `VSeg{y0,y1,x}`）から**一般線分**（`{a: Point, b: Point, edge: number}`）に一般化する。交差判定は標準の線分交差式で、**両線分の strict-interior**（端点でない）で交わるときのみ hop（端点合流＝接続は除外、既存規約の一般化）。
+- `HopMark` に**向き**（単位ベクトルまたは角度）を追加する。renderer はアークを線分方向に沿って回す（SVG `A` の x-axis-rotation、または path 全体を `transform="rotate(...)"`）。現行の「横 over 縦」は水平線（角度 0）の特殊ケースとして一致し、**既存の軸整列 snapshot は不変**。
+- **どちらの線に hop を乗せるか**（跨ぐ側）: 決定論規則。第一候補 = **より水平に近い線**に乗せる（|dx|≥|dy| の線）。同点は edge index 小で決定。縦優先の spine 直通性（P2c-C の「縦は直通線」）と整合。
+- クラスタ化は「同一セグメント上でセグメント方向パラメータ t が近接する交差を 1 幅広 hop に統合」へ一般化（現行の同一横線 x 近接の一般化）。座標由来で決定論。
+- 軸整列交差は一般ロジックの特殊ケースとして同一結果（回帰なし）。既存の #1926 テストはそのまま通ることを回帰柵にする。
+
+**柵**: 斜め交差も含め「全 strict-interior 交差が hop で覆われる」を assert（TPL-20260711-02）。既存軸整列テストの結果不変。
+
+### Part 2 — multi-system の Group-by ビューへの P2c 適用
+
+**現状の gap**: `layoutMultipleSystems` は各 system を自前の枠に置き（枠はネスト: system 枠 ⊃ per-(system,team) group 枠、#1884）、regular edge を `computeEdgePoints`（中心間直線）で描く。直交ルーティングもトランクも marks も無い。
+
+**方針**: 単一 system の grouped branch と同型に、**最終ジオメトリ確定後**に `routeGroupedEdges` → `aggregateGroupTrunks` → `computeCrossingMarks` を multi-system 全体に対して走らせ、`LayoutResult.crossingMarks` に格納する。`groupBy` 有効時のみ gate（ungrouped multi-system は byte-identical＝AC-5）。
+
+- **障害物集合** = 全ノード ∪ 全 group 枠 ∪ **全 system 枠**（他 system 枠の内部貫通も禁止）。
+- **ガター** = canvas 端（全 system 枠の外側）。cross-system エッジ（system A→B）はガター経由で直交化。
+- **トランク** = 共有 target ごと。multi-system で system をまたぐ共有 infra は稀。まず「同一 system 内の共有 target」を対象にし、system またぎトランクは実装時に品質を見て判断（段階導入）。
+- marks 座標は `normalizeCoordinates` 後の最終座標から算出（決定論）。
+
+**未解決の問い（実装 PR で確定）**:
+
+- **cross-system エッジの routing 品質** — ガター経由の直交化で読みやすくなるか、直線のままが良い箇所があるか。実装で計測（貫通ゼロ + 交差 marked）。
+- **トランクの system またぎ可否** — 段階導入（まず system 内共有のみ）。
+
+**柵**: multi-system で **貫通数 == 0** かつ **全交差 marked**（TPL-20260711-02）。ungrouped multi-system snapshot が byte-identical（AC-5）。退化ケース（system 1 つ＝単一 system パス／team 未使用）で不変。
+
+### スライス分割
+
+| スライス | 内容 | 依存 |
+| --- | --- | --- |
+| **#1939-A** | 案C: `computeCrossingMarks` を一般線分交差に拡張（斜め対応・hop 向き付与） | routing 不変なので #1930 と独立・並行可 |
+| **#1939-B** | multi-system に grouped パイプライン適用（route/trunk/marks） | Part A の一般化 marks を再利用 |
+
+各 PR に changeset（`@karasu-tools/core` + `karasu` minor）と AT を付す。**#1939-B が `Closes #1939`**。
 
 ## 差分モードの grouping — 除去ノード配置と集約エッジ diff state（#1886）
 

@@ -35,10 +35,15 @@ const OWNER = new Map([
   ["Catalog", "catalog"],
 ]);
 
-function layoutOf(krs: string, ownerIndex: Map<string, string>, groupBy?: "team"): LayoutResult {
+function layoutOf(
+  krs: string,
+  ownerIndex: Map<string, string>,
+  groupBy?: "team",
+  collapsedGroups?: ReadonlySet<string>,
+): LayoutResult {
   const parsed = Parser.parse(krs);
   const slice = extractView(parsed.value.systems, []);
-  return layout(slice, { ownerIndex, groupBy });
+  return layout(slice, { ownerIndex, groupBy, collapsedGroups });
 }
 
 /** The group boundary frames in a layout result. */
@@ -121,6 +126,90 @@ function totalCrossings(res: LayoutResult): number {
   for (let i = 0; i < segs.length; i++) {
     for (let j = i + 1; j < segs.length; j++) {
       if (segmentsCross(segs[i][0], segs[i][1], segs[j][0], segs[j][1])) n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * #1927 metric: count pairs of *distinct* edges whose vertical segments are
+ * collinear (share an x) and whose y-ranges overlap on a sub-segment of positive
+ * length — i.e. two corridors drawn as one indistinguishable line. Must be 0.
+ *
+ * Trunk siblings (same `trunkId`) intentionally share one spine — that is the
+ * aggregation merge (marked by a junction dot in P2c-C), a *connection* not a
+ * false overlap — so they are excluded.
+ */
+function collinearVerticalOverlaps(res: LayoutResult): number {
+  interface VSeg {
+    edge: LayoutEdge;
+    x: number;
+    lo: number;
+    hi: number;
+  }
+  const verticals: VSeg[] = [];
+  for (const e of res.edges) {
+    if (e.ghost || e.cyclic) continue;
+    const pts: Point[] = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i];
+      const q = pts[i + 1];
+      if (p.x === q.x && p.y !== q.y) {
+        verticals.push({ edge: e, x: p.x, lo: Math.min(p.y, q.y), hi: Math.max(p.y, q.y) });
+      }
+    }
+  }
+  let n = 0;
+  for (let i = 0; i < verticals.length; i++) {
+    for (let j = i + 1; j < verticals.length; j++) {
+      const a = verticals[i];
+      const b = verticals[j];
+      if (a.edge === b.edge) continue;
+      // Trunk siblings share one spine by design (aggregation merge, not a defect).
+      if (a.edge.trunkId && a.edge.trunkId === b.edge.trunkId) continue;
+      if (a.x !== b.x) continue;
+      // Positive-length overlap (touching endpoints do not count as overlap).
+      if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 0) n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * #1927 source-exit metric: count pairs of *distinct* edges whose *horizontal*
+ * segments are collinear (share a y) and overlap on a sub-segment of positive
+ * length — e.g. two gutter edges leaving one node on the same mid-edge port, whose
+ * stubs run as one line before branching. Must be 0 after source fan-out. Trunk
+ * siblings share a target-entry stub by design, so they are excluded.
+ */
+function collinearHorizontalOverlaps(res: LayoutResult): number {
+  interface HSeg {
+    edge: LayoutEdge;
+    y: number;
+    lo: number;
+    hi: number;
+  }
+  const horizontals: HSeg[] = [];
+  for (const e of res.edges) {
+    if (e.ghost || e.cyclic) continue;
+    const pts: Point[] = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i];
+      const q = pts[i + 1];
+      if (p.y === q.y && p.x !== q.x) {
+        horizontals.push({ edge: e, y: p.y, lo: Math.min(p.x, q.x), hi: Math.max(p.x, q.x) });
+      }
+    }
+  }
+  let n = 0;
+  for (let i = 0; i < horizontals.length; i++) {
+    for (let j = i + 1; j < horizontals.length; j++) {
+      const a = horizontals[i];
+      const b = horizontals[j];
+      if (a.edge === b.edge) continue;
+      if (a.edge.trunkId && a.edge.trunkId === b.edge.trunkId) continue;
+      if (a.y !== b.y) continue;
+      if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 0) n++;
     }
   }
   return n;
@@ -282,6 +371,217 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
         expect(wp.y).toBeGreaterThanOrEqual(0);
       }
     }
+  });
+
+  it("gives single-incoming gutter edges distinct lanes so no two share a collinear corridor (#1927, AC-1)", () => {
+    // Billing → {Catalog, ShopDB, Stripe} are three non-trunked gutter edges from
+    // one source (each target has only one incoming), so their corridors all start
+    // at Billing's center y and overlap in y-range — collinear if laid on one x.
+    const res = layoutOf(SYS, OWNER, "team");
+    const eCat = edge(res, "Billing", "Catalog");
+    const eDb = edge(res, "Billing", "ShopDB");
+    const eStr = edge(res, "Billing", "Stripe");
+    // None is trunked (each target is single-incoming among gutter routes).
+    for (const e of [eCat, eDb, eStr]) {
+      expect(e.trunkId).toBeUndefined();
+      expect(e.waypoints).toHaveLength(2);
+    }
+    // Each colliding corridor gets its own lane x → three distinct columns.
+    const xs = new Set([eCat.waypoints![0].x, eDb.waypoints![0].x, eStr.waypoints![0].x]);
+    expect(xs.size).toBe(3);
+    // No two distinct edges render a collinear (overlapping) vertical corridor.
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    // AC-1 preserved: still zero node/frame penetrations after laning.
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("fans out the source anchors of edges leaving one node, so their stubs don't overlap (#1927 source-exit)", () => {
+    // Billing → {Catalog, ShopDB, Stripe} all leave Billing on the right gutter.
+    // Without fan-out they share Billing's mid-right port and their horizontal
+    // stubs are collinear (render as one line until they branch).
+    const res = layoutOf(SYS, OWNER, "team");
+    const eCat = edge(res, "Billing", "Catalog");
+    const eDb = edge(res, "Billing", "ShopDB");
+    const eStr = edge(res, "Billing", "Stripe");
+    // Fanned: the three source anchors are now at distinct y (own stub each).
+    const ys = new Set([eCat.fromPoint.y, eDb.fromPoint.y, eStr.fromPoint.y]);
+    expect(ys.size).toBe(3);
+    // The corridor top elbow follows the anchor y (the stub is truly horizontal).
+    for (const e of [eCat, eDb, eStr]) expect(e.waypoints![0].y).toBe(e.fromPoint.y);
+    // Anchors stay on Billing's right edge (same x), inside its height.
+    const from = res.nodes.get("Billing")!;
+    for (const e of [eCat, eDb, eStr]) {
+      expect(e.fromPoint.x).toBe(from.x + from.width);
+      expect(e.fromPoint.y).toBeGreaterThan(from.y);
+      expect(e.fromPoint.y).toBeLessThan(from.y + from.height);
+    }
+    // No two distinct edges share a collinear horizontal (source-stub) segment,
+    // and the vertical corridors and penetration guard still hold.
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("leaves a lone gutter edge on its mid-edge port (no needless fan-out)", () => {
+    // Only Billing → Stripe leaves Billing to the far right on its own here (the
+    // single-source case): the port stays at mid-height, no churn.
+    const oneFar = `
+system Shop {
+  service Billing { label "Billing" }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Catalog { label "Catalog" }
+  service Stripe [external] { label "Stripe" }
+  Billing -> Wallet "debit"
+  Search -> Catalog "read"
+  Billing -> Stripe "authorize"
+}
+organization Org {
+  team "payments" { label "Payments" owns Billing owns Wallet }
+  team "catalog" { label "Catalog" owns Search owns Catalog }
+}`;
+    const res = layoutOf(oneFar, OWNER, "team");
+    const e = edge(res, "Billing", "Stripe");
+    const from = res.nodes.get("Billing")!;
+    expect(e.waypoints).toHaveLength(2);
+    expect(e.fromPoint.y).toBe(from.y + from.height / 2); // untouched mid-edge port
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("fans out incoming edges too — a node's entry anchors don't overlap outgoing stubs (#1927 entry-side)", () => {
+    // Checkout both sends to platform (order placed → Notifications) and receives
+    // from it (route ← Gateway). Collapsing `platform` re-targets both onto the
+    // stub, so `route` now *enters* Checkout on its right gutter alongside its
+    // outgoing edges — without entry-side fan-out the incoming stub sits on top of
+    // an outgoing stub at Checkout's mid-edge port.
+    const BIDIR = `
+system Shop {
+  service Checkout { label "Checkout" }
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+  service Gateway { label "API Gateway" }
+  service Notifications { label "Notifications" }
+  database OrderDB { label "Order DB" }
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> OrderDB "persist"
+  Checkout -> Notifications "order placed"
+}
+organization Org {
+  team "payments" { label "Payments" owns Checkout owns Billing }
+  team "catalog" { label "Catalog" owns Search owns Inventory }
+  team "platform" { label "Platform" owns Gateway owns Notifications }
+}`;
+    const owner = new Map([
+      ["Checkout", "payments"],
+      ["Billing", "payments"],
+      ["Search", "catalog"],
+      ["Inventory", "catalog"],
+      ["Gateway", "platform"],
+      ["Notifications", "platform"],
+    ]);
+    const res = layoutOf(BIDIR, owner, "team", new Set(["platform"]));
+    // No two distinct edges share a collinear horizontal (stub) segment anywhere,
+    // and the vertical corridors and penetration guard still hold with a collapse.
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
+    // Find a node that carries BOTH an incoming and an outgoing gutter edge on
+    // the same side — that is the entry-vs-exit collision this pass fixes — and
+    // assert their anchors are at distinct y (trunk shared-entries excluded, since
+    // those legitimately merge at one point).
+    let sawMixedNode = false;
+    for (const n of res.nodes.values()) {
+      const attachYs: number[] = [];
+      let hasIn = false;
+      let hasOut = false;
+      for (const e of res.edges) {
+        if (e.ghost || e.cyclic || !e.waypoints || e.waypoints.length !== 2) continue;
+        if (e.waypoints[0].x !== e.waypoints[1].x) continue;
+        const cx = e.waypoints[0].x;
+        if (!(cx >= n.x + n.width || cx <= n.x)) continue; // gutter side of n
+        if (e.from === n.id) {
+          attachYs.push(e.fromPoint.y);
+          hasOut = true;
+        }
+        if (e.to === n.id && !e.trunkId) {
+          attachYs.push(e.toPoint.y);
+          hasIn = true;
+        }
+      }
+      // Distinct anchors ⇒ no two stubs collinear at this node's edge.
+      expect(new Set(attachYs).size).toBe(attachYs.length);
+      if (hasIn && hasOut) sawMixedNode = true;
+    }
+    // Guard that the collapsed fixture actually exercises the entry-vs-exit case.
+    expect(sawMixedNode).toBe(true);
+  });
+
+  it("fans out a collapsed stub whose team name contains a space (no id-key mis-parse)", () => {
+    // A team named with a space collapses to `__group_collapsed_<name>__` — an id
+    // that contains a space. Grouping attachments by a delimited string key would
+    // mis-split it and skip the node, leaving its stubs overlapping.
+    const spaced = `
+system Shop {
+  service Checkout { label "Checkout" }
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+  service Gateway { label "API Gateway" }
+  service Notifications { label "Notifications" }
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> Notifications "order placed"
+}
+organization Org {
+  team "payments" { owns Checkout owns Billing }
+  team "catalog" { owns Search owns Inventory }
+  team "Data Platform" { owns Gateway owns Notifications }
+}`;
+    const owner = new Map([
+      ["Checkout", "payments"],
+      ["Billing", "payments"],
+      ["Search", "catalog"],
+      ["Inventory", "catalog"],
+      ["Gateway", "Data Platform"],
+      ["Notifications", "Data Platform"],
+    ]);
+    const res = layoutOf(spaced, owner, "team", new Set(["Data Platform"]));
+    // The collapsed stub (space in its id) still gets its incoming/outgoing stubs
+    // fanned apart — no collinear overlap anywhere.
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("keeps single-edge lanes distinct from trunk lanes — no lane-x collision (#1927, AC-3)", () => {
+    // Adding Wallet → ShopDB makes ShopDB fan-in (Billing + Wallet) → a trunk,
+    // while Billing → {Catalog, Stripe} stay single-incoming gutter edges — so a
+    // non-trunked corridor coexists with a trunk lane.
+    const mixed = SYS.replace(
+      'Billing -> ShopDB "persist"',
+      'Billing -> ShopDB "persist"\n  Wallet -> ShopDB "persist"',
+    );
+    const res = layoutOf(mixed, OWNER, "team");
+    expect(edge(res, "Billing", "ShopDB").trunkId).toBe("ShopDB"); // trunked
+    const bStripe = edge(res, "Billing", "Stripe");
+    // Billing → Stripe is a single-incoming gutter edge (not trunked).
+    expect(bStripe.trunkId).toBeUndefined();
+    expect(bStripe.waypoints).toHaveLength(2);
+    const singleLaneX = bStripe.waypoints![0].x;
+    // Collect every trunk lane x; the single-edge lane must not collide with any.
+    const trunkXs = new Set(res.edges.filter((e) => e.trunkId).map((e) => e.waypoints![0].x));
+    expect(trunkXs.size).toBeGreaterThanOrEqual(1);
+    expect(trunkXs.has(singleLaneX)).toBe(false);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
   });
 
   it("does not trunk a target with only one incoming edge", () => {

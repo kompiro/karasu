@@ -16,7 +16,12 @@ import {
   wrapLayerIntoRows,
 } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
-import { routeGroupedEdges, aggregateGroupTrunks } from "./edge-routing-groups.js";
+import {
+  routeGroupedEdges,
+  aggregateGroupTrunks,
+  distributeGutterLanes,
+  fanOutGutterPorts,
+} from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
@@ -1446,6 +1451,12 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     // Merge edges sharing an infra/external target onto one trunk lane per
     // target so distinct targets' spines no longer overlap (#1859 P2c-B).
     aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames);
+    // Give the remaining non-trunked gutter corridors distinct lanes so two
+    // single-incoming edges no longer share a collinear vertical segment (#1927).
+    distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
+    // Fan out the anchors of edges leaving *or entering* one node on the same
+    // side, so their horizontal stubs no longer overlap into one line (#1927).
+    fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames);
   } else {
     // In-place expansion (#1921) keeps the band layout but routes edges with the
     // plain orthogonal router: a single expansion frame's own domains are the
