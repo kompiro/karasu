@@ -91,13 +91,23 @@ permalink:
 | system | [図を開く](https://taka.kompiro.dev/TkrZQG) | `examples/payments/system.krs` |
 ```
 
-### 検証（#1830 / adr-tools へ申し送り）
+### 検証（`pnpm adr:check-permalinks`）
 
-`permalink:` の検証（必須 `source` の `.krs` が実在するか・`short` が解決するか）と
-本文サマリ生成は [#1830](https://github.com/kompiro/karasu/issues/1830) /
-`@kompiro/adr-tools` に委ねる。現状の `adr:validate` はまだ `permalink:` を検証
-しないため、当面は手書きで規約に従う（スキーマ未対応の段階で実 ADR に貼ると検証が
-付かない点に留意）。
+`permalink:` の検証は `@kompiro/adr-tools`（`>=0.0.7`）の **`krs` kind** が担う
+（`adr.config.json` の `"permalink": { "kind": "krs" }`、[#1830](https://github.com/kompiro/karasu/issues/1830) /
+[kompiro/adr-tools#17](https://github.com/kompiro/adr-tools/issues/17)）。`pnpm adr:check-permalinks`
+が各エントリについて次を検査し、破れていれば CI を落とす:
+
+- **`source` 必須**（`short` 単独は不可）・**`source` の `.krs` 実在**。
+- **deep anchor の解決** — `source` に `#krs-<view>-<id>` があれば、adr-tools が
+  optional peer の `@karasu-tools/core` を lazy import して `.krs` をレンダーし、
+  emit されるアンカー集合に含まれるか検証（rename / 削除で dangling した anchor を検出）。
+- **`view` 妥当性**（任意）・**`short` のオフライン形式検査**（http(s) 形か・`#s=`
+  fragment でないか。ネットワーク解決はしない）。
+
+resolver は built `@karasu-tools/core` を要するため、CI では **`Build (core)` の後**に
+実行する（ci.yml の Check job）。本文サマリ表の生成はまだ未実装で adr-tools 側の
+follow-up。当面サマリは手書きしてよい。
 
 ## 編集後のチェック
 

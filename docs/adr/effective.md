@@ -14,6 +14,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260502-02](20260502-02-adr-config-externalization.md) — ADR ツール用語彙の adr.config.json への外部化
 - [ADR-20260513-01](20260513-01-tpl-tools-extraction.md) — TPL ツールを `@kompiro/tpl-tools` として外出しし、karasu からは外部 package 経由で参照する
 - [ADR-20260702-01](20260702-01-adr-permalink-convention.md) — ADR から karasu 構造へリンクする permalink 規約（taka 短縮 + 必須 source）
+- [ADR-20260713-02](20260713-02-adr-permalink-validation.md) — ADR→karasu permalink の検証は adr-tools の krs kind で行い karasu は config で adopt する
 
 ## app-ui
 

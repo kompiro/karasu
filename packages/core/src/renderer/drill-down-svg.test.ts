@@ -748,6 +748,32 @@ system EC {
     expect(result.hasContent).toBe(false);
     expect(result.svg).not.toContain('data-node-id="Order"');
   });
+
+  it("renders a cross-domain foreign entity as a muted ghost (#1911)", () => {
+    const krsFile = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        Order -> Customers.Customer "placed by"
+      }
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`).value;
+    const result = renderEntityView(krsFile, ["OrderService", "Ordering"]);
+    expect(result.hasContent).toBe(true);
+    // The foreign entity is drawn (keyed by its qualified id) …
+    expect(result.svg).toContain('data-node-id="Customers.Customer"');
+    // … inside the muted ghost group (opacity driven by layoutNode.ghost, not a
+    // tag/style lookup — the approach rejected in PR 2a review).
+    expect(result.svg).toContain('class="ghost-nodes" opacity="0.3"');
+  });
 });
 
 describe("buildAllViewsSvg", () => {
