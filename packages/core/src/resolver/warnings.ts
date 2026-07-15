@@ -566,11 +566,7 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
 
     for (const entry of agg.values()) {
       const mode =
-        entry.hasWrite && entry.hasRead
-          ? "readwrite"
-          : entry.hasWrite
-            ? "write"
-            : "read";
+        entry.hasWrite && entry.hasRead ? "readwrite" : entry.hasWrite ? "write" : "read";
       warnings.push({
         kind: "cross-domain-store-access",
         params: {
