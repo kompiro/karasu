@@ -3,7 +3,7 @@
 - **日付**: 2026-07-15
 - **Issue**: #1955（epic #1817 comprehension、前段 #1815 / #1923）
 - **PR**: feat/expand-all-services
-- **設計**: [expand-all-services-in-place.md](../design/expand-all-services-in-place.md)（→ ADR 昇格予定） / [ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)
+- **設計**: [ADR-20260715-02](../adr/20260715-02-expand-all-services-in-place.md)（overload 決定 + 2 クリック tradeoff） / [ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)
 - **Related TPLs**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（user-facing surface の docs 同期）, [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（軸の有無で駆動し `groupBy` に分岐しない）, [TPL-20260516-01](../test-perspectives/TPL-20260516-01-control-a11y-contract-survives-migration.md)（コントロールの a11y 契約維持）
 - **対象**: `packages/app/src/hooks/useSystemView.ts`、`docs/tools/app.md` / `app.ja.md`
 
