@@ -33,8 +33,13 @@ describe("buildSharePage", () => {
     expect(res.body).toContain(`<meta property="og:url" content="${ORIGIN}/s?s=${s}">`);
     expect(res.body).toContain('<meta property="og:image:type" content="image/png">');
     expect(res.body).toContain('<meta name="twitter:card" content="summary_large_image">');
-    // Human visitors are bounced back to the unchanged #s= restore path.
-    expect(res.body).toContain(`location.replace("${ORIGIN}/#s=${s}")`);
+    // Human visitors are bounced to the SPA. The script builds the target
+    // client-side so it can carry a repo-backed deep anchor (#krs-…) from
+    // location.hash into a ?krs= query (#1958); the payload always stays in the
+    // #s= fragment. The <noscript> fallback link is the plain #s= (whole-model).
+    expect(res.body).toContain(`var s = ${JSON.stringify(s)};`);
+    expect(res.body).toContain("/^#(krs-[\\w:-]+)$/.exec(location.hash");
+    expect(res.body).toContain('location.replace(location.origin + "/" + q + "#s=" + s)');
     expect(res.body).toContain(`href="${ORIGIN}/#s=${s}"`);
   });
 

@@ -127,7 +127,21 @@ function renderHtml(s: string, origin: string): string {
 <meta name="twitter:title" content="${safeTitle}">
 <meta name="twitter:description" content="${safeDescription}">
 <meta name="twitter:image" content="${imageUrl}">
-<script>location.replace(${JSON.stringify(fragmentUrl)});</script>
+<script>
+// Bounce the human visitor to the SPA. A repo-backed deep permalink
+// (…/r/<owner>/<repo>@<sha>#krs-<view>-<id>, #1958) carries its #krs-… anchor
+// here as the location.hash — the browser applies the original request's
+// fragment onto this /s redirect target. The payload must stay in the #s=
+// fragment (never sent to the server), so the anchor — a non-sensitive element
+// id — rides in a ?krs= query that the SPA reads and normalizes to #krs-…
+// (App.resolveDeepLinkHash). No anchor → the plain #s= bounce, unchanged.
+(function () {
+  var s = ${JSON.stringify(s)};
+  var m = /^#(krs-[\\w:-]+)$/.exec(location.hash || "");
+  var q = m ? "?krs=" + encodeURIComponent(m[1]) : "";
+  location.replace(location.origin + "/" + q + "#s=" + s);
+})();
+</script>
 </head>
 <body>
 <p>Opening the shared diagram… If it does not load, <a href="${fragmentUrl}">click here</a>.</p>
