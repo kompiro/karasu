@@ -244,9 +244,20 @@ interface ResolveResult {
   status: number;
   /** Present on 200: the `encodeShare` payload for `/s?s=<payload>`. */
   encodedPayload?: string;
+  /**
+   * True when the ref pins an immutable commit (a 7–40 char hex SHA). The caller
+   * uses this to pick the cache TTL: a `@<sha>` response is safe to cache
+   * `immutable`; a `HEAD`/branch/tag response is mutable → short TTL only.
+   */
+  immutable?: boolean;
   /** Present on non-200: a plain-text reason. */
   message?: string;
   contentType: string;
+}
+
+/** A ref is treated as immutable when it looks like a commit SHA (7–40 hex). */
+function isImmutableRef(ref: string): boolean {
+  return /^[0-9a-f]{7,40}$/i.test(ref);
 }
 
 /**
@@ -281,7 +292,12 @@ export async function resolveRepoPermalink(
       };
     }
     const payload = await synthesizeSharePayload(entry, fs);
-    return { status: 200, encodedPayload: encodeShare(payload), contentType: PLAIN };
+    return {
+      status: 200,
+      encodedPayload: encodeShare(payload),
+      immutable: isImmutableRef(ref),
+      contentType: PLAIN,
+    };
   } catch (err) {
     const upstream = (err as { upstreamStatus?: number }).upstreamStatus;
     if (typeof upstream === "number") {
