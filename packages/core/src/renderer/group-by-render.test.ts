@@ -345,8 +345,14 @@ describe("crossing marks layer (#1859 P2c-C)", () => {
     expect(svg).toContain("<circle");
   });
 
-  it("emits no crossing-marks layer when ungrouped (AC-5)", () => {
-    expect(trunksSvg(undefined)).not.toContain('class="crossing-marks"');
+  it("emits crossing marks in the ungrouped view too, but no junction dots (#1956)", () => {
+    // #1956 drops the grouped-only gate: the default (Group by: none) view now
+    // marks its crossings as well. Junction dots stay grouped-only (no trunks).
+    const svg = trunksSvg(undefined);
+    expect(svg).toContain('class="crossing-marks"');
+    const layer = svg.match(/<g class="crossing-marks">.*?<\/g>/s)?.[0] ?? "";
+    expect(layer).toContain("<path"); // hops
+    expect(layer).not.toContain("<circle"); // no junctions (ungrouped has no trunks)
   });
 
   it("orders the crossing-marks layer after the edges layer (marks on top)", () => {

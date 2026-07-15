@@ -147,11 +147,12 @@ export interface LayoutResult {
    */
   foldedEdgeDiffState?: Map<string, string>;
   /**
-   * Hop/junction crossing marks for the Group-by view (#1859 P2c-C). Set only by
-   * the grouped layout branch (after all geometry passes, from final
-   * coordinates); the ungrouped branch never sets it, so the ungrouped SVG stays
-   * byte-identical (AC-5). The renderer emits a `crossing-marks` layer on top of
-   * the edges when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
+   * Hop/junction crossing marks for the system view (#1859 P2c-C). Set by every
+   * single-system layout — grouped and, since #1956, ungrouped (Group by: none) —
+   * from final coordinates; junction dots stay grouped-only (no trunks ungrouped).
+   * Multi-system (`layoutMultipleSystems`) leaves it unset (straight-line edges,
+   * out of scope). The renderer emits a `crossing-marks` layer on top of the edges
+   * when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
    */
   crossingMarks?: CrossingMarks;
 }
