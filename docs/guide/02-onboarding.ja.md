@@ -221,6 +221,47 @@ karasu はこの共有を **描くが禁止しません** — マイクロサー
 
 > **診断との対応**: 上の例のように 1 つの store を 2 つ以上の service が参照する **fan-in 自体** には `shared-infra-fan-in`(info) が出て、store と参照元 service を列挙します。これは何ファイルで宣言したかに依らず実際の共有で判定します（`[external]` ストアは除外）。これとは別に、同名の `database` / `queue` / `storage` を **複数ファイルで再宣言** した場合は `infra-redeclared-across-files`(info) が出ますが、こちらが観察するのは共有ではなく宣言の冗長性です。
 
+### 3.2 ドメインのエンティティをキャッチアップする
+
+そのドメインが **何をするか**（usecase）を掴んだら、次のオンボーディングの問いは
+**何を扱うか** — そのドメインが所有する **エンティティ** とその関連です。`domain` の子として
+`entity` を宣言します:
+
+```krs
+service OrderService {
+  domain Ordering {
+    entity Order {
+      table OrderDB.OrdersTable            // 物理対応（任意）
+      Order -> LineItem "line item"         // intra-domain 関連（bare id）
+      Order -> Customers.Customer "placed by" // cross-domain 関連（限定子付き DomainId.EntityId）
+    }
+    entity LineItem {}
+  }
+}
+```
+
+- **エンティティは意図的にスキーマではありません。** 名前・関連・任意の物理対応のみを持ち、
+  **属性（カラム・型・インデックス）は持ちません**。この「属性なし」線が、エンティティ層を
+  ゆっくり変化する構造の側に留める滑り坂ガードです。物理詳細は `database` / `table` に残ります。
+- **関連 1 つ = edge 1 本。参照を保持する側に書きます。** `Order -> Customer` は Order が参照を
+  保持する意味（`orders.customer_id`、ActiveRecord の `belongs_to :customer`）。逆方向（`has_many`）は
+  含意されるので 2 本目は書きません。
+- **domain 配下のエンティティビュー** はユースケースビューとは別ビュー（切り替え式）なので、
+  どちらも過密になりません。**他ドメイン** の entity への関連は限定子付き
+  （`Ordering -> Customers.Customer`）で書くと muted な **ghost** として描かれ、§2.1 の ghost system と
+  同じ要領でドメイン（＝チーム）境界が見えたままになります。
+
+**`resource` は entity に解決する — これが正準の論理形です。** `entity Order` を宣言すると、usecase 内の
+bare な `resource Order` は usecase 側 **無編集** でそこに解決し、それまでの `unassigned-resource` 警告が
+消えます。karasu は `usecase → entity → table → database` を推移的に辿って `service → database` エッジも
+導出します。つまり §3 のボトムアップな `resource OrderTable` には自然な昇格経路があります — entity を
+宣言すれば論理参照がひとりでに点灯します。
+
+> `translate --from db`（§1.3）はこの層をスキャフォールドしてくれます: 既定の aggregate モードでは、
+> 集約ルートごとに 1 つの entity と外部キーから推論した関連を持つ **暫定の per-database `domain`** を吐きます。
+> 宣言された FK ではなく命名規約から推測した関連には `[inferred]` タグが付くので、キュレーションで確認して
+> 外していけます。
+
 ---
 
 ## 4. 依存関係を読み解く — karasu が構造的負債を教えてくれる

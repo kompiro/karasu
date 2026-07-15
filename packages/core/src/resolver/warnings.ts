@@ -447,7 +447,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  * dot-notation, not a unique `entity` (the canonical logical form), and not
  * `[external]` (which intentionally has no store). Resolution is model-wide, so
  * the warning is *promoted away* — with zero edits to the usecase — the moment a
- * matching `entity` is declared anywhere (`docs/design/domain-entity-modeling.md`).
+ * matching `entity` is declared anywhere (`docs/adr/20260715-01-domain-entity-modeling.md`).
  *
  * Moved here from the parser (which only sees a single declaration): the
  * entity a bare id resolves to may be declared in another domain / service.

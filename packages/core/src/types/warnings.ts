@@ -143,7 +143,7 @@ export interface WarningParamsByKind {
    * silently breaking CSS `:target`. Warning register: the model still renders
    * and resolves — only deep-link addressability degrades (warn-don't-error).
    * `domain Billing` + a root `entity Billing` is a natural naming clash, so
-   * this is a warning, not an error. See `docs/design/domain-entity-modeling.md`.
+   * this is a warning, not an error. See `docs/adr/20260715-01-domain-entity-modeling.md`.
    */
   "entity-anchor-collision": {
     /** The id claimed by more than one target in the entity anchor namespace. */
