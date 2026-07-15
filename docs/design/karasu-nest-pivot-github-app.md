@@ -2,6 +2,7 @@
 
 - **日付**: 2026-07-15
 - **Issue**: #1783（nest 壁打ち・本 doc の親）／関連 #1828 permalink layer・#1960 private permalink・#1787 Phase 3 in-site editor
+- **PR**: #1978
 - **ステータス**: 壁打ち（brainstorm）— 方向性の合意用。技術詳細・実装は後続 design/ADR
 - **関連**:
   - [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（nest v1 = **render-only / BYO reverse / stateless / 認証なし**。本ピボットが覆す対象）
