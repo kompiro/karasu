@@ -2137,6 +2137,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
+//   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 
 system FeatureSamples {
   label "Feature samples"
@@ -2791,6 +2792,58 @@ organization MarketplaceOrg {
     owns Gateway
     owns Notifications
   }
+}
+`,
+    },
+    {
+      path: "boundary-clusters.krs",
+      content: `// Semantic clusters via \`boundary\` / \`contains\` (Issue #1822, P2b — experimental).
+//
+// A \`boundary\` block declares a named cluster of system-view nodes, drawn as the
+// second "Group by" axis of the system view (the first is team ownership —
+// see team-ownership.krs). With \`groupBy: "boundary"\` the renderer bands each
+// boundary's members as a dependency-ordered group and frames it, exactly like
+// the team axis — but grouped by the author's *semantic* clusters instead of by
+// org chart. The two axes are independent and mutually exclusive.
+//
+// Here the "Payments" and "Catalog" boundaries cut across what could be a
+// different team structure: a boundary groups by meaning ("everything payments"),
+// not by who owns it. Un-clustered nodes (the shared Order DB) fall into a
+// trailing band below the boundary frames.
+//
+// \`boundary\` is experimental notation — backward compatibility is not yet
+// promised (docs/spec/syntax.md § Grouping the system view).
+
+system Marketplace {
+  label "Marketplace"
+
+  service Checkout { label "Checkout" }
+  service Billing { label "Billing" }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+  service Gateway { label "API Gateway" }
+
+  database OrderDB { label "Order DB" }
+
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Billing -> Wallet "settle"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> OrderDB "persist"
+}
+
+boundary payments "Payments" {
+  contains Checkout
+  contains Billing
+  contains Wallet
+}
+
+boundary catalog "Catalog" {
+  contains Search
+  contains Inventory
 }
 `,
     },

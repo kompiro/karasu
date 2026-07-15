@@ -156,6 +156,10 @@ An independent axis from logical/physical, describing the **ownership** of servi
 | `team` | A team with responsibility. May be nested | `team`, `member`, `owns` |
 | `member` | An individual belonging to a team | — |
 
+A related grouping overlay — **`boundary`** (experimental) — lets an author
+declare semantic clusters *within* the system view, drawn as a second "Group by"
+axis alongside team ownership. See [§ Grouping the system view (`boundary`)](#grouping-the-system-view-boundary--experimental).
+
 ### Physical structure (how) — rendered as a separate diagram
 
 Deployment units are declared inside a `deploy` block using a kind keyword.
@@ -908,6 +912,61 @@ All properties are optional. `member` cannot be nested.
 
 `organization`, `team`, and `member` all support both a positional argument (`team backend "Backend Team"`) and the property form (`team backend { label "Backend Team" }`).
 When both are specified, the property form takes precedence.
+
+---
+
+## Grouping the system view (`boundary`) — experimental
+
+> **Experimental notation (post-v1.0 watch).** `boundary` is retained as
+> experimental, not frozen — backward compatibility is **not yet promised**, and
+> promotion to a v1.0-stable construct is gated on real-usage evidence (the
+> notation promotion gate, [ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)).
+> See `docs/roadmap.md` § post-v1.0 horizon.
+
+A `boundary` block declares a **semantic cluster** of system-view nodes — a
+grouping the author draws on top of the logical structure, independent of the
+kind tiers and of team ownership. It is the second **"Group by"** axis of the
+system view (the first is team ownership, above): with `groupBy: "boundary"` the
+renderer bands each boundary's members as a dependency-ordered group and draws a
+boundary frame around it, exactly as the team axis does — the two axes are
+**mutually exclusive** (you pick one at a time) and **independent** (a node can
+sit in team A under *Group by: team* and boundary X under *Group by: boundary*).
+
+```krs
+boundary payments "Payments" {
+  contains Billing
+  contains Wallet
+}
+```
+
+- **Top-level declaration**, like `organization`. It groups nodes *by reference*
+  (`contains <id>`), not by containment, so a boundary can gather nodes declared
+  anywhere — including across imported files (the same file-crossing property as
+  `owns`).
+- **`contains <id>`** lists one member per line (mirroring `owns`). Any declared
+  node kind may be a member (there is no kind restriction, unlike `owns`).
+- A **`boundaryIndex`** (`node id → boundary id`) is derived at parse time,
+  analogous to the org `ownerIndex`. It is **1:1**: if a node is listed in more
+  than one boundary, the **first-declared** boundary wins and the duplicate is
+  surfaced as the info diagnostic `duplicate-boundary-assignment` (a fact, not an
+  error — the same "smell is representable" register as `duplicate-owner-assignment`).
+
+| Keyword | Meaning | May contain |
+|---------|---------|-------------|
+| `boundary` | A named semantic cluster of system-view nodes. Multiple declarations allowed | `contains` |
+| `contains` | A member node id belonging to this boundary (one per line) | — |
+
+Diagnostics (see [diagnostics.md](diagnostics.md)):
+
+- `duplicate-boundary-assignment` (info) — a node is listed in more than one `boundary`; the first-declared boundary is kept.
+- `contains-target-not-found` (warning) — a `contains` target does not exist in the system hierarchy.
+- `duplicate-boundary-id` (error) — two `boundary` blocks declare the same id.
+
+`boundary` supports both the positional label (`boundary payments "Payments"`)
+and the property form (`boundary payments { label "Payments" }`); when both are
+given the property form wins.
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish).
 
 ---
 

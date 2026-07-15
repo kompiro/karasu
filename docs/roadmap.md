@@ -300,6 +300,15 @@ experimental notation を v1.0-stable へ昇格させる判断の規律（決定
 - **証拠源 = karasu-nest の共有 corpus**。実 OSS を書いた `.krs` が watch tier の必要とする「実利用 pain」の観測装置になる。
 - 配置は **三点配線** — **[ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md)（決定）+ 本書（生きた適用状態）+ [`docs/process.md` リリース運用](process.md#リリース運用)（発火 touchpoint）**。gate を実際に invoke するのは process.md 側（experimental notation に触れる changeset・リリース前の版番号/CHANGELOG 目視）で、これにより決定が絵に描いた餅にならないようにする。
 
+#### watch 対象の experimental notation（登録）
+
+gate の生きた適用状態。ここに載る構文は **後方互換を約束しない** experimental で、
+昇格判断は上記トリガーで行う（証拠源 = karasu-nest corpus）。
+
+| notation | 追加 | 現状 | promotion trigger（stable 昇格の判断材料） |
+| --- | --- | --- | --- |
+| **`boundary`**（system view の意味的クラスタ宣言 / `contains` / `boundaryIndex`） | [#1974](https://github.com/kompiro/karasu/issues/1974)（P2b、[design](design/system-view-grouping.md)・[syntax](spec/syntax.md#grouping-the-system-view-boundary--experimental)） | experimental（[ADR-20260711-03](adr/20260711-03-system-view-group-by-team.md) の team 軸に続く第二 Group-by 軸） | corpus で `boundary` が実際に使われるか・`contains` の粒度や first-wins 多重所属が実利用で噛み合うか・`group` 系の別語彙要望が出ないか。溜まったら v1.x minor で stable 昇格を判断 |
+
 ### 独立 candidate（未 Issue 化 — issue が生えたら Milestone 化）
 
 | candidate | 状態 | 依存 |

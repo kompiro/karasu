@@ -151,6 +151,9 @@ system ECPlatform {
 | `team` | 責任を持つチーム。ネスト可 | `team`, `member`, `owns` |
 | `member` | チームに所属する個人 | — |
 
+関連するグルーピングのオーバーレイ **`boundary`**（experimental）は、system view 内に意味的クラスタを
+宣言し、team 所有と並ぶ第二の「Group by」軸として描画する。後述の「システムビューのグルーピング（`boundary`）」節を参照。
+
 ### 物理構造（どのように）— 別図で表現
 
 `deploy` ブロックの中にデプロイ単位を種別キーワードで記述する。
@@ -849,6 +852,50 @@ team の直下に `member` を宣言して個人を記述する。
 `organization` / `team` / `member` はいずれも位置引数（`team backend "バックエンドチーム"`）と
 プロパティ形式（`team backend { label "バックエンドチーム" }`）の両方で label を指定できる。
 両方が同時に指定された場合はプロパティ形式が優先される。
+
+---
+
+## システムビューのグルーピング（`boundary`）— experimental
+
+> **experimental notation（post-v1.0 watch）。** `boundary` は freeze せず experimental として保持する。
+> 後方互換は**まだ約束しない**。v1.0-stable への昇格は実利用証拠に基づく notation promotion gate
+> （[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)）で判断する。`docs/roadmap.md` § post-v1.0 horizon を参照。
+
+`boundary` ブロックは system view のノードの**意味的クラスタ**を宣言する。論理構造の上に著者が引く
+グルーピングで、kind ティアとも team 所有とも独立している。system view の第二の**「Group by」軸**
+（第一は team 所有。上記）で、`groupBy: "boundary"` にすると各 boundary のメンバーが依存順のグループに
+束ねられ、team 軸とまったく同じように境界フレームで囲まれる。二つの軸は**排他**（同時に一つだけ選ぶ）で
+**独立**（あるノードが *Group by: team* では team A、*Group by: boundary* では boundary X に属しうる）。
+
+```krs
+boundary payments "Payments" {
+  contains Billing
+  contains Wallet
+}
+```
+
+- **top-level 宣言**（`organization` と同じ）。containment ではなく**参照**（`contains <id>`）で束ねるので、
+  import をまたいで宣言されたノードも集められる（`owns` と同じファイル横断性）。
+- **`contains <id>`** は 1 行 1 メンバー（`owns` と同型）。メンバーはどの node kind でもよい（`owns` と違い kind 制限なし）。
+- parse 時に **`boundaryIndex`**（`node id → boundary id`）を導出する（org の `ownerIndex` と同型）。**1:1** で、
+  あるノードが複数 boundary に含まれる場合は**最初に宣言された** boundary が勝ち、重複は info 診断
+  `duplicate-boundary-assignment` で観測する（error ではなく事実 — `duplicate-owner-assignment` と同じ register）。
+
+| キーワード | 意味 | 含められるもの |
+|---|---|---|
+| `boundary` | system view ノードの名前付き意味的クラスタ。複数宣言可 | `contains` |
+| `contains` | この boundary に属するメンバー node id（1 行 1 つ） | — |
+
+診断（[diagnostics.md](diagnostics.md) 参照）:
+
+- `duplicate-boundary-assignment`（info）— ノードが複数の `boundary` に含まれる。最初の boundary を採用。
+- `contains-target-not-found`（warning）— `contains` 先が system 階層に存在しない。
+- `duplicate-boundary-id`（error）— 2 つの `boundary` ブロックが同じ id を宣言。
+
+`boundary` は位置引数（`boundary payments "Payments"`）とプロパティ形式（`boundary payments { label "Payments" }`）の
+両方に対応し、両方指定時はプロパティ形式が優先される。
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。
 
 ---
 

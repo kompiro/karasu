@@ -95,3 +95,7 @@ scope:
   効果を伴う必要があるという本 TPL を新タグに適用したもの。`[index]` は `REFERENCE_DATA.tags`
   への登録 + `default-style.ts` の `database[index]` バッジで効果を持つ。登録 / スタイル /
   生成ドキュメントの 3 表現の同期は [[TPL-20260519-02]] を参照）
+- `docs/spec/syntax.md` — Grouping the system view (`boundary`)（#1822 P2b、experimental。
+  受理される `boundary` 宣言は効果を持つ必要があるという本 TPL を新構文に適用したもの。宣言された
+  `boundary` は parse-and-vanish せず、`groupBy: "boundary"` で必ず境界フレームを生む — その
+  end-to-end 効果を `packages/core/src/renderer/group-by-boundary-render.test.ts` が柵にする）
