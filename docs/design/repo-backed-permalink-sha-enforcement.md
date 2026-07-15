@@ -1,4 +1,4 @@
-# repo-backed permalink の `@<sha>` 強制（#1828 slice d）
+# repo-backed permalink の `@<sha>` 推奨検証（#1828 slice d）
 
 - **日付**: 2026-07-15
 - **ステータス**: 検討中
@@ -17,9 +17,11 @@
 
 親設計（#1828, 軸2-A・改訂）は repo-backed permalink resolver を **permissive** にすると決めた: `@<ref>` は任意で、省略時は default branch `HEAD`（mutable）を解決し、branch/tag/SHA いずれも描画する。この決定の裏返しとして、「**ADR に貼る repo-backed permalink は immutable（＝ `@<sha>` 固定）であるべき**」という要件は resolver ではなく **ADR 執筆規約 + 検証層**に移された（親設計「現時点の方針」#1、決着した論点 #1）。
 
-その検証層がまだ無い。resolver が寛容に開く以上、ADR 著者が `@<branch>` や ref-less（HEAD 相当）の repo-backed permalink を貼っても CI は素通しする。すると ADR が「決定時点の構造への恒久リンク」ではなく「今この repo を読むリンク」を指してしまい、時間が経つと ADR の主張と描画がずれる（mutable link rot）。#1959（slice d）はこの enforcement を埋める。
+その検証層がまだ無い。resolver が寛容に開く以上、ADR 著者が `@<branch>` や ref-less（HEAD 相当）の repo-backed permalink を貼っても検証は素通しする。すると ADR が「決定時点の構造への恒久リンク」ではなく「今この repo を読むリンク」を指してしまい、時間が経つと ADR の主張と描画がずれる（mutable link rot）。#1959（slice d）はこの検証層を埋める。
 
-到達目標: `pnpm adr:check-permalinks`（= `@kompiro/adr-tools` の `krs` kind）が、ADR に埋め込まれた **repo-backed permalink を `@<sha>`-pinned 必須**とし、mutable な `HEAD`/branch 形・ref-less 形を **CI で落とす**。規約を `.claude/rules/adr.md` と `docs/guide/adr-permalinks.md` に明文化する。
+到達目標: `pnpm adr:check-permalinks`（= `@kompiro/adr-tools` の `krs` kind）が、ADR に埋め込まれた repo-backed permalink が mutable な `HEAD`/branch 形・ref-less 形のとき、**`@<sha>` によるコミット固定を推奨する warning を出す**（CI は落とさない）。規約を `.claude/rules/adr.md` と `docs/guide/adr-permalinks.md` に明文化する。
+
+> **強度の方針（2026-07-15、レビューで確定）**: 初稿は「非-SHA 形を **CI hard-fail**」としたが、これは **推奨（warn）に緩める**。理由は軸3 に詳述するが、要点は「resolver を permissive にした（軸2-A）philosophy と揃える」「ref-less / branch も discovery の正当な形で、検証側で一律 CI ブロックすると resolver が意図的に許した寛容さを締め直すことになる」。#1959 の issue 本文は "fail CI otherwise" と書くが、本設計はこれを **recommendation に refine** する（その判断を ADR に残す）。
 
 ## 現状（インベントリ）
 
@@ -31,7 +33,7 @@ adr-tools `0.0.8` の `krs` kind が今 `permalink:` の各エントリに対し
 | `short`（任意） | URL | `validateShort`: `new URL()` で valid か・`http(s)` か・`#s=`/`s=` fragment 共有でないか。**それ以外の中身は一切見ない** |
 | `view`（任意） | view 名 | `KRS_KNOWN_VIEWS` に含まれるか |
 
-**重要な事実**: adr-tools には **repo-backed permalink という概念が存在しない**。`owner` / `repo` / `ref` / `raw.githubusercontent` / `pinned` いずれの語も dist に無い。`short` は「任意の http(s) URL（`#s=` でないもの）」としか見なされていない。したがって `@<sha>` 強制は adr-tools 側の**新規機能**として実装するしかない（Issue #1959 の Notes「may need an upstream option」と一致）。
+**重要な事実**: adr-tools には **repo-backed permalink という概念が存在しない**。`owner` / `repo` / `ref` / `raw.githubusercontent` / `pinned` いずれの語も dist に無い。`short` は「任意の http(s) URL（`#s=` でないもの）」としか見なされていない。したがって `@<sha>` 推奨検証は adr-tools 側の**新規機能**として実装するしかない（Issue #1959 の Notes「may need an upstream option」と一致）。
 
 karasu 側の配線（[ADR-20260713-02](../adr/20260713-02-adr-permalink-validation.md)）:
 
@@ -47,14 +49,14 @@ karasu 側の配線（[ADR-20260713-02](../adr/20260713-02-adr-permalink-validat
 
 `docs/adr/` を permalink / validation / resolver / adr-tools / sha / ref-pin の語彙で走査した。**衝突（覆すべき却下決定）は無い。** 踏襲すべき制約:
 
-- **検証は karasu 側 script に置かない（ADR-20260713-02）** — karasu-local validator は PR #1916 で一度実装され**却下された**（「守る repo を間違える・再利用できない。実受益者は下流 repo で、彼らが回すのは adr-tools」）。したがって `@<sha>` 強制も **adr-tools の `krs` kind に置く**のが唯一整合する道。karasu にワンオフの grep script を足すのは同 ADR の却下案の再来になる。
-- **both-sides トリガ（ADR-20260713-02 / TPL-20260520-02）** — 整合チェックは ADR 側・`.krs` 側の両変更で発火させる。`check-permalinks` は既に unfiltered な CI step。`@<sha>` 強制を足しても配線は変えない。
+- **検証は karasu 側 script に置かない（ADR-20260713-02）** — karasu-local validator は PR #1916 で一度実装され**却下された**（「守る repo を間違える・再利用できない。実受益者は下流 repo で、彼らが回すのは adr-tools」）。したがって `@<sha>` 推奨検証も **adr-tools の `krs` kind に置く**のが唯一整合する道。karasu にワンオフの grep script を足すのは同 ADR の却下案の再来になる。
+- **both-sides トリガ（ADR-20260713-02 / TPL-20260520-02）** — 整合チェックは ADR 側・`.krs` 側の両変更で発火させる。`check-permalinks` は既に unfiltered な CI step。`@<sha>` 推奨検証を足しても配線は変えない。
 - **`source` は必須のまま（ADR-20260702-01 / TPL-20260630-03）** — repo-backed permalink を足しても `source`（in-repo 記録）は消さない。permalink は pointer、record は `source`。repo-backed URL が `@<sha>` で immutable でも、shortener/resolver/host が将来変わりうる以上、復元元 `source` は残す。
 - **trust boundary（TPL-20260510-17）** — 本 slice は「URL 文字列を検査する」だけで外部 fetch はしない（オフライン検査）。resolver 側の SSRF/canonicalize は #1828 本体の責務。ただし `short` を parse して `owner/repo/ref` を取り出す際、`validateShort` と同じく `new URL()` ベースで行い、regex での ad-hoc parse に頼らない。
 
 ### スコープ
 
-- **In scope（本設計が決める論点）**: ①repo-backed permalink が `permalink:` frontmatter のどこに載るか、②検証がどの `short` を「repo-backed」と判定するか（検出規則）、③`@<sha>` の受理条件（何を pinned とみなすか）、④upstream（adr-tools）と karasu（adopt + docs）の実装分割。
+- **In scope（本設計が決める論点）**: ①repo-backed permalink が `permalink:` frontmatter のどこに載るか、②検証がどの `short` を「repo-backed」と判定するか（検出規則）、③推奨する pinned 形（何を `@<sha>` とみなすか）と非準拠時の**強度**（fail か warn か）、④upstream（adr-tools）と karasu（adopt + docs）の実装分割。
 - **Out of scope**: resolver 本体（#1828 slice a/c）、private repo（#1960）、bare route vs `/r/`（#1961）、caching。本設計は resolver の**最終 URL 形が未確定**であることを前提に、検出規則をその決定に**依存しない**形にする（後述）。
 
 ## 検討した選択肢
@@ -75,7 +77,7 @@ karasu 側の配線（[ADR-20260713-02](../adr/20260713-02-adr-permalink-validat
 
 ### 軸2: どの `short` を「repo-backed permalink」と判定するか（検出規則）
 
-`@<sha>` 強制は「repo-backed permalink に対してのみ」効かせる。taka 短縮 URL や外部リンクを `short` に入れても誤検出してはいけない。しかし resolver の最終 URL 形（bare `/<owner>/<repo>@<sha>` か `/r/…` プレフィックス付きか）は **#1961 で未確定**。検出規則をこの決定に依存させない必要がある。
+`@<sha>` 推奨検証は「repo-backed permalink に対してのみ」効かせる。taka 短縮 URL や外部リンクを `short` に入れても誤検出してはいけない。しかし resolver の最終 URL 形（bare `/<owner>/<repo>@<sha>` か `/r/…` プレフィックス付きか）は **#1961 で未確定**。検出規則をこの決定に依存させない必要がある。
 
 - **案 2-A: host allowlist で判定（config 駆動）**
   - nest の host（例 `taka.kompiro.dev` とは別の nest host）を `adr.config.json` に列挙し、`short` の host がそれに一致したら「repo-backed candidate」とみなす。path 形（`/r/` 有無）は問わず、path 内に `@<ref>` があるか・その ref が SHA かだけを見る。
@@ -90,33 +92,46 @@ karasu 側の配線（[ADR-20260713-02](../adr/20260713-02-adr-permalink-validat
   - ❌ URL を汚す / 軸1-B と同じ新スキーマ問題。著者が付け忘れると検出漏れ（fail-open）。
 - **推奨: 2-A（host allowlist、config 駆動）。** #1961 に非依存で、汎用性も高い。host が確定するまでは karasu の `adr.config.json` に nest host の placeholder を置き、確定時に 1 行埋める（本 slice の実装は host 確定を待てる／待てない場合 placeholder のまま upstream 機能だけ入れて karasu adopt を後追いにできる）。
 
-### 軸3: 何を「`@<sha>`-pinned（immutable）」として受理するか
+### 軸3: 推奨する pinned 形と、非準拠時の強度（fail か warn か）
 
-repo-backed candidate と判定したら、その ref が immutable な commit SHA かを検査する。
+repo-backed candidate と判定したら、その ref が immutable な commit SHA かを見る。ここには 2 つの独立した論点がある: (i) 何を「pinned（immutable）」とみなすか、(ii) 非準拠のとき CI を落とす（fail）か推奨に留める（warn）か。
 
-- **案 3-A: full 40-hex SHA のみ受理**
-  - ⭕ 曖昧さゼロ。`@<40-hex>` 以外（ref-less / `@main` / `@v1.0` / `@<7-hex short>`）は fail。
-  - ❌ short SHA（7–40 hex）を弾く。GitHub raw は short SHA も解決するが、short SHA は理論上衝突しうる（immutable 保証が弱い）。
+**(i) 推奨する pinned 形**
+
+- **案 3-A: full 40-hex SHA を pinned とみなす**
+  - ⭕ 曖昧さゼロ。`@<40-hex>` 以外（ref-less / `@main` / `@v1.0` / `@<7-hex short>`）は非-pinned。
+  - ❌ short SHA（7–40 hex）を非-pinned 扱いにする。GitHub raw は short SHA も解決するが、short SHA は理論上衝突しうる（immutable 保証が弱い）。
 - **案 3-B: 7–40 hex を SHA とみなす**
-  - ⭕ 実運用の short SHA を許容。
   - ❌ `@abcdef0`（7 hex）と tag/branch 名の hex-like 文字列の区別が曖昧。`@deadbeef` はブランチ名にもなりうる。
-- **推奨: 3-A（full 40-hex のみ）。** ADR permalink は「決定時点の commit」を厳密に指すべきで、衝突可能性のある short SHA を許すと immutable 保証が弱まる。regex は `/^[0-9a-f]{40}$/`。`@` が無い（ref-less）・`@` の後が 40-hex でない場合はすべて fail with 明快なメッセージ（「repo-backed permalink must be pinned to a full commit SHA (`@<40-hex>`); `HEAD`/branch/tag forms are mutable」）。
+- **推奨: 3-A（full 40-hex のみを pinned とみなす）。** regex は `/^[0-9a-f]{40}$/`。`@` が無い（ref-less）・`@` の後が 40-hex でない場合はすべて「非-pinned（mutable）」。ネットワークで SHA 実在までは検査しない（オフライン検査の原則。存在検証は resolver の責務）。
 
-> ネットワークで「その SHA が実在するか」までは検査しない（オフライン検査の原則を保つ。dangling anchor 検出と同じく、存在検証は resolver の責務で CI では形の検査に留める）。
+**(ii) 非準拠時の強度（fail vs warn）— 本改訂の核心**
+
+- **案 3-C（初稿・却下）: 非-pinned を CI hard-fail**
+  - ⭕ mutable link rot を機械的に完全ブロック。
+  - ❌ **resolver の permissive 設計（軸2-A）と philosophy がずれる。** 親設計は「ref-less / branch も discovery の正当な形」だから immutability を resolver から外した。検証側で非-SHA を一律 CI ブロックすると、resolver が意図的に許した寛容さを締め直すことになる。
+  - ❌ **現状 enforcement が premature。** repo-backed permalink を貼った ADR はまだ 1 件も無く、nest host も未確定。使われていない規約を hard-fail で先行導入するのは締めすぎ。
+  - ❌ 「決定時点の構造」を厳密に指したい ADR と、「今の living な構造」を指したい ADR の両方が正当にありうる。後者を CI で禁止するのは著者の自由を奪う。
+- **案 3-D（採用）: 非-pinned を warn（推奨）に留め、CI は落とさない**
+  - ⭕ resolver の permissive 設計と揃う。「ADR permalink は SHA で固定するのが推奨」という nudge を可視化しつつ、branch/HEAD 形を禁止しない。
+  - ⭕ adr-tools は既に非-fatal な出力機構を持つ（`validate` の `warnings`、`check-permalinks` の `MANUAL` ライン）。permalink 評価に **`status: "warn"`** を足すのは小さな拡張で、新概念の発明ではない。
+  - ⭕ 将来「特定 repo では hard-fail にしたい」需要が出たら config でオプトイン強化できる（severity を上げるのは後方互換）。逆に最初から fail にすると緩める方が破壊的。
+  - ❌ mutable link を機械的にブロックはしない（＝規約遵守は著者と review 依存）。ただし warn の可視化 + docs 明文化で十分な nudge になる。
+- **推奨: 3-A + 3-D。** full 40-hex を pinned とみなし、非-pinned な repo-backed `short` は **warning**（`@<sha>` によるコミット固定を推奨）を出すが CI は落とさない。メッセージ例: 「repo-backed permalink `<url>` is not pinned to a commit; consider `@<40-hex-sha>` so the ADR points at the structure as of the decision (`HEAD`/branch/tag forms are mutable)」。この「推奨（enforce しない）」という判断そのものを ADR に残す。
 
 ### 軸4: upstream（adr-tools）と karasu（adopt）の分割
 
 [ADR-20260713-02](../adr/20260713-02-adr-permalink-validation.md) により検証ロジックは adr-tools の `krs` kind に置く。したがって本 slice は 2 repo にまたがる:
 
-- **upstream（kompiro/adr-tools）**: `validateShort`（または新 `validateRepoBacked`）に host allowlist ベースの検出 + `@<40-hex>` 強制を追加。config schema に nest host allowlist（例 `permalink.repoBackedHosts: string[]`）を足す。新バージョン（`0.0.9`）を release。upstream 側にも unit test と ADR。
+- **upstream（kompiro/adr-tools）**: `validateShort`（または新 `validateRepoBacked`）に host allowlist ベースの検出 + `@<40-hex>` 判定を追加し、非-pinned を **`status: "warn"`（非-fatal）** で報告する（`evaluatePermalinksForAdr` に warn severity を導入 — 既存の `validate` warnings / `MANUAL` ライン機構と同系統）。config schema に nest host allowlist（例 `permalink.repoBackedHosts: string[]`）を足す。新バージョン（`0.0.9`）を release。upstream 側にも unit test と ADR。
 - **karasu（本 repo、本 slice の deliverable）**:
   1. `@kompiro/adr-tools` を新バージョンへ bump。
   2. `adr.config.json` に nest host allowlist を配線（host 確定まで placeholder）。
   3. `.claude/rules/adr.md`（L2）と `docs/guide/adr-permalinks.md`（L1）に「repo-backed permalink は `@<sha>` 必須」規約を明文化。
-  4. `docs/acceptance/1959-*.md` で受け入れ条件（mutable 形が CI で落ちること）を記録。
+  4. `docs/acceptance/1959-*.md` で受け入れ条件（mutable 形に `@<sha>` 推奨 warning が出ること・ただし CI は落とさないこと）を記録。
   5. ADR-20260702-01 か新 ADR に規約を集約（親設計と本 slice をまとめて ADR 昇格するのが自然）。
 
-- **推奨: upstream-first。** adr-tools に機能 + release を先に入れ、karasu は bump + adopt + docs。karasu 側 script での暫定実装は ADR-20260713-02 の却下案の再来なので採らない。upstream release までの間、karasu 側は docs（規約明文化）だけ先行させることは可能（enforcement は release 後に有効化）。
+- **推奨: upstream-first。** adr-tools に機能 + release を先に入れ、karasu は bump + adopt + docs。karasu 側 script での暫定実装は ADR-20260713-02 の却下案の再来なので採らない。upstream release までの間、karasu 側は docs（規約明文化）だけ先行させることは可能（warn 検証は release 後に有効化）。
 
 ## 比較
 
@@ -124,14 +139,14 @@ repo-backed candidate と判定したら、その ref が immutable な commit S
 | --- | --- | --- | --- |
 | 1 frontmatter 位置 | 1-A `short` 再利用 | pointer は 1 席、record は `source`。スキーマ不変 | ADR-20260702-01 の 2 者構造 |
 | 2 検出規則 | 2-A host allowlist（config） | #1961 の URL 形決定に非依存・汎用 | nest host 確定（placeholder 許容） |
-| 3 pinned 受理 | 3-A full 40-hex のみ | immutable を厳密に。short SHA 衝突回避 | — |
+| 3 pinned 形 + 強度 | 3-A full 40-hex ＋ **3-D warn（推奨、CI は落とさない）** | resolver の permissive 設計と揃える／premature な hard-fail 回避 | adr-tools に warn severity |
 | 4 実装分割 | upstream-first（adr-tools → karasu adopt） | ADR-20260713-02（karasu-local validator 却下） | adr-tools release |
 
-**全体像**: repo-backed permalink は `permalink[].short` に載る（新フィールドなし）。adr-tools の `krs` kind が、`short` の host が config の nest host allowlist に一致したら「repo-backed」とみなし、path 内の `@<ref>` が **full 40-hex SHA でなければ CI を落とす**（ref-less・`@HEAD`・`@branch`・`@tag`・short SHA はすべて fail）。この検出は #1961 の bare/`​/r/` 決定に依存しない。実装は upstream-first（adr-tools に機能 + release、karasu は bump + config + docs）。`source`（必須・record）は不変。
+**全体像**: repo-backed permalink は `permalink[].short` に載る（新フィールドなし）。adr-tools の `krs` kind が、`short` の host が config の nest host allowlist に一致したら「repo-backed」とみなし、path 内の `@<ref>` が **full 40-hex SHA でなければ warning を出す**（`@<sha>` 固定を推奨。ref-less・`@HEAD`・`@branch`・`@tag`・short SHA が対象）。**CI は落とさない**（recommendation）。この検出は #1961 の bare/`​/r/` 決定に依存しない。実装は upstream-first（adr-tools に機能 + release、karasu は bump + config + docs）。`source`（必須・record）は不変。
 
 ## Related TPLs
 
-- [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md) — 整合チェックは両側で起動。`check-permalinks` は既に unfiltered な CI step で ADR 側・`.krs` 側の両変更に発火する。`@<sha>` 強制を足しても配線を狭めない（片側 path filter を張らない）ことを担保する観点。
+- [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md) — 整合チェックは両側で起動。`check-permalinks` は既に unfiltered な CI step で ADR 側・`.krs` 側の両変更に発火する。`@<sha>` 推奨検証を足しても配線を狭めない（片側 path filter を張らない）ことを担保する観点。
 - [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md) — permalink は pointer、record は in-repo `.krs` `source`。repo-backed URL（`@<sha>` で immutable）を足しても `source` を必須のまま残す（host/resolver が将来変わっても復元できる）ことを担保する観点。
 - [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md) — 外部 input は trust boundary 越え前に validate/canonicalize。本 slice は `short` を `new URL()` で parse して host/ref を取り出す（ad-hoc regex に頼らない）。offline 検査で fetch はしないが、URL 分解は canonical に行う観点。
 
@@ -139,10 +154,10 @@ repo-backed candidate と判定したら、その ref が immutable な commit S
 
 1. **frontmatter 位置**: repo-backed permalink は既存の `permalink[].short` に載せる。新フィールドは足さない（軸1-A）。`source`（必須・record）は不変。
 2. **検出規則**: adr-tools `krs` kind が `short` の host を config の nest host allowlist（`permalink.repoBackedHosts` 等）と照合し、一致したものだけ「repo-backed」とみなす。path 形（`/r/` 有無）は問わない → #1961 に非依存（軸2-A）。
-3. **pinned 受理**: repo-backed と判定した `short` の `@<ref>` が **full 40-hex SHA**（`/^[0-9a-f]{40}$/`）でなければ fail。ref-less・`@HEAD`・`@branch`・`@tag`・short SHA はすべて mutable として CI を落とす。メッセージで理由を明示（軸3-A）。存在検証（SHA 実在）はしない（offline 検査）。
+3. **pinned 形 + 強度**: repo-backed と判定した `short` の `@<ref>` が **full 40-hex SHA**（`/^[0-9a-f]{40}$/`）を pinned とみなす。ref-less・`@HEAD`・`@branch`・`@tag`・short SHA はすべて mutable で、その場合 **`@<sha>` 固定を推奨する warning を出すが CI は落とさない**（軸3-A + 3-D）。「enforce ではなく推奨」という判断そのものを ADR に残す。存在検証（SHA 実在）はしない（offline 検査）。将来 config でオプトインの hard-fail に上げる余地は残す。
 4. **実装分割**: upstream-first（軸4）。
-   - upstream（kompiro/adr-tools）: `krs` kind に host-allowlist 検出 + `@<40-hex>` 強制 + config schema の allowlist フィールドを追加。unit test + ADR。`0.0.9` release。
+   - upstream（kompiro/adr-tools）: `krs` kind に host-allowlist 検出 + `@<40-hex>` 判定 + 非-pinned を非-fatal な `status: "warn"` で報告 + config schema の allowlist フィールドを追加。unit test + ADR。`0.0.9` release。
    - karasu（本 slice）: adr-tools bump／`adr.config.json` に nest host allowlist 配線（host 確定まで placeholder）／`.claude/rules/adr.md`（L2）と `docs/guide/adr-permalinks.md`（L1）に規約明文化／`docs/acceptance/1959-*.md`／親設計 + 本 slice を ADR 昇格。
 5. **karasu-local script は作らない**（ADR-20260713-02 の却下案の再来を避ける）。
-6. **sequencing（host 確定タイミング、確定）**: upstream 機能 + karasu の docs/規約 + config（placeholder host）を**先行**させる。karasu の実 enforcement は、#1828 resolver deploy で nest 本番 host が確定した時点で `adr.config.json` の host 1 行を埋めるだけで有効化される。本 slice 全体を host 確定まで待たない。
+6. **sequencing（host 確定タイミング、確定）**: upstream 機能 + karasu の docs/規約 + config（placeholder host）を**先行**させる。karasu のwarn 検証 は、#1828 resolver deploy で nest 本番 host が確定した時点で `adr.config.json` の host 1 行を埋めるだけで有効化される。本 slice 全体を host 確定まで待たない。
 7. **ADR 昇格（粒度、確定）**: 本 slice の `@<sha>` 決定は #1828 親設計（slice a/c/d）と**まとめて 1 つの repo-backed permalink ADR に昇格**する（repo-backed permalink という単一決定の構成要素のため）。親 ADR 昇格は slice c（#1958）完了を待つので、本 slice の docs（規約明文化）は先にマージしてよい。
