@@ -1,10 +1,80 @@
 import type { ResolvedEdgeStyle } from "../types/style.js";
-import type { LayoutEdge } from "./layout-types.js";
+import type { HopMark, LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
 
 interface Point {
   x: number;
   y: number;
+}
+
+const round2 = (n: number): number => Number(n.toFixed(2));
+
+/**
+ * The segment index of `points` whose line the hop's centre lies on, or -1.
+ * A hop is derived from a crossing *on* one of the edge's segments, so the
+ * centre projects onto that segment with ~zero perpendicular distance.
+ */
+function hopSegment(points: Point[], hop: HopMark): number {
+  for (let i = 0; i < points.length - 1; i++) {
+    const p = points[i];
+    const q = points[i + 1];
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
+    const len2 = dx * dx + dy * dy;
+    if (len2 < 1e-9) continue;
+    const t = ((hop.x - p.x) * dx + (hop.y - p.y) * dy) / len2;
+    if (t < -1e-6 || t > 1 + 1e-6) continue;
+    const distX = hop.x - (p.x + dx * t);
+    const distY = hop.y - (p.y + dy * t);
+    if (distX * distX + distY * distY < 0.01) return i;
+  }
+  return -1;
+}
+
+/**
+ * Build the edge's stroke path with a **gap** at each hop, so a hop reads as a
+ * real jump-over (the arc drawn in the crossing-marks layer bridges the gap)
+ * instead of an arc laid on top of a continuous line (a "half-moon"). The gap
+ * `[centre ± halfWidth]` along the hosting segment exactly matches the arc's
+ * endpoints (same formula), so line and arc meet seamlessly. The crossed line is
+ * not a host and stays continuous — it is the through-line the hop jumps over.
+ */
+function gappedStrokePath(points: Point[], hops: HopMark[]): string {
+  const cutsPerSeg = new Map<number, { tEnter: number; tExit: number }[]>();
+  for (const hop of hops) {
+    const seg = hopSegment(points, hop);
+    if (seg < 0) continue;
+    const p = points[seg];
+    const q = points[seg + 1];
+    const len2 = (q.x - p.x) ** 2 + (q.y - p.y) ** 2;
+    if (len2 < 1e-9) continue;
+    const rad = (hop.angle * Math.PI) / 180;
+    const dx = Math.cos(rad);
+    const dy = Math.sin(rad);
+    const paramOf = (x: number, y: number) =>
+      ((x - p.x) * (q.x - p.x) + (y - p.y) * (q.y - p.y)) / len2;
+    let tEnter = paramOf(hop.x - hop.halfWidth * dx, hop.y - hop.halfWidth * dy);
+    let tExit = paramOf(hop.x + hop.halfWidth * dx, hop.y + hop.halfWidth * dy);
+    if (tEnter > tExit) [tEnter, tExit] = [tExit, tEnter];
+    tEnter = Math.max(0, tEnter);
+    tExit = Math.min(1, tExit);
+    if (tExit - tEnter <= 0) continue;
+    const list = cutsPerSeg.get(seg);
+    if (list) list.push({ tEnter, tExit });
+    else cutsPerSeg.set(seg, [{ tEnter, tExit }]);
+  }
+
+  let d = `M ${round2(points[0].x)} ${round2(points[0].y)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p = points[i];
+    const q = points[i + 1];
+    const at = (t: number) => `${round2(p.x + (q.x - p.x) * t)} ${round2(p.y + (q.y - p.y) * t)}`;
+    for (const { tEnter, tExit } of (cutsPerSeg.get(i) ?? []).sort((a, b) => a.tEnter - b.tEnter)) {
+      d += ` L ${at(tEnter)} M ${at(tExit)}`;
+    }
+    d += ` L ${round2(q.x)} ${round2(q.y)}`;
+  }
+  return d;
 }
 
 const STROKE_DASHARRAY: Record<ResolvedEdgeStyle["strokeStyle"], string | undefined> = {
@@ -18,10 +88,14 @@ export function renderEdge(
   style: ResolvedEdgeStyle,
   markerId: string,
   diffState?: string,
+  hops?: HopMark[],
 ): string {
   const { fromPoint, toPoint } = edge;
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
   const parts: string[] = [];
+  // When this edge hosts hop marks (#1859 P2c-C), draw its stroke with a gap at
+  // each hop so the arc reads as a jump-over, not a bump on a solid line.
+  const gapped = hops !== undefined && hops.length > 0;
 
   // Group-by against-flow edges are dashed (#1859) so backward inter-group
   // dependencies stand out — but only when the author left `stroke-style` at
@@ -74,7 +148,15 @@ export function renderEdge(
     }
   }
 
-  if (points.length === 2) {
+  if (gapped) {
+    parts.push(
+      el("path", {
+        d: gappedStrokePath(points, hops),
+        fill: "none",
+        ...strokeAttrs,
+      }),
+    );
+  } else if (points.length === 2) {
     parts.push(
       el("line", {
         x1: fromPoint.x,
