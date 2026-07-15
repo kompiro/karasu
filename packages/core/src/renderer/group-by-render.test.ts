@@ -392,6 +392,31 @@ organization O { team "t1" { owns A owns B owns C } team "t2" { owns X owns Y } 
     expect(layer).toMatch(/ A [\d.]+ [\d.]+ -?\d*\.?\d*[1-9]\d* 0 1 /);
   });
 
+  it("gaps the host edge at each hop so it reads as a jump-over, not a half-moon", () => {
+    // The host edge's stroke is drawn with a break where the arc bridges it, and
+    // the arc's endpoints coincide with the gap boundaries (same coordinates).
+    const DIAG = `
+system S {
+  service A {} service B {} service C {}
+  service X {} service Y {}
+  A -> X  B -> Y  C -> X  A -> Y
+}
+organization O { team "t1" { owns A owns B owns C } team "t2" { owns X owns Y } }`;
+    const r = compile(DIAG, { diagramType: "system", groupBy: "team" });
+    if (r.diagramType !== "system") throw new Error("expected system view");
+    const edges = r.svg.match(/<g class="edges">.*?<\/g><\/g>/s)?.[0] ?? r.svg;
+    // A gapped host edge is a <path> with a mid-path `M` (pen lift = the gap).
+    const gapped = [...edges.matchAll(/<path d="(M [^"]*? M [^"]*?)"/g)].map((m) => m[1]);
+    expect(gapped.length).toBeGreaterThan(0);
+    // Each arc's start coordinate reappears as a gap boundary in some host path,
+    // proving line and arc meet seamlessly.
+    const arcStarts = [...r.svg.matchAll(/<path d="M ([\d.]+ [\d.]+) A /g)].map((m) => m[1]);
+    expect(arcStarts.length).toBeGreaterThan(0);
+    for (const start of arcStarts) {
+      expect(gapped.some((d) => d.includes(`M ${start}`) || d.includes(`L ${start}`))).toBe(true);
+    }
+  });
+
   // Multi-system marks are a separate slice (#1939 Part 2). Until then the
   // multi-system grouped view emits no marks — pinned so it stays explicit.
   it("does not emit marks for the multi-system grouped view (#1939 Part 2, not yet)", () => {

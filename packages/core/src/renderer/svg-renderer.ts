@@ -6,6 +6,7 @@ import type {
   ContainerRect,
   CrossingMarks,
   DisplayMode,
+  HopMark,
   LayoutNode,
   LayoutResult,
 } from "./layout-types.js";
@@ -326,7 +327,17 @@ export function renderFromLayout(
   // Resolved stroke of each edge, indexed to match `layoutResult.edges` — so a
   // crossing mark can be drawn in its own edge's colour/width (#1859 P2c-C),
   // not a fixed default that detaches from a coloured diagram.
+  // Hops grouped by their host edge index (== position in `layoutResult.edges`,
+  // the same array `computeCrossingMarks` indexed), so the host edge's stroke can
+  // be gapped where each hop jumps over a crossing (#1859 P2c-C).
+  const hopsByEdge = new Map<number, HopMark[]>();
+  for (const hop of layoutResult.crossingMarks?.hops ?? []) {
+    const list = hopsByEdge.get(hop.edge);
+    if (list) list.push(hop);
+    else hopsByEdge.set(hop.edge, [hop]);
+  }
   const edgeStroke: { color: string; strokeWidth: number }[] = [];
+  let edgeIndex = 0;
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     // Prefer the kind-qualified style entry so parallel sync/async edges between
@@ -339,7 +350,14 @@ export function renderFromLayout(
     edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     const diffState = effectiveEdgeDiffState?.get(edgeKey);
-    const rendered = renderEdge(edgeLayout, edgeStyle, markerId, diffState);
+    const rendered = renderEdge(
+      edgeLayout,
+      edgeStyle,
+      markerId,
+      diffState,
+      hopsByEdge.get(edgeIndex),
+    );
+    edgeIndex++;
     const isDimmedGhost =
       edgeLayout.ghost && (diffState === undefined || diffState === "unchanged");
     if (isDimmedGhost) {
