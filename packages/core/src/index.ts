@@ -406,7 +406,7 @@ export interface CompileOptions {
    * un-grouped kind-tier layout. System view only; see
    * `docs/design/system-view-grouping.md`.
    */
-  groupBy?: "team";
+  groupBy?: "team" | "boundary";
   /**
    * System-view team ids collapsed to a `<Team> (N)` stub (Issue #1858, P2a).
    * Only meaningful with `groupBy: "team"`. Cross-group edges re-target onto the
@@ -437,6 +437,12 @@ export interface SystemCompileResult {
    * racing the org compile (Issue #923).
    */
   hasOrgDiagram: boolean;
+  /**
+   * Whether the project declares at least one `boundary` block (#1822 P2b).
+   * Gates the "Group by: boundary" axis in the app the same way
+   * `hasOrgDiagram` gates "Group by: team".
+   */
+  hasBoundaries: boolean;
   deployBlocks: DeployBlockInfo[];
   /**
    * Fully resolved system tree (all imports merged), with a synthetic
@@ -615,6 +621,7 @@ function _compileFromPreparedInput(
   ];
   const hasDeployDiagram = krsFile.deploys.length > 0;
   const hasOrgDiagram = krsFile.organizations.length > 0;
+  const hasBoundaries = krsFile.boundaries.length > 0;
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = krsFile.ownerIndex;
@@ -678,6 +685,7 @@ function _compileFromPreparedInput(
     collapsedCategories,
     interactive,
     groupBy,
+    boundaryIndex: krsFile.boundaryIndex,
     collapsedGroups,
   });
   const nodeMetadata = buildNodeMetadata(
@@ -694,6 +702,7 @@ function _compileFromPreparedInput(
     nodeMetadata,
     hasDeployDiagram,
     hasOrgDiagram,
+    hasBoundaries,
     deployBlocks,
     systems: effectiveSystems,
     nodeFileIndex,
@@ -993,7 +1002,7 @@ export function buildDrillDownSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
-  groupBy?: "team",
+  groupBy?: "team" | "boundary",
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvg(
@@ -1055,7 +1064,7 @@ export function buildAllLayersSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
-  groupBy?: "team",
+  groupBy?: "team" | "boundary",
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllLayersSvg(
@@ -1129,7 +1138,7 @@ export function buildAllViewsSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
-  groupBy?: "team",
+  groupBy?: "team" | "boundary",
 ): AllViewsSvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllViewsSvg(
@@ -1228,7 +1237,7 @@ export interface CompileSystemDiffOptions {
    * gets the same team bands / boundary frames as the non-compare view. Omit
    * for the default un-grouped layout.
    */
-  groupBy?: "team";
+  groupBy?: "team" | "boundary";
   /** Teams collapsed to a `<Team> (N)` stub in the diff (Issue #1858). Only with `groupBy: "team"`. */
   collapsedGroups?: ReadonlySet<string>;
   /**
@@ -1334,6 +1343,14 @@ export async function compileSystemDiff(
     const formerTeam = beforeResolved.krsFile.ownerIndex.get(id);
     if (formerTeam !== undefined) mergedOwnerIndex.set(id, formerTeam);
   }
+  // Same backfill for the boundary axis (#1822 P2b): a removed node returns to
+  // its former boundary frame instead of the trailing un-grouped band.
+  const mergedBoundaryIndex = new Map<string, string>(afterResolved.krsFile.boundaryIndex);
+  for (const [id, meta] of diffed.nodes) {
+    if (meta.state !== "removed" || mergedBoundaryIndex.has(id)) continue;
+    const formerBoundary = beforeResolved.krsFile.boundaryIndex.get(id);
+    if (formerBoundary !== undefined) mergedBoundaryIndex.set(id, formerBoundary);
+  }
 
   const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
     nodeDiffState: nodeDiffStateMap,
@@ -1342,6 +1359,7 @@ export async function compileSystemDiff(
     emptyLabels: emptyStateLabels,
     theme,
     groupBy,
+    boundaryIndex: mergedBoundaryIndex,
     collapsedGroups,
     collapsedCategories,
     interactive,

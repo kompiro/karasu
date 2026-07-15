@@ -215,7 +215,7 @@ export function buildAllLayersSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   badgeLabels?: AnnotationBadgeLabels,
-  groupBy?: "team",
+  groupBy?: "team" | "boundary",
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
@@ -252,6 +252,7 @@ export function buildAllLayersSvg(
           // deeper drill-down levels have no teams. Collapse stays off by
           // design so the export reveals the full structure, grouped.
           groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
+          boundaryIndex: krsFile.boundaryIndex,
         }),
     },
     [],

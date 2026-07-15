@@ -181,6 +181,7 @@ export const ja: Partial<Translations> = {
   "preview.groupBy.label": "グループ化",
   "preview.groupBy.none": "なし",
   "preview.groupBy.team": "チーム",
+  "preview.groupBy.boundary": "境界",
   "preview.groupBy.collapseAll": "すべて畳む",
   "preview.groupBy.expandAll": "すべて展開",
   "preview.expansion.overloadHint": "多くのコンテナを展開中 — Collapse all で俯瞰に戻れます",

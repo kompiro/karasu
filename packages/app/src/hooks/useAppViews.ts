@@ -99,6 +99,10 @@ interface SystemViewBundle {
    * selector so it is not a visible no-op (Issue #1858).
    */
   groupByAvailable: boolean;
+  /** Whether the team axis has data (an `organization`/`owns` block) — gates the "team" option (#1822 P2b). */
+  hasTeamAxis: boolean;
+  /** Whether the boundary axis has data (a `boundary` block) — gates the "boundary" option (#1822 P2b). */
+  hasBoundaryAxis: boolean;
 }
 
 interface DeployViewBundle {
@@ -202,6 +206,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     hasOrgDiagram,
+    hasBoundaries,
     recompile: recompileSystem,
     systems: resolvedSystems,
     nodeFileIndex,
@@ -347,7 +352,11 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       toggleCategory,
       groupBy,
       setGroupBy,
-      groupByAvailable: hasOrgDiagram,
+      // The selector shows when either axis has data; each option is rendered
+      // only for the axis it applies to (#1822 P2b, data-driven visibility).
+      groupByAvailable: hasOrgDiagram || hasBoundaries,
+      hasTeamAxis: hasOrgDiagram,
+      hasBoundaryAxis: hasBoundaries,
       toggleGroup,
       expandedContainers,
       toggleExpand,

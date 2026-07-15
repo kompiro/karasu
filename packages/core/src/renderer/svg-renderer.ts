@@ -134,11 +134,16 @@ export interface RenderOptions {
    */
   interactive?: boolean;
   /**
-   * System-view grouping axis (Issue #1858, P2a). `"team"` lays each node's
-   * owning team out as a dependency-ordered band with a boundary frame. Omit
-   * for the default un-grouped kind-tier layout.
+   * System-view grouping axis. `"team"` (#1858, P2a) bands each node's owning
+   * team; `"boundary"` (#1822, P2b) bands by declared `boundary`. Omit for the
+   * default un-grouped kind-tier layout.
    */
-  groupBy?: "team";
+  groupBy?: "team" | "boundary";
+  /**
+   * Declared-boundary axis (node id → boundary id). Sourced from
+   * `krsFile.boundaryIndex`; consumed by layout only when `groupBy === "boundary"`.
+   */
+  boundaryIndex?: Map<string, string>;
   collapsedGroups?: ReadonlySet<string>;
   /**
    * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).
@@ -182,6 +187,7 @@ export function render(
   }
   const layoutResult = layout(viewSlice, {
     ownerIndex,
+    boundaryIndex: options?.boundaryIndex,
     displayMode,
     layoutHints: styles.layoutHints,
     edgeDirections,

@@ -18,7 +18,7 @@ export function useViewSvg(
   displayMode: DisplayMode | undefined,
   styleSource?: string,
   theme?: DiagramTheme,
-  groupBy?: "team",
+  groupBy?: "team" | "boundary",
   // The current system-view drill path — drives the live entity view, which is
   // scoped to the drilled domain (unlike the whole-model export builders above).
   viewPath?: string[],

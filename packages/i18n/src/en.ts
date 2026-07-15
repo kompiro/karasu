@@ -182,6 +182,7 @@ export const en: Translations = {
   "preview.groupBy.label": "Group by",
   "preview.groupBy.none": "None",
   "preview.groupBy.team": "Team",
+  "preview.groupBy.boundary": "Boundary",
   "preview.groupBy.collapseAll": "Collapse all",
   "preview.groupBy.expandAll": "Expand all",
   "preview.expansion.overloadHint":
