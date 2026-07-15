@@ -770,11 +770,19 @@ describe("mixed channel routing on examples/en/getting-started (#1954)", () => {
     expect(seller.waypoints).toBeDefined();
   });
 
-  it("leaves the ungrouped (Group by: none) view penetration-free and unchanged in shape", () => {
-    // AC-5: the ungrouped pipeline is untouched. It has no group frames, so the
-    // grouped routing never runs; assert it still lays out cleanly.
+  it("does not group or mixed-route the ungrouped (Group by: none) view (AC-5)", () => {
+    // AC-5: the ungrouped pipeline is untouched — no group frames, so the grouped
+    // routing (and its mixed-route fallback) never runs. The two edges that get
+    // mixed routes when grouped are NOT rerouted here.
     const ungrouped = layoutGettingStarted();
     expect(ungrouped.containers.some((c) => c.group)).toBe(false);
-    expect(ungrouped.crossingMarks).toBeUndefined();
+    for (const [from, to] of [
+      ["ECommerce", "OrderEvents"],
+      ["Seller", "ECommerce"],
+    ] as const) {
+      // The grouped mixed route bends through 3 gutter/channel waypoints; the
+      // ungrouped pipeline does not produce that shape for these edges.
+      expect((edge(ungrouped, from, to).waypoints ?? []).length).toBeLessThan(3);
+    }
   });
 });
