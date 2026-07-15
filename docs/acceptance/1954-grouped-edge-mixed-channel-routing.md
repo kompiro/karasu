@@ -15,7 +15,7 @@ Group by → Team の system view で、両側のガター側 stub が同 row �
 
 ### AC-1: 貫通ゼロ・overlap ゼロ（core, 実サンプル）
 
-> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts`（"mixed channel routing on examples/en/getting-started" suite）
+> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide)
 
 - [x] `examples/en/getting-started/index.krs` を Group by team でレイアウトすると `totalPenetrations == 0`
 - [x] 同 fixture で `collinearVerticalOverlaps == 0` かつ `collinearHorizontalOverlaps == 0`（素朴 channel が生む false-connection を出さない）
@@ -24,9 +24,9 @@ Group by → Team の system view で、両側のガター側 stub が同 row �
 
 ### AC-2: 既存 route の回帰なし（core）
 
-> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts`（`SYS` / `TRUNKS` suite）+ core 全スイート（2290 tests）
+> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide)
 
-- [x] 既存 2-waypoint ガター route の経路・trunk・lane・fan-out・overlap ゼロ assert がすべて不変（パス一般化の回帰柵）
+- [x] 既存 2-waypoint ガター route の経路・trunk・lane・fan-out・overlap ゼロ assert がすべて不変（パス一般化の回帰柵。core 全スイート 2290 tests も無変更で通過）
 - [x] `groupBy` 未指定（ungrouped）は既存 snapshot と byte 一致（AC-5）
 
 ### AC-3: 手動（描画の目視確認）

@@ -14,16 +14,28 @@ import { resolveRepoPermalink } from "../../packages/app/src/render/repo-permali
  * function is the thin Workers adapter (same split as functions/s.ts ↔
  * share-page.ts).
  *
- * The browser carries the incoming `#krs-…` fragment onto the 302 target
- * automatically, but `/s` overwrites the fragment when it bounces to `/#s=…`,
- * so deep-anchor drill is a separate follow-up slice — this opens the whole
- * model.
+ * The incoming `#krs-…` deep anchor is carried through the `/s` bounce to a
+ * drilled/focused SPA open (#1958): the browser applies the original request's
+ * fragment onto this 302 target, and `/s` moves it into a `?krs=` query the SPA
+ * normalizes (share-page.ts ↔ App.resolveDeepLinkHash).
+ *
+ * Caching (#1958): an immutable `@<sha>` 302 is cached `immutable` (1y) via the
+ * Cloudflare Cache API; a mutable `HEAD`/branch 302 gets a short TTL. This is an
+ * ephemeral CDN cache, not a new store — stateless per ADR-20260626-01. The
+ * cache key excludes the URL fragment, so one cached `@<sha>` 302 serves every
+ * `#krs-…` anchor variant (the anchor is applied client-side).
  */
 export async function onRequestGet(context: {
   request: Request;
   params: { path: string | string[] };
+  waitUntil(promise: Promise<unknown>): void;
 }): Promise<Response> {
-  const url = new URL(context.request.url);
+  const { request } = context;
+  const cache = caches.default;
+  const hit = await cache.match(request);
+  if (hit) return hit;
+
+  const url = new URL(request.url);
 
   const raw = context.params.path;
   const rest = Array.isArray(raw) ? raw.join("/") : raw;
@@ -49,10 +61,22 @@ export async function onRequestGet(context: {
 
   if (result.status === 200 && result.encodedPayload) {
     const target = `${url.origin}/s?s=${result.encodedPayload}`;
-    return new Response(null, {
+    // Immutable `@<sha>`: cache 1y everywhere (content can't change). Mutable
+    // `HEAD`/branch: let the shared CDN cache hold it briefly (`s-maxage`) to
+    // shield GitHub raw, but keep the visitor's browser from replaying a stale
+    // redirect (`max-age=0, must-revalidate`) — the Cloudflare Cache API honors
+    // `s-maxage` over `max-age`, so this still caches at the edge.
+    const cacheControl = result.immutable
+      ? "public, max-age=31536000, immutable"
+      : "public, s-maxage=60, max-age=0, must-revalidate";
+    const response = new Response(null, {
       status: 302,
-      headers: { Location: target, "Cache-Control": "no-store" },
+      headers: { Location: target, "Cache-Control": cacheControl },
     });
+    // Populate the cache off the response path; a put failure must not break the
+    // redirect (e.g. an environment where the Cache API is a no-op).
+    context.waitUntil(cache.put(request, response.clone()).catch(() => {}));
+    return response;
   }
 
   return new Response(result.message ?? "Error.", {
