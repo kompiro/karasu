@@ -77,6 +77,14 @@ permalink:
 - deep permalink（要素ドリル）は `source` に anchor を添える（例
   `system.krs#krs-system-payment-api`）。identity は author-given `id`、`label`
   ではない。
+- **repo-backed permalink（#1828）を `short` に貼るなら `@<sha>` で pin する**。
+  nest resolver（`https://karasu.kompiro.dev/r/<owner>/<repo>[/<path>][@<ref>]`）
+  は permissive で、`@` 省略時は default branch HEAD（mutable）を描く。ADR は
+  「決定時点の構造」を指すべきなので、**full 40-hex の commit SHA** を付ける
+  （`…/r/<owner>/<repo>@<40-hex>#krs-…`）。branch/tag/HEAD/短縮 SHA は mutable で
+  link rot する。これは **推奨**であり、非準拠は `adr:check-permalinks` が
+  warning で促すが CI は落とさない（[#1959](https://github.com/kompiro/karasu/issues/1959) /
+  [kompiro/adr-tools#23](https://github.com/kompiro/adr-tools/issues/23)、下記「検証」参照）。
 
 ### 本文サマリ節（生成）
 
@@ -93,17 +101,24 @@ permalink:
 
 ### 検証（`pnpm adr:check-permalinks`）
 
-`permalink:` の検証は `@kompiro/adr-tools`（`>=0.0.7`）の **`krs` kind** が担う
+`permalink:` の検証は `@kompiro/adr-tools`（`>=0.0.9`）の **`krs` kind** が担う
 （`adr.config.json` の `"permalink": { "kind": "krs" }`、[#1830](https://github.com/kompiro/karasu/issues/1830) /
 [kompiro/adr-tools#17](https://github.com/kompiro/adr-tools/issues/17)）。`pnpm adr:check-permalinks`
-が各エントリについて次を検査し、破れていれば CI を落とす:
+が各エントリについて次を検査し、**`fail`** が 1 つでもあれば CI を落とす（`warn` は
+非-fatal で CI を落とさない）:
 
-- **`source` 必須**（`short` 単独は不可）・**`source` の `.krs` 実在**。
+- **`source` 必須**（`short` 単独は不可）・**`source` の `.krs` 実在**。（fail）
 - **deep anchor の解決** — `source` に `#krs-<view>-<id>` があれば、adr-tools が
   optional peer の `@karasu-tools/core` を lazy import して `.krs` をレンダーし、
-  emit されるアンカー集合に含まれるか検証（rename / 削除で dangling した anchor を検出）。
+  emit されるアンカー集合に含まれるか検証（rename / 削除で dangling した anchor を検出）。（fail）
 - **`view` 妥当性**（任意）・**`short` のオフライン形式検査**（http(s) 形か・`#s=`
-  fragment でないか。ネットワーク解決はしない）。
+  fragment でないか。ネットワーク解決はしない）。（fail）
+- **repo-backed permalink の `@<sha>` pin 推奨**（`warn`、非-fatal）— `adr.config.json` の
+  `permalink.repoBackedHosts`（`["karasu.kompiro.dev", "karasu.pages.dev"]`）に host が
+  一致する `short` が full 40-hex SHA で pin されていなければ、`@<sha>` を推奨する warning を
+  出す（ref-less / `@HEAD` / `@branch` / `@tag` / 短縮 SHA が対象）。host で判定するため
+  route 形（bare / `/r/`）に非依存。**CI は落とさない**（[#1959](https://github.com/kompiro/karasu/issues/1959) /
+  [kompiro/adr-tools#23](https://github.com/kompiro/adr-tools/issues/23)）。将来 hard-fail 化するなら config で opt-in。
 
 resolver は built `@karasu-tools/core` を要するため、CI では **`Build (core)` の後**に
 実行する（ci.yml の Check job）。本文サマリ表の生成はまだ未実装で adr-tools 側の
