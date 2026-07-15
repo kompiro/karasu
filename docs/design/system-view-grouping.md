@@ -458,6 +458,7 @@ P2c-A（#1894）/ P2c-B（#1901）マージ後の最終スライス。直交ル�
 
 - `svg-renderer.ts` に `renderCrossingMarks(marks)` を足し、`edges` グループの**後**に `crossing-marks` レイヤ（`<g class="crossing-marks">`）を emit する（marks が線の上に載る）。hop = `<path>`（横線上の半円バンプ、cluster 時は幅広アーク）、junction = `<circle>`。
 - **各 mark は所有エッジの色/線幅で描く**（`HopMark.edge` / `JunctionMark.edge` = `LayoutResult.edges` の index。hop は跨ぐ横エッジ、junction は合流する stub エッジ）。色付きの図でも marks が線から浮かないようにする。index 外は既定エッジ stroke にフォールバック。
+- **hop は host エッジの線を切って描く**（`renderEdge` が host エッジを `<path>` で描き、各 hop の `[中心 ± halfWidth]` 区間に gap を空ける）。gap 端はアークの端点と同座標なので継ぎ目なく繋がり、hop が「連続線の上のこぶ（半月）」ではなく本来の**飛び越え**に見える。跨がれる側の線は host ではないので**連続**（＝飛び越えられる through-line）。
 
 #### 既知の制限（scope）
 

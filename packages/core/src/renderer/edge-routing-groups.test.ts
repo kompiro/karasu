@@ -668,9 +668,11 @@ function rightAngleCrossings(res: LayoutResult): Point[] {
 }
 
 describe("computeCrossingMarks (#1859, P2c-C)", () => {
-  it("sets crossingMarks in the grouped view and leaves it undefined ungrouped (AC-5)", () => {
+  it("sets crossingMarks for a single-system layout whether grouped or not (#1956)", () => {
+    // #1956 extended marks to the ungrouped view, so both branches populate it
+    // (grouped adds junction dots; ungrouped is hops-only).
     expect(layoutOf(TRUNKS, TRUNKS_OWNER, "team").crossingMarks).toBeDefined();
-    expect(layoutOf(TRUNKS, TRUNKS_OWNER).crossingMarks).toBeUndefined();
+    expect(layoutOf(TRUNKS, TRUNKS_OWNER).crossingMarks).toBeDefined();
   });
 
   it("marks a junction dot only at real trunk merges, not at the trunk head (AC-2)", () => {

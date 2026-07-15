@@ -18,11 +18,13 @@
 <line x1="518" y1="312" x2="580" y2="432" stroke="#D97706" stroke-width="1.5" marker-end="url(#arrow-0)"/>
 <text x="549" y="366" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">決済を依頼する</text></g>
 <g data-edge-from="OrderService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="OrderService--&gt;NotificationService" data-edge-label="注文確定を通知する" class="krs-edge krs-edge--interactive"><polyline points="486,312 486,558 333.3333333333333,558 333.3333333333333,618" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<polyline points="486,312 486,558 333.3333333333333,558 333.3333333333333,618" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
+<path d="M 486 312 L 486 558 L 486 558 M 479.33 558 L 333.33 558 L 333.33 618" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
 <text x="486" y="429" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">注文確定を通知する</text></g>
 <g data-edge-from="PaymentService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="PaymentService--&gt;NotificationService" data-edge-label="決済結果を通知する" class="krs-edge krs-edge--interactive"><line x1="580" y1="498" x2="386.66666666666663" y2="618" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="580" y1="498" x2="386.66666666666663" y2="618" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
+<path d="M 580 498 L 489.4 554.24 M 482.6 558.45 L 386.67 618" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
 <text x="483.3333333333333" y="552" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>
+<g class="crossing-marks"><path d="M 482.6 558.45 A 4 4 -31.83 0 1 489.4 554.24" fill="none" stroke="#D97706" stroke-width="1.5"/>
+<path d="M 479.33 558 A 4 4 0 0 1 487.33 558" fill="none" stroke="#D97706" stroke-width="1.5"/></g>
 <g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="360" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <path d="M324 82.16 L396 82.16 L416 93.12 L416 122 Q416 126 412 126 L308 126 Q304 126 304 122 L304 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <text x="360" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
