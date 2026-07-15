@@ -3,7 +3,7 @@
 - **日付**: 2026-07-12
 - **Issue**: #1859（親 #1822 / Epic #1817 comprehension）
 - **PR**: (P2c-B — aggregation trunks)
-- **設計**: [docs/design/system-view-grouping.md](../design/system-view-grouping.md) § 「P2c 実装設計（#1859）」
+- **設計**: [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)
 - **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測り、貫通は 0 を assert）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（参照エッジ端点保持 / edge identity）
 - **対象**: `packages/core/src/renderer/edge-routing-groups.ts`（`aggregateGroupTrunks` 追加） / `layout.ts` / `layout-types.ts`
 
