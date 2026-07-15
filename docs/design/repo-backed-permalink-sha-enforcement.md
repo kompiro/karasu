@@ -3,7 +3,7 @@
 - **日付**: 2026-07-15
 - **ステータス**: 検討中
 - **Issue**: #1959（親 #1828 repo-backed + ref-pinned permalink、エピック #1826 permalink layer）
-- **PR**: #TBD
+- **PR**: #1969
 - **関連**:
   - 親設計: [`docs/design/repo-backed-ref-pinned-permalink.md`](./repo-backed-ref-pinned-permalink.md)（#1828 本体、軸2-A で immutability を resolver から検証層へ移した）
   - 検証の所在 ADR: [ADR-20260713-02](../adr/20260713-02-adr-permalink-validation.md)（検証は adr-tools の `krs` kind が担い karasu は config で adopt）
