@@ -111,6 +111,28 @@ describe("resolveRepoPermalink", () => {
     expect(payload?.krs).toContain("system Shop");
   });
 
+  it("flags immutable=true only for a full 40-hex SHA (cache TTL selector)", async () => {
+    const sha = await resolveRepoPermalink(
+      `o/r@${"a".repeat(40)}`,
+      stubFetch({ "index.krs": SINGLE_KRS }),
+    );
+    expect(sha.status).toBe(200);
+    expect(sha.immutable).toBe(true);
+
+    // Abbreviated SHAs are indistinguishable from a hex-looking branch → mutable.
+    const shortSha = await resolveRepoPermalink(
+      "o/r@a1b2c3d",
+      stubFetch({ "index.krs": SINGLE_KRS }),
+    );
+    expect(shortSha.immutable).toBe(false);
+
+    const branch = await resolveRepoPermalink("o/r@main", stubFetch({ "index.krs": SINGLE_KRS }));
+    expect(branch.immutable).toBe(false);
+
+    const head = await resolveRepoPermalink("o/r", stubFetch({ "index.krs": SINGLE_KRS }));
+    expect(head.immutable).toBe(false);
+  });
+
   it("resolves the default branch (HEAD) when @ is omitted", async () => {
     // No `@ref` → the provider fetches raw at the `HEAD` ref (default branch).
     let seenRef: string | undefined;

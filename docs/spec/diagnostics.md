@@ -82,6 +82,7 @@ primary owner.
 | `duplicate-resource-operation` | warning | A CRUD verb is listed more than once on one resource. |
 | `duplicate-crud-decoration-target` | warning | A CRUD decoration targets the same operation more than once. |
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-20260615-01](../adr/20260615-01-ownership-during-migration.md)). |
+| `duplicate-boundary-assignment` | info | A node is listed in more than one `boundary` (a fact; the first-declared boundary is kept). |
 | `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
 
 ### Cross-reference resolution (warn-don't-error, §S6)
@@ -94,6 +95,7 @@ error) — see syntax spec §S6.
 | --- | --- | --- |
 | `owns-target-not-found` | warning | A team `owns` a service / domain that does not exist. |
 | `invalid-owns` | warning | An `owns` target resolves to a kind that cannot be owned. |
+| `contains-target-not-found` | warning | A `boundary` `contains` a node that does not exist in the system hierarchy. |
 | `import-id-not-found` | error | A named import id path fails to resolve. |
 | `import-path-not-found` | error | An import path fails to resolve at some segment. |
 | `unresolved-edge-endpoint` | warning | An edge endpoint id is not found anywhere in the merged model. |

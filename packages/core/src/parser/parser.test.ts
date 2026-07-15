@@ -1978,6 +1978,142 @@ domain Payment {
   });
 });
 
+describe("boundary declarations (P2b — system-view semantic clusters)", () => {
+  it("parses a boundary block with label and contains members", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+  service Wallet {}
+}
+boundary payments "Payments" {
+  description "money movement"
+  contains Billing
+  contains Wallet
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.value.boundaries).toHaveLength(1);
+    const b = result.value.boundaries[0];
+    expect(b.kind).toBe("boundary");
+    expect(b.id).toBe("payments");
+    expect(b.label).toBe("Payments");
+    expect(b.properties.description).toBe("money movement");
+    expect(b.contains).toEqual(["Billing", "Wallet"]);
+  });
+
+  it("builds boundaryIndex (node id → boundary id) at parse time", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+  service Wallet {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.value.boundaryIndex.get("Billing")).toBe("payments");
+    expect(result.value.boundaryIndex.get("Wallet")).toBe("payments");
+  });
+
+  it("keeps the first-declared boundary and reports the duplicate as info (first-wins)", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+}
+boundary payments {
+  contains Billing
+}
+boundary finance {
+  contains Billing
+}
+    `);
+    // Multi-membership is a fact, not an error: info register (mirrors
+    // duplicate-owner-assignment). boundaryIndex is 1:1 and keeps the first.
+    const dup = result.diagnostics.filter((d) => d.code === "duplicate-boundary-assignment");
+    expect(dup).toHaveLength(1);
+    expect(dup[0].severity).toBe("info");
+    expect(JSON.stringify(dup[0].params)).toContain("Billing");
+    // The diagnostic names the retained (first) boundary.
+    expect(JSON.stringify(dup[0].params)).toContain("payments");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.value.boundaryIndex.get("Billing")).toBe("payments");
+  });
+
+  it("warns when contains references a node that does not exist", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+}
+boundary payments {
+  contains Billing
+  contains Ghost
+}
+    `);
+    const notFound = result.diagnostics.filter((d) => d.code === "contains-target-not-found");
+    expect(notFound).toHaveLength(1);
+    expect(notFound[0].severity).toBe("warning");
+    expect(JSON.stringify(notFound[0].params)).toContain("Ghost");
+    // The existing member is still indexed.
+    expect(result.value.boundaryIndex.get("Billing")).toBe("payments");
+  });
+
+  it("allows any node kind as a member (no kind restriction, unlike owns)", () => {
+    const result = Parser.parse(`
+system Shop {
+  user Shopper {}
+  client Web {}
+  service Billing {}
+}
+boundary checkout {
+  contains Shopper
+  contains Web
+  contains Billing
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.code === "contains-target-not-found")).toHaveLength(
+      0,
+    );
+    expect(result.value.boundaryIndex.get("Shopper")).toBe("checkout");
+    expect(result.value.boundaryIndex.get("Web")).toBe("checkout");
+  });
+
+  it("accepts a string-literal id and string-literal members", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+}
+boundary "payments-domain" {
+  contains "Billing"
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.value.boundaries[0].id).toBe("payments-domain");
+    expect(result.value.boundaryIndex.get("Billing")).toBe("payments-domain");
+  });
+
+  it("degenerates cleanly with an empty boundary (no members)", () => {
+    const result = Parser.parse(`
+boundary empty {
+  label "Empty"
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.value.boundaries[0].contains).toEqual([]);
+    expect(result.value.boundaryIndex.size).toBe(0);
+  });
+
+  it("reports a missing member id after contains without crashing", () => {
+    const result = Parser.parse(`
+boundary payments {
+  contains
+}
+    `);
+    expect(result.diagnostics.some((d) => d.code === "expected-id-after")).toBe(true);
+  });
+});
+
 describe("top-level-declaration diagnostic (#1624)", () => {
   it("errors on a top-level user with code top-level-declaration", () => {
     const result = Parser.parse(`

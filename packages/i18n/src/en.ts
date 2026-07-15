@@ -372,6 +372,10 @@ export const en: Translations = {
     `Duplicate CRUD verb "${value}" in decoration of "${operation}" on resource "${resourceId}"`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is owned by more than one team; "${existingTeam}" is kept as its primary owner`,
+  "diagnostic.duplicateBoundaryAssignment.message": ({ nodeId, existingBoundary }) =>
+    `"${nodeId}" is listed in more than one boundary; "${existingBoundary}" is kept as its boundary`,
+  "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
+    `"${memberId}" referenced in "contains" was not found in the system hierarchy`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,
