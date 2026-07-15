@@ -135,15 +135,29 @@ function decodeXmlEntities(s: string): string {
  * attribute so its `⊕` expand control still works) and axis-agnostic — read
  * from what is actually drawn, so the bulk toggle needs no change when a future
  * Group-by axis lands. See `docs/design/group-by-bulk-collapse.md`.
+ *
+ * `serviceIds` are every in-place-expandable service (`data-expand-node`,
+ * #1921/#1923) — the renderer emits it only in the single-system, ungrouped view
+ * (both on a collapsed `⊕` box and an expanded `⊖` frame), so this is the full
+ * set the bulk "Expand all" acts on and is naturally empty under Group-by team /
+ * multi-system. See `docs/design/expand-all-services-in-place.md` (#1955).
  */
-function extractCollapsibles(svg: string): { groupIds: string[]; categoryIds: CategoryId[] } {
+function extractCollapsibles(svg: string): {
+  groupIds: string[];
+  categoryIds: CategoryId[];
+  serviceIds: string[];
+} {
   const groupIds = new Set<string>();
   const categoryIds = new Set<CategoryId>();
+  const serviceIds = new Set<string>();
   for (const m of svg.matchAll(/data-collapse-(group|category)="([^"]+)"/g)) {
     if (m[1] === "group") groupIds.add(decodeXmlEntities(m[2]));
     else if (m[2] === "external" || m[2] === "infra") categoryIds.add(m[2]);
   }
-  return { groupIds: [...groupIds], categoryIds: [...categoryIds] };
+  for (const m of svg.matchAll(/data-expand-node="([^"]+)"/g)) {
+    serviceIds.add(decodeXmlEntities(m[1]));
+  }
+  return { groupIds: [...groupIds], categoryIds: [...categoryIds], serviceIds: [...serviceIds] };
 }
 
 export function useSystemView(
@@ -170,20 +184,22 @@ export function useSystemView(
   /** Ids of every collapsible team boundary frame in the current render (#1872). */
   groupIds: string[];
   /**
-   * Whether anything is collapsible in the current view — at least one team
-   * frame OR one external/infra category band (#1872). Gates the bulk toggle so
-   * it shows even when the view is un-grouped but has category bands.
+   * Whether the bulk toggle is relevant in the current view — at least one team
+   * frame, one external/infra category band, an active in-place expansion, OR a
+   * drillable service to expand (#1872/#1955). Gates the toggle so it shows even
+   * in an un-grouped view whose only bulk action is Expand-all-services.
    */
   anyCollapsible: boolean;
   /**
-   * True when everything collapsible in the current view — every team frame
-   * AND every external/infra category band — is collapsed (#1872). Drives the
-   * bulk toggle's Collapse-all ⇄ Expand-all state.
+   * True when everything is folded to the scoped-glance overview — every team
+   * frame AND category band collapsed AND no service expanded (#1872/#1955).
+   * Drives the bulk toggle's Collapse-all ⇄ Expand-all state.
    */
   allCollapsed: boolean;
   /**
-   * Collapse everything (team frames + external/infra categories) when anything
-   * is open, else expand everything (#1872).
+   * From the overview, expand everything (unfold team frames + category bands and
+   * expand every drillable service in place); otherwise collapse everything back
+   * to the overview (#1872/#1955).
    */
   onCollapseAllToggle: () => void;
 } {
@@ -354,18 +370,29 @@ export function useSystemView(
       expandKey,
     ],
   });
-  // Bulk collapse (#1872). Both id lists come from the rendered SVG in one pass,
-  // so they are axis-agnostic and always match what is actually on screen.
-  // "Collapse all" spans both collapse axes — team frames (#1858) and
-  // external/infra categories (#1821) — so its label ("all") is honest, and it
-  // is offered whenever anything is collapsible (even an un-grouped view with
-  // only category bands). The per-axis state / controls stay orthogonal
-  // (ADR-20260711-03 §3); only this convenience toggle bridges them.
-  const { groupIds, categoryIds } = useMemo(() => extractCollapsibles(result.svg), [result.svg]);
+  // Bulk collapse (#1872) + bulk expand-all-services (#1955). All id lists come
+  // from the rendered SVG in one pass, so they are axis-agnostic and always match
+  // what is actually on screen. "Collapse all" spans both collapse axes — team
+  // frames (#1858) and external/infra categories (#1821) — plus in-place
+  // expansions, and its Expand-all direction also opens every drillable service
+  // in place (#1955), so its label ("all") is honest. It is offered whenever
+  // anything is collapsible OR expandable (even an un-grouped view whose only
+  // bulk action is expanding its services). The per-axis state / controls stay
+  // orthogonal (ADR-20260711-03 §3); only this convenience toggle bridges them.
+  const { groupIds, categoryIds, serviceIds } = useMemo(
+    () => extractCollapsibles(result.svg),
+    [result.svg],
+  );
   // In-place expansions count as "collapsible" too: Collapse all clears them,
-  // giving a one-click return to the scoped-glance overview (#1923).
+  // giving a one-click return to the scoped-glance overview (#1923). Drillable
+  // services count as well (#1955): even an un-grouped view with no frames/bands
+  // but expandable services offers the toggle, so its Expand-all direction can
+  // open them all at once.
   const anyCollapsible =
-    groupIds.length > 0 || categoryIds.length > 0 || expandedContainers.size > 0;
+    groupIds.length > 0 ||
+    categoryIds.length > 0 ||
+    expandedContainers.size > 0 ||
+    serviceIds.length > 0;
   const allCollapsed =
     anyCollapsible &&
     expandedContainers.size === 0 &&
@@ -373,23 +400,25 @@ export function useSystemView(
     categoryIds.every((c) => collapsedCategories.has(c));
   const collapseGroupsAll = groups.replace;
   const collapseCategoriesAll = categories.replace;
-  const clearExpansions = expansions.replace;
+  const replaceExpansions = expansions.replace;
   const onCollapseAllToggle = useCallback(() => {
     if (allCollapsed) {
       collapseGroupsAll();
       collapseCategoriesAll();
+      replaceExpansions(serviceIds); // expand every drillable service in place (#1955)
     } else {
       collapseGroupsAll(groupIds);
       collapseCategoriesAll(categoryIds);
-      clearExpansions(); // fold every expanded container back to the overview
+      replaceExpansions(); // fold every expanded container back to the overview
     }
   }, [
     allCollapsed,
     groupIds,
     categoryIds,
+    serviceIds,
     collapseGroupsAll,
     collapseCategoriesAll,
-    clearExpansions,
+    replaceExpansions,
   ]);
 
   return {
