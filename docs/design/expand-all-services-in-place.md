@@ -3,7 +3,7 @@
 - **日付**: 2026-07-15
 - **ステータス**: 検討中
 - **Issue**: #1955
-- **PR**: <!-- 作成後に反映 -->
+- **PR**: [#1964](https://github.com/kompiro/karasu/pull/1964)
 - **関連**:
   - 引き金 Issue: [#1955](https://github.com/kompiro/karasu/issues/1955)（Comprehension: expand all services in place with one action）
   - 親 Issue: epic [#1817](https://github.com/kompiro/karasu/issues/1817)（comprehension / explorable viewer）
