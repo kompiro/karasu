@@ -229,6 +229,18 @@ export const en: Translations = {
     `${infraKind} "${infraId}" is shared by ${count} services`,
   "warning.sharedInfraFanIn.checkDatabasePerService":
     "Microservices Database-per-Service sometimes calls a shared store a smell",
+  "warning.crossDomainStoreAccess.message": ({
+    accessingDomain,
+    infraKind,
+    infraId,
+    tableId,
+    mode,
+  }) => {
+    const verb = mode === "write" ? "writes" : mode === "readwrite" ? "reads/writes" : "reads";
+    return `Domain "${accessingDomain}" ${verb} ${infraKind} leaf "${infraId}.${tableId}" owned by another domain`;
+  },
+  "warning.crossDomainStoreAccess.checkBoundary":
+    "Reaching into another domain's store is sometimes called a boundary smell (legitimate under a shared kernel or during migration)",
   "warning.unassignedDomain.message": ({ display }) =>
     `Domain "${display}" is not assigned to any service`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>

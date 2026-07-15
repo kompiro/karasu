@@ -224,6 +224,15 @@ export type Translations = {
     count: number;
   }) => string;
   "warning.sharedInfraFanIn.checkDatabasePerService": string;
+  "warning.crossDomainStoreAccess.message": (params: {
+    accessingDomain: string;
+    infraKind: string;
+    infraId: string;
+    tableId: string;
+    mode: string;
+    ownerCount: number;
+  }) => string;
+  "warning.crossDomainStoreAccess.checkBoundary": string;
   "warning.unassignedDomain.message": (params: { display: string }) => string;
   "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
   "warning.unassignedResource.message": (params: { resourceId: string }) => string;

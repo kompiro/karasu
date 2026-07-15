@@ -18,6 +18,17 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "shared-infra-fan-in",
     params: { infraId: "OrderDB", infraKind: "database", services: ["ServiceA", "ServiceB"] },
   },
+  "cross-domain-store-access": {
+    kind: "cross-domain-store-access",
+    params: {
+      accessingDomain: "Billing",
+      owningDomains: ["Ordering"],
+      infraId: "OrderDB",
+      infraKind: "database",
+      tableId: "orders",
+      mode: "write",
+    },
+  },
   "style-conflict": {
     kind: "style-conflict",
     params: { selector: ".node", sheetIndices: [0, 1] },
@@ -138,6 +149,7 @@ const SAMPLES: Record<WarningKind, Warning> = {
 const IDENTIFIERS: Record<WarningKind, string[]> = {
   "domain-dispersal": ["Orders"],
   "shared-infra-fan-in": ["OrderDB", "database"],
+  "cross-domain-store-access": ["Billing", "OrderDB", "orders"],
   "style-conflict": [".node"],
   "missing-runtime": ["ApiUnit"],
   "missing-realizes": ["ApiUnit"],

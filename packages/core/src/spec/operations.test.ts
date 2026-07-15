@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isRecognizedResourceOperation,
   isWriteOperation,
+  isReadOperation,
   type ResourceOperation,
 } from "./operations.js";
 
@@ -67,5 +68,39 @@ describe("isWriteOperation", () => {
 
   it("respects decoration even when bare verb is recognized: read:read is read-only", () => {
     expect(isWriteOperation([{ verb: "read", decoratedAs: ["read"] }])).toBe(false);
+  });
+});
+
+describe("isReadOperation", () => {
+  it("returns false for undefined / empty (untyped access defaults to read at the caller)", () => {
+    expect(isReadOperation(undefined)).toBe(false);
+    expect(isReadOperation([])).toBe(false);
+  });
+
+  it("returns true when read is present", () => {
+    expect(isReadOperation(bare("read"))).toBe(true);
+    expect(isReadOperation(bare("create", "read"))).toBe(true);
+  });
+
+  it("returns false for write-only verbs", () => {
+    expect(isReadOperation(bare("create", "update", "delete"))).toBe(false);
+  });
+
+  it("treats bare unrecognized verbs as non-read (conservative)", () => {
+    expect(isReadOperation(bare("list", "search"))).toBe(false);
+  });
+
+  it("respects decoration: list:read is a read", () => {
+    expect(isReadOperation([{ verb: "list", decoratedAs: ["read"] }])).toBe(true);
+  });
+
+  it("respects decoration: replace:create,delete is not a read", () => {
+    expect(isReadOperation([{ verb: "replace", decoratedAs: ["create", "delete"] }])).toBe(false);
+  });
+
+  it("is not mutually exclusive with isWriteOperation (create,read is both)", () => {
+    const ops = bare("create", "read");
+    expect(isWriteOperation(ops)).toBe(true);
+    expect(isReadOperation(ops)).toBe(true);
   });
 });

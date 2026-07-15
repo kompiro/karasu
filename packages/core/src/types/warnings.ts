@@ -3,6 +3,7 @@ import type { SourceRange } from "./tokens.js";
 export type WarningKind =
   | "domain-dispersal"
   | "shared-infra-fan-in"
+  | "cross-domain-store-access"
   | "style-conflict"
   | "missing-runtime"
   | "missing-realizes"
@@ -63,6 +64,37 @@ export interface WarningParamsByKind {
     infraKind: "database" | "queue" | "storage";
     /** ids of the services that depend on it (≥ 2) */
     services: string[];
+  };
+  /**
+   * A `usecase` in one `domain` reads/writes an infra leaf (`table` /
+   * `queue-item` / `bucket`) whose owning domain is a *different* domain.
+   * Ownership is derived from the logical layer: a leaf is owned by every
+   * `domain` whose `entity` maps it via `table <InfraId>.<subId>`
+   * (ADR-20260715-01). The store is keyed at **leaf granularity**
+   * (`infraId.tableId`), not the whole `database`, because sibling tables in
+   * one store can belong to different domains. Fires when the accessing domain
+   * is not in the owner set — so a single-owner reach-in and a third domain
+   * touching a co-owned table are both caught, while the owners of a co-owned
+   * table are exempt. `[external]` / `[index]` stores are excluded (symmetric
+   * with `shared-infra-fan-in`). Info-register per ADR-20260514-02 (a
+   * boundary-crossing *fact* some schools call a smell, not a defect). Paired
+   * with but orthogonal to `shared-infra-fan-in` (service-count sharing vs
+   * ownership-boundary crossing) — the two fire independently. See
+   * `docs/adr/` (promoted from `docs/design/domain-store-ownership-diagnostic.md`).
+   */
+  "cross-domain-store-access": {
+    /** id of the domain whose usecase performs the access */
+    accessingDomain: string;
+    /** ids of the domains that own the leaf (≥ 1; > 1 when co-owned), sorted */
+    owningDomains: string[];
+    /** id of the infra block the leaf lives in (e.g. "OrderDB") */
+    infraId: string;
+    /** kind of that infra block */
+    infraKind: "database" | "queue" | "storage";
+    /** id of the accessed leaf sub-resource (e.g. "orders") */
+    tableId: string;
+    /** aggregated CRUD direction of the crossing access(es) */
+    mode: "read" | "write" | "readwrite";
   };
   "style-conflict": { selector: string; sheetIndices: number[] };
   "missing-runtime": { nodeId: string };
@@ -245,6 +277,9 @@ const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
   // defect karasu prescribes fixing — same register as domain-dispersal
   // (ADR-20260514-02 / TPL-20260514-08).
   "shared-infra-fan-in",
+  // Cross-domain store access is a boundary-crossing fact some schools call a
+  // smell (legitimate under shared kernel / migrations) — same register.
+  "cross-domain-store-access",
   // Pre-existing informational kinds: the UI already rendered these with
   // the ℹ icon via the old `WARNING_ICONS` map; preserve that register.
   "missing-runtime",

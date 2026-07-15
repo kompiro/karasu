@@ -227,6 +227,18 @@ export const ja: Partial<Translations> = {
     `${infraKind} "${infraId}" は ${count} 個の service から参照されています`,
   "warning.sharedInfraFanIn.checkDatabasePerService":
     "マイクロサービスの Database-per-Service は共有された store を smell とみなすことがあります",
+  "warning.crossDomainStoreAccess.message": ({
+    accessingDomain,
+    infraKind,
+    infraId,
+    tableId,
+    mode,
+  }) => {
+    const verb = mode === "write" ? "書き込み" : mode === "readwrite" ? "読み書き" : "読み取り";
+    return `domain "${accessingDomain}" が別ドメイン所有の ${infraKind} leaf "${infraId}.${tableId}" を${verb}しています`;
+  },
+  "warning.crossDomainStoreAccess.checkBoundary":
+    "他ドメインの store に踏み込むことを境界の smell とみなす流派があります（shared kernel や移行期には正当なこともあります）",
   "warning.unassignedDomain.message": ({ display }) =>
     `domain "${display}" はどの service にも割り当てられていません`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>

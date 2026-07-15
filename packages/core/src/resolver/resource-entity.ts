@@ -21,6 +21,14 @@ export interface ResolvedResourceRef {
    * `tableRef` yet (the legitimate forward-design intermediate state).
    */
   infraParentId?: string;
+  /**
+   * Leaf sub-resource id the resource targets (the `child` of a physical
+   * dot-notation ref or an entity's `tableRef`). Paired with `infraParentId`
+   * it forms the table-granular key `parent.child`. Undefined whenever
+   * `infraParentId` is (unresolved bare id, or a resolved entity with no
+   * physical mapping yet).
+   */
+  infraChildId?: string;
   /** Entity id when a bare resource resolved to a unique entity. */
   entityId?: string;
   /**
@@ -72,7 +80,11 @@ export function buildEntityResolver(roots: KrsNode[]): EntityResolver {
     resolve(resource: ResourceNode): ResolvedResourceRef {
       // Physical dot-notation wins directly; no entity lookup needed.
       if (resource.ref) {
-        return { infraParentId: resource.ref.parent, ambiguous: false };
+        return {
+          infraParentId: resource.ref.parent,
+          infraChildId: resource.ref.child,
+          ambiguous: false,
+        };
       }
       const matches = index.get(resource.id);
       if (!matches || matches.length === 0) {
@@ -82,10 +94,15 @@ export function buildEntityResolver(roots: KrsNode[]): EntityResolver {
         return { ambiguous: true };
       }
       const entity = matches[0];
-      // Resolved logically. `infraParentId` stays undefined when the entity has
-      // no physical mapping yet — the resource is still resolved (no
-      // unassigned-resource warning), it just derives no service→database edge.
-      return { entityId: entity.id, infraParentId: entity.tableRef?.parent, ambiguous: false };
+      // Resolved logically. `infraParentId` / `infraChildId` stay undefined when
+      // the entity has no physical mapping yet — the resource is still resolved
+      // (no unassigned-resource warning), it just derives no service→database edge.
+      return {
+        entityId: entity.id,
+        infraParentId: entity.tableRef?.parent,
+        infraChildId: entity.tableRef?.child,
+        ambiguous: false,
+      };
     },
   };
 }

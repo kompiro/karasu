@@ -37,6 +37,18 @@ function makeWarning(kind: Warning["kind"]): Warning {
         kind,
         params: { infraId: "test-db", infraKind: "database", services: ["svc1", "svc2"] },
       };
+    case "cross-domain-store-access":
+      return {
+        kind,
+        params: {
+          accessingDomain: "test-domain",
+          owningDomains: ["owner-domain"],
+          infraId: "test-db",
+          infraKind: "database",
+          tableId: "test-table",
+          mode: "write",
+        },
+      };
     case "style-conflict":
       return { kind, params: { selector: "test-selector", sheetIndices: [0, 1] } };
     case "missing-runtime":
