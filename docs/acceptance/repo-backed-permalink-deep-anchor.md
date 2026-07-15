@@ -16,7 +16,7 @@
 
 ### AC-1: SHA-keyed cache TTL selector（resolver）
 
-- [x] AT-A: `@<sha>`（7–40 hex）は `immutable=true`、`@<branch>` / ref-less HEAD は `false` を返す（Function の `Cache-Control` 選択に使う）
+- [x] AT-A: **full 40-hex SHA** のみ `immutable=true`、abbreviated SHA（7–39 hex）/ `@<branch>` / ref-less HEAD は `false` を返す（Function の `Cache-Control` 選択に使う。abbreviated SHA は hex-branch と区別できないため保守的に mutable 扱い）
 
   > ✅ Automated — `packages/app/src/render/repo-permalink.test.ts` › `resolveRepoPermalink` › `flags immutable=true only for a SHA-pinned ref (cache TTL selector)`
 
@@ -36,5 +36,5 @@
 
 - [ ] M-1: `https://<host>/r/kompiro/karasu/examples/en/getting-started/index.krs@<sha>#krs-system-<id>` を開くと、nest SPA がその要素にドリル／フォーカスした状態で開く（whole-model ではなく）。`#krs-` 無しは従来どおり whole-model
 - [ ] M-2: 存在しない / rename された anchor は whole-model（または nearest-resolvable）で開き、throw しない（tolerant）
-- [ ] M-3: `@<sha>` の `/r/...` 応答が `Cache-Control: public, max-age=31536000, immutable` を返す。`HEAD`/branch は `max-age=60`（`curl -I` で確認）
+- [ ] M-3: full 40-hex `@<sha>` の `/r/...` 応答が `Cache-Control: public, max-age=31536000, immutable` を返す。`HEAD`/branch/abbreviated-SHA は `public, s-maxage=60, max-age=0, must-revalidate`（CDN は 60s キャッシュ、ブラウザは stale redirect を握らない）。`curl -s -D - -o /dev/null <url>`（GET）で確認 — `curl -I` は HEAD で GET-only Function に当たらない
 - [ ] M-4: 既存の inline share（`/s?s=` → `/#s=`、`#krs-` 無し）が従来どおり動作する（回帰なし）

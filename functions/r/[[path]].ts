@@ -61,9 +61,14 @@ export async function onRequestGet(context: {
 
   if (result.status === 200 && result.encodedPayload) {
     const target = `${url.origin}/s?s=${result.encodedPayload}`;
+    // Immutable `@<sha>`: cache 1y everywhere (content can't change). Mutable
+    // `HEAD`/branch: let the shared CDN cache hold it briefly (`s-maxage`) to
+    // shield GitHub raw, but keep the visitor's browser from replaying a stale
+    // redirect (`max-age=0, must-revalidate`) — the Cloudflare Cache API honors
+    // `s-maxage` over `max-age`, so this still caches at the edge.
     const cacheControl = result.immutable
       ? "public, max-age=31536000, immutable"
-      : "public, max-age=60";
+      : "public, s-maxage=60, max-age=0, must-revalidate";
     const response = new Response(null, {
       status: 302,
       headers: { Location: target, "Cache-Control": cacheControl },

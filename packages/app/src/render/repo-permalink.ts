@@ -245,9 +245,13 @@ interface ResolveResult {
   /** Present on 200: the `encodeShare` payload for `/s?s=<payload>`. */
   encodedPayload?: string;
   /**
-   * True when the ref pins an immutable commit (a 7–40 char hex SHA). The caller
-   * uses this to pick the cache TTL: a `@<sha>` response is safe to cache
-   * `immutable`; a `HEAD`/branch/tag response is mutable → short TTL only.
+   * True when the ref pins an immutable commit (a **full 40-char hex SHA**). The
+   * caller uses this to pick the cache TTL: a full-SHA response is safe to cache
+   * `immutable`; a `HEAD`/branch/tag — or an *abbreviated* SHA, which we can't
+   * tell apart from a hex-looking branch without a GitHub API hop — is treated
+   * as mutable (short shared-cache TTL only). Full-40-hex is unambiguously a
+   * commit (matches the `@<sha>` ADR-permalink convention, #1959), so it never
+   * over-caches a branch.
    */
   immutable?: boolean;
   /** Present on non-200: a plain-text reason. */
@@ -255,9 +259,14 @@ interface ResolveResult {
   contentType: string;
 }
 
-/** A ref is treated as immutable when it looks like a commit SHA (7–40 hex). */
+/**
+ * A ref is treated as immutable only when it is a full 40-char hex commit SHA.
+ * Abbreviated SHAs (7–39 hex) are indistinguishable from a hex-looking branch
+ * name without resolving against GitHub, so they are conservatively treated as
+ * mutable — safe (merely under-cached), never stale.
+ */
 function isImmutableRef(ref: string): boolean {
-  return /^[0-9a-f]{7,40}$/i.test(ref);
+  return /^[0-9a-f]{40}$/i.test(ref);
 }
 
 /**

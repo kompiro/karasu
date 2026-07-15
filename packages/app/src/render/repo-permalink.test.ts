@@ -111,7 +111,7 @@ describe("resolveRepoPermalink", () => {
     expect(payload?.krs).toContain("system Shop");
   });
 
-  it("flags immutable=true only for a SHA-pinned ref (cache TTL selector)", async () => {
+  it("flags immutable=true only for a full 40-hex SHA (cache TTL selector)", async () => {
     const sha = await resolveRepoPermalink(
       `o/r@${"a".repeat(40)}`,
       stubFetch({ "index.krs": SINGLE_KRS }),
@@ -119,11 +119,12 @@ describe("resolveRepoPermalink", () => {
     expect(sha.status).toBe(200);
     expect(sha.immutable).toBe(true);
 
+    // Abbreviated SHAs are indistinguishable from a hex-looking branch → mutable.
     const shortSha = await resolveRepoPermalink(
       "o/r@a1b2c3d",
       stubFetch({ "index.krs": SINGLE_KRS }),
     );
-    expect(shortSha.immutable).toBe(true);
+    expect(shortSha.immutable).toBe(false);
 
     const branch = await resolveRepoPermalink("o/r@main", stubFetch({ "index.krs": SINGLE_KRS }));
     expect(branch.immutable).toBe(false);
