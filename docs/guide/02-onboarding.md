@@ -223,6 +223,31 @@ karasu **draws this sharing but does not forbid it** — from a microservices Da
 
 > **On diagnostics**: the **fan-in itself** — one store referenced by ≥ 2 services, as above — emits `shared-infra-fan-in` (info), naming the store and the depending services. This is keyed on actual sharing, independent of how many files declared the store (`[external]` stores are excluded). Separately, re-declaring the same `database` / `queue` / `storage` id **across multiple files** emits `infra-redeclared-across-files` (info), which observes declaration redundancy rather than sharing.
 
+### 3.2 Catching up on a domain's entities
+
+Once you understand *what a domain does* (its usecases), the next onboarding question is *what it is about* — which **entities** the domain owns and how they relate. Declare them as `entity` children of the `domain`:
+
+```krs
+service OrderService {
+  domain Ordering {
+    entity Order {
+      table OrderDB.OrdersTable            // optional physical mapping
+      Order -> LineItem "line item"         // intra-domain relation (bare id)
+      Order -> Customers.Customer "placed by" // cross-domain relation (qualified DomainId.EntityId)
+    }
+    entity LineItem {}
+  }
+}
+```
+
+- **An entity is deliberately not a schema.** It carries a name, relations, and an optional physical mapping — **never attributes** (columns, types, indexes). That "no attributes" line is what keeps the entity layer on the slowly-changing structural side; the physical detail stays in `database` / `table`.
+- **One relation, one edge, written on the reference holder.** `Order -> Customer` means Order holds the reference (`orders.customer_id`; ActiveRecord `belongs_to :customer`). The reverse (`has_many`) is implied — don't write a second edge.
+- **The per-domain entity view** is separate from the usecase view (toggle between them) so neither gets crowded. A relation to an entity in **another** domain — written qualified, `Ordering -> Customers.Customer` — is drawn as a muted **ghost**, so the domain (team) boundary stays visible, the same way ghost systems work in §2.1.
+
+**A `resource` resolves to an entity — the canonical logical form.** Once `entity Order` exists, a bare `resource Order` inside a usecase resolves to it with **zero edits** to the usecase — the earlier `unassigned-resource` warning just disappears, and karasu still derives the `service → database` edge transitively through `usecase → entity → table → database`. So the bottom-up `resource OrderTable` from §3 has a natural promotion path: declare the entity, and the logical reference lights up on its own.
+
+> `translate --from db` (§1.3) scaffolds this layer for you: in the default aggregate mode it emits a provisional per-database `domain` with one entity per aggregate root and relations inferred from foreign keys — relations guessed from a naming convention (no declared FK) are tagged `[inferred]` so you can confirm and clear them during curation.
+
 ---
 
 ## 4. Reading the dependencies — karasu shows you the structural debt

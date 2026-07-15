@@ -33,6 +33,7 @@ const FORMAT_LABEL_KEY = {
   k8s: "translateDialog.format.k8s",
   openapi: "translateDialog.format.openapi",
   db: "translateDialog.format.db",
+  wrangler: "translateDialog.format.wrangler",
 } as const satisfies Record<TranslateFormat, string>;
 
 // Placeholder source snippets are sample code (YAML / SQL), not natural
@@ -42,11 +43,21 @@ const FORMAT_PLACEHOLDERS: Record<TranslateFormat, string> = {
   k8s: "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: order-service",
   openapi: "openapi: 3.0.0\ninfo:\n  title: Order API\npaths:\n  /orders:\n    get: {}",
   db: "CREATE TABLE orders (\n  id BIGINT PRIMARY KEY\n);",
+  wrangler: 'name = "my-worker"\n\n[[d1_databases]]\nbinding = "DB"\ndatabase_name = "app-db"',
 };
 
-/** Formats that emit logical blocks and so accept `system` / bindings / granularity. */
+/** Formats that emit logical blocks and so accept bindings / granularity / service / database. */
 function isLogicalFormat(format: TranslateFormat): boolean {
   return format === "openapi" || format === "db";
+}
+
+/**
+ * Formats that accept a `system` name. openapi / db wrap their output via
+ * `wrapInSystem`; wrangler emits its own `system` block and treats the name as
+ * an override of the one derived from the source.
+ */
+function supportsSystem(format: TranslateFormat): boolean {
+  return isLogicalFormat(format) || format === "wrangler";
 }
 
 const TEXTAREA_CLASS =
@@ -112,13 +123,13 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
       const out = await translateInfraConfig(inputText, {
         from: format,
         inputName: sourceName.trim() || undefined,
-        mapFile: !logical && mapFile.trim() ? mapFile : undefined,
+        mapFile: (format === "compose" || format === "k8s") && mapFile.trim() ? mapFile : undefined,
         service: format === "openapi" && service.trim() ? service.trim() : undefined,
         database: format === "db" && database.trim() ? database.trim() : undefined,
         granularity: logical && granularity ? (granularity as never) : undefined,
         emitBindings: logical ? emitBindings : undefined,
         emitCrudDecoration: logical ? emitCrudDecoration : undefined,
-        system: logical && system.trim() ? system.trim() : undefined,
+        system: supportsSystem(format) && system.trim() ? system.trim() : undefined,
       });
       setResult(out);
     } catch (err) {
@@ -315,21 +326,23 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
                     />
                     {t("translateDialog.emitCrudDecoration")}
                   </label>
-
-                  <label className={FIELD_LABEL_CLASS}>
-                    {t("translateDialog.system.label")}
-                    <input
-                      className={TEXT_INPUT_CLASS}
-                      value={system}
-                      onChange={(e) => setSystem(e.target.value)}
-                      placeholder="Orders"
-                      aria-label={t("translateDialog.system.aria")}
-                    />
-                  </label>
                 </>
               )}
 
-              {!logical && (
+              {supportsSystem(format) && (
+                <label className={FIELD_LABEL_CLASS}>
+                  {t("translateDialog.system.label")}
+                  <input
+                    className={TEXT_INPUT_CLASS}
+                    value={system}
+                    onChange={(e) => setSystem(e.target.value)}
+                    placeholder="Orders"
+                    aria-label={t("translateDialog.system.aria")}
+                  />
+                </label>
+              )}
+
+              {(format === "compose" || format === "k8s") && (
                 <label className={FIELD_LABEL_CLASS}>
                   {t("translateDialog.mapFile.label")}
                   <textarea

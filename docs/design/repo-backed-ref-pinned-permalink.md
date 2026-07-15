@@ -27,10 +27,10 @@ permalink layer の near-term 3 児（#1827 deep anchor / #1829 taka inline / #1
 #1828 が解く permalink 属性は **repo-backed（GitHub repo の `.krs` を解決して描画）** かつ **ref-pinned（特定の git ref/SHA に固定して immutable に描画）**。到達目標は次の形の URL:
 
 ```
-karasu-nest.<host>/<owner>/<repo>@<ref-or-sha>#krs-<view>-<id>
+karasu-nest.<host>/<owner>/<repo>[@<ref-or-sha>]#krs-<view>-<id>
 ```
 
-読者がクリックすると、その repo の `.krs` を **その ref の時点**で解決・合成し、既存の drill-down preview を **deep anchor が指す要素にフォーカスした状態**で開く。ADR の「決定時点の構造への恒久リンク」という要件に、inline snapshot より素直に適合する。
+`@<ref>` は**任意**: 省略時は default branch HEAD を参照し（`raw.githubusercontent.com/<owner>/<repo>/HEAD/<path>` が API hop なしで default branch を解決する — 実測確認済み）、`@<sha>` を付ければその時点で immutable に固定する。読者がクリックすると、その repo の `.krs` を **その ref の時点**で解決・合成し、既存の drill-down preview を **deep anchor が指す要素にフォーカスした状態**で開く。ADR の「決定時点の構造への恒久リンク」という要件は、`@<sha>` を付けた形が inline snapshot より素直に満たす（ref-less HEAD 形は「今この repo を読む」discovery 用途で、immutable ではない）。
 
 Discussion #1786 が Phase 2 として温めていた `/<owner>/<repo>` resolver を、keystone 決定が **funnel-only の後回し項目から retained-product backbone へ格上げ**した。本 doc はその resolver の設計を詰め、#1786 の open questions（source-path 規約 / repo-FS import 解決 / private repo / caching / app surface）に答えを出す。
 
@@ -71,18 +71,21 @@ Discussion #1786 が Phase 2 として温めていた `/<owner>/<repo>` resolver
   - ❌ 追加の規約発明。ecosystem が薄い現状（#1786「今日ほぼ誰も committed `.krs` を持たない」）で manifest 規約を先に敷くのは時期尚早。
 - **推奨: 1-A を既定、1-B を明示 override として両立。** `/<owner>/<repo>@<ref>` は root の `index.krs`（無ければ `karasu.krs`）にフォールバックし、`/<owner>/<repo>/<path>@<ref>` で path を明示できる。manifest（1-C）は将来の最適化として open questions に残す。
 
-### 軸2: ref-pinning の immutability 保証
+### 軸2: ref 指定と immutability（改訂）
 
-「`@<ref>`」が branch 名（`@main`）でも SHA でも書けるとき、ADR permalink の immutability をどう担保するか。
+> **改訂（2026-07-14）**: 初版は「resolver パースで `@<ref>` を必須にし SHA-required で immutability を強制」としたが、これは誤り。ref-less で default branch HEAD を見る挙動の方が discovery の JTBD に自然で、しかも `raw` の `HEAD` literal で **API hop なし**に実現できる（下記実測）。immutability は **resolver の制約ではなく ADR 執筆規約 + 検証層（#1830）の責務**に移す。resolver は permissive にする。
 
-- **案 2-A: 受け取った ref をそのまま raw fetch に渡す（branch でも SHA でも）**
-  - ⭕ 実装が薄い。
-  - ❌ `@main` は可変。ADR が「決定時点の構造」を指す要件を満たさない。**ADR permalink には不適**。
-- **案 2-B: resolver 側で ref を SHA に解決し、正準 URL を SHA 形へ normalize（`@main` で来ても解決した SHA を canonical とみなす）**
-  - ⭕ immutable を構造的に保証。`adr:check-permalinks`（#1830）は SHA 形を検証すれば dangling を確実に検出できる。
-  - ⭕ ADR 執筆規約を「permalink は SHA で pin する」と単純化できる。
-  - ❌ branch → SHA 解決に GitHub API 1 hop 増える（cache で吸収可能）。
-- **推奨: 2-B（SHA-required 版）。** branch/tag ref を受けたら **render はする**（閲覧の利便）が、**ADR permalink は `@<sha>` を必須規約**とする（#1830 の検証もこれ前提）。重要なのは **branch→SHA 解決を hot path で強制しない**こと: GitHub API の unauthenticated rate-limit（60 req/h/IP）を permalink 表示のたびに踏むのを避ける。SHA-pinned URL は raw fetch だけで完結し API hop 不要。branch permalink の canonical 化（302/rel=canonical）は best-effort の付加機能に留め、必須経路に置かない。immutable = 「SHA の内容だから」であって「URL に凍結したから」ではない、という inline snapshot との本質的差分をここで作る。
+`@<ref>` が任意（省略 = HEAD）・branch・SHA のいずれでも書けるとき、それぞれをどう扱うか。
+
+- **案 2-A（改訂後の採用案）: resolver は受け取った ref をそのまま raw に渡す（省略時は `HEAD`）。immutability は上位層で担保。**
+  - ⭕ **ref-less = default HEAD** が API hop なしで動く。`raw.githubusercontent.com/<owner>/<repo>/HEAD/<path>` が default branch を解決する（200・内容は `main` と一致・存在しないパスは 404 と実測確認）。GitHub API の unauthenticated rate-limit（60 req/h/IP）を hot path に一切持ち込まない。
+  - ⭕ 責務が綺麗: resolver は「開く」だけ。「ADR permalink は immutable であるべき」は **ADR 執筆規約**（`.claude/rules/adr.md` / ADR-20260702-01: `source` + taka、`@<sha>` 添付）と **`adr:check-permalinks`（#1830）** が担う。
+  - ⭕ `@main`（mutable、閲覧向け）と `@<sha>`（immutable、ADR 向け）を同じ resolver で両方賄える。
+  - ❌ resolver 単体では immutable を保証しない（＝上位規約と検証が必須）。ただし #1830 が既に `source` 実在 + deep anchor 解決を CI で検査しており、SHA 形の検査を足せば dangling / mutable を落とせる。
+- **案 2-B（初版案・却下）: resolver パースで `@<ref>` 必須 + SHA へ normalize。**
+  - ❌ ref-less の自然な discovery 導線を潰す。`@main` → SHA 解決に GitHub API hop が要り rate-limit を hot path に持ち込む（初版はこれを避けるため「branch は render するが hop はしない」と折衷したが、結局 ref を必須にする理由が弱い）。
+  - ❌ immutability を resolver パースで強制するのは責務の取り違え。上位規約で足りる。
+- **推奨: 2-A。** grammar は「`@` 省略 = default HEAD（mutable、discovery 用）／`@<ref>` を付けたら ref 必須（`@` の後が空はエラー）／`@<sha>` = immutable（ADR 向け推奨）」。「hot path で GitHub API を叩かない」決定は保たれる（`HEAD` literal のおかげでむしろ強化）。immutable = 「SHA の内容だから」という本質は不変で、それを**強制する層を resolver から ADR 執筆規約 + 検証（#1830）へ移す**のが本改訂。
 
 ### 軸3: private repo の認証（BYO token）
 
@@ -110,11 +113,11 @@ Discussion #1786 が Phase 2 として温めていた `/<owner>/<repo>` resolver
 | 軸 | 推奨 | ステートレス原則 | BYOK 原則 | 既存資産の再利用 | #1830 検証との整合 |
 |---|---|---|---|---|---|
 | 1 source-path | 1-A 既定 + 1-B override | ○ | — | app `index.krs` 慣習 | anchor は path 非依存 |
-| 2 ref-pinning | 2-B SHA-normalize | ○ | — | — | **SHA 形を検証** |
+| 2 ref 指定 | 2-A permissive（省略=HEAD、`@<sha>`=immutable） | ○ | — | `HEAD` literal（API hop 不要） | **immutability は #1830 で担保** |
 | 3 private | 3-A public のみ（v1） | ○（token 非保持） | ○ | raw fetch | public permalink を検証 |
 | 4 caching | 4-B SHA-keyed ephemeral | ○（Cache API） | — | `functions/render.ts` の module cache | immutable cache |
 
-**全体像**: repo-backed permalink `= /<owner>/<repo>[/<path>]@<sha>#krs-<view>-<id>`。resolver Function が ①ref→SHA 解決、②raw fetch + `ImportResolver` で repo-FS import 解決 + `synthesizeSharePayload` で単一 payload 合成、③`MemoryModeApp` を seed して deep anchor へ drill、④SHA-keyed immutable cache。**新パッケージ・新 DB・新描画層・新 anchor grammar のいずれも作らない** — 既存 4 資産（`/render` の fetch+SSRF、Phase 1 の合成、permalink deep anchor、Cache API）の合成で構成する。
+**全体像**: repo-backed permalink `= /<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`（`@` 省略時 ref=`HEAD`）。resolver Function が ①ref をそのまま raw に渡す（省略=`HEAD`、branch、SHA いずれも；API hop なし）、②raw fetch + `ImportResolver` で repo-FS import 解決 + `synthesizeSharePayload` で単一 payload 合成、③`MemoryModeApp` を seed して deep anchor へ drill、④SHA-keyed immutable cache（SHA 形のみ長 TTL、HEAD/branch は短 TTL）。immutability は resolver ではなく **ADR 執筆規約 + #1830 検証**で担保。**新パッケージ・新 DB・新描画層・新 anchor grammar のいずれも作らない** — 既存 4 資産（`/render` の fetch+SSRF、Phase 1 の合成、permalink deep anchor、Cache API）の合成で構成する。
 
 ## Related TPLs
 
@@ -123,7 +126,7 @@ Discussion #1786 が Phase 2 として温めていた `/<owner>/<repo>` resolver
 
 ## 現時点の方針
 
-1. **URL 形**: `/<owner>/<repo>[/<path>]@<ref>#krs-<view>-<id>`。ref は branch/tag/SHA を受けて render するが、**ADR permalink は `@<sha>` を必須規約**（軸2-B）。branch→SHA 解決は hot path で強制せず、SHA-pinned URL は raw fetch のみで完結させる（GitHub API rate-limit を permalink 表示経路に持ち込まない）。
+1. **URL 形**: `/<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`。**`@<ref>` は任意** — 省略時は default branch HEAD（`raw` の `HEAD` literal、API hop なし。mutable、discovery 用）、`@<ref>` を付けたら ref 必須（`@` の後が空はエラー）、`@<sha>` は immutable（ADR permalink 推奨形）。ref は branch/tag/SHA すべて render するが、**「ADR permalink は immutable であるべき」は resolver ではなく ADR 執筆規約 + `adr:check-permalinks`（#1830）で担保**（軸2-A・改訂）。どの形も raw fetch のみで完結し GitHub API を hot path で叩かない。
 2. **source-path**: root `index.krs`（無ければ `karasu.krs`）を既定、`/<path>` で override（軸1-A + 1-B）。
 3. **private**: v1 は public repo のみ（軸3-A）。BYO token での private は後続。
 4. **caching**: SHA-keyed ephemeral（Cloudflare Cache API、immutable）。永続ストアは持たない（軸4-B、ステートレス原則維持）。
@@ -135,7 +138,7 @@ Discussion #1786 が Phase 2 として温めていた `/<owner>/<repo>` resolver
 
 ## 決着した論点（レビュー確認済み）
 
-1. **ref→SHA 解決の hop（→ SHA-required で決着）** — resolver は branch/tag も render するが、**ADR permalink は `@<sha>` 必須**とし、branch→SHA 解決を permalink 表示の hot path に置かない。SHA-pinned URL は raw fetch のみで完結し、GitHub API の unauthenticated rate-limit（60 req/h/IP）を踏まない。branch の canonical 化は best-effort の付加機能に留める。
+1. **ref 指定と immutability（→ ref-less=HEAD で再決着、2026-07-14 改訂）** — 初版は「resolver パースで `@<ref>` 必須（SHA-required）」としたが誤り。**ref-less は default branch HEAD を参照する挙動が discovery に自然**で、`raw` の `HEAD` literal により **API hop なし**に実現できる（実測: `raw.githubusercontent.com/<owner>/<repo>/HEAD/<path>` が 200 で default branch を解決、内容 `main` 一致、不在パス 404）。`@` を付けた場合のみ ref を必須にする（`@` の後が空はエラー）。**immutability の強制は resolver からは外し**、ADR 執筆規約（`.claude/rules/adr.md` / ADR-20260702-01）+ `adr:check-permalinks`（#1830）の SHA 形検査に委ねる。「hot path で GitHub API を叩かない」決定は保持（`HEAD` literal で強化）。
 2. **private repo（→ v1 public-only で決着）** — サービスは GitHub token を一切保持せず、public repo の raw fetch のみ。private（BYO-token・per-reader 認証）は後続に分離する。理由: permalink の JTBD（読者が誰でもクリックして見える恒久リンク）と per-reader token は緊張関係にあり、committed `.krs` の seeding も OSS/public から始まる。dogfooding は karasu 自身の ADR に SHA-pinned public permalink を貼って確認する。
 3. **deep anchor の存在検証（責務分担で決着）** — resolver は寛容に開く（`<id>` 不在なら spec 通り whole-model / nearest-resolvable へ fallback、throw しない）。dangling 検出は CI 側 #1830 `adr:check-permalinks`（SHA 形対応）に委ねる。resolver は「開く」責務、検証は「壊れを CI で落とす」責務、と分離する。
 4. **catch-all route と SPA ルーティングの衝突（設計方針で決着）** — `/s`・`/render` は既存の確定路。resolver は Pages Function の route 優先順位でそれ以外の 2-segment path（`/<owner>/<repo>`）を先取りし、未該当は既存 `_redirects` の SPA fallback へ落とす。この優先順位ルールを実装 PR で明文化・テストする。

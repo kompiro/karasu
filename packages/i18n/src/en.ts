@@ -75,6 +75,7 @@ export const en: Translations = {
   "translateDialog.format.k8s": "Kubernetes manifest",
   "translateDialog.format.openapi": "OpenAPI spec",
   "translateDialog.format.db": "DB schema (SQL)",
+  "translateDialog.format.wrangler": "Cloudflare wrangler.toml",
   "translateDialog.loadHint": "Paste the source below, or load a file:",
   "translateDialog.loadFile": "📂 Load file…",
   "translateDialog.loadFile.aria": "Load a file",
@@ -183,6 +184,8 @@ export const en: Translations = {
   "preview.groupBy.team": "Team",
   "preview.groupBy.collapseAll": "Collapse all",
   "preview.groupBy.expandAll": "Expand all",
+  "preview.expansion.overloadHint":
+    "Many containers expanded — Collapse all to return to the overview",
 
   // Share (inline URL sharing, karasu-nest)
   "preview.share.label": "🔗 Share",

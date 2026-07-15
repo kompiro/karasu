@@ -630,7 +630,7 @@ karasu の図とシーケンス図は異なる問いに答える道具である�
 **ゆっくり変化する構造的事実**だからである。これを表す語彙が `entity`
 （`domain` の子。名前・関連・物理対応のみを持ち、**属性は持たない**）である
 （[`docs/spec/syntax.ja.md`](spec/syntax.ja.md) の「`entity` 宣言」節、
-`docs/design/domain-entity-modeling.md`）。「属性を持たない」線が滑り坂ガードで、
+`docs/adr/20260715-01-domain-entity-modeling.md`）。「属性を持たない」線が滑り坂ガードで、
 「型だけ」「主キーだけ」という隣接する誘惑にも一貫した答えを与える。
 
 ここで `translate --from db` との **非対称性** に注意してほしい:

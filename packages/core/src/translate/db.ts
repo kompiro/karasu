@@ -13,6 +13,16 @@ function toTableId(tableName: string): string {
   return `${toPascalCase(tableName)}Table`;
 }
 
+/**
+ * Conceptual entity id for a table. Kept as the PascalCase table name (no
+ * pluralization/singularization) so the SQL-table origin stays traceable
+ * (ADR-20260419-01 case D). Distinct from `toTableId` (`Orders` vs
+ * `OrdersTable`), so an entity and its physical table never collide.
+ */
+function toEntityId(tableName: string): string {
+  return toPascalCase(tableName);
+}
+
 function deriveDbName(inputName: string | undefined): string {
   return toPascalCase(inputName ?? "Database");
 }
@@ -301,6 +311,92 @@ function emitAggregateTable(root: Table, children: { table: Table; reason: strin
   return lines;
 }
 
+// ─── Entity scaffold emission ──────────────────────────────────────────────────
+
+interface EntityRelation {
+  /** Target aggregate-root entity id. */
+  to: string;
+  /**
+   * True once any *explicit* FK contributes to this relation. Explicit wins:
+   * a relation derived purely from Soft FKs stays `[inferred]`, but a single
+   * declared `REFERENCES` promotes it to a confirmed (untagged) relation.
+   */
+  hasExplicit: boolean;
+}
+
+/**
+ * Emit a provisional per-database `domain` block scaffolding conceptual
+ * entities and their relations from the aggregate roots. Each root table
+ * becomes an `entity` with a physical `table <DbName>.<TableId>` mapping;
+ * cross-aggregate FK links (a child's FKs roll up to its root) become
+ * relations declared on the reference-holding entity. Soft-FK-only relations
+ * carry the auto-assigned `[inferred]` tag.
+ *
+ * Relations are always intra-domain (every entity lives in the one provisional
+ * domain), so bare ids are correct. Naming, domain assignment, semantic labels,
+ * and `[inferred]` curation are left to the reader (flagged by the TODO).
+ */
+function emitEntityDomain(
+  dbName: string,
+  tables: Table[],
+  parentOf: Map<string, string>,
+): string[] {
+  const rootTables = tables.filter((t) => !parentOf.has(t.name));
+  if (rootTables.length === 0) return [];
+
+  // Resolve any table name to its aggregate root (a root maps to itself).
+  const rootByLower = new Map<string, string>();
+  for (const t of tables) {
+    rootByLower.set(t.name.toLowerCase(), parentOf.get(t.name) ?? t.name);
+  }
+
+  // Gather relations as fromRoot (table name) → (target entity id → relation).
+  const relationsByRoot = new Map<string, Map<string, EntityRelation>>();
+  for (const t of tables) {
+    const fromRoot = rootByLower.get(t.name.toLowerCase());
+    if (fromRoot === undefined) continue;
+    for (const fk of t.foreignKeys) {
+      const toRoot = rootByLower.get(fk.refTable.toLowerCase());
+      if (toRoot === undefined) continue; // FK to a table outside this schema
+      if (toRoot === fromRoot) continue; // internal to the aggregate (child → root, self-FK)
+      const toEntity = toEntityId(toRoot);
+      let byTarget = relationsByRoot.get(fromRoot);
+      if (!byTarget) {
+        byTarget = new Map<string, EntityRelation>();
+        relationsByRoot.set(fromRoot, byTarget);
+      }
+      const existing = byTarget.get(toEntity);
+      if (existing) {
+        existing.hasExplicit ||= fk.kind === "explicit";
+      } else {
+        byTarget.set(toEntity, { to: toEntity, hasExplicit: fk.kind === "explicit" });
+      }
+    }
+  }
+
+  const lines: string[] = [];
+  lines.push("");
+  lines.push(`domain ${dbName} {`);
+  lines.push("  // TODO: provisional per-database domain from `translate --from db`.");
+  lines.push("  // Rename/split this domain, move entities to their real domains, and give");
+  lines.push("  // relations semantic labels. Delete `[inferred]` once a relation is confirmed.");
+  for (const t of rootTables) {
+    const entityId = toEntityId(t.name);
+    lines.push(`  entity ${entityId} {`);
+    lines.push(`    table ${dbName}.${toTableId(t.name)}`);
+    const relations = Array.from(relationsByRoot.get(t.name)?.values() ?? []).sort((a, b) =>
+      a.to.localeCompare(b.to),
+    );
+    for (const rel of relations) {
+      const tag = rel.hasExplicit ? "" : " [inferred]";
+      lines.push(`    ${entityId} -> ${rel.to}${tag}`);
+    }
+    lines.push(`  }`);
+  }
+  lines.push("}");
+  return lines;
+}
+
 // ─── Bindings emission ───────────────────────────────────────────────────────
 
 /**
@@ -355,6 +451,8 @@ export class DbTranslator implements Translator {
 
     const bodyLines: string[] = [];
     const rootTables: Table[] = [];
+    // Populated in the aggregate branch; drives the conceptual entity scaffold.
+    let aggregateParentOf: Map<string, string> | undefined;
 
     if (granularity === "table" || tables.length === 0) {
       for (const t of tables) {
@@ -364,6 +462,7 @@ export class DbTranslator implements Translator {
     } else {
       augmentWithSoftForeignKeys(tables);
       const { parentOf, reasonOf } = inferAggregates(tables);
+      aggregateParentOf = parentOf;
       const byName = new Map(tables.map((t) => [t.name, t]));
       const childrenOf = new Map<string, { table: Table; reason: string }[]>();
       for (const [child, parent] of parentOf) {
@@ -389,7 +488,19 @@ export class DbTranslator implements Translator {
         ? emitServiceBindings(dbName, rootTables, emitCrudDecoration)
         : [];
 
-    const lines: string[] = [`database ${dbName} {`, ...bodyLines, "}", ...bindingsLines, ""];
+    // In aggregate granularity, scaffold conceptual entities + relations into a
+    // provisional per-database domain, giving a bottom-up starting point.
+    const entityLines =
+      aggregateParentOf !== undefined ? emitEntityDomain(dbName, tables, aggregateParentOf) : [];
+
+    const lines: string[] = [
+      `database ${dbName} {`,
+      ...bodyLines,
+      "}",
+      ...entityLines,
+      ...bindingsLines,
+      "",
+    ];
     return lines.join("\n");
   }
 }

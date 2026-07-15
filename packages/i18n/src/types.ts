@@ -78,6 +78,7 @@ export type Translations = {
   "translateDialog.format.k8s": string;
   "translateDialog.format.openapi": string;
   "translateDialog.format.db": string;
+  "translateDialog.format.wrangler": string;
   "translateDialog.loadHint": string;
   "translateDialog.loadFile": string;
   "translateDialog.loadFile.aria": string;
@@ -183,6 +184,7 @@ export type Translations = {
   "preview.groupBy.team": string;
   "preview.groupBy.collapseAll": string;
   "preview.groupBy.expandAll": string;
+  "preview.expansion.overloadHint": string;
 
   // Preview toolbar — Share (inline URL sharing, karasu-nest)
   "preview.share.label": string;

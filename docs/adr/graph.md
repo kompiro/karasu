@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-254 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+257 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -133,6 +133,7 @@ flowchart TD
     ADR_20260430_02["ADR-20260430-02<br/>`karasu diff` の bundled all-views 出力"]
     ADR_20260502_01["ADR-20260502-01<br/>CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして..."]
     ADR_20260506_05["ADR-20260506-05<br/>translate adapter で usecase → resource バインディング ..."]
+    ADR_20260714_03["ADR-20260714-03<br/>--from wrangler translate adapter と「adapter を採る基準」"]
   end
   subgraph core-concepts["core-concepts"]
     ADR_20260312_02["ADR-20260312-02<br/>ツール名「karasu」の採用"]
@@ -153,6 +154,7 @@ flowchart TD
     ADR_20260616_09["ADR-20260616-09<br/>deploy unit は共有 infra ノードを realize できる（store ki..."]
     ADR_20260623_02["ADR-20260623-02<br/>client は realizes / owns の対象になれる（valid-target に..."]
     ADR_20260623_04["ADR-20260623-04<br/>vector store / search index は `database` の `[in..."]
+    ADR_20260715_01["ADR-20260715-01<br/>ドメインエンティティと関連のモデリング（v1）— 非目標「DB スキーマ」の線引き直し"]
   end
   subgraph edges["edges"]
     ADR_20260404_09["ADR-20260404-09<br/>クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -246,6 +248,7 @@ flowchart TD
     ADR_20260630_02["ADR-20260630-02<br/>layer toggles — external/infra カテゴリの対話的 collaps..."]
     ADR_20260711_03["ADR-20260711-03<br/>system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
     ADR_20260712_01["ADR-20260712-01<br/>category collapse は境界エッジを drop せず stub に re-tar..."]
+    ADR_20260714_04["ADR-20260714-04<br/>system view のコンテナをその場で展開する（in-place expansion /..."]
   end
   subgraph resolver["resolver"]
     ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — 検出スコープと検出キー"]
@@ -643,6 +646,9 @@ flowchart TD
   class ADR_20260713_02 accepted
   class ADR_20260714_01 accepted
   class ADR_20260714_02 accepted
+  class ADR_20260714_03 accepted
+  class ADR_20260714_04 accepted
+  class ADR_20260715_01 accepted
 ```
 
 ## Per-topic detail
@@ -651,13 +657,13 @@ flowchart TD
 - [`app-ui`](graph/app-ui.md) — 39 ADRs
 - [`build`](graph/build.md) — 54 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 10 ADRs
-- [`cli`](graph/cli.md) — 11 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 18 ADRs
+- [`cli`](graph/cli.md) — 12 ADRs
+- [`core-concepts`](graph/core-concepts.md) — 19 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 10 ADRs
 - [`parser`](graph/parser.md) — 17 ADRs
 - [`project`](graph/project.md) — 8 ADRs
-- [`renderer`](graph/renderer.md) — 33 ADRs
+- [`renderer`](graph/renderer.md) — 34 ADRs
 - [`resolver`](graph/resolver.md) — 6 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs

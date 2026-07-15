@@ -77,6 +77,29 @@ organization Corp {
     expect(r.svg).toContain('data-node-id="Order"');
   });
 
+  it("expands multiple containers simultaneously (Phase 2, #1923)", () => {
+    const MULTI = `
+system S {
+  service A { label "A" domain Da { usecase U } }
+  service B { label "B" domain Db { usecase V } }
+  service C { description "c" }
+  A -> B "x"
+}
+`;
+    const r = compile(MULTI, {
+      diagramType: "system",
+      expandedContainers: new Set(["A", "B"]),
+    });
+    if (r.diagramType !== "system") throw new Error("expected system diagram");
+    // Both frames render, both sets of domains shown, sibling C stays a box.
+    expect(r.svg).toContain('data-container-id="__group_A__"');
+    expect(r.svg).toContain('data-container-id="__group_B__"');
+    expect((r.svg.match(/data-expanded="true"/g) ?? []).length).toBe(2);
+    expect(r.svg).toContain('data-node-id="Da"');
+    expect(r.svg).toContain('data-node-id="Db"');
+    expect(r.svg).toContain('data-node-id="C"');
+  });
+
   it("does not draw expand controls in a multi-system root", () => {
     // Regression for #1921 review finding 2: expansion is only derived for the
     // single-system root, so a multi-system view must not show a dead ⊕.

@@ -115,7 +115,7 @@ paths:
     capture.restore();
 
     expect(capture.stderr()).toContain(
-      "--system is only supported with --from openapi or --from db",
+      "--system is only supported with --from openapi, db, or wrangler",
     );
     expect(capture.stdout()).not.toContain("system Orders {");
     expect(capture.stdout()).toContain('deploy "');

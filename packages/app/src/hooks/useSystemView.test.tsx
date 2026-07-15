@@ -183,6 +183,44 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("expands several containers at once and Collapse all clears them (#1923)", async () => {
+    vi.useFakeTimers();
+    const SOURCE = `system Shop {
+  service A { label "A" domain Da { usecase U } }
+  service B { label "B" domain Db { usecase V } }
+  service C { label "C" domain Dc { usecase W } }
+  service D { label "D" domain Dd { usecase X } }
+}`;
+    const fs = makeFs(SOURCE);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Expand two containers simultaneously — Phase 2 lifts the single cap.
+    act(() => result.current.toggleExpand("A"));
+    act(() => result.current.toggleExpand("B"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.expandedContainers.has("A")).toBe(true);
+    expect(result.current.expandedContainers.has("B")).toBe(true);
+    expect(result.current.svg).toContain('data-node-id="Da"');
+    expect(result.current.svg).toContain('data-node-id="Db"');
+    expect(result.current.expansionOverload).toBe(false); // 2 < threshold (4)
+
+    // Two more → soft overload hint flag trips at the threshold.
+    act(() => result.current.toggleExpand("C"));
+    act(() => result.current.toggleExpand("D"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.expandedContainers.size).toBe(4);
+    expect(result.current.expansionOverload).toBe(true);
+
+    // Collapse all folds every expansion back to the overview.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.expandedContainers.size).toBe(0);
+    expect(result.current.svg).not.toContain('data-node-id="Da"');
+    expect(result.current.svg).toContain('data-node-id="A"');
+    vi.useRealTimers();
+  });
+
   it("collapse-all folds external/infra categories too, not just team frames (#1872)", async () => {
     // "Collapse all" spans both collapse axes so its label is honest: team
     // frames (#1858) AND the external/infra category bands (#1821). The two
