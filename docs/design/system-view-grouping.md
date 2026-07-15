@@ -409,7 +409,7 @@ P2a に倣い、各 PR 単独でも図が悪化しない独立スライスで積
 1. **P2c-A `routeGroupedEdges`**（grouped で `routeOrthogonalEdges` の代わりに呼ぶ）
    - 障害物集合 = 全ノードカード ∪ **全グループフレーム矩形**。
    - エッジを「必ず空く」経路のみに通す: **帯間チャネル**（隣接帯の間の横帯）／**左右ガター**（canvas 端とフレーム外縁の間の縦列 — skip-band・逆流エッジの迂回先）／**フレーム内列回廊**（フレーム内のノード列間の縦ギャップ）。
-   - 候補経路を障害物に対し全セグメント再判定し、残れば**より外側のガターへ退避**（最外ガターは構成上必ず空くので**貫通ゼロを保証**）。
+   - 候補経路を障害物に対し全セグメント再判定し、残れば別ガター/帯間チャネルへ退避する。**当初「最外ガターは構成上必ず空くので貫通ゼロを保証」と書いたが、これは挟まれノードに対して誤り**（target の side に入る横 stub は隣の兄弟を横切るため、ガターを外へ動かしても貫通が残る）。実際の貫通ゼロは端点単位で side stub が塞がれた端点だけ top/bottom port で隣接空き帯（帯間チャネル）へ迂回する **mixed route** で達成し、その残 overlap は #1927 の lane/fan-out パスを一般化して吸収する（#1954 で修正、ADR-20260429-01 の帯間チャネルと同型）。
    - **逆流（against-flow）エッジ = 破線**（AC-4）。`groupOrder` 上で「下の帯→上の帯」に向かうもの。実装案: `LayoutEdge.groupBackward?: boolean` を足し、`renderEdge` で **author が `stroke-style` 未指定のときのみ** dashed（ADR-20260511-01 の override 優先と同型）。
    - 挿入位置: `distributePorts` の後、`distributeChannelLanes` の前（既存スロット）。
 2. **P2c-B `aggregateGroupTrunks`**（P2c-A の後）
