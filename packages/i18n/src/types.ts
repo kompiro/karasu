@@ -182,6 +182,7 @@ export type Translations = {
   "preview.groupBy.label": string;
   "preview.groupBy.none": string;
   "preview.groupBy.team": string;
+  "preview.groupBy.boundary": string;
   "preview.groupBy.collapseAll": string;
   "preview.groupBy.expandAll": string;
   "preview.expansion.overloadHint": string;

@@ -97,7 +97,7 @@ export function buildDrillDownSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   badgeLabels?: AnnotationBadgeLabels,
-  groupBy?: "team",
+  groupBy?: "team" | "boundary",
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
@@ -131,6 +131,7 @@ export function buildDrillDownSvg(
           viewScope: legendScopeForLogicalSlice(slice),
           // Root system-view level only (#1879); collapse off by design.
           groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
+          boundaryIndex: krsFile.boundaryIndex,
         }),
     },
     [],
@@ -480,7 +481,7 @@ export function buildAllViewsSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   badgeLabels?: AnnotationBadgeLabels,
-  groupBy?: "team",
+  groupBy?: "team" | "boundary",
 ): AllViewsSvgResult {
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   // Resolver warnings are a model-level fact, independent of which view is
@@ -508,6 +509,7 @@ export function buildAllViewsSvg(
             viewScope: legendScopeForLogicalSlice(slice),
             // Root system-view level only (#1879); collapse off by design.
             groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
+            boundaryIndex: krsFile.boundaryIndex,
           }),
       },
       [],

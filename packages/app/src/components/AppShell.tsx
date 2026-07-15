@@ -307,6 +307,8 @@ export function AppShell({
       groupBy: views.system.groupBy,
       setGroupBy: views.system.setGroupBy,
       groupByAvailable: views.system.groupByAvailable,
+      hasTeamAxis: views.system.hasTeamAxis,
+      hasBoundaryAxis: views.system.hasBoundaryAxis,
       anyCollapsible: views.system.anyCollapsible,
       allCollapsed: views.system.allCollapsed,
       expansionOverload: views.system.expansionOverload,

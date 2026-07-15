@@ -59,6 +59,7 @@ interface SystemViewState {
   nodeMetadata: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
   hasOrgDiagram: boolean;
+  hasBoundaries: boolean;
   systems: SystemNode[];
   nodeFileIndex: Map<string, string>;
   /**
@@ -264,15 +265,14 @@ export function useSystemView(
       annotationBadgeLabels,
       theme,
       collapsedCategories,
-      // P2b hand-off: when a second Group-by axis lands, invert this to
-      // `groupBy === "none" ? undefined : groupBy` (off-sentinel gate) and widen
-      // the core `groupBy` union, so a new axis is not silently dropped here.
-      // See docs/design/group-by-bulk-collapse.md (B2).
-      groupBy: groupBy === "team" ? "team" : undefined,
-      collapsedGroups: groupBy === "team" ? collapsedGroups : undefined,
+      // Off-sentinel gate (#1822 P2b): pass the axis through for any non-"none"
+      // value ("team" | "boundary") so a new axis is not silently dropped. The
+      // core `groupBy` union is widened in lockstep (TPL-20260510-11).
+      groupBy: groupBy === "none" ? undefined : groupBy,
+      collapsedGroups: groupBy !== "none" ? collapsedGroups : undefined,
       // In-place expansion is Phase 1-scoped to the ungrouped system view
-      // (#1921); suppressed under Group by: team.
-      expandedContainers: groupBy === "team" ? undefined : expandedContainers,
+      // (#1921); suppressed under any Group-by axis.
+      expandedContainers: groupBy !== "none" ? undefined : expandedContainers,
       interactive: true,
     });
 
@@ -293,9 +293,9 @@ export function useSystemView(
           annotationBadgeLabels,
           theme,
           collapsedCategories,
-          groupBy: groupBy === "team" ? "team" : undefined,
-          collapsedGroups: groupBy === "team" ? collapsedGroups : undefined,
-          expandedContainers: groupBy === "team" ? undefined : expandedContainers,
+          groupBy: groupBy === "none" ? undefined : groupBy,
+          collapsedGroups: groupBy !== "none" ? collapsedGroups : undefined,
+          expandedContainers: groupBy !== "none" ? undefined : expandedContainers,
           interactive: true,
         }),
       ]);
@@ -318,6 +318,7 @@ export function useSystemView(
       nodeMetadata: sysBase.nodeMetadata,
       hasDeployDiagram: sysBase.hasDeployDiagram,
       hasOrgDiagram: sysBase.hasOrgDiagram,
+      hasBoundaries: sysBase.hasBoundaries,
       systems: sysBase.systems,
       nodeFileIndex: sysBase.nodeFileIndex,
       nodeDiff,
@@ -346,6 +347,7 @@ export function useSystemView(
       nodeMetadata: new Map(),
       hasDeployDiagram: false,
       hasOrgDiagram: false,
+      hasBoundaries: false,
       systems: [],
       nodeFileIndex: new Map(),
     },

@@ -302,7 +302,10 @@ export function PreviewColumn() {
               onChange={(e) => view.onGroupByChange?.(e.target.value as GroupByMode)}
             >
               <option value="none">{t("preview.groupBy.none")}</option>
-              <option value="team">{t("preview.groupBy.team")}</option>
+              {view.hasTeamAxis && <option value="team">{t("preview.groupBy.team")}</option>}
+              {view.hasBoundaryAxis && (
+                <option value="boundary">{t("preview.groupBy.boundary")}</option>
+              )}
             </select>
           </span>
         )}

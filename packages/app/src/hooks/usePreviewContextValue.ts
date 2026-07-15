@@ -38,6 +38,8 @@ interface UsePreviewContextValueArgs {
     groupBy: GroupByMode;
     setGroupBy: (mode: GroupByMode) => void;
     groupByAvailable: boolean;
+    hasTeamAxis: boolean;
+    hasBoundaryAxis: boolean;
     anyCollapsible: boolean;
     allCollapsed: boolean;
     expansionOverload: boolean;
@@ -162,6 +164,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         groupBy: system.groupBy,
         onGroupByChange: system.setGroupBy,
         groupByAvailable: system.groupByAvailable,
+        hasTeamAxis: system.hasTeamAxis,
+        hasBoundaryAxis: system.hasBoundaryAxis,
         anyCollapsible: system.anyCollapsible,
         allCollapsed: system.allCollapsed,
         expansionOverload: system.expansionOverload,
@@ -247,6 +251,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.groupBy,
       system.setGroupBy,
       system.groupByAvailable,
+      system.hasTeamAxis,
+      system.hasBoundaryAxis,
       system.anyCollapsible,
       system.allCollapsed,
       system.expansionOverload,

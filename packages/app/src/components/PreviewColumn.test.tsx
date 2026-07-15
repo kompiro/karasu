@@ -71,6 +71,8 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       groupBy: "none" as const,
       onGroupByChange: vi.fn<() => void>(),
       groupByAvailable: true,
+      hasTeamAxis: true,
+      hasBoundaryAxis: false,
     },
     deployView: {
       svg: emptySvg,
@@ -486,6 +488,35 @@ describe("PreviewColumn", () => {
       const { getByLabelText } = renderPreview(props);
       await user.selectOptions(getByLabelText("Group by"), "team");
       expect(props.systemView.onGroupByChange).toHaveBeenCalledWith("team");
+    });
+
+    it("shows the team option only when the team axis has data (#1822 P2b)", () => {
+      const props = makeProps({ activeView: "system" });
+      props.systemView.hasTeamAxis = false;
+      props.systemView.hasBoundaryAxis = true;
+      const { getByLabelText } = renderPreview(props);
+      const select = getByLabelText("Group by") as HTMLSelectElement;
+      const values = Array.from(select.options).map((o) => o.value);
+      expect(values).toEqual(["none", "boundary"]);
+    });
+
+    it("shows both axis options when both have data (#1822 P2b)", () => {
+      const props = makeProps({ activeView: "system" });
+      props.systemView.hasTeamAxis = true;
+      props.systemView.hasBoundaryAxis = true;
+      const { getByLabelText } = renderPreview(props);
+      const select = getByLabelText("Group by") as HTMLSelectElement;
+      const values = Array.from(select.options).map((o) => o.value);
+      expect(values).toEqual(["none", "team", "boundary"]);
+    });
+
+    it("calls onGroupByChange with the boundary axis when picked (#1822 P2b)", async () => {
+      const user = userEvent.setup();
+      const props = makeProps({ activeView: "system" });
+      props.systemView.hasBoundaryAxis = true;
+      const { getByLabelText } = renderPreview(props);
+      await user.selectOptions(getByLabelText("Group by"), "boundary");
+      expect(props.systemView.onGroupByChange).toHaveBeenCalledWith("boundary");
     });
   });
 
