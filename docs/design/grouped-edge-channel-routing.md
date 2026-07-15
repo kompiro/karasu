@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1954](https://github.com/kompiro/karasu/issues/1954)
+  - PR: [#1963](https://github.com/kompiro/karasu/pull/1963)
   - 親 Issue: [#1859](https://github.com/kompiro/karasu/issues/1859)（P2c）· epic [#1817](https://github.com/kompiro/karasu/issues/1817)
   - 関連 ADR: [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)（ungrouped skip-layer routing の帯間チャネル）· [ADR-20260428-10](../adr/20260428-10-auto-layout-actor-row-by-target.md)（actor-row 配置 / #966）
   - 関連 Design Doc: `docs/design/system-view-grouping.md` § P2c-A
