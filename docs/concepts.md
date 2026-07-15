@@ -560,7 +560,7 @@ are **slowly-changing structural facts**. The vocabulary for them is `entity`
 (a `domain` child carrying only name, relations, and a physical mapping —
 **never attributes**); see the "`entity` declaration" section in
 [`docs/spec/syntax.md`](spec/syntax.md) and
-`docs/design/domain-entity-modeling.md`. The "no attributes" line is the
+`docs/adr/20260715-01-domain-entity-modeling.md`. The "no attributes" line is the
 slippery-slope guard — it gives a consistent answer to the adjacent temptations
 ("just the types", "just the primary key").
 

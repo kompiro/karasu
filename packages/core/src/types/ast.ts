@@ -127,7 +127,7 @@ export interface UsecaseNode extends BaseNodeFields {
  * (columns / types / indexes). This "no attributes" line keeps the model on
  * the slowly-changing structural side of the DB-schema non-goal: physical
  * schema stays out of scope, conceptual entities and their relations come in.
- * See `docs/design/domain-entity-modeling.md`.
+ * See `docs/adr/20260715-01-domain-entity-modeling.md`.
  */
 export interface EntityNode extends BaseNodeFields {
   kind: "entity";

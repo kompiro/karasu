@@ -67,5 +67,6 @@ scope:
 
 - [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md) § Automatic tags on
   edges → `[inferred]` 行および注記（本 TPL への `> Related TPLs:` back-ref あり）。
-- 設計経緯: [`docs/design/translate-db-entity-scaffold.md`](../design/translate-db-entity-scaffold.md)
-  論点 C / D（#1870 の final PR で ADR 昇格予定）。
+- 設計経緯: [ADR-20260715-01](../adr/20260715-01-domain-entity-modeling.md) §7
+  「translate --from db が entity + 関連スキャフォールドを吐く」および「却下した案」
+  （translate-db-entity-scaffold design doc を #1910 で本 ADR に昇格）。
