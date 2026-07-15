@@ -35,6 +35,8 @@ const KEYWORDS: Record<string, TokenType> = {
   organization: TokenType.Organization,
   member: TokenType.Member,
   owns: TokenType.Owns,
+  boundary: TokenType.Boundary,
+  contains: TokenType.Contains,
   slack: TokenType.Slack,
   github: TokenType.Github,
   import: TokenType.Import,
