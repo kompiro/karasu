@@ -452,6 +452,234 @@ system B {
   });
 });
 
+describe("cross-domain-store-access warning (#1819)", () => {
+  const xdomain = (krs: string) =>
+    compile(krs).warnings.filter((w) => w.kind === "cross-domain-store-access");
+
+  it("warns when a usecase writes a table owned (via entity mapping) by another domain", () => {
+    // Billing writes OrderDB.orders, but the `orders` leaf is owned by domain
+    // Ordering (its entity Order maps it). One-way reach-in across a boundary.
+    const krs = `
+system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+    }
+    domain Billing {
+      usecase Charge {
+        resource OrderDB.orders { operations update }
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    const ws = xdomain(krs);
+    expect(ws).toHaveLength(1);
+    expect(ws[0].params.accessingDomain).toBe("Billing");
+    expect(ws[0].params.owningDomains).toEqual(["Ordering"]);
+    expect(ws[0].params.infraId).toBe("OrderDB");
+    expect(ws[0].params.infraKind).toBe("database");
+    expect(ws[0].params.tableId).toBe("orders");
+    expect(ws[0].params.mode).toBe("write");
+    expect(warningSeverity(ws[0].kind)).toBe("info");
+  });
+
+  it("resolves ownership for a bare resource that resolves to the owning entity", () => {
+    // Billing's bare `resource Order` resolves (model-wide) to entity Order in
+    // Ordering, which maps OrderDB.orders → same cross-domain reach-in.
+    const krs = `
+system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+    }
+    domain Billing {
+      usecase Charge {
+        resource Order { operations read }
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    const ws = xdomain(krs);
+    expect(ws).toHaveLength(1);
+    expect(ws[0].params.accessingDomain).toBe("Billing");
+    expect(ws[0].params.tableId).toBe("orders");
+    expect(ws[0].params.mode).toBe("read");
+  });
+
+  it("does not warn for intra-domain access (owner accesses its own table)", () => {
+    const krs = `
+system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder {
+        resource OrderDB.orders { operations create }
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    expect(xdomain(krs)).toHaveLength(0);
+  });
+
+  it("does not warn when crossing into an [external] or [index] store", () => {
+    const krs = `
+system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table ExtDB.orders }
+    }
+    domain Billing {
+      usecase Charge {
+        resource ExtDB.orders { operations read }
+      }
+    }
+  }
+  database ExtDB [external] { table orders }
+}
+`;
+    expect(xdomain(krs)).toHaveLength(0);
+  });
+
+  it("co-owned table: a third domain is flagged, the owners are exempt", () => {
+    // orders is mapped by entities in both Ordering and Billing (co-owned).
+    // Fulfillment (a third domain) reaching in fires; Ordering / Billing don't.
+    const krs = `
+system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder { resource OrderDB.orders { operations create } }
+    }
+    domain Billing {
+      entity Invoice { table OrderDB.orders }
+      usecase Charge { resource OrderDB.orders { operations update } }
+    }
+    domain Fulfillment {
+      usecase Ship { resource OrderDB.orders { operations read } }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    const ws = xdomain(krs);
+    expect(ws).toHaveLength(1);
+    expect(ws[0].params.accessingDomain).toBe("Fulfillment");
+    expect(ws[0].params.owningDomains).toEqual(["Billing", "Ordering"]);
+    expect(ws[0].params.mode).toBe("read");
+  });
+
+  it("does not warn for a purely physical model with no entity mapping the table", () => {
+    // No entity maps orders → owner unknown → no diagnostic (legitimate
+    // bottom-up state; adding an entity promotes the diagnostic with zero edits).
+    const krs = `
+system Shop {
+  service Core {
+    domain Billing {
+      usecase Charge { resource OrderDB.orders { operations update } }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    expect(xdomain(krs)).toHaveLength(0);
+  });
+
+  it("does not resolve ownership across systems (scope is per-system)", () => {
+    const krs = `
+system A {
+  service Sa {
+    domain Ordering { entity Order { table OrderDB.orders } }
+  }
+  database OrderDB { table orders }
+}
+system B {
+  service Sb {
+    domain Billing {
+      usecase Charge { resource OrderDB.orders { operations read } }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    // System B has no entity mapping its OrderDB.orders → no owner in B's scope.
+    expect(xdomain(krs)).toHaveLength(0);
+  });
+
+  it("keys ownership at leaf granularity — sibling tables in one store differ", () => {
+    // Ordering owns orders; Billing owns invoices; both in OrderDB. Ordering
+    // reaching into invoices is cross-domain even though it owns a sibling table.
+    const krs = `
+system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder { resource OrderDB.invoices { operations read } }
+    }
+    domain Billing {
+      entity Invoice { table OrderDB.invoices }
+    }
+  }
+  database OrderDB { table orders; table invoices }
+}
+`;
+    const ws = xdomain(krs);
+    expect(ws).toHaveLength(1);
+    expect(ws[0].params.accessingDomain).toBe("Ordering");
+    expect(ws[0].params.owningDomains).toEqual(["Billing"]);
+    expect(ws[0].params.tableId).toBe("invoices");
+  });
+
+  it("aggregates read+write accesses from one domain into a single readwrite warning", () => {
+    const krs = `
+system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+    }
+    domain Billing {
+      usecase Read { resource OrderDB.orders { operations read } }
+      usecase Write { resource OrderDB.orders { operations update } }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    const ws = xdomain(krs);
+    expect(ws).toHaveLength(1);
+    expect(ws[0].params.mode).toBe("readwrite");
+  });
+
+  it("fires independently of shared-infra-fan-in on the same store", () => {
+    // Two domains in two services share OrderDB (fan-in), and Billing crosses
+    // into Ordering's owned table (cross-domain). Both fire, no suppression.
+    const krs = `
+system Shop {
+  service OrderService {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder { resource OrderDB.orders { operations create } }
+    }
+  }
+  service BillingService {
+    domain Billing {
+      usecase Charge { resource OrderDB.orders { operations update } }
+    }
+  }
+  database OrderDB { table orders }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(1);
+    expect(result.warnings.filter((w) => w.kind === "cross-domain-store-access")).toHaveLength(1);
+  });
+});
+
 describe("unassigned-domain warning", () => {
   it("warns for each top-level domain", () => {
     const krs = `
@@ -2050,6 +2278,9 @@ describe("warningSeverity — exhaustive register map", () => {
     // fact karasu surfaces but does not prescribe fixing — info, symmetric
     // with domain-dispersal (#1570).
     "shared-infra-fan-in": "info",
+    // Cross-domain store access is a boundary-crossing fact some schools call
+    // a smell (legitimate under shared kernel / migrations) — info (#1819).
+    "cross-domain-store-access": "info",
     "missing-runtime": "info",
     "missing-realizes": "info",
     // Low-confidence hint on an open name set — never a defect karasu can

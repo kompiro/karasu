@@ -35,7 +35,7 @@ system EC {
     `).value;
     const resolver = buildEntityResolver(roots(file));
     const r = resolver.resolve(findResource(file, "OrderDB.orders"));
-    expect(r).toEqual({ infraParentId: "OrderDB", ambiguous: false });
+    expect(r).toEqual({ infraParentId: "OrderDB", infraChildId: "orders", ambiguous: false });
   });
 
   it("resolves a bare id to a unique entity and its physical mapping", () => {
@@ -54,7 +54,12 @@ system EC {
     `).value;
     const resolver = buildEntityResolver(roots(file));
     const r = resolver.resolve(findResource(file, "Order"));
-    expect(r).toEqual({ entityId: "Order", infraParentId: "OrderDB", ambiguous: false });
+    expect(r).toEqual({
+      entityId: "Order",
+      infraParentId: "OrderDB",
+      infraChildId: "orders",
+      ambiguous: false,
+    });
   });
 
   it("resolves an entity across domain/service boundaries (flat id namespace)", () => {
@@ -77,7 +82,12 @@ system EC {
     `).value;
     const resolver = buildEntityResolver(roots(file));
     const r = resolver.resolve(findResource(file, "Customer"));
-    expect(r).toEqual({ entityId: "Customer", infraParentId: "CustomerDB", ambiguous: false });
+    expect(r).toEqual({
+      entityId: "Customer",
+      infraParentId: "CustomerDB",
+      infraChildId: "customers",
+      ambiguous: false,
+    });
   });
 
   it("resolves logically but yields no infra parent when the entity has no table mapping", () => {

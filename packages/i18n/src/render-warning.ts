@@ -38,6 +38,18 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [...w.params.services, t("warning.sharedInfraFanIn.checkDatabasePerService")],
       };
+    case "cross-domain-store-access":
+      return {
+        message: t("warning.crossDomainStoreAccess.message", {
+          accessingDomain: w.params.accessingDomain,
+          infraKind: w.params.infraKind,
+          infraId: w.params.infraId,
+          tableId: w.params.tableId,
+          mode: w.params.mode,
+          ownerCount: w.params.owningDomains.length,
+        }),
+        details: [...w.params.owningDomains, t("warning.crossDomainStoreAccess.checkBoundary")],
+      };
     case "unassigned-domain": {
       const display = w.params.label ?? w.params.domainId;
       return {

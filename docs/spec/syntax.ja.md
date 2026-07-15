@@ -600,6 +600,28 @@ OrderDB.orders`）はボトムアップの中間状態として引き続き有�
 > [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — 未解決の bare `resource` / 越境 entity 関連でも、解決できた側のノードは drop しない。
 > [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — entity 経由 usecase→resource エッジの read/write タグ合成は元 resource の operation semantics を保存する。
 
+#### infra leaf のドメイン所有 — cross-domain ストアアクセス
+
+`entity` のマッピング（`entity Order { table OrderDB.orders }`）は store エッジを
+導出するだけでなく、対応づけた infra **leaf** をその entity の domain に
+**所有**させる。所有は**論理層から導出**され、**物理 `table` には決して宣言しない**
+— 物理側はドメインを持たず、論理/物理の分離が保たれる。所有は **leaf 粒度**
+（`OrderDB.orders`）で扱う。1 つの store 内の兄弟テーブルが別ドメインに属しうる
+ためである。1 つの leaf は**複数の**ドメインに所有されうる（その leaf を
+マッピングする各 domain）— これは正当な co-ownership の事実。
+
+ある domain の `usecase` が、所有ドメイン集合にその domain を**含まない** leaf を
+読み書きすると、コンパイラは **`cross-domain-store-access`** info 診断を出す —
+境界越えの事実（shared kernel や移行期には正当）であって欠陥ではない。system
+単位でスコープし、`[external]` / `[index]` store は除外、集約した read/write の
+`mode` を持つ。これは `shared-infra-fan-in` と**直交**する: あちらは store を何
+service が共有するかで判定し、こちらは所有境界の越境で判定する。leaf を
+マッピングする `entity` が 1 つも無い純粋な物理モデルでは leaf は所有者不明と
+なり診断は出ない（後から entity を足せば usecase を編集せず診断が有効になる）。
+[診断リファレンス](diagnostics.ja.md) を参照。
+
+> Related TPLs: [TPL-20260715-02](../test-perspectives/TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) — infra leaf のドメイン所有は `entity` 層から導出（物理 `table` に宣言しない）、leaf 粒度でキーし、所有ドメインの集合で持ち、system 単位でスコープする。[TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — 同じ事実に 2 つ目の表現を持たせて drift させない。
+
 ### エッジ宣言
 
 ```

@@ -18,6 +18,17 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "shared-infra-fan-in",
     params: { infraId: "OrderDB", infraKind: "database", services: ["ServiceA", "ServiceB"] },
   },
+  "cross-domain-store-access": {
+    kind: "cross-domain-store-access",
+    params: {
+      accessingDomain: "Billing",
+      owningDomains: ["Ordering"],
+      infraId: "OrderDB",
+      infraKind: "database",
+      tableId: "orders",
+      mode: "write",
+    },
+  },
   "style-conflict": {
     kind: "style-conflict",
     params: { selector: ".node", sheetIndices: [0, 1] },
@@ -138,6 +149,7 @@ const SAMPLES: Record<WarningKind, Warning> = {
 const IDENTIFIERS: Record<WarningKind, string[]> = {
   "domain-dispersal": ["Orders"],
   "shared-infra-fan-in": ["OrderDB", "database"],
+  "cross-domain-store-access": ["Billing", "OrderDB", "orders"],
   "style-conflict": [".node"],
   "missing-runtime": ["ApiUnit"],
   "missing-realizes": ["ApiUnit"],
@@ -227,4 +239,45 @@ describe("renderWarning — i18n coverage for every WarningKind", () => {
       });
     });
   }
+});
+
+describe("cross-domain-store-access owner-count pluralization", () => {
+  const coOwned: Warning = {
+    kind: "cross-domain-store-access",
+    params: {
+      accessingDomain: "Fulfillment",
+      owningDomains: ["Billing", "Ordering"],
+      infraId: "OrderDB",
+      infraKind: "database",
+      tableId: "orders",
+      mode: "read",
+    },
+  };
+
+  it("uses the plural owner phrasing when the leaf is co-owned (en)", () => {
+    const out = renderWarning(coOwned, localeTranslator("en"));
+    expect(out.message).toContain("2 other domains");
+  });
+
+  it("uses the plural owner phrasing when the leaf is co-owned (ja)", () => {
+    const out = renderWarning(coOwned, localeTranslator("ja"));
+    expect(out.message).toContain("他の 2 ドメイン");
+  });
+
+  it("uses the singular owner phrasing for a single owner (en)", () => {
+    const single: Warning = {
+      kind: "cross-domain-store-access",
+      params: {
+        accessingDomain: "Fulfillment",
+        owningDomains: ["Ordering"],
+        infraId: "OrderDB",
+        infraKind: "database",
+        tableId: "orders",
+        mode: "read",
+      },
+    };
+    const out = renderWarning(single, localeTranslator("en"));
+    expect(out.message).toContain("another domain");
+    expect(out.message).not.toContain("other domains");
+  });
 });

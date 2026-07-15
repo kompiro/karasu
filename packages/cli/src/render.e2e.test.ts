@@ -147,6 +147,38 @@ system EC {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
+  // #1819: the cross-domain-store-access info diagnostic is a model-level fact
+  // and must surface on the CLI render path (end-to-end AT for the diagnostic).
+  it("surfaces the cross-domain-store-access info diagnostic — Issue #1819", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const krsPath = join(tmpDir, "index.krs");
+    writeFileSync(
+      krsPath,
+      `system Shop {
+  service Core {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+    }
+    domain Billing {
+      usecase Charge {
+        resource OrderDB.orders { operations update }
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+`,
+      "utf-8",
+    );
+
+    await render(krsPath, {});
+    const stderr = streams.stderr();
+    // Billing reaches into Ordering's owned leaf → info, not a blocking error.
+    expect(stderr).toContain('Domain "Billing"');
+    expect(stderr).toContain("OrderDB.orders");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
   it("nonexistent file writes a File not found error and exits with code 1", async () => {
     await render(join(REPO_ROOT, "examples/__nonexistent__.krs"), {});
 

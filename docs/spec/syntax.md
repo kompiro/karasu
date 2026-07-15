@@ -647,6 +647,30 @@ valid as a bottom-up intermediate state.
 > [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — an unresolved bare `resource` / a cross-domain entity relation must not drop the node that did resolve.
 > [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — read/write tag synthesis on the entity-mediated usecase→resource edge preserves the source resource's operation semantics.
 
+#### Domain ownership of an infra leaf — cross-domain store access
+
+An `entity` mapping (`entity Order { table OrderDB.orders }`) does more than
+derive a store edge: it makes the mapped infra **leaf** *owned by* the entity's
+domain. Ownership is thus **derived from the logical layer, never declared on
+the physical `table`** — the physical side stays domain-free, preserving the
+logical/physical separation. Ownership is keyed at **leaf granularity**
+(`OrderDB.orders`), not the whole `database`, because sibling tables in one store
+can belong to different domains. A leaf may be owned by **more than one** domain
+(each domain whose `entity` maps it) — a legitimate co-ownership fact.
+
+When a `usecase` in one domain reads/writes a leaf whose owner set does **not**
+include that domain, the compiler emits the **`cross-domain-store-access`** info
+diagnostic — a boundary-crossing fact (legitimate under a shared kernel or
+during migration), not a defect. It is scoped per system, excludes `[external]`
+/ `[index]` stores, and carries the aggregated read/write `mode`. It is
+**orthogonal** to `shared-infra-fan-in`: that keys on how many services share a
+store; this keys on crossing an ownership boundary. A purely physical model with
+no `entity` mapping a leaf leaves the leaf unowned, so no diagnostic fires
+(adding an entity later promotes it with zero edits to the usecase). See the
+[diagnostics reference](diagnostics.md).
+
+> Related TPLs: [TPL-20260715-02](../test-perspectives/TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) — infra-leaf domain ownership is derived from the `entity` layer (never declared on the physical `table`), keyed at leaf granularity, held as a set of owning domains, and scoped per system. [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the same fact must not gain a second representation the two would have to keep in sync.
+
 ### Edge declaration
 
 ```
