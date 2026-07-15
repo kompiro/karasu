@@ -233,9 +233,11 @@ export const ja: Partial<Translations> = {
     infraId,
     tableId,
     mode,
+    ownerCount,
   }) => {
     const verb = mode === "write" ? "書き込み" : mode === "readwrite" ? "読み書き" : "読み取り";
-    return `domain "${accessingDomain}" が別ドメイン所有の ${infraKind} leaf "${infraId}.${tableId}" を${verb}しています`;
+    const owner = ownerCount > 1 ? `他の ${ownerCount} ドメイン` : "別ドメイン";
+    return `domain "${accessingDomain}" が${owner}所有の ${infraKind} leaf "${infraId}.${tableId}" を${verb}しています`;
   },
   "warning.crossDomainStoreAccess.checkBoundary":
     "他ドメインの store に踏み込むことを境界の smell とみなす流派があります（shared kernel や移行期には正当なこともあります）",
