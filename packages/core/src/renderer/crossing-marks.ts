@@ -87,9 +87,9 @@ function segIntersection(s1: Seg, s2: Seg): Point | null {
 }
 
 /**
- * Derive hop and junction marks from the final grouped edge geometry. Only the
- * Group-by layout calls this (ungrouped never sets `LayoutResult.crossingMarks`,
- * so the ungrouped SVG stays byte-identical — AC-5).
+ * Derive hop and junction marks from the final edge geometry. Every single-system
+ * layout calls this — grouped and, since #1956, ungrouped (Group by: none). The
+ * ungrouped view has no aggregation trunks, so it gets hops only (no junctions).
  */
 export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   const segs: Seg[] = [];

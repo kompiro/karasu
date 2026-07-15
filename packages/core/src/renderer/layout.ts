@@ -1486,11 +1486,12 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     displayMode,
   );
 
-  // Crossing marks (#1859 P2c-C). Grouped view only, from final coordinates —
-  // hop arcs neutralise right-angle crossings ("not connected") and junction
-  // dots mark trunk merges ("connected"). Ungrouped leaves this undefined so its
-  // SVG stays byte-identical (AC-5). See docs/design/system-view-grouping.md.
-  const crossingMarks = groupBands ? computeCrossingMarks(layoutEdges) : undefined;
+  // Crossing marks (#1859 P2c-C, extended to the ungrouped view in #1956). Derived
+  // from final coordinates for every single-system layout, grouped or not — hop
+  // arcs neutralise crossings ("not connected") so the default view's crossings
+  // read unambiguously too. Junction dots stay grouped-only (the ungrouped view
+  // has no aggregation trunks). See docs/design/system-view-grouping.md.
+  const crossingMarks = computeCrossingMarks(layoutEdges);
 
   return {
     nodes: layoutNodes,

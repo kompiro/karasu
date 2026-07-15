@@ -530,9 +530,9 @@ function collapseGlyph(
  * out-of-range index. Coordinates are rounded to 2 decimals so tiny float noise
  * never destabilises the SVG snapshot.
  *
- * Scope: crossings in the *single-system* Group-by view (right-angle and, since
- * #1939, diagonal). The multi-system grouped view is extended separately
- * (#1939 Part 2) — see docs/design/system-view-grouping.md § "P2c カバレッジ拡張（#1939）".
+ * Scope: crossings in any *single-system* view (right-angle and, since #1939,
+ * diagonal; grouped and, since #1956, ungrouped). The multi-system view is
+ * extended separately (#1939 Part 2) — see docs/design/system-view-grouping.md.
  */
 function renderCrossingMarks(
   marks: CrossingMarks,
