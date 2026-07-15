@@ -147,24 +147,29 @@ export interface LayoutResult {
    */
   foldedEdgeDiffState?: Map<string, string>;
   /**
-   * Hop/junction crossing marks for the Group-by view (#1859 P2c-C). Set only by
-   * the grouped layout branch (after all geometry passes, from final
-   * coordinates); the ungrouped branch never sets it, so the ungrouped SVG stays
-   * byte-identical (AC-5). The renderer emits a `crossing-marks` layer on top of
-   * the edges when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
+   * Hop/junction crossing marks for the system view (#1859 P2c-C). Set by every
+   * single-system layout — grouped and, since #1956, ungrouped (Group by: none) —
+   * from final coordinates; junction dots stay grouped-only (no trunks ungrouped).
+   * Multi-system (`layoutMultipleSystems`) leaves it unset (straight-line edges,
+   * out of scope). The renderer emits a `crossing-marks` layer on top of the edges
+   * when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
    */
   crossingMarks?: CrossingMarks;
 }
 
 /**
- * A hop arc bumping over a vertical at `(x, y)`, spanning `[x-halfWidth, x+halfWidth]`
- * (#1859 P2c-C). `edge` is the index (into `LayoutResult.edges`) of the horizontal
- * edge the arc sits on, so the renderer can colour the mark like its own edge.
+ * A hop arc centred at `(x, y)`, spanning `halfWidth` px either side along the
+ * host segment's direction (#1859 P2c-C, oriented in #1939). `angle` is the host
+ * segment's direction in **degrees** (0 = horizontal, so an axis-aligned hop
+ * renders exactly as before); the arc bumps perpendicular to it. `edge` is the
+ * index (into `LayoutResult.edges`) of the host edge, so the renderer can colour
+ * the mark like its own edge.
  */
 export interface HopMark {
   x: number;
   y: number;
   halfWidth: number;
+  angle: number;
   edge: number;
 }
 

@@ -620,7 +620,7 @@ service が共有するかで判定し、こちらは所有境界の越境で判
 なり診断は出ない（後から entity を足せば usecase を編集せず診断が有効になる）。
 [診断リファレンス](diagnostics.ja.md) を参照。
 
-> Related TPLs: [TPL-20260715-01](../test-perspectives/TPL-20260715-01-domain-ownership-derived-from-entity-not-declared.md) — infra leaf のドメイン所有は `entity` 層から導出（物理 `table` に宣言しない）、leaf 粒度でキーし、所有ドメインの集合で持ち、system 単位でスコープする。[TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — 同じ事実に 2 つ目の表現を持たせて drift させない。
+> Related TPLs: [TPL-20260715-02](../test-perspectives/TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) — infra leaf のドメイン所有は `entity` 層から導出（物理 `table` に宣言しない）、leaf 粒度でキーし、所有ドメインの集合で持ち、system 単位でスコープする。[TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — 同じ事実に 2 つ目の表現を持たせて drift させない。
 
 ### エッジ宣言
 

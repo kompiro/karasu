@@ -221,6 +221,124 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("Expand all expands every drillable service in place from the overview (#1955)", async () => {
+    // The bulk toggle's Expand-all direction opens every service in place, the
+    // inverse of Collapse all. An un-grouped single-system view with only
+    // services (no team frames / category bands) still offers the toggle because
+    // there are drillable services to expand.
+    vi.useFakeTimers();
+    const SOURCE = `system Shop {
+  service A { label "A" domain Da { usecase U } }
+  service B { label "B" domain Db { usecase V } }
+  service C { label "C" domain Dc { usecase W } }
+  service D { label "D" domain Dd { usecase X } }
+}`;
+    const fs = makeFs(SOURCE);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Overview: nothing expanded, no frames/bands, but drillable services exist.
+    expect(result.current.groupIds).toEqual([]);
+    expect(result.current.expandedContainers.size).toBe(0);
+    expect(result.current.anyCollapsible).toBe(true);
+    expect(result.current.allCollapsed).toBe(true); // → toggle shows "Expand all"
+
+    // Expand all → every service opens in place; the soft overload hint trips.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect([...result.current.expandedContainers].sort()).toEqual(["A", "B", "C", "D"]);
+    expect(result.current.svg).toContain('data-node-id="Da"');
+    expect(result.current.svg).toContain('data-node-id="Db"');
+    expect(result.current.svg).toContain('data-node-id="Dc"');
+    expect(result.current.svg).toContain('data-node-id="Dd"');
+    expect(result.current.expansionOverload).toBe(true); // 4 >= threshold
+    expect(result.current.allCollapsed).toBe(false);
+
+    // Collapse all → one click back to the scoped-glance overview.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.expandedContainers.size).toBe(0);
+    expect(result.current.allCollapsed).toBe(true);
+    expect(result.current.svg).not.toContain('data-node-id="Da"');
+    expect(result.current.svg).toContain('data-node-id="A"');
+    vi.useRealTimers();
+  });
+
+  it("Expand all does not expand services under Group by: team (#1955)", async () => {
+    // In-place expansion is suppressed under Group-by team (no `data-expand-node`
+    // is emitted), so the service set is empty and Expand all only unfolds the
+    // team frames — services are never expanded. Scope is renderer-gated, not
+    // branched on `groupBy` in the app (TPL-20260510-03).
+    vi.useFakeTimers();
+    const SOURCE = `system Shop {
+  service Billing { label "Billing" domain Db { usecase U } }
+  service Search { label "Search" domain Ds { usecase V } }
+}
+organization Org {
+  team "payments" { owns Billing }
+  team "catalog" { owns Search }
+}`;
+    const fs = makeFs(SOURCE);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Un-grouped, the two services are drillable.
+    expect(result.current.svg).toContain('data-expand-node="Billing"');
+
+    // Group by: team suppresses in-place expansion controls entirely.
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).not.toContain("data-expand-node=");
+
+    // Collapse all folds the team frames, then Expand all reopens them — but no
+    // service is expanded in place (the service set is empty under team).
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.expandedContainers.size).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it("with a layer band present, Expand all is reached from the collapsed state — two clicks (#1955)", async () => {
+    // The overloaded toggle is binary (fully collapsed ⇄ fully expanded), so its
+    // label follows `allCollapsed`. A model with a store renders an infra band
+    // that starts expanded, so at mount allCollapsed=false and the toggle reads
+    // "Collapse all". Expanding every service therefore takes two clicks:
+    // Collapse all (fold the band) → Expand all (unfold + expand services). This
+    // is the accepted Option-3 tradeoff (#1955 / design doc); the test locks it.
+    vi.useFakeTimers();
+    const SOURCE = `system Shop {
+  service A { label "A" domain Da { usecase U } }
+  service B { label "B" domain Db { usecase V } }
+  database ShopDB { table Orders { label "Orders" } }
+}`;
+    const fs = makeFs(SOURCE);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // The infra band is present and expanded → not yet the overview.
+    expect(result.current.svg).toContain('data-collapse-category="infra"');
+    expect(result.current.svg).toContain('data-expand-node="A"');
+    expect(result.current.allCollapsed).toBe(false); // → toggle reads "Collapse all"
+
+    // First click (Collapse all) folds the band and clears expansions — it does
+    // NOT expand services; it only reaches the overview.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    expect(result.current.expandedContainers.size).toBe(0);
+
+    // Second click (now "Expand all") unfolds the band and expands every service.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect([...result.current.expandedContainers].sort()).toEqual(["A", "B"]);
+    expect(result.current.svg).toContain('data-node-id="Da"');
+    expect(result.current.svg).toContain('data-node-id="Db"');
+    vi.useRealTimers();
+  });
+
   it("collapse-all folds external/infra categories too, not just team frames (#1872)", async () => {
     // "Collapse all" spans both collapse axes so its label is honest: team
     // frames (#1858) AND the external/infra category bands (#1821). The two

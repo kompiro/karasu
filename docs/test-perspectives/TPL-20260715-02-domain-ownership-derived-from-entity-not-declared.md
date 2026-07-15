@@ -1,5 +1,5 @@
 ---
-id: TPL-20260715-01
+id: TPL-20260715-02
 title: "infra leaf のドメイン所有は entity 層から導出する — 物理 table に再宣言せず、leaf 粒度・所有集合で扱う"
 status: active
 date: 2026-07-15
@@ -24,7 +24,7 @@ scope:
     - core
 ---
 
-# TPL-20260715-01: infra leaf のドメイン所有は entity 層から導出する（物理 table に宣言しない）
+# TPL-20260715-02: infra leaf のドメイン所有は entity 層から導出する（物理 table に宣言しない）
 
 ## 観点
 

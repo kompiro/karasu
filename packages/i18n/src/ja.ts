@@ -181,6 +181,7 @@ export const ja: Partial<Translations> = {
   "preview.groupBy.label": "グループ化",
   "preview.groupBy.none": "なし",
   "preview.groupBy.team": "チーム",
+  "preview.groupBy.boundary": "境界",
   "preview.groupBy.collapseAll": "すべて畳む",
   "preview.groupBy.expandAll": "すべて展開",
   "preview.expansion.overloadHint": "多くのコンテナを展開中 — Collapse all で俯瞰に戻れます",
@@ -384,6 +385,10 @@ export const ja: Partial<Translations> = {
     `resource "${resourceId}" の operation "${operation}" の装飾内に CRUD verb "${value}" が重複しています`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" は複数の team が owns しています。主オーナーとして "${existingTeam}" を採用します`,
+  "diagnostic.duplicateBoundaryAssignment.message": ({ nodeId, existingBoundary }) =>
+    `"${nodeId}" は複数の boundary に含まれています。所属 boundary として "${existingBoundary}" を採用します`,
+  "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
+    `"contains" で参照されている "${memberId}" が system 階層内に見つかりません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,

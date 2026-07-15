@@ -669,7 +669,7 @@ no `entity` mapping a leaf leaves the leaf unowned, so no diagnostic fires
 (adding an entity later promotes it with zero edits to the usecase). See the
 [diagnostics reference](diagnostics.md).
 
-> Related TPLs: [TPL-20260715-01](../test-perspectives/TPL-20260715-01-domain-ownership-derived-from-entity-not-declared.md) — infra-leaf domain ownership is derived from the `entity` layer (never declared on the physical `table`), keyed at leaf granularity, held as a set of owning domains, and scoped per system. [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the same fact must not gain a second representation the two would have to keep in sync.
+> Related TPLs: [TPL-20260715-02](../test-perspectives/TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) — infra-leaf domain ownership is derived from the `entity` layer (never declared on the physical `table`), keyed at leaf granularity, held as a set of owning domains, and scoped per system. [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the same fact must not gain a second representation the two would have to keep in sync.
 
 ### Edge declaration
 

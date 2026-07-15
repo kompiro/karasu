@@ -54,6 +54,10 @@ export enum TokenType {
   Slack = "Slack",
   Github = "Github",
 
+  // Keywords (boundary — P2b semantic-cluster declaration, experimental)
+  Boundary = "Boundary",
+  Contains = "Contains",
+
   // Keywords (legend)
   Legend = "Legend",
   Swatch = "Swatch",

@@ -1,9 +1,14 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { layout } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // A system with two teams (payments owns Billing/Wallet, catalog owns
 // Search/Catalog) plus an un-owned infra store and an [external] service. The
@@ -663,9 +668,11 @@ function rightAngleCrossings(res: LayoutResult): Point[] {
 }
 
 describe("computeCrossingMarks (#1859, P2c-C)", () => {
-  it("sets crossingMarks in the grouped view and leaves it undefined ungrouped (AC-5)", () => {
+  it("sets crossingMarks for a single-system layout whether grouped or not (#1956)", () => {
+    // #1956 extended marks to the ungrouped view, so both branches populate it
+    // (grouped adds junction dots; ungrouped is hops-only).
     expect(layoutOf(TRUNKS, TRUNKS_OWNER, "team").crossingMarks).toBeDefined();
-    expect(layoutOf(TRUNKS, TRUNKS_OWNER).crossingMarks).toBeUndefined();
+    expect(layoutOf(TRUNKS, TRUNKS_OWNER).crossingMarks).toBeDefined();
   });
 
   it("marks a junction dot only at real trunk merges, not at the trunk head (AC-2)", () => {
@@ -713,5 +720,69 @@ describe("computeCrossingMarks (#1859, P2c-C)", () => {
     expect(uncovered).toEqual([]);
     // And no hop is invented where there is no crossing.
     expect(hops.length).toBeLessThanOrEqual(crossings.length);
+  });
+});
+
+// Real-sample regression for #1954. The synthetic `SYS`/`TRUNKS` fixtures above
+// never exercised a target flanked on both sides in the infra tier, nor an actor
+// whose straight edge pierces the client row — so the TPL-20260711-02 fence
+// (penetration 0) was passing while `examples/en/getting-started` still leaked
+// penetrations in the Group-by view. This fixture pins the real example.
+const GETTING_STARTED = readFileSync(
+  resolve(__dirname, "../../../../examples/en/getting-started/index.krs"),
+  "utf8",
+);
+
+function layoutGettingStarted(groupBy?: "team"): LayoutResult {
+  const parsed = Parser.parse(GETTING_STARTED);
+  const slice = extractView(parsed.value.systems, []);
+  return layout(slice, { ownerIndex: parsed.value.ownerIndex, groupBy });
+}
+
+describe("mixed channel routing on examples/en/getting-started (#1954)", () => {
+  it("routes with zero node/frame penetration and zero collinear overlap (AC-1, TPL-20260711-02, #1927)", () => {
+    const grouped = layoutGettingStarted("team");
+    // The same grouped positions with straight center-to-center edges penetrate
+    // (the defect this fixes) — proves the fixture actually drives the router.
+    expect(straightCenterPenetrations(grouped)).toBeGreaterThan(0);
+    // Dual fence: no edge pierces a node/frame, AND no two edges render as one
+    // collinear line (a false connection). A naive top/bottom-port fallback hits
+    // penetration 0 but reintroduces overlaps; mixed routing + the generalized
+    // lane/fan-out passes hold both to 0.
+    expect(totalPenetrations(grouped)).toBe(0);
+    expect(collinearVerticalOverlaps(grouped)).toBe(0);
+    expect(collinearHorizontalOverlaps(grouped)).toBe(0);
+  });
+
+  it("mixed-routes the two edges that a plain side gutter cannot clear", () => {
+    const res = layoutGettingStarted("team");
+    // ECommerce -> OrderEvents: target OrderEvents is flanked by ECommerceDB /
+    // MediaStorage in the infra tier, so it is entered via a top channel stub.
+    // Seller -> ECommerce: source Seller is blocked by the actor row, so it exits
+    // via a bottom channel stub. Both become multi-waypoint mixed routes (a plain
+    // 2-waypoint side gutter route could not clear either).
+    const eco = edge(res, "ECommerce", "OrderEvents");
+    const seller = edge(res, "Seller", "ECommerce");
+    expect((eco.waypoints ?? []).length).toBeGreaterThan(2);
+    expect((seller.waypoints ?? []).length).toBeGreaterThan(2);
+    // Neither is left straight-through (the pre-fix state was 0 waypoints).
+    expect(eco.waypoints).toBeDefined();
+    expect(seller.waypoints).toBeDefined();
+  });
+
+  it("does not group or mixed-route the ungrouped (Group by: none) view (AC-5)", () => {
+    // AC-5: the ungrouped pipeline is untouched — no group frames, so the grouped
+    // routing (and its mixed-route fallback) never runs. The two edges that get
+    // mixed routes when grouped are NOT rerouted here.
+    const ungrouped = layoutGettingStarted();
+    expect(ungrouped.containers.some((c) => c.group)).toBe(false);
+    for (const [from, to] of [
+      ["ECommerce", "OrderEvents"],
+      ["Seller", "ECommerce"],
+    ] as const) {
+      // The grouped mixed route bends through 3 gutter/channel waypoints; the
+      // ungrouped pipeline does not produce that shape for these edges.
+      expect((edge(ungrouped, from, to).waypoints ?? []).length).toBeLessThan(3);
+    }
   });
 });

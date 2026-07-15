@@ -182,6 +182,7 @@ export type Translations = {
   "preview.groupBy.label": string;
   "preview.groupBy.none": string;
   "preview.groupBy.team": string;
+  "preview.groupBy.boundary": string;
   "preview.groupBy.collapseAll": string;
   "preview.groupBy.expandAll": string;
   "preview.expansion.overloadHint": string;
@@ -412,6 +413,11 @@ export type Translations = {
     nodeId: string;
     existingTeam: string;
   }) => string;
+  "diagnostic.duplicateBoundaryAssignment.message": (params: {
+    nodeId: string;
+    existingBoundary: string;
+  }) => string;
+  "diagnostic.containsTargetNotFound.message": (params: { memberId: string }) => string;
   "diagnostic.duplicateTeamId.message": (params: { teamId: string }) => string;
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
   "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;

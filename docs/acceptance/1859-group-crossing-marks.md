@@ -49,8 +49,8 @@ Group by: team の P2c 最終 slice。P2c-A（直交ルーティング）/ P2c-B
 
 - [x] ungrouped では `LayoutResult.crossingMarks` が undefined（renderer は何も描かない）→ SVG は byte-identical
 - [x] 既存 core スイート（2216 tests）が全通過（回帰なし）
-- [x] multi-system の Group-by ビューは marks を emit しない（P2c scope 外を明示）
-- [x] 斜めエッジの交差は hop 対象外（直角 scope のみ）— `crossing-marks.test.ts` で境界を固定
+- [x] multi-system の Group-by ビューは marks を emit しない（#1939 Part 2 で対応予定・それまでは境界を固定）
+- [x] ~~斜めエッジの交差は hop 対象外~~ → **#1939 Part 1 で被覆**（斜めも oriented hop で marked。[AT-1939-A](1939-crossing-marks-diagonal.md) 参照）
 
 ## 手動検証
 

@@ -13,8 +13,11 @@ import type {
 import type { ActiveView } from "./app-reducer.js";
 import type { SharePayload } from "../utils/inline-share.js";
 
-/** System-view grouping axis (Issue #1858). `"team"` groups by owning team. */
-export type GroupByMode = "none" | "team";
+/**
+ * System-view grouping axis. `"team"` groups by owning team (#1858, P2a);
+ * `"boundary"` groups by declared `boundary` block (#1822, P2b).
+ */
+export type GroupByMode = "none" | "team" | "boundary";
 
 export interface SystemViewData {
   svg: string;
@@ -37,8 +40,12 @@ export interface SystemViewData {
   groupBy?: GroupByMode;
   /** Called when the user changes the Group-by selector (#1858). */
   onGroupByChange?: (mode: GroupByMode) => void;
-  /** Whether the Group-by selector is meaningful (has org, not comparing) (#1858). */
+  /** Whether the Group-by selector is meaningful (has org or boundary) (#1858/#1822). */
   groupByAvailable?: boolean;
+  /** Whether the team axis has data — gates the "team" option (#1822 P2b). */
+  hasTeamAxis?: boolean;
+  /** Whether the boundary axis has data — gates the "boundary" option (#1822 P2b). */
+  hasBoundaryAxis?: boolean;
   /** Whether anything (a team frame or external/infra band) is collapsible (#1872). */
   anyCollapsible?: boolean;
   /** True when every team frame AND external/infra category is collapsed (#1872). */

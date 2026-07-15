@@ -76,6 +76,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-resource-operation` | warning | 1 つの resource に CRUD verb が複数回並ぶ。 |
 | `duplicate-crud-decoration-target` | warning | CRUD decoration が同じ operation を複数回対象にする。 |
 | `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-20260615-01](../adr/20260615-01-ownership-during-migration.md) 参照）。 |
+| `duplicate-boundary-assignment` | info | node が複数の `boundary` に含まれる（事実。最初に宣言された boundary を採用）。 |
 | `node-id-multiple-locations` | warning | 同じ node id が複数の場所に現れる。 |
 
 ### cross-reference 解決（warn-don't-error, §S6）
@@ -87,6 +88,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | --- | --- | --- |
 | `owns-target-not-found` | warning | team が存在しない service / domain を `owns` する。 |
 | `invalid-owns` | warning | `owns` 先が所有できない種別に解決される。 |
+| `contains-target-not-found` | warning | `boundary` が system 階層に存在しない node を `contains` する。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |
 | `unresolved-edge-endpoint` | warning | edge の端点 id が merge 後のモデルのどこにも見つからない。 |

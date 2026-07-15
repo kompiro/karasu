@@ -192,8 +192,10 @@ export class ImportResolver {
       storages: [],
       deploys: [],
       organizations: [],
+      boundaries: [],
       legends: [],
       ownerIndex: new Map(),
+      boundaryIndex: new Map(),
       nodePathIndex: new Map(),
       nodeFileIndex: new Map(),
     };
@@ -219,9 +221,18 @@ export class ImportResolver {
     mergedFile.storages.push(...(file.storages ?? []));
     mergedFile.deploys.push(...file.deploys);
     mergedFile.organizations.push(...file.organizations);
+    mergedFile.boundaries.push(...(file.boundaries ?? []));
     mergedFile.legends.push(...(file.legends ?? []));
     for (const [ownedId, teamId] of file.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
+    }
+    // boundaryIndex is 1:1 with first-declared-wins; keep the first mapping seen
+    // across the merge (mirrors ownerIndex, but ownerIndex overwrites — here we
+    // preserve first-wins to match buildBoundaryIndex's own-file semantics).
+    for (const [memberId, boundaryId] of file.boundaryIndex ?? []) {
+      if (!mergedFile.boundaryIndex.has(memberId)) {
+        mergedFile.boundaryIndex.set(memberId, boundaryId);
+      }
     }
     for (const [nodeId, path] of file.nodePathIndex) {
       if (!mergedFile.nodePathIndex.has(nodeId)) {

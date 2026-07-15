@@ -363,6 +363,24 @@ export interface OrganizationBlock {
   loc: SourceRange;
 }
 
+// ─── 境界（P2b: system view の意味的クラスタ宣言） ──────
+//
+// `boundary <id> "label"? { contains <node-id> ... }` は、著者が任意に引く
+// 意味的まとまりを宣言する top-level 構文。`organization`/`owns` と同じく
+// containment ではなく参照（id 参照でファイル横断可）で、`boundaryIndex`
+// （node id → boundary id、1:1）を成す。team（`ownerIndex`）と直交する
+// 第二の Group-by 軸になる。experimental notation（ADR-20260713-01）。
+// 設計: docs/design/system-view-grouping.md「P2b 詳細設計」。
+export interface BoundaryBlock {
+  kind: "boundary";
+  id: string;
+  label?: string;
+  properties: CommonProperties;
+  /** Member node ids listed via `contains` (one per line, mirroring `owns`). */
+  contains: string[];
+  loc: SourceRange;
+}
+
 // ─── 物理図（変更なし） ────────────────────────────
 
 export interface DeployNodeProperties {
@@ -462,8 +480,11 @@ export interface KrsFile {
   storages: StorageNode[];
   deploys: DeployBlock[];
   organizations: OrganizationBlock[];
+  boundaries: BoundaryBlock[];
   legends: LegendBlock[];
   ownerIndex: Map<string, string>;
+  /** Maps each node id to its declared boundary id (P2b, 1:1 like ownerIndex). First-declared wins on multi-membership. */
+  boundaryIndex: Map<string, string>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
   nodePathIndex: Map<string, string[]>;
   /** Maps each node id to the absolute file path where it is defined. */
@@ -530,6 +551,8 @@ export interface DiagnosticParamsByCode {
   "empty-crud-decoration": { operation: string; resourceId: string };
   "duplicate-crud-decoration-target": { operation: string; value: string; resourceId: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
+  "duplicate-boundary-assignment": { nodeId: string; existingBoundary: string };
+  "contains-target-not-found": { memberId: string };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };
   "duplicate-node-id-parent": { nodeId: string };

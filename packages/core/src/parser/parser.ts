@@ -22,6 +22,7 @@ import type {
   SystemNode,
   CommonProperties,
   OrganizationBlock,
+  BoundaryBlock,
   TeamNode,
   MemberNode,
   OrgNode,
@@ -201,8 +202,10 @@ export class Parser {
       storages: [],
       deploys: [],
       organizations: [],
+      boundaries: [],
       legends: [],
       ownerIndex: new Map(),
+      boundaryIndex: new Map(),
       nodePathIndex: new Map(),
       nodeFileIndex: new Map(),
     };
@@ -244,6 +247,9 @@ export class Parser {
         case TokenType.Organization:
           file.organizations.push(this.parseOrganizationBlock());
           break;
+        case TokenType.Boundary:
+          file.boundaries.push(this.parseBoundaryBlock());
+          break;
         case TokenType.Legend:
           file.legends.push(this.parseLegendBlock());
           break;
@@ -284,6 +290,7 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
+    file.boundaryIndex = this.buildBoundaryIndex(file.boundaries);
     // Top-level (system-less) services get the same per-parent duplicate-child
     // check as services nested in a system, so e.g. a usecase and entity
     // sharing an id under a parked service's domain are caught.
@@ -298,6 +305,9 @@ export class Parser {
     ]);
     if (file.nodePathIndex.size > 0 && file.organizations.length > 0) {
       this.validateOwnsReferences(file.organizations, file.nodePathIndex);
+    }
+    if (file.boundaries.length > 0) {
+      this.validateContainsReferences(file);
     }
 
     return { value: file, diagnostics: this.diagnostics };
@@ -1765,6 +1775,69 @@ export class Parser {
     };
   }
 
+  // Grammar: `boundary <id> "label"? { (label | description | link | contains)* }`
+  // Mirrors parseOrganizationBlock; `contains <id>` reuses the one-target-per-line
+  // shape of `owns` (parseTeamBlock). See docs/design/system-view-grouping.md
+  // 「P2b 詳細設計」.
+  private parseBoundaryBlock(): BoundaryBlock {
+    const start = this.advance(); // boundary
+    const idToken = this.parseIdOrString("boundary");
+    let label: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      label = this.advance().value;
+    }
+    this.expect(TokenType.LeftBrace);
+
+    const properties: CommonProperties = { links: [] };
+    const contains: string[] = [];
+
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error("expected-string-after", { property: "label" });
+        }
+      } else if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+      } else if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+      } else if (token.type === TokenType.Contains) {
+        this.advance();
+        if (
+          this.peek().type === TokenType.Identifier ||
+          this.peek().type === TokenType.StringLiteral
+        ) {
+          contains.push(this.advance().value);
+        } else {
+          this.error("expected-id-after", { property: "contains" });
+        }
+      } else {
+        this.error("unexpected-token-in-block", {
+          blockKind: "boundary",
+          tokenType: String(token.type),
+          value: token.value,
+        });
+        this.advance();
+      }
+    }
+
+    const end = this.expect(TokenType.RightBrace);
+
+    return {
+      kind: "boundary" as const,
+      id: idToken.value,
+      label,
+      properties,
+      contains,
+      loc: this.range(start.loc, end.loc),
+    };
+  }
+
   private parseTeamBlock(): TeamNode {
     const start = this.advance(); // team
     const idToken = this.parseIdOrString("team");
@@ -1948,6 +2021,31 @@ export class Parser {
     }
   }
 
+  // Build the 1:1 boundaryIndex (node id → boundary id), the P2b analogue of
+  // buildOwnerIndex. Unlike teams there is no migration-annotation precedence on
+  // boundaries, so multi-membership resolves by *first-declared-wins*; the
+  // duplicate is surfaced in the fact-vs-style register (info), mirroring
+  // duplicate-owner-assignment (ADR-20260615-01 / TPL-20260514-08). The
+  // diagnostic names the retained (first) boundary.
+  private buildBoundaryIndex(boundaries: BoundaryBlock[]): Map<string, string> {
+    const index = new Map<string, string>();
+    for (const boundary of boundaries) {
+      for (const memberId of boundary.contains) {
+        if (index.has(memberId)) {
+          this.diagnostics.push({
+            severity: "info",
+            code: "duplicate-boundary-assignment",
+            params: { nodeId: memberId, existingBoundary: index.get(memberId)! },
+            loc: boundary.loc,
+          });
+        } else {
+          index.set(memberId, boundary.id);
+        }
+      }
+    }
+    return index;
+  }
+
   private collectTeamIds(teams: TeamNode[], seen: Set<string>): void {
     for (const team of teams) {
       if (seen.has(team.id)) {
@@ -2109,6 +2207,54 @@ export class Parser {
     for (const org of organizations) {
       check(org.teams);
     }
+  }
+
+  // A `boundary` may `contains` any declared node (P2a member scope = all node
+  // kinds), so — unlike `owns` — there is no kind restriction and thus no
+  // `invalid-contains`; only existence is checked. This is why we validate
+  // against *all* declared node ids rather than nodePathIndex, which
+  // intentionally excludes user / resource / usecase (TPL-20260623-02: the
+  // valid-target set must enumerate every kind the construct accepts). Only
+  // system nodes themselves are excluded — a boundary groups nodes *within* a
+  // system, not systems.
+  private validateContainsReferences(file: KrsFile): void {
+    const declaredIds = this.collectContainableIds(file);
+    for (const boundary of file.boundaries) {
+      for (const memberId of boundary.contains) {
+        if (!declaredIds.has(memberId)) {
+          this.diagnostics.push({
+            severity: "warning",
+            code: "contains-target-not-found",
+            params: { memberId },
+            loc: boundary.loc,
+          });
+        }
+      }
+    }
+  }
+
+  // Every declared node id that a `boundary` may legitimately contain: all node
+  // kinds nested anywhere in a system, plus top-level services / clients /
+  // domains / infra and their descendants. System container ids are excluded
+  // (a boundary groups nodes *inside* a system).
+  private collectContainableIds(file: KrsFile): Set<string> {
+    const ids = new Set<string>();
+    const walk = (nodes: readonly KrsNode[]): void => {
+      for (const node of nodes) {
+        ids.add(node.id);
+        walk(node.children);
+      }
+    };
+    for (const system of file.systems) {
+      walk(system.children);
+    }
+    walk(file.services);
+    walk(file.clients);
+    walk(file.domains);
+    walk(file.databases);
+    walk(file.queues);
+    walk(file.storages);
+    return ids;
   }
 
   // ─── Legend block ────────────────────────────────────────────────────────

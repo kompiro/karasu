@@ -45,8 +45,12 @@ interface ActiveViewData {
   groupBy?: GroupByMode;
   /** system: change the Group-by axis (#1858). */
   onGroupByChange?: (mode: GroupByMode) => void;
-  /** system: whether the Group-by selector is meaningful (#1858). */
+  /** system: whether the Group-by selector is meaningful (#1858/#1822). */
   groupByAvailable?: boolean;
+  /** system: whether the team axis has data — gates the "team" option (#1822 P2b). */
+  hasTeamAxis?: boolean;
+  /** system: whether the boundary axis has data — gates the "boundary" option (#1822 P2b). */
+  hasBoundaryAxis?: boolean;
   /** system: whether anything (a team frame or external/infra band) is collapsible (#1872). */
   anyCollapsible?: boolean;
   /** system: true when every team frame AND external/infra category is collapsed (#1872). */
@@ -123,6 +127,8 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         groupBy: systemView.groupBy,
         onGroupByChange: systemView.onGroupByChange,
         groupByAvailable: systemView.groupByAvailable,
+        hasTeamAxis: systemView.hasTeamAxis,
+        hasBoundaryAxis: systemView.hasBoundaryAxis,
         anyCollapsible: systemView.anyCollapsible,
         allCollapsed: systemView.allCollapsed,
         expansionOverload: systemView.expansionOverload,

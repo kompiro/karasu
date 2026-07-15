@@ -17,6 +17,7 @@ discovered_from:
 related_to:
   - TPL-20260623-04
   - TPL-20260624-02
+  - TPL-20260715-01
 topic: renderer
 scope:
   packages:
@@ -84,7 +85,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 ## 既知の対処パターン
 
 - **障害物 = 全ノードカード ∪ 全フレーム矩形**: grouped view の貫通判定は両方を obstacle に入れる。フレームは `ContainerRect { group: true }` から得られる。
-- **最外ガターへのフォールバック**: 帯間チャネル・フレーム内回廊で貫通が残るエッジは、構成上必ず空く最外の左右ガターへ退避させ、貫通ゼロを構成的に保証する。
+- **帯間チャネルへのフォールバック（mixed route）**: 側面ガター stub が同 row の兄弟に塞がれるエッジ（挟まれ infra target / actor row に塞がれた source）は、**塞がれた端点だけを top/bottom port で隣接空き帯（帯間チャネル）へ迂回**させて貫通ゼロを構成的に達成する（#1954。ADR-20260429-01 の帯間チャネルと同型）。⚠️ **「最外ガターへ退避すれば貫通ゼロ」は誤り** — target の side に入る横 stub は隣の兄弟を横切るため、ガターを外へ動かしても貫通は残る。かつ 4-waypoint の channel route を後段 overlap パスに参加させ忘れると別軸（共線オーバーラップ）が悪化する（[TPL-20260715-01](TPL-20260715-01-new-route-shape-participates-in-overlap-passes.md)）。
 - **交差は減らさず mark で無害化**: 直交ルーティングで全交差を直角にし、横 over 縦の hop アーク（非接続）とトランク junction dot（接続）で「接続か通過か」の曖昧さを消す。評価軸は「交差数」ではなく「全交差が mark 付きか」。
 - **二重計測ヘルパー**: テストに `countCrossings(edges)` と `countPenetrations(edges, obstacles)` の両方を用意し、後者は必ず 0 を assert する。
 - **共線オーバーラップのレーン分離**: 単一ガター x に載った複数回廊を、y 区間の interval partitioning で別レーン x に割り当てる（重ならない区間は同一レーン可＝幅とスナップショット差分を最小化）。トランクレーン等の既存レーン採番と x が衝突しないよう協調する（`distributeGutterLanes`, #1927）。第3計測ヘルパー `countCollinearOverlaps(edges)`（同一 `trunkId` 除外）で 0 を assert する。
