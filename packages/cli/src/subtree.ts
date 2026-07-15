@@ -63,8 +63,10 @@ function emptyKrsFile(): KrsFile {
     storages: [],
     deploys: [],
     organizations: [],
+    boundaries: [],
     legends: [],
     ownerIndex: new Map(),
+    boundaryIndex: new Map(),
     nodePathIndex: new Map(),
     nodeFileIndex: new Map(),
   };
