@@ -53,7 +53,7 @@
 - **scope は per-system**（+ top-level）。domain id は system 内でのみ error 級一意なので、cross-domain 判定も所有 system 内に閉じる（ADR-20260714-01 と一致）。cross-**system** アクセスは意図的なので対象外。
 - **`[external]` / `[index]` ストアは除外** — `shared-infra-fan-in` と対称。境界外の managed store や派生 read model へのアクセスは所有境界の smell ではない。
 - **後方互換 / 新 builtin を凍結しない** — #1816 promotion-gate（default = keep experimental, 実利用証拠なしに builtin を凍結しない）に従い、**新しい構文を一切増やさない**ことを最優先にする。
-- **未解決を error にしない** — 所有者が定まらない table（entity マッピングなし、または複数ドメインが同一 table をマッピング）に対しては診断を**出さない**（false-positive を作らない）。
+- **未解決を error にしない** — entity マッピングが 1 つも無い table のみ所有不明として診断を**出さない**（false-positive を作らない）。複数ドメインが同一 table をマッピングする co-owned table は「所有ドメインの集合」として扱い、所有集合外からのアクセスは通常どおり発火する（後述）。
 
 ## 検討した選択肢 — table のドメイン所有をどう与えるか
 
@@ -105,16 +105,17 @@ table を所有ドメインで視覚的にクラスタリングするレンダ�
 
 ### 所有導出（item 1）
 
-- 物理 leaf `table DB.T`（database `DB` 配下）は、`table DB.T` をマッピングする `entity` が属する domain に**所有される**。
-- 論理形では等価に: resource が解決した **entity の親 domain** が所有ドメイン。
-- **曖昧所有**: 相異なる複数ドメインの entity が同一 table をマッピングした場合、その table は単一所有者を持たない（まさに「schema は 1:1 でない」現実の表れ）。この table は診断上「所有者なし」として扱い、cross-domain を発火させない（false-positive 回避）。別 info（例 `shared-table-multi-domain`）に昇格するかは今回のスコープ外（「未解決の問い」）。
+- 物理 leaf `table DB.T`（database `DB` 配下）の**所有はドメインの集合**として与える: `owners(T) = { D : D に属する entity が table DB.T をマッピング }`。通常は単一要素。
+- 論理形では等価に: resource が解決した **entity の親 domain**（マッピングが 1 件なら単一所有）。
+- **co-owned table（|owners| ≥ 2）**: 相異なる複数ドメインの entity が同一 table をマッピングするケース（まさに「schema は 1:1 でない」現実の表れ）。この table は「所有ドメインの集合」として保持し、cross-domain 判定は accessor が集合に含まれるかで行う（次節）。所有者どうしのアクセスは境界越えではないので発火しないが、**集合外の第三ドメインからのアクセスは正しく捕捉される**。co-ownership それ自体を smell として通知するか（`multi-domain-table` info）は promotion-gate に従い今回スコープ外（follow-up）。
 
 ### cross-domain ストアアクセス診断（item 2）
 
 - 新 Warning kind **`cross-domain-store-access`**（`info` register）を追加。
-- `domain D_acc` 内の `usecase` の各 `resource` を entity resolver で解決し、解決先ストア/entity の所有ドメイン `D_own` を得る。
-- `D_own` が定まり、かつ `D_own != D_acc`（同一 system scope）なら発火。
-- params 案: `{ accessingDomain, owningDomain, infraId, infraKind, usecase? }`（詳細は実装時に確定。TPL-20260623-02 に従い resolver の解決集合を `deriveInfraEdges` / `detectSharedInfraFanIn` / `detectUnassignedResources` と同期する）。
+- `domain D_acc` 内の `usecase` の各 `resource` を entity resolver で解決し、解決先ストア/table の `owners(T)` を得る。
+- `owners(T)` が空でなく、かつ **`D_acc ∉ owners(T)`**（同一 system scope）なら発火。single-owner はその特殊形で、co-owned table でも所有集合外からのアクセスを正しく捕捉する。
+- **read/write モードを params に載せる** — resolver が既に合成する `[read]`/`[write]` タグから `mode ∈ { read, write, readwrite }` を導出。cross-domain write（他ドメイン所有ストアへの書き込み）は read より強い境界シグナルなので、consumer / UI が mode で絞り込めるようにする。severity は read/write とも `info`（別 severity にはしない。write-only 発火もしない — read も CQRS / shared kernel の観測対象として残す）。
+- params 案: `{ accessingDomain, owningDomains, infraId, infraKind, mode, usecase? }`（`owningDomains` は集合、`mode` は上記。詳細は実装時に確定。TPL-20260623-02 に従い resolver の解決集合を `deriveInfraEdges` / `detectSharedInfraFanIn` / `detectUnassignedResources` と同期する）。
 - scope は per-system + top-level。`[external]` / `[index]` ストアは除外（fan-in と対称）。
 - `analyze()`（merge 後）で判定 → view 非依存。LSP single-document では抑制しない（under-report のみで false-positive は出ない。fan-in / domain-dispersal と同性質）。
 
@@ -131,12 +132,15 @@ table を所有ドメインで視覚的にクラスタリングするレンダ�
 
 ADR-20260514-02 / TPL-20260514-08 の判定樹: 「domain A が domain B のストアに触れる」は**構造的事実**で、それを smell と呼ぶかは流派判断（shared kernel・移行期・意図的共有では正当）。ゆえに **`info`**。`warning`（=直すべき）にすると意図的な cross-domain 共有で誤報になり、ADR-20260514-02 の立場と矛盾する。`error` は論外（warn-don't-error）。
 
-## 未解決の問い
+## 詰めた論点と残りの follow-up
 
-- **物理 schema マッピング（案C）**: store に `schema` を持たせ `schema.table` 粒度で realize する物理配置表現。1 domain ↔ N schema、1 schema ↔ N domain の非 1:1 をどう扱うか。**本設計の所有導出とは独立**（所有は論理 entity から導出、schema は物理配置）。#1632（infra realizes）と交差しうるので、そちらの決着を見てから別 Issue で扱う。
-- **曖昧所有の昇格**: 同一 table を複数ドメインがマッピングするケースを別 info（`shared-table-multi-domain` 等）にするか。実利用証拠が出てから判断（promotion-gate）。
-- **entity 未導入モデル**: 物理 dot-notation（`resource OrderDB.orders`）だけで entity を宣言していないモデルでは所有が導出されず診断が出ない。これは「ボトムアップの正当な中間状態」であり許容する（domain-entity-modeling の zero-edit promotion と同じ思想 — entity を足せば診断も後から効く）。
-- **視覚グルーピング（案D）**: table を所有ドメインでクラスタリングする描画は comprehension pillar の後続作業。所有導出が入った後に別途。
+当初「未解決の問い」だった論点は #1819 の壁打ちで方針を確定した。
+
+- **物理 schema マッピング — 本設計から切り離す（decouple）**。診断の所有は論理層（entity → domain）だけを読む。Postgres schema 等の物理 schema は**物理配置**の話で、非 1:1（1 domain ↔ N schema、1 schema ↔ N domain）ゆえ所有導出には使えず、entity 未導入 table の所有補完もできない。よって schema モデリングは本診断の sub-question **ではなく**、動機が生じたとき独立の物理層フィーチャとして別途扱う（本設計としては #1632 とも結合しない）。
+- **co-owned table — 所有ドメインの集合として扱う**（上の「所有導出」節に取り込み済み）。cross-domain は `accessor ∉ owners(T)` で判定するので co-owned table でも正しく機能する。co-ownership それ自体を通知する `multi-domain-table` info は、実利用証拠が出てから判断（promotion-gate）。**本設計スコープ外の将来 follow-up**。
+- **read/write 非対称 — 単一 info + `mode` param で解決**（上の診断節）。write-only 発火や severity 分割はしない。
+- **entity 未導入モデル — 許容**。物理 dot-notation だけで entity を宣言していない table は所有不明で診断が出ない。ただしギャップは**狭い**: bare `resource Order` が entity に解決すれば所有は効く。純粋な物理 dot ref（`resource OrderDB.orders`）で、その table を誰の entity もマッピングしていない場合のみ dark。これは「ボトムアップの正当な中間状態」で、entity を足せば zero-edit で診断が後から効く（domain-entity-modeling の zero-edit promotion と同じ思想）。
+- **視覚グルーピング（案D）— follow-up issue**。table を所有ドメインでクラスタリングする描画は comprehension pillar の関心事。具体形は、system view の infra leaf に**所有ドメインの sub-label / badge** を付す軽量案（ADR-20260714-01 の ghost sub-label 機構を再利用）を第一候補とし、新規 view は作らない。所有導出（本設計）が入った後に別 Issue で。
 
 ## 影響範囲
 
@@ -152,7 +156,8 @@ ADR-20260514-02 / TPL-20260514-08 の判定樹: 「domain A が domain B のス�
 1. `domain A` の usecase が `domain B` 所有（B の entity が `table DB.T` をマッピング）の `DB.T` を参照 → `cross-domain-store-access` info が 1 件出る。
 2. 同一ドメイン所有の table を参照 → 出ない（intra-domain）。
 3. `[external]` / `[index]` の store を跨いでも → 出ない。
-4. 同一 table を A・B 双方の entity がマッピング（曖昧所有） → 出ない。
-5. entity を宣言していない物理 dot-notation のみのモデル → 出ない（所有不明）。
+4. **co-owned table**（A・B 双方の entity が同一 `DB.T` をマッピング）を **domain C** の usecase が参照 → 出る（`C ∉ owners = {A,B}`）。A または B の usecase が参照 → 出ない（所有集合内）。
+5. entity を宣言していない物理 dot-notation のみのモデル（その table を誰もマッピングしていない） → 出ない（所有不明）。
 6. cross-**system** の参照 → 出ない（scope 外）。
 7. 2 ドメインが 1 table を共有するケースで `shared-infra-fan-in` と `cross-domain-store-access` が**それぞれ独立に**出る（二重計上でも相互抑制でもない）。
+8. **read/write mode**: cross-domain write の resource（`operations` に write 系）→ params `mode` が `write`（または `readwrite`）。read-only 参照 → `mode: read`。severity はいずれも info。
