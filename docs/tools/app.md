@@ -123,7 +123,11 @@ The preview toolbar offers:
   collapsible — team boundary frames **or** the external / infra layer bands —
   this button folds or unfolds all of them at once, reaching the compact overview
   ("collapse by default, open what you need"). It appears even when you are not
-  grouping, as long as there are external / infra bands to fold.
+  grouping, as long as there are external / infra bands to fold. In a single,
+  un-grouped system its **Expand all** direction also expands every service in
+  place at once (each service's domains shown in a boundary frame) — the bulk
+  complement to Collapse all. Opening many services deliberately trips the
+  overload hint; Collapse all is the one-click way back to the overview.
 - **Show All Layers** — render every drill-down level stacked together.
 - **Export** — save the current view as **SVG**; the split-button menu also
   exports the drill-down tree, a single SVG bundling **all** views, or
