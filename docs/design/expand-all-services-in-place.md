@@ -66,6 +66,7 @@ service 展開軸専用のトグル（`aria-pressed=allExpanded` で expand-all 
 
 **メリット**: コントロール数が増えない（最小の UI）。`allCollapsed` は既に `expandedContainers.size===0` を含み、collapse 方向は既に `clearExpansions()` する → 変更は expand 方向 1 箇所 + id 抽出のみ。i18n 追加・prop 配線・PreviewColumn 変更が **不要**。
 **デメリット**: 1 コントロールが 2 軸（frames/bands + service 展開）にまたがり意味がやや重くなる。「Expand all」を bands 展開のつもりで押した人が全 service 展開まで一気に起こす驚きがある。
+**受け入れる制約（2 クリック）**: トグルは二値（全畳み ⇄ 全開き）でラベルは `allCollapsed` に従う。`allCollapsed` は「展開なし かつ 全 frame/band 畳み済み」で、layer band（external/infra）は **起動時は展開状態**。したがって store を持つモデル（＝ infra 帯あり = 実質ほとんどのモデル）は起動時 `allCollapsed=false` で「Collapse all」表示になり、全 service 展開は俯瞰状態からの枝でのみ起きるため **Collapse all → Expand all の 2 クリック**になる（band の無い純 service モデルのみ 1 クリック）。#1955 の AC-1「単一操作で全 service 展開」は band 無しモデルで厳密に満たし、band ありモデルでは 2 クリックに緩む。code review（PR #1968）で表面化し、ユーザー判断で **2 クリック運用を受容**（別案: Option 1 独立ボタンなら常時 1 クリック）。この tradeoff は AT-1955 AC-1b で固定。
 
 ## 比較
 

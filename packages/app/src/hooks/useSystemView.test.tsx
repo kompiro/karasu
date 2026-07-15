@@ -301,6 +301,44 @@ organization Org {
     vi.useRealTimers();
   });
 
+  it("with a layer band present, Expand all is reached from the collapsed state — two clicks (#1955)", async () => {
+    // The overloaded toggle is binary (fully collapsed ⇄ fully expanded), so its
+    // label follows `allCollapsed`. A model with a store renders an infra band
+    // that starts expanded, so at mount allCollapsed=false and the toggle reads
+    // "Collapse all". Expanding every service therefore takes two clicks:
+    // Collapse all (fold the band) → Expand all (unfold + expand services). This
+    // is the accepted Option-3 tradeoff (#1955 / design doc); the test locks it.
+    vi.useFakeTimers();
+    const SOURCE = `system Shop {
+  service A { label "A" domain Da { usecase U } }
+  service B { label "B" domain Db { usecase V } }
+  database ShopDB { table Orders { label "Orders" } }
+}`;
+    const fs = makeFs(SOURCE);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // The infra band is present and expanded → not yet the overview.
+    expect(result.current.svg).toContain('data-collapse-category="infra"');
+    expect(result.current.svg).toContain('data-expand-node="A"');
+    expect(result.current.allCollapsed).toBe(false); // → toggle reads "Collapse all"
+
+    // First click (Collapse all) folds the band and clears expansions — it does
+    // NOT expand services; it only reaches the overview.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    expect(result.current.expandedContainers.size).toBe(0);
+
+    // Second click (now "Expand all") unfolds the band and expands every service.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect([...result.current.expandedContainers].sort()).toEqual(["A", "B"]);
+    expect(result.current.svg).toContain('data-node-id="Da"');
+    expect(result.current.svg).toContain('data-node-id="Db"');
+    vi.useRealTimers();
+  });
+
   it("collapse-all folds external/infra categories too, not just team frames (#1872)", async () => {
     // "Collapse all" spans both collapse axes so its label is honest: team
     // frames (#1858) AND the external/infra category bands (#1821). The two

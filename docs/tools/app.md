@@ -126,7 +126,10 @@ The preview toolbar offers:
   grouping, as long as there are external / infra bands to fold. In a single,
   un-grouped system its **Expand all** direction also expands every service in
   place at once (each service's domains shown in a boundary frame) — the bulk
-  complement to Collapse all. Opening many services deliberately trips the
+  complement to Collapse all. Because the toggle is all-or-nothing, a model that
+  has external / infra bands (they start open) reads "Collapse all" first, so you
+  reach the fully-expanded state with Collapse all → Expand all; a model with no
+  bands expands in one click. Opening many services deliberately trips the
   overload hint; Collapse all is the one-click way back to the overview.
 - **Show All Layers** — render every drill-down level stacked together.
 - **Export** — save the current view as **SVG**; the split-button menu also
