@@ -407,6 +407,7 @@ export type Translations = {
     nodeId: string;
     existingBoundary: string;
   }) => string;
+  "diagnostic.duplicateBoundaryId.message": (params: { boundaryId: string }) => string;
   "diagnostic.containsTargetNotFound.message": (params: { memberId: string }) => string;
   "diagnostic.duplicateTeamId.message": (params: { teamId: string }) => string;
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;

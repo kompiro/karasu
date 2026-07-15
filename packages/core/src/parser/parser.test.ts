@@ -2112,6 +2112,25 @@ boundary payments {
     `);
     expect(result.diagnostics.some((d) => d.code === "expected-id-after")).toBe(true);
   });
+
+  it("errors on duplicate boundary ids (mirrors duplicate-team-id)", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+  service Wallet {}
+}
+boundary payments {
+  contains Billing
+}
+boundary payments {
+  contains Wallet
+}
+    `);
+    const dup = result.diagnostics.filter((d) => d.code === "duplicate-boundary-id");
+    expect(dup).toHaveLength(1);
+    expect(dup[0].severity).toBe("error");
+    expect(JSON.stringify(dup[0].params)).toContain("payments");
+  });
 });
 
 describe("top-level-declaration diagnostic (#1624)", () => {

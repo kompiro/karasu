@@ -372,6 +372,8 @@ export const ja: Partial<Translations> = {
     `"${nodeId}" は複数の team が owns しています。主オーナーとして "${existingTeam}" を採用します`,
   "diagnostic.duplicateBoundaryAssignment.message": ({ nodeId, existingBoundary }) =>
     `"${nodeId}" は複数の boundary に含まれています。所属 boundary として "${existingBoundary}" を採用します`,
+  "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
+    `boundary id "${boundaryId}" が重複しています`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"contains" で参照されている "${memberId}" が system 階層内に見つかりません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,

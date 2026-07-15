@@ -552,6 +552,7 @@ export interface DiagnosticParamsByCode {
   "duplicate-crud-decoration-target": { operation: string; value: string; resourceId: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-boundary-assignment": { nodeId: string; existingBoundary: string };
+  "duplicate-boundary-id": { boundaryId: string };
   "contains-target-not-found": { memberId: string };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };

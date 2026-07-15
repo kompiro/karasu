@@ -295,6 +295,16 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
+  it("formats a boundary block and round-trips it (P2b — no data loss)", () => {
+    const src = `system Shop {\n  service Billing {}\n  service Wallet {}\n}\nboundary payments "Payments" {\n  contains Billing\n  contains Wallet\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`boundary payments "Payments" {`);
+    expect(result).toContain(`  contains Billing`);
+    expect(result).toContain(`  contains Wallet`);
+    expectIdempotent(result);
+    expectAstRoundTrip(src);
+  });
+
   it("formats organization with description and link", () => {
     const src = `organization Org {\n  description "Our org"\n  link "https://example.com" "Site"\n  team Backend {\n    owns ECommerce\n  }\n}`;
     const result = fmt(src);

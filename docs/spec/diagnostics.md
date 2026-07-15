@@ -83,6 +83,7 @@ primary owner.
 | `duplicate-crud-decoration-target` | warning | A CRUD decoration targets the same operation more than once. |
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-20260615-01](../adr/20260615-01-ownership-during-migration.md)). |
 | `duplicate-boundary-assignment` | info | A node is listed in more than one `boundary` (a fact; the first-declared boundary is kept). |
+| `duplicate-boundary-id` | error | Two `boundary` blocks declare the same id. |
 | `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
 
 ### Cross-reference resolution (warn-don't-error, §S6)

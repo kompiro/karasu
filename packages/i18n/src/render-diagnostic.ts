@@ -97,6 +97,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.duplicateOwnerAssignment.message", d.params);
     case "duplicate-boundary-assignment":
       return t("diagnostic.duplicateBoundaryAssignment.message", d.params);
+    case "duplicate-boundary-id":
+      return t("diagnostic.duplicateBoundaryId.message", d.params);
     case "contains-target-not-found":
       return t("diagnostic.containsTargetNotFound.message", d.params);
     case "duplicate-team-id":

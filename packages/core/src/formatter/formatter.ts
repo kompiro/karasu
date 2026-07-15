@@ -11,6 +11,7 @@ import type {
   DeployNode,
   ImportDeclaration,
   OrganizationBlock,
+  BoundaryBlock,
   TeamNode,
   MemberNode,
   LinkEntry,
@@ -117,6 +118,7 @@ class Printer {
       ...file.domains,
       ...file.deploys,
       ...file.organizations,
+      ...file.boundaries,
     ].sort((a, b) => a.loc.start.line - b.loc.start.line);
 
     for (const block of topLevel) {
@@ -203,6 +205,7 @@ class Printer {
   private renderTopLevel(block: HasLoc): string[] {
     if ("nodes" in block) return this.renderDeployBlock(block as DeployBlock);
     if ("teams" in block) return this.renderOrganizationBlock(block as OrganizationBlock);
+    if ("contains" in block) return this.renderBoundaryBlock(block as BoundaryBlock);
     return this.renderNode(block as KrsNode, 0);
   }
 
@@ -422,6 +425,30 @@ class Printer {
       lines.push(...this.renderLeading(leadingToks, "  "));
       lines.push(...this.renderTeam(team, 1));
       prevEndLine = team.loc.end.line;
+    }
+
+    lines.push("}");
+    return lines;
+  }
+
+  // ── BoundaryBlock (P2b) ───────────────────────────────────────────────────
+
+  private renderBoundaryBlock(block: BoundaryBlock): string[] {
+    const trail = this.extractTrailing(block.loc.start.line);
+    const decl =
+      block.label !== undefined
+        ? `boundary ${quoteId(block.id)} "${block.label}" {${trail}`
+        : `boundary ${quoteId(block.id)} {${trail}`;
+    const lines: string[] = [decl];
+
+    if (block.properties.description !== undefined) {
+      lines.push(this.renderDescription(block.properties.description, "  "));
+    }
+    for (const link of block.properties.links) {
+      lines.push(this.renderLink(link, "  "));
+    }
+    for (const memberId of block.contains) {
+      lines.push(`  contains ${quoteId(memberId)}`);
     }
 
     lines.push("}");

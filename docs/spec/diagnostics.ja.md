@@ -77,6 +77,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-crud-decoration-target` | warning | CRUD decoration が同じ operation を複数回対象にする。 |
 | `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-20260615-01](../adr/20260615-01-ownership-during-migration.md) 参照）。 |
 | `duplicate-boundary-assignment` | info | node が複数の `boundary` に含まれる（事実。最初に宣言された boundary を採用）。 |
+| `duplicate-boundary-id` | error | 2 つの `boundary` ブロックが同じ id を宣言する。 |
 | `node-id-multiple-locations` | warning | 同じ node id が複数の場所に現れる。 |
 
 ### cross-reference 解決（warn-don't-error, §S6）

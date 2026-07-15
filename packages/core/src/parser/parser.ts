@@ -290,6 +290,23 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
+    // Boundary ids must be unique (mirrors duplicate-team-id): a repeated id
+    // would silently union disjoint members under one frame in the Group-by
+    // view. buildBoundaryIndex still runs on all blocks so member indexing is
+    // unaffected; this only flags the id clash.
+    const seenBoundaryIds = new Set<string>();
+    for (const boundary of file.boundaries) {
+      if (seenBoundaryIds.has(boundary.id)) {
+        this.diagnostics.push({
+          severity: "error",
+          code: "duplicate-boundary-id",
+          params: { boundaryId: boundary.id },
+          loc: boundary.loc,
+        });
+      } else {
+        seenBoundaryIds.add(boundary.id);
+      }
+    }
     file.boundaryIndex = this.buildBoundaryIndex(file.boundaries);
     // Top-level (system-less) services get the same per-parent duplicate-child
     // check as services nested in a system, so e.g. a usecase and entity
