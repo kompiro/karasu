@@ -29,6 +29,7 @@ flowchart TD
   ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_20260401_06["ADR-20260401-06<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
   ADR_20260616_01["ADR-20260616-01<br/>[chat-ai] 組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
+  ADR_20260715_03["ADR-20260715-03<br/>[resolver] infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
   ADR_20260323_03 --> ADR_20260312_03
   ADR_20260323_03 --> ADR_20260323_02
   ADR_20260404_10 --> ADR_20260323_03
@@ -36,6 +37,7 @@ flowchart TD
   ADR_20260615_05 --> ADR_20260615_01
   ADR_20260401_06 --> ADR_20260312_03
   ADR_20260616_01 --> ADR_20260615_05
+  ADR_20260715_03 --> ADR_20260715_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -65,4 +67,5 @@ flowchart TD
   class ADR_20260323_02 ghost
   class ADR_20260401_06 ghost
   class ADR_20260616_01 ghost
+  class ADR_20260715_03 ghost
 ```

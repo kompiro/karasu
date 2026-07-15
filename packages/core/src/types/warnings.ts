@@ -80,7 +80,7 @@ export interface WarningParamsByKind {
    * boundary-crossing *fact* some schools call a smell, not a defect). Paired
    * with but orthogonal to `shared-infra-fan-in` (service-count sharing vs
    * ownership-boundary crossing) — the two fire independently. See
-   * `docs/design/domain-store-ownership-diagnostic.md` (ADR promotion pending).
+   * `docs/adr/20260715-03-domain-store-ownership-diagnostic.md`.
    */
   "cross-domain-store-access": {
     /** id of the domain whose usecase performs the access */

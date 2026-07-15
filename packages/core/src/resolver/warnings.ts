@@ -488,7 +488,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  * suppression. The resource→store resolution reuses `buildEntityResolver`, kept
  * in sync with `deriveInfraEdges` / `detectSharedInfraFanIn` /
  * `detectUnassignedResources` (TPL-20260623-02).
- * See `docs/design/domain-store-ownership-diagnostic.md`.
+ * See ADR-20260715-03 (docs/adr/20260715-03-domain-store-ownership-diagnostic.md).
  */
 function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
