@@ -279,6 +279,10 @@ post-v1.0 の優先度はこの決定に従属する。壁打ちの全容は PRD
 | 2 | table を **domain** でまとめ、**cross-domain な store アクセス**を診断したい | logical=domain でグルーピング + 診断（`shared-infra-fan-in` 系）。physical=schema は 1:1 でなく**未決**（[#1632](https://github.com/kompiro/karasu/issues/1632) の infra realizes と地続き） | [#1819](https://github.com/kompiro/karasu/issues/1819) |
 | 3 | 大規模 multi-file 図の混雑。**file は grouping 単位として誤り**（サンプルは view 種別で分割）。本当の need = system 内の**意味的クラスタ宣言** | **comprehension 柱へ移設**（描画/密度の問題） | [#1822](https://github.com/kompiro/karasu/issues/1822) |
 | 4 | 残した experimental notation を**いつ評価するか**が未定義。後方互換ゆえ rename/廃止は高コスト | **promotion gate**（下記）を [ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md) に記録・本書に生きた適用状態を保持 | [#1820](https://github.com/kompiro/karasu/issues/1820) |
+| 5 | KV は **cache 用途**が多いが `database` は SoR 含意を持つ。`[index]` と並ぶ **`[cache]` role tag**（technology でなく role）が無い | **experimental 据え置き（watch）**。`--from wrangler` adapter は素の `database` へ degrade（warning）。cache パターンが複数 source で再発したら promotion gate へ | [ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
+| 6 | **Durable Object = stateful compute**（compute かつ store）で clean な infra kind が無い | **experimental 据え置き（watch）**。adapter は `service [external]` + RPC edge へ degrade（`[external]` は真の所有境界を過大表現）。honest な modeling 需要が実 corpus で溜まれば stateful-compute notation を再評価 | [ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
+
+> finding 5 / 6 は wrangler translate adapter（[ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md)、[#1943](https://github.com/kompiro/karasu/issues/1943)）が v1 freeze 下で新構文を作らず degrade する判断から派生した watch item。子 Issue は起こさず、証拠源（wrangler / nest corpus）で earn-its-keep を観測してから promotion gate に載せる。
 
 #### Comprehension の構図
 
