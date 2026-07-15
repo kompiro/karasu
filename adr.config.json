@@ -27,6 +27,7 @@
     }
   },
   "permalink": {
-    "kind": "krs"
+    "kind": "krs",
+    "repoBackedHosts": ["karasu.kompiro.dev", "karasu.pages.dev"]
   }
 }
