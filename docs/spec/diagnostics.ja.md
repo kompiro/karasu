@@ -107,6 +107,7 @@ infra node は 1 度だけ宣言される。複数 service から参照される
 | `infra-redeclared-across-files` | info | 同じ `database` / `queue` / `storage` id が複数の merge 対象ファイルで宣言される。 |
 | `infra-leaf-redeclared-silently` | info | `table` / `queue-item` / `bucket` の leaf が親 infra 内で再宣言される。 |
 | `shared-infra-fan-in` | info | 2 つ以上の service が 1 つの system 内で同じ store に依存する（欠陥ではなく事実）。 |
+| `cross-domain-store-access` | info | ある domain の usecase が、別の domain が所有する infra leaf を読み書きする（1 system 内。欠陥ではなく境界越えの事実）。所有は `entity` マッピングから導出、leaf 粒度で判定、`[external]` / `[index]` store は除外。`shared-infra-fan-in` とは直交。 |
 
 ### CRUD decoration の文法
 
