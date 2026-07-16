@@ -44,7 +44,7 @@ const TOTAL_FILL = "#EFF6FF";
  * wider CJK coverage (`isWideChar` below), so the two are kept separate —
  * see Issue #2014, point 3.
  */
-function estimateTextWidth(s: string, fontSize: number): number {
+function estimateTableTextWidth(s: string, fontSize: number): number {
   let width = 0;
   for (const ch of s) {
     width += isWideChar(ch) ? fontSize : fontSize * 0.6;
@@ -89,10 +89,11 @@ export function renderMatrixAsSvg(matrix: CrudMatrix, options: MatrixSvgOptions 
   const cornerLabel = "usecase \\ resource";
   const labelWidth = Math.max(
     MIN_LABEL_COL_WIDTH,
-    estimateTextWidth(cornerLabel, HEADER_FONT_SIZE) + CELL_PADDING_X,
-    ...matrix.rows.map((r) => estimateTextWidth(r.label, FONT_SIZE) + CELL_PADDING_X),
+    estimateTableTextWidth(cornerLabel, HEADER_FONT_SIZE) + CELL_PADDING_X,
+    ...matrix.rows.map((r) => estimateTableTextWidth(r.label, FONT_SIZE) + CELL_PADDING_X),
     ...CRUD_VERB_ORDER.map(
-      (v) => estimateTextWidth(`Σ${v.charAt(0).toUpperCase()}`, HEADER_FONT_SIZE) + CELL_PADDING_X,
+      (v) =>
+        estimateTableTextWidth(`Σ${v.charAt(0).toUpperCase()}`, HEADER_FONT_SIZE) + CELL_PADDING_X,
     ),
   );
 
@@ -102,14 +103,15 @@ export function renderMatrixAsSvg(matrix: CrudMatrix, options: MatrixSvgOptions 
   const dataColWidths = matrix.columns.map((col) =>
     Math.max(
       MIN_DATA_COL_WIDTH,
-      estimateTextWidth(columnHeader(col), HEADER_FONT_SIZE) + CELL_PADDING_X,
+      estimateTableTextWidth(columnHeader(col), HEADER_FONT_SIZE) + CELL_PADDING_X,
     ),
   );
   const totalColWidths = showTotals
     ? CRUD_VERB_ORDER.map((v) =>
         Math.max(
           MIN_TOTAL_COL_WIDTH,
-          estimateTextWidth(`Σ${v.charAt(0).toUpperCase()}`, HEADER_FONT_SIZE) + CELL_PADDING_X,
+          estimateTableTextWidth(`Σ${v.charAt(0).toUpperCase()}`, HEADER_FONT_SIZE) +
+            CELL_PADDING_X,
         ),
       )
     : [];

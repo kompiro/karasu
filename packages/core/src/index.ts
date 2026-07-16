@@ -1209,31 +1209,37 @@ import { diffOrgViewSlices } from "./diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "./diff/view-diff.js";
 import { injectDiffStyle } from "./diff/diff-style.js";
 
+/** The resolved before / after pair every diff pipeline works from. */
+interface ResolvedDiffInputs {
+  beforeResolved: ResolvedProject;
+  afterResolved: ResolvedProject;
+}
+
 /**
- * Resolve the before / after project entries with a shared `ImportResolver`
- * and concatenate their resolver diagnostics (before-side first). Shared
- * boilerplate for the `compile*Diff` pipelines and
- * `buildAllViewsSvgDiffProject`.
+ * Resolve the before / after project entries with a shared `ImportResolver`.
+ * Shared boilerplate for the `compile*Diff` pipelines and
+ * `buildAllViewsSvgDiffProject` — the latter resolves once and feeds the pair
+ * to every applicable view diff via the `compile*DiffFromResolved` bodies.
  */
 async function resolveBeforeAfter(
   fs: FileSystemProvider,
   beforeEntryPath: string,
   afterEntryPath: string,
-): Promise<{
-  beforeResolved: ResolvedProject;
-  afterResolved: ResolvedProject;
-  diagnostics: Diagnostic[];
-}> {
+): Promise<ResolvedDiffInputs> {
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
     resolver.resolve(beforeEntryPath),
     resolver.resolve(afterEntryPath),
   ]);
-  return {
-    beforeResolved,
-    afterResolved,
-    diagnostics: [...beforeResolved.diagnostics, ...afterResolved.diagnostics],
-  };
+  return { beforeResolved, afterResolved };
+}
+
+/** Fresh copy of the concatenated resolver diagnostics (before-side first). */
+function beforeAfterDiagnostics({
+  beforeResolved,
+  afterResolved,
+}: ResolvedDiffInputs): Diagnostic[] {
+  return [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
 }
 
 /**
@@ -1328,10 +1334,24 @@ export interface CompileSystemDiffOptions {
 export async function compileSystemDiff(
   options: CompileSystemDiffOptions,
 ): Promise<SystemDiffCompileResult> {
+  const resolved = await resolveBeforeAfter(
+    options.fs,
+    options.beforeEntryPath,
+    options.afterEntryPath,
+  );
+  return compileSystemDiffFromResolved(resolved, options);
+}
+
+/**
+ * Post-resolution body of {@link compileSystemDiff}. Split out so
+ * `buildAllViewsSvgDiffProject` can share one resolver pass per side across
+ * all applicable view diffs instead of re-resolving in every nested compile.
+ */
+function compileSystemDiffFromResolved(
+  resolved: ResolvedDiffInputs,
+  options: CompileSystemDiffOptions,
+): SystemDiffCompileResult {
   const {
-    beforeEntryPath,
-    afterEntryPath,
-    fs,
     viewPath,
     displayMode,
     emptyStateLabels,
@@ -1342,12 +1362,9 @@ export async function compileSystemDiff(
     interactive,
     expandedContainers,
   } = options;
+  const { beforeResolved, afterResolved } = resolved;
 
-  const { beforeResolved, afterResolved, diagnostics } = await resolveBeforeAfter(
-    fs,
-    beforeEntryPath,
-    afterEntryPath,
-  );
+  const diagnostics = beforeAfterDiagnostics(resolved);
   diagnostics.push(...validateProjectEdgeIdUniqueness(beforeResolved.krsFile));
   diagnostics.push(...validateProjectEdgeIdUniqueness(afterResolved.krsFile));
 
@@ -1463,21 +1480,23 @@ export interface CompileDeployDiffOptions {
 export async function compileDeployDiff(
   options: CompileDeployDiffOptions,
 ): Promise<DeployDiffCompileResult> {
-  const {
-    beforeEntryPath,
-    afterEntryPath,
-    fs,
-    selectedDeployId,
-    displayMode,
-    emptyStateLabels,
-    theme,
-  } = options;
-
-  const { beforeResolved, afterResolved, diagnostics } = await resolveBeforeAfter(
-    fs,
-    beforeEntryPath,
-    afterEntryPath,
+  const resolved = await resolveBeforeAfter(
+    options.fs,
+    options.beforeEntryPath,
+    options.afterEntryPath,
   );
+  return compileDeployDiffFromResolved(resolved, options);
+}
+
+/** Post-resolution body of {@link compileDeployDiff} (see {@link compileSystemDiffFromResolved}). */
+function compileDeployDiffFromResolved(
+  resolved: ResolvedDiffInputs,
+  options: CompileDeployDiffOptions,
+): DeployDiffCompileResult {
+  const { selectedDeployId, displayMode, emptyStateLabels, theme } = options;
+  const { beforeResolved, afterResolved } = resolved;
+
+  const diagnostics = beforeAfterDiagnostics(resolved);
 
   // Orphan-wrap so `realizes` targets that point at top-level (unassigned)
   // services/domains resolve to their declared labels (see extractDeployView).
@@ -1568,14 +1587,23 @@ export interface CompileOrgDiffOptions {
 export async function compileOrgDiff(
   options: CompileOrgDiffOptions,
 ): Promise<OrgDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels, theme } =
-    options;
-
-  const { beforeResolved, afterResolved, diagnostics } = await resolveBeforeAfter(
-    fs,
-    beforeEntryPath,
-    afterEntryPath,
+  const resolved = await resolveBeforeAfter(
+    options.fs,
+    options.beforeEntryPath,
+    options.afterEntryPath,
   );
+  return compileOrgDiffFromResolved(resolved, options);
+}
+
+/** Post-resolution body of {@link compileOrgDiff} (see {@link compileSystemDiffFromResolved}). */
+function compileOrgDiffFromResolved(
+  resolved: ResolvedDiffInputs,
+  options: CompileOrgDiffOptions,
+): OrgDiffCompileResult {
+  const { viewPath, displayMode, emptyStateLabels, theme } = options;
+  const { beforeResolved, afterResolved } = resolved;
+
+  const diagnostics = beforeAfterDiagnostics(resolved);
 
   const beforeSlice = extractOrgView(beforeResolved.krsFile.organizations, viewPath ?? []);
   const afterSlice = extractOrgView(afterResolved.krsFile.organizations, viewPath ?? []);
@@ -1655,14 +1683,11 @@ export async function buildAllViewsSvgDiffProject(
 ): Promise<BundledDiffCompileResult> {
   const { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels, theme } = options;
 
-  const {
-    beforeResolved,
-    afterResolved,
-    diagnostics: resolverDiagnostics,
-  } = await resolveBeforeAfter(fs, beforeEntryPath, afterEntryPath);
+  const resolved = await resolveBeforeAfter(fs, beforeEntryPath, afterEntryPath);
+  const resolverDiagnostics = beforeAfterDiagnostics(resolved);
 
-  const before = beforeResolved.krsFile;
-  const after = afterResolved.krsFile;
+  const before = resolved.beforeResolved.krsFile;
+  const after = resolved.afterResolved.krsFile;
 
   const hasSystem =
     before.systems.length > 0 ||
@@ -1686,20 +1711,20 @@ export async function buildAllViewsSvgDiffProject(
     annotationBadgeLabels: options.annotationBadgeLabels,
   };
 
-  const [systemResult, deployResult, orgResult] = await Promise.all([
-    hasSystem ? compileSystemDiff(compileOpts) : Promise.resolve(undefined),
-    hasDeploy ? compileDeployDiff(compileOpts) : Promise.resolve(undefined),
-    hasOrg ? compileOrgDiff(compileOpts) : Promise.resolve(undefined),
-  ]);
+  // Reuse the single upfront resolver pass for every applicable view diff
+  // instead of letting each compile*Diff re-resolve both sides.
+  const systemResult = hasSystem ? compileSystemDiffFromResolved(resolved, compileOpts) : undefined;
+  const deployResult = hasDeploy ? compileDeployDiffFromResolved(resolved, compileOpts) : undefined;
+  const orgResult = hasOrg ? compileOrgDiffFromResolved(resolved, compileOpts) : undefined;
 
   const views: BundledDiffCompileResult["views"] = {};
   if (systemResult) views.system = systemResult;
   if (deployResult) views.deploy = deployResult;
   if (orgResult) views.org = orgResult;
 
-  // Each compile*Diff re-resolves both sides via its own ImportResolver and
-  // returns the same resolver diagnostics. To avoid duplicates, use the
-  // diagnostics from the upfront resolver pass (which is the same data).
+  // Every view diff shares the upfront resolver pass, and each per-view
+  // result carries its own copy of the same resolver diagnostics. Use the
+  // upfront copy once instead of concatenating the per-view copies.
   const diagnostics = resolverDiagnostics;
 
   const bundled = bundleSingleLevelViews(

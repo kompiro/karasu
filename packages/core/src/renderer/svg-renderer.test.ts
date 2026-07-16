@@ -311,12 +311,31 @@ edge[link] { border-style: dotted; }
   it("renders description text", () => {
     const svg = renderFromSource(`
 system Test {
+  service ShopManagement {
+    description "Manage shops"
+  }
+}
+    `);
+    expect(svg).toContain("Manage shops");
+  });
+
+  it("truncates a CJK description by display width (1.5x per char), not by char count", () => {
+    // Node width comes from the label ("ECommerce" -> 9 chars * CHAR_WIDTH 9 = 81px
+    // content width; available description width = 81px). The description is
+    // 9 CJK chars = 9 * (7.2 * 1.5) = 97.2px of display width, so it must be
+    // truncated even though a raw char-count budget (floor(81 / 7.2) = 11 chars)
+    // would have let all 9 chars through and overflow the node border (#2014).
+    const svg = renderFromSource(`
+system Test {
   service ECommerce {
     description "商品管理と注文処理"
   }
 }
     `);
-    expect(svg).toContain("商品管理と注文処理");
+    // truncateToWidth reserves one charWidth for the ellipsis:
+    // budget 81 - 7.2 = 73.8px -> 6 CJK chars (64.8px) fit, the 7th (75.6px) does not.
+    expect(svg).toContain("商品管理と注…");
+    expect(svg).not.toContain("商品管理と注文処理");
   });
 
   it("renders system label", () => {
@@ -428,7 +447,9 @@ system Test {
 }
     `);
     expect(svg).toContain("管理者");
-    expect(svg).toContain("システムを運用する");
+    // The 9-CJK-char description exceeds the node's available width and is
+    // truncated by display width (CJK = 1.5x char width).
+    expect(svg).toContain("システムを運…");
     expect(svg).toContain("システム管理者");
     expect(svg).toContain('font-style="italic"');
   });

@@ -68,7 +68,7 @@ karasu の認知モデルは **scoped glance + drill-down**（`docs/concepts.ja.
 
 ## 関連テスト
 
-- `packages/core/src/render/` — drill-down 描画（ghost を含む scoped 描画の中核）
+- `packages/core/src/renderer/` — drill-down 描画（ghost を含む scoped 描画の中核）
 - `packages/app/src/` — view 構成（scope 境界の UI 表現）
 - `docs/concepts.ja.md` 「ドリルダウン型アーキテクチャ把握」節
 - TPL-20260510-07（書き手と読み手の非対称性をエッジ層で具現化する観点 — scoped glance のエッジ側の現れ）

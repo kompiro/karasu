@@ -18,6 +18,7 @@ import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "
 import { getIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
+  NODE_PADDING_X,
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
   ICON_DESC_MAX_WIDTH,
@@ -1078,14 +1079,13 @@ function renderNode(
     let nextY = textY + fontSize + 4;
 
     if (displayDesc) {
-      // Truncate description to fit within the node width
+      // Truncate description to fit within the node width. Uses the shared
+      // display-width heuristic so CJK characters (1.5× width) are truncated
+      // where they visually overflow, not by raw character count.
       const descFontSize = Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
-      const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
+      const availableWidth = node.width - NODE_PADDING_X * 2;
       const descCharWidth = CHAR_WIDTH * RENDERED_DESC_FONT_RATIO;
-      const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
-      const descChars = [...displayDesc];
-      const truncatedDesc =
-        descChars.length > maxChars ? descChars.slice(0, maxChars).join("") + "…" : displayDesc;
+      const truncatedDesc = truncateToWidth(displayDesc, availableWidth, descCharWidth);
       children.push(
         el(
           "text",

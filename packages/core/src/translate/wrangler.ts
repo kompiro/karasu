@@ -62,6 +62,10 @@ const HANDLED_BINDING_KEYS = new Set([
  * Turn an arbitrary binding / resource name into a valid `.krs` PascalCase
  * identifier. Non-alphanumeric runs become word boundaries; a leading digit is
  * prefixed with `_`. Returns undefined when nothing usable remains.
+ *
+ * Deliberately NOT the shared `toPascalCase` (translate/identifier.ts): that
+ * helper always returns a string, keeps trailing punctuation, and does not
+ * guard leading digits — swapping it in would change wrangler's output.
  */
 function toIdentifier(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
