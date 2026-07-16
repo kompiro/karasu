@@ -1,5 +1,5 @@
 ---
-id: ADR-20260716-02
+id: ADR-20260716-03
 title: "multi-system root view でも Group by: team を効かせる（per-(system, team) 境界フレーム）"
 status: accepted
 date: 2026-07-16
@@ -9,7 +9,7 @@ scope:
   concerns: []
 ---
 
-# ADR-20260716-02: multi-system root view でも Group by: team を効かせる（per-(system, team) 境界フレーム）
+# ADR-20260716-03: multi-system root view でも Group by: team を効かせる（per-(system, team) 境界フレーム）
 
 - **日付**: 2026-07-16
 - **ステータス**: 決定済み
