@@ -61,6 +61,28 @@ true ref-pinning of the source is tracked separately in
 > prefer **not shortening** (accepting a longer URL) or run **your own shortener** —
 > the convention never forces you to hand the diagram to a third party.
 
+## Repo-backed permalinks — pin to a commit SHA
+
+A third form, [#1828](https://github.com/kompiro/karasu/issues/1828), is
+**repo-backed**: instead of embedding a snapshot, the link resolves a `.krs`
+straight from a GitHub repo at a git ref —
+`https://karasu.kompiro.dev/r/<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`.
+The resolver is deliberately permissive: **`@<ref>` is optional**, and when it is
+omitted (or is a branch/tag) the link tracks the *moving* default branch.
+
+For an ADR — which should point at the structure **as of the decision** — pin the
+link to a **full 40-hex commit SHA**:
+
+```
+https://karasu.kompiro.dev/r/kompiro/karasu@3f1a…<40 hex>…9c/examples/en/payment-platform/system.krs#krs-system-Gateway
+```
+
+A ref-less, `@HEAD`, `@branch`, `@tag`, or abbreviated-SHA link is mutable and
+drifts from what the ADR claims. This is a **recommendation, not a hard rule** —
+a "living" link is sometimes what you want — but for a decision record, prefer the
+SHA. `source` (the in-repo record) stays required either way. Repos on adr-tools
+have this recommendation surfaced automatically (see L2 below).
+
 ## Pointing at one element (deep permalink)
 
 For a [deep permalink](../spec/permalink.md) — a link that lands the reader drilled
@@ -97,8 +119,11 @@ can follow, and a stricter one for repos that opt into tooling.
   [`@kompiro/adr-tools`](https://www.npmjs.com/package/@kompiro/adr-tools) get a
   stricter, machine-checkable form of L1: a `permalink:` frontmatter field (taka
   `short` + required `source`) and a generated body summary, validated by the tool.
-  It fixes *where* the link lives and lets a linter enforce it. karasu's own
-  `docs/adr/` uses L2 as dogfooding and as L1's reference implementation — see
+  It fixes *where* the link lives and lets a linter enforce it. On adr-tools
+  `>=0.0.9`, if you list your resolver host under `permalink.repoBackedHosts`,
+  `check-permalinks` also **recommends `@<sha>` pinning** for a repo-backed
+  `short` — a non-fatal warning, never a CI failure. karasu's own `docs/adr/`
+  uses L2 as dogfooding and as L1's reference implementation — see
   `.claude/rules/adr.md` for the frontmatter schema.
 
 In short: **L1 is the rule (record a short link + `source`); L2 is one enforced way

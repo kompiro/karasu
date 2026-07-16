@@ -1,5 +1,5 @@
 ---
-id: ADR-20260715-03
+id: ADR-20260715-04
 title: infra leaf のドメイン所有を entity から導出し cross-domain ストアアクセスを info 診断する
 status: accepted
 date: 2026-07-15
@@ -22,7 +22,7 @@ assumptions:
   - "file: docs/test-perspectives/TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md"
 ---
 
-# ADR-20260715-03: infra leaf のドメイン所有を entity から導出し cross-domain ストアアクセスを info 診断する
+# ADR-20260715-04: infra leaf のドメイン所有を entity から導出し cross-domain ストアアクセスを info 診断する
 
 - **日付**: 2026-07-15
 - **ステータス**: 決定済み

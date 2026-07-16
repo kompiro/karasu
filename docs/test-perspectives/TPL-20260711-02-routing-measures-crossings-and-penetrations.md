@@ -98,7 +98,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 ## 派生元 spec / 設計
 
 - `docs/design/system-view-grouping.md` § 「計測 5」 — 交差 vs 貫通の計測（本観点の一次ソース）
-- `docs/design/system-view-grouping.md` § 「P2c 実装設計（#1859）」 — 本観点を「正しさの柵」に採用
+- `docs/adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md`（ADR-20260715-03）— 本観点を「正しさの柵」に採用
 - [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md) — system-view Group by team（P2a）
 - [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md) — skip-layer の直交チャネルルーティング
 - [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md) — ティア分割で中間カードを貫通しない（本 TPL が frame + 二重計測へ拡張）

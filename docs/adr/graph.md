@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-259 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+260 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -250,6 +250,7 @@ flowchart TD
     ADR_20260711_03["ADR-20260711-03<br/>system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
     ADR_20260712_01["ADR-20260712-01<br/>category collapse は境界エッジを drop せず stub に re-tar..."]
     ADR_20260714_04["ADR-20260714-04<br/>system view のコンテナをその場で展開する（in-place expansion /..."]
+    ADR_20260715_03["ADR-20260715-03<br/>grouped system view のエッジを直交ルーティング・集約トランク・交差マークで..."]
   end
   subgraph resolver["resolver"]
     ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — 検出スコープと検出キー"]
@@ -258,7 +259,7 @@ flowchart TD
     ADR_20260411_02["ADR-20260411-02<br/>移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
     ADR_20260514_01["ADR-20260514-01<br/>マルチファイル import の意味論 — whole-file import / syste..."]
     ADR_20260615_02["ADR-20260615-02<br/>共有 infra fan-in を info 診断として通知する"]
-    ADR_20260715_03["ADR-20260715-03<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
+    ADR_20260715_04["ADR-20260715-04<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
   end
   subgraph styling["styling"]
     ADR_20260312_04["ADR-20260312-04<br/>CSSインスパイアのスタイリングシステム"]
@@ -384,8 +385,8 @@ flowchart TD
   ADR_20260616_01 --> ADR_20260615_05
   ADR_20260713_01 --> ADR_20260616_06
   ADR_20260714_01 --> ADR_20260411_05
-  ADR_20260715_03 --> ADR_20260715_01
-  ADR_20260715_03 --> ADR_20260405_05
+  ADR_20260715_04 --> ADR_20260715_01
+  ADR_20260715_04 --> ADR_20260405_05
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260508_01 -.supersedes.-> ADR_20260506_01
@@ -655,6 +656,7 @@ flowchart TD
   class ADR_20260715_01 accepted
   class ADR_20260715_02 accepted
   class ADR_20260715_03 accepted
+  class ADR_20260715_04 accepted
 ```
 
 ## Per-topic detail
@@ -669,7 +671,7 @@ flowchart TD
 - [`navigation`](graph/navigation.md) — 10 ADRs
 - [`parser`](graph/parser.md) — 17 ADRs
 - [`project`](graph/project.md) — 8 ADRs
-- [`renderer`](graph/renderer.md) — 34 ADRs
+- [`renderer`](graph/renderer.md) — 35 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
