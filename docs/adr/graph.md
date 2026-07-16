@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-262 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+263 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -253,7 +253,7 @@ flowchart TD
     ADR_20260714_04["ADR-20260714-04<br/>system view のコンテナをその場で展開する（in-place expansion /..."]
     ADR_20260715_03["ADR-20260715-03<br/>grouped system view のエッジを直交ルーティング・集約トランク・交差マークで..."]
     ADR_20260716_01["ADR-20260716-01<br/>差分モードの Group by で除去ノードを元の team フレームに残し、集約エッジの d..."]
-    ADR_20260716_02["ADR-20260716-02<br/>multi-system root view でも Group by: team を効かせる（..."]
+    ADR_20260716_03["ADR-20260716-03<br/>multi-system root view でも Group by: team を効かせる（..."]
   end
   subgraph resolver["resolver"]
     ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — 検出スコープと検出キー"]
@@ -663,6 +663,7 @@ flowchart TD
   class ADR_20260715_04 accepted
   class ADR_20260716_01 accepted
   class ADR_20260716_02 accepted
+  class ADR_20260716_03 accepted
 ```
 
 ## Per-topic detail
