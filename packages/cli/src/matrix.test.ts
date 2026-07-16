@@ -78,6 +78,81 @@ describe("matrix CLI", () => {
     expect(out).not.toContain("ΣC");
   });
 
+  // AT-1062 AT-N: default is show-all; --omit-empty drops rows/columns whose
+  // every cell is empty (an operation-less usecase / an unreferenced table).
+  it("--omit-empty drops empty rows/columns; the default keeps them", async () => {
+    const sparseKrs = `
+system EC {
+  database OrderDB {
+    table OrderTable { label "Order table" }
+    table AuditTable { label "Audit table" }
+  }
+  service Svc {
+    domain D {
+      usecase PlaceOrder { resource OrderDB.OrderTable { operations create, read } }
+      usecase Ponder {}
+    }
+  }
+}
+`;
+    await writeFile(krsPath, sparseKrs, "utf-8");
+
+    await matrix(krsPath, {});
+    const shown = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(shown).toContain("Ponder");
+    expect(shown).toContain("Audit table");
+
+    stdoutSpy.mockClear();
+    await matrix(krsPath, { omitEmpty: true });
+    const omitted = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(omitted).toContain("PlaceOrder");
+    expect(omitted).not.toContain("Ponder");
+    expect(omitted).not.toContain("Audit table");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("--writes-only drops read-only rows and keeps writing usecases", async () => {
+    await matrix(krsPath, { writesOnly: true });
+    const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(out).toContain("PlaceOrder");
+    expect(out).not.toContain("Search");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("--external / --no-external filter [external] resource columns", async () => {
+    const externalKrs = `
+system EC {
+  database OrderDB {
+    table OrderTable { label "Order table" }
+  }
+  service Svc {
+    domain D {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable { operations create, read }
+        resource PaymentAPI [external] {
+          label "Payment API"
+          operations create
+        }
+      }
+    }
+  }
+}
+`;
+    await writeFile(krsPath, externalKrs, "utf-8");
+
+    await matrix(krsPath, { external: true });
+    const externalOnly = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(externalOnly).toContain("Payment API");
+    expect(externalOnly).not.toContain("Order table");
+
+    stdoutSpy.mockClear();
+    await matrix(krsPath, { noExternal: true });
+    const withoutExternal = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(withoutExternal).toContain("Order table");
+    expect(withoutExternal).not.toContain("Payment API");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
   it("picks up top-level (unassigned) blocks emitted by `karasu translate`", async () => {
     // Mirrors `karasu translate --from db ... --emit-bindings` output: top-level
     // `database` and `service` with no enclosing `system { ... }`. compileProject

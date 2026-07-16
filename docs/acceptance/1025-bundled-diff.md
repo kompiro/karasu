@@ -26,8 +26,8 @@
 - [x] 片側にしか存在しない view（追加 / 削除）も bundled に含まれる。
   > ✅ Automated — `packages/core/src/index.test.ts` › `includes a view if it appears on only one side (added or removed)`
 
-- [ ] `karasu diff --help` のヘルプテキストに「`--view` 省略時は bundled all views を出力する」旨の説明と Examples が記載されている。
-  > 🧑 Manual — `karasu diff --help` を実行して、bundled がデフォルトであることが説明されており、`--view` 指定例も残っていることを目視確認する。
+- [x] `karasu diff --help` のヘルプテキストに「`--view` 省略時は bundled all views を出力する」旨の説明と Examples が記載されている。
+  > ✅ Automated — `packages/cli/src/help-text.test.ts` › `diff --help states bundled all-views output is the default`（bundled が既定である説明文と、単一 view へ切り替える `--view` の案内を assert）
 
 - [ ] bundled SVG をブラウザで開き、システム / デプロイ / オーガナイゼーションのタブを切り替えて、各 view の diff カラー（緑 / 赤 / オレンジ）が想定通りに描画されることを目視確認する。
   > 🧑 Manual — visual review。CSS-only タブナビゲーション（`:target` + `:has()`）が動作すること、`<style>`（`/* karasu-diff-style */`）が outer SVG 直下にあり各 view の inner SVG にも diff カラーが適用されることを確認する。
