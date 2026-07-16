@@ -19,28 +19,22 @@ import { ja } from "./ja.js";
 const MAPS: Record<Locale, Partial<Translations>> = { en, ja };
 
 /**
+ * Argument tuple accepted by a locale-bound translator call: string-valued
+ * keys take exactly the key, function-valued (parameterized) keys require
+ * the params object their entry declares. Shared by `TranslateFn`,
+ * `translate`, and `bindTranslate` so the contract lives in one place.
+ */
+export type TranslateArgs<K extends keyof Translations> = Translations[K] extends string
+  ? [key: K]
+  : [key: K, params: TranslationParams<K>];
+
+/**
  * Locale-bound translator signature used by `renderWarning` /
  * `renderDiagnostic`. Matches the call shape of the `t` returned by the
  * app's `useTranslation`, but lets non-React consumers (lsp / cli) and
- * tests invoke it directly. String-valued keys take exactly one arg;
- * function-valued (parameterized) keys require a params object.
+ * tests invoke it directly.
  */
-export type TranslateFn = <K extends keyof Translations>(
-  ...args: Translations[K] extends string ? [key: K] : [key: K, params: TranslationParams<K>]
-) => string;
-
-// Untyped lookup core shared by `translate` / `bindTranslate`. The public
-// signatures re-establish per-key type safety; this widening stays private
-// to this module.
-function lookup(locale: Locale, key: keyof Translations, params?: unknown): string {
-  const activeMap = MAPS[locale];
-  const entry = activeMap[key] ?? en[key];
-
-  if (typeof entry === "function") {
-    return (entry as (p: unknown) => string)(params);
-  }
-  return entry;
-}
+export type TranslateFn = <K extends keyof Translations>(...args: TranslateArgs<K>) => string;
 
 /**
  * Resolve a translation key against the active locale, falling back to
@@ -53,12 +47,18 @@ function lookup(locale: Locale, key: keyof Translations, params?: unknown): stri
  */
 export function translate<K extends keyof Translations>(
   locale: Locale,
-  ...args: Translations[K] extends string ? [key: K] : [key: K, params: TranslationParams<K>]
+  ...args: TranslateArgs<K>
 ): string {
   // The conditional tuple cannot be destructured while K is unresolved;
   // widen once here. The public signature above keeps callers type-safe.
   const [key, params] = args as [K, unknown?];
-  return lookup(locale, key, params);
+  const activeMap = MAPS[locale];
+  const entry = activeMap[key] ?? en[key];
+
+  if (typeof entry === "function") {
+    return (entry as (p: unknown) => string)(params);
+  }
+  return entry;
 }
 
 /**
@@ -68,12 +68,6 @@ export function translate<K extends keyof Translations>(
  * across lsp / cli / app / tests.
  */
 export function bindTranslate(locale: Locale): TranslateFn {
-  return <K extends keyof Translations>(
-    ...args: Translations[K] extends string ? [key: K] : [key: K, params: TranslationParams<K>]
-  ) => {
-    // Same widening as `translate` — the conditional tuple cannot be
-    // destructured or spread while K is unresolved.
-    const [key, params] = args as [K, unknown?];
-    return lookup(locale, key, params);
-  };
+  return <K extends keyof Translations>(...args: TranslateArgs<K>) =>
+    translate<K>(locale, ...args);
 }

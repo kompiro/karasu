@@ -62,7 +62,7 @@ describe("i18n locale coverage — annotation badge pipeline", () => {
 // is not part of core's public API, so instead of a deep import we pin the
 // contract transitively: a DEFAULT compile (no `annotationBadgeLabels`
 // injection) renders the reference-data en labels — asserting those renders
-// contain `translate("en", "badge.*")` fails if either side's wording forks.
+// match `translate("en", "badge.*")` fails if either side's wording forks.
 describe("i18n locale coverage — badge.* matches core reference-data defaults", () => {
   const krs = [
     "system S {",
@@ -74,6 +74,9 @@ describe("i18n locale coverage — badge.* matches core reference-data defaults"
     "",
   ].join("\n");
 
+  // One compile is enough — all four badges render into the same SVG.
+  const svg = compile(krs, { diagramType: "system" }).svg;
+
   const cases = [
     ["deprecated", "badge.deprecated"],
     ["new", "badge.new"],
@@ -83,8 +86,11 @@ describe("i18n locale coverage — badge.* matches core reference-data defaults"
 
   for (const [annotation, key] of cases) {
     it(`default compile renders the en label for @${annotation} (= translate("en", "${key}"))`, () => {
-      const result = compile(krs, { diagramType: "system" });
-      expect(result.svg).toContain(translate("en", key));
+      // Exact match at the SVG text-node boundary — badge labels render as
+      // `<text ...>Label</text>` (core's badgeChildren). A substring
+      // `toContain(label)` would still pass if the core-side label forked
+      // into a superstring (e.g. "Deprecated (legacy)").
+      expect(svg).toContain(`>${translate("en", key)}</text>`);
     });
   }
 });
