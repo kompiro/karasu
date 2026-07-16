@@ -51,6 +51,7 @@ export default defineConfig({
         { label: "Tools", items: [{ autogenerate: { directory: "tools" } }] },
         { label: "Reference", items: [{ autogenerate: { directory: "spec" } }] },
         { label: "Concepts", link: "/concepts/" },
+        { label: "Keystone glossary", link: "/glossary/" },
         {
           label: "Examples",
           items: [
