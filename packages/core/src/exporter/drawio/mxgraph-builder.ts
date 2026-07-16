@@ -14,6 +14,9 @@ const XML_ESCAPES: Record<string, string> = {
   "'": "&apos;",
 };
 
+// NOTE: unlike the SVG renderer's escapeXml (renderer/svg-builder.ts), this
+// variant also escapes `'` — mxGraph attribute values can end up inside
+// single-quoted contexts in draw.io, so the apostrophe escaping is load-bearing.
 export function escapeXml(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => XML_ESCAPES[ch]!);
 }
