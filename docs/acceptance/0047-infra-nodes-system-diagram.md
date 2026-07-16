@@ -60,38 +60,39 @@ system ECPlatform {
 
 ### Auto-derived edges
 
-- [ ] An edge `OrderService → OrderDB` is rendered (derived from `resource OrderDB.OrderTable` and `resource OrderDB.InventoryTable` — deduplicated to one edge)
-- [ ] An edge `OrderService → EventBus` is rendered (derived from `resource EventBus.OrderCreated`)
-- [ ] An edge `MediaService → MediaStorage` is rendered (derived from `resource MediaStorage.ImageBucket`)
-- [ ] An edge `MediaService → OrderDB` is rendered (derived from `resource OrderDB.InventoryTable`)
-- [ ] No duplicate edges appear between the same service and infra node
+> ✅ Automated by `packages/core/src/view/view-extract.test.ts` (suite-wide) — "derives service→database edge from resource dot-notation reference" / "derives service→queue edge" / "derives service→storage edge" / "deduplicates edges when multiple usecases reference the same infra node"; plus `packages/core/src/view/derivation-contracts.test.ts` › "deriveInfraEdges: service→database via resource dot-notation"（TPL-20260510-07 attribute contract）
 
-> manual / visual review — derived-edge coverage and dedup are checked by eye on the rendered System diagram.
+- [x] An edge `OrderService → OrderDB` is rendered (derived from `resource OrderDB.OrderTable` and `resource OrderDB.InventoryTable` — deduplicated to one edge)
+- [x] An edge `OrderService → EventBus` is rendered (derived from `resource EventBus.OrderCreated`)
+- [x] An edge `MediaService → MediaStorage` is rendered (derived from `resource MediaStorage.ImageBucket`)
+- [x] An edge `MediaService → OrderDB` is rendered (derived from `resource OrderDB.InventoryTable`)
+- [x] No duplicate edges appear between the same service and infra node
 
 ### Multi-service shared infra
 
-- [ ] When two services reference the same database, both edges appear independently:
+> ✅ Automated by `packages/core/src/view/view-extract.test.ts` (suite-wide) — "derives service→database edge from resource dot-notation reference"（OrderService → OrderDB）+ "deduplicates edges when multiple usecases reference the same infra node"（MediaService → OrderDB がちょうど 1 本）
+
+- [x] When two services reference the same database, both edges appear independently:
   - `[OrderService] → [OrderDB]`
   - `[MediaService] → [OrderDB]`
-
-> manual / visual review — visual confirmation that both edges remain distinct on the rendered SVG.
 
 ### Explicit edge takes precedence
 
 Given an additional `OrderService -> OrderDB "カスタムラベル"` edge in the source:
 
-- [ ] Only one `OrderService → OrderDB` edge is rendered (no duplication)
-
-> manual / visual review — checking precedence between an explicit edge and an auto-derived one requires looking at the rendered diagram for duplicates.
+- [x] Only one `OrderService → OrderDB` edge is rendered (no duplication)
+> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `does not override explicitly declared edges with derived ones`
 
 ### Unassigned resources
 
 Given a `resource UnassignedTable` (no dot-notation ref) inside a usecase:
 
-- [ ] No spurious edge is derived to a non-existent node
+- [x] No spurious edge is derived to a non-existent node
+> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `does not derive edges for resources without dot-notation ref`
+
 - [ ] No error is thrown; the diagram renders normally
 
-> manual / visual review — verifies the negative case (no spurious edge, no crash) on a real render.
+> manual / visual review — verifies the no-crash / renders-normally half on a real render.
 
 ## Manual Verification Steps
 

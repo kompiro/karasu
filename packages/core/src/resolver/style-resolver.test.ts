@@ -625,13 +625,20 @@ describe("resolveStyles", () => {
   describe("[implicit] + kind coexistence (TPL-07 item 3 / #510)", () => {
     const IMPLICIT_AMBER = "#F59E0B";
 
-    function resolveImplicitEdge(kind: "sync" | "async") {
+    /**
+     * Resolve a system with one `[implicit]` edge (A→B) and one explicit
+     * untagged edge (C→B). Returns both resolved styles so callers can
+     * assert the implicit edge's styling and the explicit sibling's
+     * non-participation. `userSheets` are appended after the builtin sheet.
+     */
+    function resolveImplicitEdge(kind: "sync" | "async", userSheets: StyleSheet[] = []) {
       const system = makeNode({
         kind: "system",
         id: "Test",
         children: [
           makeNode({ kind: "service", id: "A", label: "A" }),
           makeNode({ kind: "service", id: "B", label: "B" }),
+          makeNode({ kind: "service", id: "C", label: "C" }),
         ],
         edges: [
           {
@@ -641,22 +648,52 @@ describe("resolveStyles", () => {
             tags: ["implicit"],
             loc: dummyLoc,
           },
+          {
+            from: "C",
+            to: "B",
+            kind: "sync",
+            tags: [],
+            loc: dummyLoc,
+          },
         ],
       });
-      const result = resolveStyles([system], [getBuiltinStyleSheet()]);
-      return result.edges.get("A->B")!;
+      const result = resolveStyles([system], [getBuiltinStyleSheet(), ...userSheets]);
+      return { implicit: result.edges.get("A->B")!, explicit: result.edges.get("C->B")! };
     }
 
     it("async + [implicit]: dashed (from edge[async]) AND amber (from edge[implicit])", () => {
-      const edgeStyle = resolveImplicitEdge("async");
+      const edgeStyle = resolveImplicitEdge("async").implicit;
       expect(edgeStyle.color).toBe(IMPLICIT_AMBER);
       expect(edgeStyle.strokeStyle).toBe("dashed");
     });
 
     it("sync + [implicit]: solid (no dash) AND amber (still applies)", () => {
-      const edgeStyle = resolveImplicitEdge("sync");
+      const edgeStyle = resolveImplicitEdge("sync").implicit;
       expect(edgeStyle.color).toBe(IMPLICIT_AMBER);
       expect(edgeStyle.strokeStyle).not.toBe("dashed");
+    });
+
+    it("user edge[implicit] rule overrides builtin amber to purple dotted", () => {
+      // AT-0053 Case 6: a user `edge[implicit]` rule (same specificity 11 as
+      // the builtin rule, later sheet → wins the tie) replaces the builtin
+      // amber with purple dotted; an explicit (non-implicit) edge keeps the
+      // builtin default styling.
+      const userSheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: ["implicit"], annotations: [] },
+            { color: "#A855F7", "border-style": "dotted" },
+            11,
+            0,
+          ),
+        ],
+      };
+      const { implicit, explicit } = resolveImplicitEdge("sync", [userSheet]);
+      expect(implicit.color).toBe("#A855F7");
+      expect(implicit.strokeStyle).toBe("dotted");
+      // The explicit sibling edge is unaffected: builtin base edge styling.
+      expect(explicit.color).toBe("#94A3B8");
+      expect(explicit.strokeStyle).toBe("solid");
     });
   });
 
@@ -972,6 +1009,44 @@ describe("resolveStyles", () => {
     expect(readStyle.strokeWidth).toBe(1.5);
     expect(writeStyle.strokeWidth).toBe(2);
     expect(readStyle.strokeWidth).toBeLessThan(writeStyle.strokeWidth);
+  });
+
+  it("user edge[cyclic] rule overrides the builtin cyclic color and width", () => {
+    // AT-0045 AC-4: a user `edge[cyclic]` rule (same specificity 11 as the
+    // builtin rule, later sheet → wins the tie) replaces the builtin red
+    // (#EF4444 / 2.5) with the user's values, while a sibling non-cyclic
+    // edge keeps the builtin default styling.
+    const system = makeNode({
+      kind: "system",
+      id: "Test",
+      children: [
+        makeNode({ kind: "service", id: "A", label: "A" }),
+        makeNode({ kind: "service", id: "B", label: "B" }),
+        makeNode({ kind: "service", id: "C", label: "C" }),
+      ],
+      edges: [
+        { from: "A", to: "B", kind: "sync", tags: ["cyclic"], loc: dummyLoc },
+        { from: "A", to: "C", kind: "sync", tags: [], loc: dummyLoc },
+      ],
+    });
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "edge", tags: ["cyclic"], annotations: [] },
+          { color: "#F97316", "stroke-width": "4" },
+          11,
+          0,
+        ),
+      ],
+    };
+    const result = resolveStyles([system], [getBuiltinStyleSheet(), userSheet]);
+    const cyclicStyle = result.edges.get("A->B")!;
+    const plainStyle = result.edges.get("A->C")!;
+    expect(cyclicStyle.color).toBe("#F97316");
+    expect(cyclicStyle.strokeWidth).toBe(4);
+    // The non-cyclic sibling is unaffected: builtin base edge styling.
+    expect(plainStyle.color).toBe("#94A3B8");
+    expect(plainStyle.strokeWidth).toBe(1.5);
   });
 
   it("user stylesheet overrides builtin", () => {

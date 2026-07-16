@@ -47,7 +47,7 @@ type: product
   > ✅ Automated — `parser.test.ts` › `accepts verb decoration ...` の warnings.length === 0 検証
 
 - [x] AT-H: `isWriteOperation` が装飾を読む — `list:read` は false、`replace:create,delete` は true、bare `read:read`（装飾あり）は false
-  > ✅ Automated — `spec/operations.test.ts` › `respects decoration` 系 3 ケース
+  > ✅ Automated — `packages/core/src/spec/operations.test.ts` › `respects decoration` 系 3 ケース
 
 - [x] AT-I: CRUD マトリクスの cell が装飾を反映 — `list:read` は `R`（`R?` ではない）、`replace:create,delete` は `CD` で write 扱い + ΣC/ΣD 両方インクリメント
   > ✅ Automated — `crud-matrix-extract.test.ts` › `decorated verb (list:read)` / `decorated 1:N (replace:create,delete)`

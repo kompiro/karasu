@@ -101,7 +101,9 @@ organization Acme {
 
 ### Tab Navigation
 
-- [ ] The SVG renders three tabs: **System**, **Deploy**, **Org**
+- [x] The SVG renders three tabs: **System**, **Deploy**, **Org**
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `tab bar always has three tabs`
+
 - [ ] By default (no URL fragment), the **System** pane is visible
 - [ ] Clicking **Deploy** tab navigates to the deploy pane (URL fragment `#krs-deploy-root`)
 - [ ] Clicking **Org** tab navigates to the org pane (URL fragment `#krs-org-root`)
@@ -112,15 +114,20 @@ organization Acme {
 
 ### Disabled Tabs
 
-- [ ] When a view has no content, its tab is visually disabled (dimmed)
-- [ ] Disabled tabs are not clickable (no `<a>` wrapper)
-- [ ] For a system-only file, Deploy and Org tabs are disabled
+- [x] When a view has no content, its tab is visually disabled (dimmed)
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `system only: system tab enabled, deploy/org tabs disabled`（`krs-tab--disabled` クラス付与を検証）
 
-> manual / visual review — タブの dimmed 表示・非クリック状態は SVG 描画結果をブラウザで目視確認する。
+- [ ] Disabled tabs are not clickable (no `<a>` wrapper)
+- [x] For a system-only file, Deploy and Org tabs are disabled
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `system only: system tab enabled, deploy/org tabs disabled`
+
+> manual / visual review — タブの dimmed 見た目と非クリック状態（`<a>` ラッパー不在はテスト未検証）は SVG 描画結果をブラウザで目視確認する。
 
 ### Drill-Down (System View)
 
-- [ ] Clicking a node with children navigates to its detail level (e.g., `#krs-system-OrderService`)
+- [x] Clicking a node with children navigates to its detail level (e.g., `#krs-system-OrderService`)
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `system drill-down links use krs-system-* prefix`（`#krs-system-*` アンカーと `<a href>` の生成を検証。クリック遷移そのものはブラウザ `:target`）
+
 - [ ] The detail level shows a **← Back** button
 - [ ] Clicking Back returns to the parent level
 - [ ] Nested drill-down works for three levels if present
@@ -138,19 +145,20 @@ organization Acme {
 ### Deploy View
 
 - [ ] Deploy view shows a single flat level with all deploy units
-- [ ] No drill-down within the deploy view
+- [x] No drill-down within the deploy view
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `deploy is a single non-drillable level`
 
-> manual / visual review — Deploy ペインの単一レベル描画はブラウザレンダリング結果を目視確認する。
+> manual / visual review — Deploy ペインに全 deploy unit が描画されることはブラウザレンダリング結果を目視確認する。
 
 ### Empty File
 
-- [ ] A `.krs` file with no content produces a "No diagram" placeholder SVG
-
-> manual / visual review — 空ファイル時のプレースホルダ SVG はブラウザで開いて文言を確認する。
+- [x] A `.krs` file with no content produces a "No diagram" placeholder SVG
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `returns placeholder for empty file`
 
 ### Style Source
 
-- [ ] Passing a `styleSource` string applies custom styles to the rendered output
-- [ ] Parse errors in `styleSource` are returned in `diagnostics` but the SVG still renders
+- [x] Passing a `styleSource` string applies custom styles to the rendered output
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `applies styleSource to the rendered output`
 
-> manual / visual review — `styleSource` の適用結果は描画見た目で判定するため目視確認が必要。
+- [x] Parse errors in `styleSource` are returned in `diagnostics` but the SVG still renders
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `returns diagnostics for malformed style source`

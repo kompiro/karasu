@@ -41,7 +41,8 @@ system view の dep ティア（infra + `[external]` を 1 行に詰め込む）
 > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング）
 - [x] external 用の固定バンドが既存 infra の #974 pull-up を抑止していない（TPL-20260623-04）
 > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `pulls a dep used only by an upper service up to one row below its consumer (Issue #974)`
-- [ ] shape / icon 両 displayMode でティア構造が成立する（TPL-20260623-04 / TPL-20260510-06）
+- [x] shape / icon 両 displayMode でティア構造が成立する（TPL-20260623-04 / TPL-20260510-06）
+> ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `keeps the infra/external tier split in icon displayMode (#1724)`（shape モードは AC-1〜AC-3 のティア構造テスト群が既定 displayMode で検証）
 
 ### AC-5: 幅削減（実モデル）
 
@@ -51,4 +52,4 @@ system view の dep ティア（infra + `[external]` を 1 行に詰め込む）
 ## 検証方法
 
 - 自動: `pnpm --filter @karasu-tools/core test -- layout`（AC-1〜AC-3, AC-4 の一部）。
-- 手動 / 測定: `node packages/cli/dist/index.js render <hato>/index.krs --view system -o /tmp/out.svg` で出力 viewBox を確認（AC-5）。icon モードは `--view system` のレンダリングを目視（AC-4 の displayMode 項）。
+- 手動 / 測定: `node packages/cli/dist/index.js render <hato>/index.krs --view system -o /tmp/out.svg` で出力 viewBox を確認（AC-5）。icon モードのティア構造は `layout.test.ts` の icon displayMode テストで自動検証済み（AC-4 の displayMode 項）。

@@ -41,17 +41,20 @@ npm run format:check  # フォーマット OK
 ### AC-1.3: ユーザースタイルによるオーバーライド
 
 - [ ] Project モードで `.krs.style` ファイルを作成し、`resource { shape: hexagon; }` と記述
-- [ ] resource ノードが hexagon シェイプで表示される（ビルトインの box を上書き）
+- [x] resource ノードが hexagon シェイプで表示される（ビルトインの box を上書き）
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user stylesheet overrides builtin`（resource の shape がビルトイン box → hexagon に上書きされることを検証）
 
-> manual / visual review — ビルトインのオーバーライドはブラウザの実描画で hexagon に切り替わるかを確認する。
+> manual / visual review — Project モードでの `.krs.style` 作成とブラウザ実描画での切り替わり確認は目視で行う。
 
 ### AC-1.4: 存在しないスタイルファイルのインポート
 
 - [ ] `.krs` ファイルに `@import "nonexistent.krs.style"` を記述
-- [ ] 警告パネルに warning（error ではない）が表示される
+- [x] 警告パネルに warning（error ではない）が表示される
+> ✅ Automated — `packages/core/src/fs/import-resolver.test.ts` › `returns warning diagnostic for missing style file`（severity `warning` / code `style-file-not-found` の診断発行を検証）
+
 - [ ] 描画はビルトインスタイルで正常に行われる
 
-> manual / visual review — 警告パネル表示と描画継続の同時確認はライブセッションで行う。
+> manual / visual review — 警告パネルへの表示と描画継続の同時確認はライブセッションで行う。
 
 ## AC-2: 冗長なデフォルトの削除（Phase 2）
 
@@ -75,35 +78,49 @@ npm run format:check  # フォーマット OK
 
 ### AC-3.2: Syntax タブ
 
-- [ ] ノード種別一覧テーブルが表示される（system, service, domain, usecase, resource, user）
-- [ ] 各種別の含有関係と使用可能プロパティが表示される
-- [ ] エッジ構文の例が表示される
+- [x] ノード種別一覧テーブルが表示される（system, service, domain, usecase, resource, user）
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `shows the Syntax tab with system node kinds by default`
 
-> manual / visual review — Syntax タブのテーブル表示・例の可読性はパネルを開いて目視確認する。
+- [ ] 各種別の含有関係と使用可能プロパティが表示される
+- [x] エッジ構文の例が表示される
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Syntax tab documents resource operations (CRUD) and the optional edge id`（Edge Syntax セクションの `#criticalWrite` 例を検証）
+
+> manual / visual review — 含有関係・プロパティ列の表示と例の可読性はパネルを開いて目視確認する。
 
 ### AC-3.3: Styles タブ
 
-- [ ] セレクタ構文と詳細度スコアの一覧が表示される
-- [ ] スタイルプロパティ一覧が表示される（background-color, shape 等）
+- [x] セレクタ構文と詳細度スコアの一覧が表示される
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Styles tab includes the edge#<id> selector (specificity 101) and a direction example`
+
+- [x] スタイルプロパティ一覧が表示される（background-color, shape 等）
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Styles tab lists the edge / layout style properties from the spec`
+
 - [ ] シェイプキーワード一覧が表示される
 
-> manual / visual review — Styles タブのプロパティ・キーワード一覧はブラウザでパネルを開いて確認する。
+> manual / visual review — シェイプキーワード一覧はブラウザでパネルを開いて確認する。
 
 ### AC-3.4: Tags & Annotations タブ
 
-- [ ] タグ一覧テーブルが表示される（external, async, sync, human, ai, table, queue, api, storage）
-- [ ] アノテーション一覧テーブルが表示される（deprecated, new, experimental, migration_target）
+- [x] タグ一覧テーブルが表示される（external, async, sync, human, ai, table, queue, api, storage）
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Tags tab shows tags list for system view`
+
+- [x] アノテーション一覧テーブルが表示される（deprecated, new, experimental, migration_target）
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Tags tab shows tags list for system view`（annotations テーブルの `deprecated` 表示も同テストで検証）
+
 - [ ] 各アノテーションにバッジプレビューが表示される
 
-> manual / visual review — タグ／アノテーション一覧とバッジプレビュー描画はパネル UI を目視確認する。
+> manual / visual review — バッジプレビュー描画はパネル UI を目視確認する。
 
 ### AC-3.5: Built-in Theme タブ
 
 - [ ] ビルトインスタイルシートのソースコードが表示される
-- [ ] "Copy" ボタンでクリップボードにコピーされる
-- [ ] コピー後 "Copied!" と一時的に表示される
+- [x] "Copy" ボタンでクリップボードにコピーされる
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Copy button shows 'Copied!' after click and reverts after 2 seconds`（`navigator.clipboard.writeText` 成功後にのみ "Copied!" になる実装のため、コピー実行も同テストで担保）
 
-> manual / visual review — Copy ボタンのクリップボード操作と "Copied!" 表示はブラウザ操作で確認する。
+- [x] コピー後 "Copied!" と一時的に表示される
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Copy button shows 'Copied!' after click and reverts after 2 seconds`
+
+> manual / visual review — ビルトインスタイルシートのソースコード表示はブラウザ操作で確認する。
 
 ### AC-3.6: 両モード対応
 

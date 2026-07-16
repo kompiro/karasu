@@ -92,7 +92,8 @@ edge[cyclic] {
 }
 ```
 
-- [ ] 循環エッジがオレンジ (`#F97316`) かつ stroke-width 4 で描画される
-- [ ] 非循環エッジは影響を受けない
+- [x] 循環エッジがオレンジ (`#F97316`) かつ stroke-width 4 で描画される
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user edge[cyclic] rule overrides the builtin cyclic color and width`
 
-> ユーザースタイル適用後の視覚確認のため AI / 人間レビューに残す。
+- [x] 非循環エッジは影響を受けない
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user edge[cyclic] rule overrides the builtin cyclic color and width`

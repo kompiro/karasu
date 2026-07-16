@@ -33,10 +33,10 @@ type: product
   > ✅ Automated — `packages/core/src/builtins/default-style.test.ts` の既存スタイル解決スモーク + `view-extract.test.ts` の AT-B/C で生成タグを検証
 
 - [x] AT-E: `examples/ja/getting-started/index.krs` および `examples/en/getting-started/index.krs` が diagnostics ゼロで parse でき、bundled `examples.ts` の内容と一致している
-  > ✅ Automated — `packages/core/src/builtins/examples.test.ts`
+  > 🟡 Partially automated — `packages/core/src/examples.test.ts` › `getting-started: column hint affects rendered x positions (#969)`（en 側 index.krs の parse + compile を end-to-end で検証。ja 側の parse と bundled `examples.ts` の byte 一致は現状テストが無く手動確認）
 
 - [x] AT-F: `examples/en/feature-samples/resource-operations.krs` が write / read / 多行 operations / `[external]` 併用 / 省略形 の各ケースを含み、diagnostics ゼロで parse できる
-  > ✅ Automated — examples スモーク
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors`
 
 - [ ] AT-G（manual）: Preview で `examples/ja/getting-started/index.krs` を開き、`PlaceOrder` の usecase view ドリルダウンで `OrderEvents.OrderPlaced`（write）と `InventoryAPI`（read）に向かう edge が太さ + ラベル "W" / "R" で区別できる
   > 🧑 Manual — Preview で目視確認。`R` / `W` のラベルが edge midpoint に出ること、write が read より太いこと、cyclic edge（仮にあれば）が write よりさらに太いこと（または別色）を確認

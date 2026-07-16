@@ -63,17 +63,20 @@ Drill down to `OrderService → Order` (domain view):
 
 ### Edges
 
-- [ ] An edge `PlaceOrder → OrderDB.OrderTable` is rendered
-- [ ] An edge `PlaceOrder → EventBus.OrderCreated` is rendered
+- [x] An edge `PlaceOrder → OrderDB.OrderTable` is rendered
+> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `adds synthetic usecase→resource edges`（read/write の分類は `tags synthetic usecase→resource edges as read by default and labels them R` / `... as write and labels them W when operations include create/update/delete`）
+
+- [x] An edge `PlaceOrder → EventBus.OrderCreated` is rendered
+> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `adds synthetic usecase→resource edges`
+
 - [ ] An edge `CancelOrder → OrderDB.InventoryTable` is rendered
 
-> manual / visual review — visual edge coverage in the rendered domain view.
+> manual / visual review — the `CancelOrder` instance and visual edge coverage in the rendered domain view.
 
 ### Label resolution
 
-- [ ] Resource nodes use the label from the `table`/`queue`/`bucket` declaration, not the raw dot-notation ID
-
-> manual / visual review — confirms the rendered text on the resource node matches the declared label, not the dot-notation id.
+- [x] Resource nodes use the label from the `table`/`queue`/`bucket` declaration, not the raw dot-notation ID
+> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `maps dot-notation resource IDs to infra sub-resource labels`（`resourceLabelMap` が宣言 label を返すことを検証）
 
 ### Shared resource deduplication
 

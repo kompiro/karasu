@@ -81,12 +81,11 @@ Open the usecase view `#krs-system-Ordering`:
 
 ### Back navigation
 
-- [ ] The entity view's Back button targets a level that exists — the domain's
+> ✅ Automated by `packages/core/src/renderer/drill-down-svg.test.ts` (suite-wide) — "does not emit a dead drill link to an entity-only domain"（bundle 内の全 `href` が実在レベルに解決することを検証）/ "emits the entity view in the standalone system drill-down export too"（standalone export 側の Back target 解決）
+
+- [x] The entity view's Back button targets a level that exists — the domain's
       usecase view when the domain also has usecases, otherwise its parent drill
       level — never a dead `#krs-system-<domainId>` for an entity-only domain
-
-> manual / visual review — from `out.svg#krs-entity-Customers` (entity-only
-> domain), Back returns to a real level, not the root.
 
 ### Standalone system drill-down export
 
