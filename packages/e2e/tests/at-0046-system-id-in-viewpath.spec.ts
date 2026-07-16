@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
 
 /**
  * AT-0046: System ID in ViewPath for multi-system navigation.
@@ -58,10 +58,7 @@ test.describe("AT-0046 System ID in ViewPath", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, MULTI_SYSTEM_KRS);
+    await bootMemoryApp(page, opfs, MULTI_SYSTEM_KRS);
 
     // Click ServiceA — it belongs to SysA. The breadcrumb should reflect
     // the system id as the first segment, not the other system.

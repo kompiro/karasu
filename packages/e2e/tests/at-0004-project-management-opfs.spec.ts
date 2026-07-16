@@ -28,16 +28,6 @@ const SAMPLE_KRS_A = 'system "Project A" {}\n';
 const SAMPLE_KRS_B = 'system "Project B" {}\n';
 const SAMPLE_KRS_C = 'system "Project C" {}\n';
 
-/**
- * Force the locale to English so that `+ New`, `✕ Delete`, etc. labels are
- * deterministic regardless of the test runner's `navigator.language`.
- * Must be called *after* `opfs.seed`/`reset` (which clears localStorage)
- * and *before* `gotoApp`.
- */
-async function pinLocaleEn(page: Page) {
-  await page.evaluate(() => localStorage.setItem("karasu-locale", "en"));
-}
-
 async function editorReplace(page: Page, content: string) {
   await page.locator(".monaco-editor .view-lines").first().click();
   await page.keyboard.press("Control+A");
@@ -57,7 +47,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
       ],
       lastProjectId: "alpha",
     });
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     const dropdown = page.locator(".project-selector select.project-selector-dropdown");
@@ -70,7 +59,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
       projects: [{ id: "alpha", name: "Alpha", files: { "index.krs": SAMPLE_KRS_A } }],
       lastProjectId: "alpha",
     });
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     await page.getByRole("button", { name: "+ New" }).click();
@@ -105,7 +93,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
       ],
       lastProjectId: "bravo",
     });
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     page.once("dialog", (d) => d.accept());
@@ -138,7 +125,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
       ],
       lastProjectId: "multi",
     });
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     const fileTree = page.locator(".file-tree");
@@ -177,7 +163,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
       ],
       lastProjectId: "twofile",
     });
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     const fileTree = page.locator(".file-tree");
@@ -202,7 +187,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
     opfs,
   }) => {
     await opfs.reset();
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     const dropdown = page.locator(".project-selector select.project-selector-dropdown");
@@ -228,7 +212,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
       ],
       lastProjectId: "charlie",
     });
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     const dropdown = page.locator(".project-selector select.project-selector-dropdown");
@@ -241,7 +224,6 @@ test.describe("AT-0004 Project management & OPFS", () => {
       projects: [{ id: "edit-me", name: "EditMe", files: { "index.krs": SAMPLE_KRS_A } }],
       lastProjectId: "edit-me",
     });
-    await pinLocaleEn(page);
     await opfs.gotoApp();
 
     await editorReplace(page, 'system "Edited Live" {}\n');

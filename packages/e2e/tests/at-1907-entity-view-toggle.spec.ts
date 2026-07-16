@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
 
 /**
  * AT-1907: Entity view app integration (PR 2b-1).
@@ -44,9 +45,7 @@ test.describe("AT-1907 Entity view app integration", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ENTITY_KRS);
+    await bootMemoryApp(page, opfs, ENTITY_KRS);
 
     // At the system root there is no drilled domain → no toggle.
     await expect(entityToggle(page)).toHaveCount(0);
@@ -64,9 +63,7 @@ test.describe("AT-1907 Entity view app integration", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ENTITY_KRS);
+    await bootMemoryApp(page, opfs, ENTITY_KRS);
     await drillIntoOrderingDomain(page);
 
     // Usecase view first: PlaceOrder is shown, entities are not.
@@ -88,9 +85,7 @@ test.describe("AT-1907 Entity view app integration", () => {
   });
 
   test("Deactivating the entity view restores the usecase view", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ENTITY_KRS);
+    await bootMemoryApp(page, opfs, ENTITY_KRS);
     await drillIntoOrderingDomain(page);
 
     await entityToggle(page).click();
@@ -105,25 +100,16 @@ test.describe("AT-1907 Entity view app integration", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ENTITY_KRS);
+    await bootMemoryApp(page, opfs, ENTITY_KRS);
     await drillIntoOrderingDomain(page);
     await entityToggle(page).click();
     await expect(page.locator(".preview-pane--entity")).toBeVisible();
 
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export SVG" }).click();
-    const download = await downloadPromise;
+    const download = await clickAndDownload(page, page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/-entity\.svg$/);
 
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const content = Buffer.concat(chunks).toString("utf-8");
+    const content = await readDownloadText(download);
     expect(content).toContain("<svg");
     expect(content).toContain('data-node-id="Order"');
     expect(content).toContain('data-node-id="LineItem"');

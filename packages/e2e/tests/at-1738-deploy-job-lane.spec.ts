@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-1738: deploy view job lane (first kind band).
@@ -40,12 +41,9 @@ deploy "Production" {
 
 test.describe("AT-1738 Deploy view job lane", () => {
   test("job band renders below compute and above the unclassified row", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, JOB_BAND_KRS);
+    await bootMemoryApp(page, opfs, JOB_BAND_KRS);
 
-    await page.getByRole("tab", { name: "Deploy" }).click();
-    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await openViewTab(page, "Deploy");
 
     // The job band wrapper is marked with data-kind-band="job".
     const jobBand = page.locator('[data-kind-band="job"][data-container-id="__job_band__"]');

@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0058 / AT-0061 / AT-0062: Graphical diff viewer — app interaction flow.
@@ -198,8 +199,7 @@ test.describe("AT-0058 Graphical diff viewer", () => {
     // same compare source. The unit only present on the after-side must
     // arrive decorated (structural attribute only — colour perception and
     // ghost-edge styling stay manual checks).
-    await page.getByRole("tab", { name: "Deploy" }).click();
-    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await openViewTab(page, "Deploy");
     await expect(
       page.locator('[data-node-id="Payments::payments-svc"][data-diff-state="added"]'),
     ).toBeVisible();

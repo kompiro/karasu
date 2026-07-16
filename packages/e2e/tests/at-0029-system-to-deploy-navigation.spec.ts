@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0029: System ↔ Deploy / Org cross-navigation.
@@ -62,10 +63,7 @@ test.describe("AT-0029 Cross-navigation", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS);
+    await bootMemoryApp(page, opfs, KRS);
 
     await expect(page.locator('svg [data-deploy-button="ECommerce"]').first()).toBeAttached();
     await expect(page.locator('svg [data-deploy-button="Payment"]').first()).toBeAttached();
@@ -76,20 +74,14 @@ test.describe("AT-0029 Cross-navigation", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS);
+    await bootMemoryApp(page, opfs, KRS);
 
     await page.locator('svg [data-deploy-button="ECommerce"]').first().click();
     await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
   });
 
   test("clicking the team button switches to the Org tab (AT-0029-04)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS);
+    await bootMemoryApp(page, opfs, KRS);
 
     await page.locator('svg [data-team-button="ecTeam"]').first().click();
     await expect(page.getByRole("tab", { name: "Org", selected: true })).toBeVisible();
@@ -99,13 +91,9 @@ test.describe("AT-0029 Cross-navigation", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
+    await bootMemoryApp(page, opfs, KRS);
 
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS);
-
-    await page.getByRole("tab", { name: "Org" }).click();
-    await expect(page.getByRole("tab", { name: "Org", selected: true })).toBeVisible();
+    await openViewTab(page, "Org");
 
     await page.locator('svg [data-owned-service-button="ECommerce"]').first().click();
     await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();

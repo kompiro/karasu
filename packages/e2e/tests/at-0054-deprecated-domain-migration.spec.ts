@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0054: Deprecated domain migration annotations.
@@ -69,21 +69,13 @@ const SWAPPED_ORDER_KRS = `system OrderSystem {
 const UNIQUE_ERROR_PATTERN = /must be unique within a system/i;
 const DISPERSAL_INFO_PATTERN = /appears under multiple services/i;
 
-async function goToSystemTab(page: Page) {
-  await page.getByRole("tab", { name: "System" }).click();
-  await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
-}
-
 test.describe("AT-0054 Deprecated domain migration annotations", () => {
   test("annotated duplicate produces no uniqueness error and both edges resolve (Case 1/2)", async ({
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ANNOTATED_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, ANNOTATED_KRS);
+    await openViewTab(page, "System");
 
     // Case 1: Diagnostics banner must not report the uniqueness error.
     // Wait for the diagram to settle before asserting absence.
@@ -107,11 +99,8 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, UNANNOTATED_DUPLICATE_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, UNANNOTATED_DUPLICATE_KRS);
+    await openViewTab(page, "System");
 
     // ADR-20260514-02: an unannotated duplicate domain id is a structural
     // fact karasu visualizes. No uniqueness error, the diagram renders, and
@@ -129,11 +118,8 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, SWAPPED_ORDER_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, SWAPPED_ORDER_KRS);
+    await openViewTab(page, "System");
 
     await expect(page.locator('[data-node-id="LegacyService"]')).toBeVisible();
     await expect(page.locator('[data-node-id="NewService"]')).toBeVisible();

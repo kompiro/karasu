@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0011: Deploy node detail panel.
@@ -37,21 +37,13 @@ deploy "本番環境" {
 }
 `;
 
-async function openDeployTab(page: Page) {
-  await page.getByRole("tab", { name: "Deploy" }).click();
-  await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
-}
-
 test.describe("AT-0011 Deploy node detail panel", () => {
   test("clicking a deploy unit with runtime + realizes opens the detail panel", async ({
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS);
-    await openDeployTab(page);
+    await bootMemoryApp(page, opfs, KRS);
+    await openViewTab(page, "Deploy");
 
     await page.locator('svg [data-node-id="ECommerce::order-api"]').first().click();
 
@@ -67,11 +59,8 @@ test.describe("AT-0011 Deploy node detail panel", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS);
-    await openDeployTab(page);
+    await bootMemoryApp(page, opfs, KRS);
+    await openViewTab(page, "Deploy");
 
     // `mailer` is unassigned (no `realizes`), so the deploy layout keys
     // it by the bare unit id instead of the `<service>::<unit>` form.
@@ -85,10 +74,7 @@ test.describe("AT-0011 Deploy node detail panel", () => {
   });
 
   test("system view click still opens the detail panel for a service", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS);
+    await bootMemoryApp(page, opfs, KRS);
 
     // Wait for the editor change to propagate into the rendered SVG before
     // clicking. The `決済サービス` label is unique to KRS — once it shows up
