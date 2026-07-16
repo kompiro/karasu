@@ -26,7 +26,9 @@ hero:
       link: https://deepwiki.com/kompiro/karasu
       icon: open-book
     - text: Dev retrospective
-      link: /karasu/retrospective/
+      # Route-relative from the synced location index.md (route "") so the link is
+      # base-agnostic, like every other in-site link.
+      link: retrospective/
       icon: open-book
 ---
 

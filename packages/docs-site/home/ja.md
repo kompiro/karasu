@@ -26,7 +26,9 @@ hero:
       link: https://deepwiki.com/kompiro/karasu
       icon: open-book
     - text: 開発ふりかえり
-      link: /karasu/retrospective/?lang=ja
+      # Route-relative from the synced location ja/index.md (route "ja/") so the
+      # link is base-agnostic, like every other in-site link.
+      link: ../retrospective/?lang=ja
       icon: open-book
 ---
 

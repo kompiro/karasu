@@ -4,8 +4,21 @@
 
 import path from "node:path";
 
-export const REPO_SLUG = "kompiro/karasu";
-export const REPO_BRANCH = "main";
+// Private: all GitHub URLs must go through githubUrl() below.
+const REPO_SLUG = "kompiro/karasu";
+const REPO_BRANCH = "main";
+
+/** The hosted preview app (deep-link target for "Open in the app" gallery links). */
+export const APP_URL = "https://karasu.kompiro.dev";
+
+/**
+ * Canonical GitHub URL for a repo-relative path, e.g.
+ * githubUrl("blob", "docs/roadmap.md"). Single source for the
+ * `https://github.com/<slug>/<blob|tree>/<branch>/<path>` shape.
+ */
+export function githubUrl(kind: "blob" | "tree", repoPath: string): string {
+  return `https://github.com/${REPO_SLUG}/${kind}/${REPO_BRANCH}/${repoPath}`;
+}
 
 /**
  * docs-relative paths (POSIX) of the English base files published on the site.
@@ -32,7 +45,7 @@ export const PUBLISHED_EN_FILES: readonly string[] = [
   "spec/diagnostics.md",
 ];
 
-type Locale = "en" | "ja";
+export type Locale = "en" | "ja";
 
 function stripExt(docsRel: string): string {
   return docsRel.replace(/\.ja\.md$/, "").replace(/\.md$/, "");

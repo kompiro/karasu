@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { GALLERY_PAGES, type Locale, resolveEntry } from "./lib/examples-manifest.ts";
 import { examplePageMarkdown, indexPageMarkdown } from "./lib/gallery-pages.ts";
-import { extractTitle } from "./lib/markdown.ts";
+import { extractTitle, frontmatter } from "./lib/markdown.ts";
 import { renderDiagram, type RenderedDiagram } from "./lib/render-examples.ts";
 import { rewriteBody } from "./lib/rewrite.ts";
 import { contentPathOf, slugOf } from "./lib/site-map.ts";
@@ -34,10 +34,6 @@ function copyHomePages(): void {
 function fallbackTitle(docsRel: string): string {
   const leaf = slugOf(docsRel).split("/").pop() ?? docsRel;
   return leaf.replace(/[-_]/g, " ");
-}
-
-function yamlQuote(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 function writeContent(relPath: string, content: string): void {
@@ -93,8 +89,8 @@ async function main(): Promise<void> {
     const raw = fs.readFileSync(absPath, "utf8");
     const { title, body } = extractTitle(raw);
     const rewritten = rewriteBody(body, { srcDocsRel: docsRel, published });
-    const frontmatter = `---\ntitle: ${yamlQuote(title ?? fallbackTitle(docsRel))}\n---\n\n`;
-    writeContent(contentPathOf(docsRel), frontmatter + rewritten.replace(/\s*$/, "") + "\n");
+    const head = frontmatter(title ?? fallbackTitle(docsRel));
+    writeContent(contentPathOf(docsRel), head + rewritten.replace(/\s*$/, "") + "\n");
   }
 
   copyHomePages();
