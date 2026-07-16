@@ -29,23 +29,24 @@ import {
   getWordAtPosition,
 } from "./position-resolver.js";
 import { buildDocumentSymbols } from "./document-symbols.js";
+import type { LspPosition, LspRange } from "./lsp-position.js";
+
+// The languageId under which the VS Code extension registers `.krs.style`
+// documents (see packages/vscode/src/extension.ts). Style docs are routed
+// to the style parser/formatter; everything else is treated as `.krs`.
+const STYLE_LANGUAGE_ID = "krs-style";
 
 // ─── Custom LSP request types ─────────────────────────────────────────────────
 
 export const NodeAtPositionRequest = new RequestType<
-  { uri: string; position: { line: number; character: number } },
+  { uri: string; position: LspPosition },
   { nodeId: string | null },
   void
 >("karasu/nodeAtPosition");
 
 export const PositionOfNodeRequest = new RequestType<
   { uri: string; nodeId: string },
-  {
-    range: {
-      start: { line: number; character: number };
-      end: { line: number; character: number };
-    } | null;
-  },
+  { range: LspRange | null },
   void
 >("karasu/positionOfNode");
 
@@ -87,7 +88,7 @@ connection.onDocumentFormatting((params) => {
   // The `.krs` vs `.krs.style` routing decision lives in `formatting.ts`
   // (`formatSource`); this handler only wraps the result in a full-document
   // TextEdit.
-  const formatted = formatSource(src, doc.languageId === "krs-style");
+  const formatted = formatSource(src, doc.languageId === STYLE_LANGUAGE_ID);
   if (formatted === null) return [];
 
   const lastLine = doc.lineCount - 1;
@@ -242,7 +243,7 @@ connection.onDocumentSymbol((params) => {
 function validateDocument(document: TextDocument): void {
   const diagnostics = computeDiagnostics(
     document.getText(),
-    document.languageId === "krs-style",
+    document.languageId === STYLE_LANGUAGE_ID,
     locale,
   );
   connection.sendDiagnostics({ uri: document.uri, diagnostics });

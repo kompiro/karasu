@@ -32,6 +32,13 @@ import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palett
 
 const GHOST_OPACITY = 0.3;
 
+// Ratio of the description font size (and its estimated char width) to the
+// node's base font size in the *rendered* SVG. NOTE: this is intentionally
+// 0.8, not layout.ts's DESCRIPTION_FONT_RATIO (0.85) — layout width
+// estimation and rendered font size have historically used different ratios,
+// and unifying them would change output geometry (see Issue #2014, point 3).
+const RENDERED_DESC_FONT_RATIO = 0.8;
+
 // Icon-mode text layout constants (from design doc)
 const ICON_LABEL_MAX_WIDTH = 122; // px available for title text
 const ICON_DESC_MAX_LINES = 3;
@@ -989,7 +996,7 @@ function renderNode(
       const descX = node.x + iconDef.descriptionSlot.x * scaleX;
       const descY = node.y + iconDef.descriptionSlot.y * scaleY;
       const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
-      const descFontSize = iconMode ? 11 : Math.round(fontSize * 0.8);
+      const descFontSize = iconMode ? 11 : Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
 
       if (iconMode) {
         // Multi-line description: wrap text into up to 3 lines with tspan elements
@@ -1072,9 +1079,9 @@ function renderNode(
 
     if (displayDesc) {
       // Truncate description to fit within the node width
-      const descFontSize = Math.round(fontSize * 0.8);
+      const descFontSize = Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
       const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
-      const descCharWidth = CHAR_WIDTH * 0.8; // DESCRIPTION_FONT_RATIO
+      const descCharWidth = CHAR_WIDTH * RENDERED_DESC_FONT_RATIO;
       const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
       const descChars = [...displayDesc];
       const truncatedDesc =

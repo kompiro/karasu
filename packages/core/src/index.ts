@@ -82,7 +82,7 @@ export {
   formatMatrixAsCsv,
   type CrudMatrixFormatOptions,
 } from "./view/crud-matrix-format.js";
-export { renderMatrixAsSvg, type MatrixSvgOptions } from "./render/matrix-svg.js";
+export { renderMatrixAsSvg, type MatrixSvgOptions } from "./renderer/matrix-svg.js";
 export {
   extractCoverage,
   type CoverageReport,
@@ -296,7 +296,7 @@ import { extractView, type ViewPath } from "./view/view-extract.js";
 import { withUnassignedSystem } from "./view/unassigned-system.js";
 import { extractOrgView, type OrgViewPath } from "./view/org-view-extract.js";
 import { extractDeployView } from "./view/deploy-view-extract.js";
-import { ImportResolver } from "./fs/import-resolver.js";
+import { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "./builtins/default-style.js";
 import { getIconThemeStyleSheet } from "./builtins/icon-theme.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
@@ -1209,6 +1209,68 @@ import { diffOrgViewSlices } from "./diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "./diff/view-diff.js";
 import { injectDiffStyle } from "./diff/diff-style.js";
 
+/**
+ * Resolve the before / after project entries with a shared `ImportResolver`
+ * and concatenate their resolver diagnostics (before-side first). Shared
+ * boilerplate for the `compile*Diff` pipelines and
+ * `buildAllViewsSvgDiffProject`.
+ */
+async function resolveBeforeAfter(
+  fs: FileSystemProvider,
+  beforeEntryPath: string,
+  afterEntryPath: string,
+): Promise<{
+  beforeResolved: ResolvedProject;
+  afterResolved: ResolvedProject;
+  diagnostics: Diagnostic[];
+}> {
+  const resolver = new ImportResolver(fs);
+  const [beforeResolved, afterResolved] = await Promise.all([
+    resolver.resolve(beforeEntryPath),
+    resolver.resolve(afterEntryPath),
+  ]);
+  return {
+    beforeResolved,
+    afterResolved,
+    diagnostics: [...beforeResolved.diagnostics, ...afterResolved.diagnostics],
+  };
+}
+
+/**
+ * Assemble the style sheets a diff render resolves against: builtin sheet,
+ * then before-side sheets, then after-side sheets (later sheets win on
+ * conflicts), with the icon-theme sheet appended in icon display mode.
+ */
+function assembleDiffSheets(
+  beforeResolved: ResolvedProject,
+  afterResolved: ResolvedProject,
+  theme: DiagramTheme | undefined,
+  annotationBadgeLabels: AnnotationBadgeLabels | undefined,
+  displayMode: DisplayMode | undefined,
+): StyleSheet[] {
+  const sheets = [
+    getBuiltinStyleSheet(theme, annotationBadgeLabels),
+    ...beforeResolved.styleSheets,
+    ...afterResolved.styleSheets,
+  ];
+  return displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+}
+
+/**
+ * Flatten diff metadata maps into the plain `Map<id, state>` shape the
+ * renderers consume for `data-diff-state` stamping.
+ */
+function toDiffStateMaps(diffed: {
+  nodes: Map<string, NodeDiffMeta>;
+  edges: Map<string, EdgeDiffMeta>;
+}): { nodeDiffState: Map<string, string>; edgeDiffState: Map<string, string> } {
+  const nodeDiffState = new Map<string, string>();
+  for (const [id, meta] of diffed.nodes) nodeDiffState.set(id, meta.state);
+  const edgeDiffState = new Map<string, string>();
+  for (const [key, meta] of diffed.edges) edgeDiffState.set(key, meta.state);
+  return { nodeDiffState, edgeDiffState };
+}
+
 export interface SystemDiffCompileResult {
   diagramType: "system";
   svg: string;
@@ -1281,12 +1343,11 @@ export async function compileSystemDiff(
     expandedContainers,
   } = options;
 
-  const resolver = new ImportResolver(fs);
-  const [beforeResolved, afterResolved] = await Promise.all([
-    resolver.resolve(beforeEntryPath),
-    resolver.resolve(afterEntryPath),
-  ]);
-  const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+  const { beforeResolved, afterResolved, diagnostics } = await resolveBeforeAfter(
+    fs,
+    beforeEntryPath,
+    afterEntryPath,
+  );
   diagnostics.push(...validateProjectEdgeIdUniqueness(beforeResolved.krsFile));
   diagnostics.push(...validateProjectEdgeIdUniqueness(afterResolved.krsFile));
 
@@ -1303,12 +1364,13 @@ export async function compileSystemDiff(
   // Resolve styles against the union (after-side systems augmented with
   // any removed nodes — the union slice's childNodes will be styled via
   // the same fallback path used for ghost nodes).
-  const sheets = [
-    getBuiltinStyleSheet(theme, options.annotationBadgeLabels),
-    ...beforeResolved.styleSheets,
-    ...afterResolved.styleSheets,
-  ];
-  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  const resolveSheets = assembleDiffSheets(
+    beforeResolved,
+    afterResolved,
+    theme,
+    options.annotationBadgeLabels,
+    displayMode,
+  );
   const styles = resolveStyles(
     afterSystems,
     resolveSheets,
@@ -1318,14 +1380,7 @@ export async function compileSystemDiff(
     diffed.slice.childEdges,
   );
 
-  const nodeDiffStateMap = new Map<string, string>();
-  for (const [id, meta] of diffed.nodes) {
-    nodeDiffStateMap.set(id, meta.state);
-  }
-  const edgeDiffStateMap = new Map<string, string>();
-  for (const [key, meta] of diffed.edges) {
-    edgeDiffStateMap.set(key, meta.state);
-  }
+  const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);
 
   // Grouping axis for diff mode. `diffed.slice` is the union of both sides, so a
   // node removed in the after-slice has no after-side owner and would fall into
@@ -1353,8 +1408,8 @@ export async function compileSystemDiff(
   }
 
   const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
-    nodeDiffState: nodeDiffStateMap,
-    edgeDiffState: edgeDiffStateMap,
+    nodeDiffState,
+    edgeDiffState,
     nodeDiffMeta: diffed.nodes,
     emptyLabels: emptyStateLabels,
     theme,
@@ -1418,12 +1473,11 @@ export async function compileDeployDiff(
     theme,
   } = options;
 
-  const resolver = new ImportResolver(fs);
-  const [beforeResolved, afterResolved] = await Promise.all([
-    resolver.resolve(beforeEntryPath),
-    resolver.resolve(afterEntryPath),
-  ]);
-  const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+  const { beforeResolved, afterResolved, diagnostics } = await resolveBeforeAfter(
+    fs,
+    beforeEntryPath,
+    afterEntryPath,
+  );
 
   // Orphan-wrap so `realizes` targets that point at top-level (unassigned)
   // services/domains resolve to their declared labels (see extractDeployView).
@@ -1440,12 +1494,13 @@ export async function compileDeployDiff(
 
   const diffed = diffDeployViewSlices(beforeSlice, afterSlice);
 
-  const sheets = [
-    getBuiltinStyleSheet(theme, options.annotationBadgeLabels),
-    ...beforeResolved.styleSheets,
-    ...afterResolved.styleSheets,
-  ];
-  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  const resolveSheets = assembleDiffSheets(
+    beforeResolved,
+    afterResolved,
+    theme,
+    options.annotationBadgeLabels,
+    displayMode,
+  );
   const deployUnits = [
     ...diffed.slice.containers.flatMap((c) => c.units),
     ...diffed.slice.unclassifiedUnits,
@@ -1458,19 +1513,12 @@ export async function compileDeployDiff(
     [...afterResolved.krsFile.services, ...afterResolved.krsFile.domains],
   );
 
-  const nodeDiffStateMap = new Map<string, string>();
-  for (const [id, meta] of diffed.nodes) {
-    nodeDiffStateMap.set(id, meta.state);
-  }
-  const edgeDiffStateMap = new Map<string, string>();
-  for (const [key, meta] of diffed.edges) {
-    edgeDiffStateMap.set(key, meta.state);
-  }
+  const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);
   const containerDiffStateMap = new Map<string, string>(diffed.containers);
 
   const svg = renderDeploy(diffed.slice, styles, displayMode, {
-    nodeDiffState: nodeDiffStateMap,
-    edgeDiffState: edgeDiffStateMap,
+    nodeDiffState,
+    edgeDiffState,
     containerDiffState: containerDiffStateMap,
     emptyLabels: emptyStateLabels,
     theme,
@@ -1523,24 +1571,24 @@ export async function compileOrgDiff(
   const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels, theme } =
     options;
 
-  const resolver = new ImportResolver(fs);
-  const [beforeResolved, afterResolved] = await Promise.all([
-    resolver.resolve(beforeEntryPath),
-    resolver.resolve(afterEntryPath),
-  ]);
-  const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+  const { beforeResolved, afterResolved, diagnostics } = await resolveBeforeAfter(
+    fs,
+    beforeEntryPath,
+    afterEntryPath,
+  );
 
   const beforeSlice = extractOrgView(beforeResolved.krsFile.organizations, viewPath ?? []);
   const afterSlice = extractOrgView(afterResolved.krsFile.organizations, viewPath ?? []);
 
   const diffed = diffOrgViewSlices(beforeSlice, afterSlice);
 
-  const sheets = [
-    getBuiltinStyleSheet(theme, options.annotationBadgeLabels),
-    ...beforeResolved.styleSheets,
-    ...afterResolved.styleSheets,
-  ];
-  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  const resolveSheets = assembleDiffSheets(
+    beforeResolved,
+    afterResolved,
+    theme,
+    options.annotationBadgeLabels,
+    displayMode,
+  );
   const styles = resolveStyles(
     afterResolved.krsFile.systems,
     resolveSheets,
@@ -1548,14 +1596,11 @@ export async function compileOrgDiff(
     afterResolved.krsFile.organizations,
   );
 
-  const nodeDiffStateMap = new Map<string, string>();
-  for (const [id, meta] of diffed.nodes) nodeDiffStateMap.set(id, meta.state);
-  const edgeDiffStateMap = new Map<string, string>();
-  for (const [key, meta] of diffed.edges) edgeDiffStateMap.set(key, meta.state);
+  const { nodeDiffState, edgeDiffState } = toDiffStateMaps(diffed);
 
   const svg = _renderOrgView(diffed.slice, styles, displayMode, undefined, {
-    nodeDiffState: nodeDiffStateMap,
-    edgeDiffState: edgeDiffStateMap,
+    nodeDiffState,
+    edgeDiffState,
     emptyLabels: emptyStateLabels,
     theme,
   });
@@ -1610,12 +1655,11 @@ export async function buildAllViewsSvgDiffProject(
 ): Promise<BundledDiffCompileResult> {
   const { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels, theme } = options;
 
-  const resolver = new ImportResolver(fs);
-  const [beforeResolved, afterResolved] = await Promise.all([
-    resolver.resolve(beforeEntryPath),
-    resolver.resolve(afterEntryPath),
-  ]);
-  const resolverDiagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+  const {
+    beforeResolved,
+    afterResolved,
+    diagnostics: resolverDiagnostics,
+  } = await resolveBeforeAfter(fs, beforeEntryPath, afterEntryPath);
 
   const before = beforeResolved.krsFile;
   const after = afterResolved.krsFile;
