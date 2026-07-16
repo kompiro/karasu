@@ -13,6 +13,7 @@ import {
   type FrameContext,
   SUITE_TIMEOUT_MS,
   breadcrumbSegments,
+  dispatchClick,
   ensureWebViewFrame,
   isViewActive,
   leaveWebViewFrame,
@@ -95,20 +96,6 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
 
   let driver: WebDriver;
   let ctx: FrameContext;
-
-  async function dispatchClickOnSelector(
-    selector: string,
-    { ctrlKey = false }: { ctrlKey?: boolean } = {},
-  ): Promise<void> {
-    const ctrl = ctrlKey ? "true" : "false";
-    await driver.executeScript(
-      `const el = document.querySelector(${JSON.stringify(selector)});` +
-        "if (!el) throw new Error('selector did not match: ' + " +
-        JSON.stringify(selector) +
-        ");" +
-        `el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: ${ctrl}, metaKey: ${ctrl} }));`,
-    );
-  }
 
   async function dispatchMouseMoveOnSelector(selector: string): Promise<void> {
     await driver.executeScript(
@@ -204,7 +191,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-node-id="Customer"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
+    await dispatchClick(driver, '[data-node-id="Customer"]');
 
     await awaitPanelVisible("detail panel did not become visible after clicking Customer");
 
@@ -219,7 +206,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="OrderService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
 
     await awaitPanelVisible("detail panel did not become visible after clicking the ⓘ button");
 
@@ -247,7 +234,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   it("TC-04: × close button dismisses the panel; click-outside also dismisses it", async () => {
     await closePanelIfOpen();
 
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
+    await dispatchClick(driver, '[data-node-id="Customer"]');
     await awaitPanelVisible("panel did not open before testing close");
 
     await driver.executeScript(
@@ -262,7 +249,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       "panel should be hidden after clicking the × button",
     );
 
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
+    await dispatchClick(driver, '[data-node-id="Customer"]');
     await awaitPanelVisible("panel did not re-open before testing click-outside");
 
     // A click that lands on `#preview` itself (no `[data-node-id]`
@@ -291,7 +278,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       `expected to start at root, but breadcrumb was "${beforeBreadcrumb}"`,
     );
 
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
 
     await awaitPanelVisible("detail panel did not open after ⓘ click");
 
@@ -320,7 +307,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
 
     // Open the panel; the tooltip should not show even when we hover
     // OrderService again.
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
+    await dispatchClick(driver, '[data-node-id="Customer"]');
     await awaitPanelVisible("detail panel did not open before testing tooltip suppression");
 
     await dispatchMouseMoveOnSelector('[data-node-id="OrderService"]');
@@ -339,7 +326,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   it("TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open", async () => {
     await closePanelIfOpen();
 
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
+    await dispatchClick(driver, '[data-node-id="Customer"]');
     await awaitPanelVisible("panel did not open before testing Jump to editor");
 
     await driver.executeScript(
@@ -367,7 +354,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     // Switch out of the WebView frame to read the editor's coordinates.
     // Bringing the .krs editor to focus rebuilds the preview, which is
     // why the visibility assertion above runs first.
-    await leaveWebViewFrame(ctx);
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
 
     let lastLine = 0;
     await driver.wait(
@@ -394,7 +381,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="UserService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="UserService"]');
+    await dispatchClick(driver, '[data-info-button="UserService"]');
     await awaitPanelVisible("detail panel did not open after clicking UserService ⓘ button");
 
     const html = await detailPanelHtml();
@@ -418,7 +405,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="OrderService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
     await awaitPanelVisible("panel did not open before testing team nav button");
 
     const html = await detailPanelHtml();
@@ -458,7 +445,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="OrderService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
     await awaitPanelVisible("panel did not open before testing deploy nav button");
 
     const html = await detailPanelHtml();

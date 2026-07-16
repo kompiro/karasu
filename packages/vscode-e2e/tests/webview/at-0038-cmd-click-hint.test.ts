@@ -13,6 +13,7 @@ import {
   type FrameContext,
   SUITE_TIMEOUT_MS,
   breadcrumbSegments,
+  dispatchClick,
   ensureWebViewFrame,
   leaveWebViewFrame,
   openFixtureWithRetry,
@@ -104,19 +105,8 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
   let driver: WebDriver;
   let ctx: FrameContext;
 
-  async function dispatchClick(selector: string, modifier: boolean): Promise<void> {
-    const ctrl = modifier ? "true" : "false";
-    await driver.executeScript(
-      `const el = document.querySelector(${JSON.stringify(selector)});` +
-        "if (!el) throw new Error('selector did not match: ' + " +
-        JSON.stringify(selector) +
-        ");" +
-        `el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: ${ctrl}, metaKey: ${ctrl} }));`,
-    );
-  }
-
   async function readEditorLine(): Promise<number> {
-    await leaveWebViewFrame(ctx);
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
     const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
     await driver.sleep(150);
     const [line] = await editor.getCoordinates();
@@ -139,7 +129,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
       await driver.wait(
         async () => {
           await ensureWebViewFrame(ctx);
-          await dispatchClick(selector, true);
+          await dispatchClick(driver, selector, { ctrlKey: true });
           await driver.sleep(200);
           lastLine = await readEditorLine();
           return lastLine === expectedLine;
@@ -185,7 +175,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     // The cursor watcher in extension.ts debounces by 150 ms, asks the
     // LSP for the node id, and posts a `highlight` message that adds
     // `karasu-highlighted` to the matching `<g data-node-id>`.
-    await leaveWebViewFrame(ctx);
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
     const editorView = new EditorView();
     const editor = (await editorView.openEditor(FIXTURE_NAME, 0)) as TextEditor;
     await editor.moveCursor(FIXTURE_LINE.OrderService, 11);
@@ -243,7 +233,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
   });
 
   it("TC-02: keeps the hint visible after plain-clicking a parent node to drill in", async () => {
-    await dispatchClick('[data-node-id="OrderService"][data-has-children="true"]', false);
+    await dispatchClick(driver, '[data-node-id="OrderService"][data-has-children="true"]');
 
     // Drill rebuilds webview.html — re-acquire the frame.
     await reacquireFrame(ctx, DRILL_REACQUIRE_SLEEP_MS);

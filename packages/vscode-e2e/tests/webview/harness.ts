@@ -8,23 +8,32 @@ import {
 } from "vscode-extension-tester";
 
 /**
- * Shared ExTester WebView harness for the karasu preview suites.
- *
- * Three pieces of logic used to be copy-pasted across every WebView spec
+ * Shared ExTester WebView harness for the karasu preview suites
  * (`at-0038-cmd-click-hint.test.ts`, `at-0039-detail-panel.test.ts`, and the
- * `screenshots.capture.ts` capture spec):
+ * `screenshots.capture.ts` capture spec). It centralises the logic that used
+ * to be copy-pasted across the specs:
  *
  *   1. the 3-attempt "File: Open File..." retry (the simple-dialog stalls
  *      intermittently under xvfb — see `.claude/rules/vscode-webview-tests.md`
  *      rule 2 and memory `feedback_webview_simple_dialog_flake.md`),
- *   2. opening the preview and switching into its WebView iframe, and
- *   3. the `switchBack → sleep → switchToFrame` frame-reacquire dance that the
+ *   2. opening the preview and switching into its WebView iframe,
+ *   3. the WebView frame lifecycle — `ensureWebViewFrame`, `leaveWebViewFrame`
+ *      (lenient teardown exit vs strict in-test exit, see its docstring), and
+ *      the `switchBack → sleep → switchToFrame` frame-reacquire dance that the
  *      extension forces whenever it reassigns `webview.html` (drill-down, view
- *      switch, cross-diagram navigation).
+ *      switch, cross-diagram navigation),
+ *   4. synthetic MouseEvent dispatch on an exact selector (`dispatchClick`) —
+ *      rule 4's answer to coordinate-based clicks landing on an overlapping
+ *      ancestor,
+ *   5. breadcrumb reading/parsing (`readBreadcrumb` / `breadcrumbSegments`),
+ *      and
+ *   6. the shared timing constants (`ELEMENT_TIMEOUT_MS`, `SUITE_TIMEOUT_MS`,
+ *      the frame-reacquire sleeps) plus toolbar view switching
+ *      (`switchToView` / `isViewActive`).
  *
- * Centralising the retry/timeout/frame constants here keeps the three suites in
- * lock-step. The rule still mandates the *pattern*, not literal duplication; the
- * helpers below are that pattern in one place.
+ * Centralising these here keeps the suites in lock-step. The rule still
+ * mandates the *pattern*, not literal duplication; the helpers below are that
+ * pattern in one place.
  */
 
 /** Editor-tab title of the karasu preview WebView. */
@@ -161,18 +170,30 @@ export async function ensureWebViewFrame(ctx: FrameContext): Promise<void> {
 }
 
 /**
- * Leave the WebView iframe if currently inside it. Best-effort: a failing
- * `switchBack` (frame already detached) is swallowed.
+ * Leave the WebView iframe if currently inside it.
+ *
+ * Lenient by default (`swallowErrors: true`): a failing `switchBack` (frame
+ * already detached) is swallowed and `inWebViewFrame` is reset regardless.
+ * Use this form in teardown (`after()` hooks, capture flows), where a
+ * spurious switch failure must not fail the suite.
+ *
+ * Pass `{ swallowErrors: false }` inside test bodies: a real `switchBack`
+ * failure (stale session, lost window handle under xvfb) then propagates
+ * immediately and `inWebViewFrame` is only reset on success — otherwise the
+ * desynced flag would resurface later as a misleading element-lookup timeout.
  */
-export async function leaveWebViewFrame(ctx: FrameContext): Promise<void> {
-  if (ctx.inWebViewFrame) {
-    try {
-      await ctx.webview.switchBack();
-    } catch {
-      // already detached
-    }
-    ctx.inWebViewFrame = false;
+export async function leaveWebViewFrame(
+  ctx: FrameContext,
+  { swallowErrors = true }: { swallowErrors?: boolean } = {},
+): Promise<void> {
+  if (!ctx.inWebViewFrame) return;
+  try {
+    await ctx.webview.switchBack();
+  } catch (err) {
+    if (!swallowErrors) throw err;
+    // already detached
   }
+  ctx.inWebViewFrame = false;
 }
 
 /**
@@ -189,6 +210,31 @@ export async function reacquireFrame(
   await ctx.driver.sleep(sleepMs);
   await ctx.webview.switchToFrame();
   ctx.inWebViewFrame = true;
+}
+
+/**
+ * Dispatch a synthetic `click` MouseEvent on the exact element matched by
+ * `selector` via `executeScript`, so the WebView handler's `e.target` is the
+ * intended element (Selenium's coordinate-based `element.click()` can land on
+ * an overlapping ancestor — `.claude/rules/vscode-webview-tests.md` rule 4).
+ * `ctrlKey: true` sets both `ctrlKey` and `metaKey` on the synthetic event —
+ * the WebView handler reads `e.metaKey || e.ctrlKey` from the event object,
+ * so the OS keyboard never needs to be driven (xvfb-friendly). Throws when
+ * the selector matches nothing.
+ */
+export async function dispatchClick(
+  driver: WebDriver,
+  selector: string,
+  { ctrlKey = false }: { ctrlKey?: boolean } = {},
+): Promise<void> {
+  const ctrl = ctrlKey ? "true" : "false";
+  await driver.executeScript(
+    `const el = document.querySelector(${JSON.stringify(selector)});` +
+      "if (!el) throw new Error('selector did not match: ' + " +
+      JSON.stringify(selector) +
+      ");" +
+      `el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: ${ctrl}, metaKey: ${ctrl} }));`,
+  );
 }
 
 /**
@@ -228,13 +274,7 @@ export async function isViewActive(driver: WebDriver, view: PreviewView): Promis
 export async function switchToView(ctx: FrameContext, view: PreviewView): Promise<void> {
   await ensureWebViewFrame(ctx);
   if (await isViewActive(ctx.driver, view)) return;
-  await ctx.driver.executeScript(
-    `const btn = document.querySelector('[data-view="${view}"]');` +
-      "if (!btn) throw new Error('toolbar view button not found: ' + " +
-      JSON.stringify(view) +
-      ");" +
-      "btn.click();",
-  );
+  await dispatchClick(ctx.driver, `[data-view="${view}"]`);
   await reacquireFrame(ctx);
   await ctx.driver.wait(
     async () => await isViewActive(ctx.driver, view),
