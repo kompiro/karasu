@@ -4,8 +4,8 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1983](https://github.com/kompiro/karasu/issues/1983)（parent: [#1822](https://github.com/kompiro/karasu/issues/1822) comprehension、follow-up to [#1974](https://github.com/kompiro/karasu/issues/1974) P2b）
-  - 経緯 Issue: [#1879](https://github.com/kompiro/karasu/issues/1879)（export surface への groupBy 配線 — 「root system-view level only」の由来）、[#1884](https://github.com/kompiro/karasu/issues/1884)（multi-system per-(system, team) フレーム）、[#1921](https://github.com/kompiro/karasu/issues/1921) / [#1923](https://github.com/kompiro/karasu/issues/1923)（in-place expansion / mixed-LOD）
-  - 関連 ADR: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（P2a team 軸 — 決定 7 が root-only の出所）、[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)（notation promotion gate）、[ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c routing/marks）、[ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff-mode grouping）、[ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)（入れ子は drill-down の領域）、[ADR-20260611-02](../adr/20260611-02-legend-drill-down-scope.md)（per-drill-depth exact-match の前例）、[ADR-20260403-01](../adr/20260403-01-drill-down-adapter-hierarchy-node.md) / [ADR-20260401-05](../adr/20260401-05-vscode-phase3-5-drilldown.md)（drill-down の node 集合・ナビゲーション契約）
+  - 経緯 Issue: [#1879](https://github.com/kompiro/karasu/issues/1879)（export surface への groupBy 配線 — 「root system-view level only」の由来）、[#1884](https://github.com/kompiro/karasu/issues/1884)（multi-system per-(system, team) フレーム — ADR-20260716-03 に昇格済み）、[#1921](https://github.com/kompiro/karasu/issues/1921) / [#1923](https://github.com/kompiro/karasu/issues/1923)（in-place expansion / mixed-LOD）
+  - 関連 ADR: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（P2a team 軸 — 決定 7 が root-only の出所）、[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)（notation promotion gate）、[ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c routing/marks）、[ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff-mode grouping）、[ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md)（multi-system root の per-(system, team) フレーム — 規則 2 の同型先例）、[ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)（入れ子は drill-down の領域）、[ADR-20260630-02](../adr/20260630-02-layer-toggles.md)（interactive collapse コントロールの gate — entity view の frames-only 挙動の根拠）、[ADR-20260611-02](../adr/20260611-02-legend-drill-down-scope.md)（per-drill-depth exact-match の前例）、[ADR-20260403-01](../adr/20260403-01-drill-down-adapter-hierarchy-node.md) / [ADR-20260401-05](../adr/20260401-05-vscode-phase3-5-drilldown.md)（drill-down の node 集合・ナビゲーション契約）
   - 親 Design Doc: [system-view-grouping.md](system-view-grouping.md)（P2b 詳細設計。「boundary の入れ子 / boundary 単位の drill-down」を deferred（却下ではない）として本 Issue に送った出所）
   - 関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md), [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md), [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md), [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md), [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md), [TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md), [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md), [TPL-20260615-02](../test-perspectives/TPL-20260615-02-diagnostic-absence-assertion-scope-severity.md), **[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)（本 doc と同 PR で起票する proactive TPL）**
   - コード: `packages/core/src/parser/parser.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/drill-down-svg.ts`, `packages/core/src/renderer/all-layers-svg.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/index.ts`, `packages/app/src/hooks/useSystemView.ts`
@@ -40,8 +40,8 @@ probe モデル（要旨）: `system Shop { service Orders { domain OrderDomain 
 | surface | drill レベルの grouping | 根拠 |
 | --- | --- | --- |
 | **interactive preview**（app: `compile()` + `viewPath`。`useSystemView` は drill 中も `groupBy` を渡す — `packages/app/src/hooks/useSystemView.ts` の compile options） | **既に効いている**（フレーム・collapse とも。ただし未仕様・専用テストなし） | probe 2/2'/3 |
-| **静的 export**（`buildDrillDownSvg` / `buildAllLayersSvg` / `buildAllViewsSvg`） | root のみ。`groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined` の明示 gate（`drill-down-svg.ts:133`, `all-layers-svg.ts:254`、コメント「Root system-view level only (#1879); collapse off by design.」） | コード |
-| **entity view**（`renderEntityView`） | 効かない。`groupBy` / `boundaryIndex` を **signature ごと受け取らない**（`packages/core/src/index.ts:1030-1038`） | コード |
+| **静的 export**（`buildDrillDownSvg` / `buildAllLayersSvg` / `buildAllViewsSvg`） | root のみ。`groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined` の明示 gate が **3 箇所**（`buildDrillDownSvg` = `drill-down-svg.ts:133`、`buildAllLayersSvg` = `all-layers-svg.ts:254`、`buildAllViewsSvg` = `drill-down-svg.ts:511`（関数開始 `:477`）。コメント「Root system-view level only (#1879); collapse off by design.」）。app は `useViewSvg.ts:100-108` で `buildAllViewsSvg` にも `groupBy` を渡し済みのため、緩和漏れは即ユーザー可視の不整合になる | コード |
+| **entity view**（`renderEntityView`） | 効かない。**`groupBy` を signature ごと受け取らない**（`packages/core/src/index.ts:1030-1038`。`ownerIndex` は `drill-down-svg.ts:206` で内部導出済み、`boundaryIndex` も `krsFile` から取得可能 — 不足は `groupBy` の 1 引数のみ） | コード |
 | **spec**（`docs/spec/syntax.md:970-978`、P2b-C #1980 でマージ） | 「grouping takes visible effect **only** on nodes that render at the grouped level — **the system-view top tier**」と記述 | spec |
 
 interactive で効いてしまっている理由は単純で、bucket 計算が最初から「view に渡された
@@ -65,12 +65,12 @@ gate を追加して spec 記述どおりに殺すか。正規化するなら、
 | `contains` の検証 | `validateContainsReferences` は**存在チェックのみ**。`collectContainableIds` が全 system の全 descendant + top-level 孤児を再帰収集するため、nested usecase / domain の id も「存在する」— レベル・可視性のチェックは無い | `parser.ts:2220-2234` / `:2240-2258` |
 | 軸の選択 | `groupIndex = groupBy === "boundary" ? boundaryIndex : groupBy === "team" ? ownerIndex : undefined` が唯一の分岐点（multi-system 側にミラー） | `packages/core/src/renderer/layout.ts:961-962` / `:1602-1603` |
 | bucket 計算 | `allNodes.map(n => ({ id, groupId: groupIdOf(n.id), ungroupedRank: systemTier(n) }))` — **`allNodes` は渡された slice の top-level childNodes**。「system-view top tier 限定」はここではなく、**呼び出し側が drill slice に groupBy を渡さないことで**成立している | `layout.ts:1070-1084`（gate `:1070`）、`groupIdOf` `:1051-1052` |
-| export surface の gate | `groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined`。`legendScopeForLogicalSlice` は slice が root（`slice.systems.length > 0`）のときだけ `"system"` を返す | `drill-down-svg.ts:133`, `all-layers-svg.ts:254`, `svg-renderer.ts:168-174` |
+| export surface の gate | `groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined` が **3 builder に複製**されている。`legendScopeForLogicalSlice` は slice が root（`slice.systems.length > 0`）のときだけ `"system"` を返す | `drill-down-svg.ts:133`（buildDrillDownSvg）, `all-layers-svg.ts:254`（buildAllLayersSvg）, `drill-down-svg.ts:511`（buildAllViewsSvg）, `svg-renderer.ts:168-174` |
 | interactive 経路 | `compile()` → `extractView(systems, viewPath, ...)`（`index.ts:665`）→ `render()` → `layout()`。**gate なし** — drill slice にも `groupBy` / `boundaryIndex` がそのまま届く（`index.ts:687-688`） | `packages/core/src/index.ts` |
 | entity view | `renderEntityView(krsSource, viewPath, ...)` は `groupBy` を受けない（未配線） | `index.ts:1030-1038`, `drill-down-svg.ts:186` |
 | フレーム描画 | layout が `buildGroupFrames` で `ContainerRect`（`__group_<gid>__`, `group: true`）を作り、renderer は `container.group` だけ見て破線枠 + `data-group` を描く。**renderer に view-scope 依存は無い** | `layout.ts:63-97` / `:1391`、`svg-renderer.ts:846` / `:870` / `:895` |
 | collapse | `collapseGroups` が member を `<Boundary> (N)` stub に畳み、境界エッジを stub へ再ターゲット。stub id は single-system で `__group_collapsed_<gid>__`、multi-system は `<sys>` で namespace | `packages/core/src/renderer/group-collapse.ts:82` / `:25-29` |
-| P2c routing | `routeGroupedEdges` / `aggregateGroupTrunks` / `computeCrossingMarks` は **`groupBands != null` のみで発火**（level 判定なし）。drill slice に groupBands ができれば自動で付いてくる（probe 2/3 で既に発火している） | `layout.ts:1461` / `:1468` / `:1472`、ADR-20260715-03 |
+| P2c routing / marks | `routeGroupedEdges` / `aggregateGroupTrunks` は **`if (groupBands)` gate 内**（level 判定なし）。`computeCrossingMarks` は **#1956 以降無条件実行**（`if` の外 — hop アークは ungrouped view 含め常時、junction dot は trunk がある grouped のみ）。いずれも level 非依存で、drill slice に groupBands ができれば routing/trunks も自動で付いてくる（probe 2/3 で既に発火している）— marks が既に全ビュー無条件である事実は「P2c 系パスは view-level を見ない」という本 doc の結論をさらに裏付ける | `layout.ts:1461`（gate）/ `:1468`（routeGroupedEdges）/ `:1473`（aggregateGroupTrunks）/ `:1504-1509`（computeCrossingMarks、無条件）、ADR-20260715-03 |
 | diff-mode | `compileSystemDiff` が removed node の boundary を before 側から backfill する `mergedBoundaryIndex` を構築（axis map レベルの操作。drill とは独立） | `index.ts:1348-1353`、ADR-20260716-01 |
 | app | `GroupByMode`（none/team/boundary）は app の view-state。`useSystemView` は **drill 中も** `groupBy` を compile に渡す。Group-by セレクタは `activeView === "system" && view.groupByAvailable` で drill 中も表示 | `useSystemView.ts`（`groupBy: groupBy === "none" ? undefined : groupBy`）、`PreviewColumn.tsx:295-320` |
 | ghost | `ViewSlice` の `ghostDomains` / `ghostSystems` / `ghostEntities` 等は `childNodes` と別フィールド。`LayoutNode.ghost?: boolean` あり。**bucket 対象にならない**（probe 4） | `packages/core/src/view/view-extract.ts:353-393`, `layout-types.ts:36` |
@@ -85,8 +85,9 @@ gate を追加して spec 記述どおりに殺すか。正規化するなら、
 - **ADR-20260711-03 決定 7（root-only）は team 軸の根拠で決まった**: #1879 の文言は
   「drill-down levels have no teams, so grouping does not apply there」。boundary 軸は任意 kind を
   含められるためこの根拠は成立しない。root-only を覆すのではなく「軸の member が居るレベルで
-  効く」へ一般化する（decision 7 は当時の team 軸には正しく、supersede は不要 — 実装完了後の
-  ADR 昇格時に関係を記す）。
+  効く」へ一般化する（decision 7 は当時の team 軸には正しく、supersede は不要 — 昇格 ADR は
+  frontmatter `related_to: [ADR-20260711-03]` で紐付ける。「一点更新は supersedes ではなく
+  related_to」の先例は ADR-20260711-02 / ADR-20260623-05。`amends` は関係語彙に無い）。
 - **ADR-20260714-04**: 「深い入れ子展開は不採用（展開 domain の子をさらに展開するのは
   drill-down の領域）」— 入れ子の表現は drill-down に委ねるのが既決。drill-down ビューの内側で
   グルーピングする本件はこの routing に沿う（system view を deep 化しない）。
@@ -106,9 +107,10 @@ gate を追加して spec 記述どおりに殺すか。正規化するなら、
 
 interactive で既に動いているセマンティクス — **軸 index（model-wide の `Map<id, groupId>`）と
 「いま描画しているレベルの childNodes」の交差でフレームを組む** — を意図された仕様として
-言語化する。実装は (a) export surface の gate（`drill-down-svg.ts:133` / `all-layers-svg.ts:254`）を
-外して interactive と揃え、(b) `renderEntityView` に軸を配線し、(c) ghost 除外・退化ケースに
-テストの柵をかけ、(d) spec の interim 記述を書き換える。文法変更ゼロ。
+言語化する。実装は (a) export surface の gate **3 箇所**（`drill-down-svg.ts:133` /
+`all-layers-svg.ts:254` / `drill-down-svg.ts:511`）を外して interactive と揃え、
+(b) `renderEntityView` に軸を配線し、(c) ghost 除外・退化ケースにテストの柵をかけ、
+(d) spec の interim 記述を書き換える。文法変更ゼロ。
 
 **メリット**
 
@@ -116,7 +118,7 @@ interactive で既に動いているセマンティクス — **軸 index（mode
 - 差分が最小 — bucket 計算・フレーム描画・collapse・P2c は最初から level 非依存に書かれており
   （インベントリ参照）、「作る」ものがほぼ無い。変更は gate の緩和と柵。
 - 三者不整合（interactive / export / spec）を「実装 2 面を spec に合わせて殺す」のではなく
-  「spec を実挙動 + ユーザー価値side に合わせる」形で解消する。interactive の挙動は P2a 以来
+  「spec を実挙動 + ユーザー価値側に合わせる」形で解消する。interactive の挙動は P2a 以来
   出荷され続けており、殺す方が実質的な挙動変更。
 - ADR-20260611-02（legend の per-drill-depth exact-match）が示した「レベルごとに、そのレベルの
   ものだけを描く」原則と一致する。
@@ -125,8 +127,10 @@ interactive で既に動いているセマンティクス — **軸 index（mode
 
 - 未仕様のまま動いていた挙動を追認する形になる（ghost・groupTier・P2c の drill での振る舞いを
   柵で固める作業が必須。追認 ≠ 無検証）。
-- export（all-layers / all-views）で各レベル band に枠が増え、出力が変わる（experimental 軸を
-  使っている場合のみ。ungrouped 出力は byte 不変）。
+- export（all-layers / all-views / drill-down bundle）で各レベル band に枠が増え、出力が変わる。
+  影響は**両軸に及ぶ** — boundary 軸（experimental）だけでなく、**team 軸（stable 構文の
+  `organization` / `owns`）でも nested domain を owns しているモデルの grouped export が変わる**
+  （`owns` にレベル制限は無い — インベントリ最終行。ungrouped 出力は byte 不変）。
 
 ### 案 2: gate 追加 — interactive も root のみに制限し、spec の現行記述に実装を合わせる
 
@@ -219,10 +223,11 @@ ADR-20260714-04 の「入れ子は drill-down の領域」、ADR-20260611-02 の
    フレームを組む。他レベルの member はそのビューのフレームに参加しない。
 2. **同一 boundary の複数フレーム**: member が複数レベルに散る boundary は、レベルごとに
    同名ラベルの disjoint なフレームを持つ（例: root では `Orders` を含む `Cluster` 枠、
-   `Orders` の service view では `OrderDomain` を含む `Cluster` 枠）。これは #1884 の
-   per-(system, team) フレームと同型の「正直な表現」（1 枚の枠でレベルを跨いで囲まない —
-   囲むと [TPL-20260624-02] の disjoint 不変条件と replace-context ナビゲーション
-   （ADR-20260401-05）の前提を壊す）。
+   `Orders` の service view では `OrderDomain` を含む `Cluster` 枠）。これは
+   [ADR-20260716-03]（multi-system root の per-(system, team) フレーム — #1884 の昇格先）が
+   採用した「同一ラベル・disjoint な複数フレーム = 正直な表現」と同型（1 枚の枠でレベルを
+   跨いで囲まない — 囲むと [TPL-20260624-02] の disjoint 不変条件と replace-context
+   ナビゲーション（ADR-20260401-05）の前提を壊す）。
 3. **member 不在のビューでは枠を出さない**: そのビューに member が 1 つも居なければ
    フレームなし（`assignGroupedLayers` が group 不在で null を返す既存挙動
    `group-layout.ts:261-262` を継承）。
@@ -231,8 +236,8 @@ ADR-20260714-04 の「入れ子は drill-down の領域」、ADR-20260611-02 の
    （probe 4 で実測済みの現挙動を明文化し、テストで柵をかける）。ghost は「視野の外にある
    ものの文脈」であり、ビュー内の整理対象ではない（[TPL-20260510-21]）。
 5. **collapse・P2c routing は同じ機構がそのまま効く**: collapse は per-view の view-state、
-   P2c 3 パスは `groupBands != null` で発火（従来どおり）。diff-mode は system root のみ
-   （現状維持）。
+   P2c の routing / trunks は `groupBands != null` で発火（従来どおり）、crossing marks は
+   #1956 以降もともと全ビュー無条件。diff-mode は system root のみ（現状維持）。
 
 ### フェーズ分割（実装 PR の出荷単位）
 
@@ -242,7 +247,7 @@ ADR-20260714-04 の「入れ子は drill-down の領域」、ADR-20260611-02 の
 
 | フェーズ | 内容 | 出荷単位 / changeset |
 | --- | --- | --- |
-| **Phase 1（正規化 — 本体）** | 1a: export surface の gate 緩和（`drill-down-svg.ts:133` / `all-layers-svg.ts:254` — collapse off は #1879 どおり維持）+ `renderEntityView` への軸配線 + ghost 除外と退化ケースのテスト柵（core）。1b: spec 書き換え（`syntax.md` / `syntax.ja.md` — 下記差分案）+ examples 拡張 + AT + roadmap watch 表の promotion trigger 追記 | 1a: `@karasu-tools/core` + `karasu` minor。1b: docs のみ（1a と同 PR でも可） |
+| **Phase 1（正規化 — 本体）** | 1a: export surface の gate 緩和（**3 箇所** — `drill-down-svg.ts:133` / `all-layers-svg.ts:254` / `drill-down-svg.ts:511`。collapse off は #1879 どおり維持）+ `renderEntityView` への軸配線 + ghost 除外と退化ケースのテスト柵（core）。1b: spec 書き換え（`syntax.md` / `syntax.ja.md`、team 軸記述の整合含む — 下記差分案）+ examples 拡張 + AT + roadmap watch 表の promotion trigger 追記 | 1a: `@karasu-tools/core` + `karasu` minor。1b: docs のみ（1a と同 PR でも可） |
 | **Phase 2（診断）** | `contains-target-not-groupable` 警告（下記具体設計）: どの groupable ビューにも描画され得ない kind の member への warning。i18n en/ja + catalog + tests | `@karasu-tools/core` + `karasu` minor |
 
 Phase 1 と 2 は独立して出荷可能（診断は kind ベースの静的判定であり、正規化の前後で意味が
@@ -285,21 +290,37 @@ Phase 1 と 2 は独立して出荷可能（診断は kind ベースの静的判
 
 Phase 1（core / 変更対象は実在パス）:
 
-1. `packages/core/src/renderer/drill-down-svg.ts:133` と
-   `packages/core/src/renderer/all-layers-svg.ts:254` の
-   `legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined` を、slice 種別に
+1. `legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined` の gate **3 箇所すべて**
+   （`packages/core/src/renderer/drill-down-svg.ts:133` = `buildDrillDownSvg`、
+   `packages/core/src/renderer/all-layers-svg.ts:254` = `buildAllLayersSvg`、
+   `packages/core/src/renderer/drill-down-svg.ts:511` = `buildAllViewsSvg`）を、slice 種別に
    依らず `groupBy` を渡す形に緩和する（`collapsedGroups` を渡さない「collapse off by design」
-   は維持）。両ファイルの entity path も同様。
+   は維持）。両ファイルの entity path も同様。**gate 判定を 3 箇所に複製したまま個別緩和しない**:
+   撤去後は 3 builder が同一の無条件パスになることをもって単一地点化とし、将来適用範囲の制限を
+   再導入する場合は共有ヘルパ経由に限る（[TPL-20260716-02] の「既知の対処パターン」——本 doc 旧稿は
+   2 箇所しか挙げておらず、同 TPL のチェックリスト「全経路を列挙したか」違反の実例になっていた）。
 2. `packages/core/src/index.ts:1030-1038` `renderEntityView`（および
-   `drill-down-svg.ts:186` `_renderEntityView`）の signature に `groupBy` / `boundaryIndex`
-   （+ `ownerIndex`）を追加し、`layout()` まで配線する。app の entity view 呼び出し
-   （呼び出し元は実装時に特定）にも通す（[TPL-20260510-11] — 全 call site へ、漏れは黙って落ちる）。
+   `drill-down-svg.ts:186` `_renderEntityView`）の signature に **`groupBy` のみ**を追加して
+   `layout()` まで配線する — `ownerIndex` は `_renderEntityView` 内で導出済み
+   （`drill-down-svg.ts:206` `const ownerIndex = krsFile.ownerIndex ?? new Map()`）、
+   `boundaryIndex` は `krsFile.boundaryIndex` から取る（`buildDrillDownSvg` の
+   `drill-down-svg.ts:134` と同型）。app 側の呼び出し元は
+   `packages/app/src/hooks/useViewSvg.ts:120-136` の `renderEntityView` 呼び出しで、`groupBy` は
+   同 hook に既存（`:100-108` で `buildAllViewsSvg` へ渡し済み）なので引数を 1 つ足すだけ
+   （[TPL-20260510-11] — 全 call site へ、漏れは黙って落ちる）。なお interactive の entity view は
+   `interactive` / `collapsedGroups` を渡していないため、配線後も **フレーム描画のみで
+   collapse ⊖ コントロールは出ない**（対話的 collapse は `interactive` オプションで gate される —
+   ADR-20260630-02 の帰結。entity view に collapse UI を足すかは本件 out of scope）。
 3. ghost 除外の柵: `layout()` の bucket 対象が `viewSlice.childNodes` 由来に限られ、ghost 系
    フィールドが `groupIdOf` に到達しないことを assert する renderer テストを追加
    （現挙動の追認 + 将来の retrofit からの保護）。
 4. 退化ケーステスト: drill view で member 0（枠なし）/ 全 childNodes が同一 boundary /
    member 1 個 / collapse round-trip（[TPL-20260624-02] の全域性・端点保持を drill slice で
-   assert）/ `groupBy` 未指定の drill 出力が従来と byte 一致（回帰なし）。
+   assert）/ `groupBy` 未指定の drill 出力が従来と byte 一致（回帰なし）/ **#1879 直撃シナリオ:
+   軸を渡した export の drill ページ・band で当該レベルに member が 1 つも居ないとき、出力が
+   gate 時（旧挙動）と byte 一致**する（interactive 経路は member 不在レベルでこの性質を既に
+   満たすことを probe で確認済み — export 側にも同じ assert を張るのが #1879「full structure を
+   崩さない」の直接の柵）。
 5. P2c が drill で発火した出力の crossings / penetrations 計測テスト（[TPL-20260711-02]）。
 
 Phase 1（docs / examples）:
@@ -321,9 +342,12 @@ Phase 1（docs / examples）:
    >   such as `table`) is reported as `contains-target-not-groupable`（Phase 2 マージ後に
    >   この一文を追加。Phase 1 時点では当該 kind の記述を「has no visible effect」として残す）.
 
-   また team 軸側の記述（同節冒頭の「exactly as the team axis does」と P2a 節）にレベル交差
-   セマンティクスが波及することを確認し、必要なら同 PR で揃える（`owns` はレベル制限が無いため
-   team 軸でも nested domain で同じことが起きる — インベントリ最終行）。
+   **team 軸側の記述の整合も Phase 1b の確定タスクとする**（「必要なら」ではなく必ず同 PR で
+   揃える）: 同節冒頭の「exactly as the team axis does」と team 軸（P2a）節に、レベル交差
+   セマンティクスが**両軸共通**である旨を反映する。`owns` はレベル制限が無いため team 軸でも
+   nested domain で同じことが起きる（インベントリ最終行）— boundary 節だけ直すと、stable 構文の
+   team 軸に spec 未記載の挙動が残り、本 doc が解消しようとしている「spec と実装の乖離」を
+   team 軸側に温存してしまう。
 7. `examples/en/feature-samples/boundary-clusters.krs` に drill-down member（nested domain /
    usecase）を含む boundary を追加拡張（**`/update-examples` スキル経由**で `examples.ts` 同期、
    `.claude/rules/examples-sync.md`）。
@@ -342,7 +366,13 @@ Phase 2: 上記「診断の具体設計」のとおり（`parser.ts` / `packages
 11. ADR 昇格: Phase 1+2 実装完了後、本 doc を `docs/adr/YYYYMMDD-NN-boundary-drilldown-grouping.md`
     へ昇格し、本 doc は同 PR で削除する（親 doc `system-view-grouping.md` の P2b 節・bundled P2c
     ADR の扱いと整合させる）。ADR には ADR-20260711-03 決定 7 との関係（supersede ではなく
-    「team 軸根拠の root-only を、軸非依存のレベル交差へ一般化」）を明記する。
+    frontmatter **`related_to: [ADR-20260711-03]`** — 「team 軸根拠の root-only を、軸非依存の
+    レベル交差へ一般化」）を明記する。**staleness window への手当て**: Phase 1 マージから昇格までの
+    間、`docs/adr/effective.md` の決定 7「root system-view level に限って」が出荷挙動と食い違う。
+    (i) Phase 1 PR でセマンティクス部分だけ**部分昇格**する（`.claude/rules/adr.md` が Design Doc
+    更新型の部分昇格を許容 — 先例 ADR-20260509-02）か、(ii) 少なくとも同 PR で ADR-20260711-03 の
+    決定 7 近傍に「#1983 で一般化（本 doc 参照）」の注記を入れて effective.md の再生成に載せる。
+    どちらにするかは Phase 1 実装 PR で決める（推奨は (i) — 不整合期間ゼロ）。
 
 ### テスト計画
 
@@ -350,8 +380,11 @@ Phase 2: 上記「診断の具体設計」のとおり（`parser.ts` / `packages
   `group-by-drilldown-render.test.ts` を新設、既存 `group-by-boundary-render.test.ts` の
   流儀に倣う）。parser テスト（Phase 2 の発火 / 非発火 / multi-file、
   `packages/core/src/parser/parser.test.ts`）。診断カタログ meta-test は追加コードで自動的に
-  効く。export surface（`buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`）の
-  grouped スナップショット。
+  効く。export surface（`buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`）は
+  grouped スナップショットに加えて **「drill レベルの band / ページに `__group_<gid>__` フレームが
+  出る」明示 assert を 3 builder それぞれに書く**（スナップショットのみだと gate されたままの
+  出力をそのまま期待値化して緩和漏れを検出できない — 特に `buildAllViewsSvg` は本 doc 旧稿の
+  緩和リストから漏れていた箇所）。
 - **app（vitest + RTL)**: drill 中に Group-by セレクタが機能し続けること（既存
   `PreviewColumn.test.tsx` / `useSystemView` テストに drill 状態のケースを追加。
   **`afterEach(cleanup)` を明示する**（repo 慣習 — globals 無効のため RTL の自動 cleanup が
@@ -364,7 +397,9 @@ Phase 2: 上記「診断の具体設計」のとおり（`parser.ts` / `packages
 - 既存ユーザーへの影響: `groupBy` 未使用・`boundary` / `organization` 未宣言のモデルは
   **全 surface で byte 不変**（gate 緩和は grouped render にしか効かない）。grouped の
   interactive 挙動は変わらない（既に効いている）。grouped の**静的 export のみ**各レベル band に
-  枠が現れる（experimental 軸の利用者のみ）。
+  枠が現れる。この export 変化は**両軸に及ぶ**: boundary 軸は experimental だが、**team 軸は
+  stable 構文であり、nested domain を owns しているモデルの grouped export が変わる**（通常の
+  minor 挙動変更として扱う — 下記「experimental gating / changeset」節）。
 - ドキュメント更新: `docs/spec/syntax.md` / `syntax.ja.md`、`docs/spec/diagnostics.md` /
   `diagnostics.ja.md`（Phase 2）、`docs/roadmap.md`、`examples/`。
 - テスト・examples への影響: 上記テスト計画 / examples 同期のとおり。
@@ -373,11 +408,11 @@ Phase 2: 上記「診断の具体設計」のとおり（`parser.ts` / `packages
 
 | 機構 | 相互作用と方針 |
 | --- | --- |
-| **P2c routing / trunks / marks**（ADR-20260715-03） | `groupBands != null` gate（`layout.ts:1461`）で drill でも自動発火する（実測済み）。「grouped（展開）ビュー専用の 3 パス」という ADR の原則は「grouped な drill ビュー」を自然に含むと解釈し、変更しない。柵は [TPL-20260711-02]（crossings + penetrations の両計測）を drill ケースへ拡張 |
+| **P2c routing / trunks / marks**（ADR-20260715-03） | routing / trunks は `groupBands != null` gate（`layout.ts:1461`）で drill でも自動発火する（実測済み）。crossing marks は #1956 以降**無条件**（`layout.ts:1504-1509`、hop は常時 / junction は grouped のみ）で、既に全ビューを対象にしている。「grouped ビュー専用」の残る 2 パスも「grouped な drill ビュー」を自然に含むと解釈し、変更しない。柵は [TPL-20260711-02]（crossings + penetrations の両計測）を drill ケースへ拡張 |
 | **collapse / stub** | stub id は single-context で `__group_collapsed_<gid>__`（`group-collapse.ts:25-29`）。drill slice は常に単一コンテキストなので multi-system の `<sys>` namespace 問題は再発しない。app の `collapsedGroups` state は view-state として drill 前後で共有される（boundary id はレベル非依存なので自然に意味を保つ）— 挙動として妥当だが AT で目視確認する |
 | **diff-mode**（ADR-20260716-01） | diff は `compileSystemDiff`（system root）のみで drill diff は存在しない。`mergedBoundaryIndex` backfill（`index.ts:1348-1353`）は axis map レベルの操作なので本件と直交。**diff × drill grouping は out of scope のまま** |
 | **in-place expansion**（#1921 / #1923、ADR-20260714-04） | `expandedContainers` は「ungrouped system view のみ」で Group-by と排他（`useSystemView` が axis 有効時に suppress）。この排他は本件でも変えない。将来 #1923 Phase 2 で mixed-LOD × grouping を合成する際、本件のレベル交差セマンティクスが前提になる（expand された子の bucket は `expandMembership` — `layout.ts:1051-1052` — が既に担う） |
-| **multi-system root**（#1884） | drill slice は単一 system 文脈のため per-(system, team) フレームの機構と干渉しない |
+| **multi-system root**（ADR-20260716-03 / #1884） | drill slice は単一 system 文脈のため per-(system, team) フレームの機構と干渉しない |
 | **legend**（ADR-20260611-02） | 独立機能だが、per-level exact-match の前例として本件のセマンティクスの先行事例。`legendScopeForLogicalSlice` を gate に転用していた結合が Phase 1 で解ける（legend 用途は不変） |
 
 ## experimental gating / changeset の扱い
@@ -387,6 +422,11 @@ Phase 2: 上記「診断の具体設計」のとおり（`parser.ts` / `packages
   挙動確定 + surface 間不整合の解消」であり、昇格判断ではない — が、**experimental notation の
   挙動に触れる changeset** に該当するため、`docs/process.md` §リリース運用に従い PR description で
   gate 判断（据え置き + 挙動確定の根拠）を明示する。
+- **team 軸への影響は promotion gate の枠外**: gate は notation（構文）の規律であり、team 軸
+  （`organization` / `owns` は stable 構文）の grouped export が変わる分は gate 対象ではなく、
+  **通常の minor 挙動変更**として changeset の CHANGELOG 文面に明記する（「grouped exports now
+  draw group frames on drill-down levels for both axes」の趣旨。boundary = experimental /
+  team = stable の区別を文面で分ける）。
 - changeset は Phase 1a / Phase 2 とも `@karasu-tools/core` と `karasu` の**両方**を minor で
   名指す（`.claude/rules/changesets.md` の cascade 非対称性）。
 
@@ -401,7 +441,8 @@ Phase 2: 上記「診断の具体設計」のとおり（`parser.ts` / `packages
 2. **手動**: drill ビューで枠の ⊖ → member だけが `<Boundary> (N)` stub に畳まれ、ghost と
    non-member が残る。⊕ で戻る。breadcrumb で root へ戻っても Group-by 状態が破綻しない。
 3. **手動**: entity view（Phase 1 の新規配線面）で entity member に枠が出て、FK エッジ表示と
-   両立して読める。
+   両立して読める（collapse ⊖ コントロールは出ないのが正 — `interactive` を渡さない設計。
+   実装の指針 step 2 参照）。
 4. **手動**: Show All Layers / Open All Views の export で、各レベル band に枠が出た出力が
    1 枚の SVG として読める（band 間で枠が視覚的に混線しない）。
 
@@ -418,5 +459,3 @@ Phase 2: 上記「診断の具体設計」のとおり（`parser.ts` / `packages
   要る（診断とビュー集合の同期を Phase 2 のテストで機械化できるか）。
 - **collapse 状態・Group-by 状態の URL / Share payload への符号化**は #1838 系の既存
   follow-up 枠のまま（drill との組み合わせで面が増えるが、本件では扱わない）。
-- **team 軸の spec 記述**（`owns` で nested domain を掴んだ場合のレベル交差）を boundary と
-  同じ PR で明文化するか、別 Issue に切るか（実装時判断）。
