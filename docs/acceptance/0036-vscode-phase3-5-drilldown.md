@@ -1,5 +1,46 @@
 # Acceptance Test: VSCode Extension Phase 3.5 — Drill-down Navigation (#218)
 
+## Coverage policy
+
+**State logic (TC-01/02/03/04/05/06 path & label math)** — the drill-down
+path/label transitions were extracted from `preview-panel.ts` into
+[`packages/vscode/src/drilldown-state.ts`](../../packages/vscode/src/drilldown-state.ts)
+and are unit-fenced (required-tier `vitest`) in
+[`packages/vscode/src/drilldown-state.test.ts`](../../packages/vscode/src/drilldown-state.test.ts)
+(#2002):
+
+- TC-01: `buildBreadcrumbHtml` › `renders only a non-clickable Root at the top level`
+- TC-02/03: `drillDown` › `appends nodeId and resolves the last label` /
+  `uses meta.viewPath prefix when present`
+- TC-04: `navigateTo` › `index 0 (Root crumb) resets to the empty path`
+- TC-05: `drillDown` › `does not mutate the previous state` (an edit-triggered
+  re-render reads the state without rebuilding it, so purity is the state half
+  of "preserved on edit")
+- TC-06: `emptyDrilldownState` › `switchView / switchViewAndHighlight reset to it`
+
+**WebView interaction** — automated in the WebView E2E harness
+(ADR-20260429-09; the ExTester job is **not** a required check):
+
+- TC-01/02:
+  [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
+  › `TC-03: Cmd/Ctrl+Click on a parent node moves the editor cursor without drilling`
+  asserts the root view starts with a `Root`-only breadcrumb, and
+  › `TC-02: keeps the hint visible after plain-clicking a parent node to drill in`
+  asserts a plain click on a parent advances the breadcrumb past `Root`.
+- TC-07: same file › `TC-03` / `TC-04` (Cmd/Ctrl+Click on a parent / leaf moves
+  the editor cursor without changing the preview).
+- TC-08:
+  [`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
+  › `TC-01: clicking a leaf node (Customer) opens the detail panel`. Note that
+  TC-08's expected "navigate behavior" below pre-dates Phase 6 (#250): a plain
+  click on a leaf now opens the detail panel instead of jumping the editor
+  (see [AT-0038 TC-05](./0038-vscode-phase4-5-cmd-click-hint.md)); either way
+  the preview does not drill.
+
+The **visual walkthrough** halves of TC-04/05/06 (watching the breadcrumb and
+the narrowed preview re-render across real edits and view switches) stay
+manual in the Extension Development Host.
+
 ## Summary
 
 Verify that the `packages/vscode` Webview supports drill-down navigation:

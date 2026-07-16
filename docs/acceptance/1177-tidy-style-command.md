@@ -48,14 +48,14 @@ type: product
 - [ ] AT-K（manual）: `.krs` を開いている時、`✨ Tidy` ボタンは現れない（誤誘導しない）
   > 🧑 Manual — `currentFilePath` が `.krs.style` で終わる時のみ AppShell が `onTidyStyle` を渡す挙動の目視確認
 
-- [ ] AT-L（manual）: VS Code 拡張で `.krs.style` を開き、`Karasu: Tidy Style` パレットコマンドを実行すると tidy され、保存されていないバッファに反映される
-  > 🧑 Manual — `vscode.languages.registerDocumentFormattingEditProvider` 経由
+- [x] AT-L: VS Code 拡張で `.krs.style` を開き、`Karasu: Tidy Style` パレットコマンドを実行すると tidy され、保存されていないバッファに反映される
+  > 🟡 Partially automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-1177 — Tidy Style formatting › formats a .krs.style buffer to tidied output`（extension host 上で formatter provider 経由の tidy と未保存バッファへの反映を自動化。パレットコマンド自体は `editor.action.formatDocument` への薄い委譲 — 「補足」参照）
 
 - [ ] AT-M（manual）: VS Code で `editor.formatOnSave` を有効化したワークスペース設定で `.krs.style` を保存すると、保存と同時に tidy される
   > 🧑 Manual — formatter プロバイダの format-on-save パスが効いていることを確認
 
-- [ ] AT-N（manual）: VS Code で `.krs` ファイルを開いた状態で `editor.action.formatDocument` を実行しても、Tidy Style は走らない（`krs-style` のみに registered）
-  > 🧑 Manual — formatter スコープが正しく `krs-style` に限定されていることを確認
+- [x] AT-N: VS Code で `.krs` ファイルを開いた状態で `editor.action.formatDocument` を実行しても、Tidy Style は走らない（`krs-style` のみに registered）
+  > ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-1177 — Tidy Style formatting › formats a .krs buffer with the source formatter, not tidy-style`（tidy-style が走ると出力がスタイルルール状に崩れるため、source formatter の正確な出力一致でルーティングを検証）
 
 ## 補足
 

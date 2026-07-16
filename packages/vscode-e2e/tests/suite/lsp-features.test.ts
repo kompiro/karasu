@@ -211,6 +211,92 @@ describe("AT-0037 — Phase 5 LSP features", () => {
   });
 });
 
+describe("AT-1177 — Tidy Style formatting", () => {
+  // The extension registers no formatter of its own: `documentFormattingProvider`
+  // comes from the LSP server, which routes by languageId (`krs-style` →
+  // tidyStyleSheet, `krs` → the source formatter). These tests drive that
+  // route through the real extension host via the public
+  // `vscode.executeFormatDocumentProvider` command — no `File: Open File...`
+  // dialog and no WebView, so they run in this in-process suite harness.
+
+  const FORMAT_POLL_INTERVAL_MS = 100;
+  const FORMAT_TIMEOUT_MS = 15_000;
+
+  /**
+   * Request document-formatting edits for `uri`, polling until the provider
+   * returns a non-empty edit list. The language client starts asynchronously
+   * on activation, and `executeFormatDocumentProvider` resolves to
+   * `undefined` while no provider is registered yet — both fixtures are
+   * deliberately non-tidy, so a ready provider always yields edits.
+   */
+  async function formatDocumentEdits(uri: vscode.Uri): Promise<vscode.TextEdit[]> {
+    const deadline = Date.now() + FORMAT_TIMEOUT_MS;
+    let last: unknown;
+    while (Date.now() < deadline) {
+      try {
+        const edits = await vscode.commands.executeCommand<vscode.TextEdit[] | undefined>(
+          "vscode.executeFormatDocumentProvider",
+          uri,
+          { tabSize: 2, insertSpaces: true },
+        );
+        last = edits;
+        if (Array.isArray(edits) && edits.length > 0) return edits;
+      } catch {
+        // Server not ready yet — keep polling.
+      }
+      await new Promise((resolve) => setTimeout(resolve, FORMAT_POLL_INTERVAL_MS));
+    }
+    throw new Error(
+      `formatting provider returned no edits for ${uri.toString()} within ${FORMAT_TIMEOUT_MS}ms (last: ${JSON.stringify(last)})`,
+    );
+  }
+
+  async function applyEdits(doc: vscode.TextDocument, edits: vscode.TextEdit[]): Promise<void> {
+    const workspaceEdit = new vscode.WorkspaceEdit();
+    workspaceEdit.set(doc.uri, edits);
+    const applied = await vscode.workspace.applyEdit(workspaceEdit);
+    assert.ok(applied, "workspace.applyEdit should apply the formatting edits");
+  }
+
+  it("formats a .krs.style buffer to tidied output", async () => {
+    const doc = await openFixture("at-1177/messy.krs.style");
+    // Routing precondition: VS Code must classify *.krs.style as `krs-style`
+    // (not `krs`), or the server would run the wrong formatter.
+    assert.strictEqual(doc.languageId, "krs-style");
+
+    const edits = await formatDocumentEdits(doc.uri);
+    await applyEdits(doc, edits);
+
+    // Tidy output: duplicate-free rules, axis-ordered declarations
+    // (color/visual before shape/karasu), canonical multi-line form. The
+    // buffer is updated without saving — the format target is the unsaved
+    // buffer (AT-1177 AT-L).
+    assert.strictEqual(
+      doc.getText(),
+      "service {\n  color: red;\n  shape: user;\n}\n\ndomain {\n  color: blue;\n}\n",
+    );
+    assert.strictEqual(doc.isDirty, true, "tidy should edit the buffer, not write the file");
+  });
+
+  it("formats a .krs buffer with the source formatter, not tidy-style", async () => {
+    const doc = await openFixture("at-1177/unformatted.krs");
+    assert.strictEqual(doc.languageId, "krs");
+
+    const edits = await formatDocumentEdits(doc.uri);
+    await applyEdits(doc, edits);
+
+    // The source formatter normalizes indentation and blank lines while
+    // preserving the .krs structure. Running tidy-style here instead would
+    // mangle the source into style-sheet rules (`system {\n  Shop: { ... `),
+    // so this exact match proves the `krs` languageId routed to the source
+    // formatter (AT-1177 AT-N).
+    assert.strictEqual(
+      doc.getText(),
+      "system Shop {\n  service Api {}\n\n  service Billing {}\n}\n",
+    );
+  });
+});
+
 function hoverText(hovers: readonly vscode.Hover[]): string {
   const parts: string[] = [];
   for (const h of hovers) {

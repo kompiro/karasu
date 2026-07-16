@@ -1,0 +1,2 @@
+service { shape: user; color: red; }
+domain { color: blue; }

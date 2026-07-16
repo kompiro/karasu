@@ -7,7 +7,8 @@
 - **対象ファイル**: `packages/core/src/renderer/palette.ts`,
   `packages/core/src/builtins/default-style.ts`, `packages/core/src/index.ts`,
   `packages/core/src/renderer/*.ts`, `packages/cli/src/render.ts`,
-  `packages/app/src/hooks/useViewSvg.ts`, `packages/vscode/src/preview-panel.ts`
+  `packages/app/src/hooks/useViewSvg.ts`, `packages/vscode/src/preview-panel.ts`,
+  `packages/vscode/src/theme-mapping.ts`（`ColorThemeKind` → theme 対応、#2002 で抽出）
 
 ## 受け入れ条件（自動）
 
@@ -100,6 +101,11 @@
    - [ ] ブラウザ以外（OS の画像プレビュー等）で開いても色が正しく表示される
 
 ### 検証方法（VS Code 拡張）
+
+> 🟡 Partially automated — `packages/vscode/src/theme-mapping.test.ts` › `diagramThemeFromColorTheme` が
+> `ColorThemeKind` 全 4 値（Light / Dark / HighContrast / HighContrastLight）→ diagram theme の
+> 対応表を fence する（#2002）。テーマ変更への追従再レンダリングと図の見た目は、冒頭の注記
+> どおり自動化対象外で以下の目視確認のまま。
 
 6. VS Code を light カラーテーマにして `.krs` ファイルのプレビューを開く。
 
