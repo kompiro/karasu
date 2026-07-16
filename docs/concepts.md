@@ -333,7 +333,7 @@ When the same `domain` id appears under multiple `service` blocks within a singl
   DDD sometimes calls cross-service domain reuse a cohesion smell
 ```
 
-### Detection scope (design direction — implementation tracked in #237)
+### Detection scope
 
 Detection is performed **within a `system` block**. Because `system` represents an organizational ownership boundary, the same domain name appearing across different `system` blocks is treated as **intentional parallel modeling** and is not flagged.
 
@@ -353,7 +353,7 @@ system ECPlatform {
 }
 ```
 
-### Detection key (design direction — implementation tracked in #237)
+### Detection key
 
 Domain identity is determined by **`id`**. The `label` (display name) can be translated or abbreviated over time, so it is not used as the detection key.
 

@@ -106,8 +106,8 @@ disposition 列は [§criteria](#syntax-v10-の定義criteria) の 3 tier を各
 | (#1569) | `unresolved-edge-endpoint` warning が spec §S6 に約束されつつ未実装 | bug fix 済み | **確定** |
 | (#1566+) | team block への annotation / owner priority | [ADR-20260615-05](adr/20260615-05-team-annotations-owner-priority.md) で `migrationPriority()` による primary owner 選定 | **確定** |
 | **H** | CRUD verb-decoration 1:N（`replace:create,delete`） | spec + parser 実装済み | **v1.0 で残す**（freeze 対象。判断根拠は付録参照） |
-| **G** | `client` sub-language の複雑さが実装詳細線に接近 | spec 上は文書化済み・gap なし | **freeze 前に concepts へ境界注記** |
-| **I** | infra block keyword（`database`/`queue`/…）vs shape tag（`[table]`/`[queue]`/…）の vocabulary overlap | 衝突強制なし。semantic overlap | **freeze 前に audience guidance** |
+| **G** | `client` sub-language の複雑さが実装詳細線に接近 | spec 上は文書化済み・gap なし | **確定**（concepts へ境界注記済み #1643） |
+| **I** | infra block keyword（`database`/`queue`/…）vs shape tag（`[table]`/`[queue]`/…）の vocabulary overlap | 衝突強制なし。semantic overlap | **確定**（audience guidance を spec に注記済み #1636） |
 | **C** | `translate` の抽象化が部分的（domain 推論なし） | core 構文に gap なし。translate adapter 側の課題 | **post-v1.0 watch**（experimental — adapter 課題） |
 | **D** | edge semantics が sync/async + tag のみ（protocol/cardinality が first-class でない） | protocol/cardinality は `description`/`link` の散文に逃がす | **post-v1.0 watch**（experimental — 境界が灰色） |
 | **E** | reading-confidence / uncertainty | onboarding guide §5.1（#1561）で open-set annotation（`@unverified`/`@assumed`）+ `.krs.style` により対応済み | **対応済み（docs）** |

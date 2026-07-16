@@ -41,7 +41,7 @@ The recognized `client` form-factor tags are listed below.
 
 #### `client` form-factor tags (recognized)
 
-karasu's tag system is intentionally open — any tag is accepted and styles react via selectors. For `client` specifically, **seven names are recognized** as form-factor classifications. Future versions will respond to them with kind-specific icons (Phase 2) and layout hints. Tags outside this list still parse and behave as ordinary user-defined tags; they simply do not trigger karasu's built-in form-factor treatment.
+karasu's tag system is intentionally open — any tag is accepted and styles react via selectors. For `client` specifically, **seven names are recognized** as form-factor classifications. Icon Mode renders each with a kind-specific icon; layout hints are a future addition. Tags outside this list still parse and behave as ordinary user-defined tags; they simply do not trigger karasu's built-in form-factor treatment.
 
 <!-- gen:reference:client-form-factor-tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Tag | Form factor |
