@@ -17,7 +17,7 @@
  */
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { translate, type Translations, type TranslationParams } from "@karasu-tools/i18n";
+import { translate, bindTranslate, type TranslateFn } from "@karasu-tools/i18n";
 import { resolveLocale, setLocale as setStoredLocale, type Locale } from "./locale.js";
 
 export { translate };
@@ -53,13 +53,12 @@ export function LocaleProvider({ children, initialLocale }: LocaleProviderProps)
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
 
-// Overloads: parameterless keys take exactly one arg, parameterized keys require a params object.
+// `t` reuses the shared `TranslateFn` conditional tuple: parameterless keys
+// take exactly one arg, parameterized keys require a params object.
 interface UseTranslationResult {
   locale: Locale;
   setLocale: SetLocale;
-  t<K extends keyof Translations>(
-    ...args: Translations[K] extends string ? [key: K] : [key: K, params: TranslationParams<K>]
-  ): string;
+  t: TranslateFn;
 }
 
 export function useTranslation(): UseTranslationResult {
@@ -70,13 +69,9 @@ export function useTranslation(): UseTranslationResult {
 
   const { locale, setLocale } = ctx;
 
-  const t = useCallback<UseTranslationResult["t"]>(
-    // The overloaded signature narrows for callers; the underlying
-    // implementation accepts either shape.
-    ((key: keyof Translations, params?: unknown) =>
-      translate(locale, key, params)) as UseTranslationResult["t"],
-    [locale],
-  );
+  // Rebind only when the locale changes so `t`'s identity is stable
+  // across re-renders (same contract as the previous useCallback).
+  const t = useMemo<TranslateFn>(() => bindTranslate(locale), [locale]);
 
   return { locale, setLocale, t };
 }

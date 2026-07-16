@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Warning, WarningKind } from "@karasu-tools/core";
-import { renderWarning, type TranslateFn } from "./render-warning.js";
-import { translate } from "./translate.js";
-import type { Locale } from "./locale.js";
+import { renderWarning } from "./render-warning.js";
+import { bindTranslate } from "./translate.js";
 
 // One sample `Warning` per `WarningKind`. The `Record<WarningKind, Warning>`
 // type forces this map to stay exhaustive: adding a new kind to the union
@@ -184,10 +183,6 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "style-unknown-property": ["color2"],
 };
 
-const localeTranslator = (locale: Locale): TranslateFn =>
-  ((key: Parameters<TranslateFn>[0], params?: unknown) =>
-    translate(locale, key, params)) as TranslateFn;
-
 const PLACEHOLDER = /\{\{[^}]+\}\}/;
 
 describe("renderWarning — i18n coverage for every WarningKind", () => {
@@ -199,7 +194,7 @@ describe("renderWarning — i18n coverage for every WarningKind", () => {
 
     describe(`kind: ${kind}`, () => {
       it("renders a non-empty en message with no unresolved placeholders", () => {
-        const out = renderWarning(sample, localeTranslator("en"));
+        const out = renderWarning(sample, bindTranslate("en"));
         expect(out.message.trim().length).toBeGreaterThan(0);
         expect(out.message).not.toMatch(PLACEHOLDER);
         for (const detail of out.details) {
@@ -209,7 +204,7 @@ describe("renderWarning — i18n coverage for every WarningKind", () => {
       });
 
       it("renders a non-empty ja message with no unresolved placeholders", () => {
-        const out = renderWarning(sample, localeTranslator("ja"));
+        const out = renderWarning(sample, bindTranslate("ja"));
         expect(out.message.trim().length).toBeGreaterThan(0);
         expect(out.message).not.toMatch(PLACEHOLDER);
         for (const detail of out.details) {
@@ -219,20 +214,20 @@ describe("renderWarning — i18n coverage for every WarningKind", () => {
       });
 
       it("ja message differs from en (catches a missing ja translation falling through)", () => {
-        const en = renderWarning(sample, localeTranslator("en")).message;
-        const ja = renderWarning(sample, localeTranslator("ja")).message;
+        const en = renderWarning(sample, bindTranslate("en")).message;
+        const ja = renderWarning(sample, bindTranslate("ja")).message;
         expect(ja).not.toBe(en);
       });
 
       it("the rendered en message surfaces the identifying field(s)", () => {
-        const out = renderWarning(sample, localeTranslator("en"));
+        const out = renderWarning(sample, bindTranslate("en"));
         for (const id of identifiers) {
           expect(out.message).toContain(id);
         }
       });
 
       it("the rendered ja message surfaces the identifying field(s)", () => {
-        const out = renderWarning(sample, localeTranslator("ja"));
+        const out = renderWarning(sample, bindTranslate("ja"));
         for (const id of identifiers) {
           expect(out.message).toContain(id);
         }
@@ -255,12 +250,12 @@ describe("cross-domain-store-access owner-count pluralization", () => {
   };
 
   it("uses the plural owner phrasing when the leaf is co-owned (en)", () => {
-    const out = renderWarning(coOwned, localeTranslator("en"));
+    const out = renderWarning(coOwned, bindTranslate("en"));
     expect(out.message).toContain("2 other domains");
   });
 
   it("uses the plural owner phrasing when the leaf is co-owned (ja)", () => {
-    const out = renderWarning(coOwned, localeTranslator("ja"));
+    const out = renderWarning(coOwned, bindTranslate("ja"));
     expect(out.message).toContain("他の 2 ドメイン");
   });
 
@@ -276,7 +271,7 @@ describe("cross-domain-store-access owner-count pluralization", () => {
         mode: "read",
       },
     };
-    const out = renderWarning(single, localeTranslator("en"));
+    const out = renderWarning(single, bindTranslate("en"));
     expect(out.message).toContain("another domain");
     expect(out.message).not.toContain("other domains");
   });

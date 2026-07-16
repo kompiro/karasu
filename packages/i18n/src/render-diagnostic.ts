@@ -8,7 +8,7 @@
  */
 
 import type { Diagnostic } from "@karasu-tools/core";
-import type { TranslateFn } from "./render-warning.js";
+import type { TranslateFn } from "./translate.js";
 
 /**
  * Render a `Diagnostic` to a display string using the supplied translator.

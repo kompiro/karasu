@@ -1,4 +1,5 @@
 import type { Translations } from "./types.js";
+import { formatRange } from "./format.js";
 
 /**
  * English translation map.
@@ -310,17 +311,8 @@ export const en: Translations = {
     `${property}: "${value}" is missing a unit (expected ${allowedUnits.join(" / ")}) — ignored`,
   "warning.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
     `${property}: "${value}" uses unit "${unit}" (expected ${allowedUnits.join(" / ")}) — ignored`,
-  "warning.styleOutOfRange.message": ({ property, value, min, max }) => {
-    const range =
-      min !== undefined && max !== undefined
-        ? `[${min}, ${max}]`
-        : min !== undefined
-          ? `>= ${min}`
-          : max !== undefined
-            ? `<= ${max}`
-            : "";
-    return `${property}: ${value} is out of range ${range} — ignored`;
-  },
+  "warning.styleOutOfRange.message": ({ property, value, min, max }) =>
+    `${property}: ${value} is out of range ${formatRange(min, max)} — ignored`,
   "warning.styleUnknownProperty.message": ({ property }) =>
     `unknown style property "${property}" — ignored`,
 
@@ -418,17 +410,8 @@ export const en: Translations = {
     `Missing unit for "${property}": "${value}". Expected one of: ${allowedUnits.join(", ")}`,
   "diagnostic.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
     `Invalid unit "${unit}" for "${property}": "${value}". Allowed: ${allowedUnits.join(", ")}`,
-  "diagnostic.styleOutOfRange.message": ({ property, value, min, max }) => {
-    const range =
-      min !== undefined && max !== undefined
-        ? `[${min}, ${max}]`
-        : min !== undefined
-          ? `>= ${min}`
-          : max !== undefined
-            ? `<= ${max}`
-            : "";
-    return `Value ${value} for "${property}" is out of range ${range}`;
-  },
+  "diagnostic.styleOutOfRange.message": ({ property, value, min, max }) =>
+    `Value ${value} for "${property}" is out of range ${formatRange(min, max)}`,
   "diagnostic.styleUnknownProperty.message": ({ property }) =>
     `Unknown style property "${property}"`,
   "diagnostic.circularImport.message": ({ filePath }) => `Circular import detected: ${filePath}`,

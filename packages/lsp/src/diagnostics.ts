@@ -6,13 +6,7 @@ import {
   analyze,
   validateStyleValues,
 } from "@karasu-tools/core";
-import {
-  renderDiagnostic,
-  renderWarning,
-  translate,
-  type Locale,
-  type TranslateFn,
-} from "@karasu-tools/i18n";
+import { renderDiagnostic, renderWarning, bindTranslate, type Locale } from "@karasu-tools/i18n";
 
 /** Core positions are 1-based; LSP positions are 0-based. */
 function toLspPosition(line: number, column: number) {
@@ -43,8 +37,7 @@ export function computeDiagnostics(
 ): Diagnostic[] {
   // Bind the locale-aware translator once per pass. `renderDiagnostic` /
   // `renderWarning` are pure formatters shared with the app and CLI.
-  const t = ((key: Parameters<TranslateFn>[0], params?: unknown) =>
-    translate(locale, key, params)) as TranslateFn;
+  const t = bindTranslate(locale);
 
   const parseResult = isStyleDocument ? StyleParser.parse(text) : Parser.parse(text);
 
