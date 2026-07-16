@@ -248,10 +248,10 @@ export function buildAllLayersSvg(
           theme,
           ...legendOptions,
           viewScope: legendScopeForLogicalSlice(slice),
-          // Group-by frames apply to the root system-view level only (#1879):
-          // deeper drill-down levels have no teams. Collapse stays off by
-          // design so the export reveals the full structure, grouped.
-          groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
+          // Group-by frames resolve per band, against the nodes drawn at that
+          // level (#1983). Collapse stays off by design so the export reveals
+          // the full structure, grouped.
+          groupBy,
           boundaryIndex: krsFile.boundaryIndex,
         }),
     },

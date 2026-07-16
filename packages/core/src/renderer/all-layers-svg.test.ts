@@ -225,9 +225,9 @@ system Shop {
 // A system with two teams (payments owns Billing/Wallet, catalog owns
 // Search/Catalog), each service carrying a drill-down domain so the export
 // stacks a root band plus deeper bands. `owns BillingDomain` deliberately
-// puts an *owned* node on a deeper band so the root-only guard is actually
-// fenced: if grouping leaked past the root, BillingDomain's band would draw
-// a third frame (see the "root band only" test).
+// puts an *owned* node on a deeper band: grouping resolves per band against
+// the nodes drawn there (#1983), so BillingDomain's band draws its own
+// payments frame (see the per-band test below).
 const GROUPED_TWO_LEVEL = `
 system Shop {
   service Billing {
@@ -287,7 +287,6 @@ describe("buildAllLayersSvg with groupBy: team (#1879)", () => {
     );
     expect(svg).toContain('data-container-id="__group_payments__"');
     expect(svg).toContain('data-container-id="__group_catalog__"');
-    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
   });
 
   it("keeps the full structure — no collapse stub — every node drawn once", () => {
@@ -309,7 +308,7 @@ describe("buildAllLayersSvg with groupBy: team (#1879)", () => {
     expect(svg).not.toContain("__group_collapsed_");
   });
 
-  it("applies grouping to the root band only — deeper drill-down bands are ungrouped", () => {
+  it("applies grouping per band — a deeper band draws frames for its own members (#1983)", () => {
     const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
     const { svg } = buildAllLayersSvg(
       krsFile,
@@ -320,13 +319,13 @@ describe("buildAllLayersSvg with groupBy: team (#1879)", () => {
       undefined,
       "team",
     );
-    // Exactly two group frames — one per team — all on the root system band.
-    // `BillingDomain` IS owned by payments, so it sits on a deeper band with a
-    // team-owned node; the root-only guard must still refuse to frame that
-    // band. Removing the guard would draw a third frame here, so this count
-    // fences the guard (not just the fact that deeper bands lack owners).
-    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
-    // The owned domain node is still present on its (ungrouped) drill-down band.
+    // Three group frames: payments + catalog on the root band, and a third
+    // payments frame on Billing's drill band, where the owned `BillingDomain`
+    // is drawn. Grouping resolves per band against the nodes drawn there —
+    // the same boundary yields disjoint frames on several bands.
+    expect(svg.match(/data-group="true"/g)?.length).toBe(3);
+    expect(svg.match(/data-container-id="__group_payments__"/g)?.length).toBe(2);
+    // The owned domain node is present on its (now framed) drill-down band.
     expect(svg).toContain('data-node-id="BillingDomain"');
   });
 });

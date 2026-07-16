@@ -128,12 +128,22 @@ export function useViewSvg(
         emptyStateLabels,
         theme,
         badgeLabels,
+        groupBy,
       );
     } catch {
       return undefined;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewPathKey stands in for the viewPath array identity
-  }, [fileContent, viewPathKey, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
+  }, [
+    fileContent,
+    viewPathKey,
+    displayMode,
+    styleSource,
+    emptyStateLabels,
+    theme,
+    badgeLabels,
+    groupBy,
+  ]);
 
   // All functions parse the same styleSource, so diagnostics are identical.
   // Take from the first available result to avoid duplication.
