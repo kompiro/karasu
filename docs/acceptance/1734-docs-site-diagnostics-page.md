@@ -9,7 +9,7 @@
 
 - [x] `spec/diagnostics.md` が公開ページ集合（`PUBLISHED_EN_FILES`）に登録され、Reference サイドバーグループのルート `spec/diagnostics/`（en）/ `ja/spec/diagnostics/`（ja）に解決される
 
-  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.ts` の `PUBLISHED_EN_FILES` に追加。既存の `routeOf` / `contentPathOf` のロジックで解決され、`diagnostics.ja.md` sibling も自動公開される（`astro.config.mjs` の "Reference" グループが `spec` ディレクトリを autogenerate するため設定変更は不要）。
+  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.test.ts` › `publishes tools/app, tools/cli, spec/glossary, spec/diagnostics, notation-cookbook` / `resolves each published page to its route + content path`（実物の `PUBLISHED_EN_FILES` への登録と、route `spec/diagnostics/`（en）/ `ja/spec/diagnostics/`（ja sibling）への解決を検証。ja sibling の自動公開は `listSources()` が担う。`astro.config.mjs` の "Reference" グループが `spec` ディレクトリを autogenerate するため設定変更は不要）。
 
 - [x] diagnostics ページの内部リンク / アンカーがすべて解決し、リンク切れがない（公開集合に追加したことで新たな未解決リンクが生まれない）
 

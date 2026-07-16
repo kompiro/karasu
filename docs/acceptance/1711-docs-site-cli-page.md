@@ -10,7 +10,7 @@
 
 - [x] `tools/cli.md` が公開ページ集合（`PUBLISHED_EN_FILES`）に登録され、サイトのルート `tools/cli/` に解決される
 
-  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.ts` の `PUBLISHED_EN_FILES` に追加。既存の `routeOf` / `contentPathOf` のロジックで route `tools/cli/`, content `tools/cli.md` に解決される（`astro.config.mjs` の "Tools" サイドバーグループが `tools` ディレクトリを autogenerate するため設定変更は不要）。
+  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.test.ts` › `publishes tools/app, tools/cli, spec/glossary, spec/diagnostics, notation-cookbook` / `resolves each published page to its route + content path`（実物の `PUBLISHED_EN_FILES` への登録と、route `tools/cli/`, content `tools/cli.md` への解決を検証。`astro.config.mjs` の "Tools" サイドバーグループが `tools` ディレクトリを autogenerate するため設定変更は不要）。
 
 - [x] 英語版・日本語版の内部リンクがすべて解決し、リンク切れがない
 
