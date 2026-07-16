@@ -84,5 +84,5 @@ infra leaf の「所有ドメイン」は **論理層（`entity` の親 domain�
   infra leaf — cross-domain store access」節（本 TPL への back-ref あり。ja は `syntax.ja.md` の
   「infra leaf のドメイン所有 — cross-domain ストアアクセス」節）。
 - 診断カタログ: [`docs/spec/diagnostics.md`](../spec/diagnostics.md) `cross-domain-store-access`。
-- 設計経緯: [`docs/design/domain-store-ownership-diagnostic.md`](../design/domain-store-ownership-diagnostic.md)
+- 設計経緯: [ADR-20260715-04](../adr/20260715-04-domain-store-ownership-diagnostic.md)
   （ADR 昇格予定）、土台は [ADR-20260715-01](../adr/20260715-01-domain-entity-modeling.md)。
