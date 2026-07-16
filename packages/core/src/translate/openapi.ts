@@ -1,5 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import type { Translator, TranslatorContext } from "./translator.js";
+import { toPascalCase } from "./identifier.js";
 
 // ─── OpenAPI types (minimal subset) ──────────────────────────────────────────
 
@@ -34,14 +35,6 @@ type HttpMethod = (typeof HTTP_METHODS)[number];
 
 const PREFIX_SEGMENTS = new Set(["api"]);
 const VERSION_SEGMENT = /^v\d+$/i;
-
-/** Convert a string to PascalCase identifier. */
-function toPascalCase(str: string): string {
-  return str
-    .trim()
-    .replace(/[^a-zA-Z0-9]+(.)/g, (_, ch) => ch.toUpperCase())
-    .replace(/^(.)/, (ch) => ch.toUpperCase());
-}
 
 /**
  * Derive a usecase identifier when operationId is absent.
