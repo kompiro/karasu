@@ -56,6 +56,25 @@ ref-pin は [#1828](https://github.com/kompiro/karasu/issues/1828) で別途追�
 > （長い URL を許容する）か、**自前のシュリンカ**を使うこと — 規約は図を第三者に
 > 預けることを強制しない。
 
+## repo-backed permalink — commit SHA で pin する
+
+第 3 の形 [#1828](https://github.com/kompiro/karasu/issues/1828) が **repo-backed**
+である: スナップショットを埋め込む代わりに、GitHub repo の `.krs` を git ref の
+時点で解決する — `https://karasu.kompiro.dev/r/<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`。
+resolver は意図的に permissive で、**`@<ref>` は任意**。省略時（や branch/tag 指定時）は
+*動く* default branch を追ってしまう。
+
+ADR は「決定時点の構造」を指すべきなので、**full 40-hex の commit SHA** で pin する:
+
+```
+https://karasu.kompiro.dev/r/kompiro/karasu@3f1a…<40 hex>…9c/examples/en/payment-platform/system.krs#krs-system-Gateway
+```
+
+ref-less・`@HEAD`・`@branch`・`@tag`・短縮 SHA のリンクは mutable で、ADR の主張から
+ずれていく。これは **推奨であって強制ではない**（「living」なリンクが欲しい場合もある）
+が、決定記録には SHA を優先する。どちらでも `source`（in-repo の記録）は必須のまま。
+adr-tools 採用 repo ではこの推奨が自動で促される（下記 L2 参照）。
+
 ## 1 要素を指す（deep permalink）
 
 [deep permalink](../spec/permalink.ja.md)（1 要素にドリルした状態で開くリンク）は、
@@ -90,9 +109,11 @@ repo 向けのより厳密な層である。
 - **L2 — adr-tools reference 実装**。[`@kompiro/adr-tools`](https://www.npmjs.com/package/@kompiro/adr-tools)
   を採用した repo は、L1 のより厳密で機械検証可能な形を得る: `permalink:` frontmatter
   フィールド（taka `short` ＋ 必須 `source`）＋生成される本文サマリで、ツールが検証
-  する。リンクの*置き場所*を固定し、linter で強制できる。karasu 自身の `docs/adr/` は
-  L2 を dogfooding 兼 L1 の reference 実装として使う — frontmatter スキーマは
-  `.claude/rules/adr.md` を参照。
+  する。リンクの*置き場所*を固定し、linter で強制できる。adr-tools `>=0.0.9` では、
+  resolver の host を `permalink.repoBackedHosts` に列挙すれば、`check-permalinks` が
+  repo-backed な `short` に対して **`@<sha>` pin を推奨**する（非-fatal な warning で、
+  CI は落とさない）。karasu 自身の `docs/adr/` は L2 を dogfooding 兼 L1 の reference
+  実装として使う — frontmatter スキーマは `.claude/rules/adr.md` を参照。
 
 要するに **L1 が規則（短縮リンク ＋ `source` を記録する）、L2 はそれを満たす強制手段の
 一つ**である。adr-tools を使わないなら、ADR フォーマットが参照を置く場所に L1 を適用
