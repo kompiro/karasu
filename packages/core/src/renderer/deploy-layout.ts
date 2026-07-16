@@ -1,7 +1,12 @@
 import type { DeployNode } from "../types/ast.js";
 import type { LayoutResult, LayoutNode, ContainerRect, LayoutEdge } from "./layout-types.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
-import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
+import {
+  CHAR_WIDTH,
+  NODE_PADDING_X,
+  NODE_PADDING_Y,
+  estimateTextWidth,
+} from "./rendering-constants.js";
 import { sortByBarycenter, gridColumnCount } from "./layer-layout-logics.js";
 const LINE_HEIGHT = 18;
 const NODE_GAP = 16;
@@ -20,18 +25,6 @@ const JOB_BAND_LABEL = "Scheduled jobs";
 
 type Group = { id: string; label: string; units: DeployNode[]; kindBand?: "job" };
 
-function estimateTextWidth(text: string): number {
-  let width = 0;
-  for (const ch of text) {
-    if (ch.charCodeAt(0) > 0x2e80) {
-      width += CHAR_WIDTH * 1.5;
-    } else {
-      width += CHAR_WIDTH;
-    }
-  }
-  return width;
-}
-
 /**
  * The single description line shown under a deploy unit. `runtime` is the
  * primary form for code artifacts; kinds without a runtime fall back to their
@@ -44,7 +37,7 @@ function deployUnitDescription(unit: DeployNode): string | undefined {
 }
 
 function measureDeployUnit(unit: DeployNode): { width: number; height: number } {
-  const labelWidth = estimateTextWidth(unit.label ?? unit.id);
+  const labelWidth = estimateTextWidth(unit.label ?? unit.id, CHAR_WIDTH);
   const width = Math.max(labelWidth, 80) + NODE_PADDING_X * 2;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (deployUnitDescription(unit)) height += LINE_HEIGHT;
@@ -52,7 +45,7 @@ function measureDeployUnit(unit: DeployNode): { width: number; height: number } 
 }
 
 function measureContainerWidth(units: DeployNode[], label: string): number {
-  const labelWidth = estimateTextWidth(label) + CONTAINER_PADDING_X * 2 + 24;
+  const labelWidth = estimateTextWidth(label, CHAR_WIDTH) + CONTAINER_PADDING_X * 2 + 24;
   const maxUnitWidth = Math.max(...units.map((u) => measureDeployUnit(u).width), 80);
   return Math.max(maxUnitWidth + CONTAINER_PADDING_X * 2, labelWidth);
 }

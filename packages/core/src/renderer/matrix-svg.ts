@@ -5,7 +5,7 @@ import {
   cellKey,
   formatCell,
 } from "../view/crud-matrix-extract.js";
-import { escapeXml } from "../renderer/svg-builder.js";
+import { escapeXml } from "./svg-builder.js";
 
 export interface MatrixSvgOptions {
   showTotals?: boolean;
@@ -37,6 +37,12 @@ const TOTAL_FILL = "#EFF6FF";
  * other wide-glyph characters as full-width (≈ fontSize px) and ASCII as
  * half-width (≈ fontSize * 0.6). Good enough to size table columns so labels
  * fit horizontally without measuring in a real DOM.
+ *
+ * NOTE: this intentionally differs from the shared node-card heuristic in
+ * `rendering-constants.ts` (`estimateTextWidth`: CJK = 1.5× a fixed char
+ * width, threshold `> U+2E80` only). Table columns need tighter fitting and
+ * wider CJK coverage (`isWideChar` below), so the two are kept separate —
+ * see Issue #2014, point 3.
  */
 function estimateTextWidth(s: string, fontSize: number): number {
   let width = 0;

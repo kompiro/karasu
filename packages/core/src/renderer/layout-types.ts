@@ -16,8 +16,17 @@ export type LayoutNodeProperties = CommonProperties & {
   capabilities?: ClientCapability[];
 };
 
+/**
+ * Org-chart node kinds that appear in layouts produced for the org view
+ * (currently only the draw.io org exporter emits them as `LayoutNode`s;
+ * the main SVG org renderer has its own tree renderer). Kept as a named
+ * union so `kind` switches can handle org nodes explicitly instead of
+ * receiving smuggled strings via casts.
+ */
+export type OrgLayoutNodeKind = "member" | "team";
+
 export interface LayoutNode {
-  kind: LogicalNodeKind | DeployNodeKind;
+  kind: LogicalNodeKind | DeployNodeKind | OrgLayoutNodeKind;
   id: string;
   label: string;
   /** Source-node tags (e.g. `external`, the collapse-stub marker). Used by the

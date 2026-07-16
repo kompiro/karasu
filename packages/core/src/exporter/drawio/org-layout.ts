@@ -89,7 +89,7 @@ function placeTeam(team: TeamNode, x: number, y: number): PlacedTeam {
     const row = members.slice(i, i + membersPerRow);
     row.forEach((m, idx) => {
       nodes.push({
-        kind: "member" as unknown as LayoutNode["kind"],
+        kind: "member",
         id: m.id,
         label: m.label ?? m.id,
         properties: { description: undefined, links: [] },
