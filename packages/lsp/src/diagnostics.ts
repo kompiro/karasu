@@ -29,7 +29,9 @@ function toSeverity(sev: string): DiagnosticSeverity {
 /** Convert an optional core source range to an LSP range, anchoring loc-less
  * diagnostics at the start of the document. */
 function locToRange(
-  loc: { start: { line: number; column: number }; end: { line: number; column: number } } | undefined,
+  loc:
+    | { start: { line: number; column: number }; end: { line: number; column: number } }
+    | undefined,
 ): LspRange {
   return loc ? toLspRange(loc) : { start: DOC_START, end: DOC_START };
 }
