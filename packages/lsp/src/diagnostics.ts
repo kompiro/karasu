@@ -13,17 +13,26 @@ import {
   type Locale,
   type TranslateFn,
 } from "@karasu-tools/i18n";
-
-/** Core positions are 1-based; LSP positions are 0-based. */
-function toLspPosition(line: number, column: number) {
-  // Clamp to 0 to guard against synthetic EOF tokens (line: 0, column: 0).
-  return {
-    line: Math.max(0, line - 1),
-    character: Math.max(0, column - 1),
-  };
-}
+import { toLspRange, type LspRange } from "./lsp-position.js";
 
 const DOC_START = { line: 0, character: 0 };
+
+/** Map a core severity string to the LSP `DiagnosticSeverity` enum. */
+function toSeverity(sev: string): DiagnosticSeverity {
+  return sev === "error"
+    ? DiagnosticSeverity.Error
+    : sev === "info"
+      ? DiagnosticSeverity.Information
+      : DiagnosticSeverity.Warning;
+}
+
+/** Convert an optional core source range to an LSP range, anchoring loc-less
+ * diagnostics at the start of the document. */
+function locToRange(
+  loc: { start: { line: number; column: number }; end: { line: number; column: number } } | undefined,
+): LspRange {
+  return loc ? toLspRange(loc) : { start: DOC_START, end: DOC_START };
+}
 
 /**
  * Parse + (for style docs) value validation + (for `.krs` docs) resolver
@@ -57,16 +66,8 @@ export function computeDiagnostics(
       : parseResult.diagnostics;
 
   const diagnostics: Diagnostic[] = parserDiagnostics.map((d) => ({
-    severity:
-      d.severity === "error"
-        ? DiagnosticSeverity.Error
-        : d.severity === "info"
-          ? DiagnosticSeverity.Information
-          : DiagnosticSeverity.Warning,
-    range: {
-      start: d.loc ? toLspPosition(d.loc.start.line, d.loc.start.column) : DOC_START,
-      end: d.loc ? toLspPosition(d.loc.end.line, d.loc.end.column) : DOC_START,
-    },
+    severity: toSeverity(d.severity),
+    range: locToRange(d.loc),
     message: renderDiagnostic(d, t),
     source: "karasu",
   }));
@@ -102,14 +103,8 @@ export function computeDiagnostics(
       // services are present in this one document, so it never false-positives.
       // Same property as `domain-dispersal`, which is likewise left to fire.
       diagnostics.push({
-        severity:
-          warningSeverity(w.kind) === "info"
-            ? DiagnosticSeverity.Information
-            : DiagnosticSeverity.Warning,
-        range: {
-          start: w.loc ? toLspPosition(w.loc.start.line, w.loc.start.column) : DOC_START,
-          end: w.loc ? toLspPosition(w.loc.end.line, w.loc.end.column) : DOC_START,
-        },
+        severity: toSeverity(warningSeverity(w.kind)),
+        range: locToRange(w.loc),
         message: renderWarning(w, t).message,
         source: "karasu",
       });

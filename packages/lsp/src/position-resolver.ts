@@ -8,11 +8,7 @@ import type {
   OrganizationBlock,
 } from "@karasu-tools/core";
 import type { Range } from "vscode-languageserver/node";
-
-interface LspPosition {
-  line: number;
-  character: number;
-}
+import { toLspPosition, type LspPosition } from "./lsp-position.js";
 
 interface NodeEntry {
   id: string;
@@ -112,13 +108,6 @@ export function findRangeOfNode(krsFile: KrsFile, nodeId: string): Range | null 
   };
 }
 
-function toLspPosition(line: number, column: number) {
-  return {
-    line: Math.max(0, line - 1),
-    character: Math.max(0, column - 1),
-  };
-}
-
 // ─── Phase 5 helpers ─────────────────────────────────────────────────────────
 
 /**
@@ -211,10 +200,7 @@ export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | n
 /**
  * Extract the identifier-like word ([\w] characters) around the given position.
  */
-export function getWordAtPosition(
-  text: string,
-  position: { line: number; character: number },
-): string | null {
+export function getWordAtPosition(text: string, position: LspPosition): string | null {
   const lines = text.split("\n");
   const line = lines[position.line];
   if (!line) return null;
