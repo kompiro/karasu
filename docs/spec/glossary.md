@@ -243,6 +243,9 @@ repository (not on this site).
 
 ## See also
 
+- [Keystone & permalink glossary](../glossary.md) — the **product-direction and
+  permalink** vocabulary (read/record split, funnel/retained, the permalink
+  family), a companion to this modeling-language glossary.
 - [Core Concepts](../concepts.md) — the dimensions and principles behind the
   vocabulary.
 - [Syntax reference](syntax.md) · [Style reference](style.md) ·
