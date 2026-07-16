@@ -7,23 +7,22 @@ import {
 } from "@karasu-tools/core";
 import { marked } from "marked";
 import {
+  type DrilldownNodeMeta,
+  type DrilldownState,
+  buildBreadcrumbHtml,
+  drillDown,
+  emptyDrilldownState,
+  escapeHtml,
+  navigateTo,
+} from "./drilldown-state.js";
+import {
   type ViewType,
   isAllowedExternalUrl,
   isValidNavIndex,
   isViewType,
 } from "./message-validation.js";
+import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
-
-/**
- * Map the active VS Code editor color theme to a karasu `DiagramTheme` so
- * the rendered SVG matches the editor chrome. Light and high-contrast
- * light themes render the light diagram; everything else renders dark.
- */
-function diagramThemeFromColorTheme(kind: vscode.ColorThemeKind): DiagramTheme {
-  return kind === vscode.ColorThemeKind.Light || kind === vscode.ColorThemeKind.HighContrastLight
-    ? "light"
-    : "dark";
-}
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -50,8 +49,7 @@ export class PreviewPanel {
   private _viewType: ViewType = "system";
   private _displayMode: "icon" | "shape" = "shape";
   private _theme: DiagramTheme = diagramThemeFromColorTheme(vscode.window.activeColorTheme.kind);
-  private _viewPath: string[] = [];
-  private _viewLabels: string[] = [];
+  private _drilldown: DrilldownState = emptyDrilldownState();
   private _lastNodeMetadata: Map<string, NodeMetadata> | undefined;
   private _currentDocument: vscode.TextDocument | undefined;
   private readonly _disposables: vscode.Disposable[] = [];
@@ -78,32 +76,26 @@ export class PreviewPanel {
       }) => {
         // The webview is a trust boundary: messages it posts are tainted and
         // must be validated here before acting on them. See message-validation.ts.
+        // Path/label arithmetic lives in drilldown-state.ts (unit-tested).
         if (message.type === "switchView" && isViewType(message.viewType)) {
           this._viewType = message.viewType;
-          this._viewPath = [];
-          this._viewLabels = [];
+          this._drilldown = emptyDrilldownState();
           if (this._currentDocument) {
             void this._render(this._currentDocument);
           }
         } else if (message.type === "drillDown" && message.nodeId) {
-          const meta = this._lastNodeMetadata?.get(message.nodeId);
-          const lastLabel = meta?.label ?? message.nodeId;
-          // Use viewPath from metadata (includes system ID prefix) when available.
-          // Fall back to appending nodeId for nodes not in the index.
-          const newPath = meta?.viewPath ?? [...this._viewPath, message.nodeId];
-          // Build labels: use nodeId as label for intermediate path segments, resolved label for the last.
-          const newLabels = newPath.map((id, i) => (i === newPath.length - 1 ? lastLabel : id));
-          this._viewPath = newPath;
-          this._viewLabels = newLabels;
+          // NodeMetadata satisfies DrilldownNodeMeta structurally; the
+          // annotation records the subset the transition actually reads.
+          const meta: DrilldownNodeMeta | undefined = this._lastNodeMetadata?.get(message.nodeId);
+          this._drilldown = drillDown(this._drilldown, message.nodeId, meta);
           if (this._currentDocument) {
             void this._render(this._currentDocument);
           }
         } else if (
           message.type === "navigateTo" &&
-          isValidNavIndex(message.index, this._viewPath.length)
+          isValidNavIndex(message.index, this._drilldown.viewPath.length)
         ) {
-          this._viewPath = this._viewPath.slice(0, message.index);
-          this._viewLabels = this._viewLabels.slice(0, message.index);
+          this._drilldown = navigateTo(this._drilldown, message.index);
           if (this._currentDocument) {
             void this._render(this._currentDocument);
           }
@@ -113,8 +105,7 @@ export class PreviewPanel {
           message.nodeId
         ) {
           this._viewType = message.viewType;
-          this._viewPath = [];
-          this._viewLabels = [];
+          this._drilldown = emptyDrilldownState();
           const highlightId = message.nodeId;
           if (this._currentDocument) {
             void this._render(this._currentDocument).then(() => {
@@ -184,7 +175,9 @@ export class PreviewPanel {
     let svg: string;
     try {
       const viewPathOpts =
-        this._viewType === "org" || this._viewType === "system" ? { viewPath: this._viewPath } : {};
+        this._viewType === "org" || this._viewType === "system"
+          ? { viewPath: this._drilldown.viewPath }
+          : {};
       const result = await compileProject(document.uri.fsPath, new VsCodeFileSystemProvider(), {
         diagramType: this._viewType,
         displayMode: this._displayMode,
@@ -196,7 +189,7 @@ export class PreviewPanel {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="60">
-        <text x="10" y="30" fill="#f44" font-family="monospace" font-size="13">Error: ${_escape(msg)}</text>
+        <text x="10" y="30" fill="#f44" font-family="monospace" font-size="13">Error: ${escapeHtml(msg)}</text>
       </svg>`;
     }
     this._panel.webview.html = this._buildHtml(svg, this._lastNodeMetadata);
@@ -209,7 +202,7 @@ export class PreviewPanel {
     const btnStyle = (view: ViewType) => (view === this._viewType ? activeStyle : "");
     const iconModeStyle = this._displayMode === "icon" ? activeStyle : "";
 
-    const breadcrumb = this._buildBreadcrumb();
+    const breadcrumb = buildBreadcrumbHtml(this._drilldown.viewLabels);
 
     // Serialize full node metadata for the webview, with pre-rendered description HTML.
     const metadataMap: Record<string, SerializedNodeMeta> = {};
@@ -796,23 +789,6 @@ export class PreviewPanel {
 </html>`;
   }
 
-  private _buildBreadcrumb(): string {
-    // segments[0] = Root (navigateTo 0 → empty path)
-    // segments[i] = _viewLabels[i-1] (navigateTo i → path of length i)
-    // Last segment is current position — not clickable
-    const labels = ["Root", ...this._viewLabels];
-    return labels
-      .map((label, i) => {
-        const isLast = i === labels.length - 1;
-        const sep = i > 0 ? `<span class="sep">›</span>` : "";
-        if (isLast) {
-          return `${sep}<button style="cursor:default;color:var(--vscode-editor-foreground);font-weight:bold;">${_escape(label)}</button>`;
-        }
-        return `${sep}<button data-nav-index="${i}">${_escape(label)}</button>`;
-      })
-      .join("");
-  }
-
   dispose(): void {
     if (this._disposed) return;
     this._disposed = true;
@@ -830,12 +806,4 @@ function _nonce(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
-}
-
-function _escape(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
