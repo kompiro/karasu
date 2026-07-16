@@ -43,7 +43,7 @@ type: product
   > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `accepts CRUD verbs on a resource inside a usecase`（[external] 併用ケースを使用）
 
 - [x] AT-H: `examples/en/feature-samples/resource-operations.krs` と `examples/ja/ec-platform/03-domains.krs` が diagnostics ゼロで parse できる
-  > ✅ Automated — `packages/core/src/builtins/examples.test.ts`（既存の examples スモーク）
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors`（resource-operations.krs を含む全 feature-samples の error ゼロ parse。ec-platform 側は同ファイルの byte 一致 drift guard が bundled 内容を固定）
 
 - [ ] AT-I（manual）: `docs/spec/syntax.md` および `syntax.ja.md` に `operations` の構文・認識セット・省略時セマンティクスが追加されている
   > 🧑 Manual — 本 PR の spec 差分をレビューして、recognized table と omission 説明が ja/en で一致しているかを目視確認

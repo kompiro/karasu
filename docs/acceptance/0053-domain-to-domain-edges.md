@@ -182,8 +182,11 @@ edge[implicit] {
 }
 ```
 
-- [ ] The implicit service edge now renders in **purple** (`#A855F7`) with a **dotted** line
-- [ ] Explicit (non-implicit) edges are unaffected
+- [x] The implicit service edge now renders in **purple** (`#A855F7`) with a **dotted** line
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user edge[implicit] rule overrides builtin amber to purple dotted`
+
+- [x] Explicit (non-implicit) edges are unaffected
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user edge[implicit] rule overrides builtin amber to purple dotted`
 
 ---
 
@@ -208,8 +211,12 @@ system OrderSystem {
 }
 ```
 
-- [ ] In the system view, `LegacyService → BillingService` is rendered as an amber **solid** line (sync implicit edge)
-- [ ] `NewService → NotificationService` is rendered as an amber **dashed** line (async implicit edge)
+- [x] In the system view, `LegacyService → BillingService` is rendered as an amber **solid** line (sync implicit edge)
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `sync + [implicit]: solid (no dash) AND amber (still applies)`
+
+- [x] `NewService → NotificationService` is rendered as an amber **dashed** line (async implicit edge)
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `async + [implicit]: dashed (from edge[async]) AND amber (from edge[implicit])`
+
 - [ ] The two edges are visually distinguishable at a glance
 
 Then add a service pair with both kinds in a single source:

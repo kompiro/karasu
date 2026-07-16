@@ -94,7 +94,7 @@ system DriftSample {
 - [ ] The edge from `OrderDomain` to `ShippingDomain` is rendered with **full opacity** (not ghost)
 - [ ] `ShippingDomain` appears as a normal (non-ghost) node
 
-> manual / visual review — opacity / ghost vs normal rendering needs human judgment in the rendered SVG.
+> manual / visual review — the full-opacity look needs human judgment in the rendered SVG. The slice-side non-ghost contract is fenced by `packages/core/src/view/view-extract.test.ts` › `surfaces intra-service domain edges in service view`（intra-service edge は通常の `childEdges` に載る）and the `ghost domains in service drill-down view` cases（`ghostDomains` に載るのは foreign domain のみ）.
 
 ---
 

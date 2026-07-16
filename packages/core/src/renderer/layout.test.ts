@@ -904,6 +904,49 @@ system S {
     expectOnSide(twilio, web, api, postgres, jobs);
   });
 
+  it("keeps the infra/external tier split in icon displayMode (#1724)", () => {
+    // AT-1724 AC-4: the tier structure must hold in *both* displayModes
+    // (TPL-20260623-04 / TPL-20260510-06). Same fixture as the shape-mode
+    // fan-out test above — icon mode swaps card sizes and gaps, but must not
+    // change which row/band a node lands in.
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  client App [web]
+  service Web {}
+  service Api {}
+  database Postgres {}
+  queue Jobs {}
+  service Stripe [external] {}
+  service Twilio [external] {}
+  Customer -> App
+  App -> Web
+  Web -> Api
+  Web -> Stripe
+  Api -> Twilio
+}
+`);
+    const result = layout(slice, { displayMode: "icon" });
+    const customer = result.nodes.get("Customer")!;
+    const app = result.nodes.get("App")!;
+    const web = result.nodes.get("Web")!;
+    const api = result.nodes.get("Api")!;
+    const postgres = result.nodes.get("Postgres")!;
+    const jobs = result.nodes.get("Jobs")!;
+    const stripe = result.nodes.get("Stripe")!;
+    const twilio = result.nodes.get("Twilio")!;
+    // Forced tier rows hold: user < client < service, services above infra.
+    expect(customer.y).toBeLessThan(app.y);
+    expect(app.y).toBeLessThan(web.y);
+    expect(web.y).toBeLessThan(postgres.y);
+    expect(api.y).toBeLessThan(postgres.y);
+    // Infra (database/queue) still shares one row of its own.
+    expect(postgres.y).toBe(jobs.y);
+    // Externals still leave the in-boundary span for the side columns.
+    expectOnSide(stripe, web, api, postgres, jobs);
+    expectOnSide(twilio, web, api, postgres, jobs);
+  });
+
   it("keeps a single-hub external in the bottom band, not a side column (gate, #1728)", () => {
     // Only one hub (Api) fans out → no cross-hub crossings to fix, so the
     // gate leaves the external in the compact bottom band (below the infra
