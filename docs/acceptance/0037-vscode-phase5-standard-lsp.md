@@ -22,6 +22,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 ### AT-0037-1: Keyword Completion
 
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-1: keyword completion`
+
 **Steps:**
 
 1. Open a `.krs` file
@@ -36,6 +38,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 ---
 
 ### AT-0037-2: Identifier Completion
+
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-2: identifier completion`
 
 **Steps:**
 
@@ -56,6 +60,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 ### AT-0037-3: Go to Definition — Same File
 
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-3: go to definition (same file)`
+
 **Steps:**
 
 1. Open a `.krs` file containing:
@@ -75,6 +81,9 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 ---
 
 ### AT-0037-4: Go to Definition — Cross-File
+
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-4: go to definition (cross-file)` (named-import happy path, end to end).
+> The remaining walk variants — named-import skip, whole-file (wildcard), directory (sorted order), transitive (main→mid→base), import cycle termination, unknown identifier, missing import path — are unit-fenced in `packages/lsp/src/definition-imports.test.ts` › `findDefinitionInImports — cross-file definition walk (AT-0037-4)` (#2001).
 
 **Steps:**
 
@@ -102,6 +111,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 ### AT-0037-5: Hover — Node Description
 
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-5: hover with description`
+
 **Steps:**
 
 1. Open a `.krs` file containing:
@@ -121,6 +132,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 ### AT-0037-6: Hover — Node Without Description
 
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-6: hover on a node without description`
+
 **Steps:**
 
 1. Open a `.krs` file containing a node with no `description` property
@@ -133,6 +146,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 ---
 
 ### AT-0037-7: Outline View (Document Symbols)
+
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-7: outline / document symbols`
 
 **Steps:**
 
@@ -161,6 +176,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 ---
 
 ### AT-0037-8: No Regression — Diagnostics Still Work
+
+> ✅ Automated — `packages/vscode-e2e/tests/suite/lsp-features.test.ts` › `AT-0037-8: diagnostics regression`
 
 **Steps:**
 
@@ -208,6 +225,8 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 > Added with #1413 — the LSP now publishes resolver-level warnings, not just
 > parser diagnostics.
+
+> ✅ Automated — `packages/lsp/src/diagnostics.test.ts` › `surfaces domain-dispersal at Information severity` / `surfaces a resolver warning kind at Warning severity`
 
 **Steps:**
 
