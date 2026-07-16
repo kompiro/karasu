@@ -68,6 +68,5 @@ export function translate<K extends keyof Translations>(
  * across lsp / cli / app / tests.
  */
 export function bindTranslate(locale: Locale): TranslateFn {
-  return <K extends keyof Translations>(...args: TranslateArgs<K>) =>
-    translate<K>(locale, ...args);
+  return <K extends keyof Translations>(...args: TranslateArgs<K>) => translate<K>(locale, ...args);
 }
