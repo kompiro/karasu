@@ -460,3 +460,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260714-02](TPL-20260714-02-inferred-tag-only-soft-fk.md) | `translate --from db` は Soft FK 由来の関連にのみ `[inferred]` を付け、Explicit FK 由来は無タグ（確定）にする。既定スタイルは色のみ（線種は kind に委ねる） | edges | #1909 |
 | [TPL-20260715-01](TPL-20260715-01-new-route-shape-participates-in-overlap-passes.md) | 新しいエッジ route 形（waypoint 構成）を足したら、既存の overlap 回避パス（lane 分離・port fan-out）がその形を素通りしていないか確認する | renderer | #1954 |
 | [TPL-20260715-02](TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) | infra leaf のドメイン所有は entity 層から導出する（物理 table に宣言しない）。leaf 粒度・所有ドメインの集合・system スコープで扱う | resolver | #1819 |
+| [TPL-20260716-01](TPL-20260716-01-view-state-gate-parity-across-surfaces.md) | view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える — 一部 surface だけ gate すると残りが undocumented 挙動として出荷される | renderer | #1983 |
