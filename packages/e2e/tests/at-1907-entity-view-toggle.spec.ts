@@ -105,7 +105,7 @@ test.describe("AT-1907 Entity view app integration", () => {
     await entityToggle(page).click();
     await expect(page.locator(".preview-pane--entity")).toBeVisible();
 
-    const download = await clickAndDownload(page, page.getByRole("button", { name: "Export SVG" }));
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/-entity\.svg$/);
 

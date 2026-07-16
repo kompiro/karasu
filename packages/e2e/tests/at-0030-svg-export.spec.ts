@@ -20,7 +20,7 @@ test.describe("AT-0030 SVG Export", () => {
     await expect(exportButton).toBeVisible();
     await expect(exportButton).toBeEnabled();
 
-    const download = await clickAndDownload(page, exportButton);
+    const download = await clickAndDownload(exportButton);
 
     expect(download.suggestedFilename()).toMatch(/\.svg$/);
 

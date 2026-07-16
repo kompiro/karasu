@@ -34,7 +34,7 @@ test.describe("AT-0058 App draw.io export", () => {
     const drawioItem = page.getByRole("menuitem", { name: "Export draw.io (mxGraph XML)" });
     await expect(drawioItem).toBeVisible();
 
-    const download = await clickAndDownload(page, drawioItem);
+    const download = await clickAndDownload(drawioItem);
 
     expect(download.suggestedFilename()).toMatch(/\.drawio$/);
 

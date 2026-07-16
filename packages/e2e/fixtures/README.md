@@ -102,6 +102,57 @@ This keeps the cost local to the AT that needs it; existing tests
   when the test explicitly verifies Japanese UI. Pass `pinLocale: "ja"`
   to pin Japanese explicitly.
 
+## `editor.ts` — deterministic Monaco editing
+
+`replaceEditorContent(page, content)` replaces the Monaco buffer without
+racing the editor's focus handling. The naive `click .view-lines` +
+`Ctrl+A` / `Delete` / `keyboard.insertText` pattern silently no-ops in
+roughly 1 out of 5 runs (the historical dominant flake source across
+AT-0007 / 0011 / 0044 / 0046 / 0049 / 0053 / 0054 / 0057); this helper
+instead focuses the EditContext textbox, asserts focus, pastes via the
+clipboard (which bypasses Monaco's per-newline auto-indent), verifies the
+first pasted line is rendered, and waits out the compile debounce +
+auto-switch effects (`COMPILE_SETTLE_MS`).
+
+Requires `clipboard-read` / `clipboard-write` permissions — already
+granted suite-wide in `playwright.config.ts`.
+
+## `boot.ts` — memory-mode boot sequence
+
+`bootMemoryApp(page, opfs, krs)` is the canonical 3-step boot used by
+most memory-mode specs, extracted verbatim:
+
+```ts
+await opfs.seed({ mode: "memory" });
+await opfs.gotoApp();
+await replaceEditorContent(page, krs);
+```
+
+Use it whenever a spec just needs "the app in memory mode with this
+`.krs` in the editor". Specs that need a different seed (OPFS projects,
+locale opt-out) or a custom `gotoApp` path keep calling the fixture
+methods directly.
+
+## `tabs.ts` — race-safe view-tab switching
+
+`openViewTab(page, name)` clicks the view tab (`"System"`, `"Deploy"`,
+`"Org"`, ...) and asserts `selected: true` before returning. The
+assertion is load-bearing: a click right after an edit races the
+auto-switch effects (`useAutoSwitchToOrg`, `useAutoSwitchToDeploy`), so
+callers must not assert on tab content until the switch has been
+observed. Do not remove it.
+
+Specs that intentionally skip the selected assertion (AT-0044's
+`openOrgTab`) or assert `aria-selected` via `toHaveAttribute` keep their
+own inline choreography.
+
+## `download.ts` — download plumbing
+
+- `clickAndDownload(locator)` — registers `waitForEvent("download")` on
+  `locator.page()` _before_ clicking, so the event cannot be missed.
+- `readDownloadText(download)` — reads the download's bytes into a UTF-8
+  string for content assertions.
+
 ## `anthropic.ts` — Anthropic transport mock
 
 Intercepts `POST https://api.anthropic.com/v1/messages` (the only endpoint

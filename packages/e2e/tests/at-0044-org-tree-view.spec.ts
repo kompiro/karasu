@@ -184,7 +184,7 @@ test.describe("AT-0044 Org Tree View", () => {
     await expect(page.locator("svg").first()).toContainText("Engineering");
     await activateTreeView(page);
 
-    const download = await clickAndDownload(page, page.getByRole("button", { name: "Export SVG" }));
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/-tree\.svg$/);
 

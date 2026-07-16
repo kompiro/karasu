@@ -64,7 +64,7 @@ test.describe("AT-0033 Drill-down SVG export", () => {
 
     await page.getByRole("button", { name: "Toggle all layers" }).click();
 
-    const download = await clickAndDownload(page, page.getByRole("button", { name: "Export SVG" }));
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/-all-layers\.svg$/);
 
@@ -81,7 +81,7 @@ test.describe("AT-0033 Drill-down SVG export", () => {
     await opfs.reset();
     await opfs.gotoApp();
 
-    const download = await clickAndDownload(page, page.getByRole("button", { name: "Export SVG" }));
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/\.svg$/);
     expect(download.suggestedFilename()).not.toMatch(/-all-layers\.svg$/);
