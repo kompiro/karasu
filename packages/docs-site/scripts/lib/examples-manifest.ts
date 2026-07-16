@@ -6,10 +6,6 @@
 
 import type { Locale } from "./site-map.ts";
 
-// Locale is single-sourced in site-map.ts; re-exported here because the manifest
-// is the natural import site for the gallery pipeline (sync, gallery-pages, tests).
-export type { Locale } from "./site-map.ts";
-
 export interface LocalizedString {
   en: string;
   ja: string;

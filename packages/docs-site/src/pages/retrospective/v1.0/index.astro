@@ -1,9 +1,3 @@
----
-// The GitHub Pages base path (astro.config.mjs `base`, e.g. "/karasu/"),
-// statically resolved at build so no base is ever hardcoded in this page.
-const base = import.meta.env.BASE_URL;
----
-
 <!doctype html>
 <html lang="en">
   <head>
@@ -459,7 +453,8 @@ const base = import.meta.env.BASE_URL;
   </head>
   <body>
     <div class="topbar">
-      <a class="back" href={`${base}retrospective/`} data-i="backHome">← karasu docs</a>
+      <!-- Relative to this page's fixed route /retrospective/v1.0/, so base-agnostic. -->
+      <a class="back" href="../" data-i="backHome">← karasu docs</a>
       <span class="langtoggle">
         <button data-lang="en" onclick="setLang('en')">English</button>
         <button data-lang="ja" onclick="setLang('ja')">日本語</button>

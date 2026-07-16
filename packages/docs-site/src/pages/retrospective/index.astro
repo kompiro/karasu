@@ -1,9 +1,3 @@
----
-// The GitHub Pages base path (astro.config.mjs `base`, e.g. "/karasu/"),
-// statically resolved at build so no base is ever hardcoded in this page.
-const base = import.meta.env.BASE_URL;
----
-
 <!doctype html>
 <html lang="en">
   <head>
@@ -203,7 +197,8 @@ const base = import.meta.env.BASE_URL;
   </head>
   <body>
     <div class="topbar">
-      <a class="back" href={base} data-i="backHome">← karasu docs</a>
+      <!-- Relative to this page's fixed route /retrospective/, so base-agnostic. -->
+      <a class="back" href="../" data-i="backHome">← karasu docs</a>
       <span class="langtoggle">
         <button data-lang="en" onclick="setLang('en')">English</button>
         <button data-lang="ja" onclick="setLang('ja')">日本語</button>
@@ -222,16 +217,13 @@ const base = import.meta.env.BASE_URL;
       <div class="foot" data-i="foot"></div>
     </div>
 
-    <script is:inline data-base={base}>
-      /* The Pages base path, passed in via the data attribute above (define:vars
-         would wrap this script in an IIFE and un-global setLang). */
-      const base = document.currentScript.dataset.base;
-
+    <script is:inline>
       /* Each retrospective edition. Add a new entry here as future editions ship;
-         the page renders them newest-first as cards. */
+         the page renders them newest-first as cards. hrefs are relative to this
+         page's fixed route /retrospective/, so they are base-agnostic. */
       const EDITIONS = [
         {
-          href: `${base}retrospective/v1.0/`,
+          href: "v1.0/",
           accent: "#34d399",
           tag: "v1.0",
           en: {

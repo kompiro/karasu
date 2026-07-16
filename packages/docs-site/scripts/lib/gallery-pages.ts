@@ -9,13 +9,12 @@ import {
   GROUP_LABELS,
   GROUP_ORDER,
   type GalleryPage,
-  type Locale,
   type LocalizedString,
   resolveGithubDir,
 } from "./examples-manifest.ts";
 import { frontmatter } from "./markdown.ts";
 import type { RenderedDiagram } from "./render-examples.ts";
-import { APP_URL, githubUrl } from "./site-map.ts";
+import { APP_URL, githubUrl, type Locale } from "./site-map.ts";
 
 const VIEW_LABEL: Record<DiagramType, LocalizedString> = {
   system: { en: "System view", ja: "System ビュー" },

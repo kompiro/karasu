@@ -26,9 +26,12 @@ hero:
       link: https://deepwiki.com/kompiro/karasu
       icon: open-book
     - text: Dev retrospective
-      # Route-relative from the synced location index.md (route "") so the link is
-      # base-agnostic, like every other in-site link.
-      link: retrospective/
+      # Deliberately base-absolute (exception to the route-relative convention):
+      # home/*.md is copied verbatim (no build-time templating), and astro
+      # dev/preview can serve the page without a trailing slash (trailingSlash
+      # "ignore"), where a route-relative link would resolve outside the base.
+      # Update if astro.config.mjs `base` ever changes.
+      link: /karasu/retrospective/
       icon: open-book
 ---
 

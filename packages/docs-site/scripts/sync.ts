@@ -5,12 +5,12 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { GALLERY_PAGES, type Locale, resolveEntry } from "./lib/examples-manifest.ts";
+import { GALLERY_PAGES, resolveEntry } from "./lib/examples-manifest.ts";
 import { examplePageMarkdown, indexPageMarkdown } from "./lib/gallery-pages.ts";
 import { extractTitle, frontmatter } from "./lib/markdown.ts";
 import { renderDiagram, type RenderedDiagram } from "./lib/render-examples.ts";
 import { rewriteBody } from "./lib/rewrite.ts";
-import { contentPathOf, slugOf } from "./lib/site-map.ts";
+import { contentPathOf, type Locale, slugOf } from "./lib/site-map.ts";
 import { CONTENT_DIR, listSources, PKG_ROOT, publishedSet } from "./sources.ts";
 
 // Hand-authored splash home pages (committed under home/), copied to the locale
