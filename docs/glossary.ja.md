@@ -54,14 +54,12 @@ karasu の permalink は、ADR / PR / docs が karasu の構造を*指す*ため
   [`docs/spec/permalink.md`](spec/permalink.ja.md)。nest の inline share は
   `SharePayload.target` で要素の深さに到達する。
 - **repo-backed permalink** — payload を URL に積む代わりに、GitHub repo の `.krs`
-  （`/<owner>/<repo>`）を解決して描画する。nest Phase 2 形。design doc
-  [`docs/design/repo-backed-ref-pinned-permalink.md`](design/repo-backed-ref-pinned-permalink.md)
-  参照。
+  （`/<owner>/<repo>`）を解決して描画する。nest Phase 2 形。
+  [ADR-20260716-02](adr/20260716-02-repo-backed-ref-pinned-permalink.md) 参照。
 - **ref-pinned permalink** — repo-backed permalink を特定の git ref / SHA に固定
   し、その時点の構造を immutable に描画する — ADR の point-in-time 記録に適合する
-  形。[`docs/design/repo-backed-ref-pinned-permalink.md`](design/repo-backed-ref-pinned-permalink.md)
-  と [`docs/design/repo-backed-permalink-sha-enforcement.md`](design/repo-backed-permalink-sha-enforcement.md)
-  参照。
+  形。[ADR-20260716-02](adr/20260716-02-repo-backed-ref-pinned-permalink.md)
+  （SHA 強制と ref-less default HEAD の resolver）参照。
 - **inline snapshot permalink** — 現行の nest `?s=` 形。model を URL 自体に凍結する
   （immutable だが repo 非連動・長い → taka で短縮）。repo-backed / ref-pinned が
   揃うまでの near-term の代替。
