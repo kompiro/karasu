@@ -29,7 +29,7 @@ import {
   getWordAtPosition,
 } from "./position-resolver.js";
 import { buildDocumentSymbols } from "./document-symbols.js";
-import type { LspPosition } from "./lsp-position.js";
+import type { LspPosition, LspRange } from "./lsp-position.js";
 
 // The languageId under which the VS Code extension registers `.krs.style`
 // documents (see packages/vscode/src/extension.ts). Style docs are routed
@@ -46,7 +46,7 @@ export const NodeAtPositionRequest = new RequestType<
 
 export const PositionOfNodeRequest = new RequestType<
   { uri: string; nodeId: string },
-  { range: { start: LspPosition; end: LspPosition } | null },
+  { range: LspRange | null },
   void
 >("karasu/positionOfNode");
 

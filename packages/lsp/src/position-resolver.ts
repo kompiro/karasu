@@ -8,7 +8,7 @@ import type {
   OrganizationBlock,
 } from "@karasu-tools/core";
 import type { Range } from "vscode-languageserver/node";
-import { toLspPosition, type LspPosition } from "./lsp-position.js";
+import { toLspRange, type LspPosition } from "./lsp-position.js";
 
 interface NodeEntry {
   id: string;
@@ -102,10 +102,7 @@ export function findRangeOfNode(krsFile: KrsFile, nodeId: string): Range | null 
   const entry = entries.find((e) => e.id === nodeId);
   if (!entry) return null;
 
-  return {
-    start: toLspPosition(entry.start.line, entry.start.column),
-    end: toLspPosition(entry.end.line, entry.end.column),
-  };
+  return toLspRange(entry);
 }
 
 // ─── Phase 5 helpers ─────────────────────────────────────────────────────────

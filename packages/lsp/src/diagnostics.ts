@@ -5,6 +5,7 @@ import {
   warningSeverity,
   analyze,
   validateStyleValues,
+  type DiagnosticSeverity as CoreSeverity,
 } from "@karasu-tools/core";
 import {
   renderDiagnostic,
@@ -13,12 +14,12 @@ import {
   type Locale,
   type TranslateFn,
 } from "@karasu-tools/i18n";
-import { toLspRange, type LspRange } from "./lsp-position.js";
+import { toLspRange, type LspRange, type SourceRangeLike } from "./lsp-position.js";
 
 const DOC_START = { line: 0, character: 0 };
 
-/** Map a core severity string to the LSP `DiagnosticSeverity` enum. */
-function toSeverity(sev: string): DiagnosticSeverity {
+/** Map a core severity to the LSP `DiagnosticSeverity` enum. */
+function toSeverity(sev: CoreSeverity): DiagnosticSeverity {
   return sev === "error"
     ? DiagnosticSeverity.Error
     : sev === "info"
@@ -28,11 +29,7 @@ function toSeverity(sev: string): DiagnosticSeverity {
 
 /** Convert an optional core source range to an LSP range, anchoring loc-less
  * diagnostics at the start of the document. */
-function locToRange(
-  loc:
-    | { start: { line: number; column: number }; end: { line: number; column: number } }
-    | undefined,
-): LspRange {
+function locToRange(loc: SourceRangeLike | undefined): LspRange {
   return loc ? toLspRange(loc) : { start: DOC_START, end: DOC_START };
 }
 

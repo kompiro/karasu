@@ -6,7 +6,7 @@ import type {
   TeamNode,
 } from "@karasu-tools/core";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver/node";
-import { toLspRange } from "./lsp-position.js";
+import { toLspRange, type SourceRangeLike } from "./lsp-position.js";
 
 const KIND_MAP: Record<KrsNode["kind"], SymbolKind> = {
   system: SymbolKind.Module,
@@ -30,10 +30,7 @@ const KIND_MAP: Record<KrsNode["kind"], SymbolKind> = {
 interface NamedEntity {
   id: string;
   label?: string;
-  loc: {
-    start: { line: number; column: number };
-    end: { line: number; column: number };
-  };
+  loc: SourceRangeLike;
 }
 
 /**

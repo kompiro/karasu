@@ -19,7 +19,7 @@ export interface LspRange {
 }
 
 /** A core-AST source range: 1-based `line` / `column` points. */
-interface SourceRangeLike {
+export interface SourceRangeLike {
   start: { line: number; column: number };
   end: { line: number; column: number };
 }
