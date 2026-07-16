@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { render } from "./render.js";
@@ -25,6 +25,7 @@ const EC_SYSTEM_KRS = join(ECPLATFORM_ROOT, "01-system.krs");
 const DEPLOY_KRS = join(ECPLATFORM_ROOT, "06-deploy/deploy.krs");
 const MULTIFILE_ROOT = join(ECPLATFORM_ROOT, "05-multifile/system.krs");
 const ORG_KRS = join(REPO_ROOT, "examples/ja/org/system.krs");
+const GETTING_STARTED_KRS = join(REPO_ROOT, "examples/ja/getting-started/index.krs");
 
 function captureStreams() {
   let stdout = "";
@@ -184,5 +185,50 @@ system EC {
 
     expect(streams.stderr()).toContain("File not found");
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  // AT-0042 §7: a project with a deploy block renders both the system and
+  // deploy panes in the default all-views bundle.
+  it("default render of a deploy file bundles both system and deploy panes", async () => {
+    await render(DEPLOY_KRS, {});
+
+    const out = streams.stdout();
+    expect(out).toContain("krs-pane--system");
+    expect(out).toContain("krs-pane--deploy");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  // AT-1062 AT-M: --include-matrix writes a CRUD-matrix SVG sidecar next to
+  // --output (warning paths live in render.ts).
+  it("--include-matrix writes the SVG and a sibling .matrix.svg", async () => {
+    const outPath = join(tmpDir, "out.svg");
+    await render(GETTING_STARTED_KRS, { output: outPath, includeMatrix: true });
+
+    expect(readFileSync(outPath, "utf-8")).toContain("<svg");
+    const matrixSvg = readFileSync(join(tmpDir, "out.matrix.svg"), "utf-8");
+    expect(matrixSvg.startsWith("<svg")).toBe(true);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("--include-matrix without --output warns and skips the sidecar", async () => {
+    await render(GETTING_STARTED_KRS, { includeMatrix: true });
+
+    expect(streams.stdout()).toContain("<svg");
+    expect(streams.stderr()).toContain(
+      "--include-matrix requires --output; matrix.svg not written",
+    );
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("--include-matrix with --format drawio warns and writes the drawio output only", async () => {
+    const outPath = join(tmpDir, "arch.drawio");
+    await render(GETTING_STARTED_KRS, { format: "drawio", output: outPath, includeMatrix: true });
+
+    expect(readFileSync(outPath, "utf-8")).toContain("<mxfile");
+    expect(streams.stderr()).toContain(
+      "--include-matrix is only supported with --format svg; matrix.svg not written",
+    );
+    expect(existsSync(join(tmpDir, "arch.matrix.svg"))).toBe(false);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

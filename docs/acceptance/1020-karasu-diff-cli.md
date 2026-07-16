@@ -30,8 +30,8 @@
 - [x] 既存の `compileSystemDiff` / `compileDeployDiff` / `compileOrgDiff` を利用しており、独自の diff レンダリングを持たない
   > ✅ Automated — `packages/cli/src/diff.ts` の実装が `@karasu-tools/core` の compile 関数を直接呼び出していること（コードレビューで確認、テストでは生成 SVG が `data-diff-state` を含むことで間接的に保証）
 
-- [ ] `karasu diff --help` の Examples セクションに git diff driver / external-diff 設定例が記載されている
-  > 🧑 Manual — `karasu diff --help` を実行し、`.gitconfig` 用の snippet が表示されることを目視確認する。
+- [x] `karasu diff --help` の Examples セクションに git diff driver / external-diff 設定例が記載されている
+  > ✅ Automated — `packages/cli/src/help-text.test.ts` › `diff --help documents the git diff-driver snippet (textconv)`（`[diff "krs"]` / `textconv = karasu render` / external-diff の `karasu diff "$2" "$5"` を assert）
 
 - [ ] git の external diff として実際に動作する（`GIT_EXTERNAL_DIFF=karasu-diff-wrapper git diff` で SVG を吐く wrapper script を書き、想定通りに動作する）
   > 🧑 Manual — wrapper script を書いて手動検証。

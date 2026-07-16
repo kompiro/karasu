@@ -41,6 +41,8 @@
 
 ### TC-03: 複数ファイルの URL ルーティング
 
+> 🟡 Partially automated — `packages/cli/src/serve.test.ts` › `resolveKrsFile` › `returns the full path when the file exists` / `GET /api/file/:name` › `returns file content with 200`（ファイル名 → `.krs` 解決と API 応答を確認、ブラウザでのプレビュー表示は手動）
+
 **手順**:
 1. テスト用ディレクトリに `index.krs` と `system.krs` を置く
 2. サーバー起動後、`http://localhost:3000/system` にアクセスする
@@ -78,6 +80,8 @@
 ---
 
 ### TC-06: 存在しないファイルへのアクセス
+
+> ✅ Automated — `packages/cli/src/serve.test.ts` › `GET /api/file/:name` › `returns 404 for a missing file`（API レベルで確認。ブラウザのエラー画面表示は手動）
 
 **手順**:
 1. `http://localhost:3000/nonexistent` にアクセスする
