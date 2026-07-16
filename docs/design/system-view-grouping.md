@@ -1,7 +1,7 @@
 # システム構成図の grouping — 優先順位と検証計画
 
 - **日付**: 2026-07-09
-- **ステータス**: 部分昇格 — **P2a は [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-20260716-02](../adr/20260716-02-group-by-team-multi-system-root-per-system-frames.md) に昇格済み**。本 doc は P1 検証の詳細（evidence）と、**P2b（宣言構文 `boundary` — 下記「P2b 詳細設計」で設計確定）** を継続保持する。
+- **ステータス**: 部分昇格 — **P2a は [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md) に昇格済み**。本 doc は P1 検証の詳細（evidence）と、**P2b（宣言構文 `boundary` — 下記「P2b 詳細設計」で設計確定）** を継続保持する。
 - **関連**:
   - 引き金 Issue: [#1822](https://github.com/kompiro/karasu/issues/1822)（旧題 "Declare semantic clusters within a system"）
   - 実装済み: [#1858](https://github.com/kompiro/karasu/issues/1858) P2a（ADR-20260711-03）。フォローアップ #1872–#1876
@@ -257,7 +257,7 @@ P2 / P3 に着手するときに再利用するため、これまでの検討結
 
 P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 決定**（メンバー範囲=全ノード種／全体フロー保存／共存=排他セレクタ／既定=展開／min-FAS 順序／折り畳みエッジ再ターゲット）と、その理由・却下案は **[ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)** に昇格した。P2a は実装完了（#1860/#1861/#1865/#1869）。
 
-以降、本 doc は **P2b（宣言構文）** の検討を継続する（差分モード grouping #1886 → [ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping #1884 → [ADR-20260716-02](../adr/20260716-02-group-by-team-multi-system-root-per-system-frames.md) に昇格済み）。実装フェーズの整理:
+以降、本 doc は **P2b（宣言構文）** の検討を継続する（差分モード grouping #1886 → [ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping #1884 → [ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md) に昇格済み）。実装フェーズの整理:
 
 | フェーズ | 内容 | 文法変更 | 状態 |
 | --- | --- | --- | --- |
