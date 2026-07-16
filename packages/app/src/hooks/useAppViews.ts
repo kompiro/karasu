@@ -20,7 +20,11 @@ import { useSystemView } from "./useSystemView.js";
 import { useDeployView } from "./useDeployView.js";
 import { useOrgView } from "./useOrgView.js";
 import { useHistoryNavigation } from "./useHistoryNavigation.js";
-import { useAutoSwitchView } from "./useAutoSwitchView.js";
+import {
+  useAutoSwitchView,
+  shouldAutoSwitchToDeploy,
+  shouldAutoSwitchToOrg,
+} from "./useAutoSwitchView.js";
 import { useResolvedCompareSource } from "./useResolvedCompareSource.js";
 import type { CompareSource } from "../fs/compare-source.js";
 import type { SnapshotManager } from "../fs/snapshot-manager.js";
@@ -316,7 +320,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
 
   // Priority `system > deploy > org` is encoded via the `shouldSwitch`
   // predicates (org yields when hasDeployDiagram), not via call order.
-  // Reordering these two would not change behavior.
+  // Reordering these two would not change behavior. The predicate expressions
+  // live next to the hook (exported, unit-tested) so they cannot silently
+  // drift here.
   const hasSystem = resolvedSystems.length > 0;
 
   // Deploy-only file → switch to "deploy" (Issue #766).
@@ -324,7 +330,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     entryPath: effEntryPath,
     activeView,
     target: "deploy",
-    shouldSwitch: hasDeployDiagram && !hasSystem,
+    shouldSwitch: shouldAutoSwitchToDeploy({ hasDeployDiagram, hasSystem }),
     dispatch,
   });
 
@@ -336,7 +342,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     entryPath: effEntryPath,
     activeView,
     target: "org",
-    shouldSwitch: hasOrgDiagram && !hasSystem && !hasDeployDiagram,
+    shouldSwitch: shouldAutoSwitchToOrg({ hasOrg: hasOrgDiagram, hasSystem, hasDeployDiagram }),
     dispatch,
   });
 

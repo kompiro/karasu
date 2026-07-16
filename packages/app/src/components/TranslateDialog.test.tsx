@@ -244,22 +244,26 @@ describe("TranslateDialog — Download button", () => {
     vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 
-    render(<TranslateDialog open onClose={() => {}} />);
-    fireEvent.change(screen.getByLabelText("Source content"), {
-      target: { value: "services:\n  order-service:\n    image: order-service:1.0.0\n" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Translate/ }));
-    await screen.findByLabelText("Generated .krs");
+    try {
+      render(<TranslateDialog open onClose={() => {}} />);
+      fireEvent.change(screen.getByLabelText("Source content"), {
+        target: { value: "services:\n  order-service:\n    image: order-service:1.0.0\n" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Translate/ }));
+      await screen.findByLabelText("Generated .krs");
 
-    fireEvent.click(screen.getByRole("button", { name: /Download/ }));
-    expect(createObjectURL).toHaveBeenCalledOnce();
-    // triggerBlobDownload defers revocation with setTimeout(…, 0) so the
-    // browser can initiate the download first — wait a tick before asserting.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(revokeObjectURL).toHaveBeenCalledOnce();
-
-    clickSpy.mockRestore();
-    vi.unstubAllGlobals();
+      fireEvent.click(screen.getByRole("button", { name: /Download/ }));
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      // triggerBlobDownload defers revocation with setTimeout(…, 0) so the
+      // browser can initiate the download first — wait a tick before asserting.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(revokeObjectURL).toHaveBeenCalledOnce();
+    } finally {
+      // Always undo the prototype spy and the URL stub — a failing assertion
+      // above must not leak them into later tests.
+      clickSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 });
 
