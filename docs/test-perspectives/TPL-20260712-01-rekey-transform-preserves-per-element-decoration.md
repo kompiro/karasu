@@ -82,4 +82,4 @@ TPL-20260624-02 のチェックリストを全部通しても**すり抜ける**
 
 ## 派生元 spec
 
-- `docs/design/system-view-grouping.md` § 「差分モードの grouping — 除去ノード配置と集約エッジ diff state（#1886）」
+- `docs/adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md`（ADR-20260716-01）
