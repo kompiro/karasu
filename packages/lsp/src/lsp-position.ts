@@ -25,7 +25,7 @@ export interface SourceRangeLike {
 }
 
 /** Core positions are 1-based; LSP positions are 0-based. */
-export function toLspPosition(line: number, column: number): LspPosition {
+function toLspPosition(line: number, column: number): LspPosition {
   // Clamp to 0 to guard against synthetic EOF tokens (line: 0, column: 0).
   return {
     line: Math.max(0, line - 1),
