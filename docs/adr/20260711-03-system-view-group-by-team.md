@@ -43,6 +43,8 @@ system view に **view-mode の「Group by: team」** を実装する。所有�
 6. **折り畳み時のエッジ**は stub に**再ターゲット**（category collapse の drop と異なる）。intra-group は drop、stub エッジは dedup。retarget されたエッジのみ dedup し、展開ノード間の authored parallel edge / self-loop は保持する。
 7. **export / secondary サーフェスは「frame は描くが collapse は適用しない」**（#1879, 2026-07-11）。Show All Layers / drill-down export / Open&Export All Views（`buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`）に `groupBy` のみを **root system-view level に限って**渡す（drill-down の深い層にチームは無いため非適用）。`collapsedGroups` は渡さない — export は「畳んだ姿」ではなく**完全な構造**を見せる目的なので、team バンド＋境界フレームで束ねつつ全ノードを描画する。TPL-20260624-02（全要素ちょうど一度配置）を回帰の柵にした。
 
+   > 注記（2026-07-16）: 決定 7 の「root system-view level に限って」は [#1983](https://github.com/kompiro/karasu/issues/1983) で軸非依存のレベル交差セマンティクス（グルーピングは各ビューで、そのレベルに描画されるノード集合との交差で解決）へ一般化し、export の root-only gate は撤去した — [docs/design/boundary-drilldown-grouping.md](../design/boundary-drilldown-grouping.md) 参照（ADR 昇格予定）。「collapse は適用しない」は維持。
+
 ## 理由
 
 - **仮説は「述べられた形のまま」では偽だった**（P1 計測、20 service/5 team の合成モデル）。枠を描いてグループ配置にするだけでは canvas 51%・交差は残存で利得が薄い。**読みやすさを生むのは折り畳み**（全折り畳みで canvas 31%・service 段 20→11・交差 21）。よって「枠は折り畳みを可能にするアフォーダンス」と位置づけ、collapse を機能の核にした。

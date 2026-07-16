@@ -852,6 +852,7 @@ organization TechCorp {
 ### team ノード
 
 - `owns <id>` は team が所有する論理ノード（`service` / `domain` / `client` 等）を宣言する。同じ `id` を複数の team が `owns` することはできず、重複するとエラーになる。
+- *Group by: team* のグルーピングは**ビューごとに、いま描画しているレベルに描かれるノード集合との交差で**解決される。`owns` にレベル制限は無いため、service 配下にネストされた `domain` を owns した team はその service の drill-down ビューに team フレームを得る — `boundary` 軸と共通のビューごとセマンティクス（「システムビューのグルーピング（`boundary`）」節を参照）。
 - team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
 - team ID は同一 organization 内で一意。重複するとエラーになる。
 - パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。
@@ -886,7 +887,8 @@ team の直下に `member` を宣言して個人を記述する。
 `boundary` ブロックは system view のノードの**意味的クラスタ**を宣言する。論理構造の上に著者が引く
 グルーピングで、kind ティアとも team 所有とも独立している。system view の第二の**「Group by」軸**
 （第一は team 所有。上記）で、`groupBy: "boundary"` にすると各 boundary のメンバーが依存順のグループに
-束ねられ、team 軸とまったく同じように境界フレームで囲まれる。二つの軸は**排他**（同時に一つだけ選ぶ）で
+束ねられ、team 軸とまったく同じように境界フレームで囲まれる。両軸とも**ビューごと・drill-down の
+各レベルで**解決される（下の `contains` の項を参照）。二つの軸は**排他**（同時に一つだけ選ぶ）で
 **独立**（あるノードが *Group by: team* では team A、*Group by: boundary* では boundary X に属しうる）。
 
 ```krs
@@ -898,12 +900,18 @@ boundary payments "Payments" {
 
 - **top-level 宣言**（`organization` と同じ）。containment ではなく**参照**（`contains <id>`）で束ねるので、
   import をまたいで宣言されたノードも集められる（`owns` と同じファイル横断性）。
-- **`contains <id>`** は 1 行 1 メンバー（`owns` と同型）。parser は宣言済みの id なら受理する（`owns` と違い kind 制限なし）が、
-  グルーピングが**目に見えて効くのは、まとめる階層＝ system view のトップ階層に描かれるノードだけ**
-  （service / トップレベル domain / user / client / infra / external）。drill-down にしか出ないメンバー
-  — service 配下にネストされた `domain`・`usecase`・`entity` — は受理されるが**現状はまとまらない**
-  （その階層に描かれないので黙って無効になる）。drill-down ビューへのグルーピング拡張は
-  [#1983](https://github.com/kompiro/karasu/issues/1983) で追跡する。
+- **`contains <id>`** は 1 行 1 メンバー（`owns` と同型）。parser は宣言済みの id なら受理する（`owns` と違い kind 制限なし）。
+  グルーピングは**ビューごとに、いま描画しているレベルに描かれるノード集合との交差で**解決される:
+  各ビューはそのレベルに居るメンバーだけをフレームで囲み、他レベルのメンバーはそのビューのフレームに
+  参加しない。service 配下にネストされた `domain` はその service の drill-down ビューで、`usecase` は
+  domain ビューで、`entity` は entity ビューで、infra の leaf（`table`・queue メッセージ・`bucket`）は
+  そのストアの drill-down ビューで囲まれる。したがって 1 つの boundary が複数レベルにフレームを持ちうる
+  （同一ラベル・disjoint なフレーム — multi-system root view の per-system team フレームと同じ正直な表現）。
+  ghost ノードはグルーピングに参加しない。`contains` が受理する全 kind はいずれかのレベルに描画されるため、
+  解決済みメンバーには必ずフレームの現れるビューがある — inert になるのは実在しない id への参照
+  （`contains-target-not-found`）だけ。このビューごとの解決は**両方の** Group-by 軸に共通:
+  `owns` にもレベル制限は無いので、ネストされた `domain` を owns した team は *Group by: team* で
+  同じ drill-down ビューにフレームを得る。
 - parse 時に **`boundaryIndex`**（`node id → boundary id`）を導出する（org の `ownerIndex` と同型）。**1:1** で、
   あるノードが複数 boundary に含まれる場合は**最初に宣言された** boundary が勝ち、重複は info 診断
   `duplicate-boundary-assignment` で観測する（error ではなく事実 — `duplicate-owner-assignment` と同じ register）。
@@ -922,7 +930,7 @@ boundary payments "Payments" {
 `boundary` は位置引数（`boundary payments "Payments"`）とプロパティ形式（`boundary payments { label "Payments" }`）の
 両方に対応し、両方指定時はプロパティ形式が優先される。
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。
 
 ---
 

@@ -78,13 +78,15 @@ view-state オプションに適用範囲の制限を導入・変更・撤去す
 
 ## 関連テスト
 
-- `packages/core/src/renderer/group-by-boundary-render.test.ts` — boundary 軸が「効く側」の柵。
-  「効かない側 / 全 surface 一致」の柵は #1983 実装（正規化）で追加予定
-  （`docs/design/boundary-drilldown-grouping.md` テスト計画を参照）
+- `packages/core/src/renderer/group-by-boundary-render.test.ts` — boundary 軸が「効く側」の柵
+- `packages/core/src/renderer/group-by-drilldown-render.test.ts` — #1983 正規化後の全 surface
+  一致の柵（interactive / 3 つの静的 export builder / entity view のレベル別フレーム、
+  member 不在レベルの byte 一致、ghost 除外）
 
 ## 派生元 spec
 
 - `docs/spec/syntax.md` § Grouping the system view (`boundary`) — 同節の適用範囲規定
-  （「grouping takes visible effect only on nodes that render at the grouped level」）と
-  interactive 実装の乖離を #1983 の design 調査（compile probe）で検出したことから起票した
-  proactive TPL。#1983 実装 PR が同節を改訂する際に `> Related TPLs:` で本 TPL を back-ref する
+  （起票時点の文言「grouping takes visible effect only on nodes that render at the grouped
+  level」）と interactive 実装の乖離を #1983 の design 調査（compile probe）で検出したことから
+  起票した proactive TPL。#1983 実装 PR で同節はビューごと解決のセマンティクスに改訂され、
+  `> Related TPLs:` で本 TPL を back-ref 済み（en / ja 両方）

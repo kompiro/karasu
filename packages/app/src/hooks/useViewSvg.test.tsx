@@ -120,4 +120,32 @@ describe("useViewSvg > groupBy threading to export SVGs (#1879)", () => {
     rerender({ g: "team" });
     expect(result.current.allLayersSvg).toContain('data-group="true"');
   });
+
+  it("threads groupBy into the live entity view of the drilled domain (#1983)", () => {
+    // The entity view is a render surface like any other: with a boundary
+    // grouping entity members, the drilled domain's live entity view draws
+    // the frame once groupBy is set (TPL-20260510-11 — every call site).
+    const ENTITY_SOURCE = `system Shop {
+  service Orders {
+    domain OrderDomain {
+      entity Order {}
+      entity Invoice {}
+    }
+  }
+}
+boundary cluster "Cluster" {
+  contains Order
+}`;
+    const path = ["Shop", "Orders", "OrderDomain"];
+    const { result: plain } = renderHook(() =>
+      useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, undefined, path),
+    );
+    const { result: grouped } = renderHook(() =>
+      useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, "boundary", path),
+    );
+
+    expect(plain.current.hasEntityView).toBe(true);
+    expect(plain.current.entityViewSvg).not.toContain('data-group="true"');
+    expect(grouped.current.entityViewSvg).toContain('data-container-id="__group_cluster__"');
+  });
 });

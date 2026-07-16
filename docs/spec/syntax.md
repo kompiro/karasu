@@ -913,6 +913,7 @@ organization TechCorp {
 ### team node
 
 - `owns <id>` declares a logical node (`service` / `domain` / `client`, etc.) that the team owns. The same `id` cannot be `owns`-ed by multiple teams; duplicates produce an error.
+- Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary--experimental)).
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
@@ -952,9 +953,11 @@ grouping the author draws on top of the logical structure, independent of the
 kind tiers and of team ownership. It is the second **"Group by"** axis of the
 system view (the first is team ownership, above): with `groupBy: "boundary"` the
 renderer bands each boundary's members as a dependency-ordered group and draws a
-boundary frame around it, exactly as the team axis does — the two axes are
-**mutually exclusive** (you pick one at a time) and **independent** (a node can
-sit in team A under *Group by: team* and boundary X under *Group by: boundary*).
+boundary frame around it, exactly as the team axis does — both axes resolve
+**per view, at every drill-down level** (see the `contains` bullet below), and
+the two axes are **mutually exclusive** (you pick one at a time) and
+**independent** (a node can sit in team A under *Group by: team* and boundary X
+under *Group by: boundary*).
 
 ```krs
 boundary payments "Payments" {
@@ -968,14 +971,21 @@ boundary payments "Payments" {
   anywhere — including across imported files (the same file-crossing property as
   `owns`).
 - **`contains <id>`** lists one member per line (mirroring `owns`). The parser
-  accepts any declared id (no kind restriction, unlike `owns`), but grouping
-  takes **visible effect only on nodes that render at the grouped level — the
-  system-view top tier** (services, top-level domains, users, clients, infra,
-  external). A member that lives only in a drill-down view — a `domain` nested
-  under a `service`, a `usecase`, an `entity` — is accepted but **not grouped
-  today** (it is not drawn at the system-view level, so it silently has no
-  effect). Extending grouping to drill-down views is tracked in
-  [#1983](https://github.com/kompiro/karasu/issues/1983).
+  accepts any declared id (no kind restriction, unlike `owns`). Grouping resolves
+  **per view, against the nodes rendered at the level being drawn**: each view
+  frames the members present at that level; members living at other levels simply
+  do not participate in that view's frames. A `domain` nested under a `service`
+  is framed in that service's drill-down view; a `usecase` in its domain view; an
+  `entity` in the entity view; an infra leaf (a `table`, a queue message, a
+  `bucket`) in its store's drill-down view. One boundary may therefore produce
+  frames on several levels (same label, disjoint frames — the same honest
+  representation as the per-system team frames of the multi-system root view).
+  Ghost nodes never participate in grouping. Every kind `contains` accepts is
+  drawn at some level, so every resolved member has a view where its frame
+  appears — only a reference to a nonexistent id (`contains-target-not-found`)
+  stays inert. This per-view resolution is shared by **both** grouping axes:
+  `owns` has no level restriction either, so a team owning a nested `domain`
+  frames it in the same drill-down views under *Group by: team*.
 - A **`boundaryIndex`** (`node id → boundary id`) is derived at parse time,
   analogous to the org `ownerIndex`. It is **1:1**: if a node is listed in more
   than one boundary, the **first-declared** boundary wins and the duplicate is
@@ -997,7 +1007,7 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 and the property form (`boundary payments { label "Payments" }`); when both are
 given the property form wins.
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish).
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983).
 
 ---
 
