@@ -308,6 +308,21 @@ karasu matrix arch.krs --format svg --output docs/crud.svg
 karasu matrix arch.krs --format csv --writes-only > writes.csv
 ```
 
+### カバレッジとサブツリー
+
+```bash
+# ドメインごとの密度を計測し、薄くしかモデリングされていないドメインを検出
+karasu coverage arch.krs
+karasu coverage arch.krs --format json          # 機械可読（ツール連携向け）
+karasu coverage arch.krs --threshold 0.3        # thin 判定のしきい値を上書き
+
+# 1 ノードのサブツリーを独立した .krs として抽出（例: ドメイン単体をツールへ渡す）
+karasu subtree Order arch.krs                    # 最小ラップ（ドメインのみ）
+karasu subtree Order arch.krs --with-ancestors   # system / service のコンテキストを保持
+```
+
+`coverage` と `subtree` は、アーキテクチャリバースワークフローを支える構造プリミティブです。生成された `.krs` モデルを静的に解析し、`coverage` はドメインごとの深さ（usecase / entity / resource / edge）を計測して薄いドメインを定量的に検出し、`subtree` はモデルを 1 ノードに切り出して、focused な refinement のために再投入できるようにします。
+
 ## VS Code 拡張
 
 > **ステータス: experimental（実験的）**
