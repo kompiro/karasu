@@ -1,4 +1,5 @@
 import { buildDrawioProject, type FileSystemProvider } from "@karasu-tools/core";
+import { triggerBlobDownload } from "./trigger-download.js";
 
 /**
  * Build a draw.io (mxGraph XML) export for the current project and trigger a
@@ -11,14 +12,5 @@ export async function downloadDrawio(
   filename: string,
 ): Promise<void> {
   const result = await buildDrawioProject(entryPath, fs);
-  const blob = new Blob([result.xml], { type: "application/xml" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  // Defer revocation to allow the browser to initiate the download first
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  triggerBlobDownload(result.xml, "application/xml", filename);
 }

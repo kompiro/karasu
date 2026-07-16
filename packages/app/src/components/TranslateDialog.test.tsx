@@ -236,10 +236,13 @@ describe("TranslateDialog — Download button", () => {
   });
 
   it("triggers URL.createObjectURL when Download is clicked", async () => {
-    // Stub URL APIs used by handleDownload
+    // Stub URL APIs used by triggerBlobDownload, and neuter the anchor click —
+    // jsdom would otherwise log "Not implemented: navigation" for the
+    // appended-anchor click.
     const createObjectURL = vi.fn<(obj: object) => string>().mockReturnValue("blob:mock");
     const revokeObjectURL = vi.fn<(url: string) => void>();
     vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 
     render(<TranslateDialog open onClose={() => {}} />);
     fireEvent.change(screen.getByLabelText("Source content"), {
@@ -250,9 +253,12 @@ describe("TranslateDialog — Download button", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Download/ }));
     expect(createObjectURL).toHaveBeenCalledOnce();
-    // revokeObjectURL is called after click to free the blob URL
+    // triggerBlobDownload defers revocation with setTimeout(…, 0) so the
+    // browser can initiate the download first — wait a tick before asserting.
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(revokeObjectURL).toHaveBeenCalledOnce();
 
+    clickSpy.mockRestore();
     vi.unstubAllGlobals();
   });
 });

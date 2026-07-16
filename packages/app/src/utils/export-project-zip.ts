@@ -1,5 +1,6 @@
 import { zipSync, strToU8 } from "fflate";
 import type { FileSystemProvider } from "@karasu-tools/core";
+import { triggerBlobDownload } from "./trigger-download.js";
 
 async function collectFiles(
   fs: FileSystemProvider,
@@ -34,13 +35,5 @@ export async function exportProjectAsZip(
   }
 
   const zipped = zipSync(files);
-  const blob = new Blob([new Uint8Array(zipped)], { type: "application/zip" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${projectName}.zip`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  triggerBlobDownload(new Uint8Array(zipped), "application/zip", `${projectName}.zip`);
 }

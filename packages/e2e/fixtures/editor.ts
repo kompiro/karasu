@@ -2,8 +2,8 @@ import { type Page, expect } from "@playwright/test";
 
 /**
  * Mirrors `DEBOUNCE_MS` in `packages/app/src/hooks/useSystemView.ts`. We give a
- * little extra so the React commit + auto-switch effects (`useAutoSwitchToOrg`,
- * `useAutoSwitchToDeploy`) have a chance to settle before the caller starts
+ * little extra so the React commit + auto-switch effects (`useAutoSwitchView`
+ * for org/deploy) have a chance to settle before the caller starts
  * asserting on the active tab. Without this, tests that click a tab right
  * after editing race with the auto-switch and the active tab can flip after
  * a manual `selected: true` assertion has already passed.
