@@ -876,7 +876,12 @@ boundary payments "Payments" {
 
 - **top-level 宣言**（`organization` と同じ）。containment ではなく**参照**（`contains <id>`）で束ねるので、
   import をまたいで宣言されたノードも集められる（`owns` と同じファイル横断性）。
-- **`contains <id>`** は 1 行 1 メンバー（`owns` と同型）。メンバーはどの node kind でもよい（`owns` と違い kind 制限なし）。
+- **`contains <id>`** は 1 行 1 メンバー（`owns` と同型）。parser は宣言済みの id なら受理する（`owns` と違い kind 制限なし）が、
+  グルーピングが**目に見えて効くのは、まとめる階層＝ system view のトップ階層に描かれるノードだけ**
+  （service / トップレベル domain / user / client / infra / external）。drill-down にしか出ないメンバー
+  — service 配下にネストされた `domain`・`usecase`・`entity` — は受理されるが**現状はまとまらない**
+  （その階層に描かれないので黙って無効になる）。drill-down ビューへのグルーピング拡張は
+  [#1983](https://github.com/kompiro/karasu/issues/1983) で追跡する。
 - parse 時に **`boundaryIndex`**（`node id → boundary id`）を導出する（org の `ownerIndex` と同型）。**1:1** で、
   あるノードが複数 boundary に含まれる場合は**最初に宣言された** boundary が勝ち、重複は info 診断
   `duplicate-boundary-assignment` で観測する（error ではなく事実 — `duplicate-owner-assignment` と同じ register）。

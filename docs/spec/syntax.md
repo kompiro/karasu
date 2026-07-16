@@ -943,8 +943,15 @@ boundary payments "Payments" {
   (`contains <id>`), not by containment, so a boundary can gather nodes declared
   anywhere — including across imported files (the same file-crossing property as
   `owns`).
-- **`contains <id>`** lists one member per line (mirroring `owns`). Any declared
-  node kind may be a member (there is no kind restriction, unlike `owns`).
+- **`contains <id>`** lists one member per line (mirroring `owns`). The parser
+  accepts any declared id (no kind restriction, unlike `owns`), but grouping
+  takes **visible effect only on nodes that render at the grouped level — the
+  system-view top tier** (services, top-level domains, users, clients, infra,
+  external). A member that lives only in a drill-down view — a `domain` nested
+  under a `service`, a `usecase`, an `entity` — is accepted but **not grouped
+  today** (it is not drawn at the system-view level, so it silently has no
+  effect). Extending grouping to drill-down views is tracked in
+  [#1983](https://github.com/kompiro/karasu/issues/1983).
 - A **`boundaryIndex`** (`node id → boundary id`) is derived at parse time,
   analogous to the org `ownerIndex`. It is **1:1**: if a node is listed in more
   than one boundary, the **first-declared** boundary wins and the duplicate is
