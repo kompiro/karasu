@@ -35,7 +35,7 @@
 ### AC-3: 空ビュー非表示（自動選択）
 
 - [x] `org-only` は Org ビューのみ、`deploy-only` は Deploy ビューのみ、system を持つ example は System（+ 該当すれば Deploy/Org）を出す
-  > ✅ Automated — `packages/docs-site/scripts/lib/render-examples.test.ts`（view 自動選択。空ビューは push されない）
+  > ✅ Automated — `packages/docs-site/scripts/lib/render-examples.test.ts` › `org-only renders only the org view` / `deploy-only renders only the deploy view` / `a system example includes system and omits empty views`（`views.map(v => v.type)` の厳密一致で抑制契約を検証。従来引用していた smoke は `views.length > 0` のみで抑制を検証していなかった — #2004 で是正）
 
 ### AC-4: 公開・体裁（手動確認）
 
