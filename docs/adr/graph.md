@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-260 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+261 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -260,6 +260,7 @@ flowchart TD
     ADR_20260411_02["ADR-20260411-02<br/>移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
     ADR_20260514_01["ADR-20260514-01<br/>マルチファイル import の意味論 — whole-file import / syste..."]
     ADR_20260615_02["ADR-20260615-02<br/>共有 infra fan-in を info 診断として通知する"]
+    ADR_20260715_04["ADR-20260715-04<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
   end
   subgraph styling["styling"]
     ADR_20260312_04["ADR-20260312-04<br/>CSSインスパイアのスタイリングシステム"]
@@ -385,6 +386,8 @@ flowchart TD
   ADR_20260616_01 --> ADR_20260615_05
   ADR_20260713_01 --> ADR_20260616_06
   ADR_20260714_01 --> ADR_20260411_05
+  ADR_20260715_04 --> ADR_20260715_01
+  ADR_20260715_04 --> ADR_20260405_05
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260508_01 -.supersedes.-> ADR_20260506_01
@@ -654,6 +657,7 @@ flowchart TD
   class ADR_20260715_01 accepted
   class ADR_20260715_02 accepted
   class ADR_20260715_03 accepted
+  class ADR_20260715_04 accepted
   class ADR_20260716_01 accepted
 ```
 
@@ -670,7 +674,7 @@ flowchart TD
 - [`parser`](graph/parser.md) — 17 ADRs
 - [`project`](graph/project.md) — 8 ADRs
 - [`renderer`](graph/renderer.md) — 36 ADRs
-- [`resolver`](graph/resolver.md) — 6 ADRs
+- [`resolver`](graph/resolver.md) — 7 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs
