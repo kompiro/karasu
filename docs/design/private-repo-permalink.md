@@ -3,7 +3,7 @@
 - **日付**: 2026-07-15
 - **Issue**: #1960（親 #1828 permalink layer / epic #1826）
 - **PR**: #1971
-- **ステータス**: 検討中（access model 確定 / **実装は保留** — 下記）
+- **ステータス**: **却下記録**（2026-07-16）— client-side BYO-PAT 方式は「reader が PAT を貼って手元で fetch」＝**local ツールに収束**し、nest(funnel)/core(my-system) の境界を越える（#1960 の当初動機に反する）。private repo は代わりに **karasu-nest の GitHub App ピボット**（installation 認証で server-side reverse、reader は PAT 不要）で解く。→ [`docs/design/karasu-nest-pivot-github-app.md`](./karasu-nest-pivot-github-app.md)（#1783 / PR #1978）。本 doc は「なぜ client-PAT を採らずピボットに至ったか」の推論記録として残す。
 - **関連**:
   - repo-backed permalink 設計 [`docs/design/repo-backed-ref-pinned-permalink.md`](./repo-backed-ref-pinned-permalink.md)（軸3 private を v1 で public-only に決定・後続化）
   - [ADR-20260407-04](../adr/20260407-04-cloudflare-deployment-and-byok-ai.md)（BYOK 原則・token/secret をサービスが持たない・sessionStorage 既定 / localStorage opt-in）
