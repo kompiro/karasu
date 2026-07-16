@@ -7,7 +7,7 @@
   - 経緯 Issue: [#1879](https://github.com/kompiro/karasu/issues/1879)（export surface への groupBy 配線 — 「root system-view level only」の由来）、[#1884](https://github.com/kompiro/karasu/issues/1884)（multi-system per-(system, team) フレーム）、[#1921](https://github.com/kompiro/karasu/issues/1921) / [#1923](https://github.com/kompiro/karasu/issues/1923)（in-place expansion / mixed-LOD）
   - 関連 ADR: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（P2a team 軸 — 決定 7 が root-only の出所）、[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)（notation promotion gate）、[ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c routing/marks）、[ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff-mode grouping）、[ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)（入れ子は drill-down の領域）、[ADR-20260611-02](../adr/20260611-02-legend-drill-down-scope.md)（per-drill-depth exact-match の前例）、[ADR-20260403-01](../adr/20260403-01-drill-down-adapter-hierarchy-node.md) / [ADR-20260401-05](../adr/20260401-05-vscode-phase3-5-drilldown.md)（drill-down の node 集合・ナビゲーション契約）
   - 親 Design Doc: [system-view-grouping.md](system-view-grouping.md)（P2b 詳細設計。「boundary の入れ子 / boundary 単位の drill-down」を deferred（却下ではない）として本 Issue に送った出所）
-  - 関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md), [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md), [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md), [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md), [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md), [TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md), [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md), [TPL-20260615-02](../test-perspectives/TPL-20260615-02-diagnostic-absence-assertion-scope-severity.md), **[TPL-20260716-01](../test-perspectives/TPL-20260716-01-view-state-gate-parity-across-surfaces.md)（本 doc と同 PR で起票する proactive TPL）**
+  - 関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md), [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md), [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md), [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md), [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md), [TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md), [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md), [TPL-20260615-02](../test-perspectives/TPL-20260615-02-diagnostic-absence-assertion-scope-severity.md), **[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)（本 doc と同 PR で起票する proactive TPL）**
   - コード: `packages/core/src/parser/parser.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/drill-down-svg.ts`, `packages/core/src/renderer/all-layers-svg.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/index.ts`, `packages/app/src/hooks/useSystemView.ts`
 
 ## 背景・課題
@@ -50,7 +50,7 @@ interactive で効いてしまっている理由は単純で、bucket 計算が�
 これは「view-state option の制限（gate）を一部 surface にだけ入れた結果、残りの surface で
 undocumented 挙動が生きて出荷される」という失敗クラスで、[TPL-20260510-11]（parity）の
 逆方向（機能を通す漏れではなく、制限をかける漏れ）。本 doc と同 PR で proactive TPL
-[TPL-20260716-01] として観点化する。
+[TPL-20260716-02] として観点化する。
 
 したがって本 doc の問いは Issue 起票時の「drill-down grouping をどう作るか」から
 **「既に interactive で動いている drill-down grouping を仕様として認めて柵をかける（正規化）か、
@@ -306,7 +306,7 @@ Phase 1（docs / examples）:
 
 6. spec 差分案（`docs/spec/syntax.md:970-978` の書き換え。`syntax.ja.md` §「システムビューの
    グルーピング」も同内容。**spec 改訂 PR の proactive TPL 義務**は本 doc 同 PR の
-   [TPL-20260716-01] を `> Related TPLs:` に back-ref して満たす）:
+   [TPL-20260716-02] を `> Related TPLs:` に back-ref して満たす）:
 
    > - **`contains <id>`** lists one member per line (mirroring `owns`). The parser
    >   accepts any declared id (no kind restriction, unlike `owns`). Grouping resolves

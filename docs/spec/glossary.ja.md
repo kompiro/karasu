@@ -224,6 +224,9 @@ karasu のコアな語彙のクイックリファレンスです。karasu は
 
 ## 関連項目
 
+- [keystone・permalink 用語集](../glossary.ja.md) — **製品方向と permalink** の語彙
+  （read/record split・funnel/retained・permalink family）。本モデリング言語用語集の
+  対になる用語集。
 - [コアコンセプト](../concepts.ja.md) — 語彙の背後にある面と原則。
 - [構文リファレンス](syntax.ja.md) · [スタイルリファレンス](style.ja.md) ·
   [タグ・アノテーション](tags-annotations.ja.md) · [診断](diagnostics.ja.md) —

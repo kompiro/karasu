@@ -1,5 +1,5 @@
 ---
-id: TPL-20260716-01
+id: TPL-20260716-02
 title: "view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える"
 status: active
 date: 2026-07-16
@@ -23,7 +23,7 @@ scope:
     - app
 ---
 
-# TPL-20260716-01: view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える
+# TPL-20260716-02: view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える
 
 ## 観点
 
