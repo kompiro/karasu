@@ -270,6 +270,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260411-02](20260411-02-deprecated-domain-migration-coexistence.md) — 移行期における重複ドメイン ID の共存を `@deprecated` + `@migration_target` で許容する
 - [ADR-20260514-01](20260514-01-multi-file-import-semantics.md) — マルチファイル import の意味論 — whole-file import / system 再オープン / DAG 再到達
 - [ADR-20260615-02](20260615-02-shared-infra-fan-in-diagnostic.md) — 共有 infra fan-in を info 診断として通知する
+- [ADR-20260715-04](20260715-04-domain-store-ownership-diagnostic.md) — infra leaf のドメイン所有を entity から導出し cross-domain ストアアクセスを info 診断する
 
 ## styling
 

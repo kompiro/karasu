@@ -1,6 +1,6 @@
 # ADR Topic: resolver
 
-6 ADRs in this topic. Solid nodes belong to `resolver`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+7 ADRs in this topic. Solid nodes belong to `resolver`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -12,13 +12,17 @@ flowchart TD
     ADR_20260411_02["ADR-20260411-02<br/>移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
     ADR_20260514_01["ADR-20260514-01<br/>マルチファイル import の意味論 — whole-file import / syste..."]
     ADR_20260615_02["ADR-20260615-02<br/>共有 infra fan-in を info 診断として通知する"]
+    ADR_20260715_04["ADR-20260715-04<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
   end
   ADR_20260312_03["ADR-20260312-03<br/>[core-concepts] 論理構造と物理構造の分離"]
   ADR_20260407_02["ADR-20260407-02<br/>[renderer] resource shape 自動推論とインフラノード Icon Mode 対応"]
   ADR_20260412_04["ADR-20260412-04<br/>[parser] ブロック内エッジの暗黙 source 簡略記法"]
   ADR_20260415_01["ADR-20260415-01<br/>[styling] 親サービスのアノテーションを子ノードに継承する"]
   ADR_20260422_05["ADR-20260422-05<br/>[renderer] トップレベル infra ブロック（database / queue / storage）を ..."]
+  ADR_20260715_01["ADR-20260715-01<br/>[core-concepts] ドメインエンティティと関連のモデリング（v1）— 非目標「DB スキーマ」の線引き直し"]
   ADR_20260401_06 --> ADR_20260312_03
+  ADR_20260715_04 --> ADR_20260715_01
+  ADR_20260715_04 --> ADR_20260405_05
   ADR_20260407_02 --> ADR_20260405_05
   ADR_20260412_04 --> ADR_20260411_02
   ADR_20260415_01 --> ADR_20260411_02
@@ -36,9 +40,11 @@ flowchart TD
   class ADR_20260411_02 accepted
   class ADR_20260514_01 accepted
   class ADR_20260615_02 accepted
+  class ADR_20260715_04 accepted
   class ADR_20260312_03 ghost
   class ADR_20260407_02 ghost
   class ADR_20260412_04 ghost
   class ADR_20260415_01 ghost
   class ADR_20260422_05 ghost
+  class ADR_20260715_01 ghost
 ```
