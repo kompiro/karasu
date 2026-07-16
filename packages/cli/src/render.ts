@@ -1,4 +1,4 @@
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { resolve, dirname, basename, extname } from "node:path";
 import {
   buildAllViewsSvgProject,
@@ -9,8 +9,6 @@ import {
   warningSeverity,
 } from "@karasu-tools/core";
 import type {
-  FileSystemProvider,
-  DirEntry,
   DiagramType,
   DiagramTheme,
   Diagnostic,
@@ -18,6 +16,8 @@ import type {
   Warning,
 } from "@karasu-tools/core";
 import { formatDiagnostic, formatWarning } from "./i18n.js";
+import { NodeFileSystemProvider } from "./node-fs.js";
+import { writeOutput } from "./output.js";
 
 type RenderFormat = "svg" | "drawio";
 
@@ -26,41 +26,6 @@ const DRAWIO_VIEW_SELECTIONS: Record<DiagramType, DrawioViewSelection> = {
   deploy: "deploy",
   org: "org",
 };
-
-class NodeFileSystemProvider implements FileSystemProvider {
-  async readFile(path: string): Promise<string> {
-    return readFile(path, "utf-8");
-  }
-
-  async writeFile(path: string, content: string): Promise<void> {
-    await writeFile(path, content, "utf-8");
-  }
-
-  async readDir(path: string): Promise<DirEntry[]> {
-    const entries = await readdir(path, { withFileTypes: true });
-    return entries.map((e) => ({
-      name: e.name,
-      kind: e.isDirectory() ? ("directory" as const) : ("file" as const),
-    }));
-  }
-
-  async exists(path: string): Promise<boolean> {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  async delete(_path: string): Promise<void> {
-    throw new Error("delete not supported in render mode");
-  }
-
-  async mkdir(_path: string): Promise<void> {
-    throw new Error("mkdir not supported in render mode");
-  }
-}
 
 interface RenderOptions {
   output?: string;
@@ -145,11 +110,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     process.exit(1);
   }
 
-  if (options.output) {
-    await writeFile(resolve(options.output), output, "utf-8");
-  } else {
-    process.stdout.write(output);
-  }
+  await writeOutput(output, options.output);
 
   if (options.includeMatrix) {
     if (!options.output) {

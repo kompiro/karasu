@@ -1,6 +1,6 @@
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
 import { format, FormatError } from "@karasu-tools/core";
+import { findFilesBySuffix, resolveTargets } from "./find-files.js";
 import { readStdin } from "./stdin.js";
 
 interface FmtOptions {
@@ -8,13 +8,16 @@ interface FmtOptions {
   stdin?: boolean;
 }
 
+const SKIP = new Set(["node_modules", ".worktrees", ".git", "dist"]);
+
 export async function fmt(files: string[], options: FmtOptions): Promise<void> {
   if (options.stdin) {
     await fmtStdin();
     return;
   }
 
-  const targets = await resolveTargets(files);
+  // Default: all .krs files under the current directory (recursive)
+  const targets = resolveTargets(files, () => findFilesBySuffix(process.cwd(), ".krs", SKIP));
 
   if (targets.length === 0) {
     process.stderr.write("No .krs files found.\n");
@@ -64,27 +67,4 @@ async function fmtStdin(): Promise<void> {
     }
     throw e;
   }
-}
-
-async function resolveTargets(files: string[]): Promise<string[]> {
-  if (files.length > 0) {
-    return files.map((f) => path.resolve(f));
-  }
-  // Default: all .krs files under the current directory (recursive)
-  return findKrsFiles(process.cwd()).sort();
-}
-
-function findKrsFiles(dir: string): string[] {
-  const SKIP = new Set(["node_modules", ".worktrees", ".git", "dist"]);
-  const results: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (SKIP.has(entry.name)) continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...findKrsFiles(full));
-    } else if (entry.isFile() && entry.name.endsWith(".krs")) {
-      results.push(full);
-    }
-  }
-  return results;
 }

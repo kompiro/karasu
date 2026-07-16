@@ -1,4 +1,3 @@
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   compileProject,
@@ -7,12 +6,12 @@ import {
   formatMatrixAsCsv,
   renderMatrixAsSvg,
   INFRA_KIND_SET,
-  type FileSystemProvider,
-  type DirEntry,
   type CrudMatrixOptions,
   type InfraKind,
 } from "@karasu-tools/core";
 import { formatDiagnostic } from "./i18n.js";
+import { NodeFileSystemProvider } from "./node-fs.js";
+import { writeOutput } from "./output.js";
 
 type MatrixFormat = "md" | "csv" | "svg";
 
@@ -26,36 +25,6 @@ interface MatrixCliOptions {
   writesOnly?: boolean;
   omitEmpty?: boolean;
   noTotals?: boolean;
-}
-
-class NodeFileSystemProvider implements FileSystemProvider {
-  async readFile(path: string): Promise<string> {
-    return readFile(path, "utf-8");
-  }
-  async writeFile(path: string, content: string): Promise<void> {
-    await writeFile(path, content, "utf-8");
-  }
-  async readDir(path: string): Promise<DirEntry[]> {
-    const entries = await readdir(path, { withFileTypes: true });
-    return entries.map((e) => ({
-      name: e.name,
-      kind: e.isDirectory() ? ("directory" as const) : ("file" as const),
-    }));
-  }
-  async exists(path: string): Promise<boolean> {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async delete(): Promise<void> {
-    throw new Error("delete not supported");
-  }
-  async mkdir(): Promise<void> {
-    throw new Error("mkdir not supported");
-  }
 }
 
 export async function matrix(filePath: string, options: MatrixCliOptions): Promise<void> {
@@ -108,9 +77,5 @@ export async function matrix(filePath: string, options: MatrixCliOptions): Promi
   else if (format === "csv") output = formatMatrixAsCsv(m, { showTotals });
   else output = renderMatrixAsSvg(m, { showTotals });
 
-  if (options.output) {
-    await writeFile(resolve(options.output), output, "utf-8");
-  } else {
-    process.stdout.write(output);
-  }
+  await writeOutput(output, options.output);
 }
