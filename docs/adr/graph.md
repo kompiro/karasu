@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-262 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+263 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -185,7 +185,7 @@ flowchart TD
     ADR_20260411_03["ADR-20260411-03<br/>ブラウザ履歴でのハイライト復元 — hash コロン拡張"]
     ADR_20260504_01["ADR-20260504-01<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
     ADR_20260630_01["ADR-20260630-01<br/>Deep permalink — 構造要素 / view への深いパーマリンク"]
-    ADR_20260716_02["ADR-20260716-02<br/>repo-backed + ref-pinned permalink（nest Phase 2..."]
+    ADR_20260716_03["ADR-20260716-03<br/>repo-backed + ref-pinned permalink（nest Phase 2..."]
   end
   subgraph parser["parser"]
     ADR_20260320_02["ADR-20260320-02<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
@@ -390,7 +390,7 @@ flowchart TD
   ADR_20260714_01 --> ADR_20260411_05
   ADR_20260715_04 --> ADR_20260715_01
   ADR_20260715_04 --> ADR_20260405_05
-  ADR_20260716_02 --> ADR_20260630_01
+  ADR_20260716_03 --> ADR_20260630_01
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260508_01 -.supersedes.-> ADR_20260506_01
@@ -663,6 +663,7 @@ flowchart TD
   class ADR_20260715_04 accepted
   class ADR_20260716_01 accepted
   class ADR_20260716_02 accepted
+  class ADR_20260716_03 accepted
 ```
 
 ## Per-topic detail

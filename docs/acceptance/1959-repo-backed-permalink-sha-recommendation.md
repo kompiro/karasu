@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-15
 - **関連 Issue**: [#1959](https://github.com/kompiro/karasu/issues/1959)（#1828 slice d、permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826)）
-- **設計 (ADR)**: [ADR-20260716-02](../adr/20260716-02-repo-backed-ref-pinned-permalink.md)（repo-backed permalink、slice d `@<sha>` 推奨検証）
+- **設計 (ADR)**: [ADR-20260716-03](../adr/20260716-03-repo-backed-ref-pinned-permalink.md)（repo-backed permalink、slice d `@<sha>` 推奨検証）
 - **実装（別 repo）**: [kompiro/adr-tools#23](https://github.com/kompiro/adr-tools/issues/23) / PR #24（`krs` kind に repo-backed host 検出 + `@<sha>` 推奨 `warn`、`0.0.9` release）
 - **前提 ADR**: [ADR-20260713-02](../adr/20260713-02-adr-permalink-validation.md)（検証は adr-tools の `krs` kind）／ [ADR-20260702-01](../adr/20260702-01-adr-permalink-convention.md)（`permalink:` 規約）
 - **関連 TPL**: [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（両側トリガ）

@@ -1,5 +1,5 @@
 ---
-id: ADR-20260716-02
+id: ADR-20260716-03
 title: repo-backed + ref-pinned permalink（nest Phase 2 resolver）
 status: accepted
 date: 2026-07-16
@@ -23,7 +23,7 @@ assumptions:
   - "file: docs/spec/permalink.md"
 ---
 
-# ADR-20260716-02: repo-backed + ref-pinned permalink（nest Phase 2 resolver）
+# ADR-20260716-03: repo-backed + ref-pinned permalink（nest Phase 2 resolver）
 
 - **日付**: 2026-07-16
 - **ステータス**: 決定済み

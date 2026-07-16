@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-14
 - **関連 Issue**: [#1828](https://github.com/kompiro/karasu/issues/1828)（親エピック #1826 permalink layer）
-- **設計 (ADR)**: [ADR-20260716-02](../adr/20260716-02-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink）
+- **設計 (ADR)**: [ADR-20260716-03](../adr/20260716-03-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink）
 - **関連 ADR**: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest / Phase 2 を後続化）, [ADR-20260404-06](../adr/20260404-06-github-markdown-render-service.md)（`isSafeUrl` SSRF 対策）, [ADR-20260407-04](../adr/20260407-04-cloudflare-deployment-and-byok-ai.md)（BYOK）
 - **Related TPLs**: [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)（外部 input を trust boundary 越え前に validate / canonicalize）
 - **対象ファイル**:
