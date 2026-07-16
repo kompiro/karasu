@@ -18,11 +18,21 @@ import {
 import {
   type ViewType,
   isAllowedExternalUrl,
+  isNodeId,
   isValidNavIndex,
   isViewType,
 } from "./message-validation.js";
 import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
+
+/**
+ * Width budget for the detail panel, shared by the CSS `max-width` and the
+ * webview script's overflow-avoidance math (which flips the panel to the
+ * left of the node, offset by an 8px gap, when it would overflow the right
+ * edge). Keeping both in one constant prevents the positioning math from
+ * silently desynchronizing from the rendered width.
+ */
+const DETAIL_PANEL_MAX_WIDTH = 360;
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -38,7 +48,6 @@ interface SerializedNodeMeta {
   schedule?: string;
   realizes?: string[];
   tags: string[];
-  hasChildren: boolean;
   hasDeployContainer?: boolean;
 }
 
@@ -68,9 +77,9 @@ export class PreviewPanel {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._panel.webview.onDidReceiveMessage(
       (message: {
-        type: string;
+        type: unknown;
         viewType?: unknown;
-        nodeId?: string;
+        nodeId?: unknown;
         index?: unknown;
         url?: unknown;
       }) => {
@@ -80,29 +89,23 @@ export class PreviewPanel {
         if (message.type === "switchView" && isViewType(message.viewType)) {
           this._viewType = message.viewType;
           this._drilldown = emptyDrilldownState();
-          if (this._currentDocument) {
-            void this._render(this._currentDocument);
-          }
-        } else if (message.type === "drillDown" && message.nodeId) {
+          this._rerender();
+        } else if (message.type === "drillDown" && isNodeId(message.nodeId)) {
           // NodeMetadata satisfies DrilldownNodeMeta structurally; the
           // annotation records the subset the transition actually reads.
           const meta: DrilldownNodeMeta | undefined = this._lastNodeMetadata?.get(message.nodeId);
           this._drilldown = drillDown(this._drilldown, message.nodeId, meta);
-          if (this._currentDocument) {
-            void this._render(this._currentDocument);
-          }
+          this._rerender();
         } else if (
           message.type === "navigateTo" &&
           isValidNavIndex(message.index, this._drilldown.viewPath.length)
         ) {
           this._drilldown = navigateTo(this._drilldown, message.index);
-          if (this._currentDocument) {
-            void this._render(this._currentDocument);
-          }
+          this._rerender();
         } else if (
           message.type === "switchViewAndHighlight" &&
           isViewType(message.viewType) &&
-          message.nodeId
+          isNodeId(message.nodeId)
         ) {
           this._viewType = message.viewType;
           this._drilldown = emptyDrilldownState();
@@ -114,10 +117,8 @@ export class PreviewPanel {
           }
         } else if (message.type === "toggleIconMode") {
           this._displayMode = this._displayMode === "icon" ? "shape" : "icon";
-          if (this._currentDocument) {
-            void this._render(this._currentDocument);
-          }
-        } else if (message.type === "navigate" && message.nodeId) {
+          this._rerender();
+        } else if (message.type === "navigate" && isNodeId(message.nodeId)) {
           this._onNavigate(message.nodeId);
         } else if (message.type === "openExternal" && isAllowedExternalUrl(message.url)) {
           void vscode.env.openExternal(vscode.Uri.parse(message.url));
@@ -135,9 +136,7 @@ export class PreviewPanel {
         const next = diagramThemeFromColorTheme(colorTheme.kind);
         if (next === this._theme) return;
         this._theme = next;
-        if (this._currentDocument) {
-          void this._render(this._currentDocument);
-        }
+        this._rerender();
       },
       null,
       this._disposables,
@@ -169,6 +168,13 @@ export class PreviewPanel {
 
   get isDisposed(): boolean {
     return this._disposed;
+  }
+
+  /** Re-render the current document, if one has been set. */
+  private _rerender(): void {
+    if (this._currentDocument) {
+      void this._render(this._currentDocument);
+    }
   }
 
   private async _render(document: vscode.TextDocument): Promise<void> {
@@ -228,7 +234,6 @@ export class PreviewPanel {
           schedule: meta.schedule,
           realizes: meta.realizes,
           tags: meta.tags,
-          hasChildren: meta.hasChildren,
           hasDeployContainer: meta.hasDeployContainer,
         };
       }
@@ -343,7 +348,7 @@ export class PreviewPanel {
     #detail-panel {
       display: none;
       position: absolute;
-      max-width: 360px;
+      max-width: ${DETAIL_PANEL_MAX_WIDTH}px;
       max-height: 400px;
       z-index: 100;
       background: var(--vscode-editorHoverWidget-background, #252526);
@@ -351,7 +356,6 @@ export class PreviewPanel {
       border-radius: 6px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
       overflow: hidden;
-      display: none;
       flex-direction: column;
     }
     #detail-panel.visible {
@@ -622,8 +626,8 @@ export class PreviewPanel {
       var anchorY = targetRect.top - wrapperRect.top + wrapper.scrollTop;
 
       // If panel would overflow right edge, position to the left
-      if (anchorX + 360 > wrapper.scrollWidth && anchorX + 360 > wrapperRect.width) {
-        anchorX = targetRect.left - wrapperRect.left + wrapper.scrollLeft - 368;
+      if (anchorX + ${DETAIL_PANEL_MAX_WIDTH} > wrapper.scrollWidth && anchorX + ${DETAIL_PANEL_MAX_WIDTH} > wrapperRect.width) {
+        anchorX = targetRect.left - wrapperRect.left + wrapper.scrollLeft - ${DETAIL_PANEL_MAX_WIDTH + 8};
         if (anchorX < 0) anchorX = 8;
       }
 
