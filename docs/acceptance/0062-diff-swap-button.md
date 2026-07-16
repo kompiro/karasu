@@ -58,7 +58,7 @@ system Shop {
 - [ ] The Swap button has `aria-pressed="true"` (visually highlighted).
 - [ ] Click **⇄ Swap** again. Direction returns to the original orientation.
 
-> manual / visual review — visually confirms the diff colors flip when the swap toggles direction; banner text and SVG re-render must agree.
+> 🟡 Partially automated — `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` › `Swap flips the diff direction in place (AT-0062 TC-1)` covers the structural flip: enter diff, click Swap, the added node re-renders as `data-diff-state="removed"` (and no longer `added`), with `aria-pressed="true"` on the button. Banner label-order flips are unit-fenced by `packages/app/src/components/DiffModeBanner.test.tsx`. The green/red **colour** perception stays a manual check on the live SVG.
 
 ### TC-2: Exiting diff mode resets the swap
 

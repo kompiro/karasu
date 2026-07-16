@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/builtins/reference.ts`
   - `packages/core/src/builtins/reference-spec-sync.test.ts`
-  - `packages/app/src/components/ReferencePanel.test.tsx`
+  - `packages/app/src/components/ReferenceContent.test.tsx`（旧 `ReferencePanel.test.tsx` — #1548/#1585 の pop-out 化で `ReferenceContent.tsx`/`ReferenceWindow.tsx` に改名）
   - `docs/test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md`
 - **TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md), [TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md) item 5
 
@@ -25,7 +25,7 @@ type: product
   > ✅ Automated — `reference-spec-sync.test.ts` の `missing` assertion がこれを担保（実装時に `column` 等が欠けている状態で test が赤くなることを確認済み）
 
 - [ ] AT-D: Reference パネルの **Styles タブ**を開くと、Style Properties テーブルに `direction` / `label-position` / `label-offset` / `column` の行が description 付きで表示される
-  > ✅ Automated — `packages/app/src/components/ReferencePanel.test.tsx` › `Styles tab lists the edge / layout style properties from the spec`
+  > ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Styles tab lists the edge / layout style properties from the spec`
 
 - [ ] AT-E（manual）: アプリ（`pnpm dev`）で `index.krs` を開き、Reference パネル → Styles タブで上記 4 プロパティの行が表示され、説明文が読めることを目視確認する。locale を `ja` に切り替えて日本語の説明文が出ることも確認する
   > 🧑 Manual — UI レンダリングの目視確認。RTL test で文字列の存在は担保しているが、テーブル内での見え方（折り返し等）は目視で確認する

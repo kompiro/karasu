@@ -33,11 +33,15 @@ Both paths pass the parsed HTML through DOMPurify before mounting.
 ## Automated coverage
 
 - `packages/app/src/components/NodeDetailPanel.test.tsx`
-  — existing tests cover basic bold markdown and `<script>` XSS sanitization.
+  — existing tests cover basic bold/italic/inline-code markdown and `<script>`
+    XSS sanitization.
   — new regression guards added for v18 edge cases:
     - `renders GFM tables without swallowing trailing newlines`
     - `renders headings followed by blank lines`
     - `renders indented code blocks with embedded blank lines`
+- `packages/app/src/components/ChatPane.test.tsx`
+  — assistant-message markdown rendering (`renders bold text in assistant
+    messages`) and sanitization (`sanitizes XSS in assistant messages`).
 - `pnpm --filter @karasu-tools/app test` passes 477 / 477 on this branch.
 - `pnpm --filter @karasu-tools/app typecheck` passes.
 
@@ -57,11 +61,11 @@ Description:
 This is **bold**, *italic*, and `inline code`.
 ```
 
-- [ ] `bold` is rendered with `<strong>`.
-- [ ] `italic` is rendered with `<em>`.
-- [ ] `inline code` is rendered with `<code>`.
+> ✅ Automated by `packages/app/src/components/NodeDetailPanel.test.tsx` (suite-wide) — `renders markdown description as HTML`（`<strong>` / `<em>` / `<code>` の DOM 構造を検証。実ブラウザでの見た目の live-paint は任意の目視確認）
 
-> manual / visual review — NodeDetailPanel に貼り付けたあとの実描画を目視確認する受入観点（自動テストは別途 `NodeDetailPanel.test.tsx` でカバー）。
+- [x] `bold` is rendered with `<strong>`.
+- [x] `italic` is rendered with `<em>`.
+- [x] `inline code` is rendered with `<code>`.
 
 ### TC-2 — GFM table with content after (NodeDetailPanel)
 
@@ -76,10 +80,10 @@ Description:
 Trailing paragraph after the table.
 ```
 
-- [ ] Table renders with two columns, two data rows.
-- [ ] "Trailing paragraph after the table." renders as a paragraph *after* the table (v18 no longer swallows trailing newlines into the table token).
+> ✅ Automated by `packages/app/src/components/NodeDetailPanel.test.tsx` (suite-wide) — `renders GFM tables without swallowing trailing newlines`（`<table>` 描画とテーブル後続段落の分離を DOM で検証）
 
-> manual / visual review — テーブル直後の段落分離は v18 の挙動差を実 UI で確認する観点。
+- [x] Table renders with two columns, two data rows.
+- [x] "Trailing paragraph after the table." renders as a paragraph *after* the table (v18 no longer swallows trailing newlines into the table token).
 
 ### TC-3 — Heading followed by blank lines (NodeDetailPanel)
 
@@ -92,10 +96,10 @@ Description:
 Paragraph after two blank lines.
 ```
 
-- [ ] `Heading` renders as `<h1>`.
-- [ ] `Paragraph after two blank lines.` renders as a separate paragraph, not concatenated to the heading.
+> ✅ Automated by `packages/app/src/components/NodeDetailPanel.test.tsx` (suite-wide) — `renders headings followed by blank lines`（`<h1>` と後続 `<p>` が独立して描画されることを検証）
 
-> manual / visual review — 見出し後の連続空行が段落を消費しないことは描画結果で確認する。
+- [x] `Heading` renders as `<h1>`.
+- [x] `Paragraph after two blank lines.` renders as a separate paragraph, not concatenated to the heading.
 
 ### TC-4 — Indented code block with embedded blank line (NodeDetailPanel)
 
@@ -107,9 +111,9 @@ Description:
     line three
 ```
 
-- [ ] Both lines appear inside a single `<pre><code>` block; the page does not hang (18.0.2 infinite-loop fix).
+> ✅ Automated by `packages/app/src/components/NodeDetailPanel.test.tsx` (suite-wide) — `renders indented code blocks with embedded blank lines`（両行が単一 `<pre><code>` に入ることを検証。テストが完走すること自体が 18.0.2 の無限ループ回帰の検出になる）
 
-> manual / visual review — 18.0.2 の無限ループ修正はブラウザでハングしないことを目視確認する観点。
+- [x] Both lines appear inside a single `<pre><code>` block; the page does not hang (18.0.2 infinite-loop fix).
 
 ### TC-5 — XSS sanitization still active (NodeDetailPanel)
 
@@ -119,11 +123,11 @@ Description:
 <script>alert(1)</script>safe text
 ```
 
-- [ ] No alert fires.
-- [ ] `safe text` is visible.
-- [ ] No `<script>` element present in the DOM of the panel.
+> ✅ Automated by `packages/app/src/components/NodeDetailPanel.test.tsx` (suite-wide) — `sanitizes XSS in description — <script> tag is removed`（`<script>` 要素の不在と `safe text` の残存を DOM で検証。script が除去される以上 alert は発火し得ない）
 
-> manual / visual review — DOMPurify によるサニタイズの実効性は実 DOM を目視確認する。
+- [x] No alert fires.
+- [x] `safe text` is visible.
+- [x] No `<script>` element present in the DOM of the panel.
 
 ### TC-6 — ChatPane assistant response rendering
 
@@ -133,7 +137,7 @@ markdown patterns from TC-1–TC-4. Confirm:
 - [ ] Tables, headings, code blocks, and inline formatting render as expected.
 - [ ] No console errors from marked or DOMPurify.
 
-> manual / visual review — ChatPane のアシスタント応答描画は実チャットセッションで確認するためライブセッションが必要。
+> 🟡 Partially automated — `packages/app/src/components/ChatPane.test.tsx` › `renders bold text in assistant messages` / `sanitizes XSS in assistant messages`（assistant メッセージのマークダウン描画とサニタイズは jsdom で fence 済み。table / heading / code の実チャットセッションでの live-paint と console エラー無しの確認は手動）
 
 ---
 

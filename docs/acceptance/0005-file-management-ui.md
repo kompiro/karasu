@@ -16,57 +16,92 @@ FileTree コンポーネントにファイル管理機能を追加する。ヘ�
 
 ### AC-1: ヘッダーアクションボタン
 
-> 🟡 Partially automated — `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `header +File button creates a new .krs file (AC-1)` / `header +Dir button creates a new directory (AC-1)` / `Esc cancels the inline input without creating an entry (AC-1)`（`.krs.style` 拡張子の維持と空文字無視は手動）
+> 🟡 Partially automated — `packages/e2e/tests/at-0005-file-management-ui.spec.ts` › `header +File button creates a new .krs file (AC-1)` / `header +Dir button creates a new directory (AC-1)` / `Esc cancels the inline input without creating an entry (AC-1)`（エディタへの自動選択や入力欄の見え方などライブ UI の細部は手動）
 
 - [ ] FileTree ヘッダーに [+File] と [+Dir] ボタンが表示される
 - [ ] [+File] クリックでルートディレクトリにインライン入力欄が表示される
 - [ ] Enter で空の `.krs` ファイルが作成され、エディタに自動選択される
 - [ ] 拡張子なしの名前入力時に `.krs` が自動付与される
-- [ ] `.krs.style` 拡張子はそのまま維持される
+- [x] `.krs.style` 拡張子はそのまま維持される
+
+> ✅ Automated — `packages/app/src/hooks/useFileTreeOps.test.ts` › `keeps the name as-is when it ends with .krs or .krs.style`
+
 - [ ] [+Dir] クリックでインライン入力欄が表示され、Enter でディレクトリが作成される
 - [ ] Esc でインライン入力がキャンセルされる
-- [ ] 空文字列の入力は無視される
+- [x] 空文字列の入力は無視される
+
+> ✅ Automated — `packages/app/src/hooks/useFileTreeOps.test.ts` › `does nothing when the name is blank`
 
 ### AC-2: コンテキストメニュー
 
-- [ ] ファイルを右クリックで Rename / Delete メニューが表示される
-- [ ] ディレクトリを右クリックで New File / New Folder / Rename / Delete メニューが表示される
+- [x] ファイルを右クリックで Rename / Delete メニューが表示される
+
+> ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `file context menu offers only Rename/Delete`
+
+- [x] ディレクトリを右クリックで New File / New Folder / Rename / Delete メニューが表示される
+
+> ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `directory context menu offers New File/New Folder/Rename/Delete`
+
 - [ ] メニュー外クリックでメニューが閉じる
 - [ ] Esc キーでメニューが閉じる
 
-> manual / visual review — 右クリックメニューの表示・項目の出し分け・閉じる挙動はライブブラウザ操作で確認する。
+> manual / visual review — メニュー外クリック / Esc での close は document レベルのリスナーに依存し jsdom では安定して再現できないため（`.claude/rules/testing.md`）、ライブブラウザで確認する。
 
 ### AC-3: リネーム
 
-- [ ] Rename でインライン入力欄に現在の名前が表示される
-- [ ] Enter で名前が変更される（ファイル内容は保持される）
-- [ ] ディレクトリのリネームで中身が再帰的にコピーされる
-- [ ] リネーム対象がエディタで開かれている場合、新パスで再選択される
+- [x] Rename でインライン入力欄に現在の名前が表示される
 
-> manual / visual review — Rename フローのインライン入力・ディレクトリ再帰コピー・エディタ再選択は UI とファイルシステムの実挙動を目視確認する。
+> ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `Rename flow renames the file and re-selects it`（インライン入力が現在名で pre-fill されることを含めて検証）
+
+- [x] Enter で名前が変更される（ファイル内容は保持される）
+
+> ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `Rename flow renames the file and re-selects it`
+
+- [x] ディレクトリのリネームで中身が再帰的にコピーされる
+
+> ✅ Automated — `packages/app/src/hooks/useFileTreeOps.test.ts` › `renames a directory by copying recursively and deleting the source`
+
+- [x] リネーム対象がエディタで開かれている場合、新パスで再選択される
+
+> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Rename flow renames the file and re-selects it`（旧・新パスでの `onFileRenamed` 発火まで fence。ProjectModeApp 側でエディタが実際に新パスへ切り替わる様子は手動）
 
 ### AC-4: 削除
 
-- [ ] Delete で確認ダイアログが表示される
-- [ ] 確認後にファイル/ディレクトリが削除される
-- [ ] 削除対象がエディタで開かれていた場合、エディタがクリアされる
+- [x] Delete で確認ダイアログが表示される
 
-> manual / visual review — 削除確認ダイアログとエディタクリアの連動はブラウザ操作で確認する。
+> ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor`（`window.confirm` がファイル名入りメッセージで呼ばれることを検証。ダイアログの表示自体はブラウザ標準機能）
+
+- [x] 確認後にファイル/ディレクトリが削除される
+
+> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor` と `packages/app/src/hooks/useFileTreeOps.test.ts` › `deletes and fires onFileDeleted when confirmed` / `skips deletion when the confirm hook returns false`（ファイル削除を fence。ディレクトリ削除の実挙動は手動）
+
+- [x] 削除対象がエディタで開かれていた場合、エディタがクリアされる
+
+> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor`（削除パスでの `onFileDeleted` 発火まで fence。ProjectModeApp 側でエディタが実際にクリアされる様子は手動）
 
 ### AC-5: ディレクトリ操作
 
-- [ ] コンテキストメニューの New File でサブディレクトリにファイルが作成される
-- [ ] コンテキストメニューの New Folder でサブディレクトリが作成される
+- [x] コンテキストメニューの New File でサブディレクトリにファイルが作成される
 
-> manual / visual review — ディレクトリ配下への New File / New Folder 作成はツリー操作とファイルシステム反映を目視確認する。
+> ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `New File in a subdirectory creates the file there`
+
+- [x] コンテキストメニューの New Folder でサブディレクトリが作成される
+
+> ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `New Folder in a subdirectory creates the directory there`
 
 ### AC-6: ProjectModeApp 統合
 
-- [ ] ファイル作成後にエディタが新規ファイルを自動選択する（`onFileCreated`）
-- [ ] ファイル削除後にエディタがクリアされる（`onFileDeleted`、削除対象が開かれていた場合）
-- [ ] ファイルリネーム後にエディタが新パスで再選択される（`onFileRenamed`、リネーム対象が開かれていた場合）
+- [x] ファイル作成後にエディタが新規ファイルを自動選択する（`onFileCreated`）
 
-> manual / visual review — FileTree → ProjectModeApp 間のコールバック連動はブラウザ操作で確認する受入観点。
+> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `New File in a subdirectory creates the file there`（作成パスでの `onFileCreated` 発火まで fence。ProjectModeApp 側の自動選択の実挙動は手動）
+
+- [x] ファイル削除後にエディタがクリアされる（`onFileDeleted`、削除対象が開かれていた場合）
+
+> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Delete confirms then removes and clears the editor`（削除パスでの `onFileDeleted` 発火まで fence。エディタクリアの実挙動は手動）
+
+- [x] ファイルリネーム後にエディタが新パスで再選択される（`onFileRenamed`、リネーム対象が開かれていた場合）
+
+> 🟡 Partially automated — `packages/app/src/components/FileTree.test.tsx` › `Rename flow renames the file and re-selects it`（旧・新パスでの `onFileRenamed` 発火まで fence。再選択の実挙動は手動）
 
 ## 検証方法
 

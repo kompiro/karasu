@@ -63,12 +63,12 @@ type: product
 - [x] Samples タブをクリックすると `system`, `deploy`, `organization` の各ブロックを含むサンプル KRS が表示されること
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `ReferencePanel exposes the Samples tab with system/deploy/organization sample (AC-5)`
 
-- [ ] Samples タブの Copy ボタンをクリックするとクリップボードにサンプル全文がコピーされ、ボタンラベルが "Copied!" に変わること
-- [ ] 2秒後にボタンラベルが "Copy" に戻ること
+- [x] Samples タブの Copy ボタンをクリックするとクリップボードにサンプル全文がコピーされ、ボタンラベルが "Copied!" に変わること
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Copy button shows 'Copied!' after click and reverts after 2 seconds`（copyable ブロックはタブ間で共通の単一コンポーネント。clipboard 書き込みは `packages/app/src/hooks/useClipboardCopy.test.ts` も fence）
+- [x] 2秒後にボタンラベルが "Copy" に戻ること
+> ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Copy button shows 'Copied!' after click and reverts after 2 seconds` および `packages/app/src/hooks/useClipboardCopy.test.ts` › `sets copied=true after a successful write and resets after the timeout`
 - [x] MemoryModeApp・ProjectModeApp どちらのモードでも Samples タブが参照できること
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `ReferencePanel exposes the Samples tab with system/deploy/organization sample (AC-5)`
-
-> manual / visual review — 「Copy ボタンの動作」はブラウザの Clipboard API パーミッション付与が必要なため Playwright で安定して回せず手動扱いに残す。「2 秒後ラベル復帰」も Copy ボタンの動作が前提となるため同じ理由で現状は手動扱いとする。
 
 ## 検証方法
 

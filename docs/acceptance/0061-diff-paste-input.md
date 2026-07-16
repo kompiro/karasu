@@ -59,7 +59,7 @@ system Shop {
       **red dashed** (removed from the current file compared to the pasted
       blob)
 
-> manual / visual review — confirms the paste-driven diff round-trip end-to-end (dialog → banner label → SVG colours).
+> 🟡 Partially automated — `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` › `paste-compare dialog drives a diff from a pasted blob (AT-0061 TC-2)` covers the round-trip structurally: dialog fill → Compare → banner with the `pasted` before-label → `data-diff-state` decoration on the changed node (the spec's blob omits a service, so it asserts the `added` state; this checklist's larger blob yields `removed`). The red-dashed **colour** judgement stays a manual check on the live SVG.
 
 ### TC-3: View pasted content
 
