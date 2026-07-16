@@ -34,6 +34,13 @@ const PREVIEW_TITLE = "karasu Preview";
 export const ELEMENT_TIMEOUT_MS = 15_000;
 
 /**
+ * Mocha suite timeout shared by the WebView/capture suites. It exists because
+ * of xvfb slowness (VS Code download + extension install + preview render),
+ * so it must move in lock-step across suites.
+ */
+export const SUITE_TIMEOUT_MS = 240_000;
+
+/**
  * Settle time after a frame-rebuilding action (drill, view switch, nav) before
  * re-entering the iframe. View switches use this value; the AT-0038 drill flow
  * passes a longer value explicitly.
@@ -182,6 +189,25 @@ export async function reacquireFrame(
   await ctx.driver.sleep(sleepMs);
   await ctx.webview.switchToFrame();
   ctx.inWebViewFrame = true;
+}
+
+/**
+ * Read the preview breadcrumb as a single "A › B › C" string (empty string when
+ * the `#breadcrumb` element is absent). Must be called inside the WebView frame.
+ */
+export async function readBreadcrumb(driver: WebDriver): Promise<string> {
+  return (await driver.executeScript(
+    "const el = document.getElementById('breadcrumb');" +
+      "return el ? Array.from(el.querySelectorAll('button')).map(b => b.textContent).join(' › ') : '';",
+  )) as string;
+}
+
+/** Split a {@link readBreadcrumb} string into its trimmed, non-empty segments. */
+export function breadcrumbSegments(text: string): string[] {
+  return text
+    .split("›")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 /** True when the toolbar button for `view` carries the active (background) style. */
