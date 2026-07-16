@@ -262,7 +262,7 @@ P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 �
 | フェーズ | 内容 | 文法変更 | 状態 |
 | --- | --- | --- | --- |
 | **P2a** | 二段 topo + 枠 + 折り畳み（team=`ownerIndex` 軸） | ゼロ | ✅ 実装済み（ADR-20260711-03） |
-| **P2b** | `boundary` 宣言構文 + `boundaryIndex` | あり（experimental で追加。#1820 gate は promotion 側） | 詳細設計済み（下記「P2b 詳細設計」） |
+| **P2b** | `boundary` 宣言構文 + `boundaryIndex` | あり（experimental で追加。#1820 gate は promotion 側） | ✅ 実装済み（#1974: A 文法 #1966 / B 軸配線 #1973 / C spec・examples・roadmap）— 下記「P2b 詳細設計」 |
 | **P2c** | 直交ルーティング + 集約トランク + hop/junction 交差マーク（#1859） | ゼロ | ✅ 実装済み（**[ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)**。#1927/#1954 mixed route・#1939/#1956 marks 拡張含む） |
 
 ## P2b 詳細設計（宣言構文 + `boundaryIndex`）

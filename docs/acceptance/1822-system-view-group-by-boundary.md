@@ -51,17 +51,7 @@ P2b-A で追加した `boundary` 宣言（`boundaryIndex`）を **第二の Grou
 
 ### AC-5: 手動（描画の目視確認）
 
-`boundary` を宣言した密なモデルを app の `index.krs` に置いて開く（例は P2b-C で追加。当面は下記を貼る）:
-
-```krs
-system Shop {
-  service Billing {} service Wallet {} service Search {} service Catalog {}
-  database ShopDB {} service Stripe [external] {}
-  Billing -> Wallet  Search -> Catalog  Billing -> Catalog  Billing -> ShopDB
-}
-boundary payments "Payments" { contains Billing contains Wallet }
-boundary catalog "Catalog" { contains Search contains Catalog }
-```
+feature-samples の `boundary-clusters.krs`（P2b-C で追加）を app で開く（`examples/en/feature-samples/boundary-clusters.krs` — payments / catalog の 2 boundary、org なし）:
 
 - [ ] **手動**: system view の「Group by」を **Boundary** に切り替える → payments / catalog が破線フレームで囲まれる。None に戻すと従来表示に戻る
 - [ ] **手動**: org を持たないこのモデルでは「Group by」に Team は出ず、Boundary と None のみが並ぶ
