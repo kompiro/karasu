@@ -62,3 +62,27 @@ export function isWriteOperation(operations: readonly ResourceOperation[] | unde
   }
   return false;
 }
+
+/**
+ * Symmetric to `isWriteOperation`: returns true when any CRUD effect on this
+ * resource is a read. Decoration takes precedence — `list:read` counts as a
+ * read even though `list` is unrecognized. Bare unrecognized verbs are
+ * conservatively treated as non-read.
+ *
+ * Note the two classifiers are **not** mutually exclusive: `operations create,
+ * read` is both a write and a read (a `readwrite` access). Callers that need a
+ * single verdict combine the two (e.g. read/write/readwrite mode). A resource
+ * with no `operations` declared is neither a recognized read nor write here —
+ * callers default such an untyped access to read.
+ */
+export function isReadOperation(operations: readonly ResourceOperation[] | undefined): boolean {
+  if (!operations) return false;
+  for (const op of operations) {
+    if (op.decoratedAs && op.decoratedAs.length > 0) {
+      if (op.decoratedAs.some((v) => v === "read")) return true;
+      continue;
+    }
+    if (op.verb === "read") return true;
+  }
+  return false;
+}

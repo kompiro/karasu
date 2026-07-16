@@ -239,6 +239,21 @@ excess 候補（finding H）として挙げた。検討の結果、**v1.0 で残
 - **後方互換**: notation watch（round 2）は**後方互換を保ったまま**実利用で評価する営みで、昇格は v1.x 内で [§promotion gate](#promotion-gatenotation-評価の規律) を通す（破壊的変更を前提にしない）。
 - **動かさない非ゴール**: 時間軸 / sequence（[#23](https://github.com/kompiro/karasu/issues/23) / [#28](https://github.com/kompiro/karasu/issues/28)）・code generation・ER modeling・runtime metrics・infra topology・canvas editing は `docs/concepts.md` で確定済み。post-v1.0 horizon はこの線を動かさない。実利用で圧力が出たものは下記 [§非ゴール圧力 log](#非ゴール圧力-log) に記録のみする。
 
+### planning の起点（[#1814](https://github.com/kompiro/karasu/issues/1814)）と本セクションの対応
+
+本セクションは [#1814](https://github.com/kompiro/karasu/issues/1814)（post-v1.0 milestones の壁打ち傘 Issue）の**合意結果を吸収したもの**である。#1814 が提案した milestone 案 M1〜M5 / M0 は、その後の [keystone 決定（2026-06-28）](#keystone-primary-path-と主-surface決定済み-2026-06-28)で **primary path = permalink pipeline** に軸を切り直し、下表の柱・候補へ**再編**された。したがって #1814 の 5 つの discussion point（順序・テーマの過不足・"done" の具体度・Milestone 化・最優先の1本）は本セクションが現時点の答えを持ち、#1814 自体は planning 傘として役目を終える。
+
+| #1814 の milestone 案 | 現在の受け皿 | 状態 |
+| --- | --- | --- |
+| **M1** hard launch を仕上げる | [§実行中の柱](#実行中の柱テーマ--epic-issue--epic-ラベル) の OSS launch（`epic: oss-launch` / [#1317](https://github.com/kompiro/karasu/issues/1317)） | ✅ #1317 **CLOSED**（launch 発効） |
+| **M2** post-v1.0 notation watch | 柱 **Notation watch (round 2)**（[#1816](https://github.com/kompiro/karasu/issues/1816) ・`epic: notation-watch-r2`）。C/D/H/I は [§棚卸し finding の決着状況](#棚卸し-finding-の決着状況) と [§promotion gate](#promotion-gatenotation-評価の規律) で評価規律を規定 | 進行中（既定 = experimental 据え置き） |
+| **M3** AI-assisted authoring | [§独立 candidate](#独立-candidate未-issue-化--issue-が生えたら-milestone-化) の「AI authoring 深度 / Chat 去就」（[#638](https://github.com/kompiro/karasu/issues/638) の user testing データ待ち） | 評価待ち |
+| **M4** karasu-nest（ホスト型） | 柱 **karasu-nest**（[#1783](https://github.com/kompiro/karasu/issues/1783) ・`epic: karasu-nest`）。keystone で permalink layer（[#1826](https://github.com/kompiro/karasu/issues/1826)）が retained の背骨に格上げ | Phase 2 は Backlog（keystone 後） |
+| **M5** notation / diagram improvements | 柱 **Comprehension / explorable viewer**（[#1817](https://github.com/kompiro/karasu/issues/1817) ・`epic: comprehension`） | 進行中（第一手 [#1821](https://github.com/kompiro/karasu/issues/1821)） |
+| **M0** maintenance baseline（always-on） | [§非ゴール圧力 log](#非ゴール圧力-log) + [`docs/process.md` リリース運用](process.md#リリース運用)（release/dependency/security hygiene の touchpoint） | 常時 |
+
+> #1814 の元 milestone 番号（M1〜M5）は**この対応表でのみ参照**し、以降のセクションは keystone 後の柱・候補の語彙で記述する。1軸フラットな GitHub Milestone との使い分けは上の [§管理モデル](#post-v10-horizonロードマップ)（時間軸 = 日付 Milestone / テーマ軸 = Epic Issue）に従う。
+
 ### keystone: primary path と主 surface（決定済み 2026-06-28）
 
 post-v1.0 の優先度はこの決定に従属する。壁打ちの全容は PRD
@@ -279,6 +294,10 @@ post-v1.0 の優先度はこの決定に従属する。壁打ちの全容は PRD
 | 2 | table を **domain** でまとめ、**cross-domain な store アクセス**を診断したい | logical=domain でグルーピング + 診断（`shared-infra-fan-in` 系）。physical=schema は 1:1 でなく**未決**（[#1632](https://github.com/kompiro/karasu/issues/1632) の infra realizes と地続き） | [#1819](https://github.com/kompiro/karasu/issues/1819) |
 | 3 | 大規模 multi-file 図の混雑。**file は grouping 単位として誤り**（サンプルは view 種別で分割）。本当の need = system 内の**意味的クラスタ宣言** | **comprehension 柱へ移設**（描画/密度の問題） | [#1822](https://github.com/kompiro/karasu/issues/1822) |
 | 4 | 残した experimental notation を**いつ評価するか**が未定義。後方互換ゆえ rename/廃止は高コスト | **promotion gate**（下記）を [ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md) に記録・本書に生きた適用状態を保持 | [#1820](https://github.com/kompiro/karasu/issues/1820) |
+| 5 | KV は **cache 用途**が多いが `database` は SoR 含意を持つ。`[index]` と並ぶ **`[cache]` role tag**（technology でなく role）が無い | **experimental 据え置き（watch）**。`--from wrangler` adapter は素の `database` へ degrade（warning）。cache パターンが複数 source で再発したら promotion gate へ | [ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
+| 6 | **Durable Object = stateful compute**（compute かつ store）で clean な infra kind が無い | **experimental 据え置き（watch）**。adapter は `service [external]` + RPC edge へ degrade（`[external]` は真の所有境界を過大表現）。honest な modeling 需要が実 corpus で溜まれば stateful-compute notation を再評価 | [ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
+
+> finding 5 / 6 は wrangler translate adapter（[ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md)、[#1943](https://github.com/kompiro/karasu/issues/1943)）が v1 freeze 下で新構文を作らず degrade する判断から派生した watch item。子 Issue は起こさず、証拠源（wrangler / nest corpus）で earn-its-keep を観測してから promotion gate に載せる。
 
 #### Comprehension の構図
 

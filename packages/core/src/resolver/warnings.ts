@@ -3,10 +3,12 @@ import type {
   KrsEdge,
   KrsFile,
   ResourceNode,
+  EntityNode,
   TeamNode,
   LegendRefTarget,
 } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
+import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
@@ -22,6 +24,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
 
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectSharedInfraFanIn(file));
+  warnings.push(...detectCrossDomainStoreAccess(file));
   warnings.push(...detectUnassignedDomains(file));
   warnings.push(...detectUnassignedServices(file));
   warnings.push(...detectUnassignedClients(file));
@@ -336,6 +339,39 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
   return warnings;
 }
 
+/** Kind + declaration location of an in-scope infra block, keyed by id. */
+type InfraInScope = Map<string, { kind: "database" | "queue" | "storage"; loc: KrsNode["loc"] }>;
+
+/**
+ * Collect the infra blocks (`database` / `queue` / `storage`) reachable in a
+ * scope, excluding `[external]` and `[index]` stores. Shared by the shared-store
+ * diagnostics (`detectSharedInfraFanIn`, `detectCrossDomainStoreAccess`) so the
+ * exclusion rule and the kind narrowing live in exactly one place
+ * (TPL-20260623-02 — keep the resource→store target set synchronized across
+ * every consumer).
+ *
+ * `[external]`: the smell is about owning a shared store, not depending on a
+ * managed third-party one. `[index]`: a derived search / secondary index (a read
+ * model built from the system of record) is a legitimate shared read surface,
+ * not the Database-per-Service smell a shared system-of-record store would be
+ * (Issue #1733).
+ */
+function collectInfraInScope(nodes: KrsNode[]): InfraInScope {
+  const infra: InfraInScope = new Map();
+  function walk(node: KrsNode): void {
+    if (
+      INFRA_KIND_SET.has(node.kind) &&
+      !node.tags.includes("external") &&
+      !node.tags.includes("index")
+    ) {
+      infra.set(node.id, { kind: node.kind as "database" | "queue" | "storage", loc: node.loc });
+    }
+    for (const child of node.children) walk(child);
+  }
+  for (const node of nodes) walk(node);
+  return infra;
+}
+
 /**
  * Surface the shared-store "fan-in": ≥2 services with a resolved `resource`
  * dependency on the same `database` / `queue` / `storage` within one system
@@ -355,16 +391,9 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
   // Each system is an organizational boundary; cross-system sharing of a store
   // is intentional and not surfaced. Top-level services form their own scope.
   function detectInScope(nodes: KrsNode[]): void {
-    // Infra ids declared in this scope, excluding `[external]` and `[index]`
-    // stores. `[external]`: the smell is about owning a shared store, not
-    // depending on a managed third-party one. `[index]`: a derived search /
-    // secondary index (a read model built from the system of record) is a
-    // legitimate shared read surface, not the database-per-service smell that
-    // a shared system-of-record store would be (Issue #1733).
-    const infraInScope = new Map<
-      string,
-      { kind: "database" | "queue" | "storage"; loc: KrsNode["loc"] }
-    >();
+    // Infra ids in this scope, `[external]` / `[index]` excluded (see
+    // collectInfraInScope for the rationale).
+    const infraInScope = collectInfraInScope(nodes);
     const infraToServices = new Map<string, Set<string>>();
 
     // Resolver over this scope's entities: a bare `resource Order` that resolves
@@ -372,22 +401,6 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
     // OrderDB just as a physical `resource OrderDB.orders` would (TPL-20260623-02
     // — keep the resource→store target set synchronized across every consumer).
     const resolver = buildEntityResolver(nodes);
-
-    function collectInfra(node: KrsNode): void {
-      if (
-        INFRA_KIND_SET.has(node.kind) &&
-        !node.tags.includes("external") &&
-        !node.tags.includes("index")
-      ) {
-        infraInScope.set(node.id, {
-          kind: node.kind as "database" | "queue" | "storage",
-          loc: node.loc,
-        });
-      }
-      for (const child of node.children) {
-        collectInfra(child);
-      }
-    }
 
     function collectRefs(node: KrsNode, parentServiceId?: string): void {
       if (node.kind === "service") {
@@ -407,9 +420,6 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
       }
     }
 
-    for (const node of nodes) {
-      collectInfra(node);
-    }
     for (const node of nodes) {
       collectRefs(node);
     }
@@ -437,6 +447,160 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
   // scope already has both, since infra and services are alike `system.children`.
   if (file.services.length > 0) {
     detectInScope([...file.services, ...file.databases, ...file.queues, ...file.storages]);
+  }
+
+  return warnings;
+}
+
+/**
+ * Cross-domain store access (info): a `usecase` in domain A reads/writes an
+ * infra leaf owned by a *different* domain B.
+ *
+ * Ownership is derived from the logical layer — a leaf `infraId.tableId` is
+ * owned by every `domain` whose `entity` maps it via `table <InfraId>.<subId>`
+ * (ADR-20260715-01). No new syntax: the entity layer is the source of truth,
+ * and the physical `table` never carries a domain. Keying is at **leaf
+ * granularity** because sibling tables in one `database` can belong to
+ * different domains — keying on the whole store would let a reach-in into a
+ * co-owned store's foreign table hide behind the accessor being *an* owner of
+ * *some* table there.
+ *
+ * Ownership is a **set** of domains: `owners(leaf) = { D : entity∈D maps leaf }`.
+ * The warning fires when `accessingDomain ∉ owners(leaf)` — a single-owner
+ * reach-in and a third domain touching a co-owned leaf both fire, while a
+ * co-owned leaf's own owners are exempt. `[external]` / `[index]` stores are
+ * excluded (symmetric with `shared-infra-fan-in`). Detection runs on the merged
+ * `KrsFile` (view-independent) and is scoped per system.
+ *
+ * Both ownership and access key on the domain **id**, consistent with how the
+ * whole model treats domain identity (domain edges, ghost domains, `handles`).
+ * A consequence: when the *same* domain id is dispersed across services in one
+ * system (the `domain-dispersal` info fact — allowed, not an error), the two
+ * dispersed halves are treated as one logical domain, so a usecase in one half
+ * reaching into a leaf owned by the other half does **not** fire here (the
+ * dispersal itself is what `domain-dispersal` surfaces). Cross-*system* access
+ * is out of scope: per-system scoping keeps the id comparison within a single
+ * system so identical ids in different systems never conflate (ADR-20260714-01).
+ *
+ * Paired with but **orthogonal** to `shared-infra-fan-in`: that keys on how
+ * many services share a store; this keys on crossing an ownership boundary. The
+ * two fire independently on the same store — no double counting, no mutual
+ * suppression. The resource→store resolution reuses `buildEntityResolver`, kept
+ * in sync with `deriveInfraEdges` / `detectSharedInfraFanIn` /
+ * `detectUnassignedResources` (TPL-20260623-02).
+ * See `docs/design/domain-store-ownership-diagnostic.md`.
+ */
+function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  function detectInScope(nodes: KrsNode[]): void {
+    const resolver = buildEntityResolver(nodes);
+
+    // Infra blocks in scope, `[external]` / `[index]` excluded (shared with
+    // fan-in via collectInfraInScope). Excluded stores also contribute no
+    // ownership, so an entity mapping such a leaf yields no owner and never fires.
+    const infraInScope = collectInfraInScope(nodes);
+
+    // owners: leaf key `infraId.tableId` -> set of owning domain ids.
+    const owners = new Map<string, Set<string>>();
+    function collectOwners(node: KrsNode, domainId?: string): void {
+      const nextDomain = node.kind === "domain" ? node.id : domainId;
+      if (node.kind === "entity" && nextDomain !== undefined) {
+        const tableRef = (node as EntityNode).tableRef;
+        if (tableRef !== undefined && infraInScope.has(tableRef.parent)) {
+          const key = `${tableRef.parent}.${tableRef.child}`;
+          let set = owners.get(key);
+          if (!set) owners.set(key, (set = new Set()));
+          set.add(nextDomain);
+        }
+      }
+      for (const child of node.children) collectOwners(child, nextDomain);
+    }
+    for (const node of nodes) collectOwners(node);
+
+    // Aggregate crossing accesses by (accessingDomain, leaf). Multiple usecases
+    // in one domain touching the same foreign leaf collapse to one warning; the
+    // read/write mode is the union of their accesses.
+    interface Agg {
+      accessingDomain: string;
+      owningDomains: string[];
+      infraId: string;
+      infraKind: "database" | "queue" | "storage";
+      tableId: string;
+      hasRead: boolean;
+      hasWrite: boolean;
+      loc: KrsNode["loc"];
+    }
+    const agg = new Map<string, Agg>();
+
+    function collectAccess(node: KrsNode, domainId?: string): void {
+      const nextDomain = node.kind === "domain" ? node.id : domainId;
+      if (node.kind === "resource" && nextDomain !== undefined) {
+        const resolved = resolver.resolve(node as ResourceNode);
+        const { infraParentId: parent, infraChildId: child } = resolved;
+        if (parent !== undefined && child !== undefined && infraInScope.has(parent)) {
+          const leafKey = `${parent}.${child}`;
+          const ownerSet = owners.get(leafKey);
+          if (ownerSet && ownerSet.size > 0 && !ownerSet.has(nextDomain)) {
+            const aggKey = `${nextDomain} ${leafKey}`;
+            const ops = (node as ResourceNode).properties.operations;
+            let entry = agg.get(aggKey);
+            if (!entry) {
+              entry = {
+                accessingDomain: nextDomain,
+                owningDomains: Array.from(ownerSet).sort(),
+                infraId: parent,
+                infraKind: infraInScope.get(parent)!.kind,
+                tableId: child,
+                hasRead: false,
+                hasWrite: false,
+                loc: node.loc,
+              };
+              agg.set(aggKey, entry);
+            }
+            entry.hasWrite = entry.hasWrite || isWriteOperation(ops);
+            entry.hasRead = entry.hasRead || isReadOperation(ops);
+            // Point at the last crossing occurrence (mirrors domain-dispersal).
+            entry.loc = node.loc;
+          }
+        }
+      }
+      for (const child of node.children) collectAccess(child, nextDomain);
+    }
+    for (const node of nodes) collectAccess(node);
+
+    for (const entry of agg.values()) {
+      const mode =
+        entry.hasWrite && entry.hasRead ? "readwrite" : entry.hasWrite ? "write" : "read";
+      warnings.push({
+        kind: "cross-domain-store-access",
+        params: {
+          accessingDomain: entry.accessingDomain,
+          owningDomains: entry.owningDomains,
+          infraId: entry.infraId,
+          infraKind: entry.infraKind,
+          tableId: entry.tableId,
+          mode,
+        },
+        loc: entry.loc,
+      });
+    }
+  }
+
+  for (const system of file.systems) {
+    detectInScope(system.children);
+  }
+  // Top-level (system-less) scope: a top-level domain's usecase can reach into
+  // another top-level domain's store, so include `file.domains` alongside the
+  // services and the separately-bucketed top-level infra.
+  if (file.services.length > 0 || file.domains.length > 0) {
+    detectInScope([
+      ...file.services,
+      ...file.domains,
+      ...file.databases,
+      ...file.queues,
+      ...file.storages,
+    ]);
   }
 
   return warnings;

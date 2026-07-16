@@ -261,6 +261,7 @@ karasu は architecture を **視覚化** する。流派（school）を **規�
 | `domain-dispersal` (info) | 同一 system 内で同じ domain id が 2 つ以上の service に登場 | DDD は領域分散を凝集性低下のシグナルとみなす |
 | `infra-redeclared-across-files` (info) | 同じ `database` / `queue` / `storage` id が複数ファイルで**宣言される** | マルチファイル分割の衛生 — 観察しているのは宣言の冗長性であって共有ではない（1 service しか触っていなくても発火しうる） |
 | `shared-infra-fan-in` (info) | 同一 system 内で同じ `database` / `queue` / `storage` を 2 つ以上の service が参照する（`[external]` / `[index]` ストアは除外） | マイクロサービスの Database-per-Service は共有 store を smell とする — 何ファイルで宣言したかに依らず、実際の共有で判定する |
+| `cross-domain-store-access` (info) | 同一 system 内で、ある domain の usecase が *別の* domain 所有の infra leaf を読み書きする（所有は `entity` マッピングから導出、leaf 粒度、`[external]` / `[index]` は除外） | 境界づけられたコンテキスト / DDD は他ドメインの store への踏み込みを境界の smell とする — shared kernel や移行期には正当。`shared-infra-fan-in` とは直交（所有境界の越境 vs service 数の共有） |
 | `duplicate-owner-assignment` (info) | 同一ノードを複数の `team` が `owns`（主オーナーは最初の宣言を採用） | 単一所有を前提とする組織論は重複所有を smell とみなす。逆コンウェイの移行期には正当な過渡状態 |
 
 このリストは今後も伸びる。追加する判断基準は以下のとおり:
