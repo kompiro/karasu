@@ -22,9 +22,7 @@ export async function tidyStyle(files: string[], options: TidyStyleOptions): Pro
     return;
   }
 
-  const targets = resolveTargets(files, () =>
-    findFilesBySuffix(process.cwd(), ".krs.style", SKIP),
-  );
+  const targets = resolveTargets(files, () => findFilesBySuffix(process.cwd(), ".krs.style", SKIP));
 
   if (targets.length === 0) {
     process.stderr.write("No .krs.style files found.\n");
