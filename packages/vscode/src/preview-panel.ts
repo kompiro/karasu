@@ -28,11 +28,17 @@ import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 /**
  * Width budget for the detail panel, shared by the CSS `max-width` and the
  * webview script's overflow-avoidance math (which flips the panel to the
- * left of the node, offset by an 8px gap, when it would overflow the right
- * edge). Keeping both in one constant prevents the positioning math from
- * silently desynchronizing from the rendered width.
+ * left of the node, offset by `DETAIL_PANEL_GAP`, when it would overflow the
+ * right edge). Keeping both in one constant prevents the positioning math
+ * from silently desynchronizing from the rendered width.
  */
 const DETAIL_PANEL_MAX_WIDTH = 360;
+
+/**
+ * Gap between the anchor node and the detail panel, also used as the minimum
+ * left margin when the panel is clamped to the viewport edge.
+ */
+const DETAIL_PANEL_GAP = 8;
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -89,19 +95,19 @@ export class PreviewPanel {
         if (message.type === "switchView" && isViewType(message.viewType)) {
           this._viewType = message.viewType;
           this._drilldown = emptyDrilldownState();
-          this._rerender();
+          void this._rerender();
         } else if (message.type === "drillDown" && isNodeId(message.nodeId)) {
           // NodeMetadata satisfies DrilldownNodeMeta structurally; the
           // annotation records the subset the transition actually reads.
           const meta: DrilldownNodeMeta | undefined = this._lastNodeMetadata?.get(message.nodeId);
           this._drilldown = drillDown(this._drilldown, message.nodeId, meta);
-          this._rerender();
+          void this._rerender();
         } else if (
           message.type === "navigateTo" &&
           isValidNavIndex(message.index, this._drilldown.viewPath.length)
         ) {
           this._drilldown = navigateTo(this._drilldown, message.index);
-          this._rerender();
+          void this._rerender();
         } else if (
           message.type === "switchViewAndHighlight" &&
           isViewType(message.viewType) &&
@@ -110,14 +116,12 @@ export class PreviewPanel {
           this._viewType = message.viewType;
           this._drilldown = emptyDrilldownState();
           const highlightId = message.nodeId;
-          if (this._currentDocument) {
-            void this._render(this._currentDocument).then(() => {
-              this.highlight(highlightId);
-            });
-          }
+          void this._rerender()?.then(() => {
+            this.highlight(highlightId);
+          });
         } else if (message.type === "toggleIconMode") {
           this._displayMode = this._displayMode === "icon" ? "shape" : "icon";
-          this._rerender();
+          void this._rerender();
         } else if (message.type === "navigate" && isNodeId(message.nodeId)) {
           this._onNavigate(message.nodeId);
         } else if (message.type === "openExternal" && isAllowedExternalUrl(message.url)) {
@@ -136,7 +140,7 @@ export class PreviewPanel {
         const next = diagramThemeFromColorTheme(colorTheme.kind);
         if (next === this._theme) return;
         this._theme = next;
-        this._rerender();
+        void this._rerender();
       },
       null,
       this._disposables,
@@ -170,11 +174,16 @@ export class PreviewPanel {
     return this._disposed;
   }
 
-  /** Re-render the current document, if one has been set. */
-  private _rerender(): void {
+  /**
+   * Re-render the current document, if one has been set. Returns the render
+   * promise so callers can chain post-render work (e.g. highlighting), or
+   * `undefined` when there is no document to render.
+   */
+  private _rerender(): Promise<void> | undefined {
     if (this._currentDocument) {
-      void this._render(this._currentDocument);
+      return this._render(this._currentDocument);
     }
+    return undefined;
   }
 
   private async _render(document: vscode.TextDocument): Promise<void> {
@@ -622,13 +631,13 @@ export class PreviewPanel {
       var wrapperRect = wrapper.getBoundingClientRect();
       var targetRect = targetEl.getBoundingClientRect();
 
-      var anchorX = targetRect.right - wrapperRect.left + wrapper.scrollLeft + 8;
+      var anchorX = targetRect.right - wrapperRect.left + wrapper.scrollLeft + ${DETAIL_PANEL_GAP};
       var anchorY = targetRect.top - wrapperRect.top + wrapper.scrollTop;
 
       // If panel would overflow right edge, position to the left
       if (anchorX + ${DETAIL_PANEL_MAX_WIDTH} > wrapper.scrollWidth && anchorX + ${DETAIL_PANEL_MAX_WIDTH} > wrapperRect.width) {
-        anchorX = targetRect.left - wrapperRect.left + wrapper.scrollLeft - ${DETAIL_PANEL_MAX_WIDTH + 8};
-        if (anchorX < 0) anchorX = 8;
+        anchorX = targetRect.left - wrapperRect.left + wrapper.scrollLeft - ${DETAIL_PANEL_MAX_WIDTH + DETAIL_PANEL_GAP};
+        if (anchorX < 0) anchorX = ${DETAIL_PANEL_GAP};
       }
 
       detailPanel.style.left = anchorX + 'px';
