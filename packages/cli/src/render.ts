@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import { resolve, dirname, basename, extname } from "node:path";
 import {
   buildAllViewsSvgProject,
@@ -127,11 +126,8 @@ export async function render(filePath: string, options: RenderOptions): Promise<
         const outDir = dirname(resolve(options.output));
         const stem = basename(options.output, extname(options.output));
         const matrixPath = resolve(outDir, `${stem}.matrix.svg`);
-        await writeFile(matrixPath, matrixSvg, "utf-8");
+        await writeOutput(matrixSvg, matrixPath);
       }
     }
   }
 }
-
-// Re-export for testing
-export { NodeFileSystemProvider };

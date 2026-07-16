@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { tidyStyleSheet } from "@karasu-tools/core";
-import { findFilesBySuffix, resolveTargets } from "./find-files.js";
+import { DEFAULT_SKIP_DIRS, findFilesBySuffix, resolveTargets } from "./find-files.js";
 import { readStdin } from "./stdin.js";
 
 interface TidyStyleOptions {
@@ -8,8 +8,6 @@ interface TidyStyleOptions {
   stdin?: boolean;
   noMerge?: boolean;
 }
-
-const SKIP = new Set(["node_modules", ".worktrees", ".git", "dist", ".claude"]);
 
 /**
  * `karasu tidy-style` — normalize one or more `.krs.style` files in
@@ -22,7 +20,9 @@ export async function tidyStyle(files: string[], options: TidyStyleOptions): Pro
     return;
   }
 
-  const targets = resolveTargets(files, () => findFilesBySuffix(process.cwd(), ".krs.style", SKIP));
+  const targets = resolveTargets(files, () =>
+    findFilesBySuffix(process.cwd(), ".krs.style", DEFAULT_SKIP_DIRS),
+  );
 
   if (targets.length === 0) {
     process.stderr.write("No .krs.style files found.\n");

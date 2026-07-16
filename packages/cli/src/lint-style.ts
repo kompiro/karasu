@@ -1,14 +1,12 @@
 import * as fs from "node:fs";
 import { StyleParser, validateStyleValues, type Diagnostic } from "@karasu-tools/core";
-import { findFilesBySuffix, resolveTargets } from "./find-files.js";
+import { DEFAULT_SKIP_DIRS, findFilesBySuffix, resolveTargets } from "./find-files.js";
 import { formatDiagnostic } from "./i18n.js";
 import { readStdin } from "./stdin.js";
 
 interface LintStyleOptions {
   stdin?: boolean;
 }
-
-const SKIP = new Set(["node_modules", ".worktrees", ".git", "dist", ".claude"]);
 
 /**
  * `karasu lint-style` — value-level diagnostics for `.krs.style` files
@@ -26,7 +24,9 @@ export async function lintStyle(files: string[], options: LintStyleOptions): Pro
     return;
   }
 
-  const targets = resolveTargets(files, () => findFilesBySuffix(process.cwd(), ".krs.style", SKIP));
+  const targets = resolveTargets(files, () =>
+    findFilesBySuffix(process.cwd(), ".krs.style", DEFAULT_SKIP_DIRS),
+  );
 
   if (targets.length === 0) {
     process.stderr.write("No .krs.style files found.\n");

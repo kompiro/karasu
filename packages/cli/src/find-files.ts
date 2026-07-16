@@ -2,11 +2,23 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 /**
+ * Directories the no-arg file walkers (fmt / tidy-style / lint-style)
+ * never descend into. Includes `.claude` so a no-arg run at the repo
+ * root does not touch `.claude/worktrees/` copies of the repo.
+ */
+export const DEFAULT_SKIP_DIRS: ReadonlySet<string> = new Set([
+  "node_modules",
+  ".worktrees",
+  ".git",
+  "dist",
+  ".claude",
+]);
+
+/**
  * Recursively collect files under `dir` whose name ends with `suffix`,
  * skipping any directory (or file) whose name is in `skip`.
  *
- * Shared by `fmt` / `tidy-style` / `lint-style`; each command passes its
- * own suffix and SKIP set so behavior stays identical per command.
+ * Shared by `fmt` / `tidy-style` / `lint-style`.
  */
 export function findFilesBySuffix(
   dir: string,
