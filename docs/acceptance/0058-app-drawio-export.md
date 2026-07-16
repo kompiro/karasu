@@ -20,11 +20,14 @@ CLI 側の draw.io エクスポート (#649 / AT-0057) と同じ出力を、端�
 
 ### 1. メニューからのエクスポート
 
-- [ ] プレビュー上部のツールバー右側に `↓ Export SVG` と `▾` の分割ボタンが表示されている
-- [ ] `▾` をクリックするとドロップダウンに以下 3 項目が並ぶ:
-  - Export Drill-down SVG
-  - Export All Diagrams SVG
-  - **Export draw.io (mxGraph XML)**  ← 今回追加
+- [x] プレビュー上部のツールバー右側に `↓ Export SVG` と `▾` の分割ボタンが表示されている
+
+> ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `renders Export SVG main button and toggle button`
+
+- [x] `▾` をクリックするとドロップダウンに Export Drill-down SVG / Export All Diagrams SVG / **Export draw.io (mxGraph XML)**（← 今回追加）の 3 項目が並ぶ
+
+> ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `clicking toggle button opens export options menu with drill-down item` / `Export All Diagrams SVG calls onExportSvg with all-diagrams.svg filename` / `Export draw.io menu item calls onExportDrawio with a .drawio filename`（3 項目それぞれをメニュー内で発見・操作して存在を担保）
+
 - [x] `Export draw.io (mxGraph XML)` をクリックすると `.drawio` ファイルがダウンロードされる
 
 > ✅ Automated — `packages/e2e/tests/at-0058-app-drawio-export.spec.ts` › `exports the project as a valid .drawio file from the dropdown`
@@ -58,10 +61,9 @@ CLI 側の draw.io エクスポート (#649 / AT-0057) と同じ出力を、端�
 
 ### 4. 無効化条件
 
-- [ ] プロジェクトが読み込まれていない（`entryPath` 未設定）状態では
-      `Export draw.io (mxGraph XML)` メニュー項目が `disabled` 状態になっている
+- [x] プロジェクトが読み込まれていない（`entryPath` 未設定）状態では `Export draw.io (mxGraph XML)` メニュー項目が `disabled` 状態になっている
 
-> manual / visual review — プロジェクト未ロード状態のメニュー無効化はライブセッションで確認する。
+> ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `Export draw.io menu item is disabled when no onExportDrawio is wired`（`AppShell` は `entryPath` 未設定のとき `onExportDrawio` を undefined にするため、この disabled 分岐がそのまま未ロード状態に対応する）
 
 ### 5. CLI との一致
 

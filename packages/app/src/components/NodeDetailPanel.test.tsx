@@ -58,11 +58,16 @@ function baseProps(overrides: Partial<NodeMetadata> = {}) {
 
 describe("NodeDetailPanel", () => {
   it("renders markdown description as HTML", () => {
+    // Inline formatting triple from AT-0060 TC-1: bold / italic / inline code.
     const { container } = render(
-      <NodeDetailPanel {...baseProps({ description: "**bold text**" })} />,
+      <NodeDetailPanel
+        {...baseProps({ description: "**bold text** with *italic text* and `inline code`" })}
+      />,
     );
     expect(container.querySelector("strong")).not.toBeNull();
     expect(container.querySelector("strong")?.textContent).toBe("bold text");
+    expect(container.querySelector("em")?.textContent).toBe("italic text");
+    expect(container.querySelector("code")?.textContent).toBe("inline code");
   });
 
   // Regression guards for marked v18 parser changes (trailing-blank trim on

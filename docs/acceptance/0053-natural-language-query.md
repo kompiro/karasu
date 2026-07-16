@@ -143,7 +143,7 @@ Set a valid Claude API key in the Settings tab before running these tests.
 - AI returns services from all imported files, not just the currently open file
 - This verifies that `resolvedSystems` (compiled from all files) is passed to the chat
 
-> manual / visual review — multi-file モデル全体が AI に渡っているかは Chat 応答の網羅性で判定するため目視確認が必要。
+> 🟡 Partially automated — `packages/app/src/hooks/useChatSession/prompt.test.ts` › `serializes teams / owns / members / links / subteams even when the org block is not in the current file` fences that the whole multi-file model (not just the open file) is serialized into the prompt. Whether the LLM's answer then enumerates them correctly stays a manual check on the live Chat UI.
 
 ---
 

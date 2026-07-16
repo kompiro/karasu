@@ -99,7 +99,7 @@ Open `index.krs` so it is the current file.
 - [ ] Reversing the comparison renders a **ghost removed badge** (dashed red
       circle with `−`) and the panel shows `- @deprecated`
 
-> manual / visual review — annotation-badge-only diff (vs whole-node diff) plus the "Annotation diff" detail-panel section needs interactive UI inspection.
+> 🟡 Partially automated — `packages/core/src/renderer/svg-renderer.test.ts` › `marks the merged badge as added when an annotation was added` / `renders a ghost removed badge when the node has no current badge` / `keeps annotation-only nodes at state=unchanged on the main group` cover the badge `data-diff-state` states and the unchanged main rect; `packages/app/src/components/NodeDetailPanel.test.tsx` › `renders +/- rows when annotationDiff is provided` covers the "⇄ Annotation diff" panel section. The green-ring / dashed-red badge **colours** remain a manual perception check on the live SVG.
 
 ### TC-5: Unchanged elements are dimmed
 
@@ -215,11 +215,22 @@ deploy Production {
 
 **Forward direction (added unit):** `index.krs` is the project entry, so it is always the "after" side. Make sure `index.krs` is the file *with* `payments-svc` and `before.krs` is the file *without*.
 
-- [ ] Enter diff mode by right-clicking `before.krs` → **⇄ Compare with current**
-- [ ] Switch to the **Deploy** view tab
-- [ ] `payments-svc` deploy unit appears with a **green** border
+- [x] Enter diff mode by right-clicking `before.krs` → **⇄ Compare with current**
+
+> ✅ Automated — `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` › `deploy-view diff decorates the added unit after switching tabs mid-diff (AT-0058 TC-9)`
+
+- [x] Switch to the **Deploy** view tab
+
+> ✅ Automated — `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` › `deploy-view diff decorates the added unit after switching tabs mid-diff (AT-0058 TC-9)`
+
+- [x] `payments-svc` deploy unit appears with a **green** border
+
+> 🟡 Partially automated — `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` › `deploy-view diff decorates the added unit after switching tabs mid-diff (AT-0058 TC-9)` asserts the unit carries `data-diff-state="added"` after the tab switch; the green border **tone** stays a manual colour-perception check.
+
 - [ ] The new ghost edge from `Orders` container to `Payments` container is **green**
-- [ ] Diff banner remains visible while the deploy view is active
+- [x] Diff banner remains visible while the deploy view is active
+
+> ✅ Automated — `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` › `deploy-view diff decorates the added unit after switching tabs mid-diff (AT-0058 TC-9)`
 
 **Removed unit:** swap which file holds `payments-svc` — put it in `before.krs` only, with `index.krs` *not* containing it. Then run the same Compare action.
 

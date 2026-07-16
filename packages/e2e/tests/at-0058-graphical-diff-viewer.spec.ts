@@ -17,10 +17,14 @@ import { expect, test } from "../fixtures/opfs.js";
  *  - AT-0061 TC-2: the paste-compare dialog drives a diff from a pasted blob
  *    (banner shows the italic `pasted` before-label).
  *  - AT-0058 TC-6: Exit diff restores the non-diff render (no `data-diff-state`).
+ *  - AT-0058 TC-9: the deploy view keeps the diff across a mid-diff tab
+ *    switch — the added unit carries `data-diff-state="added"` and the diff
+ *    banner stays visible.
  *
  * Out of scope (documented to avoid false "missing coverage" reads):
- *  - Colour / opacity perception (TC-1/3/5), annotation-badge diff (TC-4),
- *    org-view (TC-8a) and deploy-view (TC-9) diff styling — visual checks.
+ *  - Colour / opacity perception (TC-1/3/5/9), annotation-badge diff (TC-4),
+ *    and org-view (TC-8a) diff styling — visual checks. TC-9 is covered
+ *    structurally only (attributes, not colours or ghost-edge styling).
  *  - Snapshot compare source (AT-0060) and open-file-as-entry history /
  *    deep-link (AT-0063) — the latter's meaningful ACs are browser-history
  *    and app-reducer unit-level, not an app e2e fit.
@@ -46,6 +50,36 @@ const BEFORE_KRS = `system Shop {
 
 // Same shape as BEFORE_KRS, used as a pasted before-side blob.
 const PASTED_KRS = BEFORE_KRS;
+
+// Deploy variants for the TC-9 mid-diff tab switch: the deploy blocks differ
+// by exactly one unit (`payments-svc`, realizing the service that is also
+// only present on the after-side).
+const INDEX_DEPLOY_KRS = `system Shop {
+  service Catalog
+  service Orders
+  service Payments
+  Catalog -> Orders "queries"
+  Orders -> Payments "charges"
+}
+
+deploy Production {
+  oci "catalog-svc" { realizes Catalog }
+  oci "orders-svc" { realizes Orders }
+  oci "payments-svc" { realizes Payments }
+}
+`;
+
+const BEFORE_DEPLOY_KRS = `system Shop {
+  service Catalog
+  service Orders
+  Catalog -> Orders "queries"
+}
+
+deploy Production {
+  oci "catalog-svc" { realizes Catalog }
+  oci "orders-svc" { realizes Orders }
+}
+`;
 
 const banner = (page: import("@playwright/test").Page) =>
   page.getByRole("status", { name: "Diff mode active" });
@@ -132,6 +166,46 @@ test.describe("AT-0058 Graphical diff viewer", () => {
     await expect(banner(page)).toContainText("pasted");
     // Pasted blob (before-side) lacks Payments → added in the current file.
     await expect(page.locator('[data-node-id="Payments"][data-diff-state="added"]')).toBeVisible();
+  });
+
+  test("deploy-view diff decorates the added unit after switching tabs mid-diff (AT-0058 TC-9)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({
+      projects: [
+        {
+          id: "diff",
+          name: "Diff",
+          files: { "index.krs": INDEX_DEPLOY_KRS, "before.krs": BEFORE_DEPLOY_KRS },
+        },
+      ],
+      lastProjectId: "diff",
+    });
+    await opfs.gotoApp();
+
+    await page.locator(".file-tree-item", { hasText: "index.krs" }).first().click();
+    await expect(page.locator('[data-node-id="Payments"]')).toBeVisible();
+
+    // Enter diff mode on the system view first (the mid-diff starting point).
+    await page.locator(".file-tree-item", { hasText: "before.krs" }).first().click({
+      button: "right",
+    });
+    await page.getByRole("button", { name: "⇄ Compare with current" }).click();
+    await expect(page.locator('[data-node-id="Payments"][data-diff-state="added"]')).toBeVisible();
+
+    // Switch tabs mid-diff: the deploy view compiles its own diff for the
+    // same compare source. The unit only present on the after-side must
+    // arrive decorated (structural attribute only — colour perception and
+    // ghost-edge styling stay manual checks).
+    await page.getByRole("tab", { name: "Deploy" }).click();
+    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await expect(
+      page.locator('[data-node-id="Payments::payments-svc"][data-diff-state="added"]'),
+    ).toBeVisible();
+
+    // The diff banner survives the tab switch.
+    await expect(banner(page)).toBeVisible();
   });
 
   test("Exit diff restores the non-diff render (AT-0058 TC-6)", async ({ page, opfs }) => {
