@@ -11,10 +11,15 @@ import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from 
 import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
 import { type LegendUsage, legendRefHasUsage } from "../legend/usage.js";
 import type { DiagramPalette } from "./palette.js";
+import { charDisplayWidth } from "./rendering-constants.js";
 
 type AttrValue = string | number | undefined | null | false;
 type Attrs = Record<string, AttrValue>;
 
+// SVG text/attribute escaping. Deliberately does NOT escape `'` — SVG output
+// only uses double-quoted attributes. The draw.io exporter has its own variant
+// (exporter/drawio/mxgraph-builder.ts) that additionally escapes `'` because
+// mxGraph style strings are apostrophe-sensitive; do not merge the two.
 function escapeXml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -60,7 +65,7 @@ export function truncateToWidth(text: string, maxWidth: number, charWidth: numbe
   const chars = [...text];
   let width = 0;
   for (let i = 0; i < chars.length; i++) {
-    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+    const cw = charDisplayWidth(chars[i], charWidth);
     if (width + cw > textBudget) {
       return chars.slice(0, i).join("") + "…";
     }
@@ -88,7 +93,7 @@ export function wrapToWidth(
   let lastFitIdx = 0;
 
   for (let i = 0; i < chars.length; i++) {
-    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+    const cw = charDisplayWidth(chars[i], charWidth);
     if (lineWidth + cw > maxWidth) {
       if (lines.length === maxLines - 1) {
         // Last allowed line: reserve room for "…" so the output fits within maxWidth.
@@ -97,7 +102,7 @@ export function wrapToWidth(
         let lastLineWidth = lineWidth;
         while (j > lineStart && lastLineWidth > lastLineBudget) {
           j--;
-          const prevCw = chars[j].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+          const prevCw = charDisplayWidth(chars[j], charWidth);
           lastLineWidth -= prevCw;
         }
         lines.push(chars.slice(lineStart, j).join("") + "…");

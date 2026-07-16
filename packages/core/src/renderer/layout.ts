@@ -7,7 +7,12 @@ import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
-import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
+import {
+  CHAR_WIDTH,
+  NODE_PADDING_X,
+  NODE_PADDING_Y,
+  estimateTextWidth,
+} from "./rendering-constants.js";
 import {
   sortByBarycenter,
   bucketByColumn,
@@ -2450,16 +2455,4 @@ function measureNode(
   if (hasMetaRow) height += LINE_HEIGHT;
 
   return { width, height };
-}
-
-function estimateTextWidth(text: string, charWidth: number): number {
-  let width = 0;
-  for (const ch of text) {
-    if (ch.charCodeAt(0) > 0x2e80) {
-      width += charWidth * 1.5;
-    } else {
-      width += charWidth;
-    }
-  }
-  return width;
 }

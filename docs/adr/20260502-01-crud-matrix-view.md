@@ -15,13 +15,13 @@ scope:
 assumptions:
   - "file: packages/core/src/view/crud-matrix-extract.ts"
   - "file: packages/core/src/view/crud-matrix-format.ts"
-  - "file: packages/core/src/render/matrix-svg.ts"
+  - "file: packages/core/src/renderer/matrix-svg.ts"
   - "file: packages/cli/src/matrix.ts"
   - "file: packages/app/src/components/CrudMatrixPanel.tsx"
   - "symbol: packages/core/src/view/crud-matrix-extract.ts :: extractCrudMatrix"
   - "symbol: packages/core/src/view/crud-matrix-format.ts :: formatMatrixAsMarkdown"
   - "symbol: packages/core/src/view/crud-matrix-format.ts :: formatMatrixAsCsv"
-  - "symbol: packages/core/src/render/matrix-svg.ts :: renderMatrixAsSvg"
+  - "symbol: packages/core/src/renderer/matrix-svg.ts :: renderMatrixAsSvg"
 ---
 
 # ADR-20260502-01: CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして提供する

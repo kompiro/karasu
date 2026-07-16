@@ -1,13 +1,7 @@
 import type { Translator, TranslatorContext } from "./translator.js";
+import { toPascalCase } from "./identifier.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function toPascalCase(str: string): string {
-  return str
-    .trim()
-    .replace(/[^a-zA-Z0-9]+(.)/g, (_, ch: string) => ch.toUpperCase())
-    .replace(/^(.)/, (ch: string) => ch.toUpperCase());
-}
 
 function toTableId(tableName: string): string {
   return `${toPascalCase(tableName)}Table`;
