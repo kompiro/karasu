@@ -102,6 +102,8 @@ karasu render examples/ja/ec-platform/05-multifile/system.krs
 
 ### 7. Deploy diagram with all-views (default)
 
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `default render of a deploy file bundles both system and deploy panes`
+
 ```bash
 karasu render examples/ja/ec-platform/06-deploy/deploy.krs
 ```
@@ -131,6 +133,8 @@ karasu render examples/ja/ec-platform/01-system.krs | svgo - -o /tmp/ec-optimize
 - [ ] `/tmp/ec-optimized.svg` is created and is a smaller valid SVG
 
 ### 10. Help output shows Examples section
+
+> ✅ Automated — `packages/cli/src/help-text.test.ts` › `render --help lists the svgo pipe, --output and --view examples`
 
 ```bash
 karasu render --help

@@ -69,11 +69,11 @@ type: product
 - [ ] AT-L（manual）: `karasu matrix examples/en/feature-samples/crud-matrix.krs --format=svg -o /tmp/m.svg` を生成しブラウザで開き、grid layout が読めること、`R?`（`SearchOrders`）と単独 `?`（`ReplayOrderEvents`）が正しく描かれていること、unknown verb 脚注が表示されることを確認する
   > 🧑 Manual — SVG をブラウザで目視確認
 
-- [ ] AT-M（manual）: `karasu render examples/ja/getting-started/index.krs --include-matrix --output /tmp/out.svg` を実行し、`/tmp/out.svg` と `/tmp/out.matrix.svg` が同じディレクトリに出力されることを確認する
-  > 🧑 Manual — シェル実行で確認
+- [x] AT-M: `karasu render examples/ja/getting-started/index.krs --include-matrix --output /tmp/out.svg` を実行し、`/tmp/out.svg` と `/tmp/out.matrix.svg` が同じディレクトリに出力されることを確認する
+  > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--include-matrix writes the SVG and a sibling .matrix.svg`（同じ getting-started example を使用。warning 経路も `--include-matrix without --output warns and skips the sidecar` / `--include-matrix with --format drawio warns and writes the drawio output only` で fence）
 
-- [ ] AT-N（manual）: `--omit-empty` を付けたときに未宣言の行・列が消え、付けないとき（default）に未宣言の行・列も出ることを `examples/en/feature-samples/crud-matrix.krs` で目視比較する
-  > 🧑 Manual — `karasu matrix --omit-empty` と無し版を比較
+- [x] AT-N: `--omit-empty` を付けたときに全セル空の行・列（resource 参照を持たない usecase の行 / どの usecase からも参照されない resource の列）が消え、付けないとき（default）は残ることを比較する
+  > ✅ Automated — `packages/cli/src/matrix.test.ts` › `--omit-empty drops empty rows/columns; the default keeps them`（`--writes-only` / `--external` / `--no-external` の CLI 配線も `--writes-only drops read-only rows and keeps writing usecases` / `--external / --no-external filter [external] resource columns` で fence）
 
 ## 補足
 

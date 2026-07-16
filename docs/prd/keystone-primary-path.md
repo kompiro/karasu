@@ -11,19 +11,11 @@
 
 ## 用語集（この doc / 後続の特殊用語）
 
-> 本壁打ちで導入した load-bearing な用語。Issue 展開時、permalink 系は恒久的な定義場所
-> （nest/permalink の design doc か共通用語集）へ移すこと。
-
-- **read / record split**: nest = 知らないシステムを*読む*（funnel/utility）/ karasu 本体 = 自分のシステムを*残す*（retained 製品）。
-- **funnel / retained**: funnel = 獲得・awareness の面（web: app/nest）/ retained = 再訪する製品（in-repo authoring + 記録）。
-- **record-as-byproduct**: 構造の記録を「設計判断」の副産物として落とす原則。別途の維持作業（chore）にしないことで doc-rot を構造的に回避（#1 の決定）。
-- **permalink（karasu の）**: ADR/PR/docs が karasu の構造を*指す*住所。link 方向は **ADR→karasu**（karasu は decision metadata を持たない、#2 の決定）。次の属性で分類:
-  - **deep permalink**: model 全体ではなく*特定の構造要素・view*を指す（現 nest share は model 全体止まり）。
-  - **repo-backed permalink**: payload を URL に積む inline 形ではなく、GitHub repo の `.krs` を解決して描画する nest Phase 2 形（`/<owner>/<repo>`）。
-  - **ref-pinned**: 特定の git ref/SHA に固定し、その時点の構造を immutable に描画（ADR の point-in-time 記録に適合）。
-  - **inline snapshot permalink**: 現行の nest `?s=`。model を URL に凍結（immutable だが repo 非連動・長い → taka で短縮）。
-- **source of truth / 描画層**: source = in-repo の `.krs`（version 管理）/ 描画・permalink = app/nest URL。同じ `.krs` の別レイヤー。
-- **supply → share → explore**: adoption funnel の仮説（reverse 等で `.krs` 供給 → 共有で拡散 → drill-down で探索）。
+> 本壁打ちで導入した load-bearing な用語（**read / record split**・**funnel / retained**・
+> **record-as-byproduct**・**source of truth / 描画層**・**supply → share → explore** と
+> permalink family: **deep** / **repo-backed** / **ref-pinned** / **inline snapshot**）は、
+> [`docs/glossary.md`](../glossary.md)（keystone・permalink 用語集）へ恒久的に移した。
+> 定義の drift を防ぐため、本書はこれらを再掲せず用語集を正典として参照する（#1831）。
 
 ## 背景・課題
 

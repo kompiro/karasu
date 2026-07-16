@@ -25,16 +25,18 @@ node packages/cli/dist/index.js render examples/ja/ec-platform/05-multifile/syst
   --format drawio --output /tmp/ecplatform.drawio
 ```
 
-- [ ] コマンドが終了コード 0 で完了する
-- [ ] `/tmp/ecplatform.drawio` が生成される
-- [ ] ファイル冒頭が `<?xml version="1.0" encoding="UTF-8"?>` で始まり、`<mxfile host="karasu" ...>` が続く
-- [ ] 少なくとも以下のページが含まれる:
+- [x] コマンドが終了コード 0 で完了する
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `default --format drawio writes a multipage mxfile (host=karasu)`
+- [x] `/tmp/ecplatform.drawio` が生成される
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `default --format drawio writes a multipage mxfile (host=karasu)`（`--output` 先のファイルを読み戻して assert）
+- [x] ファイル冒頭が `<?xml version="1.0" encoding="UTF-8"?>` で始まり、`<mxfile host="karasu" ...>` が続く
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `default --format drawio writes a multipage mxfile (host=karasu)`
+- [x] 少なくとも以下のページが含まれる:
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `default --format drawio writes a multipage mxfile (host=karasu)`（deploy / organization ブロックを持つ `examples/ja/getting-started/index.krs` で 4 種のページを assert）/ `multi-file project exports drill-down pages with breadcrumb names`（import 解決後の drill-down 名）。ページ分割の contract 自体は `packages/core/src/exporter/drawio/build-drawio-project.test.ts` › `emits one page per drillable level (top + each system / service / domain / usecase with children)` / `bundles system drill-down, deploy, and org pages together` が fence する。
   - `<diagram id="system" name="System">` — トップレベル
   - `<diagram id="system_..." name="System ▸ ..."` — system / service / domain / usecase の各ドリルダウン
   - `<diagram id="deploy" name="Deploy">` — deploy ブロックがあるとき
   - `<diagram id="org" name="Organization">` — organization ブロックがあるとき
-
-> manual / visual review — マルチページ XML の冒頭・diagram 要素の存在は CLI 出力を目視確認する必要がある（ec-platform 一式に依存）。
 
 ### 2. draw.io で開く
 
@@ -52,11 +54,15 @@ node packages/cli/dist/index.js render examples/ja/ec-platform/05-multifile/syst
 
 - [ ] 各ノードのラベル上部に `«service»` / `«domain»` / `«user»` のような
       UML 風ステレオタイプが小さな灰文字で表示される
+  > 🟡 Partially automated — ステレオタイプ付きラベルの生成は `packages/core/src/exporter/drawio/drawio-style.test.ts` › `prefixes the kind as a UML-style stereotype above the label` で fence（draw.io 上の見た目は手動）
 - [ ] `user` ノードが UML アクター形（棒人間）で描画される
+  > 🟡 Partially automated — style 文字列は `packages/core/src/exporter/drawio/drawio-style.test.ts` › `applies kind-specific shape (user → umlActor)` および `packages/core/src/exporter/drawio/drawio-exporter.test.ts` › `applies kind-specific shape overrides (user → umlActor, database → cylinder3)` で fence（描画結果は手動）
 - [ ] `database` / `table` / `bucket` / `storage` ノードがシリンダー形で描画される
+  > 🟡 Partially automated — database は `packages/core/src/exporter/drawio/drawio-exporter.test.ts` › `applies kind-specific shape overrides (user → umlActor, database → cylinder3)` で fence（table / bucket / storage の style と描画結果は手動）
 - [ ] `usecase` ノードが楕円で描画される
 - [ ] `service` / `domain` / deploy kind（oci / lambda / jar ...）が
       それぞれ異なる淡い背景色で塗り分けられている
+  > 🟡 Partially automated — service の fill は `packages/core/src/exporter/drawio/drawio-style.test.ts` › `applies kind-specific fill color (service)` で fence（他 kind の色と描画結果は手動）
 
 > manual / visual review — UML ステレオタイプ・形状・配色の視覚的確認は draw.io でのレンダリング結果を目視で判定する。
 
@@ -65,12 +71,17 @@ node packages/cli/dist/index.js render examples/ja/ec-platform/05-multifile/syst
 `examples/ja/migration/` のように `@external` / `@deprecated` / `@migration_target` を含むサンプルで確認する:
 
 - [ ] `@external` が付いたノードは灰色・破線で描画される
+  > 🟡 Partially automated — style 導出は `packages/core/src/exporter/drawio/drawio-style.test.ts` › `applies the external annotation overrides` で fence（描画結果は手動）
 - [ ] `@deprecated` が付いたノードは赤系ストロークと斜体ラベルで描画される
+  > 🟡 Partially automated — 赤系ストロークの優先は `packages/core/src/exporter/drawio/drawio-style.test.ts` › `lets annotation overrides win over kind overrides (deprecated wins on stroke)` で fence（斜体ラベルと描画結果は手動）
 - [ ] `@migration_target` が付いたノードはオレンジ系の強調スタイルになる
+  > 🟡 Partially automated — `@migration_target` バッジの出力は `packages/core/src/exporter/drawio/drawio-exporter.test.ts` › `surfaces container tags/annotations supplied via metadata` で fence（オレンジ強調スタイルの描画は手動）
 - [ ] 付与された全ての annotation が `@name` の小さなオレンジ文字として
       ラベル上に表示される（スタイル未定義のカスタム annotation も含む）
+  > 🟡 Partially automated — `packages/core/src/exporter/drawio/drawio-exporter.test.ts` › `includes tags and annotations from metadata in label and data attrs`（`@deprecated` バッジと `data-karasu-annotations` を assert。色味は手動）
 - [ ] tag が付いているノードで、`#name` の小さな青文字ラベルが表示される
       （例: `examples/ja/migration/` の `#human` タグ）
+  > 🟡 Partially automated — `packages/core/src/exporter/drawio/drawio-exporter.test.ts` › `includes tags and annotations from metadata in label and data attrs`（`#payment` / `#pii` バッジと `data-karasu-tags` を assert。青文字の見た目は手動）
 
 > manual / visual review — annotation / tag 由来のスタイル変化（破線・斜体・色味）は draw.io 描画上の視覚チェック。
 
@@ -81,9 +92,10 @@ node packages/cli/dist/index.js render examples/ja/ec-platform/05-multifile/syst
   --format drawio --view system --output /tmp/system-only.drawio
 ```
 
-- [ ] 出力された `.drawio` ファイルに含まれる `<diagram>` は 1 つだけ
+- [x] 出力された `.drawio` ファイルに含まれる `<diagram>` は system 系ページ（トップ + 各 drill-down）のみで、deploy / org のページは含まれない
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `--view system emits only the system pages (top + drill-downs)`（deploy / organization ブロックを持つ入力で除外を assert）
 
-> manual / visual review — `--view system` で生成した出力ファイルの diagram 要素数を実コマンドで確認する。
+> Note: system view のドリルダウン対応（§1 参照 — drillable な各レベルを別ページに emit）以降、`--view system` は 1 ページではなく system 系の複数ページを出力する。本 AT 初版の「`<diagram>` は 1 つだけ」は当時の単一ページ実装に基づく記述で、現仕様では view の選別（deploy / org を含めない）が §5 の contract。
 
 ### 6. org view 単独指定
 
@@ -92,10 +104,10 @@ node packages/cli/dist/index.js render examples/ja/org/system.krs \
   --format drawio --view org --output /tmp/org-only.drawio
 ```
 
-- [ ] コマンドが終了コード 0 で完了する
-- [ ] 出力された `.drawio` に `<diagram id="org" ...>` のみが含まれる（system / deploy は出ない）
-
-> manual / visual review — `--view org` 単独指定の出力検証は実 CLI 実行を要するため自動化対象外。
+- [x] コマンドが終了コード 0 で完了する
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `--view org emits only the org diagram and exits 0`
+- [x] 出力された `.drawio` に `<diagram id="org" ...>` のみが含まれる（system / deploy は出ない）
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `--view org emits only the org diagram and exits 0`（`<diagram>` がちょうど 1 つであることも assert）。単一 org → `id="org"` の contract は `packages/core/src/exporter/drawio/build-drawio-project.test.ts` › `emits a single org page when there is one organization` が fence する。
 
 ### 7. 未知フォーマットのリジェクト
 
@@ -104,21 +116,20 @@ node packages/cli/dist/index.js render examples/ja/ec-platform/05-multifile/syst
   --format xyz
 ```
 
-- [ ] コマンドが終了コード 1 で終了する
-- [ ] stderr に `unknown --format "xyz"` が含まれる
-
-> manual / visual review — エラーパスの exit code / stderr 文言は実 CLI 実行で確認する。
+- [x] コマンドが終了コード 1 で終了する
+  > ✅ Automated — `packages/cli/src/cli-arg-validation.test.ts` › `render rejects unknown --format with exit 1`
+- [x] stderr に `unknown --format "xyz"` が含まれる
+  > ✅ Automated — `packages/cli/src/cli-arg-validation.test.ts` › `render rejects unknown --format with exit 1`（隣接する validation path も `render rejects unknown --theme with exit 1` / `diff rejects unknown --view with exit 1` で fence）
 
 ### 8. karasu 固有メタデータの保持
 
 draw.io で任意のセルを右クリック → Edit Geometry / Edit Style ではなく、左サイドバー「Arrange」タブまたは XML 直接閲覧で:
 
-- [ ] セル要素に `data-karasu-id`、`data-karasu-kind` のカスタム属性が残っている
-- [ ] 集約された implicit edge（"N domain edges" ラベルが付いたエッジ）に `data-karasu-aggregated` が残っている
-
-> manual / visual review — draw.io 内のセル属性は GUI 経由でしか直接確認できないため目視レビューが必要。
+- [x] セル要素に `data-karasu-id`、`data-karasu-kind` のカスタム属性が残っている
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `drawio cells carry data-karasu-* attributes (id / kind, aggregated on aggregated edges)`、および `packages/core/src/exporter/drawio/drawio-exporter.test.ts` › `renders a node as a vertex cell with absolute geometry when no container encloses it`
+- [x] 集約された implicit edge（"N domain edges" ラベルが付いたエッジ）に `data-karasu-aggregated` が残っている
+  > ✅ Automated — `packages/cli/src/render-drawio.e2e.test.ts` › `drawio cells carry data-karasu-* attributes (id / kind, aggregated on aggregated edges)`（`2 domain edges` ラベルの実 fixture で assert）、および `packages/core/src/exporter/drawio/drawio-exporter.test.ts` › `renders edges as edge cells with source/target and aggregated attribute when applicable`
 
 ## 備考
 
-- 本 AT では `org` view は対象外。org view 対応は別 Issue で扱う（`docs/design/drawio-export.md` 参照）。
 - `.krs` は唯一の真実源であり、draw.io 側で編集した結果は karasu に戻らない。round-trip は非目標。

@@ -45,8 +45,8 @@ type: product
 - [ ] AT-J（manual）: VS Code で `.krs.style` の `color2: red` のような unknown property に warning（黄色波線）が表示される
   > 🧑 Manual — `style-unknown-property` warning が LSP 経由で表示
 
-- [ ] AT-K（manual）: `karasu lint-style --stdin < broken.krs.style` を実行し、`stdin:N:M error: ...` が出力されて exit 1 になる
-  > 🧑 Manual — CLI の対話確認
+- [x] AT-K: `karasu lint-style --stdin < broken.krs.style` を実行し、`stdin:N:M error: ...` が出力されて exit 1 になる
+  > ✅ Automated — `packages/cli/src/lint-style.test.ts` › `lintStyle() --stdin mode › reads stdin and reports diagnostics with 'stdin:' prefix`（`stdin:` prefix と exit 1 を assert）＋ `reports an enum-value error and exits 1`（`<file>:<line>:<col> error:` 形式は `emits errors from multiple files in <file>:<line>:<col> form` で fence）
 
 ## TPL からの観点（PR-B Design Doc に記載）
 

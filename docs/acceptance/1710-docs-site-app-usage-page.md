@@ -9,7 +9,7 @@
 
 - [x] `tools/app.md` が公開ページ集合に登録され、サイトのルートに解決される
 
-  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.test.ts`（`PUBLISHED_EN_FILES` / `routeOf` / `contentPathOf` の既存テストが `tools/app.md` → route `tools/app/`, content `tools/app.md` を検証）
+  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.test.ts` › `publishes tools/app, tools/cli, spec/glossary, spec/diagnostics, notation-cookbook` / `resolves each published page to its route + content path`（実物の `PUBLISHED_EN_FILES` への登録と、`tools/app.md` → route `tools/app/`, content `tools/app.md` の解決を検証）
 
 - [x] 英語版・日本語版の内部リンクがすべて解決し、リンク切れがない
 

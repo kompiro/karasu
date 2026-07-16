@@ -50,5 +50,6 @@
 
 ## 検証方法
 
-- 自動: `pnpm --filter @karasu-tools/docs-site run test`（13 ケース）、`pnpm --filter @karasu-tools/docs-site run check-links`（in-site link/anchor 解決）。両者は root の `test` / `test:coverage` チェーンとビルドに組み込み済み。
+- 自動（PR ゲート）: `pnpm --filter @karasu-tools/docs-site run test`（`rewrite.test.ts` / `site-map.test.ts` ほかのユニット層）。root の `test` / `test:coverage` チェーンに入っており PR CI で走る。
+- 自動（deploy ゲート）: `pnpm --filter @karasu-tools/docs-site run check-links`（in-site link/anchor 解決）は `build` 内で実行され、`.github/workflows/pages.yml`（main への push 時のデプロイ）でのみ走る — PR 時点ではゲートしない。
 - 手動: `pnpm --filter @karasu-tools/docs-site run build && pnpm --filter @karasu-tools/docs-site run preview` でローカル起動し、AC-3 / AC-4 を目視確認する。

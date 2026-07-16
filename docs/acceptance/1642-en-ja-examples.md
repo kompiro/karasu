@@ -27,6 +27,8 @@ docs gallery の en ページが日本語ラベルの図を出していた問題
 
 - [x] `localized()` ページは en エントリ `examples/en/<name>` / ja エントリ `examples/<name>` を持ち、`githubDir` も per-locale
   > ✅ Automated — `packages/docs-site/scripts/lib/gallery-pages.test.ts` › `single-example page embeds the view as a data-URI img with a source fence`（en ページの GitHub リンクが `examples/en/payment-platform` を指す）
+- [x] `localized()` エントリはレンダリング結果もロケール別に分岐する（en エントリの SVG ≠ ja エントリの SVG、ja render は日本語ラベルを含み en render は含まない）
+  > ✅ Automated — `packages/docs-site/scripts/lib/render-examples.test.ts` › `localized example renders locale-distinct labels (en != ja)`（`payment-platform` の en/ja system view を比較）
 - [ ] `/examples/payment-platform/` 等の en ページが**英語ラベルの図**を、`/ja/examples/...` が**日本語ラベルの図**を表示する（目視。gallery のルートは en=`/examples/<slug>/` / ja=`/ja/examples/<slug>/`）
 
 ### AC-3: 既に英語の example は重複させない

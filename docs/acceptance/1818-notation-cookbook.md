@@ -23,7 +23,7 @@
 
 - [x] AT-B: クックブックが docs-site で公開される（`PUBLISHED_EN_FILES` に登録され、ja スラッグが生成され、Guides サイドバーに現れる）
 
-  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.ts` の `PUBLISHED_EN_FILES` に `guide/notation-cookbook.md` を含み、docs-site `sync` + `build` が en/ja ページを生成する
+  > ✅ Automated — `packages/docs-site/scripts/lib/site-map.test.ts` › `publishes tools/app, tools/cli, spec/glossary, spec/diagnostics, notation-cookbook`（実物の `PUBLISHED_EN_FILES` に `guide/notation-cookbook.md` を含むことを PR 時に検証）。en/ja ページ生成と Guides サイドバーは docs-site `sync` + `build`（`pages.yml`、deploy 時）が担う
 
 - [x] AT-C: reverse-engineering guide の "give the model the syntax" 節と See also が、文法と一緒に渡す資料としてクックブックを参照している（en / ja 両方）
 

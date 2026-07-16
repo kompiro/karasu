@@ -1,0 +1,106 @@
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
+import { Location } from "vscode-languageserver/node";
+import { Parser } from "@karasu-tools/core";
+import { findRangeOfNode } from "./position-resolver.js";
+
+/**
+ * Recursively search imported files for a node definition.
+ * Handles named imports, wildcard imports (file and directory), and transitive imports.
+ */
+export function findDefinitionInImports(
+  nodeImports: ReturnType<typeof Parser.parse>["value"]["nodeImports"],
+  word: string,
+  baseUri: string,
+  visited: Set<string>,
+): Location | null {
+  for (const imp of nodeImports) {
+    if (imp.path === "") continue;
+
+    // Directory import: expand to individual .krs files and search each
+    if (imp.path.endsWith("/")) {
+      const dirUri = resolveImportUri(baseUri, imp.path);
+      const dirPath = fileURLToPath(dirUri);
+      let entries: string[];
+      try {
+        entries = fs
+          .readdirSync(dirPath)
+          .filter((name) => name.endsWith(".krs"))
+          .sort()
+          .map((name) => path.join(dirPath, name));
+      } catch {
+        continue;
+      }
+      for (const filePath of entries) {
+        if (visited.has(filePath)) continue;
+        visited.add(filePath);
+        let text: string;
+        try {
+          text = fs.readFileSync(filePath, "utf-8");
+        } catch {
+          continue;
+        }
+        let parsed;
+        try {
+          parsed = Parser.parse(text);
+        } catch {
+          continue;
+        }
+        const fileUri = pathToFileURL(filePath).toString();
+        const range = findRangeOfNode(parsed.value, word);
+        if (range) return Location.create(fileUri, range);
+        const nested = findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited);
+        if (nested) return nested;
+      }
+      continue;
+    }
+
+    const isNamed = imp.ids.length > 0;
+    // For named imports, only search files that declare the target id.
+    // After path-import support (#927) `imp.ids` is `string[][]`; check both
+    // bare entries (`["Foo"]`) and the leaf segment of multi-segment paths
+    // (`["A", "B", "Foo"]`) — the user can only place a cursor on a single
+    // identifier token, so we match against the final segment.
+    if (isNamed && !imp.ids.some((segments) => segments[segments.length - 1] === word)) continue;
+
+    const importedUri = resolveImportUri(baseUri, imp.path);
+    const importedFilePath = fileURLToPath(importedUri);
+    if (visited.has(importedFilePath)) continue;
+    visited.add(importedFilePath);
+
+    let importedText: string;
+    try {
+      importedText = fs.readFileSync(importedFilePath, "utf-8");
+    } catch {
+      continue;
+    }
+
+    let importedParse;
+    try {
+      importedParse = Parser.parse(importedText);
+    } catch {
+      continue;
+    }
+    const importedRange = findRangeOfNode(importedParse.value, word);
+    if (importedRange) return Location.create(importedUri, importedRange);
+
+    // Recurse into this file's imports (transitive)
+    const nested = findDefinitionInImports(
+      importedParse.value.nodeImports,
+      word,
+      importedUri,
+      visited,
+    );
+    if (nested) return nested;
+  }
+  return null;
+}
+
+/** Resolve a relative import path to a file:// URI. */
+function resolveImportUri(documentUri: string, importPath: string): string {
+  const documentFilePath = fileURLToPath(documentUri);
+  const dir = path.dirname(documentFilePath);
+  const resolved = path.resolve(dir, importPath);
+  return pathToFileURL(resolved).toString();
+}
