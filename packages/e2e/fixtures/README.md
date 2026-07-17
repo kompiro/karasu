@@ -117,6 +117,15 @@ auto-switch effects (`COMPILE_SETTLE_MS`).
 Requires `clipboard-read` / `clipboard-write` permissions — already
 granted suite-wide in `playwright.config.ts`.
 
+`expectNoWarningMatching(page, pattern?)` asserts the "no warning appears"
+negative idiom used by specs that prove a source does _not_ trigger a
+diagnostic: it settles for `WARNING_SETTLE_MS` (500ms, defined next to
+`COMPILE_SETTLE_MS`) then checks the `.warning-panel`, if present, either
+has zero `.warning-item`s (`pattern` omitted) or does not contain text
+matching `pattern`. There is no positive signal to wait on for a negative
+assertion, so the settle sleep stays — tightening it is a separate,
+riskier follow-up.
+
 ## `boot.ts` — memory-mode boot sequence
 
 `bootMemoryApp(page, opfs, krs)` is the canonical 3-step boot used by
@@ -223,3 +232,27 @@ hanging on a real network attempt.
 - **The 401/429/500 body shape mirrors the real Anthropic API** so
   `@anthropic-ai/sdk` still produces `APIError` instances and
   `useChatSession/errors.ts` keeps classifying them correctly.
+
+## `chat.ts` — Chat UI choreography
+
+Shared by AT-0050 and `anthropic-fixture.smoke.spec.ts` so the two specs'
+boot/send choreography and error-expectation table can't drift apart.
+
+- `bootChat(opfs, anthropic, options)` — seeds OPFS (`projects` /
+  `lastProjectId`), then either `anthropic.seedApiKey(options.apiKey ??
+"sk-ant-test-fake")` or, when `options.apiKey` is `null`,
+  `anthropic.clearApiKey()` (the ApiKeySetup / no-key boot path), then
+  `opfs.gotoApp()`.
+- `sendChatMessage(page, text)` — opens the Chat tab, fills the message
+  input, and sends it via `ControlOrMeta+Enter`. Returns the input
+  `Locator` so callers that keep asserting on it (`toHaveValue("")`,
+  `toBeDisabled()`) don't have to re-locate it.
+- `CHAT_ERROR_CASES` — the 401/429/500 error-expectation table (status,
+  expected inline-error text, expected/hidden action button), consumed by
+  both specs' `for` loops.
+
+AT-0050 and the smoke spec both run their Chat UI tests against the same
+Vite preview origin; AT-0050 additionally runs `serial` due to prior OPFS
+flake (see the comment at the top of that spec) — this fixture only
+extracts the driving choreography, it does not restructure either
+`describe` block.

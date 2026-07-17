@@ -1,5 +1,5 @@
-import { test, expect, type AnthropicFixture } from "../fixtures/anthropic.js";
-import type { OpfsFixture } from "../fixtures/opfs.js";
+import { test, expect } from "../fixtures/anthropic.js";
+import { bootChat, sendChatMessage, CHAT_ERROR_CASES } from "../fixtures/chat.js";
 
 /**
  * Smoke tests for the Anthropic transport fixture.
@@ -30,26 +30,17 @@ const PROJECT = {
   files: { "index.krs": 'system "Fixture Only" {}\n' },
 };
 
-async function bootChat(opts: { opfs: OpfsFixture; anthropic: AnthropicFixture }) {
-  await opts.opfs.seed({ projects: [PROJECT], lastProjectId: PROJECT.id });
-  await opts.anthropic.seedApiKey("sk-ant-test-fake");
-  await opts.opfs.gotoApp();
-}
-
 test.describe("anthropic fixture smoke", () => {
   test("scripts a text turn so the chat round-trips end-to-end", async ({
     page,
     opfs,
     anthropic,
   }) => {
-    await bootChat({ opfs, anthropic });
+    await bootChat(opfs, anthropic, { projects: [PROJECT], lastProjectId: PROJECT.id });
 
     anthropic.scriptTurns([{ kind: "text", text: "Hello from the fixture." }]);
 
-    await page.getByRole("tab", { name: /Chat/ }).click();
-    const input = page.getByRole("textbox", { name: /Chat message input/i });
-    await input.fill("Hi");
-    await input.press("ControlOrMeta+Enter");
+    await sendChatMessage(page, "Hi");
 
     await expect(page.locator(".chat-message--user .chat-message-content")).toHaveText("Hi");
     await expect(page.locator(".chat-message--assistant")).toContainText("Hello from the fixture.");
@@ -63,7 +54,7 @@ test.describe("anthropic fixture smoke", () => {
     opfs,
     anthropic,
   }) => {
-    await bootChat({ opfs, anthropic });
+    await bootChat(opfs, anthropic, { projects: [PROJECT], lastProjectId: PROJECT.id });
 
     anthropic.scriptTurns([
       {
@@ -75,10 +66,7 @@ test.describe("anthropic fixture smoke", () => {
       { kind: "text", text: "Navigated to fixture-only." },
     ]);
 
-    await page.getByRole("tab", { name: /Chat/ }).click();
-    const input = page.getByRole("textbox", { name: /Chat message input/i });
-    await input.fill("Show me the fixture system");
-    await input.press("ControlOrMeta+Enter");
+    await sendChatMessage(page, "Show me the fixture system");
 
     await expect(page.locator(".chat-message--assistant")).toContainText(
       "Navigated to fixture-only.",
@@ -100,42 +88,19 @@ test.describe("anthropic fixture smoke", () => {
   // 401 / 429 / 500 are mapped by `useChatSession/errors.ts` to three
   // distinct inline messages and button affordances. Locking all three
   // here prevents the mock body shape from drifting away from what the
-  // SDK's `APIError` classifier expects.
-  const errorCases = [
-    {
-      status: 401 as const,
-      expectedText: /API key is invalid/,
-      expectedButton: /Open Settings/i,
-      hiddenButton: /Retry/i,
-    },
-    {
-      status: 429 as const,
-      expectedText: /Rate limit reached/,
-      expectedButton: /Retry/i,
-      hiddenButton: /Open Settings/i,
-    },
-    {
-      status: 500 as const,
-      expectedText: /Anthropic server error/,
-      expectedButton: /Retry/i,
-      hiddenButton: /Open Settings/i,
-    },
-  ];
-
-  for (const { status, expectedText, expectedButton, hiddenButton } of errorCases) {
+  // SDK's `APIError` classifier expects. `CHAT_ERROR_CASES` is shared with
+  // AT-0050 (AC-13..AC-15) so both copies can't drift apart.
+  for (const { status, expectedText, expectedButton, hiddenButton } of CHAT_ERROR_CASES) {
     test(`respondWithError(${status}) renders the matching inline error`, async ({
       page,
       opfs,
       anthropic,
     }) => {
-      await bootChat({ opfs, anthropic });
+      await bootChat(opfs, anthropic, { projects: [PROJECT], lastProjectId: PROJECT.id });
 
       anthropic.respondWithError({ status });
 
-      await page.getByRole("tab", { name: /Chat/ }).click();
-      const input = page.getByRole("textbox", { name: /Chat message input/i });
-      await input.fill(`This should fail with ${status}`);
-      await input.press("ControlOrMeta+Enter");
+      await sendChatMessage(page, `This should fail with ${status}`);
 
       const errorMsg = page.locator(".chat-message--error");
       await expect(errorMsg).toContainText(expectedText);

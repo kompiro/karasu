@@ -110,7 +110,8 @@ test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
     await expect(svgText.getByText("注文作成イベント", { exact: true })).toBeVisible();
 
     // At least three usecase → resource edges (PlaceOrder has 2, CancelOrder has 1).
-    expect(await page.locator("g.edges line").count()).toBeGreaterThanOrEqual(3);
+    const edgeLines = page.locator("g.edges line");
+    await expect.poll(() => edgeLines.count()).toBeGreaterThanOrEqual(3);
   });
 
   test("shared resource across usecases deduplicates to one node with two incoming edges", async ({
@@ -125,7 +126,8 @@ test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
     await expect(page.locator('[data-node-id="OrderDB.OrderTable"]')).toHaveCount(1);
 
     // One resource node + two incoming edges from the two usecases.
-    expect(await page.locator("g.edges line").count()).toBeGreaterThanOrEqual(2);
+    const edgeLines = page.locator("g.edges line");
+    await expect.poll(() => edgeLines.count()).toBeGreaterThanOrEqual(2);
   });
 
   test("inline (unassigned) resources without dot-notation refs are not promoted to siblings", async ({
