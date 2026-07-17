@@ -111,6 +111,7 @@ export {
 } from "./share/synthesize.js";
 export { Parser } from "./parser/parser.js";
 export { isSafeLinkUrl } from "./parser/link-url.js";
+export { KRS_KEYWORD_NAMES } from "./lexer/lexer.js";
 export {
   interpretUntil,
   getMigrationIntent,

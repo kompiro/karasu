@@ -51,6 +51,13 @@ const KEYWORDS: Record<string, TokenType> = {
   ref: TokenType.Ref,
 };
 
+/**
+ * The lexer's keyword names, derived from the same table the lexer matches
+ * against. Consumers that maintain their own hand-copied keyword list (e.g.
+ * LSP completion) can diff against this to detect drift.
+ */
+export const KRS_KEYWORD_NAMES = Object.keys(KEYWORDS);
+
 export class Lexer {
   private source: string;
   private pos = 0;

@@ -2,15 +2,36 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Location } from "vscode-languageserver/node";
-import { Parser } from "@karasu-tools/core";
+import { Parser, type ImportDeclaration } from "@karasu-tools/core";
 import { findRangeOfNode } from "./position-resolver.js";
+
+/**
+ * Read, parse, and search a single `.krs` file for `word`'s definition,
+ * recursing into its own imports (transitively) on a miss. Shared by both
+ * the directory-import expansion and the single-file-import branch below.
+ */
+function searchKrsFile(filePath: string, word: string, visited: Set<string>): Location | null {
+  let text: string;
+  try {
+    text = fs.readFileSync(filePath, "utf-8");
+  } catch {
+    return null;
+  }
+
+  const parsed = Parser.parse(text);
+  const fileUri = pathToFileURL(filePath).toString();
+  const range = findRangeOfNode(parsed.value, word);
+  if (range) return Location.create(fileUri, range);
+
+  return findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited);
+}
 
 /**
  * Recursively search imported files for a node definition.
  * Handles named imports, wildcard imports (file and directory), and transitive imports.
  */
 export function findDefinitionInImports(
-  nodeImports: ReturnType<typeof Parser.parse>["value"]["nodeImports"],
+  nodeImports: ImportDeclaration[],
   word: string,
   baseUri: string,
   visited: Set<string>,
@@ -35,23 +56,8 @@ export function findDefinitionInImports(
       for (const filePath of entries) {
         if (visited.has(filePath)) continue;
         visited.add(filePath);
-        let text: string;
-        try {
-          text = fs.readFileSync(filePath, "utf-8");
-        } catch {
-          continue;
-        }
-        let parsed;
-        try {
-          parsed = Parser.parse(text);
-        } catch {
-          continue;
-        }
-        const fileUri = pathToFileURL(filePath).toString();
-        const range = findRangeOfNode(parsed.value, word);
-        if (range) return Location.create(fileUri, range);
-        const nested = findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited);
-        if (nested) return nested;
+        const result = searchKrsFile(filePath, word, visited);
+        if (result) return result;
       }
       continue;
     }
@@ -69,30 +75,8 @@ export function findDefinitionInImports(
     if (visited.has(importedFilePath)) continue;
     visited.add(importedFilePath);
 
-    let importedText: string;
-    try {
-      importedText = fs.readFileSync(importedFilePath, "utf-8");
-    } catch {
-      continue;
-    }
-
-    let importedParse;
-    try {
-      importedParse = Parser.parse(importedText);
-    } catch {
-      continue;
-    }
-    const importedRange = findRangeOfNode(importedParse.value, word);
-    if (importedRange) return Location.create(importedUri, importedRange);
-
-    // Recurse into this file's imports (transitive)
-    const nested = findDefinitionInImports(
-      importedParse.value.nodeImports,
-      word,
-      importedUri,
-      visited,
-    );
-    if (nested) return nested;
+    const result = searchKrsFile(importedFilePath, word, visited);
+    if (result) return result;
   }
   return null;
 }
