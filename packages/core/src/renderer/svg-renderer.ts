@@ -15,7 +15,7 @@ import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
 import { badgeChildren } from "./badge.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
-import { getIconDef } from "../shapes/shape-registry.js";
+import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   ICON_LABEL_CHAR_WIDTH,
@@ -923,28 +923,8 @@ function renderNode(
 
   // For icon-mode nodes, render card frame (background + border) before the icon body.
   // Built-in shapes already include fill/stroke in their own rendering.
-  const isIconShape = typeof style.shape !== "string";
-  if (displayMode === "icon" && isIconShape) {
-    children.push(
-      el("rect", {
-        x: node.x,
-        y: node.y,
-        width: node.width,
-        height: node.height,
-        rx: style.borderRadius,
-        ry: style.borderRadius,
-        fill: style.backgroundColor,
-        stroke: style.borderColor,
-        "stroke-width": style.borderWidth,
-        "stroke-dasharray":
-          style.borderStyle === "dashed"
-            ? "8 4"
-            : style.borderStyle === "dotted"
-              ? "2 2"
-              : undefined,
-      }),
-    );
-  }
+  const iconFrame = renderIconFrame(node, style, displayMode);
+  if (iconFrame) children.push(iconFrame);
 
   // Shape
   children.push(renderShape(node.x, node.y, node.width, node.height, style));
@@ -959,301 +939,22 @@ function renderNode(
   const hasMetaRow = node.linkCount > 0 || !!node.properties.team;
 
   if (iconDef?.labelSlot) {
-    const vw = iconDef.viewBoxWidth ?? 24;
-    const vh = iconDef.viewBoxHeight ?? 24;
-    const scaleX = node.width / vw;
-    const scaleY = node.height / vh;
-
-    const labelX = node.x + iconDef.labelSlot.x * scaleX;
-    const labelY = node.y + iconDef.labelSlot.y * scaleY;
-    const labelAnchor = iconDef.labelSlot.textAnchor ?? "middle";
-
-    // Icon-mode label truncation
-    const iconMode = displayMode === "icon";
-    const truncatedLabel = iconMode
-      ? truncateToWidth(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH)
-      : node.label;
-    const labelFontSize = iconMode ? 13 : fontSize;
-
     children.push(
-      el(
-        "text",
-        {
-          x: labelX,
-          y: labelY,
-          "text-anchor": labelAnchor,
-          "dominant-baseline": "central",
-          fill: textColor,
-          "font-size": `${labelFontSize}px`,
-          "font-weight": style.fontWeight,
-          "font-family": style.fontFamily,
-        },
-        escapeXml(truncatedLabel),
-      ),
+      ...renderSlottedText(node, style, iconDef, displayMode, textColor, fontSize, displayDesc),
     );
-
-    if (displayDesc && iconDef.descriptionSlot) {
-      const descX = node.x + iconDef.descriptionSlot.x * scaleX;
-      const descY = node.y + iconDef.descriptionSlot.y * scaleY;
-      const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
-      const descFontSize = iconMode ? 11 : Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
-
-      if (iconMode) {
-        // Multi-line description: wrap text into up to 3 lines with tspan elements
-        const lines = wrapToWidth(
-          displayDesc,
-          ICON_DESC_MAX_WIDTH,
-          ICON_DESC_CHAR_WIDTH,
-          ICON_DESC_MAX_LINES,
-        );
-        const tspans = lines.map((line, i) =>
-          el(
-            "tspan",
-            {
-              x: descX,
-              dy: i === 0 ? "0" : `${ICON_DESC_LINE_HEIGHT}`,
-            },
-            escapeXml(line),
-          ),
-        );
-        children.push(
-          el(
-            "text",
-            {
-              x: descX,
-              y: descY,
-              "text-anchor": descAnchor,
-              "dominant-baseline": "hanging",
-              fill: textColor,
-              "font-size": `${descFontSize}px`,
-              "font-family": style.fontFamily,
-              opacity: 0.7,
-            },
-            ...tspans,
-          ),
-        );
-      } else {
-        children.push(
-          el(
-            "text",
-            {
-              x: descX,
-              y: descY,
-              "text-anchor": descAnchor,
-              "dominant-baseline": "central",
-              fill: textColor,
-              "font-size": `${descFontSize}px`,
-              "font-family": style.fontFamily,
-              opacity: 0.7,
-            },
-            escapeXml(displayDesc),
-          ),
-        );
-      }
-    }
   } else {
-    const textX = node.x + node.width / 2;
-    const textLines =
-      1 + (displayDesc ? 1 : 0) + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
-    let textY = node.y + node.height / 2;
-    if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
-
     children.push(
-      el(
-        "text",
-        {
-          x: textX,
-          y: textY,
-          "text-anchor": "middle",
-          "dominant-baseline": "central",
-          fill: textColor,
-          "font-size": `${fontSize}px`,
-          "font-weight": style.fontWeight,
-          "font-family": style.fontFamily,
-        },
-        escapeXml(node.label),
+      ...renderDefaultText(
+        node,
+        style,
+        palette,
+        nodeId,
+        textColor,
+        fontSize,
+        displayDesc,
+        hasMetaRow,
       ),
     );
-
-    let nextY = textY + fontSize + 4;
-
-    if (displayDesc) {
-      // Truncate description to fit within the node width
-      const descFontSize = Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
-      const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
-      const descCharWidth = CHAR_WIDTH * RENDERED_DESC_FONT_RATIO;
-      const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
-      const descChars = [...displayDesc];
-      const truncatedDesc =
-        descChars.length > maxChars ? descChars.slice(0, maxChars).join("") + "…" : displayDesc;
-      children.push(
-        el(
-          "text",
-          {
-            x: textX,
-            y: nextY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: textColor,
-            "font-size": `${descFontSize}px`,
-            "font-family": style.fontFamily,
-            opacity: 0.7,
-          },
-          escapeXml(truncatedDesc),
-        ),
-      );
-      nextY += fontSize + 4;
-    }
-
-    if (node.properties.role) {
-      children.push(
-        el(
-          "text",
-          {
-            x: textX,
-            y: nextY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: textColor,
-            "font-size": `${Math.round(fontSize * 0.75)}px`,
-            "font-family": style.fontFamily,
-            "font-style": "italic",
-            opacity: 0.6,
-          },
-          escapeXml(node.properties.role),
-        ),
-      );
-      nextY += fontSize + 4;
-    }
-
-    // Resource badge (client only). Replaces the per-resource text loop with
-    // a single "📦 ×N" badge so the card height does not grow with resource
-    // count. The full list is surfaced in NodeDetailPanel (Issue #914).
-    if (node.properties.resources && node.properties.resources.length > 0) {
-      const resCount = node.properties.resources.length;
-      const resFontSize = Math.round(fontSize * 0.7);
-      const tooltip = node.properties.resources
-        .map((r) => `${r.storageKind} "${r.name}"`)
-        .join(", ");
-      children.push(
-        el(
-          "text",
-          {
-            x: textX,
-            y: nextY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: textColor,
-            "font-size": `${resFontSize}px`,
-            "font-family": style.fontFamily,
-            opacity: 0.8,
-            "data-client-resource-count": String(resCount),
-          },
-          el("title", {}, escapeXml(tooltip)) + escapeXml(`📦 ×${resCount}`),
-        ),
-      );
-      nextY += fontSize + 4;
-    }
-
-    // Capability badge (client only). Mirrors the resource badge: a single
-    // "🔐 ×N" so the card height stays bounded regardless of how many
-    // capabilities the client declares. Full list (including label /
-    // description) is surfaced in NodeDetailPanel.
-    if (node.properties.capabilities && node.properties.capabilities.length > 0) {
-      const capCount = node.properties.capabilities.length;
-      const capFontSize = Math.round(fontSize * 0.7);
-      const tooltip = node.properties.capabilities.map((c) => c.name).join(", ");
-      children.push(
-        el(
-          "text",
-          {
-            x: textX,
-            y: nextY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: textColor,
-            "font-size": `${capFontSize}px`,
-            "font-family": style.fontFamily,
-            opacity: 0.8,
-            "data-client-capability-count": String(capCount),
-          },
-          el("title", {}, escapeXml(tooltip)) + escapeXml(`🔐 ×${capCount}`),
-        ),
-      );
-      nextY += fontSize + 4;
-    }
-
-    // Meta row: link count + team
-    if (hasMetaRow) {
-      const metaFontSize = `${Math.round(fontSize * 0.7)}px`;
-      const metaAttrs = {
-        "text-anchor": "middle" as const,
-        "dominant-baseline": "central" as const,
-        fill: palette.textSubtle,
-        "font-size": metaFontSize,
-        "font-family": style.fontFamily,
-      };
-
-      if (node.linkCount > 0 && node.properties.team) {
-        // Both link count and team: render link on the left, team on the right
-        const linkText = `🔗${node.linkCount}`;
-        const teamChars = [...node.properties.team];
-        const teamDisplay =
-          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
-        const teamText = `👥${teamDisplay}`;
-        const contentLeft = node.x + 40;
-        const contentRight = node.x + node.width - 40;
-        children.push(
-          el(
-            "g",
-            { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-            el(
-              "text",
-              { ...metaAttrs, "text-anchor": "start", x: contentLeft, y: nextY },
-              escapeXml(linkText),
-            ),
-          ),
-        );
-        children.push(
-          el(
-            "g",
-            {
-              "data-team-button": node.properties.team,
-              style: "cursor: pointer",
-              "pointer-events": "all",
-            },
-            el(
-              "text",
-              { ...metaAttrs, "text-anchor": "end", x: contentRight, y: nextY },
-              escapeXml(teamText),
-            ),
-          ),
-        );
-      } else if (node.linkCount > 0) {
-        children.push(
-          el(
-            "g",
-            { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-            el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`🔗${node.linkCount}`)),
-          ),
-        );
-      } else if (node.properties.team) {
-        const teamChars = [...node.properties.team];
-        const teamDisplay =
-          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
-        children.push(
-          el(
-            "g",
-            {
-              "data-team-button": node.properties.team,
-              style: "cursor: pointer",
-              "pointer-events": "all",
-            },
-            el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
-          ),
-        );
-      }
-    }
   }
 
   // Badge (single merged badge driven by the node's current annotations).
@@ -1263,6 +964,470 @@ function renderNode(
   // (Issue #738 / design doc D-2). If the node's badge disappeared because
   // the last annotation was removed, we still emit a ghost badge so the
   // viewer can see *what* was removed.
+  const {
+    children: badgeParts,
+    annotationAddedAttr,
+    annotationRemovedAttr,
+  } = renderNodeBadge(node, style, palette, nodeId, diffMeta);
+  children.push(...badgeParts);
+
+  // Sub-label: shown below the node for ghost domains to indicate the parent service
+  const subLabel = renderSubLabel(node, style, textColor, fontSize);
+  if (subLabel) children.push(subLabel);
+
+  // Top-right icon buttons: deploy button and info button
+  // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
+  const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
+  const showDeployButton = isServiceOrDomain && (serviceIdsWithDeploy?.has(nodeId) ?? false);
+  // Show info button when the node has any metadata worth displaying in the detail panel.
+  // Container nodes (hasChildren) need the button because clicking the body drills down.
+  // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
+  const showInfoButton =
+    node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
+  const btnY = node.y + 14;
+  let btnSlot = 0; // 0 = rightmost, increments leftward
+
+  if (showInfoButton) {
+    const btnX = node.x + node.width - 16 - btnSlot * 20;
+    btnSlot++;
+    children.push(renderInfoButton(nodeId, palette, btnX, btnY));
+  }
+
+  if (showDeployButton) {
+    const btnX = node.x + node.width - 16 - btnSlot * 20;
+    children.push(renderDeployButton(nodeId, palette, btnX, btnY));
+  }
+
+  const nodeEl = el(
+    "g",
+    {
+      "data-node-id": nodeId,
+      "data-node-kind": node.kind,
+      "data-has-children": node.hasChildren ? "true" : "false",
+      "data-has-description": node.hasDescription ? "true" : "false",
+      "data-link-count": node.linkCount > 0 ? String(node.linkCount) : undefined,
+      "data-diff-state": diffState,
+      "data-annotation-added": annotationAddedAttr,
+      "data-annotation-removed": annotationRemovedAttr,
+      style: node.hasChildren ? "cursor: pointer" : undefined,
+      opacity: style.opacity < 1 ? style.opacity : undefined,
+    },
+    ...children,
+  );
+
+  const childLevelId = childLevelLinks?.get(nodeId);
+  if (childLevelId) {
+    return el("a", { href: `#${childLevelId}` }, nodeEl);
+  }
+  return nodeEl;
+}
+
+/**
+ * Icon-mode card frame — the background + border rect drawn before the icon
+ * body. Built-in shapes already paint their own fill/stroke, so this only
+ * applies when the resolved shape is an external icon (`style.shape` is an
+ * object, not a built-in shape name) and the view is in icon display mode.
+ */
+function renderIconFrame(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  displayMode: DisplayMode | undefined,
+): string | undefined {
+  const isIconShape = typeof style.shape !== "string";
+  if (displayMode !== "icon" || !isIconShape) return undefined;
+  return el("rect", {
+    x: node.x,
+    y: node.y,
+    width: node.width,
+    height: node.height,
+    rx: style.borderRadius,
+    ry: style.borderRadius,
+    fill: style.backgroundColor,
+    stroke: style.borderColor,
+    "stroke-width": style.borderWidth,
+    "stroke-dasharray":
+      style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : undefined,
+  });
+}
+
+/**
+ * Text rendered into an icon's declared label/description slots (`krs-label`
+ * / `krs-description` positions carried on the SVG icon body) — the icon-mode
+ * card's text layout, as opposed to the default centered text stack used by
+ * shapes/icons with no slots (see `renderDefaultText`). Caller only invokes
+ * this when `iconDef.labelSlot` is present.
+ */
+function renderSlottedText(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  iconDef: SvgIconDef,
+  displayMode: DisplayMode | undefined,
+  textColor: string,
+  fontSize: number,
+  displayDesc: string | undefined,
+): string[] {
+  const labelSlot = iconDef.labelSlot;
+  if (!labelSlot) return [];
+
+  const children: string[] = [];
+  const vw = iconDef.viewBoxWidth ?? 24;
+  const vh = iconDef.viewBoxHeight ?? 24;
+  const scaleX = node.width / vw;
+  const scaleY = node.height / vh;
+
+  const labelX = node.x + labelSlot.x * scaleX;
+  const labelY = node.y + labelSlot.y * scaleY;
+  const labelAnchor = labelSlot.textAnchor ?? "middle";
+
+  // Icon-mode label truncation
+  const iconMode = displayMode === "icon";
+  const truncatedLabel = iconMode
+    ? truncateToWidth(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH)
+    : node.label;
+  const labelFontSize = iconMode ? 13 : fontSize;
+
+  children.push(
+    el(
+      "text",
+      {
+        x: labelX,
+        y: labelY,
+        "text-anchor": labelAnchor,
+        "dominant-baseline": "central",
+        fill: textColor,
+        "font-size": `${labelFontSize}px`,
+        "font-weight": style.fontWeight,
+        "font-family": style.fontFamily,
+      },
+      escapeXml(truncatedLabel),
+    ),
+  );
+
+  if (displayDesc && iconDef.descriptionSlot) {
+    const descX = node.x + iconDef.descriptionSlot.x * scaleX;
+    const descY = node.y + iconDef.descriptionSlot.y * scaleY;
+    const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
+    const descFontSize = iconMode ? 11 : Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
+
+    if (iconMode) {
+      // Multi-line description: wrap text into up to 3 lines with tspan elements
+      const lines = wrapToWidth(
+        displayDesc,
+        ICON_DESC_MAX_WIDTH,
+        ICON_DESC_CHAR_WIDTH,
+        ICON_DESC_MAX_LINES,
+      );
+      const tspans = lines.map((line, i) =>
+        el(
+          "tspan",
+          {
+            x: descX,
+            dy: i === 0 ? "0" : `${ICON_DESC_LINE_HEIGHT}`,
+          },
+          escapeXml(line),
+        ),
+      );
+      children.push(
+        el(
+          "text",
+          {
+            x: descX,
+            y: descY,
+            "text-anchor": descAnchor,
+            "dominant-baseline": "hanging",
+            fill: textColor,
+            "font-size": `${descFontSize}px`,
+            "font-family": style.fontFamily,
+            opacity: 0.7,
+          },
+          ...tspans,
+        ),
+      );
+    } else {
+      children.push(
+        el(
+          "text",
+          {
+            x: descX,
+            y: descY,
+            "text-anchor": descAnchor,
+            "dominant-baseline": "central",
+            fill: textColor,
+            "font-size": `${descFontSize}px`,
+            "font-family": style.fontFamily,
+            opacity: 0.7,
+          },
+          escapeXml(displayDesc),
+        ),
+      );
+    }
+  }
+
+  return children;
+}
+
+/**
+ * Default centered text stack for shapes/icons with no declared label slot:
+ * label, then (as present) description, role, resource badge, capability
+ * badge, and the link/team meta row (`renderMetaRow`). Each line grows
+ * `nextY` for the next one, and `textLines` centers the whole stack
+ * vertically inside the node.
+ */
+function renderDefaultText(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  palette: DiagramPalette,
+  nodeId: string,
+  textColor: string,
+  fontSize: number,
+  displayDesc: string | undefined,
+  hasMetaRow: boolean,
+): string[] {
+  const children: string[] = [];
+  const textX = node.x + node.width / 2;
+  const textLines =
+    1 + (displayDesc ? 1 : 0) + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
+  let textY = node.y + node.height / 2;
+  if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
+
+  children.push(
+    el(
+      "text",
+      {
+        x: textX,
+        y: textY,
+        "text-anchor": "middle",
+        "dominant-baseline": "central",
+        fill: textColor,
+        "font-size": `${fontSize}px`,
+        "font-weight": style.fontWeight,
+        "font-family": style.fontFamily,
+      },
+      escapeXml(node.label),
+    ),
+  );
+
+  let nextY = textY + fontSize + 4;
+
+  if (displayDesc) {
+    // Truncate description to fit within the node width
+    const descFontSize = Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
+    const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
+    const descCharWidth = CHAR_WIDTH * RENDERED_DESC_FONT_RATIO;
+    const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
+    const descChars = [...displayDesc];
+    const truncatedDesc =
+      descChars.length > maxChars ? descChars.slice(0, maxChars).join("") + "…" : displayDesc;
+    children.push(
+      el(
+        "text",
+        {
+          x: textX,
+          y: nextY,
+          "text-anchor": "middle",
+          "dominant-baseline": "central",
+          fill: textColor,
+          "font-size": `${descFontSize}px`,
+          "font-family": style.fontFamily,
+          opacity: 0.7,
+        },
+        escapeXml(truncatedDesc),
+      ),
+    );
+    nextY += fontSize + 4;
+  }
+
+  if (node.properties.role) {
+    children.push(
+      el(
+        "text",
+        {
+          x: textX,
+          y: nextY,
+          "text-anchor": "middle",
+          "dominant-baseline": "central",
+          fill: textColor,
+          "font-size": `${Math.round(fontSize * 0.75)}px`,
+          "font-family": style.fontFamily,
+          "font-style": "italic",
+          opacity: 0.6,
+        },
+        escapeXml(node.properties.role),
+      ),
+    );
+    nextY += fontSize + 4;
+  }
+
+  // Resource badge (client only). Replaces the per-resource text loop with
+  // a single "📦 ×N" badge so the card height does not grow with resource
+  // count. The full list is surfaced in NodeDetailPanel (Issue #914).
+  if (node.properties.resources && node.properties.resources.length > 0) {
+    const resCount = node.properties.resources.length;
+    const resFontSize = Math.round(fontSize * 0.7);
+    const tooltip = node.properties.resources.map((r) => `${r.storageKind} "${r.name}"`).join(", ");
+    children.push(
+      el(
+        "text",
+        {
+          x: textX,
+          y: nextY,
+          "text-anchor": "middle",
+          "dominant-baseline": "central",
+          fill: textColor,
+          "font-size": `${resFontSize}px`,
+          "font-family": style.fontFamily,
+          opacity: 0.8,
+          "data-client-resource-count": String(resCount),
+        },
+        el("title", {}, escapeXml(tooltip)) + escapeXml(`📦 ×${resCount}`),
+      ),
+    );
+    nextY += fontSize + 4;
+  }
+
+  // Capability badge (client only). Mirrors the resource badge: a single
+  // "🔐 ×N" so the card height stays bounded regardless of how many
+  // capabilities the client declares. Full list (including label /
+  // description) is surfaced in NodeDetailPanel.
+  if (node.properties.capabilities && node.properties.capabilities.length > 0) {
+    const capCount = node.properties.capabilities.length;
+    const capFontSize = Math.round(fontSize * 0.7);
+    const tooltip = node.properties.capabilities.map((c) => c.name).join(", ");
+    children.push(
+      el(
+        "text",
+        {
+          x: textX,
+          y: nextY,
+          "text-anchor": "middle",
+          "dominant-baseline": "central",
+          fill: textColor,
+          "font-size": `${capFontSize}px`,
+          "font-family": style.fontFamily,
+          opacity: 0.8,
+          "data-client-capability-count": String(capCount),
+        },
+        el("title", {}, escapeXml(tooltip)) + escapeXml(`🔐 ×${capCount}`),
+      ),
+    );
+    nextY += fontSize + 4;
+  }
+
+  // Meta row: link count + team
+  if (hasMetaRow) {
+    children.push(...renderMetaRow(node, style, palette, nodeId, textX, nextY));
+  }
+
+  return children;
+}
+
+/**
+ * Link-count / team meta row rendered below a default-text-stack node's
+ * badges (Issue #914 / team grouping). `hasMetaRow` (checked by the caller)
+ * guarantees at least one of link count / team is present; both, only one,
+ * or the layout (left/right split when both) branch on that here.
+ */
+function renderMetaRow(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  palette: DiagramPalette,
+  nodeId: string,
+  textX: number,
+  nextY: number,
+): string[] {
+  const children: string[] = [];
+  const metaFontSize = `${Math.round(style.fontSize * 0.7)}px`;
+  const metaAttrs = {
+    "text-anchor": "middle" as const,
+    "dominant-baseline": "central" as const,
+    fill: palette.textSubtle,
+    "font-size": metaFontSize,
+    "font-family": style.fontFamily,
+  };
+
+  if (node.linkCount > 0 && node.properties.team) {
+    // Both link count and team: render link on the left, team on the right
+    const linkText = `🔗${node.linkCount}`;
+    const teamChars = [...node.properties.team];
+    const teamDisplay =
+      teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
+    const teamText = `👥${teamDisplay}`;
+    const contentLeft = node.x + 40;
+    const contentRight = node.x + node.width - 40;
+    children.push(
+      el(
+        "g",
+        { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+        el(
+          "text",
+          { ...metaAttrs, "text-anchor": "start", x: contentLeft, y: nextY },
+          escapeXml(linkText),
+        ),
+      ),
+    );
+    children.push(
+      el(
+        "g",
+        {
+          "data-team-button": node.properties.team,
+          style: "cursor: pointer",
+          "pointer-events": "all",
+        },
+        el(
+          "text",
+          { ...metaAttrs, "text-anchor": "end", x: contentRight, y: nextY },
+          escapeXml(teamText),
+        ),
+      ),
+    );
+  } else if (node.linkCount > 0) {
+    children.push(
+      el(
+        "g",
+        { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+        el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`🔗${node.linkCount}`)),
+      ),
+    );
+  } else if (node.properties.team) {
+    const teamChars = [...node.properties.team];
+    const teamDisplay =
+      teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
+    children.push(
+      el(
+        "g",
+        {
+          "data-team-button": node.properties.team,
+          style: "cursor: pointer",
+          "pointer-events": "all",
+        },
+        el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
+      ),
+    );
+  }
+
+  return children;
+}
+
+/**
+ * Annotation-driven badge (a single merged badge per node) plus the delta
+ * `data-annotation-added` / `data-annotation-removed` attrs the caller
+ * stamps onto the node's `<g>` (Issue #738 / design doc D-2). When the
+ * node's last annotation was removed there is no current style badge, but a
+ * ghost "removed" placeholder is still emitted so the viewer can see what
+ * disappeared.
+ */
+function renderNodeBadge(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  palette: DiagramPalette,
+  nodeId: string,
+  diffMeta: NodeDiffMeta | undefined,
+): {
+  children: string[];
+  annotationAddedAttr: string | undefined;
+  annotationRemovedAttr: string | undefined;
+} {
+  const children: string[] = [];
   const annotationsAdded = diffMeta?.changes?.annotations?.added ?? [];
   const annotationsRemoved = diffMeta?.changes?.annotations?.removed ?? [];
   const hasAnnotationDiff = annotationsAdded.length > 0 || annotationsRemoved.length > 0;
@@ -1323,125 +1488,113 @@ function renderNode(
   const annotationRemovedAttr =
     hasAnnotationDiff && annotationsRemoved.length > 0 ? annotationsRemoved.join(",") : undefined;
 
-  // Sub-label: shown below the node for ghost domains to indicate the parent service
-  if (node.subLabel) {
-    const subLabelFontSize = Math.round(fontSize * 0.75);
-    children.push(
-      el(
-        "text",
-        {
-          x: node.x + node.width / 2,
-          y: node.y + node.height + subLabelFontSize + 4,
-          "text-anchor": "middle",
-          "dominant-baseline": "central",
-          fill: textColor,
-          "font-size": `${subLabelFontSize}px`,
-          "font-family": style.fontFamily,
-        },
-        escapeXml(`(${node.subLabel})`),
-      ),
-    );
-  }
+  return { children, annotationAddedAttr, annotationRemovedAttr };
+}
 
-  // Top-right icon buttons: deploy button and info button
-  // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
-  const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
-  const showDeployButton = isServiceOrDomain && (serviceIdsWithDeploy?.has(nodeId) ?? false);
-  // Show info button when the node has any metadata worth displaying in the detail panel.
-  // Container nodes (hasChildren) need the button because clicking the body drills down.
-  // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
-  const showInfoButton =
-    node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
-  const btnY = node.y + 14;
-  let btnSlot = 0; // 0 = rightmost, increments leftward
-
-  if (showInfoButton) {
-    const btnX = node.x + node.width - 16 - btnSlot * 20;
-    btnSlot++;
-    children.push(
-      el(
-        "g",
-        { "data-info-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-        el("circle", {
-          cx: btnX,
-          cy: btnY,
-          r: 8,
-          fill: "transparent",
-          stroke: palette.textMuted,
-          "stroke-width": 1,
-        }),
-        el(
-          "text",
-          {
-            x: btnX,
-            y: btnY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: palette.textMuted,
-            "font-size": "10px",
-            "font-family": "sans-serif",
-            "font-style": "italic",
-          },
-          "i",
-        ),
-      ),
-    );
-  }
-
-  if (showDeployButton) {
-    const btnX = node.x + node.width - 16 - btnSlot * 20;
-    children.push(
-      el(
-        "g",
-        { "data-deploy-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-        el("circle", {
-          cx: btnX,
-          cy: btnY,
-          r: 8,
-          fill: "transparent",
-          stroke: palette.accent,
-          "stroke-width": 1,
-        }),
-        el(
-          "text",
-          {
-            x: btnX,
-            y: btnY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: palette.accent,
-            "font-size": "9px",
-            "font-family": "sans-serif",
-            "font-weight": "bold",
-          },
-          "D",
-        ),
-      ),
-    );
-  }
-
-  const nodeEl = el(
-    "g",
+/**
+ * Sub-label rendered below the node body — used for ghost domains to name
+ * the parent service they belong to (`(parentLabel)`).
+ */
+function renderSubLabel(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  textColor: string,
+  fontSize: number,
+): string | undefined {
+  if (!node.subLabel) return undefined;
+  const subLabelFontSize = Math.round(fontSize * 0.75);
+  return el(
+    "text",
     {
-      "data-node-id": nodeId,
-      "data-node-kind": node.kind,
-      "data-has-children": node.hasChildren ? "true" : "false",
-      "data-has-description": node.hasDescription ? "true" : "false",
-      "data-link-count": node.linkCount > 0 ? String(node.linkCount) : undefined,
-      "data-diff-state": diffState,
-      "data-annotation-added": annotationAddedAttr,
-      "data-annotation-removed": annotationRemovedAttr,
-      style: node.hasChildren ? "cursor: pointer" : undefined,
-      opacity: style.opacity < 1 ? style.opacity : undefined,
+      x: node.x + node.width / 2,
+      y: node.y + node.height + subLabelFontSize + 4,
+      "text-anchor": "middle",
+      "dominant-baseline": "central",
+      fill: textColor,
+      "font-size": `${subLabelFontSize}px`,
+      "font-family": style.fontFamily,
     },
-    ...children,
+    escapeXml(`(${node.subLabel})`),
   );
+}
 
-  const childLevelId = childLevelLinks?.get(nodeId);
-  if (childLevelId) {
-    return el("a", { href: `#${childLevelId}` }, nodeEl);
-  }
-  return nodeEl;
+/**
+ * The "i" info-button affordance drawn top-right on nodes with metadata
+ * worth surfacing in the detail panel (description, links, team, role —
+ * Issue #914). Container nodes get it too even though clicking the body
+ * also drills down, for discoverability.
+ */
+function renderInfoButton(
+  nodeId: string,
+  palette: DiagramPalette,
+  btnX: number,
+  btnY: number,
+): string {
+  return el(
+    "g",
+    { "data-info-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+    el("circle", {
+      cx: btnX,
+      cy: btnY,
+      r: 8,
+      fill: "transparent",
+      stroke: palette.textMuted,
+      "stroke-width": 1,
+    }),
+    el(
+      "text",
+      {
+        x: btnX,
+        y: btnY,
+        "text-anchor": "middle",
+        "dominant-baseline": "central",
+        fill: palette.textMuted,
+        "font-size": "10px",
+        "font-family": "sans-serif",
+        "font-style": "italic",
+      },
+      "i",
+    ),
+  );
+}
+
+/**
+ * The "D" deploy-button affordance, shown on service/domain nodes that have
+ * at least one deploy unit realizing them so the viewer can jump to the
+ * deploy view for this node.
+ */
+function renderDeployButton(
+  nodeId: string,
+  palette: DiagramPalette,
+  btnX: number,
+  btnY: number,
+): string {
+  return el(
+    "g",
+    { "data-deploy-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+    el("circle", {
+      cx: btnX,
+      cy: btnY,
+      r: 8,
+      fill: "transparent",
+      stroke: palette.accent,
+      "stroke-width": 1,
+    }),
+    el(
+      "text",
+      {
+        x: btnX,
+        y: btnY,
+        "text-anchor": "middle",
+        "dominant-baseline": "central",
+        fill: palette.accent,
+        "font-size": "9px",
+        "font-family": "sans-serif",
+        "font-weight": "bold",
+      },
+      "D",
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
