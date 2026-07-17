@@ -15,8 +15,7 @@ import type {
   Warning,
 } from "@karasu-tools/core";
 import { formatDiagnostic, formatWarning } from "./i18n.js";
-import { NodeFileSystemProvider } from "./node-fs.js";
-import { formatDiagLoc } from "./compile-system-view.js";
+import { formatDiagLoc, resolveKrsFileOrExit } from "./compile-system-view.js";
 import { writeOutput } from "./output.js";
 
 type RenderFormat = "svg" | "drawio";
@@ -37,13 +36,9 @@ interface RenderOptions {
 }
 
 export async function render(filePath: string, options: RenderOptions): Promise<void> {
-  const absolutePath = resolve(filePath);
-  const fs = new NodeFileSystemProvider();
-
-  if (!(await fs.exists(absolutePath))) {
-    process.stderr.write(`Error: File not found: ${filePath}\n`);
-    process.exit(1);
-  }
+  const resolved = await resolveKrsFileOrExit(filePath);
+  if (!resolved) return;
+  const { absolutePath, fs } = resolved;
 
   const format: RenderFormat = options.format ?? "svg";
   let output: string;
