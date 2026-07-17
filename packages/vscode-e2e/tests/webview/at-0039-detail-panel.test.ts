@@ -57,11 +57,11 @@ import {
  *
  * AT-0042-3 (runtime/realizes section above team/role/tags section) is
  * a static layout invariant of the renderer — sections are emitted in
- * fixed source order in `preview-panel.ts`, and no live fixture node
+ * fixed source order in `webview-content.ts`, and no live fixture node
  * carries both runtime/realizes AND team/role/tags simultaneously
  * (services have team; deploy units have runtime/realizes; metadata
  * does not aggregate across them). Verified by code review of
- * `_buildHtml`'s `// Runtime / realizes` and `// Team / role / tags`
+ * `buildPreviewHtml`'s `// Runtime / realizes` and `// Team / role / tags`
  * blocks; see AT-0076 for context.
  *
  * AT-0042-4 is N/A in VSCode per the AT-0042 spec (the extension

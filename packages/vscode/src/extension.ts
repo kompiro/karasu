@@ -31,12 +31,21 @@ const PositionOfNodeRequest = new RequestType<
   void
 >("karasu/positionOfNode");
 
-let client: LanguageClient | undefined;
-let previewPanel: PreviewPanel | undefined;
-let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-let cursorDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+/**
+ * `deactivate()` is called by VS Code independently of `activate`'s closure,
+ * so it needs a way to reach the running `LanguageClient` without the rest of
+ * `activate`'s mutable state (`previewPanel`, debounce timers) being visible
+ * at module scope. `activate` assigns this callback once the client exists;
+ * everything else stays local to `activate`.
+ */
+let onDeactivate: (() => Thenable<void> | undefined) | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
+  let client: LanguageClient | undefined;
+  let previewPanel: PreviewPanel | undefined;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let cursorDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
   // --- LSP ---
   // The vscode build script copies the bundled server into `out/server.js`
   // so installed extensions can load it from inside the .vsix. In the
@@ -67,7 +76,29 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   client = new LanguageClient("karasu", "karasu Language Server", serverOptions, clientOptions);
+  // Wire the deactivate stop-path to the client as soon as it is *constructed*,
+  // before `start()`. The client spawns the language-server child process, so
+  // `deactivate()` (window reload / uninstall) must be able to stop it even if
+  // `start()` throws synchronously — otherwise the child process is orphaned.
+  onDeactivate = () => client?.stop();
   client.start();
+
+  async function handleNavigate(nodeId: string, uri: string): Promise<void> {
+    if (!client) return;
+
+    const result = await client.sendRequest(PositionOfNodeRequest, { uri, nodeId });
+    if (!result.range) return;
+
+    const editor = vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === uri);
+    if (!editor) return;
+
+    const range = new vscode.Range(
+      new vscode.Position(result.range.start.line, result.range.start.character),
+      new vscode.Position(result.range.end.line, result.range.end.character),
+    );
+    editor.selection = new vscode.Selection(range.start, range.start);
+    editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  }
 
   // --- Preview ---
   const openPreviewCmd = vscode.commands.registerCommand("karasu.openPreview", () => {
@@ -123,11 +154,18 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
 
+    // Narrow `client` into a local const: the `!client` guard above proves
+    // it's defined at this point, but that narrowing doesn't survive into
+    // the `setTimeout` callback below (a reassignment could race it in
+    // theory), so capture the checked reference now instead of asserting
+    // non-null across the async gap.
+    const c = client;
+
     clearTimeout(cursorDebounceTimer);
     cursorDebounceTimer = setTimeout(() => {
       const pos = e.textEditor.selection.active;
       const uri = e.textEditor.document.uri.toString();
-      void client!
+      void c
         .sendRequest(NodeAtPositionRequest, {
           uri,
           position: { line: pos.line, character: pos.character },
@@ -164,23 +202,6 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-async function handleNavigate(nodeId: string, uri: string): Promise<void> {
-  if (!client) return;
-
-  const result = await client.sendRequest(PositionOfNodeRequest, { uri, nodeId });
-  if (!result.range) return;
-
-  const editor = vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === uri);
-  if (!editor) return;
-
-  const range = new vscode.Range(
-    new vscode.Position(result.range.start.line, result.range.start.character),
-    new vscode.Position(result.range.end.line, result.range.end.character),
-  );
-  editor.selection = new vscode.Selection(range.start, range.start);
-  editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-}
-
 export function deactivate(): Thenable<void> | undefined {
-  return client?.stop();
+  return onDeactivate?.();
 }
