@@ -155,25 +155,33 @@ deploy Production {
 }
 `;
 
+// Duplicate id where the FIRST occurrence has no description and a LATER one
+// does. The original recursive walkers used continue-on-null semantics, so
+// they returned the later definition's description; a naive "return at first
+// match" refactor would regress this to null (hover shows nothing). See
+// issue #2017 point 5.
+const KRS_DUPLICATE_ID = `\
+system Root {
+  service Repeated {}
+  service Repeated {
+    description "second definition"
+  }
+}
+`;
+
 describe("collectNodes / collectAllIdentifiers org+deploy asymmetry (issue #2017 point 5)", () => {
-  it("collectNodes omits the organization block's own id but includes its teams/members and all deploy entities", () => {
+  // Full ordered lists (not just membership): the fence must fail if a future
+  // reorder of visitNamedEntities changes the byte-identical walk order.
+  it("collectNodes emits deploy entities then org teams/members in order, omitting the org block's own id", () => {
     const file = parse(KRS_WITH_ORG_AND_DEPLOY);
     const ids = collectNodes(file).map((n) => n.id);
-    expect(ids).not.toContain("TechCorp");
-    expect(ids).toContain("ec-team");
-    expect(ids).toContain("alice");
-    expect(ids).toContain("Production");
-    expect(ids).toContain("api");
+    expect(ids).toEqual(["Production", "api", "ec-team", "alice"]);
   });
 
-  it("collectAllIdentifiers includes the organization block's own id alongside teams/members and deploy entities", () => {
+  it("collectAllIdentifiers emits the same order plus the org block's own id", () => {
     const file = parse(KRS_WITH_ORG_AND_DEPLOY);
     const ids = collectAllIdentifiers(file);
-    expect(ids).toContain("TechCorp");
-    expect(ids).toContain("ec-team");
-    expect(ids).toContain("alice");
-    expect(ids).toContain("Production");
-    expect(ids).toContain("api");
+    expect(ids).toEqual(["Production", "api", "TechCorp", "ec-team", "alice"]);
   });
 });
 
@@ -231,6 +239,15 @@ describe("getNodeDescription", () => {
     const file = parse(KRS_WITH_ORG_AND_DEPLOY);
     expect(getNodeDescription(file, "Production")).toBeNull();
     expect(getNodeDescription(file, "api")).toBeNull();
+  });
+
+  it("returns a LATER duplicate-id definition's description when the first has none (continue-on-null; issue #2017 point 5)", () => {
+    const file = parse(KRS_DUPLICATE_ID);
+    // Both `service Repeated` blocks are parsed as siblings; the first has no
+    // description, the second does. The original walkers skipped the null
+    // first match and returned the second — a naive first-match refactor
+    // would return null here.
+    expect(getNodeDescription(file, "Repeated")).toBe("second definition");
   });
 });
 

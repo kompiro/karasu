@@ -45,23 +45,55 @@ interface NamedEntity {
  * three prior traversals; it does not visit `clients` / `domains` /
  * `databases` / `queues` / `storages` / `boundaries` because none of the
  * three prior walkers did (out of scope for this refactor, see #2017).
+ *
+ * `stopDescending` reproduces `getNodeDescription`'s original stop-at-first-
+ * match search: the three now-removed `search*` helpers returned as soon as
+ * an id matched and never descended past that node (and, for a matched
+ * `member`, bailed out of the rest of the enclosing team). `collectNodes`
+ * and `collectAllIdentifiers` need the full traversal, so they pass no
+ * predicate and every entity's subtree is visited. See `getNodeDescription`.
  */
-function* visitNamedEntities(krsFile: KrsFile): Generator<NamedEntity> {
+function* visitNamedEntities(
+  krsFile: KrsFile,
+  stopDescending?: (entity: NamedEntity) => boolean,
+): Generator<NamedEntity> {
   function* walkKrsNode(node: KrsNode): Generator<NamedEntity> {
-    yield { id: node.id, loc: node.loc, description: node.properties.description, group: "krs" };
+    const entity: NamedEntity = {
+      id: node.id,
+      loc: node.loc,
+      description: node.properties.description,
+      group: "krs",
+    };
+    yield entity;
+    // Original `searchKrsNode` returned at a matching node without recursing
+    // into its children; reproduce by not descending here.
+    if (stopDescending?.(entity)) return;
     for (const child of node.children) yield* walkKrsNode(child);
   }
 
   function* walkTeam(team: TeamNode): Generator<NamedEntity> {
-    yield { id: team.id, loc: team.loc, description: team.properties.description, group: "team" };
+    const teamEntity: NamedEntity = {
+      id: team.id,
+      loc: team.loc,
+      description: team.properties.description,
+      group: "team",
+    };
+    yield teamEntity;
+    // Original `searchTeam` returned at a matching team without descending.
+    if (stopDescending?.(teamEntity)) return;
     for (const child of team.children) {
       if (child.kind === "member") {
-        yield {
+        const memberEntity: NamedEntity = {
           id: child.id,
           loc: child.loc,
           description: child.properties.description,
           group: "member",
         };
+        yield memberEntity;
+        // Original `searchTeam` returned *inline* at a matching member,
+        // which stopped scanning the rest of THIS team's children (not just
+        // the member's — members are leaves anyway). Bail out of the team.
+        if (stopDescending?.(memberEntity)) return;
       } else {
         yield* walkTeam(child);
       }
@@ -71,13 +103,23 @@ function* visitNamedEntities(krsFile: KrsFile): Generator<NamedEntity> {
   for (const sys of krsFile.systems) yield* walkKrsNode(sys);
   for (const svc of krsFile.services) yield* walkKrsNode(svc);
   for (const block of krsFile.deploys) {
-    yield { id: block.id, loc: block.loc, group: "deploy-block" };
+    const blockEntity: NamedEntity = { id: block.id, loc: block.loc, group: "deploy-block" };
+    yield blockEntity;
+    if (stopDescending?.(blockEntity)) continue;
     for (const node of block.nodes) {
       yield { id: node.id, loc: node.loc, group: "deploy" };
     }
   }
   for (const org of krsFile.organizations) {
-    yield { id: org.id, loc: org.loc, description: org.properties.description, group: "org" };
+    const orgEntity: NamedEntity = {
+      id: org.id,
+      loc: org.loc,
+      description: org.properties.description,
+      group: "org",
+    };
+    yield orgEntity;
+    // Original `searchOrg` returned at a matching org without visiting teams.
+    if (stopDescending?.(orgEntity)) continue;
     for (const team of org.teams) yield* walkTeam(team);
   }
 }
@@ -168,7 +210,19 @@ export function collectAllIdentifiers(krsFile: KrsFile): string[] {
  * Returns null if the node has no description or is not found.
  */
 export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | null {
-  for (const entity of visitNamedEntities(krsFile)) {
+  // Continue-on-null: the original `search*` helpers propagated `null` up
+  // through their parent loops, so when the first entity matching `nodeId`
+  // had no description the search kept going and could return a LATER
+  // duplicate-id entity's description (duplicate ids are common mid-edit).
+  // Reproduce that here by scanning matches in traversal order and returning
+  // the first one that actually carries a description (`!= null` so an
+  // empty-string description still counts, matching `description ?? null`),
+  // returning null only if no matching entity has one. The `stopDescending`
+  // argument reproduces the original stop-at-match pruning so the SAME
+  // entity wins the tie (see visitNamedEntities) — without it, a matched
+  // node's same-id descendant, or a later same-team child after a matched
+  // member, could wrongly win.
+  for (const entity of visitNamedEntities(krsFile, (e) => e.id === nodeId)) {
     // DRIFT (reproduced, not fixed — see issue #2017 point 5): deploy
     // blocks and deploy nodes are skipped entirely here, so this never
     // resolves a description for them even though `collectNodes`/
@@ -179,7 +233,8 @@ export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | n
     // later entity's description, exactly as the original per-container
     // loops (which never visited `krsFile.deploys` at all) did.
     if (entity.group === "deploy-block" || entity.group === "deploy") continue;
-    if (entity.id === nodeId) return entity.description ?? null;
+    if (entity.id !== nodeId) continue;
+    if (entity.description != null) return entity.description;
   }
   return null;
 }
