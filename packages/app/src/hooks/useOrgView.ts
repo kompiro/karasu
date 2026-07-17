@@ -1,4 +1,3 @@
-import { useState, useCallback } from "react";
 import {
   compileProject,
   compileOrgDiff,
@@ -17,6 +16,7 @@ import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
 import { useDebouncedCompile, type CompileOutcome } from "./useDebouncedCompile.js";
+import { useCollapsibleSet } from "./useCollapsibleSet.js";
 
 interface OrgViewState {
   orgSvg: string;
@@ -38,24 +38,12 @@ export function useOrgView(
   theme?: DiagramTheme,
 ): OrgViewState & {
   recompile: () => void;
-  expandedTeamIds: Set<string>;
+  expandedTeamIds: ReadonlySet<string>;
   toggleTeamExpand: (teamId: string) => void;
   orgTreeSvg: string;
   orgTreeExportSvg: string;
 } {
-  const [expandedTeamIds, setExpandedTeamIds] = useState<Set<string>>(new Set());
-
-  const toggleTeamExpand = useCallback((teamId: string) => {
-    setExpandedTeamIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(teamId)) {
-        next.delete(teamId);
-      } else {
-        next.add(teamId);
-      }
-      return next;
-    });
-  }, []);
+  const { set: expandedTeamIds, toggle: toggleTeamExpand } = useCollapsibleSet<string>();
 
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();

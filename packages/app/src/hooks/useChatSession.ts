@@ -8,6 +8,7 @@ import {
 } from "@karasu-tools/core";
 import { resolveLocale } from "../i18n/locale.js";
 import { useTranslation } from "../i18n/index.js";
+import { useLatestRef } from "./useLatestRef.js";
 import {
   buildTools,
   buildSystemPrompt,
@@ -125,30 +126,20 @@ export function useChatSession({
   // Keep the latest value in a ref so async callbacks pick up the current
   // locale's messages without extra re-subscribes.
   const { t } = useTranslation();
-  const tRef = useRef(t);
-  tRef.current = t;
+  const tRef = useLatestRef(t);
 
   // Keep a ref to the current phase so async callbacks can read the latest value
-  const phaseRef = useRef<SessionPhase>(phase);
-  phaseRef.current = phase;
+  const phaseRef = useLatestRef<SessionPhase>(phase);
 
   // Keep a ref to the latest apiKey / fileContent / currentFilePath / scopeLabel for use in callbacks
-  const fileContentRef = useRef(fileContent);
-  fileContentRef.current = fileContent;
-  const currentFilePathRef = useRef(currentFilePath);
-  currentFilePathRef.current = currentFilePath;
-  const scopeLabelRef = useRef(scopeLabel);
-  scopeLabelRef.current = scopeLabel;
-  const viewPathRef = useRef(viewPath);
-  viewPathRef.current = viewPath;
-  const resolvedSystemsRef = useRef(resolvedSystems);
-  resolvedSystemsRef.current = resolvedSystems;
-  const organizationsRef = useRef(organizations);
-  organizationsRef.current = organizations;
-  const ownerIndexRef = useRef(ownerIndex);
-  ownerIndexRef.current = ownerIndex;
-  const apiKeyRef = useRef(apiKey);
-  apiKeyRef.current = apiKey;
+  const fileContentRef = useLatestRef(fileContent);
+  const currentFilePathRef = useLatestRef(currentFilePath);
+  const scopeLabelRef = useLatestRef(scopeLabel);
+  const viewPathRef = useLatestRef(viewPath);
+  const resolvedSystemsRef = useLatestRef(resolvedSystems);
+  const organizationsRef = useLatestRef(organizations);
+  const ownerIndexRef = useLatestRef(ownerIndex);
+  const apiKeyRef = useLatestRef(apiKey);
 
   // Generation guard (#1533). `resetSession` (project switch / New Session) and
   // each new operation bump the generation and abort the in-flight request, so
@@ -288,7 +279,22 @@ export function useChatSession({
 
       return { text, patchProposal };
     },
-    [onNavigateViewPath, locale, tools],
+    // The `*Ref` deps are stable ref objects (only `.current` is read inside
+    // the callback), so listing them satisfies exhaustive-deps without
+    // changing when `runTurn` is recreated.
+    [
+      onNavigateViewPath,
+      locale,
+      tools,
+      apiKeyRef,
+      scopeLabelRef,
+      viewPathRef,
+      fileContentRef,
+      currentFilePathRef,
+      resolvedSystemsRef,
+      organizationsRef,
+      ownerIndexRef,
+    ],
   );
 
   // ── callApi ────────────────────────────────────────────────────────────────
@@ -344,7 +350,9 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     },
-    [runTurn],
+    // `apiKeyRef` / `tRef` are stable ref objects — listing them satisfies
+    // exhaustive-deps without changing when `callApi` is recreated.
+    [runTurn, apiKeyRef, tRef],
   );
 
   // ── sendMessage ────────────────────────────────────────────────────────────
@@ -400,7 +408,9 @@ export function useChatSession({
       setPhase({ kind: "loading" });
       await callApi(nextMessages, op, userMsg.id);
     },
-    [messages, callApi, runTurn, beginOperation],
+    // `phaseRef` is a stable ref object — listing it satisfies exhaustive-deps
+    // without changing when `sendMessage` is recreated.
+    [messages, callApi, runTurn, beginOperation, phaseRef],
   );
 
   // ── retryMessage ───────────────────────────────────────────────────────────
@@ -499,7 +509,10 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     },
-    [messages, onEditorChange, runTurn, beginOperation],
+    // `tRef` / `apiKeyRef` / `fileContentRef` are stable ref objects — listing
+    // them satisfies exhaustive-deps without changing when `applyPatch` is
+    // recreated.
+    [messages, onEditorChange, runTurn, beginOperation, tRef, apiKeyRef, fileContentRef],
   );
 
   // ── rejectPatch ────────────────────────────────────────────────────────────
@@ -547,7 +560,9 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     },
-    [messages, runTurn, beginOperation],
+    // `apiKeyRef` / `tRef` are stable ref objects — listing them satisfies
+    // exhaustive-deps without changing when `rejectPatch` is recreated.
+    [messages, runTurn, beginOperation, apiKeyRef, tRef],
   );
 
   // ── startReview ────────────────────────────────────────────────────────────
@@ -597,7 +612,9 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [runTurn, locale, beginOperation]);
+    // `apiKeyRef` / `tRef` are stable ref objects — listing them satisfies
+    // exhaustive-deps without changing when `startReview` is recreated.
+  }, [runTurn, locale, beginOperation, apiKeyRef, tRef]);
 
   // ── startInterview ─────────────────────────────────────────────────────────
 
@@ -635,7 +652,9 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [runTurn, locale, beginOperation]);
+    // `apiKeyRef` / `tRef` are stable ref objects — listing them satisfies
+    // exhaustive-deps without changing when `startInterview` is recreated.
+  }, [runTurn, locale, beginOperation, apiKeyRef, tRef]);
 
   return {
     messages,
