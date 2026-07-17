@@ -90,7 +90,7 @@ export interface FrameContext {
  * dismiss any lingering dialog with ESC between attempts. Throws after the last
  * attempt fails.
  */
-export async function openFixtureWithRetry(
+async function openFixtureWithRetry(
   driver: WebDriver,
   workbench: Workbench,
   editorView: EditorView,
@@ -142,7 +142,7 @@ export async function openFixtureWithRetry(
  * group, switch into its WebView iframe, and return the resulting
  * {@link FrameContext} (already inside the frame).
  */
-export async function openPreviewAndEnterFrame(
+async function openPreviewAndEnterFrame(
   driver: WebDriver,
   workbench: Workbench,
   editorView: EditorView,
@@ -241,7 +241,7 @@ export async function leaveWebViewFrame(
  * position — mirrors the settle VS Code needs to finish laying out the
  * editor tab.
  */
-export const EDITOR_FOCUS_SETTLE_MS = 150;
+const EDITOR_FOCUS_SETTLE_MS = 150;
 
 /**
  * Read the .krs editor's cursor line: leave the WebView frame (strict —
