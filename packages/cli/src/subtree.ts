@@ -1,6 +1,4 @@
-import { resolve } from "node:path";
 import {
-  compileProject,
   serializeKrsFile,
   type KrsFile,
   type KrsNode,
@@ -8,8 +6,7 @@ import {
   type ServiceNode,
   type DomainNode,
 } from "@karasu-tools/core";
-import { NodeFileSystemProvider } from "./node-fs.js";
-import { formatDiagnostic } from "./i18n.js";
+import { compileSystemViewOrExit, resolveKrsFileOrExit } from "./compile-system-view.js";
 import { writeOutput } from "./output.js";
 
 interface SubtreeCliOptions {
@@ -110,31 +107,12 @@ export async function subtree(
   filePath: string,
   options: SubtreeCliOptions,
 ): Promise<void> {
-  const absolutePath = resolve(filePath);
-  const fs = new NodeFileSystemProvider();
+  const resolved = await resolveKrsFileOrExit(filePath);
+  if (!resolved) return;
+  const { absolutePath, fs } = resolved;
 
-  if (!(await fs.exists(absolutePath))) {
-    process.stderr.write(`Error: File not found: ${filePath}\n`);
-    process.exit(1);
-    return;
-  }
-
-  const result = await compileProject(absolutePath, fs, { diagramType: "system" });
-  if (result.diagramType !== "system") {
-    process.stderr.write("Error: subtree requires a system view\n");
-    process.exit(1);
-    return;
-  }
-
-  const errors = result.diagnostics.filter((d) => d.severity === "error");
-  for (const d of errors) {
-    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
-    process.stderr.write(`Error: ${loc}: ${formatDiagnostic(d)}\n`);
-  }
-  if (errors.length > 0) {
-    process.exit(1);
-    return;
-  }
+  const result = await compileSystemViewOrExit(fs, absolutePath, filePath, "subtree");
+  if (!result) return;
 
   const matches = findMatches(result.systems, nodeId);
 

@@ -17,6 +17,11 @@ import { subtree } from "./subtree.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
 
+/** Commander repeatable-option collector: accumulate `--flag <v>` occurrences into an array. */
+function collect(value: string, prev?: string[]): string[] {
+  return [...(prev ?? []), value];
+}
+
 program
   .command("serve [dir]")
   .description("Serve .krs files from a local directory with live preview")
@@ -476,6 +481,17 @@ Warnings (e.g. unknown property names) do not change the exit code.`,
     lintStyle(files, { stdin: options.stdin });
   });
 
+interface MatrixRawOptions {
+  output?: string;
+  format?: string;
+  service?: string[];
+  infra?: string[];
+  external?: boolean;
+  writesOnly?: boolean;
+  omitEmpty?: boolean;
+  totals?: boolean;
+}
+
 program
   .command("matrix <file>")
   .description("Render a usecase × resource CRUD matrix from a .krs project")
@@ -484,12 +500,12 @@ program
   .option(
     "--service <name>",
     "Restrict rows to usecases inside the named service (repeatable)",
-    (value: string, prev: string[] | undefined) => [...(prev ?? []), value],
+    collect,
   )
   .option(
     "--infra <kind>",
     "Restrict columns to the named infra kind: database | queue | storage (repeatable)",
-    (value: string, prev: string[] | undefined) => [...(prev ?? []), value],
+    collect,
   )
   .option("--external", "Show only [external] resources")
   .option("--no-external", "Hide [external] resources")
@@ -512,10 +528,10 @@ Examples:
   # Filter to one service and database resources only
   $ karasu matrix index.krs --service Catalog --infra database`,
   )
-  .action((file: string, options) => {
+  .action((file: string, options: MatrixRawOptions) => {
     matrix(file, {
       output: options.output,
-      format: options.format,
+      format: options.format as "md" | "csv" | "svg" | undefined,
       service: options.service,
       infra: options.infra,
       external: options.external === true,
@@ -525,6 +541,12 @@ Examples:
       noTotals: options.totals === false,
     });
   });
+
+interface CoverageRawOptions {
+  output?: string;
+  format?: string;
+  threshold?: string;
+}
 
 program
   .command("coverage <file>")
@@ -545,13 +567,18 @@ Examples:
   # Flag domains below an explicit score threshold
   $ karasu coverage index.krs --threshold 0.3`,
   )
-  .action((file: string, options) => {
+  .action((file: string, options: CoverageRawOptions) => {
     coverage(file, {
       output: options.output,
-      format: options.format,
+      format: options.format as "md" | "json" | undefined,
       threshold: options.threshold,
     });
   });
+
+interface SubtreeRawOptions {
+  output?: string;
+  withAncestors?: boolean;
+}
 
 program
   .command("subtree <node-id> <file>")
@@ -568,7 +595,7 @@ Examples:
   # Keep the enclosing system/service context
   $ karasu subtree Order index.krs --with-ancestors -o order-slice.krs`,
   )
-  .action((nodeId: string, file: string, options) => {
+  .action((nodeId: string, file: string, options: SubtreeRawOptions) => {
     subtree(nodeId, file, {
       output: options.output,
       withAncestors: options.withAncestors === true,
