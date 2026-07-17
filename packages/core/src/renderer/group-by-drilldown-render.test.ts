@@ -614,7 +614,7 @@ boundary cluster "Cluster" {
 // If a future view change makes one of these cases fail — or extending
 // `LogicalNodeKind` fails the `satisfies` guard below at typecheck — a kind
 // has (or may have) lost its rendering level and the diagnostic decision must
-// be revisited (docs/design/boundary-drilldown-grouping.md).
+// be revisited (docs/adr/20260717-01-boundary-drilldown-grouping.md).
 const EVERY_KIND_SRC = `
 system Shop {
   service Orders {
