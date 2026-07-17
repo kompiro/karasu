@@ -92,7 +92,7 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
     await expect(page.locator('[data-node-id="BillingService"]')).toBeVisible();
     const edgeLines = page.locator("g.edges line");
     await expect(edgeLines).not.toHaveCount(0);
-    expect(await edgeLines.count()).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => edgeLines.count()).toBeGreaterThanOrEqual(2);
   });
 
   test("unannotated duplicate renders with an info note, not an error (Case 4)", async ({
@@ -128,6 +128,6 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
     ).toHaveCount(0);
 
     const edgeLines = page.locator("g.edges line");
-    expect(await edgeLines.count()).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => edgeLines.count()).toBeGreaterThanOrEqual(2);
   });
 });

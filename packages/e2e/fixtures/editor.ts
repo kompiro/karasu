@@ -11,6 +11,52 @@ import { type Page, expect } from "@playwright/test";
 const COMPILE_SETTLE_MS = 400;
 
 /**
+ * Settle window for `expectNoWarningMatching` below. Same intent as
+ * `COMPILE_SETTLE_MS` above — give the reactive compile pipeline a moment
+ * before sampling the DOM — but kept at its own historical duration
+ * (500ms vs. 400ms) since the four call sites it was extracted from
+ * predate `COMPILE_SETTLE_MS`. Coalescing the two values (or replacing the
+ * sleep with a smarter wait) is an intentionally separate, riskier
+ * follow-up — see #2021 point 6.
+ *
+ * KNOWN LIMITATION (follow-up): this is a blind fixed sleep, so a warning
+ * that only renders *after* the window (e.g. a compile that runs slow on a
+ * loaded CI runner, past ~500ms) would be missed by the negative check
+ * below. A deterministic replacement — waiting on a compile-done / render
+ * settle signal — was investigated for this batch but the app exposes no
+ * such marker today (no render-counter, `data-*` ready attribute, or
+ * compile-complete event that e2e can await). Rather than invent a fragile
+ * new mechanism, the pre-existing sleep is preserved as-is. A marker-based
+ * wait is deferred to a follow-up that adds the signal on the app side.
+ */
+const WARNING_SETTLE_MS = 500;
+
+/**
+ * Assert that no warning appears — the "negative assertion" idiom used by
+ * specs proving a particular `.krs` source does *not* trigger a
+ * diagnostic. There is no positive signal to wait on (the absence of a
+ * warning looks identical to "hasn't rendered yet"), so this settles for
+ * `WARNING_SETTLE_MS` before sampling the panel. See the KNOWN LIMITATION
+ * note on `WARNING_SETTLE_MS` for why the settle is a blind sleep.
+ *
+ * - `pattern` omitted: the warning panel, if present, must have zero
+ *   `.warning-item` children (used when *any* warning would be wrong).
+ * - `pattern` given: the warning panel, if present, must not contain text
+ *   matching it (used when other, unrelated warnings are expected).
+ */
+export async function expectNoWarningMatching(page: Page, pattern?: RegExp): Promise<void> {
+  await page.waitForTimeout(WARNING_SETTLE_MS);
+  const panel = page.locator(".warning-panel");
+  if ((await panel.count()) > 0) {
+    if (pattern) {
+      await expect(panel).not.toContainText(pattern);
+    } else {
+      await expect(panel.locator(".warning-item")).toHaveCount(0);
+    }
+  }
+}
+
+/**
  * Replace Monaco editor content deterministically.
  *
  * The previous click-on-`.view-lines` + `Ctrl+A` / `Delete` / `insertText`

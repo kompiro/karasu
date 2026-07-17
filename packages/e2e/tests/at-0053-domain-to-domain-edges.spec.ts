@@ -121,16 +121,21 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     // source domain edge is `->` (sync), so the line is solid (no
     // stroke-dasharray attribute). See #510.
     const implicitEdge = page.locator(`g.edges line[stroke="${IMPLICIT_COLOR}"]`);
-    expect(await implicitEdge.count()).toBeGreaterThanOrEqual(1);
+    await expect.poll(() => implicitEdge.count()).toBeGreaterThanOrEqual(1);
     const dashedSync = page.locator(
       `g.edges line[stroke="${IMPLICIT_COLOR}"][stroke-dasharray="${DASHED_PATTERN}"]`,
     );
+    // Hard "must never appear" invariant: a sync (`->`) source edge must
+    // never render dashed. Kept as an EAGER one-shot `.count()` check (not
+    // a retrying `toHaveCount(0)`), because a retrying assertion would
+    // auto-wait until the count settles to 0 and mask a transient
+    // wrong-render flash. The preceding retrying `implicitEdge` poll has
+    // already settled the DOM, so this eager read is not racy.
     expect(await dashedSync.count()).toBe(0);
 
     // Label of the single domain edge is preserved.
-    expect(
-      await page.locator("g.edges text", { hasText: "decides payment" }).count(),
-    ).toBeGreaterThanOrEqual(1);
+    const decidesPaymentLabel = page.locator("g.edges text", { hasText: "decides payment" });
+    await expect.poll(() => decidesPaymentLabel.count()).toBeGreaterThanOrEqual(1);
   });
 
   test("sync and async implicit edges are visually distinguishable (Case 7, #510)", async ({
@@ -145,18 +150,18 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
 
     // Sync implicit edge: amber, no stroke-dasharray.
     const ambers = page.locator(`g.edges line[stroke="${IMPLICIT_COLOR}"]`);
-    expect(await ambers.count()).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => ambers.count()).toBeGreaterThanOrEqual(2);
 
     // At least one amber line is dashed (the async one) and at least one is
     // not (the sync one).
     const amberDashed = page.locator(
       `g.edges line[stroke="${IMPLICIT_COLOR}"][stroke-dasharray="${DASHED_PATTERN}"]`,
     );
-    expect(await amberDashed.count()).toBeGreaterThanOrEqual(1);
+    await expect.poll(() => amberDashed.count()).toBeGreaterThanOrEqual(1);
     const amberSolid = page.locator(
       `g.edges line[stroke="${IMPLICIT_COLOR}"]:not([stroke-dasharray])`,
     );
-    expect(await amberSolid.count()).toBeGreaterThanOrEqual(1);
+    await expect.poll(() => amberSolid.count()).toBeGreaterThanOrEqual(1);
   });
 
   test("intra-service domain edge renders in the service drill-down view (Case 2)", async ({
@@ -178,9 +183,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     await expect(page.locator('[data-node-id="ShippingDomain"]')).toHaveCount(1);
 
     // Intra-service edge label is the original text.
-    expect(
-      await page.locator("g.edges text", { hasText: "triggers shipment" }).count(),
-    ).toBeGreaterThanOrEqual(1);
+    const triggersShipmentLabel = page.locator("g.edges text", { hasText: "triggers shipment" });
+    await expect.poll(() => triggersShipmentLabel.count()).toBeGreaterThanOrEqual(1);
   });
 
   test('multiple cross-service domain edges aggregate into a "N domain edges" label (Case 3)', async ({
@@ -191,9 +195,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     await openViewTab(page, "System");
 
     await expect(page.locator('[data-node-id="OrderService"]')).toBeVisible();
-    expect(
-      await page.locator("g.edges text", { hasText: /\d+ domain edges/ }).count(),
-    ).toBeGreaterThanOrEqual(1);
+    const aggregatedLabel = page.locator("g.edges text", { hasText: /\d+ domain edges/ });
+    await expect.poll(() => aggregatedLabel.count()).toBeGreaterThanOrEqual(1);
   });
 
   test("clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)", async ({

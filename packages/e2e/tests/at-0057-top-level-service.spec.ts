@@ -1,6 +1,7 @@
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { openViewTab } from "../fixtures/tabs.js";
+import { expectNoWarningMatching } from "../fixtures/editor.js";
 
 /**
  * AT-0057: Top-level service declarations.
@@ -66,10 +67,6 @@ test.describe("AT-0057 Top-level service declarations", () => {
   }) => {
     await bootMemoryApp(page, opfs, SERVICE_INSIDE_SYSTEM_KRS);
 
-    await page.waitForTimeout(500);
-    const warningPanel = page.locator(".warning-panel");
-    if ((await warningPanel.count()) > 0) {
-      await expect(warningPanel).not.toContainText(/not assigned to any system/);
-    }
+    await expectNoWarningMatching(page, /not assigned to any system/);
   });
 });
