@@ -987,7 +987,14 @@ function collapseAndAssignGroupLayers(
   groupIdOf: (id: string) => string | null;
   grouped: GroupedLayerBands | null;
 } {
-  const collapsed = collapseGroups(nodes, edges, groupIndex, collapsedGroups, edgeDiffState, stubScope);
+  const collapsed = collapseGroups(
+    nodes,
+    edges,
+    groupIndex,
+    collapsedGroups,
+    edgeDiffState,
+    stubScope,
+  );
   const groupIdOf = (id: string): string | null =>
     groupIndex.get(id) ?? collapsed.stubGroup.get(id) ?? null;
   let grouped: GroupedLayerBands | null = null;
@@ -1007,7 +1014,11 @@ function collapseAndAssignGroupLayers(
       declaredGroupOrder,
     );
     if (result) {
-      grouped = { layers: result.layers, groupBands: result.groupBands, groupOrder: result.groupOrder };
+      grouped = {
+        layers: result.layers,
+        groupBands: result.groupBands,
+        groupOrder: result.groupOrder,
+      };
     }
   }
   return {
