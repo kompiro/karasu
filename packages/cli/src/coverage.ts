@@ -1,7 +1,5 @@
-import { resolve } from "node:path";
-import { compileProject, extractCoverage, type CoverageReport } from "@karasu-tools/core";
-import { NodeFileSystemProvider } from "./node-fs.js";
-import { formatDiagnostic } from "./i18n.js";
+import { extractCoverage, type CoverageReport } from "@karasu-tools/core";
+import { compileSystemViewOrExit, resolveKrsFileOrExit } from "./compile-system-view.js";
 import { writeOutput } from "./output.js";
 
 type CoverageFormat = "md" | "json";
@@ -30,13 +28,9 @@ function formatAsMarkdown(report: CoverageReport): string {
 }
 
 export async function coverage(filePath: string, options: CoverageCliOptions): Promise<void> {
-  const absolutePath = resolve(filePath);
-  const fs = new NodeFileSystemProvider();
-
-  if (!(await fs.exists(absolutePath))) {
-    process.stderr.write(`Error: File not found: ${filePath}\n`);
-    process.exit(1);
-  }
+  const resolved = await resolveKrsFileOrExit(filePath);
+  if (!resolved) return;
+  const { absolutePath, fs } = resolved;
 
   const format: CoverageFormat = options.format ?? "md";
   if (format !== "md" && format !== "json") {
@@ -53,18 +47,8 @@ export async function coverage(filePath: string, options: CoverageCliOptions): P
     }
   }
 
-  const result = await compileProject(absolutePath, fs, { diagramType: "system" });
-  if (result.diagramType !== "system") {
-    process.stderr.write("Error: coverage requires a system view\n");
-    process.exit(1);
-  }
-
-  const errors = result.diagnostics.filter((d) => d.severity === "error");
-  for (const d of errors) {
-    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
-    process.stderr.write(`Error: ${loc}: ${formatDiagnostic(d)}\n`);
-  }
-  if (errors.length > 0) process.exit(1);
+  const result = await compileSystemViewOrExit(fs, absolutePath, filePath, "coverage");
+  if (!result) return;
 
   const report = extractCoverage(result.systems, { threshold });
   const output =
