@@ -11,14 +11,18 @@ import { findRangeOfNode } from "./position-resolver.js";
  * the directory-import expansion and the single-file-import branch below.
  */
 function searchKrsFile(filePath: string, word: string, visited: Set<string>): Location | null {
-  let text: string;
+  // Skip this file on any read or parse failure, matching the per-branch
+  // skip semantics the two original import branches had. `Parser.parse`
+  // reports errors as diagnostics rather than throwing today, so the parse
+  // guard is a deliberate resilience net, not a load-bearing branch.
+  let parsed: ReturnType<typeof Parser.parse>;
   try {
-    text = fs.readFileSync(filePath, "utf-8");
+    const text = fs.readFileSync(filePath, "utf-8");
+    parsed = Parser.parse(text);
   } catch {
     return null;
   }
 
-  const parsed = Parser.parse(text);
   const fileUri = pathToFileURL(filePath).toString();
   const range = findRangeOfNode(parsed.value, word);
   if (range) return Location.create(fileUri, range);

@@ -109,6 +109,11 @@ documents.onDidClose((event) => {
  * Look up the open document for `uri` and parse it. Returns `null` when the
  * document isn't open — callers fall back to their own empty/null result in
  * that case (the fallback shape differs per handler, so it isn't baked in here).
+ *
+ * Only for handlers with no cheaper pre-parse early-return. `onHover` /
+ * `onDefinition` guard on the word under the cursor first (a full parse on
+ * every non-identifier hover is wasteful), so they fetch the doc via
+ * `documents.get` and parse lazily only past the guard.
  */
 function getParsedDocument(uri: string): { doc: TextDocument; file: KrsFile } | null {
   const doc = documents.get(uri);
@@ -161,39 +166,42 @@ connection.onCompletion((params) => {
 // ─── Definition ───────────────────────────────────────────────────────────────
 
 connection.onDefinition((params) => {
-  const parsed = getParsedDocument(params.textDocument.uri);
-  if (!parsed) return null;
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
 
-  const word = getWordAtPosition(parsed.doc.getText(), params.position);
+  const word = getWordAtPosition(doc.getText(), params.position);
   if (!word) return null;
 
+  // Parse only past the word guard — avoids a full parse when the cursor
+  // isn't on an identifier.
+  const file = Parser.parse(doc.getText()).value;
+
   // Same-file lookup
-  const range = findRangeOfNode(parsed.file, word);
+  const range = findRangeOfNode(file, word);
   if (range) return Location.create(params.textDocument.uri, range);
 
   // Cross-file lookup: recursively search all imports (named, wildcard, transitive)
   const visited = new Set<string>([fileURLToPath(params.textDocument.uri)]);
-  const result = findDefinitionInImports(
-    parsed.file.nodeImports,
-    word,
-    params.textDocument.uri,
-    visited,
-  );
+  const result = findDefinitionInImports(file.nodeImports, word, params.textDocument.uri, visited);
   return result;
 });
 
 // ─── Hover ────────────────────────────────────────────────────────────────────
 
 connection.onHover((params) => {
-  const parsed = getParsedDocument(params.textDocument.uri);
-  if (!parsed) return null;
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
 
   // Use the identifier under the cursor so that hovering over any reference
   // to a node (e.g. in an edge declaration) shows THAT node's description,
   // not the description of the enclosing (parent) node.
-  const word = getWordAtPosition(parsed.doc.getText(), params.position);
+  const word = getWordAtPosition(doc.getText(), params.position);
   if (!word) return null;
-  const description = getNodeDescription(parsed.file, word);
+
+  // Parse only past the word guard — hover fires on every mouse move, so a
+  // full parse on non-identifier positions would be wasted work.
+  const file = Parser.parse(doc.getText()).value;
+  const description = getNodeDescription(file, word);
   if (!description) return null;
 
   return { contents: { kind: "markdown", value: description } } satisfies Hover;
