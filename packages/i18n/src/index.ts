@@ -16,6 +16,6 @@ export type { Locale } from "./locale.js";
 export { isLocale } from "./locale.js";
 export { en } from "./en.js";
 export { ja } from "./ja.js";
-export { translate } from "./translate.js";
-export { renderWarning, type TranslateFn } from "./render-warning.js";
+export { translate, bindTranslate, type TranslateFn } from "./translate.js";
+export { renderWarning } from "./render-warning.js";
 export { renderDiagnostic } from "./render-diagnostic.js";

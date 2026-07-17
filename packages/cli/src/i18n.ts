@@ -8,13 +8,7 @@
  */
 
 import type { Diagnostic, Warning, FormattedWarning } from "@karasu-tools/core";
-import {
-  renderDiagnostic,
-  renderWarning,
-  translate,
-  type Locale,
-  type TranslateFn,
-} from "@karasu-tools/i18n";
+import { renderDiagnostic, renderWarning, bindTranslate, type Locale } from "@karasu-tools/i18n";
 
 /**
  * Resolve the CLI's output locale from POSIX locale environment variables.
@@ -28,8 +22,7 @@ export function resolveCliLocale(env: NodeJS.ProcessEnv = process.env): Locale {
 
 // The CLI process locale is fixed for the lifetime of the run.
 const locale = resolveCliLocale();
-const t = ((key: Parameters<TranslateFn>[0], params?: unknown) =>
-  translate(locale, key, params)) as TranslateFn;
+const t = bindTranslate(locale);
 
 /** Render a core `Diagnostic` to a localized one-line message. */
 export function formatDiagnostic(d: Diagnostic): string {

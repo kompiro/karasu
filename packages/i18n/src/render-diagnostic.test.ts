@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Diagnostic, DiagnosticCode } from "@karasu-tools/core";
 import { renderDiagnostic } from "./render-diagnostic.js";
-import type { TranslateFn } from "./render-warning.js";
-import { translate } from "./translate.js";
-import type { Locale } from "./locale.js";
+import { bindTranslate } from "./translate.js";
 
 // One sample `Diagnostic` per `DiagnosticCode`, mirroring the
 // `Record<WarningKind, Warning>` map in `render-warning.test.ts`. The mapped
@@ -430,10 +428,6 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "generic-text": ["Something went wrong while compiling"],
 };
 
-const localeTranslator = (locale: Locale): TranslateFn =>
-  ((key: Parameters<TranslateFn>[0], params?: unknown) =>
-    translate(locale, key, params)) as TranslateFn;
-
 const PLACEHOLDER = /\{\{[^}]+\}\}/;
 
 // Codes whose ja rendering is identical to en BY DESIGN. `generic-text`
@@ -454,26 +448,26 @@ describe("renderDiagnostic — i18n coverage for every DiagnosticCode", () => {
 
     describe(`code: ${code}`, () => {
       it("renders a non-empty en message with no unresolved placeholders", () => {
-        const out = renderDiagnostic(sample, localeTranslator("en"));
+        const out = renderDiagnostic(sample, bindTranslate("en"));
         expect(out.trim().length).toBeGreaterThan(0);
         expect(out).not.toMatch(PLACEHOLDER);
       });
 
       it("renders a non-empty ja message with no unresolved placeholders", () => {
-        const out = renderDiagnostic(sample, localeTranslator("ja"));
+        const out = renderDiagnostic(sample, bindTranslate("ja"));
         expect(out.trim().length).toBeGreaterThan(0);
         expect(out).not.toMatch(PLACEHOLDER);
       });
 
       it("the rendered en message surfaces the identifying field(s)", () => {
-        const out = renderDiagnostic(sample, localeTranslator("en"));
+        const out = renderDiagnostic(sample, bindTranslate("en"));
         for (const id of identifiers) {
           expect(out).toContain(id);
         }
       });
 
       it("the rendered ja message surfaces the identifying field(s)", () => {
-        const out = renderDiagnostic(sample, localeTranslator("ja"));
+        const out = renderDiagnostic(sample, bindTranslate("ja"));
         for (const id of identifiers) {
           expect(out).toContain(id);
         }
@@ -489,16 +483,16 @@ describe("ja differs from en (no silent English fallback)", () => {
   for (const code of JA_MUST_DIFFER_CODES) {
     it(`code: ${code}`, () => {
       const sample = SAMPLES[code];
-      const en = renderDiagnostic(sample, localeTranslator("en"));
-      const ja = renderDiagnostic(sample, localeTranslator("ja"));
+      const en = renderDiagnostic(sample, bindTranslate("en"));
+      const ja = renderDiagnostic(sample, bindTranslate("ja"));
       expect(ja).not.toBe(en);
     });
   }
 
   it("code: generic-text renders the same passthrough text in en and ja (by design)", () => {
     const sample = SAMPLES["generic-text"];
-    expect(renderDiagnostic(sample, localeTranslator("ja"))).toBe(
-      renderDiagnostic(sample, localeTranslator("en")),
+    expect(renderDiagnostic(sample, bindTranslate("ja"))).toBe(
+      renderDiagnostic(sample, bindTranslate("en")),
     );
   });
 });
@@ -543,7 +537,7 @@ describe("unexpected-token-in-block blockKind key variants", () => {
   for (const { name, diagnostic, identifiers } of variants) {
     describe(`variant: ${name}`, () => {
       it("renders a non-empty en message surfacing the identifying field(s)", () => {
-        const out = renderDiagnostic(diagnostic, localeTranslator("en"));
+        const out = renderDiagnostic(diagnostic, bindTranslate("en"));
         expect(out.trim().length).toBeGreaterThan(0);
         for (const id of identifiers) {
           expect(out).toContain(id);
@@ -551,7 +545,7 @@ describe("unexpected-token-in-block blockKind key variants", () => {
       });
 
       it("renders a non-empty ja message surfacing the identifying field(s)", () => {
-        const out = renderDiagnostic(diagnostic, localeTranslator("ja"));
+        const out = renderDiagnostic(diagnostic, bindTranslate("ja"));
         expect(out.trim().length).toBeGreaterThan(0);
         for (const id of identifiers) {
           expect(out).toContain(id);
@@ -559,8 +553,8 @@ describe("unexpected-token-in-block blockKind key variants", () => {
       });
 
       it("ja message differs from en (catches a missing ja translation falling through)", () => {
-        const en = renderDiagnostic(diagnostic, localeTranslator("en"));
-        const ja = renderDiagnostic(diagnostic, localeTranslator("ja"));
+        const en = renderDiagnostic(diagnostic, bindTranslate("en"));
+        const ja = renderDiagnostic(diagnostic, bindTranslate("ja"));
         expect(ja).not.toBe(en);
       });
     });
@@ -587,20 +581,20 @@ describe("property-not-for-node-kind property key variants", () => {
       };
 
       it("renders a non-empty en message naming the property", () => {
-        const out = renderDiagnostic(diagnostic, localeTranslator("en"));
+        const out = renderDiagnostic(diagnostic, bindTranslate("en"));
         expect(out.trim().length).toBeGreaterThan(0);
         expect(out).toContain(property);
       });
 
       it("renders a non-empty ja message naming the property", () => {
-        const out = renderDiagnostic(diagnostic, localeTranslator("ja"));
+        const out = renderDiagnostic(diagnostic, bindTranslate("ja"));
         expect(out.trim().length).toBeGreaterThan(0);
         expect(out).toContain(property);
       });
 
       it("ja message differs from en (catches a missing ja translation falling through)", () => {
-        const en = renderDiagnostic(diagnostic, localeTranslator("en"));
-        const ja = renderDiagnostic(diagnostic, localeTranslator("ja"));
+        const en = renderDiagnostic(diagnostic, bindTranslate("en"));
+        const ja = renderDiagnostic(diagnostic, bindTranslate("ja"));
         expect(ja).not.toBe(en);
       });
     });

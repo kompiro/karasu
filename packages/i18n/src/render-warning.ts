@@ -8,14 +8,7 @@
  */
 
 import type { Warning, FormattedWarning } from "@karasu-tools/core";
-import type { TranslationParams, Translations } from "./types.js";
-
-// Translator signature used by `renderWarning`. Matches the call shape of
-// the `t` returned by the app's `useTranslation`, but lets non-React
-// consumers (lsp / cli) and tests invoke it directly.
-export type TranslateFn = <K extends keyof Translations>(
-  ...args: Translations[K] extends string ? [key: K] : [key: K, params: TranslationParams<K>]
-) => string;
+import type { TranslateFn } from "./translate.js";
 
 /**
  * Render a `Warning` to a `FormattedWarning` using the supplied translator.

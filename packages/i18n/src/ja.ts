@@ -1,4 +1,5 @@
 import type { Translations } from "./types.js";
+import { formatRange } from "./format.js";
 
 /**
  * Japanese translation map.
@@ -308,17 +309,8 @@ export const ja: Partial<Translations> = {
     `${property}: "${value}" に単位がないため無視されました（${allowedUnits.join(" / ")} を期待）`,
   "warning.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
     `${property}: "${value}" の単位 "${unit}" は無効です（${allowedUnits.join(" / ")} を期待）— 無視されました`,
-  "warning.styleOutOfRange.message": ({ property, value, min, max }) => {
-    const range =
-      min !== undefined && max !== undefined
-        ? `[${min}, ${max}]`
-        : min !== undefined
-          ? `>= ${min}`
-          : max !== undefined
-            ? `<= ${max}`
-            : "";
-    return `${property}: ${value} は範囲外 ${range} のため無視されました`;
-  },
+  "warning.styleOutOfRange.message": ({ property, value, min, max }) =>
+    `${property}: ${value} は範囲外 ${formatRange(min, max)} のため無視されました`,
   "warning.styleUnknownProperty.message": ({ property }) =>
     `未知のスタイルプロパティ "${property}" — 無視されました`,
 
@@ -416,17 +408,8 @@ export const ja: Partial<Translations> = {
     `"${property}" の値 "${value}" に単位がありません。期待する単位: ${allowedUnits.join(", ")}`,
   "diagnostic.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
     `"${property}" の値 "${value}" の単位 "${unit}" は無効です。許容: ${allowedUnits.join(", ")}`,
-  "diagnostic.styleOutOfRange.message": ({ property, value, min, max }) => {
-    const range =
-      min !== undefined && max !== undefined
-        ? `[${min}, ${max}]`
-        : min !== undefined
-          ? `>= ${min}`
-          : max !== undefined
-            ? `<= ${max}`
-            : "";
-    return `"${property}" の値 ${value} は範囲外です ${range}`;
-  },
+  "diagnostic.styleOutOfRange.message": ({ property, value, min, max }) =>
+    `"${property}" の値 ${value} は範囲外です ${formatRange(min, max)}`,
   "diagnostic.styleUnknownProperty.message": ({ property }) =>
     `未知のスタイルプロパティ "${property}"`,
   "diagnostic.circularImport.message": ({ filePath }) =>

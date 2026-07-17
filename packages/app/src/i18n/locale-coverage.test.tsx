@@ -55,6 +55,46 @@ describe("i18n locale coverage — annotation badge pipeline", () => {
   });
 });
 
+// Fence for the `badge.*` ↔ core reference-data label contract.
+// docs/spec/i18n.md names core's `reference-data.ts` the single source of
+// truth for the built-in annotation badge labels, and the i18n en catalog
+// hand-duplicates them (with only a comment as protection). `REFERENCE_DATA`
+// is not part of core's public API, so instead of a deep import we pin the
+// contract transitively: a DEFAULT compile (no `annotationBadgeLabels`
+// injection) renders the reference-data en labels — asserting those renders
+// match `translate("en", "badge.*")` fails if either side's wording forks.
+describe("i18n locale coverage — badge.* matches core reference-data defaults", () => {
+  const krs = [
+    "system S {",
+    "  service Legacy @deprecated {}",
+    "  service Fresh @new {}",
+    "  service Lab @experimental {}",
+    "  service Next @migration_target {}",
+    "}",
+    "",
+  ].join("\n");
+
+  // One compile is enough — all four badges render into the same SVG.
+  const svg = compile(krs, { diagramType: "system" }).svg;
+
+  const cases = [
+    ["deprecated", "badge.deprecated"],
+    ["new", "badge.new"],
+    ["experimental", "badge.experimental"],
+    ["migration_target", "badge.migrationTarget"],
+  ] as const;
+
+  for (const [annotation, key] of cases) {
+    it(`default compile renders the en label for @${annotation} (= translate("en", "${key}"))`, () => {
+      // Exact match at the SVG text-node boundary — badge labels render as
+      // `<text ...>Label</text>` (core's badgeChildren). A substring
+      // `toContain(label)` would still pass if the core-side label forked
+      // into a superstring (e.g. "Deprecated (legacy)").
+      expect(svg).toContain(`>${translate("en", key)}</text>`);
+    });
+  }
+});
+
 // Regression guard for ja-locale renders. As each follow-up i18n-izes a
 // known core hardcode, drop it from this list. When the list is empty the
 // test as a whole is dead code and can be removed.
