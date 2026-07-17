@@ -120,4 +120,88 @@ describe("useViewSvg > groupBy threading to export SVGs (#1879)", () => {
     rerender({ g: "team" });
     expect(result.current.allLayersSvg).toContain('data-group="true"');
   });
+
+  it("threads groupBy: boundary into the export SVGs (#2033)", () => {
+    // The boundary axis must reach the same export surfaces as team — the
+    // AppShell pass-through once hardcoded `=== "team"` and dropped it.
+    const BOUNDARY_SOURCE = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  Billing -> Search "read"
+}
+
+boundary money "Money" {
+  contains Billing
+}`;
+    const { result: plain } = renderHook(() => useViewSvg(BOUNDARY_SOURCE, "shape"));
+    const { result: grouped } = renderHook(() =>
+      useViewSvg(BOUNDARY_SOURCE, "shape", undefined, undefined, "boundary"),
+    );
+
+    expect(plain.current.allLayersSvg).not.toContain('data-group="true"');
+    expect(grouped.current.allLayersSvg).toContain('data-container-id="__group_money__"');
+    expect(grouped.current.drillDownSvg).toContain('data-container-id="__group_money__"');
+    expect(grouped.current.allViewsSvg).toContain('data-container-id="__group_money__"');
+  });
+
+  it("threads groupBy into the live entity view of the drilled domain (#1983)", () => {
+    // The entity view is a render surface like any other: with a boundary
+    // grouping entity members, the drilled domain's live entity view draws
+    // the frame once groupBy is set (TPL-20260510-11 — every call site).
+    const ENTITY_SOURCE = `system Shop {
+  service Orders {
+    domain OrderDomain {
+      entity Order {}
+      entity Invoice {}
+    }
+  }
+}
+boundary cluster "Cluster" {
+  contains Order
+}`;
+    const path = ["Shop", "Orders", "OrderDomain"];
+    const { result: plain } = renderHook(() =>
+      useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, undefined, path),
+    );
+    const { result: grouped } = renderHook(() =>
+      useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, "boundary", path),
+    );
+
+    expect(plain.current.hasEntityView).toBe(true);
+    expect(plain.current.entityViewSvg).not.toContain('data-group="true"');
+    expect(grouped.current.entityViewSvg).toContain('data-container-id="__group_cluster__"');
+  });
+
+  it("reactively re-renders the live entity view when groupBy flips (#1983)", () => {
+    // The two-mount comparison above only proves the value is correct on
+    // initial render, which would pass even if `groupBy` were missing from
+    // `entityViewResult`'s useMemo deps (React always computes on mount
+    // regardless of the deps array). A `rerender` on one live hook — the
+    // shape a user's Group-by selector flip actually takes while the entity
+    // view is already open — is the one that pins the deps-array wiring
+    // itself.
+    const ENTITY_SOURCE = `system Shop {
+  service Orders {
+    domain OrderDomain {
+      entity Order {}
+      entity Invoice {}
+    }
+  }
+}
+boundary cluster "Cluster" {
+  contains Order
+}`;
+    const path = ["Shop", "Orders", "OrderDomain"];
+    const { result, rerender } = renderHook(
+      ({ g }: { g?: "boundary" }) =>
+        useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, g, path),
+      { initialProps: { g: undefined as "boundary" | undefined } },
+    );
+
+    expect(result.current.hasEntityView).toBe(true);
+    expect(result.current.entityViewSvg).not.toContain('data-group="true"');
+
+    rerender({ g: "boundary" });
+    expect(result.current.entityViewSvg).toContain('data-container-id="__group_cluster__"');
+  });
 });

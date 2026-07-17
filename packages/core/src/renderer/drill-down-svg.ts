@@ -129,8 +129,9 @@ export function buildDrillDownSvg(
           theme,
           ...legendOptions,
           viewScope: legendScopeForLogicalSlice(slice),
-          // Root system-view level only (#1879); collapse off by design.
-          groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
+          // Grouping resolves per level, against the nodes drawn there (#1983);
+          // collapse off by design.
+          groupBy,
           boundaryIndex: krsFile.boundaryIndex,
         }),
     },
@@ -153,6 +154,8 @@ export function buildDrillDownSvg(
     displayMode,
     theme,
     legendOptions,
+    groupBy,
+    krsFile.boundaryIndex,
   );
   for (const level of entityLevels) levels.push(level.element);
 
@@ -191,6 +194,7 @@ export function renderEntityView(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   badgeLabels?: AnnotationBadgeLabels,
+  groupBy?: "team" | "boundary",
 ): EntityViewResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
@@ -205,10 +209,15 @@ export function renderEntityView(
   const styles = resolveStyles(effectiveSystems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map();
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
+  // Grouping resolves per view: entity members frame here, like any other
+  // level (#1983). No `interactive` / `collapsedGroups` — frames only, the
+  // collapse ⊖ control stays a system-view affordance (ADR-20260630-02).
   const svg = render(slice, styles, undefined, ownerIndex, displayMode, new Map(), {
     theme,
     ...legendOptions,
     viewScope: legendScopeForLogicalSlice(slice),
+    groupBy,
+    boundaryIndex: krsFile.boundaryIndex,
   });
   return { svg, diagnostics, hasContent: true };
 }
@@ -347,6 +356,8 @@ function collectEntityLevels(
   displayMode: DisplayMode | undefined,
   theme: DiagramTheme | undefined,
   legendOptions: ReturnType<typeof buildLegendRenderOptions>,
+  groupBy?: "team" | "boundary",
+  boundaryIndex?: Map<string, string>,
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
   const styles = resolveStyles(effectiveSystems, sheets, []);
@@ -371,6 +382,10 @@ function collectEntityLevels(
       theme,
       ...legendOptions,
       viewScope: legendScopeForLogicalSlice(slice),
+      // Grouping resolves per level: entity members frame in their entity
+      // view too (#1983); collapse off by design.
+      groupBy,
+      boundaryIndex,
     });
     const { viewBox, innerContent } = extractSvgParts(svg);
     // Back target: the domain's usecase view when it exists (the domain has
@@ -507,8 +522,9 @@ export function buildAllViewsSvg(
             theme,
             ...legendOptions,
             viewScope: legendScopeForLogicalSlice(slice),
-            // Root system-view level only (#1879); collapse off by design.
-            groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
+            // Grouping resolves per level, against the nodes drawn there (#1983);
+            // collapse off by design.
+            groupBy,
             boundaryIndex: krsFile.boundaryIndex,
           }),
       },
@@ -529,6 +545,8 @@ export function buildAllViewsSvg(
     displayMode,
     theme,
     legendOptions,
+    groupBy,
+    krsFile.boundaryIndex,
   );
 
   // Collect deploy level
