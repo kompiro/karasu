@@ -990,12 +990,32 @@ function renderNode(
   if (showInfoButton) {
     const btnX = node.x + node.width - 16 - btnSlot * 20;
     btnSlot++;
-    children.push(renderInfoButton(nodeId, palette, btnX, btnY));
+    children.push(
+      renderIconButton(
+        "data-info-button",
+        nodeId,
+        palette.textMuted,
+        "i",
+        { fontSize: "10px", italic: true },
+        btnX,
+        btnY,
+      ),
+    );
   }
 
   if (showDeployButton) {
     const btnX = node.x + node.width - 16 - btnSlot * 20;
-    children.push(renderDeployButton(nodeId, palette, btnX, btnY));
+    children.push(
+      renderIconButton(
+        "data-deploy-button",
+        nodeId,
+        palette.accent,
+        "D",
+        { fontSize: "9px", bold: true },
+        btnX,
+        btnY,
+      ),
+    );
   }
 
   const nodeEl = el(
@@ -1519,26 +1539,38 @@ function renderSubLabel(
 }
 
 /**
- * The "i" info-button affordance drawn top-right on nodes with metadata
- * worth surfacing in the detail panel (description, links, team, role —
- * Issue #914). Container nodes get it too even though clicking the body
- * also drills down, for discoverability.
+ * A top-right circular icon button — the shared `g > circle + text` affordance
+ * behind the "i" info button and the "D" deploy button. The two differ only in
+ * their `data-*` attribute, color, glyph, font size, and glyph emphasis
+ * (`italic` vs `bold`), all threaded through params. The `<text>` attribute
+ * order keeps `font-style` before `font-weight`; whichever `opts` flag is unset
+ * is emitted as `undefined` and dropped by `el`, so each button's serialized
+ * string stays byte-identical to the pre-merge dedicated helpers.
+ *
+ * - Info button (Issue #914): drawn on nodes with metadata worth surfacing in
+ *   the detail panel (description, links, team, role). Container nodes get it
+ *   too even though clicking the body also drills down, for discoverability.
+ * - Deploy button: drawn on service/domain nodes that have at least one deploy
+ *   unit realizing them, to jump to the deploy view for this node.
  */
-function renderInfoButton(
+function renderIconButton(
+  dataAttr: string,
   nodeId: string,
-  palette: DiagramPalette,
+  color: string,
+  glyph: string,
+  opts: { fontSize: string; italic?: boolean; bold?: boolean },
   btnX: number,
   btnY: number,
 ): string {
   return el(
     "g",
-    { "data-info-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+    { [dataAttr]: nodeId, style: "cursor: pointer", "pointer-events": "all" },
     el("circle", {
       cx: btnX,
       cy: btnY,
       r: 8,
       fill: "transparent",
-      stroke: palette.textMuted,
+      stroke: color,
       "stroke-width": 1,
     }),
     el(
@@ -1548,51 +1580,13 @@ function renderInfoButton(
         y: btnY,
         "text-anchor": "middle",
         "dominant-baseline": "central",
-        fill: palette.textMuted,
-        "font-size": "10px",
+        fill: color,
+        "font-size": opts.fontSize,
         "font-family": "sans-serif",
-        "font-style": "italic",
+        "font-style": opts.italic ? "italic" : undefined,
+        "font-weight": opts.bold ? "bold" : undefined,
       },
-      "i",
-    ),
-  );
-}
-
-/**
- * The "D" deploy-button affordance, shown on service/domain nodes that have
- * at least one deploy unit realizing them so the viewer can jump to the
- * deploy view for this node.
- */
-function renderDeployButton(
-  nodeId: string,
-  palette: DiagramPalette,
-  btnX: number,
-  btnY: number,
-): string {
-  return el(
-    "g",
-    { "data-deploy-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-    el("circle", {
-      cx: btnX,
-      cy: btnY,
-      r: 8,
-      fill: "transparent",
-      stroke: palette.accent,
-      "stroke-width": 1,
-    }),
-    el(
-      "text",
-      {
-        x: btnX,
-        y: btnY,
-        "text-anchor": "middle",
-        "dominant-baseline": "central",
-        fill: palette.accent,
-        "font-size": "9px",
-        "font-family": "sans-serif",
-        "font-weight": "bold",
-      },
-      "D",
+      glyph,
     ),
   );
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "./svg-renderer.js";
+import { render, renderFromLayout } from "./svg-renderer.js";
+import type { LayoutNode, LayoutResult } from "./layout-types.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { extractView } from "../view/view-extract.js";
 import { assignEdgeCanonicalIds } from "../resolver/canonical-id.js";
@@ -346,6 +347,13 @@ system Test {
     );
     expect(svg).toContain('data-deploy-button="ECommerce"');
     expect(svg).not.toContain('data-deploy-button="Payment"');
+    // Lock the deploy glyph's exact serialization: "D" in accent color, 9px,
+    // bold, no font-style. The all-views byte-identity harness never emits a
+    // deploy button (it passes no serviceIdsWithDeploy), so this order-sensitive
+    // tail is what fences the `bold` branch of the shared `renderIconButton`.
+    expect(svg).toContain(
+      'fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text>',
+    );
   });
 
   it("renders clickable team button when service is owned by a team", () => {
@@ -375,6 +383,12 @@ system Test {
 }
     `);
     expect(svg).toContain('data-info-button="ECommerce"');
+    // Lock the info glyph's exact serialization: "i" in muted color, 10px,
+    // italic, no font-weight — the italic branch of the shared
+    // `renderIconButton`, distinct from the deploy button's bold branch.
+    expect(svg).toContain(
+      'fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text>',
+    );
   });
 
   it("renders info button on leaf service node with team (from ownerIndex)", () => {
@@ -1015,5 +1029,50 @@ system S {
       // though the badge carries its own added state.
       expect(svg).toMatch(/data-node-id="A"[^>]*data-diff-state="unchanged"/);
     });
+  });
+
+  // The ghost-domain sub-label (`(parentService)` under a cross-domain ghost
+  // node) is only produced by the drill-down / cross-view layout path, which
+  // the source-driven `extractView` fixtures above never exercise — so this
+  // fragment's exact geometry (position, 0.75 font-size ratio, the `(...)`
+  // wrapping) was otherwise unlocked. Drive `renderFromLayout` with a
+  // hand-built `LayoutNode` carrying `subLabel` so any edit to `renderSubLabel`
+  // fails here (mirrors the coordinate/wrapping contract).
+  it("renders the ghost-domain sub-label as a wrapped, positioned <text>", () => {
+    const styles = resolveStyles(
+      Parser.parse('system S { service Svc { label "Svc" } }').value.systems,
+      [getBuiltinStyleSheet()],
+    );
+    const node: LayoutNode = {
+      kind: "domain",
+      id: "Orders",
+      label: "Orders",
+      properties: { links: [] },
+      linkCount: 0,
+      hasChildren: false,
+      hasDescription: false,
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 50,
+      ghost: true,
+      subLabel: "Payments",
+    };
+    const layoutResult: LayoutResult = {
+      nodes: new Map([["Orders", node]]),
+      edges: [],
+      containers: [],
+      width: 200,
+      height: 200,
+    };
+    const svg = renderFromLayout(layoutResult, styles);
+
+    // Default node style: fontSize 13 → subLabelFontSize = round(13 * 0.75) = 10.
+    // x = node.x + width/2 = 60; y = node.y + height + subLabelFontSize + 4 = 84.
+    // Parent service name is wrapped in parentheses.
+    expect(svg).toContain(
+      '<text x="60" y="84" text-anchor="middle" dominant-baseline="central" ' +
+        'fill="#F9FAFB" font-size="10px" font-family="sans-serif">(Payments)</text>',
+    );
   });
 });
