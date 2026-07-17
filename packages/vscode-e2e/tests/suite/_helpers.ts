@@ -6,27 +6,41 @@ const POLL_INTERVAL_MS = 50;
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
- * Poll `probe` until it resolves to a defined value or `timeoutMs` elapses,
- * sleeping `intervalMs` between attempts. A thrown probe error (e.g. the LSP
- * client is still spinning up) is treated the same as an `undefined` result —
- * "not ready yet" — and polling continues. Throws `new Error(message)` once
- * the deadline passes without a defined result.
+ * Sentinel a {@link pollUntil} probe returns to mean "not ready yet, keep
+ * polling". A dedicated symbol (rather than `undefined`/`null`/`false`) lets a
+ * probe legitimately resolve with any of those falsy values as a success.
+ */
+export const NOT_READY: unique symbol = Symbol("not-ready");
+
+/**
+ * Poll `probe` until it resolves to a value other than {@link NOT_READY}, or
+ * until `timeoutMs` elapses, sleeping `intervalMs` between attempts.
+ *
+ * `pollUntil` does NOT catch exceptions — a throwing probe surfaces
+ * immediately, matching the original `waitForDiagnostics` loop. Callers that
+ * must tolerate a throwing probe while a resource spins up (e.g.
+ * `waitForLspReady`, whose `executeCommand` rejects until the LSP is ready)
+ * wrap their own probe in a `try/catch` that returns {@link NOT_READY}.
+ *
+ * `message` may be a string or a factory evaluated at throw time — the latter
+ * lets a caller fold the last-seen probe state into the timeout error (as
+ * `formatDocumentEdits` does with its last edits value).
  */
 export async function pollUntil<T>(
-  probe: () => Promise<T | undefined>,
-  { timeoutMs, intervalMs, message }: { timeoutMs: number; intervalMs: number; message: string },
+  probe: () => Promise<T | typeof NOT_READY>,
+  {
+    timeoutMs,
+    intervalMs,
+    message,
+  }: { timeoutMs: number; intervalMs: number; message: string | (() => string) },
 ): Promise<T> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    try {
-      const result = await probe();
-      if (result !== undefined) return result;
-    } catch {
-      // Not ready yet — keep polling.
-    }
+    const result = await probe();
+    if (result !== NOT_READY) return result;
     await sleep(intervalMs);
   }
-  throw new Error(message);
+  throw new Error(typeof message === "function" ? message() : message);
 }
 
 export function fixtureUri(relative: string): vscode.Uri {
@@ -57,11 +71,17 @@ export async function waitForLspReady(
 
   await pollUntil(
     async () => {
-      const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-        "vscode.executeDocumentSymbolProvider",
-        uri,
-      );
-      return Array.isArray(symbols) ? true : undefined;
+      // The first requests reject while the client is still spinning up —
+      // swallow those here (the original loop did) and keep polling.
+      try {
+        const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+          "vscode.executeDocumentSymbolProvider",
+          uri,
+        );
+        return Array.isArray(symbols) ? true : NOT_READY;
+      } catch {
+        return NOT_READY;
+      }
     },
     {
       timeoutMs,
@@ -76,10 +96,12 @@ export async function waitForDiagnostics(
   predicate: (diags: readonly vscode.Diagnostic[]) => boolean,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<readonly vscode.Diagnostic[]> {
+  // No try/catch: the original loop had none, so a throwing predicate or
+  // getDiagnostics call must surface immediately rather than poll to timeout.
   return pollUntil(
     async () => {
       const diags = vscode.languages.getDiagnostics(uri);
-      return predicate(diags) ? diags : undefined;
+      return predicate(diags) ? diags : NOT_READY;
     },
     {
       timeoutMs,

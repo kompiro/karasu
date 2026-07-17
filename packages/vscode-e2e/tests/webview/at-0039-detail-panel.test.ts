@@ -337,11 +337,10 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       "panel should remain visible after Jump-to-editor (handler does not call hideDetailPanel)",
     );
 
-    // Switch out of the WebView frame to read the editor's coordinates.
-    // Bringing the .krs editor to focus rebuilds the preview, which is
-    // why the visibility assertion above runs first.
-    await leaveWebViewFrame(ctx, { swallowErrors: false });
-
+    // Read the editor's coordinates. `readEditorCursorLine` leaves the
+    // WebView frame on every iteration; bringing the .krs editor to focus
+    // rebuilds the preview, which is why the visibility assertion above
+    // runs first.
     let lastLine = 0;
     await driver.wait(
       async () => {
