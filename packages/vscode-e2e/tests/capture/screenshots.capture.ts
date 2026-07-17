@@ -13,6 +13,7 @@ import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
   type PreviewView,
+  SUITE_TIMEOUT_MS,
   leaveWebViewFrame,
   openFixtureWithRetry,
   openPreviewAndEnterFrame,
@@ -49,7 +50,7 @@ const SHOTS: ReadonlyArray<{ view: PreviewView; file: string }> = [
 ];
 
 describe("karasu Marketplace screenshots (capture)", function () {
-  this.timeout(240_000);
+  this.timeout(SUITE_TIMEOUT_MS);
 
   let driver: WebDriver;
   let ctx: FrameContext;

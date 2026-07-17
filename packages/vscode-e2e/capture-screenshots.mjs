@@ -21,9 +21,8 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { packageRoot, runExtester } from "./extester-bootstrap.mjs";
+import { packageRoot, repoRoot, runExtester } from "./extester-bootstrap.mjs";
 
-const repoRoot = path.resolve(packageRoot, "..", "..");
 const outDir = path.join(repoRoot, "packages", "vscode", "images", "screenshots");
 
 const exitCode = await runExtester({

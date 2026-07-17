@@ -2,7 +2,7 @@
   "name": "@karasu-tools/vscode-e2e",
   "version": "0.0.0",
   "private": true,
-  "description": "VS Code extension host smoke tests for the karasu extension",
+  "description": "E2E tests for the karasu VS Code extension: extension host smoke tests, the ExTester WebView E2E harness, and the Marketplace screenshot capture generator",
   "license": "Apache-2.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
