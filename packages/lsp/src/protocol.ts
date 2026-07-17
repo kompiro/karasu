@@ -8,14 +8,22 @@
  * param/result shapes, so a rename or shape change on one side fails
  * typecheck on the other instead of only at runtime. See Issue #2018 point 6.
  *
- * `RequestType` is constructed here via `vscode-languageserver/node`'s
- * re-export of `vscode-languageserver-protocol`. `vscode-languageclient`
- * re-exports the very same class from the identical
- * `vscode-languageserver-protocol` install (pnpm dedupes both onto one
- * `3.17.5` instance), so instances built here are structurally — and by
- * `instanceof` — the same `RequestType` the client side expects.
+ * `RequestType` is imported from `vscode-languageserver-protocol` — the
+ * minimal protocol package — NOT from `vscode-languageserver/node` (the full
+ * server runtime: `createConnection`, `TextDocuments`, etc.). This module is
+ * bundled into the VS Code extension (a pure LSP client), and esbuild bundles
+ * the CJS graph without tree-shaking, so importing from `/node` would drag the
+ * entire server framework (~106KB the client never runs) into the .vsix.
+ * `vscode-languageserver` and `vscode-languageclient` both re-export this same
+ * `RequestType` from `vscode-languageserver-protocol@3.17.5`, which pnpm has
+ * already deduped into the extension's dependency tree.
+ *
+ * Runtime request dispatch matches on the method-NAME string
+ * (`"karasu/nodeAtPosition"` / `"karasu/positionOfNode"`), not on class
+ * identity, so the two sides interoperate regardless of which package's
+ * `RequestType` export constructed each end's value.
  */
-import { RequestType } from "vscode-languageserver/node";
+import { RequestType } from "vscode-languageserver-protocol";
 import type { LspPosition, LspRange } from "./lsp-position.js";
 
 export interface NodeAtPositionParams {
