@@ -43,9 +43,8 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
     anthropic,
   }) => {
     await opfs.seed(PROJECT_OPTIONS);
-    // No API key seeded; pin locale only.
+    // No API key seeded.
     await anthropic.clearApiKey();
-    await page.evaluate(() => localStorage.setItem("karasu-locale", "en"));
     await opfs.gotoApp();
 
     await page.getByRole("tab", { name: /Settings/ }).click();
@@ -70,7 +69,6 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
   }) => {
     await opfs.seed(PROJECT_OPTIONS);
     await anthropic.clearApiKey();
-    await page.evaluate(() => localStorage.setItem("karasu-locale", "en"));
     await opfs.gotoApp();
 
     await page.getByRole("tab", { name: /Settings/ }).click();
@@ -91,7 +89,6 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
   test("AC-3: API key with persist ON lands in localStorage", async ({ page, opfs, anthropic }) => {
     await opfs.seed(PROJECT_OPTIONS);
     await anthropic.clearApiKey();
-    await page.evaluate(() => localStorage.setItem("karasu-locale", "en"));
     await opfs.gotoApp();
 
     await page.getByRole("tab", { name: /Settings/ }).click();
@@ -116,7 +113,6 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
   }) => {
     await opfs.seed(PROJECT_OPTIONS);
     await anthropic.clearApiKey();
-    await page.evaluate(() => localStorage.setItem("karasu-locale", "en"));
     await opfs.gotoApp();
 
     await page.getByRole("tab", { name: /Chat/ }).click();
@@ -129,7 +125,6 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
   test("AC-5: ApiKeySetup button navigates to Settings tab", async ({ page, opfs, anthropic }) => {
     await opfs.seed(PROJECT_OPTIONS);
     await anthropic.clearApiKey();
-    await page.evaluate(() => localStorage.setItem("karasu-locale", "en"));
     await opfs.gotoApp();
 
     await page.getByRole("tab", { name: /Chat/ }).click();

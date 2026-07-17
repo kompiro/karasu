@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0053: Domain-to-domain dependency edges.
@@ -105,21 +105,13 @@ system SystemB {
 const UNIQUE_ERROR_PATTERN = /must be unique within a system/i;
 const DISPERSAL_INFO_PATTERN = /appears under multiple services/i;
 
-async function goToSystemTab(page: Page) {
-  await page.getByRole("tab", { name: "System" }).click();
-  await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
-}
-
 test.describe("AT-0053 Domain-to-domain dependency edges", () => {
   test("cross-service domain edge becomes an amber implicit service edge (Case 1)", async ({
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, BASE_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, BASE_KRS);
+    await openViewTab(page, "System");
 
     await expect(page.locator('[data-node-id="OrderService"]')).toBeVisible();
     await expect(page.locator('[data-node-id="PaymentService"]')).toBeVisible();
@@ -145,11 +137,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, SYNC_ASYNC_MIX_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, SYNC_ASYNC_MIX_KRS);
+    await openViewTab(page, "System");
 
     await expect(page.locator('[data-node-id="LegacyService"]')).toBeVisible();
     await expect(page.locator('[data-node-id="NewService"]')).toBeVisible();
@@ -174,11 +163,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, BASE_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, BASE_KRS);
+    await openViewTab(page, "System");
 
     // Drill into OrderService. The node `<g>` is wrapped in an `<a>` when it
     // has children, so clicking navigates to the service-level view.
@@ -201,11 +187,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, AGGREGATED_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, AGGREGATED_KRS);
+    await openViewTab(page, "System");
 
     await expect(page.locator('[data-node-id="OrderService"]')).toBeVisible();
     expect(
@@ -217,11 +200,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, AGGREGATED_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, AGGREGATED_KRS);
+    await openViewTab(page, "System");
 
     // Click the "2 domain edges" label group
     const edgeLabelGroup = page.locator("[data-domain-edges]").first();
@@ -244,11 +224,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, DUPLICATE_IN_SYSTEM_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, DUPLICATE_IN_SYSTEM_KRS);
+    await openViewTab(page, "System");
 
     // ADR-20260514-02: a dispersed domain is a structural fact karasu
     // visualizes, not a defect that blocks rendering. No uniqueness error.
@@ -264,11 +241,8 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
   });
 
   test("same domain ID in different systems does not error (Case 5)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, DUPLICATE_ACROSS_SYSTEMS_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, DUPLICATE_ACROSS_SYSTEMS_KRS);
+    await openViewTab(page, "System");
 
     // Both systems render — at least one of the services must be visible.
     await expect(page.locator('[data-node-id="ServiceA"]')).toBeVisible();

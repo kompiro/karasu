@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
 import { expect, test } from "../fixtures/opfs.js";
 import type { Mode, OpfsFixture } from "../fixtures/opfs.js";
 
@@ -77,11 +78,10 @@ async function bootApp(page: Page, opfs: OpfsFixture, mode: Mode, initialContent
     });
     await opfs.gotoApp();
   } else {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    // MemoryModeApp seeds its own sampleKrs on mount; replace it with the
-    // scenario content so the assertions read against the same source.
-    await replaceEditorContent(page, initialContent);
+    // MemoryModeApp seeds its own sampleKrs on mount; bootMemoryApp replaces
+    // it with the scenario content so the assertions read against the same
+    // source.
+    await bootMemoryApp(page, opfs, initialContent);
   }
 }
 

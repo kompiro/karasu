@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0031: Multiple deploy blocks.
@@ -45,8 +46,7 @@ test.describe("AT-0031 Multiple deploy blocks", () => {
     await opfs.gotoApp();
 
     // Default Getting Started project has a single `deploy Production` block.
-    await page.getByRole("tab", { name: "Deploy" }).click();
-    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await openViewTab(page, "Deploy");
     await expect(page.getByLabel("deploy block selector")).toHaveCount(0);
   });
 
@@ -54,10 +54,7 @@ test.describe("AT-0031 Multiple deploy blocks", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-
-    await replaceEditorContent(page, MULTI_DEPLOY_KRS);
+    await bootMemoryApp(page, opfs, MULTI_DEPLOY_KRS);
 
     await page.getByRole("tab", { name: "Deploy" }).click();
 
@@ -74,8 +71,7 @@ test.describe("AT-0031 Multiple deploy blocks", () => {
     await expect(selector).toHaveValue("staging");
 
     // AT-0031-05: selection persists across tab switches
-    await page.getByRole("tab", { name: "System" }).click();
-    await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
+    await openViewTab(page, "System");
     await page.getByRole("tab", { name: "Deploy" }).click();
     await expect(page.getByLabel("deploy block selector")).toHaveValue("staging");
   });

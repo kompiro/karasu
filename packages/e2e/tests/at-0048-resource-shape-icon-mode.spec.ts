@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0048: Resource shape auto-inference & Icon Mode for infra nodes.
@@ -48,20 +48,13 @@ const SAMPLE_KRS = `system ECPlatform {
 }
 `;
 
-async function goToSystemTab(page: Page) {
-  await page.getByRole("tab", { name: "System" }).click();
-  await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
-}
-
 test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
   test("Icon Mode toggle changes active state and embeds icon-card markup for infra nodes (TC-3)", async ({
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, SAMPLE_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, SAMPLE_KRS);
+    await openViewTab(page, "System");
 
     // Sanity: infra nodes are present in the system view.
     await expect(page.locator('[data-node-id="OrderDB"]')).toHaveCount(1);
@@ -94,10 +87,8 @@ test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, SAMPLE_KRS);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, SAMPLE_KRS);
+    await openViewTab(page, "System");
 
     // Drill into OrderService → Order so the resource sibling nodes render.
     await page.locator('[data-node-id="OrderService"]').click();

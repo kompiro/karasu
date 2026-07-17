@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
+import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
 
 /**
  * AT-0044: Org Tree View.
@@ -58,16 +60,12 @@ async function activateTreeView(page: Page) {
 
 test.describe("AT-0044 Org Tree View", () => {
   test("Tree View toggle appears on Org tab only (Case 1)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_KRS);
+    await bootMemoryApp(page, opfs, ORG_KRS);
 
     // ORG_KRS has no system block, so the org auto-switch (`useAutoSwitchView`, #817) fires and
     // lands the user on the Org tab automatically. Explicitly navigate back
     // to System to verify the toggle is not rendered there.
-    await page.getByRole("tab", { name: "System" }).click();
-    await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
+    await openViewTab(page, "System");
     await expect(page.getByRole("button", { name: "Toggle org tree view" })).toHaveCount(0);
 
     await openOrgTab(page);
@@ -78,10 +76,7 @@ test.describe("AT-0044 Org Tree View", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_KRS);
+    await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
 
     const breadcrumb = page.locator(".breadcrumb");
@@ -112,10 +107,7 @@ test.describe("AT-0044 Org Tree View", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_KRS);
+    await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
 
@@ -125,10 +117,7 @@ test.describe("AT-0044 Org Tree View", () => {
   });
 
   test("Click to expand members; click again to collapse (Cases 5 & 7)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_KRS);
+    await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
 
@@ -154,10 +143,7 @@ test.describe("AT-0044 Org Tree View", () => {
   });
 
   test("Multiple teams can be expanded simultaneously (Case 6)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_KRS);
+    await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
 
@@ -171,10 +157,7 @@ test.describe("AT-0044 Org Tree View", () => {
   });
 
   test("Deactivating Tree View restores breadcrumb bar (Case 8)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_KRS);
+    await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
 
@@ -191,10 +174,7 @@ test.describe("AT-0044 Org Tree View", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_KRS);
+    await bootMemoryApp(page, opfs, ORG_KRS);
     await openOrgTab(page);
     // Wait for the new ORG_KRS content to be reflected in the rendered SVG
     // before exporting — otherwise the export can capture the seed's org
@@ -204,18 +184,11 @@ test.describe("AT-0044 Org Tree View", () => {
     await expect(page.locator("svg").first()).toContainText("Engineering");
     await activateTreeView(page);
 
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export SVG" }).click();
-    const download = await downloadPromise;
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/-tree\.svg$/);
 
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const content = Buffer.concat(chunks).toString("utf-8");
+    const content = await readDownloadText(download);
 
     expect(content).toContain("<svg");
     expect(content).toContain("</svg>");
@@ -229,10 +202,7 @@ test.describe("AT-0044 Org Tree View", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, TWO_ORGS_KRS);
+    await bootMemoryApp(page, opfs, TWO_ORGS_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
 
