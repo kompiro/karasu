@@ -188,7 +188,7 @@ function hasFollowingBlockquote(lines: string[], index: number): boolean {
 }
 
 /** A single checklist bullet and whether an automation marker covers it. */
-export interface BulletCoverage {
+interface BulletCoverage {
   /** 1-indexed line of the bullet. */
   line: number;
   /** `true` for `- [x]`, `false` for `- [ ]`. */
