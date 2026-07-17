@@ -97,6 +97,39 @@ function markPatchResolved(
   return resolved;
 }
 
+// Builds the ErrorChatMessage shown in the chat log for a failed API call.
+// Shared by every catch block in this hook so error shape/translation stays
+// in one place; callers decide whether to append or replace `messages`.
+function makeErrorMessage(
+  err: unknown,
+  t: Parameters<typeof errorMessage>[1],
+  retryMessageId?: string,
+): ErrorChatMessage {
+  const errorType = classifyError(err);
+  return {
+    id: crypto.randomUUID(),
+    role: "error",
+    errorType,
+    content: errorMessage(errorType, t),
+    retryMessageId,
+  };
+}
+
+// Appends a `tool_result` user turn to `history`, the shape the Anthropic API
+// requires immediately after a `tool_use` block. Callers build `history`
+// differently (via `buildApiMessages` or by threading the just-received
+// assistant turn), so this only owns the common tail.
+function withToolResult(
+  history: Anthropic.Messages.MessageParam[],
+  toolUseId: string,
+  content: string,
+): Anthropic.Messages.MessageParam[] {
+  return [
+    ...history,
+    { role: "user", content: [{ type: "tool_result", tool_use_id: toolUseId, content }] },
+  ];
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useChatSession({
@@ -252,16 +285,11 @@ export function useChatSession({
       }
 
       if (navigateToolUseId) {
-        const followupMessages: Anthropic.Messages.MessageParam[] = [
-          ...apiMessages,
-          { role: "assistant", content: response.content },
-          {
-            role: "user",
-            content: [
-              { type: "tool_result", tool_use_id: navigateToolUseId, content: "Navigated." },
-            ],
-          },
-        ];
+        const followupMessages = withToolResult(
+          [...apiMessages, { role: "assistant", content: response.content }],
+          navigateToolUseId,
+          "Navigated.",
+        );
         const followup = await client.messages.create(
           {
             model: MODEL,
@@ -338,14 +366,7 @@ export function useChatSession({
             ? { status: err.status, message: err.message, error: err.error }
             : err,
         );
-        const errorType = classifyError(err);
-        const errorMsg: ErrorChatMessage = {
-          id: crypto.randomUUID(),
-          role: "error",
-          errorType,
-          content: errorMessage(errorType, tRef.current),
-          retryMessageId: retryUserMsgId,
-        };
+        const errorMsg = makeErrorMessage(err, tRef.current, retryUserMsgId);
         setMessages((prev) => [...prev, errorMsg]);
         setPhase({ kind: "idle" });
       }
@@ -369,19 +390,11 @@ export function useChatSession({
       if (currentPhase.kind === "pending_confirmation") {
         const proposal = currentPhase.proposal;
         try {
-          const followupMessages: Anthropic.Messages.MessageParam[] = [
-            ...buildApiMessages(messages),
-            {
-              role: "user",
-              content: [
-                {
-                  type: "tool_result",
-                  tool_use_id: proposal.toolUseId,
-                  content: "User declined.",
-                },
-              ],
-            },
-          ];
+          const followupMessages = withToolResult(
+            buildApiMessages(messages),
+            proposal.toolUseId,
+            "User declined.",
+          );
           const { text: autoText } = await runTurn(followupMessages, {
             navigateMode: "side_effect",
             extractPatch: false,
@@ -433,12 +446,6 @@ export function useChatSession({
   const applyPatch = useCallback(
     async (proposal: PatchProposal): Promise<void> => {
       const currentHash = await hashContent(fileContentRef.current);
-      // eslint-disable-next-line no-console
-      console.log("[useChatSession] applyPatch", {
-        currentHash,
-        contentHashAtProposal: proposal.contentHashAtProposal,
-        hashMatch: currentHash === proposal.contentHashAtProposal,
-      });
       if (currentHash !== proposal.contentHashAtProposal) {
         // eslint-disable-next-line no-console
         console.warn("[useChatSession] applyPatch: hash mismatch — patch is stale, skipping");
@@ -465,24 +472,17 @@ export function useChatSession({
         setPhase({ kind: "idle" });
         return;
       }
-      // eslint-disable-next-line no-console
-      console.log(
-        "[useChatSession] applyPatch: calling onEditorChange, newContent length =",
-        patchResult.source.length,
-      );
       onEditorChange(patchResult.source);
       setPhase({ kind: "awaiting_followup" });
 
       if (!apiKeyRef.current) return;
 
       const op = beginOperation();
-      const followupMessages: Anthropic.Messages.MessageParam[] = [
-        ...buildApiMessages(messages),
-        {
-          role: "user",
-          content: [{ type: "tool_result", tool_use_id: proposal.toolUseId, content: "Applied." }],
-        },
-      ];
+      const followupMessages = withToolResult(
+        buildApiMessages(messages),
+        proposal.toolUseId,
+        "Applied.",
+      );
 
       try {
         const { text } = await runTurn(followupMessages, {
@@ -496,16 +496,7 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       } catch (err) {
         if (op.isStale()) return;
-        const errorType = classifyError(err);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "error",
-            errorType,
-            content: errorMessage(errorType, tRef.current),
-          },
-        ]);
+        setMessages((prev) => [...prev, makeErrorMessage(err, tRef.current)]);
         setPhase({ kind: "idle" });
       }
     },
@@ -525,15 +516,11 @@ export function useChatSession({
         return;
       }
       const op = beginOperation();
-      const followupMessages: Anthropic.Messages.MessageParam[] = [
-        ...buildApiMessages(messages),
-        {
-          role: "user",
-          content: [
-            { type: "tool_result", tool_use_id: proposal.toolUseId, content: "User declined." },
-          ],
-        },
-      ];
+      const followupMessages = withToolResult(
+        buildApiMessages(messages),
+        proposal.toolUseId,
+        "User declined.",
+      );
 
       try {
         const { text } = await runTurn(followupMessages, {
@@ -547,16 +534,7 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       } catch (err) {
         if (op.isStale()) return;
-        const errorType = classifyError(err);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "error",
-            errorType,
-            content: errorMessage(errorType, tRef.current),
-          },
-        ]);
+        setMessages((prev) => [...prev, makeErrorMessage(err, tRef.current)]);
         setPhase({ kind: "idle" });
       }
     },
@@ -601,15 +579,7 @@ export function useChatSession({
       }
     } catch (err) {
       if (op.isStale()) return;
-      const errorType = classifyError(err);
-      setMessages([
-        {
-          id: crypto.randomUUID(),
-          role: "error",
-          errorType,
-          content: errorMessage(errorType, tRef.current),
-        },
-      ]);
+      setMessages([makeErrorMessage(err, tRef.current)]);
       setPhase({ kind: "idle" });
     }
     // `apiKeyRef` / `tRef` are stable ref objects — listing them satisfies
@@ -641,15 +611,7 @@ export function useChatSession({
       setPhase({ kind: "idle" });
     } catch (err) {
       if (op.isStale()) return;
-      const errorType = classifyError(err);
-      setMessages([
-        {
-          id: crypto.randomUUID(),
-          role: "error",
-          errorType,
-          content: errorMessage(errorType, tRef.current),
-        },
-      ]);
+      setMessages([makeErrorMessage(err, tRef.current)]);
       setPhase({ kind: "idle" });
     }
     // `apiKeyRef` / `tRef` are stable ref objects — listing them satisfies
