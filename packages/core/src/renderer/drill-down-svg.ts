@@ -70,7 +70,11 @@ function collectDrillDownLevelsGeneric<S>(
   const { viewBox, innerContent } = extractSvgParts(svg);
 
   const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
-  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
+  // Paint the back button after (on top of) innerContent: innerContent carries
+  // the opaque level canvas <rect>, and SVG paints in document order, so a
+  // back button emitted first is buried and becomes invisible/unclickable
+  // (#2044). It must come last to stay hit-testable.
+  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}${backButton}</svg>`;
   const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
   levels.push(`<g id="${anchorId(viewPrefix, viewId)}" class="${cssClass}">${innerSvg}</g>`);
 
@@ -322,7 +326,8 @@ function collectDrillDownLevelsWithDimensions<S>(
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
 
   const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
-  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
+  // Back button last so it paints on top of the opaque level canvas rect (#2044).
+  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}${backButton}</svg>`;
   const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
   const element = `<g id="${anchorId(viewPrefix, viewId)}" class="${cssClass}">${innerSvg}</g>`;
   levels.push({ element, width, height });
@@ -399,7 +404,8 @@ function collectEntityLevels(
         ? path[path.length - 2]
         : "root";
     const backButton = renderBackButton(backTarget, "system");
-    const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
+    // Back button last so it paints on top of the opaque level canvas rect (#2044).
+    const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}${backButton}</svg>`;
     levels.push({
       // Entity levels do not contribute to the shared canvas dimensions (they
       // are fragment-only in v1); they scale to fit the bundle viewBox.
