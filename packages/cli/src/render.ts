@@ -15,7 +15,7 @@ import type {
   Warning,
 } from "@karasu-tools/core";
 import { formatDiagnostic, formatWarning } from "./i18n.js";
-import { NodeFileSystemProvider } from "./node-fs.js";
+import { formatDiagLoc, resolveKrsFileOrExit } from "./compile-system-view.js";
 import { writeOutput } from "./output.js";
 
 type RenderFormat = "svg" | "drawio";
@@ -36,13 +36,9 @@ interface RenderOptions {
 }
 
 export async function render(filePath: string, options: RenderOptions): Promise<void> {
-  const absolutePath = resolve(filePath);
-  const fs = new NodeFileSystemProvider();
-
-  if (!(await fs.exists(absolutePath))) {
-    process.stderr.write(`Error: File not found: ${filePath}\n`);
-    process.exit(1);
-  }
+  const resolved = await resolveKrsFileOrExit(filePath);
+  if (!resolved) return;
+  const { absolutePath, fs } = resolved;
 
   const format: RenderFormat = options.format ?? "svg";
   let output: string;
@@ -82,20 +78,22 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   const diagWarnings = diagnostics.filter((d) => d.severity === "warning");
   const diagInfos = diagnostics.filter((d) => d.severity === "info");
 
-  for (const d of errors) {
-    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
-    process.stderr.write(`Error: ${loc}: ${formatDiagnostic(d)}\n`);
+  function printDiagnostics(prefix: string, list: Diagnostic[]): void {
+    for (const d of list) {
+      process.stderr.write(`${prefix}: ${formatDiagLoc(filePath, d)}: ${formatDiagnostic(d)}\n`);
+    }
   }
-  for (const d of diagWarnings) {
-    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
-    process.stderr.write(`Warning: ${loc}: ${formatDiagnostic(d)}\n`);
-  }
-  // Info-severity parser diagnostics (e.g. duplicate-owner-assignment) honour
-  // their register with an `Info:` prefix — mirroring the info-warning loop
-  // below — instead of being dropped (ADR-20260615-01 / ADR-20260514-02).
-  for (const d of diagInfos) {
-    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
-    process.stderr.write(`Info: ${loc}: ${formatDiagnostic(d)}\n`);
+
+  const severityGroups: [string, Diagnostic[]][] = [
+    ["Error", errors],
+    ["Warning", diagWarnings],
+    // Info-severity parser diagnostics (e.g. duplicate-owner-assignment) honour
+    // their register with an `Info:` prefix — mirroring the info-warning loop
+    // below — instead of being dropped (ADR-20260615-01 / ADR-20260514-02).
+    ["Info", diagInfos],
+  ];
+  for (const [prefix, list] of severityGroups) {
+    printDiagnostics(prefix, list);
   }
   for (const w of warnings) {
     // Honour the warning's register: info-severity kinds (e.g.
