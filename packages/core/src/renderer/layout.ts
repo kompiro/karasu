@@ -948,6 +948,79 @@ interface LayoutOptions {
   edgeDiffState?: ReadonlyMap<string, string>;
 }
 
+/** Grouped-layer computation shared by {@link collapseAndAssignGroupLayers}. */
+interface GroupedLayerBands {
+  layers: Map<string, number>;
+  groupBands: Map<string, GroupBand>;
+  groupOrder: string[];
+}
+
+/**
+ * Shared group-collapse + grouped-layer-assignment machinery for the
+ * single-system (`layout()`) and multi-system (`layoutMultipleSystems()`)
+ * "Group by" paths (#1858 P2a, #1884). Folds any collapsed group's members to
+ * a `<Group> (N)` stub and re-targets its edges (`collapseGroups`), then
+ * buckets the (possibly collapsed) nodes into group bands via
+ * `assignGroupedLayers`.
+ *
+ * A pure computation only — it does not decide whether the collapse is
+ * *committed* when band assignment fails to produce groups. The two callers
+ * differ there (`layout()` always keeps the collapsed nodes/edges once this
+ * runs; `layoutMultipleSystems()` only adopts them when `grouped` comes back
+ * non-null), so that decision is left to each call site to preserve today's
+ * behavior exactly.
+ */
+function collapseAndAssignGroupLayers(
+  nodes: readonly KrsNode[],
+  edges: readonly KrsEdge[],
+  groupIndex: Map<string, string>,
+  collapsedGroups: ReadonlySet<string> | undefined,
+  edgeDiffState: ReadonlyMap<string, string> | undefined,
+  /** Namespaces collapse-stub ids (the enclosing system id); omitted in the single-system view. */
+  stubScope: string | undefined,
+): {
+  nodes: KrsNode[];
+  edges: KrsEdge[];
+  stubGroup: Map<string, string>;
+  remapEndpoint: (id: string) => string;
+  foldedEdgeDiffState: Map<string, string>;
+  groupIdOf: (id: string) => string | null;
+  grouped: GroupedLayerBands | null;
+} {
+  const collapsed = collapseGroups(nodes, edges, groupIndex, collapsedGroups, edgeDiffState, stubScope);
+  const groupIdOf = (id: string): string | null =>
+    groupIndex.get(id) ?? collapsed.stubGroup.get(id) ?? null;
+  let grouped: GroupedLayerBands | null = null;
+  if (groupIndex.size > 0) {
+    const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => ({
+      id: n.id,
+      groupId: groupIdOf(n.id),
+      ungroupedRank: systemTier(n),
+    }));
+    // Group declaration order = first-appearance order in the axis map (the
+    // parser inserts `owns` / `contains` in declaration order), so the
+    // deterministic tie-break in `orderGroups` follows what the author wrote.
+    const declaredGroupOrder = [...new Set(groupIndex.values())];
+    const result = assignGroupedLayers(
+      groupedNodes,
+      collapsed.edges.map((e) => ({ from: e.from, to: e.to })),
+      declaredGroupOrder,
+    );
+    if (result) {
+      grouped = { layers: result.layers, groupBands: result.groupBands, groupOrder: result.groupOrder };
+    }
+  }
+  return {
+    nodes: collapsed.nodes,
+    edges: collapsed.edges,
+    stubGroup: collapsed.stubGroup,
+    remapEndpoint: collapsed.remapEndpoint,
+    foldedEdgeDiffState: collapsed.foldedEdgeDiffState,
+    groupIdOf,
+    grouped,
+  };
+}
+
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
   const {
     ownerIndex,
@@ -984,18 +1057,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(
-      viewSlice,
-      ownerIndex,
-      boundaryIndex,
-      displayMode,
-      layoutHints,
-      edgeDirections,
-      collapsedCategories,
-      groupBy,
-      collapsedGroups,
-      edgeDiffState,
-    );
+    return layoutMultipleSystems(viewSlice, options);
   }
 
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
@@ -1025,13 +1087,22 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // Diff state re-keyed onto collapsed-group stub edges (#1886). Empty unless a
   // team collapses in compare/diff mode; merged into the render lookup below.
   let foldedEdgeDiffState = new Map<string, string>();
+  // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
+  // bucket nodes into their owning team instead of the kind tiers, stacking each
+  // team as a dependency-ordered band that a boundary frame can enclose. Falls
+  // back to the ungrouped layout when nothing is grouped (no org / no owns), so
+  // this only ever changes output for a model that both opts in and has owners.
+  let groupedLayers: Map<string, number> | null = null;
+  let groupBands: Map<string, GroupBand> | null = null;
+  let groupOrder: string[] = [];
   if (groupBy && groupIndex) {
-    const collapsed = collapseGroups(
+    const collapsed = collapseAndAssignGroupLayers(
       allNodes,
       allEdges,
       groupIndex,
       collapsedGroups,
       edgeDiffState,
+      undefined,
     );
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
@@ -1039,6 +1110,11 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     const groupRemap = collapsed.remapEndpoint;
     remapGhostEndpoint = (id) => groupRemap(collapsedCat.remapEndpoint(id));
     foldedEdgeDiffState = collapsed.foldedEdgeDiffState;
+    if (collapsed.grouped) {
+      groupedLayers = collapsed.grouped.layers;
+      groupBands = collapsed.grouped.groupBands;
+      groupOrder = collapsed.grouped.groupOrder;
+    }
   }
   /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
   // In-place expansion (#1921): map each expanded container's spliced domain
@@ -1063,36 +1139,6 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // (the only mode expansion runs in) teams do not form bands, so expansion
   // must use its own membership exclusively.
   const expandGroupIdOf = (id: string): string | null => expandMembership.get(id) ?? null;
-
-  // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
-  // bucket nodes into their owning team instead of the kind tiers, stacking each
-  // team as a dependency-ordered band that a boundary frame can enclose. Falls
-  // back to the ungrouped layout when nothing is grouped (no org / no owns), so
-  // this only ever changes output for a model that both opts in and has owners.
-  let groupedLayers: Map<string, number> | null = null;
-  let groupBands: Map<string, GroupBand> | null = null;
-  let groupOrder: string[] = [];
-  if (groupBy && groupIndex && groupIndex.size > 0) {
-    const groupedNodes: GroupedNode[] = allNodes.map((n) => ({
-      id: n.id,
-      groupId: groupIdOf(n.id),
-      ungroupedRank: systemTier(n),
-    }));
-    // Group declaration order = first-appearance order in the axis map (the
-    // parser inserts `owns` / `contains` in declaration order), so the
-    // deterministic tie-break in `orderGroups` follows what the author wrote.
-    const declaredGroupOrder = [...new Set(groupIndex.values())];
-    const grouped = assignGroupedLayers(
-      groupedNodes,
-      allEdges.map((e) => ({ from: e.from, to: e.to })),
-      declaredGroupOrder,
-    );
-    if (grouped) {
-      groupedLayers = grouped.layers;
-      groupBands = grouped.groupBands;
-      groupOrder = grouped.groupOrder;
-    }
-  }
 
   // In-place expansion band (#1921): reuse the two-level group layout so an
   // expanded container's domain children occupy a contiguous, framed band among
@@ -1589,18 +1635,18 @@ function layoutGhostSystem(
  * Lay out multiple systems side by side for root view.
  * All systems are rendered as full (non-ghost) nodes.
  */
-function layoutMultipleSystems(
-  viewSlice: ViewSlice,
-  ownerIndex?: Map<string, string>,
-  boundaryIndex?: Map<string, string>,
-  displayMode?: DisplayMode,
-  layoutHints?: Map<string, ResolvedLayoutHints>,
-  edgeDirections?: Map<string, EdgeDirection>,
-  collapsedCategories?: ReadonlySet<CategoryId>,
-  groupBy?: "team" | "boundary",
-  collapsedGroups?: ReadonlySet<string>,
-  edgeDiffState?: ReadonlyMap<string, string>,
-): LayoutResult {
+function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult {
+  const {
+    ownerIndex,
+    boundaryIndex,
+    displayMode,
+    layoutHints,
+    edgeDirections,
+    collapsedCategories,
+    groupBy,
+    collapsedGroups,
+    edgeDiffState,
+  } = options;
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Grouping axis (team = ownerIndex, boundary = boundaryIndex); `ownerIndex`
   // stays the per-card team badge source regardless of axis (mirrors layout()).
@@ -1653,7 +1699,7 @@ function layoutMultipleSystems(
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
-      const collapsed = collapseGroups(
+      const collapsed = collapseAndAssignGroupLayers(
         rawNodes,
         sys.edges,
         groupIndex,
@@ -1661,28 +1707,13 @@ function layoutMultipleSystems(
         edgeDiffState,
         sys.id,
       );
-      const stubGroup = collapsed.stubGroup;
-      const gidOf = (id: string): string | null => groupIndex.get(id) ?? stubGroup.get(id) ?? null;
-      const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => ({
-        id: n.id,
-        groupId: gidOf(n.id),
-        ungroupedRank: systemTier(n),
-      }));
-      // Group declaration order (first-appearance in the axis map);
-      // `assignGroupedLayers` filters to the groups actually present in this system.
-      const declaredGroupOrder = [...new Set(groupIndex.values())];
-      const grouped = assignGroupedLayers(
-        groupedNodes,
-        collapsed.edges.map((e) => ({ from: e.from, to: e.to })),
-        declaredGroupOrder,
-      );
-      if (grouped) {
+      if (collapsed.grouped) {
         workNodes = collapsed.nodes;
         workEdges = collapsed.edges;
-        groupedLayers = grouped.layers;
-        groupBandsS = grouped.groupBands;
-        groupOrderS = grouped.groupOrder;
-        groupIdOf = gidOf;
+        groupedLayers = collapsed.grouped.layers;
+        groupBandsS = collapsed.grouped.groupBands;
+        groupOrderS = collapsed.grouped.groupOrder;
+        groupIdOf = collapsed.groupIdOf;
         for (const [k, v] of collapsed.foldedEdgeDiffState) foldedEdgeDiffState.set(k, v);
         // Record each folded member → stub so cross-system edges re-anchor onto
         // the stub instead of dropping (#1884). Only when a team actually
