@@ -128,4 +128,39 @@ test.describe("AT-1907 Entity view app integration", () => {
     expect(content).toContain('data-node-id="Order"');
     expect(content).toContain('data-node-id="LineItem"');
   });
+
+  // "Group by frames an entity member once selected, without leaving the
+  // entity view (#1983)" — not e2e-testable from the live app right now.
+  //
+  // `renderEntityView` never received `groupBy` before #1983; this PR wires
+  // it, and the core render math is unit-tested in
+  // packages/core/src/renderer/group-by-drilldown-render.test.ts and
+  // packages/app/src/hooks/useViewSvg.test.tsx (both call the
+  // function/hook directly with an explicit `groupBy` argument). But driven
+  // through the real UI, the frame never appears, for two independent
+  // reasons:
+  //
+  //  1. `owns` (team axis) structurally excludes `entity` — it is only
+  //     indexed for service/domain/client (+ top-level infra) in
+  //     `buildNodePathIndex` (packages/core/src/parser/parser.ts). An entity
+  //     can only ever be grouped via the `boundary` axis (`contains` has no
+  //     kind restriction).
+  //  2. `boundary` never reaches this surface: AppShell hardcodes
+  //     `views.system.groupBy === "team" ? "team" : undefined` when calling
+  //     `useViewSvg` (packages/app/src/components/AppShell.tsx:228, added by
+  //     #1879 before the boundary axis existed). The P2b-B boundary-axis
+  //     rollout (#1973) updated the selector, `useSystemView`, and every core
+  //     render path, but not this call site — so `groupBy: "boundary"` is
+  //     silently dropped before it reaches the entity view AND the three
+  //     export builders (Show All Layers / drill-down export / Open All
+  //     Views), even though the "Boundary" option is offered in the UI.
+  //     Confirmed live: selecting Boundary and toggling Show All Layers on a
+  //     `boundary`-only fixture exports zero group frames.
+  //
+  // This looks like a pre-existing parity gap (TPL-20260510-11 / the very
+  // TPL-20260716-02 this PR introduces), not something introduced by this
+  // diff — flagged for a human decision rather than patched here. Re-enable
+  // once AppShell forwards `views.system.groupBy` unfiltered (mirroring the
+  // `groupBy === "none" ? undefined : groupBy` used for the main system view).
+  test.skip("Group by: boundary frames an entity member (blocked — see comment)", () => {});
 });

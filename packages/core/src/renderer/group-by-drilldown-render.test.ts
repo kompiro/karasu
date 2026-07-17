@@ -329,6 +329,32 @@ describe("export surfaces draw frames on drill levels (#1983)", () => {
       renderEntityView(without, ["Shop", "Orders", "OrderDomain"]).svg,
     );
   });
+
+  it("public renderEntityView (source-string API) frames entity members like the internal path", () => {
+    // Companion to "renderEntityView frames entity members" above, but
+    // through the public wrapper (packages/core/src/index.ts), which parses
+    // krsSource and forwards `groupBy` to `_renderEntityView` — a second call
+    // site TPL-20260510-11 (parallel-function parity) requires covering on
+    // its own. The byte-identical fence below this test (and the ROOT_ONLY_SRC
+    // one further down) only exercises `groupBy` with no entity member on the
+    // view, so a dropped/misforwarded argument would pass it trivially (an
+    // absent member frames nothing either way, forwarded or not). Only a
+    // positive case — a member present — can catch that class of bug.
+    const result = renderEntityViewFromSource(
+      DRILL_SRC,
+      ["Shop", "Orders", "OrderDomain"],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    expect(result.hasContent).toBe(true);
+    expect(result.svg).toContain(FRAME);
+    expect(result.svg).toContain('data-node-id="OrderEntity"');
+    expect(result.svg).toContain('data-node-id="Invoice"');
+  });
 });
 
 // Members on the ROOT tier only: with the export gate removed, a drill level

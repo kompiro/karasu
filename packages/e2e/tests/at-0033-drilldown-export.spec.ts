@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0033: Drill-down (all-layers) SVG export.
@@ -19,6 +20,15 @@ import { expect, test } from "../fixtures/opfs.js";
  *  - AT-0033-2: needs a fixture without drill-down levels
  *  - AT-0033-5/6/7: in-iframe navigation across drill-down levels
  *  - AT-0033-10: opening the downloaded SVG in a separate browser context
+ *
+ * Also includes one #1983 case (not part of the AT-0033 AC map above,
+ * co-located here for the toggle + Export SVG harness): Group-by frames now
+ * reach drill-level bands in this export, not just the root band (#1879's
+ * root-only gate was removed). The core/hook math is unit-tested elsewhere;
+ * this proves the live "Group by" selector + toggle + download are wired
+ * together end-to-end. Uses the team axis — see the skipped boundary-axis
+ * case in at-1907-entity-view-toggle.spec.ts for why boundary can't be used
+ * here yet.
  */
 test.describe("AT-0033 Drill-down SVG export", () => {
   test("toggle is visible on System and disabled on Deploy (AT-0033-1, AT-0033-3)", async ({
@@ -93,5 +103,56 @@ test.describe("AT-0033 Drill-down SVG export", () => {
 
     expect(download.suggestedFilename()).toMatch(/\.svg$/);
     expect(download.suggestedFilename()).not.toMatch(/-all-layers\.svg$/);
+  });
+
+  test("Show All Layers frames a drill-level band under Group by: Team, not just the root (#1983)", async ({
+    page,
+    opfs,
+  }) => {
+    // Before #1983 the three export builders gated `groupBy` to the root
+    // system-view band only (#1879's "Root system-view level only" comment);
+    // #1983 removed that gate so every band with members gets framed.
+    // `owns BillingDomain` puts an owned node one level below the root band.
+    const GROUPED_KRS = `system Shop {
+  service Billing {
+    domain BillingDomain {}
+  }
+  service Search {}
+  Billing -> Search "reads"
+}
+
+organization Org {
+  team "payments" {
+    label "Payments"
+    owns Billing
+    owns BillingDomain
+  }
+  team "catalog" { label "Catalog" owns Search }
+}
+`;
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
+    await replaceEditorContent(page, GROUPED_KRS);
+
+    await page.selectOption("#group-by-select", "team");
+    await page.getByRole("button", { name: "Toggle all layers" }).click();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Export SVG" }).click();
+    const download = await downloadPromise;
+
+    const stream = await download.createReadStream();
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    const content = Buffer.concat(chunks).toString("utf-8");
+
+    // Root band: payments + catalog. Billing's drill band: a second payments
+    // frame around the owned BillingDomain — the per-level behavior #1983
+    // ships, proven here through the real toggle + selector + download.
+    expect(content.match(/data-container-id="__group_payments__"/g)?.length).toBe(2);
+    expect(content).toContain('data-container-id="__group_catalog__"');
+    expect(content).toContain('data-node-id="BillingDomain"');
   });
 });
