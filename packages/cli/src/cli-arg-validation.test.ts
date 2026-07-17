@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mockRender = vi.fn<() => void>();
 const mockDiff = vi.fn<() => void>();
+const mockTranslate = vi.fn<() => Promise<void>>();
 vi.mock("./render.js", () => ({ render: mockRender }));
 vi.mock("./diff.js", () => ({ diff: mockDiff }));
+vi.mock("./translate/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./translate/index.js")>();
+  return { ...actual, translate: mockTranslate };
+});
 
 const { program } = await import("./index.js");
 
@@ -25,6 +30,7 @@ describe("CLI arg validation (AT-0057 §7)", () => {
   beforeEach(() => {
     mockRender.mockReset();
     mockDiff.mockReset();
+    mockTranslate.mockReset();
     stderr = [];
     vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
       stderr.push(String(chunk));
@@ -67,5 +73,18 @@ describe("CLI arg validation (AT-0057 §7)", () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(stderr.join("")).toContain('unknown --view "xyz"');
     expect(mockDiff).not.toHaveBeenCalled();
+  });
+
+  it("translate action propagates async command rejections to parseAsync", async () => {
+    // Guards the `return translate(...)` in the action: a failed async
+    // `--output` write must reject through `parseAsync` into the formatted
+    // `Error: ...` handler instead of becoming an unhandled rejection.
+    mockTranslate.mockRejectedValueOnce(new Error("EACCES: permission denied"));
+
+    await expect(
+      program.parseAsync(["node", "karasu", "translate", "--from", "compose", "compose.yml"]),
+    ).rejects.toThrow("EACCES: permission denied");
+
+    expect(mockTranslate).toHaveBeenCalledTimes(1);
   });
 });

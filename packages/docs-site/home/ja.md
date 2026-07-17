@@ -26,6 +26,11 @@ hero:
       link: https://deepwiki.com/kompiro/karasu
       icon: open-book
     - text: 開発ふりかえり
+      # Deliberately base-absolute (exception to the route-relative convention):
+      # home/*.md is copied verbatim (no build-time templating), and astro
+      # dev/preview can serve /karasu/ja without a trailing slash (trailingSlash
+      # "ignore"), where a route-relative link would resolve outside the base.
+      # Update if astro.config.mjs `base` ever changes.
       link: /karasu/retrospective/?lang=ja
       icon: open-book
 ---

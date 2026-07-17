@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
 
 /**
  * AT-0040: Top-level domain declarations.
@@ -35,10 +35,7 @@ test.describe("AT-0040 Top-level domain declarations", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, TOP_LEVEL_DOMAINS_KRS);
+    await bootMemoryApp(page, opfs, TOP_LEVEL_DOMAINS_KRS);
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).toContainText("ECサイト");
@@ -55,10 +52,7 @@ test.describe("AT-0040 Top-level domain declarations", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, DOMAIN_INSIDE_SERVICE_KRS);
+    await bootMemoryApp(page, opfs, DOMAIN_INSIDE_SERVICE_KRS);
 
     await page.waitForTimeout(500);
     const warningPanel = page.locator(".warning-panel");

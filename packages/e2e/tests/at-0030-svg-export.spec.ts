@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
+import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
 
 /**
  * AT-0030: SVG Export — pilot coverage.
@@ -19,18 +20,11 @@ test.describe("AT-0030 SVG Export", () => {
     await expect(exportButton).toBeVisible();
     await expect(exportButton).toBeEnabled();
 
-    const downloadPromise = page.waitForEvent("download");
-    await exportButton.click();
-    const download = await downloadPromise;
+    const download = await clickAndDownload(exportButton);
 
     expect(download.suggestedFilename()).toMatch(/\.svg$/);
 
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const content = Buffer.concat(chunks).toString("utf-8");
+    const content = await readDownloadText(download);
 
     expect(content).toContain("<svg");
     expect(content).toContain("</svg>");

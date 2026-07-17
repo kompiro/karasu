@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
+import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
 
 /**
  * AT-0058: App — draw.io export from the preview toolbar.
@@ -33,18 +34,11 @@ test.describe("AT-0058 App draw.io export", () => {
     const drawioItem = page.getByRole("menuitem", { name: "Export draw.io (mxGraph XML)" });
     await expect(drawioItem).toBeVisible();
 
-    const downloadPromise = page.waitForEvent("download");
-    await drawioItem.click();
-    const download = await downloadPromise;
+    const download = await clickAndDownload(drawioItem);
 
     expect(download.suggestedFilename()).toMatch(/\.drawio$/);
 
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const content = Buffer.concat(chunks).toString("utf-8");
+    const content = await readDownloadText(download);
 
     // mxGraph document produced by the karasu drawio exporter.
     expect(content).toContain('<mxfile host="karasu"');

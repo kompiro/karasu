@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-1658: deploy view service→infra dependency (ghost) edge placement.
@@ -47,12 +48,9 @@ test.describe("AT-1658 Deploy view service→infra dependency edges", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, INFRA_EDGE_KRS);
+    await bootMemoryApp(page, opfs, INFRA_EDGE_KRS);
 
-    await page.getByRole("tab", { name: "Deploy" }).click();
-    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await openViewTab(page, "Deploy");
 
     // Both realized containers must be present in the deploy view.
     const serviceContainer = page.locator('[data-container-id="ECommerce"]');

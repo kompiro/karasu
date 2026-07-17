@@ -81,7 +81,9 @@ organization Acme {
 
 ## 自動化範囲
 
-- `packages/app/src/hooks/useAutoSwitchToOrg.test.ts` が Hook の分岐を網羅する。
-- 優先度ルール（system > deploy > org）はフックの guard 節と
-  `packages/app/src/hooks/useAutoSwitchToDeploy.test.ts` の組み合わせで担保される。
+- `packages/app/src/hooks/useAutoSwitchView.test.ts` が Hook の分岐
+  （`useAutoSwitchView` の機構と `shouldAutoSwitchToOrg` 述語）を網羅する
+  （旧 `useAutoSwitchToOrg.test.ts`、#2015 で統合）。
+- 優先度ルール（system > deploy > org）は同ファイルの
+  `shouldAutoSwitchToDeploy` / `shouldAutoSwitchToOrg` 述語テストで担保される。
 - ユーザーが実際にタブ切替を視認する部分のみ手動検証とする。

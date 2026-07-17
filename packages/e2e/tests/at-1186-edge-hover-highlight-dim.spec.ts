@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-1186: Hovering an interactive edge in the Preview SVG dims peer edges
@@ -28,20 +28,13 @@ const KRS_TWO_INTERACTIVE_EDGES = `system DriftSample {
 }
 `;
 
-async function goToSystemTab(page: Page) {
-  await page.getByRole("tab", { name: "System" }).click();
-  await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
-}
-
 test.describe("AT-1186 Edge hover-highlight + dim peers", () => {
   test("hovering an interactive edge dims its peers (AT-A) and the focused edge keeps full opacity (AT-C)", async ({
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS_TWO_INTERACTIVE_EDGES);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, KRS_TWO_INTERACTIVE_EDGES);
+    await openViewTab(page, "System");
 
     // Two interactive edges — Order→Payment and Order→Shipping (both gain a
     // canonical id once they are aggregated up to the implicit service-edge
@@ -63,10 +56,8 @@ test.describe("AT-1186 Edge hover-highlight + dim peers", () => {
   });
 
   test("mouseleave restores peer edges to full opacity (AT-B)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, KRS_TWO_INTERACTIVE_EDGES);
-    await goToSystemTab(page);
+    await bootMemoryApp(page, opfs, KRS_TWO_INTERACTIVE_EDGES);
+    await openViewTab(page, "System");
 
     const edges = page.locator(".preview-container svg [data-edge-canonical-id]");
     await expect(edges).toHaveCount(2);

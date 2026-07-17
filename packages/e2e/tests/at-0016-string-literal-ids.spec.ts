@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
 
 /**
  * AT-0016: String literal IDs for logical and organization nodes.
@@ -79,9 +79,7 @@ test.describe("AT-0016 String literal IDs", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, LOGICAL_HYPHENATED_KRS);
+    await bootMemoryApp(page, opfs, LOGICAL_HYPHENATED_KRS);
 
     await expectNoWarnings(page);
 
@@ -95,9 +93,7 @@ test.describe("AT-0016 String literal IDs", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ORG_LITERAL_KRS);
+    await bootMemoryApp(page, opfs, ORG_LITERAL_KRS);
 
     await expectNoWarnings(page);
   });
@@ -106,9 +102,7 @@ test.describe("AT-0016 String literal IDs", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, DEPLOY_REALIZES_LITERAL_KRS);
+    await bootMemoryApp(page, opfs, DEPLOY_REALIZES_LITERAL_KRS);
 
     await expectNoWarnings(page);
 

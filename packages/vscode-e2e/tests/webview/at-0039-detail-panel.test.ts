@@ -11,11 +11,16 @@ import {
 import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
+  SUITE_TIMEOUT_MS,
+  breadcrumbSegments,
+  dispatchClick,
   ensureWebViewFrame,
   isViewActive,
+  leaveWebViewFrame,
   openFixtureWithRetry,
   openPreviewAndEnterFrame,
   reacquireFrame,
+  readBreadcrumb,
   switchToView,
 } from "./harness";
 
@@ -87,24 +92,10 @@ const FIXTURE_LINE = {
 } as const;
 
 describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram navigation", function () {
-  this.timeout(240_000);
+  this.timeout(SUITE_TIMEOUT_MS);
 
   let driver: WebDriver;
   let ctx: FrameContext;
-
-  async function dispatchClickOnSelector(
-    selector: string,
-    { ctrlKey = false }: { ctrlKey?: boolean } = {},
-  ): Promise<void> {
-    const ctrl = ctrlKey ? "true" : "false";
-    await driver.executeScript(
-      `const el = document.querySelector(${JSON.stringify(selector)});` +
-        "if (!el) throw new Error('selector did not match: ' + " +
-        JSON.stringify(selector) +
-        ");" +
-        `el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: ${ctrl}, metaKey: ${ctrl} }));`,
-    );
-  }
 
   async function dispatchMouseMoveOnSelector(selector: string): Promise<void> {
     await driver.executeScript(
@@ -147,11 +138,18 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     )) as boolean;
   }
 
-  async function readBreadcrumb(): Promise<string> {
-    return (await driver.executeScript(
-      "const el = document.getElementById('breadcrumb');" +
-        "return el ? Array.from(el.querySelectorAll('button')).map(b => b.textContent).join(' › ') : '';",
-    )) as string;
+  // AT-0039-specific waits on the detail panel's `visible` class. Kept
+  // spec-local (not in the harness): the detail panel is AT-0039 DOM.
+  async function awaitPanelVisible(message: string): Promise<void> {
+    await driver.wait(async () => await detailPanelHasVisibleClass(), ELEMENT_TIMEOUT_MS, message);
+  }
+
+  async function awaitPanelHidden(message: string): Promise<void> {
+    await driver.wait(
+      async () => !(await detailPanelHasVisibleClass()),
+      ELEMENT_TIMEOUT_MS,
+      message,
+    );
   }
 
   async function closePanelIfOpen(): Promise<void> {
@@ -159,11 +157,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       await driver.executeScript(
         "const btn = document.getElementById('dp-close-btn'); if (btn) btn.click();",
       );
-      await driver.wait(
-        async () => !(await detailPanelHasVisibleClass()),
-        ELEMENT_TIMEOUT_MS,
-        "detail panel did not close",
-      );
+      await awaitPanelHidden("detail panel did not close");
     }
   }
 
@@ -186,14 +180,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   });
 
   after(async () => {
-    if (ctx.inWebViewFrame) {
-      try {
-        await ctx.webview.switchBack();
-      } catch {
-        // already detached
-      }
-      ctx.inWebViewFrame = false;
-    }
+    await leaveWebViewFrame(ctx);
     await new EditorView().closeAllEditors();
   });
 
@@ -204,13 +191,9 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-node-id="Customer"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
+    await dispatchClick(driver, '[data-node-id="Customer"]');
 
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "detail panel did not become visible after clicking Customer",
-    );
+    await awaitPanelVisible("detail panel did not become visible after clicking Customer");
 
     const text = await detailPanelText();
     assert.match(text, /Customer/, `panel should contain "Customer"; saw: ${text}`);
@@ -223,13 +206,9 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="OrderService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
 
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "detail panel did not become visible after clicking the ⓘ button",
-    );
+    await awaitPanelVisible("detail panel did not become visible after clicking the ⓘ button");
 
     const html = await detailPanelHtml();
     const text = await detailPanelText();
@@ -255,35 +234,23 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   it("TC-04: × close button dismisses the panel; click-outside also dismisses it", async () => {
     await closePanelIfOpen();
 
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "panel did not open before testing close",
-    );
+    await dispatchClick(driver, '[data-node-id="Customer"]');
+    await awaitPanelVisible("panel did not open before testing close");
 
     await driver.executeScript(
       "const btn = document.getElementById('dp-close-btn');" +
         "if (!btn) throw new Error('dp-close-btn not found');" +
         "btn.click();",
     );
-    await driver.wait(
-      async () => !(await detailPanelHasVisibleClass()),
-      ELEMENT_TIMEOUT_MS,
-      "panel did not close after pressing the × button",
-    );
+    await awaitPanelHidden("panel did not close after pressing the × button");
     assert.strictEqual(
       await detailPanelHasVisibleClass(),
       false,
       "panel should be hidden after clicking the × button",
     );
 
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "panel did not re-open before testing click-outside",
-    );
+    await dispatchClick(driver, '[data-node-id="Customer"]');
+    await awaitPanelVisible("panel did not re-open before testing click-outside");
 
     // A click that lands on `#preview` itself (no `[data-node-id]`
     // ancestor) is treated as "click outside any node" by the WebView
@@ -293,11 +260,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
         "if (!preview) throw new Error('#preview not found');" +
         "preview.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));",
     );
-    await driver.wait(
-      async () => !(await detailPanelHasVisibleClass()),
-      ELEMENT_TIMEOUT_MS,
-      "panel did not close after clicking outside any node",
-    );
+    await awaitPanelHidden("panel did not close after clicking outside any node");
     assert.strictEqual(
       await detailPanelHasVisibleClass(),
       false,
@@ -308,30 +271,20 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   it("TC-06: ⓘ info button on a parent does not drill the preview", async () => {
     await closePanelIfOpen();
 
-    const beforeBreadcrumb = await readBreadcrumb();
+    const beforeBreadcrumb = await readBreadcrumb(driver);
     assert.deepStrictEqual(
-      beforeBreadcrumb
-        .split("›")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      breadcrumbSegments(beforeBreadcrumb),
       ["Root"],
       `expected to start at root, but breadcrumb was "${beforeBreadcrumb}"`,
     );
 
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
 
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "detail panel did not open after ⓘ click",
-    );
+    await awaitPanelVisible("detail panel did not open after ⓘ click");
 
-    const afterBreadcrumb = await readBreadcrumb();
+    const afterBreadcrumb = await readBreadcrumb(driver);
     assert.deepStrictEqual(
-      afterBreadcrumb
-        .split("›")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      breadcrumbSegments(afterBreadcrumb),
       ["Root"],
       `ⓘ click should not drill the preview; breadcrumb went to "${afterBreadcrumb}"`,
     );
@@ -354,12 +307,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
 
     // Open the panel; the tooltip should not show even when we hover
     // OrderService again.
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "detail panel did not open before testing tooltip suppression",
-    );
+    await dispatchClick(driver, '[data-node-id="Customer"]');
+    await awaitPanelVisible("detail panel did not open before testing tooltip suppression");
 
     await dispatchMouseMoveOnSelector('[data-node-id="OrderService"]');
     await driver.sleep(300);
@@ -377,12 +326,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   it("TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open", async () => {
     await closePanelIfOpen();
 
-    await dispatchClickOnSelector('[data-node-id="Customer"]');
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "panel did not open before testing Jump to editor",
-    );
+    await dispatchClick(driver, '[data-node-id="Customer"]');
+    await awaitPanelVisible("panel did not open before testing Jump to editor");
 
     await driver.executeScript(
       "const btn = document.getElementById('dp-jump-btn');" +
@@ -409,8 +354,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     // Switch out of the WebView frame to read the editor's coordinates.
     // Bringing the .krs editor to focus rebuilds the preview, which is
     // why the visibility assertion above runs first.
-    await ctx.webview.switchBack();
-    ctx.inWebViewFrame = false;
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
 
     let lastLine = 0;
     await driver.wait(
@@ -437,12 +381,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="UserService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="UserService"]');
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "detail panel did not open after clicking UserService ⓘ button",
-    );
+    await dispatchClick(driver, '[data-info-button="UserService"]');
+    await awaitPanelVisible("detail panel did not open after clicking UserService ⓘ button");
 
     const html = await detailPanelHtml();
     assert.match(
@@ -465,12 +405,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="OrderService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "panel did not open before testing team nav button",
-    );
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
+    await awaitPanelVisible("panel did not open before testing team nav button");
 
     const html = await detailPanelHtml();
     assert.match(
@@ -509,12 +445,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       until.elementLocated(By.css('[data-info-button="OrderService"]')),
       ELEMENT_TIMEOUT_MS,
     );
-    await dispatchClickOnSelector('[data-info-button="OrderService"]');
-    await driver.wait(
-      async () => await detailPanelHasVisibleClass(),
-      ELEMENT_TIMEOUT_MS,
-      "panel did not open before testing deploy nav button",
-    );
+    await dispatchClick(driver, '[data-info-button="OrderService"]');
+    await awaitPanelVisible("panel did not open before testing deploy nav button");
 
     const html = await detailPanelHtml();
     assert.match(

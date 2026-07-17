@@ -7,13 +7,7 @@ import {
   validateStyleValues,
   type DiagnosticSeverity as CoreSeverity,
 } from "@karasu-tools/core";
-import {
-  renderDiagnostic,
-  renderWarning,
-  translate,
-  type Locale,
-  type TranslateFn,
-} from "@karasu-tools/i18n";
+import { renderDiagnostic, renderWarning, bindTranslate, type Locale } from "@karasu-tools/i18n";
 import { toLspRange, type LspRange, type SourceRangeLike } from "./lsp-position.js";
 
 const DOC_START = { line: 0, character: 0 };
@@ -51,8 +45,7 @@ export function computeDiagnostics(
 ): Diagnostic[] {
   // Bind the locale-aware translator once per pass. `renderDiagnostic` /
   // `renderWarning` are pure formatters shared with the app and CLI.
-  const t = ((key: Parameters<TranslateFn>[0], params?: unknown) =>
-    translate(locale, key, params)) as TranslateFn;
+  const t = bindTranslate(locale);
 
   const parseResult = isStyleDocument ? StyleParser.parse(text) : Parser.parse(text);
 

@@ -23,7 +23,9 @@ import { ExTester } from "vscode-extension-tester";
 /** Absolute path of the `packages/vscode-e2e` package root. */
 export const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 
-const repoRoot = path.resolve(packageRoot, "..", "..");
+/** Absolute path of the monorepo root. */
+export const repoRoot = path.resolve(packageRoot, "..", "..");
+
 const vscodePkg = path.join(repoRoot, "packages", "vscode");
 
 /** ExTester storage / test-resources directory (downloads, vsix, fixtures). */

@@ -13,10 +13,8 @@ scope:
     - app
   concerns: []
 assumptions:
-  - "file: packages/app/src/hooks/useAutoSwitchToDeploy.ts"
-  - "file: packages/app/src/hooks/useAutoSwitchToOrg.ts"
-  - "symbol: packages/app/src/hooks/useAutoSwitchToDeploy.ts :: useAutoSwitchToDeploy"
-  - "symbol: packages/app/src/hooks/useAutoSwitchToOrg.ts :: useAutoSwitchToOrg"
+  - "file: packages/app/src/hooks/useAutoSwitchView.ts"
+  - "symbol: packages/app/src/hooks/useAutoSwitchView.ts :: useAutoSwitchView"
   - "file: packages/app/src/hooks/useAppViews.ts"
 ---
 
@@ -88,6 +86,14 @@ boolean 述語で表現し、フックの呼び出し順は意味を持たない
 
 両ガードが安定な props のみを参照するため、effect が同一 commit で並行に
 評価されても dispatch は最大 1 件しか発火しない（race-free）。
+
+> **実装追記（2026-07-16, Issue #2015）**: 重複解消リファクタリングで
+> 2 フックは単一の `useAutoSwitchView`（caller が `shouldSwitch` 述語を計算
+> して渡す形）に統合された。本節の behavioral 決定（優先順位・述語による
+> priority 表現・呼び出し順非依存・race-free 性）はすべて維持されている。
+> 却下案 A の懸念（predicate と target を引数化すると可読性が落ちる）は、
+> 述語計算を `useAppViews` 側に置き hook 本体を once-per-entryPath 機構のみ
+> に絞ることで回避した。
 
 ### 優先度行列
 
@@ -167,8 +173,8 @@ deploy view extractor の現行挙動（raw serviceId をラベルに使う）�
 
 ## 影響範囲
 
-- `packages/app/src/hooks/useAutoSwitchToDeploy.ts`
-- `packages/app/src/hooks/useAutoSwitchToOrg.ts`
+- `packages/app/src/hooks/useAutoSwitchView.ts`（旧 `useAutoSwitchToDeploy.ts` /
+  `useAutoSwitchToOrg.ts`、#2015 で統合）
 - `packages/app/src/hooks/useAppViews.ts`
 - アクセプタンステスト: `docs/acceptance/0063-deploy-only-render.md`,
   `docs/acceptance/0064-org-only-render.md`
@@ -187,3 +193,7 @@ deploy view extractor の現行挙動（raw serviceId をラベルに使う）�
 新しい view target （仮: `infra` / `data` / `flow` 等）が追加され、auto-switch
 の対象が 3 つを超える場合は本 ADR の優先度行列を更新する。同時に、共通化
 （却下案 A）の費用対効果を再評価する閾値とする。
+
+> **追記（2026-07-16）**: 共通化は Issue #2015 のリファクタリング一括で実施
+> 済み（上記「実装追記」参照）。新 target の追加は `useAutoSwitchView` の
+> 呼び出しを 1 つ増やすだけでよい。

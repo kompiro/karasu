@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0015: Deploy id/label separation.
@@ -46,18 +46,10 @@ deploy "本番環境" {
 }
 `;
 
-async function openDeployTab(page: Page) {
-  await page.getByRole("tab", { name: "Deploy" }).click();
-  await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
-}
-
 test.describe("AT-0015 Deploy id/label separation", () => {
   test("renders label text when both id and label are set (AT-0015-1)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, WITH_LABELS);
-    await openDeployTab(page);
+    await bootMemoryApp(page, opfs, WITH_LABELS);
+    await openViewTab(page, "Deploy");
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).toContainText("本番環境");
@@ -68,11 +60,8 @@ test.describe("AT-0015 Deploy id/label separation", () => {
   });
 
   test("falls back to id when label is absent (AT-0015-2)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, WITHOUT_LABELS);
-    await openDeployTab(page);
+    await bootMemoryApp(page, opfs, WITHOUT_LABELS);
+    await openViewTab(page, "Deploy");
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).toContainText("Production");
@@ -80,11 +69,8 @@ test.describe("AT-0015 Deploy id/label separation", () => {
   });
 
   test("legacy string literal deploy syntax still works (AT-0015-3)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, LEGACY_STRING_LITERAL);
-    await openDeployTab(page);
+    await bootMemoryApp(page, opfs, LEGACY_STRING_LITERAL);
+    await openViewTab(page, "Deploy");
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).toContainText("本番環境");

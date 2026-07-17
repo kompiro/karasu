@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0007: Deployment diagram.
@@ -56,8 +57,7 @@ test.describe("AT-0007 Deployment diagram", () => {
 
     const deployTab = page.getByRole("tab", { name: "Deploy" });
     await expect(deployTab).toBeEnabled();
-    await deployTab.click();
-    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await openViewTab(page, "Deploy");
 
     // The Getting Started project's deploy block contains the EC service —
     // its rendered label varies by locale-matched seed (Japanese seed: ECサイト,
@@ -71,17 +71,14 @@ test.describe("AT-0007 Deployment diagram", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, NO_DEPLOY_KRS);
+    await bootMemoryApp(page, opfs, NO_DEPLOY_KRS);
 
     // Behavior change in #812: rather than disabling the Deploy tab, we now
     // keep it interactive and render an empty-state placeholder SVG when no
     // deploy block exists. The placeholder text is locale-aware.
     const deployTab = page.getByRole("tab", { name: "Deploy" });
     await expect(deployTab).toBeEnabled();
-    await deployTab.click();
-    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await openViewTab(page, "Deploy");
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).toContainText(

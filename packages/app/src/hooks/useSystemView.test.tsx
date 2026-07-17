@@ -490,7 +490,7 @@ organization Org {
     // Start with a source that has an organization block. After the editor is
     // edited to a source without one, hasOrgDiagram must flip to false in the
     // SAME tick that the system result settles. Without this single source of
-    // truth, useAutoSwitchToOrg would race a stale orgCompile result and
+    // truth, the org auto-switch (useAutoSwitchView) would race a stale orgCompile result and
     // wrongly switch tabs.
     const SOURCE_WITH_ORG = `system Sys {
   service Svc { label "Svc" }

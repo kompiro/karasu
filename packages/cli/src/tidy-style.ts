@@ -1,6 +1,6 @@
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
 import { tidyStyleSheet } from "@karasu-tools/core";
+import { DEFAULT_SKIP_DIRS, findFilesBySuffix, resolveTargets } from "./find-files.js";
 import { readStdin } from "./stdin.js";
 
 interface TidyStyleOptions {
@@ -20,7 +20,9 @@ export async function tidyStyle(files: string[], options: TidyStyleOptions): Pro
     return;
   }
 
-  const targets = await resolveTargets(files);
+  const targets = resolveTargets(files, () =>
+    findFilesBySuffix(process.cwd(), ".krs.style", DEFAULT_SKIP_DIRS),
+  );
 
   if (targets.length === 0) {
     process.stderr.write("No .krs.style files found.\n");
@@ -51,26 +53,4 @@ async function tidyStyleStdin(options: TidyStyleOptions): Promise<void> {
   const src = await readStdin();
   const result = tidyStyleSheet(src, { merge: !options.noMerge });
   process.stdout.write(result.output);
-}
-
-async function resolveTargets(files: string[]): Promise<string[]> {
-  if (files.length > 0) {
-    return files.map((f) => path.resolve(f));
-  }
-  return findStyleFiles(process.cwd()).sort();
-}
-
-function findStyleFiles(dir: string): string[] {
-  const SKIP = new Set(["node_modules", ".worktrees", ".git", "dist", ".claude"]);
-  const results: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (SKIP.has(entry.name)) continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...findStyleFiles(full));
-    } else if (entry.isFile() && entry.name.endsWith(".krs.style")) {
-      results.push(full);
-    }
-  }
-  return results;
 }

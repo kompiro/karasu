@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useTranslation } from "../i18n/index.js";
+import { triggerBlobDownload } from "../utils/trigger-download.js";
 
 /**
  * In-App equivalent of the `karasu translate` CLI command (Issue #1463).
@@ -168,13 +169,7 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
 
   const handleDownload = useCallback(() => {
     if (!result) return;
-    const blob = new Blob([result.krs], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${sourceName.trim() || format}.krs`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(result.krs, "text/plain", `${sourceName.trim() || format}.krs`);
   }, [result, sourceName, format]);
 
   const granularityOptions = useMemo(

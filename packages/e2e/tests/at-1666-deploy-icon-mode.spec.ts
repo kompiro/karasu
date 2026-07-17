@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-1666: Icon Mode renders icons on the deploy view.
@@ -36,12 +37,9 @@ test.describe("AT-1666 Deploy view Icon Mode", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, DEPLOY_KRS);
+    await bootMemoryApp(page, opfs, DEPLOY_KRS);
 
-    await page.getByRole("tab", { name: "Deploy" }).click();
-    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+    await openViewTab(page, "Deploy");
 
     // Sanity: the deploy units render as nodes in shape mode.
     await expect(page.locator('g[data-node-kind="oci"]')).toHaveCount(1);

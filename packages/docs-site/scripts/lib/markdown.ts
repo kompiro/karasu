@@ -25,6 +25,19 @@ export function extractTitle(body: string): { title: string | null; body: string
   return { title: null, body };
 }
 
+function yamlQuote(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Starlight frontmatter block for a generated page (title-only), ending with a
+ * blank line so the body can be appended directly. Single source of the
+ * frontmatter shape shared by sync and the gallery generator.
+ */
+export function frontmatter(title: string): string {
+  return `---\ntitle: ${yamlQuote(title)}\n---\n\n`;
+}
+
 /** Reduce inline markdown in heading text to its rendered text before slugging. */
 function headingText(raw: string): string {
   return raw

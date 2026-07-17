@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0057: Top-level service declarations.
@@ -34,10 +35,7 @@ test.describe("AT-0057 Top-level service declarations", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, TOP_LEVEL_SERVICE_KRS);
+    await bootMemoryApp(page, opfs, TOP_LEVEL_SERVICE_KRS);
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).toContainText("ECサイト");
@@ -50,16 +48,12 @@ test.describe("AT-0057 Top-level service declarations", () => {
   });
 
   test("zero-system file renders orphan service drill-down (TC-3)", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, ZERO_SYSTEM_KRS);
+    await bootMemoryApp(page, opfs, ZERO_SYSTEM_KRS);
 
     // Make sure we are on the System tab — auto-switch hooks (#766/#844)
     // can run during the seed → empty → ZERO_SYSTEM transition and leave the
     // active tab somewhere other than System.
-    await page.getByRole("tab", { name: "System" }).click();
-    await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
+    await openViewTab(page, "System");
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).not.toContainText("No diagram");
@@ -70,10 +64,7 @@ test.describe("AT-0057 Top-level service declarations", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, SERVICE_INSIDE_SYSTEM_KRS);
+    await bootMemoryApp(page, opfs, SERVICE_INSIDE_SYSTEM_KRS);
 
     await page.waitForTimeout(500);
     const warningPanel = page.locator(".warning-panel");

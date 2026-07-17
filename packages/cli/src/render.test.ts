@@ -22,7 +22,7 @@ vi.mock("@karasu-tools/core", async (importOriginal) => {
   };
 });
 
-import { render, NodeFileSystemProvider } from "./render.js";
+import { render } from "./render.js";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -38,36 +38,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await rm(tmpDir, { recursive: true, force: true });
   vi.restoreAllMocks();
-});
-
-// ── NodeFileSystemProvider ────────────────────────────────────────────────────
-
-describe("NodeFileSystemProvider", () => {
-  it("readFile returns file contents", async () => {
-    const filePath = join(tmpDir, "test.krs");
-    await writeFile(filePath, "system { }", "utf-8");
-    const fs = new NodeFileSystemProvider();
-    expect(await fs.readFile(filePath)).toBe("system { }");
-  });
-
-  it("readDir returns entries with kind", async () => {
-    await writeFile(join(tmpDir, "a.krs"), "", "utf-8");
-    const fs = new NodeFileSystemProvider();
-    const entries = await fs.readDir(tmpDir);
-    expect(entries).toContainEqual({ name: "a.krs", kind: "file" });
-  });
-
-  it("exists returns true for existing file", async () => {
-    const filePath = join(tmpDir, "exists.krs");
-    await writeFile(filePath, "", "utf-8");
-    const fs = new NodeFileSystemProvider();
-    expect(await fs.exists(filePath)).toBe(true);
-  });
-
-  it("exists returns false for missing file", async () => {
-    const fs = new NodeFileSystemProvider();
-    expect(await fs.exists(join(tmpDir, "missing.krs"))).toBe(false);
-  });
 });
 
 // ── render: file-not-found ────────────────────────────────────────────────────

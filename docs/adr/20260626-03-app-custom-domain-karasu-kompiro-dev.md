@@ -12,7 +12,8 @@ scope:
   concerns:
     - deployment
 assumptions:
-  - "grep: packages/docs-site/scripts/lib/gallery-pages.ts :: karasu\\.kompiro\\.dev"
+  # APP_URL moved from gallery-pages.ts to the site-wide constants module (#2020).
+  - "grep: packages/docs-site/scripts/lib/site-map.ts :: karasu\\.kompiro\\.dev"
 ---
 
 # ADR-20260626-03: プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する

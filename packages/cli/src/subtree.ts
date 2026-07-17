@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   compileProject,
@@ -11,6 +10,7 @@ import {
 } from "@karasu-tools/core";
 import { NodeFileSystemProvider } from "./node-fs.js";
 import { formatDiagnostic } from "./i18n.js";
+import { writeOutput } from "./output.js";
 
 interface SubtreeCliOptions {
   output?: string;
@@ -163,9 +163,5 @@ export async function subtree(
   }
 
   const output = serializeKrsFile(file);
-  if (options.output) {
-    await writeFile(resolve(options.output), output, "utf-8");
-  } else {
-    process.stdout.write(output);
-  }
+  await writeOutput(output, options.output);
 }

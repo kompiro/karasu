@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
 
 /**
  * AT-0047: Infra nodes (database/queue/storage) in the System diagram.
@@ -52,9 +52,7 @@ test.describe("AT-0047 Infra nodes in System diagram", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, INFRA_KRS);
+    await bootMemoryApp(page, opfs, INFRA_KRS);
 
     for (const id of ["OrderDB", "EventBus", "MediaStorage", "OrderService", "MediaService"]) {
       await expect(page.locator(`svg [data-node-id="${id}"]`).first()).toBeAttached();
@@ -73,9 +71,7 @@ test.describe("AT-0047 Infra nodes in System diagram", () => {
   });
 
   test("drilling into OrderService hides System-level infra nodes", async ({ page, opfs }) => {
-    await opfs.seed({ mode: "memory" });
-    await opfs.gotoApp();
-    await replaceEditorContent(page, INFRA_KRS);
+    await bootMemoryApp(page, opfs, INFRA_KRS);
 
     await page.locator('svg [data-node-id="OrderService"]').first().click();
 

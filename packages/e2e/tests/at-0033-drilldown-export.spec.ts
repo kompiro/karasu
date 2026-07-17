@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
+import { clickAndDownload, readDownloadText } from "../fixtures/download.js";
 
 /**
  * AT-0033: Drill-down (all-layers) SVG export.
@@ -26,9 +27,9 @@ import { replaceEditorContent } from "../fixtures/editor.js";
  * reach drill-level bands in this export, not just the root band (#1879's
  * root-only gate was removed). The core/hook math is unit-tested elsewhere;
  * this proves the live "Group by" selector + toggle + download are wired
- * together end-to-end. Uses the team axis — see the skipped boundary-axis
- * case in at-1907-entity-view-toggle.spec.ts for why boundary can't be used
- * here yet.
+ * together end-to-end. Uses the team axis because `owns` places a node one
+ * level below the root band; the boundary axis is exercised in the entity
+ * view by at-1907-entity-view-toggle.spec.ts.
  */
 test.describe("AT-0033 Drill-down SVG export", () => {
   test("toggle is visible on System and disabled on Deploy (AT-0033-1, AT-0033-3)", async ({
@@ -73,18 +74,11 @@ test.describe("AT-0033 Drill-down SVG export", () => {
 
     await page.getByRole("button", { name: "Toggle all layers" }).click();
 
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export SVG" }).click();
-    const download = await downloadPromise;
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/-all-layers\.svg$/);
 
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const content = Buffer.concat(chunks).toString("utf-8");
+    const content = await readDownloadText(download);
     expect(content).toContain("<svg");
     expect(content).toContain("</svg>");
     expect(content).not.toContain("<script");
@@ -97,9 +91,7 @@ test.describe("AT-0033 Drill-down SVG export", () => {
     await opfs.reset();
     await opfs.gotoApp();
 
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export SVG" }).click();
-    const download = await downloadPromise;
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
 
     expect(download.suggestedFilename()).toMatch(/\.svg$/);
     expect(download.suggestedFilename()).not.toMatch(/-all-layers\.svg$/);
@@ -137,16 +129,8 @@ organization Org {
     await page.selectOption("#group-by-select", "team");
     await page.getByRole("button", { name: "Toggle all layers" }).click();
 
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export SVG" }).click();
-    const download = await downloadPromise;
-
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const content = Buffer.concat(chunks).toString("utf-8");
+    const download = await clickAndDownload(page.getByRole("button", { name: "Export SVG" }));
+    const content = await readDownloadText(download);
 
     // Root band: payments + catalog. Billing's drill band: a second payments
     // frame around the owned BillingDomain — the per-level behavior #1983

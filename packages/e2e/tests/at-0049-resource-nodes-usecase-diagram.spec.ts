@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
-import { replaceEditorContent } from "../fixtures/editor.js";
+import { bootMemoryApp } from "../fixtures/boot.js";
+import { openViewTab } from "../fixtures/tabs.js";
 
 /**
  * AT-0049: Resource nodes in the domain-level UseCase diagram.
@@ -76,8 +77,7 @@ const INLINE_KRS = `system ECPlatform {
 `;
 
 async function drillIntoOrderDomain(page: Page) {
-  await page.getByRole("tab", { name: "System" }).click();
-  await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
+  await openViewTab(page, "System");
   await page.locator('[data-node-id="OrderService"]').click();
   await expect(page.locator(".breadcrumb-current")).toHaveText("OrderService");
   await page.locator('[data-node-id="Order"]').click();
@@ -89,10 +89,7 @@ test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, BASE_KRS);
+    await bootMemoryApp(page, opfs, BASE_KRS);
     await drillIntoOrderDomain(page);
 
     // Usecase nodes.
@@ -120,10 +117,7 @@ test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, SHARED_KRS);
+    await bootMemoryApp(page, opfs, SHARED_KRS);
     await drillIntoOrderDomain(page);
 
     await expect(page.locator('[data-node-id="PlaceOrder"]')).toHaveCount(1);
@@ -138,10 +132,7 @@ test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
     page,
     opfs,
   }) => {
-    await opfs.seed({ mode: "memory" });
-
-    await opfs.gotoApp();
-    await replaceEditorContent(page, INLINE_KRS);
+    await bootMemoryApp(page, opfs, INLINE_KRS);
     await drillIntoOrderDomain(page);
 
     await expect(page.locator('[data-node-id="PlaceOrder"]')).toHaveCount(1);
