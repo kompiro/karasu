@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { compile, compileProject, InMemoryFileSystemProvider } from "../index.js";
+import {
+  compile,
+  compileProject,
+  InMemoryFileSystemProvider,
+  renderEntityView as renderEntityViewFromSource,
+} from "../index.js";
 import { Parser } from "../parser/parser.js";
+import type { LogicalNodeKind } from "../types/ast.js";
 import { extractView } from "../view/view-extract.js";
 import { layout } from "./layout.js";
 import { buildAllLayersSvg } from "./all-layers-svg.js";
@@ -389,6 +395,26 @@ describe("levels without members match the ungrouped export byte-for-byte (#1879
     expect(buildDrillDownSvg(withBoundary).svg).toBe(buildDrillDownSvg(without).svg);
     expect(buildAllViewsSvg(withBoundary).svg).toBe(buildAllViewsSvg(without).svg);
   });
+
+  it("public renderEntityView: grouped with no entity members is byte-identical to ungrouped", () => {
+    // The public source-string API (packages/core/src/index.ts) is its own
+    // call path: with the axis set but no member on this entity view, it must
+    // fall back to the exact ungrouped output, like the export builders above.
+    const grouped = renderEntityViewFromSource(
+      ROOT_ONLY_SRC,
+      ["Shop", "Orders", "OrderDomain"],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    const plain = renderEntityViewFromSource(ROOT_ONLY_SRC, ["Shop", "Orders", "OrderDomain"]);
+    expect(grouped.hasContent).toBe(true);
+    expect(grouped.svg).not.toContain('data-container-id="__group_');
+    expect(grouped.svg).toBe(plain.svg);
+  });
 });
 
 describe("P2c routing on a grouped drill view (TPL-20260711-02)", () => {
@@ -485,7 +511,9 @@ boundary g2 "G2" {
     // …and the routed drill layout pierces nothing.
     expect(penetrations).toBe(0);
     // Dual metric (TPL-20260711-02): crossings are measured alongside, not
-    // judged alone — assert the metric is computable and finite.
+    // judged alone — pin the observed value so a routing change that raises
+    // crossings on this drill fixture surfaces for re-evaluation (raise the
+    // pin deliberately if a future router trades crossings for readability).
     const cross = (a: Point, b: Point, c: Point, d: Point): boolean => {
       const o = (p: Point, q: Point, r: Point) =>
         Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
@@ -500,7 +528,7 @@ boundary g2 "G2" {
         if (cross(segments[i][0], segments[i][1], segments[j][0], segments[j][1])) crossings++;
       }
     }
-    expect(Number.isFinite(crossings)).toBe(true);
+    expect(crossings).toBeLessThanOrEqual(0); // observed 0 on this fixture
   });
 });
 
@@ -509,7 +537,7 @@ describe("cross-file members group on drill levels (multi-file merge)", () => {
     // The merged boundaryIndex (first-wins across files) must reach the drill
     // render exactly like the single-file path. Note: the per-file
     // `contains-target-not-found` pass still warns about the cross-file id at
-    // parse time (pre-existing project-mode behavior, tracked separately) —
+    // parse time (pre-existing project-mode false positive, tracked in #2032) —
     // this fence pins that the *grouping* itself resolves on the merged model.
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile(
@@ -552,11 +580,15 @@ boundary cluster "Cluster" {
 // enumerating the view-extract surfaces (TPL-20260623-02: a valid-target set
 // must enumerate every kind the construct accepts). This suite IS that
 // enumeration, machine-checked: for every kind `contains` can reference, the
-// member renders — and is framed — at some drill level. The determined set is
-// therefore EMPTY and no diagnostic is emitted (a warning claiming "no
-// effect" would be false for every kind). If a future view change makes one
-// of these cases fail, a kind has lost its rendering level and the diagnostic
-// decision must be revisited (docs/design/boundary-drilldown-grouping.md).
+// member renders — and is framed / foldable — at some drill level. The
+// determined set is therefore EMPTY and no diagnostic is emitted (a warning
+// claiming "no effect" would be false for every kind). Each member gets its
+// OWN one-member boundary, so a kind silently falling out of the bucket
+// cannot hide behind a frame raised by a co-resident member of another kind.
+// If a future view change makes one of these cases fail — or extending
+// `LogicalNodeKind` fails the `satisfies` guard below at typecheck — a kind
+// has (or may have) lost its rendering level and the diagnostic decision must
+// be revisited (docs/design/boundary-drilldown-grouping.md).
 const EVERY_KIND_SRC = `
 system Shop {
   service Orders {
@@ -586,60 +618,92 @@ system Shop {
   }
 }
 
-boundary cluster "Cluster" {
-  contains Orders
-  contains TopDomain
-  contains OrderDomain
-  contains PlaceOrder
-  contains OrderEntity
-  contains OrderRes
-  contains DirectRes
-  contains Buyer
-  contains WebApp
-  contains ShopDB
-  contains Jobs
-  contains Files
-  contains orders
-  contains emailJob
-  contains images
-}
+boundary fence_service { contains Orders }
+boundary fence_top_domain { contains TopDomain }
+boundary fence_user { contains Buyer }
+boundary fence_client { contains WebApp }
+boundary fence_database { contains ShopDB }
+boundary fence_queue { contains Jobs }
+boundary fence_storage { contains Files }
+boundary fence_nested_domain { contains OrderDomain }
+boundary fence_usecase { contains PlaceOrder }
+boundary fence_entity { contains OrderEntity }
+boundary fence_resource_domain { contains DirectRes }
+boundary fence_resource_usecase { contains OrderRes }
+boundary fence_table { contains orders }
+boundary fence_queue_item { contains emailJob }
+boundary fence_bucket { contains images }
 `;
 
 describe("every containable kind renders (framed) at some groupable level — the not-groupable set is empty", () => {
-  const CASES: { kind: string; memberId: string; viewPath: string[] | undefined }[] = [
-    { kind: "service", memberId: "Orders", viewPath: undefined },
-    { kind: "domain (top-level)", memberId: "TopDomain", viewPath: undefined },
-    { kind: "user", memberId: "Buyer", viewPath: undefined },
-    { kind: "client", memberId: "WebApp", viewPath: undefined },
-    { kind: "database", memberId: "ShopDB", viewPath: undefined },
-    { kind: "queue", memberId: "Jobs", viewPath: undefined },
-    { kind: "storage", memberId: "Files", viewPath: undefined },
-    { kind: "domain (nested)", memberId: "OrderDomain", viewPath: ["Shop", "Orders"] },
-    { kind: "usecase", memberId: "PlaceOrder", viewPath: ["Shop", "Orders", "OrderDomain"] },
+  const CASES: {
+    kind: string;
+    memberId: string;
+    fence: string;
+    viewPath: string[] | undefined;
+  }[] = [
+    { kind: "service", memberId: "Orders", fence: "fence_service", viewPath: undefined },
+    {
+      kind: "domain (top-level)",
+      memberId: "TopDomain",
+      fence: "fence_top_domain",
+      viewPath: undefined,
+    },
+    { kind: "user", memberId: "Buyer", fence: "fence_user", viewPath: undefined },
+    { kind: "client", memberId: "WebApp", fence: "fence_client", viewPath: undefined },
+    { kind: "database", memberId: "ShopDB", fence: "fence_database", viewPath: undefined },
+    { kind: "queue", memberId: "Jobs", fence: "fence_queue", viewPath: undefined },
+    { kind: "storage", memberId: "Files", fence: "fence_storage", viewPath: undefined },
+    {
+      kind: "domain (nested)",
+      memberId: "OrderDomain",
+      fence: "fence_nested_domain",
+      viewPath: ["Shop", "Orders"],
+    },
+    {
+      kind: "usecase",
+      memberId: "PlaceOrder",
+      fence: "fence_usecase",
+      viewPath: ["Shop", "Orders", "OrderDomain"],
+    },
     {
       kind: "resource (domain child)",
       memberId: "DirectRes",
+      fence: "fence_resource_domain",
       viewPath: ["Shop", "Orders", "OrderDomain"],
     },
     {
       kind: "resource (usecase child)",
       memberId: "OrderRes",
+      fence: "fence_resource_usecase",
       viewPath: ["Shop", "Orders", "OrderDomain", "PlaceOrder"],
     },
-    { kind: "table", memberId: "orders", viewPath: ["Shop", "ShopDB"] },
-    { kind: "queue-item", memberId: "emailJob", viewPath: ["Shop", "Jobs"] },
-    { kind: "bucket", memberId: "images", viewPath: ["Shop", "Files"] },
+    { kind: "table", memberId: "orders", fence: "fence_table", viewPath: ["Shop", "ShopDB"] },
+    {
+      kind: "queue-item",
+      memberId: "emailJob",
+      fence: "fence_queue_item",
+      viewPath: ["Shop", "Jobs"],
+    },
+    { kind: "bucket", memberId: "images", fence: "fence_bucket", viewPath: ["Shop", "Files"] },
   ];
 
-  for (const { kind, memberId, viewPath } of CASES) {
-    it(`${kind}: "${memberId}" renders and is framed at ${viewPath ? viewPath.join("/") : "the root view"}`, () => {
+  for (const { kind, memberId, fence, viewPath } of CASES) {
+    it(`${kind}: "${memberId}" renders, raises its own frame, and folds at ${viewPath ? viewPath.join("/") : "the root view"}`, () => {
+      // The member's DEDICATED one-member boundary raises the frame — a
+      // co-resident member of another boundary cannot fake this green.
       const svg = systemSvg(EVERY_KIND_SRC, viewPath, "boundary");
       expect(svg).toContain(`data-node-id="${memberId}"`);
-      expect(svg).toContain(FRAME);
+      expect(svg).toContain(`data-container-id="__group_${fence}__"`);
+      // Membership proof by fold: collapsing the dedicated boundary makes
+      // exactly this member disappear into its stub.
+      const collapsed = systemSvg(EVERY_KIND_SRC, viewPath, "boundary", new Set([fence]));
+      expect(collapsed).not.toContain(`data-node-id="${memberId}"`);
+      expect(collapsed).toContain(`data-node-id="__group_collapsed_${fence}__"`);
     });
   }
 
-  it('entity: "OrderEntity" renders and is framed in the entity view', () => {
+  it('entity: "OrderEntity" renders and raises its own frame in the entity view', () => {
     const krsFile = Parser.parse(EVERY_KIND_SRC).value;
     const result = renderEntityView(
       krsFile,
@@ -653,12 +717,33 @@ describe("every containable kind renders (framed) at some groupable level — th
     );
     expect(result.hasContent).toBe(true);
     expect(result.svg).toContain('data-node-id="OrderEntity"');
-    expect(result.svg).toContain(FRAME);
+    // The entity view draws frames only (no collapse surface — ADR-20260630-02),
+    // so the dedicated-boundary frame is the membership proof here.
+    expect(result.svg).toContain('data-container-id="__group_fence_entity__"');
   });
 
   it("the enumeration covers every containable kind (sync guard, TPL-20260623-02)", () => {
-    // If a new kind becomes containable (appears in the parsed model but not
-    // in CASES), this fails and the enumeration above must be extended.
+    // Type-level exhaustiveness: extending `LogicalNodeKind` fails typecheck
+    // on this `satisfies`, forcing the enumeration above (and the ∅
+    // determination) to be revisited. The runtime walk below is the second
+    // half of the guard: it fails if the fixture stops DECLARING one of the
+    // expected kinds (e.g. a syntax change reinterprets a declaration).
+    const EXPECTED_CONTAINABLE = {
+      service: 0,
+      domain: 0,
+      usecase: 0,
+      entity: 0,
+      resource: 0,
+      user: 0,
+      client: 0,
+      database: 0,
+      queue: 0,
+      storage: 0,
+      table: 0,
+      "queue-item": 0,
+      bucket: 0,
+    } satisfies Record<Exclude<LogicalNodeKind, "system">, unknown>;
+
     const parsed = Parser.parse(EVERY_KIND_SRC).value;
     const kinds = new Set<string>();
     const walk = (nodes: readonly { kind: string; children: readonly unknown[] }[]): void => {
@@ -668,22 +753,6 @@ describe("every containable kind renders (framed) at some groupable level — th
       }
     };
     for (const system of parsed.systems) walk(system.children as never[]);
-    expect([...kinds].sort()).toEqual(
-      [
-        "bucket",
-        "client",
-        "database",
-        "domain",
-        "entity",
-        "queue",
-        "queue-item",
-        "resource",
-        "service",
-        "storage",
-        "table",
-        "usecase",
-        "user",
-      ].sort(),
-    );
+    expect([...kinds].sort()).toEqual(Object.keys(EXPECTED_CONTAINABLE).sort());
   });
 });
