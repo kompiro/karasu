@@ -1,4 +1,5 @@
 import { test, expect } from "../fixtures/anthropic.js";
+import { bootChat, sendChatMessage, CHAT_ERROR_CASES } from "../fixtures/chat.js";
 
 /**
  * AT-0050 Chat UI Phase 2 — BYOK + AI integration.
@@ -42,10 +43,8 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
     opfs,
     anthropic,
   }) => {
-    await opfs.seed(PROJECT_OPTIONS);
     // No API key seeded.
-    await anthropic.clearApiKey();
-    await opfs.gotoApp();
+    await bootChat(opfs, anthropic, { ...PROJECT_OPTIONS, apiKey: null });
 
     await page.getByRole("tab", { name: /Settings/ }).click();
 
@@ -67,9 +66,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
     opfs,
     anthropic,
   }) => {
-    await opfs.seed(PROJECT_OPTIONS);
-    await anthropic.clearApiKey();
-    await opfs.gotoApp();
+    await bootChat(opfs, anthropic, { ...PROJECT_OPTIONS, apiKey: null });
 
     await page.getByRole("tab", { name: /Settings/ }).click();
     await page.locator("input#settings-api-key").fill("sk-ant-test-fake");
@@ -87,9 +84,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
   });
 
   test("AC-3: API key with persist ON lands in localStorage", async ({ page, opfs, anthropic }) => {
-    await opfs.seed(PROJECT_OPTIONS);
-    await anthropic.clearApiKey();
-    await opfs.gotoApp();
+    await bootChat(opfs, anthropic, { ...PROJECT_OPTIONS, apiKey: null });
 
     await page.getByRole("tab", { name: /Settings/ }).click();
     await page.locator("input#settings-api-key").fill("sk-ant-test-fake");
@@ -111,9 +106,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
     opfs,
     anthropic,
   }) => {
-    await opfs.seed(PROJECT_OPTIONS);
-    await anthropic.clearApiKey();
-    await opfs.gotoApp();
+    await bootChat(opfs, anthropic, { ...PROJECT_OPTIONS, apiKey: null });
 
     await page.getByRole("tab", { name: /Chat/ }).click();
 
@@ -123,9 +116,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
   });
 
   test("AC-5: ApiKeySetup button navigates to Settings tab", async ({ page, opfs, anthropic }) => {
-    await opfs.seed(PROJECT_OPTIONS);
-    await anthropic.clearApiKey();
-    await opfs.gotoApp();
+    await bootChat(opfs, anthropic, { ...PROJECT_OPTIONS, apiKey: null });
 
     await page.getByRole("tab", { name: /Chat/ }).click();
     await page.getByRole("button", { name: /Configure in Settings/ }).click();
@@ -140,9 +131,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
 
   test.describe("with API key seeded", () => {
     test.beforeEach(async ({ opfs, anthropic }) => {
-      await opfs.seed(PROJECT_OPTIONS);
-      await anthropic.seedApiKey("sk-ant-test-fake");
-      await opfs.gotoApp();
+      await bootChat(opfs, anthropic, PROJECT_OPTIONS);
     });
 
     test("AC-6: sending a message round-trips and renders the AI reply", async ({
@@ -151,10 +140,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
     }) => {
       anthropic.scriptTurns([{ kind: "text", text: "Hello from AT-0050." }]);
 
-      await page.getByRole("tab", { name: /Chat/ }).click();
-      const input = page.getByRole("textbox", { name: /Chat message input/ });
-      await input.fill("Describe this system");
-      await input.press("ControlOrMeta+Enter");
+      const input = await sendChatMessage(page, "Describe this system");
 
       await expect(page.locator(".chat-message--user .chat-message-content")).toHaveText(
         "Describe this system",
@@ -177,9 +163,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
         { kind: "text", text: "Navigated to BYOK Demo." },
       ]);
 
-      await page.getByRole("tab", { name: /Chat/ }).click();
-      await page.getByRole("textbox", { name: /Chat message input/ }).fill("Show me the system");
-      await page.getByRole("textbox", { name: /Chat message input/ }).press("ControlOrMeta+Enter");
+      await sendChatMessage(page, "Show me the system");
 
       await expect(page.locator(".chat-message--assistant")).toContainText(
         "Navigated to BYOK Demo.",
@@ -207,10 +191,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
         },
       ]);
 
-      await page.getByRole("tab", { name: /Chat/ }).click();
-      const input = page.getByRole("textbox", { name: /Chat message input/ });
-      await input.fill("Add an Order service");
-      await input.press("ControlOrMeta+Enter");
+      const input = await sendChatMessage(page, "Add an Order service");
 
       const proposal = page.locator(".chat-patch-proposal");
       await expect(proposal).toContainText("Add a new service");
@@ -239,9 +220,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
         { kind: "text", text: "Applied." },
       ]);
 
-      await page.getByRole("tab", { name: /Chat/ }).click();
-      await page.getByRole("textbox", { name: /Chat message input/ }).fill("Add Order");
-      await page.getByRole("textbox", { name: /Chat message input/ }).press("ControlOrMeta+Enter");
+      await sendChatMessage(page, "Add Order");
 
       await page.locator(".chat-patch-proposal").getByRole("button", { name: /Apply/ }).click();
 
@@ -280,9 +259,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
         { kind: "text", text: "Acknowledged — leaving the file as-is." },
       ]);
 
-      await page.getByRole("tab", { name: /Chat/ }).click();
-      await page.getByRole("textbox", { name: /Chat message input/ }).fill("Add Order");
-      await page.getByRole("textbox", { name: /Chat message input/ }).press("ControlOrMeta+Enter");
+      await sendChatMessage(page, "Add Order");
 
       await page
         .locator(".chat-patch-proposal")
@@ -334,9 +311,7 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
         },
       ]);
 
-      await page.getByRole("tab", { name: /Chat/ }).click();
-      await page.getByRole("textbox", { name: /Chat message input/ }).fill("Add Order");
-      await page.getByRole("textbox", { name: /Chat message input/ }).press("ControlOrMeta+Enter");
+      await sendChatMessage(page, "Add Order");
 
       await expect(page.locator(".chat-patch-proposal")).toBeVisible();
 
@@ -350,42 +325,14 @@ test.describe("AT-0050 Chat UI Phase 2 — BYOK + AI", () => {
 
     // ── AC-13〜AC-15: error states ──────────────────────────────────────
 
-    const errorCases = [
-      {
-        ac: "AC-13",
-        status: 401 as const,
-        expectedText: /API key is invalid/,
-        expectedButton: /Open Settings/,
-        hiddenButton: /Retry/,
-      },
-      {
-        ac: "AC-14",
-        status: 429 as const,
-        expectedText: /Rate limit reached/,
-        expectedButton: /Retry/,
-        hiddenButton: /Open Settings/,
-      },
-      {
-        ac: "AC-15",
-        status: 500 as const,
-        expectedText: /Anthropic server error/,
-        expectedButton: /Retry/,
-        hiddenButton: /Open Settings/,
-      },
-    ];
-
-    for (const { ac, status, expectedText, expectedButton, hiddenButton } of errorCases) {
+    for (const { ac, status, expectedText, expectedButton, hiddenButton } of CHAT_ERROR_CASES) {
       test(`${ac}: ${status} surfaces the inline error with the matching action button`, async ({
         page,
         anthropic,
       }) => {
         anthropic.respondWithError({ status });
 
-        await page.getByRole("tab", { name: /Chat/ }).click();
-        await page.getByRole("textbox", { name: /Chat message input/ }).fill(`Trigger ${status}`);
-        await page
-          .getByRole("textbox", { name: /Chat message input/ })
-          .press("ControlOrMeta+Enter");
+        await sendChatMessage(page, `Trigger ${status}`);
 
         const errorMsg = page.locator(".chat-message--error");
         await expect(errorMsg).toContainText(expectedText);

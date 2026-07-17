@@ -97,6 +97,23 @@ system ECommerce {
     expect(backIdx).toBeGreaterThan(orderIdx);
   });
 
+  // #2044: SVG paints in document order, so the back button must be emitted
+  // AFTER innerContent — innerContent opens with the opaque level canvas <rect>,
+  // and a back button painted before it is buried (invisible & unclickable).
+  it("two-level: back button paints on top of the level canvas rect", () => {
+    const krsFile = Parser.parse(TWO_LEVEL).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+
+    const orderIdx = svg.indexOf('id="krs-system-OrderService"');
+    const nextLevelIdx = svg.indexOf('<g id="krs-system-', orderIdx + 1);
+    const region = svg.slice(orderIdx, nextLevelIdx === -1 ? undefined : nextLevelIdx);
+    const firstRectIdx = region.indexOf("<rect");
+    const backIdx = region.indexOf('<g class="krs-back-button"');
+    expect(firstRectIdx).toBeGreaterThanOrEqual(0);
+    // Back button comes after the canvas rect → last painter wins the hit test.
+    expect(backIdx).toBeGreaterThan(firstRectIdx);
+  });
+
   it("three-level: recursively generates all levels", () => {
     const krsFile = Parser.parse(THREE_LEVEL).value;
     const { svg } = buildDrillDownSvg(krsFile);
@@ -595,6 +612,19 @@ system EC {
     expect(segment).toContain('data-node-id="Order"');
   });
 
+  // #2044: the entity level's back button must paint after its canvas rect too.
+  it("entity view back button paints on top of the level canvas rect", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    const start = svg.indexOf(`id="${anchorId("entity", "Ordering")}"`);
+    const nextLevel = svg.indexOf('<g id="krs-', start + 1);
+    const region = svg.slice(start, nextLevel === -1 ? undefined : nextLevel);
+    const firstRectIdx = region.indexOf("<rect");
+    const backIdx = region.indexOf('<g class="krs-back-button"');
+    expect(firstRectIdx).toBeGreaterThanOrEqual(0);
+    expect(backIdx).toBeGreaterThan(firstRectIdx);
+  });
+
   it("emits an entity view for a domain nested below another domain (deep nesting)", () => {
     const krsFile = Parser.parse(`
 system EC {
@@ -827,6 +857,25 @@ describe("buildAllViewsSvg", () => {
     // Match krs-tab--system/deploy/org but not krs-tab-bar
     const matches = [...svg.matchAll(/class="krs-tab krs-tab--/g)];
     expect(matches.length).toBe(3);
+  });
+
+  // #2044: bundled drill level back button must paint after the canvas rect.
+  it("drill-down back button paints on top of the level canvas rect", () => {
+    const krsFile = Parser.parse(`
+system ECommerce {
+  service OrderService {
+    domain OrderDomain { usecase CreateOrder {} }
+  }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    const start = svg.indexOf('id="krs-system-OrderService"');
+    const nextLevel = svg.indexOf('<g id="krs-system-', start + 1);
+    const region = svg.slice(start, nextLevel === -1 ? undefined : nextLevel);
+    const firstRectIdx = region.indexOf("<rect");
+    const backIdx = region.indexOf('<g class="krs-back-button"');
+    expect(firstRectIdx).toBeGreaterThanOrEqual(0);
+    expect(backIdx).toBeGreaterThan(firstRectIdx);
   });
 
   // Issue #1790 — the multi-view root <svg> must carry a viewBox matching its

@@ -5,7 +5,7 @@ const BASE_URL = `http://localhost:${PORT}`;
 
 const webServerCommand = process.env.CI
   ? `pnpm --filter @karasu-tools/app exec vite build && pnpm --filter @karasu-tools/app exec vite preview --port ${PORT} --strictPort`
-  : `pnpm --filter @karasu-tools/app dev -- --port ${PORT} --strictPort`;
+  : `pnpm --filter @karasu-tools/app exec vite --port ${PORT} --strictPort`;
 
 export default defineConfig({
   testDir: "./tests",

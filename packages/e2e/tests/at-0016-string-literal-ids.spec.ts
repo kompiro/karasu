@@ -1,6 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
+import { expectNoWarningMatching } from "../fixtures/editor.js";
 
 /**
  * AT-0016: String literal IDs for logical and organization nodes.
@@ -64,16 +64,6 @@ deploy Production {
 }
 `;
 
-async function expectNoWarnings(page: Page) {
-  // Give the reactive pipeline a moment to settle then assert the panel
-  // is either absent or free of any listed warnings.
-  await page.waitForTimeout(500);
-  const panel = page.locator(".warning-panel");
-  if ((await panel.count()) > 0) {
-    await expect(panel.locator(".warning-item")).toHaveCount(0);
-  }
-}
-
 test.describe("AT-0016 String literal IDs", () => {
   test("logical nodes with hyphenated string literal IDs parse and render labels (AT-0016-1)", async ({
     page,
@@ -81,7 +71,7 @@ test.describe("AT-0016 String literal IDs", () => {
   }) => {
     await bootMemoryApp(page, opfs, LOGICAL_HYPHENATED_KRS);
 
-    await expectNoWarnings(page);
+    await expectNoWarningMatching(page);
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).toContainText("ECサイト");
@@ -95,7 +85,7 @@ test.describe("AT-0016 String literal IDs", () => {
   }) => {
     await bootMemoryApp(page, opfs, ORG_LITERAL_KRS);
 
-    await expectNoWarnings(page);
+    await expectNoWarningMatching(page);
   });
 
   test("deploy realizes with string literal cross-reference parses cleanly (AT-0016-3)", async ({
@@ -104,7 +94,7 @@ test.describe("AT-0016 String literal IDs", () => {
   }) => {
     await bootMemoryApp(page, opfs, DEPLOY_REALIZES_LITERAL_KRS);
 
-    await expectNoWarnings(page);
+    await expectNoWarningMatching(page);
 
     // The Deploy tab should be enabled since a deploy block exists.
     await expect(page.getByRole("tab", { name: "Deploy" })).toBeEnabled();
