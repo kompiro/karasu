@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { GALLERY_PAGES, resolveEntry, type Locale } from "./examples-manifest.ts";
+import { GALLERY_PAGES, resolveEntry } from "./examples-manifest.ts";
 import { renderDiagram } from "./render-examples.ts";
+import type { Locale } from "./site-map.ts";
 
 function entryOf(slug: string, locale: Locale): string {
   const page = GALLERY_PAGES.find((p) => p.slug === slug);

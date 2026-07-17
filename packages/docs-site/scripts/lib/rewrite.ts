@@ -7,7 +7,7 @@
 
 import path from "node:path";
 import { eachLine } from "./fences.ts";
-import { REPO_BRANCH, REPO_SLUG, routeOf, routeRelative } from "./site-map.ts";
+import { githubUrl, routeOf, routeRelative } from "./site-map.ts";
 
 interface RewriteContext {
   /** docs-relative path of the source document, e.g. "guide/05-communicating-diagrams.md" */
@@ -69,7 +69,7 @@ export function rewriteLinkTarget(raw: string, ctx: RewriteContext): string {
     }
     case "repo": {
       const kind = resolved.isDir ? "tree" : "blob";
-      return `https://github.com/${REPO_SLUG}/${kind}/${REPO_BRANCH}/${resolved.repoPath}${resolved.suffix}`;
+      return githubUrl(kind, resolved.repoPath) + resolved.suffix;
     }
   }
 }

@@ -4,6 +4,8 @@
 // (system / deploy / org) appear is auto-selected from the compiled result, so
 // empty views are never shown.
 
+import type { Locale } from "./site-map.ts";
+
 export interface LocalizedString {
   en: string;
   ja: string;
@@ -35,8 +37,6 @@ export interface GalleryPage {
   /** One diagram for single-example pages; many for the feature-samples page. */
   diagrams: GalleryDiagram[];
 }
-
-export type Locale = "en" | "ja";
 
 export function resolveEntry(entry: LocalizedEntry, locale: Locale): string {
   return typeof entry === "string" ? entry : entry[locale];

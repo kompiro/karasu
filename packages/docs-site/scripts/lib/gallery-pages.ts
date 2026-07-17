@@ -9,22 +9,18 @@ import {
   GROUP_LABELS,
   GROUP_ORDER,
   type GalleryPage,
-  type Locale,
   type LocalizedString,
   resolveGithubDir,
 } from "./examples-manifest.ts";
+import { frontmatter } from "./markdown.ts";
 import type { RenderedDiagram } from "./render-examples.ts";
-import { REPO_BRANCH, REPO_SLUG } from "./site-map.ts";
+import { APP_URL, githubUrl, type Locale } from "./site-map.ts";
 
 const VIEW_LABEL: Record<DiagramType, LocalizedString> = {
   system: { en: "System view", ja: "System ビュー" },
   deploy: { en: "Deploy view", ja: "Deploy ビュー" },
   org: { en: "Org view", ja: "Org ビュー" },
 };
-
-function yamlQuote(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
 
 function dataUri(svg: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -51,10 +47,8 @@ function sourceFence(source: string): string {
 function githubLink(page: GalleryPage, locale: Locale): string {
   const text = locale === "ja" ? "GitHub でソースを見る" : "View the source on GitHub";
   const dir = resolveGithubDir(page, locale);
-  return `[${text}](https://github.com/${REPO_SLUG}/tree/${REPO_BRANCH}/${dir})`;
+  return `[${text}](${githubUrl("tree", dir)})`;
 }
-
-const APP_URL = "https://karasu.kompiro.dev";
 
 /** "Open in the app" deep-link, only when this example is openable in this locale (#1646). */
 function openInAppLink(page: GalleryPage, locale: Locale): string | null {
@@ -69,7 +63,7 @@ export function examplePageMarkdown(
   rendered: readonly RenderedDiagram[],
   locale: Locale,
 ): string {
-  const out = [`---\ntitle: ${yamlQuote(page.title[locale])}\n---\n`, page.blurb[locale], ""];
+  const out = [page.blurb[locale], ""];
   const openLink = openInAppLink(page, locale);
   out.push([githubLink(page, locale), openLink].filter(Boolean).join(" · "), "");
 
@@ -84,7 +78,7 @@ export function examplePageMarkdown(
       out.push(sourceFence(rendered[i].source), "");
     });
   }
-  return `${out.join("\n")}\n`;
+  return `${frontmatter(page.title[locale])}${out.join("\n")}\n`;
 }
 
 /** Markdown for the gallery index, grouped like examples/README.md. */
@@ -101,5 +95,5 @@ export function indexPageMarkdown(locale: Locale): string {
     return `## ${GROUP_LABELS[group][locale]}\n\n${items}`;
   }).join("\n\n");
 
-  return `---\ntitle: ${yamlQuote("Examples")}\n---\n\n${intro}\n\n${groups}\n`;
+  return `${frontmatter("Examples")}${intro}\n\n${groups}\n`;
 }
