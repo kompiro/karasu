@@ -241,7 +241,11 @@ Examples:
         );
         process.exit(1);
       }
-      translate(file, {
+      // Return the promise so `parseAsync` awaits it and a failed async
+      // write (e.g. --output to an unwritable path) rejects into the
+      // formatted `Error: ...` handler below instead of becoming an
+      // unhandled rejection.
+      return translate(file, {
         from: options.from,
         map: options.map,
         output: options.output,

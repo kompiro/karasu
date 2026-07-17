@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, resolve } from "node:path";
 import { translateInfraConfig, type TranslateFormat } from "@karasu-tools/core";
+import { writeOutput } from "../output.js";
 
 // Re-exported for the CLI command layer (`cli/src/index.ts`) and tests, which
 // validate `--system` before invoking translate. The implementations live in
@@ -61,9 +62,5 @@ export async function translate(inputFile: string, options: TranslateOptions): P
     process.stderr.write(`Warning: ${warning}\n`);
   }
 
-  if (options.output) {
-    writeFileSync(resolve(options.output), result.krs, "utf-8");
-  } else {
-    process.stdout.write(result.krs);
-  }
+  await writeOutput(result.krs, options.output);
 }

@@ -9,7 +9,8 @@ import {
 } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
 import { formatDiagnostic, formatWarning } from "./i18n.js";
-import { NodeFileSystemProvider } from "./render.js";
+import { NodeFileSystemProvider } from "./node-fs.js";
+import { writeOutput } from "./output.js";
 
 interface DiffOptions {
   output?: string;
@@ -97,11 +98,7 @@ export async function diff(
       process.exit(1);
     }
 
-    if (options.output) {
-      await writeFile(resolve(options.output), result.svg, "utf-8");
-    } else {
-      process.stdout.write(result.svg);
-    }
+    await writeOutput(result.svg, options.output);
   } finally {
     if (stdinTempDir) {
       await rm(stdinTempDir, { recursive: true, force: true });

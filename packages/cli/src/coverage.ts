@@ -1,8 +1,8 @@
-import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { compileProject, extractCoverage, type CoverageReport } from "@karasu-tools/core";
 import { NodeFileSystemProvider } from "./node-fs.js";
 import { formatDiagnostic } from "./i18n.js";
+import { writeOutput } from "./output.js";
 
 type CoverageFormat = "md" | "json";
 
@@ -70,9 +70,5 @@ export async function coverage(filePath: string, options: CoverageCliOptions): P
   const output =
     format === "json" ? JSON.stringify(report, null, 2) + "\n" : formatAsMarkdown(report);
 
-  if (options.output) {
-    await writeFile(resolve(options.output), output, "utf-8");
-  } else {
-    process.stdout.write(output);
-  }
+  await writeOutput(output, options.output);
 }
