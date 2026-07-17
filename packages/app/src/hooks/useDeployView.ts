@@ -13,7 +13,11 @@ import {
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
-import { useDebouncedCompile, type CompileOutcome } from "./useDebouncedCompile.js";
+import {
+  useDebouncedCompile,
+  resolveBaseAndDiff,
+  type CompileOutcome,
+} from "./useDebouncedCompile.js";
 
 interface DeployViewState {
   svg: string;
@@ -54,31 +58,21 @@ export function useDeployView(
       theme,
     });
 
-    let base: Awaited<typeof basePromise>;
-    let svg: string;
-    let diagnostics: Diagnostic[];
-    if (compareEntryPath) {
-      const [b, diff] = await Promise.all([
-        basePromise,
-        compileDeployDiff({
-          beforeEntryPath: compareEntryPath,
-          afterEntryPath: entryPath,
-          fs: compareFs ?? fs,
-          selectedDeployId: selectedDeployBlockId ?? undefined,
-          displayMode,
-          emptyStateLabels,
-          annotationBadgeLabels,
-          theme,
-        }),
-      ]);
-      base = b;
-      svg = diff.svg;
-      diagnostics = diff.diagnostics;
-    } else {
-      base = await basePromise;
-      svg = base.svg;
-      diagnostics = base.diagnostics;
-    }
+    const { base, svg, diagnostics } = await resolveBaseAndDiff(
+      basePromise,
+      compareEntryPath
+        ? compileDeployDiff({
+            beforeEntryPath: compareEntryPath,
+            afterEntryPath: entryPath,
+            fs: compareFs ?? fs,
+            selectedDeployId: selectedDeployBlockId ?? undefined,
+            displayMode,
+            emptyStateLabels,
+            annotationBadgeLabels,
+            theme,
+          })
+        : null,
+    );
     if (base.diagramType !== "deploy") return null;
     const deployBase = base;
 
