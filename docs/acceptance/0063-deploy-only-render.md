@@ -78,6 +78,8 @@ deploy Production {
 
 ## 自動化範囲
 
-- `packages/app/src/hooks/useAutoSwitchToDeploy.test.ts` が Hook の分岐を網羅する。
+- `packages/app/src/hooks/useAutoSwitchView.test.ts` が Hook の分岐
+  （`useAutoSwitchView` の機構と `shouldAutoSwitchToDeploy` 述語）を網羅する
+  （旧 `useAutoSwitchToDeploy.test.ts`、#2015 で統合）。
 - deploy-only ファイルのコア側レンダリングは既存の `packages/core/src/renderer/deploy-renderer.test.ts` で担保される。
 - ユーザーが実際にタブ切替を視認する部分のみ手動検証とする。

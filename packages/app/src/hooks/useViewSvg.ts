@@ -8,10 +8,22 @@ import {
   renderEntityView,
   type DisplayMode,
   type DiagramTheme,
-  type Diagnostic,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
+
+/**
+ * Run an export builder, mapping any parse/render failure to `undefined` —
+ * the shared "best effort" contract of every memo in this hook: a broken
+ * source simply yields no exported SVG.
+ */
+function safeBuild<T>(fn: () => T): T | undefined {
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
 
 export function useViewSvg(
   fileContent: string | undefined,
@@ -28,10 +40,11 @@ export function useViewSvg(
   // Newline-joined so it can't collide across segment boundaries (node ids
   // never contain newlines): ["a","bc"] and ["ab","c"] map to distinct keys.
   const viewPathKey = (viewPath ?? []).join("\n");
+
   const drillDownResult = useMemo(() => {
     if (!fileContent) return undefined;
-    try {
-      return buildDrillDownSvg(
+    return safeBuild(() =>
+      buildDrillDownSvg(
         fileContent,
         styleSource,
         displayMode,
@@ -39,16 +52,14 @@ export function useViewSvg(
         theme,
         badgeLabels,
         groupBy,
-      );
-    } catch {
-      return undefined;
-    }
+      ),
+    );
   }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
 
   const allLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
-    try {
-      return buildAllLayersSvg(
+    return safeBuild(() =>
+      buildAllLayersSvg(
         fileContent,
         styleSource,
         displayMode,
@@ -56,48 +67,43 @@ export function useViewSvg(
         theme,
         badgeLabels,
         groupBy,
-      );
-    } catch {
-      return undefined;
-    }
+      ),
+    );
   }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
 
+  // Org builders take no `groupBy` — grouping is a system-view concept.
   const orgAllLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
-    try {
-      return buildAllLayersSvgOrg(
+    return safeBuild(() =>
+      buildAllLayersSvgOrg(
         fileContent,
         styleSource,
         displayMode,
         emptyStateLabels,
         theme,
         badgeLabels,
-      );
-    } catch {
-      return undefined;
-    }
+      ),
+    );
   }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
 
   const orgDrillDownResult = useMemo(() => {
     if (!fileContent) return undefined;
-    try {
-      return buildDrillDownSvgOrg(
+    return safeBuild(() =>
+      buildDrillDownSvgOrg(
         fileContent,
         styleSource,
         displayMode,
         emptyStateLabels,
         theme,
         badgeLabels,
-      );
-    } catch {
-      return undefined;
-    }
+      ),
+    );
   }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
 
   const allViewsResult = useMemo(() => {
     if (!fileContent) return undefined;
-    try {
-      return buildAllViewsSvg(
+    return safeBuild(() =>
+      buildAllViewsSvg(
         fileContent,
         styleSource,
         displayMode,
@@ -105,10 +111,8 @@ export function useViewSvg(
         theme,
         badgeLabels,
         groupBy,
-      );
-    } catch {
-      return undefined;
-    }
+      ),
+    );
   }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
 
   // The live, single-level entity view of the drilled domain. Scoped to the
@@ -119,8 +123,8 @@ export function useViewSvg(
   // usecase/entity toggle to domains that actually have an entity view.
   const entityViewResult = useMemo(() => {
     if (!fileContent || (viewPath ?? []).length === 0) return undefined;
-    try {
-      return renderEntityView(
+    return safeBuild(() =>
+      renderEntityView(
         fileContent,
         viewPath ?? [],
         styleSource,
@@ -128,16 +132,10 @@ export function useViewSvg(
         emptyStateLabels,
         theme,
         badgeLabels,
-      );
-    } catch {
-      return undefined;
-    }
+      ),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewPathKey stands in for the viewPath array identity
   }, [fileContent, viewPathKey, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
-
-  // All functions parse the same styleSource, so diagnostics are identical.
-  // Take from the first available result to avoid duplication.
-  const styleDiagnostics: Diagnostic[] = drillDownResult?.diagnostics ?? [];
 
   return {
     drillDownSvg: drillDownResult?.svg,
@@ -150,6 +148,5 @@ export function useViewSvg(
     // entities (not the empty-diagram placeholder). Gates the usecase/entity
     // toggle without scanning the rendered SVG text.
     hasEntityView: entityViewResult?.hasContent ?? false,
-    styleDiagnostics,
   };
 }

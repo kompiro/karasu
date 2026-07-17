@@ -63,7 +63,7 @@ test.describe("AT-0044 Org Tree View", () => {
     await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
 
-    // ORG_KRS has no system block, so `useAutoSwitchToOrg` (#817) fires and
+    // ORG_KRS has no system block, so the org auto-switch (`useAutoSwitchView`, #817) fires and
     // lands the user on the Org tab automatically. Explicitly navigate back
     // to System to verify the toggle is not rendered there.
     await page.getByRole("tab", { name: "System" }).click();

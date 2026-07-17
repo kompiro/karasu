@@ -1,3 +1,5 @@
+import { triggerBlobDownload } from "./trigger-download.js";
+
 /**
  * Strip the interactive category controls (⊖ buttons + hover frames, the
  * `krs-category-controls` group) from a live-preview SVG before it leaves the
@@ -20,14 +22,5 @@ export function stripInteractiveChrome(svg: string): string {
 }
 
 export function downloadSvg(svg: string, filename: string): void {
-  const blob = new Blob([stripInteractiveChrome(svg)], { type: "image/svg+xml" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  // Defer revocation to allow the browser to initiate the download first
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  triggerBlobDownload(stripInteractiveChrome(svg), "image/svg+xml", filename);
 }

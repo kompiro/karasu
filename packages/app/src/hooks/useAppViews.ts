@@ -20,8 +20,11 @@ import { useSystemView } from "./useSystemView.js";
 import { useDeployView } from "./useDeployView.js";
 import { useOrgView } from "./useOrgView.js";
 import { useHistoryNavigation } from "./useHistoryNavigation.js";
-import { useAutoSwitchToDeploy } from "./useAutoSwitchToDeploy.js";
-import { useAutoSwitchToOrg } from "./useAutoSwitchToOrg.js";
+import {
+  useAutoSwitchView,
+  shouldAutoSwitchToDeploy,
+  shouldAutoSwitchToOrg,
+} from "./useAutoSwitchView.js";
 import { useResolvedCompareSource } from "./useResolvedCompareSource.js";
 import type { CompareSource } from "../fs/compare-source.js";
 import type { SnapshotManager } from "../fs/snapshot-manager.js";
@@ -315,26 +318,31 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     recompileOrg();
   }, [recompileSystem, recompileDeploy, recompileOrg]);
 
-  // Priority `system > deploy > org` is encoded via the predicates each hook
-  // checks (org yields when hasDeployDiagram), not via call order. Reordering
-  // these two would not change behavior.
-  useAutoSwitchToDeploy({
+  // Priority `system > deploy > org` is encoded via the `shouldSwitch`
+  // predicates (org yields when hasDeployDiagram), not via call order.
+  // Reordering these two would not change behavior. The predicate expressions
+  // live next to the hook (exported, unit-tested) so they cannot silently
+  // drift here.
+  const hasSystem = resolvedSystems.length > 0;
+
+  // Deploy-only file → switch to "deploy" (Issue #766).
+  useAutoSwitchView({
     entryPath: effEntryPath,
     activeView,
-    hasDeployDiagram,
-    hasSystem: resolvedSystems.length > 0,
+    target: "deploy",
+    shouldSwitch: shouldAutoSwitchToDeploy({ hasDeployDiagram, hasSystem }),
     dispatch,
   });
 
-  useAutoSwitchToOrg({
+  // Org-only file → switch to "org" (Issue #817). `hasOrgDiagram` is read
+  // from systemCompile (same source of truth as `hasSystem` and
+  // `hasDeployDiagram`) to avoid the race where orgCompile lags behind
+  // an editor edit and reports a stale `hasOrg=true` (Issue #923).
+  useAutoSwitchView({
     entryPath: effEntryPath,
     activeView,
-    // Read from systemCompile (same source of truth as `hasSystem` and
-    // `hasDeployDiagram`) to avoid the race where orgCompile lags behind
-    // an editor edit and reports a stale `hasOrg=true` (Issue #923).
-    hasOrg: hasOrgDiagram,
-    hasSystem: resolvedSystems.length > 0,
-    hasDeployDiagram,
+    target: "org",
+    shouldSwitch: shouldAutoSwitchToOrg({ hasOrg: hasOrgDiagram, hasSystem, hasDeployDiagram }),
     dispatch,
   });
 
