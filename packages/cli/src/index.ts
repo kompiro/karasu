@@ -2,7 +2,11 @@
 import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
-import { translate, SYSTEM_NAME_PATTERN } from "./translate/index.js";
+import { translate } from "./translate/index.js";
+import {
+  resolveTranslateCliOptions,
+  type RawTranslateCliOptions,
+} from "./translate/cli-options.js";
 import { apply } from "./apply.js";
 import { append } from "./append.js";
 import { remove } from "./remove.js";
@@ -167,102 +171,22 @@ Examples:
   # Extract a Cloudflare Workers app's physical layer from wrangler.toml
   $ karasu translate --from wrangler wrangler.toml > index.krs`,
   )
-  .action(
-    (
-      file: string,
-      options: {
-        from: string;
-        map?: string;
-        output?: string;
-        service?: string;
-        database?: string;
-        granularity?: string;
-        emitBindings?: boolean;
-        emitCrudDecoration?: boolean;
-        system?: string;
-      },
-    ) => {
-      if (
-        options.from !== "compose" &&
-        options.from !== "k8s" &&
-        options.from !== "openapi" &&
-        options.from !== "db" &&
-        options.from !== "wrangler"
-      ) {
-        process.stderr.write(
-          `Error: --from must be "compose", "k8s", "openapi", "db", or "wrangler"\n`,
-        );
-        process.exit(1);
-      }
-      let granularity: "resource" | "operation" | "aggregate" | "table" | undefined;
-      if (options.granularity === undefined) {
-        granularity = undefined;
-      } else if (options.from === "openapi") {
-        if (options.granularity === "resource" || options.granularity === "operation") {
-          granularity = options.granularity;
-        } else {
-          process.stderr.write(
-            `Error: --granularity for --from openapi must be "resource" or "operation"\n`,
-          );
-          process.exit(1);
-        }
-      } else if (options.from === "db") {
-        if (options.granularity === "aggregate" || options.granularity === "table") {
-          granularity = options.granularity;
-        } else {
-          process.stderr.write(
-            `Error: --granularity for --from db must be "aggregate" or "table"\n`,
-          );
-          process.exit(1);
-        }
-      } else {
-        process.stderr.write(
-          `Error: --granularity is only valid with --from openapi or --from db\n`,
-        );
-        process.exit(1);
-      }
-      let emitBindings = options.emitBindings ?? false;
-      let emitCrudDecoration = options.emitCrudDecoration ?? false;
-      if (emitCrudDecoration) emitBindings = true;
-      if (emitBindings || emitCrudDecoration) {
-        if (options.from !== "openapi" && options.from !== "db") {
-          process.stderr.write(
-            `Warning: --emit-bindings / --emit-crud-decoration are only supported with --from openapi or --from db; ignoring.\n`,
-          );
-          emitBindings = false;
-          emitCrudDecoration = false;
-        } else if (granularity === "operation" || granularity === "table") {
-          process.stderr.write(
-            `Warning: --emit-bindings / --emit-crud-decoration are ignored with --granularity ${granularity}.\n`,
-          );
-          emitBindings = false;
-          emitCrudDecoration = false;
-        }
-      }
-      const system: string | undefined = options.system;
-      if (system !== undefined && !SYSTEM_NAME_PATTERN.test(system)) {
-        process.stderr.write(
-          `Error: --system value "${system}" is not a valid identifier (expected [A-Za-z_][A-Za-z0-9_]*)\n`,
-        );
-        process.exit(1);
-      }
-      // Return the promise so `parseAsync` awaits it and a failed async
-      // write (e.g. --output to an unwritable path) rejects into the
-      // formatted `Error: ...` handler below instead of becoming an
-      // unhandled rejection.
-      return translate(file, {
-        from: options.from,
-        map: options.map,
-        output: options.output,
-        service: options.service,
-        database: options.database,
-        granularity,
-        emitBindings,
-        emitCrudDecoration,
-        system,
-      });
-    },
-  );
+  .action((file: string, options: RawTranslateCliOptions) => {
+    const resolved = resolveTranslateCliOptions(options);
+    for (const warning of resolved.warnings) {
+      process.stderr.write(warning);
+    }
+    if (!resolved.ok) {
+      process.stderr.write(resolved.message);
+      process.exit(1);
+      return;
+    }
+    // Return the promise so `parseAsync` awaits it and a failed async
+    // write (e.g. --output to an unwritable path) rejects into the
+    // formatted `Error: ...` handler below instead of becoming an
+    // unhandled rejection.
+    return translate(file, resolved.options);
+  });
 
 program
   .command("append <file>")

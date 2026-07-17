@@ -50,7 +50,11 @@ import artifactSvg from "@karasu-tools/core/icons/artifact.svg?raw";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
-import { useDebouncedCompile, type CompileOutcome } from "./useDebouncedCompile.js";
+import {
+  useDebouncedCompile,
+  resolveBaseAndDiff,
+  type CompileOutcome,
+} from "./useDebouncedCompile.js";
 
 interface SystemViewState {
   svg: string;
@@ -277,40 +281,29 @@ export function useSystemView(
       interactive: true,
     });
 
-    let base: Awaited<typeof basePromise>;
-    let svg: string;
-    let diagnostics: Diagnostic[];
-    let nodeDiff: Map<string, NodeDiffMeta> | undefined;
-    if (compareEntryPath) {
-      const [b, diff] = await Promise.all([
-        basePromise,
-        compileSystemDiff({
-          beforeEntryPath: compareEntryPath,
-          afterEntryPath: entryPath,
-          fs: compareFs ?? fs,
-          viewPath,
-          displayMode,
-          emptyStateLabels,
-          annotationBadgeLabels,
-          theme,
-          collapsedCategories,
-          groupBy: groupBy === "none" ? undefined : groupBy,
-          collapsedGroups: groupBy !== "none" ? collapsedGroups : undefined,
-          expandedContainers: groupBy !== "none" ? undefined : expandedContainers,
-          interactive: true,
-        }),
-      ]);
-      base = b;
-      svg = diff.svg;
-      diagnostics = diff.diagnostics;
-      nodeDiff = diff.nodeDiff;
-    } else {
-      base = await basePromise;
-      svg = base.svg;
-      diagnostics = base.diagnostics;
-    }
+    const { base, svg, diagnostics, diff } = await resolveBaseAndDiff(
+      basePromise,
+      compareEntryPath
+        ? compileSystemDiff({
+            beforeEntryPath: compareEntryPath,
+            afterEntryPath: entryPath,
+            fs: compareFs ?? fs,
+            viewPath,
+            displayMode,
+            emptyStateLabels,
+            annotationBadgeLabels,
+            theme,
+            collapsedCategories,
+            groupBy: groupBy === "none" ? undefined : groupBy,
+            collapsedGroups: groupBy !== "none" ? collapsedGroups : undefined,
+            expandedContainers: groupBy !== "none" ? undefined : expandedContainers,
+            interactive: true,
+          })
+        : null,
+    );
     if (base.diagramType !== "system") return null;
     const sysBase = base;
+    const nodeDiff: Map<string, NodeDiffMeta> | undefined = diff?.nodeDiff;
 
     const toState = (s: string): SystemViewState => ({
       svg: s,

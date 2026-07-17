@@ -132,6 +132,59 @@ service StandaloneAuth {
 }
 `;
 
+// Exercises the org + deploy traversal drift documented on
+// `visitNamedEntities`'s call sites in position-resolver.ts (issue #2017
+// point 5): `collectNodes` excludes the organization block's own id while
+// `collectAllIdentifiers` includes it, and `getNodeDescription` resolves
+// org/team/member descriptions but never looks at deploy blocks/nodes.
+const KRS_WITH_ORG_AND_DEPLOY = `\
+organization TechCorp {
+  description "Tech company org"
+  team "ec-team" {
+    description "EC team"
+    member alice {
+      description "Alice bio"
+    }
+  }
+}
+
+deploy Production {
+  oci "api" {
+    runtime "Node.js 20"
+  }
+}
+`;
+
+// Duplicate id where the FIRST occurrence has no description and a LATER one
+// does. The original recursive walkers used continue-on-null semantics, so
+// they returned the later definition's description; a naive "return at first
+// match" refactor would regress this to null (hover shows nothing). See
+// issue #2017 point 5.
+const KRS_DUPLICATE_ID = `\
+system Root {
+  service Repeated {}
+  service Repeated {
+    description "second definition"
+  }
+}
+`;
+
+describe("collectNodes / collectAllIdentifiers org+deploy asymmetry (issue #2017 point 5)", () => {
+  // Full ordered lists (not just membership): the fence must fail if a future
+  // reorder of visitNamedEntities changes the byte-identical walk order.
+  it("collectNodes emits deploy entities then org teams/members in order, omitting the org block's own id", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    const ids = collectNodes(file).map((n) => n.id);
+    expect(ids).toEqual(["Production", "api", "ec-team", "alice"]);
+  });
+
+  it("collectAllIdentifiers emits the same order plus the org block's own id", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    const ids = collectAllIdentifiers(file);
+    expect(ids).toEqual(["Production", "api", "TechCorp", "ec-team", "alice"]);
+  });
+});
+
 describe("collectAllIdentifiers", () => {
   it("collects all IDs from a system hierarchy", () => {
     const file = parse(KRS_SOURCE);
@@ -173,6 +226,28 @@ describe("getNodeDescription", () => {
   it("returns null for an unknown node ID", () => {
     const file = parse(KRS_SOURCE);
     expect(getNodeDescription(file, "NonExistent")).toBeNull();
+  });
+
+  it("resolves descriptions for organization/team/member entities (issue #2017 point 5)", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    expect(getNodeDescription(file, "TechCorp")).toBe("Tech company org");
+    expect(getNodeDescription(file, "ec-team")).toBe("EC team");
+    expect(getNodeDescription(file, "alice")).toBe("Alice bio");
+  });
+
+  it("never resolves a description for deploy block/node ids, even though collectNodes covers them (issue #2017 point 5)", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    expect(getNodeDescription(file, "Production")).toBeNull();
+    expect(getNodeDescription(file, "api")).toBeNull();
+  });
+
+  it("returns a LATER duplicate-id definition's description when the first has none (continue-on-null; issue #2017 point 5)", () => {
+    const file = parse(KRS_DUPLICATE_ID);
+    // Both `service Repeated` blocks are parsed as siblings; the first has no
+    // description, the second does. The original walkers skipped the null
+    // first match and returned the second — a naive first-match refactor
+    // would return null here.
+    expect(getNodeDescription(file, "Repeated")).toBe("second definition");
   });
 });
 

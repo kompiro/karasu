@@ -36,6 +36,54 @@ export interface CompileOutcome<TState> {
   getDiagnostics: (state: TState) => readonly Diagnostic[];
 }
 
+/**
+ * Result of {@link resolveBaseAndDiff}: the base compile result plus the
+ * rendered `svg` / `diagnostics` to publish (the diff's, in diff mode; the
+ * base's, otherwise), and the diff result itself when diff mode is active.
+ */
+interface BaseAndDiffResult<TBase, TDiff> {
+  /**
+   * The un-diffed `compileProject` result. Metadata fields (nodeMetadata,
+   * systems, deployBlocks, organizations, …) always come from here, in both
+   * modes — the diff never supplies them.
+   */
+  base: TBase;
+  /** Rendered SVG: the diff's in diff mode, the base's otherwise. */
+  svg: string;
+  /** Diagnostics: the diff's in diff mode, the base's otherwise. */
+  diagnostics: Diagnostic[];
+  /** The diff compile result. Present only when `diffPromise` was non-null. */
+  diff?: TDiff;
+}
+
+/**
+ * Shared base+diff compile dance used by the diagram view hooks
+ * (`useSystemView` / `useOrgView` / `useDeployView`, #2015 point 6): run the
+ * base `compileProject` call, and — in diff mode — run it in parallel with
+ * the diff compile via `Promise.all`. The base always supplies the metadata;
+ * the diff (when present) replaces only `svg` + `diagnostics`.
+ *
+ * `diffPromise` must be `null` outside diff mode, not a promise that resolves
+ * to `null` — pass `compareEntryPath ? compileXDiff({...}) : null` so the
+ * diff compile is only ever invoked when actually needed (matches the prior
+ * per-hook `if (compareEntryPath) { ... } else { ... }` control flow, and its
+ * `Promise.all` timing, exactly).
+ */
+export async function resolveBaseAndDiff<
+  TBase extends { svg: string; diagnostics: Diagnostic[] },
+  TDiff extends { svg: string; diagnostics: Diagnostic[] },
+>(
+  basePromise: Promise<TBase>,
+  diffPromise: Promise<TDiff> | null,
+): Promise<BaseAndDiffResult<TBase, TDiff>> {
+  if (diffPromise) {
+    const [base, diff] = await Promise.all([basePromise, diffPromise]);
+    return { base, svg: diff.svg, diagnostics: diff.diagnostics, diff };
+  }
+  const base = await basePromise;
+  return { base, svg: base.svg, diagnostics: base.diagnostics };
+}
+
 interface DebouncedCompileArgs<TState> {
   /** Whether a compile should run (e.g. entryPath and fs are both set). */
   active: boolean;

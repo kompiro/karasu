@@ -15,7 +15,11 @@ import {
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
-import { useDebouncedCompile, type CompileOutcome } from "./useDebouncedCompile.js";
+import {
+  useDebouncedCompile,
+  resolveBaseAndDiff,
+  type CompileOutcome,
+} from "./useDebouncedCompile.js";
 import { useCollapsibleSet } from "./useCollapsibleSet.js";
 
 interface OrgViewState {
@@ -68,31 +72,21 @@ export function useOrgView(
 
     // Diff-mode replaces only the SVG and diagnostics; the org metadata
     // (organizations / nodePathIndex / styles / warnings) comes from the base.
-    let base: Awaited<typeof basePromise>;
-    let svg: string;
-    let diagnostics: Diagnostic[];
-    if (compareEntryPath) {
-      const [b, diff] = await Promise.all([
-        basePromise,
-        compileOrgDiff({
-          beforeEntryPath: compareEntryPath,
-          afterEntryPath: entryPath,
-          fs: compareFs ?? fs,
-          viewPath,
-          displayMode,
-          emptyStateLabels,
-          annotationBadgeLabels,
-          theme,
-        }),
-      ]);
-      base = b;
-      svg = diff.svg;
-      diagnostics = diff.diagnostics;
-    } else {
-      base = await basePromise;
-      svg = base.svg;
-      diagnostics = base.diagnostics;
-    }
+    const { base, svg, diagnostics } = await resolveBaseAndDiff(
+      basePromise,
+      compareEntryPath
+        ? compileOrgDiff({
+            beforeEntryPath: compareEntryPath,
+            afterEntryPath: entryPath,
+            fs: compareFs ?? fs,
+            viewPath,
+            displayMode,
+            emptyStateLabels,
+            annotationBadgeLabels,
+            theme,
+          })
+        : null,
+    );
     if (base.diagramType !== "org") return null;
     const orgBase = base;
 
