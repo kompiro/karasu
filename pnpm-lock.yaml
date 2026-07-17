@@ -299,6 +299,9 @@ importers:
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
+      '@karasu-tools/lsp':
+        specifier: workspace:*
+        version: link:../lsp
       marked:
         specifier: ^18.0.2
         version: 18.0.2
