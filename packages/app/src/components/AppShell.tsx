@@ -9,6 +9,7 @@ import {
 } from "react";
 import { synthesizeSharePayload } from "@karasu-tools/core";
 import { useEditorWidth } from "../hooks/useEditorWidth.js";
+import { useLatestRef } from "../hooks/useLatestRef.js";
 import type { SharePayload } from "../utils/inline-share.js";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
@@ -268,8 +269,7 @@ export function AppShell({
   // `hasKrsSource` only flips on the empty↔non-empty boundary, so neither
   // re-renders the preview on every keystroke. Falls back to the live single
   // file if synthesis fails (e.g. a transient parse error).
-  const fileContentRef = useRef(fileContent);
-  fileContentRef.current = fileContent;
+  const fileContentRef = useLatestRef(fileContent);
   const getShareBundle = useCallback(async (): Promise<SharePayload> => {
     if (entryPath) {
       try {
@@ -284,7 +284,9 @@ export function AppShell({
       }
     }
     return { krs: fileContentRef.current };
-  }, [entryPath, fs]);
+    // `fileContentRef` is a stable ref object (only `.current` is read here),
+    // so listing it satisfies exhaustive-deps without changing memoization.
+  }, [entryPath, fs, fileContentRef]);
   const hasKrsSource = fileContent.trim() !== "";
 
   const previewContextValue = usePreviewContextValue({

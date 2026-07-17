@@ -3,6 +3,7 @@ import { anchorId } from "@karasu-tools/core";
 import type { Dispatch } from "react";
 import type { ShareTarget } from "@karasu-tools/core";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
+import { useLatestRef } from "./useLatestRef.js";
 
 // ─── Utilities (exported for testing) ────────────────────────────────────────
 
@@ -249,16 +250,13 @@ export function useHistoryNavigation({
   navigateViewPath: (path: string[]) => void;
 } {
   // Tracks the current activeView without causing stale closures in effects
-  const activeViewRef = useRef(activeView);
-  activeViewRef.current = activeView;
+  const activeViewRef = useLatestRef(activeView);
 
   // Stable ref for setIsOrgTreeView to avoid re-running mount-only effects
-  const setIsOrgTreeViewRef = useRef(setIsOrgTreeView);
-  setIsOrgTreeViewRef.current = setIsOrgTreeView;
+  const setIsOrgTreeViewRef = useLatestRef(setIsOrgTreeView);
 
   // Stable ref for setIsEntityView (same rationale as setIsOrgTreeView).
-  const setIsEntityViewRef = useRef(setIsEntityView);
-  setIsEntityViewRef.current = setIsEntityView;
+  const setIsEntityViewRef = useLatestRef(setIsEntityView);
 
   // When true, state changes are caused by popstate — skip pushing another history entry
   const isProgrammaticNavRef = useRef(false);
@@ -275,12 +273,10 @@ export function useHistoryNavigation({
   const pendingHighlightRef = useRef<string | null>(null);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
-  const onFileChangeRef = useRef(onFileChange);
-  onFileChangeRef.current = onFileChange;
+  const onFileChangeRef = useLatestRef(onFileChange);
 
   // Tracks the latest currentFilePath without re-binding the popstate listener.
-  const currentFilePathRef = useRef(currentFilePath);
-  currentFilePathRef.current = currentFilePath;
+  const currentFilePathRef = useLatestRef(currentFilePath);
 
   // Tracks the *previous* currentFilePath so effect ③ can distinguish
   // user-initiated file switches (push) from project-switch initialization
@@ -463,7 +459,19 @@ export function useHistoryNavigation({
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [dispatch, nodePathIndex, orgPathIndex]);
+    // The `*Ref` deps are stable ref objects (their `.current` is read inside
+    // the listener, not captured), so listing them satisfies exhaustive-deps
+    // without changing when this effect re-registers.
+  }, [
+    dispatch,
+    nodePathIndex,
+    orgPathIndex,
+    activeViewRef,
+    currentFilePathRef,
+    onFileChangeRef,
+    setIsOrgTreeViewRef,
+    setIsEntityViewRef,
+  ]);
 
   // ─── Public API ─────────────────────────────────────────────────────────────
   // Hash updates are handled by effect ③ watching state changes.

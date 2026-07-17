@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type DependencyList } from "react";
 import type { Diagnostic } from "@karasu-tools/core";
+import { useLatestRef } from "./useLatestRef.js";
 
 const DEBOUNCE_MS = 300;
 
@@ -103,12 +104,9 @@ export function useDebouncedCompile<TState>(
   const recompileCounter = useRef(0);
 
   // Latest closures, read inside the debounced callback.
-  const compileRef = useRef(compile);
-  compileRef.current = compile;
-  const currentKeyRef = useRef(currentKey);
-  currentKeyRef.current = currentKey;
-  const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
+  const compileRef = useLatestRef(compile);
+  const currentKeyRef = useLatestRef(currentKey);
+  const onErrorRef = useLatestRef(onError);
 
   const recompile = useCallback(() => {
     recompileCounter.current++;
