@@ -9,7 +9,10 @@
 import type { Diagnostic } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { FileSystemProvider } from "../fs/types.js";
-import { assignEdgeCanonicalIds, validateProjectEdgeIdUniqueness } from "../resolver/canonical-id.js";
+import {
+  assignEdgeCanonicalIds,
+  validateProjectEdgeIdUniqueness,
+} from "../resolver/canonical-id.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { render } from "../renderer/svg-renderer.js";
 import type { CategoryId } from "../renderer/category-collapse.js";

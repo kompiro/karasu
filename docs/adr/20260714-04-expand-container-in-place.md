@@ -16,7 +16,7 @@ assumptions:
   - "symbol: packages/core/src/renderer/svg-renderer.ts :: renderExpandControls"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: resolveGroupBoxes"
   - "symbol: packages/app/src/hooks/useCollapsibleSet.ts :: useCollapsibleSet"
-  - "grep: packages/core/src/index.ts :: expandedContainers"
+  - "grep: packages/core/src/compile/compile.ts :: expandedContainers"
 ---
 
 # ADR-20260714-04: system view のコンテナをその場で展開する（in-place expansion / true mixed-LOD）
