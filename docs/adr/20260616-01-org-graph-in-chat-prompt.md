@@ -13,7 +13,7 @@ scope:
 assumptions:
   - "symbol: packages/app/src/hooks/useChatSession/prompt.ts :: serializeOrganizations"
   - "grep: packages/app/src/hooks/useChatSession/prompt.ts :: organizations: OrganizationBlock\\[\\]"
-  - "grep: packages/core/src/index.ts :: ownerIndex: krsFile.ownerIndex"
+  - "grep: packages/core/src/compile/compile.ts :: ownerIndex: krsFile.ownerIndex"
   - "file: docs/acceptance/1580-chat-org-query-imported-file.md"
   - "file: docs/test-perspectives/TPL-20260615-01-migration-priority-index-winner.md"
 ---
@@ -29,7 +29,7 @@ assumptions:
   - [TPL-20260514-02](../test-perspectives/TPL-20260514-02-whole-file-import-completeness.md)（import 先の宣言は merged グラフに流入する）
   - [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md)（1:1 index は `@migration_target` を勝者に選ぶ）
   - 受け入れテスト: `docs/acceptance/1580-chat-org-query-imported-file.md`
-  - コード: `packages/app/src/hooks/useChatSession/prompt.ts`（`serializeModelGraph` / `serializeOrganizations` / `serializeNode`）、`packages/core/src/index.ts`（`OrgCompileResult.ownerIndex`）
+  - コード: `packages/app/src/hooks/useChatSession/prompt.ts`（`serializeModelGraph` / `serializeOrganizations` / `serializeNode`）、`packages/core/src/compile/compile.ts`（`OrgCompileResult.ownerIndex`、`index.ts` から re-export）
 
 ## 背景
 
