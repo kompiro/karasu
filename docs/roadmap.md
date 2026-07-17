@@ -328,7 +328,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 
 | notation | 追加 | 現状 | promotion trigger（stable 昇格の判断材料） |
 | --- | --- | --- | --- |
-| **`boundary`**（system view の意味的クラスタ宣言 / `contains` / `boundaryIndex`） | [#1974](https://github.com/kompiro/karasu/issues/1974)（P2b、[design](design/system-view-grouping.md)・[syntax](spec/syntax.md#grouping-the-system-view-boundary--experimental)） | experimental（[ADR-20260711-03](adr/20260711-03-system-view-group-by-team.md) の team 軸に続く第二 Group-by 軸） | corpus で `boundary` が実際に使われるか・`contains` の粒度や first-wins 多重所属が実利用で噛み合うか・`group` 系の別語彙要望が出ないか。溜まったら v1.x minor で stable 昇格を判断 |
+| **`boundary`**（system view の意味的クラスタ宣言 / `contains` / `boundaryIndex`） | [#1974](https://github.com/kompiro/karasu/issues/1974)（P2b、[design](design/system-view-grouping.md)・[syntax](spec/syntax.md#grouping-the-system-view-boundary--experimental)） | experimental（[ADR-20260711-03](adr/20260711-03-system-view-group-by-team.md) の team 軸に続く第二 Group-by 軸） | corpus で `boundary` が実際に使われるか・`contains` の粒度や first-wins 多重所属が実利用で噛み合うか・drill-down grouping（[#1983](https://github.com/kompiro/karasu/issues/1983) で正規化したレベル別フレーム）が実利用されるか・`group` 系の別語彙要望が出ないか。溜まったら v1.x minor で stable 昇格を判断 |
 
 ### 独立 candidate（未 Issue 化 — issue が生えたら Milestone 化）
 

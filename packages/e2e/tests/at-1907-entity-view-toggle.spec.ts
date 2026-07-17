@@ -114,4 +114,35 @@ test.describe("AT-1907 Entity view app integration", () => {
     expect(content).toContain('data-node-id="Order"');
     expect(content).toContain('data-node-id="LineItem"');
   });
+
+  // The entity member can only be grouped via the `boundary` axis: `owns`
+  // (team axis) never indexes entities (service/domain/client + top-level
+  // infra only), and `contains` has no kind restriction. The boundary axis
+  // reaching this surface at all is the #2033 fix — AppShell used to hardcode
+  // the team axis when calling `useViewSvg`, dropping "boundary" before it
+  // reached the entity view and the export builders.
+  test("Group by: boundary frames an entity member in the entity view (#1983)", async ({
+    page,
+    opfs,
+  }) => {
+    const ENTITY_BOUNDARY_KRS = `${ENTITY_KRS}
+boundary core_data "Core data" {
+  contains Order
+}
+`;
+    await bootMemoryApp(page, opfs, ENTITY_BOUNDARY_KRS);
+    await drillIntoOrderingDomain(page);
+
+    // Pick the boundary axis on the drilled (usecase) view, then flip to the
+    // entity sub-mode — Group-by is view-state and must survive the toggle.
+    await page.locator("#group-by-select").selectOption("boundary");
+    await entityToggle(page).click();
+
+    const entityPane = page.locator(".preview-pane--entity");
+    await expect(entityPane).toBeVisible();
+    await expect(entityPane.locator('[data-node-id="Order"]')).toBeVisible();
+    // The contained entity gets its boundary frame; the non-member stays out.
+    await expect(entityPane.locator('[data-container-id="__group_core_data__"]')).toBeVisible();
+    await expect(entityPane.locator('[data-node-id="LineItem"]')).toBeVisible();
+  });
 });

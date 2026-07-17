@@ -14,7 +14,7 @@ import {
   type CategoryId,
 } from "@karasu-tools/core";
 import { useCallback, useMemo, useState } from "react";
-import type { GroupByMode } from "../state/preview-context.js";
+import { groupByAxis, type GroupByMode } from "../state/preview-context.js";
 import { useCollapsibleSet } from "./useCollapsibleSet.js";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
@@ -267,8 +267,9 @@ export function useSystemView(
       collapsedCategories,
       // Off-sentinel gate (#1822 P2b): pass the axis through for any non-"none"
       // value ("team" | "boundary") so a new axis is not silently dropped. The
-      // core `groupBy` union is widened in lockstep (TPL-20260510-11).
-      groupBy: groupBy === "none" ? undefined : groupBy,
+      // core `groupBy` union is widened in lockstep (TPL-20260510-11);
+      // `groupByAxis` is the shared conversion with the export surfaces (#2033).
+      groupBy: groupByAxis(groupBy),
       collapsedGroups: groupBy !== "none" ? collapsedGroups : undefined,
       // In-place expansion is Phase 1-scoped to the ungrouped system view
       // (#1921); suppressed under any Group-by axis.

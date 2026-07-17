@@ -2811,13 +2811,27 @@ organization MarketplaceOrg {
 // not by who owns it. Un-clustered nodes (the shared Order DB) fall into a
 // trailing band below the boundary frames.
 //
+// Members can live on drill-down levels too: grouping resolves per view,
+// against the nodes rendered at the level being drawn (Issue #1983). The
+// Payment domain nested inside Checkout is framed on Checkout's drill-down
+// view, and its Authorize usecase on Payment's domain view — one boundary,
+// disjoint frames on several levels. Keep "Group by: Boundary" on while you
+// drill to see each level's frame.
+//
 // \`boundary\` is experimental notation — backward compatibility is not yet
 // promised (docs/spec/syntax.md § Grouping the system view).
 
 system Marketplace {
   label "Marketplace"
 
-  service Checkout { label "Checkout" }
+  service Checkout {
+    label "Checkout"
+    domain Cart { label "Cart" }
+    domain Payment {
+      label "Payment"
+      usecase Authorize { label "Authorize card" }
+    }
+  }
   service Billing { label "Billing" }
   service Wallet { label "Wallet" }
   service Search { label "Search" }
@@ -2839,6 +2853,8 @@ boundary payments "Payments" {
   contains Checkout
   contains Billing
   contains Wallet
+  contains Payment
+  contains Authorize
 }
 
 boundary catalog "Catalog" {

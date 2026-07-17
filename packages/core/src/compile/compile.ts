@@ -789,6 +789,7 @@ export function renderEntityView(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
+  groupBy?: "team" | "boundary",
 ): EntityViewResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _renderEntityView(
@@ -799,6 +800,7 @@ export function renderEntityView(
     emptyStateLabels,
     theme,
     annotationBadgeLabels,
+    groupBy,
   );
   return {
     svg: result.svg,

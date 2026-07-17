@@ -2079,6 +2079,44 @@ boundary checkout {
     expect(result.value.boundaryIndex.get("Web")).toBe("checkout");
   });
 
+  it("stays silent for members that render only on drill levels — no warning of any kind (#1983)", () => {
+    // TPL-20260615-02: an absence assertion fixes its scope and severity.
+    // Scope: the ENTIRE diagnostics list of this parse; severity: none at any
+    // level. A nested domain, a usecase, an entity, a resource, and an infra
+    // leaf are all drawn (and framed) on some drill-down / entity level
+    // (#1983 normalization — the per-level enumeration fence lives in
+    // group-by-drilldown-render.test.ts), so `contains` referencing them is
+    // fully effective and must produce no diagnostic — in particular no
+    // "not groupable" ghost warning.
+    const result = Parser.parse(`
+system Shop {
+  service Orders {
+    domain OrderDomain {
+      usecase PlaceOrder {
+        resource OrderRes
+      }
+      entity OrderEntity {}
+    }
+  }
+  database ShopDB {
+    table orders
+  }
+}
+boundary cluster {
+  contains OrderDomain
+  contains PlaceOrder
+  contains OrderEntity
+  contains OrderRes
+  contains orders
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    // …and every member is indexed (accepted vocabulary keeps its effect).
+    for (const id of ["OrderDomain", "PlaceOrder", "OrderEntity", "OrderRes", "orders"]) {
+      expect(result.value.boundaryIndex.get(id)).toBe("cluster");
+    }
+  });
+
   it("accepts a string-literal id and string-literal members", () => {
     const result = Parser.parse(`
 system Shop {

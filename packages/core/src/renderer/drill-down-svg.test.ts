@@ -1094,9 +1094,9 @@ describe("bundleSingleLevelViews", () => {
 
 // Two teams (payments owns Billing/Wallet, catalog owns Search/Catalog);
 // Billing carries a drill-down domain so deeper levels exist. `owns
-// BillingDomain` puts an owned node on a deeper band so the root-only guard
-// is fenced: leaking grouping past the root would draw a frame there and
-// push the `data-group="true"` count past 2.
+// BillingDomain` puts an owned node on a deeper level: grouping resolves per
+// level against the nodes drawn there (#1983), so Billing's drill level draws
+// its own payments frame around BillingDomain.
 const GROUPED = `
 system Shop {
   service Billing {
@@ -1142,7 +1142,7 @@ describe("buildDrillDownSvg with groupBy: team (#1879)", () => {
     expect(grouped).not.toContain('data-group="true"');
   });
 
-  it("draws team frames at the root system level and keeps the full structure", () => {
+  it("draws team frames on every level with members and keeps the full structure", () => {
     const krsFile = Parser.parse(GROUPED).value;
     const { svg } = buildDrillDownSvg(
       krsFile,
@@ -1155,7 +1155,9 @@ describe("buildDrillDownSvg with groupBy: team (#1879)", () => {
     );
     expect(svg).toContain('data-container-id="__group_payments__"');
     expect(svg).toContain('data-container-id="__group_catalog__"');
-    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    // Root level: payments + catalog. Billing's drill level: a third frame
+    // around the owned BillingDomain (#1983 — grouping resolves per level).
+    expect(svg.match(/data-group="true"/g)?.length).toBe(3);
     // Full structure — no collapse stub, every member drawn.
     expect(svg).not.toContain("__group_collapsed_");
     for (const id of ["Billing", "Wallet", "Search", "Catalog"]) {
@@ -1180,7 +1182,7 @@ describe("buildAllViewsSvg with groupBy: team (#1879)", () => {
     expect(grouped).not.toContain('data-group="true"');
   });
 
-  it("frames the system-view root by team, leaving org/deploy panes untouched", () => {
+  it("frames the system-view levels by team, leaving org/deploy panes untouched", () => {
     const krsFile = Parser.parse(GROUPED).value;
     const { svg } = buildAllViewsSvg(
       krsFile,
@@ -1191,10 +1193,12 @@ describe("buildAllViewsSvg with groupBy: team (#1879)", () => {
       undefined,
       "team",
     );
-    // Only the system root gets grouped — two team frames, no collapse.
+    // System pane levels get grouped — root (payments + catalog) plus
+    // Billing's drill level (payments around BillingDomain, #1983). No
+    // collapse.
     expect(svg).toContain('data-container-id="__group_payments__"');
     expect(svg).toContain('data-container-id="__group_catalog__"');
-    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    expect(svg.match(/data-group="true"/g)?.length).toBe(3);
     expect(svg).not.toContain("__group_collapsed_");
   });
 });

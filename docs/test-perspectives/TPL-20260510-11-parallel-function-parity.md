@@ -20,10 +20,12 @@ discovered_from:
   - issue: "#160"
   - issue: "#1273"
   - issue: "#1884"
+  - issue: "#2033"
   - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts"
   - root_cause_file: "packages/core/src/index.ts:480"
   - root_cause_file: "packages/core/src/renderer/org-tree-renderer.ts:544"
   - root_cause_file: "packages/core/src/renderer/layout.ts"
+  - root_cause_file: "packages/app/src/components/AppShell.tsx:228"
 topic: build
 scope:
   packages:

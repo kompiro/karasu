@@ -18,7 +18,7 @@ import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { downloadDrawio } from "../utils/download-drawio.js";
 import { useAppContext } from "../state/app-context.js";
-import { PreviewProvider } from "../state/preview-context.js";
+import { PreviewProvider, groupByAxis } from "../state/preview-context.js";
 import { useAppViews } from "../hooks/useAppViews.js";
 import { useSnapshotAutoCapture } from "../hooks/useSnapshotAutoCapture.js";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs.js";
@@ -223,9 +223,12 @@ export function AppShell({
     styleSource,
     effectiveTheme,
     // Carry the system view's Group-by axis into the export / all-layers SVGs
-    // so team boundary frames reach those surfaces (#1879). Exports keep the
-    // full structure (no collapse) by design.
-    views.system.groupBy === "team" ? "team" : undefined,
+    // and the live entity view, so group frames reach every surface for both
+    // axes (#1879, #2033). Exports keep the full structure (no collapse) by
+    // design. `groupByAxis` is the shared conversion, so a new axis value
+    // passes through without editing this site (TPL-20260510-11 — the old
+    // `=== "team"` hardcode here silently dropped the boundary axis).
+    groupByAxis(views.system.groupBy),
     viewPath,
   );
 
