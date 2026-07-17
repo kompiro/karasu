@@ -255,6 +255,16 @@ Phase 1 と 2 は独立して出荷可能（診断は kind ベースの静的判
 
 ### 診断の具体設計（Phase 2）
 
+> **実装時追記（2026-07-17, #1983 実装 PR）**: 本節が実装時課題とした全列挙
+> （`packages/core/src/renderer/group-by-drilldown-render.test.ts` の enumeration suite）を
+> 実施した結果、**対象 kind 集合は ∅** — `resource` は domain view（直下宣言・promotion）と
+> usecase drill ページで、infra leaf（`table` / `queue-item` / `bucket`）は infra コンテナの
+> drill ビューで描画・フレーム対象になる。したがって**本診断は出荷しない**（設計時の候補
+> {resource, table, queue-item, bucket} への警告はすべて偽陽性になる — 「正規化後も恒久的に真」
+> の要件を候補集合自身が満たさない）。将来 containable な kind が groupable レベルを失ったら
+> enumeration suite（`LogicalNodeKind` の型レベル網羅ガード付き）が fail し、この判断を再訪する。
+> 以下の設計本文は判断の履歴として原文のまま保存する。
+
 **発火条件を「system-view top tier に居ない member」にしない**ことが要点。それは正規化後には
 偽（drill で効く）になる。正規化後も**恒久的に真**である条件は kind ベースで書ける:
 

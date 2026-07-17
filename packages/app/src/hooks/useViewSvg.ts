@@ -132,10 +132,20 @@ export function useViewSvg(
         emptyStateLabels,
         theme,
         badgeLabels,
+        groupBy,
       ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewPathKey stands in for the viewPath array identity
-  }, [fileContent, viewPathKey, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
+  }, [
+    fileContent,
+    viewPathKey,
+    displayMode,
+    styleSource,
+    emptyStateLabels,
+    theme,
+    badgeLabels,
+    groupBy,
+  ]);
 
   return {
     drillDownSvg: drillDownResult?.svg,

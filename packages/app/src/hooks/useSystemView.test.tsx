@@ -132,6 +132,39 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("keeps Group-by working on a drilled view — members frame at the drill level (#1983)", async () => {
+    // Grouping resolves per view against the nodes drawn at the level being
+    // drawn, so the selector stays functional while drilled: switching the
+    // axis on a service view frames that view's own members.
+    const SOURCE_DRILL_BOUNDARY = `system Shop {
+  service Orders {
+    domain OrderDomain {}
+    domain ShippingDomain {}
+  }
+  service Billing {}
+}
+boundary cluster "Cluster" {
+  contains OrderDomain
+}`;
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_DRILL_BOUNDARY);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, ["Shop", "Orders"]));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Drilled + ungrouped: the nested domains render without frames.
+    expect(result.current.svg).toContain('data-node-id="OrderDomain"');
+    expect(result.current.svg).not.toContain('data-group="true"');
+
+    // Switch the axis while drilled → the member domain gets its frame.
+    act(() => result.current.setGroupBy("boundary"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.groupBy).toBe("boundary");
+    expect(result.current.svg).toContain('data-container-id="__group_cluster__"');
+    // The non-member sibling stays a regular node on the same view.
+    expect(result.current.svg).toContain('data-node-id="ShippingDomain"');
+    vi.useRealTimers();
+  });
+
   it("exposes group ids from the rendered SVG when grouped by team (#1872)", async () => {
     // `groupIds` is read from the SVG's `data-collapse-group` frames, so it is
     // axis-agnostic and matches the frames actually drawn.
