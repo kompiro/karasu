@@ -132,6 +132,51 @@ service StandaloneAuth {
 }
 `;
 
+// Exercises the org + deploy traversal drift documented on
+// `visitNamedEntities`'s call sites in position-resolver.ts (issue #2017
+// point 5): `collectNodes` excludes the organization block's own id while
+// `collectAllIdentifiers` includes it, and `getNodeDescription` resolves
+// org/team/member descriptions but never looks at deploy blocks/nodes.
+const KRS_WITH_ORG_AND_DEPLOY = `\
+organization TechCorp {
+  description "Tech company org"
+  team "ec-team" {
+    description "EC team"
+    member alice {
+      description "Alice bio"
+    }
+  }
+}
+
+deploy Production {
+  oci "api" {
+    runtime "Node.js 20"
+  }
+}
+`;
+
+describe("collectNodes / collectAllIdentifiers org+deploy asymmetry (issue #2017 point 5)", () => {
+  it("collectNodes omits the organization block's own id but includes its teams/members and all deploy entities", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    const ids = collectNodes(file).map((n) => n.id);
+    expect(ids).not.toContain("TechCorp");
+    expect(ids).toContain("ec-team");
+    expect(ids).toContain("alice");
+    expect(ids).toContain("Production");
+    expect(ids).toContain("api");
+  });
+
+  it("collectAllIdentifiers includes the organization block's own id alongside teams/members and deploy entities", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    const ids = collectAllIdentifiers(file);
+    expect(ids).toContain("TechCorp");
+    expect(ids).toContain("ec-team");
+    expect(ids).toContain("alice");
+    expect(ids).toContain("Production");
+    expect(ids).toContain("api");
+  });
+});
+
 describe("collectAllIdentifiers", () => {
   it("collects all IDs from a system hierarchy", () => {
     const file = parse(KRS_SOURCE);
@@ -173,6 +218,19 @@ describe("getNodeDescription", () => {
   it("returns null for an unknown node ID", () => {
     const file = parse(KRS_SOURCE);
     expect(getNodeDescription(file, "NonExistent")).toBeNull();
+  });
+
+  it("resolves descriptions for organization/team/member entities (issue #2017 point 5)", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    expect(getNodeDescription(file, "TechCorp")).toBe("Tech company org");
+    expect(getNodeDescription(file, "ec-team")).toBe("EC team");
+    expect(getNodeDescription(file, "alice")).toBe("Alice bio");
+  });
+
+  it("never resolves a description for deploy block/node ids, even though collectNodes covers them (issue #2017 point 5)", () => {
+    const file = parse(KRS_WITH_ORG_AND_DEPLOY);
+    expect(getNodeDescription(file, "Production")).toBeNull();
+    expect(getNodeDescription(file, "api")).toBeNull();
   });
 });
 

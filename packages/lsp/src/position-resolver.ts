@@ -1,12 +1,4 @@
-import type {
-  KrsFile,
-  KrsNode,
-  DeployBlock,
-  DeployNode,
-  TeamNode,
-  MemberNode,
-  OrganizationBlock,
-} from "@karasu-tools/core";
+import type { KrsFile, KrsNode, TeamNode } from "@karasu-tools/core";
 import type { Range } from "vscode-languageserver/node";
 import { toLspRange, type LspPosition } from "./lsp-position.js";
 
@@ -16,46 +8,96 @@ interface NodeEntry {
   end: { line: number; column: number };
 }
 
+/** 1-based source position, matching core AST `SourceRange` points. */
+interface AstPoint {
+  line: number;
+  column: number;
+}
+
+/** 1-based source range, matching core AST `SourceRange`. */
+interface AstRange {
+  start: AstPoint;
+  end: AstPoint;
+}
+
+/**
+ * The named-entity kinds `visitNamedEntities` walks. "krs" covers both
+ * `systems` and `services` (KrsNode trees) — they share the identical
+ * recursive shape and are visited identically.
+ */
+type NamedEntityGroup = "krs" | "deploy-block" | "deploy" | "org" | "team" | "member";
+
+interface NamedEntity {
+  id: string;
+  loc: AstRange;
+  /** Present only for entity kinds whose AST shape carries `properties.description`. */
+  description?: string;
+  group: NamedEntityGroup;
+}
+
+/**
+ * Single traversal over every named entity in the KrsFile AST, encoding
+ * TODAY's exact walk order and coverage. This replaces three previously
+ * hand-rolled recursive walkers (`collectNodes`, `collectAllIdentifiers`,
+ * `getNodeDescription`) that had already drifted from one another — see the
+ * comments at each call site below for the specific drift each one
+ * reproduces. `visitNamedEntities` itself must stay a literal merge of the
+ * three prior traversals; it does not visit `clients` / `domains` /
+ * `databases` / `queues` / `storages` / `boundaries` because none of the
+ * three prior walkers did (out of scope for this refactor, see #2017).
+ */
+function* visitNamedEntities(krsFile: KrsFile): Generator<NamedEntity> {
+  function* walkKrsNode(node: KrsNode): Generator<NamedEntity> {
+    yield { id: node.id, loc: node.loc, description: node.properties.description, group: "krs" };
+    for (const child of node.children) yield* walkKrsNode(child);
+  }
+
+  function* walkTeam(team: TeamNode): Generator<NamedEntity> {
+    yield { id: team.id, loc: team.loc, description: team.properties.description, group: "team" };
+    for (const child of team.children) {
+      if (child.kind === "member") {
+        yield {
+          id: child.id,
+          loc: child.loc,
+          description: child.properties.description,
+          group: "member",
+        };
+      } else {
+        yield* walkTeam(child);
+      }
+    }
+  }
+
+  for (const sys of krsFile.systems) yield* walkKrsNode(sys);
+  for (const svc of krsFile.services) yield* walkKrsNode(svc);
+  for (const block of krsFile.deploys) {
+    yield { id: block.id, loc: block.loc, group: "deploy-block" };
+    for (const node of block.nodes) {
+      yield { id: node.id, loc: node.loc, group: "deploy" };
+    }
+  }
+  for (const org of krsFile.organizations) {
+    yield { id: org.id, loc: org.loc, description: org.properties.description, group: "org" };
+    for (const team of org.teams) yield* walkTeam(team);
+  }
+}
+
 /**
  * Collect all named nodes from the KrsFile AST into a flat list.
  * AST positions are 1-based.
  */
 export function collectNodes(krsFile: KrsFile): NodeEntry[] {
   const entries: NodeEntry[] = [];
-
-  function addKrsNode(node: KrsNode): void {
-    entries.push({ id: node.id, start: node.loc.start, end: node.loc.end });
-    for (const child of node.children) addKrsNode(child);
+  for (const entity of visitNamedEntities(krsFile)) {
+    // DRIFT (reproduced, not fixed — see issue #2017 point 5): the
+    // organization block's own id is excluded here even though
+    // `collectAllIdentifiers` includes it below. This means
+    // findNodeAtPosition/findRangeOfNode cannot resolve an org's own id,
+    // only its teams/members — a pre-existing inconsistency, not a
+    // regression introduced by this refactor.
+    if (entity.group === "org") continue;
+    entries.push({ id: entity.id, start: entity.loc.start, end: entity.loc.end });
   }
-
-  function addDeployNode(node: DeployNode): void {
-    entries.push({ id: node.id, start: node.loc.start, end: node.loc.end });
-  }
-
-  function addTeamNode(team: TeamNode): void {
-    entries.push({ id: team.id, start: team.loc.start, end: team.loc.end });
-    for (const child of team.children) {
-      if (child.kind === "member") addMemberNode(child);
-      else addTeamNode(child);
-    }
-  }
-
-  function addMemberNode(member: MemberNode): void {
-    entries.push({ id: member.id, start: member.loc.start, end: member.loc.end });
-  }
-
-  function addDeployBlock(block: DeployBlock): void {
-    entries.push({ id: block.id, start: block.loc.start, end: block.loc.end });
-    for (const node of block.nodes) addDeployNode(node);
-  }
-
-  for (const sys of krsFile.systems) addKrsNode(sys);
-  for (const svc of krsFile.services) addKrsNode(svc);
-  for (const block of krsFile.deploys) addDeployBlock(block);
-  for (const org of krsFile.organizations) {
-    for (const team of org.teams) addTeamNode(team);
-  }
-
   return entries;
 }
 
@@ -114,31 +156,10 @@ export function findRangeOfNode(krsFile: KrsFile, nodeId: string): Range | null 
  */
 export function collectAllIdentifiers(krsFile: KrsFile): string[] {
   const ids: string[] = [];
-
-  function addKrsNode(node: KrsNode): void {
-    ids.push(node.id);
-    for (const child of node.children) addKrsNode(child);
-  }
-
-  function addTeamNode(team: TeamNode): void {
-    ids.push(team.id);
-    for (const child of team.children) {
-      if (child.kind === "member") ids.push(child.id);
-      else addTeamNode(child);
-    }
-  }
-
-  for (const sys of krsFile.systems) addKrsNode(sys);
-  for (const svc of krsFile.services) addKrsNode(svc);
-  for (const block of krsFile.deploys) {
-    ids.push(block.id);
-    for (const node of block.nodes) ids.push(node.id);
-  }
-  for (const org of krsFile.organizations) {
-    ids.push(org.id);
-    for (const team of org.teams) addTeamNode(team);
-  }
-
+  // Unfiltered: unlike `collectNodes`, this includes the organization
+  // block's own id (group "org") — this asymmetry is the drift documented
+  // on `collectNodes` above.
+  for (const entity of visitNamedEntities(krsFile)) ids.push(entity.id);
   return ids;
 }
 
@@ -147,50 +168,19 @@ export function collectAllIdentifiers(krsFile: KrsFile): string[] {
  * Returns null if the node has no description or is not found.
  */
 export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | null {
-  function searchKrsNode(node: KrsNode): string | null {
-    if (node.id === nodeId) return node.properties.description ?? null;
-    for (const child of node.children) {
-      const found = searchKrsNode(child);
-      if (found !== null) return found;
-    }
-    return null;
+  for (const entity of visitNamedEntities(krsFile)) {
+    // DRIFT (reproduced, not fixed — see issue #2017 point 5): deploy
+    // blocks and deploy nodes are skipped entirely here, so this never
+    // resolves a description for them even though `collectNodes`/
+    // `collectAllIdentifiers` both include deploy entities. Skipping them
+    // (rather than just relying on their `description` being absent) also
+    // preserves the original search order: an id shared between a deploy
+    // entity and a later system/service/org entity still resolves to the
+    // later entity's description, exactly as the original per-container
+    // loops (which never visited `krsFile.deploys` at all) did.
+    if (entity.group === "deploy-block" || entity.group === "deploy") continue;
+    if (entity.id === nodeId) return entity.description ?? null;
   }
-
-  function searchTeam(team: TeamNode): string | null {
-    if (team.id === nodeId) return team.properties.description ?? null;
-    for (const child of team.children) {
-      if (child.kind === "member") {
-        if (child.id === nodeId) return child.properties.description ?? null;
-      } else {
-        const found = searchTeam(child);
-        if (found !== null) return found;
-      }
-    }
-    return null;
-  }
-
-  function searchOrg(org: OrganizationBlock): string | null {
-    if (org.id === nodeId) return org.properties.description ?? null;
-    for (const team of org.teams) {
-      const found = searchTeam(team);
-      if (found !== null) return found;
-    }
-    return null;
-  }
-
-  for (const sys of krsFile.systems) {
-    const found = searchKrsNode(sys);
-    if (found !== null) return found;
-  }
-  for (const svc of krsFile.services) {
-    const found = searchKrsNode(svc);
-    if (found !== null) return found;
-  }
-  for (const org of krsFile.organizations) {
-    const found = searchOrg(org);
-    if (found !== null) return found;
-  }
-
   return null;
 }
 
