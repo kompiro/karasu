@@ -125,7 +125,13 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     const dashedSync = page.locator(
       `g.edges line[stroke="${IMPLICIT_COLOR}"][stroke-dasharray="${DASHED_PATTERN}"]`,
     );
-    await expect(dashedSync).toHaveCount(0);
+    // Hard "must never appear" invariant: a sync (`->`) source edge must
+    // never render dashed. Kept as an EAGER one-shot `.count()` check (not
+    // a retrying `toHaveCount(0)`), because a retrying assertion would
+    // auto-wait until the count settles to 0 and mask a transient
+    // wrong-render flash. The preceding retrying `implicitEdge` poll has
+    // already settled the DOM, so this eager read is not racy.
+    expect(await dashedSync.count()).toBe(0);
 
     // Label of the single domain edge is preserved.
     const decidesPaymentLabel = page.locator("g.edges text", { hasText: "decides payment" });

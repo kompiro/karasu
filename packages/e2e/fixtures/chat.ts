@@ -65,27 +65,34 @@ export async function sendChatMessage(page: Page, text: string): Promise<Locator
  *
  * `ac` labels the AT-0050 acceptance criterion for its test titles; the
  * smoke spec ignores it.
+ *
+ * Button matchers are case-SENSITIVE. Before consolidation AT-0050 used
+ * case-sensitive matchers (`/Open Settings/`, `/Retry/`) while the smoke
+ * spec used case-insensitive (`/i`) ones; sharing the table must not
+ * weaken AT-0050's button-visibility assertion, so the stricter
+ * (case-sensitive) form wins here. Both specs pass under it — the app
+ * renders the labels with this exact casing.
  */
 export const CHAT_ERROR_CASES = [
   {
     ac: "AC-13",
     status: 401 as const,
     expectedText: /API key is invalid/,
-    expectedButton: /Open Settings/i,
-    hiddenButton: /Retry/i,
+    expectedButton: /Open Settings/,
+    hiddenButton: /Retry/,
   },
   {
     ac: "AC-14",
     status: 429 as const,
     expectedText: /Rate limit reached/,
-    expectedButton: /Retry/i,
-    hiddenButton: /Open Settings/i,
+    expectedButton: /Retry/,
+    hiddenButton: /Open Settings/,
   },
   {
     ac: "AC-15",
     status: 500 as const,
     expectedText: /Anthropic server error/,
-    expectedButton: /Retry/i,
-    hiddenButton: /Open Settings/i,
+    expectedButton: /Retry/,
+    hiddenButton: /Open Settings/,
   },
 ] as const;
