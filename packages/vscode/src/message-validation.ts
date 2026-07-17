@@ -12,7 +12,9 @@
  * the extension host.
  */
 
-/** The view types the preview panel understands. Mirrors `ViewType` in preview-panel.ts. */
+import { isSafeLinkUrl } from "@karasu-tools/core";
+
+/** The view types the preview panel understands. preview-panel.ts imports `ViewType` from here. */
 export const VIEW_TYPES = ["system", "deploy", "org"] as const;
 export type ViewType = (typeof VIEW_TYPES)[number];
 
@@ -32,20 +34,25 @@ export function isValidNavIndex(index: unknown, pathLength: number): index is nu
 }
 
 /**
- * Schemes allowed for `vscode.env.openExternal`. Restricting to web / mail
- * schemes prevents a hostile webview message from opening `file:`,
- * `javascript:`, or arbitrary custom-protocol URLs through the extension host.
+ * True when `url` is a well-formed string with a scheme allowed for
+ * `vscode.env.openExternal`. Delegates to core's canonical link-scheme
+ * allowlist (`isSafeLinkUrl`, see `packages/core/src/parser/link-url.ts`) —
+ * the same list the host uses to filter links before they reach the webview
+ * — so a link can never render in the panel yet be rejected on click, or
+ * vice versa. Rejecting `file:`, `javascript:`, and custom-protocol URLs
+ * prevents a hostile webview message from opening them through the
+ * extension host.
  */
-const ALLOWED_EXTERNAL_URL_SCHEMES = new Set(["http:", "https:", "mailto:"]);
-
-/** True when `url` is a well-formed string with an allowed external scheme. */
 export function isAllowedExternalUrl(url: unknown): url is string {
-  if (typeof url !== "string" || url.length === 0) return false;
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return false;
-  }
-  return ALLOWED_EXTERNAL_URL_SCHEMES.has(parsed.protocol);
+  return typeof url === "string" && isSafeLinkUrl(url);
+}
+
+/**
+ * True when `value` is a usable node id: a non-empty string. Node ids index
+ * into the node-metadata map and flow into `escapeHtml` when rendering, so a
+ * non-string value (e.g. a number posted by a buggy webview) must be rejected
+ * at the trust boundary rather than asserted away by a type annotation.
+ */
+export function isNodeId(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }

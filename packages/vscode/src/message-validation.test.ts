@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   VIEW_TYPES,
   isAllowedExternalUrl,
+  isNodeId,
   isValidNavIndex,
   isViewType,
 } from "./message-validation.js";
@@ -85,5 +86,53 @@ describe("isAllowedExternalUrl", () => {
     expect(isAllowedExternalUrl(undefined)).toBe(false);
     expect(isAllowedExternalUrl(null)).toBe(false);
     expect(isAllowedExternalUrl(42)).toBe(false);
+  });
+
+  // Tripwire: `isAllowedExternalUrl` delegates to core's `isSafeLinkUrl`
+  // (single source of truth for the link-scheme allowlist). If core ever
+  // broadens `ALLOWED_LINK_SCHEMES` — e.g. adding `vscode:` for permalinks —
+  // that change would otherwise silently widen the extension-host
+  // `openExternal` gate with no review signal in packages/vscode. This block
+  // pins the exact scheme set at the extension trust boundary so such a
+  // broadening fails here and forces an explicit decision.
+  describe("scheme pinning at the extension trust boundary", () => {
+    it("accepts exactly the http / https / mailto schemes", () => {
+      expect(isAllowedExternalUrl("http://example.com/")).toBe(true);
+      expect(isAllowedExternalUrl("https://example.com/")).toBe(true);
+      expect(isAllowedExternalUrl("mailto:dev@example.com")).toBe(true);
+    });
+
+    it("rejects every other scheme, even ones plausibly safe elsewhere", () => {
+      expect(isAllowedExternalUrl("vscode://kompiro.karasu/open")).toBe(false);
+      expect(isAllowedExternalUrl("javascript:alert(1)")).toBe(false);
+      expect(isAllowedExternalUrl("file:///etc/passwd")).toBe(false);
+      expect(isAllowedExternalUrl("data:text/html,hi")).toBe(false);
+      expect(isAllowedExternalUrl("command:workbench.action.terminal.new")).toBe(false);
+    });
+
+    it("rejects non-string values", () => {
+      expect(isAllowedExternalUrl(undefined)).toBe(false);
+      expect(isAllowedExternalUrl(null)).toBe(false);
+      expect(isAllowedExternalUrl(42)).toBe(false);
+      expect(isAllowedExternalUrl(["https://example.com/"])).toBe(false);
+    });
+  });
+});
+
+describe("isNodeId", () => {
+  it("accepts a non-empty string", () => {
+    expect(isNodeId("payment-service")).toBe(true);
+    expect(isNodeId("a")).toBe(true);
+  });
+
+  it("rejects the empty string", () => {
+    expect(isNodeId("")).toBe(false);
+  });
+
+  it("rejects non-string values", () => {
+    expect(isNodeId(42)).toBe(false);
+    expect(isNodeId(null)).toBe(false);
+    expect(isNodeId(undefined)).toBe(false);
+    expect(isNodeId({ id: "payment-service" })).toBe(false);
   });
 });
