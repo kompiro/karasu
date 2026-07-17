@@ -1,5 +1,5 @@
 ---
-id: TPL-20260717-01
+id: TPL-20260717-02
 title: "SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つこと"
 status: active
 date: 2026-07-17
@@ -20,7 +20,7 @@ scope:
     - core
 ---
 
-# TPL-20260717-01: SVG の interactive control は不透明背景より後に描いて hit-testable を保つこと
+# TPL-20260717-02: SVG の interactive control は不透明背景より後に描いて hit-testable を保つこと
 
 ## 観点
 

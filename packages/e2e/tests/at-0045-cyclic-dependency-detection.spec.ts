@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
+import { expectNoWarningMatching } from "../fixtures/editor.js";
 
 /**
  * AT-0045: Cyclic dependency detection and rendering.
@@ -49,20 +50,13 @@ test.describe("AT-0045 Cyclic dependency detection", () => {
     // Rendered SVG has at least one edge element flagged as cyclic.
     const cyclicEdges = page.locator("svg .krs-edge--cyclic");
     await expect(cyclicEdges.first()).toBeAttached();
-    expect(await cyclicEdges.count()).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => cyclicEdges.count()).toBeGreaterThanOrEqual(2);
   });
 
   test("async-only cycle does not emit a cyclic-dependency warning", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ASYNC_CYCLE_KRS);
 
-    // Either the warning panel is absent entirely, or it does not mention
-    // a circular dependency. We wait a beat to let the preview re-render.
-    await page.waitForTimeout(500);
-    const warningPanel = page.locator(".warning-panel");
-    const panelCount = await warningPanel.count();
-    if (panelCount > 0) {
-      await expect(warningPanel).not.toContainText(/Circular dependency/);
-    }
+    await expectNoWarningMatching(page, /Circular dependency/);
     await expect(page.locator("svg .krs-edge--cyclic")).toHaveCount(0);
   });
 });
