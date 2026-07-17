@@ -85,9 +85,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const result = await client.sendRequest(PositionOfNodeRequest, { uri, nodeId });
     if (!result.range) return;
 
-    const editor = vscode.window.visibleTextEditors.find(
-      (e) => e.document.uri.toString() === uri,
-    );
+    const editor = vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === uri);
     if (!editor) return;
 
     const range = new vscode.Range(

@@ -44,9 +44,7 @@ describe("buildPreviewHtml", () => {
     );
     expect(html).toContain('<div id="preview"><svg><g data-node-id="svc-order"></g></svg></div>');
     expect(html).toContain('var nodeMetadataMap = {"svc-order":{"kind":"service"}};');
-    expect(html).toContain(
-      '<div id="breadcrumb"><button data-nav-index="0">System</button></div>',
-    );
+    expect(html).toContain('<div id="breadcrumb"><button data-nav-index="0">System</button></div>');
     expect(html).toContain("script-src 'nonce-abc123'");
     expect(html).toContain('<script nonce="abc123">');
   });
