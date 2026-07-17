@@ -1,19 +1,10 @@
 import { useMemo } from "react";
-import type {
-  Diagnostic,
-  Warning,
-  DisplayMode,
-  EdgeDirection,
-  NodeMetadata,
-  NodeDiffMeta,
-  DeployBlockInfo,
-  SystemNode,
-  CategoryId,
-} from "@karasu-tools/core";
+import type { DisplayMode, EdgeDirection, NodeMetadata } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
-import type { GroupByMode, PreviewContextValue } from "../state/preview-context.js";
+import type { PreviewContextValue } from "../state/preview-context.js";
 import type { SharePayload } from "../utils/inline-share.js";
 import type { UseCrossNavigationResult } from "./useCrossNavigation.js";
+import type { SystemViewBundle, DeployViewBundle, OrgViewBundle } from "./useAppViews.js";
 
 type BreadcrumbItems = { id: string; label: string }[];
 
@@ -25,40 +16,35 @@ interface UsePreviewContextValueArgs {
   highlightedNodeId: string | null;
   nodeMetadata: Map<string, NodeMetadata>;
 
-  system: {
-    svg: string;
-    diagnostics: Diagnostic[];
-    warnings: Warning[];
-    hasDeployDiagram: boolean;
-    nodeDiff?: Map<string, NodeDiffMeta>;
-    resolvedSystems: SystemNode[];
-    toggleCategory: (category: CategoryId) => void;
-    toggleGroup: (groupId: string) => void;
-    toggleExpand: (serviceId: string) => void;
-    groupBy: GroupByMode;
-    setGroupBy: (mode: GroupByMode) => void;
-    groupByAvailable: boolean;
-    hasTeamAxis: boolean;
-    hasBoundaryAxis: boolean;
-    anyCollapsible: boolean;
-    allCollapsed: boolean;
-    expansionOverload: boolean;
-    onCollapseAllToggle: () => void;
-  };
-  deploy: {
-    svg: string;
-    diagnostics: Diagnostic[];
-    warnings: Warning[];
-    deployBlocks: DeployBlockInfo[];
-  };
-  org: {
-    svg: string;
-    diagnostics: Diagnostic[];
-    warnings: Warning[];
-    orgTreeSvg?: string;
-    orgTreeExportSvg?: string;
-    toggleTeamExpand: (teamId: string) => void;
-  };
+  // Sliced from the `useAppViews` bundle types (#2015 point 8) instead of
+  // re-listing each field's type by hand — the field names/types stay the
+  // single source of truth in `useAppViews.ts`.
+  system: Pick<
+    SystemViewBundle,
+    | "svg"
+    | "diagnostics"
+    | "warnings"
+    | "hasDeployDiagram"
+    | "nodeDiff"
+    | "resolvedSystems"
+    | "toggleCategory"
+    | "toggleGroup"
+    | "toggleExpand"
+    | "groupBy"
+    | "setGroupBy"
+    | "groupByAvailable"
+    | "hasTeamAxis"
+    | "hasBoundaryAxis"
+    | "anyCollapsible"
+    | "allCollapsed"
+    | "expansionOverload"
+    | "onCollapseAllToggle"
+  >;
+  deploy: Pick<DeployViewBundle, "svg" | "diagnostics" | "warnings" | "deployBlocks">;
+  org: Pick<
+    OrgViewBundle,
+    "svg" | "diagnostics" | "warnings" | "orgTreeSvg" | "orgTreeExportSvg" | "toggleTeamExpand"
+  >;
 
   breadcrumbItems: BreadcrumbItems;
   orgBreadcrumbItems: BreadcrumbItems;
