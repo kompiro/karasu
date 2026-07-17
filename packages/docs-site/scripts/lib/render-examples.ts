@@ -6,12 +6,7 @@
 
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
-import {
-  compileProject,
-  type DiagramType,
-  type DirEntry,
-  type FileSystemProvider,
-} from "../../../core/src/index.ts";
+import { compileProject, type DiagramType, type DirEntry, type FileSystemProvider } from "./core.ts";
 import { REPO_ROOT } from "../sources.ts";
 
 /** Read-only Node filesystem for the import resolver. Writes are not needed. */

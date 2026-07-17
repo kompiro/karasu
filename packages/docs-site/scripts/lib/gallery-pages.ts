@@ -3,7 +3,7 @@
 // <img> so the (id-bearing) SVGs never collide when several share a page, and so
 // the markup is base-path independent. Pure (no fs) — unit tested.
 
-import { type DiagramType, findOpenableExample } from "../../../core/src/index.ts";
+import { type DiagramType, findOpenableExample } from "./core.ts";
 import {
   GALLERY_PAGES,
   GROUP_LABELS,

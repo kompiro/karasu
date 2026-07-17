@@ -23,7 +23,8 @@
     },
     "packages/docs-site": {
       "entry": ["scripts/{sync,check-links}.ts"],
-      "project": ["scripts/**/*.ts", "src/**/*.ts"]
+      "project": ["scripts/**/*.ts", "src/**/*.ts"],
+      "ignoreDependencies": ["@karasu-tools/core"]
     },
     "packages/vscode": {
       "project": ["src/**/*.ts"]
