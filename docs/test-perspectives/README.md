@@ -462,3 +462,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260715-02](TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) | infra leaf のドメイン所有は entity 層から導出する（物理 table に宣言しない）。leaf 粒度・所有ドメインの集合・system スコープで扱う | resolver | #1819 |
 | [TPL-20260716-01](TPL-20260716-01-keystone-terms-single-home.md) | keystone・permalink の coined 用語は単一の正典（docs/glossary.md）を持つ — 他 doc は再定義せず参照し、用語集は機構ドキュメントと矛盾しない | build | docs/glossary.md, ADR-20260702-01, #1831 |
 | [TPL-20260716-02](TPL-20260716-02-view-state-gate-parity-across-surfaces.md) | view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える — 一部 surface だけ gate すると残りが undocumented 挙動として出荷される | renderer | #1983, #2033 |
+| [TPL-20260717-01](TPL-20260717-01-svg-interactive-control-paints-last.md) | SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つ — document order がそのまま重なり順 | renderer | #2044 |
