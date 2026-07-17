@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
+import { expectNoWarningMatching } from "../fixtures/editor.js";
 
 /**
  * AT-0040: Top-level domain declarations.
@@ -54,10 +55,6 @@ test.describe("AT-0040 Top-level domain declarations", () => {
   }) => {
     await bootMemoryApp(page, opfs, DOMAIN_INSIDE_SERVICE_KRS);
 
-    await page.waitForTimeout(500);
-    const warningPanel = page.locator(".warning-panel");
-    if ((await warningPanel.count()) > 0) {
-      await expect(warningPanel).not.toContainText(/not assigned to any service/);
-    }
+    await expectNoWarningMatching(page, /not assigned to any service/);
   });
 });
