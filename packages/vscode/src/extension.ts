@@ -76,8 +76,12 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   client = new LanguageClient("karasu", "karasu Language Server", serverOptions, clientOptions);
-  client.start();
+  // Wire the deactivate stop-path to the client as soon as it is *constructed*,
+  // before `start()`. The client spawns the language-server child process, so
+  // `deactivate()` (window reload / uninstall) must be able to stop it even if
+  // `start()` throws synchronously — otherwise the child process is orphaned.
   onDeactivate = () => client?.stop();
+  client.start();
 
   async function handleNavigate(nodeId: string, uri: string): Promise<void> {
     if (!client) return;
