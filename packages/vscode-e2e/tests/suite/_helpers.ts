@@ -1,9 +1,47 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-const EXTENSION_ID = "karasu-tools.karasu-vscode";
+export const EXTENSION_ID = "karasu-tools.karasu-vscode";
 const POLL_INTERVAL_MS = 50;
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
+ * Sentinel a {@link pollUntil} probe returns to mean "not ready yet, keep
+ * polling". A dedicated symbol (rather than `undefined`/`null`/`false`) lets a
+ * probe legitimately resolve with any of those falsy values as a success.
+ */
+export const NOT_READY: unique symbol = Symbol("not-ready");
+
+/**
+ * Poll `probe` until it resolves to a value other than {@link NOT_READY}, or
+ * until `timeoutMs` elapses, sleeping `intervalMs` between attempts.
+ *
+ * `pollUntil` does NOT catch exceptions — a throwing probe surfaces
+ * immediately, matching the original `waitForDiagnostics` loop. Callers that
+ * must tolerate a throwing probe while a resource spins up (e.g.
+ * `waitForLspReady`, whose `executeCommand` rejects until the LSP is ready)
+ * wrap their own probe in a `try/catch` that returns {@link NOT_READY}.
+ *
+ * `message` may be a string or a factory evaluated at throw time — the latter
+ * lets a caller fold the last-seen probe state into the timeout error (as
+ * `formatDocumentEdits` does with its last edits value).
+ */
+export async function pollUntil<T>(
+  probe: () => Promise<T | typeof NOT_READY>,
+  {
+    timeoutMs,
+    intervalMs,
+    message,
+  }: { timeoutMs: number; intervalMs: number; message: string | (() => string) },
+): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const result = await probe();
+    if (result !== NOT_READY) return result;
+    await sleep(intervalMs);
+  }
+  throw new Error(typeof message === "function" ? message() : message);
+}
 
 export function fixtureUri(relative: string): vscode.Uri {
   const folders = vscode.workspace.workspaceFolders;
@@ -31,20 +69,26 @@ export async function waitForLspReady(
   const ext = vscode.extensions.getExtension(EXTENSION_ID);
   if (ext && !ext.isActive) await ext.activate();
 
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-        "vscode.executeDocumentSymbolProvider",
-        uri,
-      );
-      if (Array.isArray(symbols)) return;
-    } catch {
-      // Server not ready yet — keep polling.
-    }
-    await sleep(POLL_INTERVAL_MS);
-  }
-  throw new Error(`LSP did not become ready for ${uri.toString()} within ${timeoutMs}ms`);
+  await pollUntil(
+    async () => {
+      // The first requests reject while the client is still spinning up —
+      // swallow those here (the original loop did) and keep polling.
+      try {
+        const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+          "vscode.executeDocumentSymbolProvider",
+          uri,
+        );
+        return Array.isArray(symbols) ? true : NOT_READY;
+      } catch {
+        return NOT_READY;
+      }
+    },
+    {
+      timeoutMs,
+      intervalMs: POLL_INTERVAL_MS,
+      message: `LSP did not become ready for ${uri.toString()} within ${timeoutMs}ms`,
+    },
+  );
 }
 
 export async function waitForDiagnostics(
@@ -52,13 +96,19 @@ export async function waitForDiagnostics(
   predicate: (diags: readonly vscode.Diagnostic[]) => boolean,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<readonly vscode.Diagnostic[]> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const diags = vscode.languages.getDiagnostics(uri);
-    if (predicate(diags)) return diags;
-    await sleep(POLL_INTERVAL_MS);
-  }
-  throw new Error(`diagnostics predicate did not pass for ${uri.toString()} within ${timeoutMs}ms`);
+  // No try/catch: the original loop had none, so a throwing predicate or
+  // getDiagnostics call must surface immediately rather than poll to timeout.
+  return pollUntil(
+    async () => {
+      const diags = vscode.languages.getDiagnostics(uri);
+      return predicate(diags) ? diags : NOT_READY;
+    },
+    {
+      timeoutMs,
+      intervalMs: POLL_INTERVAL_MS,
+      message: `diagnostics predicate did not pass for ${uri.toString()} within ${timeoutMs}ms`,
+    },
+  );
 }
 
 /**

@@ -1,10 +1,12 @@
 import * as assert from "node:assert";
 import * as vscode from "vscode";
 import {
+  NOT_READY,
   findIdentifierOnLine,
   findUniqueIdentifier,
   fixtureUri,
   openFixture,
+  pollUntil,
   waitForDiagnostics,
   waitForLspReady,
 } from "./_helpers.js";
@@ -230,24 +232,31 @@ describe("AT-1177 — Tidy Style formatting", () => {
    * deliberately non-tidy, so a ready provider always yields edits.
    */
   async function formatDocumentEdits(uri: vscode.Uri): Promise<vscode.TextEdit[]> {
-    const deadline = Date.now() + FORMAT_TIMEOUT_MS;
+    // Track the last observed result so the timeout message can distinguish
+    // "provider returned []" (registered but produced no edits) from
+    // "provider not registered yet" (undefined) — the signal CI triage needs.
     let last: unknown;
-    while (Date.now() < deadline) {
-      try {
-        const edits = await vscode.commands.executeCommand<vscode.TextEdit[] | undefined>(
-          "vscode.executeFormatDocumentProvider",
-          uri,
-          { tabSize: 2, insertSpaces: true },
-        );
-        last = edits;
-        if (Array.isArray(edits) && edits.length > 0) return edits;
-      } catch {
-        // Server not ready yet — keep polling.
-      }
-      await new Promise((resolve) => setTimeout(resolve, FORMAT_POLL_INTERVAL_MS));
-    }
-    throw new Error(
-      `formatting provider returned no edits for ${uri.toString()} within ${FORMAT_TIMEOUT_MS}ms (last: ${JSON.stringify(last)})`,
+    return pollUntil(
+      async () => {
+        try {
+          const edits = await vscode.commands.executeCommand<vscode.TextEdit[] | undefined>(
+            "vscode.executeFormatDocumentProvider",
+            uri,
+            { tabSize: 2, insertSpaces: true },
+          );
+          last = edits;
+          return Array.isArray(edits) && edits.length > 0 ? edits : NOT_READY;
+        } catch {
+          // Server not ready yet — keep polling.
+          return NOT_READY;
+        }
+      },
+      {
+        timeoutMs: FORMAT_TIMEOUT_MS,
+        intervalMs: FORMAT_POLL_INTERVAL_MS,
+        message: () =>
+          `formatting provider returned no edits for ${uri.toString()} within ${FORMAT_TIMEOUT_MS}ms (last: ${JSON.stringify(last)})`,
+      },
     );
   }
 

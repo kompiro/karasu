@@ -2,6 +2,8 @@ import {
   EditorView,
   InputBox,
   Key,
+  type TextEditor,
+  VSBrowser,
   type WebDriver,
   WebView,
   Workbench,
@@ -26,10 +28,14 @@ import {
  *      rule 4's answer to coordinate-based clicks landing on an overlapping
  *      ancestor,
  *   5. breadcrumb reading/parsing (`readBreadcrumb` / `breadcrumbSegments`),
- *      and
  *   6. the shared timing constants (`ELEMENT_TIMEOUT_MS`, `SUITE_TIMEOUT_MS`,
  *      the frame-reacquire sleeps) plus toolbar view switching
- *      (`switchToView` / `isViewActive`).
+ *      (`switchToView` / `isViewActive`),
+ *   7. the suite-level `before()` bootstrap — env-var validation, driver /
+ *      EditorView / Workbench construction, `openFixtureWithRetry`, and
+ *      `openPreviewAndEnterFrame` (`openFixtureAndPreview`), and
+ *   8. reading the .krs editor's cursor line via the frame-exit → open-editor
+ *      → settle → `getCoordinates()` dance (`readEditorCursorLine`).
  *
  * Centralising these here keeps the suites in lock-step. The rule still
  * mandates the *pattern*, not literal duplication; the helpers below are that
@@ -84,7 +90,7 @@ export interface FrameContext {
  * dismiss any lingering dialog with ESC between attempts. Throws after the last
  * attempt fails.
  */
-export async function openFixtureWithRetry(
+async function openFixtureWithRetry(
   driver: WebDriver,
   workbench: Workbench,
   editorView: EditorView,
@@ -136,7 +142,7 @@ export async function openFixtureWithRetry(
  * group, switch into its WebView iframe, and return the resulting
  * {@link FrameContext} (already inside the frame).
  */
-export async function openPreviewAndEnterFrame(
+async function openPreviewAndEnterFrame(
   driver: WebDriver,
   workbench: Workbench,
   editorView: EditorView,
@@ -154,6 +160,40 @@ export async function openPreviewAndEnterFrame(
   const webview = new WebView();
   await webview.switchToFrame();
   return { driver, webview, inWebViewFrame: true };
+}
+
+/**
+ * Full suite-level bootstrap shared by every fixture-opening WebView/capture
+ * suite: read `envVar` from the environment (throwing a "not set by
+ * `<runnerName>`" error if missing — the same failure mode as a misconfigured
+ * runner script), then construct the `driver`/`EditorView`/`Workbench` trio,
+ * open the fixture via {@link openFixtureWithRetry}, and enter the preview
+ * frame via {@link openPreviewAndEnterFrame}. Wraps — does not modify — the
+ * 3-attempt retry.
+ *
+ * Callers with extra `before()` setup (e.g. the capture spec's output-dir
+ * `mkdirSync` and post-render wait) keep that logic locally around this call.
+ */
+export async function openFixtureAndPreview({
+  envVar,
+  fixtureName,
+  runnerName = "run-webview-tests.mjs",
+}: {
+  envVar: string;
+  fixtureName: string;
+  runnerName?: string;
+}): Promise<FrameContext> {
+  const fixturePath = process.env[envVar];
+  if (!fixturePath) {
+    throw new Error(`${envVar} env var was not set by ${runnerName}`);
+  }
+
+  const driver = VSBrowser.instance.driver;
+  const editorView = new EditorView();
+  const workbench = new Workbench();
+
+  await openFixtureWithRetry(driver, workbench, editorView, fixturePath, fixtureName);
+  return openPreviewAndEnterFrame(driver, workbench, editorView);
 }
 
 /**
@@ -194,6 +234,33 @@ export async function leaveWebViewFrame(
     // already detached
   }
   ctx.inWebViewFrame = false;
+}
+
+/**
+ * Settle time after the .krs editor gains focus before reading its cursor
+ * position — mirrors the settle VS Code needs to finish laying out the
+ * editor tab.
+ */
+const EDITOR_FOCUS_SETTLE_MS = 150;
+
+/**
+ * Read the .krs editor's cursor line: leave the WebView frame (strict —
+ * propagates a real `switchBack` failure instead of masking it), open
+ * `editorTitle` in editor group 0, wait {@link EDITOR_FOCUS_SETTLE_MS} for
+ * the tab switch to settle, then return the 1-indexed line from
+ * `TextEditor.getCoordinates()`. Leaves the driver outside the WebView
+ * frame; callers that need to keep polling from inside the frame should
+ * re-enter it via {@link ensureWebViewFrame}.
+ */
+export async function readEditorCursorLine(
+  ctx: FrameContext,
+  editorTitle: string,
+): Promise<number> {
+  await leaveWebViewFrame(ctx, { swallowErrors: false });
+  const editor = (await new EditorView().openEditor(editorTitle, 0)) as TextEditor;
+  await ctx.driver.sleep(EDITOR_FOCUS_SETTLE_MS);
+  const [line] = await editor.getCoordinates();
+  return line;
 }
 
 /**

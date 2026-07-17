@@ -1,13 +1,5 @@
 import * as assert from "node:assert";
-import {
-  By,
-  EditorView,
-  type TextEditor,
-  VSBrowser,
-  type WebDriver,
-  Workbench,
-  until,
-} from "vscode-extension-tester";
+import { By, EditorView, type TextEditor, type WebDriver, until } from "vscode-extension-tester";
 import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
@@ -16,10 +8,10 @@ import {
   dispatchClick,
   ensureWebViewFrame,
   leaveWebViewFrame,
-  openFixtureWithRetry,
-  openPreviewAndEnterFrame,
+  openFixtureAndPreview,
   reacquireFrame,
   readBreadcrumb,
+  readEditorCursorLine,
 } from "./harness";
 
 /**
@@ -106,11 +98,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
   let ctx: FrameContext;
 
   async function readEditorLine(): Promise<number> {
-    await leaveWebViewFrame(ctx, { swallowErrors: false });
-    const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
-    await driver.sleep(150);
-    const [line] = await editor.getCoordinates();
-    return line;
+    return readEditorCursorLine(ctx, FIXTURE_NAME);
   }
 
   // Dispatch a Cmd/Ctrl+Click at `selector` and poll the .krs editor
@@ -148,17 +136,11 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
   }
 
   before(async () => {
-    const fixturePath = process.env.KARASU_E2E_FIXTURE_KRS_AT0038;
-    if (!fixturePath) {
-      throw new Error("KARASU_E2E_FIXTURE_KRS_AT0038 env var was not set by run-webview-tests.mjs");
-    }
-
-    driver = VSBrowser.instance.driver;
-    const editorView = new EditorView();
-    const workbench = new Workbench();
-
-    await openFixtureWithRetry(driver, workbench, editorView, fixturePath, FIXTURE_NAME);
-    ctx = await openPreviewAndEnterFrame(driver, workbench, editorView);
+    ctx = await openFixtureAndPreview({
+      envVar: "KARASU_E2E_FIXTURE_KRS_AT0038",
+      fixtureName: FIXTURE_NAME,
+    });
+    driver = ctx.driver;
   });
 
   beforeEach(async () => {
