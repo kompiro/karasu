@@ -187,6 +187,55 @@ function hasFollowingBlockquote(lines: string[], index: number): boolean {
   return false;
 }
 
+/** A single checklist bullet and whether an automation marker covers it. */
+export interface BulletCoverage {
+  /** 1-indexed line of the bullet. */
+  line: number;
+  /** `true` for `- [x]`, `false` for `- [ ]`. */
+  checked: boolean;
+  /** `true` if a `✅ Automated` / `🟡 Partially automated` / suite-wide marker covers this bullet. */
+  covered: boolean;
+  /** The bullet text (first line only), trimmed. */
+  text: string;
+}
+
+/**
+ * Per-bullet automation-coverage scan, reusing the same marker regexes as
+ * `analyzeFile` so the two stay in lockstep.
+ *
+ * A bullet is `covered` when it sits under an active
+ * `> ✅ Automated by … (suite-wide)` header, or is immediately followed by a
+ * `> ✅ Automated …` / `> 🟡 Partially automated …` blockquote. The QA checklist
+ * generator (`generate-qa-checklist.ts`) uses this to drop already-fenced items
+ * that would otherwise leak into the manual list as bare `- [ ]` lines — the
+ * marker-blindness fixed by #2045. Pure — no filesystem access.
+ */
+export function scanBulletCoverage(content: string): BulletCoverage[] {
+  const lines = content.split(/\r?\n/);
+  const out: BulletCoverage[] = [];
+  let suiteWideActive = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (HEADING.test(line)) {
+      suiteWideActive = false;
+      continue;
+    }
+    if (SUITE_WIDE_BLOCKQUOTE.test(line)) {
+      suiteWideActive = true;
+      continue;
+    }
+    const m = line.match(CHECKBOX);
+    if (!m) continue;
+    out.push({
+      line: i + 1,
+      checked: m[1] === "x",
+      covered: suiteWideActive || hasFollowingBlockquote(lines, i),
+      text: m[2].trim(),
+    });
+  }
+  return out;
+}
+
 function extractAtId(file: string): string | null {
   const m = basename(file).match(AT_FILENAME);
   return m ? m[1] : null;

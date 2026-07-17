@@ -58,6 +58,7 @@
     "tpl:review:body": "tpl review-body --repo kompiro/karasu",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
     "at:test": "vitest run scripts/acceptance",
+    "qa:checklist": "tsx scripts/acceptance/generate-qa-checklist.ts",
     "gen:reference": "tsx scripts/reference/gen-docs.ts",
     "gen:guide-diagrams": "tsx scripts/guide/gen-guide-diagrams.ts"
   },
