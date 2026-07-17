@@ -11,7 +11,7 @@ import {
   type DiagramType,
   type DirEntry,
   type FileSystemProvider,
-} from "../../../core/src/index.ts";
+} from "./core.ts";
 import { REPO_ROOT } from "../sources.ts";
 
 /** Read-only Node filesystem for the import resolver. Writes are not needed. */
