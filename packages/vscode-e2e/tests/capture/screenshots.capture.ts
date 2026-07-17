@@ -1,22 +1,14 @@
 import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import {
-  By,
-  EditorView,
-  VSBrowser,
-  type WebDriver,
-  Workbench,
-  until,
-} from "vscode-extension-tester";
+import { By, EditorView, type WebDriver, until } from "vscode-extension-tester";
 import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
   type PreviewView,
   SUITE_TIMEOUT_MS,
   leaveWebViewFrame,
-  openFixtureWithRetry,
-  openPreviewAndEnterFrame,
+  openFixtureAndPreview,
   switchToView,
 } from "../webview/harness";
 
@@ -57,24 +49,18 @@ describe("karasu Marketplace screenshots (capture)", function () {
   let outDir: string;
 
   before(async () => {
-    const fixturePath = process.env.KARASU_E2E_CAPTURE_FIXTURE_KRS;
-    if (!fixturePath) {
-      throw new Error(
-        "KARASU_E2E_CAPTURE_FIXTURE_KRS env var was not set by capture-screenshots.mjs",
-      );
-    }
     outDir = process.env.KARASU_E2E_CAPTURE_OUT_DIR ?? "";
     if (!outDir) {
       throw new Error("KARASU_E2E_CAPTURE_OUT_DIR env var was not set by capture-screenshots.mjs");
     }
     fs.mkdirSync(outDir, { recursive: true });
 
-    driver = VSBrowser.instance.driver;
-    const editorView = new EditorView();
-    const workbench = new Workbench();
-
-    await openFixtureWithRetry(driver, workbench, editorView, fixturePath, FIXTURE_NAME);
-    ctx = await openPreviewAndEnterFrame(driver, workbench, editorView);
+    ctx = await openFixtureAndPreview({
+      envVar: "KARASU_E2E_CAPTURE_FIXTURE_KRS",
+      fixtureName: FIXTURE_NAME,
+      runnerName: "capture-screenshots.mjs",
+    });
+    driver = ctx.driver;
 
     // Wait for the preview to render before capturing anything.
     await driver.wait(until.elementLocated(By.css("[data-node-id]")), ELEMENT_TIMEOUT_MS);

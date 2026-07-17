@@ -5,6 +5,7 @@ import {
   findUniqueIdentifier,
   fixtureUri,
   openFixture,
+  pollUntil,
   waitForDiagnostics,
   waitForLspReady,
 } from "./_helpers.js";
@@ -230,24 +231,20 @@ describe("AT-1177 — Tidy Style formatting", () => {
    * deliberately non-tidy, so a ready provider always yields edits.
    */
   async function formatDocumentEdits(uri: vscode.Uri): Promise<vscode.TextEdit[]> {
-    const deadline = Date.now() + FORMAT_TIMEOUT_MS;
-    let last: unknown;
-    while (Date.now() < deadline) {
-      try {
+    return pollUntil(
+      async () => {
         const edits = await vscode.commands.executeCommand<vscode.TextEdit[] | undefined>(
           "vscode.executeFormatDocumentProvider",
           uri,
           { tabSize: 2, insertSpaces: true },
         );
-        last = edits;
-        if (Array.isArray(edits) && edits.length > 0) return edits;
-      } catch {
-        // Server not ready yet — keep polling.
-      }
-      await new Promise((resolve) => setTimeout(resolve, FORMAT_POLL_INTERVAL_MS));
-    }
-    throw new Error(
-      `formatting provider returned no edits for ${uri.toString()} within ${FORMAT_TIMEOUT_MS}ms (last: ${JSON.stringify(last)})`,
+        return Array.isArray(edits) && edits.length > 0 ? edits : undefined;
+      },
+      {
+        timeoutMs: FORMAT_TIMEOUT_MS,
+        intervalMs: FORMAT_POLL_INTERVAL_MS,
+        message: `formatting provider returned no edits for ${uri.toString()} within ${FORMAT_TIMEOUT_MS}ms`,
+      },
     );
   }
 

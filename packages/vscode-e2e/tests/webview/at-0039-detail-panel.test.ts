@@ -1,13 +1,5 @@
 import * as assert from "node:assert";
-import {
-  By,
-  EditorView,
-  type TextEditor,
-  VSBrowser,
-  type WebDriver,
-  Workbench,
-  until,
-} from "vscode-extension-tester";
+import { By, EditorView, type WebDriver, until } from "vscode-extension-tester";
 import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
@@ -17,10 +9,10 @@ import {
   ensureWebViewFrame,
   isViewActive,
   leaveWebViewFrame,
-  openFixtureWithRetry,
-  openPreviewAndEnterFrame,
+  openFixtureAndPreview,
   reacquireFrame,
   readBreadcrumb,
+  readEditorCursorLine,
   switchToView,
 } from "./harness";
 
@@ -162,17 +154,11 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   }
 
   before(async () => {
-    const fixturePath = process.env.KARASU_E2E_FIXTURE_KRS;
-    if (!fixturePath) {
-      throw new Error("KARASU_E2E_FIXTURE_KRS env var was not set by run-webview-tests.mjs");
-    }
-
-    driver = VSBrowser.instance.driver;
-    const editorView = new EditorView();
-    const workbench = new Workbench();
-
-    await openFixtureWithRetry(driver, workbench, editorView, fixturePath, FIXTURE_NAME);
-    ctx = await openPreviewAndEnterFrame(driver, workbench, editorView);
+    ctx = await openFixtureAndPreview({
+      envVar: "KARASU_E2E_FIXTURE_KRS",
+      fixtureName: FIXTURE_NAME,
+    });
+    driver = ctx.driver;
   });
 
   beforeEach(async () => {
@@ -359,9 +345,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     let lastLine = 0;
     await driver.wait(
       async () => {
-        const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
-        await driver.sleep(150);
-        const [line] = await editor.getCoordinates();
+        const line = await readEditorCursorLine(ctx, FIXTURE_NAME);
         lastLine = line;
         return line === FIXTURE_LINE.Customer;
       },

@@ -1,9 +1,33 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-const EXTENSION_ID = "karasu-tools.karasu-vscode";
+export const EXTENSION_ID = "karasu-tools.karasu-vscode";
 const POLL_INTERVAL_MS = 50;
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
+ * Poll `probe` until it resolves to a defined value or `timeoutMs` elapses,
+ * sleeping `intervalMs` between attempts. A thrown probe error (e.g. the LSP
+ * client is still spinning up) is treated the same as an `undefined` result —
+ * "not ready yet" — and polling continues. Throws `new Error(message)` once
+ * the deadline passes without a defined result.
+ */
+export async function pollUntil<T>(
+  probe: () => Promise<T | undefined>,
+  { timeoutMs, intervalMs, message }: { timeoutMs: number; intervalMs: number; message: string },
+): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const result = await probe();
+      if (result !== undefined) return result;
+    } catch {
+      // Not ready yet — keep polling.
+    }
+    await sleep(intervalMs);
+  }
+  throw new Error(message);
+}
 
 export function fixtureUri(relative: string): vscode.Uri {
   const folders = vscode.workspace.workspaceFolders;
@@ -31,20 +55,20 @@ export async function waitForLspReady(
   const ext = vscode.extensions.getExtension(EXTENSION_ID);
   if (ext && !ext.isActive) await ext.activate();
 
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
+  await pollUntil(
+    async () => {
       const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
         "vscode.executeDocumentSymbolProvider",
         uri,
       );
-      if (Array.isArray(symbols)) return;
-    } catch {
-      // Server not ready yet — keep polling.
-    }
-    await sleep(POLL_INTERVAL_MS);
-  }
-  throw new Error(`LSP did not become ready for ${uri.toString()} within ${timeoutMs}ms`);
+      return Array.isArray(symbols) ? true : undefined;
+    },
+    {
+      timeoutMs,
+      intervalMs: POLL_INTERVAL_MS,
+      message: `LSP did not become ready for ${uri.toString()} within ${timeoutMs}ms`,
+    },
+  );
 }
 
 export async function waitForDiagnostics(
@@ -52,13 +76,17 @@ export async function waitForDiagnostics(
   predicate: (diags: readonly vscode.Diagnostic[]) => boolean,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<readonly vscode.Diagnostic[]> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const diags = vscode.languages.getDiagnostics(uri);
-    if (predicate(diags)) return diags;
-    await sleep(POLL_INTERVAL_MS);
-  }
-  throw new Error(`diagnostics predicate did not pass for ${uri.toString()} within ${timeoutMs}ms`);
+  return pollUntil(
+    async () => {
+      const diags = vscode.languages.getDiagnostics(uri);
+      return predicate(diags) ? diags : undefined;
+    },
+    {
+      timeoutMs,
+      intervalMs: POLL_INTERVAL_MS,
+      message: `diagnostics predicate did not pass for ${uri.toString()} within ${timeoutMs}ms`,
+    },
+  );
 }
 
 /**
