@@ -48,7 +48,6 @@ export function useShareDialog({
   hasEntityView,
   getShareBundle,
 }: UseShareDialogParams): {
-  shareOpen: boolean;
   handleShare: () => Promise<void>;
   shareDialogProps: ShareDialogRenderProps;
 } {
@@ -139,7 +138,6 @@ export function useShareDialog({
   }
 
   return {
-    shareOpen,
     handleShare,
     shareDialogProps: {
       open: shareOpen,

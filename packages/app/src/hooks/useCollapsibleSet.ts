@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 /**
  * A collapsed-id set with the three idioms the system view's collapse axes share
@@ -14,6 +14,11 @@ import { useCallback, useMemo, useState } from "react";
  * any other member first, so the set never holds more than one element. Used by
  * the in-place expansion axis, where expanding a second container collapses the
  * first (keeping the scoped-glance node budget bounded — TPL-20260510-21).
+ *
+ * `key` is exposed as a lazy getter, not an eagerly-memoized field: consumers
+ * that only read `set` / `toggle` (e.g. `useOrgView`) never pay the sort+join,
+ * while consumers that read it (`useSystemView`'s three axes) still get the same
+ * stable string, computed once per `set` identity and cached in a ref.
  */
 export function useCollapsibleSet<T extends string>(
   single = false,
@@ -25,7 +30,7 @@ export function useCollapsibleSet<T extends string>(
   /** Replace the whole set — empty when `items` is omitted (expand-all). */
   replace: (items?: Iterable<T>) => void;
   /** Sorted, comma-joined ids — a stable string key for effect dependencies. */
-  key: string;
+  readonly key: string;
 } {
   const [set, setSet] = useState<ReadonlySet<T>>(new Set());
   const toggle = useCallback(
@@ -45,6 +50,19 @@ export function useCollapsibleSet<T extends string>(
   const replace = useCallback((items?: Iterable<T>) => {
     setSet(new Set(items));
   }, []);
-  const key = useMemo(() => [...set].sort().join(","), [set]);
-  return { set, toggle, replace, key };
+
+  // Cache the sorted key per `set` identity so repeated reads within a render
+  // don't recompute, and unread renders cost nothing (the getter isn't invoked).
+  const keyCache = useRef<{ set: ReadonlySet<T>; key: string } | null>(null);
+  return {
+    set,
+    toggle,
+    replace,
+    get key(): string {
+      if (keyCache.current?.set !== set) {
+        keyCache.current = { set, key: [...set].sort().join(",") };
+      }
+      return keyCache.current.key;
+    },
+  };
 }
