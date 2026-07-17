@@ -129,38 +129,36 @@ test.describe("AT-1907 Entity view app integration", () => {
     expect(content).toContain('data-node-id="LineItem"');
   });
 
-  // "Group by frames an entity member once selected, without leaving the
-  // entity view (#1983)" — not e2e-testable from the live app right now.
-  //
-  // `renderEntityView` never received `groupBy` before #1983; this PR wires
-  // it, and the core render math is unit-tested in
-  // packages/core/src/renderer/group-by-drilldown-render.test.ts and
-  // packages/app/src/hooks/useViewSvg.test.tsx (both call the
-  // function/hook directly with an explicit `groupBy` argument). But driven
-  // through the real UI, the frame never appears, for two independent
-  // reasons:
-  //
-  //  1. `owns` (team axis) structurally excludes `entity` — it is only
-  //     indexed for service/domain/client (+ top-level infra) in
-  //     `buildNodePathIndex` (packages/core/src/parser/parser.ts). An entity
-  //     can only ever be grouped via the `boundary` axis (`contains` has no
-  //     kind restriction).
-  //  2. `boundary` never reaches this surface: AppShell hardcodes
-  //     `views.system.groupBy === "team" ? "team" : undefined` when calling
-  //     `useViewSvg` (packages/app/src/components/AppShell.tsx:228, added by
-  //     #1879 before the boundary axis existed). The P2b-B boundary-axis
-  //     rollout (#1973) updated the selector, `useSystemView`, and every core
-  //     render path, but not this call site — so `groupBy: "boundary"` is
-  //     silently dropped before it reaches the entity view AND the three
-  //     export builders (Show All Layers / drill-down export / Open All
-  //     Views), even though the "Boundary" option is offered in the UI.
-  //     Confirmed live: selecting Boundary and toggling Show All Layers on a
-  //     `boundary`-only fixture exports zero group frames.
-  //
-  // This looks like a pre-existing parity gap (TPL-20260510-11 / the very
-  // TPL-20260716-02 this PR introduces), not something introduced by this
-  // diff — flagged for a human decision rather than patched here. Re-enable
-  // once AppShell forwards `views.system.groupBy` unfiltered (mirroring the
-  // `groupBy === "none" ? undefined : groupBy` used for the main system view).
-  test.skip("Group by: boundary frames an entity member (blocked — see comment)", () => {});
+  // The entity member can only be grouped via the `boundary` axis: `owns`
+  // (team axis) never indexes entities (service/domain/client + top-level
+  // infra only), and `contains` has no kind restriction. The boundary axis
+  // reaching this surface at all is the #2033 fix — AppShell used to hardcode
+  // the team axis when calling `useViewSvg`, dropping "boundary" before it
+  // reached the entity view and the export builders.
+  test("Group by: boundary frames an entity member in the entity view (#1983)", async ({
+    page,
+    opfs,
+  }) => {
+    const ENTITY_BOUNDARY_KRS = `${ENTITY_KRS}
+boundary core_data "Core data" {
+  contains Order
+}
+`;
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
+    await replaceEditorContent(page, ENTITY_BOUNDARY_KRS);
+    await drillIntoOrderingDomain(page);
+
+    // Pick the boundary axis on the drilled (usecase) view, then flip to the
+    // entity sub-mode — Group-by is view-state and must survive the toggle.
+    await page.locator("#group-by-select").selectOption("boundary");
+    await entityToggle(page).click();
+
+    const entityPane = page.locator(".preview-pane--entity");
+    await expect(entityPane).toBeVisible();
+    await expect(entityPane.locator('[data-node-id="Order"]')).toBeVisible();
+    // The contained entity gets its boundary frame; the non-member stays out.
+    await expect(entityPane.locator('[data-container-id="__group_core_data__"]')).toBeVisible();
+    await expect(entityPane.locator('[data-node-id="LineItem"]')).toBeVisible();
+  });
 });
