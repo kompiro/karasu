@@ -15,7 +15,7 @@ import {
   Range,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { Parser } from "@karasu-tools/core";
+import { Parser, type KrsFile } from "@karasu-tools/core";
 import type { Locale } from "@karasu-tools/i18n";
 import { computeDiagnostics } from "./diagnostics.js";
 import { findDefinitionInImports } from "./definition-imports.js";
@@ -30,6 +30,7 @@ import {
 } from "./position-resolver.js";
 import { buildDocumentSymbols } from "./document-symbols.js";
 import type { LspPosition, LspRange } from "./lsp-position.js";
+import { KRS_KEYWORDS } from "./completion-keywords.js";
 
 // The languageId under which the VS Code extension registers `.krs.style`
 // documents (see packages/vscode/src/extension.ts). Style docs are routed
@@ -91,11 +92,9 @@ connection.onDocumentFormatting((params) => {
   const formatted = formatSource(src, doc.languageId === STYLE_LANGUAGE_ID);
   if (formatted === null) return [];
 
-  const lastLine = doc.lineCount - 1;
-  const lastChar = doc.getText().split("\n").at(-1)?.length ?? 0;
   const fullRange: Range = {
-    start: { line: 0, character: 0 },
-    end: { line: lastLine, character: lastChar },
+    start: doc.positionAt(0),
+    end: doc.positionAt(src.length),
   };
   return [TextEdit.replace(fullRange, formatted)];
 });
@@ -104,67 +103,48 @@ documents.onDidClose((event) => {
   connection.sendDiagnostics({ uri: event.document.uri, diagnostics: [] });
 });
 
+// ─── Shared handler boilerplate ───────────────────────────────────────────────
+
+/**
+ * Look up the open document for `uri` and parse it. Returns `null` when the
+ * document isn't open — callers fall back to their own empty/null result in
+ * that case (the fallback shape differs per handler, so it isn't baked in here).
+ *
+ * Only for handlers with no cheaper pre-parse early-return. `onHover` /
+ * `onDefinition` guard on the word under the cursor first (a full parse on
+ * every non-identifier hover is wasteful), so they fetch the doc via
+ * `documents.get` and parse lazily only past the guard.
+ */
+function getParsedDocument(uri: string): { doc: TextDocument; file: KrsFile } | null {
+  const doc = documents.get(uri);
+  if (!doc) return null;
+  const parseResult = Parser.parse(doc.getText());
+  return { doc, file: parseResult.value };
+}
+
 // ─── Custom request handlers ──────────────────────────────────────────────────
 
 connection.onRequest(NodeAtPositionRequest, ({ uri, position }) => {
-  const doc = documents.get(uri);
-  if (!doc) return { nodeId: null };
+  const parsed = getParsedDocument(uri);
+  if (!parsed) return { nodeId: null };
 
-  const parseResult = Parser.parse(doc.getText());
-  return { nodeId: findNodeAtPosition(parseResult.value, position) };
+  return { nodeId: findNodeAtPosition(parsed.file, position) };
 });
 
 connection.onRequest(PositionOfNodeRequest, ({ uri, nodeId }) => {
-  const doc = documents.get(uri);
-  if (!doc) return { range: null };
+  const parsed = getParsedDocument(uri);
+  if (!parsed) return { range: null };
 
-  const parseResult = Parser.parse(doc.getText());
-  return { range: findRangeOfNode(parseResult.value, nodeId) };
+  return { range: findRangeOfNode(parsed.file, nodeId) };
 });
 
 // ─── Completion ───────────────────────────────────────────────────────────────
 
-const KRS_KEYWORDS = [
-  "system",
-  "service",
-  "client",
-  "domain",
-  "usecase",
-  "resource",
-  "user",
-  "deploy",
-  "war",
-  "jar",
-  "oci",
-  "lambda",
-  "function",
-  "assets",
-  "job",
-  "artifact",
-  "store",
-  "organization",
-  "member",
-  "label",
-  "description",
-  "team",
-  "role",
-  "link",
-  "runtime",
-  "realizes",
-  "schedule",
-  "image",
-  "type",
-  "owns",
-  "slack",
-  "github",
-];
-
 connection.onCompletion((params) => {
-  const doc = documents.get(params.textDocument.uri);
-  if (!doc) return [];
+  const parsed = getParsedDocument(params.textDocument.uri);
+  if (!parsed) return [];
 
-  const parseResult = Parser.parse(doc.getText());
-  const identifiers = collectAllIdentifiers(parseResult.value);
+  const identifiers = collectAllIdentifiers(parsed.file);
 
   const keywordItems: CompletionItem[] = KRS_KEYWORDS.map((kw) => ({
     label: kw,
@@ -192,20 +172,17 @@ connection.onDefinition((params) => {
   const word = getWordAtPosition(doc.getText(), params.position);
   if (!word) return null;
 
-  const parseResult = Parser.parse(doc.getText());
+  // Parse only past the word guard — avoids a full parse when the cursor
+  // isn't on an identifier.
+  const file = Parser.parse(doc.getText()).value;
 
   // Same-file lookup
-  const range = findRangeOfNode(parseResult.value, word);
+  const range = findRangeOfNode(file, word);
   if (range) return Location.create(params.textDocument.uri, range);
 
   // Cross-file lookup: recursively search all imports (named, wildcard, transitive)
   const visited = new Set<string>([fileURLToPath(params.textDocument.uri)]);
-  const result = findDefinitionInImports(
-    parseResult.value.nodeImports,
-    word,
-    params.textDocument.uri,
-    visited,
-  );
+  const result = findDefinitionInImports(file.nodeImports, word, params.textDocument.uri, visited);
   return result;
 });
 
@@ -221,8 +198,10 @@ connection.onHover((params) => {
   const word = getWordAtPosition(doc.getText(), params.position);
   if (!word) return null;
 
-  const parseResult = Parser.parse(doc.getText());
-  const description = getNodeDescription(parseResult.value, word);
+  // Parse only past the word guard — hover fires on every mouse move, so a
+  // full parse on non-identifier positions would be wasted work.
+  const file = Parser.parse(doc.getText()).value;
+  const description = getNodeDescription(file, word);
   if (!description) return null;
 
   return { contents: { kind: "markdown", value: description } } satisfies Hover;
@@ -231,11 +210,10 @@ connection.onHover((params) => {
 // ─── Document Symbols ─────────────────────────────────────────────────────────
 
 connection.onDocumentSymbol((params) => {
-  const doc = documents.get(params.textDocument.uri);
-  if (!doc) return [];
+  const parsed = getParsedDocument(params.textDocument.uri);
+  if (!parsed) return [];
 
-  const parseResult = Parser.parse(doc.getText());
-  return buildDocumentSymbols(parseResult.value);
+  return buildDocumentSymbols(parsed.file);
 });
 
 // ─── Diagnostics ─────────────────────────────────────────────────────────────
