@@ -491,6 +491,35 @@ export interface KrsFile {
   nodeFileIndex: Map<string, string>;
 }
 
+/**
+ * Single source of truth for an empty {@link KrsFile}. Returns a **fresh**
+ * literal on every call (fresh arrays/Maps) — callers must not share a single
+ * instance across parses/merges, since each represents a distinct file's
+ * accumulator. Used by the parser (`parseFile`), the import resolver
+ * (circular-import fallback + merge accumulator), and CLI subtree wrapping.
+ */
+export function createEmptyKrsFile(): KrsFile {
+  return {
+    styleImports: [],
+    nodeImports: [],
+    systems: [],
+    services: [],
+    clients: [],
+    domains: [],
+    databases: [],
+    queues: [],
+    storages: [],
+    deploys: [],
+    organizations: [],
+    boundaries: [],
+    legends: [],
+    ownerIndex: new Map(),
+    boundaryIndex: new Map(),
+    nodePathIndex: new Map(),
+    nodeFileIndex: new Map(),
+  };
+}
+
 // ─── Diagnostics ───────────────────────────────────
 
 /**

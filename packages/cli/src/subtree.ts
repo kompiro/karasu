@@ -1,5 +1,6 @@
 import {
   serializeKrsFile,
+  createEmptyKrsFile,
   type KrsFile,
   type KrsNode,
   type SystemNode,
@@ -47,28 +48,6 @@ function buildPath(chain: KrsNode[]): KrsNode {
   return node;
 }
 
-function emptyKrsFile(): KrsFile {
-  return {
-    styleImports: [],
-    nodeImports: [],
-    systems: [],
-    services: [],
-    clients: [],
-    domains: [],
-    databases: [],
-    queues: [],
-    storages: [],
-    deploys: [],
-    organizations: [],
-    boundaries: [],
-    legends: [],
-    ownerIndex: new Map(),
-    boundaryIndex: new Map(),
-    nodePathIndex: new Map(),
-    nodeFileIndex: new Map(),
-  };
-}
-
 /**
  * Choose the slice to serialize. Default (minimal) wraps the target up to its
  * nearest top-level-capable ancestor (domain > service > system). With
@@ -86,7 +65,7 @@ function sliceChain(chain: KrsNode[], withAncestors: boolean): KrsNode[] {
 }
 
 function wrapIntoFile(top: KrsNode): KrsFile | undefined {
-  const file = emptyKrsFile();
+  const file = createEmptyKrsFile();
   switch (top.kind) {
     case "system":
       file.systems.push(top as SystemNode);

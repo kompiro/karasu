@@ -30,7 +30,7 @@ export type {
   ClientResourceKind,
   ClientCapability,
 } from "./types/ast.js";
-export { INFRA_BLOCK_KINDS, INFRA_KIND_SET } from "./types/ast.js";
+export { INFRA_BLOCK_KINDS, INFRA_KIND_SET, createEmptyKrsFile } from "./types/ast.js";
 
 export type {
   StyleSheet,
