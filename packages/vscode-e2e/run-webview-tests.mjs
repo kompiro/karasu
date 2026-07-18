@@ -40,10 +40,13 @@ const exitCode = await runExtester({
     // team id* (`ownerIndex`), so the AT-0042 assertions look for
     // `data-nav-node="order-team"` rather than the old team label.
     //
-    // Issue #2068 addition (kept after Customer's own block so
+    // Issue #2068 additions (kept after Customer's own block so
     // `FIXTURE_LINE.Customer` in at-0039-detail-panel.test.ts does not
-    // shift): `OrderDB` (a `database`) is realized by a deploy `store` unit
-    // so the store kind gets its own detail-panel icon (previously
+    // shift): `UserService` gets `@deprecated(until: …)` for the Migration
+    // intent section; `WebApp` (a `client` node) carries `resource` /
+    // `capability` declarations for the Storage resources / Capabilities
+    // sections; `OrderDB` (a `database`) is realized by a deploy `store`
+    // unit so the store kind gets its own detail-panel icon (previously
     // unmapped, falling back to "■" — the bug this issue fixed alongside
     // the `usecase`/`domain` icon collision).
     fs.writeFileSync(
@@ -63,10 +66,20 @@ Handles **order processing** and payment.
     domain OrderManagement {}
     domain Inventory {}
   }
-  service UserService {}
+  service UserService @deprecated(until: "2026-12-31") {}
   user Customer [human] {
     description "A customer who purchases products."
     role "Buyer"
+  }
+  client WebApp [web] {
+    label "Customer SPA"
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+    capability notification
+    capability camera {
+      label "QR scanning"
+      description "Used to scan QR codes"
+    }
   }
   database OrderDB {
     table OrderTable {}

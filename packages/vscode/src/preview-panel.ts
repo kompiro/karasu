@@ -41,6 +41,18 @@ interface SerializedNodeMeta {
   realizes?: string[];
   tags: string[];
   hasDeployContainer?: boolean;
+  /** Client-only: operation-tied storage resources, in declaration order (Issue #2068). */
+  resources?: { storageKind: string; name: string }[];
+  /** Client-only: device / browser capabilities, in declaration order (Issue #2068). */
+  capabilities?: { name: string; label?: string; description?: string }[];
+  /**
+   * Interpreted migration-intent params (`@deprecated(until:…)` /
+   * `@experimental(until:…)` / `@migration_target(from:…)`), mirroring the
+   * app's `NodeDetailPanel` migration section (Issue #2068). `until.kind`
+   * is `"machine"` (parsed date/month/quarter) or `"opaque"` (free text);
+   * `until.raw` / `from` are always the exact source text.
+   */
+  migrationIntent?: { until?: { kind: string; raw: string }; from?: string };
 }
 
 export class PreviewPanel {
@@ -224,6 +236,20 @@ export class PreviewPanel {
           realizes: meta.realizes,
           tags: meta.tags,
           hasDeployContainer: meta.hasDeployContainer,
+          resources: meta.resources?.map((r) => ({ storageKind: r.storageKind, name: r.name })),
+          capabilities: meta.capabilities?.map((c) => ({
+            name: c.name,
+            label: c.label,
+            description: c.description,
+          })),
+          migrationIntent: meta.migrationIntent
+            ? {
+                until: meta.migrationIntent.until
+                  ? { kind: meta.migrationIntent.until.kind, raw: meta.migrationIntent.until.raw }
+                  : undefined,
+                from: meta.migrationIntent.from,
+              }
+            : undefined,
         };
       }
     }

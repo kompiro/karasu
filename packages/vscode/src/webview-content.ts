@@ -79,6 +79,16 @@ const ROLE_EMOJI = jsUnicodeEscape(NODE_DETAIL_ROLE_EMOJI);
 const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
 const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
 
+// Section titles for the resources/capabilities/migration sections (Issue
+// #2068). Not sourced from `@karasu-tools/core` — like the "Links" section
+// title above them in the generated script, these are hand-kept in sync
+// with the app's `nodeDetail.*.title` en strings in `@karasu-tools/i18n`
+// (the webview has no i18n runtime; see node-detail-fields.ts's doc comment
+// for what is and is not shared).
+const RESOURCES_TITLE_EMOJI = jsUnicodeEscape("📦");
+const CAPABILITIES_TITLE_EMOJI = jsUnicodeEscape("🔐");
+const MIGRATION_TITLE_EMOJI = jsUnicodeEscape("🕒");
+
 /**
  * Emoji glyph for each icon name in {@link NODE_DETAIL_KIND_ICON_NAMES}
  * (Issue #2068). The webview's `<script>` text is string-built in the
@@ -392,6 +402,21 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       margin: 2px 0;
       font-family: var(--vscode-editor-fontFamily, monospace);
     }
+    .dp-resource-list { list-style: none; padding: 0; font-family: var(--vscode-editor-fontFamily, monospace); font-size: 11.5px; }
+    .dp-resource-item { display: flex; gap: 8px; padding: 2px 0; }
+    .dp-resource-kind { color: var(--vscode-descriptionForeground); min-width: 96px; }
+    .dp-resource-name { color: var(--vscode-editor-foreground); }
+    .dp-capability-list { list-style: none; padding: 0; }
+    .dp-capability-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
+    .dp-capability-item + .dp-capability-item { border-top: 1px solid var(--vscode-panel-border); }
+    .dp-capability-title { color: var(--vscode-editor-foreground); font-size: 12px; font-weight: 600; }
+    .dp-capability-description {
+      margin: 0;
+      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
     .dp-jump {
       display: block;
       width: 100%;
@@ -506,6 +531,37 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
         html += '</ul></div>';
       }
 
+      // Storage resources (client kind only) — matching app layout
+      if (meta.resources && meta.resources.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">${RESOURCES_TITLE_EMOJI} Storage resources</div>';
+        html += '<ul class="dp-resource-list">';
+        for (var ri = 0; ri < meta.resources.length; ri++) {
+          var res = meta.resources[ri];
+          html += '<li class="dp-resource-item"><span class="dp-resource-kind">'
+            + escapeHtml(res.storageKind) + '</span><span class="dp-resource-name">'
+            + escapeHtml(res.name) + '</span></li>';
+        }
+        html += '</ul></div>';
+      }
+
+      // Capabilities (client kind only) — matching app layout
+      if (meta.capabilities && meta.capabilities.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">${CAPABILITIES_TITLE_EMOJI} Capabilities</div>';
+        html += '<ul class="dp-capability-list">';
+        for (var ci = 0; ci < meta.capabilities.length; ci++) {
+          var cap = meta.capabilities[ci];
+          html += '<li class="dp-capability-item"><span class="dp-capability-title">'
+            + escapeHtml(cap.label || cap.name) + '</span>';
+          if (cap.description) {
+            html += '<p class="dp-capability-description">' + escapeHtml(cap.description) + '</p>';
+          }
+          html += '</li>';
+        }
+        html += '</ul></div>';
+      }
+
       // Runtime / type / image / schedule / realizes (own section, matching app layout)
       if (${PROPERTY_SECTION_GUARD}) {
         html += '<div class="dp-section">';
@@ -514,6 +570,22 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
         if (meta.image) html += '<div class="dp-prop">${IMAGE_FIELD.emoji} ${IMAGE_FIELD.label}: ' + escapeHtml(meta.image) + '</div>';
         if (meta.schedule) html += '<div class="dp-prop">${SCHEDULE_FIELD.emoji} ${SCHEDULE_FIELD.label}: ' + escapeHtml(meta.schedule) + '</div>';
         if (meta.realizes?.length) html += '<div class="dp-prop">${REALIZES_FIELD.emoji} ${REALIZES_FIELD.label}: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
+        html += '</div>';
+      }
+
+      // Migration intent (@deprecated/@experimental until, @migration_target from)
+      if (meta.migrationIntent && (meta.migrationIntent.until || meta.migrationIntent.from)) {
+        html += '<div class="dp-section dp-migration">';
+        html += '<div class="dp-section-title">${MIGRATION_TITLE_EMOJI} Migration intent</div>';
+        if (meta.migrationIntent.until) {
+          html += '<div class="dp-prop dp-migration-until" data-until-kind="'
+            + escapeAttr(meta.migrationIntent.until.kind) + '">until: <code>'
+            + escapeHtml(meta.migrationIntent.until.raw) + '</code></div>';
+        }
+        if (meta.migrationIntent.from) {
+          html += '<div class="dp-prop dp-migration-from">from: <code>'
+            + escapeHtml(meta.migrationIntent.from) + '</code></div>';
+        }
         html += '</div>';
       }
 

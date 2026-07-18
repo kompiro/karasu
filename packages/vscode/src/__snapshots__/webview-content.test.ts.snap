@@ -211,6 +211,21 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       margin: 2px 0;
       font-family: var(--vscode-editor-fontFamily, monospace);
     }
+    .dp-resource-list { list-style: none; padding: 0; font-family: var(--vscode-editor-fontFamily, monospace); font-size: 11.5px; }
+    .dp-resource-item { display: flex; gap: 8px; padding: 2px 0; }
+    .dp-resource-kind { color: var(--vscode-descriptionForeground); min-width: 96px; }
+    .dp-resource-name { color: var(--vscode-editor-foreground); }
+    .dp-capability-list { list-style: none; padding: 0; }
+    .dp-capability-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
+    .dp-capability-item + .dp-capability-item { border-top: 1px solid var(--vscode-panel-border); }
+    .dp-capability-title { color: var(--vscode-editor-foreground); font-size: 12px; font-weight: 600; }
+    .dp-capability-description {
+      margin: 0;
+      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
     .dp-jump {
       display: block;
       width: 100%;
@@ -325,6 +340,37 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
         html += '</ul></div>';
       }
 
+      // Storage resources (client kind only) — matching app layout
+      if (meta.resources && meta.resources.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">\\ud83d\\udce6 Storage resources</div>';
+        html += '<ul class="dp-resource-list">';
+        for (var ri = 0; ri < meta.resources.length; ri++) {
+          var res = meta.resources[ri];
+          html += '<li class="dp-resource-item"><span class="dp-resource-kind">'
+            + escapeHtml(res.storageKind) + '</span><span class="dp-resource-name">'
+            + escapeHtml(res.name) + '</span></li>';
+        }
+        html += '</ul></div>';
+      }
+
+      // Capabilities (client kind only) — matching app layout
+      if (meta.capabilities && meta.capabilities.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">\\ud83d\\udd10 Capabilities</div>';
+        html += '<ul class="dp-capability-list">';
+        for (var ci = 0; ci < meta.capabilities.length; ci++) {
+          var cap = meta.capabilities[ci];
+          html += '<li class="dp-capability-item"><span class="dp-capability-title">'
+            + escapeHtml(cap.label || cap.name) + '</span>';
+          if (cap.description) {
+            html += '<p class="dp-capability-description">' + escapeHtml(cap.description) + '</p>';
+          }
+          html += '</li>';
+        }
+        html += '</ul></div>';
+      }
+
       // Runtime / type / image / schedule / realizes (own section, matching app layout)
       if (meta.runtime || meta.type || meta.image || meta.schedule || meta.realizes?.length) {
         html += '<div class="dp-section">';
@@ -333,6 +379,22 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
         if (meta.image) html += '<div class="dp-prop">\\ud83d\\udce6 image: ' + escapeHtml(meta.image) + '</div>';
         if (meta.schedule) html += '<div class="dp-prop">\\u23f1 schedule: ' + escapeHtml(meta.schedule) + '</div>';
         if (meta.realizes?.length) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
+        html += '</div>';
+      }
+
+      // Migration intent (@deprecated/@experimental until, @migration_target from)
+      if (meta.migrationIntent && (meta.migrationIntent.until || meta.migrationIntent.from)) {
+        html += '<div class="dp-section dp-migration">';
+        html += '<div class="dp-section-title">\\ud83d\\udd52 Migration intent</div>';
+        if (meta.migrationIntent.until) {
+          html += '<div class="dp-prop dp-migration-until" data-until-kind="'
+            + escapeAttr(meta.migrationIntent.until.kind) + '">until: <code>'
+            + escapeHtml(meta.migrationIntent.until.raw) + '</code></div>';
+        }
+        if (meta.migrationIntent.from) {
+          html += '<div class="dp-prop dp-migration-from">from: <code>'
+            + escapeHtml(meta.migrationIntent.from) + '</code></div>';
+        }
         html += '</div>';
       }
 
@@ -758,6 +820,21 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       margin: 2px 0;
       font-family: var(--vscode-editor-fontFamily, monospace);
     }
+    .dp-resource-list { list-style: none; padding: 0; font-family: var(--vscode-editor-fontFamily, monospace); font-size: 11.5px; }
+    .dp-resource-item { display: flex; gap: 8px; padding: 2px 0; }
+    .dp-resource-kind { color: var(--vscode-descriptionForeground); min-width: 96px; }
+    .dp-resource-name { color: var(--vscode-editor-foreground); }
+    .dp-capability-list { list-style: none; padding: 0; }
+    .dp-capability-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
+    .dp-capability-item + .dp-capability-item { border-top: 1px solid var(--vscode-panel-border); }
+    .dp-capability-title { color: var(--vscode-editor-foreground); font-size: 12px; font-weight: 600; }
+    .dp-capability-description {
+      margin: 0;
+      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
     .dp-jump {
       display: block;
       width: 100%;
@@ -872,6 +949,37 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
         html += '</ul></div>';
       }
 
+      // Storage resources (client kind only) — matching app layout
+      if (meta.resources && meta.resources.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">\\ud83d\\udce6 Storage resources</div>';
+        html += '<ul class="dp-resource-list">';
+        for (var ri = 0; ri < meta.resources.length; ri++) {
+          var res = meta.resources[ri];
+          html += '<li class="dp-resource-item"><span class="dp-resource-kind">'
+            + escapeHtml(res.storageKind) + '</span><span class="dp-resource-name">'
+            + escapeHtml(res.name) + '</span></li>';
+        }
+        html += '</ul></div>';
+      }
+
+      // Capabilities (client kind only) — matching app layout
+      if (meta.capabilities && meta.capabilities.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">\\ud83d\\udd10 Capabilities</div>';
+        html += '<ul class="dp-capability-list">';
+        for (var ci = 0; ci < meta.capabilities.length; ci++) {
+          var cap = meta.capabilities[ci];
+          html += '<li class="dp-capability-item"><span class="dp-capability-title">'
+            + escapeHtml(cap.label || cap.name) + '</span>';
+          if (cap.description) {
+            html += '<p class="dp-capability-description">' + escapeHtml(cap.description) + '</p>';
+          }
+          html += '</li>';
+        }
+        html += '</ul></div>';
+      }
+
       // Runtime / type / image / schedule / realizes (own section, matching app layout)
       if (meta.runtime || meta.type || meta.image || meta.schedule || meta.realizes?.length) {
         html += '<div class="dp-section">';
@@ -880,6 +988,22 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
         if (meta.image) html += '<div class="dp-prop">\\ud83d\\udce6 image: ' + escapeHtml(meta.image) + '</div>';
         if (meta.schedule) html += '<div class="dp-prop">\\u23f1 schedule: ' + escapeHtml(meta.schedule) + '</div>';
         if (meta.realizes?.length) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
+        html += '</div>';
+      }
+
+      // Migration intent (@deprecated/@experimental until, @migration_target from)
+      if (meta.migrationIntent && (meta.migrationIntent.until || meta.migrationIntent.from)) {
+        html += '<div class="dp-section dp-migration">';
+        html += '<div class="dp-section-title">\\ud83d\\udd52 Migration intent</div>';
+        if (meta.migrationIntent.until) {
+          html += '<div class="dp-prop dp-migration-until" data-until-kind="'
+            + escapeAttr(meta.migrationIntent.until.kind) + '">until: <code>'
+            + escapeHtml(meta.migrationIntent.until.raw) + '</code></div>';
+        }
+        if (meta.migrationIntent.from) {
+          html += '<div class="dp-prop dp-migration-from">from: <code>'
+            + escapeHtml(meta.migrationIntent.from) + '</code></div>';
+        }
         html += '</div>';
       }
 
