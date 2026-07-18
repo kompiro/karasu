@@ -4,6 +4,7 @@ import {
   analyzeLinkage,
   analyzeRepo,
   hasTokenOverlap,
+  scanBulletCoverage,
   slugTokens,
   type SpecDocRef,
   type SpecLookup,
@@ -340,5 +341,36 @@ describe("analyzeLinkage (exact e2e guards)", () => {
         specPath: "packages/e2e/tests/at-0033-drilldown.spec.ts",
       },
     ]);
+  });
+});
+
+describe("scanBulletCoverage", () => {
+  it("reports checked/unchecked and marker coverage per bullet", () => {
+    const md = [
+      "### AC-1",
+      "- [x] done, no marker", // checked, uncovered
+      "- [ ] fenced by a sibling marker",
+      "> ✅ Automated — `packages/e2e/tests/at-0099.spec.ts` › `case A`",
+      "- [ ] genuinely manual", // unchecked, uncovered
+    ].join("\n");
+    const cov = scanBulletCoverage(md);
+    expect(cov).toEqual([
+      { line: 2, checked: true, covered: false, text: "done, no marker" },
+      { line: 3, checked: false, covered: true, text: "fenced by a sibling marker" },
+      { line: 5, checked: false, covered: false, text: "genuinely manual" },
+    ]);
+  });
+
+  it("treats a suite-wide marker as covering every following bullet until the next heading", () => {
+    const md = [
+      "### AC-1",
+      "> ✅ Automated by `packages/e2e/tests/at-0099.spec.ts` (suite-wide)",
+      "- [x] a",
+      "- [ ] b",
+      "### AC-2",
+      "- [ ] c",
+    ].join("\n");
+    const cov = scanBulletCoverage(md);
+    expect(cov.map((c) => c.covered)).toEqual([true, true, false]);
   });
 });

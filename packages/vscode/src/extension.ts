@@ -6,30 +6,12 @@ import {
   type LanguageClientOptions,
   type ServerOptions,
   TransportKind,
-  RequestType,
 } from "vscode-languageclient/node";
+import { NodeAtPositionRequest, PositionOfNodeRequest } from "@karasu-tools/lsp/protocol";
 import { PreviewPanel } from "./preview-panel.js";
 
 const PREVIEW_DEBOUNCE_MS = 300;
 const CURSOR_DEBOUNCE_MS = 150;
-
-// Custom LSP request types (must mirror packages/lsp/src/server.ts)
-const NodeAtPositionRequest = new RequestType<
-  { uri: string; position: { line: number; character: number } },
-  { nodeId: string | null },
-  void
->("karasu/nodeAtPosition");
-
-const PositionOfNodeRequest = new RequestType<
-  { uri: string; nodeId: string },
-  {
-    range: {
-      start: { line: number; character: number };
-      end: { line: number; character: number };
-    } | null;
-  },
-  void
->("karasu/positionOfNode");
 
 /**
  * `deactivate()` is called by VS Code independently of `activate`'s closure,

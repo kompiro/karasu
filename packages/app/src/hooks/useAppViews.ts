@@ -68,7 +68,13 @@ interface UseAppViewsArgs {
   onFileChange?: (path: string) => Promise<void> | void;
 }
 
-interface SystemViewBundle {
+/**
+ * Exported so `usePreviewContextValue`'s `system` arg can be declared as
+ * `Pick<SystemViewBundle, ...>` instead of re-listing every field's type by
+ * hand (#2015 point 8) — one fewer hand-maintained copy of this shape between
+ * `useSystemView`'s return and `PreviewContextValue`.
+ */
+export interface SystemViewBundle {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
@@ -108,7 +114,8 @@ interface SystemViewBundle {
   hasBoundaryAxis: boolean;
 }
 
-interface DeployViewBundle {
+/** Exported for `usePreviewContextValue`'s `deploy` arg (#2015 point 8). */
+export interface DeployViewBundle {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
@@ -118,7 +125,8 @@ interface DeployViewBundle {
   deployTree: DeployBlock[];
 }
 
-interface OrgViewBundle {
+/** Exported for `usePreviewContextValue`'s `org` arg (#2015 point 8). */
+export interface OrgViewBundle {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
