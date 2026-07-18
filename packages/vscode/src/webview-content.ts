@@ -78,6 +78,22 @@ const ROLE_EMOJI = jsUnicodeEscape(NODE_DETAIL_ROLE_EMOJI);
 const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
 const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
 
+/**
+ * Visibility guard for the property-row section, derived from the shared
+ * spec so adding a field to NODE_DETAIL_PROPERTY_FIELDS automatically both
+ * renders its row (below) *and* keeps the section visible for a node whose
+ * only populated property is that new field. Generates the exact
+ * left-to-right `meta.runtime || meta.type || … || meta.realizes?.length`
+ * expression the client-side `if (...)` used before this change — the
+ * `realizes` array field tests `?.length`, the rest test truthiness — so
+ * the emitted script text stays byte-identical (fenced by the golden
+ * snapshot). Since it feeds an `if (...)`, boolean coercion makes it
+ * byte-identical for every input.
+ */
+const PROPERTY_SECTION_GUARD = NODE_DETAIL_PROPERTY_FIELDS.map((f) =>
+  f.metaKey === "realizes" ? "meta.realizes?.length" : `meta.${f.metaKey}`,
+).join(" || ");
+
 /** Inputs for {@link buildPreviewHtml}, all pre-computed by the caller. */
 export interface BuildPreviewHtmlParams {
   /** Rendered diagram SVG markup, already sized to embed as-is. */
@@ -437,7 +453,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       }
 
       // Runtime / type / image / schedule / realizes (own section, matching app layout)
-      if (meta.runtime || meta.type || meta.image || meta.schedule || meta.realizes?.length) {
+      if (${PROPERTY_SECTION_GUARD}) {
         html += '<div class="dp-section">';
         if (meta.runtime) html += '<div class="dp-prop">${RUNTIME_FIELD.emoji} ${RUNTIME_FIELD.label}: ' + escapeHtml(meta.runtime) + '</div>';
         if (meta.type) html += '<div class="dp-prop">${TYPE_FIELD.emoji} ${TYPE_FIELD.label}: ' + escapeHtml(meta.type) + '</div>';

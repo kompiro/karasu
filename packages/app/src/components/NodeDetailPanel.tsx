@@ -177,11 +177,19 @@ export function NodeDetailPanel({
         </div>
       )}
 
-      {(metadata.runtime ||
-        metadata.type ||
-        metadata.image ||
-        metadata.schedule ||
-        metadata.realizes?.length) && (
+      {/* Section is visible iff at least one property row would render.
+          Derived from the shared NODE_DETAIL_PROPERTY_FIELDS spec so a new
+          field extends both the guard and the rows in lockstep (Issue #2018
+          point 7). The reduce reproduces the previous left-associative
+          `metadata.runtime || … || metadata.realizes?.length` chain exactly
+          — same value (not just truthiness) for every input, so JSX
+          short-circuit rendering is byte-identical. */}
+      {NODE_DETAIL_PROPERTY_FIELDS.reduce<string | number | undefined>(
+        (shown, field) =>
+          shown ||
+          (field.metaKey === "realizes" ? metadata.realizes?.length : metadata[field.metaKey]),
+        undefined,
+      ) && (
         <div className="node-detail-section">
           {/* Row order/emoji/label come from the shared
               NODE_DETAIL_PROPERTY_FIELDS spec (@karasu-tools/core), also
