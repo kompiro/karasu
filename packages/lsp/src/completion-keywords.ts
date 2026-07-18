@@ -1,44 +1,17 @@
 /**
  * Keyword completion items offered by `onCompletion` in `server.ts`.
  *
- * This list is a hand-maintained copy of the language's keyword set and is
- * known to have drifted from the lexer's `KEYWORDS` table in
- * `@karasu-tools/core` (see `completion-keywords.test.ts`, which pins the
- * known deltas). Extracted to its own leaf module so the drift test can
- * import it without pulling in `server.ts`'s side-effecting
+ * Derived directly from the lexer's `KRS_KEYWORD_NAMES` (the source of
+ * truth for the grammar's keyword set, `@karasu-tools/core`) so this list
+ * can never drift from the lexer again — see `completion-keywords.test.ts`,
+ * which asserts exact parity. Extracted to its own leaf module so the drift
+ * test can import it without pulling in `server.ts`'s side-effecting
  * `connection.listen()` call.
+ *
+ * No lexer keywords are excluded: every entry in `KRS_KEYWORD_NAMES` is a
+ * grammar keyword a user may type, so all of them are valid completion
+ * candidates.
  */
-export const KRS_KEYWORDS = [
-  "system",
-  "service",
-  "client",
-  "domain",
-  "usecase",
-  "resource",
-  "user",
-  "deploy",
-  "war",
-  "jar",
-  "oci",
-  "lambda",
-  "function",
-  "assets",
-  "job",
-  "artifact",
-  "store",
-  "organization",
-  "member",
-  "label",
-  "description",
-  "team",
-  "role",
-  "link",
-  "runtime",
-  "realizes",
-  "schedule",
-  "image",
-  "type",
-  "owns",
-  "slack",
-  "github",
-];
+import { KRS_KEYWORD_NAMES } from "@karasu-tools/core";
+
+export const KRS_KEYWORDS = [...KRS_KEYWORD_NAMES];
