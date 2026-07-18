@@ -682,213 +682,377 @@ function buildGhostDomains(
   };
 }
 
-export function extractView(
-  systems: KrsNode[],
-  path: ViewPath,
-  unassignedDomains: KrsNode[] = [],
-  unassignedServices: KrsNode[] = [],
-  /**
-   * Service ids to expand in place in the root system view (#1921). Each named
-   * service is replaced by its domain children (spliced as a boundary-frame
-   * band) while siblings stay collapsed; cross-boundary edges re-anchor to the
-   * exact internal domain. Only honoured on the root system view; ignored on
-   * drill-down levels and multi-system roots (Phase 1 scope).
-   */
-  expandedContainers?: ReadonlySet<string>,
-): ViewSlice {
-  const resourceLabelMap = buildResourceLabelMap(systems);
-  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
+/**
+ * Shared context threaded through the {@link extractView} phase helpers:
+ * model-wide maps and resolvers that don't vary across the orphan / root /
+ * drill-down branches, computed once in {@link extractView}.
+ */
+interface ViewExtractContext {
+  resourceLabelMap: Map<string, string>;
+  resourceInferredTagsMap: Map<string, string>;
+  empty: ViewSlice;
+  entityResolver: EntityResolver;
+}
 
-  const empty = emptySlice(resourceLabelMap, resourceInferredTagsMap);
+interface PromotedChildren {
+  childNodes: KrsNode[];
+  childEdges: KrsEdge[];
+}
 
-  const orphans = [...unassignedServices, ...unassignedDomains];
-
-  // Resolver over the whole model: a bare `resource <id>` in one domain may
-  // resolve to an `entity` declared in another domain / service, so this is
-  // built once from every root, not per-container.
-  const entityResolver = buildEntityResolver([...systems, ...orphans]);
-
-  // No-system file: render orphan services/domains as peer nodes with no container.
-  // Drill-down walks from the orphan as path root.
-  if (systems.length === 0) {
-    if (orphans.length === 0) return empty;
-
-    if (path.length === 0) {
-      const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
-        deriveImplicitServiceEdges(
-          orphans.filter((c) => c.kind === "service"),
-          new Set(),
-        );
-      const derivedEdges = deriveInfraEdges(orphans, entityResolver);
-      const deliversEdges = deriveDeliversEdges(orphans);
-      return {
-        ...empty,
-        childNodes: orphans,
-        childEdges: [...derivedEdges, ...implicitServiceEdges, ...deliversEdges],
-        implicitEdgeDetails,
-      };
-    }
-
-    // Drill-down under orphan root
-    const root = orphans.find((c) => nodeId(c) === path[0]);
-    if (!root) return empty;
-    const chain: KrsNode[] = [root];
-    let cursor: KrsNode = root;
-    for (let i = 1; i < path.length; i++) {
-      const child = cursor.children.find((c) => nodeId(c) === path[i]);
-      if (!child) return empty;
-      chain.push(child);
-      cursor = child;
-    }
-    const container = chain.pop()!;
-    const containerChildIds = new Set(container.children.map(nodeId));
-    let edges = container.edges.filter(
-      (e) => containerChildIds.has(e.from) && containerChildIds.has(e.to),
+/**
+ * Child-collection phase, shared by the orphan drill-down and system
+ * drill-down branches: at domain level, promote resource nodes with
+ * dot-notation refs to sibling level (via {@link deriveUsecaseResourceNodes})
+ * so they appear as connected nodes in the UseCase diagram. Entities are
+ * excluded at every container kind — they render only in the (separate)
+ * entity view, so keeping them out here avoids stray unstyled boxes and a
+ * collision with an entity-resolved bare `resource` promoted above (which
+ * shares the entity's id).
+ */
+function collectPromotedChildren(
+  container: KrsNode,
+  edges: KrsEdge[],
+  resourceInferredTagsMap: Map<string, string>,
+  entityResolver: EntityResolver,
+): PromotedChildren {
+  const renderableChildren = container.children.filter((c) => c.kind !== "entity");
+  let childNodes = applyInferredTags(renderableChildren, resourceInferredTagsMap);
+  let childEdges = edges;
+  if (container.kind === "domain") {
+    const { resourceNodes, edges: resourceEdges } = deriveUsecaseResourceNodes(
+      renderableChildren,
+      resourceInferredTagsMap,
+      entityResolver,
     );
-    if (container.kind === "service") {
-      const domainIds = new Set(
-        container.children.filter((c) => c.kind === "domain").map((c) => c.id),
-      );
-      const existing = new Set(edges.map((e) => `${e.from}->${e.to}`));
-      for (const domain of container.children) {
-        if (domain.kind !== "domain") continue;
-        for (const edge of domain.edges) {
-          if (!domainIds.has(edge.from) || !domainIds.has(edge.to)) continue;
-          const key = `${edge.from}->${edge.to}`;
-          if (!existing.has(key)) {
-            edges = [...edges, edge];
-            existing.add(key);
-          }
-        }
+    if (resourceNodes.length > 0) {
+      childNodes = [...childNodes, ...resourceNodes];
+      childEdges = [...edges, ...resourceEdges];
+    }
+  }
+  return { childNodes, childEdges };
+}
+
+interface GhostSynthesis {
+  ghostUsers: KrsNode[];
+  ghostUserEdges: KrsEdge[];
+  ghostSystems: GhostSystem[];
+  ghostSystemEdges: KrsEdge[];
+  callerGhostSystems: GhostSystem[];
+  callerGhostSystemEdges: KrsEdge[];
+  ghostDomains: GhostDomain[];
+  ghostDomainEdges: KrsEdge[];
+}
+
+function emptyGhostSynthesis(): GhostSynthesis {
+  return {
+    ghostUsers: [],
+    ghostUserEdges: [],
+    ghostSystems: [],
+    ghostSystemEdges: [],
+    callerGhostSystems: [],
+    callerGhostSystemEdges: [],
+    ghostDomains: [],
+    ghostDomainEdges: [],
+  };
+}
+
+/**
+ * Ghost-edge synthesis phase, service view only: builds every ghost category
+ * (users, ghost systems, caller ghost systems, ghost domains) attached to
+ * `containerNode`. Only called when the drill-down path resolves to service
+ * granularity — see {@link extractSystemDrillDownView}'s `isServiceView` check.
+ */
+function synthesizeGhosts(
+  containerNode: KrsNode,
+  system: KrsNode,
+  systems: KrsNode[],
+): GhostSynthesis {
+  const containerId = nodeId(containerNode);
+  const users = system.children.filter((c) => c.kind === "user");
+  const connectedEdges = system.edges.filter(
+    (e) =>
+      (users.some((p) => nodeId(p) === e.from) && e.to === containerId) ||
+      (users.some((p) => nodeId(p) === e.to) && e.from === containerId),
+  );
+  const connectedUserIds = new Set(
+    connectedEdges.flatMap((e) => {
+      const ids: string[] = [];
+      if (e.from !== containerId) ids.push(e.from);
+      if (e.to !== containerId) ids.push(e.to);
+      return ids;
+    }),
+  );
+  const ghostUsers = users.filter((p) => connectedUserIds.has(nodeId(p)));
+  const ghostUserEdges = connectedEdges;
+
+  // Ghost systems: edges from this service to qualified targets in other known systems
+  const candidateEdges = system.edges.filter((e) => e.from === containerId && e.to.includes("."));
+  const ghostSystems = buildGhostSystems(candidateEdges, systems);
+  // Only include edges that resolved to a known ghost system
+  const resolvedSysIds = new Set(ghostSystems.map((gs) => gs.systemNode.id));
+  const ghostSystemEdges = candidateEdges.filter((e) => {
+    const sysId = e.to.slice(0, e.to.indexOf("."));
+    return resolvedSysIds.has(sysId);
+  });
+
+  // Caller ghost systems: other systems that have edges pointing into this service
+  const { callerGhostSystems, callerGhostSystemEdges } = buildCallerGhostSystems(
+    containerId,
+    system.id,
+    systems,
+  );
+
+  // Ghost domains: cross-service domain edges (both outgoing and incoming)
+  const { ghostDomains, ghostDomainEdges } = buildGhostDomains(containerId, system);
+
+  return {
+    ghostUsers,
+    ghostUserEdges,
+    ghostSystems,
+    ghostSystemEdges,
+    callerGhostSystems,
+    callerGhostSystemEdges,
+    ghostDomains,
+    ghostDomainEdges,
+  };
+}
+
+/**
+ * Among `allChildren`, find every service named in `expandedContainers`
+ * (#1921) that actually has domain children — the ones eligible to be
+ * spliced into the sibling grid as a boundary-frame band.
+ */
+function resolveExpandedServices(
+  allChildren: KrsNode[],
+  expandedContainers: ReadonlySet<string> | undefined,
+): { expandedServices: Map<string, KrsNode>; expandedSet: ReadonlySet<string> | undefined } {
+  const expandedServices = new Map<string, KrsNode>();
+  if (expandedContainers && expandedContainers.size > 0) {
+    for (const child of allChildren) {
+      if (
+        child.kind === "service" &&
+        expandedContainers.has(child.id) &&
+        child.children.some((c) => c.kind === "domain")
+      ) {
+        expandedServices.set(child.id, child);
       }
     }
-    // Entities render only in the (separate) entity view — exclude them from the
-    // domain / usecase drill-down so they neither appear as stray unstyled boxes
-    // nor collide with an entity-resolved bare `resource` promoted below (which
-    // shares the entity's id). Mirrors the systems-branch filter.
-    const renderableChildren = container.children.filter((c) => c.kind !== "entity");
-    let promoted = applyInferredTags(renderableChildren, resourceInferredTagsMap);
-    let finalEdges = edges;
-    if (container.kind === "domain") {
-      const { resourceNodes, edges: resourceEdges } = deriveUsecaseResourceNodes(
-        renderableChildren,
+  }
+  const expandedSet = expandedServices.size > 0 ? new Set(expandedServices.keys()) : undefined;
+  return { expandedServices, expandedSet };
+}
+
+/**
+ * Expanded-frame construction phase: splice each expanded service's domains
+ * into the sibling grid in place of the service node, and record the frame
+ * band the layout draws around each contiguous member band.
+ */
+function spliceExpandedFrames(
+  allChildren: KrsNode[],
+  expandedServices: Map<string, KrsNode>,
+  resourceInferredTagsMap: Map<string, string>,
+): { childNodes: KrsNode[]; expandedFrames: ExpandedFrame[] } {
+  const expandedFrames: ExpandedFrame[] = [];
+  const childNodes: KrsNode[] = [];
+  for (const child of allChildren) {
+    const expanded = expandedServices.get(nodeId(child));
+    if (expanded) {
+      const domains = applyInferredTags(
+        expanded.children.filter((c) => c.kind === "domain"),
         resourceInferredTagsMap,
-        entityResolver,
       );
-      if (resourceNodes.length > 0) {
-        promoted = [...promoted, ...resourceNodes];
-        finalEdges = [...edges, ...resourceEdges];
-      }
+      childNodes.push(...domains);
+      expandedFrames.push({
+        containerId: expanded.id,
+        label: expanded.label ?? expanded.id,
+        memberIds: domains.map(nodeId),
+      });
+    } else {
+      childNodes.push(child);
     }
+  }
+  return { childNodes, expandedFrames };
+}
+
+/**
+ * No-system-file phase: render orphan services/domains as peer nodes with no
+ * container (`path.length === 0`), or drill down from an orphan as the path
+ * root (`path.length > 0`). Mirrors {@link extractRootSystemView} /
+ * {@link extractSystemDrillDownView} for the no-system case.
+ */
+function extractOrphanView(orphans: KrsNode[], path: ViewPath, ctx: ViewExtractContext): ViewSlice {
+  const { empty, resourceInferredTagsMap, entityResolver } = ctx;
+  if (orphans.length === 0) return empty;
+
+  if (path.length === 0) {
+    const { edges: implicitServiceEdges, details: implicitEdgeDetails } = deriveImplicitServiceEdges(
+      orphans.filter((c) => c.kind === "service"),
+      new Set(),
+    );
+    const derivedEdges = deriveInfraEdges(orphans, entityResolver);
+    const deliversEdges = deriveDeliversEdges(orphans);
     return {
       ...empty,
-      containerNode: container,
-      childNodes: promoted,
-      childEdges: finalEdges,
-      ancestorChain: chain,
+      childNodes: orphans,
+      childEdges: [...derivedEdges, ...implicitServiceEdges, ...deliversEdges],
+      implicitEdgeDetails,
     };
   }
 
-  // Root system view (path = [])
-  if (path.length === 0) {
-    const system = systems[0];
-    const allChildren = [...system.children, ...unassignedServices, ...unassignedDomains];
-    const childIds = new Set(allChildren.map(nodeId));
-    const explicitEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
-    const derivedEdges = deriveInfraEdges(allChildren, entityResolver);
-    // Merge derived edges, skipping any already covered by explicit edges
-    const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
-
-    // In-place expansion (#1921): a service named in `expandedContainers` that
-    // actually has domain children is replaced by those domains as a boundary
-    // frame band; cross-boundary edges re-anchor to the exact internal domain.
-    const expandedServices = new Map<string, KrsNode>();
-    if (expandedContainers && expandedContainers.size > 0) {
-      for (const child of allChildren) {
-        if (
-          child.kind === "service" &&
-          expandedContainers.has(child.id) &&
-          child.children.some((c) => c.kind === "domain")
-        ) {
-          expandedServices.set(child.id, child);
+  // Drill-down under orphan root
+  const root = orphans.find((c) => nodeId(c) === path[0]);
+  if (!root) return empty;
+  const chain: KrsNode[] = [root];
+  let cursor: KrsNode = root;
+  for (let i = 1; i < path.length; i++) {
+    const child = cursor.children.find((c) => nodeId(c) === path[i]);
+    if (!child) return empty;
+    chain.push(child);
+    cursor = child;
+  }
+  const container = chain.pop()!;
+  const containerChildIds = new Set(container.children.map(nodeId));
+  let edges = container.edges.filter(
+    (e) => containerChildIds.has(e.from) && containerChildIds.has(e.to),
+  );
+  if (container.kind === "service") {
+    const domainIds = new Set(
+      container.children.filter((c) => c.kind === "domain").map((c) => c.id),
+    );
+    const existing = new Set(edges.map((e) => `${e.from}->${e.to}`));
+    for (const domain of container.children) {
+      if (domain.kind !== "domain") continue;
+      for (const edge of domain.edges) {
+        if (!domainIds.has(edge.from) || !domainIds.has(edge.to)) continue;
+        const key = `${edge.from}->${edge.to}`;
+        if (!existing.has(key)) {
+          edges = [...edges, edge];
+          existing.add(key);
         }
       }
     }
-    const expandedSet = expandedServices.size > 0 ? new Set(expandedServices.keys()) : undefined;
-
-    const {
-      edges: implicitServiceEdges,
-      details: implicitEdgeDetails,
-      internalEdges,
-    } = deriveImplicitServiceEdges(
-      allChildren.filter((c) => c.kind === "service"),
-      explicitKeys,
-      expandedSet,
-    );
-    const deliversEdges = deriveDeliversEdges(allChildren);
-
-    // Splice each expanded service's domains into the sibling grid, and record
-    // the frame band the layout draws around them.
-    const expandedFrames: ExpandedFrame[] = [];
-    const childNodes: KrsNode[] = [];
-    for (const child of allChildren) {
-      const expanded = expandedServices.get(nodeId(child));
-      if (expanded) {
-        const domains = applyInferredTags(
-          expanded.children.filter((c) => c.kind === "domain"),
-          resourceInferredTagsMap,
-        );
-        childNodes.push(...domains);
-        expandedFrames.push({
-          containerId: expanded.id,
-          label: expanded.label ?? expanded.id,
-          memberIds: domains.map(nodeId),
-        });
-      } else {
-        childNodes.push(child);
-      }
-    }
-
-    const childEdges = [
-      ...explicitEdges,
-      ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
-      ...implicitServiceEdges,
-      ...internalEdges,
-      ...deliversEdges,
-    ];
-
-    // Cross-system edges: collect from all systems where target is qualified
-    const crossSystemEdges = systems.flatMap((sys) =>
-      sys.edges.filter((e) => {
-        if (!e.to.includes(".")) return false;
-        const sysId = e.to.slice(0, e.to.indexOf("."));
-        return systems.some((s) => s.id === sysId);
-      }),
-    );
-
-    return {
-      containerNode: system,
-      childNodes,
-      childEdges,
-      ancestorChain: [],
-      ghostUsers: [],
-      ghostUserEdges: [],
-      systems,
-      crossSystemEdges,
-      ghostSystems: [],
-      ghostSystemEdges: [],
-      callerGhostSystems: [],
-      callerGhostSystemEdges: [],
-      ghostDomains: [],
-      ghostDomainEdges: [],
-      ghostEntities: [],
-      ghostEntityEdges: [],
-      resourceLabelMap,
-      resourceInferredTagsMap,
-      implicitEdgeDetails,
-      expandedFrames,
-    };
   }
+  // Entities render only in the (separate) entity view — exclude them from the
+  // domain / usecase drill-down so they neither appear as stray unstyled boxes
+  // nor collide with an entity-resolved bare `resource` promoted below (which
+  // shares the entity's id). Mirrors the systems-branch filter.
+  const { childNodes, childEdges } = collectPromotedChildren(
+    container,
+    edges,
+    resourceInferredTagsMap,
+    entityResolver,
+  );
+  return {
+    ...empty,
+    containerNode: container,
+    childNodes,
+    childEdges,
+    ancestorChain: chain,
+  };
+}
+
+/**
+ * Root system view phase (`path.length === 0`, at least one system present):
+ * shows `systems[0]`'s direct children plus unassigned orphans, with derived
+ * infra/implicit-service/delivers edges, in-place service expansion (#1921),
+ * and the full cross-system edge set for the multi-system root.
+ */
+function extractRootSystemView(
+  systems: KrsNode[],
+  unassignedServices: KrsNode[],
+  unassignedDomains: KrsNode[],
+  expandedContainers: ReadonlySet<string> | undefined,
+  ctx: ViewExtractContext,
+): ViewSlice {
+  const { resourceLabelMap, resourceInferredTagsMap, entityResolver } = ctx;
+  const system = systems[0];
+  const allChildren = [...system.children, ...unassignedServices, ...unassignedDomains];
+  const childIds = new Set(allChildren.map(nodeId));
+  const explicitEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+  const derivedEdges = deriveInfraEdges(allChildren, entityResolver);
+  // Merge derived edges, skipping any already covered by explicit edges
+  const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
+
+  // In-place expansion (#1921): a service named in `expandedContainers` that
+  // actually has domain children is replaced by those domains as a boundary
+  // frame band; cross-boundary edges re-anchor to the exact internal domain.
+  const { expandedServices, expandedSet } = resolveExpandedServices(allChildren, expandedContainers);
+
+  const {
+    edges: implicitServiceEdges,
+    details: implicitEdgeDetails,
+    internalEdges,
+  } = deriveImplicitServiceEdges(
+    allChildren.filter((c) => c.kind === "service"),
+    explicitKeys,
+    expandedSet,
+  );
+  const deliversEdges = deriveDeliversEdges(allChildren);
+
+  // Splice each expanded service's domains into the sibling grid, and record
+  // the frame band the layout draws around them.
+  const { childNodes, expandedFrames } = spliceExpandedFrames(
+    allChildren,
+    expandedServices,
+    resourceInferredTagsMap,
+  );
+
+  const childEdges = [
+    ...explicitEdges,
+    ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
+    ...implicitServiceEdges,
+    ...internalEdges,
+    ...deliversEdges,
+  ];
+
+  // Cross-system edges: collect from all systems where target is qualified
+  const crossSystemEdges = systems.flatMap((sys) =>
+    sys.edges.filter((e) => {
+      if (!e.to.includes(".")) return false;
+      const sysId = e.to.slice(0, e.to.indexOf("."));
+      return systems.some((s) => s.id === sysId);
+    }),
+  );
+
+  return {
+    containerNode: system,
+    childNodes,
+    childEdges,
+    ancestorChain: [],
+    ghostUsers: [],
+    ghostUserEdges: [],
+    systems,
+    crossSystemEdges,
+    ghostSystems: [],
+    ghostSystemEdges: [],
+    callerGhostSystems: [],
+    callerGhostSystemEdges: [],
+    ghostDomains: [],
+    ghostDomainEdges: [],
+    ghostEntities: [],
+    ghostEntityEdges: [],
+    resourceLabelMap,
+    resourceInferredTagsMap,
+    implicitEdgeDetails,
+    expandedFrames,
+  };
+}
+
+/**
+ * Drill-down phase for a known system (`path.length > 0`): resolves the
+ * container via {@link resolveContainerChain} (path resolution), collects its
+ * child edges (including domain-to-domain edges surfaced at service level),
+ * synthesizes ghost users/systems/domains at service granularity, and
+ * promotes dot-notation resources at domain granularity.
+ */
+function extractSystemDrillDownView(
+  systems: KrsNode[],
+  path: ViewPath,
+  unassignedServices: KrsNode[],
+  unassignedDomains: KrsNode[],
+  ctx: ViewExtractContext,
+): ViewSlice {
+  const { empty, resourceLabelMap, resourceInferredTagsMap, entityResolver } = ctx;
 
   // Determine the active system and walk the path to the container.
   // path[0] is the system ID when it matches a known system. Otherwise the
@@ -929,79 +1093,32 @@ export function extractView(
     childEdges = [...childEdges, ...intraDomainEdges];
   }
 
-  // Ghost users: only for service view.
+  // Ghost users/systems/domains: only for service view.
   // With system ID in path: path.length - startIndex === 1 (e.g. ["ECPlatform", "ECommerce"]).
   // Without system ID (unassigned domain fallback): path.length === 1.
-  let ghostUsers: KrsNode[] = [];
-  let ghostUserEdges: KrsEdge[] = [];
-  let ghostSystems: GhostSystem[] = [];
-  let ghostSystemEdges: KrsEdge[] = [];
-  let callerGhostSystems: GhostSystem[] = [];
-  let callerGhostSystemEdges: KrsEdge[] = [];
-  let ghostDomains: GhostDomain[] = [];
-  let ghostDomainEdges: KrsEdge[] = [];
-
   const isServiceView = path.length - startIndex === 1;
-  if (isServiceView) {
-    const containerId = nodeId(containerNode);
-    const users = system.children.filter((c) => c.kind === "user");
-    const connectedEdges = system.edges.filter(
-      (e) =>
-        (users.some((p) => nodeId(p) === e.from) && e.to === containerId) ||
-        (users.some((p) => nodeId(p) === e.to) && e.from === containerId),
-    );
-    const connectedUserIds = new Set(
-      connectedEdges.flatMap((e) => {
-        const ids: string[] = [];
-        if (e.from !== containerId) ids.push(e.from);
-        if (e.to !== containerId) ids.push(e.to);
-        return ids;
-      }),
-    );
-    ghostUsers = users.filter((p) => connectedUserIds.has(nodeId(p)));
-    ghostUserEdges = connectedEdges;
-
-    // Ghost systems: edges from this service to qualified targets in other known systems
-    const candidateEdges = system.edges.filter((e) => e.from === containerId && e.to.includes("."));
-    ghostSystems = buildGhostSystems(candidateEdges, systems);
-    // Only include edges that resolved to a known ghost system
-    const resolvedSysIds = new Set(ghostSystems.map((gs) => gs.systemNode.id));
-    ghostSystemEdges = candidateEdges.filter((e) => {
-      const sysId = e.to.slice(0, e.to.indexOf("."));
-      return resolvedSysIds.has(sysId);
-    });
-
-    // Caller ghost systems: other systems that have edges pointing into this service
-    ({ callerGhostSystems, callerGhostSystemEdges } = buildCallerGhostSystems(
-      containerId,
-      system.id,
-      systems,
-    ));
-
-    // Ghost domains: cross-service domain edges (both outgoing and incoming)
-    ({ ghostDomains, ghostDomainEdges } = buildGhostDomains(containerId, system));
-  }
+  const {
+    ghostUsers,
+    ghostUserEdges,
+    ghostSystems,
+    ghostSystemEdges,
+    callerGhostSystems,
+    callerGhostSystemEdges,
+    ghostDomains,
+    ghostDomainEdges,
+  } = isServiceView ? synthesizeGhosts(containerNode, system, systems) : emptyGhostSynthesis();
 
   // At domain level: promote resource nodes with dot-notation refs to sibling level
   // so they appear as connected nodes in the UseCase diagram.
   // Entities are conceptual data nodes rendered only in the (deferred) entity
   // view — exclude them here so they don't appear as stray unstyled boxes in
   // the domain / usecase drill-down.
-  const renderableChildren = containerNode.children.filter((c) => c.kind !== "entity");
-  let promotedChildNodes = applyInferredTags(renderableChildren, resourceInferredTagsMap);
-  let finalChildEdges = childEdges;
-
-  if (containerNode.kind === "domain") {
-    const { resourceNodes, edges: resourceEdges } = deriveUsecaseResourceNodes(
-      renderableChildren,
-      resourceInferredTagsMap,
-      entityResolver,
-    );
-    if (resourceNodes.length > 0) {
-      promotedChildNodes = [...promotedChildNodes, ...resourceNodes];
-      finalChildEdges = [...childEdges, ...resourceEdges];
-    }
-  }
+  const { childNodes: promotedChildNodes, childEdges: finalChildEdges } = collectPromotedChildren(
+    containerNode,
+    childEdges,
+    resourceInferredTagsMap,
+    entityResolver,
+  );
 
   return {
     containerNode,
@@ -1026,6 +1143,54 @@ export function extractView(
     implicitEdgeDetails: new Map(),
     expandedFrames: [],
   };
+}
+
+export function extractView(
+  systems: KrsNode[],
+  path: ViewPath,
+  unassignedDomains: KrsNode[] = [],
+  unassignedServices: KrsNode[] = [],
+  /**
+   * Service ids to expand in place in the root system view (#1921). Each named
+   * service is replaced by its domain children (spliced as a boundary-frame
+   * band) while siblings stay collapsed; cross-boundary edges re-anchor to the
+   * exact internal domain. Only honoured on the root system view; ignored on
+   * drill-down levels and multi-system roots (Phase 1 scope).
+   */
+  expandedContainers?: ReadonlySet<string>,
+): ViewSlice {
+  const resourceLabelMap = buildResourceLabelMap(systems);
+  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
+
+  const empty = emptySlice(resourceLabelMap, resourceInferredTagsMap);
+
+  const orphans = [...unassignedServices, ...unassignedDomains];
+
+  // Resolver over the whole model: a bare `resource <id>` in one domain may
+  // resolve to an `entity` declared in another domain / service, so this is
+  // built once from every root, not per-container.
+  const entityResolver = buildEntityResolver([...systems, ...orphans]);
+  const ctx: ViewExtractContext = { resourceLabelMap, resourceInferredTagsMap, empty, entityResolver };
+
+  // No-system file: render orphan services/domains as peer nodes with no container.
+  // Drill-down walks from the orphan as path root.
+  if (systems.length === 0) {
+    return extractOrphanView(orphans, path, ctx);
+  }
+
+  // Root system view (path = [])
+  if (path.length === 0) {
+    return extractRootSystemView(
+      systems,
+      unassignedServices,
+      unassignedDomains,
+      expandedContainers,
+      ctx,
+    );
+  }
+
+  // Determine the active system and walk the path to the container.
+  return extractSystemDrillDownView(systems, path, unassignedServices, unassignedDomains, ctx);
 }
 
 /**
