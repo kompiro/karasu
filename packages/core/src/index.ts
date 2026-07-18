@@ -150,6 +150,7 @@ export {
   NODE_DETAIL_ROLE_EMOJI,
   NODE_DETAIL_TAGS_EMOJI,
   NODE_DETAIL_TEAM_EMOJI,
+  NODE_DETAIL_KIND_ICON_NAMES,
   type NodeDetailPropertyField,
 } from "./builtins/node-detail-fields.js";
 export {

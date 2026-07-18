@@ -22,6 +22,7 @@ import {
   NODE_DETAIL_ROLE_EMOJI,
   NODE_DETAIL_TAGS_EMOJI,
   NODE_DETAIL_TEAM_EMOJI,
+  NODE_DETAIL_KIND_ICON_NAMES,
 } from "@karasu-tools/core";
 import type { ViewType } from "./message-validation.js";
 
@@ -77,6 +78,80 @@ const REALIZES_FIELD = propertyField("realizes");
 const ROLE_EMOJI = jsUnicodeEscape(NODE_DETAIL_ROLE_EMOJI);
 const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
 const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
+
+// Section titles for the resources/capabilities/migration sections (Issue
+// #2068). These are ENGLISH-ONLY by design: the webview has no i18n runtime
+// (unlike the app's NodeDetailPanel, which pulls `nodeDetail.*.title` from
+// `@karasu-tools/i18n`), so the title *words* are hardcoded here — exactly
+// as the pre-existing "Links" section title above them in the generated
+// script already is. Parity with the app is therefore exact under the
+// default/English locale; Japanese-locale label parity is out of scope for
+// this change and needs a separate webview-i18n runtime (tracked as a
+// follow-up). See node-detail-fields.ts's doc comment for what is/isn't
+// shared. Only the leading emoji is derived (to match the app's en strings).
+const RESOURCES_TITLE_EMOJI = jsUnicodeEscape("📦");
+const CAPABILITIES_TITLE_EMOJI = jsUnicodeEscape("🔐");
+const MIGRATION_TITLE_EMOJI = jsUnicodeEscape("🕒");
+
+/**
+ * Emoji glyph for each icon name in {@link NODE_DETAIL_KIND_ICON_NAMES}
+ * (Issue #2068). The webview's `<script>` text is string-built in the
+ * extension host and evaluated later inside the webview's sandboxed
+ * browser context, so it cannot call into `@karasu-tools/core`'s SVG icon
+ * registry the way the app's `renderPictogram` does — it renders an emoji
+ * per icon-name identity instead. Every icon name
+ * `NODE_DETAIL_KIND_ICON_NAMES` uses must have an entry here; `kindIcon`
+ * below throws at module load otherwise, so a kind added to the shared map
+ * without a webview glyph fails immediately instead of silently rendering
+ * "■" in the panel.
+ */
+const ICON_NAME_TO_EMOJI: Record<string, string> = {
+  service: "⚙",
+  "user-card": "👤",
+  domain: "📦",
+  usecase: "🎯",
+  resource: "💾",
+  team: "👥",
+  member: "👤",
+  oci: "🐳",
+  lambda: "λ",
+  jar: "☕",
+  war: "☕",
+  function: "fₙ",
+  assets: "📁",
+  job: "⏰",
+  artifact: "📦",
+  database: "🗄",
+};
+
+/** `\uXXXX`-escaped emoji for a detail-panel kind, resolved through the
+ * shared {@link NODE_DETAIL_KIND_ICON_NAMES} identity map. */
+function kindIcon(kind: string): string {
+  const iconName = NODE_DETAIL_KIND_ICON_NAMES[kind];
+  if (!iconName) {
+    throw new Error(`webview-content: no NODE_DETAIL_KIND_ICON_NAMES entry for kind "${kind}"`);
+  }
+  const emoji = ICON_NAME_TO_EMOJI[iconName];
+  if (!emoji) {
+    throw new Error(
+      `webview-content: no ICON_NAME_TO_EMOJI entry for icon name "${iconName}" (kind "${kind}")`,
+    );
+  }
+  return jsUnicodeEscape(emoji);
+}
+
+/**
+ * Source text for the client-side `KIND_ICONS` lookup object, generated
+ * from {@link NODE_DETAIL_KIND_ICON_NAMES} so the webview cannot drift from
+ * the app's kind→icon mapping (the original #2068 bug: `usecase` collided
+ * with `domain`'s 📦, and `store` had no entry at all). `system` has no
+ * registered pictogram in either renderer (mirrors the app's
+ * `KIND_FALLBACK_ICONS`), so it is appended by hand, same as before.
+ */
+const KIND_ICON_ENTRIES = Object.keys(NODE_DETAIL_KIND_ICON_NAMES)
+  .map((kind) => `${kind}: '${kindIcon(kind)}'`)
+  .join(", ");
+const SYSTEM_KIND_ICON = jsUnicodeEscape("🏗");
 
 /**
  * Visibility guard for the property-row section, derived from the shared
@@ -331,6 +406,21 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       margin: 2px 0;
       font-family: var(--vscode-editor-fontFamily, monospace);
     }
+    .dp-resource-list { list-style: none; padding: 0; font-family: var(--vscode-editor-fontFamily, monospace); font-size: 11.5px; }
+    .dp-resource-item { display: flex; gap: 8px; padding: 2px 0; }
+    .dp-resource-kind { color: var(--vscode-descriptionForeground); min-width: 96px; }
+    .dp-resource-name { color: var(--vscode-editor-foreground); }
+    .dp-capability-list { list-style: none; padding: 0; }
+    .dp-capability-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
+    .dp-capability-item + .dp-capability-item { border-top: 1px solid var(--vscode-panel-border); }
+    .dp-capability-title { color: var(--vscode-editor-foreground); font-size: 12px; font-weight: 600; }
+    .dp-capability-description {
+      margin: 0;
+      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
     .dp-jump {
       display: block;
       width: 100%;
@@ -388,14 +478,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
 
-    var KIND_ICONS = {
-      service: '\\u2699', user: '\\ud83d\\udc64', domain: '\\ud83d\\udce6',
-      resource: '\\ud83d\\udcbe', usecase: '\\ud83d\\udce6', team: '\\ud83d\\udc65',
-      member: '\\ud83d\\udc64', oci: '\\ud83d\\udc33', lambda: '\\u03bb',
-      jar: '\\u2615', war: '\\u2615', function: 'f\\u2099',
-      assets: '\\ud83d\\udcc1', job: '\\u23f0', artifact: '\\ud83d\\udce6',
-      system: '\\ud83c\\udfd7'
-    };
+    var KIND_ICONS = { ${KIND_ICON_ENTRIES}, system: '${SYSTEM_KIND_ICON}' };
 
     // ── View switcher ──
     document.querySelectorAll('[data-view]').forEach(function(btn) {
@@ -452,6 +535,40 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
         html += '</ul></div>';
       }
 
+      // Storage resources (client kind only) — matching app layout
+      if (meta.resources && meta.resources.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">${RESOURCES_TITLE_EMOJI} Storage resources</div>';
+        html += '<ul class="dp-resource-list">';
+        for (var ri = 0; ri < meta.resources.length; ri++) {
+          var res = meta.resources[ri];
+          html += '<li class="dp-resource-item"><span class="dp-resource-kind">'
+            + escapeHtml(res.storageKind) + '</span><span class="dp-resource-name">'
+            + escapeHtml(res.name) + '</span></li>';
+        }
+        html += '</ul></div>';
+      }
+
+      // Capabilities (client kind only) — matching app layout
+      if (meta.capabilities && meta.capabilities.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">${CAPABILITIES_TITLE_EMOJI} Capabilities</div>';
+        html += '<ul class="dp-capability-list">';
+        for (var ci = 0; ci < meta.capabilities.length; ci++) {
+          var cap = meta.capabilities[ci];
+          // Nullish (??), not logical-or, to match the app NodeDetailPanel
+          // (c.label ?? c.name) exactly: an explicit empty-string label is
+          // kept as a blank title, never falling through to the name.
+          html += '<li class="dp-capability-item"><span class="dp-capability-title">'
+            + escapeHtml(cap.label ?? cap.name) + '</span>';
+          if (cap.description) {
+            html += '<p class="dp-capability-description">' + escapeHtml(cap.description) + '</p>';
+          }
+          html += '</li>';
+        }
+        html += '</ul></div>';
+      }
+
       // Runtime / type / image / schedule / realizes (own section, matching app layout)
       if (${PROPERTY_SECTION_GUARD}) {
         html += '<div class="dp-section">';
@@ -460,6 +577,22 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
         if (meta.image) html += '<div class="dp-prop">${IMAGE_FIELD.emoji} ${IMAGE_FIELD.label}: ' + escapeHtml(meta.image) + '</div>';
         if (meta.schedule) html += '<div class="dp-prop">${SCHEDULE_FIELD.emoji} ${SCHEDULE_FIELD.label}: ' + escapeHtml(meta.schedule) + '</div>';
         if (meta.realizes?.length) html += '<div class="dp-prop">${REALIZES_FIELD.emoji} ${REALIZES_FIELD.label}: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
+        html += '</div>';
+      }
+
+      // Migration intent (@deprecated/@experimental until, @migration_target from)
+      if (meta.migrationIntent && (meta.migrationIntent.until || meta.migrationIntent.from)) {
+        html += '<div class="dp-section dp-migration">';
+        html += '<div class="dp-section-title">${MIGRATION_TITLE_EMOJI} Migration intent</div>';
+        if (meta.migrationIntent.until) {
+          html += '<div class="dp-prop dp-migration-until" data-until-kind="'
+            + escapeAttr(meta.migrationIntent.until.kind) + '">until: <code>'
+            + escapeHtml(meta.migrationIntent.until.raw) + '</code></div>';
+        }
+        if (meta.migrationIntent.from) {
+          html += '<div class="dp-prop dp-migration-from">from: <code>'
+            + escapeHtml(meta.migrationIntent.from) + '</code></div>';
+        }
         html += '</div>';
       }
 
