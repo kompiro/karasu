@@ -74,4 +74,16 @@ describe("buildPreviewHtml", () => {
     expect(html).toContain(`anchorX + ${DETAIL_PANEL_MAX_WIDTH} > wrapper.scrollWidth`);
     expect(html).toContain(`- ${DETAIL_PANEL_MAX_WIDTH + DETAIL_PANEL_GAP};`);
   });
+
+  // Golden byte-identity fence for Issue #2018 point 7: the detail-panel
+  // property-row emoji/label text (runtime/type/image/schedule/realizes,
+  // role, tags, team) now derives from the shared `@karasu-tools/core`
+  // NODE_DETAIL_PROPERTY_FIELDS spec (also consumed by the app's
+  // NodeDetailPanel) instead of being hand-typed twice. This snapshot pins
+  // the full output so any drift in that codegen — a wrong `\uXXXX` escape,
+  // a reordered field, a changed label — fails loudly instead of silently
+  // changing the webview's rendered HTML.
+  it("full document output is byte-stable (golden snapshot)", () => {
+    expect(buildPreviewHtml(baseParams())).toMatchSnapshot();
+  });
 });

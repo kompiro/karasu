@@ -1,7 +1,14 @@
 import { useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { renderPictogram, isSafeLinkUrl } from "@karasu-tools/core";
+import {
+  renderPictogram,
+  isSafeLinkUrl,
+  NODE_DETAIL_PROPERTY_FIELDS,
+  NODE_DETAIL_ROLE_EMOJI,
+  NODE_DETAIL_TAGS_EMOJI,
+  NODE_DETAIL_TEAM_EMOJI,
+} from "@karasu-tools/core";
 import type { NodeMetadata } from "@karasu-tools/core";
 import { useTranslation } from "../i18n/index.js";
 
@@ -176,17 +183,24 @@ export function NodeDetailPanel({
         metadata.schedule ||
         metadata.realizes?.length) && (
         <div className="node-detail-section">
-          {metadata.runtime && (
-            <div className="node-detail-prop">🖥 runtime: {metadata.runtime}</div>
-          )}
-          {metadata.type && <div className="node-detail-prop">🏷 type: {metadata.type}</div>}
-          {metadata.image && <div className="node-detail-prop">📦 image: {metadata.image}</div>}
-          {metadata.schedule && (
-            <div className="node-detail-prop">⏱ schedule: {metadata.schedule}</div>
-          )}
-          {metadata.realizes?.length && (
-            <div className="node-detail-prop">🔗 realizes: {metadata.realizes.join(", ")}</div>
-          )}
+          {/* Row order/emoji/label come from the shared
+              NODE_DETAIL_PROPERTY_FIELDS spec (@karasu-tools/core), also
+              consumed by the VS Code webview panel — Issue #2018 point 7. */}
+          {NODE_DETAIL_PROPERTY_FIELDS.map((field) => {
+            if (field.metaKey === "realizes") {
+              return metadata.realizes?.length ? (
+                <div key={field.metaKey} className="node-detail-prop">
+                  {field.emoji} {field.label}: {metadata.realizes.join(", ")}
+                </div>
+              ) : null;
+            }
+            const value = metadata[field.metaKey];
+            return value ? (
+              <div key={field.metaKey} className="node-detail-prop">
+                {field.emoji} {field.label}: {value}
+              </div>
+            ) : null;
+          })}
         </div>
       )}
 
@@ -239,15 +253,21 @@ export function NodeDetailPanel({
                   onClose();
                 }}
               >
-                👥 {metadata.team} →
+                {NODE_DETAIL_TEAM_EMOJI} {metadata.team} →
               </button>
             ) : (
-              <div className="node-detail-prop">👥 {metadata.team}</div>
+              <div className="node-detail-prop">
+                {NODE_DETAIL_TEAM_EMOJI} {metadata.team}
+              </div>
             ))}
-          {metadata.role && <div className="node-detail-prop">📌 {metadata.role}</div>}
+          {metadata.role && (
+            <div className="node-detail-prop">
+              {NODE_DETAIL_ROLE_EMOJI} {metadata.role}
+            </div>
+          )}
           {metadata.tags.length > 0 && (
             <div className="node-detail-prop">
-              🏷 {metadata.tags.map((tag) => `[${tag}]`).join(" ")}
+              {NODE_DETAIL_TAGS_EMOJI} {metadata.tags.map((tag) => `[${tag}]`).join(" ")}
             </div>
           )}
         </div>

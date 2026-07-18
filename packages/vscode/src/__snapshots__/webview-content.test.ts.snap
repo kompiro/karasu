@@ -1,116 +1,12 @@
-/**
- * Pure webview HTML/CSS/JS template for the preview panel.
- *
- * `preview-panel.ts` owns everything that needs `vscode` (webview lifecycle,
- * message wiring, rendering the diagram) and everything that needs core /
- * `marked` (markdown rendering, link-scheme filtering). This module only
- * assembles the final HTML document from already-computed strings, mirroring
- * the `drilldown-state.ts` / `message-validation.ts` / `theme-mapping.ts`
- * split: kept free of any `vscode` import so the template itself is
- * unit-testable without mocking the extension host.
- *
- * **Caution:** the inline-`style` active-toolbar-button mechanism (see
- * `activeStyle` below) is asserted by
- * `packages/vscode-e2e/tests/webview/harness.ts` via
- * `getAttribute('style').includes('background')`. Converting it to CSS
- * classes is a behavior change from that harness's point of view — do not do
- * it here (see ADR-20260429-09 / `.claude/rules/vscode-webview-tests.md`).
- */
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-import {
-  NODE_DETAIL_PROPERTY_FIELDS,
-  NODE_DETAIL_ROLE_EMOJI,
-  NODE_DETAIL_TAGS_EMOJI,
-  NODE_DETAIL_TEAM_EMOJI,
-} from "@karasu-tools/core";
-import type { ViewType } from "./message-validation.js";
-
-/**
- * Width budget for the detail panel, shared by the CSS `max-width` and the
- * webview script's overflow-avoidance math (which flips the panel to the
- * left of the node, offset by `DETAIL_PANEL_GAP`, when it would overflow the
- * right edge). Keeping both in one constant prevents the positioning math
- * from silently desynchronizing from the rendered width.
- */
-export const DETAIL_PANEL_MAX_WIDTH = 360;
-
-/**
- * Gap between the anchor node and the detail panel, also used as the minimum
- * left margin when the panel is clamped to the viewport edge.
- */
-export const DETAIL_PANEL_GAP = 8;
-
-/**
- * Re-encode a string as `\uXXXX`-per-UTF-16-code-unit escapes — the style
- * this module's inline `<script>` already used (by hand) for every
- * non-ASCII glyph before this change. The detail-panel emoji now come from
- * the shared `@karasu-tools/core` NODE_DETAIL_PROPERTY_FIELDS spec (Issue
- * #2018 point 7), but that spec holds real emoji characters (so the app's
- * JSX can render them directly) — this function re-derives the same
- * hand-written escape form so the generated `<script>` text stays
- * byte-identical to what was previously typed out per glyph. Iterating by
- * `.length`/`.charCodeAt` (not code points) is deliberate: astral emoji are
- * two UTF-16 code units, and the escape form used throughout this file is
- * one `\uXXXX` per unit (i.e. a surrogate pair, not a single \u{...}).
- */
-function jsUnicodeEscape(glyph: string): string {
-  let out = "";
-  for (let i = 0; i < glyph.length; i++) {
-    out += "\\u" + glyph.charCodeAt(i).toString(16).padStart(4, "0");
-  }
-  return out;
-}
-
-const propertyField = (key: (typeof NODE_DETAIL_PROPERTY_FIELDS)[number]["metaKey"]) => {
-  const field = NODE_DETAIL_PROPERTY_FIELDS.find((f) => f.metaKey === key);
-  if (!field) {
-    throw new Error(`webview-content: no NODE_DETAIL_PROPERTY_FIELDS entry for "${key}"`);
-  }
-  return { emoji: jsUnicodeEscape(field.emoji), label: field.label };
-};
-
-const RUNTIME_FIELD = propertyField("runtime");
-const TYPE_FIELD = propertyField("type");
-const IMAGE_FIELD = propertyField("image");
-const SCHEDULE_FIELD = propertyField("schedule");
-const REALIZES_FIELD = propertyField("realizes");
-const ROLE_EMOJI = jsUnicodeEscape(NODE_DETAIL_ROLE_EMOJI);
-const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
-const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
-
-/** Inputs for {@link buildPreviewHtml}, all pre-computed by the caller. */
-export interface BuildPreviewHtmlParams {
-  /** Rendered diagram SVG markup, already sized to embed as-is. */
-  svg: string;
-  /** JSON-stringified `Record<string, SerializedNodeMeta>` for the webview script. */
-  metadataJson: string;
-  /** Pre-rendered breadcrumb `<button>`/`<span>` markup (see `buildBreadcrumbHtml`). */
-  breadcrumbHtml: string;
-  /** Currently active toolbar view, used to highlight its button. */
-  viewType: ViewType;
-  /** Currently active display mode, used to highlight the icon-mode button. */
-  displayMode: "icon" | "shape";
-  /** CSP script nonce (see {@link nonce}). */
-  nonce: string;
-}
-
-/**
- * Assemble the full webview HTML document. Pure function of its inputs —
- * the same params always produce byte-identical output.
- */
-export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
-  const { svg, metadataJson, breadcrumbHtml, viewType, displayMode, nonce } = params;
-  const activeStyle =
-    "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
-  const btnStyle = (view: ViewType) => (view === viewType ? activeStyle : "");
-  const iconModeStyle = displayMode === "icon" ? activeStyle : "";
-
-  return `<!DOCTYPE html>
+exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot) 1`] = `
+"<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
+    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-test-nonce-123';">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -213,7 +109,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
     #detail-panel {
       display: none;
       position: absolute;
-      max-width: ${DETAIL_PANEL_MAX_WIDTH}px;
+      max-width: 360px;
       max-height: 400px;
       z-index: 100;
       background: var(--vscode-editorHoverWidget-background, #252526);
@@ -351,23 +247,23 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
 </head>
 <body>
   <div id="toolbar">
-    <button data-view="system" style="${btnStyle("system")}">System</button>
-    <button data-view="deploy" style="${btnStyle("deploy")}">Deploy</button>
-    <button data-view="org" style="${btnStyle("org")}">Org</button>
+    <button data-view="system" style="background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);">System</button>
+    <button data-view="deploy" style="">Deploy</button>
+    <button data-view="org" style="">Org</button>
     <div class="toolbar-sep"></div>
-    <button id="icon-mode-btn" style="${iconModeStyle}">◇ Icon Mode</button>
+    <button id="icon-mode-btn" style="">◇ Icon Mode</button>
     <div class="toolbar-sep"></div>
-    <div id="breadcrumb">${breadcrumbHtml}</div>
+    <div id="breadcrumb"></div>
     <span id="jump-hint">ⓘ for details · Cmd/Ctrl+Click to jump</span>
   </div>
   <div id="preview-wrapper">
-    <div id="preview">${svg}</div>
+    <div id="preview"><svg><g data-node-id="n1"></g></svg></div>
     <div id="detail-panel"></div>
   </div>
   <div id="karasu-tooltip"></div>
-  <script nonce="${nonce}">
+  <script nonce="test-nonce-123">
     var vscode = acquireVsCodeApi();
-    var nodeMetadataMap = ${metadataJson};
+    var nodeMetadataMap = {};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
@@ -439,25 +335,25 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       // Runtime / type / image / schedule / realizes (own section, matching app layout)
       if (meta.runtime || meta.type || meta.image || meta.schedule || meta.realizes?.length) {
         html += '<div class="dp-section">';
-        if (meta.runtime) html += '<div class="dp-prop">${RUNTIME_FIELD.emoji} ${RUNTIME_FIELD.label}: ' + escapeHtml(meta.runtime) + '</div>';
-        if (meta.type) html += '<div class="dp-prop">${TYPE_FIELD.emoji} ${TYPE_FIELD.label}: ' + escapeHtml(meta.type) + '</div>';
-        if (meta.image) html += '<div class="dp-prop">${IMAGE_FIELD.emoji} ${IMAGE_FIELD.label}: ' + escapeHtml(meta.image) + '</div>';
-        if (meta.schedule) html += '<div class="dp-prop">${SCHEDULE_FIELD.emoji} ${SCHEDULE_FIELD.label}: ' + escapeHtml(meta.schedule) + '</div>';
-        if (meta.realizes?.length) html += '<div class="dp-prop">${REALIZES_FIELD.emoji} ${REALIZES_FIELD.label}: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
+        if (meta.runtime) html += '<div class="dp-prop">\\ud83d\\udda5 runtime: ' + escapeHtml(meta.runtime) + '</div>';
+        if (meta.type) html += '<div class="dp-prop">\\ud83c\\udff7 type: ' + escapeHtml(meta.type) + '</div>';
+        if (meta.image) html += '<div class="dp-prop">\\ud83d\\udce6 image: ' + escapeHtml(meta.image) + '</div>';
+        if (meta.schedule) html += '<div class="dp-prop">\\u23f1 schedule: ' + escapeHtml(meta.schedule) + '</div>';
+        if (meta.realizes?.length) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
         html += '</div>';
       }
 
       // Team / role / tags
       var teamRoleTagsProps = [];
-      if (meta.role) teamRoleTagsProps.push('${ROLE_EMOJI} ' + escapeHtml(meta.role));
+      if (meta.role) teamRoleTagsProps.push('\\ud83d\\udccc ' + escapeHtml(meta.role));
       if (meta.tags && meta.tags.length > 0) {
-        teamRoleTagsProps.push('${TAGS_EMOJI} ' + meta.tags.map(function(t) { return '[' + escapeHtml(t) + ']'; }).join(' '));
+        teamRoleTagsProps.push('\\ud83c\\udff7 ' + meta.tags.map(function(t) { return '[' + escapeHtml(t) + ']'; }).join(' '));
       }
       if (meta.team || teamRoleTagsProps.length > 0) {
         html += '<div class="dp-section">';
         if (meta.team) {
           html += '<button class="dp-nav-btn" data-nav-view="org" data-nav-node="' + escapeAttr(meta.team) + '">'
-            + '${TEAM_EMOJI} ' + escapeHtml(meta.team) + ' \\u2192</button>';
+            + '\\ud83d\\udc65 ' + escapeHtml(meta.team) + ' \\u2192</button>';
         }
         for (var j = 0; j < teamRoleTagsProps.length; j++) {
           html += '<div class="dp-prop">' + teamRoleTagsProps[j] + '</div>';
@@ -487,13 +383,13 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       var wrapperRect = wrapper.getBoundingClientRect();
       var targetRect = targetEl.getBoundingClientRect();
 
-      var anchorX = targetRect.right - wrapperRect.left + wrapper.scrollLeft + ${DETAIL_PANEL_GAP};
+      var anchorX = targetRect.right - wrapperRect.left + wrapper.scrollLeft + 8;
       var anchorY = targetRect.top - wrapperRect.top + wrapper.scrollTop;
 
       // If panel would overflow right edge, position to the left
-      if (anchorX + ${DETAIL_PANEL_MAX_WIDTH} > wrapper.scrollWidth && anchorX + ${DETAIL_PANEL_MAX_WIDTH} > wrapperRect.width) {
-        anchorX = targetRect.left - wrapperRect.left + wrapper.scrollLeft - ${DETAIL_PANEL_MAX_WIDTH + DETAIL_PANEL_GAP};
-        if (anchorX < 0) anchorX = ${DETAIL_PANEL_GAP};
+      if (anchorX + 360 > wrapper.scrollWidth && anchorX + 360 > wrapperRect.width) {
+        anchorX = targetRect.left - wrapperRect.left + wrapper.scrollLeft - 368;
+        if (anchorX < 0) anchorX = 8;
       }
 
       detailPanel.style.left = anchorX + 'px';
@@ -655,15 +551,5 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
     });
   </script>
 </body>
-</html>`;
-}
-
-/** Generate a CSP script nonce for {@link BuildPreviewHtmlParams.nonce}. */
-export function generateNonce(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
+</html>"
+`;

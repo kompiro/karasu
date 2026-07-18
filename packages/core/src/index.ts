@@ -146,6 +146,13 @@ export {
   type ClientSubtypeTag,
 } from "./builtins/icon-theme.js";
 export {
+  NODE_DETAIL_PROPERTY_FIELDS,
+  NODE_DETAIL_ROLE_EMOJI,
+  NODE_DETAIL_TAGS_EMOJI,
+  NODE_DETAIL_TEAM_EMOJI,
+  type NodeDetailPropertyField,
+} from "./builtins/node-detail-fields.js";
+export {
   type ExampleProject,
   EC_PLATFORM_PROJECTS,
   EC_PLATFORM_PROJECTS_EN,
