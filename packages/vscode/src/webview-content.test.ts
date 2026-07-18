@@ -84,6 +84,63 @@ describe("buildPreviewHtml", () => {
   // a reordered field, a changed label — fails loudly instead of silently
   // changing the webview's rendered HTML.
   it("full document output is byte-stable (golden snapshot)", () => {
-    expect(buildPreviewHtml(baseParams())).toMatchSnapshot();
+    expect(buildPreviewHtml(baseParams({ displayMode: "shape" }))).toMatchSnapshot();
+  });
+
+  // Companion golden snapshot for the OTHER display mode. The detail-panel
+  // property rows (runtime/type/image/schedule/realizes, role, tags, team)
+  // are emitted by the webview's client-side `showDetailPanel` JS, whose
+  // source text is display-mode-agnostic — `displayMode` only flips the
+  // toolbar `#icon-mode-btn` inline style (`iconModeStyle`). Pinning both
+  // modes fences that the shared-spec-driven property rows never start
+  // depending on display mode (the regression a code review flagged as a
+  // risk for the `realizes` 🔗 row).
+  it("icon-mode document output is byte-stable (golden snapshot)", () => {
+    expect(buildPreviewHtml(baseParams({ displayMode: "icon" }))).toMatchSnapshot();
+  });
+
+  // Permanent regression guard: switching display mode must change the
+  // output ONLY at the icon-mode toolbar button, never anywhere in the
+  // detail-panel JS. If a future edit ever made a property row (e.g.
+  // `realizes`) conditional on display mode, this diff would widen and the
+  // assertion would fail. Reproduces origin/main's behavior, where the
+  // property-row `if (meta.X)` guards do not reference `displayMode` at all.
+  it("display mode affects only the icon-mode toolbar button, not the detail-panel JS", () => {
+    const shape = buildPreviewHtml(baseParams({ displayMode: "shape" }));
+    const icon = buildPreviewHtml(baseParams({ displayMode: "icon" }));
+
+    // No unresolved template markers leaked into either output.
+    expect(shape).not.toContain("${");
+    expect(icon).not.toContain("${");
+
+    // The realizes / property-row source lines are present and identical in
+    // both modes (they live in the display-mode-agnostic script).
+    for (const mode of [shape, icon]) {
+      expect(mode).toContain(
+        "if (meta.realizes?.length) html += '<div class=\"dp-prop\">\\ud83d\\udd17 realizes: '",
+      );
+      expect(mode).toContain(
+        "if (meta.runtime) html += '<div class=\"dp-prop\">\\ud83d\\udda5 runtime: '",
+      );
+    }
+
+    // The single divergence: the icon-mode button's inline style.
+    let head = 0;
+    while (head < shape.length && shape[head] === icon[head]) head++;
+    let tail = 0;
+    while (
+      tail < shape.length - head &&
+      shape[shape.length - 1 - tail] === icon[icon.length - 1 - tail]
+    ) {
+      tail++;
+    }
+    const shapeRegion = shape.slice(head, shape.length - tail);
+    const iconRegion = icon.slice(head, icon.length - tail);
+    // The only differing bytes are inside the icon-mode button's style="".
+    expect(shape.slice(head - 30, head)).toContain('id="icon-mode-btn" style="');
+    expect(shapeRegion).toBe("");
+    expect(iconRegion).toBe(
+      "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);",
+    );
   });
 });
