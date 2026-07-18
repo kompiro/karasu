@@ -361,8 +361,11 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
         html += '<ul class="dp-capability-list">';
         for (var ci = 0; ci < meta.capabilities.length; ci++) {
           var cap = meta.capabilities[ci];
+          // Nullish (??), not logical-or, to match the app NodeDetailPanel
+          // (c.label ?? c.name) exactly: an explicit empty-string label is
+          // kept as a blank title, never falling through to the name.
           html += '<li class="dp-capability-item"><span class="dp-capability-title">'
-            + escapeHtml(cap.label || cap.name) + '</span>';
+            + escapeHtml(cap.label ?? cap.name) + '</span>';
           if (cap.description) {
             html += '<p class="dp-capability-description">' + escapeHtml(cap.description) + '</p>';
           }
@@ -970,8 +973,11 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
         html += '<ul class="dp-capability-list">';
         for (var ci = 0; ci < meta.capabilities.length; ci++) {
           var cap = meta.capabilities[ci];
+          // Nullish (??), not logical-or, to match the app NodeDetailPanel
+          // (c.label ?? c.name) exactly: an explicit empty-string label is
+          // kept as a blank title, never falling through to the name.
           html += '<li class="dp-capability-item"><span class="dp-capability-title">'
-            + escapeHtml(cap.label || cap.name) + '</span>';
+            + escapeHtml(cap.label ?? cap.name) + '</span>';
           if (cap.description) {
             html += '<p class="dp-capability-description">' + escapeHtml(cap.description) + '</p>';
           }

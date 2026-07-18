@@ -542,6 +542,23 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       /<p class="dp-capability-description">Used to scan QR codes<\/p>/,
       `panel should render the camera capability's description; saw HTML: ${html.slice(0, 600)}`,
     );
+
+    // #2068 code-review fence: the `geolocation` capability has an explicit
+    // empty `label ""`. The panel uses `cap.label ?? cap.name` (nullish),
+    // matching the app EXACTLY — an empty-string label is kept as a blank
+    // title and must NOT fall through to the name. So the capability's
+    // description renders while its name "geolocation" never appears as a
+    // title. (With the old `||`, "geolocation" would have shown.)
+    assert.match(
+      html,
+      /<p class="dp-capability-description">explicit empty label[^<]*<\/p>/,
+      `empty-label capability should still render its description; saw HTML: ${html.slice(0, 800)}`,
+    );
+    assert.doesNotMatch(
+      text,
+      /geolocation/,
+      `empty-label capability must keep a blank title (?? not ||), never showing its name; saw: ${text}`,
+    );
   });
 
   // Issue #2068: `UserService`'s `@deprecated(until: …)` annotation must

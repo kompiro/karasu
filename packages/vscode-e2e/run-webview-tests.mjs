@@ -48,7 +48,10 @@ const exitCode = await runExtester({
     // sections; `OrderDB` (a `database`) is realized by a deploy `store`
     // unit so the store kind gets its own detail-panel icon (previously
     // unmapped, falling back to "■" — the bug this issue fixed alongside
-    // the `usecase`/`domain` icon collision).
+    // the `usecase`/`domain` icon collision). WebApp's `geolocation`
+    // capability carries an explicit empty `label ""` to fence the panel's
+    // `cap.label ?? cap.name` fallback (must NOT show the name "geolocation"
+    // — the code-review `??` vs `||` finding on PR #2072).
     fs.writeFileSync(
       fixtureKrs,
       `system Demo {
@@ -79,6 +82,10 @@ Handles **order processing** and payment.
     capability camera {
       label "QR scanning"
       description "Used to scan QR codes"
+    }
+    capability geolocation {
+      label ""
+      description "explicit empty label — must NOT fall through to the name (#2068 ?? vs || fence)"
     }
   }
   database OrderDB {

@@ -80,11 +80,15 @@ const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
 const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
 
 // Section titles for the resources/capabilities/migration sections (Issue
-// #2068). Not sourced from `@karasu-tools/core` — like the "Links" section
-// title above them in the generated script, these are hand-kept in sync
-// with the app's `nodeDetail.*.title` en strings in `@karasu-tools/i18n`
-// (the webview has no i18n runtime; see node-detail-fields.ts's doc comment
-// for what is and is not shared).
+// #2068). These are ENGLISH-ONLY by design: the webview has no i18n runtime
+// (unlike the app's NodeDetailPanel, which pulls `nodeDetail.*.title` from
+// `@karasu-tools/i18n`), so the title *words* are hardcoded here — exactly
+// as the pre-existing "Links" section title above them in the generated
+// script already is. Parity with the app is therefore exact under the
+// default/English locale; Japanese-locale label parity is out of scope for
+// this change and needs a separate webview-i18n runtime (tracked as a
+// follow-up). See node-detail-fields.ts's doc comment for what is/isn't
+// shared. Only the leading emoji is derived (to match the app's en strings).
 const RESOURCES_TITLE_EMOJI = jsUnicodeEscape("📦");
 const CAPABILITIES_TITLE_EMOJI = jsUnicodeEscape("🔐");
 const MIGRATION_TITLE_EMOJI = jsUnicodeEscape("🕒");
@@ -552,8 +556,11 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
         html += '<ul class="dp-capability-list">';
         for (var ci = 0; ci < meta.capabilities.length; ci++) {
           var cap = meta.capabilities[ci];
+          // Nullish (??), not logical-or, to match the app NodeDetailPanel
+          // (c.label ?? c.name) exactly: an explicit empty-string label is
+          // kept as a blank title, never falling through to the name.
           html += '<li class="dp-capability-item"><span class="dp-capability-title">'
-            + escapeHtml(cap.label || cap.name) + '</span>';
+            + escapeHtml(cap.label ?? cap.name) + '</span>';
           if (cap.description) {
             html += '<p class="dp-capability-description">' + escapeHtml(cap.description) + '</p>';
           }
