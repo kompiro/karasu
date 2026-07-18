@@ -8,6 +8,7 @@ import {
   NODE_DETAIL_ROLE_EMOJI,
   NODE_DETAIL_TAGS_EMOJI,
   NODE_DETAIL_TEAM_EMOJI,
+  NODE_DETAIL_KIND_ICON_NAMES,
 } from "@karasu-tools/core";
 import type { NodeMetadata } from "@karasu-tools/core";
 import { useTranslation } from "../i18n/index.js";
@@ -34,28 +35,16 @@ interface NodeDetailPanelProps {
 }
 
 // Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE
-// from @karasu-tools/core's icon-theme builtins). Exported so cross-surface
-// tests can assert this map and the icon-card style cascade resolve identical
-// icons per kind — the contract enforced by TPL-20260510-05 / 06 item 4 and
-// originally violated in #132 §3 (panel pictogram diverged from icon card).
-export const KIND_TO_ICON_NAME: Record<string, string> = {
-  service: "service",
-  user: "user-card",
-  domain: "domain",
-  usecase: "usecase",
-  resource: "resource",
-  team: "team",
-  member: "member",
-  oci: "oci",
-  lambda: "lambda",
-  jar: "jar",
-  war: "war",
-  function: "function",
-  assets: "assets",
-  job: "job",
-  artifact: "artifact",
-  store: "database",
-};
+// from @karasu-tools/core's icon-theme builtins). Sourced from
+// @karasu-tools/core's NODE_DETAIL_KIND_ICON_NAMES (Issue #2068) so the VS
+// Code webview panel (webview-content.ts) consumes the identical kind→icon
+// identity instead of maintaining its own, drift-prone copy — it then maps
+// each icon name to an emoji glyph instead of an SVG pictogram. Re-exported
+// under this name so cross-surface tests can assert this map and the
+// icon-card style cascade resolve identical icons per kind — the contract
+// enforced by TPL-20260510-05 / 06 item 4 and originally violated in #132 §3
+// (panel pictogram diverged from icon card).
+export const KIND_TO_ICON_NAME: Record<string, string> = NODE_DETAIL_KIND_ICON_NAMES;
 
 // Fallback emoji icons for kinds without a registered SVG pictogram.
 const KIND_FALLBACK_ICONS: Record<string, string> = {

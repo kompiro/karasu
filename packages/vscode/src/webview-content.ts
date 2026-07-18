@@ -22,6 +22,7 @@ import {
   NODE_DETAIL_ROLE_EMOJI,
   NODE_DETAIL_TAGS_EMOJI,
   NODE_DETAIL_TEAM_EMOJI,
+  NODE_DETAIL_KIND_ICON_NAMES,
 } from "@karasu-tools/core";
 import type { ViewType } from "./message-validation.js";
 
@@ -77,6 +78,66 @@ const REALIZES_FIELD = propertyField("realizes");
 const ROLE_EMOJI = jsUnicodeEscape(NODE_DETAIL_ROLE_EMOJI);
 const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
 const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
+
+/**
+ * Emoji glyph for each icon name in {@link NODE_DETAIL_KIND_ICON_NAMES}
+ * (Issue #2068). The webview's `<script>` text is string-built in the
+ * extension host and evaluated later inside the webview's sandboxed
+ * browser context, so it cannot call into `@karasu-tools/core`'s SVG icon
+ * registry the way the app's `renderPictogram` does — it renders an emoji
+ * per icon-name identity instead. Every icon name
+ * `NODE_DETAIL_KIND_ICON_NAMES` uses must have an entry here; `kindIcon`
+ * below throws at module load otherwise, so a kind added to the shared map
+ * without a webview glyph fails immediately instead of silently rendering
+ * "■" in the panel.
+ */
+const ICON_NAME_TO_EMOJI: Record<string, string> = {
+  service: "⚙",
+  "user-card": "👤",
+  domain: "📦",
+  usecase: "🎯",
+  resource: "💾",
+  team: "👥",
+  member: "👤",
+  oci: "🐳",
+  lambda: "λ",
+  jar: "☕",
+  war: "☕",
+  function: "fₙ",
+  assets: "📁",
+  job: "⏰",
+  artifact: "📦",
+  database: "🗄",
+};
+
+/** `\uXXXX`-escaped emoji for a detail-panel kind, resolved through the
+ * shared {@link NODE_DETAIL_KIND_ICON_NAMES} identity map. */
+function kindIcon(kind: string): string {
+  const iconName = NODE_DETAIL_KIND_ICON_NAMES[kind];
+  if (!iconName) {
+    throw new Error(`webview-content: no NODE_DETAIL_KIND_ICON_NAMES entry for kind "${kind}"`);
+  }
+  const emoji = ICON_NAME_TO_EMOJI[iconName];
+  if (!emoji) {
+    throw new Error(
+      `webview-content: no ICON_NAME_TO_EMOJI entry for icon name "${iconName}" (kind "${kind}")`,
+    );
+  }
+  return jsUnicodeEscape(emoji);
+}
+
+/**
+ * Source text for the client-side `KIND_ICONS` lookup object, generated
+ * from {@link NODE_DETAIL_KIND_ICON_NAMES} so the webview cannot drift from
+ * the app's kind→icon mapping (the original #2068 bug: `usecase` collided
+ * with `domain`'s 📦, and `store` had no entry at all). `system` has no
+ * registered pictogram in either renderer (mirrors the app's
+ * `KIND_FALLBACK_ICONS`), so it is appended by hand, same as before.
+ */
+const KIND_ICON_ENTRIES = Object.keys(NODE_DETAIL_KIND_ICON_NAMES)
+  .map((kind) => `${kind}: '${kindIcon(kind)}'`)
+  .join(", ");
+const SYSTEM_KIND_ICON = jsUnicodeEscape("🏗");
 
 /**
  * Visibility guard for the property-row section, derived from the shared
@@ -388,14 +449,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
 
-    var KIND_ICONS = {
-      service: '\\u2699', user: '\\ud83d\\udc64', domain: '\\ud83d\\udce6',
-      resource: '\\ud83d\\udcbe', usecase: '\\ud83d\\udce6', team: '\\ud83d\\udc65',
-      member: '\\ud83d\\udc64', oci: '\\ud83d\\udc33', lambda: '\\u03bb',
-      jar: '\\u2615', war: '\\u2615', function: 'f\\u2099',
-      assets: '\\ud83d\\udcc1', job: '\\u23f0', artifact: '\\ud83d\\udce6',
-      system: '\\ud83c\\udfd7'
-    };
+    var KIND_ICONS = { ${KIND_ICON_ENTRIES}, system: '${SYSTEM_KIND_ICON}' };
 
     // ── View switcher ──
     document.querySelectorAll('[data-view]').forEach(function(btn) {

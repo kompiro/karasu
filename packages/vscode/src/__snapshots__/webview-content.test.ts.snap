@@ -268,14 +268,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
 
-    var KIND_ICONS = {
-      service: '\\u2699', user: '\\ud83d\\udc64', domain: '\\ud83d\\udce6',
-      resource: '\\ud83d\\udcbe', usecase: '\\ud83d\\udce6', team: '\\ud83d\\udc65',
-      member: '\\ud83d\\udc64', oci: '\\ud83d\\udc33', lambda: '\\u03bb',
-      jar: '\\u2615', war: '\\u2615', function: 'f\\u2099',
-      assets: '\\ud83d\\udcc1', job: '\\u23f0', artifact: '\\ud83d\\udce6',
-      system: '\\ud83c\\udfd7'
-    };
+    var KIND_ICONS = { service: '\\u2699', user: '\\ud83d\\udc64', domain: '\\ud83d\\udce6', usecase: '\\ud83c\\udfaf', resource: '\\ud83d\\udcbe', team: '\\ud83d\\udc65', member: '\\ud83d\\udc64', oci: '\\ud83d\\udc33', lambda: '\\u03bb', jar: '\\u2615', war: '\\u2615', function: '\\u0066\\u2099', assets: '\\ud83d\\udcc1', job: '\\u23f0', artifact: '\\ud83d\\udce6', store: '\\ud83d\\uddc4', system: '\\ud83c\\udfd7' };
 
     // ── View switcher ──
     document.querySelectorAll('[data-view]').forEach(function(btn) {
@@ -822,14 +815,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
 
-    var KIND_ICONS = {
-      service: '\\u2699', user: '\\ud83d\\udc64', domain: '\\ud83d\\udce6',
-      resource: '\\ud83d\\udcbe', usecase: '\\ud83d\\udce6', team: '\\ud83d\\udc65',
-      member: '\\ud83d\\udc64', oci: '\\ud83d\\udc33', lambda: '\\u03bb',
-      jar: '\\u2615', war: '\\u2615', function: 'f\\u2099',
-      assets: '\\ud83d\\udcc1', job: '\\u23f0', artifact: '\\ud83d\\udce6',
-      system: '\\ud83c\\udfd7'
-    };
+    var KIND_ICONS = { service: '\\u2699', user: '\\ud83d\\udc64', domain: '\\ud83d\\udce6', usecase: '\\ud83c\\udfaf', resource: '\\ud83d\\udcbe', team: '\\ud83d\\udc65', member: '\\ud83d\\udc64', oci: '\\ud83d\\udc33', lambda: '\\u03bb', jar: '\\u2615', war: '\\u2615', function: '\\u0066\\u2099', assets: '\\ud83d\\udcc1', job: '\\u23f0', artifact: '\\ud83d\\udce6', store: '\\ud83d\\uddc4', system: '\\ud83c\\udfd7' };
 
     // ── View switcher ──
     document.querySelectorAll('[data-view]').forEach(function(btn) {

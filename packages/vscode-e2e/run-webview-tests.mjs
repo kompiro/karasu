@@ -39,6 +39,13 @@ const exitCode = await runExtester({
     // detail panel's Org navigation button is keyed on the *resolved owner
     // team id* (`ownerIndex`), so the AT-0042 assertions look for
     // `data-nav-node="order-team"` rather than the old team label.
+    //
+    // Issue #2068 addition (kept after Customer's own block so
+    // `FIXTURE_LINE.Customer` in at-0039-detail-panel.test.ts does not
+    // shift): `OrderDB` (a `database`) is realized by a deploy `store` unit
+    // so the store kind gets its own detail-panel icon (previously
+    // unmapped, falling back to "■" — the bug this issue fixed alongside
+    // the `usecase`/`domain` icon collision).
     fs.writeFileSync(
       fixtureKrs,
       `system Demo {
@@ -61,6 +68,9 @@ Handles **order processing** and payment.
     description "A customer who purchases products."
     role "Buyer"
   }
+  database OrderDB {
+    table OrderTable {}
+  }
   Customer -> OrderService "places an order"
 }
 
@@ -69,6 +79,10 @@ deploy "production" {
     image "order:1.0"
     runtime "Node 20"
     realizes OrderService
+  }
+  store "order-db" {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
   }
 }
 

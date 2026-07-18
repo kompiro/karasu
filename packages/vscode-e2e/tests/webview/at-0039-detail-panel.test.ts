@@ -69,6 +69,20 @@ import {
  *
  * The "File: Open File..." simple-dialog stalls intermittently under
  * xvfb (the shared `openFixtureWithRetry` 3-attempt retry handles it).
+ *
+ * Issue #2068 coverage (kind→icon mapping parity with the app's
+ * `NodeDetailPanel`, co-located here rather than under a new AT number
+ * since it reuses this suite's fixture and WebView): the deploy
+ * `store "order-db"` unit (realizing `OrderDB`) gets its own detail-panel
+ * icon distinct from the "■" fallback it rendered with before the fix
+ * (`store` had no `KIND_ICONS` entry at all). The `usecase`/`domain` icon
+ * collision the issue also fixed is pinned by the `webview-content.test.ts`
+ * golden snapshot (the exact `KIND_ICONS` `<script>` text the browser
+ * evaluates) and by `packages/core/src/builtins/node-detail-fields.test.ts`,
+ * rather than by a live click here — reaching a `usecase` node requires
+ * drilling into a domain, which would turn `OrderManagement`/`Inventory`
+ * into parent nodes and break TC-01's "leaf node" assumption for this
+ * shared fixture.
  */
 
 const FIXTURE_NAME = "at-0039.krs";
@@ -454,6 +468,29 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       await isViewActive(driver, "deploy"),
       true,
       "Deploy toolbar button should carry the active style after deploy nav click",
+    );
+  });
+
+  // Issue #2068: `store` had no `KIND_ICONS` entry before this fix, so its
+  // panel header always fell back to the generic "■" glyph. `order-db`
+  // realizes the logical `database OrderDB` and has no children, so a
+  // plain click opens its panel directly (no ⓘ button needed).
+  it("#2068: detail panel for a store deploy unit renders its own icon, not the generic fallback", async () => {
+    await switchToView(ctx, "deploy");
+    await closePanelIfOpen();
+
+    await driver.wait(
+      until.elementLocated(By.css('[data-node-id="OrderDB::order-db"]')),
+      ELEMENT_TIMEOUT_MS,
+    );
+    await dispatchClick(driver, '[data-node-id="OrderDB::order-db"]');
+    await awaitPanelVisible("detail panel did not open after clicking the order-db store unit");
+
+    const html = await detailPanelHtml();
+    assert.match(
+      html,
+      /<span class="dp-icon">🗄<\/span>/,
+      `store panel should render its own icon, not the "■" fallback; saw HTML: ${html.slice(0, 300)}`,
     );
   });
 });
