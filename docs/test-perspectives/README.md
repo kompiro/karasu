@@ -464,3 +464,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260716-02](TPL-20260716-02-view-state-gate-parity-across-surfaces.md) | view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える — 一部 surface だけ gate すると残りが undocumented 挙動として出荷される | renderer | #1983, #2033 |
 | [TPL-20260717-01](TPL-20260717-01-pnpm-double-dash-arg-forwarding.md) | `pnpm run <script> -- <flag>` は flag が下位ツールに届かないことがある — CLI 引数は下位ツールに直接渡し、2 経路起動は引数の渡し方を揃える | testing | #2046 |
 | [TPL-20260717-02](TPL-20260717-02-svg-interactive-control-paints-last.md) | SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つ — document order がそのまま重なり順 | renderer | #2044 |
+| [TPL-20260718-01](TPL-20260718-01-i18n-key-naming-max-4-segments.md) | i18n key は `<feature>.<sub-feature?>.<element>.<state>` の最大 4 段命名規約に従う — sub-feature は独立 UI サーフェスがあるときのみ導入し、孫階層は作らない | app-ui | docs/spec/i18n.md, #2019 |

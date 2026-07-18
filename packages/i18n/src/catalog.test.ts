@@ -23,3 +23,16 @@ describe("catalog drift guard — ja vs en", () => {
     expect(jaOrder).toEqual(sorted);
   });
 });
+
+// Key-naming guard (docs/spec/i18n.md "key naming 規約", TPL-20260718-01).
+// Keys are `<feature>.<sub-feature?>.<element>.<state>`, i.e. at most 4
+// dot-separated segments. This mechanizes the segment-count half of the
+// rule; the "when is a sub-feature warranted" judgement call stays a
+// review-time checklist item (see the TPL), not something worth encoding
+// here.
+describe("key naming — max 4 dot-segments (docs/spec/i18n.md)", () => {
+  it("every en key has at most 4 dot-separated segments", () => {
+    const tooLong = Object.keys(en).filter((key) => key.split(".").length > 4);
+    expect(tooLong).toEqual([]);
+  });
+});
