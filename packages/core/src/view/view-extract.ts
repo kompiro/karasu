@@ -885,10 +885,11 @@ function extractOrphanView(orphans: KrsNode[], path: ViewPath, ctx: ViewExtractC
   if (orphans.length === 0) return empty;
 
   if (path.length === 0) {
-    const { edges: implicitServiceEdges, details: implicitEdgeDetails } = deriveImplicitServiceEdges(
-      orphans.filter((c) => c.kind === "service"),
-      new Set(),
-    );
+    const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
+      deriveImplicitServiceEdges(
+        orphans.filter((c) => c.kind === "service"),
+        new Set(),
+      );
     const derivedEdges = deriveInfraEdges(orphans, entityResolver);
     const deliversEdges = deriveDeliversEdges(orphans);
     return {
@@ -976,7 +977,10 @@ function extractRootSystemView(
   // In-place expansion (#1921): a service named in `expandedContainers` that
   // actually has domain children is replaced by those domains as a boundary
   // frame band; cross-boundary edges re-anchor to the exact internal domain.
-  const { expandedServices, expandedSet } = resolveExpandedServices(allChildren, expandedContainers);
+  const { expandedServices, expandedSet } = resolveExpandedServices(
+    allChildren,
+    expandedContainers,
+  );
 
   const {
     edges: implicitServiceEdges,
@@ -1170,7 +1174,12 @@ export function extractView(
   // resolve to an `entity` declared in another domain / service, so this is
   // built once from every root, not per-container.
   const entityResolver = buildEntityResolver([...systems, ...orphans]);
-  const ctx: ViewExtractContext = { resourceLabelMap, resourceInferredTagsMap, empty, entityResolver };
+  const ctx: ViewExtractContext = {
+    resourceLabelMap,
+    resourceInferredTagsMap,
+    empty,
+    entityResolver,
+  };
 
   // No-system file: render orphan services/domains as peer nodes with no container.
   // Drill-down walks from the orphan as path root.
