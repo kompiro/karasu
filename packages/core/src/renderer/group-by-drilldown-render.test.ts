@@ -561,10 +561,11 @@ boundary g2 "G2" {
 describe("cross-file members group on drill levels (multi-file merge)", () => {
   it("frames a member declared in an imported file at its drill level", async () => {
     // The merged boundaryIndex (first-wins across files) must reach the drill
-    // render exactly like the single-file path. Note: the per-file
-    // `contains-target-not-found` pass still warns about the cross-file id at
-    // parse time (pre-existing project-mode false positive, tracked in #2032) —
-    // this fence pins that the *grouping* itself resolves on the merged model.
+    // render exactly like the single-file path. Reference existence is
+    // re-validated against the merged id-space (#2032), so a cross-file
+    // `contains` member no longer draws a false `contains-target-not-found` —
+    // this fence pins both that the *grouping* resolves on the merged model and
+    // that the diagnostic stays silent for a resolvable cross-file member.
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile(
       "/p/index.krs",
@@ -596,6 +597,13 @@ boundary cluster "Cluster" {
     expect(result.svg).toContain(FRAME);
     expect(result.svg).toContain('data-node-id="BillingDomain"');
     expect(result.svg).toContain('data-node-id="LedgerDomain"');
+    // #2032: the cross-file member resolves in the merged model, so no false
+    // `contains-target-not-found` (fixed code + severity — TPL-20260615-02).
+    expect(
+      result.diagnostics.filter(
+        (d) => d.code === "contains-target-not-found" && d.severity === "warning",
+      ),
+    ).toHaveLength(0);
   });
 });
 

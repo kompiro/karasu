@@ -1,6 +1,7 @@
 import type { FileSystemProvider, DirEntry } from "./types.js";
 import type {
   Diagnostic,
+  DiagnosticCode,
   KrsFile,
   SystemNode,
   KrsNode,
@@ -12,8 +13,22 @@ import type {
 import { createEmptyKrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
+import {
+  validateOwnsReferences,
+  validateContainsReferences,
+} from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
 import type { StyleSheet } from "../types/style.js";
+
+/**
+ * Reference-existence diagnostics that are only decidable after the cross-file
+ * merge. Their per-file verdict is dropped during Pass 1 and re-derived against
+ * the merged id-space in `resolve()` (Issue #2032).
+ */
+const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
+  "contains-target-not-found",
+  "owns-target-not-found",
+]);
 
 export interface ResolvedProject {
   /** マージ済みの KrsFile（全ファイルの system / deploy を統合） */
@@ -68,6 +83,20 @@ export class ImportResolver {
     // Pass 2: エントリから再帰的にマージ
     const krsFile = this.resolveKrsFromMap(fileMap, entryPath);
 
+    // Reference-existence re-validation against the merged id-space. The
+    // per-file pass suppressed these codes (see loadFileRecursive) because a
+    // `contains` / `owns` target may be declared in a different file; only the
+    // merged model can decide whether it truly exists (Issue #2032). Mirrors
+    // the parser's own guards so single-file projects behave identically.
+    if (krsFile.nodePathIndex.size > 0 && krsFile.organizations.length > 0) {
+      this.diagnostics.push(
+        ...validateOwnsReferences(krsFile.organizations, krsFile.nodePathIndex),
+      );
+    }
+    if (krsFile.boundaries.length > 0) {
+      this.diagnostics.push(...validateContainsReferences(krsFile));
+    }
+
     const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
 
     return {
@@ -115,7 +144,13 @@ export class ImportResolver {
     }
 
     const parseResult = Parser.parse(source);
-    this.diagnostics.push(...parseResult.diagnostics);
+    // Reference-existence diagnostics (`contains-target-not-found` /
+    // `owns-target-not-found`) are re-derived against the merged id-space
+    // after Pass 2, so drop the per-file verdict here — a member/owned id
+    // declared in another file would otherwise falsely warn (Issue #2032).
+    this.diagnostics.push(
+      ...parseResult.diagnostics.filter((d) => !MERGED_SPACE_REFERENCE_CODES.has(d.code)),
+    );
     fileMap.set(filePath, parseResult.value);
 
     for (const nodeImport of parseResult.value.nodeImports) {
