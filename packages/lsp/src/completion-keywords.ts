@@ -25,6 +25,7 @@
  *     - queue      : top-level infra block
  *     - storage    : top-level infra block
  *     - boundary   : top-level block (like `system` / `organization`)
+ *     - legend     : top-level construct (parity with system/boundary/deploy/organization)
  *     - entity     : domain-child declaration (like the included `usecase` / `resource`)
  *     - capability : client-child declaration (like the included `usecase` / `resource`)
  *
@@ -38,7 +39,7 @@
  *   see `EXCLUDED_FROM_COMPLETION` in the test for the per-keyword reasons):
  *     handles, operations, delivers (node property blocks), contains (boundary
  *     body), from (import tail), table (database body), bucket (storage body),
- *     legend / swatch / ref (presentation sub-grammar).
+ *     swatch / ref (legend presentation sub-grammar body).
  */
 export const KRS_KEYWORDS = [
   // Top-level declarations
@@ -51,6 +52,7 @@ export const KRS_KEYWORDS = [
   "queue", // added #2067 — top-level infra block
   "storage", // added #2067 — top-level infra block
   "boundary", // added #2067 — top-level block
+  "legend", // added #2067 — top-level construct (parity with system/boundary/deploy/organization)
   "deploy",
   "organization",
   // Node-child declarations

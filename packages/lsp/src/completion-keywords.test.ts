@@ -37,7 +37,6 @@ const EXCLUDED_FROM_COMPLETION = [
   "from", // import tail (`import X from "…"`) — never a standalone starter
   "table", // database body only
   "bucket", // storage body only
-  "legend", // presentation sub-grammar (top-level, but omitted like the old curated list)
   "swatch", // legend body only
   "ref", // legend/swatch body only
 ].sort();
