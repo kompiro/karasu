@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@karasu-tools/core": "workspace:*",
+    "@karasu-tools/lsp": "workspace:*",
     "marked": "^18.0.2",
     "vscode-languageclient": "^9.0.1"
   },

@@ -6,7 +6,6 @@ import {
   InitializeParams,
   InitializeResult,
   TextDocumentSyncKind,
-  RequestType,
   CompletionItem,
   CompletionItemKind,
   Location,
@@ -29,27 +28,13 @@ import {
   getWordAtPosition,
 } from "./position-resolver.js";
 import { buildDocumentSymbols } from "./document-symbols.js";
-import type { LspPosition, LspRange } from "./lsp-position.js";
+import { NodeAtPositionRequest, PositionOfNodeRequest } from "./protocol.js";
 import { KRS_KEYWORDS } from "./completion-keywords.js";
 
 // The languageId under which the VS Code extension registers `.krs.style`
 // documents (see packages/vscode/src/extension.ts). Style docs are routed
 // to the style parser/formatter; everything else is treated as `.krs`.
 const STYLE_LANGUAGE_ID = "krs-style";
-
-// ─── Custom LSP request types ─────────────────────────────────────────────────
-
-export const NodeAtPositionRequest = new RequestType<
-  { uri: string; position: LspPosition },
-  { nodeId: string | null },
-  void
->("karasu/nodeAtPosition");
-
-export const PositionOfNodeRequest = new RequestType<
-  { uri: string; nodeId: string },
-  { range: LspRange | null },
-  void
->("karasu/positionOfNode");
 
 // ─── Server setup ─────────────────────────────────────────────────────────────
 
