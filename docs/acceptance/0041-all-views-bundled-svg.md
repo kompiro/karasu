@@ -12,10 +12,12 @@ Verify that `buildAllViewsSvg()` generates a single SVG file that bundles system
 
 ## Current Status
 
-`buildAllViewsSvg()` is implemented in `packages/core` but is **not yet integrated into the app UI or CLI**.
-There is no export button or `--all-views` flag yet (depends on issue #121).
+`buildAllViewsSvg()` is implemented in `packages/core` and integrated into the app UI: the
+preview toolbar's **Open All Views** button opens the bundled SVG in a new window (AT-0043).
+The browser-level tab navigation, drill-down and Back control are fenced by
+`packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` (driven through that popup).
 
-Manual verification must be done by generating the SVG via a script and opening it in a browser directly.
+The script-based generation below remains a valid manual fallback for inspecting the raw SVG.
 
 ## How to Generate the SVG
 
@@ -104,51 +106,53 @@ organization Acme {
 - [x] The SVG renders three tabs: **System**, **Deploy**, **Org**
 > ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `tab bar always has three tabs`
 
-- [ ] By default (no URL fragment), the **System** pane is visible
-- [ ] Clicking **Deploy** tab navigates to the deploy pane (URL fragment `#krs-deploy-root`)
-- [ ] Clicking **Org** tab navigates to the org pane (URL fragment `#krs-org-root`)
-- [ ] Clicking **System** tab returns to the system pane (URL fragment `#krs-system-root`)
-- [ ] Active tab has a visually distinct appearance
+> ✅ Automated by `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` (suite-wide)
 
-> manual / visual review — CSS `:target` ベースのタブ切替はブラウザで開かなければ確認できない（自動化はヘッドレスブラウザを別途用意する必要あり）。
+- [x] By default (no URL fragment), the **System** pane is visible
+- [x] Clicking **Deploy** tab navigates to the deploy pane (URL fragment `#krs-deploy-root`)
+- [x] Clicking **Org** tab navigates to the org pane (URL fragment `#krs-org-root`)
+- [x] Clicking **System** tab returns to the system pane (URL fragment `#krs-system-root`)
+- [x] Active tab has a visually distinct appearance（構造的に検証: active タブ `rect` の fill が非 active と異なる。知覚的な見た目は手動）
 
 ### Disabled Tabs
 
 - [x] When a view has no content, its tab is visually disabled (dimmed)
 > ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `system only: system tab enabled, deploy/org tabs disabled`（`krs-tab--disabled` クラス付与を検証）
 
-- [ ] Disabled tabs are not clickable (no `<a>` wrapper)
+- [x] Disabled tabs are not clickable (no `<a>` wrapper)
+> ✅ Automated — `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` › `disabled tab (no org block) has no <a> wrapper and stays inert`
 - [x] For a system-only file, Deploy and Org tabs are disabled
 > ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `system only: system tab enabled, deploy/org tabs disabled`
 
-> manual / visual review — タブの dimmed 見た目と非クリック状態（`<a>` ラッパー不在はテスト未検証）は SVG 描画結果をブラウザで目視確認する。
+> manual / visual review — タブの dimmed 見た目のみブラウザ目視。非クリック（`<a>` ラッパー不在）は e2e でフェンス済み。
 
 ### Drill-Down (System View)
 
 - [x] Clicking a node with children navigates to its detail level (e.g., `#krs-system-OrderService`)
 > ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `system drill-down links use krs-system-* prefix`（`#krs-system-*` アンカーと `<a href>` の生成を検証。クリック遷移そのものはブラウザ `:target`）
 
-- [ ] The detail level shows a **← Back** button
-- [ ] Clicking Back returns to the parent level
-- [ ] Nested drill-down works for three levels if present
+> ✅ Automated by `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` (suite-wide)
 
-> manual / visual review — System view のドリルダウンと Back 動作は CSS-only ナビゲーションのため実ブラウザでの動作確認が必要。
+- [x] The detail level shows a **← Back** button
+- [x] Clicking Back returns to the parent level
+- [x] Nested drill-down works for three levels if present（root → Store → Catalog を検証）
 
 ### Drill-Down (Org View)
 
-- [ ] Teams with sub-teams show a drill-down link
-- [ ] Clicking a team navigates to its detail level (e.g., `#krs-org-Engineering`)
+- [x] Teams with sub-teams show a drill-down link
+> ✅ Automated — `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` › `drill-down — node links descend levels; browser-back ascends`
+- [x] Clicking a team navigates to its detail level (e.g., `#krs-org-Engineering`)
+> ✅ Automated — `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` › `drill-down — node links descend levels; browser-back ascends`
 - [ ] Back button returns to org root
 
-> manual / visual review — Org view の team ドリルダウンはブラウザでフラグメント遷移を手動で確認する。
+> manual / visual review — Org view の Back（org root への復帰）はブラウザで手動確認。team ドリルダウンの link 表示と遷移は e2e でフェンス済み。
 
 ### Deploy View
 
-- [ ] Deploy view shows a single flat level with all deploy units
+- [x] Deploy view shows a single flat level with all deploy units
+> ✅ Automated — `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` › `tab navigation via :target — panes switch, fragment updates, active tab distinct`（deploy ペインに store-svc / billing-svc 両ユニットが描画されることを検証）
 - [x] No drill-down within the deploy view
 > ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `deploy is a single non-drillable level`
-
-> manual / visual review — Deploy ペインに全 deploy unit が描画されることはブラウザレンダリング結果を目視確認する。
 
 ### Empty File
 

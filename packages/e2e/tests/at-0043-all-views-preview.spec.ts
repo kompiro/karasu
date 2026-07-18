@@ -12,10 +12,11 @@ import { expect, test } from "../fixtures/opfs.js";
  *  - Clicking it opens a popup whose URL is a `blob:` address
  *  - With an editor that parses to no views, the button is disabled
  *
- * Inside-popup tab navigation and drill-down rely on opening the
- * blob: URL in a secondary context and inspecting the bundled SVG —
- * kept in manual / AI visual review for now since the popup is a
- * separate Playwright page without a stable selector surface.
+ * Inside-popup tab navigation, drill-down, the Back control and disabled
+ * tabs are fenced in `at-0041-all-views-bundled-svg.spec.ts`, which opens
+ * the blob: popup as a secondary `Page` and asserts the `:target` / `:has()`
+ * effects via getComputedStyle — so this spec keeps to the open/disable
+ * surface and defers the bundled-SVG navigation there.
  */
 
 test.describe("AT-0043 Open All Views (bundled SVG popup)", () => {
