@@ -138,6 +138,26 @@ describe("NodeDetailPanel", () => {
     expect(container.textContent).not.toContain("runtime:");
   });
 
+  // Fences the spec-derived property-section visibility guard (Issue #2018
+  // point 7): the guard is now `NODE_DETAIL_PROPERTY_FIELDS.reduce(...)`,
+  // which must show the section when ANY single property field is populated
+  // — here only `realizes`, the array-typed field the guard tests via
+  // `?.length` rather than truthiness.
+  it("shows the property section when only realizes is populated", () => {
+    const { container } = render(<NodeDetailPanel {...baseProps({ realizes: ["OrderDB"] })} />);
+    expect(container.querySelector(".node-detail-section")).not.toBeNull();
+    expect(container.textContent).toContain("realizes: OrderDB");
+  });
+
+  // Complementary guard: no property field populated → no property section.
+  // (`realizes` absent, not an empty array — the compiler never emits `[]`.)
+  it("omits the property section when no property field is populated", () => {
+    const { container } = render(<NodeDetailPanel {...baseProps()} />);
+    // baseProps() sets no runtime/type/image/schedule/realizes, and the only
+    // other section-producing fields (links/team/role/tags/…) are empty too.
+    expect(container.querySelector(".node-detail-section")).toBeNull();
+  });
+
   it("renders deploy navigation button when hasDeployContainer is true", () => {
     const onNavigateToDeploy = vi.fn<() => void>();
     const onClose = vi.fn<() => void>();

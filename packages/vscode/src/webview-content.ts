@@ -17,6 +17,12 @@
  * it here (see ADR-20260429-09 / `.claude/rules/vscode-webview-tests.md`).
  */
 
+import {
+  NODE_DETAIL_PROPERTY_FIELDS,
+  NODE_DETAIL_ROLE_EMOJI,
+  NODE_DETAIL_TAGS_EMOJI,
+  NODE_DETAIL_TEAM_EMOJI,
+} from "@karasu-tools/core";
 import type { ViewType } from "./message-validation.js";
 
 /**
@@ -33,6 +39,60 @@ export const DETAIL_PANEL_MAX_WIDTH = 360;
  * left margin when the panel is clamped to the viewport edge.
  */
 export const DETAIL_PANEL_GAP = 8;
+
+/**
+ * Re-encode a string as `\uXXXX`-per-UTF-16-code-unit escapes — the style
+ * this module's inline `<script>` already used (by hand) for every
+ * non-ASCII glyph before this change. The detail-panel emoji now come from
+ * the shared `@karasu-tools/core` NODE_DETAIL_PROPERTY_FIELDS spec (Issue
+ * #2018 point 7), but that spec holds real emoji characters (so the app's
+ * JSX can render them directly) — this function re-derives the same
+ * hand-written escape form so the generated `<script>` text stays
+ * byte-identical to what was previously typed out per glyph. Iterating by
+ * `.length`/`.charCodeAt` (not code points) is deliberate: astral emoji are
+ * two UTF-16 code units, and the escape form used throughout this file is
+ * one `\uXXXX` per unit (i.e. a surrogate pair, not a single \u{...}).
+ */
+function jsUnicodeEscape(glyph: string): string {
+  let out = "";
+  for (let i = 0; i < glyph.length; i++) {
+    out += "\\u" + glyph.charCodeAt(i).toString(16).padStart(4, "0");
+  }
+  return out;
+}
+
+const propertyField = (key: (typeof NODE_DETAIL_PROPERTY_FIELDS)[number]["metaKey"]) => {
+  const field = NODE_DETAIL_PROPERTY_FIELDS.find((f) => f.metaKey === key);
+  if (!field) {
+    throw new Error(`webview-content: no NODE_DETAIL_PROPERTY_FIELDS entry for "${key}"`);
+  }
+  return { emoji: jsUnicodeEscape(field.emoji), label: field.label };
+};
+
+const RUNTIME_FIELD = propertyField("runtime");
+const TYPE_FIELD = propertyField("type");
+const IMAGE_FIELD = propertyField("image");
+const SCHEDULE_FIELD = propertyField("schedule");
+const REALIZES_FIELD = propertyField("realizes");
+const ROLE_EMOJI = jsUnicodeEscape(NODE_DETAIL_ROLE_EMOJI);
+const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
+const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
+
+/**
+ * Visibility guard for the property-row section, derived from the shared
+ * spec so adding a field to NODE_DETAIL_PROPERTY_FIELDS automatically both
+ * renders its row (below) *and* keeps the section visible for a node whose
+ * only populated property is that new field. Generates the exact
+ * left-to-right `meta.runtime || meta.type || … || meta.realizes?.length`
+ * expression the client-side `if (...)` used before this change — the
+ * `realizes` array field tests `?.length`, the rest test truthiness — so
+ * the emitted script text stays byte-identical (fenced by the golden
+ * snapshot). Since it feeds an `if (...)`, boolean coercion makes it
+ * byte-identical for every input.
+ */
+const PROPERTY_SECTION_GUARD = NODE_DETAIL_PROPERTY_FIELDS.map((f) =>
+  f.metaKey === "realizes" ? "meta.realizes?.length" : `meta.${f.metaKey}`,
+).join(" || ");
 
 /** Inputs for {@link buildPreviewHtml}, all pre-computed by the caller. */
 export interface BuildPreviewHtmlParams {
@@ -393,27 +453,27 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       }
 
       // Runtime / type / image / schedule / realizes (own section, matching app layout)
-      if (meta.runtime || meta.type || meta.image || meta.schedule || meta.realizes?.length) {
+      if (${PROPERTY_SECTION_GUARD}) {
         html += '<div class="dp-section">';
-        if (meta.runtime) html += '<div class="dp-prop">\\ud83d\\udda5 runtime: ' + escapeHtml(meta.runtime) + '</div>';
-        if (meta.type) html += '<div class="dp-prop">\\ud83c\\udff7 type: ' + escapeHtml(meta.type) + '</div>';
-        if (meta.image) html += '<div class="dp-prop">\\ud83d\\udce6 image: ' + escapeHtml(meta.image) + '</div>';
-        if (meta.schedule) html += '<div class="dp-prop">\\u23f1 schedule: ' + escapeHtml(meta.schedule) + '</div>';
-        if (meta.realizes?.length) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
+        if (meta.runtime) html += '<div class="dp-prop">${RUNTIME_FIELD.emoji} ${RUNTIME_FIELD.label}: ' + escapeHtml(meta.runtime) + '</div>';
+        if (meta.type) html += '<div class="dp-prop">${TYPE_FIELD.emoji} ${TYPE_FIELD.label}: ' + escapeHtml(meta.type) + '</div>';
+        if (meta.image) html += '<div class="dp-prop">${IMAGE_FIELD.emoji} ${IMAGE_FIELD.label}: ' + escapeHtml(meta.image) + '</div>';
+        if (meta.schedule) html += '<div class="dp-prop">${SCHEDULE_FIELD.emoji} ${SCHEDULE_FIELD.label}: ' + escapeHtml(meta.schedule) + '</div>';
+        if (meta.realizes?.length) html += '<div class="dp-prop">${REALIZES_FIELD.emoji} ${REALIZES_FIELD.label}: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
         html += '</div>';
       }
 
       // Team / role / tags
       var teamRoleTagsProps = [];
-      if (meta.role) teamRoleTagsProps.push('\\ud83d\\udccc ' + escapeHtml(meta.role));
+      if (meta.role) teamRoleTagsProps.push('${ROLE_EMOJI} ' + escapeHtml(meta.role));
       if (meta.tags && meta.tags.length > 0) {
-        teamRoleTagsProps.push('\\ud83c\\udff7 ' + meta.tags.map(function(t) { return '[' + escapeHtml(t) + ']'; }).join(' '));
+        teamRoleTagsProps.push('${TAGS_EMOJI} ' + meta.tags.map(function(t) { return '[' + escapeHtml(t) + ']'; }).join(' '));
       }
       if (meta.team || teamRoleTagsProps.length > 0) {
         html += '<div class="dp-section">';
         if (meta.team) {
           html += '<button class="dp-nav-btn" data-nav-view="org" data-nav-node="' + escapeAttr(meta.team) + '">'
-            + '\\ud83d\\udc65 ' + escapeHtml(meta.team) + ' \\u2192</button>';
+            + '${TEAM_EMOJI} ' + escapeHtml(meta.team) + ' \\u2192</button>';
         }
         for (var j = 0; j < teamRoleTagsProps.length; j++) {
           html += '<div class="dp-prop">' + teamRoleTagsProps[j] + '</div>';
