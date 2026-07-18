@@ -514,13 +514,29 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     const html = await detailPanelHtml();
     const text = await detailPanelText();
 
-    assert.match(text, /Storage resources/, `panel should show the resources section title; saw: ${text}`);
+    assert.match(
+      text,
+      /Storage resources/,
+      `panel should show the resources section title; saw: ${text}`,
+    );
     assert.match(text, /localStorage/, `panel should list the localStorage resource; saw: ${text}`);
-    assert.match(text, /preferences/, `panel should list the "preferences" resource name; saw: ${text}`);
+    assert.match(
+      text,
+      /preferences/,
+      `panel should list the "preferences" resource name; saw: ${text}`,
+    );
     assert.match(text, /outbox/, `panel should list the "outbox" resource name; saw: ${text}`);
 
-    assert.match(text, /Capabilities/, `panel should show the capabilities section title; saw: ${text}`);
-    assert.match(text, /QR scanning/, `panel should show the camera capability's label; saw: ${text}`);
+    assert.match(
+      text,
+      /Capabilities/,
+      `panel should show the capabilities section title; saw: ${text}`,
+    );
+    assert.match(
+      text,
+      /QR scanning/,
+      `panel should show the camera capability's label; saw: ${text}`,
+    );
     assert.match(
       html,
       /<p class="dp-capability-description">Used to scan QR codes<\/p>/,
@@ -545,7 +561,11 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     const html = await detailPanelHtml();
     const text = await detailPanelText();
 
-    assert.match(text, /Migration intent/, `panel should show the migration section title; saw: ${text}`);
+    assert.match(
+      text,
+      /Migration intent/,
+      `panel should show the migration section title; saw: ${text}`,
+    );
     assert.match(text, /2026-12-31/, `panel should show the "until" raw value; saw: ${text}`);
     assert.match(
       html,
