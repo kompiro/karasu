@@ -5,6 +5,7 @@ import {
   type BuildPreviewHtmlParams,
   buildPreviewHtml,
 } from "./webview-content.js";
+import { buildPreviewPanelLabels } from "./webview-i18n.js";
 
 // Fences the webview HTML/CSS/JS template extracted from
 // PreviewPanel._buildHtml (Issue #2018 point 3). preview-panel.ts still
@@ -23,6 +24,7 @@ function baseParams(overrides: Partial<BuildPreviewHtmlParams> = {}): BuildPrevi
     viewType: "system",
     displayMode: "shape",
     nonce: "test-nonce-123",
+    labels: buildPreviewPanelLabels("en"),
     ...overrides,
   };
 }
@@ -142,5 +144,35 @@ describe("buildPreviewHtml", () => {
     expect(iconRegion).toBe(
       "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);",
     );
+  });
+
+  // Issue #2074: the detail-panel labels are resolved by the extension host
+  // per active locale (webview-i18n.ts, mirroring the app NodeDetailPanel's
+  // `t("nodeDetail.*")` keys) and injected as `PANEL_LABELS`. The en labels
+  // must be the English section titles; the ja labels the Japanese ones — so
+  // the webview matches the app under BOTH locales instead of the previous
+  // hardcoded-English (with an accidental Japanese Deploy-nav) mix.
+  it("injects PANEL_LABELS resolved for the active locale (en)", () => {
+    const html = buildPreviewHtml(baseParams({ labels: buildPreviewPanelLabels("en") }));
+    expect(html).toContain(`var PANEL_LABELS = ${JSON.stringify(buildPreviewPanelLabels("en"))};`);
+    // English section titles / buttons.
+    expect(html).toContain('"linksTitle":"🔗 Links"');
+    expect(html).toContain('"resourcesTitle":"📦 Storage resources"');
+    expect(html).toContain('"capabilitiesTitle":"🔐 Capabilities"');
+    expect(html).toContain('"migrationTitle":"🕒 Migration intent"');
+    expect(html).toContain('"jumpToEditor":"↗ Jump to editor"');
+    expect(html).toContain('"openDeployView":"🚀 View in Deploy diagram →"');
+  });
+
+  it("injects PANEL_LABELS resolved for the active locale (ja)", () => {
+    const html = buildPreviewHtml(baseParams({ labels: buildPreviewPanelLabels("ja") }));
+    expect(html).toContain(`var PANEL_LABELS = ${JSON.stringify(buildPreviewPanelLabels("ja"))};`);
+    // Japanese section titles / buttons — parity with the app under ja.
+    expect(html).toContain('"linksTitle":"🔗 リンク"');
+    expect(html).toContain('"resourcesTitle":"📦 ストレージリソース"');
+    expect(html).toContain('"capabilitiesTitle":"🔐 ケイパビリティ"');
+    expect(html).toContain('"migrationTitle":"🕒 移行 intent"');
+    expect(html).toContain('"jumpToEditor":"↗ エディタへジャンプ"');
+    expect(html).toContain('"openDeployView":"🚀 Deploy 図で確認 →"');
   });
 });

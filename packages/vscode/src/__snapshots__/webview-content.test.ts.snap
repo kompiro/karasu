@@ -279,6 +279,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
   <script nonce="test-nonce-123">
     var vscode = acquireVsCodeApi();
     var nodeMetadataMap = {};
+    var PANEL_LABELS = {"close":"Close","linksTitle":"🔗 Links","resourcesTitle":"📦 Storage resources","capabilitiesTitle":"🔐 Capabilities","migrationTitle":"🕒 Migration intent","migrationUntil":"until","migrationFrom":"from","openDeployView":"🚀 View in Deploy diagram →","jumpToEditor":"↗ Jump to editor"};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
@@ -316,7 +317,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       var html = '<div class="dp-header">';
       html += '<span class="dp-icon">' + icon + '</span>';
       html += '<span class="dp-label">' + escapeHtml(meta.label) + '</span>';
-      html += '<button class="dp-close" id="dp-close-btn" aria-label="Close">\\u00d7</button>';
+      html += '<button class="dp-close" id="dp-close-btn" aria-label="' + escapeAttr(PANEL_LABELS.close) + '">\\u00d7</button>';
       html += '</div>';
       html += '<div class="dp-body">';
 
@@ -328,7 +329,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       // Links
       if (meta.links && meta.links.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">\\ud83d\\udd17 Links</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.linksTitle) + '</div>';
         html += '<ul class="dp-links">';
         for (var i = 0; i < meta.links.length; i++) {
           var link = meta.links[i];
@@ -343,7 +344,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       // Storage resources (client kind only) — matching app layout
       if (meta.resources && meta.resources.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">\\ud83d\\udce6 Storage resources</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.resourcesTitle) + '</div>';
         html += '<ul class="dp-resource-list">';
         for (var ri = 0; ri < meta.resources.length; ri++) {
           var res = meta.resources[ri];
@@ -357,7 +358,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       // Capabilities (client kind only) — matching app layout
       if (meta.capabilities && meta.capabilities.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">\\ud83d\\udd10 Capabilities</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.capabilitiesTitle) + '</div>';
         html += '<ul class="dp-capability-list">';
         for (var ci = 0; ci < meta.capabilities.length; ci++) {
           var cap = meta.capabilities[ci];
@@ -388,14 +389,14 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       // Migration intent (@deprecated/@experimental until, @migration_target from)
       if (meta.migrationIntent && (meta.migrationIntent.until || meta.migrationIntent.from)) {
         html += '<div class="dp-section dp-migration">';
-        html += '<div class="dp-section-title">\\ud83d\\udd52 Migration intent</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.migrationTitle) + '</div>';
         if (meta.migrationIntent.until) {
           html += '<div class="dp-prop dp-migration-until" data-until-kind="'
-            + escapeAttr(meta.migrationIntent.until.kind) + '">until: <code>'
+            + escapeAttr(meta.migrationIntent.until.kind) + '">' + escapeHtml(PANEL_LABELS.migrationUntil) + ': <code>'
             + escapeHtml(meta.migrationIntent.until.raw) + '</code></div>';
         }
         if (meta.migrationIntent.from) {
-          html += '<div class="dp-prop dp-migration-from">from: <code>'
+          html += '<div class="dp-prop dp-migration-from">' + escapeHtml(PANEL_LABELS.migrationFrom) + ': <code>'
             + escapeHtml(meta.migrationIntent.from) + '</code></div>';
         }
         html += '</div>';
@@ -423,13 +424,13 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
       if (meta.hasDeployContainer) {
         html += '<div class="dp-section">';
         html += '<button class="dp-nav-btn" data-nav-view="deploy" data-nav-node="' + escapeAttr(nodeId) + '">'
-          + '\\ud83d\\ude80 Deploy \\u56f3\\u3067\\u78ba\\u8a8d \\u2192</button>';
+          + escapeHtml(PANEL_LABELS.openDeployView) + '</button>';
         html += '</div>';
       }
 
       // Jump to editor button
       html += '<div class="dp-section">';
-      html += '<button class="dp-jump" id="dp-jump-btn">Jump to editor</button>';
+      html += '<button class="dp-jump" id="dp-jump-btn">' + escapeHtml(PANEL_LABELS.jumpToEditor) + '</button>';
       html += '</div>';
 
       html += '</div>'; // .dp-body
@@ -891,6 +892,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
   <script nonce="test-nonce-123">
     var vscode = acquireVsCodeApi();
     var nodeMetadataMap = {};
+    var PANEL_LABELS = {"close":"Close","linksTitle":"🔗 Links","resourcesTitle":"📦 Storage resources","capabilitiesTitle":"🔐 Capabilities","migrationTitle":"🕒 Migration intent","migrationUntil":"until","migrationFrom":"from","openDeployView":"🚀 View in Deploy diagram →","jumpToEditor":"↗ Jump to editor"};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
@@ -928,7 +930,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       var html = '<div class="dp-header">';
       html += '<span class="dp-icon">' + icon + '</span>';
       html += '<span class="dp-label">' + escapeHtml(meta.label) + '</span>';
-      html += '<button class="dp-close" id="dp-close-btn" aria-label="Close">\\u00d7</button>';
+      html += '<button class="dp-close" id="dp-close-btn" aria-label="' + escapeAttr(PANEL_LABELS.close) + '">\\u00d7</button>';
       html += '</div>';
       html += '<div class="dp-body">';
 
@@ -940,7 +942,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       // Links
       if (meta.links && meta.links.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">\\ud83d\\udd17 Links</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.linksTitle) + '</div>';
         html += '<ul class="dp-links">';
         for (var i = 0; i < meta.links.length; i++) {
           var link = meta.links[i];
@@ -955,7 +957,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       // Storage resources (client kind only) — matching app layout
       if (meta.resources && meta.resources.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">\\ud83d\\udce6 Storage resources</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.resourcesTitle) + '</div>';
         html += '<ul class="dp-resource-list">';
         for (var ri = 0; ri < meta.resources.length; ri++) {
           var res = meta.resources[ri];
@@ -969,7 +971,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       // Capabilities (client kind only) — matching app layout
       if (meta.capabilities && meta.capabilities.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">\\ud83d\\udd10 Capabilities</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.capabilitiesTitle) + '</div>';
         html += '<ul class="dp-capability-list">';
         for (var ci = 0; ci < meta.capabilities.length; ci++) {
           var cap = meta.capabilities[ci];
@@ -1000,14 +1002,14 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       // Migration intent (@deprecated/@experimental until, @migration_target from)
       if (meta.migrationIntent && (meta.migrationIntent.until || meta.migrationIntent.from)) {
         html += '<div class="dp-section dp-migration">';
-        html += '<div class="dp-section-title">\\ud83d\\udd52 Migration intent</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.migrationTitle) + '</div>';
         if (meta.migrationIntent.until) {
           html += '<div class="dp-prop dp-migration-until" data-until-kind="'
-            + escapeAttr(meta.migrationIntent.until.kind) + '">until: <code>'
+            + escapeAttr(meta.migrationIntent.until.kind) + '">' + escapeHtml(PANEL_LABELS.migrationUntil) + ': <code>'
             + escapeHtml(meta.migrationIntent.until.raw) + '</code></div>';
         }
         if (meta.migrationIntent.from) {
-          html += '<div class="dp-prop dp-migration-from">from: <code>'
+          html += '<div class="dp-prop dp-migration-from">' + escapeHtml(PANEL_LABELS.migrationFrom) + ': <code>'
             + escapeHtml(meta.migrationIntent.from) + '</code></div>';
         }
         html += '</div>';
@@ -1035,13 +1037,13 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
       if (meta.hasDeployContainer) {
         html += '<div class="dp-section">';
         html += '<button class="dp-nav-btn" data-nav-view="deploy" data-nav-node="' + escapeAttr(nodeId) + '">'
-          + '\\ud83d\\ude80 Deploy \\u56f3\\u3067\\u78ba\\u8a8d \\u2192</button>';
+          + escapeHtml(PANEL_LABELS.openDeployView) + '</button>';
         html += '</div>';
       }
 
       // Jump to editor button
       html += '<div class="dp-section">';
-      html += '<button class="dp-jump" id="dp-jump-btn">Jump to editor</button>';
+      html += '<button class="dp-jump" id="dp-jump-btn">' + escapeHtml(PANEL_LABELS.jumpToEditor) + '</button>';
       html += '</div>';
 
       html += '</div>'; // .dp-body

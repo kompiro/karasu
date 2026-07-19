@@ -25,6 +25,7 @@ import {
 import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 import { buildPreviewHtml, generateNonce } from "./webview-content.js";
+import { buildPreviewPanelLabels, resolveWebviewLocale } from "./webview-i18n.js";
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -262,6 +263,9 @@ export class PreviewPanel {
       viewType: this._viewType,
       displayMode: this._displayMode,
       nonce: generateNonce(),
+      // Resolve detail-panel labels for VS Code's active display language so
+      // the webview matches the app's NodeDetailPanel under any locale (#2074).
+      labels: buildPreviewPanelLabels(resolveWebviewLocale(vscode.env.language)),
     });
   }
 

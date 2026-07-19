@@ -31,6 +31,14 @@ resources/Capabilities sections and a deprecated node's Migration intent
 section. These are not separately numbered TCs — see the file's top-of-file
 comment for what each covers.
 
+Issue #2074 (webview label i18n) makes the panel's section titles / buttons
+locale-driven: the extension host resolves them from the shared
+`@karasu-tools/i18n` `nodeDetail.*` keys per `vscode.env.language`, matching
+the app. The automated cases above run under the harness's default **en**
+display language, so their `Storage resources` / `Capabilities` /
+`Migration intent` / `Jump to editor` assertions are the en labels. Japanese
+parity is covered by **TC-10 (manual)** below.
+
 ## Summary
 
 Verify that the VSCode Webview displays a detail panel when a leaf node is
@@ -195,3 +203,31 @@ organization Corp {
 2. Look at the right end of the toolbar
 3. **Expected**: The text reads `ⓘ for details · Cmd/Ctrl+Click to jump`
    (updated from the previous Phase 4.5 hint)
+
+---
+
+### TC-10: Detail-panel labels follow the VS Code display language (#2074) — manual
+
+Verifies label parity with the app's `NodeDetailPanel` under Japanese.
+Stays manual: swapping the ExTester harness's display language mid-run is
+not worth the flake budget for a non-required check (see the test file's
+top-of-file comment).
+
+1. Set VS Code's display language to Japanese: run **"Configure Display
+   Language"** → select **日本語** (installs the Japanese Language Pack if
+   needed) → reload.
+2. Open the Webview for a `.krs` file containing a `client` node with
+   `resource` / `capability` declarations and a node with an
+   `@deprecated(until: …)` annotation.
+3. Click the client node, then the deprecated node.
+4. **Expected**: the panel shows the Japanese section titles / buttons,
+   byte-identical to the app's `NodeDetailPanel` under `ja`:
+   - `🔗 リンク` (Links)
+   - `📦 ストレージリソース` (Storage resources)
+   - `🔐 ケイパビリティ` (Capabilities)
+   - `🕒 移行 intent` (Migration intent)
+   - `🚀 Deploy 図で確認 →` (deploy-nav button)
+   - `↗ エディタへジャンプ` (Jump to editor)
+5. Switch the display language back to English and reload.
+6. **Expected**: the same panels now show the English labels
+   (`🔗 Links`, `📦 Storage resources`, …, `↗ Jump to editor`).
