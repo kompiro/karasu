@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2036](https://github.com/kompiro/karasu/issues/2036)（parent [#1822](https://github.com/kompiro/karasu/issues/1822) comprehension）
-  - carve-out 先: [#2065](https://github.com/kompiro/karasu/issues/2065)（cross-cutting concern labeling — tag/annotation で足りるか first-class concern tag が要るか。本 doc で却下した案 B/C の cross-cutting 用途はここへ）
+  - carve-out 先: [#2065](https://github.com/kompiro/karasu/issues/2065)（cross-cutting concern labeling — architectural 属性は tag `[...]` の領分だが user-defined tag が未実装で first-class 化が要る。annotation `@...` は lifecycle/state の別概念で対象外。本 doc で却下した案 B/C の cross-cutting 用途はここへ）
   - 顕在化元: [#1983](https://github.com/kompiro/karasu/issues/1983) / [#2034](https://github.com/kompiro/karasu/issues/2034)（drill-down grouping 正規化 → [ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md)。末尾「補足（識別モデルの sharp edge）」が本設計の charter）
   - 関連 Issue: [#2032](https://github.com/kompiro/karasu/issues/2032)（cross-file contains の偽 not-found — 同じ contains 解決経路）
   - notation の母体（設計）: [`system-view-grouping.md`](./system-view-grouping.md)（P2b `boundary`/`contains`、status: 部分昇格。本設計はその follow-up）
@@ -66,7 +66,7 @@ boundary は **「同一 view に co-render する peer をまとめる」視覚
 
 さらに「複数 service の domain を一度に見る」view（expand-all-services in place、[ADR-20260715-02](../adr/20260715-02-expand-all-services-in-place.md)）は **group-by と mutually exclusive**（`useSystemView.ts:276,299` の `expandedContainers: groupBy !== "none" ? undefined : expandedContainers`）。よって **cross-layer boundary を 1 枠で描く view はそもそも存在しない**。
 
-→ **結論**: 「cross-layer をうまく扱う」は boundary の用途として**成立しない**。コンプライアンス等の cross-cutting concern（PCI・データ所在地・移行状態…）は per-element の**属性 = tag/annotation**であって boundary membership ではない（[#2065](https://github.com/kompiro/karasu/issues/2065) に carve-out）。本 doc は #2036 を **view 内 correctness の focused fix（案 A）**に絞る。
+→ **結論**: 「cross-layer をうまく扱う」は boundary の用途として**成立しない**。コンプライアンス等の cross-cutting concern（PCI・データ所在地・移行状態…）は per-element の**架構的属性 = tag（`[...]`）の領分**であって boundary membership ではない（[#2065](https://github.com/kompiro/karasu/issues/2065) に carve-out）。本 doc は #2036 を **view 内 correctness の focused fix（案 A）**に絞る。
 
 ### なぜ #1983 が増幅したか
 
@@ -134,7 +134,7 @@ karasu は「**フラット id 名前空間 + kind 別の段階 severity 一意�
 
 - 案 A は **view 内 correctness の focused fix**。同一 view の兄弟 id は `duplicate-node-id-parent`（error）で既に衝突禁止なので、案 A が拾うのは **深さ/親を跨ぐ id 衝突**（= probe 1）— それは probe 2 の断片化と同じ「boundary が 1 枠で描けないもの」を bare id でうっかり参照したケースであり、案 A はその**安全網**になる。
 - 文法変更ゼロ・promotion gate 非依存（[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) L52）で **先行独立出荷**できる。
-- 「うまく cross-layer を束ねる」方向（前回まで案 B/C の主動機）は probe 2 で**不成立と判明したので撤回**。cross-cutting concern は [#2065](https://github.com/kompiro/karasu/issues/2065) の tag/annotation 領域へ。
+- 「うまく cross-layer を束ねる」方向（前回まで案 B/C の主動機）は probe 2 で**不成立と判明したので撤回**。cross-cutting concern は [#2065](https://github.com/kompiro/karasu/issues/2065) の user-defined tag 領域へ。
 
 ### 実装の指針（Phase A のみ）
 
@@ -158,9 +158,9 @@ karasu は「**フラット id 名前空間 + kind 別の段階 severity 一意�
 ## 却下・非目標
 
 - **案 B（qualified `contains` — 修飾記法の追加）**: 却下。修飾（`Checkout.Payment`）が意味を持つのは **cross-depth 参照のときだけ**だが、それは probe 2 の「1 枠に描けない断片ケース」。**同一 view 内では兄弟 id が既に error 一意**（`duplicate-node-id-parent`）なので bare で足り、修飾は要らない。karasu には既に修飾解決イディオム（`DomainId.EntityId`、`view-extract.ts:1101-1235` の `resolveQualifiedEntity`）が在るが、それは entity view の cross-domain 解決であって cross-depth grouping を描けるようにはしない。よって **experimental surface を増やす実利用上の正当化が立たない**（[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md) の gate 規律）。構造的先例だった [TPL-20260714-01](../test-perspectives/TPL-20260714-01-cross-domain-entity-reference-qualified.md)（修飾参照）/ [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)（合成キー）は、案 B を復活させるときの参考として関連に残す。
-- **案 C（in-context membership — node 側に boundary 所属を書く）**: 却下（ただし洞察は転用）。「membership を宣言サイト（node）に in-context で書く」という着想自体は正しかったが、**in-context で宣言すべき対象は "boundary membership" ではなく "cross-cutting tag/属性"** だった（PCI は各 node に `@pci` を付ける話であって、cross-depth の枠を作る話ではない）。boundary membership の in-context 化としては却下し、cross-cutting tag の議論は [#2065](https://github.com/kompiro/karasu/issues/2065) へ送る。
+- **案 C（in-context membership — node 側に boundary 所属を書く）**: 却下（ただし洞察は転用）。「membership を宣言サイト（node）に in-context で書く」という着想自体は正しかったが、**in-context で宣言すべき対象は "boundary membership" ではなく "cross-cutting な architectural tag（属性）"** だった（PCI は各 node に `[pci]` 相当の user-defined tag を付ける話であって、cross-depth の枠を作る話ではない）。boundary membership の in-context 化としては却下し、user-defined tag の議論は [#2065](https://github.com/kompiro/karasu/issues/2065) へ送る。
 - **cross-layer bundling を boundary で扱う動機**: **撤回**。probe 2 が「boundary は cross-depth を 1 枠で描けない／expand-all は group-by と排他」を compile 実測で示した。boundary は cross-kind・same-level の peer grouping に徹する。
-- **cross-cutting concern（PCI・データ所在地・移行状態…）の labeling を boundary で行う**: 非目標。これは per-element の属性 = tag/annotation の領域で、既存の `[...]`（system-defined）/ `@...`（user-defined open set）で概ね書ける。system-defined vs user-defined の定義方法や concern overview の要否は [#2065](https://github.com/kompiro/karasu/issues/2065) で検討。本 doc スコープ外。
+- **cross-cutting concern（PCI・データ所在地・移行状態…）の labeling を boundary で行う**: 非目標。これは per-element の architectural 属性 = **tag `[...]`（architectural meaning）**の領域で、boundary（view 内グルーピング軸）でも annotation `@...`（lifecycle/state の**別概念**）でもない。ただし karasu の tag は現状 **system-defined 固定語彙のみで first-class な user-defined tag が無い**（任意の `[pci]` は非 client ノードで診断ゼロ・inert — probe 実測）。user-defined tag の定義方法（system-defined との分離）や concern overview の要否は [#2065](https://github.com/kompiro/karasu/issues/2065) で検討。本 doc スコープ外。
 - **identity = path 化**: bare-id 参照と permalink deep anchor（leaf id 依存、[ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)）を壊す。却下。
 - **hard global id 一意性の強制**: entity の warning 級一意（[ADR-20260715-01](../adr/20260715-01-domain-entity-modeling.md)）・親が違えば同 id が共存する既存 scope（`duplicate-node-id-parent` は sibling 限定、[ADR-20260513-03](../adr/20260513-03-import-system-nested.md) L36）と矛盾。却下。
 - **`namespace` 語彙 / 宣言サイトの identity name-scope 化**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md) L57 / P2b L240 で却下済み（id を `payments.Billing` に修飾する＝過剰約束）。案 A/B いずれも identity を変えないため別問題。
