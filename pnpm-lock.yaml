@@ -302,6 +302,9 @@ importers:
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
+      '@karasu-tools/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@karasu-tools/lsp':
         specifier: workspace:*
         version: link:../lsp

@@ -25,6 +25,7 @@ import {
   NODE_DETAIL_KIND_ICON_NAMES,
 } from "@karasu-tools/core";
 import type { ViewType } from "./message-validation.js";
+import type { PreviewPanelLabels } from "./webview-i18n.js";
 
 /**
  * Width budget for the detail panel, shared by the CSS `max-width` and the
@@ -79,19 +80,15 @@ const ROLE_EMOJI = jsUnicodeEscape(NODE_DETAIL_ROLE_EMOJI);
 const TAGS_EMOJI = jsUnicodeEscape(NODE_DETAIL_TAGS_EMOJI);
 const TEAM_EMOJI = jsUnicodeEscape(NODE_DETAIL_TEAM_EMOJI);
 
-// Section titles for the resources/capabilities/migration sections (Issue
-// #2068). These are ENGLISH-ONLY by design: the webview has no i18n runtime
-// (unlike the app's NodeDetailPanel, which pulls `nodeDetail.*.title` from
-// `@karasu-tools/i18n`), so the title *words* are hardcoded here — exactly
-// as the pre-existing "Links" section title above them in the generated
-// script already is. Parity with the app is therefore exact under the
-// default/English locale; Japanese-locale label parity is out of scope for
-// this change and needs a separate webview-i18n runtime (tracked as a
-// follow-up). See node-detail-fields.ts's doc comment for what is/isn't
-// shared. Only the leading emoji is derived (to match the app's en strings).
-const RESOURCES_TITLE_EMOJI = jsUnicodeEscape("📦");
-const CAPABILITIES_TITLE_EMOJI = jsUnicodeEscape("🔐");
-const MIGRATION_TITLE_EMOJI = jsUnicodeEscape("🕒");
+// Section titles (Links / Storage resources / Capabilities / Migration
+// intent), the close aria-label, the Deploy-nav button, and "Jump to editor"
+// are no longer hardcoded here: they are resolved per active locale by the
+// extension host (`webview-i18n.ts`, mirroring the app NodeDetailPanel's
+// `t("nodeDetail.*")` keys) and injected as `PANEL_LABELS` into the script
+// below (Issue #2074). Parity with the app is therefore exact under BOTH en
+// and ja. Property-row labels (runtime/type/…) are still sourced from the
+// shared `@karasu-tools/core` NODE_DETAIL_PROPERTY_FIELDS spec — the app
+// does not translate those either, so their parity is already exact.
 
 /**
  * Emoji glyph for each icon name in {@link NODE_DETAIL_KIND_ICON_NAMES}
@@ -183,6 +180,13 @@ export interface BuildPreviewHtmlParams {
   displayMode: "icon" | "shape";
   /** CSP script nonce (see {@link nonce}). */
   nonce: string;
+  /**
+   * Detail-panel labels resolved for the active locale by the extension
+   * host (see `webview-i18n.ts`). Injected as `PANEL_LABELS` so the
+   * client-side `showDetailPanel` renders localized section titles /
+   * buttons instead of hardcoded English (Issue #2074).
+   */
+  labels: PreviewPanelLabels;
 }
 
 /**
@@ -190,7 +194,14 @@ export interface BuildPreviewHtmlParams {
  * the same params always produce byte-identical output.
  */
 export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
-  const { svg, metadataJson, breadcrumbHtml, viewType, displayMode, nonce } = params;
+  const { svg, metadataJson, breadcrumbHtml, viewType, displayMode, nonce, labels } = params;
+  const labelsJson = embedJsonInScript(JSON.stringify(labels));
+  // Same treatment for the caller-supplied metadata JSON: it carries node
+  // labels/ids straight from the user's .krs, so a `</script>` in a label
+  // would otherwise terminate the inline script early (the CSP nonce blocks
+  // any injected script from executing, but the legit panel/tooltip script
+  // would break). See {@link embedJsonInScript}.
+  const safeMetadataJson = embedJsonInScript(metadataJson);
   const activeStyle =
     "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
   const btnStyle = (view: ViewType) => (view === viewType ? activeStyle : "");
@@ -473,7 +484,8 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
   <div id="karasu-tooltip"></div>
   <script nonce="${nonce}">
     var vscode = acquireVsCodeApi();
-    var nodeMetadataMap = ${metadataJson};
+    var nodeMetadataMap = ${safeMetadataJson};
+    var PANEL_LABELS = ${labelsJson};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
     var currentDetailNodeId = null;
@@ -511,7 +523,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       var html = '<div class="dp-header">';
       html += '<span class="dp-icon">' + icon + '</span>';
       html += '<span class="dp-label">' + escapeHtml(meta.label) + '</span>';
-      html += '<button class="dp-close" id="dp-close-btn" aria-label="Close">\\u00d7</button>';
+      html += '<button class="dp-close" id="dp-close-btn" aria-label="' + escapeAttr(PANEL_LABELS.close) + '">\\u00d7</button>';
       html += '</div>';
       html += '<div class="dp-body">';
 
@@ -523,7 +535,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       // Links
       if (meta.links && meta.links.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">\\ud83d\\udd17 Links</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.linksTitle) + '</div>';
         html += '<ul class="dp-links">';
         for (var i = 0; i < meta.links.length; i++) {
           var link = meta.links[i];
@@ -538,7 +550,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       // Storage resources (client kind only) — matching app layout
       if (meta.resources && meta.resources.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">${RESOURCES_TITLE_EMOJI} Storage resources</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.resourcesTitle) + '</div>';
         html += '<ul class="dp-resource-list">';
         for (var ri = 0; ri < meta.resources.length; ri++) {
           var res = meta.resources[ri];
@@ -552,7 +564,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       // Capabilities (client kind only) — matching app layout
       if (meta.capabilities && meta.capabilities.length > 0) {
         html += '<div class="dp-section">';
-        html += '<div class="dp-section-title">${CAPABILITIES_TITLE_EMOJI} Capabilities</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.capabilitiesTitle) + '</div>';
         html += '<ul class="dp-capability-list">';
         for (var ci = 0; ci < meta.capabilities.length; ci++) {
           var cap = meta.capabilities[ci];
@@ -583,14 +595,14 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       // Migration intent (@deprecated/@experimental until, @migration_target from)
       if (meta.migrationIntent && (meta.migrationIntent.until || meta.migrationIntent.from)) {
         html += '<div class="dp-section dp-migration">';
-        html += '<div class="dp-section-title">${MIGRATION_TITLE_EMOJI} Migration intent</div>';
+        html += '<div class="dp-section-title">' + escapeHtml(PANEL_LABELS.migrationTitle) + '</div>';
         if (meta.migrationIntent.until) {
           html += '<div class="dp-prop dp-migration-until" data-until-kind="'
-            + escapeAttr(meta.migrationIntent.until.kind) + '">until: <code>'
+            + escapeAttr(meta.migrationIntent.until.kind) + '">' + escapeHtml(PANEL_LABELS.migrationUntil) + ': <code>'
             + escapeHtml(meta.migrationIntent.until.raw) + '</code></div>';
         }
         if (meta.migrationIntent.from) {
-          html += '<div class="dp-prop dp-migration-from">from: <code>'
+          html += '<div class="dp-prop dp-migration-from">' + escapeHtml(PANEL_LABELS.migrationFrom) + ': <code>'
             + escapeHtml(meta.migrationIntent.from) + '</code></div>';
         }
         html += '</div>';
@@ -618,13 +630,13 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
       if (meta.hasDeployContainer) {
         html += '<div class="dp-section">';
         html += '<button class="dp-nav-btn" data-nav-view="deploy" data-nav-node="' + escapeAttr(nodeId) + '">'
-          + '\\ud83d\\ude80 Deploy \\u56f3\\u3067\\u78ba\\u8a8d \\u2192</button>';
+          + escapeHtml(PANEL_LABELS.openDeployView) + '</button>';
         html += '</div>';
       }
 
       // Jump to editor button
       html += '<div class="dp-section">';
-      html += '<button class="dp-jump" id="dp-jump-btn">Jump to editor</button>';
+      html += '<button class="dp-jump" id="dp-jump-btn">' + escapeHtml(PANEL_LABELS.jumpToEditor) + '</button>';
       html += '</div>';
 
       html += '</div>'; // .dp-body
@@ -805,6 +817,18 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
   </script>
 </body>
 </html>`;
+}
+
+/**
+ * Escape a JSON string for safe embedding inside an inline `<script>` block.
+ * `JSON.stringify` leaves `<` unescaped, so a `</script>` substring in any
+ * value would close the script tag early and break the webview's client
+ * script. Replacing every `<` with a `<` escape keeps the JSON
+ * parse-equivalent while never emitting a literal `<` (so no `</script>`
+ * or `<!--` can appear in the embedded value).
+ */
+export function embedJsonInScript(json: string): string {
+  return json.replace(/</g, "\\u003c");
 }
 
 /** Generate a CSP script nonce for {@link BuildPreviewHtmlParams.nonce}. */
