@@ -93,9 +93,9 @@ error) — see syntax spec §S6.
 
 | Code | Severity | Fires when |
 | --- | --- | --- |
-| `owns-target-not-found` | warning | A team `owns` a service / domain that does not exist. |
+| `owns-target-not-found` | warning | A team `owns` a service / domain absent from the merged model (existence is checked after cross-file merge, not per file). |
 | `invalid-owns` | warning | An `owns` target resolves to a kind that cannot be owned. |
-| `contains-target-not-found` | warning | A `boundary` `contains` a node that does not exist in the system hierarchy. |
+| `contains-target-not-found` | warning | A `boundary` `contains` a node absent from the merged system hierarchy (existence is checked after cross-file merge, not per file). |
 | `import-id-not-found` | error | A named import id path fails to resolve. |
 | `import-path-not-found` | error | An import path fails to resolve at some segment. |
 | `unresolved-edge-endpoint` | warning | An edge endpoint id is not found anywhere in the merged model. |

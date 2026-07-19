@@ -88,6 +88,16 @@ import {
  * a live click here — reaching a `usecase` node requires drilling into a
  * domain, which would turn `OrderManagement`/`Inventory` into parent
  * nodes and break TC-01's "leaf node" assumption for this shared fixture.
+ *
+ * Issue #2074: the panel's section titles / buttons are now resolved by the
+ * extension host per VS Code's active display language (`vscode.env.language`)
+ * from the shared `@karasu-tools/i18n` `nodeDetail.*` keys, matching the
+ * app's `NodeDetailPanel`. The ExTester harness launches vanilla VS Code,
+ * whose display language defaults to English, so the assertions below match
+ * the **en** labels ("Storage resources", "Capabilities", "Migration
+ * intent", "Jump to editor"). Japanese-locale label parity is verified
+ * manually (AT-0039 TC-10) — swapping the harness's display language mid-run
+ * is not worth the flake budget for a non-required check.
  */
 
 const FIXTURE_NAME = "at-0039.krs";

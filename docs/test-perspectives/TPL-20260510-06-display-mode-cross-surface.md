@@ -20,6 +20,7 @@ known_consumers:
   - useDeployView
   - useOrgView
   - useViewSvg
+  - node-detail-panel-webview
 discovered_from:
   - issue: "#1001"
   - issue: "#279"
@@ -38,6 +39,7 @@ scope:
   packages:
     - core
     - app
+    - vscode
 ---
 
 # TPL-20260510-06: 表示モード / グローバルレンダリング切替は全描画面の点検と precedence 設計が必要
@@ -92,7 +94,9 @@ scope:
 - `packages/core/src/displaymode-meta.test.ts` — curated meta-test enumerating every public SVG-producing entry point that consumes `displayMode`. **Adding a new SVG-producing entry to the public API requires registering it in `DISPLAY_MODE_CONSUMERS`** so the next #183-style missed surface is caught at code review
 - `packages/core/src/theme-meta.test.ts` — the same curated meta-test for the `theme` toggle (`THEME_CONSUMERS`). NOTE: both meta-tests fence the **library** layer only — they prove `core` threads the toggle, not that each app / CLI / extension call site forwards it (the #1479 gap)
 - `packages/core/src/badge-labels-meta.test.ts` — the same curated meta-test for `annotationBadgeLabels` (`BADGE_LABEL_CONSUMERS`, #1508)
+- `packages/vscode/src/webview-i18n.test.ts` / `packages/vscode/src/webview-content.test.ts` — consumer-layer fence for #2074 (locale switch): the VS Code preview WebView is a separate consumer call site that string-builds its detail panel in the extension host. These assert the host resolves `nodeDetail.*` from the shared catalog per `vscode.env.language` and injects them, so the panel stays byte-identical to the app's `NodeDetailPanel` under both en and ja instead of re-hardcoding English (the point-5 "each consumer forwards the toggle" gap, here for locale rather than `displayMode`)
 
 ## 派生元 spec
 
 - [`docs/spec/i18n.md`](../spec/i18n.md) — core 節「組み込みアノテーションバッジのラベル」（locale は theme と同様の全描画面横断スイッチで、注入オプションが全エントリポイントに通っていることを本 TPL の meta-test パターンで検証する）
+- [`docs/spec/i18n.md`](../spec/i18n.md) — 「CLI / lsp / vscode」節（VS Code WebView の detail panel が locale を honor する consumer 呼び出し口である旨。#2074 で追加）

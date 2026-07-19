@@ -1385,4 +1385,120 @@ system ECPlatform {
       );
     });
   });
+
+  // ─── #2032: reference-existence validated on the merged id-space ──────────
+  //
+  // `contains` / `owns` existence is only decidable after the cross-file
+  // merge. The per-file parse verdict is dropped and re-derived on the merged
+  // model, so a target declared in another file must NOT warn, while a target
+  // that exists nowhere still must. Absence assertions pin the exact code +
+  // severity so a broadened suppression can't hide a real miss (TPL-20260615-02).
+  describe("cross-file reference-existence diagnostics (#2032)", () => {
+    const containsWarnings = (ds: { code: string; severity: string }[]) =>
+      ds.filter((d) => d.code === "contains-target-not-found" && d.severity === "warning");
+    const ownsWarnings = (ds: { code: string; severity: string }[]) =>
+      ds.filter((d) => d.code === "owns-target-not-found" && d.severity === "warning");
+
+    it("does not warn when a boundary contains a member declared in another file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./billing.krs"
+system Shop {
+  service Orders {}
+}
+boundary cluster "Cluster" {
+  contains BillingDomain
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/billing.krs",
+        `system Shop {
+  service Billing {
+    domain BillingDomain {}
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(containsWarnings(result.diagnostics)).toHaveLength(0);
+    });
+
+    it("still warns when a boundary contains a genuinely nonexistent member", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./billing.krs"
+system Shop {
+  service Orders {}
+}
+boundary cluster "Cluster" {
+  contains NopeDomain
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/billing.krs",
+        `system Shop {
+  service Billing {
+    domain BillingDomain {}
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const warnings = containsWarnings(result.diagnostics);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toMatchObject({ params: { memberId: "NopeDomain" } });
+    });
+
+    it("does not warn when a team owns a service declared in another file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./teams.krs"
+system Shop {
+  service Orders {}
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/teams.krs",
+        `organization Acme {
+  team Platform {
+    owns Orders
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(ownsWarnings(result.diagnostics)).toHaveLength(0);
+    });
+
+    it("still warns when a team owns a genuinely nonexistent target", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./teams.krs"
+system Shop {
+  service Orders {}
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/teams.krs",
+        `organization Acme {
+  team Platform {
+    owns Ghost
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const warnings = ownsWarnings(result.diagnostics);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toMatchObject({ params: { ownedId: "Ghost" } });
+    });
+  });
 });
