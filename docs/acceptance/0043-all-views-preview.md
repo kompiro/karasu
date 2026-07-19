@@ -62,39 +62,42 @@ organization Acme {
 
 ### Opening the Bundled SVG
 
-> 🟡 Partially automated — `packages/e2e/tests/at-0043-all-views-preview.spec.ts` › `clicking the button opens a blob: popup carrying the bundled SVG`（タブ構成と main URL の不変は手動）
+> 🟡 Partially automated — `packages/e2e/tests/at-0043-all-views-preview.spec.ts` › `clicking the button opens a blob: popup carrying the bundled SVG`（popup 起動と blob: MIME は手動）
 
 - [ ] Clicking the button triggers a new browser tab/window (popup)
 - [ ] The popup loads a `blob:` URL that serves the bundled SVG with
       MIME type `image/svg+xml`
-- [ ] The rendered SVG inside the popup contains three tabs
-      (System / Deploy / Org) and defaults to the System pane
-- [ ] Closing the popup leaves the main editor and PreviewPane
-      untouched — the main window URL fragment is unchanged
+- [x] The rendered SVG inside the popup contains three tabs (System / Deploy / Org) and defaults to the System pane
+> ✅ Automated — `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` › `tab navigation via :target — panes switch, fragment updates, active tab distinct`
+- [x] Closing the popup leaves the main editor and PreviewPane untouched — the main window URL fragment is unchanged
+> ✅ Automated — `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` › `tab navigation via :target — panes switch, fragment updates, active tab distinct`
 
 ### Tab Navigation Inside the Popup
 
-- [ ] Clicking the Deploy tab switches to the deploy pane
-- [ ] Clicking the Org tab switches to the org pane
-- [ ] Clicking the System tab returns to the system pane
-- [ ] The active tab is visually distinct
+> ✅ Automated by `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` (suite-wide)
 
-> manual / visual review — pure-CSS `:target` tab switching inside the popup window is interactive UX; needs human eye on the rendered SVG.
+- [x] Clicking the Deploy tab switches to the deploy pane
+- [x] Clicking the Org tab switches to the org pane
+- [x] Clicking the System tab returns to the system pane
+- [x] The active tab is visually distinct (asserted structurally: the active tab
+      `rect` fill differs from an inactive tab; the perceptual look stays manual)
 
 ### Drill-Down Inside the Popup
 
-- [ ] Clicking a node with children navigates to its drill-down level
-- [ ] A Back button is shown on drill-down levels
-- [ ] Clicking Back returns to the parent level
-- [ ] Navigating between drill-down levels does not affect the outer
-      page URL
+> ✅ Automated by `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` (suite-wide)
 
-> manual / visual review — popup-internal `:target` drill-down navigation needs interactive verification across SVG levels.
+- [x] Clicking a node with children navigates to its drill-down level
+- [x] A Back button is shown on drill-down levels
+- [x] Clicking Back returns to the parent level (the paint-order fix from #2044 /
+      #2051 makes the Back control clickable at the browser layer)
+- [x] Navigating between drill-down levels does not affect the outer
+      page URL
 
 ### Disabled Tabs
 
-- [ ] A view not defined in the `.krs` file shows a disabled (dimmed)
-      tab in the popup
-- [ ] Disabled tabs cannot be clicked
+> ✅ Automated by `packages/e2e/tests/at-0041-all-views-bundled-svg.spec.ts` (suite-wide)
 
-> manual / visual review — disabled-state visual styling is checked by eye; the popup is rendered from a Blob URL and is hard to drive headlessly.
+- [x] A view not defined in the `.krs` file shows a disabled (dimmed)
+      tab in the popup (asserted via the `krs-tab--disabled` class; the dimmed
+      look stays manual)
+- [x] Disabled tabs cannot be clicked (no `<a>` wrapper; a click does not navigate)

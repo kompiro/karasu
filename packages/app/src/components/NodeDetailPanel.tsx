@@ -1,7 +1,15 @@
 import { useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { renderPictogram, isSafeLinkUrl } from "@karasu-tools/core";
+import {
+  renderPictogram,
+  isSafeLinkUrl,
+  NODE_DETAIL_PROPERTY_FIELDS,
+  NODE_DETAIL_ROLE_EMOJI,
+  NODE_DETAIL_TAGS_EMOJI,
+  NODE_DETAIL_TEAM_EMOJI,
+  NODE_DETAIL_KIND_ICON_NAMES,
+} from "@karasu-tools/core";
 import type { NodeMetadata } from "@karasu-tools/core";
 import { useTranslation } from "../i18n/index.js";
 
@@ -27,28 +35,16 @@ interface NodeDetailPanelProps {
 }
 
 // Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE
-// from @karasu-tools/core's icon-theme builtins). Exported so cross-surface
-// tests can assert this map and the icon-card style cascade resolve identical
-// icons per kind — the contract enforced by TPL-20260510-05 / 06 item 4 and
-// originally violated in #132 §3 (panel pictogram diverged from icon card).
-export const KIND_TO_ICON_NAME: Record<string, string> = {
-  service: "service",
-  user: "user-card",
-  domain: "domain",
-  usecase: "usecase",
-  resource: "resource",
-  team: "team",
-  member: "member",
-  oci: "oci",
-  lambda: "lambda",
-  jar: "jar",
-  war: "war",
-  function: "function",
-  assets: "assets",
-  job: "job",
-  artifact: "artifact",
-  store: "database",
-};
+// from @karasu-tools/core's icon-theme builtins). Sourced from
+// @karasu-tools/core's NODE_DETAIL_KIND_ICON_NAMES (Issue #2068) so the VS
+// Code webview panel (webview-content.ts) consumes the identical kind→icon
+// identity instead of maintaining its own, drift-prone copy — it then maps
+// each icon name to an emoji glyph instead of an SVG pictogram. Re-exported
+// under this name so cross-surface tests can assert this map and the
+// icon-card style cascade resolve identical icons per kind — the contract
+// enforced by TPL-20260510-05 / 06 item 4 and originally violated in #132 §3
+// (panel pictogram diverged from icon card).
+export const KIND_TO_ICON_NAME: Record<string, string> = NODE_DETAIL_KIND_ICON_NAMES;
 
 // Fallback emoji icons for kinds without a registered SVG pictogram.
 const KIND_FALLBACK_ICONS: Record<string, string> = {
@@ -170,23 +166,38 @@ export function NodeDetailPanel({
         </div>
       )}
 
-      {(metadata.runtime ||
-        metadata.type ||
-        metadata.image ||
-        metadata.schedule ||
-        metadata.realizes?.length) && (
+      {/* Section is visible iff at least one property row would render.
+          Derived from the shared NODE_DETAIL_PROPERTY_FIELDS spec so a new
+          field extends both the guard and the rows in lockstep (Issue #2018
+          point 7). The reduce reproduces the previous left-associative
+          `metadata.runtime || … || metadata.realizes?.length` chain exactly
+          — same value (not just truthiness) for every input, so JSX
+          short-circuit rendering is byte-identical. */}
+      {NODE_DETAIL_PROPERTY_FIELDS.reduce<string | number | undefined>(
+        (shown, field) =>
+          shown ||
+          (field.metaKey === "realizes" ? metadata.realizes?.length : metadata[field.metaKey]),
+        undefined,
+      ) && (
         <div className="node-detail-section">
-          {metadata.runtime && (
-            <div className="node-detail-prop">🖥 runtime: {metadata.runtime}</div>
-          )}
-          {metadata.type && <div className="node-detail-prop">🏷 type: {metadata.type}</div>}
-          {metadata.image && <div className="node-detail-prop">📦 image: {metadata.image}</div>}
-          {metadata.schedule && (
-            <div className="node-detail-prop">⏱ schedule: {metadata.schedule}</div>
-          )}
-          {metadata.realizes?.length && (
-            <div className="node-detail-prop">🔗 realizes: {metadata.realizes.join(", ")}</div>
-          )}
+          {/* Row order/emoji/label come from the shared
+              NODE_DETAIL_PROPERTY_FIELDS spec (@karasu-tools/core), also
+              consumed by the VS Code webview panel — Issue #2018 point 7. */}
+          {NODE_DETAIL_PROPERTY_FIELDS.map((field) => {
+            if (field.metaKey === "realizes") {
+              return metadata.realizes?.length ? (
+                <div key={field.metaKey} className="node-detail-prop">
+                  {field.emoji} {field.label}: {metadata.realizes.join(", ")}
+                </div>
+              ) : null;
+            }
+            const value = metadata[field.metaKey];
+            return value ? (
+              <div key={field.metaKey} className="node-detail-prop">
+                {field.emoji} {field.label}: {value}
+              </div>
+            ) : null;
+          })}
         </div>
       )}
 
@@ -239,15 +250,21 @@ export function NodeDetailPanel({
                   onClose();
                 }}
               >
-                👥 {metadata.team} →
+                {NODE_DETAIL_TEAM_EMOJI} {metadata.team} →
               </button>
             ) : (
-              <div className="node-detail-prop">👥 {metadata.team}</div>
+              <div className="node-detail-prop">
+                {NODE_DETAIL_TEAM_EMOJI} {metadata.team}
+              </div>
             ))}
-          {metadata.role && <div className="node-detail-prop">📌 {metadata.role}</div>}
+          {metadata.role && (
+            <div className="node-detail-prop">
+              {NODE_DETAIL_ROLE_EMOJI} {metadata.role}
+            </div>
+          )}
           {metadata.tags.length > 0 && (
             <div className="node-detail-prop">
-              🏷 {metadata.tags.map((tag) => `[${tag}]`).join(" ")}
+              {NODE_DETAIL_TAGS_EMOJI} {metadata.tags.map((tag) => `[${tag}]`).join(" ")}
             </div>
           )}
         </div>

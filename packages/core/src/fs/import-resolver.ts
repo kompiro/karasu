@@ -9,6 +9,7 @@ import type {
   OrganizationBlock,
   ImportDeclaration,
 } from "../types/ast.js";
+import { createEmptyKrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { resolvePath } from "./path-utils.js";
@@ -180,25 +181,7 @@ export class ImportResolver {
     const cached = this.resolvedCache.get(filePath);
     if (cached) return cached;
 
-    const mergedFile: KrsFile = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
-      services: [],
-      clients: [],
-      domains: [],
-      databases: [],
-      queues: [],
-      storages: [],
-      deploys: [],
-      organizations: [],
-      boundaries: [],
-      legends: [],
-      ownerIndex: new Map(),
-      boundaryIndex: new Map(),
-      nodePathIndex: new Map(),
-      nodeFileIndex: new Map(),
-    };
+    const mergedFile: KrsFile = createEmptyKrsFile();
 
     // 真の循環: 既に解決中なら空を返す（Pass 1 で circular-import 警告は出ている）
     if (this.resolvingKrs.has(filePath)) return mergedFile;

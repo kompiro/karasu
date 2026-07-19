@@ -37,7 +37,7 @@ import type {
   LegendRefTarget,
   LegendViewScope,
 } from "../types/ast.js";
-import { INFRA_KIND_SET } from "../types/ast.js";
+import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
@@ -190,25 +190,7 @@ export class Parser {
   }
 
   parseFile(): ParseResult<KrsFile> {
-    const file: KrsFile = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
-      services: [],
-      clients: [],
-      domains: [],
-      databases: [],
-      queues: [],
-      storages: [],
-      deploys: [],
-      organizations: [],
-      boundaries: [],
-      legends: [],
-      ownerIndex: new Map(),
-      boundaryIndex: new Map(),
-      nodePathIndex: new Map(),
-      nodeFileIndex: new Map(),
-    };
+    const file: KrsFile = createEmptyKrsFile();
 
     while (this.peek().type !== TokenType.EOF) {
       const token = this.peek();

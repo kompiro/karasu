@@ -69,6 +69,25 @@ import {
  *
  * The "File: Open File..." simple-dialog stalls intermittently under
  * xvfb (the shared `openFixtureWithRetry` 3-attempt retry handles it).
+ *
+ * Issue #2068 coverage (detail-panel parity with the app's
+ * `NodeDetailPanel`, co-located here rather than under a new AT number
+ * since it reuses this suite's fixture and WebView):
+ *   - the deploy `store "order-db"` unit (realizing `OrderDB`) gets its
+ *     own detail-panel icon distinct from the "■" fallback it rendered
+ *     with before the fix (`store` had no `KIND_ICONS` entry at all).
+ *   - the `client WebApp` node's `resource`/`capability` declarations
+ *     render the panel's Storage resources / Capabilities sections
+ *     (previously omitted by the webview panel entirely).
+ *   - `UserService`'s `@deprecated(until: …)` annotation renders the
+ *     panel's Migration intent section (also previously omitted).
+ * The `usecase`/`domain` icon collision the issue also fixed is pinned by
+ * the `webview-content.test.ts` golden snapshot (the exact `KIND_ICONS`
+ * `<script>` text the browser evaluates) and by
+ * `packages/core/src/builtins/node-detail-fields.test.ts`, rather than by
+ * a live click here — reaching a `usecase` node requires drilling into a
+ * domain, which would turn `OrderManagement`/`Inventory` into parent
+ * nodes and break TC-01's "leaf node" assumption for this shared fixture.
  */
 
 const FIXTURE_NAME = "at-0039.krs";
@@ -454,6 +473,121 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
       await isViewActive(driver, "deploy"),
       true,
       "Deploy toolbar button should carry the active style after deploy nav click",
+    );
+  });
+
+  // Issue #2068: `store` had no `KIND_ICONS` entry before this fix, so its
+  // panel header always fell back to the generic "■" glyph. `order-db`
+  // realizes the logical `database OrderDB` and has no children, so a
+  // plain click opens its panel directly (no ⓘ button needed).
+  it("#2068: detail panel for a store deploy unit renders its own icon, not the generic fallback", async () => {
+    await switchToView(ctx, "deploy");
+    await closePanelIfOpen();
+
+    await driver.wait(
+      until.elementLocated(By.css('[data-node-id="OrderDB::order-db"]')),
+      ELEMENT_TIMEOUT_MS,
+    );
+    await dispatchClick(driver, '[data-node-id="OrderDB::order-db"]');
+    await awaitPanelVisible("detail panel did not open after clicking the order-db store unit");
+
+    const html = await detailPanelHtml();
+    assert.match(
+      html,
+      /<span class="dp-icon">🗄<\/span>/,
+      `store panel should render its own icon, not the "■" fallback; saw HTML: ${html.slice(0, 300)}`,
+    );
+  });
+
+  // Issue #2068: the `client WebApp` node's `resource`/`capability`
+  // declarations must render the Storage resources / Capabilities
+  // sections, matching the app's `NodeDetailPanel` (previously the webview
+  // panel omitted both sections entirely).
+  it("#2068: detail panel for a client node shows Storage resources and Capabilities sections", async () => {
+    await switchToView(ctx, "system");
+    await closePanelIfOpen();
+
+    await driver.wait(until.elementLocated(By.css('[data-node-id="WebApp"]')), ELEMENT_TIMEOUT_MS);
+    await dispatchClick(driver, '[data-node-id="WebApp"]');
+    await awaitPanelVisible("detail panel did not open after clicking WebApp");
+
+    const html = await detailPanelHtml();
+    const text = await detailPanelText();
+
+    assert.match(
+      text,
+      /Storage resources/,
+      `panel should show the resources section title; saw: ${text}`,
+    );
+    assert.match(text, /localStorage/, `panel should list the localStorage resource; saw: ${text}`);
+    assert.match(
+      text,
+      /preferences/,
+      `panel should list the "preferences" resource name; saw: ${text}`,
+    );
+    assert.match(text, /outbox/, `panel should list the "outbox" resource name; saw: ${text}`);
+
+    assert.match(
+      text,
+      /Capabilities/,
+      `panel should show the capabilities section title; saw: ${text}`,
+    );
+    assert.match(
+      text,
+      /QR scanning/,
+      `panel should show the camera capability's label; saw: ${text}`,
+    );
+    assert.match(
+      html,
+      /<p class="dp-capability-description">Used to scan QR codes<\/p>/,
+      `panel should render the camera capability's description; saw HTML: ${html.slice(0, 600)}`,
+    );
+
+    // #2068 code-review fence: the `geolocation` capability has an explicit
+    // empty `label ""`. The panel uses `cap.label ?? cap.name` (nullish),
+    // matching the app EXACTLY — an empty-string label is kept as a blank
+    // title and must NOT fall through to the name. So the capability's
+    // description renders while its name "geolocation" never appears as a
+    // title. (With the old `||`, "geolocation" would have shown.)
+    assert.match(
+      html,
+      /<p class="dp-capability-description">explicit empty label[^<]*<\/p>/,
+      `empty-label capability should still render its description; saw HTML: ${html.slice(0, 800)}`,
+    );
+    assert.doesNotMatch(
+      text,
+      /geolocation/,
+      `empty-label capability must keep a blank title (?? not ||), never showing its name; saw: ${text}`,
+    );
+  });
+
+  // Issue #2068: `UserService`'s `@deprecated(until: …)` annotation must
+  // render the Migration intent section, matching the app's
+  // `NodeDetailPanel` (previously the webview panel omitted it entirely).
+  it("#2068: detail panel for a deprecated node shows the Migration intent section", async () => {
+    await switchToView(ctx, "system");
+    await closePanelIfOpen();
+
+    await driver.wait(
+      until.elementLocated(By.css('[data-info-button="UserService"]')),
+      ELEMENT_TIMEOUT_MS,
+    );
+    await dispatchClick(driver, '[data-info-button="UserService"]');
+    await awaitPanelVisible("detail panel did not open after clicking the UserService ⓘ button");
+
+    const html = await detailPanelHtml();
+    const text = await detailPanelText();
+
+    assert.match(
+      text,
+      /Migration intent/,
+      `panel should show the migration section title; saw: ${text}`,
+    );
+    assert.match(text, /2026-12-31/, `panel should show the "until" raw value; saw: ${text}`);
+    assert.match(
+      html,
+      /data-until-kind="machine"/,
+      `panel should tag the "until" row with its interpreted kind; saw HTML: ${html.slice(0, 600)}`,
     );
   });
 });

@@ -39,6 +39,19 @@ const exitCode = await runExtester({
     // detail panel's Org navigation button is keyed on the *resolved owner
     // team id* (`ownerIndex`), so the AT-0042 assertions look for
     // `data-nav-node="order-team"` rather than the old team label.
+    //
+    // Issue #2068 additions (kept after Customer's own block so
+    // `FIXTURE_LINE.Customer` in at-0039-detail-panel.test.ts does not
+    // shift): `UserService` gets `@deprecated(until: …)` for the Migration
+    // intent section; `WebApp` (a `client` node) carries `resource` /
+    // `capability` declarations for the Storage resources / Capabilities
+    // sections; `OrderDB` (a `database`) is realized by a deploy `store`
+    // unit so the store kind gets its own detail-panel icon (previously
+    // unmapped, falling back to "■" — the bug this issue fixed alongside
+    // the `usecase`/`domain` icon collision). WebApp's `geolocation`
+    // capability carries an explicit empty `label ""` to fence the panel's
+    // `cap.label ?? cap.name` fallback (must NOT show the name "geolocation"
+    // — the code-review `??` vs `||` finding on PR #2072).
     fs.writeFileSync(
       fixtureKrs,
       `system Demo {
@@ -56,10 +69,27 @@ Handles **order processing** and payment.
     domain OrderManagement {}
     domain Inventory {}
   }
-  service UserService {}
+  service UserService @deprecated(until: "2026-12-31") {}
   user Customer [human] {
     description "A customer who purchases products."
     role "Buyer"
+  }
+  client WebApp [web] {
+    label "Customer SPA"
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+    capability notification
+    capability camera {
+      label "QR scanning"
+      description "Used to scan QR codes"
+    }
+    capability geolocation {
+      label ""
+      description "explicit empty label — must NOT fall through to the name (#2068 ?? vs || fence)"
+    }
+  }
+  database OrderDB {
+    table OrderTable {}
   }
   Customer -> OrderService "places an order"
 }
@@ -69,6 +99,10 @@ deploy "production" {
     image "order:1.0"
     runtime "Node 20"
     realizes OrderService
+  }
+  store "order-db" {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
   }
 }
 

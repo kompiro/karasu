@@ -30,7 +30,7 @@ export type {
   ClientResourceKind,
   ClientCapability,
 } from "./types/ast.js";
-export { INFRA_BLOCK_KINDS, INFRA_KIND_SET } from "./types/ast.js";
+export { INFRA_BLOCK_KINDS, INFRA_KIND_SET, createEmptyKrsFile } from "./types/ast.js";
 
 export type {
   StyleSheet,
@@ -145,6 +145,14 @@ export {
   CLIENT_SUBTYPE_TAGS,
   type ClientSubtypeTag,
 } from "./builtins/icon-theme.js";
+export {
+  NODE_DETAIL_PROPERTY_FIELDS,
+  NODE_DETAIL_ROLE_EMOJI,
+  NODE_DETAIL_TAGS_EMOJI,
+  NODE_DETAIL_TEAM_EMOJI,
+  NODE_DETAIL_KIND_ICON_NAMES,
+  type NodeDetailPropertyField,
+} from "./builtins/node-detail-fields.js";
 export {
   type ExampleProject,
   EC_PLATFORM_PROJECTS,

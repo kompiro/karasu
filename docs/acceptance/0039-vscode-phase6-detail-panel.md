@@ -24,6 +24,13 @@ without test-only seams in production code (see
 The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
 a required check.
 
+Issue #2068 (icon-mapping and section parity with the app's
+`NodeDetailPanel`) added three more cases to the same test file: a `store`
+deploy unit's detail-panel icon, and a `client` node's Storage
+resources/Capabilities sections and a deprecated node's Migration intent
+section. These are not separately numbered TCs — see the file's top-of-file
+comment for what each covers.
+
 ## Summary
 
 Verify that the VSCode Webview displays a detail panel when a leaf node is
