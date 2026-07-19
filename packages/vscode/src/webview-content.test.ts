@@ -4,6 +4,7 @@ import {
   DETAIL_PANEL_MAX_WIDTH,
   type BuildPreviewHtmlParams,
   buildPreviewHtml,
+  embedJsonInScript,
 } from "./webview-content.js";
 import { buildPreviewPanelLabels } from "./webview-i18n.js";
 
@@ -162,6 +163,26 @@ describe("buildPreviewHtml", () => {
     expect(html).toContain('"migrationTitle":"🕒 Migration intent"');
     expect(html).toContain('"jumpToEditor":"↗ Jump to editor"');
     expect(html).toContain('"openDeployView":"🚀 View in Deploy diagram →"');
+  });
+
+  it("escapes '<' in the embedded metadata JSON so a node label cannot close the <script> early", () => {
+    // A node label carrying `</script>` (straight from a user's .krs) must
+    // not terminate the inline script; the CSP nonce blocks execution of any
+    // injected script, but an early close would still break the legit
+    // panel/tooltip client script.
+    const metadataJson = JSON.stringify({ n1: { kind: "service", label: "</script><x>" } });
+    const html = buildPreviewHtml(baseParams({ metadataJson }));
+    expect(html).not.toContain("</script><x>");
+    expect(html).toContain("var nodeMetadataMap = " + embedJsonInScript(metadataJson) + ";");
+    // The document still closes with exactly one real </script>.
+    expect(html.match(/<\/script>/g)).toHaveLength(1);
+  });
+
+  it("embedJsonInScript escapes every '<' to a unicode escape and stays JSON.parse-equivalent", () => {
+    const src = JSON.stringify({ a: "</script>", b: "<!--", c: "plain" });
+    const escaped = embedJsonInScript(src);
+    expect(escaped).not.toContain("<");
+    expect(JSON.parse(escaped)).toEqual(JSON.parse(src));
   });
 
   it("injects PANEL_LABELS resolved for the active locale (ja)", () => {

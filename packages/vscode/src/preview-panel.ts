@@ -60,6 +60,12 @@ export class PreviewPanel {
   static readonly viewType = "karasu.preview";
 
   private readonly _panel: vscode.WebviewPanel;
+  // Detail-panel labels resolved once from VS Code's display language: it is
+  // constant for the panel's lifetime (a language change requires a reload),
+  // so resolving per-render would re-run the i18n lookups on every keystroke.
+  private readonly _panelLabels = buildPreviewPanelLabels(
+    resolveWebviewLocale(vscode.env.language),
+  );
   private _viewType: ViewType = "system";
   private _displayMode: "icon" | "shape" = "shape";
   private _theme: DiagramTheme = diagramThemeFromColorTheme(vscode.window.activeColorTheme.kind);
@@ -263,9 +269,10 @@ export class PreviewPanel {
       viewType: this._viewType,
       displayMode: this._displayMode,
       nonce: generateNonce(),
-      // Resolve detail-panel labels for VS Code's active display language so
-      // the webview matches the app's NodeDetailPanel under any locale (#2074).
-      labels: buildPreviewPanelLabels(resolveWebviewLocale(vscode.env.language)),
+      // Labels match the app's NodeDetailPanel under any locale; resolved
+      // once at panel creation (see _panelLabels) since the display language
+      // is fixed for the panel's lifetime (#2074).
+      labels: this._panelLabels,
     });
   }
 

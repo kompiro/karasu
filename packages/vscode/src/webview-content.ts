@@ -195,7 +195,13 @@ export interface BuildPreviewHtmlParams {
  */
 export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
   const { svg, metadataJson, breadcrumbHtml, viewType, displayMode, nonce, labels } = params;
-  const labelsJson = JSON.stringify(labels);
+  const labelsJson = embedJsonInScript(JSON.stringify(labels));
+  // Same treatment for the caller-supplied metadata JSON: it carries node
+  // labels/ids straight from the user's .krs, so a `</script>` in a label
+  // would otherwise terminate the inline script early (the CSP nonce blocks
+  // any injected script from executing, but the legit panel/tooltip script
+  // would break). See {@link embedJsonInScript}.
+  const safeMetadataJson = embedJsonInScript(metadataJson);
   const activeStyle =
     "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
   const btnStyle = (view: ViewType) => (view === viewType ? activeStyle : "");
@@ -478,7 +484,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
   <div id="karasu-tooltip"></div>
   <script nonce="${nonce}">
     var vscode = acquireVsCodeApi();
-    var nodeMetadataMap = ${metadataJson};
+    var nodeMetadataMap = ${safeMetadataJson};
     var PANEL_LABELS = ${labelsJson};
     var tooltip = document.getElementById('karasu-tooltip');
     var detailPanel = document.getElementById('detail-panel');
@@ -811,6 +817,18 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
   </script>
 </body>
 </html>`;
+}
+
+/**
+ * Escape a JSON string for safe embedding inside an inline `<script>` block.
+ * `JSON.stringify` leaves `<` unescaped, so a `</script>` substring in any
+ * value would close the script tag early and break the webview's client
+ * script. Replacing every `<` with a `<` escape keeps the JSON
+ * parse-equivalent while never emitting a literal `<` (so no `</script>`
+ * or `<!--` can appear in the embedded value).
+ */
+export function embedJsonInScript(json: string): string {
+  return json.replace(/</g, "\\u003c");
 }
 
 /** Generate a CSP script nonce for {@link BuildPreviewHtmlParams.nonce}. */
