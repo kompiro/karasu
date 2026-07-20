@@ -14,6 +14,10 @@ import type {
   TeamNode,
   MemberNode,
   LinkEntry,
+  BoundaryBlock,
+  LegendBlock,
+  LegendEntry,
+  LegendRefTarget,
 } from "../types/ast.js";
 
 export class FormatError extends Error {
@@ -110,13 +114,25 @@ class Printer {
       prevEndLine = imp.loc.end.line;
     }
 
-    // Top-level blocks sorted by source line
+    // Top-level blocks sorted by source line.
+    //
+    // This list must enumerate **every** block-valued top-level array on
+    // `KrsFile`. An array omitted here is silently dropped from the output —
+    // `fmt` then destroys source the parser accepted (#2076). The exhaustiveness
+    // guard in `formatter-top-level-coverage.test.ts` fails when a new top-level
+    // array is added to `KrsFile` without being wired in here.
     const topLevel = [
       ...file.systems,
       ...file.services,
+      ...file.clients,
       ...file.domains,
+      ...file.databases,
+      ...file.queues,
+      ...file.storages,
       ...file.deploys,
       ...file.organizations,
+      ...file.boundaries,
+      ...file.legends,
     ].sort((a, b) => a.loc.start.line - b.loc.start.line);
 
     for (const block of topLevel) {
@@ -203,6 +219,11 @@ class Printer {
   private renderTopLevel(block: HasLoc): string[] {
     if ("nodes" in block) return this.renderDeployBlock(block as DeployBlock);
     if ("teams" in block) return this.renderOrganizationBlock(block as OrganizationBlock);
+    if ("contains" in block) return this.renderBoundaryBlock(block as BoundaryBlock);
+    if ("entries" in block) return this.renderLegendBlock(block as LegendBlock);
+    // Everything else is a KrsNode: system / service / client / domain and the
+    // infra kinds (database / queue / storage), which are legal at top level
+    // (ADR-20260422-05) and render exactly as they do when nested.
     return this.renderNode(block as KrsNode, 0);
   }
 
@@ -479,5 +500,66 @@ class Printer {
 
     lines.push(`${indent}}`);
     return lines;
+  }
+
+  // ── BoundaryBlock ─────────────────────────────────────────────────────────
+
+  private renderBoundaryBlock(block: BoundaryBlock): string[] {
+    const trail = this.extractTrailing(block.loc.start.line);
+    // The label is emitted as a `label` property rather than in the header
+    // position (`boundary g "G" {`). Both parse to the same AST; picking one
+    // canonical form keeps the output idempotent.
+    const lines: string[] = [`boundary ${quoteId(block.id)} {${trail}`];
+
+    if (block.label !== undefined) lines.push(`  label "${block.label}"`);
+    if (block.properties.description !== undefined) {
+      lines.push(this.renderDescription(block.properties.description, "  "));
+    }
+    for (const link of block.properties.links) {
+      lines.push(this.renderLink(link, "  "));
+    }
+    for (const id of block.contains) {
+      lines.push(`  contains ${quoteId(id)}`);
+    }
+
+    lines.push("}");
+    return lines;
+  }
+
+  // ── LegendBlock ───────────────────────────────────────────────────────────
+
+  private renderLegendBlock(block: LegendBlock): string[] {
+    const trail = this.extractTrailing(block.loc.start.line);
+    const decl = ["legend"];
+    if (block.scope !== undefined) decl.push(block.scope);
+    if (block.title !== undefined) decl.push(`"${block.title}"`);
+
+    const lines: string[] = [`${decl.join(" ")} {${trail}`];
+    for (const entry of block.entries) {
+      lines.push(`  ${this.renderLegendEntry(entry)}`);
+    }
+    lines.push("}");
+    return lines;
+  }
+
+  private renderLegendEntry(entry: LegendEntry): string {
+    if (entry.kind === "swatch") {
+      // `color` is stored verbatim including the leading `#` (the lexer emits
+      // `#xxx` as one token), so it round-trips as-is.
+      return `swatch ${entry.color} "${entry.label}"`;
+    }
+    return `ref ${renderLegendRefTarget(entry.target)} "${entry.label}"`;
+  }
+}
+
+function renderLegendRefTarget(target: LegendRefTarget): string {
+  switch (target.kind) {
+    case "annotation":
+      return `@${target.name}`;
+    case "tag":
+      return `[${target.name}]`;
+    case "selector":
+      // Selectors keep their sigil (`.foo`, `#Node`) or are a bare type name.
+      return target.selector;
   }
 }
