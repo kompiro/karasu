@@ -217,6 +217,40 @@ render link URLs as clickable `<a href>` — only show `http:` / `https:` /
 
 > Related TPLs: TPL-20260510-17 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
 
+### String values and escapes
+
+A quoted string value (`"..."`) recognises exactly three escape sequences:
+
+| Sequence | Produces |
+|----------|----------|
+| `\"` | a literal double quote |
+| `\\` | a literal backslash |
+| `\n` | a newline |
+
+Any other `\<char>` yields the bare character — `\t` is a literal `t`, not a
+tab. Characters needing no escape (including a carriage return) may appear
+verbatim; a string literal is not restricted to a single line.
+
+```krs
+service Search {
+  label "say \"hi\""
+  description "first line\nsecond line"
+}
+```
+
+A **triple-quoted** string (`"""..."""`) is **raw**: no escape processing
+happens inside it, and it ends at the first `"""`. It exists so Markdown can be
+written verbatim (see [ADR-20260320-02](../adr/20260320-02-ast-restructure-discriminated-union.md)),
+with the indentation of the closing `"""` stripped from every line. A value that
+must itself contain `"""` therefore has no triple-quoted form and must use the
+single-line form with `\n` escapes — which is what `karasu fmt` emits for such
+a value.
+
+`karasu fmt` and `karasu translate` both escape on emit, so any value the lexer
+accepts survives a round trip unchanged.
+
+> Related TPLs: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
+
 ### user node example
 
 ```
