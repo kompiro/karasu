@@ -1,10 +1,10 @@
 ---
-id: ADR-20260720-03
+id: ADR-2087
 title: 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
 status: accepted
 date: 2026-07-20
 topic: parser
-related_to: [ADR-20260410-02, ADR-20260320-02, ADR-20260720-01, ADR-20260417-01, ADR-20260419-01]
+related_to: [ADR-438, ADR-9008, ADR-2076, ADR-643, ADR-644]
 assumptions:
   - "file: packages/core/src/formatter/quote-string.ts"
   - "symbol: packages/core/src/formatter/quote-string.ts :: escapeStringValue"
@@ -13,14 +13,14 @@ assumptions:
   - "file: packages/core/src/formatter/quote-string.test.ts"
 ---
 
-# ADR-20260720-03: 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
+# ADR-2087: 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
 
 - **日付**: 2026-07-20
 - **ステータス**: 決定済み
 - **関連**:
   - Issue: [#2087](https://github.com/kompiro/karasu/issues/2087)（`karasu fmt` が値の `"` / `\` を escape しない）
   - 実装 PR: (このコミットの PR)
-  - ADR: [ADR-20260410-02](20260410-02-krs-formatter.md)（formatter — 冪等性の保証）、[ADR-20260320-02](20260320-02-ast-restructure-discriminated-union.md)（`"""` を verbatim Markdown 用に採用 = エスケープ機構を持たない制約の出所）、[ADR-20260720-01](20260720-01-formatter-top-level-exhaustiveness.md)（同種の「列挙漏れ」を機械検出する先例）、[ADR-20260417-01](20260417-01-translate-openapi-resource-grouping.md) / [ADR-20260419-01](20260419-01-translate-db-aggregate-grouping.md)（description ブロックを生成する translate 経路）
+  - ADR: [ADR-438](438-krs-formatter.md)（formatter — 冪等性の保証）、[ADR-9008](9008-ast-restructure-discriminated-union.md)（`"""` を verbatim Markdown 用に採用 = エスケープ機構を持たない制約の出所）、[ADR-2076](2076-formatter-top-level-exhaustiveness.md)（同種の「列挙漏れ」を機械検出する先例）、[ADR-643](643-translate-openapi-resource-grouping.md) / [ADR-644](644-translate-db-aggregate-grouping.md)（description ブロックを生成する translate 経路）
   - AT: [2087-fmt-escape-string-values.md](../acceptance/2087-fmt-escape-string-values.md)
   - TPL: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（round-trip 保証 — 本 ADR で「ID だけでなく値も escape」「表現不能な値には fallback」を追記）
 
@@ -50,17 +50,17 @@ lines.push(`${indent}label "${node.label}"`);
 
 ### 2. 改行は生のままにせず escape する
 
-生の改行でも再 parse は通る（`readString` は行をまたぐ）。それでも `\n` に escape する。formatter の出力は行指向であり、コメントの再配置は行番号をキーにしているため、値の途中で改行するとブロックが「1 行 1 プロパティ」でなくなり、冪等性（ADR-20260410-02 決定 4）も崩れるためである。
+生の改行でも再 parse は通る（`readString` は行をまたぐ）。それでも `\n` に escape する。formatter の出力は行指向であり、コメントの再配置は行番号をキーにしているため、値の途中で改行するとブロックが「1 行 1 プロパティ」でなくなり、冪等性（ADR-438 決定 4）も崩れるためである。
 
 ### 3. `"""` を含む値は単一行形式に fallback する
 
-triple-quote は raw で、最初の `"""` で終端する（ADR-20260320-02）。よって `"""` を含む値は triple-quote 形式では**表現不能**である。この場合は `\n` escape 付きの単一行形式に落とす。長い Markdown では読みにくくなるが、`"""` を literal に含む値でしか発動しない。
+triple-quote は raw で、最初の `"""` で終端する（ADR-9008）。よって `"""` を含む値は triple-quote 形式では**表現不能**である。この場合は `\n` escape 付きの単一行形式に落とす。長い Markdown では読みにくくなるが、`"""` を literal に含む値でしか発動しない。
 
 判定と出力は `emitDescription()` に集約し、formatter と translate の両方から呼ぶ。同じ規則を 2 箇所に書けば、いずれ片方だけがドリフトする。
 
 ### 4. 網羅性は「生補間が 0 件」というソースレベルの不変条件で守る
 
-emit site を列挙するテストは [ADR-20260720-01](20260720-01-formatter-top-level-exhaustiveness.md) と同じ理由でドリフトする（テストの列挙と実装の列挙が同じ思い込みから生まれる）。そこで **formatter のソースに `` `"${` `` パターンが 1 件も存在しないこと**をアサートする。修正後は値がすべて `quoteString()` / `quoteId()` 経由になるため、この不変条件は「次に追加される emit site が escape を忘れた瞬間」に破れる。
+emit site を列挙するテストは [ADR-2076](2076-formatter-top-level-exhaustiveness.md) と同じ理由でドリフトする（テストの列挙と実装の列挙が同じ思い込みから生まれる）。そこで **formatter のソースに `` `"${` `` パターンが 1 件も存在しないこと**をアサートする。修正後は値がすべて `quoteString()` / `quoteId()` 経由になるため、この不変条件は「次に追加される emit site が escape を忘れた瞬間」に破れる。
 
 負のテストで空振りしないことを確認済み（escape を無効化すると 28 件、生補間を 1 箇所戻すと構造ガードが落ちる）。
 
@@ -76,7 +76,7 @@ ID と値で escape 規則自体は同じなので、一見すると流用でき
 
 ### `"""` にエスケープ機構を追加する
 
-`\"""` のような escape を triple-quote 内に導入すれば fallback が要らなくなる。却下。ADR-20260320-02 が `"""` を選んだ理由は **verbatim な Markdown を書けること**であり、エスケープ処理を入れるとその前提が崩れる（Markdown 中の `\` が意味を持ってしまう）。構文変更でもあり、spec 改訂と移行が必要になる。表現不能な値は稀なので、fallback の方が費用対効果が高い。
+`\"""` のような escape を triple-quote 内に導入すれば fallback が要らなくなる。却下。ADR-9008 が `"""` を選んだ理由は **verbatim な Markdown を書けること**であり、エスケープ処理を入れるとその前提が崩れる（Markdown 中の `\` が意味を持ってしまう）。構文変更でもあり、spec 改訂と移行が必要になる。表現不能な値は稀なので、fallback の方が費用対効果が高い。
 
 ### translate 側は別 Issue に切る
 

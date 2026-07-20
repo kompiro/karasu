@@ -39,7 +39,7 @@ formatter が引用符の有無を判定する `BARE_ID_PATTERN`（`packages/cor
 
 round-trip が破れるのは値の変換ミスだけではない。**構文が出力から丸ごと抜け落ちる**のも同じ違反であり、被害はむしろ大きい（変質ではなく消失）。
 
-#2076 では formatter の top-level 出力リスト（`printFile` が `KrsFile` の配列プロパティを手で列挙している箇所）が 11 個中 5 個しか列挙しておらず、parser が受理する `boundary` / `legend` / `client` / `database` / `queue` / `storage` の 6 構文が `karasu fmt` で無言のうちに削除されていた。top-level infra だけで構成されたファイル（`karasu translate --from db` が生成する形 — ADR-20260422-05）は **ファイル全体が空になった**。
+#2076 では formatter の top-level 出力リスト（`printFile` が `KrsFile` の配列プロパティを手で列挙している箇所）が 11 個中 5 個しか列挙しておらず、parser が受理する `boundary` / `legend` / `client` / `database` / `queue` / `storage` の 6 構文が `karasu fmt` で無言のうちに削除されていた。top-level infra だけで構成されたファイル（`karasu translate --from db` が生成する形 — ADR-702）は **ファイル全体が空になった**。
 
 この種の欠落は「既存の構文を 1 つ選んでテストする」書き方では絶対に捕まらない。テストが列挙する構文の集合と、実装が列挙する構文の集合が、同じ人間の同じ思い込みから生まれるからである。**期待集合を型・スキーマ側から機械的に導出する**こと（下記「既知の対処パターン」）。
 
@@ -53,7 +53,7 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
 
 ### 表現できない値には fallback を用意する（#2087）
 
-`"""` は verbatim Markdown のために raw（エスケープ機構なし）と決めた（ADR-20260320-02）。その結果、`"""` を含む値は triple-quote 形式では**表現不能**であり、そのまま出力するとブロックが途中で終了する。この種の「その表現形式では書けない値」は、構文を拡張する（= spec 変更）か、別の表現形式に fallback するかの二択になる。#2087 では後者（`\n` escape 付きの単一行形式へ落とす）を選んだ。表現形式を複数持つプロパティを実装するときは、**各形式で表現できない値の集合**を洗い出し、fallback 経路をテストする。
+`"""` は verbatim Markdown のために raw（エスケープ機構なし）と決めた（ADR-9008）。その結果、`"""` を含む値は triple-quote 形式では**表現不能**であり、そのまま出力するとブロックが途中で終了する。この種の「その表現形式では書けない値」は、構文を拡張する（= spec 変更）か、別の表現形式に fallback するかの二択になる。#2087 では後者（`\n` escape 付きの単一行形式へ落とす）を選んだ。表現形式を複数持つプロパティを実装するときは、**各形式で表現できない値の集合**を洗い出し、fallback 経路をテストする。
 
 ## 想定される失敗モード
 
@@ -88,7 +88,7 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
   - 実行時: `createEmptyKrsFile()` の配列プロパティを `Object.keys` で走査し、fixture 表のキー集合と `toEqual` で突き合わせる
   - 型: fixture 表に `satisfies Record<ArrayKeys<KrsFile>, string>` を付け、キー欠落を `tsc` で落とす
 
-  の二重にした。どちらも「新しい構文を足した人が formatter を触り忘れる」瞬間に落ちる（ADR-20260720-01）
+  の二重にした。どちらも「新しい構文を足した人が formatter を触り忘れる」瞬間に落ちる（ADR-2076）
 - **「生の補間が 1 つも残っていない」ことをソースレベルでアサートする**。emit site を列挙するテストは #2076 と同じ理由でドリフトするので、#2087 では formatter のソースに `` `"${` `` パターンが 0 件であることを検査した（値はすべて `quoteString()` / `quoteId()` 経由になる）。次に追加される emit site を自動で捕まえられる
 - **エスケープ規則は lexer のデコード規則と 1:1 で書き、両方向をテストする**。`escape(value)` の出力を lexer に食わせて元の値に戻るかを、hostile value 一覧（`"` / `\` / 末尾 `\` / 改行 / `"""` / CR / 空文字）で確認する
 - **ガードが空振りしていないことを負のテストで確かめる**。#2076 の型ガードは初版が `const FIXTURES: Record<string, string>` という注釈で、index signature のせいで**恒真**（何も検査していない）だった。ダミーのキーを型に足して `tsc` が落ちることを確認して初めてガードとして成立する。実行時ガードも同様に、修正を部分 revert して落ちることを確認する
@@ -110,6 +110,6 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
   `"""` は raw）と「fmt / translate は emit 時にエスケープするので lexer が受理する
   値は round-trip する」規定。同節末尾に本 TPL への `> Related TPLs:` back-ref あり。
   規定が破られると #2087（値に `"` を含むと出力が parse 不能）が再発する。
-- 設計経緯: [ADR-20260320-02](../adr/20260320-02-ast-restructure-discriminated-union.md)
+- 設計経緯: [ADR-9008](../adr/9008-ast-restructure-discriminated-union.md)
   （`"""` を verbatim Markdown 用に採用 = エスケープ機構を持たない、という制約の出所）、
-  [ADR-20260720-03](../adr/20260720-03-escape-emitted-string-values.md)（本件の決定）。
+  [ADR-2087](../adr/2087-escape-emitted-string-values.md)（本件の決定）。

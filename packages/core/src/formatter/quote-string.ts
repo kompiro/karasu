@@ -17,7 +17,7 @@
  * line-oriented output: comment attachment is keyed by source line, and the
  * emitted block would no longer be one property per line.
  *
- * See TPL-20260510-02 (round-trip guarantee) and ADR-20260720-02.
+ * See TPL-20260510-02 (round-trip guarantee) and ADR-2087.
  */
 export function escapeStringValue(value: string): string {
   // Backslash first — the later rules introduce backslashes of their own.
@@ -36,7 +36,7 @@ export function quoteString(value: string): string {
  * escape processing) and terminate at the first `"""`, so a body containing
  * that sequence has no representable form and must fall back to the
  * single-line quoted form. Adding an escape to `"""` would be a syntax change
- * — see ADR-20260320-02, which chose `"""` precisely for verbatim Markdown.
+ * — see ADR-9008, which chose `"""` precisely for verbatim Markdown.
  */
 export function canUseTripleQuote(value: string): boolean {
   return !value.includes('"""');
@@ -45,7 +45,7 @@ export function canUseTripleQuote(value: string): boolean {
 /**
  * Emit a `description` property, picking the representable form.
  *
- * Multi-line bodies use a `"""` block (readable Markdown, per ADR-20260320-02)
+ * Multi-line bodies use a `"""` block (readable Markdown, per ADR-9008)
  * unless the body contains `"""`, which would terminate the block early — those
  * fall back to the single-line quoted form with `\n` escapes.
  *

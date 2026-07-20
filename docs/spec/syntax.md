@@ -240,7 +240,7 @@ service Search {
 
 A **triple-quoted** string (`"""..."""`) is **raw**: no escape processing
 happens inside it, and it ends at the first `"""`. It exists so Markdown can be
-written verbatim (see [ADR-20260320-02](../adr/20260320-02-ast-restructure-discriminated-union.md)),
+written verbatim (see [ADR-9008](../adr/9008-ast-restructure-discriminated-union.md)),
 with the indentation of the closing `"""` stripped from every line. A value that
 must itself contain `"""` therefore has no triple-quoted form and must use the
 single-line form with `\n` escapes — which is what `karasu fmt` emits for such

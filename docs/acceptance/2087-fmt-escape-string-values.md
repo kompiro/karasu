@@ -6,7 +6,7 @@
   - `packages/core/src/formatter/quote-string.ts`（新規）
   - `packages/core/src/formatter/formatter.ts`
   - `packages/core/src/translate/{openapi,db,compose,k8s,wrangler}.ts`
-- **関連**: ADR-20260720-03（本件の決定）、ADR-20260410-02（formatter）、ADR-20260320-02（`"""` は raw）、TPL-20260510-02（round-trip 保証）
+- **関連**: ADR-2087（本件の決定）、ADR-438（formatter）、ADR-9008（`"""` は raw）、TPL-20260510-02（round-trip 保証）
 
 ## 受け入れ条件
 
@@ -46,5 +46,5 @@
 ## 範囲外（follow-up）
 
 - **`translate --from db` が引用符付き SQL 識別子を落とす**: `CREATE TABLE "we""ird" (...)` は SQL パーサ側（`parseTables` の `headerPattern` が `\w+` のみ）でテーブルごと認識されず、出力が空になる。emit 前段の別バグであり本 Issue の escape とは独立。別 Issue で扱う。
-- **`"""` を含む description の可読性**: fallback 先の単一行形式は長い Markdown では読みにくい。triple-quote 側に escape を導入する案は ADR-20260720-03 で却下済み（verbatim Markdown の前提が崩れるため）。
-- **生補間の禁止を lint ルール化**: 現状は formatter 1 ファイルを対象にした test でのガード。emit site が他パッケージに広がったら oxlint のカスタムルール化を再検討する（ADR-20260720-03「却下した案」）。
+- **`"""` を含む description の可読性**: fallback 先の単一行形式は長い Markdown では読みにくい。triple-quote 側に escape を導入する案は ADR-2087 で却下済み（verbatim Markdown の前提が崩れるため）。
+- **生補間の禁止を lint ルール化**: 現状は formatter 1 ファイルを対象にした test でのガード。emit site が他パッケージに広がったら oxlint のカスタムルール化を再検討する（ADR-2087「却下した案」）。
