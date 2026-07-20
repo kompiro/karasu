@@ -7,7 +7,7 @@ topic: parser
 related_to: [ADR-20260410-02, ADR-20260422-05, ADR-20260422-04, ADR-20260713-01, ADR-20260714-02]
 assumptions:
   - "symbol: packages/core/src/formatter/formatter.ts :: Printer"
-  - "grep: packages/core/src/formatter/formatter.ts :: const topLevel = ["
+  - "grep: packages/core/src/formatter/formatter.ts :: const topLevel"
   - "file: packages/core/src/formatter/formatter-top-level-coverage.test.ts"
   - "symbol: packages/core/src/types/ast.ts :: createEmptyKrsFile"
 ---
