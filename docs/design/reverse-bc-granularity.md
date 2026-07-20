@@ -7,7 +7,8 @@
   - 証拠元 Issue: [#1991](https://github.com/kompiro/karasu/issues/1991)（spike）
   - 関連 ADR: [ADR-20260714-02](../adr/20260714-02-reverse-architecture-harness.md)（本 doc の昇格先が supersede する）、[ADR-20260616-06](../adr/20260616-06-krs-spec-v1-freeze.md)（v1 syntax freeze）
   - 関連 TPL: [TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md)（薄い domain を黙って落とさない）、[TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)（identity は `id`）
-  - 隣接 Issue: [#2078](https://github.com/kompiro/karasu/issues/2078)（synthesis の loss）、[#2084](https://github.com/kompiro/karasu/issues/2084)（`lint-style` 誤用）、[#638](https://github.com/kompiro/karasu/issues/638)（eval corpus / metric）、[#1990](https://github.com/kompiro/karasu/issues/1990)（nest pivot、decision 4）
+  - 隣接 Issue: [#2078](https://github.com/kompiro/karasu/issues/2078)（synthesis の loss）、[#2084](https://github.com/kompiro/karasu/issues/2084)（`lint-style` 誤用）、[#638](https://github.com/kompiro/karasu/issues/638)（eval corpus / metric）、[#1990](https://github.com/kompiro/karasu/issues/1990)（nest pivot、decision 4）、[#2036](https://github.com/kompiro/karasu/issues/2036)（scoped boundary — 論点 B の再検討条件）
+  - 隣接 Design: [`scoped-boundary-declaration.md`](./scoped-boundary-declaration.md)（採用済み。案 B2 の前提を変える）
   - コード: `.claude/skills/reverse-architecture/SKILL.md`
 
 ## 背景・課題
@@ -167,14 +168,26 @@ scout に目標 domain 数を与える。
 **メリット**
 
 - aggregate 境界が構造として残る。
+- **scoped boundary（#2036、design `scoped-boundary-declaration.md` 採用済み）で
+  人間工学の障害は解消される見込み**。boundary を `domain` ブロック内に宣言でき、
+  member は当該スコープの子の素の id になるため、#2079 が挙げた
+  「冗長な top-level by-reference」「global-id 圧力」は成立しなくなる。
+  すなわち B2 は *表現手段としては* もはや無理筋ではない。
 
 **デメリット**
 
-- boundary は #2079 で「domain の usecase 整理には人間工学的に不向き」と判明済み。
-- 粒度問題を解くのに新しい構造の判断を harness に足すことになり、
-  spike が「プロンプト一行で足りる」と示した結論に逆行する。
-- v1 freeze 下で experimental 構文に harness を依存させるのは早い。
-- → 不採用（将来 #1983 / #2079 の決着後に再考の余地あり）。
+- **有効化する文法が未実装**。#2036 / #2079 はいずれも open で、
+  採用されたのは design doc のみ。harness を未実装の文法に依存させられない。
+- **spike の測定範囲外**。全 7 run は aggregate boundary を一切書かずに採点しており、
+  BC 粒度で得た V-measure 0.83–1.00 は「aggregate を畳んだ」状態の数字である。
+  B2 は各 deep-dive subagent に「どの usecase / entity を 1 つの aggregate に括るか」という
+  **新しい判断**を課すが、その判断の質は未測定。
+- 粒度問題を解くのに構造判断を harness に足すことになり、
+  spike が「効くレバーはプロンプト一行であって機構ではない」と示した結論に逆行する。
+- boundary は experimental notation であり、ADR-20260713-01 の gate 下にある。
+- → 不採用。ただし**却下ではなく延期**である（下記「未解決」参照）。
+  B1 と B2 は排他ではなく、B2 は domain 内部の追加構造なので、
+  粒度の決定を触らずに後から加算できる。
 
 ### 論点 C: 構造 grounding の扱い
 
@@ -321,7 +334,15 @@ ADR-20260714-02 の 4-phase pipeline・CLI spine・責務分離はいずれも�
   有望なのはこちらだが、本 doc のスコープ外。
 - **#638 の eval corpus 実体化** — gold の作り方・corpus の選定・CI 化は #638 で決める。
   本 doc は metric の形だけを候補として示す。
-- **aggregate 境界の構造的表現** — B2（nested domain / boundary）は現時点で不採用だが、
-  #1983 の drill-down grouping と #2079 の boundary 人間工学が決着したら再考の余地がある。
+- **aggregate 境界の構造的表現（延期であって却下ではない）** — B2 の障害だった
+  boundary の人間工学は、scoped boundary の設計採用（#2036、
+  `docs/design/scoped-boundary-declaration.md`）で解消される見込みであり、
+  #1983（drill-down grouping）は既に closed。残る前提は **#2036 の実装着地**のみ。
+  着地後に「deep-dive subagent が domain 内の aggregate を boundary として
+  出力すべきか」を再検討する。判断材料は spike が持っていない
+  （全 run が aggregate boundary なしで採点された）ため、
+  再検討時は #638 の eval で B1 と B2 を比較して決めるのが筋。
+  なお本 doc の**粒度の決定（何を 1 domain とするか）は B2 採否と独立**であり、
+  B2 を後から足しても再検討は要らない。
 - **粒度指示の repo 特性依存** — 4 repo（85 ファイル〜7.8k ファイル）で成立したが、
   monorepo / 多言語 repo など未測定の形状はある。統合 ADR では「実測 4 repo」の範囲を明示する。
