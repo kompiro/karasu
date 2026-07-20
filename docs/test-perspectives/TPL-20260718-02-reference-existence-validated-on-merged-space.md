@@ -29,7 +29,7 @@ scope:
 `owns-target-not-found` など存在検証系）は、**その id が解決されうる最終的な
 id 空間**に対して評価しなければならない。karasu の project mode では id 空間は
 複数ファイルを import でマージした後に初めて確定する（[[TPL-20260615-02]] と
-同じ「resolution はマージ後」原則、ADR-20260514-01）。
+同じ「resolution はマージ後」原則、ADR-1381）。
 
 Parser は 1 ファイル単位で走るため、per-file の存在検証は「別ファイルで宣言され
 他ファイルから参照される id」を知らない。この per-file の判定を ImportResolver が

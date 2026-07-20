@@ -21,7 +21,7 @@ import { resolveRepoPermalink } from "../../packages/app/src/render/repo-permali
  *
  * Caching (#1958): an immutable `@<sha>` 302 is cached `immutable` (1y) via the
  * Cloudflare Cache API; a mutable `HEAD`/branch 302 gets a short TTL. This is an
- * ephemeral CDN cache, not a new store — stateless per ADR-20260626-01. The
+ * ephemeral CDN cache, not a new store — stateless per ADR-1783. The
  * cache key excludes the URL fragment, so one cached `@<sha>` 302 serves every
  * `#krs-…` anchor variant (the anchor is applied client-side).
  */

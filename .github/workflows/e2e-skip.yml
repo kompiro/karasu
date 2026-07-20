@@ -1,8 +1,8 @@
 name: E2E (skip)
 
-# Companion of `e2e.yml`, following the paired-stub pattern (ADR-20260428-08,
+# Companion of `e2e.yml`, following the paired-stub pattern (ADR-953,
 # `ci.yml` <-> `ci-skip.yml`). Once `Playwright` is a Required status check
-# (ADR-20260711-02), a PR that doesn't match `e2e.yml`'s `paths` (docs-only,
+# (ADR-1866), a PR that doesn't match `e2e.yml`'s `paths` (docs-only,
 # cli-only, lsp-only, ...) would never start the E2E workflow and the required
 # `Playwright` context would stay permanently pending. This stub fires on the
 # INVERSE path filter and emits a `Playwright` job that just exits 0, so the

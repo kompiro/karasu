@@ -9,7 +9,7 @@
 // `docs/spec/*.md` tables from this same module. The Reference panel's
 // "Samples" tab content comes from `examples/ja/getting-started/` (via
 // `./examples.ts`), not from here. See
-// docs/adr/20260512-03-reference-data-single-source.md.
+// docs/adr/1296-reference-data-single-source.md.
 
 /** A user-facing string in every supported locale. */
 interface LocalizedString {

@@ -8,7 +8,7 @@ name: Release
 # build to no-op). `workflow_dispatch` is kept as a manual re-run fallback.
 # Prepare a release with the "Release — Prepare" workflow
 # (release-prepare.yml), which runs `changeset version` and pushes a
-# `chore/release-*` branch for review. See ADR-20260623-01.
+# `chore/release-*` branch for review. See ADR-1370.
 #
 # `changeset publish` publishes any public package whose `package.json`
 # version is not yet on npm, so this is a no-op between releases.
@@ -20,8 +20,8 @@ name: Release
 # workflow file `release.yml`). Requires npm >= 11.5.1 and Node >= 22.14.0,
 # so we upgrade npm explicitly below. Provenance is generated automatically
 # under trusted publishing — no `--provenance` flag / `NPM_CONFIG_PROVENANCE`
-# needed. See ADR-20260619-02 (OIDC migration; follows up the token-based
-# auth of ADR-20260512-05) and docs/process.md "リリース運用".
+# needed. See ADR-9020 (OIDC migration; follows up the token-based
+# auth of ADR-1315) and docs/process.md "リリース運用".
 #
 # Public packages: `karasu` (CLI) and `@karasu-tools/core`. `@karasu-tools/*`
 # others, `@karasu-tools/i18n` (private), and `karasu-vscode` are not

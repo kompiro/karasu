@@ -9,4 +9,4 @@ the viewer has grouping active. Exports keep the **full structure** (collapse is
 never applied there by design); the root system-view level is grouped into team
 bands with boundary frames while every node stays drawn. Threads `groupBy`
 through `buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`
-(#1879, ADR-20260711-03).
+(#1879, ADR-1858).

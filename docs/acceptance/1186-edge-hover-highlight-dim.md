@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/app/src/styles/app.css`
   - `packages/e2e/tests/at-1186-edge-hover-highlight-dim.spec.ts`
-- **依存**: ADR-20260506-02（`edge#<canonicalId>` selector / `data-edge-canonical-id` 付与）, ADR-20260422-03（Implicit edge detail panel）
+- **依存**: ADR-1096（`edge#<canonicalId>` selector / `data-edge-canonical-id` 付与）, ADR-463（Implicit edge detail panel）
 
 ## 受け入れ条件
 
@@ -28,7 +28,7 @@ type: product
 - [ ] AT-E（manual）: 多数 edge の system view（例: `examples/ja/ec-platform/`）を Preview で開き、edge を順番に hover して **focused edge が視認しやすく**、関係ない edge が背景に沈むことを目視確認する
   > 🧑 Manual — UX 体験の主観的評価。CI では検証できない
 
-- [ ] AT-F（manual）: 既存の右クリック → direction menu（#1129）と label-click → edge detail panel（ADR-20260422-03）が引き続き機能する。具体的には: (1) edge を右クリックして Direction ▸ Up/Down/Left/Right が選べる、(2) edge label をクリックして detail panel が開く
+- [ ] AT-F（manual）: 既存の右クリック → direction menu（#1129）と label-click → edge detail panel（ADR-463）が引き続き機能する。具体的には: (1) edge を右クリックして Direction ▸ Up/Down/Left/Right が選べる、(2) edge label をクリックして detail panel が開く
   > 🧑 Manual — hover dim はそれらの click ハンドラに干渉しないが、CSS 状態の遷移として相互作用が起きないことの最終確認は目視で行う
 
 - [ ] AT-G（manual）: **diff mode** で hover dim が破綻しないこと。snapshot diff を有効化した状態で edge に hover → 焦点 edge は `opacity: 1` になり（`[data-diff-state="unchanged"]` の `opacity: 0.55` を上書き）、diff-tagged な peer (`added` / `removed` / `changed`) も含めて `opacity: 0.25` まで dim される

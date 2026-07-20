@@ -7,7 +7,7 @@
   - `packages/core/src/renderer/drill-down-svg.ts`（`bundleSingleLevelViews`）
   - `packages/cli/src/diff.ts`
   - `packages/cli/src/index.ts`
-- **関連 ADR**: ADR-20260420-02（graphical diff viewer）, ADR-20260429-06（`karasu diff` CLI）
+- **関連 ADR**: ADR-650（graphical diff viewer）, ADR-1020（`karasu diff` CLI）
 
 ## 受け入れ条件
 

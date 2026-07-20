@@ -9,8 +9,8 @@ known_consumers:
   - system-view-tier-assignment
 date: 2026-06-23
 discovered_from:
-  - root_cause_adr: "ADR-20260429-02"
-  - root_cause_adr: "ADR-20260429-01"
+  - root_cause_adr: "ADR-974"
+  - root_cause_adr: "ADR-968"
   - root_cause_file: "packages/core/src/renderer/layout.ts"
 related_to: [TPL-20260519-02, TPL-20260711-02]
 topic: renderer
@@ -28,10 +28,10 @@ system-view の forced layout は、ノードを kind/タグで複数のティ�
 
 このとき守るべき不変条件は2つ:
 
-1. **貫通の救済**: 中間段を跨ぐエッジは、中間段のノードカードを直線で貫通してはならない。直交チャネルルーティング（[ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)）または consumer 直下への引き上げ（[ADR-20260429-02](../adr/20260429-02-infra-row-by-deepest-consumer.md)）のいずれかで救済されること。
+1. **貫通の救済**: 中間段を跨ぐエッジは、中間段のノードカードを直線で貫通してはならない。直交チャネルルーティング（[ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)）または consumer 直下への引き上げ（[ADR-974](../adr/974-infra-row-by-deepest-consumer.md)）のいずれかで救済されること。
 2. **既存 pull-up の温存**: ティア分割は、既存のティアに対する pull-up/pull-down post-pass（#974 / #967）の不変条件を壊してはならない。新ティアのための floor/clamp を足すなら、それが既存ティアの引き上げを抑止していないか確認する。
 
-「論理的に近いものは物理的にも近くに置く」原則（[ADR-20260429-02](../adr/20260429-02-infra-row-by-deepest-consumer.md) 却下案 D1）の派生。ティアを増やすほど段間距離が伸び、貫通が起きやすくなる。
+「論理的に近いものは物理的にも近くに置く」原則（[ADR-974](../adr/974-infra-row-by-deepest-consumer.md) 却下案 D1）の派生。ティアを増やすほど段間距離が伸び、貫通が起きやすくなる。
 
 ## 想定される失敗モード
 
@@ -52,7 +52,7 @@ system-view の forced layout は、ノードを kind/タグで複数のティ�
 ## 既知の対処パターン
 
 - **新ティアは pull-up させず固定バンドに置く**: external は最下段固定（consumer 直下へ引き上げない）にして、infra との行重複を避ける。引き上げが必要な既存ティア（infra）は従来どおり pull-up を温存し、新ティアの floor を既存ティアに掛けない（#1724 の実装方針）。
-- **救済はルーティングに委ねる**: 固定バンド化で生まれる skip-layer エッジは [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md) の直交チャネルルーティングが処理する。エッジの交差そのものの低減は別 workstream（[#1728](https://github.com/kompiro/karasu/issues/1728)）。
+- **救済はルーティングに委ねる**: 固定バンド化で生まれる skip-layer エッジは [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md) の直交チャネルルーティングが処理する。エッジの交差そのものの低減は別 workstream（[#1728](https://github.com/kompiro/karasu/issues/1728)）。
 
 ## 関連テスト
 
@@ -66,6 +66,6 @@ system-view の forced layout は、ノードを kind/タグで複数のティ�
 
 ## 派生元 spec / ADR
 
-- [ADR-20260429-02](../adr/20260429-02-infra-row-by-deepest-consumer.md) — infra/external を最深 consumer 直下へ引き上げる（#974）
-- [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md) — skip-layer エッジの直交チャネルルーティング
-- [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md) — system-view の infra/external ティア分割（#1724）
+- [ADR-974](../adr/974-infra-row-by-deepest-consumer.md) — infra/external を最深 consumer 直下へ引き上げる（#974）
+- [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md) — skip-layer エッジの直交チャネルルーティング
+- [ADR-1724](../adr/1724-system-view-infra-external-tier-split.md) — system-view の infra/external ティア分割（#1724）

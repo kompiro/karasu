@@ -1681,7 +1681,7 @@ system EC {
 
     it("does not error on cross-service duplicate domain id and keeps first path", () => {
       // A domain id shared by multiple services within one system is a
-      // structural fact, not a parse error (ADR-20260514-02 — "smell is
+      // structural fact, not a parse error (ADR-1386 — "smell is
       // representable"). The resolver surfaces it via the `domain-dispersal`
       // info diagnostic; the parser just keeps the first occurrence in the
       // nodePathIndex so navigation stays deterministic.
@@ -1856,7 +1856,7 @@ system EC {
     });
 
     it("does not error when both duplicate domain ids have no migration annotation", () => {
-      // Pre-ADR-20260514-02 this raised `domain-id-not-unique` (error). The
+      // Pre-ADR-1386 this raised `domain-id-not-unique` (error). The
       // dispersal is now informational only (`domain-dispersal`, info), so
       // the parser stays silent and keeps the first occurrence in the index.
       const result = Parser.parse(`
@@ -3169,7 +3169,7 @@ organization Corp {
       expect(warnings).toHaveLength(0);
     });
 
-    it("does not emit owns-target-not-found when owns references a client (ADR-20260623-02)", () => {
+    it("does not emit owns-target-not-found when owns references a client (ADR-1720)", () => {
       const result = Parser.parse(`
 system S {
   client Web [web] {}

@@ -3,7 +3,7 @@
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1421](https://github.com/kompiro/karasu/issues/1421)
 - **対象ファイル**: `packages/app/src/components/CommandPalette.tsx`
-- **関連**: キーボードショートカット基盤 [ADR-20260519-02](../adr/20260519-02-app-keyboard-shortcuts.md) / TPL-20260519-01
+- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-20260519-01
 
 ## 受け入れ条件
 

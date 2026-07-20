@@ -79,7 +79,7 @@ karasu/
 
 ### テスト観点ライブラリ（TPL）の参照
 
-`docs/test-perspectives/` には、過去の bug Issue から抽出した再発防止のためのテスト観点（TPL）が蓄積されている。運用方針の決定は [ADR-20260509-04](docs/adr/20260509-04-test-perspective-library.md) を参照。
+`docs/test-perspectives/` には、過去の bug Issue から抽出した再発防止のためのテスト観点（TPL）が蓄積されている。運用方針の決定は [ADR-1192](docs/adr/1192-test-perspective-library.md) を参照。
 
 - **DesignDoc 作成時 / 新機能実装時 / bug 修正時** に該当する `topic` / `scope.packages` の TPL を確認する
 - 該当する観点が見つかったら、DesignDoc または PR description で TPL の ID を引用する

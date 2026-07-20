@@ -5,7 +5,7 @@ import { replaceEditorContent } from "../fixtures/editor.js";
  * AT-0004: Project management & OPFS.
  *
  * Covers the deterministic bullets of `docs/acceptance/0004-project-management-opfs.md`
- * using the `opfs` fixture (ADR-20260427-05).
+ * using the `opfs` fixture (ADR-862).
  *
  * Coverage map (test name → AC bullets):
  *  - "dropdown lists seeded projects ..."             → AC-1 dropdown listing

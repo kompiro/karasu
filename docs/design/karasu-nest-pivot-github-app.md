@@ -5,9 +5,9 @@
 - **PR**: #1978
 - **ステータス**: 壁打ち（brainstorm）— **6 論点の方向性を確定（2026-07-16、下記「決定」節）**。技術詳細・実装は後続 design/ADR
 - **関連**:
-  - [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（nest v1 = **render-only / BYO reverse / stateless / 認証なし**。本ピボットが覆す対象）
-  - [ADR-20260407-04](../adr/20260407-04-cloudflare-deployment-and-byok-ai.md)（BYOK・サービスは secret を持たない）
-  - [ADR-20260714-02](../adr/20260714-02-reverse-architecture-harness.md)（reverse-architecture harness — 現状は **BYO/ローカル** の Claude Code skill）
+  - [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（nest v1 = **render-only / BYO reverse / stateless / 認証なし**。本ピボットが覆す対象）
+  - [ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)（BYOK・サービスは secret を持たない）
+  - [ADR-1895](../adr/1895-reverse-architecture-harness.md)（reverse-architecture harness — 現状は **BYO/ローカル** の Claude Code skill）
   - PRD [`docs/prd/keystone-primary-path.md`](../prd/keystone-primary-path.md)（read/record split・**solo-maintainer economics**）
   - [`docs/design/private-repo-permalink.md`](./private-repo-permalink.md)（#1960、本ピボットに吸収される client-PAT 案）
 
@@ -29,10 +29,10 @@
 
 | 覆す決定 | 元の内容（ADR） | ピボットでの扱い |
 |---|---|---|
-| **server-side LLM reverse 却下** | ADR-20260626-01「サービス側での LLM reverse は却下（コスト・キャッシュ・**推論メータリング**）。reverse は **BYO**とし v1 から外した」 | **中核として採用**（＝最大の反転）。コスト/メータリングをどう封じるかが本 doc の要 |
-| **stateless / 保存型ストア却下** | ADR-20260626-01「stateless inline・DB なし」「保存型 paste は却下」 | **stateful 化**（installation records・生成 `.krs` cache・webhook）。D1/KV を導入 |
-| **認証なし** | ADR-20260626-01「認証なし（BYOK が実質認証）」 | **GitHub App 認証基盤**を新設 |
-| **サービスは secret を持たない** | ADR-20260407-04（BYOK） | GitHub App は **private key** を持つ。加えて server reverse なら **LLM API キーと推論コスト**も |
+| **server-side LLM reverse 却下** | ADR-1783「サービス側での LLM reverse は却下（コスト・キャッシュ・**推論メータリング**）。reverse は **BYO**とし v1 から外した」 | **中核として採用**（＝最大の反転）。コスト/メータリングをどう封じるかが本 doc の要 |
+| **stateless / 保存型ストア却下** | ADR-1783「stateless inline・DB なし」「保存型 paste は却下」 | **stateful 化**（installation records・生成 `.krs` cache・webhook）。D1/KV を導入 |
+| **認証なし** | ADR-1783「認証なし（BYOK が実質認証）」 | **GitHub App 認証基盤**を新設 |
+| **サービスは secret を持たない** | ADR-9017（BYOK） | GitHub App は **private key** を持つ。加えて server reverse なら **LLM API キーと推論コスト**も |
 
 そして**最大の新規リスク（新しい制約）**: **他者の private ソースコードを hosted LLM に通す**。データ保持・LLM プロバイダのデータポリシー・コード中の secret 露出・repo owner の同意/責任範囲 — permalink スライスとは桁違いの信頼/セキュリティ/法務面。ここを設計で抑えられなければピボット自体が成立しない。
 
@@ -54,11 +54,11 @@
 
 ### 軸2: AI reverse のホスティングとコスト負担
 
-ADR-20260626-01 が却下した「server AI reverse」の**コスト/メータリング**を誰がどう負うか。
+ADR-1783 が却下した「server AI reverse」の**コスト/メータリング**を誰がどう負うか。
 
 - **案 2-A: サービスが LLM コストを負担（無料 hosted reverse）** — UX 最良。
   - ❌ solo-maintainer が他者 repo の推論コストを無制限に負う → **経済的に破綻**しうる。rate-limit/abuse 必須。
-- **案 2-B: installer/reader が LLM key を持ち込む（BYO-LLM key）** — ADR-20260626-01 の BYO 精神を「reverse」に適用。コストは持ち込み側。
+- **案 2-B: installer/reader が LLM key を持ち込む（BYO-LLM key）** — ADR-1783 の BYO 精神を「reverse」に適用。コストは持ち込み側。
   - ⭕ solo economics を守れる（サービスは推論コストゼロ）。既存 BYOK パターン（`api-key-storage.ts`）を LLM key に流用。
   - ❌ install した org が key も供給する二段構え。UX 摩擦。
 - **案 2-C: 従量課金 / プラン** — コストを価格転嫁。
@@ -77,7 +77,7 @@ ADR-20260626-01 が却下した「server AI reverse」の**コスト/メータ�
 
 - repo owner の**明示同意**（App install 時の scope 提示 + 図示・LLM 送信の告知）。
 - LLM プロバイダの**データ保持ゼロ / 学習不使用**設定（Anthropic の zero-retention 等）を必須要件に。
-- 生成 `.krs` は**構造のみ**（コード本文・secret を含めない）。reverse harness の出力が構造抽象である点（ADR-20260714-02）を活かし、生成物に生コードが混ざらない保証をテストで担保。
+- 生成 `.krs` は**構造のみ**（コード本文・secret を含めない）。reverse harness の出力が構造抽象である点（ADR-1895）を活かし、生成物に生コードが混ざらない保証をテストで担保。
 - 生成物 cache は owner がパージできる／install 解除で消える。
 - **方向**: これはピボットの**成立条件**。曖昧なら public-only に留める判断もあり得る。
 
@@ -115,7 +115,7 @@ ADR-20260626-01 が却下した「server AI reverse」の**コスト/メータ�
 1. **リバース実行場所 = 案A（server-side）。** Worker が private code を fetch し LLM を呼ぶ。**ゼロ設定（App 入れる→図が出る）**という最大の差別化を取る。代償として、サービスが private コードの data processor になる責任・コストを負う（＝本格 SaaS の賭け）。案B（client-side）は #1960 の「local ツール収束」批判が跳ね返るため不採用。
 2. **secret 対策 = redact before LLM。** fetch したコードを LLM 送信前に gitleaks 相当で scan/redact し、生成 `.krs` にも scan をかけて「構造のみ」を担保。privacy policy で「送信前 redact」と謳える。
 3. **推論コスト = service-paid + quota/freemium。** サービスが推論を負担。ただし **v1 は無料枠＋厳格 quota のみ（課金 = Stripe は後回し）**。per-installation 月次 quota ＋ global rate-limit でコストを cap。
-4. **出力スコープ = 全ビュー生成＋confidence マーク。そして domain 分析を first-class に投資する。** ← 製品の核心。system top-level + deploy だけでは「うり」が弱い（既存の一発 reverse と大差ない）。**domain 分解の質こそ hosted サービスの差別化**であり、それは案A（server）だから実現できる: **agentic multi-pass reverse**（harness の per-domain subagent fan-out, ADR-20260714-02 を server で重く回す）＋**構造シグナル grounding**（dir/package 境界・CODEOWNERS・commit coupling・DDD）＋**human refinement → PR 還元を質のラチェット**に。confidence マークは正直さの層であって戦略ではない。#1783 の「domain は一発では弱い」を「一発でなく agentic で作り込む」で乗り越える。
+4. **出力スコープ = 全ビュー生成＋confidence マーク。そして domain 分析を first-class に投資する。** ← 製品の核心。system top-level + deploy だけでは「うり」が弱い（既存の一発 reverse と大差ない）。**domain 分解の質こそ hosted サービスの差別化**であり、それは案A（server）だから実現できる: **agentic multi-pass reverse**（harness の per-domain subagent fan-out, ADR-1895 を server で重く回す）＋**構造シグナル grounding**（dir/package 境界・CODEOWNERS・commit coupling・DDD）＋**human refinement → PR 還元を質のラチェット**に。confidence マークは正直さの層であって戦略ではない。#1783 の「domain は一発では弱い」を「一発でなく agentic で作り込む」で乗り越える。
 5. **パッケージ = 別 Workers サービス（推奨・後続技術設計で確定）。** state・secret（App private key）・webhook を静的 Pages app に同居させず別サービスにし、描画は `packages/app`（MemoryModeApp）、reverse+合成は `packages/core` を再利用。名前は "karasu-nest" 継続、URL 後決め。solo の維持面が 1 面増える点は明記。
 6. **epic / 既存扱い**: 新規 **karasu-nest pivot epic** を起こし child（App auth / server reverse pipeline / redact / domain agentic / confidence マーク / quota+state / webhook purge …）を下げる。**#1960 は pivot に吸収して close**。**#1971（client-PAT design）は「client-PAT は local 収束で却下、private は App pivot へ」の status を付けて却下記録として merge**。
 

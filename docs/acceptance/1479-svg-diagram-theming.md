@@ -2,7 +2,7 @@
 
 - **日付**: 2026-05-21
 - **関連 Issue**: [#1479](https://github.com/kompiro/karasu/issues/1479)
-- **関連 ADR**: [ADR-20260520-06](../adr/20260520-06-app-css-modularization-and-light-theme.md)
+- **関連 ADR**: [ADR-1470](../adr/1470-app-css-modularization-and-light-theme.md)
 - **関連 TPL**: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)
 - **対象ファイル**: `packages/core/src/renderer/palette.ts`,
   `packages/core/src/builtins/default-style.ts`, `packages/core/src/index.ts`,

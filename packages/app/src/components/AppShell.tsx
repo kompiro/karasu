@@ -117,7 +117,7 @@ export function AppShell({
   const [isEntityViewOpen, setIsEntityViewOpen] = useState(false);
 
   // The SVG diagram follows the app's effective theme so the rendered
-  // diagram matches the chrome (ADR-20260520-06 left SVG out of scope;
+  // diagram matches the chrome (ADR-1470 left SVG out of scope;
   // Issue #1479 closes that gap). `effectiveTheme` is the concrete
   // light/dark — `ThemeProvider` has already resolved `"system"`.
   const { effectiveTheme } = useTheme();

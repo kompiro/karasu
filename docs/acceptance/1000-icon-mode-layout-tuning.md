@@ -8,7 +8,7 @@
   - `packages/core/src/renderer/layout.test.ts`（icon-mode gap の assertion
     を追加）
 - **設計ドキュメント**:
-  [ADR-20260429-05](../adr/20260429-05-icon-mode-layout-gap-tuning.md)
+  [ADR-1000](../adr/1000-icon-mode-layout-gap-tuning.md)
 
 ## 受け入れ条件
 
@@ -42,7 +42,7 @@
   > - 同じレイヤ内のアイコン間の余白が以前より狭く（36px ≒ アイコン幅の 22%）見える
   > - レイヤ間の縦間隔が以前より縮まって見える（説明なしカード 56px 高 + LAYER_GAP 80）
   > - sub-row 折返しが以前と同じ位置（または 1 つ早く）に発生する
-  > - skip-layer 直交エッジ（ADR-20260429-01）の L 字経路が縦 80px のチャネルに収まり、ノード矩形を貫通しない
+  > - skip-layer 直交エッジ（ADR-968）の L 字経路が縦 80px のチャネルに収まり、ノード矩形を貫通しない
   > - LANE_BAND（18px）でレーン分散される多重エッジが LAYER_GAP=80 の余裕に収まり、ラベル・arrowhead が重ならない
 
   > Manual rationale: 自動レイアウトの数値変更は単体テストで assert できるが、「アイコンが寄って見える / typology が読み取りやすい」「edge routing が破綻していない」は SVG 上の最終的な見えに依存するため目視確認が必要。Issue #1000 の "Render representative diagrams in Icon mode and capture screenshots" タスクに直接対応する。

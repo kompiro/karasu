@@ -15,7 +15,7 @@ type: feature
   - `examples/ja/multi-file-system/{index,reader,editor,cms}.krs`（spec PR で追加済み、本 AT で end-to-end を検証）
 - **Spec**: `docs/spec/syntax.md` §「Multi-file import semantics」(S1〜S7)
 - **TPL**: TPL-20260514-01 〜 TPL-20260514-05
-- **ADR**: [ADR-20260514-01](../adr/20260514-01-multi-file-import-semantics.md)
+- **ADR**: [ADR-1381](../adr/1381-multi-file-import-semantics.md)
 
 ## 受け入れ条件
 
@@ -45,7 +45,7 @@ type: feature
 
 ## 関連
 
-- ADR: `docs/adr/20260514-01-multi-file-import-semantics.md`
+- ADR: `docs/adr/1381-multi-file-import-semantics.md`
 - 仕様化 PR: #1383 (merged)
 - 実装 PR: 本 PR
 - AT-H（S6 警告）実装: #1569

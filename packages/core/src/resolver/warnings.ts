@@ -376,7 +376,7 @@ function collectInfraInScope(nodes: KrsNode[]): InfraInScope {
  * Surface the shared-store "fan-in": ≥2 services with a resolved `resource`
  * dependency on the same `database` / `queue` / `storage` within one system
  * scope. Symmetric with `detectDomainDispersal` (same id under ≥2 services),
- * info-register per ADR-20260514-02 — it states a fact (the Database-per-Service
+ * info-register per ADR-1386 — it states a fact (the Database-per-Service
  * smell), it is not a defect.
  *
  * Keyed on *actual sharing*, so — unlike `infra-redeclared-across-files`, which
@@ -458,7 +458,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  *
  * Ownership is derived from the logical layer — a leaf `infraId.tableId` is
  * owned by every `domain` whose `entity` maps it via `table <InfraId>.<subId>`
- * (ADR-20260715-01). No new syntax: the entity layer is the source of truth,
+ * (ADR-1870). No new syntax: the entity layer is the source of truth,
  * and the physical `table` never carries a domain. Keying is at **leaf
  * granularity** because sibling tables in one `database` can belong to
  * different domains — keying on the whole store would let a reach-in into a
@@ -480,7 +480,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  * reaching into a leaf owned by the other half does **not** fire here (the
  * dispersal itself is what `domain-dispersal` surfaces). Cross-*system* access
  * is out of scope: per-system scoping keeps the id comparison within a single
- * system so identical ids in different systems never conflate (ADR-20260714-01).
+ * system so identical ids in different systems never conflate (ADR-1911).
  *
  * Paired with but **orthogonal** to `shared-infra-fan-in`: that keys on how
  * many services share a store; this keys on crossing an ownership boundary. The
@@ -488,7 +488,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  * suppression. The resource→store resolution reuses `buildEntityResolver`, kept
  * in sync with `deriveInfraEdges` / `detectSharedInfraFanIn` /
  * `detectUnassignedResources` (TPL-20260623-02).
- * See ADR-20260715-04 (docs/adr/20260715-04-domain-store-ownership-diagnostic.md).
+ * See ADR-1819 (docs/adr/1819-domain-store-ownership-diagnostic.md).
  */
 function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
@@ -611,7 +611,7 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
  * dot-notation, not a unique `entity` (the canonical logical form), and not
  * `[external]` (which intentionally has no store). Resolution is model-wide, so
  * the warning is *promoted away* — with zero edits to the usecase — the moment a
- * matching `entity` is declared anywhere (`docs/adr/20260715-01-domain-entity-modeling.md`).
+ * matching `entity` is declared anywhere (`docs/adr/1870-domain-entity-modeling.md`).
  *
  * Moved here from the parser (which only sees a single declaration): the
  * entity a bare id resolves to may be declared in another domain / service.
@@ -1035,9 +1035,9 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
   // Build the set of all valid realize-target IDs: services / domains / clients
   // and the system-level infra nodes (database / queue / storage). A deploy unit
   // may realize a shared store to record its physical form (e.g. a `store` unit
-  // realizing a `database`); see ADR-20260616-09. A client is also a deployable
+  // realizing a `database`); see ADR-1632. A client is also a deployable
   // logical node (a `war` / `assets` bundle realizes a `client` SPA), so it is a
-  // valid target too; see ADR-20260623-02. Leaf sub-resources
+  // valid target too; see ADR-1720. Leaf sub-resources
   // (table / queue-item / bucket) are NOT valid targets.
   const validIds = new Set<string>();
   function collectIds(nodes: KrsNode[]): void {
@@ -1102,7 +1102,7 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
 
   // Build the set of all valid owns-target IDs: services / domains / clients.
   // A team can own a client (a deployable SPA / mobile app) just as it owns a
-  // service or domain; see ADR-20260623-02.
+  // service or domain; see ADR-1720.
   const validIds = new Set<string>();
   function collectIds(nodes: KrsNode[]): void {
     for (const node of nodes) {

@@ -27,7 +27,7 @@ scope:
 
 ## 観点
 
-すべてのスイートが全 PR で走るとは限らない。この観点の起源（#1725）では、karasu の Playwright e2e は **`e2e` ラベルが付いた PR でのみ**走り（`.github/workflows/e2e.yml` の `if: contains(github.event.pull_request.labels.*.name, 'e2e')`）、それ以外は nightly（`e2e-nightly.yml`）でしか実行されなかった。**この label gate は現在は撤廃済み**で、e2e は関連パッケージの変更で自動発火する path filter（ADR-20260623-05）に移行し、さらに Required status check 化（ADR-20260711-02, #1867）＋ paired stub `e2e-skip.yml` でマージ前起動が構造的に保証されている（詳細は「既知の対処パターン」節）。以下は起源時点の label-gated 構成を例に観点を述べるが、原理は **今後追加される任意の gated / 遅延実行スイート**に一般化される。
+すべてのスイートが全 PR で走るとは限らない。この観点の起源（#1725）では、karasu の Playwright e2e は **`e2e` ラベルが付いた PR でのみ**走り（`.github/workflows/e2e.yml` の `if: contains(github.event.pull_request.labels.*.name, 'e2e')`）、それ以外は nightly（`e2e-nightly.yml`）でしか実行されなかった。**この label gate は現在は撤廃済み**で、e2e は関連パッケージの変更で自動発火する path filter（ADR-1729）に移行し、さらに Required status check 化（ADR-1866, #1867）＋ paired stub `e2e-skip.yml` でマージ前起動が構造的に保証されている（詳細は「既知の対処パターン」節）。以下は起源時点の label-gated 構成を例に観点を述べるが、原理は **今後追加される任意の gated / 遅延実行スイート**に一般化される。
 
 このような **gated / 遅延実行のスイート**は「検出のブラインドスポット」を生む。スイートがアサーションしている surface（DOM 構造・control のラベルや ARIA role・セレクタ）を変える PR が、そのスイートを起動させずにマージされると、**壊れたアサーションが緑のまま `main` に入り**、失敗が nightly か後続の（ラベル付き）無関係 PR まで遅延する。失敗が顕在化したとき、原因 PR はすでにマージ済みで、無関係な PR の作者が切り分けコストを払うことになる。
 
@@ -51,9 +51,9 @@ UI / surface を変える PR（特にリファクタ・リネーム・control �
 
 ## 既知の対処パターン
 
-- **トリガを gate から path filter へ（構造的対処）**: app E2E は ADR-20260623-05、VS Code E2E（extension host / WebView）は ADR-20260623-07 で、それぞれラベル駆動を廃止し関連パッケージの変更で自動起動する path filter に移行した。これにより該当 surface を触る PR では人間がラベルを覚えなくても E2E がマージ前に走り、本ブラインドスポットは構造的に塞がれる。先例は Preview workflow の同型移行（ADR-20260413-01）。
+- **トリガを gate から path filter へ（構造的対処）**: app E2E は ADR-1729、VS Code E2E（extension host / WebView）は ADR-1742 で、それぞれラベル駆動を廃止し関連パッケージの変更で自動起動する path filter に移行した。これにより該当 surface を触る PR では人間がラベルを覚えなくても E2E がマージ前に走り、本ブラインドスポットは構造的に塞がれる。先例は Preview workflow の同型移行（ADR-579）。
   - karasu の主要 E2E スイート（`e2e.yml` / `vscode-e2e.yml`）は path filter 化済み。今後 **新しい gated スイートを足すとき**（label / 特定 path / schedule でしか走らないチェック）は、その検証対象を変える PR で必ず起動するトリガ条件になっているかを設計時に確認する。
-- **path filter を Required check へ昇格（さらなる構造的対処）**: path filter は「対象を触らない PR では走らない」ため、Required 化しても pending で止まらないよう paired stub が要る。app E2E（`Playwright`）は ADR-20260711-02（#1867）で Required status check 化し、`paths` に一致しない PR には paired stub `e2e-skip.yml` が同名 check を報告して pending を防ぐ。stub 側の `paths-ignore` は実チェックの `paths` と厳密に同期させる（[TPL-20260520-02]）。これで「対象を触る PR では必ず実チェックが Required として走る」経路が保証される。
+- **path filter を Required check へ昇格（さらなる構造的対処）**: path filter は「対象を触らない PR では走らない」ため、Required 化しても pending で止まらないよう paired stub が要る。app E2E（`Playwright`）は ADR-1866（#1867）で Required status check 化し、`paths` に一致しない PR には paired stub `e2e-skip.yml` が同名 check を報告して pending を防ぐ。stub 側の `paths-ignore` は実チェックの `paths` と厳密に同期させる（[TPL-20260520-02]）。これで「対象を触る PR では必ず実チェックが Required として走る」経路が保証される。
 - **同 PR で grep → トリガ確認 → テスト更新**: surface を変える PR で `packages/e2e` / `packages/vscode-e2e` を変更セレクタで grep し、ヒットしたら対象スイートがその PR で起動することを確認し、stale なアサーションを同 PR で直す。
 - **nightly セーフティネット**: `e2e-nightly.yml` が全スイートを定期実行し、失敗時に `ci: nightly-e2e` ラベルの Issue を起票する。ただしこれは最後の砦であり、マージ前検出の代替にはならない（検出遅延 = 切り分けコスト）。
 - #1725 では `at-0014` AC-5 を「docs dropdown を開く → `↗ Reference` menuitem をクリック」に修正して回復した。
@@ -61,7 +61,7 @@ UI / surface を変える PR（特にリファクタ・リネーム・control �
 ## 関連テスト
 
 - `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts`（AC-5 — reference pop-out 起動経路。stale 化した実例）
-- `.github/workflows/e2e.yml`（app E2E のトリガ定義 — path filter, ADR-20260623-05 / Required check, ADR-20260711-02）
+- `.github/workflows/e2e.yml`（app E2E のトリガ定義 — path filter, ADR-1729 / Required check, ADR-1866）
 - `.github/workflows/e2e-skip.yml`（Required check `Playwright` の paired stub — `paths` 非一致 PR の pending を防ぐ, #1867）
-- `.github/workflows/vscode-e2e.yml`（VS Code E2E のトリガ定義 — path filter, ADR-20260623-07）
+- `.github/workflows/vscode-e2e.yml`（VS Code E2E のトリガ定義 — path filter, ADR-1742）
 - `.github/workflows/e2e-nightly.yml`（遅延検出のセーフティネット）

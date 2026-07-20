@@ -81,7 +81,7 @@ primary owner.
 | `duplicate-team-in-organization` | error | A team id is duplicated within an `organization`. |
 | `duplicate-resource-operation` | warning | A CRUD verb is listed more than once on one resource. |
 | `duplicate-crud-decoration-target` | warning | A CRUD decoration targets the same operation more than once. |
-| `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-20260615-01](../adr/20260615-01-ownership-during-migration.md)). |
+| `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
 | `duplicate-boundary-assignment` | info | A node is listed in more than one `boundary` (a fact; the first-declared boundary is kept). |
 | `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
 
@@ -155,7 +155,7 @@ Annotation parameters and removed / deprecated properties.
 | --- | --- | --- |
 | `annotation-param-unsupported` | warning | An annotation parameter key is not recognised for that annotation. |
 | `annotation-possible-typo` | info | An annotation name is a near-match to a builtin (typo hint). |
-| `team-property-removed` | error | The removed `team` property is used (see [ADR-20260614-01](../adr/20260614-01-remove-team-property.md)). |
+| `team-property-removed` | error | The removed `team` property is used (see [ADR-1564](../adr/1564-remove-team-property.md)). |
 
 ### Imports & files
 

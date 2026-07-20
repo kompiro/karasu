@@ -13,7 +13,7 @@ known_consumers:
   - glossary（docs/glossary.md · docs/spec/glossary.md）
 discovered_from:
   - root_cause_file: "docs/glossary.md"
-  - root_cause_adr: "docs/adr/20260702-01-adr-permalink-convention.md"
+  - root_cause_adr: "docs/adr/1829-adr-permalink-convention.md"
 related_to:
   - TPL-20260511-02
   - TPL-20260616-01
@@ -95,4 +95,4 @@ keystone / permalink の用語を扱う doc を変更するときに確認する
 - 起票の動機: [#1831](https://github.com/kompiro/karasu/issues/1831)（coined 用語の drift 懸念）。
 - 用語の初出: PRD [`docs/prd/keystone-primary-path.md`](../prd/keystone-primary-path.md)。
 - permalink 機構の正典: [`docs/spec/permalink.md`](../spec/permalink.md) /
-  [ADR-20260702-01](../adr/20260702-01-adr-permalink-convention.md)。
+  [ADR-1829](../adr/1829-adr-permalink-convention.md)。

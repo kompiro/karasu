@@ -3,7 +3,7 @@
 - **日付**: 2026-07-11
 - **Issue**: #1879（親 #1858 P2a follow-up / Epic #1817 comprehension）
 - **PR**: feat/group-by-exports
-- **決定**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（決定 7 に export-surface ルールを追記）
+- **決定**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（決定 7 に export-surface ルールを追記）
 - **Related TPLs**: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
 - **対象**: `packages/core/src/renderer/all-layers-svg.ts` / `drill-down-svg.ts` / `index.ts`、`packages/app/src/hooks/useViewSvg.ts` / `components/AppShell.tsx`
 
@@ -11,7 +11,7 @@
 
 secondary / export SVG（**Show All Layers**・drill-down export・**Open & Export All Views** = `buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`）に system view の **`groupBy`** を通す。ビューアが「Group by: team」を有効にしているとき、export でも team バンド＋境界フレームで束ねる。ただし **collapse は適用しない**（`collapsedGroups` を渡さない）— export は「畳んだ姿」ではなく**完全な構造**を見せる目的。opt-in で、`groupBy` 未指定なら従来出力と byte 一致。
 
-> **訂正（2026-07-17, #1983）**: 本 AT は当初「grouping は root system-view level のみ適用（drill-down の深い層にチームは無い）」としていたが、これは boundary 軸（kind 制限なし）には成立せず、[#1983](https://github.com/kompiro/karasu/issues/1983) でその root-only gate を撤去した。現行の挙動は「grouping は各ビューで、そのレベルに描画されるノード集合との交差で解決される」— drill-down の深い band / level にも、そこに member が居れば同じ仕組みでフレームが出る。詳細は [AT-1983](1983-boundary-drilldown-grouping.md) と [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md) 決定 7 の注記を参照。「collapse は export に適用しない」は変わらず有効。以下の AC は現行挙動（per-level）に合わせて更新済み — 参照先のテストファイル・suite 名は不変（実装 PR で assert 内容のみ per-level 用に更新されたため）。
+> **訂正（2026-07-17, #1983）**: 本 AT は当初「grouping は root system-view level のみ適用（drill-down の深い層にチームは無い）」としていたが、これは boundary 軸（kind 制限なし）には成立せず、[#1983](https://github.com/kompiro/karasu/issues/1983) でその root-only gate を撤去した。現行の挙動は「grouping は各ビューで、そのレベルに描画されるノード集合との交差で解決される」— drill-down の深い band / level にも、そこに member が居れば同じ仕組みでフレームが出る。詳細は [AT-1983](1983-boundary-drilldown-grouping.md) と [ADR-1858](../adr/1858-system-view-group-by-team.md) 決定 7 の注記を参照。「collapse は export に適用しない」は変わらず有効。以下の AC は現行挙動（per-level）に合わせて更新済み — 参照先のテストファイル・suite 名は不変（実装 PR で assert 内容のみ per-level 用に更新されたため）。
 
 ## 受け入れ条件
 

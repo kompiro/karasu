@@ -10,7 +10,7 @@ type: product
   - core: `packages/core/src/style/value-validator.ts`（PR-B でメイン実装、本 PR で `loc` enrichment を追加）
   - LSP: `packages/lsp/src/server.ts`
   - CLI: `packages/cli/src/lint-style.ts`、`packages/cli/src/lint-style.test.ts`、`packages/cli/src/index.ts`
-- **関連 Design Doc**: [`docs/adr/20260511-03-style-value-diagnostics.md`](../adr/20260511-03-style-value-diagnostics.md)（Phase 3 計画 — 本 PR は step 3 of 3）
+- **関連 Design Doc**: [`docs/adr/1178-style-value-diagnostics.md`](../adr/1178-style-value-diagnostics.md)（Phase 3 計画 — 本 PR は step 3 of 3）
 - **依存**: [#1244](https://github.com/kompiro/karasu/pull/1244)（PR-A: ValueNode AST）、[#1254](https://github.com/kompiro/karasu/pull/1254)（PR-B: validator + schema）
 
 ## 受け入れ条件

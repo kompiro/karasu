@@ -1,7 +1,7 @@
 /**
  * Browser locale resolution for the karasu app.
  *
- * Resolution order (per ADR-20260420-03):
+ * Resolution order (per ADR-34):
  *   localStorage['karasu-locale'] → navigator.language → 'en' fallback
  *
  * The `Locale` type and `isLocale` guard now live in `@karasu-tools/i18n`,

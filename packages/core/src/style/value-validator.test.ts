@@ -29,7 +29,7 @@ describe("validateStyleValues — ident-of", () => {
     expect(diags[0].code).toBe("style-invalid-enum-value");
   });
 
-  // ADR-20260610-01 / #1492: stroke-style is an official edge property.
+  // ADR-1492 / #1492: stroke-style is an official edge property.
   it("accepts stroke-style with a line-style keyword", () => {
     expect(validate(`edge { stroke-style: dotted; }`)).toEqual([]);
   });

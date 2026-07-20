@@ -11,7 +11,7 @@ import type { KrsNode, ResourceNode, EntityNode } from "../types/ast.js";
  *   store. This is the design's canonical form — the usecase thinks in terms of
  *   the entity, and the physical table is derived transitively
  *   (`usecase → entity → table → database`). See
- *   `docs/adr/20260715-01-domain-entity-modeling.md`.
+ *   `docs/adr/1870-domain-entity-modeling.md`.
  */
 export interface ResolvedResourceRef {
   /**
@@ -63,7 +63,7 @@ function collectEntities(node: KrsNode, out: Map<string, EntityNode[]>): void {
  *
  * Resolution requires a **unique** entity match: a duplicated entity id is
  * ambiguous and left unresolved, mirroring the unique-target requirement the
- * design specifies (`docs/adr/20260715-01-domain-entity-modeling.md`, §resource 解決).
+ * design specifies (`docs/adr/1870-domain-entity-modeling.md`, §resource 解決).
  */
 export function buildEntityResolver(roots: KrsNode[]): EntityResolver {
   const index = new Map<string, EntityNode[]>();

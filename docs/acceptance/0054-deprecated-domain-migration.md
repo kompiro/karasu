@@ -97,7 +97,7 @@ system OrderSystem {
 ```
 
 **Expected:**
-- No error diagnostic appears (per ADR-20260514-02 — a dispersed domain is representable, with or without migration annotations).
+- No error diagnostic appears (per ADR-1386 — a dispersed domain is representable, with or without migration annotations).
 - The system diagram renders.
 - An info note appears in the WarningPanel (ℹ icon): `Domain "Contract" appears under multiple services`.
 

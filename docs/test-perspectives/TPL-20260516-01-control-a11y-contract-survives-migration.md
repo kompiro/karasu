@@ -13,7 +13,7 @@ known_consumers:
   - diff-mode-banner
 discovered_from:
   - issue: "#1399"
-  - root_cause_adr: "ADR-20260515-01"
+  - root_cause_adr: "ADR-1368"
 related_to:
   - TPL-20260510-09
 topic: app-ui

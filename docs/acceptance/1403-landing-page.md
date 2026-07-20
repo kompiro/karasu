@@ -4,7 +4,7 @@
 > ドキュメントサイト（`packages/docs-site/`、Astro Starlight）に置き換えられ、`site/`
 > は削除された。`pages.yml` は `packages/docs-site/dist` をデプロイする。以下の手動確認
 > 項目はもう適用されない。後継は [AT-1575](1575-docs-site.md)、決定は
-> [ADR-20260616-03](../adr/20260616-03-docs-site-ssg.md) を参照。記録として残す。
+> [ADR-1575](../adr/1575-docs-site-ssg.md) を参照。記録として残す。
 
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1403](https://github.com/kompiro/karasu/issues/1403)

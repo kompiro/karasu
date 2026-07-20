@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1632](https://github.com/kompiro/karasu/issues/1632)
-- **関連 ADR**: [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md)
+- **関連 ADR**: [ADR-1632](../adr/1632-infra-physical-realize.md)
 - **対象ファイル**: `packages/core/src/resolver/warnings.ts`, `packages/core/src/builtins/reference-data.ts`, `packages/core/src/view/deploy-view-extract.ts`
 
 ## 受け入れ条件

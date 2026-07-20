@@ -1,6 +1,6 @@
 ---
-id: ADR-YYYYMMDD-NN
-title: 短く人間が読めるタイトル（body H1 の `:` 以降と一致させる、原則日本語 — see ADR-20260427-02）
+id: ADR-<n>   # <n> = originating Issue number (or PR number if none)
+title: 短く人間が読めるタイトル（body H1 の `:` 以降と一致させる、原則日本語 — see ADR-830）
 status: accepted
 date: YYYY-MM-DD
 # topic must match one of the section headings in docs/adr/README.md:
@@ -11,12 +11,12 @@ topic: core-concepts
 # authors: [your-handle]
 
 # --- Relationships (all optional; leave as empty arrays if unused) ---
-# supersedes: [ADR-YYYYMMDD-NN]           # this ADR replaces the listed ones (status=superseded on those)
-# superseded_by: ADR-YYYYMMDD-NN          # only when status=superseded; scalar or null
-# depends_on: [ADR-YYYYMMDD-NN]           # prerequisites this ADR assumes
-# related_to: [ADR-YYYYMMDD-NN]           # reference-only; no semantic dependency
-# conflicts_with: [ADR-YYYYMMDD-NN]       # mutually exclusive alternatives
-# refines: [ADR-YYYYMMDD-NN]              # this ADR is a concrete specialization of an abstract one
+# supersedes: [ADR-<n>]           # this ADR replaces the listed ones (status=superseded on those)
+# superseded_by: ADR-<n>          # only when status=superseded; scalar or null
+# depends_on: [ADR-<n>]           # prerequisites this ADR assumes
+# related_to: [ADR-<n>]           # reference-only; no semantic dependency
+# conflicts_with: [ADR-<n>]       # mutually exclusive alternatives
+# refines: [ADR-<n>]              # this ADR is a concrete specialization of an abstract one
 
 # --- Scope (optional) ---
 # `scope.concerns` is a controlled vocabulary of cross-cutting aspects that
@@ -48,7 +48,7 @@ topic: core-concepts
 #   - "external IdP remains available"
 ---
 
-# ADR-YYYYMMDD-NN: Short human-readable title (matches frontmatter title after the `:`)
+# ADR-<n>: Short human-readable title (matches frontmatter title after the `:`)
 
 - **日付**: YYYY-MM-DD
 - **ステータス**: 決定済み
@@ -78,7 +78,7 @@ Alternatives considered and rejected (only when useful for posterity).
 
 - `status` must be one of: `proposed` | `accepted` | `deprecated` | `superseded` | `not_adopted`.
 - `topic` is required and must be one of the controlled values listed above (matches `docs/adr/README.md` section headings).
-- `id` must equal `ADR-<YYYYMMDD>-<NN>` derived from the filename.
+- `id` must equal `ADR-<n>` derived from the filename, where `<n>` is the originating GitHub Issue number (or the PR number when no issue originated it). No zero padding.
 - The body H1 heading must match `ADR-<id>: <title>` from frontmatter.
 - When `status: superseded`, `superseded_by` is required **and** the new ADR must list this ID in its `supersedes`. The validator enforces bidirectional consistency.
 - The prose header (`- **日付**:`, `- **ステータス**:`, `- **関連**:`) stays for human readers; frontmatter is for tooling. Both coexist.

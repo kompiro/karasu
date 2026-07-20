@@ -35,7 +35,7 @@ scope:
 cross-cutting なチェック（整合性チェック・drift guard）を CI workflow / VCS フックに追加・改修するとき:
 
 - [ ] そのチェックが**破られる原因となりうる変更パス**を列挙し、`paths` / `glob` がそのすべてを含むか確認する（チェック定義の置き場所ではなく）
-- [ ] paired-stub workflow パターン（ADR-20260428-08）を使う場合、Required check として「コード PR でも docs PR でも必ず実チェックが走る」経路があるか確認する。skip 側スタブで実チェックが skip される穴がないか
+- [ ] paired-stub workflow パターン（ADR-953）を使う場合、Required check として「コード PR でも docs PR でも必ず実チェックが走る」経路があるか確認する。skip 側スタブで実チェックが skip される穴がないか
 - [ ] path filter が広すぎて毎回フル実行になるのを避けたいだけなら、軽量チェック（grep ベース等）は filter せず常時実行する選択肢を検討する
 - [ ] CI と VCS フックの両方に同じチェックがある場合、発火条件（`paths` と `glob`）が同じ集合を表すか確認する
 

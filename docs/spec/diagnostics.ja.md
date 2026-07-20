@@ -75,7 +75,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-team-in-organization` | error | team id が `organization` 内で重複する。 |
 | `duplicate-resource-operation` | warning | 1 つの resource に CRUD verb が複数回並ぶ。 |
 | `duplicate-crud-decoration-target` | warning | CRUD decoration が同じ operation を複数回対象にする。 |
-| `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-20260615-01](../adr/20260615-01-ownership-during-migration.md) 参照）。 |
+| `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-1566](../adr/1566-ownership-during-migration.md) 参照）。 |
 | `duplicate-boundary-assignment` | info | node が複数の `boundary` に含まれる（事実。最初に宣言された boundary を採用）。 |
 | `node-id-multiple-locations` | warning | 同じ node id が複数の場所に現れる。 |
 
@@ -148,7 +148,7 @@ annotation パラメータと、削除・非推奨になったプロパティ。
 | --- | --- | --- |
 | `annotation-param-unsupported` | warning | annotation のパラメータ key がその annotation で認識されない。 |
 | `annotation-possible-typo` | info | annotation 名が builtin の near-match（typo の示唆）。 |
-| `team-property-removed` | error | 削除済みの `team` プロパティが使われる（[ADR-20260614-01](../adr/20260614-01-remove-team-property.md) 参照）。 |
+| `team-property-removed` | error | 削除済みの `team` プロパティが使われる（[ADR-1564](../adr/1564-remove-team-property.md) 参照）。 |
 
 ### import とファイル
 

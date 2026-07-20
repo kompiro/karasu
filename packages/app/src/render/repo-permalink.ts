@@ -25,7 +25,7 @@ import { encodeShare } from "../utils/inline-share.js";
  *
  * Scope (v1, per the design doc's decided points):
  * - **public repos only** — the service holds no GitHub token (BYOK,
- *   ADR-20260407-04); private repos are a follow-up.
+ *   ADR-9017); private repos are a follow-up.
  * - **`@<ref>` optional** — omitted → default branch `HEAD` (mutable, "read this
  *   repo now"); `@<branch>` / `@<sha>` pin a ref (`@<sha>` = immutable, the ADR
  *   permalink form). Every form is a single raw fetch — no GitHub API hop (avoids

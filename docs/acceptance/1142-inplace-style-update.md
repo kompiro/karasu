@@ -9,8 +9,8 @@ type: product
 - **対象ファイル**:
   - `packages/app/src/lib/append-style-rule.ts`、`packages/app/src/lib/append-style-rule.test.ts`
   - `packages/app/src/components/AppShell.tsx`
-- **関連 ADR**: [ADR-20260508-01](../adr/20260508-01-gui-style-inplace-update.md)（supersedes [ADR-20260506-01](../adr/20260506-01-gui-driven-style-editing.md)）
-- **依存**: [ADR-20260506-02](../adr/20260506-02-edge-id-selector.md)（`edge#<canonicalId>` selector）
+- **関連 ADR**: [ADR-1142](../adr/1142-gui-style-inplace-update.md)（supersedes [ADR-1076](../adr/1076-gui-driven-style-editing.md)）
+- **依存**: [ADR-1096](../adr/1096-edge-id-selector.md)（`edge#<canonicalId>` selector）
 
 ## 受け入れ条件
 

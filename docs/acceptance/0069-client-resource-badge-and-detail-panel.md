@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 `client { resource <kind> "<name>" }` の SVG レンダリングを **件数バッジ** に集約し、詳細は `NodeDetailPanel` の "Storage resources" セクションに移動したことを確認する
-（Issue [#914](https://github.com/kompiro/karasu/issues/914)、設計は [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)）。
+（Issue [#914](https://github.com/kompiro/karasu/issues/914)、設計は [ADR-823](../adr/823-client-mcp-modeling.md)）。
 
 Phase 5 (#855) では resource 行が 1 件につき 1 行カード上にレンダリングされ、6 件並ぶとカードが縦長になっていた。本変更ではカード上は `📦 ×N` の単一行に圧縮し、強制 3 段レイアウト (Phase 6) との相性を回復する。
 
@@ -76,5 +76,5 @@ resource を持たないクライアントでは同セクションは出ない�
 
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823) — `client` kind MVP の最終追跡
 - 本 Issue: [#914](https://github.com/kompiro/karasu/issues/914)
-- ADR: [`docs/adr/20260428-06-client-mcp-modeling.md`](../adr/20260428-06-client-mcp-modeling.md)
+- ADR: [`docs/adr/823-client-mcp-modeling.md`](../adr/823-client-mcp-modeling.md)
 - 先行 AT: [`docs/acceptance/0066-client-kind-phase5-resource.md`](0066-client-kind-phase5-resource.md)

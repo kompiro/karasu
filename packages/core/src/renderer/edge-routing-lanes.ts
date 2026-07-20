@@ -1,6 +1,6 @@
 /**
  * Lane allocation for edges that share an inter-row channel (Phase 3 of
- * #968 — see ADR-20260429-01 and Issue #996).
+ * #968 — see ADR-968 and Issue #996).
  *
  * After `routeOrthogonalEdges` adds L-shape waypoints to skip-layer edges,
  * multiple edges can land on the same channel y. Their horizontal segments

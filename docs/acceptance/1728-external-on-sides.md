@@ -3,13 +3,13 @@
 - **日付**: 2026-06-24
 - **Issue**: #1728
 - **PR**: なし（実装 PR で追記）
-- **関連ADR**: [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md)（本変更が refine）
+- **関連ADR**: [ADR-1724](../adr/1724-system-view-infra-external-tier-split.md)（本変更が refine）
 - **Related TPLs**: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)（external サイド配置の不変条件）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)
 - **対象**: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）, `docs/spec/style.md`（`column`）, `examples/en/hato/`（実モデル測定用、`index.krs` + `hato.krs.style`）
 
 ## 概要
 
-system view で `[external]` サービスを最下段バンドではなく左右のサイド列に配置し、`service → external` エッジを水平化して infra への下向きファンアウトとの交差を減らす（#1728、[ADR-20260623-06] を refine）。サイドは consuming-hub の x 重心で自動振り分け、`column: left/right` で override 可能。
+system view で `[external]` サービスを最下段バンドではなく左右のサイド列に配置し、`service → external` エッジを水平化して infra への下向きファンアウトとの交差を減らす（#1728、[ADR-1724] を refine）。サイドは consuming-hub の x 重心で自動振り分け、`column: left/right` で override 可能。
 
 ## 受け入れ条件
 
@@ -32,7 +32,7 @@ system view で `[external]` サービスを最下段バンドではなく左右
 
 > ✅ Automated by `packages/core/src/renderer/layout.test.ts` (suite-wide)
 
-- [x] `database [external]` は infra 行に留まる（kind がタグに優先、[ADR-20260623-06] の境界ルール）
+- [x] `database [external]` は infra 行に留まる（kind がタグに優先、[ADR-1724] の境界ルール）
 - [x] 既存の infra tier 配置（#1724）と infra pull-up（#974）が無変更で通る
 
 ### AC-4: 交差削減（実モデル・決定性）

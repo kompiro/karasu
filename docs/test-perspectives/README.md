@@ -4,7 +4,7 @@
 
 karasu で **再発しうる失敗パターン** を、構造化された観点として蓄積する。新機能の DesignDoc 作成時や受け入れテスト設計時に、これらの観点が自動的に参照される状態を作ることが目的。
 
-運用開始の意思決定は [ADR-20260509-04](../adr/20260509-04-test-perspective-library.md) に記録されている。
+運用開始の意思決定は [ADR-1192](../adr/1192-test-perspective-library.md) に記録されている。
 
 > **メタ観点**: 個別 TPL とは別に、**全機能 PR に共通して適用するスコープフィルタ** — 「ゆっくり変化する構造的な文脈」フィルタ — は TPL スキーマに載せず、新機能の提案・レビューフェーズで surface する形にしている。原典は [`docs/concepts.ja.md`「非目標 → 共通フィルタ」](../concepts.ja.md)、チェックリストは [feature request Issue テンプレート](../../.github/ISSUE_TEMPLATE/feature-request.yml) と [PR テンプレート](../../.github/PULL_REQUEST_TEMPLATE.md) の "Scope filter" セクションにある。topic / package に紐付かないメタ観点なので TPL スキーマには載せていない（経緯は #1221）。
 
@@ -429,11 +429,11 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260514-05](TPL-20260514-05-dangling-edge-preserves-node.md) | edge / relation の片側が未解決でも、解決できた側のノードは drop しない | resolver | docs/spec/syntax.md (S6), #1381 |
 | [TPL-20260514-07](TPL-20260514-07-infra-redeclared-across-files.md) | 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断で surface する | resolver | docs/spec/syntax.md (S4.5), #1385 |
 | [TPL-20260514-08](TPL-20260514-08-diagnostic-register-fact-vs-style.md) | 新規 resolver diagnostic の register は「事実か流派判断か」で決める | core-concepts | docs/concepts.md (§What karasu visualizes vs. what it doesn't prescribe), #1386 |
-| [TPL-20260516-01](TPL-20260516-01-control-a11y-contract-survives-migration.md) | interactive control の a11y 契約は移行・リファクタで静かに壊れる | app-ui | ADR-20260515-01, #1399 |
+| [TPL-20260516-01](TPL-20260516-01-control-a11y-contract-survives-migration.md) | interactive control の a11y 契約は移行・リファクタで静かに壊れる | app-ui | ADR-1368, #1399 |
 | [TPL-20260518-01](TPL-20260518-01-involutive-toggle-renders-both-states.md) | involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する | app-ui | #1402 |
 | [TPL-20260519-01](TPL-20260519-01-global-shortcut-text-input-inhibition.md) | グローバルキーボードショートカットはテキスト入力フォーカス下での挙動を契約として検証する | app-ui | packages/app/src/keyboard/KeyboardShortcutDispatcher.tsx |
 | [TPL-20260519-02](TPL-20260519-02-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
-| [TPL-20260519-03](TPL-20260519-03-single-renderer-for-structured-messages.md) | 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する | core-concepts | ADR-20260420-03 |
+| [TPL-20260519-03](TPL-20260519-03-single-renderer-for-structured-messages.md) | 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する | core-concepts | ADR-34 |
 | [TPL-20260520-01](TPL-20260520-01-overlay-z-index-scale.md) | overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ | app-ui | #1468 |
 | [TPL-20260520-02](TPL-20260520-02-consistency-check-triggers-on-both-sides.md) | 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる | build | #1480 |
 | [TPL-20260610-01](TPL-20260610-01-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
@@ -443,9 +443,9 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260613-01](TPL-20260613-01-persistent-store-init-and-mutation-resilience.md) | 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する | app-ui | #1530 / #1531 |
 | [TPL-20260613-02](TPL-20260613-02-edit-and-watch-same-store.md) | 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する | app-ui | #1535 / #1536 |
 | [TPL-20260613-03](TPL-20260613-03-cancel-stale-async-effect-results.md) | 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する | app-ui | #1534 / #1540 |
-| [TPL-20260615-01](TPL-20260615-01-migration-priority-index-winner.md) | 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる | core-concepts | docs/spec/tags-annotations.md, ADR-20260411-02 / ADR-20260615-01, #1583 |
+| [TPL-20260615-01](TPL-20260615-01-migration-priority-index-winner.md) | 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる | core-concepts | docs/spec/tags-annotations.md, ADR-477 / ADR-1566, #1583 |
 | [TPL-20260615-02](TPL-20260615-02-diagnostic-absence-assertion-scope-severity.md) | 診断の不在を assert するテストは severity でスコープする（info register は open set） | testing | #1608 |
-| [TPL-20260616-01](TPL-20260616-01-docs-pipeline-link-anchor-resolution.md) | docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる | build | ADR-20260616-03 |
+| [TPL-20260616-01](TPL-20260616-01-docs-pipeline-link-anchor-resolution.md) | docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる | build | ADR-1575 |
 | [TPL-20260616-02](TPL-20260616-02-diagnostics-catalog-completeness.md) | 全診断コードは規則カタログに 1 件の項目を持つ（規則 ↔ 診断の双方向完全性） | parser | #1623 / docs/spec/diagnostics.md |
 | [TPL-20260616-03](TPL-20260616-03-client-vocabulary-structure-not-implementation.md) | client の語彙はアクセスパスの構造を名指し、実装の詳細を名指さない | core-concepts | #1625 / docs/concepts.md |
 | [TPL-20260618-01](TPL-20260618-01-style-lookup-matches-layout-id-form.md) | ノード style/metadata の lookup は layout が使う id 形（bare / 修飾）をすべて試す | renderer | #1666 |
@@ -454,24 +454,24 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260623-01](TPL-20260623-01-user-facing-surface-docs-sync.md) | user-facing な app/CLI surface の変更は docs/tools の両ロケール + reference に反映する | build | #1715 |
 | [TPL-20260623-02](TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) | cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、重複する集合は同期させる | resolver | #1720 |
 | [TPL-20260623-03](TPL-20260623-03-gated-test-suite-detection-gap.md) | label-gated / 遅延実行のテストスイートは、その検証対象を変える PR でマージ前に必ず起動させる | testing | #1725 |
-| [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md) | system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する | renderer | ADR-20260429-02, #1724 |
+| [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md) | system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する | renderer | ADR-974, #1724 |
 | [TPL-20260624-01](TPL-20260624-01-at-e2e-spec-linkage-no-drift.md) | AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す/rename したら AT doc から辿れること） | testing | #1680 |
 | [TPL-20260624-02](TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) | 要素を主構造から抜き出して別グループに再配置するとき、全要素ちょうど一度配置 + 参照エッジの端点保持を検証する | renderer | #1738 |
 | [TPL-20260624-03](TPL-20260624-03-edge-endpoint-selector-id-form.md) | エッジの端点で引くセレクタ / lookup は、ビューが格納する端点 id 形（bare / dot-notation）で比較する | styling | #1755 |
-| [TPL-20260624-04](TPL-20260624-04-external-side-placement-invariant.md) | system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する | renderer | ADR-20260623-06, #1728 |
+| [TPL-20260624-04](TPL-20260624-04-external-side-placement-invariant.md) | system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する | renderer | ADR-1724, #1728 |
 | [TPL-20260625-01](TPL-20260625-01-root-svg-viewbox-responsive.md) | プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に左上クロップせず内容がスケールする — 全合成ビルダーで共有 | renderer | #1790 |
 | [TPL-20260626-01](TPL-20260626-01-raster-pipeline-glyph-coverage.md) | 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする（PNG の絵文字フォント等） | renderer | #1799 |
 | [TPL-20260630-01](TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |
 | [TPL-20260630-02](TPL-20260630-02-restore-state-survive-later-reset.md) | URL/共有から復元する state は、後発の seed reset を越えて再適用する | navigation | #1842 |
 | [TPL-20260630-03](TPL-20260630-03-adr-permalink-records-source.md) | ADR permalink は record ではなく pointer — in-repo `.krs` source を必須で記録する | adr-tooling | #1829 |
 | [TPL-20260711-01](TPL-20260711-01-entity-carries-no-attributes.md) | `entity` は名前・関連・物理対応のみを受け付け、属性（カラム・型・主キー）を持たせない | parser | #1870 |
-| [TPL-20260711-02](TPL-20260711-02-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-20260711-03, #1859 |
+| [TPL-20260711-02](TPL-20260711-02-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-1858, #1859 |
 | [TPL-20260712-01](TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md) | 端点 id を書き換える集約/畳み込み変換は、元 id にキーされた per-要素の装飾（diff state 等）を再導出する（retarget 後も装飾が残ることを assert） | renderer | #1886 |
 | [TPL-20260714-01](TPL-20260714-01-cross-domain-entity-reference-qualified.md) | cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照し、bare id は intra-domain 専用（cross-domain へ勝手に解決しない） | edges | #1911 |
 | [TPL-20260714-02](TPL-20260714-02-inferred-tag-only-soft-fk.md) | `translate --from db` は Soft FK 由来の関連にのみ `[inferred]` を付け、Explicit FK 由来は無タグ（確定）にする。既定スタイルは色のみ（線種は kind に委ねる） | edges | #1909 |
 | [TPL-20260715-01](TPL-20260715-01-new-route-shape-participates-in-overlap-passes.md) | 新しいエッジ route 形（waypoint 構成）を足したら、既存の overlap 回避パス（lane 分離・port fan-out）がその形を素通りしていないか確認する | renderer | #1954 |
 | [TPL-20260715-02](TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) | infra leaf のドメイン所有は entity 層から導出する（物理 table に宣言しない）。leaf 粒度・所有ドメインの集合・system スコープで扱う | resolver | #1819 |
-| [TPL-20260716-01](TPL-20260716-01-keystone-terms-single-home.md) | keystone・permalink の coined 用語は単一の正典（docs/glossary.md）を持つ — 他 doc は再定義せず参照し、用語集は機構ドキュメントと矛盾しない | build | docs/glossary.md, ADR-20260702-01, #1831 |
+| [TPL-20260716-01](TPL-20260716-01-keystone-terms-single-home.md) | keystone・permalink の coined 用語は単一の正典（docs/glossary.md）を持つ — 他 doc は再定義せず参照し、用語集は機構ドキュメントと矛盾しない | build | docs/glossary.md, ADR-1829, #1831 |
 | [TPL-20260716-02](TPL-20260716-02-view-state-gate-parity-across-surfaces.md) | view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える — 一部 surface だけ gate すると残りが undocumented 挙動として出荷される | renderer | #1983, #2033 |
 | [TPL-20260717-01](TPL-20260717-01-pnpm-double-dash-arg-forwarding.md) | `pnpm run <script> -- <flag>` は flag が下位ツールに届かないことがある — CLI 引数は下位ツールに直接渡し、2 経路起動は引数の渡し方を揃える | testing | #2046 |
 | [TPL-20260717-02](TPL-20260717-02-svg-interactive-control-paints-last.md) | SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つ — document order がそのまま重なり順 | renderer | #2044 |

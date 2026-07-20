@@ -318,7 +318,7 @@ describe("export surfaces draw frames on drill levels (#1983)", () => {
     // Non-member entity stays outside the frame's membership.
     expect(result.svg).toContain('data-node-id="Invoice"');
     // Frames only: the ⊖ collapse control is gated on `interactive`, which the
-    // entity view does not pass (ADR-20260630-02).
+    // entity view does not pass (ADR-1821).
     expect(result.svg).not.toContain("krs-group-controls");
   });
 
@@ -622,7 +622,7 @@ boundary cluster "Cluster" {
 // If a future view change makes one of these cases fail — or extending
 // `LogicalNodeKind` fails the `satisfies` guard below at typecheck — a kind
 // has (or may have) lost its rendering level and the diagnostic decision must
-// be revisited (docs/adr/20260717-01-boundary-drilldown-grouping.md).
+// be revisited (docs/adr/1983-boundary-drilldown-grouping.md).
 const EVERY_KIND_SRC = `
 system Shop {
   service Orders {
@@ -751,7 +751,7 @@ describe("every containable kind renders (framed) at some groupable level — th
     );
     expect(result.hasContent).toBe(true);
     expect(result.svg).toContain('data-node-id="OrderEntity"');
-    // The entity view draws frames only (no collapse surface — ADR-20260630-02),
+    // The entity view draws frames only (no collapse surface — ADR-1821),
     // so the dedicated-boundary frame is the membership proof here.
     expect(result.svg).toContain('data-container-id="__group_fence_entity__"');
   });

@@ -89,7 +89,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     ["Warning", diagWarnings],
     // Info-severity parser diagnostics (e.g. duplicate-owner-assignment) honour
     // their register with an `Info:` prefix — mirroring the info-warning loop
-    // below — instead of being dropped (ADR-20260615-01 / ADR-20260514-02).
+    // below — instead of being dropped (ADR-1566 / ADR-1386).
     ["Info", diagInfos],
   ];
   for (const [prefix, list] of severityGroups) {
@@ -98,7 +98,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   for (const w of warnings) {
     // Honour the warning's register: info-severity kinds (e.g.
     // domain-dispersal) print as `Info:`, not `Warning:` — see
-    // ADR-20260514-02.
+    // ADR-1386.
     const prefix = warningSeverity(w.kind) === "info" ? "Info" : "Warning";
     process.stderr.write(`${prefix}: ${formatWarning(w).message}\n`);
   }

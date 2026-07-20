@@ -12,7 +12,7 @@ name: Release — Prepare
 # is disabled (Issue #1370); click "Compare & pull request" on the pushed
 # branch. Opening the PR as a human is also what makes the required checks
 # run (a GITHUB_TOKEN push does not trigger other workflows). See
-# ADR-20260623-01 and docs/process.md "リリースの流れ".
+# ADR-1370 and docs/process.md "リリースの流れ".
 
 on:
   workflow_dispatch:

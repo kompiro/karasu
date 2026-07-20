@@ -3,7 +3,7 @@ import { decodeShare } from "../utils/inline-share.js";
 
 /**
  * Server-rendered share page for karasu-nest OGP unfurl (design:
- * docs/adr/20260626-01-karasu-nest-hosted-preview.md follow-up, Issue #1801).
+ * docs/adr/1783-karasu-nest-hosted-preview.md follow-up, Issue #1801).
  *
  * The inline-share payload normally lives in the URL *fragment* (`#s=`), which
  * OGP crawlers never send to the server — so a `#s=` link cannot produce a

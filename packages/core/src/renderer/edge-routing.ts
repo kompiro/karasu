@@ -100,7 +100,7 @@ export function renderEdge(
   // Group-by against-flow edges are dashed (#1859) so backward inter-group
   // dependencies stand out — but only when the author left `stroke-style` at
   // its default, so an explicit style still wins (mirrors the label-position
-  // override precedence, ADR-20260511-01).
+  // override precedence, ADR-1185).
   const dashArray =
     edge.groupBackward && style.strokeStyle === "solid"
       ? STROKE_DASHARRAY.dashed

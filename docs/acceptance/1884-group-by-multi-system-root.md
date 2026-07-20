@@ -1,10 +1,10 @@
 # AT-1884: Group by team — multi-system root view でも grouping を適用する
 
 - **日付**: 2026-07-13
-- **Issue**: #1884（follow-up of #1858 / ADR-20260711-03）
+- **Issue**: #1884（follow-up of #1858 / ADR-1858）
 - **PR**: (この PR)
-- **関連 ADR**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（Group by: team P2a）
-- **設計**: [ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md)
+- **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（Group by: team P2a）
+- **設計**: [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)
 - **Related TPLs**:
   - [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（並列関数ファミリは parameter parity を保つ — 本 bug の直接の失敗クラス）
   - [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）

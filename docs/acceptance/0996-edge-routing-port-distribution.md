@@ -6,7 +6,7 @@
   - `packages/core/src/renderer/edge-routing-ports.ts`（新規）
   - `packages/core/src/renderer/edge-routing-lanes.ts`（新規）
   - `packages/core/src/renderer/layout.ts`
-- **ADR**: [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)
+- **ADR**: [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)
 
 ## 受け入れ条件
 
@@ -36,6 +36,6 @@
 
 ## スコープ外（follow-up）
 
-- 1 channel あたりのレーン数上限（密な fan-out で channel が縦に広がりすぎる問題）— ADR-20260429-01 の判断保留事項
+- 1 channel あたりのレーン数上限（密な fan-out で channel が縦に広がりすぎる問題）— ADR-968 の判断保留事項
 - ghost domain edge / cyclic edge の port 分散
 - 横方向 layered モード対応

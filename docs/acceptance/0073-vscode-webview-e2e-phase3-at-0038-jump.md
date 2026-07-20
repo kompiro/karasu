@@ -102,11 +102,11 @@ un-skip** が含まれる。
 - AT-0037-9（SVG-click による editor ↔ preview 双方向ジャンプの SVG 側） — Phase 3 内の別 PR（同じ LSP packaging fix の上に乗る）
 - AT-0039 残り TC（description / link / Jump-to-editor / [ⓘ] ボタン） — Phase 3 内の別 PR
 - AT-0042-vscode（cross-diagram navigation） — Phase 3 内の別 PR
-- ADR-20260428-05 の supersede — Phase 3 完了時に実施
+- ADR-926 の supersede — Phase 3 完了時に実施
 
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014), [#1024](https://github.com/kompiro/karasu/issues/1024) (本 PR で close)
 - 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 同 Phase の hint visibility AT: `docs/acceptance/0072-vscode-webview-e2e-phase3-at-0038.md`
-- 既存 ADR: ADR-20260428-03（拡張ホスト smoke）, ADR-20260428-05（マニュアル運用 — Phase 3 完了時に supersede 予定）
+- 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）

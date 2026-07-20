@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-25
 - **関連 Issue**: [#1777](https://github.com/kompiro/karasu/issues/1777)（親: [#1642](https://github.com/kompiro/karasu/issues/1642)）
-- **関連 ADR**: [ADR-20260616-08](../adr/20260616-08-en-ja-example-parity.md)（en/ja example parity）
+- **関連 ADR**: [ADR-1642](../adr/1642-en-ja-example-parity.md)（en/ja example parity）
 - **対象**:
   - `examples/en/ec-platform/`（15 ファイル / 7 ステージの英語版）
   - `packages/core/src/builtins/examples.ts`（`EC_PLATFORM_PROJECTS_EN`）

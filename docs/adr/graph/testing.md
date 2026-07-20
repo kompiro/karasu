@@ -6,23 +6,23 @@ Other topics: [overview](../graph.md).
 ```mermaid
 flowchart TD
   subgraph testing["testing"]
-    ADR_20260324_01["ADR-20260324-01<br/>E2EテストよりQA手動確認を優先する"]
-    ADR_20260325_01["ADR-20260325-01<br/>コンポーネントテストに @testing-library/react を採用する"]
-    ADR_20260326_04["ADR-20260326-04<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
-    ADR_20260330_03["ADR-20260330-03<br/>モノレポ内 vitest の配置 — ルート install ではなく workspace d..."]
-    ADR_20260427_05["ADR-20260427-05<br/>Playwright 向け OPFS fixture ヘルパー"]
-    ADR_20260428_04["ADR-20260428-04<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
-    ADR_20260428_05["ADR-20260428-05<br/>VS Code WebView の DOM 系テストはマニュアル運用とする"]
-    ADR_20260428_09["ADR-20260428-09<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
-    ADR_20260429_09["ADR-20260429-09<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
-    ADR_20260509_01["ADR-20260509-01<br/>flaky な E2E テストは test.fixme でマークし追跡 Issue を立てる"]
-    ADR_20260509_04["ADR-20260509-04<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
-    ADR_20260717_02["ADR-20260717-02<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
+    ADR_33["ADR-33<br/>E2EテストよりQA手動確認を優先する"]
+    ADR_40["ADR-40<br/>コンポーネントテストに @testing-library/react を採用する"]
+    ADR_165["ADR-165<br/>モノレポ内 vitest の配置 — ルート install ではなく workspace d..."]
+    ADR_862["ADR-862<br/>Playwright 向け OPFS fixture ヘルパー"]
+    ADR_864["ADR-864<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
+    ADR_916["ADR-916<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
+    ADR_926["ADR-926<br/>VS Code WebView の DOM 系テストはマニュアル運用とする"]
+    ADR_1008["ADR-1008<br/>flaky な E2E テストは test.fixme でマークし追跡 Issue を立てる"]
+    ADR_1014["ADR-1014<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
+    ADR_1192["ADR-1192<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
+    ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
+    ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
-  ADR_20260412_05["ADR-20260412-05<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
-  ADR_20260326_04 --> ADR_20260325_01
-  ADR_20260429_09 -.supersedes.-> ADR_20260428_05
-  ADR_20260412_05 -.supersedes.-> ADR_20260324_01
+  ADR_529["ADR-529<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
+  ADR_9012 --> ADR_40
+  ADR_1014 -.supersedes.-> ADR_926
+  ADR_529 -.supersedes.-> ADR_33
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -30,17 +30,17 @@ flowchart TD
   classDef superseded fill:#e2e3e5,stroke:#6c757d,color:#383d41
   classDef not_adopted fill:#e2e3e5,stroke:#6c757d,color:#383d41,stroke-dasharray:3 3
   classDef ghost fill:#f5f5f5,stroke:#adb5bd,color:#6c757d,stroke-dasharray:2 2
-  class ADR_20260324_01 superseded
-  class ADR_20260325_01 accepted
-  class ADR_20260326_04 accepted
-  class ADR_20260330_03 accepted
-  class ADR_20260427_05 accepted
-  class ADR_20260428_04 accepted
-  class ADR_20260428_05 superseded
-  class ADR_20260428_09 accepted
-  class ADR_20260429_09 accepted
-  class ADR_20260509_01 accepted
-  class ADR_20260509_04 accepted
-  class ADR_20260717_02 accepted
-  class ADR_20260412_05 ghost
+  class ADR_33 superseded
+  class ADR_40 accepted
+  class ADR_165 accepted
+  class ADR_862 accepted
+  class ADR_864 accepted
+  class ADR_916 accepted
+  class ADR_926 superseded
+  class ADR_1008 accepted
+  class ADR_1014 accepted
+  class ADR_1192 accepted
+  class ADR_2045 accepted
+  class ADR_9012 accepted
+  class ADR_529 ghost
 ```

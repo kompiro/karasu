@@ -1,0 +1,131 @@
+---
+id: ADR-769
+title: "依存パッケージ更新 — 2026-04-20"
+status: accepted
+date: 2026-04-21
+topic: build
+scope:
+  concerns:
+    - dependencies
+---
+
+# ADR-769: 依存パッケージ更新 — 2026-04-20
+
+## Status
+
+Accepted
+
+## Context
+
+Thirteen Dependabot PRs were opened on 2026-04-20. Three are exact duplicates caused by the current `dependabot.yml` watching both `/` and each `/packages/*` directory (tracked separately in #771). Of the remaining ten, eight are patch/minor updates with the lockfile in sync, one is a patch update whose content is safe but whose lockfile needs a rebase before CI can pass (vite), and one is a **major** runtime-library bump that requires a QA pass (marked 17 → 18).
+
+This ADR summarizes each candidate so we can decide adoption per package. The "Deploy Preview to Cloudflare Pages" failure visible on every Dependabot PR is expected (secrets are not exposed to fork PRs) and is not a signal about the update itself.
+
+| Package | From | To | Type | PR | Status |
+|---------|------|----|------|----|--------|
+| `actions/setup-node` | 6.3.0 | 6.4.0 | GitHub Actions | #752 | Check ✓ |
+| `pnpm/action-setup` | 6.0.0 | 6.0.1 | GitHub Actions | #753 | Check ✓ |
+| `cloudflare/wrangler-action` | 3.14.1 | 3.15.0 | GitHub Actions | #754 | Check ✓ |
+| `lefthook` | 2.1.5 | 2.1.6 | dev | #760 | Check ✓ |
+| `@types/vscode` | 1.110.0 | 1.116.0 | dev | #761 | Check ✓ |
+| `@anthropic-ai/sdk` | 0.88.0 | 0.90.0 | runtime | #762 | Check ✓ |
+| `typescript` | 6.0.2 | 6.0.3 | dev (all workspaces) | #763 | Check ✓ |
+| `knip` | 6.3.0 | 6.5.0 | dev | #764 | Check ✓ |
+| `vite` | 8.0.5 | 8.0.9 | dev (app) | #757 | Check ✗ (lockfile only — content safe, adopt after rebase) |
+| `marked` | 17.0.6 | 18.0.2 | runtime (app) | #758 | Check ✗ (lockfile) + **MAJOR** (defer pending QA) |
+
+Duplicates to close without merging: #755, #756 (superseded by #763), #759 (superseded by #762).
+
+### typescript 6.0.2 → 6.0.3
+
+Stable patch release, bug fixes only. No API surface changes. Safe workspace-wide.
+
+### knip 6.3.0 → 6.5.0
+
+No breaking changes. 6.5.0 replaces `fast-glob` with `tinyglobby` and switches internals from `tsc` to `tsgo`; glob caching and walk dedupe improve performance. Several new ecosystem plugins (unused for karasu). Low risk — rerun `knip` after upgrade to catch any regressed false-positives in unused-code detection.
+
+### @anthropic-ai/sdk 0.88.0 → 0.90.0
+
+Purely additive: adds the `claude-opus-4-7` model, token-budget support, and `user_profiles` typing. 0.89 marks Sonnet/Opus 4 entries as deprecated in the model enum, so any code pinning the older IDs may surface a deprecation hint. No runtime break. Used in `packages/app`.
+
+### @types/vscode 1.110.0 → 1.116.0
+
+Additive `.d.ts` only — tracks VS Code API surface additions during that window. Action item: if `engines.vscode` in `packages/vscode/package.json` is pinned below 1.116, confirm the pin still matches what we intend to ship against; otherwise consumers on older hosts could miss typed APIs at runtime.
+
+### lefthook 2.1.5 → 2.1.6
+
+Bug-fix only: Windows path normalization for shell scripts, skip pty allocation when stdout is not a TTY, trailing-slash root normalization, better logging for scoped skipped jobs. karasu invokes lefthook via Claude Code hooks rather than git hooks directly, so risk is minimal.
+
+### cloudflare/wrangler-action 3.14.1 → 3.15.0
+
+Single minor feature: `wranglerVersion` now accepts ranges/tags (`4`, `^4.0.0`, `latest`) in addition to exact pins. Non-breaking; current pins continue to work.
+
+### pnpm/action-setup 6.0.0 → 6.0.1
+
+Bumps bundled pnpm to `v11.0.0-rc.2`. Behavioral note: `pnpm-lock.yaml` is written with two documents only when `packageManager` is configured via `devEngines.packageManager`. We should verify our `packageManager` field placement in the root `package.json` before merging, to avoid surprise lockfile-format churn on the next `pnpm install` in CI.
+
+### actions/setup-node 6.3.0 → 6.4.0
+
+Dependency refresh only (internal `@actions/*` bumps + updated Node.js version manifest). No workflow changes required.
+
+### vite 8.0.5 → 8.0.9 — adopt (after lockfile rebase)
+
+Security-adjacent hardening in 8.0.9: the dev server now rejects HMR patch file requests from untrusted origins. No CVE was assigned, but the scenario it closes is real — while `pnpm dev` is running on localhost, a malicious page opened in the same browser could previously fetch project sources via HMR / `@fs` endpoints because the dev server did not validate the request Origin. 8.0.9 rejects those cross-origin requests. Other fixes in this range: `strictPort` wildcard handling, `emptyOutDir` in watch mode, CSS sourcemap key collisions on same-basename files, SSR class property key hoisting. No breaking changes. vite is used only in `packages/app`.
+
+This update was initially flagged as "needs judgment" because #757 only touches `packages/app/package.json` and does not update `pnpm-lock.yaml`, causing the `Check` job to fail on `ERR_PNPM_OUTDATED_LOCKFILE`. The content of the bump itself is low-risk and the security hardening is worth adopting, so the conclusion is: **adopt after rebasing the lockfile** (`@dependabot rebase` comment, or regenerate locally via `pnpm install` on the branch). The lockfile drift is a mechanical CI blocker, not a signal about the upgrade.
+
+### marked 17.0.6 → 18.0.2 — **MAJOR**
+
+`marked` is used in `packages/app/src/components/NodeDetailPanel.tsx` for node-description markdown. Breaking changes to evaluate:
+
+- **Block tokens trim trailing blank lines.** Custom renderers/extensions that inspect `raw` or rely on blank-line padding may see different token text. karasu does not define custom renderers or extensions against marked, so this is expected to be inert — needs a snapshot run to confirm.
+- **Build requires TypeScript ≥ 5.9.** karasu is on TS 6.0.3 (after #763), so this is satisfied.
+- Parser correctness: GFM tables no longer greedily capture trailing newlines; headings/definitions no longer swallow multiple newlines. Subtle output shifts possible for markdown with blank lines around those constructs.
+- 18.0.1 / 18.0.2 ship a minifier-safe lookbehind regex and an infinite-loop fix for blank lines inside indented code blocks.
+
+Also missing the lockfile update. Requires a visual/QA pass on the NodeDetailPanel before adoption.
+
+## Decision
+
+Adopt all ten non-duplicate updates. Close the three duplicates.
+
+| PR | Package | Outcome |
+|----|---------|---------|
+| #752 | actions/setup-node 6.3 → 6.4 | Merged |
+| #753 | pnpm/action-setup 6.0.0 → 6.0.1 | Merged |
+| #754 | cloudflare/wrangler-action 3.14.1 → 3.15.0 | Merged |
+| #760 | lefthook 2.1.5 → 2.1.6 | Merged |
+| #761 | @types/vscode 1.110 → 1.116 | Merged |
+| #762 | @anthropic-ai/sdk 0.88 → 0.90 | Merged |
+| #763 | typescript 6.0.2 → 6.0.3 | Merged |
+| #764 | knip 6.3 → 6.5 | Merged |
+| #757 | vite 8.0.5 → 8.0.9 | Superseded by #777 (regenerated lockfile), merged |
+| #758 | marked 17 → 18 | Superseded by #778 (regenerated lockfile + AT `0060-marked-18-upgrade.md` passed), merged |
+| #755, #756, #759 | duplicates | Closed without merging |
+
+Merge order followed: GitHub Actions (#752, #753, #754) → workspace-wide `typescript` (#763) → remaining green-Check PRs (#760, #761, #762, #764) → #777 (vite replacement) → #778 (marked replacement, after QA).
+
+Dependabot's per-package directory scope (`/packages/app`) cannot update the root `pnpm-lock.yaml`, so #757 and #758 were re-opened as manually regenerated replacement PRs (#777, #778). This class of failure is tracked for structural fix in #771 (consolidate `dependabot.yml` to root only).
+
+## Consequences
+
+**Positive:**
+
+- Vite dev server gained HMR origin rejection, reducing a local-dev attack surface where a malicious page in the same browser could previously read project sources via `@fs` / HMR endpoints while `pnpm dev` was running.
+- `pnpm/action-setup` and `actions/setup-node` stay on current minor lines, reducing future upgrade friction.
+- `@anthropic-ai/sdk` 0.90 unlocks the `claude-opus-4-7` model typing for upcoming AI-support work (#355/#356/#362/#363/#364).
+- Dev-tooling (`knip`, `typescript`, `lefthook`, `@types/vscode`) stays current.
+- `marked` 18 correctness fixes (GFM tables no longer swallow trailing newlines; indented code block + blank line no longer hangs) land with explicit regression tests in `NodeDetailPanel.test.tsx` and an acceptance record at `docs/acceptance/0060-marked-18-upgrade.md`.
+
+**Negative:**
+
+- #757 and #758 required manual rebase to fix lockfile drift — small operational cost paid this cycle. The `dependabot.yml` consolidation in #771 is the structural follow-up to prevent the same pattern next week.
+
+**Follow-ups (open):**
+
+- #770 — Dependabot cooldown configuration to reduce churn from rapid patch releases.
+- #771 — Consolidate `dependabot.yml` npm entries to root only, eliminating the duplicate PR / orphaned-lockfile class of failure seen here.
+
+**Follow-ups (closed):**
+
+- #769 — mechanical PR processing, closed with all adopted PRs merged.

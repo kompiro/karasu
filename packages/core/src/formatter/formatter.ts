@@ -223,7 +223,7 @@ class Printer {
     if ("entries" in block) return this.renderLegendBlock(block as LegendBlock);
     // Everything else is a KrsNode: system / service / client / domain and the
     // infra kinds (database / queue / storage), which are legal at top level
-    // (ADR-20260422-05) and render exactly as they do when nested.
+    // (ADR-702) and render exactly as they do when nested.
     return this.renderNode(block as KrsNode, 0);
   }
 

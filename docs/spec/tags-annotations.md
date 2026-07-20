@@ -35,7 +35,7 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 >
 > Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync.
 
-> **`database [index]`** marks a `database` node as a **derived search / secondary index** — an ElasticSearch / OpenSearch cluster, or a vector store such as pgvector / Pinecone / Weaviate — rather than the system of record. It keeps the database cylinder and adds an `index` badge. The **concrete technology stays in the physical layer** via `store { type "ElasticSearch 8"; realizes SearchIndex }`, so the logical model does not churn when the engine is swapped. The same store can be *both* the system of record and its own index (e.g. Postgres + pgvector) — there the `[index]` tag is simply omitted. **`[index]` denotes a role, not a technology**: tag a secondary store that is derived as an index to search the system of record quickly. Even when it is a vector DB / ElasticSearch, do **not** add `[index]` if that store is itself the system of record. Background: [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md), Issue #1718.
+> **`database [index]`** marks a `database` node as a **derived search / secondary index** — an ElasticSearch / OpenSearch cluster, or a vector store such as pgvector / Pinecone / Weaviate — rather than the system of record. It keeps the database cylinder and adds an `index` badge. The **concrete technology stays in the physical layer** via `store { type "ElasticSearch 8"; realizes SearchIndex }`, so the logical model does not churn when the engine is swapped. The same store can be *both* the system of record and its own index (e.g. Postgres + pgvector) — there the `[index]` tag is simply omitted. **`[index]` denotes a role, not a technology**: tag a secondary store that is derived as an index to search the system of record quickly. Even when it is a vector DB / ElasticSearch, do **not** add `[index]` if that store is itself the system of record. Background: [ADR-316](../adr/316-database-as-first-class-node.md), Issue #1718.
 >
 > Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — `[index]` is an accepted tag that must carry an effect (the `index` badge), not merely a label.
 
@@ -161,7 +161,7 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 |---------|----------------|
 | Operation-tied storage (`localStorage`, `indexedDB`, `keychain`) | `resource <storageKind> "<name>"` |
 | HTTP session / authentication credentials | Separate vocabulary, tracked under #834 |
-| Runtime authorization (RBAC permission bundles, license / feature flag gates) | Not modelled in karasu — see [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md). The `user.role` property is an actor-archetype label, not an authz primitive — see [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) |
+| Runtime authorization (RBAC permission bundles, license / feature flag gates) | Not modelled in karasu — see [ADR-832](../adr/832-no-runtime-authz-modeling.md). The `user.role` property is an actor-archetype label, not an authz primitive — see [ADR-1281](../adr/1281-user-role-keyword-clarification.md) |
 
 ---
 
@@ -216,7 +216,7 @@ edge[implicit] {
 
 To support organizational queries in the AI chat ("who is the owner team of this service?", "I want to contact the affected teams"), declare teams in an `organization` block, have them `owns` the services / domains, and add contact `link`s to the `team` block.
 
-> The old `team "..."` string property on `service` / `domain` has been **removed** (per the deprecation plan of [ADR-20260323-03](../adr/20260323-03-organization-diagram.md)). The owner team is derived from `organization` / `owns`.
+> The old `team "..."` string property on `service` / `domain` has been **removed** (per the deprecation plan of [ADR-14](../adr/14-organization-diagram.md)). The owner team is derived from `organization` / `owns`.
 
 ```krs
 organization Corp {

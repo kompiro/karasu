@@ -5,7 +5,7 @@ import { bootChat, sendChatMessage, CHAT_ERROR_CASES } from "../fixtures/chat.js
  * AT-0050 Chat UI Phase 2 — BYOK + AI integration.
  *
  * Drives the BYOK chat flow against the Anthropic transport mock from
- * #864 (ADR-20260428-04). Each AC corresponds 1:1 to a bullet in
+ * #864 (ADR-864). Each AC corresponds 1:1 to a bullet in
  * `docs/acceptance/0050-chat-ui-phase2-byok-ai.md` (English-locale
  * variant — selectors target `karasu-locale=en` strings, which the
  * `anthropic` fixture pins by default).

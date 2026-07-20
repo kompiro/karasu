@@ -140,7 +140,7 @@ system DriftSample {
 }
 ```
 
-- [ ] **No error** diagnostic is shown (per ADR-20260514-02 — a dispersed domain is representable)
+- [ ] **No error** diagnostic is shown (per ADR-1386 — a dispersed domain is representable)
 - [ ] The system diagram **is** rendered
 - [ ] An **info** note appears in the WarningPanel (ℹ icon): `Domain "SharedDomain" appears under multiple services`
 
