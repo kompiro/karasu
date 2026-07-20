@@ -6,7 +6,7 @@
   - `packages/core/src/formatter/formatter.ts`
   - `packages/core/src/formatter/formatter-top-level-coverage.test.ts`（新規）
   - `packages/cli/src/fmt.test.ts`
-- **関連**: ADR-20260720-01（formatter の top-level 網羅を型と test で強制する）、ADR-20260410-02（`.krs` フォーマッター）、ADR-20260422-05（トップレベル infra ブロック）、TPL-20260510-02（round-trip 保証）
+- **関連**: ADR-20260720-02（formatter の top-level 網羅を型と test で強制する）、ADR-20260410-02（`.krs` フォーマッター）、ADR-20260422-05（トップレベル infra ブロック）、TPL-20260510-02（round-trip 保証）
 
 ## 受け入れ条件
 

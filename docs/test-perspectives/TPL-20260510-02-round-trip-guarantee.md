@@ -71,7 +71,7 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
   - 実行時: `createEmptyKrsFile()` の配列プロパティを `Object.keys` で走査し、fixture 表のキー集合と `toEqual` で突き合わせる
   - 型: fixture 表に `satisfies Record<ArrayKeys<KrsFile>, string>` を付け、キー欠落を `tsc` で落とす
 
-  の二重にした。どちらも「新しい構文を足した人が formatter を触り忘れる」瞬間に落ちる（ADR-20260720-01）
+  の二重にした。どちらも「新しい構文を足した人が formatter を触り忘れる」瞬間に落ちる（ADR-20260720-02）
 - **ガードが空振りしていないことを負のテストで確かめる**。#2076 の型ガードは初版が `const FIXTURES: Record<string, string>` という注釈で、index signature のせいで**恒真**（何も検査していない）だった。ダミーのキーを型に足して `tsc` が落ちることを確認して初めてガードとして成立する。実行時ガードも同様に、修正を部分 revert して落ちることを確認する
 
 ## 関連テスト

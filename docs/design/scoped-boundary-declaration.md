@@ -6,7 +6,7 @@
   - 引き金 Issue: [#2036](https://github.com/kompiro/karasu/issues/2036)（parent [#1822](https://github.com/kompiro/karasu/issues/1822) comprehension）／設計 PR: [#2058](https://github.com/kompiro/karasu/pull/2058)
   - carve-out 先: [#2088](https://github.com/kompiro/karasu/issues/2088)（team 軸 `owns` — org は system ツリー外の横断オーバーレイなのでスコープ解決が効かない）、[#2065](https://github.com/kompiro/karasu/issues/2065)（cross-cutting concern labeling — user-defined tag の領分）
   - 顕在化元: [#1983](https://github.com/kompiro/karasu/issues/1983) / [#2034](https://github.com/kompiro/karasu/issues/2034)（drill-down grouping 正規化 → [ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md)）
-  - 関連 Issue: [#2032](https://github.com/kompiro/karasu/issues/2032)（cross-file contains の偽 not-found）、[#2076](https://github.com/kompiro/karasu/issues/2076) / [ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md)（`fmt` が top-level `boundary` を落とす問題 — マージ済み。本設計の前提）
+  - 関連 Issue: [#2032](https://github.com/kompiro/karasu/issues/2032)（cross-file contains の偽 not-found）、[#2076](https://github.com/kompiro/karasu/issues/2076) / [ADR-20260720-02](../adr/20260720-02-formatter-top-level-exhaustiveness.md)（`fmt` が top-level `boundary` を落とす問題 — マージ済み。本設計の前提）
   - notation の母体（設計）: [`system-view-grouping.md`](./system-view-grouping.md)（P2b `boundary`/`contains`、status: 部分昇格）
   - 関連 ADR: [ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md)（per-view 交差セマンティクス。「per-level axis」却下・「nested boundary 構文」deferred の当事者 ADR）、[ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md)（同一ラベル・disjoint フレームの先例）、[ADR-20260513-03](../adr/20260513-03-import-system-nested.md)（同 id の意図的共存は正当）、[ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（`namespace` 語彙却下）、[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)（notation promotion gate）、[ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)（permalink deep anchor = leaf id）
   - 関連 TPL: [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)、[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)、[TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)、[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)、[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md)
@@ -127,7 +127,7 @@ tag（[#2065](https://github.com/kompiro/karasu/issues/2065)）に委ねる。
 | 層またぎ同 id | **正当**（診断ゼロ） | probe 実測、[ADR-20260513-03](../adr/20260513-03-import-system-nested.md) L36 |
 | drill-down view を持つ kind | 構造由来（`children.length > 0` かつ内容あり）。drawio exporter は `system \| service \| domain \| usecase` を hardcode。加えて domain ごとの entity view、infra コンテナの drill view | `drill-down-svg.ts:64-66` / `:320-322`、`exporter/drawio/build-drawio-project.ts:127-129`、`view-extract.ts:1330` |
 | `entity` の子 | ノード子を取れない（`parser.ts:628-638`） | 同左 |
-| **formatter** | **`boundary` を 1 箇所も扱っていない** — `printFile` の emit list（`formatter.ts:113-120`）に `file.boundaries` が無く、`fmt` が **top-level boundary を黙って消す**。[ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) で**修正済み**（マージ済み） | 同左 |
+| **formatter** | **`boundary` を 1 箇所も扱っていない** — `printFile` の emit list（`formatter.ts:113-120`）に `file.boundaries` が無く、`fmt` が **top-level boundary を黙って消す**。[ADR-20260720-02](../adr/20260720-02-formatter-top-level-exhaustiveness.md) で**修正済み**（マージ済み） | 同左 |
 | `duplicate-boundary-id` | **spec にのみ存在、実装なし**（`syntax.md:1004` / `syntax.ja.md:928` の 2 箇所だけ。`DiagnosticParamsByCode` / parser / `render-diagnostic.ts` / `diagnostics.md` に無し）。probe でも発火せず | ドリフト |
 
 ### 同名 boundary が層をまたいでも壊れないことの検証
@@ -357,10 +357,10 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
      現在 `scope` を渡すのは multi-system root（`layout.ts:1713-1720`、`sys.id`）だけなので、
      スコープ内 boundary でも同様に宣言スコープを渡せば stub id が namespace される。
 5. **formatter（`fmt`）**
-   - 前提の fmt 修正は **[ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) としてマージ済み**。修正前は — 現状 `printFile` の emit list（`formatter.ts:113-120`）に
+   - 前提の fmt 修正は **[ADR-20260720-02](../adr/20260720-02-formatter-top-level-exhaustiveness.md) としてマージ済み**。修正前は — 現状 `printFile` の emit list（`formatter.ts:113-120`）に
      `file.boundaries` が無く、`fmt` は top-level boundary を**黙って消す**（`formatter.ts` に `boundary` 0 hit）。
-   - ADR-20260720-01 が追加した `renderBoundaryBlock` を、**ノードブロックのレンダリング経路からも呼ぶ**必要がある。
-   - **注意**: ADR-20260720-01 の網羅性ガード（同 ADR 決定 2 が期待集合を `KrsFile` の配列プロパティから導出すると定めている）（`formatter-top-level-coverage.test.ts`）は `KrsFile` の配列プロパティ由来なので
+   - ADR-20260720-02 が追加した `renderBoundaryBlock` を、**ノードブロックのレンダリング経路からも呼ぶ**必要がある。
+   - **注意**: ADR-20260720-02 の網羅性ガード（同 ADR 決定 2 が期待集合を `KrsFile` の配列プロパティから導出すると定めている）（`formatter-top-level-coverage.test.ts`）は `KrsFile` の配列プロパティ由来なので
      **top-level しか守らない**。スコープ内 boundary の emit 漏れは検出されない → 別途 round-trip テストが要る
      （[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)）。
 6. **診断のドリフト解消**
@@ -399,7 +399,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
   今日 parse error だった記述が通るようになるだけで、通っていた記述の意味は変わらない。
 - **ドキュメント**: `docs/spec/syntax.md`（+ `syntax.ja.md`）の boundary 節、`docs/spec/diagnostics.md`（+ ja、`duplicate-boundary-id` 1 行）。
 - **examples**: 1 本追加。
-- **他 PR との順序**: fmt の top-level boundary 落ちは [ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) でマージ済みのため、順序制約は解消済み。
+- **他 PR との順序**: fmt の top-level boundary 落ちは [ADR-20260720-02](../adr/20260720-02-formatter-top-level-exhaustiveness.md) でマージ済みのため、順序制約は解消済み。
 
 ## 却下・非目標
 
@@ -450,7 +450,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
   スコープ内 `boundary` を parse できるようにしただけで枠が出ない（parse-and-vanish）状態を禁ずる。
 - [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — round-trip 保証。
   **今回特に効く** — top-level boundary が `fmt` で消える bug（[#2076](https://github.com/kompiro/karasu/issues/2076)）が
-  現に起きており、[ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) の網羅性ガードは `KrsFile` の配列プロパティ由来で
+  現に起きており、[ADR-20260720-02](../adr/20260720-02-formatter-top-level-exhaustiveness.md) の網羅性ガードは `KrsFile` の配列プロパティ由来で
   **top-level しか守らない**。スコープ内 boundary は同じ穴に落ちうる。
 - [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — valid-target は全 kind 列挙。
   「boundary を置ける kind」「メンバになれる kind」の両方を `LogicalNodeKind`（`ast.ts:6-20`）の全列挙で確定する。

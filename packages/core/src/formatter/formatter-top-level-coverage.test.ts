@@ -18,7 +18,7 @@ import type { KrsFile } from "../types/ast.js";
 // every fixture must survive a format round-trip. Adding a new top-level
 // construct to `KrsFile` without wiring it into the formatter fails this test.
 //
-// See TPL-20260510-02 (round-trip guarantee) and ADR-20260720-01.
+// See TPL-20260510-02 (round-trip guarantee) and ADR-20260720-02.
 
 /**
  * One `.krs` sample per array-valued `KrsFile` key. Each sample must populate

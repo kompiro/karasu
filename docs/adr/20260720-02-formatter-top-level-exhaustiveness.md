@@ -1,5 +1,5 @@
 ---
-id: ADR-20260720-01
+id: ADR-20260720-02
 title: formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 status: accepted
 date: 2026-07-20
@@ -12,7 +12,7 @@ assumptions:
   - "symbol: packages/core/src/types/ast.ts :: createEmptyKrsFile"
 ---
 
-# ADR-20260720-01: formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
+# ADR-20260720-02: formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 
 - **日付**: 2026-07-20
 - **ステータス**: 決定済み
