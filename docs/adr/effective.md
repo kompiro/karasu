@@ -213,6 +213,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260511-03](20260511-03-style-value-diagnostics.md) — `.krs.style` 値レベル診断 — 構造化 ValueNode AST と property schema による validator
 - [ADR-20260513-03](20260513-03-import-system-nested.md) — system にネストした service / domain の Named Import は明示的な path 構文で取り込む
 - [ADR-20260616-04](20260616-04-rule-diagnostic-separation-and-catalog.md) — 規則と診断を分離し、診断カタログで完全性を担保する
+- [ADR-20260720-01](20260720-01-formatter-top-level-exhaustiveness.md) — formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 
 ## project
 
