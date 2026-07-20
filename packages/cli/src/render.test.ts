@@ -312,7 +312,7 @@ describe("render — --view system", () => {
 
     await render(filePath, { view: "system" });
 
-    // domain-dispersal is info register (ADR-20260514-02): the CLI labels it
+    // domain-dispersal is info register (ADR-1386): the CLI labels it
     // `Info:`, not `Warning:`.
     const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
     expect(lines.some((l) => l.startsWith("Info:") && l.includes("Order"))).toBe(true);
@@ -341,7 +341,7 @@ describe("render — --view system", () => {
     await render(filePath, { view: "system" });
 
     // An info-severity parser diagnostic must surface (with `Info:`), not be
-    // dropped, and must not exit non-zero (ADR-20260615-01).
+    // dropped, and must not exit non-zero (ADR-1566).
     const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
     expect(lines.some((l) => l.startsWith("Info:") && l.includes("ECommerce"))).toBe(true);
     expect(lines.some((l) => l.startsWith("Warning:") && l.includes("ECommerce"))).toBe(false);

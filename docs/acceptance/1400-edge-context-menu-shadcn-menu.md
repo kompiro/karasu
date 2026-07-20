@@ -4,7 +4,7 @@
 - **関連 Issue**: [#1400](https://github.com/kompiro/karasu/issues/1400)
 - **対象ファイル**: `packages/app/src/components/EdgeContextMenu.tsx`、
   `packages/app/src/components/ui/dropdown-menu.tsx`
-- **関連**: ADR-20260515-01（shadcn/ui 採用）/ TPL-20260516-01（a11y 契約の移行劣化）
+- **関連**: ADR-1368（shadcn/ui 採用）/ TPL-20260516-01（a11y 契約の移行劣化）
 
 ## 受け入れ条件
 

@@ -71,7 +71,7 @@ client WebApp [web] {
 }
 ```
 
-> **The `client` vs. `user` boundary**: a `client` is limited to **software the project itself distributes.** When a third-party browser, IDE, or external AI agent uses the system, model it as a `user` (`[human]` / `[ai]`), not a `client`. "Did we ship it?" is the test ([ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)).
+> **The `client` vs. `user` boundary**: a `client` is limited to **software the project itself distributes.** When a third-party browser, IDE, or external AI agent uses the system, model it as a `user` (`[human]` / `[ai]`), not a `client`. "Did we ship it?" is the test ([ADR-823](../adr/823-client-mcp-modeling.md)).
 
 ---
 
@@ -184,7 +184,7 @@ client MobileApp [mobile] {
 
 `resource` is storage the client reads/writes; `capability` is a function the OS / browser grants — separate concepts. The SVG card shows count badges `📦 ×N` / `🔐 ×N` respectively, with the full list in the detail panel.
 
-> Cookie / session / raw-credential storage, and threat modeling itself, are deliberately out of scope (karasu models the underlying facts but does not pin a security discipline's shape into its vocabulary — [ADR-20260430-01](../adr/20260430-01-security-modeling-stance.md)).
+> Cookie / session / raw-credential storage, and threat modeling itself, are deliberately out of scope (karasu models the underlying facts but does not pin a security discipline's shape into its vocabulary — [ADR-834](../adr/834-security-modeling-stance.md)).
 
 ---
 
@@ -200,5 +200,5 @@ For complete examples, see [`examples/ja/ec-platform/02.5-clients.krs`](../../ex
 
 - Related guides: [Boundary Design](01-service-team-design.md) / [Onboarding](02-onboarding.md) / [Evolution](03-evolution.md) / [Communicating Diagrams](05-communicating-diagrams.md)
 - Precise syntax (user / client / handles / delivers): [`docs/spec/syntax.md`](../spec/syntax.md)
-- Why client is its own kind: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)
+- Why client is its own kind: [ADR-823](../adr/823-client-mcp-modeling.md)
 - Client examples: [`examples/ja/ec-platform/02.5-clients.krs`](../../examples/ja/ec-platform/02.5-clients.krs), [`examples/en/client-mcp/`](../../examples/en/client-mcp/)

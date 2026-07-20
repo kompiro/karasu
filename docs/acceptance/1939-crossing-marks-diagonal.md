@@ -3,7 +3,7 @@
 - **日付**: 2026-07-14
 - **Issue**: #1939（親 #1859 / Epic #1817 comprehension）— Part 1
 - **PR**: (#1939-A — generalise computeCrossingMarks)
-- **設計**: [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)
+- **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
 - **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（交差数と貫通数を両方測る／交差は「全交差 marked」を assert）
 - **対象**: `packages/core/src/renderer/crossing-marks.ts`（`computeCrossingMarks` を一般線分交差へ拡張・`HopMark.angle` 追加） / `layout-types.ts` / `svg-renderer.ts`（`renderCrossingMarks` を回転アーク対応）
 

@@ -34,7 +34,7 @@ system MySystem {
 > 🟡 Partially automated —
 > [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
 > › `AT-0037-9: editor cursor on a node identifier highlights the matching SVG node`
-> automates step 1.1 under the WebView E2E harness (ADR-20260429-09; not a
+> automates step 1.1 under the WebView E2E harness (ADR-1014; not a
 > required check). Steps 1.2–1.5 (highlight hand-off, clearing on a blank
 > line, debounce) stay manual.
 

@@ -370,7 +370,7 @@ CI で `.krs` ファイルから SVG を自動生成するワークフローテ�
 | .krs.style 構文リファレンス | `docs/spec/style.md` |
 | タグ・アノテーション一覧 | `docs/spec/tags-annotations.md` |
 | コアコンセプト（論理／物理分離など） | `docs/concepts.md` |
-| 設計判断の経緯（ADR） | `docs/adr/` — `ADR-YYYYMMDD-NN-*.md` 形式で日付順 |
+| 設計判断の経緯（ADR） | `docs/adr/` — `<issue-number>-*.md` 形式（起点の GitHub Issue 番号） |
 | 詳細技術設計（検討中のもの）| `docs/design/` |
 | 受け入れテスト基準 | `docs/acceptance/` |
 | 開発プロセス（ライフサイクル・PR フロー）| `docs/process.md` |

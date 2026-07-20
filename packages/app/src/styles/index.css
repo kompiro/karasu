@@ -12,7 +12,7 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
-/* Tailwind v4 — shadcn/ui (ADR-20260515-01).
+/* Tailwind v4 — shadcn/ui (ADR-1368).
  * Loaded before our own modules so our unlayered rules still win over
  * Tailwind's `@layer base` preflight. preflight is left enabled per ADR;
  * conflicts are fixed case-by-case. */

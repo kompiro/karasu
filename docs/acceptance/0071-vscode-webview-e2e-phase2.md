@@ -35,7 +35,7 @@ Phase 2 の鍵となる技術ポイント:
 ### AC-2: AT-0039 の Coverage policy が更新される
 
 - [ ] `docs/acceptance/0039-vscode-phase6-detail-panel.md` の Coverage policy が "Manual" → "Partial automation" に変わっている
-- [ ] 残り TC（description / link / Jump-to-editor / [ⓘ] ボタン）は依然 ADR-20260428-05 manual で運用される旨が明記されている
+- [ ] 残り TC（description / link / Jump-to-editor / [ⓘ] ボタン）は依然 ADR-926 manual で運用される旨が明記されている
 
 > 上記 2 項目は本 PR 内のドキュメント編集で対応済み。リリース QA で目視レビューする。
 
@@ -53,11 +53,11 @@ Phase 2 の鍵となる技術ポイント:
 
 - AT-0039 の TC-02..TC-N（description / links / Jump-to-editor / [ⓘ] ボタン） — Phase 3 で TC ごとに分離
 - AT-0037-9 / AT-0038 / AT-0042-vscode の自動化 — Phase 3
-- ADR-20260428-05 の supersede — Phase 3
+- ADR-926 の supersede — Phase 3
 
 ## 関連
 
 - Issue: [#928](https://github.com/kompiro/karasu/issues/928)
 - 設計: `docs/design/vscode-webview-e2e-harness.md`
 - Phase 1 AT: `docs/acceptance/0069-vscode-webview-e2e-phase1.md`
-- 既存 ADR: ADR-20260428-03（拡張ホスト smoke）, ADR-20260428-05（マニュアル運用 — Phase 3 で supersede 予定）
+- 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 で supersede 予定）

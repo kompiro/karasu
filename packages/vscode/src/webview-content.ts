@@ -14,7 +14,7 @@
  * `packages/vscode-e2e/tests/webview/harness.ts` via
  * `getAttribute('style').includes('background')`. Converting it to CSS
  * classes is a behavior change from that harness's point of view — do not do
- * it here (see ADR-20260429-09 / `.claude/rules/vscode-webview-tests.md`).
+ * it here (see ADR-1014 / `.claude/rules/vscode-webview-tests.md`).
  */
 
 import {

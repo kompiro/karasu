@@ -6,28 +6,28 @@ Other topics: [overview](../graph.md).
 ```mermaid
 flowchart TD
   subgraph cli["cli"]
-    ADR_20260328_04["ADR-20260328-04<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
-    ADR_20260404_08["ADR-20260404-08<br/>CLI `karasu render` コマンド"]
-    ADR_20260409_02["ADR-20260409-02<br/>CLI `karasu translate` コマンドと複数 realizes 対応"]
-    ADR_20260411_07["ADR-20260411-07<br/>`karasu apply` サブコマンド — stdin + `applyKrsPatch`..."]
-    ADR_20260412_02["ADR-20260412-02<br/>CLI 変更系サブコマンド — `karasu remove` / `append` / `i..."]
-    ADR_20260417_01["ADR-20260417-01<br/>`translate --from openapi` のデフォルトをリソース単位の useca..."]
-    ADR_20260419_01["ADR-20260419-01<br/>`translate --from db` のデフォルトを集約ルート単位のテーブル集約に変更する"]
-    ADR_20260429_06["ADR-20260429-06<br/>`karasu diff` CLI と diff SVG の self-contained ス..."]
-    ADR_20260430_02["ADR-20260430-02<br/>`karasu diff` の bundled all-views 出力"]
-    ADR_20260502_01["ADR-20260502-01<br/>CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして..."]
-    ADR_20260506_05["ADR-20260506-05<br/>translate adapter で usecase → resource バインディング ..."]
-    ADR_20260714_03["ADR-20260714-03<br/>--from wrangler translate adapter と「adapter を採る基準」"]
+    ADR_121["ADR-121<br/>CLI `karasu render` コマンド"]
+    ADR_355["ADR-355<br/>CLI `karasu translate` コマンドと複数 realizes 対応"]
+    ADR_464["ADR-464<br/>`karasu apply` サブコマンド — stdin + `applyKrsPatch`..."]
+    ADR_469["ADR-469<br/>CLI 変更系サブコマンド — `karasu remove` / `append` / `i..."]
+    ADR_643["ADR-643<br/>`translate --from openapi` のデフォルトをリソース単位の useca..."]
+    ADR_644["ADR-644<br/>`translate --from db` のデフォルトを集約ルート単位のテーブル集約に変更する"]
+    ADR_1020["ADR-1020<br/>`karasu diff` CLI と diff SVG の self-contained ス..."]
+    ADR_1025["ADR-1025<br/>`karasu diff` の bundled all-views 出力"]
+    ADR_1062["ADR-1062<br/>CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして..."]
+    ADR_1104["ADR-1104<br/>translate adapter で usecase → resource バインディング ..."]
+    ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
+    ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
-  ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
-  ADR_20260401_02["ADR-20260401-02<br/>[renderer] 全ビュー統合バンドル SVG（buildAllViewsSvg）"]
-  ADR_20260328_04 --> ADR_20260317_02
-  ADR_20260404_08 --> ADR_20260401_02
-  ADR_20260409_02 --> ADR_20260404_08
-  ADR_20260411_07 --> ADR_20260409_02
-  ADR_20260412_02 --> ADR_20260411_07
-  ADR_20260417_01 --> ADR_20260409_02
-  ADR_20260419_01 --> ADR_20260409_02
+  ADR_9006["ADR-9006<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
+  ADR_9015["ADR-9015<br/>[renderer] 全ビュー統合バンドル SVG（buildAllViewsSvg）"]
+  ADR_121 --> ADR_9015
+  ADR_355 --> ADR_121
+  ADR_464 --> ADR_355
+  ADR_469 --> ADR_464
+  ADR_643 --> ADR_355
+  ADR_644 --> ADR_355
+  ADR_9013 --> ADR_9006
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -35,18 +35,18 @@ flowchart TD
   classDef superseded fill:#e2e3e5,stroke:#6c757d,color:#383d41
   classDef not_adopted fill:#e2e3e5,stroke:#6c757d,color:#383d41,stroke-dasharray:3 3
   classDef ghost fill:#f5f5f5,stroke:#adb5bd,color:#6c757d,stroke-dasharray:2 2
-  class ADR_20260328_04 accepted
-  class ADR_20260404_08 accepted
-  class ADR_20260409_02 accepted
-  class ADR_20260411_07 accepted
-  class ADR_20260412_02 accepted
-  class ADR_20260417_01 accepted
-  class ADR_20260419_01 accepted
-  class ADR_20260429_06 accepted
-  class ADR_20260430_02 accepted
-  class ADR_20260502_01 accepted
-  class ADR_20260506_05 accepted
-  class ADR_20260714_03 accepted
-  class ADR_20260317_02 ghost
-  class ADR_20260401_02 ghost
+  class ADR_121 accepted
+  class ADR_355 accepted
+  class ADR_464 accepted
+  class ADR_469 accepted
+  class ADR_643 accepted
+  class ADR_644 accepted
+  class ADR_1020 accepted
+  class ADR_1025 accepted
+  class ADR_1062 accepted
+  class ADR_1104 accepted
+  class ADR_1935 accepted
+  class ADR_9013 accepted
+  class ADR_9006 ghost
+  class ADR_9015 ghost
 ```

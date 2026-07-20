@@ -8,7 +8,7 @@
  *
  * Kept free of any `vscode` import. Note this module covers only the
  * host-side reducer math: how the webview *renders and reacts to* the
- * breadcrumb stays under the ExTester WebView harness per ADR-20260429-09
+ * breadcrumb stays under the ExTester WebView harness per ADR-1014
  * (see `.claude/rules/vscode-webview-tests.md`).
  */
 

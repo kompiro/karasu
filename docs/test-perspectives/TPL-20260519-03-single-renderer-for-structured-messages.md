@@ -11,7 +11,7 @@ related_to:
   - TPL-20260510-18
 discovered_from:
   - issue: "#1417"
-  - root_cause_adr: "ADR-20260420-03"
+  - root_cause_adr: "ADR-34"
 topic: core-concepts
 scope:
   packages:
@@ -37,7 +37,7 @@ consumer ごとに表示が割れる。
 
 ## 想定される失敗モード
 
-実際に #1417 で起きた事故: i18n ロールアウト（ADR-20260420-03）で app は
+実際に #1417 で起きた事故: i18n ロールアウト（ADR-34）で app は
 `renderWarning`（`@karasu-tools/i18n`）に移行した一方、lsp / cli は core の
 互換ブリッジ `formatWarning()` を使い続けた。ブリッジは `WarningKind` ごとに
 文字列をハードコードしており、一部のブランチが英語・一部が日本語のまま正規化

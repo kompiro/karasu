@@ -1,15 +1,15 @@
 # システム構成図の grouping — 優先順位と検証計画
 
 - **日付**: 2026-07-09
-- **ステータス**: 部分昇格 — **P2a は [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md) に昇格済み**。本 doc は P1 検証の詳細（evidence）と、**P2b（宣言構文 `boundary` — 下記「P2b 詳細設計」で設計確定）** を継続保持する。
+- **ステータス**: 部分昇格 — **P2a は [ADR-1858](../adr/1858-system-view-group-by-team.md)、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md) に昇格済み**。本 doc は P1 検証の詳細（evidence）と、**P2b（宣言構文 `boundary` — 下記「P2b 詳細設計」で設計確定）** を継続保持する。
 - **関連**:
   - 引き金 Issue: [#1822](https://github.com/kompiro/karasu/issues/1822)（旧題 "Declare semantic clusters within a system"）
-  - 実装済み: [#1858](https://github.com/kompiro/karasu/issues/1858) P2a（ADR-20260711-03）。フォローアップ #1872–#1876
+  - 実装済み: [#1858](https://github.com/kompiro/karasu/issues/1858) P2a（ADR-1858）。フォローアップ #1872–#1876
   - 親 epic: [#1817](https://github.com/kompiro/karasu/issues/1817)（comprehension pillar — 横方向の密度制御）
   - 既存実装: [#1821](https://github.com/kompiro/karasu/issues/1821)（external / infra カテゴリの折り畳み）
   - notation promotion gate: [#1820](https://github.com/kompiro/karasu/issues/1820)
   - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)
-  - 関連 ADR: [ADR-20260616-06](../adr/20260616-06-krs-spec-v1-freeze.md)（`.krs` / `.krs.style` v1.0 凍結）
+  - 関連 ADR: [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` / `.krs.style` v1.0 凍結）
   - コード: `packages/core/src/renderer/category-collapse.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`
 
 > 本 Doc は「semantic clusters の構文をどう綴るか」から始めた初版を差し替えたもの。
@@ -76,7 +76,7 @@ grouping はそれ自体が目的ではなく、**まとまりごとに開閉（
 
 ### その他
 
-- **`.krs` / `.krs.style` は v1.0 凍結**（[ADR-20260616-06]）。文法変更は #1820 の promotion gate を通す。
+- **`.krs` / `.krs.style` は v1.0 凍結**（[ADR-1314]）。文法変更は #1820 の promotion gate を通す。
 - **out of scope**: deploy / org view への grouping 適用、group の入れ子、group 単位の drill-down、cross-system group。
 
 ## P1: grouping は可読性を上げるか（検証）
@@ -253,17 +253,17 @@ P2 / P3 に着手するときに再利用するため、これまでの検討結
 | `#payments` | **不可**。`#` は karasu では **identity**（`readHashToken`、ID selector `#ECommerce`、edge id `#criticalWrite`）。CSS の `#id` に対応し、グループとは逆の意味 |
 | **参照宣言 `group X { contains … }`** | **P2 の推奨**。単一値・ファイル横断・`owns` の既存イディオムに乗る |
 
-## 確定した方針 → ADR-20260711-03（P2a）
+## 確定した方針 → ADR-1858（P2a）
 
-P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 決定**（メンバー範囲=全ノード種／全体フロー保存／共存=排他セレクタ／既定=展開／min-FAS 順序／折り畳みエッジ再ターゲット）と、その理由・却下案は **[ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)** に昇格した。P2a は実装完了（#1860/#1861/#1865/#1869）。
+P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 決定**（メンバー範囲=全ノード種／全体フロー保存／共存=排他セレクタ／既定=展開／min-FAS 順序／折り畳みエッジ再ターゲット）と、その理由・却下案は **[ADR-1858](../adr/1858-system-view-group-by-team.md)** に昇格した。P2a は実装完了（#1860/#1861/#1865/#1869）。
 
-以降、本 doc は **P2b（宣言構文）** の検討を継続する（差分モード grouping #1886 → [ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping #1884 → [ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md) に昇格済み）。実装フェーズの整理:
+以降、本 doc は **P2b（宣言構文）** の検討を継続する（差分モード grouping #1886 → [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping #1884 → [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md) に昇格済み）。実装フェーズの整理:
 
 | フェーズ | 内容 | 文法変更 | 状態 |
 | --- | --- | --- | --- |
-| **P2a** | 二段 topo + 枠 + 折り畳み（team=`ownerIndex` 軸） | ゼロ | ✅ 実装済み（ADR-20260711-03） |
+| **P2a** | 二段 topo + 枠 + 折り畳み（team=`ownerIndex` 軸） | ゼロ | ✅ 実装済み（ADR-1858） |
 | **P2b** | `boundary` 宣言構文 + `boundaryIndex` | あり（experimental で追加。#1820 gate は promotion 側） | ✅ 実装済み（#1974: A 文法 #1966 / B 軸配線 #1973 / C spec・examples・roadmap）— 下記「P2b 詳細設計」 |
-| **P2c** | 直交ルーティング + 集約トランク + hop/junction 交差マーク（#1859） | ゼロ | ✅ 実装済み（**[ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)**。#1927/#1954 mixed route・#1939/#1956 marks 拡張含む） |
+| **P2c** | 直交ルーティング + 集約トランク + hop/junction 交差マーク（#1859） | ゼロ | ✅ 実装済み（**[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)**。#1927/#1954 mixed route・#1939/#1956 marks 拡張含む） |
 
 ## P2b 詳細設計（宣言構文 + `boundaryIndex`）
 
@@ -271,7 +271,7 @@ P2a は grouping 軸を **team（`ownerIndex`）** に固定した。P2b は「�
 
 ### 動機（P2a だけでは足りない理由）
 
-ADR-20260711-03（P2a）は「入れ物を作って畳むと読める」を team 軸で実証した。しかし team 軸には二つの穴が残る（本 doc「P2」節）:
+ADR-1858（P2a）は「入れ物を作って畳むと読める」を team 軸で実証した。しかし team 軸には二つの穴が残る（本 doc「P2」節）:
 
 1. **1 チームが多数の service を持つと、チーム内の密度は下がらない。** team 枠の中がまた過密になる。
 2. **組織と一致しない意味的まとまり**（「決済まわり」「認証まわり」）を表現できない。`owns` は組織の面であって、bounded-context の面ではない。
@@ -317,7 +317,7 @@ parse 時に `boundaryIndex: Map<string, string>`（node id → boundary id）�
 
 ### 決定 3 — 軸の配線（team 軸への完全パリティ）
 
-Group by セレクタを **排他**（none / team / **boundary**）に拡張する（ADR-20260711-03 決定 3「共存＝排他」を踏襲）。既存 team 軸の機構をそのまま再利用し、`groupIdOf`（`layout.ts:1038`）が `groupBy` に応じて `ownerIndex` か `boundaryIndex` を選ぶ。配線が必要な全箇所（[TPL-20260510-11] parallel-function-parity — 一つでも漏らすと軸が**黙って落ちる**）:
+Group by セレクタを **排他**（none / team / **boundary**）に拡張する（ADR-1858 決定 3「共存＝排他」を踏襲）。既存 team 軸の機構をそのまま再利用し、`groupIdOf`（`layout.ts:1038`）が `groupBy` に応じて `ownerIndex` か `boundaryIndex` を選ぶ。配線が必要な全箇所（[TPL-20260510-11] parallel-function-parity — 一つでも漏らすと軸が**黙って落ちる**）:
 
 - **core**: `groupBy?: "team"` → `"team" | "boundary"`（`index.ts:409` / `layout.ts:930` / `svg-renderer.ts:141,189` / `all-layers-svg.ts` / `drill-down-svg.ts` / `layoutMultipleSystems` `layout.ts:1578`）。`layout.ts:1010-1077` の `groupBy === "team"` gate を軸に応じた index 選択へ一般化。
 - **app**: `GroupByMode`（`preview-context.tsx:17`）に `"boundary"` を追加。**off-sentinel gate（`useSystemView.ts:241-242`）を必ず広げる** — コメントが「新軸はここと core union の両方を広げないと silently drop」と警告している当該箇所。ドロップダウン（`PreviewColumn.tsx:295-320`）に選択肢追加。
@@ -327,7 +327,7 @@ Group by セレクタを **排他**（none / team / **boundary**）に拡張す�
 
 ### 決定 4 — notation gate: experimental で着地（stable 昇格は corpus 待ち）
 
-`boundary` は**新規 experimental notation** として追加する（[ADR-20260713-01] notation promotion gate）。gate の既定は「experimental 据え置き・open/既存構文での表現に寛容・証拠源＝karasu-nest corpus」。P2b は既存構文で表現しきれない（タグは多値で単一値の開閉識別子にならない — 本 doc「タグが折り畳み軸にならない理由」で既に検証済み）ため新構文を導入するが、**stable 昇格は corpus evidence を見てから** #1820 gate で判断する。
+`boundary` は**新規 experimental notation** として追加する（[ADR-1820] notation promotion gate）。gate の既定は「experimental 据え置き・open/既存構文での表現に寛容・証拠源＝karasu-nest corpus」。P2b は既存構文で表現しきれない（タグは多値で単一値の開閉識別子にならない — 本 doc「タグが折り畳み軸にならない理由」で既に検証済み）ため新構文を導入するが、**stable 昇格は corpus evidence を見てから** #1820 gate で判断する。
 
 - **後方互換は明示的に約束しない**（experimental tier の定義）。`docs/roadmap.md` の experimental 節に watch item として登録し、promotion trigger（corpus 上で boundary がどう使われるか）を書く。
 - gate を「絵に描いた餅」にしないため、`docs/process.md` のリリース運用 touchpoint（experimental notation に触れる changeset）に乗る。

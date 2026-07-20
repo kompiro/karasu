@@ -3,13 +3,13 @@
 - **日付**: 2026-07-15
 - **Issue**: #1955（epic #1817 comprehension、前段 #1815 / #1923）
 - **PR**: feat/expand-all-services
-- **設計**: [ADR-20260715-02](../adr/20260715-02-expand-all-services-in-place.md)（overload 決定 + 2 クリック tradeoff） / [ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)
+- **設計**: [ADR-1955](../adr/1955-expand-all-services-in-place.md)（overload 決定 + 2 クリック tradeoff） / [ADR-1815](../adr/1815-expand-container-in-place.md)
 - **Related TPLs**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（user-facing surface の docs 同期）, [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（軸の有無で駆動し `groupBy` に分岐しない）, [TPL-20260516-01](../test-perspectives/TPL-20260516-01-control-a11y-contract-survives-migration.md)（コントロールの a11y 契約維持）
 - **対象**: `packages/app/src/hooks/useSystemView.ts`、`docs/tools/app.md` / `app.ja.md`
 
 ## 概要
 
-in-place expansion（ADR-20260714-04）が持つ「Collapse all」の対称操作 — **全 service を一気にその場展開する** — を追加する。実装は既存の「Collapse all / Expand all」トグルの overload: その **Expand all** 方向が frames/bands の展開に加え、単一 system・ungrouped view の全 drillable service をその場展開する。コントロール・i18n キー・prop 配線の新設なし。scope は renderer 側（`data-expand-node` は `!groupBy && expandable` のときのみ emit）に一元化され、Group-by team / multi-system では自動的に no-op。トグルは二値（全畳み ⇄ 全開き）なので、layer band を持つモデル（= store あり）では Collapse all → Expand all の 2 クリックで全 service 展開に到達する（AC-1b、Option 3 の受け入れ済み tradeoff）。
+in-place expansion（ADR-1815）が持つ「Collapse all」の対称操作 — **全 service を一気にその場展開する** — を追加する。実装は既存の「Collapse all / Expand all」トグルの overload: その **Expand all** 方向が frames/bands の展開に加え、単一 system・ungrouped view の全 drillable service をその場展開する。コントロール・i18n キー・prop 配線の新設なし。scope は renderer 側（`data-expand-node` は `!groupBy && expandable` のときのみ emit）に一元化され、Group-by team / multi-system では自動的に no-op。トグルは二値（全畳み ⇄ 全開き）なので、layer band を持つモデル（= store あり）では Collapse all → Expand all の 2 クリックで全 service 展開に到達する（AC-1b、Option 3 の受け入れ済み tradeoff）。
 
 ## 受け入れ条件
 
@@ -19,7 +19,7 @@ in-place expansion（ADR-20260714-04）が持つ「Collapse all」の対称操�
 
 - [x] 単一 system・ungrouped の俯瞰状態（frames/bands なし・service のみ）で `anyCollapsible` が true、`allCollapsed` が true（→ トグルは「Expand all」表示）
 - [x] Expand all（`onCollapseAllToggle`）で全 drillable service が `expandedContainers` に入り、各 domain フレームが描画される（`data-node-id` 複数）
-- [x] 全展開で `expansionOverload`（閾値 4）が立つ = ソフト警告のトリガ（ADR-20260714-04 準拠・ハード上限なし）
+- [x] 全展開で `expansionOverload`（閾値 4）が立つ = ソフト警告のトリガ（ADR-1815 準拠・ハード上限なし）
 
 ### AC-1b: layer band があるモデルは Collapse all → Expand all の 2 クリック（app）
 

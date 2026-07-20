@@ -3,13 +3,13 @@
 - **日付**: 2026-07-12
 - **Issue**: #1859（親 #1822 / Epic #1817 comprehension）
 - **PR**: (P2c-B — aggregation trunks)
-- **設計**: [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)
+- **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
 - **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測り、貫通は 0 を assert）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（参照エッジ端点保持 / edge identity）
 - **対象**: `packages/core/src/renderer/edge-routing-groups.ts`（`aggregateGroupTrunks` 追加） / `layout.ts` / `layout-types.ts`
 
 ## 概要
 
-Group by: team の P2c slice B。P2c-A は各 cross-band エッジをサイドガターへ迂回させるが、同一 infra/external target を共有する複数エッジは**同じ既定ガター x** に落ちるため、複数 target の spine が重なる。本 slice は、共有 target（fan-in、gutter-routed な incoming ≥ 2）ごとに**専用のトランク・レーン**を割り当て、その incoming エッジを**1 本の縦 spine** に合流させて target に一度だけ入れる。各トランクエッジは `trunkId = <target id>` を持つ。合流点（`waypoints[0]` の elbow）を P2c-C が junction dot で描く。edge identity は保持（描画の合流であって edge 統合ではない — ADR-20260511-01 の立場）。
+Group by: team の P2c slice B。P2c-A は各 cross-band エッジをサイドガターへ迂回させるが、同一 infra/external target を共有する複数エッジは**同じ既定ガター x** に落ちるため、複数 target の spine が重なる。本 slice は、共有 target（fan-in、gutter-routed な incoming ≥ 2）ごとに**専用のトランク・レーン**を割り当て、その incoming エッジを**1 本の縦 spine** に合流させて target に一度だけ入れる。各トランクエッジは `trunkId = <target id>` を持つ。合流点（`waypoints[0]` の elbow）を P2c-C が junction dot で描く。edge identity は保持（描画の合流であって edge 統合ではない — ADR-1185 の立場）。
 
 ## 受け入れ条件
 

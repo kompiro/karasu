@@ -9,7 +9,7 @@ known_consumers:
   - system-view-external-on-sides
 date: 2026-06-24
 discovered_from:
-  - root_cause_adr: "ADR-20260623-06"
+  - root_cause_adr: "ADR-1724"
   - root_cause_file: "packages/core/src/renderer/layout.ts"
 related_to: [TPL-20260623-04, TPL-20260510-06]
 topic: renderer
@@ -26,7 +26,7 @@ system view では `[external]` サービスを左右のサイド列に配置す
 1. **他帯を侵さない**: external は side（または overflow 時のサイド縦積み）にのみ置かれ、actor / client / service / infra の配置帯（行・x スパン）を侵食しない。infra は従来どおり service の下の行に残る。
 2. **決定的**: 自動サイド振り分け（consuming-hub barycenter）は宣言順に対して安定で、入力が同じなら出力も同じ。tie（同 barycenter / 同 x）は宣言順で安定化する。
 3. **override 可能**: 作者の `column: left/right` ヒントが自動割り当てより優先される。
-4. **kind の境界を保つ**: infra kind（`database`/`queue`/`storage`）は `[external]` タグの有無に関わらずサイドへ移動しない（[ADR-20260623-06] の境界ルール）。
+4. **kind の境界を保つ**: infra kind（`database`/`queue`/`storage`）は `[external]` タグの有無に関わらずサイドへ移動しない（[ADR-1724] の境界ルール）。
 5. **内側アンカー**: サイド external へのエッジは external の内側の辺（左サイド→右辺 / 右サイド→左辺）に着地し、矢印頂点が内向きになる。tier index ベースの上下アンカーに引っ張られて上辺/下辺に着地しないこと。
 6. **gate**: サイド化は適用すると益のある条件（cross-hub 交差が生じる ＝ external エッジを持つ hub が ≥2）でのみ行う。単純な図（単一ハブ）は従来配置を維持し、横に無駄に広げない。明示ヒントは gate を迂回する。
 7. **回帰なし**: external 配置の変更が、infra/service の tier 配置（#1724 / #823）や #974 の infra pull-up を壊さない。
@@ -47,7 +47,7 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
 - [ ] 動かした kind 以外（actor/client/service/infra）の行・x スパンが不変であることを確認した
 - [ ] 自動配置が決定的（宣言順安定・tie-break 明示）であることを確認した
 - [ ] style ヒント（`column` 等）による override が効くことを確認した
-- [ ] 関連 kind の境界ルール（infra は常に内側 = [ADR-20260623-06]）が保たれることを確認した
+- [ ] 関連 kind の境界ルール（infra は常に内側 = [ADR-1724]）が保たれることを確認した
 - [ ] サイド external へのエッジが内側の辺に着地し矢印が内向きであることを確認した（tier index ベースの上下アンカーに上書きが効いている）
 - [ ] サイド化の gate（益のある条件でのみ適用）が効き、単純な図が無駄に広がらないことを確認した
 - [ ] 既存の tier 配置テスト（#1724 / #823）と pull-up テスト（#974）が無変更で通ることを確認した
@@ -71,6 +71,6 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
 
 ## 派生元 spec / ADR
 
-- [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md) — infra/external ティア分割（本 TPL の external 配置はこれを refine する #1728 由来）
+- [ADR-1724](../adr/1724-system-view-infra-external-tier-split.md) — infra/external ティア分割（本 TPL の external 配置はこれを refine する #1728 由来）
 - `docs/spec/style.md` の `column` 節（external services: `column` picks the side）
-- [ADR-20260624-06](../adr/20260624-06-external-on-sides-layout.md) — system-view の external サイド配置（#1728。Design Doc から昇格）
+- [ADR-1728](../adr/1728-external-on-sides-layout.md) — system-view の external サイド配置（#1728。Design Doc から昇格）

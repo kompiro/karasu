@@ -133,7 +133,7 @@ examples/ja/getting-started/index.krs` works as a smoke test after `pnpm build`.
   `.changeset/*.md` file. Internal refactors, test-only changes, and
   documentation don't need a changeset. The release flow itself is
   documented in [`docs/process.md`](docs/process.md) ("リリース運用") and
-  recorded in [ADR-20260512-05](docs/adr/20260512-05-release-automation-changesets.md).
+  recorded in [ADR-1315](docs/adr/1315-release-automation-changesets.md).
 
 The full development workflow — worktree setup, the `status: *` issue
 labels, the `/hane:start-dev` skill that automates the loop end-to-end —

@@ -93,7 +93,7 @@ store "search" {
 `database` のまま（`[index]` なし）。1 つの Postgres が正本かつインデックスを兼ねる
 場合も付けない。idiom #1 と同じ「役割はタグ・技術は物理層」の規律で、エンジンごとに
 `vector-store` / `search` kind を増やすのを避ける。
-[ADR-20260623-04](https://github.com/kompiro/karasu/blob/main/docs/adr/20260623-04-vector-store-vs-database.md) を参照。
+[ADR-1718](https://github.com/kompiro/karasu/blob/main/docs/adr/1718-vector-store-vs-database.md) を参照。
 
 ## 3. 境界の外側にあるもの — `[external]` タグ
 

@@ -1,9 +1,9 @@
 # AT-1873: Group by team — compare / diff モードでも有効化する
 
 - **日付**: 2026-07-11
-- **Issue**: #1873（follow-up of #1858 / ADR-20260711-03。Gap 1）
+- **Issue**: #1873（follow-up of #1858 / ADR-1858。Gap 1）
 - **PR**: (この PR)
-- **関連 ADR**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（Group by: team P2a）
+- **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（Group by: team P2a）
 - **Related TPLs**: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
 - **対象**: `packages/core/src/index.ts`（`compileSystemDiff`） / `packages/app/src/hooks/useSystemView.ts` / `packages/app/src/hooks/useAppViews.ts`
 

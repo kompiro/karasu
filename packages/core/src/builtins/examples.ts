@@ -512,7 +512,7 @@ edge[from=ECommerce] {
 // Per-view reference samples (#1548): the reference window's Samples tab shows
 // a view-appropriate starter. Bundled (byte-equal to examples/ja/deploy-only/ and
 // examples/ja/org-only/, governed by .claude/rules/examples-sync.md) so they can't
-// drift — see docs/adr/20260512-03-reference-data-single-source.md.
+// drift — see docs/adr/1296-reference-data-single-source.md.
 export const DEPLOY_ONLY_PROJECT: ExampleProject = {
   name: "deploy-only",
   files: [
@@ -2866,7 +2866,7 @@ boundary catalog "Catalog" {
     {
       path: "usecase-authorization.krs",
       content: `// Authorization notes on a usecase — the description + link convention
-// (ADR-20260511-02, Issue #1282).
+// (ADR-832, Issue #1282).
 //
 // karasu deliberately does NOT model runtime authorization (who may call
 // which usecase) in its vocabulary. There is no \`requires\`, no \`policy\`,

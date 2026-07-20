@@ -13,7 +13,7 @@ known_consumers:
   - resource-entity（buildEntityResolver）
 discovered_from:
   - root_cause_file: "docs/spec/syntax.md"
-  - root_cause_adr: "docs/adr/20260715-01-domain-entity-modeling.md"
+  - root_cause_adr: "docs/adr/1870-domain-entity-modeling.md"
 related_to:
   - TPL-20260519-02
   - TPL-20260623-02
@@ -43,7 +43,7 @@ infra leaf の「所有ドメイン」は **論理層（`entity` の親 domain�
 3. **所有はドメインの集合** — 1 leaf は複数ドメインに所有されうる（co-ownership）。単一所有者を
    前提にすると co-owned leaf で誤判定する。判定は `accessingDomain ∉ owners(leaf)`。
 4. **scope は system 単位、除外は fan-in と対称** — domain id は system 内でのみ error 級一意
-   （[ADR-20260714-01](../adr/20260714-01-cross-domain-ghost-entities.md)）。cross-system は解決しない。
+   （[ADR-1911](../adr/1911-cross-domain-ghost-entities.md)）。cross-system は解決しない。
    `[external]` / `[index]` store は所有・アクセスの両方から除外する（`shared-infra-fan-in` と対称）。
 
 ## 失敗パターン
@@ -84,5 +84,5 @@ infra leaf の「所有ドメイン」は **論理層（`entity` の親 domain�
   infra leaf — cross-domain store access」節（本 TPL への back-ref あり。ja は `syntax.ja.md` の
   「infra leaf のドメイン所有 — cross-domain ストアアクセス」節）。
 - 診断カタログ: [`docs/spec/diagnostics.md`](../spec/diagnostics.md) `cross-domain-store-access`。
-- 設計経緯: [ADR-20260715-04](../adr/20260715-04-domain-store-ownership-diagnostic.md)
-  （ADR 昇格予定）、土台は [ADR-20260715-01](../adr/20260715-01-domain-entity-modeling.md)。
+- 設計経緯: [ADR-1819](../adr/1819-domain-store-ownership-diagnostic.md)
+  （ADR 昇格予定）、土台は [ADR-1870](../adr/1870-domain-entity-modeling.md)。

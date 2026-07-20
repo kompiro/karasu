@@ -6,7 +6,7 @@ type: tool
 
 - **日付**: 2026-04-12
 - **関連 Issue**: #529
-- **関連 ADR**: ADR-20260412-05
+- **関連 ADR**: ADR-529
 - **対象**: `packages/e2e/`、`.github/workflows/e2e.yml`
 
 ## 概要
@@ -47,9 +47,9 @@ AT-0030（SVG Export）の最小検証を1本実装する。CI は PR に `e2e` 
 
 ### AC-4: ADR の整合性
 
-- [ ] 新 ADR `20260412-05-playwright-with-ai-visual-review.md` が作成されている
-- [ ] 旧 ADR `20260324-01-manual-qa-over-e2e.md` のステータスが
-      `Superseded by ADR-20260412-05` に更新されている
+- [ ] 新 ADR `529-playwright-with-ai-visual-review.md` が作成されている
+- [ ] 旧 ADR `33-manual-qa-over-e2e.md` のステータスが
+      `Superseded by ADR-529` に更新されている
 - [ ] `docs/process.md` の E2E 関連記述が新 ADR を指すように更新されている
 
 > manual / visual review — ADR / docs の文面整合は人間レビューで確認する（`pnpm adr:validate` は構造のみカバー）。

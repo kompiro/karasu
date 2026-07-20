@@ -87,7 +87,7 @@ describe.each<{ target: ActiveView }>([{ target: "deploy" }, { target: "org" }])
 );
 
 // Fence the REAL predicate expressions that useAppViews passes as
-// `shouldSwitch` — the `system > deploy > org` priority (ADR-20260427-04)
+// `shouldSwitch` — the `system > deploy > org` priority (ADR-766)
 // lives in these, not in hook call order. E.g. dropping `!hasDeployDiagram`
 // from the org predicate would reintroduce the #923 stale-org tab flip.
 describe("shouldAutoSwitchToDeploy (Issue #766)", () => {

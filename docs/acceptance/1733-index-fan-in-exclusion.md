@@ -7,7 +7,7 @@
 
 ## 受け入れ条件
 
-`database [index]`（[ADR-20260623-04](../adr/20260623-04-vector-store-vs-database.md)）は派生の検索 / 二次インデックス（read model）であり、複数 service が共有しても database-per-service smell ではない。`[external]` と同様に `shared-infra-fan-in` から除外する。
+`database [index]`（[ADR-1718](../adr/1718-vector-store-vs-database.md)）は派生の検索 / 二次インデックス（read model）であり、複数 service が共有しても database-per-service smell ではない。`[external]` と同様に `shared-infra-fan-in` から除外する。
 
 - [x] `[index]` データベースを 2 つ以上の service が参照しても `shared-infra-fan-in` warning を出さない
 

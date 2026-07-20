@@ -4,7 +4,7 @@ import type { AppAction, ActiveView } from "../state/app-reducer.js";
 /**
  * The `shouldSwitch` predicates used by `useAppViews` for its two
  * `useAutoSwitchView` instances. Exported so unit tests fence the REAL
- * expressions — the priority `system > deploy > org` (ADR-20260427-04) is
+ * expressions — the priority `system > deploy > org` (ADR-766) is
  * encoded here, not in hook call order, and e.g. dropping the
  * `!hasDeployDiagram` term would reintroduce the #923 stale-org tab flip.
  */
@@ -36,7 +36,7 @@ interface UseAutoSwitchViewArgs {
    * deploy-only → deploy per #766, org-only → org per #817). Priority between
    * multiple auto-switch instances is encoded in these predicates (org yields
    * when the file also has a deploy block — see the exported
-   * `shouldAutoSwitchTo*` helpers above and ADR-20260427-04), not in hook
+   * `shouldAutoSwitchTo*` helpers above and ADR-766), not in hook
    * call order.
    */
   shouldSwitch: boolean;

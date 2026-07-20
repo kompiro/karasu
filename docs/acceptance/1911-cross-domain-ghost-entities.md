@@ -15,7 +15,7 @@ intra-domain relations and bare cross-domain references behave as before.
 
 Scope: PR 2b-2, core only. Reuses the existing layout-node ghost mechanism
 (`layoutNode.ghost` → muted `ghost-nodes` group at `GHOST_OPACITY`), mirroring
-`ghostDomains` (ADR-20260411-05). No renderer or app change.
+`ghostDomains` (ADR-460). No renderer or app change.
 
 ## Design
 

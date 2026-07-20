@@ -3,7 +3,7 @@
 - **日付**: 2026-07-14
 - **Issue**: #1926（親 #1859 / #1822 / Epic #1817 comprehension）
 - **PR**: (P2c-C — hop/junction crossing marks)
-- **設計**: [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)
+- **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
 - **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測る。交差は表現で無害化するので「全交差が mark 付き」を assert し、残存交差を欠陥視しない）
 - **対象**: `packages/core/src/renderer/crossing-marks.ts`（`computeCrossingMarks` 追加） / `layout.ts` / `layout-types.ts` / `svg-renderer.ts`（`renderCrossingMarks` + `crossing-marks` レイヤ）
 

@@ -7,7 +7,7 @@ can be verified via DOM state or downloaded artifacts.
 ## Philosophy
 
 See `docs/design/e2e-automation-with-ai-visual-review.md` and ADR
-`20260412-05-playwright-with-ai-visual-review.md` for the full rationale.
+`529-playwright-with-ai-visual-review.md` for the full rationale.
 Key points:
 
 - This layer **supplements**, and does not replace, manual QA (`/qa`).
@@ -44,7 +44,7 @@ are uploaded with a retention of 14 days.
 ## Handling flaky tests
 
 When a test is judged flaky (definition and procedure in
-[ADR-20260509-01](../../docs/adr/20260509-01-flaky-e2e-fixme-and-issue.md)):
+[ADR-1008](../../docs/adr/1008-flaky-e2e-fixme-and-issue.md)):
 
 1. Mark the test `test.fixme(...)` in the same commit that observed the flake,
    with a comment of the form

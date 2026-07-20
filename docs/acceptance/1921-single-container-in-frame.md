@@ -3,7 +3,7 @@
 - **日付**: 2026-07-13
 - **Issue**: #1921（親 tracking #1815 / epic #1817 comprehension、goal #1923）
 - **PR**: feat/expand-container-in-frame
-- **設計**: [ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)
+- **設計**: [ADR-1815](../adr/1815-expand-container-in-place.md)
 - **Related TPLs**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を再配置しても全要素ちょうど一度配置 + 端点保持）, [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（`.krs` 不変）
 - **対象**: `packages/core/src/view/view-extract.ts` / `renderer/layout.ts` / `renderer/svg-renderer.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewPane` ほか）
 

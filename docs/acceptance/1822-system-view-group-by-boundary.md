@@ -9,7 +9,7 @@
 
 ## 概要
 
-P2b-A で追加した `boundary` 宣言（`boundaryIndex`）を **第二の Group-by 軸**として配線する。`groupBy: "boundary"` を選ぶと、宣言された `boundary` ごとにノードを束ね、P2a（team 軸）と同じ二段トポロジカルレイアウト・境界フレーム・折り畳み・P2c ルーティングをそのまま再利用して描く。team 軸（`ownerIndex`）とは**排他・独立**で、`ownerIndex` は軸に関わらず常にカードの team バッジ源として残る。experimental notation（ADR-20260713-01）。
+P2b-A で追加した `boundary` 宣言（`boundaryIndex`）を **第二の Group-by 軸**として配線する。`groupBy: "boundary"` を選ぶと、宣言された `boundary` ごとにノードを束ね、P2a（team 軸）と同じ二段トポロジカルレイアウト・境界フレーム・折り畳み・P2c ルーティングをそのまま再利用して描く。team 軸（`ownerIndex`）とは**排他・独立**で、`ownerIndex` は軸に関わらず常にカードの team バッジ源として残る。experimental notation（ADR-1820）。
 
 ## 受け入れ条件
 

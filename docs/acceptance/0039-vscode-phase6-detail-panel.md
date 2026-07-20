@@ -5,7 +5,7 @@
 **Partial automation** — TC-01..TC-04, TC-06, TC-08 are automated in
 [`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
 under the WebView E2E harness
-([`docs/adr/20260429-09-vscode-webview-e2e-automated.md`](../adr/20260429-09-vscode-webview-e2e-automated.md)
+([`docs/adr/1014-vscode-webview-e2e-automated.md`](../adr/1014-vscode-webview-e2e-automated.md)
 / [AT-0071](./0071-vscode-webview-e2e-phase2.md) (TC-01),
 [AT-0075](./0075-vscode-webview-e2e-phase3-at-0039-rest.md) (the rest)).
 
@@ -18,7 +18,7 @@ stays manual. From inside the WebView frame we can verify that the
 page posts an `openExternal` message to the extension, but cannot
 observe `vscode.env.openExternal` actually being called by the host
 without test-only seams in production code (see
-[ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md)
+[ADR-926](../adr/926-vscode-webview-manual-tests.md)
 "no extension-host stubs" rule).
 
 The harness job is gated on the `vscode-webview-e2e` PR label and is **not**

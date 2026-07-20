@@ -15,7 +15,7 @@ known_consumers:
 related_to: []
 discovered_from:
   - root_cause_file: "docs/concepts.ja.md"
-  - root_cause_adr: "ADR-20260317-02"
+  - root_cause_adr: "ADR-9006"
 topic: core-concepts
 scope:
   packages:

@@ -12,7 +12,7 @@ known_consumers:
   - layout
 discovered_from:
   - root_cause_file: "docs/spec/syntax.md"
-  - root_cause_adr: "docs/adr/20260714-01-cross-domain-ghost-entities.md"
+  - root_cause_adr: "docs/adr/1911-cross-domain-ghost-entities.md"
 related_to:
   - TPL-20260630-01
 topic: edges
@@ -63,4 +63,4 @@ domain id の error 級一意性とは異なる）。bare id では foreign enti
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) § `entity` declaration →「Intra- vs
   cross-domain targets — bare id vs `DomainId.EntityId`」節（本 TPL への back-ref あり）。
-- 設計経緯: [ADR-20260714-01](../adr/20260714-01-cross-domain-ghost-entities.md)。
+- 設計経緯: [ADR-1911](../adr/1911-cross-domain-ghost-entities.md)。

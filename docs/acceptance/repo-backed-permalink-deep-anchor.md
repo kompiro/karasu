@@ -2,8 +2,8 @@
 
 - **日付**: 2026-07-15
 - **関連 Issue**: [#1958](https://github.com/kompiro/karasu/issues/1958)（親 #1828 permalink layer / epic #1826）
-- **設計 (ADR)**: [ADR-20260716-02](../adr/20260716-02-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink、caching / deep-anchor）
-- **関連 ADR**: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（stateless、Cache API は新ストアではない）
+- **設計 (ADR)**: [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink、caching / deep-anchor）
+- **関連 ADR**: [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（stateless、Cache API は新ストアではない）
 - **Related TPLs**: [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)（deep-link anchor は単一 grammar — `?krs=` を `parseHash` で検証し fork しない）
 - **対象ファイル**:
   - `packages/app/src/render/share-page.ts`（`/s` bounce が `#krs-…` を `?krs=` に載せ替え）

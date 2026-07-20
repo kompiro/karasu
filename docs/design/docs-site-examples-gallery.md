@@ -4,8 +4,8 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1628](https://github.com/kompiro/karasu/issues/1628)（docs site Phase 2 — 本 Design Doc はうち「Examples gallery」項目）
-  - 親 ADR: [ADR-20260616-03](../adr/20260616-03-docs-site-ssg.md)（docs-site SSG 選定。Phase 2 で examples gallery を予定と明記）
-  - 関連: [ADR-20260616-02](../adr/20260616-02-guide-embedded-diagrams.md)（guide の hero スニペット → 併置 SVG。#1574）
+  - 親 ADR: [ADR-1575](../adr/1575-docs-site-ssg.md)（docs-site SSG 選定。Phase 2 で examples gallery を予定と明記）
+  - 関連: [ADR-1574](../adr/1574-guide-embedded-diagrams.md)（guide の hero スニペット → 併置 SVG。#1574）
   - 関連 TPL: [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)（docs 取り込みパイプラインの link/anchor 解決）, [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（正典 ↔ 再掲の片方向同期）
   - コード: `packages/docs-site/scripts/`, `examples/`, `packages/core/src/index.ts`（`compileProject` / `buildAllViewsSvgProject`）, `packages/cli/src/matrix.ts`（`NodeFileSystemProvider`）, `scripts/guide/gen-guide-diagrams.ts`
 
@@ -23,7 +23,7 @@ Phase 1 で `docs/`（guides / spec / concepts）から docs サイトを生成�
 | multi-file | `multi-file-system/`・`deploy/` 等は `import` で複数ファイルを跨ぐ。`ec-platform/` は段階チュートリアル（`01-system.krs`…`06-deploy/`）で単一エントリを持たない |
 | レンダリング API | core に `compileProject(path, fs, opts)` と `buildAllViewsSvgProject(path, fs, …)`（import 解決込みで全ビュー SVG 化、async）。単一ファイルは `compile()` + `buildAllViewsSvg()` |
 | FS 抽象 | core は `FileSystemProvider` interface を取る。`packages/cli/src/matrix.ts` に Node 実装 `NodeFileSystemProvider`（~30 行）があり流用できる |
-| 既存の図生成 | `scripts/guide/gen-guide-diagrams.ts` が guide の `krs` fence を **committed SVG** にして drift check（#1574 / ADR-20260616-02）。examples とは別系統 |
+| 既存の図生成 | `scripts/guide/gen-guide-diagrams.ts` が guide の `krs` fence を **committed SVG** にして drift check（#1574 / ADR-1574）。examples とは別系統 |
 | docs-site sync | `packages/docs-site/scripts/sync.ts` が `docs/` → Starlight content collection を生成（gitignore）。`check-links` が in-site link/anchor をビルド時検証（TPL-20260616-01） |
 
 ## 制約・前提

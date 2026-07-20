@@ -52,7 +52,7 @@ import {
  * browser) stays manual: from inside the WebView frame we can verify
  * that the page posts an `openExternal` message to the extension, but
  * cannot observe `vscode.env.openExternal` actually being called by the
- * host without test-only seams in production code (see ADR-20260428-05's
+ * host without test-only seams in production code (see ADR-926's
  * "no extension-host stubs" rule).
  *
  * AT-0042-3 (runtime/realizes section above team/role/tags section) is
@@ -106,7 +106,7 @@ const FIXTURE_NAME = "at-0039.krs";
 // node identifier in the AT-0039 fixture lives on line 17 (OrderService
 // with its description/links/domains, then a one-line UserService, then
 // Customer). Team ownership moved to a top-level `organization` block at
-// the end of the fixture (ADR-20260614-01 removed the inline property),
+// the end of the fixture (ADR-1564 removed the inline property),
 // which does not shift the in-system node lines.
 const FIXTURE_LINE = {
   Customer: 17,

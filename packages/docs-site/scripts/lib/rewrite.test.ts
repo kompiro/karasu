@@ -73,8 +73,8 @@ describe("rewriteLinkTarget", () => {
 
   it("rewrites out-of-site docs/*.md links to GitHub blob URLs", () => {
     const conceptsCtx = { srcDocsRel: "concepts.md", published: PUBLISHED };
-    expect(rewriteLinkTarget("./adr/20260323-03-organization-diagram.md", conceptsCtx)).toBe(
-      "https://github.com/kompiro/karasu/blob/main/docs/adr/20260323-03-organization-diagram.md",
+    expect(rewriteLinkTarget("./adr/14-organization-diagram.md", conceptsCtx)).toBe(
+      "https://github.com/kompiro/karasu/blob/main/docs/adr/14-organization-diagram.md",
     );
     // github-actions.md lives under docs/ but isn't published in Phase 1.
     expect(rewriteLinkTarget("../github-actions.md", ctx)).toBe(

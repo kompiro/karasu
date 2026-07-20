@@ -131,7 +131,7 @@ describe("fmt() with explicit files", () => {
   });
 
   it("does not empty a file made only of top-level infra blocks (#2076)", async () => {
-    // `karasu translate --from db` emits exactly this shape (ADR-20260422-05),
+    // `karasu translate --from db` emits exactly this shape (ADR-702),
     // so the old behaviour silently truncated translate output to nothing.
     const file = await writeKrs("infra.krs", `database DB{label "DB"}\nqueue Q{label "Q"}\n`);
     captureStdout();

@@ -2,7 +2,7 @@
 
 The core engine behind [karasu](https://github.com/kompiro/karasu) — a text-based architecture modeling tool inspired by the C4 model but with its own vocabulary, separating logical, physical, and organizational structure. This package is the pure-TypeScript parser, style resolver, SVG renderer, and `translate` library that the karasu CLI and app are built on.
 
-> **Stability — v0.x (no stability promise).** The `.krs` / `.krs.style` _language_ spec is committed to v1.0 (see [ADR-20260616-06](https://github.com/kompiro/karasu/blob/main/docs/adr/20260616-06-krs-spec-v1-freeze.md)), but this **TypeScript API is v0.x**: breaking changes may land in minor releases. Pin a version if you depend on it.
+> **Stability — v0.x (no stability promise).** The `.krs` / `.krs.style` _language_ spec is committed to v1.0 (see [ADR-1314](https://github.com/kompiro/karasu/blob/main/docs/adr/1314-krs-spec-v1-freeze.md)), but this **TypeScript API is v0.x**: breaking changes may land in minor releases. Pin a version if you depend on it.
 
 ## Install
 

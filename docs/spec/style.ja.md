@@ -105,7 +105,7 @@ edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
 パーサが `ambiguous-edge-base` warning を出し、`edge#<base>` セレクタは
 **どちらにも一致しない**。区別したい場合は `.krs` 側でいずれかに `#<id>` を
 付ける。詳細は [`docs/spec/syntax.md`](syntax.md#edge-declaration) と
-[`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md) を参照。
+[`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。
 
 ### タグセレクタを優先すべきケース
 
@@ -180,7 +180,7 @@ edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
 > — 本ドキュメントの `css` フェンスに宣言されたプロパティはアプリ内
 > reference データに存在しなければならず、`PROPERTY_SCHEMAS` の全エントリは
 > 本ドキュメントに記載されていなければならない（`stroke-style` は正式化前は
-> スキーマのみのゴーストだった — ADR-20260610-01 / #1492 参照）。
+> スキーマのみのゴーストだった — ADR-1492 / #1492 参照）。
 
 ---
 
@@ -332,7 +332,7 @@ edge#criticalWrite { direction: down; }
   ため、source endpoint については node `column` ヒントを上書きする
   （target の `column` は尊重）。同じ source への矛盾するヒントは
   **last-wins** で、cascade 規約と一貫する。詳細は
-  [`docs/adr/20260506-04-edge-direction-horizontal.md`](../adr/20260506-04-edge-direction-horizontal.md)
+  [`docs/adr/1135-edge-direction-horizontal.md`](../adr/1135-edge-direction-horizontal.md)
 
 #### サイクル / forced-layer フォールバック
 
@@ -348,7 +348,7 @@ edge#criticalWrite { direction: down; }
   動かない）。明示された該当エッジに限ってのみ kind stratification が
   乱れる
 
-詳細は [`docs/adr/20260506-03-edge-direction-style.md`](../adr/20260506-03-edge-direction-style.md)。
+詳細は [`docs/adr/9019-edge-direction-style.md`](../adr/9019-edge-direction-style.md)。
 
 不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
 
@@ -396,7 +396,7 @@ typographic な lift はそのまま、その上にこの offset が加算され
 > 1 軸 perpendicular ずらしと定義していた。これだと
 > `edge { label-offset: 8px; }` の効果が edge の傾きごとに違う方向に出て
 > 予測が立てにくかった。screen-axis CSS shorthand に切り替えた。詳細は
-> [ADR-20260509-05](../adr/20260509-05-edge-label-position-offset.md)。
+> [ADR-1184](../adr/1184-edge-label-position-offset.md)。
 
 ---
 

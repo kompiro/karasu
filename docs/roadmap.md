@@ -1,7 +1,7 @@
 # karasu ロードマップ
 
 - **ステータス**: living（随時更新する。決定は ADR、実行・進捗は GitHub Issues で管理し、本書は**全体方針**を保持する）
-- **現在のフォーカス**: `.krs` / `.krs.style` **v1.0 確定済み** — [ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md) の freeze 方針を公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317) / [#1764](https://github.com/kompiro/karasu/issues/1764)）で発効した。次の地平は [§post-v1.0 horizon（ロードマップ）](#post-v10-horizonロードマップ) に集約する（notation watch round 2 / comprehension / karasu-nest ほか）。
+- **現在のフォーカス**: `.krs` / `.krs.style` **v1.0 確定済み** — [ADR-1314](adr/1314-krs-spec-v1-freeze.md) の freeze 方針を公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317) / [#1764](https://github.com/kompiro/karasu/issues/1764)）で発効した。次の地平は [§post-v1.0 horizon（ロードマップ）](#post-v10-horizonロードマップ) に集約する（notation watch round 2 / comprehension / karasu-nest ほか）。
 - **関連**:
   - [#1567](https://github.com/kompiro/karasu/issues/1567) — notation gap stocktaking（本ロードマップの起点）
   - [#1314](https://github.com/kompiro/karasu/issues/1314) — OSS launch Phase 2: `.krs` / `.krs.style` v1.0 spec freeze の ADR（本ロードマップが入力になる）
@@ -41,9 +41,9 @@ freeze（後方互換を約束）するための readiness と計画。最終的
 
 | tier | 意味（互換保証） | 入る条件（すべて満たす） |
 | --- | --- | --- |
-| **v1.0-stable** | 後方互換を約束する。破壊的変更は major でしか入れない | (1) [structure-vs-implementation 境界](#guiding-principle-structure-vs-implementation-境界) の構造側にある（実装詳細を持ち込まない）／(2) spec に明文化済みで、規則 ↔ 診断が対応づいている（[ADR-20260616-04](adr/20260616-04-rule-diagnostic-separation-and-catalog.md)）／(3) 既存の `.krs` を壊さずに freeze できる（実装と spec が一致している）／(4) 削るより残すほうが利用者の表現コストが低い |
+| **v1.0-stable** | 後方互換を約束する。破壊的変更は major でしか入れない | (1) [structure-vs-implementation 境界](#guiding-principle-structure-vs-implementation-境界) の構造側にある（実装詳細を持ち込まない）／(2) spec に明文化済みで、規則 ↔ 診断が対応づいている（[ADR-1567](adr/1567-rule-diagnostic-separation-and-catalog.md)）／(3) 既存の `.krs` を壊さずに freeze できる（実装と spec が一致している）／(4) 削るより残すほうが利用者の表現コストが低い |
 | **experimental（post-v1.0 watch）** | in-core で使えるが互換は**明示的に約束しない**。実利用の pain を観察してから stable / 変更 / deprecate を決める | (1)〜(4) のいずれかが未充足だが、構文を変えずに当面運用できる。境界が灰色（構造か実装か判断保留）／実利用が不足し earn-its-keep が未確認、のいずれか |
-| **deprecated** | 段階的に外す。`@deprecated(until: …)` の graceful-degradation で移行猶予を与える（[ADR-20260615-04](adr/20260615-04-migration-intent-fields.md)） | 構造側にない、または redundant と確定し、後継が用意できている |
+| **deprecated** | 段階的に外す。`@deprecated(until: …)` の graceful-degradation で移行猶予を与える（[ADR-1568](adr/1568-migration-intent-fields.md)） | 構造側にない、または redundant と確定し、後継が用意できている |
 
 補足:
 
@@ -52,7 +52,7 @@ freeze（後方互換を約束）するための readiness と計画。最終的
   の二分（[TPL-20260514-08](test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)）に従う。
 - **open annotation set は常に stable 側**: 未知の annotation は display-only で通る
   ため、新語彙の追加が後方互換を壊さない。features を experimental に置くより、
-  open-set へ逃がせるものは逃がす（[ADR-20260615-04](adr/20260615-04-migration-intent-fields.md)）。
+  open-set へ逃がせるものは逃がす（[ADR-1568](adr/1568-migration-intent-fields.md)）。
 - **experimental を明示することが目的**: 「観察してから決める」ものを早すぎる段階で
   stable に硬直化させないため、freeze しないものを曖昧にせず experimental と名指す
   （`docs/concepts.md` の "these goals and non-goals are not fixed" の精神）。
@@ -99,12 +99,12 @@ disposition 列は [§criteria](#syntax-v10-の定義criteria) の 3 tier を各
 
 | ID | finding | 現状 | v1.0 disposition |
 | --- | --- | --- | --- |
-| **F** | service/domain の `team` property（excess） | [ADR-20260614-01](adr/20260614-01-remove-team-property.md) で削除、`team-property-removed` error 化 | **確定**（freeze 対象） |
-| **A** | ownership-during-migration の register 不整合 | [ADR-20260615-01](adr/20260615-01-ownership-during-migration.md) で `duplicate-owner-assignment` を error→info に降格 | **確定** |
-| **B** | structured lifecycle-annotation fields | [ADR-20260615-04](adr/20260615-04-migration-intent-fields.md) で `@name(key: "value")` + `until`/`from` built-in（runtime 評価なし） | **確定** |
-| (#1570) | shared-database fan-in に diagnostic 無し | [ADR-20260615-02](adr/20260615-02-shared-infra-fan-in-diagnostic.md) で `shared-infra-fan-in`（info）追加 | **確定** |
+| **F** | service/domain の `team` property（excess） | [ADR-1564](adr/1564-remove-team-property.md) で削除、`team-property-removed` error 化 | **確定**（freeze 対象） |
+| **A** | ownership-during-migration の register 不整合 | [ADR-1566](adr/1566-ownership-during-migration.md) で `duplicate-owner-assignment` を error→info に降格 | **確定** |
+| **B** | structured lifecycle-annotation fields | [ADR-1568](adr/1568-migration-intent-fields.md) で `@name(key: "value")` + `until`/`from` built-in（runtime 評価なし） | **確定** |
+| (#1570) | shared-database fan-in に diagnostic 無し | [ADR-1570](adr/1570-shared-infra-fan-in-diagnostic.md) で `shared-infra-fan-in`（info）追加 | **確定** |
 | (#1569) | `unresolved-edge-endpoint` warning が spec §S6 に約束されつつ未実装 | bug fix 済み | **確定** |
-| (#1566+) | team block への annotation / owner priority | [ADR-20260615-05](adr/20260615-05-team-annotations-owner-priority.md) で `migrationPriority()` による primary owner 選定 | **確定** |
+| (#1566+) | team block への annotation / owner priority | [ADR-1583](adr/1583-team-annotations-owner-priority.md) で `migrationPriority()` による primary owner 選定 | **確定** |
 | **H** | CRUD verb-decoration 1:N（`replace:create,delete`） | spec + parser 実装済み | **v1.0 で残す**（freeze 対象。判断根拠は付録参照） |
 | **G** | `client` sub-language の複雑さが実装詳細線に接近 | spec 上は文書化済み・gap なし | **確定**（concepts へ境界注記済み #1643） |
 | **I** | infra block keyword（`database`/`queue`/…）vs shape tag（`[table]`/`[queue]`/…）の vocabulary overlap | 衝突強制なし。semantic overlap | **確定**（audience guidance を spec に注記済み #1636） |
@@ -118,7 +118,7 @@ disposition 列は [§criteria](#syntax-v10-の定義criteria) の 3 tier を各
 | --- | --- | --- |
 | edge は**所属ブロックの id を起点**にする（domain edge は source `domain` 内に書く） | 明文化されていない。例から暗黙的に読み取るのみ | **freeze 前に spec 明文化 + 名前付き診断を新設** |
 | top-level の `user` / edge は invalid（`system` 内に置く） | 明文化されていない。診断名なし | **freeze 前に spec 明文化 + 名前付き診断を新設** |
-| nested node の named import は dotted path（`import { Sys.Svc.Domain }`） | 明文化済み（[ADR-20260513-03](adr/20260513-03-import-system-nested.md)） | 済み |
+| nested node の named import は dotted path（`import { Sys.Svc.Domain }`） | 明文化済み（[ADR-927](adr/927-import-system-nested.md)） | 済み |
 
 ### v1.0 freeze のスコープ
 
@@ -132,9 +132,9 @@ freeze する = 後方互換を約束する。
 - **タグ・アノテーション**: `docs/spec/tags-annotations.md` の builtin 集合と
   **open annotation set のセマンティクス**（未知 annotation は display-only で許容）。
 - **診断 register**: fact vs style の二分（[TPL-20260514-08](test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)）と、
-  ADR-20260615-01/02/05 で確定した register 割り当て。**warn-don't-error** 方針
+  ADR-1566/02/05 で確定した register 割り当て。**warn-don't-error** 方針
   （未完成・in-flight なモデルでも render できる差別化要因）。
-- **lifecycle annotation の parameter 構文**（[ADR-20260615-04](adr/20260615-04-migration-intent-fields.md)、
+- **lifecycle annotation の parameter 構文**（[ADR-1568](adr/1568-migration-intent-fields.md)、
   `@name(key: "value")` + graceful degradation by precision）。
 - **CRUD verb-decoration**（1:N 含む。付録の判断に基づく）。
 - 配置 scope の診断 `edge-source-mismatch`（既存）/ `top-level-declaration`（新設、#1624）。
@@ -176,18 +176,18 @@ are not fixed" の精神に沿う）。
 ### 実行計画（GitHub Issues で管理）— ✅ 完了
 
 freeze 前タスクはすべて完了し、[#1314](https://github.com/kompiro/karasu/issues/1314) で
-freeze ADR（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）を確定した。
+freeze ADR（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）を確定した。
 **凍結方針は決定済み**で、v1.0 は公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317) /
 [#1764](https://github.com/kompiro/karasu/issues/1764)）で**確定・発効した**。
 
 | # | タスク | 種別 | Issue | 状態 |
 | --- | --- | --- | --- | --- |
 | 1 | edge 起点 scope の spec 明文化（規則名 = edge origin scope）。診断は既存の `edge-source-mismatch` を back-ref（rename しない） | spec + AT | [#1623](https://github.com/kompiro/karasu/issues/1623) | ✅ #1630 |
-| 2 | top-level `user`/edge 禁止の spec 明文化 + 名前付き診断 `top-level-declaration` 新設 | core + spec + AT | [#1624](https://github.com/kompiro/karasu/issues/1624) | ✅ #1637（user scoping: [ADR-20260616-05](adr/20260616-05-user-system-scoped.md)） |
+| 2 | top-level `user`/edge 禁止の spec 明文化 + 名前付き診断 `top-level-declaration` 新設 | core + spec + AT | [#1624](https://github.com/kompiro/karasu/issues/1624) | ✅ #1637（user scoping: [ADR-1639](adr/1639-user-system-scoped.md)） |
 | 3 | **G** `client` sub-language の structure vs implementation 境界注記を `docs/concepts.md` に追加 | docs | [#1625](https://github.com/kompiro/karasu/issues/1625) | ✅ #1643 |
 | 4 | **I** infra block keyword と shape tag の使い分け意図を spec に注記 | docs | [#1626](https://github.com/kompiro/karasu/issues/1626) | ✅ #1636 |
-| 5 | v1.0 spec freeze ADR | adr | [#1314](https://github.com/kompiro/karasu/issues/1314) | ✅ [ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)（#1647） |
-| — | 規則↔診断の分離 + 診断カタログ | adr | — | ✅ [ADR-20260616-04](adr/20260616-04-rule-diagnostic-separation-and-catalog.md)（#1629/#1641） |
+| 5 | v1.0 spec freeze ADR | adr | [#1314](https://github.com/kompiro/karasu/issues/1314) | ✅ [ADR-1314](adr/1314-krs-spec-v1-freeze.md)（#1647） |
+| — | 規則↔診断の分離 + 診断カタログ | adr | — | ✅ [ADR-1567](adr/1567-rule-diagnostic-separation-and-catalog.md)（#1629/#1641） |
 
 > **proactive TPL 同梱の義務**: タスク 1〜4 は `docs/spec/` / `docs/concepts*.md` への
 > 新規セクション追加を含むため、CLAUDE.md / `docs/process.md`「spec / concepts 改訂時の
@@ -227,14 +227,14 @@ excess 候補（finding H）として挙げた。検討の結果、**v1.0 で残
 ### 残す前提での watch
 
 - v1.0 後、実利用で 1:N が earn its keep しているか（実際に使われ、誤用が少ないか）を
-  観察する。問題が出れば post-v1.0 で deprecation を別途検討する（ADR-20260615-04 の
+  観察する。問題が出れば post-v1.0 で deprecation を別途検討する（ADR-1568 の
   `@deprecated` graceful-degradation の枠組みが使える）。
 
 ---
 
 ## post-v1.0 horizon（ロードマップ）
 
-- **ステータス**: living。v1.0（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）で構文を freeze した後の **rolling な次の地平**を束ねる。単一バージョンの release ではないので "v2.0" のような版では括らない。
+- **ステータス**: living。v1.0（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）で構文を freeze した後の **rolling な次の地平**を束ねる。単一バージョンの release ではないので "v2.0" のような版では括らない。
 - **管理モデル**: GitHub Milestone は 1 Issue 1 個のフラット1軸なので、2軸を分けて持つ — **時間軸（いつ着手）= 日付 Milestone**（`2026-07` / `2026-09` / `2026-12` / `Backlog`）、**テーマ軸（何を）= parent Epic Issue + `epic:` ラベル**。日付は keystone（下記）後に確定する intent バケツ。根拠は本書と各 ADR、詳細経緯は parent Epic Issue が持つ（[#1814](https://github.com/kompiro/karasu/issues/1814) が全体 planning の傘）。
 - **後方互換**: notation watch（round 2）は**後方互換を保ったまま**実利用で評価する営みで、昇格は v1.x 内で [§promotion gate](#promotion-gatenotation-評価の規律) を通す（破壊的変更を前提にしない）。
 - **動かさない非ゴール**: 時間軸 / sequence（[#23](https://github.com/kompiro/karasu/issues/23) / [#28](https://github.com/kompiro/karasu/issues/28)）・code generation・ER modeling・runtime metrics・infra topology・canvas editing は `docs/concepts.md` で確定済み。post-v1.0 horizon はこの線を動かさない。実利用で圧力が出たものは下記 [§非ゴール圧力 log](#非ゴール圧力-log) に記録のみする。
@@ -295,11 +295,11 @@ permalink family）の定義は [`docs/glossary.md`](glossary.md)（keystone・p
 | 1 | authoring AI に渡すのが `syntax.md`（文法）のみで **idiom/pattern** 資料が無い。KV store は **leaf-less `database`** + node 粒度参照 + physical layer の engine で**表現済み**（`@kv` は却下: annotation は lifecycle 標識） | **cookbook 新設**（KV を entry #1、LLM に同梱）。`[kv]` badge は watch | [#1818](https://github.com/kompiro/karasu/issues/1818) |
 | 2 | table を **domain** でまとめ、**cross-domain な store アクセス**を診断したい | logical=domain でグルーピング + 診断（`shared-infra-fan-in` 系）。physical=schema は 1:1 でなく**未決**（[#1632](https://github.com/kompiro/karasu/issues/1632) の infra realizes と地続き） | [#1819](https://github.com/kompiro/karasu/issues/1819) |
 | 3 | 大規模 multi-file 図の混雑。**file は grouping 単位として誤り**（サンプルは view 種別で分割）。本当の need = system 内の**意味的クラスタ宣言** | **comprehension 柱へ移設**（描画/密度の問題） | [#1822](https://github.com/kompiro/karasu/issues/1822) |
-| 4 | 残した experimental notation を**いつ評価するか**が未定義。後方互換ゆえ rename/廃止は高コスト | **promotion gate**（下記）を [ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md) に記録・本書に生きた適用状態を保持 | [#1820](https://github.com/kompiro/karasu/issues/1820) |
-| 5 | KV は **cache 用途**が多いが `database` は SoR 含意を持つ。`[index]` と並ぶ **`[cache]` role tag**（technology でなく role）が無い | **experimental 据え置き（watch）**。`--from wrangler` adapter は素の `database` へ degrade（warning）。cache パターンが複数 source で再発したら promotion gate へ | [ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
-| 6 | **Durable Object = stateful compute**（compute かつ store）で clean な infra kind が無い | **experimental 据え置き（watch）**。adapter は `service [external]` + RPC edge へ degrade（`[external]` は真の所有境界を過大表現）。honest な modeling 需要が実 corpus で溜まれば stateful-compute notation を再評価 | [ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
+| 4 | 残した experimental notation を**いつ評価するか**が未定義。後方互換ゆえ rename/廃止は高コスト | **promotion gate**（下記）を [ADR-1820](adr/1820-notation-promotion-gate.md) に記録・本書に生きた適用状態を保持 | [#1820](https://github.com/kompiro/karasu/issues/1820) |
+| 5 | KV は **cache 用途**が多いが `database` は SoR 含意を持つ。`[index]` と並ぶ **`[cache]` role tag**（technology でなく role）が無い | **experimental 据え置き（watch）**。`--from wrangler` adapter は素の `database` へ degrade（warning）。cache パターンが複数 source で再発したら promotion gate へ | [ADR-1935](adr/1935-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
+| 6 | **Durable Object = stateful compute**（compute かつ store）で clean な infra kind が無い | **experimental 据え置き（watch）**。adapter は `service [external]` + RPC edge へ degrade（`[external]` は真の所有境界を過大表現）。honest な modeling 需要が実 corpus で溜まれば stateful-compute notation を再評価 | [ADR-1935](adr/1935-wrangler-translate-adapter.md) / [#1816](https://github.com/kompiro/karasu/issues/1816) |
 
-> finding 5 / 6 は wrangler translate adapter（[ADR-20260714-03](adr/20260714-03-wrangler-translate-adapter.md)、[#1943](https://github.com/kompiro/karasu/issues/1943)）が v1 freeze 下で新構文を作らず degrade する判断から派生した watch item。子 Issue は起こさず、証拠源（wrangler / nest corpus）で earn-its-keep を観測してから promotion gate に載せる。
+> finding 5 / 6 は wrangler translate adapter（[ADR-1935](adr/1935-wrangler-translate-adapter.md)、[#1943](https://github.com/kompiro/karasu/issues/1943)）が v1 freeze 下で新構文を作らず degrade する判断から派生した watch item。子 Issue は起こさず、証拠源（wrangler / nest corpus）で earn-its-keep を観測してから promotion gate に載せる。
 
 #### Comprehension の構図
 
@@ -314,12 +314,12 @@ permalink family）の定義は [`docs/glossary.md`](glossary.md)（keystone・p
 
 ### promotion gate（notation 評価の規律）
 
-experimental notation を v1.0-stable へ昇格させる判断の規律（決定は [ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md)、本節はその生きた適用状態）:
+experimental notation を v1.0-stable へ昇格させる判断の規律（決定は [ADR-1820](adr/1820-notation-promotion-gate.md)、本節はその生きた適用状態）:
 
 - **既定 = experimental 据え置き**。追加しない/据え置くコストは低く、削除コストは高い。昇格に渋く、open/既存構文での表現に寛容に、灰色は experimental に留める。問いは「**stable へ昇格するに足る実利用証拠があるか**」であって「廃止すべきか」ではない。
 - **トリガー**: (i) その notation に触れるリリースの直前（v1.0 はリリース済みのため、載せる版が v1.x minor（追加互換）か v2.0 major（破壊的変更を伴う昇格）かの判断も含む）、(ii) 実利用データが溜まった時、(iii) 混乱/bug Issue の再発時。
 - **証拠源 = karasu-nest の共有 corpus**。実 OSS を書いた `.krs` が watch tier の必要とする「実利用 pain」の観測装置になる。
-- 配置は **三点配線** — **[ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md)（決定）+ 本書（生きた適用状態）+ [`docs/process.md` リリース運用](process.md#リリース運用)（発火 touchpoint）**。gate を実際に invoke するのは process.md 側（experimental notation に触れる changeset・リリース前の版番号/CHANGELOG 目視）で、これにより決定が絵に描いた餅にならないようにする。
+- 配置は **三点配線** — **[ADR-1820](adr/1820-notation-promotion-gate.md)（決定）+ 本書（生きた適用状態）+ [`docs/process.md` リリース運用](process.md#リリース運用)（発火 touchpoint）**。gate を実際に invoke するのは process.md 側（experimental notation に触れる changeset・リリース前の版番号/CHANGELOG 目視）で、これにより決定が絵に描いた餅にならないようにする。
 
 #### watch 対象の experimental notation（登録）
 
@@ -328,7 +328,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 
 | notation | 追加 | 現状 | promotion trigger（stable 昇格の判断材料） |
 | --- | --- | --- | --- |
-| **`boundary`**（system view の意味的クラスタ宣言 / `contains` / `boundaryIndex`） | [#1974](https://github.com/kompiro/karasu/issues/1974)（P2b、[design](design/system-view-grouping.md)・[syntax](spec/syntax.md#grouping-the-system-view-boundary--experimental)） | experimental（[ADR-20260711-03](adr/20260711-03-system-view-group-by-team.md) の team 軸に続く第二 Group-by 軸） | corpus で `boundary` が実際に使われるか・`contains` の粒度や first-wins 多重所属が実利用で噛み合うか・drill-down grouping（[#1983](https://github.com/kompiro/karasu/issues/1983) で正規化したレベル別フレーム）が実利用されるか・`group` 系の別語彙要望が出ないか。溜まったら v1.x minor で stable 昇格を判断 |
+| **`boundary`**（system view の意味的クラスタ宣言 / `contains` / `boundaryIndex`） | [#1974](https://github.com/kompiro/karasu/issues/1974)（P2b、[design](design/system-view-grouping.md)・[syntax](spec/syntax.md#grouping-the-system-view-boundary--experimental)） | experimental（[ADR-1858](adr/1858-system-view-group-by-team.md) の team 軸に続く第二 Group-by 軸） | corpus で `boundary` が実際に使われるか・`contains` の粒度や first-wins 多重所属が実利用で噛み合うか・drill-down grouping（[#1983](https://github.com/kompiro/karasu/issues/1983) で正規化したレベル別フレーム）が実利用されるか・`group` 系の別語彙要望が出ないか。溜まったら v1.x minor で stable 昇格を判断 |
 
 ### 独立 candidate（未 Issue 化 — issue が生えたら Milestone 化）
 

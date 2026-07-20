@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-23
 - **関連 Issue**: [#1720](https://github.com/kompiro/karasu/issues/1720)
-- **関連 ADR**: [ADR-20260623-02](../adr/20260623-02-client-realize-owns-target.md)
+- **関連 ADR**: [ADR-1720](../adr/1720-client-realize-owns-target.md)
 - **対象ファイル**: `packages/core/src/resolver/warnings.ts`, `packages/core/src/parser/parser.ts`
 
 ## 受け入れ条件
@@ -11,7 +11,7 @@
 
 - [x] deploy unit が system 内の client を realize しても `unresolved-realizes` 警告が出ない
 
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `resolves a deploy unit realizing a system-nested client (ADR-20260623-02)`
+  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `resolves a deploy unit realizing a system-nested client (ADR-1720)`
 
 - [x] deploy unit が top-level（unassigned）の client を realize しても警告が出ない
 
@@ -21,7 +21,7 @@
 
 - [x] team が system 内の client を `owns` しても `invalid-owns`（resolver）警告が出ない
 
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `does not warn when owns references a client ID (ADR-20260623-02)`
+  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `does not warn when owns references a client ID (ADR-1720)`
 
 - [x] team が top-level の client を `owns` しても `invalid-owns` 警告が出ない
 
@@ -29,7 +29,7 @@
 
 - [x] team が client を `owns` しても parser の `owns-target-not-found` 警告が出ない（system 内 / top-level 両方）
 
-  > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `does not emit owns-target-not-found when owns references a client (ADR-20260623-02)` / `... a top-level client`
+  > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `does not emit owns-target-not-found when owns references a client (ADR-1720)` / `... a top-level client`
 
 ### deploy / org view への描画
 

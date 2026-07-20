@@ -3,7 +3,7 @@
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1468](https://github.com/kompiro/karasu/issues/1468)
 - **対象ファイル**: `packages/app/src/styles/app.css` / `packages/app/src/components/ui/dialog.tsx` / `dropdown-menu.tsx` / `tooltip.tsx`
-- **関連**: コマンドパレット [ADR-20260520-01](../adr/20260520-01-app-command-palette.md) / shadcn/ui 採用 [ADR-20260515-01](../adr/20260515-01-adopt-shadcn-ui.md) / テスト観点 [TPL-20260520-01](../test-perspectives/TPL-20260520-01-overlay-z-index-scale.md)
+- **関連**: コマンドパレット [ADR-1421](../adr/1421-app-command-palette.md) / shadcn/ui 採用 [ADR-1368](../adr/1368-adopt-shadcn-ui.md) / テスト観点 [TPL-20260520-01](../test-perspectives/TPL-20260520-01-overlay-z-index-scale.md)
 
 ## 背景
 

@@ -1,6 +1,6 @@
 /* shadcn/ui Button — adapted from https://ui.shadcn.com/docs/components/button
  * Issue #1368. Variants are karasu-specific: they encode the two toolbar
- * button tiers from ADR-20260405-02 (toolbar-btn--actionable) rather than
+ * button tiers from ADR-307 (toolbar-btn--actionable) rather than
  * shadcn's generic default/secondary/destructive set.
  *
  *   variant="actionable" — Tier 1: persistent actions the user should notice

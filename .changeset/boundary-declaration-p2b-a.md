@@ -10,5 +10,5 @@ Multi-membership resolves first-declared-wins and surfaces the new info
 diagnostic `duplicate-boundary-assignment`; a `contains` target that is not found
 in the system hierarchy warns via `contains-target-not-found`. This is a
 parse-time slice only — the Group-by "boundary" axis and rendering land in a
-follow-up. Experimental notation (ADR-20260713-01); backward compatibility is not
+follow-up. Experimental notation (ADR-1820); backward compatibility is not
 yet promised. Refs #1822.

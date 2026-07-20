@@ -8,7 +8,7 @@ applicable_to:
   - "migration 共存（@migration_target / @deprecated）の最中に「主」を 1 つ選ぶ必要があるロジックを追加・変更するとき"
 discovered_from:
   - issue: "#1583"
-  - root_cause_adr: "ADR-20260411-02"
+  - root_cause_adr: "ADR-477"
 related_to:
   - TPL-20260514-08
   - TPL-20260512-01
@@ -88,5 +88,5 @@ karasu は逆コンウェイ戦略の過渡期（移行元 → 移行先の引�
 
 - `docs/spec/tags-annotations.md` §「Team contact convention」（team アノテーションと
   primary-owner 優先ルール）/ §「Migration annotations」（domain 側の共存ルール）
-- ADR-20260411-02（deprecated-domain-migration-coexistence）、ADR-20260615-01
+- ADR-477（deprecated-domain-migration-coexistence）、ADR-1566
   （duplicate-owner-assignment を info に下げる）

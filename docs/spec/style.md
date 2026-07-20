@@ -108,7 +108,7 @@ author id, the parser raises an `ambiguous-edge-base` warning and the
 `edge#<base>` selector matches **none** of them. To disambiguate, give
 one of the edges an `#<id>` in `.krs`. See
 [`docs/spec/syntax.md`](syntax.md#edge-declaration) and
-[`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md).
+[`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md).
 
 ### When to prefer tag selectors
 
@@ -190,7 +190,7 @@ On nodes, `border-style` is the only line-style property —
 > — every property declared in this document's `css` fences must exist in
 > the in-app reference data, and every `PROPERTY_SCHEMAS` entry must be
 > documented here (`stroke-style` was a schema-only ghost before being
-> formalized — see ADR-20260610-01 / #1492).
+> formalized — see ADR-1492 / #1492).
 
 ---
 
@@ -353,7 +353,7 @@ karasu layered layout.
   source endpoint; the target's `column` stays in effect. Conflicts on
   the same source resolve **last-wins**, matching the cascade
   convention. See
-  [`docs/adr/20260506-04-edge-direction-horizontal.md`](../adr/20260506-04-edge-direction-horizontal.md).
+  [`docs/adr/1135-edge-direction-horizontal.md`](../adr/1135-edge-direction-horizontal.md).
 
 #### Cycle / forced-layer fallback
 
@@ -370,7 +370,7 @@ cases:
   kind are unaffected. The kind stratification is therefore only
   perturbed for the explicitly-flagged edge.
 
-See [`docs/adr/20260506-03-edge-direction-style.md`](../adr/20260506-03-edge-direction-style.md)
+See [`docs/adr/9019-edge-direction-style.md`](../adr/9019-edge-direction-style.md)
 for the rationale.
 
 Invalid values are silently dropped and `direction` falls back to `auto`.
@@ -421,7 +421,7 @@ labels off the line, and the offset adds on top.
 > the edge direction. That made `edge { label-offset: 8px; }` produce
 > a different visual direction per edge slope, which was hard to
 > reason about. Switched to screen-axis CSS-shorthand semantics — see
-> [ADR-20260509-05](../adr/20260509-05-edge-label-position-offset.md).
+> [ADR-1184](../adr/1184-edge-label-position-offset.md).
 
 ---
 

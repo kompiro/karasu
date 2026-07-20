@@ -6,14 +6,14 @@ paths:
 
 # App UI Rules — Buttons
 
-karasu adopted shadcn/ui in [ADR-20260515-01](../../docs/adr/20260515-01-adopt-shadcn-ui.md).
+karasu adopted shadcn/ui in [ADR-1368](../../docs/adr/1368-adopt-shadcn-ui.md).
 **All buttons use the shadcn `Button` primitive** (`@/components/ui/button`).
 The legacy `toolbar-btn` / `toolbar-btn--actionable` / `toolbar-btn--<name>`
 class system is deprecated — no new code should add those classes.
 
 ## The two tiers map to Button variants
 
-The tier model from ADR-20260405-02 is preserved, now expressed as
+The tier model from ADR-307 is preserved, now expressed as
 `Button` variants instead of CSS classes:
 
 | Tier | Old class | `Button` variant |

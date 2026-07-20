@@ -38,7 +38,7 @@ const exitCode = await runExtester({
     // domains (System), deploy units that realize services (Deploy), and an
     // organization with teams that own the services/domains (Org). Team
     // ownership uses the top-level `organization` block — the inline `team`
-    // property was removed in ADR-20260614-01, so it must NOT appear inside
+    // property was removed in ADR-1564, so it must NOT appear inside
     // services (it would render error squiggles in the screenshots). Keep this
     // fixture diagnostic-clean.
     fs.writeFileSync(

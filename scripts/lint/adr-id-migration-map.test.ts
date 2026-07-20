@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { adrFiles, check, type MapEntry } from "./adr-id-migration-map.ts";
+import {
+  adrFiles,
+  bareStemMatcher,
+  check,
+  findBareInText,
+  type MapEntry,
+} from "./adr-id-migration-map.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
@@ -144,5 +150,68 @@ describe("adrFiles", () => {
     expect(files).not.toContain("effective.md");
     expect(files).not.toContain("graph.md");
     expect(files.length).toBeGreaterThan(200);
+  });
+});
+
+describe("findBareInText", () => {
+  // 20260419-01 -> ADR-644, 20260626-01 -> ADR-1783
+  const entries: MapEntry[] = [
+    {
+      oldId: "ADR-20260419-01",
+      oldFile: "20260419-01-translate-db-aggregate-grouping.md",
+      newId: "ADR-644",
+      newFile: "644-translate-db-aggregate-grouping.md",
+      source: "issue",
+      evidence: "x",
+    },
+    {
+      oldId: "ADR-20260626-01",
+      oldFile: "20260626-01-karasu-nest-hosted-preview.md",
+      newId: "ADR-1783",
+      newFile: "1783-karasu-nest-hosted-preview.md",
+      source: "issue",
+      evidence: "x",
+    },
+  ];
+  const matcher = bareStemMatcher(entries);
+
+  const stems = (t: string) => findBareInText(t, matcher).map((h) => h.stem);
+
+  it("flags a bare stem the main rename missed", () => {
+    const hits = findBareInText("捨てていた（ADR-643 / 20260419-01）", matcher);
+    expect(hits).toEqual([{ stem: "20260419-01", newId: "ADR-644" }]);
+  });
+
+  it("flags every occurrence, not just the first", () => {
+    expect(stems("| 1783? | 20260626-01 | 20260626-01 |")).toEqual(["20260626-01", "20260626-01"]);
+  });
+
+  it("does NOT match an ADR- prefixed id (the main pass owns those)", () => {
+    expect(stems("see ADR-20260419-01 for details")).toEqual([]);
+  });
+
+  it("does NOT match the filename form (the main pass owns those)", () => {
+    expect(stems("[link](20260419-01-translate-db-aggregate-grouping.md)")).toEqual([]);
+  });
+
+  it("does NOT match a TPL id sharing the same digits", () => {
+    expect(stems("see TPL-20260419-01 for the perspective")).toEqual([]);
+  });
+
+  it("does NOT match a path segment", () => {
+    expect(stems("docs/adr/20260419-01/notes")).toEqual([]);
+  });
+
+  it("does NOT match a longer dotted token like a meta filename", () => {
+    expect(stems("`20260419-01.meta.yaml`")).toEqual([]);
+  });
+
+  it("does NOT match a stem that is not a known old ADR", () => {
+    // Same shape, but no entry maps it — a random date pair must be left alone.
+    expect(stems("build 20261231-99 completed")).toEqual([]);
+  });
+
+  it("returns nothing when there are no entries", () => {
+    expect(findBareInText("20260419-01", bareStemMatcher([]))).toEqual([]);
   });
 });

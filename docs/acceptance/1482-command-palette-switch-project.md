@@ -3,7 +3,7 @@
 - **日付**: 2026-05-21
 - **関連 Issue**: [#1482](https://github.com/kompiro/karasu/issues/1482)
 - **対象ファイル**: `packages/app/src/components/SwitchProjectCommand.tsx` / `packages/app/src/components/ProjectPicker.tsx`
-- **関連**: コマンドパレット [AT #1421](1421-command-palette.md) / キーボードショートカット基盤 [ADR-20260519-02](../adr/20260519-02-app-keyboard-shortcuts.md) / TPL-20260519-01 / TPL-20260520-01
+- **関連**: コマンドパレット [AT #1421](1421-command-palette.md) / キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-20260519-01 / TPL-20260520-01
 
 ## 受け入れ条件
 

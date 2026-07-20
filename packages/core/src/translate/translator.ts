@@ -44,7 +44,7 @@ export interface TranslatorContext {
    */
   emitBindings?: boolean;
   /**
-   * Annotate emitted operations with `<verb>:<crud>` decoration per ADR-20260503-01.
+   * Annotate emitted operations with `<verb>:<crud>` decoration per ADR-1082.
    * Implies `emitBindings`.
    */
   emitCrudDecoration?: boolean;

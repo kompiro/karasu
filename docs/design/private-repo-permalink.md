@@ -6,8 +6,8 @@
 - **ステータス**: **却下記録**（2026-07-16）— client-side BYO-PAT 方式は「reader が PAT を貼って手元で fetch」＝**local ツールに収束**し、nest(funnel)/core(my-system) の境界を越える（#1960 の当初動機に反する）。private repo は代わりに **karasu-nest の GitHub App ピボット**（installation 認証で server-side reverse、reader は PAT 不要）で解く。→ [#1783](https://github.com/kompiro/karasu/issues/1783) / [PR #1978](https://github.com/kompiro/karasu/pull/1978)（`docs/design/karasu-nest-pivot-github-app.md`、マージ後に有効）。本 doc は「なぜ client-PAT を採らずピボットに至ったか」の推論記録として残す。
 - **関連**:
   - repo-backed permalink 設計 [`docs/design/repo-backed-ref-pinned-permalink.md`](./repo-backed-ref-pinned-permalink.md)（軸3 private を v1 で public-only に決定・後続化）
-  - [ADR-20260407-04](../adr/20260407-04-cloudflare-deployment-and-byok-ai.md)（BYOK 原則・token/secret をサービスが持たない・sessionStorage 既定 / localStorage opt-in）
-  - [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（nest = stateless・DB なし）
+  - [ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)（BYOK 原則・token/secret をサービスが持たない・sessionStorage 既定 / localStorage opt-in）
+  - [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（nest = stateless・DB なし）
   - 既存 BYOK 実装 `packages/app/src/utils/api-key-storage.ts`（`karasu.ai.anthropic.apiKey`）
   - Discussion #1786（private repos は **reader 自身の GitHub token**（BYO）を使う、サービス横断 token は不可）
 
@@ -20,7 +20,7 @@ repo-backed permalink resolver（#1945 で slice 1、#1958 で deep-anchor+cache
                           →  private は 401/404（サービスは token を持たない）
 ```
 
-**BYOK 不変条件（ADR-20260407-04・#1786）**: nest はサービス横断 GitHub token を**絶対に持たない**。よって server-side で private `.krs` を取得する道は原理的に存在しない。private repo permalink を成立させるには **reader 自身の token でクライアント側から取得する**しかない。
+**BYOK 不変条件（ADR-9017・#1786）**: nest はサービス横断 GitHub token を**絶対に持たない**。よって server-side で private `.krs` を取得する道は原理的に存在しない。private repo permalink を成立させるには **reader 自身の token でクライアント側から取得する**しかない。
 
 同時に permalink の JTBD「リンクをクリックすれば構造が見える恒久リンク」と private の緊張がある: private は「誰でも見える」ではなく「repo にアクセスできる人が、自分の token で見る」= **authenticated viewer** 体験になる。本 doc はその access model を決める（#1960 の求めるとおり、実装前に設計を固める）。
 
@@ -30,8 +30,8 @@ repo-backed permalink resolver（#1945 で slice 1、#1958 で deep-anchor+cache
 
 `docs/adr/` を byok / token / auth / private / oauth / credential で走査。**衝突する却下決定は無い。** 踏襲する制約:
 
-- **BYOK / サービスは token・secret を持たない（ADR-20260407-04）** — Claude API key と同じ扱いを GitHub token に適用する。sessionStorage 既定 / localStorage opt-in、namespaced key。
-- **stateless（ADR-20260626-01）** — DB・保存型ストア無し。private でも server 側に状態を作らない。
+- **BYOK / サービスは token・secret を持たない（ADR-9017）** — Claude API key と同じ扱いを GitHub token に適用する。sessionStorage 既定 / localStorage opt-in、namespaced key。
+- **stateless（ADR-1783）** — DB・保存型ストア無し。private でも server 側に状態を作らない。
 - **client-only 完結が可能** — core（`synthesizeSharePayload` / `ImportResolver`）は pure TS でブラウザで動く。slice 1 の `GitHubRawFileSystemProvider` の authenticated・client 版を書けば、**合成をブラウザで**行える。
 
 ### 重要な観察: private permalink は「repo ポインタ」であって「payload」ではない

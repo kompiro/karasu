@@ -7,7 +7,7 @@ import { openViewTab } from "../fixtures/tabs.js";
  *
  * Covers Case 1 (no uniqueness error for annotated duplicate), Case 2 (edges on
  * both services resolve), Case 4 (unannotated duplicates render with an
- * info-register `domain-dispersal` note — ADR-20260514-02), and Case 5 (order
+ * info-register `domain-dispersal` note — ADR-1386), and Case 5 (order
  * independence).
  *
  * Out of scope for this spec (issue #558):
@@ -102,7 +102,7 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
     await bootMemoryApp(page, opfs, UNANNOTATED_DUPLICATE_KRS);
     await openViewTab(page, "System");
 
-    // ADR-20260514-02: an unannotated duplicate domain id is a structural
+    // ADR-1386: an unannotated duplicate domain id is a structural
     // fact karasu visualizes. No uniqueness error, the diagram renders, and
     // the dispersal is surfaced as an info note.
     await expect(page.locator('[data-node-id="A"]')).toBeVisible();

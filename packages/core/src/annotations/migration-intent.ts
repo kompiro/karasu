@@ -3,13 +3,13 @@
  * (`@deprecated(until: …)` / `@experimental(until: …)` / `@migration_target(from: …)`).
  *
  * The language layer (parser) stores these verbatim on
- * `BaseNodeFields.annotationParams` (ADR-20260615-04). This module is the
+ * `BaseNodeFields.annotationParams` (ADR-1568). This module is the
  * consumer that gives the stored `until` value an *effect* — interpreting it
  * by precision so display / filter surfaces can treat a real date as
  * machine-usable while keeping an ambiguous phrase ("sometime next year") as
  * an opaque, display-only string.
  *
- * Per ADR-20260615-04, `until` is recorded **intent**, not a runtime deadline:
+ * Per ADR-1568, `until` is recorded **intent**, not a runtime deadline:
  * this module never reads the current date and never decides whether a node is
  * "overdue". It only normalizes the *written* value into a comparable form.
  * See `docs/spec/tags-annotations.md` § Annotation parameters.
@@ -36,7 +36,7 @@ export interface MachineUntil {
 /**
  * An opaque `until` value: it did not parse as a date / year-month / quarter
  * (e.g. `"sometime next year"`). Kept verbatim for display; no error is raised
- * (graceful degradation — ADR-20260615-04).
+ * (graceful degradation — ADR-1568).
  */
 export interface OpaqueUntil {
   kind: "opaque";

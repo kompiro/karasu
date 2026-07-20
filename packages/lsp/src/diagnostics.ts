@@ -66,7 +66,7 @@ export function computeDiagnostics(
 
   // Resolver-level warnings (domain-dispersal, unassigned-*, cyclic-dependency,
   // …) are produced by `analyze()`, not by the parser. Surface them too so the
-  // editor matches the in-app preview (ADR-20260514-02 — the info register is
+  // editor matches the in-app preview (ADR-1386 — the info register is
   // intended for App / LSP / CLI alike). `analyze()` needs a `KrsFile`, so this
   // applies to `.krs` documents only. Style sheets are not available in the
   // single-document LSP context, which cuts both ways: style-dependent

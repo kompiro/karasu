@@ -55,7 +55,7 @@ export interface WarningParamsByKind {
    * (cf. `infra-redeclared-across-files`, which keys on declaration
    * redundancy). `[external]` stores are excluded: the smell is about owning
    * a store, not depending on a managed third-party one. Info-register per
-   * ADR-20260514-02 (fact, not a defect).
+   * ADR-1386 (fact, not a defect).
    */
   "shared-infra-fan-in": {
     /** id of the shared infra node (e.g. "OrderDB") */
@@ -70,17 +70,17 @@ export interface WarningParamsByKind {
    * `queue-item` / `bucket`) whose owning domain is a *different* domain.
    * Ownership is derived from the logical layer: a leaf is owned by every
    * `domain` whose `entity` maps it via `table <InfraId>.<subId>`
-   * (ADR-20260715-01). The store is keyed at **leaf granularity**
+   * (ADR-1870). The store is keyed at **leaf granularity**
    * (`infraId.tableId`), not the whole `database`, because sibling tables in
    * one store can belong to different domains. Fires when the accessing domain
    * is not in the owner set — so a single-owner reach-in and a third domain
    * touching a co-owned table are both caught, while the owners of a co-owned
    * table are exempt. `[external]` / `[index]` stores are excluded (symmetric
-   * with `shared-infra-fan-in`). Info-register per ADR-20260514-02 (a
+   * with `shared-infra-fan-in`). Info-register per ADR-1386 (a
    * boundary-crossing *fact* some schools call a smell, not a defect). Paired
    * with but orthogonal to `shared-infra-fan-in` (service-count sharing vs
    * ownership-boundary crossing) — the two fire independently. See
-   * `docs/adr/20260715-04-domain-store-ownership-diagnostic.md`.
+   * `docs/adr/1819-domain-store-ownership-diagnostic.md`.
    */
   "cross-domain-store-access": {
     /** id of the domain whose usecase performs the access */
@@ -175,7 +175,7 @@ export interface WarningParamsByKind {
    * silently breaking CSS `:target`. Warning register: the model still renders
    * and resolves — only deep-link addressability degrades (warn-don't-error).
    * `domain Billing` + a root `entity Billing` is a natural naming clash, so
-   * this is a warning, not an error. See `docs/adr/20260715-01-domain-entity-modeling.md`.
+   * this is a warning, not an error. See `docs/adr/1870-domain-entity-modeling.md`.
    */
   "entity-anchor-collision": {
     /** The id claimed by more than one target in the entity anchor namespace. */
@@ -264,7 +264,7 @@ export type Warning = {
 
 /**
  * Visual register of a Warning. Most kinds render as `warning`; style-school
- * smell detections (per ADR-20260514-02 / TPL-20260514-08) render as `info`
+ * smell detections (per ADR-1386 / TPL-20260514-08) render as `info`
  * — the configuration is a structural fact, not a defect karasu prescribes
  * fixing. The mapping is keyed by `kind` so producers do not need to set
  * severity explicitly.
@@ -275,7 +275,7 @@ const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
   "domain-dispersal",
   // Shared-store fan-in is a style-school smell (Database-per-Service), not a
   // defect karasu prescribes fixing — same register as domain-dispersal
-  // (ADR-20260514-02 / TPL-20260514-08).
+  // (ADR-1386 / TPL-20260514-08).
   "shared-infra-fan-in",
   // Cross-domain store access is a boundary-crossing fact some schools call a
   // smell (legitimate under shared kernel / migrations) — same register.
