@@ -50,7 +50,7 @@ light theme の deploy ラベルが白で潰れていた。logical kind は `col
 
 - light テンプレートの各 deploy kind に、背景の色相に合わせた濃い text `color`
   （例: `oci` → `#1E3A8A`、`job` → `#7F1D1D`）を追加した（#1697）。badge / accent は
-  彩度を保つ（ADR-20260522-01）。
+  彩度を保つ（ADR-1479）。
 
 ## 関連テスト
 

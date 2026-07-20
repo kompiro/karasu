@@ -35,7 +35,7 @@
 >
 > Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
 
-> **`database [index]`** は `database` ノードを、正本（system of record）ではなく **派生の検索 / 二次インデックス** — ElasticSearch / OpenSearch クラスタ、あるいは pgvector / Pinecone / Weaviate などの vector store — として印付ける。cylinder はそのままに `index` バッジを付与する。**具体的な技術は物理層**の `store { type "ElasticSearch 8"; realizes SearchIndex }` に置き、エンジンを載せ替えても論理モデルが揺れないようにする。同じストアが正本かつ index を兼ねる場合（例: Postgres + pgvector）は `[index]` タグを付けないだけでよい。**`[index]` は技術ではなく役割を表す**: 正本（system of record）を高速に検索するための index として導出した二次ストアにタグ付けする。Vector DB / ElasticSearch 等を使っている場合でも、それが正本なら `[index]` は付けない。背景: [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md), Issue #1718。
+> **`database [index]`** は `database` ノードを、正本（system of record）ではなく **派生の検索 / 二次インデックス** — ElasticSearch / OpenSearch クラスタ、あるいは pgvector / Pinecone / Weaviate などの vector store — として印付ける。cylinder はそのままに `index` バッジを付与する。**具体的な技術は物理層**の `store { type "ElasticSearch 8"; realizes SearchIndex }` に置き、エンジンを載せ替えても論理モデルが揺れないようにする。同じストアが正本かつ index を兼ねる場合（例: Postgres + pgvector）は `[index]` タグを付けないだけでよい。**`[index]` は技術ではなく役割を表す**: 正本（system of record）を高速に検索するための index として導出した二次ストアにタグ付けする。Vector DB / ElasticSearch 等を使っている場合でも、それが正本なら `[index]` は付けない。背景: [ADR-316](../adr/316-database-as-first-class-node.md), Issue #1718。
 >
 > Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — `[index]` はラベルだけでなく効果（`index` バッジ）を伴う必要がある、受理されるタグである。
 
@@ -162,7 +162,7 @@ identifier セットは **オープン** — 任意の kebab-case 識別子を�
 |------|--------------|
 | 操作に紐づくストレージ（`localStorage`, `indexedDB`, `keychain`） | `resource <storageKind> "<name>"` |
 | HTTP セッション / 認証クレデンシャル | 別語彙。#834 で追跡 |
-| 実行時の認可（RBAC permission bundle、ライセンス / フィーチャーフラグ） | karasu はモデル化しない — [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) 参照。`user.role` プロパティは actor-archetype ラベルであり authz primitive ではない — [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) 参照 |
+| 実行時の認可（RBAC permission bundle、ライセンス / フィーチャーフラグ） | karasu はモデル化しない — [ADR-832](../adr/832-no-runtime-authz-modeling.md) 参照。`user.role` プロパティは actor-archetype ラベルであり authz primitive ではない — [ADR-1281](../adr/1281-user-role-keyword-clarification.md) 参照 |
 
 ---
 
@@ -213,7 +213,7 @@ edge[implicit] {
 組織クエリ（「このサービスのオーナーチームは？」「影響するチームに連絡したい」）を AI チャットで利用するには、
 `organization` ブロックでチームを宣言し、`owns` でサービス / ドメインを所有させ、`team` ブロックに連絡先 `link` を添える。
 
-> 旧仕様の `service` / `domain` に直接書く `team "..."` プロパティは **削除された**（[ADR-20260323-03](../adr/20260323-03-organization-diagram.md) の廃止計画に基づく）。オーナーチームは `organization` / `owns` から導出する。
+> 旧仕様の `service` / `domain` に直接書く `team "..."` プロパティは **削除された**（[ADR-14](../adr/14-organization-diagram.md) の廃止計画に基づく）。オーナーチームは `organization` / `owns` から導出する。
 
 ```krs
 organization Corp {

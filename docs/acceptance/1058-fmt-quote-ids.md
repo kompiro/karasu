@@ -5,7 +5,7 @@
 - **対象ファイル**:
   - `packages/core/src/formatter/quote-id.ts`（新規）
   - `packages/core/src/formatter/formatter.ts`
-- **関連**: ADR-20260410-02（`.krs` フォーマッター — トークン列ベースでコメント保持）
+- **関連**: ADR-438（`.krs` フォーマッター — トークン列ベースでコメント保持）
 
 ## 受け入れ条件
 

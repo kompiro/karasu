@@ -215,7 +215,7 @@ export function renderEntityView(
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
   // Grouping resolves per view: entity members frame here, like any other
   // level (#1983). No `interactive` / `collapsedGroups` — frames only, the
-  // collapse ⊖ control stays a system-view affordance (ADR-20260630-02).
+  // collapse ⊖ control stays a system-view affordance (ADR-1821).
   const svg = render(slice, styles, undefined, ownerIndex, displayMode, new Map(), {
     theme,
     ...legendOptions,

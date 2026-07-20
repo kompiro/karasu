@@ -8,7 +8,7 @@ import { openViewTab } from "../fixtures/tabs.js";
  * Covers Case 1 (implicit service edge derivation + amber color, solid for
  * sync source), Case 2 (intra-service domain edge in drill-down), Case 3
  * (aggregated "N domain edges" label), Case 4 (duplicate domain ID is an
- * info-register `domain-dispersal` note, not an error — ADR-20260514-02),
+ * info-register `domain-dispersal` note, not an error — ADR-1386),
  * Case 5 (same ID across different systems is legal), and Case 7 (sync vs
  * async implicit edges are visually distinguishable — amber solid vs amber
  * dashed; see #510).
@@ -230,7 +230,7 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     await bootMemoryApp(page, opfs, DUPLICATE_IN_SYSTEM_KRS);
     await openViewTab(page, "System");
 
-    // ADR-20260514-02: a dispersed domain is a structural fact karasu
+    // ADR-1386: a dispersed domain is a structural fact karasu
     // visualizes, not a defect that blocks rendering. No uniqueness error.
     await expect(
       page.locator(".diagnostic-banner__item", { hasText: UNIQUE_ERROR_PATTERN }),

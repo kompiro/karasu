@@ -62,5 +62,5 @@ scope:
 
 ## 派生元 spec / 設計
 
-- `docs/adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md`（ADR-20260715-03）— mixed route ＋ #1927 パス一般化（本観点の一次ソース、#1954）
+- `docs/adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md`（ADR-1859）— mixed route ＋ #1927 パス一般化（本観点の一次ソース、#1954）
 - [TPL-20260711-02](TPL-20260711-02-routing-measures-crossings-and-penetrations.md) — 交差・貫通・共線オーバーラップの三重計測（本 TPL が守らせる不変条件の中身）

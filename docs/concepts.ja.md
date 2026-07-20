@@ -26,13 +26,13 @@ system
 
 - `system`：アクター、クライアント、自社サービス、外部サービスの関係を示す器
 - `user`：システムを駆動するアクター（`[human]` / `[ai]`）
-- `client`：エンドユーザーの委譲で動く、我々が出荷するソフトウェア（mobile / web / desktop / CLI / device / extension / embed）。`user` と `service` の間に位置する。タグではなく独立した kind にした理由は [ADR-20260428-06](adr/20260428-06-client-mcp-modeling.md) を参照
+- `client`：エンドユーザーの委譲で動く、我々が出荷するソフトウェア（mobile / web / desktop / CLI / device / extension / embed）。`user` と `service` の間に位置する。タグではなく独立した kind にした理由は [ADR-823](adr/823-client-mcp-modeling.md) を参照
 - `service`：独立したビジネス機能の単位
 - `domain`：サービス内のビジネス上の関心事の境界（DDD の Bounded Context に近い）
 - `usecase`：ドメイン内の業務・操作
 - `resource`：usecase が操作する対象（テーブル、外部API、ファイル等）。`client` 直下にも書ける（`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain` 等のクライアント側ストレージ）
 
-`database` / `queue` / `storage` は system 直下に共有インフラとして配置することもできる（[ADR-20260405-05](adr/20260405-05-database-as-first-class-node.md) 参照）。
+`database` / `queue` / `storage` は system 直下に共有インフラとして配置することもできる（[ADR-316](adr/316-database-as-first-class-node.md) 参照）。
 
 ### 物理構造（How）
 
@@ -163,7 +163,7 @@ karasu は上位の service 間のエッジを **自動的に合成** する。
 sync と async の区別は視覚的装飾ではなく構造の意味論を扱う情報である —
 後述の循環検出が非同期を「意図された疎結合」として扱う根拠になっている。
 
-参照: ADR-20260410-01、ADR-20260413-02。詳細構文は `docs/spec/syntax.md`。
+参照: ADR-445、ADR-510。詳細構文は `docs/spec/syntax.md`。
 
 ### 集約 — 俯瞰時の情報量を絞る
 
@@ -176,7 +176,7 @@ karasu はこれを sync/async 種別ごとに **1 本の implicit エッジへ�
 俯瞰時は畳み、必要な詳細は drill-down と詳細パネルに委ねる。
 集約は sync / async を別々に扱うため、同じペアに両方の依存があれば 2 本描かれる。
 
-参照: ADR-20260410-01、ADR-20260413-02、PR #607。
+参照: ADR-445、ADR-510、PR #607。
 
 ### ghost — drill-down で視野が狭まっても境界を失わない
 
@@ -191,7 +191,7 @@ karasu はこれを **ghost domain / ghost system** で解決する:
 参照先のシステムは ghost system として描画される。
 マイクロサービスや複数組織にまたがるアーキテクチャを描く際の標準的な仕組み。
 
-参照: ADR-20260404-09、ADR-20260405-07、ADR-20260411-05。
+参照: ADR-285、ADR-328、ADR-460。
 
 ### アノテーションの継承 — drill-down で文脈を保つ
 
@@ -204,7 +204,7 @@ service に `@deprecated` が付いていれば、配下のノードも描画時
 保ちながら描画できるようにするための仕組みで、エッジの描画スタイルにも影響する。
 深い drill-down 先で急にアノテーションが無視されてしまうことを防ぐ。
 
-参照: ADR-20260415-01。
+参照: ADR-517。
 
 ### 自動検査 — 循環依存
 
@@ -217,7 +217,7 @@ Sync の循環は実際の障害に繋がるため、静的に検出して警告
 「ゆっくり変化する構造的な文脈」に留まる karasu だからこそ、
 こうした静的検査の結果が意味を持つ — 実装が変わるたびに警告が揺れ動く性質の検査ではない。
 
-参照: ADR-20260405-06。
+参照: ADR-287。
 
 ### まとめ
 
@@ -280,8 +280,8 @@ position を取り続け、議論し直し続ける」立場に追い込まれ�
 リンクを添えて、**プロジェクト・チーム・制約を知っているユーザーに判断を委ねる** —
 これが本立場の核心である。
 
-同じ理由づけは ADR-20260430-01（セキュリティ / 脅威モデリングを core に取り込まない）
-や ADR-20260511-02（実行時認可を core に取り込まない）にも通底する。いずれも
+同じ理由づけは ADR-834（セキュリティ / 脅威モデリングを core に取り込まない）
+や ADR-832（実行時認可を core に取り込まない）にも通底する。いずれも
 「外部の規律が推奨する shape を karasu の語彙に固定しない。ただし基礎となる事実は
 モデル化できるようにしておく」という同じ判断の現れである。
 
@@ -334,7 +334,7 @@ position を取り続け、議論し直し続ける」立場に追い込まれ�
 
 > Related TPLs: [TPL-20260616-03](test-perspectives/TPL-20260616-03-client-vocabulary-structure-not-implementation.md) — `client` の語彙はアクセスパスの構造を名指し、実装の詳細は名指さない。
 
-> Related ADR topics: _(none — boundary clarification section; the client kind itself is covered by ADR-20260428-06)_
+> Related ADR topics: _(none — boundary clarification section; the client kind itself is covered by ADR-823)_
 
 ## ドメイン分散の検出
 
@@ -631,7 +631,7 @@ karasu の図とシーケンス図は異なる問いに答える道具である�
 **ゆっくり変化する構造的事実**だからである。これを表す語彙が `entity`
 （`domain` の子。名前・関連・物理対応のみを持ち、**属性は持たない**）である
 （[`docs/spec/syntax.ja.md`](spec/syntax.ja.md) の「`entity` 宣言」節、
-`docs/adr/20260715-01-domain-entity-modeling.md`）。「属性を持たない」線が滑り坂ガードで、
+`docs/adr/1870-domain-entity-modeling.md`）。「属性を持たない」線が滑り坂ガードで、
 「型だけ」「主キーだけ」という隣接する誘惑にも一貫した答えを与える。
 
 ここで `translate --from db` との **非対称性** に注意してほしい:

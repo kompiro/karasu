@@ -27,7 +27,7 @@
  * on whichever endpoint is clear and detour only the blocked endpoint out through
  * its adjacent inter-row channel via a top/bottom port. This completes the
  * "inter-band channel" leg the P2c-A design specified but never shipped (the same
- * clear-band detour the ungrouped router uses, ADR-20260429-01). Only if nothing
+ * clear-band detour the ungrouped router uses, ADR-968). Only if nothing
  * is clear is the edge left straight — strictly monotonic, never worse (AC-1).
  *
  * An edge that runs *against* the top-to-bottom group flow (target band above
@@ -197,7 +197,7 @@ export function routeGroupedEdges(
  * sibling between it and the gutter. The empty band *adjacent* to an endpoint's
  * row (an inter-row channel, clear across the full layout width by construction)
  * lets that endpoint out via a **top/bottom port** instead — the same
- * inter-band channel the ungrouped router uses (ADR-20260429-01). These return
+ * inter-band channel the ungrouped router uses (ADR-968). These return
  * the clear-band y just below / above a box, from the nearest node in the next
  * row; with no neighbour they fall back to a `GUTTER_GAP` offset.
  */
@@ -348,7 +348,7 @@ function tryGutterRoute(
  * trunked edge is tagged `trunkId = <target id>`; the elbow where its horizontal
  * stub meets the spine (`waypoints[0]`) is the merge point a junction dot marks
  * in P2c-C. Edge identity is preserved — each `LayoutEdge` stays its own line
- * sharing the spine geometry, not a single merged edge (ADR-20260511-01 stance).
+ * sharing the spine geometry, not a single merged edge (ADR-1185 stance).
  *
  * Penetration-safe: trunk lanes sit in the right gutter (x > every card/frame),
  * so their verticals are clear by construction; each edge's candidate route is

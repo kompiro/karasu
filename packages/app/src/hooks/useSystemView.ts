@@ -374,7 +374,7 @@ export function useSystemView(
   // in place (#1955), so its label ("all") is honest. It is offered whenever
   // anything is collapsible OR expandable (even an un-grouped view whose only
   // bulk action is expanding its services). The per-axis state / controls stay
-  // orthogonal (ADR-20260711-03 §3); only this convenience toggle bridges them.
+  // orthogonal (ADR-1858 §3); only this convenience toggle bridges them.
   const { groupIds, categoryIds, serviceIds } = useMemo(
     () => extractCollapsibles(result.svg),
     [result.svg],

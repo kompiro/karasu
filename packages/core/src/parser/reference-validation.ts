@@ -12,7 +12,7 @@
 //     declared in another file would falsely warn even though the merged model
 //     resolves it (Issue #2032). Reference existence is only knowable after the
 //     cross-file merge, mirroring the "resolution happens at the merged level"
-//     stance of ADR-20260514-01.
+//     stance of ADR-1381.
 // ---------------------------------------------------------------------------
 
 import type { Diagnostic, KrsFile, KrsNode, OrganizationBlock, TeamNode } from "../types/ast.js";

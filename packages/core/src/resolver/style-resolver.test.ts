@@ -1064,7 +1064,7 @@ describe("resolveStyles", () => {
     expect(result.nodes.get("DB")!.shape).toBe("hexagon");
   });
 
-  // ADR-20260610-01 / #1492: `stroke-style` is the canonical edge-side
+  // ADR-1492 / #1492: `stroke-style` is the canonical edge-side
   // line-style property; `border-style` stays as the edge alias.
   describe("stroke-style property (edges)", () => {
     function resolveEdgeWith(rules: StyleRule[]) {

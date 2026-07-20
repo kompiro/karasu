@@ -3,7 +3,7 @@
 - **日付**: 2026-07-15
 - **Issue**: #1954（P2c #1859 / Epic #1817 comprehension）
 - **PR**: (実装 — core routing)
-- **設計**: [ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)
+- **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
 - **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（交差＋貫通の二重計測）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（段跨ぎ edge がカードを貫通しない）, [TPL-20260715-01](../test-perspectives/TPL-20260715-01-new-route-shape-participates-in-overlap-passes.md)（新 route 形は overlap 回避パスに参加させる）
 - **対象**: `packages/core/src/renderer/edge-routing-groups.ts`
 

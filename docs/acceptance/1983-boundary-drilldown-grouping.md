@@ -3,8 +3,8 @@
 - **日付**: 2026-07-16
 - **Issue**: #1983（parent: #1822 comprehension、follow-up to #1974 P2b）
 - **PR**: (この PR)
-- **関連 ADR**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（P2a — 決定 7 の root-only を軸非依存のレベル交差へ一般化）、[ADR-20260715-03](../adr/20260715-03-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c routing/marks）、[ADR-20260630-02](../adr/20260630-02-layer-toggles.md)（interactive collapse コントロールの gate）
-- **設計 / ADR**: [ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md)（design doc から昇格）
+- **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（P2a — 決定 7 の root-only を軸非依存のレベル交差へ一般化）、[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c routing/marks）、[ADR-1821](../adr/1821-layer-toggles.md)（interactive collapse コントロールの gate）
+- **設計 / ADR**: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（design doc から昇格）
 - **Related TPLs**:
   - [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)（view-state gate の全 surface parity — 本件の失敗クラス）
   - [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
@@ -41,7 +41,7 @@ P2c penetrations = 0 は `packages/core/src/renderer/group-by-drilldown-render.t
 
 - [ ] **手動**: entity view（本 PR の新規配線面）で entity member に枠が出て、FK エッジ表示と
       両立して読める（collapse ⊖ コントロールは**出ないのが正** — `interactive` を渡さない設計、
-      ADR-20260630-02）。
+      ADR-1821）。
 
 ### AC-4: 静的 export の各レベル band が 1 枚の SVG として読める
 

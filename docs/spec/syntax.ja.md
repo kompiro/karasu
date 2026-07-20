@@ -99,7 +99,7 @@ client C [web] {
 
 ### インフラ層（共有データストア）— system 図に描画される
 
-複数の service が共有するデータストアは、特定の `usecase` に所有させるのではなく、**`.krs` ファイルのトップレベル**（または `system` ブロックの直下）に下記 3 つのインフラブロックキーワードのいずれかで宣言する。各ブロックは leaf なサブリソースをネストできる。これらのノードは **system 図** に描画され、`[external]` service と同じ依存先 tier に並ぶ — service が共有インフラに *依存する* のであって、その逆はない。ファーストクラスノードへの昇格は [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md) を参照。
+複数の service が共有するデータストアは、特定の `usecase` に所有させるのではなく、**`.krs` ファイルのトップレベル**（または `system` ブロックの直下）に下記 3 つのインフラブロックキーワードのいずれかで宣言する。各ブロックは leaf なサブリソースをネストできる。これらのノードは **system 図** に描画され、`[external]` service と同じ依存先 tier に並ぶ — service が共有インフラに *依存する* のであって、その逆はない。ファーストクラスノードへの昇格は [ADR-316](../adr/316-database-as-first-class-node.md) を参照。
 
 <!-- gen:reference:node-kinds-infra — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | キーワード | 階層 | 用途 | 含むことができるもの |
@@ -193,7 +193,7 @@ system ECPlatform {
 |-----------|------|--------------|------|
 | `label` | `label "<表示名>"` | 全種別 | 図上の表示名。省略時は id をそのまま表示する |
 | `description` | `description "<説明>"` | 全種別 | ノードの説明文（複数行は `"""..."""` 形式） |
-| `role` | `role "<ロール名>"` | user | actor archetype、または「この user が何をするか」の一行要約。**authz primitive ではない**（`requires role = ...` 述語も RBAC permission bundle も存在しない） — [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) と [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) 参照 |
+| `role` | `role "<ロール名>"` | user | actor archetype、または「この user が何をするか」の一行要約。**authz primitive ではない**（`requires role = ...` 述語も RBAC permission bundle も存在しない） — [ADR-832](../adr/832-no-runtime-authz-modeling.md) と [ADR-1281](../adr/1281-user-role-keyword-clarification.md) 参照 |
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | この service が配布する client（BFF / SSR パターン）。レンダラーは各エントリを service から参照先 `client` への破線エッジとして描画する |
 | `link` | `link "<URL>" "<ラベル>"` | 全種別 | 関連ドキュメントへのリンク（複数可）。ラベルは省略可 |
 | `resource` | `resource <storageKind> "<name>"` | client | client 上の操作と紐づくローカルストレージ。複数可。client resource storage kinds は下記参照 |
@@ -507,7 +507,7 @@ operations create, list:read                // 装飾なし + 装飾ありを混
 - 右辺が空（`list:`）の場合は `empty-crud-decoration`（エラー）。
 - 右辺に同じ CRUD 動詞が重複（`replace:create,create`）すると `duplicate-crud-decoration-target`（警告）、AST 上で重複排除される。
 - 装飾された動詞は認識セット外でも `unknown-resource-operation` を出さない — デコレーションが著者の CRUD 宣言として扱われる。
-- CRUD マトリクスビュー（[ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)）はセル文字 / ΣC/R/U/D 合計 / write-dominates フラグの計算で `decoratedAs` を優先する。装飾された動詞は `?` サフィックスを生成しない。
+- CRUD マトリクスビュー（[ADR-1062](../adr/1062-crud-matrix-view.md)）はセル文字 / ΣC/R/U/D 合計 / write-dominates フラグの計算で `decoratedAs` を優先する。装飾された動詞は `?` サフィックスを生成しない。
 
 1 行に 1:N + 複数動詞が並んだときの曖昧性解消ルール: パーサが `verb:` を見たら、次の `<id>:` 境界まで続くカンマ区切り識別子は CRUD-RHS 継続として扱われる。したがって `search:read,create, list:read` は `search:[read,create]` の後に `list:[read]` としてパースされる。装飾された動詞の後ろに装飾なしの動詞を置きたい場合は、装飾なしの動詞を先に並べる（`create, list:read`）。
 
@@ -515,7 +515,7 @@ operations create, list:read                // 装飾なし + 装飾ありを混
 
 #### 認可ノート — `description` + `link` で書く
 
-[ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) により、karasu は usecase レベルの認可（ロール／ライセンス／プラン／スコープなどの述語）を語彙に取り込まない。構造言語が表現するのは「何が存在し、どう関係するか」であり、「実行時に誰が当該 usecase を呼べるか」は外部の policy doc や IAM ツール（OPA, Cedar, Casbin, 社内 RBAC ドキュメントなど）に委ねる。
+[ADR-832](../adr/832-no-runtime-authz-modeling.md) により、karasu は usecase レベルの認可（ロール／ライセンス／プラン／スコープなどの述語）を語彙に取り込まない。構造言語が表現するのは「何が存在し、どう関係するか」であり、「実行時に誰が当該 usecase を呼べるか」は外部の policy doc や IAM ツール（OPA, Cedar, Casbin, 社内 RBAC ドキュメントなど）に委ねる。
 
 そのため認可記述を散文に逃がすことになるが、何も決めないとチームごとに語彙がブレる（「Admin only」「`billing.write` スコープ必要」「pro プラン以上」など）。次の取り決めで散文の見た目を揃え、読者と AI が「この usecase には認可制約がある」と一目で認識できるようにする:
 
@@ -533,7 +533,7 @@ usecase RefundOrder {
 - 同じ usecase に `link` を添え、ラベルに `Authorization policy`（または `認可ポリシー`）を含めて canonical な policy doc / IAM ルールを指す。**source of truth は link 側。** 散文と link が食い違ったときは link が正で、`description` は古いとみなす。
 - `description` の中に属性風の語彙（`role: admin`、`requires: billing.write` 等）を発明しない。一文に収まらない制約はモデルではなく policy doc に置くべきというサインである。
 
-ツールはこの規約を強制も描画もしない（`アクセス:` バッジも policy-link デコレーションもバリデータも存在しない）。あくまで著者間の「散文の取り決め」であり、同じ制約がファイルやチームを跨いでも同じ姿で読めるようにするためのもの。machine-checkable なゲートが必要な場合は明示的に対象外である（ADR-20260511-02 参照）。
+ツールはこの規約を強制も描画もしない（`アクセス:` バッジも policy-link デコレーションもバリデータも存在しない）。あくまで著者間の「散文の取り決め」であり、同じ制約がファイルやチームを跨いでも同じ姿で読めるようにするためのもの。machine-checkable なゲートが必要な場合は明示的に対象外である（ADR-832 参照）。
 
 ### トップレベル domain 宣言
 
@@ -711,7 +711,7 @@ usecase PlaceOrder {
 }
 ```
 
-`#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
+`#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
 
 #### domain ブロック内のエッジ
 
@@ -829,11 +829,11 @@ infra を realize できるが、`store` を使うと意図が明確になる。
 
 service が realize 済みの infra ノードに依存し（usecase が `resource <Infra>.<Sub>` で参照）、その service と
 store の両方が realize されているとき、deploy 図は service のコンテナから realize 先 store のコンテナへ依存エッジを
-描く（[ADR-20260616-12](../adr/20260616-12-deploy-infra-dependency-edges.md)）。
+描く（[ADR-1658](../adr/1658-deploy-infra-dependency-edges.md)）。
 
 > スコープ: これは `deploy` の **ランタイム契約層**（どの concrete な形態がストアを裏付けるか）に収まる。
 > インフラのトポロジ（リージョン・AZ・クラスタ・ノード）は依然として対象外（[concepts.ja.md](../concepts.ja.md) 参照）。
-> 決定は [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md)。
+> 決定は [ADR-1632](../adr/1632-infra-physical-realize.md)。
 
 ---
 
@@ -915,7 +915,7 @@ team の直下に `member` を宣言して個人を記述する。
 
 > **experimental notation（post-v1.0 watch）。** `boundary` は freeze せず experimental として保持する。
 > 後方互換は**まだ約束しない**。v1.0-stable への昇格は実利用証拠に基づく notation promotion gate
-> （[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)）で判断する。`docs/roadmap.md` § post-v1.0 horizon を参照。
+> （[ADR-1820](../adr/1820-notation-promotion-gate.md)）で判断する。`docs/roadmap.md` § post-v1.0 horizon を参照。
 
 `boundary` ブロックは system view のノードの**意味的クラスタ**を宣言する。論理構造の上に著者が引く
 グルーピングで、kind ティアとも team 所有とも独立している。system view の第二の**「Group by」軸**
@@ -1088,7 +1088,7 @@ legend domain "データアクセス" {
 
 ### v1 で扱わないこと
 
-設計判断の経緯は [`docs/adr/20260428-07-diagram-legend-syntax.md`](../adr/20260428-07-diagram-legend-syntax.md) を参照。
+設計判断の経緯は [`docs/adr/833-diagram-legend-syntax.md`](../adr/833-diagram-legend-syntax.md) を参照。
 
 - shape / icon / pattern 凡例（v1 は色のみ）
 - インタラクティブ凡例（クリックでハイライト 等）
@@ -1177,7 +1177,7 @@ import { ECPlatform.NotThere.Order } from "./services.krs"
 
 ## マルチファイル import の意味論
 
-このセクションは、モデルを複数の `.krs` ファイルに分割したときに各 `import` 形式が何を意味するかを定義する。実装: `packages/core/src/fs/import-resolver.ts`。関連 ADR: [ADR-20260405-03](../adr/20260405-03-wildcard-import-two-pass-resolution.md)（wildcard / 2 パス）, [ADR-20260409-05](../adr/20260409-05-directory-import.md)（ディレクトリ）, [ADR-20260409-06](../adr/20260409-06-named-import-toplevel-service.md)（named top-level）, [ADR-20260513-03](../adr/20260513-03-import-system-nested.md)（named path 構文）。
+このセクションは、モデルを複数の `.krs` ファイルに分割したときに各 `import` 形式が何を意味するかを定義する。実装: `packages/core/src/fs/import-resolver.ts`。関連 ADR: [ADR-281](../adr/281-wildcard-import-two-pass-resolution.md)（wildcard / 2 パス）, [ADR-292](../adr/292-directory-import.md)（ディレクトリ）, [ADR-412](../adr/412-named-import-toplevel-service.md)（named top-level）, [ADR-927](../adr/927-import-system-nested.md)（named path 構文）。
 
 ### S1. 4 つの import 形式
 

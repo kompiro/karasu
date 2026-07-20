@@ -243,7 +243,7 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 - An **Information**-severity diagnostic (blue underline, not red) appears on
   the dispersed `domain Order`, sourced `karasu`. It does **not** block
-  anything — there is no error squiggle (ADR-20260514-02: a dispersed domain
+  anything — there is no error squiggle (ADR-1386: a dispersed domain
   is representable).
 - Introducing a genuine resolver warning instead — e.g. a top-level
   `domain Orphan {}` with no owning service — shows a **Warning**-severity

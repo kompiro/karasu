@@ -10,7 +10,7 @@ const PALETTE_COMMAND_ID = "command.openCommandPalette";
 /**
  * The command palette — a searchable list of every registered `Command`,
  * opened with `Ctrl/Cmd+Shift+P` and the second consumer of the keyboard
- * command registry (ADR-20260519-02, Issue #1421).
+ * command registry (ADR-1411, Issue #1421).
  *
  * The open command is `whenTextInputFocused: "allow"`, so the palette opens
  * even while the editor is focused — the case a user most wants it
@@ -19,7 +19,7 @@ const PALETTE_COMMAND_ID = "command.openCommandPalette";
  * Commands are snapshotted with `getCommands()` when the palette opens; the
  * registry holds them in a ref and does not notify on change, and a palette
  * session is short enough that mid-session registration churn is not a
- * concern (ADR-20260519-02 後続作業).
+ * concern (ADR-1411 後続作業).
  */
 export function CommandPalette() {
   const registry = useCommandRegistry();

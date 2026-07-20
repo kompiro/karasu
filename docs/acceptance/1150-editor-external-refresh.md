@@ -9,8 +9,8 @@ type: product
 - **対象ファイル**:
   - `packages/app/src/hooks/useEditorExternalRefresh.ts`、`packages/app/src/hooks/useEditorExternalRefresh.test.ts`
   - `packages/app/src/components/AppShell.tsx`
-- **関連 Design Doc**: [`docs/adr/20260507-02-editor-external-refresh.md`](../adr/20260507-02-editor-external-refresh.md)
-- **関連 ADR**: [ADR-20260506-01](../adr/20260506-01-gui-driven-style-editing.md)（cascade-tail-wins）、[ADR-20260506-06](../adr/20260506-06-krs-style-open-affordance.md)（`.krs.style` 直接編集の append target）
+- **関連 Design Doc**: [`docs/adr/1150-editor-external-refresh.md`](../adr/1150-editor-external-refresh.md)
+- **関連 ADR**: [ADR-1076](../adr/1076-gui-driven-style-editing.md)（cascade-tail-wins）、[ADR-1144](../adr/1144-krs-style-open-affordance.md)（`.krs.style` 直接編集の append target）
 - **依存実装**: [#1151](https://github.com/kompiro/karasu/pull/1151)（`ObservableFileSystemProvider`）
 
 ## 受け入れ条件
@@ -42,5 +42,5 @@ type: product
 ## 補足
 
 - **echo loop 回避の根拠**: エディタの auto-save (`handleEditorChange`) が `dispatch(UPDATE_FILE_CONTENT)` → `fs.writeFile` の順で実行されるため、watch event が届く時点で `state.fileContent` は既に最新 = disk と一致 → 差分検出で skip される。詳細は Design Doc 「Conflict guard の取り扱い」節
-- **dirty buffer guard punt**: 現行モデルは auto-save のため buffer = disk が常に保たれ、独立した dirty buffer 概念が無い。GUI append と editor 入力のレースは ADR-20260506-01 の cascade-tail-wins で意味付けられているため、最後に disk に書かれた内容を buffer に反映する素直な挙動で十分。将来 dirty buffer を導入する場合は再評価する
+- **dirty buffer guard punt**: 現行モデルは auto-save のため buffer = disk が常に保たれ、独立した dirty buffer 概念が無い。GUI append と editor 入力のレースは ADR-1076 の cascade-tail-wins で意味付けられているため、最後に disk に書かれた内容を buffer に反映する素直な挙動で十分。将来 dirty buffer を導入する場合は再評価する
 - **delete event の扱い**: 開いているファイルが消された場合の UX（"file disappeared" メッセージなど）は現状未整備。本 hook は delete event を無視するに留め、改善が必要なら別 issue 化

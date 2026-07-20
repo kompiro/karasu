@@ -18,9 +18,9 @@ related_to:
   - TPL-20260510-21
 discovered_from:
   - root_cause_file: "docs/concepts.ja.md"
-  - root_cause_adr: "ADR-20260410-01"
-  - root_cause_adr: "ADR-20260413-02"
-  - root_cause_adr: "ADR-20260415-01"
+  - root_cause_adr: "ADR-445"
+  - root_cause_adr: "ADR-510"
+  - root_cause_adr: "ADR-517"
 topic: edges
 scope:
   packages:
@@ -32,7 +32,7 @@ scope:
 
 ## 観点
 
-karasu の edge モデルの根幹は **書き手と読み手の非対称性** にある（`docs/concepts.ja.md` 「エッジ → explicit と implicit」、ADR-20260410-01）。書き手はドメインモデリングの自然な粒度（domain edge）でエッジを書くだけで、読み手は service レベルの俯瞰図でそれが集約された implicit edge として見える。この **「writer は coarse、reader は progressive disclosure」** が drill-down 全体の動機を支えている。
+karasu の edge モデルの根幹は **書き手と読み手の非対称性** にある（`docs/concepts.ja.md` 「エッジ → explicit と implicit」、ADR-445）。書き手はドメインモデリングの自然な粒度（domain edge）でエッジを書くだけで、読み手は service レベルの俯瞰図でそれが集約された implicit edge として見える。この **「writer は coarse、reader は progressive disclosure」** が drill-down 全体の動機を支えている。
 
 新しい関係性プリミティブ（edge / cross-reference / inherited annotation / ownership 系 relation）を追加するときは、この非対称性を **設計レベルで** 保つ必要がある。両者を同じ粒度に強制する API を導入すると:
 
@@ -47,7 +47,7 @@ karasu の edge モデルの根幹は **書き手と読み手の非対称性** �
 | domain edge (`->` / `-->`) | domain-to-domain | service レベルでは implicit service edge に集約 |
 | `realizes` | deploy unit が指す論理 service | deploy view と system view 両方で意味を取れる |
 | `owns` | team が直下の service / domain を 1 行で指定 | organization view と system view 両方で扱う |
-| 親 service の `@deprecated` | service レベルに 1 つ書く | 配下 domain / usecase / resource すべてに継承（ADR-20260415-01）|
+| 親 service の `@deprecated` | service レベルに 1 つ書く | 配下 domain / usecase / resource すべてに継承（ADR-517）|
 
 新しい relation を提案するときは、この表に新しい行を加えられる形になっているかを問う。「書き手は何を書くか」「読み手は何種類の view でどう見るか」を **2 列に分けて設計する**。
 
@@ -72,7 +72,7 @@ karasu の edge モデルの根幹は **書き手と読み手の非対称性** �
 
 - 設計フェーズで **「writer 列 / reader 列 / 自動変換」の 3 カラム表** を Design Doc に書く。3 列が埋まらない場合は設計をやり直す
 - writer の入力をそのまま render するのではなく、**view-extract / resolver で新しい relation 用の集約関数を 1 つ追加** する経路を default にする（`deriveImplicitServiceEdges` のような関数を新 relation ごとに 1 つ）
-- inherited annotation のように reader 側で「親から継承する」型の progressive disclosure を採るときは、**子が自分の値を持てばそこで止まる** という挙動を明示（ADR-20260415-01 のパターン）
+- inherited annotation のように reader 側で「親から継承する」型の progressive disclosure を採るときは、**子が自分の値を持てばそこで止まる** という挙動を明示（ADR-517 のパターン）
 - AI / Chat 経路で relation を生成するときも、AI に **writer の自然な粒度** で出力させる（reader-level での冗長な再記述を生成させない）。これによって `.krs` が AI 出力 / 手書きで一貫した粒度に揃う
 
 ## TPL-07 との境界

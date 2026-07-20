@@ -19,7 +19,7 @@ resources) thins out. This skill uses **per-domain subagent fan-out** to give
 each domain its own attention budget, and the **karasu CLI as a deterministic
 spine** (physical extraction, slicing, measurement, validation, rendering).
 
-Design rationale: ADR-20260714-02 (`docs/adr/20260714-02-reverse-architecture-harness.md`).
+Design rationale: ADR-1895 (`docs/adr/1895-reverse-architecture-harness.md`).
 
 ## Prerequisites
 
@@ -159,7 +159,7 @@ launching the fan-out rather than discovering the bill afterwards.
    entity and omit the mapping — the pathological output is an empty
    `entity Goal {}`. Flag empty entities and missing mappings, and repair them
    before Phase 4. Both this and step 5 are mechanical and deterministic: they
-   belong on the structural side of the split (ADR-20260714-02), not to agent
+   belong on the structural side of the split (ADR-1895), not to agent
    judgement.
 7. **Cross-domain entity relations — one roster pass.** A per-domain subagent
    only knows its own entity ids, so cross-domain foreign keys risk id mismatch.

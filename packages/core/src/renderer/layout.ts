@@ -801,7 +801,7 @@ const EXTERNAL_SIDE_GAP = 100;
  * Place `[external]` service nodes (systemTier 4) into left/right side columns
  * instead of the bottom band, so `service → external` edges run horizontally
  * and stop weaving through the downward infra fan-out (#1728, refines
- * ADR-20260623-06). Runs *before* edge computation so `computeEdgePoints`
+ * ADR-1724). Runs *before* edge computation so `computeEdgePoints`
  * re-picks side anchors from the new relative positions.
  *
  * Side assignment: the consuming-hub barycenter x (median split, ties → left)
@@ -839,7 +839,7 @@ function placeExternalServicesOnSides(
   // Gate: side placement only pays off when ≥2 distinct hubs fan out to
   // externals — the condition that produces cross-hub edge crossings (#1728).
   // A single-hub fan does not cross itself, so a simple diagram keeps the
-  // compact bottom band (ADR-20260623-06) rather than spreading wide. An
+  // compact bottom band (ADR-1724) rather than spreading wide. An
   // explicit `column: left|right` on any external still forces side placement.
   const hubs = new Set<string>();
   for (const ed of allEdges) if (extIds.has(ed.to)) hubs.add(ed.from);
@@ -1511,7 +1511,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
   // so labels separate horizontally / vertically instead of stacking. Must
   // run before channel routing so the orthogonal pass uses the new ports.
-  // See ADR-20260429-01 and Issue #996.
+  // See ADR-968 and Issue #996.
   distributePorts(layoutNodes, layoutEdges);
 
   // Orthogonal routing. In Group-by mode the two-level band layout adds group
@@ -1519,7 +1519,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // treat as obstacles; route through side gutters instead so no edge crosses a
   // node or frame interior (#1859, P2c-A). Ungrouped keeps the skip-layer
   // channel router unchanged, so "Group by: none" stays byte-identical.
-  // See ADR-20260429-01 and docs/design/system-view-grouping.md § "P2c 実装設計".
+  // See ADR-968 and docs/design/system-view-grouping.md § "P2c 実装設計".
   if (groupBands) {
     const groupFrames = containers.filter((c) => c.group);
     // In-place expansion (#1921/#1923) shares the group router: passing the
@@ -2179,7 +2179,7 @@ function computeEdgePoints(
  * for nodes that genuinely live in another system (e.g. `service [external]`).
  * A `database [external]` is a modeling contradiction (an in-boundary store
  * tagged as another boundary); we keep it on the infra row rather than promote
- * it. See ADR-20260623-06 (docs/adr/20260623-06-system-view-infra-external-tier-split.md).
+ * it. See ADR-1724 (docs/adr/1724-system-view-infra-external-tier-split.md).
  */
 const SYSTEM_TIER_COUNT = 5;
 function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
@@ -2306,7 +2306,7 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
   // — rather than merged with infra — is what halves the widest row (#1724).
   // We intentionally do NOT pull external up toward shallow consumers: that
   // would reintroduce the infra/external overlap. The resulting skip-layer
-  // edges to external are rescued by orthogonal routing (ADR-20260429-01).
+  // edges to external are rescued by orthogonal routing (ADR-968).
   if (byTier[4].length > 0) {
     const externalIds = new Set(byTier[4].map((n) => n.id));
     let maxOtherLayer = 0;

@@ -127,7 +127,7 @@ export interface UsecaseNode extends BaseNodeFields {
  * (columns / types / indexes). This "no attributes" line keeps the model on
  * the slowly-changing structural side of the DB-schema non-goal: physical
  * schema stays out of scope, conceptual entities and their relations come in.
- * See `docs/adr/20260715-01-domain-entity-modeling.md`.
+ * See `docs/adr/1870-domain-entity-modeling.md`.
  */
 export interface EntityNode extends BaseNodeFields {
   kind: "entity";
@@ -369,7 +369,7 @@ export interface OrganizationBlock {
 // 意味的まとまりを宣言する top-level 構文。`organization`/`owns` と同じく
 // containment ではなく参照（id 参照でファイル横断可）で、`boundaryIndex`
 // （node id → boundary id、1:1）を成す。team（`ownerIndex`）と直交する
-// 第二の Group-by 軸になる。experimental notation（ADR-20260713-01）。
+// 第二の Group-by 軸になる。experimental notation（ADR-1820）。
 // 設計: docs/design/system-view-grouping.md「P2b 詳細設計」。
 export interface BoundaryBlock {
   kind: "boundary";

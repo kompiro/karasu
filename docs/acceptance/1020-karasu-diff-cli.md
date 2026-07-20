@@ -5,7 +5,7 @@
 - **対象ファイル**:
   - `packages/cli/src/diff.ts`（新規）
   - `packages/cli/src/index.ts`
-- **関連 ADR**: ADR-20260420-02（graphical diff viewer）, ADR-20260422-06（paste diff input）, ADR-20260422-07（OPFS snapshot diff）
+- **関連 ADR**: ADR-650（graphical diff viewer）, ADR-739（paste diff input）, ADR-740（OPFS snapshot diff）
 
 ## 受け入れ条件
 

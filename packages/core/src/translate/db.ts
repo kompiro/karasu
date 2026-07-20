@@ -11,7 +11,7 @@ function toTableId(tableName: string): string {
 /**
  * Conceptual entity id for a table. Kept as the PascalCase table name (no
  * pluralization/singularization) so the SQL-table origin stays traceable
- * (ADR-20260419-01 case D). Distinct from `toTableId` (`Orders` vs
+ * (ADR-644 case D). Distinct from `toTableId` (`Orders` vs
  * `OrdersTable`), so an entity and its physical table never collide.
  */
 function toEntityId(tableName: string): string {

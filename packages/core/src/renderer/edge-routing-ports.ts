@@ -1,6 +1,6 @@
 /**
  * Port distribution for edges that share a node side (Phase 3 of #968 — see
- * ADR-20260429-01 and Issue #996).
+ * ADR-968 and Issue #996).
  *
  * When N ≥ 2 edges anchor on the same side of a node (typically a hub
  * node's bottom side, with several outgoing edges), the default

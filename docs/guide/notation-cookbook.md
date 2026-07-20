@@ -99,7 +99,7 @@ the system of record stays a plain `database` (no `[index]`); a single Postgres 
 is both SoR and index also stays plain. This is the same "role via tag, technology in
 the physical layer" discipline as idiom #1 — it avoids minting a `vector-store` /
 `search` kind for every engine. See
-[ADR-20260623-04](https://github.com/kompiro/karasu/blob/main/docs/adr/20260623-04-vector-store-vs-database.md).
+[ADR-1718](https://github.com/kompiro/karasu/blob/main/docs/adr/1718-vector-store-vs-database.md).
 
 ## 3. Something outside the boundary — the `[external]` tag
 

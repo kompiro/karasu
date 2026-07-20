@@ -40,7 +40,7 @@ interface UseEditorExternalRefreshArgs {
  *
  * Conflict semantics for genuine external writes (GUI direction append,
  * AI translate output, snapshot writes): the cascade-tail-wins rule from
- * ADR-20260506-01 makes "later write wins" the authoritative outcome, so
+ * ADR-1076 makes "later write wins" the authoritative outcome, so
  * surfacing the disk content into the buffer is the correct behaviour
  * even when the user has been typing — the disk already reflects the
  * merged state.

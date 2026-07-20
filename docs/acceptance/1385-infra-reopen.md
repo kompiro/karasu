@@ -15,7 +15,7 @@ type: feature
   - `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` §「Multi-file import semantics」に **S4.5** 追加
 - **Spec**: `docs/spec/syntax.md` §「Multi-file import semantics」 S4.5
 - **TPL**: [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md)
-- **ADR**: [ADR-20260514-01](../adr/20260514-01-multi-file-import-semantics.md)（系列）
+- **ADR**: [ADR-1381](../adr/1381-multi-file-import-semantics.md)（系列）
 
 ## 受け入れ条件
 

@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-26
 - **関連 Issue**: [#1801](https://github.com/kompiro/karasu/issues/1801)（共有リンクの OGP 画像）
-- **関連 ADR**: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest。OGP は「後続」節）
+- **関連 ADR**: [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（karasu-nest。OGP は「後続」節）
 - **関連 TPL**: [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)（URL 由来 payload → server-rendered HTML）、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（share page と `/render`・SPA の payload セマンティクス一致）
 - **対象ファイル**:
   - `functions/s.ts`（Pages Function `GET /s` — 薄い Workers アダプタ）

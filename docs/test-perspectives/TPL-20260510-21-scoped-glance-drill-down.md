@@ -62,8 +62,8 @@ karasu の認知モデルは **scoped glance + drill-down**（`docs/concepts.ja.
 ## 既知の対処パターン
 
 - **inline nest + extract**: 育った範囲は外部ファイルに extract し、親図では子の存在だけが見える状態に戻す（`docs/concepts.ja.md` ドリルダウン節）
-- **ghost domain / ghost system**: drill-down 先から見える外の世界は、半透明プレースホルダで境界の存在だけ残す（ADR-20260404-09、ADR-20260405-07、ADR-20260411-05）
-- **edge aggregation**: 俯瞰時は sync / async ごとに 1 本に畳み、詳細は drill-down と詳細パネルに委ねる（ADR-20260410-01、ADR-20260413-02）
+- **ghost domain / ghost system**: drill-down 先から見える外の世界は、半透明プレースホルダで境界の存在だけ残す（ADR-285、ADR-328、ADR-460）
+- **edge aggregation**: 俯瞰時は sync / async ごとに 1 本に畳み、詳細は drill-down と詳細パネルに委ねる（ADR-445、ADR-510）
 - **default scope を絞ったまま提供**: 「一覧表示」を追加するときも、default は scope を絞った形にし、「すべて見る」は明示操作に分離する
 
 ## 関連テスト

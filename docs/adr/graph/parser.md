@@ -1,51 +1,50 @@
 # ADR Topic: parser
 
-19 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+18 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
 flowchart TD
   subgraph parser["parser"]
-    ADR_20260320_02["ADR-20260320-02<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
-    ADR_20260323_01["ADR-20260323-01<br/>YAML スタイル構文移行の見送り"]
-    ADR_20260323_04["ADR-20260323-04<br/>ID 必須化と `label` のプロパティ化"]
-    ADR_20260401_03["ADR-20260401-03<br/>`compile()` API 統一 — Discriminated Union による戻り値型"]
-    ADR_20260405_03["ADR-20260405-03<br/>ワイルドカードインポートと2パス解決の採用"]
-    ADR_20260409_05["ADR-20260409-05<br/>Directory Import — `import &quot;dir/&quot;` 構文"]
-    ADR_20260409_06["ADR-20260409-06<br/>トップレベル service の Named Import — スタブ補完 + エッジ参照によ..."]
-    ADR_20260410_02["ADR-20260410-02<br/>`.krs` フォーマッター — トークン列ベースでコメント保持"]
-    ADR_20260410_03["ADR-20260410-03<br/>構造的 `.krs` パッチ — ノード ID ベースの `append` / `replac..."]
-    ADR_20260412_04["ADR-20260412-04<br/>ブロック内エッジの暗黙 source 簡略記法"]
-    ADR_20260430_03["ADR-20260430-03<br/>usecase 内 resource に CRUD operations プロパティを追加する"]
-    ADR_20260503_01["ADR-20260503-01<br/>usecase resource operations に verb 装飾構文（1:N CRU..."]
-    ADR_20260509_02["ADR-20260509-02<br/>`.krs.style` AST に位置情報と sheetId を持たせ、parser の e..."]
-    ADR_20260510_01["ADR-20260510-01<br/>Tidy Style コマンド — `.krs.style` に trivia 保持と軸グルー..."]
-    ADR_20260511_03["ADR-20260511-03<br/>`.krs.style` 値レベル診断 — 構造化 ValueNode AST と prope..."]
-    ADR_20260513_03["ADR-20260513-03<br/>system にネストした service / domain の Named Import は..."]
-    ADR_20260616_04["ADR-20260616-04<br/>規則と診断を分離し、診断カタログで完全性を担保する"]
-    ADR_20260720_01["ADR-20260720-01<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
-    ADR_20260720_03["ADR-20260720-03<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
+    ADR_7["ADR-7<br/>YAML スタイル構文移行の見送り"]
+    ADR_19["ADR-19<br/>ID 必須化と `label` のプロパティ化"]
+    ADR_211["ADR-211<br/>`compile()` API 統一 — Discriminated Union による戻り値型"]
+    ADR_281["ADR-281<br/>ワイルドカードインポートと2パス解決の採用"]
+    ADR_292["ADR-292<br/>Directory Import — `import &quot;dir/&quot;` 構文"]
+    ADR_412["ADR-412<br/>トップレベル service の Named Import — スタブ補完 + エッジ参照によ..."]
+    ADR_438["ADR-438<br/>`.krs` フォーマッター — トークン列ベースでコメント保持"]
+    ADR_442["ADR-442<br/>構造的 `.krs` パッチ — ノード ID ベースの `append` / `replac..."]
+    ADR_496["ADR-496<br/>ブロック内エッジの暗黙 source 簡略記法"]
+    ADR_927["ADR-927<br/>system にネストした service / domain の Named Import は..."]
+    ADR_1046["ADR-1046<br/>usecase 内 resource に CRUD operations プロパティを追加する"]
+    ADR_1082["ADR-1082<br/>usecase resource operations に verb 装飾構文（1:N CRU..."]
+    ADR_1168["ADR-1168<br/>`.krs.style` AST に位置情報と sheetId を持たせ、parser の e..."]
+    ADR_1177["ADR-1177<br/>Tidy Style コマンド — `.krs.style` に trivia 保持と軸グルー..."]
+    ADR_1178["ADR-1178<br/>`.krs.style` 値レベル診断 — 構造化 ValueNode AST と prope..."]
+    ADR_1567["ADR-1567<br/>規則と診断を分離し、診断カタログで完全性を担保する"]
+    ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
+    ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
-  ADR_20260320_01["ADR-20260320-01<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
-  ADR_20260404_09["ADR-20260404-09<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
-  ADR_20260409_07["ADR-20260409-07<br/>[navigation] マルチファイルプロジェクトでのクロスファイルナビゲーション"]
-  ADR_20260411_02["ADR-20260411-02<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
-  ADR_20260422_04["ADR-20260422-04<br/>[renderer] トップレベル service / domain を `(Unassigned)` 擬似システム..."]
-  ADR_20260430_04["ADR-20260430-04<br/>[renderer] usecase→resource edge を read/write で視覚的に区別する"]
-  ADR_20260323_04 --> ADR_20260320_02
-  ADR_20260409_05 --> ADR_20260405_03
-  ADR_20260409_06 --> ADR_20260409_05
-  ADR_20260409_06 --> ADR_20260405_03
-  ADR_20260412_04 --> ADR_20260411_02
-  ADR_20260510_01 --> ADR_20260509_02
-  ADR_20260511_03 --> ADR_20260509_02
-  ADR_20260511_03 --> ADR_20260510_01
-  ADR_20260320_01 --> ADR_20260320_02
-  ADR_20260404_09 --> ADR_20260405_03
-  ADR_20260409_07 --> ADR_20260409_06
-  ADR_20260409_07 --> ADR_20260401_03
-  ADR_20260422_04 --> ADR_20260409_06
-  ADR_20260430_04 --> ADR_20260430_03
+  ADR_285["ADR-285<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
+  ADR_429["ADR-429<br/>[navigation] マルチファイルプロジェクトでのクロスファイルナビゲーション"]
+  ADR_477["ADR-477<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
+  ADR_681["ADR-681<br/>[renderer] トップレベル service / domain を `(Unassigned)` 擬似システム..."]
+  ADR_1061["ADR-1061<br/>[renderer] usecase→resource edge を read/write で視覚的に区別する"]
+  ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
+  ADR_19 --> ADR_9008
+  ADR_292 --> ADR_281
+  ADR_412 --> ADR_292
+  ADR_412 --> ADR_281
+  ADR_496 --> ADR_477
+  ADR_1177 --> ADR_1168
+  ADR_1178 --> ADR_1168
+  ADR_1178 --> ADR_1177
+  ADR_285 --> ADR_281
+  ADR_429 --> ADR_412
+  ADR_429 --> ADR_211
+  ADR_681 --> ADR_412
+  ADR_1061 --> ADR_1046
+  ADR_9007 --> ADR_9008
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -53,29 +52,28 @@ flowchart TD
   classDef superseded fill:#e2e3e5,stroke:#6c757d,color:#383d41
   classDef not_adopted fill:#e2e3e5,stroke:#6c757d,color:#383d41,stroke-dasharray:3 3
   classDef ghost fill:#f5f5f5,stroke:#adb5bd,color:#6c757d,stroke-dasharray:2 2
-  class ADR_20260320_02 accepted
-  class ADR_20260323_01 not_adopted
-  class ADR_20260323_04 accepted
-  class ADR_20260401_03 accepted
-  class ADR_20260405_03 accepted
-  class ADR_20260409_05 accepted
-  class ADR_20260409_06 accepted
-  class ADR_20260410_02 accepted
-  class ADR_20260410_03 accepted
-  class ADR_20260412_04 accepted
-  class ADR_20260430_03 accepted
-  class ADR_20260503_01 accepted
-  class ADR_20260509_02 accepted
-  class ADR_20260510_01 accepted
-  class ADR_20260511_03 accepted
-  class ADR_20260513_03 accepted
-  class ADR_20260616_04 accepted
-  class ADR_20260720_01 accepted
-  class ADR_20260720_03 accepted
-  class ADR_20260320_01 ghost
-  class ADR_20260404_09 ghost
-  class ADR_20260409_07 ghost
-  class ADR_20260411_02 ghost
-  class ADR_20260422_04 ghost
-  class ADR_20260430_04 ghost
+  class ADR_7 not_adopted
+  class ADR_19 accepted
+  class ADR_211 accepted
+  class ADR_281 accepted
+  class ADR_292 accepted
+  class ADR_412 accepted
+  class ADR_438 accepted
+  class ADR_442 accepted
+  class ADR_496 accepted
+  class ADR_927 accepted
+  class ADR_1046 accepted
+  class ADR_1082 accepted
+  class ADR_1168 accepted
+  class ADR_1177 accepted
+  class ADR_1178 accepted
+  class ADR_1567 accepted
+  class ADR_2076 accepted
+  class ADR_9008 accepted
+  class ADR_285 ghost
+  class ADR_429 ghost
+  class ADR_477 ghost
+  class ADR_681 ghost
+  class ADR_1061 ghost
+  class ADR_9007 ghost
 ```

@@ -25,13 +25,13 @@ system
 
 - `system`: a container showing relationships between actors, clients, owned services, and external services
 - `user`: an actor that drives the system (`[human]` / `[ai]`)
-- `client`: software we ship that acts on a user's behalf (mobile / web / desktop / CLI / device / extension / embed). Sits between `user` and `service`. See [ADR-20260428-06](adr/20260428-06-client-mcp-modeling.md) for why this is its own kind rather than a tag on `service`
+- `client`: software we ship that acts on a user's behalf (mobile / web / desktop / CLI / device / extension / embed). Sits between `user` and `service`. See [ADR-823](adr/823-client-mcp-modeling.md) for why this is its own kind rather than a tag on `service`
 - `service`: an independent unit of business functionality
 - `domain`: a business-concern boundary inside a service (close to DDD's Bounded Context)
 - `usecase`: a business operation inside a domain
 - `resource`: what a usecase operates on (tables, external APIs, files, etc.); also reserved on `client` for operation-tied local storage (`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain`)
 
-`database` / `queue` / `storage` may also live directly under `system` as shared infrastructure that services depend on (see [ADR-20260405-05](adr/20260405-05-database-as-first-class-node.md)).
+`database` / `queue` / `storage` may also live directly under `system` as shared infrastructure that services depend on (see [ADR-316](adr/316-database-as-first-class-node.md)).
 
 ### Physical structure (How)
 
@@ -151,7 +151,7 @@ The result of domain modeling feeds directly into service-boundary discussions, 
 The distinction between sync and async is not visual decoration but information that captures structural semantics —
 the cyclic-dependency detection described below treats async edges as "intentional loose coupling" precisely because of this distinction.
 
-References: ADR-20260410-01, ADR-20260413-02. See `docs/spec/syntax.md` for the detailed syntax.
+References: ADR-445, ADR-510. See `docs/spec/syntax.md` for the detailed syntax.
 
 ### Aggregation — reducing information when seen from above
 
@@ -162,7 +162,7 @@ This is a direct embodiment of the **"limit how much is shown at once"** princip
 aggregate when viewed from above; delegate the details to drill-down and the detail panel.
 Aggregation is done separately for sync and async, so if a pair has both kinds of dependencies, two edges are drawn.
 
-References: ADR-20260410-01, ADR-20260413-02, PR #607.
+References: ADR-445, ADR-510, PR #607.
 
 ### Ghost — keep boundaries visible even as the field narrows under drill-down
 
@@ -175,7 +175,7 @@ The existence of the boundary is visible; the details are not — another embodi
 You can also explicitly draw an edge to a different system using the `SystemId.ServiceId` dot notation, and the referenced system renders as a ghost system.
 This is the standard mechanism for describing architectures that span microservices or multiple organizations.
 
-References: ADR-20260404-09, ADR-20260405-07, ADR-20260411-05.
+References: ADR-285, ADR-328, ADR-460.
 
 ### Annotation inheritance — keeping context across drill-down
 
@@ -186,7 +186,7 @@ If a service has `@deprecated`, its descendant nodes are also rendered as deprec
 This exists so that the context "this service is on its way out" is preserved at any drill-down level, and it affects the way edges are drawn as well.
 It prevents annotations from being ignored suddenly at deeper drill-down levels.
 
-Reference: ADR-20260415-01.
+Reference: ADR-517.
 
 ### Automatic checks — cyclic dependencies
 
@@ -197,7 +197,7 @@ Sync cycles, on the other hand, lead to real failures, so they are worth catchin
 Detected cyclic edges receive a `[cyclic]` tag and are rendered in red.
 Precisely because karasu stays in a **slowly-changing structural context**, the results of such static checks are meaningful — this is not the kind of check whose warnings wobble every time the implementation changes.
 
-Reference: ADR-20260405-06.
+Reference: ADR-287.
 
 ### Summary
 
@@ -261,8 +261,8 @@ karasu to take and re-litigate positions in design schools that change with the
 field. Surfacing facts and linking to context lets the user — who knows the
 project, the team, and the constraints — judge.
 
-The same reasoning underlies ADR-20260430-01 (no security / threat modeling in
-core) and ADR-20260511-02 (no runtime-authorization modeling): both refuse to
+The same reasoning underlies ADR-834 (no security / threat modeling in
+core) and ADR-832 (no runtime-authorization modeling): both refuse to
 encode an external discipline's preferred shape into karasu's vocabulary while
 still allowing the underlying facts to be modeled.
 
@@ -318,7 +318,7 @@ implementation detail live where it can change without touching the architecture
 
 > Related TPLs: [TPL-20260616-03](test-perspectives/TPL-20260616-03-client-vocabulary-structure-not-implementation.md) — `client` vocabulary names access-path structure, never implementation detail.
 
-> Related ADR topics: _(none — boundary clarification section; the client kind itself is covered by ADR-20260428-06)_
+> Related ADR topics: _(none — boundary clarification section; the client kind itself is covered by ADR-823)_
 
 ## Domain dispersal detection
 
@@ -561,7 +561,7 @@ are **slowly-changing structural facts**. The vocabulary for them is `entity`
 (a `domain` child carrying only name, relations, and a physical mapping —
 **never attributes**); see the "`entity` declaration" section in
 [`docs/spec/syntax.md`](spec/syntax.md) and
-`docs/adr/20260715-01-domain-entity-modeling.md`. The "no attributes" line is the
+`docs/adr/1870-domain-entity-modeling.md`. The "no attributes" line is the
 slippery-slope guard — it gives a consistent answer to the adjacent temptations
 ("just the types", "just the primary key").
 

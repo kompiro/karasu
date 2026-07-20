@@ -65,11 +65,11 @@ independent axes:
 - **repo-backed permalink** — resolves a `.krs` from a GitHub repo
   (`/<owner>/<repo>`) and renders it, instead of carrying the payload inside the
   URL. The nest Phase 2 form; see
-  [ADR-20260716-02](adr/20260716-02-repo-backed-ref-pinned-permalink.md).
+  [ADR-1828](adr/1828-repo-backed-ref-pinned-permalink.md).
 - **ref-pinned permalink** — pins a repo-backed permalink to a specific git
   ref / SHA, so it renders that point-in-time structure immutably — the shape an
   ADR's point-in-time record wants. See
-  [ADR-20260716-02](adr/20260716-02-repo-backed-ref-pinned-permalink.md)
+  [ADR-1828](adr/1828-repo-backed-ref-pinned-permalink.md)
   (SHA enforcement and the ref-less-default-HEAD resolver).
 - **inline snapshot permalink** — the current nest `?s=` form: the model is
   frozen into the URL itself (immutable, but not repo-linked, and long — hence

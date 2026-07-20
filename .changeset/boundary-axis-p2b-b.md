@@ -11,4 +11,4 @@ routing). The boundary axis is independent of and exclusive with the team
 (`owns`) axis — `ownerIndex` remains the per-card team badge regardless of axis.
 In the app the Group-by selector shows the "Boundary" option only when the model
 declares a `boundary` (data-driven visibility, mirroring the "Team" option's
-`organization` gate). Experimental notation (ADR-20260713-01). Refs #1822.
+`organization` gate). Experimental notation (ADR-1820). Refs #1822.

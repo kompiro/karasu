@@ -19,7 +19,7 @@ and are unit-fenced (required-tier `vitest`) in
 - TC-06: `emptyDrilldownState` › `switchView / switchViewAndHighlight reset to it`
 
 **WebView interaction** — automated in the WebView E2E harness
-(ADR-20260429-09; the ExTester job is **not** a required check):
+(ADR-1014; the ExTester job is **not** a required check):
 
 - TC-01/02:
   [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)

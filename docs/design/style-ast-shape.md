@@ -1,13 +1,13 @@
 # `.krs.style` AST の形と将来の拡張
 
 - **日付**: 2026-05-08
-- **ステータス**: 全フェーズ完了。フェーズ 1 = [ADR-20260509-02](../adr/20260509-02-style-ast-position-and-recovery.md) として昇格・実装済み。フェーズ 2 = [ADR-20260510-01](../adr/20260510-01-tidy-style-and-trivia.md) として昇格・実装済み（`docs/design/tidy-style-and-trivia.md` は ADR に集約して削除）。フェーズ 3 = [ADR-20260511-03](../adr/20260511-03-style-value-diagnostics.md) として昇格・実装済み（`docs/design/style-value-diagnostics.md` は ADR に集約して削除）
+- **ステータス**: 全フェーズ完了。フェーズ 1 = [ADR-1168](../adr/1168-style-ast-position-and-recovery.md) として昇格・実装済み。フェーズ 2 = [ADR-1177](../adr/1177-tidy-style-and-trivia.md) として昇格・実装済み（`docs/design/tidy-style-and-trivia.md` は ADR に集約して削除）。フェーズ 3 = [ADR-1178](../adr/1178-style-value-diagnostics.md) として昇格・実装済み（`docs/design/style-value-diagnostics.md` は ADR に集約して削除）
 - **関連**:
   - 引き金 Issue: [#1168](https://github.com/kompiro/karasu/issues/1168) — `,` と `;` の取り違えが silent に通る
-  - 関連 ADR: [ADR-20260322-01](../adr/20260322-01-builtin-style-and-reference.md)（builtin + cascade）、
-    [ADR-20260328-01](../adr/20260328-01-unified-style-pipeline.md)（resolver 一元化）、
-    [ADR-20260506-01..03](../adr/20260506-01-gui-driven-style-editing.md)、
-    [ADR-20260508-01](../adr/20260508-01-gui-style-inplace-update.md)
+  - 関連 ADR: [ADR-8](../adr/8-builtin-style-and-reference.md)（builtin + cascade）、
+    [ADR-108](../adr/108-unified-style-pipeline.md)（resolver 一元化）、
+    [ADR-1076..03](../adr/1076-gui-driven-style-editing.md)、
+    [ADR-1142](../adr/1142-gui-style-inplace-update.md)
   - コード:
     `packages/core/src/types/style.ts`、
     `packages/core/src/lexer/style-lexer.ts`、
@@ -27,7 +27,7 @@ properties: Record<string, string>, specificity, sourceIndex }` という最小�
    `color = "red , direction : down"` という壊れた値が成立し、`direction`
    property は AST から消える。診断も出ないので、LSP は誤りをユーザーに
    報告できない
-2. **GUI in-place update (#1142 / ADR-20260508-01)**: 単一プロパティ rule の
+2. **GUI in-place update (#1142 / ADR-1142)**: 単一プロパティ rule の
    in-place 書き換えを **テキスト正規表現** で実装した。AST が位置情報を
    持たないので、AST 経由で安全に編集する選択肢が今は無い
 3. **Tidy Style コマンド** (将来): append 連発で散らかった `.krs.style` を
@@ -199,7 +199,7 @@ interface StyleSelector {
 
 ### 採否
 
-**採用済み** — [ADR-20260509-02](../adr/20260509-02-style-ast-position-and-recovery.md)
+**採用済み** — [ADR-1168](../adr/1168-style-ast-position-and-recovery.md)
 として昇格、PR [#1173](https://github.com/kompiro/karasu/pull/1173) で
 実装。`StyleSheet.sheetId` のみ envelope レベルで optional に残す譲歩あり
 （test fixture 数の都合）。それ以外は本 design doc の MVP どおり。
@@ -254,7 +254,7 @@ interface StyleSelector {
    （`loc` 追加 + recovery audit + 診断追加）として PR を切る
 2. 同じ PR で `expected-semicolon-between-properties` を導入し、parseValue
    の recovery 規則を明文化する
-3. ADR-20260328-01（resolver 一元化）に refines する形で **新 ADR
+3. ADR-108（resolver 一元化）に refines する形で **新 ADR
    `style-ast-position-and-recovery`** を起こす。AST に `loc?` を生やすこと、
    recovery のセマンティクス（error severity + 前進）、`sourceIndex` の
    シート横断ポリシーを記録する

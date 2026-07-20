@@ -15,7 +15,7 @@ ADR（Architecture Decision Record）と、ADR に昇格させる前の Design D
 - **本文も日本語**（背景・決定・理由・却下した案 など）
 - コード例・識別子・固有名詞（`Bun`, `Dependabot`, `Playwright`, `i18n`,
   `OPFS`, `draw.io`, `karasu render` など）は英語綴りのまま残す
-- 詳細・経緯は **ADR-20260427-02** 参照
+- 詳細・経緯は **ADR-830** 参照
 
 > OSS 化時に ADR タイトル・本文を英語に一括翻訳する想定があるため、
 > flowery な日本語表現は避けて素直な訳にする。後で機械的に英訳できる
@@ -51,7 +51,7 @@ ADR の必須要素は `docs/adr/TEMPLATE.md` を参照。frontmatter スキー�
 ADR が karasu の構造（共有 URL・レンダリング済み図）へリンクするときの **L2
 実装規約**（`@kompiro/adr-tools` 採用 repo = karasu 自身の `docs/adr/` に適用）。
 ツール非依存の **L1 portable guide** は `docs/guide/adr-permalinks.md` を、決定の
-経緯は [ADR-20260702-01](../../docs/adr/20260702-01-adr-permalink-convention.md) を参照。
+経緯は [ADR-1829](../../docs/adr/1829-adr-permalink-convention.md) を参照。
 
 **記録（SoT）は in-repo `.krs`**、permalink はそれを見る pointer。karasu は
 **taka 短縮リンク + 必須 `source`** を採用する（生の `/s?s=` payload は数 KB に
@@ -71,7 +71,7 @@ permalink:
 ```
 
 - `short` の宛先は **`/s?s=`（query）形**を短縮したもの。`#s=`（fragment）は
-  server に届かず unfurl が死ぬので不可（ADR-20260626-04）。
+  server に届かず unfurl が死ぬので不可（ADR-1801）。
 - 生の `/s?s=` payload は frontmatter に載せない（数 KB になりうる）。復元は
   `source` から。真の ref-pin は #1828。
 - deep permalink（要素ドリル）は `source` に anchor を添える（例
@@ -139,7 +139,13 @@ pnpm adr:regenerate        # docs/adr/effective.md, graph/*.md を再生成
 
 `docs/design/<name>.md` で設計検討して合意したら、ADR に昇格させ
 `docs/design/<name>.md` を削除する（履歴は PR / Issue で追える）。
-昇格時のファイル名は `docs/adr/YYYYMMDD-NN-<name>.md`（NN は同日内連番）。
+昇格時のファイル名は `docs/adr/<n>-<name>.md`。`<n>` は **起点の GitHub Issue 番号**、
+Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083](https://github.com/kompiro/karasu/issues/2083)）。
+ゼロ埋めしない。GitHub の番号は大域的に一意なので、並行 PR 間で採番が衝突しない
+（旧 `YYYYMMDD-NN` 形式では衝突が構造的に起きていた — #1985/#1986、#2086/#2092）。
+
+同じ Issue から 2 本目の ADR を起こす場合は、**Issue 番号はその Issue を最もよく
+表す 1 本に与え**、残りは各自の PR 番号を使う。
 
 新規 Design Doc の雛形は `docs/design/TEMPLATE.md` を参照。
 
@@ -165,7 +171,7 @@ gh pr merge <pr-number> --auto --squash --delete-branch
    - `docs/design/<name>.md` の **削除** または **更新**:
      - 削除 — Design Doc 全体を ADR に昇格させて元ファイルを消すケース
      - 更新 — 部分昇格（複数フェーズの一部だけ ADR 化し、残りを Design Doc
-       に保持するケース。例: ADR-20260509-02）
+       に保持するケース。例: ADR-1168）
 3. `gh pr view <N> --json files,title` で 1〜2 を確認した直後にコマンドを
    実行する
 

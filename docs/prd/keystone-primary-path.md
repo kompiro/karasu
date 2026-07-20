@@ -5,7 +5,7 @@
 - **ステータス**: 決定済み（keystone 3 点 + 目的関数を確定。要件は Issue へ、結論は `docs/roadmap.md` keystone 節へ）
 - **関連**:
   - 引き金: post-v1.0 horizon（`docs/roadmap.md`）の keystone 節 / planning [#1814](https://github.com/kompiro/karasu/issues/1814)
-  - 関連 ADR: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest）
+  - 関連 ADR: [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（karasu-nest）
   - 関連 Issue: [#1783](https://github.com/kompiro/karasu/issues/1783)（nest brainstorm）/ [#638](https://github.com/kompiro/karasu/issues/638)（Chat user testing）
   - 派生する柱: comprehension [#1817](https://github.com/kompiro/karasu/issues/1817) / notation watch r2 [#1816](https://github.com/kompiro/karasu/issues/1816)
 

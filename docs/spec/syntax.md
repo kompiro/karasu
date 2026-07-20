@@ -99,7 +99,7 @@ client C [web] {
 
 ### Infra layer (shared data stores) — rendered on the system view
 
-Some data stores are shared by several services rather than owned by a single `usecase`. Declare them at the **top level of a `.krs` file** (or directly inside a `system` block) using one of the three infra-block keywords below; each may nest leaf sub-resources. These nodes render on the **system view**, in the dependency tier next to `[external]` services — services *depend on* shared infra, never the other way round. They were promoted to first-class nodes in [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md).
+Some data stores are shared by several services rather than owned by a single `usecase`. Declare them at the **top level of a `.krs` file** (or directly inside a `system` block) using one of the three infra-block keywords below; each may nest leaf sub-resources. These nodes render on the **system view**, in the dependency tier next to `[external]` services — services *depend on* shared infra, never the other way round. They were promoted to first-class nodes in [ADR-316](../adr/316-database-as-first-class-node.md).
 
 <!-- gen:reference:node-kinds-infra — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Keyword | Layer | Intended use | May contain |
@@ -199,7 +199,7 @@ Properties are written inside the body block `{ }`. Properties come before child
 |----------|--------|-----------------|-------------|
 | `label` | `label "<display-name>"` | All | Display name on the diagram. Defaults to the id when omitted |
 | `description` | `description "<text>"` | All | Description text (use `"""..."""` for multi-line) |
-| `role` | `role "<role-name>"` | user | Actor archetype, or a short one-line description of what this user does. **Not** an authz primitive (no `requires role = ...` predicate, no RBAC permission bundle) — see [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) and [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) |
+| `role` | `role "<role-name>"` | user | Actor archetype, or a short one-line description of what this user does. **Not** an authz primitive (no `requires role = ...` predicate, no RBAC permission bundle) — see [ADR-832](../adr/832-no-runtime-authz-modeling.md) and [ADR-1281](../adr/1281-user-role-keyword-clarification.md) |
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | Client(s) this service ships (BFF / SSR pattern). The renderer draws each entry as a distinct dashed edge from the service to the referenced `client` |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
 | `resource` | `resource <storageKind> "<name>"` | client | Operation-tied local storage on the client. Multiple allowed. See client resource kinds below |
@@ -262,7 +262,7 @@ user <id> [<human|ai>] {
 ```
 
 - The tag `[human]` / `[ai]` distinguishes human users from AI agents.
-- `role` describes the actor archetype or what this user does within the system (a short one-line label or sentence). It is **not** an authz primitive: it does not represent a RBAC permission bundle, and karasu does not introduce a `requires role = ...` predicate or similar authz construct (see [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) and [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md)). To document who may execute a usecase, use the usecase's `description` and a `link` to an external policy document.
+- `role` describes the actor archetype or what this user does within the system (a short one-line label or sentence). It is **not** an authz primitive: it does not represent a RBAC permission bundle, and karasu does not introduce a `requires role = ...` predicate or similar authz construct (see [ADR-832](../adr/832-no-runtime-authz-modeling.md) and [ADR-1281](../adr/1281-user-role-keyword-clarification.md)). To document who may execute a usecase, use the usecase's `description` and a `link` to an external policy document.
 - Properties and the body block `{ }` are optional.
 
 ### service / domain node example
@@ -521,7 +521,7 @@ Behavior:
 - An empty right-hand side (`list:`) raises `empty-crud-decoration` (error).
 - A duplicated CRUD verb on the right (`replace:create,create`) raises `duplicate-crud-decoration-target` (warning) and is deduplicated.
 - A decorated verb does **not** raise `unknown-resource-operation`, even if the verb itself is outside the recognised set — the decoration is the author's CRUD declaration.
-- The CRUD matrix view ([ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)) reads `decoratedAs` first when computing cell letters, ΣC/R/U/D totals, and the write-dominates flag. A decorated verb never produces a `?` suffix.
+- The CRUD matrix view ([ADR-1062](../adr/1062-crud-matrix-view.md)) reads `decoratedAs` first when computing cell letters, ΣC/R/U/D totals, and the write-dominates flag. A decorated verb never produces a `?` suffix.
 
 Disambiguation rule for 1:N + multiple verbs on one line: once the parser sees `verb:`, the comma-separated identifiers that follow are CRUD-RHS continuations until the next `<id>:` boundary. So `search:read,create, list:read` parses as `search:[read,create]` then `list:[read]`. To express a bare verb after a decorated one, place the bare verb earlier in the list (`create, list:read`).
 
@@ -529,7 +529,7 @@ Disambiguation rule for 1:N + multiple verbs on one line: once the parser sees `
 
 #### Authorization notes — write them as `description` + `link`
 
-[ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) decided that karasu does **not** model usecase-level authorization (role / license / plan / scope predicates) in its vocabulary. The structural language describes *what exists* and *how it relates*; *who may call a usecase at runtime* is left to the canonical policy doc or IAM tool (OPA, Cedar, Casbin, internal RBAC docs, etc.).
+[ADR-832](../adr/832-no-runtime-authz-modeling.md) decided that karasu does **not** model usecase-level authorization (role / license / plan / scope predicates) in its vocabulary. The structural language describes *what exists* and *how it relates*; *who may call a usecase at runtime* is left to the canonical policy doc or IAM tool (OPA, Cedar, Casbin, internal RBAC docs, etc.).
 
 To keep that prose from drifting into ad-hoc vocabulary across teams, write authz notes on a `usecase` using this pattern:
 
@@ -547,7 +547,7 @@ usecase RefundOrder {
 - Add a `link` whose label contains `Authorization policy` (or `Policy`) and whose URL points at the canonical policy doc / IAM rule. **The link is authoritative.** When the prose and the link disagree, the link wins; readers should treat the description as out-of-date.
 - Do not invent attributes (`role: admin`, `requires: billing.write`, etc.) inside `description`. If a constraint cannot be summarised in one sentence, that is a signal the constraint belongs in the policy doc, not in the model.
 
-Tools do not enforce or render this convention — there is no `Access:` badge, no policy-link decoration, no validator. It is a *prose contract* between authors so the same constraint is recognisable across files and teams. If you need a machine-checkable gate, that need is explicitly out of scope (see ADR-20260511-02).
+Tools do not enforce or render this convention — there is no `Access:` badge, no policy-link decoration, no validator. It is a *prose contract* between authors so the same constraint is recognisable across files and teams. If you need a machine-checkable gate, that need is explicitly out of scope (see ADR-832).
 
 ### Top-level domain declaration
 
@@ -770,7 +770,7 @@ usecase PlaceOrder {
 }
 ```
 
-See [`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md)
+See [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
 itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
 
@@ -891,11 +891,11 @@ other kinds (`oci`, …) *may* realize an infra node too, but `store` keeps the 
 
 When a service depends on a realized infra node (a usecase references it via `resource <Infra>.<Sub>`)
 and both the service and the store are realized, the deploy diagram draws a dependency edge from the
-service's container to the realized store's container ([ADR-20260616-12](../adr/20260616-12-deploy-infra-dependency-edges.md)).
+service's container to the realized store's container ([ADR-1658](../adr/1658-deploy-infra-dependency-edges.md)).
 
 > Scope: this stays within `deploy`'s **runtime-contract** layer (which concrete form backs the store).
 > Infrastructure topology — regions, AZs, clusters, nodes — remains out of scope (see [concepts.md](../concepts.md)).
-> Decided in [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md).
+> Decided in [ADR-1632](../adr/1632-infra-physical-realize.md).
 
 ---
 
@@ -979,7 +979,7 @@ When both are specified, the property form takes precedence.
 > **Experimental notation (post-v1.0 watch).** `boundary` is retained as
 > experimental, not frozen — backward compatibility is **not yet promised**, and
 > promotion to a v1.0-stable construct is gated on real-usage evidence (the
-> notation promotion gate, [ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)).
+> notation promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
 > See `docs/roadmap.md` § post-v1.0 horizon.
 
 A `boundary` block declares a **semantic cluster** of system-view nodes — a
@@ -1143,7 +1143,7 @@ Legend labels are author-supplied strings, treated the same way as `name` and `l
 
 ### What's not in v1
 
-The following are deferred (see [`docs/adr/20260428-07-diagram-legend-syntax.md`](../adr/20260428-07-diagram-legend-syntax.md) for rationale):
+The following are deferred (see [`docs/adr/833-diagram-legend-syntax.md`](../adr/833-diagram-legend-syntax.md) for rationale):
 
 - Shape / icon / pattern legends (only color today).
 - Interactive legends (click to filter, etc.).
@@ -1230,7 +1230,7 @@ import { ECPlatform.NotThere.Order } from "./services.krs"
 
 ## Multi-file import semantics
 
-This section defines what each `import` form means when a model is split across multiple `.krs` files. Implementation: `packages/core/src/fs/import-resolver.ts`. Related ADRs: [ADR-20260405-03](../adr/20260405-03-wildcard-import-two-pass-resolution.md) (wildcard / two-pass), [ADR-20260409-05](../adr/20260409-05-directory-import.md) (directory), [ADR-20260409-06](../adr/20260409-06-named-import-toplevel-service.md) (named top-level), [ADR-20260513-03](../adr/20260513-03-import-system-nested.md) (named path syntax).
+This section defines what each `import` form means when a model is split across multiple `.krs` files. Implementation: `packages/core/src/fs/import-resolver.ts`. Related ADRs: [ADR-281](../adr/281-wildcard-import-two-pass-resolution.md) (wildcard / two-pass), [ADR-292](../adr/292-directory-import.md) (directory), [ADR-412](../adr/412-named-import-toplevel-service.md) (named top-level), [ADR-927](../adr/927-import-system-nested.md) (named path syntax).
 
 ### S1. The four import forms
 

@@ -23,7 +23,7 @@ import { StyleParser } from "../parser/style-parser.js";
  * resolves the rule: only `logical`, `infra`, `resource-variant` and
  * `client-variant` rules are system-view concepts the preview's Icon Mode
  * draws. `org` and `deploy` rules exist in the CSS theme but resolve to
- * `undefined` from `iconNameForNode` (see ADR-20260519-06).
+ * `undefined` from `iconNameForNode` (see ADR-1415).
  */
 type IconScope = "logical" | "infra" | "resource-variant" | "client-variant" | "org" | "deploy";
 

@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-05-10
 - **関連 Issue**: [#1185](https://github.com/kompiro/karasu/issues/1185)（親 [#1071](https://github.com/kompiro/karasu/issues/1071)）
-- **関連 Design Doc**: [ADR-20260511-01](../adr/20260511-01-parallel-edge-bundling.md)
+- **関連 Design Doc**: [ADR-1185](../adr/1185-parallel-edge-bundling.md)
 - **対象ファイル**:
   - `packages/core/src/renderer/edge-routing-bundles.ts`、`...test.ts`
   - `packages/core/src/renderer/edge-routing.ts`

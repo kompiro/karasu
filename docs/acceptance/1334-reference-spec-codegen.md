@@ -13,7 +13,7 @@ type: product
   - `docs/spec/tags-annotations.md` / `.ja.md`（Annotations テーブルを `<!-- gen:reference:annotations -->` 区間に）
   - `docs/spec/style.md` / `.ja.md`（shape テーブルを `<!-- gen:reference:shapes -->` 区間に）
   - `lefthook.yml` / `.github/workflows/ci.yml`（`gen:reference --check` の配線）
-- **ADR**: [ADR-20260512-03](../adr/20260512-03-reference-data-single-source.md)
+- **ADR**: [ADR-1296](../adr/1296-reference-data-single-source.md)
 - **TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
 
 ## 受け入れ条件

@@ -510,7 +510,7 @@ export class Parser {
         continue;
       }
 
-      // Property: team — removed. Was deprecated (ADR-20260323-03); ownership is
+      // Property: team — removed. Was deprecated (ADR-14); ownership is
       // now declared with an `organization` block + `owns`. The `team` keyword
       // itself stays valid as the organization team-block keyword (parsed elsewhere).
       if (token.type === TokenType.Team) {
@@ -1158,7 +1158,7 @@ export class Parser {
 
         let decoratedAs: CrudVerb[] | undefined;
         if (op.decoration === undefined) {
-          // Bare verb — current ADR-20260430-03 behavior.
+          // Bare verb — current ADR-1046 behavior.
           if (!isRecognizedResourceOperation(op.verb)) {
             this.diagnostics.push({
               severity: "warning",
@@ -1976,7 +1976,7 @@ export class Parser {
           // Co-ownership is a structural fact, not an integrity error: an
           // inverse-Conway handoff legitimately has two teams own a node
           // mid-migration. Surface it in the fact-vs-style register (info),
-          // like domain-dispersal (ADR-20260615-01). ownerIndex is 1:1, so a
+          // like domain-dispersal (ADR-1566). ownerIndex is 1:1, so a
           // single primary owner must be chosen: the @migration_target team
           // (the migration destination) wins, mirroring buildNodePathIndex's
           // domain logic; ties keep the first declaration (#1583). The
@@ -2008,7 +2008,7 @@ export class Parser {
   // buildOwnerIndex. Unlike teams there is no migration-annotation precedence on
   // boundaries, so multi-membership resolves by *first-declared-wins*; the
   // duplicate is surfaced in the fact-vs-style register (info), mirroring
-  // duplicate-owner-assignment (ADR-20260615-01 / TPL-20260514-08). The
+  // duplicate-owner-assignment (ADR-1566 / TPL-20260514-08). The
   // diagnostic names the retained (first) boundary.
   private buildBoundaryIndex(boundaries: BoundaryBlock[]): Map<string, string> {
     const index = new Map<string, string>();
@@ -2095,11 +2095,11 @@ export class Parser {
             // A domain id shared by multiple services within one system is a
             // structural fact, not an error: karasu visualizes it, and the
             // resolver surfaces it through the `domain-dispersal` info
-            // diagnostic (ADR-20260514-02 — "smell is representable"). The
+            // diagnostic (ADR-1386 — "smell is representable"). The
             // nodePathIndex keeps a single winner — the higher-priority
             // (migration-target) entry, or the first occurrence when
             // priorities tie — exactly as the migration-coexistence path
-            // (ADR-20260411-02) already does.
+            // (ADR-477) already does.
             if (priority > existingPriority) {
               index.set(node.id, currentPath);
               seenDomainIds.set(node.id, priority);

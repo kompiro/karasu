@@ -11,8 +11,8 @@ type: product
   - `packages/core/src/renderer/layout.ts`（forced layer の単一 / 多 system 経路にフック）
   - `packages/core/src/renderer/layer-layout-logics.test.ts`（新規）、`packages/core/src/index.test.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`
-- **関連設計**: [`docs/adr/20260506-04-edge-direction-horizontal.md`](../adr/20260506-04-edge-direction-horizontal.md)
-- **関連 ADR**: ADR-20260409-04（barycenter）、ADR-20260429-04（column hint）、ADR-20260430-04（last-wins）
+- **関連設計**: [`docs/adr/1135-edge-direction-horizontal.md`](../adr/1135-edge-direction-horizontal.md)
+- **関連 ADR**: ADR-395（barycenter）、ADR-969（column hint）、ADR-1061（last-wins）
 - **依存**: AT-1124（`direction: up` 実装）、AT-1134（`direction: down` 実装）
 
 ## 受け入れ条件
@@ -41,7 +41,7 @@ type: product
 ## 補足
 
 - **適用スコープ**: forced kind-based system view（top-level および multi-system）と drill-down view（topological）の両方で動作する。layer 引き寄せ（案 A）採用により、source / target が自然な layout で別層になる典型ケース（service 同士の edge など）でも honor される
-- **ADR 整合**: 既存 ADR-20260429-04（column hint）の "bucket 内並び保持" は edge hint が無い場合の挙動として引き続き成立。edge hint 適用時は precedence ルール上、bucket 境界を越え得ることが Design Doc に明記されている
+- **ADR 整合**: 既存 ADR-969（column hint）の "bucket 内並び保持" は edge hint が無い場合の挙動として引き続き成立。edge hint 適用時は precedence ルール上、bucket 境界を越え得ることが Design Doc に明記されている
 - **値の意味**: `direction:` は `up` / `down` / `left` / `right` のすべてが「矢印の流れる向き」を表す。source は矢印と逆側に置かれる。GUI 編集器でも「Direction ▸ Right」を選ぶと矢印が右に流れる、と直感的に読める
-- **last-wins**: ADR-20260430-04 の cascade 規約に揃える形で、矛盾する horizontal hint は後発勝ち。GUI 編集器（#1129）の append 流に整合
+- **last-wins**: ADR-1061 の cascade 規約に揃える形で、矛盾する horizontal hint は後発勝ち。GUI 編集器（#1129）の append 流に整合
 - **deploy / org view**: 引き続き column hint と同様に horizontal direction も無視される（warning は出さない — edge プロパティなので column の non-system warning とは別系統）

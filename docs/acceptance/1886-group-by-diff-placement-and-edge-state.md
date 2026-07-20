@@ -1,10 +1,10 @@
 # AT-1886: Group by team（diff モード）— 除去ノード配置と集約エッジ diff state
 
 - **日付**: 2026-07-12
-- **Issue**: #1886（follow-up of #1873 / ADR-20260711-03）
+- **Issue**: #1886（follow-up of #1873 / ADR-1858）
 - **PR**: (この PR)
-- **関連 ADR**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（Group by: team P2a）
-- **設計**: [ADR-20260716-01](../adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)
+- **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（Group by: team P2a）
+- **設計**: [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)
 - **Related TPLs**:
   - [TPL-20260712-01](../test-perspectives/TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md)（id を書き換える集約変換は元 id にキーされた装飾を再導出する）
   - [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）

@@ -3,7 +3,7 @@
 - **日付**: 2026-07-13
 - **関連 Issue**: [#1818](https://github.com/kompiro/karasu/issues/1818)（notation watch round 2 item 1、親 [#1816](https://github.com/kompiro/karasu/issues/1816)）
 - **関連 ロードマップ**: [`docs/roadmap.md`](../roadmap.md) §post-v1.0 horizon / notation watch (round 2)（cookbook 新設・KV entry #1・`@kv` 却下）
-- **関連 ADR**: [ADR-20260623-04](../adr/20260623-04-vector-store-vs-database.md)（`[index]` = 役割タグ、技術は物理層 — idiom #2 の裏付け）
+- **関連 ADR**: [ADR-1718](../adr/1718-vector-store-vs-database.md)（`[index]` = 役割タグ、技術は物理層 — idiom #2 の裏付け）
 - **対象ファイル**:
   - `docs/guide/notation-cookbook.md` / `docs/guide/notation-cookbook.ja.md`（新規クックブック）
   - `docs/guide/reverse-engineering-with-ai.md` / `.ja.md`（"what to feed the model" にクックブックを追加）

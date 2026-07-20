@@ -82,4 +82,4 @@ TPL-20260624-02 のチェックリストを全部通しても**すり抜ける**
 
 ## 派生元 spec
 
-- `docs/adr/20260716-01-group-by-diff-removed-node-placement-and-aggregated-edge-state.md`（ADR-20260716-01）
+- `docs/adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md`（ADR-1886）

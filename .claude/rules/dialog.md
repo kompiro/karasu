@@ -6,7 +6,7 @@ paths:
 
 # App UI Rules — Modal Dialogs
 
-karasu adopted shadcn/ui + Tailwind v4 in [ADR-20260515-01](../../docs/adr/20260515-01-adopt-shadcn-ui.md).
+karasu adopted shadcn/ui + Tailwind v4 in [ADR-1368](../../docs/adr/1368-adopt-shadcn-ui.md).
 **All new modal dialogs use the shadcn `Dialog` primitive.** The legacy
 `.dialog-overlay` / `.dialog` / `.dialog__*` class structure is
 deprecated — kept only so existing CSS continues to render until each
