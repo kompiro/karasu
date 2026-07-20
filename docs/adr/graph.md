@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-267 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+268 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -207,6 +207,7 @@ flowchart TD
     ADR_20260513_03["ADR-20260513-03<br/>system にネストした service / domain の Named Import は..."]
     ADR_20260616_04["ADR-20260616-04<br/>規則と診断を分離し、診断カタログで完全性を担保する"]
     ADR_20260720_01["ADR-20260720-01<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
+    ADR_20260720_03["ADR-20260720-03<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
   end
   subgraph project["project"]
     ADR_20260317_02["ADR-20260317-02<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -672,6 +673,7 @@ flowchart TD
   class ADR_20260717_02 accepted
   class ADR_20260720_01 accepted
   class ADR_20260720_02 accepted
+  class ADR_20260720_03 accepted
 ```
 
 ## Per-topic detail
@@ -684,7 +686,7 @@ flowchart TD
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 11 ADRs
-- [`parser`](graph/parser.md) — 18 ADRs
+- [`parser`](graph/parser.md) — 19 ADRs
 - [`project`](graph/project.md) — 8 ADRs
 - [`renderer`](graph/renderer.md) — 38 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs
