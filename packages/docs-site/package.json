@@ -18,7 +18,7 @@
     "@astrojs/starlight": "^0.40.0",
     "@karasu-tools/core": "workspace:*",
     "@vitest/coverage-v8": "^4.1.4",
-    "astro": "^6.4.7",
+    "astro": "^7.1.0",
     "github-slugger": "^2.0.0",
     "tsx": "^4.22.4",
     "vitest": "^4.1.4"
