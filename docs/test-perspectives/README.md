@@ -120,14 +120,25 @@ frontmatter とこの README の一覧表は **`pnpm tpl:validate`** で機械�
 - ファイル名が `TPL-YYYYMMDD-NN-<slug>.md` で frontmatter `id` と一致すること
 - 必須フィールド（`id` / `title` / `status` / `date` / `applicable_to` / `discovered_from` / `topic` / `scope.packages`）の存在
 - `status` が `active` / `deprecated` のいずれか
-- `topic` が `adr.config.json` の controlled vocabulary（ADR と共有）に含まれること
+- `topic` が `tpl.config.json` の controlled vocabulary（ADR と同一の語彙を複製）に含まれること
 - `applicable_to` / `discovered_from` が非空、`discovered_from` の各エントリは既知 key（`issue` / `root_cause_adr` / `root_cause_file`）のみを持つこと
 - `related_to` が指す TPL が同ディレクトリに存在すること
 - `scope.packages` が `packages/` 配下の実在ディレクトリを指すこと
 - `status: deprecated` のエントリ本文に deprecation rationale が含まれること
 - README の一覧表が全 TPL ファイルと双方向に整合していること（行欠落 / dead リンク無し）
 
-実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config adr.config.json` を渡して `topics` 語彙を ADR と共有し、`--packages-root packages` で `scope.packages` を検証している（karasu#1357 で切り出し）。
+実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を検証している（karasu#1357 で切り出し）。
+
+> **なぜ ADR と config を分けているか**（karasu#2083）
+> `tpl-tools` と `adr-tools` は同じ config キー `idFormat` を読む。ADR は
+> `issue-number`（`ADR-<n>`）へ移行したが、TPL は bug 起点で単一の issue に
+> 紐付かないため `date-sequence`（`TPL-YYYYMMDD-NN`）を維持する。config を
+> 共有したままだと ADR 側の `idFormat` が TPL にも適用され、全 TPL が
+> `id-format-invalid` になる。そのため `tpl.config.json` を分離した。
+>
+> `topics` は両ファイルに複製されている。**ADR 側に topic を足すときは
+> `tpl.config.json` にも同じ値を足すこと** — 差分は `pnpm lint:config-topics-sync`
+> が検出する。
 
 ### Related TPL クエリ
 
