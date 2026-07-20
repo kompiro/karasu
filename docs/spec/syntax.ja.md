@@ -212,6 +212,39 @@ system ECPlatform {
 
 > Related TPLs: TPL-20260510-17 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
 
+### 文字列値とエスケープ
+
+引用符付き文字列値（`"..."`）が解釈するエスケープシーケンスは次の 3 種だけである。
+
+| シーケンス | 意味 |
+|-----------|------|
+| `\"` | ダブルクォート |
+| `\\` | バックスラッシュ |
+| `\n` | 改行 |
+
+これ以外の `\<char>` は素の文字になる（`\t` はタブではなく文字 `t`）。
+エスケープの不要な文字は、復帰（CR）も含めてそのまま書いてよい。文字列
+リテラルは 1 行に収まる必要はない。
+
+```krs
+service Search {
+  label "say \"hi\""
+  description "1 行目\n2 行目"
+}
+```
+
+**トリプルクォート**文字列（`"""..."""`）は **raw** である。内部でエスケープ
+処理は行われず、最初に現れた `"""` で終端する。Markdown をそのまま書ける
+ようにするための選択であり（[ADR-20260320-02](../adr/20260320-02-ast-restructure-discriminated-union.md)）、
+閉じ `"""` のインデントが各行から除去される。したがって値そのものが `"""` を
+含む場合はトリプルクォート形式では表現できず、`\n` エスケープを使った単一行
+形式になる（`karasu fmt` はそのように出力する）。
+
+`karasu fmt` と `karasu translate` はいずれも出力時にエスケープするため、
+lexer が受理する値は round-trip しても変化しない。
+
+> Related TPLs: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
+
 ### user ノードの例
 
 ```
