@@ -103,6 +103,45 @@ describe("fmt() with explicit files", () => {
     expect(exitSpy).toHaveBeenCalledWith(2);
     expect(stderr.some((s) => s.includes("bad.krs"))).toBe(true);
   });
+
+  // #2076: `fmt` used to write back a file with top-level constructs deleted.
+  // The per-construct coverage lives in
+  // packages/core/src/formatter/formatter-top-level-coverage.test.ts; these two
+  // fence the CLI path that actually overwrites the user's file on disk.
+  it("preserves a top-level boundary block when writing back (#2076)", async () => {
+    const src = [
+      `system T {`,
+      `  service A { label "A" }`,
+      `}`,
+      ``,
+      `boundary g {`,
+      `  label "G"`,
+      `  contains A`,
+      `}`,
+      ``,
+    ].join("\n");
+    const file = await writeKrs("boundary.krs", src);
+    captureStdout();
+
+    await fmt([file], {});
+
+    const result = readFileSync(file, "utf8");
+    expect(result).toContain("boundary g {");
+    expect(result).toContain("contains A");
+  });
+
+  it("does not empty a file made only of top-level infra blocks (#2076)", async () => {
+    // `karasu translate --from db` emits exactly this shape (ADR-20260422-05),
+    // so the old behaviour silently truncated translate output to nothing.
+    const file = await writeKrs("infra.krs", `database DB{label "DB"}\nqueue Q{label "Q"}\n`);
+    captureStdout();
+
+    await fmt([file], {});
+
+    const result = readFileSync(file, "utf8");
+    expect(result).toContain("database DB {");
+    expect(result).toContain("queue Q {");
+  });
 });
 
 // ── fmt() — no files, default discovery ──────────────────────────────────────
