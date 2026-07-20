@@ -1,12 +1,4 @@
 {
-  "$comment": "Frozen old->new ADR id table for the issue-number migration (Issue #2083). Generated once, reviewed, then used as the SOLE input to the Phase 3 rename. Also serves as the permanent redirect record for external references to old ADR-YYYYMMDD-NN ids. Validated by `pnpm lint:adr-id-map`.",
-  "rules": {
-    "issue": "The ADR's own originating GitHub Issue. Preferred over a parent epic or tracker: a specific 'Issue #N' reference outranks a '親 Issue #N' one in the same file.",
-    "pr": "The PR that authored the ADR, used when no issue originated it (periodic Dependabot/dependency triage records, decisions made inside a feature PR). Derived with `git log --follow` so the bulk-rename PR #525 does not mask the real authoring PR.",
-    "reserved-block": "9001+ for ADRs with no unique GitHub number: no authoring PR at all (committed before the PR workflow), or an authoring PR that was a bulk design-doc->ADR promotion shared with other ADRs (e.g. PR #508 introduced 12, #518 introduced 10). Assigned in date order.",
-    "collisionTieBreak": "When one issue genuinely produced two ADRs, the issue number goes to the ADR whose subject matches the issue title; date order is the fallback. The loser takes its own unique authoring PR, or a reserved-block number if it has none.",
-    "rejectedAsIdCandidates": "Cross-repo refs (actions/checkout#2439), Dependabot alert numbers, dependency-table cells, PR ranges (#611-#626), and prose like 'Rule #2'."
-  },
   "entries": [
     {
       "oldId": "ADR-20260312-01",
@@ -2130,11 +2122,22 @@
     },
     {
       "oldId": "ADR-20260720-01",
-      "oldFile": "20260720-01-tpl-config-split.md",
-      "newId": "ADR-2083",
-      "newFile": "2083-tpl-config-split.md",
+      "oldFile": "20260720-01-formatter-top-level-exhaustiveness.md",
+      "newId": "ADR-2076",
+      "newFile": "2076-formatter-top-level-exhaustiveness.md",
       "source": "issue",
-      "evidence": "trigger-issue: - 引き金 Issue: [#2083](https://github.com/kompiro/karasu/issues/2083)（ADR 採番の `issue-number` 移行 — 本 ADR はその Phase 1）"
+      "evidence": "issue-bullet: - Issue: [#2076](https://github.com/kompiro/karasu/issues/2076)（`karasu fmt` が top-level `boundary` を無言で削除する）"
+    },
+    {
+      "oldId": "ADR-20260720-02",
+      "oldFile": "20260720-02-tpl-config-split.md",
+      "newId": "ADR-2092",
+      "newFile": "2092-tpl-config-split.md",
+      "source": "pr",
+      "evidence": "authoring PR #2092 'refactor(adr-tooling): split TPL config from adr.config.json so ADR ids can migrate', unique to this ADR [deliberate reservation: this ADR is the Phase 1 side-decision of #2083, but the Phase 3 migration ADR is the canonical record for that issue and should own ADR-2083. Assigning the issue number here by strict date order would leave the main migration ADR taking a PR number instead.]"
     }
-  ]
+  ],
+  "rules": {
+    "reservedIssueNumbers": "ADR-2083 is deliberately left unassigned: it is the migration issue itself, and the Phase 3 migration ADR should own it. The Phase 1 side-decision (tpl-config-split) takes its own PR number instead."
+  }
 }
