@@ -1,4 +1,5 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -26,6 +27,20 @@ export const ADR_DIR = "docs/adr";
 
 /** Files in docs/adr that are not ADRs. */
 const NON_ADR = new Set(["README.md", "TEMPLATE.md", "effective.md", "graph.md"]);
+
+/**
+ * Files that intentionally retain old-format `YYYYMMDD-NN` tokens and must be
+ * skipped by the bare-id survivor scan:
+ * - the map itself records the old ids as its redirect columns;
+ * - the map validator's test fixtures simulate a pre-migration tree;
+ * - THIS file quotes an old-format id in prose to illustrate the
+ *   half-migration failure mode (`20260716-02 -> ADR-20260716`).
+ */
+const BARE_SCAN_FROZEN = new Set([
+  "docs/adr/id-migration-map.json",
+  "scripts/lint/adr-id-migration-map.test.ts",
+  "scripts/lint/adr-id-migration-map.ts",
+]);
 
 /** Reserved range for ADRs that predate issue-driven development (see #2083). */
 export const RESERVED_MIN = 9001;
@@ -71,6 +86,96 @@ export function adrFiles(root: string): string[] {
   return readdirSync(join(root, ADR_DIR))
     .filter((f) => f.endsWith(".md") && !NON_ADR.has(f))
     .sort();
+}
+
+export interface BareSurvivor {
+  file: string;
+  stem: string;
+  newId: string;
+}
+
+/**
+ * Build the bare-stem matcher and lookup for a set of map entries. Pure and
+ * testable, separate from the git/filesystem walk. See `bareSurvivors`.
+ */
+export function bareStemMatcher(entries: MapEntry[]): {
+  re: RegExp | null;
+  stemToNewId: Map<string, string>;
+} {
+  const stemToNewId = new Map<string, string>();
+  for (const e of entries) {
+    const m = e.oldFile.match(OLD_FILE_RE);
+    if (m) stemToNewId.set(`${m[1]}-${m[2]}`, e.newId);
+  }
+  const stems = [...stemToNewId.keys()];
+  const re =
+    stems.length === 0
+      ? null
+      : new RegExp(`(?<![\\w\\-_/.])(${stems.join("|")})(?![\\w\\-_/.])`, "g");
+  return { re, stemToNewId };
+}
+
+/** Bare old-format stems found in a single blob of text. */
+export function findBareInText(
+  text: string,
+  matcher: ReturnType<typeof bareStemMatcher>,
+): Array<{ stem: string; newId: string }> {
+  if (!matcher.re) return [];
+  return [...text.matchAll(matcher.re)].map((m) => ({
+    stem: m[1],
+    newId: matcher.stemToNewId.get(m[1])!,
+  }));
+}
+
+/**
+ * Find BARE old-format references the main rename missed.
+ *
+ * The migration rewrote `ADR-YYYYMMDD-NN` and the filename form
+ * `YYYYMMDD-NN-slug.md`, but a bare `20260419-01` (no `ADR-` prefix, no `.md`
+ * suffix) matched neither pattern and survived as a dangling reference. No
+ * other CI check catches these — `adr:validate` / `check-permalinks` only
+ * inspect `ADR-`-prefixed ids, filenames, and frontmatter.
+ *
+ * To stay precise (a bare `YYYYMMDD-NN` also looks like a TPL fragment, a date,
+ * or an arbitrary number pair) we only flag a token that EXACTLY equals a known
+ * old ADR filename stem and is not glued to a word char / `-` / `_` / `/` / `.`
+ * on either side — so `ADR-<stem>`, `<stem>-slug.md`, `TPL-<stem>`, and path
+ * segments are excluded.
+ *
+ * Scans git-tracked text files, skipping BARE_SCAN_FROZEN.
+ */
+export function bareSurvivors(root: string, entries: MapEntry[]): BareSurvivor[] {
+  const matcher = bareStemMatcher(entries);
+  if (!matcher.re) return [];
+
+  let listing: string;
+  try {
+    listing = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" });
+  } catch {
+    // Not a git checkout (e.g. a tmp-dir unit test) — can't enumerate tracked
+    // files, so skip the scan. The real repo is always a git checkout, so CI
+    // still runs it.
+    return [];
+  }
+  const tracked = listing
+    .split("\n")
+    .filter(Boolean)
+    .filter((f) => !BARE_SCAN_FROZEN.has(f))
+    .filter((f) => /\.(md|mdx|ts|tsx|json|yml|yaml|astro)$/i.test(f));
+
+  const out: BareSurvivor[] = [];
+  for (const f of tracked) {
+    let text: string;
+    try {
+      text = readFileSync(join(root, f), "utf8");
+    } catch {
+      continue;
+    }
+    for (const hit of findBareInText(text, matcher)) {
+      out.push({ file: f, stem: hit.stem, newId: hit.newId });
+    }
+  }
+  return out;
 }
 
 export function check(root: string): Result {
@@ -167,6 +272,16 @@ export function check(root: string): Result {
     }
     for (const f of expected) {
       if (!present.has(f)) errors.push(`${f}: in the map but missing from ${ADR_DIR}`);
+    }
+  }
+
+  // Once the files are renamed away, a bare old-format reference is dangling.
+  // Only meaningful post-migration (pre-migration those tokens still resolve).
+  if (phase === "post-migration") {
+    for (const s of bareSurvivors(root, entries)) {
+      errors.push(
+        `${s.file}: bare old-format reference "${s.stem}" is now dangling — rewrite it to ${s.newId.replace(/^ADR-/, "")}`,
+      );
     }
   }
 

@@ -91,9 +91,9 @@ ADR-1783 が却下した「server AI reverse」の**コスト/メータリング
 
 | 軸 | v1 推奨 | solo economics | 信頼/データ | 覆す ADR |
 |---|---|---|---|---|
-| 1 認証 | GitHub App installation（private 解禁） | △（state/secret 増） | install 同意で担保 | 20260626-01 no-auth |
-| 2 AI コスト | **BYO-LLM key**（installer 持ち込み） | ○（推論コスト転嫁） | 送信は installer の key/責任 | 20260626-01 server-reverse 却下 |
-| 3 state | SHA-keyed 生成 cache のみ | ○（最小） | owner パージ可 | 20260626-01 stateless |
+| 1 認証 | GitHub App installation（private 解禁） | △（state/secret 増） | install 同意で担保 | 1783 no-auth |
+| 2 AI コスト | **BYO-LLM key**（installer 持ち込み） | ○（推論コスト転嫁） | 送信は installer の key/責任 | 1783 server-reverse 却下 |
+| 3 state | SHA-keyed 生成 cache のみ | ○（最小） | owner パージ可 | 1783 stateless |
 | 4 データ | 構造のみ・零保持・同意・パージ | — | **成立条件** | — |
 | 5 record 還元 | v1 スコープ外（接続点のみ） | — | — | — |
 

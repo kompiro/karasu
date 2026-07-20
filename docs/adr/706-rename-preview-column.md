@@ -63,7 +63,7 @@ scope:
 
 旧名 `KarasuPreviewColumn` は以下の ADR / acceptance doc / design doc に登場するが、これらは**当時の実装と決定の記録**であり本文は変更しない:
 
-- ADR: `20260326-02` / `20260329-02` / `20260404-10` / `20260405-04` / `20260409-08`
+- ADR: `9010` / `131` / `309` / `9016` / `362`
 - Acceptance: `0014-memory-project-mode-unification.md` / `0040-panel-focus-mode.md`
 - Design: `docs/design/implicit-edge-detail-panel.md`
 

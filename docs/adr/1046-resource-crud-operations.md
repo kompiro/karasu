@@ -33,7 +33,7 @@ related_to:
 
 - **CRUD マトリクスビュー**（usecase × resource）: ドメイン分析の定番アーティファクト
 - **結合度シグナル**: 同じリソースを 2 つの usecase が *書く* 結合は、両方が *読む* よりも強い
-- **translate アダプタの情報損失**: `translate openapi` / `translate db` は CRUD 相当の分類を内部で持っているが `.krs` 出力時に捨てていた（ADR-643 / 20260419-01）
+- **translate アダプタの情報損失**: `translate openapi` / `translate db` は CRUD 相当の分類を内部で持っているが `.krs` 出力時に捨てていた（ADR-643 / 644）
 - **描画の差**: 書き込みエッジと読み取り専用エッジは視覚的に区別する価値がある
 
 Issue #643（クローズ済）は「6 個の REST メソッドを 1 つの usecase にまとめる」逆方向の決定だった。本 ADR はその決定を **覆さず**、まとめた 1 つの `manage X` usecase の中に「どの CRUD verbs をカバーするか」を記録するための語彙を追加する。
