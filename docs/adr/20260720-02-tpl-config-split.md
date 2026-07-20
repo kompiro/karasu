@@ -1,5 +1,5 @@
 ---
-id: ADR-20260720-01
+id: ADR-20260720-02
 title: TPL の reference-data 設定を `tpl.config.json` に分離し、TPL は `date-sequence` を維持する
 status: accepted
 date: 2026-07-20
@@ -19,7 +19,7 @@ assumptions:
   - "grep: lefthook.yml :: config-topics-sync"
 ---
 
-# ADR-20260720-01: TPL の reference-data 設定を `tpl.config.json` に分離し、TPL は `date-sequence` を維持する
+# ADR-20260720-02: TPL の reference-data 設定を `tpl.config.json` に分離し、TPL は `date-sequence` を維持する
 
 - **日付**: 2026-07-20
 - **ステータス**: 決定済み
