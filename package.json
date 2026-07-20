@@ -54,6 +54,7 @@
     "lint:spec-structure-sync": "tsx scripts/lint/spec-structure-sync.ts",
     "lint:app-shortcut-docs-sync": "tsx scripts/lint/app-shortcut-docs-sync.ts",
     "lint:config-topics-sync": "tsx scripts/lint/config-topics-sync.ts",
+    "lint:adr-id-map": "tsx scripts/lint/adr-id-migration-map.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages",
     "tpl:related": "tpl related --config tpl.config.json",
     "tpl:review:body": "tpl review-body --repo kompiro/karasu",
