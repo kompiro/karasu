@@ -97,9 +97,40 @@ describe("check", () => {
     expect(check(tmp).errors.some((e) => e.includes("does not match newFile number"))).toBe(true);
   });
 
-  it("rejects an ADR on disk that is absent from the map", () => {
+  it("PRE-migration: rejects an ADR on disk that is absent from the map", () => {
+    // Before the rename, an unmapped ADR means the rename would leave it behind.
     seed([entry()], ["20260312-01-monorepo.md", "20260401-01-orphan.md"]);
-    expect(check(tmp).errors.some((e) => e.includes("absent from the map"))).toBe(true);
+    const r = check(tmp);
+    expect(r.phase).toBe("pre-migration");
+    expect(r.errors.some((e) => e.includes("absent from the map"))).toBe(true);
+  });
+
+  it("POST-migration: allows a new issue-number ADR that is not in the frozen map", () => {
+    // ADRs authored after the migration are born issue-number and have no `old`
+    // id, so they are legitimately absent from the map — this must NOT error.
+    seed([entry()], ["9001-monorepo.md", "2087-escape-emitted-string-values.md"]);
+    const r = check(tmp);
+    expect(r.phase).toBe("post-migration");
+    expect(r.errors).toEqual([]);
+  });
+
+  it("POST-migration: still rejects a mapped newFile that vanished from disk", () => {
+    // Redirect integrity holds regardless of new ADRs being added.
+    seed(
+      [
+        entry(),
+        entry({
+          oldId: "ADR-20260312-02",
+          oldFile: "20260312-02-b.md",
+          newId: "ADR-9002",
+          newFile: "9002-b.md",
+        }),
+      ],
+      ["9001-monorepo.md"],
+    );
+    const r = check(tmp);
+    expect(r.phase).toBe("post-migration");
+    expect(r.errors.some((e) => e.includes("missing from"))).toBe(true);
   });
 
   it("rejects a map entry whose file is missing from disk", () => {

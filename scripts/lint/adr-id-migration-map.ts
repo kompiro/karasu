@@ -263,15 +263,23 @@ export function check(root: string): Result {
         `The rename must land atomically — a mixed tree parses some ids from the date (20260716-02 -> ADR-20260716) and CI cannot be trusted.`,
     );
   } else {
-    // Totality: every ADR on disk must be accounted for, in whichever phase.
     const expected = new Set(
       entries.map((e) => (phase === "post-migration" ? e.newFile : e.oldFile)),
     );
-    for (const f of present) {
-      if (!expected.has(f)) errors.push(`${f}: present in ${ADR_DIR} but absent from the map`);
-    }
+    // Redirect integrity, both phases: every mapped file must exist on disk.
     for (const f of expected) {
       if (!present.has(f)) errors.push(`${f}: in the map but missing from ${ADR_DIR}`);
+    }
+    // Completeness — PRE-migration only: every ADR on disk must be mapped, so
+    // the rename cannot leave one behind. Post-migration this must NOT fire:
+    // ADRs authored after the migration are born issue-number and have no
+    // `old` id, so they are legitimately absent from the frozen map. (A stray
+    // DATE-named ADR does not reach this branch — it flips phase to
+    // half-migrated above — and a number collision is caught by adr:validate.)
+    if (phase === "pre-migration") {
+      for (const f of present) {
+        if (!expected.has(f)) errors.push(`${f}: present in ${ADR_DIR} but absent from the map`);
+      }
     }
   }
 
