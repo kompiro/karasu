@@ -43,8 +43,16 @@ pre-push:
       # Check job. Issue #1480.
       run: pnpm exec adr check-assumptions --quiet
     tpl-validate:
-      glob: "{docs/test-perspectives/**,adr.config.json}"
+      glob: "{docs/test-perspectives/**,tpl.config.json}"
       run: pnpm run tpl:validate
+    config-topics-sync:
+      # adr.config.json and tpl.config.json duplicate the `topics` vocabulary.
+      # They are separate files only because adr-tools and tpl-tools read the
+      # same `idFormat` key and the two corpora want different values
+      # (Issue #2083) — `topics` must stay identical. The vitest mirror in
+      # scripts/lint runs it in CI.
+      glob: "{adr.config.json,tpl.config.json,scripts/lint/config-topics-sync.ts}"
+      run: pnpm run lint:config-topics-sync
     at-check-coverage:
       # Also globs packages/e2e/tests/** so the exact e2e linkage guards
       # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added

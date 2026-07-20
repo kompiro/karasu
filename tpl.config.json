@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/@kompiro/tpl-tools/dist/config.schema.json",
+  "idFormat": "date-sequence",
+  "topics": [
+    "core-concepts",
+    "parser",
+    "resolver",
+    "renderer",
+    "edges",
+    "styling",
+    "navigation",
+    "app-ui",
+    "project",
+    "chat-ai",
+    "cli",
+    "vscode",
+    "testing",
+    "build",
+    "adr-tooling"
+  ]
+}

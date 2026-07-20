@@ -37,8 +37,8 @@ importers:
         specifier: workspace:*
         version: link:packages/core
       '@kompiro/adr-tools':
-        specifier: ^0.0.9
-        version: 0.0.9(@karasu-tools/core@packages+core)
+        specifier: ^0.0.10
+        version: 0.0.10(@karasu-tools/core@packages+core)
       '@kompiro/tpl-tools':
         specifier: ^0.0.6
         version: 0.0.6
@@ -1022,8 +1022,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@kompiro/adr-tools@0.0.9':
-    resolution: {integrity: sha512-Xdo/YnmtkKsGvWIbGHwmMF4B/CJjMM3L9VobZ5PIttbFR4kOA8FRbEDLGzyR/7BJCewQFSqpnHHmWzQEGFibHg==}
+  '@kompiro/adr-tools@0.0.10':
+    resolution: {integrity: sha512-/il6HYX2SS21sj9CbYOBe7SfTNPB6Y3MNKcnsHrZje+b2038wX+2z6X0ZGOMUEnHVyzmabB0ErAryuzdoUZ1kg==}
     engines: {node: '>=20.0.0'}
     hasBin: true
     peerDependencies:
@@ -7222,7 +7222,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@kompiro/adr-tools@0.0.9(@karasu-tools/core@packages+core)':
+  '@kompiro/adr-tools@0.0.10(@karasu-tools/core@packages+core)':
     dependencies:
       js-yaml: 4.2.0
     optionalDependencies:
@@ -8531,7 +8531,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.0.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+      vitest: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.22.4)(yaml@2.8.3))
 
   '@vitest/expect@4.1.4':
     dependencies:
