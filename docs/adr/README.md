@@ -46,6 +46,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-20260410-03](20260410-03-structural-krs-patch.md) — 構造的 `.krs` パッチ — ノード ID ベースの `append` / `replace` / `remove`
 - [ADR-20260412-04](20260412-04-implicit-edge-source-shorthand.md) — ブロック内エッジの暗黙 source 簡略記法
 - [ADR-20260513-03](20260513-03-import-system-nested.md) — system にネストした service / domain の Named Import は明示的な path 構文で取り込む
+- [ADR-20260720-01](20260720-01-formatter-top-level-exhaustiveness.md) — formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 
 ### リゾルバ / 警告 / 検証
 
@@ -244,6 +245,7 @@ ADR 自体のスキーマ、フロントマター、バリデータ、extractor 
 - [ADR-20260423-01](20260423-01-adr-body-ref-check.md) — Validator warning for body ↔ frontmatter reference consistency
 - [ADR-20260424-01](20260424-01-adr-knowledge-graph.md) — ADR knowledge graph — machine-readable frontmatter + tooling
 - [ADR-20260502-02](20260502-02-adr-config-externalization.md) — ADR ツール用語彙の `adr.config.json` への外部化
+- [ADR-20260720-01](20260720-01-tpl-config-split.md) — TPL の reference-data 設定を `tpl.config.json` に分離し、TPL は `date-sequence` を維持する
 
 ---
 

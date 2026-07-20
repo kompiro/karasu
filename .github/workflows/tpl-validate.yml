@@ -3,7 +3,7 @@ name: TPL validate
 # Validates docs/test-perspectives frontmatter and the README index on
 # PRs that touch TPL paths. The validator itself lives in the external
 # @kompiro/tpl-tools package (see karasu#1357); this workflow just runs
-# `tpl validate` against the controlled vocabulary in adr.config.json.
+# `tpl validate` against the controlled vocabulary in tpl.config.json.
 # Still informative-only — not a required check yet.
 
 on:
@@ -11,13 +11,13 @@ on:
     branches: [main]
     paths:
       - "docs/test-perspectives/**"
-      - "adr.config.json"
+      - "tpl.config.json"
       - ".github/workflows/tpl-validate.yml"
   push:
     branches: [main]
     paths:
       - "docs/test-perspectives/**"
-      - "adr.config.json"
+      - "tpl.config.json"
       - ".github/workflows/tpl-validate.yml"
 
 concurrency:
