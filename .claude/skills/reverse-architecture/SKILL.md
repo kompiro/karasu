@@ -57,16 +57,45 @@ files, so `lint-style` has no role here.
    - a k8s manifest → `karasu translate --from k8s <file>`
    - OpenAPI → `karasu translate --from openapi <file>` (usecases under a service)
    - DB schema → `karasu translate --from db <file>` (database / table blocks)
-   - **No compose/k8s (serverless)?** For a Cloudflare Workers / Lambda-style app,
-     `translate` has no adapter — read the deploy manifest (`wrangler.toml`,
-     `serverless.yml`, `*.tf`) yourself and model each backing binding as an infra
-     block: a SQL/D1 store → `database`, a KV / cache / vector index → `database`,
-     an object store (S3 / R2 / GCS) → `storage`, a message queue → `queue`.
+   - `wrangler.toml` (Cloudflare Workers) → `karasu translate --from wrangler <file>`.
+     This adapter is richer than it looks: it derives the `system` / `service`
+     from the worker name, maps every known binding (D1 → `database`, R2 →
+     `storage`, Queues → `queue`, KV → `database`, Vectorize → `database
+     [index]`, Workers AI / Durable Objects / service bindings → `service
+     [external]` plus edges), **and** emits the physical `deploy` / `function`
+     layer (`runtime`, `type "Cloudflare D1"`, `realizes`). Unknown binding
+     kinds are warned and skipped rather than hallucinated. Hand-modeling this
+     loses the entire physical `realizes` layer — always run the adapter.
+   - **Another serverless manifest with no adapter** (`serverless.yml`, `*.tf`)?
+     Only here do you read the manifest yourself and model each backing binding
+     as an infra block: a SQL store → `database`, a KV / cache / vector index →
+     `database`, an object store (S3 / GCS) → `storage`, a message queue →
+     `queue`.
 3. **Enumerate the logical domains (primary axis).** Use the physical output
    (containers / services) and the directory / module tree as *seam hints* to
-   infer bounded contexts. For a ball-of-mud that resists decomposition, split
-   the directory tree with a size cap and **record low-confidence seams
-   explicitly** (never drop them silently).
+   infer bounded contexts.
+
+   **Split at bounded-context granularity, not aggregate granularity.** This is
+   the single highest-leverage instruction in this skill — spike #1991 measured
+   it moving a repo from `domain-F1 0.40` to a **1.000 exact match** with the
+   human decomposition, and it is *cheaper* (fewer, coarser domains → fewer
+   fan-out agents: 5 vs 9 agents, 318k vs 489k output tokens on the same repo).
+   Concretely:
+
+   - **Fold aggregates up into their owning context.** `Loan`, `Hold`, and
+     `Checkout` are aggregates of one `Lending` context — emit `Lending`, not
+     three domains.
+   - **Split only at a real seam**: a schema seam (disjoint table clusters), a
+     coupling seam (modules that barely reference each other), or a *language*
+     seam (the same word means different things on either side).
+   - Directory structure and file count are **hints, never seams**. Do not split
+     a context just because its directory is large — the unguided harness's
+     known failure mode is over-splitting, and a size cap makes it worse.
+
+   When you cannot resolve a seam, **record it as low-confidence explicitly**
+   (never drop it silently). Over-splitting is recoverable by a human folding
+   domains up; a wrong merge is not, so when genuinely torn, prefer the split
+   and mark it.
 4. Assign canonical ids (**English PascalCase**; `label` follows the user's
    language). Subagents reuse these ids instead of inventing their own.
 5. Output: `skeleton.krs` (system / service / domain scaffold + physical spine)
@@ -99,6 +128,15 @@ subagent:
 
 Domains are independent, so launch the subagents in parallel.
 
+**This phase is the cost centre — budget before you fan out.** A full run over
+the *smallest* repo measured in spike #1991 (85 files, 3 domains) cost ~318k
+output tokens and ~12 minutes; the same repo at aggregate granularity cost ~489k
+and ~13 min. Cost scales with *domains × slice size*, so a large repo (Dify:
+~7.8k files, 19 domains) runs several times that. Two consequences: getting
+Phase 1 granularity right is a **cost** decision as well as a quality one, and
+for a large repo you should confirm the domain count with the user before
+launching the fan-out rather than discovering the bill afterwards.
+
 ### Phase 3: Synthesis (one pass)
 
 1. Merge each fragment into the skeleton to form a single `.krs`.
@@ -108,14 +146,29 @@ Domains are independent, so launch the subagents in parallel.
 3. Match identity by `id`, never by `label`.
 4. Resolve resource-location conflicts structurally: the physical declaration
    lives in one place; every domain references it.
-5. **Cross-domain entity relations — one roster pass.** A per-domain subagent
+5. **Carry the skeleton's infra declarations through the merge — verbatim.**
+   The merge reads as "combine the fragments", but the fragments only *reference*
+   infra; the `database` / `storage` / `queue` **declaration blocks** live in the
+   skeleton alone. Dropping them silently deletes every table no fragment
+   happened to reference. Real run (spike #1991): the merged `index.krs` had no
+   `database` block at all, and **9 of 35 real tables vanished** from the model
+   purely for lack of a referent.
+6. **Verify entity↔table mappings survived the fan-out.** For every table a
+   domain touches via `resource <Db>.<Table>`, the owning entity must carry the
+   matching `table <Db>.<Table>` line. Deep-dive agents routinely write the
+   entity and omit the mapping — the pathological output is an empty
+   `entity Goal {}`. Flag empty entities and missing mappings, and repair them
+   before Phase 4. Both this and step 5 are mechanical and deterministic: they
+   belong on the structural side of the split (ADR-20260714-02), not to agent
+   judgement.
+7. **Cross-domain entity relations — one roster pass.** A per-domain subagent
    only knows its own entity ids, so cross-domain foreign keys risk id mismatch.
    After merging, run **one** relations agent over the *full entity roster*
    (every entity id + its domain) plus the schema; it emits FK-derived relations
    (`{from, to, label}`, both ids in the roster) that you inject into each
    reference-holding entity block. Seeing all ids at once is what makes
    cross-domain relations resolve consistently.
-6. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
+8. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
    uneven indentation (a closing `}` can land under-indented and *look* like a
    missing brace even though it parses). Always finish synthesis — and any
    mechanical node injection — with `karasu fmt <file>`.
@@ -140,8 +193,19 @@ Domains are independent, so launch the subagents in parallel.
    singleton-store domain with no foreign keys) is usually genuinely thin — do
    not pad it; record why.
 6. Record any un-modelable idioms (notation gaps) for the cookbook (#1818) /
-   notation watch (#1816). (Real runs surfaced e.g. async **message-queue /
-   background-job** pipelines that the four infra kinds don't capture cleanly.)
+   notation watch (#1816). These five recur across agents and repos, so expect
+   them rather than rediscovering them:
+   - **domain-event publication from a usecase** (outbox / publish) — no v1
+     vocabulary at all; the most widespread gap;
+   - **async background-job / scheduled pipelines** (Celery, `@Scheduled` outbox
+     drains, queue consumers) — map only loosely onto the single `queue` kind;
+   - **`entity` id colliding with its `domain` id** → `entity-anchor-collision`
+     (deep-link `#krs-entity-X`), which forces a rename;
+   - **list-vs-single reads** — the CRUD verb set collapses a collection query
+     and a get into one `read`;
+   - **value objects / identity types / state machines / policies** — no
+     structural home (an `entity` carries no attributes), so they survive only
+     as prose.
 
 ## Deliverables
 
@@ -151,12 +215,23 @@ Domains are independent, so launch the subagents in parallel.
 
 ## Notes
 
-- **Never fabricate the physical layer** (use `translate`, or model deploy-manifest
-  bindings as infra blocks). **Match identity by `id`**, not `label`. **Never
-  silently drop thin domains** (surface them via `coverage`). **Do not introduce
-  new `.krs` syntax** (v1 is frozen).
+- **Never fabricate the physical layer.** Reach for `translate` first — including
+  `--from wrangler`, which exists — and hand-model bindings only for a manifest
+  with no adapter. If you are about to write an infra block by hand, first check
+  that no adapter covers it.
+- **Split at bounded-context granularity, not aggregate granularity** — the
+  highest-leverage instruction here, and the one the unguided harness gets wrong.
+- **Match identity by `id`**, not `label`. **Never silently drop thin domains**
+  (surface them via `coverage`). **Do not introduce new `.krs` syntax** (v1 is
+  frozen).
 - Tell each subagent explicitly to read **only its domain's source slice** —
   letting it read the whole repo destroys the uniform depth.
 - **Always `karasu fmt` after any machine generation or injection**, and
   keep `operations` verbs **comma-separated** — these are the two mechanical
   slips that real runs hit most.
+- The merge is where *physical* fidelity is lost: infra declaration blocks and
+  `table` mappings do not survive on their own (Phase 3 steps 5-6).
+- **This skill hardcodes CLI command names, and the CLI moves.** Two instances of
+  skill-vs-CLI drift have already shipped (`lint-style` #2084, `--from wrangler`
+  #2090) and neither was visible to CI. Before trusting any command written here,
+  confirm it against `karasu <cmd> --help`.
