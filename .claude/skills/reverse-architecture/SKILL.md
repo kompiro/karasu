@@ -36,10 +36,16 @@ Design rationale: ADR-20260714-02 (`docs/adr/20260714-02-reverse-architecture-ha
 | Layer | What it handles | Who | How |
 | --- | --- | --- | --- |
 | Semantic | read source and **write** a domain's usecases / entities / resources | subagent (judgement) | source reading |
-| Structural | **slice / measure / render / validate** the produced `.krs` | CLI (deterministic) | `translate` / `subtree` / `coverage` / `render` / `lint-style` |
+| Structural | **slice / measure / render / validate** the produced `.krs` | CLI (deterministic) | `translate` / `subtree` / `coverage` / `render` |
 
 `subtree` / `coverage` statically analyze the **produced `.krs` model**, not the
 source — that is why they are deterministic.
+
+`render` doubles as the `.krs` validator: it exits non-zero on any
+error-severity diagnostic. **Never validate a `.krs` with `lint-style`** — that
+command parses its input as `.krs.style`, so a perfectly valid `.krs` yields a
+page of bogus "Expected LeftBrace" errors. This skill produces no `.krs.style`
+files, so `lint-style` has no role here.
 
 ## Procedure (4-phase pipeline)
 
@@ -85,7 +91,11 @@ subagent:
     cross domains (the target entity may live in another fragment).
   - resources **reference the physical declaration** (the logical side is a
     reference; the physical declaration is canonical);
-- validates its own fragment with `karasu lint-style <fragment>` before returning.
+- validates its own fragment with `karasu render <fragment> -o /dev/null` before
+  returning (non-zero exit = the fragment is structurally broken; `-o /dev/null`
+  discards the SVG so only diagnostics surface). A fragment that declares only
+  `domain` / `usecase` blocks renders fine — unassigned-node *warnings* are
+  expected at this stage and do not fail the gate.
 
 Domains are independent, so launch the subagents in parallel.
 
