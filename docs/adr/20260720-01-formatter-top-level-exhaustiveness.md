@@ -58,11 +58,15 @@ const topLevel = [...file.systems, ...file.services, ...file.domains, ...file.de
 「6 個テストを足す」で終わらせない。テストが列挙する構文の集合と実装が列挙する集合が、**同じ人間の同じ思い込み**から生まれる限り、次の構文でまた抜ける。よって期待集合を型・スキーマ側から機械的に導出し、二重にガードする:
 
 - **実行時**: `createEmptyKrsFile()` の配列プロパティを `Object.keys` で走査し、fixture 表のキー集合と `toEqual` で突き合わせる。fixture のない top-level 配列があればテストが落ちる
-- **型**: fixture 表を `Record<ArrayKeys<KrsFile>, string>` に代入し、キー欠落を `tsc --noEmit` で落とす
+- **型**: fixture 表に `satisfies Record<ArrayKeys<KrsFile>, string>` を付け、キー欠落を `tsc --noEmit` で落とす
+
+  型注釈（`const FIXTURES: Record<string, string> = {...}`）にしてはいけない。index signature を持つ型は任意の `Record<union, string>` に代入可能なので、**チェックが恒真になり守っているつもりで何も守らない**。初版はこの誤りを踏んでおり、レビューで指摘されて `satisfies` に修正した。`satisfies` はリテラルのキー集合を保ったまま制約だけを検査する
 
 加えて各 fixture は「その配列を実際に非空にするか」も assert する。fixture が構文を取り違えて別物を測っていた場合も検出するため。
 
-これにより、`KrsFile` に新しい top-level 配列を足した人は、formatter に配線するまで**テストか typecheck のどちらかで必ず止まる**。ガードが効くことは、修正を部分的に revert して 2 テストが落ちることを確認済み。
+これにより、`KrsFile` に新しい top-level 配列を足した人は、formatter に配線するまで**テストか typecheck のどちらかで必ず止まる**。両ガードが実際に効くことは負のテストで確認済み: 修正を部分 revert すると実行時ガードが 2 件落ち、`KrsFile` にダミーの配列キーを足すと `tsc` が fixture 表の欠落を指摘する。
+
+> ガード自体が空振りしていないかを負のテストで確かめること。「守られているつもり」は守られていないより悪い。実際、上記の型ガードの初版は恒真で、負のテストを書くまで誰も気づかなかった。
 
 ### 3. `boundary` の label はプロパティ位置に正規化する
 

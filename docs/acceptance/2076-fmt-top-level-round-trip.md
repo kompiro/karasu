@@ -20,7 +20,7 @@
   > ✅ Automated — `round-trips top-level databases / queues / storages / clients through format()`、`packages/cli/src/fmt.test.ts` › `does not empty a file made only of top-level infra blocks (#2076)`
 
 - [x] `KrsFile` の **配列型 top-level キーすべて**に fixture が存在する（新しい top-level 構文を足したとき formatter への配線漏れが test で落ちる）
-  > ✅ Automated — `has a fixture for every array-valued KrsFile key`（`createEmptyKrsFile()` から期待集合を導出）。型レベルでも `Record<ArrayKeys<KrsFile>, string>` で `pnpm typecheck` が落ちる
+  > ✅ Automated — `has a fixture for every array-valued KrsFile key`（`createEmptyKrsFile()` から期待集合を導出）。型レベルでも fixture 表の `satisfies Record<ArrayKeys<KrsFile>, string>` で `pnpm typecheck` が落ちる（両ガードとも負のテストで空振りしないことを確認済み）
 
 - [x] 各 top-level 構文で `parse(format(x))` が `parse(x)` と構造的に等価（loc を除く）
   > ✅ Automated — 各 fixture で `stripLocations` 比較（TPL-20260510-02 のチェックリスト）
@@ -38,3 +38,4 @@
 
 - **`boundary` の label 位置**: parser は header 位置（`boundary g "G" {`）とプロパティ位置（`label "G"`）の両方を受理するが、formatter は後者に正規化する。AST は同一なので round-trip は保たれるが、header 位置で書いた author の diff は 1 行動く。header 位置を保持するには AST に記法の別を持たせる必要があり、本 Issue の範囲外。
 - **`legend` ブロック内のコメント保持**: entry 間の leading comment は現状 block 先頭に寄る可能性がある（ADR-20260410-02 の既知の制限と同種）。
+- **string value のエスケープ**: `label` / `description` / legend title 等の値に埋め込まれた `"` / `\` は emit 時にエスケープされず、round-trip が壊れる。既存の全 renderer に共通する先行バグで、本 PR の新 renderer も同じ pattern を踏襲している。[#2087](https://github.com/kompiro/karasu/issues/2087) で一括対応する。

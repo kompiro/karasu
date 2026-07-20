@@ -24,8 +24,13 @@ import type { KrsFile } from "../types/ast.js";
  * One `.krs` sample per array-valued `KrsFile` key. Each sample must populate
  * the keyed array when parsed — asserted below, so a fixture that silently
  * stopped exercising its construct is caught too.
+ *
+ * `satisfies` (not a type annotation) is load-bearing: it checks the key set
+ * against `KrsFile` while keeping the literal keys visible. Annotating this as
+ * `Record<string, string>` would make the check vacuous, since an index
+ * signature is assignable to any `Record<union, string>`.
  */
-const FIXTURES: Record<string, string> = {
+const FIXTURES = {
   styleImports: `@import "default.krs.style"\nsystem S {}\n`,
   nodeImports: `import { A } from "other.krs"\nsystem S {}\n`,
   systems: `system S {\n  service A { label "A" }\n}\n`,
@@ -39,7 +44,12 @@ const FIXTURES: Record<string, string> = {
   organizations: `organization O {\n  team T { label "T" }\n}\n`,
   boundaries: `system S {\n  service A { label "A" }\n}\nboundary g {\n  label "G"\n  contains A\n}\n`,
   legends: `system S {\n  service A { label "A" }\n}\nlegend system "Colors" {\n  swatch #ff0000 "hot"\n  ref @deprecated "going away"\n  ref [external] "third party"\n}\n`,
-};
+} satisfies Record<ArrayKeys<KrsFile>, string>;
+
+/** Array-valued keys of `KrsFile` — the set `FIXTURES` must cover exactly. */
+type ArrayKeys<T> = {
+  [K in keyof T]-?: T[K] extends readonly unknown[] ? K : never;
+}[keyof T];
 
 /** Array-valued keys of a fresh `KrsFile` — the set the formatter must cover. */
 function topLevelArrayKeys(): string[] {
@@ -115,11 +125,3 @@ function stripLocations<T>(node: T): T {
   }
   return node;
 }
-
-// Type-level companion to the runtime guard: if a new array-valued key is added
-// to KrsFile, `FIXTURES` no longer satisfies this and typecheck fails too.
-type ArrayKeys<T> = {
-  [K in keyof T]-?: T[K] extends readonly unknown[] ? K : never;
-}[keyof T];
-const _fixturesCoverKrsFile: Record<ArrayKeys<KrsFile>, string> = FIXTURES;
-void _fixturesCoverKrsFile;
