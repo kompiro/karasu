@@ -12,6 +12,7 @@ import type {
 } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
+import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
 import { badgeChildren } from "./badge.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
@@ -349,17 +350,36 @@ export function renderFromLayout(
     if (list) list.push(hop);
     else hopsByEdge.set(hop.edge, [hop]);
   }
-  const edgeStroke: { color: string; strokeWidth: number }[] = [];
-  let edgeIndex = 0;
-  for (const edgeLayout of layoutResult.edges) {
+  // Resolve the edge style once per edge (reused by both the label-placement
+  // pre-pass and the render loop below).
+  const edgeStyleFor = (edgeLayout: LayoutResult["edges"][number]) => {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     // Prefer the kind-qualified style entry so parallel sync/async edges between
     // the same pair keep their own stroke style; fall back to the bare key for
     // synthetic layout edges (delivers, owns, ghosts, aggregated domain edges).
-    const edgeStyle =
+    return (
       styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
       styles.edges.get(edgeKey) ??
-      styles.defaultEdgeStyle;
+      styles.defaultEdgeStyle
+    );
+  };
+
+  // Auto label collision-avoidance (#2048): nudge labels that collide with node
+  // cards or with each other off their default midpoint. Author-positioned
+  // labels (non-default label-position/label-offset) are excluded from moving
+  // but still act as obstacles, so author intent wins (ADR-1184 precedence).
+  const { inputs: labelInputs, nodeRects } = buildLabelInputs(
+    layoutResult.edges,
+    layoutResult.nodes,
+    edgeStyleFor,
+  );
+  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects);
+
+  const edgeStroke: { color: string; strokeWidth: number }[] = [];
+  let edgeIndex = 0;
+  for (const edgeLayout of layoutResult.edges) {
+    const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
+    const edgeStyle = edgeStyleFor(edgeLayout);
     edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     const diffState = effectiveEdgeDiffState?.get(edgeKey);
@@ -369,6 +389,7 @@ export function renderFromLayout(
       markerId,
       diffState,
       hopsByEdge.get(edgeIndex),
+      labelPlacements.get(edgeIndex),
     );
     edgeIndex++;
     const isDimmedGhost =

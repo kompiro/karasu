@@ -89,6 +89,7 @@ export function renderEdge(
   markerId: string,
   diffState?: string,
   hops?: HopMark[],
+  labelAnchorOverride?: Point,
 ): string {
   const { fromPoint, toPoint } = edge;
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
@@ -177,25 +178,17 @@ export function renderEdge(
   }
 
   if (edge.label) {
-    // When the edge is part of a parallel-edge bundle (N ≥ 2 sharing
-    // `(from, to)`) and the author has not overridden label-position via
-    // style, slide the label along the edge so parallel labels separate.
-    // See docs/design/parallel-edge-bundling.md.
-    let position = style.labelPosition;
-    if (
-      position === 0.5 &&
-      edge.bundleSize !== undefined &&
-      edge.bundleIndex !== undefined &&
-      edge.bundleSize >= 2
-    ) {
-      position = (edge.bundleIndex + 1) / (edge.bundleSize + 1);
-    }
-    const { x: midX, y: midY } = labelAnchor(
-      points,
-      position,
-      style.labelOffsetX,
-      style.labelOffsetY,
-    );
+    // Default anchor (parallel-bundle slide applied, ADR-1185). When the
+    // auto label-placement pass (#2048) has nudged this label off a collision,
+    // it hands the resolved anchor in via `labelAnchorOverride`, which wins.
+    const { x: midX, y: midY } =
+      labelAnchorOverride ??
+      labelAnchor(
+        points,
+        resolveLabelPosition(edge, style),
+        style.labelOffsetX,
+        style.labelOffsetY,
+      );
     const labelText = el(
       "text",
       {
@@ -264,7 +257,32 @@ export function renderEdge(
  * like `edge { label-offset: 0 8px; }` produces a uniform downward
  * shift across the diagram regardless of each edge's slope.
  */
-function labelAnchor(points: Point[], position: number, offsetX: number, offsetY: number): Point {
+/**
+ * The fractional label position for an edge: the author's `label-position`
+ * (default `0.5`), or — when left at default on a parallel-edge bundle (N ≥ 2
+ * sharing `(from, to)`) — a per-index slide so parallel labels separate
+ * (ADR-1185). Extracted so the auto label-placement pass (#2048) computes the
+ * same default anchor `renderEdge` would draw.
+ */
+export function resolveLabelPosition(edge: LayoutEdge, style: ResolvedEdgeStyle): number {
+  let position = style.labelPosition;
+  if (
+    position === 0.5 &&
+    edge.bundleSize !== undefined &&
+    edge.bundleIndex !== undefined &&
+    edge.bundleSize >= 2
+  ) {
+    position = (edge.bundleIndex + 1) / (edge.bundleSize + 1);
+  }
+  return position;
+}
+
+export function labelAnchor(
+  points: Point[],
+  position: number,
+  offsetX: number,
+  offsetY: number,
+): Point {
   if (position === 0.5 && offsetX === 0 && offsetY === 0) {
     return defaultLabelAnchor(points);
   }
