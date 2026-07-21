@@ -3,6 +3,7 @@ import { Lexer } from "../lexer/lexer.js";
 import { TokenType } from "../types/tokens.js";
 import type { Token } from "../types/tokens.js";
 import { quoteId } from "./quote-id.js";
+import { quoteString, emitDescription } from "./quote-string.js";
 import type {
   KrsFile,
   KrsNode,
@@ -102,7 +103,7 @@ class Printer {
 
     // @import (style imports — no loc available)
     for (const path of file.styleImports) {
-      out.push(`@import "${path}"`);
+      out.push(`@import ${quoteString(path)}`);
     }
 
     // import (node imports — have loc)
@@ -207,11 +208,11 @@ class Printer {
   // ── Import ────────────────────────────────────────────────────────────────
 
   private renderImport(imp: ImportDeclaration): string {
-    if (imp.ids.length === 0) return `import "${imp.path}"`;
+    if (imp.ids.length === 0) return `import ${quoteString(imp.path)}`;
     // Bare ids are stored as `["Foo"]`; multi-segment paths as `["A", "B", "C"]`.
     // Re-join each path with "." to round-trip through the formatter.
     const formatted = imp.ids.map((segments) => segments.map(quoteId).join(".")).join(", ");
-    return `import { ${formatted} } from "${imp.path}"`;
+    return `import { ${formatted} } from ${quoteString(imp.path)}`;
   }
 
   // ── Top-level dispatch ────────────────────────────────────────────────────
@@ -313,7 +314,7 @@ class Printer {
 
   private renderProperties(node: KrsNode, indent: string): string[] {
     const lines: string[] = [];
-    if (node.label !== undefined) lines.push(`${indent}label "${node.label}"`);
+    if (node.label !== undefined) lines.push(`${indent}label ${quoteString(node.label)}`);
     if (node.properties.description !== undefined) {
       lines.push(this.renderDescription(node.properties.description, indent));
     }
@@ -321,7 +322,7 @@ class Printer {
       lines.push(`${indent}table ${quoteId(node.tableRef.parent)}.${quoteId(node.tableRef.child)}`);
     }
     if ("role" in node.properties && node.properties.role !== undefined) {
-      lines.push(`${indent}role "${node.properties.role}"`);
+      lines.push(`${indent}role ${quoteString(node.properties.role)}`);
     }
     if (
       "delivers" in node.properties &&
@@ -357,22 +358,18 @@ class Printer {
   }
 
   private renderDescription(value: string, indent: string): string {
-    if (!value.includes("\n")) return `${indent}description "${value}"`;
-    const body = value
-      .split("\n")
-      .map((l) => (l ? `${indent}  ${l}` : ""))
-      .join("\n");
-    return `${indent}description """\n${body}\n${indent}  """`;
+    return emitDescription(value, indent);
   }
 
   private renderLink(link: LinkEntry, indent: string): string {
-    if (link.label !== undefined) return `${indent}link "${link.url}" "${link.label}"`;
-    return `${indent}link "${link.url}"`;
+    if (link.label !== undefined)
+      return `${indent}link ${quoteString(link.url)} ${quoteString(link.label)}`;
+    return `${indent}link ${quoteString(link.url)}`;
   }
 
   private renderEdge(edge: KrsEdge, parentKind?: string): string {
     const arrow = edge.kind === "async" ? "-->" : "->";
-    const label = edge.label !== undefined ? ` "${edge.label}"` : "";
+    const label = edge.label !== undefined ? ` ${quoteString(edge.label)}` : "";
     const tags = edge.tags.length > 0 ? ` [${edge.tags.join(", ")}]` : "";
     // Use implicit-source shorthand for service/domain blocks (from is always parentId)
     const from =
@@ -386,7 +383,7 @@ class Printer {
     const trail = this.extractTrailing(block.loc.start.line);
     const lines: string[] = [`deploy ${quoteId(block.id)} {${trail}`];
 
-    if (block.label !== undefined) lines.push(`  label "${block.label}"`);
+    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
 
     let prevEndLine = block.loc.start.line;
     for (let i = 0; i < block.nodes.length; i++) {
@@ -406,13 +403,15 @@ class Printer {
     const trail = this.extractTrailing(node.loc.start.line);
     const lines: string[] = [`  ${node.kind} ${quoteId(node.id)} {${trail}`];
 
-    if (node.label !== undefined) lines.push(`    label "${node.label}"`);
+    if (node.label !== undefined) lines.push(`    label ${quoteString(node.label)}`);
     if (node.properties.runtime !== undefined)
-      lines.push(`    runtime "${node.properties.runtime}"`);
-    if (node.properties.image !== undefined) lines.push(`    image "${node.properties.image}"`);
-    if (node.properties.type !== undefined) lines.push(`    type "${node.properties.type}"`);
+      lines.push(`    runtime ${quoteString(node.properties.runtime)}`);
+    if (node.properties.image !== undefined)
+      lines.push(`    image ${quoteString(node.properties.image)}`);
+    if (node.properties.type !== undefined)
+      lines.push(`    type ${quoteString(node.properties.type)}`);
     if (node.properties.schedule !== undefined)
-      lines.push(`    schedule "${node.properties.schedule}"`);
+      lines.push(`    schedule ${quoteString(node.properties.schedule)}`);
     for (const r of node.properties.realizes ?? []) {
       lines.push(`    realizes ${quoteId(r)}`);
     }
@@ -427,7 +426,7 @@ class Printer {
     const trail = this.extractTrailing(block.loc.start.line);
     const lines: string[] = [`organization ${quoteId(block.id)} {${trail}`];
 
-    if (block.label !== undefined) lines.push(`  label "${block.label}"`);
+    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
     if (block.properties.description !== undefined) {
       lines.push(this.renderDescription(block.properties.description, "  "));
     }
@@ -454,7 +453,7 @@ class Printer {
     const trail = this.extractTrailing(team.loc.start.line);
     const lines: string[] = [`${indent}team ${quoteId(team.id)} {${trail}`];
 
-    if (team.label !== undefined) lines.push(`${indent}  label "${team.label}"`);
+    if (team.label !== undefined) lines.push(`${indent}  label ${quoteString(team.label)}`);
     if (team.properties.description !== undefined) {
       lines.push(this.renderDescription(team.properties.description, `${indent}  `));
     }
@@ -489,14 +488,14 @@ class Printer {
     const trail = this.extractTrailing(member.loc.start.line);
     const lines: string[] = [`${indent}member ${quoteId(member.id)} {${trail}`];
 
-    if (member.label !== undefined) lines.push(`${indent}  label "${member.label}"`);
+    if (member.label !== undefined) lines.push(`${indent}  label ${quoteString(member.label)}`);
     if (member.properties.description !== undefined) {
       lines.push(this.renderDescription(member.properties.description, `${indent}  `));
     }
     if (member.properties.slack !== undefined)
-      lines.push(`${indent}  slack "${member.properties.slack}"`);
+      lines.push(`${indent}  slack ${quoteString(member.properties.slack)}`);
     if (member.properties.github !== undefined)
-      lines.push(`${indent}  github "${member.properties.github}"`);
+      lines.push(`${indent}  github ${quoteString(member.properties.github)}`);
 
     lines.push(`${indent}}`);
     return lines;
@@ -511,7 +510,7 @@ class Printer {
     // canonical form keeps the output idempotent.
     const lines: string[] = [`boundary ${quoteId(block.id)} {${trail}`];
 
-    if (block.label !== undefined) lines.push(`  label "${block.label}"`);
+    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
     if (block.properties.description !== undefined) {
       lines.push(this.renderDescription(block.properties.description, "  "));
     }
@@ -532,7 +531,7 @@ class Printer {
     const trail = this.extractTrailing(block.loc.start.line);
     const decl = ["legend"];
     if (block.scope !== undefined) decl.push(block.scope);
-    if (block.title !== undefined) decl.push(`"${block.title}"`);
+    if (block.title !== undefined) decl.push(`${quoteString(block.title)}`);
 
     const lines: string[] = [`${decl.join(" ")} {${trail}`];
     for (const entry of block.entries) {
@@ -546,9 +545,9 @@ class Printer {
     if (entry.kind === "swatch") {
       // `color` is stored verbatim including the leading `#` (the lexer emits
       // `#xxx` as one token), so it round-trips as-is.
-      return `swatch ${entry.color} "${entry.label}"`;
+      return `swatch ${entry.color} ${quoteString(entry.label)}`;
     }
-    return `ref ${renderLegendRefTarget(entry.target)} "${entry.label}"`;
+    return `ref ${renderLegendRefTarget(entry.target)} ${quoteString(entry.label)}`;
   }
 }
 

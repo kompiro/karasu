@@ -79,6 +79,7 @@ Alternatives considered and rejected (only when useful for posterity).
 - `status` must be one of: `proposed` | `accepted` | `deprecated` | `superseded` | `not_adopted`.
 - `topic` is required and must be one of the controlled values listed above (matches `docs/adr/README.md` section headings).
 - `id` must equal `ADR-<n>` derived from the filename, where `<n>` is the originating GitHub Issue number (or the PR number when no issue originated it). No zero padding.
+- **A new ADR must also be registered in `docs/adr/id-migration-map.json`** as a `source: "native"` entry (identity: `oldId === newId`, `oldFile === newFile`). The map is the totality ledger — `pnpm lint:adr-id-map` fails on any ADR file absent from it. A native entry has no date-format ancestor, so the rename/slug checks are skipped for it; `evidence` should note the originating issue. Background: the issue-number migration, Issue #2083.
 - The body H1 heading must match `ADR-<id>: <title>` from frontmatter.
 - When `status: superseded`, `superseded_by` is required **and** the new ADR must list this ID in its `supersedes`. The validator enforces bidirectional consistency.
 - The prose header (`- **日付**:`, `- **ステータス**:`, `- **関連**:`) stays for human readers; frontmatter is for tooling. Both coexist.

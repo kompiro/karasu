@@ -2135,6 +2135,14 @@
       "newFile": "2092-tpl-config-split.md",
       "source": "pr",
       "evidence": "authoring PR #2092 'refactor(adr-tooling): split TPL config from adr.config.json so ADR ids can migrate', unique to this ADR [deliberate reservation: this ADR is the Phase 1 side-decision of #2083, but the Phase 3 migration ADR is the canonical record for that issue and should own ADR-2083. Assigning the issue number here by strict date order would leave the main migration ADR taking a PR number instead.]"
+    },
+    {
+      "oldId": "ADR-2087",
+      "oldFile": "2087-escape-emitted-string-values.md",
+      "newId": "ADR-2087",
+      "newFile": "2087-escape-emitted-string-values.md",
+      "source": "native",
+      "evidence": "born after the issue-number migration (#2100); originating Issue #2087, no date-format ancestor, so this is an identity entry (not a rename)"
     }
   ],
   "rules": {

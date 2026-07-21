@@ -1,6 +1,6 @@
 # ADR Topic: parser
 
-18 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+19 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -23,6 +23,7 @@ flowchart TD
     ADR_1178["ADR-1178<br/>`.krs.style` 値レベル診断 — 構造化 ValueNode AST と prope..."]
     ADR_1567["ADR-1567<br/>規則と診断を分離し、診断カタログで完全性を担保する"]
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
+    ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   ADR_285["ADR-285<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -69,6 +70,7 @@ flowchart TD
   class ADR_1178 accepted
   class ADR_1567 accepted
   class ADR_2076 accepted
+  class ADR_2087 accepted
   class ADR_9008 accepted
   class ADR_285 ghost
   class ADR_429 ghost

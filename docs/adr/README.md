@@ -47,6 +47,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-496](496-implicit-edge-source-shorthand.md) — ブロック内エッジの暗黙 source 簡略記法
 - [ADR-927](927-import-system-nested.md) — system にネストした service / domain の Named Import は明示的な path 構文で取り込む
 - [ADR-2076](2076-formatter-top-level-exhaustiveness.md) — formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
+- [ADR-2087](2087-escape-emitted-string-values.md) — 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
 
 ### リゾルバ / 警告 / 検証
 

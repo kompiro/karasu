@@ -46,7 +46,11 @@ const BARE_SCAN_FROZEN = new Set([
 export const RESERVED_MIN = 9001;
 export const RESERVED_MAX = 9099;
 
-export type EntrySource = "issue" | "pr" | "reserved-block";
+// "native" = an ADR born after the issue-number migration. It never had a
+// date-format id, so its map entry is identity (oldId === newId,
+// oldFile === newFile) and exists only so the totality check has a home for it
+// — every ADR on disk must appear in the map. See docs/adr/TEMPLATE.md.
+export type EntrySource = "issue" | "pr" | "reserved-block" | "native";
 
 export interface MapEntry {
   oldId: string;
@@ -191,6 +195,46 @@ export function check(root: string): Result {
   for (const e of entries) {
     const where = e.oldFile || e.newFile || "<unknown>";
 
+    // A native ADR was born post-migration and never carried a date-format id,
+    // so there is no rename to validate — only that the entry is a consistent
+    // identity record. It shares the injectivity / evidence / totality checks
+    // with migrated entries, keyed on newFile (oldFile === newFile).
+    if (e.source === "native") {
+      const nm = e.newFile.match(NEW_FILE_RE);
+      if (!nm) {
+        errors.push(`${where}: newFile "${e.newFile}" is not <n>-<slug>.md`);
+        continue;
+      }
+      const nn = Number(nm[1]);
+      if (e.oldFile !== e.newFile) {
+        errors.push(`${where}: native entry must have oldFile === newFile`);
+      }
+      if (e.oldId !== e.newId) {
+        errors.push(`${where}: native entry must have oldId === newId`);
+      }
+      if (e.newId !== `ADR-${nn}`) {
+        errors.push(
+          `${where}: newId "${e.newId}" does not match newFile number (expected ADR-${nn})`,
+        );
+      }
+      if (nn >= RESERVED_MIN && nn <= RESERVED_MAX) {
+        errors.push(
+          `${where}: native entry must not use the reserved range ${RESERVED_MIN}-${RESERVED_MAX}`,
+        );
+      }
+      if (!e.evidence || e.evidence.trim() === "") {
+        errors.push(`${where}: evidence is required`);
+      }
+      if (seenOldFile.has(e.newFile)) errors.push(`${e.newFile}: duplicate entry`);
+      seenOldFile.add(e.newFile);
+      const nativeClash = seenNewNum.get(nn);
+      if (nativeClash !== undefined) {
+        errors.push(`ADR-${nn}: assigned to both ${nativeClash} and ${e.newFile}`);
+      }
+      seenNewNum.set(nn, e.newFile);
+      continue;
+    }
+
     if (!OLD_FILE_RE.test(e.oldFile)) {
       errors.push(`${where}: oldFile is not YYYYMMDD-NN-<slug>.md`);
       continue;
@@ -248,7 +292,10 @@ export function check(root: string): Result {
   // --- Agreement with what is actually on disk ---
 
   const present = new Set(adrFiles(root));
-  const oldPresent = entries.filter((e) => present.has(e.oldFile)).length;
+  // Native entries have oldFile === newFile (they never had a date-format name),
+  // so counting their oldFile would spuriously read as a lingering old file and
+  // trip the half-migrated alarm. Only genuine renames can be "still old".
+  const oldPresent = entries.filter((e) => e.source !== "native" && present.has(e.oldFile)).length;
   const newPresent = entries.filter((e) => present.has(e.newFile)).length;
 
   let phase: Phase;
