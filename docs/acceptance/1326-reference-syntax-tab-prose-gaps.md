@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/app/src/components/ReferenceContent.tsx` / `ReferenceWindow.tsx`（Syntax タブの `<pre>` スニペット、Styles タブの selector examples / specificity テーブル。旧 `ReferencePanel.tsx` — #1548/#1585 の pop-out 化で改名）
   - `packages/app/src/components/ReferenceContent.test.tsx`（旧 `ReferencePanel.test.tsx`）
-- **関連 ADR**: [ADR-20260512-03](../adr/20260512-03-reference-data-single-source.md)（`docs/spec/syntax.md` の `krs` フェンスを app に取り込む方向 — 散文スニペットの全面生成化は別 follow-up）
+- **関連 ADR**: [ADR-1296](../adr/1296-reference-data-single-source.md)（`docs/spec/syntax.md` の `krs` フェンスを app に取り込む方向 — 散文スニペットの全面生成化は別 follow-up）
 
 ## 受け入れ条件
 

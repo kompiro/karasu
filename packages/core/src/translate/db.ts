@@ -1,3 +1,4 @@
+import { quoteString, emitDescription } from "../formatter/quote-string.js";
 import type { Translator, TranslatorContext } from "./translator.js";
 import { toPascalCase } from "./identifier.js";
 
@@ -10,7 +11,7 @@ function toTableId(tableName: string): string {
 /**
  * Conceptual entity id for a table. Kept as the PascalCase table name (no
  * pluralization/singularization) so the SQL-table origin stays traceable
- * (ADR-20260419-01 case D). Distinct from `toTableId` (`Orders` vs
+ * (ADR-644 case D). Distinct from `toTableId` (`Orders` vs
  * `OrdersTable`), so an entity and its physical table never collide.
  */
 function toEntityId(tableName: string): string {
@@ -286,21 +287,22 @@ function inferAggregates(tables: Table[]): GroupDecision {
 // ─── Emission ─────────────────────────────────────────────────────────────────
 
 function emitFlatTable(t: Table): string {
-  return `  table ${toTableId(t.name)} { label "${t.name}" }`;
+  return `  table ${toTableId(t.name)} { label ${quoteString(t.name)} }`;
 }
 
 function emitAggregateTable(root: Table, children: { table: Table; reason: string }[]): string[] {
   if (children.length === 0) return [emitFlatTable(root)];
   const lines: string[] = [];
   lines.push(`  table ${toTableId(root.name)} {`);
-  lines.push(`    label "${root.name}"`);
-  lines.push(`    description """`);
-  lines.push(`      Tables:`);
-  lines.push(`      - ${root.name} (root)`);
-  for (const c of children) {
-    lines.push(`      - ${c.table.name} — ${c.reason}`);
-  }
-  lines.push(`      """`);
+  lines.push(`    label ${quoteString(root.name)}`);
+  // Table names come from the schema and are not guaranteed to be safe inside a
+  // raw `"""` block; let emitDescription pick a representable form (#2087).
+  const descriptionBody = [
+    "Tables:",
+    `- ${root.name} (root)`,
+    ...children.map((c) => `- ${c.table.name} — ${c.reason}`),
+  ].join("\n");
+  lines.push(...emitDescription(descriptionBody, "    ").split("\n"));
   lines.push(`  }`);
   return lines;
 }

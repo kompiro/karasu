@@ -46,7 +46,7 @@ karasu には「同じ仕様を 2 箇所で手書きしている」構造があ�
 
 - spec doc に `label-position` / `label-offset` / `column` のような新 style プロパティを足したが `reference.ts` に追記し忘れ、Reference パネルの Styles タブが古いプロパティ一覧のまま（#1296 で実際に発生）。
 - 新しいノード種別 / タグ / アノテーションが spec に landed したのに Syntax / Tags タブに出てこない。
-- 逆向き: parser / `reference.ts` 側に先にキーワードが landed したのに `docs/spec/*.md` に節がなく、`getReference()` / `ReferencePanel` 経由でしか辿れない状態が続く（infra-layer ノード種別 `database` / `queue` / `storage` / `table` / `queue-item` / `bucket` が ADR-20260405-05 以降ずっと spec doc 未記載だった #1327 で実際に発生）。`spec-syntax.test.ts` の `krs` fence チェックは構文の *使用例* は縛れても *節の存在* は縛れない点に注意。
+- 逆向き: parser / `reference.ts` 側に先にキーワードが landed したのに `docs/spec/*.md` に節がなく、`getReference()` / `ReferencePanel` 経由でしか辿れない状態が続く（infra-layer ノード種別 `database` / `queue` / `storage` / `table` / `queue-item` / `bucket` が ADR-316 以降ずっと spec doc 未記載だった #1327 で実際に発生）。`spec-syntax.test.ts` の `krs` fence チェックは構文の *使用例* は縛れても *節の存在* は縛れない点に注意。
 - 逆に reference 側を直しても i18n 文字列（`STRINGS_EN` / `STRINGS_JA`）の片方を足し忘れ、片言語だけ `undefined` が表示される。
 - 「reference にあるが doc にない」を厳密に双方向チェックしてしまい、doc が追いついていない過渡期に無関係な test 失敗が出続けて test がミュートされる。
 
@@ -74,5 +74,5 @@ karasu には「同じ仕様を 2 箇所で手書きしている」構造があ�
 
 ## 派生元 spec
 
-- `docs/spec/style.md` §「stroke-style property (edges)」（#1492 / ADR-20260610-01 で正式化）
+- `docs/spec/style.md` §「stroke-style property (edges)」（#1492 / ADR-1492 で正式化）
 - `docs/spec/glossary.md` / `glossary.ja.md`（#1712）— concepts / spec の定義を curated に再掲する用語集。正典は各リンク先で、用語集は索引。各項目の定義がリンク先と矛盾しないことを縛る（curated ゆえ「全 keyword が用語集にある」逆向きは縛らない）。

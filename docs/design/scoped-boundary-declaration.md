@@ -5,10 +5,10 @@
 - **関連**:
   - 引き金 Issue: [#2036](https://github.com/kompiro/karasu/issues/2036)（parent [#1822](https://github.com/kompiro/karasu/issues/1822) comprehension）／設計 PR: [#2058](https://github.com/kompiro/karasu/pull/2058)
   - carve-out 先: [#2088](https://github.com/kompiro/karasu/issues/2088)（team 軸 `owns` — org は system ツリー外の横断オーバーレイなのでスコープ解決が効かない）、[#2065](https://github.com/kompiro/karasu/issues/2065)（cross-cutting concern labeling — user-defined tag の領分）
-  - 顕在化元: [#1983](https://github.com/kompiro/karasu/issues/1983) / [#2034](https://github.com/kompiro/karasu/issues/2034)（drill-down grouping 正規化 → [ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md)）
-  - 関連 Issue: [#2032](https://github.com/kompiro/karasu/issues/2032)（cross-file contains の偽 not-found）、[#2076](https://github.com/kompiro/karasu/issues/2076) / [ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md)（`fmt` が top-level `boundary` を落とす問題 — マージ済み。本設計の前提）
+  - 顕在化元: [#1983](https://github.com/kompiro/karasu/issues/1983) / [#2034](https://github.com/kompiro/karasu/issues/2034)（drill-down grouping 正規化 → [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)）
+  - 関連 Issue: [#2032](https://github.com/kompiro/karasu/issues/2032)（cross-file contains の偽 not-found）、[#2076](https://github.com/kompiro/karasu/issues/2076) / [ADR-2076](../adr/2076-formatter-top-level-exhaustiveness.md)（`fmt` が top-level `boundary` を落とす問題 — マージ済み。本設計の前提）
   - notation の母体（設計）: [`system-view-grouping.md`](./system-view-grouping.md)（P2b `boundary`/`contains`、status: 部分昇格）
-  - 関連 ADR: [ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md)（per-view 交差セマンティクス。「per-level axis」却下・「nested boundary 構文」deferred の当事者 ADR）、[ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md)（同一ラベル・disjoint フレームの先例）、[ADR-20260513-03](../adr/20260513-03-import-system-nested.md)（同 id の意図的共存は正当）、[ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（`namespace` 語彙却下）、[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)（notation promotion gate）、[ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)（permalink deep anchor = leaf id）
+  - 関連 ADR: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（per-view 交差セマンティクス。「per-level axis」却下・「nested boundary 構文」deferred の当事者 ADR）、[ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（同一ラベル・disjoint フレームの先例）、[ADR-927](../adr/927-import-system-nested.md)（同 id の意図的共存は正当）、[ADR-1858](../adr/1858-system-view-group-by-team.md)（`namespace` 語彙却下）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（notation promotion gate）、[ADR-1827](../adr/1827-permalink-deep-element.md)（permalink deep anchor = leaf id）
   - 関連 TPL: [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)、[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)、[TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)、[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)、[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md)
   - コード: `packages/core/src/parser/parser.ts`（`parseBoundaryBlock` `:1765`、root dispatch `:233`、block dispatch `parseBlockContentsWithProperties` `:370`、`buildBoundaryIndex` `:2013`）、`packages/core/src/types/ast.ts`（`BoundaryBlock` `:374`、`KrsFile.boundaryIndex` `:487`）、`packages/core/src/renderer/layout.ts`（`groupIdOf` `:1143`、`buildGroupFrames` `:68`、軸選択 `:1050`/`:1664`）、`packages/core/src/renderer/group-collapse.ts`（`groupStubId` `:25`）、`packages/core/src/formatter/formatter.ts`（`printFile` の top-level emit list `:113`）
 
@@ -42,13 +42,13 @@
 
 | 段階 | 何を課題だと思っていたか | なぜ乗り越えたか |
 | --- | --- | --- |
-| 1. [#2036](https://github.com/kompiro/karasu/issues/2036) 起票時 | **id 衝突が bug** — service `Payment` と nested domain `Payment` があると `contains Payment` が両方を黙って取り込む（[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) 末尾の「識別モデルの sharp edge」補足） | 衝突自体は**正当**。同 id の意図的共存は karasu が明示的に許した設計（[ADR-20260513-03](../adr/20260513-03-import-system-nested.md) L36） |
+| 1. [#2036](https://github.com/kompiro/karasu/issues/2036) 起票時 | **id 衝突が bug** — service `Payment` と nested domain `Payment` があると `contains Payment` が両方を黙って取り込む（[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) 末尾の「識別モデルの sharp edge」補足） | 衝突自体は**正当**。同 id の意図的共存は karasu が明示的に許した設計（[ADR-927](../adr/927-import-system-nested.md) L36） |
 | 2. 前版 `node-reference-qualification.md` | **指定方法が無いこと**が課題 — 「どの層の `Payment` か」を書く記法が membership 参照サイトにだけ無い | 「どの層か」を**参照サイトで**書かせるのは、boundary が本来どの層のものかを**宣言サイトで**書けていないことの代償だった |
 | 3. **本版** | **boundary の定義が曖昧だったこと**が課題 — boundary が「層ごとの関心事」なら、**宣言をその層のスコープに置く**のが素直で、addressing 問題は発生しない | — |
 
 ### 観測事実 1 — cross-layer boundary は 1 枚の枠として描画できない
 
-深さの異なる members を持つ boundary は、**1 枚の枠にならず view ごとに断片化**する（compile probe 実測、[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) 決定 2 として仕様化済み）:
+深さの異なる members を持つ boundary は、**1 枚の枠にならず view ごとに断片化**する（compile probe 実測、[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) 決定 2 として仕様化済み）:
 
 ```krs
 system Shop {
@@ -72,8 +72,8 @@ boundary pci "PCI" { contains CardVault contains Billing contains Payment contai
 **意味として成立しない**（描画の都合ではなく定義上の帰結）。
 
 > **混同してはならない 2 つのこと。** 上の断片化は「**1 枚の枠が層をまたげない**」という話である。
-> 一方 **「同名の枠が各層に出ること」自体は是**であり、[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md)
-> 決定 2 と [ADR-20260716-03](../adr/20260716-03-group-by-team-multi-system-root-per-system-frames.md)（multi-system の
+> 一方 **「同名の枠が各層に出ること」自体は是**であり、[ADR-1983](../adr/1983-boundary-drilldown-grouping.md)
+> 決定 2 と [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（multi-system の
 > per-(system, team) フレーム）で既にそう動く。本設計は前者を否定し、後者を**積極的に肯定**する。
 
 ### 観測事実 2 — `boundary` をスコープ内に書くと今日は parse error
@@ -124,10 +124,10 @@ tag（[#2065](https://github.com/kompiro/karasu/issues/2065)）に委ねる。
 | 枠生成 | `buildGroupFrames(nodes, groupOrder, groupIdOf, out, metaOf)` → `__group_${groupId}__` | `layout.ts:68-101`、呼び出し `:1453` / `:1937` |
 | collapse stub id | `groupStubId(groupId, scope?)` → `__group_collapsed_${scope}_${groupId}__`。**`scope` は既に存在**（multi-system root で `sys.id` を渡す、#1884） | `group-collapse.ts:25-29`、caller `layout.ts:1713-1720` |
 | 兄弟 id 一意性 | `duplicate-node-id-parent`（**error**）— 同一親直下でのみ発火 | `docs/spec/diagnostics.md:76`、probe 実測 |
-| 層またぎ同 id | **正当**（診断ゼロ） | probe 実測、[ADR-20260513-03](../adr/20260513-03-import-system-nested.md) L36 |
+| 層またぎ同 id | **正当**（診断ゼロ） | probe 実測、[ADR-927](../adr/927-import-system-nested.md) L36 |
 | drill-down view を持つ kind | 構造由来（`children.length > 0` かつ内容あり）。drawio exporter は `system \| service \| domain \| usecase` を hardcode。加えて domain ごとの entity view、infra コンテナの drill view | `drill-down-svg.ts:64-66` / `:320-322`、`exporter/drawio/build-drawio-project.ts:127-129`、`view-extract.ts:1330` |
 | `entity` の子 | ノード子を取れない（`parser.ts:628-638`） | 同左 |
-| **formatter** | **`boundary` を 1 箇所も扱っていない** — `printFile` の emit list（`formatter.ts:113-120`）に `file.boundaries` が無く、`fmt` が **top-level boundary を黙って消す**。[ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) で**修正済み**（マージ済み） | 同左 |
+| **formatter** | **`boundary` を 1 箇所も扱っていない** — `printFile` の emit list（`formatter.ts:113-120`）に `file.boundaries` が無く、`fmt` が **top-level boundary を黙って消す**。[ADR-2076](../adr/2076-formatter-top-level-exhaustiveness.md) で**修正済み**（マージ済み） | 同左 |
 | `duplicate-boundary-id` | **spec にのみ存在、実装なし**（`syntax.md:1004` / `syntax.ja.md:928` の 2 箇所だけ。`DiagnosticParamsByCode` / parser / `render-diagnostic.ts` / `diagnostics.md` に無し）。probe でも発火せず | ドリフト |
 
 ### 同名 boundary が層をまたいでも壊れないことの検証
@@ -146,12 +146,12 @@ service スコープにも出現しうる。**何が壊れるかを機構ごと�
 
 ## 制約・前提
 
-- **層をまたぐ id 衝突は正当**。global 一意性は強制しない（[ADR-20260513-03](../adr/20260513-03-import-system-nested.md)）。
-- **identity は author-given bare flat id のまま**。permalink deep anchor は leaf id 依存（[ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)）で、本設計はこれを触らない。
+- **層をまたぐ id 衝突は正当**。global 一意性は強制しない（[ADR-927](../adr/927-import-system-nested.md)）。
+- **identity は author-given bare flat id のまま**。permalink deep anchor は leaf id 依存（[ADR-1827](../adr/1827-permalink-deep-element.md)）で、本設計はこれを触らない。
 - **後方互換**: 既存の top-level `boundary` は**今日の挙動そのまま**残す。本設計は**追加的変更**であり、既存 `.krs` は 1 行も壊れない。
 - **`owns`（team 軸）は対象外** → [#2088](https://github.com/kompiro/karasu/issues/2088)。`organization` は system ツリーの外にある横断オーバーレイなので「宣言スコープ」という概念自体が効かない。
 - **横断的関心事は対象外** → [#2065](https://github.com/kompiro/karasu/issues/2065)（tag の領分）。
-- **文法追加 → promotion gate 対象**（[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)）。ただし `boundary` は experimental のまま据え置き。
+- **文法追加 → promotion gate 対象**（[ADR-1820](../adr/1820-notation-promotion-gate.md)）。ただし `boundary` は experimental のまま据え置き。
 
 ## 検討した選択肢
 
@@ -206,35 +206,35 @@ system Shop {
 どれを指すか」を書く道具だが、案 S ではメンバ候補が**兄弟だけ**に限定され、兄弟 id は error 一意なので
 候補が常に 0 個か 1 個しかない。**問題が無いところに記法を足すのは構文表面積の純増**であり、
 experimental notation に corpus evidence ゼロで表面積を足さないという規律
-（[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)）に反する。
+（[ADR-1820](../adr/1820-notation-promotion-gate.md)）に反する。
 
 加えて、修飾記法は「boundary は層をまたいで宣言してよい」という前提を温存する。その前提こそが
 概念の混同（横断的関心事 vs 層ごとの関心事）の源だった。
 
 ### 案 N（不採用・現状維持）: 何もせず、断片化を仕様として受け入れる
 
-[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) は既に per-view 交差を仕様化しており、
+[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) は既に per-view 交差を仕様化しており、
 「壊れてはいない」。しかし**著者が「この service 内の domain 群」を表現する手段が無い**ままで、
 [#2036](https://github.com/kompiro/karasu/issues/2036) の多重取り込みも残る。
 
 ### 隣接する既決事項との関係（重要）
 
-[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) は 2 つの近い案を退けている。**本案はどちらとも別物**である:
+[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) は 2 つの近い案を退けている。**本案はどちらとも別物**である:
 
-| ADR-20260717-01 が退けた案 | その理由 | 本案との違い |
+| ADR-1983 が退けた案 | その理由 | 本案との違い |
 | --- | --- | --- |
 | **per-level axis**（`boundary payments service { … }` のようなレベル**指定子**の新設） | 「member は id 参照であり、その id がどのレベルで描画されるかはモデル構造が既に決めている。flat index × 描画レベルの交差で同じ結果が得られ、著者に冗長な指定を課すだけ」 | 本案は**レベル指定子を足さない**。スコープは**宣言をどこに書いたか**（lexical な位置）から決まる。動機も「レベルの選択」ではなく「**どのノードを指すか**の一意化」であり、冗長な指定ではなく**曖昧性の除去**である |
 | **nested `boundary` 構文**（deferred、却下ではない） | 「boundary 同士の階層という直交した別問題を解いてしまう。`boundaryIndex` の 1:1 前提が壊れ機構コストが跳ねる」 | 本案は **boundary の中に boundary を入れる話ではない**。ノードブロックの中に boundary を置く話であり、boundary 同士の階層は生じない。**1:1 前提も壊れない** — ノードの親スコープは 1 つなので、あるノードが所属しうる boundary は 1 スコープ内に限られる |
 
 とくに per-level axis の却下理由の中核は「**flat index × 描画レベルの交差で同じ結果が得られる**」という前提だが、
 これは **id が一意な場合にしか成立しない**。同 id が複数の層に存在するとき、flat index は交差では絞り込めず
-**該当する全ノードを取り込む**（＝ #2036 の症状そのもの）。この過剰捕捉は ADR-20260717-01 自身が末尾の
+**該当する全ノードを取り込む**（＝ #2036 の症状そのもの）。この過剰捕捉は ADR-1983 自身が末尾の
 「識別モデルの sharp edge」補足で認めており、**却下理由の前提はその補足と両立しない**。本案はまさに
 その前提が崩れる領域（同 id の共存）を扱うため、per-level axis の却下は本案に及ばない。
 
-ただし ADR-20260717-01 の「`boundaryIndex` の 1:1 前提」への懸念は、**キーの次元**という形で本案にも部分的に当てはまる（後述の実装方針で扱う）。
+ただし ADR-1983 の「`boundaryIndex` の 1:1 前提」への懸念は、**キーの次元**という形で本案にも部分的に当てはまる（後述の実装方針で扱う）。
 
-なお本案は experimental notation への**文法追加**であり、[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)
+なお本案は experimental notation への**文法追加**であり、[ADR-1820](../adr/1820-notation-promotion-gate.md)
 の promotion gate の対象になる（per-level axis 却下理由の 3 点目と同じ土俵）。ただし本案の動機は
 「corpus 証拠のない利便性の追加」ではなく、(a) 過剰捕捉という**構造的な誤りの除去**、(b) 宣言位置と
 意味論の一致、(c) 「boundary は層ごとの関心事」という**概念定義の確定**であり、gate の趣旨（証拠なき
@@ -293,7 +293,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
 | `resource` / `user` / `client` / leaf infra | 子を持たない | **不可** |
 
 `domain` が **2 つのキャンバス**（usecase drill-down と entity view）を持つ点は問題にならない。
-[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) 決定 1 の per-view 交差がそのまま効き、
+[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) 決定 1 の per-view 交差がそのまま効き、
 **各キャンバスはそこに描かれる member だけで枠を組む**。`domain Payment { boundary x { contains Order contains Item } }`
 で `Order` / `Item` が entity なら、枠は entity view に出て usecase drill-down には出ない（member 不在 → 決定 3 により枠なし）。
 
@@ -320,7 +320,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
 
 - 既存の top-level `boundary` は **system view トップ階層スコープ**の記法として存続し、**挙動は不変**。
 - したがって top-level boundary は今日どおり **kind 無制限・レベル無制限・cross-file** にメンバを取れ、
-  複数レベルにまたがれば従来どおり複数フレームに断片化する（[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) 決定 2）。
+  複数レベルにまたがれば従来どおり複数フレームに断片化する（[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) 決定 2）。
 - **スコープ内 boundary は新しい制限付きの形**であり、top-level 形を後から狭める（＝破壊的変更）ことは本設計では**しない**。
   両形の最終的な統合は未解決の問いに残す。
 
@@ -357,10 +357,10 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
      現在 `scope` を渡すのは multi-system root（`layout.ts:1713-1720`、`sys.id`）だけなので、
      スコープ内 boundary でも同様に宣言スコープを渡せば stub id が namespace される。
 5. **formatter（`fmt`）**
-   - 前提の fmt 修正は **[ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) としてマージ済み**。修正前は — 現状 `printFile` の emit list（`formatter.ts:113-120`）に
+   - 前提の fmt 修正は **[ADR-2076](../adr/2076-formatter-top-level-exhaustiveness.md) としてマージ済み**。修正前は — 現状 `printFile` の emit list（`formatter.ts:113-120`）に
      `file.boundaries` が無く、`fmt` は top-level boundary を**黙って消す**（`formatter.ts` に `boundary` 0 hit）。
-   - ADR-20260720-01 が追加した `renderBoundaryBlock` を、**ノードブロックのレンダリング経路からも呼ぶ**必要がある。
-   - **注意**: ADR-20260720-01 の網羅性ガード（同 ADR 決定 2 が期待集合を `KrsFile` の配列プロパティから導出すると定めている）（`formatter-top-level-coverage.test.ts`）は `KrsFile` の配列プロパティ由来なので
+   - ADR-2076 が追加した `renderBoundaryBlock` を、**ノードブロックのレンダリング経路からも呼ぶ**必要がある。
+   - **注意**: ADR-2076 の網羅性ガード（同 ADR 決定 2 が期待集合を `KrsFile` の配列プロパティから導出すると定めている）（`formatter-top-level-coverage.test.ts`）は `KrsFile` の配列プロパティ由来なので
      **top-level しか守らない**。スコープ内 boundary の emit 漏れは検出されない → 別途 round-trip テストが要る
      （[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)）。
 6. **診断のドリフト解消**
@@ -399,19 +399,19 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
   今日 parse error だった記述が通るようになるだけで、通っていた記述の意味は変わらない。
 - **ドキュメント**: `docs/spec/syntax.md`（+ `syntax.ja.md`）の boundary 節、`docs/spec/diagnostics.md`（+ ja、`duplicate-boundary-id` 1 行）。
 - **examples**: 1 本追加。
-- **他 PR との順序**: fmt の top-level boundary 落ちは [ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) でマージ済みのため、順序制約は解消済み。
+- **他 PR との順序**: fmt の top-level boundary 落ちは [ADR-2076](../adr/2076-formatter-top-level-exhaustiveness.md) でマージ済みのため、順序制約は解消済み。
 
 ## 却下・非目標
 
 - **修飾記法（FQCN / 最小接尾辞パス）**: **却下**（前版の主軸の撤回）。スコープ宣言によって
   解くべき曖昧性が消えるため不要。問題が無いところに構文表面積を足さない
-  （[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)）。
+  （[ADR-1820](../adr/1820-notation-promotion-gate.md)）。
 - **hard global id 一意性の強制**: 却下。層をまたぐ衝突は**正当**であり、意図的な同 id 共存
-  （[ADR-20260513-03](../adr/20260513-03-import-system-nested.md) L36）と段階 severity の設計に反する。
+  （[ADR-927](../adr/927-import-system-nested.md) L36）と段階 severity の設計に反する。
 - **identity = path 化**: 却下。bare-id 参照と permalink deep anchor（leaf id 依存、
-  [ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)）を壊す。本設計が
+  [ADR-1827](../adr/1827-permalink-deep-element.md)）を壊す。本設計が
   スコープ付きにするのは **boundary の identity** だけで、**ノードの identity は不変**。
-- **`namespace` 語彙 / 宣言サイトの id name-scope 化**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md) L57 /
+- **`namespace` 語彙 / 宣言サイトの id name-scope 化**: [ADR-1858](../adr/1858-system-view-group-by-team.md) L57 /
   [`system-view-grouping.md`](./system-view-grouping.md) L240 で却下済み（id を `payments.Billing` に修飾する＝過剰約束）。
   **本案はそれとは別物** — 本案が動かすのは **`boundary` ブロックの配置**であって、**ノード id を修飾しない**。
 - **`owns`（team 軸）への同種の適用**: 非目標 → [#2088](https://github.com/kompiro/karasu/issues/2088)。
@@ -421,14 +421,14 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
 - **cross-service の domain 群を 1 つの boundary にまとめる**: 非目標。スコープに収まらない。
   **ただしこれは後退ではない** — 今日も 1 枚の枠としては描画できず、複数フレームに断片化するだけである
   （上記「観測事実 1」）。表現したいものが横断的関心事なら [#2065](https://github.com/kompiro/karasu/issues/2065) の領分。
-- **boundary 同士の階層（nested boundary）**: 非目標。[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) が
+- **boundary 同士の階層（nested boundary）**: 非目標。[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) が
   deferred にした別問題であり、本案は boundary の中に boundary を入れない。
 - **タイポ検出診断の同時出荷**: 本設計では**決めない**（下記 未解決）。
 
-## promotion gate 整理（[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)）
+## promotion gate 整理（[ADR-1820](../adr/1820-notation-promotion-gate.md)）
 
 - 文法追加（配置場所の拡張）→ **gate 対象**。ただし `boundary` は **experimental のまま据え置き**であり、
-  本件は experimental 層内での配置規則の確定である（[ADR-20260717-01](../adr/20260717-01-boundary-drilldown-grouping.md) L54 の
+  本件は experimental 層内での配置規則の確定である（[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) L54 の
   「within-experimental の挙動変更 = 通常の minor」と同じ扱い）。
 - 正当化は corpus evidence だけに寄りかからない。**概念の定義を明確化した帰結として配置が決まる**という
   論拠を併記する — boundary を「層ごとの関心事」と定義するなら、宣言がその層に置けないのは
@@ -450,7 +450,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
   スコープ内 `boundary` を parse できるようにしただけで枠が出ない（parse-and-vanish）状態を禁ずる。
 - [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — round-trip 保証。
   **今回特に効く** — top-level boundary が `fmt` で消える bug（[#2076](https://github.com/kompiro/karasu/issues/2076)）が
-  現に起きており、[ADR-20260720-01](../adr/20260720-01-formatter-top-level-exhaustiveness.md) の網羅性ガードは `KrsFile` の配列プロパティ由来で
+  現に起きており、[ADR-2076](../adr/2076-formatter-top-level-exhaustiveness.md) の網羅性ガードは `KrsFile` の配列プロパティ由来で
   **top-level しか守らない**。スコープ内 boundary は同じ穴に落ちうる。
 - [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — valid-target は全 kind 列挙。
   「boundary を置ける kind」「メンバになれる kind」の両方を `LogicalNodeKind`（`ast.ts:6-20`）の全列挙で確定する。
@@ -513,8 +513,8 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
   規定が必要になるのは concern overview やタイポ検出を入れるときで、そのとき決める。
 - **top-level 形とスコープ形の最終的な統合** — top-level を「system view トップ階層スコープ」として
   存続させるが、長期的に「top-level もスコープ規則（直下の子のみ）に揃える」＝破壊的変更を行うかは
-  本設計では決めない。experimental notation なので余地はある（[ADR-20260713-01](../adr/20260713-01-notation-promotion-gate.md)）。
+  本設計では決めない。experimental notation なので余地はある（[ADR-1820](../adr/1820-notation-promotion-gate.md)）。
 - **multi-file との相互作用**（[#2032](https://github.com/kompiro/karasu/issues/2032)） — top-level boundary は
   cross-file にメンバを取れるが、スコープ内 boundary はスコープの子に限るので **cross-file 参照が原理的に起きない**。
-  ただし import 先で同じスコープが再オープンされる形（nested import、[ADR-20260513-03](../adr/20260513-03-import-system-nested.md)）が
+  ただし import 先で同じスコープが再オープンされる形（nested import、[ADR-927](../adr/927-import-system-nested.md)）が
   あるかは実装時に確認する。

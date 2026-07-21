@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-15
 - **関連 Issue**: [#1570](https://github.com/kompiro/karasu/issues/1570)
-- **関連 ADR**: [ADR-20260514-02](../adr/20260514-02-style-prescription-stance.md)（流派が smell と呼ぶ構造は info 通知）
+- **関連 ADR**: [ADR-1386](../adr/1386-style-prescription-stance.md)（流派が smell と呼ぶ構造は info 通知）
 - **関連 TPL**: [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md), [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md)
 - **対象ファイル**: `packages/core/src/resolver/warnings.ts`,
   `packages/core/src/types/warnings.ts`,
@@ -20,7 +20,7 @@
 
 - [x] severity は `info` で render をブロックしない（error 0 件・SVG 生成あり）
 
-  > ✅ Automated — `warnings.test.ts` › `is registered as info and does not block rendering (ADR-20260514-02)`
+  > ✅ Automated — `warnings.test.ts` › `is registered as info and does not block rendering (ADR-1386)`
 
 - [x] 1 service しか依存しない場合・同一 service が複数 usecase から参照する場合は出ない（閾値 ≥2 service）
 

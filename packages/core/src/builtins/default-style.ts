@@ -27,7 +27,7 @@ const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> = {
 /**
  * Light-theme badge colors. The dark colors are the canonical
  * `reference-data.ts` `defaultBadge.color` values; light uses slightly
- * darker variants that stay legible on light cards (ADR-20260522-01).
+ * darker variants that stay legible on light cards (ADR-1479).
  */
 const LIGHT_BADGE_COLORS: Record<string, string> = {
   deprecated: "#DC2626",
@@ -327,7 +327,7 @@ edge[delivers] {
  * so badges remain legible on light cards.
  *
  * Cascade position is identical to the dark sheet (lowest layer); user
- * `.krs.style` still wins. See ADR-20260522-01.
+ * `.krs.style` still wins. See ADR-1479.
  */
 const BUILTIN_STYLE_TEMPLATE_LIGHT: string = `/* karasu built-in default theme (light) */
 

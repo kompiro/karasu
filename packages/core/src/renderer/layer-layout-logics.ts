@@ -149,7 +149,7 @@ export function bucketByColumn<T extends { id: string }>(
  *
  * Conflicts on the same source are resolved by **declaration order with
  * last-wins**, matching the project-wide cascade convention
- * (ADR-20260430-04). The final position therefore reflects the most
+ * (ADR-1061). The final position therefore reflects the most
  * recently appended `.krs.style` rule, which lines up with the GUI
  * editor's append flow (#1076).
  *

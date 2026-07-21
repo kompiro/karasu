@@ -3,7 +3,7 @@
 - **日付**: 2026-07-14
 - **Issue**: #1923（親 tracking #1815 / epic #1817 comprehension、前段 #1921）
 - **PR**: feat/expand-multi-container
-- **設計**: [ADR-20260714-04](../adr/20260714-04-expand-container-in-place.md)
+- **設計**: [ADR-1815](../adr/1815-expand-container-in-place.md)
 - **Related TPLs**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（段跨ぎ edge のフレーム貫通）
 - **対象**: `packages/core/src/renderer/edge-routing-groups.ts` / `layout.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewColumn`）、`packages/i18n`
 

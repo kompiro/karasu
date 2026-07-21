@@ -35,7 +35,7 @@ const exitCode = await runExtester({
     //
     // Team ownership lives in a top-level `organization { team { owns … } }`
     // block: the inline `team "…"` property on service/domain was removed in
-    // ADR-20260614-01 (it now emits a `team-property-removed` error). The
+    // ADR-1564 (it now emits a `team-property-removed` error). The
     // detail panel's Org navigation button is keyed on the *resolved owner
     // team id* (`ownerIndex`), so the AT-0042 assertions look for
     // `data-nav-node="order-team"` rather than the old team label.

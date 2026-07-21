@@ -6,7 +6,7 @@
   - `packages/core/src/formatter/formatter.ts`
   - `packages/core/src/formatter/formatter-top-level-coverage.test.ts`（新規）
   - `packages/cli/src/fmt.test.ts`
-- **関連**: ADR-20260720-01（formatter の top-level 網羅を型と test で強制する）、ADR-20260410-02（`.krs` フォーマッター）、ADR-20260422-05（トップレベル infra ブロック）、TPL-20260510-02（round-trip 保証）
+- **関連**: ADR-2076（formatter の top-level 網羅を型と test で強制する）、ADR-438（`.krs` フォーマッター）、ADR-702（トップレベル infra ブロック）、TPL-20260510-02（round-trip 保証）
 
 ## 受け入れ条件
 
@@ -31,11 +31,11 @@
 - [x] top-level 構文が混在するファイルで宣言順が保存される
   > ✅ Automated — `preserves declaration order when top-level kinds are interleaved`
 
-- [ ] reverse-architecture harness（ADR-20260714-02）が生成した `boundary` 入り `.krs` に対して、SKILL.md 所定の `karasu fmt` ステップを実行しても boundary クラスタが残る
+- [ ] reverse-architecture harness（ADR-1895）が生成した `boundary` 入り `.krs` に対して、SKILL.md 所定の `karasu fmt` ステップを実行しても boundary クラスタが残る
   > 🧑 Manual — harness の出力（spike #1991 の生成物など）に `karasu fmt --write` を実行し、`grep -c '^boundary '` が実行前後で変わらないことを確認する。自動テストは合成 fixture で塞いでいるため、実運用の生成物での確認のみ手動。
 
 ## 範囲外（follow-up）
 
 - **`boundary` の label 位置**: parser は header 位置（`boundary g "G" {`）とプロパティ位置（`label "G"`）の両方を受理するが、formatter は後者に正規化する。AST は同一なので round-trip は保たれるが、header 位置で書いた author の diff は 1 行動く。header 位置を保持するには AST に記法の別を持たせる必要があり、本 Issue の範囲外。
-- **`boundary` / `legend` ブロック内のコメント保持**: entry 間（`contains` 行の間、legend の `swatch` / `ref` 行の間）に置かれた leading comment は、**ファイル末尾に寄る**。`renderBoundaryBlock` / `renderLegendBlock` が entry 単位で `extractLeading` を呼ばないため、未回収のコメントが `remainingComments()` で最後にまとめて出力されるため。既存の `organization` / `team` の `owns` 行間でも同じ挙動になる先行の制限（ADR-20260410-02「プロパティ位置は AST に保持されない」）であり、本 PR で新たに生じたものではない。round-trip（構造等価）と idempotency は保たれる。
+- **`boundary` / `legend` ブロック内のコメント保持**: entry 間（`contains` 行の間、legend の `swatch` / `ref` 行の間）に置かれた leading comment は、**ファイル末尾に寄る**。`renderBoundaryBlock` / `renderLegendBlock` が entry 単位で `extractLeading` を呼ばないため、未回収のコメントが `remainingComments()` で最後にまとめて出力されるため。既存の `organization` / `team` の `owns` 行間でも同じ挙動になる先行の制限（ADR-438「プロパティ位置は AST に保持されない」）であり、本 PR で新たに生じたものではない。round-trip（構造等価）と idempotency は保たれる。
 - **string value のエスケープ**: `label` / `description` / legend title 等の値に埋め込まれた `"` / `\` は emit 時にエスケープされず、round-trip が壊れる。既存の全 renderer に共通する先行バグで、本 PR の新 renderer も同じ pattern を踏襲している。[#2087](https://github.com/kompiro/karasu/issues/2087) で一括対応する。

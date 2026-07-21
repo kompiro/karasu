@@ -1,17 +1,17 @@
 # GUI 編集時に同一 ID rule を in-place 更新する
 
 - **日付**: 2026-05-07
-- **ステータス**: 決定済み（[ADR-20260508-01](../adr/20260508-01-gui-style-inplace-update.md) として昇格）
+- **ステータス**: 決定済み（[ADR-1142](../adr/1142-gui-style-inplace-update.md) として昇格）
 - **関連**:
   - 親 Issue: [#1142](https://github.com/kompiro/karasu/issues/1142) — GUI style editing: update existing ID rule in place
-  - 親 ADR（再検討対象）: [ADR-20260506-01](../adr/20260506-01-gui-driven-style-editing.md) — append-only round-trip
-  - 前提 ADR: [ADR-20260506-02](../adr/20260506-02-edge-id-selector.md) — `edge#<canonicalId>` selector が安定 ID として確立
-  - 関連 ADR: [ADR-20260506-03](../adr/20260506-03-edge-direction-style.md)、[ADR-20260506-06](../adr/20260506-06-krs-style-open-affordance.md)
+  - 親 ADR（再検討対象）: [ADR-1076](../adr/1076-gui-driven-style-editing.md) — append-only round-trip
+  - 前提 ADR: [ADR-1096](../adr/1096-edge-id-selector.md) — `edge#<canonicalId>` selector が安定 ID として確立
+  - 関連 ADR: [ADR-9019](../adr/9019-edge-direction-style.md)、[ADR-1144](../adr/1144-krs-style-open-affordance.md)
   - コード: `packages/app/src/lib/append-style-rule.ts`、`packages/core/src/parser/style-parser.ts`、`packages/core/src/types/style.ts`
 
 ## 背景・課題
 
-ADR-20260506-01 は GUI 編集を **append-only** と決めた。理由は当時:
+ADR-1076 は GUI 編集を **append-only** と決めた。理由は当時:
 
 - Edge を一意に指す ID が無く、同一要素を 2 度編集したときに「同じ rule
   だ」と判定する手段が無かった（`edge[write]` のような tag selector は
@@ -19,7 +19,7 @@ ADR-20260506-01 は GUI 編集を **append-only** と決めた。理由は当時
 - 整形・コメントを保つ AST writer の作り込みが重く、editor との衝突や
   意図しない diff を恐れた
 
-その後、ADR-20260506-02 で `edge#<canonicalId>` セレクタが定義・実装
+その後、ADR-1096 で `edge#<canonicalId>` セレクタが定義・実装
 され、各 edge を一意に指せるようになった（spec: `docs/spec/style.md`、
 parser: `packages/core/src/parser/style-parser.ts`、resolver:
 `packages/core/src/resolver/canonical-id.ts`）。前提条件のうち「ID が無い」
@@ -48,7 +48,7 @@ edge#A->B { direction: right; }
 ## 制約・前提
 
 - **GUI が書き込む rule は、現状 ID 形式のみ**（`edge#<canonicalId>` /
-  将来的に `#<nodeId>`）。Type/Tag selector は GUI から書かない（ADR-20260506-01）
+  将来的に `#<nodeId>`）。Type/Tag selector は GUI から書かない（ADR-1076）
 - **GUI が触るプロパティは限定的**: 現在は `direction` のみ。今後増えても
   `color` / `stroke-width` / `shape` 等の単純 key:value で、複雑な値
   （function 表記・複数値）は当面入らない
@@ -66,7 +66,7 @@ edge#A->B { direction: right; }
 
 ### 案1: append のまま据え置き、`Tidy Style` コマンドを先に作る
 
-ADR-20260506-01 の方針を維持。散らかったらユーザーが `Tidy` を打つ。
+ADR-1076 の方針を維持。散らかったらユーザーが `Tidy` を打つ。
 
 - 利点:
   - 既存実装そのまま。書き込み側は最も単純
@@ -240,8 +240,8 @@ GUI が生成する rule 末尾に `/* karasu:gui id=A->B */` のような署名
 - **node ID rule も同時に general 化**: `upsert` ロジックを selector 種別
   非依存にして、node `#<id>` rule にも効かせる。GUI の node メニューが
   追加された時に追加実装が要らないようにする
-- **ADR は supersedes**: 新 ADR が accepted、旧 ADR-20260506-01 は
+- **ADR は supersedes**: 新 ADR が accepted、旧 ADR-1076 は
   `status: superseded` + `superseded_by: ADR-NEW`、新 ADR に
-  `supersedes: [ADR-20260506-01]`。「action は append ではなく
+  `supersedes: [ADR-1076]`。「action は append ではなく
   conditional in-place」という本質的な方針転換なので、effective から
   旧 ADR を外す

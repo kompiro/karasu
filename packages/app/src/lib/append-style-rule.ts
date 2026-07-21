@@ -91,7 +91,7 @@ export function injectStyleImport(krsContent: string, styleFileName: string): st
  * cannot confidently round-trip fall through to append. The cascade puts
  * the new rule last, so behavior is preserved either way — the upgrade is
  * that GUI-emitted single-line rules collapse into one entry instead of
- * stacking on every edit (see ADR-20260508-01, supersedes ADR-20260506-01).
+ * stacking on every edit (see ADR-1142, supersedes ADR-1076).
  */
 export function upsertStyleProperty(
   content: string,

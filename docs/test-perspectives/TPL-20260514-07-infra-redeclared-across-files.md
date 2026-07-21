@@ -11,7 +11,7 @@ known_consumers:
 discovered_from:
   - root_cause_file: "docs/spec/syntax.md#multi-file-import-semantics"
   - issue: "#1385"
-  - root_cause_adr: "ADR-20260514-01"
+  - root_cause_adr: "ADR-1381"
 related_to:
   - TPL-20260514-02
   - TPL-20260514-03
@@ -64,5 +64,5 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 ## 派生元 spec
 
 - `docs/spec/syntax.md` §「Multi-file import semantics」 S4.5
-- ADR-20260514-01（spec の根拠）
+- ADR-1381（spec の根拠）
 - 設計 doc: `docs/design/karasu-position-on-style-prescriptions.md` (info severity 採用の経緯)

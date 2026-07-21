@@ -11,8 +11,8 @@ Dependabot 設定・依存更新 ADR を編集するとき、または Dependabo
 レビュー・トリアージするときに従う運用ルール。
 
 正本は `docs/process.md`「Dependabot 運用ルール」セクションと
-`ADR-20260329-01`（採用判断）、`ADR-20260422-01`（cooldown 7 日）、
-`ADR-20260429-08`（security update 重複 PR の処理）。本ファイルは要点の
+`ADR-128`（採用判断）、`ADR-784`（cooldown 7 日）、
+`ADR-1038`（security update 重複 PR の処理）。本ファイルは要点の
 ショートカットで、矛盾があれば process.md と ADR が優先する。
 
 ## スケジュールと cooldown
@@ -50,13 +50,13 @@ Dependabot security update は GHSA 検知時に即時起票され、
 `updates:` を参照しないため設定で止められず、`directory: "/packages/..."`
 を追加すると version update も同様に壊れる。
 
-詳細経緯は `ADR-20260429-08` 参照。再発時は ADR を増やさず本ルールで処理。
+詳細経緯は `ADR-1038` 参照。再発時は ADR を増やさず本ルールで処理。
 
 ## 依存更新バッチの ADR 化
 
 月曜バッチで複数 PR が出て、特殊な判断（major / cooldown 違反観測 / bot
 PR を close → 人間 PR で再提出 など）を行った場合は、その回の判断を
-`ADR-YYYYMMDD-NN-update-dependencies-YYYYMMDD.md` として残す。
+`<n>-update-dependencies-YYYYMMDD.md` として残す（`<n>` は triage Issue 番号、無ければその ADR を書いた PR 番号 — 定期 triage 記録は Issue を持たないことが多い）。
 
 通常通りマージするだけのバッチは ADR 不要。判断ログが必要なケースだけ
-書く（直近例: `ADR-20260428-02`）。
+書く（直近例: `ADR-909`）。

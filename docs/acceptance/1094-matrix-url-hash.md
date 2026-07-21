@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/app/src/hooks/useHistoryNavigation.ts`
   - `packages/app/src/hooks/useHistoryNavigation.test.ts`
-- **関連 ADR**: [ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)（CRUD マトリクスビュー — 本修正の対象タブ）
+- **関連 ADR**: [ADR-1062](../adr/1062-crud-matrix-view.md)（CRUD マトリクスビュー — 本修正の対象タブ）
 
 ## 受け入れ条件
 

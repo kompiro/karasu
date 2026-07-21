@@ -36,7 +36,7 @@ const INVALID_SOURCE = "!!! invalid krs !!!";
 // parse error). Both services parse successfully, but the duplicate service ID
 // under one system is flagged as an error in buildNodePathIndex.
 // (A duplicate *domain* ID across services is no longer an error — it is an
-// informational `domain-dispersal` diagnostic per ADR-20260514-02 — so this
+// informational `domain-dispersal` diagnostic per ADR-1386 — so this
 // fixture uses a duplicate service ID, which still errors.)
 const SOURCE_DUPLICATE_NODE_ID = `system SysA {
   service SvcB {

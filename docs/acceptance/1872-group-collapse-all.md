@@ -4,17 +4,17 @@
 - **Issue**: #1872（親 #1858 / Epic #1817 comprehension）
 - **PR**: (this PR)
 - **設計**: [docs/design/group-by-bulk-collapse.md](../design/group-by-bulk-collapse.md)
-- **関連 ADR**: [ADR-20260711-03](../adr/20260711-03-system-view-group-by-team.md)（決定 4「bulk 操作は #1872 で追加」）, [ADR-20260712-01](../adr/20260712-01-category-collapse-retarget-edges.md)（category collapse を edge re-target 化）
+- **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（決定 4「bulk 操作は #1872 で追加」）, [ADR-1872](../adr/1872-category-collapse-retarget-edges.md)（category collapse を edge re-target 化）
 - **Related TPLs**: [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（列挙メンバー追加時の網羅性を型で強制 — bulk collapse を軸非依存にして追加漏れを防ぐ）, [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（toolbar action の docs 同期）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持 — category re-target の柵）
 - **対象**: core `packages/core/src/renderer/category-collapse.ts`（`collapseCategories`）/ `layout.ts` / `group-collapse.ts`；app `packages/app/src/hooks/useSystemView.ts` / `useAppViews.ts` / `usePreviewContextValue.ts`、`packages/app/src/state/preview-context.tsx` / `active-view-data.ts`、`packages/app/src/components/PreviewColumn.tsx` / `AppShell.tsx`、`packages/i18n`
 
 ## 概要
 
-Group by: Team の system view に **Collapse all / Expand all** の一括操作を追加する。per-group ⊖/⊕（#1858 slice B）はあるが一括手段が無かった。ADR-20260711-03 の P1 検証が示すとおり「既定で畳んでおき必要な所だけ開く」（全折り畳み = group 依存 DAG ビュー）が最も読みやすく、そこへ 1 クリックで入る手段を用意する。
+Group by: Team の system view に **Collapse all / Expand all** の一括操作を追加する。per-group ⊖/⊕（#1858 slice B）はあるが一括手段が無かった。ADR-1858 の P1 検証が示すとおり「既定で畳んでおき必要な所だけ開く」（全折り畳み = group 依存 DAG ビュー）が最も読みやすく、そこへ 1 クリックで入る手段を用意する。
 
-ラベルが「all」なので、**ビュー内で畳めるものすべて** を対象にする — team 境界フレーム（#1858, `data-collapse-group`）**と** external / infra カテゴリ帯（#1821, `data-collapse-category`）の両軸。per-axis の状態（`collapsedGroups` / `collapsedCategories`）と個別コントロールは従来どおり直交（ADR-20260711-03 §3）で、束ねるのは bulk トグルだけ。ボタンの表示は `groupBy` ではなく **「畳めるものがあるか」（`anyCollapsible`）** で判定するため、グループ化していない（Group by: None・org 無し）ビューでも external / infra 帯があれば出る。team 側は SVG 由来の id で駆動するため軸非依存で、将来 Group-by 軸が増えても（P2b `group`）無改修（設計 doc 参照）。
+ラベルが「all」なので、**ビュー内で畳めるものすべて** を対象にする — team 境界フレーム（#1858, `data-collapse-group`）**と** external / infra カテゴリ帯（#1821, `data-collapse-category`）の両軸。per-axis の状態（`collapsedGroups` / `collapsedCategories`）と個別コントロールは従来どおり直交（ADR-1858 §3）で、束ねるのは bulk トグルだけ。ボタンの表示は `groupBy` ではなく **「畳めるものがあるか」（`anyCollapsible`）** で判定するため、グループ化していない（Group by: None・org 無し）ビューでも external / infra 帯があれば出る。team 側は SVG 由来の id で駆動するため軸非依存で、将来 Group-by 軸が増えても（P2b `group`）無改修（設計 doc 参照）。
 
-あわせて、両軸を畳んだときに **team→external/infra の依存線が消えない**よう、core の category collapse を group collapse と同じ **edge re-target** に揃えた（[ADR-20260712-01](../adr/20260712-01-category-collapse-retarget-edges.md)）。`.krs` は不変。core を変更するため **changeset あり**（`@karasu-tools/core` / `karasu` minor）。
+あわせて、両軸を畳んだときに **team→external/infra の依存線が消えない**よう、core の category collapse を group collapse と同じ **edge re-target** に揃えた（[ADR-1872](../adr/1872-category-collapse-retarget-edges.md)）。`.krs` は不変。core を変更するため **changeset あり**（`@karasu-tools/core` / `karasu` minor）。
 
 ## 受け入れ条件
 
@@ -35,7 +35,7 @@ Group by: Team の system view に **Collapse all / Expand all** の一括操作
 - [x] **ungrouped（Group by: None・org 無し）でも** external / infra だけで `anyCollapsible` が true になり、collapse-all がカテゴリを畳む（groups は関与しない）
 - [x] 全折り畳み状態でもう一度呼ぶと **両軸とも**展開に戻る（サービスカード・カテゴリメンバーが復帰、stub が消える、`collapsedCategories` が空）→ `allCollapsed` が false
 
-### AC-2b: category collapse の edge re-target（core, ADR-20260712-01）
+### AC-2b: category collapse の edge re-target（core, ADR-1872）
 
 > ✅ Automated by `packages/core/src/renderer/category-collapse.test.ts` (suite-wide)
 

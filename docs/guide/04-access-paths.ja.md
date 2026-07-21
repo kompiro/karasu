@@ -71,7 +71,7 @@ client WebApp [web] {
 }
 ```
 
-> **`client` と `user` の境界**: `client` は **プロジェクト自身が配布するソフトウェア** に限ります。サードパーティのブラウザ・IDE・外部 AI エージェントがシステムを利用する場合は、`client` ではなく `user`（`[human]` / `[ai]`）でモデル化します。「自分たちが出荷したか」が判断基準です（[ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)）。
+> **`client` と `user` の境界**: `client` は **プロジェクト自身が配布するソフトウェア** に限ります。サードパーティのブラウザ・IDE・外部 AI エージェントがシステムを利用する場合は、`client` ではなく `user`（`[human]` / `[ai]`）でモデル化します。「自分たちが出荷したか」が判断基準です（[ADR-823](../adr/823-client-mcp-modeling.md)）。
 
 ---
 
@@ -182,7 +182,7 @@ client MobileApp [mobile] {
 
 `resource` は client が読み書きするストレージ、`capability` は OS / browser が許可を与える機能、という別概念です。SVG カードはそれぞれ `📦 ×N` / `🔐 ×N` のカウントバッジで表示し、完全リストは詳細パネルに出ます。
 
-> cookie / session / 生クレデンシャルのストレージ、および脅威モデリングそのものは意図的に対象外です（karasu は基礎事実をモデル化するが、セキュリティ規律の shape は語彙に固定しない — [ADR-20260430-01](../adr/20260430-01-security-modeling-stance.md)）。
+> cookie / session / 生クレデンシャルのストレージ、および脅威モデリングそのものは意図的に対象外です（karasu は基礎事実をモデル化するが、セキュリティ規律の shape は語彙に固定しない — [ADR-834](../adr/834-security-modeling-stance.md)）。
 
 ---
 
@@ -198,5 +198,5 @@ client MobileApp [mobile] {
 
 - 関連ガイド: [境界設計](01-service-team-design.ja.md) / [オンボーディング](02-onboarding.ja.md) / [進化](03-evolution.ja.md) / [伝達](05-communicating-diagrams.ja.md)
 - 正確な構文（user / client / handles / delivers）: [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)
-- client を独立 kind にした理由: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)
+- client を独立 kind にした理由: [ADR-823](../adr/823-client-mcp-modeling.md)
 - クライアント例: [`examples/ja/ec-platform/02.5-clients.krs`](../../examples/ja/ec-platform/02.5-clients.krs)、[`examples/en/client-mcp/`](../../examples/en/client-mcp/)

@@ -1,5 +1,5 @@
 // Authorization notes on a usecase — the description + link convention
-// (ADR-20260511-02, Issue #1282).
+// (ADR-832, Issue #1282).
 //
 // karasu deliberately does NOT model runtime authorization (who may call
 // which usecase) in its vocabulary. There is no `requires`, no `policy`,

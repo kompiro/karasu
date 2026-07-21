@@ -98,11 +98,11 @@ Phase 6 (#250) で実装方針が変わった後の現行挙動が以下 2 つ�
 
 - AT-0039 残り TC（description / link / Jump-to-editor / [ⓘ] ボタン） — Phase 3 内の別 PR
 - AT-0042-vscode（cross-diagram navigation） — Phase 3 内の別 PR
-- ADR-20260428-05 の supersede — Phase 3 完了時に実施
+- ADR-926 の supersede — Phase 3 完了時に実施
 
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
 - 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 関連 AT: `docs/acceptance/0072-vscode-webview-e2e-phase3-at-0038.md` (hint), `docs/acceptance/0073-vscode-webview-e2e-phase3-at-0038-jump.md` (editor jump)
-- 既存 ADR: ADR-20260428-03（拡張ホスト smoke）, ADR-20260428-05（マニュアル運用 — Phase 3 完了時に supersede 予定）
+- 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）

@@ -63,7 +63,7 @@ organization Corp {
     expect(ownsWarnings).toHaveLength(2);
   });
 
-  it("does not warn when owns references a client ID (ADR-20260623-02)", () => {
+  it("does not warn when owns references a client ID (ADR-1720)", () => {
     const krs = `
 system MySystem {
   client Web [web] {}
@@ -203,7 +203,7 @@ system ECPlatform {
     expect(w?.loc?.start.line).toBe(6);
   });
 
-  it("does not block rendering — dispersed domain produces no error diagnostic (ADR-20260514-02)", () => {
+  it("does not block rendering — dispersed domain produces no error diagnostic (ADR-1386)", () => {
     // Regression: a domain id shared across services used to also raise the
     // `domain-id-not-unique` parser error, which made the App refuse to draw
     // the diagram. The dispersal is informational only; the diagram must
@@ -311,7 +311,7 @@ system Shop {
     ).toHaveLength(0);
   });
 
-  it("is registered as info and does not block rendering (ADR-20260514-02)", () => {
+  it("is registered as info and does not block rendering (ADR-1386)", () => {
     const krs = `
 system Shop {
   service A { domain Da { usecase Ua { resource DB.t { operations read } } } }
@@ -1473,7 +1473,7 @@ deploy Production {
     expect(unresolved(krs)).toHaveLength(0);
   });
 
-  it("resolves a deploy unit realizing a system-nested client (ADR-20260623-02)", () => {
+  it("resolves a deploy unit realizing a system-nested client (ADR-1720)", () => {
     const krs = `
 system S {
   client Web [web] {}
@@ -2269,7 +2269,7 @@ describe("warningSeverity — exhaustive register map", () => {
   // The `Record<WarningKind, WarningSeverity>` literal forces this table to
   // stay exhaustive: adding a new `WarningKind` to the union without an entry
   // here is a compile error. That is the fence — it makes the author decide,
-  // per ADR-20260514-02 / TPL-20260514-08, whether the new kind is a model
+  // per ADR-1386 / TPL-20260514-08, whether the new kind is a model
   // fact (`warning`) or a style-school smell (`info`), instead of silently
   // inheriting the `warning` default.
   const EXPECTED_SEVERITY: Record<WarningKind, WarningSeverity> = {

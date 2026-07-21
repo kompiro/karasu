@@ -1,3 +1,4 @@
+import { quoteString, emitDescription } from "../formatter/quote-string.js";
 import { parse as parseYaml } from "yaml";
 import type { Translator, TranslatorContext } from "./translator.js";
 import { toPascalCase } from "./identifier.js";
@@ -102,7 +103,7 @@ function emitOperationUsecase(op: CollectedOperation): string {
     ? toPascalCase(op.operation.operationId)
     : deriveUsecaseId(op.method, op.path);
   const label = `${op.method.toUpperCase()} ${op.path}`;
-  return `  usecase ${usecaseId} { label "${label}" }`;
+  return `  usecase ${usecaseId} { label ${quoteString(label)} }`;
 }
 
 interface ResourceGroup {
@@ -189,15 +190,19 @@ function emitResourceUsecases(
     const id = `Manage${toPascalCase(displayName)}`;
     const labelText = `manage ${formatResourceLabel(displayName)}`;
     lines.push(`  usecase ${id} {`);
-    lines.push(`    label "${labelText}"`);
-    lines.push(`    description """`);
-    lines.push(`      Operations:`);
-    for (const op of ops) {
-      const summary = op.operation.summary?.trim();
-      const head = `${op.method.toUpperCase()} ${op.path}`;
-      lines.push(`      - ${summary ? `${head} — ${summary}` : head}`);
-    }
-    lines.push(`      """`);
+    lines.push(`    label ${quoteString(labelText)}`);
+    // `summary` is free-form prose from the spec, so it can contain `"""` or a
+    // newline — either of which would break a raw `"""` block. Build the body
+    // and let emitDescription pick a representable form (#2087).
+    const descriptionBody = [
+      "Operations:",
+      ...ops.map((op) => {
+        const summary = op.operation.summary?.trim();
+        const head = `${op.method.toUpperCase()} ${op.path}`;
+        return `- ${summary ? `${head} — ${summary}` : head}`;
+      }),
+    ].join("\n");
+    lines.push(...emitDescription(descriptionBody, "    ").split("\n"));
     if (options.emitBindings) {
       const resourceId = `${toPascalCase(displayName)}Resource`;
       const opsLine = buildOperationsLine(ops, options.emitCrudDecoration);

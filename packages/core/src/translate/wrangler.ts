@@ -1,3 +1,4 @@
+import { quoteString } from "../formatter/quote-string.js";
 import { parse as parseToml } from "smol-toml";
 import type { Translator, TranslatorContext } from "./translator.js";
 
@@ -230,7 +231,7 @@ export class WranglerTranslator implements Translator {
   }): string {
     const body: string[] = [];
     body.push(`service ${m.workerId} {`);
-    body.push(`  label "${m.workerName}"`);
+    body.push(`  label ${quoteString(m.workerName)}`);
     body.push(`}`);
 
     for (const node of m.infra) {
@@ -257,14 +258,14 @@ export class WranglerTranslator implements Translator {
     const lines: string[] = [`system ${m.systemName} {`, indented, `}`, ``];
 
     // Physical layer — concrete Cloudflare tech lives here, not in labels.
-    lines.push(`deploy "${m.workerName}" {`);
-    lines.push(`  function "${m.workerName}" {`);
+    lines.push(`deploy ${quoteString(m.workerName)} {`);
+    lines.push(`  function ${quoteString(m.workerName)} {`);
     lines.push(`    runtime "cloudflare-workers"`);
     lines.push(`    realizes ${m.workerId}`);
     lines.push(`  }`);
     for (const node of m.infra) {
       lines.push(`  store ${node.id}Store {`);
-      lines.push(`    type "${node.storeType}"`);
+      lines.push(`    type ${quoteString(node.storeType)}`);
       lines.push(`    realizes ${node.id}`);
       lines.push(`  }`);
     }

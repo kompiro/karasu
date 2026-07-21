@@ -175,7 +175,7 @@ karasu 側のセッション内で `/workspaces/adr-tools` / `/workspaces/tpl-to
 
 - 生成ファイルは git にコミットしない（`.gitignore` 対象）
 - 手動確認項目は生成されたファイルをもとに順番に実施する
-- `/hane:qa` は手動 QA のチェックリストを生成する。機械化可能な AT は Playwright による E2E 層（`packages/e2e/`）が補完する。自動化は手動 QA を置き換えず補完する（詳細は ADR-20260412-05）
+- `/hane:qa` は手動 QA のチェックリストを生成する。機械化可能な AT は Playwright による E2E 層（`packages/e2e/`）が補完する。自動化は手動 QA を置き換えず補完する（詳細は ADR-529）
 
 ### 設計判断を ADR に残すタイミング
 
@@ -213,8 +213,8 @@ Frontmatter スキーマ・関係性セマンティクス・バリデータの�
 
 - 旧 ADR はそのまま歴史的記録として残す
 - 新 ADR を作成し、背景に「何が変わったためこの再評価に至ったか」を明記する
-- 旧 ADR のステータス行を `決定済み` から `Superseded by ADR-YYYYMMDD-NN` に更新する
-- Frontmatter では旧 ADR を `status: superseded` + `superseded_by: ADR-YYYYMMDD-NN`、新 ADR を `supersedes: [旧 ADR ID]` とする。`pnpm adr:validate` が双方向整合をチェックする
+- 旧 ADR のステータス行を `決定済み` から `Superseded by ADR-<n>` に更新する
+- Frontmatter では旧 ADR を `status: superseded` + `superseded_by: ADR-<n>`、新 ADR を `supersedes: [旧 ADR ID]` とする。`pnpm adr:validate` が双方向整合をチェックする
 - 新 ADR の「関連」に旧 ADR へのリンクを記載する
 
 理由: ADR は時点の意思決定と根拠を保存するログであり、過去の判断が「当時は正しかった」
@@ -225,7 +225,7 @@ Frontmatter スキーマ・関係性セマンティクス・バリデータの�
 ### 通常の version update
 
 - スケジュールは weekly / Monday、cooldown は全 semver レベル 7 日（`.github/dependabot.yml`）。
-- 月曜のバッチ起票後にレビュー → マージする。バッチ単位で取り込み判断を ADR に残すことがある（例: `ADR-20260428-02`）。
+- 月曜のバッチ起票後にレビュー → マージする。バッチ単位で取り込み判断を ADR に残すことがある（例: `ADR-909`）。
 
 ### Security update（GHSA 起因の即時 PR）
 
@@ -238,19 +238,19 @@ Dependabot security update は alert 検知時に即時起票され、`schedule`
 
 理由: pnpm workspace では依存宣言（`packages/*/package.json`）と解決済みバージョン（root の `pnpm-lock.yaml`）が別 manifest として alert 化されるため、Dependabot は alert ごとに PR を作る。`packages/*` 単独 PR は workspace ルートの lockfile を更新できず、`pnpm install --frozen-lockfile` で必ず CI が落ちる構造的制約があり、`@dependabot recreate` でも直らない。`dependabot.yml` でも抑制不可（security update は `updates:` を参照しない）。
 
-詳細・経緯は `ADR-20260429-08`（`docs/adr/20260429-08-dependabot-security-2026-04-29.md`）を参照。同様の事象が再発した場合は ADR を増やさず、本ルールに従って処理する。
+詳細・経緯は `ADR-1038`（`docs/adr/1038-dependabot-security-2026-04-29.md`）を参照。同様の事象が再発した場合は ADR を増やさず、本ルールに従って処理する。
 
 ## リリース運用
 
-npm への公開は **changesets** で管理し、認証は **npm Trusted Publishing（GitHub OIDC）** で行う（token レス）。設計の経緯は [ADR-20260512-05](adr/20260512-05-release-automation-changesets.md)（changesets 採用）と [ADR-20260619-02](adr/20260619-02-npm-trusted-publishing-oidc.md)（OIDC 移行）を参照。
+npm への公開は **changesets** で管理し、認証は **npm Trusted Publishing（GitHub OIDC）** で行う（token レス）。設計の経緯は [ADR-1315](adr/1315-release-automation-changesets.md)（changesets 採用）と [ADR-9020](adr/9020-npm-trusted-publishing-oidc.md)（OIDC 移行）を参照。
 
 ### 対象パッケージ
 
 npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` は `.changeset/config.json` の `ignore` に入っており版管理・公開とも対象外。
 
-`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で別管理（手動 — Issue #1316、後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。経緯は [ADR-20260624-03](adr/20260624-03-vscode-changeset-versioning.md)（ADR-20260512-05 を refine）を参照。
+`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で別管理（手動 — Issue #1316、後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。経緯は [ADR-1758](adr/1758-vscode-changeset-versioning.md)（ADR-1315 を refine）を参照。
 
-> **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist`（types + ESM）を指し、`development` 条件で repo 内は TS ソースを解決する（root tsconfig `customConditions: ["development"]`）ため `pnpm typecheck` は build 非依存のまま。`@karasu-tools` npm org は確保済み。
+> **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-1314](adr/1314-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist`（types + ESM）を指し、`development` 条件で repo 内は TS ソースを解決する（root tsconfig `customConditions: ["development"]`）ため `pnpm typecheck` は build 非依存のまま。`@karasu-tools` npm org は確保済み。
 
 > **`karasu`（CLI）の version floor は 0.6.0**。npm の `karasu` 名には 2020–2021 の旧 incarnation の履歴があり `〜0.5.2` まで既出。現アーキテクチャツールは 0.0.1 / 0.1.0 で再スタートしたが、changeset 計算の版が旧版と衝突して `E400 Cannot publish over previously published version` になるため、`karasu` は 0.5.2 を越えて **0.6.0 へ手動 leap** 済み（#1774）。以降は 0.6.0 から changeset 駆動で進める。`@karasu-tools/core` は npm 上の履歴がクリーンなため独立して 0.x のまま（independent versioning）。
 
@@ -259,25 +259,25 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 公開・配布対象パッケージ（`karasu` / `@karasu-tools/core` / `karasu-vscode`）に利用者から見える変更を入れる PR では、`pnpm changeset` を実行して `.changeset/<name>.md` を追加し、PR に含める。
 
 - bump レベルは semver に従う（破壊的変更 = major、機能追加 = minor、修正 = patch）。各パッケージとも 0.x なので、当面は破壊的変更も minor で扱ってよい。
-- **どのパッケージを名指すか**（依存の cascade 非対称性に注意 — 詳細は [ADR-20260624-03](adr/20260624-03-vscode-changeset-versioning.md)）:
+- **どのパッケージを名指すか**（依存の cascade 非対称性に注意 — 詳細は [ADR-1758](adr/1758-vscode-changeset-versioning.md)）:
   - `packages/core` の利用者向け変更 → **`@karasu-tools/core` と `karasu` の両方**を名指す。`@karasu-tools/core` の bump は `karasu-vscode`（core を実 dependency に持つ）へ patch を自動 cascade するが、`karasu`（core を devDependency でバンドル）へは cascade しないため CLI は別途名指しが要る。
   - `packages/cli` 固有の変更 → `karasu`
   - `packages/vscode` 固有の変更 → `karasu-vscode`
 - 内部リファクタ・テスト・ドキュメントのみ・公開対象外パッケージのみの変更では changeset 不要。
 - `CHANGELOG.md` の文面は利用者向けに書く（コミット subject の流用ではなく）。
-- **experimental notation に触れる変更は promotion gate を通す**: `docs/roadmap.md` の [§promotion gate](roadmap.md#promotion-gatenotation-評価の規律) に載る watch item（experimental notation）を stable 層へ昇格させる／挙動を変える changeset では、[ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md) の gate を通す。昇格なら **載せる版（後方互換な追加 = v1.x minor / 既存構文の変更・再設計 = v2.0 major）を決めて bump レベルに反映**し、判断根拠（実利用証拠 = karasu-nest の共有 corpus）を PR に書く。据え置きが既定なので、証拠が無ければ experimental のままにする。
+- **experimental notation に触れる変更は promotion gate を通す**: `docs/roadmap.md` の [§promotion gate](roadmap.md#promotion-gatenotation-評価の規律) に載る watch item（experimental notation）を stable 層へ昇格させる／挙動を変える changeset では、[ADR-1820](adr/1820-notation-promotion-gate.md) の gate を通す。昇格なら **載せる版（後方互換な追加 = v1.x minor / 既存構文の変更・再設計 = v2.0 major）を決めて bump レベルに反映**し、判断根拠（実利用証拠 = karasu-nest の共有 corpus）を PR に書く。据え置きが既定なので、証拠が無ければ experimental のままにする。
 
 `pnpm changeset status` で「未リリースの変更があるか」を確認できる。
 
 ### リリースの流れ
 
-リリースは **GitHub Actions 起動**で行う。ローカルで `changeset version` は実行しない。Actions に PR 作成権限を与えなくて済むよう、bot による "Version Packages" PR は使わない（経緯は Issue #1370）。配線の決定は [ADR-20260623-01](adr/20260623-01-release-flow-actions-driven.md) を参照。
+リリースは **GitHub Actions 起動**で行う。ローカルで `changeset version` は実行しない。Actions に PR 作成権限を与えなくて済むよう、bot による "Version Packages" PR は使わない（経緯は Issue #1370）。配線の決定は [ADR-1370](adr/1370-release-flow-actions-driven.md) を参照。
 
 リリース手順は以下のとおり:
 
 1. **"Release — Prepare"**（`release-prepare.yml`）を Actions タブから `workflow_dispatch` で起動する。`changeset version`（版 bump + `CHANGELOG.md` 生成 + lockfile 更新）を実行し、`chore/release-<version>` ブランチを push する。pending changeset が無ければ何もせず終了する。
 2. その push されたブランチから **PR を開く**（Actions は PR を作れないので「Compare & pull request」を 1 クリック。人が開くことで必須チェックも走る）。
-3. **マージ前に版番号と `CHANGELOG.md` を必ず読む**（main ruleset の必須承認数は 0 = self-merge 可。目視確認はこの運用ルールで担保する）。このとき、**experimental notation の stable 昇格や破壊的変更が CHANGELOG に含まれるなら、promotion gate（[ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md)）が通っているか・版 target（v1.x minor / v2.0 major）が bump レベルと整合するかを確認**する。問題なければ **squash マージ**する。
+3. **マージ前に版番号と `CHANGELOG.md` を必ず読む**（main ruleset の必須承認数は 0 = self-merge 可。目視確認はこの運用ルールで担保する）。このとき、**experimental notation の stable 昇格や破壊的変更が CHANGELOG に含まれるなら、promotion gate（[ADR-1820](adr/1820-notation-promotion-gate.md)）が通っているか・版 target（v1.x minor / v2.0 major）が bump レベルと整合するかを確認**する。問題なければ **squash マージ**する。
 4. マージで `main` の `packages/**/CHANGELOG.md` が変わり、`release.yml`（`paths` filter）が発火 → `changeset publish` が bump 済みパッケージを npm に公開する（`workflow_dispatch` での手動再実行も可）。
 5. 認証は **GitHub OIDC（Trusted Publishing）** — `release.yml` の `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。要件は npm >= 11.5.1 / Node >= 22.14.0 で、workflow が `npm i -g npm@latest` で満たす。
 
@@ -295,7 +295,7 @@ npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`�
 
 > **`packages/vscode/README.md` の画像は絶対 URL で書く**（`https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/...`）。`vsce` は相対画像パスを repository-**root** の raw URL に書き換えるが `repository.directory`（`packages/vscode`）を考慮しないため、monorepo では Marketplace 上で 404 になる（0.1.2 でリンク切れ → 0.1.3 で絶対 URL 化して解決、#1779）。スクリーンショットを追加するときも絶対 URL を使う。
 
-> 拡張は CLI とは独立した cadence で出す（マージのたびに自動公開はしない）。CHANGELOG 変更での自動 publish は重さ・cadence の観点から採らない（[ADR-20260624-03](adr/20260624-03-vscode-changeset-versioning.md) の却下案）。
+> 拡張は CLI とは独立した cadence で出す（マージのたびに自動公開はしない）。CHANGELOG 変更での自動 publish は重さ・cadence の観点から採らない（[ADR-1758](adr/1758-vscode-changeset-versioning.md) の却下案）。
 
 ### 未対応のフォローアップ
 

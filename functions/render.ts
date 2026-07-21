@@ -11,7 +11,7 @@ import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
  * SVG (`format` omitted) is produced by the unit-tested `renderSharePayload`.
  * `format=png` additionally rasterizes that SVG with resvg-wasm — PNG lives
  * only here (the Workers runtime), keeping core/cli/app SVG-only per
- * ADR-20260404-03. Deployed alongside the SPA — see .github/workflows/deploy.yml.
+ * ADR-105. Deployed alongside the SPA — see .github/workflows/deploy.yml.
  *
  * resvg has no system fonts in the Workers runtime, so fonts are shipped as
  * static assets (packages/app/public/fonts) and fetched via env.ASSETS. Without

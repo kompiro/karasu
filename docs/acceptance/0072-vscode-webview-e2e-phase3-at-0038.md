@@ -23,7 +23,7 @@ Phase 3 / AT-0038 のスコープ:
   - TC-02: parent node（`OrderService`）を drill-down した後も `#jump-hint`
     が visible のままであること
 - AT-0038 の Coverage policy を "Manual" → "Partial automation" に更新（TC-01/02
-  のみ自動化、TC-03..TC-05 は引き続き ADR-20260428-05 manual）
+  のみ自動化、TC-03..TC-05 は引き続き ADR-926 manual）
 
 技術ポイント:
 
@@ -62,7 +62,7 @@ Phase 3 / AT-0038 のスコープ:
 ### AC-2: AT-0038 の Coverage policy が更新される
 
 - [ ] `docs/acceptance/0038-vscode-phase4-5-cmd-click-hint.md` の Coverage policy が "Manual" → "Partial automation" に変わっている
-- [ ] TC-03..TC-05（modifier-click 経由の editor jump）は依然 ADR-20260428-05 manual で運用される旨が明記されている
+- [ ] TC-03..TC-05（modifier-click 経由の editor jump）は依然 ADR-926 manual で運用される旨が明記されている
 
 > 上記 2 項目は本 PR 内のドキュメント編集で対応済み。リリース QA で目視レビューする。
 
@@ -87,11 +87,11 @@ Phase 3 / AT-0038 のスコープ:
 - AT-0037-9 / AT-0042-vscode の自動化 — Phase 3 内の別 PR
 - AT-0039 残り TC（description / link / Jump-to-editor / [ⓘ] ボタン） — Phase 3
   内の別 PR
-- ADR-20260428-05 の supersede — Phase 3 完了時に実施
+- ADR-926 の supersede — Phase 3 完了時に実施
 
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
 - 設計: `docs/design/vscode-webview-e2e-harness.md`
 - Phase 2 AT: `docs/acceptance/0071-vscode-webview-e2e-phase2.md`
-- 既存 ADR: ADR-20260428-03（拡張ホスト smoke）, ADR-20260428-05（マニュアル運用 — Phase 3 完了時に supersede 予定）
+- 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）

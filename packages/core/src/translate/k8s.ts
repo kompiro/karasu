@@ -1,3 +1,4 @@
+import { quoteString } from "../formatter/quote-string.js";
 import { parseAllDocuments } from "yaml";
 import { parseMapFile, resolveRealizes, realizesLines } from "./realizes.js";
 import type { Translator, TranslatorContext } from "./translator.js";
@@ -65,7 +66,7 @@ export class K8sTranslator implements Translator {
     const namespace = workloads[0]?.metadata?.namespace ?? "default";
     const mapFile = parseMapFile(context.mapFile);
 
-    const lines: string[] = [`deploy "${namespace}" {`];
+    const lines: string[] = [`deploy ${quoteString(namespace)} {`];
 
     for (const resource of workloads) {
       const name = resource.metadata?.name;
@@ -77,10 +78,10 @@ export class K8sTranslator implements Translator {
       const image = getPrimaryImage(resource);
       const krsKind = getKrsKind(resource.kind!);
 
-      lines.push(`  ${krsKind} "${name}" {`);
-      if (image) lines.push(`    image "${image}"`);
+      lines.push(`  ${krsKind} ${quoteString(name)} {`);
+      if (image) lines.push(`    image ${quoteString(image)}`);
       if (resource.kind === "CronJob" && resource.spec?.schedule) {
-        lines.push(`    schedule "${resource.spec.schedule}"`);
+        lines.push(`    schedule ${quoteString(resource.spec.schedule)}`);
       }
       lines.push(...realizesLines(name, realizesResult, context.onWarning));
       lines.push(`  }`);

@@ -230,7 +230,7 @@ function deriveImplicitServiceEdges(
  * Exported as the single source of truth for the service→infra dependency: the
  * system view consumes it to draw `service → database` edges, and the deploy view
  * (`extractDeployView`) reuses it so both views agree on the dependency set
- * (see ADR-20260616-12, TPL-20260519-02).
+ * (see ADR-1658, TPL-20260519-02).
  */
 export function deriveInfraEdges(
   children: KrsNode[],
@@ -1324,7 +1324,7 @@ function resolveQualifiedEntity(
  *   qualified id (entity ids are only warning-level unique, so a bare id can't
  *   disambiguate). Both outgoing (this domain → foreign) and incoming (foreign →
  *   this domain) directions are collected, mirroring the ghost-domain view
- *   (ADR-20260411-05). Bare cross-domain references, and qualified references to
+ *   (ADR-460). Bare cross-domain references, and qualified references to
  *   a resource / unknown target, are dropped.
  */
 export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice {

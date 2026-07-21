@@ -133,7 +133,7 @@ export function buildShareUrl(
  * in the query and is echoed again into the `/render?s=` image URL, so it must
  * stay well under request-line / crawler limits. ~8000 leaves ample headroom
  * below Cloudflare's ~16KB URL cap while covering every realistic project
- * (a real reverse-engineered `.krs` compresses to ~5k chars — ADR-20260626-01).
+ * (a real reverse-engineered `.krs` compresses to ~5k chars — ADR-1783).
  */
 export const MAX_UNFURL_PAYLOAD = 8000;
 

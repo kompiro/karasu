@@ -129,7 +129,7 @@ program
   )
   .option(
     "--emit-crud-decoration",
-    "Decorate emitted operations with <verb>:<crud> (ADR-20260503-01). Implies --emit-bindings.",
+    "Decorate emitted operations with <verb>:<crud> (ADR-1082). Implies --emit-bindings.",
   )
   .option(
     "--system <name>",

@@ -10,7 +10,7 @@ paths:
 # Changeset Rules
 
 公開パッケージ（`karasu` CLI / `@karasu-tools/core`）のソースを変更する PR では
-**changeset の追加を忘れない**ためのルール。背景は [ADR-20260512-05](../../docs/adr/20260512-05-release-automation-changesets.md)（changesets 採用）と `docs/process.md` 「リリース運用」。
+**changeset の追加を忘れない**ためのルール。背景は [ADR-1315](../../docs/adr/1315-release-automation-changesets.md)（changesets 採用）と `docs/process.md` 「リリース運用」。
 
 > ⚠️ **changeset はマージしても自動生成されない。** 開発者が PR の中で
 > `pnpm changeset` を手で実行して `.changeset/<name>.md` を作り、PR に含める。
@@ -42,7 +42,7 @@ pnpm changeset
 ```
 
 依存の **cascade 非対称性**に注意（実測・詳細は
-[ADR-20260624-03](../../docs/adr/20260624-03-vscode-changeset-versioning.md)）。changesets は `dependencies` の
+[ADR-1758](../../docs/adr/1758-vscode-changeset-versioning.md)）。changesets は `dependencies` の
 dependent は版 bump するが、`devDependencies` は範囲更新のみで bump しない:
 
 | 変更箇所 | 名指すパッケージ | 自動 cascade |

@@ -5,7 +5,7 @@ import { scanBulletCoverage } from "./coverage.ts";
 
 /**
  * QA manual-checklist generator (successor to the retired `hane:qa` skill's
- * step-3 collection). Reproduces the checklist that ADR-20260412-05's third
+ * step-3 collection). Reproduces the checklist that ADR-529's third
  * layer (manual QA) consumes, but marker-aware: it drops items a committed test
  * already fences, drops retired ATs, and triages the genuinely-manual residue
  * into the three-layer QA model. See #2045 and ADR-20260717-*.
@@ -24,7 +24,7 @@ import { scanBulletCoverage } from "./coverage.ts";
  * The survivors are the real manual items, each triaged (best-effort, keyword
  * heuristic) into `spec-target` / `agent-sweep` / `human-only`, defaulting to
  * `needs-review` when no signal is strong enough. The triage mirrors the three
- * QA layers of ADR-20260412-05; it is advisory, not authoritative.
+ * QA layers of ADR-529; it is advisory, not authoritative.
  */
 
 export type Triage = "spec-target" | "agent-sweep" | "human-only" | "needs-review";
@@ -269,7 +269,7 @@ export function renderMarkdown(result: ChecklistResult, date: string): string {
     "> フェンス済みの項目（`✅ Automated` マーカー付き）を除外した、真の手動確認項目のみ。",
   );
   lines.push(
-    "> triage はキーワードヒューリスティックによる advisory な振り分け（ADR-20260412-05 の三層 QA に対応）。",
+    "> triage はキーワードヒューリスティックによる advisory な振り分け（ADR-529 の三層 QA に対応）。",
   );
   lines.push("");
   lines.push("## サマリ");

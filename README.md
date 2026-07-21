@@ -31,7 +31,7 @@ karasu is a **personal learning project** — not a commercial product. It is de
 
 That said, it is built to be safe to start adopting now:
 
-- **`.krs` / `.krs.style` language spec — v1.0 (stable).** The freeze scope and compatibility commitment are decided in [ADR-20260616-06](docs/adr/20260616-06-krs-spec-v1-freeze.md). Backward compatibility is the commitment — a breaking change to the language would mean a v2.
+- **`.krs` / `.krs.style` language spec — v1.0 (stable).** The freeze scope and compatibility commitment are decided in [ADR-1314](docs/adr/1314-krs-spec-v1-freeze.md). Backward compatibility is the commitment — a breaking change to the language would mean a v2.
 - **`packages/core` TypeScript API — v0.x (no stability commitment).** The programmatic API may change between minor releases.
 - **Maintainer response — best-effort, no SLA.**
 
@@ -367,7 +367,7 @@ The name comes from Huginn and Muninn — the ravens of Odin in Norse mythology,
 | `.krs.style` syntax reference | `docs/spec/style.md` |
 | Tags and annotations catalog | `docs/spec/tags-annotations.md` |
 | Core concepts (logical/physical/organizational separation, etc.) | `docs/concepts.md` |
-| Decision history (ADR) | `docs/adr/` — `ADR-YYYYMMDD-NN-*.md` in date order |
+| Decision history (ADR) | `docs/adr/` — `<issue-number>-*.md`, keyed on the originating GitHub Issue |
 | Design documents (in progress) | `docs/design/` |
 | Acceptance test criteria | `docs/acceptance/` |
 | Development process (lifecycle / PR flow) | `docs/process.md` |

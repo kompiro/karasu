@@ -52,7 +52,7 @@ OrderManagement と Inventory を追加（OrderService が drill 可能になる
 5. **TC-07 の external browser 検証は WebView から不可**。link click は
    `postMessage({ type: 'openExternal', url })` を投げるところまでは
    観測できるが、extension host 側の `vscode.env.openExternal` 呼び出しは
-   観測できない（ADR-20260428-05 の「拡張ホストスタブ禁止」ルールに沿って
+   観測できない（ADR-926 の「拡張ホストスタブ禁止」ルールに沿って
    manual のまま据え置き）。
 
 ## 前提条件
@@ -111,11 +111,11 @@ OrderManagement と Inventory を追加（OrderService が drill 可能になる
 - AT-0042-vscode（cross-diagram navigation） — Phase 3 内の別 PR
 - TC-07（external browser launch） — production seam を増やしたくないため
   manual 据え置き
-- ADR-20260428-05 の supersede — Phase 3 完了時（AT-0042-vscode 移植後）に実施
+- ADR-926 の supersede — Phase 3 完了時（AT-0042-vscode 移植後）に実施
 
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
 - 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 既存 TC-01 自動化: `docs/acceptance/0071-vscode-webview-e2e-phase2.md`
-- 既存 ADR: ADR-20260428-03（拡張ホスト smoke）, ADR-20260428-05（マニュアル運用 — Phase 3 完了時に supersede 予定）
+- 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）

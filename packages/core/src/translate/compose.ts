@@ -1,3 +1,4 @@
+import { quoteString } from "../formatter/quote-string.js";
 import { parse as parseYaml } from "yaml";
 import { parseMapFile, resolveRealizes, realizesLines } from "./realizes.js";
 import type { Translator, TranslatorContext } from "./translator.js";
@@ -45,7 +46,7 @@ export class ComposeTranslator implements Translator {
     const envName = doc.name ?? context.inputName ?? "compose";
     const mapFile = parseMapFile(context.mapFile);
 
-    const lines: string[] = [`deploy "${envName}" {`];
+    const lines: string[] = [`deploy ${quoteString(envName)} {`];
 
     for (const [name, service] of Object.entries(services)) {
       const labels = parseLabels(service.labels);
@@ -53,8 +54,8 @@ export class ComposeTranslator implements Translator {
       const realizesResult = resolveRealizes(name, annotation, mapFile);
       const image = service.image;
 
-      lines.push(`  oci "${name}" {`);
-      if (image) lines.push(`    image "${image}"`);
+      lines.push(`  oci ${quoteString(name)} {`);
+      if (image) lines.push(`    image ${quoteString(image)}`);
       lines.push(...realizesLines(name, realizesResult, context.onWarning));
       lines.push(`  }`);
     }

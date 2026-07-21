@@ -76,10 +76,10 @@ WebView の iframe に降りてカード/詳細パネルを assert するのは 
 
 - WebView の iframe DOM へ降りる経路（`WebView.switchToFrame()` の selector チューニング）— Phase 2
 - AT-0039 / AT-0037-9 / AT-0038 / AT-0042-vscode の自動化（Phase 2 / 3）
-- ADR-20260428-05 の supersede（Phase 3）
+- ADR-926 の supersede（Phase 3）
 
 ## 関連
 
 - Issue: [#928](https://github.com/kompiro/karasu/issues/928)
 - 設計: `docs/design/vscode-webview-e2e-harness.md`
-- 既存 ADR: ADR-20260428-03（拡張ホスト smoke）, ADR-20260428-05（マニュアル運用）
+- 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用）

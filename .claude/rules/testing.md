@@ -7,7 +7,7 @@ paths:
 # App UI Rules — Testing Interactive Components
 
 Established with the shadcn/ui adoption in
-[ADR-20260515-01](../../docs/adr/20260515-01-adopt-shadcn-ui.md).
+[ADR-1368](../../docs/adr/1368-adopt-shadcn-ui.md).
 The decisions below codify what was discovered during PR #1379 / #1395.
 
 ## Use `userEvent.click` for interactions, not `fireEvent.click`

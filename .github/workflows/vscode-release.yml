@@ -11,7 +11,7 @@ name: VS Code Extension Release
 # `private: true`, so `changeset publish` (release.yml) never publishes it to
 # npm — Marketplace publish stays here, run manually after the version is
 # bumped. The version published is whatever is in `packages/vscode/package.json`.
-# See docs/design/vscode-changeset-versioning.md (refines ADR-20260512-05),
+# See docs/design/vscode-changeset-versioning.md (refines ADR-1315),
 # Issue #1316, and docs/process.md "VS Code 拡張のリリース".
 #
 # Auth: Microsoft Entra ID via GitHub OIDC (no stored secret, nothing to expire

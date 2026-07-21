@@ -11,7 +11,7 @@ type: product
   - `packages/app/src/components/EdgeContextMenu.tsx`
   - `packages/app/src/components/PreviewPane.test.tsx`
   - `packages/app/src/styles/app.css`
-- **関連 ADR**: [ADR-20260506-01](../adr/20260506-01-gui-driven-style-editing.md)（GUI 編集器の親ルール）
+- **関連 ADR**: [ADR-1076](../adr/1076-gui-driven-style-editing.md)（GUI 編集器の親ルール）
 
 ## 受け入れ条件
 
@@ -42,5 +42,5 @@ type: product
 ## 補足
 
 - **Preview source**: `.krs.style` のみを開いている状態の Preview は、当該 issue の議論で「現状の挙動を改善対象とする」項目だが、本 PR では確認のみ。実態として Preview は他のフックでプロジェクト・ファイルを保持するため、`.krs.style` 編集時も diagram が表示される。改善が必要な不具合が出た場合は別 Issue 化
-- **target 解決の優先順位**: (1) 開いているファイルが `.krs.style` ならそれ → (2) `.krs` の最後の `@import`。ADR-20260506-01 の「append-only cascade override」と整合
+- **target 解決の優先順位**: (1) 開いているファイルが `.krs.style` ならそれ → (2) `.krs` の最後の `@import`。ADR-1076 の「append-only cascade override」と整合
 - **ヒント文言**: 「@import が無い」という旧文言は `.krs` 編集時のみ正確だった。一般化して「`.krs.style` 直接編集」も提案するメッセージに統一

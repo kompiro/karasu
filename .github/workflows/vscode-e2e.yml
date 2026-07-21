@@ -1,7 +1,7 @@
 name: VS Code E2E
 
 # Triggered by path filter, not by `vscode-e2e` / `vscode-webview-e2e` labels
-# (ADR-20260623-06, extending ADR-20260623-05 to the VS Code suites). The labels
+# (ADR-1724, extending ADR-1729 to the VS Code suites). The labels
 # were an opt-in that created a detection blind spot (TPL-20260623-03): a PR
 # changing a surface these suites assert on but missing the label could merge
 # with stale assertions undetected. Both jobs share the same build chain

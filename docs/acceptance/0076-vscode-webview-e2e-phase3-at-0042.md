@@ -11,7 +11,7 @@ navigation）を ExTester WebView ハーネスへ移植する
 （Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3、設計は
 `docs/design/vscode-webview-e2e-harness.md`）。
 
-これで Phase 3 のテスト移植は完了。次は ADR-20260428-05 を supersede する
+これで Phase 3 のテスト移植は完了。次は ADR-926 を supersede する
 後継 ADR を起こして Phase 3 を締める。
 
 ## スコープ
@@ -98,11 +98,11 @@ UserService（team あり / deploy なし）と `deploy "production"` ブロッ�
 
 ## スコープ外
 
-- ADR-20260428-05 の supersede — Phase 3 完了の最後の作業として別 PR で実施
+- ADR-926 の supersede — Phase 3 完了の最後の作業として別 PR で実施
 
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
 - 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 同 file 内の関連 AT: `docs/acceptance/0075-vscode-webview-e2e-phase3-at-0039-rest.md` (AT-0039 残り)
-- 既存 ADR: ADR-20260428-03（拡張ホスト smoke）, ADR-20260428-05（マニュアル運用 — Phase 3 完了時に supersede 予定）
+- 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）
