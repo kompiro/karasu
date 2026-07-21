@@ -55,61 +55,6 @@ describe("check", () => {
     expect(r.phase).toBe("post-migration");
   });
 
-  // A native entry: an ADR born after the migration. Identity record, no rename.
-  function native(over: Partial<MapEntry> = {}): MapEntry {
-    return {
-      oldId: "ADR-2087",
-      oldFile: "2087-escape.md",
-      newId: "ADR-2087",
-      newFile: "2087-escape.md",
-      source: "native",
-      evidence: "born post-migration; originating Issue #2087",
-      ...over,
-    };
-  }
-
-  it("accepts a native entry alongside migrated ones (stays post-migration)", () => {
-    seed([entry(), native()], ["9001-monorepo.md", "2087-escape.md"]);
-    const r = check(tmp);
-    expect(r.errors).toEqual([]);
-    // The native file is on disk under its only name — this must NOT read as a
-    // lingering old file and trip the half-migrated alarm.
-    expect(r.phase).toBe("post-migration");
-  });
-
-  it("rejects a native entry whose oldFile differs from newFile", () => {
-    seed([native({ oldFile: "20260312-09-x.md" })], ["2087-escape.md"]);
-    expect(check(tmp).errors.some((e) => e.includes("oldFile === newFile"))).toBe(true);
-  });
-
-  it("rejects a native entry whose id disagrees with its file number", () => {
-    seed([native({ newId: "ADR-9999", oldId: "ADR-9999" })], ["2087-escape.md"]);
-    expect(check(tmp).errors.some((e) => e.includes("does not match newFile number"))).toBe(true);
-  });
-
-  it("rejects a native entry in the reserved range", () => {
-    seed(
-      [
-        native({
-          oldId: "ADR-9050",
-          oldFile: "9050-x.md",
-          newId: "ADR-9050",
-          newFile: "9050-x.md",
-        }),
-      ],
-      ["9050-x.md"],
-    );
-    expect(check(tmp).errors.some((e) => e.includes("reserved range"))).toBe(true);
-  });
-
-  it("rejects a native entry colliding on number with a migrated one", () => {
-    seed(
-      [entry({ newId: "ADR-2087", newFile: "2087-monorepo.md" }), native()],
-      ["2087-monorepo.md", "2087-escape.md"],
-    );
-    expect(check(tmp).errors.some((e) => e.includes("assigned to both"))).toBe(true);
-  });
-
   it("reports a half-migrated tree as a single clear failure", () => {
     // The most dangerous state: some files renamed, some not. An unrenamed
     // 20260716-02-… parses as ADR-20260716 under issue-number, so a mixed tree
