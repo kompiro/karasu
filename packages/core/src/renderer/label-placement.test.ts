@@ -113,11 +113,67 @@ describe("resolveLabelPlacements", () => {
     expect([...a.entries()]).toEqual([...b.entries()]);
   });
 
-  it("falls back best-effort (no throw) when no candidate fully clears", () => {
+  it("falls back best-effort when no candidate fully clears — never increases collisions", () => {
     // A node rect large enough that every capped candidate still overlaps.
     const huge: Rect = { x: -1000, y: -1000, width: 2000, height: 2000 };
     const inputs = [label(0, { x: 0, y: 0 }, 40)];
-    expect(() => resolveLabelPlacements(inputs, [huge])).not.toThrow();
+    const before = countLabelPenetrations(boxesAfter(inputs, new Map()), [huge]);
+    let overrides!: Map<number, { x: number; y: number }>;
+    expect(() => (overrides = resolveLabelPlacements(inputs, [huge]))).not.toThrow();
+    // best-effort must not make things worse than leaving the label at default.
+    expect(countLabelPenetrations(boxesAfter(inputs, overrides), [huge])).toBeLessThanOrEqual(
+      before,
+    );
+  });
+});
+
+describe("buildLabelInputs", () => {
+  const styles = resolveStyles(
+    Parser.parse('system S { service A { label "A" } service B { label "B" } }').value.systems,
+    [getBuiltinStyleSheet()],
+  );
+  const styleFor = () => styles.defaultEdgeStyle;
+
+  it("excludes ghost and cyclic edges (peripheral geometry — ADR-968), keeps real ones", () => {
+    const edges: LayoutEdge[] = [
+      { from: "A", to: "B", label: "real", fromPoint: { x: 0, y: 0 }, toPoint: { x: 100, y: 0 } },
+      {
+        from: "A",
+        to: "C",
+        label: "ghost",
+        fromPoint: { x: 0, y: 0 },
+        toPoint: { x: 0, y: 100 },
+        ghost: true,
+      },
+      {
+        from: "A",
+        to: "D",
+        label: "cyclic",
+        fromPoint: { x: 0, y: 0 },
+        toPoint: { x: 50, y: 50 },
+        cyclic: true,
+      },
+    ];
+    const { inputs } = buildLabelInputs(edges, new Map(), styleFor);
+    // Only the real edge (index 0) participates — ghost/cyclic neither move nor obstruct.
+    expect(inputs.map((i) => i.index)).toEqual([0]);
+  });
+
+  it("nudges perpendicular to the local segment, not the from→to chord, for bent routes", () => {
+    // L-shaped route: horizontal segment (0,0)→(100,0) is the longest, so the
+    // label anchors on it; the from→to chord is the diagonal (0,0)→(100,100).
+    const edge: LayoutEdge = {
+      from: "A",
+      to: "B",
+      label: "x",
+      fromPoint: { x: 0, y: 0 },
+      waypoints: [{ x: 100, y: 0 }],
+      toPoint: { x: 100, y: 100 },
+    };
+    const { inputs } = buildLabelInputs([edge], new Map(), styleFor);
+    // dir follows the horizontal local segment (y === 0), not the diagonal chord (y === 100).
+    expect(inputs[0].dir.y).toBe(0);
+    expect(inputs[0].dir.x).toBeGreaterThan(0);
   });
 });
 

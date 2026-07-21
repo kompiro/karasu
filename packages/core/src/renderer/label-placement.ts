@@ -25,7 +25,7 @@ import type { Point, Rect } from "./edge-geometry.js";
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import { estimateTextWidth } from "./rendering-constants.js";
-import { labelAnchor, resolveLabelPosition } from "./edge-routing.js";
+import { labelAnchorWithSegment, resolveLabelPosition } from "./edge-routing.js";
 
 /**
  * One edge label offered to the placement pass. `anchor` is the label's default
@@ -37,7 +37,7 @@ export interface LabelInput {
   index: number;
   /** Default anchor (bundle slide applied), before any auto nudge. */
   anchor: Point;
-  /** Edge chord direction `to - from`; the nudge axis is perpendicular to it. */
+  /** Direction of the local polyline segment the anchor sits on; the nudge axis is perpendicular to it. */
   dir: Point;
   /** Estimated rendered width of the label text in px. */
   width: number;
@@ -89,9 +89,15 @@ export function buildLabelInputs(
   const inputs: LabelInput[] = [];
   edges.forEach((edge, index) => {
     if (!edge.label) return;
+    // Ghost/cyclic edges are peripheral (dimmed / back-arc styled) and sit
+    // outside the "real" geometry every other renderer pass reasons about —
+    // crossing-marks, port fan-out, channel/group routing and bundle nudging
+    // all skip them (ADR-968). Excluding them here keeps a barely-visible ghost
+    // label from being moved or from pushing a real label off its default spot.
+    if (edge.ghost || edge.cyclic) return;
     const style = styleFor(edge, index);
     const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
-    const anchor = labelAnchor(
+    const { anchor, segDir } = labelAnchorWithSegment(
       points,
       resolveLabelPosition(edge, style),
       style.labelOffsetX,
@@ -100,10 +106,10 @@ export function buildLabelInputs(
     inputs.push({
       index,
       anchor,
-      dir: {
-        x: edge.toPoint.x - edge.fromPoint.x,
-        y: edge.toPoint.y - edge.fromPoint.y,
-      },
+      // Nudge perpendicular to the *local* segment the anchor sits on, not the
+      // overall from→to chord — otherwise a bent / waypoint route's label would
+      // be shifted at a skewed angle relative to the line it labels (#2048).
+      dir: segDir,
       width: edgeLabelWidth(edge.label, style.fontSize),
       fontSize: style.fontSize,
       // Author-positioned labels (non-default label-position/offset) are not
@@ -201,45 +207,86 @@ export function resolveLabelPlacements(
   for (const label of byIndex) {
     if (!label.eligible) continue;
     const step = label.fontSize + 4;
+    // Two search axes: `perp` lifts the label off its edge; `tang` slides it
+    // *along* the edge to a clear stretch. A single perpendicular axis is not
+    // enough — for a vertical edge boxed in by side-by-side nodes the only
+    // escape is along the edge, not across it (#2048). The default (0,0) is
+    // always the first candidate, so a clear label is never moved (byte-stable).
     const perp = perpendicular(label.dir);
-
-    // Candidate offsets along the perpendicular: 0, +1, -1, +2, -2, ... The
-    // default (0) is tried first so a clear label is never moved.
-    const magnitudes: number[] = [0];
-    for (let k = 1; k <= maxSteps; k++) {
-      magnitudes.push(k * step, -k * step);
-    }
+    const tang = normalize(label.dir);
+    const candidates = candidateOffsets(maxSteps);
 
     let bestAnchor = label.anchor;
     let bestBox = labelBox(label.anchor, label.width, label.fontSize);
     let bestCost = Number.POSITIVE_INFINITY;
-    let bestMag = 0;
-    for (const mag of magnitudes) {
-      const anchor: Point = { x: label.anchor.x + perp.x * mag, y: label.anchor.y + perp.y * mag };
+    let bestDist = 0;
+    for (const [i, j] of candidates) {
+      const dp = i * step;
+      const dt = j * step;
+      const anchor: Point = {
+        x: label.anchor.x + perp.x * dp + tang.x * dt,
+        y: label.anchor.y + perp.y * dp + tang.y * dt,
+      };
       const box = labelBox(anchor, label.width, label.fontSize);
       let cost = 0;
       for (const o of nodeRects) if (rectsOverlap(box, o)) cost++;
       for (const p of placed) if (rectsOverlap(box, p)) cost++;
       if (cost === 0) {
-        // First clear candidate wins (0 is checked first, so a clear default stays put).
+        // Candidates are ordered by increasing displacement, so the first clear
+        // one is the smallest move (and (0,0) is first → a clear default stays put).
         bestAnchor = anchor;
         bestBox = box;
         bestCost = 0;
-        bestMag = mag;
+        bestDist = i * i + j * j;
         break;
       }
-      // Best-effort tiebreak: fewer collisions, then smaller shift.
-      if (cost < bestCost || (cost === bestCost && Math.abs(mag) < Math.abs(bestMag))) {
+      // Best-effort tiebreak: fewer collisions, then smaller displacement.
+      const dist = i * i + j * j;
+      if (cost < bestCost || (cost === bestCost && dist < bestDist)) {
         bestCost = cost;
         bestAnchor = anchor;
         bestBox = box;
-        bestMag = mag;
+        bestDist = dist;
       }
     }
 
     placed.push(bestBox);
-    if (bestMag !== 0) overrides.set(label.index, bestAnchor);
+    if (bestDist !== 0) overrides.set(label.index, bestAnchor);
   }
 
   return overrides;
+}
+
+/**
+ * Integer (perp, tang) step offsets to try, ordered by increasing Euclidean
+ * displacement (so the first clearing candidate is the smallest move) with a
+ * deterministic tie-break. `[0, 0]` is always first. Cached per `maxSteps`.
+ */
+const candidateCache = new Map<number, [number, number][]>();
+function candidateOffsets(maxSteps: number): [number, number][] {
+  const cached = candidateCache.get(maxSteps);
+  if (cached) return cached;
+  const offsets: [number, number][] = [];
+  for (let i = -maxSteps; i <= maxSteps; i++) {
+    for (let j = -maxSteps; j <= maxSteps; j++) offsets.push([i, j]);
+  }
+  offsets.sort((a, b) => {
+    const da = a[0] * a[0] + a[1] * a[1];
+    const db = b[0] * b[0] + b[1] * b[1];
+    if (da !== db) return da - db;
+    // Prefer a perpendicular lift over an along-edge slide at equal distance
+    // (keeps the label nearer its midpoint), then a fully deterministic order.
+    if (Math.abs(a[1]) !== Math.abs(b[1])) return Math.abs(a[1]) - Math.abs(b[1]);
+    if (a[0] !== b[0]) return a[0] - b[0];
+    return a[1] - b[1];
+  });
+  candidateCache.set(maxSteps, offsets);
+  return offsets;
+}
+
+/** Unit vector along `dir`. Falls back to horizontal for a zero-length chord. */
+function normalize(dir: Point): Point {
+  const len = Math.hypot(dir.x, dir.y);
+  if (len < 1e-6) return { x: 1, y: 0 };
+  return { x: dir.x / len, y: dir.y / len };
 }

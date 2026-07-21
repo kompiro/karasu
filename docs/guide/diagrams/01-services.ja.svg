@@ -19,7 +19,7 @@
 <text x="549" y="366" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">決済を依頼する</text></g>
 <g data-edge-from="OrderService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="OrderService--&gt;NotificationService" data-edge-label="注文確定を通知する" class="krs-edge krs-edge--interactive"><polyline points="486,312 486,558 333.3333333333333,558 333.3333333333333,618" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <path d="M 486 312 L 486 558 L 486 558 M 479.33 558 L 333.33 558 L 333.33 618" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
-<text x="472.5777487584462" y="422.30349556793936" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">注文確定を通知する</text></g>
+<text x="486" y="414" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">注文確定を通知する</text></g>
 <g data-edge-from="PaymentService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="PaymentService--&gt;NotificationService" data-edge-label="決済結果を通知する" class="krs-edge krs-edge--interactive"><line x1="580" y1="498" x2="386.66666666666663" y2="618" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <path d="M 580 498 L 489.4 554.24 M 482.6 558.45 L 386.67 618" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
 <text x="483.3333333333333" y="552" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>

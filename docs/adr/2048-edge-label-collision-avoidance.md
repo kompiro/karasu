@@ -7,6 +7,7 @@ topic: renderer
 related_to:
   - ADR-1184
   - ADR-1185
+  - ADR-968
 scope:
   packages: [core]
 assumptions:
@@ -38,10 +39,12 @@ ADR-1184 は同じ問題を認識しつつ、手動 lever（`label-position` / `
 
 ## 決定
 
-`svg-renderer` のエッジ描画ループの前に、**レンダー後段の label placement post-pass** を走らせる。衝突するラベルだけを、エッジに垂直な方向へ上限付き・貪欲・決定論的に nudge して、ノードカード貫通と label 同士のオーバーラップを解消する（`packages/core/src/renderer/label-placement.ts`）。
+`svg-renderer` のエッジ描画ループの前に、**レンダー後段の label placement post-pass** を走らせる。衝突するラベルだけを上限付き・貪欲・決定論的に nudge して、ノードカード貫通と label 同士のオーバーラップを解消する（`packages/core/src/renderer/label-placement.ts`）。
 
 - **障害物 = 葉ノードの矩形のみ**。境界フレーム（container）はラベルが正当に内側に住む領域なので障害物に含めない。
-- **候補 = default(0) → 垂直 ±d, ±2d, …（既定上限 6 ステップ ≈ 90px）**。最初に clear した最小変位候補で確定。clear できなければ最小コスト（best-effort）。
+- **2 軸探索**: 候補は「ラベルが乗る**局所セグメント**に垂直な軸（線から持ち上げる）」と「そのセグメントに沿う軸（線に沿って空きへスライドする）」の 2 次元グリッド（各軸 ±maxSteps、既定 6）。変位の小さい順に走査し、**default(0,0) が最初**なので clear なラベルは動かない。単一の垂直軸では不十分 —— 縦向きエッジが左右のノードに挟まれている場合、逃げ場は「線を横切る」方向ではなく「線に沿う」方向にしかない。
+- **垂直軸は from→to chord ではなく局所セグメント基準**。bent / waypoint route でも lift が線に対して直角になる（`labelAnchorWithSegment` が anchor と局所セグメント方向を返す）。
+- **ghost / cyclic エッジは対象外**（周辺的・dimmed。crossing-marks・port fan-out・channel/group routing・bundle nudge も同様に除外 — ADR-968）。移動もせず障害物にもならない。
 - **衝突が無いラベルは default 維持**（override なし）→ 衝突が無い図は byte-identical。
 - **author 指定（非 default position/offset）は auto 対象外**。obstacle としては効く（author intent が勝つ）。
 - `renderEdge` に optional `labelAnchorOverride` を追加し、pass が算出したアンカーを渡す。`buildLabelInputs` を placement module に切り出し、renderer 本体と test が同じ入力構築・箱推定を共有する。
