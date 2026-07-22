@@ -89,6 +89,7 @@ export function renderEdge(
   markerId: string,
   diffState?: string,
   hops?: HopMark[],
+  labelAnchorOverride?: Point,
 ): string {
   const { fromPoint, toPoint } = edge;
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
@@ -177,25 +178,17 @@ export function renderEdge(
   }
 
   if (edge.label) {
-    // When the edge is part of a parallel-edge bundle (N ≥ 2 sharing
-    // `(from, to)`) and the author has not overridden label-position via
-    // style, slide the label along the edge so parallel labels separate.
-    // See docs/design/parallel-edge-bundling.md.
-    let position = style.labelPosition;
-    if (
-      position === 0.5 &&
-      edge.bundleSize !== undefined &&
-      edge.bundleIndex !== undefined &&
-      edge.bundleSize >= 2
-    ) {
-      position = (edge.bundleIndex + 1) / (edge.bundleSize + 1);
-    }
-    const { x: midX, y: midY } = labelAnchor(
-      points,
-      position,
-      style.labelOffsetX,
-      style.labelOffsetY,
-    );
+    // Default anchor (parallel-bundle slide applied, ADR-1185). When the
+    // auto label-placement pass (#2048) has nudged this label off a collision,
+    // it hands the resolved anchor in via `labelAnchorOverride`, which wins.
+    const { x: midX, y: midY } =
+      labelAnchorOverride ??
+      labelAnchor(
+        points,
+        resolveLabelPosition(edge, style),
+        style.labelOffsetX,
+        style.labelOffsetY,
+      );
     const labelText = el(
       "text",
       {
@@ -251,6 +244,26 @@ export function renderEdge(
 }
 
 /**
+ * The fractional label position for an edge: the author's `label-position`
+ * (default `0.5`), or — when left at default on a parallel-edge bundle (N ≥ 2
+ * sharing `(from, to)`) — a per-index slide so parallel labels separate
+ * (ADR-1185). Extracted so the auto label-placement pass (#2048) computes the
+ * same default anchor `renderEdge` would draw.
+ */
+export function resolveLabelPosition(edge: LayoutEdge, style: ResolvedEdgeStyle): number {
+  let position = style.labelPosition;
+  if (
+    position === 0.5 &&
+    edge.bundleSize !== undefined &&
+    edge.bundleIndex !== undefined &&
+    edge.bundleSize >= 2
+  ) {
+    position = (edge.bundleIndex + 1) / (edge.bundleSize + 1);
+  }
+  return position;
+}
+
+/**
  * Anchor point for the edge label.
  *
  * When `position === 0.5` and both offsets are `0`, the historical
@@ -265,17 +278,41 @@ export function renderEdge(
  * shift across the diagram regardless of each edge's slope.
  */
 function labelAnchor(points: Point[], position: number, offsetX: number, offsetY: number): Point {
+  return labelAnchorWithSegment(points, position, offsetX, offsetY).anchor;
+}
+
+/**
+ * As {@link labelAnchor}, but also returns `segDir` — the direction vector of
+ * the polyline segment the anchor lies on (the longest one for the default
+ * heuristic, or the one the fractional position falls in). The auto placement
+ * pass (#2048) nudges *perpendicular* to this local segment, not the overall
+ * `from → to` chord, so the lift stays square to the line the label is drawn on
+ * for bent / waypoint routes.
+ */
+export function labelAnchorWithSegment(
+  points: Point[],
+  position: number,
+  offsetX: number,
+  offsetY: number,
+): { anchor: Point; segDir: Point } {
   if (position === 0.5 && offsetX === 0 && offsetY === 0) {
     return defaultLabelAnchor(points);
   }
   return fractionalLabelAnchor(points, position, offsetX, offsetY);
 }
 
-function defaultLabelAnchor(points: Point[]): Point {
+function segDirAt(points: Point[], i: number): Point {
+  return { x: points[i + 1].x - points[i].x, y: points[i + 1].y - points[i].y };
+}
+
+function defaultLabelAnchor(points: Point[]): { anchor: Point; segDir: Point } {
   if (points.length === 2) {
     return {
-      x: (points[0].x + points[1].x) / 2,
-      y: (points[0].y + points[1].y) / 2,
+      anchor: {
+        x: (points[0].x + points[1].x) / 2,
+        y: (points[0].y + points[1].y) / 2,
+      },
+      segDir: segDirAt(points, 0),
     };
   }
   let bestIdx = 0;
@@ -290,8 +327,11 @@ function defaultLabelAnchor(points: Point[]): Point {
     }
   }
   return {
-    x: (points[bestIdx].x + points[bestIdx + 1].x) / 2,
-    y: (points[bestIdx].y + points[bestIdx + 1].y) / 2,
+    anchor: {
+      x: (points[bestIdx].x + points[bestIdx + 1].x) / 2,
+      y: (points[bestIdx].y + points[bestIdx + 1].y) / 2,
+    },
+    segDir: segDirAt(points, bestIdx),
   };
 }
 
@@ -300,7 +340,7 @@ function fractionalLabelAnchor(
   position: number,
   offsetX: number,
   offsetY: number,
-): Point {
+): { anchor: Point; segDir: Point } {
   const segLengths: number[] = [];
   let total = 0;
   for (let i = 0; i < points.length - 1; i++) {
@@ -311,7 +351,10 @@ function fractionalLabelAnchor(
     total += len;
   }
   if (total === 0) {
-    return { x: points[0].x + offsetX, y: points[0].y + offsetY };
+    return {
+      anchor: { x: points[0].x + offsetX, y: points[0].y + offsetY },
+      segDir: segDirAt(points, 0),
+    };
   }
 
   const clamped = Math.min(1, Math.max(0, position));
@@ -326,14 +369,20 @@ function fractionalLabelAnchor(
       const dx = points[i + 1].x - points[i].x;
       const dy = points[i + 1].y - points[i].y;
       return {
-        x: points[i].x + dx * localT + offsetX,
-        y: points[i].y + dy * localT + offsetY,
+        anchor: {
+          x: points[i].x + dx * localT + offsetX,
+          y: points[i].y + dy * localT + offsetY,
+        },
+        segDir: segDirAt(points, i),
       };
     }
     acc += segLen;
   }
   // Unreachable in practice — the loop above covers `isLast`.
-  return { x: points[points.length - 1].x + offsetX, y: points[points.length - 1].y + offsetY };
+  return {
+    anchor: { x: points[points.length - 1].x + offsetX, y: points[points.length - 1].y + offsetY },
+    segDir: segDirAt(points, points.length - 2),
+  };
 }
 
 export function renderArrowMarker(id: string, color: string): string {

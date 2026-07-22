@@ -394,6 +394,17 @@ landing at `position × totalLength`.
 Invalid values (unknown keywords, non-numeric strings) silently fall
 back to `middle`. Fractional values outside `[0, 1]` are clamped.
 
+**Auto placement vs. author intent.** When the author leaves both
+`label-position` and `label-offset` at their defaults, the renderer may
+automatically nudge a label off a collision with a node card or another
+label (edge-label collision-avoidance, [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)).
+This auto pass fires
+**only** on default-positioned labels; setting either property opts the
+label out of auto placement, so an explicit `label-position` /
+`label-offset` always wins.
+
+> Related TPLs: [TPL-20260721-02](../test-perspectives/TPL-20260721-02-label-placement-measured-and-byte-stable.md) — label placement is measured numerically (label↔label / label↔node overlap), non-colliding diagrams stay byte-stable, and author-set positions are never auto-moved.
+
 ### `label-offset` — `<dy>px` or `<dx>px <dy>px`
 
 Screen-axis nudge of the label relative to its computed anchor, in

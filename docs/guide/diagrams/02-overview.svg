@@ -9,7 +9,7 @@
 <text x="259.0833333333333" y="384" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">look up products</text></g>
 <g data-edge-from="OrderService" data-edge-to="Legacy" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;Legacy" data-edge-label="query stock (details unknown)" class="krs-edge krs-edge--interactive"><line x1="308.3333333333333" y1="330" x2="275.5" y2="636" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="308.3333333333333" y1="330" x2="275.5" y2="636" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
-<text x="291.91666666666663" y="477" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">query stock (details unknown)</text></g></g>
+<text x="280.20285826335146" y="445.57092599693044" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">query stock (details unknown)</text></g></g>
 <g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="275.5" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <path d="M239.5 82.16 L311.5 82.16 L331.5 93.12 L331.5 122 Q331.5 126 327.5 126 L223.5 126 Q219.5 126 219.5 122 L219.5 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <text x="275.5" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
