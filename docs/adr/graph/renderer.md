@@ -1,6 +1,6 @@
 # ADR Topic: renderer
 
-38 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+39 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -41,6 +41,7 @@ flowchart TD
     ADR_1884["ADR-1884<br/>multi-system root view でも Group by: team を効かせる（..."]
     ADR_1886["ADR-1886<br/>差分モードの Group by で除去ノードを元の team フレームに残し、集約エッジの d..."]
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
+    ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -124,6 +125,7 @@ flowchart TD
   class ADR_1884 accepted
   class ADR_1886 accepted
   class ADR_1983 accepted
+  class ADR_2048 accepted
   class ADR_9005 accepted
   class ADR_9007 accepted
   class ADR_9015 accepted
