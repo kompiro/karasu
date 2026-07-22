@@ -7,7 +7,7 @@
   - `packages/core/src/renderer/label-placement.test.ts`（新規）
   - `packages/core/src/renderer/edge-routing.ts`（`renderEdge` に `labelAnchorOverride`、`labelAnchor` / `resolveLabelPosition` を export）
   - `packages/core/src/renderer/svg-renderer.ts`（エッジ描画ループ前に placement pass を配線）
-- **関連**: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（本 AT の設計。ADR-1184 の defer を部分的に見直す）、[ADR-1184](../adr/1184-edge-label-position-offset.md)（手動 `label-position` / `label-offset` lever）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)（parallel-edge bundle の label スライド）、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（overlap は数値で 0/削減を assert）、[TPL-20260721-01](../test-perspectives/TPL-20260721-01-label-placement-measured-and-byte-stable.md)（本 PR で新設）
+- **関連**: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（本 AT の設計。ADR-1184 の defer を部分的に見直す）、[ADR-1184](../adr/1184-edge-label-position-offset.md)（手動 `label-position` / `label-offset` lever）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)（parallel-edge bundle の label スライド）、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（overlap は数値で 0/削減を assert）、[TPL-20260721-02](../test-perspectives/TPL-20260721-02-label-placement-measured-and-byte-stable.md)（本 PR で新設）
 
 ## 受け入れ条件
 

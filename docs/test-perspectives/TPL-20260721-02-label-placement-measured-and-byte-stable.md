@@ -1,5 +1,5 @@
 ---
-id: TPL-20260721-01
+id: TPL-20260721-02
 title: "エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable に保ち、author 指定ラベルは動かさない"
 status: active
 date: 2026-07-21
@@ -21,7 +21,7 @@ scope:
     - core
 ---
 
-# TPL-20260721-01: ラベル配置は overlap を数値で計測して assert し、衝突が無い図は byte-stable に保つ
+# TPL-20260721-02: ラベル配置は overlap を数値で計測して assert し、衝突が無い図は byte-stable に保つ
 
 ## 観点
 

@@ -403,7 +403,7 @@ This auto pass fires
 label out of auto placement, so an explicit `label-position` /
 `label-offset` always wins.
 
-> Related TPLs: [TPL-20260721-01](../test-perspectives/TPL-20260721-01-label-placement-measured-and-byte-stable.md) — label placement is measured numerically (label↔label / label↔node overlap), non-colliding diagrams stay byte-stable, and author-set positions are never auto-moved.
+> Related TPLs: [TPL-20260721-02](../test-perspectives/TPL-20260721-02-label-placement-measured-and-byte-stable.md) — label placement is measured numerically (label↔label / label↔node overlap), non-colliding diagrams stay byte-stable, and author-set positions are never auto-moved.
 
 ### `label-offset` — `<dy>px` or `<dx>px <dy>px`
 
