@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-269 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+270 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -109,6 +109,7 @@ flowchart TD
     ADR_1862["ADR-1862<br/>TypeScript 7.0（native compiler）を採用する"]
     ADR_1866["ADR-1866<br/>app E2E（Playwright）を Required status check にし、p..."]
     ADR_2106["ADR-2106<br/>Dependabot トリアージ 2026-07-21 — setup-node 採用・ast..."]
+    ADR_2111["ADR-2111<br/>Dependabot security update — brace-expansion / ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -656,6 +657,7 @@ flowchart TD
   class ADR_2087 accepted
   class ADR_2092 accepted
   class ADR_2106 accepted
+  class ADR_2111 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -682,7 +684,7 @@ flowchart TD
 
 - [`adr-tooling`](graph/adr-tooling.md) — 8 ADRs
 - [`app-ui`](graph/app-ui.md) — 40 ADRs
-- [`build`](graph/build.md) — 55 ADRs
+- [`build`](graph/build.md) — 56 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 10 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs
