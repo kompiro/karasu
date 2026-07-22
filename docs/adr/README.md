@@ -232,6 +232,7 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-953](953-ci-docs-only-paired-stub-workflow.md) — Required Check は paired stub workflow で docs-only PR を成功扱いにする
 - [ADR-1338](1338-fast-uri-override-pin.md) — `fast-uri` を `pnpm.overrides` で `^3.1.2` に固定（GHSA セキュリティ修正）
 - [ADR-1350](1350-dependabot-batch-2026-05-12.md) — Dependabot Batch Triage (2026-05-12)
+- [ADR-2114](2114-dependabot-triage-2026-07-22.md) — Dependabot トリアージ 2026-07-22 — dompurify 3.4.12 を採用し、override 同時更新を Dependabot PR に上乗せする
 - [ADR-1084](1084-skills-plugin-portability.md) — portable な開発スキルは `kompiro/hane` plugin に切り出し、karasu からは plugin 経由で読み込む
 - [ADR-1085](1085-agent-worktree-coexistence.md) — ユーザー作成 worktree は `.claude/worktrees/<branch>` 配下に置き、Claude Code Agent の自動 worktree と共存させる
 
