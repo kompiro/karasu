@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#2077](https://github.com/kompiro/karasu/issues/2077)
   - 証拠元 Issue: [#1991](https://github.com/kompiro/karasu/issues/1991)（spike）
-  - 関連 ADR: [ADR-20260714-02](../adr/20260714-02-reverse-architecture-harness.md)（本 doc の昇格先が supersede する）、[ADR-20260616-06](../adr/20260616-06-krs-spec-v1-freeze.md)（v1 syntax freeze）
+  - 関連 ADR: [ADR-1895](../adr/1895-reverse-architecture-harness.md)（本 doc の昇格先が `related_to` で参照する。supersede しない — 論点 D）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1 syntax freeze）
   - 関連 TPL: [TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md)（薄い domain を黙って落とさない）、[TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)（identity は `id`）
   - 隣接 Issue: [#2078](https://github.com/kompiro/karasu/issues/2078)（synthesis の loss）、[#2084](https://github.com/kompiro/karasu/issues/2084)（`lint-style` 誤用）、[#638](https://github.com/kompiro/karasu/issues/638)（eval corpus / metric）、[#1990](https://github.com/kompiro/karasu/issues/1990)（nest pivot、decision 4）、[#2036](https://github.com/kompiro/karasu/issues/2036)（scoped boundary — 論点 B の再検討条件）
   - 隣接 Design: [`scoped-boundary-declaration.md`](./scoped-boundary-declaration.md)（採用済み。案 B2 の前提を変える）
@@ -13,7 +13,7 @@
 
 ## 背景・課題
 
-ADR-20260714-02 の reverse harness は「domain 単位で subagent を fan-out する」ことで
+ADR-1895 の reverse harness は「domain 単位で subagent を fan-out する」ことで
 domain interior の**深さ**を均一化した。しかし**分解の粒度**については
 「論理 domain（bounded-context）を primary にする」と方針を書いただけで、
 scout に渡す具体的な判定基準を置いていない。
@@ -74,10 +74,10 @@ domain が粗いほど fan-out が減るため、品質とコストが同じ方�
 
 ### 過去決定との衝突確認
 
-- ADR-20260714-02 は **「固定深さ（E1）」を却下**している（trivial slice を過剰・rich slice を
+- ADR-1895 は **「固定深さ（E1）」を却下**している（trivial slice を過剰・rich slice を
   過小モデル化するため）。本 doc の粒度指示はこれと衝突してはならない。
   → **domain 数を渡す指示は E1 の再導入**にあたる。採る指示は *seam の判定基準*でなければならない。
-- ADR-20260714-02 は「分解軸: 物理 seam primary（A1）/ source tree 機械分割（A3）」を却下し、
+- ADR-1895 は「分解軸: 物理 seam primary（A1）/ source tree 機械分割（A3）」を却下し、
   dir/module tree を **seam ヒント**に降格して残した。spike が refute したのは
   CODEOWNERS / commit-coupling であって dir tree ヒントではない。両者を混同しない。
 - pivot design `karasu-nest-pivot-github-app.md` の decision 4 は構造 grounding を
@@ -86,7 +86,7 @@ domain が粗いほど fan-out が減るため、品質とコストが同じ方�
 
 ## 制約・前提
 
-- **v1 syntax freeze**（ADR-20260616-06）— 新 `.krs` 構文を導入しない。粒度の表現は既存語彙で行う。
+- **v1 syntax freeze**（ADR-1314）— 新 `.krs` 構文を導入しない。粒度の表現は既存語彙で行う。
 - **SKILL.md は portable な Agent Skill** — karasu repo 外の任意 repo に対して単体で動く必要があり、
   karasu の CLI 以外の外部ツール依存を増やさない。
 - **E1（固定深さ）却下との整合** — 指示は基準であって数量ではない。
@@ -144,7 +144,7 @@ scout に目標 domain 数を与える。
 
 **デメリット**
 
-- **ADR-20260714-02 が却下した E1（固定深さ）の再導入**。
+- **ADR-1895 が却下した E1（固定深さ）の再導入**。
 - そもそも任意 repo に対して gold 数は存在しない。運用不能。
 - → 却下。
 
@@ -155,7 +155,7 @@ scout に目標 domain 数を与える。
 **メリット**
 
 - 既存語彙のみ。v1 freeze と整合。
-- ADR-20260714-02 の Phase 2 が既に「subagent は自 domain の usecase/entity/resource を書く」
+- ADR-1895 の Phase 2 が既に「subagent は自 domain の usecase/entity/resource を書く」
   としており、追加の機構が要らない。
 - gold（人手の domain 分解）と同じ粒度に揃う。
 
@@ -184,7 +184,7 @@ scout に目標 domain 数を与える。
   **新しい判断**を課すが、その判断の質は未測定。
 - 粒度問題を解くのに構造判断を harness に足すことになり、
   spike が「効くレバーはプロンプト一行であって機構ではない」と示した結論に逆行する。
-- boundary は experimental notation であり、ADR-20260713-01 の gate 下にある。
+- boundary は experimental notation であり、ADR-1820 の gate 下にある。
 - → 不採用。ただし**却下ではなく延期**である（下記「未解決」参照）。
   B1 と B2 は排他ではなく、B2 は domain 内部の追加構造なので、
   粒度の決定を触らずに後から加算できる。
@@ -232,6 +232,58 @@ seam 判断が拮抗したときのみ commit-coupling を参照する。
   pivot decision 4 が生きている限り再導入圧力が残る。negative result が失われる。
 - → 不採用。
 
+### 論点 D: ADR 昇格の形（supersede か追加か）
+
+本 doc の決定を ADR-1895（harness ADR）に対してどう載せるか。ADR-1895 の「決定」は
+5 項目あり、本 doc が触るのは **1 項目め（分解軸）に判定基準を足す**ことだけである。
+4-phase pipeline・CLI primitive 2 つ・意味/構造の責務分離・Skill 梱包の 4 項目は無傷。
+また C1 の grounding 不採用は ADR-1895 に対する**新規の制約**であって、
+既存記述（dir/module tree を seam ヒントに使う）を覆すものではない。
+
+#### 案 D1: ADR-1895 を supersede する統合版 ADR
+
+**メリット**
+
+- 読者が 1 本読めば harness の現行仕様が揃う。
+- 分解軸は ADR-1895 の中核決定なので、部分改訂より置換のほうが素直との見方。
+
+**デメリット**
+
+- **無傷の 4 決定を全文転記する**ことになる（CLI primitive・責務分離・却下した案・
+  実運用で確定した細部）。転記時の劣化リスクを負う。
+- ADR-1895 は `superseded` として残るため、履歴を追う読者は結局 2 本に触れる。
+  「1 本で済む」効果は現在の読者にのみ効く。
+- `.claude/rules/adr.md` の supersede 規定は「**既存 ADR を覆すとき**」。本件は
+  覆しではなく**精緻化 + 新規制約の追加**であり、規定の想定と噛み合わない。
+
+#### 案 D2: 焦点を絞った追加 ADR（`related_to: [ADR-1895]`）
+
+粒度規定（A1 + B1）と grounding 不採用（C1）だけを決定として持つ ADR を新規に起こし、
+ADR-1895 は `accepted` のまま残す。
+
+**メリット**
+
+- 転記ゼロ。変わった点だけが記録され、diff が読者にそのまま伝わる。
+- ADR-1895 が現役のままなので、無傷の 4 決定の出典が 1 箇所に保たれる。
+- 覆しではない変更に supersede を使わずに済み、規約の意図と整合する。
+
+**デメリット**
+
+- harness の「分解軸」に関する記述が ADR-1895 と新 ADR の 2 本にまたがる。
+  ただし**エージェントと実装者が実際に従う現行仕様は SKILL.md** であり、
+  ADR は「なぜそう決めたか」の履歴である。運用上の単一情報源は SKILL.md 側で
+  既に担保されているため、この分散のコストは D1 の転記コストより小さいと判断する。
+- 将来さらに harness の決定が積み増されると分散が進む。その時点で
+  統合 ADR（supersede）を起こす判断を改めて行う。
+
+#### 案 D3: ADR-1895 を直接改訂（追記）
+
+**デメリット**
+
+- `.claude/rules/adr.md` が「旧 ADR を書き換えず、新 ADR で supersede する」と
+  明記しており、規約違反。
+- → 却下。
+
 ## 比較
 
 | 観点 | A1 実証文言そのまま | A2 要約 | A3 domain 数 |
@@ -247,19 +299,28 @@ seam 判断が拮抗したときのみ commit-coupling を参照する。
 | 再導入の防止 | あり | なし | なし |
 | 実装コスト | 1 行 | 判定機構が要る | 0 |
 
+| 観点 | D1 supersede 統合版 | D2 焦点を絞った追加 ADR | D3 直接改訂 |
+| --- | --- | --- | --- |
+| 無傷 4 決定の転記 | **要**（劣化リスク） | 不要 | 不要 |
+| 覆しか精緻化か | 覆し前提の規定を流用 | **精緻化として整合** | — |
+| `.claude/rules/adr.md` 整合 | △（「覆すとき」の想定外） | 整合 | **違反** |
+| 現行仕様の単一情報源 | ADR 1 本（ただし SKILL.md が実運用の正） | SKILL.md（ADR は履歴） | — |
+| 履歴読者が触る ADR 数 | 2 本（superseded 込み） | 2 本 | 1 本 |
+
 ## 現時点の方針
 
-**A1 + B1 + C1 を採用する。**
+**A1 + B1 + C1 + D2 を採用する。**
 
 spike の中心的な発見は「効くレバーは安価なプロンプト指示であって、新しい機構ではない」だった。
 したがって解も機構ではなくプロンプトに置く。実証された文言を書き換えずに移植し（A1）、
 aggregate は既存語彙で domain 内に畳み（B1）、効かないと測られた grounding は
 **測定結果ごと**不採用として記録する（C1）。
 
-ADR-20260714-02 の 4-phase pipeline・CLI spine・責務分離はいずれも無傷であり、
-変わるのは「分解軸 = 論理 domain」の**粒度規定**である。ただし分解軸の規定は ADR の中核決定で
-あるため、部分改訂ではなく **ADR-20260714-02 を supersede する統合版 ADR** として起こす
-（読者が 1 本読めば harness の現行仕様が揃う状態を保つ）。
+ADR-1895 の 4-phase pipeline・CLI spine・責務分離はいずれも無傷であり、
+変わるのは「分解軸 = 論理 domain」の**粒度規定**と、grounding 不採用という**新規制約**である。
+覆しではなく精緻化であるため、supersede（D1）ではなく **`related_to: [ADR-1895]` を持つ
+焦点を絞った追加 ADR**（D2）として起こす。無傷の 4 決定を転記せず、変わった点だけを記録する。
+harness の現行仕様の単一情報源は ADR ではなく **SKILL.md** 側で担保されている。
 
 ### 実装の指針
 
@@ -284,15 +345,23 @@ ADR-20260714-02 の 4-phase pipeline・CLI spine・責務分離はいずれも�
    小規模 repo では分解を動かさず、大規模 repo では Conway 方向（オーナー縦割り）に
    引っ張って domain 分解を悪化させることが #1991 で測定されている。
 
-3. **ADR 昇格** — `docs/adr/YYYYMMDD-NN-reverse-architecture-harness.md`（統合版）を起こす。
-   - frontmatter: `supersedes: [ADR-20260714-02]`、`topic: chat-ai`、
-     `scope.packages: [cli, core]`（ADR-20260714-02 を踏襲）
-   - ADR-20260714-02 側は `status: superseded` + `superseded_by: ADR-YYYYMMDD-NN`
-   - `pnpm adr:validate` で双方向整合を確認する
-   - 本文は ADR-20260714-02 の内容を引き継いだ上で、「決定」に粒度規定を追加し、
-     「却下した案」に **構造 grounding（CODEOWNERS / commit-coupling）** と
-     **domain 数指定（E1 の再導入）** を測定値つきで追加する
-   - 「派生」の eval 項目に spike の metric（下記 4）を反映する
+3. **ADR 昇格（D2 = 焦点を絞った追加 ADR）** — `docs/adr/2077-reverse-bc-granularity.md` を起こす。
+   ファイル名の `<n>` は起点 Issue #2077（[#2083](https://github.com/kompiro/karasu/issues/2083)
+   の Issue 番号ベース命名。旧 `YYYYMMDD-NN` 形式は廃止済み）。
+   - frontmatter: `id: ADR-2077`、`related_to: [ADR-1895]`、`topic: chat-ai`、
+     `scope.packages: [cli, core]`（ADR-1895 を踏襲）
+   - **ADR-1895 は `accepted` のまま**。`supersedes` / `superseded_by` は設定しない
+     （本件は覆しではなく精緻化 — 論点 D 参照）
+   - `pnpm adr:validate` で `related_to` の整合を確認する
+   - 本文は**転記せず**、変わった点だけを書く:
+     - 「決定」= 分解軸の粒度規定（BC 粒度既定・実証文言の verbatim 移植）と
+       構造 grounding の不採用
+     - 「却下した案」= **構造 grounding（CODEOWNERS / commit-coupling）** と
+       **domain 数指定（ADR-1895 の E1 再導入）** を測定値つきで記録。
+       加えて本 doc の A2 / C2 / D1 の却下理由も引き継ぐ
+     - 「背景」から ADR-1895 を参照し、4-phase pipeline 等の無傷部分は
+       ADR-1895 が引き続き正であることを明記する
+   - eval metric（下記 4）は本 ADR の「派生」節に記す
    - 本 Design Doc は同 PR で削除する
 
 4. **eval metric の記述（#638 への接続）** — 統合 ADR の「派生」節に、
@@ -320,7 +389,8 @@ ADR-20260714-02 の 4-phase pipeline・CLI spine・責務分離はいずれも�
 - **既存ユーザーへの影響**: なし。`.krs` 構文・CLI の挙動は変わらない。
   変わるのは reverse harness が生成する domain の粒度（より粗く、gold に近く、より安価）。
 - **ドキュメント更新**: `.claude/skills/reverse-architecture/SKILL.md`、
-  `docs/adr/`（統合 ADR 新規 + ADR-20260714-02 の superseded 化）、
+  `docs/adr/`（追加 ADR `2077-reverse-bc-granularity.md` の新規作成のみ。
+  ADR-1895 は `accepted` のまま変更しない）、
   本 Design Doc の削除。
 - **テスト・examples への影響**: なし。
 - **並行変更**: #2078 / #2084 が同じ SKILL.md を触る。マージ順に応じて conflict 解消。
