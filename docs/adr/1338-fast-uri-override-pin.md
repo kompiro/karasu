@@ -13,8 +13,11 @@ related_to:
   - ADR-671
   - ADR-1038
 assumptions:
-  - "grep: package.json :: \"fast-uri\":\\s*\"\\^3\\.1\\.2\""
-  - "grep: pnpm-lock.yaml :: fast-uri: 3\\.1\\.2"
+  # 特定パッチ番号ではなく「3.x 系に caret で pin されている」ことを表明する。
+  # 本 ADR の決定は patched な 3.x への固定であって、特定のパッチ版ではない
+  # （後続の security bump のたびに assumption が壊れるのを避ける — ADR-2115）。
+  - "grep: package.json :: \"fast-uri\":\\s*\"\\^3\\."
+  - "grep: pnpm-lock.yaml :: fast-uri: 3\\."
 ---
 
 # ADR-1338: `fast-uri` を `pnpm.overrides` で `^3.1.2` に固定（GHSA セキュリティ修正）
