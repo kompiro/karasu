@@ -52,6 +52,29 @@ Dependabot security update は GHSA 検知時に即時起票され、
 
 詳細経緯は `ADR-1038` 参照。再発時は ADR を増やさず本ルールで処理。
 
+## override 付き直接依存の security update PR（別の失敗モード）
+
+**root `pnpm.overrides` に載っているパッケージが、同時に
+`packages/<name>/package.json` の直接依存でもある**場合、その security
+update PR は上記とは別の理由で構造的に CI を通せない:
+
+- Dependabot は宣言と `pnpm-lock.yaml`（`overrides:` スナップショットを含む）
+  を修正版に更新する
+- 一方で **root `package.json` の `pnpm.overrides` は書き換えない**
+  （Dependabot は override 機構を認識しない）
+- 結果、manifest の override だけが古いまま残り、
+  `pnpm install --frozen-lockfile` が **`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`**
+  で必ず落ちる（`ERR_PNPM_OUTDATED_LOCKFILE` ではない）
+
+`@dependabot recreate` でも直らない。bot ブランチに人手で override 合わせの
+コミットを足しても次の recreate で失われるため、**PR は close し、当該 bump は
+人手の PR に畳み込む**（override とセットで 1 コミットにする）。
+
+判別のポイント: エラーが `LOCKFILE_CONFIG_MISMATCH` なら override 起因、
+`OUTDATED_LOCKFILE` なら lockfile 未更新起因。
+
+詳細経緯は `ADR-2115` 参照（実例: PR #2114 の `dompurify`）。
+
 ## 依存更新バッチの ADR 化
 
 月曜バッチで複数 PR が出て、特殊な判断（major / cooldown 違反観測 / bot
