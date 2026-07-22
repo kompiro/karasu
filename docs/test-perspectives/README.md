@@ -477,3 +477,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260717-02](TPL-20260717-02-svg-interactive-control-paints-last.md) | SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つ — document order がそのまま重なり順 | renderer | #2044 |
 | [TPL-20260718-01](TPL-20260718-01-i18n-key-naming-max-4-segments.md) | i18n key は `<feature>.<sub-feature?>.<element>.<state>` の最大 4 段命名規約に従う — sub-feature は独立 UI サーフェスがあるときのみ導入し、孫階層は作らない | app-ui | docs/spec/i18n.md, #2019 |
 | [TPL-20260718-02](TPL-20260718-02-reference-existence-validated-on-merged-space.md) | 参照存在チェック（`contains` / `owns` 等の `*-target-not-found`）は per-file ではなくマージ後の id 空間で検証する — per-file の判定を project mode に横流しすると cross-file 参照が偽陽性になる | resolver | #2032 |
+| [TPL-20260721-01](TPL-20260721-01-skill-cli-command-refs-drift.md) | エージェント向け skill が散文で参照する CLI コマンド名は CLI レジストリと同期させる — 名前の存在は機械チェック、用途違い・capability 不在の断定は checklist と CLI surface 変更時の advisory で担保 | build | #2084, #2090 |
+| [TPL-20260721-02](TPL-20260721-02-label-placement-measured-and-byte-stable.md) | エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable、author 指定ラベルは動かさない | renderer | ADR-2048, #2048 |

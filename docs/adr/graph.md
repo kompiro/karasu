@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-268 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+271 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -108,6 +108,8 @@ flowchart TD
     ADR_1855["ADR-1855<br/>Dependabot Triage (2026-07-08) — `actions/cache..."]
     ADR_1862["ADR-1862<br/>TypeScript 7.0（native compiler）を採用する"]
     ADR_1866["ADR-1866<br/>app E2E（Playwright）を Required status check にし、p..."]
+    ADR_2106["ADR-2106<br/>Dependabot トリアージ 2026-07-21 — setup-node 採用・ast..."]
+    ADR_2111["ADR-2111<br/>Dependabot security update — brace-expansion / ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -255,6 +257,7 @@ flowchart TD
     ADR_1884["ADR-1884<br/>multi-system root view でも Group by: team を効かせる（..."]
     ADR_1886["ADR-1886<br/>差分モードの Group by で除去ノードを元の team フレームに残し、集約エッジの d..."]
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
+    ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -651,9 +654,12 @@ flowchart TD
   class ADR_1955 accepted
   class ADR_1983 accepted
   class ADR_2045 accepted
+  class ADR_2048 accepted
   class ADR_2076 accepted
   class ADR_2087 accepted
   class ADR_2092 accepted
+  class ADR_2106 accepted
+  class ADR_2111 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -680,7 +686,7 @@ flowchart TD
 
 - [`adr-tooling`](graph/adr-tooling.md) — 8 ADRs
 - [`app-ui`](graph/app-ui.md) — 40 ADRs
-- [`build`](graph/build.md) — 54 ADRs
+- [`build`](graph/build.md) — 56 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 10 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs
@@ -688,7 +694,7 @@ flowchart TD
 - [`navigation`](graph/navigation.md) — 11 ADRs
 - [`parser`](graph/parser.md) — 19 ADRs
 - [`project`](graph/project.md) — 8 ADRs
-- [`renderer`](graph/renderer.md) — 38 ADRs
+- [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 12 ADRs

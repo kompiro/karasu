@@ -75,6 +75,16 @@ pre-push:
       # without `mod+shift+p`. The vitest mirror in scripts/lint runs it in CI.
       glob: "{packages/app/src/**,docs/tools/**,scripts/lint/app-shortcut-docs-sync.ts}"
       run: pnpm run lint:app-shortcut-docs-sync
+    skill-cli-refs:
+      # Every `karasu <cmd>` hardcoded in .claude/skills/** must be a registered
+      # CLI command (Issue #2093). Catches a skill referencing a renamed/removed
+      # command. Globbed on the CLI's command surface too — index.ts and the
+      # translate adapters — so it re-runs (and prints its residual advisory)
+      # when that surface changes, i.e. on exactly the PR that can make a skill's
+      # CLI claims stale (#2084 lint-style, #2090 wrangler). The vitest mirror in
+      # scripts/lint runs it in CI.
+      glob: "{.claude/skills/**,packages/cli/src/index.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
+      run: pnpm run lint:skill-cli-refs
     reference-docs-check:
       # The machine-derived tables in docs/spec/*.md (and the .ja.md
       # counterparts) are generated from reference-data.ts — fail if a hand
