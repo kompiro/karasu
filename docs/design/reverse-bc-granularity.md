@@ -86,7 +86,13 @@ domain が粗いほど fan-out が減るため、品質とコストが同じ方�
 
 ## 制約・前提
 
-- **v1 syntax freeze**（ADR-1314）— 新 `.krs` 構文を導入しない。粒度の表現は既存語彙で行う。
+- **構文の二層モデル**（ADR-1314）— v1.0 は**リリース済み**であり、凍結は
+  **v1.0-stable 面**（後方互換を約束する面）にかかる。`boundary` のような
+  **experimental（post-v1.0 watch）は「in-core で使えるが互換を明示的に約束しない」**面であり、
+  凍結対象ではない。したがって本 doc の制約は「**新しい構文を発明しない**」であって、
+  **既存 experimental 語彙の利用を禁じるものではない**。
+  experimental に依存する設計は「壊れうる」というリスクを負うだけで、
+  freeze 違反にはならない（この区別は論点 B2 の評価に効く）。
 - **SKILL.md は portable な Agent Skill** — karasu repo 外の任意 repo に対して単体で動く必要があり、
   karasu の CLI 以外の外部ツール依存を増やさない。
 - **E1（固定深さ）却下との整合** — 指示は基準であって数量ではない。
@@ -154,7 +160,8 @@ scout に目標 domain 数を与える。
 
 **メリット**
 
-- 既存語彙のみ。v1 freeze と整合。
+- `usecase` / `entity` は **v1.0-stable 層**の語彙。後方互換が約束されているため、
+  harness の出力に互換リスクが乗らない（experimental に依存する B2 との対比）。
 - ADR-1895 の Phase 2 が既に「subagent は自 domain の usecase/entity/resource を書く」
   としており、追加の機構が要らない。
 - gold（人手の domain 分解）と同じ粒度に揃う。
@@ -176,15 +183,27 @@ scout に目標 domain 数を与える。
 
 **デメリット**
 
-- **有効化する文法が未実装**。#2036 / #2079 はいずれも open で、
-  採用されたのは design doc のみ。harness を未実装の文法に依存させられない。
+- **今日書ける形は人間工学的に破綻する**。`boundary` 本体は実装済み
+  （[#1974](https://github.com/kompiro/karasu/issues/1974) / drill-down grouping
+  [#1983](https://github.com/kompiro/karasu/issues/1983) とも closed。usecase / entity も
+  レベル別にフレームされる）ので、B2 は**今日でも技術的には書ける**。
+  ただし書けるのは **top-level by-reference 形**だけで、aggregate ごとに member の
+  usecase / entity を全部 top-level に列挙することになり、
+  [#2079](https://github.com/kompiro/karasu/issues/2079) が実測した 3 つの摩擦
+  （冗長な列挙・global id 一意性の圧力・1:1 membership）を正面から踏む。
+  これを解消する **scoped 形（#2036）は `status: designed` で実装未着地**。
+  つまり障害は「文法が無い」ではなく「**使える形がまだ来ていない**」。
 - **spike の測定範囲外**。全 7 run は aggregate boundary を一切書かずに採点しており、
   BC 粒度で得た V-measure 0.83–1.00 は「aggregate を畳んだ」状態の数字である。
   B2 は各 deep-dive subagent に「どの usecase / entity を 1 つの aggregate に括るか」という
   **新しい判断**を課すが、その判断の質は未測定。
 - 粒度問題を解くのに構造判断を harness に足すことになり、
   spike が「効くレバーはプロンプト一行であって機構ではない」と示した結論に逆行する。
-- boundary は experimental notation であり、ADR-1820 の gate 下にある。
+- **experimental への依存はリスクであって禁止ではない**（制約節参照）。`boundary` は
+  post-v1.0 watch 面であり互換を約束しない（ADR-1820 の gate 下）。v1.0 リリース済みの今、
+  scoped 形の着地や stable 昇格で表記が動きうるため、harness の出力を今日の形に
+  合わせると将来の移行コストを抱える。freeze 違反ではないが、**採る理由が弱い間は
+  待つほうが安い**。
 - → 不採用。ただし**却下ではなく延期**である（下記「未解決」参照）。
   B1 と B2 は排他ではなく、B2 は domain 内部の追加構造なので、
   粒度の決定を触らずに後から加算できる。
