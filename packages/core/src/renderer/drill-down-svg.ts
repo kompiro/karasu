@@ -137,6 +137,7 @@ export function buildDrillDownSvg(
           // collapse off by design.
           groupBy,
           boundaryIndex: krsFile.boundaryIndex,
+          scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
         }),
     },
     [],
@@ -160,6 +161,7 @@ export function buildDrillDownSvg(
     legendOptions,
     groupBy,
     krsFile.boundaryIndex,
+    krsFile.scopedBoundaryIndex,
   );
   for (const level of entityLevels) levels.push(level.element);
 
@@ -222,6 +224,7 @@ export function renderEntityView(
     viewScope: legendScopeForLogicalSlice(slice),
     groupBy,
     boundaryIndex: krsFile.boundaryIndex,
+    scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
   });
   return { svg, diagnostics, hasContent: true };
 }
@@ -363,6 +366,7 @@ function collectEntityLevels(
   legendOptions: ReturnType<typeof buildLegendRenderOptions>,
   groupBy?: "team" | "boundary",
   boundaryIndex?: Map<string, string>,
+  scopedBoundaryIndex?: Map<string, Map<string, string>>,
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
   const styles = resolveStyles(effectiveSystems, sheets, []);
@@ -391,6 +395,7 @@ function collectEntityLevels(
       // view too (#1983); collapse off by design.
       groupBy,
       boundaryIndex,
+      scopedBoundaryIndex,
     });
     const { viewBox, innerContent } = extractSvgParts(svg);
     // Back target: the domain's usecase view when it exists (the domain has
@@ -532,6 +537,7 @@ export function buildAllViewsSvg(
             // collapse off by design.
             groupBy,
             boundaryIndex: krsFile.boundaryIndex,
+            scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
           }),
       },
       [],
@@ -553,6 +559,7 @@ export function buildAllViewsSvg(
     legendOptions,
     groupBy,
     krsFile.boundaryIndex,
+    krsFile.scopedBoundaryIndex,
   );
 
   // Collect deploy level

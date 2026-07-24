@@ -1,5 +1,5 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
-import { INFRA_KIND_SET } from "../types/ast.js";
+import { INFRA_KIND_SET, boundaryScopeKey } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import { collapseGroups } from "./group-collapse.js";
@@ -934,6 +934,13 @@ interface LayoutOptions {
    * badge source regardless of axis. See docs/design/system-view-grouping.md.
    */
   boundaryIndex?: Map<string, string>;
+  /**
+   * Membership from `boundary` blocks declared inside a node block (#2036),
+   * keyed by declaring scope (see `boundaryScopeKey`). Only the entry for the
+   * canvas being drawn applies, so a scoped boundary frames its own level and
+   * nowhere else — unlike `boundaryIndex`, which is model-wide.
+   */
+  scopedBoundaryIndex?: Map<string, Map<string, string>>;
   displayMode?: DisplayMode;
   layoutHints?: Map<string, ResolvedLayoutHints>;
   edgeDirections?: Map<string, EdgeDirection>;
@@ -970,6 +977,29 @@ interface GroupedLayerBands {
  * non-null), so that decision is left to each call site to preserve today's
  * behavior exactly.
  */
+/**
+ * The boundary membership that applies to the canvas being drawn (#2036).
+ *
+ * `boundaryIndex` is model-wide, so it applies everywhere; a scoped block is
+ * declared on one canvas and applies only there. Where both name the same node
+ * the scoped entry wins — it is the more specific statement, written next to
+ * the node it names — and the top-level form keeps its reach untouched
+ * everywhere else.
+ *
+ * `scopePath` is the chain of node ids from the root down to this canvas's
+ * container, which is what the parser keys membership by.
+ */
+function boundaryAxisFor(
+  scopePath: readonly string[],
+  boundaryIndex: Map<string, string> | undefined,
+  scopedBoundaryIndex: Map<string, Map<string, string>> | undefined,
+): Map<string, string> | undefined {
+  const scoped = scopedBoundaryIndex?.get(boundaryScopeKey(scopePath));
+  if (scoped === undefined || scoped.size === 0) return boundaryIndex;
+  if (boundaryIndex === undefined) return new Map(scoped);
+  return new Map([...boundaryIndex, ...scoped]);
+}
+
 function collapseAndAssignGroupLayers(
   nodes: readonly KrsNode[],
   edges: readonly KrsEdge[],
@@ -1036,6 +1066,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const {
     ownerIndex,
     boundaryIndex,
+    scopedBoundaryIndex,
     displayMode,
     layoutHints,
     edgeDirections,
@@ -1047,8 +1078,21 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // The grouping axis (#1858 P2a = team, #1822 P2b = boundary). `ownerIndex`
   // stays the team-badge source on every card regardless of axis; only the
   // *grouping* logic below switches to `groupIndex`.
+  //
+  // The canvas being drawn is the container plus its ancestors — for the root
+  // system view that is the system itself (`containerNode` is set, with an empty
+  // ancestor chain), which is the scope a top-level-looking `system X { boundary
+  // … }` declares into.
+  const scopePath =
+    viewSlice.containerNode !== null
+      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
+      : [];
   const groupIndex =
-    groupBy === "boundary" ? boundaryIndex : groupBy === "team" ? ownerIndex : undefined;
+    groupBy === "boundary"
+      ? boundaryAxisFor(scopePath, boundaryIndex, scopedBoundaryIndex)
+      : groupBy === "team"
+        ? ownerIndex
+        : undefined;
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
   // (or all systems for the root view). Within a single drill-down view, IDs
@@ -1650,6 +1694,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   const {
     ownerIndex,
     boundaryIndex,
+    scopedBoundaryIndex,
     displayMode,
     layoutHints,
     edgeDirections,
@@ -1663,6 +1708,13 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // stays the per-card team badge source regardless of axis (mirrors layout()).
   const groupIndex =
     groupBy === "boundary" ? boundaryIndex : groupBy === "team" ? ownerIndex : undefined;
+  // Each system frame is its own canvas, so a scoped boundary declared in
+  // `system X { … }` applies inside X's frame and nowhere else (#2036). Resolved
+  // per system in the loop below; the team axis stays model-wide.
+  const boundaryAxisForSystem = (systemId: string): Map<string, string> | undefined =>
+    groupBy === "boundary"
+      ? boundaryAxisFor([systemId], boundaryIndex, scopedBoundaryIndex)
+      : groupIndex;
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
@@ -1706,14 +1758,15 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     let groupBandsS: Map<string, GroupBand> | null = null;
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
-    if (groupBy && groupIndex && groupIndex.size > 0) {
+    const systemGroupIndex = boundaryAxisForSystem(sys.id);
+    if (groupBy && systemGroupIndex && systemGroupIndex.size > 0) {
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
       const collapsed = collapseAndAssignGroupLayers(
         rawNodes,
         sys.edges,
-        groupIndex,
+        systemGroupIndex,
         collapsedGroups,
         edgeDiffState,
         sys.id,

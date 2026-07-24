@@ -243,6 +243,7 @@ export async function compileSystemDiff(
     theme,
     groupBy,
     boundaryIndex: mergedBoundaryIndex,
+    scopedBoundaryIndex: afterResolved.krsFile.scopedBoundaryIndex,
     collapsedGroups,
     collapsedCategories,
     interactive,

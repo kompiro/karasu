@@ -440,6 +440,7 @@ function _compileFromPreparedInput(
     interactive,
     groupBy,
     boundaryIndex: krsFile.boundaryIndex,
+    scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
     collapsedGroups,
   });
   const nodeMetadata = buildNodeMetadata(
