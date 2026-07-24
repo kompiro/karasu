@@ -413,7 +413,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
   [ADR-1827](../adr/1827-permalink-deep-element.md)）を壊す。本設計が
   スコープ付きにするのは **boundary の identity** だけで、**ノードの identity は不変**。
 - **`namespace` 語彙 / 宣言サイトの id name-scope 化**: [ADR-1858](../adr/1858-system-view-group-by-team.md) L57 /
-  [`system-view-grouping.md`](./system-view-grouping.md) L240 で却下済み（id を `payments.Billing` に修飾する＝過剰約束）。
+  [ADR-1974](../adr/1974-boundary-declaration-syntax.md)「却下した案」で却下済み（id を `payments.Billing` に修飾する＝過剰約束）。
   **本案はそれとは別物** — 本案が動かすのは **`boundary` ブロックの配置**であって、**ノード id を修飾しない**。
 - **`owns`（team 軸）への同種の適用**: 非目標 → [#2088](https://github.com/kompiro/karasu/issues/2088)。
   `organization` は system ツリーの**外**にある横断オーバーレイなので、「宣言スコープ」という概念が効かない。
@@ -471,7 +471,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
 `docs/spec/` に新規節を追加する PR は proactive TPL 同梱が必要（`CLAUDE.md`）だが、本 PR は
 **`docs/design/` のみ**を触り、`syntax.md` の改訂は実装 PR で行う。双方向 spec back-ref（spec 章末の
 `> Related TPLs:` ↔ TPL の「## 派生元 spec」）は spec 節が存在して初めて閉じられるため、**実装 PR に deferral する**。
-母体の P2b design doc も同じ deferral 先例を持つ（[`system-view-grouping.md`](./system-view-grouping.md) L357）。
+母体の P2b も同じ deferral 先例を持つ（[ADR-1974](../adr/1974-boundary-declaration-syntax.md) 理由節「柵は既存 TPL で足りる」— 新規 proactive TPL は起こさず、spec 章末の `> Related TPLs:` から既存 TPL に back-ref した）。
 
 実装 PR で起こす/更新する内容のドラフト:
 - [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md) に
