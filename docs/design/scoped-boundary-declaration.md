@@ -6,6 +6,7 @@
   - 引き金 Issue: [#2036](https://github.com/kompiro/karasu/issues/2036)（parent [#1822](https://github.com/kompiro/karasu/issues/1822) comprehension）／設計 PR: [#2058](https://github.com/kompiro/karasu/pull/2058)
   - carve-out 先: [#2088](https://github.com/kompiro/karasu/issues/2088)（team 軸 `owns` — org は system ツリー外の横断オーバーレイなのでスコープ解決が効かない）、[#2065](https://github.com/kompiro/karasu/issues/2065)（cross-cutting concern labeling — user-defined tag の領分）
   - 顕在化元: [#1983](https://github.com/kompiro/karasu/issues/1983) / [#2034](https://github.com/kompiro/karasu/issues/2034)（drill-down grouping 正規化 → [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)）
+  - **実利用エビデンス**: [#2079](https://github.com/kompiro/karasu/issues/2079)（hato 21 domains / 215 usecases の実測。本設計とは独立に、人間工学の側から同じ 2 つの症状を報告している — 下記「実利用エビデンス（#2079）との対応」節）
   - 関連 Issue: [#2032](https://github.com/kompiro/karasu/issues/2032)（cross-file contains の偽 not-found）、[#2076](https://github.com/kompiro/karasu/issues/2076) / [ADR-2076](../adr/2076-formatter-top-level-exhaustiveness.md)（`fmt` が top-level `boundary` を落とす問題 — マージ済み。本設計の前提）
   - notation の母体（設計）: [`system-view-grouping.md`](./system-view-grouping.md)（P2b `boundary`/`contains`、status: 部分昇格）
   - 関連 ADR: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（per-view 交差セマンティクス。「per-level axis」却下・「nested boundary 構文」deferred の当事者 ADR）、[ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（同一ラベル・disjoint フレームの先例）、[ADR-927](../adr/927-import-system-nested.md)（同 id の意図的共存は正当）、[ADR-1858](../adr/1858-system-view-group-by-team.md)（`namespace` 語彙却下）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（notation promotion gate）、[ADR-1827](../adr/1827-permalink-deep-element.md)（permalink deep anchor = leaf id）
@@ -394,6 +395,23 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
 
 いずれも「診断を足して警告する」のではなく「**その状態を書けなくする**」形の解決である。
 
+### 実利用エビデンス（#2079）との対応
+
+[#2079](https://github.com/kompiro/karasu/issues/2079) は本設計とは**独立の経路**で書かれた。出発点は
+correctness ではなく**人間工学**で、証拠は実モデル（hato: 21 domains / **215 usecases**、spike
+[#1991](https://github.com/kompiro/karasu/issues/1991) の逆生成物）を `boundary` で整理したときの実測である。
+それが報告する 3 つの friction のうち **2 つは本設計が構造的に解消する**。同じ症状に別方向から到達している。
+
+| #2079 の friction | 本設計での扱い |
+| --- | --- |
+| **(1) top-level by-reference が冗長で宣言から切り離される** — 全 usecase を整理するには 215 個の id を宣言場所から遠い top-level ブロックに並べる。rename すると離れた boundary を直す羽目になり locality が無い。「**宣言場所に置ける inline な sub-grouping**（例: `domain` の中に置く group/section ブロック）が自然だが、notation に相当物が無い」 | **決定事項 1 が相当物そのもの。** boundary ブロックを `domain` の中に置けるようにするので、「この層の関心事」がその層のブロックに並ぶ。#2079 が「notation に無い」と書いた構造が、本設計の主軸である |
+| **(2) global id 一意性の圧力** — `contains <UsecaseId>` が bare id で解決するため usecase id が実質グローバル一意を要求される。hato では `GetChat`（Journaling）と MCP gateway の同名が衝突し、harness が `McpGetChat` へ**改名を強制**された | **決定事項 2 が圧力を外す。** メンバ候補が宣言スコープの直下の子に限られるので、層をまたぐ同名は `contains` の解決に影響しない。karasu はもともと global 一意を要求していない（[ADR-927](../adr/927-import-system-nested.md)、兄弟のみ `duplicate-node-id-parent`）ため、改名を強いていたのは **`contains` の bare-id 解決だけ**だった |
+| **(3) 1:1 membership ゆえに単一軸しか表現できない** — usecase は trigger 種別 / CRUD / sub-feature と直交する複数の facet を持つが、同時に 1 つしか表現できない | **本設計では解かない。解くべきでもない。** 1:1 は boundary の都合ではなく**開閉フレームの構造的要件**である（`system-view-grouping.md`「開閉の識別子は単一値でなければならない」— 多重所属はフレームの重なりを生み [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) の「全要素ちょうど一度配置」不変条件を壊す）。多値の facet ラベリングは**畳まない機構**の仕事で、[#2065](https://github.com/kompiro/karasu/issues/2065)（user-defined tag）の領分。決定事項 7 の carve-out がそのまま効く |
+
+friction (1)(2) は #2079 自身が「別の construct が要る要求」として書いたものだが、**本設計を入れれば
+新しい construct を足さずに消える**。#2079 が求めた「inline sub-grouping」は、本設計では新語彙ではなく
+**既存 `boundary` ブロックを置ける場所を増やすだけ**で得られる。
+
 ### 影響範囲・マイグレーション
 
 - **既存ユーザー**: **影響なし**。既存の top-level `boundary` は挙動不変で、スコープ内宣言は純粋な追加。
@@ -434,6 +452,19 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
 - 正当化は corpus evidence だけに寄りかからない。**概念の定義を明確化した帰結として配置が決まる**という
   論拠を併記する — boundary を「層ごとの関心事」と定義するなら、宣言がその層に置けないのは
   定義と文法の不整合である。本設計はその不整合の是正であって、新機軸の導入ではない。
+- **ただし実利用エビデンスも揃った**（本節の初版執筆時点では無かった）。[#2079](https://github.com/kompiro/karasu/issues/2079) が
+  hato（21 domains / 215 usecases）を `boundary` で整理した実測から、本設計が構造的に解消する 2 症状
+  （宣言からの乖離・global id 圧力）を**独立に**報告している。correctness 側（#2036 の曖昧性）と
+  人間工学側（#2079）という別経路の観測が同じ設計に収束しており、gate の評価材料としては
+  「定義の整合」だけに依るより強い。
+  なお hato は **karasu-nest の共有 corpus そのものではない**（corpus は #1783 で未実在。hato は spike
+  [#1991](https://github.com/kompiro/karasu/issues/1991) の逆生成モデルで repo 外）。gate が求める証拠源に
+  厳密に一致するわけではないが、合成モデルではなく実在システムを対象にした実測である点を明記して扱う。
+- gate はさらに roadmap の watch item に「`group` 系の別語彙要望が出ないか」「`contains` の粒度や
+  first-wins 多重所属が実利用で噛み合うか」を挙げている。#2079 の friction (1) は前者に対する
+  **実際の要望**であり、friction (3) は後者に対する **実際の不一致報告**である。ただし (3) への回答は
+  「boundary を多値にする」ではなく「多値 facet は [#2065](https://github.com/kompiro/karasu/issues/2065) の
+  tag が担う」— 上表を参照。
 - 構文表面積は**純減方向**である点も併記する。案 Q（修飾記法）を採れば `contains` の引数文法が
   恒久的に複雑化したが、案 S は既存ブロックを置ける場所を増やすだけで、`contains` の文法は bare id のまま変わらない。
 
