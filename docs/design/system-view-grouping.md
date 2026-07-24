@@ -1,7 +1,7 @@
 # システム構成図の grouping — 優先順位と検証計画
 
 - **日付**: 2026-07-09
-- **ステータス**: 部分昇格 — **P2a は [ADR-1858](../adr/1858-system-view-group-by-team.md)、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md) に昇格済み**。本 doc は P1 検証の詳細（evidence）と、**P2b（宣言構文 `boundary` — 下記「P2b 詳細設計」で設計確定）** を継続保持する。
+- **ステータス**: 部分昇格 — **全フェーズの決定が ADR 化済み**: P2a は [ADR-1858](../adr/1858-system-view-group-by-team.md)、**P2b（宣言構文 `boundary` + `boundaryIndex`、#1974）は [ADR-1974](../adr/1974-boundary-declaration-syntax.md)**、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)。本 doc は **P1 検証の詳細（evidence）と設計空間の記録**を継続保持する（[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md) が §「計測 5」を一次ソースとして参照するため、決定の移送後も evidence として残す）。
 - **関連**:
   - 引き金 Issue: [#1822](https://github.com/kompiro/karasu/issues/1822)（旧題 "Declare semantic clusters within a system"）
   - 実装済み: [#1858](https://github.com/kompiro/karasu/issues/1858) P2a（ADR-1858）。フォローアップ #1872–#1876
@@ -257,130 +257,23 @@ P2 / P3 に着手するときに再利用するため、これまでの検討結
 
 P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 決定**（メンバー範囲=全ノード種／全体フロー保存／共存=排他セレクタ／既定=展開／min-FAS 順序／折り畳みエッジ再ターゲット）と、その理由・却下案は **[ADR-1858](../adr/1858-system-view-group-by-team.md)** に昇格した。P2a は実装完了（#1860/#1861/#1865/#1869）。
 
-以降、本 doc は **P2b（宣言構文）** の検討を継続する（差分モード grouping #1886 → [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping #1884 → [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md) に昇格済み）。実装フェーズの整理:
+差分モード grouping（#1886 → [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)）と multi-system root grouping（#1884 → [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)）も昇格済み。実装フェーズの整理:
 
 | フェーズ | 内容 | 文法変更 | 状態 |
 | --- | --- | --- | --- |
 | **P2a** | 二段 topo + 枠 + 折り畳み（team=`ownerIndex` 軸） | ゼロ | ✅ 実装済み（ADR-1858） |
-| **P2b** | `boundary` 宣言構文 + `boundaryIndex` | あり（experimental で追加。#1820 gate は promotion 側） | ✅ 実装済み（#1974: A 文法 #1966 / B 軸配線 #1973 / C spec・examples・roadmap）— 下記「P2b 詳細設計」 |
+| **P2b** | `boundary` 宣言構文 + `boundaryIndex` | あり（experimental で追加。#1820 gate は promotion 側） | ✅ 実装済み（**[ADR-1974](../adr/1974-boundary-declaration-syntax.md)**。#1974: A 文法 #1966 / B 軸配線 #1973 / C spec・examples・roadmap） |
 | **P2c** | 直交ルーティング + 集約トランク + hop/junction 交差マーク（#1859） | ゼロ | ✅ 実装済み（**[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)**。#1927/#1954 mixed route・#1939/#1956 marks 拡張含む） |
 
-## P2b 詳細設計（宣言構文 + `boundaryIndex`）
+## 確定した方針 → ADR-1974（P2b 詳細設計）
 
-P2a は grouping 軸を **team（`ownerIndex`）** に固定した。P2b は「著者が任意に宣言する意味的まとまり」を第二の軸として足す。**設計の要点は「新レイアウトを作らない」こと** — P2a/P2c が実装した grouping 機構（`collapseGroups` / `assignGroupedLayers` / 境界フレーム / P2c ルーティング）は grouping 軸を **`Map<string,string>`（node id → group id）** としか見ていない（`groupIdOf` at `layout.ts:1038`）。P2b は **`ownerIndex` と同型の第二の map（`boundaryIndex`）を供給し、Group by セレクタで切り替える**だけに絞る。新規なのは (a) 文法、(b) `boundaryIndex` の構築、(c) 軸値の配線、(d) app のセレクタ選択肢、(e) 診断、(f) spec、(g) TPL contract。**レイアウト・描画・折り畳み・ルーティングのコードは一切増やさない。**
+P2b（宣言構文 `boundary` + `boundaryIndex`）の **5 決定**（構文 = `boundary` / メンバー動詞 = `contains`／`boundaryIndex` は `ownerIndex` の構造的ミラーで 1:1・first-wins・重複は info 診断／Group by セレクタを排他 3 値に拡張して軸を全 call site へ配線／experimental で着地し stable 昇格は corpus 待ち／P2a・P2c 機構の再利用に徹しレイアウトを増やさない）と、その理由・却下した語彙（`cluster` / `namespace` / `partition` / `subsystem` / `group`）・却下した綴り方（bare tag / keyed tag / sigil / UML 風 / `#`）は **[ADR-1974](../adr/1974-boundary-declaration-syntax.md)** に昇格した。
 
-### 動機（P2a だけでは足りない理由）
-
-ADR-1858（P2a）は「入れ物を作って畳むと読める」を team 軸で実証した。しかし team 軸には二つの穴が残る（本 doc「P2」節）:
-
-1. **1 チームが多数の service を持つと、チーム内の密度は下がらない。** team 枠の中がまた過密になる。
-2. **組織と一致しない意味的まとまり**（「決済まわり」「認証まわり」）を表現できない。`owns` は組織の面であって、bounded-context の面ではない。
-
-P2b は「著者が引く任意の境界」を第二軸として与え、この二穴を埋める。team 軸（Conway）と boundary 軸（意味的クラスタ）は**独立**で、同じ図を別々の切り口で畳める。
-
-### 決定 1 — 構文（語彙 = `boundary`、メンバー動詞 = `contains`）
-
-```krs
-boundary payments {
-  label "Payments"
-  contains Billing
-  contains Wallet
-}
-```
-
-- **top-level 宣言**。`organization` と同じく system/domain の外に置ける。ファイル横断（`owns` と同じく id 参照であって containment ではない）。
-- **`contains <id>` を 1 行 1 メンバー**で並べる（`owns <id>` の綴りに厳密に揃える。parser 実装も `parseTeamBlock` の owns ループ `parser.ts:1796-1805` をそのまま流用できる）。カンマ列挙（`contains A, B`）は `owns` と idiom がずれ parser 分岐も増えるため採らない（2026-07-14 決定）。
-- `label` / `description` / `link` は `organization` と同じく受け付ける（`BaseNodeFields` 相当）。
-
-**語彙が `boundary` である理由（本 doc P3 の vocab 分析は当初 `group` を推していた — その lean を覆す）:**
-
-| 論点 | `boundary` | `group` |
-| --- | --- | --- |
-| セレクタの自己言及 | 「**Group by: boundary**」= 「宣言した boundary で束ねる」と読め、team 軸と対等に並ぶ | 「Group by: **group**」は自己言及で不明瞭（機構そのものが group） |
-| 既存語との整合 | design doc 全体と `docs/guide/` の**「境界フレーム / boundary frame」**語彙に一致。読者が見る対象（描かれる枠）を名指す | 中立だが機構名と重複 |
-| 構文 vs 機構の分離 | **構文 = `boundary`（著者が引く線）／機構 = group（team でも boundary でも生む枠）** と綺麗に分離。`ownerIndex`↔`boundaryIndex` の命名も源構文に揃う（owns→owner, boundary→boundary） | 構文と機構が同語で混線 |
-| DDD の含意 | 「bounded context」を薄く連想させるが、`contains` で「ただのまとまり」に留める（過剰約束は避ける） | baggage なし |
-
-`group` の唯一の優位（baggage の無さ）より、**セレクタの自己言及回避**と**boundary-frame 語彙との一致**が勝ると判断する。加えて内部機構は既に `group`（`groupBy` / `collapseGroups` / `assignGroupedLayers` / `__group_<team>__`）で統一されており、**「構文＝boundary / 機構＝group」の二層命名**はコードの現状とも噛み合う。
-
-**メンバー動詞が `contains` である理由:** `member` は**既に予約語**（org の team メンバーブロック `lexer.ts:36` / `parser.ts:1806-1807`）で衝突する。`contains` / `includes` は共に空き。`contains` は「boundary payments contains Billing」と自然に読め、本 doc の P2 例でも既に使っていた。karasu の参照動詞（owns / realizes / delivers / handles = 三単現）とも語形が揃う。
-
-### 決定 2 — `boundaryIndex` は `ownerIndex` の構造的ミラー
-
-parse 時に `boundaryIndex: Map<string, string>`（node id → boundary id）を構築する。`buildOwnerIndex`（`parser.ts:1900-1949`）と同型:
-
-- **1:1**（node はちょうど 1 boundary に属する）。開閉フレームの単一値要件（本 doc「開閉の識別子は単一値」）を最初から満たす。
-- **多重所属は許容し、precedence で primary を選ぶ。** ただし boundary には `@migration_target` / `@deprecated` のような組織アノテーションが意味を持たないため、precedence は **宣言順の first-wins**（最初に `contains` した boundary が勝つ）に単純化する。`ownerIndex` の `migrationPriority`（`parser.ts:83-91`）は流用せず、tie-break だけを踏襲する。
-- **重複は error ではなく info 診断** `duplicate-boundary-assignment`（`duplicate-owner-assignment` `parser.ts:1932-1937` のミラー。severity `info`、params `{ nodeId, existingBoundary }`）。「事実を述べ、判断は読み手に委ねる」register（[TPL-20260514-08]）に従う。診断コードは `DiagnosticParamsByCode`（`ast.ts:532` 近傍）に追加。
-
-> **spec の既存記述との齟齬に注意（実装が正）**: `docs/spec/syntax.md:887` は `owns` の重複を「produces an **error**」と書くが、実装（`parser.test.ts:1258-1328`）は **first-wins + `@migration_target` 優先の precedence 解決**で error ではない。P2b の `contains` も同じく precedence 解決（error にしない）とし、spec を実装に合わせて記述する（`owns` 側の stale 記述も同 PR で正すか別 Issue 化するかは実装時判断）。
-
-### 決定 3 — 軸の配線（team 軸への完全パリティ）
-
-Group by セレクタを **排他**（none / team / **boundary**）に拡張する（ADR-1858 決定 3「共存＝排他」を踏襲）。既存 team 軸の機構をそのまま再利用し、`groupIdOf`（`layout.ts:1038`）が `groupBy` に応じて `ownerIndex` か `boundaryIndex` を選ぶ。配線が必要な全箇所（[TPL-20260510-11] parallel-function-parity — 一つでも漏らすと軸が**黙って落ちる**）:
-
-- **core**: `groupBy?: "team"` → `"team" | "boundary"`（`index.ts:409` / `layout.ts:930` / `svg-renderer.ts:141,189` / `all-layers-svg.ts` / `drill-down-svg.ts` / `layoutMultipleSystems` `layout.ts:1578`）。`layout.ts:1010-1077` の `groupBy === "team"` gate を軸に応じた index 選択へ一般化。
-- **app**: `GroupByMode`（`preview-context.tsx:17`）に `"boundary"` を追加。**off-sentinel gate（`useSystemView.ts:241-242`）を必ず広げる** — コメントが「新軸はここと core union の両方を広げないと silently drop」と警告している当該箇所。ドロップダウン（`PreviewColumn.tsx:295-320`）に選択肢追加。
-- **CLI**: 現状 `groupBy` の call site なし（app 専用）。P2b でも CLI 露出は追加しない（scope 外）。
-
-**team 軸と boundary 軸の関係**: 独立。ある node が team A に `owns` され boundary B に `contains` されることは普通にあり、「Group by: team」では A 枠、「Group by: boundary」では B 枠に入る（排他セレクタなので枠は同時に重ならない）。これは org と意味的クラスタが一致しないという P2b の動機そのもので、意図した挙動。
-
-### 決定 4 — notation gate: experimental で着地（stable 昇格は corpus 待ち）
-
-`boundary` は**新規 experimental notation** として追加する（[ADR-1820] notation promotion gate）。gate の既定は「experimental 据え置き・open/既存構文での表現に寛容・証拠源＝karasu-nest corpus」。P2b は既存構文で表現しきれない（タグは多値で単一値の開閉識別子にならない — 本 doc「タグが折り畳み軸にならない理由」で既に検証済み）ため新構文を導入するが、**stable 昇格は corpus evidence を見てから** #1820 gate で判断する。
-
-- **後方互換は明示的に約束しない**（experimental tier の定義）。`docs/roadmap.md` の experimental 節に watch item として登録し、promotion trigger（corpus 上で boundary がどう使われるか）を書く。
-- gate を「絵に描いた餅」にしないため、`docs/process.md` のリリース運用 touchpoint（experimental notation に触れる changeset）に乗る。
-- **現時点で corpus（karasu-nest, #1783）は未実在**。よって P2b は「価値検証のための experimental 構文を出す」ことが目的で、stable 化は当面しない。この順序（P2a で team 軸の価値実証 → P2b で宣言構文を experimental 提供 → corpus で使用実感 → gate で stable 判断）は本 doc P1→P2→P3 の順序規律と一致する。
-
-### 決定 5 — スコープ（P2a/P2c 機構の再利用に徹する）
-
-**新規に書くもの**: 文法（lexer keyword `lexer.ts:3-50` / token `tokens.ts:42-66` / parser dispatch `parser.ts:213-283` + `parseBoundaryBlock` / AST `BoundaryBlock` + `KrsFile.boundaryIndex` `ast.ts:453-471`）、`buildBoundaryIndex`、軸値配線（決定 3）、app セレクタ、診断、spec（`syntax.md` に boundary 節）、TPL contract。
-
-**再利用（変更しない）**: `collapseGroups` / `assignGroupedLayers` / `group-layout.ts` / 境界フレーム描画 / P2c ルーティング（`routeGroupedEdges` / `aggregateGroupTrunks` / `computeCrossingMarks`）。これらは軸が `Map<string,string>` でありさえすれば boundary 軸でもそのまま動く。
-
-**out of scope**（本 doc scope 節と一致）: boundary の入れ子、boundary 単位の drill-down、cross-system boundary、deploy / org view への boundary 適用。将来必要になれば別 Issue。
-
-### 正しさの柵
-
-- **[TPL-20260510-12]（AST↔parser↔renderer 三点同意）**: `boundary` を AST 型・parser keyword・renderer（軸として消費）の 3 層で揃える。1 層でも欠けると parse できて描かれない/描けてキー無し等の silent 不整合。
-- **[TPL-20260610-01]（受理語彙は効果を持つ）**: parse は通るが枠を生まない「inert な boundary」を防ぐ。`boundary` 宣言 → `boundaryIndex` に載る → Group by: boundary で枠が出る、を end-to-end で assert。
-- **[TPL-20260510-11]（parallel-function-parity）**: 決定 3 の全 call site に軸値を通す。特に `useSystemView.ts:241-242` の off-sentinel gate と core union の同時拡張。
-- **[TPL-20260615-01]（precedence index winner）**: 多重所属の first-wins + 重複 info 診断（`ownerIndex` の winner ルールのミラー）。
-- **[TPL-20260514-08]（診断の fact-vs-style register）**: `duplicate-boundary-assignment` は info（構造的事実）で、警告や error にしない。
-- **[TPL-20260624-02]（再配置で全要素ちょうど一度・端点保持）**: boundary 軸でも折り畳み時に removed/stub の全域性と cross-boundary エッジ端点保持を維持（team 軸と同じ機構なので継承）。
-- **[TPL-20260623-01]（user-facing surface の docs 同期）/ [TPL-20260623-02]（valid-target set が全 kind を列挙）**: `contains` の妥当ターゲット集合を parser・resolver で同期し、spec / examples に反映。
-- **[TPL-20260610-02] / [TPL-20260616-02]（spec 約束の診断を実装・カタログ化）**: `duplicate-boundary-assignment` を `docs/spec/diagnostics.md` に登録。
-- **[TPL-20260511-01]（keyword の字句的曖昧性）**: `boundary` / `contains` を lexer に足すときの既存 id との衝突確認。
-- **退化ケース**: boundary 0 個（現行挙動に退化）/ 全 node が 1 boundary / boundary 宣言だが contains 空 / 参照先 id が存在しない。
-
-> **proactive TPL について**: 本 P2b の新規失敗クラス（「新 group-by 軸を全 call site に通さないと黙って落ちる」「受理された boundary が枠を生まない」）は既存 [TPL-20260510-11] / [TPL-20260610-01] が既に覆う。#1939 の判断（「既存原則の適用範囲を広げるだけなら新規 proactive TPL 不要」）と同じく、**新規 proactive TPL は起こさず既存 TPL を spec 節に back-ref する**方針。ただし `docs/spec/syntax.md` に boundary 節を追加する実装 PR では、CLAUDE.md「spec 新規セクション追加 PR は proactive TPL 最低 1 件」に従い、TPL-20260610-01 を当該節に `> Related TPLs:` で back-ref して要件を満たす（新規起票の要否は実装時に最終判断）。
-
-### Related TPLs
-
-- [TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md) — 新 node 形の AST/parser/renderer 三点同意
-- [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（inert boundary の防止）
-- [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) — 並列関数ファミリの parameter parity（軸を全 call site へ）
-- [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md) — 1:1 index の precedence winner（`boundaryIndex` のミラー元）
-- [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 事実系診断は info register
-- [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) — 再配置で全要素ちょうど一度・端点保持
-- [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — valid-target set が全 kind を列挙（`contains` の対象）
-
-### 実装スライス分割（2026-07-14 決定）
-
-P2a に倣い、各 PR 単独でも図が悪化しない独立スライスで積む:
-
-| スライス | 内容 | changeset |
-| --- | --- | --- |
-| **P2b-A** | core 文法（lexer / token / parser dispatch + `parseBoundaryBlock` / AST `BoundaryBlock`）+ `buildBoundaryIndex` + `duplicate-boundary-assignment` 診断 | `@karasu-tools/core` minor |
-| **P2b-B** | 軸配線 — core `groupBy: "team" \| "boundary"` + `groupIdOf` の index 選択、app `GroupByMode` / off-sentinel gate / ドロップダウン | `@karasu-tools/core` + `karasu` minor |
-| **P2b-C** | `docs/spec/syntax.md` に boundary 節 + `docs/spec/diagnostics.md` 登録 + `examples/` + AT + roadmap experimental 登録 + TPL back-ref | docs のみ |
-
-各スライスに AT を付す。**boundary の spec 節を足す P2b-C は CLAUDE.md「spec 新規セクション追加 PR は proactive TPL 最低 1 件」に従い、TPL-20260610-01 を back-ref**（新規起票の要否は実装時最終判断）。
+実装は完了している（#1974: A 文法 [#1966](https://github.com/kompiro/karasu/pull/1966) / B 軸配線 [#1973](https://github.com/kompiro/karasu/pull/1973) / C spec・examples・roadmap [#1980](https://github.com/kompiro/karasu/pull/1980)、設計 PR [#1951](https://github.com/kompiro/karasu/pull/1951)）。その後の per-view セマンティクス正規化は [ADR-1983](../adr/1983-boundary-drilldown-grouping.md) を参照。
 
 ## 未解決の問い / 決めないこと
 
-- **P2 のメンバー列挙キーワード** — `contains` / `includes` / `member` を候補として記録（参照系は動詞が karasu のイディオム: owns / realizes / delivers / handles）。**P2b 設計時に決める**。
+- ~~**P2 のメンバー列挙キーワード**~~ — 決着済み。`contains` を採用（`member` は organization の予約語と衝突）。理由は [ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 1 を参照。
 - **group 間の相互結合を info 診断にするか** — `[cyclic]` / `duplicate-owner-assignment` と同じく「事実を述べ、判断は読み手に委ねる」形で surface できる。診断コードの新設は #1820 gate の対象か要検討。
 - **任意 grouping なら group グラフは DAG に近づくか**（P2 の動機の一つ）— チーム境界は依存構造と一致しないことが実測された。意味的 group ならより DAG に近い可能性があるが未検証。
 - **Group by 状態・折り畳み状態の共有**（URL / Share payload への符号化）— #1838 の follow-up（`/render` query param・Share button state）と同じ枠で扱う。
