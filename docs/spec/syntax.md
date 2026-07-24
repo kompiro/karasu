@@ -1035,7 +1035,6 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 
 - `duplicate-boundary-assignment` (info) — a node is listed in more than one `boundary`; the first-declared boundary is kept.
 - `contains-target-not-found` (warning) — a `contains` target does not exist in the system hierarchy.
-- `duplicate-boundary-id` (error) — two `boundary` blocks declare the same id.
 
 `boundary` supports both the positional label (`boundary payments "Payments"`)
 and the property form (`boundary payments { label "Payments" }`); when both are
