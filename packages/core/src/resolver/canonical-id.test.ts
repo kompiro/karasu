@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { KrsEdge } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
 import { Parser } from "../parser/parser.js";
-import type { KrsFile } from "../types/ast.js";
+import { createEmptyKrsFile, type KrsFile } from "../types/ast.js";
 import {
   assignEdgeCanonicalIds,
   edgeBaseId,
@@ -100,25 +100,7 @@ describe("assignEdgeCanonicalIds", () => {
 
 describe("validateProjectEdgeIdUniqueness", () => {
   function makeFile(systems: KrsFile["systems"]): KrsFile {
-    return {
-      styleImports: [],
-      nodeImports: [],
-      systems,
-      services: [],
-      clients: [],
-      domains: [],
-      databases: [],
-      queues: [],
-      storages: [],
-      deploys: [],
-      organizations: [],
-      boundaries: [],
-      legends: [],
-      ownerIndex: new Map(),
-      boundaryIndex: new Map(),
-      nodePathIndex: new Map(),
-      nodeFileIndex: new Map(),
-    };
+    return { ...createEmptyKrsFile(), systems };
   }
 
   it("returns no diagnostics when all author ids are unique", () => {

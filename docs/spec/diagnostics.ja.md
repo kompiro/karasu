@@ -53,6 +53,7 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 | `ambiguous-edge-base` | warning | 同じ `from → to` の base を持つ edge が複数あり、識別する author id が無い。 |
 | `service-outside-system` | warning | `service` が `system` の外で宣言されている。 |
 | `infra-not-in-context` | error | infra ブロック（`database` / `queue` / `storage`）が `system` の直接の子でない。 |
+| `boundary-not-in-context` | error | 自身のキャンバスを持たない kind（`entity` / `resource` / `user` / `client` / infra leaf）の中に `boundary` ブロックが宣言されており、囲む対象が存在しない。 |
 | `entity-not-in-domain` | error | `entity` が `domain` の子以外の場所で宣言されている。 |
 | `legend-not-top-level` | error | `legend` ブロックがトップレベル以外で宣言されている。 |
 | `top-level-declaration` | error | `user` またはエッジが `system` ブロック内ではなくトップレベルで宣言されている。 |
@@ -77,6 +78,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-crud-decoration-target` | warning | CRUD decoration が同じ operation を複数回対象にする。 |
 | `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-1566](../adr/1566-ownership-during-migration.md) 参照）。 |
 | `duplicate-boundary-assignment` | info | node が複数の `boundary` に含まれる（事実。最初に宣言された boundary を採用）。 |
+| `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
 | `node-id-multiple-locations` | warning | 同じ node id が複数の場所に現れる。 |
 
 ### cross-reference 解決（warn-don't-error, §S6）

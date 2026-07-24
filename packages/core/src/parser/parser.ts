@@ -37,11 +37,44 @@ import type {
   LegendRefTarget,
   LegendViewScope,
 } from "../types/ast.js";
-import { INFRA_KIND_SET, createEmptyKrsFile } from "../types/ast.js";
+import { INFRA_KIND_SET, boundaryScopeKey, createEmptyKrsFile } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
-import { validateOwnsReferences, validateContainsReferences } from "./reference-validation.js";
+import {
+  validateOwnsReferences,
+  validateContainsReferences,
+  validateScopedContainsReferences,
+} from "./reference-validation.js";
+
+/**
+ * Which kinds may host a scoped `boundary` block (#2036).
+ *
+ * The rule is "a boundary can be declared wherever a canvas is drawn" — a frame
+ * encloses peers on one canvas, so placement and canvas correspond 1:1. Kinds
+ * that draw a drill-down canvas (and infra blocks, whose leaf children are drawn
+ * as top-level nodes there) can host one; leaves and `entity` (which takes no
+ * node children) cannot.
+ *
+ * Keyed by every {@link LogicalNodeKind} rather than a set literal, so adding a
+ * kind fails to typecheck until its placement is decided (TPL-20260623-02).
+ */
+const BOUNDARY_HOST_KIND = {
+  system: true,
+  service: true,
+  domain: true,
+  usecase: true,
+  database: true,
+  queue: true,
+  storage: true,
+  entity: false,
+  resource: false,
+  user: false,
+  client: false,
+  table: false,
+  "queue-item": false,
+  bucket: false,
+} as const satisfies Record<LogicalNodeKind, boolean>;
 
 /** Intermediate shape returned by `parseOperationsList` before per-resource validation. */
 interface ParsedOperation {
@@ -274,6 +307,15 @@ export class Parser {
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
     file.boundaryIndex = this.buildBoundaryIndex(file.boundaries);
+    file.scopedBoundaryIndex = this.buildScopedBoundaryIndex([
+      ...file.systems,
+      ...file.services,
+      ...file.clients,
+      ...file.domains,
+      ...file.databases,
+      ...file.queues,
+      ...file.storages,
+    ]);
     // Top-level (system-less) services get the same per-parent duplicate-child
     // check as services nested in a system, so e.g. a usecase and entity
     // sharing an id under a parked service's domain are caught.
@@ -292,6 +334,19 @@ export class Parser {
     if (file.boundaries.length > 0) {
       this.diagnostics.push(...validateContainsReferences(file));
     }
+    // Scoped boundaries resolve against direct children, so they are checked
+    // per scope rather than against the whole model (#2036).
+    this.diagnostics.push(
+      ...validateScopedContainsReferences([
+        ...file.systems,
+        ...file.services,
+        ...file.clients,
+        ...file.domains,
+        ...file.databases,
+        ...file.queues,
+        ...file.storages,
+      ]),
+    );
 
     return { value: file, diagnostics: this.diagnostics };
   }
@@ -383,6 +438,8 @@ export class Parser {
       tableRef?: { parent: string; child: string };
     },
     parentId?: string,
+    /** Collector for scoped `boundary` blocks; omitted by callers whose kind can never host one. */
+    boundaries?: BoundaryBlock[],
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
@@ -642,6 +699,24 @@ export class Parser {
 
       if (token.type === TokenType.Legend) {
         this.handleNestedLegend(kind);
+        continue;
+      }
+
+      // A `boundary` block declared inside a node block (#2036). Parse it first
+      // either way, so a misplaced one is consumed whole and recovery is clean
+      // (same shape as the `entity-not-in-domain` branch above).
+      if (token.type === TokenType.Boundary) {
+        const block = this.parseBoundaryBlock();
+        if (BOUNDARY_HOST_KIND[kind] && boundaries) {
+          boundaries.push(block);
+        } else {
+          this.diagnostics.push({
+            severity: "error",
+            code: "boundary-not-in-context",
+            params: { parentKind: kind },
+            loc: block.loc,
+          });
+        }
         continue;
       }
 
@@ -972,6 +1047,7 @@ export class Parser {
     // Optional body
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
+    const boundaries: BoundaryBlock[] = [];
     let end = idToken;
 
     if (this.peek().type === TokenType.LeftBrace) {
@@ -982,7 +1058,14 @@ export class Parser {
       // origin = the reference-holding entity.
       const parentId =
         kind === "service" || kind === "domain" || kind === "entity" ? id : undefined;
-      this.parseBlockContentsWithProperties(children, edges, kind, properties, parentId);
+      this.parseBlockContentsWithProperties(
+        children,
+        edges,
+        kind,
+        properties,
+        parentId,
+        boundaries,
+      );
       end = this.expect(TokenType.RightBrace);
     }
 
@@ -994,6 +1077,9 @@ export class Parser {
       ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
+      // Omitted entirely when none were declared, so nodes in existing models
+      // keep their exact shape (snapshot/round-trip stability).
+      ...(boundaries.length > 0 ? { boundaries } : {}),
       loc: this.range(start.loc, end.loc),
     };
 
@@ -1253,11 +1339,12 @@ export class Parser {
     const properties: CommonProperties & { label?: string } = { links: [] };
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
+    const boundaries: BoundaryBlock[] = [];
     let end = idToken;
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
-      this.parseInfraBlockContents(children, edges, kind, properties);
+      this.parseInfraBlockContents(children, edges, kind, properties, boundaries);
       end = this.expect(TokenType.RightBrace);
     }
 
@@ -1269,6 +1356,7 @@ export class Parser {
       ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
+      ...(boundaries.length > 0 ? { boundaries } : {}),
       loc: this.range(start.loc, end.loc),
       properties: {
         description: properties.description,
@@ -1285,6 +1373,7 @@ export class Parser {
     edges: KrsEdge[],
     parentKind: "database" | "queue" | "storage",
     properties: CommonProperties & { label?: string },
+    boundaries: BoundaryBlock[],
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
@@ -1329,6 +1418,13 @@ export class Parser {
         continue;
       }
 
+      // Infra blocks draw a drill-down canvas of their leaf children, so they
+      // host boundaries like any other container kind (#2036).
+      if (token.type === TokenType.Boundary) {
+        boundaries.push(this.parseBoundaryBlock());
+        continue;
+      }
+
       this.error("unexpected-token-in-block", {
         blockKind: parentKind,
         tokenType: String(token.type),
@@ -1349,6 +1445,7 @@ export class Parser {
   private parseLeafNodeContents(
     edges: KrsEdge[],
     properties: CommonProperties & { label?: string },
+    kind: "table" | "queue-item" | "bucket",
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
@@ -1377,6 +1474,20 @@ export class Parser {
 
       if (this.isEdgeStart(token)) {
         edges.push(this.parseEdge());
+        continue;
+      }
+
+      // A leaf draws no canvas, so a boundary here would have nothing to frame.
+      // Named explicitly rather than falling through to unexpected-token, which
+      // would not say why (#2036).
+      if (token.type === TokenType.Boundary) {
+        const block = this.parseBoundaryBlock();
+        this.diagnostics.push({
+          severity: "error",
+          code: "boundary-not-in-context",
+          params: { parentKind: kind },
+          loc: block.loc,
+        });
         continue;
       }
 
@@ -1433,7 +1544,7 @@ export class Parser {
       // Sub-resource nodes (table, queue-item, bucket) are leaf nodes: only properties and
       // edges are allowed inside their bodies. Using a restricted parser avoids accidentally
       // accepting infra keywords (database/queue/storage) as child nodes.
-      this.parseLeafNodeContents(edges, properties);
+      this.parseLeafNodeContents(edges, properties, kind);
       end = this.expect(TokenType.RightBrace);
     }
 
@@ -2025,6 +2136,77 @@ export class Parser {
           index.set(memberId, boundary.id);
         }
       }
+    }
+    return index;
+  }
+
+  /**
+   * Build the scope-keyed membership map for `boundary` blocks declared inside
+   * node blocks (#2036), the scoped counterpart of `buildBoundaryIndex`.
+   *
+   * The key carries the declaring scope because node ids are unique only among
+   * siblings, so `nodeId` alone does not identify a node (TPL-20260512-01).
+   *
+   * Members resolve against the scope's **direct children** only. That is both
+   * the set sibling-uniqueness makes unambiguous — the whole reason this form
+   * avoids the top-level ambiguity of #2036 — and the set drawn as top-level
+   * nodes on that scope's canvas. A `contains` naming anything else is left
+   * unindexed and reported by reference validation, never silently framed.
+   */
+  private buildScopedBoundaryIndex(roots: KrsNode[]): Map<string, Map<string, string>> {
+    const index = new Map<string, Map<string, string>>();
+
+    const walk = (node: KrsNode, ancestorIds: string[]): void => {
+      const scopePath = [...ancestorIds, node.id];
+      if (node.boundaries !== undefined && node.boundaries.length > 0) {
+        const childIds = new Set(node.children.map((child) => child.id));
+        const membership = new Map<string, string>();
+        const declaredIds = new Set<string>();
+
+        for (const boundary of node.boundaries) {
+          // Same id twice in one scope: the two blocks are indistinguishable,
+          // so the second cannot be addressed. Top-level blocks keep their
+          // existing merge behaviour (ADR-1974) — only the scoped form is
+          // constrained, matching the compatibility rule for the new syntax.
+          if (declaredIds.has(boundary.id)) {
+            this.diagnostics.push({
+              severity: "error",
+              code: "duplicate-boundary-id",
+              params: { boundaryId: boundary.id },
+              loc: boundary.loc,
+            });
+            continue;
+          }
+          declaredIds.add(boundary.id);
+
+          for (const memberId of boundary.contains) {
+            if (!childIds.has(memberId)) continue;
+            const existingBoundary = membership.get(memberId);
+            if (existingBoundary !== undefined) {
+              this.diagnostics.push({
+                severity: "info",
+                code: "duplicate-boundary-assignment",
+                params: { nodeId: memberId, existingBoundary },
+                loc: boundary.loc,
+              });
+              continue;
+            }
+            membership.set(memberId, boundary.id);
+          }
+        }
+
+        if (membership.size > 0) {
+          index.set(boundaryScopeKey(scopePath), membership);
+        }
+      }
+
+      for (const child of node.children) {
+        walk(child, scopePath);
+      }
+    };
+
+    for (const root of roots) {
+      walk(root, []);
     }
     return index;
   }

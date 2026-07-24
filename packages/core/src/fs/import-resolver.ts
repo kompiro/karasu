@@ -252,6 +252,20 @@ export class ImportResolver {
         mergedFile.boundaryIndex.set(memberId, boundaryId);
       }
     }
+    // Scoped membership (#2036) merges per scope, with the same first-wins rule
+    // inside each one. Scopes from different files cannot overlap in practice —
+    // a scoped boundary only names its own direct children — but merging by
+    // scope rather than replacing keeps that an observation, not an assumption.
+    for (const [scope, membership] of file.scopedBoundaryIndex ?? []) {
+      let merged = mergedFile.scopedBoundaryIndex.get(scope);
+      if (merged === undefined) {
+        merged = new Map<string, string>();
+        mergedFile.scopedBoundaryIndex.set(scope, merged);
+      }
+      for (const [memberId, boundaryId] of membership) {
+        if (!merged.has(memberId)) merged.set(memberId, boundaryId);
+      }
+    }
     for (const [nodeId, path] of file.nodePathIndex) {
       if (!mergedFile.nodePathIndex.has(nodeId)) {
         mergedFile.nodePathIndex.set(nodeId, path);

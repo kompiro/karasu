@@ -69,6 +69,41 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
   return diagnostics;
 }
 
+/**
+ * Validate `contains` inside *scoped* `boundary` blocks (#2036).
+ *
+ * The valid target set is narrower than for top-level blocks: a scoped boundary
+ * frames the canvas it is written on, so its members are the declaring node's
+ * direct children and nothing else. Reporting is what keeps the form honest —
+ * without it a member naming a grandchild (or a typo) would simply not be
+ * indexed and would vanish without a word (TPL-20260610-01).
+ */
+export function validateScopedContainsReferences(roots: readonly KrsNode[]): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+
+  const walk = (node: KrsNode): void => {
+    if (node.boundaries !== undefined && node.boundaries.length > 0) {
+      const childIds = new Set(node.children.map((child) => child.id));
+      for (const boundary of node.boundaries) {
+        for (const memberId of boundary.contains) {
+          if (!childIds.has(memberId)) {
+            diagnostics.push({
+              severity: "warning",
+              code: "contains-target-not-found",
+              params: { memberId },
+              loc: boundary.loc,
+            });
+          }
+        }
+      }
+    }
+    for (const child of node.children) walk(child);
+  };
+
+  for (const root of roots) walk(root);
+  return diagnostics;
+}
+
 // Every declared node id that a `boundary` may legitimately contain: all node
 // kinds nested anywhere in a system, plus top-level services / clients /
 // domains / infra and their descendants. System container ids are excluded

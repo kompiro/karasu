@@ -162,6 +162,16 @@ const SAMPLES: SamplesByCode = {
     code: "duplicate-boundary-assignment",
     params: { nodeId: "OrderService", existingBoundary: "OrderIntake" },
   },
+  "boundary-not-in-context": {
+    severity: "error",
+    code: "boundary-not-in-context",
+    params: { parentKind: "entity" },
+  },
+  "duplicate-boundary-id": {
+    severity: "error",
+    code: "duplicate-boundary-id",
+    params: { boundaryId: "OrderIntake" },
+  },
   "contains-target-not-found": {
     severity: "warning",
     code: "contains-target-not-found",
@@ -392,6 +402,8 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-crud-decoration-target": ["manage", "read", "Order"],
   "duplicate-owner-assignment": ["OrderService", "Checkout"],
   "duplicate-boundary-assignment": ["OrderService", "OrderIntake"],
+  "boundary-not-in-context": ["entity"],
+  "duplicate-boundary-id": ["OrderIntake"],
   "contains-target-not-found": ["MissingSvc"],
   "duplicate-team-id": ["Platform"],
   "node-id-multiple-locations": ["OrderService"],

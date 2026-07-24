@@ -72,6 +72,14 @@ export interface BaseNodeFields {
   annotationParams?: Record<string, Record<string, string>>;
   children: KrsNode[];
   edges: KrsEdge[];
+  /**
+   * `boundary` blocks declared *inside* this node's block (#2036). Members are
+   * this node's direct children, resolved by bare id — sibling ids are already
+   * error-unique (`duplicate-node-id-parent`), so the ambiguity that bare ids
+   * have at top level cannot arise here. Absent on kinds that draw no canvas of
+   * their own; see `BOUNDARY_HOST_KIND` in the parser.
+   */
+  boundaries?: BoundaryBlock[];
   loc: SourceRange;
 }
 
@@ -485,6 +493,19 @@ export interface KrsFile {
   ownerIndex: Map<string, string>;
   /** Maps each node id to its declared boundary id (P2b, 1:1 like ownerIndex). First-declared wins on multi-membership. */
   boundaryIndex: Map<string, string>;
+  /**
+   * Membership declared by *scoped* `boundary` blocks (#2036), keyed by the
+   * declaring scope and then by child id: `scopeKey(path) → (childId → boundaryId)`.
+   *
+   * A flat `Map<nodeId, boundaryId>` cannot express this: node ids are unique
+   * only among siblings, so the scope is a distinguishing dimension the key must
+   * carry (TPL-20260512-01). Build keys with {@link boundaryScopeKey} on both
+   * the producing and consuming side so the separator never leaks.
+   *
+   * Top-level `boundary` blocks keep using the flat `boundaryIndex` above — their
+   * behaviour is unchanged (ADR-1974 stays in force for them).
+   */
+  scopedBoundaryIndex: Map<string, Map<string, string>>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
   nodePathIndex: Map<string, string[]>;
   /** Maps each node id to the absolute file path where it is defined. */
@@ -498,6 +519,20 @@ export interface KrsFile {
  * accumulator. Used by the parser (`parseFile`), the import resolver
  * (circular-import fallback + merge accumulator), and CLI subtree wrapping.
  */
+/**
+ * Key for {@link KrsFile.scopedBoundaryIndex}: the chain of node ids from the
+ * root down to the declaring node (e.g. `["Shop", "Checkout"]`).
+ *
+ * The single place the encoding is chosen, so producer (parser) and consumer
+ * (layout) cannot disagree. Ids may be written as quoted strings and can hold
+ * any character, so joining on a separator is not injective — `["A B"]` and
+ * `["A", "B"]` would collide on any separator an id is allowed to contain.
+ * JSON encoding is injective for string arrays whatever the ids hold.
+ */
+export function boundaryScopeKey(pathIds: readonly string[]): string {
+  return JSON.stringify(pathIds);
+}
+
 export function createEmptyKrsFile(): KrsFile {
   return {
     styleImports: [],
@@ -515,6 +550,7 @@ export function createEmptyKrsFile(): KrsFile {
     legends: [],
     ownerIndex: new Map(),
     boundaryIndex: new Map(),
+    scopedBoundaryIndex: new Map(),
     nodePathIndex: new Map(),
     nodeFileIndex: new Map(),
   };
@@ -581,6 +617,8 @@ export interface DiagnosticParamsByCode {
   "duplicate-crud-decoration-target": { operation: string; value: string; resourceId: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-boundary-assignment": { nodeId: string; existingBoundary: string };
+  "boundary-not-in-context": { parentKind: string };
+  "duplicate-boundary-id": { boundaryId: string };
   "contains-target-not-found": { memberId: string };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };

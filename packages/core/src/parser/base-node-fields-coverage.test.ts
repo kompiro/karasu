@@ -45,6 +45,11 @@ type ExpectedKeys =
   | "annotationParams"
   | "children"
   | "edges"
+  // Structural, like children/edges: composed by the parser from nested
+  // `boundary` blocks (#2036) rather than parsed as a scalar on the node, so it
+  // is excluded from the per-kind user-facing probe below. Placement is covered
+  // by the scoped-boundary parser tests.
+  | "boundaries"
   | "loc";
 
 // If a key is added to BaseNodeFields, this assignment fails — see the file
