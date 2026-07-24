@@ -138,8 +138,9 @@ function decodeXmlEntities(s: string): string {
  *
  * Both are complete in either direction (a collapsed frame/band keeps its
  * attribute so its `⊕` expand control still works) and axis-agnostic — read
- * from what is actually drawn, so the bulk toggle needs no change when a future
- * Group-by axis lands. See `docs/design/group-by-bulk-collapse.md`.
+ * from what is actually drawn, so the bulk toggle needs no change when another
+ * Group-by axis lands (the `boundary` axis did, and this needed none). See
+ * ADR-2120 (`docs/adr/2120-group-by-bulk-collapse.md`).
  *
  * `serviceIds` are every in-place-expandable service (`data-expand-node`,
  * #1921/#1923) — the renderer emits it only in the single-system, ungrouped view

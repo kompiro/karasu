@@ -2151,6 +2151,14 @@
       "newFile": "1974-boundary-declaration-syntax.md",
       "source": "native",
       "evidence": "born after the issue-number migration (#2100); originating Issue #1974 (P2b boundary declaration syntax), promoted from docs/design/system-view-grouping.md; no date-format ancestor, so this is an identity entry (not a rename)"
+    },
+    {
+      "oldId": "ADR-2120",
+      "oldFile": "2120-group-by-bulk-collapse.md",
+      "newId": "ADR-2120",
+      "newFile": "2120-group-by-bulk-collapse.md",
+      "source": "native",
+      "evidence": "born after the issue-number migration (#2100), so this is an identity entry (not a rename). Number is the authoring PR #2120, not the originating Issue #1872: that number is already held by ADR-1872 (category-collapse edge re-target, the sibling decision from the same issue), so this second ADR from #1872 takes its own PR number per the #2083 convention"
     }
   ],
   "rules": {

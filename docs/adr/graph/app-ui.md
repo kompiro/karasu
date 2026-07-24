@@ -1,6 +1,6 @@
 # ADR Topic: app-ui
 
-40 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+41 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -41,6 +41,7 @@ flowchart TD
     ADR_1470["ADR-1470<br/>app.css をモジュール分割し、トークン層でライトテーマを提供する"]
     ADR_1646["ADR-1646<br/>gallery の example は id 指定・固定 origin fetch で app..."]
     ADR_1955["ADR-1955<br/>全 service をその場一括展開する — Collapse all / Expand al..."]
+    ADR_2120["ADR-2120<br/>bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -55,6 +56,8 @@ flowchart TD
   ADR_462["ADR-462<br/>[project] Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
   ADR_740["ADR-740<br/>[project] OPFS 履歴スナップショットを diff 比較ソースにする"]
   ADR_1096["ADR-1096<br/>[edges] `.krs.style` の `edge#<id>` セレクタ — base ID + opt..."]
+  ADR_1821["ADR-1821<br/>[renderer] layer toggles — external/infra カテゴリの対話的 collaps..."]
+  ADR_1858["ADR-1858<br/>[renderer] system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
   ADR_9006["ADR-9006<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_9019["ADR-9019<br/>[edges] `.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
@@ -64,6 +67,8 @@ flowchart TD
   ADR_739 --> ADR_650
   ADR_813 --> ADR_34
   ADR_1150 --> ADR_1148
+  ADR_2120 --> ADR_1858
+  ADR_2120 --> ADR_1821
   ADR_9011 --> ADR_9007
   ADR_14 --> ADR_9009
   ADR_22 --> ADR_21
@@ -122,6 +127,7 @@ flowchart TD
   class ADR_1470 accepted
   class ADR_1646 accepted
   class ADR_1955 accepted
+  class ADR_2120 accepted
   class ADR_9009 accepted
   class ADR_9010 accepted
   class ADR_9011 accepted
@@ -135,6 +141,8 @@ flowchart TD
   class ADR_462 ghost
   class ADR_740 ghost
   class ADR_1096 ghost
+  class ADR_1821 ghost
+  class ADR_1858 ghost
   class ADR_9006 ghost
   class ADR_9007 ghost
   class ADR_9019 ghost
