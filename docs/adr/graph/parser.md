@@ -1,6 +1,6 @@
 # ADR Topic: parser
 
-19 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+20 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -22,6 +22,7 @@ flowchart TD
     ADR_1177["ADR-1177<br/>Tidy Style コマンド — `.krs.style` に trivia 保持と軸グルー..."]
     ADR_1178["ADR-1178<br/>`.krs.style` 値レベル診断 — 構造化 ValueNode AST と prope..."]
     ADR_1567["ADR-1567<br/>規則と診断を分離し、診断カタログで完全性を担保する"]
+    ADR_1974["ADR-1974<br/>system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
@@ -31,6 +32,8 @@ flowchart TD
   ADR_477["ADR-477<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
   ADR_681["ADR-681<br/>[renderer] トップレベル service / domain を `(Unassigned)` 擬似システム..."]
   ADR_1061["ADR-1061<br/>[renderer] usecase→resource edge を read/write で視覚的に区別する"]
+  ADR_1820["ADR-1820<br/>[build] notation promotion gate — experimental notation..."]
+  ADR_1858["ADR-1858<br/>[renderer] system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_19 --> ADR_9008
   ADR_292 --> ADR_281
@@ -40,6 +43,8 @@ flowchart TD
   ADR_1177 --> ADR_1168
   ADR_1178 --> ADR_1168
   ADR_1178 --> ADR_1177
+  ADR_1974 --> ADR_1858
+  ADR_1974 --> ADR_1820
   ADR_285 --> ADR_281
   ADR_429 --> ADR_412
   ADR_429 --> ADR_211
@@ -69,6 +74,7 @@ flowchart TD
   class ADR_1177 accepted
   class ADR_1178 accepted
   class ADR_1567 accepted
+  class ADR_1974 accepted
   class ADR_2076 accepted
   class ADR_2087 accepted
   class ADR_9008 accepted
@@ -77,5 +83,7 @@ flowchart TD
   class ADR_477 ghost
   class ADR_681 ghost
   class ADR_1061 ghost
+  class ADR_1820 ghost
+  class ADR_1858 ghost
   class ADR_9007 ghost
 ```

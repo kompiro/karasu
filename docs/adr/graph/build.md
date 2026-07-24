@@ -65,8 +65,10 @@ flowchart TD
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
   ADR_8["ADR-8<br/>[styling] ビルトインスタイルの一元化と構造化リファレンス"]
+  ADR_1974["ADR-1974<br/>[parser] system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
   ADR_1296 --> ADR_8
   ADR_1820 --> ADR_1314
+  ADR_1974 --> ADR_1820
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -132,4 +134,5 @@ flowchart TD
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
+  class ADR_1974 ghost
 ```
