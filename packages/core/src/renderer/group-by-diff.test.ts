@@ -87,7 +87,10 @@ function centerInside(node: Rect, frame: Rect): boolean {
   return cx >= frame.x && cx <= frame.x + frame.w && cy >= frame.y && cy <= frame.y + frame.h;
 }
 
-async function diffSvg(groupBy?: "team", collapsedGroups?: ReadonlySet<string>): Promise<string> {
+async function diffSvg(
+  groupBy?: "team" | "boundary",
+  collapsedGroups?: ReadonlySet<string>,
+): Promise<string> {
   const fs = new InMemoryFileSystemProvider();
   await fs.writeFile(BEFORE_PATH, BEFORE);
   await fs.writeFile(AFTER_PATH, AFTER);
@@ -451,5 +454,68 @@ organization Org {
     // The external service folds into the category stub instead of rendering.
     expect(result.svg).toContain('data-node-id="__collapsed_external__"');
     expect(result.svg).not.toContain('data-node-id="Stripe"');
+  });
+});
+
+// The removed-node backfill (#1886) has to reach the scoped boundary axis too,
+// or a node whose only membership was a `boundary` declared inside a node block
+// (#2036) drops out of its frame in diff view. Scoped and top-level indexes are
+// disjoint, so the top-level backfill above does not cover it — this needs its
+// own merge, keyed by scope.
+describe("compileSystemDiff() with groupBy: boundary — scoped backfill (#2036)", () => {
+  // `Wallet` is contained by a boundary declared inside `Checkout` and is
+  // removed in the after model, so it must be restored to that scope's frame.
+  const before = `system Shop {
+  service Checkout {
+    boundary core "Core" {
+      contains Ledger
+      contains Wallet
+    }
+
+    domain Ledger { label "Ledger" }
+    domain Wallet { label "Wallet" }
+  }
+}`;
+  const after = `system Shop {
+  service Checkout {
+    boundary core "Core" {
+      contains Ledger
+    }
+
+    domain Ledger { label "Ledger" }
+  }
+}`;
+
+  async function scopedDiffSvg(): Promise<string> {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(BEFORE_PATH, before);
+    await fs.writeFile(AFTER_PATH, after);
+    const result = await compileSystemDiff({
+      beforeEntryPath: BEFORE_PATH,
+      afterEntryPath: AFTER_PATH,
+      fs,
+      groupBy: "boundary",
+      viewPath: ["Checkout"],
+      interactive: true,
+    });
+    return result.svg;
+  }
+
+  it("frames a removed scoped-boundary member in its former frame, not the trailing band", async () => {
+    const svg = await scopedDiffSvg();
+
+    // Rendered once, still marked removed (TPL-20260624-02 totality).
+    expect(svg.match(/data-node-id="Wallet"/g)?.length).toBe(1);
+    expect(svg).toMatch(/data-node-id="Wallet"[^>]*data-diff-state="removed"/);
+
+    const frame = groupFrameRect(svg, "core");
+    const wallet = nodeRect(svg, "Wallet");
+    const ledger = nodeRect(svg, "Ledger");
+    expect(frame).not.toBeNull();
+    expect(wallet).not.toBeNull();
+    // The removed member sits inside its former frame, exactly like the
+    // surviving member — not dropped to the ungrouped band below it.
+    expect(centerInside(wallet!, frame!)).toBe(true);
+    expect(centerInside(ledger!, frame!)).toBe(true);
   });
 });
