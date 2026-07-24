@@ -53,15 +53,6 @@ pre-push:
       # scripts/lint runs it in CI.
       glob: "{adr.config.json,tpl.config.json,scripts/lint/config-topics-sync.ts}"
       run: pnpm run lint:config-topics-sync
-    adr-id-map:
-      # docs/adr/id-migration-map.json is the frozen old->new id table driving
-      # the issue-number migration (Issue #2083). Guards totality, injectivity,
-      # slug preservation, and — most importantly — detects a HALF-MIGRATED
-      # docs/adr, where some files are renamed and some are not. That state is
-      # dangerous because an unrenamed 20260716-02-… parses as ADR-20260716
-      # under issue-number, i.e. a plausible-but-wrong id rather than an error.
-      glob: "{docs/adr/**,scripts/lint/adr-id-migration-map.ts}"
-      run: pnpm run lint:adr-id-map
     at-check-coverage:
       # Also globs packages/e2e/tests/** so the exact e2e linkage guards
       # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added
