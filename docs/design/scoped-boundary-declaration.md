@@ -87,7 +87,7 @@ boundary pci "PCI" { contains CardVault contains Billing contains Payment contai
 | top-level `boundary payments "Payments" { contains Checkout contains Billing }` | 診断 **0 件**。`compile(src, { groupBy: "boundary" })` で svg に `__group_payments__` が 1 つ出る（現行挙動） |
 | `system Shop { service Payment {} service Payment {} }` | `duplicate-node-id-parent`（**error**）+ `node-id-multiple-locations`（warning） |
 | `system Shop { service Payment {} service Checkout { domain Payment {} } }` | 診断 **0 件**（層またぎ同 id は正当） |
-| top-level `boundary dup "One" {…}` + `boundary dup "Two" {…}` | 診断 **0 件** — `duplicate-boundary-id` は spec にあるが**未実装**（下記ドリフト） |
+| top-level `boundary dup "One" {…}` + `boundary dup "Two" {…}` | 診断 **0 件** — `duplicate-boundary-id` は**未実装**（probe 当時は spec にだけ書かれていた。2026-07-24 に spec 側を削除してドリフトは解消済み。下記参照） |
 
 パーサの構造上の理由: root の dispatch は `parser.ts:233` の `case TokenType.Boundary`（`file.boundaries.push(this.parseBoundaryBlock())`）のみで、
 ブロック内 dispatcher `parseBlockContentsWithProperties`（`parser.ts:370`）には `Boundary` の分岐が無く `unexpected-token-in-block`（`:646`）に落ちる。
@@ -128,7 +128,7 @@ tag（[#2065](https://github.com/kompiro/karasu/issues/2065)）に委ねる。
 | drill-down view を持つ kind | 構造由来（`children.length > 0` かつ内容あり）。drawio exporter は `system \| service \| domain \| usecase` を hardcode。加えて domain ごとの entity view、infra コンテナの drill view | `drill-down-svg.ts:64-66` / `:320-322`、`exporter/drawio/build-drawio-project.ts:127-129`、`view-extract.ts:1330` |
 | `entity` の子 | ノード子を取れない（`parser.ts:628-638`） | 同左 |
 | **formatter** | **`boundary` を 1 箇所も扱っていない** — `printFile` の emit list（`formatter.ts:113-120`）に `file.boundaries` が無く、`fmt` が **top-level boundary を黙って消す**。[ADR-2076](../adr/2076-formatter-top-level-exhaustiveness.md) で**修正済み**（マージ済み） | 同左 |
-| `duplicate-boundary-id` | **spec にのみ存在、実装なし**（`syntax.md:1004` / `syntax.ja.md:928` の 2 箇所だけ。`DiagnosticParamsByCode` / parser / `render-diagnostic.ts` / `diagnostics.md` に無し）。probe でも発火せず | ドリフト |
+| `duplicate-boundary-id` | **どこにも存在しない**。当初は spec の 2 箇所（`syntax.md` / `syntax.ja.md` の boundary 節）にだけ error として書かれ実装が無いドリフトだったが、**2026-07-24 に spec 側の記述を削除して解消済み**（`DiagnosticParamsByCode` / parser / `render-diagnostic.ts` / `diagnostics.md` には元から無い）。probe でも発火せず | ドリフト解消済み |
 
 ### 同名 boundary が層をまたいでも壊れないことの検証
 
@@ -140,7 +140,7 @@ service スコープにも出現しうる。**何が壊れるかを機構ごと�
 | **permalink アンカー** | 衝突しようがない — **boundary はアンカー名前空間に参加していない** | `docs/spec/permalink.md` に `boundary` の記載ゼロ。renderer の単一の生成点 `anchorId(viewPrefix, id)`（`svg-renderer.ts:74-76`）が出すのは `krs-<view>-<id>`（view ∈ system/deploy/org/matrix/entity）とノード id のみで、group frame は anchor を持たない |
 | **collapse 状態** | **既存機構にそのまま乗る** — `groupStubId` は既に `scope` 引数を持ち `__group_collapsed_${scope}_${groupId}__` と namespace する（multi-system 用、#1884） | `group-collapse.ts:25-29` |
 | **スタイル** | 同一性の論点が発生しない — **boundary / group frame を狙う `.krs.style` セレクタが存在しない** | `docs/spec/style.md` に `boundary` 0 hit、`packages/core/src/style/*.ts` に 0 hit |
-| **`duplicate-boundary-id`** | 制約にならない — **spec にあるだけで未実装**（上記ドリフト）。スコープ化を機に「**同一スコープ内の重複**」として定義し直す | probe 実測 + grep |
+| **`duplicate-boundary-id`** | 制約にならない — **spec からも削除済みで未実装**（上記ドリフト解消）。スコープ化を機に「**同一スコープ内の重複**」として**新規に**定義する | probe 実測 + grep |
 | **`duplicate-boundary-assignment`**（info、実装済み） | 影響なし — ノードの親スコープは 1 つなので、あるノードが所属しうる boundary は同一スコープ内の boundary のみ。1:1 ルールはそのまま成立する | `parser.ts:2016-2027` |
 | **タイポ検出** | **これが唯一の実質的コスト** — `contains paymnets` ならぬ `boundary paymnets` が黙って別 boundary になり、警告されない | 後述「未解決の問い」 |
 
@@ -363,10 +363,11 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
    - **注意**: ADR-2076 の網羅性ガード（同 ADR 決定 2 が期待集合を `KrsFile` の配列プロパティから導出すると定めている）（`formatter-top-level-coverage.test.ts`）は `KrsFile` の配列プロパティ由来なので
      **top-level しか守らない**。スコープ内 boundary の emit 漏れは検出されない → 別途 round-trip テストが要る
      （[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)）。
-6. **診断のドリフト解消**
-   - `duplicate-boundary-id`（`syntax.md:1004` / `syntax.ja.md:928` にのみ存在、実装なし）を
-     「**同一スコープ内で同 id の boundary が 2 つ**」として定義し直し、実装する
+6. **`duplicate-boundary-id` の新規導入**
+   - 「**同一スコープ内で同 id の boundary が 2 つ**」として定義し、実装する
      （`collectTeamIds` の `duplicate-team-id`、`parser.ts:2032` が直接の雛形）。
+     2026-07-24 に spec 側の記述を削除したので、これは既存の約束を実装するのではなく
+     **新しい規則を足す**作業になる（下記「未解決の問い」も参照）。
    - `DiagnosticParamsByCode`（`ast.ts`）→ `render-diagnostic.ts` の exhaustive switch → `en.ts` / `ja.ts` → `diagnostics.md` / `diagnostics.ja.md`。
      completeness は `packages/core/src/types/diagnostics-catalog.test.ts` が強制する。
    - `contains-target-not-found`（`reference-validation.ts:54-65`）の探索範囲を、スコープ内 boundary では**当該スコープの直下の子**に限定する。
@@ -375,7 +376,7 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
      - 「Top-level declaration, like `organization`」（`:969`）を「top-level またはノードブロック内」に。
      - 配置可能 kind の表、メンバ = 直下の子の規則、identity = スコープ + id、top-level 互換規定を追加。
      - `boundaryIndex` の記述（`:989`）を「per-scope」に更新。
-     - `duplicate-boundary-id` の再定義（`:1004`）。
+     - `duplicate-boundary-id` を診断一覧に追加（2026-07-24 の削除以降、spec には存在しない）。
    - 章末 `> Related TPLs:` の back-ref を更新する。
 8. **examples**: スコープ内 boundary を使う例を 1 本追加（app が開くのは `index.krs`）。
 9. **changeset**: `@karasu-tools/core` + `karasu` を **minor**（後方互換な文法追加）。
@@ -500,9 +501,12 @@ karasu の drill-down は構造由来（`children.length > 0` かつ内容あり
   spec 上は `table` / `queue-item` / `bucket` が store の drill view で枠対象になる（`syntax.md:978-981`）ので
   原則上は「可」だが、corpus evidence がゼロなので初回は除外して後から広げる選択もある。
   `LogicalNodeKind` の全列挙で確定する（[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md)）。
-- **`duplicate-boundary-id` の再定義とドリフト解消** — 「同一スコープ内の重複」で error とする方針は決めたが、
-  top-level 形（グローバル 1 スコープ扱い）との整合、および既に spec に error と書かれているものを
-  今から実装することによる**既存モデルの新規 error 化**リスクの評価が残る。
+- **`duplicate-boundary-id` の新規導入** — 「同一スコープ内の重複」で error とする方針は決めたが、
+  top-level 形（グローバル 1 スコープ扱い）との整合と、**既存モデルの新規 error 化**リスクの評価が残る。
+  2026-07-24 に spec の記述を削除した（実装の無い約束を残さないため）ので、この診断は
+  「spec が既に約束しているものを実装する」のではなく「新しい規則を足す」位置づけになった。
+  同 id の boundary ブロックは現状ひとつの枠にマージされるだけなので、error 化は既存モデルを
+  壊しうる挙動変更であり、experimental notation の gate（[ADR-1820](../adr/1820-notation-promotion-gate.md)）で扱う。
 - **スコープ化した `boundaryIndex` の実装コスト** — `Map<scopePath, Map<childId, boundaryId>>` 形の妥当性、
   layout の 2 箇所の軸選択（`:1050` / `:1664`）の統合可否、`compile-diff.ts:231-245` /
   `fs/import-resolver.ts:247-253` の index マージ経路への波及。

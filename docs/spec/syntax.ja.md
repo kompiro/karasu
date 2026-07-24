@@ -958,7 +958,6 @@ boundary payments "Payments" {
 
 - `duplicate-boundary-assignment`（info）— ノードが複数の `boundary` に含まれる。最初の boundary を採用。
 - `contains-target-not-found`（warning）— `contains` 先が system 階層に存在しない。
-- `duplicate-boundary-id`（error）— 2 つの `boundary` ブロックが同じ id を宣言。
 
 `boundary` は位置引数（`boundary payments "Payments"`）とプロパティ形式（`boundary payments { label "Payments" }`）の
 両方に対応し、両方指定時はプロパティ形式が優先される。
