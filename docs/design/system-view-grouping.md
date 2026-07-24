@@ -1,7 +1,7 @@
 # システム構成図の grouping — 優先順位と検証計画
 
 - **日付**: 2026-07-09
-- **ステータス**: 部分昇格 — **全フェーズの決定が ADR 化済み**: P2a は [ADR-1858](../adr/1858-system-view-group-by-team.md)、**P2b（宣言構文 `boundary` + `boundaryIndex`、#1974）は [ADR-1974](../adr/1974-boundary-declaration-syntax.md)**、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)。本 doc は **P1 検証の詳細（evidence）と設計空間の記録**を継続保持する（[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md) が §「計測 5」を一次ソースとして参照するため、決定の移送後も evidence として残す）。
+- **ステータス**: 部分昇格 — **全フェーズの決定が ADR 化済み**: P2a は [ADR-1858](../adr/1858-system-view-group-by-team.md)、**P2b（宣言構文 `boundary` + `boundaryIndex`、#1974）は [ADR-1974](../adr/1974-boundary-declaration-syntax.md)**、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)。本 doc に残るのは **P1 検証の詳細（evidence）だけ**である（[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md) が §「計測 5」を一次ソースとして参照するため、決定の移送後も evidence として残す）。語彙・綴り方の設計空間を含む P2 / P3 の検討は [ADR-1974](../adr/1974-boundary-declaration-syntax.md) に集約した。
 - **関連**:
   - 引き金 Issue: [#1822](https://github.com/kompiro/karasu/issues/1822)（旧題 "Declare semantic clusters within a system"）
   - 実装済み: [#1858](https://github.com/kompiro/karasu/issues/1858) P2a（ADR-1858）。フォローアップ #1872–#1876
@@ -14,7 +14,8 @@
 
 > 本 Doc は「semantic clusters の構文をどう綴るか」から始めた初版を差し替えたもの。
 > 初版の案を却下するのではなく、**「いま何を優先すべきか」** の軸で作業順序を組み替える。
-> 語彙・構文の検討結果は「設計空間の記録」節に保存し、P2 / P3 で再利用する。
+> 語彙・構文の検討結果は P2b で決着し、却下案も含めて
+> [ADR-1974](../adr/1974-boundary-declaration-syntax.md) に移した。
 
 ## 背景・課題
 
@@ -29,8 +30,8 @@ grouping はそれ自体が目的ではなく、**まとまりごとに開閉（
 | 優先度 | 何を | なぜ先か | 文法変更 |
 | --- | --- | --- | --- |
 | **P1** | **grouping が可読性を上げるかの検証**（乗り物 = 組織境界） | 中心仮説が未検証。ここが偽なら以降すべて不要 | **なし** |
-| **P2** | **任意 grouping の宣言機構** | 組織境界だけでは要素数問題が残る（後述） | あり（P1 検証後に支払う） |
-| **P3** | 語彙・first-class 化の判断 | corpus evidence を見てから（#1820 gate） | — |
+| **P2** | **任意 grouping の宣言機構** | 組織境界だけでは要素数問題が残る（→ [ADR-1974](../adr/1974-boundary-declaration-syntax.md)） | あり（P1 検証後に支払う） |
+| **P3** | 語彙・first-class 化の判断 | corpus evidence を見てから（#1820 gate。→ 同 ADR 決定 4） | — |
 
 ## 現状（インベントリ）
 
@@ -77,7 +78,7 @@ grouping はそれ自体が目的ではなく、**まとまりごとに開閉（
 ### その他
 
 - **`.krs` / `.krs.style` は v1.0 凍結**（[ADR-1314]）。文法変更は #1820 の promotion gate を通す。
-- **out of scope**: deploy / org view への grouping 適用、group の入れ子、group 単位の drill-down、cross-system group。
+- **out of scope**: deploy / org view への grouping 適用、boundary の入れ子、boundary 単位の drill-down、cross-system boundary（[ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 5 が同じ範囲を確定した）。
 
 ## P1: grouping は可読性を上げるか（検証）
 
@@ -202,56 +203,18 @@ y = tierBase[systemTier(node)] + subRow(node)
 - 畳んだノードを端点に持つ edge が**両端点を解決して描画される**
 - 退化ケース（team が 1 サービス / 全サービスが同一 team / team 未使用）で破綻しない
 
-## P2: 任意 grouping の宣言機構（P1 検証後）
+## P2 / P3 の検討 → ADR-1974
 
-**組織境界だけでは要素数問題は残り続ける。** 1 チームが多数のサービスを持つ場合、チーム内の密度は下がらない。また「決済まわり」のように**組織と一致しない**意味的まとまりを表現したい要求も残る。したがって、著者が任意に group を宣言する機構は別途必要になる。
+P1 の検証を受けて検討した **P2（任意 grouping の宣言機構）** と **P3（語彙・first-class 化）** は
+P2b で決着し、**[ADR-1974](../adr/1974-boundary-declaration-syntax.md)** に昇格した。当時の暫定案
+（キーワード `group`、カンマ列挙のメンバー）は採らず、確定形は **`boundary <id> { contains <id> … }`**
+（1 行 1 メンバー、index は `boundaryIndex`）である。
 
-その形は上記の構造的制約から導かれる — **containment ではなく参照、単一値、多重所属は precedence + info 診断**。すなわち `organization` / `owns` を雛形にする:
-
-```krs
-group payments {
-  label "Payments"
-  contains Billing, Wallet
-}
-```
-
-- ファイルをまたげる（`owns` と同じ）。**file は単位ではない**（#1822）を満たす。
-- `groupIndex: Map<string, string>` を 1:1 で持ち、多重所属は precedence で primary を選び、重複は info 診断で観測する。
-
-> **スコープの訂正（P1 計測 1 より）**: 当初 P2 を「`groupIndex` を足して `krs-cat-frame` を再利用するだけ」と見積もったが、これは誤り。**グループ配置のレイアウトが本体**であり、`collapseNodeList` の再利用や枠の描画はその上に乗る薄い層にすぎない。P2 の主コストは `layout()` — 依存レイヤリングとグループ局所性の調停（計測 3）にある。
-
-これは文法変更だが、**karasu ネイティブな形**であり、かつ **P1 の検証が済んでから支払うコスト**である。
-
-## P3: 語彙・first-class 化（#1820 gate）
-
-P1 が検証され P2 の機構が使われたのち、corpus の使用実感をもとに #1820 の promotion gate で判断する。
-
-`group` は現時点で最も無難な語である（後述の語彙分析）。将来これを本当に一級の階層段（`system > ? > service`）へ昇格させるなら、その時点で `subsystem` が正しい語になる。段を作らない限り `group` が事実に忠実。
-
-## 設計空間の記録（deferred — 却下ではない）
-
-P2 / P3 に着手するときに再利用するため、これまでの検討結果を保存する。
-
-### 語彙
-
-| 語 | 評価 |
-| --- | --- |
-| `cluster` | **不可**。`docs/concepts.md` / `docs/spec/syntax.md` が "regions, AZs, **clusters**, nodes" を **out of scope な物理トポロジ**として名指ししており、論理グルーピングに使うと自分の spec と衝突する。コードでも `clusterByXGap()`（近接クラスタリング）と二重化。統計的には cluster は *discover* するもので "Declare" と矛盾 |
-| `namespace` | **不可**。中核の意味は**識別子のスコープ**（`payments.Billing` のように id を修飾する）。今回 id は変えないので過剰約束。K8s namespace は運用テナント境界＝物理側 |
-| `partition` | **不可**。数学的には**互いに素かつ全体を覆う**分割。どの group にも属さないサービスが普通にありえるので全域性が成り立たない。DB では sharding ＝物理 |
-| `subsystem` | 階層段を足すことを含意する。段を作るなら正しい語 |
-| **`group`** | **推奨**。物理・創発いずれの baggage もなく、既存語と衝突しない。「名前の付いたまとまり」以上を約束しない |
-
-### 綴り方
-
-| 案 | 評価 |
-| --- | --- |
-| bare tag `[payments]` | **構造的に不適** — タグは多値。今日パースはできる（未知タグに警告なし）が、開閉の単一値識別子にならない |
-| keyed tag `[cluster: payments]` | **構造的に不適** — 同上。`[...]` 自体が多値コンテナ。加えて `parseTags()`（`parser.ts:1359-1376`）は `:` を扱わず、`[cluster: payments]` は `["cluster", ":", "payments"]` の 3 タグに誤解釈される |
-| sigil `$payments` | `$` は lexer で未使用（`default` で skip）なので字句的には空き。ただし**恒久記号の新設**は最も重い notation commitment。`$` は多くの言語で「変数」を意味し語感がずれる |
-| UML 風 `<<payments>>` | `<` `>` も lexer 未使用で空き。ただし **karasu の `[tag]` が既に UML stereotype の座**（style の specificity が Kind=1 / Tag=10 / ID=100 と CSS に一致し、`[tag]` は CSS の `.class` に対応）。分類用の括弧が二重化する。`<` `>` は将来の双方向 edge（`<->`）に使いたい文字でもある |
-| `#payments` | **不可**。`#` は karasu では **identity**（`readHashToken`、ID selector `#ECommerce`、edge id `#criticalWrite`）。CSS の `#id` に対応し、グループとは逆の意味 |
-| **参照宣言 `group X { contains … }`** | **P2 の推奨**。単一値・ファイル横断・`owns` の既存イディオムに乗る |
+**語彙・綴り方の設計空間**もすべて同 ADR の「却下した案」に移した — 却下した語彙（`cluster` /
+`namespace` / `partition` / `subsystem` / `group`）と綴り方（bare tag / keyed tag / sigil `$` /
+UML 風 `<<>>` / `#`）の評価、および `group` を推していた当初の lean を覆した理由（セレクタの
+自己言及回避、boundary-frame 語彙との一致、**構文 = `boundary` / 機構 = group** の二層命名）は
+同 ADR 決定 1 にある。experimental 据え置きと #1820 gate による stable 昇格判断は決定 4。
 
 ## 確定した方針 → ADR-1858（P2a）
 
@@ -274,6 +237,6 @@ P2b（宣言構文 `boundary` + `boundaryIndex`）の **5 決定**（構文 = `b
 ## 未解決の問い / 決めないこと
 
 - ~~**P2 のメンバー列挙キーワード**~~ — 決着済み。`contains` を採用（`member` は organization の予約語と衝突）。理由は [ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 1 を参照。
-- **group 間の相互結合を info 診断にするか** — `[cyclic]` / `duplicate-owner-assignment` と同じく「事実を述べ、判断は読み手に委ねる」形で surface できる。診断コードの新設は #1820 gate の対象か要検討。
+- **boundary 間の相互結合を info 診断にするか** — `[cyclic]` / `duplicate-owner-assignment` と同じく「事実を述べ、判断は読み手に委ねる」形で surface できる。診断コードの新設は #1820 gate の対象か要検討。
 - **任意 grouping なら group グラフは DAG に近づくか**（P2 の動機の一つ）— チーム境界は依存構造と一致しないことが実測された。意味的 group ならより DAG に近い可能性があるが未検証。
 - **Group by 状態・折り畳み状態の共有**（URL / Share payload への符号化）— #1838 の follow-up（`/render` query param・Share button state）と同じ枠で扱う。
