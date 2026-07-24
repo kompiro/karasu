@@ -523,8 +523,8 @@ describe("PreviewColumn", () => {
   describe("Collapse all / Expand all control (#1872)", () => {
     // The control is gated on `anyCollapsible` (a team frame OR an external/infra
     // band exists), NOT on `groupBy === "team"` or `groupByAvailable` — so it
-    // shows for category-only un-grouped views too, and a future Group-by axis
-    // needs no change here. See docs/design/group-by-bulk-collapse.md.
+    // shows for category-only un-grouped views too, and another Group-by axis
+    // needs no change here. See docs/adr/2120-group-by-bulk-collapse.md.
     const withCollapsibles = (over: Partial<PreviewContextValue["systemView"]> = {}) =>
       makeProps({
         activeView: "system",

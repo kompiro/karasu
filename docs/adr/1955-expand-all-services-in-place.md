@@ -8,6 +8,7 @@ related_to:
   - ADR-1815
   - ADR-1858
   - ADR-1872
+  - ADR-2120
 scope:
   packages: [app]
 assumptions:
@@ -24,7 +25,7 @@ assumptions:
   - 引き金 Issue: [#1955](https://github.com/kompiro/karasu/issues/1955)（親 epic [#1817](https://github.com/kompiro/karasu/issues/1817) comprehension）。実装 PR [#1968](https://github.com/kompiro/karasu/pull/1968)、設計 PR [#1964](https://github.com/kompiro/karasu/pull/1964)
   - 前提: [ADR-1815](1815-expand-container-in-place.md)（in-place expansion / true mixed-LOD。Phase 2 #1923 で複数同時展開・「Collapse all」で全畳み・ソフト警告・ハード上限なしを確定）
   - 再利用機構: [ADR-1858](1858-system-view-group-by-team.md) §3（per-axis 状態/コントロールの直交）, [ADR-1872](1872-category-collapse-retarget-edges.md)（category band の折り畳み）
-  - 姉妹（未 ADR 化の design）: `group-by-bulk-collapse.md`（#1872。bulk collapse の「描画済み SVG から id 集合を得る」「軸の有無で駆動する」パターンの初出。本 ADR はその expansion 軸版）
+  - 姉妹: [ADR-2120](2120-group-by-bulk-collapse.md)（#1872。bulk collapse の「描画済み SVG から id 集合を得る」「軸の有無で駆動する」パターンの初出。本 ADR はその expansion 軸版）
   - 制約 TPL: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（軸の有無で駆動し `groupBy` に分岐しない）, [TPL-20260516-01](../test-perspectives/TPL-20260516-01-control-a11y-contract-survives-migration.md)（コントロールの a11y 契約維持）, [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（user-facing surface の docs 同期）
   - AT: [AT-1955](../acceptance/1955-expand-all-services.md)
   - コード: `packages/app/src/hooks/useSystemView.ts`

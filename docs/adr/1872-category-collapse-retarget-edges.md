@@ -4,7 +4,7 @@ title: category collapse は境界エッジを drop せず stub に re-target �
 status: accepted
 date: 2026-07-12
 topic: renderer
-related_to: [ADR-1821, ADR-1858]
+related_to: [ADR-1821, ADR-1858, ADR-2120]
 scope:
   packages: [core, app]
 assumptions:
@@ -21,7 +21,7 @@ assumptions:
   - Issue [#1872](https://github.com/kompiro/karasu/issues/1872)（Group by team: Collapse all / Expand all）
   - 見直す決定: [ADR-1821](1821-layer-toggles.md)（#1821 layer toggle — 「edge は `computeLayoutEdges` の既存ガードで自動 drop」の一点を更新）
   - 同型の先行実装: [ADR-1858](1858-system-view-group-by-team.md)（group collapse は cross-group edge を stub に re-target）
-  - 設計: [docs/design/group-by-bulk-collapse.md](../design/group-by-bulk-collapse.md)
+  - 同じ Issue から出た姉妹決定: [ADR-2120](2120-group-by-bulk-collapse.md)（bulk collapse を軸非依存にする設計。本 ADR の edge re-target はその bulk 化で表面化した）
   - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持）
   - コード: `packages/core/src/renderer/category-collapse.ts` / `layout.ts` / `group-collapse.ts`
 
