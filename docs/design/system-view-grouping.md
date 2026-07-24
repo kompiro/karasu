@@ -204,6 +204,11 @@ y = tierBase[systemTier(node)] + subRow(node)
 
 ## P2: 任意 grouping の宣言機構（P1 検証後）
 
+> **この節は P2 時点のスケッチであり、確定した構文ではない。** 実際に出荷された構文は
+> **`boundary <id> { contains <id> … }`**（語彙 `group` → `boundary`、メンバーは 1 行 1 つ、
+> index は `boundaryIndex`）で、決定と理由は **[ADR-1974](../adr/1974-boundary-declaration-syntax.md)**
+> にある。以下の `group` / カンマ列挙の綴りは当時の案として残す。
+
 **組織境界だけでは要素数問題は残り続ける。** 1 チームが多数のサービスを持つ場合、チーム内の密度は下がらない。また「決済まわり」のように**組織と一致しない**意味的まとまりを表現したい要求も残る。したがって、著者が任意に group を宣言する機構は別途必要になる。
 
 その形は上記の構造的制約から導かれる — **containment ではなく参照、単一値、多重所属は precedence + info 診断**。すなわち `organization` / `owns` を雛形にする:
@@ -228,9 +233,21 @@ P1 が検証され P2 の機構が使われたのち、corpus の使用実感を
 
 `group` は現時点で最も無難な語である（後述の語彙分析）。将来これを本当に一級の階層段（`system > ? > service`）へ昇格させるなら、その時点で `subsystem` が正しい語になる。段を作らない限り `group` が事実に忠実。
 
+> **この lean は P2b で覆った。** 採用したのは **`boundary`** である。決め手は (1) セレクタの自己言及回避
+> （「Group by: group」は機構名と混線する）と (2) 「境界フレーム / boundary frame」語彙との一致で、
+> 内部機構は `group` のままとして**構文 = `boundary` / 機構 = group** の二層命名に分けた。
+> 経緯は [ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 1。
+> なお `boundary` は experimental notation のままで、stable 昇格の判断が #1820 gate に残る点は変わらない
+> （watch item は `docs/roadmap.md`）。
+
 ## 設計空間の記録（deferred — 却下ではない）
 
 P2 / P3 に着手するときに再利用するため、これまでの検討結果を保存する。
+
+> **語彙・綴り方の問いは P2b で決着した。** 下表の「推奨」は **P2 時点の評価**であり、現在の推奨ではない。
+> 採用は **`boundary` + `contains`（1 行 1 メンバー）** で、`group` を覆した理由も含めて
+> **[ADR-1974](../adr/1974-boundary-declaration-syntax.md)** が正典。表は却下語（`cluster` / `namespace` /
+> `partition` / `subsystem`）の評価が今後も再利用できるため、当時のまま残す。
 
 ### 語彙
 
@@ -240,7 +257,7 @@ P2 / P3 に着手するときに再利用するため、これまでの検討結
 | `namespace` | **不可**。中核の意味は**識別子のスコープ**（`payments.Billing` のように id を修飾する）。今回 id は変えないので過剰約束。K8s namespace は運用テナント境界＝物理側 |
 | `partition` | **不可**。数学的には**互いに素かつ全体を覆う**分割。どの group にも属さないサービスが普通にありえるので全域性が成り立たない。DB では sharding ＝物理 |
 | `subsystem` | 階層段を足すことを含意する。段を作るなら正しい語 |
-| **`group`** | **推奨**。物理・創発いずれの baggage もなく、既存語と衝突しない。「名前の付いたまとまり」以上を約束しない |
+| **`group`** | P2 時点の**推奨**。物理・創発いずれの baggage もなく、既存語と衝突しない。「名前の付いたまとまり」以上を約束しない。**→ P2b で覆り `boundary` を採用**（[ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 1） |
 
 ### 綴り方
 
@@ -251,7 +268,7 @@ P2 / P3 に着手するときに再利用するため、これまでの検討結
 | sigil `$payments` | `$` は lexer で未使用（`default` で skip）なので字句的には空き。ただし**恒久記号の新設**は最も重い notation commitment。`$` は多くの言語で「変数」を意味し語感がずれる |
 | UML 風 `<<payments>>` | `<` `>` も lexer 未使用で空き。ただし **karasu の `[tag]` が既に UML stereotype の座**（style の specificity が Kind=1 / Tag=10 / ID=100 と CSS に一致し、`[tag]` は CSS の `.class` に対応）。分類用の括弧が二重化する。`<` `>` は将来の双方向 edge（`<->`）に使いたい文字でもある |
 | `#payments` | **不可**。`#` は karasu では **identity**（`readHashToken`、ID selector `#ECommerce`、edge id `#criticalWrite`）。CSS の `#id` に対応し、グループとは逆の意味 |
-| **参照宣言 `group X { contains … }`** | **P2 の推奨**。単一値・ファイル横断・`owns` の既存イディオムに乗る |
+| **参照宣言 `group X { contains … }`** | **P2 の推奨**。単一値・ファイル横断・`owns` の既存イディオムに乗る。**→ 綴り方は採用され、キーワードだけ `boundary` になった**（`boundary X { contains … }`。メンバーは 1 行 1 つ） |
 
 ## 確定した方針 → ADR-1858（P2a）
 
