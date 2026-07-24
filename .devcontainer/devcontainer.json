@@ -31,7 +31,9 @@
         "oxc.oxc-vscode",
         "vitest.explorer",
         "ms-vscode.vscode-typescript-next",
-        "ms-azuretools.vscode-containers"
+        "ms-azuretools.vscode-containers",
+        "peakchen90.open-html-in-browser",
+        "Anthropic.claude-code"
       ],
       "settings": {
         "js/ts.tsdk.path": "node_modules/typescript/lib",
