@@ -234,6 +234,39 @@ boundary pay "Two" { contains Wallet }
   });
 });
 
+describe("scoped boundary — the sibling-uniqueness the form depends on", () => {
+  // A scoped `contains` can only name one node *because* sibling ids are
+  // error-unique. That guarantee has to hold everywhere a boundary may be
+  // declared, including a system-less infra block, whose children were not
+  // previously covered by the duplicate check.
+  it("reports duplicate children of a top-level infra block", () => {
+    const result = Parser.parse(`
+database DB {
+  boundary hot { contains orders }
+  table orders {}
+  table orders {}
+}
+`);
+    const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent");
+    expect(dup).toHaveLength(1);
+    expect(dup[0].severity).toBe("error");
+    expect(JSON.stringify(dup[0].params)).toContain("orders");
+  });
+
+  it("reports it for a nested infra block too, so placement does not change the rule", () => {
+    const result = Parser.parse(`
+system Shop {
+  database DB {
+    boundary hot { contains orders }
+    table orders {}
+    table orders {}
+  }
+}
+`);
+    expect(result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent")).toHaveLength(1);
+  });
+});
+
 describe("scoped boundary — scope key", () => {
   it("distinguishes paths that a separator-joined key would collide", () => {
     // Ids may be quoted strings and hold any character, so ["A B"] must not key

@@ -322,6 +322,14 @@ export class Parser {
     for (const service of file.services) {
       this.collectNodeIds(service.children, new Set<string>());
     }
+    // Same check for top-level infra blocks. Nested ones are reached via
+    // `system.children`, but a system-less `database` / `queue` / `storage`
+    // otherwise never gets one — and its leaf children are exactly the members a
+    // scoped `boundary` addresses (#2036), which relies on sibling ids being
+    // error-unique.
+    for (const infra of [...file.databases, ...file.queues, ...file.storages]) {
+      this.collectNodeIds(infra.children, new Set<string>());
+    }
     file.nodePathIndex = this.buildNodePathIndex(file.systems, file.domains, [
       ...file.databases,
       ...file.queues,

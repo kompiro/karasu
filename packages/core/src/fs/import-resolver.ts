@@ -16,6 +16,7 @@ import { StyleParser } from "../parser/style-parser.js";
 import {
   validateOwnsReferences,
   validateContainsReferences,
+  validateScopedContainsReferences,
 } from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
 import type { StyleSheet } from "../types/style.js";
@@ -96,6 +97,21 @@ export class ImportResolver {
     if (krsFile.boundaries.length > 0) {
       this.diagnostics.push(...validateContainsReferences(krsFile));
     }
+    // Scoped boundaries (#2036) share the `contains-target-not-found` code, so
+    // their per-file verdict was suppressed above too. Re-derive here or they
+    // vanish entirely: cross-file `system` reopen can add the very child a
+    // scoped `contains` names, so only the merged tree can decide.
+    this.diagnostics.push(
+      ...validateScopedContainsReferences([
+        ...krsFile.systems,
+        ...krsFile.services,
+        ...krsFile.clients,
+        ...krsFile.domains,
+        ...krsFile.databases,
+        ...krsFile.queues,
+        ...krsFile.storages,
+      ]),
+    );
 
     const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
 
