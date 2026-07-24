@@ -381,6 +381,10 @@ export const ja: Partial<Translations> = {
     `"${nodeId}" は複数の boundary に含まれています。所属 boundary として "${existingBoundary}" を採用します`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"contains" で参照されている "${memberId}" が system 階層内に見つかりません`,
+  "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>
+    `"${parentKind}" は自身のキャンバスを持たないため、その中に "boundary" は宣言できません`,
+  "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
+    `同一スコープ内で boundary id "${boundaryId}" が重複しています`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,

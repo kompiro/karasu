@@ -1453,6 +1453,50 @@ boundary cluster "Cluster" {
       expect(warnings[0]).toMatchObject({ params: { memberId: "NopeDomain" } });
     });
 
+    // Scoped boundaries (#2036) share the `contains-target-not-found` code, so
+    // the Pass-1 suppression hides their per-file verdict too. If `resolve()`
+    // does not re-derive them, a bad member produces no diagnostic anywhere —
+    // and the parser-level tests would not notice, since they call
+    // `Parser.parse` directly rather than the path the CLI/app/LSP use.
+    it("still warns when a scoped boundary contains a node that is not its child", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `system Shop {
+  service Checkout {
+    boundary core { contains Nope }
+    domain Ledger {}
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const warnings = containsWarnings(result.diagnostics);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toMatchObject({ params: { memberId: "Nope" } });
+    });
+
+    it("does not warn when a scoped member arrives via a system reopen in another file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./billing.krs"
+system Shop {
+  boundary core { contains Billing }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/billing.krs",
+        `system Shop {
+  service Billing {}
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(containsWarnings(result.diagnostics)).toHaveLength(0);
+    });
+
     it("does not warn when a team owns a service declared in another file", async () => {
       await fs.writeFile(
         "/p/index.krs",

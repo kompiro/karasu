@@ -418,6 +418,8 @@ export type Translations = {
     existingBoundary: string;
   }) => string;
   "diagnostic.containsTargetNotFound.message": (params: { memberId: string }) => string;
+  "diagnostic.boundaryNotInContext.message": (params: { parentKind: string }) => string;
+  "diagnostic.duplicateBoundaryId.message": (params: { boundaryId: string }) => string;
   "diagnostic.duplicateTeamId.message": (params: { teamId: string }) => string;
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
   "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;

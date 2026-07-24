@@ -10,6 +10,7 @@ import type {
   TeamNode,
   MemberNode,
 } from "../types/ast.js";
+import { createEmptyKrsFile } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
 
@@ -31,26 +32,7 @@ function makeNode(overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; id: str
 }
 
 function makeFile(overrides: Partial<KrsFile>): KrsFile {
-  return {
-    styleImports: [],
-    nodeImports: [],
-    systems: [],
-    services: [],
-    clients: [],
-    domains: [],
-    databases: [],
-    queues: [],
-    storages: [],
-    deploys: [],
-    organizations: [],
-    boundaries: [],
-    legends: [],
-    ownerIndex: new Map(),
-    boundaryIndex: new Map(),
-    nodePathIndex: new Map(),
-    nodeFileIndex: new Map(),
-    ...overrides,
-  };
+  return { ...createEmptyKrsFile(), ...overrides };
 }
 
 const ZERO_RANGE = {

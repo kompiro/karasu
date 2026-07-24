@@ -383,6 +383,10 @@ export const en: Translations = {
     `"${nodeId}" is listed in more than one boundary; "${existingBoundary}" is kept as its boundary`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"${memberId}" referenced in "contains" was not found in the system hierarchy`,
+  "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>
+    `"boundary" cannot be declared inside "${parentKind}", which draws no canvas of its own`,
+  "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
+    `Duplicate boundary id "${boundaryId}" in the same scope`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,

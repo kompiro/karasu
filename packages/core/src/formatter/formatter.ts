@@ -262,7 +262,8 @@ class Printer {
     // Children and edges sorted by source line
     type Item =
       | { kind: "child"; node: KrsNode; line: number; endLine: number }
-      | { kind: "edge"; edge: KrsEdge; line: number; endLine: number };
+      | { kind: "edge"; edge: KrsEdge; line: number; endLine: number }
+      | { kind: "boundary"; block: BoundaryBlock; line: number; endLine: number };
 
     const items: Item[] = [
       ...node.children.map((n) => ({
@@ -277,10 +278,22 @@ class Printer {
         line: e.loc.start.line,
         endLine: e.loc.end.line,
       })),
+      // Scoped `boundary` blocks (#2036). They join the same line-ordered list
+      // as children and edges so authored order round-trips; omitting them here
+      // would make `fmt` delete them silently, the failure ADR-2076 fixed for
+      // the top-level form (TPL-20260510-02).
+      ...(node.boundaries ?? []).map((b) => ({
+        kind: "boundary" as const,
+        block: b,
+        line: b.loc.start.line,
+        endLine: b.loc.end.line,
+      })),
     ].sort((a, b) => a.line - b.line);
 
     let prevEndLine = node.loc.start.line;
-    let prevItemKind: "property" | "child" | "edge" | null = hasProps ? "property" : null;
+    let prevItemKind: "property" | "child" | "edge" | "boundary" | null = hasProps
+      ? "property"
+      : null;
 
     for (const item of items) {
       const leadingToks = this.extractLeading(prevEndLine + 1, item.line - 1);
@@ -290,7 +303,7 @@ class Printer {
       // - before first edge when preceded by properties or children
       // - no blank line between consecutive edges
       const needsBlank =
-        item.kind === "child"
+        item.kind === "child" || item.kind === "boundary"
           ? prevItemKind !== null // blank before child (except if very first with no props)
           : prevItemKind !== null && prevItemKind !== "edge"; // blank before first edge only
 
@@ -299,6 +312,8 @@ class Printer {
 
       if (item.kind === "child") {
         lines.push(...this.renderNode(item.node, depth + 1));
+      } else if (item.kind === "boundary") {
+        lines.push(...this.renderBoundaryBlock(item.block).map((l) => `${indent}  ${l}`));
       } else {
         const edgeTrail = this.extractTrailing(item.edge.loc.start.line);
         lines.push(`${indent}  ${this.renderEdge(item.edge, node.kind)}${edgeTrail}`);

@@ -59,6 +59,7 @@ cycle.
 | `ambiguous-edge-base` | warning | Multiple edges share the same `from → to` base with no distinguishing author id. |
 | `service-outside-system` | warning | A `service` is declared outside any `system`. |
 | `infra-not-in-context` | error | An infra block (`database` / `queue` / `storage`) is not a direct child of `system`. |
+| `boundary-not-in-context` | error | A `boundary` block is declared inside a node kind that draws no canvas of its own (`entity`, `resource`, `user`, `client`, or an infra leaf), so it would have no peers to frame. |
 | `entity-not-in-domain` | error | An `entity` is declared somewhere other than as a child of a `domain`. |
 | `legend-not-top-level` | error | A `legend` block is declared somewhere other than the top level. |
 | `top-level-declaration` | error | A `user` or an edge is declared at the top level instead of inside a `system` block. |
@@ -83,6 +84,7 @@ primary owner.
 | `duplicate-crud-decoration-target` | warning | A CRUD decoration targets the same operation more than once. |
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
 | `duplicate-boundary-assignment` | info | A node is listed in more than one `boundary` (a fact; the first-declared boundary is kept). |
+| `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
 | `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
 
 ### Cross-reference resolution (warn-don't-error, §S6)
