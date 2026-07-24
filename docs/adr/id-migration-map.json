@@ -2143,6 +2143,14 @@
       "newFile": "2087-escape-emitted-string-values.md",
       "source": "native",
       "evidence": "born after the issue-number migration (#2100); originating Issue #2087, no date-format ancestor, so this is an identity entry (not a rename)"
+    },
+    {
+      "oldId": "ADR-1974",
+      "oldFile": "1974-boundary-declaration-syntax.md",
+      "newId": "ADR-1974",
+      "newFile": "1974-boundary-declaration-syntax.md",
+      "source": "native",
+      "evidence": "born after the issue-number migration (#2100); originating Issue #1974 (P2b boundary declaration syntax), promoted from docs/design/system-view-grouping.md; no date-format ancestor, so this is an identity entry (not a rename)"
     }
   ],
   "rules": {
