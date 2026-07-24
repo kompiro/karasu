@@ -1,6 +1,6 @@
 # ADR Topic: adr-tooling
 
-8 ADRs in this topic. Solid nodes belong to `adr-tooling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+9 ADRs in this topic. Solid nodes belong to `adr-tooling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -14,6 +14,7 @@ flowchart TD
     ADR_1829["ADR-1829<br/>ADR から karasu 構造へリンクする permalink 規約（taka 短縮 + 必..."]
     ADR_1830["ADR-1830<br/>ADR→karasu permalink の検証は adr-tools の krs kind ..."]
     ADR_2092["ADR-2092<br/>TPL の reference-data 設定を `tpl.config.json` に分離し..."]
+    ADR_2125["ADR-2125<br/>id-migration-map と専用 lint を退役する — 移行完了後の map は「..."]
   end
   ADR_1077 --> ADR_788
 
@@ -31,4 +32,5 @@ flowchart TD
   class ADR_1829 accepted
   class ADR_1830 accepted
   class ADR_2092 accepted
+  class ADR_2125 accepted
 ```
