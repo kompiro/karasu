@@ -125,6 +125,21 @@ system Shop {
     expect(svg).toContain('data-container-id="__group_core__"');
   });
 
+  it("reports hasBoundaries so the app offers the Group-by menu for a scoped-only model", () => {
+    // The menu's visibility gate is `hasBoundaries`. A model whose only
+    // boundaries are scoped has an empty top-level `boundaries` array, so
+    // checking that alone would hide the menu and leave the axis unreachable.
+    const result = compile(SCOPED, { diagramType: "system" });
+    if (result.diagramType !== "system") throw new Error("expected system view");
+    expect(result.hasBoundaries).toBe(true);
+
+    const noBoundaries = compile(`system Shop { service Billing { label "Billing" } }`, {
+      diagramType: "system",
+    });
+    if (noBoundaries.diagramType !== "system") throw new Error("expected system view");
+    expect(noBoundaries.hasBoundaries).toBe(false);
+  });
+
   it("does not disturb the top-level form", () => {
     const src = `
 system Shop {
