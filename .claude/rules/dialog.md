@@ -54,9 +54,10 @@ export function MyDialog({ open, onClose }: { open: boolean; onClose: () => void
 - Return focus to the trigger element when the dialog closes
 - Portal mounting — z-index conflicts with the editor are not your problem
 
-Do **not** add the bespoke `document.addEventListener("keydown")` or
-overlay-onClick listeners that the legacy dialogs used. They are
-redundant under Radix and risk firing twice.
+Rely on Radix for Esc / outside-click handling — do not re-add the
+bespoke `document.addEventListener("keydown")` or overlay-onClick
+listeners that the legacy dialogs used. Under Radix they are redundant
+and risk firing twice.
 
 ## Width and per-dialog overrides
 

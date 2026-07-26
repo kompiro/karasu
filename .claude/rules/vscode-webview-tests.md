@@ -39,6 +39,8 @@ VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は 
    手段で部分的にカバーすると、テストは緑だが実際の WebView 上の挙動は
    壊れている、という状態を作りやすい。本番のシームを増やすコストに対して
    得られる検証範囲が狭いため、ADR-1014 でも維持されている禁止事項。
+   WebView の挙動を検証したいときは、ルール 1 の ExTester ハーネスで
+   実 WebView に対してテストを書く。
 
 4. **WebView 操作の確立済みパターン**:
    - **Click**: `MouseEvent` を `dispatchEvent` で element に直接送る

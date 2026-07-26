@@ -10,6 +10,13 @@ paths:
 Dependabot 設定・依存更新 ADR を編集するとき、または Dependabot PR を
 レビュー・トリアージするときに従う運用ルール。
 
+このファイルには 2 つの入口がある:
+
+- **設定・ADR 編集時** — frontmatter の `paths:` にマッチして自動で読み込まれる
+- **Dependabot PR のトリアージ時** — ファイル編集を伴わないため自動では読み込まれ
+  ない。トリアージ（`/hane:dependabot` スキル実行を含む）を開始したら、最初に
+  本ファイルを明示的に読むこと
+
 正本は `docs/process.md`「Dependabot 運用ルール」セクションと
 `ADR-128`（採用判断）、`ADR-784`（cooldown 7 日）、
 `ADR-1038`（security update 重複 PR の処理）。本ファイルは要点の
