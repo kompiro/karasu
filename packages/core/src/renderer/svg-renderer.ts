@@ -153,6 +153,12 @@ export interface RenderOptions {
    * `krsFile.boundaryIndex`; consumed by layout only when `groupBy === "boundary"`.
    */
   boundaryIndex?: Map<string, string>;
+  /**
+   * `krsFile.scopedBoundaryIndex` — membership from `boundary` blocks declared
+   * inside a node block (#2036). Layout picks the entry for the canvas it is
+   * drawing, so these frame their own level only.
+   */
+  scopedBoundaryIndex?: Map<string, Map<string, string>>;
   collapsedGroups?: ReadonlySet<string>;
   /**
    * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).
@@ -197,6 +203,7 @@ export function render(
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     boundaryIndex: options?.boundaryIndex,
+    scopedBoundaryIndex: options?.scopedBoundaryIndex,
     displayMode,
     layoutHints: styles.layoutHints,
     edgeDirections,

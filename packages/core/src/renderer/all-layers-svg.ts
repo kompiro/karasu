@@ -253,6 +253,7 @@ export function buildAllLayersSvg(
           // the full structure, grouped.
           groupBy,
           boundaryIndex: krsFile.boundaryIndex,
+          scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
         }),
     },
     [],

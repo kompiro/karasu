@@ -234,6 +234,27 @@ export async function compileSystemDiff(
     const formerBoundary = beforeResolved.krsFile.boundaryIndex.get(id);
     if (formerBoundary !== undefined) mergedBoundaryIndex.set(id, formerBoundary);
   }
+  // Same backfill for the scoped boundary axis (#2036). It is keyed by scope, so
+  // the before-side membership is restored under its own scope key — the same
+  // key the removed node's canvas is drawn with — rather than flattened. Scoped
+  // and top-level indexes are disjoint (a scoped member never appears in the
+  // flat `boundaryIndex`), so without this a node whose only membership was a
+  // scoped `boundary` would drop out of its frame in diff view.
+  const mergedScopedBoundaryIndex = new Map<string, Map<string, string>>();
+  for (const [scope, membership] of afterResolved.krsFile.scopedBoundaryIndex) {
+    mergedScopedBoundaryIndex.set(scope, new Map(membership));
+  }
+  for (const [scope, membership] of beforeResolved.krsFile.scopedBoundaryIndex) {
+    for (const [id, boundaryId] of membership) {
+      if (diffed.nodes.get(id)?.state !== "removed") continue;
+      let target = mergedScopedBoundaryIndex.get(scope);
+      if (target === undefined) {
+        target = new Map<string, string>();
+        mergedScopedBoundaryIndex.set(scope, target);
+      }
+      if (!target.has(id)) target.set(id, boundaryId);
+    }
+  }
 
   const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
     nodeDiffState,
@@ -243,6 +264,7 @@ export async function compileSystemDiff(
     theme,
     groupBy,
     boundaryIndex: mergedBoundaryIndex,
+    scopedBoundaryIndex: mergedScopedBoundaryIndex,
     collapsedGroups,
     collapsedCategories,
     interactive,
