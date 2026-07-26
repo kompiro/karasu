@@ -48,20 +48,10 @@ ADR の必須要素は `docs/adr/TEMPLATE.md` を参照。frontmatter スキー�
 
 ## ADR から karasu 構造へリンクする（permalink）
 
-ADR が karasu の構造（共有 URL・レンダリング済み図）へリンクするときの **L2
-実装規約**（`@kompiro/adr-tools` 採用 repo = karasu 自身の `docs/adr/` に適用）。
-ツール非依存の **L1 portable guide** は `docs/guide/adr-permalinks.md` を、決定の
-経緯は [ADR-1829](../../docs/adr/1829-adr-permalink-convention.md) を参照。
-
-**記録（SoT）は in-repo `.krs`**、permalink はそれを見る pointer。karasu は
-**taka 短縮リンク + 必須 `source`** を採用する（生の `/s?s=` payload は数 KB に
-及びうるため frontmatter にインラインしない）。`source` を必須にすることで、taka が
-消えても構造を repo から復元でき、shortener を単一障害点にしない
-（[TPL-20260630-03](../../docs/test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)）。
-
-### Frontmatter `permalink:`
-
-frontmatter に `short`（taka）と `source`（必須）を持つ。`view` は任意:
+**到達状態**: frontmatter の `permalink:` が taka 短縮リンク（`short`）と
+in-repo `.krs`（`source`、必須）を持ち、`pnpm adr:check-permalinks` が通る。
+記録（SoT）は `source` の `.krs` で、permalink はそれを見る pointer
+（taka が消えても repo から復元でき、shortener を単一障害点にしない）。
 
 ```yaml
 permalink:
@@ -70,59 +60,22 @@ permalink:
     view:   system                             # 任意: 既定 view
 ```
 
-- `short` の宛先は **`/s?s=`（query）形**を短縮したもの。`#s=`（fragment）は
-  server に届かず unfurl が死ぬので不可（ADR-1801）。
-- 生の `/s?s=` payload は frontmatter に載せない（数 KB になりうる）。復元は
-  `source` から。真の ref-pin は #1828。
-- deep permalink（要素ドリル）は `source` に anchor を添える（例
-  `system.krs#krs-system-payment-api`）。identity は author-given `id`、`label`
-  ではない。
-- **repo-backed permalink（#1828）を `short` に貼るなら `@<sha>` で pin する**。
-  nest resolver（`https://karasu.kompiro.dev/r/<owner>/<repo>[/<path>][@<ref>]`）
-  は permissive で、`@` 省略時は default branch HEAD（mutable）を描く。ADR は
-  「決定時点の構造」を指すべきなので、**full 40-hex の commit SHA** を付ける
-  （`…/r/<owner>/<repo>@<40-hex>#krs-…`）。branch/tag/HEAD/短縮 SHA は mutable で
-  link rot する。これは **推奨**であり、非準拠は `adr:check-permalinks` が
-  warning で促すが CI は落とさない（[#1959](https://github.com/kompiro/karasu/issues/1959) /
-  [kompiro/adr-tools#23](https://github.com/kompiro/adr-tools/issues/23)、下記「検証」参照）。
+形式違反はバリデータが具体的なエラーで検出するので、ここには書き手が
+自分で守るもの（検出不能・warning 止まり）だけを挙げる:
 
-### 本文サマリ節（生成）
+- 生の `/s?s=` payload（数 KB になりうる）は frontmatter にインラインしない。
+  復元は `source` から
+- 要素ドリルは `source` に anchor を添える（例 `system.krs#krs-system-payment-api`）。
+  identity は author-given `id` であり `label` ではない
+- repo-backed permalink（`karasu.kompiro.dev/r/...`）を `short` に貼るなら
+  **full 40-hex の commit SHA で pin** する（`…@<40-hex>#krs-…`）。
+  branch / tag / HEAD / 短縮 SHA は mutable で link rot する。非準拠は
+  `adr:check-permalinks` が warning を出すが CI は落とさない
+- 本文サマリ表（`## 構造（permalink）`）の自動生成は adr-tools 側 follow-up で
+  未実装。当面は手書きしてよい
 
-人間がクリックする本文サマリは frontmatter から **adr-tools が生成**する
-（手書きしない＝二重メンテなし）。フォーマット:
-
-```markdown
-## 構造（permalink）
-
-| 構造 | リンク | source |
-| --- | --- | --- |
-| system | [図を開く](https://taka.kompiro.dev/TkrZQG) | `examples/payments/system.krs` |
-```
-
-### 検証（`pnpm adr:check-permalinks`）
-
-`permalink:` の検証は `@kompiro/adr-tools`（`>=0.0.9`）の **`krs` kind** が担う
-（`adr.config.json` の `"permalink": { "kind": "krs" }`、[#1830](https://github.com/kompiro/karasu/issues/1830) /
-[kompiro/adr-tools#17](https://github.com/kompiro/adr-tools/issues/17)）。`pnpm adr:check-permalinks`
-が各エントリについて次を検査し、**`fail`** が 1 つでもあれば CI を落とす（`warn` は
-非-fatal で CI を落とさない）:
-
-- **`source` 必須**（`short` 単独は不可）・**`source` の `.krs` 実在**。（fail）
-- **deep anchor の解決** — `source` に `#krs-<view>-<id>` があれば、adr-tools が
-  optional peer の `@karasu-tools/core` を lazy import して `.krs` をレンダーし、
-  emit されるアンカー集合に含まれるか検証（rename / 削除で dangling した anchor を検出）。（fail）
-- **`view` 妥当性**（任意）・**`short` のオフライン形式検査**（http(s) 形か・`#s=`
-  fragment でないか。ネットワーク解決はしない）。（fail）
-- **repo-backed permalink の `@<sha>` pin 推奨**（`warn`、非-fatal）— `adr.config.json` の
-  `permalink.repoBackedHosts`（`["karasu.kompiro.dev", "karasu.pages.dev"]`）に host が
-  一致する `short` が full 40-hex SHA で pin されていなければ、`@<sha>` を推奨する warning を
-  出す（ref-less / `@HEAD` / `@branch` / `@tag` / 短縮 SHA が対象）。host で判定するため
-  route 形（bare / `/r/`）に非依存。**CI は落とさない**（[#1959](https://github.com/kompiro/karasu/issues/1959) /
-  [kompiro/adr-tools#23](https://github.com/kompiro/adr-tools/issues/23)）。将来 hard-fail 化するなら config で opt-in。
-
-resolver は built `@karasu-tools/core` を要するため、CI では **`Build (core)` の後**に
-実行する（ci.yml の Check job）。本文サマリ表の生成はまだ未実装で adr-tools 側の
-follow-up。当面サマリは手書きしてよい。
+背景と詳細はツール非依存の L1 guide `docs/guide/adr-permalinks.md` と
+[ADR-1829](../../docs/adr/1829-adr-permalink-convention.md) を参照。
 
 ## 編集後のチェック
 
