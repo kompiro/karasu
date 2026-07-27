@@ -5,7 +5,7 @@ status: accepted
 date: 2026-07-27
 topic: chat-ai
 authors: [kompiro]
-related_to: [ADR-1895, ADR-1314, ADR-1820]
+related_to: [ADR-1895, ADR-1314, ADR-1820, ADR-2036]
 scope:
   packages: [cli, core]
 assumptions:
