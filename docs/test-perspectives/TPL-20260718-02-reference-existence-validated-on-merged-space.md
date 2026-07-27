@@ -12,6 +12,7 @@ known_consumers:
   - parser
 discovered_from:
   - issue: "#2032"
+  - issue: "#2036"
   - root_cause_file: "packages/core/src/fs/import-resolver.ts"
 related_to:
   - TPL-20260615-02
@@ -57,6 +58,10 @@ per-file で消してよいのは **他ファイルの宣言で解決が変わ�
   種別・構文レベルの per-file 診断まで巻き込んではならない。
 - 新しいクロス参照診断（例: 将来 `realizes-target-not-found` 相当）を per-file
   検証として足したとき、マージ後の再評価を用意し忘れ、同じ偽陽性を再生産する。
+  **再発実例**（#2036 slice A）: スコープ内 `boundary` の `contains-target-not-found` を
+  per-file 検証で足したところ、ImportResolver に strip され再導出も無く、`compile()` 経由では
+  診断が一切出なかった — parser 直呼びのテストだけでは見えない（assert はユーザーが実際に
+  通る surface で行う）。
 
 ## チェックリスト
 
@@ -83,3 +88,10 @@ per-file で消してよいのは **他ファイルの宣言で解決が変わ�
   偽陽性なし・真の欠落は warning の両側面）
 - `packages/core/src/renderer/group-by-drilldown-render.test.ts`（cross-file member の
   frame と診断沈黙を同居で固定）
+
+## 派生元 spec
+
+- `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」/「Scoped declaration」—
+  スコープ宣言の `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する
+  規定（#2036 slice A の再発事例が「想定される失敗モード」にある）。同節末尾に本 TPL への
+  `> Related TPLs:` back-ref あり。

@@ -8,6 +8,8 @@ applicable_to:
   - "解決済みスタイル・レイアウト・診断メタデータを `id` 系の文字列キーで引くキャッシュ"
 known_consumers:
   - style-resolver
+  - parser
+  - renderer
 discovered_from:
   - issue: "#1352"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
@@ -53,6 +55,22 @@ scope:
 resolver（書き込み）と renderer（参照）の両方から import する。synthetic 要素（delivers / owns / ghost / 集約 domain edge）は
 区別属性を持たないので bare key で登録し、参照側は「合成キー → bare key → default」の順にフォールバックする。
 
+## 既知の consumer — scoped boundary（#2036）
+
+スコープ内 `boundary` 宣言は identity = (宣言スコープ, id) を持ち、この観点の直接の consumer が 2 つある:
+
+- **`KrsFile.scopedBoundaryIndex`** — `Map<boundaryScopeKey(scopePath), Map<childId, boundaryId>>`。
+  node id は global 一意でないため、スコープをキーに含めないと別スコープの同名の子が衝突する。
+  エンコードは `boundaryScopeKey`（JSON、injective — separator join は quoted id で衝突しうる）に一元化。
+- **scoped group id**（`scopedBoundaryGroupId`） — フレームの container id / collapse 状態 / stub id が
+  キーする group identity。bare id のままだと別スコープの同名 boundary が 1 つの collapse 状態に
+  融合する（slice C でスコープ修飾に修正）。
+
 ## 関連テスト
 
 - `packages/core/src/renderer/svg-renderer.test.ts` — "keeps the sync edge solid when a parallel async edge exists between the same pair"
+- `packages/core/src/renderer/scoped-boundary-render.test.ts` — "collapses a same-named boundary independently per scope"
+
+## 派生元 spec
+
+- `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」/「Scoped declaration」（membership index と identity の規定、#2036）

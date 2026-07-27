@@ -1,4 +1,5 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
+import { displayGroupId } from "../types/ast.js";
 import { makeStubNode } from "./collapse-stub.js";
 
 /**
@@ -32,7 +33,9 @@ function stubNode(groupId: string, count: number, scope?: string): KrsNode {
   return makeStubNode({
     id: groupStubId(groupId, scope),
     kind: "service",
-    label: `${groupId} (${count})`,
+    // displayGroupId strips the scope qualifier of a scoped boundary's group
+    // id (#2036) so the stub reads `<boundary> (N)`, not the encoded scope.
+    label: `${displayGroupId(groupId)} (${count})`,
     tags: [GROUP_STUB_TAG],
   });
 }

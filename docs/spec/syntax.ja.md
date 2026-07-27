@@ -936,8 +936,9 @@ boundary payments {
 }
 ```
 
-- **top-level 宣言**（`organization` と同じ）。containment ではなく**参照**（`contains <id>`）で束ねるので、
-  import をまたいで宣言されたノードも集められる（`owns` と同じファイル横断性）。
+- **2 つの配置**がある: 上記の **top-level 宣言**（`organization` と同じ）と、**ノードブロック内の
+  スコープ宣言**（次のサブセクション）。top-level 形は containment ではなく**参照**（`contains <id>`）で
+  束ねるので、import をまたいで宣言されたノードも集められる（`owns` と同じファイル横断性）。
 - **`contains <id>`** は 1 行 1 メンバー（`owns` と同型）。parser は宣言済みの id なら受理する（`owns` と違い kind 制限なし）。
   グルーピングは**ビューごとに、いま描画しているレベルに描かれるノード集合との交差で**解決される:
   各ビューはそのレベルに居るメンバーだけをフレームで囲み、他レベルのメンバーはそのビューのフレームに
@@ -950,25 +951,82 @@ boundary payments {
   （`contains-target-not-found`）だけ。このビューごとの解決は**両方の** Group-by 軸に共通:
   `owns` にもレベル制限は無いので、ネストされた `domain` を owns した team は *Group by: team* で
   同じ drill-down ビューにフレームを得る。
-- parse 時に **`boundaryIndex`**（`node id → boundary id`）を導出する（org の `ownerIndex` と同型）。**1:1** で、
-  あるノードが複数 boundary に含まれる場合は**最初に宣言された** boundary が勝ち、重複は info 診断
-  `duplicate-boundary-assignment` で観測する（error ではなく事実 — `duplicate-owner-assignment` と同じ register）。
+- **membership index は配置ごとに parse 時に導出される**。top-level 形はフラットな
+  **`boundaryIndex`**（`node id → boundary id`、org の `ownerIndex` と同型）を、スコープ宣言は
+  per-scope の **`scopedBoundaryIndex`**（`宣言スコープ → (child id → boundary id)`）を組む。
+  後者はスコープパスをキーに含むため、別スコープの同名の子と混同しえない（TPL-20260512-01）。
+  どちらも **1:1** で、同じ index 内で複数 boundary に含まれるノードは**最初に宣言された** boundary が
+  勝ち、重複は info 診断 `duplicate-boundary-assignment` で観測する（error ではなく事実 —
+  `duplicate-owner-assignment` と同じ register）。1 つのキャンバス上で両 index が同じノードを指名した
+  場合は**スコープ側が勝つ** — そのノードの隣に書かれた、より具体的な宣言だからである。
+
+### スコープ宣言 — ノードブロック内の `boundary`
+
+`boundary` ブロックは**ノードブロックの中**にも宣言できる。そこに書かれた boundary は
+その層自身の関心事であり、メンバは**宣言ノードの直下の子**を bare id で指し、
+フレームは**宣言ノードのキャンバスにだけ**現れる。
+
+```krs
+system Shop {
+  service Checkout {
+    boundary core {
+      label "Core domains"
+      contains Ledger
+      contains Cart
+    }
+    domain Ledger {}
+    domain Cart {}
+    domain Reporting {}   // contains されていない — フレームの外に描かれる
+  }
+}
+```
+
+- **配置** — 自身のキャンバス（子が描画される drill-down ビュー）を持つ kind の中に置ける:
+
+  | ホスト kind | スコープ `boundary` 可否 |
+  |---|---|
+  | `system` / `service` / `domain` / `usecase` | **可** |
+  | `database` / `queue` / `storage` | **可**（ストアの drill-down ビューの `table` / queue-item / `bucket` leaf を囲む） |
+  | `entity` / `resource` / `user` / `client` / infra leaf（`table`・queue item・`bucket`） | **不可** — キャンバスを持たず囲む peer が無い。宣言すると error `boundary-not-in-context` |
+
+  `system` ブロック直下に書いた `boundary` は root system キャンバスをスコープとする —
+  top-level 形の root レベルメンバがフレームされるのと同じキャンバスである。
+- **メンバは直下の子のみ。** `contains <id>` は宣言ノードの直下の子に対してのみ解決される —
+  孫は不可。兄弟 id は既に error 一意（`duplicate-node-id-parent`）なので、bare id は常に
+  ちょうど 1 ノードを指し、top-level 形が持つ曖昧さ（[#2036](https://github.com/kompiro/karasu/issues/2036)）は
+  構造的に発生しない。孫をグルーピングしたければ**孫の親のブロックに** boundary を書く —
+  層ごとの関心事は層ごとに書く。直下の子でない `contains` 先は報告され
+  （`contains-target-not-found`）、inert に留まる。メンバが直下の子に限られるため、
+  スコープ宣言の `contains` はファイル横断参照になりえない。
+- **identity = 宣言スコープ + id。** 別スコープの同名 `boundary` は**別の boundary**である:
+  それぞれ自分のキャンバスに自分の group identity でフレームを持ち、自分の `label` で
+  タイトルされ、**collapse も独立**する — フレームの group id は内部的にスコープ修飾されるため、
+  collapse 状態がスコープ間で漏れることはない（対して top-level 形は 1 宣言 = 1 identity で、
+  レベルをまたぐメンバを持つ top-level boundary のフレーム群は 1 つの collapse 状態を共有する —
+  system をまたぐ team と同じ、ADR-1884）。**同一スコープ内**で同じ id を 2 度宣言することは
+  できない（`duplicate-boundary-id`、error）。別スコープの同名 boundary が同じ*関心事*を意味するか
+  どうかは意図的に規定しない。
+- **top-level 互換。** top-level 形は今日の挙動を一切変えない: メンバの kind・レベル無制限、
+  ファイル横断参照、レベルをまたぐ per-view 断片化（ADR-1983）、同 id 宣言のマージ。
+  スコープ形は新しい・より厳格な配置であり、追加しても既存の top-level 宣言には何も起きない。
 
 | キーワード | 意味 | 含められるもの |
 |---|---|---|
-| `boundary` | system view ノードの名前付き意味的クラスタ。複数宣言可 | `contains` |
-| `contains` | この boundary に属するメンバー node id（1 行 1 つ） | — |
+| `boundary` | system view ノードの名前付き意味的クラスタ。複数宣言可。top-level またはキャンバスを持つノードブロック内 | `contains` |
+| `contains` | この boundary に属するメンバー node id（1 行 1 つ。スコープ宣言では宣言ノードの直下の子に対して解決） | — |
 
 診断（[diagnostics.md](diagnostics.md) 参照）:
 
 - `duplicate-boundary-assignment`（info）— ノードが複数の `boundary` に含まれる。最初の boundary を採用。
-- `contains-target-not-found`（warning）— `contains` 先が system 階層に存在しない。
+- `contains-target-not-found`（warning）— `contains` 先が存在しない（top-level: system 階層のどこにも無い。スコープ宣言: 宣言ノードの直下の子に無い）。
+- `boundary-not-in-context`（error）— キャンバスを持たない kind の中の `boundary` ブロック。
+- `duplicate-boundary-id`（error）— 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言。top-level ブロックは対象外（従来どおりマージ）。
 - `positional-label-removed`（error）— boundary id 直後の位置ラベル（`boundary payments "Payments"`）。label は `label` プロパティのみ（[ADR-19](../adr/19-required-id-label-as-property.md)、#2133）。
 
 どちらの *Group by* 軸でも、グループフレームのタイトルにはグループの `label` が表示される。
 label が無い場合は id にフォールバックする（#2133）。
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。
 
 ---
 

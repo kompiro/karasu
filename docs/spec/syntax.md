@@ -1003,10 +1003,11 @@ boundary payments {
 }
 ```
 
-- **Top-level declaration**, like `organization`. It groups nodes *by reference*
-  (`contains <id>`), not by containment, so a boundary can gather nodes declared
-  anywhere — including across imported files (the same file-crossing property as
-  `owns`).
+- **Two placements**: the **top-level declaration** shown above (like
+  `organization`), and a **scoped declaration inside a node block** (the next
+  subsection). The top-level form groups nodes *by reference* (`contains <id>`),
+  not by containment, so it can gather nodes declared anywhere — including
+  across imported files (the same file-crossing property as `owns`).
 - **`contains <id>`** lists one member per line (mirroring `owns`). The parser
   accepts any declared id (no kind restriction, unlike `owns`). Grouping resolves
   **per view, against the nodes rendered at the level being drawn**: each view
@@ -1023,27 +1024,95 @@ boundary payments {
   stays inert. This per-view resolution is shared by **both** grouping axes:
   `owns` has no level restriction either, so a team owning a nested `domain`
   frames it in the same drill-down views under *Group by: team*.
-- A **`boundaryIndex`** (`node id → boundary id`) is derived at parse time,
-  analogous to the org `ownerIndex`. It is **1:1**: if a node is listed in more
-  than one boundary, the **first-declared** boundary wins and the duplicate is
-  surfaced as the info diagnostic `duplicate-boundary-assignment` (a fact, not an
-  error — the same "smell is representable" register as `duplicate-owner-assignment`).
+- **Membership indexes** are derived at parse time, per placement. The
+  top-level form builds the flat **`boundaryIndex`** (`node id → boundary id`),
+  analogous to the org `ownerIndex`; scoped declarations build the per-scope
+  **`scopedBoundaryIndex`** (`declaring scope → (child id → boundary id)`),
+  keyed by the scope path so a same-named child in another scope can never be
+  confused with this one (TPL-20260512-01). Both are **1:1**: if a node is
+  listed in more than one boundary of the same index, the **first-declared**
+  boundary wins and the duplicate is surfaced as the info diagnostic
+  `duplicate-boundary-assignment` (a fact, not an error — the same "smell is
+  representable" register as `duplicate-owner-assignment`). Where both indexes
+  name the same node on one canvas, the scoped entry wins — it is the more
+  specific statement, written next to the node it names.
+
+### Scoped declaration — `boundary` inside a node block
+
+A `boundary` block may also be declared **inside a node block**. Written there,
+it is that layer's own concern: its members are the **direct children** of the
+declaring node, referenced by bare id, and its frame appears on the declaring
+node's canvas only.
+
+```krs
+system Shop {
+  service Checkout {
+    boundary core {
+      label "Core domains"
+      contains Ledger
+      contains Cart
+    }
+    domain Ledger {}
+    domain Cart {}
+    domain Reporting {}   // not contained — drawn outside the frame
+  }
+}
+```
+
+- **Placement** — a `boundary` may be declared inside any kind that draws a
+  canvas of its own (a drill-down view its children render on):
+
+  | Host kind | Scoped `boundary` allowed? |
+  |---|---|
+  | `system`, `service`, `domain`, `usecase` | **yes** |
+  | `database`, `queue`, `storage` | **yes** (frames the store's drill-down view of `table` / queue-item / `bucket` leaves) |
+  | `entity`, `resource`, `user`, `client`, infra leaves (`table`, queue item, `bucket`) | **no** — these draw no canvas, so there would be no peers to frame; declaring one is the error `boundary-not-in-context` |
+
+  A `boundary` written directly in a `system` block scopes to the root system
+  canvas — the same canvas the top-level form's root-level members frame on.
+- **Members are direct children only.** `contains <id>` resolves against the
+  declaring node's direct children — nothing else, not even grandchildren.
+  Sibling ids are already error-unique (`duplicate-node-id-parent`), so a bare
+  id names exactly one node and the ambiguity the flat form has at top level
+  ([#2036](https://github.com/kompiro/karasu/issues/2036)) cannot arise. To
+  group grandchildren, declare a `boundary` in *their* parent's block — a
+  per-layer concern is written in its layer. A `contains` target that is not a
+  direct child is reported (`contains-target-not-found`) and stays inert.
+  Because members are direct children, a scoped `contains` can never reference
+  across files.
+- **Identity = declaring scope + id.** A same-named `boundary` in another scope
+  is a **different boundary**: each frames its own canvas under its own group
+  identity, is titled by its own `label`, and **collapses independently** — the
+  frame's group id is scope-qualified internally, so collapse state never leaks
+  between scopes. (Contrast the top-level form: one declaration, one identity —
+  a top-level boundary whose members span levels shares one collapse state
+  across its frames, like a team spanning systems, ADR-1884.) Within **one**
+  scope the same id may not be declared twice (`duplicate-boundary-id`, error);
+  whether two scopes' same-named boundaries mean the same *concern* is
+  deliberately unspecified.
+- **Top-level compatibility.** The top-level form keeps today's behavior
+  untouched: unrestricted member kinds and levels, cross-file references,
+  per-view fragmentation across levels (ADR-1983), merged same-id declarations.
+  The scoped form is a new, stricter placement — adding one changes nothing
+  about any existing top-level declaration.
 
 | Keyword | Meaning | May contain |
 |---------|---------|-------------|
-| `boundary` | A named semantic cluster of system-view nodes. Multiple declarations allowed | `contains` |
-| `contains` | A member node id belonging to this boundary (one per line) | — |
+| `boundary` | A named semantic cluster of system-view nodes. Multiple declarations allowed; top-level or inside a canvas-bearing node block | `contains` |
+| `contains` | A member node id belonging to this boundary (one per line; a scoped block resolves it against the declaring node's direct children) | — |
 
 Diagnostics (see [diagnostics.md](diagnostics.md)):
 
 - `duplicate-boundary-assignment` (info) — a node is listed in more than one `boundary`; the first-declared boundary is kept.
-- `contains-target-not-found` (warning) — a `contains` target does not exist in the system hierarchy.
+- `contains-target-not-found` (warning) — a `contains` target does not exist (top-level: anywhere in the system hierarchy; scoped: among the declaring node's direct children).
+- `boundary-not-in-context` (error) — a `boundary` block inside a node kind that draws no canvas of its own.
+- `duplicate-boundary-id` (error) — two `boundary` blocks in the same enclosing node declare the same id. Top-level blocks are unaffected (they keep merging).
 - `positional-label-removed` (error) — a positional label after the boundary id (`boundary payments "Payments"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md), #2133).
 
 Under either *Group by* axis the group frame is titled with the group's declared
 `label`, falling back to the group id when no label is given (#2133).
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983).
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this).
 
 ---
 

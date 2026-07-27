@@ -41,6 +41,14 @@ function systemSvg(src: string, groupBy?: "team" | "boundary"): string {
   return result.svg;
 }
 
+// A scoped boundary's group id is its declaring scope path plus its id in the
+// JSON encoding of `scopedBoundaryGroupId` (#2036 — identity = scope + id).
+// In raw SVG text the JSON quotes appear XML-escaped.
+function scopedFrameAttr(scopePath: string[], id: string): string {
+  const groupId = JSON.stringify([...scopePath, id]).replaceAll('"', "&quot;");
+  return `data-container-id="__group_${groupId}__"`;
+}
+
 function drillSvg(src: string, viewPath: string[], groupBy?: "team" | "boundary"): string {
   const result = compile(src, { diagramType: "system", groupBy, viewPath });
   if (result.diagramType !== "system") throw new Error("expected system view");
@@ -51,23 +59,23 @@ describe("scoped boundary rendering (#2036)", () => {
   it("frames the declaring canvas only", () => {
     // `core` is declared inside Checkout, so it frames Checkout's drill view…
     const drill = drillSvg(SCOPED, ["Checkout"], "boundary");
-    expect(drill).toContain('data-container-id="__group_core__"');
+    expect(drill).toContain(scopedFrameAttr(["Shop", "Checkout"], "core"));
     // …and does not appear on the root canvas, where its members are not drawn.
     const root = systemSvg(SCOPED, "boundary");
-    expect(root).not.toContain('data-container-id="__group_core__"');
+    expect(root).not.toContain(scopedFrameAttr(["Shop", "Checkout"], "core"));
   });
 
   it("treats a boundary written in the system block as the root canvas's own", () => {
     const root = systemSvg(SCOPED, "boundary");
-    expect(root).toContain('data-container-id="__group_top__"');
+    expect(root).toContain(scopedFrameAttr(["Shop"], "top"));
     // It frames the root canvas, not the drill level below it.
     const drill = drillSvg(SCOPED, ["Checkout"], "boundary");
-    expect(drill).not.toContain('data-container-id="__group_top__"');
+    expect(drill).not.toContain(scopedFrameAttr(["Shop"], "top"));
   });
 
   it("stays inert unless the boundary axis is selected", () => {
-    expect(systemSvg(SCOPED)).not.toContain('data-container-id="__group_top__"');
-    expect(drillSvg(SCOPED, ["Checkout"])).not.toContain('data-container-id="__group_core__"');
+    expect(systemSvg(SCOPED)).not.toContain("__group_");
+    expect(drillSvg(SCOPED, ["Checkout"])).not.toContain("__group_");
     // Byte-identical to compiling with no groupBy at all, so a model that does
     // not opt in is untouched.
     expect(systemSvg(SCOPED, undefined)).toBe(systemSvg(SCOPED));
@@ -78,11 +86,11 @@ describe("scoped boundary rendering (#2036)", () => {
     // Reporting is a sibling of the members but not contained, so it is drawn
     // without being framed — a boundary that swallowed the whole canvas would
     // still satisfy the presence assertions above.
-    expect(drill).toContain('data-container-id="__group_core__"');
+    expect(drill).toContain(scopedFrameAttr(["Shop", "Checkout"], "core"));
     expect(drill).toContain("Reporting");
   });
 
-  it("draws a same-named boundary on each scope that declares one", () => {
+  it("gives a same-named boundary in each scope its own group identity", () => {
     const src = `
 system Shop {
   boundary core {
@@ -100,14 +108,60 @@ system Shop {
   }
 }
 `;
-    // Each canvas frames its own members. The two frames share the container id
-    // `__group_core__`, matching how a team spanning systems is framed once per
-    // system under one id (layout.ts, #1884) — collapse is keyed by that id, so
-    // it applies to both. Whether scoped boundaries should instead collapse
-    // independently is a semantic question the design raises but does not
-    // settle; pinned here so a change to it is deliberate.
-    expect(systemSvg(src, "boundary")).toContain('data-container-id="__group_core__"');
-    expect(drillSvg(src, ["Checkout"], "boundary")).toContain('data-container-id="__group_core__"');
+    // Identity = declaring scope + id (#2036), so each canvas frames its own
+    // `core` under a scope-qualified container id — unlike a team spanning
+    // systems (#1884), which is ONE declaration and deliberately shares one id.
+    // Each frame is titled with its own declared label.
+    const root = systemSvg(src, "boundary");
+    expect(root).toContain(scopedFrameAttr(["Shop"], "core"));
+    expect(root).toContain(">Root core</text>");
+    const drill = drillSvg(src, ["Checkout"], "boundary");
+    expect(drill).toContain(scopedFrameAttr(["Shop", "Checkout"], "core"));
+    expect(drill).toContain(">Service core</text>");
+    expect(drill).not.toContain(">Root core</text>");
+  });
+
+  it("collapses a same-named boundary independently per scope", () => {
+    const src = `
+system Shop {
+  boundary core {
+    label "Root core"
+    contains Checkout
+  }
+
+  service Checkout {
+    boundary core {
+      label "Service core"
+      contains Ledger
+    }
+
+    domain Ledger { label "Ledger" }
+  }
+}
+`;
+    // Collapse state is keyed by the group id; scope-qualified ids keep the two
+    // `core` boundaries independent (the design's acceptance expectation).
+    const rootGroupId = JSON.stringify(["Shop", "core"]);
+    const collapsed = new Set([rootGroupId]);
+    const root = compile(src, {
+      diagramType: "system",
+      groupBy: "boundary",
+      collapsedGroups: collapsed,
+    });
+    if (root.diagramType !== "system") throw new Error("expected system view");
+    // Root canvas: its `core` folded to a stub, titled with the bare id.
+    expect(root.svg).toContain("__group_collapsed_");
+    expect(root.svg).toContain("core (1)");
+    // Drill canvas: the service-scoped `core` is untouched by that state.
+    const drill = compile(src, {
+      diagramType: "system",
+      groupBy: "boundary",
+      viewPath: ["Checkout"],
+      collapsedGroups: collapsed,
+    });
+    if (drill.diagramType !== "system") throw new Error("expected system view");
+    expect(drill.svg).toContain(scopedFrameAttr(["Shop", "Checkout"], "core"));
+    expect(drill.svg).not.toContain("__group_collapsed_");
   });
 
   it("reaches the bundled drill-down export, not just the interactive view", () => {
@@ -125,8 +179,8 @@ system Shop {
       "boundary",
     );
     // Both levels' frames are present in the one bundled document.
-    expect(svg).toContain('data-container-id="__group_top__"');
-    expect(svg).toContain('data-container-id="__group_core__"');
+    expect(svg).toContain(scopedFrameAttr(["Shop"], "top"));
+    expect(svg).toContain(scopedFrameAttr(["Shop", "Checkout"], "core"));
   });
 
   it("reports hasBoundaries so the app offers the Group-by menu for a scoped-only model", () => {
