@@ -9,18 +9,20 @@ paths:
 
 # Changeset Rules
 
-公開パッケージ（`karasu` CLI / `@karasu-tools/core`）のソースを変更する PR では
-**changeset の追加を忘れない**ためのルール。背景は [ADR-1315](../../docs/adr/1315-release-automation-changesets.md)（changesets 採用）と `docs/process.md` 「リリース運用」。
+**到達状態**: 版管理対象パッケージ（`karasu` CLI / `@karasu-tools/core` /
+`karasu-vscode`）の利用者から見える変更を含む PR には `.changeset/<name>.md` が
+含まれ、`pnpm changeset status --since=main` が意図したパッケージと bump レベルを
+表示する。PR を出す前にこのコマンドで確認する。
 
-> ⚠️ **changeset はマージしても自動生成されない。** 開発者が PR の中で
-> `pnpm changeset` を手で実行して `.changeset/<name>.md` を作り、PR に含める。
-> 付け忘れると次のリリースで bump されず公開されない（実例: #1754 で
-> #1727 / #1721 / #1736 / #1741 / #1748 / #1749 / #1698 を遡って backfill した）。
+changeset はマージしても自動生成されない — 開発者が PR の中で `pnpm changeset` を
+実行して `.changeset/<name>.md` を作り、PR に含める。付け忘れると次のリリースで
+bump されず公開されない（実例: #1754 で 7 PR 分を遡って backfill した）。
+背景は [ADR-1315](../../docs/adr/1315-release-automation-changesets.md)（changesets 採用）と
+`docs/process.md`「リリース運用」。
 
 ## changeset が必要な変更
 
-版管理対象パッケージ（`karasu` / `@karasu-tools/core` / `karasu-vscode`）の
-**利用者から見える**変更を入れる PR:
+版管理対象パッケージの**利用者から見える**変更を入れる PR:
 
 - 新しい構文・タグ・アノテーション、診断（diagnostic）の追加・変更
 - レンダリング／レイアウト／スタイル解決の挙動変更（見た目が変わるもの）
@@ -83,8 +85,6 @@ bump レベルの目安:
 pnpm changeset status          # 未リリースの bump 対象を表示
 pnpm changeset status --since=main   # ブランチに changeset が含まれるか
 ```
-
-PR を出す前に `pnpm changeset status` で意図した bump になっているか確認する。
 
 ## リリースとの関係
 

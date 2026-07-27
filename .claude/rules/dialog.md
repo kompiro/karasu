@@ -54,9 +54,10 @@ export function MyDialog({ open, onClose }: { open: boolean; onClose: () => void
 - Return focus to the trigger element when the dialog closes
 - Portal mounting — z-index conflicts with the editor are not your problem
 
-Do **not** add the bespoke `document.addEventListener("keydown")` or
-overlay-onClick listeners that the legacy dialogs used. They are
-redundant under Radix and risk firing twice.
+Rely on Radix for Esc / outside-click handling — do not re-add the
+bespoke `document.addEventListener("keydown")` or overlay-onClick
+listeners that the legacy dialogs used. Under Radix they are redundant
+and risk firing twice.
 
 ## Width and per-dialog overrides
 
@@ -108,22 +109,7 @@ Tabs, Popover, Tooltip).
 
 ## Legacy dialogs (deprecated)
 
-The pre-shadcn structure was:
-
-```tsx
-<div className="dialog-overlay" role="dialog" aria-modal="true" onClick={onClose}>
-  <div className="dialog dialog--my-feature" onClick={(e) => e.stopPropagation()}>
-    <header>
-      <h2 className="dialog__title">Title</h2>
-    </header>
-    <div className="dialog__body">{/* ... */}</div>
-    <footer className="dialog__footer">{/* ... */}</footer>
-  </div>
-</div>
-```
-
-The CSS for `.dialog-overlay`, `.dialog`, `.dialog__title`,
-`.dialog__subtitle`, `.dialog__body`, `.dialog__footer` is retained in
-`app.css` only while remaining un-migrated dialogs exist. **Do not write
-new code using these classes.** When you touch a legacy dialog, migrate
-it to the shadcn pattern above in the same PR.
+Pre-shadcn dialogs used the `.dialog-overlay` / `.dialog` / `.dialog__*`
+class structure with hand-rolled listeners. Their CSS is retained in
+`app.css` only while un-migrated dialogs exist. When you touch a legacy
+dialog, migrate it to the shadcn pattern above in the same PR.
