@@ -88,3 +88,10 @@ per-file で消してよいのは **他ファイルの宣言で解決が変わ�
   偽陽性なし・真の欠落は warning の両側面）
 - `packages/core/src/renderer/group-by-drilldown-render.test.ts`（cross-file member の
   frame と診断沈黙を同居で固定）
+
+## 派生元 spec
+
+- `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」/「Scoped declaration」—
+  スコープ宣言の `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する
+  規定（#2036 slice A の再発事例が「想定される失敗モード」にある）。同節末尾に本 TPL への
+  `> Related TPLs:` back-ref あり。

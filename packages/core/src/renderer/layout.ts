@@ -951,10 +951,10 @@ interface LayoutOptions {
   scopedBoundaryIndex?: Map<string, Map<string, string>>;
   /**
    * Declared group labels for the active axis (#2133), from
-   * `buildGroupLabelIndex`. Resolved per canvas via `groupLabelsFor` (a scoped
-   * declaration labels its own canvas and wins there, like `boundaryAxisFor`).
-   * Titles the group frames; the container id stays `__group_<id>__`. Omitted
-   * → frames fall back to the group id.
+   * `buildGroupLabelIndex`. Resolved per canvas via `groupLabelsFor`; scoped
+   * entries are keyed by their scope-qualified group id (#2036), so the model
+   * and scoped maps never contend. Titles the group frames; omitted → frames
+   * fall back to the (display) group id.
    */
   groupLabels?: GroupLabelIndex;
   displayMode?: DisplayMode;
@@ -1522,10 +1522,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     // buckets `groupIdOf` would report for an `owns` model (#1921).
     const frameGroupIdOf = isExpanding ? expandGroupIdOf : groupIdOf;
     // Expansion meta wins where it applies; otherwise the group's declared
-    // label titles the frame (#2133), with the id fallback inside
+    // label titles the frame (#2133), with the display-id fallback inside
     // buildGroupFrames covering label-less groups. Labels resolve against this
-    // canvas's scope, so a scoped boundary's own label wins over a same-id
-    // model-wide one here (mirroring boundaryAxisFor's membership rule).
+    // canvas's scope — scoped entries are keyed by their scope-qualified group
+    // id (#2036), matching the ids boundaryAxisFor put on the axis.
     const canvasLabels = groupLabelsFor(groupLabels, scopePath);
     const frameMeta = (groupId: string) => {
       const meta = expandMeta?.(groupId);
