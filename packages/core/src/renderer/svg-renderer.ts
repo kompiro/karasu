@@ -159,6 +159,12 @@ export interface RenderOptions {
    * drawing, so these frame their own level only.
    */
   scopedBoundaryIndex?: Map<string, Map<string, string>>;
+  /**
+   * Group id → declared `label` for the active axis (#2133), from
+   * `buildGroupLabelIndex(krsFile, groupBy)`. Titles the group frames; omitted
+   * → frames fall back to the group id.
+   */
+  groupLabels?: Map<string, string>;
   collapsedGroups?: ReadonlySet<string>;
   /**
    * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).
@@ -204,6 +210,7 @@ export function render(
     ownerIndex,
     boundaryIndex: options?.boundaryIndex,
     scopedBoundaryIndex: options?.scopedBoundaryIndex,
+    groupLabels: options?.groupLabels,
     displayMode,
     layoutHints: styles.layoutHints,
     edgeDirections,

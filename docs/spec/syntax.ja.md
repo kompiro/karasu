@@ -905,9 +905,13 @@ team の直下に `member` を宣言して個人を記述する。
 
 ### label の指定方法
 
-`organization` / `team` / `member` はいずれも位置引数（`team backend "バックエンドチーム"`）と
-プロパティ形式（`team backend { label "バックエンドチーム" }`）の両方で label を指定できる。
+`organization` / `team` / `member` の label は、他のノード kind と同じく `label` プロパティで指定する
+（`team backend { label "バックエンドチーム" }`、[ADR-19](../adr/19-required-id-label-as-property.md)）。
+旧来の位置引数（`team backend "バックエンドチーム"`）は**非推奨**（#2133）: 現状は受理され
+`positional-label-deprecated` warning が出る。`karasu fmt` がプロパティ形式へ書き換える。
 両方が同時に指定された場合はプロパティ形式が優先される。
+
+> Related TPLs: [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — parser が受理する形は必ず本 spec に文書化する。未文書の受理形は drift（本節の positional 形は約 4 ヶ月間 undocumented のまま受理されていた、#2133）。
 
 ---
 
@@ -925,7 +929,8 @@ team の直下に `member` を宣言して個人を記述する。
 **独立**（あるノードが *Group by: team* では team A、*Group by: boundary* では boundary X に属しうる）。
 
 ```krs
-boundary payments "Payments" {
+boundary payments {
+  label "Payments"
   contains Billing
   contains Wallet
 }
@@ -958,11 +963,12 @@ boundary payments "Payments" {
 
 - `duplicate-boundary-assignment`（info）— ノードが複数の `boundary` に含まれる。最初の boundary を採用。
 - `contains-target-not-found`（warning）— `contains` 先が system 階層に存在しない。
+- `positional-label-removed`（error）— boundary id 直後の位置ラベル（`boundary payments "Payments"`）。label は `label` プロパティのみ（[ADR-19](../adr/19-required-id-label-as-property.md)、#2133）。
 
-`boundary` は位置引数（`boundary payments "Payments"`）とプロパティ形式（`boundary payments { label "Payments" }`）の
-両方に対応し、両方指定時はプロパティ形式が優先される。
+どちらの *Group by* 軸でも、グループフレームのタイトルにはグループの `label` が表示される。
+label が無い場合は id にフォールバックする（#2133）。
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。
 
 ---
 

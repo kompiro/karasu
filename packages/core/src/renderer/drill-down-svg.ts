@@ -7,6 +7,7 @@ import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
+import { buildGroupLabelIndex } from "./group-labels.js";
 import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
@@ -115,6 +116,7 @@ export function buildDrillDownSvg(
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(effectiveSystems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map();
+  const groupLabels = buildGroupLabelIndex(krsFile, groupBy);
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
   const levels: string[] = [];
@@ -138,6 +140,7 @@ export function buildDrillDownSvg(
           groupBy,
           boundaryIndex: krsFile.boundaryIndex,
           scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+          groupLabels,
         }),
     },
     [],
@@ -162,6 +165,7 @@ export function buildDrillDownSvg(
     groupBy,
     krsFile.boundaryIndex,
     krsFile.scopedBoundaryIndex,
+    groupLabels,
   );
   for (const level of entityLevels) levels.push(level.element);
 
@@ -225,6 +229,7 @@ export function renderEntityView(
     groupBy,
     boundaryIndex: krsFile.boundaryIndex,
     scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+    groupLabels: buildGroupLabelIndex(krsFile, groupBy),
   });
   return { svg, diagnostics, hasContent: true };
 }
@@ -367,6 +372,7 @@ function collectEntityLevels(
   groupBy?: "team" | "boundary",
   boundaryIndex?: Map<string, string>,
   scopedBoundaryIndex?: Map<string, Map<string, string>>,
+  groupLabels?: Map<string, string>,
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
   const styles = resolveStyles(effectiveSystems, sheets, []);
@@ -396,6 +402,7 @@ function collectEntityLevels(
       groupBy,
       boundaryIndex,
       scopedBoundaryIndex,
+      groupLabels,
     });
     const { viewBox, innerContent } = extractSvgParts(svg);
     // Back target: the domain's usecase view when it exists (the domain has
@@ -517,6 +524,7 @@ export function buildAllViewsSvg(
 
   // Collect system levels
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
+  const groupLabels = buildGroupLabelIndex(krsFile, groupBy);
   const systemLevels: BundledLevel[] = [];
   const systemRootSlice = extractView(effectiveSystems, []);
   if (systemRootSlice.childNodes.length > 0) {
@@ -538,6 +546,7 @@ export function buildAllViewsSvg(
             groupBy,
             boundaryIndex: krsFile.boundaryIndex,
             scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+            groupLabels,
           }),
       },
       [],
@@ -560,6 +569,7 @@ export function buildAllViewsSvg(
     groupBy,
     krsFile.boundaryIndex,
     krsFile.scopedBoundaryIndex,
+    groupLabels,
   );
 
   // Collect deploy level

@@ -15,6 +15,7 @@ import {
 } from "../resolver/canonical-id.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { render } from "../renderer/svg-renderer.js";
+import { buildGroupLabelIndex } from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import { bundleSingleLevelViews } from "../renderer/drill-down-svg.js";
 
@@ -256,6 +257,17 @@ export async function compileSystemDiff(
     }
   }
 
+  // Group labels resolve from the after model; a group that only exists on the
+  // before side (its members are all removed) backfills from before, mirroring
+  // the index merges above (#2133).
+  const groupLabels = buildGroupLabelIndex(afterResolved.krsFile, groupBy);
+  const beforeGroupLabels = buildGroupLabelIndex(beforeResolved.krsFile, groupBy);
+  if (groupLabels && beforeGroupLabels) {
+    for (const [id, label] of beforeGroupLabels) {
+      if (!groupLabels.has(id)) groupLabels.set(id, label);
+    }
+  }
+
   const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
     nodeDiffState,
     edgeDiffState,
@@ -265,6 +277,7 @@ export async function compileSystemDiff(
     groupBy,
     boundaryIndex: mergedBoundaryIndex,
     scopedBoundaryIndex: mergedScopedBoundaryIndex,
+    groupLabels,
     collapsedGroups,
     collapsedCategories,
     interactive,

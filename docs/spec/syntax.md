@@ -969,8 +969,10 @@ All properties are optional. `member` cannot be nested.
 
 ### How to specify a label
 
-`organization`, `team`, and `member` all support both a positional argument (`team backend "Backend Team"`) and the property form (`team backend { label "Backend Team" }`).
-When both are specified, the property form takes precedence.
+`organization`, `team`, and `member` take their label as the `label` property (`team backend { label "Backend Team" }`), like every node kind ([ADR-19](../adr/19-required-id-label-as-property.md)).
+The legacy positional argument (`team backend "Backend Team"`) is **deprecated** (#2133): it still parses, emits the `positional-label-deprecated` warning, and `karasu fmt` rewrites it to the property form. When both are specified, the property form takes precedence.
+
+> Related TPLs: [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — every form the parser accepts must be documented here; undocumented leniency is drift (this section's positional form went unspecified-but-accepted for four months, #2133).
 
 ---
 
@@ -994,7 +996,8 @@ the two axes are **mutually exclusive** (you pick one at a time) and
 under *Group by: boundary*).
 
 ```krs
-boundary payments "Payments" {
+boundary payments {
+  label "Payments"
   contains Billing
   contains Wallet
 }
@@ -1035,12 +1038,12 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 
 - `duplicate-boundary-assignment` (info) — a node is listed in more than one `boundary`; the first-declared boundary is kept.
 - `contains-target-not-found` (warning) — a `contains` target does not exist in the system hierarchy.
+- `positional-label-removed` (error) — a positional label after the boundary id (`boundary payments "Payments"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md), #2133).
 
-`boundary` supports both the positional label (`boundary payments "Payments"`)
-and the property form (`boundary payments { label "Payments" }`); when both are
-given the property form wins.
+Under either *Group by* axis the group frame is titled with the group's declared
+`label`, falling back to the group id when no label is given (#2133).
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983).
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983).
 
 ---
 

@@ -126,7 +126,8 @@ test.describe("AT-1907 Entity view app integration", () => {
     opfs,
   }) => {
     const ENTITY_BOUNDARY_KRS = `${ENTITY_KRS}
-boundary core_data "Core data" {
+boundary core_data {
+  label "Core data"
   contains Order
 }
 `;

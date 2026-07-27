@@ -212,15 +212,16 @@ describe("applyKrsPatch", () => {
 
   describe("org nodes", () => {
     const orgSrc = `organization ExampleOrg "Example Org" {
-  team BackendTeam "バックエンドチーム" {
-    member AliceUser "Alice" {}
+  team BackendTeam {
+    label "バックエンドチーム"
+    member AliceUser { label "Alice" }
   }
-  team FrontendTeam "フロントエンドチーム" {}
+  team FrontendTeam { label "フロントエンドチーム" }
 }`;
 
     it("replaces an organization block", () => {
       const replacement = `organization ExampleOrg "Example Org (updated)" {
-  team BackendTeam "バックエンドチーム" {}
+  team BackendTeam { label "バックエンドチーム" }
 }`;
       const result = applyKrsPatch(orgSrc, "replace", "ExampleOrg", replacement);
       expect(result).toEqual({ ok: true, source: replacement });
@@ -228,8 +229,8 @@ describe("applyKrsPatch", () => {
 
     it("replaces a team block to add a sub-team", () => {
       const replacement = `team BackendTeam "バックエンドチーム" {
-    member AliceUser "Alice" {}
-    team CoreSubTeam "コアサブチーム" {}
+    member AliceUser { label "Alice" }
+    team CoreSubTeam { label "コアサブチーム" }
   }`;
       const result = applyKrsPatch(orgSrc, "replace", "BackendTeam", replacement);
       expect(result).toMatchObject({ ok: true, source: expect.stringContaining("CoreSubTeam") });

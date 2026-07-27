@@ -1154,21 +1154,26 @@ system Test {
   it("parses organization block with teams and members", () => {
     const result = Parser.parse(`
 organization ExampleCorp {
-  team backend "バックエンドチーム" {
+  team backend {
+    label "バックエンドチーム"
     owns ECommerce
     owns Order
 
-    member alice "Alice" {
+    member alice {
+      label "Alice"
       slack "@alice"
       github "alice-dev"
     }
-    member bob "Bob" {
+    member bob {
+      label "Bob"
       description "SRE担当"
     }
   }
-  team frontend "フロントエンドチーム" {
+  team frontend {
+    label "フロントエンドチーム"
     owns WebApp
-    member carol "Carol" {
+    member carol {
+      label "Carol"
       github "carol-fe"
     }
   }
@@ -1206,11 +1211,13 @@ organization ExampleCorp {
   it("parses sub-team nesting", () => {
     const result = Parser.parse(`
 organization Corp {
-  team platform "プラットフォーム" {
-    team infra "インフラ" {
-      member dave "Dave" {}
+  team platform {
+    label "プラットフォーム"
+    team infra {
+      label "インフラ"
+      member dave { label "Dave" }
     }
-    team security "セキュリティ" {}
+    team security { label "セキュリティ" }
   }
 }
     `);
@@ -1361,7 +1368,31 @@ organization Corp {
     expect(member?.label).toBe("Alice Smith");
   });
 
-  it("label property overrides positional label", () => {
+  // ─── Positional label form retirement (#2133, ADR-19) ─────────────────────
+
+  it("positional label on organization / team / member still parses but warns", () => {
+    const result = Parser.parse(`
+organization Corp "Corp Label" {
+  team backend "Backend Team" {
+    member alice "Alice Smith" {}
+  }
+}
+    `);
+    const warnings = result.diagnostics.filter((d) => d.code === "positional-label-deprecated");
+    expect(warnings.map((w) => (w.params as { construct: string }).construct)).toEqual([
+      "organization",
+      "team",
+      "member",
+    ]);
+    expect(warnings.every((w) => w.severity === "warning")).toBe(true);
+    // Compatibility: the value still lands in the AST.
+    const org = result.value.organizations[0];
+    expect(org.label).toBe("Corp Label");
+    expect(org.teams[0].label).toBe("Backend Team");
+    expect(org.teams[0].children.find((c) => c.kind === "member")?.label).toBe("Alice Smith");
+  });
+
+  it("label property overrides a deprecated positional label", () => {
     const result = Parser.parse(`
 organization Corp {
   team backend "Positional" {
@@ -1369,8 +1400,27 @@ organization Corp {
   }
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["positional-label-deprecated"]);
     expect(result.value.organizations[0].teams[0].label).toBe("Property");
+  });
+
+  it("positional label on boundary is a parse error and does not set the label", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+}
+boundary payments "Payments" {
+  contains Billing
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.code === "positional-label-removed");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].severity).toBe("error");
+    expect((errors[0].params as { construct: string }).construct).toBe("boundary");
+    // Recovery: the block body still parses past the stray string.
+    const boundary = result.value.boundaries[0];
+    expect(boundary.label).toBeUndefined();
+    expect(boundary.contains).toEqual(["Billing"]);
   });
 
   // ─── String literal ids ────────────────────────────────────────────────────
@@ -1985,7 +2035,8 @@ system Shop {
   service Billing {}
   service Wallet {}
 }
-boundary payments "Payments" {
+boundary payments {
+  label "Payments"
   description "money movement"
   contains Billing
   contains Wallet

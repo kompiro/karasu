@@ -619,6 +619,12 @@ export interface DiagnosticParamsByCode {
   "duplicate-boundary-assignment": { nodeId: string; existingBoundary: string };
   "boundary-not-in-context": { parentKind: string };
   "duplicate-boundary-id": { boundaryId: string };
+  // ADR-19 conformance (#2133): the positional `<kw> <id> "<label>"` form.
+  // Removed outright on `boundary` (experimental, no compat promise) …
+  "positional-label-removed": { construct: string };
+  // … and deprecated-but-accepted on organization / team / member (v1.0
+  // constructs; the form was never in the spec, but shipped builds parsed it).
+  "positional-label-deprecated": { construct: string };
   "contains-target-not-found": { memberId: string };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };

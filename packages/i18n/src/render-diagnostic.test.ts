@@ -172,6 +172,16 @@ const SAMPLES: SamplesByCode = {
     code: "duplicate-boundary-id",
     params: { boundaryId: "OrderIntake" },
   },
+  "positional-label-removed": {
+    severity: "error",
+    code: "positional-label-removed",
+    params: { construct: "boundary" },
+  },
+  "positional-label-deprecated": {
+    severity: "warning",
+    code: "positional-label-deprecated",
+    params: { construct: "team" },
+  },
   "contains-target-not-found": {
     severity: "warning",
     code: "contains-target-not-found",
@@ -404,6 +414,8 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-boundary-assignment": ["OrderService", "OrderIntake"],
   "boundary-not-in-context": ["entity"],
   "duplicate-boundary-id": ["OrderIntake"],
+  "positional-label-removed": ["boundary", "label"],
+  "positional-label-deprecated": ["team", "label"],
   "contains-target-not-found": ["MissingSvc"],
   "duplicate-team-id": ["Platform"],
   "node-id-multiple-locations": ["OrderService"],

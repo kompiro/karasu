@@ -941,6 +941,12 @@ interface LayoutOptions {
    * nowhere else — unlike `boundaryIndex`, which is model-wide.
    */
   scopedBoundaryIndex?: Map<string, Map<string, string>>;
+  /**
+   * Group id → declared `label` for the active axis (#2133), from
+   * `buildGroupLabelIndex`. Titles the group frames; the container id stays
+   * `__group_<id>__`. Omitted → frames fall back to the group id.
+   */
+  groupLabels?: Map<string, string>;
   displayMode?: DisplayMode;
   layoutHints?: Map<string, ResolvedLayoutHints>;
   edgeDirections?: Map<string, EdgeDirection>;
@@ -1067,6 +1073,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     ownerIndex,
     boundaryIndex,
     scopedBoundaryIndex,
+    groupLabels,
     displayMode,
     layoutHints,
     edgeDirections,
@@ -1494,7 +1501,16 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     // Expansion frames enclose their own members (by container), not the team
     // buckets `groupIdOf` would report for an `owns` model (#1921).
     const frameGroupIdOf = isExpanding ? expandGroupIdOf : groupIdOf;
-    buildGroupFrames([...layoutNodes.values()], groupOrder, frameGroupIdOf, containers, expandMeta);
+    // Expansion meta wins where it applies; otherwise the group's declared
+    // label titles the frame (#2133), with the id fallback inside
+    // buildGroupFrames covering label-less groups.
+    const frameMeta = (groupId: string) => {
+      const meta = expandMeta?.(groupId);
+      if (meta) return meta;
+      const label = groupLabels?.get(groupId);
+      return label !== undefined ? { label } : undefined;
+    };
+    buildGroupFrames([...layoutNodes.values()], groupOrder, frameGroupIdOf, containers, frameMeta);
   }
 
   // Place ghost nodes
@@ -1695,6 +1711,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     ownerIndex,
     boundaryIndex,
     scopedBoundaryIndex,
+    groupLabels,
     displayMode,
     layoutHints,
     edgeDirections,
@@ -1987,7 +2004,16 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // system, so two frames intentionally share the same `__group_<team>__`
     // container id (app collapse is keyed by team id → collapse-everywhere).
     if (groupBandsS) {
-      buildGroupFrames([...localNodes.values()], groupOrderS, groupIdOf, allContainers);
+      buildGroupFrames(
+        [...localNodes.values()],
+        groupOrderS,
+        groupIdOf,
+        allContainers,
+        (groupId) => {
+          const label = groupLabels?.get(groupId);
+          return label !== undefined ? { label } : undefined;
+        },
+      );
     }
 
     // Move [external] services to side columns for this system (#1728). Skipped

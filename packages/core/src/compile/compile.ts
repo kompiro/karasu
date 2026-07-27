@@ -36,6 +36,7 @@ import {
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { analyze } from "../resolver/warnings.js";
 import { render, legendScopeForLogicalSlice } from "../renderer/svg-renderer.js";
+import { buildGroupLabelIndex } from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
@@ -445,6 +446,7 @@ function _compileFromPreparedInput(
     groupBy,
     boundaryIndex: krsFile.boundaryIndex,
     scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+    groupLabels: buildGroupLabelIndex(krsFile, groupBy),
     collapsedGroups,
   });
   const nodeMetadata = buildNodeMetadata(

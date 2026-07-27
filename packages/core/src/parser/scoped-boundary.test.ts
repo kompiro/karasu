@@ -21,7 +21,7 @@ system Shop {
 describe("scoped boundary — the ambiguity it removes", () => {
   it("top-level contains still frames every same-id node (the #2036 symptom, unchanged)", () => {
     const result = Parser.parse(`${COLLIDING_IDS}
-boundary b "B" { contains Payment }
+boundary b { label "B" contains Payment }
 `);
     // Documents today's behaviour rather than endorsing it: the flat index maps
     // the *id*, so both the service and the nested domain resolve to it.
@@ -34,7 +34,7 @@ boundary b "B" { contains Payment }
 system Shop {
   service Payment { domain Ledger {} }
   service Checkout {
-    boundary b "B" { contains Payment }
+    boundary b { label "B" contains Payment }
     domain Payment {}
   }
 }
@@ -52,9 +52,9 @@ system Shop {
   it("the same boundary id in two scopes stays two independent memberships", () => {
     const result = Parser.parse(`
 system Shop {
-  boundary core "Core" { contains Checkout }
+  boundary core { label "Core" contains Checkout }
   service Checkout {
-    boundary core "Core" { contains Ledger }
+    boundary core { label "Core" contains Ledger }
     domain Ledger {}
   }
 }
@@ -74,7 +74,7 @@ describe("scoped boundary — member resolution", () => {
     const result = Parser.parse(`
 system Shop {
   service Checkout {
-    boundary b "B" { contains Ledger  contains Entry }
+    boundary b { label "B" contains Ledger  contains Entry }
     domain Ledger { usecase Entry {} }
   }
 }
@@ -96,8 +96,8 @@ system Shop {
     const result = Parser.parse(`
 system Shop {
   service Checkout {
-    boundary one "One" { contains Ledger }
-    boundary two "Two" { contains Ledger }
+    boundary one { label "One" contains Ledger }
+    boundary two { label "Two" contains Ledger }
     domain Ledger {}
   }
 }
@@ -183,7 +183,7 @@ describe("scoped boundary — placement", () => {
     const result = Parser.parse(`
 system Shop {
   client Web {
-    boundary b "B" { contains Nothing }
+    boundary b { label "B" contains Nothing }
     label "Web app"
   }
 }
@@ -201,8 +201,8 @@ describe("scoped boundary — duplicate ids", () => {
     const result = Parser.parse(`
 system Shop {
   service Checkout {
-    boundary core "One" { contains Ledger }
-    boundary core "Two" { contains Cart }
+    boundary core { label "One" contains Ledger }
+    boundary core { label "Two" contains Cart }
     domain Ledger {}
     domain Cart {}
   }
@@ -225,8 +225,8 @@ system Shop {
   service Billing {}
   service Wallet {}
 }
-boundary pay "One" { contains Billing }
-boundary pay "Two" { contains Wallet }
+boundary pay { label "One" contains Billing }
+boundary pay { label "Two" contains Wallet }
 `);
     expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(0);
     expect(result.value.boundaryIndex.get("Billing")).toBe("pay");

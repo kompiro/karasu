@@ -60,7 +60,7 @@ system Shop {
     usecase Capture
   } }
 }
-boundary pci "PCI" { contains CardVault contains Billing contains Payment contains Authorize contains Capture }
+boundary pci { label "PCI" contains CardVault contains Billing contains Payment contains Authorize contains Capture }
 ```
 
 | view | `__group_pci__` frame | framed members |
@@ -165,14 +165,14 @@ system Shop {
   service Checkout {
     domain Payment {}
     domain Cart {}
-    boundary core "Core domains" {     // service Checkout スコープ
+    boundary core { label "Core domains"     // service Checkout スコープ
       contains Payment
       contains Cart
     }
   }
   service Billing {}
   service Wallet {}
-  boundary payments "Payments" {        // system Shop スコープ
+  boundary payments { label "Payments"        // system Shop スコープ
     contains Billing
     contains Wallet
   }

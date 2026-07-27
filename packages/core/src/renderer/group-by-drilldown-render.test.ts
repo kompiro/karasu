@@ -42,7 +42,8 @@ system Shop {
 }
 `;
 const DRILL_SRC = `${DRILL_BODY}
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains OrderDomain
   contains PlaceOrder
   contains OrderEntity
@@ -125,7 +126,8 @@ describe("drill-down grouping (#1983) — interactive compile", () => {
 
   it("frames every node when the whole drill level belongs to one boundary (degenerate)", () => {
     const allMembers = `${DRILL_BODY}
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains OrderDomain
   contains ShippingDomain
 }
@@ -193,7 +195,8 @@ system Shop {
 describe("ghosts stay out of drill grouping (rule 4)", () => {
   it("draws no frame when the only member at this level is a ghost", () => {
     const ghostOnly = `${GHOST_BODY}
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains BillingDomain
 }
 `;
@@ -205,7 +208,8 @@ boundary cluster "Cluster" {
 
   it("keeps a member ghost out of the collapse fold", () => {
     const both = `${GHOST_BODY}
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains OrderDomain
   contains BillingDomain
 }
@@ -224,7 +228,8 @@ boundary cluster "Cluster" {
     // the boundary index. Guards against a future retrofit accidentally
     // feeding ghost nodes into groupIdOf.
     const ghostOnly = `${GHOST_BODY}
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains BillingDomain
 }
 `;
@@ -362,7 +367,8 @@ describe("export surfaces draw frames on drill levels (#1983)", () => {
 // direct fence for #1879's "grouped export must not disturb the full
 // structure" on every level below the root.
 const ROOT_ONLY_SRC = `${DRILL_BODY}
-boundary rootline "Rootline" {
+boundary rootline {
+  label "Rootline"
   contains Orders
   contains Billing
 }
@@ -462,11 +468,13 @@ system Shop {
     domain E {}
   }
 }
-boundary g1 "G1" {
+boundary g1 {
+  label "G1"
   contains A
   contains B
 }
-boundary g2 "G2" {
+boundary g2 {
+  label "G2"
   contains C
   contains D
 }
@@ -573,7 +581,8 @@ describe("cross-file members group on drill levels (multi-file merge)", () => {
 system Shop {
   service Orders {}
 }
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains BillingDomain
 }
 `,
