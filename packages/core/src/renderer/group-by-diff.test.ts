@@ -510,7 +510,12 @@ describe("compileSystemDiff() with groupBy: boundary — scoped backfill (#2036)
     expect(svg.match(/data-node-id="Wallet"/g)?.length).toBe(1);
     expect(svg).toMatch(/data-node-id="Wallet"[^>]*data-diff-state="removed"/);
 
-    const frame = groupFrameRect(svg, "core");
+    // The scoped `core` frames under its scope-qualified group id (#2036:
+    // identity = scope + id); JSON quotes appear XML-escaped in the raw SVG.
+    const scopedGroupId = JSON.stringify(["Shop", "Checkout", "core"])
+      .replaceAll('"', "&quot;")
+      .replaceAll(/[[\]]/g, "\\$&");
+    const frame = groupFrameRect(svg, scopedGroupId);
     const wallet = nodeRect(svg, "Wallet");
     const ledger = nodeRect(svg, "Ledger");
     expect(frame).not.toBeNull();

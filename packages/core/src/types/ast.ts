@@ -533,6 +533,46 @@ export function boundaryScopeKey(pathIds: readonly string[]): string {
   return JSON.stringify(pathIds);
 }
 
+/**
+ * Group id of a *scoped* boundary on the grouping axis: the declaring scope
+ * path plus the boundary id, in the same injective JSON encoding as
+ * {@link boundaryScopeKey}. A scoped boundary's identity is (declaring scope,
+ * id) — #2036 — so everything keyed by its group id (frame container id,
+ * collapse state, stub id) must carry both dimensions (TPL-20260512-01): a
+ * bare id would fuse same-named boundaries across scopes into one collapse
+ * key. Top-level boundaries keep their bare id — the flat form is one
+ * model-wide declaration, so one shared collapse state is its identity.
+ *
+ * (A top-level boundary whose quoted id happens to spell a full JSON array
+ * could collide with this space; treated as pathological and not defended.)
+ */
+export function scopedBoundaryGroupId(scopePath: readonly string[], boundaryId: string): string {
+  return boundaryScopeKey([...scopePath, boundaryId]);
+}
+
+/**
+ * The author-facing name inside a group id: the boundary id for a scoped
+ * group id (the last element of its JSON encoding), the id itself otherwise.
+ * Used wherever a group id is *displayed* — collapse-stub labels and the
+ * frame-title fallback — so the scope qualifier never leaks into the diagram.
+ */
+export function displayGroupId(groupId: string): string {
+  if (!groupId.startsWith("[")) return groupId;
+  try {
+    const parts: unknown = JSON.parse(groupId);
+    if (
+      Array.isArray(parts) &&
+      parts.length > 0 &&
+      parts.every((p): p is string => typeof p === "string")
+    ) {
+      return parts[parts.length - 1];
+    }
+  } catch {
+    // Not a scoped group id — fall through to the raw id.
+  }
+  return groupId;
+}
+
 export function createEmptyKrsFile(): KrsFile {
   return {
     styleImports: [],

@@ -92,7 +92,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | --- | --- | --- |
 | `owns-target-not-found` | warning | team が存在しない service / domain を `owns` する。 |
 | `invalid-owns` | warning | `owns` 先が所有できない種別に解決される。 |
-| `contains-target-not-found` | warning | `boundary` が system 階層に存在しない node を `contains` する。 |
+| `contains-target-not-found` | warning | `boundary` の `contains` 先が存在しない — top-level ブロックはマージ後の system 階層のどこにも無い場合（存在検証は per-file でなく cross-file マージ後）、スコープブロックは宣言ノードの直下の子に無い場合。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |
 | `unresolved-edge-endpoint` | warning | edge の端点 id が merge 後のモデルのどこにも見つからない。 |

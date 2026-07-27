@@ -1,26 +1,29 @@
-import { boundaryScopeKey } from "../types/ast.js";
+import { boundaryScopeKey, scopedBoundaryGroupId } from "../types/ast.js";
 import type { KrsFile, KrsNode, TeamNode } from "../types/ast.js";
 
 /**
  * Group id → declared `label` for the active "Group by" axis (#2133).
  *
  * Group frames are titled with the group's declared label, falling back to the
- * group id when no label is given (`buildGroupFrames`'s default). The frame
- * *container id* stays `__group_<id>__` either way, so collapse keying and the
- * permalink surface are unaffected.
+ * bare group id when no label is given.
  *
  * Shaped like the membership indexes it labels: `model` holds model-wide
- * declarations (teams; top-level boundaries), `scoped` holds per-scope
- * `boundary` blocks keyed by {@link boundaryScopeKey} — a scoped declaration
- * labels its own canvas only, and there it wins over a same-id model-wide one,
- * mirroring `boundaryAxisFor`'s membership rule. Built per axis so a team id
- * and an unrelated boundary id sharing the same spelling can never borrow each
- * other's label (the axis is a distinguishing dimension — TPL-20260512-01).
+ * declarations (teams; top-level boundaries) keyed by bare id, `scoped` holds
+ * per-scope `boundary` blocks keyed by {@link boundaryScopeKey} whose inner
+ * maps are keyed by the scope-qualified group id (`scopedBoundaryGroupId`),
+ * matching the axis `boundaryAxisFor` builds — the two key spaces are disjoint
+ * by construction. Built per axis so a team id and an unrelated boundary id
+ * sharing the same spelling can never borrow each other's label (the axis is a
+ * distinguishing dimension — TPL-20260512-01).
  */
 export interface GroupLabelIndex {
-  /** Model-wide labels: team ids, or top-level boundary ids. */
+  /** Model-wide labels: team ids, or top-level boundary ids (bare id keys). */
   model: Map<string, string>;
-  /** Labels from scoped `boundary` blocks, keyed by `boundaryScopeKey`. */
+  /**
+   * Labels from scoped `boundary` blocks, keyed by `boundaryScopeKey`; inner
+   * maps are keyed by the scope-qualified group id and always carry an entry
+   * (declared label, else the bare id) so the qualifier never becomes a title.
+   */
   scoped: Map<string, Map<string, string>>;
 }
 
@@ -36,9 +39,10 @@ export function buildGroupLabelIndex(
 }
 
 /**
- * The labels that apply to the canvas at `scopePath` — the model-wide map with
- * that canvas's scoped declarations layered on top (the scoped entry wins; it
- * is the more specific statement, same rule as `boundaryAxisFor`).
+ * The labels that apply to the canvas at `scopePath` — the model-wide map plus
+ * that canvas's scoped declarations. Scoped entries are keyed by their
+ * scope-qualified group id, so the two maps never collide; the union simply
+ * covers every group the canvas's axis (`boundaryAxisFor`) can produce.
  */
 export function groupLabelsFor(
   index: GroupLabelIndex | undefined,
@@ -72,8 +76,13 @@ export function declaredGroupIds(
     for (const org of krsFile.organizations) walk(org.teams);
   } else if (groupBy === "boundary") {
     for (const boundary of krsFile.boundaries) ids.add(boundary.id);
-    walkNodes(krsFile, (node) => {
-      for (const boundary of node.boundaries ?? []) ids.add(boundary.id);
+    // Scoped declarations register under their scope-qualified group id — the
+    // key the axis and the label maps use — so declaration identity matches
+    // group identity ((scope, id), #2036).
+    walkNodes(krsFile, (node, scopePath) => {
+      for (const boundary of node.boundaries ?? []) {
+        ids.add(scopedBoundaryGroupId(scopePath, boundary.id));
+      }
     });
   }
   return ids;
@@ -104,7 +113,6 @@ function buildBoundaryLabelIndex(krsFile: KrsFile): GroupLabelIndex {
   walkNodes(krsFile, (node, scopePath) => {
     let entry: Map<string, string> | undefined;
     for (const boundary of node.boundaries ?? []) {
-      if (boundary.label === undefined) continue;
       if (entry === undefined) {
         const key = boundaryScopeKey(scopePath);
         entry = scoped.get(key);
@@ -113,7 +121,10 @@ function buildBoundaryLabelIndex(krsFile: KrsFile): GroupLabelIndex {
           scoped.set(key, entry);
         }
       }
-      if (!entry.has(boundary.id)) entry.set(boundary.id, boundary.label);
+      // Every scoped boundary gets an entry (label, else its bare id) so the
+      // frame-title fallback never shows the scope-qualified group id.
+      const groupId = scopedBoundaryGroupId(scopePath, boundary.id);
+      if (!entry.has(groupId)) entry.set(groupId, boundary.label ?? boundary.id);
     }
   });
   return { model, scoped };

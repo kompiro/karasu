@@ -20,6 +20,7 @@
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
+//   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 
 system FeatureSamples {
   label "Feature samples"

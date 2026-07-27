@@ -99,7 +99,7 @@ error) — see syntax spec §S6.
 | --- | --- | --- |
 | `owns-target-not-found` | warning | A team `owns` a service / domain absent from the merged model (existence is checked after cross-file merge, not per file). |
 | `invalid-owns` | warning | An `owns` target resolves to a kind that cannot be owned. |
-| `contains-target-not-found` | warning | A `boundary` `contains` a node absent from the merged system hierarchy (existence is checked after cross-file merge, not per file). |
+| `contains-target-not-found` | warning | A `boundary` `contains` a node that does not exist — for a top-level block, anywhere in the merged system hierarchy (existence is checked after cross-file merge, not per file); for a scoped block, among the declaring node's direct children. |
 | `import-id-not-found` | error | A named import id path fails to resolve. |
 | `import-path-not-found` | error | An import path fails to resolve at some segment. |
 | `unresolved-edge-endpoint` | warning | An edge endpoint id is not found anywhere in the merged model. |

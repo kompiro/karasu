@@ -2138,6 +2138,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
+//   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 
 system FeatureSamples {
   label "Feature samples"
@@ -2862,6 +2863,59 @@ boundary catalog {
   label "Catalog"
   contains Search
   contains Inventory
+}
+`,
+    },
+    {
+      path: "scoped-boundary.krs",
+      content: `// Scoped boundary — a \`boundary\` declared INSIDE a node block (#2036, experimental).
+//
+// Written inside a node block, a boundary is that layer's own concern: its
+// members are the declaring node's DIRECT CHILDREN (bare ids — siblings are
+// already unique), and its frame appears on the declaring node's canvas only.
+// Contrast boundary-clusters.krs, where a top-level boundary gathers nodes by
+// reference from anywhere and fragments across drill levels.
+//
+// Turn "Group by: Boundary" on and drill to see each declaration frame its own
+// canvas:
+//   - \`edge\` (declared in the system block) frames Web + Mobile on the root view.
+//   - \`core\` (declared inside Checkout) frames Ledger + Cart on Checkout's
+//     drill-down view — and nowhere else. Reporting stays outside the frame.
+//
+// A same-named boundary in another scope is a DIFFERENT boundary (identity =
+// declaring scope + id): its frame, label, and collapse state are independent.
+//
+// \`boundary\` is experimental notation — backward compatibility is not yet
+// promised (docs/spec/syntax.md § Grouping the system view).
+
+system Shop {
+  label "Shop"
+
+  boundary edge {
+    label "Edge services"
+    contains Web
+    contains Mobile
+  }
+
+  service Web { label "Web BFF" }
+  service Mobile { label "Mobile BFF" }
+
+  service Checkout {
+    label "Checkout"
+
+    boundary core {
+      label "Core domains"
+      contains Ledger
+      contains Cart
+    }
+
+    domain Ledger { label "Ledger" }
+    domain Cart { label "Cart" }
+    domain Reporting { label "Reporting (unclustered)" }
+  }
+
+  Web -> Checkout "order"
+  Mobile -> Checkout "order"
 }
 `,
     },

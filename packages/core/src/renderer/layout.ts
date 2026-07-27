@@ -1,5 +1,10 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
-import { INFRA_KIND_SET, boundaryScopeKey } from "../types/ast.js";
+import {
+  INFRA_KIND_SET,
+  boundaryScopeKey,
+  displayGroupId,
+  scopedBoundaryGroupId,
+} from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import { collapseGroups } from "./group-collapse.js";
@@ -89,7 +94,9 @@ function buildGroupFrames(
     const meta = metaOf?.(groupId);
     out.push({
       id: `__group_${groupId}__`,
-      label: meta?.label ?? groupId,
+      // displayGroupId strips the scope qualifier of a scoped boundary's group
+      // id (#2036) so the qualifier never surfaces as a title.
+      label: meta?.label ?? displayGroupId(groupId),
       x: minX - GROUP_FRAME_PAD_X,
       y: minY - GROUP_FRAME_PAD_TOP,
       width: maxX - minX + GROUP_FRAME_PAD_X * 2,
@@ -995,6 +1002,12 @@ interface GroupedLayerBands {
  * the node it names — and the top-level form keeps its reach untouched
  * everywhere else.
  *
+ * Scoped entries carry a scope-qualified group id (`scopedBoundaryGroupId`):
+ * a scoped boundary's identity is (declaring scope, id), so a same-named
+ * boundary in another scope is a different group — separate frame container
+ * id, independent collapse state. Top-level ids stay bare, keeping today's
+ * one-declaration / collapse-everywhere behavior (#1884 precedent).
+ *
  * `scopePath` is the chain of node ids from the root down to this canvas's
  * container, which is what the parser keys membership by.
  */
@@ -1005,8 +1018,12 @@ function boundaryAxisFor(
 ): Map<string, string> | undefined {
   const scoped = scopedBoundaryIndex?.get(boundaryScopeKey(scopePath));
   if (scoped === undefined || scoped.size === 0) return boundaryIndex;
-  if (boundaryIndex === undefined) return new Map(scoped);
-  return new Map([...boundaryIndex, ...scoped]);
+  const qualified = new Map<string, string>();
+  for (const [nodeId, boundaryId] of scoped) {
+    qualified.set(nodeId, scopedBoundaryGroupId(scopePath, boundaryId));
+  }
+  if (boundaryIndex === undefined) return qualified;
+  return new Map([...boundaryIndex, ...qualified]);
 }
 
 function collapseAndAssignGroupLayers(

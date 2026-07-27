@@ -11,9 +11,15 @@ import { Parser } from "../parser/parser.js";
 
 /** The group frame `<g>` for `groupId`, or throws when absent. */
 function frameOf(svg: string, groupId: string): string {
-  const m = new RegExp(`<g data-container-id="__group_${groupId}__"[^]*?</g>`).exec(svg);
+  const escaped = groupId.replaceAll('"', "&quot;").replaceAll(/[[\]]/g, "\\$&");
+  const m = new RegExp(`<g data-container-id="__group_${escaped}__"[^]*?</g>`).exec(svg);
   if (!m) throw new Error(`no frame for ${groupId}`);
   return m[0];
+}
+
+/** Scope-qualified group id of a scoped boundary (#2036: identity = scope + id). */
+function scopedId(scopePath: string[], id: string): string {
+  return JSON.stringify([...scopePath, id]);
 }
 
 function systemSvg(src: string, groupBy: "team" | "boundary"): string {
@@ -157,14 +163,13 @@ system Shop {
       undefined,
       "boundary",
     );
-    expect(frameOf(svg, "core")).toContain(">Core domains</text>");
+    expect(frameOf(svg, scopedId(["Shop", "Checkout"], "core"))).toContain(">Core domains</text>");
   });
 
-  it("scoped boundary label wins over a same-id top-level label on its own canvas only", () => {
-    // Review finding on #2137: a flat label map let the top-level "Root core"
-    // title the Checkout drill frame too. Labels must resolve per canvas like
-    // boundaryAxisFor: the scoped declaration wins where it is declared, the
-    // top-level one keeps every other canvas.
+  it("scoped and top-level boundaries sharing an id each keep their own label", () => {
+    // Review finding on #2137 (then a flat label map let the top-level "Root
+    // core" title the Checkout drill frame too); with scope-qualified group
+    // ids (#2036: identity = scope + id) the two are distinct groups outright.
     const SRC = `
 system Shop {
   service Checkout {
@@ -191,7 +196,7 @@ boundary core {
       viewPath: ["Shop", "Checkout"],
     });
     if (drilled.diagramType !== "system") throw new Error("expected system view");
-    const drillFrame = frameOf(drilled.svg, "core");
+    const drillFrame = frameOf(drilled.svg, scopedId(["Shop", "Checkout"], "core"));
     expect(drillFrame).toContain(">Service core</text>");
     expect(drillFrame).not.toContain(">Root core</text>");
   });
