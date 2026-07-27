@@ -221,6 +221,14 @@ launching the fan-out rather than discovering the bill afterwards.
   that no adapter covers it.
 - **Split at bounded-context granularity, not aggregate granularity** — the
   highest-leverage instruction here, and the one the unguided harness gets wrong.
+- **Do not decide seams from organizational signals** (CODEOWNERS,
+  commit-coupling, package ownership). Spike #1991 measured this as a quality
+  lever and it did not pay: inert on small repos (identical decomposition down
+  to 3 decimals), and on a large repo (Dify) it made the result *worse* vs the
+  domain gold (V-measure 0.83 → 0.70) by pulling seams toward per-owner vertical
+  slices — that is Conway's *team* structure, not the product's ubiquitous
+  language. Domain decomposition ≠ team decomposition; deciding seams from who
+  owns the code is the wrong target (ADR-2077).
 - **Match identity by `id`**, not `label`. **Never silently drop thin domains**
   (surface them via `coverage`). **Do not introduce new `.krs` syntax** (v1 is
   frozen).

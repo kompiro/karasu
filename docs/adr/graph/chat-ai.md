@@ -1,6 +1,6 @@
 # ADR Topic: chat-ai
 
-10 ADRs in this topic. Solid nodes belong to `chat-ai`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+11 ADRs in this topic. Solid nodes belong to `chat-ai`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -15,6 +15,7 @@ flowchart TD
     ADR_639["ADR-639<br/>Chat システムプロンプトの i18n — ロケール検出とプロンプト選択"]
     ADR_1580["ADR-1580<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
     ADR_1895["ADR-1895<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
+    ADR_2077["ADR-2077<br/>reverse harness の分解粒度 — bounded-context 既定と構造 g..."]
     ADR_9017["ADR-9017<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
   end
   ADR_33["ADR-33<br/>[testing] E2EテストよりQA手動確認を優先する"]
@@ -49,6 +50,7 @@ flowchart TD
   class ADR_639 accepted
   class ADR_1580 accepted
   class ADR_1895 accepted
+  class ADR_2077 accepted
   class ADR_9017 accepted
   class ADR_33 ghost
   class ADR_813 ghost
