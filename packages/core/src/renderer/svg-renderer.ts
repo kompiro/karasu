@@ -1,6 +1,7 @@
 import type { EdgeDirection, ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { layout } from "./layout.js";
+import type { GroupLabelIndex } from "./group-labels.js";
 import { CATEGORY_STUB_TAG, categoryOf, type CategoryId } from "./category-collapse.js";
 import type {
   ContainerRect,
@@ -160,11 +161,11 @@ export interface RenderOptions {
    */
   scopedBoundaryIndex?: Map<string, Map<string, string>>;
   /**
-   * Group id → declared `label` for the active axis (#2133), from
-   * `buildGroupLabelIndex(krsFile, groupBy)`. Titles the group frames; omitted
-   * → frames fall back to the group id.
+   * Declared group labels for the active axis (#2133), from
+   * `buildGroupLabelIndex(krsFile, groupBy)`; layout resolves them per canvas.
+   * Titles the group frames; omitted → frames fall back to the group id.
    */
-  groupLabels?: Map<string, string>;
+  groupLabels?: GroupLabelIndex;
   collapsedGroups?: ReadonlySet<string>;
   /**
    * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).

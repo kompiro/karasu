@@ -7,7 +7,7 @@ import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
-import { buildGroupLabelIndex } from "./group-labels.js";
+import { buildGroupLabelIndex, type GroupLabelIndex } from "./group-labels.js";
 import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
@@ -372,7 +372,7 @@ function collectEntityLevels(
   groupBy?: "team" | "boundary",
   boundaryIndex?: Map<string, string>,
   scopedBoundaryIndex?: Map<string, Map<string, string>>,
-  groupLabels?: Map<string, string>,
+  groupLabels?: GroupLabelIndex,
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
   const styles = resolveStyles(effectiveSystems, sheets, []);

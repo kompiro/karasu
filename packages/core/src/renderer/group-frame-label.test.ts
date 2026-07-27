@@ -160,6 +160,42 @@ system Shop {
     expect(frameOf(svg, "core")).toContain(">Core domains</text>");
   });
 
+  it("scoped boundary label wins over a same-id top-level label on its own canvas only", () => {
+    // Review finding on #2137: a flat label map let the top-level "Root core"
+    // title the Checkout drill frame too. Labels must resolve per canvas like
+    // boundaryAxisFor: the scoped declaration wins where it is declared, the
+    // top-level one keeps every other canvas.
+    const SRC = `
+system Shop {
+  service Checkout {
+    boundary core {
+      label "Service core"
+      contains Ledger
+    }
+    domain Ledger {}
+  }
+  service Billing {}
+}
+boundary core {
+  label "Root core"
+  contains Checkout
+}
+`;
+    const root = compile(SRC, { diagramType: "system", groupBy: "boundary" });
+    if (root.diagramType !== "system") throw new Error("expected system view");
+    expect(frameOf(root.svg, "core")).toContain(">Root core</text>");
+
+    const drilled = compile(SRC, {
+      diagramType: "system",
+      groupBy: "boundary",
+      viewPath: ["Shop", "Checkout"],
+    });
+    if (drilled.diagramType !== "system") throw new Error("expected system view");
+    const drillFrame = frameOf(drilled.svg, "core");
+    expect(drillFrame).toContain(">Service core</text>");
+    expect(drillFrame).not.toContain(">Root core</text>");
+  });
+
   it("keeps the collapse container id unchanged (label changes the title only)", () => {
     const svg = systemSvg(
       `
@@ -217,5 +253,46 @@ boundary core {
       groupBy: "boundary",
     });
     expect(frameOf(result.svg, "legacy")).toContain(">Legacy cluster</text>");
+  });
+
+  it("does not resurrect a deleted label in diff view when the group still exists", async () => {
+    // Review finding on #2137 (the #1886 stale-state guard, label space): the
+    // author deleted `label` from a boundary whose members are unchanged — the
+    // diff must show the after intent (id fallback), not the before label.
+    const before = `
+system Shop {
+  service Billing {}
+  service Wallet {}
+  Billing -> Wallet
+}
+boundary payments {
+  label "Payments cluster"
+  contains Billing
+  contains Wallet
+}
+`;
+    const after = `
+system Shop {
+  service Billing {}
+  service Wallet {}
+  Billing -> Wallet
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+`;
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/p/before.krs", before);
+    await fs.writeFile("/p/after.krs", after);
+    const result = await compileSystemDiff({
+      beforeEntryPath: "/p/before.krs",
+      afterEntryPath: "/p/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    const frame = frameOf(result.svg, "payments");
+    expect(frame).toContain(">payments</text>");
+    expect(frame).not.toContain(">Payments cluster</text>");
   });
 });
