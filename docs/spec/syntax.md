@@ -946,13 +946,13 @@ organization TechCorp {
 
 ### team node
 
-- `owns <id>` declares a logical node (`service` / `domain` / `client`, etc.) that the team owns. The same `id` cannot be `owns`-ed by multiple teams; duplicates produce an error.
+- `owns <id>` declares a logical node (`service` / `domain` / `client`, etc.) that the team owns. When the same `id` is `owns`-ed by more than one team, it is a tolerated fact (transient co-ownership during an inverse-Conway migration): the first-declared team is kept as the node's primary owner and the overlap surfaces as the `duplicate-owner-assignment` **info** diagnostic — not an error (ADR-1566). A `@migration_target` team takes primary over unmarked, and `@deprecated` last.
 - Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary--experimental)).
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
 
-> Related TPLs: [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。
+> Related TPLs: [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
 
 ### member node
 
