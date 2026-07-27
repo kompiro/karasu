@@ -1406,7 +1406,8 @@ system ECPlatform {
 system Shop {
   service Orders {}
 }
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains BillingDomain
 }
 `,
@@ -1432,7 +1433,8 @@ boundary cluster "Cluster" {
 system Shop {
   service Orders {}
 }
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains NopeDomain
 }
 `,

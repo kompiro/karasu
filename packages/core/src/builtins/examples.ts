@@ -2849,7 +2849,8 @@ system Marketplace {
   Checkout -> OrderDB "persist"
 }
 
-boundary payments "Payments" {
+boundary payments {
+  label "Payments"
   contains Checkout
   contains Billing
   contains Wallet
@@ -2857,7 +2858,8 @@ boundary payments "Payments" {
   contains Authorize
 }
 
-boundary catalog "Catalog" {
+boundary catalog {
+  label "Catalog"
   contains Search
   contains Inventory
 }

@@ -467,7 +467,8 @@ describe("compileSystemDiff() with groupBy: boundary — scoped backfill (#2036)
   // removed in the after model, so it must be restored to that scope's frame.
   const before = `system Shop {
   service Checkout {
-    boundary core "Core" {
+    boundary core {
+      label "Core"
       contains Ledger
       contains Wallet
     }
@@ -478,7 +479,8 @@ describe("compileSystemDiff() with groupBy: boundary — scoped backfill (#2036)
 }`;
   const after = `system Shop {
   service Checkout {
-    boundary core "Core" {
+    boundary core {
+      label "Core"
       contains Ledger
     }
 

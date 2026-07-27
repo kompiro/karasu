@@ -20,11 +20,13 @@ system Shop {
   Billing -> ShopDB "persist"
 }
 
-boundary payments "Payments" {
+boundary payments {
+  label "Payments"
   contains Billing
   contains Wallet
 }
-boundary catalog "Catalog" {
+boundary catalog {
+  label "Catalog"
   contains Search
   contains Catalog
 }

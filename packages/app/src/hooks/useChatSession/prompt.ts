@@ -411,12 +411,14 @@ id の候補が曖昧な場合は英語 PascalCase で提案し、ユーザー�
 ## org 図（organization ブロック）の構文
 
     organization "会社名" {
-      team BackendTeam "バックエンドチーム" {
+      team BackendTeam {
+        label "バックエンドチーム"
         owns: ECommerceService
-        member AliceUser "Alice" {
+        member AliceUser {
+          label "Alice"
           slack: "@alice"
         }
-        team CoreSubTeam "コアサブチーム" {   // サブチームはこのようにネストする
+        team CoreSubTeam { label "コアサブチーム"   // サブチームはこのようにネストする
           owns: PaymentService
         }
       }
@@ -540,12 +542,14 @@ Because the org graph is merged into the \`organizations\` section, ownership re
 ## org diagram (organization block) syntax
 
     organization "Company" {
-      team BackendTeam "Backend Team" {
+      team BackendTeam {
+        label "Backend Team"
         owns: ECommerceService
-        member AliceUser "Alice" {
+        member AliceUser {
+          label "Alice"
           slack: "@alice"
         }
-        team CoreSubTeam "Core Sub Team" {   // nest subteams like this
+        team CoreSubTeam { label "Core Sub Team"   // nest subteams like this
           owns: PaymentService
         }
       }

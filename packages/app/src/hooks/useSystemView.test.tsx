@@ -143,7 +143,8 @@ describe("useSystemView", () => {
   }
   service Billing {}
 }
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains OrderDomain
 }`;
     vi.useFakeTimers();

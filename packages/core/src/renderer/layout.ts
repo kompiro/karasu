@@ -3,6 +3,7 @@ import { INFRA_KIND_SET, boundaryScopeKey } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import { collapseGroups } from "./group-collapse.js";
+import { groupLabelsFor, type GroupLabelIndex } from "./group-labels.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -941,6 +942,14 @@ interface LayoutOptions {
    * nowhere else — unlike `boundaryIndex`, which is model-wide.
    */
   scopedBoundaryIndex?: Map<string, Map<string, string>>;
+  /**
+   * Declared group labels for the active axis (#2133), from
+   * `buildGroupLabelIndex`. Resolved per canvas via `groupLabelsFor` (a scoped
+   * declaration labels its own canvas and wins there, like `boundaryAxisFor`).
+   * Titles the group frames; the container id stays `__group_<id>__`. Omitted
+   * → frames fall back to the group id.
+   */
+  groupLabels?: GroupLabelIndex;
   displayMode?: DisplayMode;
   layoutHints?: Map<string, ResolvedLayoutHints>;
   edgeDirections?: Map<string, EdgeDirection>;
@@ -1067,6 +1076,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     ownerIndex,
     boundaryIndex,
     scopedBoundaryIndex,
+    groupLabels,
     displayMode,
     layoutHints,
     edgeDirections,
@@ -1494,7 +1504,19 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     // Expansion frames enclose their own members (by container), not the team
     // buckets `groupIdOf` would report for an `owns` model (#1921).
     const frameGroupIdOf = isExpanding ? expandGroupIdOf : groupIdOf;
-    buildGroupFrames([...layoutNodes.values()], groupOrder, frameGroupIdOf, containers, expandMeta);
+    // Expansion meta wins where it applies; otherwise the group's declared
+    // label titles the frame (#2133), with the id fallback inside
+    // buildGroupFrames covering label-less groups. Labels resolve against this
+    // canvas's scope, so a scoped boundary's own label wins over a same-id
+    // model-wide one here (mirroring boundaryAxisFor's membership rule).
+    const canvasLabels = groupLabelsFor(groupLabels, scopePath);
+    const frameMeta = (groupId: string) => {
+      const meta = expandMeta?.(groupId);
+      if (meta) return meta;
+      const label = canvasLabels?.get(groupId);
+      return label !== undefined ? { label } : undefined;
+    };
+    buildGroupFrames([...layoutNodes.values()], groupOrder, frameGroupIdOf, containers, frameMeta);
   }
 
   // Place ghost nodes
@@ -1695,6 +1717,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     ownerIndex,
     boundaryIndex,
     scopedBoundaryIndex,
+    groupLabels,
     displayMode,
     layoutHints,
     edgeDirections,
@@ -1987,7 +2010,19 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // system, so two frames intentionally share the same `__group_<team>__`
     // container id (app collapse is keyed by team id → collapse-everywhere).
     if (groupBandsS) {
-      buildGroupFrames([...localNodes.values()], groupOrderS, groupIdOf, allContainers);
+      // Labels resolve per system canvas ([sys.id]), matching the axis
+      // resolution in boundaryAxisForSystem (#2133).
+      const systemLabels = groupLabelsFor(groupLabels, [sys.id]);
+      buildGroupFrames(
+        [...localNodes.values()],
+        groupOrderS,
+        groupIdOf,
+        allContainers,
+        (groupId) => {
+          const label = systemLabels?.get(groupId);
+          return label !== undefined ? { label } : undefined;
+        },
+      );
     }
 
     // Move [external] services to side columns for this system (#1728). Skipped

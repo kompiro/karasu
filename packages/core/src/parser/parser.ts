@@ -1824,10 +1824,7 @@ export class Parser {
   private parseOrganizationBlock(): OrganizationBlock {
     const start = this.advance(); // organization
     const idToken = this.parseIdOrString("organization");
-    let label: string | undefined;
-    if (this.peek().type === TokenType.StringLiteral) {
-      label = this.advance().value;
-    }
+    let label = this.parseDeprecatedPositionalLabel("organization");
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties = { links: [] };
@@ -1877,7 +1874,26 @@ export class Parser {
     };
   }
 
-  // Grammar: `boundary <id> "label"? { (label | description | link | contains)* }`
+  /**
+   * Accept-and-warn path for the positional `<kw> <id> "<label>"` form on
+   * organization / team / member (#2133). ADR-19 made `label` a property; these
+   * constructs kept the positional read as undocumented leniency, so shipped
+   * files may rely on it — the value still lands in the AST (and `karasu fmt`
+   * canonicalizes it to the property form), but a deprecation warning marks the
+   * form for removal.
+   */
+  private parseDeprecatedPositionalLabel(construct: string): string | undefined {
+    if (this.peek().type !== TokenType.StringLiteral) return undefined;
+    this.diagnostics.push({
+      severity: "warning",
+      code: "positional-label-deprecated",
+      params: { construct },
+      loc: this.range(this.peek().loc),
+    });
+    return this.advance().value;
+  }
+
+  // Grammar: `boundary <id> { (label | description | link | contains)* }`
   // Mirrors parseOrganizationBlock; `contains <id>` reuses the one-target-per-line
   // shape of `owns` (parseTeamBlock). See docs/design/system-view-grouping.md
   // 「P2b 詳細設計」.
@@ -1885,8 +1901,12 @@ export class Parser {
     const start = this.advance(); // boundary
     const idToken = this.parseIdOrString("boundary");
     let label: string | undefined;
+    // The positional label form is removed on boundary (ADR-19 / #2133;
+    // experimental construct, so no deprecation window). Consume the stray
+    // string so parsing resumes cleanly at `{`.
     if (this.peek().type === TokenType.StringLiteral) {
-      label = this.advance().value;
+      this.error("positional-label-removed", { construct: "boundary" });
+      this.advance();
     }
     this.expect(TokenType.LeftBrace);
 
@@ -1943,10 +1963,7 @@ export class Parser {
   private parseTeamBlock(): TeamNode {
     const start = this.advance(); // team
     const idToken = this.parseIdOrString("team");
-    let label: string | undefined;
-    if (this.peek().type === TokenType.StringLiteral) {
-      label = this.advance().value;
-    }
+    let label = this.parseDeprecatedPositionalLabel("team");
     const { names: annotations, params: annotationParams } = this.parseAnnotations();
     this.expect(TokenType.LeftBrace);
 
@@ -2011,10 +2028,7 @@ export class Parser {
   private parseMemberBlock(): MemberNode {
     const start = this.advance(); // member
     const idToken = this.parseIdOrString("member");
-    let label: string | undefined;
-    if (this.peek().type === TokenType.StringLiteral) {
-      label = this.advance().value;
-    }
+    let label = this.parseDeprecatedPositionalLabel("member");
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties & { slack?: string; github?: string } = { links: [] };

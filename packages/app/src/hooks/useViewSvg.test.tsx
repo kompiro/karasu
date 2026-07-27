@@ -130,7 +130,8 @@ describe("useViewSvg > groupBy threading to export SVGs (#1879)", () => {
   Billing -> Search "read"
 }
 
-boundary money "Money" {
+boundary money {
+  label "Money"
   contains Billing
 }`;
     const { result: plain } = renderHook(() => useViewSvg(BOUNDARY_SOURCE, "shape"));
@@ -156,7 +157,8 @@ boundary money "Money" {
     }
   }
 }
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains Order
 }`;
     const path = ["Shop", "Orders", "OrderDomain"];
@@ -188,7 +190,8 @@ boundary cluster "Cluster" {
     }
   }
 }
-boundary cluster "Cluster" {
+boundary cluster {
+  label "Cluster"
   contains Order
 }`;
     const path = ["Shop", "Orders", "OrderDomain"];

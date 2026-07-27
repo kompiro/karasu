@@ -15,6 +15,7 @@ import {
 } from "../resolver/canonical-id.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { render } from "../renderer/svg-renderer.js";
+import { buildGroupLabelIndex, declaredGroupIds } from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import { bundleSingleLevelViews } from "../renderer/drill-down-svg.js";
 
@@ -256,6 +257,33 @@ export async function compileSystemDiff(
     }
   }
 
+  // Group labels resolve from the after model; a group the after model no
+  // longer declares at all backfills its label from before, mirroring the
+  // index merges above (#2133). Groups still declared in after are NOT
+  // backfilled even when unlabeled there — deleting a label must fall back to
+  // the id, not resurrect the before label (the #1886 stale-state guard,
+  // applied to the label space).
+  const groupLabels = buildGroupLabelIndex(afterResolved.krsFile, groupBy);
+  const beforeGroupLabels = buildGroupLabelIndex(beforeResolved.krsFile, groupBy);
+  if (groupLabels && beforeGroupLabels) {
+    const afterDeclared = declaredGroupIds(afterResolved.krsFile, groupBy);
+    for (const [id, label] of beforeGroupLabels.model) {
+      if (afterDeclared.has(id)) continue;
+      if (!groupLabels.model.has(id)) groupLabels.model.set(id, label);
+    }
+    for (const [scope, labels] of beforeGroupLabels.scoped) {
+      for (const [id, label] of labels) {
+        if (afterDeclared.has(id)) continue;
+        let target = groupLabels.scoped.get(scope);
+        if (target === undefined) {
+          target = new Map<string, string>();
+          groupLabels.scoped.set(scope, target);
+        }
+        if (!target.has(id)) target.set(id, label);
+      }
+    }
+  }
+
   const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
     nodeDiffState,
     edgeDiffState,
@@ -265,6 +293,7 @@ export async function compileSystemDiff(
     groupBy,
     boundaryIndex: mergedBoundaryIndex,
     scopedBoundaryIndex: mergedScopedBoundaryIndex,
+    groupLabels,
     collapsedGroups,
     collapsedCategories,
     interactive,

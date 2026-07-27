@@ -6,6 +6,7 @@ import { extractView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { render, legendScopeForLogicalSlice, type RenderOptions } from "./svg-renderer.js";
+import { buildGroupLabelIndex } from "./group-labels.js";
 import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
@@ -231,6 +232,7 @@ export function buildAllLayersSvg(
   const rootNode = effectiveSystems[0];
   const rootLabel = rootNode.label ?? rootNode.id;
   const ownerIndex = krsFile.ownerIndex ?? new Map();
+  const groupLabels = buildGroupLabelIndex(krsFile, groupBy);
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
   const levels: AllLayersLevel[] = [];
@@ -254,6 +256,7 @@ export function buildAllLayersSvg(
           groupBy,
           boundaryIndex: krsFile.boundaryIndex,
           scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+          groupLabels,
         }),
     },
     [],

@@ -14,12 +14,14 @@ import { buildDrillDownSvg } from "./drill-down-svg.js";
 
 const SCOPED = `
 system Shop {
-  boundary top "Top" {
+  boundary top {
+    label "Top"
     contains Checkout
   }
 
   service Checkout {
-    boundary core "Core domains" {
+    boundary core {
+      label "Core domains"
       contains Ledger
       contains Cart
     }
@@ -83,12 +85,14 @@ describe("scoped boundary rendering (#2036)", () => {
   it("draws a same-named boundary on each scope that declares one", () => {
     const src = `
 system Shop {
-  boundary core "Root core" {
+  boundary core {
+    label "Root core"
     contains Checkout
   }
 
   service Checkout {
-    boundary core "Service core" {
+    boundary core {
+      label "Service core"
       contains Ledger
     }
 
@@ -146,7 +150,8 @@ system Shop {
   service Billing { label "Billing" }
   service Wallet { label "Wallet" }
 }
-boundary payments "Payments" {
+boundary payments {
+  label "Payments"
   contains Billing
   contains Wallet
 }

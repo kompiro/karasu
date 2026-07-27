@@ -385,6 +385,10 @@ export const ja: Partial<Translations> = {
     `"${parentKind}" は自身のキャンバスを持たないため、その中に "boundary" は宣言できません`,
   "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
     `同一スコープ内で boundary id "${boundaryId}" が重複しています`,
+  "diagnostic.positionalLabelRemoved.message": ({ construct }) =>
+    `"${construct}" は id の直後にラベルを置けません。ブロック内に label "..." を書いてください`,
+  "diagnostic.positionalLabelDeprecated.message": ({ construct }) =>
+    `"${construct}" の id 直後のラベル記法は非推奨です。ブロック内に label "..." を書いてください（"karasu fmt" が書き換えます）`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,

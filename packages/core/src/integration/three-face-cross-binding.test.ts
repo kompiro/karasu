@@ -34,11 +34,13 @@ deploy Production {
 }
 
 organization EcOrg {
-  team EcTeam "EC Team" {
+  team EcTeam {
+    label "EC Team"
     owns ECommerce
     owns Order
   }
-  team InfraTeam "Infra Team" {
+  team InfraTeam {
+    label "Infra Team"
     owns Inventory
   }
 }
@@ -62,11 +64,13 @@ deploy Production {
 }
 
 organization EcOrg {
-  team EcTeam "EC Team" {
+  team EcTeam {
+    label "EC Team"
     owns ECommerce
     owns Order
   }
-  team InfraTeam "Infra Team" {
+  team InfraTeam {
+    label "Infra Team"
     owns Inventory
   }
 }
@@ -91,10 +95,12 @@ deploy Production {
 }
 
 organization EcOrg {
-  team EcTeam "EC Team" {
+  team EcTeam {
+    label "EC Team"
     owns Order
   }
-  team InfraTeam "Infra Team" {
+  team InfraTeam {
+    label "Infra Team"
     owns Inventory
   }
 }

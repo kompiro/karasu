@@ -85,6 +85,8 @@ primary owner.
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
 | `duplicate-boundary-assignment` | info | A node is listed in more than one `boundary` (a fact; the first-declared boundary is kept). |
 | `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
+| `positional-label-removed` | error | A `boundary` id is followed by a positional label string. ADR-19 made `label` a property; `boundary` is experimental, so the undocumented positional form is removed outright instead of deprecated (#2133). |
+| `positional-label-deprecated` | warning | An `organization` / `team` / `member` id is followed by a positional label string. The form was never in the spec (ADR-19); it still parses, and `karasu fmt` rewrites it to the `label` property (#2133). |
 | `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
 
 ### Cross-reference resolution (warn-don't-error, §S6)
