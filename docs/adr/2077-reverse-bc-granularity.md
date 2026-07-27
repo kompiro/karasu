@@ -12,6 +12,7 @@ assumptions:
   - "file: .claude/skills/reverse-architecture/SKILL.md"
   - "grep: .claude/skills/reverse-architecture/SKILL.md :: bounded-context granularity"
   - "grep: .claude/skills/reverse-architecture/SKILL.md :: CODEOWNERS"
+  - "grep: .claude/skills/reverse-architecture/SKILL.md :: Organizational overlay"
 ---
 
 # ADR-2077: reverse harness の分解粒度 — bounded-context 既定と構造 grounding の不採用
@@ -69,11 +70,20 @@ Skill 梱包の 4 決定はいずれも本 ADR で無傷であり、それらの
 
 ## 決定
 
-**reverse harness は bounded-context 粒度を既定とし、構造シグナル grounding は採らない。**
+**reverse harness は bounded-context 粒度を既定とし、組織シグナルを論理 domain の seam 決定には使わない。
+ただし組織構造そのものは karasu の組織軸（`organization` / `team` / `owns`）として別に構築し、
+論理分解が済んだ後に `owns` で所有関係を結ぶ。**
 
 変わるのは ADR-1895 の「分解軸 = 論理 domain」に**粒度の判定基準を足す**ことと、
-grounding 不採用という**新規制約**の 2 点のみ。覆しではなく精緻化のため、supersede せず
-`related_to: [ADR-1895]` を持つ焦点を絞った追加 ADR として起こす（ADR-1895 は `accepted` のまま）。
+「組織シグナルは seam を決めず組織軸に振り向ける」という**新規制約**の 2 点のみ。
+覆しではなく精緻化のため、supersede せず `related_to: [ADR-1895]` を持つ
+焦点を絞った追加 ADR として起こす（ADR-1895 は `accepted` のまま）。
+
+**却下したのは「組織構造をそのまま論理構造として採用する」ことであって、組織情報を捨てることではない。**
+karasu は論理/物理/組織の三面を別々に定義できる（`docs/concepts.md`）。CODEOWNERS が示すのは
+「誰が持つか」= 組織構造であり、これを論理 domain の割り方に流し込むと Conway 方向に歪む
+（下記 spike 実測）。正しい置き場は組織軸であり、`realizes`（物理→論理）と対称に
+`owns`（組織→論理）で結ぶ。この振り分けは karasu の三面分離テーゼそのものである。
 
 具体的な着地（実運用の単一情報源は ADR ではなく SKILL.md 側にある）:
 
@@ -95,9 +105,20 @@ grounding 不採用という**新規制約**の 2 点のみ。覆しではなく
    v1.0-stable 層であり後方互換が約束されている。ADR-1895 の Phase 2 が既に subagent に
    自 domain の usecase/entity/resource を書かせているため、追加機構は不要。
 
-3. **構造 grounding 不採用を negative guidance として SKILL の Notes に明記する**（案 C1）。
-   「書かなかった」だけでは pivot decision 4 が生きている限り善意で再導入される。
-   negative result は明示的に記録しないと失われる。
+3. **組織シグナルの扱いを SKILL に明記する**（案 C1 を精緻化）。禁止だけを書くと
+   代替行動を示さず情報を丸ごと捨てるため、「seam 決定に使うな」（negative）と
+   「組織軸に振り向けよ」（redirect）を対で書く。「書かなかった」だけでは pivot
+   decision 4 が生きている限り善意で seam 決定に再導入される。negative result は
+   明示的に記録しないと失われる。
+
+4. **組織構造を harness の出力に組織軸として構築する。** SKILL の Phase 3 に
+   organizational overlay ステップを置き、CODEOWNERS / OWNERS 等の所有シグナルを
+   `organization` / `team` / `member` として起こし、各 owner の担当パスが落ちる論理
+   ノード（`domain` / `service`）に `owns <NodeId>` で結ぶ。**論理分解が済んだ後**に
+   構築するため `owns` の対象は既に存在する。1 ノードの所有は 1 team（重複は
+   `duplicate-owner-assignment` info が surface する）。`organization` / `team` /
+   `owns` はいずれも v1 既存語彙であり、新規機構は不要 — spike の「効くレバーは
+   プロンプトであって機構ではない」結論と整合する。
 
 ## 理由
 
@@ -111,12 +132,16 @@ grounding 不採用という**新規制約**の 2 点のみ。覆しではなく
 
 ## 却下した案
 
-- **構造シグナル grounding（CODEOWNERS + commit-coupling）を品質レバーにする** — spike で
+- **組織シグナル（CODEOWNERS）を論理 domain の seam 決定に流し込む** — spike で
   library では完全に無効（baseline と小数 3 桁まで同一）、Dify では**悪化**（V 0.83→0.70、
   homogeneity 0.83→0.70、gold 回収 16→13）。オーナー縦割り＝Conway 方向に引っ張り、
   ubiquitous-language decomposition という製品の狙いと対象がずれる。weak な tie-breaker として
   残す案も、「拮抗時のみ参照」を LLM が判定するため常時参照と区別できず、Dify の悪化は
   分解そのものが変わった結果で弱く効かせる制御手段がないため不採用。
+  **却下されたのは組織構造を*論理構造として*採ることに限る** — 組織情報そのものは
+  捨てず、組織軸（`organization` / `team` / `owns`）に振り向ける（決定 4）。
+- **commit-coupling を seam 決定に使う** — 組織所有と違い karasu に対応する軸がなく、
+  spike でも grounding アームの一部として悪化に寄与した。振り向け先がないため不採用（discard）。
 - **scout に目標 domain 数を渡す** — ADR-1895 が却下した「固定深さ（E1）」の再導入。
   任意 repo に gold 数は存在せず運用不能。採る指示は *seam の判定基準*でなければならない。
 - **粒度指示を要約して短く書く** — split 条件の 3 点が落ち、無誘導状態に近づく。実証の外に出るため
