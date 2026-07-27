@@ -171,6 +171,7 @@ Chat パネル、BYOK、構造化インタビュー、AI アシスト機能の�
 - [ADR-639](639-chat-prompt-i18n.md) — Chat system prompt i18n — locale detection and prompt selection
 - [ADR-34](34-i18n-rollout.md) — i18n Rollout — English / Japanese UI, Diagnostics, and Chat（#34 全体）
 - [ADR-363](363-chat-ui-design-review.md) — Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統
+- [ADR-2077](2077-reverse-bc-granularity.md) — reverse harness の分解粒度 — bounded-context 既定と構造 grounding の不採用
 
 ### CLI
 

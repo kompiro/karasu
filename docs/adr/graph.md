@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-276 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+277 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -127,6 +127,7 @@ flowchart TD
     ADR_639["ADR-639<br/>Chat システムプロンプトの i18n — ロケール検出とプロンプト選択"]
     ADR_1580["ADR-1580<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
     ADR_1895["ADR-1895<br/>アーキテクチャリバースハーネス — multi-subagent fan-out + CLI ..."]
+    ADR_2077["ADR-2077<br/>reverse harness の分解粒度 — bounded-context 既定と構造 g..."]
     ADR_9017["ADR-9017<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
   end
   subgraph cli["cli"]
@@ -666,6 +667,7 @@ flowchart TD
   class ADR_2045 accepted
   class ADR_2048 accepted
   class ADR_2076 accepted
+  class ADR_2077 accepted
   class ADR_2087 accepted
   class ADR_2092 accepted
   class ADR_2106 accepted
@@ -701,7 +703,7 @@ flowchart TD
 - [`adr-tooling`](graph/adr-tooling.md) — 9 ADRs
 - [`app-ui`](graph/app-ui.md) — 41 ADRs
 - [`build`](graph/build.md) — 58 ADRs
-- [`chat-ai`](graph/chat-ai.md) — 10 ADRs
+- [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs

@@ -168,7 +168,35 @@ launching the fan-out rather than discovering the bill afterwards.
    (`{from, to, label}`, both ids in the roster) that you inject into each
    reference-holding entity block. Seeing all ids at once is what makes
    cross-domain relations resolve consistently.
-8. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
+8. **Organizational overlay — model ownership as its own axis, bind with
+   `owns`.** If the repo carries ownership signals (`CODEOWNERS`, `OWNERS`),
+   model them on karasu's **organizational axis**, which is independent of the
+   logical and physical models and renders as a separate Org view. The shape is
+   a named `organization <Id>` holding named `team <Id>` blocks (**both need an
+   id — a bare `organization {` / `team {` is a parse error**), each `team`
+   carrying `member`s and `owns`:
+
+   ```
+   organization <Id> {
+     team <TeamId> { owns <DomainOrServiceId> }
+   }
+   ```
+
+   - one `team` per owner (a GitHub team, or a set of individuals as `member`s);
+     an individual owner with no team → a single-member team. Nest teams to
+     mirror the org hierarchy;
+   - resolve each owner's covered paths to the logical node they map to (the
+     `domain` / `service` whose source slice those paths fall in) and declare
+     `owns <NodeId>` **inside the team** — `owns` binds organization → logical
+     (or physical), symmetric to how `realizes` binds physical → logical;
+   - build this **after** the logical decomposition, so the `owns` targets
+     already exist. **Never let ownership decide where domains split** (Phase 1) —
+     that is Conway's team structure, not the product's ubiquitous language (see
+     Notes / ADR-2077). A node is `owns`-ed by at most one team; if two owners
+     cover it, declare both and let the `duplicate-owner-assignment` **info**
+     diagnostic surface the overlap (the first team is kept as primary owner;
+     render still exits 0) rather than forcing a domain merge.
+9. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
    uneven indentation (a closing `}` can land under-indented and *look* like a
    missing brace even though it parses). Always finish synthesis — and any
    mechanical node injection — with `karasu fmt <file>`.
@@ -221,6 +249,17 @@ launching the fan-out rather than discovering the bill afterwards.
   that no adapter covers it.
 - **Split at bounded-context granularity, not aggregate granularity** — the
   highest-leverage instruction here, and the one the unguided harness gets wrong.
+- **Do not decide domain seams from ownership or change-history signals**
+  (CODEOWNERS, commit-coupling, package ownership). Spike #1991 measured this as
+  a quality lever and it did not pay: inert on small repos (identical
+  decomposition down to 3 decimals), and on a large repo (Dify) it made the
+  result *worse* vs the domain gold (V-measure 0.83 → 0.70) by pulling seams
+  toward per-owner vertical slices — that is Conway's *team* structure, not the
+  product's ubiquitous language. Domain decomposition ≠ team decomposition
+  (ADR-2077). **This forbids using ownership to *split domains*, not modelling
+  ownership at all**: ownership is a first-class axis of its own — capture it as
+  `organization` / `team` / `owns` (Phase 3 step 8) and bind it to the finished
+  logical layer, never fold it into the seams.
 - **Match identity by `id`**, not `label`. **Never silently drop thin domains**
   (surface them via `coverage`). **Do not introduce new `.krs` syntax** (v1 is
   frozen).
