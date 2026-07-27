@@ -169,23 +169,33 @@ launching the fan-out rather than discovering the bill afterwards.
    reference-holding entity block. Seeing all ids at once is what makes
    cross-domain relations resolve consistently.
 8. **Organizational overlay — model ownership as its own axis, bind with
-   `owns`.** If the repo carries ownership signals (`CODEOWNERS`, `OWNERS`, a
-   monorepo `owners:` field, a `teams/` manifest), model them on karasu's
-   **organizational axis** — `organization` / `team` / `member` — which is
-   independent of the logical and physical models and renders as a separate Org
-   view:
+   `owns`.** If the repo carries ownership signals (`CODEOWNERS`, `OWNERS`),
+   model them on karasu's **organizational axis**, which is independent of the
+   logical and physical models and renders as a separate Org view. The shape is
+   a named `organization <Id>` holding named `team <Id>` blocks (**both need an
+   id — a bare `organization {` / `team {` is a parse error**), each `team`
+   carrying `member`s and `owns`:
+
+   ```
+   organization <Id> {
+     team <TeamId> { owns <DomainOrServiceId> }
+   }
+   ```
+
    - one `team` per owner (a GitHub team, or a set of individuals as `member`s);
-     nest teams to mirror the org hierarchy;
+     an individual owner with no team → a single-member team. Nest teams to
+     mirror the org hierarchy;
    - resolve each owner's covered paths to the logical node they map to (the
      `domain` / `service` whose source slice those paths fall in) and declare
-     `owns <NodeId>` **inside the team** — `owns` binds organization → logical,
-     symmetric to how `realizes` binds physical → logical;
+     `owns <NodeId>` **inside the team** — `owns` binds organization → logical
+     (or physical), symmetric to how `realizes` binds physical → logical;
    - build this **after** the logical decomposition, so the `owns` targets
      already exist. **Never let ownership decide where domains split** (Phase 1) —
      that is Conway's team structure, not the product's ubiquitous language (see
      Notes / ADR-2077). A node is `owns`-ed by at most one team; if two owners
-     cover it, keep the primary and let the `duplicate-owner-assignment` info
-     diagnostic surface the overlap rather than forcing a domain merge.
+     cover it, declare both and let the `duplicate-owner-assignment` **info**
+     diagnostic surface the overlap (the first team is kept as primary owner;
+     render still exits 0) rather than forcing a domain merge.
 9. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
    uneven indentation (a closing `}` can land under-indented and *look* like a
    missing brace even though it parses). Always finish synthesis — and any
