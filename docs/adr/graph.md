@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-279 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+280 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -215,6 +215,7 @@ flowchart TD
     ADR_1178["ADR-1178<br/>`.krs.style` 値レベル診断 — 構造化 ValueNode AST と prope..."]
     ADR_1567["ADR-1567<br/>規則と診断を分離し、診断カタログで完全性を担保する"]
     ADR_1974["ADR-1974<br/>system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
+    ADR_2036["ADR-2036<br/>boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
@@ -401,6 +402,8 @@ flowchart TD
   ADR_1911 --> ADR_460
   ADR_1974 --> ADR_1858
   ADR_1974 --> ADR_1820
+  ADR_2036 --> ADR_1974
+  ADR_2036 --> ADR_1983
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
   ADR_9007 --> ADR_9008
@@ -666,6 +669,7 @@ flowchart TD
   class ADR_1955 accepted
   class ADR_1974 accepted
   class ADR_1983 accepted
+  class ADR_2036 accepted
   class ADR_2045 accepted
   class ADR_2048 accepted
   class ADR_2076 accepted
@@ -712,7 +716,7 @@ flowchart TD
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 11 ADRs
-- [`parser`](graph/parser.md) — 20 ADRs
+- [`parser`](graph/parser.md) — 21 ADRs
 - [`project`](graph/project.md) — 8 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs

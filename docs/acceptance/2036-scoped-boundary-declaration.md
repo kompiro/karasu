@@ -4,7 +4,7 @@
 - **Issue**: #2036（parent: #1822 comprehension）
 - **PR**: slice A #2128（文法 + index）、slice B #2132（描画）、slice C (この PR — collapse 独立化 + spec/examples/AT)
 - **関連 ADR**: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（per-view 交差 — スコープ形はこの上に乗る）、[ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（top-level 形の collapse-everywhere 先例 — スコープ形は**対照的に**独立 collapse）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（experimental 据え置き）
-- **設計 / ADR**: `docs/design/scoped-boundary-declaration.md`（ADR-2036 へ昇格予定）
+- **設計 / ADR**: [ADR-2036](../adr/2036-scoped-boundary-declaration.md)（design doc から昇格）
 - **Related TPLs**:
   - [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)（scoped index / group identity は (scope, id) でキー）
   - [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)（全 surface parity）

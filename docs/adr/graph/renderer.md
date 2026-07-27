@@ -56,6 +56,7 @@ flowchart TD
   ADR_650["ADR-650<br/>[app-ui] グラフィカル diff ビューア"]
   ADR_1046["ADR-1046<br/>[parser] usecase 内 resource に CRUD operations プロパティを追加する"]
   ADR_1974["ADR-1974<br/>[parser] system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
+  ADR_2036["ADR-2036<br/>[parser] boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
   ADR_2120["ADR-2120<br/>[app-ui] bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
   ADR_9008["ADR-9008<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
   ADR_9009["ADR-9009<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
@@ -85,6 +86,8 @@ flowchart TD
   ADR_422 --> ADR_9007
   ADR_650 --> ADR_21
   ADR_1974 --> ADR_1858
+  ADR_2036 --> ADR_1974
+  ADR_2036 --> ADR_1983
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
   ADR_9011 --> ADR_9007
@@ -144,6 +147,7 @@ flowchart TD
   class ADR_650 ghost
   class ADR_1046 ghost
   class ADR_1974 ghost
+  class ADR_2036 ghost
   class ADR_2120 ghost
   class ADR_9008 ghost
   class ADR_9009 ghost
