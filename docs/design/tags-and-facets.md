@@ -196,8 +196,10 @@ near-miss typo hint）は決定事項 5 により**廃案** — open set を正�
    tag = アーキタイプ（ツール語彙） / facet = 外在的集合所属（**唯一のユーザー拡張点**）。
    PCI と認証を例に分解（scope 集合・規制所属 → facet、アーキタイプ → tag、ルール内容 →
    prose + link）を示す。
-4. **v2.0: 閉鎖** — builtin 集合外の tag / annotation を不受理にする（severity は未解決の問い
-   (B6)）。`.krs.style` の任意名タグ / annotation セレクタも builtin + facet 由来に整理する。
+4. **v2.0: 閉鎖** — 語彙としては閉じるが、enforcement は **warning に留める**（(B6) で確定 —
+   parse は通り、効果を持たず、警告される。TPL-20260610-01 の状態 (2) を v2.0 でも維持し、
+   既存ファイルを parse error で壊さない）。`.krs.style` の任意名タグ / annotation セレクタの
+   v2.0 挙動は**未決**（(B8) — 既存モデルの見た目を黙って剥がさないマイグレーション設計が要る）。
 5. changeset: core+karasu minor（v1.x の新診断）。roadmap の `[cache]` watch は「builtin 追加要望の
    経路」として本設計に接続する。
 
@@ -238,9 +240,10 @@ system Shop {
 - **宣言ブロックは所属リストを持たない**（`contains` なし）。文法は `label` / `description` /
   `link` のみで閉じ、値言語を持たない。
 - **所属は要素側の `facets` プロパティ**で書く。複数所属は `facets pii, gdpr`（カンマ区切り、
-  プロパティの繰り返しも可・マージ。`fmt` が正規化）。所属が**要素の隣に書ける**ため、#2079 が
-  boundary の by-reference で報告した locality 問題（rename のたびに遠くのリストを直す）が
-  構造的に起きない。
+  プロパティの繰り返しも可・マージ。`fmt` が正規化）。**全 node kind で受理**（(B1) で確定 —
+  一様で kind 別診断が不要。resource など典型外への付与は guide で抑止し、edge は v1 対象外）。
+  所属が**要素の隣に書ける**ため、#2079 が boundary の by-reference で報告した locality 問題
+  （rename のたびに遠くのリストを直す）が構造的に起きない。
 - **参照は facet id のみ — addressing 問題が存在しない**: `facets pii` が参照するのは top-level の
   facet 宣言（平坦な id 名前空間）であって、ノード id ではない。boundary `contains` / `owns` が
   抱える cross-layer のノード addressing（#2036 / #2088）はこの形には**原理的に発生しない**。
@@ -252,8 +255,10 @@ system Shop {
 - **多重所属（1:N）**: `facetIndex` は `Map<nodeId, Set<facetId>>`。多重所属は正常状態であり
   診断対象ではない（同一要素の `facets` に同じ id を二度書いた場合のみ冪等にマージ）。
 - **効果（TPL-20260610-01 — inert 禁止。ただし既定描画は不変）**:
-  1. **overlay 強調**（opt-in） — facet を選択すると所属要素を強調（非所属を減光）。per-element の
-     塗りなので **Group-by 状態と直交して重畳**でき、drill をまたいでも断片化しない。
+  1. **overlay 強調**（opt-in） — facet を選択すると所属要素を強調（非所属を減光）。**v1 から
+     複数 facet の同時表示**（multi-select + facet ごとの色割り当て。多重所属要素の表現 —
+     縁取りの重ね等 — は実装 Issue で詰める）。per-element の塗りなので **Group-by 状態と直交して
+     重畳**でき、drill をまたいでも断片化しない。
   2. **legend 掲出** — 宣言の `label` で凡例に出せる（ADR-999 の機構）。
   3. **概観** — 「facet pii の所属要素一覧」は model から**導出**する（app 詳細パネル・将来の
      監査レポート）。所属が要素側に分散する trade-off はこの導出ビューで受ける。
@@ -276,12 +281,35 @@ system Shop {
 
 ### 命名: `facet` vs `concern`
 
-**`facet` を推奨**（最終確定はレビューで）。理由: (1) faceted classification（多軸の直交ラベリング）
+**`facet` で確定**（2026-07-28 レビュー）。理由: (1) faceted classification（多軸の直交ラベリング）
 の含意が多重所属の設計と正確に一致する。(2) `concern` は AOP / セキュリティ寄りの含意が強く、
 trigger 種別・CRUD・sub-feature のような中立的な facet（#2079 friction 3 の実例）も同じ機構で
 扱えることが語から読み取りにくい。(3) #2079 自身がこの要求を "facet" の語で報告している。
 却下済み語彙（`namespace` / `cluster` / `partition` / `subsystem` — ADR-1858/1974）とも衝突しない。
 横断的関心事（cross-cutting concern）は**概念名**として prose で使い続ける。
+
+## 閉鎖の弊害と緩和（リスク台帳）
+
+open set にしていた背景の記録: annotation は `tags-annotations.md:98-100` が「open + `.krs.style`
+セレクタの正当なターゲット」と明文規定し、**ADR-1314 が open であること自体を v1.0-stable として
+凍結**している（typo hint + style-selector-as-intent はこの open set のための安全装置）。tag は
+`concepts.md`（structure-not-implementation 節）が「recognized set が閉じているのは built-in の
+扱いに関してのみ — **タグシステム自体は open のまま**」と concept 原則で明文化（spec 側は client
+限定の 1 文のみ・backing ADR なし）。client の `capability` も第 3 の open set として明文規定
+（`tags-annotations.md:140` — ドメイン固有 capability の自由な表現が目的）。
+
+これらを閉じる弊害と、本設計での緩和:
+
+| 弊害 | 対象 | 緩和 |
+| --- | --- | --- |
+| アーキタイプ拡張のレイテンシ — `[cache]` `[bff]` が builtin 追加のリリースサイクル待ちになる | tag | (B6) warning 運用なので「書けなくなる」ことはない（警告 + 無効果）。builtin 追加要望の経路を明文化し、`[cache]` watch を実例として接続 |
+| **styling の退行** — 今日実際に動く `[pci] { … }` / `@custom { … }` セレクタが「整理」で剥がれると、既存モデルの見た目が黙って壊れる | tag / annotation | **(B8) として未決のまま明示** — 任意名セレクタの v2.0 挙動はマイグレーション設計とセットでのみ決める（黙った視覚破壊は parse error より痛い） |
+| `concepts.md` の「タグシステム自体は open」原則との矛盾 | tag | v2.0 閉鎖の ADR で concepts 改訂を同時に行う（keystone 文書の単独更新はしない） |
+| custom lifecycle 状態（canary / sunset 等）の**逃げ道消滅** — (B7) で lifecycle 系 facet を不許可としたため、閉鎖後は builtin 追加要望以外の弁が無い | annotation | **閉鎖前に corpus で実態を測る**（(B7)）。実用されている custom 状態は閉鎖と同時に builtin 候補として評価。annotation は ADR-1314 が open を凍結した明文約束なので、tag より慎重に |
+| 版スキューのノイズ — builtin 集合の成長により、新 builtin を使うモデルが旧ツールで「not builtin」警告（偽陽性） | tag / annotation | warning 運用（(B6)）で許容。診断メッセージにツール更新の示唆を含める |
+| 生成パイプライン（reverse / translate / LLM）が自由語彙を出すと警告まみれになる | tag / annotation | 裏返しの利点として運用 — hallucinated 語彙の検出器になる。harness 側は builtin + facet で出すよう更新 |
+| **register 混濁の facet への移送** — 拡張点の一本化により `facet bff`（アーキタイプ偽装）/ `facet canary`（lifecycle 偽装）が facet 内で再生産されうる | facet | 構造的には防げない。宣言（description 必須の文化 + guide の四分法）で**意図が文書化される場所に誤用を移す**、と正直に位置づける |
+| `capability`（client）の open set が原則の例外として残る | capability | 本設計の対象外だが、v2.0 計画で「語彙はツール所有」原則との整合を判断する（(B9)） |
 
 ## 比較（却下案との対照）
 
@@ -347,26 +375,30 @@ lifecycle（ツール語彙）/ facet = 外在的集合所属（唯一のユー�
   notation cookbook、roadmap（facet を experimental watch に登録）。
 - examples: アーキタイプ tag + facet の feature-sample を検討。
 
+## 解消済みの問い（2026-07-28 レビューで確定）
+
+- **命名**: `facet` で確定（`concern` は概念名として prose で使用）。
+- **(B1)**: `facets` は**全 node kind で受理**（一様・kind 別診断なし。典型外は guide で抑止、
+  edge は v1 対象外）。
+- **(B3)**: overlay は **v1 から複数 facet の同時表示**（multi-select + 色割り当て）。多重所属
+  要素の表現・boundary banded view の secondary 所属示唆は実装 Issue で詰める（boundary / facet
+  共通課題）。
+- **(B4)**: boundary 所属の 1:N 一般化（ADR-1974 refine）は **follow-up Issue に分離**（v2.0 の
+  boundary core 昇格作業に束ねる）。
+- **(B5)**: 「評価済み・対象外」の明示的否定は**未実装のまま保留**（監査系 facet で要求が
+  実測されてから記法を決める）。
+- **(B6)**: v2.0 の閉鎖 enforcement は **warning**（parse error にしない — 状態 (2) を維持し
+  既存ファイルを壊さない）。
+- **(B7)**: 既存 user-defined annotation の移行先は **builtin 追加要望のみ**（lifecycle 系 facet は
+  不許可 — register の再混濁を避ける）。閉鎖前に corpus で実態を測る。
+
 ## 未解決の問い / 決めないこと
 
-- **(B1) `facets` プロパティを受ける kind の集合** — 全 node kind で受けるか（単純・一貫）、
-  実例分析の想定（service / infra / table / entity / usecase）に合わせて guide 推奨に留めるか。
-  決めるなら全 kind 列挙で確定する（TPL-20260623-02）。
-- **(B3) overlay の操作面** — app の facet selector の UI（複数 facet の同時表示・色割り当て・
-  多重所属要素の表現）は実装 Issue で詰める。boundary の banded view でも secondary 所属の示唆
-  （バッジ等）を出すかを含め、多重所属の描画は boundary / facet **共通の課題**として扱う。
-- **(B4) boundary 所属の 1:N 一般化の実装時期** — 原則は「所属モデルの一般化」のとおり確定するが、
-  `boundaryIndex` の full membership 化（+ banded 解決の分離、ADR-1974 refine）を Part B と同時に
-  やるか follow-up Issue にするか。
-- **(B5) 「評価済み・対象外」の明示的否定** — by-reference 型では `excludes` が自然だったが、
-  要素側プロパティ型での表現（記法・要否）は未決。監査系 facet で要求が実測されてから決める。
-- **(B6) v2.0 での不受理の severity** — builtin 集合外の tag / annotation を parse error にするか
-  warning に留めるか。error は「受理語彙は 3 状態」の最も強い形だが、warn-don't-error の
-  posture との整合を v2.0 の版方針として決める（#2124 と同時）。
-- **(B7) 既存 user-defined annotation の移行先** — open annotation set を実利用しているモデル
-  （`@name` セレクタでスタイルされた custom lifecycle 状態）の受け皿。builtin 追加要望で吸収
-  するか、lifecycle 系 facet を許すか（後者は register の再混濁リスクがあるため慎重に）。
-  v2.0 の閉鎖前に corpus で実態を測る。
+- **(B8) 任意名 style セレクタの v2.0 挙動** — 今日実際に効いている `[custom]` / `@custom`
+  セレクタを v2.0 でどう扱うか。黙った視覚破壊を避けるマイグレーション設計（deprecation 表示・
+  facet セレクタへの移行経路）とセットでのみ決める。
+- **(B9) `capability`（client）の open set** — 「語彙はツール所有」原則の例外として残すか、
+  v2.0 で同様に閉じるか。本設計の対象外、v2.0 計画（roadmap / #2124）で判断。
 - 決めないこと: ルール言語（恒久的に入れない — ADR-832 維持）。annotation への宣言機構の逆輸入。
-  boundary の変更。`user.role` の存続可否（ADR-832 が別 Issue と定めた論点のまま）。旧案の
-  `tag` 宣言構文（registry）は facet が register を持ち去ったため不要。
+  boundary の変更（1:N 一般化は follow-up）。`user.role` の存続可否（ADR-832 が別 Issue と定めた
+  論点のまま）。旧案の `tag` 宣言構文（registry）は facet が register を持ち去ったため不要。
