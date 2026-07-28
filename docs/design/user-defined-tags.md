@@ -214,13 +214,19 @@ register・style-selector-as-intent の慣行）をすべて共有し、案 B �
    三分法（boundary / annotation / tag の使い分け表 — PCI 例つき）を含める。
    TPL-20260610-01 への `> Related TPLs:` back-ref + TPL 側「派生元 spec」を同 PR で。
 2. **`tag-possible-typo`（info）**: `resolver/warnings.ts` に `detectTagPossibleTypos()` を追加 —
-   builtin 17 種（`REFERENCE_DATA.tags`）への near-miss、`indexStyleSelectors().tags` と
-   legend ref 済みタグは抑制。`WarningKind` / render-warning / i18n en+ja /
-   `docs/spec/diagnostics.md`+ja（catalog テストが強制）。
+   builtin 17 種（`REFERENCE_DATA.tags`）への near-miss。抑制条件は **style タグセレクタまたは
+   legend `ref [tag]` の存在**（どちらも「意図の証跡」— annotation の style-only 先例より 1 条件
+   広いが、legend はタグの意味を文書化する行為なので自然な拡張。spec に非対称の理由を明記する）。
+   `WarningKind` / render-warning / i18n en+ja / `docs/spec/diagnostics.md`+ja（catalog テストが強制）。
 3. **guide**: `docs/guide/` の記法クックブックに「横断的関心事の書き方」を追加
    （`[pci]` + style + legend の 3 点セット、boundary を使わない理由）。
 4. **roadmap**: watch item「user-defined tag 宣言構文（Stage 2 candidate）」を追加 — signal =
-   タグ意味の置き場所への不満・タグ一覧要望・user-defined typo の実測。
+   タグ意味の置き場所への不満・タグ一覧要望・user-defined typo の実測。**トリガは実報告 1 件**
+   （corpus / dogfood での具体的な困りごとの Issue 記録 — #2079 と同じ運用）で設計再訪とし、
+   定量観測までは要求しない。既存の `[cache]` role tag watch（roadmap finding 5、ADR-1935）は
+   **独立のまま維持** — あれは recognized（builtin）タグへの昇格候補、本件は user-defined の
+   機構でレイヤが違う。Stage 1 のガイドには「`[cache]` は今日から user-defined tag として
+   書ける」ことを記載してよい。
 5. changeset: core+karasu minor（新診断）。
 6. AT: `docs/acceptance/2065-user-defined-tags.md`。目視観点のみ:
    - `[pci]` + `[pci]` セレクタ + legend `ref [pci]` の 3 点セットが app で意図どおり見えること
@@ -237,17 +243,14 @@ register・style-selector-as-intent の慣行）をすべて共有し、案 B �
 - テスト・examples への影響: examples に user-defined tag の feature-sample を 1 本追加検討
   （Stage 1 の 3 点セットのデモ）。
 
-## 未解決の問い / 決めないこと
+## 決めないこと
 
-- **(1) Stage 2 のトリガ条件の精度** — 「corpus / dogfood の実報告」で足りるか、#2079 のような
-  定量観測（モデル規模・発生頻度）まで要求するか。
-- **(2) typo hint の抑制条件に legend ref を含めるか** — annotation の先例は style セレクタのみ。
-  legend `ref [tag]` も「意図の証跡」に数えるのは自然だが、annotation との対称性を崩す
-  （annotation 側には legend ref が無いので実害はないが、規則の記述が非対称になる）。
-- **(3) 概観（Q3）の Stage 1 での扱い** — legend で足りるとするか、app の NodeDetailPanel に
-  「同じタグを持つ要素」リンク程度の軽い導線を Stage 1 に含めるか。
-- **(4) `[cache]` 等の役割タグ watch item との合流** — roadmap 既存の `[cache]` watch
-  （role tag、experimental）を Stage 2 の宣言構文設計に合流させるか、独立のまま観察するか。
-- 決めないこと: annotation への宣言機構の逆輸入（本設計の範囲外。Stage 2 が実現し、かつ
-  annotation 側にも同じ pain が実測されたときに別 Issue で検討する）。タグの kind 制限
-  （縮小は breaking、非目標）。
+（当初の未解決の問い 4 件は 2026-07-28 のレビューで解消済み — (1) Stage 2 トリガ = 実報告 1 件、
+(2) typo 抑制 = style セレクタ + legend ref の両方、(3) Stage 1 の概観 = legend で足りるとする、
+(4) `[cache]` watch = 独立維持。いずれも「実装の指針」に反映済み。）
+
+- annotation への宣言機構の逆輸入 — 本設計の範囲外。Stage 2 が実現し、かつ annotation 側にも
+  同じ pain が実測されたときに別 Issue で検討する。
+- タグの kind 制限 — 今日全 kind で受理している挙動の縮小は breaking であり非目標。
+- Stage 2 の宣言構文の詳細文法（ブロックプロパティの集合・placement）— 案 B の輪郭までを本 doc
+  で固定し、詳細は設計再訪時に確定する。
