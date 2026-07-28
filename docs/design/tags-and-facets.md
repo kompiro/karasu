@@ -1,13 +1,13 @@
-# tag と facet の分離 — アーキタイプ tag の open set 正式化と、横断的関心事の facet construct
+# karasu 構文 2.0 の語彙 register — tag / annotation の閉鎖と、boundary / facet の主軸化
 
 - **日付**: 2026-07-28
-- **ステータス**: 検討中（骨格は決定済み — 下記「決定事項」）
+- **ステータス**: 検討中（骨格 + v2.0 方針は決定済み — 下記「決定事項」）
 - **Issue**: [#2065](https://github.com/kompiro/karasu/issues/2065)
 - **PR**: [#2155](https://github.com/kompiro/karasu/pull/2155)
 - **関連**:
   - 引き金 Issue: [#2065](https://github.com/kompiro/karasu/issues/2065)（#2036 / boundary cross-layer 議論からの分離）。実測エビデンス: [#2079](https://github.com/kompiro/karasu/issues/2079)（friction 3 — 多値 facet は boundary の 1:1 で表現不能 → 本設計の facet 側へ）
   - 関連 ADR: [ADR-832](../adr/832-no-runtime-authz-modeling.md)（**本設計が refine を提案する対象** — 再検討条項を自ら持つ）、[ADR-2036](../adr/2036-scoped-boundary-declaration.md)（横断的関心事とタイポ検出を #2065 へ carve-out）、[ADR-1974](../adr/1974-boundary-declaration-syntax.md) / [ADR-1858](../adr/1858-system-view-group-by-team.md)（boundary = view 内 peer グルーピング、`boundaryIndex` 1:1 first-wins）、[ADR-834](../adr/834-security-modeling-stance.md)（脅威モデリングは companion doc — 本設計は再訪しない）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（新 notation は experimental で着地）、[ADR-999](../adr/999-legend-in-use-fallback.md)（legend の user-defined tag フォールバック）、[ADR-19](../adr/19-required-id-label-as-property.md)（id 必須 + label プロパティ — facet ブロックも従う）
-  - 関連 Issue: [#2088](https://github.com/kompiro/karasu/issues/2088)（`owns` の cross-layer addressing — **facet の採用形はこれに依存しない**。下記「却下した形」）
+  - 関連 Issue: [#2088](https://github.com/kompiro/karasu/issues/2088)（`owns` の cross-layer addressing — **facet の採用形はこれに依存しない**。下記「却下した形」）、[#2124](https://github.com/kompiro/karasu/issues/2124)（version vocabulary — v2.0 の版運用と直接交差）
   - 関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（受理語彙の 3 状態規律 — 現状の user-defined tag は禁止された第 4 状態）、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)、[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)、[TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md)
   - コード: `packages/core/src/parser/parser.ts:1578`（`parseTags`）、`packages/core/src/builtins/reference-data.ts:262`（builtin `TagInfo` 17 種）、`packages/core/src/resolver/warnings.ts:213`（`detectAnnotationPossibleTypos` — tag 側 typo hint の雛形）、`packages/core/src/resolver/style-resolver.ts:433`（タグセレクタ照合 — 任意タグで既に動作）
 
@@ -18,6 +18,13 @@
    横断的関心事を載せると描画への影響と register の混濁を避けられない。
 3. **形は「宣言 + プロパティによる修飾」**: top-level の `facet` 宣言ブロック（メタデータの置き場）と、
    要素側の `facets` プロパティ（所属の記述）。boundary 型の by-reference（`contains`）は採らない。
+4. **`boundary` と `facet` を karasu 構文 2.0 の主軸に据える。** boundary（view 内グルーピング）は
+   experimental から v2.0 core へ昇格させる前提で、facet とともに 2.0 の語彙体系の柱とする。
+5. **v2.0 では tag / annotation を closed set にする** — ツールが用意した語彙のみを受理する。
+   register の割り当ては **tag = アーキテクチャの意味（アーキタイプ）**、**annotation = lifecycle の
+   意味**で確定。v1.0-freeze が認めていた user-defined tag（および open annotation set）は v2.0 で
+   終了し、**ユーザー拡張点は facet に一本化**する。新しいアーキタイプが必要な場合はツールの
+   builtin 語彙への追加要望として扱う（roadmap の `[cache]` watch がその機構の実例）。
 
 ```krs
 facet pii {
@@ -72,6 +79,9 @@ backing ADR なし）で実挙動と不一致 —
 禁ずる「受理・無効果・open set 文書化なし」の第 4 状態が現存する。一方 styling（タグセレクタは
 任意タグで generic に照合）と legend（ADR-999 フォールバック）は宣言ゼロで既に動く（実測）。
 typo 対策は annotation 側にのみあり、`[extenal]` は黙って inert な別タグになる。
+決定事項 5 のもとで、この穴の解消先は「open set としての文書化」ではなく **deprecation 診断 +
+v2.0 での閉鎖**になる（TPL-20260610-01 の 3 状態のうち**状態 (2) = unknown を警告する**で解消。
+下記 Part A）。
 
 ### facet 側の要求の解剖 — 実例分析（認証・RBAC・PCI）
 
@@ -147,8 +157,11 @@ boundary 側の index 一般化（full membership の保持 + banded 解決の�
 
 ## 制約・前提
 
-- **v1.0 freeze（ADR-1314）**: bare `[foo]` の受理は不変。新診断・既存解釈を変えない新構文は
-  v1.x additive。
+- **v1.0 freeze（ADR-1314）**: v1.x の間、bare `[foo]` の受理と **annotation の open set** は
+  不変（freeze は「open であること」自体を凍結している）。v1.x で足せるのは追加的な診断と
+  既存解釈を変えない新構文のみ。**closed set 化は正真正銘の breaking であり、v2.0 major の
+  経路（ADR-1820 の「既存構文の変更・再設計 = v2.0」）でのみ行う** — 決定事項 4–5 が v2.0 を
+  名指しするのはこのため。
 - **promotion gate（ADR-1820）**: `facet` は新 notation なので **experimental で着地**。追加動機は
   register の欠落の是正（所属に正当な置き場が無く tag への誤用が構造的に誘発される状態の解消）
   — ADR-2036 が採った「定義の整合」型の正当化と同型。
@@ -160,27 +173,33 @@ boundary 側の index 一般化（full membership の保持 + banded 解決の�
   脅威・攻撃面の分析は対象外のまま。
 - out of scope: annotation の変更、boundary の変更、タグの kind 制限、ルール言語（恒久的に）。
 
-## Part A — user-defined tag の open set 正式化（新構文ゼロ）
+## Part A — v1.x 移行措置と v2.0 での tag / annotation 閉鎖
 
-tag を annotation と同じ「open set」として正式化する。**定義は「アーキタイプ（要素が何であるか）」
-に限定**し、横断的関心事の受け皿としては位置づけない（facet へ誘導する）。
+v2.0 の到達状態は「**tag / annotation はツール語彙のみ**」（決定事項 5）。v1.x では freeze の
+制約下で**追加的な deprecation 診断**により移行を始める。旧案（open set としての正式化 +
+near-miss typo hint）は決定事項 5 により**廃案** — open set を正典化すると v2.0 で閉じるものを
+一度公式化することになり、corpus の lock-in を増やすだけである。
 
-1. **spec**: `tags-annotations.md`（+ ja）に「User-defined tags（open set）」節を新設 — builtin
-   集合の外のタグは全 kind で許容される user-defined の**アーキタイプ** tag（例: `[cache]`
-   `[bff]` `[gateway]` `[saga]` — builtin 語彙が覆っていない「何であるか」）。効果は `.krs.style`
-   タグセレクタと legend（ADR-999）。client 限定の 1 文（`:32`）を置換し、**「所属（PCI・PII 等）は
-   tag で書かない — facet へ」を同節に明記**。TPL-20260610-01 の第 4 状態を状態 (3) で解消し、
-   双方向 back-ref を同 PR で。
-2. **`tag-possible-typo`（info）**: `detectAnnotationPossibleTypos` の鏡写し。builtin 17 種への
-   near-miss を hint、**style タグセレクタまたは legend `ref [tag]` の存在で抑制**（どちらも意図の
-   証跡。annotation の style-only 先例より 1 条件広い — legend はタグの意味の文書化行為。spec に
-   非対称の理由を明記）。
+1. **v1.x: deprecation 診断（additive）** — builtin 集合外の tag / annotation の使用に
+   `tag-not-builtin` / `annotation-not-builtin`（warning）を出す。メッセージは移行先を指す:
+   所属・モデル固有ラベリングは **facet へ**、新しいアーキタイプ / lifecycle 状態が必要なら
+   **builtin への追加要望へ**（`[cache]` watch と同じ経路）。既存の `annotation-possible-typo`
+   （near-miss hint）は `annotation-not-builtin` に包含されるため、v1.x 中は共存させ v2.0 で
+   整理する。抑制条件（style セレクタ / legend ref = 意図の証跡）は**設けない** — 意図的で
+   あっても v2.0 で不受理になる事実は変わらないため、deprecation は無条件に告知する。
+2. **spec**: `tags-annotations.md`（+ ja）の user-defined 言及（client 限定の 1 文 `:32` を含む）を
+   「v1.x では受理されるが **deprecated**。v2.0 でツール語彙のみになる」に置換。register の確定
+   （tag = アーキテクチャの意味 / annotation = lifecycle）を明文化。TPL-20260610-01 の第 4 状態は
+   **状態 (2)（unknown を警告）で解消**し、双方向 back-ref を同 PR で。
 3. **register ガイド**: `tags-annotations.md` + notation cookbook に**四分法**を明記 —
-   boundary = view 内 peer グルーピング / annotation = lifecycle・state / tag = アーキタイプ /
-   facet = 外在的集合所属。PCI と認証を例に分解（scope 集合・規制所属 → facet、アーキタイプ →
-   tag、ルール内容 → prose + link）を示す。
-4. changeset: core+karasu minor（新診断）。roadmap の `[cache]` watch（recognized 層への昇格候補）は
-   独立のまま。
+   boundary = view 内 peer グルーピング（v2.0 core 候補） / annotation = lifecycle（ツール語彙） /
+   tag = アーキタイプ（ツール語彙） / facet = 外在的集合所属（**唯一のユーザー拡張点**）。
+   PCI と認証を例に分解（scope 集合・規制所属 → facet、アーキタイプ → tag、ルール内容 →
+   prose + link）を示す。
+4. **v2.0: 閉鎖** — builtin 集合外の tag / annotation を不受理にする（severity は未解決の問い
+   (B6)）。`.krs.style` の任意名タグ / annotation セレクタも builtin + facet 由来に整理する。
+5. changeset: core+karasu minor（v1.x の新診断）。roadmap の `[cache]` watch は「builtin 追加要望の
+   経路」として本設計に接続する。
 
 ## Part B — `facet` construct（experimental）
 
@@ -290,26 +309,35 @@ trigger 種別・CRUD・sub-feature のような中立的な facet（#2079 frict
 
 ## 現時点の方針
 
-**tag と facet の役割を分離する（決定事項 1–3）。** tag は「アーキテクチャ上の意味（アーキタイプ）」
-という既存の役割のまま open set として正式化し（Part A、新構文ゼロ）、横断的関心事は宣言 +
-プロパティ修飾の `facet` construct（Part B、experimental、既定描画への影響ゼロ）が引き受ける。
+**boundary と facet を構文 2.0 の主軸に据え、tag / annotation はツール語彙に閉じる（決定事項
+1–5）。** 語彙 register は tag = アーキテクチャの意味（アーキタイプ、ツール語彙）/ annotation =
+lifecycle（ツール語彙）/ facet = 外在的集合所属（唯一のユーザー拡張点）/ boundary = view 内
+グルーピングで確定。v1.x では deprecation 診断と facet の experimental 導入で移行を始め（Part A
+1–3 + Part B）、閉鎖そのもの（Part A 4）と boundary / facet の core 昇格は v2.0 major で行う。
 ポリシーの適用範囲は要素側 `facets` で第一級化し（ADR-832 の refine — 832 自身の再検討条項に
-基づく）、ルール内容は facet 宣言の description / link に置く。実装順は A → B。
+基づく）、ルール内容は facet 宣言の description / link に置く。
 
 ### 実装の指針
 
-1. Part A: spec 節 + `tag-possible-typo` + 四分法ガイド + changeset（Part A の 1–4）。
+1. Part A（v1.x 分）: `tag-not-builtin` / `annotation-not-builtin` 診断 + spec の deprecated 化 +
+   四分法ガイド + changeset。
 2. Part B: `facet` 宣言 + `facets` プロパティの文法（parser / AST / `facetIndex` / resolver merge /
    fmt）→ 診断（`facet-not-declared` / `duplicate-facet-id`）→ overlay 表示（app selector +
    renderer）→ legend / 概観。実装 Issue を #2065 から分割起票する。
-3. AT: `docs/acceptance/2065-tags-and-facets.md`。目視観点:
+3. **v2.0 プログラムの起票**: 「構文 2.0 = boundary + facet 主軸、tag / annotation 閉鎖」を
+   roadmap（および必要なら PRD）に v2.0 の枠として登録する。版語彙の整理は
+   [#2124](https://github.com/kompiro/karasu/issues/2124)（version vocabulary — v1.0 言語版 vs
+   パッケージ semver、"experimental" / "deprecated" の多義）と直接交差するため、v2.0 の版運用は
+   #2124 の決定と同時に確定させる。
+4. AT: `docs/acceptance/2065-tags-and-facets.md`。目視観点:
    - user-defined アーキタイプ tag + style + legend の 3 点セットが app で意図どおり見えること
    - `[extenal]` の typo hint が出て、style セレクタ or legend ref で消えること
    - facet overlay が Group-by: team / boundary と**同時に**視認できること（排他でないことの目視）
    - `requires_auth` facet で認証境界が drill をまたいで読めること
    - facet を付けても overlay 非選択時の描画が不変であること
-4. ADR 昇格: 実装完了後 `docs/adr/2065-tags-and-facets.md`（`refines: [ADR-832]`）として昇格し、
-   本 doc を削除。ADR-832 側は書き換えない（refine は非破壊）。
+5. ADR 昇格: 実装完了後 `docs/adr/2065-tags-and-facets.md`（`refines: [ADR-832]`）として昇格し、
+   本 doc を削除。ADR-832 側は書き換えない（refine は非破壊）。v2.0 の閉鎖実施時には ADR-1314
+   （v1.0 freeze）との関係を新 ADR で明示する。
 
 ### 影響範囲・マイグレーション
 
@@ -332,6 +360,13 @@ trigger 種別・CRUD・sub-feature のような中立的な facet（#2079 frict
   やるか follow-up Issue にするか。
 - **(B5) 「評価済み・対象外」の明示的否定** — by-reference 型では `excludes` が自然だったが、
   要素側プロパティ型での表現（記法・要否）は未決。監査系 facet で要求が実測されてから決める。
+- **(B6) v2.0 での不受理の severity** — builtin 集合外の tag / annotation を parse error にするか
+  warning に留めるか。error は「受理語彙は 3 状態」の最も強い形だが、warn-don't-error の
+  posture との整合を v2.0 の版方針として決める（#2124 と同時）。
+- **(B7) 既存 user-defined annotation の移行先** — open annotation set を実利用しているモデル
+  （`@name` セレクタでスタイルされた custom lifecycle 状態）の受け皿。builtin 追加要望で吸収
+  するか、lifecycle 系 facet を許すか（後者は register の再混濁リスクがあるため慎重に）。
+  v2.0 の閉鎖前に corpus で実態を測る。
 - 決めないこと: ルール言語（恒久的に入れない — ADR-832 維持）。annotation への宣言機構の逆輸入。
   boundary の変更。`user.role` の存続可否（ADR-832 が別 Issue と定めた論点のまま）。旧案の
   `tag` 宣言構文（registry）は facet が register を持ち去ったため不要。
