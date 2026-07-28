@@ -105,6 +105,28 @@ set construct が存在せず（boundary は 2 ヶ月後）、範囲の表現は
 実装 ADR では `refines: [ADR-832]` として関係を明示する（832 の中核決定は存続し、「範囲の表現」
 という一断面のみを specialize するため。supersede は過剰）。
 
+## 所属モデルの一般化 — 1:N を model 層の原則にする（boundary への波及）
+
+concern の 1:N を設計する過程で、boundary の 1:1 の根拠を再確認した（設計議論 2026-07-28）。
+[ADR-1974](../adr/1974-boundary-declaration-syntax.md) の記録は「**開閉フレームの識別子は
+1 ノード 1 値**」（collapse は 1 stub、banded 配置は 1 band — TPL-20260624-02 の全要素ちょうど
+一度配置）であり、かつ同 ADR は「**多重所属は許容し、precedence で primary を選ぶ**」と明記して
+いる。つまり 1:1 は**配置の制約であって所属の制約ではない** — 現実装はビュー機構の要件を
+`boundaryIndex` の導出に焼き付け、first-wins で残りの所属情報を捨てている（レイヤ違反）。
+
+**原則**: 所属は model 層で **1:N**（boundary / concern 共通）。各ビューが必要な解決を行う:
+
+| ビュー | 解決 |
+| --- | --- |
+| banded Group-by（boundary の描画モード） | **primary = first-declared** で配置・collapse — 今日の first-wins と同一なので既存の見た目は不変。`duplicate-boundary-assignment`（info）は「banded view は primary をフレームする」という事実の register に文言を改める |
+| overlay（concern の描画モード） | full membership（複数 concern の重畳。色・重ねの詳細は (B3)） |
+| metadata パネル / legend / 監査・export | full membership |
+
+同一ビューで複数所属を**同時に**見せられるのは overlay 側だけである点に注意 — banded view は
+N 所属でも配置は 1 箇所なので、#2079 friction 3（複数 facet の同時可視化）は引き続き concern の
+受け持ち。boundary 側の index 一般化（full membership の保持 + banded 解決の分離）は
+**ADR-1974 の refine** に当たり（experimental なので可能）、実装は follow-up Issue に切り出す。
+
 ## 制約・前提
 
 - **v1.0 freeze（ADR-1314）**: bare `[foo]` の受理は不変。新診断・既存解釈を変えない新構文は
@@ -113,7 +135,8 @@ set construct が存在せず（boundary は 2 ヶ月後）、範囲の表現は
   register の欠落の是正（concern に正当な置き場が無く tag への誤用が構造的に誘発される状態の解消）
   — ADR-2036 が採った「定義の整合」型の正当化と同型。
 - **多値性**: concern は複数ブロックが同じ node を `contains` できる（1:N）。boundary の 1:1 は
-  開閉フレームの構造的要件だったが、concern はフレームを描かないので制約の理由が無い。
+  開閉フレームの**配置**要件に由来し、所属の制約ではない（上記「所属モデルの一般化」）。concern は
+  フレームを描かないので配置の解決自体が不要。
 - **ADR-834（脅威モデリング = companion doc）は再訪しない**。本設計が扱うのは範囲の宣言までで、
   脅威・攻撃面の分析は対象外のまま。
 - out of scope: annotation の変更、boundary の変更、タグの kind 制限、ルール言語（上記のとおり恒久的に）。
@@ -246,8 +269,12 @@ concern requires_auth {
 - **(B2) `contains` の曖昧 id の扱い** — #2088 と共通解（qualified 参照 or 曖昧時診断）。concern
   実装時点で #2088 が未決なら、当面は top-level boundary と同じ「全宣言 id 受理」で出荷し、
   addressing は #2088 に委ねる。
-- **(B3) overlay の操作面** — app の concern selector の UI（複数 concern の同時表示・色割り当て）は
-  実装 Issue で詰める。
+- **(B3) overlay の操作面** — app の concern selector の UI（複数 concern の同時表示・色割り当て・
+  多重所属要素の表現）は実装 Issue で詰める。boundary の banded view でも secondary 所属の示唆
+  （バッジ等）を出すかを含め、多重所属の描画は boundary / concern **共通の課題**として扱う。
+- **(B4) boundary 所属の 1:N 一般化の実装時期** — 原則は上記のとおり確定するが、`boundaryIndex` の
+  full membership 化（+ banded 解決の分離、ADR-1974 refine）を Part B と同時にやるか follow-up
+  Issue にするか。
 - 決めないこと: `excludes` / owner / 伝播規則の実装（構文の置き場のみ確保）。ルール言語（恒久的に
   入れない — ADR-832 維持）。annotation への宣言機構の逆輸入。boundary の変更。`user.role` の
   存続可否（ADR-832 が別 Issue と定めた論点のまま）。旧案だった `tag` 宣言構文（registry）は
