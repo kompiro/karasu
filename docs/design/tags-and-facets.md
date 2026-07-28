@@ -198,8 +198,9 @@ near-miss typo hint）は決定事項 5 により**廃案** — open set を正�
    prose + link）を示す。
 4. **v2.0: 閉鎖** — 語彙としては閉じるが、enforcement は **warning に留める**（(B6) で確定 —
    parse は通り、効果を持たず、警告される。TPL-20260610-01 の状態 (2) を v2.0 でも維持し、
-   既存ファイルを parse error で壊さない）。`.krs.style` の任意名タグ / annotation セレクタの
-   v2.0 挙動は**未決**（(B8) — 既存モデルの見た目を黙って剥がさないマイグレーション設計が要る）。
+   既存ファイルを parse error で壊さない）。`.krs.style` の任意名タグ / annotation セレクタは
+   **facet セレクタへ移行**（(B8) で確定 — v1.x で deprecation 告知、v2.0 で無効化。移行経路は
+   facet 宣言 + `facets` 付与 + セレクタ書き換え）。
 5. changeset: core+karasu minor（v1.x の新診断）。roadmap の `[cache]` watch は「builtin 追加要望の
    経路」として本設計に接続する。
 
@@ -259,8 +260,13 @@ system Shop {
      複数 facet の同時表示**（multi-select + facet ごとの色割り当て。多重所属要素の表現 —
      縁取りの重ね等 — は実装 Issue で詰める）。per-element の塗りなので **Group-by 状態と直交して
      重畳**でき、drill をまたいでも断片化しない。
-  2. **legend 掲出** — 宣言の `label` で凡例に出せる（ADR-999 の機構）。
-  3. **概観** — 「facet pii の所属要素一覧」は model から**導出**する（app 詳細パネル・将来の
+  2. **facet セレクタによる styling** — `.krs.style` に facet を狙うセレクタを導入し、今日の
+     任意名タグ / annotation セレクタの styling フックを facet が引き継ぐ（(B8) の解消。2026-07-28
+     レビューで決定）。セレクタ構文は実装時に確定 — 既存の属性セレクタ（`edge[from=X]`）に揃えた
+     `[facets=pii]` 形を第一候補とする。fact-vs-style の分離はそのまま: 所属は `.krs`、見た目は
+     `.krs.style`。既定描画への影響ゼロの制約とも整合（セレクタはユーザーの opt-in styling）。
+  3. **legend 掲出** — 宣言の `label` で凡例に出せる（ADR-999 の機構）。
+  4. **概観** — 「facet pii の所属要素一覧」は model から**導出**する（app 詳細パネル・将来の
      監査レポート）。所属が要素側に分散する trade-off はこの導出ビューで受ける。
 - fmt round-trip（TPL-20260510-02 — 宣言ブロックは top-level 配列由来の網羅性ガード、`facets`
   プロパティは per-node の round-trip テスト）、import-resolver merge、diagnostics/i18n 一式は
@@ -298,12 +304,20 @@ open set にしていた背景の記録: annotation は `tags-annotations.md:98-
 限定の 1 文のみ・backing ADR なし）。client の `capability` も第 3 の open set として明文規定
 （`tags-annotations.md:140` — ドメイン固有 capability の自由な表現が目的）。
 
+**意味論レベルの検証（2026-07-28 レビュー）**: この open は**名前空間と styling への素通しに
+限られ、意味論は最初から closed（ツール所有）だった**。spec 自身が「user-defined annotation は
+デフォルト描画を持たない — style セレクタのターゲットになる（だけ）」と明言し、concepts の
+「closed only for built-in treatment」も意味論側の閉鎖を前提にしている。probe 実測でも
+user-defined tag にツールが与える効果はゼロ。したがって v2.0 の閉鎖が取り去るのは (a) 無警告の
+名前許容（→ (B6) warning で軟着陸）と (b) styling フック（→ **facet セレクタとして引き継ぐ** —
+下記 (B8) の解消）のみで、**意味論的な能力の喪失は無い**。これが閉鎖シフトの安全性の根拠である。
+
 これらを閉じる弊害と、本設計での緩和:
 
 | 弊害 | 対象 | 緩和 |
 | --- | --- | --- |
 | アーキタイプ拡張のレイテンシ — `[cache]` `[bff]` が builtin 追加のリリースサイクル待ちになる | tag | (B6) warning 運用なので「書けなくなる」ことはない（警告 + 無効果）。builtin 追加要望の経路を明文化し、`[cache]` watch を実例として接続 |
-| **styling の退行** — 今日実際に動く `[pci] { … }` / `@custom { … }` セレクタが「整理」で剥がれると、既存モデルの見た目が黙って壊れる | tag / annotation | **(B8) として未決のまま明示** — 任意名セレクタの v2.0 挙動はマイグレーション設計とセットでのみ決める（黙った視覚破壊は parse error より痛い） |
+| **styling の退行** — 今日実際に動く `[pci] { … }` / `@custom { … }` セレクタが「整理」で剥がれると、既存モデルの見た目が黙って壊れる | tag / annotation | **(B8) 解消: 任意名セレクタは facet セレクタとして facet に導入**する。移行 = facet 宣言 + `facets` 付与 + facet セレクタへの書き換え。v1.x では builtin 外の名前を参照するタグ / annotation セレクタに deprecation を告知し、v2.0 で無効化する |
 | `concepts.md` の「タグシステム自体は open」原則との矛盾 | tag | v2.0 閉鎖の ADR で concepts 改訂を同時に行う（keystone 文書の単独更新はしない） |
 | custom lifecycle 状態（canary / sunset 等）の**逃げ道消滅** — (B7) で lifecycle 系 facet を不許可としたため、閉鎖後は builtin 追加要望以外の弁が無い | annotation | **閉鎖前に corpus で実態を測る**（(B7)）。実用されている custom 状態は閉鎖と同時に builtin 候補として評価。annotation は ADR-1314 が open を凍結した明文約束なので、tag より慎重に |
 | 版スキューのノイズ — builtin 集合の成長により、新 builtin を使うモデルが旧ツールで「not builtin」警告（偽陽性） | tag / annotation | warning 運用（(B6)）で許容。診断メッセージにツール更新の示唆を含める |
@@ -391,12 +405,13 @@ lifecycle（ツール語彙）/ facet = 外在的集合所属（唯一のユー�
   既存ファイルを壊さない）。
 - **(B7)**: 既存 user-defined annotation の移行先は **builtin 追加要望のみ**（lifecycle 系 facet は
   不許可 — register の再混濁を避ける）。閉鎖前に corpus で実態を測る。
+- **(B8)**: **任意名 style セレクタは facet に導入する** — facet セレクタ（第一候補 `[facets=pii]`、
+  構文は実装時確定）が今日の `[custom]` / `@custom` styling フックを引き継ぐ。既存モデルの移行 =
+  facet 宣言 + `facets` 付与 + セレクタ書き換え。v1.x で deprecation 告知、v2.0 で任意名タグ /
+  annotation セレクタを無効化。
 
 ## 未解決の問い / 決めないこと
 
-- **(B8) 任意名 style セレクタの v2.0 挙動** — 今日実際に効いている `[custom]` / `@custom`
-  セレクタを v2.0 でどう扱うか。黙った視覚破壊を避けるマイグレーション設計（deprecation 表示・
-  facet セレクタへの移行経路）とセットでのみ決める。
 - **(B9) `capability`（client）の open set** — 「語彙はツール所有」原則の例外として残すか、
   v2.0 で同様に閉じるか。本設計の対象外、v2.0 計画（roadmap / #2124）で判断。
 - 決めないこと: ルール言語（恒久的に入れない — ADR-832 維持）。annotation への宣言機構の逆輸入。
