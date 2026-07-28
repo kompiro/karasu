@@ -146,14 +146,15 @@ facet の 1:N を設計する過程で、boundary の 1:1 の根拠を再確認�
 
 | ビュー | 解決 |
 | --- | --- |
-| banded Group-by（boundary の描画モード） | **primary = first-declared** で配置・collapse — 今日の first-wins と同一なので既存の見た目は不変。`duplicate-boundary-assignment`（info）は「banded view は primary をフレームする」という事実の register に文言を改める |
+| banded Group-by（boundary の描画モード） | **理想 = 多重所属ノードを、宣言されている複数の boundary フレームが重なって包含するように描画する**（Euler 図的な frame geometry。ノードの配置は 1 回のまま — TPL-20260624-02 — で、フレーム側が重なる）。**first-wins の primary 配置は理想ではなく暫定** — follow-up 実装まで今日の見た目を維持するだけの位置づけ。実現には frame の disjoint 前提（`buildGroupFrames`「frames are disjoint by construction」）の再設計と、collapse の二重性（片方の boundary を畳んだとき多重所属ノードをどう扱うか）の設計が要り、**(B4) の follow-up Issue の scope に含める** |
 | overlay（facet の描画モード） | full membership（複数 facet の重畳。色・重ねの詳細は (B3)） |
 | metadata パネル / legend / 監査・export | full membership |
 
-同一ビューで複数所属を**同時に**見せられるのは overlay 側だけである点に注意 — banded view は
-N 所属でも配置は 1 箇所なので、#2079 friction 3（複数 facet の同時可視化）は facet の受け持ち。
-boundary 側の index 一般化（full membership の保持 + banded 解決の分離）は **ADR-1974 の refine**
-に当たり（experimental なので可能）、実装は follow-up Issue に切り出す。
+**現行機構では**複数所属を同時に見せられるのは overlay 側だけ（banded view の配置は 1 箇所）
+だが、これは機構の制約であって理想ではない。banded view の到達点は上記のとおり多重包含描画で
+あり、first-wins はそこまでの暫定。boundary 側の作業一式 — index の full membership 化・
+banded 描画の多重包含 geometry・collapse の二重性（ADR-1974 の refine）— は一括で follow-up
+Issue に切り出す。facet の overlay（#2079 friction 3 の受け皿）はこれと独立に v1 から入る。
 
 ## 制約・前提
 
@@ -395,10 +396,12 @@ lifecycle（ツール語彙）/ facet = 外在的集合所属（唯一のユー�
 - **(B1)**: `facets` は**全 node kind で受理**（一様・kind 別診断なし。典型外は guide で抑止、
   edge は v1 対象外）。
 - **(B3)**: overlay は **v1 から複数 facet の同時表示**（multi-select + 色割り当て）。多重所属
-  要素の表現・boundary banded view の secondary 所属示唆は実装 Issue で詰める（boundary / facet
-  共通課題）。
+  要素の表現（色の重ね等）は facet 実装 Issue で詰める。boundary 側の多重所属描画は (B4) の
+  follow-up（多重包含 geometry）が受け持つ。
 - **(B4)**: boundary 所属の 1:N 一般化（ADR-1974 refine）は **follow-up Issue に分離**（v2.0 の
-  boundary core 昇格作業に束ねる）。
+  boundary core 昇格作業に束ねる）。scope には **banded Group-by ビューの理想描画 — 多重所属
+  ノードを複数フレームが重なって包含する geometry と、collapse の二重性の設計 — を含める**
+  （first-wins primary は暫定であって理想ではない。2026-07-28 レビューで確定）。
 - **(B5)**: 「評価済み・対象外」の明示的否定は**未実装のまま保留**（監査系 facet で要求が
   実測されてから記法を決める）。
 - **(B6)**: v2.0 の閉鎖 enforcement は **warning**（parse error にしない — 状態 (2) を維持し
