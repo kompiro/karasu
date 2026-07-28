@@ -166,7 +166,10 @@ concern requires_auth {
 - **文法は閉じている（値言語なし）**: `label` / `description` / `link` / `contains <id>` のみ
   （+ 将来 `excludes <id>` — 「評価済み・対象外」の明示的否定。tag では不可能だった tri-state の
   置き場）。式・条件・属性は**恒久的に入れない**（ADR-832 維持部分）。
-- **多重所属（1:N）**: `concernIndex` は `Map<nodeId, Set<concernId>>`。
+- **多重所属（1:N）**: `concernIndex` は `Map<nodeId, Set<concernId>>`。**多重所属は診断対象では
+  ない** — boundary は 1:1 が主所属の選択を強制するため `duplicate-boundary-assignment`（info）を
+  出すが、concern では複数所属が正常状態であり、対応する診断は存在しない（同一 concern ブロック内の
+  同一 id の重複 `contains` のみ、冪等として黙って重複排除する）。
 - **member の解決**: 宣言済み id を merged 空間で検証（`contains-target-not-found` 同型、
   TPL-20260718-02）。ガイド上の想定 member は **service / infra ブロック / table / entity /
   usecase**（domain と resource は上記の実例分析どおり member にならない）。kind のハード制限は
