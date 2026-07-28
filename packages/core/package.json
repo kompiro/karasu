@@ -37,7 +37,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "smol-toml": "^1.6.1",
+    "smol-toml": "^1.7.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
