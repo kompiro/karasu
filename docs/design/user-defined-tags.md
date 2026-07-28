@@ -3,7 +3,7 @@
 - **日付**: 2026-07-28
 - **ステータス**: 検討中
 - **Issue**: [#2065](https://github.com/kompiro/karasu/issues/2065)
-- **PR**: (この PR)
+- **PR**: [#2155](https://github.com/kompiro/karasu/pull/2155)
 - **関連**:
   - 引き金 Issue: [#2065](https://github.com/kompiro/karasu/issues/2065)（#2036 / boundary cross-layer 議論からの分離）。実測エビデンス: [#2079](https://github.com/kompiro/karasu/issues/2079)（friction 3 — usecase の多値 facet は boundary の 1:1 では表現不能 → 本設計へ回送）
   - 関連 ADR: [ADR-2036](../adr/2036-scoped-boundary-declaration.md)（横断的関心事とタイポ検出を本 Issue へ carve-out した当事者）、[ADR-1974](../adr/1974-boundary-declaration-syntax.md) / [ADR-1858](../adr/1858-system-view-group-by-team.md)（タグを**グルーピング識別子として**却下 — 多値だから。本設計はその同じ性質を根拠に採る）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze — 追加的変更の条件）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（新 notation は experimental で着地）、[ADR-999](../adr/999-legend-in-use-fallback.md)（legend の user-defined tag フォールバック — 凡例側は解決済み）
