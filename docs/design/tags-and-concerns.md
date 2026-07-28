@@ -1,4 +1,4 @@
-# tag と concern の分離 — 内在的分類の open set 正式化と、横断的関心事の専用 construct
+# tag と concern の分離 — アーキタイプ tag の open set 正式化と、横断的関心事の専用 construct
 
 - **日付**: 2026-07-28
 - **ステータス**: 検討中
@@ -20,22 +20,27 @@
 Issue 自身が一度目の category 訂正（`@pci` は annotation ではない — annotation は lifecycle/state）を
 経ているが、同じ検査を tag に適用すると**二度目の訂正**が必要になる:
 
-- **tag `[...]` は「その要素がアーキテクチャ上何であるか」— 要素に内在する分類**。この役割は
-  spec が既に与えている（`[external]` = 境界に対する位置、`[index]` = table の役割、form-factor =
-  client の表面種別、shape = resource の種別）。[ADR-832](../adr/832-no-runtime-authz-modeling.md) も
-  中間案却下で同じ定義を明文化している — 「タグは『これは何の kind か』… 混ぜると概念のホームを
+- **tag `[...]` は「その要素がアーキテクチャ上何であるか」— 要素の**アーキタイプ**（kind の
+  精緻化。UML の stereotype に相当）**。この役割は spec が既に与えている（`[external]` = 境界に
+  対する位置づけ、`[index]` = table の役割、form-factor = client の表面種別、shape = resource の
+  種別 — builtin 17 種はすべて「何であるか」を述べる）。[ADR-832](../adr/832-no-runtime-authz-modeling.md)
+  も中間案却下で同じ定義を明文化している — 「タグは『これは何の kind か』… 混ぜると概念のホームを
   侵食する」。
+  **用語ノート**: 本設計は当初この register を「分類」と呼んでいたが、「分類」は任意の切り口の
+  仕分け（PCI 所属で仕分けることも「分類」）を含意し、まさに防ぎたい誤用を語のレベルで許して
+  しまう。**アーキタイプ**は「要素が何であるか」に限定され、builtin 語彙の性質と一致する。
 - **横断的関心事は「外部フレーム（規制・ポリシー）が定義した集合への所属」— 要素に外在する属性**。
   database は PCI スコープに入っていようがいまいが database であり、PCI 性はアーキテクチャの
-  外から課される。
+  外から課される。「PII を含む」も同様 — 何が個人情報かは規制フレーム（GDPR 等）が定義する
+  所属であって、entity のアーキタイプではない。
 
-同居させた場合のデメリット（設計議論 2026-07-28 で整理）: register の混濁（分類と所属が 1 つの
-リストに混ざる）／正しさのセマンティクスの潰れ（concern の「不在」は「スコープ外」か「未評価」か
+同居させた場合のデメリット（設計議論 2026-07-28 で整理）: register の混濁（アーキタイプと所属が
+1 つのリストに混ざる）／正しさのセマンティクスの潰れ（concern の「不在」は「スコープ外」か「未評価」か
 区別できず、9 割しか付いていない `[pci]` の図が監査文脈で偽の保証になる）／recognized 集合の将来
 拡張（`[cache]` builtin 候補）が user の concern タグの意味を黙って変える前方互換ハザード／concern
 が欲しがるメタデータ（owner・policy link・明示的除外）の圧力が単純な tag 構文を侵食する。
 
-**よって**: tag は内在的分類のまま正式化し（Part A）、横断的関心事には専用 construct `concern` を
+**よって**: tag はアーキタイプのまま正式化し（Part A）、横断的関心事には専用 construct `concern` を
 与える（Part B）。
 
 ### tag 側の現存する穴（Part A の動機 — concern と独立に実在する）
@@ -55,7 +60,7 @@ typo 対策は annotation 側にのみあり、`[extenal]` は黙って inert �
 | 関心事の成分 | 実体 | 受け皿 |
 | --- | --- | --- |
 | コンポーネント scope 集合（PCI CDE の service / store、residency 処理系） | 外在的集合所属 | **`concern`**（Part B） |
-| データ分類（PII を含む entity、CHD を持つ table） | データに**内在する**性質 | tag（Part A の分類 register） |
+| データの規制所属（PII を含む entity、CHD を持つ table） | 外在的集合所属（何が PII/CHD かは規制フレームが定義） | **`concern`**（Part B）— entity/table のアーキタイプ（`[index]`、shape）は tag のまま |
 | ポリシーの**適用範囲**（どの usecase が認証必須か、どの振る舞いが制限付きか） | 外在的集合所属 | **`concern`**（Part B — ADR-832 の refine を伴う。下記） |
 | ポリシーの**ルール内容**（誰が・どの条件で呼べるか — role×plan×条件式） | 実行時ルール | ADR-832 どおり prose + `link`（**維持** — concern に式言語は入れない） |
 
@@ -115,21 +120,23 @@ set construct が存在せず（boundary は 2 ヶ月後）、範囲の表現は
 
 ## Part A — user-defined tag の open set 正式化（新構文ゼロ）
 
-tag を annotation と同じ「open set」として正式化する。**定義は「内在的分類」に限定**し、横断的
-関心事の受け皿としては位置づけない（concern へ誘導する）。
+tag を annotation と同じ「open set」として正式化する。**定義は「アーキタイプ（要素が何であるか）」
+に限定**し、横断的関心事の受け皿としては位置づけない（concern へ誘導する）。
 
 1. **spec**: `tags-annotations.md`（+ ja）に「User-defined tags（open set）」節を新設 — builtin
-   集合の外のタグは全 kind で許容される user-defined の**分類** tag（役割分類 `[cache]` `[bff]`、
-   データ分類 `[pii]` 等）。効果は `.krs.style` タグセレクタと legend（ADR-999）。client 限定の
-   1 文（`:32`）を置換。TPL-20260610-01 の第 4 状態を状態 (3) で解消し、双方向 back-ref を同 PR で。
+   集合の外のタグは全 kind で許容される user-defined の**アーキタイプ** tag（例: `[cache]`
+   `[bff]` `[gateway]` `[saga]` — builtin 語彙が覆っていない「何であるか」）。効果は `.krs.style`
+   タグセレクタと legend（ADR-999）。client 限定の 1 文（`:32`）を置換し、**「所属（PCI・PII 等）は
+   tag で書かない — concern へ」を同節に明記**。TPL-20260610-01 の第 4 状態を状態 (3) で解消し、
+   双方向 back-ref を同 PR で。
 2. **`tag-possible-typo`（info）**: `detectAnnotationPossibleTypos` の鏡写し。builtin 17 種への
    near-miss を hint、**style タグセレクタまたは legend `ref [tag]` の存在で抑制**（どちらも意図の
    証跡。annotation の style-only 先例より 1 条件広い — legend はタグの意味の文書化行為。spec に
    非対称の理由を明記）。
 3. **register ガイド**: `tags-annotations.md` + notation cookbook に**四分法**を明記 —
-   boundary = view 内 peer グルーピング / annotation = lifecycle・state / tag = 内在的分類 /
-   concern = 外在的集合所属。PCI と認証を例に分解（コンポーネント scope → concern、データ分類 →
-   tag、ルール内容 → prose + link）を示す。
+   boundary = view 内 peer グルーピング / annotation = lifecycle・state / tag = アーキタイプ /
+   concern = 外在的集合所属。PCI と認証を例に分解（scope 集合・規制所属 → concern、
+   アーキタイプ → tag、ルール内容 → prose + link）を示す。
 4. changeset: core+karasu minor（新診断）。roadmap の `[cache]` watch（recognized 層への昇格候補）は
    独立のまま。
 
@@ -182,7 +189,7 @@ concern requires_auth {
 
 | 観点 | tag に同居（却下） | boundary に充当（却下） | prose のみ（ADR-832 現状） | **concern（採用）** |
 | --- | --- | --- | --- | --- |
-| register | 分類と所属が混濁 | view グルーピングと所属が混濁 | 表現不能（散文） | 分離 |
+| register | アーキタイプと所属が混濁 | view グルーピングと所属が混濁 | 表現不能（散文） | 分離 |
 | 多重所属 | ○（多値） | ×（1:1 first-wins） | — | ○（1:N） |
 | 表示 | style 頼み | Group-by 軸と排他 | なし | overlay — view 状態と直交 |
 | 監査リスト | 全モデル走査 | contains に集約 | 各 description に分散 | contains に集約 + メタデータ |
@@ -203,7 +210,7 @@ concern requires_auth {
 
 ## 現時点の方針
 
-**tag と concern の役割を分離する。** tag は「アーキテクチャ上の意味（内在的分類）」という既存の
+**tag と concern の役割を分離する。** tag は「アーキテクチャ上の意味（アーキタイプ）」という既存の
 役割のまま open set として正式化し（Part A、新構文ゼロ）、横断的関心事は専用 construct `concern`
 （Part B、experimental）が引き受ける。ポリシーの適用範囲は concern の集合として第一級化し
 （ADR-832 の refine — 832 自身の再検討条項に基づく）、ルール内容は prose + link のまま維持する。
@@ -215,7 +222,7 @@ concern requires_auth {
 2. Part B: `concern` 文法（parser / AST / `concernIndex` / resolver merge / fmt）→ overlay 表示
    （app selector + renderer）→ legend 掲出 → 診断。実装 Issue を #2065 から分割起票する。
 3. AT: `docs/acceptance/2065-tags-and-concerns.md`。目視観点:
-   - user-defined 分類 tag + style + legend の 3 点セットが app で意図どおり見えること
+   - user-defined アーキタイプ tag + style + legend の 3 点セットが app で意図どおり見えること
    - `[extenal]` の typo hint が出て、style セレクタ or legend ref で消えること
    - concern overlay が Group-by: team / boundary と**同時に**視認できること（排他でないことの目視）
    - `requires_auth` concern で認証境界が drill をまたいで読めること
@@ -227,7 +234,7 @@ concern requires_auth {
 - 既存ユーザーへの影響: なし（bare tag 受理は不変。追加は info 診断と新 construct のみ）。
 - ドキュメント: `tags-annotations.md`+ja、`syntax.md`+ja（concern 節）、`diagnostics.md`+ja、
   notation cookbook、roadmap（concern を experimental watch に登録）。
-- examples: 分類 tag + concern の feature-sample を検討。
+- examples: アーキタイプ tag + concern の feature-sample を検討。
 
 ## 未解決の問い / 決めないこと
 
