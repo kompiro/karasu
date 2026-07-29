@@ -3,7 +3,7 @@
 - **日付**: 2026-07-29
 - **ステータス**: 検討中
 - **Issue**: [#2124](https://github.com/kompiro/karasu/issues/2124)
-- **PR**: （作成後に記入）
+- **PR**: [#2170](https://github.com/kompiro/karasu/pull/2170)
 - **関連**:
   - 引き金 Issue: [#2124](https://github.com/kompiro/karasu/issues/2124)（boundary notation ADR の昇格作業 #2118 / #2120 で「v1.x minor」トリガーが実行不能であることが表面化）
   - 関連 ADR: [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze — 「追加は v1.x / 破壊は v2.0」の言語版セマンティクスの定義元）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（promotion gate — **本設計が refine を提案する対象**。「v1.x minor / v2.0 major を bump レベルに反映」の規定が実行不能）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（vscode の版管理は changesets、配布は Marketplace 別管理）
