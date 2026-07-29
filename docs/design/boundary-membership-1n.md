@@ -109,14 +109,14 @@ export const primaryBoundaryOf = (ids: readonly string[] | undefined): string | 
 **メリット**
 
 - 「宣言されたすべてのフレームに包含される」という #2161 の到達点をそのまま実現する。ノードの配置は 1 回（TPL-20260624-02 を満たす）。
-- 所属の**任意の重なり方**（3 重、部分重複）を原理的に表現できる。degradation は品質の問題であって表現可能性の問題にならない。
+- 所属の**任意の重なり方**（3 重、部分重複）を原理的に表現できる。縮退は品質の問題であって表現可能性の問題にならない。
 - 群の並び最適化（co-membership 隣接）は既存の min-feedback-arc-set の tie-break にコスト項を足すだけで、`orderGroups` の構造を変えない。
 
 **デメリット**
 
 - フレームのプリミティブ変更が広い: `ContainerRect` の生産（`buildGroupFrames`）・描画（SVG `<path>` + 角丸）・ラベル配置・**P2c routing の障害物判定**（`buildFrameOfNode` の「高々 1 つ一致 / `break`」が前提ごと崩れる）。
 - 重なり領域では「どちらのフレームの内側か」が一意でなくなり、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md) の penetration 計測の定義を見直す必要がある（同一 boundary 内エッジが重なり領域を通るのは penetration ではない、等）。
-- 非隣接 band 間の共有（band 順の最適化でも隣接させられないケース）では、細い回廊（corridor）を引くか degradation に落ちるかの判断が要る。
+- 非隣接 band 間の共有（band 順の最適化でも隣接させられないケース）では、細い回廊（corridor）を引くか縮退に落ちるかの判断が要る。
 
 #### 案 2: 共有ノード専用の intersection band
 
@@ -129,7 +129,7 @@ export const primaryBoundaryOf = (ids: readonly string[] | undefined): string | 
 
 **デメリット**
 
-- **3 重所属・非隣接ペアを原理的に表現できない**。degradation が表現可能性の欠落として恒久的に残る。
+- **3 重所属・非隣接ペアを原理的に表現できない**。縮退が表現可能性の欠落として恒久的に残る。
 - 帯の挿入が band 順を強制するため、依存の流れ（min-FAS で決まる縦順）と競合する。共有ペアが複数あると帯が乱立し、縦方向の情報密度が落ちる。
 - 「フレームは矩形」という前提を温存するので、将来 facet overlay（[#2065](https://github.com/kompiro/karasu/issues/2065)）や nested boundary（[ADR-1983](../adr/1983-boundary-drilldown-grouping.md) deferred）で同じ壁に再度ぶつかる。
 
@@ -155,16 +155,16 @@ export const primaryBoundaryOf = (ids: readonly string[] | undefined): string | 
 | band 順（min-FAS）との干渉 | 小（tie-break にコスト項） | 大（帯の挿入が順序を強制） | 無し |
 | 将来（facet overlay / nested boundary） | 同じ機構を再利用できる | 同じ壁に再度ぶつかる | — |
 
-### 採用と degradation 規則
+### 採用と縮退規則
 
 **案 1（矩形直交ポリゴン frame）を採る。** 案 2 は安いが、表現可能性の欠落が恒久的に残り、#2161 が到達点として決めた「すべてのフレームが包含する」を条件付きでしか満たせない。案 1 の重い部分（routing の障害物判定）は、どのみち nested / overlay の方向で一度は通る道である。
 
-ただし v1 の品質保証は次の degradation 規則で明示的に限る:
+ただし v1 の品質保証は次の縮退規則で明示的に限る:
 
 1. `orderGroups` は co-membership を隣接させる方向に群を並べ替える（既存の FAS 最小化を第一項、co-membership 隣接を第二項に置き、宣言順を最終 tie-break に残す）。
 2. 共有ノードは、共有相手の band に接する **seam 行**に配置する。これで重なりは 1 行分の L / T 字に収まる。
 3. 上記で隣接させられない共有（相反する共有ペアが循環する等）は、**primary フレームのみが包含し、他の所属はカードのバッジで示す**（案 3 相当）に落とす。落ちた事実は info 診断として観測可能にする（コード名は実装時に決める。`duplicate-boundary-assignment` とは別 — あちらは model の事実、こちらは view の解決結果）。
-4. **偽の包含は作らない。** フレームが非メンバーを図形的に囲む形（bbox の素朴な拡張）は、いかなる degradation でも採らない。
+4. **偽の包含は作らない。** フレームが非メンバーを図形的に囲む形（bbox の素朴な拡張）は、いかなる縮退でも採らない。
 
 ## Part C — collapse の二重性
 
@@ -206,7 +206,7 @@ C-1 の帰結として決めること:
 2. `orderGroups` に co-membership 隣接コスト項、`assignGroupedLayers` に seam 行配置。
 3. `buildGroupFrames` をセル和ベースに置換。
 4. `edge-routing-groups.ts` の `buildFrameOfNode` を frame **集合**に一般化し、P2c の「同一群内か」判定と penetration 計測の定義を更新（TPL-20260711-02 の計測で退行がないことを確認）。
-5. degradation 規則 3 の info 診断。
+5. 縮退規則 3 の info 診断。
 
 **slice C — collapse 二重性**
 
@@ -219,7 +219,7 @@ C-1 の帰結として決めること:
 - ノードが図中に**ちょうど 1 つ**しか現れないこと。
 - 一方の boundary を畳んでも、他方が expanded ならそのノードが消えないこと。両方畳むと消えること。
 - 全メンバーが他 boundary と共有の boundary でも、宣言した枠が図に出ること。
-- degradation に落ちたケースで、偽の包含（非メンバーが枠に入る）が起きていないこと。
+- 縮退に落ちたケースで、偽の包含（非メンバーが枠に入る）が起きていないこと。
 
 **ADR 昇格**: 3 スライス完了後、`docs/adr/2161-boundary-membership-1n.md` として昇格し（`refines: [ADR-1974]`）、本 Design Doc を同 PR で削除する。[ADR-1974](../adr/1974-boundary-declaration-syntax.md) は書き換えない（refine は非破壊）。
 
@@ -234,6 +234,6 @@ C-1 の帰結として決めること:
 
 - **team 軸（`ownerIndex`）の 1:N 化**: 構造は同型だが stable 構文であり、precedence に意味づけがある。本設計では決めない。新規 [TPL-20260729-02](../test-perspectives/TPL-20260729-02-declared-membership-not-discarded-in-derived-index.md) が再訪点を保持する。
 - **矩形直交ポリゴンの具体的な角丸・線種・重なり領域の塗り**: slice B の実装時に決める。重なり領域を視覚的に区別する（ハッチ等）かどうかも含む。
-- **非隣接共有の回廊（corridor）描画**: v1 では degradation（規則 3）に落とす。corridor を引くかは corpus で必要性が観測されてから。
+- **非隣接共有の回廊（corridor）描画**: v1 では縮退（規則 3）に落とす。corridor を引くかは corpus で必要性が観測されてから。
 - **boundary の入れ子**: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md) で deferred のまま。本件で 1:1 前提が外れることは、同 ADR が挙げた却下理由の 1 つを取り除くが、**解禁の動機（corpus 証拠）は別途必要**であり本設計では扱わない。
 - **`boundary` の stable 昇格**: [ADR-1820](../adr/1820-notation-promotion-gate.md) の gate は corpus evidence 待ちのまま。本件は experimental 層内の refine。
