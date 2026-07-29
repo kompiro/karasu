@@ -324,7 +324,7 @@ user-defined tag にツールが与える効果はゼロ。したがって v2.0 
 | 版スキューのノイズ — builtin 集合の成長により、新 builtin を使うモデルが旧ツールで「not builtin」警告（偽陽性） | tag / annotation | warning 運用（(B6)）で許容。診断メッセージにツール更新の示唆を含める |
 | 生成パイプライン（reverse / translate / LLM）が自由語彙を出すと警告まみれになる | tag / annotation | 裏返しの利点として運用 — hallucinated 語彙の検出器になる。harness 側は builtin + facet で出すよう更新 |
 | **register 混濁の facet への移送** — 拡張点の一本化により `facet bff`（アーキタイプ偽装）/ `facet canary`（lifecycle 偽装）が facet 内で再生産されうる | facet | 構造的には防げない。宣言（description 必須の文化 + guide の四分法）で**意図が文書化される場所に誤用を移す**、と正直に位置づける |
-| `capability`（client）の open set が原則の例外として残る | capability | 本設計の対象外だが、v2.0 計画で「語彙はツール所有」原則との整合を判断する（(B9)） |
+| `capability`（client）の open set が原則の例外に見える | capability | **例外ではなく原則の帰結として open を維持**（(B9) で解消 — 下記）。閉鎖原則は「**語彙の宇宙をツールが所有するものは閉じる（tag = アーキタイプ / annotation = lifecycle）、世界が所有するものは open のまま（capability = デバイス能力）**」と定式化する |
 
 ## 比較（却下案との対照）
 
@@ -412,11 +412,16 @@ lifecycle（ツール語彙）/ facet = 外在的集合所属（唯一のユー�
   構文は実装時確定）が今日の `[custom]` / `@custom` styling フックを引き継ぐ。既存モデルの移行 =
   facet 宣言 + `facets` 付与 + セレクタ書き換え。v1.x で deprecation 告知、v2.0 で任意名タグ /
   annotation セレクタを無効化。
+- **(B9)**: **`capability`（client）は open のまま維持**（2026-07-29 レビューで確定）。capability の
+  語彙は spec / ADR-837 がデバイス / ブラウザ能力（permission を要求する機能）に限定済みで、
+  隣接 register（storage / credential / authz）は既に柵がある。その宇宙は世界側（W3C・OS・業界
+  ハードウェア）にあり非有界で、ツールが closed set として列挙できる対象ではない。また client
+  1 kind 限定・`🔐 ×N` バッジのみ・style セレクタ非対象で、tag / annotation が持っていた誤用の
+  入口も無い。**閉鎖原則の定式化: 語彙の宇宙をツールが所有するもの（tag / annotation）は閉じ、
+  世界が所有するもの（capability）は open のまま** — capability は例外ではなく原則の帰結。
 
 ## 未解決の問い / 決めないこと
 
-- **(B9) `capability`（client）の open set** — 「語彙はツール所有」原則の例外として残すか、
-  v2.0 で同様に閉じるか。本設計の対象外、v2.0 計画（roadmap / #2124）で判断。
 - 決めないこと: ルール言語（恒久的に入れない — ADR-832 維持）。annotation への宣言機構の逆輸入。
   boundary の変更（1:N 一般化は follow-up）。`user.role` の存続可否（ADR-832 が別 Issue と定めた
   論点のまま）。旧案の `tag` 宣言構文（registry）は facet が register を持ち去ったため不要。
