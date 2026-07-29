@@ -25,6 +25,8 @@ export type WarningKind =
   | "delivers-target-not-client"
   | "client-capability-duplicate"
   | "annotation-possible-typo"
+  | "tag-not-builtin"
+  | "annotation-not-builtin"
   | "entity-anchor-collision"
   | "legend-ref-unresolved"
   | "style-column-invalid-value"
@@ -150,12 +152,13 @@ export interface WarningParamsByKind {
   "client-capability-duplicate": { clientId: string; name: string };
   /**
    * An annotation name is not one of the built-ins but is within a small
-   * edit distance of one (e.g. `@depracated`). Annotation names are an
-   * open set (docs/spec/tags-annotations.md § Annotation names are an
-   * open set), so unknown names are never an error — this hint only fires
-   * on near-misses of a built-in, where a typo is the likely intent.
-   * Names that appear in a stylesheet annotation selector are treated as
-   * intentional and never hinted.
+   * edit distance of one (e.g. `@depracated`). Unknown names still parse
+   * in v1.x (docs/spec/tags-annotations.md § Non-builtin annotation names
+   * are deprecated (v1.x)) — this hint only fires on near-misses of a
+   * built-in, where a typo is the likely intent. Names that appear in a
+   * stylesheet annotation selector are treated as intentional and never
+   * hinted. The unconditional deprecation itself is
+   * `annotation-not-builtin`.
    */
   "annotation-possible-typo": {
     /** id of the node carrying the suspicious annotation */
@@ -164,6 +167,37 @@ export interface WarningParamsByKind {
     annotation: string;
     /** the closest built-in annotation name, without the `@` sigil */
     suggestion: string;
+  };
+  /**
+   * A tag name is outside the tool vocabulary (builtin tags plus the
+   * system-assigned tags of docs/spec/tags-annotations.md § System-assigned
+   * tags). v1.x accepts the name unchanged (ADR-1314 freeze) but deprecates
+   * it: syntax v2.0 keeps only tool-owned tag vocabulary, with membership /
+   * model-specific labeling moving to `facet` (#2065 Part B) and new
+   * archetypes going through builtin-addition requests. Deliberately has no
+   * suppression condition — a style selector or legend ref proves intent,
+   * but intent does not change the v2.0 outcome (docs/design/tags-and-facets.md
+   * Part A). Warning register: resolves the TPL-20260610-01 fourth state
+   * into state (2), "warned as unknown".
+   */
+  "tag-not-builtin": {
+    /** id of the node carrying the tag, or `"<from> -> <to>"` for an edge */
+    nodeId: string;
+    /** the tag name as written, without the `[...]` brackets */
+    tag: string;
+  };
+  /**
+   * An annotation name is outside the builtin lifecycle vocabulary. Same
+   * deprecation contract as `tag-not-builtin`: accepted in v1.x, tool
+   * vocabulary only in v2.0, no suppression condition. Subsumes the
+   * `annotation-possible-typo` hint for the near-miss case; both coexist
+   * during v1.x and are consolidated in v2.0.
+   */
+  "annotation-not-builtin": {
+    /** id of the node (or `team`) carrying the annotation */
+    nodeId: string;
+    /** the annotation name as written, without the `@` sigil */
+    annotation: string;
   };
   /**
    * Two addressable targets in the `entity` deep-link namespace share one id.

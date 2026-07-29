@@ -146,12 +146,16 @@ resource への operation / CRUD decoration の文法。
 
 ### annotation・lifecycle
 
-annotation パラメータと、削除・非推奨になったプロパティ。
+annotation パラメータ、削除・非推奨になったプロパティ、および非 builtin の
+tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙のみを受理 —
+[tags-annotations.ja.md](./tags-annotations.ja.md) 参照）。
 
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `annotation-param-unsupported` | warning | annotation のパラメータ key がその annotation で認識されない。 |
 | `annotation-possible-typo` | info | annotation 名が builtin の near-match（typo の示唆）。 |
+| `tag-not-builtin` | warning | tag 名がツール語彙（builtin + system-assigned tag）の外にある。v1.x で非推奨。抑制条件なし。 |
+| `annotation-not-builtin` | warning | annotation 名が builtin 集合の外にある。v1.x で非推奨。抑制条件なし。 |
 | `team-property-removed` | error | 削除済みの `team` プロパティが使われる（[ADR-1564](../adr/1564-remove-team-property.md) 参照）。 |
 
 ### import とファイル

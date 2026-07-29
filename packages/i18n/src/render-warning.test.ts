@@ -100,6 +100,14 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "annotation-possible-typo",
     params: { nodeId: "Legacy", annotation: "depracated", suggestion: "deprecated" },
   },
+  "tag-not-builtin": {
+    kind: "tag-not-builtin",
+    params: { nodeId: "SessionStore", tag: "cache" },
+  },
+  "annotation-not-builtin": {
+    kind: "annotation-not-builtin",
+    params: { nodeId: "OrderService", annotation: "canary" },
+  },
   "legend-ref-unresolved": {
     kind: "legend-ref-unresolved",
     params: { target: "@missing", legendTitle: "Tags" },
@@ -171,6 +179,8 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "delivers-target-not-client": ["BFF", "OrderService"],
   "client-capability-duplicate": ["WebApp", "camera"],
   "annotation-possible-typo": ["Legacy", "@depracated", "@deprecated"],
+  "tag-not-builtin": ["SessionStore", "[cache]"],
+  "annotation-not-builtin": ["OrderService", "@canary"],
   "legend-ref-unresolved": ["@missing"],
   "style-column-invalid-value": ["OrderService", "centre"],
   "style-column-ignored-non-system-view": ["OrderUnit"],
