@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { compile } from "../index.js";
-import { analyze } from "./warnings.js";
+import { analyze, SYSTEM_ASSIGNED_TAGS } from "./warnings.js";
+import { REFERENCE_DATA } from "../builtins/reference-data.js";
 import { warningSeverity } from "../types/warnings.js";
 import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
@@ -1281,6 +1285,25 @@ system S {
     expect(warnings).toHaveLength(1);
     if (warnings[0].kind !== "tag-not-builtin") throw new Error("kind mismatch");
     expect(warnings[0].params).toEqual({ nodeId: "OrderRef", tag: "ledger" });
+  });
+
+  it("allows every tag in the spec's System-assigned tags table (dual-representation guard, TPL-20260519-02)", () => {
+    // `SYSTEM_ASSIGNED_TAGS` and the spec table are two representations of
+    // one vocabulary. If a future auto-assigned tag lands in the spec but
+    // not in the constant, the tool would warn on its own vocabulary — this
+    // guard catches that drift the way diagnostics-catalog.test.ts guards
+    // the warning-kind catalog.
+    const here = dirname(fileURLToPath(import.meta.url));
+    const spec = readFileSync(
+      resolve(here, "../../../..", "docs/spec/tags-annotations.md"),
+      "utf8",
+    );
+    const section = /## System-assigned tags([\s\S]*?)(\n## |$)/.exec(spec);
+    if (!section) throw new Error("System-assigned tags section not found in spec");
+    const documented = [...section[1].matchAll(/^\| `\[([a-z-]+)\]` \|/gm)].map((m) => m[1]);
+    expect(documented.length).toBeGreaterThanOrEqual(5); // sanity: the table was found
+    const allowed = new Set([...REFERENCE_DATA.tags.map((t) => t.name), ...SYSTEM_ASSIGNED_TAGS]);
+    expect(documented.filter((tag) => !allowed.has(tag))).toEqual([]);
   });
 });
 
