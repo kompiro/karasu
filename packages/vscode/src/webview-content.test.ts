@@ -78,6 +78,15 @@ describe("buildPreviewHtml", () => {
     expect(html).toContain(`- ${DETAIL_PANEL_MAX_WIDTH + DETAIL_PANEL_GAP};`);
   });
 
+  // Issue #2157: the org-jump button navigates by the team id (identity) while
+  // its text shows the team's declared label, matching the card chip and the
+  // app's NodeDetailPanel.
+  it("detail panel labels the org-jump button with teamLabel, keeping the id as the target", () => {
+    const html = buildPreviewHtml(baseParams());
+    expect(html).toContain("data-nav-node=\"' + escapeAttr(meta.team) + '\"");
+    expect(html).toContain("escapeHtml(meta.teamLabel || meta.team)");
+  });
+
   // Golden byte-identity fence for Issue #2018 point 7: the detail-panel
   // property-row emoji/label text (runtime/type/image/schedule/realizes,
   // role, tags, team) now derives from the shared `@karasu-tools/core`

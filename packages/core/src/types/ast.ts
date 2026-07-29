@@ -32,6 +32,36 @@ export type InfraKind = (typeof INFRA_BLOCK_KINDS)[number];
 /** Membership set over {@link INFRA_BLOCK_KINDS}; typed as `string` so any node kind can be tested. */
 export const INFRA_KIND_SET: ReadonlySet<string> = new Set(INFRA_BLOCK_KINDS);
 
+/**
+ * The logical node kinds a team can `owns` (ADR-1720). Single source of truth
+ * for the **presentation** side of ownership — the `👥` owner chip on the
+ * system-view card, the card's measured height, and `NodeMetadata.team` — so a
+ * future ownable kind lights up every surface at once instead of one gate at a
+ * time. Resolution has its own enumerations (parser `INDEXED_KINDS`, the
+ * `owns` reference validator); they must list the same kinds, which
+ * `owner-affordance-kinds.test.ts` checks behaviorally (Issue #2157).
+ */
+export const OWNABLE_LOGICAL_KINDS = ["service", "domain", "client"] as const;
+
+/** Membership set over {@link OWNABLE_LOGICAL_KINDS}; typed as `string` so any node kind can be tested. */
+export const OWNABLE_KIND_SET: ReadonlySet<string> = new Set(OWNABLE_LOGICAL_KINDS);
+
+/**
+ * The logical node kinds whose system-view card carries the deploy-view jump
+ * affordance (the `D` button / `NodeMetadata.hasDeployContainer`) when a deploy
+ * unit `realizes` them — service / domain / client (ADR-1720).
+ *
+ * Infra blocks are deliberately excluded even though they are valid `realizes`
+ * targets (ADR-1632): they render as cylinders / clouds whose corners the
+ * rectangular button geometry does not fit. Widening this set therefore needs a
+ * shape-aware button placement first, not just another kind (Issue #2157).
+ */
+export const DEPLOY_AFFORDANCE_KIND_SET: ReadonlySet<string> = new Set([
+  "service",
+  "domain",
+  "client",
+]);
+
 export type EdgeKind = "sync" | "async";
 
 export type DeployNodeKind =

@@ -15,7 +15,11 @@ import {
 } from "../resolver/canonical-id.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { render } from "../renderer/svg-renderer.js";
-import { buildGroupLabelIndex, declaredGroupIds } from "../renderer/group-labels.js";
+import {
+  buildGroupLabelIndex,
+  buildTeamLabelIndex,
+  declaredGroupIds,
+} from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import { bundleSingleLevelViews } from "../renderer/drill-down-svg.js";
 
@@ -284,6 +288,15 @@ export async function compileSystemDiff(
     }
   }
 
+  // Owner-chip labels follow the same merge as `mergedOwnerIndex`: after wins,
+  // and a team the after model dropped keeps its before label so a `removed`
+  // node's chip still names its former owner rather than falling back to the
+  // bare id (#2157).
+  const teamLabels = buildTeamLabelIndex(afterResolved.krsFile);
+  for (const [teamId, label] of buildTeamLabelIndex(beforeResolved.krsFile)) {
+    if (!teamLabels.has(teamId)) teamLabels.set(teamId, label);
+  }
+
   const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
     nodeDiffState,
     edgeDiffState,
@@ -294,6 +307,7 @@ export async function compileSystemDiff(
     boundaryIndex: mergedBoundaryIndex,
     scopedBoundaryIndex: mergedScopedBoundaryIndex,
     groupLabels,
+    teamLabels,
     collapsedGroups,
     collapsedCategories,
     interactive,

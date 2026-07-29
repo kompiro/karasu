@@ -38,3 +38,19 @@ export function estimateTextWidth(text: string, charWidth: number): number {
   }
   return width;
 }
+
+/** Grapheme budget for the `👥` owner chip on a node card before elision. */
+const TEAM_CHIP_MAX_CHARS = 15;
+
+/**
+ * The owner chip's display string — the team's label (or id), elided at
+ * {@link TEAM_CHIP_MAX_CHARS}. Shared by `measureNode` and the renderer so the
+ * reserved width always matches the drawn text; labels can be much longer than
+ * the team ids the chip used to show (Issue #2157).
+ */
+export function teamChipText(teamLabel: string): string {
+  const chars = [...teamLabel];
+  return chars.length > TEAM_CHIP_MAX_CHARS
+    ? chars.slice(0, TEAM_CHIP_MAX_CHARS).join("") + "…"
+    : teamLabel;
+}
