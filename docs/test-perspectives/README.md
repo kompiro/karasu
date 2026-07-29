@@ -480,3 +480,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260721-01](TPL-20260721-01-skill-cli-command-refs-drift.md) | エージェント向け skill が散文で参照する CLI コマンド名は CLI レジストリと同期させる — 名前の存在は機械チェック、用途違い・capability 不在の断定は checklist と CLI surface 変更時の advisory で担保 | build | #2084, #2090 |
 | [TPL-20260721-02](TPL-20260721-02-label-placement-measured-and-byte-stable.md) | エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable、author 指定ラベルは動かさない | renderer | ADR-2048, #2048 |
 | [TPL-20260727-01](TPL-20260727-01-parser-acceptance-documented-in-spec.md) | parser が受理する形は spec に文書化されている（受理 ⊆ 文書化）— undocumented leniency は実測（最小 `.krs` の parse）で棚卸しし、ADR で廃止した記法は全 construct を横断確認する | parser | #2133 |
+| [TPL-20260729-01](TPL-20260729-01-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
