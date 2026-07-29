@@ -1,5 +1,5 @@
 ---
-id: TPL-20260729-01
+id: TPL-20260729-02
 title: "解決済みの関係を描画する側の kind gate も、spec が許す全 kind を列挙する"
 status: active
 date: 2026-07-29
@@ -27,7 +27,7 @@ scope:
     - vscode
 ---
 
-# TPL-20260729-01: 解決済みの関係を描画する側の kind gate も、spec が許す全 kind を列挙する
+# TPL-20260729-02: 解決済みの関係を描画する側の kind gate も、spec が許す全 kind を列挙する
 
 ## 観点
 

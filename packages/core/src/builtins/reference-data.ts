@@ -125,7 +125,7 @@ export const REFERENCE_DATA = {
         ja: "ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed）",
       },
       canContain: [],
-      properties: ["label", "description", "handles", "resource", "link"],
+      properties: ["label", "description", "handles", "resource", "capability", "link"],
       layer: "logical",
     },
     {
@@ -135,7 +135,7 @@ export const REFERENCE_DATA = {
         ja: "独立したビジネス機能の単位",
       },
       canContain: ["domain"],
-      properties: ["label", "description", "team", "delivers", "handles", "link"],
+      properties: ["label", "description", "delivers", "handles", "link"],
       layer: "logical",
     },
     {
@@ -144,8 +144,8 @@ export const REFERENCE_DATA = {
         en: "A business-concern boundary (top-level or inside a service)",
         ja: "ビジネス上の関心事の境界（トップレベルまたはサービス内）",
       },
-      canContain: ["usecase"],
-      properties: ["label", "description", "team", "link"],
+      canContain: ["usecase", "entity"],
+      properties: ["label", "description", "link"],
       layer: "logical",
     },
     {
@@ -165,7 +165,17 @@ export const REFERENCE_DATA = {
         ja: "usecaseが操作する対象（テーブル、外部API、ファイル等）",
       },
       canContain: [],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "operations", "link"],
+      layer: "logical",
+    },
+    {
+      kind: "entity",
+      description: {
+        en: "A conceptual data entity owned by a domain — a name and its relations, no attributes. Maps to an infra sub-resource with `table`",
+        ja: "domain が所有する概念データエンティティ。名前と関連のみを持ち属性は持たない。`table` で infra サブリソースに対応づける",
+      },
+      canContain: [],
+      properties: ["label", "description", "table", "link"],
       layer: "logical",
     },
     {

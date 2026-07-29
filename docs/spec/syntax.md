@@ -32,10 +32,13 @@ karasu explicitly separates **logical structure** and **physical structure**.
 | `user` | A user of the system (human or AI agent) | — |
 | `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) | — |
 | `service` | An independent unit of business capability | `domain` |
-| `domain` | A business-concern boundary (top-level or inside a service) | `usecase` |
+| `domain` | A business-concern boundary (top-level or inside a service) | `usecase`, `entity` |
 | `usecase` | A business task or operation within a domain | `resource` |
 | `resource` | A target that a usecase reads or writes (table, external API, file, etc.) | — |
+| `entity` | A conceptual data entity owned by a domain — a name and its relations, no attributes. Maps to an infra sub-resource with `table` | — |
 <!-- /gen:reference:node-kinds-logical -->
+
+> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) — this table is generated from `REFERENCE_DATA`, so it cannot be used as the independent source a sync test compares that catalog against; the kind and property columns are fenced against the parser instead.
 
 The recognized `client` form-factor tags are listed below.
 
@@ -953,7 +956,7 @@ organization TechCorp {
 - During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
 - Ownership is **rendered on the owned node's card** in the system view as a `👥` chip, on every kind a team can `owns` (`service` / `domain` / `client`). The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
 
-> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
+> Related TPLs: [TPL-20260729-02](../test-perspectives/TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
 
 ### member node
 

@@ -32,10 +32,13 @@ karasu は**論理構造**と**物理構造**を明確に分離して表現す�
 | `user` | システムの利用者（人間またはAIエージェント） | — |
 | `client` | ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed） | — |
 | `service` | 独立したビジネス機能の単位 | `domain` |
-| `domain` | ビジネス上の関心事の境界（トップレベルまたはサービス内） | `usecase` |
+| `domain` | ビジネス上の関心事の境界（トップレベルまたはサービス内） | `usecase`, `entity` |
 | `usecase` | ドメイン内の業務・操作 | `resource` |
 | `resource` | usecaseが操作する対象（テーブル、外部API、ファイル等） | — |
+| `entity` | domain が所有する概念データエンティティ。名前と関連のみを持ち属性は持たない。`table` で infra サブリソースに対応づける | — |
 <!-- /gen:reference:node-kinds-logical -->
+
+> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) — この表は `REFERENCE_DATA` から生成されているため、その catalog を検査する同期テストの独立した正典には使えない。kind とプロパティの列は parser の実測で縛る。
 
 認識される `client` の form-factor タグは下記の表を参照。
 
@@ -891,7 +894,7 @@ organization TechCorp {
 - パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。
 - 所有関係はシステムビューの**所有されるノードのカード上**に `👥` チップとして描画される。対象は team が `owns` できる全 kind（`service` / `domain` / `client`）。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
 
-> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。
+> Related TPLs: [TPL-20260729-02](../test-perspectives/TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。
 
 ### member ノード
 
