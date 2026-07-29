@@ -287,6 +287,13 @@ export type Translations = {
     suggestion: string;
   }) => string;
   "warning.annotationPossibleTypo.openSetNote": string;
+  "warning.tagNotBuiltin.message": (params: { nodeId: string; tag: string }) => string;
+  "warning.tagNotBuiltin.migrationNote": string;
+  "warning.annotationNotBuiltin.message": (params: {
+    nodeId: string;
+    annotation: string;
+  }) => string;
+  "warning.annotationNotBuiltin.migrationNote": string;
   "warning.legendRefUnresolved.message": (params: {
     target: string;
     legendTitle?: string;

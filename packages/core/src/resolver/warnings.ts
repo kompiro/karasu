@@ -45,6 +45,8 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectDeliversTargetNotClient(file));
   warnings.push(...detectDuplicateClientCapabilities(file));
   warnings.push(...detectAnnotationPossibleTypos(file, stylesIndex));
+  warnings.push(...detectTagsNotBuiltin(file));
+  warnings.push(...detectAnnotationsNotBuiltin(file));
   warnings.push(...detectUnresolvedLegendRefs(file, stylesIndex));
 
   return warnings;
@@ -199,16 +201,16 @@ function detectDuplicateClientCapabilities(file: KrsFile): Warning[] {
 }
 
 /**
- * Annotation names are an open set (docs/spec/tags-annotations.md
- * § Annotation names are an open set): any identifier is accepted and
- * user-defined annotations are legitimate stylesheet targets. The only
- * thing worth surfacing is a *near-miss* of a built-in name — `@depracated`
- * silently losing its badge is the failure mode this hint exists for
- * (#1499). Fires as `info`, never `warning`.
+ * Any annotation identifier still parses in v1.x (docs/spec/tags-annotations.md
+ * § Non-builtin annotation names are deprecated (v1.x)). This hint surfaces a
+ * *near-miss* of a built-in name — `@depracated` silently losing its badge is
+ * the failure mode it exists for (#1499). Fires as `info`, never `warning`.
  *
  * A name that appears in any stylesheet annotation selector is treated as
  * intentionally user-defined and is never hinted, even when it sits close
- * to a built-in.
+ * to a built-in. The unconditional v1.x deprecation of non-builtin names is
+ * `detectAnnotationsNotBuiltin` (#2159); both coexist during v1.x and are
+ * consolidated in v2.0.
  */
 function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelectorIndex): Warning[] {
   const builtins = REFERENCE_DATA.annotations.map((a) => a.name);
@@ -237,6 +239,102 @@ function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelector
   for (const database of file.databases) visit(database);
   for (const queue of file.queues) visit(queue);
   for (const storage of file.storages) visit(storage);
+  return warnings;
+}
+
+/**
+ * Tags outside the tool vocabulary that are still legitimate in authored
+ * source: the system-assigned tags of docs/spec/tags-annotations.md
+ * § System-assigned tags. Most are synthesized after parsing and never
+ * appear in `.krs` files, but `[inferred]` is stamped *into* the emitted
+ * source by `translate --from db` and persists until curated away —
+ * warning on these would flag the tool's own vocabulary as foreign.
+ */
+const SYSTEM_ASSIGNED_TAGS = ["implicit", "cyclic", "read", "write", "inferred"];
+
+/**
+ * v1.x deprecation for tag names outside the tool vocabulary
+ * (docs/design/tags-and-facets.md Part A, #2159). The name is still accepted
+ * unchanged — ADR-1314 freezes bare-tag acceptance for v1.x — but syntax
+ * v2.0 keeps only tool-owned tags, so every non-builtin use is warned now.
+ * Unlike `annotation-possible-typo` there is deliberately **no suppression
+ * condition**: a style selector or legend ref proves the name is intentional,
+ * but intent does not change the v2.0 outcome, so the deprecation is
+ * announced unconditionally. Resolves the TPL-20260610-01 fourth state
+ * (accepted, inert, undocumented) into state (2): warned as unknown.
+ */
+function detectTagsNotBuiltin(file: KrsFile): Warning[] {
+  const allowed = new Set<string>([
+    ...REFERENCE_DATA.tags.map((t) => t.name),
+    ...SYSTEM_ASSIGNED_TAGS,
+  ]);
+  const warnings: Warning[] = [];
+
+  const checkTags = (tags: string[], nodeId: string, loc: KrsNode["loc"]): void => {
+    for (const tag of tags) {
+      if (!allowed.has(tag)) {
+        warnings.push({ kind: "tag-not-builtin", params: { nodeId, tag }, loc });
+      }
+    }
+  };
+  const visit = (node: KrsNode): void => {
+    checkTags(node.tags, node.id, node.loc);
+    for (const edge of node.edges) {
+      checkTags(edge.tags, `${edge.from} -> ${edge.to}`, edge.loc);
+    }
+    for (const child of node.children) visit(child);
+  };
+
+  for (const system of file.systems) visit(system);
+  for (const client of file.clients) visit(client);
+  for (const service of file.services) visit(service);
+  for (const domain of file.domains) visit(domain);
+  for (const database of file.databases) visit(database);
+  for (const queue of file.queues) visit(queue);
+  for (const storage of file.storages) visit(storage);
+  return warnings;
+}
+
+/**
+ * v1.x deprecation for annotation names outside the builtin lifecycle
+ * vocabulary — same contract as `detectTagsNotBuiltin` (accepted in v1.x,
+ * tool vocabulary only in v2.0, no suppression condition). Subsumes the
+ * near-miss case of `annotation-possible-typo`; both diagnostics coexist
+ * during v1.x and are consolidated in v2.0. Also covers `team` blocks,
+ * which accept the same annotation grammar (spec § Team annotations).
+ */
+function detectAnnotationsNotBuiltin(file: KrsFile): Warning[] {
+  const builtins = new Set<string>(REFERENCE_DATA.annotations.map((a) => a.name));
+  const warnings: Warning[] = [];
+
+  const checkAnnotations = (annotations: string[], nodeId: string, loc: KrsNode["loc"]): void => {
+    for (const annotation of annotations) {
+      if (!builtins.has(annotation)) {
+        warnings.push({ kind: "annotation-not-builtin", params: { nodeId, annotation }, loc });
+      }
+    }
+  };
+  const visit = (node: KrsNode): void => {
+    checkAnnotations(node.annotations, node.id, node.loc);
+    for (const child of node.children) visit(child);
+  };
+  const visitTeam = (team: TeamNode): void => {
+    checkAnnotations(team.annotations, team.id, team.loc);
+    for (const child of team.children) {
+      if (child.kind === "team") visitTeam(child);
+    }
+  };
+
+  for (const system of file.systems) visit(system);
+  for (const client of file.clients) visit(client);
+  for (const service of file.services) visit(service);
+  for (const domain of file.domains) visit(domain);
+  for (const database of file.databases) visit(database);
+  for (const queue of file.queues) visit(queue);
+  for (const storage of file.storages) visit(storage);
+  for (const organization of file.organizations) {
+    for (const team of organization.teams) visitTeam(team);
+  }
   return warnings;
 }
 

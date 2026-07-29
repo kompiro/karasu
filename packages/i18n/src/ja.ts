@@ -290,7 +290,15 @@ export const ja: Partial<Translations> = {
   "warning.annotationPossibleTypo.message": ({ nodeId, annotation, suggestion }) =>
     `${nodeId} の "@${annotation}" — "@${suggestion}" の誤記ではありませんか？`,
   "warning.annotationPossibleTypo.openSetNote":
-    "アノテーション名はオープンセットであり、独自の名前も有効です。このヒントは組み込み名に近い名前にのみ表示されます。",
+    "このヒントは組み込み名に近い名前にのみ表示されます。任意の名前は v1.x では引き続きパースされますが、非組み込み名は非推奨です（annotation-not-builtin を参照）。",
+  "warning.tagNotBuiltin.message": ({ nodeId, tag }) =>
+    `${nodeId} の "[${tag}]" は組み込みタグではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
+  "warning.tagNotBuiltin.migrationNote":
+    "所属やモデル固有のラベリングは facet 構文（#2065）へ移行してください。新しいアーキタイプが必要な場合は組み込みタグの追加要望を出してください。",
+  "warning.annotationNotBuiltin.message": ({ nodeId, annotation }) =>
+    `${nodeId} の "@${annotation}" は組み込みアノテーションではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
+  "warning.annotationNotBuiltin.migrationNote":
+    "所属やモデル固有のラベリングは facet 構文（#2065）へ移行してください。新しい lifecycle 状態が必要な場合は組み込みアノテーションの追加要望を出してください。",
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} はどのノード・スタイル規則にも一致しません`

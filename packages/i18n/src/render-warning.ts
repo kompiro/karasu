@@ -196,6 +196,22 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [t("warning.annotationPossibleTypo.openSetNote")],
       };
+    case "tag-not-builtin":
+      return {
+        message: t("warning.tagNotBuiltin.message", {
+          nodeId: w.params.nodeId,
+          tag: w.params.tag,
+        }),
+        details: [t("warning.tagNotBuiltin.migrationNote")],
+      };
+    case "annotation-not-builtin":
+      return {
+        message: t("warning.annotationNotBuiltin.message", {
+          nodeId: w.params.nodeId,
+          annotation: w.params.annotation,
+        }),
+        details: [t("warning.annotationNotBuiltin.migrationNote")],
+      };
     case "legend-ref-unresolved":
       return {
         message: t("warning.legendRefUnresolved.message", {

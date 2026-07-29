@@ -143,6 +143,10 @@ function makeWarning(kind: Warning["kind"]): Warning {
         kind,
         params: { nodeId: "test-node", annotation: "depracated", suggestion: "deprecated" },
       };
+    case "tag-not-builtin":
+      return { kind, params: { nodeId: "test-node", tag: "cache" } };
+    case "annotation-not-builtin":
+      return { kind, params: { nodeId: "test-node", annotation: "canary" } };
   }
 }
 
