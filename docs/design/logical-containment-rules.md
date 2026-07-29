@@ -2,6 +2,7 @@
 
 - **日付**: 2026-07-29
 - **ステータス**: 検討中
+- **PR**: [#2171](https://github.com/kompiro/karasu/pull/2171)
 - **関連**:
   - 引き金 Issue: [#2165](https://github.com/kompiro/karasu/issues/2165)（`system` が何を含めるかの語彙判断）
   - 発見元: [#2158](https://github.com/kompiro/karasu/issues/2158) / [PR #2163](https://github.com/kompiro/karasu/pull/2163)（Reference catalog と parser の drift 修正。`canContain` だけ parser で縛れず残った）
