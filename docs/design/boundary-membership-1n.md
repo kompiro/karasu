@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2161](https://github.com/kompiro/karasu/issues/2161)（`docs/design/tags-and-facets.md` §「所属モデルの一般化」/ PR [#2155](https://github.com/kompiro/karasu/pull/2155) からの分離。親 [#2065](https://github.com/kompiro/karasu/issues/2065)、boundary 系譜 [#1822](https://github.com/kompiro/karasu/issues/1822) / [#1974](https://github.com/kompiro/karasu/issues/1974) / [#2036](https://github.com/kompiro/karasu/issues/2036)）
+  - follow-up: [#2176](https://github.com/kompiro/karasu/issues/2176)（seam 配置 + co-membership band 順 — slice B から分離）
   - **refine 対象 ADR**: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（決定 2 の「1:1 + first-wins」）
   - 関連 ADR: [ADR-2036](../adr/2036-scoped-boundary-declaration.md)（スコープ宣言 — identity =（宣言スコープ, id）、collapse 独立）、[ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（軸 index × 描画レベルの交差。「nested `boundary`」を *1:1 前提が壊れる* ことを理由の一つに deferred）、[ADR-1858](../adr/1858-system-view-group-by-team.md)（team 軸 = 本件が触らない先行機構）、[ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（multi-system root の per-system フレーム）、[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff の grouping / backfill）、[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c grouped routing — frame を障害物として使う側）、[ADR-2120](../adr/2120-group-by-bulk-collapse.md)（bulk collapse）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（promotion gate — `boundary` は experimental）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` v1.0 freeze / TS API は 0.x）
   - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（**全要素ちょうど一度配置** — 本設計の最重要制約）、[TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)、[TPL-20260510-08](../test-perspectives/TPL-20260510-08-derived-state-staleness.md)（派生 state の二重持ち）、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（軸を全 call site に通す）、[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)、**新規 proactive** [TPL-20260729-02](../test-perspectives/TPL-20260729-02-declared-membership-not-discarded-in-derived-index.md)
@@ -84,7 +85,7 @@ export const primaryBoundaryOf = (ids: readonly string[] | undefined): string | 
 
 ### A-4. 影に入った boundary の復活
 
-`declaredGroupOrder` を membership 配列の flatten から作れば、全メンバーが他 boundary と共有の boundary も群として現れ、band とフレームを得る。slice A の時点では primary 配置のままなので、**そのフレームは共有メンバーを含まない部分集合の枠**になる（メンバーが 1 人も primary でなければ band は空 → フレーム無し）。完全な解消は slice B に属する。slice A では「今日消えていたものが（部分的にでも）出る」までを担保し、テストで固定する。
+`declaredGroupOrder` を membership 配列の flatten から作れば、全メンバーが他 boundary と共有の boundary も群として現れ、band とフレームを得る。slice A の時点では primary 配置のままなので、**そのフレームは共有メンバーを含まない部分集合の枠**になる（メンバーが 1 人も primary でなければ band は空 → フレーム無し）。完全な解消は配置の問題であり [#2176](https://github.com/kompiro/karasu/issues/2176) に属する。slice A では「今日消えていたものが（部分的にでも）出る」までを担保し、テストで固定する。
 
 > slice A 単独でのユーザー可視の変化は、この A-4 と A-3 の文言のみ。ノードの配置・フレーム形状は不変。
 
@@ -110,13 +111,14 @@ export const primaryBoundaryOf = (ids: readonly string[] | undefined): string | 
 
 - 「宣言されたすべてのフレームに包含される」という #2161 の到達点をそのまま実現する。ノードの配置は 1 回（TPL-20260624-02 を満たす）。
 - 所属の**任意の重なり方**（3 重、部分重複）を原理的に表現できる。縮退は品質の問題であって表現可能性の問題にならない。
-- 群の並び最適化（co-membership 隣接）は既存の min-feedback-arc-set の tie-break にコスト項を足すだけで、`orderGroups` の構造を変えない。
+- 群の並び最適化（co-membership 隣接）は既存の min-feedback-arc-set の tie-break にコスト項を足すだけで、`orderGroups` の構造を変えない（実施は [#2176](https://github.com/kompiro/karasu/issues/2176)）。
 
 **デメリット**
 
 - フレームのプリミティブ変更が広い: `ContainerRect` の生産（`buildGroupFrames`）・描画（SVG `<path>` + 角丸）・ラベル配置・**P2c routing の障害物判定**（`buildFrameOfNode` の「高々 1 つ一致 / `break`」が前提ごと崩れる）。
 - 重なり領域では「どちらのフレームの内側か」が一意でなくなり、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md) の penetration 計測の定義を見直す必要がある（同一 boundary 内エッジが重なり領域を通るのは penetration ではない、等）。
 - 非隣接 band 間の共有（band 順の最適化でも隣接させられないケース）では、細い回廊（corridor）を引くか縮退に落ちるかの判断が要る。
+- **単色のままでは重なりが「入れ子」に読める**（spike 実測。下記「spike の実測」）。多重包含を成立させるには boundary ごとの識別が要る。
 
 #### 案 2: 共有ノード専用の intersection band
 
@@ -161,10 +163,33 @@ export const primaryBoundaryOf = (ids: readonly string[] | undefined): string | 
 
 ただし v1 の品質保証は次の縮退規則で明示的に限る:
 
-1. `orderGroups` は co-membership を隣接させる方向に群を並べ替える（既存の FAS 最小化を第一項、co-membership 隣接を第二項に置き、宣言順を最終 tie-break に残す）。
-2. 共有ノードは、共有相手の band に接する **seam 行**に配置する。これで重なりは 1 行分の L / T 字に収まる。
-3. 上記で隣接させられない共有（相反する共有ペアが循環する等）は、**primary フレームのみが包含し、他の所属はカードのバッジで示す**（案 3 相当）に落とす。落ちた事実は info 診断として観測可能にする（コード名は実装時に決める。`duplicate-boundary-assignment` とは別 — あちらは model の事実、こちらは view の解決結果）。
+1. **配置は変えない。** 共有ノードは今までどおり primary の band に置かれる。フレームが他 band のメンバーに届くかどうかは**そのときの band 順次第**であり、v1 の多重包含は日和見的（opportunistic）である。band 順への co-membership 項と seam 行配置は
+   [#2176](https://github.com/kompiro/karasu/issues/2176) に切り出した（2026-07-29 決定 — 下記「spike の実測」を受けて slice B から外した）。
+2. 届かない共有は、**primary フレームのみが包含し、他の所属はカード下端の破線タブで示す**（spike の案 B）。タブはフレームと同じ破線言語で描き、`◇ <boundary>` を載せる。落ちた事実は info 診断としても観測可能にする（コード名は実装時に決める。`duplicate-boundary-assignment` とは別 — あちらは model の事実、こちらは view の解決結果）。
+3. **boundary ごとに識別色を与える**（2026-07-29 決定）。単色では重なりが入れ子に読めることが spike で実測されたため、色は装飾ではなく多重包含の成立条件である。フレームの見た目は
+   [ADR-1858](../adr/1858-system-view-group-by-team.md) / [ADR-1974](../adr/1974-boundary-declaration-syntax.md) が「全フレーム同じ破線」で確定させているので、**昇格 ADR でこの変更を明記する**。team 軸のフレームは単色のまま（本設計は boundary 軸のみを変える）。
 4. **偽の包含は作らない。** フレームが非メンバーを図形的に囲む形（bbox の素朴な拡張）は、いかなる縮退でも採らない。
+
+### spike の実測（2026-07-29）
+
+`spike/boundary-multi-containment` ブランチで Part B を実装し、`compile(src, { groupBy: "boundary" })` の
+出力で確認した。フィクスチャは 3 つの boundary が総当たりでメンバーを共有するモデル（`payments ∩ ledger`・
+`ledger ∩ risk` は帯が隣接、`risk ∩ payments` はあいだに ledger が入る）。
+
+- **伸ばしたフレームは L / T 字にならず矩形に潰れる。** ledger のフレームの実測値は、伸ばした部分が
+  `x 55–245`、帯の本体が `x 54–246`。カード幅が帯幅とほぼ同じなので、切り欠きが視認できるほどの差が出ない。
+  本設計の前版が想定していた「1 行分の小さな L / T 字」はこの配置では現れず、**背の高い矩形が 2 つ重なる**形になる。
+  重なりを伝えるのは切り欠きの形ではなく、**2 つのフレームの縦の範囲がずれて同じカードを囲むこと**である。
+- **単色では入れ子に見える。** ジオメトリが完全に同一で線の色だけが違う 2 枚を比べると、単色では
+  「payments の中に ledger が入っている」と読めてしまう。識別色で初めて「別々の枠が 1 枚のカードで重なる」と読める（決定 3 の根拠）。
+- **自前の band を持たない boundary には伸ばす元の矩形が無い。** メンバー全員が他 boundary と共有の boundary は
+  primary 軸に 1 件も現れず、フレームもラベルも描かれなかった（背景の指摘が実測で再現）。slice A は群の並びに
+  その boundary を復活させるが、**body を与えるわけではない** — 解消は配置の問題であり [#2176](https://github.com/kompiro/karasu/issues/2176) が受け持つ。
+- **フレームのタイトルは帯の本体に置く。** 伸ばした分だけ記録上の矩形を広げると、タイトルが伸びた先のカードに重なった。
+  記録する矩形は band の本体のままにして、描画だけポリゴンにする。
+- **グリフは同梱フォントの範囲で選ぶ。** タブの当初案 `⧉`（U+29C9）は同梱 Noto の範囲外で PNG 書き出しが豆腐になった。
+  `◇`（U+25C7）に変更。実装時に `packages/app/src/render/png-font-coverage.test.ts` のカバレッジ集合へ追加する
+  （[TPL-20260626-01](../test-perspectives/TPL-20260626-01-raster-pipeline-glyph-coverage.md)）。
 
 ## Part C — collapse の二重性
 
@@ -200,13 +225,16 @@ C-1 の帰結として決めること:
 5. 診断文言の差し替え（`packages/i18n` en/ja）+ `docs/spec/diagnostics.md`（+ja）+ `docs/spec/syntax.md`（+ja）の boundary 節に「所属は 1:N、banded view は primary を枠に入れる」を明記。
 6. changeset: `@karasu-tools/core` + `karasu` の minor（診断文言と TS API の変更）。
 
-**slice B — 多重包含 geometry**
+**slice B — 多重包含 geometry（配置は含まない）**
 
-1. `ContainerRect` を矩形直交ポリゴン対応に一般化（既存の単一矩形はその退化形）。SVG 描画・ラベル配置・drawio export の扱いを確認。
-2. `orderGroups` に co-membership 隣接コスト項、`assignGroupedLayers` に seam 行配置。
-3. `buildGroupFrames` をセル和ベースに置換。
-4. `edge-routing-groups.ts` の `buildFrameOfNode` を frame **集合**に一般化し、P2c の「同一群内か」判定と penetration 計測の定義を更新（TPL-20260711-02 の計測で退行がないことを確認）。
-5. 縮退規則 3 の info 診断。
+1. `ContainerRect` を矩形直交ポリゴン対応に一般化（既存の単一矩形はその退化形）。SVG 描画・ラベル配置・drawio export の扱いを確認。記録する矩形は band 本体のまま（タイトル位置のため）。
+2. `buildGroupFrames` をセル和ベースに置換し、他 band のメンバーへ届く場合はポリゴンにする。
+3. boundary ごとの識別色（縮退規則 3）。legend との整合を確認する。
+4. 縮退タブ（縮退規則 2）+ font coverage テストへのグリフ追加 + info 診断。
+5. `edge-routing-groups.ts` の `buildFrameOfNode` を frame **集合**に一般化し、P2c の「同一群内か」判定と penetration 計測の定義を更新（TPL-20260711-02 の計測で退行がないことを確認）。
+
+> 配置（`orderGroups` の co-membership 項・seam 行）は **slice B に含めない** — [#2176](https://github.com/kompiro/karasu/issues/2176)。
+> したがって slice B 時点の多重包含は日和見的で、届かない共有は縮退タブで示される。
 
 **slice C — collapse 二重性**
 
@@ -215,10 +243,11 @@ C-1 の帰結として決めること:
 
 **AT**: `docs/acceptance/2161-boundary-multi-membership.md` を新規作成。目視観点（人間確認が必要なもののみ）:
 
-- 2 つの boundary に属するノードが**両方の枠に囲まれて**見えること（枠が重なる）。
+- 帯が隣接する共有で、ノードが**両方の枠に囲まれて**見えること（枠が重なる）。
 - ノードが図中に**ちょうど 1 つ**しか現れないこと。
+- boundary ごとの識別色で、重なりが**入れ子ではなく重なりとして**読めること。
+- 縮退したノードに `◇ <boundary>` のタブが出て、そのグリフが PNG 書き出しでも豆腐にならないこと。
 - 一方の boundary を畳んでも、他方が expanded ならそのノードが消えないこと。両方畳むと消えること。
-- 全メンバーが他 boundary と共有の boundary でも、宣言した枠が図に出ること。
 - 縮退に落ちたケースで、偽の包含（非メンバーが枠に入る）が起きていないこと。
 
 **ADR 昇格**: 3 スライス完了後、`docs/adr/2161-boundary-membership-1n.md` として昇格し（`refines: [ADR-1974]`）、本 Design Doc を同 PR で削除する。[ADR-1974](../adr/1974-boundary-declaration-syntax.md) は書き換えない（refine は非破壊）。
@@ -233,7 +262,7 @@ C-1 の帰結として決めること:
 ## 未解決の問い / 決めないこと
 
 - **team 軸（`ownerIndex`）の 1:N 化**: 構造は同型だが stable 構文であり、precedence に意味づけがある。本設計では決めない。新規 [TPL-20260729-02](../test-perspectives/TPL-20260729-02-declared-membership-not-discarded-in-derived-index.md) が再訪点を保持する。
-- **矩形直交ポリゴンの具体的な角丸・線種・重なり領域の塗り**: slice B の実装時に決める。重なり領域を視覚的に区別する（ハッチ等）かどうかも含む。
+- **識別色のパレットと、重なり領域の扱い**: 色の選び方（固定パレットの循環か、style シートで指定可能にするか）と、重なり領域を塗りで区別するか（ハッチ等）は slice B の実装時に決める。角丸・線種も同様。
 - **非隣接共有の回廊（corridor）描画**: v1 では縮退（規則 3）に落とす。corridor を引くかは corpus で必要性が観測されてから。
 - **boundary の入れ子**: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md) で deferred のまま。本件で 1:1 前提が外れることは、同 ADR が挙げた却下理由の 1 つを取り除くが、**解禁の動機（corpus 証拠）は別途必要**であり本設計では扱わない。
 - **`boundary` の stable 昇格**: [ADR-1820](../adr/1820-notation-promotion-gate.md) の gate は corpus evidence 待ちのまま。本件は experimental 層内の refine。
