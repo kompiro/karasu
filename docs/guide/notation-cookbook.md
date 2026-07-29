@@ -259,6 +259,51 @@ and a **service binding → a `->` communication edge**. KV maps to a plain `dat
 notation). Unknown binding kinds are skipped with a warning — never guessed. Run
 `karasu translate --from wrangler wrangler.toml > index.krs`.
 
+## 8. Cross-cutting concerns (PCI, PII, auth) — pick the right register
+
+**When** — you want to mark elements with a compliance scope, a data-classification,
+or a policy ("these services are in PCI scope", "this entity is PII", "this usecase
+requires login") and are tempted to invent a tag (`[pci]`) or an annotation
+(`@requires_auth`).
+
+**Pattern** — labels live in four registers; membership in an externally defined
+set is *not* a tag and *not* an annotation:
+
+| You are saying… | Register | Construct |
+| --- | --- | --- |
+| what the element **is** (architecturally) | archetype | builtin tag — `[external]`, `[index]` |
+| what development **state** it is in | lifecycle | builtin annotation — `@deprecated`, `@new` |
+| how peers **group** in a view | view grouping | `boundary` |
+| which externally defined **set** it belongs to | membership | `facet` (#2065 Part B, upcoming) — until it lands, `description` + `link` |
+
+**`.krs`** — PCI / auth today (prose + link), with rule content never modelled:
+
+```krs
+system Shop {
+  service Checkout {
+    description "In PCI DSS scope — see assessment"
+    link "https://wiki.example.com/pci/scope" "PCI scope doc"
+    domain Ordering {
+      usecase PlaceOrder {
+        description "Requires authentication; who may call it is defined by the IAM policy"
+        link "https://wiki.example.com/policies/iam" "IAM policy"
+      }
+    }
+  }
+}
+```
+
+**Why** — tag / annotation vocabularies are tool-owned: a non-builtin name draws a
+`tag-not-builtin` / `annotation-not-builtin` deprecation warning in v1.x, and
+syntax v2.0 accepts tool vocabulary only. Membership also *semantically* misfits
+tags: a database is a database whether or not it is in PCI scope, and a
+nine-out-of-ten `[pci]` diagram reads as a false audit guarantee. The rule
+*content* (roles, plans, conditions) stays prose + `link` permanently
+([ADR-832](../adr/832-no-runtime-authz-modeling.md)); only the *scope* becomes
+first-class when `facet` lands. If what you actually need is a missing archetype
+(`[cache]`, `[bff]`), request a builtin tag addition instead — see
+[`tags-annotations.md`](../spec/tags-annotations.md).
+
 ## See also
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — the precise `.krs` grammar (feed this first)

@@ -29,7 +29,7 @@
 | `[storage]` | ストレージ系リソース（シェイプ: cloud） | cloud シェイプで描画 |
 <!-- /gen:reference:tags -->
 
-> `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。リスト外のタグも `client` に付与可能で、その場合は通常のユーザー定義タグとして扱われる。
+> `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。組み込み表の外のタグは v1.x では受理されるが**非推奨** — 下記「非 builtin のタグ名は非推奨（v1.x）」を参照。
 
 > **shape タグは infra ブロックキーワードをミラーする — 別物ではなく対応関係にある。** infra ブロックの **キーワード**（`database` 配下の `table`、`queue` 配下の `queue-item`、`storage` 配下の `bucket`）は、system 図上の **共有ストアノード（実体）を宣言**する。usecase の `resource` は、その usecase が読み書きする対象への **操作参照**であり、`resource` が dot 記法で infra leaf を参照する（`resource OrderDB.OrderTable`）と、karasu は **参照先 infra sub-resource の kind から対応する shape タグを推論**する（`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`）。つまり参照は、指し示すストアと同じ形で描画される。だから shape タグ `[table]` / `[queue]` / `[storage]` は infra sub-resource kind を**意図的にミラー**している。参照する infra leaf が無い `resource` には、純粋な shape ヒントとして手書きで付けることもできる。`[api]`（hexagon）だけは infra 側に対応 kind が無く、API 系 resource 用の手書き専用 shape。同じ語が 2 つの位置に現れても **衝突しない**: キーワードは **宣言の先頭**でノードの *kind* を決め、`[...]` タグは `resource` への **接尾辞**で *shape* だけを決める — 両者は resource 参照で結ばれた相補的なレイヤーである。[syntax.md](./syntax.md) の *Infra layer* 節も参照。
 >
@@ -38,6 +38,17 @@
 > **`database [index]`** は `database` ノードを、正本（system of record）ではなく **派生の検索 / 二次インデックス** — ElasticSearch / OpenSearch クラスタ、あるいは pgvector / Pinecone / Weaviate などの vector store — として印付ける。cylinder はそのままに `index` バッジを付与する。**具体的な技術は物理層**の `store { type "ElasticSearch 8"; realizes SearchIndex }` に置き、エンジンを載せ替えても論理モデルが揺れないようにする。同じストアが正本かつ index を兼ねる場合（例: Postgres + pgvector）は `[index]` タグを付けないだけでよい。**`[index]` は技術ではなく役割を表す**: 正本（system of record）を高速に検索するための index として導出した二次ストアにタグ付けする。Vector DB / ElasticSearch 等を使っている場合でも、それが正本なら `[index]` は付けない。背景: [ADR-316](../adr/316-database-as-first-class-node.md), Issue #1718。
 >
 > Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — `[index]` はラベルだけでなく効果（`index` バッジ）を伴う必要がある、受理されるタグである。
+
+### 非 builtin のタグ名は非推奨（v1.x）
+
+bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する（v1.0 freeze — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — が parse 挙動を凍結している）。ただし**ツール語彙**（上記の組み込み表 + 下記の[システム自動付与タグ](#システム自動付与タグsystem-assigned-tags)）の外のタグは**非推奨**であり、karasu は使用のたびに `tag-not-builtin` **warning** を出す。抑制条件は意図的に**設けない** — `.krs.style` のセレクタや `legend` の ref は名前が意図的である証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する（enforcement は warning のままで、parse error にはしない — 既存ファイルはパースされ続ける）。移行先:
+
+- **所属やモデル固有のラベリング**（PCI スコープ、PII、「認証必須」）→ `facet` 構文（#2065 Part B。導入までは `description` / `link` の prose に記録する）。
+- **足りないアーキタイプ**（`[cache]`、`[bff]` など）→ 組み込みタグの追加要望（roadmap の `[cache]` watch がその経路の実例）。非推奨タグは告知の間も動き続ける — 警告されるだけで、既定描画への効果は持たない。
+
+どの構文を選ぶかは下記[「語彙の register」](#語彙の-register--boundary--annotation--tag--facet)を参照。
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 非 builtin のタグ名はかつて禁止された第 4 状態（受理・無効果・文書化なし）にあった。`tag-not-builtin` はそれを状態 (2)「unknown として警告」に解消する。
 
 ### 記述例
 
@@ -96,18 +107,21 @@ system OrderSystem {
 > `@deprecated` 単独、または `@migration_target` 単独、どちらか一方が付いていれば重複を許容する。
 > どちらにも付いていない場合はエラーのまま。
 
-### アノテーション名はオープンセット
+### 非 builtin のアノテーション名は非推奨（v1.x）
 
-アノテーション名の集合は**オープン** — `@<identifier>` は任意の識別子を受け付け、組み込みセット外の名前に警告は出さない。デフォルトのセマンティクスとバッジ描画を持つのは上記 4 つの組み込みのみで、ユーザー定義アノテーションにはデフォルト描画はないが、`.krs.style` のアノテーションセレクタの正当なターゲットになる（[`docs/spec/style.ja.md`](./style.ja.md#セレクタの種類) を参照）。
+`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし 4 つの組み込みの外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能する（[`docs/spec/style.ja.md`](./style.ja.md#セレクタの種類) を参照）— このフックは #2065 Part B で facet セレクタへ移行する。移行先:
 
-未知の名前を黙って受け付ける以上、組み込み名のタイポ（例: `@depracated`）は「バッジが出ない」という形でしか表面化しない。そのため karasu は、組み込みではないが組み込み名と編集距離が近いアノテーション名に対して **info レベルのヒント**（`annotation-possible-typo`）を出す。スタイルシートのアノテーションセレクタに現れる名前についてはヒントを抑制する — セレクタの定義はその名前が意図的なユーザー定義であることの表明とみなす。
+- **所属やモデル固有のラベリング**（チーム所有マーク、audience ラベルなど）→ `facet` 構文（#2065 Part B。導入までは `description` / `link` の prose）。
+- **足りない lifecycle 状態**（`@canary`、`@sunset` など）→ 組み込みアノテーションの追加要望。
+
+near-miss の**タイポヒント**（`annotation-possible-typo`、info）も引き続き発火する: 組み込み名のタイポ（例: `@depracated`）は放置すると「バッジが出ない」という形でしか表面化しないためである。ヒントはスタイルシートのアノテーションセレクタに現れる名前について従来どおり抑制される。両診断は v1.x の間共存し（near-miss には両方が付きうる）、v2.0 で整理される。
 
 ```krs
-service Billing @team-alpha   // OK: ユーザー定義アノテーション、ヒントなし
-service Legacy  @depracated   // info ヒント: "@deprecated" の誤記では？
+service Billing @team-alpha   // 非推奨: annotation-not-builtin warning
+service Legacy  @depracated   // 二重に警告: タイポヒント (info) + not-builtin (warning)
 ```
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — deprecation により非 builtin 名は、従来の文書化なき open set 受理ではなく状態 (2)「unknown として警告」に保たれる。
 
 ### アノテーションのパラメータ
 
@@ -163,6 +177,32 @@ identifier セットは **オープン** — 任意の kebab-case 識別子を�
 | 操作に紐づくストレージ（`localStorage`, `indexedDB`, `keychain`） | `resource <storageKind> "<name>"` |
 | HTTP セッション / 認証クレデンシャル | 別語彙。#834 で追跡 |
 | 実行時の認可（RBAC permission bundle、ライセンス / フィーチャーフラグ） | karasu はモデル化しない — [ADR-832](../adr/832-no-runtime-authz-modeling.md) 参照。`user.role` プロパティは actor-archetype ラベルであり authz primitive ではない — [ADR-1281](../adr/1281-user-role-keyword-clarification.md) 参照 |
+
+---
+
+## 語彙の register — boundary / annotation / tag / facet
+
+karasu は「このラベルはどの種類か」を 4 つの register に分離する。tag と annotation の語彙は**ツール所有**であり、ユーザー拡張点は `facet` 構文（#2065 Part B — 設計済み・未実装）に一本化される。
+
+| Register | 構文 | 語彙 | 答える問い |
+| --- | --- | --- | --- |
+| アーキタイプ | tag `[...]` | ツール所有（上記の組み込み表） | この要素はアーキテクチャ上**何であるか**？（`[external]`、`[index]`） |
+| lifecycle | annotation `@...` | ツール所有（上記の組み込み表） | どの開発状態にあるか？（`@deprecated`、`@new`） |
+| view 内グルーピング | `boundary` | ユーザー宣言 id | この view で peer をどうまとめるか？（[syntax.ja.md](./syntax.ja.md) 参照） |
+| 集合所属 | `facet`（#2065、導入予定） | ユーザー宣言 id | 外部で定義された**どの集合に属するか**？（PCI スコープ、PII、認証必須） |
+
+分解の実例 — PCI 対応と認証を、タグを誤用せずにモデリングする:
+
+| 関心事の成分 | Register | 置き場 |
+| --- | --- | --- |
+| 要素のアーキテクチャ上の役割（検索インデックス、外部ストア） | tag | 組み込みタグ — `[index]`、`[external]` |
+| 「この table はカード会員データを持つ」「この entity は PII」（規制上の所属） | facet | #2065 Part B 導入後は `facets pci` / `facets pii`。それまでは `description` / `link` の prose |
+| 「この usecase は認証必須」（ポリシーの適用範囲） | facet | `facets requires_auth`（同じく当面は prose + `link`） |
+| 誰が・どのプラン / 条件で呼べるか（ルールの内容） | prose | `description` + ポリシー文書への `link` — モデル化しない（[ADR-832](../adr/832-no-runtime-authz-modeling.md)） |
+
+register を分ける理由は、所属のセマンティクスがアーキタイプと異なるからである: database は PCI スコープに入っていようがいまいが database であり、対象 10 要素中 9 要素にしか所属タグが付いていない図は、監査文脈で偽の保証として読まれてしまう。したがって所属はタグの名前空間を借りず、宣言メタデータ（`label` / `description` / `link`）を持つ専用構文を得る。
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — どの register でも、受理される語彙は効果を持つか警告される必要がある。v1.x の deprecation 診断（`tag-not-builtin` / `annotation-not-builtin`）はツール所有 register を状態 (2) に保つ。
 
 ---
 

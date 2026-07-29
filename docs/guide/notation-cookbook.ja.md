@@ -253,6 +253,50 @@ Durable Object → `service [external]`**（イディオム #3、この adapter 
 未知の binding 種別は warning を出して skip する — 決して推測しない。実行は
 `karasu translate --from wrangler wrangler.toml > index.krs`。
 
+## 8. 横断的関心事（PCI・PII・認証）— 正しい register を選ぶ
+
+**When** — コンプライアンスのスコープ、データ分類、ポリシー（「この service 群は
+PCI 対象」「この entity は PII」「この usecase はログイン必須」）を要素に印付けたく
+なり、タグ（`[pci]`）やアノテーション（`@requires_auth`）を発明したくなったとき。
+
+**Pattern** — ラベルは 4 つの register に分かれる。外部で定義された集合への所属は
+タグでも、アノテーションでもない:
+
+| 言いたいこと | Register | 構文 |
+| --- | --- | --- |
+| その要素がアーキテクチャ上**何であるか** | アーキタイプ | 組み込みタグ — `[external]`、`[index]` |
+| どの開発**状態**にあるか | lifecycle | 組み込みアノテーション — `@deprecated`、`@new` |
+| view で peer を**どうまとめるか** | view 内グルーピング | `boundary` |
+| 外部定義の**どの集合に属するか** | 所属 | `facet`（#2065 Part B、導入予定）— それまでは `description` + `link` |
+
+**`.krs`** — 今日の PCI / 認証の書き方（prose + link）。ルールの内容はモデル化しない:
+
+```krs
+system Shop {
+  service Checkout {
+    description "PCI DSS 対象 — 評価資料を参照"
+    link "https://wiki.example.com/pci/scope" "PCI スコープ資料"
+    domain Ordering {
+      usecase PlaceOrder {
+        description "認証必須。誰が呼べるかは IAM ポリシーが定める"
+        link "https://wiki.example.com/policies/iam" "IAM ポリシー"
+      }
+    }
+  }
+}
+```
+
+**Why** — タグ / アノテーションの語彙はツール所有であり、非 builtin 名は v1.x で
+`tag-not-builtin` / `annotation-not-builtin` の deprecation warning を受け、構文
+v2.0 はツール語彙のみを受理する。所属は**意味論的にも**タグに合わない: database は
+PCI スコープに入っていようがいまいが database であり、対象 10 要素中 9 要素にしか
+`[pci]` が付いていない図は偽の監査保証として読まれる。ルールの**内容**（role・
+プラン・条件）は恒久的に prose + `link` のまま
+（[ADR-832](../adr/832-no-runtime-authz-modeling.md)）で、`facet` 導入後に第一級に
+なるのは**適用範囲**だけである。本当に必要なのが足りないアーキタイプ（`[cache]`、
+`[bff]`）なら、代わりに組み込みタグの追加要望を出す —
+[`tags-annotations.ja.md`](../spec/tags-annotations.ja.md) を参照。
+
 ## 関連
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — 厳密な `.krs` 文法（まずこれを渡す）

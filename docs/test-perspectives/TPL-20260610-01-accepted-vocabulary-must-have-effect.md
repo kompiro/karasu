@@ -85,9 +85,11 @@ scope:
 ## 派生元 spec
 
 - `docs/spec/style.md` — Property list（エッジ線種の正典が `border-style` であること）
-- `docs/spec/tags-annotations.md` — Annotation names are an open set（アノテーション名の
+- `docs/spec/tags-annotations.md` — 旧 Annotation names are an open set（アノテーション名の
   open set 明文化と `annotation-possible-typo` ヒント、#1499。本 TPL の「open set と明文化」
-  状態を annotation 名前空間に適用したもの）
+  状態を annotation 名前空間に適用したもの。#2159 で節は「Non-builtin annotation names are
+  deprecated (v1.x)」に改稿され、状態は「open set と明文化」から状態 (2)「unknown を警告」へ
+  移行した — 下記の #2159 項を参照）
 - `docs/spec/tags-annotations.md` — Annotation parameters（`@name(key: …)` の未認識キー/
   アノテーションは `annotation-param-unsupported` で警告し黙殺しない、#1568。本 TPL の
   「効果を持つ／警告される」を annotation パラメータに適用したもの）
@@ -95,6 +97,15 @@ scope:
   効果を伴う必要があるという本 TPL を新タグに適用したもの。`[index]` は `REFERENCE_DATA.tags`
   への登録 + `default-style.ts` の `database[index]` バッジで効果を持つ。登録 / スタイル /
   生成ドキュメントの 3 表現の同期は [[TPL-20260519-02]] を参照）
+- `docs/spec/tags-annotations.md` — Non-builtin tag names are deprecated (v1.x) /
+  Non-builtin annotation names are deprecated (v1.x) / Vocabulary registers（#2159、
+  tags-and-facets Part A）。非 builtin のタグ名が置かれていた**第 4 状態**（受理・無効果・
+  spec 記述は client 限定の 1 文のみ — 2026-07-28 の probe で `[cache]` が全 kind で診断ゼロ
+  受理と実測）を、`tag-not-builtin` / `annotation-not-builtin` warning により**状態 (2)
+  「unknown を警告」に解消**したもの。抑制条件なし（style セレクタ / legend ref は意図の
+  証跡だが v2.0 の閉鎖結果を変えない）。annotation 側の open set 明文化はこの deprecation
+  告知に置換された。検証: `packages/core/src/resolver/warnings.test.ts` の
+  `tag-not-builtin` / `annotation-not-builtin` describe 2 件
 - `docs/spec/syntax.md` — Grouping the system view (`boundary`)（#1822 P2b、experimental。
   受理される `boundary` 宣言は効果を持つ必要があるという本 TPL を新構文に適用したもの。宣言された
   `boundary` は parse-and-vanish せず、`groupBy: "boundary"` で必ず境界フレームを生む — その
