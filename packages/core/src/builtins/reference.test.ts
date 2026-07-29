@@ -14,6 +14,7 @@ describe("getReference", () => {
       "domain",
       "usecase",
       "resource",
+      "entity",
       "database",
       "queue",
       "storage",
@@ -23,11 +24,12 @@ describe("getReference", () => {
     ]);
   });
 
-  it("client kind exposes handles, resource and link properties", () => {
+  it("client kind exposes handles, resource, capability and link properties", () => {
     const client = ref.nodeKinds.find((k) => k.kind === "client");
     expect(client).toBeDefined();
     expect(client!.properties).toContain("handles");
     expect(client!.properties).toContain("resource");
+    expect(client!.properties).toContain("capability");
   });
 
   it("service kind exposes delivers and handles properties", () => {

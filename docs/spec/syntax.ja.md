@@ -32,10 +32,13 @@ karasu は**論理構造**と**物理構造**を明確に分離して表現す�
 | `user` | システムの利用者（人間またはAIエージェント） | — |
 | `client` | ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed） | — |
 | `service` | 独立したビジネス機能の単位 | `domain` |
-| `domain` | ビジネス上の関心事の境界（トップレベルまたはサービス内） | `usecase` |
+| `domain` | ビジネス上の関心事の境界（トップレベルまたはサービス内） | `usecase`, `entity` |
 | `usecase` | ドメイン内の業務・操作 | `resource` |
 | `resource` | usecaseが操作する対象（テーブル、外部API、ファイル等） | — |
+| `entity` | domain が所有する概念データエンティティ。名前と関連のみを持ち属性は持たない。`table` で infra サブリソースに対応づける | — |
 <!-- /gen:reference:node-kinds-logical -->
+
+> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) — この表は `REFERENCE_DATA` から生成されているため、その catalog を検査する同期テストの独立した正典には使えない。kind とプロパティの列は parser の実測で縛る。
 
 認識される `client` の form-factor タグは下記の表を参照。
 

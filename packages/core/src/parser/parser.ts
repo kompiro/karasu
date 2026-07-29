@@ -90,7 +90,14 @@ interface ParsedOperation {
   decorationLoc: SourceLocation | undefined;
 }
 
-const LOGICAL_KEYWORDS = new Set<string>([
+/**
+ * The block keywords the parser accepts as logical node declarations.
+ *
+ * Exported so the hand-maintained Reference catalog can be fenced against the
+ * parser instead of against a doc table generated from that same catalog —
+ * see `builtins/reference-parser-sync.test.ts` (#2158, TPL-20260729-01).
+ */
+export const LOGICAL_KEYWORDS = new Set<string>([
   "system",
   "service",
   "domain",
