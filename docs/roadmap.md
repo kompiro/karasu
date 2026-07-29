@@ -420,4 +420,5 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 - [TPL-20260514-08](test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 診断 register の fact vs style 二分。v1.0 で freeze する register 割り当ての拠り所。
 - [TPL-20260511-02](test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — spec doc と source-of-truth の同期。freeze 前タスクで spec ↔ 実装の整合を担保。
 - [TPL-20260519-02](test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — 共有語彙の dual representation。finding I（infra keyword と shape tag の overlap）の audience guidance の拠り所。
+- [TPL-20260610-01](test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理語彙の 3 状態規律。[§Syntax 2.0 プログラム](#syntax-20-プログラム) の閉鎖 enforcement（warning = 状態 (2)）の拠り所。
 </content>
