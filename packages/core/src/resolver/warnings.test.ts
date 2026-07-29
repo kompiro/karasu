@@ -1382,6 +1382,29 @@ system S {
     expect(warnings[0].params).toEqual({ nodeId: "payments", annotation: "sunset" });
   });
 
+  it("a team near-miss carries both diagnostics, same as a node (spec: coexist in v1.x)", () => {
+    const file = Parser.parse(`
+organization Corp {
+  team ops @depracated {
+    owns Payment
+  }
+}
+system S {
+  service Payment {}
+}
+    `).value;
+    const all = analyze(file, [getBuiltinStyleSheet()]);
+    const hints = all.filter((w) => w.kind === "annotation-possible-typo");
+    expect(hints).toHaveLength(1);
+    if (hints[0].kind !== "annotation-possible-typo") throw new Error("kind mismatch");
+    expect(hints[0].params).toEqual({
+      nodeId: "ops",
+      annotation: "depracated",
+      suggestion: "deprecated",
+    });
+    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(1);
+  });
+
   it("renders as warning", () => {
     expect(warningSeverity("annotation-not-builtin")).toBe("warning");
   });

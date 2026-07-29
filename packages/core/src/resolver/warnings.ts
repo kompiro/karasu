@@ -217,19 +217,32 @@ function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelector
   const styledAnnotations = stylesIndex.annotations;
   const warnings: Warning[] = [];
 
-  const visit = (node: KrsNode): void => {
-    for (const annotation of node.annotations) {
+  const checkAnnotations = (annotations: string[], nodeId: string, loc: KrsNode["loc"]): void => {
+    for (const annotation of annotations) {
       if (builtins.includes(annotation) || styledAnnotations.has(annotation)) continue;
       const suggestion = closestBuiltinAnnotation(annotation, builtins);
       if (suggestion !== undefined) {
         warnings.push({
           kind: "annotation-possible-typo",
-          params: { nodeId: node.id, annotation, suggestion },
-          loc: node.loc,
+          params: { nodeId, annotation, suggestion },
+          loc,
         });
       }
     }
+  };
+  const visit = (node: KrsNode): void => {
+    checkAnnotations(node.annotations, node.id, node.loc);
     for (const child of node.children) visit(child);
+  };
+  // `team` blocks accept the same annotation grammar (added by #1605, after
+  // this hint) — walk them too so a near-miss on a team gets the same
+  // suggestion it would get on a node, keeping parity with
+  // `detectAnnotationsNotBuiltin` (spec: both diagnostics coexist in v1.x).
+  const visitTeam = (team: TeamNode): void => {
+    checkAnnotations(team.annotations, team.id, team.loc);
+    for (const child of team.children) {
+      if (child.kind === "team") visitTeam(child);
+    }
   };
 
   for (const system of file.systems) visit(system);
@@ -239,6 +252,9 @@ function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelector
   for (const database of file.databases) visit(database);
   for (const queue of file.queues) visit(queue);
   for (const storage of file.storages) visit(storage);
+  for (const organization of file.organizations) {
+    for (const team of organization.teams) visitTeam(team);
+  }
   return warnings;
 }
 
