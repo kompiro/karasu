@@ -32,10 +32,13 @@ karasu explicitly separates **logical structure** and **physical structure**.
 | `user` | A user of the system (human or AI agent) | — |
 | `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) | — |
 | `service` | An independent unit of business capability | `domain` |
-| `domain` | A business-concern boundary (top-level or inside a service) | `usecase` |
+| `domain` | A business-concern boundary (top-level or inside a service) | `usecase`, `entity` |
 | `usecase` | A business task or operation within a domain | `resource` |
 | `resource` | A target that a usecase reads or writes (table, external API, file, etc.) | — |
+| `entity` | A conceptual data entity owned by a domain — a name and its relations, no attributes. Maps to an infra sub-resource with `table` | — |
 <!-- /gen:reference:node-kinds-logical -->
+
+> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) — this table is generated from `REFERENCE_DATA`, so it cannot be used as the independent source a sync test compares that catalog against; the kind and property columns are fenced against the parser instead.
 
 The recognized `client` form-factor tags are listed below.
 
