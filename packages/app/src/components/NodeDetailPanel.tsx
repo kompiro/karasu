@@ -250,11 +250,11 @@ export function NodeDetailPanel({
                   onClose();
                 }}
               >
-                {NODE_DETAIL_TEAM_EMOJI} {metadata.team} →
+                {NODE_DETAIL_TEAM_EMOJI} {metadata.teamLabel ?? metadata.team} →
               </button>
             ) : (
               <div className="node-detail-prop">
-                {NODE_DETAIL_TEAM_EMOJI} {metadata.team}
+                {NODE_DETAIL_TEAM_EMOJI} {metadata.teamLabel ?? metadata.team}
               </div>
             ))}
           {metadata.role && (

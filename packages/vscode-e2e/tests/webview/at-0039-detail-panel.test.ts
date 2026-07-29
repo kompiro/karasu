@@ -241,9 +241,15 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     assert.match(html, /<li>Accept new orders<\/li>/i, "description should render the bullet list");
     assert.match(text, /Design Wiki/, "panel should mention the Design Wiki link");
     assert.match(text, /API Docs/, "panel should mention the API Docs link");
-    // The Org nav button is keyed on the resolved owner team id (ownerIndex),
-    // which is `order-team` for OrderService (owned via the organization block).
-    assert.match(text, /order-team/, "panel should mention the owning team");
+    // The Org nav button is keyed on the resolved owner team id (ownerIndex) —
+    // `order-team` for OrderService (owned via the organization block) — while
+    // its text shows that team's declared label (#2157).
+    assert.match(text, /Order Team/, "panel should mention the owning team's label");
+    assert.match(
+      html,
+      /data-nav-node="order-team"/,
+      "the org nav button should still target the team id",
+    );
   });
 
   it("TC-04: × close button dismisses the panel; click-outside also dismisses it", async () => {

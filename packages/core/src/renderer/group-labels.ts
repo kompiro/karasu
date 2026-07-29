@@ -88,6 +88,16 @@ export function declaredGroupIds(
   return ids;
 }
 
+/**
+ * Team id → declared `label`, for every team in the model. Titles group frames
+ * under `Group by: team` (via {@link buildGroupLabelIndex}) and, since #2157,
+ * also names the owner on each card's `👥` chip — which is drawn on every axis,
+ * hence a builder that does not take a `groupBy`.
+ */
+export function buildTeamLabelIndex(krsFile: KrsFile): Map<string, string> {
+  return buildTeamLabelMap(krsFile);
+}
+
 function buildTeamLabelMap(krsFile: KrsFile): Map<string, string> {
   const labels = new Map<string, string>();
   const walk = (teams: readonly TeamNode[]): void => {

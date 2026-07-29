@@ -892,6 +892,9 @@ organization TechCorp {
 - team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
 - team ID は同一 organization 内で一意。重複するとエラーになる。
 - パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。
+- 所有関係はシステムビューの**所有されるノードのカード上**に `👥` チップとして描画される。対象は team が `owns` できる全 kind（`service` / `domain` / `client`）。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
+
+> Related TPLs: [TPL-20260729-02](../test-perspectives/TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。
 
 ### member ノード
 

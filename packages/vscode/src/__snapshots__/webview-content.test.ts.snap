@@ -412,7 +412,7 @@ exports[`buildPreviewHtml > full document output is byte-stable (golden snapshot
         html += '<div class="dp-section">';
         if (meta.team) {
           html += '<button class="dp-nav-btn" data-nav-view="org" data-nav-node="' + escapeAttr(meta.team) + '">'
-            + '\\ud83d\\udc65 ' + escapeHtml(meta.team) + ' \\u2192</button>';
+            + '\\ud83d\\udc65 ' + escapeHtml(meta.teamLabel || meta.team) + ' \\u2192</button>';
         }
         for (var j = 0; j < teamRoleTagsProps.length; j++) {
           html += '<div class="dp-prop">' + teamRoleTagsProps[j] + '</div>';
@@ -1025,7 +1025,7 @@ exports[`buildPreviewHtml > icon-mode document output is byte-stable (golden sna
         html += '<div class="dp-section">';
         if (meta.team) {
           html += '<button class="dp-nav-btn" data-nav-view="org" data-nav-node="' + escapeAttr(meta.team) + '">'
-            + '\\ud83d\\udc65 ' + escapeHtml(meta.team) + ' \\u2192</button>';
+            + '\\ud83d\\udc65 ' + escapeHtml(meta.teamLabel || meta.team) + ' \\u2192</button>';
         }
         for (var j = 0; j < teamRoleTagsProps.length; j++) {
           html += '<div class="dp-prop">' + teamRoleTagsProps[j] + '</div>';

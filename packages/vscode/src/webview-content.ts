@@ -618,7 +618,7 @@ export function buildPreviewHtml(params: BuildPreviewHtmlParams): string {
         html += '<div class="dp-section">';
         if (meta.team) {
           html += '<button class="dp-nav-btn" data-nav-view="org" data-nav-node="' + escapeAttr(meta.team) + '">'
-            + '${TEAM_EMOJI} ' + escapeHtml(meta.team) + ' \\u2192</button>';
+            + '${TEAM_EMOJI} ' + escapeHtml(meta.teamLabel || meta.team) + ' \\u2192</button>';
         }
         for (var j = 0; j < teamRoleTagsProps.length; j++) {
           html += '<div class="dp-prop">' + teamRoleTagsProps[j] + '</div>';

@@ -954,8 +954,9 @@ organization TechCorp {
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
+- Ownership is **rendered on the owned node's card** in the system view as a `👥` chip, on every kind a team can `owns` (`service` / `domain` / `client`). The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
 
-> Related TPLs: [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
+> Related TPLs: [TPL-20260729-02](../test-perspectives/TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
 
 ### member node
 

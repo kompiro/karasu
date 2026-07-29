@@ -33,7 +33,10 @@ interface SerializedNodeMeta {
   label: string;
   descriptionHtml: string;
   links: { url: string; label?: string }[];
+  /** Owning team id — what the org-view jump button navigates by. */
   team?: string;
+  /** Owning team's declared label, shown instead of the id when present (#2157). */
+  teamLabel?: string;
   role?: string;
   runtime?: string;
   type?: string;
@@ -235,6 +238,7 @@ export class PreviewPanel {
           // drift-prone regex inside the webview.
           links: meta.links.filter((l) => isSafeLinkUrl(l.url)),
           team: meta.team,
+          teamLabel: meta.teamLabel,
           role: meta.role,
           runtime: meta.runtime,
           type: meta.type,

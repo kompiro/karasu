@@ -9,7 +9,14 @@ import type { DomainEdgeDetail } from "../view/view-extract.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
+  /** Owning team **id** — the identity the `data-team-button` navigates by. */
   team?: string;
+  /**
+   * Owning team's declared `label`, when it has one. The chip renders this and
+   * falls back to {@link team}, so a card and a `Group by: team` frame title
+   * name the same team the same way (Issue #2157).
+   */
+  teamLabel?: string;
   /** Client-only: operation-tied storage resources rendered inline on the card. */
   resources?: ClientResource[];
   /** Client-only: device / browser capabilities rendered inline on the card. */
