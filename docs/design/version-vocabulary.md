@@ -5,7 +5,7 @@
 - **Issue**: [#2124](https://github.com/kompiro/karasu/issues/2124)
 - **PR**: [#2170](https://github.com/kompiro/karasu/pull/2170)
 - **関連**:
-  - 引き金 Issue: [#2124](https://github.com/kompiro/karasu/issues/2124)（boundary notation ADR の昇格作業 #2118 / #2120 で「v1.x minor」トリガーが実行不能であることが表面化）
+  - 引き金 Issue: [#2124](https://github.com/kompiro/karasu/issues/2124)（boundary notation ADR の昇格作業 #2118 で「v1.x minor」トリガーが実行不能であることが表面化。Issue 本文が併記する #2120 は Group-by bulk collapse の昇格 PR であり本件と無関係 — 本 doc で訂正）
   - 関連 ADR: [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze — 「追加は v1.x / 破壊は v2.0」の言語版セマンティクスの定義元）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（promotion gate — **本設計が refine を提案する対象**。「v1.x minor / v2.0 major を bump レベルに反映」の規定が実行不能）、[ADR-1758](../adr/1758-vscode-changeset-versioning.md)（vscode の版管理は changesets、配布は Marketplace 別管理）
   - 関連 Issue: [#2162](https://github.com/kompiro/karasu/issues/2162)（Syntax 2.0 プログラム — v2.0 の版運用は本 Issue の決定と同時確定と registered。roadmap §Syntax 2.0 プログラム）
   - 関連 TPL: [TPL-20260716-01](../test-perspectives/TPL-20260716-01-keystone-terms-single-home.md)（load-bearing な coined 語彙は単一の正典を持ち、他 doc は参照する — 本設計の置き場論点の拠り所）、[TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（doc と source-of-truth の同期 — 言語版を code constant にする場合の観点）
@@ -45,7 +45,7 @@ docs は `v1.0` / `v1.0-stable` / `experimental` / `post-v1.0 watch` / `v1.x min
 
 ### なぜ今か
 
-boundary notation の ADR 昇格（#2118 / #2120）で promotion gate の昇格トリガー
+boundary notation の ADR 昇格（#2118）で promotion gate の昇格トリガー
 「v1.x minor」が実行不能であることが表面化した。roadmap の watch table に載る全
 experimental notation が同じ問題を継承しており、**この曖昧さは gate が実際に発火することを
 恒久的に阻む**。加えて [#2162](https://github.com/kompiro/karasu/issues/2162) で登録した
@@ -119,7 +119,7 @@ Syntax 2.0 プログラムは「v2.0 の版運用は #2124 の決定と同時確
   CLI minor / 言語 v2.0 → CLI 2.0.0）:
   - 利点: 「v1.x minor」という既存の文言がそのまま実行可能になる。ユーザーから見て
     「CLI 1.x = 言語 v1.x」の単純な対応。
-  - 欠点: CLI 1.0.0 は**言語以外の表面（コマンド体系・флаг・出力形式）の安定も semver で
+  - 欠点: CLI 1.0.0 は**言語以外の表面（コマンド体系・フラグ・出力形式）の安定も semver で
     約束する**ことを意味するが、その表面の棚卸しは行われていない。CLI 独自の破壊的変更
     （フラグ改名等）が起きるたびに、言語が変わっていないのに major を切るか、semver を破るかの
     二択になる。core（0.x のまま、API 約束なし）と CLI（1.x）の乖離も新たな混乱源。
@@ -209,7 +209,8 @@ Syntax 2.0 プログラムは「v2.0 の版運用は #2124 の決定と同時確
 4. **正典の置き場 = roadmap §version vocabulary**（tier 表の隣）。process.md / concepts.md /
    glossary.md から参照を配線し、TPL-20260716-01 の単一正典原則をこの語彙にも適用する。
 
-決定の記録は **ADR-2124**（`related_to: [ADR-1314]`、ADR-1820 を refine）として昇格し、
+決定の記録は **ADR-2124**（`depends_on: [ADR-1314]` — 言語版セマンティクスを前提とするため
+参照のみの `related_to` ではなく前提関係、`refines: [ADR-1820]`）として昇格し、
 本 doc は削除する。実装（--version 修正 + 定数 + drift ガード）は docs 改訂と分けて
 実装 Issue を起票する。
 
