@@ -3189,7 +3189,7 @@ system Blog {
     description "投稿内容の審査・公開可否を判断"
   }
 
-  client AdminApp [internal] {
+  client AdminApp [web] {
     label "管理コンソール"
     description "モデレーション / 公開キュー操作"
   }
@@ -3468,7 +3468,7 @@ system Blog {
     description "Reviews submitted content and decides whether to publish"
   }
 
-  client AdminApp [internal] {
+  client AdminApp [web] {
     label "Admin console"
     description "Moderation and publish-queue operations"
   }
