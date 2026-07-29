@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { compile, type SystemCompileResult } from "../index.js";
+import { compile, compileSystemDiff, InMemoryFileSystemProvider } from "../index.js";
+import type { SystemCompileResult } from "../index.js";
 import { OWNABLE_LOGICAL_KINDS } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { extractView } from "../view/view-extract.js";
@@ -120,6 +121,45 @@ describe("owner chip text (#2157)", () => {
     expect(result.svg).toContain('data-team-button="T"');
     // 15 graphemes, then the ellipsis — the same budget `measureNode` reserves.
     expect(result.svg).toContain("👥Customer Experi…");
+  });
+});
+
+/** Compiles a before/after pair into the compare (diff) system view. */
+async function diffSvg(before: string, after: string): Promise<string> {
+  const fs = new InMemoryFileSystemProvider();
+  await fs.writeFile("/before.krs", before);
+  await fs.writeFile("/after.krs", after);
+  const result = await compileSystemDiff({
+    beforeEntryPath: "/before.krs",
+    afterEntryPath: "/after.krs",
+    fs,
+  });
+  return result.svg;
+}
+
+describe("owner chip label in the diff view (#2157)", () => {
+  const CLIENT = system(`  client X [web] { label "X" }`);
+
+  it("falls back to the id when a surviving team's label is deleted", async () => {
+    // The #1886 stale-state guard applied to the owner-chip label space: the
+    // team still exists and still owns X, so a deleted label must fall back to
+    // the id rather than resurrect the before-side label.
+    const svg = await diffSvg(
+      `${CLIENT}\norganization O { team T { label "Old Name" owns X } }`,
+      `${CLIENT}\norganization O { team T { owns X } }`,
+    );
+    expect(svg).not.toContain("Old Name");
+    expect(svg).toContain("👥T");
+  });
+
+  it("keeps the before label for a team the after model no longer declares", async () => {
+    // The node is `removed` along with its team, so its chip should still name
+    // the former owner instead of degrading to the bare id.
+    const svg = await diffSvg(
+      `${CLIENT}\norganization O { team T { label "Old Name" owns X } }`,
+      system(`  service Other { label "Other" }`),
+    );
+    expect(svg).toContain("👥Old Name");
   });
 });
 

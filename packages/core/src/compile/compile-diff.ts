@@ -288,12 +288,17 @@ export async function compileSystemDiff(
     }
   }
 
-  // Owner-chip labels follow the same merge as `mergedOwnerIndex`: after wins,
-  // and a team the after model dropped keeps its before label so a `removed`
-  // node's chip still names its former owner rather than falling back to the
-  // bare id (#2157).
+  // Owner-chip labels follow the group-label rule above, for the same reason:
+  // after wins, and only a team the after model no longer *declares* backfills
+  // its before label, so a `removed` node's chip still names its former owner
+  // (#2157). The guard is on declaration, not on presence in the label map —
+  // `buildTeamLabelIndex` only holds teams that declare a label, so keying off
+  // it would resurrect a deleted label for a team that still exists (the #1886
+  // stale-state guard, applied to the owner-chip label space).
   const teamLabels = buildTeamLabelIndex(afterResolved.krsFile);
+  const afterTeams = declaredGroupIds(afterResolved.krsFile, "team");
   for (const [teamId, label] of buildTeamLabelIndex(beforeResolved.krsFile)) {
+    if (afterTeams.has(teamId)) continue;
     if (!teamLabels.has(teamId)) teamLabels.set(teamId, label);
   }
 

@@ -50,6 +50,10 @@
 
   > ✅ Automated — `packages/core/src/renderer/owner-affordance-kinds.test.ts` › `elides a long label but keeps the full id on the button` / `reserves a meta row on the owned client's card` / `widens the card for a long team label the chip will draw`
 
+- [x] diff ビューでは、after にも宣言が残る team の `label` が削除された場合はチップが id にフォールバックし、after から消えた team の場合のみ before の label を引き継ぐ（#1886 stale-state guard の label 空間版）
+
+  > ✅ Automated — `packages/core/src/renderer/owner-affordance-kinds.test.ts` › `falls back to the id when a surviving team's label is deleted` / `keeps the before label for a team the after model no longer declares`
+
 - [x] app / VS Code の detail panel は label を表示し、org view への遷移は team id で行う
 
   > ✅ Automated — `packages/app/src/components/NodeDetailPanel.test.tsx` › `shows the team label but navigates by the team id (#2157)` / `packages/vscode/src/webview-content.test.ts` › `detail panel labels the org-jump button with teamLabel, keeping the id as the target`
