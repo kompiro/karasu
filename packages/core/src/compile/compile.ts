@@ -393,7 +393,7 @@ function _compileFromPreparedInput(
   const hasOrgDiagram = krsFile.organizations.length > 0;
   // Either boundary form makes the axis worth offering: top-level blocks
   // (`krsFile.boundaries`) or scoped ones declared inside a node block (#2036,
-  // in `scopedBoundaryIndex`). Checking only the former hides the Group-by menu
+  // in `scopedBoundaryMembership`). Checking only the former hides the Group-by menu
   // for a model whose only boundaries are scoped.
   const hasBoundaries = krsFile.boundaries.length > 0 || krsFile.scopedBoundaryMembership.size > 0;
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));

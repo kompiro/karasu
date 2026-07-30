@@ -299,6 +299,10 @@ export const ja: Partial<Translations> = {
     `${nodeId} の "@${annotation}" は組み込みアノテーションではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
   "warning.annotationNotBuiltin.migrationNote":
     "所属やモデル固有のラベリングは facet 構文（#2065）へ移行してください。新しい lifecycle 状態が必要な場合は組み込みアノテーションの追加要望を出してください。",
+  "warning.facetNotDeclared.message": ({ nodeId, facetId }) =>
+    `${nodeId} の "facets ${facetId}" は宣言済みの facet を指していません`,
+  "warning.facetNotDeclared.declarationNote":
+    'top-level に facet <id> { label "..." } を宣言するか、既存の宣言に合わせて綴りを修正してください。',
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} はどのノード・スタイル規則にも一致しません`
@@ -395,6 +399,8 @@ export const ja: Partial<Translations> = {
     `"${parentKind}" は自身のキャンバスを持たないため、その中に "boundary" は宣言できません`,
   "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
     `同一スコープ内で boundary id "${boundaryId}" が重複しています`,
+  "diagnostic.duplicateFacetId.message": ({ facetId }) =>
+    `facet "${facetId}" は既に宣言されています。参照が解決するのは最初の宣言です`,
   "diagnostic.positionalLabelRemoved.message": ({ construct }) =>
     `"${construct}" は id の直後にラベルを置けません。ブロック内に label "..." を書いてください`,
   "diagnostic.positionalLabelDeprecated.message": ({ construct }) =>

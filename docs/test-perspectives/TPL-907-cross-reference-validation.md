@@ -56,3 +56,11 @@ karasu には既に `unresolved-handles`（`warnings.ts:402`）と `unresolved-r
 
 - `packages/core/src/resolver/warnings.test.ts`（`unresolved-handles`, `unresolved-realizes` の test）
 - `docs/spec/syntax.md` — 新しい参照プロパティの仕様記述
+
+## 派生元 spec
+
+- `docs/spec/syntax.md` §「Cross-cutting membership (`facet`)」— `facets <id>` は
+  cross-reference プロパティであり、parser の受理だけでなく resolver 側の検証
+  （`facet-not-declared` warning）を伴う規定（#2173）。宣言集合が「正」を与えるため、
+  この検証は builtin 近傍の near-miss ヒントと違い完全である。同節末尾に本 TPL への
+  `> Related TPLs:` back-ref あり。

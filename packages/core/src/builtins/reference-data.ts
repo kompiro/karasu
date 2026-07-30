@@ -110,7 +110,7 @@ export const REFERENCE_DATA = {
         ja: "owned/external なサービスやクライアントの関係を示す器",
       },
       canContain: ["service", "user", "client", "domain", "database", "queue", "storage"],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "logical",
     },
     {
@@ -120,7 +120,7 @@ export const REFERENCE_DATA = {
         ja: "システムの利用者（人間またはAIエージェント）",
       },
       canContain: [],
-      properties: ["label", "description", "role", "link"],
+      properties: ["label", "description", "role", "facets", "link"],
       layer: "logical",
     },
     {
@@ -130,7 +130,7 @@ export const REFERENCE_DATA = {
         ja: "ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed）",
       },
       canContain: [],
-      properties: ["label", "description", "handles", "resource", "capability", "link"],
+      properties: ["label", "description", "handles", "resource", "capability", "facets", "link"],
       layer: "logical",
     },
     {
@@ -140,7 +140,7 @@ export const REFERENCE_DATA = {
         ja: "独立したビジネス機能の単位",
       },
       canContain: ["domain"],
-      properties: ["label", "description", "delivers", "handles", "link"],
+      properties: ["label", "description", "delivers", "handles", "facets", "link"],
       layer: "logical",
     },
     {
@@ -150,7 +150,7 @@ export const REFERENCE_DATA = {
         ja: "ビジネス上の関心事の境界（トップレベル / system 直下 / service 内）",
       },
       canContain: ["usecase", "entity"],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "logical",
     },
     {
@@ -160,7 +160,7 @@ export const REFERENCE_DATA = {
         ja: "ドメイン内の業務・操作",
       },
       canContain: ["resource"],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "logical",
     },
     {
@@ -170,7 +170,7 @@ export const REFERENCE_DATA = {
         ja: "usecaseが操作する対象（テーブル、外部API、ファイル等）",
       },
       canContain: [],
-      properties: ["label", "description", "operations", "link"],
+      properties: ["label", "description", "operations", "facets", "link"],
       layer: "logical",
     },
     {
@@ -180,7 +180,7 @@ export const REFERENCE_DATA = {
         ja: "domain が所有する概念データエンティティ。名前と関連のみを持ち属性は持たない。`table` で infra サブリソースに対応づける",
       },
       canContain: [],
-      properties: ["label", "description", "table", "link"],
+      properties: ["label", "description", "table", "facets", "link"],
       layer: "logical",
     },
     {
@@ -190,7 +190,7 @@ export const REFERENCE_DATA = {
         ja: "system 直下に置く共有データベース。service が依存する infra",
       },
       canContain: ["table"],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "infra-block",
       infraLayerLabel: { en: "system-level infra block", ja: "system 直下のインフラブロック" },
       infraIntendedUse: {
@@ -205,7 +205,7 @@ export const REFERENCE_DATA = {
         ja: "system 直下に置く共有メッセージキュー。service が依存する infra",
       },
       canContain: ["queue-item"],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "infra-block",
       infraLayerLabel: { en: "system-level infra block", ja: "system 直下のインフラブロック" },
       infraIntendedUse: {
@@ -220,7 +220,7 @@ export const REFERENCE_DATA = {
         ja: "system 直下に置く共有ストレージ（オブジェクトストレージ等）。service が依存する infra",
       },
       canContain: ["bucket"],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "infra-block",
       infraLayerLabel: { en: "system-level infra block", ja: "system 直下のインフラブロック" },
       infraIntendedUse: {
@@ -235,7 +235,7 @@ export const REFERENCE_DATA = {
         ja: "`database` ブロック内のテーブル / コレクション",
       },
       canContain: [],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "infra-leaf",
       infraLayerLabel: { en: "leaf, inside a `database` block", ja: "leaf、`database` ブロック内" },
       infraIntendedUse: {
@@ -250,7 +250,7 @@ export const REFERENCE_DATA = {
         ja: "`queue` ブロックが運ぶメッセージ / イベント型",
       },
       canContain: [],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "infra-leaf",
       infraLayerLabel: { en: "leaf, inside a `queue` block", ja: "leaf、`queue` ブロック内" },
       infraIntendedUse: {
@@ -265,7 +265,7 @@ export const REFERENCE_DATA = {
         ja: "`storage` ブロック内のバケット / コンテナ",
       },
       canContain: [],
-      properties: ["label", "description", "link"],
+      properties: ["label", "description", "facets", "link"],
       layer: "infra-leaf",
       infraLayerLabel: { en: "leaf, inside a `storage` block", ja: "leaf、`storage` ブロック内" },
       infraIntendedUse: {

@@ -2509,6 +2509,10 @@ describe("warningSeverity — exhaustive register map", () => {
     // TPL-1503 state (2)).
     "tag-not-builtin": "warning",
     "annotation-not-builtin": "warning",
+    // A `facets` reference to an undeclared facet is a broken reference with a
+    // definite fix (declare it, or fix the spelling) — the same register as the
+    // other unresolved-reference kinds, not the info hint register (#2173).
+    "facet-not-declared": "warning",
     "style-conflict": "warning",
     "unresolved-realizes": "warning",
     "invalid-owns": "warning",
@@ -2550,4 +2554,126 @@ describe("warningSeverity — exhaustive register map", () => {
       expect(warningSeverity(kind)).toBe(expected);
     });
   }
+});
+
+describe("facet-not-declared (#2173)", () => {
+  function facetWarnings(krs: string) {
+    return analyze(Parser.parse(krs).value, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "facet-not-declared",
+    );
+  }
+
+  it("warns when a `facets` reference names no declaration", () => {
+    const warnings = facetWarnings(`
+facet pii {}
+system S {
+  service Checkout { facets pcl }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "Checkout", facetId: "pcl" });
+    expect(warnings[0].loc).toBeDefined();
+  });
+
+  // The reverse assertion matters as much as the positive one: a correct model
+  // that warns is as broken as a typo that does not (TPL-907).
+  it("stays silent when every reference resolves", () => {
+    expect(
+      facetWarnings(`
+facet pii {}
+facet pci {}
+system S {
+  service Checkout { facets pii, pci }
+  database OrderDB { facets pii }
+}
+    `),
+    ).toEqual([]);
+  });
+
+  it("warns once per undeclared id, not once per node in the facet", () => {
+    const warnings = facetWarnings(`
+system S {
+  service A { facets ghost }
+  service B { facets ghost }
+}
+    `);
+    expect(warnings.map((w) => (w.kind === "facet-not-declared" ? w.params.nodeId : ""))).toEqual([
+      "A",
+      "B",
+    ]);
+  });
+
+  it("reports only the undeclared id when a node mixes declared and undeclared", () => {
+    const warnings = facetWarnings(`
+facet pii {}
+system S {
+  service Checkout { facets pii, pcl }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
+    expect(warnings[0].params.facetId).toBe("pcl");
+  });
+
+  it("checks references on every kind, including infra leaves", () => {
+    const warnings = facetWarnings(`
+system S {
+  database DB { table T { facets ghost } }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
+    expect(warnings[0].params.nodeId).toBe("T");
+  });
+
+  it("is a warning, never info — a broken reference is a fact with a fix", () => {
+    expect(warningSeverity("facet-not-declared")).toBe("warning");
+  });
+});
+
+describe("facet-not-declared location precision (#2199 review)", () => {
+  function facetWarnings(krs: string) {
+    return analyze(Parser.parse(krs).value, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "facet-not-declared",
+    );
+  }
+
+  // Node ids are unique only among siblings (ADR-927), and `facetIndex` keys on
+  // the bare id, so deriving the location from that index reported whichever
+  // same-named node was walked first. The diagnostic has to land on the line the
+  // author must edit (TPL-1352).
+  it("points at the node that wrote the reference, not a same-named node elsewhere", () => {
+    const warnings = facetWarnings(`facet pii {}
+system Shop {
+  service Payment {
+    domain Ledger {}
+  }
+  service Checkout {
+    domain Payment {
+      facets ghost
+    }
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    // `service Payment` opens on line 3; the `domain Payment` that wrote the
+    // reference opens on line 7.
+    expect(warnings[0].loc?.start.line).toBe(7);
+  });
+
+  it("reports each site when two same-id nodes both carry a bad reference", () => {
+    const warnings = facetWarnings(`system Shop {
+  service Payment {
+    domain Ledger { facets ghost }
+  }
+  service Checkout {
+    domain Ledger { facets ghost }
+  }
+}
+`);
+    // One warning per authoring site — the union in `facetIndex` would have
+    // collapsed these two mistakes into one.
+    expect(warnings.map((w) => w.loc?.start.line)).toEqual([3, 6]);
+  });
 });

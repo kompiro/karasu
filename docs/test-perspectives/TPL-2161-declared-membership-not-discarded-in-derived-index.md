@@ -83,3 +83,6 @@ team 軸（`ownerIndex`）は依然 1:1 first-wins であり、本観点の未�
 
 - `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」 — 所属の多値性と banded view の解決規則。
 - 設計: `docs/design/boundary-membership-1n.md`・`docs/design/boundary-membership-slice-a.md`（[#2161](https://github.com/kompiro/karasu/issues/2161) / [#2178](https://github.com/kompiro/karasu/issues/2178)）、[ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 2 の refine 対象。
+- `docs/spec/syntax.md` §「Cross-cutting membership (`facet`)」— facet 所属は 1:N であり、
+  `facetIndex`（`Map<nodeId, Set<facetId>>`）と全マージ経路がその多値性を保つ規定（#2173）。
+  同節末尾に本 TPL への `> Related TPLs:` back-ref あり。
