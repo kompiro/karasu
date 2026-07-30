@@ -4,7 +4,7 @@
 - **関連 Issue**: [#2173](https://github.com/kompiro/karasu/issues/2173)（tags-and-facets Part B slice 1、親 [#2160](https://github.com/kompiro/karasu/issues/2160) / [#2065](https://github.com/kompiro/karasu/issues/2065)）
 - **関連 Design Doc**: `docs/design/facet-grammar-and-model.md`（実装設計）/ `docs/design/tags-and-facets.md`（プログラム設計）。ADR 昇格は Part B 全 slice 完了後
 - **関連 spec**: [`docs/spec/syntax.md`](../spec/syntax.md)（Cross-cutting membership (`facet`)）/ [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)（Vocabulary registers）/ [`docs/spec/diagnostics.md`](../spec/diagnostics.md)
-- **関連 TPL**: [TPL-20260510-10](../test-perspectives/TPL-20260510-10-cross-reference-validation.md)（cross-reference は resolver 検証 + unresolved warning）/ [TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)（多重所属を派生 index で捨てない）/ [TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md)（マージ後空間で検証）/ [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（round-trip）/ [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（受理語彙は効果を持つ）/ [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md)（受理形は spec に文書化）
+- **関連 TPL**: [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md)（cross-reference は resolver 検証 + unresolved warning）/ [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（多重所属を派生 index で捨てない）/ [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)（マージ後空間で検証）/ [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（round-trip）/ [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理語彙は効果を持つ）/ [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md)（受理形は spec に文書化）
 - **対象ファイル**:
   - `packages/core/src/lexer/lexer.ts` / `packages/core/src/types/tokens.ts`（`facet` / `facets` キーワード）
   - `packages/core/src/types/ast.ts`（`FacetBlock`、`BaseNodeFields.facets`、`KrsFile.facets` / `facetIndex`、`duplicate-facet-id`）
@@ -70,7 +70,7 @@
 
 - [x] AT-M: 診断カタログ（`docs/spec/diagnostics.md` +ja）に 2 コードの行がある
 
-  > ✅ Automated — `packages/core/src/types/diagnostics-catalog.test.ts`（TPL-20260616-02 の網羅性メタテスト）
+  > ✅ Automated — `packages/core/src/types/diagnostics-catalog.test.ts`（TPL-1623 の網羅性メタテスト）
 
 - [x] AT-N: kind カタログと parser の受理が双方向で一致する（`facets` を広告する kind ≡ 受理する kind）
 

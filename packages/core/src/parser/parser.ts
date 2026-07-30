@@ -333,7 +333,7 @@ export class Parser {
     // Same root set as the scoped-boundary walk: `facets` is accepted on every
     // node kind, so the index must reach top-level orphans (a system-less
     // `service` / `client` / `domain` / infra block) and their descendants, not
-    // just what hangs off a `system` (TPL-20260510-01 / TPL-20260623-02).
+    // just what hangs off a `system` (TPL-1160 / TPL-1720).
     file.facetIndex = buildFacetIndex([
       ...file.systems,
       ...file.services,
@@ -386,7 +386,7 @@ export class Parser {
     // files may each declare `facet pii` with different metadata, and only the
     // merge sees that. The ImportResolver suppresses this code per file and
     // re-derives it there; single-file parses (LSP, `Parser.parse`) get the same
-    // verdict here (TPL-20260718-02).
+    // verdict here (TPL-2032).
     this.diagnostics.push(...validateFacetDeclarations(file.facets));
 
     return { value: file, diagnostics: this.diagnostics };

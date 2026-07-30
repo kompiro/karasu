@@ -210,7 +210,7 @@ export interface WarningParamsByKind {
    * declaration and the reference may live in different files.
    *
    * Warning register, not info: an undeclared facet is a broken reference —
-   * a fact with a fix — not a style-school judgement (TPL-20260514-08).
+   * a fact with a fix — not a style-school judgement (TPL-1386).
    */
   "facet-not-declared": {
     /** id of the node carrying the `facets` property */

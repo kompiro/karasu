@@ -310,7 +310,7 @@ export class ImportResolver {
     // `facetIndex` is deliberately NOT merged entry-by-entry here. It is a pure
     // derivation of the `facets` properties on the merged tree, so `resolve()`
     // rebuilds it once at the end instead — one derivation rather than one per
-    // merge path (TPL-20260510-08). That also makes it immune to a merge path
+    // merge path (TPL-1032). That also makes it immune to a merge path
     // forgetting to carry it: `boundaries` / `boundaryIndex`, which do merge by
     // hand here, are silently dropped by `mergeWildcardResolved`.
     for (const [nodeId, path] of file.nodePathIndex) {
@@ -468,7 +468,7 @@ export class ImportResolver {
       }
     }
     // Facet declarations propagate through whole-file import like every other
-    // top-level block (TPL-20260514-04): a project that keeps its `facet`
+    // top-level block (TPL-2169): a project that keeps its `facet`
     // vocabulary in one file and imports it wholesale is the expected layout,
     // and without this the references in the importing file would all warn.
     for (const facet of resolved.facets) {

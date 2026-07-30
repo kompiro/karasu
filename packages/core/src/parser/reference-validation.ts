@@ -117,7 +117,7 @@ export function validateScopedContainsReferences(roots: readonly KrsNode[]): Dia
  * labels / descriptions to mean (#2065 Part B).
  *
  * Evaluated on the **merged** declaration list, like every other check whose
- * verdict a second file can change (TPL-20260718-02) — here the direction is the
+ * verdict a second file can change (TPL-2032) — here the direction is the
  * opposite of a reference check: per-file evaluation would never false-positive,
  * it would miss the cross-file duplicate entirely. The ImportResolver therefore
  * suppresses the per-file result and re-runs this against the merged file.
@@ -149,7 +149,7 @@ export function validateFacetDeclarations(facets: readonly FacetBlock[]): Diagno
  * **Every declared membership is kept.** The map is 1:N because multi-membership
  * is a normal state — an `entity` can be both PII and PCI scope — and because a
  * downstream view that can only paint one value per node must resolve that
- * itself rather than have the model layer decide for it (TPL-20260730-01).
+ * itself rather than have the model layer decide for it (TPL-2161).
  * Nodes without the property never enter the map.
  */
 export function buildFacetIndex(roots: readonly KrsNode[]): Map<string, Set<string>> {

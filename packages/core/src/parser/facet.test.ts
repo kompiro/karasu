@@ -9,7 +9,7 @@
 //      structural half of ADR-832's refusal to model runtime authorization, so
 //      `contains` and anything predicate-shaped must stay rejected.
 //   2. Membership is 1:N and the index keeps every declared membership
-//      (TPL-20260730-01). The `boundaryIndex` next door is 1:1 first-wins; this
+//      (TPL-2161). The `boundaryIndex` next door is 1:1 first-wins; this
 //      file exists partly so that shape cannot be copied here unnoticed.
 
 import { describe, expect, it } from "vitest";
@@ -272,7 +272,7 @@ system Shop {
   });
 
   // Top-level (system-less) declarations are a first-class layout, and a walk
-  // that only descends from `systems` would quietly skip them (TPL-20260510-01).
+  // that only descends from `systems` would quietly skip them (TPL-1160).
   it("indexes top-level orphan nodes and their descendants", () => {
     const file = parse(`
 facet a {}

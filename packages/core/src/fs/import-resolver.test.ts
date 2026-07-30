@@ -1553,7 +1553,7 @@ system Shop {
   // namespace, and `facetIndex` is rebuilt from the merged tree so it never
   // depends on a per-path merge remembering to carry it. The 1:N shape must
   // survive that merge — the `boundaryIndex` first-wins next door is exactly
-  // the shape not to copy (TPL-20260730-01).
+  // the shape not to copy (TPL-2161).
   describe("facet across files (#2173)", () => {
     const notDeclared = (ds: { code: string; severity: string }[]) =>
       ds.filter((d) => d.code === "facet-not-declared");

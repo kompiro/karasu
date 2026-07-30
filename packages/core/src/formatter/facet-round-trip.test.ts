@@ -4,7 +4,7 @@
 // guard in `formatter-top-level-coverage.test.ts`, which derives its fixture set
 // from `KrsFile`'s array-valued keys. The **per-node `facets` property** is not:
 // that guard cannot see nested constructs, which is exactly how #2036's scoped
-// `boundary` got dropped by `fmt` unnoticed. TPL-20260510-02 therefore asks for
+// `boundary` got dropped by `fmt` unnoticed. TPL-1101 therefore asks for
 // a dedicated per-node round-trip test, and this is it.
 
 import { describe, expect, it } from "vitest";
@@ -41,7 +41,7 @@ function expectRoundTrip(src: string): string {
   return formatted;
 }
 
-describe("facet fmt round-trip (TPL-20260510-02)", () => {
+describe("facet fmt round-trip (TPL-1101)", () => {
   it("preserves the `facets` property on a nested node", () => {
     const out = expectRoundTrip(`facet pii {}
 facet pci {}

@@ -2577,7 +2577,7 @@ system S {
   });
 
   // The reverse assertion matters as much as the positive one: a correct model
-  // that warns is as broken as a typo that does not (TPL-20260510-10).
+  // that warns is as broken as a typo that does not (TPL-907).
   it("stays silent when every reference resolves", () => {
     expect(
       facetWarnings(`

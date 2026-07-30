@@ -583,7 +583,7 @@ export interface KrsFile {
    * a normal state (an entity can be both PII and PCI scope), never a diagnostic
    * condition, so this map holds every declared membership rather than picking a
    * winner. A view that can only draw one value per node resolves that on the
-   * view side; the model layer does not discard the fact (TPL-20260730-01 —
+   * view side; the model layer does not discard the fact (TPL-2161 —
    * `boundaryIndex`'s first-wins is exactly the shape not to copy here).
    *
    * Nodes with no `facets` property are absent from the map (no empty sets).
