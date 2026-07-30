@@ -47,6 +47,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectAnnotationPossibleTypos(file, stylesIndex));
   warnings.push(...detectTagsNotBuiltin(file));
   warnings.push(...detectAnnotationsNotBuiltin(file));
+  warnings.push(...detectFacetsNotDeclared(file));
   warnings.push(...detectUnresolvedLegendRefs(file, stylesIndex));
 
   return warnings;
@@ -350,6 +351,64 @@ function detectAnnotationsNotBuiltin(file: KrsFile): Warning[] {
   for (const storage of file.storages) visit(storage);
   for (const organization of file.organizations) {
     for (const team of organization.teams) visitTeam(team);
+  }
+  return warnings;
+}
+
+/**
+ * A `facets <id>` reference must name a declared `facet` block (#2065 Part B).
+ *
+ * This is the resolver-side validator every cross-reference property is
+ * required to ship with (TPL-20260510-10): the parser accepts any identifier,
+ * so without this a one-character slip (`facets pcl`) would silently put the
+ * element in a facet nobody ever looks at.
+ *
+ * It lives here, not in the parser, because the declaration and the reference
+ * may sit in different files — `analyze()` runs on the import-merged model, so
+ * the merged-space requirement (TPL-20260718-02) holds by construction rather
+ * than by a suppress-and-re-derive pass.
+ *
+ * **Sheet-less / single-document context (TPL-20260612-01):** this warning is
+ * *not* suppressed in the LSP. It is import-coupled, so a project that declares
+ * its facets in one file and references them in another over-reports there —
+ * the same trade `invalid-owns` and `unresolved-handles` already make. The
+ * alternative costs more: typo detection against the declared set is this
+ * diagnostic's whole point, and suppressing it would switch that off in the
+ * editor, which is exactly where a typo gets made.
+ *
+ * Reads `facetIndex` rather than re-walking the tree: the index is the one
+ * derivation of membership, so a node that reached the model through any merge
+ * path is checked the same way.
+ */
+function detectFacetsNotDeclared(file: KrsFile): Warning[] {
+  if (file.facetIndex.size === 0) return [];
+  const declared = new Set(file.facets.map((f) => f.id));
+  const warnings: Warning[] = [];
+
+  // The index is keyed by node id, but the diagnostic wants the source range of
+  // the node that wrote the reference, so resolve locations from the tree.
+  const locById = new Map<string, KrsNode["loc"]>();
+  const visit = (node: KrsNode): void => {
+    if (!locById.has(node.id)) locById.set(node.id, node.loc);
+    for (const child of node.children) visit(child);
+  };
+  for (const system of file.systems) visit(system);
+  for (const client of file.clients) visit(client);
+  for (const service of file.services) visit(service);
+  for (const domain of file.domains) visit(domain);
+  for (const database of file.databases) visit(database);
+  for (const queue of file.queues) visit(queue);
+  for (const storage of file.storages) visit(storage);
+
+  for (const [nodeId, facetIds] of file.facetIndex) {
+    for (const facetId of facetIds) {
+      if (declared.has(facetId)) continue;
+      warnings.push({
+        kind: "facet-not-declared",
+        params: { nodeId, facetId },
+        loc: locById.get(nodeId),
+      });
+    }
   }
   return warnings;
 }

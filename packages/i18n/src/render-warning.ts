@@ -212,6 +212,14 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [t("warning.annotationNotBuiltin.migrationNote")],
       };
+    case "facet-not-declared":
+      return {
+        message: t("warning.facetNotDeclared.message", {
+          nodeId: w.params.nodeId,
+          facetId: w.params.facetId,
+        }),
+        details: [t("warning.facetNotDeclared.declarationNote")],
+      };
     case "legend-ref-unresolved":
       return {
         message: t("warning.legendRefUnresolved.message", {

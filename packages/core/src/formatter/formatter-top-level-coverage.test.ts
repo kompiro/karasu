@@ -43,6 +43,7 @@ const FIXTURES = {
   deploys: `deploy P {\n  oci "api" {\n    runtime "Node.js 20"\n  }\n}\n`,
   organizations: `organization O {\n  team T { label "T" }\n}\n`,
   boundaries: `system S {\n  service A { label "A" }\n}\nboundary g {\n  label "G"\n  contains A\n}\n`,
+  facets: `facet pii {\n  label "PII"\n  description "Handled per ADR-1421"\n  link "https://example.com/adr/1421" "ADR-1421"\n}\n`,
   legends: `system S {\n  service A { label "A" }\n}\nlegend system "Colors" {\n  swatch #ff0000 "hot"\n  ref @deprecated "going away"\n  ref [external] "third party"\n}\n`,
 } satisfies Record<ArrayKeys<KrsFile>, string>;
 

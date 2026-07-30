@@ -117,3 +117,7 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
 - 設計経緯: [ADR-9008](../adr/9008-ast-restructure-discriminated-union.md)
   （`"""` を verbatim Markdown 用に採用 = エスケープ機構を持たない、という制約の出所）、
   [ADR-2087](../adr/2087-escape-emitted-string-values.md)（本件の決定）。
+- [`docs/spec/syntax.md`](../spec/syntax.md) §「Cross-cutting membership (`facet`)」—
+  top-level の `facet` 宣言ブロックと、ノード内の `facets` プロパティの双方が round-trip 対象
+  （#2173）。前者は `KrsFile` の配列由来の網羅ガードが捕まえるが、後者は per-node 構文なので
+  専用の round-trip テストが要る。同節末尾に本 TPL への `> Related TPLs:` back-ref あり。

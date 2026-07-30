@@ -147,6 +147,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { nodeId: "test-node", tag: "cache" } };
     case "annotation-not-builtin":
       return { kind, params: { nodeId: "test-node", annotation: "canary" } };
+    case "facet-not-declared":
+      return { kind, params: { nodeId: "test-node", facetId: "pcl" } };
   }
 }
 

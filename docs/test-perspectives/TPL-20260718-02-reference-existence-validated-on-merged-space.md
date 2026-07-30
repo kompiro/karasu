@@ -95,3 +95,8 @@ per-file で消してよいのは **他ファイルの宣言で解決が変わ�
   スコープ宣言の `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する
   規定（#2036 slice A の再発事例が「想定される失敗モード」にある）。同節末尾に本 TPL への
   `> Related TPLs:` back-ref あり。
+- `docs/spec/syntax.md` §「Cross-cutting membership (`facet`)」— `facet-not-declared` は
+  マージ後モデルで判定する（宣言と参照が別ファイルにありうる）。`duplicate-facet-id` は逆向きの
+  理由で同じ扱い: per-file 評価は偽陽性ではなく**ファイル横断の重複の見落とし**を生むため、
+  ImportResolver が per-file を抑止しマージ後に再導出する（#2173）。同節末尾に本 TPL への
+  `> Related TPLs:` back-ref あり。

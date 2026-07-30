@@ -47,3 +47,11 @@ DSL キーワードの意味づけを決める／見直すときに確認する:
 ## 関連テスト
 
 未確立。spec 文言の検証は `pnpm adr:check-assumptions` の `grep:` アサーション（ADR が参照する spec 文字列が消えていないか）で部分的に担保される。
+
+## 派生元 spec
+
+- `docs/spec/syntax.md` §「Cross-cutting membership (`facet`)」— 新キーワード `facet` /
+  `facets` の追加にあたり、「所属」から「ルール言語」への引力を語の選び直しではなく
+  **外部 fence** で縛った実例（#2173）。spec の該当節が
+  [ADR-832](../adr/832-no-runtime-authz-modeling.md) を名指しし、宣言文法が値言語を
+  持たないことを恒久的な制約として明記する。
