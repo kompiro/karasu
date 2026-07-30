@@ -2,9 +2,9 @@
 
 - **日付**: 2026-07-30
 - **関連 Issue**: [#2184](https://github.com/kompiro/karasu/issues/2184)（発見元: [#2165](https://github.com/kompiro/karasu/issues/2165) / [PR #2183](https://github.com/kompiro/karasu/pull/2183)）
-- **関連 Design Doc**: `docs/design/unassigned-domain-placement-parity.md`（[PR #2194](https://github.com/kompiro/karasu/pull/2194)。実装完了後に ADR 昇格し同 PR で削除）
+- **関連 ADR**: [ADR-2184](../adr/2184-unassigned-domain-placement-parity.md)（本件の決定。設計は [PR #2194](https://github.com/kompiro/karasu/pull/2194) の Design Doc として起こし、本 ADR に集約）
 - **関連 spec**: [`docs/spec/syntax.md`](../spec/syntax.md) §Nesting placement / [`docs/spec/diagnostics.md`](../spec/diagnostics.md) §Assignment & cohesion
-- **関連 ADR**: [ADR-2165](../adr/2165-logical-containment-rules.md)（`canContain` が containment 規則の正典）、[ADR-681](../adr/681-top-level-service-rendering.md)（`(Unassigned)` 擬似 system）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（言語 v1.0 freeze — warning に留める根拠）
+- **前提 ADR**: [ADR-2165](../adr/2165-logical-containment-rules.md)（`canContain` が containment 規則の正典）、[ADR-681](../adr/681-top-level-service-rendering.md)（`(Unassigned)` 擬似 system）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（言語 v1.0 freeze — warning に留める根拠）
 - **関連 TPL**: [TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md)（本件で新設。チェックリストの「同じ意味の全綴りをテストに入れる」を AT-C で満たす）、[TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md)、[TPL-1160](../test-perspectives/TPL-1160-top-level-orphans.md)
 - **対象ファイル**:
   - `packages/core/src/resolver/warnings.ts`（`detectUnassignedDomains`）
@@ -60,7 +60,7 @@
 
 診断（「service に割り当てられていない」）と描画（`(Unassigned)` 枠）は別の関心事として
 切り分けた。AT-G が「警告は出るが枠には入らない」を明示的に確認するのはそのため —
-両者を揃えると renderer に手が入り、既存の図の見た目が変わる（Design Doc 案3）。
+両者を揃えると renderer に手が入り、既存の図の見た目が変わる（[ADR-2184](../adr/2184-unassigned-domain-placement-parity.md) 却下案 B）。
 
 warning の追加は additive なので言語 v1.0 freeze（ADR-1314）に抵触しない。ただし今日
 無言のファイルに新しく警告が出るため、`.changeset/` で `minor` として公開する。
