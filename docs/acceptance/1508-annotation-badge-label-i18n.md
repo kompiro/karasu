@@ -34,7 +34,7 @@
 
   > ✅ Automated — `default-style.test.ts` › `escapes quotes and backslashes`
 
-### 全エントリポイント貫通（TPL-1001 / 11）— `packages/core/src/badge-labels-meta.test.ts`
+### 全エントリポイント貫通（TPL-1001 / TPL-219）— `packages/core/src/badge-labels-meta.test.ts`
 
 - [x] `annotationBadgeLabels` を受ける全 SVG 生成エントリポイントで、無注入時に en 既定が出る
 

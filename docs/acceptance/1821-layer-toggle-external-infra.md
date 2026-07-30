@@ -37,7 +37,7 @@ system view の **external**（`[external]` service）と **infra**（database/q
 - [x] `[data-collapse-category="infra"|"external"]` のクリックで `onCategoryToggle(category)` が発火する
 - [x] 未知のカテゴリ値はトグルしない
 
-### AC-4: 非破壊・cross-surface（TPL-1101 / -06）
+### AC-4: 非破壊・cross-surface（TPL-1101 / TPL-1001）
 
 - [x] collapse 状態は app の view-state で、`.krs` を変更しない（round-trip 保持）
 > ✅ Automated — collapse は compile option のみで AST/シリアライズに触れない（`category-collapse.test.ts` が SVG 差分のみを確認）

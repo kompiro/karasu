@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ICON_THEME_STYLE_SOURCE } from "@karasu-tools/core";
 import { KIND_TO_ICON_NAME } from "./NodeDetailPanel.js";
 
-// Cross-surface icon source consistency (TPL-999 / -06 item 4).
+// Cross-surface icon source consistency (TPL-999 / TPL-1001 item 4).
 //
 // Two independent mappings live in the codebase:
 //   1. `ICON_THEME_STYLE_SOURCE` in @karasu-tools/core — the .krs.style
