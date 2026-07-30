@@ -5,8 +5,12 @@
  * every package's npm semver. The spec docs (docs/spec/syntax.md / style.md
  * and their ja variants) state the same version as the canonical token
  * `.krs language v<version>`; language-version.test.ts guards the two
- * representations against drift (TPL-1296). The version moves per
- * ADR-1314 semantics: additive changes bump v1.x, breaking changes require
- * v2.0.
+ * representations against drift (TPL-1296) by rejecting *stale* tokens
+ * — ones naming a version the language has moved past. Forward references stay
+ * legal: prose registers future behaviour against `.krs language v2.0` while
+ * v1.0 is frozen, so the guard must not fire on them.
+ *
+ * The version moves per ADR-1314 semantics: additive changes bump v1.x,
+ * breaking changes require v2.0.
  */
 export const KRS_LANGUAGE_VERSION = "1.0";

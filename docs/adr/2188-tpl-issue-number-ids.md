@@ -45,7 +45,7 @@ ADR-2092 は「TPL の採番は誰も困っていない」を前提に `date-seq
 2. 番号が既に他 TPL に使われている、または issue が無い場合は **その TPL を起こした PR 番号**
 3. どちらも使えない場合は **local 採番（既存 TPL id の最大値 + 1）**
 
-既存 88 TPL は本 ADR 末尾の対応表のとおり一括移行した（起点 Issue: 66 / 作成 PR: 16 / local 採番: 6 — local 分は移行時点の最大値 2165 の続き 2166〜2171）。`related_to` グラフ・README 索引・repo 内の全参照（docs / packages / .claude / workflows、約 2,100 箇所）も同時に書き換えた。旧 NN 略記（`TPL-04` など、初期 backfill 23 件への省略参照）も新 id に引き直した。
+既存 89 TPL は本 ADR 末尾の対応表のとおり一括移行した（起点 Issue: 67 / 作成 PR: 16 / local 採番: 6 — local 分は移行時点の最大値 2165 の続き 2166〜2171。89 件目の TPL-20260730-03 は移行作業と並行して main に追加され、merge 時に取り込んだ）。`related_to` グラフ・README 索引・repo 内の全参照（docs / packages / .claude / workflows、約 2,100 箇所）も同時に書き換えた。旧 NN 略記（`TPL-04` など、初期 backfill 23 件への省略参照）も新 id に引き直した。
 
 **ADR-2092 の config 分離（`tpl.config.json` / `adr.config.json`）は維持する。** 分離の当初理由（idFormat の差異）は消えるが、片方のツール設定変更がもう片方の corpus 検証を巻き添えにしない分離の実利は形式が揃っても変わらない。`topics` 複製 + `pnpm lint:config-topics-sync` の運用も従来どおり。
 
@@ -161,3 +161,4 @@ ADR-2092 は「TPL の採番は誰も困っていない」を前提に `date-seq
 | TPL-20260729-02 | TPL-2157 | 起点 Issue |
 | TPL-20260730-01 | TPL-2161 | 起点 Issue |
 | TPL-20260730-02 | TPL-2165 | 起点 Issue |
+| TPL-20260730-03 | TPL-2185 | 起点 Issue |

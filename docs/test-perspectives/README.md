@@ -488,4 +488,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2165](TPL-2165-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
 | [TPL-2157](TPL-2157-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
 | [TPL-2161](TPL-2161-declared-membership-not-discarded-in-derived-index.md) | 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側の解決（primary 選択）で吸収し、merge 経路も同じ多値の意味論に従わせる | core-concepts | ADR-1974, #2161 |
+| [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) | drift guard は「宣言」と「言及」を区別する — 「正典の値以外が現れたら fail」は次期版への前方参照を stale と誤検出し、freeze 中の設計作業をブロックする | build | #2185 |
 | [TPL-2188](TPL-2188-id-uniqueness-needs-cross-corpus-check.md) | 採番 id の一意性は corpus 横断の機械検証か大域 allocator で担保する — per-file 検査だけの validator は並行ブランチの採番衝突を検出できない | adr-tooling | #2188, ADR-2092 |
