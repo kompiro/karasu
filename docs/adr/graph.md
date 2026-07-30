@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-285 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+286 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -233,6 +233,7 @@ flowchart TD
     ADR_1783["ADR-1783<br/>karasu-nest — URL で .krs を共有・プレビューするホスト型機能"]
     ADR_1801["ADR-1801<br/>karasu-nest — 共有リンクの OGP 画像（system 図 unfurl）"]
     ADR_1809["ADR-1809<br/>プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する"]
+    ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -697,6 +698,7 @@ flowchart TD
   class ADR_2152 accepted
   class ADR_2165 accepted
   class ADR_2188 accepted
+  class ADR_2218 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -730,7 +732,7 @@ flowchart TD
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 11 ADRs
 - [`parser`](graph/parser.md) — 22 ADRs
-- [`project`](graph/project.md) — 8 ADRs
+- [`project`](graph/project.md) — 9 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
