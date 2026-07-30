@@ -21,7 +21,7 @@ assumptions:
   - 実装 PR: (このコミットの PR)
   - ADR: [ADR-438](438-krs-formatter.md)（`.krs` フォーマッター — 本 ADR が網羅性の担保方法を追加）、[ADR-702](702-top-level-infra-rendering.md) / [ADR-681](681-top-level-service-rendering.md)（top-level infra / service の受理 — 今回落ちていた構文の出所）、[ADR-1820](1820-notation-promotion-gate.md)（experimental notation の gate）、[ADR-1895](1895-reverse-architecture-harness.md)（`boundary` を生成し `fmt` を必須ステップに持つ harness — 被害の発見経路）
   - AT: [2076-fmt-top-level-round-trip.md](../acceptance/2076-fmt-top-level-round-trip.md)
-  - TPL: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（round-trip 保証 — 本 ADR で「網羅性も round-trip の一部」を追記）
+  - TPL: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（round-trip 保証 — 本 ADR で「網羅性も round-trip の一部」を追記）
 
 ## 背景
 
@@ -72,9 +72,9 @@ const topLevel = [...file.systems, ...file.services, ...file.domains, ...file.de
 
 parser は header 位置（`boundary g "G" {`）とプロパティ位置（`label "G"`）の両方を受理し、どちらも同じ AST（`label` フィールド）になる。formatter は後者に正規化する。`organization` / `team` / `member` と同じ形になり、出力が一意（= idempotent）になるため。AST は同一なので round-trip 保証は保たれる。header 位置で書いた author の diff が 1 行動くのは許容する。
 
-### 4. TPL は新設せず TPL-20260510-02 を拡張する
+### 4. TPL は新設せず TPL-1101 を拡張する
 
-3-Yes ルール（横展開しうる / 構造的に再発しうる / 既存 TPL に未掲載）のうち第 3 項を満たさない。[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) が round-trip 保証を既に所有しているため、そこに「**網羅性も round-trip の一部**」という節・チェックリスト項目・対処パターンを追記する。近い内容の TPL を 2 本置くと、次に参照する人がどちらを見ればよいか分からなくなる。
+3-Yes ルール（横展開しうる / 構造的に再発しうる / 既存 TPL に未掲載）のうち第 3 項を満たさない。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) が round-trip 保証を既に所有しているため、そこに「**網羅性も round-trip の一部**」という節・チェックリスト項目・対処パターンを追記する。近い内容の TPL を 2 本置くと、次に参照する人がどちらを見ればよいか分からなくなる。
 
 ## 却下した案
 

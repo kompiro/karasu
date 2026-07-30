@@ -1,4 +1,4 @@
-// Build-time guard (proactive TPL-20260616-01): fail if any repo-relative link or
+// Build-time guard (proactive TPL-1621): fail if any repo-relative link or
 // `#fragment` that points *into the published site* doesn't resolve — an unresolved
 // route or a missing heading/`<a id>` anchor would otherwise 404 silently on the
 // deployed site. Links that leave the site (examples/, ADRs, external) are out of

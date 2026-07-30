@@ -178,7 +178,7 @@ describe("buildLabelInputs", () => {
 });
 
 describe("real sample fence — ec-platform system top view (#2048)", () => {
-  // TPL-20260715-01 / TPL-20260711-02: fence a real diagram numerically. The
+  // TPL-1954 / TPL-1927: fence a real diagram numerically. The
   // top view of 01-system.krs reproduces #2048 (a wide async label clips a
   // service card). After the pass, no edge-label box may penetrate a node card
   // and no two labels may overlap.
@@ -212,7 +212,7 @@ describe("real sample fence — ec-platform system top view (#2048)", () => {
     );
 
     // Precondition: this real sample actually reproduces the collision at default
-    // placement (guards against a vacuous fence — see TPL-20260715-01).
+    // placement (guards against a vacuous fence — see TPL-1954).
     const before = boxesAfter(inputs, new Map());
     expect(countLabelPenetrations(before, nodeRects)).toBeGreaterThan(0);
 

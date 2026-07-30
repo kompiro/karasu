@@ -3,7 +3,7 @@
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1628](https://github.com/kompiro/karasu/issues/1628)（docs site Phase 2 — Examples gallery 項目）
 - **関連設計**: `docs/design/docs-site-examples-gallery.md`（実装完了後 ADR に昇格）
-- **Related TPLs**: [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)（docs 取り込みパイプライン）, [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（正典 ↔ 派生の片方向）
+- **Related TPLs**: [TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md)（docs 取り込みパイプライン）, [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（正典 ↔ 派生の片方向）
 - **対象**:
   - `packages/docs-site/scripts/lib/{examples-manifest,render-examples,gallery-pages}.ts`
   - `packages/docs-site/scripts/sync.ts`（gallery 生成を追加）

@@ -68,7 +68,7 @@ first-class node になり、SPA・モバイルアプリ等の「ユーザーが
 ## 影響
 
 - spec: `docs/spec/syntax.md` / `.ja.md` の realizes・owns 記述に client を明記。
-- 派生 TPL: [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md)
+- 派生 TPL: [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md)
   — cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、複数の独立した集合は同期させる。
 
 ## 却下した代替案

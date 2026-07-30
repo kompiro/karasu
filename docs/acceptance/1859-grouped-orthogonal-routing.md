@@ -4,7 +4,7 @@
 - **Issue**: #1859（親 #1822 / Epic #1817 comprehension）
 - **PR**: (P2c-A — core routing)
 - **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
-- **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測り、貫通は 0 を assert）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（段跨ぎ edge がカードを貫通しない）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置 + 参照エッジ端点保持）
+- **Related TPLs**: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測り、貫通は 0 を assert）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（段跨ぎ edge がカードを貫通しない）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置 + 参照エッジ端点保持）
 - **対象**: `packages/core/src/renderer/edge-routing-groups.ts`（新規） / `edge-geometry.ts`（新規） / `layout.ts` / `edge-routing.ts` / `layout-types.ts`
 
 ## 概要
@@ -13,13 +13,13 @@ Group by: team（P2a）の展開ビューのエッジを直交ルーティング
 
 ## 受け入れ条件
 
-### AC-1: 貫通ゼロ（core, TPL-20260711-02 二重計測）
+### AC-1: 貫通ゼロ（core, TPL-1927 二重計測）
 
 > ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide)
 
 - [x] grouped 展開ビューで、どのエッジセグメントもノードカード / グループフレームの内部を貫通しない（貫通数 == 0 を厳密 assert）
 - [x] 同じ grouped ノード配置で直線 center-to-center に描くと貫通する（> 0）ことを確認 — fixture が実際にルータを起動していることの担保
-- [x] 交差数も併せて計測する（TPL-20260711-02: 交差数だけで可読性を判断しない。P2c-A は交差を減らさず貫通を消す）
+- [x] 交差数も併せて計測する（TPL-1927: 交差数だけで可読性を判断しない。P2c-A は交差を減らさず貫通を消す）
 - [x] 障害物集合は「全ノードカード ∪ 端点を含まない全フレーム」— エッジは自チームフレーム内で始点/終点を持ってよい
 
 ### AC-2: ルーティング挙動（core）

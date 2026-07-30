@@ -69,7 +69,7 @@ v0.x のまま。** v1.0 の公開確定は launch（#1317 / #1764）で行っ�
   （edge origin scope、top-level の `user` / edge 禁止）を含む。
 - **タグ・注釈**: `docs/spec/tags-annotations.md` の builtin 集合と **open annotation
   set のセマンティクス**（未知の注釈は display-only で許容）。
-- **診断 register**: 事実 vs 流派の二分（ADR-1567 / TPL-20260514-08）と、
+- **診断 register**: 事実 vs 流派の二分（ADR-1567 / TPL-1386）と、
   ADR-1566/02/05 で確定した register 割り当て。**warn-don't-error** 方針。
   診断コードは安定 API として扱う（ADR-1567）。
 - **lifecycle 注釈のパラメータ構文**（ADR-1568、`@name(key: "value")` +

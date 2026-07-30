@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 // Guards the VS Code Marketplace publish readiness for Issue #1316:
 // discoverability metadata in the manifest, the .vsix file filter, and the
 // publish-step secret guard. See docs/acceptance/1316-vscode-marketplace-publish.md
-// and TPL-20260510-15 (dev vs packaged mode parity) / TPL-20260520-02 (guard
+// and TPL-1024 (dev vs packaged mode parity) / TPL-1480 (guard
 // must no-op without the secret).
 
 const read = (relative: string) =>
@@ -66,7 +66,7 @@ describe("Marketplace manifest", () => {
   });
 });
 
-describe(".vscodeignore (packaged/installed parity — TPL-20260510-15)", () => {
+describe(".vscodeignore (packaged/installed parity — TPL-1024)", () => {
   it("excludes source and dev tooling from the .vsix", () => {
     expect(ignorePatterns).toContain("src/**");
     expect(ignorePatterns).toContain("**/*.test.*");
@@ -82,7 +82,7 @@ describe(".vscodeignore (packaged/installed parity — TPL-20260510-15)", () => 
   });
 });
 
-describe("vscode-release workflow (TPL-20260520-02)", () => {
+describe("vscode-release workflow (TPL-1480)", () => {
   it("is manual-only (workflow_dispatch, not push)", () => {
     expect(releaseWorkflow).toContain("workflow_dispatch:");
     expect(releaseWorkflow).not.toMatch(/^\s*push:/m);

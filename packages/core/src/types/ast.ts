@@ -568,7 +568,7 @@ export interface KrsFile {
    *
    * A flat `Map<nodeId, boundaryId>` cannot express this: node ids are unique
    * only among siblings, so the scope is a distinguishing dimension the key must
-   * carry (TPL-20260512-01). Build keys with {@link boundaryScopeKey} on both
+   * carry (TPL-1352). Build keys with {@link boundaryScopeKey} on both
    * the producing and consuming side so the separator never leaks.
    *
    * Top-level `boundary` blocks keep using the flat `boundaryIndex` above — their
@@ -621,7 +621,7 @@ export function boundaryScopeKey(pathIds: readonly string[]): string {
  * path plus the boundary id, in the same injective JSON encoding as
  * {@link boundaryScopeKey}. A scoped boundary's identity is (declaring scope,
  * id) — #2036 — so everything keyed by its group id (frame container id,
- * collapse state, stub id) must carry both dimensions (TPL-20260512-01): a
+ * collapse state, stub id) must carry both dimensions (TPL-1352): a
  * bare id would fuse same-named boundaries across scopes into one collapse
  * key. Top-level boundaries keep their bare id — the flat form is one
  * model-wide declaration, so one shared collapse state is its identity.

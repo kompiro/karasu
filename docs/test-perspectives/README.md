@@ -12,8 +12,8 @@ karasu で **再発しうる失敗パターン** を、構造化された観点�
 
 TPL は **2 つの起源** から生まれる:
 
-- **Retrospective（事後）** — 過去の `bug` / `test-infra` Issue から、実際に起きた失敗を一般化する。バックフィルの主流（TPL-01〜17）はこの形
-- **Proactive（事前）** — `docs/concepts.ja.md` のようなアーキテクチャ原則 / 非目標 / north-star から、**原則が破られたときに起きるであろう失敗** を予測して観点化する（TPL-18〜20 はこの形）
+- **Retrospective（事後）** — 過去の `bug` / `test-infra` Issue から、実際に起きた失敗を一般化する。バックフィルの主流（初期バックフィルの 17 件）はこの形
+- **Proactive（事前）** — `docs/concepts.ja.md` のようなアーキテクチャ原則 / 非目標 / north-star から、**原則が破られたときに起きるであろう失敗** を予測して観点化する（初期の proactive 3 件 — TPL-1207 / TPL-2166 / TPL-2167 — はこの形）
 
 どちらも 3-Yes ルール（次節）と同じ基準で評価する。バグ起源 / 原則起源は frontmatter の `discovered_from` を見れば分かる（`issue:` か `root_cause_file: docs/concepts.*` か）。両方とも同じスキーマ・同じ運用ルールに乗る。
 
@@ -26,13 +26,15 @@ ADR が **過去の判断を残す** ためのものに対し、TPL は **未来
 
 ## エントリの構造
 
-各 TPL は 1 ファイル = 1 観点で、`docs/test-perspectives/TPL-YYYYMMDD-NN-<slug>.md` というファイル名規約に従う。
+各 TPL は 1 ファイル = 1 観点で、`docs/test-perspectives/TPL-<n>-<slug>.md` というファイル名規約に従う（[ADR-2188](../adr/2188-tpl-issue-number-ids.md)）。
+
+`<n>` の採番は ADR と同じ優先順位: **起点の GitHub Issue 番号 → その TPL を起こす PR 番号 → local 採番（既存 TPL id の最大値 + 1）**。ゼロ埋めしない。GitHub の番号は大域的に一意なので並行ブランチ間で採番が衝突しない。複数 issue にまたがる TPL は先頭の `discovered_from` の issue を使い、番号が既に他 TPL に使われていれば次の優先順位へ進む。
 
 ### Frontmatter
 
 ```yaml
 ---
-id: TPL-YYYYMMDD-NN
+id: TPL-<n>
 title: "観点を1行で表現"
 status: active            # active | deprecated
 date: YYYY-MM-DD
@@ -44,10 +46,10 @@ known_consumers:           # optional — この観点が適用されると判�
   - matrix
 discovered_from:
   - issue: "#1234"
-  - root_cause_adr: "ADR-XXXXXXXX-XX"        # optional
+  - root_cause_adr: "ADR-<n>"                # optional
   - root_cause_file: "path/to/file.ts:LINE"  # optional
 related_to:
-  - TPL-XXXXXXXX-XX
+  - TPL-<n>
 topic: app-ui              # ADR と同じ controlled vocabulary
 scope:
   packages:
@@ -73,7 +75,7 @@ scope:
 
 ### 新規エントリの追加タイミング
 
-`bug` または `test-infra` ラベルが付いた Issue が起票されたとき、以下の **3-Yes ルール** で TPL 化を検討する（`test-infra` は E2E flake / fixture / harness の問題で、典型的には testing-topic TPL を生む — 例: TPL-20260510-13 / TPL-20260510-14）。
+`bug` または `test-infra` ラベルが付いた Issue が起票されたとき、以下の **3-Yes ルール** で TPL 化を検討する（`test-infra` は E2E flake / fixture / harness の問題で、典型的には testing-topic TPL を生む — 例: TPL-976 / TPL-1171）。
 
 1. 同じ root cause が **別の機能でも発生しうる** か?
 2. 構造的なパターンとして **再発する可能性がある** か?
@@ -91,11 +93,11 @@ scope:
 
 ### 定期 deprecation レビュー
 
-deprecation の **トリガー** は週次の定期レビューで起こす。`active` な TPL を放置すると、構造変更で原理的に発生しなくなった観点がそのまま残り続けるため。
+deprecation の **トリガー** は月次の定期レビューで起こす。`active` な TPL を放置すると、構造変更で原理的に発生しなくなった観点がそのまま残り続けるため。
 
-**カデンス**: 毎週月曜 09:00 UTC に `.github/workflows/tpl-review.yml` が走り、その週のレビュー用 Issue を自動作成する。`workflow_dispatch` で手動実行も可能（bootstrap や大きなアーキテクチャ変更直後の ad-hoc 用）。
+**カデンス**: 毎月 25 日 09:00 UTC に `.github/workflows/tpl-review.yml` が走り、その月のレビュー用 Issue（`TPL deprecation review — YYYY-MM`）を自動作成する。`workflow_dispatch` で手動実行も可能（bootstrap や大きなアーキテクチャ変更直後の ad-hoc 用）。
 
-> なぜ週次か: TPL 運用は始まったばかりで、20 件近くを一括 backfill した直後でもある。早く obsolescence を捕捉するために、当面は高頻度で回す。ほとんどの週で全件 `keep` になる状態が安定したら、月次 / 半年に伸ばすかを再検討する（cadence 自体も TPL のレビュー対象）。
+> なぜ月次か: 当初は週次で回していた（一括 backfill 直後で obsolescence を早く捕捉したかったため）。運用開始から実際に deprecate された TPL は 0 件、2026-W30 / W31 のレビューも全件 `keep` で、週次の Issue はキューのノイズになっていた。当初の「全件 `keep` が安定したら伸ばす」条件を満たしたので、#2094 / #2136 のレビューをもって月次へ緩めた。月次でも全件 `keep` が続くなら半年次を検討し、逆に 1 回のレビューで複数 deprecate が出たら週次へ戻す（cadence 自体も TPL のレビュー対象）。
 
 **Issue の中身**: `pnpm tpl:review:body` が生成する。`active` TPL ごとにチェックボックス + 3 つの観点が並ぶ:
 
@@ -117,7 +119,8 @@ frontmatter とこの README の一覧表は **`pnpm tpl:validate`** で機械�
 
 検査内容:
 
-- ファイル名が `TPL-YYYYMMDD-NN-<slug>.md` で frontmatter `id` と一致すること
+- ファイル名が `TPL-<n>-<slug>.md` で frontmatter `id` と一致すること
+- `id` が corpus 内で一意であること（並行ブランチが同じ id を採番した衝突をマージ時に検出する — `tpl-tools` 0.0.7 の `duplicate-id`、[#2188](https://github.com/kompiro/karasu/issues/2188)）
 - 必須フィールド（`id` / `title` / `status` / `date` / `applicable_to` / `discovered_from` / `topic` / `scope.packages`）の存在
 - `status` が `active` / `deprecated` のいずれか
 - `topic` が `tpl.config.json` の controlled vocabulary（ADR と同一の語彙を複製）に含まれること
@@ -129,12 +132,13 @@ frontmatter とこの README の一覧表は **`pnpm tpl:validate`** で機械�
 
 実装は外部パッケージ [`@kompiro/tpl-tools`](https://github.com/kompiro/tpl-tools)（`tpl validate` サブコマンド）。`pnpm tpl:validate` は `--config tpl.config.json` を渡し、`--packages-root packages` で `scope.packages` を検証している（karasu#1357 で切り出し）。
 
-> **なぜ ADR と config を分けているか**（karasu#2083）
-> `tpl-tools` と `adr-tools` は同じ config キー `idFormat` を読む。ADR は
-> `issue-number`（`ADR-<n>`）へ移行したが、TPL は bug 起点で単一の issue に
-> 紐付かないため `date-sequence`（`TPL-YYYYMMDD-NN`）を維持する。config を
-> 共有したままだと ADR 側の `idFormat` が TPL にも適用され、全 TPL が
-> `id-format-invalid` になる。そのため `tpl.config.json` を分離した。
+> **なぜ ADR と config を分けているか**（karasu#2083 → #2188）
+> `tpl-tools` と `adr-tools` は同じ config キー `idFormat` を読む。分離当時
+> （ADR-2092）は ADR が `issue-number`、TPL が `date-sequence` と形式が異なる
+> ことが分離の理由だった。#2188 で TPL も `issue-number` へ移行し形式は揃ったが
+> （ADR-2188）、ツールごとに config を分けておく構造は維持している — 片方の
+> ツール設定変更がもう片方を巻き添えにしない、という分離の実利は形式が同じでも
+> 変わらないため。
 >
 > `topics` は両ファイルに複製されている。**ADR 側に topic を足すときは
 > `tpl.config.json` にも同じ値を足すこと** — 差分は `pnpm lint:config-topics-sync`
@@ -146,13 +150,13 @@ DesignDoc を書くとき、該当 `topic` の active TPL を一覧したい場�
 
 ```
 $ pnpm tpl:related app-ui
-- [TPL-20260510-04](docs/test-perspectives/TPL-20260510-04-continuous-input-dom-interference.md) — ユーザーの連続操作中は DOM / state を破壊する別系統の処理を抑止する
-- [TPL-20260510-08](docs/test-perspectives/TPL-20260510-08-derived-state-staleness.md) — 派生 view / panel の memoization は source state の変化次元すべてを key に含める
-- [TPL-20260510-09](docs/test-perspectives/TPL-20260510-09-event-handler-ui-restructure.md) — UI 構造を変える event handler は次描画でマウントされる target への event 漏れを防ぐ
+- [TPL-1053](docs/test-perspectives/TPL-1053-continuous-input-dom-interference.md) — ユーザーの連続操作中は DOM / state を破壊する別系統の処理を抑止する
+- [TPL-1032](docs/test-perspectives/TPL-1032-derived-state-staleness.md) — 派生 view / panel の memoization は source state の変化次元すべてを key に含める
+- [TPL-948](docs/test-perspectives/TPL-948-event-handler-ui-restructure.md) — UI 構造を変える event handler は次描画でマウントされる target への event 漏れを防ぐ
 
 $ pnpm tpl:related renderer --package core
-- [TPL-20260510-05](docs/test-perspectives/TPL-20260510-05-implicit-data-filtering.md) — データ表示の暗黙フィルタ（宣言漏れ / resolver / null 戻り）を全経路で確認する
-- [TPL-20260510-06](docs/test-perspectives/TPL-20260510-06-display-mode-cross-surface.md) — 表示モード / グローバルレンダリング切替は全描画面の点検と precedence 設計が必要
+- [TPL-999](docs/test-perspectives/TPL-999-implicit-data-filtering.md) — データ表示の暗黙フィルタ（宣言漏れ / resolver / null 戻り）を全経路で確認する
+- [TPL-1001](docs/test-perspectives/TPL-1001-display-mode-cross-surface.md) — 表示モード / グローバルレンダリング切替は全描画面の点検と precedence 設計が必要
 ```
 
 active なエントリのみが表示される（deprecated はクエリで除外）。`<topic>` が ADR vocabulary 外でも warning 付きで実行はする — 新トピック導入時の事前確認に使えるように。実装は `@kompiro/tpl-tools` の `tpl related` サブコマンド。
@@ -213,12 +217,12 @@ duplication が複数箇所に分散していて drift の温床になってい�
 
 現時点の evidence:
 
-- [TPL-06](TPL-20260510-06-display-mode-cross-surface.md) — 共通アセット（pictogram など）を「id → 単一ソース」の解決関数に集約
-- [TPL-11](TPL-20260510-11-parallel-function-parity.md) — 並列関数ファミリの差を共通 helper に抽出（`buildStyles` のような形）
-- [TPL-12](TPL-20260510-12-ast-parser-renderer-agreement.md) — ノード共通フィールドを `BaseNodeFields` に集約、parser の keyword 処理を共通関数に
-- [TPL-13](TPL-20260510-13-e2e-fixture-controlled-state.md) — 既存 fixture（`anthropic.ts` の locale pin）を他 fixture にテンプレ展開
-- [TPL-14](TPL-20260510-14-wait-for-stable-state.md) — Monaco の async mount 操作を fixture helper（`replaceEditorContent`）に集約
-- [TPL-15](TPL-20260510-15-dev-vs-packaged-mode-parity.md) — 候補パス配列 + `find(fs.existsSync)` の解決ロジックを 1 箇所に
+- [TPL-1001](TPL-1001-display-mode-cross-surface.md) — 共通アセット（pictogram など）を「id → 単一ソース」の解決関数に集約
+- [TPL-219](TPL-219-parallel-function-parity.md) — 並列関数ファミリの差を共通 helper に抽出（`buildStyles` のような形）
+- [TPL-74](TPL-74-ast-parser-renderer-agreement.md) — ノード共通フィールドを `BaseNodeFields` に集約、parser の keyword 処理を共通関数に
+- [TPL-976](TPL-976-e2e-fixture-controlled-state.md) — 既存 fixture（`anthropic.ts` の locale pin）を他 fixture にテンプレ展開
+- [TPL-1171](TPL-1171-wait-for-stable-state.md) — Monaco の async mount 操作を fixture helper（`replaceEditorContent`）に集約
+- [TPL-1024](TPL-1024-dev-vs-packaged-mode-parity.md) — 候補パス配列 + `find(fs.existsSync)` の解決ロジックを 1 箇所に
 
 **使わないケース**: duplication がまだ 2 箇所しかなく、抽象化すると形が決まりすぎて将来の divergence を阻害する場合。3 箇所目で再評価する（rule of three）。
 
@@ -228,9 +232,9 @@ trust boundary / consumer 境界 / 入出力境界では、**便利な変種で�
 
 現時点の evidence:
 
-- [TPL-13](TPL-20260510-13-e2e-fixture-controlled-state.md) — テスト boot は `page.goto("/")` ではなく fixture 経由をデフォルト（fixture が wipe / seed / locale pin を担保）
-- [TPL-16](TPL-20260510-16-convenience-vs-principled-api.md) — consumer 境界では convenience API（`compile`, `parse`）ではなく principled API（`compileProject`, `parseAsync`）をデフォルト
-- [TPL-17](TPL-20260510-17-trust-boundary-input-validation.md) — 外部入力は受け取った時点で validate / canonicalize する（downstream の incidental mitigation に頼らない）
+- [TPL-976](TPL-976-e2e-fixture-controlled-state.md) — テスト boot は `page.goto("/")` ではなく fixture 経由をデフォルト（fixture が wipe / seed / locale pin を担保）
+- [TPL-239](TPL-239-convenience-vs-principled-api.md) — consumer 境界では convenience API（`compile`, `parse`）ではなく principled API（`compileProject`, `parseAsync`）をデフォルト
+- [TPL-168](TPL-168-trust-boundary-input-validation.md) — 外部入力は受け取った時点で validate / canonicalize する（downstream の incidental mitigation に頼らない）
 
 **使わないケース**: principled variant が genuinely overspec で、convenience を選ぶ理由を Design Doc / コメントで言える場合。境界の内側（純粋な internal helper）では convenience でよい。
 
@@ -240,10 +244,10 @@ trust boundary / consumer 境界 / 入出力境界では、**便利な変種で�
 
 現時点の evidence:
 
-- [TPL-10](TPL-20260510-10-cross-reference-validation.md) — **正しい参照に warning が出ない** 反対方向の test
-- [TPL-13](TPL-20260510-13-e2e-fixture-controlled-state.md) — retry-pass を `failed` と同等に集計、**flake が隠蔽されない** ことを担保
-- [TPL-14](TPL-20260510-14-wait-for-stable-state.md) — `retries=0` で通らないテストを「隠れ flake」として可視化
-- [TPL-17](TPL-20260510-17-trust-boundary-input-validation.md) — traversal 試行 / injection 試行 / null byte / 巨大入力の **negative test** を回帰テストに必ず 1 件
+- [TPL-907](TPL-907-cross-reference-validation.md) — **正しい参照に warning が出ない** 反対方向の test
+- [TPL-976](TPL-976-e2e-fixture-controlled-state.md) — retry-pass を `failed` と同等に集計、**flake が隠蔽されない** ことを担保
+- [TPL-1171](TPL-1171-wait-for-stable-state.md) — `retries=0` で通らないテストを「隠れ flake」として可視化
+- [TPL-168](TPL-168-trust-boundary-input-validation.md) — traversal 試行 / injection 試行 / null byte / 巨大入力の **negative test** を回帰テストに必ず 1 件
 
 **使わないケース**: positive test だけで boundary が完全に枚挙できる場合（pure function で input 集合が小さく、全列挙できるなど）。多くの実コードでは該当しない。
 
@@ -298,17 +302,17 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 | 実施日 | Topic | TPL 件数 | Gap 件数 | Issues |
 |---|---|---|---|---|
-| 2026-05-10 | [parser](#fit-gap-parser) | 3 (TPL-02 / 10 / 12) | 4 | [#1231](https://github.com/kompiro/karasu/issues/1231) [#1232](https://github.com/kompiro/karasu/issues/1232) [#1233](https://github.com/kompiro/karasu/issues/1233) [#1234](https://github.com/kompiro/karasu/issues/1234) |
-| 2026-05-10 | [app-ui](#fit-gap-app-ui) | 3 (TPL-04 / 08 / 09) | 4 | [#1238](https://github.com/kompiro/karasu/issues/1238) [#1239](https://github.com/kompiro/karasu/issues/1239) [#1240](https://github.com/kompiro/karasu/issues/1240) [#1241](https://github.com/kompiro/karasu/issues/1241) |
-| 2026-05-11 | [renderer](#fit-gap-renderer) | 2 (TPL-05 / 06) | 3 | [#1245](https://github.com/kompiro/karasu/issues/1245) [#1246](https://github.com/kompiro/karasu/issues/1246) [#1247](https://github.com/kompiro/karasu/issues/1247) |
-| 2026-05-11 | [edges](#fit-gap-edges) | 2 (TPL-07 / 23) | 3 | [#1248](https://github.com/kompiro/karasu/issues/1248) [#1249](https://github.com/kompiro/karasu/issues/1249) [#1250](https://github.com/kompiro/karasu/issues/1250) |
-| 2026-05-11 | [core-concepts](#fit-gap-core-concepts) | 5 (TPL-01 / 18 / 19 / 21 / 22) | 3 | [#1260](https://github.com/kompiro/karasu/issues/1260) [#1261](https://github.com/kompiro/karasu/issues/1261) [#1262](https://github.com/kompiro/karasu/issues/1262) |
-| 2026-05-11 | [cli](#fit-gap-cli) | 2 (TPL-16 / 17) | 2 | [#1268](https://github.com/kompiro/karasu/issues/1268) [#1269](https://github.com/kompiro/karasu/issues/1269) |
-| 2026-05-11 | [testing](#fit-gap-testing) | 2 (TPL-13 / 14) | 2 | [#1270](https://github.com/kompiro/karasu/issues/1270) [#1271](https://github.com/kompiro/karasu/issues/1271) |
-| 2026-05-11 | [vscode](#fit-gap-vscode) | 1 (TPL-15) | 1 | [#1272](https://github.com/kompiro/karasu/issues/1272) |
-| 2026-05-11 | [build](#fit-gap-build) | 1 (TPL-11) | 1 | [#1273](https://github.com/kompiro/karasu/issues/1273) |
-| 2026-05-11 | [navigation](#fit-gap-navigation) | 1 (TPL-03) | 1 | [#1274](https://github.com/kompiro/karasu/issues/1274) |
-| 2026-05-11 | [resolver](#fit-gap-resolver) | 1 (TPL-20) | 1 | [#1275](https://github.com/kompiro/karasu/issues/1275) |
+| 2026-05-10 | [parser](#fit-gap-parser) | 3 (TPL-1101 / TPL-907 / TPL-74) | 4 | [#1231](https://github.com/kompiro/karasu/issues/1231) [#1232](https://github.com/kompiro/karasu/issues/1232) [#1233](https://github.com/kompiro/karasu/issues/1233) [#1234](https://github.com/kompiro/karasu/issues/1234) |
+| 2026-05-10 | [app-ui](#fit-gap-app-ui) | 3 (TPL-1053 / TPL-1032 / TPL-948) | 4 | [#1238](https://github.com/kompiro/karasu/issues/1238) [#1239](https://github.com/kompiro/karasu/issues/1239) [#1240](https://github.com/kompiro/karasu/issues/1240) [#1241](https://github.com/kompiro/karasu/issues/1241) |
+| 2026-05-11 | [renderer](#fit-gap-renderer) | 2 (TPL-999 / TPL-1001) | 3 | [#1245](https://github.com/kompiro/karasu/issues/1245) [#1246](https://github.com/kompiro/karasu/issues/1246) [#1247](https://github.com/kompiro/karasu/issues/1247) |
+| 2026-05-11 | [edges](#fit-gap-edges) | 2 (TPL-510 / TPL-1227) | 3 | [#1248](https://github.com/kompiro/karasu/issues/1248) [#1249](https://github.com/kompiro/karasu/issues/1249) [#1250](https://github.com/kompiro/karasu/issues/1250) |
+| 2026-05-11 | [core-concepts](#fit-gap-core-concepts) | 5 (TPL-1160 / TPL-1207 / TPL-2166 / TPL-1223 / TPL-1225) | 3 | [#1260](https://github.com/kompiro/karasu/issues/1260) [#1261](https://github.com/kompiro/karasu/issues/1261) [#1262](https://github.com/kompiro/karasu/issues/1262) |
+| 2026-05-11 | [cli](#fit-gap-cli) | 2 (TPL-239 / TPL-168) | 2 | [#1268](https://github.com/kompiro/karasu/issues/1268) [#1269](https://github.com/kompiro/karasu/issues/1269) |
+| 2026-05-11 | [testing](#fit-gap-testing) | 2 (TPL-976 / TPL-1171) | 2 | [#1270](https://github.com/kompiro/karasu/issues/1270) [#1271](https://github.com/kompiro/karasu/issues/1271) |
+| 2026-05-11 | [vscode](#fit-gap-vscode) | 1 (TPL-1024) | 1 | [#1272](https://github.com/kompiro/karasu/issues/1272) |
+| 2026-05-11 | [build](#fit-gap-build) | 1 (TPL-219) | 1 | [#1273](https://github.com/kompiro/karasu/issues/1273) |
+| 2026-05-11 | [navigation](#fit-gap-navigation) | 1 (TPL-1094) | 1 | [#1274](https://github.com/kompiro/karasu/issues/1274) |
+| 2026-05-11 | [resolver](#fit-gap-resolver) | 1 (TPL-2167) | 1 | [#1275](https://github.com/kompiro/karasu/issues/1275) |
 | — | styling / chat-ai / project / adr-tooling | 0 | — | TPL なし、audit 対象外 |
 
 <a id="fit-gap-parser"></a>**parser (2026-05-10)** — bug 起源の TPL に対する regression は core 系で完備だが、AST 構造的等価 / i18n 出力 / parser keyword の exhaustiveness / spec ↔ impl smoke が未カバー。
@@ -319,15 +323,15 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 <a id="fit-gap-edges"></a>**edges (2026-05-11)** — `[implicit]` と `[async/sync]` の coexistence integration / 派生関数の semantic 保存契約の meta-test / owns / inherited annotation の cross-view rendering integration が未カバー。AT-0056 が automation marker を持たないことが判明。
 
-<a id="fit-gap-core-concepts"></a>**core-concepts (2026-05-11)** — 5 TPL 中 **3 つ (TPL-18 / 19 / 21) はほぼ完全に proactive** で「設計時 review」型の checklist 項目しか持たず、test gap として現れなかった（後述「proactive TPL は backward gap を出さない」）。残る retrospective な TPL-01 と一部 testable な TPL-22 から 3 gap: TPL-01 の `known_consumers` のうち deploy-view / org-view が top-level handling を test していない / #412 (named import → system membership) の regression fixture 不在 / 三面（論理+物理+組織）を 1 fixture に含む cross-face integration test 不在。
+<a id="fit-gap-core-concepts"></a>**core-concepts (2026-05-11)** — 5 TPL 中 **3 つ (TPL-1207 / TPL-2166 / TPL-1223) はほぼ完全に proactive** で「設計時 review」型の checklist 項目しか持たず、test gap として現れなかった（後述「proactive TPL は backward gap を出さない」）。残る retrospective な TPL-1160 と一部 testable な TPL-1225 から 3 gap: TPL-1160 の `known_consumers` のうち deploy-view / org-view が top-level handling を test していない / #412 (named import → system membership) の regression fixture 不在 / 三面（論理+物理+組織）を 1 fixture に含む cross-face integration test 不在。
 
 <a id="fit-gap-cli"></a>**cli (2026-05-11)** — `resolveKrsFile` の path traversal は 6 case で網羅 ✅。gap 2 つ: render-endpoint.ts の `/render` HTTP endpoint が single-file `compile()` を使っており multi-file 解決ができない (#239-style) / vscode preview-panel.ts の webview message handler が `url` / `index` を validation なしで受け取る（trust boundary 検証なし）。
 
 <a id="fit-gap-testing"></a>**testing (2026-05-11)** — `page.goto("/")` migration 完了 ✅ (0 hits)、locale pin ✅、e2e-nightly.yml ✅、replaceEditorContent helper ✅、retries=1 in CI（推奨通り）✅。gap 2 つ: migration を再 creep させない lint rule が無い / retry-passed (flaky) test を CI で surface する仕組みが無い。
 
-<a id="fit-gap-vscode"></a>**vscode (2026-05-11)** — TPL-15 起源の #1024 修正が **comprehensive**（多候補パス解決 + bundling step + e2e で installed 動作検証）で、実質 gap がほぼ無い。残る 1 つ: `pnpm build` 後に `out/server.js` が存在することの fast unit-level check（bundling step が壊れても dev-tree fallback で local は動くため vscode-e2e でしか検出できない）。
+<a id="fit-gap-vscode"></a>**vscode (2026-05-11)** — TPL-1024 起源の #1024 修正が **comprehensive**（多候補パス解決 + bundling step + e2e で installed 動作検証）で、実質 gap がほぼ無い。残る 1 つ: `pnpm build` 後に `out/server.js` が存在することの fast unit-level check（bundling step が壊れても dev-tree fallback で local は動くため vscode-e2e でしか検出できない）。
 
-<a id="fit-gap-build"></a>**build (2026-05-11)** — compileProject / compileProjectOrgView は #160 fix で parity ✅、drill-down / multi-level は `buildStyles` 共通化済み (#219) ✅。gap 1 つ: SVG builder family を同一 fixture + 同一 styleSource + 同一 displayMode で呼んで挙動一致を assert する family-wide parity test が無い（TPL-11 checklist 項目 5）。
+<a id="fit-gap-build"></a>**build (2026-05-11)** — compileProject / compileProjectOrgView は #160 fix で parity ✅、drill-down / multi-level は `buildStyles` 共通化済み (#219) ✅。gap 1 つ: SVG builder family を同一 fixture + 同一 styleSource + 同一 displayMode で呼んで挙動一致を assert する family-wide parity test が無い（TPL-219 checklist 項目 5）。
 
 <a id="fit-gap-navigation"></a>**navigation (2026-05-11)** — buildHash/parseHash は 15+ case（matrix 含む）✅ (#1094)。gap 1 つ: useHistoryNavigation.ts が依然 if-else chain で `activeView` の網羅性が型強制されていない — #1094 の修正は matrix case を追加したが構造的 exhaustiveness は未達。
 
@@ -366,7 +370,7 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 #### 観察 C（暫定）: proactive TPL は backward gap を出さないが forward test を生むべき
 
-Fit/Gap 分析は「**既存コードにその観点の test があるか**」を見る = **backward gap** を探す作業。proactive TPL（`docs/concepts.ja.md` 由来）はこの backward gap をほとんど出さない — checklist 項目が「全 state が `.krs` から復元可能か」「情報の流れは up か down か」のような **feature 提案を見て判断する設計時の問い** だから。core-concepts topic の TPL-18 / 19 / 21 は実際そうだった。
+Fit/Gap 分析は「**既存コードにその観点の test があるか**」を見る = **backward gap** を探す作業。proactive TPL（`docs/concepts.ja.md` 由来）はこの backward gap をほとんど出さない — checklist 項目が「全 state が `.krs` から復元可能か」「情報の流れは up か down か」のような **feature 提案を見て判断する設計時の問い** だから。core-concepts topic の TPL-1207 / TPL-2166 / TPL-1223 は実際そうだった。
 
 ただしこれは **「proactive TPL は test と無関係」という意味ではない**。proactive TPL の目的は「これを元に設計・テストを書くことで、そもそも bug が出ない状態を作る」こと。つまり proactive TPL は **forward gap** — *将来* の feature がその観点を設計と test に織り込むべき、織り込まなければ次の bug になる — を防ぐためにある。backward gap は Fit/Gap 分析が捕捉し、forward gap は **DesignDoc review + 実装 PR の test 追加** が捕捉する。
 
@@ -374,13 +378,13 @@ Fit/Gap 分析は「**既存コードにその観点の test があるか**」�
 
 DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 
-1. **引用した TPL の checklist 項目のうち、その feature に該当するものを assertion 化した test を機能と一緒に書く** — bug が起きてから書く retrospective な regression test ではなく、**設計判断をロックする contract test**。例: 新しい入力経路を作るとき TPL-18 を引用 → 「この経路の出力が `.krs` を round-trip する」test を実装と同時に追加。
-2. **AT を作る場合（`/hane:acceptance-test`）は、引用した proactive TPL の checklist 項目を AC として転記** する。例: TPL-19 を引く feature なら「出力の詳細量が入力より減っている（抽象化方向 = up）」を AC に明記し、自動 / 手動どちらかで検証する。
+1. **引用した TPL の checklist 項目のうち、その feature に該当するものを assertion 化した test を機能と一緒に書く** — bug が起きてから書く retrospective な regression test ではなく、**設計判断をロックする contract test**。例: 新しい入力経路を作るとき TPL-1207 を引用 → 「この経路の出力が `.krs` を round-trip する」test を実装と同時に追加。
+2. **AT を作る場合（`/hane:acceptance-test`）は、引用した proactive TPL の checklist 項目を AC として転記** する。例: TPL-2166 を引く feature なら「出力の詳細量が入力より減っている（抽象化方向 = up）」を AC に明記し、自動 / 手動どちらかで検証する。
 3. PR テンプレの「TPL impact」セクション（`docs(adr)` / new-feature PR 向け）には、引用した proactive TPL に対して **「relevant な checklist 項目を test / AC に落としたか」** を記録する欄がある（後述「PR テンプレ」参照）。
 
 この運用により、proactive TPL は「review で気づく観点」から「review で気づき、その feature の test に落とす観点」へ格上げされ、観点違反が *コードに到達する前* に止まる。
 
-> ステータス: forward 運用は #1264 / 関連 PR で導入。Fit/Gap 側の「proactive は backward gap を出さない」観察は **2 近縁事例**（core-concepts の TPL-18/19/21 が backward gap ゼロ + vscode の TPL-15 は #1024 修正が comprehensive で実質 gap なし）。rule of three の 3 件目（次に proactive 中心 / 修正が comprehensive な topic を audit したとき同じパターンが再現）で暫定マークを外す。なお `/hane:acceptance-test` skill 側への同等プロンプト追加は別リポ（kompiro/hane）の作業のため follow-up（karasu 側からは PR テンプレと本 README だけ更新）。
+> ステータス: forward 運用は #1264 / 関連 PR で導入。Fit/Gap 側の「proactive は backward gap を出さない」観察は **2 近縁事例**（core-concepts の TPL-1207 / TPL-2166 / TPL-1223 が backward gap ゼロ + vscode の TPL-1024 は #1024 修正が comprehensive で実質 gap なし）。rule of three の 3 件目（次に proactive 中心 / 修正が comprehensive な topic を audit したとき同じパターンが再現）で暫定マークを外す。なお `/hane:acceptance-test` skill 側への同等プロンプト追加は別リポ（kompiro/hane）の作業のため follow-up（karasu 側からは PR テンプレと本 README だけ更新）。
 
 ### 推奨 cadence
 
@@ -396,92 +400,93 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 
 | ID | タイトル | topic | 起源 |
 |---|---|---|---|
-| [TPL-20260510-01](TPL-20260510-01-top-level-orphans.md) | top-level orphans の扱い | core-concepts | #1160, #412 |
-| [TPL-20260510-02](TPL-20260510-02-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058 |
-| [TPL-20260510-03](TPL-20260510-03-enum-member-addition.md) | 列挙型メンバー追加時の更新漏れ | navigation | #1094 |
-| [TPL-20260510-04](TPL-20260510-04-continuous-input-dom-interference.md) | 連続操作中の DOM 介入 | app-ui | #1053 |
-| [TPL-20260510-05](TPL-20260510-05-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999, #132 |
-| [TPL-20260510-06](TPL-20260510-06-display-mode-cross-surface.md) | 表示モード切替の cross-surface 点検 | renderer | #1001, #279, #132, #183, #1479 |
-| [TPL-20260510-07](TPL-20260510-07-derivation-tag-semantics.md) | 派生タグでの semantic 区別の保存 | edges | #510 |
-| [TPL-20260510-08](TPL-20260510-08-derived-state-staleness.md) | 派生 view / panel の memoization と publish | app-ui | #1032, #891 |
-| [TPL-20260510-09](TPL-20260510-09-event-handler-ui-restructure.md) | UI 構造を変える event handler の event 漏れ | app-ui | #948 |
-| [TPL-20260510-10](TPL-20260510-10-cross-reference-validation.md) | cross-reference プロパティの resolver-side 検証 | parser | #907 |
-| [TPL-20260510-11](TPL-20260510-11-parallel-function-parity.md) | 並列関数ファミリの parameter parity | build | #219, #160 |
-| [TPL-20260510-12](TPL-20260510-12-ast-parser-renderer-agreement.md) | AST 型 / parser keyword / renderer fallback の三点同意 | parser | #74 |
-| [TPL-20260510-13](TPL-20260510-13-e2e-fixture-controlled-state.md) | E2E fixture が状態 / 環境 / 後始末を所有する | testing | #976, #1006, #1007 |
-| [TPL-20260510-14](TPL-20260510-14-wait-for-stable-state.md) | E2E は到達した stable state を待ってから assert する | testing | #1171, #976 |
-| [TPL-20260510-15](TPL-20260510-15-dev-vs-packaged-mode-parity.md) | dev mode と packaged / installed mode の parity | vscode | #1024 |
-| [TPL-20260510-16](TPL-20260510-16-convenience-vs-principled-api.md) | consumer 境界では convenience より principled API | cli | #239, #507 |
-| [TPL-20260510-17](TPL-20260510-17-trust-boundary-input-validation.md) | trust boundary で外部入力を validate / canonicalize | cli | #168 |
-| [TPL-20260510-18](TPL-20260510-18-text-as-single-source-of-truth.md) | `.krs` テキストを single source of truth に保つ | core-concepts | concepts.ja.md |
-| [TPL-20260510-19](TPL-20260510-19-information-flows-up.md) | 情報の流れは抽象化方向（up）か詳細化方向（down）かを判定する | core-concepts | concepts.ja.md |
-| [TPL-20260510-20](TPL-20260510-20-id-not-label-for-identity.md) | identity は `id` で判定し `label` を比較に使わない | resolver | concepts.ja.md |
-| [TPL-20260510-21](TPL-20260510-21-scoped-glance-drill-down.md) | 一度に見せる範囲を限定し、drill-down を first-class に保つ | core-concepts | concepts.ja.md |
-| [TPL-20260510-22](TPL-20260510-22-three-face-intersection-single-artifact.md) | 論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる | core-concepts | concepts.ja.md |
-| [TPL-20260510-23](TPL-20260510-23-writer-reader-asymmetry.md) | 新しい edge / relation 機能は writer の coarse 表現と reader の progressive disclosure を両立する | edges | concepts.ja.md |
-| [TPL-20260511-01](TPL-20260511-01-keyword-lexical-ambiguity-fence-vs-deprecate.md) | 既存キーワードの語彙的曖昧さは外部 fence ADR を deprecate より先に検討する | core-concepts | #1281 |
-| [TPL-20260511-02](TPL-20260511-02-spec-doc-reference-data-sync.md) | spec ドキュメントと in-app reference データは片方向 smoke test で同期を縛る | build | #1296 |
-| [TPL-20260512-01](TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md) | 値ごとに区別が必要な属性は、その値を格納するマップのキーに含める | core-concepts | #1352 |
-| [TPL-20260514-01](TPL-20260514-01-import-dag-not-cycle.md) | DAG 経由で同じファイルに 2 回到達するのは循環ではない | resolver | docs/spec/syntax.md (S5), #1381 |
-| [TPL-20260514-02](TPL-20260514-02-whole-file-import-completeness.md) | whole-file import は imported ファイルの全 top-level ノードと全 children を merged に流す | resolver | docs/spec/syntax.md (S2), #1381 |
-| [TPL-20260514-03](TPL-20260514-03-system-reopen-merge.md) | 同名 system / deploy / organization の再オープンは children を union し、property は import-graph root に近い側が勝つ | resolver | docs/spec/syntax.md (S3), #1381 |
-| [TPL-20260514-04](TPL-20260514-04-deploy-org-wildcard-propagation.md) | whole-file import は system だけでなく deploy / organization も伝搬する | resolver | docs/spec/syntax.md (S4), #1381 |
-| [TPL-20260514-05](TPL-20260514-05-dangling-edge-preserves-node.md) | edge / relation の片側が未解決でも、解決できた側のノードは drop しない | resolver | docs/spec/syntax.md (S6), #1381 |
-| [TPL-20260514-07](TPL-20260514-07-infra-redeclared-across-files.md) | 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断で surface する | resolver | docs/spec/syntax.md (S4.5), #1385 |
-| [TPL-20260514-08](TPL-20260514-08-diagnostic-register-fact-vs-style.md) | 新規 resolver diagnostic の register は「事実か流派判断か」で決める | core-concepts | docs/concepts.md (§What karasu visualizes vs. what it doesn't prescribe), #1386 |
-| [TPL-20260516-01](TPL-20260516-01-control-a11y-contract-survives-migration.md) | interactive control の a11y 契約は移行・リファクタで静かに壊れる | app-ui | ADR-1368, #1399 |
-| [TPL-20260518-01](TPL-20260518-01-involutive-toggle-renders-both-states.md) | involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する | app-ui | #1402 |
-| [TPL-20260519-01](TPL-20260519-01-global-shortcut-text-input-inhibition.md) | グローバルキーボードショートカットはテキスト入力フォーカス下での挙動を契約として検証する | app-ui | packages/app/src/keyboard/KeyboardShortcutDispatcher.tsx |
-| [TPL-20260519-02](TPL-20260519-02-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
-| [TPL-20260519-03](TPL-20260519-03-single-renderer-for-structured-messages.md) | 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する | core-concepts | ADR-34 |
-| [TPL-20260520-01](TPL-20260520-01-overlay-z-index-scale.md) | overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ | app-ui | #1468 |
-| [TPL-20260520-02](TPL-20260520-02-consistency-check-triggers-on-both-sides.md) | 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる | build | #1480 |
-| [TPL-20260610-01](TPL-20260610-01-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
-| [TPL-20260610-02](TPL-20260610-02-spec-promised-diagnostics-implemented.md) | spec が約束する診断は専用の診断コードとして実装されていることを検証する | parser | docs/spec/style.md, docs/spec/syntax.md |
-| [TPL-20260612-01](TPL-20260612-01-style-coupled-diagnostics-sheetless-context.md) | style 連動の diagnostic はシート不在の文脈（LSP 単一ドキュメント）での挙動を仕様化する | core-concepts | #1522 |
-| [TPL-20260612-02](TPL-20260612-02-react-passive-event-preventdefault-noop.md) | React の synthetic onWheel / onTouchMove では preventDefault が no-op になる | app-ui | #1537 |
-| [TPL-20260613-01](TPL-20260613-01-persistent-store-init-and-mutation-resilience.md) | 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する | app-ui | #1530 / #1531 |
-| [TPL-20260613-02](TPL-20260613-02-edit-and-watch-same-store.md) | 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する | app-ui | #1535 / #1536 |
-| [TPL-20260613-03](TPL-20260613-03-cancel-stale-async-effect-results.md) | 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する | app-ui | #1534 / #1540 |
-| [TPL-20260615-01](TPL-20260615-01-migration-priority-index-winner.md) | 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる | core-concepts | docs/spec/tags-annotations.md, ADR-477 / ADR-1566, #1583 |
-| [TPL-20260615-02](TPL-20260615-02-diagnostic-absence-assertion-scope-severity.md) | 診断の不在を assert するテストは severity でスコープする（info register は open set） | testing | #1608 |
-| [TPL-20260616-01](TPL-20260616-01-docs-pipeline-link-anchor-resolution.md) | docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる | build | ADR-1575 |
-| [TPL-20260616-02](TPL-20260616-02-diagnostics-catalog-completeness.md) | 全診断コードは規則カタログに 1 件の項目を持つ（規則 ↔ 診断の双方向完全性） | parser | #1623 / docs/spec/diagnostics.md |
-| [TPL-20260616-03](TPL-20260616-03-client-vocabulary-structure-not-implementation.md) | client の語彙はアクセスパスの構造を名指し、実装の詳細を名指さない | core-concepts | #1625 / docs/concepts.md |
-| [TPL-20260618-01](TPL-20260618-01-style-lookup-matches-layout-id-form.md) | ノード style/metadata の lookup は layout が使う id 形（bare / 修飾）をすべて試す | renderer | #1666 |
-| [TPL-20260618-02](TPL-20260618-02-publishable-tarball-completeness.md) | publish する tarball は実行に必要な build 成果物だけを含み、テスト・型・sourcemap を除外する | build | #1681 |
-| [TPL-20260618-03](TPL-20260618-03-kind-style-sets-text-color-per-theme.md) | ノード kind ルールで background-color を設定したら、対になる text color も設定する（テーマごと） | styling | #1697 |
-| [TPL-20260623-01](TPL-20260623-01-user-facing-surface-docs-sync.md) | user-facing な app/CLI surface の変更は docs/tools の両ロケール + reference に反映する | build | #1715 |
-| [TPL-20260623-02](TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) | cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、重複する集合は同期させる | resolver | #1720 |
-| [TPL-20260623-03](TPL-20260623-03-gated-test-suite-detection-gap.md) | label-gated / 遅延実行のテストスイートは、その検証対象を変える PR でマージ前に必ず起動させる | testing | #1725 |
-| [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md) | system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する | renderer | ADR-974, #1724 |
-| [TPL-20260624-01](TPL-20260624-01-at-e2e-spec-linkage-no-drift.md) | AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す/rename したら AT doc から辿れること） | testing | #1680 |
-| [TPL-20260624-02](TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) | 要素を主構造から抜き出して別グループに再配置するとき、全要素ちょうど一度配置 + 参照エッジの端点保持を検証する | renderer | #1738 |
-| [TPL-20260624-03](TPL-20260624-03-edge-endpoint-selector-id-form.md) | エッジの端点で引くセレクタ / lookup は、ビューが格納する端点 id 形（bare / dot-notation）で比較する | styling | #1755 |
-| [TPL-20260624-04](TPL-20260624-04-external-side-placement-invariant.md) | system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する | renderer | ADR-1724, #1728 |
-| [TPL-20260625-01](TPL-20260625-01-root-svg-viewbox-responsive.md) | プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に左上クロップせず内容がスケールする — 全合成ビルダーで共有 | renderer | #1790 |
-| [TPL-20260626-01](TPL-20260626-01-raster-pipeline-glyph-coverage.md) | 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする（PNG の絵文字フォント等） | renderer | #1799 |
-| [TPL-20260630-01](TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |
-| [TPL-20260630-02](TPL-20260630-02-restore-state-survive-later-reset.md) | URL/共有から復元する state は、後発の seed reset を越えて再適用する | navigation | #1842 |
-| [TPL-20260630-03](TPL-20260630-03-adr-permalink-records-source.md) | ADR permalink は record ではなく pointer — in-repo `.krs` source を必須で記録する | adr-tooling | #1829 |
-| [TPL-20260711-01](TPL-20260711-01-entity-carries-no-attributes.md) | `entity` は名前・関連・物理対応のみを受け付け、属性（カラム・型・主キー）を持たせない | parser | #1870 |
-| [TPL-20260711-02](TPL-20260711-02-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-1858, #1859 |
-| [TPL-20260712-01](TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md) | 端点 id を書き換える集約/畳み込み変換は、元 id にキーされた per-要素の装飾（diff state 等）を再導出する（retarget 後も装飾が残ることを assert） | renderer | #1886 |
-| [TPL-20260714-01](TPL-20260714-01-cross-domain-entity-reference-qualified.md) | cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照し、bare id は intra-domain 専用（cross-domain へ勝手に解決しない） | edges | #1911 |
-| [TPL-20260714-02](TPL-20260714-02-inferred-tag-only-soft-fk.md) | `translate --from db` は Soft FK 由来の関連にのみ `[inferred]` を付け、Explicit FK 由来は無タグ（確定）にする。既定スタイルは色のみ（線種は kind に委ねる） | edges | #1909 |
-| [TPL-20260715-01](TPL-20260715-01-new-route-shape-participates-in-overlap-passes.md) | 新しいエッジ route 形（waypoint 構成）を足したら、既存の overlap 回避パス（lane 分離・port fan-out）がその形を素通りしていないか確認する | renderer | #1954 |
-| [TPL-20260715-02](TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) | infra leaf のドメイン所有は entity 層から導出する（物理 table に宣言しない）。leaf 粒度・所有ドメインの集合・system スコープで扱う | resolver | #1819 |
-| [TPL-20260716-01](TPL-20260716-01-keystone-terms-single-home.md) | keystone・permalink の coined 用語は単一の正典（docs/glossary.md）を持つ — 他 doc は再定義せず参照し、用語集は機構ドキュメントと矛盾しない | build | docs/glossary.md, ADR-1829, #1831 |
-| [TPL-20260716-02](TPL-20260716-02-view-state-gate-parity-across-surfaces.md) | view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える — 一部 surface だけ gate すると残りが undocumented 挙動として出荷される | renderer | #1983, #2033 |
-| [TPL-20260717-01](TPL-20260717-01-pnpm-double-dash-arg-forwarding.md) | `pnpm run <script> -- <flag>` は flag が下位ツールに届かないことがある — CLI 引数は下位ツールに直接渡し、2 経路起動は引数の渡し方を揃える | testing | #2046 |
-| [TPL-20260717-02](TPL-20260717-02-svg-interactive-control-paints-last.md) | SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つ — document order がそのまま重なり順 | renderer | #2044 |
-| [TPL-20260718-01](TPL-20260718-01-i18n-key-naming-max-4-segments.md) | i18n key は `<feature>.<sub-feature?>.<element>.<state>` の最大 4 段命名規約に従う — sub-feature は独立 UI サーフェスがあるときのみ導入し、孫階層は作らない | app-ui | docs/spec/i18n.md, #2019 |
-| [TPL-20260718-02](TPL-20260718-02-reference-existence-validated-on-merged-space.md) | 参照存在チェック（`contains` / `owns` 等の `*-target-not-found`）は per-file ではなくマージ後の id 空間で検証する — per-file の判定を project mode に横流しすると cross-file 参照が偽陽性になる | resolver | #2032 |
-| [TPL-20260721-01](TPL-20260721-01-skill-cli-command-refs-drift.md) | エージェント向け skill が散文で参照する CLI コマンド名は CLI レジストリと同期させる — 名前の存在は機械チェック、用途違い・capability 不在の断定は checklist と CLI surface 変更時の advisory で担保 | build | #2084, #2090 |
-| [TPL-20260721-02](TPL-20260721-02-label-placement-measured-and-byte-stable.md) | エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable、author 指定ラベルは動かさない | renderer | ADR-2048, #2048 |
-| [TPL-20260727-01](TPL-20260727-01-parser-acceptance-documented-in-spec.md) | parser が受理する形は spec に文書化されている（受理 ⊆ 文書化）— undocumented leniency は実測（最小 `.krs` の parse）で棚卸しし、ADR で廃止した記法は全 construct を横断確認する | parser | #2133 |
-| [TPL-20260729-01](TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) | 手書き catalog（`REFERENCE_DATA` 等）は parser 実測で双方向に縛る。その catalog から生成した doc を正典に見立てた同期テストは循環しており恒真 | build | #2158 |
-| [TPL-20260730-02](TPL-20260730-02-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
-| [TPL-20260729-02](TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
-| [TPL-20260730-01](TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md) | 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側の解決（primary 選択）で吸収し、merge 経路も同じ多値の意味論に従わせる | core-concepts | ADR-1974, #2161 |
-| [TPL-20260730-03](TPL-20260730-03-drift-guard-distinguishes-declaration-from-mention.md) | drift guard は「宣言」と「言及」を区別する — 「正典の値以外が現れたら fail」は次期版への前方参照を stale と誤検出し、freeze 中の設計作業をブロックする | build | #2185 |
+| [TPL-1160](TPL-1160-top-level-orphans.md) | top-level orphans の扱い | core-concepts | #1160, #412 |
+| [TPL-1101](TPL-1101-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058 |
+| [TPL-1094](TPL-1094-enum-member-addition.md) | 列挙型メンバー追加時の更新漏れ | navigation | #1094 |
+| [TPL-1053](TPL-1053-continuous-input-dom-interference.md) | 連続操作中の DOM 介入 | app-ui | #1053 |
+| [TPL-999](TPL-999-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999, #132 |
+| [TPL-1001](TPL-1001-display-mode-cross-surface.md) | 表示モード切替の cross-surface 点検 | renderer | #1001, #279, #132, #183, #1479 |
+| [TPL-510](TPL-510-derivation-tag-semantics.md) | 派生タグでの semantic 区別の保存 | edges | #510 |
+| [TPL-1032](TPL-1032-derived-state-staleness.md) | 派生 view / panel の memoization と publish | app-ui | #1032, #891 |
+| [TPL-948](TPL-948-event-handler-ui-restructure.md) | UI 構造を変える event handler の event 漏れ | app-ui | #948 |
+| [TPL-907](TPL-907-cross-reference-validation.md) | cross-reference プロパティの resolver-side 検証 | parser | #907 |
+| [TPL-219](TPL-219-parallel-function-parity.md) | 並列関数ファミリの parameter parity | build | #219, #160 |
+| [TPL-74](TPL-74-ast-parser-renderer-agreement.md) | AST 型 / parser keyword / renderer fallback の三点同意 | parser | #74 |
+| [TPL-976](TPL-976-e2e-fixture-controlled-state.md) | E2E fixture が状態 / 環境 / 後始末を所有する | testing | #976, #1006, #1007 |
+| [TPL-1171](TPL-1171-wait-for-stable-state.md) | E2E は到達した stable state を待ってから assert する | testing | #1171, #976 |
+| [TPL-1024](TPL-1024-dev-vs-packaged-mode-parity.md) | dev mode と packaged / installed mode の parity | vscode | #1024 |
+| [TPL-239](TPL-239-convenience-vs-principled-api.md) | consumer 境界では convenience より principled API | cli | #239, #507 |
+| [TPL-168](TPL-168-trust-boundary-input-validation.md) | trust boundary で外部入力を validate / canonicalize | cli | #168 |
+| [TPL-1207](TPL-1207-text-as-single-source-of-truth.md) | `.krs` テキストを single source of truth に保つ | core-concepts | concepts.ja.md |
+| [TPL-2166](TPL-2166-information-flows-up.md) | 情報の流れは抽象化方向（up）か詳細化方向（down）かを判定する | core-concepts | concepts.ja.md |
+| [TPL-2167](TPL-2167-id-not-label-for-identity.md) | identity は `id` で判定し `label` を比較に使わない | resolver | concepts.ja.md |
+| [TPL-1223](TPL-1223-scoped-glance-drill-down.md) | 一度に見せる範囲を限定し、drill-down を first-class に保つ | core-concepts | concepts.ja.md |
+| [TPL-1225](TPL-1225-three-face-intersection-single-artifact.md) | 論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる | core-concepts | concepts.ja.md |
+| [TPL-1227](TPL-1227-writer-reader-asymmetry.md) | 新しい edge / relation 機能は writer の coarse 表現と reader の progressive disclosure を両立する | edges | concepts.ja.md |
+| [TPL-1281](TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) | 既存キーワードの語彙的曖昧さは外部 fence ADR を deprecate より先に検討する | core-concepts | #1281 |
+| [TPL-1296](TPL-1296-spec-doc-reference-data-sync.md) | spec ドキュメントと in-app reference データは片方向 smoke test で同期を縛る | build | #1296 |
+| [TPL-1352](TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) | 値ごとに区別が必要な属性は、その値を格納するマップのキーに含める | core-concepts | #1352 |
+| [TPL-1381](TPL-1381-import-dag-not-cycle.md) | DAG 経由で同じファイルに 2 回到達するのは循環ではない | resolver | docs/spec/syntax.md (S5), #1381 |
+| [TPL-1383](TPL-1383-whole-file-import-completeness.md) | whole-file import は imported ファイルの全 top-level ノードと全 children を merged に流す | resolver | docs/spec/syntax.md (S2), #1381 |
+| [TPL-2168](TPL-2168-system-reopen-merge.md) | 同名 system / deploy / organization の再オープンは children を union し、property は import-graph root に近い側が勝つ | resolver | docs/spec/syntax.md (S3), #1381 |
+| [TPL-2169](TPL-2169-deploy-org-wildcard-propagation.md) | whole-file import は system だけでなく deploy / organization も伝搬する | resolver | docs/spec/syntax.md (S4), #1381 |
+| [TPL-2170](TPL-2170-dangling-edge-preserves-node.md) | edge / relation の片側が未解決でも、解決できた側のノードは drop しない | resolver | docs/spec/syntax.md (S6), #1381 |
+| [TPL-1385](TPL-1385-infra-redeclared-across-files.md) | 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断で surface する | resolver | docs/spec/syntax.md (S4.5), #1385 |
+| [TPL-1386](TPL-1386-diagnostic-register-fact-vs-style.md) | 新規 resolver diagnostic の register は「事実か流派判断か」で決める | core-concepts | docs/concepts.md (§What karasu visualizes vs. what it doesn't prescribe), #1386 |
+| [TPL-1399](TPL-1399-control-a11y-contract-survives-migration.md) | interactive control の a11y 契約は移行・リファクタで静かに壊れる | app-ui | ADR-1368, #1399 |
+| [TPL-1402](TPL-1402-involutive-toggle-renders-both-states.md) | involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する | app-ui | #1402 |
+| [TPL-1419](TPL-1419-global-shortcut-text-input-inhibition.md) | グローバルキーボードショートカットはテキスト入力フォーカス下での挙動を契約として検証する | app-ui | packages/app/src/keyboard/KeyboardShortcutDispatcher.tsx |
+| [TPL-1415](TPL-1415-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
+| [TPL-1417](TPL-1417-single-renderer-for-structured-messages.md) | 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する | core-concepts | ADR-34 |
+| [TPL-1468](TPL-1468-overlay-z-index-scale.md) | overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ | app-ui | #1468 |
+| [TPL-1480](TPL-1480-consistency-check-triggers-on-both-sides.md) | 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる | build | #1480 |
+| [TPL-1503](TPL-1503-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
+| [TPL-2171](TPL-2171-spec-promised-diagnostics-implemented.md) | spec が約束する診断は専用の診断コードとして実装されていることを検証する | parser | docs/spec/style.md, docs/spec/syntax.md |
+| [TPL-1522](TPL-1522-style-coupled-diagnostics-sheetless-context.md) | style 連動の diagnostic はシート不在の文脈（LSP 単一ドキュメント）での挙動を仕様化する | core-concepts | #1522 |
+| [TPL-1537](TPL-1537-react-passive-event-preventdefault-noop.md) | React の synthetic onWheel / onTouchMove では preventDefault が no-op になる | app-ui | #1537 |
+| [TPL-1530](TPL-1530-persistent-store-init-and-mutation-resilience.md) | 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する | app-ui | #1530 / #1531 |
+| [TPL-1535](TPL-1535-edit-and-watch-same-store.md) | 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する | app-ui | #1535 / #1536 |
+| [TPL-1534](TPL-1534-cancel-stale-async-effect-results.md) | 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する | app-ui | #1534 / #1540 |
+| [TPL-1583](TPL-1583-migration-priority-index-winner.md) | 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる | core-concepts | docs/spec/tags-annotations.md, ADR-477 / ADR-1566, #1583 |
+| [TPL-1608](TPL-1608-diagnostic-absence-assertion-scope-severity.md) | 診断の不在を assert するテストは severity でスコープする（info register は open set） | testing | #1608 |
+| [TPL-1621](TPL-1621-docs-pipeline-link-anchor-resolution.md) | docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる | build | ADR-1575 |
+| [TPL-1623](TPL-1623-diagnostics-catalog-completeness.md) | 全診断コードは規則カタログに 1 件の項目を持つ（規則 ↔ 診断の双方向完全性） | parser | #1623 / docs/spec/diagnostics.md |
+| [TPL-1625](TPL-1625-client-vocabulary-structure-not-implementation.md) | client の語彙はアクセスパスの構造を名指し、実装の詳細を名指さない | core-concepts | #1625 / docs/concepts.md |
+| [TPL-1666](TPL-1666-style-lookup-matches-layout-id-form.md) | ノード style/metadata の lookup は layout が使う id 形（bare / 修飾）をすべて試す | renderer | #1666 |
+| [TPL-1681](TPL-1681-publishable-tarball-completeness.md) | publish する tarball は実行に必要な build 成果物だけを含み、テスト・型・sourcemap を除外する | build | #1681 |
+| [TPL-1697](TPL-1697-kind-style-sets-text-color-per-theme.md) | ノード kind ルールで background-color を設定したら、対になる text color も設定する（テーマごと） | styling | #1697 |
+| [TPL-1716](TPL-1716-user-facing-surface-docs-sync.md) | user-facing な app/CLI surface の変更は docs/tools の両ロケール + reference に反映する | build | #1715 |
+| [TPL-1720](TPL-1720-validation-target-set-enumerates-all-kinds.md) | cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、重複する集合は同期させる | resolver | #1720 |
+| [TPL-1725](TPL-1725-gated-test-suite-detection-gap.md) | label-gated / 遅延実行のテストスイートは、その検証対象を変える PR でマージ前に必ず起動させる | testing | #1725 |
+| [TPL-1736](TPL-1736-tier-split-no-edge-penetration.md) | system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する | renderer | ADR-974, #1724 |
+| [TPL-1680](TPL-1680-at-e2e-spec-linkage-no-drift.md) | AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す/rename したら AT doc から辿れること） | testing | #1680 |
+| [TPL-1738](TPL-1738-relayout-into-group-preserves-placement-and-edges.md) | 要素を主構造から抜き出して別グループに再配置するとき、全要素ちょうど一度配置 + 参照エッジの端点保持を検証する | renderer | #1738 |
+| [TPL-1755](TPL-1755-edge-endpoint-selector-id-form.md) | エッジの端点で引くセレクタ / lookup は、ビューが格納する端点 id 形（bare / dot-notation）で比較する | styling | #1755 |
+| [TPL-1761](TPL-1761-external-side-placement-invariant.md) | system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する | renderer | ADR-1724, #1728 |
+| [TPL-1790](TPL-1790-root-svg-viewbox-responsive.md) | プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に左上クロップせず内容がスケールする — 全合成ビルダーで共有 | renderer | #1790 |
+| [TPL-1799](TPL-1799-raster-pipeline-glyph-coverage.md) | 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする（PNG の絵文字フォント等） | renderer | #1799 |
+| [TPL-1827](TPL-1827-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |
+| [TPL-1842](TPL-1842-restore-state-survive-later-reset.md) | URL/共有から復元する state は、後発の seed reset を越えて再適用する | navigation | #1842 |
+| [TPL-1829](TPL-1829-adr-permalink-records-source.md) | ADR permalink は record ではなく pointer — in-repo `.krs` source を必須で記録する | adr-tooling | #1829 |
+| [TPL-1882](TPL-1882-entity-carries-no-attributes.md) | `entity` は名前・関連・物理対応のみを受け付け、属性（カラム・型・主キー）を持たせない | parser | #1870 |
+| [TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-1858, #1859 |
+| [TPL-1886](TPL-1886-rekey-transform-preserves-per-element-decoration.md) | 端点 id を書き換える集約/畳み込み変換は、元 id にキーされた per-要素の装飾（diff state 等）を再導出する（retarget 後も装飾が残ることを assert） | renderer | #1886 |
+| [TPL-1936](TPL-1936-cross-domain-entity-reference-qualified.md) | cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照し、bare id は intra-domain 専用（cross-domain へ勝手に解決しない） | edges | #1911 |
+| [TPL-1944](TPL-1944-inferred-tag-only-soft-fk.md) | `translate --from db` は Soft FK 由来の関連にのみ `[inferred]` を付け、Explicit FK 由来は無タグ（確定）にする。既定スタイルは色のみ（線種は kind に委ねる） | edges | #1909 |
+| [TPL-1954](TPL-1954-new-route-shape-participates-in-overlap-passes.md) | 新しいエッジ route 形（waypoint 構成）を足したら、既存の overlap 回避パス（lane 分離・port fan-out）がその形を素通りしていないか確認する | renderer | #1954 |
+| [TPL-1967](TPL-1967-domain-ownership-derived-from-entity-not-declared.md) | infra leaf のドメイン所有は entity 層から導出する（物理 table に宣言しない）。leaf 粒度・所有ドメインの集合・system スコープで扱う | resolver | #1819 |
+| [TPL-2005](TPL-2005-keystone-terms-single-home.md) | keystone・permalink の coined 用語は単一の正典（docs/glossary.md）を持つ — 他 doc は再定義せず参照し、用語集は機構ドキュメントと矛盾しない | build | docs/glossary.md, ADR-1829, #1831 |
+| [TPL-1983](TPL-1983-view-state-gate-parity-across-surfaces.md) | view-state オプションの適用範囲制限（gate）は全 render surface で同一条件に揃える — 一部 surface だけ gate すると残りが undocumented 挙動として出荷される | renderer | #1983, #2033 |
+| [TPL-2046](TPL-2046-pnpm-double-dash-arg-forwarding.md) | `pnpm run <script> -- <flag>` は flag が下位ツールに届かないことがある — CLI 引数は下位ツールに直接渡し、2 経路起動は引数の渡し方を揃える | testing | #2046 |
+| [TPL-2044](TPL-2044-svg-interactive-control-paints-last.md) | SVG の interactive control（back button 等）は不透明背景より後に描いて hit-testable を保つ — document order がそのまま重なり順 | renderer | #2044 |
+| [TPL-2019](TPL-2019-i18n-key-naming-max-4-segments.md) | i18n key は `<feature>.<sub-feature?>.<element>.<state>` の最大 4 段命名規約に従う — sub-feature は独立 UI サーフェスがあるときのみ導入し、孫階層は作らない | app-ui | docs/spec/i18n.md, #2019 |
+| [TPL-2032](TPL-2032-reference-existence-validated-on-merged-space.md) | 参照存在チェック（`contains` / `owns` 等の `*-target-not-found`）は per-file ではなくマージ後の id 空間で検証する — per-file の判定を project mode に横流しすると cross-file 参照が偽陽性になる | resolver | #2032 |
+| [TPL-2084](TPL-2084-skill-cli-command-refs-drift.md) | エージェント向け skill が散文で参照する CLI コマンド名は CLI レジストリと同期させる — 名前の存在は機械チェック、用途違い・capability 不在の断定は checklist と CLI surface 変更時の advisory で担保 | build | #2084, #2090 |
+| [TPL-2048](TPL-2048-label-placement-measured-and-byte-stable.md) | エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable、author 指定ラベルは動かさない | renderer | ADR-2048, #2048 |
+| [TPL-2133](TPL-2133-parser-acceptance-documented-in-spec.md) | parser が受理する形は spec に文書化されている（受理 ⊆ 文書化）— undocumented leniency は実測（最小 `.krs` の parse）で棚卸しし、ADR で廃止した記法は全 construct を横断確認する | parser | #2133 |
+| [TPL-2158](TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) | 手書き catalog（`REFERENCE_DATA` 等）は parser 実測で双方向に縛る。その catalog から生成した doc を正典に見立てた同期テストは循環しており恒真 | build | #2158 |
+| [TPL-2165](TPL-2165-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
+| [TPL-2157](TPL-2157-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
+| [TPL-2161](TPL-2161-declared-membership-not-discarded-in-derived-index.md) | 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側の解決（primary 選択）で吸収し、merge 経路も同じ多値の意味論に従わせる | core-concepts | ADR-1974, #2161 |
+| [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) | drift guard は「宣言」と「言及」を区別する — 「正典の値以外が現れたら fail」は次期版への前方参照を stale と誤検出し、freeze 中の設計作業をブロックする | build | #2185 |
+| [TPL-2188](TPL-2188-id-uniqueness-needs-cross-corpus-check.md) | 採番 id の一意性は corpus 横断の機械検証か大域 allocator で担保する — per-file 検査だけの validator は並行ブランチの採番衝突を検出できない | adr-tooling | #2188, ADR-2092 |

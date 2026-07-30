@@ -3,7 +3,7 @@
 - **日付**: 2026-06-15
 - **関連 Issue**: [#1570](https://github.com/kompiro/karasu/issues/1570)
 - **関連 ADR**: [ADR-1386](../adr/1386-style-prescription-stance.md)（流派が smell と呼ぶ構造は info 通知）
-- **関連 TPL**: [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md), [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md)
+- **関連 TPL**: [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md), [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md)
 - **対象ファイル**: `packages/core/src/resolver/warnings.ts`,
   `packages/core/src/types/warnings.ts`,
   `packages/i18n/src/{en,ja,types,render-warning}.ts`,

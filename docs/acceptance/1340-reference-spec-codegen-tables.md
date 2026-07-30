@@ -12,7 +12,7 @@ type: product
   - `docs/spec/tags-annotations.md` / `.ja.md`（`## Tags` テーブルを `<!-- gen:reference:tags -->` 区間に）
   - `docs/spec/syntax.md` / `.ja.md`（`#### client form-factor tags` テーブルを `<!-- gen:reference:client-form-factor-tags -->` 区間に、deploy-unit テーブルを `<!-- gen:reference:deploy-unit-kinds -->` 区間に）
 - **ADR**: [ADR-1296](../adr/1296-reference-data-single-source.md)
-- **TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+- **TPL**: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
 
 ## 受け入れ条件
 

@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Guards docs/spec/diagnostics.md against drift from the emitted code surface
-// (TPL-20260616-02). Every member of DiagnosticParamsByCode and WarningKind
+// (TPL-1623). Every member of DiagnosticParamsByCode and WarningKind
 // must appear as a `code` in the catalog, in both en and ja. The code-side
 // source-of-truth is the type declarations in this directory; we extract the
 // string-literal keys / members from the source text (they are erased at
@@ -38,7 +38,7 @@ function warningKinds(): string[] {
 
 const CATALOGS = ["docs/spec/diagnostics.md", "docs/spec/diagnostics.ja.md"] as const;
 
-describe("diagnostics catalog completeness (TPL-20260616-02)", () => {
+describe("diagnostics catalog completeness (TPL-1623)", () => {
   const codes = diagnosticCodes();
   const kinds = warningKinds();
 

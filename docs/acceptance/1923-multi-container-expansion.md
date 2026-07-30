@@ -4,7 +4,7 @@
 - **Issue**: #1923（親 tracking #1815 / epic #1817 comprehension、前段 #1921）
 - **PR**: feat/expand-multi-container
 - **設計**: [ADR-1815](../adr/1815-expand-container-in-place.md)
-- **Related TPLs**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（段跨ぎ edge のフレーム貫通）
+- **Related TPLs**: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（段跨ぎ edge のフレーム貫通）
 - **対象**: `packages/core/src/renderer/edge-routing-groups.ts` / `layout.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewColumn`）、`packages/i18n`
 
 ## 概要
@@ -26,8 +26,8 @@ Phase 1 の「同時展開数 ≤ 1」制約を外し、system view で **複数
 > ✅ Automated by `packages/core/src/renderer/layout.expand.test.ts` (suite-wide)
 
 - [x] frame 端点（service レベルのエッジ）が両フレームの境界に接続する（`routeGroupedEdges` が frame 端点を解決し、skip されない）
-- [x] 内部 domain 端点のエッジは自分のフレームに入り、他のフレームは side gutter で迂回する（貫通しない、TPL-20260623-04）
-- [x] 再アンカー済みエッジは全要素ちょうど一度配置 + 端点保持（TPL-20260624-02、Phase 1 の不変条件を維持）
+- [x] 内部 domain 端点のエッジは自分のフレームに入り、他のフレームは side gutter で迂回する（貫通しない、TPL-1736）
+- [x] 再アンカー済みエッジは全要素ちょうど一度配置 + 端点保持（TPL-1738、Phase 1 の不変条件を維持）
 
 ### AC-3: scoped-glance ガード — ソフト（app）
 

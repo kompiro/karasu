@@ -1,9 +1,9 @@
 // Family-wide parity test for the SVG builder function family.
 //
-// Closes the TPL-20260510-11 / GB11-1 gap (#1273) — TPL-11 checklist item 5
+// Closes the TPL-219 / GB11-1 gap (#1273) — TPL-219 checklist item 5
 // calls for a family-wide test that invokes every member with the same
 // input + options and asserts consistent parameter handling. The bugs that
-// motivated TPL-11 (#219 — styleSource silently ignored in drill-down;
+// motivated TPL-219 (#219 — styleSource silently ignored in drill-down;
 // #160 — systemSheetCount missing in OrgView) were both family-drift
 // failures. Per-builder tests already cover each in isolation; this file
 // is the structural fence against the next drift.
@@ -69,7 +69,7 @@ const FIXTURE_STYLE = `
 #MemberA { background-color: ${PROBE_COLOR}; }
 `;
 
-describe("SVG builder family parity (TPL-20260510-11 / GB11-1)", () => {
+describe("SVG builder family parity (TPL-219 / GB11-1)", () => {
   it("registers every advertised family member (sanity)", () => {
     // Sentinel — if the family list shrinks to ≤1 member, the parity
     // test stops asserting parity. Fail loudly in that case.

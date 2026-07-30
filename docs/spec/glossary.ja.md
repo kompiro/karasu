@@ -12,7 +12,7 @@ karasu のコアな語彙のクイックリファレンスです。karasu は
 [診断](diagnostics.ja.md)）へのリンクを示します。ここの定義と正典が食い違う場合は
 正典が優先されます — リンク先を参照してください。
 
-> Related TPLs: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — この用語集は他所に正典がある定義の再掲であり、各項目はリンク先の正典と矛盾してはならない。
+> Related TPLs: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — この用語集は他所に正典がある定義の再掲であり、各項目はリンク先の正典と矛盾してはならない。
 
 ## コアコンセプト
 

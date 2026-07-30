@@ -26,7 +26,7 @@
 
 ### spec — `docs/spec/tags-annotations.md` / `.ja.md`
 
-- [x] 「Annotation parameters」節が en / ja 同構造で存在し、TPL-20260610-01 と双方向リンクする
+- [x] 「Annotation parameters」節が en / ja 同構造で存在し、TPL-1503 と双方向リンクする
 
   > ✅ Automated — `scripts/lint/spec-structure-sync.ts`（pre-push / CI）
 

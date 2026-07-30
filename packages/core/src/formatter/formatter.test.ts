@@ -28,7 +28,7 @@ function stripLocations<T>(node: T): T {
 
 // Helper: assert format() preserves the AST structurally — parse(src) and
 // parse(format(src)) must produce the same AST modulo source locations.
-// This is the round-trip guarantee from TPL-20260510-02 and is strictly
+// This is the round-trip guarantee from TPL-1101 and is strictly
 // stronger than text-level idempotence: it would catch a future regression
 // where formatter output still re-formats cleanly but the AST has shifted
 // (the failure mode behind #1101 and #1058).

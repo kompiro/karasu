@@ -51,7 +51,7 @@ export function buildHash(
   } = options;
   // Exhaustive dispatch on activeView — adding a new ActiveView member without
   // updating this switch fails the `never` assignment at compile time. Locks in
-  // TPL-20260510-03 (the #1094 failure mode where a new tab silently fell into
+  // TPL-1094 (the #1094 failure mode where a new tab silently fell into
   // the fallback branch and produced the wrong hash).
   let base: string;
   switch (activeView) {
@@ -63,7 +63,7 @@ export function buildHash(
       break;
     // system/org are drillable: their element anchors route through the shared
     // `anchorId` grammar (core), so the SPA hash and the static drill-down SVG
-    // emit one form — the cross-surface parity guarded by TPL-20260630-01.
+    // emit one form — the cross-surface parity guarded by TPL-1827.
     // (deploy/matrix above are single-level whole-view tabs with a bare
     // `#krs-<view>` token, and org Tree View is a mode — these are not element
     // anchors and intentionally do not share the leaf grammar; see

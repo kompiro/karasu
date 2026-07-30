@@ -3,7 +3,7 @@
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1463](https://github.com/kompiro/karasu/issues/1463)
 - **対象ファイル**: `packages/app/src/components/TranslateDialog.tsx`, `packages/app/src/components/TranslateProvider.tsx`（旧 `TranslateFeature.tsx` — #1467 で改名）, `packages/core/src/translate/`
-- **関連**: [ADR-1463](../adr/1463-app-translate.md)（translate を core に移設し App で提供）/ translate CLI [ADR-355](../adr/355-cli-translate-command.md) / TPL-20260510-11（CLI と App の translate output 一致）
+- **関連**: [ADR-1463](../adr/1463-app-translate.md)（translate を core に移設し App で提供）/ translate CLI [ADR-355](../adr/355-cli-translate-command.md) / TPL-219（CLI と App の translate output 一致）
 
 ## 受け入れ条件
 
@@ -39,7 +39,7 @@
 
   > ✅ Automated — `packages/app/src/components/TranslateDialog.test.tsx` › `clears a stale result when the input changes`
 
-- [x] App と CLI は同じ変換ロジック（`translateInfraConfig` in `@karasu-tools/core`）を共有し、同一入力から同一 `.krs` を出力する（TPL-20260510-11）
+- [x] App と CLI は同じ変換ロジック（`translateInfraConfig` in `@karasu-tools/core`）を共有し、同一入力から同一 `.krs` を出力する（TPL-219）
 
   > ✅ Automated — `packages/core/src/translate/{compose,k8s,openapi,db,bindings}.test.ts`（core 側の変換テスト）および `packages/cli/src/translate/translate.e2e.test.ts`（CLI が同じ関数を呼ぶ e2e）
 

@@ -158,7 +158,7 @@ export async function handleRender(
   // source are intentionally left unresolved. Multi-file projects are out of
   // scope for this endpoint; consumers that need import resolution should use
   // the `karasu render` CLI (which resolves against a real filesystem) or the
-  // VS Code preview. See TPL-20260510-16 for the convenience-vs-principled
+  // VS Code preview. See TPL-239 for the convenience-vs-principled
   // API distinction.
   let svg: string;
   try {

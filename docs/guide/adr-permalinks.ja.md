@@ -121,7 +121,7 @@ repo 向けのより厳密な層である。
 `.krs` 実在・`short` の解決）は [#1830](https://github.com/kompiro/karasu/issues/1830)
 で追う。
 
-> Related TPLs: [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)
+> Related TPLs: [TPL-1829](../test-perspectives/TPL-1829-adr-permalink-records-source.md)
 > — ADR permalink は record ではなく pointer。shortener や URL の形が消えても構造が
 > 残るよう、常に in-repo `.krs` の `source` を記録する。
 

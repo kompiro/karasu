@@ -26,11 +26,11 @@
 # <短く人間が読めるタイトル>
 
 - **日付**: YYYY-MM-DD
-- **ステータス**: 検討中 <!-- | 決定済み（[ADR-YYYYMMDD-NN](../adr/YYYYMMDD-NN-...md) として昇格） | 取りやめ -->
+- **ステータス**: 検討中 <!-- | 決定済み（[ADR-<n>](../adr/<n>-...md) として昇格） | 取りやめ -->
 - **関連**:
   - 引き金 Issue: [#NNNN](https://github.com/kompiro/karasu/issues/NNNN)
-  - 関連 ADR: [ADR-YYYYMMDD-NN](../adr/YYYYMMDD-NN-...md)
-  - 関連 TPL: [TPL-YYYYMMDD-NN](../test-perspectives/YYYYMMDD-NN-...md) <!-- 該当があれば。proactive TPL を同 PR で起こす場合もここに -->
+  - 関連 ADR: [ADR-<n>](../adr/<n>-...md)
+  - 関連 TPL: [TPL-<n>](../test-perspectives/TPL-<n>-...md) <!-- 該当があれば。proactive TPL を同 PR で起こす場合もここに -->
   - コード: `packages/<package>/src/<path>.ts`
 
 ## 背景・課題

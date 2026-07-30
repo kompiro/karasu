@@ -54,7 +54,7 @@ export function validateOwnsReferences(
 // kinds), so — unlike `owns` — there is no kind restriction and thus no
 // `invalid-contains`; only existence is checked. This is why we validate
 // against *all* declared node ids rather than nodePathIndex, which
-// intentionally excludes user / resource / usecase (TPL-20260623-02: the
+// intentionally excludes user / resource / usecase (TPL-1720: the
 // valid-target set must enumerate every kind the construct accepts). Only
 // system nodes themselves are excluded — a boundary groups nodes *within* a
 // system, not systems.
@@ -83,7 +83,7 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
  * frames the canvas it is written on, so its members are the declaring node's
  * direct children and nothing else. Reporting is what keeps the form honest —
  * without it a member naming a grandchild (or a typo) would simply not be
- * indexed and would vanish without a word (TPL-20260610-01).
+ * indexed and would vanish without a word (TPL-1503).
  */
 export function validateScopedContainsReferences(roots: readonly KrsNode[]): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];

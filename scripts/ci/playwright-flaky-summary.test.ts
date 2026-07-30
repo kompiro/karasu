@@ -149,7 +149,7 @@ describe("renderSummary", () => {
     expect(out).toContain("tests/a.spec.ts:10");
     expect(out).toContain("passes on retry");
     expect(out).toContain("tests/b.spec.ts");
-    expect(out).toContain("TPL-20260510-14");
+    expect(out).toContain("TPL-1171");
   });
 
   it("uses the singular form when exactly one flaky test", () => {

@@ -20,7 +20,7 @@ assumptions:
 - **関連**:
   - Issue #1421 — Add a command palette to the App
   - 関連 ADR: [ADR-1411](1411-app-keyboard-shortcuts.md) — キーボードショートカットのコマンドレジストリ基盤
-  - 関連 TPL: [TPL-20260519-01](../test-perspectives/TPL-20260519-01-global-shortcut-text-input-inhibition.md) — グローバルショートカットのテキスト入力フォーカス契約
+  - 関連 TPL: [TPL-1419](../test-perspectives/TPL-1419-global-shortcut-text-input-inhibition.md) — グローバルショートカットのテキスト入力フォーカス契約
   - コード: `packages/app/src/components/CommandPalette.tsx`、`packages/app/src/keyboard/command-context.tsx`
   - 受け入れテスト: [docs/acceptance/1421-command-palette.md](../acceptance/1421-command-palette.md)
 
@@ -56,7 +56,7 @@ ADR-1411 で App のキーボードショートカットはコマンドレジス
   意図的に選んだ「登録で再レンダーしない」設計を壊さない。パレットのセッションは
   数秒で、表示中の登録増減を反映する必要は実シナリオ上ない。
 - **`allow` の最初の利用例**: 起動コマンドを `whenTextInputFocused: "allow"` に
-  するのは、編集中こそコマンドを名前で探したいため。TPL-20260519-01 が挙げる
+  するのは、編集中こそコマンドを名前で探したいため。TPL-1419 が挙げる
   失敗モード「入力中も発火すべきショートカットが `skip` 扱いで死ぬ」を回避する。
 - **部分一致で十分**: 登録コマンドが一桁の現状でファジーマッチはスコアリング
   調整の手間に見合わない。将来コマンドが増えたら、パレット内に閉じた変更で

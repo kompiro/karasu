@@ -60,7 +60,7 @@ karasu-nest の `/render?format=png` のラスタライズに **[`@resvg/resvg-w
 
 - **wasm バンドルサイズ**。resvg-wasm の wasm は ~2.4MB。Pages Functions のバンドル上限内に収まることを実デプロイで確認した（フォントは Function バンドルではなく静的アセット側に乗るため上限には効かない）。
 - **システムフォントが無い**。Workers にはシステムフォントが無いため、フォントを **vendored 静的アセット**として配信し `env.ASSETS` 経由で `fontBuffers` に渡す（CDN fetch / Cloudflare Fonts は外部実行時依存になるため不採用 — [ADR-1783](1783-karasu-nest-hosted-preview.md)）。
-- **グリフカバレッジが供給フォント次第**（[#1799](https://github.com/kompiro/karasu/issues/1799)）。ブラウザの暗黙フォールバックが無いため、与えた buffer のカバレッジが全てになる。SVG レンダラーが絵文字/記号を inline マーカー（👥 / 📦 / 🔗 / 🔐 / ⚠ / ✦ / ⚗）に使うので、Latin/JP の 2 フォントだけだと PNG で豆腐（□）になる。**monochrome の Noto Emoji**（絵文字 + ⚠ / ⚗）と **Noto Sans Symbols 2**（✦ = U+2726, Dingbats 記号）を追加して解消した。**COLR/CBDT 系のカラー絵文字は resvg-wasm のサポートが限定的**なため、あえて monochrome の Noto Emoji を選んでいる。カバレッジは `packages/app/src/render/png-font-coverage.test.ts` が cmap で機械チェックする（観点は [TPL-20260626-01](../test-perspectives/TPL-20260626-01-raster-pipeline-glyph-coverage.md)）。
+- **グリフカバレッジが供給フォント次第**（[#1799](https://github.com/kompiro/karasu/issues/1799)）。ブラウザの暗黙フォールバックが無いため、与えた buffer のカバレッジが全てになる。SVG レンダラーが絵文字/記号を inline マーカー（👥 / 📦 / 🔗 / 🔐 / ⚠ / ✦ / ⚗）に使うので、Latin/JP の 2 フォントだけだと PNG で豆腐（□）になる。**monochrome の Noto Emoji**（絵文字 + ⚠ / ⚗）と **Noto Sans Symbols 2**（✦ = U+2726, Dingbats 記号）を追加して解消した。**COLR/CBDT 系のカラー絵文字は resvg-wasm のサポートが限定的**なため、あえて monochrome の Noto Emoji を選んでいる。カバレッジは `packages/app/src/render/png-font-coverage.test.ts` が cmap で機械チェックする（観点は [TPL-1799](../test-perspectives/TPL-1799-raster-pipeline-glyph-coverage.md)）。
 - **cold-start コスト**。isolate ごとに初回だけ wasm 初期化 + ~8MB のフォント fetch+decode を払う（以降はキャッシュ）。
 - **SVG-only 方針は維持**。core/cli/app は引き続き SVG のみ。PNG は karasu-nest の Worker に閉じた例外であり、ADR-105 の本旨（ツール本体に PNG 機能を持たせない）は変わらない。
 

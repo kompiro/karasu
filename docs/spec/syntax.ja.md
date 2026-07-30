@@ -40,7 +40,7 @@ karasu は**論理構造**と**物理構造**を明確に分離して表現す�
 | `entity` | domain が所有する概念データエンティティ。名前と関連のみを持ち属性は持たない。`table` で infra サブリソースに対応づける | — |
 <!-- /gen:reference:node-kinds-logical -->
 
-> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) — この表は `REFERENCE_DATA` から生成されているため、その catalog を検査する同期テストの独立した正典には使えない。kind とプロパティの列は parser の実測で縛る。
+> Related TPLs: [TPL-2158](../test-perspectives/TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) — この表は `REFERENCE_DATA` から生成されているため、その catalog を検査する同期テストの独立した正典には使えない。kind とプロパティの列は parser の実測で縛る。
 
 認識される `client` の form-factor タグは下記の表を参照。
 
@@ -143,7 +143,7 @@ system ECPlatform {
 }
 ```
 
-> Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
+> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
 
 ### 組織構造（誰が所有するか）— 別図で表現
 
@@ -215,7 +215,7 @@ system ECPlatform {
 `https:` / `mailto:` のリンクのみを表示する（`javascript:` href は
 アプリの origin で実行されてしまうため）。
 
-> Related TPLs: TPL-20260510-17 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
+> Related TPLs: TPL-168 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
 
 ### 文字列値とエスケープ
 
@@ -248,7 +248,7 @@ service Search {
 `karasu fmt` と `karasu translate` はいずれも出力時にエスケープするため、
 lexer が受理する値は round-trip しても変化しない。
 
-> Related TPLs: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
+> Related TPLs: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
 
 ### user ノードの例
 
@@ -397,7 +397,7 @@ system との **アクターの関係** をモデル化し、その `role` は�
 post-v1.0 の拡張余地として意図的に残しており、ここではスコープ外とする
 （[#1639](https://github.com/kompiro/karasu/issues/1639) 参照）。
 
-> Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — spec が約束する配置規則は、汎用 parse error に落とさず専用の診断コードを持つこと。
+> Related TPLs: [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) — spec が約束する配置規則は、汎用 parse error に落とさず専用の診断コードを持つこと。
 
 #### 入れ子の配置
 
@@ -430,7 +430,7 @@ error ではなく warning なのは言語 v1.0 が freeze 済み
 トップレベル形のみである（system 直下の domain は描画先の器を既に持つため。
 [#2184](https://github.com/kompiro/karasu/issues/2184) 参照）。
 
-> Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。
+> Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。
 
 ### service ブロック
 
@@ -669,10 +669,10 @@ OrderDB.orders`）はボトムアップの中間状態として引き続き有�
   （`unassigned-resource` 警告のまま）、衝突の根本原因は
   `entity-anchor-collision` が指す。
 
-> Related TPLs: [TPL-20260711-01](../test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。モデルを DB スキーマ非目標の構造側に保つ。
-> [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — resource→store の target set は複数の resolver（`deriveInfraEdges` / `detectSharedInfraFanIn` / `detectUnassignedResources`）が消費する。解決先に `entity` を追加する際は全箇所を同期させる。
-> [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — 未解決の bare `resource` / 越境 entity 関連でも、解決できた側のノードは drop しない。
-> [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — entity 経由 usecase→resource エッジの read/write タグ合成は元 resource の operation semantics を保存する。
+> Related TPLs: [TPL-1882](../test-perspectives/TPL-1882-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。モデルを DB スキーマ非目標の構造側に保つ。
+> [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — resource→store の target set は複数の resolver（`deriveInfraEdges` / `detectSharedInfraFanIn` / `detectUnassignedResources`）が消費する。解決先に `entity` を追加する際は全箇所を同期させる。
+> [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — 未解決の bare `resource` / 越境 entity 関連でも、解決できた側のノードは drop しない。
+> [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — entity 経由 usecase→resource エッジの read/write タグ合成は元 resource の operation semantics を保存する。
 
 #### infra leaf のドメイン所有 — cross-domain ストアアクセス
 
@@ -694,7 +694,7 @@ service が共有するかで判定し、こちらは所有境界の越境で判
 なり診断は出ない（後から entity を足せば usecase を編集せず診断が有効になる）。
 [診断リファレンス](diagnostics.ja.md) を参照。
 
-> Related TPLs: [TPL-20260715-02](../test-perspectives/TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) — infra leaf のドメイン所有は `entity` 層から導出（物理 `table` に宣言しない）、leaf 粒度でキーし、所有ドメインの集合で持ち、system 単位でスコープする。[TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — 同じ事実に 2 つ目の表現を持たせて drift させない。
+> Related TPLs: [TPL-1967](../test-perspectives/TPL-1967-domain-ownership-derived-from-entity-not-declared.md) — infra leaf のドメイン所有は `entity` 層から導出（物理 `table` に宣言しない）、leaf 粒度でキーし、所有ドメインの集合で持ち、system 単位でスコープする。[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — 同じ事実に 2 つ目の表現を持たせて drift させない。
 
 ### エッジ宣言
 
@@ -929,7 +929,7 @@ organization TechCorp {
 - パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。
 - 所有関係はシステムビューの**所有されるノードのカード上**に `👥` チップとして描画される。対象は team が `owns` できる全 kind（`service` / `domain` / `client`）。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
 
-> Related TPLs: [TPL-20260729-02](../test-perspectives/TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。
+> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。
 
 ### member ノード
 
@@ -952,7 +952,7 @@ team の直下に `member` を宣言して個人を記述する。
 `positional-label-deprecated` warning が出る。`karasu fmt` がプロパティ形式へ書き換える。
 両方が同時に指定された場合はプロパティ形式が優先される。
 
-> Related TPLs: [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — parser が受理する形は必ず本 spec に文書化する。未文書の受理形は drift（本節の positional 形は約 4 ヶ月間 undocumented のまま受理されていた、#2133）。
+> Related TPLs: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は必ず本 spec に文書化する。未文書の受理形は drift（本節の positional 形は約 4 ヶ月間 undocumented のまま受理されていた、#2133）。
 
 ---
 
@@ -995,7 +995,7 @@ boundary payments {
 - **membership index は配置ごとに parse 時に導出される**。top-level 形はフラットな
   **`boundaryIndex`**（`node id → boundary id`、org の `ownerIndex` と同型）を、スコープ宣言は
   per-scope の **`scopedBoundaryIndex`**（`宣言スコープ → (child id → boundary id)`）を組む。
-  後者はスコープパスをキーに含むため、別スコープの同名の子と混同しえない（TPL-20260512-01）。
+  後者はスコープパスをキーに含むため、別スコープの同名の子と混同しえない（TPL-1352）。
   どちらも **1:1** で、同じ index 内で複数 boundary に含まれるノードは**最初に宣言された** boundary が
   勝ち、重複は info 診断 `duplicate-boundary-assignment` で観測する（error ではなく事実 —
   `duplicate-owner-assignment` と同じ register）。1 つのキャンバス上で両 index が同じノードを指名した
@@ -1067,7 +1067,7 @@ system Shop {
 どちらの *Group by* 軸でも、グループフレームのタイトルにはグループの `label` が表示される。
 label が無い場合は id にフォールバックする（#2133）。
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。
 
 ---
 
@@ -1306,9 +1306,9 @@ legend domain "データアクセス" {
   カバーするため、ノード単位の出し分けは需要が観測されてから（Issue #1513）
 
 > **Related TPLs**:
-> - [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — scoped glance: 各ドリルダウンレベルは自分の語彙だけを見せる（完全一致の凡例切り替えはこの原則の凡例への適用）
-> - [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) — トップレベル / drill-down / all-layers の各レンダーパスに同じ legend オプションが渡ること
-> - [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — view-scope 語彙は built-in リファレンスデータと同期すること
+> - [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — scoped glance: 各ドリルダウンレベルは自分の語彙だけを見せる（完全一致の凡例切り替えはこの原則の凡例への適用）
+> - [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) — トップレベル / drill-down / all-layers の各レンダーパスに同じ legend オプションが渡ること
+> - [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — view-scope 語彙は built-in リファレンスデータと同期すること
 
 ---
 
@@ -1503,12 +1503,12 @@ system Blog {
 同じプロジェクトは常に同じ merged AST を生成する。
 
 > **関連 TPL**:
-> - [TPL-20260514-01](../test-perspectives/TPL-20260514-01-import-dag-not-cycle.md) — DAG 経由再到達は循環ではない（S5）
-> - [TPL-20260514-02](../test-perspectives/TPL-20260514-02-whole-file-import-completeness.md) — whole-file import は全 top-level / nested ノードを保持する（S2）
-> - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — 再オープン `system` は children を union、property は root entry が勝つ（S3）
-> - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` も whole-file import で伝搬する（S4）
-> - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — 未解決 edge endpoint は残存ノードを drop しない（S6）
-> - [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md) — 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断（S4.5）
+> - [TPL-1381](../test-perspectives/TPL-1381-import-dag-not-cycle.md) — DAG 経由再到達は循環ではない（S5）
+> - [TPL-1383](../test-perspectives/TPL-1383-whole-file-import-completeness.md) — whole-file import は全 top-level / nested ノードを保持する（S2）
+> - [TPL-2168](../test-perspectives/TPL-2168-system-reopen-merge.md) — 再オープン `system` は children を union、property は root entry が勝つ（S3）
+> - [TPL-2169](../test-perspectives/TPL-2169-deploy-org-wildcard-propagation.md) — `deploy` / `organization` も whole-file import で伝搬する（S4）
+> - [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — 未解決 edge endpoint は残存ノードを drop しない（S6）
+> - [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md) — 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断（S4.5）
 
 ---
 
@@ -1555,4 +1555,4 @@ system Blog {
 
 **検出キー**: `domain` の `id`。`label`（表示名）は検出に使用しない。
 
-> Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`
+> Related TPLs: TPL-1386 — `Diagnostic register reflects "fact vs. style"`

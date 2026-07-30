@@ -1,7 +1,7 @@
 # Controls what ships in the .vsix. The extension is bundled with esbuild into
 # out/extension.js (+ out/server.js, the LSP server), so source and dev tooling
 # do not need to ship. See docs/adr (vscode-marketplace-publish) and
-# TPL-20260510-15 (dev vs packaged mode parity): the AT asserts out/server.js +
+# TPL-1024 (dev vs packaged mode parity): the AT asserts out/server.js +
 # README ship and src/ does not.
 
 # Source — bundled into out/, not needed at runtime

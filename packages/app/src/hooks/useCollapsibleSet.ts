@@ -13,7 +13,7 @@ import { useCallback, useRef, useState } from "react";
  * `single` (#1921) enforces an at-most-one invariant: toggling a new id clears
  * any other member first, so the set never holds more than one element. Used by
  * the in-place expansion axis, where expanding a second container collapses the
- * first (keeping the scoped-glance node budget bounded — TPL-20260510-21).
+ * first (keeping the scoped-glance node budget bounded — TPL-1223).
  *
  * `key` is exposed as a lazy getter, not an eagerly-memoized field: consumers
  * that only read `set` / `toggle` (e.g. `useOrgView`) never pay the sort+join,

@@ -22,7 +22,7 @@ assumptions:
   - Issue [#1463](https://github.com/kompiro/karasu/issues/1463)
   - PR [#1467](https://github.com/kompiro/karasu/pull/1467)
   - 関連 ADR: [ADR-355](355-cli-translate-command.md)（translate CLI の導入）, [ADR-1104](1104-translate-crud-bindings.md)
-  - 関連 TPL: TPL-20260510-11（CLI と App の translate output 一致）
+  - 関連 TPL: TPL-219（CLI と App の translate output 一致）
   - 昇格元 Design Doc: `docs/design/app-translate.md`（本 PR で削除）
 
 ## 背景
@@ -37,7 +37,7 @@ translate のロジックを `packages/cli` から `packages/core` に移設し�
 
 ## 理由
 
-- **単一実装**: CLI と App が同じ `translateInfraConfig` を呼ぶため、同一入力から同一 `.krs` が出ることが構造的に保証される（CLI/App の output 乖離を防ぐ — TPL-20260510-11）。
+- **単一実装**: CLI と App が同じ `translateInfraConfig` を呼ぶため、同一入力から同一 `.krs` が出ることが構造的に保証される（CLI/App の output 乖離を防ぐ — TPL-219）。
 - **全モード対応**: クライアントサイド変換なので App の 3 モード（Project / Memory / Serve）すべてでサーバーなしに動く。
 - **置き場の整合**: `core` はもともと純粋な TS ロジック（パーサー・レンダラー）の置き場であり、純粋な変換ロジックはそこに収まる。
 - **CLI 後方互換**: `karasu translate` の挙動・出力は不変。CLI 側にはファイル I/O のラッパーだけが残る。

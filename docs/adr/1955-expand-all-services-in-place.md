@@ -26,7 +26,7 @@ assumptions:
   - 前提: [ADR-1815](1815-expand-container-in-place.md)（in-place expansion / true mixed-LOD。Phase 2 #1923 で複数同時展開・「Collapse all」で全畳み・ソフト警告・ハード上限なしを確定）
   - 再利用機構: [ADR-1858](1858-system-view-group-by-team.md) §3（per-axis 状態/コントロールの直交）, [ADR-1872](1872-category-collapse-retarget-edges.md)（category band の折り畳み）
   - 姉妹: [ADR-2120](2120-group-by-bulk-collapse.md)（#1872。bulk collapse の「描画済み SVG から id 集合を得る」「軸の有無で駆動する」パターンの初出。本 ADR はその expansion 軸版）
-  - 制約 TPL: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（軸の有無で駆動し `groupBy` に分岐しない）, [TPL-20260516-01](../test-perspectives/TPL-20260516-01-control-a11y-contract-survives-migration.md)（コントロールの a11y 契約維持）, [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（user-facing surface の docs 同期）
+  - 制約 TPL: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md)（軸の有無で駆動し `groupBy` に分岐しない）, [TPL-1399](../test-perspectives/TPL-1399-control-a11y-contract-survives-migration.md)（コントロールの a11y 契約維持）, [TPL-1716](../test-perspectives/TPL-1716-user-facing-surface-docs-sync.md)（user-facing surface の docs 同期）
   - AT: [AT-1955](../acceptance/1955-expand-all-services.md)
   - コード: `packages/app/src/hooks/useSystemView.ts`
 
@@ -46,7 +46,7 @@ in-place expansion（ADR-1815）は各 service に ⊕/⊖ を与え、「Collap
 2. `anyCollapsible` に `serviceIds.length > 0` を OR — frames/bands の無い純 service view でもトグルが出る。
 3. `onCollapseAllToggle` の expand 方向で `expansions.replace(serviceIds)` を呼ぶ。
 
-**scope は renderer 側ゲートに一元化する。** `data-expand-node` は `!groupBy && expandable`（単一 system）のときしか emit されないため、`serviceIds` は Group-by team / multi-system で自然に空になり、app 側で `groupBy` を条件分岐せずに no-op を得る（TPL-20260510-03）。
+**scope は renderer 側ゲートに一元化する。** `data-expand-node` は `!groupBy && expandable`（単一 system）のときしか emit されないため、`serviceIds` は Group-by team / multi-system で自然に空になり、app 側で `groupBy` を条件分岐せずに no-op を得る（TPL-1094）。
 
 **scoped-glance ガードはソフトのまま。** 全展開は overload 閾値（4）を超えて ⚠ ヒントを出すが、それは仕様どおり。「Collapse all」が 1 クリックで俯瞰へ戻す（ADR-1815 のハード上限なし方針を踏襲）。
 
@@ -59,8 +59,8 @@ overload トグルは二値（全畳み ⇄ 全開き）でラベルは `allColl
 ## 理由
 
 - **最小差分**: 現状コードが既に `allCollapsed` / collapse 方向で expansion を織り込んでいたため、overload は expand 方向 1 箇所 + id 抽出のみで成立し、PreviewColumn / i18n / prop 配線 / core を触らない（changeset も不要）。
-- **軸非依存の駆動**: 「今そのビューで展開しうる service」を描画済み SVG から読むことで、将来 Group-by 軸が増えても bulk 操作が silent に壊れない（姉妹 bulk-collapse と同じ設計、TPL-20260510-03）。
-- **既存 a11y 契約の維持**: `anyCollapsible` / `allCollapsed` / `onCollapseAllToggle` の 3 フィールドの内部計算・挙動だけを変え、`aria-pressed`/click 契約は不変（TPL-20260516-01）。
+- **軸非依存の駆動**: 「今そのビューで展開しうる service」を描画済み SVG から読むことで、将来 Group-by 軸が増えても bulk 操作が silent に壊れない（姉妹 bulk-collapse と同じ設計、TPL-1094）。
+- **既存 a11y 契約の維持**: `anyCollapsible` / `allCollapsed` / `onCollapseAllToggle` の 3 フィールドの内部計算・挙動だけを変え、`aria-pressed`/click 契約は不変（TPL-1399）。
 
 ## 却下した案
 

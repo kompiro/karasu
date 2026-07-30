@@ -12,7 +12,7 @@ import type { SourceRange } from "./tokens.js";
  *
  * Resolver / Tidy / svg-builder still read the string side. The string
  * remains the canonical persistence form; ValueNode is a derived view
- * (see TPL-20260510-18 and the design doc's roadmap section).
+ * (see TPL-1207 and the design doc's roadmap section).
  */
 export type ValueNode =
   /** Bare identifier — e.g. `down`, `bold`, `red`, `solid`. */

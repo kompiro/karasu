@@ -37,7 +37,7 @@ describe("DiagramViewShortcuts", () => {
     });
   }
 
-  it("ignores the shortcuts while a text input is focused (TPL-20260519-01)", () => {
+  it("ignores the shortcuts while a text input is focused (TPL-1419)", () => {
     const onActiveViewChange = vi.fn<(view: ActiveView) => void>();
     renderWithShortcuts(<DiagramViewShortcuts onActiveViewChange={onActiveViewChange} />);
     const textarea = document.createElement("textarea");
@@ -50,7 +50,7 @@ describe("DiagramViewShortcuts", () => {
     textarea.remove();
   });
 
-  it("stops resolving the shortcuts after the component unmounts (TPL-20260519-01)", () => {
+  it("stops resolving the shortcuts after the component unmounts (TPL-1419)", () => {
     const onActiveViewChange = vi.fn<(view: ActiveView) => void>();
     const { unmount } = renderWithShortcuts(
       <DiagramViewShortcuts onActiveViewChange={onActiveViewChange} />,

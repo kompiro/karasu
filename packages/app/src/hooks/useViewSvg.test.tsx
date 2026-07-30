@@ -12,7 +12,7 @@ afterEach(cleanup);
 // regression #183 was the bug where `useFullViewSvg` / `useViewSvg` failed
 // to forward `displayMode` to `buildAllLayersSvg`, leaving Full View stuck
 // in shape mode regardless of the toolbar toggle.
-// See TPL-20260510-06 and Issue #1245.
+// See TPL-1001 and Issue #1245.
 const SOURCE = `system EC {
   service Frontend {
     label "Frontend"
@@ -66,7 +66,7 @@ describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
   });
 
   it("forwards displayMode to the system drill-down view as well (cross-surface parity)", () => {
-    // TPL-20260510-06 enumerates "all surfaces consuming displayMode" —
+    // TPL-1001 enumerates "all surfaces consuming displayMode" —
     // useViewSvg covers drill-down, all-layers, and org variants. Cover
     // both system surfaces here so a future refactor that drops
     // displayMode from one but not the other is caught.
@@ -148,7 +148,7 @@ boundary money {
   it("threads groupBy into the live entity view of the drilled domain (#1983)", () => {
     // The entity view is a render surface like any other: with a boundary
     // grouping entity members, the drilled domain's live entity view draws
-    // the frame once groupBy is set (TPL-20260510-11 — every call site).
+    // the frame once groupBy is set (TPL-219 — every call site).
     const ENTITY_SOURCE = `system Shop {
   service Orders {
     domain OrderDomain {

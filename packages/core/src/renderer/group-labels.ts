@@ -14,7 +14,7 @@ import type { KrsFile, KrsNode, TeamNode } from "../types/ast.js";
  * matching the axis `boundaryAxisFor` builds — the two key spaces are disjoint
  * by construction. Built per axis so a team id and an unrelated boundary id
  * sharing the same spelling can never borrow each other's label (the axis is a
- * distinguishing dimension — TPL-20260512-01).
+ * distinguishing dimension — TPL-1352).
  */
 export interface GroupLabelIndex {
   /** Model-wide labels: team ids, or top-level boundary ids (bare id keys). */

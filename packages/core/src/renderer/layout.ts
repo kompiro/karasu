@@ -71,7 +71,7 @@ const GROUP_FRAME_TITLE_GAP = GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM;
  * (guaranteed by `assignGroupedLayers`), so the frames are disjoint by
  * construction. Shared by the single-system focus path and the multi-system
  * root path (#1884) — both mint the same `__group_<team>__` frame, so the two
- * grouping paths cannot drift on frame geometry (TPL-20260510-11).
+ * grouping paths cannot drift on frame geometry (TPL-219).
  */
 function buildGroupFrames(
   nodes: readonly LayoutNode[],
@@ -2115,7 +2115,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // Cross-system edges. When a team is collapsed (#1884), an endpoint here may
   // have been folded into that team's stub — re-anchor onto the stub via
   // `crossSystemRemap` instead of silently dropping the edge (mirrors the
-  // single-system ghost-edge remap; TPL-20260624-02: a collapsed node's edges
+  // single-system ghost-edge remap; TPL-1738: a collapsed node's edges
   // must resolve both endpoints). De-dupe *only* re-targeted edges (one stub can
   // absorb several), so authored parallel cross-system edges between two
   // expanded nodes are untouched and the un-collapsed path stays byte-identical.

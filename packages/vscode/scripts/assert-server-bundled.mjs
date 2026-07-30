@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 // or empty. extension.ts falls back to `../lsp/out/server.js` in the dev tree,
 // so a broken bundling step (a removed/edited `cpSync` line in package.json)
 // stays invisible locally and would only surface once someone installs the
-// .vsix. See Issue #1272 and TPL-20260510-15 (dev vs packaged mode parity).
+// .vsix. See Issue #1272 and TPL-1024 (dev vs packaged mode parity).
 
 const serverPath = fileURLToPath(new URL("../out/server.js", import.meta.url));
 

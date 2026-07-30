@@ -288,7 +288,7 @@ class Printer {
       // Scoped `boundary` blocks (#2036). They join the same line-ordered list
       // as children and edges so authored order round-trips; omitting them here
       // would make `fmt` delete them silently, the failure ADR-2076 fixed for
-      // the top-level form (TPL-20260510-02).
+      // the top-level form (TPL-1101).
       ...(node.boundaries ?? []).map((b) => ({
         kind: "boundary" as const,
         block: b,

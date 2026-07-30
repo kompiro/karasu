@@ -17,7 +17,7 @@ vocabulary instead. Where a term's mechanics live in another authoritative doc
 (the permalink anchor contract, a design doc, an ADR), the entry links there for
 the details and keeps only the definition here.
 
-> Related TPLs: [TPL-20260716-01](test-perspectives/TPL-20260716-01-keystone-terms-single-home.md) — these terms have a single canonical home; the PRD, roadmap, epic, and specs must reference this page, not re-define the terms, and entries here must not contradict the mechanics docs they link to.
+> Related TPLs: [TPL-2005](test-perspectives/TPL-2005-keystone-terms-single-home.md) — these terms have a single canonical home; the PRD, roadmap, epic, and specs must reference this page, not re-define the terms, and entries here must not contradict the mechanics docs they link to.
 
 ## Product direction (keystone)
 

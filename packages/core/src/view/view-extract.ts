@@ -230,7 +230,7 @@ function deriveImplicitServiceEdges(
  * Exported as the single source of truth for the service→infra dependency: the
  * system view consumes it to draw `service → database` edges, and the deploy view
  * (`extractDeployView`) reuses it so both views agree on the dependency set
- * (see ADR-1658, TPL-20260519-02).
+ * (see ADR-1658, TPL-1415).
  */
 export function deriveInfraEdges(
   children: KrsNode[],

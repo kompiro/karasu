@@ -116,7 +116,7 @@ export type LegendRenderOptions = Pick<RenderOptions, "legends" | "styleSheets" 
 /**
  * Builds the legend slice of the render options once per multi-level build.
  * Every builder spreads this into its render calls so a render path cannot
- * accidentally lose the legend wiring (TPL-20260510-11), and the model walk
+ * accidentally lose the legend wiring (TPL-219), and the model walk
  * in `collectLegendUsage` runs once per build instead of once per pane.
  * The per-level `viewScope` stays at the call site.
  */

@@ -33,7 +33,7 @@ karasu は問題を 2 つのレイヤーの語彙で報告する。
 - `warning` — 著者が直すべき実際の欠陥（dangling な参照、スタイル衝突など）。
 - `info` — 欠陥ではなく **事実**。外部の流派が smell と呼びうる構造（共有
   database、領域分散など）を、誤りと断じずに surface する。これが *事実 vs 流派*
-  の register 区別である — [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) を参照。
+  の register 区別である — [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) を参照。
 
 karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う。未解決の関係は
 落とすが、参照元の node は保存し、レンダー全体を失敗させずに warning として報告
@@ -240,8 +240,8 @@ throw された compile / parse エラーを app が包むときに使う合成�
 本書に `code` として現れなければならない。meta-test
 （`packages/core/src/types/diagnostics-catalog.test.ts`）が双方向でこれを assert
 するため、カタログが emit されるコードから無言で drift することはない。背景の規律は
-[TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md)
+[TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md)
 に記録する。
 
-> Related TPLs: [TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md)（カタログ ↔ コードの完全性）, [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（事実 vs 流派の register）, [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md)（spec が約束する診断は実装されている）, [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（spec ↔ source-of-truth 同期）.
+> Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md)（カタログ ↔ コードの完全性）, [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（事実 vs 流派の register）, [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md)（spec が約束する診断は実装されている）, [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（spec ↔ source-of-truth 同期）.
 </content>

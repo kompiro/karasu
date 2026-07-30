@@ -26,7 +26,7 @@ export type GroupByMode = "none" | "team" | "boundary";
  * options, the export builders and entity view via `useViewSvg`), so a new
  * axis added to {@link GroupByMode} flows through without editing call sites —
  * a per-site hardcode (`=== "team" ? "team" : undefined`) silently dropped the
- * boundary axis from the export surfaces (#2033, TPL-20260510-11).
+ * boundary axis from the export surfaces (#2033, TPL-219).
  */
 export function groupByAxis(groupBy: GroupByMode): Exclude<GroupByMode, "none"> | undefined {
   return groupBy === "none" ? undefined : groupBy;

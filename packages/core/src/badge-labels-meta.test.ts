@@ -8,8 +8,8 @@
  *    ("Deprecated") — the no-injection path is unchanged.
  * 2. The injected invocation renders the injected label and not the
  *    en default — the call site forwards `annotationBadgeLabels` into
- *    `getBuiltinStyleSheet` (cf. Issue #183 / TPL-20260510-06 for the
- *    silently-dropped-parameter failure mode, and TPL-20260510-11 for
+ *    `getBuiltinStyleSheet` (cf. Issue #183 / TPL-1001 for the
+ *    silently-dropped-parameter failure mode, and TPL-219 for
  *    the parallel-family drift this table fences).
  *
  * **When you add a new SVG-producing entry point that takes

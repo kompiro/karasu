@@ -21,7 +21,7 @@ assumptions:
   - Issue #1400 — Migrate EdgeContextMenu direction items to a shadcn menu primitive
   - 親 Issue #1399（shadcn/ui 移行レビューの item 3 から分離）
   - 関連 ADR: [ADR-1368](1368-adopt-shadcn-ui.md) — shadcn/ui 採用
-  - 関連 TPL: [TPL-20260516-01](../test-perspectives/TPL-20260516-01-control-a11y-contract-survives-migration.md) —
+  - 関連 TPL: [TPL-1399](../test-perspectives/TPL-1399-control-a11y-contract-survives-migration.md) —
     interactive control の a11y 契約は移行で静かに壊れる
   - コード: `packages/app/src/components/EdgeContextMenu.tsx`、
     `packages/app/src/components/ui/dropdown-menu.tsx`
@@ -57,7 +57,7 @@ primitive 化する必要がある、というのが論点だった。
   兼ねる。これをゼロサイズ要素としてクリック座標に置けば、移行前の `Popover` +
   `PopoverAnchor` と同型の「仮想 anchor」テクニックがそのまま使え、座標表示・dismissal
   （Esc / outside-click）契約を崩さない。
-- **a11y 契約を強化する方向の移行**（TPL-20260516-01）: `role="menuitem"` と disabled 状態は
+- **a11y 契約を強化する方向の移行**（TPL-1399）: `role="menuitem"` と disabled 状態は
   primitive 由来になり、`aria-disabled` / `data-disabled` が付く。contract test も class
   ベースから role / 属性ベースへ移した。移行で契約が劣化するのではなく、menu primitive 化で
   むしろ強化される。

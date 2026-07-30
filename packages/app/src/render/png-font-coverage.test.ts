@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * Guard for TPL-20260626-01 (#1799): the karasu-nest PNG raster path
+ * Guard for TPL-1799 (#1799): the karasu-nest PNG raster path
  * (`functions/render.ts`, resvg-wasm) supplies its own fonts, with no implicit
  * browser fallback. The SVG renderer emits emoji as inline node markers, so the
  * bundled emoji font MUST cover every marker codepoint — otherwise PNG output
@@ -123,7 +123,7 @@ function readCmapCoverage(font: Buffer): Set<number> {
   return covered;
 }
 
-describe("PNG raster font coverage (TPL-20260626-01, #1799)", () => {
+describe("PNG raster font coverage (TPL-1799, #1799)", () => {
   it("the bundled fonts together cover every marker glyph the renderer emits", () => {
     const covered = new Set<number>();
     for (const file of BUNDLED_FONTS) {

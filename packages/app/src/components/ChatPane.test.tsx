@@ -144,7 +144,7 @@ describe("ChatPane — with API key", () => {
     expect(queryByRole("button", { name: /Start Interview/ })).toBeNull();
   });
 
-  // TPL-20260510-09 anti-regression: ChatPane's submit is gated by a
+  // TPL-948 anti-regression: ChatPane's submit is gated by a
   // modifier (Cmd/Ctrl+Enter); a bare Enter inserts a newline and must
   // NOT call sendMessage. Today the only post-submit state transition is
   // `setInputValue("")` — the textarea stays mounted, no new focusable
@@ -152,7 +152,7 @@ describe("ChatPane — with API key", () => {
   // keypress) cannot reproduce here. If a future change rewires Enter
   // (without modifier) to submit, the implementer must consciously port
   // ProjectSelector's `preventDefault + stopPropagation` pattern.
-  it("plain Enter (no modifier) does not submit (TPL-09 / #948 prophylaxis)", () => {
+  it("plain Enter (no modifier) does not submit (TPL-948 / #948 prophylaxis)", () => {
     const sendMessage = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
     mockUseChatSession.mockReturnValue(makeDefaultSession({ sendMessage }));
     const { getByLabelText } = render(<ChatPane {...defaultProps} />);
@@ -163,7 +163,7 @@ describe("ChatPane — with API key", () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 
-  it("Cmd/Ctrl+Enter submits exactly once with preventDefault (TPL-09)", () => {
+  it("Cmd/Ctrl+Enter submits exactly once with preventDefault (TPL-948)", () => {
     const sendMessage = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
     mockUseChatSession.mockReturnValue(makeDefaultSession({ sendMessage }));
     const { getByLabelText } = render(<ChatPane {...defaultProps} />);
@@ -279,7 +279,7 @@ describe("ChatPane — localization (Phase C4)", () => {
     expect(container.textContent).toContain("AI 機能を使うには Claude API キーが必要です");
   });
 
-  // TPL-20260510-04 anti-regression: the chat input is a plain controlled
+  // TPL-1053 anti-regression: the chat input is a plain controlled
   // textarea (`value` only changes via the user's `onChange`). Today
   // nothing rewrites it mid-composition, so the EditorPane-class IME bug
   // (#1053) cannot reach here. If AI streaming, prefix autofill, or live

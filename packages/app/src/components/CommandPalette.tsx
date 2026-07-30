@@ -14,7 +14,7 @@ const PALETTE_COMMAND_ID = "command.openCommandPalette";
  *
  * The open command is `whenTextInputFocused: "allow"`, so the palette opens
  * even while the editor is focused — the case a user most wants it
- * (TPL-20260519-01). Esc / outside-click close it via Radix.
+ * (TPL-1419). Esc / outside-click close it via Radix.
  *
  * Commands are snapshotted with `getCommands()` when the palette opens; the
  * registry holds them in a ref and does not notify on change, and a palette

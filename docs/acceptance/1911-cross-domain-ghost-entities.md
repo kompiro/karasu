@@ -22,7 +22,7 @@ Scope: PR 2b-2, core only. Reuses the existing layout-node ghost mechanism
 Entity ids are only *warning*-level unique (`entity-anchor-collision`), so a bare
 id cannot disambiguate a foreign entity. Cross-domain relations therefore use a
 qualified `DomainId.EntityId` target (`DomainId` is error-level unique). See
-`docs/spec/syntax.md` § entity relations and TPL-20260714-01.
+`docs/spec/syntax.md` § entity relations and TPL-1936.
 
 ## Acceptance Criteria
 

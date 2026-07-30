@@ -22,7 +22,7 @@ assumptions:
   - Issue [#1568](https://github.com/kompiro/karasu/issues/1568)（gap B / 親 [#1567](https://github.com/kompiro/karasu/issues/1567)）
   - 非目標の境界: [#23](https://github.com/kompiro/karasu/issues/23)（sequence / 時間軸モデリングはスコープ外）
   - 先例: [ADR-832](832-no-runtime-authz-modeling.md)（実装側関心を語彙に入れず散文/link に逃がす）、`operations` の verb-decoration、open annotation、`job.schedule`
-  - 関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
+  - 関連 TPL: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)
   - コード: `packages/core/src/parser/parser.ts`, `packages/core/src/types/ast.ts`
 
 ## 背景
@@ -45,7 +45,7 @@ assumptions:
 
 - **karasu idiomatic**: 「認識→意味付与／認識外→opaque 保持」は `operations` 装飾・open annotation・`job.schedule` と同系。曖昧な時期（"来年あたり"）も壊さず書ける。
 - **fact / 縁は散文の系譜**: 厳密日付は machine-usable、曖昧表現は表示のみ。authz の `アクセス:` 散文規約（ADR-832）と同じ「縁は緩く」。
-- **TPL-20260610-01**: 受理する語彙は効果を持つか警告される。未対応 param を warn する根拠。
+- **TPL-1503**: 受理する語彙は効果を持つか警告される。未対応 param を warn する根拠。
 - **非目標の堅持**: 時間軸スケジューリング（PERT）は core に入れず export に委ねる。`until` を runtime 評価しないことで scheduler 化を防ぐ。
 
 ## 却下した案
@@ -57,5 +57,5 @@ assumptions:
 ## 影響範囲
 
 - 後方互換: 既存の裸フラグはそのまま有効。params は opt-in。
-- `docs/spec/tags-annotations.md`（en/ja）に「Annotation parameters」節を追加（TPL-20260610-01 と双方向リンク）。
+- `docs/spec/tags-annotations.md`（en/ja）に「Annotation parameters」節を追加（TPL-1503 と双方向リンク）。
 - 公開 CLI（`karasu`）のパースに新構文が surface（changeset minor）。

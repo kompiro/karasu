@@ -5,7 +5,7 @@
  * every package's npm semver. The spec docs (docs/spec/syntax.md / style.md
  * and their ja variants) state the same version as the canonical token
  * `.krs language v<version>`; language-version.test.ts guards the two
- * representations against drift (TPL-20260511-02) by rejecting *stale* tokens
+ * representations against drift (TPL-1296) by rejecting *stale* tokens
  * — ones naming a version the language has moved past. Forward references stay
  * legal: prose registers future behaviour against `.krs language v2.0` while
  * v1.0 is frozen, so the guard must not fire on them.

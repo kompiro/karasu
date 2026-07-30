@@ -21,7 +21,7 @@ assumptions:
   - 実装 PR [#1761](https://github.com/kompiro/karasu/pull/1761)
   - refines: [ADR-1724](./1724-system-view-infra-external-tier-split.md)（external の配置を最下段バンドからサイド列へ）
   - 関連: [ADR-968](./968-orthogonal-edge-routing-skip-layer.md), [ADR-974](./974-infra-row-by-deepest-consumer.md), [ADR-1755](./1755-edge-from-to-selectors.md)（color-by-source selector、本件の補助）
-  - TPL: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)（サイド配置の不変条件）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)
+  - TPL: [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)（サイド配置の不変条件）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)
   - AT: [AT-1728](../acceptance/1728-external-on-sides.md)
   - コード: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）
 

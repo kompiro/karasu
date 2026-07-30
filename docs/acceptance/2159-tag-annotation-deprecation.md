@@ -4,7 +4,7 @@
 - **関連 Issue**: [#2159](https://github.com/kompiro/karasu/issues/2159)（tags-and-facets Part A、親 [#2065](https://github.com/kompiro/karasu/issues/2065)）
 - **関連 Design Doc**: `docs/design/tags-and-facets.md`（ADR 昇格は Part B 完了後）
 - **関連 spec**: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)（Non-builtin tag / annotation names are deprecated、Vocabulary registers）/ [`docs/spec/diagnostics.md`](../spec/diagnostics.md)
-- **関連 TPL**: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（第 4 状態を状態 (2) に解消）
+- **関連 TPL**: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（第 4 状態を状態 (2) に解消）
 - **対象ファイル**:
   - `packages/core/src/types/warnings.ts`（`tag-not-builtin` / `annotation-not-builtin`）
   - `packages/core/src/resolver/warnings.ts`（detector + `SYSTEM_ASSIGNED_TAGS`）

@@ -49,7 +49,7 @@ deploy view からは参照されていなかった。結果として「何が i
 ## 理由
 
 - **単一情報源で drift を防ぐ**: 同じ `service → infra` 依存を 2 箇所で別実装すると、片方更新で静かに食い違う
-  （TPL-20260519-02）。`deriveInfraEdges` を共有することで両 view の依存集合が構造的に一致する。
+  （TPL-1415）。`deriveInfraEdges` を共有することで両 view の依存集合が構造的に一致する。
 - **既存機構の再利用**: 「両端 realize 済み」フィルタと layered layout をそのまま使えるため変更が小さく、
   store コンテナは依存先として自然に下層へ落ちる。
 - **`extractDeployView` のシグネチャを変えない**: 依存は `systems` から導出でき、呼び出し側 5 箇所を触らずに済む。
