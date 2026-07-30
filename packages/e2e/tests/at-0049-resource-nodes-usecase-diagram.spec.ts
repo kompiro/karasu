@@ -11,8 +11,11 @@ import { openViewTab } from "../fixtures/tabs.js";
  * from the infra declaration, and duplicates across usecases collapse into a
  * single resource node while keeping distinct edges.
  *
- * Out of scope:
- *  - Node shape/visual rendering — covered by manual visual review.
+ * Out of scope here, covered elsewhere:
+ *  - Node shape / visual rendering — `at-0006-builtin-style.spec.ts` fences the
+ *    infra-kind → shape inference (table → cylinder, queue → queue,
+ *    bucket → cloud), so this spec stays on node presence, labels and
+ *    de-duplication.
  */
 
 const BASE_KRS = `system ECPlatform {

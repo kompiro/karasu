@@ -56,9 +56,17 @@ system ECPlatform {
 Drill down to `OrderService → Order` (domain view):
 
 - [ ] `PlaceOrder` and `CancelOrder` appear as usecase nodes
-- [ ] `OrderDB.OrderTable` appears as a table-shaped node with label "注文テーブル"
-- [ ] `EventBus.OrderCreated` appears as a queue-shaped node with label "注文作成イベント"
-- [ ] `OrderDB.InventoryTable` appears as a table-shaped node with label "在庫テーブル"
+- [x] `OrderDB.OrderTable` appears as a table-shaped node with label "注文テーブル"
+
+> ✅ Automated — the node and its label by `packages/e2e/tests/at-0049-resource-nodes-usecase-diagram.spec.ts` › `table, queue, and bucket resources render as sibling nodes with infra labels`; the **table shape** by `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `resource shapes are inferred from the infra kind (AC-1.2, AT-0049)`.
+
+- [x] `EventBus.OrderCreated` appears as a queue-shaped node with label "注文作成イベント"
+
+> ✅ Automated — as above; the queue shape is distinguished from a cylinder by cap orientation (`rx` vs `ry`), since both emit `path` + `ellipse`.
+
+- [x] `OrderDB.InventoryTable` appears as a table-shaped node with label "在庫テーブル"
+
+> ✅ Automated — as above (node + label by the AT-0049 spec, shape by the AT-0006 spec).
 - [ ] No duplicate resource nodes appear (if two usecases reference the same resource, it is shown once)
 
 ### Edges
