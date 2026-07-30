@@ -183,7 +183,7 @@ karasu 側のセッション内で `/workspaces/adr-tools` / `/workspaces/tpl-to
 | ` ```krs fragment ` | 抜粋（ファイル全体ではない） | parse しない |
 | ` ```krs invalid ` | 意図的に不正な入力（診断のデモ） | いまも parse エラーが出ることを検証 |
 
-`invalid` を逆向きにも検証するのは、文法が緩んで例が例でなくなる変化も拾うため。実装は `scripts/acceptance/krs-fences.ts`、観点は [TPL-20260730-03](test-perspectives/TPL-20260730-03-doc-embedded-krs-is-parsed-not-prose.md)。
+`invalid` を逆向きにも検証するのは、文法が緩んで例が例でなくなる変化も拾うため。実装は `scripts/acceptance/krs-fences.ts`、観点は [TPL-20260730-05](test-perspectives/TPL-20260730-05-doc-embedded-krs-is-parsed-not-prose.md)。
 
 - 生成ファイルは git にコミットしない（`.gitignore` 対象）
 - 手動確認項目は生成されたファイルをもとに順番に実施する

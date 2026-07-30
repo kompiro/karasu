@@ -18,6 +18,33 @@ const SPEC_DOCS = [
   "../../../docs/spec/style.ja.md",
 ];
 
+const VERSION_TOKEN = /\.krs language v(\d+\.\d+)/g;
+
+/** `a` orders before `b` as a major.minor language version. */
+function isBefore(a: string, b: string): boolean {
+  const [aMajor, aMinor] = a.split(".").map(Number);
+  const [bMajor, bMinor] = b.split(".").map(Number);
+  return aMajor !== bMajor ? aMajor < bMajor : aMinor < bMinor;
+}
+
+/**
+ * Version tokens in `doc` that the language has already moved past.
+ *
+ * Only *lagging* mentions are drift. Spec prose legitimately points **forward**
+ * at a version the language has not reached: v1.0 is frozen (ADR-1314) while
+ * v2.0 grammar is designed and experimental notation lands under the freeze, so
+ * syntax.md registers a diagnostic's promotion to an error against
+ * `.krs language v2.0`. Rejecting every token that differs from the current
+ * version would make the guard block the v2.0 work it is meant to accompany —
+ * which is exactly how it broke on main (#2183's forward reference + #2185's
+ * guard, each green alone).
+ */
+function staleVersions(doc: string, current: string): string[] {
+  return [...doc.matchAll(VERSION_TOKEN)]
+    .map((m) => m[1])
+    .filter((version) => isBefore(version, current));
+}
+
 describe("KRS_LANGUAGE_VERSION", () => {
   it("is a major.minor version", () => {
     expect(KRS_LANGUAGE_VERSION).toMatch(/^\d+\.\d+$/);
@@ -28,23 +55,33 @@ describe("KRS_LANGUAGE_VERSION", () => {
     expect(doc).toContain(`.krs language v${KRS_LANGUAGE_VERSION}`);
   });
 
-  // "Stale" means *older than* the shipped version — a doc still describing a
-  // language the tool has moved past. A token naming a **higher** version is
-  // forward-looking prose, not drift: the spec routinely registers a change to
-  // the next major (`Promotion to an error is registered to .krs language
-  // v2.0`, roadmap §Syntax 2.0), and flagging those would force the roadmap
-  // out of the spec.
-  const asNumber = (version: string): number => {
-    const [major, minor] = version.split(".").map(Number);
-    return major * 1000 + minor;
-  };
-
   it.each(SPEC_DOCS)("%s does not state a stale language version", (rel) => {
     const doc = readFileSync(resolve(__dirname, rel), "utf8");
-    const stale = [...doc.matchAll(/\.krs language v(\d+\.\d+)/g)]
-      .map((m) => m[1])
-      .filter((v) => asNumber(v) < asNumber(KRS_LANGUAGE_VERSION));
+    expect(staleVersions(doc, KRS_LANGUAGE_VERSION)).toEqual([]);
+  });
 
-    expect(stale).toEqual([]);
+  describe("stale detection", () => {
+    it("flags a version the language has moved past", () => {
+      expect(staleVersions("frozen at `.krs language v1.0`", "1.1")).toEqual(["1.0"]);
+      expect(staleVersions("frozen at `.krs language v1.9`", "2.0")).toEqual(["1.9"]);
+    });
+
+    it("allows a forward reference to a version not yet reached", () => {
+      // The shape that broke main: v1.0 is current, v2.0 is being designed.
+      const doc =
+        "`.krs language v1.0` is frozen; promotion is registered to `.krs language v2.0`.";
+      expect(staleVersions(doc, "1.0")).toEqual([]);
+      expect(staleVersions("registered to `.krs language v1.1`", "1.0")).toEqual([]);
+    });
+
+    it("allows the current version", () => {
+      expect(staleVersions("`.krs language v1.0`", "1.0")).toEqual([]);
+    });
+
+    it("compares minor versions numerically, not lexically", () => {
+      // "10" < "9" as strings; 1.10 is after 1.9 as a version.
+      expect(staleVersions("`.krs language v1.10`", "1.9")).toEqual([]);
+      expect(staleVersions("`.krs language v1.9`", "1.10")).toEqual(["1.9"]);
+    });
   });
 });
