@@ -15,6 +15,7 @@ discovered_from:
   - issue: "#2165"
   - root_cause_file: "packages/core/src/builtins/reference-data.ts"
 related_to:
+  - TPL-20260711-01
   - TPL-20260729-01
   - TPL-20260727-01
   - TPL-20260610-01
@@ -47,9 +48,12 @@ pnpm gen:reference --check
 
 **規則を第 2 の場所に書き写さない。** 配置規則を追加したくなったら
 `canContain` を編集する。parser 側に kind 名を直書きした条件分岐を足すのは、
-その規則が `canContain` から導出**できない**場合（= ノードの繋ぎ先が無く error に
-する場合）に限る。現在その例外は 3 つだけである — `infra-not-in-context` /
-`entity-not-in-domain` / `boundary-not-in-context`。
+その規則が `canContain` から導出**できない**場合（= 捨てるしかなく error に
+する場合）に限る。現在その例外は 4 つ — `infra-not-in-context` /
+`entity-not-in-domain` / `boundary-not-in-context` と、`entity` の中のノード全般
+（`unexpected-token-in-block`、[TPL-20260711-01](TPL-20260711-01-entity-carries-no-attributes.md) の「属性を持たない」不変条件）。
+例外を足したら spec の一覧表も同じ PR で更新する（この 4 つは spec 側で表として
+列挙されており、数を書いた文は増減のたびに嘘になる）。
 
 ## 想定される失敗モード
 
@@ -70,7 +74,8 @@ pnpm gen:reference --check
 `canContain` / 配置診断 / spec の配置節を触るときに確認する:
 
 - [ ] 規則を書いた場所は `canContain` 1 箇所か。parser に kind 名を直書きして
-      いないか（例外 3 つ以外）。
+      いないか（上記の例外 4 つ以外）。例外を足したなら spec の一覧表も同じ PR で
+      更新したか。
 - [ ] 新 kind を足したなら、その kind の `canContain` と、その kind を子に取れる
       親の `canContain` の**両方**を更新したか。
 - [ ] 変更後に `reference-parser-sync.test.ts` が通るか（表 ↔ parser の双方向）。

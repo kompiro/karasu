@@ -420,15 +420,23 @@ parsing. Promotion to an error is registered to the next major
 ([roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)) — the same
 warning-now / error-at-v2.0 path the tag and annotation vocabularies take.
 
-Three nestings are rejected outright rather than warned, because the node would
-have nowhere to attach: an infra block outside `system` (`infra-not-in-context`),
-an `entity` outside a `domain` (`entity-not-in-domain`), and a `boundary` inside
-a kind that draws no canvas (`boundary-not-in-context`).
+Four nestings are rejected outright rather than warned, and the misplaced node is
+dropped:
+
+| Rejected nesting | Diagnostic | Why it is an error, not a warning |
+|---|---|---|
+| an infra block outside `system` | `infra-not-in-context` | the block has no system to belong to |
+| an `entity` outside a `domain` | `entity-not-in-domain` | an entity is owned by exactly one domain |
+| a `boundary` inside a kind that draws no canvas | `boundary-not-in-context` | there are no peers to frame |
+| any node inside an `entity` | `unexpected-token-in-block` | an entity carries a name, its relations and a `table` mapping — never attributes |
 
 A `domain` may be written at the top level, directly inside a `system`, or
-inside a `service`. The first two express a domain that is not (yet) assigned to
-a service; a top-level one renders under the `(Unassigned)` pseudo-system
-([ADR-681](../adr/681-top-level-service-rendering.md)).
+inside a `service`. The first two both express a domain that is not (yet)
+assigned to a service. They are not yet treated identically downstream: the
+`unassigned-domain` warning and the `(Unassigned)` pseudo-system
+([ADR-681](../adr/681-top-level-service-rendering.md)) currently cover only the
+top-level form, since a system-nested domain already has a container to render
+in (see [#2184](https://github.com/kompiro/karasu/issues/2184)).
 
 > Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it.
 

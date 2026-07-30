@@ -412,15 +412,21 @@ error ではなく warning なのは `.krs` v1.0 が freeze 済み
 （[roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)）。tag / annotation の
 語彙が辿るのと同じ「v1.x は warning、v2.0 で error」の経路である。
 
-次の 3 つだけは warning ではなく拒否される。ノードの繋ぎ先が無いためである:
-`system` 外のインフラブロック（`infra-not-in-context`）、`domain` 外の `entity`
-（`entity-not-in-domain`）、canvas を描かない kind の中の `boundary`
-（`boundary-not-in-context`）。
+次の 4 つは warning ではなく拒否され、該当ノードは捨てられる:
+
+| 拒否される入れ子 | 診断 | warning ではなく error である理由 |
+|---|---|---|
+| `system` 外のインフラブロック | `infra-not-in-context` | 所属すべき system が無い |
+| `domain` 外の `entity` | `entity-not-in-domain` | entity はちょうど 1 つの domain に所有される |
+| canvas を描かない kind の中の `boundary` | `boundary-not-in-context` | 囲む対象の peer が存在しない |
+| `entity` の中のノード全般 | `unexpected-token-in-block` | entity が持つのは名前・関連・`table` 対応だけで、属性は持たない |
 
 `domain` はトップレベル・`system` 直下・`service` 内のいずれにも書ける。前 2 者は
-service にまだ割り当てられていない domain を表し、トップレベルのものは
-`(Unassigned)` 擬似 system の下に描画される
-（[ADR-681](../adr/681-top-level-service-rendering.md)）。
+どちらも service にまだ割り当てられていない domain を表す。ただし下流の扱いは
+まだ同一ではない — `unassigned-domain` warning と `(Unassigned)` 擬似 system
+（[ADR-681](../adr/681-top-level-service-rendering.md)）が対象にしているのは
+トップレベル形のみである（system 直下の domain は描画先の器を既に持つため。
+[#2184](https://github.com/kompiro/karasu/issues/2184) 参照）。
 
 > Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。
 

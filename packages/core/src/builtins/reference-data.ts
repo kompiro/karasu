@@ -1,4 +1,9 @@
-// Single source of truth for the in-app Reference panel data.
+// Single source of truth for the node-kind catalog: the in-app Reference panel
+// data, the generated `docs/spec/*.md` tables — and, since #2165, the parser
+// itself, which reads `LOGICAL_CONTAINMENT` (derived from `canContain` at the
+// bottom of this file) to emit `node-not-in-context`. That last consumer makes
+// this module a behavioural dependency of `parser/parser.ts`, not only a
+// display/docs one: editing `canContain` changes what karasu diagnoses.
 //
 // `getReference(locale)` in `./reference.ts` is a thin adapter that picks
 // the `en` / `ja` strings out of this module and shapes them into the
