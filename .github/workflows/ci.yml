@@ -26,9 +26,11 @@ permissions:
 jobs:
   check:
     name: Check
-    # Ubicloud runner pilot (#1890). Swapped from `ubuntu-latest` to measure
-    # wall-clock / cost vs. GitHub-hosted. `-ubuntu-2404` matches the image
-    # `ubuntu-latest` currently resolves to, keeping the comparison like-for-like.
+    # Ubicloud runner (ADR-1890): compute-bound verification jobs run on
+    # Ubicloud, secret-bearing publish / deploy jobs stay GitHub-hosted.
+    # `-ubuntu-2404` matches the image `ubuntu-latest` resolves to.
+    # The runner-per-job policy is fenced by
+    # `scripts/ci/workflow-runner-policy.test.ts`.
     runs-on: ubicloud-standard-4-ubuntu-2404
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
