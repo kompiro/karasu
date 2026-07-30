@@ -45,7 +45,7 @@ system T {
 
 `index.krs` に以下を入力する。
 
-```krs
+```krs invalid
 system T {
   client WebApp [web] {
     resource cookie "session"
@@ -72,7 +72,7 @@ system T {
 
 `service` ブロック内に `resource indexedDB "outbox"` のような **string literal を伴う** `resource` 文を書くと、従来どおり parser が「`resource indexedDB` の宣言」として扱おうとし、エラーまたは未割当 resource の警告が出る（Phase 5 で挙動を変えない）。
 
-```krs
+```krs invalid
 system T {
   service S {
     resource indexedDB "outbox"   // ← client 限定の構文。service ブロック内では従来の resource 宣言として解釈されるため警告/エラーが出る

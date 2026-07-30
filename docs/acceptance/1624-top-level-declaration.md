@@ -24,7 +24,7 @@ Automated coverage: `packages/core/src/parser/parser.test.ts` —
 ## AC-1: top-level `user` raises top-level-declaration (automated)
 
 **Input:**
-```krs
+```krs invalid
 user Customer [human] {
   description "A general user"
 }
