@@ -74,19 +74,33 @@
 
 `examples/en/feature-samples/legend.krs` の内容を `index.krs` として app で開いて確認する。
 
-- [ ] トップレベルで「Owner team」凡例（省略スコープ）が図の下に表示される
-- [ ] EC Site サービスへドリルダウンすると凡例が「Service internals」に切り替わる（「Owner team」は消える）
-- [ ] Order ドメインへドリルダウンすると凡例が「Domain vocabulary」に切り替わる
-- [ ] パンくずでトップレベルに戻ると「Owner team」凡例が再表示される
+> ✅ Automated by `packages/e2e/tests/at-1513-legend-scope.spec.ts` (suite-wide)
+
+- [x] トップレベルで「Owner team」凡例（省略スコープ）が図の下に表示される
+- [x] EC Site サービスへドリルダウンすると凡例が「Service internals」に切り替わる（「Owner team」は消える）
+- [x] Order ドメインへドリルダウンすると凡例が「Domain vocabulary」に切り替わる
+- [x] パンくずでトップレベルに戻ると「Owner team」凡例が再表示される
+
+> Test: `the legend follows the drill-down level and returns on breadcrumb home (AC-4)`。
+> fixture は AC-4 の指示どおり `examples/en/feature-samples/legend.krs` を**ファイルから読んで**
+> `index.krs` として seed する（インラインコピーにしないので、example が変わればここで落ちる）。
+> 各レベルで前のスコープの凡例が**消えている**ことも assert する（完全一致セマンティクス）。
+> 戻り（パンくず）も assert 対象（TPL-20260518-01: 往復の両方向を描画させる）。
 
 ### AC-5: all-layers ビューでの凡例表示位置
 
-- [ ] all-layers ビューで、トップレベル帯の直下に「Owner team」、service 帯の直下に「Service internals」、domain 帯の直下に「Domain vocabulary」がそれぞれ表示され、位置が帯とずれない
+- [x] all-layers ビューで、トップレベル帯・service 帯・domain 帯がそれぞれ自分のスコープの凡例を持ち、深度順に並ぶ
+
+> ✅ Automated — `packages/e2e/tests/at-1513-legend-scope.spec.ts` › `all-layers stacks each band's own legend below it, in depth order (AC-5)` — all-layers は `<iframe srcDoc>` に描画されるため frame 内で `getBoundingClientRect` を読み、「ずれていないか」を目視で判断する代わりに**縦位置の順序**（top → service → domain）を assert する。deploy スコープの凡例が system スタックに漏れないことも確認する。
+
+- [ ] 帯と凡例の余白・視覚的な近接（どの帯に属するか一目で分かるか）
+
+> manual / visual review — 順序は自動化済みだが、帯と凡例の距離が「同じ帯のものだと読める」かは目視判断。
 
 > 未チェック項目について:
 >
-> - AC-4 / AC-5 は SVG 上の視覚的な切り替わり・配置の判定が必要なため人間確認に残す。
->   表示内容自体（どのレベルにどの凡例が含まれるか）は AC-2 / AC-3 で自動化済み。
+> - AC-4 / AC-5 の切り替わりと並び順は `packages/e2e/tests/at-1513-legend-scope.spec.ts`
+>   で自動化した（#2049 item 5）。残る目視は帯と凡例の視覚的近接のみ。
 
 ## 検証方法
 
