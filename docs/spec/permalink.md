@@ -86,4 +86,4 @@ which fails CI when a `permalink:` anchor no longer resolves (#1830).
 Do not work around it by anchoring on `label` — labels are display/i18n strings
 and are explicitly not identity.
 
-> Related TPLs: [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) — the static-SVG and SPA-hash anchors must stay one id-based grammar; a divergence makes a permalink resolve on one surface but not the other.
+> Related TPLs: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) — the static-SVG and SPA-hash anchors must stay one id-based grammar; a divergence makes a permalink resolve on one surface but not the other.

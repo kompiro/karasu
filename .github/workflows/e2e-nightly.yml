@@ -60,7 +60,7 @@ jobs:
         run: pnpm --filter @karasu-tools/e2e test
 
       # Informative-only — surfaces tests that failed once then passed on
-      # retry so the flake count is visible per nightly run (TPL-20260510-13
+      # retry so the flake count is visible per nightly run (TPL-976
       # / #1271).
       - name: Surface flaky retry-passes
         if: always()

@@ -29,7 +29,7 @@ assumptions:
   - 実装 PR: [#1336](https://github.com/kompiro/karasu/pull/1336)（Phase 1: `reference-data.ts` 抽出）、[#1339](https://github.com/kompiro/karasu/pull/1339) / [#1343](https://github.com/kompiro/karasu/pull/1343) / [#1347](https://github.com/kompiro/karasu/pull/1347)（Phase 2: spec-doc テーブル生成）、[#1346](https://github.com/kompiro/karasu/pull/1346)（reference-docs-check 専用 workflow）、[#1348](https://github.com/kompiro/karasu/pull/1348)（Phase 3: Reference サンプルを examples から取得）
   - 前提 ADR: [ADR-8](8-builtin-style-and-reference.md)（`getReference()` / `ReferencePanel` の初出、ビルトインスタイルの一元化、reference を JSON 化する案を却下）
   - 関連 ADR: [ADR-316](316-database-as-first-class-node.md)（infra-layer ノードのファーストクラス化 — `### Infra layer` テーブルの内容に対応）
-  - TPL: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（人間向け spec ドキュメントと in-app reference データの同期）
+  - TPL: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（人間向け spec ドキュメントと in-app reference データの同期）
 
 ## 背景
 
@@ -55,12 +55,12 @@ karasu の構文・スタイル仕様は「同じ内容を複数箇所で手書�
 
 4. **drift 防止の配線**: `pnpm gen:reference --check` を (a) lefthook `pre-push` の `reference-docs-check`（glob: `docs/spec/**` / `reference-data.ts` / `scripts/reference/**`）、(b) `ci.yml` の Check ジョブのステップ、(c) docs-only PR でも走る専用 workflow `reference-docs-check.yml`（+ `reference-docs-check-skip.yml` stub、`adr-validate.yml` を踏襲）で実行する。さらに `scripts/reference/gen-docs.test.ts` がコミット済みドキュメントが in-sync であることを assert する（`test:scripts` に乗る）。
 
-5. **round-trip の担保は `gen:reference --check` に集約する。** `reference-spec-sync.test.ts`（spec doc の keyword ⊆ `getReference()` データ の片方向 subset チェック）は移行期の安全網としてそのまま残す — `--check` が「reference データ → spec doc テーブル」を縛り、spec-sync test が「spec doc 散文の keyword → reference データ」を縛るので、双方向が別々の機構でカバーされる。TPL-20260511-02 は `#1337` で逆方向（parser → spec doc）も含めて改訂済み。
+5. **round-trip の担保は `gen:reference --check` に集約する。** `reference-spec-sync.test.ts`（spec doc の keyword ⊆ `getReference()` データ の片方向 subset チェック）は移行期の安全網としてそのまま残す — `--check` が「reference データ → spec doc テーブル」を縛り、spec-sync test が「spec doc 散文の keyword → reference データ」を縛るので、双方向が別々の機構でカバーされる。TPL-1296 は `#1337` で逆方向（parser → spec doc）も含めて改訂済み。
 
 ## 理由
 
 - **散文を parse する（案 B）のではなく data から表を生成する（案 C）方が堅牢**。`docs/spec/*.md` は散文・表・コードフェンスが混在する人間向けドキュメントで、全部を data 化すると可読性を損なう。逆向き（data → 表）はマーカー区間の codegen で容易に実現でき、散文はそのまま手書きで残せる。
-- **i18n が構造的に安全になる**。description が `reference-data.ts` に `{ en, ja }` で同居するので、`STRINGS_EN` / `STRINGS_JA` の片落ち（一方の locale だけ `undefined` — TPL-20260511-02 の失敗モード）が起こりえない。`.ja.md` のテーブルも同じソースから生成されるので doc ↔ doc の同期問題も消える。
+- **i18n が構造的に安全になる**。description が `reference-data.ts` に `{ en, ja }` で同居するので、`STRINGS_EN` / `STRINGS_JA` の片落ち（一方の locale だけ `undefined` — TPL-1296 の失敗モード）が起こりえない。`.ja.md` のテーブルも同じソースから生成されるので doc ↔ doc の同期問題も消える。
 - **データファイルを `.ts` にしたのは ADR-8 の制約を守るため**。ADR-8 は reference を JSON 化する案を「`?raw` 等のビルド設定が必要で複雑化する」として却下している。`.ts` データファイルなら型安全（`satisfies ReferenceData`）かつビルド設定不要で、その判断と整合する。codegen はビルド時ではなく `tsx` で走る別スクリプト（`docs/adr/effective.md` の生成と同じ運用）。
 - **Reference サンプルを examples から取得することで第三の手書きコピーが消える**。旧 `SAMPLE_KRS_*` は `examples/getting-started/index.krs` の古い派生コピーで、example 側が `operations` / `capability` を獲得した後も追従していなかった。canonical な example を指すことで `examples/ ↔ examples.ts` の単一の同期レジームに一本化される。
 - **マーカー区間方式は誤編集リスクを `--check` + lefthook + 専用 workflow + テストで多重に担保する**。マーカーには `DO NOT EDIT — generated from reference-data.ts; run pnpm gen:reference` を明記。

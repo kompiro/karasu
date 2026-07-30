@@ -302,7 +302,7 @@ boundary cluster {
     // In-place expansion is suppressed under Group-by team (no `data-expand-node`
     // is emitted), so the service set is empty and Expand all only unfolds the
     // team frames — services are never expanded. Scope is renderer-gated, not
-    // branched on `groupBy` in the app (TPL-20260510-03).
+    // branched on `groupBy` in the app (TPL-1094).
     vi.useFakeTimers();
     const SOURCE = `system Shop {
   service Billing { label "Billing" domain Db { usecase U } }
@@ -760,7 +760,7 @@ organization Acme {
     vi.useRealTimers();
   });
 
-  // TPL-20260510-08 checklist item 5 — cross-surface timing alignment.
+  // TPL-1032 checklist item 5 — cross-surface timing alignment.
   // After one source edit + one recompile cycle, every surface derived
   // from the source must reflect the new shape in the same React tick:
   // none of `svg`, `warnings`, `nodeMetadata`, `systems`, `hasOrgDiagram`
@@ -772,7 +772,7 @@ organization Acme {
   // field from the payload), the assertion against that surface fails on
   // the very same recompile that updates the others — surfacing the skew
   // before users see a half-stale UI.
-  it("publishes svg / warnings / nodeMetadata / systems / hasOrgDiagram together in one recompile (TPL-08 item 5)", async () => {
+  it("publishes svg / warnings / nodeMetadata / systems / hasOrgDiagram together in one recompile (TPL-1032 item 5)", async () => {
     vi.useFakeTimers();
 
     // BEFORE: a clean system with one service, no warnings, no

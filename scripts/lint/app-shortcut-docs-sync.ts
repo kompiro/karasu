@@ -18,7 +18,7 @@ import { join, resolve } from "node:path";
 // views" table.
 //
 // This is the enumerable half of the broader "app/CLI surface -> docs/tools"
-// reflection rule (see TPL-20260623-01); the non-enumerable half (toolbar
+// reflection rule (see TPL-1716); the non-enumerable half (toolbar
 // buttons, views, CLI flags) is a review-time checklist, not this script.
 
 export const APP_SRC_DIR = "packages/app/src";

@@ -65,7 +65,7 @@ PR の変更周辺を調査し、不足しているテスト（unit / e2e / AT�
 
 - **`.claude/rules/testing.md` に従う** — Radix 系は `userEvent`、portal は document
   スコープで query、`TooltipProvider` でラップ、Esc/outside-click は jsdom で assert
-  しない、prophylactic test（TPL-20260510-04 / -09）は残す。
+  しない、prophylactic test（TPL-1053 / TPL-948）は残す。
 - Vitest は `globals: true` 未設定 — `afterEach(cleanup)` を明示的に追加する。
 - amend+force-push は e2e gated Playwright を cancel させるため、追加は新規コミットで。
 

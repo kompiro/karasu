@@ -4,7 +4,7 @@
 - **関連 Issue**: [#1830](https://github.com/kompiro/karasu/issues/1830)（permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826) の子）
 - **関連 ADR（決定記録）**: [ADR-1830](../adr/1830-adr-permalink-validation.md)（adr-tools の `krs` kind を adopt）／ 実装 = [kompiro/adr-tools ADR-17](https://github.com/kompiro/adr-tools/blob/main/docs/adr/17-permalink-krs-kind.md)
 - **前提 ADR**: [ADR-1829](../adr/1829-adr-permalink-convention.md)（`permalink:` 規約）
-- **関連 TPL**: [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（両側トリガ）
+- **関連 TPL**: [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)（両側トリガ）
 - **対象ファイル**:
   - `adr.config.json`（`permalink.kind: krs`）／ `package.json`（`@kompiro/adr-tools@^0.0.7` + `@karasu-tools/core` devDep + `adr:check-permalinks` script）
   - `.github/workflows/ci.yml`（`Build (core)` の後に check-permalinks）／ `knip.json`（core を ignore）
@@ -29,7 +29,7 @@
 
 - [ ] AT-D: 配線が両側で発火する（ADR 変更・`.krs` 変更のどちらの push でも実チェックが走る）
 
-  > 🔍 レビュー確認 — ci.yml の check-permalinks step が path filter 無しの Check job にあり、`Build (core)` の後に置かれていること（`krs` resolver は built core を要する）。TPL-20260520-02
+  > 🔍 レビュー確認 — ci.yml の check-permalinks step が path filter 無しの Check job にあり、`Build (core)` の後に置かれていること（`krs` resolver は built core を要する）。TPL-1480
 
 ## 手動検証手順（AT-B / AT-D）
 

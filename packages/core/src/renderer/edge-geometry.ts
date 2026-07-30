@@ -3,7 +3,7 @@
  * (`edge-routing-channels.ts` for the ungrouped skip-layer case,
  * `edge-routing-groups.ts` for the Group-by view). Kept in one module so both
  * routers — and the penetration assertions in their tests — use the exact same
- * strict-interior crossing test (TPL-20260711-02: measure crossings *and*
+ * strict-interior crossing test (TPL-1927: measure crossings *and*
  * node/frame penetrations from one definition).
  */
 
@@ -65,7 +65,7 @@ export function segmentCrossesAnyRect(a: Point, b: Point, rects: Rect[]): boolea
  * early-exit boolean companion to `countPolylinePenetrations`. Both share the
  * one strict-interior test (`segmentCrossesRect`), so the routers that decide a
  * route with this and the tests that assert penetration == 0 with the counter
- * can never disagree (TPL-20260711-02).
+ * can never disagree (TPL-1927).
  */
 export function polylineClearOf(path: Point[], obstacles: Rect[]): boolean {
   for (let i = 0; i < path.length - 1; i++) {
@@ -77,7 +77,7 @@ export function polylineClearOf(path: Point[], obstacles: Rect[]): boolean {
 /**
  * Count strict-interior crossings of a polyline against a set of obstacle
  * rectangles. Shared by the routers' tests to assert **penetration == 0**
- * (TPL-20260711-02). Every segment × every rect is counted, so callers pass
+ * (TPL-1927). Every segment × every rect is counted, so callers pass
  * only the obstacles that should never be crossed (i.e. excluding the edge's
  * own endpoint nodes and their enclosing frames).
  */

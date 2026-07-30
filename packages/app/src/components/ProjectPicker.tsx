@@ -23,7 +23,7 @@ interface ProjectPickerProps {
  * arrow-key navigation, Enter to confirm, Esc / outside-click to close — and
  * deliberately reuses the same shadcn `DialogContent` primitive so it sits on
  * the documented `--z-dialog` layer rather than a local magic number
- * (TPL-20260520-01).
+ * (TPL-1468).
  */
 export function ProjectPicker({
   open,

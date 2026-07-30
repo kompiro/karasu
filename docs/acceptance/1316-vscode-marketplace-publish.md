@@ -3,7 +3,7 @@
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1316](https://github.com/kompiro/karasu/issues/1316)
 - **関連 ADR**: [ADR-1316](../adr/1316-vscode-marketplace-publish.md)（旧 `docs/design/vscode-marketplace-publish.md` を昇格・集約）
-- **関連 TPL**: [TPL-20260510-15](../test-perspectives/TPL-20260510-15-dev-vs-packaged-mode-parity.md), [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)
+- **関連 TPL**: [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md), [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)
 - **対象ファイル**: `packages/vscode/package.json`, `packages/vscode/README.md`, `packages/vscode/.vscodeignore`, `.github/workflows/vscode-release.yml`, `README.md`
 
 ## 受け入れ条件
@@ -26,7 +26,7 @@
 
   > ✅ Automated — `packages/vscode/src/marketplace-manifest.test.ts` › `links repository (with directory), homepage, and bugs` / `sets a gallery banner and ships an icon`
 
-### .vsix の中身（packaged/installed parity — TPL-20260510-15）
+### .vsix の中身（packaged/installed parity — TPL-1024）
 
 - [x] `.vscodeignore` が `src/**` / `**/*.test.*` / `scripts/**` を除外する
 
@@ -40,7 +40,7 @@
 
   > 🟡 Partially automated — 同梱を決める `.vscodeignore` パターンは上記の自動テストで縛る。最終的な `.vsix` の中身は `pnpm --filter karasu-vscode run build` 後の `pnpm exec vsce ls --no-dependencies` で確認した（`out/extension.js` `out/server.js` `README.md` `icon.png` `images/*` `syntaxes/*` を含み、`src/` `node_modules/` `*.test.ts` `tsconfig.json` を含まない）
 
-### publish workflow（guard — TPL-20260520-02）
+### publish workflow（guard — TPL-1480）
 
 - [x] `vscode-release.yml` は `workflow_dispatch` のみ（push では走らない）
 

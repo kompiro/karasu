@@ -4,7 +4,7 @@
 - **Issue**: #1921（親 tracking #1815 / epic #1817 comprehension、goal #1923）
 - **PR**: feat/expand-container-in-frame
 - **設計**: [ADR-1815](../adr/1815-expand-container-in-place.md)
-- **Related TPLs**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を再配置しても全要素ちょうど一度配置 + 端点保持）, [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（`.krs` 不変）
+- **Related TPLs**: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（要素を再配置しても全要素ちょうど一度配置 + 端点保持）, [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（`.krs` 不変）
 - **対象**: `packages/core/src/view/view-extract.ts` / `renderer/layout.ts` / `renderer/svg-renderer.ts`、`packages/app`（`useSystemView` / `useCollapsibleSet` / `PreviewPane` ほか）
 
 ## 概要
@@ -21,7 +21,7 @@ system view で 1 つの service コンテナをその場で展開（in-place ex
 - [x] 兄弟 service は畳んだ箱のまま残る
 - [x] 越境 domain edge は近端 = 正確な内部 domain、遠端 = 畳んだ兄弟 service に再アンカーされる（出入り両方向）
 - [x] 展開 service 内部の domain→domain edge は implicit タグなしの real edge として描かれる
-- [x] 全ノードちょうど一度配置（重複・drop なし、TPL-20260624-02）
+- [x] 全ノードちょうど一度配置（重複・drop なし、TPL-1738）
 - [x] 存在しない / domain を持たない id は no-op
 
 ### AC-2: レイアウト — band + フレーム + エッジ端点保持（core）
@@ -30,7 +30,7 @@ system view で 1 つの service コンテナをその場で展開（in-place ex
 
 - [x] 展開 service の domain は連続 band に配置され、service ラベルを冠した境界フレーム（`expanded` / `nodeId`）で囲まれる（`buildGroupFrames`/`assignGroupedLayers` 再利用）
 - [x] domain はフレーム矩形の内側、兄弟はフレーム外
-- [x] 再アンカー済みの越境・内部エッジが端点を保って描かれる（TPL-20260624-02）
+- [x] 再アンカー済みの越境・内部エッジが端点を保って描かれる（TPL-1738）
 - [x] **domain provenance を持たない explicit service edge はフレーム境界にアンカーされ drop されない**（`computeEdgePoints` の container-border fallback）
 
 ### AC-3: 描画 affordance と interactive gating（core）
@@ -47,12 +47,12 @@ system view で 1 つの service コンテナをその場で展開（in-place ex
 > ✅ Automated by `packages/app/src/components/PreviewPane.test.tsx`
 - [x] `useCollapsibleSet(single)` は高々 1 要素を保持（2 つ目を展開すると 1 つ目が畳まれる、C1）
 > ✅ Automated by `packages/app/src/hooks/useCollapsibleSet.test.ts`
-- [x] 展開状態は app の view-state で `.krs` を変更しない（round-trip 保持、TPL-20260510-02）
+- [x] 展開状態は app の view-state で `.krs` を変更しない（round-trip 保持、TPL-1101）
 > ✅ Automated — 展開は compile option のみで AST/シリアライズに触れない（`packages/core/src/renderer/expand-render.test.ts` が SVG 差分のみを確認）
 - [x] live app で ⊕ が service をその場展開し、フレームの ⊖ で畳み直せる（開いた後ちゃんと閉じられる）
 > ✅ Automated by `packages/e2e/tests/at-1921-expand-in-place.spec.ts` › `⊕ expands a service in place; ⊖ collapses it back (AT-1921-01)`
 
-### AC-5: scoped glance を壊さない（B1–B3、TPL-20260510-21）
+### AC-5: scoped glance を壊さない（B1–B3、TPL-1223）
 
 受け入れバーは `examples/ja/payment-platform` で `Gateway` を展開して実測した
 （design doc「Phase 1 計測結果」節）。数値: 1 画面ノード数 9 → 10（+1、上限内）、
@@ -60,7 +60,7 @@ system view で 1 つの service コンテナをその場で展開（in-place ex
 
 - [x] B1: 展開ノードの内部要素と兄弟が同一フレームに共存し、越境エッジが端点を保って drop せず描かれる
 > ✅ Automated by `packages/core/src/renderer/layout.expand.test.ts`
-- [x] B3: 全ノードちょうど一度だけ配置される（重複・drop なし、TPL-20260624-02）
+- [x] B3: 全ノードちょうど一度だけ配置される（重複・drop なし、TPL-1738）
 > ✅ Automated by `packages/core/src/view/view-extract.expand.test.ts`
 - [x] B2: 展開した service のフレームと、それに接続する edge（例: `Customer -> OrderService`）が展開中も描かれる
 > ✅ Automated by `packages/e2e/tests/at-1921-expand-in-place.spec.ts` › `⊕ expands a service in place; ⊖ collapses it back (AT-1921-01)`

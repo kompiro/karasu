@@ -266,7 +266,7 @@ core) and ADR-832 (no runtime-authorization modeling): both refuse to
 encode an external discipline's preferred shape into karasu's vocabulary while
 still allowing the underlying facts to be modeled.
 
-> Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`
+> Related TPLs: TPL-1386 — `Diagnostic register reflects "fact vs. style"`
 
 > Related ADR topics: `styling`
 
@@ -316,7 +316,7 @@ to external documentation, **not** in new vocabulary. This is the same escape
 hatch the Non-goals use: keep the model at the structural altitude, and let
 implementation detail live where it can change without touching the architecture.
 
-> Related TPLs: [TPL-20260616-03](test-perspectives/TPL-20260616-03-client-vocabulary-structure-not-implementation.md) — `client` vocabulary names access-path structure, never implementation detail.
+> Related TPLs: [TPL-1625](test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md) — `client` vocabulary names access-path structure, never implementation detail.
 
 > Related ADR topics: _(none — boundary clarification section; the client kind itself is covered by ADR-823)_
 
@@ -453,7 +453,7 @@ What is first class, however, is "limited scope + drill-down"; any hint view wou
 
 **It is also a question of resolution, not only of how deep you drill.** "Limit how much is shown at once" is violated *within a single view* too. When many sibling nodes spread out along one long horizontal row, fitting the whole view on screen forces a zoom-out, and each node shrinks until the diagram drops below the **resolution a human can grasp at a glance**. The node *count* may belong to "one level," but a layout that sprawls sideways exceeds the cognitive bandwidth exactly the way an everything-on-one-page bird's-eye view does. So scoped glance covers not just navigation (how many levels you descend) but also **the layout keeping an appropriate, graspable resolution in a single glance**: many siblings should be packed into a grid of a reasonable aspect ratio rather than streamed into one wide row, so the visual density inside the view stays bounded. (This is the conceptual basis for the balanced-grid sibling layout — see issue #1737.)
 
-> Related TPLs: [TPL-20260510-21](test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — limit how much is shown at once and keep drill-down first-class (single-view resolution / visual density is part of this principle).
+> Related TPLs: [TPL-1223](test-perspectives/TPL-1223-scoped-glance-drill-down.md) — limit how much is shown at once and keep drill-down first-class (single-view resolution / visual density is part of this principle).
 
 #### karasu captures structure across three dimensions: logical, physical, organizational
 
@@ -573,7 +573,7 @@ an entity, etc.) demands the opposite direction of information flow —
 it creates pressure to pull implementation details into the model, and stays out of scope.
 For column and index design, dedicated ER modeling tools exist, and those are what you should use.
 
-> Related TPLs: [TPL-20260711-01](test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, holding this line.
+> Related TPLs: [TPL-1882](test-perspectives/TPL-1882-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, holding this line.
 
 #### C4 compatibility is not a goal
 

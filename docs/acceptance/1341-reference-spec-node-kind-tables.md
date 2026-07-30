@@ -12,7 +12,7 @@ type: product
   - `docs/spec/syntax.md` / `.ja.md`（`### Logical structure` を `<!-- gen:reference:node-kinds-logical -->` 区間に、`### Infra layer` を `<!-- gen:reference:node-kinds-infra -->` 区間に）
   - `packages/core/src/builtins/reference.test.ts` / `reference-spec-sync.test.ts`（leaf kinds 反映）
 - **ADR**: [ADR-1296](../adr/1296-reference-data-single-source.md)
-- **TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+- **TPL**: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
 
 ## 受け入れ条件
 

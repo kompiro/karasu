@@ -61,7 +61,7 @@ describe("PasteCompareDialog", () => {
     expect(textarea.value).toBe("system Y {}");
   });
 
-  // TPL-20260510-04 anti-regression: the textarea is a plain controlled
+  // TPL-1053 anti-regression: the textarea is a plain controlled
   // component whose `value` only changes via the user's own `onChange`.
   // No parent-side derived rewrite fires mid-composition today, so the
   // EditorPane-class IME bug (#1053) cannot reach it. If a future change
@@ -81,7 +81,7 @@ describe("PasteCompareDialog", () => {
     expect(textarea.value).toBe("システム");
   });
 
-  // TPL-20260510-09 anti-regression: today the dialog has no Enter
+  // TPL-948 anti-regression: today the dialog has no Enter
   // handler — Enter inserts a newline and confirm goes only through the
   // `<button>` click. The #948 shape (state flip → new mount → keypress
   // lands on next render) therefore cannot reproduce from Enter alone.
@@ -89,7 +89,7 @@ describe("PasteCompareDialog", () => {
   // on confirm, the new handler must guard with `preventDefault +
   // stopPropagation` like ProjectSelector does (#948); this fence
   // catches a regression that wires Enter to confirm without that guard.
-  it("plain Enter on the textarea does not confirm or close the dialog (TPL-09 / #948 prophylaxis)", () => {
+  it("plain Enter on the textarea does not confirm or close the dialog (TPL-948 / #948 prophylaxis)", () => {
     const onConfirm = vi.fn<(content: string) => void>();
     const onCancel = vi.fn<() => void>();
     const { getByLabelText } = render(

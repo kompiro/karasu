@@ -20,7 +20,7 @@ assumptions:
   - Issue #1468 — Command palette renders behind the References panel
   - PR #1471
   - [ADR-1368](1368-adopt-shadcn-ui.md) — shadcn/ui 採用
-  - [TPL-20260520-01](../test-perspectives/TPL-20260520-01-overlay-z-index-scale.md)
+  - [TPL-1468](../test-perspectives/TPL-1468-overlay-z-index-scale.md)
 
 ## 背景
 

@@ -16,7 +16,7 @@ afterEach(() => {
  * `useFileTreeOps` callbacks. `FileTreeView` (presentational) and
  * `useFileTreeOps` (FS mutations) have their own suites; these cases fence
  * the wiring in `FileTree.tsx` between them, which nothing else exercises
- * (Issue #1999, TPL-20260510-09).
+ * (Issue #1999, TPL-948).
  *
  * Deliberately not covered here: closing the context menu via Escape or an
  * outside click. Both ride document-level listeners that jsdom does not

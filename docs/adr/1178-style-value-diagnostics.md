@@ -57,7 +57,7 @@ enum セット照合をしていた。typo / 型不一致は silent:
 増やすたびに resolver と diagnostic の両方を更新する保守コストが
 重なる。フェーズ 3 では **値レベルの validation を一本化** し、parser
 は loose に受理して validator が `property → ValueSpec` の schema に
-対する整合性だけを見る分業を確立する（TPL-20260510-10 の原則）。
+対する整合性だけを見る分業を確立する（TPL-907 の原則）。
 
 ## 決定
 
@@ -79,7 +79,7 @@ type ValueNode =
 
 `StyleRule.valueNodes?: Record<string, ValueNode>` を additive で
 追加。`properties: Record<string, string>` は canonical のまま残し、
-resolver / Tidy / svg-builder は触らない（TPL-20260510-18 — テキスト
+resolver / Tidy / svg-builder は触らない（TPL-1207 — テキスト
 が単一の真実、`valueNodes` は派生）。
 
 ### Property schema（PR-B）
@@ -118,7 +118,7 @@ type ValueSpec =
 
 `validateStyleValues(sheet): Diagnostic[]` がルールごとに
 `ValueNode` を走査し、`ValueSpec.kind` の **exhaustive switch**
-（TPL-20260510-03）で照合。失敗時は parser-shaped `Diagnostic` を
+（TPL-1094）で照合。失敗時は parser-shaped `Diagnostic` を
 返す（`loc` 込み）:
 
 - `style-invalid-enum-value` — error
@@ -153,11 +153,11 @@ enum は **case-sensitive**（`DOWN` は error）。
 
 ## 理由
 
-- **parser は loose、validator が validate**（TPL-20260510-10）—
+- **parser は loose、validator が validate**（TPL-907）—
   parser を改修する量を最小化し、value validation の責任を 1 箇所に
   集約する
 - **`ValueSpec` を discriminated union にして switch + exhaustive
-  check**（TPL-20260510-03）— spec に kind を追加したら validator の
+  check**（TPL-1094）— spec に kind を追加したら validator の
   switch が型エラーで網羅漏れを検出する。schema を増やす保守コスト
   が型で軽くなる
 - **`union` ケースが `shape` と `color` の両方をカバー**（Q1 の確定）—

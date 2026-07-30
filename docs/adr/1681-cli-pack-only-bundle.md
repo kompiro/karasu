@@ -18,8 +18,8 @@ related_to:
 - **関連**:
   - Issue #1681 — published karasu@0.0.1 ships no build (tarball is package.json + README only)
   - ADR-1315 — changesets による OSS リリース自動化（`karasu` CLI のみ npm 公開）
-  - TPL-20260618-02 — publish する tarball の内容物完全性・除外（本 ADR を root cause とする retrospective TPL）
-  - TPL-20260510-15 — dev / packaged モードの parity
+  - TPL-1681 — publish する tarball の内容物完全性・除外（本 ADR を root cause とする retrospective TPL）
+  - TPL-1024 — dev / packaged モードの parity
   - PR #1690（Design Doc, 本 ADR に集約のうえ削除）
 
 ## 背景
@@ -54,5 +54,5 @@ npm に公開済みの `karasu@0.0.1` は **name reservation（パッケージ�
 ## 影響
 
 - 既存ユーザーへの影響なし（壊れた `0.0.1` しか公開されておらず、正しく使えた利用者はいない）。次回 release で初めて動く `karasu` が公開される。
-- `core` / `vscode` など他の publish 対象パッケージには本 ADR では手を入れない。ただし TPL-20260618-02 のチェックリストは横展開可能で、それらの `files` / tarball も同じ観点で見直す余地がある。
+- `core` / `vscode` など他の publish 対象パッケージには本 ADR では手を入れない。ただし TPL-1681 のチェックリストは横展開可能で、それらの `files` / tarball も同じ観点で見直す余地がある。
 - spec / concepts / examples への影響なし。

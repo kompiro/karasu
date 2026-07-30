@@ -58,7 +58,7 @@ import {
  * node children) cannot.
  *
  * Keyed by every {@link LogicalNodeKind} rather than a set literal, so adding a
- * kind fails to typecheck until its placement is decided (TPL-20260623-02).
+ * kind fails to typecheck until its placement is decided (TPL-1720).
  */
 const BOUNDARY_HOST_KIND = {
   system: true,
@@ -96,7 +96,7 @@ interface ParsedOperation {
  *
  * Exported so the hand-maintained Reference catalog can be fenced against the
  * parser instead of against a doc table generated from that same catalog —
- * see `builtins/reference-parser-sync.test.ts` (#2158, TPL-20260729-01).
+ * see `builtins/reference-parser-sync.test.ts` (#2158, TPL-2158).
  */
 export const LOGICAL_KEYWORDS = new Set<string>([
   "system",
@@ -697,7 +697,7 @@ export class Parser {
         }
         // An `entity` block accepts no node children — only relations, a
         // `table` mapping, and label / description (the "no attributes"
-        // invariant, TPL-20260711-01). Reject and drop any nested logical
+        // invariant, TPL-1882). Reject and drop any nested logical
         // node (usecase / resource / …) instead of silently attaching it.
         if (kind === "entity") {
           const node = this.parseNodeDecl();
@@ -865,7 +865,7 @@ export class Parser {
       end = labelToken.loc;
     }
     const loc = this.range(start, end);
-    // Trust-boundary scheme allowlist (#1525 / TPL-20260510-17): link URLs are
+    // Trust-boundary scheme allowlist (#1525 / TPL-168): link URLs are
     // untrusted .krs content rendered as <a href> in the app and the VS Code
     // webview, where a javascript: URL executes in the app origin. We WARN here
     // (validate once at the boundary) but keep the link in the AST so Format /
@@ -1653,7 +1653,7 @@ export class Parser {
           if (allowed?.has(key)) {
             (params[name] ??= {})[key] = value;
           } else {
-            // Accepted-vocabulary rule (TPL-20260610-01): a param with no
+            // Accepted-vocabulary rule (TPL-1503): a param with no
             // effect is warned, not silently kept. Only builtin keys have an
             // effect; custom annotations stay param-less for now (#1568).
             this.diagnostics.push({
@@ -2164,7 +2164,7 @@ export class Parser {
   // buildOwnerIndex. Unlike teams there is no migration-annotation precedence on
   // boundaries, so multi-membership resolves by *first-declared-wins*; the
   // duplicate is surfaced in the fact-vs-style register (info), mirroring
-  // duplicate-owner-assignment (ADR-1566 / TPL-20260514-08). The
+  // duplicate-owner-assignment (ADR-1566 / TPL-1386). The
   // diagnostic names the retained (first) boundary.
   private buildBoundaryIndex(boundaries: BoundaryBlock[]): Map<string, string> {
     const index = new Map<string, string>();
@@ -2190,7 +2190,7 @@ export class Parser {
    * node blocks (#2036), the scoped counterpart of `buildBoundaryIndex`.
    *
    * The key carries the declaring scope because node ids are unique only among
-   * siblings, so `nodeId` alone does not identify a node (TPL-20260512-01).
+   * siblings, so `nodeId` alone does not identify a node (TPL-1352).
    *
    * Members resolve against the scope's **direct children** only. That is both
    * the set sibling-uniqueness makes unambiguous — the whole reason this form

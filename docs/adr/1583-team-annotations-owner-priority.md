@@ -15,7 +15,7 @@ assumptions:
   - "symbol: packages/core/src/parser/parser.ts :: migrationPriority"
   - "grep: packages/core/src/types/ast.ts :: annotations: string\\[\\]"
   - "grep: packages/core/src/resolver/style-resolver.ts :: sel.annotations.every"
-  - "file: docs/test-perspectives/TPL-20260615-01-migration-priority-index-winner.md"
+  - "file: docs/test-perspectives/TPL-1583-migration-priority-index-winner.md"
 ---
 
 # ADR-1583: team アノテーション対応と `@migration_target` による primary owner 選択
@@ -26,7 +26,7 @@ assumptions:
   - Issue [#1583](https://github.com/kompiro/karasu/issues/1583)（実装）、親 [#1566](https://github.com/kompiro/karasu/issues/1566)
   - [ADR-1566](1566-ownership-during-migration.md)（`duplicate-owner-assignment` を info に下げ first-wins を採用。本 ADR はその「却下した案: `@migration_target` 優先」を実装する続き）
   - [ADR-477](477-deprecated-domain-migration-coexistence.md)（domain 側の migration-coexistence precedent）
-  - [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md)（本 ADR と同 PR で起こした proactive TPL）
+  - [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（本 ADR と同 PR で起こした proactive TPL）
   - コード: `packages/core/src/parser/parser.ts`（`migrationPriority` / `indexTeams` / `buildNodePathIndex`）、`packages/core/src/resolver/style-resolver.ts`、`packages/core/src/renderer/badge.ts`
 
 ## 背景
@@ -49,8 +49,8 @@ assumptions:
 ## 理由
 
 - **domain との対称性**: 論理構造（domain → `nodePathIndex`）と組織構造（team → `ownerIndex`）で「移行先が主になる」挙動を揃える。ユーザーから見て「カードのオーナーは移行先なのにナビゲーションは移行元」のような不整合を防ぐ。
-- **fact-vs-style ドクトリンの維持**: 共同所有自体は事実であり、引き続き info（error にしない）。ADR-1566 / TPL-20260514-08 の register 判断を保つ。
-- **規則の単一化**: priority 計算を `migrationPriority()` に集約し、`nodePathIndex` と `ownerIndex` の両方で共有。将来 3 つ目の 1:1 index が増えても同じ規則を使えるよう proactive TPL-20260615-01 で縛る。
+- **fact-vs-style ドクトリンの維持**: 共同所有自体は事実であり、引き続き info（error にしない）。ADR-1566 / TPL-1386 の register 判断を保つ。
+- **規則の単一化**: priority 計算を `migrationPriority()` に集約し、`nodePathIndex` と `ownerIndex` の両方で共有。将来 3 つ目の 1:1 index が増えても同じ規則を使えるよう proactive TPL-1583 で縛る。
 - **最小スコープの badge 再利用**: 既存の node badge 機構（style resolver + 共有 SVG helper）に乗せ、新しい描画系を作らない。
 
 ## 却下した案
@@ -62,5 +62,5 @@ assumptions:
 ## 影響範囲
 
 - 既存ユーザー: 後方互換（無印 team の優先度は 1 のまま、重複が無ければ `ownerIndex` 挙動は不変）。重複時のみ主オーナーの選び方が first-wins → migration 優先 に変わる（緩和・対称化方向）。badge は team にアノテーションを付けた場合のみ出る。
-- ドキュメント: `docs/spec/tags-annotations.md`（en/ja）に team アノテーション + primary-owner 優先 + badge を追記。proactive TPL-20260615-01 を新設。
+- ドキュメント: `docs/spec/tags-annotations.md`（en/ja）に team アノテーション + primary-owner 優先 + badge を追記。proactive TPL-1583 を新設。
 - テスト: parser / style-resolver / org renderer に優先解決・badge のユニットテストを追加。

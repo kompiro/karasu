@@ -241,4 +241,4 @@ system MixedSystem {
 
 | TPL | 適用 |
 |---|---|
-| [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) | Case 4 — 同名 domain id の分散は error ではなく `domain-dispersal` info 診断で surface する（register は「事実か流派判断か」で決める） |
+| [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) | Case 4 — 同名 domain id の分散は error ではなく `domain-dispersal` info 診断で surface する（register は「事実か流派判断か」で決める） |

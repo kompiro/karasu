@@ -84,7 +84,7 @@ public server 経路が 401/404 のとき、どう「client 認証経路」に�
 
 ### 軸5: セキュリティ
 
-- token は**ブラウザから出ない**（nest server に送らない・api.github.com へ直接）。TPL-20260510-17（trust boundary）: token は Authorization header にのみ載せ、URL / OGP / ログに出さない。
+- token は**ブラウザから出ない**（nest server に送らない・api.github.com へ直接）。TPL-168（trust boundary）: token は Authorization header にのみ載せ、URL / OGP / ログに出さない。
 - 保管は BYOK 準拠（session 既定）。設定 UI に「fine-grained PAT・contents:read 最小権限・session 既定」の注意書き。
 - private 構造は in-memory のみ・OPFS を汚さない（`MemoryModeApp` の既存 ephemeral 特性）。
 
@@ -101,8 +101,8 @@ public server 経路が 401/404 のとき、どう「client 認証経路」に�
 
 ## Related TPLs
 
-- [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md) — token / owner / repo / ref / path が trust boundary を越える。token は Authorization header 限定（URL/OGP/ログ非出力）、path traversal 拒否、host 固定は private でも維持。
-- [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) — deep anchor は client-resolve でも同一 grammar（`resolveDeepLinkHash` 再利用、fork しない）。
+- [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md) — token / owner / repo / ref / path が trust boundary を越える。token は Authorization header 限定（URL/OGP/ログ非出力）、path traversal 拒否、host 固定は private でも維持。
+- [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) — deep anchor は client-resolve でも同一 grammar（`resolveDeepLinkHash` 再利用、fork しない）。
 
 ## 現時点の方針
 
@@ -111,7 +111,7 @@ public server 経路が 401/404 のとき、どう「client 認証経路」に�
 3. **token = BYO fine-grained PAT**（contents:read 最小権限）、`karasu.github.token` を BYOK パターンで保管（session 既定 / local opt-in、軸2-A）。
 4. **fetch = GitHub Contents API を client から**（`GitHubApiFileSystemProvider`、`synthesizeSharePayload` 再利用、軸3-A）。**CORS+Authorization の spike を実装前に必ず通す**。
 5. **private は payload URL を作らず in-memory 描画・OGP なし**（軸4）。構造は URL に載らない = private permalink の最良プライバシー特性。
-6. **token はブラウザから出ない**（軸5、TPL-20260510-17）。
+6. **token はブラウザから出ない**（軸5、TPL-168）。
 7. **`adr:check-permalinks`（#1830/#1959）は private permalink を CI で解決検証できない**（token 無し）→ private と判定できる permalink は **skip / warn** に留める（dangling 検出は public に限る）。#1959 の enforcement 設計に private 分岐を申し送る。
 8. **実装スライス案**: (a) `GitHubApiFileSystemProvider`（core, contents API, client）+ CORS spike → (b) token store（`github-token-storage.ts`）+ 設定/入力 UI → (c) SPA の private-resolve フロー（landing → token → fetch → in-memory seed → deep anchor）→ (d) `adr:check-permalinks` の private skip/warn。各スライスを子 Issue に落とす。
 

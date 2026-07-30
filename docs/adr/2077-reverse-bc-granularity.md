@@ -26,7 +26,7 @@ assumptions:
   - [ADR-1820](1820-notation-promotion-gate.md) — notation promotion gate（`boundary` は post-v1.0 watch 面）
   - Design: 昇格元 `docs/design/reverse-bc-granularity.md`（本 PR で削除）、[ADR-2036](2036-scoped-boundary-declaration.md)（scoped boundary — 案 B2 の前提を変える。design doc から昇格済み）
   - 隣接 Issue: [#638](https://github.com/kompiro/karasu/issues/638)（eval corpus / metric）、[#1990](https://github.com/kompiro/karasu/issues/1990)（nest pivot decision 4）、[#2036](https://github.com/kompiro/karasu/issues/2036)（scoped boundary — 案 B2 の再検討条件）
-  - TPL: [TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md)（薄い domain を黙って落とさない）、[TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)（identity は `id`）
+  - TPL: [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md)（薄い domain を黙って落とさない）、[TPL-2167](../test-perspectives/TPL-2167-id-not-label-for-identity.md)（identity は `id`）
 
 ## 背景
 
@@ -171,7 +171,7 @@ spike で使った採点方式を #638 の eval corpus / metric 候補として�
 
 ### 引き継ぐ TPL
 
-TPL-20260510-05（薄い domain を黙って落とさない）と TPL-20260510-20（identity は `id`）は
+TPL-999（薄い domain を黙って落とさない）と TPL-2167（identity は `id`）は
 本 ADR が harness の分解を扱う以上、引き続き参照観点として有効。
 
 ### 未解決 / 別管轄

@@ -813,7 +813,7 @@ export const LOGICAL_CONTAINMENT: ReadonlyMap<string, ReadonlySet<string>> = new
 // they are single strings, not `LocalizedString`s. Keeping them here next to
 // the rest of the reference data means the app can no longer drift them from
 // the spec, and `reference-spec-sync.test.ts` can fence them against
-// `docs/spec/*.md` (#1586, TPL-20260511-02).
+// `docs/spec/*.md` (#1586, TPL-1296).
 
 /** The diagram families the reference content is keyed on (matrix → system). */
 export type RefView = "system" | "deploy" | "org";

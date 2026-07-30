@@ -28,7 +28,7 @@ assumptions:
   - 引き金 Issue: [#1801](https://github.com/kompiro/karasu/issues/1801)
   - 実装 PR: [#1810](https://github.com/kompiro/karasu/pull/1810)（Design Doc PR: [#1808](https://github.com/kompiro/karasu/pull/1808)）
   - 前提 ADR: [ADR-1783](1783-karasu-nest-hosted-preview.md)（karasu-nest v1。OGP は本 ADR の「後続（範囲外）」に挙げられていた）
-  - 関連 TPL: [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)（URL 由来 payload を server-rendered HTML に埋める trust boundary）、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)
+  - 関連 TPL: [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)（URL 由来 payload を server-rendered HTML に埋める trust boundary）、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
   - 受け入れ条件: `docs/acceptance/karasu-nest-ogp-share-page.md`
 
 ## 背景
@@ -54,7 +54,7 @@ karasu-nest の inline 共有 URL はプロジェクトを URL **fragment**（`#
 
 - **既存資産（`/render` PNG・`encodeShare`・`readSharedProjectFromHash`）を全再利用**し、新規描画も SPA 配線も DB も持たずに最小実装で OGP unfurl を実現できる（ADR-1783 の「新規パッケージ・サービス・DB を作らない」方針を踏襲）。
 - **bounce 方式**は SPA の復元経路に手を入れず、共有ページを「OGP を出して fragment へ送り返すだけ」に保てる。
-- **trust boundary 対策**（TPL-20260510-17）: `s` は base64url 文字集合 `[A-Za-z0-9_-]+` を厳密検証（外れたら 400）し、そのまま埋める箇所（画像 URL・bounce・noscript）への injection を構造的に封じる。decode 由来の title / description は charset 検証の外なので **HTML escape を必須**（動的化で escaping が load-bearing になる）。
+- **trust boundary 対策**（TPL-168）: `s` は base64url 文字集合 `[A-Za-z0-9_-]+` を厳密検証（外れたら 400）し、そのまま埋める箇所（画像 URL・bounce・noscript）への injection を構造的に封じる。decode 由来の title / description は charset 検証の外なので **HTML escape を必須**（動的化で escaping が load-bearing になる）。
 - **プライバシーは選択制**。fragment 共有はデフォルトのまま（サーバ非送信）。unfurl は「プレビューと引き換えに共有内容がサーバ／ログに見える」ことを UI で明示した opt-in リンクにし、ADR-1783 の private 方針を壊さない。
 
 ### クローラ互換のための追補（実装時に判明）

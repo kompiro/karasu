@@ -60,13 +60,13 @@ export function sanitizeId(id: string): string {
  * Canonical deep-link anchor id for a drillable structural element / view level.
  *
  * Both surfaces that address such an element by URL fragment route through this
- * one function so the grammar can't drift (TPL-20260510-11 / TPL-20260630-01):
+ * one function so the grammar can't drift (TPL-219 / TPL-1827):
  *   - the static drill-down SVG (`<g id="…">` + `:target` CSS, this package)
  *   - the SPA history hash for the drillable system/org views (`buildHash` in
  *     `packages/app`, `#krs-…`) — parity-tested
  *
  * Shape: `krs-<viewPrefix>-<sanitizeId(nodeId)>`. `nodeId` is the author-given
- * `id` (never a label — TPL-20260510-20) or the literal `"root"` for a view's
+ * `id` (never a label — TPL-2167) or the literal `"root"` for a view's
  * top level. `sanitizeId` is idempotent, so passing an already-sanitized
  * segment is safe.
  *

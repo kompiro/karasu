@@ -22,7 +22,7 @@ assumptions:
   - governing ADR: [ADR-1829](1829-adr-permalink-convention.md)（permalink 規約 — 本検証を #1830 に申し送り）
   - 前提 ADR: [ADR-1827](1827-permalink-deep-element.md)（deep permalink アンカー文法）
   - アンカー contract: `docs/spec/permalink.md`（+ `.ja.md`）／ L2 規約: `.claude/rules/adr.md`
-  - 関連 TPL: [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（整合性チェックは両側で起動）、[TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)、[TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)
+  - 関連 TPL: [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)（整合性チェックは両側で起動）、[TPL-1829](../test-perspectives/TPL-1829-adr-permalink-records-source.md)、[TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)
   - 受け入れ条件: `docs/acceptance/1830-adr-permalink-validation.md`
   - 経緯: 初版は karasu 側 validator（PR #1916、close）→ redirect design（#1922）→ 本 ADR で adr-tools 実装を adopt
 
@@ -47,7 +47,7 @@ adr-tools ADR-17）。karasu 側の配線:
 - `@kompiro/adr-tools` を `^0.0.7` に bump し、adr-tools の optional peer を満たすため
   `@karasu-tools/core` を root devDependency（`workspace:*`）に追加。
 - `pnpm adr:check-permalinks`（`adr check-permalinks`）を ci.yml の Required `Check` job に
-  **path filter 無し**で追加し、ADR 側・`.krs` 側の両変更で発火させる（TPL-20260520-02）。
+  **path filter 無し**で追加し、ADR 側・`.krs` 側の両変更で発火させる（TPL-1480）。
 - `krs` resolver は **built `@karasu-tools/core`** を lazy import するため、CI では
   **`Build (core)` の後**に実行する。
 - 本 ADR で ADR-1829 に最初の dogfood `permalink:` を追加（worked example）。

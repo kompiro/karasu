@@ -4,7 +4,7 @@
 - **Issue**: #1955（epic #1817 comprehension、前段 #1815 / #1923）
 - **PR**: feat/expand-all-services
 - **設計**: [ADR-1955](../adr/1955-expand-all-services-in-place.md)（overload 決定 + 2 クリック tradeoff） / [ADR-1815](../adr/1815-expand-container-in-place.md)
-- **Related TPLs**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（user-facing surface の docs 同期）, [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（軸の有無で駆動し `groupBy` に分岐しない）, [TPL-20260516-01](../test-perspectives/TPL-20260516-01-control-a11y-contract-survives-migration.md)（コントロールの a11y 契約維持）
+- **Related TPLs**: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（scoped glance を first-class に保つ）, [TPL-1716](../test-perspectives/TPL-1716-user-facing-surface-docs-sync.md)（user-facing surface の docs 同期）, [TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md)（軸の有無で駆動し `groupBy` に分岐しない）, [TPL-1399](../test-perspectives/TPL-1399-control-a11y-contract-survives-migration.md)（コントロールの a11y 契約維持）
 - **対象**: `packages/app/src/hooks/useSystemView.ts`、`docs/tools/app.md` / `app.ja.md`
 
 ## 概要
@@ -41,13 +41,13 @@ overload トグルは二値（全畳み ⇄ 全開き）でラベルは `allColl
 > ✅ Automated by `packages/app/src/hooks/useSystemView.test.tsx` (suite-wide)
 
 - [x] Group by: team では `data-expand-node` が emit されず、Expand all は frames のみ開き service は展開しない（`expandedContainers.size === 0`）
-- [x] scope 判定は renderer 側ゲートに一元化され、app 側で `groupBy` を条件分岐しない（TPL-20260510-03）
+- [x] scope 判定は renderer 側ゲートに一元化され、app 側で `groupBy` を条件分岐しない（TPL-1094）
 
 ### AC-4: 既存コントロール契約の非破壊（app）
 
 > ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` (suite-wide)
 
-- [x] 「Collapse all / Expand all」ボタンの表示・`aria-pressed`・click → `onCollapseAllToggle` 契約は不変（overload は hook 内部の挙動変更のみ、TPL-20260516-01）
+- [x] 「Collapse all / Expand all」ボタンの表示・`aria-pressed`・click → `onCollapseAllToggle` 契約は不変（overload は hook 内部の挙動変更のみ、TPL-1399）
 
 ### AC-5: 非破壊（view-state only）
 
@@ -55,7 +55,7 @@ overload トグルは二値（全畳み ⇄ 全開き）でラベルは `allColl
 
 - [x] 展開状態は app の view-state のみ（compile option 経由）で `.krs` / AST を変更しない — 一括展開も #1921/#1923 と同じ機構を通るため継承
 
-> user-facing surface（トグルの拡張された意味）は本 PR で `docs/tools/app.md` / `app.ja.md` に反映済み。toolbar surface は機械チェック対象外でレビュー担保（TPL-20260623-01）。
+> user-facing surface（トグルの拡張された意味）は本 PR で `docs/tools/app.md` / `app.ja.md` に反映済み。toolbar surface は機械チェック対象外でレビュー担保（TPL-1716）。
 
 ### AC-6: 手動確認
 

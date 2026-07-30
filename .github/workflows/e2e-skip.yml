@@ -9,7 +9,7 @@ name: E2E (skip)
 # required check is satisfied without paying for the full Playwright run.
 #
 # Keep the `paths-ignore` list below in exact sync with `e2e.yml`'s `paths`.
-# If a new E2E-relevant path is added there, mirror it here (TPL-20260520-02).
+# If a new E2E-relevant path is added there, mirror it here (TPL-1480).
 
 on:
   pull_request:

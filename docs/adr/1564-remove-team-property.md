@@ -22,7 +22,7 @@ assumptions:
 - **関連**:
   - Issue [#1564](https://github.com/kompiro/karasu/issues/1564)
   - [ADR-14](14-organization-diagram.md)（`team` プロパティを deprecate した決定。本 ADR はその廃止計画を完了させる）
-  - [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（受理語彙は「効果を持つ / 警告される / open set と明文化」のいずれか）
+  - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理語彙は「効果を持つ / 警告される / open set と明文化」のいずれか）
   - コード: `packages/core/src/{parser/parser.ts,resolver/warnings.ts,types/ast.ts,renderer/*}`、`packages/i18n/src/*`
 
 ## 背景
@@ -39,14 +39,14 @@ assumptions:
 
 ## 理由
 
-- **TPL-20260610-01 に整合**: 受理する語彙は「効果を持つ / 警告される / open set」のいずれかでなければならない。黙って受理して無視する（silent-ignore）案はこの観点に反するため、error として明示的に警告する。
+- **TPL-1503 に整合**: 受理する語彙は「効果を持つ / 警告される / open set」のいずれかでなければならない。黙って受理して無視する（silent-ignore）案はこの観点に反するため、error として明示的に警告する。
 - **オーナーシップ表現の一本化**: 2 系統の併存と食い違いの余地が構造的に消える。`realizes`（物理↔論理）と対称に `owns`（組織↔論理/物理）が唯一の所有関係になる。
 - **消し漏れ防止**: AST から `team?: string` を削除することで、renderer のフォールバック参照を TypeScript の typecheck が機械的に検出でき、移行漏れを防げる。
 - **十分な移行期間**: deprecation warning を約 3 か月出しており、CLI は 0.x。error 診断はパースを止めず移行先（`organization`/`owns`）を明示する。
 
 ## 却下した案
 
-- **silent-ignore（黙って無視）**: 受理するが効果も警告もない語彙を生み、TPL-20260610-01 に反する。ユーザーは無視に気づけない。
+- **silent-ignore（黙って無視）**: 受理するが効果も警告もない語彙を生み、TPL-1503 に反する。ユーザーは無視に気づけない。
 - **deprecation の延長（現状維持）**: 2 系統併存・相互検証なしの問題が残り、ADR-14 の「将来削除」が宙吊りのまま。
 - **error は出すが AST フィールドは残す**: 「error と言いながら値は描画される」矛盾が生じ、owner 表示の一本化も typecheck による消し漏れ検出も得られない。
 

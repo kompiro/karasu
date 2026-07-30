@@ -6,7 +6,7 @@
   - `packages/cli/package.json`（`files` を `dist/index.js` に限定）
   - `packages/cli/src/packaging.test.ts`（新規・回帰ガード）
 - **関連 ADR**: ADR-1315（changesets リリース自動化）, ADR-<番号>（cli-pack-only-bundle）
-- **関連 TPL**: [TPL-20260618-02](../test-perspectives/TPL-20260618-02-publishable-tarball-completeness.md), [TPL-20260510-15](../test-perspectives/TPL-20260510-15-dev-vs-packaged-mode-parity.md)
+- **関連 TPL**: [TPL-1681](../test-perspectives/TPL-1681-publishable-tarball-completeness.md), [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)
 
 ## 受け入れ条件
 

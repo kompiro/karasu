@@ -4,7 +4,7 @@
 - **Issue**: #1822（umbrella / Epic #1817 comprehension）
 - **PR**: (P2b-B — axis wiring)
 - **設計**: [docs/design/system-view-grouping.md](../design/system-view-grouping.md)「P2b 詳細設計」
-- **Related TPLs**: [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（新 group-by 軸を全 `groupBy` call site へ通す — 一つでも漏れると軸が黙って落ちる）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置 + 参照エッジ端点保持）
+- **Related TPLs**: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（新 group-by 軸を全 `groupBy` call site へ通す — 一つでも漏れると軸が黙って落ちる）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置 + 参照エッジ端点保持）
 - **対象**: `packages/core/src/renderer/layout.ts` / `svg-renderer.ts` / `index.ts` / `all-layers-svg.ts` / `drill-down-svg.ts`、`packages/app`（`useSystemView` / `useAppViews` / `PreviewColumn` / preview-context 配線）
 
 ## 概要
@@ -17,7 +17,7 @@ P2b-A で追加した `boundary` 宣言（`boundaryIndex`）を **第二の Grou
 
 - [x] `groupBy: "boundary"` で宣言 `boundary` ごとに境界フレーム（`data-container-id="__group_<boundaryId>__"`）が1つずつ出る
 > ✅ Automated by `packages/core/src/renderer/group-by-boundary-render.test.ts`
-- [x] grouped でも全ノードがちょうど一度描かれる（TPL-20260624-02 の全域性 — team 軸と同じ機構を継承）
+- [x] grouped でも全ノードがちょうど一度描かれる（TPL-1738 の全域性 — team 軸と同じ機構を継承）
 > ✅ Automated by `packages/core/src/renderer/group-by-boundary-render.test.ts`
 - [x] `groupBy` 未指定は option 無しと **byte 一致**（opt-in・後方互換・回帰なし）
 > ✅ Automated by `packages/core/src/renderer/group-by-boundary-render.test.ts`
@@ -33,7 +33,7 @@ P2b-A で追加した `boundary` 宣言（`boundaryIndex`）を **第二の Grou
 
 ### AC-3: 全 `groupBy` サーフェスへの配線（回帰・parity）
 
-- [x] `layout()` / `layoutMultipleSystems()` / `svg-renderer` / `index.ts`（単一 + diff）/ `all-layers-svg` / `drill-down-svg` の `groupBy` 型が `"team" | "boundary"` に拡張され、`boundaryIndex` が全 render 経路に通っている（TPL-20260510-11）
+- [x] `layout()` / `layoutMultipleSystems()` / `svg-renderer` / `index.ts`（単一 + diff）/ `all-layers-svg` / `drill-down-svg` の `groupBy` 型が `"team" | "boundary"` に拡張され、`boundaryIndex` が全 render 経路に通っている（TPL-219）
 > ✅ Automated — 既存 core スイート全体（2292 tests）が軸追加後も無変更で通過（既存 team snapshot 不変）
 - [x] team 軸の既存挙動は byte 不変（`groupIndex` は軸選択のみで team ロジックを変えない）
 > ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts`（team snapshot 不変）/ `group-by-boundary-render.test.ts`（team 軸独立）

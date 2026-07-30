@@ -17,6 +17,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1830](1830-adr-permalink-validation.md) — ADR→karasu permalink の検証は adr-tools の krs kind で行い karasu は config で adopt する
 - [ADR-2092](2092-tpl-config-split.md) — TPL の reference-data 設定を `tpl.config.json` に分離し、TPL は `date-sequence` を維持する
 - [ADR-2125](2125-retire-adr-id-migration-map.md) — id-migration-map と専用 lint を退役する — 移行完了後の map は「lint が map を守るためだけの map」だった
+- [ADR-2188](2188-tpl-issue-number-ids.md) — TPL の採番を issue-number（TPL-<n>）へ移行する
 
 ## app-ui
 

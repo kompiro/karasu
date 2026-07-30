@@ -1,6 +1,6 @@
 // Surface Playwright retry-pass (flaky) tests in CI.
 //
-// Closes the TPL-20260510-13 / GT13-2 gap (#1271): Playwright is configured
+// Closes the TPL-976 / GT13-2 gap (#1271): Playwright is configured
 // with `retries: 1` in CI, so a test that fails on attempt 0 and passes on
 // attempt 1 is reported as `flaky` in Playwright's run summary but does not
 // fail the job. That is the exact failure mode #976 described — retry-pass
@@ -109,7 +109,7 @@ export function renderSummary(flakies: FlakyTest[]): string {
   return [
     "## Playwright flaky-pass summary",
     "",
-    `⚠ **${flakies.length}** retry-pass (flaky) test${flakies.length === 1 ? "" : "s"} in this run. Each is a TPL-20260510-14 ("wait for stable state") candidate.`,
+    `⚠ **${flakies.length}** retry-pass (flaky) test${flakies.length === 1 ? "" : "s"} in this run. Each is a TPL-1171 ("wait for stable state") candidate.`,
     "",
     "| Location | Test | Attempts |",
     "|---|---|---|",

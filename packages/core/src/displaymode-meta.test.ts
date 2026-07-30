@@ -28,11 +28,11 @@
  *
  * Background: Issue #183 was the canonical missed-surface failure — the
  * Full View hook called `buildExportSvg` without `displayMode` so icon
- * mode was silently dropped from Full View output. TPL-20260510-06
+ * mode was silently dropped from Full View output. TPL-1001
  * codified the "enumerate every surface" principle; this test
  * operationalizes that enumeration.
  *
- * See Issue #1247 and TPL-20260510-06.
+ * See Issue #1247 and TPL-1001.
  *
  * The `theme` argument (Issue #1479) has its own sibling meta-test —
  * `theme-meta.test.ts` — applying the same enumeration pattern.

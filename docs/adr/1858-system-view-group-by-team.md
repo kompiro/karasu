@@ -20,7 +20,7 @@ scope:
   - 関連: [ADR-1724](1724-system-view-infra-external-tier-split.md)（kind ティア分割 — 既定ビューでは不変）, [ADR-1821](1821-layer-toggles.md)（#1821 category collapse — 本 ADR が machinery を共有）
   - notation promotion gate: [#1820](https://github.com/kompiro/karasu/issues/1820) / P2c: [#1859](https://github.com/kompiro/karasu/issues/1859)
   - フォローアップ: #1872 / #1873 / #1874 / #1875 / #1876 / #1879
-  - TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
+  - TPL: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
   - コード: `packages/core/src/renderer/group-layout.ts` / `group-collapse.ts` / `layout.ts` / `svg-renderer.ts`、`packages/app`（`useSystemView` ほか）
 
 ## 背景
@@ -41,7 +41,7 @@ system view に **view-mode の「Group by: team」** を実装する。所有�
 4. **既定は常に展開**。全折り畳み（group DAG ビュー）へは「すべて畳む」で到達（bulk 操作は #1872 で追加）。
 5. **順序** = min feedback-arc-set。group 数 ≤ 8 は全探索、超は greedy（Eades–Lin–Smyth）、同点は宣言順（決定的・著者制御可）。
 6. **折り畳み時のエッジ**は stub に**再ターゲット**（category collapse の drop と異なる）。intra-group は drop、stub エッジは dedup。retarget されたエッジのみ dedup し、展開ノード間の authored parallel edge / self-loop は保持する。
-7. **export / secondary サーフェスは「frame は描くが collapse は適用しない」**（#1879, 2026-07-11）。Show All Layers / drill-down export / Open&Export All Views（`buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`）に `groupBy` のみを **root system-view level に限って**渡す（drill-down の深い層にチームは無いため非適用）。`collapsedGroups` は渡さない — export は「畳んだ姿」ではなく**完全な構造**を見せる目的なので、team バンド＋境界フレームで束ねつつ全ノードを描画する。TPL-20260624-02（全要素ちょうど一度配置）を回帰の柵にした。
+7. **export / secondary サーフェスは「frame は描くが collapse は適用しない」**（#1879, 2026-07-11）。Show All Layers / drill-down export / Open&Export All Views（`buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`）に `groupBy` のみを **root system-view level に限って**渡す（drill-down の深い層にチームは無いため非適用）。`collapsedGroups` は渡さない — export は「畳んだ姿」ではなく**完全な構造**を見せる目的なので、team バンド＋境界フレームで束ねつつ全ノードを描画する。TPL-1738（全要素ちょうど一度配置）を回帰の柵にした。
 
    > 注記（2026-07-16、ADR 昇格 2026-07-17）: 決定 7 の「root system-view level に限って」は [#1983](https://github.com/kompiro/karasu/issues/1983) で軸非依存のレベル交差セマンティクス（グルーピングは各ビューで、そのレベルに描画されるノード集合との交差で解決）へ一般化し、export の root-only gate は撤去した — [ADR-1983](1983-boundary-drilldown-grouping.md) 参照。「collapse は適用しない」は維持。
 
@@ -49,7 +49,7 @@ system view に **view-mode の「Group by: team」** を実装する。所有�
 
 - **仮説は「述べられた形のまま」では偽だった**（P1 計測、20 service/5 team の合成モデル）。枠を描いてグループ配置にするだけでは canvas 51%・交差は残存で利得が薄い。**読みやすさを生むのは折り畳み**（全折り畳みで canvas 31%・service 段 20→11・交差 21）。よって「枠は折り畳みを可能にするアフォーダンス」と位置づけ、collapse を機能の核にした。
 - **owns 軸なら文法変更ゼロで即出せる**。`ownerIndex` は 1:1・precedence 解決済み・ファイル横断で、開閉に必要な**単一値**の所属を既に満たす。タグは多値で開閉識別子に不適だった。組織情報は既に system view の service カードに team バッジとして描画済みで、枠は新たな越境ではなく既存情報の強い視覚化。
-- **既存機構の再利用で de-risk**: 描画・折り畳みは #1821 の `krs-cat-*` / on-SVG affordance / app 5-hop 配線を踏襲。TPL-20260624-02（全要素ちょうど一度配置 + 端点保持）を回帰の柵にした。
+- **既存機構の再利用で de-risk**: 描画・折り畳みは #1821 の `krs-cat-*` / on-SVG affordance / app 5-hop 配線を踏襲。TPL-1738（全要素ちょうど一度配置 + 端点保持）を回帰の柵にした。
 - **notation gate 整合**: 語彙・first-class 化を先に決めず experimental に留め、owns 軸で価値検証してから P2b（宣言構文）へ #1820 gate 経由で進める。
 
 ## 却下した案

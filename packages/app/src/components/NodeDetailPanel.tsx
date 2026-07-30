@@ -42,7 +42,7 @@ interface NodeDetailPanelProps {
 // each icon name to an emoji glyph instead of an SVG pictogram. Re-exported
 // under this name so cross-surface tests can assert this map and the
 // icon-card style cascade resolve identical icons per kind — the contract
-// enforced by TPL-20260510-05 / 06 item 4 and originally violated in #132 §3
+// enforced by TPL-999 / 06 item 4 and originally violated in #132 §3
 // (panel pictogram diverged from icon card).
 export const KIND_TO_ICON_NAME: Record<string, string> = NODE_DETAIL_KIND_ICON_NAMES;
 

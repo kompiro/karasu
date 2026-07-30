@@ -271,7 +271,7 @@ organization AppOrg {
     expect(bodies.system).not.toEqual(bodies.org);
   });
 
-  // TPL-20260510-16: the /render endpoint is a single-file boundary by
+  // TPL-239: the /render endpoint is a single-file boundary by
   // design — `import { ... } from "./other.krs"` declarations in the posted
   // source are intentionally NOT resolved (no filesystem context exists for
   // a remote URL or a base64 text blob). This test locks in that documented
@@ -279,7 +279,7 @@ organization AppOrg {
   // the endpoint, and the imported entity must not appear in the rendered
   // SVG. Consumers needing multi-file resolution should use `karasu render`
   // (CLI, real filesystem) or the VS Code preview.
-  it("TPL-16: posted source's `import` is left unresolved (single-file contract)", async () => {
+  it("TPL-239: posted source's `import` is left unresolved (single-file contract)", async () => {
     const source = `import { ImportedRemoteService } from "./does-not-exist.krs"
 
 system App {

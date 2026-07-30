@@ -62,7 +62,7 @@ test.describe("AT-0047 Infra nodes in System diagram", () => {
     // assertion to `--warning` only: the info register is an open set (this KRS
     // shares OrderDB across two services, which legitimately raises the
     // `shared-infra-fan-in` *info* note — a fact, not a defect, see
-    // TPL-20260514-08). Counting all `.warning-item` would couple this fixture
+    // TPL-1386). Counting all `.warning-item` would couple this fixture
     // to every future info diagnostic.
     const panel = page.locator(".warning-panel");
     if ((await panel.count()) > 0) {

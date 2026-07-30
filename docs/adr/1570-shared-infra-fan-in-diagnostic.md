@@ -13,7 +13,7 @@ assumptions:
   - "symbol: packages/core/src/resolver/warnings.ts :: detectSharedInfraFanIn"
   - "grep: packages/core/src/types/warnings.ts :: shared-infra-fan-in"
   - "grep: docs/concepts.md :: shared-infra-fan-in"
-  - "file: docs/test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md"
+  - "file: docs/test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md"
 ---
 
 # ADR-1570: 共有 infra fan-in を info 診断として通知する
@@ -26,7 +26,7 @@ assumptions:
   - 実装 PR: [#1590](https://github.com/kompiro/karasu/pull/1590)
   - 統治 ADR: [ADR-1386](1386-style-prescription-stance.md)（流派が smell と呼ぶ構造は `info` で事実通知 — 本 ADR はその register を拡張する）
   - 前提 ADR: [ADR-316](316-database-as-first-class-node.md)（database を first-class に — 共有 store を表現可能にする前提）
-  - 関連 TPL: [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（新規 diagnostic の register は事実か流派判断かで決める）, [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md), [TPL-20260612-01](../test-perspectives/TPL-20260612-01-style-coupled-diagnostics-sheetless-context.md)
+  - 関連 TPL: [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（新規 diagnostic の register は事実か流派判断かで決める）, [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md), [TPL-1522](../test-perspectives/TPL-1522-style-coupled-diagnostics-sheetless-context.md)
 
 ## 背景
 
@@ -42,14 +42,14 @@ ADR-1386 は「流派が smell と呼ぶ構造は `info` で事実通知する�
 
 個別の設計判断:
 
-- **register は `info`** — ADR-1386 / TPL-20260514-08 の判定樹に従う。共有 store は「ある流派が smell と呼ぶ構造的事実」であり、karasu が直すべきと規定する defect ではない。
+- **register は `info`** — ADR-1386 / TPL-1386 の判定樹に従う。共有 store は「ある流派が smell と呼ぶ構造的事実」であり、karasu が直すべきと規定する defect ではない。
 - **params は `{ infraId, infraKind, services }`** — `database` 限定にせず `queue` / `storage` も横断する。
 - **閾値は ≥2 service**。同一 service が複数 usecase から参照する場合は 1 とカウント（Set で dedup）。
 - **`[external]` ストアは集計から除外** — Database-per-Service smell は「自システムが所有する store」に関する信号であり、境界外の managed 第三者 store を共有すること自体は同種の信号ではなくノイズになる。
 - **scope は per-system + top-level（system なし）**。system 境界はまたがない（cross-system 共有は意図的）。トップレベル infra は `file.databases` / `queues` / `storages` に bucket されるため、トップレベル scope ではそれらも infra ソースとして供給する。
 - **`infra-redeclared-across-files` は併存維持** — 観察する事実が別物（宣言の冗長性 vs 実際の共有）。concepts 表は両者を残し、説明を書き分ける。
 - **検出は `analyze()`（merge 後 `KrsFile`）で行う** — view 非依存。ファイル数に依らず実共有で判定でき、App / CLI / LSP のいずれからも surface される。
-- **LSP single-document では抑制しない**（TPL-20260612-01 の「判断を記録する」契約）— import-merge から利益を受けるが、単一ドキュメント文脈では *under-report* するだけで false-positive は出ない（store と ≥2 参照 service の両方が同一ドキュメントに揃ったときのみ発火）。`domain-dispersal` と同性質。
+- **LSP single-document では抑制しない**（TPL-1522 の「判断を記録する」契約）— import-merge から利益を受けるが、単一ドキュメント文脈では *under-report* するだけで false-positive は出ない（store と ≥2 参照 service の両方が同一ドキュメントに揃ったときのみ発火）。`domain-dispersal` と同性質。
 
 ## 理由
 
@@ -60,6 +60,6 @@ ADR-1386 は「流派が smell と呼ぶ構造は `info` で事実通知する�
 
 ## 却下した案
 
-- **案 A — `infra-redeclared-across-files` に fan-in 検出を相乗りさせる**: 観察する事実が異なり（宣言冗長 vs 実共有）、params 形も合わず、利用側が 2 ケースを判別できない。TPL-20260514-08 の「事実 1 行」原則に反する。
+- **案 A — `infra-redeclared-across-files` に fan-in 検出を相乗りさせる**: 観察する事実が異なり（宣言冗長 vs 実共有）、params 形も合わず、利用側が 2 ケースを判別できない。TPL-1386 の「事実 1 行」原則に反する。
 - **案 B — view 抽出（`deriveInfraEdges`）の synthetic edge から数える**: 診断は view 非依存であるべき（system view を開かなくても出てほしい）。view 経路に置くと LSP / CLI の warning 収集から漏れる。
 - **`warning` register で出す**: 「直すべき」のニュアンスが強く、移行期・低トラフィック・レガシーなど意図的共有で誤報になる。ADR-1386 の立場と矛盾する。

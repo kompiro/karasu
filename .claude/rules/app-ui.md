@@ -111,7 +111,7 @@ missing doc entry **fails the push / CI**.
 - Deliberately undocumented chords go in that script's `DOC_EXEMPT` list
   with a reason (currently the `mod+shift+1/2` edit-tab toggles).
 - Toolbar / view / CLI-flag surfaces are *not* mechanically checked — they
-  rely on review (proactive TPL `TPL-20260623-01-user-facing-surface-docs-sync`).
+  rely on review (proactive TPL `TPL-1716-user-facing-surface-docs-sync`).
 
 ## Legacy `toolbar-btn` CSS (deprecated)
 

@@ -6,8 +6,8 @@
 - **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（Group by: team P2a）
 - **設計**: [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)
 - **Related TPLs**:
-  - [TPL-20260712-01](../test-perspectives/TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md)（id を書き換える集約変換は元 id にキーされた装飾を再導出する）
-  - [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
+  - [TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md)（id を書き換える集約変換は元 id にキーされた装飾を再導出する）
+  - [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
 - **対象**: `packages/core/src/index.ts`（`compileSystemDiff`）/ `packages/core/src/renderer/group-collapse.ts` / `layout.ts` / `svg-renderer.ts`
 
 ## 概要
@@ -31,7 +31,7 @@ diff モードの Group by: team は grouping 軸に **after 側だけの `owner
 
 - [x] before で team 所有・after で削除されたノードが、末尾帯ではなく `__group_<team>__` フレームの
       矩形内（中心座標が枠内）に `data-diff-state="removed"` で描かれる
-- [x] 全域性は維持（ちょうど一度描画）— TPL-20260624-02
+- [x] 全域性は維持（ちょうど一度描画）— TPL-1738
 - [x] 別チーム所有ノードは当該フレーム内に入らない（配置の混線がない）
 - [x] **所属剥奪 ≠ 除去**: `owns` だけ消して node は残したケース（生存・無所属）は after どおり
       無所属で、古い team フレームに leak しない（backfill は `removed` 状態のみが条件）

@@ -25,9 +25,9 @@ assumptions:
   - Issue #1470 — Refactor app.css into modular files and add light theme support
   - PR #1472（Design Doc）/ PR #1477（実装）
   - [ADR-1368](1368-adopt-shadcn-ui.md) — shadcn/ui 採用・`@theme inline` ブリッジ
-  - [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md) — 表示モード / グローバル切替の全描画面点検
-  - [TPL-20260518-01](../test-perspectives/TPL-20260518-01-involutive-toggle-renders-both-states.md) — 両結果状態の end-to-end 検証
-  - [TPL-20260516-01](../test-perspectives/TPL-20260516-01-control-a11y-contract-survives-migration.md) — interactive control の a11y 契約
+  - [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md) — 表示モード / グローバル切替の全描画面点検
+  - [TPL-1402](../test-perspectives/TPL-1402-involutive-toggle-renders-both-states.md) — 両結果状態の end-to-end 検証
+  - [TPL-1399](../test-perspectives/TPL-1399-control-a11y-contract-survives-migration.md) — interactive control の a11y 契約
 
 ## 背景
 
@@ -80,7 +80,7 @@ Issue #1470 で 2 案を検討した。
 - トークン定義（`themes.css`）と利用箇所（`components/*`）を分離することで、
   将来テーマを追加・調整するとき触る場所が `themes.css` に限定される。
 - テーマは「描画全体に影響するグローバル切替」であり、CSS における描画面は
-  各コンポーネント CSS である（TPL-20260510-06）。`styles-no-raw-color.test.ts`
+  各コンポーネント CSS である（TPL-1001）。`styles-no-raw-color.test.ts`
   が `layout.css` / `base.css` / `components/*.css` に生の色リテラルが
   出現しないことを検証し、テーマ非対応の退行を code review で検出できる。
 - shadcn/ui の `@theme inline` ブリッジ（ADR-1368）は `var()` を inline

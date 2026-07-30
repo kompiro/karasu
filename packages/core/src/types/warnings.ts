@@ -136,7 +136,7 @@ export interface WarningParamsByKind {
   /**
    * An authored edge references a node id that exists nowhere in the merged
    * model. The edge is dropped during view extraction (the resolved endpoint
-   * node is preserved — see §S6 / TPL-20260514-05); this warning surfaces the
+   * node is preserved — see §S6 / TPL-2170); this warning surfaces the
    * silent drop. Cross-system dotted refs (`Sys.Svc`) are excluded — those are
    * handled by `cross-system-ref-*`.
    */
@@ -177,7 +177,7 @@ export interface WarningParamsByKind {
    * archetypes going through builtin-addition requests. Deliberately has no
    * suppression condition — a style selector or legend ref proves intent,
    * but intent does not change the v2.0 outcome (docs/design/tags-and-facets.md
-   * Part A). Warning register: resolves the TPL-20260610-01 fourth state
+   * Part A). Warning register: resolves the TPL-1503 fourth state
    * into state (2), "warned as unknown".
    */
   "tag-not-builtin": {
@@ -298,7 +298,7 @@ export type Warning = {
 
 /**
  * Visual register of a Warning. Most kinds render as `warning`; style-school
- * smell detections (per ADR-1386 / TPL-20260514-08) render as `info`
+ * smell detections (per ADR-1386 / TPL-1386) render as `info`
  * — the configuration is a structural fact, not a defect karasu prescribes
  * fixing. The mapping is keyed by `kind` so producers do not need to set
  * severity explicitly.
@@ -309,7 +309,7 @@ const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
   "domain-dispersal",
   // Shared-store fan-in is a style-school smell (Database-per-Service), not a
   // defect karasu prescribes fixing — same register as domain-dispersal
-  // (ADR-1386 / TPL-20260514-08).
+  // (ADR-1386 / TPL-1386).
   "shared-infra-fan-in",
   // Cross-domain store access is a boundary-crossing fact some schools call a
   // smell (legitimate under shared kernel / migrations) — same register.

@@ -20,8 +20,8 @@ assumptions:
   - Issue #1408 — Add an AST Outline view to the App sidebar
   - フォローアップ Issue: #1410（deploy/org 表示時の Outline 切り替え）、
     #1411（Ctrl/Cmd+B でサイドバー開閉）、#1415（タグ由来アイコンバリアント）
-  - 関連 TPL: TPL-20260518-01（involutive toggle）、TPL-20260516-01（control a11y）、
-    TPL-20260510-20（id-not-label）
+  - 関連 TPL: TPL-1402（involutive toggle）、TPL-1399（control a11y）、
+    TPL-2167（id-not-label）
   - コード: `packages/app/src/components/OutlineView.tsx`、
     `packages/app/src/components/EditArea.tsx`、
     `packages/app/src/components/AppShell.tsx`
@@ -65,8 +65,8 @@ presentational な `OutlineView` をサイドバーに追加する。Outline ノ
   `renderPictogram` でピクトグラムを描画する。プレビューの Icon Mode と同じ
   グリフを使うことで一貫性が保てる。
 - **a11y / toggle 契約**: ActivityBar ボタンは `ActivityBarButton` に集約し
-  `aria-pressed` + `aria-label` + 可視ラベルを 1 箇所で担保（TPL-20260516-01）。
-  開閉トグルは Files / Outline 双方で両結果状態をテストで検証（TPL-20260518-01）。
+  `aria-pressed` + `aria-label` + 可視ラベルを 1 箇所で担保（TPL-1399）。
+  開閉トグルは Files / Outline 双方で両結果状態をテストで検証（TPL-1402）。
 
 ## 却下した案
 

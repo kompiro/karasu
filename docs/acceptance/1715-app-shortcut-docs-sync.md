@@ -3,11 +3,11 @@
 - **日付**: 2026-06-23
 - **関連 Issue**: [#1715](https://github.com/kompiro/karasu/issues/1715)
 - **対象ファイル**: `scripts/lint/app-shortcut-docs-sync.ts`, `docs/tools/app.md`,
-  `docs/tools/app.ja.md`, `docs/test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md`
+  `docs/tools/app.ja.md`, `docs/test-perspectives/TPL-1716-user-facing-surface-docs-sync.md`
 
 ## 受け入れ条件
 
-該当する観点は [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（user-facing surface → docs/tools 反映）。
+該当する観点は [TPL-1716](../test-perspectives/TPL-1716-user-facing-surface-docs-sync.md)（user-facing surface → docs/tools 反映）。
 
 - [x] `mod+...` chord を `Ctrl/Cmd+...` 表示形に正規化する（`mod+shift+e` → `Ctrl/Cmd+Shift+E`）
 

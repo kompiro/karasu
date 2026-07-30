@@ -38,7 +38,7 @@ import { encodeShare } from "../utils/inline-share.js";
  *   directory listing without an API hop, so `readDir` is unsupported here;
  *   explicit-file imports (`import "..."`, `@import`, named imports) work.
  *
- * Security (TPL-20260510-17): the untrusted `<owner>/<repo>/<path>@<ref>`
+ * Security (TPL-168): the untrusted `<owner>/<repo>/<path>@<ref>`
  * segments cross a trust boundary into a fetch URL. Each segment is
  * charset-validated and `..`/traversal is rejected before the raw URL is built,
  * and the host is hard-pinned to `raw.githubusercontent.com` (SSRF is
