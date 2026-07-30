@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-285 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+286 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -233,6 +233,7 @@ flowchart TD
     ADR_1783["ADR-1783<br/>karasu-nest — URL で .krs を共有・プレビューするホスト型機能"]
     ADR_1801["ADR-1801<br/>karasu-nest — 共有リンクの OGP 画像（system 図 unfurl）"]
     ADR_1809["ADR-1809<br/>プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する"]
+    ADR_1990["ADR-1990<br/>karasu-nest ピボット — GitHub App による server-side r..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -425,6 +426,7 @@ flowchart TD
   ADR_529 -.supersedes.-> ADR_33
   ADR_1014 -.supersedes.-> ADR_926
   ADR_1142 -.supersedes.-> ADR_1076
+  ADR_1990 -.supersedes.-> ADR_1783
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -649,7 +651,7 @@ flowchart TD
   class ADR_1742 accepted
   class ADR_1755 accepted
   class ADR_1758 accepted
-  class ADR_1783 accepted
+  class ADR_1783 superseded
   class ADR_1801 accepted
   class ADR_1805 accepted
   class ADR_1809 accepted
@@ -678,6 +680,7 @@ flowchart TD
   class ADR_1955 accepted
   class ADR_1974 accepted
   class ADR_1983 accepted
+  class ADR_1990 accepted
   class ADR_2036 accepted
   class ADR_2045 accepted
   class ADR_2048 accepted
@@ -730,7 +733,7 @@ flowchart TD
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 11 ADRs
 - [`parser`](graph/parser.md) — 22 ADRs
-- [`project`](graph/project.md) — 8 ADRs
+- [`project`](graph/project.md) — 9 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
