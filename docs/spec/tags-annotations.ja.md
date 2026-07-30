@@ -43,7 +43,7 @@
 
 bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する（v1.0 freeze — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — が parse 挙動を凍結している）。ただし**ツール語彙**（上記の組み込み表 + 下記の[システム自動付与タグ](#システム自動付与タグsystem-assigned-tags)）の外のタグは**非推奨**であり、karasu は使用のたびに `tag-not-builtin` **warning** を出す。抑制条件は意図的に**設けない** — `.krs.style` のセレクタや `legend` の ref は名前が意図的である証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する（enforcement は warning のままで、parse error にはしない — 既存ファイルはパースされ続ける）。移行先:
 
-- **所属やモデル固有のラベリング**（PCI スコープ、PII、「認証必須」）→ `facet` 構文（#2065 Part B。導入までは `description` / `link` の prose に記録する）。
+- **所属やモデル固有のラベリング**（PCI スコープ、PII、「認証必須」）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental): 集合を top-level で 1 度宣言し、要素に `facets <id>` を書く。
 - **足りないアーキタイプ**（`[cache]`、`[bff]` など）→ 組み込みタグの追加要望（roadmap の `[cache]` watch がその経路の実例）。非推奨タグは告知の間も動き続ける — 警告されるだけで、既定描画への効果は持たない。
 
 どの構文を選ぶかは下記[「語彙の register」](#語彙の-register--boundary--annotation--tag--facet)を参照。
@@ -109,9 +109,9 @@ system OrderSystem {
 
 ### 非 builtin のアノテーション名は非推奨（v1.x）
 
-`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし 4 つの組み込みの外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能する（[`docs/spec/style.ja.md`](./style.ja.md#セレクタの種類) を参照）— このフックは #2065 Part B で facet セレクタへ移行する。移行先:
+`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし 4 つの組み込みの外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能する（[`docs/spec/style.ja.md`](./style.ja.md#セレクタの種類) を参照）— このフックは #2160 の後続スライスで facet セレクタへ移行する。移行先:
 
-- **所属やモデル固有のラベリング**（チーム所有マーク、audience ラベルなど）→ `facet` 構文（#2065 Part B。導入までは `description` / `link` の prose）。
+- **所属やモデル固有のラベリング**（チーム所有マーク、audience ラベルなど）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)。
 - **足りない lifecycle 状態**（`@canary`、`@sunset` など）→ 組み込みアノテーションの追加要望。
 
 near-miss の**タイポヒント**（`annotation-possible-typo`、info）も引き続き発火する: 組み込み名のタイポ（例: `@depracated`）は放置すると「バッジが出ない」という形でしか表面化しないためである。ヒントはスタイルシートのアノテーションセレクタに現れる名前について従来どおり抑制される。両診断は v1.x の間共存し（near-miss には両方が付きうる）、v2.0 で整理される。
@@ -182,22 +182,22 @@ identifier セットは **オープン** — 任意の kebab-case 識別子を�
 
 ## 語彙の register — boundary / annotation / tag / facet
 
-karasu は「このラベルはどの種類か」を 4 つの register に分離する。tag と annotation の語彙は**ツール所有**であり、ユーザー拡張点は `facet` 構文（#2065 Part B — 設計済み・未実装）に一本化される。
+karasu は「このラベルはどの種類か」を 4 つの register に分離する。tag と annotation の語彙は**ツール所有**であり、ユーザー拡張点は [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)（experimental）に一本化される。
 
 | Register | 構文 | 語彙 | 答える問い |
 | --- | --- | --- | --- |
 | アーキタイプ | tag `[...]` | ツール所有（上記の組み込み表） | この要素はアーキテクチャ上**何であるか**？（`[external]`、`[index]`） |
 | lifecycle | annotation `@...` | ツール所有（上記の組み込み表） | どの開発状態にあるか？（`@deprecated`、`@new`） |
 | view 内グルーピング | `boundary` | ユーザー宣言 id | この view で peer をどうまとめるか？（[syntax.ja.md](./syntax.ja.md) 参照） |
-| 集合所属 | `facet`（#2065、導入予定） | ユーザー宣言 id | 外部で定義された**どの集合に属するか**？（PCI スコープ、PII、認証必須） |
+| 集合所属 | [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)（experimental） | ユーザー宣言 id | 外部で定義された**どの集合に属するか**？（PCI スコープ、PII、認証必須） |
 
 分解の実例 — PCI 対応と認証を、タグを誤用せずにモデリングする:
 
 | 関心事の成分 | Register | 置き場 |
 | --- | --- | --- |
 | 要素のアーキテクチャ上の役割（検索インデックス、外部ストア） | tag | 組み込みタグ — `[index]`、`[external]` |
-| 「この table はカード会員データを持つ」「この entity は PII」（規制上の所属） | facet | #2065 Part B 導入後は `facets pci` / `facets pii`。それまでは `description` / `link` の prose |
-| 「この usecase は認証必須」（ポリシーの適用範囲） | facet | `facets requires_auth`（同じく当面は prose + `link`） |
+| 「この table はカード会員データを持つ」「この entity は PII」（規制上の所属） | facet | top-level の `facet` 宣言に対して `facets pci` / `facets pii` |
+| 「この usecase は認証必須」（ポリシーの適用範囲） | facet | `facets requires_auth`。ポリシー本文は宣言の `description` / `link` に置く |
 | 誰が・どのプラン / 条件で呼べるか（ルールの内容） | prose | `description` + ポリシー文書への `link` — モデル化しない（[ADR-832](../adr/832-no-runtime-authz-modeling.md)） |
 
 register を分ける理由は、所属のセマンティクスがアーキタイプと異なるからである: database は PCI スコープに入っていようがいまいが database であり、対象 10 要素中 9 要素にしか所属タグが付いていない図は、監査文脈で偽の保証として読まれてしまう。したがって所属はタグの名前空間を借りず、宣言メタデータ（`label` / `description` / `link`）を持つ専用構文を得る。

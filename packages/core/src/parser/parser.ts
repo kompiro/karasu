@@ -23,6 +23,7 @@ import type {
   CommonProperties,
   OrganizationBlock,
   BoundaryBlock,
+  FacetBlock,
   TeamNode,
   MemberNode,
   OrgNode,
@@ -46,6 +47,8 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validateFacetDeclarations,
+  buildFacetIndex,
 } from "./reference-validation.js";
 
 /**
@@ -274,6 +277,9 @@ export class Parser {
         case TokenType.Boundary:
           file.boundaries.push(this.parseBoundaryBlock());
           break;
+        case TokenType.Facet:
+          file.facets.push(this.parseFacetBlock());
+          break;
         case TokenType.Legend:
           file.legends.push(this.parseLegendBlock());
           break;
@@ -324,6 +330,19 @@ export class Parser {
       ...file.queues,
       ...file.storages,
     ]);
+    // Same root set as the scoped-boundary walk: `facets` is accepted on every
+    // node kind, so the index must reach top-level orphans (a system-less
+    // `service` / `client` / `domain` / infra block) and their descendants, not
+    // just what hangs off a `system` (TPL-1160 / TPL-1720).
+    file.facetIndex = buildFacetIndex([
+      ...file.systems,
+      ...file.services,
+      ...file.clients,
+      ...file.domains,
+      ...file.databases,
+      ...file.queues,
+      ...file.storages,
+    ]);
     // Top-level (system-less) services get the same per-parent duplicate-child
     // check as services nested in a system, so e.g. a usecase and entity
     // sharing an id under a parked service's domain are caught.
@@ -363,6 +382,12 @@ export class Parser {
         ...file.storages,
       ]),
     );
+    // Declaration uniqueness is a property of the *merged* facet namespace: two
+    // files may each declare `facet pii` with different metadata, and only the
+    // merge sees that. The ImportResolver suppresses this code per file and
+    // re-derives it there; single-file parses (LSP, `Parser.parse`) get the same
+    // verdict here (TPL-2032).
+    this.diagnostics.push(...validateFacetDeclarations(file.facets));
 
     return { value: file, diagnostics: this.diagnostics };
   }
@@ -452,6 +477,7 @@ export class Parser {
       delivers?: string[];
       operations?: ParsedOperation[];
       tableRef?: { parent: string; child: string };
+      facets?: string[];
     },
     parentId?: string,
     /** Collector for scoped `boundary` blocks; omitted by callers whose kind can never host one. */
@@ -482,6 +508,17 @@ export class Parser {
       if (token.type === TokenType.Link) {
         this.advance();
         properties.links.push(this.parseLink());
+        continue;
+      }
+
+      // Property: facets — cross-cutting membership (#2065 Part B). Accepted on
+      // every kind: which facets an element belongs to is imposed from outside
+      // the architecture, so no kind is structurally excluded (no
+      // `property-not-for-node-kind` branch here, unlike role / handles).
+      if (token.type === TokenType.Facets) {
+        this.advance();
+        properties.facets ??= [];
+        this.parseFacetsList(properties.facets);
         continue;
       }
 
@@ -730,6 +767,11 @@ export class Parser {
 
       if (token.type === TokenType.Legend) {
         this.handleNestedLegend(kind);
+        continue;
+      }
+
+      if (token.type === TokenType.Facet) {
+        this.rejectNestedFacetBlock(kind);
         continue;
       }
 
@@ -1071,6 +1113,7 @@ export class Parser {
       handles?: string[];
       delivers?: string[];
       tableRef?: { parent: string; child: string };
+      facets?: string[];
     } = {
       links: [],
     };
@@ -1111,6 +1154,7 @@ export class Parser {
       // Omitted entirely when none were declared, so nodes in existing models
       // keep their exact shape (snapshot/round-trip stability).
       ...(boundaries.length > 0 ? { boundaries } : {}),
+      ...(properties.facets && properties.facets.length > 0 ? { facets: properties.facets } : {}),
       loc: this.range(start.loc, end.loc),
     };
 
@@ -1232,7 +1276,11 @@ export class Parser {
     const { names: annotations, params: annotationParams } = this.parseAnnotations();
     const authorId = this.parseAuthorIdSuffix();
 
-    const properties: CommonProperties & { label?: string; operations?: ParsedOperation[] } = {
+    const properties: CommonProperties & {
+      label?: string;
+      operations?: ParsedOperation[];
+      facets?: string[];
+    } = {
       links: [],
     };
     const children: KrsNode[] = [];
@@ -1335,6 +1383,7 @@ export class Parser {
       ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
+      ...(properties.facets && properties.facets.length > 0 ? { facets: properties.facets } : {}),
       loc: this.range(start.loc, end.loc),
       properties: {
         description: properties.description,
@@ -1367,7 +1416,7 @@ export class Parser {
 
     const tags = this.parseTags();
     const { names: annotations, params: annotationParams } = this.parseAnnotations();
-    const properties: CommonProperties & { label?: string } = { links: [] };
+    const properties: CommonProperties & { label?: string; facets?: string[] } = { links: [] };
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
     const boundaries: BoundaryBlock[] = [];
@@ -1388,6 +1437,7 @@ export class Parser {
       children,
       edges,
       ...(boundaries.length > 0 ? { boundaries } : {}),
+      ...(properties.facets && properties.facets.length > 0 ? { facets: properties.facets } : {}),
       loc: this.range(start.loc, end.loc),
       properties: {
         description: properties.description,
@@ -1403,7 +1453,7 @@ export class Parser {
     children: KrsNode[],
     edges: KrsEdge[],
     parentKind: "database" | "queue" | "storage",
-    properties: CommonProperties & { label?: string },
+    properties: CommonProperties & { label?: string; facets?: string[] },
     boundaries: BoundaryBlock[],
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
@@ -1456,6 +1506,18 @@ export class Parser {
         continue;
       }
 
+      if (token.type === TokenType.Facets) {
+        this.advance();
+        properties.facets ??= [];
+        this.parseFacetsList(properties.facets);
+        continue;
+      }
+
+      if (token.type === TokenType.Facet) {
+        this.rejectNestedFacetBlock(parentKind);
+        continue;
+      }
+
       this.error("unexpected-token-in-block", {
         blockKind: parentKind,
         tokenType: String(token.type),
@@ -1475,7 +1537,7 @@ export class Parser {
    */
   private parseLeafNodeContents(
     edges: KrsEdge[],
-    properties: CommonProperties & { label?: string },
+    properties: CommonProperties & { label?: string; facets?: string[] },
     kind: "table" | "queue-item" | "bucket",
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
@@ -1505,6 +1567,21 @@ export class Parser {
 
       if (this.isEdgeStart(token)) {
         edges.push(this.parseEdge());
+        continue;
+      }
+
+      // A leaf holds no canvas, but it does hold data — a `table` is the
+      // canonical carrier of a regulatory facet (CHD, PII), so `facets` is
+      // accepted here exactly as on every other kind.
+      if (token.type === TokenType.Facets) {
+        this.advance();
+        properties.facets ??= [];
+        this.parseFacetsList(properties.facets);
+        continue;
+      }
+
+      if (token.type === TokenType.Facet) {
+        this.rejectNestedFacetBlock(kind);
         continue;
       }
 
@@ -1565,7 +1642,7 @@ export class Parser {
 
     const tags = this.parseTags();
     const { names: annotations, params: annotationParams } = this.parseAnnotations();
-    const properties: CommonProperties & { label?: string } = { links: [] };
+    const properties: CommonProperties & { label?: string; facets?: string[] } = { links: [] };
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
     let end = idToken;
@@ -1587,6 +1664,7 @@ export class Parser {
       ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
+      ...(properties.facets && properties.facets.length > 0 ? { facets: properties.facets } : {}),
       loc: this.range(start.loc, end.loc),
       properties: {
         description: properties.description,
@@ -1981,6 +2059,135 @@ export class Parser {
       contains,
       loc: this.range(start.loc, end.loc),
     };
+  }
+
+  // Grammar: `facet <id> { (label | description | link)* }` (#2065 Part B).
+  //
+  // Deliberately **not** `parseBoundaryBlock` with one more property: a facet
+  // declaration has no membership list and no value language at all. `contains`
+  // is rejected here like any other unexpected token, and that rejection is the
+  // structural half of ADR-832's fence — the metadata home stays prose + link,
+  // so there is no gradient from "declare a scope" to "declare a rule".
+  private parseFacetBlock(): FacetBlock {
+    const start = this.advance(); // facet
+    const idToken = this.parseIdOrString("facet");
+    let label: string | undefined;
+    // Positional label is not part of the grammar (ADR-19 / #2133). `facet` is
+    // new, so there is nothing to deprecate — reject and consume, as `boundary`
+    // does, so parsing resumes cleanly at `{`.
+    if (this.peek().type === TokenType.StringLiteral) {
+      this.error("positional-label-removed", { construct: "facet" });
+      this.advance();
+    }
+    this.expect(TokenType.LeftBrace);
+
+    const properties: CommonProperties = { links: [] };
+
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error("expected-string-after", { property: "label" });
+        }
+      } else if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+      } else if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+      } else {
+        this.error("unexpected-token-in-block", {
+          blockKind: "facet",
+          tokenType: String(token.type),
+          value: token.value,
+        });
+        // Skip the whole offending clause, not just its first token. The
+        // closed grammar makes this safe and worthwhile: the rejected forms are
+        // the value-carrying ones (`contains Order`, `requires plan in [...]`),
+        // and reporting each of their tokens separately would turn one authoring
+        // mistake into a pile of diagnostics. Always advances at least once, so
+        // the loop cannot stall.
+        do {
+          this.advance();
+        } while (!this.isFacetPropertyStart(this.peek().type));
+      }
+    }
+
+    const end = this.expect(TokenType.RightBrace);
+
+    return {
+      kind: "facet" as const,
+      id: idToken.value,
+      label,
+      properties,
+      loc: this.range(start.loc, end.loc),
+    };
+  }
+
+  /** Tokens that begin a legal `facet` body entry, or end the block. */
+  private isFacetPropertyStart(type: TokenType): boolean {
+    return (
+      type === TokenType.Label ||
+      type === TokenType.Description ||
+      type === TokenType.Link ||
+      type === TokenType.RightBrace ||
+      type === TokenType.EOF
+    );
+  }
+
+  /**
+   * Parse the value of a `facets` property: `<id>[, <id>]*`.
+   *
+   * Mirrors `parseHandlesList`. Ids are appended to `existing` rather than
+   * returned fresh so repeated `facets` lines accumulate, and a duplicate id
+   * (within one line or across lines) collapses — membership is a set, and
+   * saying it twice is not a mistake worth a diagnostic.
+   */
+  private parseFacetsList(existing: string[]): void {
+    const isId = (t: TokenType) => t === TokenType.Identifier || t === TokenType.StringLiteral;
+    if (!isId(this.peek().type)) {
+      this.error("expected-id-after", { property: "facets" });
+      return;
+    }
+    const push = (id: string): void => {
+      if (!existing.includes(id)) existing.push(id);
+    };
+    push(this.advance().value);
+    while (this.peek().type === TokenType.Comma) {
+      this.advance();
+      if (!isId(this.peek().type)) {
+        this.error("expected-id-after", { property: "facets" });
+        return;
+      }
+      push(this.advance().value);
+    }
+  }
+
+  /**
+   * A `facet` block written inside a node block. Declarations are top-level only
+   * — a facet is a model-wide name, not a per-node one — so consume the whole
+   * block and report it once, instead of letting its body cascade into a dozen
+   * unexpected-token errors.
+   */
+  private rejectNestedFacetBlock(blockKind: string): void {
+    const token = this.peek();
+    // Diagnostics raised while consuming the misplaced block are dropped: the
+    // author's mistake is the placement, and complaints about the body of a
+    // block that has no business being here are noise pointing at the wrong
+    // fix. Truncating rather than not-parsing keeps the recovery — the block is
+    // still consumed whole, so the enclosing block resumes cleanly.
+    const before = this.diagnostics.length;
+    const block = this.parseFacetBlock();
+    this.diagnostics.length = before;
+    this.diagnostics.push({
+      severity: "error",
+      code: "unexpected-token-in-block",
+      params: { blockKind, tokenType: String(token.type), value: token.value },
+      loc: block.loc,
+    });
   }
 
   private parseTeamBlock(): TeamNode {

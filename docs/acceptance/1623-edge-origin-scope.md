@@ -29,7 +29,7 @@ Automated coverage: `packages/core/src/parser/parser.test.ts` —
 ## AC-1: explicit mismatched source inside a domain raises edge-source-mismatch (automated)
 
 **Input:**
-```krs
+```krs invalid
 system Test {
   service S {
     domain Contract {

@@ -80,6 +80,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-1566](../adr/1566-ownership-during-migration.md) 参照）。 |
 | `duplicate-boundary-assignment` | info | node が複数の `boundary` に含まれる（事実。最初に宣言された boundary を採用）。 |
 | `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
+| `duplicate-facet-id` | error | 2 つの `facet` ブロックが同じ id を宣言しており、`facets` の参照がどちらのメタデータを指すか決まらない。マージ後のモデルで判定するのでファイルをまたぐ重複も検出する。参照が解決するのは最初の宣言。 |
 | `positional-label-removed` | error | `boundary` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、experimental な `boundary` では未文書の位置ラベル記法を deprecation を挟まず削除した（#2133）。 |
 | `positional-label-deprecated` | warning | `organization` / `team` / `member` の id 直後にラベル文字列が置かれている。この記法は spec に存在しない（ADR-19）。現状は受理され、`karasu fmt` が `label` プロパティへ書き換える（#2133）。 |
 | `node-id-multiple-locations` | warning | 同じ node id が複数の場所に現れる。 |
@@ -94,6 +95,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `owns-target-not-found` | warning | team が存在しない service / domain を `owns` する。 |
 | `invalid-owns` | warning | `owns` 先が所有できない種別に解決される。 |
 | `contains-target-not-found` | warning | `boundary` の `contains` 先が存在しない — top-level ブロックはマージ後の system 階層のどこにも無い場合（存在検証は per-file でなく cross-file マージ後）、スコープブロックは宣言ノードの直下の子に無い場合。 |
+| `facet-not-declared` | warning | `facets` の参照先の `facet` ブロックが宣言されていない（存在検証はマージ後のモデルで行うので、import 先の宣言も有効）。near-miss の annotation ヒントと違い、宣言集合が「正」を与えるためこの検査は完全で、著者定義の名前どうしの取り違えも検出する。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |
 | `unresolved-edge-endpoint` | warning | edge の端点 id が merge 後のモデルのどこにも見つからない。 |
@@ -134,7 +136,7 @@ resource への operation / CRUD decoration の文法。
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `unassigned-service` | warning | service が team 割り当てなしにトップレベルに置かれる。 |
-| `unassigned-domain` | warning | domain が team 割り当てなしにトップレベルに置かれる。 |
+| `unassigned-domain` | warning | domain がどの service にも割り当てられていない（トップレベル、または `system` 直下に置かれている）。2 つの配置は同じモデリング状態を表すため両方で発火する（[#2184](https://github.com/kompiro/karasu/issues/2184)）。`(Unassigned)` 擬似 system に包まれるのはトップレベル形のみ。 |
 | `unassigned-usecase` | warning | usecase が domain の親なしに service の直接の子になる。 |
 | `unassigned-client` | warning | client が team 割り当てなしにトップレベルに置かれる。 |
 | `unassigned-database` | warning | database が team 割り当てなしにトップレベルに置かれる。 |

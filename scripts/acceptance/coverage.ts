@@ -414,7 +414,7 @@ export function analyzeLinkage(
   const staleSpecRefs: SpecDocRef[] = [];
   for (const ref of docRefs) {
     if (specExists(ref.specPath)) continue;
-    const key = `${ref.file} ${ref.specPath}`;
+    const key = `${ref.file}\0${ref.specPath}`;
     if (staleSeen.has(key)) continue;
     staleSeen.add(key);
     staleSpecRefs.push(ref);

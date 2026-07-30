@@ -252,4 +252,19 @@ describe("examples: every shipped .krs is free of node-not-in-context warnings",
       expect(misplaced).toEqual([]);
     },
   );
+
+  // Placement fence (#2184): a `domain` written directly inside a `system` now
+  // raises `unassigned-domain`, the same warning the top-level spelling raises.
+  // Shipping an example in that placement would put a warning in front of a
+  // reader following our own tutorial — see TPL-2184.
+  it.each(krsFiles.map((f) => [f.replace(`${examplesRoot}/`, ""), f] as const))(
+    "%s declares no domain directly inside a system",
+    (_name, path) => {
+      const file = Parser.parse(readFileSync(path, "utf8")).value;
+      const systemNested = file.systems.flatMap((system) =>
+        system.children.filter((child) => child.kind === "domain").map((child) => child.id),
+      );
+      expect(systemNested).toEqual([]);
+    },
+  );
 });

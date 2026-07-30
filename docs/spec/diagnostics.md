@@ -86,6 +86,7 @@ primary owner.
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
 | `duplicate-boundary-assignment` | info | A node is listed in more than one `boundary` (a fact; the first-declared boundary is kept). |
 | `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
+| `duplicate-facet-id` | error | Two `facet` blocks declare the same id, so a `facets` reference cannot say whose metadata it means. Decided on the merged model, so a duplicate split across two files is caught; the first declaration is the one references resolve to. |
 | `positional-label-removed` | error | A `boundary` id is followed by a positional label string. ADR-19 made `label` a property; `boundary` is experimental, so the undocumented positional form is removed outright instead of deprecated (#2133). |
 | `positional-label-deprecated` | warning | An `organization` / `team` / `member` id is followed by a positional label string. The form was never in the spec (ADR-19); it still parses, and `karasu fmt` rewrites it to the `label` property (#2133). |
 | `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
@@ -101,6 +102,7 @@ error) — see syntax spec §S6.
 | `owns-target-not-found` | warning | A team `owns` a service / domain absent from the merged model (existence is checked after cross-file merge, not per file). |
 | `invalid-owns` | warning | An `owns` target resolves to a kind that cannot be owned. |
 | `contains-target-not-found` | warning | A `boundary` `contains` a node that does not exist — for a top-level block, anywhere in the merged system hierarchy (existence is checked after cross-file merge, not per file); for a scoped block, among the declaring node's direct children. |
+| `facet-not-declared` | warning | A `facets` reference names no declared `facet` block (existence is checked on the merged model, so a declaration in an imported file counts). Unlike the near-miss annotation hint, the declared set makes this check complete: a typo between two author-defined names is caught too. |
 | `import-id-not-found` | error | A named import id path fails to resolve. |
 | `import-path-not-found` | error | An import path fails to resolve at some segment. |
 | `unresolved-edge-endpoint` | warning | An edge endpoint id is not found anywhere in the merged model. |
@@ -141,7 +143,7 @@ about how domains and deploy targets are wired.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `unassigned-service` | warning | A service sits at top level with no team assignment. |
-| `unassigned-domain` | warning | A domain sits at top level with no team assignment. |
+| `unassigned-domain` | warning | A domain is not assigned to a service — it sits at top level, or directly inside a `system`. Both placements express the same modelling state, so both fire ([#2184](https://github.com/kompiro/karasu/issues/2184)); only the top-level form is additionally wrapped in the `(Unassigned)` pseudo-system. |
 | `unassigned-usecase` | warning | A usecase is a direct child of a service with no domain parent. |
 | `unassigned-client` | warning | A client sits at top level with no team assignment. |
 | `unassigned-database` | warning | A database sits at top level with no team assignment. |

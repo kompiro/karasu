@@ -50,7 +50,7 @@ system T {
 
 ```krs
 system T {
-  client X [mobile] [v2] [critical]
+  client X [mobile, v2, critical]
   client Y [my-team-internal-tag]
   client Z
 }

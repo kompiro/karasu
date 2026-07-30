@@ -56,13 +56,13 @@ detail panel via the [ⓘ] info button.
 ```krs
 system ECommerce {
   service OrderService {
-    description {
+    description """
       Handles **order processing** and payment.
 
       ## Responsibilities
       - Accept new orders
       - Process payments
-    }
+    """
     link "Design Wiki" "https://wiki.example.com/order"
     link "API Docs" "https://api.example.com/order"
 
@@ -70,9 +70,9 @@ system ECommerce {
     domain Inventory {}
   }
   service UserService {
-    description {
+    description """
       User authentication and profile management.
-    }
+    """
     domain Auth {}
   }
   user Customer {

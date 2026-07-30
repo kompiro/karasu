@@ -173,6 +173,18 @@ karasu 側のセッション内で `/workspaces/adr-tools` / `/workspaces/tpl-to
 
 自動化されたケースを `docs/acceptance/*.md` に反映するときは、`/hane:acceptance-test` スキル（plugin: `kompiro/hane`）の「自動化アノテーション」節に従って `> ✅ Automated — ... › ...` 形式の blockquote を箇条書き直下に添える。書式は repo 全体で統一されており、過去の "Verified by" メタ欄や "Automated Checks" 節分割は順次本方式に畳まれる（#916）。
 
+### AT に埋める `.krs` スニペットの fence 規約
+
+手順に書いた `.krs` は誰も実行しないため、放っておくと文法から静かにズレる（AT-0006 AC-1.2 が現行文法で parse できない状態のまま放置されていた — #2047）。`pnpm at:check-coverage` が `docs/acceptance/*.md` の ` ```krs ` ブロックを実際に parse するので、fence の情報文字列でスニペットの主張を宣言する。
+
+| fence | 主張 | ガード |
+|-------|------|--------|
+| ` ```krs ` | 現行文法で通る完全なモデル | parse エラーゼロを検証 |
+| ` ```krs fragment ` | 抜粋（ファイル全体ではない） | parse しない |
+| ` ```krs invalid ` | 意図的に不正な入力（診断のデモ） | いまも parse エラーが出ることを検証 |
+
+`invalid` を逆向きにも検証するのは、文法が緩んで例が例でなくなる変化も拾うため。実装は `scripts/acceptance/krs-fences.ts`、観点は [TPL-2047](test-perspectives/TPL-2047-doc-embedded-krs-is-parsed-not-prose.md)。
+
 - 生成ファイルは git にコミットしない（`.gitignore` 対象）
 - 手動確認項目は生成されたファイルをもとに順番に実施する
 - `/hane:qa` は手動 QA のチェックリストを生成する。機械化可能な AT は Playwright による E2E 層（`packages/e2e/`）が補完する。自動化は手動 QA を置き換えず補完する（詳細は ADR-529）

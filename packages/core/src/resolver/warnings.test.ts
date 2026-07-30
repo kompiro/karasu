@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { compile } from "../index.js";
 import { analyze, SYSTEM_ASSIGNED_TAGS } from "./warnings.js";
-import { REFERENCE_DATA } from "../builtins/reference-data.js";
+import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { warningSeverity } from "../types/warnings.js";
 import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
@@ -718,6 +718,94 @@ system ECPlatform {
     const warnings = analyze(file, [builtin]);
     const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
     expect(unassigned).toHaveLength(0);
+  });
+
+  it("warns for a domain declared directly inside a system (#2184)", () => {
+    const krs = `
+system ECPlatform {
+  domain Ordering { label "受注" }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
+    expect(unassigned).toHaveLength(1);
+    expect(unassigned[0].params.domainId).toBe("Ordering");
+    expect(unassigned[0].params.label).toBe("受注");
+    // points at the declaration, not at the enclosing system
+    expect(unassigned[0].loc?.start.line).toBe(3);
+  });
+
+  // TPL-2184: every spelling of "this domain is not assigned to a service"
+  // carries the same diagnostic — the author picks the spelling, not the meaning.
+  // A single-placement fixture cannot catch the asymmetry, so drive them together.
+  it.each([
+    ["top level", `domain Ordering {}`],
+    ["directly inside a system", `system EC { domain Ordering {} }`],
+  ])("warns for an unassigned domain written at %s", (_placement, krs) => {
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
+    expect(unassigned).toHaveLength(1);
+    expect(unassigned[0].params.domainId).toBe("Ordering");
+  });
+
+  it("does not warn for a domain inside a service that is itself inside a system", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Ordering {}
+  }
+  domain Billing {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
+    expect(unassigned.map((w) => w.params.domainId)).toEqual(["Billing"]);
+  });
+
+  // TPL-2184 / TPL-2165: the detector derives its parent set from `canContain`,
+  // so a new domain parent is picked up automatically. This guard fires when that
+  // set changes, so the new placement also gets a spelling case above.
+  it("covers every parent canContain lets hold a domain", () => {
+    const parents = [...LOGICAL_CONTAINMENT.entries()]
+      .filter(([, children]) => children.has("domain"))
+      .map(([parent]) => parent)
+      .sort();
+    expect(parents).toEqual(["service", "system"]);
+  });
+
+  it("reports in source order when the two spellings are mixed", () => {
+    const krs = `
+system ECPlatform {
+  domain Ordering {}
+}
+
+domain Billing {}
+    `;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
+    // Ordering declared first, even though Billing is the top-level one that
+    // lands in `file.domains`.
+    expect(unassigned.map((w) => w.params.domainId)).toEqual(["Ordering", "Billing"]);
+  });
+
+  it("leaves a domain outside canContain to node-not-in-context, without double-reporting", () => {
+    const krs = `
+system ECPlatform {
+  client Web {
+    domain Ordering {}
+  }
+}
+    `;
+    const result = Parser.parse(krs);
+    const misplaced = result.diagnostics.filter((d) => d.code === "node-not-in-context");
+    expect(misplaced).toHaveLength(1);
+
+    const warnings = analyze(result.value, [getBuiltinStyleSheet()]);
+    expect(warnings.filter((w) => w.kind === "unassigned-domain")).toHaveLength(0);
   });
 });
 
@@ -2509,6 +2597,10 @@ describe("warningSeverity — exhaustive register map", () => {
     // TPL-1503 state (2)).
     "tag-not-builtin": "warning",
     "annotation-not-builtin": "warning",
+    // A `facets` reference to an undeclared facet is a broken reference with a
+    // definite fix (declare it, or fix the spelling) — the same register as the
+    // other unresolved-reference kinds, not the info hint register (#2173).
+    "facet-not-declared": "warning",
     "style-conflict": "warning",
     "unresolved-realizes": "warning",
     "invalid-owns": "warning",
@@ -2550,4 +2642,126 @@ describe("warningSeverity — exhaustive register map", () => {
       expect(warningSeverity(kind)).toBe(expected);
     });
   }
+});
+
+describe("facet-not-declared (#2173)", () => {
+  function facetWarnings(krs: string) {
+    return analyze(Parser.parse(krs).value, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "facet-not-declared",
+    );
+  }
+
+  it("warns when a `facets` reference names no declaration", () => {
+    const warnings = facetWarnings(`
+facet pii {}
+system S {
+  service Checkout { facets pcl }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "Checkout", facetId: "pcl" });
+    expect(warnings[0].loc).toBeDefined();
+  });
+
+  // The reverse assertion matters as much as the positive one: a correct model
+  // that warns is as broken as a typo that does not (TPL-907).
+  it("stays silent when every reference resolves", () => {
+    expect(
+      facetWarnings(`
+facet pii {}
+facet pci {}
+system S {
+  service Checkout { facets pii, pci }
+  database OrderDB { facets pii }
+}
+    `),
+    ).toEqual([]);
+  });
+
+  it("warns once per undeclared id, not once per node in the facet", () => {
+    const warnings = facetWarnings(`
+system S {
+  service A { facets ghost }
+  service B { facets ghost }
+}
+    `);
+    expect(warnings.map((w) => (w.kind === "facet-not-declared" ? w.params.nodeId : ""))).toEqual([
+      "A",
+      "B",
+    ]);
+  });
+
+  it("reports only the undeclared id when a node mixes declared and undeclared", () => {
+    const warnings = facetWarnings(`
+facet pii {}
+system S {
+  service Checkout { facets pii, pcl }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
+    expect(warnings[0].params.facetId).toBe("pcl");
+  });
+
+  it("checks references on every kind, including infra leaves", () => {
+    const warnings = facetWarnings(`
+system S {
+  database DB { table T { facets ghost } }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
+    expect(warnings[0].params.nodeId).toBe("T");
+  });
+
+  it("is a warning, never info — a broken reference is a fact with a fix", () => {
+    expect(warningSeverity("facet-not-declared")).toBe("warning");
+  });
+});
+
+describe("facet-not-declared location precision (#2199 review)", () => {
+  function facetWarnings(krs: string) {
+    return analyze(Parser.parse(krs).value, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "facet-not-declared",
+    );
+  }
+
+  // Node ids are unique only among siblings (ADR-927), and `facetIndex` keys on
+  // the bare id, so deriving the location from that index reported whichever
+  // same-named node was walked first. The diagnostic has to land on the line the
+  // author must edit (TPL-1352).
+  it("points at the node that wrote the reference, not a same-named node elsewhere", () => {
+    const warnings = facetWarnings(`facet pii {}
+system Shop {
+  service Payment {
+    domain Ledger {}
+  }
+  service Checkout {
+    domain Payment {
+      facets ghost
+    }
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    // `service Payment` opens on line 3; the `domain Payment` that wrote the
+    // reference opens on line 7.
+    expect(warnings[0].loc?.start.line).toBe(7);
+  });
+
+  it("reports each site when two same-id nodes both carry a bad reference", () => {
+    const warnings = facetWarnings(`system Shop {
+  service Payment {
+    domain Ledger { facets ghost }
+  }
+  service Checkout {
+    domain Ledger { facets ghost }
+  }
+}
+`);
+    // One warning per authoring site — the union in `facetIndex` would have
+    // collapsed these two mistakes into one.
+    expect(warnings.map((w) => w.loc?.start.line)).toEqual([3, 6]);
+  });
 });

@@ -92,7 +92,7 @@ Drill down to `OrderService → Order` (domain view):
 
 Add a second usecase referencing the same resource:
 
-```krs
+```krs fragment
 usecase PlaceOrder {
   resource OrderDB.OrderTable
 }
@@ -108,7 +108,7 @@ usecase UpdateOrder {
 
 > ✅ Automated — `packages/e2e/tests/at-0049-resource-nodes-usecase-diagram.spec.ts` › `inline (unassigned) resources without dot-notation refs are not promoted to siblings`
 
-```krs
+```krs fragment
 usecase PlaceOrder {
   resource UnassignedTable { label "未割り当て" }
 }

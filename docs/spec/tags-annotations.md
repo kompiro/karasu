@@ -43,7 +43,7 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 
 Bare `[<identifier>]` still accepts any name in v1.x — the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)) keeps parse behaviour unchanged — but a tag outside the **tool vocabulary** (the builtin table above plus the [system-assigned tags](#system-assigned-tags) below) is **deprecated**: karasu emits a `tag-not-builtin` **warning** on every use. There is deliberately **no suppression condition** — a `.krs.style` selector or a `legend` ref proves the name is intentional, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only (still enforced as a warning, never a parse error — existing files keep parsing). Migration targets:
 
-- **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the `facet` construct (#2065 Part B; until it lands, record the fact in `description` / `link` prose).
+- **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental): declare the set once at the top level and write `facets <id>` on the elements.
 - **A missing archetype** (`[cache]`, `[bff]`, …) → request a builtin tag addition (the roadmap `[cache]` watch is the exemplar route). A deprecated tag keeps working meanwhile — warned, without default-rendering effect.
 
 See [*Vocabulary registers*](#vocabulary-registers--boundary--annotation--tag--facet) below for how to pick the right construct.
@@ -108,9 +108,9 @@ system OrderSystem {
 
 ### Non-builtin annotation names are deprecated (v1.x)
 
-`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)), a hook that migrates to facet selectors with #2065 Part B. Migration targets:
+`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)), a hook that migrates to facet selectors in a later slice of #2160. Migration targets:
 
-- **Membership or model-specific labeling** (team ownership marks, audience labels) → the `facet` construct (#2065 Part B; until it lands, `description` / `link` prose).
+- **Membership or model-specific labeling** (team ownership marks, audience labels) → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental).
 - **A missing lifecycle state** (`@canary`, `@sunset`, …) → request a builtin annotation addition.
 
 The near-miss **typo hint** (`annotation-possible-typo`, info) also still fires: a typo in a builtin name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". The hint stays suppressed for names that appear in a stylesheet annotation selector. Both diagnostics coexist during v1.x — a near-miss can carry both — and are consolidated in v2.0.
@@ -181,22 +181,22 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 
 ## Vocabulary registers — boundary / annotation / tag / facet
 
-karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the `facet` construct (#2065 Part B — designed, not yet implemented).
+karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental) (experimental).
 
 | Register | Construct | Vocabulary | Question it answers |
 | --- | --- | --- | --- |
 | Archetype | tag `[...]` | tool-owned (builtin table above) | What *is* this element, architecturally? (`[external]`, `[index]`) |
 | Lifecycle | annotation `@...` | tool-owned (builtin table above) | What development state is it in? (`@deprecated`, `@new`) |
 | View grouping | `boundary` | user-declared ids | How should peers be grouped in this view? (see [syntax.md](./syntax.md)) |
-| Set membership | `facet` (#2065, upcoming) | user-declared ids | Which externally defined set does it belong to? (PCI scope, PII, "requires auth") |
+| Set membership | [`facet`](./syntax.md#cross-cutting-membership-facet--experimental) (experimental) | user-declared ids | Which externally defined set does it belong to? (PCI scope, PII, "requires auth") |
 
 Worked decomposition — modeling PCI compliance and authentication without misusing tags:
 
 | Concern component | Register | Where it goes |
 | --- | --- | --- |
 | The element's architectural role (a search index, an external store) | tag | builtin tags — `[index]`, `[external]` |
-| "This table holds cardholder data" / "this entity is PII" (regulatory membership) | facet | `facets pci` / `facets pii` once #2065 Part B lands; until then `description` / `link` prose |
-| "This usecase requires authentication" (policy scope) | facet | `facets requires_auth` (same interim: prose + `link`) |
+| "This table holds cardholder data" / "this entity is PII" (regulatory membership) | facet | `facets pci` / `facets pii`, against a top-level `facet` declaration |
+| "This usecase requires authentication" (policy scope) | facet | `facets requires_auth`, with the policy itself in the declaration's `description` / `link` |
 | Who may call it, under which plan / condition (rule content) | prose | `description` + `link` to the policy document — never modelled ([ADR-832](../adr/832-no-runtime-authz-modeling.md)) |
 
 The registers matter because membership semantics differ from archetype semantics: an element is a `database` whether or not it is in PCI scope, and a diagram where 9 of 10 in-scope elements carry a membership tag silently reads as a false audit guarantee. Membership therefore gets its own construct with declared metadata (`label` / `description` / `link`) instead of borrowing the tag namespace.

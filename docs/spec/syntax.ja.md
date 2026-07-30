@@ -60,7 +60,7 @@ karasu のタグシステムは意図的にオープンで、任意のタグを�
 | `[embed]` | サードパーティの Web コンテンツに埋め込む widget / SDK（Stripe Checkout、Intercom 等） |
 <!-- /gen:reference:client-form-factor-tags -->
 
-推奨: 1 つの client につき form-factor タグは最大 1 つに留める。組み合わせ（例: `[mobile] [desktop]`）はパースされるが、アーキテクチャ上の追加意味は持たない。
+推奨: 1 つの client につき form-factor タグは最大 1 つに留める。複数タグは **1 つの** 角括弧にカンマ区切りで書く（`[mobile, desktop]`）。角括弧を繰り返す書き方（`[mobile] [desktop]`）は parse error になる。組み合わせ自体はパースされるが、アーキテクチャ上の追加意味は持たない。
 
 `client` は **プロジェクト自身が配布するソフトウェア** に限定される。サードパーティのブラウザ・IDE・AI エージェントがシステムを利用する場合は `user`（通常は `[human]` / `[ai]`）でモデル化し、`client` にはしない。
 
@@ -424,11 +424,16 @@ error ではなく warning なのは言語 v1.0 が freeze 済み
 | `entity` の中のノード全般 | `unexpected-token-in-block` | entity が持つのは名前・関連・`table` 対応だけで、属性は持たない |
 
 `domain` はトップレベル・`system` 直下・`service` 内のいずれにも書ける。前 2 者は
-どちらも service にまだ割り当てられていない domain を表す。ただし下流の扱いは
-まだ同一ではない — `unassigned-domain` warning と `(Unassigned)` 擬似 system
-（[ADR-681](../adr/681-top-level-service-rendering.md)）が対象にしているのは
-トップレベル形のみである（system 直下の domain は描画先の器を既に持つため。
-[#2184](https://github.com/kompiro/karasu/issues/2184) 参照）。
+どちらも service にまだ割り当てられていない domain を表し、どちらも
+`unassigned-domain` warning を出す。著者が選んでいるのは綴りであって意味ではない
+（[#2184](https://github.com/kompiro/karasu/issues/2184)）。
+
+両者が正当に分かれるのは描画である。`(Unassigned)` 擬似 system
+（[ADR-681](../adr/681-top-level-service-rendering.md)）が包むのはトップレベル形
+のみで、これは「描画先の器を持たないノードに器を与える」機構だからである
+（system 直下の domain は既に自分の system の中に描画される）。「service に割り
+当てられていない」ことの診断と「描画先が無い」ことの framing は別の関心事であり、
+2 つの配置で対称になるのは前者だけである。
 
 > Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。[TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — 同じモデリング状態を表す配置は、著者が選んだ綴りによらず同じ診断を出す。
 
@@ -780,6 +785,10 @@ service BillingService {
 
 使用できるタグ・スタイルの詳細は [`docs/spec/tags-annotations.md`](tags-annotations.md) を参照。
 
+> 関連 TPL:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理した構造はいずれかの view で描画されるか診断される。エッジの endpoint が宣言スコープに無い場合に黙って落とさない（**Endpoint scope** の散文は #2075 の実装 PR で入る）
+> - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照する
+
 ---
 
 ## 物理図の記述
@@ -1068,6 +1077,109 @@ system Shop {
 label が無い場合は id にフォールバックする（#2133）。
 
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。
+
+---
+
+## 横断的な所属（`facet`）— experimental
+
+> **experimental な記法（post-v1.0 watch）。** `facet` は experimental として
+> 着地する — 後方互換はまだ約束されず、v1.0-stable への昇格は実利用の
+> エビデンスを条件とする（notation promotion gate、
+> [ADR-1820](../adr/1820-notation-promotion-gate.md)）。
+>
+> **本スライスの時点で描画には影響しない。** facet の所属は parse され、index 化され、
+> ファイル横断でマージされ、検証されるが、図の見た目は何も変わらない。所属要素を
+> 強調する overlay、`.krs.style` の facet セレクタ、「facet X の所属一覧」の導出ビューは
+> [#2160](https://github.com/kompiro/karasu/issues/2160) の後続スライスで入る。
+> 現時点で宣言が与えるのは下記の参照チェックである。
+
+`facet` は、アーキテクチャの**外側**で定義された集合 — 規制・ポリシー・監査スコープ — を
+宣言し、要素がそこに所属することを表す。`database` は PCI スコープに入っていようが
+いまいが database であり、PCI 性は外から課される。これが register の分かれ目である:
+**tag** は要素が「何であるか」（アーキタイプ）を述べ、`facet` は外部定義の「どの集合に
+属するか」を述べる。`boundary` / `annotation` / `tag` / `facet` の四分法は
+[tags-annotations.ja.md](tags-annotations.ja.md#語彙の-register--boundary--annotation--tag--facet)
+を参照。
+
+```krs
+facet pii {
+  label "個人情報"
+  description "取扱いは ADR-1421 に従う"
+  link "https://example.com/adr/1421" "ADR-1421"
+}
+
+facet requires_auth {
+  label "認証必須"
+  description "ログイン後にのみ到達可能。誰が呼べるかは IAM policy が定める"
+  link "https://example.com/policies/iam" "IAM policy"
+}
+
+system Shop {
+  service Checkout {
+    domain Ordering {
+      usecase PlaceOrder {
+        facets requires_auth
+      }
+      entity Order {
+        table OrderDB.orders
+        facets pii
+      }
+    }
+  }
+
+  database OrderDB {
+    facets pii
+  }
+}
+```
+
+- **宣言は top-level** で、持てるのはメタデータのみ（`label` / `description` / `link`）。
+  ノードブロック内に `facet` ブロックを書くとエラーになる — facet id はモデル全体の
+  名前であり、ノードごとの名前ではない。
+- **宣言は所属リストを持たない。** `contains` は無く、所属は要素側に書く。所属が
+  対象の隣にあるため、要素の rename や移動のたびに遠くのリストを直す必要がない。
+- **文法は閉じており値言語を持たない — 恒久的に。** 述語も属性宣言も `policy` ブロックも
+  入れない。facet が述べるのは「ポリシーがどの振る舞いを覆うか」であって、
+  **ポリシーの内容**は `description` の prose と実物への `link` に置く。これは実行時の
+  authorization をモデル化しないという [ADR-832](../adr/832-no-runtime-authz-modeling.md)
+  の決定の構造的な担保である: 値言語が無ければ「範囲の宣言」から「ルールの宣言」へ
+  滑り落ちる勾配自体が存在しない。
+- **`facets <id>[, <id>]*` は全 node kind で受理される** — `system` / `service` /
+  `domain` / `usecase` / `entity` / `resource` / `user` / `client`、infra ブロック
+  （`database` / `queue` / `storage`）とその leaf（`table`・queue item・`bucket`）。
+  所属はアーキテクチャの外から課されるものなので、構造的に除外される kind は無い。
+  edge は v1 では `facets` を取らない。
+- **プロパティの繰り返しと id の重複はマージされる。** `facets a, b` と 2 行に分けた
+  `facets` は同じ意味で、同じ id を二度書いても冪等でありエラーではない。
+  `karasu fmt` は 1 行のカンマ区切りに正規化する。
+- **要素は任意個の facet に所属できる（1:N）。** 多重所属は正常な状態であり
+  （`entity` が PII かつ PCI スコープ、はあり得る）診断対象ではない。宣言された所属は
+  すべてモデルに保持され、一度に 1 つしか見せられないビューはビュー側で解決する。
+- **参照が指すのは facet id であって node id ではない。** `facets pii` は `facet` 宣言の
+  平坦な名前空間に対して解決されるため、`boundary … contains` や `owns` が答えねば
+  ならない cross-layer の addressing 問題がそもそも発生しない。
+- **宣言と参照は別ファイルにあってよい。** 双方は import をまたいでマージされ、
+  マージ後のモデルで検証される。facet の語彙を 1 ファイルにまとめて丸ごと import する
+  構成はサポートされる。
+- **タイポ検出は best-effort ではなく完全である。** 宣言集合が「正」を与えるため、
+  著者定義の名前どうしの取り違え（`pii` に対する `facets pcl`）も、組み込み名の
+  綴り間違いと同じ確実さで検出される — 固定語彙としか比較できない near-miss の
+  `annotation-possible-typo` ヒントとは異なる。
+- **既定の描画は変わらない。** 要素に `facets` を付けても図の描かれ方は一切変わらず、
+  facet の効果はすべて opt-in である。
+
+| キーワード | 意味 | 持てるもの |
+|---------|---------|-------------|
+| `facet` | 外部定義の集合とそのメタデータの top-level 宣言。top-level 限定 | `label`、`description`、`link` |
+| `facets` | 要素が所属する facet id（カンマ区切り・繰り返し可・全 node kind で受理） | — |
+
+診断（[diagnostics.ja.md](diagnostics.ja.md) を参照）:
+
+- `facet-not-declared`（warning）— `facets` の参照先の `facet` が宣言されていない。マージ後のモデルで検査するので、import 先のファイルにある宣言も有効。
+- `duplicate-facet-id`（error）— 同じ id の `facet` ブロックが 2 つある（同一ファイル内でも、マージされた複数ファイルにまたがっていても）。参照が解決するのは最初の宣言。
+- `positional-label-removed`（error）— facet id 直後の位置ラベル（`facet pii "個人情報"`）。label は `label` プロパティのみ（[ADR-19](../adr/19-required-id-label-as-property.md)）。
+
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ。overlay スライスが入るまでの `facet` 宣言の効果は上記の参照チェックであり、本節はその暫定状態を明示して inert なまま放置しない。[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` は cross-reference プロパティなので、parser の受理だけでなく resolver 側の検証と unresolved warning を伴う。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 上記の 1:N は派生 index でも全マージ経路でも保持する。単一値が要るビューはビュー側で解決する。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` と `duplicate-facet-id` はマージ後のモデルで判定する（宣言と参照が別ファイルにありうるため）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — 宣言ブロックと per-node の `facets` プロパティは双方 `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードは per-node プロパティを守らない。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が全 kind で受理するので、受理する kind を本節に列挙する。[TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 「所属」から「ルール言語」への引力は、キーワードの選び直しではなく上記リンクの ADR-832 を外部 fence として縛る。
 
 ---
 
