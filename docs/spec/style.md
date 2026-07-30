@@ -2,6 +2,8 @@
 
 > **English** (this file) · [日本語](style.ja.md)
 
+> Language version: **`.krs language v1.0`** — `.krs` and `.krs.style` share one language version (frozen — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md); independent from every package's npm version — [ADR-2124](../adr/2124-version-vocabulary.md)).
+
 ## Selector types
 
 | Selector | Example | Target |

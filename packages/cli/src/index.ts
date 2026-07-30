@@ -18,8 +18,9 @@ import { diff } from "./diff.js";
 import { matrix } from "./matrix.js";
 import { coverage } from "./coverage.js";
 import { subtree } from "./subtree.js";
+import { versionText } from "./version.js";
 
-program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
+program.name("karasu").description("karasu — architecture diagram tool").version(versionText());
 
 /** Commander repeatable-option collector: accumulate `--flag <v>` occurrences into an array. */
 function collect(value: string, prev?: string[]): string[] {

@@ -2,6 +2,8 @@
 
 > **English** (this file) · [日本語](syntax.ja.md)
 
+> Language version: **`.krs language v1.0`** (frozen — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md); independent from every package's npm version — [ADR-2124](../adr/2124-version-vocabulary.md)). `karasu --version` reports the language version a build implements.
+
 ## File structure
 
 ```
