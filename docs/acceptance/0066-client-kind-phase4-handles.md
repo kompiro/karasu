@@ -96,7 +96,7 @@ client B [web] {
 
 ### 7. user / domain / usecase に handles を書くと parse error
 
-```krs
+```krs invalid
 system S {
   user U [human] { handles X }    // → "handles" is only valid for client and service nodes
 }

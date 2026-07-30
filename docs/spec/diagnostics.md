@@ -143,7 +143,7 @@ about how domains and deploy targets are wired.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `unassigned-service` | warning | A service sits at top level with no team assignment. |
-| `unassigned-domain` | warning | A domain sits at top level with no team assignment. |
+| `unassigned-domain` | warning | A domain is not assigned to a service — it sits at top level, or directly inside a `system`. Both placements express the same modelling state, so both fire ([#2184](https://github.com/kompiro/karasu/issues/2184)); only the top-level form is additionally wrapped in the `(Unassigned)` pseudo-system. |
 | `unassigned-usecase` | warning | A usecase is a direct child of a service with no domain parent. |
 | `unassigned-client` | warning | A client sits at top level with no team assignment. |
 | `unassigned-database` | warning | A database sits at top level with no team assignment. |

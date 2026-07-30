@@ -2,6 +2,7 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { analyzeRepo, summarize, type Finding, type RepoReport } from "./coverage.ts";
+import { analyzeKrsFences, describeKrsFenceFinding, type KrsFenceFinding } from "./krs-fences.ts";
 
 interface CliOptions {
   strict: boolean;
@@ -13,7 +14,9 @@ interface CliOptions {
 const HELP_TEXT = `Usage: pnpm at:check-coverage [options]
 
 Surveys docs/acceptance/*.md for deviations from the canonical automation
-marker convention (see .claude/skills/acceptance-test/SKILL.md).
+marker convention (see .claude/skills/acceptance-test/SKILL.md), and parses
+every \`\`\`krs block in those docs so a manual step cannot quietly drift out
+of the grammar (see scripts/acceptance/krs-fences.ts).
 
 Options:
   --strict       Exit with code 1 if any findings are reported (default: 0).
@@ -54,7 +57,7 @@ function describeFinding(f: Finding): string {
   }
 }
 
-function reportText(report: RepoReport): string {
+function reportText(report: RepoReport, fenceFindings: KrsFenceFinding[]): string {
   const lines: string[] = [];
   const summary = summarize(report);
 
@@ -65,6 +68,7 @@ function reportText(report: RepoReport): string {
   lines.push(
     `  ✓ e2e linkage: ${summary.orphanSpecs} orphan spec(s), ${summary.staleSpecRefs} stale spec reference(s).`,
   );
+  lines.push(`  ✓ krs fences: ${fenceFindings.length} finding(s).`);
 
   const nonConforming = report.reports.flatMap((r) => r.findings);
   if (nonConforming.length > 0) {
@@ -97,7 +101,15 @@ function reportText(report: RepoReport): string {
     }
   }
 
-  if (summary.totalFindings === 0) {
+  if (fenceFindings.length > 0) {
+    lines.push("");
+    lines.push(
+      "krs fences in AT docs (mark an excerpt `\x60\x60\x60krs fragment`, a bad-input demo `\x60\x60\x60krs invalid`):",
+    );
+    for (const f of fenceFindings) lines.push(`  ✗ ${describeKrsFenceFinding(f)}`);
+  }
+
+  if (summary.totalFindings === 0 && fenceFindings.length === 0) {
     lines.push("");
     lines.push("All AT files conform to the canonical marker convention.");
   }
@@ -113,26 +125,28 @@ function main(argv: string[]): number {
   }
   const report = analyzeRepo({ repoRoot: opts.repoRoot });
   const summary = summarize(report);
+  const fenceFindings = analyzeKrsFences(opts.repoRoot);
 
   if (opts.json) {
     console.log(
       JSON.stringify(
         {
-          summary,
+          summary: { ...summary, krsFences: fenceFindings.length },
           nonConforming: report.reports.flatMap((r) => r.findings),
           missingMarkerWithSpec: report.crossRefFindings,
           orphanSpecs: report.linkage.orphanSpecs,
           staleSpecRefs: report.linkage.staleSpecRefs,
+          krsFences: fenceFindings,
         },
         null,
         2,
       ),
     );
   } else {
-    console.log(reportText(report));
+    console.log(reportText(report, fenceFindings));
   }
 
-  if (opts.strict && summary.totalFindings > 0) {
+  if (opts.strict && summary.totalFindings + fenceFindings.length > 0) {
     if (!opts.json) {
       console.error(
         "\nStrict mode: exiting non-zero. Rerun `pnpm at:check-coverage` (without --strict) for the full report above.",
