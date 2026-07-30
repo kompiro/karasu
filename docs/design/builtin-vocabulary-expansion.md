@@ -29,6 +29,7 @@
 | builtin tag | 17 件（`external` / `index` / `async` / `sync` / `human` / `ai` / 7 つの client form-factor / `table` / `queue` / `api` / `storage`）。`reference-data.ts` の `tags` が単一情報源で、spec 表は `pnpm gen:reference` で生成 |
 | builtin annotation | 4 件（`deprecated` / `new` / `experimental` / `migration_target`）。`appliesTo` を持たず全ノード種に適用可。`defaultBadge`（color / icon / label）を持つ |
 | tier のフラグ | **無い**。`reference-data.ts` のエントリに experimental / stable の区別は存在せず、builtin 集合はフラット |
+| `appliesTo` の強制 | **無い**。宣言は `reference-data.ts` にあり公開 API と spec 表に出るが、検証する consumer が存在しない。`tag-not-builtin` はタグ名しか見ていない（詳細は下記「タグの適用範囲の整理」節） |
 | `[index]` の効果 | `default-style.ts` の light / dark 2 か所に `database[index] { badge-label: "index"; badge-color: … }` |
 | 派生ストアの役割語彙 | `[index]`（検索用の導出）のみ。cache / 分析用途に相当する語彙は無い |
 | lifecycle の状態 | 「削除予定」「新規」「実験的」「移行先」の 4 つ。**「まだ存在しない（to-be）」を表す語彙は無い** |
@@ -99,19 +100,23 @@ facet（[#2173](https://github.com/kompiro/karasu/issues/2173)、experimental �
 
 **案2 を採用する。** 追加 3 件・却下 5 件を以下のとおり確定し、停止規則を spec に書く。
 
-### 採用 (1) — `[cache]`（`database` に付与）
+### 採用 (1) — `[cache]`（`database` / `storage` に付与）
 
 **定義**: *SoR ではなく、失っても再構築（再計算・再取得・再ログイン）で回復できるストア。TTL を持つのが典型。*
 
 判定は「消えたら**業務データが失われる**か」の一点。失われるなら SoR なので付けない。セッションストア・Redis キャッシュ・Cloudflare KV はいずれも該当する。
 
+`storage` にも付与できるようにする。判定は同じで、object store 側の該当例は CDN のオリジンキャッシュ、生成済みサムネイル / レンダリング済み成果物、エクスポートの一時置き場など「元データから再生成できる blob」である。定義が kind に依存しない（SoR かどうかだけを問う）以上、`database` に限る理由が無い。
+
 「正本からの導出コピー」に限定する案（`[index]` と同じ定義軸）は採らない。セッションストアは**そのセッションの正本**であって導出ではないため、導出厳格にすると最も典型的な用途が漏れる。揮発性を軸に取れば `[index]`（導出 ∧ 検索用）は本定義の部分集合として矛盾なく共存する。
 
 **証拠の強さ: 強** — wrangler adapter の degrade（`wrangler.ts:156`）、クックブックの命名回避（`database CACHE`）、セッションストアという頻出用途。
 
-### 採用 (2) — `[analytics]`（`database` に付与）
+### 採用 (2) — `[analytics]`（`database` / `storage` に付与）
 
 **定義**: *分析・集計のために正本から取り込んだ派生ストア（DWH / データレイク）。*
+
+`storage` を含めるのは、データレイクが object store（S3 / GCS 上の Parquet 等）として実現されるのが典型だからである。`[cache]` と同じく定義が kind に依存しないので、適用範囲も揃える。
 
 `[warehouse]` ではなく `[analytics]` を採る。register が「tag = アーキタイプ（その要素が**何であるか**）」であるとき、`warehouse` は製品カテゴリの名前（Snowflake / BigQuery という**物**の言い換え）に寄り、`analytics` は「何のための派生か」という**役割**を名指す。`[index]` が「検索のための派生」であることと同じ語形になる。
 
@@ -129,15 +134,54 @@ facet（[#2173](https://github.com/kompiro/karasu/issues/2173)、experimental �
 
 ### 役割軸を閉じる
 
-採用後、`database` に付く役割タグは 3 つになり、一つの軸で閉じる:
+採用後、ストアに付く役割タグは 3 つになり、一つの軸で閉じる:
 
-| タグ | 何のための非 SoR か |
-| --- | --- |
-| `[index]` | 検索のための導出 |
-| `[cache]` | 速度・可用性のための揮発コピー（またはセッション等の揮発正本） |
-| `[analytics]` | 分析のための導出 |
+| タグ | 何のための非 SoR か | 適用 kind |
+| --- | --- | --- |
+| `[index]` | 検索のための導出 | `database` |
+| `[cache]` | 速度・可用性のための揮発コピー（またはセッション等の揮発正本） | `database` / `storage` |
+| `[analytics]` | 分析のための導出 | `database` / `storage` |
 
-タグ無しの `database` が SoR。この 4 状態で「そのストアは何なのか」が言い切れる。
+タグ無しが SoR。この 4 状態で「そのストアは何なのか」が言い切れる。
+
+`[index]` だけ `database` 限定なのは現状維持である（検索インデックスを `storage` で実現する形は観測していない）。適用範囲の拡大は後方互換なので、実例が出た時点で広げればよい。
+
+### タグの適用範囲（`appliesTo`）の整理 — 宣言はあるが強制されていない
+
+`[cache]` を 2 kind に広げる判断をした時点で「そもそも `appliesTo` は何を保証しているのか」が問題になる。**実測した結果、どこからも強制されていない**。
+
+`appliesTo` は `reference-data.ts` に宣言され `reference.ts` の公開 API と spec 表に出るが、これを読んで検証する consumer は存在しない。`tag-not-builtin`（`resolver/warnings.ts`）は**タグ名が builtin 集合にあるか**だけを見ており、付与先の kind を見ていない。実際に次のモデルを `karasu render` に通すと **exit 0・warning ゼロ・badge なし**になる:
+
+```
+system S {
+  service Api [index] { }     // appliesTo は database のみ
+  user U [table] { }          // appliesTo は resource のみ
+  database DB [mobile] { }    // appliesTo は client のみ
+}
+```
+
+対照として `database DB [index]` は `index` badge を出す。つまり **builtin タグを適用範囲外の kind に付けると、受理され・効果を持たず・警告もされない**。これは [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) が禁じた第 4 状態そのもので、[#2159](https://github.com/kompiro/karasu/issues/2159) は**名前の次元**でこれを解消したが、**kind の次元では残っている**。ユーザーから見ると「タグを書いたのに何も起きない」が名前のタイポと同じ症状で現れ、区別できない。
+
+現状の適用範囲を軸で並べると、構造自体は既に整っている:
+
+| 軸 | タグ | appliesTo |
+| --- | --- | --- |
+| 境界（所有の外） | `[external]` | `service` / `client` / `database` / `queue` / `storage` / `resource` |
+| ストアの役割（非 SoR） | `[index]` / **`[cache]`** / **`[analytics]`** | `database`（+ 新 2 つは `storage`） |
+| 通信様式 | `[async]` / `[sync]` | `edge` |
+| actor 種別 | `[human]` / `[ai]` | `user` |
+| client の form factor | `[mobile]` / `[web]` / `[desktop]` / `[cli]` / `[device]` / `[extension]` / `[embed]` | `client` |
+| resource の shape | `[table]` / `[queue]` / `[api]` / `[storage]` | `resource` |
+
+**タグ名 → ただ 1 つの軸 → その軸が意味を持つ kind 集合**という対応になっており、複数軸にまたがるタグは無い。`[external]` の appliesTo が広いのは境界という軸がそもそも多くの kind で意味を持つからで、例外ではない。整理すべきは表の中身ではなく、**この表が強制されていないこと**である。
+
+したがって追加で `tag-not-applicable`（名前は仮）を提案する — builtin タグが `appliesTo` 外の kind に付いていたら warning を出す。severity は `tag-not-builtin` と同格の warning とする（症状が同じで、ユーザーにとって区別する意味が無いため）。留意点:
+
+- **システム自動付与タグ**（`SYSTEM_ASSIGNED_TAGS` = `implicit` / `cyclic` / `read` / `write` / `inferred`）と、infra sub-kind から推論される shape タグは対象外にする。後者は `resource` に付くので `appliesTo` 内に収まるが、推論経路が将来変わったときに誤検知しないよう明示的に除外する。
+- **既存モデルへの影響**は #2159 と同じ姿勢になる。今日 inert に受理されているものが warning になるだけで、parse error にはしない。
+- `storage` ノードに `[storage]`（resource の shape タグ）を付けたモデルは警告対象になる。冗長な記述であり、警告されるのが正しい。
+
+**この診断は本 Doc の語彙追加とは独立**（3 語彙を足さなくても成立し、足しても診断が無ければ `[cache]` を `service` に付けられてしまう）。実装量も別物なので、**follow-up Issue に切って別 PR で入れる**。本 Doc はギャップの記録と方針決定までを担う。
 
 ### 停止規則（境界クリープ対策）
 
@@ -160,8 +204,8 @@ facet（[#2173](https://github.com/kompiro/karasu/issues/2173)、experimental �
 
 ### 実装の指針
 
-1. **`reference-data.ts`** — `tags` に `cache` / `analytics`（ともに `appliesTo: ["database"]`）、`annotations` に `planned`（`defaultBadge` の color / icon / label）を追加し、`pnpm gen:reference` で spec 表を再生成する（[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) / [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)）。
-2. **`default-style.ts`** — light / dark の 2 シートそれぞれに `database[cache]` / `database[analytics]` の `badge-label` + `badge-color` を追加する（既存 `database[index]` と同じ形）。`@planned` の badge は既存 4 種（⚠ / ✦ / ⚗ / →）と識別できる icon と色を選び、[ADR-1508](../adr/1508-annotation-badge-label-i18n.md) の i18n ラベル経路に載せる。**`[external]` が既に破線枠を使っているため、`@planned` に破線枠は使わない**（意味が混線する）。
+1. **`reference-data.ts`** — `tags` に `cache` / `analytics`（ともに `appliesTo: ["database", "storage"]`）、`annotations` に `planned`（`defaultBadge` の color / icon / label）を追加し、`pnpm gen:reference` で spec 表を再生成する（[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) / [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)）。
+2. **`default-style.ts`** — light / dark の 2 シートそれぞれに `database[cache]` / `storage[cache]` / `database[analytics]` / `storage[analytics]` の `badge-label` + `badge-color` を追加する（既存 `database[index]` と同じ形）。**`appliesTo` に挙げた kind すべてにセレクタを書く** — 片方を落とすと、宣言では受理されるのに効果が出ない状態を新規に作ることになる。`@planned` の badge は既存 4 種（⚠ / ✦ / ⚗ / →）と識別できる icon と色を選び、[ADR-1508](../adr/1508-annotation-badge-label-i18n.md) の i18n ラベル経路に載せる。**`[external]` が既に破線枠を使っているため、`@planned` に破線枠は使わない**（意味が混線する）。
 3. **spec の散文** — `docs/spec/tags-annotations.md`（+ ja）に、役割軸の 4 状態表・「消えたら業務データが失われるか」という判定・停止規則を書く。`@planned` は annotation 節の lifecycle 説明に追加する。`docs/guide/03-evolution.md`（+ ja）の lifecycle 表も 5 行にする。
 4. **クックブック** — `docs/guide/notation-cookbook.md`（+ ja）の Cloudflare Workers 節を `database CACHE [cache] { }` に更新し、「`[cache]` は notation-watch で未提供」という注記を削除する。
 5. **wrangler adapter** — `packages/core/src/translate/wrangler.ts` の KV マッピングを `database <name> [cache]` の出力に変更し、警告を削除する。`wrangler.test.ts` の「no `[cache]` tag yet」テストを反転させる。[ADR-1935](../adr/1935-wrangler-translate-adapter.md) の degrade ギャップが閉じる。
@@ -169,6 +213,7 @@ facet（[#2173](https://github.com/kompiro/karasu/issues/2173)、experimental �
 7. **changeset** — core + karasu の minor。translate 出力が変わること、および今日 inert な `[cache]` / `[analytics]` / `@planned` という名前が badge を持つようになる挙動変化を明記する（ADR-1314 の下では追加互換）。
 8. **AT**: `docs/acceptance/` に新規ファイル。TC は:
    - `database X [cache]` / `database X [analytics]` が warning なくパースされ、それぞれ固有の badge が描画される（light / dark 両テーマ）
+   - `storage X [cache]` / `storage X [analytics]` も同様に badge を持つ（`appliesTo` に挙げた kind が全部効果を持っていること）
    - `@planned` が warning なくパースされ、badge が既存 4 種と識別可能に描画される
    - `[kv]` / `@canary` は引き続き `tag-not-builtin` / `annotation-not-builtin` の warning になる（却下が挙動として現れていること）
    - `karasu translate --from wrangler` が KV binding に対して `[cache]` を出力し、degrade 警告を出さない
@@ -191,6 +236,6 @@ facet（[#2173](https://github.com/kompiro/karasu/issues/2173)、experimental �
 ## 未解決の問い / 決めないこと
 
 - `@planned` の badge に使う icon と色（実装時に既存 4 種との識別性を見て決める）
-- `[cache]` を `storage` にも許すか（初回は `database` 限定。`appliesTo` の拡大は後方互換なので、CDN / blob キャッシュの実例が出てから広げる）
+- `tag-not-applicable` 診断の正式な名前と、`docs/spec/diagnostics.md` への登録（follow-up Issue で決める。本 Doc はギャップの記録と方針までを担う）
 - `@planned` なノードを一部の診断から除外すべきか（未実在の要素が orphan 系診断を鳴らす可能性）。実装時に実挙動を見て判断し、必要なら follow-up Issue にする
 - finding 6（stateful compute）の kind 設計は本 Doc では扱わない

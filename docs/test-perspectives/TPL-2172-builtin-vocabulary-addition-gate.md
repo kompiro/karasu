@@ -54,6 +54,7 @@ karasu での実例（[#2172](https://github.com/kompiro/karasu/issues/2172)）:
 - **二重表現**: 構造（`delivers` / `realizes` / 物理層 `store`）で既に言えている事実にタグを足し、両者が食い違うモデルが書けてしまう。どちらが正しいかを decide する規則がどこにも無い。
 - **語彙の単調増加**: 個別要望を個別の妥当性で通し続け、`[graph]` `[timeseries]` `[replica]` … と連鎖する。[ADR-1718](../adr/1718-vector-store-vs-database.md) が新 kind に対して警戒した境界クリープが、タグ側で再現する。
 - **inert な追加**: 名前だけ builtin 集合に入れて既定描画の効果を付けず、[TPL-1503](TPL-1503-accepted-vocabulary-must-have-effect.md) の「受理・無効果」状態を作る。警告も効果も無いので、ユーザーは書いたことが効いているか判別できない。
+- **`appliesTo` の部分的な inert**: 複数 kind を `appliesTo` に挙げながら、既定スタイルのセレクタを一部の kind にしか書かない。宣言上は受理されるのにその kind では何も起きず、上記の inert 状態が **kind の次元**で生まれる。karasu では `appliesTo` 自体がどの consumer からも強制されていない（[#2172](https://github.com/kompiro/karasu/issues/2172) で実測）ため、宣言と効果の一致を担保するのはこのテストだけである。
 - **却下の消失**: 却下理由が Issue のコメントにしか残らず、半年後に同じ候補が「新しい提案」として再登場する。
 - **`appliesTo` の後付け縮小**: 最初に広く受理してから狭めようとする。拡大は後方互換だが**縮小は破壊的**で、v2.0 まで直せない。
 
@@ -62,12 +63,10 @@ karasu での実例（[#2172](https://github.com/kompiro/karasu/issues/2172)）:
 builtin の tag / annotation を追加する PR で:
 
 - [ ] 3 問（register / 既存表現 / 停止規則）それぞれの答えを PR description か ADR に書いている。
-- [ ] 同じ PR で既定描画の効果（`default-style.ts` の badge / shape）が入っており、**light / dark 両シート**に入っている。
-- [ ] `pnpm gen:reference` を実行し、spec 表と `reference-data.ts` が一致している（[TPL-1296](TPL-1296-spec-doc-reference-data-sync.md)）。
-- [ ] `appliesTo` を必要最小の kind に絞っている（拡大は後で後方互換にできる）。
-- [ ] 一緒に検討して**却下した候補とその理由**が ADR に列挙されている。
+- [ ] 同じ PR で既定描画の効果（`default-style.ts` の badge / shape）が入っており、**light / dark 両シート**、かつ **`appliesTo` に挙げた全 kind** にセレクタがある。
+- [ ] `appliesTo` を必要最小の kind に絞ったうえで、`pnpm gen:reference` を実行し spec 表と `reference-data.ts` が一致している（[TPL-1296](TPL-1296-spec-doc-reference-data-sync.md)）。拡大は後から後方互換にできるが、縮小はできない。
+- [ ] 一緒に検討して**却下した候補とその理由**が ADR に列挙され、却下が挙動として現れている（引き続き `tag-not-builtin` / `annotation-not-builtin` の警告対象であることをテストする）。
 - [ ] その名前が今日 inert に受理されている（warning が出ていた）ことによる挙動変化を changeset に書いている。
-- [ ] 却下した候補が引き続き `tag-not-builtin` / `annotation-not-builtin` の警告対象であることをテストしている（却下が挙動として現れていること）。
 
 ## 派生元 spec
 
