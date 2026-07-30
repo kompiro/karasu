@@ -31,12 +31,58 @@ npm run format:check  # フォーマット OK
 
 ### AC-1.2: リソースタグによるシェイプ自動適用
 
-- [ ] KRS エディタで `resource DB "DB" [table]` を追加し、cylinder シェイプで表示されることを確認
-- [ ] `resource Q "Queue" [queue]` → queue シェイプ
-- [ ] `resource API "API" [api]` → hexagon シェイプ
-- [ ] `resource S3 "Storage" [storage]` → cloud シェイプ
+`resource` のシェイプが画面に出るには **解決済み（resolved）** である必要がある。
+ドット記法でインフラの sub-resource を指すか、同名の `entity` に解決する bare id
+であること。どちらでもない bare な `resource` はスタイル上シェイプが決まっていても
+usecase 図に昇格せず描画されない（[AT-0049](0049-resource-nodes-usecase-diagram.md)）。
+以下のモデルを KRS エディタに貼り、`OrderService → Order` までドリルダウンする。
 
-> manual / visual review — タグ→シェイプ自動適用の見た目はブラウザで描画結果を確認する。
+```krs
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  queue EventBus {
+    queue OrderCreated { label "注文作成イベント" }
+  }
+  storage MediaStorage {
+    bucket ImageBucket { label "商品画像バケット" }
+  }
+  service OrderService {
+    domain Order {
+      entity PaymentGateway { label "決済ゲートウェイ" }
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource EventBus.OrderCreated
+        resource MediaStorage.ImageBucket
+        resource PaymentGateway [api]
+      }
+    }
+  }
+}
+```
+
+- [x] `resource OrderDB.OrderTable` → `[table]` 推論 → cylinder シェイプ
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `OrderDB.OrderTable → cylinder (inferred from the table sub-resource)`（描画プリミティブは同ファイルの `cylinder is a body path capped by a full-width ellipse on top`）
+
+- [x] `resource EventBus.OrderCreated` → `[queue]` 推論 → queue シェイプ
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `EventBus.OrderCreated → queue (inferred from the queue-item sub-resource)`（描画プリミティブは `queue is a body path capped by a narrow ellipse on its right edge`）
+
+- [x] `resource MediaStorage.ImageBucket` → `[storage]` 推論 → cloud シェイプ
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `MediaStorage.ImageBucket → cloud (inferred from the bucket sub-resource)`（描画プリミティブは `storage renders as a single cloud path`）
+
+- [x] `resource PaymentGateway [api]`（手書きタグ・インフラ対応物なし） → hexagon シェイプ
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `PaymentGateway → hexagon (hand-written [api], no infra counterpart)`（描画プリミティブは `api renders as a polygon (hexagon), not a rect`）
+
+- [x] 4 ノードすべてが `PlaceOrder` の兄弟ノードとして usecase 図に昇格する
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `promotes every resolved resource to a sibling node of its usecase in the domain view`
+
+- [x] 未解決の bare `resource ScratchTable [table]` はシェイプが決まっても描画されない
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `an unresolved bare resource keeps its shape but never reaches the canvas`
+
+- [ ] ブラウザ上で 4 ノードが円柱・パイプ・雲・六角形として描き分けられている
+
+> manual / visual review — シェイプ名とプリミティブの対応は core テストで固定済み。ブラウザでの実描画（重なり・ラベル位置・見分けやすさ）だけが目視観点として残る。
 
 ### AC-1.3: ユーザースタイルによるオーバーライド
 
