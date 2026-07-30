@@ -6,7 +6,7 @@
   - 引き金 Issue: [#2172](https://github.com/kompiro/karasu/issues/2172)（builtin vocabulary review: `[cache]` / `@canary`）
   - **PR**: [#2215](https://github.com/kompiro/karasu/pull/2215)
   - 前提 Issue: [#2159](https://github.com/kompiro/karasu/issues/2159)（`tag-not-builtin` / `annotation-not-builtin` の導入）, [#2065](https://github.com/kompiro/karasu/issues/2065)（tags and facets）, [#1816](https://github.com/kompiro/karasu/issues/1816)（notation watch round 2）
-  - 関連 ADR: [ADR-1718](../adr/1718-vector-store-vs-database.md)（`[index]` = 役割タグ・新 kind を増やさない判断基準）, [ADR-316](../adr/316-database-as-first-class-node.md), [ADR-1820](../adr/1820-notation-promotion-gate.md)（promotion gate）, [ADR-1935](../adr/1935-wrangler-translate-adapter.md)（wrangler adapter の degrade）, [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze / annotation set の凍結）, [ADR-1508](../adr/1508-annotation-badge-label-i18n.md)（annotation badge label の i18n）
+  - 関連 ADR: [ADR-1718](../adr/1718-vector-store-vs-database.md)（`[index]` = 役割タグ・新 kind を増やさない判断基準）, [ADR-316](../adr/316-database-as-first-class-node.md), [ADR-1820](../adr/1820-notation-promotion-gate.md)（promotion gate）, [ADR-1935](../adr/1935-wrangler-translate-adapter.md)（wrangler adapter の degrade）, [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze / annotation set の凍結）, [ADR-1508](../adr/1508-annotation-badge-label-i18n.md)（annotation badge label の i18n）, [ADR-2218](../adr/2218-roadmap-pruning-policy.md)（roadmap pruning — watch 行の畳み方）
   - 関連 design: [tags-and-facets](tags-and-facets.md)（register 確定・(B7) の corpus 測定要求）
   - 関連 TPL: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md), [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md), [TPL-1625](../test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md), 本 PR で起こす proactive TPL（下記「Related TPLs」節）
   - コード: `packages/core/src/builtins/reference-data.ts`, `packages/core/src/builtins/default-style.ts`, `packages/core/src/translate/wrangler.ts`
@@ -32,7 +32,7 @@
 | `[index]` の効果 | `default-style.ts` の light / dark 2 か所に `database[index] { badge-label: "index"; badge-color: … }` |
 | 派生ストアの役割語彙 | `[index]`（検索用の導出）のみ。cache / 分析用途に相当する語彙は無い |
 | lifecycle の状態 | 「削除予定」「新規」「実験的」「移行先」の 4 つ。**「まだ存在しない（to-be）」を表す語彙は無い** |
-| register 規約 | tag = アーキタイプ / annotation = lifecycle / boundary = view 内グルーピング / facet = 外在的集合所属（[tags-and-facets](tags-and-facets.md) 決定事項 5、facet は [#2173](https://github.com/kompiro/karasu/issues/2173) で実装中） |
+| register 規約 | tag = アーキタイプ / annotation = lifecycle / boundary = view 内グルーピング / facet = 外在的集合所属（[tags-and-facets](tags-and-facets.md) 決定事項 5）。facet は [#2173](https://github.com/kompiro/karasu/issues/2173) で **experimental として着地済み**（各 kind の `properties` に `facets` が入った）ため、membership の逃げ道は既に存在する |
 
 ## 制約・前提
 
@@ -75,7 +75,7 @@ Issue 記載の 2 件だけを可否判定する。
 
 ### 案3: すべて facet に逃がす
 
-facet（[#2173](https://github.com/kompiro/karasu/issues/2173)）がユーザー拡張点なので、`cache` も `planned` も facet で書いてもらう。
+facet（[#2173](https://github.com/kompiro/karasu/issues/2173)、experimental として着地済み）がユーザー拡張点なので、`cache` も `planned` も facet で書いてもらう。
 
 **メリット**
 
@@ -154,7 +154,7 @@ facet（[#2173](https://github.com/kompiro/karasu/issues/2173)）がユーザー
 | `@canary` | (1) `@experimental` の典型用途が `docs/guide/03-evolution.md` で「feature flag 越しの試験サービス」と定義済みで意味領域が重なる。(2) canary rollout は通常 数時間〜数日の **runtime 状態**で、`@deprecated`（数ヶ月〜）と時間スケールが 2 桁違う。`docs/concepts.md` の slowly-changing 構造という範囲の外側に落ちる。(3) 実利用証拠がゼロで、tags-and-facets (B7) が要求する corpus 測定も未実施。長期併存する canary は `@new` + `@experimental`、新旧併存は `@migration_target` で既に描ける |
 | `@sunset` | `@deprecated`（廃止予定）と意味が重複。廃止時期は `description` の散文で書ける |
 | `[bff]` | `delivers <ClientId>` が BFF / SSR パターンを**構造として**表現済み（`docs/spec/syntax.md` のプロパティ表）。構造で言えることにタグを足さない |
-| `[kv]` | **register 違反**。KV は technology であり role ではない。`[cache]` 採用と同時に、roadmap notation watch finding 1 の「`[kv]` badge は watch」を却下として確定させる |
+| `[kv]` | **register 違反**。KV は technology であり role ではない。roadmap にあった「`[kv]` badge は watch」の行は [ADR-2218](../adr/2218-roadmap-pruning-policy.md) の pruning で既に削除されており、**却下の記録が残る場所は本 Doc から昇格する ADR だけ**になる |
 | `[stateful]`（Durable Object / actor） | 今回は見送る。roadmap finding 6 の実在ギャップ（adapter が `service [external]` へ degrade し所有境界を過大表現している）は認識するが、finding 6 が求めているのは「compute かつ store」という **kind** の問題で、タグで塗るのは register の観点で筋が悪い。watch 継続 |
 | `[replica]` / `[graph]` / `[timeseries]` | 上記停止規則により却下（技術差 = 物理層、運用配置 = モデル化しない） |
 
@@ -165,7 +165,7 @@ facet（[#2173](https://github.com/kompiro/karasu/issues/2173)）がユーザー
 3. **spec の散文** — `docs/spec/tags-annotations.md`（+ ja）に、役割軸の 4 状態表・「消えたら業務データが失われるか」という判定・停止規則を書く。`@planned` は annotation 節の lifecycle 説明に追加する。`docs/guide/03-evolution.md`（+ ja）の lifecycle 表も 5 行にする。
 4. **クックブック** — `docs/guide/notation-cookbook.md`（+ ja）の Cloudflare Workers 節を `database CACHE [cache] { }` に更新し、「`[cache]` は notation-watch で未提供」という注記を削除する。
 5. **wrangler adapter** — `packages/core/src/translate/wrangler.ts` の KV マッピングを `database <name> [cache]` の出力に変更し、警告を削除する。`wrangler.test.ts` の「no `[cache]` tag yet」テストを反転させる。[ADR-1935](../adr/1935-wrangler-translate-adapter.md) の degrade ギャップが閉じる。
-6. **roadmap** — notation watch finding 1（`[kv]` watch）を却下確定、finding 5（`[cache]` watch）を昇格済みに更新。finding 6（stateful compute）は watch 継続。
+6. **roadmap** — [ADR-2218](../adr/2218-roadmap-pruning-policy.md)（pruning 方針）に従い、§watch 対象の notation gap から **`database [cache]` role tag の行を削除する**（✅ や「昇格済み」の追記はしない。決定は昇格後の ADR が持つ）。stateful compute の行は watch 継続なので残す。§Syntax 2.0 プログラムの「`[cache]` watch がその機構の実例」という参照は、実例が完了したので昇格後の ADR を指すよう差し替える（見出しの anchor は変えない）。
 7. **changeset** — core + karasu の minor。translate 出力が変わること、および今日 inert な `[cache]` / `[analytics]` / `@planned` という名前が badge を持つようになる挙動変化を明記する（ADR-1314 の下では追加互換）。
 8. **AT**: `docs/acceptance/` に新規ファイル。TC は:
    - `database X [cache]` / `database X [analytics]` が warning なくパースされ、それぞれ固有の badge が描画される（light / dark 両テーマ）
