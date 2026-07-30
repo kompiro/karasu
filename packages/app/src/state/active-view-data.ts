@@ -17,7 +17,7 @@ type BreadcrumbItem = { id: string; label: string };
  * `activeView === "system" ? … : activeView === "deploy" ? … : …` chains that
  * were repeated ~12 times (#1542).
  */
-interface ActiveViewData {
+export interface ActiveViewData {
   svg: string;
   diagnostics: Diagnostic[];
   warnings: Warning[];

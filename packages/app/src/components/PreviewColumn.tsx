@@ -7,10 +7,11 @@ import { openReferenceWindow } from "../utils/open-reference-window.js";
 import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview, type GroupByMode } from "../state/preview-context.js";
-import { useActiveViewData } from "../state/active-view-data.js";
+import { useActiveViewData, type ActiveViewData } from "../state/active-view-data.js";
 import { ShareDialog } from "./ShareDialog.js";
 import { useShareDialog } from "../hooks/useShareDialog.js";
 import { useTranslation } from "../i18n/index.js";
+import type { TranslateFn } from "@karasu-tools/i18n";
 import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,45 @@ const ALL_VIEWS_BLOB_REVOKE_DELAY_MS = 10_000;
 const DOCS_SITE_BASE_URL = "https://kompiro.github.io/karasu/";
 const docsSiteUrl = (locale: string) =>
   locale === "ja" ? `${DOCS_SITE_BASE_URL}ja/` : DOCS_SITE_BASE_URL;
+
+/** What the Group-by selector needs to know about one axis to offer it. */
+interface GroupByAxisOption {
+  /** Option label. Takes `t` so the key stays a checked literal at the call site. */
+  label: (t: TranslateFn) => string;
+  /** Data gate — the axis is offered only when the model carries it (#1822 P2b). */
+  available: (view: ActiveViewData) => boolean;
+}
+
+/**
+ * The axes the Group-by selector offers, keyed by `GroupByMode` minus the
+ * always-present `"none"`. Insertion order is the option order.
+ *
+ * The `satisfies Record<…>` is the point of this table: adding a member to
+ * `GroupByMode` without adding it here fails to typecheck, so a new axis cannot
+ * ship while the selector silently keeps offering only the old ones — the
+ * failure mode in TPL-20260510-03. This is the B3 defence ADR-2120 carried
+ * forward (#2119); the axes are mutually exclusive by ADR-1974, so the selector
+ * is the one permanent home for the choice.
+ */
+export const GROUP_BY_AXES = {
+  team: {
+    label: (t) => t("preview.groupBy.team"),
+    available: (view) => view.hasTeamAxis === true,
+  },
+  boundary: {
+    label: (t) => t("preview.groupBy.boundary"),
+    available: (view) => view.hasBoundaryAxis === true,
+  },
+} satisfies Record<Exclude<GroupByMode, "none">, GroupByAxisOption>;
+
+/**
+ * `<select>` hands back a bare string. `"none"` plus {@link GROUP_BY_AXES}'
+ * keys are exactly `GroupByMode`, so narrowing here replaces the unchecked
+ * `as GroupByMode` cast the `onChange` handler used to carry.
+ */
+function isGroupByMode(value: string): value is GroupByMode {
+  return value === "none" || value in GROUP_BY_AXES;
+}
 
 export function PreviewColumn() {
   const {
@@ -221,12 +261,17 @@ export function PreviewColumn() {
               id="group-by-select"
               className="group-by-selector"
               value={view.groupBy ?? "none"}
-              onChange={(e) => view.onGroupByChange?.(e.target.value as GroupByMode)}
+              onChange={(e) => {
+                if (isGroupByMode(e.target.value)) view.onGroupByChange?.(e.target.value);
+              }}
             >
               <option value="none">{t("preview.groupBy.none")}</option>
-              {view.hasTeamAxis && <option value="team">{t("preview.groupBy.team")}</option>}
-              {view.hasBoundaryAxis && (
-                <option value="boundary">{t("preview.groupBy.boundary")}</option>
+              {Object.entries(GROUP_BY_AXES).map(([mode, axis]) =>
+                axis.available(view) ? (
+                  <option key={mode} value={mode}>
+                    {axis.label(t)}
+                  </option>
+                ) : null,
               )}
             </select>
           </span>
