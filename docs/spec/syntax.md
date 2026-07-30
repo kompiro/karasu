@@ -434,11 +434,16 @@ dropped:
 
 A `domain` may be written at the top level, directly inside a `system`, or
 inside a `service`. The first two both express a domain that is not (yet)
-assigned to a service. They are not yet treated identically downstream: the
-`unassigned-domain` warning and the `(Unassigned)` pseudo-system
-([ADR-681](../adr/681-top-level-service-rendering.md)) currently cover only the
-top-level form, since a system-nested domain already has a container to render
-in (see [#2184](https://github.com/kompiro/karasu/issues/2184)).
+assigned to a service, and both raise the `unassigned-domain` warning: the
+author picks the spelling, not the meaning
+([#2184](https://github.com/kompiro/karasu/issues/2184)).
+
+Rendering is where the two forms legitimately differ. The `(Unassigned)`
+pseudo-system ([ADR-681](../adr/681-top-level-service-rendering.md)) wraps only
+the top-level form, because it exists to give a container to nodes that have
+none — a system-nested domain already renders inside its system. Diagnosing "not
+assigned to a service" and framing "has nowhere to be drawn" are separate
+concerns, so only the first is symmetric across the two placements.
 
 > Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it. [TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — placements that express the same modelling state carry the same diagnostic, whichever spelling the author picked.
 
