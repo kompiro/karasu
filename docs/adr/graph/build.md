@@ -71,10 +71,13 @@ flowchart TD
   end
   ADR_8["ADR-8<br/>[styling] ビルトインスタイルの一元化と構造化リファレンス"]
   ADR_1974["ADR-1974<br/>[parser] system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
+  ADR_2165["ADR-2165<br/>[parser] 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
   ADR_1296 --> ADR_8
   ADR_1820 --> ADR_1314
   ADR_2124 --> ADR_1314
   ADR_1974 --> ADR_1820
+  ADR_2165 --> ADR_1296
+  ADR_2165 --> ADR_1314
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -146,4 +149,5 @@ flowchart TD
   class ADR_9020 accepted
   class ADR_8 ghost
   class ADR_1974 ghost
+  class ADR_2165 ghost
 ```
