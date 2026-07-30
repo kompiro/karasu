@@ -3,7 +3,7 @@
 - **日付**: 2026-07-15
 - **Issue**: #1960（親 #1828 permalink layer / epic #1826）
 - **PR**: #1971
-- **ステータス**: **却下記録**（2026-07-16）— client-side BYO-PAT 方式は「reader が PAT を貼って手元で fetch」＝**local ツールに収束**し、nest(funnel)/core(my-system) の境界を越える（#1960 の当初動機に反する）。private repo は代わりに **karasu-nest の GitHub App ピボット**（installation 認証で server-side reverse、reader は PAT 不要）で解く。→ [#1783](https://github.com/kompiro/karasu/issues/1783) / [PR #1978](https://github.com/kompiro/karasu/pull/1978)（`docs/design/karasu-nest-pivot-github-app.md`、マージ後に有効）。本 doc は「なぜ client-PAT を採らずピボットに至ったか」の推論記録として残す。
+- **ステータス**: **却下記録**（2026-07-16）— client-side BYO-PAT 方式は「reader が PAT を貼って手元で fetch」＝**local ツールに収束**し、nest(funnel)/core(my-system) の境界を越える（#1960 の当初動機に反する）。private repo は代わりに **karasu-nest の GitHub App ピボット**（installation 認証で server-side reverse、reader は PAT 不要）で解く。→ [#1783](https://github.com/kompiro/karasu/issues/1783) / ピボットは 2026-07-30 に GO となり [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) として確定（壁打ちの design doc は同 ADR に昇格して削除、経緯は [PR #1978](https://github.com/kompiro/karasu/pull/1978)）。本 doc は「なぜ client-PAT を採らずピボットに至ったか」の推論記録として残す。
 - **関連**:
   - repo-backed permalink 設計 [`docs/design/repo-backed-ref-pinned-permalink.md`](./repo-backed-ref-pinned-permalink.md)（軸3 private を v1 で public-only に決定・後続化）
   - [ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)（BYOK 原則・token/secret をサービスが持たない・sessionStorage 既定 / localStorage opt-in）

@@ -1,7 +1,8 @@
 ---
 id: ADR-1783
 title: karasu-nest — URL で .krs を共有・プレビューするホスト型機能
-status: accepted
+status: superseded
+superseded_by: ADR-1990
 date: 2026-06-26
 topic: project
 related_to: [ADR-105, ADR-1575]
@@ -18,6 +19,8 @@ assumptions:
 ---
 
 # ADR-1783: karasu-nest — URL で .krs を共有・プレビューするホスト型機能
+
+- **ステータス**: Superseded by [ADR-1990](1990-karasu-nest-pivot-server-reverse.md)（2026-07-30、GitHub App による server-side reverse へのピボット）。覆るのは下記「決定」冒頭の**新しいパッケージ・サービス・DB を作らない／reverse は BYO でサービスに AI を載せない**という前提と、それを支えた 2 つの却下（server-side LLM reverse・保存型ストア）である。**inline 共有（`#s=`）・multi-file 合成・ephemeral 復元・`/render`（SVG / PNG）・reverse ガイドの決定は ADR-1990 が明示的に引き継いでおり、有効なまま**。
 
 ## 背景
 
