@@ -33,11 +33,11 @@
 
 > **shape タグは infra ブロックキーワードをミラーする — 別物ではなく対応関係にある。** infra ブロックの **キーワード**（`database` 配下の `table`、`queue` 配下の `queue-item`、`storage` 配下の `bucket`）は、system 図上の **共有ストアノード（実体）を宣言**する。usecase の `resource` は、その usecase が読み書きする対象への **操作参照**であり、`resource` が dot 記法で infra leaf を参照する（`resource OrderDB.OrderTable`）と、karasu は **参照先 infra sub-resource の kind から対応する shape タグを推論**する（`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`）。つまり参照は、指し示すストアと同じ形で描画される。だから shape タグ `[table]` / `[queue]` / `[storage]` は infra sub-resource kind を**意図的にミラー**している。参照する infra leaf が無い `resource` には、純粋な shape ヒントとして手書きで付けることもできる。`[api]`（hexagon）だけは infra 側に対応 kind が無く、API 系 resource 用の手書き専用 shape。同じ語が 2 つの位置に現れても **衝突しない**: キーワードは **宣言の先頭**でノードの *kind* を決め、`[...]` タグは `resource` への **接尾辞**で *shape* だけを決める — 両者は resource 参照で結ばれた相補的なレイヤーである。[syntax.md](./syntax.md) の *Infra layer* 節も参照。
 >
-> Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
+> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
 
 > **`database [index]`** は `database` ノードを、正本（system of record）ではなく **派生の検索 / 二次インデックス** — ElasticSearch / OpenSearch クラスタ、あるいは pgvector / Pinecone / Weaviate などの vector store — として印付ける。cylinder はそのままに `index` バッジを付与する。**具体的な技術は物理層**の `store { type "ElasticSearch 8"; realizes SearchIndex }` に置き、エンジンを載せ替えても論理モデルが揺れないようにする。同じストアが正本かつ index を兼ねる場合（例: Postgres + pgvector）は `[index]` タグを付けないだけでよい。**`[index]` は技術ではなく役割を表す**: 正本（system of record）を高速に検索するための index として導出した二次ストアにタグ付けする。Vector DB / ElasticSearch 等を使っている場合でも、それが正本なら `[index]` は付けない。背景: [ADR-316](../adr/316-database-as-first-class-node.md), Issue #1718。
 >
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — `[index]` はラベルだけでなく効果（`index` バッジ）を伴う必要がある、受理されるタグである。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `[index]` はラベルだけでなく効果（`index` バッジ）を伴う必要がある、受理されるタグである。
 
 ### 非 builtin のタグ名は非推奨（v1.x）
 
@@ -48,7 +48,7 @@ bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する�
 
 どの構文を選ぶかは下記[「語彙の register」](#語彙の-register--boundary--annotation--tag--facet)を参照。
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 非 builtin のタグ名はかつて禁止された第 4 状態（受理・無効果・文書化なし）にあった。`tag-not-builtin` はそれを状態 (2)「unknown として警告」に解消する。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 非 builtin のタグ名はかつて禁止された第 4 状態（受理・無効果・文書化なし）にあった。`tag-not-builtin` はそれを状態 (2)「unknown として警告」に解消する。
 
 ### 記述例
 
@@ -121,7 +121,7 @@ service Billing @team-alpha   // 非推奨: annotation-not-builtin warning
 service Legacy  @depracated   // 二重に警告: タイポヒント (info) + not-builtin (warning)
 ```
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — deprecation により非 builtin 名は、従来の文書化なき open set 受理ではなく状態 (2)「unknown として警告」に保たれる。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — deprecation により非 builtin 名は、従来の文書化なき open set 受理ではなく状態 (2)「unknown として警告」に保たれる。
 
 ### アノテーションのパラメータ
 
@@ -141,10 +141,10 @@ service NewSvc @migration_target(from: LegacyMonolith)
 
 - **精度による graceful degradation**: `until` の値が日付（`YYYY-MM-DD`）/ 年月（`YYYY-MM`）/ 四半期（`YYYY-Qn`）としてパースできれば machine-usable（ソート / filter 可能）。それ以外の文字列（例: `"来年あたり"`）はそのまま opaque な表示専用値として保持する。opaque 値にバリデーションエラーは出さない。
 - **実行時評価はしない**: `until` は記録された **intent** であって期限ではない — karasu は現在日付と比較しない（「期限超過」診断は出さない）。`job.schedule`（保持するが simulate しない）や warn-don't-error の立場と整合。
-- **未対応パラメータは黙殺せず warn**: それ以外のアノテーションへのパラメータ、または未認識キーは `annotation-param-unsupported` 警告とともに破棄する（TPL-20260610-01 — 受理する語彙は効果を持つか警告される）。独自アノテーションは当面パラメータ非対応。
+- **未対応パラメータは黙殺せず warn**: それ以外のアノテーションへのパラメータ、または未認識キーは `annotation-param-unsupported` 警告とともに破棄する（TPL-1503 — 受理する語彙は効果を持つか警告される）。独自アノテーションは当面パラメータ非対応。
 - パラメータはアノテーションの**名前リストを変えない**ため、`.krs.style` のアノテーションセレクタ（`@deprecated`）や継承には影響しない。
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 未認識キー/アノテーションへの `@name(key: …)` は warn され、黙って受理されない。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 未認識キー/アノテーションへの `@name(key: …)` は warn され、黙って受理されない。
 
 ---
 
@@ -202,7 +202,7 @@ karasu は「このラベルはどの種類か」を 4 つの register に分離
 
 register を分ける理由は、所属のセマンティクスがアーキタイプと異なるからである: database は PCI スコープに入っていようがいまいが database であり、対象 10 要素中 9 要素にしか所属タグが付いていない図は、監査文脈で偽の保証として読まれてしまう。したがって所属はタグの名前空間を借りず、宣言メタデータ（`label` / `description` / `link`）を持つ専用構文を得る。
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — どの register でも、受理される語彙は効果を持つか警告される必要がある。v1.x の deprecation 診断（`tag-not-builtin` / `annotation-not-builtin`）はツール所有 register を状態 (2) に保つ。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — どの register でも、受理される語彙は効果を持つか警告される必要がある。v1.x の deprecation 診断（`tag-not-builtin` / `annotation-not-builtin`）はツール所有 register を状態 (2) に保つ。
 
 ---
 
@@ -293,7 +293,7 @@ organization Corp {
 
 逆コンウェイの引き継ぎ中は、1 つのノードを複数の team が `owns` することが正当に起こりうる。`ownerIndex` は 1:1 なので、**主オーナー**を 1 つだけ移行優先度で選ぶ — `@migration_target`（移行先）が勝ち、無印が次、`@deprecated`（移行元）が負ける。同優先度の場合は最初の宣言を保持する。これは domain の移行共存ルール（上記 *Migration annotations* で `@migration_target` ドメインがナビゲーション先になる）と対称である。共同所有そのものは許容される事実で、`duplicate-owner-assignment` の **info** 診断で surface される — error にはならない。
 
-> Related TPLs: [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md)（`@migration_target` 優先 / first-wins の規則は全 1:1 index で一貫させる）、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（共同所有は事実、info register に置く）。
+> Related TPLs: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（`@migration_target` 優先 / first-wins の規則は全 1:1 index で一貫させる）、[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（共同所有は事実、info register に置く）。
 
 ### `link` プロパティ（チーム連絡先）
 

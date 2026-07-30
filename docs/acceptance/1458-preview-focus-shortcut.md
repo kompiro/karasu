@@ -3,7 +3,7 @@
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1458](https://github.com/kompiro/karasu/issues/1458)
 - **対象ファイル**: `packages/app/src/components/PreviewFocusShortcut.tsx`
-- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-20260519-01
+- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-1419
 
 ## 受け入れ条件
 
@@ -13,11 +13,11 @@
 
   > ✅ Automated — `packages/app/src/components/PreviewFocusShortcut.test.tsx` › `mod+shift+f toggles the preview focus mode`
 
-- [x] テキスト入力／エディタにフォーカスがあるときショートカットは無視される（TPL-20260519-01）
+- [x] テキスト入力／エディタにフォーカスがあるときショートカットは無視される（TPL-1419）
 
   > ✅ Automated — `packages/app/src/components/PreviewFocusShortcut.test.tsx` › `ignores the shortcut while a text input is focused`
 
-- [x] コンポーネントのアンマウントでコマンドが登録解除される（TPL-20260519-01）
+- [x] コンポーネントのアンマウントでコマンドが登録解除される（TPL-1419）
 
   > ✅ Automated — `packages/app/src/components/PreviewFocusShortcut.test.tsx` › `stops resolving the shortcut after the component unmounts`
 

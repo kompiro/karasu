@@ -219,7 +219,7 @@ describe("getBuiltinStyleSheet — annotation badge labels (#1508)", () => {
   const annotationRule = (sheet: ReturnType<typeof getBuiltinStyleSheet>, name: string) =>
     sheet.rules.find((r) => r.selector.annotations.includes(name));
 
-  it("default labels match the reference-data en labels (single source, TPL-20260519-02)", () => {
+  it("default labels match the reference-data en labels (single source, TPL-1415)", () => {
     for (const theme of ["dark", "light"] as const) {
       const sheet = getBuiltinStyleSheet(theme);
       for (const a of REFERENCE_DATA.annotations) {

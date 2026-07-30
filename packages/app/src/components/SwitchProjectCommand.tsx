@@ -17,7 +17,7 @@ interface SwitchProjectCommandProps {
  * `ProjectPicker` it opens (Issue #1482).
  *
  * The command is palette-only — it carries no keybinding, so it never
- * competes for a key chord (TPL-20260519-01) and is reached solely through
+ * competes for a key chord (TPL-1419) and is reached solely through
  * the command palette (`Ctrl/Cmd+Shift+P`). Mounted from `ProjectModeApp`, so
  * it exists only in OPFS project mode where there are projects to switch
  * between. Renders the picker; nothing is visible until the command runs.

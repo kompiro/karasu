@@ -35,7 +35,7 @@ assumptions:
   - [ADR-1829](1829-adr-permalink-convention.md)（`short` + 必須 `source`）、[ADR-1830](1830-adr-permalink-validation.md)（検証は adr-tools `krs` kind）
   - [ADR-9017](9017-cloudflare-deployment-and-byok-ai.md)（BYOK 原則）、[ADR-123](123-github-markdown-render-service.md)（`isSafeUrl()` SSRF 対策）
   - 実装 PR: #1945（slice a resolver）/ #1965（slice c deep-anchor + cache）/ #1981（slice d `@<sha>` 推奨検証）
-  - TPL: [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md) / [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) / [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md) / [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)
+  - TPL: [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md) / [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) / [TPL-1829](../test-perspectives/TPL-1829-adr-permalink-records-source.md) / [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)
 
 ## 背景
 
@@ -55,10 +55,10 @@ nest（`packages/app` + Cloudflare Pages Functions）に **permissive な repo-b
 - **ref 指定と immutability（軸2、permissive）**: `@<ref>` は**任意**。省略時は `raw.githubusercontent.com/<owner>/<repo>/HEAD/<path>` が default branch を **GitHub API hop なし**で解決する（実測確認済み）。branch/tag/SHA いずれも描画するが、`@` を付けたら ref 必須（`@` の後が空はエラー）。「hot path で GitHub API を叩かない」決定を保つ。immutability を resolver パースで強制せず、ref-less HEAD（discovery 用、mutable）と `@<sha>`（ADR 用、immutable）を同じ resolver で賄う。resolver は「開く」責務に徹し、「ADR permalink は immutable であるべき」は上位規約に移す。
 - **private repo（軸3）**: v1 は public repo のみ（raw fetch、サービスは token を一切保持しない）。private（BYO-token・per-reader 認証）は permalink の JTBD（読者が誰でもクリックして見える恒久リンク）と緊張関係にあるため後続に分離（#1960）。BYOK 原則（ADR-9017）を維持。
 - **caching（軸4）**: SHA-keyed ephemeral cache（Cloudflare Cache API）。full 40-hex `@sha` は内容不変なので `max-age=31536000, immutable`、`HEAD`/branch/短縮 SHA は `s-maxage=60, max-age=0, must-revalidate`（CDN はキャッシュ、browser は revalidate — stale redirect を出さない）。**永続ストアを新設しない**ことで ADR-1783 のステートレス原則（保存型 paste は却下済み）を保つ。
-- **deep anchor（軸2 の派生）**: `#krs-<view>-<id>` fragment を素通しし、`/s` バウンスで browser が運ぶ `#krs-…` を `?krs=` query に移して App の `resolveDeepLinkHash`（`utils/deep-link-anchor.ts`）が canonical に正規化する。新 grammar は作らず spec/permalink.md の単一 grammar を共有（TPL-20260630-01）。
+- **deep anchor（軸2 の派生）**: `#krs-<view>-<id>` fragment を素通しし、`/s` バウンスで browser が運ぶ `#krs-…` を `?krs=` query に移して App の `resolveDeepLinkHash`（`utils/deep-link-anchor.ts`）が canonical に正規化する。新 grammar は作らず spec/permalink.md の単一 grammar を共有（TPL-1827）。
 - **`@<sha>` 推奨検証（slice d、軸1–3）**: ADR に貼る repo-backed permalink が mutable（ref-less / `@HEAD` / `@branch` / `@tag` / 短縮 SHA）のとき、`@<40-hex-sha>` 固定を**推奨する warning**を出す。判定は `permalink[].short` の host を `adr.config.json` の `permalink.repoBackedHosts`（`["karasu.kompiro.dev", "karasu.pages.dev"]`）と照合する **host allowlist 方式**で、#1961 の route 形（bare vs `/r/`）に非依存。pinned 形は full 40-hex SHA のみ（`/^[0-9a-f]{40}$/`）。**強度は推奨（warn）に留め CI は落とさない** — resolver を permissive にした philosophy と揃え、まだ誰も貼っていない規約を hard-fail で先行導入する premature な締め付けを避ける。将来 config でオプトインの hard-fail に上げる余地は残す。検証ロジックは ADR-1830 に従い karasu-local script ではなく adr-tools `krs` kind（`>=0.0.9`）に置き、karasu は bump + config + docs で adopt する。
-- **セキュリティ**: GitHub fetch を host 固定（`raw.githubusercontent.com`）+ ref/path canonicalize（path traversal・SSRF 対策、TPL-20260510-17）。slice d の URL 検査は `new URL()` ベースで ad-hoc regex に頼らない。
-- **`source` は不変**: repo-backed URL が `@<sha>` で immutable でも、shortener/resolver/host が将来変わりうるため、復元元 in-repo `.krs` `source` は必須のまま残す（ADR-1829 / TPL-20260630-03）。
+- **セキュリティ**: GitHub fetch を host 固定（`raw.githubusercontent.com`）+ ref/path canonicalize（path traversal・SSRF 対策、TPL-168）。slice d の URL 検査は `new URL()` ベースで ad-hoc regex に頼らない。
+- **`source` は不変**: repo-backed URL が `@<sha>` で immutable でも、shortener/resolver/host が将来変わりうるため、復元元 in-repo `.krs` `source` は必須のまま残す（ADR-1829 / TPL-1829）。
 
 ## 却下した案
 

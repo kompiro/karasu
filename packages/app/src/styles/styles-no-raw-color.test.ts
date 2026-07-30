@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * Meta-test — component CSS must reference themed colors through tokens,
  * never as raw literals.
  *
- * TPL-20260510-06: a theme is a global rendering toggle, and every
+ * TPL-1001: a theme is a global rendering toggle, and every
  * "surface" must honour it. In CSS the surfaces are the component
  * stylesheets; the failure mode is a rule that hard-codes a color and so
  * silently stays dark-only. Routing every color through a token in

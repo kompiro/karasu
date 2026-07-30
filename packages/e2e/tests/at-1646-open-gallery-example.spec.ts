@@ -11,7 +11,7 @@ import { expect, test } from "../fixtures/opfs.js";
  *
  * The deep-link makes the app fetch from a FIXED origin
  * (`raw.githubusercontent.com/.../examples/<lang>/<slug>/...`) — never a
- * user-supplied URL (TPL-20260510-17). We intercept that origin with
+ * user-supplied URL (TPL-168). We intercept that origin with
  * `page.route()` and fulfill each request from the on-disk `examples/` file,
  * so the test is hermetic: it never hits the network and does not depend on
  * what is currently committed to `main`.
@@ -22,7 +22,7 @@ import { expect, test } from "../fixtures/opfs.js";
  *  - `lang=ja` selects the Japanese bundled variant (cf. #1670) regardless of
  *    the UI locale
  *  - a malformed slug is rejected by the manifest WITHOUT any fetch, surfacing
- *    the error banner (the trust-boundary guard, TPL-20260510-17)
+ *    the error banner (the trust-boundary guard, TPL-168)
  */
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -104,7 +104,7 @@ test.describe("AT-1646 open a gallery example via deep-link", () => {
     await expect(previewSvg).not.toContainText("Payment Gateway");
   });
 
-  test("a malformed slug is rejected without any fetch (TPL-20260510-17)", async ({
+  test("a malformed slug is rejected without any fetch (TPL-168)", async ({
     page,
     opfs,
   }) => {

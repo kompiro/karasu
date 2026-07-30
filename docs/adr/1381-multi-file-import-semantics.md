@@ -50,7 +50,7 @@ karasu は **テキスト記述で論理 / 物理 / 組織の三面を可視化�
 
 ## 決定
 
-`docs/spec/syntax.md` §「Multi-file import semantics」(S1〜S7) を canonical な規定として制定し、resolver をその規定に揃える。proactive TPL 5 件 (TPL-20260514-01〜05) をそれぞれの S 規定に対応付けて bidirectional に紐付ける。
+`docs/spec/syntax.md` §「Multi-file import semantics」(S1〜S7) を canonical な規定として制定し、resolver をその規定に揃える。proactive TPL 5 件 (TPL-1381〜05) をそれぞれの S 規定に対応付けて bidirectional に紐付ける。
 
 ### 主要な規定
 

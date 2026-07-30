@@ -14,7 +14,7 @@ permalink epic（[#1826](https://github.com/kompiro/karasu/issues/1826)）・
 permalink** の語彙を持つ。用語の機構が別の正典ドキュメント（permalink アンカー
 contract・design doc・ADR）にある場合は、その詳細をリンクし、ここには定義だけを残す。
 
-> Related TPLs: [TPL-20260716-01](test-perspectives/TPL-20260716-01-keystone-terms-single-home.md) — これらの用語は単一の正典（このページ）を持つ。PRD・ロードマップ・epic・spec はこのページを参照し、用語を再定義しない。各項目はリンク先の機構ドキュメントと矛盾してはならない。
+> Related TPLs: [TPL-2005](test-perspectives/TPL-2005-keystone-terms-single-home.md) — これらの用語は単一の正典（このページ）を持つ。PRD・ロードマップ・epic・spec はこのページを参照し、用語を再定義しない。各項目はリンク先の機構ドキュメントと矛盾してはならない。
 
 ## 製品方向（keystone 由来）
 

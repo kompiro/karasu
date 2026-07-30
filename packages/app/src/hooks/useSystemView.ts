@@ -114,7 +114,7 @@ resolveIconManifest(
 /**
  * Simultaneous in-place expansions past which the UI shows a soft scoped-glance
  * nudge (#1923). Not a hard cap — the user can open more; the hint just points
- * them at Collapse all (TPL-20260510-21).
+ * them at Collapse all (TPL-1223).
  */
 const EXPANSION_OVERLOAD_THRESHOLD = 4;
 
@@ -241,7 +241,7 @@ export function useSystemView(
   // the on-SVG ⊕/⊖ `data-expand-node` control. Phase 2 lifts the single-expand
   // cap so several can be open at once (true mixed-LOD); the scoped-glance guard
   // is soft — "Collapse all" clears them and a warning fires when many are open
-  // (TPL-20260510-21). View state, like the collapse axes — the `.krs` is
+  // (TPL-1223). View state, like the collapse axes — the `.krs` is
   // untouched.
   const expansions = useCollapsibleSet<string>();
   const expandedContainers = expansions.set;
@@ -272,7 +272,7 @@ export function useSystemView(
       collapsedCategories,
       // Off-sentinel gate (#1822 P2b): pass the axis through for any non-"none"
       // value ("team" | "boundary") so a new axis is not silently dropped. The
-      // core `groupBy` union is widened in lockstep (TPL-20260510-11);
+      // core `groupBy` union is widened in lockstep (TPL-219);
       // `groupByAxis` is the shared conversion with the export surfaces (#2033).
       groupBy: groupByAxis(groupBy),
       collapsedGroups: groupBy !== "none" ? collapsedGroups : undefined,
@@ -427,7 +427,7 @@ export function useSystemView(
     toggleGroup,
     expandedContainers,
     toggleExpand,
-    // Soft scoped-glance guard (#1923 / TPL-20260510-21): many simultaneous
+    // Soft scoped-glance guard (#1923 / TPL-1223): many simultaneous
     // expansions push past the "limit what's shown at once" principle, so the
     // UI nudges the viewer to Collapse all — no hard cap.
     expansionOverload: expandedContainers.size >= EXPANSION_OVERLOAD_THRESHOLD,

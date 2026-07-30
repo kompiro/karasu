@@ -77,7 +77,7 @@ edge[from=ApiGateway][async] { stroke-style: dashed; }  /* ApiGateway 発の asy
 `from` / `to` 以外の属性（例: `edge[source=X]`）は `unknown-edge-selector-attribute`
 エラーになる。
 
-> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+> Related TPLs: [TPL-1761](../test-perspectives/TPL-1755-edge-endpoint-selector-id-form.md)
 > （端点セレクタはビューが格納する id 形と同じ形で比較すること）。
 
 ## エッジ ID セレクタ（`edge#<id>`）
@@ -178,7 +178,7 @@ edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
 ノードの線スタイルは `border-style` のみ — `stroke-style` はノード
 シェイプには効果を持たない。
 
-> Related TPLs: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+> Related TPLs: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
 > — 本ドキュメントの `css` フェンスに宣言されたプロパティはアプリ内
 > reference データに存在しなければならず、`PROPERTY_SCHEMAS` の全エントリは
 > 本ドキュメントに記載されていなければならない（`stroke-style` は正式化前は
@@ -251,7 +251,7 @@ external サービスの `column: center` / 未指定は、サイドを自動割
 （infra kind — `database` / `queue` / `storage` — は `[external]` タグの有無に
 関わらず最下段の行に残ります。Tags を参照。）
 
-> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)
+> Related TPLs: [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)
 
 ### 適用スコープ
 
@@ -290,7 +290,7 @@ v1 では `grid-columns` による上書きはできません。
 正の整数でない値（`0` や `2.5` など）は `style-grid-columns-invalid-value` 警告とともに
 破棄され、レイアウトは自動バランスにフォールバックします。
 
-> Related TPLs: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、単一ビューが一目で把握できる解像度を保つ（バランス grid は視覚密度を一定に保つ）。
+> Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、単一ビューが一目で把握できる解像度を保つ（バランス grid は視覚密度を一定に保つ）。
 
 ### `direction` — `auto | up | down | left | right`
 

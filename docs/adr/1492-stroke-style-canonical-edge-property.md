@@ -69,7 +69,7 @@ packages/core の仕様適合性監査（#1492）で、`stroke-style` プロパ�
   ないため。正準名固定勝ちは説明が一文で済み、診断も将来足しやすい。
 - スキーマ・spec・reference データ・resolver の 4 点が揃い、#1492 の
   ゴースト状態が解消される。`PROPERTY_SCHEMAS ⊆ spec doc` の subset テスト
-  （TPL-20260511-02 拡張）で再発を防ぐ。
+  （TPL-1296 拡張）で再発を防ぐ。
 
 ## 却下した案
 

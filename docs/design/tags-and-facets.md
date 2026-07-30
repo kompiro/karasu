@@ -8,7 +8,7 @@
   - 引き金 Issue: [#2065](https://github.com/kompiro/karasu/issues/2065)（#2036 / boundary cross-layer 議論からの分離）。実測エビデンス: [#2079](https://github.com/kompiro/karasu/issues/2079)（friction 3 — 多値 facet は boundary の 1:1 で表現不能 → 本設計の facet 側へ）
   - 関連 ADR: [ADR-832](../adr/832-no-runtime-authz-modeling.md)（**本設計が refine を提案する対象** — 再検討条項を自ら持つ）、[ADR-2036](../adr/2036-scoped-boundary-declaration.md)（横断的関心事とタイポ検出を #2065 へ carve-out）、[ADR-1974](../adr/1974-boundary-declaration-syntax.md) / [ADR-1858](../adr/1858-system-view-group-by-team.md)（boundary = view 内 peer グルーピング、`boundaryIndex` 1:1 first-wins）、[ADR-834](../adr/834-security-modeling-stance.md)（脅威モデリングは companion doc — 本設計は再訪しない）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（新 notation は experimental で着地）、[ADR-999](../adr/999-legend-in-use-fallback.md)（legend の user-defined tag フォールバック）、[ADR-19](../adr/19-required-id-label-as-property.md)（id 必須 + label プロパティ — facet ブロックも従う）
   - 関連 Issue: [#2088](https://github.com/kompiro/karasu/issues/2088)（`owns` の cross-layer addressing — **facet の採用形はこれに依存しない**。下記「却下した形」）、[#2124](https://github.com/kompiro/karasu/issues/2124)（version vocabulary — v2.0 の版運用と直接交差）
-  - 関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（受理語彙の 3 状態規律 — 現状の user-defined tag は禁止された第 4 状態）、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)、[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)、[TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md)
+  - 関連 TPL: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理語彙の 3 状態規律 — 現状の user-defined tag は禁止された第 4 状態）、[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)、[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)、[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)
   - コード: `packages/core/src/parser/parser.ts:1578`（`parseTags`）、`packages/core/src/builtins/reference-data.ts:262`（builtin `TagInfo` 17 種）、`packages/core/src/resolver/warnings.ts:213`（`detectAnnotationPossibleTypos` — tag 側 typo hint の雛形）、`packages/core/src/resolver/style-resolver.ts:433`（タグセレクタ照合 — 任意タグで既に動作）
 
 ## 決定事項（2026-07-28 レビューで確定）
@@ -75,12 +75,12 @@ Issue 自身が一度目の category 訂正（`@pci` は annotation ではない
 probe 実測（2026-07-28、main `05fa294d`）: builtin 外のタグ（例 `[cache]`）は**全 kind で診断ゼロで
 受理され、何の効果も持たない**。spec の記述は client 限定の 1 文のみ（`tags-annotations.md:32`、
 backing ADR なし）で実挙動と不一致 —
-[TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) が
+[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) が
 禁ずる「受理・無効果・open set 文書化なし」の第 4 状態が現存する。一方 styling（タグセレクタは
 任意タグで generic に照合）と legend（ADR-999 フォールバック）は宣言ゼロで既に動く（実測）。
 typo 対策は annotation 側にのみあり、`[extenal]` は黙って inert な別タグになる。
 決定事項 5 のもとで、この穴の解消先は「open set としての文書化」ではなく **deprecation 診断 +
-v2.0 での閉鎖**になる（TPL-20260610-01 の 3 状態のうち**状態 (2) = unknown を警告する**で解消。
+v2.0 での閉鎖**になる（TPL-1503 の 3 状態のうち**状態 (2) = unknown を警告する**で解消。
 下記 Part A）。
 
 ### facet 側の要求の解剖 — 実例分析（認証・RBAC・PCI）
@@ -137,7 +137,7 @@ tar pit 化、動的関心事の抽象度違反）はすべて**式・属性・�
 
 facet の 1:N を設計する過程で、boundary の 1:1 の根拠を再確認した（設計議論 2026-07-28）。
 [ADR-1974](../adr/1974-boundary-declaration-syntax.md) の記録は「**開閉フレームの識別子は
-1 ノード 1 値**」（collapse は 1 stub、banded 配置は 1 band — TPL-20260624-02 の全要素ちょうど
+1 ノード 1 値**」（collapse は 1 stub、banded 配置は 1 band — TPL-1738 の全要素ちょうど
 一度配置）であり、かつ同 ADR は「**多重所属は許容し、precedence で primary を選ぶ**」と明記して
 いる。つまり 1:1 は**配置の制約であって所属の制約ではない** — 現実装はビュー機構の要件を
 `boundaryIndex` の導出に焼き付け、first-wins で残りの所属情報を捨てている（レイヤ違反）。
@@ -146,7 +146,7 @@ facet の 1:N を設計する過程で、boundary の 1:1 の根拠を再確認�
 
 | ビュー | 解決 |
 | --- | --- |
-| banded Group-by（boundary の描画モード） | **理想 = 多重所属ノードを、宣言されている複数の boundary フレームが重なって包含するように描画する**（Euler 図的な frame geometry。ノードの配置は 1 回のまま — TPL-20260624-02 — で、フレーム側が重なる）。**first-wins の primary 配置は理想ではなく暫定** — follow-up 実装まで今日の見た目を維持するだけの位置づけ。実現には frame の disjoint 前提（`buildGroupFrames`「frames are disjoint by construction」）の再設計と、collapse の二重性（片方の boundary を畳んだとき多重所属ノードをどう扱うか）の設計が要り、**(B4) の follow-up Issue の scope に含める** |
+| banded Group-by（boundary の描画モード） | **理想 = 多重所属ノードを、宣言されている複数の boundary フレームが重なって包含するように描画する**（Euler 図的な frame geometry。ノードの配置は 1 回のまま — TPL-1738 — で、フレーム側が重なる）。**first-wins の primary 配置は理想ではなく暫定** — follow-up 実装まで今日の見た目を維持するだけの位置づけ。実現には frame の disjoint 前提（`buildGroupFrames`「frames are disjoint by construction」）の再設計と、collapse の二重性（片方の boundary を畳んだとき多重所属ノードをどう扱うか）の設計が要り、**(B4) の follow-up Issue の scope に含める** |
 | overlay（facet の描画モード） | full membership（複数 facet の重畳。色・重ねの詳細は (B3)） |
 | metadata パネル / legend / 監査・export | full membership |
 
@@ -190,7 +190,7 @@ near-miss typo hint）は決定事項 5 により**廃案** — open set を正�
    あっても v2.0 で不受理になる事実は変わらないため、deprecation は無条件に告知する。
 2. **spec**: `tags-annotations.md`（+ ja）の user-defined 言及（client 限定の 1 文 `:32` を含む）を
    「v1.x では受理されるが **deprecated**。v2.0 でツール語彙のみになる」に置換。register の確定
-   （tag = アーキテクチャの意味 / annotation = lifecycle）を明文化。TPL-20260610-01 の第 4 状態は
+   （tag = アーキテクチャの意味 / annotation = lifecycle）を明文化。TPL-1503 の第 4 状態は
    **状態 (2)（unknown を警告）で解消**し、双方向 back-ref を同 PR で。
 3. **register ガイド**: `tags-annotations.md` + notation cookbook に**四分法**を明記 —
    boundary = view 内 peer グルーピング（v2.0 core 候補） / annotation = lifecycle（ツール語彙） /
@@ -198,7 +198,7 @@ near-miss typo hint）は決定事項 5 により**廃案** — open set を正�
    PCI と認証を例に分解（scope 集合・規制所属 → facet、アーキタイプ → tag、ルール内容 →
    prose + link）を示す。
 4. **v2.0: 閉鎖** — 語彙としては閉じるが、enforcement は **warning に留める**（(B6) で確定 —
-   parse は通り、効果を持たず、警告される。TPL-20260610-01 の状態 (2) を v2.0 でも維持し、
+   parse は通り、効果を持たず、警告される。TPL-1503 の状態 (2) を v2.0 でも維持し、
    既存ファイルを parse error で壊さない）。`.krs.style` の任意名タグ / annotation セレクタは
    **facet セレクタへ移行**（(B8) で確定 — v1.x で deprecation 告知、v2.0 で無効化。移行経路は
    facet 宣言 + `facets` 付与 + セレクタ書き換え）。
@@ -250,13 +250,13 @@ system Shop {
   facet 宣言（平坦な id 名前空間）であって、ノード id ではない。boundary `contains` / `owns` が
   抱える cross-layer のノード addressing（#2036 / #2088）はこの形には**原理的に発生しない**。
 - **宣言必須 + typo 検出が閉じる**: 未宣言の facet への参照 `facets pcl` は warning
-  `facet-not-declared`（merged 空間で検証 — TPL-20260718-02。multi-file では facet 宣言と参照が
+  `facet-not-declared`（merged 空間で検証 — TPL-2032。multi-file では facet 宣言と参照が
   別ファイルにありうる）。宣言集合が「正」を与えるため、annotation / tag の near-miss hint と
   違い **user-defined 同士の typo も検出できる**。同一 id の facet 宣言の重複は error
   `duplicate-facet-id`（`duplicate-team-id` の雛形）。
 - **多重所属（1:N）**: `facetIndex` は `Map<nodeId, Set<facetId>>`。多重所属は正常状態であり
   診断対象ではない（同一要素の `facets` に同じ id を二度書いた場合のみ冪等にマージ）。
-- **効果（TPL-20260610-01 — inert 禁止。ただし既定描画は不変）**:
+- **効果（TPL-1503 — inert 禁止。ただし既定描画は不変）**:
   1. **overlay 強調**（opt-in） — facet を選択すると所属要素を強調（非所属を減光）。**v1 から
      複数 facet の同時表示**（multi-select + facet ごとの色割り当て。多重所属要素の表現 —
      縁取りの重ね等 — は実装 Issue で詰める）。per-element の塗りなので **Group-by 状態と直交して
@@ -269,7 +269,7 @@ system Shop {
   3. **legend 掲出** — 宣言の `label` で凡例に出せる（ADR-999 の機構）。
   4. **概観** — 「facet pii の所属要素一覧」は model から**導出**する（app 詳細パネル・将来の
      監査レポート）。所属が要素側に分散する trade-off はこの導出ビューで受ける。
-- fmt round-trip（TPL-20260510-02 — 宣言ブロックは top-level 配列由来の網羅性ガード、`facets`
+- fmt round-trip（TPL-1101 — 宣言ブロックは top-level 配列由来の網羅性ガード、`facets`
   プロパティは per-node の round-trip テスト）、import-resolver merge、diagnostics/i18n 一式は
   boundary slice A の実装パターンを踏襲。
 
@@ -340,14 +340,14 @@ user-defined tag にツールが与える効果はゼロ。したがって v2.0 
 
 ## Related TPLs
 
-- [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) —
+- [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) —
   Part A は現存する第 4 状態の解消。Part B の facet も inert 禁止（overlay + legend + 概観）。
-- [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) —
+- [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) —
   `tag-possible-typo` / `facet-not-declared` は事実 register（info / warning）。
-- [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — `facet` 宣言
+- [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `facet` 宣言
   （top-level）と `facets` プロパティ（per-node — **ネスト構文なので top-level 配列由来の
   ガードでは守れない**）の両方が fmt round-trip 対象。
-- [TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md) —
+- [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) —
   `facet-not-declared` の存在検証は merged 空間で（宣言と参照は別ファイルにありうる）。
 
 ## 現時点の方針

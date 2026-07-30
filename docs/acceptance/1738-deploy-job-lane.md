@@ -19,7 +19,7 @@ containers stay on the DAG; `store` already sinks to the DAG bottom and is
 untouched. Decision: [ADR-1738](../adr/1738-deploy-kind-band-job-lane.md).
 
 Related: ADR-392 (Longest Path Layering), ADR-29 (deploy
-design), ADR-1658 (service→infra edges), [TPL-20260624-01].
+design), ADR-1658 (service→infra edges), [TPL-1680].
 
 ## AC-1: job-only containers form one band below the DAG, above unclassified (automated)
 

@@ -3,7 +3,7 @@
 - **日付**: 2026-06-11
 - **関連 Issue**: [#1513](https://github.com/kompiro/karasu/issues/1513)
 - **関連 ADR**: [ADR-1513](../adr/1513-legend-drill-down-scope.md)
-- **関連 TPL**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md), [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+- **関連 TPL**: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
 - **対象ファイル**: `packages/core/src/parser/parser.ts`,
   `packages/core/src/types/ast.ts`, `packages/core/src/renderer/svg-builder.ts`,
   `packages/core/src/renderer/{svg-renderer,drill-down-svg,all-layers-svg}.ts`,
@@ -46,7 +46,7 @@
 
   > ✅ Automated — `legend-footer.test.ts` › `keeps depth scopes out of the deploy view` / `keeps depth scopes out of the org view`
 
-### AC-3: Phase 0 配管とパリティ（TPL-20260510-11）
+### AC-3: Phase 0 配管とパリティ（TPL-219）
 
 - [x] 単一 SVG ドリルダウンの各レベルが自分の深度スコープの凡例だけを持つ
 
@@ -70,7 +70,7 @@
 
 ## 受け入れ条件（人間確認）
 
-### AC-4: app preview でのドリルダウン凡例切り替え（TPL-20260510-21）
+### AC-4: app preview でのドリルダウン凡例切り替え（TPL-1223）
 
 `examples/en/feature-samples/legend.krs` の内容を `index.krs` として app で開いて確認する。
 

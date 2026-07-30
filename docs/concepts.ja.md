@@ -285,7 +285,7 @@ position を取り続け、議論し直し続ける」立場に追い込まれ�
 「外部の規律が推奨する shape を karasu の語彙に固定しない。ただし基礎となる事実は
 モデル化できるようにしておく」という同じ判断の現れである。
 
-> Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`
+> Related TPLs: TPL-1386 — `Diagnostic register reflects "fact vs. style"`
 
 > Related ADR topics: `styling`
 
@@ -332,7 +332,7 @@ position を取り続け、議論し直し続ける」立場に追い込まれ�
 しない**。これは非目標と同じ escape hatch である: モデルを構造の高度に保ち、実装の
 詳細はアーキテクチャに触れずに変われる場所に置く。
 
-> Related TPLs: [TPL-20260616-03](test-perspectives/TPL-20260616-03-client-vocabulary-structure-not-implementation.md) — `client` の語彙はアクセスパスの構造を名指し、実装の詳細は名指さない。
+> Related TPLs: [TPL-1625](test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md) — `client` の語彙はアクセスパスの構造を名指し、実装の詳細は名指さない。
 
 > Related ADR topics: _(none — boundary clarification section; the client kind itself is covered by ADR-823)_
 
@@ -505,7 +505,7 @@ hint view があるとすればそれはその前提の上に乗るものであ�
 ビュー内の視覚的密度を一定に保つべきである。
 （これは balanced-grid な兄弟レイアウトの概念的な裏付けである — Issue #1737 参照。）
 
-> Related TPLs: [TPL-20260510-21](test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、drill-down を first-class に保つ（単一ビューの解像度・視覚密度もこの原則に含まれる）。
+> Related TPLs: [TPL-1223](test-perspectives/TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、drill-down を first-class に保つ（単一ビューの解像度・視覚密度もこの原則に含まれる）。
 
 #### karasu はシステムの構造を「論理・物理・組織」の三つの面で捉える
 
@@ -642,7 +642,7 @@ karasu モデルの中で物理スキーマを **設計する**（entity から 
 引き続き対象外とする。カラム設計・インデックス設計には ER モデリング専用の
 ツールを使うべきである。
 
-> Related TPLs: [TPL-20260711-01](test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。この線を保つ。
+> Related TPLs: [TPL-1882](test-perspectives/TPL-1882-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。この線を保つ。
 
 #### C4 互換は目標ではない
 

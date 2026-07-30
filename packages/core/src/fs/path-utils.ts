@@ -36,7 +36,7 @@ export function normalizePath(p: string): string {
  * バックスラッシュ区切り・`..` セグメントを含むパスを拒否する。
  * `..` セグメントの全面拒否は normalizePath が root を脱出できる経路の
  * 厳密な上位集合なので、これを通れば `normalizePath(root + "/" + p)` は
- * 必ず root 配下に留まる（TPL-20260510-17）。
+ * 必ず root 配下に留まる（TPL-168）。
  *
  * 文字列レベルの検証であり、symlink は解決しない。実 OS パスを扱う場合は
  * resolve + startsWith の境界チェックを併用すること。

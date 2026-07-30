@@ -9,7 +9,7 @@ import { boundaryScopeKey, type KrsNode } from "../types/ast.js";
 // ADR-2076), but that one derives its expectations from `KrsFile`'s array-valued
 // keys and therefore cannot see a construct that hangs off a *node*. Scoped
 // boundaries are exactly that, so without this file `fmt` could go back to
-// silently deleting them — the failure TPL-20260510-02 exists to prevent.
+// silently deleting them — the failure TPL-1101 exists to prevent.
 
 /** Membership of every scope, flattened, so two parses can be compared directly. */
 function membership(source: string): Record<string, Record<string, string>> {

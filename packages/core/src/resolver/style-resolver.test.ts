@@ -595,7 +595,7 @@ describe("resolveStyles", () => {
     expect(edgeStyle.strokeStyle).toBe("dashed");
   });
 
-  // TPL-20260510-07 item 3: a derivation-time tag (`[implicit]`) and the
+  // TPL-510 item 3: a derivation-time tag (`[implicit]`) and the
   // edge's `kind` (sync / async) are orthogonal style dimensions. The
   // visual contract from #510 is that an implicit async edge renders
   // dashed-and-amber while an implicit sync edge renders solid-and-amber
@@ -604,7 +604,7 @@ describe("resolveStyles", () => {
   // for `edge[implicit]` existence), but nothing pins the *coexistence*
   // on a single edge. A future cascade refactor could break the
   // orthogonality and no test would notice.
-  describe("[implicit] + kind coexistence (TPL-07 item 3 / #510)", () => {
+  describe("[implicit] + kind coexistence (TPL-510 item 3 / #510)", () => {
     const IMPLICIT_AMBER = "#F59E0B";
 
     /**

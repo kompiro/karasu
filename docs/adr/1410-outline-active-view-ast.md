@@ -21,8 +21,8 @@ assumptions:
   - Issue #1410 — Switch the Outline view to the deploy/org AST when those views are active
   - 関連 ADR: [ADR-1408](1408-app-outline-view.md) — Outline ビューの導入
   - 関連 TPL:
-    - [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md) — 同一モデルを複数サーフェスに出すとき表示は一致させる
-    - [TPL-20260510-08](../test-perspectives/TPL-20260510-08-derived-state-staleness.md) — 派生 view の memoization は source state の変化次元すべてを key に含める
+    - [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md) — 同一モデルを複数サーフェスに出すとき表示は一致させる
+    - [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md) — 派生 view の memoization は source state の変化次元すべてを key に含める
   - コード: `packages/app/src/components/OutlineView.tsx`、
     `packages/app/src/components/outline-adapters.ts`、
     `packages/app/src/components/AppShell.tsx`、
@@ -65,7 +65,7 @@ presentational な `OutlineView` をビュー非依存の統一モデル `Outlin
   select / activate ハンドラに閉じ込められる。
 - **派生 state の正しい memoization**: Outline の source AST は `activeView`
   依存の派生 state になるため、`outlineNodes` の `useMemo` は `activeView` と
-  各 source AST を key に含める（TPL-20260510-08）。
+  各 source AST を key に含める（TPL-1032）。
 - **core API は追加のみ**: `deployTree` フィールドの追加で、既存 `deployBlocks`
   consumer（block selector・NodeDetailPanel）は無影響。
 - **deploy は全ブロックを俯瞰**: deploy 図は `selectedDeployBlockId` で 1

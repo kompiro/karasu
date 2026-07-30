@@ -10,7 +10,7 @@ scope:
 assumptions:
   - "file: docs/guide/adr-permalinks.md"
   - "file: docs/guide/adr-permalinks.ja.md"
-  - "file: docs/test-perspectives/TPL-20260630-03-adr-permalink-records-source.md"
+  - "file: docs/test-perspectives/TPL-1829-adr-permalink-records-source.md"
   - "symbol: packages/app/src/utils/inline-share.ts :: buildShareUrls"
 permalink:
   # First dogfood of this convention (worked example of a deep permalink),
@@ -29,7 +29,7 @@ permalink:
   - 実装 PR: [#1850](https://github.com/kompiro/karasu/pull/1850)（Design Doc PR: [#1836](https://github.com/kompiro/karasu/pull/1836)）
   - 関連 ADR: [ADR-1801](1801-karasu-nest-ogp-share-page.md)（`/s?s=` OGP 共有ページ）/ [ADR-1783](1783-karasu-nest-hosted-preview.md)（karasu-nest stateless）
   - L1 guide: `docs/guide/adr-permalinks.md`（+ `.ja.md`） / L2 規約: `.claude/rules/adr.md`
-  - 関連 TPL: [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)（permalink は record ではなく pointer）
+  - 関連 TPL: [TPL-1829](../test-perspectives/TPL-1829-adr-permalink-records-source.md)（permalink は record ではなく pointer）
   - 受け入れ条件: `docs/acceptance/adr-permalink-convention.md`
   - 前方リンク: #1830（`permalink:` の検証）・#1827/#1833（deep target エンコード）・#1828（repo-backed / source の ref-pin）
 
@@ -82,7 +82,7 @@ permalink:
   adr-tools 採用 repo に限定する。ユーザーは adr-tools 非採用でも L1 を見て自分の
   ツールに合わせられる。
 - **記録は `.krs` source・permalink は pointer** — 構造の SoT は in-repo `.krs`
-  （[TPL-20260510-18](../test-perspectives/TPL-20260510-18-text-as-single-source-of-truth.md)）。
+  （[TPL-1207](../test-perspectives/TPL-1207-text-as-single-source-of-truth.md)）。
   `source` を**必須**にすることで、taka が消えても構造を repo から復元でき、shortener を
   単一障害点にしない。point-in-time の厳密な immutability は #1828（ref-pin）に切り分け、
   near-term では「ADR の commit 時点の `.krs`」と解釈する。

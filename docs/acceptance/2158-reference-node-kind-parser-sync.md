@@ -8,7 +8,7 @@
   - `packages/core/src/parser/parser.ts`（`LOGICAL_KEYWORDS` の export）
   - `docs/spec/syntax.md`, `docs/spec/syntax.ja.md`（生成表）
 - **関連 ADR**: [ADR-1296](../adr/1296-reference-data-single-source.md)（reference-data.ts が単一の真実の源）、[ADR-14](../adr/14-organization-diagram.md)（`team` プロパティ廃止）、[ADR-1870](../adr/1870-domain-entity-modeling.md)（`entity` kind）
-- **関連 TPL**: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md)、[TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)、[TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md)
+- **関連 TPL**: [TPL-2158](../test-perspectives/TPL-2158-catalog-fenced-against-parser-not-generated-doc.md)、[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)、[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md)
 
 ## 受け入れ条件
 

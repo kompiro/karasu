@@ -87,7 +87,7 @@ jobs:
       # `source` .krs exists + deep `#krs-<view>-<id>` anchor resolves) — an
       # ADR↔.krs consistency check. It runs here in the already-Required
       # `Check` job (no path filter) so it fires on the .krs-side changes (a
-      # rename) that a `docs/adr/**` filter would skip (TPL-20260520-02). The
+      # rename) that a `docs/adr/**` filter would skip (TPL-1480). The
       # `krs` resolver imports the built `@karasu-tools/core`, so this step
       # must come *after* `Build (core)`. Issue #1830 / @kompiro/adr-tools#17.
       - name: Check ADR permalinks against the working tree
@@ -101,6 +101,6 @@ jobs:
 
       # The vscode extension isn't part of `pnpm run build`. Build it here so
       # its `postbuild` assertion (out/server.js bundled) runs on every PR,
-      # not only behind the `vscode-e2e` label. See Issue #1272 / TPL-20260510-15.
+      # not only behind the `vscode-e2e` label. See Issue #1272 / TPL-1024.
       - name: Build (vscode)
         run: pnpm --filter karasu-vscode run build

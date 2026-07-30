@@ -153,7 +153,7 @@ describe("compileSystemDiff() with groupBy: team (#1873 Gap 1)", () => {
   // such a node could not resolve its former team and landed in the trailing
   // un-grouped band. #1886 merges the before ∪ after ownerIndex (after wins), so
   // the removed node now resolves its former team and renders INSIDE that team's
-  // frame. This fences both TPL-20260624-02 totality (rendered exactly once with
+  // frame. This fences both TPL-1738 totality (rendered exactly once with
   // its removed state) AND the #1886 placement decision.
   it("places a removed team-owned node inside its former team frame in diff mode (#1886)", async () => {
     const withLegacyOrg = `
@@ -256,7 +256,7 @@ organization Org {
 
   // Decision 2 (#1886): a collapsed team's re-targeted stub edge aggregates
   // one-or-more original cross-group edges — it must keep its diff decoration,
-  // re-keyed onto the stub id (TPL-20260712-01). Single unambiguous state carries
+  // re-keyed onto the stub id (TPL-1886). Single unambiguous state carries
   // through; a mix folds to `changed`.
   it("keeps single-state diff decoration on a collapsed team's stub edge (#1886)", async () => {
     // Catalog -> Wallet is an ADDED cross-group edge (catalog → payments). When
@@ -506,7 +506,7 @@ describe("compileSystemDiff() with groupBy: boundary — scoped backfill (#2036)
   it("frames a removed scoped-boundary member in its former frame, not the trailing band", async () => {
     const svg = await scopedDiffSvg();
 
-    // Rendered once, still marked removed (TPL-20260624-02 totality).
+    // Rendered once, still marked removed (TPL-1738 totality).
     expect(svg.match(/data-node-id="Wallet"/g)?.length).toBe(1);
     expect(svg).toMatch(/data-node-id="Wallet"[^>]*data-diff-state="removed"/);
 

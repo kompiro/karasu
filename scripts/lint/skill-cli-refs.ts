@@ -13,7 +13,7 @@ import { join, relative, resolve } from "node:path";
 //     wrangler` shipped (#1948).
 //
 // This is the AGENT-facing twin of the user-facing `app-shortcut-docs-sync`
-// guard / TPL-20260623-01. It closes the ENUMERABLE half of the drift only, and
+// guard / TPL-1716. It closes the ENUMERABLE half of the drift only, and
 // deliberately so — read the two limits below before trusting it.
 //
 // WHAT THIS CATCHES: a skill referencing a `karasu <cmd>` that is not a

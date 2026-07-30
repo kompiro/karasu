@@ -906,7 +906,7 @@ system S {
 
   it("keeps the infra/external tier split in icon displayMode (#1724)", () => {
     // AT-1724 AC-4: the tier structure must hold in *both* displayModes
-    // (TPL-20260623-04 / TPL-20260510-06). Same fixture as the shape-mode
+    // (TPL-1736 / TPL-1001). Same fixture as the shape-mode
     // fan-out test above — icon mode swaps card sizes and gaps, but must not
     // change which row/band a node lands in.
     const slice = parseAndExtract(`
@@ -1075,7 +1075,7 @@ system S {
     // row. `systemTier` checks the infra kind before the `external` tag. A
     // `database [external]` is a modeling contradiction (an in-boundary store
     // tagged as another boundary); we keep it on the infra row. See
-    // TPL-20260519-02 (shared-vocabulary dual representation).
+    // TPL-1415 (shared-vocabulary dual representation).
     const slice = parseAndExtract(`
 system S {
   service Backend {}

@@ -84,14 +84,14 @@ parse 時に `boundaryIndex: Map<string, string>`（node id → boundary id）�
 
 - **1:1**（node はちょうど 1 boundary に属する）。開閉フレームの単一値要件を最初から満たす。
 - **多重所属は許容し、precedence で primary を選ぶ。** ただし boundary には `@migration_target` / `@deprecated` のような組織アノテーションが意味を持たないため、precedence は **宣言順の first-wins**（最初に `contains` した boundary が勝つ）に単純化する。`ownerIndex` の `migrationPriority` は流用せず tie-break だけを踏襲する。
-- **重複は error ではなく info 診断** `duplicate-boundary-assignment`（`duplicate-owner-assignment` のミラー。params `{ nodeId, existingBoundary }`）。「事実を述べ、判断は読み手に委ねる」register（[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)）に従う。
+- **重複は error ではなく info 診断** `duplicate-boundary-assignment`（`duplicate-owner-assignment` のミラー。params `{ nodeId, existingBoundary }`）。「事実を述べ、判断は読み手に委ねる」register（[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)）に従う。
 - **存在しない id を指す `contains` のみ inert** とし、`contains-target-not-found`（warning）で観測する。kind による制限は設けない（`owns` と違い任意 id を受ける）。
 
 ### 決定 3 — 軸の配線（team 軸への完全パリティ）
 
 Group by セレクタを **排他**（none / team / **boundary**）に拡張する（[ADR-1858](1858-system-view-group-by-team.md) 決定 3「共存 = 排他」を踏襲）。既存 team 軸の機構をそのまま再利用し、`groupIdOf` が `groupBy` に応じて `ownerIndex` か `boundaryIndex` を選ぶ。
 
-軸を通す先は core（`groupBy?: "team"` → `"team" | "boundary"`。layout / svg-renderer / all-layers / drill-down / multi-system layout）と app（`GroupByMode` への `"boundary"` 追加、**off-sentinel gate の拡張**、ドロップダウンの選択肢）。CLI は現状 `groupBy` の call site が無く、P2b でも露出を追加しない。**一箇所でも漏らすと軸が黙って落ちる**ため、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（parallel-function-parity）を柵にする。
+軸を通す先は core（`groupBy?: "team"` → `"team" | "boundary"`。layout / svg-renderer / all-layers / drill-down / multi-system layout）と app（`GroupByMode` への `"boundary"` 追加、**off-sentinel gate の拡張**、ドロップダウンの選択肢）。CLI は現状 `groupBy` の call site が無く、P2b でも露出を追加しない。**一箇所でも漏らすと軸が黙って落ちる**ため、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（parallel-function-parity）を柵にする。
 
 **team 軸と boundary 軸の関係は独立**である。あるノードが team A に `owns` され boundary B に `contains` されることは普通にあり、「Group by: team」では A 枠、「Group by: boundary」では B 枠に入る（排他セレクタなので枠は同時に重ならない）。組織と意味的クラスタが一致しないことこそ P2b の動機であり、これは意図した挙動である。
 
@@ -117,7 +117,7 @@ Group by セレクタを **排他**（none / team / **boundary**）に拡張す�
 - **team 軸の穴を、team 軸を壊さずに埋められる。** 排他セレクタなので既存の Group by: team の挙動は不変で、boundary を宣言しないモデルは現行挙動にそのまま退化する。
 - **`ownerIndex` のミラーにすることで、precedence・診断・折り畳み・ルーティングの既存の正しさがそのまま継承される。** 新しい不変条件をほとんど発明していない。
 - **experimental 着地により、構文の恒久コミットを corpus evidence の後ろに置ける。** [ADR-1820](1820-notation-promotion-gate.md) の既定（experimental 据え置き・証拠源は karasu-nest corpus）に従い、価値検証と互換約束を分離した。
-- **柵は既存 TPL で足りる。** 本件の失敗クラス（新軸を全 call site に通さないと黙って落ちる／受理された語彙が枠を生まない）は [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) と [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) が既に覆うため、新規 proactive TPL は起こさず spec 節から back-ref する方針とした（`docs/spec/syntax.md` の boundary 節末尾の `> Related TPLs:` がこれにあたる）。
+- **柵は既存 TPL で足りる。** 本件の失敗クラス（新軸を全 call site に通さないと黙って落ちる／受理された語彙が枠を生まない）は [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) と [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) が既に覆うため、新規 proactive TPL は起こさず spec 節から back-ref する方針とした（`docs/spec/syntax.md` の boundary 節末尾の `> Related TPLs:` がこれにあたる）。
 
 ## 却下した案
 

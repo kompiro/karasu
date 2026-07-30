@@ -4,7 +4,7 @@
 - **Issue**: #1821（親 Epic #1817 comprehension）
 - **PR**: [#1838](https://github.com/kompiro/karasu/pull/1838)
 - **設計**: [docs/design/layer-toggles.md](../design/layer-toggles.md)
-- **Related TPLs**: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)（全描画面の点検）, [TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md)（暗黙フィルタの legend/detail 点検）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（段跨ぎ edge 貫通）, [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（`.krs` 不変）
+- **Related TPLs**: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（全描画面の点検）, [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md)（暗黙フィルタの legend/detail 点検）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（段跨ぎ edge 貫通）, [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（`.krs` 不変）
 - **対象**: `packages/core/src/renderer/category-collapse.ts` / `svg-renderer.ts` / `layout.ts`、`packages/app`（`useSystemView` / `PreviewPane` ほか）
 
 ## 概要
@@ -37,7 +37,7 @@ system view の **external**（`[external]` service）と **infra**（database/q
 - [x] `[data-collapse-category="infra"|"external"]` のクリックで `onCategoryToggle(category)` が発火する
 - [x] 未知のカテゴリ値はトグルしない
 
-### AC-4: 非破壊・cross-surface（TPL-20260510-02 / -06）
+### AC-4: 非破壊・cross-surface（TPL-1101 / -06）
 
 - [x] collapse 状態は app の view-state で、`.krs` を変更しない（round-trip 保持）
 > ✅ Automated — collapse は compile option のみで AST/シリアライズに触れない（`category-collapse.test.ts` が SVG 差分のみを確認）
@@ -57,7 +57,7 @@ system view の **external**（`[external]` service）と **infra**（database/q
 - [ ] **expand**: ⊕ stub をクリックすると元に戻る
 - [ ] **独立**: infra と external を別々に畳める
 - [ ] **scope**: deploy / org view にはカテゴリ affordance が出ない（system view 限定）
-- [ ] **legend**: 畳んだカテゴリが legend footer から落ちる（TPL-20260510-05）
+- [ ] **legend**: 畳んだカテゴリが legend footer から落ちる（TPL-999）
 
 ## 検証方法
 

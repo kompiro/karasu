@@ -23,7 +23,7 @@ assumptions:
   - Issue [#1821](https://github.com/kompiro/karasu/issues/1821)（親 Epic [#1817](https://github.com/kompiro/karasu/issues/1817) comprehension）
   - 実装 PR [#1838](https://github.com/kompiro/karasu/pull/1838)
   - 関連: [ADR-1724](1724-system-view-infra-external-tier-split.md)（infra/external のティア分割 — 本 ADR の `systemTier` 判定を再利用）, [ADR-1728](1728-external-on-sides-layout.md)（external のサイド列配置）, [ADR-1783](1783-karasu-nest-hosted-preview.md)（nest — AI 生成図の読み手）
-  - Related TPLs: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md), [TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md), [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md), [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)
+  - Related TPLs: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md), [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md), [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md), [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)
   - AT: [AT-1821](../acceptance/1821-layer-toggle-external-infra.md)
 
 ## 背景
@@ -43,8 +43,8 @@ system view の **external**（`[external]` service）と **infra**（database/q
 
 - **既存パターンの流用で de-risk**: 「core が `data-*` affordance を描き、app が click delegation でトグルして再描画」は org tree / deploy・team ボタンで確立済み。
 - **pre-layout で stub 化**するので reflow し穴が残らない。stub にすることで「畳まれた中身がそこにある」と一目で分かり silently 消えない。
-- **判定を `systemTier` に一本化**することで、infra kind と `[external]` タグの二重表現（[TPL-20260519-02]）が drift しない。
-- **`interactive` ゲート**で、対話用クロームが export/`/render`/CLI/guide の静的 SVG を汚さない（[TPL-20260510-06] の cross-surface 一貫性）。
+- **判定を `systemTier` に一本化**することで、infra kind と `[external]` タグの二重表現（[TPL-1415]）が drift しない。
+- **`interactive` ゲート**で、対話用クロームが export/`/render`/CLI/guide の静的 SVG を汚さない（[TPL-1001] の cross-surface 一貫性）。
 
 ## 却下した案
 

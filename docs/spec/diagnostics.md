@@ -38,7 +38,7 @@ A diagnostic has a **severity**: `error`, `warning`, or `info`.
 - `info` — a **fact**, not a defect. karasu surfaces something true about the
   model that an external school of thought may call a smell (a shared database,
   a dispersed domain), without asserting it is wrong. This is the *fact vs.
-  style* register split — see [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md).
+  style* register split — see [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md).
 
 karasu also follows **warn-don't-error** for unresolved references (spec §S6):
 an unresolved relation is dropped while the node it points from is preserved,
@@ -246,7 +246,7 @@ Every member of `DiagnosticParamsByCode` and `WarningKind` (in
 (`packages/core/src/types/diagnostics-catalog.test.ts`) asserts this in both
 directions, so the catalog cannot silently drift from the emitted codes. The
 discipline behind it is recorded as
-[TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md).
+[TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md).
 
-> Related TPLs: [TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md) (catalog ↔ code completeness), [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) (fact vs style register), [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) (spec-promised diagnostics are implemented), [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) (spec ↔ source-of-truth sync).
+> Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md) (catalog ↔ code completeness), [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) (fact vs style register), [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) (spec-promised diagnostics are implemented), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) (spec ↔ source-of-truth sync).
 </content>

@@ -5,7 +5,7 @@ import { StyleParser, computeSpecificity } from "../parser/style-parser.js";
 // `REFERENCE_DATA` is the single source of truth behind `getReference()`.
 // These tests guard the invariant the adapter relies on: every entry
 // carries a non-empty description in *both* locales (the failure mode
-// TPL-20260511-02 calls out — one locale silently `undefined`).
+// TPL-1296 calls out — one locale silently `undefined`).
 
 const LOCALES = ["en", "ja"] as const;
 

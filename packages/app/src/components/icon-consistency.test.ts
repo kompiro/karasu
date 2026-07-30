@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ICON_THEME_STYLE_SOURCE } from "@karasu-tools/core";
 import { KIND_TO_ICON_NAME } from "./NodeDetailPanel.js";
 
-// Cross-surface icon source consistency (TPL-20260510-05 / -06 item 4).
+// Cross-surface icon source consistency (TPL-999 / -06 item 4).
 //
 // Two independent mappings live in the codebase:
 //   1. `ICON_THEME_STYLE_SOURCE` in @karasu-tools/core — the .krs.style
@@ -45,7 +45,7 @@ function parseRendererKindToIcon(source: string): Record<string, string> {
 
 const RENDERER_KIND_TO_ICON = parseRendererKindToIcon(ICON_THEME_STYLE_SOURCE);
 
-describe("icon source consistency between NodeDetailPanel and icon-card renderer (TPL-05 / -06)", () => {
+describe("icon source consistency between NodeDetailPanel and icon-card renderer (TPL-999 / TPL-1001)", () => {
   it("parser sanity: extracts the representative kinds the test depends on", () => {
     // If the format of ICON_THEME_STYLE_SOURCE changes (e.g. spacing,
     // quoting) and the regex stops matching, the rest of this suite would

@@ -6,7 +6,7 @@
   - `packages/core/src/formatter/formatter.ts`
   - `packages/core/src/formatter/formatter-top-level-coverage.test.ts`（新規）
   - `packages/cli/src/fmt.test.ts`
-- **関連**: ADR-2076（formatter の top-level 網羅を型と test で強制する）、ADR-438（`.krs` フォーマッター）、ADR-702（トップレベル infra ブロック）、TPL-20260510-02（round-trip 保証）
+- **関連**: ADR-2076（formatter の top-level 網羅を型と test で強制する）、ADR-438（`.krs` フォーマッター）、ADR-702（トップレベル infra ブロック）、TPL-1101（round-trip 保証）
 
 ## 受け入れ条件
 
@@ -23,7 +23,7 @@
   > ✅ Automated — `has a fixture for every array-valued KrsFile key`（`createEmptyKrsFile()` から期待集合を導出）。型レベルでも fixture 表の `satisfies Record<ArrayKeys<KrsFile>, string>` で `pnpm typecheck` が落ちる（両ガードとも負のテストで空振りしないことを確認済み）
 
 - [x] 各 top-level 構文で `parse(format(x))` が `parse(x)` と構造的に等価（loc を除く）
-  > ✅ Automated — 各 fixture で `stripLocations` 比較（TPL-20260510-02 のチェックリスト）
+  > ✅ Automated — 各 fixture で `stripLocations` 比較（TPL-1101 のチェックリスト）
 
 - [x] 各 top-level 構文で `format(format(x)) === format(x)`（idempotency）
   > ✅ Automated — 各 fixture で二重適用を比較

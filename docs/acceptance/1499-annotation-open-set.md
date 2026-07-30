@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-12
 - **関連 Issue**: [#1499](https://github.com/kompiro/karasu/issues/1499)（spec 適合性監査 [#1502](https://github.com/kompiro/karasu/issues/1502) 由来）
-- **関連 TPL**: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
+- **関連 TPL**: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)
 - **対象ファイル**: `packages/core/src/resolver/warnings.ts`,
   `packages/core/src/types/warnings.ts`,
   `packages/i18n/src/{en,ja,types,render-warning}.ts`,

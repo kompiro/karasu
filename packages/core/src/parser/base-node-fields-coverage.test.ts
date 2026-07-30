@@ -1,4 +1,4 @@
-// Meta-test for TPL-20260510-12 (AST / parser / renderer agreement) — G12-1.
+// Meta-test for TPL-74 (AST / parser / renderer agreement) — G12-1.
 //
 // Enforces that every user-facing field declared on BaseNodeFields is preserved
 // by the parser for every node kind that extends it. The retrospective origin
@@ -225,7 +225,7 @@ function expectedFor(field: UserFacingField): unknown {
 
 // ─── Tests ─────────────────────────────────────────────────────────────────
 
-describe("BaseNodeFields × kind coverage (TPL-20260510-12 / G12-1)", () => {
+describe("BaseNodeFields × kind coverage (TPL-74 / G12-1)", () => {
   for (const fixture of KIND_FIXTURES) {
     describe(`kind=${fixture.kind}`, () => {
       it("defaults are correct when no user-facing field is set", () => {

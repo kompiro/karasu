@@ -42,7 +42,7 @@ domain レベルでは usecase→resource の `R`/`W` エッジラベルなど�
 
 設計時のインベントリで、単一 SVG 系のレンダーパス（drill-down / all-layers /
 all-views）には legend がそもそも配管されていないことが分かった
-（TPL-20260510-11 の言う並列レンダーパス間 drift の実例）。
+（TPL-219 の言う並列レンダーパス間 drift の実例）。
 
 さらに実装中に設計時の現状認識の誤りが見つかった: 対話的プレビュー経路
 （`compile()` + `viewPath`）は `viewScope: "system"` をハードコードしており、
@@ -82,11 +82,11 @@ legend の view-scope 語彙に論理ドリルダウン深度 `service` / `domai
   が view slice から導出（root 一覧 = `system`、drill root の kind = 深度）
 - legend 配管は `buildLegendRenderOptions`（`all-layers-svg.ts`）に集約し、
   全ビルダーが spread する。新しいレンダーパスが配管を取りこぼす drift
-  （TPL-20260510-11）を構造的に防ぐ
+  （TPL-219）を構造的に防ぐ
 
 ## 理由
 
-- **scoped glance 原則（TPL-20260510-21）**: 各スコープで見せる情報量を限定
+- **scoped glance 原則（TPL-1223）**: 各スコープで見せる情報量を限定
   するのが karasu の認知設計。レベルごとに関連する凡例だけを見せる完全一致は
   この原則の凡例への適用。「全レベルの凡例を常時全部出す」案は同原則に反する
   ため却下

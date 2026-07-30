@@ -94,7 +94,7 @@ describe("ThemeProvider — explicit preference", () => {
 describe("ThemeProvider — switching", () => {
   beforeEach(() => localStorage.clear());
 
-  // TPL-20260518-01: a multi-state switch must drive BOTH result states
+  // TPL-1402: a multi-state switch must drive BOTH result states
   // all the way to the final output (here, the documentElement attribute),
   // not just flip a boolean.
   it("drives both light and dark all the way to <html data-theme> and storage", () => {

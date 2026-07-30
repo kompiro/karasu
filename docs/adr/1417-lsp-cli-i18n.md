@@ -26,7 +26,7 @@ assumptions:
   - Issue #1417 — LSP / VS Code の警告メッセージが種類によって英語・日本語で混在する調査（Closes）
   - [ADR-34](34-i18n-rollout.md) — i18n ロールアウト。互換ブリッジを残し、「将来課題」に本検討を予告していた（`depends_on`）
   - [docs/spec/i18n.md](../spec/i18n.md) — i18n ポリシー
-  - [TPL-20260519-03](../test-perspectives/TPL-20260519-03-single-renderer-for-structured-messages.md) — 本実装で起こした proactive TPL
+  - [TPL-1417](../test-perspectives/TPL-1417-single-renderer-for-structured-messages.md) — 本実装で起こした proactive TPL
   - 実装 PR: #1429（stage 1）/ #1430（stage 2）/ #1433（stage 3）/ #1442・#1449（stage 4）
   - 旧 Design Doc（本 ADR に昇格して削除）: `docs/design/lsp-cli-i18n.md`
 
@@ -104,7 +104,7 @@ language-neutral のまま保たれ（i18n.md の原則）、ADR-34 が予告し
 2. **#1430** — LSP を `renderWarning` / `renderDiagnostic` + `params.locale` へ。
 3. **#1433** — CLI を共有 renderer + `LANG` / `LC_ALL` へ。
 4. **#1442 / #1449** — 消費者のなくなった core ブリッジを削除。proactive TPL
-   （TPL-20260519-01）を起こした。
+   （TPL-1419）を起こした。
 
 ## 理由
 

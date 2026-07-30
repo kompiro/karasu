@@ -28,7 +28,7 @@ assumptions:
   - [ADR-1729](1729-e2e-path-filter-trigger.md)（E2E をラベル駆動から path filter へ移行した ADR — 本 ADR はその「`Playwright` は required にしない」という一点を更新する）
   - [ADR-953](953-ci-docs-only-paired-stub-workflow.md)（Required Check を paired stub workflow で満たすパターン — 本 ADR はこれを E2E に適用する）
   - [ADR-579](579-preview-workflow-no-label-gating.md)（path filter 化の先例）
-  - [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（paired workflow の paths を両側で同期させる観点）
+  - [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)（paired workflow の paths を両側で同期させる観点）
   - `.github/workflows/e2e.yml` / `.github/workflows/e2e-skip.yml`
 
 ## 背景
@@ -93,7 +93,7 @@ ADR-953（`ci.yml` ↔ `ci-skip.yml`）と同型に、`e2e.yml` の `paths` を
      中身は echo のみで 0 終了。
 2. ruleset `14114011` の required status checks に `Playwright` を追加する。
 3. `e2e.yml` に、`e2e-skip.yml` と `paths` を同期させる旨のコメントを追加する
-   （TPL-20260520-02）。
+   （TPL-1480）。
 
 ### 順序制約（重要）
 
@@ -112,7 +112,7 @@ PR が `Playwright` を報告できず永久 pending になる。
   同名 check を AND するため実 run の合否が支配し、正しさは保たれる
   （ADR-953 の `Check` と同じ既知挙動）。
 - 新たな moving part として stub と実 workflow の `paths` 同期が必要になる。
-  TPL-20260520-02 のチェックリストで担保し、両ファイルに相互参照コメントを置く。
+  TPL-1480 のチェックリストで担保し、両ファイルに相互参照コメントを置く。
 - ADR-1729 の path filter 判断・三層 QA モデルは不変。本 ADR は
   「`Playwright` を required にしない」の一点のみを更新する（`supersedes` では
   なく `related_to`）。

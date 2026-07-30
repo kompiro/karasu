@@ -18,14 +18,14 @@ scope:
   - 前提 ADR: [ADR-1858](1858-system-view-group-by-team.md)（P2a: team 軸グループ化。本 ADR はそれを multi-system root view にも通す follow-up）
   - 実装 PR: #1906（`layoutMultipleSystems` に per-system grouping を注入）/ #1915（collapsed-stub id を生成時点で per-system namespace 化）
   - 設計（本 ADR に集約し削除）: `docs/design/system-view-grouping.md` § 「multi-system root view の grouping」
-  - TPL: [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（並列関数ファミリの parameter parity — 本 bug の失敗クラス）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置で全要素ちょうど一度 + 枠 disjoint + 参照エッジ端点保持）
+  - TPL: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数ファミリの parameter parity — 本 bug の失敗クラス）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（再配置で全要素ちょうど一度 + 枠 disjoint + 参照エッジ端点保持）
   - コード: `packages/core/src/renderer/layout.ts`（`layoutMultipleSystems`）/ `group-collapse.ts`
 
 ## 背景
 
 P2a（ADR-1858）は `layout()` の **single-system focus 分岐**にだけ grouping 機構（`collapseGroups` + `assignGroupedLayers` + 境界フレーム）を実装し、**multi-system root view 分岐**（`layoutMultipleSystems`）には `groupBy` / `collapsedGroups` を渡していなかった（signature にも無かった）。結果、**system を 2 つ以上宣言した瞬間**（＝ cross-system ghost エッジが存在する状況と一致する。ghost エッジは参照先の第 2 system を要求するため）root view の team 境界フレームと per-team collapse が黙って消え、利用者からは「ghost エッジがあると Group by: team が壊れる」ように見えていた。
 
-これは [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（並列関数ファミリの parameter parity）の失敗クラスそのもの — dispatch する分岐にも「兄弟」があり、options は全分岐へ通す必要があった。
+これは [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数ファミリの parameter parity）の失敗クラスそのもの — dispatch する分岐にも「兄弟」があり、options は全分岐へ通す必要があった。
 
 ## 決定
 
@@ -38,7 +38,7 @@ grouping を **各 system フレームの内側**に適用する（**per-(system
 
 ### 退化ケースの fence（実装で担保）
 
-- **collapsed かつ cross-system edge を持つ team**: collapse でメンバーが stub に畳まれると、そのメンバーを端点に持つ cross-system edge が `crossSystemEdges` の端点解決に失敗して黙って drop される。per-system の collapse remap を全 system 分蓄積した `crossSystemRemap` で端点を stub に再アンカーし drop を防ぐ（TPL-20260624-02「畳んだノードの edge は両端点を解決」）。再ターゲットされた edge のみ dedup。
+- **collapsed かつ cross-system edge を持つ team**: collapse でメンバーが stub に畳まれると、そのメンバーを端点に持つ cross-system edge が `crossSystemEdges` の端点解決に失敗して黙って drop される。per-system の collapse remap を全 system 分蓄積した `crossSystemRemap` で端点を stub に再アンカーし drop を防ぐ（TPL-1738「畳んだノードの edge は両端点を解決」）。再ターゲットされた edge のみ dedup。
 - **collapsed かつ system をまたぐ team**: 各 system が同じ `__group_collapsed_<team>__` stub id を生成すると、後段 system の stub が前段を上書きして 1 ノードを失う（全域性違反）。`collapseGroups` に `stubScope`（= system id）を渡し、multi-system では stub id を**生成時点で** `__group_collapsed_<sys>_<team>__` と system 単位に namespace する（single-system は scope なしで従来 id）。衝突検出や後付け rewrite を持たず構造的に一意（#1915）。frame id（`__group_<team>__`）は team 単位で共有のまま（app の「全 system 一括 collapse」が team id キーで効く意図どおり）。
 
 ## 理由
@@ -48,7 +48,7 @@ grouping を **各 system フレームの内側**に適用する（**per-(system
 
 ## 却下した案
 
-- **cross-system をまたぐ 1 枚のフレーム** — 1 つの team フレームが複数の side-by-side system フレームをまたいで囲む案。`layoutMultipleSystems` の「system は独立」前提を崩し（配置空間を共有）、フレーム矩形が system フレームと**重なる**ため TPL-20260624-02 の「全要素ちょうど一度・枠は disjoint」不変条件を壊す。大幅な re-architecture でリスクが見合わないため却下し、per-system フレームを採る。
+- **cross-system をまたぐ 1 枚のフレーム** — 1 つの team フレームが複数の side-by-side system フレームをまたいで囲む案。`layoutMultipleSystems` の「system は独立」前提を崩し（配置空間を共有）、フレーム矩形が system フレームと**重なる**ため TPL-1738 の「全要素ちょうど一度・枠は disjoint」不変条件を壊す。大幅な re-architecture でリスクが見合わないため却下し、per-system フレームを採る。
 
 ## 補足: スコープ外
 

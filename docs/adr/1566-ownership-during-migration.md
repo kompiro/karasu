@@ -20,7 +20,7 @@ assumptions:
 - **関連**:
   - Issue [#1566](https://github.com/kompiro/karasu/issues/1566)
   - [ADR-14](14-organization-diagram.md)（organization / owns 導入。本 ADR は §6 の severity 規定を改める）
-  - [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（診断 register は fact / style で決める）
+  - [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（診断 register は fact / style で決める）
   - 派生 Issue [#1583](https://github.com/kompiro/karasu/issues/1583)（`@migration_target` 優先 / team アノテーション）
   - コード: `packages/core/src/parser/parser.ts`（`indexTeams`）
 
@@ -38,7 +38,7 @@ assumptions:
 
 ## 理由
 
-- **fact vs style ドクトリン（TPL-20260514-08）**: 移行中の共同所有はモデル内部整合性のエラーではなく、ある組織論から見た smell（事実）。`domain-dispersal` と対称に info が妥当。
+- **fact vs style ドクトリン（TPL-1386）**: 移行中の共同所有はモデル内部整合性のエラーではなく、ある組織論から見た smell（事実）。`domain-dispersal` と対称に info が妥当。
 - **逆コンウェイの過渡状態を通せる**: error だとチーム引き直しの最中に render がブロックされる。info なら事実として描き、判断はユーザーに委ねる。
 - **lossy さはメッセージで明示**: `ownerIndex` は 1:1 なので 2 つ目の owner は主オーナーにならない。メッセージで「`<主owner>` を採用」と事実先行に述べる。
 - **最小実装**: parser diagnostic の severity 変更のみ。owner index は parser 構築時に作るため resolver warning への移設はしない。

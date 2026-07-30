@@ -27,7 +27,7 @@ assumptions:
   - 設計（本 ADR に集約し削除）: `docs/design/group-by-bulk-collapse.md`
   - ADR: [ADR-1858](1858-system-view-group-by-team.md)（team 軸グループ化。決定 4 が bulk 操作を #1872 に委ねた）、[ADR-1821](1821-layer-toggles.md)（external / infra の category collapse — bulk トグルが横断するもう一方の軸）、[ADR-1872](1872-category-collapse-retarget-edges.md)（同じ Issue から出た姉妹決定。bulk 化で表面化した edge drop を re-target に揃えた）、[ADR-1955](1955-expand-all-services-in-place.md)（同じ「描画済み SVG から id 集合を得る」パターンの expansion 軸版）、[ADR-1974](1974-boundary-declaration-syntax.md)（P2b `boundary` 軸 — 本 ADR の拡張耐性を実地で検証した軸）
   - AT: [1872-group-collapse-all.md](../acceptance/1872-group-collapse-all.md)
-  - TPL: [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（列挙型メンバー追加時の網羅性 — 本 ADR の中心観点）、[TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)、[TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)
+  - TPL: [TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md)（列挙型メンバー追加時の網羅性 — 本 ADR の中心観点）、[TPL-1716](../test-perspectives/TPL-1716-user-facing-surface-docs-sync.md)、[TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)
   - follow-up: [#2119](https://github.com/kompiro/karasu/issues/2119)（セレクタの網羅強制 — 本 ADR が P2b に繰り越した B3。P2b は B3 なしで着地したため Issue 化した）
 
 > 本 ADR は 2026-07-11 に設計し 07-13 に実装完了（[#1891](https://github.com/kompiro/karasu/pull/1891)）した決定を、2026-07-24 に遡って昇格させたものである。当時の昇格計画は「繰り越した防御（B2 / B3）を design doc に抱えたまま P2b まで残す」だったが、P2b（[ADR-1974](1974-boundary-declaration-syntax.md)）が着地して繰り越し先が確定したため、doc を畳んで ADR 化する。
@@ -36,7 +36,7 @@ assumptions:
 
 [ADR-1858](1858-system-view-group-by-team.md)（P2a）の system view「Group by: team」は各チームを境界フレームで囲み、フレーム単位で ⊖/⊕ 折り畳みできる。ただし操作は **1 フレームずつ**だった。P1 検証が示したのは「可読性を生むのは折り畳みであり、既定で畳んでおいて必要な所だけ開く運用が最も読みやすい」ことなので、その状態に一発で入る **Collapse all / Expand all** が要る（ADR-1858 決定 4 が #1872 として明示）。
 
-機能自体は小さい。設計の主眼は別のところにあった — レビューで挙がった懸念、**「将来 Group-by の軸が team 以外に増えたとき、この bulk 操作が対応漏れを起こさないか」**である。当時 P2b（宣言構文、後の `boundary`）が検討中で、2 つ目の軸が来ることは分かっていた。素朴に `groupBy === "team"` へ機能を紐付けると、新軸を足したときに bulk collapse が**静かに効かなくなる**（[TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md) の「新メンバーが fallback 先で silent に誤動作する」失敗モード）。
+機能自体は小さい。設計の主眼は別のところにあった — レビューで挙がった懸念、**「将来 Group-by の軸が team 以外に増えたとき、この bulk 操作が対応漏れを起こさないか」**である。当時 P2b（宣言構文、後の `boundary`）が検討中で、2 つ目の軸が来ることは分かっていた。素朴に `groupBy === "team"` へ機能を紐付けると、新軸を足したときに bulk collapse が**静かに効かなくなる**（[TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md) の「新メンバーが fallback 先で silent に誤動作する」失敗モード）。
 
 したがって本 ADR が決めるのは bulk collapse の実装方式ではなく、**Group-by 軸の増加に対する結合の設計**である。
 
@@ -76,7 +76,7 @@ bulk トグルの表示条件と対象を `anyCollapsible = groupIds.length > 0 
 ## 却下した案
 
 - **案 A2: compile 結果から group id を core が明示的に公開する。** 文字列パースを避けた「正規の」データ経路に見えるが、`render()` は現状 svg 文字列しか返さず、`SystemCompileResult` まで新フィールドを貫通させる必要がある。しかも**軸非依存にするには結局「どの軸でも group id を集める」ロジックを core に書く**ことになり、app の SVG 走査を core へ移すだけになる。変更面が core に広がり changeset も要る。
-- **`groupBy === "team"` に bulk collapse を紐付ける素朴な実装。** 最も短く書けるが、まさに [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md) の失敗モードで、新軸で静かに機能が消える。本 ADR の主眼はこれを避けることにある。
+- **`groupBy === "team"` に bulk collapse を紐付ける素朴な実装。** 最も短く書けるが、まさに [TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md) の失敗モードで、新軸で静かに機能が消える。本 ADR の主眼はこれを避けることにある。
 - **bulk トグルを group フレームだけに限定する。** ラベルが「all」を名乗る以上、external / infra 帯を対象外にすると挙動とラベルがずれる（決定 3）。
 
 ## その後の検証（2026-07-24 時点）

@@ -7,7 +7,7 @@ import { KRS_LANGUAGE_VERSION } from "./language-version.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Drift guard between the code constant and the spec docs (ADR-2124,
-// TPL-20260511-02): both spec references state the language version as the
+// TPL-1296): both spec references state the language version as the
 // canonical token `.krs language v<version>` (roadmap §version vocabulary).
 // If the language version ever moves, the constant and all four docs must
 // move in the same PR — this test fails on any partial update.

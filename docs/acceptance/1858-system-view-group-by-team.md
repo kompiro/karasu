@@ -4,7 +4,7 @@
 - **Issue**: #1858（親 #1822 / Epic #1817 comprehension）
 - **PR**: (slice A — core layout)
 - **設計**: [docs/design/system-view-grouping.md](../design/system-view-grouping.md)
-- **Related TPLs**: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（段跨ぎ edge がカードを貫通しない）
+- **Related TPLs**: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（段跨ぎ edge がカードを貫通しない）
 - **対象**: `packages/core/src/renderer/group-layout.ts`（新規） / `layout.ts` / `svg-renderer.ts` / `layout-types.ts`
 
 ## 概要
@@ -30,7 +30,7 @@ system view の `groupBy: "team"` オプション（P2a・slice A / core のみ�
 > ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` (suite-wide)
 
 - [x] `groupBy: "team"` で所有チームごとに境界フレーム（`data-container-id="__group_<team>__"` / `data-group="true"`、破線）が1つずつ出る
-- [x] grouped でも全ノードがちょうど一度描かれる（TPL-20260624-02 の全域性）
+- [x] grouped でも全ノードがちょうど一度描かれる（TPL-1738 の全域性）
 - [x] 未所有の infra / external はフレームに入らず trailing band に残る
 - [x] `groupBy` 未指定は option 無しと **byte 一致**（opt-in・後方互換・回帰なし）
 - [x] `owns` の無いモデルでは grouped 指定でも既定レイアウトに一致（フォールバック）
@@ -48,7 +48,7 @@ system view の `groupBy: "team"` オプション（P2a・slice A / core のみ�
 
 - [ ] チームが依存順（上流 → 下流）に縦積みされ、各チームが破線フレーム＋ラベルで囲まれる
 - [ ] フレーム同士が重ならない（縦に分離している）
-- [ ] cross-team edge が失われず両端点に接続している（TPL-20260624-02）
+- [ ] cross-team edge が失われず両端点に接続している（TPL-1738）
 - [ ] 未所有の infra / external が最下段の帯に並ぶ
 - [ ] `groupBy` 無しの出力が従来と同一（フレームが出ない）
 

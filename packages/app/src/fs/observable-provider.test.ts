@@ -66,7 +66,7 @@ describe("ObservableFileSystemProvider", () => {
       expect(events).toEqual([{ type: "create", path: "/new.krs.style" }]);
     });
 
-    // #1563 (TPL-20260613-02): a read-modify-write must be atomic per path so a
+    // #1563 (TPL-1535): a read-modify-write must be atomic per path so a
     // concurrent writer can't clobber it. Two appends fired together must BOTH
     // land — without serialization they'd both read the same base and the later
     // write would drop the earlier append (a lost update).

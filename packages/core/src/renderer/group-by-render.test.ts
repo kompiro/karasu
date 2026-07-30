@@ -61,7 +61,7 @@ describe("compile() with groupBy: team", () => {
     expect(svg.match(/data-group="true"/g)?.length).toBe(2);
   });
 
-  it("still renders every node exactly once, grouped (TPL-20260624-02: totality)", () => {
+  it("still renders every node exactly once, grouped (TPL-1738: totality)", () => {
     const svg = svgOf("team");
     for (const id of ["Billing", "Wallet", "Search", "Catalog", "ShopDB", "Stripe"]) {
       expect(svg.match(new RegExp(`data-node-id="${id}"`, "g"))?.length).toBe(1);
@@ -203,7 +203,7 @@ describe("compile() with groupBy: team — multi-system root view (#1884)", () =
     expect(svg).toContain('data-node-id="PaymentService"');
   });
 
-  it("still lays every node out exactly once (TPL-20260624-02: totality)", () => {
+  it("still lays every node out exactly once (TPL-1738: totality)", () => {
     const svg = grouped();
     for (const id of ["Billing", "Wallet", "Search", "PaymentService"]) {
       expect(svg.match(new RegExp(`data-node-id="${id}"`, "g"))?.length).toBe(1);
@@ -263,7 +263,7 @@ organization Org {
     expect(svg.match(/data-node-id="PaymentService"/g)?.length).toBe(1);
   });
 
-  it("re-anchors a cross-system edge from a collapsed team onto its stub (TPL-20260624-02)", () => {
+  it("re-anchors a cross-system edge from a collapsed team onto its stub (TPL-1738)", () => {
     // `Search` (catalog) → `PaymentGateway.PaymentService` is a cross-system
     // edge. Collapsing catalog folds Search into its stub; the edge must survive,
     // re-anchored onto the stub — not silently dropped as before the fix.

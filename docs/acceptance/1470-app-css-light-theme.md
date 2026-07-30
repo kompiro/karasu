@@ -40,7 +40,7 @@
 
   > ✅ Automated — `index.test.tsx` › `applies an explicit light preference …` / `dark …`
 
-- [x] 切替で light・dark **両方** が `data-theme` と localStorage まで到達する（TPL-20260518-01）
+- [x] 切替で light・dark **両方** が `data-theme` と localStorage まで到達する（TPL-1402）
 
   > ✅ Automated — `index.test.tsx` › `drives both light and dark all the way to <html data-theme> and storage`
 
@@ -62,13 +62,13 @@
 
   > ✅ Automated — `SettingsPane.test.tsx` › `reflects the active theme preference …` / `applies and persists the chosen theme when switched`
 
-- [x] select に `aria-label` が付く（TPL-20260516-01）
+- [x] select に `aria-label` が付く（TPL-1399）
 
-  > ✅ Automated — `SettingsPane.test.tsx` › `labels the select for assistive tech (TPL-20260516-01)`
+  > ✅ Automated — `SettingsPane.test.tsx` › `labels the select for assistive tech (TPL-1399)`
 
 ### CSS トークン化 — `packages/app/src/styles/styles-no-raw-color.test.ts`
 
-- [x] `layout.css` / `base.css` / `components/*.css` に生の色リテラルが無い（TPL-20260510-06）
+- [x] `layout.css` / `base.css` / `components/*.css` に生の色リテラルが無い（TPL-1001）
 
   > ✅ Automated — `styles-no-raw-color.test.ts` › `<file> has no raw color literals`
 

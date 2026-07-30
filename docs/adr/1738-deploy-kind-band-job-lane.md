@@ -23,7 +23,7 @@ scope:
   - [ADR-29](29-deployment-diagram-design.md)（deploy diagram design / flat container grouping / ghost edges）
   - [ADR-1658](1658-deploy-infra-dependency-edges.md)（service→infra ghost edges）
   - [ADR-1737](1737-balanced-grid-sibling-layout.md)（balanced-grid。同層内配置を共通化。本 ADR の実装はこの上に乗る）
-  - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（主構造から抜き出して再配置する際の不変条件）
+  - 関連 TPL: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（主構造から抜き出して再配置する際の不変条件）
   - コード: `packages/core/src/renderer/deploy-layout.ts`, `packages/core/src/view/deploy-view-extract.ts`
 
 ## 背景
@@ -73,4 +73,4 @@ deploy view のレイアウトは **dependency-driven** で、kind ベースの�
 ## 将来の読者への注意
 
 - 帯機構を infra など他 kind に広げるとき（候補 B）は、その kind の DAG 位置が *meaningful* か *accidental* かを必ず判定する。意味ある依存構造を持つ kind を帯に抜くと情報を失う。
-- 帯のような「主構造から要素を抜き出して別グループに再配置する」変更は、全要素がちょうど一度配置されること・参照エッジの端点が保たれることを必ず検証する（[TPL-20260624-02]）。
+- 帯のような「主構造から要素を抜き出して別グループに再配置する」変更は、全要素がちょうど一度配置されること・参照エッジの端点が保たれることを必ず検証する（[TPL-1738]）。

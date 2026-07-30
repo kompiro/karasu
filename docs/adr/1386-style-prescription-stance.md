@@ -14,7 +14,7 @@ scope:
 assumptions:
   - "grep: docs/concepts.md :: What karasu visualizes vs. what it doesn't prescribe"
   - "grep: docs/concepts.ja.md :: karasu が「描く」もの、「規定しない」もの"
-  - "file: docs/test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md"
+  - "file: docs/test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md"
 ---
 
 # ADR-1386: karasu はスタイル流派を規定せず、流派が smell と呼ぶ構造は `info` 診断で事実通知する
@@ -27,7 +27,7 @@ assumptions:
   - concept 反映 PR: [#1390](https://github.com/kompiro/karasu/pull/1390) — `docs/concepts.md` / `docs/concepts.ja.md` への "What karasu visualizes vs. what it doesn't prescribe" 節追加
   - 連携 Issue: [#1385](https://github.com/kompiro/karasu/issues/1385) — cross-file `database` / `queue` / `storage` reopen（`infra-redeclared-across-files` の発行点）
   - 親文脈: [#1381](https://github.com/kompiro/karasu/issues/1381) — multi-file split / [ADR-1381](1381-multi-file-import-semantics.md)
-  - 派生 TPL: [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（事実 vs 流派判断による register 選択）
+  - 派生 TPL: [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（事実 vs 流派判断による register 選択）
   - 同系統 ADR: [ADR-834](834-security-modeling-stance.md)（セキュリティ / 脅威モデリングを core に取り込まない）, [ADR-832](832-no-runtime-authz-modeling.md)（実行時認可を core に取り込まない）, [ADR-316](316-database-as-first-class-node.md)（database を first-class に — 共有 DB を表現可能にする前提）
 
 ## 背景
@@ -50,7 +50,7 @@ karasu の `docs/concepts.md` "Goals and non-goals" は、ツールが扱う範�
 2. **Smell は静かに知らせる** — resolver が「ある流派なら smell と呼ぶ構造」を検出したら、新しい `info` severity で事実先行の文言 + 流派文脈 1 行 + concept 節へのリンクを発行する。「直すべき」とは言わない。
 3. **Recommended pattern は仕様ではなくドキュメントで示す** — `docs/concepts.md` の "What karasu visualizes vs. what it doesn't prescribe" 節（#1390 で追加）に該当 diagnostic を一覧し、将来の追加判断はその節の決定樹に照らして行う。
 
-判定樹（concept 節と TPL-20260514-08 で双方向リンク済み）:
+判定樹（concept 節と TPL-1386 で双方向リンク済み）:
 
 - karasu モデル自身の事実（id 未宣言、`realizes` が指す先なし 等）→ `error` または `warning`
 - ある外部流派が smell と呼ぶ構造（共有 DB、領域分散 等）→ `info`、事実先行の文言
@@ -70,7 +70,7 @@ karasu の `docs/concepts.md` "Goals and non-goals" は、ツールが扱う範�
 - **`info` という第三段階が必要**: `warning` は「直すべき」のニュアンスが強く、流派依存の判断には適さない。`info` は「気付かせる」ニュアンスで事実通知に合い、monaco / VS Code の `DiagnosticSeverity.Information` に素直にマップできる。
 - **既存 ADR の系譜**: ADR-834（セキュリティ）、ADR-832（実行時認可）は同じ「外部の規律が推奨する shape を karasu の語彙に固定しない。ただし基礎となる事実は表現できる」立場を取っている。本 ADR はそれをスタイル流派の軸に拡張したもの。
 - **抑制タグを増やさない**: `[external]` / `[deprecated]` / `[shared]` … と並ぶと、ユーザーは「どれが構造で、どれが警告抑制か」を区別しづらくなる。抑制は editor / LSP の責務に置くことで、構文の学習コストを抑える。
-- **proactive な TPL 化に乗る**: 本立場は `docs/concepts.md` に文書化され、TPL-20260514-08 が新規 diagnostic 追加 PR の checklist として機能する。これにより同種の判断（次の流派 prescription 提案）は原理から再導出できる。
+- **proactive な TPL 化に乗る**: 本立場は `docs/concepts.md` に文書化され、TPL-1386 が新規 diagnostic 追加 PR の checklist として機能する。これにより同種の判断（次の流派 prescription 提案）は原理から再導出できる。
 
 ## 却下した案
 
@@ -86,4 +86,4 @@ karasu の `docs/concepts.md` "Goals and non-goals" は、ツールが扱う範�
 - **LSP / Editor**: `DiagnosticSeverity.Information` をマップ（resolver 変更と同 PR で対応）。
 - **i18n**: `info` カテゴリの文字列キーを追加（resolver 変更と同 PR）。
 - **`domain-dispersal`**: register を `warning` → `info` に下げ、文言を事実先行に変更（**別 PR**）。AT / examples / i18n キーも同 PR で追従する。
-- **TPL**: [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) が新規 diagnostic 追加 PR の checklist として運用される。
+- **TPL**: [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) が新規 diagnostic 追加 PR の checklist として運用される。

@@ -4,7 +4,7 @@
 - **Issue**: #1873（follow-up of #1858 / ADR-1858。Gap 1）
 - **PR**: (この PR)
 - **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（Group by: team P2a）
-- **Related TPLs**: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
+- **Related TPLs**: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
 - **対象**: `packages/core/src/index.ts`（`compileSystemDiff`） / `packages/app/src/hooks/useSystemView.ts` / `packages/app/src/hooks/useAppViews.ts`
 
 ## 概要
@@ -23,7 +23,7 @@ after-slice を team フレームで囲めるようにする。Gap 2（Show All 
 
 - [x] `compileSystemDiff({ groupBy: "team" })` は after-slice の `ownerIndex` を軸に team 境界フレーム
       （`data-container-id="__group_<team>__"` / `data-group="true"`）を出す
-- [x] diff で追加されたノードが team に所有される場合も grouped で描かれ、`data-diff-state` 装飾を保つ（全域性・TPL-20260624-02）
+- [x] diff で追加されたノードが team に所有される場合も grouped で描かれ、`data-diff-state` 装飾を保つ（全域性・TPL-1738）
 - [x] `groupBy` 未指定は従来の diff 出力のまま（フレームなし・opt-in）
 - [x] `collapsedGroups` を渡すと diff モードでも team が `<Team> (N)` stub に畳まれ、cross-group エッジは stub に再ターゲット（drop しない）
 - [x] `interactive` が描く ⊖ category コントロールが no-op にならないよう、`collapsedCategories` も diff の render pass に転送する

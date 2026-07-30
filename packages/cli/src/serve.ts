@@ -40,7 +40,7 @@ export async function collectKrsFiles(dir: string): Promise<string[]> {
 }
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
-  // Shared trust-boundary segment check (TPL-20260510-17): rejects absolute
+  // Shared trust-boundary segment check (TPL-168): rejects absolute
   // paths, backslashes and ".." segments before any path is assembled.
   if (!isSafeRelativePath(name)) {
     return null;

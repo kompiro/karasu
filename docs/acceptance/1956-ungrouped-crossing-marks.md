@@ -4,7 +4,7 @@
 - **Issue**: #1956（follows #1949 / #1939 Part 1・Epic #1817 comprehension）
 - **PR**: (#1956 — ungrouped crossing marks)
 - **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
-- **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（交差数と貫通数を両方測る／交差は「全交差 marked」を assert）
+- **Related TPLs**: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（交差数と貫通数を両方測る／交差は「全交差 marked」を assert）
 - **対象**: `packages/core/src/renderer/layout.ts`（`computeCrossingMarks` の `groupBands` gate を撤廃） / `layout-types.ts` / `svg-renderer.ts`（scope コメント）
 
 ## 概要

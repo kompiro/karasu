@@ -3,7 +3,7 @@
 - **日付**: 2026-05-21
 - **関連 Issue**: [#1479](https://github.com/kompiro/karasu/issues/1479)
 - **関連 ADR**: [ADR-1470](../adr/1470-app-css-modularization-and-light-theme.md)
-- **関連 TPL**: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)
+- **関連 TPL**: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
 - **対象ファイル**: `packages/core/src/renderer/palette.ts`,
   `packages/core/src/builtins/default-style.ts`, `packages/core/src/index.ts`,
   `packages/core/src/renderer/*.ts`, `packages/cli/src/render.ts`,
@@ -40,7 +40,7 @@
 
   > ✅ Automated — `default-style.test.ts` › `keeps the same rule structure`
 
-### theme の全描画面貫通（TPL-20260510-06）— `packages/core/src/theme-meta.test.ts`
+### theme の全描画面貫通（TPL-1001）— `packages/core/src/theme-meta.test.ts`
 
 - [x] すべての SVG 生成エントリポイント（org-tree view を含む）で theme 省略時の出力が `theme:"dark"` と byte 一致する（既存スナップショット不変）
 

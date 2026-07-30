@@ -3,16 +3,16 @@
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1421](https://github.com/kompiro/karasu/issues/1421)
 - **対象ファイル**: `packages/app/src/components/CommandPalette.tsx`
-- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-20260519-01
+- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-1419
 
 ## 受け入れ条件
 
 `packages/app/src/components/CommandPalette.test.tsx` および
 `packages/app/src/keyboard/command-context.test.tsx` でカバーされる。
 
-- [x] `Ctrl/Cmd+Shift+P` でパレットが開く。テキスト入力／エディタにフォーカスがあっても開く（TPL-20260519-01）
+- [x] `Ctrl/Cmd+Shift+P` でパレットが開く。テキスト入力／エディタにフォーカスがあっても開く（TPL-1419）
 
-  > ✅ Automated — `packages/app/src/components/CommandPalette.test.tsx` › `opens on Ctrl/Cmd+Shift+P even while a text input is focused (TPL-20260519-01)`
+  > ✅ Automated — `packages/app/src/components/CommandPalette.test.tsx` › `opens on Ctrl/Cmd+Shift+P even while a text input is focused (TPL-1419)`
 
 - [x] 登録済みコマンドが一覧表示され、入力に応じて絞り込まれる
 
@@ -46,7 +46,7 @@
 
   > ✅ Automated — `packages/app/src/keyboard/command-context.test.tsx` › `returns every registered command`
 
-- [x] コンポーネントのアンマウントで `getCommands()` から当該コマンドが消える（TPL-20260519-01）
+- [x] コンポーネントのアンマウントで `getCommands()` から当該コマンドが消える（TPL-1419）
 
   > ✅ Automated — `packages/app/src/keyboard/command-context.test.tsx` › `drops a command once its component unmounts`
 

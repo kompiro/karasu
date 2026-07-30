@@ -17,7 +17,7 @@
  * line-oriented output: comment attachment is keyed by source line, and the
  * emitted block would no longer be one property per line.
  *
- * See TPL-20260510-02 (round-trip guarantee) and ADR-2087.
+ * See TPL-1101 (round-trip guarantee) and ADR-2087.
  */
 export function escapeStringValue(value: string): string {
   // Backslash first — the later rules introduce backslashes of their own.

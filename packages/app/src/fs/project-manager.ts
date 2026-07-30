@@ -93,7 +93,7 @@ export class ProjectManager {
     // ファイルを書き込む（指定がなければデフォルト）
     const filesToWrite = files ?? [{ path: "index.krs", content: DEFAULT_KRS }];
     for (const file of filesToWrite) {
-      // Write-boundary guard (#1526 / TPL-20260510-17): callers are expected to
+      // Write-boundary guard (#1526 / TPL-168): callers are expected to
       // pre-sanitize (the ZIP importer does), but every importer reaches this
       // write, and the in-memory provider's normalizePath collapses "..", so an
       // unvetted path could escape rootPath. Throw rather than silently skip —

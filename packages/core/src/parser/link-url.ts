@@ -1,5 +1,5 @@
 /**
- * Trust-boundary scheme allowlist for `link` URLs (#1525 / TPL-20260510-17).
+ * Trust-boundary scheme allowlist for `link` URLs (#1525 / TPL-168).
  *
  * Link URLs come from untrusted .krs content and are rendered as `<a href>`
  * in the app and the VS Code webview, where a `javascript:` URL executes in

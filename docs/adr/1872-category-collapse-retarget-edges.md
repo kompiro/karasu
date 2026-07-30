@@ -22,7 +22,7 @@ assumptions:
   - 見直す決定: [ADR-1821](1821-layer-toggles.md)（#1821 layer toggle — 「edge は `computeLayoutEdges` の既存ガードで自動 drop」の一点を更新）
   - 同型の先行実装: [ADR-1858](1858-system-view-group-by-team.md)（group collapse は cross-group edge を stub に re-target）
   - 同じ Issue から出た姉妹決定: [ADR-2120](2120-group-by-bulk-collapse.md)（bulk collapse を軸非依存にする設計。本 ADR の edge re-target はその bulk 化で表面化した）
-  - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持）
+  - 関連 TPL: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持）
   - コード: `packages/core/src/renderer/category-collapse.ts` / `layout.ts` / `group-collapse.ts`
 
 ## 背景
@@ -42,7 +42,7 @@ system view には直交する 2 つの折り畳み機構がある: **category c
 - カテゴリ内で完結するエッジ（両端が同一カテゴリ）は self-loop になるので **drop**。
 - re-target 後のエッジは `(from, to, kind)` で **de-dup**。展開ノード間の authored parallel edge / self-loop は保持。
 - re-target したエッジは複数の実エッジを代表するため **label を落とす**（group collapse と同じ）。
-- ViewSlice の ghost-edge リストも同じ remap で再アンカーする（[TPL-20260624-02] / #1874）。category と group の remap は合成する（メンバー集合が互いに素なので順序非依存）。
+- ViewSlice の ghost-edge リストも同じ remap で再アンカーする（[TPL-1738] / #1874）。category と group の remap は合成する（メンバー集合が互いに素なので順序非依存）。
 
 既存の node のみ版 `collapseNodeList`（per-system レイアウトのノード配置に使用）は `collapseCategories(nodes, [], collapsed).nodes` に委譲して残す。
 
@@ -50,7 +50,7 @@ system view には直交する 2 つの折り畳み機構がある: **category c
 
 - **2 機構の一貫性**: 折り畳みは「畳んでも依存構造は残す」が読み手の期待。group で確立した re-target を category にも適用し、非対称をなくす。
 - **俯瞰ビューの価値**: 全畳み時に external/infra への集約トランクが残ることで、「誰が外部/基盤に依存するか」が 1 枚で読める（設計 計測5 の DAG 俯瞰）。
-- **実装の再利用**: `collapseGroups` の remap ロジックをそのまま写した薄い変更。回帰の柵は [TPL-20260624-02]（全要素ちょうど一度配置 + 端点保持）。
+- **実装の再利用**: `collapseGroups` の remap ロジックをそのまま写した薄い変更。回帰の柵は [TPL-1738]（全要素ちょうど一度配置 + 端点保持）。
 
 ## 却下した案
 

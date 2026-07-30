@@ -20,7 +20,7 @@ assumptions:
 - **関連**:
   - Issue #1411 — Add Ctrl/Cmd+B keyboard shortcut to toggle the App sidebar
   - 関連 ADR: [ADR-1408](1408-app-outline-view.md) — Outline ビュー（Files/Outline 切替の対象）
-  - 関連 TPL: [TPL-20260519-01](../test-perspectives/TPL-20260519-01-global-shortcut-text-input-inhibition.md) —
+  - 関連 TPL: [TPL-1419](../test-perspectives/TPL-1419-global-shortcut-text-input-inhibition.md) —
     グローバルショートカットのテキスト入力フォーカス契約
   - 後続 Issue: コマンドパレット
   - 実装済み後続: Issue #1423 — ダイアグラムビュー切替ショートカット（`mod+1..4`）、
@@ -80,7 +80,7 @@ keydown をキー chord に正規化してレジストリと突き合わせ実�
 
 この基盤上に登録済みのショートカットを一覧する。新しいショートカットを足す
 ときは、ここを見てキー chord の衝突を避ける（`resolveChord` は先勝ちで、
-重複登録は後勝ちにならず無言で握りつぶされる — TPL-20260519-01）。
+重複登録は後勝ちにならず無言で握りつぶされる — TPL-1419）。
 
 | Chord | コマンド `id` | 動作 | Issue |
 |---|---|---|---|
@@ -137,7 +137,7 @@ keydown をキー chord に正規化してレジストリと突き合わせ実�
 `Ctrl+Shift+1` の `key` は `!` になり、`mod+shift+1` の keybinding が永久に
 一致しない（配列依存でもある）。数字行のキーは `event.code`（`Digit0`–`Digit9`）
 から正規化するよう `eventToChord` を変更した。`mod+1..4` のような shift 無しの
-数字 chord には影響しない（TPL-20260519-01 の「chord 正規化の取りこぼし」に
+数字 chord には影響しない（TPL-1419 の「chord 正規化の取りこぼし」に
 該当する修正）。
 
 ## 補足 — 後続作業

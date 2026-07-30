@@ -35,7 +35,7 @@ vector store / search index を **新しい論理 infra kind にはしない**�
 
 - `[index]` は **役割であって技術ではない**: 正本を高速に検索するために導出した二次ストアに付ける。Vector DB / ElasticSearch を使っていても、それが正本なら `[index]` は付けず素の `database` とする。同じストアが正本かつ index を兼ねる場合（Postgres + pgvector）も付けない。
 - 具体技術は引き続き物理層 `store { type "ElasticSearch 8"; realizes SearchIndex }` で表す。
-- 効果: `database[index]` は `index` バッジを付与する（cylinder シェイプは維持）。受理される語彙は効果を持つ（[TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)）。
+- 効果: `database[index]` は `index` バッジを付与する（cylinder シェイプは維持）。受理される語彙は効果を持つ（[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)）。
 
 採用にあたり、次の**判断基準**を置く:
 
@@ -46,7 +46,7 @@ vector store / search index を **新しい論理 infra kind にはしない**�
 - **境界クリープの回避**: `index` を kind にすると「では cache（Redis）/ graph DB / time-series は？」が連鎖し、ADR-316 が 3 種に絞った判断と逆行する。タグなら語彙集合を増やさない。
 - **「ストア ≠ 役割」への適合**: pgvector / Postgres FTS では同じ DB が正本かつ index。kind 分割は無理なノード分割を強いるが、opt-in タグなら付けない選択で自然に表現できる。
 - **論理/物理分離の維持**: 「vector store」はしばしば技術の言い換え。技術を論理 kind に焼き込むと、エンジン載せ替えで論理モデルが揺れる。技術は物理層に隔離する。
-- **効果がある**: 単なるラベルではなく `index` バッジという描画効果を持つため、TPL-20260610-01 を満たす。
+- **効果がある**: 単なるラベルではなく `index` バッジという描画効果を持つため、TPL-1503 を満たす。
 
 ## 却下した案
 

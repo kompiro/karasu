@@ -19,7 +19,7 @@ import type { LayoutNode, LayoutResult } from "./layout-types.js";
 // at other levels do not participate, and one boundary may produce disjoint
 // frames on several levels. These fences pin that semantics across the
 // interactive compile path AND the three static export builders (the #1879
-// gate held exports to the root level; TPL-20260716-02 requires the gate
+// gate held exports to the root level; TPL-1983 requires the gate
 // state to agree across every surface). Mirrors group-by-boundary-render.test.ts
 // (the root-level P2b fences).
 
@@ -139,7 +139,7 @@ boundary cluster {
   });
 });
 
-describe("collapse round-trip on a drill slice (TPL-20260624-02)", () => {
+describe("collapse round-trip on a drill slice (TPL-1738)", () => {
   it("folds members to the stub, keeps non-members, and expands back byte-identically", () => {
     const expanded = systemSvg(DRILL_SRC, ["Shop", "Orders"], "boundary");
     const collapsed = systemSvg(DRILL_SRC, ["Shop", "Orders"], "boundary", new Set(["cluster"]));
@@ -177,7 +177,7 @@ describe("collapse round-trip on a drill slice (TPL-20260624-02)", () => {
 // A member that appears as a *ghost* on the drilled level: BillingDomain lives
 // in service Billing but is edge-connected from OrderDomain, so the Orders
 // view draws it as a ghost. Ghosts are context, not content — they never
-// bucket, frame, or fold (rule 4; TPL-20260510-21).
+// bucket, frame, or fold (rule 4; TPL-1223).
 const GHOST_BODY = `
 system Shop {
   service Orders {
@@ -339,7 +339,7 @@ describe("export surfaces draw frames on drill levels (#1983)", () => {
     // Companion to "renderEntityView frames entity members" above, but
     // through the public wrapper (packages/core/src/index.ts), which parses
     // krsSource and forwards `groupBy` to `_renderEntityView` — a second call
-    // site TPL-20260510-11 (parallel-function parity) requires covering on
+    // site TPL-219 (parallel-function parity) requires covering on
     // its own. The byte-identical fence below this test (and the ROOT_ONLY_SRC
     // one further down) only exercises `groupBy` with no entity member on the
     // view, so a dropped/misforwarded argument would pass it trivially (an
@@ -449,7 +449,7 @@ describe("levels without members match the ungrouped export byte-for-byte (#1879
   });
 });
 
-describe("P2c routing on a grouped drill view (TPL-20260711-02)", () => {
+describe("P2c routing on a grouped drill view (TPL-1927)", () => {
   // Two boundaries of domains inside ONE service, with edges that cross the
   // band stack (A→C into the next band, A→E down to the trailing un-grouped
   // band), so the gutter router must engage on the drill slice.
@@ -544,7 +544,7 @@ boundary g2 {
     expect(straightBaseline).toBeGreaterThan(0);
     // …and the routed drill layout pierces nothing.
     expect(penetrations).toBe(0);
-    // Dual metric (TPL-20260711-02): crossings are measured alongside, not
+    // Dual metric (TPL-1927): crossings are measured alongside, not
     // judged alone — pin the observed value so a routing change that raises
     // crossings on this drill fixture surfaces for re-evaluation (raise the
     // pin deliberately if a future router trades crossings for readability).
@@ -607,7 +607,7 @@ boundary cluster {
     expect(result.svg).toContain('data-node-id="BillingDomain"');
     expect(result.svg).toContain('data-node-id="LedgerDomain"');
     // #2032: the cross-file member resolves in the merged model, so no false
-    // `contains-target-not-found` (fixed code + severity — TPL-20260615-02).
+    // `contains-target-not-found` (fixed code + severity — TPL-1608).
     expect(
       result.diagnostics.filter(
         (d) => d.code === "contains-target-not-found" && d.severity === "warning",
@@ -620,7 +620,7 @@ boundary cluster {
 //
 // The design doc proposed warning about `contains` members whose kind "never
 // renders at a groupable level", with the target kind set to be DETERMINED by
-// enumerating the view-extract surfaces (TPL-20260623-02: a valid-target set
+// enumerating the view-extract surfaces (TPL-1720: a valid-target set
 // must enumerate every kind the construct accepts). This suite IS that
 // enumeration, machine-checked: for every kind `contains` can reference, the
 // member renders — and is framed / foldable — at some drill level. The
@@ -765,7 +765,7 @@ describe("every containable kind renders (framed) at some groupable level — th
     expect(result.svg).toContain('data-container-id="__group_fence_entity__"');
   });
 
-  it("the enumeration covers every containable kind (sync guard, TPL-20260623-02)", () => {
+  it("the enumeration covers every containable kind (sync guard, TPL-1720)", () => {
     // Type-level exhaustiveness: extending `LogicalNodeKind` fails typecheck
     // on this `satisfies`, forcing the enumeration above (and the ∅
     // determination) to be revisited. The runtime walk below is the second

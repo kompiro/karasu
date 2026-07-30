@@ -10,8 +10,8 @@ type: product
   - `packages/core/src/builtins/reference.ts`
   - `packages/core/src/builtins/reference-spec-sync.test.ts`
   - `packages/app/src/components/ReferenceContent.test.tsx`（旧 `ReferencePanel.test.tsx` — #1548/#1585 の pop-out 化で `ReferenceContent.tsx`/`ReferenceWindow.tsx` に改名）
-  - `docs/test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md`
-- **TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md), [TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md) item 5
+  - `docs/test-perspectives/TPL-1296-spec-doc-reference-data-sync.md`
+- **TPL**: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md), [TPL-74](../test-perspectives/TPL-74-ast-parser-renderer-agreement.md) item 5
 
 ## 受け入れ条件
 

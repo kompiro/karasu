@@ -10,7 +10,7 @@ type: tooling
   - `packages/vscode/scripts/assert-server-bundled.mjs`（新規）
   - `packages/vscode/package.json`（`postbuild` スクリプト追加）
   - `.github/workflows/ci.yml`（`Build (vscode)` ステップ追加）
-- **関連 TPL**: [TPL-20260510-15](../test-perspectives/TPL-20260510-15-dev-vs-packaged-mode-parity.md)（dev vs packaged mode parity — checklist items 1-2）
+- **関連 TPL**: [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)（dev vs packaged mode parity — checklist items 1-2）
 - **originating bug**: [#1024](https://github.com/kompiro/karasu/issues/1024)（LSP server module unreachable in installed extension）
 
 ## 背景

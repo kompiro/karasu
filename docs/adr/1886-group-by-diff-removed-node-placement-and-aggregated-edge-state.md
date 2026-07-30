@@ -19,7 +19,7 @@ scope:
   - 前段: [#1873](https://github.com/kompiro/karasu/issues/1873)（PR #1883、P2a を compare/diff で有効化）— そのレビューで本 2 課題が切り出された
   - 実装 PR: #1902（core: `index.ts` マージ ownerIndex + `group-collapse.ts` diff-state fold）
   - 設計（本 ADR に集約し削除）: `docs/design/system-view-grouping.md` § 「差分モードの grouping」
-  - TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置で全要素ちょうど一度 + 参照エッジ端点保持）, [TPL-20260712-01](../test-perspectives/TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md)（id を書き換える集約変換は per-要素の装飾を再導出せよ — 本 PR で新設）
+  - TPL: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（再配置で全要素ちょうど一度 + 参照エッジ端点保持）, [TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md)（id を書き換える集約変換は per-要素の装飾を再導出せよ — 本 PR で新設）
   - コード: `packages/core/src/index.ts`（`compileSystemDiff`）/ `packages/core/src/renderer/group-collapse.ts`
 
 ## 背景
@@ -61,6 +61,6 @@ diff 用の grouping 軸を、**after の `ownerIndex` を基点**にしつつ�
 
 ## 補足: 正しさの柵とスコープ外
 
-- `group-by-diff.test.ts` の既存 pin（TPL-20260624-02 全域性: removed ノードちょうど一度・cross-group エッジ再ターゲットで非 drop）を維持しつつ、理想の見え方を追加 assert する: 除去ノードが末尾帯でなく**元 team フレーム内**（`data-container-id="__group_<team>__"` の内側）に `removed` で描かれる / team ごと除去で全 removed メンバーの team フレームが描かれる / 集約 stub エッジが単一 state 踏襲・混在 `changed`（`data-diff-state` で assert）/ 退化ケース（before だけ・after だけ・両方所属）で破綻しない。
-- 本課題は **id を書き換える集約変換が、元 id にキーされた per-要素の装飾（diff state）を落とす**という、TPL-20260624-02（端点＝トポロジ保持）がカバーしない失敗クラスなので、proactive [TPL-20260712-01](../test-perspectives/TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md) を同 PR で新設した。
+- `group-by-diff.test.ts` の既存 pin（TPL-1738 全域性: removed ノードちょうど一度・cross-group エッジ再ターゲットで非 drop）を維持しつつ、理想の見え方を追加 assert する: 除去ノードが末尾帯でなく**元 team フレーム内**（`data-container-id="__group_<team>__"` の内側）に `removed` で描かれる / team ごと除去で全 removed メンバーの team フレームが描かれる / 集約 stub エッジが単一 state 踏襲・混在 `changed`（`data-diff-state` で assert）/ 退化ケース（before だけ・after だけ・両方所属）で破綻しない。
+- 本課題は **id を書き換える集約変換が、元 id にキーされた per-要素の装飾（diff state）を落とす**という、TPL-1738（端点＝トポロジ保持）がカバーしない失敗クラスなので、proactive [TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md) を同 PR で新設した。
 - **スコープ外**: `changed` の視覚表現の新設（既存 diff スタイルを流用）/ deploy diff（`compileDeployDiff`）への同種修正（deploy に team grouping 軸が無い）。必要になれば別 Issue。

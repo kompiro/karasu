@@ -7,7 +7,7 @@
   - `packages/core/src/renderer/label-placement.test.ts`（新規）
   - `packages/core/src/renderer/edge-routing.ts`（`renderEdge` に `labelAnchorOverride`、`labelAnchor` / `resolveLabelPosition` を export）
   - `packages/core/src/renderer/svg-renderer.ts`（エッジ描画ループ前に placement pass を配線）
-- **関連**: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（本 AT の設計。ADR-1184 の defer を部分的に見直す）、[ADR-1184](../adr/1184-edge-label-position-offset.md)（手動 `label-position` / `label-offset` lever）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)（parallel-edge bundle の label スライド）、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（overlap は数値で 0/削減を assert）、[TPL-20260721-02](../test-perspectives/TPL-20260721-02-label-placement-measured-and-byte-stable.md)（本 PR で新設）
+- **関連**: [ADR-2048](../adr/2048-edge-label-collision-avoidance.md)（本 AT の設計。ADR-1184 の defer を部分的に見直す）、[ADR-1184](../adr/1184-edge-label-position-offset.md)（手動 `label-position` / `label-offset` lever）、[ADR-1185](../adr/1185-parallel-edge-bundling.md)（parallel-edge bundle の label スライド）、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（overlap は数値で 0/削減を assert）、[TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)（本 PR で新設）
 
 ## 受け入れ条件
 
@@ -30,7 +30,7 @@
   > ✅ Automated — `falls back best-effort (no throw) when no candidate fully clears`
 
 - [x] 実サンプル（`examples/en/ec-platform/01-system.krs` の system top view）で、default 配置では貫通が発生し、pass 後は label↔node 貫通・label↔label オーバーラップともに 0 になる
-  > ✅ Automated — `real sample fence — ec-platform system top view (#2048)`（TPL-20260715-01 の「実サンプルを柵に」）
+  > ✅ Automated — `real sample fence — ec-platform system top view (#2048)`（TPL-1954 の「実サンプルを柵に」）
 
 - [ ] app の system top view で、隣接エッジラベルが視覚的に重ならない
   > 🧑 Manual — app で `examples/en/ec-platform/01-system.krs` を `index.krs` として開き、トップ図のエッジラベルが互いに重なっていないことを目視で確認する。

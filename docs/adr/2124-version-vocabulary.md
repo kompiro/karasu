@@ -18,7 +18,7 @@ assumptions:
   - "file: docs/roadmap.md"
   - "file: docs/process.md"
   - "file: packages/cli/src/index.ts"
-  - "file: docs/test-perspectives/TPL-20260716-01-keystone-terms-single-home.md"
+  - "file: docs/test-perspectives/TPL-2005-keystone-terms-single-home.md"
 ---
 
 # ADR-2124: version vocabulary — 言語版とパッケージ semver は独立の軸とし、言語版を first-class で公開する
@@ -32,7 +32,7 @@ assumptions:
   - [ADR-1820](1820-notation-promotion-gate.md) — promotion gate（**refine 対象**: 「載せる版を bump レベルに反映」の一文のみを実行可能な形に置き換える。gate の既定・トリガー・三点配線は不変）
   - [ADR-1758](1758-vscode-changeset-versioning.md) — vscode の版管理（本 ADR の軸の一つとして現状を追認）
   - 実装 Issue [#2181](https://github.com/kompiro/karasu/issues/2181)（`KRS_LANGUAGE_VERSION` + 2 行 `--version` + drift ガード）
-  - 語彙の正典: `docs/roadmap.md` §version vocabulary（本 ADR は決定を記録し、定義表は roadmap 側が living に保持 — [TPL-20260716-01](../test-perspectives/TPL-20260716-01-keystone-terms-single-home.md) の単一正典原則）
+  - 語彙の正典: `docs/roadmap.md` §version vocabulary（本 ADR は決定を記録し、定義表は roadmap 側が living に保持 — [TPL-2005](../test-perspectives/TPL-2005-keystone-terms-single-home.md) の単一正典原則）
 
 ## 背景
 
@@ -83,7 +83,7 @@ docs は `v1.0` / `v1.0-stable` / `experimental` / `post-v1.0 watch` / `v1.x min
    日本語 prose = 「言語 v1.0」。「.krs v1.0」「krs-lang 1.0」等の表記ゆれは使わない。
 4. **正典の置き場**: 定義表（軸・正準語彙・表記規約）は `docs/roadmap.md`
    §version vocabulary が living に保持し、`docs/process.md` / `docs/glossary.md` は参照のみ
-   （TPL-20260716-01 の単一正典原則をこの語彙にも適用）。
+   （TPL-2005 の単一正典原則をこの語彙にも適用）。
 
 ## 理由
 
@@ -120,7 +120,7 @@ docs は `v1.0` / `v1.0-stable` / `experimental` / `post-v1.0 watch` / `v1.x min
 - `docs/process.md`: リリース運用の 2 箇所（changeset 作成時の gate 規定・リリース前
   チェックリスト）を言語版遷移ベースの文言に置換。
 - `docs/glossary.md` / `docs/glossary.ja.md`: See also に version vocabulary を追加。
-- [TPL-20260716-01](../test-perspectives/TPL-20260716-01-keystone-terms-single-home.md):
+- [TPL-2005](../test-perspectives/TPL-2005-keystone-terms-single-home.md):
   applicable_to に版語彙を追加（正典 = roadmap §version vocabulary）。
 - 実装は [#2181](https://github.com/kompiro/karasu/issues/2181)（core 定数 / --version /
   drift ガード）。それまで言語版の正典は spec prose（ADR-1314）のまま。

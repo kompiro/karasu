@@ -1,14 +1,14 @@
 # システム構成図の grouping — 優先順位と検証計画
 
 - **日付**: 2026-07-09
-- **ステータス**: 部分昇格 — **全フェーズの決定が ADR 化済み**: P2a は [ADR-1858](../adr/1858-system-view-group-by-team.md)、**P2b（宣言構文 `boundary` + `boundaryIndex`、#1974）は [ADR-1974](../adr/1974-boundary-declaration-syntax.md)**、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)。本 doc に残るのは **P1 検証の詳細（evidence）だけ**である（[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md) が §「計測 5」を一次ソースとして参照するため、決定の移送後も evidence として残す）。語彙・綴り方の設計空間を含む P2 / P3 の検討は [ADR-1974](../adr/1974-boundary-declaration-syntax.md) に集約した。
+- **ステータス**: 部分昇格 — **全フェーズの決定が ADR 化済み**: P2a は [ADR-1858](../adr/1858-system-view-group-by-team.md)、**P2b（宣言構文 `boundary` + `boundaryIndex`、#1974）は [ADR-1974](../adr/1974-boundary-declaration-syntax.md)**、P2c（直交ルーティング + 集約トランク + 交差マーク、#1859）は [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)、差分モード grouping（#1886）は [ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)、multi-system root grouping（#1884）は [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)。本 doc に残るのは **P1 検証の詳細（evidence）だけ**である（[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md) が §「計測 5」を一次ソースとして参照するため、決定の移送後も evidence として残す）。語彙・綴り方の設計空間を含む P2 / P3 の検討は [ADR-1974](../adr/1974-boundary-declaration-syntax.md) に集約した。
 - **関連**:
   - 引き金 Issue: [#1822](https://github.com/kompiro/karasu/issues/1822)（旧題 "Declare semantic clusters within a system"）
   - 実装済み: [#1858](https://github.com/kompiro/karasu/issues/1858) P2a（ADR-1858）。フォローアップ #1872–#1876
   - 親 epic: [#1817](https://github.com/kompiro/karasu/issues/1817)（comprehension pillar — 横方向の密度制御）
   - 既存実装: [#1821](https://github.com/kompiro/karasu/issues/1821)（external / infra カテゴリの折り畳み）
   - notation promotion gate: [#1820](https://github.com/kompiro/karasu/issues/1820)
-  - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)
+  - 関連 TPL: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)
   - 関連 ADR: [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` / `.krs.style` v1.0 凍結）
   - コード: `packages/core/src/renderer/category-collapse.ts`, `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`
 
@@ -55,7 +55,7 @@ grouping はそれ自体が目的ではなく、**まとまりごとに開閉（
 
 ### 開閉の識別子は「単一値」でなければならない
 
-境界フレームで囲んで畳む以上、ノードは**ちょうど 1 つのまとまりに属する**必要がある（多重所属はフレームの重なりを生み、[TPL-20260624-02] の「全要素ちょうど一度配置」不変条件を壊す）。`categoryOf()` が単一値 + precedence なのはこのためである。
+境界フレームで囲んで畳む以上、ノードは**ちょうど 1 つのまとまりに属する**必要がある（多重所属はフレームの重なりを生み、[TPL-1738] の「全要素ちょうど一度配置」不変条件を壊す）。`categoryOf()` が単一値 + precedence なのはこのためである。
 
 **タグは多値**（1 ノードに複数付けられる）。したがって:
 
@@ -193,11 +193,11 @@ y = tierBase[systemTier(node)] + subRow(node)
 
 ### cross-group edge
 
-折り畳み時、畳まれたノードを端点に持つ edge は**スタブに再ターゲットされて生き残る**必要がある（[TPL-20260624-02]）。モックでもこれを再現し、cross-team edge を強調色で描くと**チーム間の結合が可視化される**という副次効果が得られた（Conway 的な観察に使える）。
+折り畳み時、畳まれたノードを端点に持つ edge は**スタブに再ターゲットされて生き残る**必要がある（[TPL-1738]）。モックでもこれを再現し、cross-team edge を強調色で描くと**チーム間の結合が可視化される**という副次効果が得られた（Conway 的な観察に使える）。
 
 ### 正しさの柵
 
-[TPL-20260624-02] の不変条件に従う:
+[TPL-1738] の不変条件に従う:
 
 - 全ノードが**ちょうど一度**配置される（drop / duplicate なし）
 - 畳んだノードを端点に持つ edge が**両端点を解決して描画される**

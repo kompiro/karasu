@@ -1287,7 +1287,7 @@ system S {
     expect(warnings[0].params).toEqual({ nodeId: "OrderRef", tag: "ledger" });
   });
 
-  it("allows every tag in the spec's System-assigned tags table (dual-representation guard, TPL-20260519-02)", () => {
+  it("allows every tag in the spec's System-assigned tags table (dual-representation guard, TPL-1415)", () => {
     // `SYSTEM_ASSIGNED_TAGS` and the spec table are two representations of
     // one vocabulary. If a future auto-assigned tag lands in the spec but
     // not in the constant, the tool would warn on its own vocabulary — this
@@ -2487,7 +2487,7 @@ describe("warningSeverity — exhaustive register map", () => {
   // The `Record<WarningKind, WarningSeverity>` literal forces this table to
   // stay exhaustive: adding a new `WarningKind` to the union without an entry
   // here is a compile error. That is the fence — it makes the author decide,
-  // per ADR-1386 / TPL-20260514-08, whether the new kind is a model
+  // per ADR-1386 / TPL-1386, whether the new kind is a model
   // fact (`warning`) or a style-school smell (`info`), instead of silently
   // inheriting the `warning` default.
   const EXPECTED_SEVERITY: Record<WarningKind, WarningSeverity> = {
@@ -2506,7 +2506,7 @@ describe("warningSeverity — exhaustive register map", () => {
     "annotation-possible-typo": "info",
     // v1.x deprecation of non-builtin vocabulary ahead of the v2.0 closure —
     // a definite migration fact, not a low-confidence hint (#2159,
-    // TPL-20260610-01 state (2)).
+    // TPL-1503 state (2)).
     "tag-not-builtin": "warning",
     "annotation-not-builtin": "warning",
     "style-conflict": "warning",

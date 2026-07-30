@@ -6,7 +6,7 @@ describe("groupByAxis — the shared selector-to-core axis conversion (#2033)", 
   // this `satisfies`, forcing the fence to cover the new value. The regression
   // was a per-surface hardcode (`=== "team" ? "team" : undefined`) that only
   // forwarded the first axis and silently dropped "boundary" from the export
-  // surfaces (TPL-20260510-11).
+  // surfaces (TPL-219).
   const MODES = { none: 0, team: 0, boundary: 0 } satisfies Record<GroupByMode, unknown>;
   const allModes = Object.keys(MODES) as GroupByMode[];
 
