@@ -60,6 +60,45 @@ freeze（後方互換を約束）するための readiness と計画。最終的
   stable に硬直化させないため、freeze しないものを曖昧にせず experimental と名指す
   （`docs/concepts.md` の "these goals and non-goals are not fixed" の精神）。
 
+### version vocabulary（版語彙の定義 — 正典）
+
+本節が版語彙の**単一の正典**（決定 = [ADR-2124](adr/2124-version-vocabulary.md)。
+[TPL-20260716-01](test-perspectives/TPL-20260716-01-keystone-terms-single-home.md) の
+単一正典原則をこの語彙に適用）。`docs/process.md`（リリース運用）・`docs/glossary.md` は
+本節を参照し、定義を再掲しない。
+
+#### 互換性の軸
+
+版番号が指す対象は**独立した互換性の軸**であり、相互に追従しない（ADR-2124）:
+
+| 軸 | 対象 | 現在の版 | 約束 | 定義元 |
+| --- | --- | --- | --- | --- |
+| **言語**（`.krs` / `.krs.style`） | 構文・診断 register | 言語 v1.0（frozen） | 後方互換。追加は言語 v1.x、破壊は言語 v2.0 でのみ | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) |
+| **CLI**（`karasu`） | コマンド UX・配布物 | 0.x（npm） | npm semver（0.x = 安定約束なし。floor 0.6.0 — #1774） | `docs/process.md` リリース運用 |
+| **TS API**（`@karasu-tools/core`） | ライブラリ API | 0.x（npm） | **明示的に約束なし**（minor で変わりうる） | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) 非スコープ節 |
+| **VS Code 拡張**（`karasu-vscode`） | Marketplace 配布 | 0.x | 別ケイデンス（changesets bump、公開は手動） | [ADR-1758](adr/1758-vscode-changeset-versioning.md) |
+
+- **言語版の公開機構**: core の `KRS_LANGUAGE_VERSION` 定数 + `karasu --version` の 2 行表示
+  （パッケージ版 + 言語版）+ spec docs 冒頭の明記 + drift ガード —
+  実装 [#2181](https://github.com/kompiro/karasu/issues/2181)。
+- **言語版が動くリリース**は changeset / CHANGELOG に**言語版遷移を明記**する。パッケージの
+  bump レベルは semver 規約で独立に決める（[§promotion gate](#promotion-gatenotation-評価の規律)
+  の発火 touchpoint は `docs/process.md` リリース運用）。
+
+#### 正準語彙
+
+| 概念 | 正準 | 非推奨シノニム / 区別すべき別概念 |
+| --- | --- | --- |
+| 互換を約束する notation tier | **stable**（強調時 `v1.0-stable`） | 「v1.0 freeze」は tier 名ではなく**イベント**（[ADR-1314](adr/1314-krs-spec-v1-freeze.md) の決定行為） |
+| 互換を約束しない in-core tier | **experimental** | 「post-v1.0 watch」「notation watch」は tier 名ではなく**観察活動**（Epic [#1816](https://github.com/kompiro/karasu/issues/1816) / [§watch 登録](#watch-対象の-experimental-notation登録)） |
+| 段階的廃止 tier | **deprecated** | — |
+| ユーザーのモデルの標識 | **`@experimental` / `@deprecated` annotation**（常に `@` + backtick 表記） | tier と同語だが**主語が逆**（ユーザーのシステムのライフサイクル）。裸の "experimental" を annotation の意味で使わない |
+| 言語版の表記 | **`.krs language v1.0`**（ユーザー向け出力・英語 prose）/ **「言語 v1.0」**（日本語 prose） | 「.krs v1.0」「krs-lang 1.0」「spec v1.0」等は使わない。パッケージ版と並記するときは軸を明示（`karasu 0.6.0` + `.krs language v1.0`） |
+
+表記規約: karasu 自身の notation を語るときは tier を明示するか notation を主語にする
+（「boundary 構文は experimental」）。ユーザーモデルの標識は常に `@` + backtick
+（`@experimental`）。この規約だけで二義性は機械的に判別できる。
+
 ### guiding principle: structure-vs-implementation 境界
 
 v1.0 criteria 条件 (1) の拠り所であり、棚卸しの watch item **D / G / H / I** が共有する
@@ -366,7 +405,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 
 ## Syntax 2.0 プログラム
 
-- **ステータス**: 方針確定・時期未定（登録 = [#2162](https://github.com/kompiro/karasu/issues/2162)）。**実施時期は決めない** — v2.0 の版運用（何をもって major を切るか）は [#2124](https://github.com/kompiro/karasu/issues/2124)（version vocabulary）の決定と**同時に確定**させる。
+- **ステータス**: 方針確定・時期未定（登録 = [#2162](https://github.com/kompiro/karasu/issues/2162)）。**実施時期は決めない**。版運用は [ADR-2124](adr/2124-version-vocabulary.md) で確定済み — 「v2.0」= 言語 v2.0（言語軸の major）であり、パッケージ bump は独立（[§版語彙との同時確定](#版語彙との同時確定2124決定済み)）。
 - **決定源**: tags-and-facets 設計（[docs/design/tags-and-facets.md](design/tags-and-facets.md)、[#2065](https://github.com/kompiro/karasu/issues/2065) / [#2155](https://github.com/kompiro/karasu/pull/2155)、2026-07-28 レビューで決定事項 1–5 確定）。実装完了後に ADR へ昇格し（`refines: [ADR-832]`）、閉鎖実施時には [ADR-1314](adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze）との関係を新 ADR で明示する。
 - **位置づけ**: [§post-v1.0 horizon](#post-v10-horizonロードマップ) が後方互換の rolling horizon であるのに対し、本セクションは**破壊的変更を伴う次 major の枠**のみを持つ。v1.x で進む移行措置（deprecation 診断・facet の experimental 導入）は後方互換であり通常の v1.x minor で出る。
 
@@ -399,9 +438,9 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 2. **concepts.md の同時改訂** — 「タグシステム自体は open のまま」の原則記述は、閉鎖 ADR と**同時に supersede** する（keystone 文書を黙って単独更新しない）。
 3. **リスク台帳の緩和の履行** — tags-and-facets 設計「閉鎖の弊害と緩和」の表（styling 退行の facet セレクタでの引き継ぎ、版スキュー warning の許容、生成パイプラインの builtin + facet 化など）を v2.0 作業の checklist として使う。
 
-### 版語彙との同時確定（[#2124](https://github.com/kompiro/karasu/issues/2124)）
+### 版語彙との同時確定（#2124・決定済み）
 
-「v2.0」の意味そのもの（言語版 v1.0 とパッケージ semver の関係、"experimental" / "deprecated" の多義解消）が未定義のため、**本プログラムの版の切り方は #2124 の決定なしに確定できない**。v2.0 program は #2124 の決定と同時に着地させる。
+版語彙は [#2124](https://github.com/kompiro/karasu/issues/2124) → [ADR-2124](adr/2124-version-vocabulary.md) で確定した（定義 = [§version vocabulary](#version-vocabulary版語彙の定義--正典)）。本プログラムの「v2.0」は**言語 v2.0**（言語軸の major — ADR-1314 のセマンティクス）を指し、パッケージの bump レベルは semver 規約で独立に決まる。閉鎖を実施するリリースは changeset / CHANGELOG に言語版遷移（言語 v1.x → v2.0）を明記する。実施時期は引き続き未定（本プログラムの前提条件が律速）。
 
 ### 追跡（Issues）
 
@@ -410,7 +449,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 | [#2159](https://github.com/kompiro/karasu/issues/2159) | v1.x deprecation 診断（`tag-not-builtin` / `annotation-not-builtin`）+ spec の deprecated 化 + 四分法ガイド（Part A） | v1.x |
 | [#2160](https://github.com/kompiro/karasu/issues/2160) | `facet` construct — 宣言 + `facets` プロパティ + overlay + facet セレクタ（Part B、experimental） | v1.x |
 | [#2161](https://github.com/kompiro/karasu/issues/2161) | boundary 所属 1:N 一般化 + 多重包含 banded 描画（ADR-1974 refine — boundary core 昇格の宿題） | v1.x〜v2.0 |
-| [#2124](https://github.com/kompiro/karasu/issues/2124) | version vocabulary — v2.0 の版運用をこれと同時確定 | 先行 |
+| [#2124](https://github.com/kompiro/karasu/issues/2124) | version vocabulary — v2.0 の版運用をこれと同時確定 | ✅ [ADR-2124](adr/2124-version-vocabulary.md)（実装残 = [#2181](https://github.com/kompiro/karasu/issues/2181)） |
 | （未起票） | 閉鎖の実施（tag / annotation の warning enforcement・任意名セレクタ無効化・concepts 改訂 + ADR-1314 関係の新 ADR） | v2.0 |
 
 ---

@@ -8,6 +8,7 @@ applicable_to:
   - "PRD（docs/prd/keystone-primary-path.md）・ロードマップ（docs/roadmap.md）・permalink epic・ADR で上記の用語を説明したくなったとき（定義を再掲する誘惑）"
   - "docs/glossary.md / docs/glossary.ja.md の項目を追加・変更するとき、および permalink 機構が変わって permalink.md / design doc / ADR 側の記述が動いたとき"
   - "新しく壁打ち・PRD で load-bearing な語彙を coin したとき（恒久的な定義場所を最初から決めるため）"
+  - "version vocabulary（互換性の軸・notation tier / annotation の主語区別・言語版表記）を定義・言い換えする文を追加・変更するとき — この語彙の正典は docs/glossary.md ではなく docs/roadmap.md §version vocabulary（ADR-2124）"
 known_consumers:
   - check-links（packages/docs-site/scripts/check-links.ts）
   - glossary（docs/glossary.md · docs/spec/glossary.md）
