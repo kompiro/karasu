@@ -761,8 +761,26 @@ function detectUnassignedResources(file: KrsFile): Warning[] {
   return warnings;
 }
 
+/**
+ * A `domain` is unassigned when its parent is not a `service` — which is what
+ * the warning says ("is not assigned to any service"), so the scan range is
+ * decided by parent kind, not by which AST slot the node landed in.
+ *
+ * `canContain` permits exactly two such parents: the file top level and a
+ * `system` (ADR-2165). Both spell the same modelling state, so both warn — the
+ * author picks the spelling, not the meaning (#2184). Rendering is unaffected:
+ * the `(Unassigned)` pseudo-system still wraps only the top-level form, because
+ * it gives a container to nodes that have none, and a system-nested domain
+ * already has one (ADR-681).
+ *
+ * Nestings outside `canContain` (`client { domain … }`) already report
+ * `node-not-in-context`; they are deliberately not reported twice here.
+ */
 function detectUnassignedDomains(file: KrsFile): Warning[] {
-  return file.domains.map((domain) => ({
+  const systemNested = file.systems.flatMap((system) =>
+    system.children.filter((child) => child.kind === "domain"),
+  );
+  return [...file.domains, ...systemNested].map((domain) => ({
     kind: "unassigned-domain" as const,
     params: {
       domainId: domain.id,
