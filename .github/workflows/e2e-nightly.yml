@@ -22,7 +22,9 @@ permissions:
 jobs:
   e2e:
     name: Playwright (main)
-    runs-on: ubuntu-latest
+    # Ubicloud runner (ADR-1890) — same suite / same runner as the PR-side
+    # `e2e.yml` run, so a nightly failure is comparable to the PR result.
+    runs-on: ubicloud-standard-4-ubuntu-2404
     timeout-minutes: 20
     outputs:
       result: ${{ steps.run-tests.outcome }}
@@ -84,6 +86,7 @@ jobs:
     name: Update tracking issue
     needs: e2e
     if: ${{ always() }}
+    # GitHub-hosted on purpose (ADR-1890): a single Issues API call, no build.
     runs-on: ubuntu-latest
     permissions:
       contents: read
