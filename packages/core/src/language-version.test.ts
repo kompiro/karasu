@@ -28,10 +28,23 @@ describe("KRS_LANGUAGE_VERSION", () => {
     expect(doc).toContain(`.krs language v${KRS_LANGUAGE_VERSION}`);
   });
 
+  // "Stale" means *older than* the shipped version — a doc still describing a
+  // language the tool has moved past. A token naming a **higher** version is
+  // forward-looking prose, not drift: the spec routinely registers a change to
+  // the next major (`Promotion to an error is registered to .krs language
+  // v2.0`, roadmap §Syntax 2.0), and flagging those would force the roadmap
+  // out of the spec.
+  const asNumber = (version: string): number => {
+    const [major, minor] = version.split(".").map(Number);
+    return major * 1000 + minor;
+  };
+
   it.each(SPEC_DOCS)("%s does not state a stale language version", (rel) => {
     const doc = readFileSync(resolve(__dirname, rel), "utf8");
-    for (const m of doc.matchAll(/\.krs language v(\d+\.\d+)/g)) {
-      expect(m[1]).toBe(KRS_LANGUAGE_VERSION);
-    }
+    const stale = [...doc.matchAll(/\.krs language v(\d+\.\d+)/g)]
+      .map((m) => m[1])
+      .filter((v) => asNumber(v) < asNumber(KRS_LANGUAGE_VERSION));
+
+    expect(stale).toEqual([]);
   });
 });
