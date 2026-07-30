@@ -175,13 +175,13 @@ system S {
 
 **タグ名 → ただ 1 つの軸 → その軸が意味を持つ kind 集合**という対応になっており、複数軸にまたがるタグは無い。`[external]` の appliesTo が広いのは境界という軸がそもそも多くの kind で意味を持つからで、例外ではない。整理すべきは表の中身ではなく、**この表が強制されていないこと**である。
 
-したがって追加で `tag-not-applicable`（名前は仮）を提案する — builtin タグが `appliesTo` 外の kind に付いていたら warning を出す。severity は `tag-not-builtin` と同格の warning とする（症状が同じで、ユーザーにとって区別する意味が無いため）。留意点:
+したがって追加で `tag-not-applicable`（名前は仮）を提案する — builtin タグが `appliesTo` 外の kind に付いていたら warning を出す。severity は `tag-not-builtin` と同格の warning とする（症状が同じで、ユーザーにとって区別する意味が無いため）。**起票済み: [#2225](https://github.com/kompiro/karasu/issues/2225)**。留意点:
 
 - **システム自動付与タグ**（`SYSTEM_ASSIGNED_TAGS` = `implicit` / `cyclic` / `read` / `write` / `inferred`）と、infra sub-kind から推論される shape タグは対象外にする。後者は `resource` に付くので `appliesTo` 内に収まるが、推論経路が将来変わったときに誤検知しないよう明示的に除外する。
 - **既存モデルへの影響**は #2159 と同じ姿勢になる。今日 inert に受理されているものが warning になるだけで、parse error にはしない。
 - `storage` ノードに `[storage]`（resource の shape タグ）を付けたモデルは警告対象になる。冗長な記述であり、警告されるのが正しい。
 
-**この診断は本 Doc の語彙追加とは独立**（3 語彙を足さなくても成立し、足しても診断が無ければ `[cache]` を `service` に付けられてしまう）。実装量も別物なので、**follow-up Issue に切って別 PR で入れる**。本 Doc はギャップの記録と方針決定までを担う。
+**この診断は本 Doc の語彙追加とは独立**（3 語彙を足さなくても成立し、足しても診断が無ければ `[cache]` を `service` に付けられてしまう）。実装量も別物なので、[#2225](https://github.com/kompiro/karasu/issues/2225) として起票し別 PR で入れる。本 Doc はギャップの記録と方針決定までを担う。
 
 ### 停止規則（境界クリープ対策）
 
@@ -236,6 +236,6 @@ system S {
 ## 未解決の問い / 決めないこと
 
 - `@planned` の badge に使う icon と色（実装時に既存 4 種との識別性を見て決める）
-- `tag-not-applicable` 診断の正式な名前と、`docs/spec/diagnostics.md` への登録（follow-up Issue で決める。本 Doc はギャップの記録と方針までを担う）
+- `tag-not-applicable` 診断の正式な名前と、`docs/spec/diagnostics.md` への登録（[#2225](https://github.com/kompiro/karasu/issues/2225) で決める。本 Doc はギャップの記録と方針までを担う）
 - `@planned` なノードを一部の診断から除外すべきか（未実在の要素が orphan 系診断を鳴らす可能性）。実装時に実挙動を見て判断し、必要なら follow-up Issue にする
 - finding 6（stateful compute）の kind 設計は本 Doc では扱わない
