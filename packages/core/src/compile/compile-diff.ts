@@ -15,7 +15,11 @@ import {
 } from "../resolver/canonical-id.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { render } from "../renderer/svg-renderer.js";
-import { buildGroupLabelIndex, declaredGroupIds } from "../renderer/group-labels.js";
+import {
+  buildGroupLabelIndex,
+  buildTeamLabelIndex,
+  declaredGroupIds,
+} from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import { bundleSingleLevelViews } from "../renderer/drill-down-svg.js";
 
@@ -284,6 +288,20 @@ export async function compileSystemDiff(
     }
   }
 
+  // Owner-chip labels follow the group-label rule above, for the same reason:
+  // after wins, and only a team the after model no longer *declares* backfills
+  // its before label, so a `removed` node's chip still names its former owner
+  // (#2157). The guard is on declaration, not on presence in the label map —
+  // `buildTeamLabelIndex` only holds teams that declare a label, so keying off
+  // it would resurrect a deleted label for a team that still exists (the #1886
+  // stale-state guard, applied to the owner-chip label space).
+  const teamLabels = buildTeamLabelIndex(afterResolved.krsFile);
+  const afterTeams = declaredGroupIds(afterResolved.krsFile, "team");
+  for (const [teamId, label] of buildTeamLabelIndex(beforeResolved.krsFile)) {
+    if (afterTeams.has(teamId)) continue;
+    if (!teamLabels.has(teamId)) teamLabels.set(teamId, label);
+  }
+
   const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
     nodeDiffState,
     edgeDiffState,
@@ -294,6 +312,7 @@ export async function compileSystemDiff(
     boundaryIndex: mergedBoundaryIndex,
     scopedBoundaryIndex: mergedScopedBoundaryIndex,
     groupLabels,
+    teamLabels,
     collapsedGroups,
     collapsedCategories,
     interactive,

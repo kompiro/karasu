@@ -1,13 +1,13 @@
 # boundary 所属の 1:N 一般化と、banded view の多重包含描画（ADR-1974 refine）
 
-- **日付**: 2026-07-29
+- **日付**: 2026-07-30
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2161](https://github.com/kompiro/karasu/issues/2161)（`docs/design/tags-and-facets.md` §「所属モデルの一般化」/ PR [#2155](https://github.com/kompiro/karasu/pull/2155) からの分離。親 [#2065](https://github.com/kompiro/karasu/issues/2065)、boundary 系譜 [#1822](https://github.com/kompiro/karasu/issues/1822) / [#1974](https://github.com/kompiro/karasu/issues/1974) / [#2036](https://github.com/kompiro/karasu/issues/2036)）
   - follow-up: [#2176](https://github.com/kompiro/karasu/issues/2176)（seam 配置 + co-membership band 順 — slice B から分離）
   - **refine 対象 ADR**: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（決定 2 の「1:1 + first-wins」）
   - 関連 ADR: [ADR-2036](../adr/2036-scoped-boundary-declaration.md)（スコープ宣言 — identity =（宣言スコープ, id）、collapse 独立）、[ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（軸 index × 描画レベルの交差。「nested `boundary`」を *1:1 前提が壊れる* ことを理由の一つに deferred）、[ADR-1858](../adr/1858-system-view-group-by-team.md)（team 軸 = 本件が触らない先行機構）、[ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（multi-system root の per-system フレーム）、[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff の grouping / backfill）、[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c grouped routing — frame を障害物として使う側）、[ADR-2120](../adr/2120-group-by-bulk-collapse.md)（bulk collapse）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（promotion gate — `boundary` は experimental）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` v1.0 freeze / TS API は 0.x）
-  - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（**全要素ちょうど一度配置** — 本設計の最重要制約）、[TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)、[TPL-20260510-08](../test-perspectives/TPL-20260510-08-derived-state-staleness.md)（派生 state の二重持ち）、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（軸を全 call site に通す）、[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)、**新規 proactive** [TPL-20260729-02](../test-perspectives/TPL-20260729-02-declared-membership-not-discarded-in-derived-index.md)
+  - 関連 TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（**全要素ちょうど一度配置** — 本設計の最重要制約）、[TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)、[TPL-20260510-08](../test-perspectives/TPL-20260510-08-derived-state-staleness.md)（派生 state の二重持ち）、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（軸を全 call site に通す）、[TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)、**新規 proactive** [TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)
   - コード: `packages/core/src/parser/parser.ts:2146`（`buildBoundaryIndex`）/ `:2178`（`buildScopedBoundaryIndex`）、`packages/core/src/types/ast.ts:495`（`KrsFile.boundaryIndex`）、`packages/core/src/renderer/layout.ts:74`（`buildGroupFrames`）/ `:1014`（`boundaryAxisFor`）/ `:1029`（`collapseAndAssignGroupLayers`）、`packages/core/src/renderer/group-layout.ts:248`（`assignGroupedLayers`）、`packages/core/src/renderer/group-collapse.ts:85`（`collapseGroups`）、`packages/core/src/renderer/edge-routing-groups.ts:771`（`buildFrameOfNode`）、`packages/core/src/fs/import-resolver.ts:263`、`packages/core/src/compile/compile-diff.ts:232`
 
 ## 背景・課題
@@ -164,13 +164,13 @@ export const primaryBoundaryOf = (ids: readonly string[] | undefined): string | 
 ただし v1 の品質保証は次の縮退規則で明示的に限る:
 
 1. **配置は変えない。** 共有ノードは今までどおり primary の band に置かれる。フレームが他 band のメンバーに届くかどうかは**そのときの band 順次第**であり、v1 の多重包含は日和見的（opportunistic）である。band 順への co-membership 項と seam 行配置は
-   [#2176](https://github.com/kompiro/karasu/issues/2176) に切り出した（2026-07-29 決定 — 下記「spike の実測」を受けて slice B から外した）。
+   [#2176](https://github.com/kompiro/karasu/issues/2176) に切り出した（2026-07-30 決定 — 下記「spike の実測」を受けて slice B から外した）。
 2. 届かない共有は、**primary フレームのみが包含し、他の所属はカード下端の破線タブで示す**（spike の案 B）。タブはフレームと同じ破線言語で描き、`◇ <boundary>` を載せる。落ちた事実は info 診断としても観測可能にする（コード名は実装時に決める。`duplicate-boundary-assignment` とは別 — あちらは model の事実、こちらは view の解決結果）。
-3. **boundary ごとに識別色を与える**（2026-07-29 決定）。単色では重なりが入れ子に読めることが spike で実測されたため、色は装飾ではなく多重包含の成立条件である。フレームの見た目は
+3. **boundary ごとに識別色を与える**（2026-07-30 決定）。単色では重なりが入れ子に読めることが spike で実測されたため、色は装飾ではなく多重包含の成立条件である。フレームの見た目は
    [ADR-1858](../adr/1858-system-view-group-by-team.md) / [ADR-1974](../adr/1974-boundary-declaration-syntax.md) が「全フレーム同じ破線」で確定させているので、**昇格 ADR でこの変更を明記する**。team 軸のフレームは単色のまま（本設計は boundary 軸のみを変える）。
 4. **偽の包含は作らない。** フレームが非メンバーを図形的に囲む形（bbox の素朴な拡張）は、いかなる縮退でも採らない。
 
-### spike の実測（2026-07-29）
+### spike の実測（2026-07-30）
 
 `spike/boundary-multi-containment` ブランチで Part B を実装し、`compile(src, { groupBy: "boundary" })` の
 出力で確認した。フィクスチャは 3 つの boundary が総当たりでメンバーを共有するモデル（`payments ∩ ledger`・
@@ -261,7 +261,7 @@ C-1 の帰結として決めること:
 
 ## 未解決の問い / 決めないこと
 
-- **team 軸（`ownerIndex`）の 1:N 化**: 構造は同型だが stable 構文であり、precedence に意味づけがある。本設計では決めない。新規 [TPL-20260729-02](../test-perspectives/TPL-20260729-02-declared-membership-not-discarded-in-derived-index.md) が再訪点を保持する。
+- **team 軸（`ownerIndex`）の 1:N 化**: 構造は同型だが stable 構文であり、precedence に意味づけがある。本設計では決めない。新規 [TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md) が再訪点を保持する。
 - **識別色のパレットと、重なり領域の扱い**: 色の選び方（固定パレットの循環か、style シートで指定可能にするか）と、重なり領域を塗りで区別するか（ハッチ等）は slice B の実装時に決める。角丸・線種も同様。
 - **非隣接共有の回廊（corridor）描画**: v1 では縮退（規則 3）に落とす。corridor を引くかは corpus で必要性が観測されてから。
 - **boundary の入れ子**: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md) で deferred のまま。本件で 1:1 前提が外れることは、同 ADR が挙げた却下理由の 1 つを取り除くが、**解禁の動機（corpus 証拠）は別途必要**であり本設計では扱わない。

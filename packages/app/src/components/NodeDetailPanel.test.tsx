@@ -197,6 +197,20 @@ describe("NodeDetailPanel", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("shows the team label but navigates by the team id (#2157)", () => {
+    const onNavigateToOrg = vi.fn<() => void>();
+    const { getByText, queryByText } = render(
+      <NodeDetailPanel
+        {...baseProps({ team: "ec-team", teamLabel: "EC Team" })}
+        onClose={vi.fn<() => void>()}
+        onNavigateToOrg={onNavigateToOrg}
+      />,
+    );
+    expect(queryByText(/ec-team/)).toBeNull();
+    fireEvent.click(getByText(/EC Team/));
+    expect(onNavigateToOrg).toHaveBeenCalledWith("ec-team");
+  });
+
   it("link section title is '🔗 Links'", () => {
     const dummyLoc = {
       start: { line: 1, column: 1, offset: 0 },

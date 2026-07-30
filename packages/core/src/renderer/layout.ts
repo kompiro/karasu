@@ -1,6 +1,7 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import {
   INFRA_KIND_SET,
+  OWNABLE_KIND_SET,
   boundaryScopeKey,
   displayGroupId,
   scopedBoundaryGroupId,
@@ -18,6 +19,7 @@ import {
   NODE_PADDING_X,
   NODE_PADDING_Y,
   estimateTextWidth,
+  teamChipText,
 } from "./rendering-constants.js";
 import {
   sortByBarycenter,
@@ -445,7 +447,7 @@ function placeCallerGhostSystems(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
-  ownerIndex?: Map<string, string>,
+  ownerOf: OwnerResolver,
   displayMode?: DisplayMode,
 ): void {
   const GHOST_SYSTEM_GAP = 80;
@@ -461,7 +463,7 @@ function placeCallerGhostSystems(
       gs,
       tempX,
       ghostStartY,
-      ownerIndex,
+      ownerOf,
       displayMode,
     );
     callerContainers.push(containerRect);
@@ -492,7 +494,7 @@ function placeOutgoingGhostSystems(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
-  ownerIndex?: Map<string, string>,
+  ownerOf: OwnerResolver,
   displayMode?: DisplayMode,
 ): void {
   const GHOST_SYSTEM_GAP = 80;
@@ -507,7 +509,7 @@ function placeOutgoingGhostSystems(
       gs,
       ghostX,
       ghostStartY,
-      ownerIndex,
+      ownerOf,
       displayMode,
     );
     containers.push(containerRect);
@@ -937,6 +939,13 @@ function placeExternalServicesOnSides(
 interface LayoutOptions {
   ownerIndex?: Map<string, string>;
   /**
+   * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
+   * display string on every axis (the group-frame titles get theirs from
+   * `groupLabels`, which only exists when grouping by team). Omitted → the chip
+   * falls back to the team id (Issue #2157).
+   */
+  teamLabels?: ReadonlyMap<string, string>;
+  /**
    * Declared-boundary axis (P2b): node id → boundary id. Selected as the
    * grouping axis when `groupBy === "boundary"`; `ownerIndex` remains the team
    * badge source regardless of axis. See docs/design/system-view-grouping.md.
@@ -1088,9 +1097,45 @@ function collapseAndAssignGroupLayers(
   };
 }
 
+/**
+ * A card's resolved owner: the team `id` the `data-team-button` navigates by,
+ * and the `label` the chip shows (the id when the team declared no label).
+ */
+interface CardOwner {
+  id: string;
+  label: string;
+}
+
+/**
+ * Resolves a node's owner, or `undefined` when its kind carries no owner chip.
+ * Takes the lookup id separately from the kind because some canvases key their
+ * node map by a qualified id (`SystemId.ServiceId`) while `ownerIndex` is
+ * always keyed by the declared id.
+ */
+type OwnerResolver = (kind: string, id: string) => CardOwner | undefined;
+
+/**
+ * The single kind gate for the owner chip (Issue #2157). Every kind a team can
+ * `owns` ({@link OWNABLE_KIND_SET}) shows one — before this, three inline
+ * `service | domain` checks silently dropped a `client`'s owner even though
+ * `ownerIndex` had it and the `Group by: team` frame used it.
+ */
+function makeOwnerResolver(
+  ownerIndex?: Map<string, string>,
+  teamLabels?: ReadonlyMap<string, string>,
+): OwnerResolver {
+  return (kind, id) => {
+    if (!OWNABLE_KIND_SET.has(kind)) return undefined;
+    const teamId = ownerIndex?.get(id);
+    if (teamId === undefined) return undefined;
+    return { id: teamId, label: teamLabels?.get(teamId) ?? teamId };
+  };
+}
+
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
   const {
     ownerIndex,
+    teamLabels,
     boundaryIndex,
     scopedBoundaryIndex,
     groupLabels,
@@ -1120,6 +1165,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       : groupBy === "team"
         ? ownerIndex
         : undefined;
+  const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
   // (or all systems for the root view). Within a single drill-down view, IDs
@@ -1352,9 +1398,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     const dimsById = new Map<string, { width: number; height: number }>();
     for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
-      const resolvedTeam =
-        krsNode.kind === "service" || krsNode.kind === "domain" ? ownerIndex?.get(nid) : undefined;
-      dimsById.set(nid, measureNode(krsNode, resolvedTeam, displayMode));
+      dimsById.set(nid, measureNode(krsNode, ownerOf(krsNode.kind, nid), displayMode));
     }
     const columnCount = gridColumnCount(nodesInLayer.length, containerGridHint);
     const rows = wrapLayerIntoRows(
@@ -1372,10 +1416,6 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       let rowMaxHeight = 0;
       for (const nid of row) {
         const krsNode = nodeMap.get(nid)!;
-        const resolvedTeam =
-          krsNode.kind === "service" || krsNode.kind === "domain"
-            ? ownerIndex?.get(nid)
-            : undefined;
         const dims = dimsById.get(nid)!;
 
         layoutNodes.set(nid, {
@@ -1384,7 +1424,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           annotations: effectiveAnnotations(krsNode),
-          properties: extractLayoutProperties(krsNode, resolvedTeam),
+          properties: extractLayoutProperties(krsNode, ownerOf(krsNode.kind, nid)),
           descriptionSummary: krsNode.properties.description
             ? summarizeDescription(krsNode.properties.description)
             : undefined,
@@ -1540,8 +1580,8 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   placeGhostUsers(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
   placeGhostDomains(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
   placeGhostEntities(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
-  placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
-  placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
+  placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerOf, displayMode);
+  placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerOf, displayMode);
 
   // Move [external] services to side columns before edges are computed, so
   // anchors re-pick sides from the new positions (#1728). Skipped in group-by
@@ -1672,7 +1712,7 @@ function layoutGhostSystem(
   gs: GhostSystem,
   originX: number,
   originY: number,
-  ownerIndex?: Map<string, string>,
+  ownerOf: OwnerResolver,
   displayMode?: DisplayMode,
 ): { nodes: Map<string, LayoutNode>; containerRect: ContainerRect } {
   const { NODE_GAP } = getLayoutConstants(displayMode);
@@ -1682,7 +1722,8 @@ function layoutGhostSystem(
   let y = originY + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
 
   for (const svc of gs.visibleServices) {
-    const dims = measureNode(svc, ownerIndex?.get(svc.id), displayMode);
+    const owner = ownerOf(svc.kind, svc.id);
+    const dims = measureNode(svc, owner, displayMode);
     const x = originX + CONTAINER_PADDING;
     const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
     nodes.set(qualifiedId, {
@@ -1691,7 +1732,7 @@ function layoutGhostSystem(
       id: qualifiedId,
       label: svc.label ?? svc.id,
       annotations: svc.annotations,
-      properties: extractLayoutProperties(svc, ownerIndex?.get(svc.id)),
+      properties: extractLayoutProperties(svc, owner),
       descriptionSummary: svc.properties.description
         ? summarizeDescription(svc.properties.description)
         : undefined,
@@ -1732,6 +1773,7 @@ function layoutGhostSystem(
 function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult {
   const {
     ownerIndex,
+    teamLabels,
     boundaryIndex,
     scopedBoundaryIndex,
     groupLabels,
@@ -1748,6 +1790,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // stays the per-card team badge source regardless of axis (mirrors layout()).
   const groupIndex =
     groupBy === "boundary" ? boundaryIndex : groupBy === "team" ? ownerIndex : undefined;
+  const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   // Each system frame is its own canvas, so a scoped boundary declared in
   // `system X { … }` applies inside X's frame and nowhere else (#2036). Resolved
   // per system in the loop below; the team axis stays model-wide.
@@ -1929,11 +1972,8 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       for (const item of sortedLayer) {
         const nid = item.id;
         const krsNode = nodeMap.get(nid)!;
-        const resolvedTeam =
-          krsNode.kind === "service" || krsNode.kind === "domain"
-            ? ownerIndex?.get(nid)
-            : undefined;
-        const dims = measureNode(krsNode, resolvedTeam, displayMode);
+        const owner = ownerOf(krsNode.kind, nid);
+        const dims = measureNode(krsNode, owner, displayMode);
 
         // Wrap to a new sub-row at the column cap or when the node would
         // exceed MAX_LAYER_WIDTH.
@@ -1953,7 +1993,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           annotations: effectiveAnnotations(krsNode),
-          properties: extractLayoutProperties(krsNode, resolvedTeam),
+          properties: extractLayoutProperties(krsNode, owner),
           descriptionSummary: krsNode.properties.description
             ? summarizeDescription(krsNode.properties.description)
             : undefined,
@@ -2512,13 +2552,16 @@ function assignLayers(
 const META_FONT_RATIO = 0.7;
 const INFO_BUTTON_WIDTH = 24;
 
-function extractLayoutProperties(node: KrsNode, resolvedTeam?: string): LayoutNodeProperties {
+function extractLayoutProperties(node: KrsNode, owner?: CardOwner): LayoutNodeProperties {
   const props: LayoutNodeProperties = {
     description: node.properties.description,
     links: node.properties.links,
   };
   if (node.kind === "user") props.role = node.properties.role;
-  if (node.kind === "service" || node.kind === "domain") props.team = resolvedTeam;
+  if (owner) {
+    props.team = owner.id;
+    props.teamLabel = owner.label;
+  }
   if (node.kind === "client" && node.properties.resources.length > 0) {
     props.resources = node.properties.resources;
   }
@@ -2530,7 +2573,7 @@ function extractLayoutProperties(node: KrsNode, resolvedTeam?: string): LayoutNo
 
 function measureNode(
   node: KrsNode,
-  resolvedTeam?: string,
+  owner?: CardOwner,
   displayMode?: DisplayMode,
 ): { width: number; height: number } {
   if (displayMode === "icon") {
@@ -2543,7 +2586,6 @@ function measureNode(
   const labelWidth = estimateTextWidth(node.label ?? node.id, CHAR_WIDTH);
   const description = node.properties.description;
   const role = node.kind === "user" ? node.properties.role : undefined;
-  const team = node.kind === "service" || node.kind === "domain" ? resolvedTeam : undefined;
   const resources = node.kind === "client" ? node.properties.resources : [];
   const capabilities = node.kind === "client" ? node.properties.capabilities : [];
 
@@ -2551,8 +2593,8 @@ function measureNode(
   const descWidth = 0;
   const roleWidth = role ? estimateTextWidth(role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO) : 0;
 
-  // Meta row: link count icon + team name
-  const hasMetaRow = node.properties.links.length > 0 || !!team;
+  // Meta row: link count icon + team chip
+  const hasMetaRow = node.properties.links.length > 0 || !!owner;
   let metaWidth = 0;
   if (hasMetaRow) {
     if (node.properties.links.length > 0)
@@ -2560,10 +2602,12 @@ function measureNode(
         `🔗${node.properties.links.length}`,
         CHAR_WIDTH * META_FONT_RATIO,
       );
-    if (team) {
+    if (owner) {
       if (metaWidth > 0) metaWidth += CHAR_WIDTH; // spacing
-      const teamDisplay = [...team].length > 15 ? [...team].slice(0, 15).join("") + "…" : team;
-      metaWidth += estimateTextWidth(`👥${teamDisplay}`, CHAR_WIDTH * META_FONT_RATIO);
+      metaWidth += estimateTextWidth(
+        `👥${teamChipText(owner.label)}`,
+        CHAR_WIDTH * META_FONT_RATIO,
+      );
     }
   }
 

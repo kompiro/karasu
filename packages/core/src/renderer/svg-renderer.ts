@@ -23,10 +23,12 @@ import {
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
   ICON_DESC_MAX_WIDTH,
+  teamChipText,
 } from "./rendering-constants.js";
 import { edgeStyleKey, nodeStyleKey } from "../resolver/style-resolver.js";
 import type { NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
+import { DEPLOY_AFFORDANCE_KIND_SET } from "../types/ast.js";
 import type { LegendBlock, LegendViewScope } from "../types/ast.js";
 import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
@@ -166,6 +168,12 @@ export interface RenderOptions {
    * Titles the group frames; omitted → frames fall back to the group id.
    */
   groupLabels?: GroupLabelIndex;
+  /**
+   * Team id → declared `label`, from `buildTeamLabelIndex(krsFile)`. Supplies
+   * the owner chip's display string on every axis; omitted → the chip falls
+   * back to the team id (Issue #2157).
+   */
+  teamLabels?: ReadonlyMap<string, string>;
   collapsedGroups?: ReadonlySet<string>;
   /**
    * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).
@@ -209,6 +217,7 @@ export function render(
   }
   const layoutResult = layout(viewSlice, {
     ownerIndex,
+    teamLabels: options?.teamLabels,
     boundaryIndex: options?.boundaryIndex,
     scopedBoundaryIndex: options?.scopedBoundaryIndex,
     groupLabels: options?.groupLabels,
@@ -1013,8 +1022,8 @@ function renderNode(
 
   // Top-right icon buttons: deploy button and info button
   // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
-  const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
-  const showDeployButton = isServiceOrDomain && (serviceIdsWithDeploy?.has(nodeId) ?? false);
+  const showDeployButton =
+    DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) && (serviceIdsWithDeploy?.has(nodeId) ?? false);
   // Show info button when the node has any metadata worth displaying in the detail panel.
   // Container nodes (hasChildren) need the button because clicking the body drills down.
   // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
@@ -1404,10 +1413,7 @@ function renderMetaRow(
   if (node.linkCount > 0 && node.properties.team) {
     // Both link count and team: render link on the left, team on the right
     const linkText = `🔗${node.linkCount}`;
-    const teamChars = [...node.properties.team];
-    const teamDisplay =
-      teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
-    const teamText = `👥${teamDisplay}`;
+    const teamText = `👥${teamChipText(node.properties.teamLabel ?? node.properties.team)}`;
     const contentLeft = node.x + 40;
     const contentRight = node.x + node.width - 40;
     children.push(
@@ -1445,9 +1451,7 @@ function renderMetaRow(
       ),
     );
   } else if (node.properties.team) {
-    const teamChars = [...node.properties.team];
-    const teamDisplay =
-      teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
+    const teamDisplay = teamChipText(node.properties.teamLabel ?? node.properties.team);
     children.push(
       el(
         "g",

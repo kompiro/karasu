@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { compile } from "../index.js";
-import { analyze } from "./warnings.js";
+import { analyze, SYSTEM_ASSIGNED_TAGS } from "./warnings.js";
+import { REFERENCE_DATA } from "../builtins/reference-data.js";
 import { warningSeverity } from "../types/warnings.js";
 import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
@@ -1192,6 +1196,220 @@ system S @experimentl {
   });
 });
 
+describe("tag-not-builtin deprecation warning (#2159)", () => {
+  function tagWarnings(krs: string, userStyle?: string) {
+    const file = Parser.parse(krs).value;
+    const sheets = [getBuiltinStyleSheet()];
+    if (userStyle) sheets.push(StyleParser.parse(userStyle).value);
+    return analyze(file, sheets).filter((w) => w.kind === "tag-not-builtin");
+  }
+
+  it("warns on a non-builtin tag on any node kind", () => {
+    const warnings = tagWarnings(`
+system S {
+  database SessionStore [cache] {}
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-builtin") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "SessionStore", tag: "cache" });
+  });
+
+  it("warns on a non-builtin tag on an edge", () => {
+    const warnings = tagWarnings(`
+system S {
+  service A {}
+  service B {}
+  A -> B "call" [pci]
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-builtin") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "A -> B", tag: "pci" });
+  });
+
+  it("stays silent for every builtin tag", () => {
+    expect(
+      tagWarnings(`
+system S {
+  user U [human]
+  user Agent [ai]
+  client App [mobile] {}
+  service Api [external] {}
+  database Search [index] {}
+  service A {}
+  A -> Api "sync" [sync]
+  A --> Api "async" [async]
+}
+    `),
+    ).toHaveLength(0);
+  });
+
+  it("stays silent for system-assigned tags — [inferred] is stamped into source by translate", () => {
+    expect(
+      tagWarnings(`
+system S {
+  service A {}
+  service B {}
+  A -> B [inferred]
+}
+    `),
+    ).toHaveLength(0);
+  });
+
+  it("is NOT suppressed by a style selector — intent does not change the v2.0 outcome", () => {
+    const krs = `
+system S {
+  service Billing [pci] {}
+}
+    `;
+    expect(tagWarnings(krs, `[pci] { border-color: #EF4444; }`)).toHaveLength(1);
+  });
+
+  it("renders as warning — a definite migration fact, not a hint", () => {
+    expect(warningSeverity("tag-not-builtin")).toBe("warning");
+  });
+
+  it("walks nested nodes", () => {
+    const warnings = tagWarnings(`
+system S {
+  service Svc {
+    domain Orders {
+      usecase Do {
+        resource OrderRef [ledger] {}
+      }
+    }
+  }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-builtin") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "OrderRef", tag: "ledger" });
+  });
+
+  it("allows every tag in the spec's System-assigned tags table (dual-representation guard, TPL-20260519-02)", () => {
+    // `SYSTEM_ASSIGNED_TAGS` and the spec table are two representations of
+    // one vocabulary. If a future auto-assigned tag lands in the spec but
+    // not in the constant, the tool would warn on its own vocabulary — this
+    // guard catches that drift the way diagnostics-catalog.test.ts guards
+    // the warning-kind catalog.
+    const here = dirname(fileURLToPath(import.meta.url));
+    const spec = readFileSync(
+      resolve(here, "../../../..", "docs/spec/tags-annotations.md"),
+      "utf8",
+    );
+    const section = /## System-assigned tags([\s\S]*?)(\n## |$)/.exec(spec);
+    if (!section) throw new Error("System-assigned tags section not found in spec");
+    const documented = [...section[1].matchAll(/^\| `\[([a-z-]+)\]` \|/gm)].map((m) => m[1]);
+    expect(documented.length).toBeGreaterThanOrEqual(5); // sanity: the table was found
+    const allowed = new Set([...REFERENCE_DATA.tags.map((t) => t.name), ...SYSTEM_ASSIGNED_TAGS]);
+    expect(documented.filter((tag) => !allowed.has(tag))).toEqual([]);
+  });
+});
+
+describe("annotation-not-builtin deprecation warning (#2159)", () => {
+  function annotationWarnings(krs: string, userStyle?: string) {
+    const file = Parser.parse(krs).value;
+    const sheets = [getBuiltinStyleSheet()];
+    if (userStyle) sheets.push(StyleParser.parse(userStyle).value);
+    return analyze(file, sheets).filter((w) => w.kind === "annotation-not-builtin");
+  }
+
+  it("warns on a non-builtin annotation", () => {
+    const warnings = annotationWarnings(`
+system S {
+  service Api @canary {}
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "annotation-not-builtin") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "Api", annotation: "canary" });
+  });
+
+  it("stays silent for the four builtin annotations", () => {
+    expect(
+      annotationWarnings(`
+system S {
+  service A @deprecated {}
+  service B @new {}
+  service C @experimental {}
+  service D @migration_target {}
+}
+    `),
+    ).toHaveLength(0);
+  });
+
+  it("is NOT suppressed by a style selector, unlike the typo hint", () => {
+    const krs = `
+system S {
+  service Legacy @deprecate {}
+}
+    `;
+    const style = `service@deprecate { opacity: 0.5; }`;
+    // The near-miss typo hint is suppressed by the selector...
+    const file = Parser.parse(krs).value;
+    const sheets = [getBuiltinStyleSheet(), StyleParser.parse(style).value];
+    const all = analyze(file, sheets);
+    expect(all.filter((w) => w.kind === "annotation-possible-typo")).toHaveLength(0);
+    // ...but the deprecation still fires: v2.0 closes the set regardless of intent.
+    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(1);
+  });
+
+  it("fires alongside the typo hint on an unstyled near-miss", () => {
+    const file = Parser.parse(`
+system S {
+  service Legacy @depracated {}
+}
+    `).value;
+    const all = analyze(file, [getBuiltinStyleSheet()]);
+    expect(all.filter((w) => w.kind === "annotation-possible-typo")).toHaveLength(1);
+    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(1);
+  });
+
+  it("covers team annotations in organization blocks", () => {
+    const warnings = annotationWarnings(`
+organization Corp {
+  team payments @sunset {
+    owns Payment
+  }
+}
+system S {
+  service Payment {}
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "annotation-not-builtin") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "payments", annotation: "sunset" });
+  });
+
+  it("a team near-miss carries both diagnostics, same as a node (spec: coexist in v1.x)", () => {
+    const file = Parser.parse(`
+organization Corp {
+  team ops @depracated {
+    owns Payment
+  }
+}
+system S {
+  service Payment {}
+}
+    `).value;
+    const all = analyze(file, [getBuiltinStyleSheet()]);
+    const hints = all.filter((w) => w.kind === "annotation-possible-typo");
+    expect(hints).toHaveLength(1);
+    if (hints[0].kind !== "annotation-possible-typo") throw new Error("kind mismatch");
+    expect(hints[0].params).toEqual({
+      nodeId: "ops",
+      annotation: "depracated",
+      suggestion: "deprecated",
+    });
+    expect(all.filter((w) => w.kind === "annotation-not-builtin")).toHaveLength(1);
+  });
+
+  it("renders as warning", () => {
+    expect(warningSeverity("annotation-not-builtin")).toBe("warning");
+  });
+});
+
 describe("unresolved-handles warning", () => {
   function unresolved(krs: string) {
     const file = Parser.parse(krs).value;
@@ -2286,6 +2504,11 @@ describe("warningSeverity — exhaustive register map", () => {
     // Low-confidence hint on an open name set — never a defect karasu can
     // assert (#1499).
     "annotation-possible-typo": "info",
+    // v1.x deprecation of non-builtin vocabulary ahead of the v2.0 closure —
+    // a definite migration fact, not a low-confidence hint (#2159,
+    // TPL-20260610-01 state (2)).
+    "tag-not-builtin": "warning",
+    "annotation-not-builtin": "warning",
     "style-conflict": "warning",
     "unresolved-realizes": "warning",
     "invalid-owns": "warning",

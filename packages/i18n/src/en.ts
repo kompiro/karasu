@@ -292,7 +292,15 @@ export const en: Translations = {
   "warning.annotationPossibleTypo.message": ({ nodeId, annotation, suggestion }) =>
     `"@${annotation}" on ${nodeId} — did you mean "@${suggestion}"?`,
   "warning.annotationPossibleTypo.openSetNote":
-    "Annotation names are an open set; custom names are fine. This hint only fires for names close to a built-in.",
+    "This hint only fires for names close to a built-in. Any name still parses in v1.x, but non-builtin names are deprecated (see annotation-not-builtin).",
+  "warning.tagNotBuiltin.message": ({ nodeId, tag }) =>
+    `"[${tag}]" on ${nodeId} is not a builtin tag — deprecated. Syntax v2.0 accepts tool vocabulary only (warned, files still parse).`,
+  "warning.tagNotBuiltin.migrationNote":
+    "For membership or model-specific labeling, migrate to the facet construct (#2065). For a missing archetype, request a builtin tag addition instead.",
+  "warning.annotationNotBuiltin.message": ({ nodeId, annotation }) =>
+    `"@${annotation}" on ${nodeId} is not a builtin annotation — deprecated. Syntax v2.0 accepts tool vocabulary only (warned, files still parse).`,
+  "warning.annotationNotBuiltin.migrationNote":
+    "For membership or model-specific labeling, migrate to the facet construct (#2065). For a missing lifecycle state, request a builtin annotation addition instead.",
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} does not match any node or style rule`

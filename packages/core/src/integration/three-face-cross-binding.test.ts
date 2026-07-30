@@ -126,10 +126,12 @@ describe("three-face cross-binding integration (TPL-22 item 4 / GC22-1)", () => 
     // Each owned service should carry its owning team's button + label on
     // the system-view render. This is the visual evidence that the
     // `owns` binding crossed the logical/org face boundary.
+    // The button carries the team *id* (navigation identity); the chip text
+    // shows the team's declared *label* (#2157).
     expect(systemResult.svg).toContain('data-team-button="EcTeam"');
-    expect(systemResult.svg).toContain("👥EcTeam");
+    expect(systemResult.svg).toContain("👥EC Team");
     expect(systemResult.svg).toContain('data-team-button="InfraTeam"');
-    expect(systemResult.svg).toContain("👥InfraTeam");
+    expect(systemResult.svg).toContain("👥Infra Team");
 
     // ── Deploy view: realizes-grouped containers ─────────────────────────
     // The deploy renderer groups units into `data-container-id="<service>"`

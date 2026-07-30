@@ -22,6 +22,7 @@ import type {
   ClientResource as ClientResourceImpl,
   ClientCapability as ClientCapabilityImpl,
 } from "../types/ast.js";
+import { DEPLOY_AFFORDANCE_KIND_SET, OWNABLE_KIND_SET } from "../types/ast.js";
 import type { StyleSheet, ResolvedStyles } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { FileSystemProvider } from "../fs/types.js";
@@ -36,7 +37,7 @@ import {
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { analyze } from "../resolver/warnings.js";
 import { render, legendScopeForLogicalSlice } from "../renderer/svg-renderer.js";
-import { buildGroupLabelIndex } from "../renderer/group-labels.js";
+import { buildGroupLabelIndex, buildTeamLabelIndex } from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
@@ -75,7 +76,13 @@ export interface NodeMetadata {
   description?: string;
   descriptionSummary?: string;
   links: LinkEntry[];
+  /** Owning team **id** — the identity `onNavigateToOrg` jumps by. */
   team?: string;
+  /**
+   * Owning team's declared `label`, when it has one. Detail panels show this
+   * and fall back to {@link team}, matching the card chip (Issue #2157).
+   */
+  teamLabel?: string;
   role?: string;
   runtime?: string;
   /** Deploy-only: the `store` unit's managed-store tech, or an `artifact`'s type. */
@@ -98,7 +105,11 @@ export interface NodeMetadata {
   resources?: ClientResourceImpl[];
   /** Client-only: device / browser capabilities, in declaration order. */
   capabilities?: ClientCapabilityImpl[];
-  /** True when this service/domain node has a corresponding deploy container */
+  /**
+   * True when this node has a corresponding deploy container. Set for the kinds
+   * whose card carries the affordance (`DEPLOY_AFFORDANCE_KIND_SET`:
+   * service / domain / client), `undefined` for the rest.
+   */
   hasDeployContainer?: boolean;
   /**
    * Full drill-down ViewPath for this node (includes system ID as first segment).
@@ -384,6 +395,7 @@ function _compileFromPreparedInput(
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = krsFile.ownerIndex;
+  const teamLabels = buildTeamLabelIndex(krsFile);
 
   if (diagramType === "deploy") {
     const styles = resolveStyles(krsFile.systems, resolveSheets, deployUnits, undefined, [
@@ -447,12 +459,14 @@ function _compileFromPreparedInput(
     boundaryIndex: krsFile.boundaryIndex,
     scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
     groupLabels: buildGroupLabelIndex(krsFile, groupBy),
+    teamLabels,
     collapsedGroups,
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,
     serviceIdsWithDeploy,
     ownerIndex,
+    teamLabels,
     krsFile.nodePathIndex,
   );
   return {
@@ -647,6 +661,7 @@ function buildNodeMetadata(
   viewSlice: import("../view/view-extract.js").ViewSlice,
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
+  teamLabels?: ReadonlyMap<string, string>,
   nodePathIndex?: Map<string, string[]>,
 ): Map<string, NodeMetadata> {
   const map = new Map<string, NodeMetadata>();
@@ -654,9 +669,10 @@ function buildNodeMetadata(
   function addNode(node: KrsNode): void {
     const id = node.id;
     const description = node.properties.description;
-    const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
-    // Resolve owner team from the organization graph (org.team.owns).
-    const team = isServiceOrDomain ? ownerIndex?.get(id) : undefined;
+    // Resolve owner team from the organization graph (org.team.owns). Every
+    // kind a team can `owns` reports it — the panel row went missing on
+    // `client` while the org view drew the same ownership (Issue #2157).
+    const team = OWNABLE_KIND_SET.has(node.kind) ? ownerIndex?.get(id) : undefined;
     map.set(id, {
       kind: node.kind,
       label: node.label ?? node.id,
@@ -664,6 +680,7 @@ function buildNodeMetadata(
       descriptionSummary: description ? summarizeDescription(description) : undefined,
       links: node.properties.links,
       team,
+      teamLabel: team !== undefined ? teamLabels?.get(team) : undefined,
       role: node.kind === "user" ? node.properties.role : undefined,
       tags: [...node.tags],
       annotations: [...node.annotations],
@@ -677,7 +694,9 @@ function buildNodeMetadata(
         node.kind === "client" && node.properties.capabilities.length > 0
           ? [...node.properties.capabilities]
           : undefined,
-      hasDeployContainer: isServiceOrDomain ? (serviceIdsWithDeploy?.has(id) ?? false) : undefined,
+      hasDeployContainer: DEPLOY_AFFORDANCE_KIND_SET.has(node.kind)
+        ? (serviceIdsWithDeploy?.has(id) ?? false)
+        : undefined,
       viewPath: nodePathIndex?.get(id),
     });
   }

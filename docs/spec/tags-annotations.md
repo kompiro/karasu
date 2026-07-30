@@ -29,7 +29,7 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 | `[storage]` | Storage-like resource (shape: cloud) | Rendered as a cloud shape |
 <!-- /gen:reference:tags -->
 
-> The seven `client` form-factor tags are **recognized** by karasu — Icon Mode renders each with a kind-specific icon (Phase 2 of #823); layout hints (Phase 6) are a future addition. Tags outside this list are still allowed on `client` and behave as ordinary user-defined tags.
+> The seven `client` form-factor tags are **recognized** by karasu — Icon Mode renders each with a kind-specific icon (Phase 2 of #823); layout hints (Phase 6) are a future addition. Tags outside the builtin table are accepted in v1.x but **deprecated** — see *Non-builtin tag names are deprecated* below.
 
 > **Shape tags mirror the infra-block keywords — they are related, not interchangeable.** An infra-block **keyword** (`table` inside a `database`, `queue-item` inside a `queue`, `bucket` inside a `storage`) declares the actual **shared-store node** on the system view. A usecase's `resource` is the **operational reference** to what that usecase reads or writes; when a `resource` points at an infra leaf via dot-notation — `resource OrderDB.OrderTable` — karasu **infers the matching shape tag from the referenced infra sub-resource kind** (`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`), so the reference is drawn in the same shape as the store it points to. The shape tags `[table]` / `[queue]` / `[storage]` therefore deliberately **mirror** the infra sub-resource kinds; you can also write them by hand on any `resource` as a pure shape hint when there is no infra leaf to reference. `[api]` (hexagon) has no infra counterpart — it is a manual-only shape for API-like resources. The same word in two positions never *collides*: the keyword **starts a declaration** and sets a node's *kind*; the `[...]` tag is a **suffix** on a `resource` and sets only its *shape* — they are complementary layers linked by the resource reference. See the *Infra layer* section of [syntax.md](./syntax.md).
 >
@@ -38,6 +38,17 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 > **`database [index]`** marks a `database` node as a **derived search / secondary index** — an ElasticSearch / OpenSearch cluster, or a vector store such as pgvector / Pinecone / Weaviate — rather than the system of record. It keeps the database cylinder and adds an `index` badge. The **concrete technology stays in the physical layer** via `store { type "ElasticSearch 8"; realizes SearchIndex }`, so the logical model does not churn when the engine is swapped. The same store can be *both* the system of record and its own index (e.g. Postgres + pgvector) — there the `[index]` tag is simply omitted. **`[index]` denotes a role, not a technology**: tag a secondary store that is derived as an index to search the system of record quickly. Even when it is a vector DB / ElasticSearch, do **not** add `[index]` if that store is itself the system of record. Background: [ADR-316](../adr/316-database-as-first-class-node.md), Issue #1718.
 >
 > Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — `[index]` is an accepted tag that must carry an effect (the `index` badge), not merely a label.
+
+### Non-builtin tag names are deprecated (v1.x)
+
+Bare `[<identifier>]` still accepts any name in v1.x — the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)) keeps parse behaviour unchanged — but a tag outside the **tool vocabulary** (the builtin table above plus the [system-assigned tags](#system-assigned-tags) below) is **deprecated**: karasu emits a `tag-not-builtin` **warning** on every use. There is deliberately **no suppression condition** — a `.krs.style` selector or a `legend` ref proves the name is intentional, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only (still enforced as a warning, never a parse error — existing files keep parsing). Migration targets:
+
+- **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the `facet` construct (#2065 Part B; until it lands, record the fact in `description` / `link` prose).
+- **A missing archetype** (`[cache]`, `[bff]`, …) → request a builtin tag addition (the roadmap `[cache]` watch is the exemplar route). A deprecated tag keeps working meanwhile — warned, without default-rendering effect.
+
+See [*Vocabulary registers*](#vocabulary-registers--boundary--annotation--tag--facet) below for how to pick the right construct.
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — non-builtin tag names previously sat in the forbidden fourth state (accepted, inert, undocumented); `tag-not-builtin` resolves them into state (2), *warned as unknown*.
 
 ### Example
 
@@ -95,18 +106,21 @@ system OrderSystem {
 > Duplication is tolerated as long as at least one side carries `@deprecated` alone, or `@migration_target` alone.
 > If neither annotation is present, the duplicate remains an error.
 
-### Annotation names are an open set
+### Non-builtin annotation names are deprecated (v1.x)
 
-The annotation name set is **open** — `@<identifier>` accepts any identifier, and no warning is emitted for names outside the built-in set. Only the four built-ins above carry default semantics and badge rendering; user-defined annotations have no default rendering but are legitimate targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)).
+`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)), a hook that migrates to facet selectors with #2065 Part B. Migration targets:
 
-Because unknown names are accepted silently, a typo in a built-in name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". karasu therefore emits an **info-level hint** (`annotation-possible-typo`) when an annotation name is not a built-in but sits within a small edit distance of one. The hint is suppressed for any name that appears in a stylesheet annotation selector — defining a selector marks the name as intentionally user-defined.
+- **Membership or model-specific labeling** (team ownership marks, audience labels) → the `facet` construct (#2065 Part B; until it lands, `description` / `link` prose).
+- **A missing lifecycle state** (`@canary`, `@sunset`, …) → request a builtin annotation addition.
+
+The near-miss **typo hint** (`annotation-possible-typo`, info) also still fires: a typo in a builtin name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". The hint stays suppressed for names that appear in a stylesheet annotation selector. Both diagnostics coexist during v1.x — a near-miss can carry both — and are consolidated in v2.0.
 
 ```krs
-service Billing @team-alpha   // fine: user-defined annotation, no hint
-service Legacy  @depracated   // info hint: did you mean "@deprecated"?
+service Billing @team-alpha   // deprecated: annotation-not-builtin warning
+service Legacy  @depracated   // warned twice: typo hint (info) + not-builtin (warning)
 ```
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — the deprecation keeps non-builtin names in state (2), *warned as unknown*, instead of the former undocumented open-set acceptance.
 
 ### Annotation parameters
 
@@ -162,6 +176,32 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 | Operation-tied storage (`localStorage`, `indexedDB`, `keychain`) | `resource <storageKind> "<name>"` |
 | HTTP session / authentication credentials | Separate vocabulary, tracked under #834 |
 | Runtime authorization (RBAC permission bundles, license / feature flag gates) | Not modelled in karasu — see [ADR-832](../adr/832-no-runtime-authz-modeling.md). The `user.role` property is an actor-archetype label, not an authz primitive — see [ADR-1281](../adr/1281-user-role-keyword-clarification.md) |
+
+---
+
+## Vocabulary registers — boundary / annotation / tag / facet
+
+karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the `facet` construct (#2065 Part B — designed, not yet implemented).
+
+| Register | Construct | Vocabulary | Question it answers |
+| --- | --- | --- | --- |
+| Archetype | tag `[...]` | tool-owned (builtin table above) | What *is* this element, architecturally? (`[external]`, `[index]`) |
+| Lifecycle | annotation `@...` | tool-owned (builtin table above) | What development state is it in? (`@deprecated`, `@new`) |
+| View grouping | `boundary` | user-declared ids | How should peers be grouped in this view? (see [syntax.md](./syntax.md)) |
+| Set membership | `facet` (#2065, upcoming) | user-declared ids | Which externally defined set does it belong to? (PCI scope, PII, "requires auth") |
+
+Worked decomposition — modeling PCI compliance and authentication without misusing tags:
+
+| Concern component | Register | Where it goes |
+| --- | --- | --- |
+| The element's architectural role (a search index, an external store) | tag | builtin tags — `[index]`, `[external]` |
+| "This table holds cardholder data" / "this entity is PII" (regulatory membership) | facet | `facets pci` / `facets pii` once #2065 Part B lands; until then `description` / `link` prose |
+| "This usecase requires authentication" (policy scope) | facet | `facets requires_auth` (same interim: prose + `link`) |
+| Who may call it, under which plan / condition (rule content) | prose | `description` + `link` to the policy document — never modelled ([ADR-832](../adr/832-no-runtime-authz-modeling.md)) |
+
+The registers matter because membership semantics differ from archetype semantics: an element is a `database` whether or not it is in PCI scope, and a diagram where 9 of 10 in-scope elements carry a membership tag silently reads as a false audit guarantee. Membership therefore gets its own construct with declared metadata (`label` / `description` / `link`) instead of borrowing the tag namespace.
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — each register's accepted vocabulary must have an effect or be warned; the v1.x deprecation diagnostics (`tag-not-builtin` / `annotation-not-builtin`) keep the tool-owned registers in state (2).
 
 ---
 
