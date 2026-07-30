@@ -73,6 +73,20 @@ function isGroupByMode(value: string): value is GroupByMode {
   return value === "none" || value in GROUP_BY_AXES;
 }
 
+/**
+ * The axes offered for this view — the table filtered by each axis' data gate.
+ *
+ * Both the option list and the selector's own visibility read this one result:
+ * an empty list means no axis has data, so the control would be a no-op and is
+ * not rendered (#1858). Deriving the visibility here is what makes the table
+ * the *only* site a new axis has to touch — `useAppViews` previously carried a
+ * hand-written `groupByAvailable: hasOrgDiagram || hasBoundaries`, which the
+ * `satisfies` guard could not see and a fourth axis would have missed silently.
+ */
+function availableGroupByAxes(view: ActiveViewData) {
+  return Object.entries(GROUP_BY_AXES).filter(([, axis]) => axis.available(view));
+}
+
 export function PreviewColumn() {
   const {
     activeView,
@@ -107,6 +121,7 @@ export function PreviewColumn() {
   } = usePreview();
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
+  const groupByAxes = availableGroupByAxes(view);
 
   const { t, locale } = useTranslation();
   const [exportError, setExportError] = useState<string | null>(null);
@@ -254,7 +269,7 @@ export function PreviewColumn() {
         >
           ◇ Icon Mode
         </Button>
-        {activeView === "system" && view.groupByAvailable && (
+        {activeView === "system" && groupByAxes.length > 0 && (
           <span className="group-by-selector-label">
             <label htmlFor="group-by-select">{t("preview.groupBy.label")}</label>
             <select
@@ -266,13 +281,11 @@ export function PreviewColumn() {
               }}
             >
               <option value="none">{t("preview.groupBy.none")}</option>
-              {Object.entries(GROUP_BY_AXES).map(([mode, axis]) =>
-                axis.available(view) ? (
-                  <option key={mode} value={mode}>
-                    {axis.label(t)}
-                  </option>
-                ) : null,
-              )}
+              {groupByAxes.map(([mode, axis]) => (
+                <option key={mode} value={mode}>
+                  {axis.label(t)}
+                </option>
+              ))}
             </select>
           </span>
         )}

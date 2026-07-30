@@ -70,7 +70,6 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       systems: [],
       groupBy: "none" as const,
       onGroupByChange: vi.fn<() => void>(),
-      groupByAvailable: true,
       hasTeamAxis: true,
       hasBoundaryAxis: false,
     },
@@ -476,8 +475,11 @@ describe("PreviewColumn", () => {
     });
 
     it("hides the selector when grouping is not meaningful (no org / compare mode)", () => {
+      // Visibility is derived from the axis table (#2119): no axis has data, so
+      // the selector would be a no-op and is not rendered.
       const props = makeProps({ activeView: "system" });
-      props.systemView.groupByAvailable = false;
+      props.systemView.hasTeamAxis = false;
+      props.systemView.hasBoundaryAxis = false;
       const { queryByLabelText } = renderPreview(props);
       expect(queryByLabelText("Group by")).toBeNull();
     });
@@ -568,7 +570,11 @@ describe("PreviewColumn", () => {
     it("shows even when un-grouped / grouping unavailable, as long as something is collapsible", () => {
       // Un-grouped view (Group by: None, no org) that still has external/infra
       // category bands: anyCollapsible is true, so the bulk control appears.
-      const props = withCollapsibles({ groupBy: "none", groupByAvailable: false });
+      const props = withCollapsibles({
+        groupBy: "none",
+        hasTeamAxis: false,
+        hasBoundaryAxis: false,
+      });
       const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Collapse all/ })).toBeTruthy();
     });

@@ -301,8 +301,9 @@ organization Org {
     );
 
     await waitFor(() => expect(result.current.system.svg).toBeTruthy(), { timeout: 2000 });
-    // The selector is offered even though a compare source is active.
-    expect(result.current.system.groupByAvailable).toBe(true);
+    // The team axis still has data even though a compare source is active —
+    // what `PreviewColumn` derives the selector's visibility from (#2119).
+    expect(result.current.system.hasTeamAxis).toBe(true);
 
     // Opting into team grouping re-compiles the diff with boundary frames.
     act(() => result.current.system.setGroupBy("team"));
