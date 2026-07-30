@@ -137,7 +137,7 @@ resource への operation / CRUD decoration の文法。
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `unassigned-service` | warning | service が team 割り当てなしにトップレベルに置かれる。 |
-| `unassigned-domain` | warning | domain が team 割り当てなしにトップレベルに置かれる。 |
+| `unassigned-domain` | warning | domain がどの service にも割り当てられていない（トップレベル、または `system` 直下に置かれている）。2 つの配置は同じモデリング状態を表すため両方で発火する（[#2184](https://github.com/kompiro/karasu/issues/2184)）。`(Unassigned)` 擬似 system に包まれるのはトップレベル形のみ。 |
 | `unassigned-usecase` | warning | usecase が domain の親なしに service の直接の子になる。 |
 | `unassigned-client` | warning | client が team 割り当てなしにトップレベルに置かれる。 |
 | `unassigned-database` | warning | database が team 割り当てなしにトップレベルに置かれる。 |
