@@ -780,6 +780,10 @@ service BillingService {
 
 使用できるタグ・スタイルの詳細は [`docs/spec/tags-annotations.md`](tags-annotations.md) を参照。
 
+> 関連 TPL:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理した構造はいずれかの view で描画されるか診断される。エッジの endpoint が宣言スコープに無い場合に黙って落とさない（**Endpoint scope** の散文は #2075 の実装 PR で入る）
+> - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照する
+
 ---
 
 ## 物理図の記述
