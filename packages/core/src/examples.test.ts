@@ -222,3 +222,34 @@ describe("deploy-only / org-only: bundled content matches examples/", () => {
     expect(entry?.content).toBe(onDisk);
   });
 });
+
+// Containment regression fence (#2165): the `node-not-in-context` warning is
+// derived from `canContain`, so tightening that column silently turns shipped
+// examples into warning sources. Every `.krs` we ship must stay clean under our
+// own rule — see TPL-20260730-02.
+describe("examples: every shipped .krs is free of node-not-in-context warnings", () => {
+  const examplesRoot = resolve(__dirname, "../../../examples");
+  const krsFiles: string[] = [];
+  const walk = (d: string) => {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      const p = resolve(d, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name.endsWith(".krs")) krsFiles.push(p);
+    }
+  };
+  walk(examplesRoot);
+
+  it("scans a non-trivial number of example files", () => {
+    expect(krsFiles.length).toBeGreaterThan(50);
+  });
+
+  it.each(krsFiles.map((f) => [f.replace(`${examplesRoot}/`, ""), f] as const))(
+    "%s",
+    (_name, path) => {
+      const misplaced = Parser.parse(readFileSync(path, "utf8")).diagnostics.filter(
+        (d) => d.code === "node-not-in-context",
+      );
+      expect(misplaced).toEqual([]);
+    },
+  );
+});

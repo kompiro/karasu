@@ -1,6 +1,6 @@
 # ADR Topic: parser
 
-21 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+22 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -26,6 +26,7 @@ flowchart TD
     ADR_2036["ADR-2036<br/>boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
+    ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   ADR_285["ADR-285<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -33,6 +34,8 @@ flowchart TD
   ADR_477["ADR-477<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
   ADR_681["ADR-681<br/>[renderer] トップレベル service / domain を `(Unassigned)` 擬似システム..."]
   ADR_1061["ADR-1061<br/>[renderer] usecase→resource edge を read/write で視覚的に区別する"]
+  ADR_1296["ADR-1296<br/>[build] in-app Reference データを `reference-data.ts` に集約し、..."]
+  ADR_1314["ADR-1314<br/>[build] .krs / .krs.style を v1.0 として凍結する（ハイブリッド版管理）"]
   ADR_1820["ADR-1820<br/>[build] notation promotion gate — experimental notation..."]
   ADR_1858["ADR-1858<br/>[renderer] system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
   ADR_1983["ADR-1983<br/>[renderer] boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
@@ -49,11 +52,14 @@ flowchart TD
   ADR_1974 --> ADR_1820
   ADR_2036 --> ADR_1974
   ADR_2036 --> ADR_1983
+  ADR_2165 --> ADR_1296
+  ADR_2165 --> ADR_1314
   ADR_285 --> ADR_281
   ADR_429 --> ADR_412
   ADR_429 --> ADR_211
   ADR_681 --> ADR_412
   ADR_1061 --> ADR_1046
+  ADR_1820 --> ADR_1314
   ADR_9007 --> ADR_9008
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -82,12 +88,15 @@ flowchart TD
   class ADR_2036 accepted
   class ADR_2076 accepted
   class ADR_2087 accepted
+  class ADR_2165 accepted
   class ADR_9008 accepted
   class ADR_285 ghost
   class ADR_429 ghost
   class ADR_477 ghost
   class ADR_681 ghost
   class ADR_1061 ghost
+  class ADR_1296 ghost
+  class ADR_1314 ghost
   class ADR_1820 ghost
   class ADR_1858 ghost
   class ADR_1983 ghost

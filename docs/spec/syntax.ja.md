@@ -2,6 +2,8 @@
 
 > [English](syntax.md) · **日本語**（このファイル）
 
+> 言語バージョン: **`.krs language v1.0`**（言語 v1.0 — freeze 済み [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)。各パッケージの npm 版とは独立 — [ADR-2124](../adr/2124-version-vocabulary.md)）。ビルドが実装する言語版は `karasu --version` が表示する。
+
 ## ファイル構造
 
 ```
@@ -28,11 +30,11 @@ karasu は**論理構造**と**物理構造**を明確に分離して表現す�
 <!-- gen:reference:node-kinds-logical — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | キーワード | 意味 | 含むことができるもの |
 |------------|------|----------------------|
-| `system` | owned/external なサービスやクライアントの関係を示す器 | `service`, `user`, `client`, `database`, `queue`, `storage` |
+| `system` | owned/external なサービスやクライアントの関係を示す器 | `service`, `user`, `client`, `domain`, `database`, `queue`, `storage` |
 | `user` | システムの利用者（人間またはAIエージェント） | — |
 | `client` | ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed） | — |
 | `service` | 独立したビジネス機能の単位 | `domain` |
-| `domain` | ビジネス上の関心事の境界（トップレベルまたはサービス内） | `usecase`, `entity` |
+| `domain` | ビジネス上の関心事の境界（トップレベル / system 直下 / service 内） | `usecase`, `entity` |
 | `usecase` | ドメイン内の業務・操作 | `resource` |
 | `resource` | usecaseが操作する対象（テーブル、外部API、ファイル等） | — |
 | `entity` | domain が所有する概念データエンティティ。名前と関連のみを持ち属性は持たない。`table` で infra サブリソースに対応づける | — |
@@ -396,6 +398,39 @@ post-v1.0 の拡張余地として意図的に残しており、ここではス�
 （[#1639](https://github.com/kompiro/karasu/issues/1639) 参照）。
 
 > Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — spec が約束する配置規則は、汎用 parse error に落とさず専用の診断コードを持つこと。
+
+#### 入れ子の配置
+
+[論理構造](#論理構造何をなぜ)の表の **含められるもの** 列が、その kind が持てる
+子の唯一の定義である。それ以外の入れ子は `node-not-in-context` **warning** を
+発行する。ノードは保持され描画もされるが、その位置での意味は定義されていない。
+意味を持つのは表に載っている入れ子だけで、`docs/concepts.ja.md` が階層を
+`service → domain → usecase → resource` と定めている以上、`client` の直下に
+書かれた `usecase` には意味を与えようがない。
+
+error ではなく warning なのは言語 v1.0 が freeze 済み
+（[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）だからである — 今日パースが通る
+ファイルは通り続ける。error への格上げは言語 v2.0 に登録してある
+（[roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)）。tag / annotation の
+語彙が辿るのと同じ「言語 v1.x は warning、言語 v2.0 で error」の経路である。
+
+次の 4 つは warning ではなく拒否され、該当ノードは捨てられる:
+
+| 拒否される入れ子 | 診断 | warning ではなく error である理由 |
+|---|---|---|
+| `system` 外のインフラブロック | `infra-not-in-context` | 所属すべき system が無い |
+| `domain` 外の `entity` | `entity-not-in-domain` | entity はちょうど 1 つの domain に所有される |
+| canvas を描かない kind の中の `boundary` | `boundary-not-in-context` | 囲む対象の peer が存在しない |
+| `entity` の中のノード全般 | `unexpected-token-in-block` | entity が持つのは名前・関連・`table` 対応だけで、属性は持たない |
+
+`domain` はトップレベル・`system` 直下・`service` 内のいずれにも書ける。前 2 者は
+どちらも service にまだ割り当てられていない domain を表す。ただし下流の扱いは
+まだ同一ではない — `unassigned-domain` warning と `(Unassigned)` 擬似 system
+（[ADR-681](../adr/681-top-level-service-rendering.md)）が対象にしているのは
+トップレベル形のみである（system 直下の domain は描画先の器を既に持つため。
+[#2184](https://github.com/kompiro/karasu/issues/2184) 参照）。
+
+> Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。
 
 ### service ブロック
 

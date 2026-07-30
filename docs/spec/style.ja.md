@@ -2,6 +2,8 @@
 
 > [English](style.md) · **日本語**（このファイル）
 
+> 言語バージョン: **`.krs language v1.0`**（言語 v1.0） — `.krs` と `.krs.style` は 1 つの言語版を共有する（freeze 済み [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)。各パッケージの npm 版とは独立 — [ADR-2124](../adr/2124-version-vocabulary.md)）。
+
 ## セレクタの種類
 
 | セレクタ | 例 | 対象 |

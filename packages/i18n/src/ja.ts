@@ -351,6 +351,8 @@ export const ja: Partial<Translations> = {
     `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
   "diagnostic.entityNotInDomain.message": ({ parentKind }) =>
     `"entity" は domain の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
+  "diagnostic.nodeNotInContext.message": ({ childKind, parentKind }) =>
+    `"${childKind}" は "${parentKind}" の子として定義されていません。描画はされますが意味は定義されていません`,
   "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
     `legend ブロックはファイルのトップレベルにのみ書けます。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>

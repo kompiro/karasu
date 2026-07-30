@@ -70,6 +70,11 @@ const SAMPLES: SamplesByCode = {
     code: "entity-not-in-domain",
     params: { parentKind: "service" },
   },
+  "node-not-in-context": {
+    severity: "warning",
+    code: "node-not-in-context",
+    params: { childKind: "usecase", parentKind: "client" },
+  },
   "legend-not-top-level": {
     severity: "error",
     code: "legend-not-top-level",
@@ -394,6 +399,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "property-not-for-node-kind": ["role"],
   "infra-not-in-context": ["database", "domain"],
   "entity-not-in-domain": ["service"],
+  "node-not-in-context": ["usecase", "client"],
   "legend-not-top-level": ["system"],
   "expected-id-or-string": ["entity table infra id"],
   "expected-node-id": ["service"],

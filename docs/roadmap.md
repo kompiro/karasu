@@ -450,6 +450,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 | [#2160](https://github.com/kompiro/karasu/issues/2160) | `facet` construct — 宣言 + `facets` プロパティ + overlay + facet セレクタ（Part B、experimental） | v1.x |
 | [#2161](https://github.com/kompiro/karasu/issues/2161) | boundary 所属 1:N 一般化 + 多重包含 banded 描画（ADR-1974 refine — boundary core 昇格の宿題） | v1.x〜v2.0 |
 | [#2124](https://github.com/kompiro/karasu/issues/2124) | version vocabulary — v2.0 の版運用をこれと同時確定 | ✅ [ADR-2124](adr/2124-version-vocabulary.md)（実装残 = [#2181](https://github.com/kompiro/karasu/issues/2181)） |
+| [#2165](https://github.com/kompiro/karasu/issues/2165) | 論理ノードの containment 規則 — v1.x は `node-not-in-context` warning（着地済み）、**error 化は v2.0** | v1.x 済 → 言語 v2.0 |
 | （未起票） | 閉鎖の実施（tag / annotation の warning enforcement・任意名セレクタ無効化・concepts 改訂 + ADR-1314 関係の新 ADR） | v2.0 |
 
 ---
