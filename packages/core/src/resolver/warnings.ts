@@ -13,7 +13,7 @@ import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
 import { buildEntityResolver } from "./resource-entity.js";
-import { REFERENCE_DATA } from "../builtins/reference-data.js";
+import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   const warnings: Warning[] = [];
@@ -714,7 +714,7 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
           const leafKey = `${parent}.${child}`;
           const ownerSet = owners.get(leafKey);
           if (ownerSet && ownerSet.size > 0 && !ownerSet.has(nextDomain)) {
-            const aggKey = `${nextDomain} ${leafKey}`;
+            const aggKey = `${nextDomain}\0${leafKey}`;
             const ops = (node as ResourceNode).properties.operations;
             let entry = agg.get(aggKey);
             if (!entry) {
@@ -819,15 +819,69 @@ function detectUnassignedResources(file: KrsFile): Warning[] {
   return warnings;
 }
 
+/**
+ * Node kinds that may hold a `domain` yet leave it unassigned — every kind whose
+ * `canContain` lists `domain`, minus `service` (a domain under a service *is*
+ * assigned). Derived from `LOGICAL_CONTAINMENT` rather than naming `system`
+ * directly, so adding a domain parent to `canContain` cannot leave this detector
+ * behind (TPL-2165 / TPL-2184). Today the set is exactly `{ system }`.
+ */
+const UNASSIGNING_DOMAIN_PARENTS: ReadonlySet<string> = new Set(
+  [...LOGICAL_CONTAINMENT.entries()]
+    .filter(([parent, children]) => parent !== "service" && children.has("domain"))
+    .map(([parent]) => parent),
+);
+
+/**
+ * A `domain` is unassigned when its parent is not a `service` — which is what
+ * the warning says ("is not assigned to any service"), so the scan range is
+ * decided by parent kind, not by which AST slot the node landed in.
+ *
+ * Two placements express that state: the file top level, licensed by the
+ * top-level grammar (`top-level-declaration`, ADR-1639), and a block parent
+ * drawn from `canContain` (ADR-2165) — today only `system`. Both spell the same
+ * thing, so both warn: the author picks the spelling, not the meaning (#2184).
+ *
+ * Rendering is unaffected: the `(Unassigned)` pseudo-system still wraps only the
+ * top-level form, because it gives a container to nodes that have none, and a
+ * system-nested domain already has one (ADR-681).
+ *
+ * Nestings outside `canContain` (`client { domain … }`) already report
+ * `node-not-in-context`; they are deliberately not reported twice here.
+ */
 function detectUnassignedDomains(file: KrsFile): Warning[] {
-  return file.domains.map((domain) => ({
-    kind: "unassigned-domain" as const,
-    params: {
-      domainId: domain.id,
-      ...(domain.label ? { label: domain.label } : {}),
-    },
-    loc: domain.loc,
-  }));
+  const unassigned: KrsNode[] = [...file.domains];
+
+  function walk(node: KrsNode): void {
+    if (UNASSIGNING_DOMAIN_PARENTS.has(node.kind)) {
+      for (const child of node.children) {
+        if (child.kind === "domain") unassigned.push(child);
+      }
+    }
+    for (const child of node.children) walk(child);
+  }
+  for (const root of [
+    ...file.systems,
+    ...file.services,
+    ...(file.clients ?? []),
+    ...file.domains,
+  ]) {
+    walk(root);
+  }
+
+  // Report in source order: `file.domains` and the nested hits come from
+  // separate AST slots, so concatenating them would surface a top-level domain
+  // ahead of a system-nested one declared earlier in the file.
+  return unassigned
+    .sort((a, b) => (a.loc?.start.offset ?? 0) - (b.loc?.start.offset ?? 0))
+    .map((domain) => ({
+      kind: "unassigned-domain" as const,
+      params: {
+        domainId: domain.id,
+        ...(domain.label ? { label: domain.label } : {}),
+      },
+      loc: domain.loc,
+    }));
 }
 
 function detectUnassignedServices(file: KrsFile): Warning[] {

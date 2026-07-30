@@ -549,7 +549,7 @@ karasu translate --from db schema.sql --database AuthDB
 
 **Expected** (entity portion): `user_roles` is a pure junction (not folded), so
 it becomes its own entity with a relation to each parent:
-```krs
+```krs fragment
   entity UserRoles {
     table AuthDB.UserRolesTable
     UserRoles -> Users

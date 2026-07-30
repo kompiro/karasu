@@ -60,7 +60,7 @@ karasu のタグシステムは意図的にオープンで、任意のタグを�
 | `[embed]` | サードパーティの Web コンテンツに埋め込む widget / SDK（Stripe Checkout、Intercom 等） |
 <!-- /gen:reference:client-form-factor-tags -->
 
-推奨: 1 つの client につき form-factor タグは最大 1 つに留める。組み合わせ（例: `[mobile] [desktop]`）はパースされるが、アーキテクチャ上の追加意味は持たない。
+推奨: 1 つの client につき form-factor タグは最大 1 つに留める。複数タグは **1 つの** 角括弧にカンマ区切りで書く（`[mobile, desktop]`）。角括弧を繰り返す書き方（`[mobile] [desktop]`）は parse error になる。組み合わせ自体はパースされるが、アーキテクチャ上の追加意味は持たない。
 
 `client` は **プロジェクト自身が配布するソフトウェア** に限定される。サードパーティのブラウザ・IDE・AI エージェントがシステムを利用する場合は `user`（通常は `[human]` / `[ai]`）でモデル化し、`client` にはしない。
 
@@ -424,11 +424,16 @@ error ではなく warning なのは言語 v1.0 が freeze 済み
 | `entity` の中のノード全般 | `unexpected-token-in-block` | entity が持つのは名前・関連・`table` 対応だけで、属性は持たない |
 
 `domain` はトップレベル・`system` 直下・`service` 内のいずれにも書ける。前 2 者は
-どちらも service にまだ割り当てられていない domain を表す。ただし下流の扱いは
-まだ同一ではない — `unassigned-domain` warning と `(Unassigned)` 擬似 system
-（[ADR-681](../adr/681-top-level-service-rendering.md)）が対象にしているのは
-トップレベル形のみである（system 直下の domain は描画先の器を既に持つため。
-[#2184](https://github.com/kompiro/karasu/issues/2184) 参照）。
+どちらも service にまだ割り当てられていない domain を表し、どちらも
+`unassigned-domain` warning を出す。著者が選んでいるのは綴りであって意味ではない
+（[#2184](https://github.com/kompiro/karasu/issues/2184)）。
+
+両者が正当に分かれるのは描画である。`(Unassigned)` 擬似 system
+（[ADR-681](../adr/681-top-level-service-rendering.md)）が包むのはトップレベル形
+のみで、これは「描画先の器を持たないノードに器を与える」機構だからである
+（system 直下の domain は既に自分の system の中に描画される）。「service に割り
+当てられていない」ことの診断と「描画先が無い」ことの framing は別の関心事であり、
+2 つの配置で対称になるのは前者だけである。
 
 > Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。[TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — 同じモデリング状態を表す配置は、著者が選んだ綴りによらず同じ診断を出す。
 
