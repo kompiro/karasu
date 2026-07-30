@@ -2773,6 +2773,51 @@ system EC {
       expect(service.children.some((c) => c.kind === "entity")).toBe(false);
     });
 
+    it("accepts a domain declared directly inside a system", () => {
+      // A domain that belongs to the system but is not (yet) assigned to a
+      // service — the in-system counterpart of the top-level unassigned domain
+      // ADR-681 renders under `(Unassigned)`. #2165.
+      const result = Parser.parse(`
+system EC {
+  domain Ordering {
+    usecase PlaceOrder {}
+  }
+  service OrderService {}
+}
+      `);
+      expect(result.diagnostics).toEqual([]);
+      expect(result.value.systems[0].children.map((c) => c.kind)).toEqual(["domain", "service"]);
+    });
+
+    it("warns when a logical node is nested outside its parent's canContain", () => {
+      const result = Parser.parse(`
+system EC {
+  client Web {
+    usecase PlaceOrder {}
+  }
+}
+      `);
+      const misplaced = result.diagnostics.filter((d) => d.code === "node-not-in-context");
+      expect(misplaced).toHaveLength(1);
+      expect(misplaced[0]?.severity).toBe("warning");
+      expect(misplaced[0]?.params).toEqual({ childKind: "usecase", parentKind: "client" });
+      // Warning only — nothing is escalated to an error (`.krs` v1.0 is frozen).
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    });
+
+    it("keeps a misplaced node in the tree so rendering is unchanged", () => {
+      const result = Parser.parse(`
+system EC {
+  client Web {
+    usecase PlaceOrder {}
+  }
+}
+      `);
+      const client = result.value.systems[0].children[0];
+      expect(client.kind).toBe("client");
+      expect(client.children.map((c) => c.id)).toEqual(["PlaceOrder"]);
+    });
+
     it("flags a usecase and entity sharing an id under one domain (duplicate-node-id-parent)", () => {
       const result = Parser.parse(`
 system EC {

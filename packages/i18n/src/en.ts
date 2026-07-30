@@ -353,6 +353,8 @@ export const en: Translations = {
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
   "diagnostic.entityNotInDomain.message": ({ parentKind }) =>
     `"entity" is only valid as a child of domain, not inside "${parentKind}"`,
+  "diagnostic.nodeNotInContext.message": ({ childKind, parentKind }) =>
+    `"${childKind}" is not a defined child of "${parentKind}"; it is drawn but carries no defined meaning there`,
   "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
     `legend blocks are only allowed at the top level of a file, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>

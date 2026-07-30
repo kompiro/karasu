@@ -104,7 +104,7 @@ export const REFERENCE_DATA = {
         en: "Container showing the relationships between owned/external services and clients",
         ja: "owned/external なサービスやクライアントの関係を示す器",
       },
-      canContain: ["service", "user", "client", "database", "queue", "storage"],
+      canContain: ["service", "user", "client", "domain", "database", "queue", "storage"],
       properties: ["label", "description", "link"],
       layer: "logical",
     },
@@ -141,8 +141,8 @@ export const REFERENCE_DATA = {
     {
       kind: "domain",
       description: {
-        en: "A business-concern boundary (top-level or inside a service)",
-        ja: "ビジネス上の関心事の境界（トップレベルまたはサービス内）",
+        en: "A business-concern boundary (top-level, inside a system, or inside a service)",
+        ja: "ビジネス上の関心事の境界（トップレベル / system 直下 / service 内）",
       },
       canContain: ["usecase", "entity"],
       properties: ["label", "description", "link"],
@@ -783,6 +783,21 @@ export const REFERENCE_DATA = {
     },
   ],
 } satisfies ReferenceData;
+
+/**
+ * `kind → the child kinds it may contain`, derived from the `canContain`
+ * column above so the rule has exactly one definition (#2165).
+ *
+ * The parser reads this to emit `node-not-in-context` (a **warning** in v1.x —
+ * `.krs` v1.0 is frozen by ADR-1314, so a nesting that parses today must keep
+ * parsing; error-ification is registered to the Syntax 2.0 program, #2162).
+ * Because the parser is the enforcer, `canContain` stopped being a
+ * documentation-only column and `reference-parser-sync.test.ts` can now fence
+ * it in both directions.
+ */
+export const LOGICAL_CONTAINMENT: ReadonlyMap<string, ReadonlySet<string>> = new Map(
+  REFERENCE_DATA.nodeKinds.map((k) => [k.kind, new Set<string>(k.canContain)]),
+);
 
 // ── Reference-panel snippets (locale-independent) ───────────────────────────
 //
