@@ -1162,6 +1162,115 @@ Under either *Group by* axis the group frame is titled with the group's declared
 
 ---
 
+## Cross-cutting membership (`facet`) — experimental
+
+> **Experimental notation (post-v1.0 watch).** `facet` lands as experimental,
+> not frozen — backward compatibility is **not yet promised**, and promotion to
+> a v1.0-stable construct is gated on real-usage evidence (the notation
+> promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
+>
+> **This slice has no visual effect yet.** Facet membership is parsed, indexed,
+> merged across files, and validated, but nothing on the diagram changes: the
+> overlay that highlights a facet's members, the `.krs.style` facet selectors,
+> and the derived "everything in facet X" overview arrive in the follow-up
+> slices of [#2160](https://github.com/kompiro/karasu/issues/2160). What a
+> declaration buys you today is the reference check below.
+
+A `facet` declares a set that is defined **outside** the architecture — by a
+regulation, a policy, or an audit scope — and that elements belong to. A
+`database` is a database whether or not it is in PCI scope; being in PCI scope
+is imposed on it from outside. That is the register split: a **tag** says what
+an element *is* (its archetype), a `facet` says what externally-defined set it
+*belongs to*. See [tags-annotations.md](tags-annotations.md#vocabulary-registers--boundary--annotation--tag--facet)
+for the four-way split between `boundary` / `annotation` / `tag` / `facet`.
+
+```krs
+facet pii {
+  label "Personal data"
+  description "Handling follows ADR-1421"
+  link "https://example.com/adr/1421" "ADR-1421"
+}
+
+facet requires_auth {
+  label "Authenticated"
+  description "Reachable only after login; who may call it is set by the IAM policy"
+  link "https://example.com/policies/iam" "IAM policy"
+}
+
+system Shop {
+  service Checkout {
+    domain Ordering {
+      usecase PlaceOrder {
+        facets requires_auth
+      }
+      entity Order {
+        table OrderDB.orders
+        facets pii
+      }
+    }
+  }
+
+  database OrderDB {
+    facets pii
+  }
+}
+```
+
+- **The declaration is top level** and carries only metadata: `label`,
+  `description`, `link`. Writing a `facet` block inside a node block is an error
+  — a facet id is a model-wide name, not a per-node one.
+- **The declaration has no membership list.** There is no `contains`; membership
+  is written on the elements. This keeps the membership next to the thing that
+  has it, so renaming or moving an element does not mean editing a distant list.
+- **The grammar is closed and value-free — permanently.** No predicates, no
+  attribute declarations, no `policy` block. A facet says *which* behaviours a
+  policy covers; *what the policy says* stays prose in `description` plus a
+  `link` to the real policy document. This is the structural half of
+  [ADR-832](../adr/832-no-runtime-authz-modeling.md)'s decision not to model
+  runtime authorization: with no value language there is no gradient from
+  "declare a scope" to "declare a rule".
+- **`facets <id>[, <id>]*` is accepted on every node kind** — `system`,
+  `service`, `domain`, `usecase`, `entity`, `resource`, `user`, `client`, the
+  infra blocks (`database` / `queue` / `storage`) and their leaves (`table`,
+  queue item, `bucket`). Membership is imposed from outside the architecture, so
+  no kind is structurally excluded. Edges do not take `facets` in v1.
+- **Repeated properties and repeated ids merge.** `facets a, b` and two separate
+  `facets` lines are the same thing, and naming the same id twice is idempotent,
+  not an error. `karasu fmt` canonicalizes them to one comma-separated line.
+- **An element may belong to any number of facets (1:N).** Multi-membership is a
+  normal state — an `entity` can be both PII and in PCI scope — and never a
+  diagnostic. Every declared membership is kept in the model; a view that can
+  only show one at a time resolves that itself.
+- **References name facet ids, never node ids.** `facets pii` resolves against
+  the flat namespace of `facet` declarations, so the cross-layer addressing
+  question that `boundary … contains` and `owns` have to answer simply does not
+  arise here.
+- **Declaration and reference may live in different files.** Both sides merge
+  across imports and are validated on the merged model, so keeping the facet
+  vocabulary in one file and importing it wholesale is a supported layout.
+- **Typo detection is complete, not best-effort.** Because the declarations
+  define the correct set, a slip between two author-defined names
+  (`facets pcl` for `pii`) is caught just as reliably as a misspelt builtin —
+  unlike the near-miss `annotation-possible-typo` hint, which can only compare
+  against a fixed vocabulary.
+- **Default rendering is unchanged.** Adding `facets` to an element never alters
+  how the diagram is drawn; every effect of a facet is opt-in.
+
+| Keyword | Meaning | May contain |
+|---------|---------|-------------|
+| `facet` | A top-level declaration of an externally-defined set, with its metadata. Top level only | `label`, `description`, `link` |
+| `facets` | The facet ids an element belongs to (comma-separated; repeatable; accepted on every node kind) | — |
+
+Diagnostics (see [diagnostics.md](diagnostics.md)):
+
+- `facet-not-declared` (warning) — a `facets` reference names no declared `facet`. Checked on the merged model, so a declaration in an imported file counts.
+- `duplicate-facet-id` (error) — two `facet` blocks declare the same id, in one file or across merged files. The first declaration is the one references resolve to.
+- `positional-label-removed` (error) — a positional label after the facet id (`facet pii "Personal data"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md)).
+
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; until the overlay slice lands, the effect of a `facet` declaration is the reference check above, and this section states the interim explicitly rather than leaving the construct silently inert. [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere. [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword.
+
+---
+
 ## Diagram legend
 
 A `legend` block declares color → meaning pairs that the renderer paints as a footer band below the diagram view. Use it to document what your colors, annotations, and tags signify so the rendered SVG is self-explanatory in reviews and exports.

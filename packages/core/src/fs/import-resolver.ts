@@ -17,6 +17,8 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validateFacetDeclarations,
+  buildFacetIndex,
 } from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
 import type { StyleSheet } from "../types/style.js";
@@ -29,6 +31,11 @@ import type { StyleSheet } from "../types/style.js";
 const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   "contains-target-not-found",
   "owns-target-not-found",
+  // `facet` declarations merge across files, so uniqueness is a property of the
+  // merged namespace. Suppressed per file and re-derived below — otherwise a
+  // duplicate split across two files would go unreported, and a duplicate inside
+  // one file would be reported twice (#2065 Part B).
+  "duplicate-facet-id",
 ]);
 
 export interface ResolvedProject {
@@ -112,6 +119,23 @@ export class ImportResolver {
         ...krsFile.storages,
       ]),
     );
+    // Facet membership is rebuilt from the merged tree rather than merged
+    // per file, so it cannot drift between merge paths (#2065 Part B).
+    krsFile.facetIndex = buildFacetIndex([
+      ...krsFile.systems,
+      ...krsFile.services,
+      ...krsFile.clients,
+      ...krsFile.domains,
+      ...krsFile.databases,
+      ...krsFile.queues,
+      ...krsFile.storages,
+    ]);
+    // `facet` declarations from every file share one flat namespace, so the
+    // duplicate check only makes sense here (#2065 Part B). Unlike the reference
+    // checks above, the per-file verdict was suppressed to avoid *under*-
+    // reporting, not over-reporting: two files each declaring `facet pii` is a
+    // duplicate no single file can see.
+    this.diagnostics.push(...validateFacetDeclarations(krsFile.facets));
 
     const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
 
@@ -256,6 +280,7 @@ export class ImportResolver {
     mergedFile.deploys.push(...file.deploys);
     mergedFile.organizations.push(...file.organizations);
     mergedFile.boundaries.push(...(file.boundaries ?? []));
+    mergedFile.facets.push(...(file.facets ?? []));
     mergedFile.legends.push(...(file.legends ?? []));
     for (const [ownedId, teamId] of file.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
@@ -282,6 +307,12 @@ export class ImportResolver {
         if (!merged.has(memberId)) merged.set(memberId, boundaryId);
       }
     }
+    // `facetIndex` is deliberately NOT merged entry-by-entry here. It is a pure
+    // derivation of the `facets` properties on the merged tree, so `resolve()`
+    // rebuilds it once at the end instead — one derivation rather than one per
+    // merge path (TPL-1032). That also makes it immune to a merge path
+    // forgetting to carry it: `boundaries` / `boundaryIndex`, which do merge by
+    // hand here, are silently dropped by `mergeWildcardResolved`.
     for (const [nodeId, path] of file.nodePathIndex) {
       if (!mergedFile.nodePathIndex.has(nodeId)) {
         mergedFile.nodePathIndex.set(nodeId, path);
@@ -434,6 +465,15 @@ export class ImportResolver {
     for (const legend of resolved.legends) {
       if (!mergedFile.legends.includes(legend)) {
         mergedFile.legends.push(legend);
+      }
+    }
+    // Facet declarations propagate through whole-file import like every other
+    // top-level block (TPL-2169): a project that keeps its `facet`
+    // vocabulary in one file and imports it wholesale is the expected layout,
+    // and without this the references in the importing file would all warn.
+    for (const facet of resolved.facets) {
+      if (!mergedFile.facets.includes(facet)) {
+        mergedFile.facets.push(facet);
       }
     }
 

@@ -108,6 +108,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "annotation-not-builtin",
     params: { nodeId: "OrderService", annotation: "canary" },
   },
+  "facet-not-declared": {
+    kind: "facet-not-declared",
+    params: { nodeId: "Order", facetId: "pcl" },
+  },
   "legend-ref-unresolved": {
     kind: "legend-ref-unresolved",
     params: { target: "@missing", legendTitle: "Tags" },
@@ -181,6 +185,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "annotation-possible-typo": ["Legacy", "@depracated", "@deprecated"],
   "tag-not-builtin": ["SessionStore", "[cache]"],
   "annotation-not-builtin": ["OrderService", "@canary"],
+  "facet-not-declared": ["Order", "pcl"],
   "legend-ref-unresolved": ["@missing"],
   "style-column-invalid-value": ["OrderService", "centre"],
   "style-column-ignored-non-system-view": ["OrderUnit"],

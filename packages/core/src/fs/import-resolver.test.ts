@@ -1547,4 +1547,169 @@ system Shop {
       expect(warnings[0]).toMatchObject({ params: { ownedId: "Ghost" } });
     });
   });
+  // ─── #2173: facet declarations and membership across files ────────────────
+  //
+  // Both sides of the construct merge: the declarations share one flat
+  // namespace, and `facetIndex` is rebuilt from the merged tree so it never
+  // depends on a per-path merge remembering to carry it. The 1:N shape must
+  // survive that merge — the `boundaryIndex` first-wins next door is exactly
+  // the shape not to copy (TPL-2161).
+  describe("facet across files (#2173)", () => {
+    const notDeclared = (ds: { code: string; severity: string }[]) =>
+      ds.filter((d) => d.code === "facet-not-declared");
+    const duplicateFacet = (ds: { code: string; severity: string }[]) =>
+      ds.filter((d) => d.code === "duplicate-facet-id" && d.severity === "error");
+
+    it("merges declarations from an imported file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./facets.krs"
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile("/p/facets.krs", `facet pii {\n  label "Personal data"\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.facets.map((f) => f.id)).toEqual(["pii"]);
+      expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
+    });
+
+    it("keeps membership from every file when a system is reopened across files", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./more.krs"
+facet pii {}
+facet pci {}
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/more.krs",
+        `system Shop {
+  database OrderDB {
+    facets pii, pci
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
+      expect(result.krsFile.facetIndex.get("OrderDB")).toEqual(new Set(["pii", "pci"]));
+    });
+
+    // The upper bound of the guarantee above, stated so the previous test's
+    // scope is not read as wider than it is: re-declaring the *same* node id
+    // inside a reopened system is already an error, and the duplicate is
+    // rejected with its facets, so there is no union to perform there.
+    it("does not union across a re-declared node id — that is duplicate-node-in-system", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./other.krs"
+facet pii {}
+facet pci {}
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/other.krs",
+        `system Shop {
+  service Orders {
+    facets pci
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.diagnostics.map((d) => d.code)).toContain("duplicate-node-in-system");
+      expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
+    });
+
+    it("reports a duplicate declaration split across two files", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./other.krs"
+facet pii {
+  label "Here"
+}
+system Shop {}
+`,
+      );
+      await fs.writeFile("/p/other.krs", `facet pii {\n  label "There"\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      const dupes = duplicateFacet(result.diagnostics);
+      expect(dupes).toHaveLength(1);
+      expect(dupes[0]).toMatchObject({ params: { facetId: "pii" } });
+    });
+
+    it("reports a duplicate inside one file exactly once, not twice", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `facet pii {
+  label "First"
+}
+facet pii {
+  label "Second"
+}
+system Shop {}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      // Suppressed per file and re-derived on the merged model — a naive
+      // implementation would emit it in both passes.
+      expect(duplicateFacet(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("does not report distinct declarations from different files", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./other.krs"
+facet pii {}
+system Shop {}
+`,
+      );
+      await fs.writeFile("/p/other.krs", `facet pci {}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(duplicateFacet(result.diagnostics)).toHaveLength(0);
+      expect(result.krsFile.facets.map((f) => f.id).sort()).toEqual(["pci", "pii"]);
+    });
+
+    // The reference check runs in `analyze()`, over the resolved model — this
+    // pins that the merged model it receives can actually resolve the pair.
+    it("leaves no undeclared reference when the declaration is imported", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./facets.krs"
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile("/p/facets.krs", `facet pii {}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      const declared = new Set(result.krsFile.facets.map((f) => f.id));
+      const referenced = [...result.krsFile.facetIndex.values()].flatMap((s) => [...s]);
+      expect(referenced.filter((id) => !declared.has(id))).toEqual([]);
+      expect(notDeclared(result.diagnostics)).toHaveLength(0);
+    });
+  });
 });

@@ -42,6 +42,7 @@ const PROPERTY_SNIPPETS: Record<string, string> = {
   capability: "capability camera",
   operations: "operations read",
   table: "table SomeDB.SomeTable",
+  facets: "facets someFacet",
 };
 
 /**
@@ -77,6 +78,10 @@ const NOT_A_LOGICAL_NODE_PROPERTY = new Set([
   // grouping / import / legend grammar
   "boundary",
   "contains",
+  // `facet` opens the top-level declaration block; the *property* side of the
+  // construct is `facets`, which is in PROPERTY_SNIPPETS above and listed on
+  // every node kind.
+  "facet",
   "import",
   "from",
   "legend",

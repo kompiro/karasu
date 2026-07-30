@@ -29,6 +29,13 @@
  *     - entity     : domain-child declaration (like the included `usecase` / `resource`)
  *     - capability : client-child declaration (like the included `usecase` / `resource`)
  *
+ *   INCLUDED, added in #2173 (facet construct, #2065 Part B):
+ *     - facet  : top-level declaration block (like `boundary` / `organization`)
+ *     - facets : node property valid on EVERY node kind — the same reason
+ *                `label` / `description` / `link` are here, and the reason it is
+ *                not in the block-scoped exclusion list next to `handles` /
+ *                `operations` / `delivers`, which each bind to one kind
+ *
  *   RESTORED (#2067 review): `store` — a real deploy-block contextual keyword
  *   matched by value (`DEPLOY_KEYWORDS` / `RESERVED_KEYWORDS` in
  *   `packages/core/src/parser/parser.ts`), even though it is not in the lexer's
@@ -52,6 +59,7 @@ export const KRS_KEYWORDS = [
   "queue", // added #2067 — top-level infra block
   "storage", // added #2067 — top-level infra block
   "boundary", // added #2067 — top-level block
+  "facet", // added #2173 — top-level block (#2065 Part B)
   "legend", // added #2067 — top-level construct (parity with system/boundary/deploy/organization)
   "deploy",
   "organization",
@@ -87,6 +95,7 @@ export const KRS_KEYWORDS = [
   "label",
   "description",
   "link",
+  "facets", // added #2173 — accepted on every node kind (#2065 Part B)
   // Integration keywords
   "slack",
   "github",
