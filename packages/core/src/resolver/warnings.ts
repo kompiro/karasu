@@ -41,6 +41,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectInvalidOwns(file));
   warnings.push(...detectCrossSystemRefs(file));
   warnings.push(...detectUnresolvedEdgeEndpoints(file));
+  warnings.push(...detectEdgeEndpointsNotAtScope(file));
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
   warnings.push(...detectDuplicateClientCapabilities(file));
@@ -1375,6 +1376,108 @@ function detectUnresolvedEdgeEndpoints(file: KrsFile): Warning[] {
   ]) {
     walkEdges(node);
   }
+
+  return warnings;
+}
+
+/**
+ * An authored edge renders only on the view that draws the block it is declared
+ * in: view extraction reads `container.edges` and keeps the edges whose two
+ * endpoints are peers there (`view-extract.ts` — root view, drill-down view,
+ * entity view all share that shape). An endpoint that resolves to a node
+ * *outside* that peer set therefore drops the edge from every view. Before
+ * #2075 the drop was silent; this surfaces it.
+ *
+ * The peer set is keyed by **id**, not by node instance: same-id `system`
+ * blocks in one file stay separate AST nodes (only imported ones merge —
+ * `import-resolver.ts`), so an instance-keyed set reports edges that do render.
+ *
+ * Skips (owned by other detectors) and the one exemption are documented on
+ * `WarningParamsByKind["edge-endpoint-not-at-scope"]`.
+ */
+function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  const topLevel = [
+    ...file.services,
+    ...file.domains,
+    ...file.clients,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ];
+
+  /** id -> the node it resolves to (first declaration wins, as elsewhere). */
+  const nodeById = new Map<string, KrsNode>();
+  /** id -> the union of the children ids of every node declared with that id. */
+  const childrenById = new Map<string, Set<string>>();
+  /** child id -> the id of a node that declares it as a child. */
+  const parentIdOf = new Map<string, string>();
+
+  const index = (node: KrsNode): void => {
+    if (!nodeById.has(node.id)) nodeById.set(node.id, node);
+    let children = childrenById.get(node.id);
+    if (!children) childrenById.set(node.id, (children = new Set()));
+    for (const child of node.children) {
+      children.add(child.id);
+      if (!parentIdOf.has(child.id)) parentIdOf.set(child.id, node.id);
+      index(child);
+    }
+  };
+  for (const system of file.systems) index(system);
+  for (const node of topLevel) index(node);
+
+  // Orphans are spliced into the root system view alongside the system's own
+  // children (`extractRootSystemView`), so they are peers at system scope.
+  const orphanIds = new Set([...file.services, ...file.domains, ...file.clients].map((n) => n.id));
+
+  const peersOf = (container: KrsNode): Set<string> => {
+    if (container.kind === "system") {
+      return new Set([...(childrenById.get(container.id) ?? []), ...orphanIds]);
+    }
+    const parentId = parentIdOf.get(container.id);
+    const siblings = parentId === undefined ? [] : (childrenById.get(parentId) ?? []);
+    // The container's own id is the self-anchored source of every edge the
+    // parser accepts inside a service / domain / entity block.
+    return new Set([container.id, ...siblings]);
+  };
+
+  const check = (container: KrsNode): void => {
+    const peers = peersOf(container);
+    for (const edge of container.edges) {
+      for (const endpointId of [edge.from, edge.to]) {
+        // Dotted refs address another system / domain explicitly and render
+        // through their own paths.
+        if (endpointId.includes(".")) continue;
+        if (peers.has(endpointId)) continue;
+        const endpoint = nodeById.get(endpointId);
+        // Absent from the model entirely — `unresolved-edge-endpoint` reports it.
+        if (!endpoint) continue;
+        // A domain depending on any other domain is derived up to a service
+        // edge (`deriveImplicitServiceEdges`), so it does render.
+        if (container.kind === "domain" && endpoint.kind === "domain") continue;
+        const ownerId = parentIdOf.get(endpointId);
+        const ownerKind = ownerId === undefined ? undefined : nodeById.get(ownerId)?.kind;
+        warnings.push({
+          kind: "edge-endpoint-not-at-scope",
+          params: {
+            from: edge.from,
+            to: edge.to,
+            endpointId,
+            endpointKind: endpoint.kind,
+            ...(ownerId !== undefined ? { ownerId } : {}),
+            ...(ownerKind !== undefined ? { ownerKind } : {}),
+            scopeId: container.id,
+            scopeKind: container.kind,
+          },
+          loc: edge.loc,
+        });
+      }
+    }
+    for (const child of container.children) check(child);
+  };
+  for (const system of file.systems) check(system);
+  for (const node of topLevel) check(node);
 
   return warnings;
 }

@@ -84,6 +84,19 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "unresolved-edge-endpoint",
     params: { from: "OrderService", to: "Missing", unresolvedId: "Missing" },
   },
+  "edge-endpoint-not-at-scope": {
+    kind: "edge-endpoint-not-at-scope",
+    params: {
+      from: "Ordering",
+      to: "Billing",
+      endpointId: "Ordering",
+      endpointKind: "domain",
+      ownerId: "OrderService",
+      ownerKind: "service",
+      scopeId: "ECPlatform",
+      scopeKind: "system",
+    },
+  },
   "cyclic-dependency": {
     kind: "cyclic-dependency",
     params: { cyclePath: ["A", "B", "A"] },
@@ -175,6 +188,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "cross-system-ref-implicit-external": ["Other.Svc"],
   "cross-system-ref-unresolved": ["Missing.Svc"],
   "unresolved-edge-endpoint": ["OrderService", "Missing"],
+  "edge-endpoint-not-at-scope": ["Ordering", "Billing", "OrderService", "ECPlatform"],
   "cyclic-dependency": ["A", "B"],
   "delivers-target-not-client": ["BFF", "OrderService"],
   "client-capability-duplicate": ["WebApp", "camera"],

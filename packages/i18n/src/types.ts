@@ -263,6 +263,22 @@ export type Translations = {
     to: string;
     unresolvedId: string;
   }) => string;
+  "warning.edgeEndpointNotAtScope.message": (params: {
+    from: string;
+    to: string;
+    endpointId: string;
+    endpointKind: string;
+    /** empty when the endpoint has no containing node */
+    ownerId: string;
+    ownerKind: string;
+    scopeId: string;
+    scopeKind: string;
+  }) => string;
+  "warning.edgeEndpointNotAtScope.anchorHint": (params: { from: string; to: string }) => string;
+  "warning.edgeEndpointNotAtScope.qualifyHint": (params: {
+    ownerId: string;
+    endpointId: string;
+  }) => string;
   "warning.crossSystemRefImplicitExternal.message": (params: {
     ref: string;
     sourceSystemId: string;

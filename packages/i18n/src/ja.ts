@@ -278,6 +278,23 @@ export const ja: Partial<Translations> = {
     `"${ref}" を解決できませんでした — 未解決の外部ノードとして描画されます`,
   "warning.unresolvedEdgeEndpoint.message": ({ from, to, unresolvedId }) =>
     `エッジ "${from} → ${to}" が未定義のノード "${unresolvedId}" を参照しています。このエッジは描画されません（解決できた側のノードは保持されます）`,
+  "warning.edgeEndpointNotAtScope.message": ({
+    from,
+    to,
+    endpointId,
+    endpointKind,
+    ownerId,
+    ownerKind,
+    scopeId,
+    scopeKind,
+  }) =>
+    `エッジ "${from} → ${to}" は ${scopeKind} "${scopeId}" の中で宣言されていますが、"${endpointId}" は${
+      ownerId === "" ? "" : ` ${ownerKind} "${ownerId}" 配下の`
+    } ${endpointKind} です。このスコープの peer ではないため、このエッジはどのビューにも描画されません`,
+  "warning.edgeEndpointNotAtScope.anchorHint": ({ from, to }) =>
+    `エッジを source のブロック内（\`${from} { -> ${to} }\`）に書くと、両端が peer になるビューで描画されます`,
+  "warning.edgeEndpointNotAtScope.qualifyHint": ({ ownerId, endpointId }) =>
+    `参照先を限定子付き（"${ownerId}.${endpointId}"）で書くと、entity ビューに描画されます`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
     `"${ref}" は ${sourceSystemId}.${sourceNodeId} から参照されていますが、@external として明示されていません`,
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>

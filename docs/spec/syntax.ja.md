@@ -729,6 +729,47 @@ service が共有するかで判定し、こちらは所有境界の越境で判
 モデル化し、任意の起点が許される `system` スコープでエッジを宣言する
 — エッジは常にその起点と同じ場所に置かれる。
 
+#### 端点のスコープ（endpoint scope）
+
+エッジは、それを宣言したブロックを描画するビューに描かれる。したがって
+**両端がそのスコープの peer でなければならない**:
+
+- `system` ブロック内 — その system の直下の子（およびルートビューが差し込む
+  トップレベルの service / domain）
+- `service` / `domain` / `entity` ブロック内 — そのブロック自身とその兄弟
+
+そのスコープより **深い位置**にあるノードを端点に指すと、エッジはどのビューにも
+描画されない。典型は、ドメイン間の依存を `system` スコープへ持ち上げた形:
+
+```krs
+system Shop {
+  service OrderSvc {
+    domain Ordering { usecase Place {} }
+    domain Billing  { usecase Charge {} }
+  }
+  Ordering -> Billing   // ✗ どこにも描画されない — edge-endpoint-not-at-scope で報告される
+}
+```
+
+上の「起点スコープ」の規則が求めるとおり、起点のブロック内に書く:
+
+```krs
+domain Ordering {
+  usecase Place {}
+  -> Billing            // ✓ OrderSvc のサービスビューに描画される
+}
+```
+
+次の 2 つは実際に描画されるため、意図的に報告しない: 距離を問わない
+`domain` → `domain` エッジ（サービスをまたぐ場合は暗黙のサービス間エッジに
+集約される。[domain ブロック内のエッジ](#domain-ブロック内のエッジ)を参照）と、
+限定子付き `DomainId.EntityId` で書いた cross-domain の `entity` 関連。
+bare id の cross-domain entity 参照は intra-domain 専用のため drop され、報告される。
+
+端点がどこにも解決しない場合は別のケースで、`unresolved-edge-endpoint`
+（§S6）として報告される。どちらの診断も
+[診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
+
 #### 任意のエッジ id（`#<id>`）
 
 末尾に `#<id>` を付けると、エッジに著者定義の安定した識別子を与えられる。`.krs.style` のリゾルバが `edge#<id>` セレクタで指せるようになる。
@@ -781,7 +822,7 @@ service BillingService {
 使用できるタグ・スタイルの詳細は [`docs/spec/tags-annotations.md`](tags-annotations.md) を参照。
 
 > 関連 TPL:
-> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理した構造はいずれかの view で描画されるか診断される。エッジの endpoint が宣言スコープに無い場合に黙って落とさない（**Endpoint scope** の散文は #2075 の実装 PR で入る）
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理した構造はいずれかの view で描画されるか診断される。エッジの endpoint が宣言スコープに無い場合に黙って落とさない（§端点のスコープ）
 > - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照する
 
 ---

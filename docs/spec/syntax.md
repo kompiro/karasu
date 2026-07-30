@@ -783,6 +783,49 @@ other-team service pointing *into* your block), model that source as an
 `[external]` node and declare the edge at `system` scope, where any source is
 allowed — the edge stays co-located with its source.
 
+#### Endpoint scope
+
+An edge is drawn on the view that renders the block it is declared in, so **both
+of its endpoints must be peers at that scope**:
+
+- inside a `system` block — the system's own children (and the top-level
+  services / domains the root view splices in);
+- inside a `service` / `domain` / `entity` block — that block and its siblings.
+
+Naming an endpoint that sits *below* that scope leaves the edge on no view at
+all. The most common shape is a domain dependency hoisted up to `system` scope:
+
+```krs
+system Shop {
+  service OrderSvc {
+    domain Ordering { usecase Place {} }
+    domain Billing  { usecase Charge {} }
+  }
+  Ordering -> Billing   // ✗ renders nowhere — reported as edge-endpoint-not-at-scope
+}
+```
+
+Write it anchored at its source instead, which is also what the origin-scope
+rule above asks for:
+
+```krs
+domain Ordering {
+  usecase Place {}
+  -> Billing            // ✓ renders on the OrderSvc service view
+}
+```
+
+Two placements are deliberately *not* reported, because they do render: a
+`domain` → `domain` edge at any distance (a cross-service one is derived up to
+an implicit service edge, see [Edges inside a domain block](#edges-inside-a-domain-block)),
+and a cross-domain `entity` relation written with a qualified
+`DomainId.EntityId` target. A bare cross-domain entity target is intra-domain
+only, so it is dropped and reported.
+
+An endpoint that resolves nowhere is a different case, reported as
+`unresolved-edge-endpoint` (§S6). Both diagnostics are catalogued in the
+[diagnostics & rules reference](diagnostics.md).
+
 #### Optional edge id (`#<id>`)
 
 A trailing `#<id>` gives an edge a stable, author-defined identifier that
@@ -845,7 +888,7 @@ If an explicit service-level edge already exists in the same direction, the impl
 See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of available tags and styles.
 
 > Related TPLs:
-> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (the **Endpoint scope** prose lands with the #2075 implementation)
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (§ Endpoint scope)
 > - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target
 
 ---

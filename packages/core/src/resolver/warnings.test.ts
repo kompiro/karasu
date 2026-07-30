@@ -1987,6 +1987,214 @@ system Shop {
   });
 });
 
+// #2075. Each "warns" case below was verified against `extractView` /
+// `extractEntityView` on every view path before the detector existed: the edge
+// rendered on none of them. Each "does not warn" case renders today, so a
+// regression here would be a false positive on a working model.
+describe("edge-endpoint-not-at-scope warning", () => {
+  const find = (krs: string) =>
+    analyze(Parser.parse(krs).value, []).filter((w) => w.kind === "edge-endpoint-not-at-scope");
+
+  it("warns when a system-scope edge names a domain nested in a service", () => {
+    const warnings = find(`
+system T {
+  service S {
+    domain A { usecase u {} }
+    domain B { usecase v {} }
+  }
+  A -> B "dep at system scope"
+}
+`);
+    // Both endpoints are out of scope, so the edge is reported per endpoint.
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0].params).toMatchObject({
+      from: "A",
+      to: "B",
+      endpointId: "A",
+      endpointKind: "domain",
+      ownerId: "S",
+      ownerKind: "service",
+      scopeId: "T",
+      scopeKind: "system",
+    });
+    expect(warnings[1].params).toMatchObject({ endpointId: "B" });
+  });
+
+  it("warns when a service-scope edge names a domain of another service", () => {
+    const warnings = find(`
+system T {
+  service S1 {
+    S1 -> B
+    domain A { usecase u {} }
+  }
+  service S2 {
+    domain B { usecase v {} }
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "B",
+      endpointKind: "domain",
+      ownerId: "S2",
+      scopeId: "S1",
+      scopeKind: "service",
+    });
+  });
+
+  it("warns when a domain-scope edge names a usecase instead of a domain", () => {
+    const warnings = find(`
+system T {
+  service S1 {
+    domain A { usecase u {} -> v }
+  }
+  service S2 {
+    domain B { usecase v {} }
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "v",
+      endpointKind: "usecase",
+      ownerId: "B",
+      ownerKind: "domain",
+      scopeKind: "domain",
+    });
+  });
+
+  it("warns when a system-scope edge names a usecase nested two levels down", () => {
+    const warnings = find(`
+system T {
+  service S {
+    domain A { usecase u {} }
+  }
+  S -> u
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({ endpointId: "u", endpointKind: "usecase" });
+  });
+
+  it("warns when a service edge names a service of another system without a dotted ref", () => {
+    const warnings = find(`
+system T {
+  service S1 { S1 -> S2 }
+}
+system U {
+  service S2 { domain B { usecase v {} } }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "S2",
+      endpointKind: "service",
+      ownerId: "U",
+      ownerKind: "system",
+    });
+  });
+
+  it("warns when an entity relation names a cross-domain entity with a bare id", () => {
+    const warnings = find(`
+system T {
+  service S {
+    domain D1 { entity Order { -> Customer } usecase u {} }
+    domain D2 { entity Customer {} usecase v {} }
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "Customer",
+      endpointKind: "entity",
+      ownerId: "D2",
+      ownerKind: "domain",
+      scopeId: "Order",
+      scopeKind: "entity",
+    });
+  });
+
+  it("does not warn for the canonical source-anchored domain edge", () => {
+    expect(
+      find(`
+system T {
+  service S {
+    domain A { usecase u {} -> B }
+    domain B { usecase v {} }
+  }
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("does not warn for a cross-service domain edge (derived as an implicit service edge)", () => {
+    expect(
+      find(`
+system T {
+  service S1 { domain A { usecase u {} -> B } }
+  service S2 { domain B { usecase v {} } }
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("does not warn for a qualified cross-domain entity relation", () => {
+    expect(
+      find(`
+system T {
+  service S {
+    domain D1 { entity Order { -> D2.Customer } usecase u {} }
+    domain D2 { entity Customer {} usecase v {} }
+  }
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  // The peer set is keyed by id: same-id `system` blocks stay separate AST
+  // nodes within one file (only imported ones merge), so an instance-keyed
+  // peer set would report this edge even though it renders.
+  it("does not warn across a reopened system block", () => {
+    expect(
+      find(`
+system Blog {
+  service Authoring { domain A { usecase u {} } }
+  Authoring -> Moderation
+}
+system Blog {
+  service Moderation { domain B { usecase v {} } }
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("does not warn for a dotted cross-system ref", () => {
+    expect(
+      find(`
+system T {
+  service S1 { S1 -> U.S2 }
+}
+system U {
+  service S2 {}
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("leaves an endpoint absent from the model to unresolved-edge-endpoint", () => {
+    const krs = `
+system T {
+  service S { domain A { usecase u {} } }
+  S -> Ghost
+}
+`;
+    expect(find(krs)).toHaveLength(0);
+    expect(
+      analyze(Parser.parse(krs).value, []).filter((w) => w.kind === "unresolved-edge-endpoint"),
+    ).toHaveLength(1);
+  });
+});
+
 describe("cyclic-dependency warning", () => {
   it("detects self-reference (A -> A)", () => {
     const krs = `
@@ -2527,6 +2735,9 @@ describe("warningSeverity — exhaustive register map", () => {
     "cross-system-ref-implicit-external": "warning",
     "cross-system-ref-unresolved": "warning",
     "unresolved-edge-endpoint": "warning",
+    // The author's edge is absent from every diagram — a defect, not a
+    // style-school fact (#2075).
+    "edge-endpoint-not-at-scope": "warning",
     "cyclic-dependency": "warning",
     "delivers-target-not-client": "warning",
     "client-capability-duplicate": "warning",
