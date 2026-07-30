@@ -1,7 +1,7 @@
 # 同じモデリング状態を表す配置スペルに同じ診断を出す（system 直下の `domain` と `unassigned-domain`）
 
 - **日付**: 2026-07-30
-- **ステータス**: 検討中
+- **ステータス**: 検討中（[PR #2194](https://github.com/kompiro/karasu/pull/2194)）
 - **関連**:
   - 引き金 Issue: [#2184](https://github.com/kompiro/karasu/issues/2184)（`unassigned-domain` が system 直下の domain に出ない）
   - 発見元: [#2165](https://github.com/kompiro/karasu/issues/2165) / [PR #2183](https://github.com/kompiro/karasu/pull/2183)（`domain` を system 直下に書ける配置として文書化した際、この非対称が表面化した）
