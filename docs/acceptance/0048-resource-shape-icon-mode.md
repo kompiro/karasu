@@ -58,7 +58,7 @@ system ECPlatform {
 
 Add an explicit tag to a resource:
 
-```krs
+```krs fragment
 resource OrderDB.OrderTable [custom]
 ```
 

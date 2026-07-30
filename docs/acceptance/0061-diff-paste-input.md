@@ -89,7 +89,7 @@ system Shop {
 
 Open the paste dialog and paste a deliberately broken `.krs` snippet:
 
-```krs
+```krs invalid
 system Shop {
   service
 }

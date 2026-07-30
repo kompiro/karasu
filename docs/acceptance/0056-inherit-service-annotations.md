@@ -12,7 +12,7 @@ Verify that when a `service` carries lifecycle annotations (`@deprecated`, `@mig
 
 Use the bundled example `examples/ja/migration/system.krs`. The relevant subset:
 
-```krs
+```krs fragment
 system ECommercePlatform {
   service LegacyMonolith @deprecated {
     domain Order { ... }
@@ -82,7 +82,7 @@ system ECommercePlatform {
 
 **Setup:** Edit `examples/ja/migration/system.krs` (or use a scratch `.krs` file) so that one domain inside `LegacyMonolith @deprecated` carries its own annotation, e.g.:
 
-```krs
+```krs fragment
 service LegacyMonolith @deprecated {
   domain Order @experimental { ... }
 }
