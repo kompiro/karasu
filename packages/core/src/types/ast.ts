@@ -587,6 +587,16 @@ export interface KrsFile {
    * `boundaryIndex`'s first-wins is exactly the shape not to copy here).
    *
    * Nodes with no `facets` property are absent from the map (no empty sets).
+   *
+   * The key is the **bare node id**, matching the flat `ownerIndex` /
+   * `boundaryIndex` convention. Node ids are only unique among siblings
+   * (ADR-927), so two same-named nodes in different scopes share one entry —
+   * the union of both their memberships. That is harmless for the slice-1
+   * consumer (`facet-not-declared` reports declared references and cannot
+   * false-positive from it), but the overlay slice paints *specific* nodes and
+   * must resolve identity rather than trust a bare id, or it will highlight the
+   * wrong `Payment` (TPL-1352 — a key must carry every distinguishing
+   * dimension; `scopedBoundaryIndex` is the worked example of doing it).
    */
   facetIndex: Map<string, Set<string>>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */

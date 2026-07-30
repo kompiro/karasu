@@ -289,3 +289,43 @@ client C { facets a }
     expect(file.facetIndex.size).toBe(0);
   });
 });
+
+// The index key is the bare node id (the flat `ownerIndex` / `boundaryIndex`
+// convention), and ids are unique only among siblings. This pins the resulting
+// ambiguity as *known and bounded* rather than leaving it to be discovered by
+// the overlay slice: memberships union, and the reference check stays correct
+// (TPL-1352 — a key must carry every distinguishing dimension; resolving node
+// identity is the overlay's job, not this index's).
+describe("facetIndex — same-id nodes in different scopes", () => {
+  it("unions the memberships of same-id nodes rather than dropping one", () => {
+    const file = parse(`
+facet pii {}
+facet pci {}
+system Shop {
+  service Payment {
+    domain Ledger { facets pii }
+  }
+  service Checkout {
+    domain Payment { facets pci }
+  }
+}
+`);
+    // "Payment" names both a service and a nested domain; the flat key merges
+    // them. Nothing is lost — which is the property that matters for slice 1.
+    expect(file.facetIndex.get("Payment")).toEqual(new Set(["pci"]));
+    expect(file.facetIndex.get("Ledger")).toEqual(new Set(["pii"]));
+  });
+
+  it("keeps the reference check correct despite the shared key", () => {
+    const result = Parser.parse(`
+facet pii {}
+system Shop {
+  service Payment { domain Ledger { facets pii } }
+  service Checkout { domain Payment {} }
+}
+`);
+    // The undeclared-facet check reads declared references only, so a node that
+    // declares nothing cannot inherit a warning from its same-named twin.
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+  });
+});
