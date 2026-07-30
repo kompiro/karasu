@@ -1,6 +1,6 @@
 name: TPL deprecation review
 
-# Opens a periodic TPL deprecation review Issue on the 1st of every month
+# Opens a periodic TPL deprecation review Issue on the 25th of every month
 # at 09:00 UTC.
 #
 # Cadence was weekly during rollout to catch obsolescence in the freshly
@@ -15,8 +15,8 @@ name: TPL deprecation review
 
 on:
   schedule:
-    # 09:00 UTC on the 1st of every month.
-    - cron: "0 9 1 * *"
+    # 09:00 UTC on the 25th of every month.
+    - cron: "0 9 25 * *"
   workflow_dispatch:
 
 concurrency:
