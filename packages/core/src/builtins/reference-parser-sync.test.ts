@@ -84,6 +84,40 @@ const NOT_A_LOGICAL_NODE_PROPERTY = new Set([
   "ref",
 ]);
 
+/** One declaration per node kind, for the containment matrix below. */
+const CHILD_DECLS: Record<string, string> = {
+  system: "system Sub {}",
+  user: "user U2 {}",
+  client: "client C2 {}",
+  service: "service Sv2 {}",
+  domain: "domain D2 {}",
+  entity: "entity E2 {}",
+  usecase: "usecase U2 {}",
+  resource: "resource R2 {}",
+  database: "database DB2 {}",
+  queue: "queue Q2 {}",
+  storage: "storage St2 {}",
+  table: "table T2 {}",
+  bucket: "bucket B2 {}",
+};
+
+/**
+ * How to write `child` inside `parent`, or `undefined` when the pair cannot be
+ * written at all. The one irregular case is `queue-item`: it has no keyword of
+ * its own — inside a `queue` block the `queue` keyword declares one (so a
+ * nested `queue` block is unwritable there), and outside one there is no way to
+ * spell it.
+ */
+function childDecl(parent: string, child: string): string | undefined {
+  if (parent === "queue") {
+    if (child === "queue-item") return "queue QI {}";
+    if (child === "queue") return undefined;
+  } else if (child === "queue-item") {
+    return undefined;
+  }
+  return CHILD_DECLS[child];
+}
+
 /** Wraps a property line in the shallowest source that declares `kind`. */
 const CONTEXT: Record<string, (body: string) => string> = {
   system: (b) => `system S {\n${b}\n}`,
@@ -160,21 +194,35 @@ describe("REFERENCE_DATA.nodeKinds ↔ parser", () => {
     },
   );
 
-  it("places `entity` in the canContain of the only kind that may hold one", () => {
-    // Containment is mostly unenforced by the parser (a `usecase` nested in a
-    // `client` parses), so `canContain` is a documentation statement and cannot
-    // be fenced wholesale. `entity` is the exception — it is rejected anywhere
-    // but a `domain` (`entity-not-in-domain` in logical blocks, the generic
-    // `unexpected-token-in-block` inside infra blocks) — so fence that one.
-    for (const entry of REFERENCE_DATA.nodeKinds) {
-      const source = CONTEXT[entry.kind]!("    entity E {}");
-      const rejected = Parser.parse(source).diagnostics.some((d) => d.severity === "error");
-      // `canContain: []` infers as `never[]` under `satisfies`, so widen to read it.
-      const canContain: readonly string[] = entry.canContain;
-      expect({ kind: entry.kind, listsEntity: canContain.includes("entity") }).toEqual({
-        kind: entry.kind,
-        listsEntity: !rejected,
-      });
-    }
-  });
+  it.each(REFERENCE_DATA.nodeKinds.map((k) => k.kind))(
+    "`%s`: canContain matches exactly the children the parser accepts without `node-not-in-context`",
+    (kind) => {
+      // Since #2165 the parser derives the containment rule from `canContain`
+      // itself (`LOGICAL_CONTAINMENT`) and warns with `node-not-in-context`
+      // outside it, so this column is enforced rather than merely documented —
+      // and can be fenced in both directions. A nesting counts as "allowed"
+      // when it draws neither that warning nor a hard placement error
+      // (`entity-not-in-domain` / `infra-not-in-context` and friends).
+      // `canContain: []` infers as `never[]` under `satisfies`, so widen it.
+      const listed = new Set<string>(
+        REFERENCE_DATA.nodeKinds.find((k) => k.kind === kind)!.canContain as readonly string[],
+      );
+      const allowed = REFERENCE_DATA.nodeKinds
+        .map((k) => k.kind)
+        .filter((child) => {
+          const decl = childDecl(kind, child);
+          if (decl === undefined) return false;
+          const diagnostics = Parser.parse(CONTEXT[kind]!(`    ${decl}`)).diagnostics;
+          return !diagnostics.some(
+            (d) => d.code === "node-not-in-context" || d.severity === "error",
+          );
+        });
+
+      // Listed but warned/rejected — the table promises a nesting the parser
+      // does not actually treat as meaningful.
+      expect([...listed].filter((c) => !allowed.includes(c))).toEqual([]);
+      // Allowed but unlisted — a nesting carries meaning nothing documents.
+      expect(allowed.filter((c) => !listed.has(c))).toEqual([]);
+    },
+  );
 });

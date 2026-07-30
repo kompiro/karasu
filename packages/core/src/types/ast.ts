@@ -667,6 +667,7 @@ export interface DiagnosticParamsByCode {
   };
   "infra-not-in-context": { infraKind: string; parentKind: string };
   "entity-not-in-domain": { parentKind: string };
+  "node-not-in-context": { childKind: string; parentKind: string };
   "legend-not-top-level": { parentKind: string };
   "expected-id-or-string": { context: string };
   "expected-node-id": { kind: string };

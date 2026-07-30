@@ -377,6 +377,10 @@ export type Translations = {
     parentKind: string;
   }) => string;
   "diagnostic.entityNotInDomain.message": (params: { parentKind: string }) => string;
+  "diagnostic.nodeNotInContext.message": (params: {
+    childKind: string;
+    parentKind: string;
+  }) => string;
   "diagnostic.legendNotTopLevel.message": (params: { parentKind: string }) => string;
   "diagnostic.expectedIdOrString.message": (params: { context: string }) => string;
   "diagnostic.expectedNodeId.message": (params: { kind: string }) => string;

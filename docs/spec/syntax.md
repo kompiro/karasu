@@ -28,11 +28,11 @@ karasu explicitly separates **logical structure** and **physical structure**.
 <!-- gen:reference:node-kinds-logical — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Keyword | Meaning | May contain |
 |---------|---------|-------------|
-| `system` | Container showing the relationships between owned/external services and clients | `service`, `user`, `client`, `database`, `queue`, `storage` |
+| `system` | Container showing the relationships between owned/external services and clients | `service`, `user`, `client`, `domain`, `database`, `queue`, `storage` |
 | `user` | A user of the system (human or AI agent) | — |
 | `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) | — |
 | `service` | An independent unit of business capability | `domain` |
-| `domain` | A business-concern boundary (top-level or inside a service) | `usecase`, `entity` |
+| `domain` | A business-concern boundary (top-level, inside a system, or inside a service) | `usecase`, `entity` |
 | `usecase` | A business task or operation within a domain | `resource` |
 | `resource` | A target that a usecase reads or writes (table, external API, file, etc.) | — |
 | `entity` | A conceptual data entity owned by a domain — a name and its relations, no attributes. Maps to an infra sub-resource with `table` | — |
@@ -403,6 +403,42 @@ shared actor / persona is intentionally left as a possible post-v1.0 extension,
 out of scope here (see [#1639](https://github.com/kompiro/karasu/issues/1639)).
 
 > Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — a spec-promised placement rule must have a dedicated diagnostic code, not fall through to a generic parse error.
+
+#### Nesting placement
+
+The **May contain** column of the [Logical structure](#logical-structure-what--why)
+table is the single definition of which children a kind may hold. Nesting a
+logical node anywhere else emits the `node-not-in-context` **warning**: the node
+is kept and still renders, it simply carries no defined meaning there. Only the
+listed nestings have semantics — `docs/concepts.md` fixes the hierarchy as
+`service → domain → usecase → resource`, so a `usecase` written directly inside
+a `client` has nothing to mean.
+
+It is a warning rather than an error because `.krs language v1.0` is frozen
+([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)): a file that parses today keeps
+parsing. Promotion to an error is registered to `.krs language v2.0`
+([roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)) — the same
+warning-in-v1.x / error-in-v2.0 path the tag and annotation vocabularies take.
+
+Four nestings are rejected outright rather than warned, and the misplaced node is
+dropped:
+
+| Rejected nesting | Diagnostic | Why it is an error, not a warning |
+|---|---|---|
+| an infra block outside `system` | `infra-not-in-context` | the block has no system to belong to |
+| an `entity` outside a `domain` | `entity-not-in-domain` | an entity is owned by exactly one domain |
+| a `boundary` inside a kind that draws no canvas | `boundary-not-in-context` | there are no peers to frame |
+| any node inside an `entity` | `unexpected-token-in-block` | an entity carries a name, its relations and a `table` mapping — never attributes |
+
+A `domain` may be written at the top level, directly inside a `system`, or
+inside a `service`. The first two both express a domain that is not (yet)
+assigned to a service. They are not yet treated identically downstream: the
+`unassigned-domain` warning and the `(Unassigned)` pseudo-system
+([ADR-681](../adr/681-top-level-service-rendering.md)) currently cover only the
+top-level form, since a system-nested domain already has a container to render
+in (see [#2184](https://github.com/kompiro/karasu/issues/2184)).
+
+> Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it.
 
 ### service block
 

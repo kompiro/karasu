@@ -38,6 +38,7 @@ import type {
   LegendViewScope,
 } from "../types/ast.js";
 import { INFRA_KIND_SET, boundaryScopeKey, createEmptyKrsFile } from "../types/ast.js";
+import { LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { Lexer } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
@@ -708,7 +709,22 @@ export class Parser {
           });
           continue;
         }
-        children.push(this.parseNodeDecl());
+        const child = this.parseNodeDecl();
+        // Nesting placement (#2165). `canContain` is the single definition of
+        // which children a kind may hold; anything outside it carries no
+        // defined semantics (`docs/concepts.ja.md` fixes the hierarchy as
+        // service → domain → usecase → resource). This is a **warning**, not an
+        // error: `.krs language v1.0` is frozen (ADR-1314), so the node is kept and
+        // still renders. Error-ification is registered to Syntax 2.0 (#2162).
+        if (!LOGICAL_CONTAINMENT.get(kind)?.has(child.kind)) {
+          this.diagnostics.push({
+            severity: "warning",
+            code: "node-not-in-context",
+            params: { childKind: child.kind, parentKind: kind },
+            loc: child.loc,
+          });
+        }
+        children.push(child);
         continue;
       }
 
