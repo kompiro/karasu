@@ -1,20 +1,22 @@
 name: TPL deprecation review
 
-# Opens a periodic TPL deprecation review Issue every Monday at 09:00 UTC.
+# Opens a periodic TPL deprecation review Issue on the 1st of every month
+# at 09:00 UTC.
 #
-# Cadence is intentionally weekly during rollout: TPL practice is new and
-# many entries were backfilled in a single batch, so we want fast feedback
-# on which observations actually rot vs. survive. Once the queue stabilizes
-# (most weeks → all `keep`), revisit and consider stretching to monthly /
-# semi-annual.
+# Cadence was weekly during rollout to catch obsolescence in the freshly
+# backfilled batch. It stabilized exactly as hoped — no TPL has ever been
+# deprecated and the 2026-W30 / W31 reviews came back all `keep` — so the
+# weekly Issue was pure queue noise and the cadence stretched to monthly
+# (#2094 / #2136). Stretch further to semi-annual if monthly reviews stay
+# all-`keep` too; tighten back if a review ever deprecates several at once.
 #
 # `workflow_dispatch` is the manual escape hatch — used for the bootstrap
 # review and for ad-hoc runs (e.g. right after a major architectural change).
 
 on:
   schedule:
-    # 09:00 UTC every Monday.
-    - cron: "0 9 * * 1"
+    # 09:00 UTC on the 1st of every month.
+    - cron: "0 9 1 * *"
   workflow_dispatch:
 
 concurrency:
@@ -49,8 +51,8 @@ jobs:
       - name: Compute period label
         id: period
         run: |
-          # ISO 8601 week date, e.g. 2026-W19 — unambiguous across years.
-          label=$(date -u +%G-W%V)
+          # Calendar month, e.g. 2026-08 — one review Issue per month.
+          label=$(date -u +%Y-%m)
           echo "label=${label}" >> "$GITHUB_OUTPUT"
 
       - name: Open review Issue
