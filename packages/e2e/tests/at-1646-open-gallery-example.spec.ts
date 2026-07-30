@@ -104,10 +104,7 @@ test.describe("AT-1646 open a gallery example via deep-link", () => {
     await expect(previewSvg).not.toContainText("Payment Gateway");
   });
 
-  test("a malformed slug is rejected without any fetch (TPL-168)", async ({
-    page,
-    opfs,
-  }) => {
+  test("a malformed slug is rejected without any fetch (TPL-168)", async ({ page, opfs }) => {
     await opfs.seed({
       projects: [{ id: "dummy", name: "Dummy", files: { "index.krs": "system D {}\n" } }],
       lastProjectId: "dummy",
