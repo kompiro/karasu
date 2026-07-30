@@ -2,6 +2,7 @@
 
 - **日付**: 2026-07-30
 - **ステータス**: 検討中
+- **PR**: [#2195](https://github.com/kompiro/karasu/pull/2195)
 - **関連**:
   - 引き金 Issue: [#2178](https://github.com/kompiro/karasu/issues/2178)（slice A。親 [#2161](https://github.com/kompiro/karasu/issues/2161)、後続 [#2179](https://github.com/kompiro/karasu/issues/2179) / [#2180](https://github.com/kompiro/karasu/issues/2180) / 配置 [#2176](https://github.com/kompiro/karasu/issues/2176)）
   - **上位設計**: `docs/design/boundary-membership-1n.md`（Part A / B / C の全体像。本 doc は **Part A を実装粒度に落とし、A-4 の到達点を実測にもとづいて決め直す**）
