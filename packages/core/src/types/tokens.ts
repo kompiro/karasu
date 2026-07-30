@@ -58,6 +58,13 @@ export enum TokenType {
   Boundary = "Boundary",
   Contains = "Contains",
 
+  // Keywords (facet — cross-cutting membership, experimental; #2065 Part B)
+  // `Facet` opens the top-level declaration block, `Facets` is the element-side
+  // membership property. Two keywords, not one: the declaration names a single
+  // facet, the property names a list of them.
+  Facet = "Facet",
+  Facets = "Facets",
+
   // Keywords (legend)
   Legend = "Legend",
   Swatch = "Swatch",

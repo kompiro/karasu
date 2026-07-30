@@ -177,6 +177,11 @@ const SAMPLES: SamplesByCode = {
     code: "duplicate-boundary-id",
     params: { boundaryId: "OrderIntake" },
   },
+  "duplicate-facet-id": {
+    severity: "error",
+    code: "duplicate-facet-id",
+    params: { facetId: "pii" },
+  },
   "positional-label-removed": {
     severity: "error",
     code: "positional-label-removed",
@@ -420,6 +425,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-boundary-assignment": ["OrderService", "OrderIntake"],
   "boundary-not-in-context": ["entity"],
   "duplicate-boundary-id": ["OrderIntake"],
+  "duplicate-facet-id": ["pii"],
   "positional-label-removed": ["boundary", "label"],
   "positional-label-deprecated": ["team", "label"],
   "contains-target-not-found": ["MissingSvc"],

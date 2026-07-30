@@ -310,6 +310,8 @@ export type Translations = {
     annotation: string;
   }) => string;
   "warning.annotationNotBuiltin.migrationNote": string;
+  "warning.facetNotDeclared.message": (params: { nodeId: string; facetId: string }) => string;
+  "warning.facetNotDeclared.declarationNote": string;
   "warning.legendRefUnresolved.message": (params: {
     target: string;
     legendTitle?: string;
@@ -447,6 +449,7 @@ export type Translations = {
   "diagnostic.containsTargetNotFound.message": (params: { memberId: string }) => string;
   "diagnostic.boundaryNotInContext.message": (params: { parentKind: string }) => string;
   "diagnostic.duplicateBoundaryId.message": (params: { boundaryId: string }) => string;
+  "diagnostic.duplicateFacetId.message": (params: { facetId: string }) => string;
   "diagnostic.positionalLabelRemoved.message": (params: { construct: string }) => string;
   "diagnostic.positionalLabelDeprecated.message": (params: { construct: string }) => string;
   "diagnostic.duplicateTeamId.message": (params: { teamId: string }) => string;

@@ -64,3 +64,7 @@ positional label（`<kw> <id> "<label>"`）を受理し続け、約 4 ヶ月間�
   label 指定形 — positional は deprecated と明記、#2133）
 - `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」診断一覧
   （`positional-label-removed`）
+- `docs/spec/syntax.md` §「Cross-cutting membership (`facet`)」— `facets` を受理する
+  node kind の列挙（parser は全 kind で受理するので全 kind を明記、#2173）。カタログ側は
+  `reference-data.ts` の各 kind の `properties` に `facets` を載せ、
+  `reference-parser-sync.test.ts` が受理 ≡ 広告を双方向に固定する。

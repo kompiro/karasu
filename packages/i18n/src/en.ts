@@ -318,6 +318,10 @@ export const en: Translations = {
     `"@${annotation}" on ${nodeId} is not a builtin annotation — deprecated. Syntax v2.0 accepts tool vocabulary only (warned, files still parse).`,
   "warning.annotationNotBuiltin.migrationNote":
     "For membership or model-specific labeling, migrate to the facet construct (#2065). For a missing lifecycle state, request a builtin annotation addition instead.",
+  "warning.facetNotDeclared.message": ({ nodeId, facetId }) =>
+    `"facets ${facetId}" on ${nodeId} names no declared facet`,
+  "warning.facetNotDeclared.declarationNote":
+    'Declare it at the top level — facet <id> { label "..." } — or fix the spelling to match an existing declaration.',
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} does not match any node or style rule`
@@ -414,6 +418,8 @@ export const en: Translations = {
     `"boundary" cannot be declared inside "${parentKind}", which draws no canvas of its own`,
   "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
     `Duplicate boundary id "${boundaryId}" in the same scope`,
+  "diagnostic.duplicateFacetId.message": ({ facetId }) =>
+    `Facet "${facetId}" is already declared; the first declaration is the one references resolve to`,
   "diagnostic.positionalLabelRemoved.message": ({ construct }) =>
     `"${construct}" does not accept a label after its id; write label "..." inside the block`,
   "diagnostic.positionalLabelDeprecated.message": ({ construct }) =>

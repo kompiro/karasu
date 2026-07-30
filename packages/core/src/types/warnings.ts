@@ -28,6 +28,7 @@ export type WarningKind =
   | "annotation-possible-typo"
   | "tag-not-builtin"
   | "annotation-not-builtin"
+  | "facet-not-declared"
   | "entity-anchor-collision"
   | "legend-ref-unresolved"
   | "style-column-invalid-value"
@@ -240,6 +241,24 @@ export interface WarningParamsByKind {
     nodeId: string;
     /** the annotation name as written, without the `@` sigil */
     annotation: string;
+  };
+  /**
+   * A `facets <id>` reference names no declared `facet` block (#2065 Part B).
+   *
+   * Unlike the near-miss `annotation-possible-typo` hint, this check is
+   * **complete**: the declarations give the validator a definitive "correct"
+   * set, so a typo between two user-defined names is caught as surely as a
+   * typo of a builtin. Evaluated on the import-merged model, since the
+   * declaration and the reference may live in different files.
+   *
+   * Warning register, not info: an undeclared facet is a broken reference —
+   * a fact with a fix — not a style-school judgement (TPL-1386).
+   */
+  "facet-not-declared": {
+    /** id of the node carrying the `facets` property */
+    nodeId: string;
+    /** the referenced facet id as written */
+    facetId: string;
   };
   /**
    * Two addressable targets in the `entity` deep-link namespace share one id.
