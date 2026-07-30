@@ -844,6 +844,10 @@ If an explicit service-level edge already exists in the same direction, the impl
 
 See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of available tags and styles.
 
+> Related TPLs:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (the **Endpoint scope** prose lands with the #2075 implementation)
+> - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target
+
 ---
 
 ## Writing physical diagrams

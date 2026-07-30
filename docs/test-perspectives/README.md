@@ -491,3 +491,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) | drift guard は「宣言」と「言及」を区別する — 「正典の値以外が現れたら fail」は次期版への前方参照を stale と誤検出し、freeze 中の設計作業をブロックする | build | #2185 |
 | [TPL-2188](TPL-2188-id-uniqueness-needs-cross-corpus-check.md) | 採番 id の一意性は corpus 横断の機械検証か大域 allocator で担保する — per-file 検査だけの validator は並行ブランチの採番衝突を検出できない | adr-tooling | #2188, ADR-2092 |
 | [TPL-2184](TPL-2184-equivalent-placements-share-one-diagnostic.md) | 同じモデリング状態を表す複数の配置は、綴りが違っても同じ診断を出す — 検出器の走査範囲は格納先ではなく `canContain` 上の親 kind で決める | resolver | ADR-2165, #2184 |
+| [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) | parse を通った構造は、どこかの view で描画されるか診断されるかのどちらかである — view 抽出の filter が作る silent drop を第 3 の状態として許さない | resolver | docs/spec/syntax.md (Edge declaration), #2075 |
