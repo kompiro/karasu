@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2172](https://github.com/kompiro/karasu/issues/2172)（builtin vocabulary review: `[cache]` / `@canary`）
+  - **PR**: [#2215](https://github.com/kompiro/karasu/pull/2215)
   - 前提 Issue: [#2159](https://github.com/kompiro/karasu/issues/2159)（`tag-not-builtin` / `annotation-not-builtin` の導入）, [#2065](https://github.com/kompiro/karasu/issues/2065)（tags and facets）, [#1816](https://github.com/kompiro/karasu/issues/1816)（notation watch round 2）
   - 関連 ADR: [ADR-1718](../adr/1718-vector-store-vs-database.md)（`[index]` = 役割タグ・新 kind を増やさない判断基準）, [ADR-316](../adr/316-database-as-first-class-node.md), [ADR-1820](../adr/1820-notation-promotion-gate.md)（promotion gate）, [ADR-1935](../adr/1935-wrangler-translate-adapter.md)（wrangler adapter の degrade）, [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze / annotation set の凍結）, [ADR-1508](../adr/1508-annotation-badge-label-i18n.md)（annotation badge label の i18n）
   - 関連 design: [tags-and-facets](tags-and-facets.md)（register 確定・(B7) の corpus 測定要求）
