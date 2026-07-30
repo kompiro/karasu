@@ -53,8 +53,6 @@ export interface SystemViewData {
   groupBy?: GroupByMode;
   /** Called when the user changes the Group-by selector (#1858). */
   onGroupByChange?: (mode: GroupByMode) => void;
-  /** Whether the Group-by selector is meaningful (has org or boundary) (#1858/#1822). */
-  groupByAvailable?: boolean;
   /** Whether the team axis has data — gates the "team" option (#1822 P2b). */
   hasTeamAxis?: boolean;
   /** Whether the boundary axis has data — gates the "boundary" option (#1822 P2b). */

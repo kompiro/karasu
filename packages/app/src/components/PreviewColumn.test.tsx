@@ -4,7 +4,7 @@ import { render as rtlRender, screen, fireEvent, cleanup, act } from "@testing-l
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import type { Diagnostic, Warning } from "@karasu-tools/core";
-import { PreviewColumn } from "./PreviewColumn.js";
+import { PreviewColumn, GROUP_BY_AXES } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { LocaleProvider } from "../i18n/index.js";
 import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
@@ -70,7 +70,6 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       systems: [],
       groupBy: "none" as const,
       onGroupByChange: vi.fn<() => void>(),
-      groupByAvailable: true,
       hasTeamAxis: true,
       hasBoundaryAxis: false,
     },
@@ -476,8 +475,11 @@ describe("PreviewColumn", () => {
     });
 
     it("hides the selector when grouping is not meaningful (no org / compare mode)", () => {
+      // Visibility is derived from the axis table (#2119): no axis has data, so
+      // the selector would be a no-op and is not rendered.
       const props = makeProps({ activeView: "system" });
-      props.systemView.groupByAvailable = false;
+      props.systemView.hasTeamAxis = false;
+      props.systemView.hasBoundaryAxis = false;
       const { queryByLabelText } = renderPreview(props);
       expect(queryByLabelText("Group by")).toBeNull();
     });
@@ -508,6 +510,28 @@ describe("PreviewColumn", () => {
       const select = getByLabelText("Group by") as HTMLSelectElement;
       const values = Array.from(select.options).map((o) => o.value);
       expect(values).toEqual(["none", "team", "boundary"]);
+    });
+
+    // The compile-time guard is the `satisfies Record<Exclude<GroupByMode,
+    // "none">, …>` on `GROUP_BY_AXES` — a new axis that skips the table fails to
+    // typecheck. This is its runtime companion: it pins that the render loop
+    // actually emits one option per declared axis, so the table can't be
+    // complete while the selector quietly stops reading it (#2119,
+    // TPL-20260510-03).
+    it("offers exactly one option per declared axis, plus none (#2119)", () => {
+      const props = makeProps({ activeView: "system" });
+      // Open every data gate so the offered set is the declared set.
+      props.systemView.hasTeamAxis = true;
+      props.systemView.hasBoundaryAxis = true;
+      const { getByLabelText } = renderPreview(props);
+      const select = getByLabelText("Group by") as HTMLSelectElement;
+      const values = Array.from(select.options).map((o) => o.value);
+      expect(values).toEqual(["none", ...Object.keys(GROUP_BY_AXES)]);
+      // Every option carries a resolved label, not a raw key or an empty node.
+      for (const option of Array.from(select.options)) {
+        expect(option.textContent?.trim()).not.toBe("");
+        expect(option.textContent).not.toContain("preview.groupBy.");
+      }
     });
 
     it("calls onGroupByChange with the boundary axis when picked (#1822 P2b)", async () => {
@@ -546,7 +570,11 @@ describe("PreviewColumn", () => {
     it("shows even when un-grouped / grouping unavailable, as long as something is collapsible", () => {
       // Un-grouped view (Group by: None, no org) that still has external/infra
       // category bands: anyCollapsible is true, so the bulk control appears.
-      const props = withCollapsibles({ groupBy: "none", groupByAvailable: false });
+      const props = withCollapsibles({
+        groupBy: "none",
+        hasTeamAxis: false,
+        hasBoundaryAxis: false,
+      });
       const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Collapse all/ })).toBeTruthy();
     });

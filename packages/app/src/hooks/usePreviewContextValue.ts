@@ -32,7 +32,6 @@ interface UsePreviewContextValueArgs {
     | "toggleExpand"
     | "groupBy"
     | "setGroupBy"
-    | "groupByAvailable"
     | "hasTeamAxis"
     | "hasBoundaryAxis"
     | "anyCollapsible"
@@ -149,7 +148,6 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onExpandToggle: system.toggleExpand,
         groupBy: system.groupBy,
         onGroupByChange: system.setGroupBy,
-        groupByAvailable: system.groupByAvailable,
         hasTeamAxis: system.hasTeamAxis,
         hasBoundaryAxis: system.hasBoundaryAxis,
         anyCollapsible: system.anyCollapsible,
@@ -236,7 +234,6 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.toggleExpand,
       system.groupBy,
       system.setGroupBy,
-      system.groupByAvailable,
       system.hasTeamAxis,
       system.hasBoundaryAxis,
       system.anyCollapsible,
