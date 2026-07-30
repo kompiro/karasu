@@ -733,7 +733,7 @@ system ECPlatform {
     expect(unassigned[0].params.domainId).toBe("Ordering");
     expect(unassigned[0].params.label).toBe("受注");
     // points at the declaration, not at the enclosing system
-    expect(unassigned[0].loc.start.line).toBe(3);
+    expect(unassigned[0].loc?.start.line).toBe(3);
   });
 
   // TPL-2184: every spelling of "this domain is not assigned to a service"
