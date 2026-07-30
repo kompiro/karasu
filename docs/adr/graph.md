@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-282 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+283 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -220,6 +220,7 @@ flowchart TD
     ADR_2036["ADR-2036<br/>boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
+    ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -409,6 +410,8 @@ flowchart TD
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
   ADR_2124 --> ADR_1314
+  ADR_2165 --> ADR_1296
+  ADR_2165 --> ADR_1314
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -689,6 +692,7 @@ flowchart TD
   class ADR_2139 accepted
   class ADR_2142 accepted
   class ADR_2152 accepted
+  class ADR_2165 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -721,7 +725,7 @@ flowchart TD
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 11 ADRs
-- [`parser`](graph/parser.md) — 21 ADRs
+- [`parser`](graph/parser.md) — 22 ADRs
 - [`project`](graph/project.md) — 8 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs
