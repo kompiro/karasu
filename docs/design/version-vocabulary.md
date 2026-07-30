@@ -151,10 +151,14 @@ Syntax 2.0 プログラムは「v2.0 の版運用は #2124 の決定と同時確
 | 互換を約束しない in-core tier | **experimental（notation tier）** | 「post-v1.0 watch」「notation watch」は tier 名ではなく**観察活動**（Epic #1816 / roadmap watch table）として区別 |
 | 段階的廃止 tier | **deprecated（notation tier）** | — |
 | ユーザーのモデルの標識 | **`@experimental` / `@deprecated` annotation**（常に `@` + backtick 表記） | tier と同語だが主語が逆。裸の "experimental" を annotation の意味で使わない |
+| 言語版の表記 | **`.krs language v1.0`**（ユーザー向け出力・英語 prose）/ **「言語 v1.0」**（日本語 prose） | 「.krs v1.0」「krs-lang 1.0」「spec v1.0」等の表記ゆれは使わない。パッケージ版と並記するときは必ず軸を明示する（例: `karasu 0.6.0` + `.krs language v1.0` の 2 行） |
 
 - 表記規約: karasu 自身の notation を語るときは「experimental（notation tier）」のように
   tier を明示するか文脈で notation を主語にする。ユーザーモデルの標識は**常に** `@` 付き
   backtick（`@experimental`）で書く。この規約だけで二義性は機械的に判別可能になる。
+- 言語版の表記も正準化する（2026-07-30 レビューで確定）: ユーザー向け出力と英語 prose は
+  `.krs language v1.0`、日本語 prose は「言語 v1.0」。`--version` の 2 行表示・spec docs
+  冒頭の明記・CHANGELOG の言語版遷移の記載はすべてこの正準表記を使う。
 
 ### 論点 4: 定義の置き場
 
@@ -206,6 +210,9 @@ Syntax 2.0 プログラムは「v2.0 の版運用は #2124 の決定と同時確
 3. **語彙の正準化**: tier = stable / experimental / deprecated（主語 = karasu の notation）、
    annotation = `@experimental` / `@deprecated`（主語 = ユーザーのモデル、常に `@` + backtick
    表記）。「v1.0 freeze」= イベント、「notation watch」= 観察活動として tier 名から区別。
+   **言語版の表記も正準化する**: `.krs language v1.0`（ユーザー向け出力・英語 prose）/
+   「言語 v1.0」（日本語 prose）。それ以外の表記ゆれ（「.krs v1.0」「krs-lang 1.0」等）は
+   使わない。
 4. **正典の置き場 = roadmap §version vocabulary**（tier 表の隣）。process.md / concepts.md /
    glossary.md から参照を配線し、TPL-20260716-01 の単一正典原則をこの語彙にも適用する。
 
@@ -225,12 +232,14 @@ Syntax 2.0 プログラムは「v2.0 の版運用は #2124 の決定と同時確
 3. AT: `--version` の出力形式（言語版行を含む）は実装 Issue 側で AT を起こす。docs 側は
    リンク・アンカー整合の機械検証で足りる。
 
-## 未解決の問い
+## 解消済みの問い
+
+- **言語版の表記**（2026-07-30 レビューで確定）: **正準化する**。ユーザー向け出力・英語
+  prose は `.krs language v1.0`、日本語 prose は「言語 v1.0」。論点 3 の正準表に反映済み。
+
+## 決めないこと
 
 - **CLI 1.0.0 への leap の時期**（案 2b 採用時の残論点）: 言語 v2.0 の実施（Syntax 2.0
   プログラム）は CLI 表面を棚卸しして 1.0.0 を切る自然な機会だが、本設計はその判断を
-  **しない**（v2.0 プログラム / #2124 後続の判断に委ねる）。ここで決めるべきは「今は
+  **しない**（v2.0 プログラム / #2124 後続の判断に委ねる）。ここで決めるのは「今は
   結合しない」ことのみ。
-- **言語版の表記**: 「.krs v1.0」「language v1.0」「krs-lang 1.0」等の表記ゆれを正準化
-  するか（推奨: `.krs language v1.0` を --version 表示に、prose では「言語 v1.0」）。
-  ADR 化時に確定する。
