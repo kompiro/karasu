@@ -48,6 +48,14 @@
 
   > 🖐 手動確認 — 拡張ホストで同じ `.krs` を開く
 
+- [x] AT-I: 検出器の親 kind 集合が `canContain` から導出されており、`canContain` に domain の親が増えたら検知できる
+
+  > ✅ Automated — 同 describe › `covers every parent canContain lets hold a domain`（`LOGICAL_CONTAINMENT` から算出した集合を assert。増えたら fail し、綴りケースの追加を促す）
+
+- [x] AT-J: 2 つの綴りが混在するとき、警告はソース順に並ぶ（格納先の順ではない）
+
+  > ✅ Automated — 同 describe › `reports in source order when the two spellings are mixed`
+
 ## 備考
 
 診断（「service に割り当てられていない」）と描画（`(Unassigned)` 枠）は別の関心事として

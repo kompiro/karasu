@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { compile } from "../index.js";
 import { analyze, SYSTEM_ASSIGNED_TAGS } from "./warnings.js";
-import { REFERENCE_DATA } from "../builtins/reference-data.js";
+import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { warningSeverity } from "../types/warnings.js";
 import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
@@ -763,6 +763,33 @@ system ECPlatform {
     const warnings = analyze(file, [getBuiltinStyleSheet()]);
     const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
     expect(unassigned.map((w) => w.params.domainId)).toEqual(["Billing"]);
+  });
+
+  // TPL-2184 / TPL-2165: the detector derives its parent set from `canContain`,
+  // so a new domain parent is picked up automatically. This guard fires when that
+  // set changes, so the new placement also gets a spelling case above.
+  it("covers every parent canContain lets hold a domain", () => {
+    const parents = [...LOGICAL_CONTAINMENT.entries()]
+      .filter(([, children]) => children.has("domain"))
+      .map(([parent]) => parent)
+      .sort();
+    expect(parents).toEqual(["service", "system"]);
+  });
+
+  it("reports in source order when the two spellings are mixed", () => {
+    const krs = `
+system ECPlatform {
+  domain Ordering {}
+}
+
+domain Billing {}
+    `;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
+    // Ordering declared first, even though Billing is the top-level one that
+    // lands in `file.domains`.
+    expect(unassigned.map((w) => w.params.domainId)).toEqual(["Ordering", "Billing"]);
   });
 
   it("leaves a domain outside canContain to node-not-in-context, without double-reporting", () => {
