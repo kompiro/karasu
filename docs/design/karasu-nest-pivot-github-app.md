@@ -4,10 +4,12 @@
 - **Issue**: #1783（nest 壁打ち・本 doc の親）／関連 #1828 permalink layer・#1960 private permalink・#1787 Phase 3 in-site editor
 - **PR**: #1978
 - **ステータス**: 壁打ち（brainstorm）— **6 論点の方向性を確定（2026-07-16、下記「決定」節）**。技術詳細・実装は後続 design/ADR
+  - **2026-07-30 更新**: gate spike #1991 完了 → **ピボットは GO**。ただし **決定 4 を再 scope**（構造シグナルは論理 seam に使わず組織軸へ）、**決定 3 は保留**（トークン実測後に判断）。詳細は「決定」節の各項と「spike #1991 による更新」節
 - **関連**:
   - [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（nest v1 = **render-only / BYO reverse / stateless / 認証なし**。本ピボットが覆す対象）
   - [ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)（BYOK・サービスは secret を持たない）
   - [ADR-1895](../adr/1895-reverse-architecture-harness.md)（reverse-architecture harness — 現状は **BYO/ローカル** の Claude Code skill）
+  - [ADR-2077](../adr/2077-reverse-bc-granularity.md)（spike #1991 の実測から: **bounded-context 粒度が既定・構造シグナルは論理 seam に使わず組織軸へ**。本 doc の決定 4 を再 scope する根拠）
   - PRD [`docs/prd/keystone-primary-path.md`](../prd/keystone-primary-path.md)（read/record split・**solo-maintainer economics**）
   - [`docs/design/private-repo-permalink.md`](./private-repo-permalink.md)（#1960、本ピボットに吸収される client-PAT 案）
 
@@ -114,8 +116,10 @@ ADR-1783 が却下した「server AI reverse」の**コスト/メータリング
 
 1. **リバース実行場所 = 案A（server-side）。** Worker が private code を fetch し LLM を呼ぶ。**ゼロ設定（App 入れる→図が出る）**という最大の差別化を取る。代償として、サービスが private コードの data processor になる責任・コストを負う（＝本格 SaaS の賭け）。案B（client-side）は #1960 の「local ツール収束」批判が跳ね返るため不採用。
 2. **secret 対策 = redact before LLM。** fetch したコードを LLM 送信前に gitleaks 相当で scan/redact し、生成 `.krs` にも scan をかけて「構造のみ」を担保。privacy policy で「送信前 redact」と謳える。
-3. **推論コスト = service-paid + quota/freemium。** サービスが推論を負担。ただし **v1 は無料枠＋厳格 quota のみ（課金 = Stripe は後回し）**。per-installation 月次 quota ＋ global rate-limit でコストを cap。
-4. **出力スコープ = 全ビュー生成＋confidence マーク。そして domain 分析を first-class に投資する。** ← 製品の核心。system top-level + deploy だけでは「うり」が弱い（既存の一発 reverse と大差ない）。**domain 分解の質こそ hosted サービスの差別化**であり、それは案A（server）だから実現できる: **agentic multi-pass reverse**（harness の per-domain subagent fan-out, ADR-1895 を server で重く回す）＋**構造シグナル grounding**（dir/package 境界・CODEOWNERS・commit coupling・DDD）＋**human refinement → PR 還元を質のラチェット**に。confidence マークは正直さの層であって戦略ではない。#1783 の「domain は一発では弱い」を「一発でなく agentic で作り込む」で乗り越える。
+3. **推論コスト = service-paid + quota/freemium。ただし quota 水準は保留（2026-07-30）。** サービスが推論を負担し、**v1 は無料枠＋厳格 quota のみ（課金 = Stripe は後回し）**、per-installation 月次 quota ＋ global rate-limit でコストを cap、という骨格は維持する。**具体的な quota 水準（何 reverse/月・何トークンまで）は決めない — 実サービス想定でのトークン/レイテンシを実測してから判断する。** spike #1991 は harness をローカルで回した参考値（85 ファイルの最小 repo で output 0.3〜0.5M token・12〜19 分、BC 粒度で 5 agent / 318k token）を出したが、これは server 側の実装（redact・cache hit 率・repo 規模分布）を含まない。
+4. **出力スコープ = 全ビュー生成＋confidence マーク。そして domain 分析を first-class に投資する。**（**2026-07-30 再 scope** — 下記の取り消し線部分を差し替え）← 製品の核心。system top-level + deploy だけでは「うり」が弱い（既存の一発 reverse と大差ない）。**domain 分解の質こそ hosted サービスの差別化**であり、それは案A（server）だから実現できる: **agentic multi-pass reverse**（harness の per-domain subagent fan-out, ADR-1895 を server で重く回す）＋~~**構造シグナル grounding**（dir/package 境界・CODEOWNERS・commit coupling・DDD）~~ → **bounded-context 粒度指示**（spike #1991 で実証された唯一効いたレバー。ADR-2077）＋**human refinement → PR 還元を質のラチェット**に。confidence マークは正直さの層であって戦略ではない。#1783 の「domain は一発では弱い」を「一発でなく agentic で作り込む」で乗り越える。
+
+   **構造シグナル（CODEOWNERS / commit coupling）は捨てないが、論理 domain の seam 決定には使わない。** spike #1991 の実測では grounding は library で完全に無効・Dify では悪化（V 0.83→0.70）し、オーナー縦割り＝Conway 方向に分解を引っ張った。所有情報の正しい置き場は **組織軸**（`organization` / `team` / `owns`）であり、論理分解が済んだ後に `owns` で結ぶ（ADR-2077 決定 4）。これは karasu の論理/物理/組織の三面分離テーゼそのもので、サービスの出力にも同じ振り分けを適用する。
 5. **パッケージ = 別 Workers サービス（推奨・後続技術設計で確定）。** state・secret（App private key）・webhook を静的 Pages app に同居させず別サービスにし、描画は `packages/app`（MemoryModeApp）、reverse+合成は `packages/core` を再利用。名前は "karasu-nest" 継続、URL 後決め。solo の維持面が 1 面増える点は明記。
 6. **epic / 既存扱い**: 新規 **karasu-nest pivot epic** を起こし child（App auth / server reverse pipeline / redact / domain agentic / confidence マーク / quota+state / webhook purge …）を下げる。**#1960 は pivot に吸収して close**。**#1971（client-PAT design）は「client-PAT は local 収束で却下、private は App pivot へ」の status を付けて却下記録として merge**。
 
@@ -129,12 +133,27 @@ server が他社 private コードを処理することを信頼可能にする�
 - **uninstall = purge**（cache は installation キー、解除＋明示 purge で消去）。
 - **subprocessor 開示 + privacy policy + ToS 責任制限**（Anthropic/Cloudflare を列挙）。← 技術でなく**この法務面が solo SaaS の本当の重り**。
 
+## spike #1991 による更新（2026-07-30）— gate 通過
+
+gate spike #1991（4 repo: `library` / `hato` / `eShop` / `Dify` を人手 gold と突き合わせ）の結果、
+**ピボットは GO**。決定への影響は 2 点:
+
+- **決定 4 の前提は成立した** — harness の分解は人手 gold の **clean refinement**（homogeneity 全 repo ≥0.83、
+  gold domain は 4 repo 中 3 本で全数回収）。誤併合はほぼ起きず、過分割は人手ラチェットで畳める。
+  過分割が安全側・誤併合が危険側という非対称性があるため、この形は「うり」として信頼できる。
+- **効いたレバーは構造 grounding ではなく粒度指示だった** — 決定 4 の再 scope（上記）。
+  実測値と却下理由の一次記録は [ADR-2077](../adr/2077-reverse-bc-granularity.md)、運用文言は
+  `.claude/skills/reverse-architecture/SKILL.md`（harness には反映済み）。
+
+spike の副産物: 記法ギャップ（domain event の emit・async/scheduled job vs 単一 `queue` kind・
+entity-id == domain-id の anchor 衝突・list/read 動詞の潰れ）は #1816 に送る。
+
 ## 未解決の問い（確定後に残るもの）
 
 > Q1〜6 の方向は上「決定」節で確定。以下は確定後に残る**本当のリスク/宿題**。
 
-1. **【最大リスク】domain 分析の品質バー** — 決定4 で domain 分析を「うり」に据えたが、agentic multi-pass ＋ 構造 grounding ＋ 人手ラチェットで「**うりと言えるほど信頼できる domain 分解**」に到達できるかは未検証。#1783 の「一発では弱い」を本当に乗り越えられるか。**最優先の spike**: 数個の実 OSS で agentic reverse を回し、人手正解と突き合わせて domain 分解の精度を測る（製品化前の go/no-go）。
-2. **深い reverse のコスト/レイテンシ vs 無料枠**（決定3・4 の緊張） — domain を深く掘るほどトークン/計算が増え、service-paid の無料枠が 1 reverse あたり高くつく＆レイテンシ増。free-tier quota をどこまで厳しく引くか、そもそも agentic reverse を solo の service-paid で捌けるか。spike のコスト実測が要る。
+1. **人手 PR 還元ラチェットの検証**（旧「domain 分析の品質バー」— spike #1991 で gate 部分は解消）— 分解そのものの質は実測で「うり」として成立すると確認できた（上節）。残る未検証は決定 4 のもう一方の柱、**human refinement → PR 還元がラチェットとして本当に効くか**（誰がどれだけ直すか・直しが次回 reverse に効くか）。spike の対象外。
+2. **深い reverse のコスト/レイテンシ vs 無料枠**（決定3・4 の緊張・**決定 3 の保留理由**） — spike のローカル実測は「最小 repo（85 ファイル）で output 0.3〜0.5M token・12〜19 分、Dify 規模はその数倍」。BC 粒度は quality と cost が同方向（library: 5 agent / 318k token vs 無誘導 9 agent / 489k token）だが、**server 実装込みの実測はまだ無い**。free-tier quota の水準決定はこの実測を待つ（決定 3）。
 3. **法務/責任（決定1 の residual）** — 他社 private コードを処理する SaaS の ToS 責任制限・privacy policy・（企業顧客の）DPA。技術でなくここが solo の本当の重り。最小構成でどこまで要るか要調査。
 4. **`.krs` notation への confidence/draft アノテーション**（決定4 派生） — 低確信 domain を機械可読に印付けるには新アノテーション（例 `[draft]` / confidence）が要る＝ `docs/spec/` の変更。notation-watch プロセス＋ proactive TPL（CLAUDE.md の spec 改訂ルール）を後続 design で同梱する。
 5. **reverse 品質の testable bar 定義** — 「compile 通る＋top-level service を X% カバー」に加え、domain 層の精度をどう機械測定するか（人手正解が要る領域）。harness の既存 coverage 指標を domain までどう拡張するか。
