@@ -3,7 +3,7 @@ name: VS Code Screenshots
 # On-demand generator for the Marketplace screenshots embedded in
 # packages/vscode/README.md (Issue #1671). ExTester needs an x86_64
 # chromedriver (chrome-for-testing ships no linux-arm64 build), so this cannot
-# run on ARM dev machines — it runs here on ubuntu-latest (x86_64) instead.
+# run on ARM dev machines — it runs here on an x86_64 hosted runner instead.
 #
 # Trigger manually from the Actions tab. The job uploads the captured PNGs as
 # an artifact; download it, review the images by eye (they ship on a public
@@ -23,7 +23,8 @@ permissions:
 jobs:
   capture:
     name: Capture Marketplace screenshots
-    runs-on: ubuntu-latest
+    # Ubicloud runner (ADR-1890) — x86_64 label, see the ExTester note above.
+    runs-on: ubicloud-standard-4-ubuntu-2404
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

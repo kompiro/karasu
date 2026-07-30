@@ -18,7 +18,7 @@ import type { KrsFile } from "../types/ast.js";
 // every fixture must survive a format round-trip. Adding a new top-level
 // construct to `KrsFile` without wiring it into the formatter fails this test.
 //
-// See TPL-20260510-02 (round-trip guarantee) and ADR-2076.
+// See TPL-1101 (round-trip guarantee) and ADR-2076.
 
 /**
  * One `.krs` sample per array-valued `KrsFile` key. Each sample must populate
@@ -80,7 +80,7 @@ describe("formatter top-level coverage", () => {
       const afterArray = (after.value as unknown as Record<string, unknown[]>)[key];
       expect(afterArray.length).toBe(beforeArray.length);
 
-      // And it survived intact, not merely in count (TPL-20260510-02).
+      // And it survived intact, not merely in count (TPL-1101).
       expect(stripLocations(after.value)).toEqual(stripLocations(before.value));
 
       // Idempotent at the text level.

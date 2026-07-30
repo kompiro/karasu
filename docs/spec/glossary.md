@@ -14,7 +14,7 @@ definition and links to the authoritative document
 [Diagnostics](diagnostics.md)). When a definition here and its source disagree,
 the source wins — follow the link.
 
-> Related TPLs: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — this glossary re-presents definitions that live canonically elsewhere; entries must not contradict their linked source.
+> Related TPLs: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — this glossary re-presents definitions that live canonically elsewhere; entries must not contradict their linked source.
 
 ## Core concepts
 

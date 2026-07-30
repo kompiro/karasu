@@ -3,7 +3,7 @@
 - **日付**: 2026-05-21
 - **関連 Issue**: [#1482](https://github.com/kompiro/karasu/issues/1482)
 - **対象ファイル**: `packages/app/src/components/SwitchProjectCommand.tsx` / `packages/app/src/components/ProjectPicker.tsx`
-- **関連**: コマンドパレット [AT #1421](1421-command-palette.md) / キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-20260519-01 / TPL-20260520-01
+- **関連**: コマンドパレット [AT #1421](1421-command-palette.md) / キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-1419 / TPL-1468
 
 ## 受け入れ条件
 
@@ -60,5 +60,5 @@ jsdom では描画の見た目・遷移を検証できないため、実ブラ�
 - [ ] 上下キーでハイライトが視覚的に移動し、Enter またはクリックで対象プロジェクトに切り替わる
 - [ ] プロジェクト切り替え後、URL が `/projects/<id>` に更新され、エディタが当該プロジェクトの `index.krs` を開く
 - [ ] 現在のプロジェクトに `current` マークが表示される
-- [ ] References パネルなど他の overlay を開いた状態でもピッカーが最前面に表示される（TPL-20260520-01）
+- [ ] References パネルなど他の overlay を開いた状態でもピッカーが最前面に表示される（TPL-1468）
 - [ ] Esc キー、またはピッカー外側のクリックでピッカーが閉じる

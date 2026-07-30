@@ -21,7 +21,7 @@ scope:
   - Issue #1729（observation）
   - [ADR-1729](1729-e2e-path-filter-trigger.md)（app E2E を path filter へ移行。本 ADR はその「適用範囲外（将来課題）」を実施する follow-up）
   - [ADR-579](579-preview-workflow-no-label-gating.md)（Preview workflow の同型移行の原典）
-  - [TPL-20260623-03](../test-perspectives/TPL-20260623-03-gated-test-suite-detection-gap.md)（gated-suite detection gap）
+  - [TPL-1725](../test-perspectives/TPL-1725-gated-test-suite-detection-gap.md)（gated-suite detection gap）
   - `.github/workflows/vscode-e2e.yml`
 
 ## 背景
@@ -96,7 +96,7 @@ path 非該当 PR で起動しなくても「永久 pending」にはならない
   （app の Playwright 側は ADR-1729 の path filter が担当）。
 - `gh pr edit --add-label vscode-e2e` / `vscode-webview-e2e` の手順が不要になる。
 - トレードオフ: WebView (ExTester) は xvfb 下で intermittent stall が出やすく
-  （TPL-20260510-14 / webview flake の既知パターン）、起動頻度が上がると flake の
+  （TPL-1171 / webview flake の既知パターン）、起動頻度が上がると flake の
   露出も増える。緩和は既存の retry パターン（AT-0038/0039 の 3-attempt）と nightly。
   flake が開発速度を落とすほど顕在化したら、WebView ジョブのみ起動条件を
   絞る / nightly 専用へ戻す等を再評価する（可逆）。

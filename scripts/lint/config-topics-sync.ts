@@ -6,22 +6,21 @@ import { join } from "node:path";
 // tpl.config.json (Issue #2083).
 //
 // The two files used to be one: `pnpm tpl:validate` was pointed at
-// adr.config.json so ADRs and TPLs shared a single `topics` list. They had to
-// be split because @kompiro/adr-tools and @kompiro/tpl-tools read the SAME
-// config key, `idFormat` — and the two corpora now want different values. ADRs
-// moved to `issue-number` (ADR-<n>, keyed on the originating GitHub Issue);
-// TPLs stay on `date-sequence` (TPL-YYYYMMDD-NN) because a test perspective is
-// extracted from bug retrospectives and rarely maps to one issue. Sharing the
-// file would have applied the ADR `idFormat` to all 81 TPLs and failed every
-// one of them with `id-format-invalid`.
+// adr.config.json so ADRs and TPLs shared a single `topics` list. They were
+// split when ADRs moved to `issue-number` while TPLs stayed on
+// `date-sequence`, because @kompiro/adr-tools and @kompiro/tpl-tools read the
+// SAME config key, `idFormat` (ADR-2092). TPLs later moved to `issue-number`
+// too (#2188 / ADR-2188), so the formats agree again — but the split stays:
+// per-tool config means one tool's settings change can never break the other
+// corpus's validation.
 //
-// Splitting the file fixed `idFormat` but duplicated `topics`, which is a
-// silent-drift hazard: add a topic to adr.config.json only, and a TPL using it
-// fails validation with a vocabulary error that points nowhere near the cause.
-// This check makes the duplication loud instead.
+// Splitting the file duplicated `topics`, which is a silent-drift hazard: add
+// a topic to adr.config.json only, and a TPL using it fails validation with a
+// vocabulary error that points nowhere near the cause. This check makes the
+// duplication loud instead.
 //
-// `idFormat` is deliberately NOT compared — the two files differing on it is
-// the entire point of the split.
+// `idFormat` is deliberately NOT compared — the two configs are allowed to
+// evolve independently; that independence is the point of the split.
 
 export const ADR_CONFIG = "adr.config.json";
 export const TPL_CONFIG = "tpl.config.json";

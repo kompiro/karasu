@@ -6,10 +6,10 @@
 - **関連 ADR**: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（per-view 交差 — スコープ形はこの上に乗る）、[ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（top-level 形の collapse-everywhere 先例 — スコープ形は**対照的に**独立 collapse）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（experimental 据え置き）
 - **設計 / ADR**: [ADR-2036](../adr/2036-scoped-boundary-declaration.md)（design doc から昇格）
 - **Related TPLs**:
-  - [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)（scoped index / group identity は (scope, id) でキー）
-  - [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)（全 surface parity）
-  - [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（parse-and-vanish の禁止）
-  - [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（ネスト構文の fmt round-trip）
+  - [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（scoped index / group identity は (scope, id) でキー）
+  - [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)（全 surface parity）
+  - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（parse-and-vanish の禁止）
+  - [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（ネスト構文の fmt round-trip）
 - **対象**: `packages/core/src/parser/parser.ts`（配置受理 + `scopedBoundaryIndex`）、`packages/core/src/renderer/layout.ts`（`boundaryAxisFor` / scope-qualified group id）、`packages/core/src/renderer/group-labels.ts`
 
 ## 概要

@@ -6,7 +6,7 @@
   - 引き金 Issue: [#2184](https://github.com/kompiro/karasu/issues/2184)（`unassigned-domain` が system 直下の domain に出ない）
   - 発見元: [#2165](https://github.com/kompiro/karasu/issues/2165) / [PR #2183](https://github.com/kompiro/karasu/pull/2183)（`domain` を system 直下に書ける配置として文書化した際、この非対称が表面化した）
   - 関連 ADR: [ADR-2165](../adr/2165-logical-containment-rules.md)（`canContain` が containment 規則の正典）、[ADR-681](../adr/681-top-level-service-rendering.md) / [ADR-702](../adr/702-top-level-infra-rendering.md)（`(Unassigned)` 擬似 system）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（言語 v1.0 freeze）、[ADR-1567](../adr/1567-rule-diagnostic-separation-and-catalog.md)（規則 ↔ 診断の対応）
-  - 関連 TPL: [TPL-20260510-01](../test-perspectives/TPL-20260510-01-top-level-orphans.md)、[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md)、[TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md)、[TPL-20260730-04](../test-perspectives/TPL-20260730-04-equivalent-placements-share-one-diagnostic.md)（本 PR で新設）
+  - 関連 TPL: [TPL-1160](../test-perspectives/TPL-1160-top-level-orphans.md)、[TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md)、[TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md)、[TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md)（本 PR で新設）
   - コード: `packages/core/src/resolver/warnings.ts`（`detectUnassignedDomains`）
   - spec: `docs/spec/syntax.md` §Nesting placement、`docs/spec/diagnostics.md` §Assignment & cohesion
 
@@ -92,7 +92,7 @@ system 直下の domain には既に実 system という描画先があるので
   通るファイルは通り続ける。error 化は選択肢に入れない
 - **`(Unassigned)` 擬似 system の適用範囲は変えない**。これを system 直下にも広げると
   既存の図の見た目が変わる（後方互換の観点でコストが跳ね上がる）
-- **`canContain` が containment 規則の正典**（ADR-2165 / TPL-20260730-02）。診断側が
+- **`canContain` が containment 規則の正典**（ADR-2165 / TPL-2165）。診断側が
   独自の配置リストを持つなら、それは `canContain` と同期していなければならない
 - **既存ファイルに新しく warning が出る**。エラーではないが利用者から見える変化なので、
   spec とカタログの文言を同時に直し、changeset に載せる
@@ -183,16 +183,16 @@ system 直下の domain には既に実 system という描画先があるので
 
 ## Related TPLs
 
-- [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) —
+- [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) —
   containment 規則の定義は `canContain` 1 箇所。本件の診断側の配置リストも、そこから
   読める事実（`domain` の親は `system` / `service` のみ）に基づいて決める
-- [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) —
+- [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) —
   検証側が列挙した集合から spec の許す kind が漏れる失敗モード。本件は「kind の漏れ」
   ではなく「**配置の漏れ**」で、形は同じだが対象軸が違う
-- [TPL-20260510-01](../test-perspectives/TPL-20260510-01-top-level-orphans.md) —
+- [TPL-1160](../test-perspectives/TPL-1160-top-level-orphans.md) —
   top-level orphan を全消費側で扱う。本件はその裏返しで、「orphan **ではない**が
   同義の綴り」が診断から漏れているケース
-- [TPL-20260730-04](../test-perspectives/TPL-20260730-04-equivalent-placements-share-one-diagnostic.md)
+- [TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md)
   （本 PR で新設・proactive）— 同じモデリング状態を表す複数の配置は同じ診断を出す。
   3-Yes 判定: 横展開しうる（全 `unassigned-*` 検出器と将来の配置追加）／構造的に再発
   しうる（`canContain` に配置を足しても検出器は自動追従しない）／既存 TPL 未掲載
@@ -229,7 +229,7 @@ spec に書く。
 4. `docs/spec/diagnostics.md` / `.ja.md` — `unassigned-domain` 行の
    `sits at top level with no team assignment` を
    `is not assigned to a service (at top level, or directly inside a system)` に直す
-5. `docs/test-perspectives/TPL-20260730-04-…md` — proactive TPL を新設し、spec 章末尾の
+5. `docs/test-perspectives/TPL-2184-…md` — proactive TPL を新設し、spec 章末尾の
    `> Related TPLs:` と TPL 側の「## 派生元 spec」で相互リンクする
 6. AT: `docs/acceptance/2184-unassigned-domain-in-system.md` を新設。TC は:
    - `system EC { domain Ordering {} }` が `unassigned-domain` を 1 件出す（id / label / loc）
@@ -261,6 +261,6 @@ spec に書く。
   読みを前提にしている。roadmap §Syntax 2.0 の議論に委ねる
 - **`unassigned-*` family 全体の走査範囲監査** — 今回は `domain` のみ。他の kind は
   現状の走査範囲が正しいことを上のインベントリで確認済みで、将来 `canContain` に
-  配置が足されたときの再発は TPL-20260730-04 で受ける
+  配置が足されたときの再発は TPL-2184 で受ける
 - **warning params の `placement` 追加**（案4）— 出し分ける consumer が現れた時点で
   additive に足せるので今は入れない

@@ -107,7 +107,7 @@ system EC {
 
     // Regression coverage for #412 — `examples/ja/ec-platform/05-multifile/` was
     // the originating reproduction (top-level `service` in one file, named-
-    // imported and stub-referenced from a `system` in another). TPL-20260510-01
+    // imported and stub-referenced from a `system` in another). TPL-1160
     // checklist item 5 ("top-level 宣言を named import で `system` 内に取り込む
     // `.krs`") is locked in by this test plus the two that follow (tag
     // preservation and multi-system fan-out). The end-to-end variant that runs
@@ -991,11 +991,11 @@ system ECPlatform {
   // End-to-end regression test for #412 (named import + top-level service +
   // stub reference inside a `system` block). Runs the actual example files
   // through ImportResolver — complementary to the synthetic-fixture unit
-  // tests in `describe("node imports")` above. Closes TPL-20260510-01
+  // tests in `describe("node imports")` above. Closes TPL-1160
   // checklist item 5's coverage at the integration level so a refactor of
   // `mergeNamedImport` / `resolveBareIdImport` that breaks the user-visible
   // example fails CI before #412 reappears.
-  describe("ec-platform/05-multifile end-to-end (#412 / TPL-20260510-01)", () => {
+  describe("ec-platform/05-multifile end-to-end (#412 / TPL-1160)", () => {
     it("merges both ECommerce and Payment into ECPlatform with full content preserved", async () => {
       const exampleDir = resolve(__dirname, "../../../../examples/ja/ec-platform/05-multifile");
       const provider = new InMemoryFileSystemProvider();
@@ -1045,7 +1045,7 @@ system ECPlatform {
   });
 
   // ─── Spec §"Multi-file import semantics" (S1–S7) — Issue #1381 ─────────────
-  // Locked in by TPL-20260514-01 through TPL-20260514-05.
+  // Locked in by TPL-1381 through TPL-2170.
   describe("multi-file import semantics (#1381)", () => {
     it("S5: DAG re-arrival of the same file is not a cycle — no circular-import warning", async () => {
       // index.krs → admin.krs → auth.krs   (named import)
@@ -1392,7 +1392,7 @@ system ECPlatform {
   // merge. The per-file parse verdict is dropped and re-derived on the merged
   // model, so a target declared in another file must NOT warn, while a target
   // that exists nowhere still must. Absence assertions pin the exact code +
-  // severity so a broadened suppression can't hide a real miss (TPL-20260615-02).
+  // severity so a broadened suppression can't hide a real miss (TPL-1608).
   describe("cross-file reference-existence diagnostics (#2032)", () => {
     const containsWarnings = (ds: { code: string; severity: string }[]) =>
       ds.filter((d) => d.code === "contains-target-not-found" && d.severity === "warning");

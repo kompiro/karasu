@@ -15,7 +15,7 @@ type: product
   - `packages/i18n/src/{types,en,ja,render-warning,render-diagnostic}.ts`
   - `docs/spec/{syntax,syntax.ja,diagnostics,diagnostics.ja}.md`
 - **関連 ADR**: [ADR-1870](../adr/1870-domain-entity-modeling.md)（ドメインエンティティと関連のモデリング v1 — #1910 で design doc から昇格）
-- **関連 TPL**: TPL-20260623-02 / TPL-20260514-05 / TPL-20260510-07
+- **関連 TPL**: TPL-1720 / TPL-2170 / TPL-510
 
 ## 受け入れ条件
 

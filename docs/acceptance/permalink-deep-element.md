@@ -4,7 +4,7 @@
 - **関連 Issue**: [#1827](https://github.com/kompiro/karasu/issues/1827)（permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826)）
 - **関連 ADR**: [ADR-1827](../adr/1827-permalink-deep-element.md)（deep permalink — 設計判断）/ [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（karasu-nest）
 - **関連 spec**: [`docs/spec/permalink.md`](../spec/permalink.md)（アンカー contract）
-- **関連 TPL**: [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)（deep-link アンカーの全サーフェス parity）
+- **関連 TPL**: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)（deep-link アンカーの全サーフェス parity）
 - **対象ファイル**:
   - `packages/core/src/share/synthesize.ts`（`SharePayload.target`）
   - `packages/core/src/renderer/svg-renderer.ts`（`anchorId`）/ `drill-down-svg.ts`

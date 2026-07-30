@@ -4,7 +4,7 @@
 - **関連 Issue**: [#1958](https://github.com/kompiro/karasu/issues/1958)（親 #1828 permalink layer / epic #1826）
 - **設計 (ADR)**: [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink、caching / deep-anchor）
 - **関連 ADR**: [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（stateless、Cache API は新ストアではない）
-- **Related TPLs**: [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)（deep-link anchor は単一 grammar — `?krs=` を `parseHash` で検証し fork しない）
+- **Related TPLs**: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)（deep-link anchor は単一 grammar — `?krs=` を `parseHash` で検証し fork しない）
 - **対象ファイル**:
   - `packages/app/src/render/share-page.ts`（`/s` bounce が `#krs-…` を `?krs=` に載せ替え）
   - `packages/app/src/utils/deep-link-anchor.ts`（`resolveDeepLinkHash` — 正規化 + precedence）／`packages/app/src/App.tsx`（mount 前正規化）
@@ -28,7 +28,7 @@
 
 ### AC-3: SPA が `?krs=` を canonical `#krs-…` に正規化（precedence + tolerant）
 
-- [x] AT-C: `?krs=<anchor>` が有効なら canonical `#krs-…` を返す（`payload.target` より優先）。無効なら payload target、無ければ null（whole-model）にフォールバック。検証は既存 `parseHash` grammar を流用し fork しない（TPL-20260630-01）
+- [x] AT-C: `?krs=<anchor>` が有効なら canonical `#krs-…` を返す（`payload.target` より優先）。無効なら payload target、無ければ null（whole-model）にフォールバック。検証は既存 `parseHash` grammar を流用し fork しない（TPL-1827）
 
   > ✅ Automated — `packages/app/src/utils/deep-link-anchor.test.ts` › `resolveDeepLinkHash`（7 ケース）
 

@@ -67,9 +67,18 @@ restores `{ activeView: "system", isEntityView: true }`.
 - [ ] Exporting while the entity view is active downloads a `-entity.svg` file
       containing the entity nodes
 
+### Deep link — cold boot into the entity view
+
+- [x] Opening `#krs-entity-<domain>` directly lands on that domain's entity view
+
+> ✅ Automated — `packages/e2e/tests/at-1907-entity-deeplink.spec.ts` › `opening #krs-entity-<domain> cold boots into that domain's entity view` — `useHistoryNavigation.test.ts` fences `parseHash` in isolation; this covers a cold boot restoring project load, drill-down *and* the sub-mode flag together, and checks the toggle's `aria-pressed` agrees with the pane so the deep link and the interactive state cannot diverge.
+
+- [x] The toggle never appears outside the system view
+
+> ✅ Automated — `packages/e2e/tests/at-1907-entity-deeplink.spec.ts` › `the Entities toggle never appears outside the system view` — the existing toggle spec covers root / service-level absence *within* the system view; this covers the Org and Deploy tabs. Note the observed behaviour it pins down: switching views resets the system drill-down to root, so returning to the system tab lands outside the domain and the toggle stays absent until the domain is drilled again.
+
 ### Manual verification
 
-> manual / visual review — open a `.krs` with a domain of entities, drill into
-> the domain, click **◇ Entities**, confirm the entity view renders and reads
-> clearly; copy the `#krs-entity-<domain>` URL, open it in a new tab, and confirm
-> it lands on the entity view of that domain.
+> manual / visual review — the remaining judgment is whether the rendered entity
+> view **reads clearly** (node/relation legibility at realistic entity counts).
+> The deep-link step it used to describe is automated above.

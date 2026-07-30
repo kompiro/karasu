@@ -85,7 +85,7 @@ system Shop {
     // outside the sibling-uniqueness guarantee the form relies on.
     expect(scope?.has("Entry")).toBe(false);
 
-    // Dropping it silently would be parse-and-vanish (TPL-20260610-01), so the
+    // Dropping it silently would be parse-and-vanish (TPL-1503), so the
     // out-of-scope member is reported rather than ignored.
     const notFound = result.diagnostics.filter((d) => d.code === "contains-target-not-found");
     expect(notFound).toHaveLength(1);
@@ -113,7 +113,7 @@ system Shop {
 
 describe("scoped boundary — placement", () => {
   // Every kind, so a new LogicalNodeKind cannot be added without deciding where
-  // a boundary may sit (TPL-20260623-02). `true` = hosts a boundary.
+  // a boundary may sit (TPL-1720). `true` = hosts a boundary.
   const PLACEMENT = {
     system: true,
     service: true,
@@ -270,7 +270,7 @@ system Shop {
 describe("scoped boundary — scope key", () => {
   it("distinguishes paths that a separator-joined key would collide", () => {
     // Ids may be quoted strings and hold any character, so ["A B"] must not key
-    // the same as ["A", "B"] (TPL-20260512-01).
+    // the same as ["A", "B"] (TPL-1352).
     expect(boundaryScopeKey(["A B"])).not.toBe(boundaryScopeKey(["A", "B"]));
   });
 });

@@ -81,7 +81,7 @@ describe("DiffModeBanner", () => {
   });
 
   it("Swap button visible label reads '⇄ Swap' when not swapped", () => {
-    // a11y contract (#1399 / TPL-20260516-01): a toggle's visible label must
+    // a11y contract (#1399 / TPL-1399): a toggle's visible label must
     // reflect its state — not just the aria-pressed attribute.
     const { getByLabelText } = render(
       <DiffModeBanner

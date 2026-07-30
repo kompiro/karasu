@@ -73,7 +73,7 @@ function frameOfNode(n: LayoutNode, frames: (Rect & { id: string })[]): string |
 }
 
 /**
- * TPL-20260711-02 dual metric: penetrations of every edge polyline against the
+ * TPL-1927 dual metric: penetrations of every edge polyline against the
  * obstacles it must never cross (all non-endpoint node cards + all non-endpoint
  * frames). Penetration must be 0.
  */
@@ -234,7 +234,7 @@ const edge = (res: LayoutResult, from: string, to: string): LayoutEdge =>
   res.edges.find((e) => e.from === from && e.to === to)!;
 
 describe("routeGroupedEdges (#1859, P2c-A)", () => {
-  it("routes so no edge crosses a node or frame interior — penetration == 0 (AC-1, TPL-20260711-02)", () => {
+  it("routes so no edge crosses a node or frame interior — penetration == 0 (AC-1, TPL-1927)", () => {
     const grouped = layoutOf(SYS, OWNER, "team");
     // The same grouped node positions with straight center-to-center edges
     // penetrate (this is the defect P2c-A fixes; measured 11). Proving it here
@@ -242,7 +242,7 @@ describe("routeGroupedEdges (#1859, P2c-A)", () => {
     expect(straightCenterPenetrations(grouped)).toBeGreaterThan(0);
     // Grouped + routed: zero penetrations.
     expect(totalPenetrations(grouped)).toBe(0);
-    // Dual metric: crossings are also measured (TPL-20260711-02 — do not judge
+    // Dual metric: crossings are also measured (TPL-1927 — do not judge
     // readability on crossings alone). P2c-A does not minimise them; P2c-C marks
     // them. Just assert the metric is computable and finite.
     expect(Number.isFinite(totalCrossings(grouped))).toBe(true);
@@ -612,7 +612,7 @@ organization Org {
 
 /**
  * Every strict-interior right-angle crossing between two *different* edges,
- * as {x, y}. This is the set P2c-C must mark with a hop (TPL-20260711-02:
+ * as {x, y}. This is the set P2c-C must mark with a hop (TPL-1927:
  * assert every crossing carries a mark, not that the crossing count is zero).
  */
 function rightAngleCrossings(res: LayoutResult): Point[] {
@@ -702,7 +702,7 @@ describe("computeCrossingMarks (#1859, P2c-C)", () => {
     expect(heads.some((h) => junctions.some((j) => j.x === h.x && j.y === h.y))).toBe(false);
   });
 
-  it("draws a hop over every right-angle crossing — none can be misread as a connection (AC-3, TPL-20260711-02)", () => {
+  it("draws a hop over every right-angle crossing — none can be misread as a connection (AC-3, TPL-1927)", () => {
     const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
     const hops = res.crossingMarks!.hops;
     const crossings = rightAngleCrossings(res);
@@ -725,7 +725,7 @@ describe("computeCrossingMarks (#1859, P2c-C)", () => {
 
 // Real-sample regression for #1954. The synthetic `SYS`/`TRUNKS` fixtures above
 // never exercised a target flanked on both sides in the infra tier, nor an actor
-// whose straight edge pierces the client row — so the TPL-20260711-02 fence
+// whose straight edge pierces the client row — so the TPL-1927 fence
 // (penetration 0) was passing while `examples/en/getting-started` still leaked
 // penetrations in the Group-by view. This fixture pins the real example.
 const GETTING_STARTED = readFileSync(
@@ -740,7 +740,7 @@ function layoutGettingStarted(groupBy?: "team"): LayoutResult {
 }
 
 describe("mixed channel routing on examples/en/getting-started (#1954)", () => {
-  it("routes with zero node/frame penetration and zero collinear overlap (AC-1, TPL-20260711-02, #1927)", () => {
+  it("routes with zero node/frame penetration and zero collinear overlap (AC-1, TPL-1927, #1927)", () => {
     const grouped = layoutGettingStarted("team");
     // The same grouped positions with straight center-to-center edges penetrate
     // (the defect this fixes) — proves the fixture actually drives the router.

@@ -24,7 +24,7 @@ describe("catalog drift guard — ja vs en", () => {
   });
 });
 
-// Key-naming guard (docs/spec/i18n.md "key naming 規約", TPL-20260718-01).
+// Key-naming guard (docs/spec/i18n.md "key naming 規約", TPL-2019).
 // Keys are `<feature>.<sub-feature?>.<element>.<state>`, i.e. at most 4
 // dot-separated segments. This mechanizes the segment-count half of the
 // rule; the "when is a sub-feature warranted" judgement call stays a

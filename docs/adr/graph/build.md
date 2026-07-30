@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-62 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+63 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -58,6 +58,7 @@ flowchart TD
     ADR_1855["ADR-1855<br/>Dependabot Triage (2026-07-08) — `actions/cache..."]
     ADR_1862["ADR-1862<br/>TypeScript 7.0（native compiler）を採用する"]
     ADR_1866["ADR-1866<br/>app E2E（Playwright）を Required status check にし、p..."]
+    ADR_1890["ADR-1890<br/>CI ランナーは Ubicloud を採用し、secret を握る publish / dep..."]
     ADR_2106["ADR-2106<br/>Dependabot トリアージ 2026-07-21 — setup-node 採用・ast..."]
     ADR_2111["ADR-2111<br/>Dependabot security update — brace-expansion / ..."]
     ADR_2115["ADR-2115<br/>Dependabot security update 第 2 便 — fast-uri / s..."]
@@ -137,6 +138,7 @@ flowchart TD
   class ADR_1855 accepted
   class ADR_1862 accepted
   class ADR_1866 accepted
+  class ADR_1890 accepted
   class ADR_2106 accepted
   class ADR_2111 accepted
   class ADR_2115 accepted

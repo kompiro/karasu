@@ -21,7 +21,7 @@ scope:
   - Issue #1729（observation）、#1725 / #1548（症状が観測された例）
   - [ADR-529](529-playwright-with-ai-visual-review.md)（E2E の `e2e` ラベル駆動 CI を導入した ADR — 本 ADR はその **CI トリガーの一点のみ** を更新する）
   - [ADR-579](579-preview-workflow-no-label-gating.md)（Preview workflow を同じ理由で path filter へ移行した先例）
-  - [TPL-20260623-03](../test-perspectives/TPL-20260623-03-gated-test-suite-detection-gap.md)（gated-suite detection gap）
+  - [TPL-1725](../test-perspectives/TPL-1725-gated-test-suite-detection-gap.md)（gated-suite detection gap）
   - `.github/workflows/e2e.yml`
 
 ## 背景
@@ -55,7 +55,7 @@ E2E は nightly（`e2e-nightly.yml`）でも全件走るが、これは検出の
 無関係な E2E ラベル付き PR (#1725) で初めて失敗が表面化し、その PR の作者が
 切り分けコストを払った。
 
-この観点は TPL-20260623-03 として記録済みで、本 ADR はその **構造的な対処**
+この観点は TPL-1725 として記録済みで、本 ADR はその **構造的な対処**
 （仕組み化）を定める。
 
 ## 検討した選択肢

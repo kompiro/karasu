@@ -276,7 +276,7 @@ export const SYSTEM_ASSIGNED_TAGS = ["implicit", "cyclic", "read", "write", "inf
  * Unlike `annotation-possible-typo` there is deliberately **no suppression
  * condition**: a style selector or legend ref proves the name is intentional,
  * but intent does not change the v2.0 outcome, so the deprecation is
- * announced unconditionally. Resolves the TPL-20260610-01 fourth state
+ * announced unconditionally. Resolves the TPL-1503 fourth state
  * (accepted, inert, undocumented) into state (2): warned as unknown.
  */
 function detectTagsNotBuiltin(file: KrsFile): Warning[] {
@@ -461,7 +461,7 @@ type InfraInScope = Map<string, { kind: "database" | "queue" | "storage"; loc: K
  * scope, excluding `[external]` and `[index]` stores. Shared by the shared-store
  * diagnostics (`detectSharedInfraFanIn`, `detectCrossDomainStoreAccess`) so the
  * exclusion rule and the kind narrowing live in exactly one place
- * (TPL-20260623-02 — keep the resource→store target set synchronized across
+ * (TPL-1720 — keep the resource→store target set synchronized across
  * every consumer).
  *
  * `[external]`: the smell is about owning a shared store, not depending on a
@@ -512,7 +512,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
 
     // Resolver over this scope's entities: a bare `resource Order` that resolves
     // to `entity Order { table OrderDB.orders }` counts toward the fan-in on
-    // OrderDB just as a physical `resource OrderDB.orders` would (TPL-20260623-02
+    // OrderDB just as a physical `resource OrderDB.orders` would (TPL-1720
     // — keep the resource→store target set synchronized across every consumer).
     const resolver = buildEntityResolver(nodes);
 
@@ -601,7 +601,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  * two fire independently on the same store — no double counting, no mutual
  * suppression. The resource→store resolution reuses `buildEntityResolver`, kept
  * in sync with `deriveInfraEdges` / `detectSharedInfraFanIn` /
- * `detectUnassignedResources` (TPL-20260623-02).
+ * `detectUnassignedResources` (TPL-1720).
  * See ADR-1819 (docs/adr/1819-domain-store-ownership-diagnostic.md).
  */
 function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
@@ -1311,7 +1311,7 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
 /**
  * §S6: an authored edge whose endpoint id exists nowhere in the merged model
  * is dropped during view extraction (the resolved endpoint node is kept —
- * TPL-20260514-05). This surfaces that otherwise-silent drop as a warning.
+ * TPL-2170). This surfaces that otherwise-silent drop as a warning.
  *
  * Only authored edges are inspected: synthetic edges (implicit service edges,
  * usecase→resource edges) are produced during view extraction and never appear

@@ -149,7 +149,7 @@ export function collapseGroups(
     if (edgeDiffState) {
       // Re-key this re-targeted edge's diff state onto the stub edge (decoration
       // keyed on the pre-collapse endpoints would otherwise miss the stub id and
-      // render undecorated - TPL-20260712-01). `unchanged` default so a collapse
+      // render undecorated - TPL-1886). `unchanged` default so a collapse
       // in non-diff mode (no diff map entries) contributes nothing.
       const renderKey = `${from}->${to}`;
       const origState = edgeDiffState.get(`${edge.from}->${edge.to}`) ?? "unchanged";

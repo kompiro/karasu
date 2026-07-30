@@ -88,7 +88,7 @@ describe("useAppViews — diff swap", () => {
     expect(result.current.system.svg).toBeTruthy();
   });
 
-  // TPL-20260518-01 checklist item 3: forward → reverse → forward round-trip.
+  // TPL-1402 checklist item 3: forward → reverse → forward round-trip.
   // The reverse state must not be assumed to be the mirror of forward; each
   // direction is independently rendered via the overlay FS.
   it("renders correctly after a full swap round-trip (forward → reverse → forward)", async () => {
@@ -161,7 +161,7 @@ describe("useAppViews — diff swap", () => {
     expect(result.current.system.svg).toBeTruthy();
   });
 
-  // TPL-20260518-01 checklist item 4: verify swap for a non-overlay (file) compare
+  // TPL-1402 checklist item 4: verify swap for a non-overlay (file) compare
   // source. For `kind: "file"`, `compareFs === fs` (no overlay), so both effFs and
   // effCompareFs are the base FS in both directions — the fix must not break this.
   it("renders the swapped diff for a file compare source", async () => {
@@ -301,8 +301,9 @@ organization Org {
     );
 
     await waitFor(() => expect(result.current.system.svg).toBeTruthy(), { timeout: 2000 });
-    // The selector is offered even though a compare source is active.
-    expect(result.current.system.groupByAvailable).toBe(true);
+    // The team axis still has data even though a compare source is active —
+    // what `PreviewColumn` derives the selector's visibility from (#2119).
+    expect(result.current.system.hasTeamAxis).toBe(true);
 
     // Opting into team grouping re-compiles the diff with boundary frames.
     act(() => result.current.system.setGroupBy("team"));

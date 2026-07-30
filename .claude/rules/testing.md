@@ -109,10 +109,10 @@ forgotten.
 
 These prophylactic tests must survive component migrations:
 
-- **TPL-20260510-04** (IME composition / continuous-input): Tests that
+- **TPL-1053** (IME composition / continuous-input): Tests that
   fire `compositionStart` / `compositionEnd` around a textarea must
   keep doing so after migration. Radix doesn't touch composition events.
-- **TPL-20260510-09** (event handler restructure): Tests that assert an
+- **TPL-948** (event handler restructure): Tests that assert an
   Enter keypress does **not** confirm/close a dialog (because that
   pattern leaks events to the next-mounted target) must remain.
 

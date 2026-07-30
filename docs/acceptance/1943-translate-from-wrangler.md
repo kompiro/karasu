@@ -4,7 +4,7 @@
 - **Issue**: #1943（設計方向 #1935 / design doc #1941）
 - **PR**: feat/translate-from-wrangler
 - **設計**: [ADR-1935](../adr/1935-wrangler-translate-adapter.md)（元 Design Doc `wrangler-translate-adapter.md` を昇格・集約）
-- **Related TPLs**: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（生成 `.krs` が round-trip する）, [TPL-20260510-16](../test-perspectives/TPL-20260510-16-convenience-vs-principled-api.md)（round-trip は parser 経由の principled API で検証）, [TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)（id 同一性 — binding 名から id を導出）
+- **Related TPLs**: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（生成 `.krs` が round-trip する）, [TPL-239](../test-perspectives/TPL-239-convenience-vs-principled-api.md)（round-trip は parser 経由の principled API で検証）, [TPL-2167](../test-perspectives/TPL-2167-id-not-label-for-identity.md)（id 同一性 — binding 名から id を導出）
 - **対象**: `packages/core/src/translate/wrangler.ts` / `wrangler.test.ts`、`packages/core/src/translate/translate.ts`（format 登録・self-wrap）、`packages/cli/src/index.ts`（`--from wrangler`）、`packages/cli/src/translate/translate.e2e.test.ts`、`packages/app/src/components/TranslateDialog.tsx`、`packages/i18n`（format label）
 
 ## 概要
@@ -46,7 +46,7 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 
 - [x] `--from wrangler` が受理される（不正値は `--from must be "compose", "k8s", "openapi", "db", or "wrangler"`）
 - [x] `--system <Name>` は wrangler が自己 wrap した `system` 名を override し、warning を出さない
-- [x] 出力が `Parser.parse` で error 診断ゼロで round-trip する（TPL-20260510-02）
+- [x] 出力が `Parser.parse` で error 診断ゼロで round-trip する（TPL-1101）
 - [x] 不正な TOML は `Failed to parse wrangler.toml` で失敗する
 
 ### AC-5: App の translate ダイアログ

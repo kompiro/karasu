@@ -7,7 +7,7 @@ import { REFERENCE_DATA } from "./reference-data.js";
  * Translated labels for the built-in annotation badges, injected by the
  * caller per docs/spec/i18n.md (same pattern as EmptyStateLabels). Omitted
  * keys fall back to the `reference-data.ts` en labels, so the builtin
- * sheet and the Reference panel can never drift (TPL-20260519-02).
+ * sheet and the Reference panel can never drift (TPL-1415).
  */
 export interface AnnotationBadgeLabels {
   deprecated?: string;

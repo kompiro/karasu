@@ -11,7 +11,7 @@ import { anchorId } from "@karasu-tools/core";
 
 afterEach(cleanup);
 
-// ─── Cross-surface anchor parity (TPL-20260630-01, docs/spec/permalink.md) ─────
+// ─── Cross-surface anchor parity (TPL-1827, docs/spec/permalink.md) ─────
 // The SPA hash (`buildHash`) and the static drill-down SVG (`anchorId` in core)
 // must emit the SAME `krs-<view>-<sanitizeId(id)>` grammar so a deep permalink
 // is portable between the two surfaces. If these drift, a shared link resolves

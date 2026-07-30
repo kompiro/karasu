@@ -26,7 +26,7 @@ describe("PreviewFocusShortcut", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores the shortcut while a text input is focused (TPL-20260519-01)", () => {
+  it("ignores the shortcut while a text input is focused (TPL-1419)", () => {
     const onToggle = vi.fn<() => void>();
     renderWithShortcuts(<PreviewFocusShortcut onToggle={onToggle} />);
     const textarea = document.createElement("textarea");
@@ -37,7 +37,7 @@ describe("PreviewFocusShortcut", () => {
     textarea.remove();
   });
 
-  it("stops resolving the shortcut after the component unmounts (TPL-20260519-01)", () => {
+  it("stops resolving the shortcut after the component unmounts (TPL-1419)", () => {
     const onToggle = vi.fn<() => void>();
     const { unmount } = renderWithShortcuts(<PreviewFocusShortcut onToggle={onToggle} />);
     unmount();

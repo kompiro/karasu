@@ -22,7 +22,7 @@ scope:
 - **関連**:
   - Issue [#1755](https://github.com/kompiro/karasu/issues/1755)（本体）、[#1728](https://github.com/kompiro/karasu/issues/1728)（分離元 — system view の交差削減。配置で減らせない残り交差を color-by-source で補う動機）
   - 関連 ADR: [ADR-1096](./1096-edge-id-selector.md)（`edge#<id>` セレクタ — base id + canonical id。本決定の id 形・specificity 階段を踏襲）, [ADR-1724](./1724-system-view-infra-external-tier-split.md)（external-on-sides 配置で交差を削減する別アプローチ）
-  - TPL: [TPL-20260624-03](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)（端点セレクタはビューが格納する id 形で比較する）, [TPL-20260618-01](../test-perspectives/TPL-20260618-01-style-lookup-matches-layout-id-form.md)
+  - TPL: [TPL-1755](../test-perspectives/TPL-1755-edge-endpoint-selector-id-form.md)（端点セレクタはビューが格納する id 形で比較する）, [TPL-1666](../test-perspectives/TPL-1666-style-lookup-matches-layout-id-form.md)
   - AT: [AT-1755](../acceptance/1755-edge-from-to-selectors.md)
   - コード: `packages/core/src/{lexer/style-lexer,parser/style-parser,resolver/style-resolver}.ts`, `docs/spec/style.md`(+`.ja.md`)
 
@@ -57,7 +57,7 @@ scope:
   テストで `reference-data.ts` の specificity 表と縛る。
 - **端点 id を `edge.from` / `edge.to` と直接比較**: ビューが格納する端点 id 形
   （bare / dot-notation）と同じ形で比較するので、合成エッジも追加処理なしで当たる。
-  id 形不一致による silent breakage の観点は TPL-20260624-03 に固定した。
+  id 形不一致による silent breakage の観点は TPL-1755 に固定した。
 
 ## 却下した案
 

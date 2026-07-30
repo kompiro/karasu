@@ -21,30 +21,67 @@ npm run format:check  # フォーマット OK
 
 ### AC-1.1: ユーザースタイルなしでもデフォルト描画される
 
-- [ ] Memory モードでアプリを開き、サンプル KRS が正しく描画されることを確認
-- [ ] user ノードが人型シェイプ（`shape: user`）で表示される
-- [ ] service ノードが青系ボックスで表示される
-- [ ] `[external]` タグ付きノードが破線枠・グレー系で表示される
-- [ ] async エッジ（`-->`）が破線矢印で表示される
+> ✅ Automated by `packages/e2e/tests/at-0006-builtin-style.spec.ts` (suite-wide)
 
-> manual / visual review — シェイプ・色・破線などの描画結果はブラウザ目視で判定する受入観点。
+- [x] Memory モードでアプリを開き、サンプル KRS が正しく描画されることを確認
+- [x] user ノードが人型シェイプ（`shape: user`）で表示される
+- [x] service ノードが青系ボックスで表示される
+- [x] `[external]` タグ付きノードが破線枠・グレー系で表示される
+- [x] async エッジ（`-->`）が破線矢印で表示される
 
-### AC-1.2: リソースタグによるシェイプ自動適用
+> Tests: `kind shapes come from the built-in sheet with no user stylesheet` /
+> `the kind palette makes services blue and keeps [external] grey and dashed` /
+> `async edges are dashed and sync edges are solid`。
+>
+> 判定の作り: シェイプは `shapes.ts` が出す**ジオメトリの分類**で見る（cylinder と
+> queue はどちらも `path` + `ellipse` で cap を伸ばす軸だけが違うため、「ellipse が
+> ある」では queue が cylinder で描かれても通ってしまう）。色は hex 固定ではなく
+> **関係と色相クラス**で見る（service は青優勢、`[external]` は service より彩度が
+> 低く別色、かつ破線）。`default-style.ts` の色調整では落ちず、external が service
+> パレットに埋没したり破線が消えたときに落ちる。async / sync は必ず**対で**比較する
+> — 全部を破線にする回帰が「async は破線」だけの assert を満たしてしまうため。
 
-- [ ] KRS エディタで `resource DB "DB" [table]` を追加し、cylinder シェイプで表示されることを確認
-- [ ] `resource Q "Queue" [queue]` → queue シェイプ
-- [ ] `resource API "API" [api]` → hexagon シェイプ
-- [ ] `resource S3 "Storage" [storage]` → cloud シェイプ
+### AC-1.2: リソースのシェイプ自動適用
 
-> manual / visual review — タグ→シェイプ自動適用の見た目はブラウザで描画結果を確認する。
+> チェックリストの旧記述 `resource DB "DB" [table]` は現行文法ではパースエラー
+> （インライン label 文字列は無く、`resource` は usecase の中に置く）。実装されて
+> いる機構は **infra kind からのシェイプ推論** — `table` → cylinder、`queue` →
+> queue、`bucket` → cloud（`default-style.ts` の `resource[table]` 等のルールと
+> infra kind → タグのマッピング）。以下は現行文法に合わせて書き直したもの。
+
+- [x] usecase の `resource MainDB.Orders`（`table` 参照）が cylinder で表示される
+
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `resource shapes are inferred from the infra kind (AC-1.2, AT-0049)`
+
+- [x] `resource Bus.Created`（`queue` 参照）が queue シェイプで表示される
+
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `resource shapes are inferred from the infra kind (AC-1.2, AT-0049)` — cylinder と queue は cap の向き（`rx` vs `ry`）で判別するので、取り違えも検出する。
+
+- [x] `resource Media.Images`（`bucket` 参照）が cloud シェイプで表示される
+
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `resource shapes are inferred from the infra kind (AC-1.2, AT-0049)`
+
+- [ ] `[api]` → hexagon
+
+> 未自動化（現状は実行不能）— `[api]` に対応する infra kind は無いため、この shape が
+> 図に出る経路は「未割当 resource への手書きタグ」しかない。ところが未割当 resource は
+> domain view に**描画されない**（`resource X is not assigned to any database or
+> entity` の warning だけが出る）。`docs/spec/syntax.md` は「orphan node として描画
+> される」と書いており実装と食い違うため
+> [#2200](https://github.com/kompiro/karasu/issues/2200) で追跡する。hexagon ルール
+> 自体は AC-1.3 のテストでカバーしている。
 
 ### AC-1.3: ユーザースタイルによるオーバーライド
 
-- [ ] Project モードで `.krs.style` ファイルを作成し、`resource { shape: hexagon; }` と記述
-- [x] resource ノードが hexagon シェイプで表示される（ビルトインの box を上書き）
-> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user stylesheet overrides builtin`（resource の shape がビルトイン box → hexagon に上書きされることを検証）
+- [x] Project モードで `.krs.style` を作成し、ビルトインを上書きできる
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `a user stylesheet overrides an inferred resource shape at equal specificity (AC-1.3)`（`.krs.style` を含む project を実際に開き、推論された cylinder が hexagon に変わること、および同じ user シートの別ルールが適用されることを確認）
 
-> manual / visual review — Project モードでの `.krs.style` 作成とブラウザ実描画での切り替わり確認は目視で行う。
+- [x] resource ノードが hexagon シェイプで表示される（ビルトインの box を上書き）
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user stylesheet overrides builtin`（無印 resource の shape がビルトイン box → hexagon に上書きされることを検証）
+
+- [x] 詳細度がビルトインより低いユーザールールは**上書きしない**
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `a lower-specificity user rule does not override a tag-scoped built-in rule` — cascade は `docs/spec/style.md` どおり詳細度優先・同点なら後勝ちで、**user origin による優遇は無い**。よって無印 `resource`（score 1）はビルトインの `resource[table]`（score 11）に勝てない。上の AC の例（`resource { shape: hexagon; }`）が上書きできるのは**タグの付かない** resource だけ。
+
 
 ### AC-1.4: 存在しないスタイルファイルのインポート
 

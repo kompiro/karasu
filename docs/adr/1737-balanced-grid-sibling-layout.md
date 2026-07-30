@@ -21,7 +21,7 @@ assumptions:
   - Issue [#1737](https://github.com/kompiro/karasu/issues/1737)（ドメイン / ユースケースの span of control が制御できない）
   - 実装 PR [#1748](https://github.com/kompiro/karasu/pull/1748)、概念 PR [#1744](https://github.com/kompiro/karasu/pull/1744)
   - 関連: [ADR-1724](./1724-system-view-infra-external-tier-split.md)（system view の横幅爆発を dep ティア分割で抑える別アプローチ）, [ADR-974](./974-infra-row-by-deepest-consumer.md)
-  - TPL: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（一度に見せる範囲の限定 + 単一ビューの解像度）, [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（並列関数のパリティ）
+  - TPL: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（一度に見せる範囲の限定 + 単一ビューの解像度）, [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数のパリティ）
   - AT: [AT-1737](../acceptance/1737-balanced-grid-sibling-layout.md)、[AT-0049](../acceptance/0049-deploy-layer-wrap.md)（deploy のグリッド挙動に更新）
   - コンセプト: `docs/concepts.md`(+`.ja.md`) scoped glance 節（解像度の軸を #1744 で明文化）
   - コード: `packages/core/src/renderer/layer-layout-logics.ts`, `layout.ts`, `deploy-layout.ts`, `org-tree-renderer.ts`
@@ -35,7 +35,7 @@ assumptions:
 - メイン `layout()`（単一 system + 全 drill-down view）は折り返し判定を持たず、1 レイヤーが無制限に 1 行へ伸びる。
 - `layoutMultipleSystems`（複数 system root view）と `deploy-layout` のみ `MAX_LAYER_WIDTH` 幅基準で sub-row 折り返ししていた。
 
-つまり症状の出る経路に折り返しが無く、しかも幅基準は「細い兄弟が多数」のケースを救えない（合計幅が閾値未満だと 1 行のまま潰れる）。この「片方の経路だけ拡張されて drift」は [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) のパリティ崩れに該当する。
+つまり症状の出る経路に折り返しが無く、しかも幅基準は「細い兄弟が多数」のケースを救えない（合計幅が閾値未満だと 1 行のまま潰れる）。この「片方の経路だけ拡張されて drift」は [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) のパリティ崩れに該当する。
 
 なお scoped glance はこれまで「何階層降りるか（ナビゲーション）」の話に閉じていたため、#1744 で `docs/concepts.md` に「単一ビューの解像度・視覚的密度」という第二の軸を明文化し、本決定の概念的裏付けとした。
 

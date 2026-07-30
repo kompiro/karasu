@@ -12,8 +12,8 @@ import { render } from "./render.js";
  * mxGraph XML: the multipage mxfile shape (§1), single-view selection
  * (§5 / §6), and the `data-karasu-*` metadata contract (§8).
  *
- * TPL-20260510-15 (test through the real wiring, not the mock seam) /
- * TPL-20260510-11 (single grammar for exported ids — assertions reuse the
+ * TPL-1024 (test through the real wiring, not the mock seam) /
+ * TPL-219 (single grammar for exported ids — assertions reuse the
  * exporter's sanitized `system_...` page-id shape).
  */
 

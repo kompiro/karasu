@@ -19,7 +19,7 @@
  *
  * Overlap is *measured*, not eyeballed: `countLabelPenetrations` /
  * `countLabelOverlaps` give the numeric guards the tests assert on
- * (TPL-20260711-02, the label analogue of the edge-routing penetration guards).
+ * (TPL-1927, the label analogue of the edge-routing penetration guards).
  */
 import type { Point, Rect } from "./edge-geometry.js";
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";

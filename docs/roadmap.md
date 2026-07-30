@@ -49,7 +49,7 @@ freeze（後方互換を約束）するための readiness と計画。最終的
 
 - **warn-don't-error が stable 判定の前提**: 未完成・in-flight なモデルでも render
   できることが karasu の差別化要因であり、freeze する診断 register は fact vs style
-  の二分（[TPL-20260514-08](test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)）に従う。
+  の二分（[TPL-1386](test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)）に従う。
 - **open annotation set は常に stable 側**: 未知の annotation は display-only で通る
   ため、新語彙の追加が後方互換を壊さない。features を experimental に置くより、
   open-set へ逃がせるものは逃がす（[ADR-1568](adr/1568-migration-intent-fields.md)）。
@@ -63,7 +63,7 @@ freeze（後方互換を約束）するための readiness と計画。最終的
 ### version vocabulary（版語彙の定義 — 正典）
 
 本節が版語彙の**単一の正典**（決定 = [ADR-2124](adr/2124-version-vocabulary.md)。
-[TPL-20260716-01](test-perspectives/TPL-20260716-01-keystone-terms-single-home.md) の
+[TPL-2005](test-perspectives/TPL-2005-keystone-terms-single-home.md) の
 単一正典原則をこの語彙に適用）。`docs/process.md`（リリース運用）・`docs/glossary.md` は
 本節を参照し、定義を再掲しない。
 
@@ -116,9 +116,9 @@ watch item をこの軸で読むと:
 
 | watch | 境界に対する位置 | criteria 上の扱い |
 | --- | --- | --- |
-| **G** `client` sub-language | 境界に**最も近い**が、各 feature が「アクセスパス構造」を名指し実装を名指さない test を通る | concepts に境界注記済み（[§Structure, not implementation](concepts.md#structure-not-implementation-client) / [TPL-20260616-03](test-perspectives/TPL-20260616-03-client-vocabulary-structure-not-implementation.md)）→ **stable** |
+| **G** `client` sub-language | 境界に**最も近い**が、各 feature が「アクセスパス構造」を名指し実装を名指さない test を通る | concepts に境界注記済み（[§Structure, not implementation](concepts.md#structure-not-implementation-client) / [TPL-1625](test-perspectives/TPL-1625-client-vocabulary-structure-not-implementation.md)）→ **stable** |
 | **H** CRUD verb-decoration 1:N | usecase の振る舞い（実装寄り）に接近するが、実在のデータ作用の**構造**を簡潔に表す | spec/parser 実装済み・削る互換コストが大きい → **stable**（[付録](#付録-finding-hcrud-verb-decoration-1nを-v10-で残す判断) で earn-its-keep を watch） |
-| **I** infra block keyword vs shape tag | どちらも構造側だが**語彙が二重化**（dual representation）し audience が混同しうる | spec に使い分け注記済み（#1626）→ **stable**（[TPL-20260519-02](test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) で観察） |
+| **I** infra block keyword vs shape tag | どちらも構造側だが**語彙が二重化**（dual representation）し audience が混同しうる | spec に使い分け注記済み（#1626）→ **stable**（[TPL-1415](test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) で観察） |
 | **D** edge の protocol/cardinality | first-class 化は**実装詳細を edge に持ち込む**圧力になりうる（構造か実装か灰色） | 当面 tag + `description`/`link` の散文に逃がす → **experimental** |
 | **C** `translate` の domain 推論 | core 構文の問題ではなく adapter 側（scaffold → readable の手作業） | core spec に gap なし → **experimental（adapter 課題）** |
 
@@ -173,7 +173,7 @@ freeze する = 後方互換を約束する。
   team / member / import（nested dotted path 含む）。
 - **タグ・アノテーション**: `docs/spec/tags-annotations.md` の builtin 集合と
   **open annotation set のセマンティクス**（未知 annotation は display-only で許容）。
-- **診断 register**: fact vs style の二分（[TPL-20260514-08](test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)）と、
+- **診断 register**: fact vs style の二分（[TPL-1386](test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)）と、
   ADR-1566/02/05 で確定した register 割り当て。**warn-don't-error** 方針
   （未完成・in-flight なモデルでも render できる差別化要因）。
 - **lifecycle annotation の parameter 構文**（[ADR-1568](adr/1568-migration-intent-fields.md)、
@@ -421,7 +421,7 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 ### 語彙の閉鎖（tag / annotation）
 
 - **v2.0 で tag / annotation はツール語彙のみを受理する**（決定事項 5）。register の確定: **tag = アーキテクチャの意味（アーキタイプ）** / **annotation = lifecycle**。ユーザー拡張点は facet に一本化し、新しいアーキタイプ / lifecycle 状態はツールの builtin 語彙への追加要望として扱う（[§Notation watch の finding 5](#notation-watch-round-2-の-finding) `[cache]` watch がその機構の実例）。
-- **enforcement は warning に留める**（parse は通り、効果を持たず、警告される — [TPL-20260610-01](test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) の状態 (2)。既存ファイルを parse error で壊さない）。
+- **enforcement は warning に留める**（parse は通り、効果を持たず、警告される — [TPL-1503](test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) の状態 (2)。既存ファイルを parse error で壊さない）。
 - **v1.x の移行診断**: builtin 集合外の tag / annotation に `tag-not-builtin` / `annotation-not-builtin`（warning、additive — freeze 非抵触）を出す = [#2159](https://github.com/kompiro/karasu/issues/2159)。
 - **style セレクタの移行**: 任意名の tag / annotation セレクタ（今日 `.krs.style` で generic に照合される styling フック）は **v1.x で deprecation 告知 → v2.0 で無効化**し、フックは **facet セレクタ**（[#2160](https://github.com/kompiro/karasu/issues/2160)）が引き継ぐ。移行経路 = facet 宣言 + `facets` 付与 + セレクタ書き換え。
 
@@ -457,8 +457,8 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 
 ## Related TPLs
 
-- [TPL-20260514-08](test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 診断 register の fact vs style 二分。v1.0 で freeze する register 割り当ての拠り所。
-- [TPL-20260511-02](test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — spec doc と source-of-truth の同期。freeze 前タスクで spec ↔ 実装の整合を担保。
-- [TPL-20260519-02](test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — 共有語彙の dual representation。finding I（infra keyword と shape tag の overlap）の audience guidance の拠り所。
-- [TPL-20260610-01](test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理語彙の 3 状態規律。[§Syntax 2.0 プログラム](#syntax-20-プログラム) の閉鎖 enforcement（warning = 状態 (2)）の拠り所。
+- [TPL-1386](test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — 診断 register の fact vs style 二分。v1.0 で freeze する register 割り当ての拠り所。
+- [TPL-1296](test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — spec doc と source-of-truth の同期。freeze 前タスクで spec ↔ 実装の整合を担保。
+- [TPL-1415](test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — 共有語彙の dual representation。finding I（infra keyword と shape tag の overlap）の audience guidance の拠り所。
+- [TPL-1503](test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理語彙の 3 状態規律。[§Syntax 2.0 プログラム](#syntax-20-プログラム) の閉鎖 enforcement（warning = 状態 (2)）の拠り所。
 </content>

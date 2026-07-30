@@ -923,7 +923,7 @@ system Test {
     expect(service.properties.links[1].url).toBe("https://figma.com/file/xxx");
   });
 
-  // #1525 / TPL-20260510-17: link URLs are untrusted input rendered as
+  // #1525 / TPL-168: link URLs are untrusted input rendered as
   // <a href> in the app and the VS Code webview. A disallowed scheme must be
   // reported with a dedicated warning at the parse boundary, but the link is
   // KEPT in the AST so Format / round-trip never silently deletes the user's
@@ -2131,7 +2131,7 @@ boundary checkout {
   });
 
   it("stays silent for members that render only on drill levels — no warning of any kind (#1983)", () => {
-    // TPL-20260615-02: an absence assertion fixes its scope and severity.
+    // TPL-1608: an absence assertion fixes its scope and severity.
     // Scope: the ENTIRE diagnostics list of this parse; severity: none at any
     // level. A nested domain, a usecase, an entity, a resource, and an infra
     // leaf are all drawn (and framed) on some drill-down / entity level

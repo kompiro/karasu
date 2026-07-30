@@ -4,7 +4,7 @@
 - **関連 Issue**: [#1712](https://github.com/kompiro/karasu/issues/1712)
 - **対象ファイル**: `docs/spec/glossary.md`, `docs/spec/glossary.ja.md`,
   `packages/docs-site/scripts/lib/site-map.ts`
-- **関連 TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（正典の再掲がドリフトしない / 矛盾しない — 用語集を back-ref で紐付け）、[TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)（リンク / アンカー解決）
+- **関連 TPL**: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（正典の再掲がドリフトしない / 矛盾しない — 用語集を back-ref で紐付け）、[TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md)（リンク / アンカー解決）
 
 ## 受け入れ条件
 
@@ -14,7 +14,7 @@
 
 - [x] 英語版・日本語版の内部リンクとアンカーがすべて解決し、リンク切れがない（en/ja とも concepts / syntax / style / tags-annotations の見出しアンカーへ正しく張られている）
 
-  > ✅ Automated — `pnpm --filter @karasu-tools/docs-site check-links`（`build` 内でも実行され、未解決ルート・壊れた見出しアンカーで失敗する）。TPL-20260616-01。
+  > ✅ Automated — `pnpm --filter @karasu-tools/docs-site check-links`（`build` 内でも実行され、未解決ルート・壊れた見出しアンカーで失敗する）。TPL-1621。
 
 - [x] sync → build がエラーなく完了する（生成された Astro コンテンツが妥当）
 
@@ -22,7 +22,7 @@
 
 - [ ] 用語集の各定義が正典（concepts / spec）と矛盾しない（新しい定義を導入していない）
 
-  > 🧑 Manual — Explore エージェントが concepts.md / spec/* から抽出した term→定義→出典の対応に基づき各項目を作成し、リンク先の正典と突き合わせて確認した。TPL-20260511-02 を back-ref で紐付け。
+  > 🧑 Manual — Explore エージェントが concepts.md / spec/* から抽出した term→定義→出典の対応に基づき各項目を作成し、リンク先の正典と突き合わせて確認した。TPL-1296 を back-ref で紐付け。
 
 - [ ] `astro dev` でサイドバーに **Reference → Glossary** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
 

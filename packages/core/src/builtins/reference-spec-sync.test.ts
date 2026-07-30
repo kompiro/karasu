@@ -26,7 +26,7 @@ import { PROPERTY_SCHEMAS } from "../style/property-schema.js";
 // resolver may consume — exactly the `stroke-style` ghost-property bug
 // (#1492). Reference data may lead the docs; the validator must not.
 //
-// See docs/test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md.
+// See docs/test-perspectives/TPL-1296-spec-doc-reference-data-sync.md.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const specDir = resolve(__dirname, "../../../../docs/spec");
@@ -80,7 +80,7 @@ function tableFirstColumn(lines: string[]): string[] {
   return out;
 }
 
-describe("Reference data ↔ docs/spec agreement (TPL-20260511-02)", () => {
+describe("Reference data ↔ docs/spec agreement (TPL-1296)", () => {
   const ref = getReference();
 
   it("style.md: every documented style property is in getReference().styleProperties", () => {

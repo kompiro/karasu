@@ -13,7 +13,7 @@ assumptions:
   - "symbol: packages/app/src/hooks/useHistoryNavigation.ts :: shareTargetToHash"
   - "symbol: packages/app/src/utils/inline-share.ts :: SHARE_TARGET_VIEWS"
   - "file: docs/spec/permalink.md"
-  - "file: docs/test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md"
+  - "file: docs/test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md"
 ---
 
 # ADR-1827: Deep permalink — 構造要素 / view への深いパーマリンク
@@ -26,7 +26,7 @@ assumptions:
   - PRD: `docs/prd/keystone-primary-path.md`（#1825）
   - 前提 ADR: [ADR-1783](1783-karasu-nest-hosted-preview.md)（karasu-nest hosted preview）、[ADR-1801](1801-karasu-nest-ogp-share-page.md)（OGP share page `/s?s=`）
   - アンカー contract: `docs/spec/permalink.md`（+ `.ja.md`）
-  - 関連 TPL: [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)（cross-surface parity）、[TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)、[TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)、[TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)
+  - 関連 TPL: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)（cross-surface parity）、[TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)、[TPL-2167](../test-perspectives/TPL-2167-id-not-label-for-identity.md)、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md)
   - 受け入れ条件: `docs/acceptance/permalink-deep-element.md`
   - フォローアップ: [#1842](https://github.com/kompiro/karasu/issues/1842)（共有リンクを開いたときの選択ノード highlight 復元）
 
@@ -47,10 +47,10 @@ deep permalink target を **`SharePayload` の中（optional `target`）に埋�
 
 具体的な決定:
 
-- **encoding は案B（payload 埋め込み）**。`SharePayload.target = { view, node?, highlight?, orgTree? }`（`ShareTargetView` は `system | deploy | org | matrix` の中立 union を core 側に定義し、app の `ActiveView` が `satisfies` で整合）。`node` はドリル先の **leaf id**（完全な path は app の `nodePathIndex` で再構成する。`#krs-<view>-<node>` ハッシュの解決と同じ）。1つの opaque トークンで fragment（`#s=`）/ server query（`/s?s=`）/ 将来の taka 短縮形（#1829）すべてに同一に効き、trust boundary の追加面（TPL-20260510-17）も増やさない。case A（fragment の sibling key `&t=`）は server `/s` に validate 面が増え2トークンになるため却下。
+- **encoding は案B（payload 埋め込み）**。`SharePayload.target = { view, node?, highlight?, orgTree? }`（`ShareTargetView` は `system | deploy | org | matrix` の中立 union を core 側に定義し、app の `ActiveView` が `satisfies` で整合）。`node` はドリル先の **leaf id**（完全な path は app の `nodePathIndex` で再構成する。`#krs-<view>-<node>` ハッシュの解決と同じ）。1つの opaque トークンで fragment（`#s=`）/ server query（`/s?s=`）/ 将来の taka 短縮形（#1829）すべてに同一に効き、trust boundary の追加面（TPL-168）も増やさない。case A（fragment の sibling key `&t=`）は server `/s` に validate 面が増え2トークンになるため却下。
 - **decode は前方後方互換**。`decodeShare` が `target` を `sanitizeTarget` で検証（未知 view / 空文字 / 不正型は破棄し、モデル全体へ degrade。throw しない）。`target` を知らない旧 app は無視してモデル全体を開き、新 app が `target` 無しの旧トークンを読めば従来挙動。payload version field は不要。
 - **開く側は hash 正規化で既存配線を再利用**。`App.tsx` は `target` 付き共有を `shareTargetToHash`（→ `buildHash`）で `#krs-…` へ書き換えてから AppShell をマウントする。これは `useState` 初期化子内で行い、entry hash を module load 時に snapshot して **StrictMode の二重実行でも純粋・冪等**にする。以降は既存の `useHistoryNavigation`（mount parse + `nodePathIndex` 遅延解決 + popstate）がそのままドリルする。
-- **アンカー文法は単一の `anchorId(viewPrefix, id)`（core）に集約**。`krs-<view>-<sanitizeId(id)>`。静的 SVG（`drill-down-svg.ts`）と、drillable な system/org の SPA hash（`buildHash`）が同経由で、cross-surface parity を test で固定する（TPL-20260630-01 / TPL-20260510-11）。identity は常に `id`（label 不使用、TPL-20260510-20）。
+- **アンカー文法は単一の `anchorId(viewPrefix, id)`（core）に集約**。`krs-<view>-<sanitizeId(id)>`。静的 SVG（`drill-down-svg.ts`）と、drillable な system/org の SPA hash（`buildHash`）が同経由で、cross-surface parity を test で固定する（TPL-1827 / TPL-219）。identity は常に `id`（label 不使用、TPL-2167）。
 - **deploy/matrix / org Tree View は element アンカーの例外**。これらは単一階層の whole-view タブ（`#krs-deploy` / `#krs-matrix`）・モード（`#krs-org-tree`）で `<id>` セグメントを持たず、意図的に `anchorId` 文法の外。`target.node` は system/org でのみ意味を持つ（`docs/spec/permalink.md` に明記）。
 - **rename 安定性は本 ADR の範囲外**。アンカーは `id` を pin するため rename で壊れる（stale は view root へフォールバック）。検証は `adr:check-assumptions` 拡張（#1830）に委ねる。
 
@@ -58,7 +58,7 @@ deep permalink target を **`SharePayload` の中（optional `target`）に埋�
 
 - **既存資産の最大再利用**: アンカー文法・`buildHash`/`parseHash`・`nodePathIndex` 遅延解決・`/s?s=` unfurl をそのまま使い、新規ナビゲーション配線を足さずに深い着地を実現。
 - **1トークンで全サーフェス同一**: ADR に貼る permalink は最終的に「1本の URL」（epic #1826 が *app/nest URL* と定義）。payload 埋め込みなら server unfurl・taka 短縮も自動で deep 化でき、OGP のフォーカス描画にも将来素直に拡張できる。
-- **drift を型と test で封じる**: `anchorId` 単一化 + parity test（TPL-20260630-01）、`SHARE_TARGET_VIEWS` を `satisfies Record<ShareTargetView, true>` で union に縛る（新 view 追加が compile error、TPL-20260510-03）。
+- **drift を型と test で封じる**: `anchorId` 単一化 + parity test（TPL-1827）、`SHARE_TARGET_VIEWS` を `satisfies Record<ShareTargetView, true>` で union に縛る（新 view 追加が compile error、TPL-1094）。
 - **安全側に倒れる decode**: 不正・rename target は throw せずモデル全体 / 最近接へ degrade。
 
 ## 却下した案

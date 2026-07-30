@@ -167,7 +167,7 @@ system Shop {
   it("reaches the bundled drill-down export, not just the interactive view", () => {
     // The export builders are a separate surface from `compile()`, and the axis
     // has been dropped on one surface before (#2033) — so the bundle is checked
-    // directly rather than assumed to follow (TPL-20260716-02).
+    // directly rather than assumed to follow (TPL-1983).
     const krsFile = Parser.parse(SCOPED).value;
     const { svg } = buildDrillDownSvg(
       krsFile,

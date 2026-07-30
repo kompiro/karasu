@@ -22,10 +22,14 @@ import { openViewTab } from "../fixtures/tabs.js";
  *    switch — the added unit carries `data-diff-state="added"` and the diff
  *    banner stays visible.
  *
+ * Covered by a sibling spec, not here:
+ *  - Colour / opacity (TC-1/2/3/5/9), annotation-badge diff (TC-4), org-view
+ *    diff styling (TC-8a) and the identical-files negative case (TC-8) —
+ *    `at-0058-diff-colors.spec.ts` asserts them against the
+ *    `--diff-color-*` tokens. This spec deliberately stays on attributes and
+ *    flow so the two do not overlap.
+ *
  * Out of scope (documented to avoid false "missing coverage" reads):
- *  - Colour / opacity perception (TC-1/3/5/9), annotation-badge diff (TC-4),
- *    and org-view (TC-8a) diff styling — visual checks. TC-9 is covered
- *    structurally only (attributes, not colours or ghost-edge styling).
  *  - Snapshot compare source (AT-0060) and open-file-as-entry history /
  *    deep-link (AT-0063) — the latter's meaningful ACs are browser-history
  *    and app-reducer unit-level, not an app e2e fit.
@@ -197,8 +201,8 @@ test.describe("AT-0058 Graphical diff viewer", () => {
 
     // Switch tabs mid-diff: the deploy view compiles its own diff for the
     // same compare source. The unit only present on the after-side must
-    // arrive decorated (structural attribute only — colour perception and
-    // ghost-edge styling stay manual checks).
+    // arrive decorated (attribute only here — the colours and the ghost-edge
+    // styling are fenced by `at-0058-diff-colors.spec.ts` (TC-9)).
     await openViewTab(page, "Deploy");
     await expect(
       page.locator('[data-node-id="Payments::payments-svc"][data-diff-state="added"]'),

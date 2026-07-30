@@ -6,8 +6,8 @@
 - **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（Group by: team P2a）
 - **設計**: [ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)
 - **Related TPLs**:
-  - [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（並列関数ファミリは parameter parity を保つ — 本 bug の直接の失敗クラス）
-  - [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
+  - [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数ファミリは parameter parity を保つ — 本 bug の直接の失敗クラス）
+  - [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
 - **対象**: `packages/core/src/renderer/layout.ts`（`layout` multi-system 分岐 + `layoutMultipleSystems`）
 
 ## 概要
@@ -32,7 +32,7 @@ fence する。team が複数 system をまたいで `owns` する場合、各 s
       `__group_payments__` / `__group_catalog__` のフレームが描かれ、`data-group="true"` が 2 個
 - [x] どの team も所有しないノード（`PaymentService`）にはフレームが描かれない
 
-### AC-2: 全ノードちょうど一度配置（TPL-20260624-02: totality）
+### AC-2: 全ノードちょうど一度配置（TPL-1738: totality）
 
 > ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` (suite-wide) — "still lays every node out exactly once"
 
@@ -63,7 +63,7 @@ fence する。team が複数 system をまたいで `owns` する場合、各 s
 > ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` (suite-wide) — "re-anchors a cross-system edge from a collapsed team onto its stub"
 
 - [x] cross-system edge の端点が collapse で stub に畳まれても、edge は drop されず stub に再アンカー
-      されて描かれる（`data-edge-from="__group_collapsed_<team>__"` → cross-system target）— TPL-20260624-02
+      されて描かれる（`data-edge-from="__group_collapsed_<team>__"` → cross-system target）— TPL-1738
 - [x] 非 collapse では従来どおり（`crossSystemRemap` 空 → byte-identical、authored parallel edge も温存）
 
 ### AC-7: system をまたぐ team を collapse すると system ごとに独立した stub を保つ

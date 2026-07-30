@@ -2,7 +2,7 @@ name: VS Code E2E
 
 # Triggered by path filter, not by `vscode-e2e` / `vscode-webview-e2e` labels
 # (ADR-1724, extending ADR-1729 to the VS Code suites). The labels
-# were an opt-in that created a detection blind spot (TPL-20260623-03): a PR
+# were an opt-in that created a detection blind spot (TPL-1725): a PR
 # changing a surface these suites assert on but missing the label could merge
 # with stale assertions undetected. Both jobs share the same build chain
 # (core / i18n / lsp / vscode), so a single workflow-level `paths` union is
@@ -31,7 +31,10 @@ permissions:
 jobs:
   vscode-e2e:
     name: VS Code extension host
-    runs-on: ubuntu-latest
+    # Ubicloud runner (ADR-1890). x86_64 like `ubuntu-latest` — ExTester /
+    # chrome-for-testing ship no linux-arm64 chromedriver, so the `-arm`
+    # Ubicloud labels are not an option for these jobs.
+    runs-on: ubicloud-standard-4-ubuntu-2404
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,7 +78,9 @@ jobs:
 
   vscode-webview-e2e:
     name: VS Code WebView (ExTester)
-    runs-on: ubuntu-latest
+    # Ubicloud runner (ADR-1890). The job installs its own Electron / Chromium
+    # system deps below, so it does not lean on runner-image preinstalls.
+    runs-on: ubicloud-standard-4-ubuntu-2404
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

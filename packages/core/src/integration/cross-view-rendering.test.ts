@@ -11,7 +11,7 @@ import type { ViewPath } from "../view/view-extract.js";
 /**
  * Cross-layer integration coverage for the two "writer writes one coarse line
  * → reader sees progressive disclosure across views" mechanics described by
- * TPL-20260510-23: `owns` (organization → team) and inherited `service`
+ * TPL-1227: `owns` (organization → team) and inherited `service`
  * annotations (`@deprecated` / `@experimental`, ADR-517).
  *
  * The parser / resolver layers are already well-tested in isolation

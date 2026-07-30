@@ -5,7 +5,7 @@
 - **PR**: (this PR)
 - **設計**: [ADR-2120](../adr/2120-group-by-bulk-collapse.md)（旧 `docs/design/group-by-bulk-collapse.md`。実装完了により ADR へ昇格）
 - **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（決定 4「bulk 操作は #1872 で追加」）, [ADR-1872](../adr/1872-category-collapse-retarget-edges.md)（category collapse を edge re-target 化）
-- **Related TPLs**: [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md)（列挙メンバー追加時の網羅性を型で強制 — bulk collapse を軸非依存にして追加漏れを防ぐ）, [TPL-20260623-01](../test-perspectives/TPL-20260623-01-user-facing-surface-docs-sync.md)（toolbar action の docs 同期）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持 — category re-target の柵）
+- **Related TPLs**: [TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md)（列挙メンバー追加時の網羅性を型で強制 — bulk collapse を軸非依存にして追加漏れを防ぐ）, [TPL-1716](../test-perspectives/TPL-1716-user-facing-surface-docs-sync.md)（toolbar action の docs 同期）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（再配置時の端点保持 — category re-target の柵）
 - **対象**: core `packages/core/src/renderer/category-collapse.ts`（`collapseCategories`）/ `layout.ts` / `group-collapse.ts`；app `packages/app/src/hooks/useSystemView.ts` / `useAppViews.ts` / `usePreviewContextValue.ts`、`packages/app/src/state/preview-context.tsx` / `active-view-data.ts`、`packages/app/src/components/PreviewColumn.tsx` / `AppShell.tsx`、`packages/i18n`
 
 ## 概要
@@ -53,7 +53,7 @@ Group by: Team の system view に **Collapse all / Expand all** の一括操作
 - [x] クリックで `onCollapseAllToggle` が発火する
 - [x] ラベルは i18n 経由（`preview.groupBy.collapseAll` / `expandAll`、en/ja 両方 — 型で全ロケール網羅を強制）
 
-### AC-4: docs 同期（TPL-20260623-01）
+### AC-4: docs 同期（TPL-1716）
 
 - [ ] **手動（レビュー）**: toolbar action の追加が `docs/tools/app.md` と `docs/tools/app.ja.md` の両方に反映されている（本 PR で対応済み — レビューで確認）
 

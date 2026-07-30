@@ -23,7 +23,7 @@ assumptions:
 - **関連**:
   - 実装 PR [#1618](https://github.com/kompiro/karasu/pull/1618)、設計 PR [#1615](https://github.com/kompiro/karasu/pull/1615)
   - [ADR-1296](./1296-reference-data-single-source.md) — 正典から再掲を生成し drift gate で縛る同系統の判断（`gen:reference`）
-  - 関連 TPL: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) / [TPL-20260510-18](../test-perspectives/TPL-20260510-18-text-as-single-source-of-truth.md) / [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) / [TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md)
+  - 関連 TPL: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) / [TPL-1207](../test-perspectives/TPL-1207-text-as-single-source-of-truth.md) / [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) / [TPL-74](../test-perspectives/TPL-74-ast-parser-renderer-agreement.md)
   - コード: `scripts/guide/gen-guide-diagrams.ts`、`docs/guide/diagrams/`
 
 ## 背景
@@ -38,17 +38,17 @@ markdown の fenced ```krs ブロックを**単一の正典**に保ち、直上�
 
 ## 理由
 
-- **単一正典**: スニペットの正典が fenced ブロック 1 箇所に留まり、サイドカー複製の drift が原理的に発生しない（[TPL-20260510-18](../test-perspectives/TPL-20260510-18-text-as-single-source-of-truth.md)）。
-- **既存パターンの踏襲**: `gen:reference` と同じ「正典 → 再掲を生成 → `--check` で片方向 drift gate」の構造に揃えた（[ADR-1296](./1296-reference-data-single-source.md) / [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)）。レビュアー・CI・lefthook の慣れが効く。
+- **単一正典**: スニペットの正典が fenced ブロック 1 箇所に留まり、サイドカー複製の drift が原理的に発生しない（[TPL-1207](../test-perspectives/TPL-1207-text-as-single-source-of-truth.md)）。
+- **既存パターンの踏襲**: `gen:reference` と同じ「正典 → 再掲を生成 → `--check` で片方向 drift gate」の構造に揃えた（[ADR-1296](./1296-reference-data-single-source.md) / [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)）。レビュアー・CI・lefthook の慣れが効く。
 - **core 直呼び**: CLI は file 引数必須・stdin 非対応のため、抽出した krs 文字列を直接渡せる `compile()` を使う。subprocess なしで速く、temp ファイル不要。
-- **決定性**: `compile()` は決定的なので再生成が diff-stable で、drift gate が安定する（[TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md)）。
-- **言語パリティ**: en/ja を対で生成し、両言語の図が揃うことを担保（[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)）。
+- **決定性**: `compile()` は決定的なので再生成が diff-stable で、drift gate が安定する（[TPL-74](../test-perspectives/TPL-74-ast-parser-renderer-agreement.md)）。
+- **言語パリティ**: en/ja を対で生成し、両言語の図が揃うことを担保（[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)）。
 - **テーマ**: ガイドは GitHub の白背景 markdown で読まれるため `light` テーマを採用。
 - **styling 章**: `style` フラグで直後の css ブロックを styleSource として適用し、スニペットの `@import "*.krs.style"`（隣に実ファイルが無い）行を除去することで、テーマ色とバッジ付きの図を出せる。
 
 ## 却下した案
 
-- **サイドカー `.krs` ファイルを置き、ガイドからは画像のみ参照**: スニペットが markdown とサイドカーで二重化し drift する。[TPL-20260510-18](../test-perspectives/TPL-20260510-18-text-as-single-source-of-truth.md) に反するため却下。
+- **サイドカー `.krs` ファイルを置き、ガイドからは画像のみ参照**: スニペットが markdown とサイドカーで二重化し drift する。[TPL-1207](../test-perspectives/TPL-1207-text-as-single-source-of-truth.md) に反するため却下。
 - **抽出した krs を temp ファイルに書き CLI `render` を呼ぶ**: core API があるのに subprocess・temp ファイルのオーバーヘッドを払う理由がない。却下。
 - **専用の新規 CI workflow を立てる**: 既存の generated-doc drift job（`reference-docs-check.yml`）と性質が同じで、Required status `Reference docs` + skip companion の仕組みにそのまま相乗りできる。job を増やす必然がないため、既存 job にステップ追加とした。
 

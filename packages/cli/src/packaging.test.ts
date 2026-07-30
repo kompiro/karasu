@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 // `*.map`) that lands in the gitignored `dist/`. Keeping this list precise makes
 // the tarball deterministic regardless of `dist/` hygiene.
 //
-// See docs/adr/<...>-cli-pack-only-bundle.md and TPL-20260618-02 (publishable
+// See docs/adr/<...>-cli-pack-only-bundle.md and TPL-1681 (publishable
 // tarball completeness / exclusion).
 const pkg = JSON.parse(
   readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8"),

@@ -53,7 +53,7 @@ describe("SettingsPane — theme selector", () => {
     expect(localStorage.getItem("karasu-theme")).toBe("light");
   });
 
-  it("labels the select for assistive tech (TPL-20260516-01)", () => {
+  it("labels the select for assistive tech (TPL-1399)", () => {
     renderWithLocale("ja");
     expect(screen.getByLabelText("テーマ")).toBeTruthy();
   });
@@ -285,7 +285,7 @@ describe("SettingsPane — Saved indicator timer (#1539)", () => {
   });
 });
 
-describe("SettingsPane — IME composition anti-regression (TPL-20260510-04)", () => {
+describe("SettingsPane — IME composition anti-regression (TPL-1053)", () => {
   beforeEach(() => {
     localStorage.clear();
   });

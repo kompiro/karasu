@@ -15,7 +15,7 @@ assumptions:
   - "grep: packages/app/src/hooks/useChatSession/prompt.ts :: organizations: OrganizationBlock\\[\\]"
   - "grep: packages/core/src/compile/compile.ts :: ownerIndex: krsFile.ownerIndex"
   - "file: docs/acceptance/1580-chat-org-query-imported-file.md"
-  - "file: docs/test-perspectives/TPL-20260615-01-migration-priority-index-winner.md"
+  - "file: docs/test-perspectives/TPL-1583-migration-priority-index-winner.md"
 ---
 
 # ADR-1580: 組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする
@@ -26,8 +26,8 @@ assumptions:
   - Issue [#1580](https://github.com/kompiro/karasu/issues/1580)（実装）、PR [#1614](https://github.com/kompiro/karasu/pull/1614)
   - [ADR-1583](1583-team-annotations-owner-priority.md)（`ownerIndex` の `@migration_target` 主オーナー選択。本 ADR はその index を消費する）
   - [ADR-1564](1564-remove-team-property.md)（per-node `team` プロパティ削除。これによりチャットがオーナーをファイル本文から読めなくなった）
-  - [TPL-20260514-02](../test-perspectives/TPL-20260514-02-whole-file-import-completeness.md)（import 先の宣言は merged グラフに流入する）
-  - [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md)（1:1 index は `@migration_target` を勝者に選ぶ）
+  - [TPL-1383](../test-perspectives/TPL-1383-whole-file-import-completeness.md)（import 先の宣言は merged グラフに流入する）
+  - [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 index は `@migration_target` を勝者に選ぶ）
   - 受け入れテスト: `docs/acceptance/1580-chat-org-query-imported-file.md`
   - コード: `packages/app/src/hooks/useChatSession/prompt.ts`（`serializeModelGraph` / `serializeOrganizations` / `serializeNode`）、`packages/core/src/compile/compile.ts`（`OrgCompileResult.ownerIndex`、`index.ts` から re-export）
 
@@ -47,12 +47,12 @@ AI チャットの system prompt は `serializeModelGraph(systems)` で **system
 
 ## 理由
 
-- **マルチファイル解決**: `organizations` / `ownerIndex` は merged `KrsFile` 由来なので、`organization` ブロックが import 先で宣言されていても解決できる（TPL-20260514-02）。開いているファイル本文には依存しない。
-- **owner 解決の単一の真実**: `ownerIndex` は parser の `migrationPriority` ヘルパで `@migration_target` を主オーナーに選ぶ（[ADR-1583](1583-team-annotations-owner-priority.md) / TPL-20260615-01）。app で `owns` から再導出すると、この優先規則を二重実装することになり、レンダラーの owner バッジとチャットの回答がずれる危険がある。core の index を消費すれば全 index で規則が一貫する。
+- **マルチファイル解決**: `organizations` / `ownerIndex` は merged `KrsFile` 由来なので、`organization` ブロックが import 先で宣言されていても解決できる（TPL-1383）。開いているファイル本文には依存しない。
+- **owner 解決の単一の真実**: `ownerIndex` は parser の `migrationPriority` ヘルパで `@migration_target` を主オーナーに選ぶ（[ADR-1583](1583-team-annotations-owner-priority.md) / TPL-1583）。app で `owns` から再導出すると、この優先規則を二重実装することになり、レンダラーの owner バッジとチャットの回答がずれる危険がある。core の index を消費すれば全 index で規則が一貫する。
 - **構造情報の範囲に収まる**: 「誰が何を所有するか」は karasu が扱う緩やかに変化する構造的コンテキストそのものであり（`docs/concepts.md` のスコープ）、実装詳細・実行時状態を持ち込むものではない。
 
 ## 却下した案
 
-- **`owns` から app 側で owner を再導出する**: `ownerIndex` を core から公開せずに済むが、`@migration_target` 主オーナー選択を app に複製することになり TPL-20260615-01 に反する（index ごとに規則がずれる失敗モード）。却下。
+- **`owns` から app 側で owner を再導出する**: `ownerIndex` を core から公開せずに済むが、`@migration_target` 主オーナー選択を app に複製することになり TPL-1583 に反する（index ごとに規則がずれる失敗モード）。却下。
 - **組織グラフをシリアライズせず、import 先ファイルの本文をすべてプロンプトに連結する**: プロンプトが肥大化し、AI が「構造」ではなく生テキストのパースに頼る。構造を JSON で渡す既存方針（system グラフ）と非対称になるため却下。
 - **system ノードにも `owner` を注記する**: `ownerIndex` は parser の `INDEXED_KINDS`（`service` / `domain`）でしかキーを持たないため system は決して所有されず、dead lookup になる。注記は子ノード（service / domain）に限定した。

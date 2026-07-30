@@ -102,13 +102,11 @@ export interface SystemViewBundle {
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
   /**
-   * Whether the Group-by axis is meaningful for the current model/view — the
-   * source declares an `organization`/`owns` block. Grouping works in compare
-   * mode too (the diff compile threads `groupBy`; Issue #1873). Gates the
-   * selector so it is not a visible no-op (Issue #1858).
-   */
-  groupByAvailable: boolean;
-  /** Whether the team axis has data (an `organization`/`owns` block) — gates the "team" option (#1822 P2b). */
+   * Whether the team axis has data (an `organization`/`owns` block) — gates the
+   * "team" option (#1822 P2b). Grouping works in compare mode too (the diff
+   * compile threads `groupBy`; Issue #1873). Whether the *selector* shows at
+   * all is derived in `PreviewColumn` from the axis table, so a new axis does
+   * not need a second hand-written condition here (#2119). (an `organization`/`owns` block) — gates the "team" option (#1822 P2b). */
   hasTeamAxis: boolean;
   /** Whether the boundary axis has data (a `boundary` block) — gates the "boundary" option (#1822 P2b). */
   hasBoundaryAxis: boolean;
@@ -368,9 +366,6 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       toggleCategory,
       groupBy,
       setGroupBy,
-      // The selector shows when either axis has data; each option is rendered
-      // only for the axis it applies to (#1822 P2b, data-driven visibility).
-      groupByAvailable: hasOrgDiagram || hasBoundaries,
       hasTeamAxis: hasOrgDiagram,
       hasBoundaryAxis: hasBoundaries,
       toggleGroup,

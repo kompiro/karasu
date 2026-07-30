@@ -1,5 +1,5 @@
 ---
-id: TPL-YYYYMMDD-NN
+id: TPL-<n>
 title: "観点を1行で表現"
 status: active
 date: YYYY-MM-DD
@@ -9,7 +9,7 @@ applicable_to:
 #   - feature-name
 discovered_from:
   - issue: "#NNNN"
-  # - root_cause_adr: "ADR-XXXXXXXX-XX"
+  # - root_cause_adr: "ADR-<n>"
   # - root_cause_file: "path/to/file.ts:LINE"
 related_to: []
 topic: core-concepts
@@ -17,7 +17,7 @@ scope:
   packages: []
 ---
 
-# TPL-YYYYMMDD-NN: 観点を1行で表現
+# TPL-<n>: 観点を1行で表現
 
 ## 観点
 

@@ -46,7 +46,7 @@ function optionTitles() {
 }
 
 describe("CommandPalette", () => {
-  it("opens on Ctrl/Cmd+Shift+P even while a text input is focused (TPL-20260519-01)", () => {
+  it("opens on Ctrl/Cmd+Shift+P even while a text input is focused (TPL-1419)", () => {
     setup([{ id: "view.toggleSidebar", title: "Toggle Sidebar", run: () => {} }]);
     // The editor's focus target is a <textarea>; emulate editing focus.
     const editor = document.createElement("textarea");

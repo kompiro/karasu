@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-12
 - **関連 Issue**: [#1554](https://github.com/kompiro/karasu/issues/1554)
-- **関連 TPL**: [TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md), [TPL-20260518-01](../test-perspectives/TPL-20260518-01-involutive-toggle-renders-both-states.md)
+- **関連 TPL**: [TPL-2167](../test-perspectives/TPL-2167-id-not-label-for-identity.md), [TPL-1402](../test-perspectives/TPL-1402-involutive-toggle-renders-both-states.md)
 - **対象ファイル**: `packages/core/src/renderer/edge-routing.ts`,
   `packages/app/src/components/{PreviewPane,EdgeContextMenu}.tsx`,
   `packages/app/src/styles/components/panels.css`
@@ -13,7 +13,7 @@
 エッジ右クリックメニューのヘッダーに `.krs` で記述したラベル文字列を表示する。
 レンダラーが edge グループに `data-edge-label` を出力し（ラベル無しエッジでは属性ごと省略）、
 app がそれを読み取ってヘッダーの `from → to` の直下に表示する。
-エッジの識別は引き続き `canonicalId` であり、ラベルは表示専用（TPL-20260510-20）。
+エッジの識別は引き続き `canonicalId` であり、ラベルは表示専用（TPL-2167）。
 
 ## 受け入れ条件（自動）
 

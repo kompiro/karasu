@@ -29,7 +29,7 @@ assumptions:
   - [ADR-1574](./1574-guide-embedded-diagrams.md) — 正典から再掲を生成し drift gate で縛る同系統の判断（guide diagrams）
   - [ADR-813](./813-i18n-default-policy.md) / [ADR-34](./34-i18n-rollout.md) — `.md` = en / `.ja.md` = ja の i18n ポリシー
   - [ADR-9017](./9017-cloudflare-deployment-and-byok-ai.md) — PR preview の Cloudflare デプロイ（docs サイトとは別系統）
-  - [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)（link/anchor 未解決をビルドで fail）、[TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（doc ↔ source 片方向同期）
+  - [TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md)（link/anchor 未解決をビルドで fail）、[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（doc ↔ source 片方向同期）
   - コード: `packages/docs-site/`, `.github/workflows/pages.yml`
 
 ## 背景
@@ -48,7 +48,7 @@ SSG に **Astro Starlight** を採用し、`packages/docs-site/`（新 workspace
 - ドキュメント UX が電池込み（サイドバー・ToC・前後ナビ）で、手書き switcher を標準へ寄せられる。React island により Phase 2 の `@karasu-tools/app`（React）playground 埋め込みも最も素直。
 - 3 案とも「`docs/` を複製せず取り込む」ために **ビルド時の content sync + リンク／アンカー書き換え**が必要で、ここは SSG の差では解消されない。最も上物の強い Starlight を選び、sync は自前で持つ。
 - ページ間リンクは GitHub Pages の base path（`/karasu/`）を埋め込まず **route-relative** で出すことで base 非依存にし、base のハードコードによる一括 404 を避ける。サイト外（`examples/` / ADR / 外部）へのリンクは GitHub URL に落とす。
-- link/anchor の未解決を **ビルド時に fail させる**ガード（`check-links`）を proactive TPL（[TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)）として同梱。実際に ja の壊れたアンカー（`#client-capability` → `#client-の-capability`）を検出した。見出し slug は本番（rehype-slug）と同じ `github-slugger` で算出する。
+- link/anchor の未解決を **ビルド時に fail させる**ガード（`check-links`）を proactive TPL（[TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md)）として同梱。実際に ja の壊れたアンカー（`#client-capability` → `#client-の-capability`）を検出した。見出し slug は本番（rehype-slug）と同じ `github-slugger` で算出する。
 - Astro / Starlight は private package の **devDependencies** とし、production license スキャン（`--prod`）の対象外に保つ。
 
 ## 却下した案
