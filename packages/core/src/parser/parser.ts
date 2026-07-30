@@ -2104,7 +2104,15 @@ export class Parser {
           tokenType: String(token.type),
           value: token.value,
         });
-        this.advance();
+        // Skip the whole offending clause, not just its first token. The
+        // closed grammar makes this safe and worthwhile: the rejected forms are
+        // the value-carrying ones (`contains Order`, `requires plan in [...]`),
+        // and reporting each of their tokens separately would turn one authoring
+        // mistake into a pile of diagnostics. Always advances at least once, so
+        // the loop cannot stall.
+        do {
+          this.advance();
+        } while (!this.isFacetPropertyStart(this.peek().type));
       }
     }
 
@@ -2117,6 +2125,17 @@ export class Parser {
       properties,
       loc: this.range(start.loc, end.loc),
     };
+  }
+
+  /** Tokens that begin a legal `facet` body entry, or end the block. */
+  private isFacetPropertyStart(type: TokenType): boolean {
+    return (
+      type === TokenType.Label ||
+      type === TokenType.Description ||
+      type === TokenType.Link ||
+      type === TokenType.RightBrace ||
+      type === TokenType.EOF
+    );
   }
 
   /**
@@ -2155,7 +2174,14 @@ export class Parser {
    */
   private rejectNestedFacetBlock(blockKind: string): void {
     const token = this.peek();
+    // Diagnostics raised while consuming the misplaced block are dropped: the
+    // author's mistake is the placement, and complaints about the body of a
+    // block that has no business being here are noise pointing at the wrong
+    // fix. Truncating rather than not-parsing keeps the recovery — the block is
+    // still consumed whole, so the enclosing block resumes cleanly.
+    const before = this.diagnostics.length;
     const block = this.parseFacetBlock();
+    this.diagnostics.length = before;
     this.diagnostics.push({
       severity: "error",
       code: "unexpected-token-in-block",

@@ -2631,3 +2631,49 @@ system S {
     expect(warningSeverity("facet-not-declared")).toBe("warning");
   });
 });
+
+describe("facet-not-declared location precision (#2199 review)", () => {
+  function facetWarnings(krs: string) {
+    return analyze(Parser.parse(krs).value, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "facet-not-declared",
+    );
+  }
+
+  // Node ids are unique only among siblings (ADR-927), and `facetIndex` keys on
+  // the bare id, so deriving the location from that index reported whichever
+  // same-named node was walked first. The diagnostic has to land on the line the
+  // author must edit (TPL-1352).
+  it("points at the node that wrote the reference, not a same-named node elsewhere", () => {
+    const warnings = facetWarnings(`facet pii {}
+system Shop {
+  service Payment {
+    domain Ledger {}
+  }
+  service Checkout {
+    domain Payment {
+      facets ghost
+    }
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    // `service Payment` opens on line 3; the `domain Payment` that wrote the
+    // reference opens on line 7.
+    expect(warnings[0].loc?.start.line).toBe(7);
+  });
+
+  it("reports each site when two same-id nodes both carry a bad reference", () => {
+    const warnings = facetWarnings(`system Shop {
+  service Payment {
+    domain Ledger { facets ghost }
+  }
+  service Checkout {
+    domain Ledger { facets ghost }
+  }
+}
+`);
+    // One warning per authoring site — the union in `facetIndex` would have
+    // collapsed these two mistakes into one.
+    expect(warnings.map((w) => w.loc?.start.line)).toEqual([3, 6]);
+  });
+});

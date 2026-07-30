@@ -1578,7 +1578,7 @@ system Shop {
       expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
     });
 
-    it("unions membership when the same node is reopened in another file", async () => {
+    it("keeps membership from every file when a system is reopened across files", async () => {
       await fs.writeFile(
         "/p/index.krs",
         `import "./more.krs"
@@ -1604,6 +1604,38 @@ system Shop {
       const result = await resolver.resolve("/p/index.krs");
       expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
       expect(result.krsFile.facetIndex.get("OrderDB")).toEqual(new Set(["pii", "pci"]));
+    });
+
+    // The upper bound of the guarantee above, stated so the previous test's
+    // scope is not read as wider than it is: re-declaring the *same* node id
+    // inside a reopened system is already an error, and the duplicate is
+    // rejected with its facets, so there is no union to perform there.
+    it("does not union across a re-declared node id — that is duplicate-node-in-system", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./other.krs"
+facet pii {}
+facet pci {}
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/other.krs",
+        `system Shop {
+  service Orders {
+    facets pci
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.diagnostics.map((d) => d.code)).toContain("duplicate-node-in-system");
+      expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
     });
 
     it("reports a duplicate declaration split across two files", async () => {

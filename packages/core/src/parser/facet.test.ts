@@ -58,11 +58,34 @@ facet pii {
   // property would reopen the path from "declare a scope" to "declare a rule",
   // so these must not quietly become valid.
   it("rejects `contains` — the declaration has no membership list", () => {
-    expect(errors(`facet pii { contains Order }`)).toContain("unexpected-token-in-block");
+    // One diagnostic for one mistake: the rejected forms carry values
+    // (`contains Order`), and reporting every token of the clause separately
+    // would read as a broken parser rather than a rejected construct.
+    expect(errors(`facet pii { contains Order }`)).toEqual(["unexpected-token-in-block"]);
   });
 
   it("rejects an unknown property", () => {
-    expect(errors(`facet pii { requires plan }`)).toContain("unexpected-token-in-block");
+    expect(errors(`facet pii { requires plan }`)).toEqual(["unexpected-token-in-block"]);
+  });
+
+  it("reports a rejected run once, names its first token, and keeps the valid properties", () => {
+    const result = Parser.parse(`facet pii {
+  label "Personal data"
+  contains Order
+  requires plan in [pro, enterprise]
+  description "d"
+}`);
+    // Recovery skips to the next legal property, so an unbroken run of rejected
+    // content is one report naming where it starts — not one per token, and not
+    // one per line.
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: "unexpected-token-in-block",
+      params: { blockKind: "facet", value: "contains" },
+    });
+    // Everything on either side of the rejected run still parsed.
+    expect(result.value.facets[0].label).toBe("Personal data");
+    expect(result.value.facets[0].properties.description).toBe("d");
   });
 
   it("rejects a positional label (ADR-19)", () => {
@@ -85,6 +108,22 @@ system Shop {
     expect(result.value.systems[0].children.map((c) => c.id)).toEqual(["Checkout"]);
     // …and it did not leak into the top-level declaration list.
     expect(result.value.facets).toEqual([]);
+  });
+
+  it("reports a misplaced block once even when its body is also malformed", () => {
+    // The mistake is the placement; complaints about the body of a block that
+    // should not be here at all point at the wrong fix.
+    const result = Parser.parse(`
+system Shop {
+  facet pii {
+    contains Order
+    requires plan
+  }
+  service Checkout {}
+}
+`);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["unexpected-token-in-block"]);
+    expect(result.value.systems[0].children.map((c) => c.id)).toEqual(["Checkout"]);
   });
 
   it("reports a re-declared id as duplicate-facet-id and keeps the first", () => {

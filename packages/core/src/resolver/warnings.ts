@@ -376,20 +376,29 @@ function detectAnnotationsNotBuiltin(file: KrsFile): Warning[] {
  * diagnostic's whole point, and suppressing it would switch that off in the
  * editor, which is exactly where a typo gets made.
  *
- * Reads `facetIndex` rather than re-walking the tree: the index is the one
- * derivation of membership, so a node that reached the model through any merge
- * path is checked the same way.
+ * Walks the **declaration sites** rather than reading `facetIndex`. The index is
+ * keyed by bare node id and unions across scopes, so resolving a location from
+ * it can only ever be a guess when two nodes in different scopes share an id
+ * (ADR-927) — it pointed at whichever was visited first, which is not
+ * necessarily the node that wrote the reference. A diagnostic's whole value is
+ * landing on the line the author must edit, so it is derived from the site that
+ * carries the property (TPL-1352 — the identifying dimension the flat index
+ * drops is exactly the one this needs). `analyze()` receives the import-merged
+ * tree, so walking it is still a merged-space check.
  */
 function detectFacetsNotDeclared(file: KrsFile): Warning[] {
-  if (file.facetIndex.size === 0) return [];
   const declared = new Set(file.facets.map((f) => f.id));
   const warnings: Warning[] = [];
 
-  // The index is keyed by node id, but the diagnostic wants the source range of
-  // the node that wrote the reference, so resolve locations from the tree.
-  const locById = new Map<string, KrsNode["loc"]>();
   const visit = (node: KrsNode): void => {
-    if (!locById.has(node.id)) locById.set(node.id, node.loc);
+    for (const facetId of node.facets ?? []) {
+      if (declared.has(facetId)) continue;
+      warnings.push({
+        kind: "facet-not-declared",
+        params: { nodeId: node.id, facetId },
+        loc: node.loc,
+      });
+    }
     for (const child of node.children) visit(child);
   };
   for (const system of file.systems) visit(system);
@@ -400,16 +409,6 @@ function detectFacetsNotDeclared(file: KrsFile): Warning[] {
   for (const queue of file.queues) visit(queue);
   for (const storage of file.storages) visit(storage);
 
-  for (const [nodeId, facetIds] of file.facetIndex) {
-    for (const facetId of facetIds) {
-      if (declared.has(facetId)) continue;
-      warnings.push({
-        kind: "facet-not-declared",
-        params: { nodeId, facetId },
-        loc: locById.get(nodeId),
-      });
-    }
-  }
   return warnings;
 }
 
