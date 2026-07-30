@@ -714,7 +714,7 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
           const leafKey = `${parent}.${child}`;
           const ownerSet = owners.get(leafKey);
           if (ownerSet && ownerSet.size > 0 && !ownerSet.has(nextDomain)) {
-            const aggKey = `${nextDomain} ${leafKey}`;
+            const aggKey = `${nextDomain}\0${leafKey}`;
             const ops = (node as ResourceNode).properties.operations;
             let entry = agg.get(aggKey);
             if (!entry) {
