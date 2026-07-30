@@ -440,7 +440,7 @@ assigned to a service. They are not yet treated identically downstream: the
 top-level form, since a system-nested domain already has a container to render
 in (see [#2184](https://github.com/kompiro/karasu/issues/2184)).
 
-> Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it.
+> Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it. [TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — placements that express the same modelling state carry the same diagnostic, whichever spelling the author picked.
 
 ### service block
 

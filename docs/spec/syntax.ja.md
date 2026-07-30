@@ -430,7 +430,7 @@ error ではなく warning なのは言語 v1.0 が freeze 済み
 トップレベル形のみである（system 直下の domain は描画先の器を既に持つため。
 [#2184](https://github.com/kompiro/karasu/issues/2184) 参照）。
 
-> Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。
+> Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。[TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — 同じモデリング状態を表す配置は、著者が選んだ綴りによらず同じ診断を出す。
 
 ### service ブロック
 
