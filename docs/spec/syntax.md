@@ -60,7 +60,7 @@ karasu's tag system is intentionally open — any tag is accepted and styles rea
 | `[embed]` | Widget / SDK embedded into third-party web content (Stripe Checkout, Intercom, etc.) |
 <!-- /gen:reference:client-form-factor-tags -->
 
-Recommended: pick at most one form-factor tag per client. Combining unrelated form factors (e.g. `[mobile] [desktop]`) is parseable but conveys no additional architectural meaning.
+Recommended: pick at most one form-factor tag per client. Multiple tags go in **one** bracket group, comma-separated (`[mobile, desktop]`); repeating the group (`[mobile] [desktop]`) is a parse error. Combining unrelated form factors is parseable but conveys no additional architectural meaning.
 
 `client` is reserved for software the project itself ships. Third-party browsers / IDEs / AI agents that consume the system are modeled as `user` (typically `[human]` or `[ai]`), not `client`.
 
