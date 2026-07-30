@@ -1,5 +1,5 @@
 ---
-id: TPL-20260730-01
+id: TPL-20260730-02
 title: "containment 規則は定義を 1 つだけ持ち、それを強制するのは parser である（表と実装を二重に書かない）"
 status: active
 date: 2026-07-30
@@ -24,7 +24,7 @@ scope:
     - core
 ---
 
-# TPL-20260730-01: containment 規則は定義を 1 つだけ持つ
+# TPL-20260730-02: containment 規則は定義を 1 つだけ持つ
 
 ## 観点
 

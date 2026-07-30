@@ -226,7 +226,7 @@ describe("deploy-only / org-only: bundled content matches examples/", () => {
 // Containment regression fence (#2165): the `node-not-in-context` warning is
 // derived from `canContain`, so tightening that column silently turns shipped
 // examples into warning sources. Every `.krs` we ship must stay clean under our
-// own rule — see TPL-20260730-01.
+// own rule — see TPL-20260730-02.
 describe("examples: every shipped .krs is free of node-not-in-context warnings", () => {
   const examplesRoot = resolve(__dirname, "../../../examples");
   const krsFiles: string[] = [];

@@ -10,7 +10,7 @@
   - `docs/spec/syntax.md` / `syntax.ja.md`（§Nesting placement / §入れ子の配置）、`docs/spec/diagnostics.md` / `.ja.md`
 - **関連 Design Doc**: `docs/design/logical-containment-rules.md`（[PR #2171](https://github.com/kompiro/karasu/pull/2171)。実装完了後に ADR へ昇格）
 - **関連 ADR**: [ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 freeze — warning に留める根拠）、[ADR-681](../adr/681-top-level-service-rendering.md) / [ADR-702](../adr/702-top-level-infra-rendering.md)（未割り当てノード）、[ADR-1567](../adr/1567-rule-diagnostic-separation-and-catalog.md)（規則 ↔ 診断）
-- **関連 TPL**: [TPL-20260730-01](../test-perspectives/TPL-20260730-01-containment-rule-has-single-definition.md)（同 PR で新設）、[TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md)、[TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md)
+- **関連 TPL**: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md)（同 PR で新設）、[TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md)、[TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md)
 
 ## 受け入れ条件
 

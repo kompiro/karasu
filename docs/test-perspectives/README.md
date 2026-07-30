@@ -481,6 +481,6 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260721-02](TPL-20260721-02-label-placement-measured-and-byte-stable.md) | エッジラベルの配置（衝突回避）は label↔label / label↔node の overlap を数値で計測して assert する。衝突が無い図は byte-stable、author 指定ラベルは動かさない | renderer | ADR-2048, #2048 |
 | [TPL-20260727-01](TPL-20260727-01-parser-acceptance-documented-in-spec.md) | parser が受理する形は spec に文書化されている（受理 ⊆ 文書化）— undocumented leniency は実測（最小 `.krs` の parse）で棚卸しし、ADR で廃止した記法は全 construct を横断確認する | parser | #2133 |
 | [TPL-20260729-01](TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) | 手書き catalog（`REFERENCE_DATA` 等）は parser 実測で双方向に縛る。その catalog から生成した doc を正典に見立てた同期テストは循環しており恒真 | build | #2158 |
-| [TPL-20260730-01](TPL-20260730-01-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
+| [TPL-20260730-02](TPL-20260730-02-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
 | [TPL-20260729-02](TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
 | [TPL-20260730-01](TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md) | 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側の解決（primary 選択）で吸収し、merge 経路も同じ多値の意味論に従わせる | core-concepts | ADR-1974, #2161 |

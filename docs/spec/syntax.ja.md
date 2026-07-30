@@ -422,7 +422,7 @@ service にまだ割り当てられていない domain を表し、トップレ�
 `(Unassigned)` 擬似 system の下に描画される
 （[ADR-681](../adr/681-top-level-service-rendering.md)）。
 
-> Related TPLs: [TPL-20260730-01](../test-perspectives/TPL-20260730-01-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。
+> Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — containment 規則は定義を 1 つだけ持ち（`canContain`）、それを強制するのは parser である。
 
 ### service ブロック
 

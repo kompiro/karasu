@@ -430,7 +430,7 @@ inside a `service`. The first two express a domain that is not (yet) assigned to
 a service; a top-level one renders under the `(Unassigned)` pseudo-system
 ([ADR-681](../adr/681-top-level-service-rendering.md)).
 
-> Related TPLs: [TPL-20260730-01](../test-perspectives/TPL-20260730-01-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it.
+> Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it.
 
 ### service block
 
