@@ -2,6 +2,8 @@
 
 - **日付**: 2026-07-30
 - **ステータス**: 検討中
+- **Issue**: [#2173](https://github.com/kompiro/karasu/issues/2173)
+- **PR**: [#2186](https://github.com/kompiro/karasu/pull/2186)
 - **関連**:
   - 引き金 Issue: [#2173](https://github.com/kompiro/karasu/issues/2173)（Part B slice 1）。親 [#2160](https://github.com/kompiro/karasu/issues/2160)（Part B）／ [#2065](https://github.com/kompiro/karasu/issues/2065)（program）
   - 上位 Design Doc: [`tags-and-facets.md`](tags-and-facets.md) — 語彙 register と facet の**形**（宣言 + プロパティ）を決めた設計。本 doc はその Part B を **どう実装するか**に限定する
