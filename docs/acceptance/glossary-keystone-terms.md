@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-16
 - **関連 Issue**: [#1831](https://github.com/kompiro/karasu/issues/1831)（epic: permalink-layer / #1826）
-- **Related TPLs**: [TPL-20260716-01](../test-perspectives/TPL-20260716-01-keystone-terms-single-home.md)（coined 用語は単一の正典を持ち、他 doc は再定義せず参照する）
+- **Related TPLs**: [TPL-2005](../test-perspectives/TPL-2005-keystone-terms-single-home.md)（coined 用語は単一の正典を持ち、他 doc は再定義せず参照する）
 - **対象ファイル**:
   - `docs/glossary.md` / `docs/glossary.ja.md`（新設 — keystone・permalink 用語集）
   - `docs/prd/keystone-primary-path.md`（用語集節を back-ref に置換）

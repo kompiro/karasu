@@ -72,7 +72,7 @@ export const NODE_DETAIL_TEAM_EMOJI = "👥";
  * `NodeDetailPanel.tsx` / `webview-content.ts`.
  *
  * Kept in sync with the icon-card renderer by
- * `packages/app/src/components/icon-consistency.test.ts` (TPL-20260510-05 /
+ * `packages/app/src/components/icon-consistency.test.ts` (TPL-999 /
  * -06 item 4) — a kind here that the renderer does not also paint (or vice
  * versa, absent an explicit `KNOWN_PANEL_GAPS` entry) fails that test.
  */

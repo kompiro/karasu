@@ -26,8 +26,8 @@ assumptions:
     - [ADR-1408](1408-app-outline-view.md) — Outline ビューの導入
     - [ADR-1410](1410-outline-active-view-ast.md) — Outline はアクティブビューの AST に追従する
   - 関連 TPL:
-    - [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md) — 同一モデルを複数サーフェスに出すとき表示は一致させる
-    - [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — 同一語彙の二重表現は片方更新による drift を検証する（本 ADR と同時に起票）
+    - [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md) — 同一モデルを複数サーフェスに出すとき表示は一致させる
+    - [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — 同一語彙の二重表現は片方更新による drift を検証する（本 ADR と同時に起票）
   - コード: `packages/core/src/builtins/icon-theme.ts`、
     `packages/app/src/components/OutlineView.tsx`、
     `packages/app/src/components/outline-adapters.ts`
@@ -46,7 +46,7 @@ Icon Mode はこれらを `ICON_THEME_STYLE_SOURCE`（`icon-theme.ts` の CSS
 できなかった: `(kind, tags) → icon name` を返す関数が無く、サブタイプ
 一覧 `CLIENT_SUBTYPE_TAGS` も `@karasu-tools/core` から re-export されて
 いなかった。同じノードに表示面ごとに別アイコンが出るのは cross-surface
-drift（TPL-20260510-06）に該当する。
+drift（TPL-1001）に該当する。
 
 ## 決定
 
@@ -75,7 +75,7 @@ drift（TPL-20260510-06）に該当する。
 - **二重表現の drift をフェンス**: `iconNameForNode` と
   `ICON_THEME_STYLE_SOURCE` は同一語彙の 2 表現であり、片方更新で静かに
   drift しうる。両者を `icon-theme.ts` に co-locate し相互参照コメントを
-  置いたうえで、proactive TPL-20260519-02 を同時に起票した。恒久対策
+  置いたうえで、proactive TPL-1415 を同時に起票した。恒久対策
   （単一真実源からの生成）は #1445 で追跡する。
 
 ## 却下した案

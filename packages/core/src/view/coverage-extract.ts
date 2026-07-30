@@ -119,7 +119,7 @@ function median(values: number[]): number {
 
 /**
  * Compute per-domain coverage from a resolved logical model. Every domain is
- * reported (thin ones are flagged, never dropped — see TPL-20260510-05).
+ * reported (thin ones are flagged, never dropped — see TPL-999).
  */
 export function extractCoverage(
   systems: readonly SystemNode[],

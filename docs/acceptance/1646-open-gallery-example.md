@@ -3,7 +3,7 @@
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1646](https://github.com/kompiro/karasu/issues/1646)
 - **関連 ADR**: [ADR-1646](../adr/1646-open-gallery-example-in-app.md)（id 指定・固定 origin）、[ADR-1642](../adr/1642-en-ja-example-parity.md)（最小シード方針）
-- **Related TPLs**: [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)（信頼境界での入力検証）
+- **Related TPLs**: [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)（信頼境界での入力検証）
 - **対象**:
   - `packages/core/src/builtins/openable-examples.ts`（manifest + `findOpenableExample`）
   - `packages/app/src/utils/fetch-example.ts`、`packages/app/src/hooks/useProjectActions.ts`（`openExample`）、`packages/app/src/ProjectModeApp.tsx`（deep-link）
@@ -15,7 +15,7 @@ gallery の example を app で開く導線（#1646）。**任意 URL は受け�
 
 ## 受け入れ条件
 
-### AC-1: openable manifest が入力を厳格検証する（TPL-20260510-17）
+### AC-1: openable manifest が入力を厳格検証する（TPL-168）
 
 > ✅ Automated by `packages/core/src/builtins/openable-examples.test.ts` (suite-wide)
 
@@ -46,8 +46,8 @@ gallery の example を app で開く導線（#1646）。**任意 URL は受け�
   > ✅ Automated — `packages/e2e/tests/at-1646-open-gallery-example.spec.ts` › `en deep-link restores payment-platform as a Project and renders its view`
 - [x] `?lang=ja` は日本語の bundled variant を選ぶ（UI ロケールと独立、cf. #1670）
   > ✅ Automated — 同 spec › `lang=ja selects the Japanese bundled variant (#1670)`
-- [x] 不正 slug（`../etc`）は manifest で弾かれ **一切 fetch せず**エラーバナーを出す（信頼境界, TPL-20260510-17）
-  > ✅ Automated — 同 spec › `a malformed slug is rejected without any fetch (TPL-20260510-17)`
+- [x] 不正 slug（`../etc`）は manifest で弾かれ **一切 fetch せず**エラーバナーを出す（信頼境界, TPL-168）
+  > ✅ Automated — 同 spec › `a malformed slug is rejected without any fetch (TPL-168)`
 
 > 注: deep-link で entry が `index.krs` でない example（payment-platform は `system.krs`）はプロジェクト切替時の自動オープン対象にならないため、preview を見るには entry ファイルを開く操作が要る。e2e はこのユーザー操作を再現してから描画を検証する。
 

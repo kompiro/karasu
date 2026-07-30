@@ -17,7 +17,7 @@ import { decodeShare } from "../utils/inline-share.js";
  * Cloudflare Pages Function (`functions/s.ts`) maps onto a `Response`, so the
  * logic is unit-testable without the Workers runtime.
  *
- * Security (TPL-20260510-17): the payload crosses a trust boundary into
+ * Security (TPL-168): the payload crosses a trust boundary into
  * server-rendered HTML. `s` is validated against the base64url charset before
  * being echoed into the image URL / bounce / noscript — base64url excludes
  * `" < > & '`, so injection there is structurally impossible. The dynamic

@@ -18,7 +18,7 @@ type: product
   - `packages/core/src/builtins/reference-data.ts`
   - `packages/core/src/types/ast.ts`、`packages/i18n/src/{render-diagnostic,en,ja}.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`、`docs/spec/diagnostics.md`、`docs/spec/diagnostics.ja.md`
-- **関連 ADR / TPL**: [ADR-1755](../adr/1755-edge-from-to-selectors.md)、[TPL-20260624-03](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+- **関連 ADR / TPL**: [ADR-1755](../adr/1755-edge-from-to-selectors.md)、[TPL-1755](../test-perspectives/TPL-1755-edge-endpoint-selector-id-form.md)
 
 ## 受け入れ条件
 
@@ -64,4 +64,4 @@ type: product
 ## 補足
 
 - 端点セレクタは **color-by-source（始点別に色分け）** が主用途。read/write のような分類は引き続き `edge[write]` / `edge[read]`、単一エッジの surgical override は `edge#<id>` を使う。
-- `<id>` は `edge.from` / `edge.to` と直接比較する。合成 usecase→resource エッジの端点は dot-notation 形（`OrderDB.OrderTable`）で格納されるため、その形で指定する（`edge#<from>-><to>` の base id と同じ規則）。id 形不一致による silent breakage の観点は TPL-20260624-03 を参照。
+- `<id>` は `edge.from` / `edge.to` と直接比較する。合成 usecase→resource エッジの端点は dot-notation 形（`OrderDB.OrderTable`）で格納されるため、その形で指定する（`edge#<from>-><to>` の base id と同じ規則）。id 形不一致による silent breakage の観点は TPL-1755 を参照。

@@ -78,7 +78,7 @@ edge[from=ApiGateway][async] { stroke-style: dashed; }  /* async edges out of Ap
 Any attribute other than `from` / `to` (e.g. `edge[source=X]`) raises an
 `unknown-edge-selector-attribute` error.
 
-> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+> Related TPLs: [TPL-1761](../test-perspectives/TPL-1755-edge-endpoint-selector-id-form.md)
 > (endpoint selectors must compare against the same id form the view stores).
 
 ## Edge ID selector (`edge#<id>`)
@@ -188,7 +188,7 @@ edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
 On nodes, `border-style` is the only line-style property —
 `stroke-style` has no effect on node shapes.
 
-> Related TPLs: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+> Related TPLs: [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
 > — every property declared in this document's `css` fences must exist in
 > the in-app reference data, and every `PROPERTY_SCHEMAS` entry must be
 > documented here (`stroke-style` was a schema-only ghost before being
@@ -263,7 +263,7 @@ the named side:
 auto-assignment. (infra kinds — `database` / `queue` / `storage` — stay in the
 bottom row regardless of any `[external]` tag; see Tags.)
 
-> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)
+> Related TPLs: [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)
 
 ### Scope
 
@@ -307,7 +307,7 @@ Invalid values (anything that is not a positive integer, e.g. `0` or `2.5`) emit
 a `style-grid-columns-invalid-value` warning and are dropped; the layout
 auto-balances instead.
 
-> Related TPLs: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — limit how much is shown at once; a single view keeps a graspable resolution (the balanced grid keeps visual density bounded).
+> Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — limit how much is shown at once; a single view keeps a graspable resolution (the balanced grid keeps visual density bounded).
 
 ### `direction` — `auto | up | down | left | right`
 
@@ -405,7 +405,7 @@ This auto pass fires
 label out of auto placement, so an explicit `label-position` /
 `label-offset` always wins.
 
-> Related TPLs: [TPL-20260721-02](../test-perspectives/TPL-20260721-02-label-placement-measured-and-byte-stable.md) — label placement is measured numerically (label↔label / label↔node overlap), non-colliding diagrams stay byte-stable, and author-set positions are never auto-moved.
+> Related TPLs: [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md) — label placement is measured numerically (label↔label / label↔node overlap), non-colliding diagrams stay byte-stable, and author-set positions are never auto-moved.
 
 ### `label-offset` — `<dy>px` or `<dx>px <dy>px`
 

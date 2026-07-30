@@ -84,4 +84,4 @@ karasu 側の構成:
 
 ## 関連 TPL
 
-このタスクはツール移設で `.krs` / app の振る舞いを変えないため、直接該当する TPL は無い。強いて挙げれば「設定の単一ソース」を扱う [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（spec doc ⇄ reference-data sync）の精神に沿って、`topics` 語彙の参照を二重定義にしない設計を踏襲している。
+このタスクはツール移設で `.krs` / app の振る舞いを変えないため、直接該当する TPL は無い。強いて挙げれば「設定の単一ソース」を扱う [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（spec doc ⇄ reference-data sync）の精神に沿って、`topics` 語彙の参照を二重定義にしない設計を踏襲している。

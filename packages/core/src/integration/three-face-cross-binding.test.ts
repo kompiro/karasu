@@ -13,7 +13,7 @@ import { compile } from "../index.js";
  * resolution that inadvertently breaks another face's cross-binding would
  * pass every per-face test and only fail here.
  *
- * Operationalizes TPL-20260510-22 checklist item 4 (the testable one).
+ * Operationalizes TPL-1225 checklist item 4 (the testable one).
  * See GC22-1 (Issue #1262).
  */
 
@@ -106,7 +106,7 @@ organization EcOrg {
 }
 `;
 
-describe("three-face cross-binding integration (TPL-22 item 4 / GC22-1)", () => {
+describe("three-face cross-binding integration (TPL-1225 item 4 / GC22-1)", () => {
   it("resolves both cross-face relations and renders every face when all three faces are present in one artifact", () => {
     const systemResult = compile(THREE_FACE_FIXTURE, { diagramType: "system" });
     const deployResult = compile(THREE_FACE_FIXTURE, { diagramType: "deploy" });
@@ -171,7 +171,7 @@ describe("three-face cross-binding integration (TPL-22 item 4 / GC22-1)", () => 
     // And the corresponding team-attribution marker for ECommerce
     // disappears from the system view too — confirming that `owns`
     // resolution feeds both the logical and the org face from the same
-    // shared state (the point of TPL-22 item 4).
+    // shared state (the point of TPL-1225 item 4).
     const systemResult = compile(FIXTURE_MISSING_OWNS, { diagramType: "system" });
     // ec-team is still present (it owns Order), but ECommerce no longer
     // carries ec-team's attribution. We detect that by counting

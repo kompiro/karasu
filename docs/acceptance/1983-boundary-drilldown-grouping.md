@@ -6,10 +6,10 @@
 - **関連 ADR**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（P2a — 決定 7 の root-only を軸非依存のレベル交差へ一般化）、[ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c routing/marks）、[ADR-1821](../adr/1821-layer-toggles.md)（interactive collapse コントロールの gate）
 - **設計 / ADR**: [ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（design doc から昇格）
 - **Related TPLs**:
-  - [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)（view-state gate の全 surface parity — 本件の失敗クラス）
-  - [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
-  - [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（crossings + penetrations の両計測）
-  - [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（ghost は視野外の文脈 — 枠に入れない）
+  - [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)（view-state gate の全 surface parity — 本件の失敗クラス）
+  - [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全域性・端点保持）
+  - [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（crossings + penetrations の両計測）
+  - [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md)（ghost は視野外の文脈 — 枠に入れない）
 - **対象**: `packages/core/src/renderer/{drill-down-svg,all-layers-svg}.ts`（export gate 緩和）、`packages/core/src/index.ts` + `packages/app/src/hooks/useViewSvg.ts`（entity view への `groupBy` 配線）
 
 ## 概要

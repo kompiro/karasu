@@ -20,7 +20,7 @@
 
   > ✅ Automated — `EditArea.test.tsx` › `expands a collapsed sidebar when a view shortcut fires`
 
-- [x] テキスト入力／エディタにフォーカスがあるときビュー切替ショートカットは無視される（TPL-20260519-01）
+- [x] テキスト入力／エディタにフォーカスがあるときビュー切替ショートカットは無視される（TPL-1419）
 
   > ✅ Automated — `EditArea.test.tsx` › `ignores the view shortcuts while a text input is focused`
 

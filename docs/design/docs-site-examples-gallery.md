@@ -6,7 +6,7 @@
   - 引き金 Issue: [#1628](https://github.com/kompiro/karasu/issues/1628)（docs site Phase 2 — 本 Design Doc はうち「Examples gallery」項目）
   - 親 ADR: [ADR-1575](../adr/1575-docs-site-ssg.md)（docs-site SSG 選定。Phase 2 で examples gallery を予定と明記）
   - 関連: [ADR-1574](../adr/1574-guide-embedded-diagrams.md)（guide の hero スニペット → 併置 SVG。#1574）
-  - 関連 TPL: [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)（docs 取り込みパイプラインの link/anchor 解決）, [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（正典 ↔ 再掲の片方向同期）
+  - 関連 TPL: [TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md)（docs 取り込みパイプラインの link/anchor 解決）, [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（正典 ↔ 再掲の片方向同期）
   - コード: `packages/docs-site/scripts/`, `examples/`, `packages/core/src/index.ts`（`compileProject` / `buildAllViewsSvgProject`）, `packages/cli/src/matrix.ts`（`NodeFileSystemProvider`）, `scripts/guide/gen-guide-diagrams.ts`
 
 ## 背景・課題
@@ -24,11 +24,11 @@ Phase 1 で `docs/`（guides / spec / concepts）から docs サイトを生成�
 | レンダリング API | core に `compileProject(path, fs, opts)` と `buildAllViewsSvgProject(path, fs, …)`（import 解決込みで全ビュー SVG 化、async）。単一ファイルは `compile()` + `buildAllViewsSvg()` |
 | FS 抽象 | core は `FileSystemProvider` interface を取る。`packages/cli/src/matrix.ts` に Node 実装 `NodeFileSystemProvider`（~30 行）があり流用できる |
 | 既存の図生成 | `scripts/guide/gen-guide-diagrams.ts` が guide の `krs` fence を **committed SVG** にして drift check（#1574 / ADR-1574）。examples とは別系統 |
-| docs-site sync | `packages/docs-site/scripts/sync.ts` が `docs/` → Starlight content collection を生成（gitignore）。`check-links` が in-site link/anchor をビルド時検証（TPL-20260616-01） |
+| docs-site sync | `packages/docs-site/scripts/sync.ts` が `docs/` → Starlight content collection を生成（gitignore）。`check-links` が in-site link/anchor をビルド時検証（TPL-1621） |
 
 ## 制約・前提
 
-- **`examples/` が single source of truth**。サイト用に `.krs` を複製しない。SVG は **ビルド時に毎回レンダリング**し、コミットしない（生成物は gitignore）。→ examples を編集すれば次ビルドで反映、drift 構造が生まれない（TPL-20260510-18 と同じ「sidecar を持たない」発想）。
+- **`examples/` が single source of truth**。サイト用に `.krs` を複製しない。SVG は **ビルド時に毎回レンダリング**し、コミットしない（生成物は gitignore）。→ examples を編集すれば次ビルドで反映、drift 構造が生まれない（TPL-1207 と同じ「sidecar を持たない」発想）。
 - **bilingual**（en / ja）。図（SVG）は言語非依存なので共有し、説明文・ページ chrome だけローカライズする。
 - **multi-file は `compileProject` + `NodeFileSystemProvider` で import 解決**して描画する。
 - **対象は manifest で明示列挙**する（エントリ名が不揃い・どのビューを出すかが example ごとに違うため）。`github-actions/` は除外。

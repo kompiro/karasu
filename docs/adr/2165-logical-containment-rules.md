@@ -38,7 +38,7 @@ assumptions:
   - follow-up: [#2184](https://github.com/kompiro/karasu/issues/2184)（system 直下 domain に `unassigned-domain` を出すか）
   - 前提 ADR: [ADR-1296](1296-reference-data-single-source.md)（`reference-data.ts` が catalog の正典）、[ADR-1314](1314-krs-spec-v1-freeze.md)（言語 v1.0 freeze）
   - 関連 ADR: [ADR-681](681-top-level-service-rendering.md) / [ADR-702](702-top-level-infra-rendering.md)（未割り当てノードを `(Unassigned)` 擬似 system で描画）、[ADR-1639](1639-user-system-scoped.md)（配置規則の書き方の先例）、[ADR-1567](1567-rule-diagnostic-separation-and-catalog.md)（規則 ↔ 診断の対応）、[ADR-1870](1870-domain-entity-modeling.md)（`entity` の配置規則）、[ADR-2124](2124-version-vocabulary.md)（版語彙 — 「言語 v2.0」の意味）
-  - TPL: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md)（同 PR で新設）
+  - TPL: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md)（同 PR で新設）
   - AT: `docs/acceptance/2165-logical-containment-rules.md`
   - コード: `packages/core/src/builtins/reference-data.ts`, `packages/core/src/parser/parser.ts`
 
@@ -79,14 +79,14 @@ error 化は言語 v2.0（[§Syntax 2.0 プログラム](../roadmap.md#syntax-20
   parser に kind 名を直書きするのは、規則が `canContain` から導出できない場合
   （= ノードを捨てるしかなく error にする場合）に限る。現在その例外は 4 つ:
   `infra-not-in-context` / `entity-not-in-domain` / `boundary-not-in-context` と、
-  `entity` の中のノード全般（`unexpected-token-in-block`、TPL-20260711-01 の
+  `entity` の中のノード全般（`unexpected-token-in-block`、TPL-1882 の
   「属性を持たない」不変条件）。
 - **`domain` は system 直下にも書ける**。ADR-681 / ADR-702 が「service に未割り当ての
   service / domain / infra」を正当な状態として扱うと決めている以上、system 直下の
   domain を異常扱いする理由がない。§S2 の記述とも一致する。ただし `unassigned-domain`
   warning と `(Unassigned)` 擬似 system が対象にしているのは今のところトップレベル形
   のみで、この非対称は spec に明記したうえで #2184 に分離した。
-- **spec に節を置き、専用の診断コードを対応させる**（ADR-1567 / TPL-20260610-02）。
+- **spec に節を置き、専用の診断コードを対応させる**（ADR-1567 / TPL-2171）。
   `docs/spec/syntax.md` / `.ja.md` に §Nesting placement / §入れ子の配置 を新設し、
   診断カタログに 1 行を追加した。
 
@@ -102,7 +102,7 @@ error 化は言語 v2.0（[§Syntax 2.0 プログラム](../roadmap.md#syntax-20
 - **意味論の裏付けがある**。`docs/concepts.ja.md` は階層を
   `service → domain → usecase → resource` と定めており、`client` 直下の `usecase` に
   与えられる意味が無い。受理はするが意味は無い、という状態を放置するのは
-  TPL-20260610-01（受理された語彙は効果を持つ）に反する。
+  TPL-1503（受理された語彙は効果を持つ）に反する。
 - **出荷資産への影響がゼロ**。`examples/**/*.krs` 78 ファイルは違反 0 件で、
   `examples.test.ts` がその状態を fence する。規則を厳しくしたとき自分のサンプルが
   最初の被害者になるのを防ぐ。
@@ -112,14 +112,14 @@ error 化は言語 v2.0（[§Syntax 2.0 プログラム](../roadmap.md#syntax-20
 ### 案: 今回は文書だけ直す（`system.canContain` に `domain` を足し、§S2 と整合させる）
 
 変更は最小だが #2165 の表面だけ塞がり、`canContain` が文書のみである構造は残る。
-残り 36 通の lax な入れ子は未文書のままで、TPL-20260727-01（parser の受理 ⊆ spec の
+残り 36 通の lax な入れ子は未文書のままで、TPL-2133（parser の受理 ⊆ spec の
 文書化）を満たさない状態が続く。次に同じ発見が別の角から出てくる。
 
 ### 案: lax を正当と認め、`canContain` を「推奨される配置」に格下げする
 
 実装コストはゼロだが、`docs/concepts.ja.md` の階層定義と正面から矛盾する。
 `client` 直下の `usecase` に意味論を与えられないまま「サポートされた記法」と宣言する
-ことになり、TPL-20260610-01 に反する。
+ことになり、TPL-1503 に反する。
 
 ### 案: いま error 化する
 

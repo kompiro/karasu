@@ -42,10 +42,15 @@ FileTree コンポーネントにファイル管理機能を追加する。ヘ�
 
 > ✅ Automated — `packages/app/src/components/FileTree.test.tsx` › `directory context menu offers New File/New Folder/Rename/Delete`
 
-- [ ] メニュー外クリックでメニューが閉じる
-- [ ] Esc キーでメニューが閉じる
+- [x] メニュー外クリックでメニューが閉じる
 
-> manual / visual review — メニュー外クリック / Esc での close は document レベルのリスナーに依存し jsdom では安定して再現できないため（`.claude/rules/testing.md`）、ライブブラウザで確認する。
+> ✅ Automated — `packages/e2e/tests/at-0005-context-menu-dismiss.spec.ts` › `clicking outside closes the context menu (AC-2)`
+
+- [x] Esc キーでメニューが閉じる
+
+> ✅ Automated — `packages/e2e/tests/at-0005-context-menu-dismiss.spec.ts` › `Esc closes the context menu (AC-2)`。
+> 手動に残していた理由は「document レベルのリスナーは jsdom で安定再現できない」（`.claude/rules/testing.md`）というもので、これは jsdom の制約であって挙動の性質ではない。実ブラウザでは通常のイベントであり、かつこのメニューは Radix ではなく `FileTree.tsx` が `window` に自前で張ったリスナーなので「保証は Radix 側」という理由も当たらない。
+> 併せて `the menu closes without performing a destructive action` が、閉じたのが Delete 等の発火の副作用ではないこと（ファイルが残り、rename 入力も開かない）を assert する。
 
 ### AC-3: リネーム
 

@@ -23,7 +23,7 @@ assumptions:
 - **関連**:
   - 引き金 Issue: [#2048](https://github.com/kompiro/karasu/issues/2048)
   - 関連 ADR: [ADR-1184](./1184-edge-label-position-offset.md)（手動 `label-position` / `label-offset` lever。本 ADR がその「auto collision detection は defer」を部分的に見直す）、[ADR-1185](./1185-parallel-edge-bundling.md)（parallel-edge bundle の label スライド）
-  - 関連 TPL: [TPL-20260721-02](../test-perspectives/TPL-20260721-02-label-placement-measured-and-byte-stable.md)（本 PR で新設）、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)
+  - 関連 TPL: [TPL-2048](../test-perspectives/TPL-2048-label-placement-measured-and-byte-stable.md)（本 PR で新設）、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
   - AT: `docs/acceptance/2048-edge-label-collision-avoidance.md`
 
 ## 背景
@@ -54,7 +54,7 @@ ADR-1184 は同じ問題を認識しつつ、手動 lever（`label-position` / `
 - **単一 choke point に閉じる**: 論理/graph view のエッジラベルはすべて `renderEdge` を通り、drill-down も同経路。system-top / drill-down が一度に直る。
 - **byte-stability を条件付きで維持**: ADR-1184 が守った「default 経路の byte-stable」を「衝突が無い限り」に狭めるだけ。既存 renderer snapshot は無変更で green（衝突していた guide diagram 1 件のラベルのみ移動）。
 - **author lever と共存**: ADR-1184 の手動指定が引き続き最優先。auto は「author が何も指定していない」ラベルにだけ効く。よって supersede ではなく related。
-- **計測して直す**: label↔node 貫通数・label↔label オーバーラップ数を数値で 0/削減 assert（TPL-20260711-02 の label 版 = TPL-20260721-02）。合成 fixture に加え実サンプル（`examples/en/ec-platform/01-system.krs`）を柵にした。
+- **計測して直す**: label↔node 貫通数・label↔label オーバーラップ数を数値で 0/削減 assert（TPL-1927 の label 版 = TPL-2048）。合成 fixture に加え実サンプル（`examples/en/ec-platform/01-system.krs`）を柵にした。
 - **純幾何・決定論**: `Date` / `random` 不使用。同じ入力 → 同じ配置。
 
 ## 却下した案

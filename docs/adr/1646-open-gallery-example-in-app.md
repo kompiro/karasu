@@ -24,7 +24,7 @@ assumptions:
 - **関連**:
   - 設計 PR [#1660](https://github.com/kompiro/karasu/pull/1660)、実装 PR [#1665](https://github.com/kompiro/karasu/pull/1665)
   - [ADR-1642](./1642-en-ja-example-parity.md)（アプリは最小シード、網羅は gallery）
-  - [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)（信頼境界での入力検証）
+  - [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)（信頼境界での入力検証）
   - コード: `packages/core/src/builtins/openable-examples.ts`, `packages/app/src/utils/fetch-example.ts`, `packages/docs-site/scripts/lib/gallery-pages.ts`
 
 ## 背景
@@ -37,7 +37,7 @@ ADR-1642 で「アプリは最小シードに徹し、網羅 example カタロ�
 
 ## 理由
 
-- **攻撃面の最小化**: 任意 URL を受けないので allowlist バイパスも未信頼 origin への fetch も成立しない。入力は `slug`（`^[a-z0-9-]+$`）/ `lang`（`en`|`ja`）のみで、`findOpenableExample` が固定 manifest に対し厳格 validate する（TPL-20260510-17）。fetch は `redirect: "error"`、サイズ/件数 cap、`import` 追従は `resolvePath` で example 配下に confine。コンテンツは parse されるだけで実行されない。
+- **攻撃面の最小化**: 任意 URL を受けないので allowlist バイパスも未信頼 origin への fetch も成立しない。入力は `slug`（`^[a-z0-9-]+$`）/ `lang`（`en`|`ja`）のみで、`findOpenableExample` が固定 manifest に対し厳格 validate する（TPL-168）。fetch は `redirect: "error"`、サイズ/件数 cap、`import` 追従は `resolvePath` で example 配下に confine。コンテンツは parse されるだけで実行されない。
 - **正典の単一化**: openable example は `packages/core` の `OPENABLE_EXAMPLES` を app（fetch/検証）と docs-site（ボタン生成）が共有。
 - **最小シードとの整合**: bundled seed（ADR-1642）には触れず、純粋な上乗せ導線。multi-file は entry の `import` を辿って同 origin から再帰取得する（`main` を参照、drift は diagnostics で表面化）。
 

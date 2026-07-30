@@ -14,7 +14,7 @@ import { StyleParser } from "../parser/style-parser.js";
  *   view and other surfaces call — reads these entries directly.
  *
  * Adding a kind or variant is a single edit to {@link ICON_RULES}. This
- * removes the dual-maintenance burden TPL-20260519-02 was raised to fence;
+ * removes the dual-maintenance burden TPL-1415 was raised to fence;
  * the parity test in `icon-theme.test.ts` is driven from the same array.
  */
 

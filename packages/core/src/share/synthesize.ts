@@ -24,7 +24,7 @@ export type ShareTargetView = "system" | "deploy" | "org" | "matrix";
  * Absent → the share opens the whole model at its root (legacy behavior).
  *
  * `node` is the author-given leaf `id` of the drilled-to element (never a
- * label — TPL-20260510-20); absent means the view's root level. The full
+ * label — TPL-2167); absent means the view's root level. The full
  * drill path is reconstructed from the leaf via the app's node-path index,
  * exactly as the `#krs-<view>-<node>` hash already resolves.
  */

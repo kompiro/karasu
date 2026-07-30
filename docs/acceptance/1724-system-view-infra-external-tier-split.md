@@ -4,7 +4,7 @@
 - **Issue**: #1724
 - **PR**: [#1736](https://github.com/kompiro/karasu/pull/1736)
 - **関連ADR**: [ADR-1724](../adr/1724-system-view-infra-external-tier-split.md)（本変更の決定）, ADR-974（dep pull-up — 本 ADR が refine）, ADR-968（skip-layer 直交ルーティング）
-- **Related TPLs**: [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
+- **Related TPLs**: [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
 - **対象**: `packages/core/src/renderer/layout.ts`（`systemTier` / `assignForcedSystemLayers`）
 
 ## 概要
@@ -35,13 +35,13 @@ system view の dep ティア（infra + `[external]` を 1 行に詰め込む）
 - [x] 既存の dep pull-up（#974）が温存される: 上位サービスだけが使う infra は consumer 直下に引き上げられる（`pulls a dep used only by an upper service…` / `places a shared dep just below its deepest consumer`）
 - [x] column-hint（#969）の x 位置契約が無変更で通る
 
-### AC-4: ティア分割で段跨ぎエッジが中間カードを貫通しない（TPL-20260623-04）
+### AC-4: ティア分割で段跨ぎエッジが中間カードを貫通しない（TPL-1736）
 
-- [x] external を infra の下段に分けても、新たに段を跨ぐ `service → external` エッジは中間カードを直線貫通せず、直交チャネルルーティング（ADR-968）で救済される（TPL-20260623-04）
+- [x] external を infra の下段に分けても、新たに段を跨ぐ `service → external` エッジは中間カードを直線貫通せず、直交チャネルルーティング（ADR-968）で救済される（TPL-1736）
 > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング）
-- [x] external 用の固定バンドが既存 infra の #974 pull-up を抑止していない（TPL-20260623-04）
+- [x] external 用の固定バンドが既存 infra の #974 pull-up を抑止していない（TPL-1736）
 > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `pulls a dep used only by an upper service up to one row below its consumer (Issue #974)`
-- [x] shape / icon 両 displayMode でティア構造が成立する（TPL-20260623-04 / TPL-20260510-06）
+- [x] shape / icon 両 displayMode でティア構造が成立する（TPL-1736 / TPL-1001）
 > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `keeps the infra/external tier split in icon displayMode (#1724)`（shape モードは AC-1〜AC-3 のティア構造テスト群が既定 displayMode で検証）
 
 ### AC-5: 幅削減（実モデル）

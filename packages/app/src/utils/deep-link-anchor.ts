@@ -11,7 +11,7 @@ import { shareTargetToHash, parseHash } from "../hooks/useHistoryNavigation.js";
  *
  * `?krs=` wins when present and valid (it is the explicit deep permalink the
  * reader followed). The value is validated with the same `parseHash` grammar
- * both anchor surfaces already use — no grammar fork (TPL-20260630-01). An
+ * both anchor surfaces already use — no grammar fork (TPL-1827). An
  * invalid / unresolvable `?krs=` falls back to the payload target, else null
  * (whole-model, tolerant open).
  */

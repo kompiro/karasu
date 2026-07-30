@@ -18,7 +18,7 @@ import type { KrsFile } from "../types/ast.js";
 // every fixture must survive a format round-trip. Adding a new top-level
 // construct to `KrsFile` without wiring it into the formatter fails this test.
 //
-// See TPL-20260510-02 (round-trip guarantee) and ADR-2076.
+// See TPL-1101 (round-trip guarantee) and ADR-2076.
 
 /**
  * One `.krs` sample per array-valued `KrsFile` key. Each sample must populate
@@ -43,6 +43,7 @@ const FIXTURES = {
   deploys: `deploy P {\n  oci "api" {\n    runtime "Node.js 20"\n  }\n}\n`,
   organizations: `organization O {\n  team T { label "T" }\n}\n`,
   boundaries: `system S {\n  service A { label "A" }\n}\nboundary g {\n  label "G"\n  contains A\n}\n`,
+  facets: `facet pii {\n  label "PII"\n  description "Handled per ADR-1421"\n  link "https://example.com/adr/1421" "ADR-1421"\n}\n`,
   legends: `system S {\n  service A { label "A" }\n}\nlegend system "Colors" {\n  swatch #ff0000 "hot"\n  ref @deprecated "going away"\n  ref [external] "third party"\n}\n`,
 } satisfies Record<ArrayKeys<KrsFile>, string>;
 
@@ -80,7 +81,7 @@ describe("formatter top-level coverage", () => {
       const afterArray = (after.value as unknown as Record<string, unknown[]>)[key];
       expect(afterArray.length).toBe(beforeArray.length);
 
-      // And it survived intact, not merely in count (TPL-20260510-02).
+      // And it survived intact, not merely in count (TPL-1101).
       expect(stripLocations(after.value)).toEqual(stripLocations(before.value));
 
       // Idempotent at the text level.

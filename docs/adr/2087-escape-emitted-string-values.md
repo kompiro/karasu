@@ -22,7 +22,7 @@ assumptions:
   - 実装 PR: (このコミットの PR)
   - ADR: [ADR-438](438-krs-formatter.md)（formatter — 冪等性の保証）、[ADR-9008](9008-ast-restructure-discriminated-union.md)（`"""` を verbatim Markdown 用に採用 = エスケープ機構を持たない制約の出所）、[ADR-2076](2076-formatter-top-level-exhaustiveness.md)（同種の「列挙漏れ」を機械検出する先例）、[ADR-643](643-translate-openapi-resource-grouping.md) / [ADR-644](644-translate-db-aggregate-grouping.md)（description ブロックを生成する translate 経路）
   - AT: [2087-fmt-escape-string-values.md](../acceptance/2087-fmt-escape-string-values.md)
-  - TPL: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（round-trip 保証 — 本 ADR で「ID だけでなく値も escape」「表現不能な値には fallback」を追記）
+  - TPL: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（round-trip 保証 — 本 ADR で「ID だけでなく値も escape」「表現不能な値には fallback」を追記）
 
 ## 背景
 
@@ -34,7 +34,7 @@ lines.push(`${indent}label "${node.label}"`);
 
 値に `"` が含まれると出力が壊れる。`service A { label "say \"hi\"" }` は `label "say "hi""` になり、再 parse で **error 2 件**。ID 側は #1058 / #1101 で `quoteId()` に集約済みだったため「エスケープは対処済み」に見えており、値側が同じ穴を空けたまま残っていた。formatter だけで 24 箇所。
 
-**より深刻なのは translate 側だった。** formatter の入力は人間が書いた `.krs` で、`"` を含む label は稀である。一方 translate の入力は外部ファイルの自由テキストで、OpenAPI の `summary` は散文である。`summary` に `"""` が含まれると `karasu translate --from openapi` の出力は **parse error 11 件**になり、生成物が丸ごと使えない。TPL-20260510-02 の `known_consumers` に translator が挙がっているのは、まさにこの非対称のためである。translate 側の emit site は 14 箇所。
+**より深刻なのは translate 側だった。** formatter の入力は人間が書いた `.krs` で、`"` を含む label は稀である。一方 translate の入力は外部ファイルの自由テキストで、OpenAPI の `summary` は散文である。`summary` に `"""` が含まれると `karasu translate --from openapi` の出力は **parse error 11 件**になり、生成物が丸ごと使えない。TPL-1101 の `known_consumers` に translator が挙がっているのは、まさにこの非対称のためである。translate 側の emit site は 14 箇所。
 
 本件は #2086（#2076 の修正）のレビュー中に発見された。#2076 で追加した 2 つの renderer が既存の生補間パターンをそのまま踏襲していたことが端緒である。
 
@@ -66,7 +66,7 @@ emit site を列挙するテストは [ADR-2076](2076-formatter-top-level-exhaus
 
 ### 5. spec に escape 規則を明記する
 
-`docs/spec/syntax.md` には escape に関する記述が一切なかった。lexer が `\"` / `\\` / `\n` を解釈することも、`"""` が raw であることも未文書であり、実装だけが知っている状態だった。§ String values and escapes を追加し、TPL-20260510-02 と相互リンクする。
+`docs/spec/syntax.md` には escape に関する記述が一切なかった。lexer が `\"` / `\\` / `\n` を解釈することも、`"""` が raw であることも未文書であり、実装だけが知っている状態だった。§ String values and escapes を追加し、TPL-1101 と相互リンクする。
 
 ## 却下した案
 

@@ -5,7 +5,7 @@
 - **設計 (ADR)**: [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（repo-backed permalink、slice d `@<sha>` 推奨検証）
 - **実装（別 repo）**: [kompiro/adr-tools#23](https://github.com/kompiro/adr-tools/issues/23) / PR #24（`krs` kind に repo-backed host 検出 + `@<sha>` 推奨 `warn`、`0.0.9` release）
 - **前提 ADR**: [ADR-1830](../adr/1830-adr-permalink-validation.md)（検証は adr-tools の `krs` kind）／ [ADR-1829](../adr/1829-adr-permalink-convention.md)（`permalink:` 規約）
-- **関連 TPL**: [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（両側トリガ）
+- **関連 TPL**: [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)（両側トリガ）
 - **対象ファイル**:
   - `adr.config.json`（`permalink.repoBackedHosts: ["karasu.kompiro.dev", "karasu.pages.dev"]`）／ `package.json`（`@kompiro/adr-tools@^0.0.9`）
   - `.claude/rules/adr.md`（L2 規約）／ `docs/guide/adr-permalinks.md`（+ `.ja.md`、L1 guide）

@@ -21,7 +21,7 @@ const { program } = await import("./index.js");
  * mockExit pattern) so the action stops at the rejection point instead of
  * falling through into the command implementation; render/diff are mocked so
  * a validation regression fails via `not.toHaveBeenCalled()` rather than by
- * running the real command. TPL-20260510-17 (validate at the trust boundary).
+ * running the real command. TPL-168 (validate at the trust boundary).
  */
 describe("CLI arg validation (AT-0057 §7)", () => {
   let stderr: string[];

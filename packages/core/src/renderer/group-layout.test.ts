@@ -107,7 +107,7 @@ describe("assignGroupedLayers", () => {
     expect(assignGroupedLayers(nodes, [], ["team-x"])).toBeNull();
   });
 
-  it("places every node exactly once (TPL-20260624-02: totality & uniqueness)", () => {
+  it("places every node exactly once (TPL-1738: totality & uniqueness)", () => {
     const nodes = [
       node("Billing", "payments"),
       node("Wallet", "payments"),

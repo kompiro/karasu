@@ -77,7 +77,7 @@ export function computeDiagnostics(
   // the sheets, stays silent). Accepted asymmetry: the hint is info-register
   // and the intentional-name case is rare (#1522). New style-coupled
   // diagnostics must decide and record their side of this split here
-  // (TPL-20260612-01).
+  // (TPL-1522).
   if (!isStyleDocument && !("rules" in parseResult.value)) {
     for (const w of analyze(parseResult.value, [])) {
       // `unresolved-edge-endpoint` is import-coupled, not style-coupled: it only
@@ -86,9 +86,9 @@ export function computeDiagnostics(
       // cross-file edge (the canonical system-reopen pattern) would false-positive
       // here. Suppress it in the single-document context; the App / CLI run
       // `analyze()` over the import-merged file where it is accurate
-      // (TPL-20260612-01 — new import/style-coupled diagnostics record their side).
+      // (TPL-1522 — new import/style-coupled diagnostics record their side).
       if (w.kind === "unresolved-edge-endpoint") continue;
-      // `shared-infra-fan-in` is *not* suppressed (TPL-20260612-01 — recording
+      // `shared-infra-fan-in` is *not* suppressed (TPL-1522 — recording
       // its side): it benefits from the import-merge (cross-file sharing is only
       // seen in the App / CLI), but in the single-document context it can only
       // *under-report* — it fires only when both the store and ≥2 referencing

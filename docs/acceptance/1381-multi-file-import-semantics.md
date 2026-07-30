@@ -14,7 +14,7 @@ type: feature
   - `packages/core/src/fs/import-resolver.test.ts`（spec §"Multi-file import semantics" S2/S3/S4/S5 を assert する describe block）
   - `examples/ja/multi-file-system/{index,reader,editor,cms}.krs`（spec PR で追加済み、本 AT で end-to-end を検証）
 - **Spec**: `docs/spec/syntax.md` §「Multi-file import semantics」(S1〜S7)
-- **TPL**: TPL-20260514-01 〜 TPL-20260514-05
+- **TPL**: TPL-1381 〜 TPL-2170
 - **ADR**: [ADR-1381](../adr/1381-multi-file-import-semantics.md)
 
 ## 受け入れ条件
@@ -40,7 +40,7 @@ type: feature
 - [ ] AT-G（manual）: `karasu render examples/ja/multi-file-system/index.krs --view deploy` および `--view org` で 4 container / 3 team が描画されていることを目視確認する
   > 🧑 Manual — SVG を目視
 
-- [ ] AT-H: merged モデルに存在しない id を指すエッジは drop され（解決できた側のノードは残る — TPL-20260514-05）、`unresolved-edge-endpoint` 警告が出る (S6)。cross-system dotted ref（`Sys.Svc`）はこの警告の対象外（`cross-system-ref-*` が担当）。単一ドキュメントの LSP 文脈では import 未解決のため抑制される
+- [ ] AT-H: merged モデルに存在しない id を指すエッジは drop され（解決できた側のノードは残る — TPL-2170）、`unresolved-edge-endpoint` 警告が出る (S6)。cross-system dotted ref（`Sys.Svc`）はこの警告の対象外（`cross-system-ref-*` が担当）。単一ドキュメントの LSP 文脈では import 未解決のため抑制される
   > ✅ Automated — `warnings.test.ts` の `"unresolved-edge-endpoint warning"` describe（dangling / resolved / ghost-domain / cross-system / domain-edge ケース）
 
 ## 関連
@@ -49,4 +49,4 @@ type: feature
 - 仕様化 PR: #1383 (merged)
 - 実装 PR: 本 PR
 - AT-H（S6 警告）実装: #1569
-- 関連 TPL: [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md)（ノード保持の半分。本 AT で警告の半分も担保）
+- 関連 TPL: [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md)（ノード保持の半分。本 AT で警告の半分も担保）

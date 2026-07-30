@@ -25,7 +25,7 @@ assumptions:
   - Issue [#1508](https://github.com/kompiro/karasu/issues/1508)（前段 [#1496](https://github.com/kompiro/karasu/issues/1496)、実装 PR [#1511](https://github.com/kompiro/karasu/pull/1511)、Design Doc PR [#1510](https://github.com/kompiro/karasu/pull/1510)）
   - [ADR-813](813-i18n-default-policy.md) — i18n 既定ポリシー（core は翻訳テーブルを import しない）
   - [ADR-1479](1479-svg-diagram-theming.md) — theme threading の前例
-  - [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md), [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)
+  - [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md), [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)
   - AT: [docs/acceptance/1508-annotation-badge-label-i18n.md](../acceptance/1508-annotation-badge-label-i18n.md)
 
 ## 背景
@@ -57,7 +57,7 @@ compile 系・SVG builder ファミリ全員にオプションとして通す。
 - **カスケード意味論が無変更** — builtin 最下層・ユーザー `.krs.style` の
   `badge-label` が常に勝つ、という既存の読み筋を保ったまま locale 次元を
   足せる唯一の案だった
-- **単一真実源化**（TPL-20260519-02 の本命対処）— ラベルの正典が
+- **単一真実源化**（TPL-1415 の本命対処）— ラベルの正典が
   `reference-data.ts` に一本化され、#1496 の 3 表記不一致が構造的に再発
   しなくなる（builtin シート ↔ reference-data の parity テストで固定）
 - **既存パターンの合成** — `EmptyStateLabels`（文字列注入、#1494）と

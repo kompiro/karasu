@@ -20,7 +20,7 @@ related_to:
   - PR [#1936](https://github.com/kompiro/karasu/pull/1936)
   - [ADR-460](460-ghost-domain-edges.md) — ghost domain エッジ（両方向・bottom 配置・subLabel・layout-node フラグによる muting）。本 ADR はその機構を entity に拡張する
   - [ADR-328](328-ghost-system-rendering.md) — ghost 描画の基本
-  - 関連 TPL: [TPL-20260714-01](../test-perspectives/TPL-20260714-01-cross-domain-entity-reference-qualified.md)
+  - 関連 TPL: [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md)
   - コード: `packages/core/src/view/view-extract.ts`（`extractEntityView` / `buildDomainEntityIndex`）、`packages/core/src/renderer/layout.ts`（`placeGhostRow` / `pushGhostEdges`）
 
 ## 背景
@@ -53,5 +53,5 @@ related_to:
 ## 影響
 
 - 追加のみ。既存の intra-domain 表示・bare 参照の挙動（cross-domain へ勝手に解決しない）は不変で後方互換。
-- spec: `docs/spec/syntax.md` § entity relations に限定子解決規則を明記（TPL-20260714-01 と相互リンク）。
+- spec: `docs/spec/syntax.md` § entity relations に限定子解決規則を明記（TPL-1936 と相互リンク）。
 - v2 以降（本 ADR では決めない）: 多重度タグ、ジャンクション経由の間接関連の ghost、cross-system 参照、nested domain 限定子（`Parent.Child.Entity`）。

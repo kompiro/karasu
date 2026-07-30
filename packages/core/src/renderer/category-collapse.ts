@@ -10,7 +10,7 @@ import { makeStubNode } from "./collapse-stub.js";
  * - `external` — `[external]`-tagged service nodes
  *
  * Identification mirrors `systemTier()` in `layout.ts` so the two stay in sync
- * (TPL-20260519-02: the infra-kind / `[external]`-tag vocabulary has one source
+ * (TPL-1415: the infra-kind / `[external]`-tag vocabulary has one source
  * of truth).
  */
 export type CategoryId = "external" | "infra";

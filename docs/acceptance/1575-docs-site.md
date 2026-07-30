@@ -3,7 +3,7 @@
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1575](https://github.com/kompiro/karasu/issues/1575)
 - **関連 ADR**: [ADR-1575](../adr/1575-docs-site-ssg.md)（SSG = Astro Starlight 採用）
-- **Related TPLs**: [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)（link/anchor 未解決をビルドで fail）, [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（doc ↔ source 片方向同期）
+- **Related TPLs**: [TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md)（link/anchor 未解決をビルドで fail）, [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（doc ↔ source 片方向同期）
 - **対象**:
   - `packages/docs-site/`（`astro.config.mjs`, `src/content.config.ts`, `scripts/sync.ts`, `scripts/check-links.ts`, `scripts/lib/{site-map,rewrite,markdown}.ts`, `home/{en,ja}.md`）
   - `.github/workflows/pages.yml`
@@ -22,7 +22,7 @@
 - [x] ページ間リンクは base path（`/karasu/`）に依存しない route-relative URL になる
   > ✅ Automated — `packages/docs-site/scripts/lib/rewrite.test.ts` › `site-map` › `computes base-agnostic relative routes`
 
-### AC-2: repo-relative リンクと明示アンカーがサイト上で解決する（TPL-20260616-01）
+### AC-2: repo-relative リンクと明示アンカーがサイト上で解決する（TPL-1621）
 
 - [x] in-site のクロスセクションリンクが route-relative URL へ書き換わり、`#anchor` は保持される
   > ✅ Automated — `packages/docs-site/scripts/lib/rewrite.test.ts` › `rewriteLinkTarget` › `rewrites in-site cross-section links route-relative` / `preserves anchors on in-site links`
@@ -32,9 +32,9 @@
   > ✅ Automated — `packages/docs-site/scripts/lib/rewrite.test.ts` › `rewriteLinkTarget` › `rewrites examples/ links to GitHub tree URLs` / `rewrites out-of-site docs/*.md links to GitHub blob URLs` / `leaves external and in-page links untouched`
 - [x] コードフェンス内の `](...)` は書き換え対象にしない
   > ✅ Automated — `packages/docs-site/scripts/lib/rewrite.test.ts` › `rewriteBody` › `rewrites links in prose but never inside code fences`
-- [x] 見出し slug（`github-slugger`）と明示 `<a id>` をアンカーとして収集し、H1 はタイトル化して本文から除く（TPL-20260616-01）
+- [x] 見出し slug（`github-slugger`）と明示 `<a id>` をアンカーとして収集し、H1 はタイトル化して本文から除く（TPL-1621）
   > ✅ Automated — `packages/docs-site/scripts/lib/rewrite.test.ts` › `markdown helpers` › `collects heading slugs and explicit anchors, skipping code fences` / `extracts and strips the first H1 as the title`
-- [x] 未解決の in-site link / アンカーがあるとビルドが fail する（TPL-20260616-01）
+- [x] 未解決の in-site link / アンカーがあるとビルドが fail する（TPL-1621）
   > ✅ Automated — `packages/docs-site/scripts/check-links.ts`（`pnpm --filter @karasu-tools/docs-site run build` および `.github/workflows/pages.yml` で実行。本 PR で `docs/spec/tags-annotations.ja.md` の壊れた `#client-capability` を検出・修正済み）
 
 ### AC-3: bilingual な公開とハイライト（手動確認）

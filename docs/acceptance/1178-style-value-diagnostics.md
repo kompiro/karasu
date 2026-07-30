@@ -52,12 +52,12 @@ type: product
 
 | TPL | 適用 |
 |---|---|
-| [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) | validator は parser 出力（ValueNode）を **読むだけ**。再 parse しないので round-trip に影響なし |
-| [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md) | `ValueSpec` 判別子を 1 つ追加すると validator の switch が型エラーになる（`_exhaustive: never`）— PR-B のテストで担保 |
-| [TPL-20260510-10](../test-perspectives/TPL-20260510-10-cross-reference-validation.md) | parser は loose に受理し、validator が schema 整合性を見る分業を採用 |
-| [TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md) | ValueNode 追加 (PR-A) / validator 追加 (PR-B) / surface 統合 (本 PR) の 3 点同意 |
-| [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md) | `.krs.style` は外部 input、validator が境界で validate する役割 |
-| [TPL-20260510-18](../test-perspectives/TPL-20260510-18-text-as-single-source-of-truth.md) | `valueNodes` は派生で永続化しない。LSP / CLI も text を一次情報源として再 parse する |
+| [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) | validator は parser 出力（ValueNode）を **読むだけ**。再 parse しないので round-trip に影響なし |
+| [TPL-1094](../test-perspectives/TPL-1094-enum-member-addition.md) | `ValueSpec` 判別子を 1 つ追加すると validator の switch が型エラーになる（`_exhaustive: never`）— PR-B のテストで担保 |
+| [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) | parser は loose に受理し、validator が schema 整合性を見る分業を採用 |
+| [TPL-74](../test-perspectives/TPL-74-ast-parser-renderer-agreement.md) | ValueNode 追加 (PR-A) / validator 追加 (PR-B) / surface 統合 (本 PR) の 3 点同意 |
+| [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md) | `.krs.style` は外部 input、validator が境界で validate する役割 |
+| [TPL-1207](../test-perspectives/TPL-1207-text-as-single-source-of-truth.md) | `valueNodes` は派生で永続化しない。LSP / CLI も text を一次情報源として再 parse する |
 
 ## 補足
 

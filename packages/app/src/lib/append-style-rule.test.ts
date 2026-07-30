@@ -104,7 +104,7 @@ describe("upsertEdgeDirectionRule", () => {
     );
   });
 
-  // #1563 (TPL-20260613-02): the GUI append's read-modify-write must not lose
+  // #1563 (TPL-1535): the GUI append's read-modify-write must not lose
   // the editor's concurrent auto-save on the same open .krs.style. Through the
   // ObservableFileSystemProvider both go through the per-path queue, so the
   // editor's write is preserved and the rule is appended to it — not to a stale

@@ -24,7 +24,7 @@ assumptions:
   - PR [#1484](https://github.com/kompiro/karasu/pull/1484)（Design Doc）/ PR [#1485](https://github.com/kompiro/karasu/pull/1485)（実装）
   - [ADR-1470](1470-app-css-modularization-and-light-theme.md) — app.css モジュール化・ライトテーマ（SVG 図は対象外と明記）
   - [ADR-9004](9004-css-inspired-styling.md) — CSS 風スタイリング・built-in stylesheet
-  - [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md) — 表示モード / グローバル切替の全描画面点検
+  - [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md) — 表示モード / グローバル切替の全描画面点検
 
 ## 背景
 
@@ -76,7 +76,7 @@ byte 不変。
   CSS カスタムプロパティ方式は要素出力の全面改修が必要になり変更量が大きい。
 - デフォルト `"dark"` で既存スナップショットが無変更。`theme-meta.test.ts` が
   全 SVG エントリポイントで「theme 省略時 == dark」「dark != light」を検証し、
-  TPL-20260510-06 に従って全描画面の追従を回帰テストで担保する。
+  TPL-1001 に従って全描画面の追従を回帰テストで担保する。
 
 ## 却下した案
 

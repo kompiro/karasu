@@ -1,5 +1,5 @@
 /**
- * Meta-test enforcing TPL-20260510-20 (identity / equality / aggregation
+ * Meta-test enforcing TPL-2167 (identity / equality / aggregation
  * keys must use `id`, never `label` or other display / translatable
  * strings). Issue #1275 / coverage gap GR20-1.
  *
@@ -34,7 +34,7 @@
  * the other curated-table meta-tests (#1233 / #1247 / #1265 / #1267).
  *
  * Refs:
- *   - TPL-20260510-20 (identity is id, not label), checklist items 1/3
+ *   - TPL-2167 (identity is id, not label), checklist items 1/3
  *   - warnings.test.ts:204 / :221 — canonical domain-dispersal pair
  *     this generalizes
  */
@@ -210,7 +210,7 @@ deploy Production {
   },
 ];
 
-describe("meta: identity-comparison sites compare by id, never label (TPL-20260510-20)", () => {
+describe("meta: identity-comparison sites compare by id, never label (TPL-2167)", () => {
   it.each(WARNING_CHECKS)("$name → warning surfaces with id-anchored params", (row) => {
     const result = compile(row.krs);
     const w = result.warnings.find((wn) => wn.kind === row.kind);

@@ -82,4 +82,4 @@ root で開く。開く際、app は history hook の mount より前に URL を
 アンカーして回避してはならない — label は表示 / i18n 文字列であり identity では
 ない。
 
-> Related TPLs: [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) — 静的 SVG と SPA ハッシュのアンカーは1つの id ベース文法を保たねばならない。drift すると permalink が片方のサーフェスでしか解決しなくなる。
+> Related TPLs: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md) — 静的 SVG と SPA ハッシュのアンカーは1つの id ベース文法を保たねばならない。drift すると permalink が片方のサーフェスでしか解決しなくなる。

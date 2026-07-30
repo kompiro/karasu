@@ -44,7 +44,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 | node の本体パーサ | 3 箇所に分かれる: `parseBlockContentsWithProperties`（論理 kind）／ `parseInfraBlockContents`（database / queue / storage）／ `parseLeafNodeContents`（table / queue-item / bucket） |
 | 参照存在検証 | `parser/reference-validation.ts` に純関数として置き、Parser（per-file）と ImportResolver（merged）が各自の空間で呼ぶ。ImportResolver は `MERGED_SPACE_REFERENCE_CODES` で per-file 版を抑止する |
 | resolver warning | `resolver/warnings.ts` の `analyze(file, sheets)`。**呼ばれる時点で file は import マージ済み**（`compile.ts:297`） |
-| LSP | parse diagnostics をそのまま出し、加えて `analyze(parseResult.value, [])` を**単一ドキュメント**で実行する。import 連動で偽陽性になる `unresolved-edge-endpoint` のみ抑止し、判断を TPL-20260612-01 に沿ってコメントで記録している |
+| LSP | parse diagnostics をそのまま出し、加えて `analyze(parseResult.value, [])` を**単一ドキュメント**で実行する。import 連動で偽陽性になる `unresolved-edge-endpoint` のみ抑止し、判断を TPL-1522 に沿ってコメントで記録している |
 | warning の severity | `types/warnings.ts` の `warningSeverity()` — `INFO_WARNING_KINDS` に載らない kind は `warning` |
 | fmt の網羅ガード | `formatter-top-level-coverage.test.ts` が `KrsFile` の配列キーからフィクスチャ集合を導出（**top-level のみ**。per-node のネスト構文は守れない） |
 | node kind × 共通フィールド | `base-node-fields-coverage.test.ts` が `keyof BaseNodeFields` を compile-time 契約で固定し、user-facing フィールド × 13 kind を runtime で総当たりする |
@@ -63,7 +63,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 
 - `docs/adr/` を `facet` で grep → **0 件**。`status: not_adopted` の 5 本（ADR-7 / 45 / 104 / 105 / 284）はいずれも本テーマと無関係。
 - 交差する唯一の決定は **ADR-832（ルール言語を入れない）**。上位 doc が「範囲の表現のみを specialize する `refines`」として整理済みで、slice 1 の文法は値言語を持たないため fence の内側に収まる。**衝突なし**。
-- ADR-1974 が記録した boundary の 1:1 は「配置の制約であって所属の制約ではない」と上位 doc が再確認済み。facet は最初から 1:N で作る（[TPL-20260730-01](#related-tpls) がこの原則を今日 TPL 化した）。
+- ADR-1974 が記録した boundary の 1:1 は「配置の制約であって所属の制約ではない」と上位 doc が再確認済み。facet は最初から 1:N で作る（[TPL-2161](#related-tpls) がこの原則を今日 TPL 化した）。
 
 ## 検討した選択肢
 
@@ -76,7 +76,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 **メリット**
 
 - 「宣言ブロックへの参照が実在するか」という点で `contains` と**同型**。1 ファイル（`reference-validation.ts`）に facet の検証 2 種がまとまる。
-- TPL-20260718-02 の既知の対処パターンをそのまま適用できる。
+- TPL-2032 の既知の対処パターンをそのまま適用できる。
 
 **デメリット**
 
@@ -89,11 +89,11 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 
 **メリット**
 
-- **`analyze()` は import マージ済みモデルに対して走る**ため、「宣言が A、参照が B」は構造的に正しく解決される（TPL-20260718-02 を機構で満たす）。
-- [TPL-20260510-10](#related-tpls) が「新しい cross-reference プロパティには resolver-side 検証と unresolved warning を必ず付ける」と明示的に規定しており、`facets <id>` はまさにその cross-reference プロパティ。既存 detector（`handles` / `realizes`）が雛形になる。
+- **`analyze()` は import マージ済みモデルに対して走る**ため、「宣言が A、参照が B」は構造的に正しく解決される（TPL-2032 を機構で満たす）。
+- [TPL-907](#related-tpls) が「新しい cross-reference プロパティには resolver-side 検証と unresolved warning を必ず付ける」と明示的に規定しており、`facets <id>` はまさにその cross-reference プロパティ。既存 detector（`handles` / `realizes`）が雛形になる。
 - Part A（#2159）の `tag-not-builtin` / `annotation-not-builtin` と**同じ語彙衛生の家族**・同じ描画面（`render-warning`）に並ぶ。
-- `warningSeverity` の register エントリを持つ（`INFO_WARNING_KINDS` に載せない = warning。事実 register の判断を TPL-20260514-08 に沿って明示できる）。
-- LSP の単一ドキュメント文脈は**既存の判断済みフック**があり、抑止するか否かを TPL-20260612-01 の作法で記録できる。
+- `warningSeverity` の register エントリを持つ（`INFO_WARNING_KINDS` に載せない = warning。事実 register の判断を TPL-1386 に沿って明示できる）。
+- LSP の単一ドキュメント文脈は**既存の判断済みフック**があり、抑止するか否かを TPL-1522 の作法で記録できる。
 
 **デメリット**
 
@@ -116,7 +116,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 **メリット**
 
 - drift ガードを弱めずに済む。app の Reference パネルにも自動で出る。
-- [TPL-20260727-01](#related-tpls)（parser が受理する形は spec に文書化されている）を満たす。
+- [TPL-2133](#related-tpls)（parser が受理する形は spec に文書化されている）を満たす。
 
 **デメリット**
 
@@ -129,7 +129,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 
 ### 論点 3: `facetIndex` の 1:N を merge まで一貫させる
 
-`boundaryIndex` の multi-file merge は `if (!merged.has(id))` の **first-wins** で書かれている。facet で同じ形を書くと、ファイル A で `facets pii`、ファイル B で同要素に `facets gdpr` と書いたとき 2 件目が消える。[TPL-20260730-01](#related-tpls) が「merge 経路すべてが同じ多値の意味論に従うこと」「`最初に見たものを保つ` が残っていないか grep する」と規定している。
+`boundaryIndex` の multi-file merge は `if (!merged.has(id))` の **first-wins** で書かれている。facet で同じ形を書くと、ファイル A で `facets pii`、ファイル B で同要素に `facets gdpr` と書いたとき 2 件目が消える。[TPL-2161](#related-tpls) が「merge 経路すべてが同じ多値の意味論に従うこと」「`最初に見たものを保つ` が残っていないか grep する」と規定している。
 
 → **union merge 一択**（`Set` を kind ごとに合成）。選択肢として比較する余地はないが、boundary のコードを雛形にすると機械的に first-wins を書き写す危険があるため、論点として明記しておく。
 
@@ -137,7 +137,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 
 `facet` / `facets` を lexer の KEYWORDS に足すと、それらを **bare id** に使っていた既存モデル（`service facets {}`）と、`@facet` アノテーションが壊れる。既存キーワード（`contains` / `owns` / `team` …）が同じ性質を持つのと同型で、逃げ道は quoted id（`service "facets" {}`）。
 
-[TPL-20260511-01](#related-tpls) が求める「新キーワードは将来の実装側関心に引かれるか」の検査:  `facet` は faceted classification（多軸ラベリング）の含意で、authz / codegen の引力は弱い。引力があるのは「所属 → ルール」方向であり、そこは **ADR-832 が外部 fence** として既に塞いでいる。上位 doc が命名節でこの検討を済ませている（`concern` 却下の理由）。→ **語の選び直しは不要。spec の facet 節に ADR-832 へのリンクを 1 行埋める**（外部 fence パターン）。
+[TPL-1281](#related-tpls) が求める「新キーワードは将来の実装側関心に引かれるか」の検査:  `facet` は faceted classification（多軸ラベリング）の含意で、authz / codegen の引力は弱い。引力があるのは「所属 → ルール」方向であり、そこは **ADR-832 が外部 fence** として既に塞いでいる。上位 doc が命名節でこの検討を済ませている（`concern` 却下の理由）。→ **語の選び直しは不要。spec の facet 節に ADR-832 へのリンクを 1 行埋める**（外部 fence パターン）。
 
 ## 比較
 
@@ -146,7 +146,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 | マージ空間での評価 | 抑止 + 再導出の実装が要る | `analyze()` が既にマージ後（機構で満たす） |
 | LSP 単一ドキュメント | 抑止フックが無く新設が要る | 既存の判断済みフックがある |
 | severity register | 無し | `warningSeverity` に載る |
-| TPL の指示 | TPL-20260718-02 の対処パターンに合う | **TPL-20260510-10 が明示的に要求する形** |
+| TPL の指示 | TPL-2032 の対処パターンに合う | **TPL-907 が明示的に要求する形** |
 | 既存の同類 | `contains-target-not-found` | `unresolved-handles` / `unresolved-realizes` / `tag-not-builtin` |
 | 診断の分散 | facet の 2 診断が 1 ファイルに集まる | parser と resolver に分かれる |
 
@@ -154,19 +154,19 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 
 | TPL | 本設計での取り込み |
 | --- | --- |
-| [TPL-20260510-10](../test-perspectives/TPL-20260510-10-cross-reference-validation.md) — 新しい cross-reference プロパティには resolver-side 検証と unresolved warning を付ける | 論点 1 の決め手。`facets <id>` は cross-reference プロパティなので `facet-not-declared` を resolver warning として実装し、i18n en/ja と renderer switch を同 PR で更新する |
-| [TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属を派生 index で捨てない | 論点 3。`facetIndex` は `Map<nodeId, Set<facetId>>`、merge は union。同一要素 N 件宣言 → 出力 N 件をテストで固定する |
-| [TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md) — 参照存在チェックはマージ後の id 空間で | `facet-not-declared` はマージ後モデルで評価（`analyze()` の位置で機構的に成立）。`duplicate-facet-id` は per-file 抑止 + マージ後再導出で、宣言がファイルを跨いで重複する場合も捕まえる |
-| [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — 受理した語彙は効果を持つ | slice 1 の interim-inert 対策。`facetIndex` の消費者（`facet-not-declared` detector）を同 PR に置き、spec で「overlay は後続 slice」と明示する |
-| [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — round-trip 保証 | 宣言ブロックは top-level 網羅ガードが自動で捕まえる。**per-node の `facets` プロパティは専用の round-trip テストを別に書く**（top-level 配列由来のガードはネスト構文に届かない） |
-| [TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md) — 共通フィールド追加は AST / parser / renderer の三点同意 | `BaseNodeFields.facets` を追加すると `base-node-fields-coverage.test.ts` の compile-time 契約が落ちる。user-facing フィールドとして登録し、13 kind 総当たりの被験対象に含める |
-| [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — parser が受理する形は spec に文書化されている | 論点 2 で案 2-A を採る根拠。受理する全 kind の `facets` をカタログ経由で spec 表に出す |
-| [TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md) — 全診断コードは規則カタログに 1 件の項目を持つ | `facet-not-declared` / `duplicate-facet-id` の行を `diagnostics.md`（+ja）に追加（meta テストが強制する） |
-| [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — register は事実か流派判断かで決める | `facet-not-declared` は「宣言が存在しない」という**事実**で、流派判断ではない → `warning`（`INFO_WARNING_KINDS` に**載せない**） |
-| [TPL-20260612-01](../test-perspectives/TPL-20260612-01-style-coupled-diagnostics-sheetless-context.md) — シート不在文脈（LSP 単一ドキュメント）での挙動を仕様化する | 論点 1 の従属論点。LSP で抑止する / しないをコードコメントに記録する |
-| [TPL-20260511-01](../test-perspectives/TPL-20260511-01-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 新キーワードの引力は外部 fence で縛れるか先に検討する | 論点 4。ADR-832 を外部 fence とし、spec の facet 節にリンクを 1 行埋める |
-| [TPL-20260510-01](../test-perspectives/TPL-20260510-01-top-level-orphans.md) — top-level 宣言を全消費側で扱う | `facetIndex` の構築は system 配下だけでなく top-level の service / client / domain / infra とその子孫まで歩く |
-| [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — 検証の valid-target set は spec が許す全 kind を列挙する | `facets` は全 node kind で受理するので、index 構築の walk が 13 kind すべてに届くことをテストで固定する |
+| [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — 新しい cross-reference プロパティには resolver-side 検証と unresolved warning を付ける | 論点 1 の決め手。`facets <id>` は cross-reference プロパティなので `facet-not-declared` を resolver warning として実装し、i18n en/ja と renderer switch を同 PR で更新する |
+| [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属を派生 index で捨てない | 論点 3。`facetIndex` は `Map<nodeId, Set<facetId>>`、merge は union。同一要素 N 件宣言 → 出力 N 件をテストで固定する |
+| [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — 参照存在チェックはマージ後の id 空間で | `facet-not-declared` はマージ後モデルで評価（`analyze()` の位置で機構的に成立）。`duplicate-facet-id` は per-file 抑止 + マージ後再導出で、宣言がファイルを跨いで重複する場合も捕まえる |
+| [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理した語彙は効果を持つ | slice 1 の interim-inert 対策。`facetIndex` の消費者（`facet-not-declared` detector）を同 PR に置き、spec で「overlay は後続 slice」と明示する |
+| [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — round-trip 保証 | 宣言ブロックは top-level 網羅ガードが自動で捕まえる。**per-node の `facets` プロパティは専用の round-trip テストを別に書く**（top-level 配列由来のガードはネスト構文に届かない） |
+| [TPL-74](../test-perspectives/TPL-74-ast-parser-renderer-agreement.md) — 共通フィールド追加は AST / parser / renderer の三点同意 | `BaseNodeFields.facets` を追加すると `base-node-fields-coverage.test.ts` の compile-time 契約が落ちる。user-facing フィールドとして登録し、13 kind 総当たりの被験対象に含める |
+| [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は spec に文書化されている | 論点 2 で案 2-A を採る根拠。受理する全 kind の `facets` をカタログ経由で spec 表に出す |
+| [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md) — 全診断コードは規則カタログに 1 件の項目を持つ | `facet-not-declared` / `duplicate-facet-id` の行を `diagnostics.md`（+ja）に追加（meta テストが強制する） |
+| [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — register は事実か流派判断かで決める | `facet-not-declared` は「宣言が存在しない」という**事実**で、流派判断ではない → `warning`（`INFO_WARNING_KINDS` に**載せない**） |
+| [TPL-1522](../test-perspectives/TPL-1522-style-coupled-diagnostics-sheetless-context.md) — シート不在文脈（LSP 単一ドキュメント）での挙動を仕様化する | 論点 1 の従属論点。LSP で抑止する / しないをコードコメントに記録する |
+| [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 新キーワードの引力は外部 fence で縛れるか先に検討する | 論点 4。ADR-832 を外部 fence とし、spec の facet 節にリンクを 1 行埋める |
+| [TPL-1160](../test-perspectives/TPL-1160-top-level-orphans.md) — top-level 宣言を全消費側で扱う | `facetIndex` の構築は system 配下だけでなく top-level の service / client / domain / infra とその子孫まで歩く |
+| [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — 検証の valid-target set は spec が許す全 kind を列挙する | `facets` は全 node kind で受理するので、index 構築の walk が 13 kind すべてに届くことをテストで固定する |
 
 **proactive TPL の要否（3-Yes ルール）**: 本設計が違反しうる原則は上表の 13 件で網羅されており、いずれも既存 TPL が既に規定している。「既存 TPL に未掲載」が満たされないため**新規 TPL は起こさない**。代わりに `CLAUDE.md` の spec 改訂ルールに従い、新設する spec 節末尾に `> Related TPLs:` を置き、対応する TPL 側に `## 派生元 spec` の back-ref を同 PR で入れて双方向に紐付ける。
 
@@ -174,7 +174,7 @@ slice 1 は**描画より下**の一式（parser / AST / index / merge / fmt / �
 
 **論点 1 は案 1-B（resolver Warning kind）、論点 2 は案 2-A（カタログに載せる）、論点 3 は union merge、論点 4 は外部 fence（語の選び直しはしない）を採る。**
 
-論点 1 の決め手は TPL-20260510-10 で、`facets <id>` は「他ノード（ここでは top-level の facet 宣言）の id を指す参照プロパティ」そのものであり、TPL は resolver-side の検証 + unresolved warning を明示的に要求している。加えて `analyze()` がマージ後モデルに対して走るため、TPL-20260718-02 が求めるマージ空間評価を**追加の抑止機構なしで**満たす。LSP では**抑止しない** — 抑止すると宣言集合に対する完全な typo 検出という facet 最大の利点が、最も効くエディタ上で消える。過剰報告は「宣言と参照を別ファイルに分けた構成」に限られ、`invalid-owns` / `unresolved-handles` が既に同じ性質で運用されている。この判断は TPL-20260612-01 の作法どおりコードコメントに残す。
+論点 1 の決め手は TPL-907 で、`facets <id>` は「他ノード（ここでは top-level の facet 宣言）の id を指す参照プロパティ」そのものであり、TPL は resolver-side の検証 + unresolved warning を明示的に要求している。加えて `analyze()` がマージ後モデルに対して走るため、TPL-2032 が求めるマージ空間評価を**追加の抑止機構なしで**満たす。LSP では**抑止しない** — 抑止すると宣言集合に対する完全な typo 検出という facet 最大の利点が、最も効くエディタ上で消える。過剰報告は「宣言と参照を別ファイルに分けた構成」に限られ、`invalid-owns` / `unresolved-handles` が既に同じ性質で運用されている。この判断は TPL-1522 の作法どおりコードコメントに残す。
 
 論点 2 は、experimental であることを理由に双方向 drift ガードへ穴を空ける費用の方が高い。experimental の表明は facet 節の見出しと注記が担い、kind 表は「parser が受理する事実」を述べる、と役割を分ける。
 

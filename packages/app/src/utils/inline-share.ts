@@ -6,7 +6,7 @@ export type { SharePayload, ShareTarget };
 /**
  * The view values a deep permalink target may name. `satisfies Record<…>` ties
  * this runtime allow-list to the `ShareTargetView` union, so adding a member to
- * the type without listing it here is a compile error (TPL-20260510-03) rather
+ * the type without listing it here is a compile error (TPL-1094) rather
  * than a silent "unknown view → whole-model" degrade.
  */
 const SHARE_TARGET_VIEWS = {
@@ -18,7 +18,7 @@ const SHARE_TARGET_VIEWS = {
 
 /**
  * Validate/canonicalize an untrusted `target` from a decoded payload
- * (TPL-20260510-17 — the payload crosses a trust boundary). Returns a clean
+ * (TPL-168 — the payload crosses a trust boundary). Returns a clean
  * `ShareTarget` or `undefined` when the value is missing or its `view` is not
  * one of the known views — an unrecognized target degrades to a whole-model
  * open rather than throwing.

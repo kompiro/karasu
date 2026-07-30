@@ -35,7 +35,7 @@ assumptions:
   - 設計検討 PR: [#1664](https://github.com/kompiro/karasu/pull/1664)（旧 `docs/design/vscode-marketplace-publish.md` — 本 ADR に集約して削除）
   - フォローアップ: [#1671](https://github.com/kompiro/karasu/issues/1671)（スクリーンショット・検索ヒット確認）, [#1672](https://github.com/kompiro/karasu/issues/1672)（本 ADR 昇格・app registration 廃止）
   - 関連 ADR: [ADR-1315](1315-release-automation-changesets.md)（changesets は `karasu`(CLI) のみ公開、`karasu-vscode` の publish は #1316 に委譲）, [ADR-9014](9014-vscode-extension-lsp-first.md)（LSP server を esbuild バンドルする先例）
-  - 関連 TPL: [TPL-20260510-15](../test-perspectives/TPL-20260510-15-dev-vs-packaged-mode-parity.md)（packaged/installed parity）, [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（guard を両側に張る）
+  - 関連 TPL: [TPL-1024](../test-perspectives/TPL-1024-dev-vs-packaged-mode-parity.md)（packaged/installed parity）, [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)（guard を両側に張る）
   - コード: `.github/workflows/vscode-release.yml`, `.github/workflows/azure-identity-bootstrap.yml`, `packages/vscode/package.json`, `packages/vscode/.vscodeignore`
 
 ## 背景
@@ -64,7 +64,7 @@ Personal Access Token）を想定していたが、**長期 PAT は 2026-12-01 �
    `NPM_TOKEN` guard と同じ思想）。
 4. **`.vsix` の中身は `.vscodeignore` で固定。** `out/`（esbuild バンドル）・`icon.png`・`images/`・
    `syntaxes/`・`README.md`・`LICENSE`・`THIRD_PARTY_NOTICES.md` を同梱し、`src/`・`node_modules/`・
-   テスト・dev config を除外する。`packages/vscode/src/marketplace-manifest.test.ts` で固定（TPL-20260510-15）。
+   テスト・dev config を除外する。`packages/vscode/src/marketplace-manifest.test.ts` で固定（TPL-1024）。
 
 ## 理由
 

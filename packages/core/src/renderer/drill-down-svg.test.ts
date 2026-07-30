@@ -66,7 +66,7 @@ describe("buildDrillDownSvg", () => {
   });
 
   // The drill-down level id MUST come from the shared `anchorId` grammar so it
-  // stays portable with the SPA hash (TPL-20260630-01, docs/spec/permalink.md).
+  // stays portable with the SPA hash (TPL-1827, docs/spec/permalink.md).
   it("level id follows the anchorId grammar (id sanitized, not the label)", () => {
     const krsFile = Parser.parse(`
 system ECommerce {
@@ -988,7 +988,7 @@ system EC {
 // Phase 0 + scope switching: every level of the single-SVG builders gets the
 // legend options, and the renderer's exact-match filter decides which legends
 // each level shows. Parity across the three logical render paths (top-level
-// compile / drill-down / all-layers) is pinned per TPL-20260510-11.
+// compile / drill-down / all-layers) is pinned per TPL-219.
 
 const LEGEND_SCOPED = `
 legend "U" { swatch #111111 "unscoped-entry" }
@@ -1094,7 +1094,7 @@ deploy Production {
   });
 });
 
-describe("logical render path parity for legends (TPL-20260510-11)", () => {
+describe("logical render path parity for legends (TPL-219)", () => {
   it("drill-down and all-layers carry the same legends as the top-level compile", () => {
     const krsFile = Parser.parse(LEGEND_SCOPED).value;
     const drillDown = buildDrillDownSvg(krsFile).svg;

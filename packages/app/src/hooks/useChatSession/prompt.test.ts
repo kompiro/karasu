@@ -97,8 +97,8 @@ describe("buildSystemPrompt", () => {
 // Issue #1580: the organization graph (teams / owns / members / links) must be
 // serialized into the model JSON so org/ownership queries resolve even when the
 // `organization` block is declared in an imported file — not the current file.
-// See TPL-20260514-02 (imported declarations must reach the merged graph) and
-// TPL-20260615-01 (the 1:1 ownerIndex picks the @migration_target winner).
+// See TPL-1383 (imported declarations must reach the merged graph) and
+// TPL-1583 (the 1:1 ownerIndex picks the @migration_target winner).
 describe("buildSystemPrompt — organization graph (multi-file ownership)", () => {
   // The org block here stands in for one declared in an *imported* file: the
   // merged compile carries it in `organizations` / `ownerIndex`, while the

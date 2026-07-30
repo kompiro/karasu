@@ -3,7 +3,7 @@
 - **日付**: 2026-05-19
 - **関連 Issue**: [#1423](https://github.com/kompiro/karasu/issues/1423)
 - **対象ファイル**: `packages/app/src/components/DiagramViewShortcuts.tsx`
-- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-20260519-01
+- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-1419
 
 ## 受け入れ条件
 
@@ -25,11 +25,11 @@
 
   > ✅ Automated — `packages/app/src/components/DiagramViewShortcuts.test.tsx` › `mod+4 switches the active view to "matrix"`
 
-- [x] テキスト入力／エディタにフォーカスがあるときショートカットは無視される（TPL-20260519-01）
+- [x] テキスト入力／エディタにフォーカスがあるときショートカットは無視される（TPL-1419）
 
   > ✅ Automated — `packages/app/src/components/DiagramViewShortcuts.test.tsx` › `ignores the shortcuts while a text input is focused`
 
-- [x] コンポーネントのアンマウントでコマンドが登録解除される（TPL-20260519-01）
+- [x] コンポーネントのアンマウントでコマンドが登録解除される（TPL-1419）
 
   > ✅ Automated — `packages/app/src/components/DiagramViewShortcuts.test.tsx` › `stops resolving the shortcuts after the component unmounts`
 

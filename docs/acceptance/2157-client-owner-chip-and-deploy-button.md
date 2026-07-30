@@ -3,7 +3,7 @@
 - **日付**: 2026-07-29
 - **関連 Issue**: [#2157](https://github.com/kompiro/karasu/issues/2157)
 - **関連 AT**: [AT-1720](1720-client-realize-owns.md)（解決側。本 AT はその system view 提示側）
-- **関連 TPL**: [TPL-20260729-02](../test-perspectives/TPL-20260729-02-resolved-relation-rendered-for-every-kind.md)
+- **関連 TPL**: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md)
 - **対象ファイル**: `packages/core/src/renderer/layout.ts`, `packages/core/src/renderer/svg-renderer.ts`, `packages/core/src/compile/compile.ts`, `packages/core/src/types/ast.ts`, `packages/app/src/components/NodeDetailPanel.tsx`, `packages/vscode/src/webview-content.ts`
 
 ## 受け入れ条件

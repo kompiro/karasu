@@ -16,6 +16,7 @@ import type {
   MemberNode,
   LinkEntry,
   BoundaryBlock,
+  FacetBlock,
   LegendBlock,
   LegendEntry,
   LegendRefTarget,
@@ -133,6 +134,7 @@ class Printer {
       ...file.deploys,
       ...file.organizations,
       ...file.boundaries,
+      ...file.facets,
       ...file.legends,
     ].sort((a, b) => a.loc.start.line - b.loc.start.line);
 
@@ -221,6 +223,11 @@ class Printer {
     if ("nodes" in block) return this.renderDeployBlock(block as DeployBlock);
     if ("teams" in block) return this.renderOrganizationBlock(block as OrganizationBlock);
     if ("contains" in block) return this.renderBoundaryBlock(block as BoundaryBlock);
+    // A `facet` block has no distinguishing member array to duck-type on (its
+    // whole point is having no membership list), so dispatch on the tag.
+    if ("kind" in block && (block as { kind: unknown }).kind === "facet") {
+      return this.renderFacetBlock(block as FacetBlock);
+    }
     if ("entries" in block) return this.renderLegendBlock(block as LegendBlock);
     // Everything else is a KrsNode: system / service / client / domain and the
     // infra kinds (database / queue / storage), which are legal at top level
@@ -281,7 +288,7 @@ class Printer {
       // Scoped `boundary` blocks (#2036). They join the same line-ordered list
       // as children and edges so authored order round-trips; omitting them here
       // would make `fmt` delete them silently, the failure ADR-2076 fixed for
-      // the top-level form (TPL-20260510-02).
+      // the top-level form (TPL-1101).
       ...(node.boundaries ?? []).map((b) => ({
         kind: "boundary" as const,
         block: b,
@@ -352,6 +359,12 @@ class Printer {
       node.properties.operations.length > 0
     ) {
       lines.push(`${indent}operations ${this.renderOperations(node.properties.operations)}`);
+    }
+    // Canonicalized to a single comma list, whatever the author wrote: repeated
+    // `facets` lines and duplicate ids were already collapsed at parse time, so
+    // emitting one line is what makes `format(format(x)) === format(x)` hold.
+    if (node.facets !== undefined && node.facets.length > 0) {
+      lines.push(`${indent}facets ${node.facets.map(quoteId).join(", ")}`);
     }
     for (const link of node.properties.links) {
       lines.push(this.renderLink(link, indent));
@@ -534,6 +547,24 @@ class Printer {
     }
     for (const id of block.contains) {
       lines.push(`  contains ${quoteId(id)}`);
+    }
+
+    lines.push("}");
+    return lines;
+  }
+
+  // ── FacetBlock ────────────────────────────────────────────────────────────
+
+  private renderFacetBlock(block: FacetBlock): string[] {
+    const trail = this.extractTrailing(block.loc.start.line);
+    const lines: string[] = [`facet ${quoteId(block.id)} {${trail}`];
+
+    if (block.label !== undefined) lines.push(`  label ${quoteString(block.label)}`);
+    if (block.properties.description !== undefined) {
+      lines.push(this.renderDescription(block.properties.description, "  "));
+    }
+    for (const link of block.properties.links) {
+      lines.push(this.renderLink(link, "  "));
     }
 
     lines.push("}");

@@ -30,30 +30,30 @@ import type { ResolvedNodeStyle } from "../types/style.js";
 
 // The model AT-0006 AC-1.2 tells the reader to paste into the editor. Kept
 // literally in sync with the ```krs block in docs/acceptance/0006-*.md.
-const MODEL = `system ECPlatform {
-  database OrderDB {
-    table OrderTable { label "注文テーブル" }
+const MODEL = `system Demo {
+  database MainDB {
+    table Orders { label "Orders" }
   }
-  queue EventBus {
-    queue OrderCreated { label "注文作成イベント" }
+  queue Bus {
+    queue Created { label "Created" }
   }
-  storage MediaStorage {
-    bucket ImageBucket { label "商品画像バケット" }
+  storage Media {
+    bucket Images { label "Images" }
   }
-  service OrderService {
-    domain Order {
+  service Api {
+    domain Core {
       entity PaymentGateway { label "決済ゲートウェイ" }
-      usecase PlaceOrder {
-        resource OrderDB.OrderTable
-        resource EventBus.OrderCreated
-        resource MediaStorage.ImageBucket
+      usecase Handle {
+        resource MainDB.Orders
+        resource Bus.Created
+        resource Media.Images
         resource PaymentGateway [api]
       }
     }
   }
 }`;
 
-const DOMAIN_VIEW = ["ECPlatform", "OrderService", "Order"];
+const DOMAIN_VIEW = ["Demo", "Api", "Core"];
 
 function parseModel(krs: string) {
   const result = Parser.parse(krs);
@@ -76,10 +76,10 @@ describe("AT-0006 AC-1.2: resource tag → shape, end to end", () => {
     const view = extractView(parseModel(MODEL).systems, DOMAIN_VIEW);
 
     expect(view.childNodes.map((n) => n.id)).toEqual([
-      "PlaceOrder",
-      "OrderDB.OrderTable",
-      "EventBus.OrderCreated",
-      "MediaStorage.ImageBucket",
+      "Handle",
+      "MainDB.Orders",
+      "Bus.Created",
+      "Media.Images",
       "PaymentGateway",
     ]);
   });
@@ -89,9 +89,9 @@ describe("AT-0006 AC-1.2: resource tag → shape, end to end", () => {
 
     it.each([
       // id, shape, how the tag got there
-      ["OrderDB.OrderTable", "cylinder", "inferred from the table sub-resource"],
-      ["EventBus.OrderCreated", "queue", "inferred from the queue-item sub-resource"],
-      ["MediaStorage.ImageBucket", "cloud", "inferred from the bucket sub-resource"],
+      ["MainDB.Orders", "cylinder", "inferred from the table sub-resource"],
+      ["Bus.Created", "queue", "inferred from the queue-item sub-resource"],
+      ["Media.Images", "cloud", "inferred from the bucket sub-resource"],
       ["PaymentGateway", "hexagon", "hand-written [api], no infra counterpart"],
     ])("%s → %s (%s)", (id, shape) => {
       expect(styles.nodes.get(id)?.shape).toBe(shape);

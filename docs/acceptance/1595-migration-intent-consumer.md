@@ -2,7 +2,7 @@
 
 [ADR-1568](../adr/1568-migration-intent-fields.md) で言語層に追加された移行 intent パラメータ（`@deprecated(until: …)` / `@experimental(until: …)` / `@migration_target(from: …)`）の **消費者側**（[#1595](https://github.com/kompiro/karasu/issues/1595)）の受け入れ基準。スコープは (1) `until` 値解釈ヘルパ（core）と (2) NodeDetailPanel での表示。explicit-threshold filter / export は本スコープ外。
 
-関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（受理した語彙は効果を持つ — 表示で `until` / `from` に効果を与える）。
+関連 TPL: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理した語彙は効果を持つ — 表示で `until` / `from` に効果を与える）。
 
 ## 受け入れ条件（自動）
 

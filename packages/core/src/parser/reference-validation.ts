@@ -15,7 +15,14 @@
 //     stance of ADR-1381.
 // ---------------------------------------------------------------------------
 
-import type { Diagnostic, KrsFile, KrsNode, OrganizationBlock, TeamNode } from "../types/ast.js";
+import type {
+  Diagnostic,
+  FacetBlock,
+  KrsFile,
+  KrsNode,
+  OrganizationBlock,
+  TeamNode,
+} from "../types/ast.js";
 
 export function validateOwnsReferences(
   organizations: OrganizationBlock[],
@@ -47,7 +54,7 @@ export function validateOwnsReferences(
 // kinds), so — unlike `owns` — there is no kind restriction and thus no
 // `invalid-contains`; only existence is checked. This is why we validate
 // against *all* declared node ids rather than nodePathIndex, which
-// intentionally excludes user / resource / usecase (TPL-20260623-02: the
+// intentionally excludes user / resource / usecase (TPL-1720: the
 // valid-target set must enumerate every kind the construct accepts). Only
 // system nodes themselves are excluded — a boundary groups nodes *within* a
 // system, not systems.
@@ -76,7 +83,7 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
  * frames the canvas it is written on, so its members are the declaring node's
  * direct children and nothing else. Reporting is what keeps the form honest —
  * without it a member naming a grandchild (or a typo) would simply not be
- * indexed and would vanish without a word (TPL-20260610-01).
+ * indexed and would vanish without a word (TPL-1503).
  */
 export function validateScopedContainsReferences(roots: readonly KrsNode[]): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
@@ -102,6 +109,66 @@ export function validateScopedContainsReferences(roots: readonly KrsNode[]): Dia
 
   for (const root of roots) walk(root);
   return diagnostics;
+}
+
+/**
+ * `facet` declarations must be uniquely named: a `facets <id>` reference names
+ * one declaration, and two declarations of the same id give it two different
+ * labels / descriptions to mean (#2065 Part B).
+ *
+ * Evaluated on the **merged** declaration list, like every other check whose
+ * verdict a second file can change (TPL-2032) — here the direction is the
+ * opposite of a reference check: per-file evaluation would never false-positive,
+ * it would miss the cross-file duplicate entirely. The ImportResolver therefore
+ * suppresses the per-file result and re-runs this against the merged file.
+ *
+ * The *first* declaration is the one that stays addressable, so the diagnostic
+ * points at each later re-declaration.
+ */
+export function validateFacetDeclarations(facets: readonly FacetBlock[]): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const seen = new Set<string>();
+  for (const facet of facets) {
+    if (seen.has(facet.id)) {
+      diagnostics.push({
+        severity: "error",
+        code: "duplicate-facet-id",
+        params: { facetId: facet.id },
+        loc: facet.loc,
+      });
+      continue;
+    }
+    seen.add(facet.id);
+  }
+  return diagnostics;
+}
+
+/**
+ * Build the node id → facet ids map from the element-side `facets` property.
+ *
+ * **Every declared membership is kept.** The map is 1:N because multi-membership
+ * is a normal state — an `entity` can be both PII and PCI scope — and because a
+ * downstream view that can only paint one value per node must resolve that
+ * itself rather than have the model layer decide for it (TPL-2161).
+ * Nodes without the property never enter the map.
+ */
+export function buildFacetIndex(roots: readonly KrsNode[]): Map<string, Set<string>> {
+  const index = new Map<string, Set<string>>();
+
+  const walk = (node: KrsNode): void => {
+    if (node.facets !== undefined && node.facets.length > 0) {
+      let memberships = index.get(node.id);
+      if (memberships === undefined) {
+        memberships = new Set<string>();
+        index.set(node.id, memberships);
+      }
+      for (const facetId of node.facets) memberships.add(facetId);
+    }
+    for (const child of node.children) walk(child);
+  };
+
+  for (const root of roots) walk(root);
+  return index;
 }
 
 // Every declared node id that a `boundary` may legitimately contain: all node

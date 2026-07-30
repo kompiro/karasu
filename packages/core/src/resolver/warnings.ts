@@ -47,6 +47,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectAnnotationPossibleTypos(file, stylesIndex));
   warnings.push(...detectTagsNotBuiltin(file));
   warnings.push(...detectAnnotationsNotBuiltin(file));
+  warnings.push(...detectFacetsNotDeclared(file));
   warnings.push(...detectUnresolvedLegendRefs(file, stylesIndex));
 
   return warnings;
@@ -276,7 +277,7 @@ export const SYSTEM_ASSIGNED_TAGS = ["implicit", "cyclic", "read", "write", "inf
  * Unlike `annotation-possible-typo` there is deliberately **no suppression
  * condition**: a style selector or legend ref proves the name is intentional,
  * but intent does not change the v2.0 outcome, so the deprecation is
- * announced unconditionally. Resolves the TPL-20260610-01 fourth state
+ * announced unconditionally. Resolves the TPL-1503 fourth state
  * (accepted, inert, undocumented) into state (2): warned as unknown.
  */
 function detectTagsNotBuiltin(file: KrsFile): Warning[] {
@@ -351,6 +352,63 @@ function detectAnnotationsNotBuiltin(file: KrsFile): Warning[] {
   for (const organization of file.organizations) {
     for (const team of organization.teams) visitTeam(team);
   }
+  return warnings;
+}
+
+/**
+ * A `facets <id>` reference must name a declared `facet` block (#2065 Part B).
+ *
+ * This is the resolver-side validator every cross-reference property is
+ * required to ship with (TPL-20260510-10): the parser accepts any identifier,
+ * so without this a one-character slip (`facets pcl`) would silently put the
+ * element in a facet nobody ever looks at.
+ *
+ * It lives here, not in the parser, because the declaration and the reference
+ * may sit in different files — `analyze()` runs on the import-merged model, so
+ * the merged-space requirement (TPL-20260718-02) holds by construction rather
+ * than by a suppress-and-re-derive pass.
+ *
+ * **Sheet-less / single-document context (TPL-20260612-01):** this warning is
+ * *not* suppressed in the LSP. It is import-coupled, so a project that declares
+ * its facets in one file and references them in another over-reports there —
+ * the same trade `invalid-owns` and `unresolved-handles` already make. The
+ * alternative costs more: typo detection against the declared set is this
+ * diagnostic's whole point, and suppressing it would switch that off in the
+ * editor, which is exactly where a typo gets made.
+ *
+ * Walks the **declaration sites** rather than reading `facetIndex`. The index is
+ * keyed by bare node id and unions across scopes, so resolving a location from
+ * it can only ever be a guess when two nodes in different scopes share an id
+ * (ADR-927) — it pointed at whichever was visited first, which is not
+ * necessarily the node that wrote the reference. A diagnostic's whole value is
+ * landing on the line the author must edit, so it is derived from the site that
+ * carries the property (TPL-1352 — the identifying dimension the flat index
+ * drops is exactly the one this needs). `analyze()` receives the import-merged
+ * tree, so walking it is still a merged-space check.
+ */
+function detectFacetsNotDeclared(file: KrsFile): Warning[] {
+  const declared = new Set(file.facets.map((f) => f.id));
+  const warnings: Warning[] = [];
+
+  const visit = (node: KrsNode): void => {
+    for (const facetId of node.facets ?? []) {
+      if (declared.has(facetId)) continue;
+      warnings.push({
+        kind: "facet-not-declared",
+        params: { nodeId: node.id, facetId },
+        loc: node.loc,
+      });
+    }
+    for (const child of node.children) visit(child);
+  };
+  for (const system of file.systems) visit(system);
+  for (const client of file.clients) visit(client);
+  for (const service of file.services) visit(service);
+  for (const domain of file.domains) visit(domain);
+  for (const database of file.databases) visit(database);
+  for (const queue of file.queues) visit(queue);
+  for (const storage of file.storages) visit(storage);
+
   return warnings;
 }
 
@@ -461,7 +519,7 @@ type InfraInScope = Map<string, { kind: "database" | "queue" | "storage"; loc: K
  * scope, excluding `[external]` and `[index]` stores. Shared by the shared-store
  * diagnostics (`detectSharedInfraFanIn`, `detectCrossDomainStoreAccess`) so the
  * exclusion rule and the kind narrowing live in exactly one place
- * (TPL-20260623-02 — keep the resource→store target set synchronized across
+ * (TPL-1720 — keep the resource→store target set synchronized across
  * every consumer).
  *
  * `[external]`: the smell is about owning a shared store, not depending on a
@@ -512,7 +570,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
 
     // Resolver over this scope's entities: a bare `resource Order` that resolves
     // to `entity Order { table OrderDB.orders }` counts toward the fan-in on
-    // OrderDB just as a physical `resource OrderDB.orders` would (TPL-20260623-02
+    // OrderDB just as a physical `resource OrderDB.orders` would (TPL-1720
     // — keep the resource→store target set synchronized across every consumer).
     const resolver = buildEntityResolver(nodes);
 
@@ -601,7 +659,7 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  * two fire independently on the same store — no double counting, no mutual
  * suppression. The resource→store resolution reuses `buildEntityResolver`, kept
  * in sync with `deriveInfraEdges` / `detectSharedInfraFanIn` /
- * `detectUnassignedResources` (TPL-20260623-02).
+ * `detectUnassignedResources` (TPL-1720).
  * See ADR-1819 (docs/adr/1819-domain-store-ownership-diagnostic.md).
  */
 function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
@@ -656,7 +714,7 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
           const leafKey = `${parent}.${child}`;
           const ownerSet = owners.get(leafKey);
           if (ownerSet && ownerSet.size > 0 && !ownerSet.has(nextDomain)) {
-            const aggKey = `${nextDomain} ${leafKey}`;
+            const aggKey = `${nextDomain}\0${leafKey}`;
             const ops = (node as ResourceNode).properties.operations;
             let entry = agg.get(aggKey);
             if (!entry) {
@@ -1311,7 +1369,7 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
 /**
  * §S6: an authored edge whose endpoint id exists nowhere in the merged model
  * is dropped during view extraction (the resolved endpoint node is kept —
- * TPL-20260514-05). This surfaces that otherwise-silent drop as a warning.
+ * TPL-2170). This surfaces that otherwise-silent drop as a warning.
  *
  * Only authored edges are inspected: synthetic edges (implicit service edges,
  * usecase→resource edges) are produced during view extraction and never appear

@@ -21,40 +21,55 @@ npm run format:check  # フォーマット OK
 
 ### AC-1.1: ユーザースタイルなしでもデフォルト描画される
 
-- [ ] Memory モードでアプリを開き、サンプル KRS が正しく描画されることを確認
-- [ ] user ノードが人型シェイプ（`shape: user`）で表示される
-- [ ] service ノードが青系ボックスで表示される
-- [ ] `[external]` タグ付きノードが破線枠・グレー系で表示される
-- [ ] async エッジ（`-->`）が破線矢印で表示される
+> ✅ Automated by `packages/e2e/tests/at-0006-builtin-style.spec.ts` (suite-wide)
 
-> manual / visual review — シェイプ・色・破線などの描画結果はブラウザ目視で判定する受入観点。
+- [x] Memory モードでアプリを開き、サンプル KRS が正しく描画されることを確認
+- [x] user ノードが人型シェイプ（`shape: user`）で表示される
+- [x] service ノードが青系ボックスで表示される
+- [x] `[external]` タグ付きノードが破線枠・グレー系で表示される
+- [x] async エッジ（`-->`）が破線矢印で表示される
 
-### AC-1.2: リソースタグによるシェイプ自動適用
+> Tests: `kind shapes come from the built-in sheet with no user stylesheet` /
+> `the kind palette makes services blue and keeps [external] grey and dashed` /
+> `async edges are dashed and sync edges are solid`。
+>
+> 判定の作り: シェイプは `shapes.ts` が出す**ジオメトリの分類**で見る（cylinder と
+> queue はどちらも `path` + `ellipse` で cap を伸ばす軸だけが違うため、「ellipse が
+> ある」では queue が cylinder で描かれても通ってしまう）。色は hex 固定ではなく
+> **関係と色相クラス**で見る（service は青優勢、`[external]` は service より彩度が
+> 低く別色、かつ破線）。`default-style.ts` の色調整では落ちず、external が service
+> パレットに埋没したり破線が消えたときに落ちる。async / sync は必ず**対で**比較する
+> — 全部を破線にする回帰が「async は破線」だけの assert を満たしてしまうため。
 
-`resource` のシェイプが画面に出るには **解決済み（resolved）** である必要がある。
-ドット記法でインフラの sub-resource を指すか、同名の `entity` に解決する bare id
-であること。どちらでもない bare な `resource` はスタイル上シェイプが決まっていても
-usecase 図に昇格せず描画されない（[AT-0049](0049-resource-nodes-usecase-diagram.md)）。
-以下のモデルを KRS エディタに貼り、`OrderService → Order` までドリルダウンする。
+### AC-1.2: リソースのシェイプ自動適用
+
+> チェックリストの旧記述 `resource DB "DB" [table]` は現行文法ではパースエラー
+> （インライン label 文字列は無く、`resource` は usecase の中に置く）。実装されて
+> いる機構は 2 つある — **infra kind からのシェイプ推論**（`table` → cylinder、
+> `queue` → queue、`bucket` → cloud）と、**手書きタグ**（推論より優先される。
+> `[api]` → hexagon は対応する infra kind が無いのでこちらだけ）。どちらの経路でも
+> 描画されるのは **解決済み（resolved）** の resource だけ — ドット記法で infra の
+> sub-resource を指すか、同名の `entity` に解決する bare id であること。以下は現行
+> 文法に合わせて書き直したもので、`Api → Core` までドリルダウンして確認する。
 
 ```krs
-system ECPlatform {
-  database OrderDB {
-    table OrderTable { label "注文テーブル" }
+system Demo {
+  database MainDB {
+    table Orders { label "Orders" }
   }
-  queue EventBus {
-    queue OrderCreated { label "注文作成イベント" }
+  queue Bus {
+    queue Created { label "Created" }
   }
-  storage MediaStorage {
-    bucket ImageBucket { label "商品画像バケット" }
+  storage Media {
+    bucket Images { label "Images" }
   }
-  service OrderService {
-    domain Order {
+  service Api {
+    domain Core {
       entity PaymentGateway { label "決済ゲートウェイ" }
-      usecase PlaceOrder {
-        resource OrderDB.OrderTable
-        resource EventBus.OrderCreated
-        resource MediaStorage.ImageBucket
+      usecase Handle {
+        resource MainDB.Orders
+        resource Bus.Created
+        resource Media.Images
         resource PaymentGateway [api]
       }
     }
@@ -62,35 +77,53 @@ system ECPlatform {
 }
 ```
 
-- [x] `resource OrderDB.OrderTable` → `[table]` 推論 → cylinder シェイプ
-> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `OrderDB.OrderTable → cylinder (inferred from the table sub-resource)`（描画プリミティブは同ファイルの `cylinder is a body path capped by a full-width ellipse on top`）
+- [x] usecase の `resource MainDB.Orders`（`table` 参照）が cylinder で表示される
 
-- [x] `resource EventBus.OrderCreated` → `[queue]` 推論 → queue シェイプ
-> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `EventBus.OrderCreated → queue (inferred from the queue-item sub-resource)`（描画プリミティブは `queue is a body path capped by a narrow ellipse on its right edge`）
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `resource shapes are inferred from the infra kind (AC-1.2, AT-0049)`（app 実描画）／`packages/core/src/integration/resource-shape-tags.test.ts` › `MainDB.Orders → cylinder (inferred from the table sub-resource)`（スタイル解決）
 
-- [x] `resource MediaStorage.ImageBucket` → `[storage]` 推論 → cloud シェイプ
-> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `MediaStorage.ImageBucket → cloud (inferred from the bucket sub-resource)`（描画プリミティブは `storage renders as a single cloud path`）
+- [x] `resource Bus.Created`（`queue` 参照）が queue シェイプで表示される
 
-- [x] `resource PaymentGateway [api]`（手書きタグ・インフラ対応物なし） → hexagon シェイプ
-> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `PaymentGateway → hexagon (hand-written [api], no infra counterpart)`（描画プリミティブは `api renders as a polygon (hexagon), not a rect`）
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `resource shapes are inferred from the infra kind (AC-1.2, AT-0049)` — cylinder と queue は cap の向き（`rx` vs `ry`）で判別するので、取り違えも検出する。／`packages/core/src/integration/resource-shape-tags.test.ts` › `Bus.Created → queue (inferred from the queue-item sub-resource)`
 
-- [x] 4 ノードすべてが `PlaceOrder` の兄弟ノードとして usecase 図に昇格する
+- [x] `resource Media.Images`（`bucket` 参照）が cloud シェイプで表示される
+
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `resource shapes are inferred from the infra kind (AC-1.2, AT-0049)`／`packages/core/src/integration/resource-shape-tags.test.ts` › `Media.Images → cloud (inferred from the bucket sub-resource)`
+
+- [x] `resource PaymentGateway [api]`（手書きタグ）が hexagon で表示される
+
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `PaymentGateway → hexagon (hand-written [api], no infra counterpart)`
+>
+> この行は一時「実行不能」と記録されていたが、それは **未割当** resource しか経路が
+> 無いという前提が誤っていたため。手書きタグは推論より優先される（[ADR-351](../adr/351-resource-shape-and-infra-icon-mode.md)）ので、
+> **解決済み** の resource — ここでは `entity PaymentGateway` に解決する bare id、
+> ドット記法の `resource MainDB.Orders [api]` でも同じ — に `[api]` を書けば hexagon
+> で描かれる。[#2200](https://github.com/kompiro/karasu/issues/2200)（未割当 resource が
+> spec の言うとおりに描かれない）は spec/impl 不一致として依然有効だが、この行の
+> 前提条件ではない。
+
+- [x] 4 ノードすべてが `Handle` の兄弟ノードとして usecase 図に昇格する
+
 > ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `promotes every resolved resource to a sibling node of its usecase in the domain view`
 
 - [x] 未解決の bare `resource ScratchTable [table]` はシェイプが決まっても描画されない
-> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `an unresolved bare resource keeps its shape but never reaches the canvas`
+
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `an unresolved bare resource keeps its shape but never reaches the canvas`（スタイル層は cylinder を返すのに view 層が落とす、という silent drop の形。[TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) / [#2200](https://github.com/kompiro/karasu/issues/2200) の対象）
 
 - [ ] ブラウザ上で 4 ノードが円柱・パイプ・雲・六角形として描き分けられている
 
-> manual / visual review — シェイプ名とプリミティブの対応は core テストで固定済み。ブラウザでの実描画（重なり・ラベル位置・見分けやすさ）だけが目視観点として残る。
+> manual / visual review — シェイプ名とプリミティブの対応は e2e / core テストで固定済み。残るのは実描画の見分けやすさ（重なり・ラベル位置）だけ。
 
 ### AC-1.3: ユーザースタイルによるオーバーライド
 
-- [ ] Project モードで `.krs.style` ファイルを作成し、`resource { shape: hexagon; }` と記述
-- [x] resource ノードが hexagon シェイプで表示される（ビルトインの box を上書き）
-> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user stylesheet overrides builtin`（resource の shape がビルトイン box → hexagon に上書きされることを検証）
+- [x] Project モードで `.krs.style` を作成し、ビルトインを上書きできる
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `a user stylesheet overrides an inferred resource shape at equal specificity (AC-1.3)`（`.krs.style` を含む project を実際に開き、推論された cylinder が hexagon に変わること、および同じ user シートの別ルールが適用されることを確認）
 
-> manual / visual review — Project モードでの `.krs.style` 作成とブラウザ実描画での切り替わり確認は目視で行う。
+- [x] resource ノードが hexagon シェイプで表示される（ビルトインの box を上書き）
+> ✅ Automated — `packages/core/src/resolver/style-resolver.test.ts` › `user stylesheet overrides builtin`（無印 resource の shape がビルトイン box → hexagon に上書きされることを検証）
+
+- [x] 詳細度がビルトインより低いユーザールールは**上書きしない**
+> ✅ Automated — `packages/e2e/tests/at-0006-builtin-style.spec.ts` › `a lower-specificity user rule does not override a tag-scoped built-in rule` — cascade は `docs/spec/style.md` どおり詳細度優先・同点なら後勝ちで、**user origin による優遇は無い**。よって無印 `resource`（score 1）はビルトインの `resource[table]`（score 11）に勝てない。上の AC の例（`resource { shape: hexagon; }`）が上書きできるのは**タグの付かない** resource だけ。
+
 
 ### AC-1.4: 存在しないスタイルファイルのインポート
 

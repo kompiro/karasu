@@ -107,7 +107,7 @@ system EC {
 
     // Regression coverage for #412 — `examples/ja/ec-platform/05-multifile/` was
     // the originating reproduction (top-level `service` in one file, named-
-    // imported and stub-referenced from a `system` in another). TPL-20260510-01
+    // imported and stub-referenced from a `system` in another). TPL-1160
     // checklist item 5 ("top-level 宣言を named import で `system` 内に取り込む
     // `.krs`") is locked in by this test plus the two that follow (tag
     // preservation and multi-system fan-out). The end-to-end variant that runs
@@ -991,11 +991,11 @@ system ECPlatform {
   // End-to-end regression test for #412 (named import + top-level service +
   // stub reference inside a `system` block). Runs the actual example files
   // through ImportResolver — complementary to the synthetic-fixture unit
-  // tests in `describe("node imports")` above. Closes TPL-20260510-01
+  // tests in `describe("node imports")` above. Closes TPL-1160
   // checklist item 5's coverage at the integration level so a refactor of
   // `mergeNamedImport` / `resolveBareIdImport` that breaks the user-visible
   // example fails CI before #412 reappears.
-  describe("ec-platform/05-multifile end-to-end (#412 / TPL-20260510-01)", () => {
+  describe("ec-platform/05-multifile end-to-end (#412 / TPL-1160)", () => {
     it("merges both ECommerce and Payment into ECPlatform with full content preserved", async () => {
       const exampleDir = resolve(__dirname, "../../../../examples/ja/ec-platform/05-multifile");
       const provider = new InMemoryFileSystemProvider();
@@ -1045,7 +1045,7 @@ system ECPlatform {
   });
 
   // ─── Spec §"Multi-file import semantics" (S1–S7) — Issue #1381 ─────────────
-  // Locked in by TPL-20260514-01 through TPL-20260514-05.
+  // Locked in by TPL-1381 through TPL-2170.
   describe("multi-file import semantics (#1381)", () => {
     it("S5: DAG re-arrival of the same file is not a cycle — no circular-import warning", async () => {
       // index.krs → admin.krs → auth.krs   (named import)
@@ -1392,7 +1392,7 @@ system ECPlatform {
   // merge. The per-file parse verdict is dropped and re-derived on the merged
   // model, so a target declared in another file must NOT warn, while a target
   // that exists nowhere still must. Absence assertions pin the exact code +
-  // severity so a broadened suppression can't hide a real miss (TPL-20260615-02).
+  // severity so a broadened suppression can't hide a real miss (TPL-1608).
   describe("cross-file reference-existence diagnostics (#2032)", () => {
     const containsWarnings = (ds: { code: string; severity: string }[]) =>
       ds.filter((d) => d.code === "contains-target-not-found" && d.severity === "warning");
@@ -1545,6 +1545,171 @@ system Shop {
       const warnings = ownsWarnings(result.diagnostics);
       expect(warnings).toHaveLength(1);
       expect(warnings[0]).toMatchObject({ params: { ownedId: "Ghost" } });
+    });
+  });
+  // ─── #2173: facet declarations and membership across files ────────────────
+  //
+  // Both sides of the construct merge: the declarations share one flat
+  // namespace, and `facetIndex` is rebuilt from the merged tree so it never
+  // depends on a per-path merge remembering to carry it. The 1:N shape must
+  // survive that merge — the `boundaryIndex` first-wins next door is exactly
+  // the shape not to copy (TPL-2161).
+  describe("facet across files (#2173)", () => {
+    const notDeclared = (ds: { code: string; severity: string }[]) =>
+      ds.filter((d) => d.code === "facet-not-declared");
+    const duplicateFacet = (ds: { code: string; severity: string }[]) =>
+      ds.filter((d) => d.code === "duplicate-facet-id" && d.severity === "error");
+
+    it("merges declarations from an imported file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./facets.krs"
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile("/p/facets.krs", `facet pii {\n  label "Personal data"\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.facets.map((f) => f.id)).toEqual(["pii"]);
+      expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
+    });
+
+    it("keeps membership from every file when a system is reopened across files", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./more.krs"
+facet pii {}
+facet pci {}
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/more.krs",
+        `system Shop {
+  database OrderDB {
+    facets pii, pci
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
+      expect(result.krsFile.facetIndex.get("OrderDB")).toEqual(new Set(["pii", "pci"]));
+    });
+
+    // The upper bound of the guarantee above, stated so the previous test's
+    // scope is not read as wider than it is: re-declaring the *same* node id
+    // inside a reopened system is already an error, and the duplicate is
+    // rejected with its facets, so there is no union to perform there.
+    it("does not union across a re-declared node id — that is duplicate-node-in-system", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./other.krs"
+facet pii {}
+facet pci {}
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/other.krs",
+        `system Shop {
+  service Orders {
+    facets pci
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.diagnostics.map((d) => d.code)).toContain("duplicate-node-in-system");
+      expect(result.krsFile.facetIndex.get("Orders")).toEqual(new Set(["pii"]));
+    });
+
+    it("reports a duplicate declaration split across two files", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./other.krs"
+facet pii {
+  label "Here"
+}
+system Shop {}
+`,
+      );
+      await fs.writeFile("/p/other.krs", `facet pii {\n  label "There"\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      const dupes = duplicateFacet(result.diagnostics);
+      expect(dupes).toHaveLength(1);
+      expect(dupes[0]).toMatchObject({ params: { facetId: "pii" } });
+    });
+
+    it("reports a duplicate inside one file exactly once, not twice", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `facet pii {
+  label "First"
+}
+facet pii {
+  label "Second"
+}
+system Shop {}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      // Suppressed per file and re-derived on the merged model — a naive
+      // implementation would emit it in both passes.
+      expect(duplicateFacet(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("does not report distinct declarations from different files", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./other.krs"
+facet pii {}
+system Shop {}
+`,
+      );
+      await fs.writeFile("/p/other.krs", `facet pci {}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(duplicateFacet(result.diagnostics)).toHaveLength(0);
+      expect(result.krsFile.facets.map((f) => f.id).sort()).toEqual(["pci", "pii"]);
+    });
+
+    // The reference check runs in `analyze()`, over the resolved model — this
+    // pins that the merged model it receives can actually resolve the pair.
+    it("leaves no undeclared reference when the declaration is imported", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./facets.krs"
+system Shop {
+  service Orders {
+    facets pii
+  }
+}
+`,
+      );
+      await fs.writeFile("/p/facets.krs", `facet pii {}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      const declared = new Set(result.krsFile.facets.map((f) => f.id));
+      const referenced = [...result.krsFile.facetIndex.values()].flatMap((s) => [...s]);
+      expect(referenced.filter((id) => !declared.has(id))).toEqual([]);
+      expect(notDeclared(result.diagnostics)).toHaveLength(0);
     });
   });
 });

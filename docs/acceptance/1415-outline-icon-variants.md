@@ -3,7 +3,7 @@
 - **日付**: 2026-05-19
 - **関連 Issue**: [#1415](https://github.com/kompiro/karasu/issues/1415)
 - **対象ファイル**: `packages/core/src/builtins/icon-theme.ts`、`packages/app/src/components/OutlineView.tsx`、`packages/app/src/components/outline-adapters.ts`
-- **関連 TPL**: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)、[TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)
+- **関連 TPL**: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)、[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)
 
 ## 受け入れ条件
 

@@ -61,7 +61,7 @@ describe("buildSharePage", () => {
     expect(res.body).toContain("An architecture diagram shared with karasu-nest.");
   });
 
-  // TPL-20260510-17: decoded title/description cross the trust boundary into
+  // TPL-168: decoded title/description cross the trust boundary into
   // HTML and are NOT covered by the base64url charset check, so they must be
   // HTML-escaped. A label crafted to break out of the attribute must not.
   it("HTML-escapes the dynamic title (no attribute/tag injection)", () => {

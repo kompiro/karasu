@@ -40,7 +40,7 @@ karasu explicitly separates **logical structure** and **physical structure**.
 | `entity` | A conceptual data entity owned by a domain — a name and its relations, no attributes. Maps to an infra sub-resource with `table` | — |
 <!-- /gen:reference:node-kinds-logical -->
 
-> Related TPLs: [TPL-20260729-01](../test-perspectives/TPL-20260729-01-catalog-fenced-against-parser-not-generated-doc.md) — this table is generated from `REFERENCE_DATA`, so it cannot be used as the independent source a sync test compares that catalog against; the kind and property columns are fenced against the parser instead.
+> Related TPLs: [TPL-2158](../test-perspectives/TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) — this table is generated from `REFERENCE_DATA`, so it cannot be used as the independent source a sync test compares that catalog against; the kind and property columns are fenced against the parser instead.
 
 The recognized `client` form-factor tags are listed below.
 
@@ -148,7 +148,7 @@ system ECPlatform {
 }
 ```
 
-> Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync.
+> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync.
 
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
@@ -220,7 +220,7 @@ formatting does not delete it from your source), but preview panels — which
 render link URLs as clickable `<a href>` — only show `http:` / `https:` /
 `mailto:` links, since a `javascript:` href would execute in the app origin.
 
-> Related TPLs: TPL-20260510-17 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
+> Related TPLs: TPL-168 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
 
 ### String values and escapes
 
@@ -254,7 +254,7 @@ a value.
 `karasu fmt` and `karasu translate` both escape on emit, so any value the lexer
 accepts survives a round trip unchanged.
 
-> Related TPLs: [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
+> Related TPLs: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `コードを変換する機能では parse(format(x)) ≡ parse(x) の round-trip を保証する`
 
 ### user node example
 
@@ -404,7 +404,7 @@ is two `user` nodes, linked only by a shared id (by convention). A cross-system
 shared actor / persona is intentionally left as a possible post-v1.0 extension,
 out of scope here (see [#1639](https://github.com/kompiro/karasu/issues/1639)).
 
-> Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — a spec-promised placement rule must have a dedicated diagnostic code, not fall through to a generic parse error.
+> Related TPLs: [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) — a spec-promised placement rule must have a dedicated diagnostic code, not fall through to a generic parse error.
 
 #### Nesting placement
 
@@ -440,7 +440,7 @@ assigned to a service. They are not yet treated identically downstream: the
 top-level form, since a system-nested domain already has a container to render
 in (see [#2184](https://github.com/kompiro/karasu/issues/2184)).
 
-> Related TPLs: [TPL-20260730-02](../test-perspectives/TPL-20260730-02-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it.
+> Related TPLs: [TPL-2165](../test-perspectives/TPL-2165-containment-rule-has-single-definition.md) — the containment rule has exactly one definition (`canContain`), and the parser is what enforces it. [TPL-2184](../test-perspectives/TPL-2184-equivalent-placements-share-one-diagnostic.md) — placements that express the same modelling state carry the same diagnostic, whichever spelling the author picked.
 
 ### service block
 
@@ -685,7 +685,7 @@ domain. A **bare** id that does not match a local entity is **not** resolved
 cross-domain — it is dropped from the entity view (write it qualified to surface
 the relation).
 
-> Related TPLs: [TPL-20260714-01](../test-perspectives/TPL-20260714-01-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target; a bare id is intra-domain only and is dropped (not ghosted) across a domain boundary.
+> Related TPLs: [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target; a bare id is intra-domain only and is dropped (not ghosted) across a domain boundary.
 
 **Placement.** `entity` is valid **only** as a `domain` child. Declaring one
 elsewhere raises `entity-not-in-domain` and the stray entity is dropped.
@@ -721,10 +721,10 @@ valid as a bottom-up intermediate state.
   not resolve (it keeps the `unassigned-resource` warning); the root-cause
   collision is reported by `entity-anchor-collision`.
 
-> Related TPLs: [TPL-20260711-01](../test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, keeping the model on the structural side of the DB-schema non-goal.
-> [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — the resource→store target set is consumed by several resolvers (`deriveInfraEdges`, `detectSharedInfraFanIn`, `detectUnassignedResources`); adding `entity` as a resolution target must be synchronized across all of them.
-> [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — an unresolved bare `resource` / a cross-domain entity relation must not drop the node that did resolve.
-> [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — read/write tag synthesis on the entity-mediated usecase→resource edge preserves the source resource's operation semantics.
+> Related TPLs: [TPL-1882](../test-perspectives/TPL-1882-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, keeping the model on the structural side of the DB-schema non-goal.
+> [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — the resource→store target set is consumed by several resolvers (`deriveInfraEdges`, `detectSharedInfraFanIn`, `detectUnassignedResources`); adding `entity` as a resolution target must be synchronized across all of them.
+> [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — an unresolved bare `resource` / a cross-domain entity relation must not drop the node that did resolve.
+> [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — read/write tag synthesis on the entity-mediated usecase→resource edge preserves the source resource's operation semantics.
 
 #### Domain ownership of an infra leaf — cross-domain store access
 
@@ -748,7 +748,7 @@ no `entity` mapping a leaf leaves the leaf unowned, so no diagnostic fires
 (adding an entity later promotes it with zero edits to the usecase). See the
 [diagnostics reference](diagnostics.md).
 
-> Related TPLs: [TPL-20260715-02](../test-perspectives/TPL-20260715-02-domain-ownership-derived-from-entity-not-declared.md) — infra-leaf domain ownership is derived from the `entity` layer (never declared on the physical `table`), keyed at leaf granularity, held as a set of owning domains, and scoped per system. [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the same fact must not gain a second representation the two would have to keep in sync.
+> Related TPLs: [TPL-1967](../test-perspectives/TPL-1967-domain-ownership-derived-from-entity-not-declared.md) — infra-leaf domain ownership is derived from the `entity` layer (never declared on the physical `table`), keyed at leaf granularity, held as a set of owning domains, and scoped per system. [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the same fact must not gain a second representation the two would have to keep in sync.
 
 ### Edge declaration
 
@@ -843,6 +843,10 @@ Implicit edges are automatically tagged with `[implicit]`. By default they are r
 If an explicit service-level edge already exists in the same direction, the implicit edge is not derived.
 
 See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of available tags and styles.
+
+> Related TPLs:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (the **Endpoint scope** prose lands with the #2075 implementation)
+> - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target
 
 ---
 
@@ -994,7 +998,7 @@ organization TechCorp {
 - During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
 - Ownership is **rendered on the owned node's card** in the system view as a `👥` chip, on every kind a team can `owns` (`service` / `domain` / `client`). The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
 
-> Related TPLs: [TPL-20260729-02](../test-perspectives/TPL-20260729-02-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
+> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
 
 ### member node
 
@@ -1014,7 +1018,7 @@ All properties are optional. `member` cannot be nested.
 `organization`, `team`, and `member` take their label as the `label` property (`team backend { label "Backend Team" }`), like every node kind ([ADR-19](../adr/19-required-id-label-as-property.md)).
 The legacy positional argument (`team backend "Backend Team"`) is **deprecated** (#2133): it still parses, emits the `positional-label-deprecated` warning, and `karasu fmt` rewrites it to the property form. When both are specified, the property form takes precedence.
 
-> Related TPLs: [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — every form the parser accepts must be documented here; undocumented leniency is drift (this section's positional form went unspecified-but-accepted for four months, #2133).
+> Related TPLs: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every form the parser accepts must be documented here; undocumented leniency is drift (this section's positional form went unspecified-but-accepted for four months, #2133).
 
 ---
 
@@ -1071,7 +1075,7 @@ boundary payments {
   analogous to the org `ownerIndex`; scoped declarations build the per-scope
   **`scopedBoundaryIndex`** (`declaring scope → (child id → boundary id)`),
   keyed by the scope path so a same-named child in another scope can never be
-  confused with this one (TPL-20260512-01). Both are **1:1**: if a node is
+  confused with this one (TPL-1352). Both are **1:1**: if a node is
   listed in more than one boundary of the same index, the **first-declared**
   boundary wins and the duplicate is surfaced as the info diagnostic
   `duplicate-boundary-assignment` (a fact, not an error — the same "smell is
@@ -1154,7 +1158,116 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 Under either *Group by* axis the group frame is titled with the group's declared
 `label`, falling back to the group id when no label is given (#2133).
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-20260727-01](../test-perspectives/TPL-20260727-01-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this).
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this).
+
+---
+
+## Cross-cutting membership (`facet`) — experimental
+
+> **Experimental notation (post-v1.0 watch).** `facet` lands as experimental,
+> not frozen — backward compatibility is **not yet promised**, and promotion to
+> a v1.0-stable construct is gated on real-usage evidence (the notation
+> promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
+>
+> **This slice has no visual effect yet.** Facet membership is parsed, indexed,
+> merged across files, and validated, but nothing on the diagram changes: the
+> overlay that highlights a facet's members, the `.krs.style` facet selectors,
+> and the derived "everything in facet X" overview arrive in the follow-up
+> slices of [#2160](https://github.com/kompiro/karasu/issues/2160). What a
+> declaration buys you today is the reference check below.
+
+A `facet` declares a set that is defined **outside** the architecture — by a
+regulation, a policy, or an audit scope — and that elements belong to. A
+`database` is a database whether or not it is in PCI scope; being in PCI scope
+is imposed on it from outside. That is the register split: a **tag** says what
+an element *is* (its archetype), a `facet` says what externally-defined set it
+*belongs to*. See [tags-annotations.md](tags-annotations.md#vocabulary-registers--boundary--annotation--tag--facet)
+for the four-way split between `boundary` / `annotation` / `tag` / `facet`.
+
+```krs
+facet pii {
+  label "Personal data"
+  description "Handling follows ADR-1421"
+  link "https://example.com/adr/1421" "ADR-1421"
+}
+
+facet requires_auth {
+  label "Authenticated"
+  description "Reachable only after login; who may call it is set by the IAM policy"
+  link "https://example.com/policies/iam" "IAM policy"
+}
+
+system Shop {
+  service Checkout {
+    domain Ordering {
+      usecase PlaceOrder {
+        facets requires_auth
+      }
+      entity Order {
+        table OrderDB.orders
+        facets pii
+      }
+    }
+  }
+
+  database OrderDB {
+    facets pii
+  }
+}
+```
+
+- **The declaration is top level** and carries only metadata: `label`,
+  `description`, `link`. Writing a `facet` block inside a node block is an error
+  — a facet id is a model-wide name, not a per-node one.
+- **The declaration has no membership list.** There is no `contains`; membership
+  is written on the elements. This keeps the membership next to the thing that
+  has it, so renaming or moving an element does not mean editing a distant list.
+- **The grammar is closed and value-free — permanently.** No predicates, no
+  attribute declarations, no `policy` block. A facet says *which* behaviours a
+  policy covers; *what the policy says* stays prose in `description` plus a
+  `link` to the real policy document. This is the structural half of
+  [ADR-832](../adr/832-no-runtime-authz-modeling.md)'s decision not to model
+  runtime authorization: with no value language there is no gradient from
+  "declare a scope" to "declare a rule".
+- **`facets <id>[, <id>]*` is accepted on every node kind** — `system`,
+  `service`, `domain`, `usecase`, `entity`, `resource`, `user`, `client`, the
+  infra blocks (`database` / `queue` / `storage`) and their leaves (`table`,
+  queue item, `bucket`). Membership is imposed from outside the architecture, so
+  no kind is structurally excluded. Edges do not take `facets` in v1.
+- **Repeated properties and repeated ids merge.** `facets a, b` and two separate
+  `facets` lines are the same thing, and naming the same id twice is idempotent,
+  not an error. `karasu fmt` canonicalizes them to one comma-separated line.
+- **An element may belong to any number of facets (1:N).** Multi-membership is a
+  normal state — an `entity` can be both PII and in PCI scope — and never a
+  diagnostic. Every declared membership is kept in the model; a view that can
+  only show one at a time resolves that itself.
+- **References name facet ids, never node ids.** `facets pii` resolves against
+  the flat namespace of `facet` declarations, so the cross-layer addressing
+  question that `boundary … contains` and `owns` have to answer simply does not
+  arise here.
+- **Declaration and reference may live in different files.** Both sides merge
+  across imports and are validated on the merged model, so keeping the facet
+  vocabulary in one file and importing it wholesale is a supported layout.
+- **Typo detection is complete, not best-effort.** Because the declarations
+  define the correct set, a slip between two author-defined names
+  (`facets pcl` for `pii`) is caught just as reliably as a misspelt builtin —
+  unlike the near-miss `annotation-possible-typo` hint, which can only compare
+  against a fixed vocabulary.
+- **Default rendering is unchanged.** Adding `facets` to an element never alters
+  how the diagram is drawn; every effect of a facet is opt-in.
+
+| Keyword | Meaning | May contain |
+|---------|---------|-------------|
+| `facet` | A top-level declaration of an externally-defined set, with its metadata. Top level only | `label`, `description`, `link` |
+| `facets` | The facet ids an element belongs to (comma-separated; repeatable; accepted on every node kind) | — |
+
+Diagnostics (see [diagnostics.md](diagnostics.md)):
+
+- `facet-not-declared` (warning) — a `facets` reference names no declared `facet`. Checked on the merged model, so a declaration in an imported file counts.
+- `duplicate-facet-id` (error) — two `facet` blocks declare the same id, in one file or across merged files. The first declaration is the one references resolve to.
+- `positional-label-removed` (error) — a positional label after the facet id (`facet pii "Personal data"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md)).
+
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; until the overlay slice lands, the effect of a `facet` declaration is the reference check above, and this section states the interim explicitly rather than leaving the construct silently inert. [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere. [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword.
 
 ---
 
@@ -1265,9 +1378,9 @@ The following are deferred (see [`docs/adr/833-diagram-legend-syntax.md`](../adr
 - Rendering on diff views (`compileSystemDiff` / `compileDeployDiff`) and on org focused-team / icon-mode return paths.
 
 > **Related TPLs**:
-> - [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — scoped glance: each drill-down level shows only its own vocabulary (exact-match legend switching applies this to legends)
-> - [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) — top-level / drill-down / all-layers render paths must carry the same legend options
-> - [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — the view-scope vocabulary here must stay in sync with the built-in reference data
+> - [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — scoped glance: each drill-down level shows only its own vocabulary (exact-match legend switching applies this to legends)
+> - [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md) — top-level / drill-down / all-layers render paths must carry the same legend options
+> - [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the view-scope vocabulary here must stay in sync with the built-in reference data
 
 ---
 
@@ -1462,12 +1575,12 @@ No `infra-redeclared-across-files` diagnostic fires for this pattern — each in
 The same project always produces the same merged AST.
 
 > **Related TPLs**:
-> - [TPL-20260514-01](../test-perspectives/TPL-20260514-01-import-dag-not-cycle.md) — DAG re-arrival is not a cycle (S5)
-> - [TPL-20260514-02](../test-perspectives/TPL-20260514-02-whole-file-import-completeness.md) — whole-file import preserves all top-level and nested nodes (S2)
-> - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
-> - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
-> - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
-> - [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
+> - [TPL-1381](../test-perspectives/TPL-1381-import-dag-not-cycle.md) — DAG re-arrival is not a cycle (S5)
+> - [TPL-1383](../test-perspectives/TPL-1383-whole-file-import-completeness.md) — whole-file import preserves all top-level and nested nodes (S2)
+> - [TPL-2168](../test-perspectives/TPL-2168-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
+> - [TPL-2169](../test-perspectives/TPL-2169-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
+> - [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
+> - [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
 
 ---
 
@@ -1514,4 +1627,4 @@ The same `domain` name across different `system` blocks is treated as intentiona
 
 **Detection key**: the `id` of the `domain`. The `label` (display name) is not used for detection.
 
-> Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`
+> Related TPLs: TPL-1386 — `Diagnostic register reflects "fact vs. style"`

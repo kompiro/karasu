@@ -10,7 +10,7 @@ import { Parser } from "./parser/parser.js";
 // blocks tagged `krs`. If the spec documents a syntax the parser does not
 // accept (or the spec is updated for a syntax that has not landed yet),
 // the examples here will fail to parse — surfacing the drift that
-// TPL-20260510-12 checklist item 5 calls out.
+// TPL-74 checklist item 5 calls out.
 //
 // Only fences explicitly tagged `krs` are extracted. Bare ``` fences are
 // often pseudo-grammar productions (`<kind> <id> [<tags>] ...`) or
@@ -53,7 +53,7 @@ function extractKrsBlocks(markdown: string): FencedBlock[] {
 const markdown = readFileSync(specPath, "utf8");
 const blocks = extractKrsBlocks(markdown);
 
-describe("docs/spec/syntax.md ↔ parser agreement (TPL-20260510-12 item 5)", () => {
+describe("docs/spec/syntax.md ↔ parser agreement (TPL-74 item 5)", () => {
   it("contains at least one `krs` code block to validate", () => {
     expect(blocks.length).toBeGreaterThan(0);
   });

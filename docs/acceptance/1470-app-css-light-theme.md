@@ -40,7 +40,7 @@
 
   > ✅ Automated — `index.test.tsx` › `applies an explicit light preference …` / `dark …`
 
-- [x] 切替で light・dark **両方** が `data-theme` と localStorage まで到達する（TPL-20260518-01）
+- [x] 切替で light・dark **両方** が `data-theme` と localStorage まで到達する（TPL-1402）
 
   > ✅ Automated — `index.test.tsx` › `drives both light and dark all the way to <html data-theme> and storage`
 
@@ -62,44 +62,55 @@
 
   > ✅ Automated — `SettingsPane.test.tsx` › `reflects the active theme preference …` / `applies and persists the chosen theme when switched`
 
-- [x] select に `aria-label` が付く（TPL-20260516-01）
+- [x] select に `aria-label` が付く（TPL-1399）
 
-  > ✅ Automated — `SettingsPane.test.tsx` › `labels the select for assistive tech (TPL-20260516-01)`
+  > ✅ Automated — `SettingsPane.test.tsx` › `labels the select for assistive tech (TPL-1399)`
 
 ### CSS トークン化 — `packages/app/src/styles/styles-no-raw-color.test.ts`
 
-- [x] `layout.css` / `base.css` / `components/*.css` に生の色リテラルが無い（TPL-20260510-06）
+- [x] `layout.css` / `base.css` / `components/*.css` に生の色リテラルが無い（TPL-1001）
 
   > ✅ Automated — `styles-no-raw-color.test.ts` › `<file> has no raw color literals`
 
+### ブラウザ実機での挙動 — `packages/e2e/tests/at-1470-app-theme.spec.ts`
+
+OS のカラースキームは Playwright の `colorScheme` で emulate する。テーマ解決の
+単体テスト（上記）に対して、こちらは「実際に描画された結果」を確認する層。
+
+- [x] `localStorage` が空 + OS が **light** のとき、初回ロードから light になる
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `first load with no stored preference follows the OS scheme, stamped before first paint`
+
+- [x] `localStorage` が空 + OS が **dark** のとき、初回ロードから dark になる
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `first load with no stored preference follows the OS dark scheme`
+
+- [x] ロード時のちらつき（dark → light のフラッシュ）が無い
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `first load with no stored preference follows the OS scheme, stamped before first paint` — 「ちらつきを見なかった」ことは直接観測できないため、それを防いでいる**機構**を fence する: `index.html` の boot script が `document.readyState === "loading"` の間（= `<head>` 内で同期的に、body が描画される前）に `data-theme` を stamp していることを `addInitScript` + `MutationObserver` で assert する。boot script を React 側へ移すとこのテストが落ちる。
+
+- [x] Settings のテーマセレクタで即座に切り替わる / リロードしても維持される
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `the Settings switch is immediate, survives a reload, and Monaco follows`
+
+- [x] Monaco エディタがテーマに追従する（light で `karasu-light`）
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `the Settings switch is immediate, survives a reload, and Monaco follows` — Monaco は独自のテーマ系統を持ち app パレットと独立に drift しうるため、エディタ背景の輝度を直接見る。
+
+- [x] `system` のまま OS のカラースキームを変えるとライブで追従する
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `preference 'system' follows a live OS scheme change without a reload`
+
+- [x] light テーマの主要テキストが判読できる（primary は WCAG AA 4.5:1、secondary は実測 floor）
+
+  > 🟡 Partially automated — `at-1470-app-theme.spec.ts` › `light-theme text stays legible: primary text meets WCAG AA, secondary keeps its floor`。primary（アクティブタブ / ファイルツリー / breadcrumb）は 12〜15:1 で AA を満たすため 4.5:1 を assert する。**secondary は AA を満たしていない** — 非アクティブタブ 4.02:1、ghost ボタン 3.51:1（11.5〜12px）で、これは fixture の都合ではなく light パレットの実際のギャップ。テストは AA を装わず実測 floor（3:1）を固定し、light パレットがこれ以上悪化することを防ぐ。ギャップ自体の是正は [#2193](https://github.com/kompiro/karasu/issues/2193) で追跡する（修正時に secondary の閾値も 4.5 へ上げる）。
+
 ## 受け入れ条件（手動 / 目視）
 
-> CSS の見た目とテーマのちらつきはブラウザでの目視確認が必要で、自動化対象外。
+> 上の e2e で fence できない「見た目の質」だけが残る。
 > `pnpm --filter @karasu-tools/app run dev` で起動して確認する。
 
-### 検証方法
-
-1. `localStorage` を空にし、OS のカラースキームを **dark** にしてアプリを開く。
-
-   - [ ] dark テーマで表示される
-
-2. OS のカラースキームを **light** にし、`localStorage` を空のままリロードする。
-
-   - [ ] 初回ロードから light テーマで表示される（OS 設定に追従）
-
-3. Settings ペインを開き、テーマセレクタで **Light** を選ぶ。
-
-   - [ ] 即座に light テーマへ切り替わる
-   - [ ] リロードしても light のまま（永続化されている）
-   - [ ] ロード時にテーマのちらつき（dark → light のフラッシュ）が無い
-
-4. テーマセレクタで **System** に戻し、OS のカラースキームを切り替える。
-
-   - [ ] OS 設定に追従してテーマがライブで切り替わる
-
-5. light テーマのまま、主要パネルの可読性を確認する。
-
-   - [ ] サイドバー / ツールバー / タブバー / チャット / 設定 /
-         コンテキストメニュー / ノード詳細 / Reference パネルの文字が判読できる
-   - [ ] Monaco エディタが `karasu-light` になり、構文ハイライトが判読できる
-   - [ ] プレビューキャンバスが明るい背景になる（図そのものは現状のまま）
+- [ ] light テーマで、チャット / コンテキストメニュー / ノード詳細 /
+      Reference パネル（e2e が到達していない surface）の文字が判読できる
+- [ ] Monaco の構文ハイライトの色が light 背景で判読できる（背景の輝度は
+      自動化済みだが、トークン色の見やすさは目視）

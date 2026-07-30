@@ -44,13 +44,13 @@
 
   > ✅ Automated — `layer-layout-logics.test.ts` › `gridColumnCount` › `is deterministic`; `layout.test.ts` › `balanced grid wrapping (#1737)` › `is deterministic: identical input produces identical coordinates`
 
-- [x] 全 render path（単一 system / 複数 system root / drill-down / deploy / org member grid）が同一の grid 規則を通る（parity, [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)）
+- [x] 全 render path（単一 system / 複数 system root / drill-down / deploy / org member grid）が同一の grid 規則を通る（parity, [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)）
 
   > ✅ Automated — 列数の決定規則 `gridColumnCount`（`layer-layout-logics.ts`）を `layout.ts`（単一 + 複数 system）・`deploy-layout.ts` が共有（org member grid は既に bounded なため `memberCols` で既定 3・`grid-columns` 上書き）。行折り返しの配置は単一 system path が共有 `wrapLayerIntoRows` を用い、複数 system / deploy path は各々の座標系（barycenter / centerX 追跡・OUTER_PADDING）に合わせて同じ折り返し規則（列数 or `MAX_LAYER_WIDTH`）をインラインで適用する。既存の各 render path スナップショット（`drill-down-svg.test.ts` / `multi-level-svg.test.ts` / `deploy-layout.test.ts` / `org-renderer.test.ts`）が非退行で通過
 
 ### 手動確認
 
-- [ ] `examples/` の `index.krs` を app で開き、直下に多数の子を持つ system / service が横一列に潰れず、適度な解像度の grid で一目で把握できる（[TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) の解像度観点）
+- [ ] `examples/` の `index.krs` を app で開き、直下に多数の子を持つ system / service が横一列に潰れず、適度な解像度の grid で一目で把握できる（[TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) の解像度観点）
 
 ## 備考（スコープ外）
 

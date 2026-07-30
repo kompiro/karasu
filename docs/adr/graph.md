@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-283 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+286 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -13,6 +13,7 @@ flowchart TD
     ADR_1830["ADR-1830<br/>ADR→karasu permalink の検証は adr-tools の krs kind ..."]
     ADR_2092["ADR-2092<br/>TPL の reference-data 設定を `tpl.config.json` に分離し..."]
     ADR_2125["ADR-2125<br/>id-migration-map と専用 lint を退役する — 移行完了後の map は「..."]
+    ADR_2188["ADR-2188<br/>TPL の採番を issue-number（TPL-<n>）へ移行する"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -110,6 +111,7 @@ flowchart TD
     ADR_1855["ADR-1855<br/>Dependabot Triage (2026-07-08) — `actions/cache..."]
     ADR_1862["ADR-1862<br/>TypeScript 7.0（native compiler）を採用する"]
     ADR_1866["ADR-1866<br/>app E2E（Playwright）を Required status check にし、p..."]
+    ADR_1890["ADR-1890<br/>CI ランナーは Ubicloud を採用し、secret を握る publish / dep..."]
     ADR_2106["ADR-2106<br/>Dependabot トリアージ 2026-07-21 — setup-node 採用・ast..."]
     ADR_2111["ADR-2111<br/>Dependabot security update — brace-expansion / ..."]
     ADR_2115["ADR-2115<br/>Dependabot security update 第 2 便 — fast-uri / s..."]
@@ -231,6 +233,7 @@ flowchart TD
     ADR_1783["ADR-1783<br/>karasu-nest — URL で .krs を共有・プレビューするホスト型機能"]
     ADR_1801["ADR-1801<br/>karasu-nest — 共有リンクの OGP 画像（system 図 unfurl）"]
     ADR_1809["ADR-1809<br/>プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する"]
+    ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -669,6 +672,7 @@ flowchart TD
   class ADR_1872 accepted
   class ADR_1884 accepted
   class ADR_1886 accepted
+  class ADR_1890 accepted
   class ADR_1895 accepted
   class ADR_1911 accepted
   class ADR_1935 accepted
@@ -693,6 +697,8 @@ flowchart TD
   class ADR_2142 accepted
   class ADR_2152 accepted
   class ADR_2165 accepted
+  class ADR_2188 accepted
+  class ADR_2218 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -717,16 +723,16 @@ flowchart TD
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 9 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 10 ADRs
 - [`app-ui`](graph/app-ui.md) — 41 ADRs
-- [`build`](graph/build.md) — 62 ADRs
+- [`build`](graph/build.md) — 63 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 11 ADRs
 - [`parser`](graph/parser.md) — 22 ADRs
-- [`project`](graph/project.md) — 8 ADRs
+- [`project`](graph/project.md) — 9 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 7 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs

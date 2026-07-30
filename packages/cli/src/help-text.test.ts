@@ -7,7 +7,7 @@ import { program } from "./index.js";
  * The Examples sections are registered via commander's `addHelpText("after")`,
  * which `helpInformation()` does not include — so the full help is captured
  * through `outputHelp()` with a stdout spy (no process spawn needed).
- * TPL-20260623-01 (user-facing docs and shipped behavior must not drift):
+ * TPL-1716 (user-facing docs and shipped behavior must not drift):
  * these fences pin the documented svgo pipe / git diff-driver snippets to the
  * shipped `--help` output.
  */

@@ -105,6 +105,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.boundaryNotInContext.message", d.params);
     case "duplicate-boundary-id":
       return t("diagnostic.duplicateBoundaryId.message", d.params);
+    case "duplicate-facet-id":
+      return t("diagnostic.duplicateFacetId.message", d.params);
     case "positional-label-removed":
       return t("diagnostic.positionalLabelRemoved.message", d.params);
     case "positional-label-deprecated":

@@ -110,6 +110,22 @@ export interface BaseNodeFields {
    * their own; see `BOUNDARY_HOST_KIND` in the parser.
    */
   boundaries?: BoundaryBlock[];
+  /**
+   * Ids of the `facet` declarations this node belongs to, written
+   * `facets <id>[, <id>]*` (#2065 Part B). Accepted on **every** node kind —
+   * membership is externally imposed (a regulation, a policy), so no kind is
+   * structurally excluded from it.
+   *
+   * Repeated `facets` lines accumulate and duplicate ids collapse, so the list
+   * is a set in declaration order. Omitted entirely when none were declared, so
+   * nodes in existing models keep their exact shape.
+   *
+   * This is the *reference* side; the declarations live in `KrsFile.facets` and
+   * the derived membership map is `KrsFile.facetIndex`. Unlike `boundary`, a
+   * facet reference names a flat facet-id namespace, never a node id — the
+   * cross-layer addressing problem simply does not arise (#2036 / #2088).
+   */
+  facets?: string[];
   loc: SourceRange;
 }
 
@@ -419,6 +435,27 @@ export interface BoundaryBlock {
   loc: SourceRange;
 }
 
+// ─── facet（#2065 Part B: 外在的な集合所属の宣言） ──────
+//
+// `facet <id> { label | description | link }` は、規制・ポリシーのように
+// アーキテクチャの外から課される集合（PCI スコープ、PII、認証必須）を
+// 宣言する top-level 構文。boundary と違い**所属リストを持たない** —
+// 所属は要素側の `facets` プロパティで書く（locality）。
+//
+// 文法は `label` / `description` / `link` で閉じ、`contains` も述語も
+// 持たない。これは ADR-832（実行時 authz のルール言語を入れない）が求める
+// 「滑り落ちを構造的に防ぐ設計 = 語彙の凍結」であり、恒久的な制約である。
+// ルールの本文は description / link に prose として置く。
+// experimental notation（ADR-1820）。設計: docs/design/tags-and-facets.md /
+// docs/design/facet-grammar-and-model.md。
+export interface FacetBlock {
+  kind: "facet";
+  id: string;
+  label?: string;
+  properties: CommonProperties;
+  loc: SourceRange;
+}
+
 // ─── 物理図（変更なし） ────────────────────────────
 
 export interface DeployNodeProperties {
@@ -519,6 +556,8 @@ export interface KrsFile {
   deploys: DeployBlock[];
   organizations: OrganizationBlock[];
   boundaries: BoundaryBlock[];
+  /** Top-level `facet` declarations (#2065 Part B). The reference side is `BaseNodeFields.facets`. */
+  facets: FacetBlock[];
   legends: LegendBlock[];
   ownerIndex: Map<string, string>;
   /** Maps each node id to its declared boundary id (P2b, 1:1 like ownerIndex). First-declared wins on multi-membership. */
@@ -529,13 +568,40 @@ export interface KrsFile {
    *
    * A flat `Map<nodeId, boundaryId>` cannot express this: node ids are unique
    * only among siblings, so the scope is a distinguishing dimension the key must
-   * carry (TPL-20260512-01). Build keys with {@link boundaryScopeKey} on both
+   * carry (TPL-1352). Build keys with {@link boundaryScopeKey} on both
    * the producing and consuming side so the separator never leaks.
    *
    * Top-level `boundary` blocks keep using the flat `boundaryIndex` above — their
    * behaviour is unchanged (ADR-1974 stays in force for them).
    */
   scopedBoundaryIndex: Map<string, Map<string, string>>;
+  /**
+   * Facet membership declared by the element-side `facets` property: node id →
+   * the set of facet ids it belongs to (#2065 Part B).
+   *
+   * **1:N by design, and it stays 1:N through every merge.** Multi-membership is
+   * a normal state (an entity can be both PII and PCI scope), never a diagnostic
+   * condition, so this map holds every declared membership rather than picking a
+   * winner. A view that can only draw one value per node resolves that on the
+   * view side; the model layer does not discard the fact (TPL-2161 —
+   * `boundaryIndex`'s first-wins is exactly the shape not to copy here).
+   *
+   * Nodes with no `facets` property are absent from the map (no empty sets).
+   *
+   * The key is the **bare node id**, matching the flat `ownerIndex` /
+   * `boundaryIndex` convention. Node ids are only unique among siblings
+   * (ADR-927), so two same-named nodes in different scopes share one entry —
+   * the union of both their memberships. Anything that needs to know *which*
+   * node a membership came from must therefore resolve identity itself rather
+   * than trust a bare id, or it will pick the wrong `Payment` (TPL-1352 — a key
+   * must carry every distinguishing dimension; `scopedBoundaryIndex` is the
+   * worked example of doing it). `facet-not-declared` learned this the hard
+   * way: it read this index and reported the first same-named node's location
+   * instead of the one that wrote the reference, and now walks the declaration
+   * sites instead. The overlay slice paints specific nodes and has the same
+   * requirement.
+   */
+  facetIndex: Map<string, Set<string>>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
   nodePathIndex: Map<string, string[]>;
   /** Maps each node id to the absolute file path where it is defined. */
@@ -568,7 +634,7 @@ export function boundaryScopeKey(pathIds: readonly string[]): string {
  * path plus the boundary id, in the same injective JSON encoding as
  * {@link boundaryScopeKey}. A scoped boundary's identity is (declaring scope,
  * id) — #2036 — so everything keyed by its group id (frame container id,
- * collapse state, stub id) must carry both dimensions (TPL-20260512-01): a
+ * collapse state, stub id) must carry both dimensions (TPL-1352): a
  * bare id would fuse same-named boundaries across scopes into one collapse
  * key. Top-level boundaries keep their bare id — the flat form is one
  * model-wide declaration, so one shared collapse state is its identity.
@@ -617,10 +683,12 @@ export function createEmptyKrsFile(): KrsFile {
     deploys: [],
     organizations: [],
     boundaries: [],
+    facets: [],
     legends: [],
     ownerIndex: new Map(),
     boundaryIndex: new Map(),
     scopedBoundaryIndex: new Map(),
+    facetIndex: new Map(),
     nodePathIndex: new Map(),
     nodeFileIndex: new Map(),
   };
@@ -690,6 +758,10 @@ export interface DiagnosticParamsByCode {
   "duplicate-boundary-assignment": { nodeId: string; existingBoundary: string };
   "boundary-not-in-context": { parentKind: string };
   "duplicate-boundary-id": { boundaryId: string };
+  // Two `facet` blocks declare the same id, so a `facets <id>` reference cannot
+  // say which declaration's metadata it means (#2065 Part B). Evaluated on the
+  // merged model, so a duplicate split across two files is caught too.
+  "duplicate-facet-id": { facetId: string };
   // ADR-19 conformance (#2133): the positional `<kw> <id> "<label>"` form.
   // Removed outright on `boundary` (experimental, no compat promise) …
   "positional-label-removed": { construct: string };

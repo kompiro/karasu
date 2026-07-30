@@ -227,7 +227,7 @@ export function AppShell({
     // and the live entity view, so group frames reach every surface for both
     // axes (#1879, #2033). Exports keep the full structure (no collapse) by
     // design. `groupByAxis` is the shared conversion, so a new axis value
-    // passes through without editing this site (TPL-20260510-11 — the old
+    // passes through without editing this site (TPL-219 — the old
     // `=== "team"` hardcode here silently dropped the boundary axis).
     groupByAxis(views.system.groupBy),
     viewPath,

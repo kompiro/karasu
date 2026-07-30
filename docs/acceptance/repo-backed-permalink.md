@@ -4,7 +4,7 @@
 - **関連 Issue**: [#1828](https://github.com/kompiro/karasu/issues/1828)（親エピック #1826 permalink layer）
 - **設計 (ADR)**: [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink）
 - **関連 ADR**: [ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（karasu-nest / Phase 2 を後続化）, [ADR-123](../adr/123-github-markdown-render-service.md)（`isSafeUrl` SSRF 対策）, [ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)（BYOK）
-- **Related TPLs**: [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)（外部 input を trust boundary 越え前に validate / canonicalize）
+- **Related TPLs**: [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)（外部 input を trust boundary 越え前に validate / canonicalize）
 - **対象ファイル**:
   - `packages/app/src/render/repo-permalink.ts`（フレームワーク非依存の resolver + GitHub-raw FileSystemProvider）
   - `functions/r/[[path]].ts`（Cloudflare Pages Function アダプタ、`/r/*` にスコープ）
@@ -13,7 +13,7 @@
 
 ## 受け入れ条件
 
-### AC-1: permalink パースと入力検証（TPL-20260510-17）
+### AC-1: permalink パースと入力検証（TPL-168）
 
 - [x] AT-A: `<owner>/<repo>@<ref>`（path 省略）をパースし、default entry にフォールバックする
 

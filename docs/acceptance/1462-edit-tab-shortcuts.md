@@ -3,7 +3,7 @@
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1462](https://github.com/kompiro/karasu/issues/1462)
 - **対象ファイル**: `packages/app/src/components/EditTabShortcuts.tsx`
-- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-20260519-01
+- **関連**: キーボードショートカット基盤 [ADR-1411](../adr/1411-app-keyboard-shortcuts.md) / TPL-1419
 
 ## 受け入れ条件
 
@@ -18,15 +18,15 @@
 
   > ✅ Automated — `packages/app/src/components/EditTabShortcuts.test.tsx` › `mod+shift+2 selects the "chat" tab`
 
-- [x] テキスト入力／エディタにフォーカスがあるときもショートカットが発火する（`whenTextInputFocused: "allow"` / TPL-20260519-01）
+- [x] テキスト入力／エディタにフォーカスがあるときもショートカットが発火する（`whenTextInputFocused: "allow"` / TPL-1419）
 
-  > ✅ Automated — `packages/app/src/components/EditTabShortcuts.test.tsx` › `fires the shortcuts even while a text input is focused (TPL-20260519-01)`
+  > ✅ Automated — `packages/app/src/components/EditTabShortcuts.test.tsx` › `fires the shortcuts even while a text input is focused (TPL-1419)`
 
-- [x] コンポーネントのアンマウントでコマンドが登録解除される（TPL-20260519-01）
+- [x] コンポーネントのアンマウントでコマンドが登録解除される（TPL-1419）
 
-  > ✅ Automated — `packages/app/src/components/EditTabShortcuts.test.tsx` › `stops resolving the shortcuts after the component unmounts (TPL-20260519-01)`
+  > ✅ Automated — `packages/app/src/components/EditTabShortcuts.test.tsx` › `stops resolving the shortcuts after the component unmounts (TPL-1419)`
 
-- [x] `Ctrl/Cmd+Shift+<数字>` の chord が `event.code` から正規化され、`shift` で記号化されない（TPL-20260519-01）
+- [x] `Ctrl/Cmd+Shift+<数字>` の chord が `event.code` から正規化され、`shift` で記号化されない（TPL-1419）
 
   > ✅ Automated — `packages/app/src/keyboard/chord.test.ts` › `normalizes a digit-row key via `code`, so shift does not yield a symbol`
 

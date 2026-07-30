@@ -60,7 +60,7 @@ system ECPlatform {
 
 ### Auto-derived edges
 
-> ✅ Automated by `packages/core/src/view/view-extract.test.ts` (suite-wide) — "derives service→database edge from resource dot-notation reference" / "derives service→queue edge" / "derives service→storage edge" / "deduplicates edges when multiple usecases reference the same infra node"; plus `packages/core/src/view/derivation-contracts.test.ts` › "deriveInfraEdges: service→database via resource dot-notation"（TPL-20260510-07 attribute contract）
+> ✅ Automated by `packages/core/src/view/view-extract.test.ts` (suite-wide) — "derives service→database edge from resource dot-notation reference" / "derives service→queue edge" / "derives service→storage edge" / "deduplicates edges when multiple usecases reference the same infra node"; plus `packages/core/src/view/derivation-contracts.test.ts` › "deriveInfraEdges: service→database via resource dot-notation"（TPL-510 attribute contract）
 
 - [x] An edge `OrderService → OrderDB` is rendered (derived from `resource OrderDB.OrderTable` and `resource OrderDB.InventoryTable` — deduplicated to one edge)
 - [x] An edge `OrderService → EventBus` is rendered (derived from `resource EventBus.OrderCreated`)

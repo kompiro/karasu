@@ -3,7 +3,7 @@
 //
 // The fenced ```krs block in the markdown stays the single source of truth;
 // the SVG is derived from it — no sidecar `.krs` copies to drift against
-// (TPL-20260510-18). A snippet is rendered only when an HTML-comment marker
+// (TPL-1207). A snippet is rendered only when an HTML-comment marker
 // sits directly above its fence:
 //
 //   <!-- render: system id=01-monolith -->
@@ -18,7 +18,7 @@
 // (same arrangement as scripts/reference/gen-docs.ts) so reruns update it in
 // place. SVGs go to docs/guide/diagrams/<id>.<lang>.svg; `<lang>` is `ja` for
 // `*.ja.md` and `en` otherwise, so the per-language labels render to distinct
-// files (TPL-20260510-11).
+// files (TPL-219).
 //
 // Optional theming: `<!-- render: system id=05-styled style -->` uses the
 // *next* fenced block (a `.krs.style` / css block) as the stylesheet and

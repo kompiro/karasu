@@ -25,7 +25,7 @@ export default defineConfig({
     ["list"],
     ["html", { outputFolder: "playwright-report", open: "never" }],
     // JSON reporter feeds `scripts/ci/playwright-flaky-summary.ts`, which
-    // surfaces retry-pass (flaky) tests in CI (TPL-20260510-13 / #1271).
+    // surfaces retry-pass (flaky) tests in CI (TPL-976 / #1271).
     ["json", { outputFile: "playwright-report/results.json" }],
   ],
   outputDir: "test-results",

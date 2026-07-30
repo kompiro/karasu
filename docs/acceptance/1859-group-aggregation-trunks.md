@@ -4,7 +4,7 @@
 - **Issue**: #1859（親 #1822 / Epic #1817 comprehension）
 - **PR**: (P2c-B — aggregation trunks)
 - **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
-- **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測り、貫通は 0 を assert）, [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（参照エッジ端点保持 / edge identity）
+- **Related TPLs**: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測り、貫通は 0 を assert）, [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（参照エッジ端点保持 / edge identity）
 - **対象**: `packages/core/src/renderer/edge-routing-groups.ts`（`aggregateGroupTrunks` 追加） / `layout.ts` / `layout-types.ts`
 
 ## 概要
@@ -29,7 +29,7 @@ Group by: team の P2c slice B。P2c-A は各 cross-band エッジをサイド�
 - [x] 異なる共有 target は異なる trunk lane x を持つ（spine が重ならない）
 - [x] レーン割当は決定的（target の y、次に id 順）
 
-### AC-3: 貫通ゼロの保存（core, TPL-20260711-02）
+### AC-3: 貫通ゼロの保存（core, TPL-1927）
 
 > ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide)
 

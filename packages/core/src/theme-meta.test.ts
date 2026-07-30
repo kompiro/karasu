@@ -22,14 +22,14 @@
  * table sits in the test file with this loud comment so code review
  * surfaces the omission.
  *
- * This mirrors `displaymode-meta.test.ts` (per TPL-20260510-06): a
+ * This mirrors `displaymode-meta.test.ts` (per TPL-1001): a
  * theme is a global switch that must reach EVERY rendering surface —
  * legend / breadcrumb / tab bar / org tree / diff / empty state, and
  * every alternate rendering path (drill-down, all-layers, bundled
  * all-views, diff bundles).
  *
  * See Issue #1479, docs/design/svg-diagram-theming.md and
- * TPL-20260510-06.
+ * TPL-1001.
  */
 import { describe, it, expect } from "vitest";
 import {

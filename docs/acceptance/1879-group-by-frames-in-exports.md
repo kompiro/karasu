@@ -4,7 +4,7 @@
 - **Issue**: #1879（親 #1858 P2a follow-up / Epic #1817 comprehension）
 - **PR**: feat/group-by-exports
 - **決定**: [ADR-1858](../adr/1858-system-view-group-by-team.md)（決定 7 に export-surface ルールを追記）
-- **Related TPLs**: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
+- **Related TPLs**: [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
 - **対象**: `packages/core/src/renderer/all-layers-svg.ts` / `drill-down-svg.ts` / `index.ts`、`packages/app/src/hooks/useViewSvg.ts` / `components/AppShell.tsx`
 
 ## 概要
@@ -27,7 +27,7 @@ secondary / export SVG（**Show All Layers**・drill-down export・**Open & Expo
 
 > ✅ Automated by `packages/core/src/renderer/all-layers-svg.test.ts` (suite-wide) — "keeps the full structure" (+ `drill-down-svg.test.ts` "draws team frames … keeps the full structure")
 
-- [x] grouped でも全メンバー（`data-node-id="…"`）がちょうど一度描かれる（TPL-20260624-02 の全域性）
+- [x] grouped でも全メンバー（`data-node-id="…"`）がちょうど一度描かれる（TPL-1738 の全域性）
 - [x] collapse stub（`__group_collapsed_…`）は出力に一切現れない — export に `collapsedGroups` を渡さない設計を回帰で固定
 
 ### AC-3: core — drill-down / all-views サーフェスも同一挙動

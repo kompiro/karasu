@@ -6,7 +6,7 @@
   - `packages/core/src/formatter/quote-string.ts`（新規）
   - `packages/core/src/formatter/formatter.ts`
   - `packages/core/src/translate/{openapi,db,compose,k8s,wrangler}.ts`
-- **関連**: ADR-2087（本件の決定）、ADR-438（formatter）、ADR-9008（`"""` は raw）、TPL-20260510-02（round-trip 保証）
+- **関連**: ADR-2087（本件の決定）、ADR-438（formatter）、ADR-9008（`"""` は raw）、TPL-1101（round-trip 保証）
 
 ## 受け入れ条件
 

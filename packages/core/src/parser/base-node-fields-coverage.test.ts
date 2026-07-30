@@ -1,4 +1,4 @@
-// Meta-test for TPL-20260510-12 (AST / parser / renderer agreement) — G12-1.
+// Meta-test for TPL-74 (AST / parser / renderer agreement) — G12-1.
 //
 // Enforces that every user-facing field declared on BaseNodeFields is preserved
 // by the parser for every node kind that extends it. The retrospective origin
@@ -50,6 +50,10 @@ type ExpectedKeys =
   // is excluded from the per-kind user-facing probe below. Placement is covered
   // by the scoped-boundary parser tests.
   | "boundaries"
+  // User-facing, and uniform across every kind — `facets` is accepted on all of
+  // them (#2065 Part B), so it joins the per-kind probe below rather than being
+  // excused as structural.
+  | "facets"
   | "loc";
 
 // If a key is added to BaseNodeFields, this assignment fails — see the file
@@ -66,11 +70,12 @@ void _baseNodeFieldsKeyContract;
 // (default `undefined`, present only when a builtin annotation carries a
 // recognized param), and is covered by the dedicated annotation-param parser
 // tests in parser.test.ts (#1568).
-type UserFacingField = "label" | "tags" | "annotations";
+type UserFacingField = "label" | "tags" | "annotations" | "facets";
 const USER_FACING_FIELDS = [
   "label",
   "tags",
   "annotations",
+  "facets",
 ] as const satisfies readonly UserFacingField[];
 
 // ─── Per-kind fixtures ─────────────────────────────────────────────────────
@@ -79,6 +84,7 @@ interface FieldModifiers {
   label?: string;
   tags?: readonly string[];
   annotations?: readonly string[];
+  facets?: readonly string[];
 }
 
 interface KindFixture {
@@ -98,8 +104,16 @@ function renderTagAnnotationSuffix(mods: FieldModifiers): string {
   return `${tagPart}${annPart}`;
 }
 
+/**
+ * The block-body properties. `label` and `facets` are both written inside the
+ * braces (unlike tags / annotations, which follow the id), so they share one
+ * renderer.
+ */
 function renderLabelBlock(mods: FieldModifiers): string {
-  return mods.label !== undefined ? `\n  label ${JSON.stringify(mods.label)}\n` : "";
+  const lines: string[] = [];
+  if (mods.label !== undefined) lines.push(`  label ${JSON.stringify(mods.label)}`);
+  if (mods.facets && mods.facets.length > 0) lines.push(`  facets ${mods.facets.join(", ")}`);
+  return lines.length > 0 ? `\n${lines.join("\n")}\n` : "";
 }
 
 const KIND_FIXTURES: readonly KindFixture[] = [
@@ -206,6 +220,7 @@ const FIELD_SET_VALUES: Record<UserFacingField, FieldModifiers> = {
   label: { label: "Coverage Probe" },
   tags: { tags: ["external"] },
   annotations: { annotations: ["deprecated"] },
+  facets: { facets: ["pii"] },
 };
 
 function getField(node: KrsNode, field: UserFacingField): unknown {
@@ -213,19 +228,23 @@ function getField(node: KrsNode, field: UserFacingField): unknown {
 }
 
 function defaultFor(field: UserFacingField): unknown {
-  if (field === "label") return undefined;
+  // `tags` / `annotations` are always-present arrays; `label` and `facets` are
+  // omitted from the node entirely when unset, so existing models keep their
+  // exact AST shape.
+  if (field === "label" || field === "facets") return undefined;
   return [];
 }
 
 function expectedFor(field: UserFacingField): unknown {
   if (field === "label") return "Coverage Probe";
   if (field === "tags") return ["external"];
+  if (field === "facets") return ["pii"];
   return ["deprecated"];
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────
 
-describe("BaseNodeFields × kind coverage (TPL-20260510-12 / G12-1)", () => {
+describe("BaseNodeFields × kind coverage (TPL-74 / G12-1)", () => {
   for (const fixture of KIND_FIXTURES) {
     describe(`kind=${fixture.kind}`, () => {
       it("defaults are correct when no user-facing field is set", () => {

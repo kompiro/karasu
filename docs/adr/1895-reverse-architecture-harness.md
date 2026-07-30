@@ -57,12 +57,12 @@ usecase・触る resource・cross-domain relation）に降りると出力が薄�
   単位は本来欲しい論理境界（A2）に合わせる。
 - **物理層の hallucination 回避**: 物理 spine は `translate`（compose/k8s/openapi/db）で deterministic に起こし、
   エージェントは annotate に徹する。deterministic 部は principled API 経由（`compileProject` /
-  `serializeKrsFile` / core 集計）で扱い、parser 内部を叩かない（[TPL-20260510-16](../test-perspectives/TPL-20260510-16-convenience-vs-principled-api.md)）。
+  `serializeKrsFile` / core 集計）で扱い、parser 内部を叩かない（[TPL-239](../test-perspectives/TPL-239-convenience-vs-principled-api.md)）。
 - **「薄い」を定量化**: eyeball ではなく `coverage` で相対密度を測り、`thin` を機械検出する。全 domain を出力し、
-  薄いものを黙って落とさない（[TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md)）。
+  薄いものを黙って落とさない（[TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md)）。
 - **identity は `id`**: synthesis の dedup / merge / cross-slice edge 照合・`subtree` の検索は author-given `id` で
-  行い、`label`（表示・翻訳文字列）は使わない（[TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)）。
-- **round-trip 保証**: `subtree` が吐く `.krs` は再 compile できる（[TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)）。
+  行い、`label`（表示・翻訳文字列）は使わない（[TPL-2167](../test-perspectives/TPL-2167-id-not-label-for-identity.md)）。
+- **round-trip 保証**: `subtree` が吐く `.krs` は再 compile できる（[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)）。
 - **v1 syntax freeze を尊重**（[ADR-1314](1314-krs-spec-v1-freeze.md)）: ハーネスは新 `.krs` 構文を
   導入しない。既存語彙で書けない idiom は notation watch r2（#1816）/ cookbook（#1818）へ観測として feed する。
 - **検証済み**: Dify（8 domain / 約 106 usecase）と hato（9 domain / 約 102 usecase）を実際に逆生成し、全 domain が

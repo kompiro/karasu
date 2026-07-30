@@ -21,7 +21,7 @@ assumptions:
   - 実装 PR [#1736](https://github.com/kompiro/karasu/pull/1736)
   - refines: [ADR-974](./974-infra-row-by-deepest-consumer.md)（infra/external の dep pull-up — 本 ADR で infra のみに scope を絞る）
   - 関連: [ADR-968](./968-orthogonal-edge-routing-skip-layer.md)（skip-layer 直交ルーティング）, [ADR-967](./967-auto-layout-actor-row-by-target.md)（actor pull-down）
-  - TPL: [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
+  - TPL: [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
   - AT: [AT-1724](../acceptance/1724-system-view-infra-external-tier-split.md)
   - コード: `packages/core/src/renderer/layout.ts`（`systemTier` / `assignForcedSystemLayers`）
 
@@ -48,9 +48,9 @@ dep ティアは infra と外部サービスを **同一の最下段** に詰め
 
 - **幅削減を PoC で実証**: 最広行のノード数が半減（hato: 10 → 6）。後述の代替案で唯一実効性が確認できた案。
 - **意味的に明快**: 所有データストア（infra, 境界内）と第三者 SaaS（external, 別境界）が視覚的に分離される。read/write エッジも短くなる。
-- **境界ルールの一貫性**: infra は定義上 system 境界の *内側* にあるデータストア。`[external]` の意味は「別の system で動く」。よって `database [external]` は「境界内のストアなのに別境界」という矛盾したモデリングであり、external 行へ昇格させるのは category error。外部 SaaS の DB であっても、自分の `system` 内で `database` として読み書き対象にモデリングした時点で境界内 infra として扱う（タグはスタイルを変えるがティアは変えない）。[TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) の二重表現観点に対応。
+- **境界ルールの一貫性**: infra は定義上 system 境界の *内側* にあるデータストア。`[external]` の意味は「別の system で動く」。よって `database [external]` は「境界内のストアなのに別境界」という矛盾したモデリングであり、external 行へ昇格させるのは category error。外部 SaaS の DB であっても、自分の `system` 内で `database` として読み書き対象にモデリングした時点で境界内 infra として扱う（タグはスタイルを変えるがティアは変えない）。[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) の二重表現観点に対応。
 - **既存挙動の温存**: infra pull-up（#974）と column-hint（#969）の不変条件は無変更で通る。回帰テストで担保。
-- **貫通リスクは routing で救済**: external を下段に分けると `service → external` が infra 行を skip するが、[ADR-968](./968-orthogonal-edge-routing-skip-layer.md) の直交ルーティングが救済する。この再燃リスクを検出する proactive TPL（[TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)）を同 PR で起こした。
+- **貫通リスクは routing で救済**: external を下段に分けると `service → external` が infra 行を skip するが、[ADR-968](./968-orthogonal-edge-routing-skip-layer.md) の直交ルーティングが救済する。この再燃リスクを検出する proactive TPL（[TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)）を同 PR で起こした。
 
 ## ADR-974 との関係（refines）
 

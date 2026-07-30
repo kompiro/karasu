@@ -38,7 +38,7 @@ A diagnostic has a **severity**: `error`, `warning`, or `info`.
 - `info` — a **fact**, not a defect. karasu surfaces something true about the
   model that an external school of thought may call a smell (a shared database,
   a dispersed domain), without asserting it is wrong. This is the *fact vs.
-  style* register split — see [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md).
+  style* register split — see [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md).
 
 karasu also follows **warn-don't-error** for unresolved references (spec §S6):
 an unresolved relation is dropped while the node it points from is preserved,
@@ -86,6 +86,7 @@ primary owner.
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
 | `duplicate-boundary-assignment` | info | A node is listed in more than one `boundary` (a fact; the first-declared boundary is kept). |
 | `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
+| `duplicate-facet-id` | error | Two `facet` blocks declare the same id, so a `facets` reference cannot say whose metadata it means. Decided on the merged model, so a duplicate split across two files is caught; the first declaration is the one references resolve to. |
 | `positional-label-removed` | error | A `boundary` id is followed by a positional label string. ADR-19 made `label` a property; `boundary` is experimental, so the undocumented positional form is removed outright instead of deprecated (#2133). |
 | `positional-label-deprecated` | warning | An `organization` / `team` / `member` id is followed by a positional label string. The form was never in the spec (ADR-19); it still parses, and `karasu fmt` rewrites it to the `label` property (#2133). |
 | `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
@@ -101,6 +102,7 @@ error) — see syntax spec §S6.
 | `owns-target-not-found` | warning | A team `owns` a service / domain absent from the merged model (existence is checked after cross-file merge, not per file). |
 | `invalid-owns` | warning | An `owns` target resolves to a kind that cannot be owned. |
 | `contains-target-not-found` | warning | A `boundary` `contains` a node that does not exist — for a top-level block, anywhere in the merged system hierarchy (existence is checked after cross-file merge, not per file); for a scoped block, among the declaring node's direct children. |
+| `facet-not-declared` | warning | A `facets` reference names no declared `facet` block (existence is checked on the merged model, so a declaration in an imported file counts). Unlike the near-miss annotation hint, the declared set makes this check complete: a typo between two author-defined names is caught too. |
 | `import-id-not-found` | error | A named import id path fails to resolve. |
 | `import-path-not-found` | error | An import path fails to resolve at some segment. |
 | `unresolved-edge-endpoint` | warning | An edge endpoint id is not found anywhere in the merged model. |
@@ -246,7 +248,7 @@ Every member of `DiagnosticParamsByCode` and `WarningKind` (in
 (`packages/core/src/types/diagnostics-catalog.test.ts`) asserts this in both
 directions, so the catalog cannot silently drift from the emitted codes. The
 discipline behind it is recorded as
-[TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md).
+[TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md).
 
-> Related TPLs: [TPL-20260616-02](../test-perspectives/TPL-20260616-02-diagnostics-catalog-completeness.md) (catalog ↔ code completeness), [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) (fact vs style register), [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) (spec-promised diagnostics are implemented), [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) (spec ↔ source-of-truth sync).
+> Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md) (catalog ↔ code completeness), [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) (fact vs style register), [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) (spec-promised diagnostics are implemented), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) (spec ↔ source-of-truth sync).
 </content>

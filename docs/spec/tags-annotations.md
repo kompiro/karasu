@@ -33,22 +33,22 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 
 > **Shape tags mirror the infra-block keywords — they are related, not interchangeable.** An infra-block **keyword** (`table` inside a `database`, `queue-item` inside a `queue`, `bucket` inside a `storage`) declares the actual **shared-store node** on the system view. A usecase's `resource` is the **operational reference** to what that usecase reads or writes; when a `resource` points at an infra leaf via dot-notation — `resource OrderDB.OrderTable` — karasu **infers the matching shape tag from the referenced infra sub-resource kind** (`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`), so the reference is drawn in the same shape as the store it points to. The shape tags `[table]` / `[queue]` / `[storage]` therefore deliberately **mirror** the infra sub-resource kinds; you can also write them by hand on any `resource` as a pure shape hint when there is no infra leaf to reference. `[api]` (hexagon) has no infra counterpart — it is a manual-only shape for API-like resources. The same word in two positions never *collides*: the keyword **starts a declaration** and sets a node's *kind*; the `[...]` tag is a **suffix** on a `resource` and sets only its *shape* — they are complementary layers linked by the resource reference. See the *Infra layer* section of [syntax.md](./syntax.md).
 >
-> Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync.
+> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync.
 
 > **`database [index]`** marks a `database` node as a **derived search / secondary index** — an ElasticSearch / OpenSearch cluster, or a vector store such as pgvector / Pinecone / Weaviate — rather than the system of record. It keeps the database cylinder and adds an `index` badge. The **concrete technology stays in the physical layer** via `store { type "ElasticSearch 8"; realizes SearchIndex }`, so the logical model does not churn when the engine is swapped. The same store can be *both* the system of record and its own index (e.g. Postgres + pgvector) — there the `[index]` tag is simply omitted. **`[index]` denotes a role, not a technology**: tag a secondary store that is derived as an index to search the system of record quickly. Even when it is a vector DB / ElasticSearch, do **not** add `[index]` if that store is itself the system of record. Background: [ADR-316](../adr/316-database-as-first-class-node.md), Issue #1718.
 >
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — `[index]` is an accepted tag that must carry an effect (the `index` badge), not merely a label.
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `[index]` is an accepted tag that must carry an effect (the `index` badge), not merely a label.
 
 ### Non-builtin tag names are deprecated (v1.x)
 
 Bare `[<identifier>]` still accepts any name in v1.x — the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)) keeps parse behaviour unchanged — but a tag outside the **tool vocabulary** (the builtin table above plus the [system-assigned tags](#system-assigned-tags) below) is **deprecated**: karasu emits a `tag-not-builtin` **warning** on every use. There is deliberately **no suppression condition** — a `.krs.style` selector or a `legend` ref proves the name is intentional, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only (still enforced as a warning, never a parse error — existing files keep parsing). Migration targets:
 
-- **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the `facet` construct (#2065 Part B; until it lands, record the fact in `description` / `link` prose).
+- **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental): declare the set once at the top level and write `facets <id>` on the elements.
 - **A missing archetype** (`[cache]`, `[bff]`, …) → request a builtin tag addition (the roadmap `[cache]` watch is the exemplar route). A deprecated tag keeps working meanwhile — warned, without default-rendering effect.
 
 See [*Vocabulary registers*](#vocabulary-registers--boundary--annotation--tag--facet) below for how to pick the right construct.
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — non-builtin tag names previously sat in the forbidden fourth state (accepted, inert, undocumented); `tag-not-builtin` resolves them into state (2), *warned as unknown*.
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — non-builtin tag names previously sat in the forbidden fourth state (accepted, inert, undocumented); `tag-not-builtin` resolves them into state (2), *warned as unknown*.
 
 ### Example
 
@@ -108,9 +108,9 @@ system OrderSystem {
 
 ### Non-builtin annotation names are deprecated (v1.x)
 
-`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)), a hook that migrates to facet selectors with #2065 Part B. Migration targets:
+`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)), a hook that migrates to facet selectors in a later slice of #2160. Migration targets:
 
-- **Membership or model-specific labeling** (team ownership marks, audience labels) → the `facet` construct (#2065 Part B; until it lands, `description` / `link` prose).
+- **Membership or model-specific labeling** (team ownership marks, audience labels) → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental).
 - **A missing lifecycle state** (`@canary`, `@sunset`, …) → request a builtin annotation addition.
 
 The near-miss **typo hint** (`annotation-possible-typo`, info) also still fires: a typo in a builtin name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". The hint stays suppressed for names that appear in a stylesheet annotation selector. Both diagnostics coexist during v1.x — a near-miss can carry both — and are consolidated in v2.0.
@@ -120,7 +120,7 @@ service Billing @team-alpha   // deprecated: annotation-not-builtin warning
 service Legacy  @depracated   // warned twice: typo hint (info) + not-builtin (warning)
 ```
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — the deprecation keeps non-builtin names in state (2), *warned as unknown*, instead of the former undocumented open-set acceptance.
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — the deprecation keeps non-builtin names in state (2), *warned as unknown*, instead of the former undocumented open-set acceptance.
 
 ### Annotation parameters
 
@@ -140,10 +140,10 @@ Recognized keys (built-ins only):
 
 - **Graceful degradation by precision**: a `until` value that parses as a date (`YYYY-MM-DD`), year-month (`YYYY-MM`), or quarter (`YYYY-Qn`) is machine-usable (sortable / filterable); any other string (e.g. `"sometime next year"`) is kept verbatim as an opaque, display-only value. No validation error is raised for opaque values.
 - **No runtime evaluation**: `until` is recorded **intent**, not a deadline — karasu never compares it to the current date (no "overdue" diagnostic). Consistent with `job.schedule` (stored, not simulated) and the warn-don't-error stance.
-- **Unsupported parameters warn, not silently ignored**: a parameter on any other annotation, or with an unrecognized key, is dropped with an `annotation-param-unsupported` warning (TPL-20260610-01 — accepted vocabulary must have an effect or be warned). Custom annotations are param-less for now.
+- **Unsupported parameters warn, not silently ignored**: a parameter on any other annotation, or with an unrecognized key, is dropped with an `annotation-param-unsupported` warning (TPL-1503 — accepted vocabulary must have an effect or be warned). Custom annotations are param-less for now.
 - The annotation **name list** is unchanged by parameters, so `.krs.style` annotation selectors (`@deprecated`) and annotation inheritance are unaffected.
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted.
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted.
 
 ---
 
@@ -181,27 +181,27 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 
 ## Vocabulary registers — boundary / annotation / tag / facet
 
-karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the `facet` construct (#2065 Part B — designed, not yet implemented).
+karasu separates "what kind of label is this?" into four registers. The tag and annotation vocabularies are **tool-owned**; the sole user extension point is the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental) (experimental).
 
 | Register | Construct | Vocabulary | Question it answers |
 | --- | --- | --- | --- |
 | Archetype | tag `[...]` | tool-owned (builtin table above) | What *is* this element, architecturally? (`[external]`, `[index]`) |
 | Lifecycle | annotation `@...` | tool-owned (builtin table above) | What development state is it in? (`@deprecated`, `@new`) |
 | View grouping | `boundary` | user-declared ids | How should peers be grouped in this view? (see [syntax.md](./syntax.md)) |
-| Set membership | `facet` (#2065, upcoming) | user-declared ids | Which externally defined set does it belong to? (PCI scope, PII, "requires auth") |
+| Set membership | [`facet`](./syntax.md#cross-cutting-membership-facet--experimental) (experimental) | user-declared ids | Which externally defined set does it belong to? (PCI scope, PII, "requires auth") |
 
 Worked decomposition — modeling PCI compliance and authentication without misusing tags:
 
 | Concern component | Register | Where it goes |
 | --- | --- | --- |
 | The element's architectural role (a search index, an external store) | tag | builtin tags — `[index]`, `[external]` |
-| "This table holds cardholder data" / "this entity is PII" (regulatory membership) | facet | `facets pci` / `facets pii` once #2065 Part B lands; until then `description` / `link` prose |
-| "This usecase requires authentication" (policy scope) | facet | `facets requires_auth` (same interim: prose + `link`) |
+| "This table holds cardholder data" / "this entity is PII" (regulatory membership) | facet | `facets pci` / `facets pii`, against a top-level `facet` declaration |
+| "This usecase requires authentication" (policy scope) | facet | `facets requires_auth`, with the policy itself in the declaration's `description` / `link` |
 | Who may call it, under which plan / condition (rule content) | prose | `description` + `link` to the policy document — never modelled ([ADR-832](../adr/832-no-runtime-authz-modeling.md)) |
 
 The registers matter because membership semantics differ from archetype semantics: an element is a `database` whether or not it is in PCI scope, and a diagram where 9 of 10 in-scope elements carry a membership tag silently reads as a false audit guarantee. Membership therefore gets its own construct with declared metadata (`label` / `description` / `link`) instead of borrowing the tag namespace.
 
-> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — each register's accepted vocabulary must have an effect or be warned; the v1.x deprecation diagnostics (`tag-not-builtin` / `annotation-not-builtin`) keep the tool-owned registers in state (2).
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — each register's accepted vocabulary must have an effect or be warned; the v1.x deprecation diagnostics (`tag-not-builtin` / `annotation-not-builtin`) keep the tool-owned registers in state (2).
 
 ---
 
@@ -237,9 +237,9 @@ They can be referenced and overridden via tag selectors in `.krs.style`.
 >
 > `[write]` / `[read]` are auto-injected on synthesized usecase→resource edges only. **Do not write them by hand on explicit edges** — the resolver will accept them syntactically, but the semantics (write-dominates classification of the target resource's `operations`) only make sense for the synthesized edges. The width hierarchy is intentionally `read (1.5) < write (2) < cyclic (2.5)` so that cyclic remains the most attention-grabbing axis.
 >
-> `[inferred]` is different in kind from the others in this table: `[implicit]` / `[read]` / `[write]` / `[cyclic]` are synthesized by the resolver at render time and **never appear in `.krs` source**, whereas `[inferred]` is stamped **into the emitted source** by `translate --from db` and then persists — it marks a relation the tool guessed from a naming convention rather than a declared FK. Curation is by hand: once you have confirmed the relation is real, delete the single `[inferred]` tag and it becomes a confirmed edge. Its colour is deliberately kept orthogonal to `[sync]` / `[async]` line style so that stamping it never hides the sync/async distinction ([TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md)).
+> `[inferred]` is different in kind from the others in this table: `[implicit]` / `[read]` / `[write]` / `[cyclic]` are synthesized by the resolver at render time and **never appear in `.krs` source**, whereas `[inferred]` is stamped **into the emitted source** by `translate --from db` and then persists — it marks a relation the tool guessed from a naming convention rather than a declared FK. Curation is by hand: once you have confirmed the relation is real, delete the single `[inferred]` tag and it becomes a confirmed edge. Its colour is deliberately kept orthogonal to `[sync]` / `[async]` line style so that stamping it never hides the sync/async distinction ([TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md)).
 
-> Related TPLs: [TPL-20260714-02](../test-perspectives/TPL-20260714-02-inferred-tag-only-soft-fk.md) — `translate --from db` assigns `[inferred]` to a relation only when every contributing FK is a Soft FK; a single explicit FK leaves the relation untagged (confirmed), and the tag must render with an effect. [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — a derived auto-tag must stay orthogonal to the `kind` (`[sync]` / `[async]`) dimension it does not own.
+> Related TPLs: [TPL-1944](../test-perspectives/TPL-1944-inferred-tag-only-soft-fk.md) — `translate --from db` assigns `[inferred]` to a relation only when every contributing FK is a Soft FK; a single explicit FK leaves the relation untagged (confirmed), and the tag must render with an effect. [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — a derived auto-tag must stay orthogonal to the `kind` (`[sync]` / `[async]`) dimension it does not own.
 
 ### Customization example
 
@@ -296,7 +296,7 @@ organization Corp {
 
 A node can legitimately be `owns`-ed by more than one team during an inverse-Conway handoff. `ownerIndex` is 1:1, so a single **primary owner** is chosen by migration priority — `@migration_target` (the destination) wins, an unmarked team is next, and `@deprecated` (the source) loses. Ties keep the first declaration. This mirrors the domain migration-coexistence rule (see *Migration annotations* above, where the `@migration_target` domain wins the navigation target). Co-ownership itself stays a tolerated fact, surfaced through the `duplicate-owner-assignment` **info** diagnostic — it is never an error.
 
-> Related TPLs: [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md) (the `@migration_target`-wins / first-wins rule must be consistent across every 1:1 index), [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) (co-ownership is a fact, kept in the info register).
+> Related TPLs: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md) (the `@migration_target`-wins / first-wins rule must be consistent across every 1:1 index), [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) (co-ownership is a fact, kept in the info register).
 
 ### `link` property (team contact)
 

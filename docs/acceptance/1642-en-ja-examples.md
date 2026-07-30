@@ -3,7 +3,7 @@
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1642](https://github.com/kompiro/karasu/issues/1642)
 - **関連 ADR**: [ADR-1642](../adr/1642-en-ja-example-parity.md)（en/ja example parity）、[ADR-1575](../adr/1575-docs-site-ssg.md)
-- **Related TPLs**: [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md), [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+- **Related TPLs**: [TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
 - **対象**:
   - `examples/en/<name>/`（9 シナリオの英語版）
   - `packages/docs-site/scripts/lib/examples-manifest.ts`（`localized()` ヘルパ / per-locale エントリ）

@@ -104,7 +104,7 @@ describe("EditArea", () => {
     expect(getByRole("button", { name: /Show files/ }).getAttribute("aria-pressed")).toBe("false");
   });
 
-  // TPL-20260518-01: an involutive toggle must render both result states.
+  // TPL-1402: an involutive toggle must render both result states.
   it("collapses and re-expands the sidebar when the active view button is re-clicked", () => {
     const { getByRole, container } = render(
       <EditArea
@@ -146,7 +146,7 @@ describe("EditArea", () => {
     expect(getByText("AST Outline")).toBeTruthy();
   });
 
-  // TPL-20260518-01: an involutive toggle must render both result states.
+  // TPL-1402: an involutive toggle must render both result states.
   it("toggles the sidebar with the mod+B shortcut", () => {
     const { container } = renderWithShortcuts(
       <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
@@ -215,7 +215,7 @@ describe("EditArea", () => {
     expect(getByText("AST Outline")).toBeTruthy();
   });
 
-  // TPL-20260519-01: global shortcuts must not fire while a text input is focused.
+  // TPL-1419: global shortcuts must not fire while a text input is focused.
   it("ignores the view shortcuts while a text input is focused", () => {
     const { getByText } = renderWithShortcuts(
       <EditArea

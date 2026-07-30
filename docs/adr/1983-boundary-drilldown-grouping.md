@@ -21,7 +21,7 @@ assumptions:
   - 実装 PR: [#2034](https://github.com/kompiro/karasu/pull/2034)（設計 PR [#2013](https://github.com/kompiro/karasu/pull/2013)）
   - ADR: [ADR-1858](1858-system-view-group-by-team.md)（P2a team 軸 — 決定 7 の root-only を本 ADR が一般化）、[ADR-1820](1820-notation-promotion-gate.md)（notation promotion gate）、[ADR-1884](1884-group-by-team-multi-system-root-per-system-frames.md)（同一ラベル・disjoint フレームの先例）、[ADR-1821](1821-layer-toggles.md)（interactive collapse コントロールの gate — entity view の frames-only 挙動の根拠）、[ADR-1513](1513-legend-drill-down-scope.md)（per-drill-depth exact-match の先例）、[ADR-1859](1859-system-view-p2c-grouped-edge-routing-and-marks.md)（P2c routing/marks）、[ADR-1886](1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff-mode）
   - AT: [1983-boundary-drilldown-grouping.md](../acceptance/1983-boundary-drilldown-grouping.md)、[1879-group-by-frames-in-exports.md](../acceptance/1879-group-by-frames-in-exports.md)
-  - TPL: [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md)（view-state gate の全 surface parity — 本件の proactive TPL）、[TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)、[TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)、[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)
+  - TPL: [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)（view-state gate の全 surface parity — 本件の proactive TPL）、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)、[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)
   - follow-up: [#2036](https://github.com/kompiro/karasu/issues/2036)（id 衝突下の contains 曖昧性）、[#2032](https://github.com/kompiro/karasu/issues/2032)（cross-file contains の偽 not-found）
 
 ## 背景
@@ -56,8 +56,8 @@ bucket 計算（`layout.ts`）は最初から「渡された slice の childNode
 - **差分が最小**: bucket 計算・フレーム描画・collapse・P2c は最初からレベル非依存に書かれており、「作る」ものはほぼ無い。変更は gate の緩和と entity 配線、そして退化ケースの柵。
 - **殺すより認める方が実挙動に忠実**: interactive の drill grouping は P2a 以来出荷され続けており、gate を足して殺す方が実質的な挙動変更になる。spec を実挙動 + ユーザー価値側に合わせる。
 - **既存原則と整合**: [ADR-1513](1513-legend-drill-down-scope.md) の「レベルごとに、そのレベルのものだけを描く」（legend の per-drill-depth exact-match）、[ADR-1815](1815-expand-container-in-place.md) の「入れ子は drill-down の領域」と一致する（system view を deep 化しない）。
-- **不変条件を各レベルで維持**: 全ノードちょうど一度配置・collapse 時の端点再解決・退化ケースで破綻しない（[TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)）を drill slice で柵にした。P2c は crossings + penetrations の両計測（[TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)）で計測。
-- **surface parity の再発防止**: gate を一部 surface にだけ入れて残りで undocumented 挙動が出荷される失敗クラスを proactive TPL [TPL-20260716-02](../test-perspectives/TPL-20260716-02-view-state-gate-parity-across-surfaces.md) として観点化した（実際、実装中に 3 番目の gate `buildAllViewsSvg` の緩和漏れをこの観点が検出した）。
+- **不変条件を各レベルで維持**: 全ノードちょうど一度配置・collapse 時の端点再解決・退化ケースで破綻しない（[TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)）を drill slice で柵にした。P2c は crossings + penetrations の両計測（[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)）で計測。
+- **surface parity の再発防止**: gate を一部 surface にだけ入れて残りで undocumented 挙動が出荷される失敗クラスを proactive TPL [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) として観点化した（実際、実装中に 3 番目の gate `buildAllViewsSvg` の緩和漏れをこの観点が検出した）。
 
 ## 却下した案
 

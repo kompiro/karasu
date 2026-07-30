@@ -1,5 +1,5 @@
 /**
- * Meta-test enforcing TPL-20260510-07 (派生・集約で自動付与するタグは元
+ * Meta-test enforcing TPL-510 (派生・集約で自動付与するタグは元
  * ノードの semantic 区別を保存する) — checklist item 1: every derivation
  * path must enumerate which source attributes it preserves and which it
  * transforms, so a future refactor cannot silently drop a preserved one.
@@ -32,17 +32,17 @@
  * (a new `derive*Edges`, a new `apply*Tags`, a new annotation
  * propagator, …) **add a row here**. A new derivation function that
  * silently drops a documented preservation guarantee is exactly the
- * regression family TPL-07 calls out, and a meta-table is the only
+ * regression family TPL-510 calls out, and a meta-table is the only
  * structural defense — individual unit tests check their own function
  * in isolation. Failing to register a new entry slips past this test;
  * code review of the new function should surface the omission, since
  * the convention is documented here.
  *
  * Refs:
- *   - TPL-20260510-07, checklist item 1 (semantic attribute preservation)
- *   - TPL-20260510-12 (AST/parser/renderer agreement) — sibling curated-table meta
+ *   - TPL-510, checklist item 1 (semantic attribute preservation)
+ *   - TPL-74 (AST/parser/renderer agreement) — sibling curated-table meta
  *   - #1233 (G12-1) / #1241 (GA08-2) / #1247 (GR06-2) — sibling gaps
- *   - #510 — the originating TPL-07 bug (sync/async collapse in implicit edges)
+ *   - #510 — the originating TPL-510 bug (sync/async collapse in implicit edges)
  */
 import { describe, it, expect } from "vitest";
 import { Parser } from "../parser/parser.js";
@@ -281,7 +281,7 @@ system S {
   },
 ];
 
-describe("meta: every derivation path preserves and transforms documented attributes (TPL-20260510-07)", () => {
+describe("meta: every derivation path preserves and transforms documented attributes (TPL-510)", () => {
   it.each(DERIVATION_CONTRACTS)("$name", (row) => {
     const observed = row.observe();
     const expected = { ...row.preserves, ...row.transforms };

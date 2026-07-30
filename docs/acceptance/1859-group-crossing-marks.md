@@ -4,7 +4,7 @@
 - **Issue**: #1926（親 #1859 / #1822 / Epic #1817 comprehension）
 - **PR**: (P2c-C — hop/junction crossing marks)
 - **設計**: [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)
-- **Related TPLs**: [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測る。交差は表現で無害化するので「全交差が mark 付き」を assert し、残存交差を欠陥視しない）
+- **Related TPLs**: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（可読性検証は交差数と貫通数を両方測る。交差は表現で無害化するので「全交差が mark 付き」を assert し、残存交差を欠陥視しない）
 - **対象**: `packages/core/src/renderer/crossing-marks.ts`（`computeCrossingMarks` 追加） / `layout.ts` / `layout-types.ts` / `svg-renderer.ts`（`renderCrossingMarks` + `crossing-marks` レイヤ）
 
 ## 概要
@@ -18,7 +18,7 @@ Group by: team の P2c 最終 slice。P2c-A（直交ルーティング）/ P2c-B
 
 ## 受け入れ条件
 
-### AC-1: hop 検出（core, #1859 AC-3 / TPL-20260711-02）
+### AC-1: hop 検出（core, #1859 AC-3 / TPL-1927）
 
 > ✅ Automated by `packages/core/src/renderer/crossing-marks.test.ts` (suite-wide)
 

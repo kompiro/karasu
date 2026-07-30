@@ -3,7 +3,7 @@ import { Parser, LOGICAL_KEYWORDS } from "../parser/parser.js";
 import { KRS_KEYWORD_NAMES } from "../lexer/lexer.js";
 import { REFERENCE_DATA } from "./reference-data.js";
 
-// Reference-data ↔ **parser** agreement (#2158, TPL-20260729-01).
+// Reference-data ↔ **parser** agreement (#2158, TPL-2158).
 //
 // `reference-spec-sync.test.ts` fences `REFERENCE_DATA` against the prose and
 // tables of `docs/spec/*.md`. That cannot cover the node-kind catalog, because
@@ -18,7 +18,7 @@ import { REFERENCE_DATA } from "./reference-data.js";
 // So this file measures the parser instead of reading a document: it declares
 // each kind with each property in a minimal `.krs` and asserts the catalog and
 // the parser agree in BOTH directions. Unlike the doc axis (where the catalog
-// is allowed to lead the prose — see TPL-20260511-02), a property list is a
+// is allowed to lead the prose — see TPL-1296), a property list is a
 // promise about what the parser accepts, so an extra entry is as wrong as a
 // missing one.
 
@@ -42,6 +42,7 @@ const PROPERTY_SNIPPETS: Record<string, string> = {
   capability: "capability camera",
   operations: "operations read",
   table: "table SomeDB.SomeTable",
+  facets: "facets someFacet",
 };
 
 /**
@@ -77,6 +78,10 @@ const NOT_A_LOGICAL_NODE_PROPERTY = new Set([
   // grouping / import / legend grammar
   "boundary",
   "contains",
+  // `facet` opens the top-level declaration block; the *property* side of the
+  // construct is `facets`, which is in PROPERTY_SNIPPETS above and listed on
+  // every node kind.
+  "facet",
   "import",
   "from",
   "legend",

@@ -8,7 +8,7 @@ import type { TranslatorContext } from "./translator.js";
 // Translate emitters take values from files karasu does not control — an
 // OpenAPI `summary` is free-form prose. Before #2087 those were interpolated
 // raw, so a summary containing `"""` produced a `.krs` that did not parse at
-// all. TPL-20260510-02 names the translator a known consumer of the round-trip
+// all. TPL-1101 names the translator a known consumer of the round-trip
 // guarantee, so hostile input has to survive here, not just in the formatter.
 
 function parseErrors(krs: string): string[] {

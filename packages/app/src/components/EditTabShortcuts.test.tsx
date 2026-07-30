@@ -38,7 +38,7 @@ describe("EditTabShortcuts", () => {
     });
   }
 
-  it("fires the shortcuts even while a text input is focused (TPL-20260519-01)", () => {
+  it("fires the shortcuts even while a text input is focused (TPL-1419)", () => {
     // The commands are `whenTextInputFocused: "allow"` — switching away from
     // the Editor implies the Monaco editor (a `<textarea>`) is focused, so a
     // `"skip"` policy would make them dead exactly when they are needed.
@@ -54,7 +54,7 @@ describe("EditTabShortcuts", () => {
     textarea.remove();
   });
 
-  it("stops resolving the shortcuts after the component unmounts (TPL-20260519-01)", () => {
+  it("stops resolving the shortcuts after the component unmounts (TPL-1419)", () => {
     const onSelectTab = vi.fn<(tab: EditTab) => void>();
     const { unmount } = renderWithShortcuts(<EditTabShortcuts onSelectTab={onSelectTab} />);
     unmount();
