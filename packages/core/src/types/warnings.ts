@@ -150,14 +150,13 @@ export interface WarningParamsByKind {
    * block (`domain A { -> B }`) or, for a cross-domain entity relation, names
    * the target qualified (`OtherDomain.Entity`).
    *
-   * An endpoint is *at scope* when it is in `peers(container)`:
+   * An endpoint is *at scope* when it is in `peers(container)`, computed per
+   * node **instance** (not per id — see the detector's comment):
    *
-   * - container is a `system` → the union of the children of every `system`
-   *   block declared with that id (S3 reopen keeps them separate AST nodes
-   *   within one file), plus the top-level orphan services / domains / clients
-   *   that the root view splices in;
-   * - otherwise → the container's own id (the self-anchored source) plus its
-   *   siblings.
+   * - container is a `system` → that block's own children, plus the top-level
+   *   orphan `domain`s the drawio exporter splices into the root frame;
+   * - otherwise → the container's own id (the self-anchored source) plus the
+   *   children of its declaring parent.
    *
    * Two endpoints are skipped rather than reported: a dotted ref (`Sys.Svc` /
    * `Domain.Entity`, owned by `cross-system-ref-*` and the entity view) and an

@@ -14,8 +14,11 @@ import {
   ORG_ONLY_PROJECT_EN,
 } from "./index.js";
 import { readFileSync, readdirSync } from "fs";
-import { resolve, dirname } from "path";
+import { resolve, dirname, relative } from "path";
 import { fileURLToPath } from "url";
+import { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
+import { ImportResolver } from "./fs/import-resolver.js";
+import { analyze } from "./resolver/warnings.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dir = resolve(__dirname, "../../../examples/en/feature-samples");
@@ -267,4 +270,40 @@ describe("examples: every shipped .krs is free of node-not-in-context warnings",
       expect(systemNested).toEqual([]);
     },
   );
+});
+
+// Scope fence (#2075): `edge-endpoint-not-at-scope` reports an edge whose
+// endpoint is not a peer where the edge is declared. Resolved through the real
+// `ImportResolver` — a per-file parse would miss the cross-file system reopen
+// that `examples/*/multi-file-system` relies on, and a concatenation of the
+// files would wrongly report it (the two `system Blog` blocks only merge via
+// the import path). See TPL-2075.
+describe("examples: every shipped .krs is free of edge-endpoint-not-at-scope", () => {
+  const examplesRoot = resolve(__dirname, "../../../examples");
+  const scanned: string[] = [];
+  const walk = (d: string) => {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      const p = resolve(d, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name.endsWith(".krs")) scanned.push(p);
+    }
+  };
+  walk(examplesRoot);
+
+  it("reports no out-of-scope endpoint in any example", async () => {
+    const provider = new InMemoryFileSystemProvider();
+    for (const f of scanned) {
+      await provider.writeFile(`/${relative(examplesRoot, f)}`, readFileSync(f, "utf8"));
+    }
+    const hits: string[] = [];
+    for (const f of scanned) {
+      const entry = `/${relative(examplesRoot, f)}`;
+      const result = await new ImportResolver(provider).resolve(entry);
+      for (const w of analyze(result.krsFile, [])) {
+        if (w.kind !== "edge-endpoint-not-at-scope") continue;
+        hits.push(`${entry}: ${w.params.from}->${w.params.to} (${w.params.endpointId})`);
+      }
+    }
+    expect(hits).toEqual([]);
+  });
 });

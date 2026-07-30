@@ -81,6 +81,35 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
     expect(hint!.severity).toBe(DiagnosticSeverity.Information);
   });
 
+  it("surfaces edge-endpoint-not-at-scope when the endpoint resolves in this document", () => {
+    // #2075 / TPL-1522: this diagnostic is import-coupled but deliberately not
+    // suppressed — see the comment above the `analyze()` call.
+    const src = `system T {
+  service S {
+    domain A { usecase u {} }
+    domain B { usecase v {} }
+  }
+  A -> B
+}`;
+    const diagnostics = computeDiagnostics(src, false);
+
+    const scoped = diagnostics.filter((d) => d.message.includes("renders on no view"));
+    expect(scoped).toHaveLength(2);
+    expect(scoped[0].severity).toBe(DiagnosticSeverity.Warning);
+  });
+
+  it("stays silent when the edge's endpoint lives in another file (import-coupled)", () => {
+    // The single-document context cannot see `Moderation`, so the endpoint is
+    // unresolved here and falls through to `unresolved-edge-endpoint`, which is
+    // suppressed. Neither diagnostic may fire on this routine cross-file edge.
+    const src = `import "./moderation.krs"
+system Blog {
+  service Authoring { domain Drafting { usecase Write {} } }
+  Authoring -> Moderation
+}`;
+    expect(computeDiagnostics(src, false)).toHaveLength(0);
+  });
+
   it("tags every karasu diagnostic with source 'karasu'", () => {
     const src = `system EC {
   service A { domain Dup {} }

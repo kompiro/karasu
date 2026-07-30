@@ -793,9 +793,14 @@ allowed — the edge stays co-located with its source.
 An edge is drawn on the view that renders the block it is declared in, so **both
 of its endpoints must be peers at that scope**:
 
-- inside a `system` block — the system's own children (and the top-level
-  services / domains the root view splices in);
+- inside a `system` block — that block's own children (plus top-level
+  `domain`s, which the root view splices in beside them);
 - inside a `service` / `domain` / `entity` block — that block and its siblings.
+
+Peers are counted per **block**, after imports are merged. Reopening a `system`
+in another file unions the children into one block (§S3), so an edge may name a
+peer that another file declared. Two `system` blocks with the same id in **one**
+file are not merged — they stay separate blocks with separate peers.
 
 Naming an endpoint that sits *below* that scope leaves the edge on no view at
 all. The most common shape is a domain dependency hoisted up to `system` scope:

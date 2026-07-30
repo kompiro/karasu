@@ -2239,18 +2239,73 @@ system T {
     ).toHaveLength(0);
   });
 
-  // The peer set is keyed by id: same-id `system` blocks stay separate AST
-  // nodes within one file (only imported ones merge), so an instance-keyed
-  // peer set would report this edge even though it renders.
-  it("does not warn across a reopened system block", () => {
-    expect(
-      find(`
+  // Two same-id `system` blocks in ONE file stay separate AST nodes (only
+  // imported ones merge), and `layout.ts` draws a system's edge only when both
+  // endpoints are in that system's own id set — so this edge really does drop.
+  // The cross-file counterpart is asserted against the real merge in
+  // `import-resolver.test.ts`.
+  it("warns across a same-file reopened system block", () => {
+    const warnings = find(`
 system Blog {
   service Authoring { domain A { usecase u {} } }
   Authoring -> Moderation
 }
 system Blog {
   service Moderation { domain B { usecase v {} } }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "Moderation",
+      endpointKind: "service",
+      scopeId: "Blog",
+      scopeKind: "system",
+    });
+  });
+
+  // The same domain id under two services is a legal shape (`domain-dispersal`
+  // is an info diagnostic, not an error), and the entity view keeps the two
+  // instances distinct by node identity — so a bare relation across them is
+  // dropped, not resolved.
+  it("warns when a dispersed domain id makes a bare entity relation look local", () => {
+    const warnings = find(`
+system T {
+  service S1 { domain A { entity Customer {} usecase u {} } }
+  service S2 { domain A { entity Order { -> Customer } usecase v {} } }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "Customer",
+      endpointKind: "entity",
+      scopeId: "Order",
+      scopeKind: "entity",
+    });
+  });
+
+  // Orphan services / clients are never spliced into a real system's frame —
+  // the SVG path wraps them in the `__unassigned__` pseudo-system instead.
+  it("warns when a system-scope edge names a top-level orphan service", () => {
+    const warnings = find(`
+service Orphan { domain O { usecase o {} } }
+system T {
+  service S { domain A { usecase u {} } }
+  S -> Orphan
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({ endpointId: "Orphan", endpointKind: "service" });
+  });
+
+  // A top-level *domain* is spliced into the root frame by the drawio exporter
+  // (`extractView(systems, path, krsFile.domains)`), so it does render there.
+  it("does not warn when a system-scope edge names a top-level orphan domain", () => {
+    expect(
+      find(`
+domain Payment { usecase Pay {} }
+system T {
+  service S { domain A { usecase u {} } }
+  S -> Payment
 }
 `),
     ).toHaveLength(0);

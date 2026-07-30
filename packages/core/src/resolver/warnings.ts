@@ -1500,11 +1500,16 @@ function detectUnresolvedEdgeEndpoints(file: KrsFile): Warning[] {
  * *outside* that peer set therefore drops the edge from every view. Before
  * #2075 the drop was silent; this surfaces it.
  *
- * The peer set is keyed by **id**, not by node instance: same-id `system`
- * blocks in one file stay separate AST nodes (only imported ones merge —
- * `import-resolver.ts`), so an instance-keyed set reports edges that do render.
+ * The peer set is per **node instance**, mirroring what the renderer does:
+ * `layout.ts`'s multi-system path draws a system's edge only when both
+ * endpoints are in that system's own `idSet`. Unioning peers by id would hide
+ * two real drops — two same-id `system` blocks in one file (they stay separate
+ * AST nodes; only *imported* ones merge into one node via `import-resolver.ts`,
+ * where per-instance peers are already correct), and the same `domain` id
+ * dispersed across two services, which the entity view keeps distinct by node
+ * identity.
  *
- * Skips (owned by other detectors) and the one exemption are documented on
+ * Skips (owned by other detectors) and the exemptions are documented on
  * `WarningParamsByKind["edge-endpoint-not-at-scope"]`.
  */
 function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
@@ -1519,39 +1524,42 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
     ...file.storages,
   ];
 
-  /** id -> the node it resolves to (first declaration wins, as elsewhere). */
+  /**
+   * id -> the node it resolves to (first declaration wins). Existence is a
+   * model-wide question — the same question `unresolved-edge-endpoint` asks —
+   * so this index stays keyed by id even though the peer sets are not.
+   */
   const nodeById = new Map<string, KrsNode>();
-  /** id -> the union of the children ids of every node declared with that id. */
-  const childrenById = new Map<string, Set<string>>();
-  /** child id -> the id of a node that declares it as a child. */
-  const parentIdOf = new Map<string, string>();
+  /** node instance -> its declaring parent instance. */
+  const parentOf = new Map<KrsNode, KrsNode>();
 
   const index = (node: KrsNode): void => {
     if (!nodeById.has(node.id)) nodeById.set(node.id, node);
-    let children = childrenById.get(node.id);
-    if (!children) childrenById.set(node.id, (children = new Set()));
     for (const child of node.children) {
-      children.add(child.id);
-      if (!parentIdOf.has(child.id)) parentIdOf.set(child.id, node.id);
+      parentOf.set(child, node);
       index(child);
     }
   };
   for (const system of file.systems) index(system);
   for (const node of topLevel) index(node);
 
-  // Orphans are spliced into the root system view alongside the system's own
-  // children (`extractRootSystemView`), so they are peers at system scope.
-  const orphanIds = new Set([...file.services, ...file.domains, ...file.clients].map((n) => n.id));
+  // Only top-level *domains* reach a real system's frame: the drawio exporter
+  // passes `krsFile.domains` to `extractView` (`build-drawio-project.ts`), which
+  // splices them in beside the system's children. Orphan services and clients
+  // are passed by nobody — the SVG / CLI path wraps every orphan into the
+  // separate `__unassigned__` pseudo-system instead (`unassigned-system.ts`) —
+  // so an edge from a real system to one of those renders nowhere and is
+  // reported like any other out-of-scope endpoint.
+  const orphanDomainIds = new Set(file.domains.map((n) => n.id));
 
   const peersOf = (container: KrsNode): Set<string> => {
     if (container.kind === "system") {
-      return new Set([...(childrenById.get(container.id) ?? []), ...orphanIds]);
+      return new Set([...container.children.map((c) => c.id), ...orphanDomainIds]);
     }
-    const parentId = parentIdOf.get(container.id);
-    const siblings = parentId === undefined ? [] : (childrenById.get(parentId) ?? []);
+    const parent = parentOf.get(container);
     // The container's own id is the self-anchored source of every edge the
     // parser accepts inside a service / domain / entity block.
-    return new Set([container.id, ...siblings]);
+    return new Set([container.id, ...(parent?.children ?? []).map((c) => c.id)]);
   };
 
   const check = (container: KrsNode): void => {
@@ -1568,8 +1576,9 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
         // A domain depending on any other domain is derived up to a service
         // edge (`deriveImplicitServiceEdges`), so it does render.
         if (container.kind === "domain" && endpoint.kind === "domain") continue;
-        const ownerId = parentIdOf.get(endpointId);
-        const ownerKind = ownerId === undefined ? undefined : nodeById.get(ownerId)?.kind;
+        const owner = parentOf.get(endpoint);
+        const ownerId = owner?.id;
+        const ownerKind = owner?.kind;
         warnings.push({
           kind: "edge-endpoint-not-at-scope",
           params: {
