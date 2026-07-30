@@ -406,11 +406,11 @@ post-v1.0 の拡張余地として意図的に残しており、ここではス�
 `service → domain → usecase → resource` と定めている以上、`client` の直下に
 書かれた `usecase` には意味を与えようがない。
 
-error ではなく warning なのは `.krs` v1.0 が freeze 済み
+error ではなく warning なのは言語 v1.0 が freeze 済み
 （[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）だからである — 今日パースが通る
-ファイルは通り続ける。error への格上げは次 major に登録してある
+ファイルは通り続ける。error への格上げは言語 v2.0 に登録してある
 （[roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)）。tag / annotation の
-語彙が辿るのと同じ「v1.x は warning、v2.0 で error」の経路である。
+語彙が辿るのと同じ「言語 v1.x は warning、言語 v2.0 で error」の経路である。
 
 次の 4 つは warning ではなく拒否され、該当ノードは捨てられる:
 

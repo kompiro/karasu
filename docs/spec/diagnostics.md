@@ -61,7 +61,7 @@ cycle.
 | `infra-not-in-context` | error | An infra block (`database` / `queue` / `storage`) is not a direct child of `system`. |
 | `boundary-not-in-context` | error | A `boundary` block is declared inside a node kind that draws no canvas of its own (`entity`, `resource`, `user`, `client`, or an infra leaf), so it would have no peers to frame. |
 | `entity-not-in-domain` | error | An `entity` is declared somewhere other than as a child of a `domain`. |
-| `node-not-in-context` | warning | A logical node is nested inside a kind whose **May contain** column does not list it (e.g. a `usecase` inside a `client`). The node is kept and still renders; it simply carries no defined meaning there. Scheduled to become an error in the next major (see [roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)). |
+| `node-not-in-context` | warning | A logical node is nested inside a kind whose **May contain** column does not list it (e.g. a `usecase` inside a `client`). The node is kept and still renders; it simply carries no defined meaning there. Scheduled to become an error in `.krs language v2.0` (see [roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)). |
 | `legend-not-top-level` | error | A `legend` block is declared somewhere other than the top level. |
 | `top-level-declaration` | error | A `user` or an edge is declared at the top level instead of inside a `system` block. |
 | `system-property-conflict` | warning | A `system` `label` / `description` conflicts between merged imports. |

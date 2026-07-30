@@ -87,5 +87,10 @@ pinned* — the axes compose (e.g. a deep, repo-backed, ref-pinned permalink).
   permalink anchor contract.
 - [`docs/roadmap.md`](roadmap.md) — the keystone decision and the pillars that
   follow from it.
+- [roadmap §version vocabulary](roadmap.md#version-vocabulary版語彙の定義--正典) —
+  the canonical home of the **version vocabulary** (compatibility axes, notation
+  tiers vs `@experimental` / `@deprecated` annotations, `.krs language v1.0`
+  notation — [ADR-2124](adr/2124-version-vocabulary.md)). Out of this glossary's
+  scope; listed here so readers looking for "version" terms find the right home.
 - [`docs/prd/keystone-primary-path.md`](prd/keystone-primary-path.md) — the full
   keystone deliberation these terms were coined in.

@@ -714,7 +714,7 @@ export class Parser {
         // which children a kind may hold; anything outside it carries no
         // defined semantics (`docs/concepts.ja.md` fixes the hierarchy as
         // service → domain → usecase → resource). This is a **warning**, not an
-        // error: `.krs` v1.0 is frozen (ADR-1314), so the node is kept and
+        // error: `.krs language v1.0` is frozen (ADR-1314), so the node is kept and
         // still renders. Error-ification is registered to Syntax 2.0 (#2162).
         if (!LOGICAL_CONTAINMENT.get(kind)?.has(child.kind)) {
           this.diagnostics.push({

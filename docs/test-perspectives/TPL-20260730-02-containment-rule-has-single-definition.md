@@ -67,7 +67,7 @@ pnpm gen:reference --check
   判別できなくなる。列は 1 つの意味しか持たない — 載っていれば意味があり、
   載っていなければ `node-not-in-context` が出る。
 - 配置規則を error にしたくなり、freeze 済みの v1.x で error 化してしまう
-  （既存ファイルが壊れる。error 化は次 major の枠 — roadmap §Syntax 2.0）。
+  （既存ファイルが壊れる。error 化は言語 v2.0 の枠 — roadmap §Syntax 2.0）。
 
 ## チェックリスト
 

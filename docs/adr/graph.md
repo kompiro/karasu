@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-281 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+282 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -113,6 +113,7 @@ flowchart TD
     ADR_2106["ADR-2106<br/>Dependabot トリアージ 2026-07-21 — setup-node 採用・ast..."]
     ADR_2111["ADR-2111<br/>Dependabot security update — brace-expansion / ..."]
     ADR_2115["ADR-2115<br/>Dependabot security update 第 2 便 — fast-uri / s..."]
+    ADR_2124["ADR-2124<br/>version vocabulary — 言語版とパッケージ semver は独立の軸とし、言..."]
     ADR_2129["ADR-2129<br/>Dependabot security alert"]
     ADR_2139["ADR-2139<br/>Dependabot security 第 2 便 — postcss の後続 advisor..."]
     ADR_2142["ADR-2142<br/>Dependabot security 第 3 便 — brace-expansion OOM..."]
@@ -407,6 +408,7 @@ flowchart TD
   ADR_2036 --> ADR_1983
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
+  ADR_2124 --> ADR_1314
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -681,6 +683,7 @@ flowchart TD
   class ADR_2111 accepted
   class ADR_2115 accepted
   class ADR_2120 accepted
+  class ADR_2124 accepted
   class ADR_2125 accepted
   class ADR_2129 accepted
   class ADR_2139 accepted
@@ -712,7 +715,7 @@ flowchart TD
 
 - [`adr-tooling`](graph/adr-tooling.md) — 9 ADRs
 - [`app-ui`](graph/app-ui.md) — 41 ADRs
-- [`build`](graph/build.md) — 61 ADRs
+- [`build`](graph/build.md) — 62 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs

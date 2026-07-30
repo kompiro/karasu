@@ -75,5 +75,9 @@ karasu の permalink は、ADR / PR / docs が karasu の構造を*指す*ため
 - [`docs/spec/permalink.md`](spec/permalink.ja.md) — deep permalink アンカーの
   正典 contract。
 - [`docs/roadmap.md`](roadmap.md) — keystone の決定と、そこから従属する柱。
+- [roadmap §version vocabulary](roadmap.md#version-vocabulary版語彙の定義--正典) —
+  **版語彙**の正典（互換性の軸・notation tier と `@experimental` / `@deprecated`
+  annotation の区別・`.krs language v1.0` 表記 — [ADR-2124](adr/2124-version-vocabulary.md)）。
+  本用語集のスコープ外だが、「version」系の用語を探す読者のためにここから指す。
 - [`docs/prd/keystone-primary-path.md`](prd/keystone-primary-path.md) — これらの
   用語が導入された keystone 壁打ちの全容。

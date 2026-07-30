@@ -55,7 +55,7 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 | `infra-not-in-context` | error | infra ブロック（`database` / `queue` / `storage`）が `system` の直接の子でない。 |
 | `boundary-not-in-context` | error | 自身のキャンバスを持たない kind（`entity` / `resource` / `user` / `client` / infra leaf）の中に `boundary` ブロックが宣言されており、囲む対象が存在しない。 |
 | `entity-not-in-domain` | error | `entity` が `domain` の子以外の場所で宣言されている。 |
-| `node-not-in-context` | warning | 論理ノードが、その親の **含められるもの** 列に載っていない入れ子で宣言されている（例: `client` 内の `usecase`）。ノードは保持され描画もされるが、その位置での意味は定義されていない。次 major で error 化予定（[roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)）。 |
+| `node-not-in-context` | warning | 論理ノードが、その親の **含められるもの** 列に載っていない入れ子で宣言されている（例: `client` 内の `usecase`）。ノードは保持され描画もされるが、その位置での意味は定義されていない。言語 v2.0 で error 化予定（[roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)）。 |
 | `legend-not-top-level` | error | `legend` ブロックがトップレベル以外で宣言されている。 |
 | `top-level-declaration` | error | `user` またはエッジが `system` ブロック内ではなくトップレベルで宣言されている。 |
 | `system-property-conflict` | warning | merge された import 間で `system` の `label` / `description` が衝突する。 |

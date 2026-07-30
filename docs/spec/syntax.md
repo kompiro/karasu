@@ -414,11 +414,11 @@ listed nestings have semantics — `docs/concepts.md` fixes the hierarchy as
 `service → domain → usecase → resource`, so a `usecase` written directly inside
 a `client` has nothing to mean.
 
-It is a warning rather than an error because `.krs` v1.0 is frozen
+It is a warning rather than an error because `.krs language v1.0` is frozen
 ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)): a file that parses today keeps
-parsing. Promotion to an error is registered to the next major
+parsing. Promotion to an error is registered to `.krs language v2.0`
 ([roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)) — the same
-warning-now / error-at-v2.0 path the tag and annotation vocabularies take.
+warning-in-v1.x / error-in-v2.0 path the tag and annotation vocabularies take.
 
 Four nestings are rejected outright rather than warned, and the misplaced node is
 dropped:

@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-61 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+62 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -61,6 +61,7 @@ flowchart TD
     ADR_2106["ADR-2106<br/>Dependabot トリアージ 2026-07-21 — setup-node 採用・ast..."]
     ADR_2111["ADR-2111<br/>Dependabot security update — brace-expansion / ..."]
     ADR_2115["ADR-2115<br/>Dependabot security update 第 2 便 — fast-uri / s..."]
+    ADR_2124["ADR-2124<br/>version vocabulary — 言語版とパッケージ semver は独立の軸とし、言..."]
     ADR_2129["ADR-2129<br/>Dependabot security alert"]
     ADR_2139["ADR-2139<br/>Dependabot security 第 2 便 — postcss の後続 advisor..."]
     ADR_2142["ADR-2142<br/>Dependabot security 第 3 便 — brace-expansion OOM..."]
@@ -72,6 +73,7 @@ flowchart TD
   ADR_1974["ADR-1974<br/>[parser] system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
   ADR_1296 --> ADR_8
   ADR_1820 --> ADR_1314
+  ADR_2124 --> ADR_1314
   ADR_1974 --> ADR_1820
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -135,6 +137,7 @@ flowchart TD
   class ADR_2106 accepted
   class ADR_2111 accepted
   class ADR_2115 accepted
+  class ADR_2124 accepted
   class ADR_2129 accepted
   class ADR_2139 accepted
   class ADR_2142 accepted

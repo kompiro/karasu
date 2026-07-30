@@ -794,7 +794,7 @@ export const REFERENCE_DATA = {
  * column above so the rule has exactly one definition (#2165).
  *
  * The parser reads this to emit `node-not-in-context` (a **warning** in v1.x —
- * `.krs` v1.0 is frozen by ADR-1314, so a nesting that parses today must keep
+ * `.krs language v1.0` is frozen by ADR-1314, so a nesting that parses today must keep
  * parsing; error-ification is registered to the Syntax 2.0 program, #2162).
  * Because the parser is the enforcer, `canContain` stopped being a
  * documentation-only column and `reference-parser-sync.test.ts` can now fence
