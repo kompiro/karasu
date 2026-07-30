@@ -56,36 +56,57 @@ export function groupLabelsFor(
 
 /**
  * Every group id the model *declares* on the axis, labelled or not (all team
- * ids; all boundary ids, top-level and scoped). Diff mode uses this to keep
- * before-side label backfill to groups the after model no longer declares —
- * a group kept but un-labelled must fall back to its id, not resurrect the
- * before label (the #1886 stale-state guard, applied to the label space).
+ * ids; all boundary ids, top-level and scoped), **in declaration order**.
+ *
+ * Existence of a group is a property of the declaration, not of the membership
+ * index: a boundary whose members are all claimed by an earlier one, or one
+ * with no `contains` at all, is still declared (TPL-2161). Layout appends these
+ * to the axis-derived order so such a group survives into the group order
+ * (#2178) — `assignGroupedLayers` still needs a member to give it a band, which
+ * placement owes it (#2176).
  */
-export function declaredGroupIds(
+export function declaredGroupOrderOf(
   krsFile: KrsFile,
   groupBy: "team" | "boundary" | undefined,
-): Set<string> {
-  const ids = new Set<string>();
+): string[] {
+  const ids: string[] = [];
+  const push = (id: string): void => {
+    if (!ids.includes(id)) ids.push(id);
+  };
   if (groupBy === "team") {
     const walk = (teams: readonly TeamNode[]): void => {
       for (const team of teams) {
-        ids.add(team.id);
+        push(team.id);
         walk(team.children.filter((c): c is TeamNode => c.kind === "team"));
       }
     };
     for (const org of krsFile.organizations) walk(org.teams);
   } else if (groupBy === "boundary") {
-    for (const boundary of krsFile.boundaries) ids.add(boundary.id);
+    for (const boundary of krsFile.boundaries) push(boundary.id);
     // Scoped declarations register under their scope-qualified group id — the
     // key the axis and the label maps use — so declaration identity matches
     // group identity ((scope, id), #2036).
     walkNodes(krsFile, (node, scopePath) => {
       for (const boundary of node.boundaries ?? []) {
-        ids.add(scopedBoundaryGroupId(scopePath, boundary.id));
+        push(scopedBoundaryGroupId(scopePath, boundary.id));
       }
     });
   }
   return ids;
+}
+
+/**
+ * {@link declaredGroupOrderOf} as a set. Diff mode uses this to keep before-side
+ * label backfill to groups the after model no longer declares — a group kept
+ * but un-labelled must fall back to its id, not resurrect the before label (the
+ * #1886 stale-state guard, applied to the label space). One derivation feeds
+ * both so the two answers cannot disagree (TPL-1032).
+ */
+export function declaredGroupIds(
+  krsFile: KrsFile,
+  groupBy: "team" | "boundary" | undefined,
+): Set<string> {
+  return new Set(declaredGroupOrderOf(krsFile, groupBy));
 }
 
 /**

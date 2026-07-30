@@ -314,8 +314,8 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
-    file.boundaryIndex = this.buildBoundaryIndex(file.boundaries);
-    file.scopedBoundaryIndex = this.buildScopedBoundaryIndex([
+    file.boundaryMembership = this.buildBoundaryMembership(file.boundaries);
+    file.scopedBoundaryMembership = this.buildScopedBoundaryMembership([
       ...file.systems,
       ...file.services,
       ...file.clients,
@@ -2160,34 +2160,46 @@ export class Parser {
     }
   }
 
-  // Build the 1:1 boundaryIndex (node id → boundary id), the P2b analogue of
-  // buildOwnerIndex. Unlike teams there is no migration-annotation precedence on
-  // boundaries, so multi-membership resolves by *first-declared-wins*; the
-  // duplicate is surfaced in the fact-vs-style register (info), mirroring
-  // duplicate-owner-assignment (ADR-1566 / TPL-1386). The
-  // diagnostic names the retained (first) boundary.
-  private buildBoundaryIndex(boundaries: BoundaryBlock[]): Map<string, string> {
-    const index = new Map<string, string>();
+  // Build the 1:N boundaryMembership (node id → every declared boundary id, in
+  // declaration order), the P2b analogue of buildOwnerIndex (#2178).
+  //
+  // Nothing declared is dropped: a node listed in three boundaries gets three
+  // entries, and the view that can only draw one band picks the primary at
+  // placement time (`primaryBoundaryOf`) — TPL-2161. Re-listing the *same*
+  // boundary is idempotent rather than an extra entry, so the merge paths can
+  // union without growing duplicates.
+  //
+  // The info diagnostic states the model fact — this node belongs to more than
+  // one boundary — and says nothing about how a view resolves it (TPL-1386);
+  // the resolution rule lives in docs/spec/syntax.md. It fires once per
+  // *additional distinct* boundary, so re-listing one boundary stays silent:
+  // "belongs to more than one" would not be true there.
+  private buildBoundaryMembership(boundaries: BoundaryBlock[]): Map<string, string[]> {
+    const membership = new Map<string, string[]>();
     for (const boundary of boundaries) {
       for (const memberId of boundary.contains) {
-        if (index.has(memberId)) {
-          this.diagnostics.push({
-            severity: "info",
-            code: "duplicate-boundary-assignment",
-            params: { nodeId: memberId, existingBoundary: index.get(memberId)! },
-            loc: boundary.loc,
-          });
-        } else {
-          index.set(memberId, boundary.id);
+        const declared = membership.get(memberId);
+        if (declared === undefined) {
+          membership.set(memberId, [boundary.id]);
+          continue;
         }
+        if (declared.includes(boundary.id)) continue;
+        this.diagnostics.push({
+          severity: "info",
+          code: "duplicate-boundary-assignment",
+          params: { nodeId: memberId, existingBoundary: declared[0] },
+          loc: boundary.loc,
+        });
+        declared.push(boundary.id);
       }
     }
-    return index;
+    return membership;
   }
 
   /**
    * Build the scope-keyed membership map for `boundary` blocks declared inside
-   * node blocks (#2036), the scoped counterpart of `buildBoundaryIndex`.
+   * node blocks (#2036), the scoped counterpart of {@link buildBoundaryMembership}
+   * — and 1:N for the same reason (#2178).
    *
    * The key carries the declaring scope because node ids are unique only among
    * siblings, so `nodeId` alone does not identify a node (TPL-1352).
@@ -2198,14 +2210,14 @@ export class Parser {
    * nodes on that scope's canvas. A `contains` naming anything else is left
    * unindexed and reported by reference validation, never silently framed.
    */
-  private buildScopedBoundaryIndex(roots: KrsNode[]): Map<string, Map<string, string>> {
-    const index = new Map<string, Map<string, string>>();
+  private buildScopedBoundaryMembership(roots: KrsNode[]): Map<string, Map<string, string[]>> {
+    const index = new Map<string, Map<string, string[]>>();
 
     const walk = (node: KrsNode, ancestorIds: string[]): void => {
       const scopePath = [...ancestorIds, node.id];
       if (node.boundaries !== undefined && node.boundaries.length > 0) {
         const childIds = new Set(node.children.map((child) => child.id));
-        const membership = new Map<string, string>();
+        const membership = new Map<string, string[]>();
         const declaredIds = new Set<string>();
 
         for (const boundary of node.boundaries) {
@@ -2226,17 +2238,24 @@ export class Parser {
 
           for (const memberId of boundary.contains) {
             if (!childIds.has(memberId)) continue;
-            const existingBoundary = membership.get(memberId);
-            if (existingBoundary !== undefined) {
-              this.diagnostics.push({
-                severity: "info",
-                code: "duplicate-boundary-assignment",
-                params: { nodeId: memberId, existingBoundary },
-                loc: boundary.loc,
-              });
+            const declared = membership.get(memberId);
+            if (declared === undefined) {
+              membership.set(memberId, [boundary.id]);
               continue;
             }
-            membership.set(memberId, boundary.id);
+            // Multi-membership within one scope: keep both, report the fact
+            // (same register as the top-level form, #2178). A repeat of the
+            // same boundary is idempotent — `duplicate-boundary-id` above
+            // already rejects a second block with this id, so this only
+            // catches `contains X` twice inside one block.
+            if (declared.includes(boundary.id)) continue;
+            this.diagnostics.push({
+              severity: "info",
+              code: "duplicate-boundary-assignment",
+              params: { nodeId: memberId, existingBoundary: declared[0] },
+              loc: boundary.loc,
+            });
+            declared.push(boundary.id);
           }
         }
 

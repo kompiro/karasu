@@ -7,7 +7,12 @@ import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
-import { buildGroupLabelIndex, buildTeamLabelIndex, type GroupLabelIndex } from "./group-labels.js";
+import {
+  buildGroupLabelIndex,
+  buildTeamLabelIndex,
+  declaredGroupOrderOf,
+  type GroupLabelIndex,
+} from "./group-labels.js";
 import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
@@ -139,8 +144,9 @@ export function buildDrillDownSvg(
           // Grouping resolves per level, against the nodes drawn there (#1983);
           // collapse off by design.
           groupBy,
-          boundaryIndex: krsFile.boundaryIndex,
-          scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+          boundaryMembership: krsFile.boundaryMembership,
+          scopedBoundaryMembership: krsFile.scopedBoundaryMembership,
+          declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
           groupLabels,
           teamLabels,
         }),
@@ -166,8 +172,9 @@ export function buildDrillDownSvg(
     theme,
     legendOptions,
     groupBy,
-    krsFile.boundaryIndex,
-    krsFile.scopedBoundaryIndex,
+    krsFile.boundaryMembership,
+    krsFile.scopedBoundaryMembership,
+    declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
   );
   for (const level of entityLevels) levels.push(level.element);
@@ -230,8 +237,9 @@ export function renderEntityView(
     ...legendOptions,
     viewScope: legendScopeForLogicalSlice(slice),
     groupBy,
-    boundaryIndex: krsFile.boundaryIndex,
-    scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+    boundaryMembership: krsFile.boundaryMembership,
+    scopedBoundaryMembership: krsFile.scopedBoundaryMembership,
+    declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
     groupLabels: buildGroupLabelIndex(krsFile, groupBy),
     teamLabels: buildTeamLabelIndex(krsFile),
   });
@@ -375,8 +383,9 @@ function collectEntityLevels(
   theme: DiagramTheme | undefined,
   legendOptions: ReturnType<typeof buildLegendRenderOptions>,
   groupBy?: "team" | "boundary",
-  boundaryIndex?: Map<string, string>,
-  scopedBoundaryIndex?: Map<string, Map<string, string>>,
+  boundaryMembership?: Map<string, string[]>,
+  scopedBoundaryMembership?: Map<string, Map<string, string[]>>,
+  declaredGroupOrder?: readonly string[],
   groupLabels?: GroupLabelIndex,
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
@@ -405,8 +414,9 @@ function collectEntityLevels(
       // Grouping resolves per level: entity members frame in their entity
       // view too (#1983); collapse off by design.
       groupBy,
-      boundaryIndex,
-      scopedBoundaryIndex,
+      boundaryMembership,
+      scopedBoundaryMembership,
+      declaredGroupOrder,
       groupLabels,
       teamLabels,
     });
@@ -551,8 +561,9 @@ export function buildAllViewsSvg(
             // Grouping resolves per level, against the nodes drawn there (#1983);
             // collapse off by design.
             groupBy,
-            boundaryIndex: krsFile.boundaryIndex,
-            scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+            boundaryMembership: krsFile.boundaryMembership,
+            scopedBoundaryMembership: krsFile.scopedBoundaryMembership,
+            declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
             groupLabels,
             teamLabels,
           }),
@@ -576,8 +587,9 @@ export function buildAllViewsSvg(
     theme,
     legendOptions,
     groupBy,
-    krsFile.boundaryIndex,
-    krsFile.scopedBoundaryIndex,
+    krsFile.boundaryMembership,
+    krsFile.scopedBoundaryMembership,
+    declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
   );
 

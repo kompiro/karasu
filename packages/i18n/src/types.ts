@@ -424,6 +424,13 @@ export type Translations = {
     nodeId: string;
     existingTeam: string;
   }) => string;
+  /**
+   * States the model fact only — the node belongs to more than one `boundary`
+   * (#2178). How a view resolves that (which one frames it) belongs in
+   * docs/spec/syntax.md, not here, or the string goes stale the moment a view
+   * draws them all (TPL-1386). `existingBoundary` is the primary, offered as
+   * one of the boundaries it belongs to.
+   */
   "diagnostic.duplicateBoundaryAssignment.message": (params: {
     nodeId: string;
     existingBoundary: string;

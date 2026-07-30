@@ -64,9 +64,22 @@ karasu では `boundaryIndex`（`buildBoundaryIndex`）が実例である。[ADR
 
 ## 関連テスト
 
-- （未確立 — [#2161](https://github.com/kompiro/karasu/issues/2161) slice A で `packages/core/src/parser/parser.test.ts` の boundary membership suite と merge 経路のテストを追加する）
+boundary 軸（[#2178](https://github.com/kompiro/karasu/issues/2178) slice A で確立）:
+
+- `packages/core/src/renderer/boundary-membership.test.ts` — チェックリストの本体。
+  N 宣言 → N 件（宣言順）／primary は純関数 1 つ／**merge 3 経路**（multi-file import の和集合・冪等性・
+  import 先で宣言された boundary の伝播、diff の removed 限定 backfill、scope 合成）／群の存在を
+  宣言リストから導く（全メンバー共有の群・`contains` ゼロの群が並びに残る）／軸が全 render surface に
+  届く（`compileProject` / `compileSystemDiff` / `buildDrillDownSvg` / `buildAllLayersSvg`）。
+- `packages/core/src/parser/parser.test.ts`（boundary suite）— 多重所属で全件保持、同一 boundary の
+  再掲は冪等、診断は事実 register（params・severity）。
+- `packages/core/src/parser/scoped-boundary.test.ts` — スコープ内でも 1:N。
+
+team 軸（`ownerIndex`）は依然 1:1 first-wins であり、本観点の未適用箇所として残っている
+（[#2178](https://github.com/kompiro/karasu/issues/2178) の設計で意図的に範囲外 — stable 構文かつ
+`@migration_target` の precedence を持つため、[[TPL-1583]] の勝者選択規則と併せて再訪する）。
 
 ## 派生元 spec
 
 - `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」 — 所属の多値性と banded view の解決規則。
-- 設計: `docs/design/boundary-membership-1n.md`（[#2161](https://github.com/kompiro/karasu/issues/2161)）、[ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 2 の refine 対象。
+- 設計: `docs/design/boundary-membership-1n.md`・`docs/design/boundary-membership-slice-a.md`（[#2161](https://github.com/kompiro/karasu/issues/2161) / [#2178](https://github.com/kompiro/karasu/issues/2178)）、[ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 2 の refine 対象。

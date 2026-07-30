@@ -25,7 +25,7 @@ boundary b { label "B" contains Payment }
 `);
     // Documents today's behaviour rather than endorsing it: the flat index maps
     // the *id*, so both the service and the nested domain resolve to it.
-    expect(result.value.boundaryIndex.get("Payment")).toBe("b");
+    expect(result.value.boundaryMembership.get("Payment")).toEqual(["b"]);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
   });
 
@@ -43,10 +43,12 @@ system Shop {
 
     // Only Checkout's scope gains membership; the top-level service Payment is
     // untouched even though it shares the id.
-    const checkout = result.value.scopedBoundaryIndex.get(boundaryScopeKey(["Shop", "Checkout"]));
-    expect(checkout?.get("Payment")).toBe("b");
-    expect(result.value.scopedBoundaryIndex.get(boundaryScopeKey(["Shop"]))).toBeUndefined();
-    expect(result.value.boundaryIndex.size).toBe(0);
+    const checkout = result.value.scopedBoundaryMembership.get(
+      boundaryScopeKey(["Shop", "Checkout"]),
+    );
+    expect(checkout?.get("Payment")).toEqual(["b"]);
+    expect(result.value.scopedBoundaryMembership.get(boundaryScopeKey(["Shop"]))).toBeUndefined();
+    expect(result.value.boundaryMembership.size).toBe(0);
   });
 
   it("the same boundary id in two scopes stays two independent memberships", () => {
@@ -60,12 +62,14 @@ system Shop {
 }
 `);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-    expect(result.value.scopedBoundaryIndex.get(boundaryScopeKey(["Shop"]))?.get("Checkout")).toBe(
-      "core",
-    );
     expect(
-      result.value.scopedBoundaryIndex.get(boundaryScopeKey(["Shop", "Checkout"]))?.get("Ledger"),
-    ).toBe("core");
+      result.value.scopedBoundaryMembership.get(boundaryScopeKey(["Shop"]))?.get("Checkout"),
+    ).toEqual(["core"]);
+    expect(
+      result.value.scopedBoundaryMembership
+        .get(boundaryScopeKey(["Shop", "Checkout"]))
+        ?.get("Ledger"),
+    ).toEqual(["core"]);
   });
 });
 
@@ -79,8 +83,8 @@ system Shop {
   }
 }
 `);
-    const scope = result.value.scopedBoundaryIndex.get(boundaryScopeKey(["Shop", "Checkout"]));
-    expect(scope?.get("Ledger")).toBe("b");
+    const scope = result.value.scopedBoundaryMembership.get(boundaryScopeKey(["Shop", "Checkout"]));
+    expect(scope?.get("Ledger")).toEqual(["b"]);
     // `Entry` is a grandchild: it is not drawn on Checkout's canvas, and it sits
     // outside the sibling-uniqueness guarantee the form relies on.
     expect(scope?.has("Entry")).toBe(false);
@@ -92,7 +96,7 @@ system Shop {
     expect(JSON.stringify(notFound[0].params)).toContain("Entry");
   });
 
-  it("keeps the first-declared boundary when a child is listed twice (info, mirroring top-level)", () => {
+  it("keeps both memberships when a child is listed twice (info, mirroring top-level)", () => {
     const result = Parser.parse(`
 system Shop {
   service Checkout {
@@ -105,9 +109,13 @@ system Shop {
     const dup = result.diagnostics.filter((d) => d.code === "duplicate-boundary-assignment");
     expect(dup).toHaveLength(1);
     expect(dup[0].severity).toBe("info");
+    // 1:N inside a scope too (#2178): both are kept, in declaration order, and
+    // the primary — the one the band places by — is the first.
     expect(
-      result.value.scopedBoundaryIndex.get(boundaryScopeKey(["Shop", "Checkout"]))?.get("Ledger"),
-    ).toBe("one");
+      result.value.scopedBoundaryMembership
+        .get(boundaryScopeKey(["Shop", "Checkout"]))
+        ?.get("Ledger"),
+    ).toEqual(["one", "two"]);
   });
 });
 
@@ -165,7 +173,7 @@ describe("scoped boundary — placement", () => {
       expect(result.diagnostics.filter((d) => d.code === "boundary-not-in-context")).toHaveLength(
         0,
       );
-      expect(result.value.scopedBoundaryIndex.size).toBeGreaterThan(0);
+      expect(result.value.scopedBoundaryMembership.size).toBeGreaterThan(0);
     });
   }
 
@@ -214,8 +222,8 @@ system Shop {
     expect(JSON.stringify(dup[0].params)).toContain("core");
 
     // The second block is unaddressable, so its members are not indexed.
-    const scope = result.value.scopedBoundaryIndex.get(boundaryScopeKey(["Shop", "Checkout"]));
-    expect(scope?.get("Ledger")).toBe("core");
+    const scope = result.value.scopedBoundaryMembership.get(boundaryScopeKey(["Shop", "Checkout"]));
+    expect(scope?.get("Ledger")).toEqual(["core"]);
     expect(scope?.has("Cart")).toBe(false);
   });
 
@@ -229,8 +237,8 @@ boundary pay { label "One" contains Billing }
 boundary pay { label "Two" contains Wallet }
 `);
     expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(0);
-    expect(result.value.boundaryIndex.get("Billing")).toBe("pay");
-    expect(result.value.boundaryIndex.get("Wallet")).toBe("pay");
+    expect(result.value.boundaryMembership.get("Billing")).toEqual(["pay"]);
+    expect(result.value.boundaryMembership.get("Wallet")).toEqual(["pay"]);
   });
 });
 

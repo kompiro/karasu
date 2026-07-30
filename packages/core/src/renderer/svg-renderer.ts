@@ -152,16 +152,23 @@ export interface RenderOptions {
    */
   groupBy?: "team" | "boundary";
   /**
-   * Declared-boundary axis (node id → boundary id). Sourced from
-   * `krsFile.boundaryIndex`; consumed by layout only when `groupBy === "boundary"`.
+   * Declared-boundary axis (node id → every boundary it is declared in, #2178).
+   * Sourced from `krsFile.boundaryMembership`; consumed by layout only when
+   * `groupBy === "boundary"`, which bands each node by its primary membership.
    */
-  boundaryIndex?: Map<string, string>;
+  boundaryMembership?: Map<string, string[]>;
   /**
-   * `krsFile.scopedBoundaryIndex` — membership from `boundary` blocks declared
-   * inside a node block (#2036). Layout picks the entry for the canvas it is
-   * drawing, so these frame their own level only.
+   * `krsFile.scopedBoundaryMembership` — membership from `boundary` blocks
+   * declared inside a node block (#2036). Layout picks the entry for the canvas
+   * it is drawing, so these frame their own level only.
    */
-  scopedBoundaryIndex?: Map<string, Map<string, string>>;
+  scopedBoundaryMembership?: Map<string, Map<string, string[]>>;
+  /**
+   * Group ids the model declares on the active axis, in declaration order
+   * (`declaredGroupOrder`). Keeps a declared-but-unplaceable group in the group
+   * order instead of letting the axis map decide which groups exist (#2178).
+   */
+  declaredGroupOrder?: readonly string[];
   /**
    * Declared group labels for the active axis (#2133), from
    * `buildGroupLabelIndex(krsFile, groupBy)`; layout resolves them per canvas.
@@ -218,8 +225,9 @@ export function render(
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     teamLabels: options?.teamLabels,
-    boundaryIndex: options?.boundaryIndex,
-    scopedBoundaryIndex: options?.scopedBoundaryIndex,
+    boundaryMembership: options?.boundaryMembership,
+    scopedBoundaryMembership: options?.scopedBoundaryMembership,
+    declaredGroupOrder: options?.declaredGroupOrder,
     groupLabels: options?.groupLabels,
     displayMode,
     layoutHints: styles.layoutHints,

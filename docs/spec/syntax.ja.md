@@ -992,14 +992,25 @@ boundary payments {
   （`contains-target-not-found`）だけ。このビューごとの解決は**両方の** Group-by 軸に共通:
   `owns` にもレベル制限は無いので、ネストされた `domain` を owns した team は *Group by: team* で
   同じ drill-down ビューにフレームを得る。
+- **所属は 1:N**。1 つのノードは何個の boundary に含まれてもよく、**宣言された所属はすべて保持される**。
+  `boundary` は著者が引くグルーピングであり、複数のグルーピングが重なるのは正常な状態である
+  （1 つの service が `payments` でもあり `pci-scope` でもある）。多重所属は info 診断
+  `duplicate-boundary-assignment` で観測する — error ではなく、見えるべき事実
+  （`duplicate-owner-assignment` と同じ register）。
+- **ビューによる多重所属の解決**: banded な *Group by: boundary* レイアウトは 1 ノードを 1 band にしか
+  置けないため、**最初に宣言された** boundary（*primary*）を使い、ノードはその boundary のフレームの中に
+  **ちょうど 1 つ**描かれる。これはそのビューの性質であってモデルの性質ではない — 残りの所属はモデルに
+  残り、所属する**すべての**フレームに囲んで描く案は別途進めている
+  （[#2161](https://github.com/kompiro/karasu/issues/2161)）。したがって、共有されたノードが今日どちらの
+  フレームに入るかは宣言順で決まる。
 - **membership index は配置ごとに parse 時に導出される**。top-level 形はフラットな
-  **`boundaryIndex`**（`node id → boundary id`、org の `ownerIndex` と同型）を、スコープ宣言は
-  per-scope の **`scopedBoundaryIndex`**（`宣言スコープ → (child id → boundary id)`）を組む。
-  後者はスコープパスをキーに含むため、別スコープの同名の子と混同しえない（TPL-1352）。
-  どちらも **1:1** で、同じ index 内で複数 boundary に含まれるノードは**最初に宣言された** boundary が
-  勝ち、重複は info 診断 `duplicate-boundary-assignment` で観測する（error ではなく事実 —
-  `duplicate-owner-assignment` と同じ register）。1 つのキャンバス上で両 index が同じノードを指名した
-  場合は**スコープ側が勝つ** — そのノードの隣に書かれた、より具体的な宣言だからである。
+  **`boundaryMembership`**（`node id → boundary id の配列`、org の `ownerIndex` と同型）を、
+  スコープ宣言は per-scope の **`scopedBoundaryMembership`**
+  （`宣言スコープ → (child id → boundary id の配列)`）を組む。後者はスコープパスをキーに含むため、
+  別スコープの同名の子と混同しえない（TPL-1352）。1 つのキャンバス上で両者が同じノードを指名した場合は
+  **スコープ側が勝つ** — そのノードの隣に書かれた、より具体的な宣言であり、**そのキャンバスにおける**
+  所属を述べ直しているからである。ファイル全体 `import` では両ファイルの所属が併合される（和集合）。
+  import 先のファイルで宣言された boundary は import 元のモデルにもフレームを作る。
 
 ### スコープ宣言 — ノードブロック内の `boundary`
 
@@ -1058,7 +1069,7 @@ system Shop {
 
 診断（[diagnostics.md](diagnostics.md) 参照）:
 
-- `duplicate-boundary-assignment`（info）— ノードが複数の `boundary` に含まれる。最初の boundary を採用。
+- `duplicate-boundary-assignment`（info）— ノードが複数の `boundary` に所属する（ビュー側の解決規則は上の「所属は 1:N」を参照）。
 - `contains-target-not-found`（warning）— `contains` 先が存在しない（top-level: system 階層のどこにも無い。スコープ宣言: 宣言ノードの直下の子に無い）。
 - `boundary-not-in-context`（error）— キャンバスを持たない kind の中の `boundary` ブロック。
 - `duplicate-boundary-id`（error）— 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言。top-level ブロックは対象外（従来どおりマージ）。

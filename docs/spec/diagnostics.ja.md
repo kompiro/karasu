@@ -78,7 +78,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-resource-operation` | warning | 1 つの resource に CRUD verb が複数回並ぶ。 |
 | `duplicate-crud-decoration-target` | warning | CRUD decoration が同じ operation を複数回対象にする。 |
 | `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-1566](../adr/1566-ownership-during-migration.md) 参照）。 |
-| `duplicate-boundary-assignment` | info | node が複数の `boundary` に含まれる（事実。最初に宣言された boundary を採用）。 |
+| `duplicate-boundary-assignment` | info | node が複数の `boundary` に所属する（事実。所属は 1:N — ビュー側の解決規則は [syntax.ja.md](syntax.ja.md) を参照）。 |
 | `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
 | `positional-label-removed` | error | `boundary` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、experimental な `boundary` では未文書の位置ラベル記法を deprecation を挟まず削除した（#2133）。 |
 | `positional-label-deprecated` | warning | `organization` / `team` / `member` の id 直後にラベル文字列が置かれている。この記法は spec に存在しない（ADR-19）。現状は受理され、`karasu fmt` が `label` プロパティへ書き換える（#2133）。 |

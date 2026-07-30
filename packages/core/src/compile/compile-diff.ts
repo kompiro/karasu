@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Diagnostic } from "../types/ast.js";
+import { mergeMembership } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { FileSystemProvider } from "../fs/types.js";
 import {
@@ -19,6 +20,7 @@ import {
   buildGroupLabelIndex,
   buildTeamLabelIndex,
   declaredGroupIds,
+  declaredGroupOrderOf,
 } from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import { bundleSingleLevelViews } from "../renderer/drill-down-svg.js";
@@ -232,33 +234,55 @@ export async function compileSystemDiff(
     if (formerTeam !== undefined) mergedOwnerIndex.set(id, formerTeam);
   }
   // Same backfill for the boundary axis (#1822 P2b): a removed node returns to
-  // its former boundary frame instead of the trailing un-grouped band.
-  const mergedBoundaryIndex = new Map<string, string>(afterResolved.krsFile.boundaryIndex);
+  // its former boundary frame instead of the trailing un-grouped band. Now that
+  // membership is 1:N the backfill restores the node's whole before-side
+  // membership array (#2178) — but still only for `removed` nodes, so a node
+  // that merely lost a `contains` does not inherit its stale before state.
+  const mergedBoundaryMembership = new Map<string, string[]>();
+  for (const [id, boundaryIds] of afterResolved.krsFile.boundaryMembership) {
+    mergedBoundaryMembership.set(id, [...boundaryIds]);
+  }
   for (const [id, meta] of diffed.nodes) {
-    if (meta.state !== "removed" || mergedBoundaryIndex.has(id)) continue;
-    const formerBoundary = beforeResolved.krsFile.boundaryIndex.get(id);
-    if (formerBoundary !== undefined) mergedBoundaryIndex.set(id, formerBoundary);
+    if (meta.state !== "removed" || mergedBoundaryMembership.has(id)) continue;
+    const formerBoundaries = beforeResolved.krsFile.boundaryMembership.get(id);
+    if (formerBoundaries !== undefined) {
+      mergeMembership(mergedBoundaryMembership, id, formerBoundaries);
+    }
   }
   // Same backfill for the scoped boundary axis (#2036). It is keyed by scope, so
   // the before-side membership is restored under its own scope key — the same
   // key the removed node's canvas is drawn with — rather than flattened. Scoped
   // and top-level indexes are disjoint (a scoped member never appears in the
-  // flat `boundaryIndex`), so without this a node whose only membership was a
-  // scoped `boundary` would drop out of its frame in diff view.
-  const mergedScopedBoundaryIndex = new Map<string, Map<string, string>>();
-  for (const [scope, membership] of afterResolved.krsFile.scopedBoundaryIndex) {
-    mergedScopedBoundaryIndex.set(scope, new Map(membership));
+  // flat `boundaryMembership`), so without this a node whose only membership was
+  // a scoped `boundary` would drop out of its frame in diff view.
+  const mergedScopedBoundaryMembership = new Map<string, Map<string, string[]>>();
+  for (const [scope, membership] of afterResolved.krsFile.scopedBoundaryMembership) {
+    const copy = new Map<string, string[]>();
+    for (const [id, boundaryIds] of membership) copy.set(id, [...boundaryIds]);
+    mergedScopedBoundaryMembership.set(scope, copy);
   }
-  for (const [scope, membership] of beforeResolved.krsFile.scopedBoundaryIndex) {
-    for (const [id, boundaryId] of membership) {
+  for (const [scope, membership] of beforeResolved.krsFile.scopedBoundaryMembership) {
+    for (const [id, boundaryIds] of membership) {
       if (diffed.nodes.get(id)?.state !== "removed") continue;
-      let target = mergedScopedBoundaryIndex.get(scope);
+      let target = mergedScopedBoundaryMembership.get(scope);
       if (target === undefined) {
-        target = new Map<string, string>();
-        mergedScopedBoundaryIndex.set(scope, target);
+        target = new Map<string, string[]>();
+        mergedScopedBoundaryMembership.set(scope, target);
       }
-      if (!target.has(id)) target.set(id, boundaryId);
+      if (!target.has(id)) mergeMembership(target, id, boundaryIds);
     }
+  }
+
+  // Declared group order follows the same shape as the index merges above: the
+  // after model declares the order, and a group it no longer declares at all is
+  // appended from before, so a removed node's former group still exists on the
+  // axis (#2178). Groups the after model still declares are not re-ordered from
+  // before — after is authoritative, as it is for labels.
+  const afterDeclaredOrder = declaredGroupOrderOf(afterResolved.krsFile, groupBy);
+  const mergedDeclaredGroupOrder = [...afterDeclaredOrder];
+  const afterDeclaredSet = new Set(afterDeclaredOrder);
+  for (const groupId of declaredGroupOrderOf(beforeResolved.krsFile, groupBy)) {
+    if (!afterDeclaredSet.has(groupId)) mergedDeclaredGroupOrder.push(groupId);
   }
 
   // Group labels resolve from the after model; a group the after model no
@@ -309,8 +333,9 @@ export async function compileSystemDiff(
     emptyLabels: emptyStateLabels,
     theme,
     groupBy,
-    boundaryIndex: mergedBoundaryIndex,
-    scopedBoundaryIndex: mergedScopedBoundaryIndex,
+    boundaryMembership: mergedBoundaryMembership,
+    scopedBoundaryMembership: mergedScopedBoundaryMembership,
+    declaredGroupOrder: mergedDeclaredGroupOrder,
     groupLabels,
     teamLabels,
     collapsedGroups,
