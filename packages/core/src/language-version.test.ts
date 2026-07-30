@@ -28,10 +28,18 @@ describe("KRS_LANGUAGE_VERSION", () => {
     expect(doc).toContain(`.krs language v${KRS_LANGUAGE_VERSION}`);
   });
 
+  // Forward references to a HIGHER version are legitimate — the spec's
+  // promotion-path phrasing ("becomes an error in `.krs language v2.0`",
+  // ADR-2124 canonical token) — so stale means strictly lower than current.
   it.each(SPEC_DOCS)("%s does not state a stale language version", (rel) => {
     const doc = readFileSync(resolve(__dirname, rel), "utf8");
-    for (const m of doc.matchAll(/\.krs language v(\d+\.\d+)/g)) {
-      expect(m[1]).toBe(KRS_LANGUAGE_VERSION);
-    }
+    const [major, minor] = KRS_LANGUAGE_VERSION.split(".").map(Number);
+    const stale = [...doc.matchAll(/\.krs language v(\d+)\.(\d+)/g)]
+      .filter(([, docMajor, docMinor]) => {
+        const [ma, mi] = [Number(docMajor), Number(docMinor)];
+        return ma < major || (ma === major && mi < minor);
+      })
+      .map(([token]) => token);
+    expect(stale).toEqual([]);
   });
 });
