@@ -36,11 +36,17 @@ parse / merge 3 経路（multi-file import・diff・scope 合成）/ 群の並�
 
 ### slice A
 
+検証用サンプル: `examples/en/feature-samples/boundary-multi-membership.krs`
+（app の builtin **Feature samples** プロジェクトをファイルツリーから開く）。
+`Ledger` が `payments` と `pci` の両方に `contains` されている。
+
 #### AC-1: 多重所属モデルでも図が変わらない
 
-- [ ] **手動**: 多重所属を含む `.krs`（1 つの service を 2 つの `boundary` が `contains` する）を app で開き、
-      Group by: **Boundary** にする。ノードは図中に**ちょうど 1 つ**だけ現れ、最初に宣言された
-      boundary の枠の中に描かれる。枠・エッジが視覚的に破綻していない。
+- [ ] **手動**: 上記サンプルを開いて Group by: **Boundary** にする。`Ledger` は図中に**ちょうど 1 つ**だけ
+      現れ、**先に宣言された** `payments` の枠の中に描かれる（`pci` の枠は `Card vault` だけを囲む）。
+      枠・エッジが視覚的に破綻していない。
+- [ ] **手動**: サンプル内の 2 つの `boundary` ブロックの順序を入れ替えると、`Ledger` が `pci` の枠へ移り、
+      それ以外は変わらない（primary だけが変わったことを確認する）。
 
 #### AC-2: 診断がモデルの事実だけを述べる
 

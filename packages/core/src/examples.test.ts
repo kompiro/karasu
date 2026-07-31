@@ -165,6 +165,63 @@ describe("feature-samples: domain-drift.krs demonstrates domain-to-domain edges"
   });
 });
 
+// The multi-membership sample is the manual-verification fixture for #2178
+// (docs/acceptance/2161-boundary-multi-membership.md), and its header comment
+// makes three claims a reader will check against the diagram. Fence them here
+// so the sample cannot quietly stop demonstrating what it says it does — an
+// example whose prose and behaviour disagree is worse than no example.
+describe("feature-samples: boundary-multi-membership.krs demonstrates 1:N membership (#2178)", () => {
+  const src = () => readFileSync(resolve(dir, "boundary-multi-membership.krs"), "utf8");
+
+  it("keeps both declared memberships, in declaration order", () => {
+    const result = Parser.parse(src());
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.value.boundaryMembership.get("Ledger")).toEqual(["payments", "pci"]);
+  });
+
+  it("reports the shared node as info, stating the fact and naming the primary", () => {
+    const result = Parser.parse(src());
+    const info = result.diagnostics.filter((d) => d.code === "duplicate-boundary-assignment");
+    expect(info).toHaveLength(1);
+    expect(info[0].severity).toBe("info");
+    expect(info[0].params).toEqual({ nodeId: "Ledger", existingBoundary: "payments" });
+  });
+
+  it("draws the shared node exactly once, inside the first-declared boundary's frame", () => {
+    // The claim a reader verifies visually: both frames are drawn, and Ledger
+    // sits in `payments` (declared first) rather than `pci`.
+    const result = compile(src(), { diagramType: "system", groupBy: "boundary" });
+    expect(result.svg).toContain('data-container-id="__group_payments__"');
+    expect(result.svg).toContain('data-container-id="__group_pci__"');
+    expect(result.svg.match(/data-node-id="Ledger"/g)).toHaveLength(1);
+
+    const frameOf = (groupId: string): { x: number; y: number; w: number; h: number } => {
+      const at = result.svg.indexOf(`data-container-id="__group_${groupId}__"`);
+      expect(at).toBeGreaterThan(-1);
+      const m = result.svg
+        .slice(at)
+        .match(
+          /<rect\b[^>]*?\bx="([\d.]+)"[^>]*?\by="([\d.]+)"[^>]*?\bwidth="([\d.]+)"[^>]*?\bheight="([\d.]+)"/,
+        );
+      if (!m) throw new Error(`no frame rect for ${groupId}`);
+      return { x: +m[1], y: +m[2], w: +m[3], h: +m[4] };
+    };
+    const nodeAt = (id: string): { x: number; y: number } => {
+      const at = result.svg.indexOf(`data-node-id="${id}"`);
+      const m = result.svg.slice(at).match(/<rect\b[^>]*?\bx="([\d.]+)"[^>]*?\by="([\d.]+)"/);
+      if (!m) throw new Error(`no rect for ${id}`);
+      return { x: +m[1], y: +m[2] };
+    };
+    const payments = frameOf("payments");
+    const pci = frameOf("pci");
+    const ledger = nodeAt("Ledger");
+    const inside = (f: typeof payments, n: typeof ledger): boolean =>
+      n.x >= f.x && n.x <= f.x + f.w && n.y >= f.y && n.y <= f.y + f.h;
+    expect(inside(payments, ledger)).toBe(true);
+    expect(inside(pci, ledger)).toBe(false);
+  });
+});
+
 // Regression guard for #969: getting-started ships with `service[external]
 // { column: right; }`. The column hint must take effect end-to-end through
 // compile() so that Payment / Inventory render to the right of Notification

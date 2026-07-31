@@ -2139,6 +2139,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
+//   boundary-multi-membership.krs  a node listed in two boundaries — every membership is kept (experimental)
 
 system FeatureSamples {
   label "Feature samples"
@@ -2916,6 +2917,70 @@ system Shop {
 
   Web -> Checkout "order"
   Mobile -> Checkout "order"
+}
+`,
+    },
+    {
+      path: "boundary-multi-membership.krs",
+      content: `// A node in more than one \`boundary\` (Issue #2161 — experimental).
+//
+// Boundaries group by meaning, and meanings overlap: Ledger is part of the
+// payments flow AND inside the PCI audit scope. Listing it in both is a normal
+// thing to write, not a mistake — every declared membership is kept in the
+// model (see boundary-clusters.krs for the basics of the axis).
+//
+// What you see with "Group by: Boundary" on:
+//   - Ledger is drawn EXACTLY ONCE, inside the frame of \`payments\` — the
+//     boundary that declares it FIRST. That first-declared membership is the
+//     node's "primary", and a banded layout can only put a node in one band.
+//   - \`pci\` frames its own member (CardVault) and does not reach across to
+//     Ledger. Drawing a node inside ALL the frames it belongs to is being built
+//     separately (#2161); until then declaration order decides which frame a
+//     shared node sits in.
+//   - The diagnostics panel reports Ledger as an \`info\`: it belongs to more
+//     than one boundary. That is a fact worth seeing, not an error — the same
+//     register as a node owned by two teams.
+//
+// Swap the two \`boundary\` blocks around and Ledger moves into \`pci\`'s frame:
+// nothing else changes, because only the primary changed.
+//
+// The whole membership survives a multi-file model too — a \`boundary\` in an
+// imported file and one here both count, rather than the first one winning.
+//
+// \`boundary\` is experimental notation — backward compatibility is not yet
+// promised (docs/spec/syntax.md § Grouping the system view).
+
+system Payments {
+  label "Payments platform"
+
+  service Checkout { label "Checkout" }
+  service Ledger { label "Ledger" }
+  service Wallet { label "Wallet" }
+  service CardVault { label "Card vault" }
+  service Reporting { label "Reporting" }
+
+  database LedgerDB { label "Ledger DB" }
+
+  Checkout -> CardVault "tokenize"
+  Checkout -> Ledger "record"
+  Checkout -> Wallet "debit"
+  Ledger -> LedgerDB "persist"
+  Reporting -> LedgerDB "read"
+}
+
+boundary payments {
+  label "Payments"
+  contains Checkout
+  contains Ledger
+  contains Wallet
+}
+
+boundary pci {
+  label "PCI scope"
+  // Ledger is already in \`payments\` above. Both memberships are kept; the
+  // frame you see it in is the first one declared.
+  contains Ledger
+  contains CardVault
 }
 `,
     },
