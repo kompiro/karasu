@@ -39,6 +39,7 @@ flowchart TD
   ADR_1820["ADR-1820<br/>[build] notation promotion gate — experimental notation..."]
   ADR_1858["ADR-1858<br/>[renderer] system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
   ADR_1983["ADR-1983<br/>[renderer] boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
+  ADR_2075["ADR-2075<br/>[resolver] 宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
   ADR_2184["ADR-2184<br/>[resolver] 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_19 --> ADR_9008
@@ -61,6 +62,8 @@ flowchart TD
   ADR_681 --> ADR_412
   ADR_1061 --> ADR_1046
   ADR_1820 --> ADR_1314
+  ADR_2075 --> ADR_1567
+  ADR_2075 --> ADR_1314
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
   ADR_9007 --> ADR_9008
@@ -103,6 +106,7 @@ flowchart TD
   class ADR_1820 ghost
   class ADR_1858 ghost
   class ADR_1983 ghost
+  class ADR_2075 ghost
   class ADR_2184 ghost
   class ADR_9007 ghost
 ```

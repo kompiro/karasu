@@ -29,6 +29,7 @@ flowchart TD
   ADR_237["ADR-237<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
   ADR_1580["ADR-1580<br/>[chat-ai] 組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
   ADR_1819["ADR-1819<br/>[resolver] infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
+  ADR_2075["ADR-2075<br/>[resolver] 宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
   ADR_9009["ADR-9009<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_14 --> ADR_9003
   ADR_14 --> ADR_9009
@@ -38,6 +39,7 @@ flowchart TD
   ADR_237 --> ADR_9003
   ADR_1580 --> ADR_1583
   ADR_1819 --> ADR_1870
+  ADR_2075 --> ADR_1386
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -67,5 +69,6 @@ flowchart TD
   class ADR_237 ghost
   class ADR_1580 ghost
   class ADR_1819 ghost
+  class ADR_2075 ghost
   class ADR_9009 ghost
 ```
