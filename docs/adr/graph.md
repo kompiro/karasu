@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-288 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+289 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -286,6 +286,7 @@ flowchart TD
     ADR_1381["ADR-1381<br/>マルチファイル import の意味論 — whole-file import / syste..."]
     ADR_1570["ADR-1570<br/>共有 infra fan-in を info 診断として通知する"]
     ADR_1819["ADR-1819<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
+    ADR_2075["ADR-2075<br/>宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
   end
   subgraph styling["styling"]
@@ -412,6 +413,9 @@ flowchart TD
   ADR_1974 --> ADR_1820
   ADR_2036 --> ADR_1974
   ADR_2036 --> ADR_1983
+  ADR_2075 --> ADR_1567
+  ADR_2075 --> ADR_1386
+  ADR_2075 --> ADR_1314
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
   ADR_2124 --> ADR_1314
@@ -688,6 +692,7 @@ flowchart TD
   class ADR_2036 accepted
   class ADR_2045 accepted
   class ADR_2048 accepted
+  class ADR_2075 accepted
   class ADR_2076 accepted
   class ADR_2077 accepted
   class ADR_2087 accepted
@@ -741,7 +746,7 @@ flowchart TD
 - [`parser`](graph/parser.md) — 22 ADRs
 - [`project`](graph/project.md) — 10 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
-- [`resolver`](graph/resolver.md) — 8 ADRs
+- [`resolver`](graph/resolver.md) — 9 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 12 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs
