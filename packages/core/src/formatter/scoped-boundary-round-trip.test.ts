@@ -12,10 +12,10 @@ import { boundaryScopeKey, type KrsNode } from "../types/ast.js";
 // silently deleting them — the failure TPL-1101 exists to prevent.
 
 /** Membership of every scope, flattened, so two parses can be compared directly. */
-function membership(source: string): Record<string, Record<string, string>> {
+function membership(source: string): Record<string, Record<string, string[]>> {
   const { value } = Parser.parse(source);
-  const out: Record<string, Record<string, string>> = {};
-  for (const [scope, map] of value.scopedBoundaryIndex) {
+  const out: Record<string, Record<string, string[]>> = {};
+  for (const [scope, map] of value.scopedBoundaryMembership) {
     out[scope] = Object.fromEntries(map);
   }
   return out;
@@ -114,8 +114,8 @@ describe("scoped boundary — formatter round trip", () => {
 `;
     const formatted = format(source);
     expect(membership(formatted)).toEqual({
-      [boundaryScopeKey(["Shop"])]: { Checkout: "top" },
-      [boundaryScopeKey(["Shop", "Checkout"])]: { Ledger: "core" },
+      [boundaryScopeKey(["Shop"])]: { Checkout: ["top"] },
+      [boundaryScopeKey(["Shop", "Checkout"])]: { Ledger: ["core"] },
     });
     expect(membership(formatted)).toEqual(membership(source));
   });

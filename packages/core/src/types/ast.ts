@@ -421,10 +421,11 @@ export interface OrganizationBlock {
 //
 // `boundary <id> "label"? { contains <node-id> ... }` は、著者が任意に引く
 // 意味的まとまりを宣言する top-level 構文。`organization`/`owns` と同じく
-// containment ではなく参照（id 参照でファイル横断可）で、`boundaryIndex`
-// （node id → boundary id、1:1）を成す。team（`ownerIndex`）と直交する
-// 第二の Group-by 軸になる。experimental notation（ADR-1820）。
-// 設計: docs/design/system-view-grouping.md「P2b 詳細設計」。
+// containment ではなく参照（id 参照でファイル横断可）で、`boundaryMembership`
+// （node id → 宣言されたすべての boundary id、1:N）を成す。team（`ownerIndex`）
+// と直交する第二の Group-by 軸になる。experimental notation（ADR-1820）。
+// 設計: docs/design/system-view-grouping.md「P2b 詳細設計」、
+// docs/design/boundary-membership-slice-a.md（1:N 化、#2178）。
 export interface BoundaryBlock {
   kind: "boundary";
   id: string;
@@ -560,21 +561,32 @@ export interface KrsFile {
   facets: FacetBlock[];
   legends: LegendBlock[];
   ownerIndex: Map<string, string>;
-  /** Maps each node id to its declared boundary id (P2b, 1:1 like ownerIndex). First-declared wins on multi-membership. */
-  boundaryIndex: Map<string, string>;
+  /**
+   * Every `boundary` a node is declared in, in declaration order (P2b, #2178).
+   *
+   * Membership is **1:N at the model layer**: a node listed in three boundaries
+   * yields three entries. Needing a single value is a *view* requirement (one
+   * band, one collapse stub) and is absorbed where the view places the node, by
+   * {@link primaryBoundaryOf} — never by dropping declarations here, which
+   * would leave the fact unrecoverable for every other consumer (TPL-2161).
+   * There is deliberately no parallel 1:1 field to drift against (TPL-1032).
+   *
+   * Refines ADR-1974 decision 2 (`boundaryIndex`, 1:1 first-declared-wins).
+   */
+  boundaryMembership: Map<string, string[]>;
   /**
    * Membership declared by *scoped* `boundary` blocks (#2036), keyed by the
-   * declaring scope and then by child id: `scopeKey(path) → (childId → boundaryId)`.
+   * declaring scope and then by child id: `scopeKey(path) → (childId → boundaryIds)`.
    *
-   * A flat `Map<nodeId, boundaryId>` cannot express this: node ids are unique
+   * A flat `Map<nodeId, boundaryIds>` cannot express this: node ids are unique
    * only among siblings, so the scope is a distinguishing dimension the key must
    * carry (TPL-1352). Build keys with {@link boundaryScopeKey} on both
    * the producing and consuming side so the separator never leaks.
    *
-   * Top-level `boundary` blocks keep using the flat `boundaryIndex` above — their
-   * behaviour is unchanged (ADR-1974 stays in force for them).
+   * Top-level `boundary` blocks use the flat {@link KrsFile.boundaryMembership}
+   * above; both are 1:N, for the same reason.
    */
-  scopedBoundaryIndex: Map<string, Map<string, string>>;
+  scopedBoundaryMembership: Map<string, Map<string, string[]>>;
   /**
    * Facet membership declared by the element-side `facets` property: node id →
    * the set of facet ids it belongs to (#2065 Part B).
@@ -583,18 +595,18 @@ export interface KrsFile {
    * a normal state (an entity can be both PII and PCI scope), never a diagnostic
    * condition, so this map holds every declared membership rather than picking a
    * winner. A view that can only draw one value per node resolves that on the
-   * view side; the model layer does not discard the fact (TPL-2161 —
-   * `boundaryIndex`'s first-wins is exactly the shape not to copy here).
+   * view side; the model layer does not discard the fact (TPL-2161 — which
+   * `boundaryMembership` now follows too, since #2178 retired its first-wins).
    *
    * Nodes with no `facets` property are absent from the map (no empty sets).
    *
    * The key is the **bare node id**, matching the flat `ownerIndex` /
-   * `boundaryIndex` convention. Node ids are only unique among siblings
+   * `boundaryMembership` convention. Node ids are only unique among siblings
    * (ADR-927), so two same-named nodes in different scopes share one entry —
    * the union of both their memberships. Anything that needs to know *which*
    * node a membership came from must therefore resolve identity itself rather
    * than trust a bare id, or it will pick the wrong `Payment` (TPL-1352 — a key
-   * must carry every distinguishing dimension; `scopedBoundaryIndex` is the
+   * must carry every distinguishing dimension; `scopedBoundaryMembership` is the
    * worked example of doing it). `facet-not-declared` learned this the hard
    * way: it read this index and reported the first same-named node's location
    * instead of the one that wrote the reference, and now walks the declaration
@@ -616,7 +628,7 @@ export interface KrsFile {
  * (circular-import fallback + merge accumulator), and CLI subtree wrapping.
  */
 /**
- * Key for {@link KrsFile.scopedBoundaryIndex}: the chain of node ids from the
+ * Key for {@link KrsFile.scopedBoundaryMembership}: the chain of node ids from the
  * root down to the declaring node (e.g. `["Shop", "Checkout"]`).
  *
  * The single place the encoding is chosen, so producer (parser) and consumer
@@ -627,6 +639,48 @@ export interface KrsFile {
  */
 export function boundaryScopeKey(pathIds: readonly string[]): string {
   return JSON.stringify(pathIds);
+}
+
+/**
+ * The one boundary a *banded* view can place a node in: its first-declared
+ * membership (#2178).
+ *
+ * The model keeps every declared membership ({@link KrsFile.boundaryMembership});
+ * a banded view needs exactly one value per node, because a node is laid out
+ * once (TPL-1738) and collapses into one stub. That reduction lives here, in a
+ * single pure function, rather than in a second index the model would have to
+ * keep in sync (TPL-1032) — so any other view (detail panel, legend, export)
+ * still reads the full membership.
+ *
+ * First-declared wins: the boundary axis has no annotation precedence (unlike
+ * the team axis's `@migration_target`, ADR-1566), so this is the tie rule of
+ * TPL-1583 with nothing above it.
+ */
+export function primaryBoundaryOf(ids: readonly string[] | undefined): string | undefined {
+  return ids?.[0];
+}
+
+/**
+ * Union `boundaryIds` into `membership[memberId]`, in place.
+ *
+ * The one place the merge predicate for 1:N membership lives (#2178), shared by
+ * the multi-file import merge and the diff merge so they cannot drift into
+ * different answers for the same model (TPL-2161). Idempotent per
+ * (member, boundary); order is first-seen, which fixes the primary.
+ */
+export function mergeMembership(
+  membership: Map<string, string[]>,
+  memberId: string,
+  boundaryIds: readonly string[],
+): void {
+  const declared = membership.get(memberId);
+  if (declared === undefined) {
+    membership.set(memberId, [...boundaryIds]);
+    return;
+  }
+  for (const boundaryId of boundaryIds) {
+    if (!declared.includes(boundaryId)) declared.push(boundaryId);
+  }
 }
 
 /**
@@ -686,8 +740,8 @@ export function createEmptyKrsFile(): KrsFile {
     facets: [],
     legends: [],
     ownerIndex: new Map(),
-    boundaryIndex: new Map(),
-    scopedBoundaryIndex: new Map(),
+    boundaryMembership: new Map(),
+    scopedBoundaryMembership: new Map(),
     facetIndex: new Map(),
     nodePathIndex: new Map(),
     nodeFileIndex: new Map(),

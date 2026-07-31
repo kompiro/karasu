@@ -158,7 +158,7 @@ describe("collapse round-trip on a drill slice (TPL-1738)", () => {
     const parsed = Parser.parse(DRILL_SRC).value;
     const slice = extractView(parsed.systems, ["Shop", "Orders"]);
     const res = layout(slice, {
-      boundaryIndex: parsed.boundaryIndex,
+      boundaryMembership: parsed.boundaryMembership,
       groupBy: "boundary",
       collapsedGroups: new Set(["cluster"]),
     });
@@ -234,11 +234,14 @@ boundary cluster {
 }
 `;
     const parsed = Parser.parse(ghostOnly).value;
-    expect(parsed.boundaryIndex.get("BillingDomain")).toBe("cluster");
+    expect(parsed.boundaryMembership.get("BillingDomain")).toEqual(["cluster"]);
     const slice = extractView(parsed.systems, ["Shop", "Orders"]);
     expect(slice.ghostDomains.some((g) => g.node.id === "BillingDomain")).toBe(true);
     expect(slice.childNodes.some((n) => n.id === "BillingDomain")).toBe(false);
-    const res = layout(slice, { boundaryIndex: parsed.boundaryIndex, groupBy: "boundary" });
+    const res = layout(slice, {
+      boundaryMembership: parsed.boundaryMembership,
+      groupBy: "boundary",
+    });
     expect(res.containers.filter((c) => c.group)).toHaveLength(0);
     expect(res.nodes.get("BillingDomain")?.ghost).toBe(true);
   });
@@ -483,7 +486,7 @@ boundary g2 {
   function drillLayout(): LayoutResult {
     const parsed = Parser.parse(P2C_SRC).value;
     const slice = extractView(parsed.systems, ["Shop", "Orders"]);
-    return layout(slice, { boundaryIndex: parsed.boundaryIndex, groupBy: "boundary" });
+    return layout(slice, { boundaryMembership: parsed.boundaryMembership, groupBy: "boundary" });
   }
 
   function framesOf(res: LayoutResult): (Rect & { id: string })[] {
@@ -568,7 +571,7 @@ boundary g2 {
 
 describe("cross-file members group on drill levels (multi-file merge)", () => {
   it("frames a member declared in an imported file at its drill level", async () => {
-    // The merged boundaryIndex (first-wins across files) must reach the drill
+    // The merged boundaryMembership (unioned across files) must reach the drill
     // render exactly like the single-file path. Reference existence is
     // re-validated against the merged id-space (#2032), so a cross-file
     // `contains` member no longer draws a false `contains-target-not-found` —

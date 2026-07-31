@@ -37,7 +37,11 @@ import {
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { analyze } from "../resolver/warnings.js";
 import { render, legendScopeForLogicalSlice } from "../renderer/svg-renderer.js";
-import { buildGroupLabelIndex, buildTeamLabelIndex } from "../renderer/group-labels.js";
+import {
+  buildGroupLabelIndex,
+  buildTeamLabelIndex,
+  declaredGroupOrderOf,
+} from "../renderer/group-labels.js";
 import type { CategoryId } from "../renderer/category-collapse.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
@@ -389,9 +393,9 @@ function _compileFromPreparedInput(
   const hasOrgDiagram = krsFile.organizations.length > 0;
   // Either boundary form makes the axis worth offering: top-level blocks
   // (`krsFile.boundaries`) or scoped ones declared inside a node block (#2036,
-  // in `scopedBoundaryIndex`). Checking only the former hides the Group-by menu
+  // in `scopedBoundaryMembership`). Checking only the former hides the Group-by menu
   // for a model whose only boundaries are scoped.
-  const hasBoundaries = krsFile.boundaries.length > 0 || krsFile.scopedBoundaryIndex.size > 0;
+  const hasBoundaries = krsFile.boundaries.length > 0 || krsFile.scopedBoundaryMembership.size > 0;
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = krsFile.ownerIndex;
@@ -456,8 +460,9 @@ function _compileFromPreparedInput(
     collapsedCategories,
     interactive,
     groupBy,
-    boundaryIndex: krsFile.boundaryIndex,
-    scopedBoundaryIndex: krsFile.scopedBoundaryIndex,
+    boundaryMembership: krsFile.boundaryMembership,
+    scopedBoundaryMembership: krsFile.scopedBoundaryMembership,
+    declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
     groupLabels: buildGroupLabelIndex(krsFile, groupBy),
     teamLabels,
     collapsedGroups,

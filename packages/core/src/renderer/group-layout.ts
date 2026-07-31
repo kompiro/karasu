@@ -237,6 +237,36 @@ export function orderGroups(declaredOrder: string[], weights: GroupEdgeWeights):
 }
 
 /**
+ * The group order handed to `assignGroupedLayers`: the axis map's own order,
+ * then every *declared* group it does not name (#2178).
+ *
+ * Deriving the order from the axis map alone drops a group whose members are
+ * all claimed by an earlier one, and a group with no members at all — declared,
+ * labelled, and yet non-existent to the band machinery (TPL-2161). Declarations
+ * supply existence; the axis supplies membership.
+ *
+ * The axis part comes first so groups that do have members keep exactly the
+ * order they have today (which is declaration order — the parser fills the axis
+ * in `contains` order). The appended ids have no member to band, so
+ * `assignGroupedLayers` filters them out until placement can reach them (#2176)
+ * — the order is complete either way.
+ */
+export function groupOrderFor(
+  groupIndex: Map<string, string>,
+  declaredGroupOrder: readonly string[] | undefined,
+): string[] {
+  const order = [...new Set(groupIndex.values())];
+  if (declaredGroupOrder === undefined) return order;
+  const seen = new Set(order);
+  for (const groupId of declaredGroupOrder) {
+    if (seen.has(groupId)) continue;
+    seen.add(groupId);
+    order.push(groupId);
+  }
+  return order;
+}
+
+/**
  * Assign every node a row index so its group's members are contiguous and groups
  * stack in dependency order. Un-grouped nodes are placed in a trailing band
  * below all groups, ordered by `ungroupedRank` then intra-band longest path.

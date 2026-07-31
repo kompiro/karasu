@@ -10,7 +10,7 @@ import type {
   OrganizationBlock,
   ImportDeclaration,
 } from "../types/ast.js";
-import { createEmptyKrsFile } from "../types/ast.js";
+import { createEmptyKrsFile, mergeMembership } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import {
@@ -285,26 +285,27 @@ export class ImportResolver {
     for (const [ownedId, teamId] of file.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
     }
-    // boundaryIndex is 1:1 with first-declared-wins; keep the first mapping seen
-    // across the merge (mirrors ownerIndex, but ownerIndex overwrites — here we
-    // preserve first-wins to match buildBoundaryIndex's own-file semantics).
-    for (const [memberId, boundaryId] of file.boundaryIndex ?? []) {
-      if (!mergedFile.boundaryIndex.has(memberId)) {
-        mergedFile.boundaryIndex.set(memberId, boundaryId);
-      }
+    // Boundary membership is 1:N, so files **union** (#2178): a node grouped in
+    // one file and grouped again in another belongs to both, exactly as if both
+    // declarations sat in one file. First-wins here would resurrect across
+    // files the truncation the parser stopped doing (TPL-2161). Repeats of the
+    // same (node, boundary) merge idempotently, and order stays first-seen so
+    // the primary — and with it the banded placement — is deterministic.
+    for (const [memberId, boundaryIds] of file.boundaryMembership ?? []) {
+      mergeMembership(mergedFile.boundaryMembership, memberId, boundaryIds);
     }
-    // Scoped membership (#2036) merges per scope, with the same first-wins rule
-    // inside each one. Scopes from different files cannot overlap in practice —
-    // a scoped boundary only names its own direct children — but merging by
-    // scope rather than replacing keeps that an observation, not an assumption.
-    for (const [scope, membership] of file.scopedBoundaryIndex ?? []) {
-      let merged = mergedFile.scopedBoundaryIndex.get(scope);
+    // Scoped membership (#2036) unions per scope, by the same rule. Scopes from
+    // different files cannot overlap in practice — a scoped boundary only names
+    // its own direct children — but merging by scope rather than replacing
+    // keeps that an observation, not an assumption.
+    for (const [scope, membership] of file.scopedBoundaryMembership ?? []) {
+      let merged = mergedFile.scopedBoundaryMembership.get(scope);
       if (merged === undefined) {
-        merged = new Map<string, string>();
-        mergedFile.scopedBoundaryIndex.set(scope, merged);
+        merged = new Map<string, string[]>();
+        mergedFile.scopedBoundaryMembership.set(scope, merged);
       }
-      for (const [memberId, boundaryId] of membership) {
-        if (!merged.has(memberId)) merged.set(memberId, boundaryId);
+      for (const [memberId, boundaryIds] of membership) {
+        mergeMembership(merged, memberId, boundaryIds);
       }
     }
     // `facetIndex` is deliberately NOT merged entry-by-entry here. It is a pure
@@ -474,6 +475,33 @@ export class ImportResolver {
     for (const facet of resolved.facets) {
       if (!mergedFile.facets.includes(facet)) {
         mergedFile.facets.push(facet);
+      }
+    }
+
+    // Top-level `boundary` blocks travel with the file, like `legend` and
+    // `organization` above: a boundary declared in an imported file frames the
+    // importing model too. Without this the block parses and vanishes — nothing
+    // reaches `boundaries` (labels, the Group-by gate) or the membership index
+    // (TPL-1503), even though `contains` is a by-reference relation that crosses
+    // files by design (#2178). Identity dedup handles DAG re-arrival.
+    for (const boundary of resolved.boundaries) {
+      if (!mergedFile.boundaries.includes(boundary)) {
+        mergedFile.boundaries.push(boundary);
+      }
+    }
+    for (const [memberId, boundaryIds] of resolved.boundaryMembership) {
+      mergeMembership(mergedFile.boundaryMembership, memberId, boundaryIds);
+    }
+    // Scoped membership (#2036) rides along with the nodes it is declared in,
+    // keyed by its declaring scope, so it merges per scope for the same reason.
+    for (const [scope, membership] of resolved.scopedBoundaryMembership) {
+      let merged = mergedFile.scopedBoundaryMembership.get(scope);
+      if (merged === undefined) {
+        merged = new Map<string, string[]>();
+        mergedFile.scopedBoundaryMembership.set(scope, merged);
+      }
+      for (const [memberId, boundaryIds] of membership) {
+        mergeMembership(merged, memberId, boundaryIds);
       }
     }
 

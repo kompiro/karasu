@@ -2052,7 +2052,7 @@ boundary payments {
     expect(b.contains).toEqual(["Billing", "Wallet"]);
   });
 
-  it("builds boundaryIndex (node id → boundary id) at parse time", () => {
+  it("builds boundaryMembership (node id → declared boundary ids) at parse time", () => {
     const result = Parser.parse(`
 system Shop {
   service Billing {}
@@ -2064,11 +2064,11 @@ boundary payments {
 }
     `);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-    expect(result.value.boundaryIndex.get("Billing")).toBe("payments");
-    expect(result.value.boundaryIndex.get("Wallet")).toBe("payments");
+    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments"]);
+    expect(result.value.boundaryMembership.get("Wallet")).toEqual(["payments"]);
   });
 
-  it("keeps the first-declared boundary and reports the duplicate as info (first-wins)", () => {
+  it("keeps every declared membership and reports the multi-membership as info (#2178)", () => {
     const result = Parser.parse(`
 system Shop {
   service Billing {}
@@ -2079,17 +2079,46 @@ boundary payments {
 boundary finance {
   contains Billing
 }
+boundary audit {
+  contains Billing
+}
     `);
     // Multi-membership is a fact, not an error: info register (mirrors
-    // duplicate-owner-assignment). boundaryIndex is 1:1 and keeps the first.
+    // duplicate-owner-assignment). Nothing is discarded — N declarations
+    // produce N entries in declaration order (TPL-2161), and the banded view
+    // picks the primary at placement time.
+    expect(result.value.boundaryMembership.get("Billing")).toEqual([
+      "payments",
+      "finance",
+      "audit",
+    ]);
+    // One diagnostic per *additional* boundary, each naming the primary.
     const dup = result.diagnostics.filter((d) => d.code === "duplicate-boundary-assignment");
-    expect(dup).toHaveLength(1);
-    expect(dup[0].severity).toBe("info");
-    expect(JSON.stringify(dup[0].params)).toContain("Billing");
-    // The diagnostic names the retained (first) boundary.
-    expect(JSON.stringify(dup[0].params)).toContain("payments");
+    expect(dup).toHaveLength(2);
+    expect(dup.every((d) => d.severity === "info")).toBe(true);
+    for (const d of dup) {
+      expect(d.params).toEqual({ nodeId: "Billing", existingBoundary: "payments" });
+    }
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-    expect(result.value.boundaryIndex.get("Billing")).toBe("payments");
+  });
+
+  it("is idempotent when one boundary lists the same member twice (no false fact)", () => {
+    const result = Parser.parse(`
+system Shop {
+  service Billing {}
+}
+boundary payments {
+  contains Billing
+  contains Billing
+}
+    `);
+    // One boundary, listed twice: the membership is unchanged and the info
+    // diagnostic must NOT fire — "belongs to more than one boundary" would be
+    // untrue here (TPL-1386: the register states the model fact).
+    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments"]);
+    expect(
+      result.diagnostics.filter((d) => d.code === "duplicate-boundary-assignment"),
+    ).toHaveLength(0);
   });
 
   it("warns when contains references a node that does not exist", () => {
@@ -2107,7 +2136,7 @@ boundary payments {
     expect(notFound[0].severity).toBe("warning");
     expect(JSON.stringify(notFound[0].params)).toContain("Ghost");
     // The existing member is still indexed.
-    expect(result.value.boundaryIndex.get("Billing")).toBe("payments");
+    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments"]);
   });
 
   it("allows any node kind as a member (no kind restriction, unlike owns)", () => {
@@ -2126,8 +2155,8 @@ boundary checkout {
     expect(result.diagnostics.filter((d) => d.code === "contains-target-not-found")).toHaveLength(
       0,
     );
-    expect(result.value.boundaryIndex.get("Shopper")).toBe("checkout");
-    expect(result.value.boundaryIndex.get("Web")).toBe("checkout");
+    expect(result.value.boundaryMembership.get("Shopper")).toEqual(["checkout"]);
+    expect(result.value.boundaryMembership.get("Web")).toEqual(["checkout"]);
   });
 
   it("stays silent for members that render only on drill levels — no warning of any kind (#1983)", () => {
@@ -2164,7 +2193,7 @@ boundary cluster {
     expect(result.diagnostics).toEqual([]);
     // …and every member is indexed (accepted vocabulary keeps its effect).
     for (const id of ["OrderDomain", "PlaceOrder", "OrderEntity", "OrderRes", "orders"]) {
-      expect(result.value.boundaryIndex.get(id)).toBe("cluster");
+      expect(result.value.boundaryMembership.get(id)).toEqual(["cluster"]);
     }
   });
 
@@ -2179,7 +2208,7 @@ boundary "payments-domain" {
     `);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     expect(result.value.boundaries[0].id).toBe("payments-domain");
-    expect(result.value.boundaryIndex.get("Billing")).toBe("payments-domain");
+    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments-domain"]);
   });
 
   it("degenerates cleanly with an empty boundary (no members)", () => {
@@ -2190,7 +2219,7 @@ boundary empty {
     `);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     expect(result.value.boundaries[0].contains).toEqual([]);
-    expect(result.value.boundaryIndex.size).toBe(0);
+    expect(result.value.boundaryMembership.size).toBe(0);
   });
 
   it("reports a missing member id after contains without crashing", () => {

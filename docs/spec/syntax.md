@@ -1123,18 +1123,31 @@ boundary payments {
   stays inert. This per-view resolution is shared by **both** grouping axes:
   `owns` has no level restriction either, so a team owning a nested `domain`
   frames it in the same drill-down views under *Group by: team*.
+- **Membership is 1:N.** A node may be listed in any number of boundaries, and
+  **every one of those memberships is kept**: `boundary` is a grouping the
+  author draws, and two authors' groupings legitimately overlap (a service can
+  be both `payments` and `pci-scope`). Multi-membership is reported as the info
+  diagnostic `duplicate-boundary-assignment` — a fact worth seeing, not an error
+  (the same "smell is representable" register as `duplicate-owner-assignment`).
+- **How a view resolves multi-membership**: the banded *Group by: boundary*
+  layout can place a node in only one band, so it uses the node's
+  **first-declared** boundary (its *primary*) and the node is drawn once, inside
+  that boundary's frame. This is a property of that view, not of the model —
+  the other memberships stay in the model for every other consumer, and drawing
+  a node inside *all* the frames it belongs to is planned separately
+  ([#2161](https://github.com/kompiro/karasu/issues/2161)). Declaration order
+  therefore decides which frame a shared node sits in today.
 - **Membership indexes** are derived at parse time, per placement. The
-  top-level form builds the flat **`boundaryIndex`** (`node id → boundary id`),
-  analogous to the org `ownerIndex`; scoped declarations build the per-scope
-  **`scopedBoundaryIndex`** (`declaring scope → (child id → boundary id)`),
-  keyed by the scope path so a same-named child in another scope can never be
-  confused with this one (TPL-1352). Both are **1:1**: if a node is
-  listed in more than one boundary of the same index, the **first-declared**
-  boundary wins and the duplicate is surfaced as the info diagnostic
-  `duplicate-boundary-assignment` (a fact, not an error — the same "smell is
-  representable" register as `duplicate-owner-assignment`). Where both indexes
-  name the same node on one canvas, the scoped entry wins — it is the more
-  specific statement, written next to the node it names.
+  top-level form builds the flat **`boundaryMembership`**
+  (`node id → boundary ids`), analogous to the org `ownerIndex`; scoped
+  declarations build the per-scope **`scopedBoundaryMembership`**
+  (`declaring scope → (child id → boundary ids)`), keyed by the scope path so a
+  same-named child in another scope can never be confused with this one
+  (TPL-1352). Where both name the same node on one canvas, the scoped entry
+  wins — it is the more specific statement, written next to the node it names,
+  and it restates that node's membership *for that canvas only*. Whole-file
+  `import` merges the two files' memberships (union); a boundary declared in an
+  imported file frames the importing model too.
 
 ### Scoped declaration — `boundary` inside a node block
 
@@ -1202,7 +1215,7 @@ system Shop {
 
 Diagnostics (see [diagnostics.md](diagnostics.md)):
 
-- `duplicate-boundary-assignment` (info) — a node is listed in more than one `boundary`; the first-declared boundary is kept.
+- `duplicate-boundary-assignment` (info) — a node belongs to more than one `boundary` (see "Membership is 1:N" above for how a view resolves it).
 - `contains-target-not-found` (warning) — a `contains` target does not exist (top-level: anywhere in the system hierarchy; scoped: among the declaring node's direct children).
 - `boundary-not-in-context` (error) — a `boundary` block inside a node kind that draws no canvas of its own.
 - `duplicate-boundary-id` (error) — two `boundary` blocks in the same enclosing node declare the same id. Top-level blocks are unaffected (they keep merging).
@@ -1211,7 +1224,7 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 Under either *Group by* axis the group frame is titled with the group's declared
 `label`, falling back to the group id when no label is given (#2133).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this).
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this). [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary membership is 1:N in the model; the banded view's primary is a view-side resolution, and the group order comes from the declarations rather than from the axis map's values (#2178).
 
 ---
 

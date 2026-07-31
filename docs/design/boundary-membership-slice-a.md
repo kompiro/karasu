@@ -8,7 +8,7 @@
   - **上位設計**: `docs/design/boundary-membership-1n.md`（Part A / B / C の全体像。本 doc は **Part A を実装粒度に落とし、A-4 の到達点を実測にもとづいて決め直す**）
   - refine 対象 ADR: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（決定 2 の「1:1 + first-wins」）
   - 関連 ADR: [ADR-2036](../adr/2036-scoped-boundary-declaration.md)（スコープ宣言 — identity =（宣言スコープ, id）、scoped が勝つ）、[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff の backfill ガード）、[ADR-1858](../adr/1858-system-view-group-by-team.md)（team 軸 = 触らない先行機構）、[ADR-1884](../adr/1884-group-by-team-multi-system-root-per-system-frames.md)（multi-system の per-system フレーム）、[ADR-1983](../adr/1983-boundary-drilldown-grouping.md)（軸 index × 描画レベルの交差）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（`.krs` v1.0 freeze / TS API は 0.x）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（`boundary` は experimental）
-  - 関連 TPL: [TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)（**本 doc の中心** — 宣言された多重所属を派生 index で捨てない／並びは宣言から、所属は index から）、[TPL-20260510-08](../test-perspectives/TPL-20260510-08-derived-state-staleness.md)（派生 state の二重持ち）、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（軸を全 call site に通す）、[TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md)（merge 後の空間で再導出）、[TPL-20260512-01](../test-perspectives/TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md)（scoped は (scope, id) でキー）、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（診断の register）、[TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md)（1:1 index の勝者選択規則）、[TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置）、[TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（受理・無効果の禁止）
+  - 関連 TPL: [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（**本 doc の中心** — 宣言された多重所属を派生 index で捨てない／並びは宣言から、所属は index から）、[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)（派生 state の二重持ち）、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（軸を全 call site に通す）、[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)（merge 後の空間で再導出）、[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（scoped は (scope, id) でキー）、[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（診断の register）、[TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 index の勝者選択規則）、[TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置）、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理・無効果の禁止）
   - コード: `packages/core/src/parser/parser.ts:2169`（`buildBoundaryIndex`）/ `:2201`（`buildScopedBoundaryIndex`）、`packages/core/src/types/ast.ts:525`（`KrsFile.boundaryIndex`）、`packages/core/src/renderer/layout.ts:1023`（`boundaryAxisFor`）/ `:1075`（`declaredGroupOrder`）、`packages/core/src/renderer/group-layout.ts:261`（`presentGroups`）、`packages/core/src/renderer/group-labels.ts:64`（`declaredGroupIds`）、`packages/core/src/fs/import-resolver.ts:263`、`packages/core/src/compile/compile-diff.ts:236`
 
 ## 背景・課題
@@ -30,7 +30,7 @@
    これは多重所属モデルの band 順を（意図せず）変える。
 
 したがって slice A では **「群の並びの導出元」を決め直す**必要がある。これは
-[TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)
+[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
 のチェックリスト「群・カテゴリの並びや存在判定を派生 index の値集合から導いていない」と
 対処パターン「**並びは宣言から、所属は index から**」が名指している論点そのものである。
 Part A の他の決定（1:N 化・単一 SoT・`primaryBoundaryOf`・merge 意味論・診断 register）は動かさない。
@@ -48,11 +48,11 @@ Part A の他の決定（1:N 化・単一 SoT・`primaryBoundaryOf`・merge 意�
 
 ## 制約・前提
 
-- **上位設計 Part A の決定は動かさない**: `boundaryMembership` / `scopedBoundaryMembership` への改名と配列化、1:1 の並行フィールドを作らない（[TPL-20260510-08](../test-perspectives/TPL-20260510-08-derived-state-staleness.md)）、`primaryBoundaryOf(ids) => ids[0]` 1 関数、multi-file は和集合・diff は removed 限定 backfill（[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)）・`boundaryAxisFor` は scoped 勝ちを維持（[ADR-2036](../adr/2036-scoped-boundary-declaration.md)）、診断はコードと `info` を維持して文言のみ事実の register に直す。
-- **slice A は配置を変えない**（[TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)）。多重所属ノードは今までどおり primary の band に 1 回だけ置かれる。
+- **上位設計 Part A の決定は動かさない**: `boundaryMembership` / `scopedBoundaryMembership` への改名と配列化、1:1 の並行フィールドを作らない（[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)）、`primaryBoundaryOf(ids) => ids[0]` 1 関数、multi-file は和集合・diff は removed 限定 backfill（[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)）・`boundaryAxisFor` は scoped 勝ちを維持（[ADR-2036](../adr/2036-scoped-boundary-declaration.md)）、診断はコードと `info` を維持して文言のみ事実の register に直す。
+- **slice A は配置を変えない**（[TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)）。多重所属ノードは今までどおり primary の band に 1 回だけ置かれる。
 - **多重所属を書いていないモデルの描画は byte-identical**（#2178 の受け入れ条件）。群の並びの導出元を替える案は、この条件で評価する。
 - 文法変更ゼロ。`KrsFile` のフィールド型変更は TS API 0.x として許容（[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）。
-- **team 軸（`ownerIndex`）は触らない**（stable 構文 + `@migration_target` の precedence、[TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md)）。`boundary` 軸の primary は annotation precedence を持たないので `ids[0]` = first-wins（同 TPL の tie 規則 4 と一致）。
+- **team 軸（`ownerIndex`）は触らない**（stable 構文 + `@migration_target` の precedence、[TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)）。`boundary` 軸の primary は annotation precedence を持たないので `ids[0]` = first-wins（同 TPL の tie 規則 4 と一致）。
 - out of scope: 影に入った boundary に **body（frame）を与えること**（配置の問題 = [#2176](https://github.com/kompiro/karasu/issues/2176)）、Part B（多重包含 geometry・[#2179](https://github.com/kompiro/karasu/issues/2179)）、Part C（collapse 二重性・[#2180](https://github.com/kompiro/karasu/issues/2180)）、`presentGroups` の意味論そのもの（バンドはメンバーを要する — view 側の正当な制約）。
 
 ## 検討した選択肢
@@ -73,7 +73,7 @@ Part A の他の決定（1:N 化・単一 SoT・`primaryBoundaryOf`・merge 意�
 - **宣言順を壊す**（実測: 宣言順 `A, C, B` に対し flatten は `A, B, C`）。`orderGroups` の最終 tie-break が
   宣言順なので、多重所属モデルの band 順が理由なく変わる。
 - 「並びを派生 index の値から導く」構造は温存される。`contains` を 1 行足すと群の並びが動く結合が残り、
-  [TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)
+  [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
   の対処パターン（並びは宣言から）に反する。
 - メンバーが 1 人もいない `boundary`（`contains` ゼロ）は依然 index に現れないので、存在の導出は不完全なまま。
 
@@ -84,7 +84,7 @@ Part A の他の決定（1:N 化・単一 SoT・`primaryBoundaryOf`・merge 意�
 
 **メリット**
 
-- [TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)
+- [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
   の対処パターンにそのまま一致する。`contains` ゼロの boundary も含めて**宣言された群がすべて並びに現れる**。
 - 並びが index の畳み込み規則（first-wins / 和集合）から独立する。
 
@@ -133,7 +133,7 @@ for (const id of declared) if (!seen.has(id)) order.push(id); // 影に入った
 ### 案 4: 現状維持（`[...new Set(groupIndex.values())]` のまま）
 
 **却下理由**: 宣言された `boundary` が群として存在しないものとして扱われ続ける
-（[TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)
+（[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
 の失敗モード「群そのものの消失」）。slice B で配置が変わったとき、この導出が残っていると
 「members を得たのに並びに居ない群」を生む。slice A で直しておくのが最も安い。
 
@@ -144,7 +144,7 @@ for (const id of declared) if (!seen.has(id)) order.push(id); // 影に入った
 | 宣言された群が並びに現れる | △（`contains` ゼロは不可） | ○ | ○ | ○ | ✕ |
 | 既存モデルの band 順が不変 | ✕（多重所属で変わる） | ✕（混在 canvas で変わりうる） | **○** | ✕ | ○ |
 | 図が悪化しない | ○ | ○ | **○** | ✕（空行が空く） | ○ |
-| TPL-20260730-01 の対処パターン | ✕ | ○ | ○（並びの存在は宣言由来） | ○ | ✕ |
+| TPL-2161 の対処パターン | ✕ | ○ | ○（並びの存在は宣言由来） | ○ | ✕ |
 | 変更量 | 最小 | 中（新オプション配線） | 中（同じ） | 小 | ゼロ |
 | slice B / #2176 への準備 | △ | ○ | ○ | ✕ | ✕ |
 
@@ -165,7 +165,7 @@ A-4 本文の記述は本 doc の決定で置き換える（ADR 昇格時に一�
 1. **model 層**（`types/ast.ts` / `parser/parser.ts`）
    - `KrsFile.boundaryIndex` → `boundaryMembership: Map<string, string[]>`、
      `scopedBoundaryIndex` → `scopedBoundaryMembership: Map<string, Map<string, string[]>>`。
-     1:1 の並行フィールドは作らない（[TPL-20260510-08](../test-perspectives/TPL-20260510-08-derived-state-staleness.md)）。
+     1:1 の並行フィールドは作らない（[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)）。
    - `primaryBoundaryOf(ids) => ids[0]` を `ast.ts` に追加（`boundaryScopeKey` 等と同居）。
    - `buildBoundaryMembership` / `buildScopedBoundaryMembership`: 宣言順で全件保持し、同一
      (node, boundary) は冪等。`duplicate-boundary-assignment`(info) は **異なる** boundary が
@@ -175,7 +175,7 @@ A-4 本文の記述は本 doc の決定で置き換える（ADR 昇格時に一�
    - `fs/import-resolver.ts:263`: first-mapping-wins をやめ和集合（冪等・first-seen 順）。scoped も同様。
    - `compile/compile-diff.ts:236`: 配列単位の backfill。`removed` 限定ガードを維持（[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)）。
    - `layout.ts` `boundaryAxisFor`: scoped 勝ち（node 単位で scoped 配列が top-level 配列を置き換える）。
-3. **軸の配線**（[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)）
+3. **軸の配線**（[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)）
    - `boundaryAxisFor` は `Map<string, string[]>` を返す。placement 用の 1:1 は
      `primaryAxisOf`（`primaryBoundaryOf` を全エントリに適用する純関数）で作る。
    - 新オプション `declaredGroupOrder?: readonly string[]` を `LayoutOptions` / `RenderOptions` に足し、
@@ -188,20 +188,20 @@ A-4 本文の記述は本 doc の決定で置き換える（ADR 昇格時に一�
 4. **診断**（`packages/i18n` en/ja/types。コードと `info` severity と params は不変）
    - en: `"X" belongs to more than one boundary (including "P")`
    - ja: `"X" は複数の boundary に所属しています（"P" を含む）`
-   - ビューの解決規則は書かない（[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)）。
+   - ビューの解決規則は書かない（[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)）。
      解決規則は `docs/spec/syntax.md`（+ja）の boundary 節に置く。
 5. **テスト**
    - `parser.test.ts` / `scoped-boundary.test.ts`: N 宣言 → N 件、冪等性、診断の register と params。
    - 新規 `packages/core/src/renderer/boundary-membership.test.ts`: merge 3 経路の一致
-     （multi-file 和集合 / diff backfill / scope 合成、[TPL-20260718-02](../test-perspectives/TPL-20260718-02-reference-existence-validated-on-merged-space.md)）、
+     （multi-file 和集合 / diff backfill / scope 合成、[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)）、
      案 2' の合成関数の単体テスト（影に入った群・`contains` ゼロの群が並びに現れる／先頭列は
      軸の値順のまま）、多重所属モデルが `compile` / diff / drill-down / all-layers の全経路で
-     同じ枠を得る parity（軸の落下は silent、[TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)）。
+     同じ枠を得る parity（軸の落下は silent、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)）。
    - 多重所属の無いモデルの描画不変（byte-identical）を固定する回帰テスト。
 6. **ドキュメント / 記録**
    - `docs/spec/syntax.md` +ja: 「Membership indexes」の 1:1 記述を 1:N + banded view は primary を枠に入れる、に書き換え。
    - `docs/spec/diagnostics.md` +ja: `duplicate-boundary-assignment` の行を事実の register に。
-   - `TPL-20260730-01` の「関連テスト」節（現在「未確立」）を新規テストで埋める。
+   - `TPL-2161` の「関連テスト」節（現在「未確立」）を新規テストで埋める。
    - changeset: `@karasu-tools/core` + `karasu` の minor。
 7. **AT**: `docs/acceptance/2161-boundary-multi-membership.md` を新規作成し、slice A 節を置く。
    自動化で判定できない項目だけを載せる:
@@ -214,7 +214,7 @@ A-4 本文の記述は本 doc の決定で置き換える（ADR 昇格時に一�
 ### proactive TPL の要否
 
 本 doc の中心論点（群の並び・存在を派生 index の値集合から導かない）は
-[TPL-20260730-01](../test-perspectives/TPL-20260730-01-declared-membership-not-discarded-in-derived-index.md)
+[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
 が失敗モード「群そのものの消失」と対処パターン「並びは宣言から、所属は index から」で**既に掲載済み**。
 3-Yes ルールの「既存 TPL に未掲載」を満たさないため新規 TPL は起こさず、同 TPL の「関連テスト」節を
 slice A の実装 PR で埋める（本 doc の実装指針 6）。
@@ -225,5 +225,5 @@ slice A の実装 PR で埋める（本 doc の実装指針 6）。
   多重所属を書いているモデルは診断の文言が変わる（experimental notation の範囲内）。
 - **TS API**: `KrsFile.boundaryIndex` / `scopedBoundaryIndex` の改名・型変更（0.x minor、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)）。
   `RenderOptions` に `declaredGroupOrder` が増える（任意フィールド）。
-- **ドキュメント更新**: `docs/spec/syntax.md`（+ja）、`docs/spec/diagnostics.md`（+ja）、`TPL-20260730-01`。
+- **ドキュメント更新**: `docs/spec/syntax.md`（+ja）、`docs/spec/diagnostics.md`（+ja）、`TPL-2161`。
 - **examples への影響**: なし（多重所属の例を足すかは slice B で判断 — 上位設計の記述を踏襲）。

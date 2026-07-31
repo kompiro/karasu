@@ -411,7 +411,7 @@ export const en: Translations = {
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is owned by more than one team; "${existingTeam}" is kept as its primary owner`,
   "diagnostic.duplicateBoundaryAssignment.message": ({ nodeId, existingBoundary }) =>
-    `"${nodeId}" is listed in more than one boundary; "${existingBoundary}" is kept as its boundary`,
+    `"${nodeId}" belongs to more than one boundary (including "${existingBoundary}")`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"${memberId}" referenced in "contains" was not found in the system hierarchy`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>
