@@ -56,6 +56,7 @@ cycle.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `edge-source-mismatch` | error | An explicit edge source inside a `service` / `domain` / `entity` block does not equal the enclosing block id (the **edge origin scope** rule; for an `entity` this enforces the relation direction — origin = the reference-holding entity). |
+| `edge-endpoint-not-at-scope` | warning | An edge endpoint resolves to a node that exists in the merged model but is not a peer at the scope where the edge is declared (the **edge endpoint scope** rule) — e.g. `A -> B` written at `system` scope where `A` and `B` are `domain`s inside a `service`. The edge renders on no view; author it inside its source block, or qualify a cross-domain entity target. Skipped for dotted refs and for ids absent from the model (`unresolved-edge-endpoint` owns those); a `domain` → `domain` edge is exempt because it is derived up to an implicit service edge. |
 | `ambiguous-edge-base` | warning | Multiple edges share the same `from → to` base with no distinguishing author id. |
 | `service-outside-system` | warning | A `service` is declared outside any `system`. |
 | `infra-not-in-context` | error | An infra block (`database` / `queue` / `storage`) is not a direct child of `system`. |

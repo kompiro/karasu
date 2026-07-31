@@ -103,6 +103,20 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { ref: "A.B" } };
     case "unresolved-edge-endpoint":
       return { kind, params: { from: "A", to: "B", unresolvedId: "B" } };
+    case "edge-endpoint-not-at-scope":
+      return {
+        kind,
+        params: {
+          from: "A",
+          to: "B",
+          endpointId: "A",
+          endpointKind: "domain",
+          ownerId: "test-service",
+          ownerKind: "service",
+          scopeId: "test-system",
+          scopeKind: "system",
+        },
+      };
     case "cyclic-dependency":
       return { kind, params: { cyclePath: ["A", "B", "A"] } };
     case "delivers-target-not-client":

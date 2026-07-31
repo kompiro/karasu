@@ -157,6 +157,30 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [],
       };
+    case "edge-endpoint-not-at-scope": {
+      const { ownerId, endpointId, scopeKind, from, to } = w.params;
+      // A relation authored inside an `entity` block is fixed by qualifying the
+      // target (`Domain.Entity`), not by re-anchoring it — the source is already
+      // the declaring entity. Every other scope is fixed by anchoring the edge
+      // at its source block.
+      const hint =
+        scopeKind === "entity" && ownerId !== undefined
+          ? t("warning.edgeEndpointNotAtScope.qualifyHint", { ownerId, endpointId })
+          : t("warning.edgeEndpointNotAtScope.anchorHint", { from, to });
+      return {
+        message: t("warning.edgeEndpointNotAtScope.message", {
+          from,
+          to,
+          endpointId,
+          endpointKind: w.params.endpointKind,
+          ownerId: ownerId ?? "",
+          ownerKind: w.params.ownerKind ?? "",
+          scopeId: w.params.scopeId,
+          scopeKind,
+        }),
+        details: [hint],
+      };
+    }
     case "cross-system-ref-implicit-external":
       return {
         message: t("warning.crossSystemRefImplicitExternal.message", {

@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { InMemoryFileSystemProvider } from "./in-memory-provider";
 import { ImportResolver } from "./import-resolver";
+import { analyze } from "../resolver/warnings";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1710,6 +1711,70 @@ system Shop {
       const referenced = [...result.krsFile.facetIndex.values()].flatMap((s) => [...s]);
       expect(referenced.filter((id) => !declared.has(id))).toEqual([]);
       expect(notDeclared(result.diagnostics)).toHaveLength(0);
+    });
+  });
+  // #2075. `edge-endpoint-not-at-scope` compares an edge's endpoints against
+  // the peers of the *instance* that declares it. That is only safe if the
+  // cross-file system reopen really does merge into one node before `analyze()`
+  // runs — asserted here against the real resolver rather than a concatenated
+  // single-file approximation, which does NOT merge (see the same-file case in
+  // `resolver/warnings.test.ts`).
+  describe("edge-endpoint-not-at-scope across a system reopen (#2075)", () => {
+    const notAtScope = (file: Parameters<typeof analyze>[0]) =>
+      analyze(file, []).filter((w) => w.kind === "edge-endpoint-not-at-scope");
+
+    it("does not warn when the edge's target arrives via a reopen in another file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./moderation.krs"
+system Blog {
+  service Authoring { domain Drafting { usecase Write {} } }
+  Authoring -> Moderation
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/moderation.krs",
+        `system Blog {
+  service Moderation { domain Review { usecase Approve {} } }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      // Precondition: the reopen collapsed to a single system node.
+      expect(result.krsFile.systems).toHaveLength(1);
+      expect(result.krsFile.systems[0].children.map((c) => c.id).sort()).toEqual([
+        "Authoring",
+        "Moderation",
+      ]);
+      expect(notAtScope(result.krsFile)).toHaveLength(0);
+    });
+
+    it("still warns when the target is nested below system scope in the other file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./moderation.krs"
+system Blog {
+  service Authoring { domain Drafting { usecase Write {} } }
+  Drafting -> Review
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/moderation.krs",
+        `system Blog {
+  service Moderation { domain Review { usecase Approve {} } }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const warnings = notAtScope(result.krsFile);
+      expect(warnings.map((w) => w.params)).toMatchObject([
+        { endpointId: "Drafting", ownerId: "Authoring" },
+        { endpointId: "Review", ownerId: "Moderation" },
+      ]);
     });
   });
 });

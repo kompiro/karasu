@@ -21,6 +21,7 @@ export type WarningKind =
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
   | "unresolved-edge-endpoint"
+  | "edge-endpoint-not-at-scope"
   | "cyclic-dependency"
   | "delivers-target-not-client"
   | "client-capability-duplicate"
@@ -142,6 +143,46 @@ export interface WarningParamsByKind {
    * handled by `cross-system-ref-*`.
    */
   "unresolved-edge-endpoint": { from: string; to: string; unresolvedId: string };
+  /**
+   * An authored edge names an endpoint that exists in the merged model but is
+   * not a peer at the scope where the edge is declared, so the edge is dropped
+   * from every view (#2075). The canonical form anchors the edge at its source
+   * block (`domain A { -> B }`) or, for a cross-domain entity relation, names
+   * the target qualified (`OtherDomain.Entity`).
+   *
+   * An endpoint is *at scope* when it is in `peers(container)`, computed per
+   * node **instance** (not per id — see the detector's comment):
+   *
+   * - container is a `system` → that block's own children, plus the top-level
+   *   orphan `domain`s the drawio exporter splices into the root frame;
+   * - otherwise → the container's own id (the self-anchored source) plus the
+   *   children of its declaring parent.
+   *
+   * Two endpoints are skipped rather than reported: a dotted ref (`Sys.Svc` /
+   * `Domain.Entity`, owned by `cross-system-ref-*` and the entity view) and an
+   * id that resolves nowhere (owned by `unresolved-edge-endpoint`). One
+   * exemption: a `domain`-anchored edge to another `domain` renders as a
+   * derived implicit service edge, at any nesting distance.
+   *
+   * Warning register per ADR-1386: an edge the author wrote is silently absent
+   * from every diagram, which is a defect rather than a style-school fact.
+   */
+  "edge-endpoint-not-at-scope": {
+    from: string;
+    to: string;
+    /** the endpoint (`from` or `to`) that is not at scope */
+    endpointId: string;
+    /** kind of the node `endpointId` resolves to */
+    endpointKind: string;
+    /** id of the node that contains the endpoint, if any */
+    ownerId?: string;
+    /** kind of that containing node */
+    ownerKind?: string;
+    /** id of the block the edge is declared in */
+    scopeId: string;
+    /** kind of that block */
+    scopeKind: string;
+  };
   "cyclic-dependency": { cyclePath: string[] };
   "delivers-target-not-client": { serviceId: string; targetId: string };
   /**

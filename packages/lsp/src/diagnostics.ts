@@ -88,6 +88,14 @@ export function computeDiagnostics(
       // `analyze()` over the import-merged file where it is accurate
       // (TPL-1522 — new import/style-coupled diagnostics record their side).
       if (w.kind === "unresolved-edge-endpoint") continue;
+      // `edge-endpoint-not-at-scope` is import-coupled too, but is *not*
+      // suppressed (TPL-1522 — recording its side, #2075). It fires only when
+      // the endpoint id resolves *within this document* and sits outside the
+      // declaring block's peers; an endpoint that lives in another file does
+      // not resolve here, so it falls through to `unresolved-edge-endpoint`
+      // above and is dropped with it. Single-document context can therefore
+      // only under-report, never false-positive — same property as
+      // `shared-infra-fan-in` below.
       // `shared-infra-fan-in` is *not* suppressed (TPL-1522 — recording
       // its side): it benefits from the import-merge (cross-file sharing is only
       // seen in the App / CLI), but in the single-document context it can only

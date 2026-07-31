@@ -280,6 +280,23 @@ export const en: Translations = {
     `"${ref}" could not be resolved — rendered as an unresolved external node`,
   "warning.unresolvedEdgeEndpoint.message": ({ from, to, unresolvedId }) =>
     `Edge "${from} → ${to}" references unknown node "${unresolvedId}"; the edge is dropped (the resolved endpoint is kept)`,
+  "warning.edgeEndpointNotAtScope.message": ({
+    from,
+    to,
+    endpointId,
+    endpointKind,
+    ownerId,
+    ownerKind,
+    scopeId,
+    scopeKind,
+  }) =>
+    `Edge "${from} → ${to}" is declared in ${scopeKind} "${scopeId}", but "${endpointId}" is a ${endpointKind}${
+      ownerId === "" ? "" : ` inside ${ownerKind} "${ownerId}"`
+    } — not at that scope, so the edge renders on no view`,
+  "warning.edgeEndpointNotAtScope.anchorHint": ({ from, to }) =>
+    `Declare the edge inside its source block (\`${from} { -> ${to} }\`) so both ends are peers where it is drawn`,
+  "warning.edgeEndpointNotAtScope.qualifyHint": ({ ownerId, endpointId }) =>
+    `Reference the target qualified ("${ownerId}.${endpointId}") so the relation renders in the entity view`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
     `"${ref}" is referenced from ${sourceSystemId}.${sourceNodeId} but is not explicitly annotated as @external`,
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
