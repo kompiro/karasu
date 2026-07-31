@@ -48,7 +48,7 @@ Bare `[<identifier>]` still accepts any name in v1.x — the v1.0 freeze ([ADR-1
 
 See [*Vocabulary registers*](#vocabulary-registers--boundary--annotation--tag--facet) below for how to pick the right construct.
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — non-builtin tag names previously sat in the forbidden fourth state (accepted, inert, undocumented); `tag-not-builtin` resolves them into state (2), *warned as unknown*.
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — non-builtin tag names previously sat in the forbidden fourth state (accepted, inert, undocumented); `tag-not-builtin` resolves them into state (2), *warned as unknown*. [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — a builtin-addition request arriving through this route is judged by three questions (register / already expressible / stopping rule), and rejections are recorded.
 
 ### Example
 
@@ -120,7 +120,7 @@ service Billing @team-alpha   // deprecated: annotation-not-builtin warning
 service Legacy  @depracated   // warned twice: typo hint (info) + not-builtin (warning)
 ```
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — the deprecation keeps non-builtin names in state (2), *warned as unknown*, instead of the former undocumented open-set acceptance.
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — the deprecation keeps non-builtin names in state (2), *warned as unknown*, instead of the former undocumented open-set acceptance. [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — the same three-question gate applies to a requested builtin *annotation*, where the lifecycle register is the first filter.
 
 ### Annotation parameters
 

@@ -48,7 +48,7 @@ bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する�
 
 どの構文を選ぶかは下記[「語彙の register」](#語彙の-register--boundary--annotation--tag--facet)を参照。
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 非 builtin のタグ名はかつて禁止された第 4 状態（受理・無効果・文書化なし）にあった。`tag-not-builtin` はそれを状態 (2)「unknown として警告」に解消する。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 非 builtin のタグ名はかつて禁止された第 4 状態（受理・無効果・文書化なし）にあった。`tag-not-builtin` はそれを状態 (2)「unknown として警告」に解消する。[TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — この経路で来た builtin 追加要望は 3 問（register / 既存表現の有無 / 停止規則）で裁き、却下も記録する。
 
 ### 記述例
 
@@ -121,7 +121,7 @@ service Billing @team-alpha   // 非推奨: annotation-not-builtin warning
 service Legacy  @depracated   // 二重に警告: タイポヒント (info) + not-builtin (warning)
 ```
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — deprecation により非 builtin 名は、従来の文書化なき open set 受理ではなく状態 (2)「unknown として警告」に保たれる。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — deprecation により非 builtin 名は、従来の文書化なき open set 受理ではなく状態 (2)「unknown として警告」に保たれる。[TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — builtin *アノテーション*の追加要望にも同じ 3 問の gate を適用し、lifecycle register が最初のフィルタになる。
 
 ### アノテーションのパラメータ
 
