@@ -50,6 +50,11 @@
 
 ## Part A — model 層を 1:N にする
 
+> **実装時の訂正**: 下記 A-4 の「band とフレームを得る」は成り立たなかった（`presentGroups` が
+> メンバーのいない群を落とすため）。到達点は「群の**並び**に復活する」までで、枠は
+> [#2176](https://github.com/kompiro/karasu/issues/2176) が受け持つ。導出元も flatten ではなく
+> 「軸の値順 + 宣言リストで補完」に変更した。経緯は `docs/design/boundary-membership-slice-a.md`。
+
 ### A-1. index の形
 
 ```ts
@@ -212,16 +217,37 @@ C-1 の帰結として決めること:
 
 **Part A（1:N 化）→ Part B（直交ポリゴン frame）→ Part C（collapse 二重性）の順に、独立して出荷できる 3 スライスで積む。** 各スライス単体でも図が悪化しないことを [ADR-1974](../adr/1974-boundary-declaration-syntax.md) の実装分割（A/B/C）と同じ規律で守る。
 
+### スライス別にできること
+
+各スライスが**何を可能にするか**と、**その時点でまだできないこと**を 1 枚にする。
+「できないこと」を並べているのは、途中のスライスを実際に使ったとき「壊れている」と
+読まれるのを防ぐため（slice A の多重所属ノードが 1 つの枠にしか入らないのは仕様であって欠陥ではない）。
+
+| スライス | できるようになること | ユーザー可視の変化 | その時点でできないこと | 前提 |
+| --- | --- | --- | --- | --- |
+| **A** model 層の 1:N 化<br>[#2178](https://github.com/kompiro/karasu/issues/2178) ✅ | 宣言された所属を**モデルが全量保持**する。merge 3 経路（multi-file import の和集合 / diff の removed 限定 backfill / scope 合成）が同じ多値の意味論に従う。群の**存在**を宣言リストから導く | 診断 `duplicate-boundary-assignment` の文言（事実の register へ）。副次的に、**import 先ファイルで宣言された `boundary` が効くようになる**（従来は parse されて消えていた） | 多重所属を**図から**確認できない。共有ノードは primary の枠にしか入らず、全メンバー共有の boundary は枠を持たない。2 つ目の所属の観測手段は info 診断と「宣言順を入れ替えると primary が移る」ことだけ | — |
+| **B** 多重包含 geometry<br>[#2179](https://github.com/kompiro/karasu/issues/2179) | 共有ノードを**所属するすべての枠が囲む**（矩形直交ポリゴン frame）。boundary ごとの識別色で重なりが入れ子と区別できる。届かない共有は `◇ <boundary>` の破線タブに縮退する | 図が変わる。帯が隣接する共有は 2 枚の枠に囲まれて見える。frame の描画・ラベル・P2c routing の障害物判定が更新される | 重なりは**日和見的** — band 順が味方したときだけ枠が届く。届かない共有はタブ表示に落ちる。自前の band を持たない boundary は依然 body を持たない | A |
+| **配置** seam 配置 + band 順<br>[#2176](https://github.com/kompiro/karasu/issues/2176) | `orderGroups` に co-membership 項を入れ、共有ノードを帯の**継ぎ目**に寄せる。全メンバー共有の boundary が body を得る | 共有が狙って重なる（B の日和見性が解消）。縮退タブに落ちるケースが減る | 3 重以上・非隣接の共有はなお縮退しうる（corridor 描画は corpus 証拠待ち） | B |
+| **C** collapse 二重性<br>[#2180](https://github.com/kompiro/karasu/issues/2180) | **所属がすべて collapsed のときだけ**ノードを畳む。0 件 stub を出さない。bulk collapse は primary の stub に集約する | 片方の boundary を畳んでも、他方が expanded ならノードは消えない。両方畳むと消える | — （本設計の到達点） | A（C-1 の判定は membership だけで決まる。ただし stub と枠の見え方は B と併せて確認する） |
+
+> **slice A 時点の「できないこと」は仕様である。** 多重所属ノードが 1 つの枠にしか
+> 現れないのは banded layout が 1 ノード 1 band だからで、モデルは両方の所属を持っている。
+> 検証用サンプル `examples/en/feature-samples/boundary-multi-membership.krs` は
+> この点を先頭のコメントで明示している。
+
 ### 実装の指針
 
 本 Design Doc の合意後、次の 3 Issue に分割起票する（#2161 は親として残す）。
 
-**slice A — model 層の 1:N 化（ユーザー可視の変化は診断文言と A-4 のみ）**
+**slice A — model 層の 1:N 化（✅ [#2178](https://github.com/kompiro/karasu/issues/2178) / PR [#2213](https://github.com/kompiro/karasu/pull/2213)）**
+
+> 実装粒度の設計と、A-4 の到達点の決め直しは `docs/design/boundary-membership-slice-a.md` にある。
 
 1. `buildBoundaryIndex` / `buildScopedBoundaryIndex` を full membership に変更、`KrsFile` のフィールドを `boundaryMembership` / `scopedBoundaryMembership` に改名・型変更、`primaryBoundaryOf` を追加。
 2. merge 3 箇所（import-resolver 和集合 / compile-diff backfill / `boundaryAxisFor` の scoped 優先維持）。
 3. 軸の受け渡し call site を列挙して通す（`svg-renderer` / `drill-down-svg` / `all-layers-svg` / `compile` / `compile-diff` / `layout`）— TPL-219 の parity テスト。
-4. `declaredGroupOrder` を flatten 由来に変更（A-4）。
+4. 群の並びに宣言由来の補完を入れる（A-4）。**flatten は採らなかった** — 宣言順を壊すことが実測で判明し、
+   「軸の値順 + 宣言リストで補完」に変更した（`docs/design/boundary-membership-slice-a.md`）。
 5. 診断文言の差し替え（`packages/i18n` en/ja）+ `docs/spec/diagnostics.md`（+ja）+ `docs/spec/syntax.md`（+ja）の boundary 節に「所属は 1:N、banded view は primary を枠に入れる」を明記。
 6. changeset: `@karasu-tools/core` + `karasu` の minor（診断文言と TS API の変更）。
 
@@ -256,7 +282,7 @@ C-1 の帰結として決めること:
 
 - **既存ユーザーへの影響**: `.krs` の書き方は不変。多重所属を書いていないモデルは描画・診断とも完全に不変。多重所属を書いているモデルは、slice A で診断文言が変わり、slice B/C で描画と collapse 挙動が変わる（experimental notation の範囲内の挙動変更）。
 - **ドキュメント**: `docs/spec/syntax.md`（+ja、boundary 節）、`docs/spec/diagnostics.md`（+ja）。`docs/roadmap.md` は [#2164](https://github.com/kompiro/karasu/pull/2164) が本件を **v2.0 core 昇格の宿題**として既に登録済み（watch item + Syntax 2.0 プログラム表）— slice A で watch item の観測項目「first-wins 多重所属が実利用で噛み合うか」だけを、決定済みの事項として書き換える。
-- **examples**: `examples/en/feature-samples/boundary-clusters.krs` に多重所属の例を足すか、専用 feature-sample を起こすかは slice B で判断（`/update-examples` スキルの同期規約に従う）。
+- **examples**: 専用 feature-sample `examples/en/feature-samples/boundary-multi-membership.krs` を slice A で追加済み（AT の目視項目の対象）。slice B で描画が変わったら同ファイルのコメントを更新する。
 - **`docs/design/tags-and-facets.md`**: §「所属モデルの一般化」が本件を (B4) follow-up として参照している。ADR 昇格時に相互リンクを張る。
 
 ## 未解決の問い / 決めないこと
