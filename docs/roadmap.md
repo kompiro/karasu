@@ -106,19 +106,28 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 
 | 柱 | Epic parent / label | 中身 | 着手 intent |
 | --- | --- | --- | --- |
-| **Comprehension / explorable viewer** | [#1817](https://github.com/kompiro/karasu/issues/1817) ・`epic: comprehension` | 大規模（AI 生成）図を認識可能にする。壁は**横の密度**（縦の深さは drill-down で足りる） | 第一手 [#1821](https://github.com/kompiro/karasu/issues/1821) を 2026-09、残りは Backlog |
-| **karasu-nest** | [#1783](https://github.com/kompiro/karasu/issues/1783) ・`epic: karasu-nest` | ホスト型の code+preview。share/render/OGP は出荷済み、Phase 2 catalog は [#1786](https://github.com/kompiro/karasu/discussions/1786)、URL 短縮 taka は [#1786 コメント](https://github.com/kompiro/karasu/discussions/1786) の統合 contract | Phase 2 は Backlog（keystone 後） |
+| **karasu-nest pivot** | [#1990](https://github.com/kompiro/karasu/issues/1990) ・`epic: karasu-nest` | GitHub App でリポジトリを読み、サーバ側 AI reverse で `.krs` を返す/描くホスト型サービス（[ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md)）。gate spike は 2026-07-30 に通過 | 第一手は Workers scaffold [#2227](https://github.com/kompiro/karasu/issues/2227)。以降 App auth → pipeline の依存順 |
+| **facets**（語彙の閉鎖） | [#2065](https://github.com/kompiro/karasu/issues/2065) ・`epic: facets` | ユーザー拡張点を `facet` に一本化し、tag / annotation はツール語彙へ閉じる（[§Syntax 2.0](#syntax-20-プログラム) の柱） | Part A 着地済み、Part B をスライス実行中 |
+| **boundary membership** | [#2161](https://github.com/kompiro/karasu/issues/2161) ・`epic: boundary` | 所属 1:N 一般化 + 多重包含描画。boundary の v2.0 core 昇格の宿題（[§Syntax 2.0](#syntax-20-プログラム) の柱） | slice A 着地済み、次は slice B [#2179](https://github.com/kompiro/karasu/issues/2179) |
 
-#### Comprehension の構図
+`epic: comprehension` と `epic: permalink-layer` は宣言していた子がすべて着地したため
+柱から降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
+それぞれの残余は下の [§comprehension の残余](#comprehension-の残余) と
+[§sequencing](#sequencing) に持つ。
 
-縦（深さ）は drill-down（[#21](https://github.com/kompiro/karasu/issues/21)、replace-context）が既にカバー。壁は**ある階層での横の密度**（service/infra ノード数 + 越境 edge の混雑）。投資は横の密度制御に向ける。
+#### comprehension の残余
 
-| 手 | コスト | Issue |
+壁が**ある階層での横の密度**（service/infra ノード数 + 越境 edge の混雑）で、縦（深さ）は
+drill-down（[#21](https://github.com/kompiro/karasu/issues/21)、replace-context）が既にカバー
+という構図は変わらない。レイヤートグル・意味的クラスタ・focus/dim・in-place 部分展開は
+出荷済みで Epic は閉じたので、**まだ構文/実装に落ちていない手だけ**を本表で追跡する
+（子 Issue は起こさず台帳で持つ運用 — [§notation gap](#watch-対象の-notation-gap構文未満の欠落) と同じ）。
+意味的クラスタの続き（所属 1:N・多重包含）は `epic: boundary`（[#2161](https://github.com/kompiro/karasu/issues/2161)）へ移した。
+
+| 残余の手 | コスト | promotion trigger |
 | --- | --- | --- |
-| external/infra の**レイヤートグル**（第一手） | 低 | [#1821](https://github.com/kompiro/karasu/issues/1821) |
-| 意味的クラスタ + 枠線 | 中 | [#1822](https://github.com/kompiro/karasu/issues/1822) |
-| provenance / `[external]` スタブ・focus（[#1186](https://github.com/kompiro/karasu/issues/1186) 出荷済み）・progressive edges | 中 | （follow-up） |
-| **縦の残課題**: in-place 部分展開（兄弟と越境 edge を見せたまま1つ展開、mixed-LOD）。重く ROI 要検証 | 高 | [#1815](https://github.com/kompiro/karasu/issues/1815) |
+| provenance / `[external]` スタブ（越境ノードを畳んだ参照として描く） | 中 | 越境ノード数そのものが読解を阻む事例が nest corpus で観測されたら Issue 化 |
+| progressive edges（越境 edge を先に、内部 edge は drill-in で） | 中 | 混雑の主因が node 数でなく edge 側だと corpus で確認できたら Issue 化 |
 
 ### promotion gate（notation 評価の規律）
 
@@ -177,10 +186,10 @@ gate で評価する。
 
 ### sequencing
 
-1. **permalink layer**（[#1826](https://github.com/kompiro/karasu/issues/1826)）が retained の背骨（keystone 決定に従属）。
-2. **comprehension 柱**は並行で進む。第一手は external/infra トグル（[#1821](https://github.com/kompiro/karasu/issues/1821)、2026-09）。
-3. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は評価可能。
-4. **Backlog** = keystone 依存のもの（[#1819](https://github.com/kompiro/karasu/issues/1819) / [#1822](https://github.com/kompiro/karasu/issues/1822) / [#1815](https://github.com/kompiro/karasu/issues/1815) / nest Phase 2 [#1783](https://github.com/kompiro/karasu/issues/1783)）。
+1. **permalink layer**（retained の背骨）は着地済み。deep permalink・repo-backed / ref-pinned resolver・ADR 側の `@<sha>` 検査まで揃い、Epic [#1826](https://github.com/kompiro/karasu/issues/1826) は close した。残るのは URL 見た目だけの optional slice [#1961](https://github.com/kompiro/karasu/issues/1961)（`/r/` prefix を落とす）で、これは律速ではない。
+2. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。gate 通過済みで、scaffold → App auth → pipeline の順に依存し、data-trust（[#1996](https://github.com/kompiro/karasu/issues/1996)）は他人の private code に触る前の**前提条件**。
+3. **syntax 2.0 の二本柱**（facets [#2065](https://github.com/kompiro/karasu/issues/2065) / boundary [#2161](https://github.com/kompiro/karasu/issues/2161)）は並行で進む v1.x 作業（閉鎖・core 昇格そのものは [§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
+4. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は評価可能。
 5. **非ゴール圧力 log** は随時追記（安価）。
 
 ---
@@ -226,10 +235,17 @@ gate で評価する。
 
 ### 追跡（Issues）
 
+二本柱はそれぞれ Epic として追跡する（テーマ軸のラベル運用は
+[§実行中の柱](#実行中の柱テーマ--epic-issue--epic-ラベル) と同じ）:
+**facet 側 = [#2065](https://github.com/kompiro/karasu/issues/2065) ・`epic: facets`** /
+**boundary 側 = [#2161](https://github.com/kompiro/karasu/issues/2161) ・`epic: boundary`**。
+下表はその内訳と、柱に属さない v2.0 項目。
+
 | Issue | 内容 | 時期 |
 | --- | --- | --- |
 | [#2159](https://github.com/kompiro/karasu/issues/2159) | v1.x deprecation 診断（`tag-not-builtin` / `annotation-not-builtin`）+ spec の deprecated 化 + 四分法ガイド（Part A） | v1.x |
 | [#2160](https://github.com/kompiro/karasu/issues/2160) | `facet` construct — 宣言 + `facets` プロパティ + overlay + facet セレクタ（Part B、experimental） | v1.x |
+| [#2172](https://github.com/kompiro/karasu/issues/2172) / [#2225](https://github.com/kompiro/karasu/issues/2225) | builtin 語彙の運用 — 昇格要望の受理（`[cache]` / `@canary`）と `appliesTo` の enforcement。閉鎖後にユーザー拡張の受け皿となる機構 | v1.x |
 | [#2161](https://github.com/kompiro/karasu/issues/2161) | boundary 所属 1:N 一般化 + 多重包含 banded 描画（ADR-1974 refine — boundary core 昇格の宿題） | v1.x〜v2.0 |
 | [#2165](https://github.com/kompiro/karasu/issues/2165) | 論理ノードの containment 規則 — v1.x は `node-not-in-context` warning（着地済み）、**error 化は v2.0** | v1.x 済 → 言語 v2.0 |
 | （未起票） | 閉鎖の実施（tag / annotation の warning enforcement・任意名セレクタ無効化・concepts 改訂 + ADR-1314 関係の新 ADR） | v2.0 |
