@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-289 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+290 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -97,6 +97,7 @@ flowchart TD
     ADR_1575["ADR-1575<br/>docs/ を single source of truth として Astro Starli..."]
     ADR_1593["ADR-1593<br/>Dependabot security update — transitive 依存を pnp..."]
     ADR_1611["ADR-1611<br/>Dependabot Batch Triage (2026-06-15) — `actions..."]
+    ADR_1628["ADR-1628<br/>docs-site の Examples gallery は examples/ をビルド時レ..."]
     ADR_1642["ADR-1642<br/>example を examples/<lang>/<name>/ に揃え、docs gall..."]
     ADR_1652["ADR-1652<br/>Dependabot security update — transitive 依存を pnp..."]
     ADR_1675["ADR-1675<br/>js-yaml transitive 脆弱性（alert #24）を read-yaml-fi..."]
@@ -404,6 +405,7 @@ flowchart TD
   ADR_1564 --> ADR_14
   ADR_1580 --> ADR_1583
   ADR_1583 --> ADR_1566
+  ADR_1628 --> ADR_1575
   ADR_1819 --> ADR_1870
   ADR_1819 --> ADR_316
   ADR_1820 --> ADR_1314
@@ -639,6 +641,7 @@ flowchart TD
   class ADR_1583 accepted
   class ADR_1593 accepted
   class ADR_1611 accepted
+  class ADR_1628 accepted
   class ADR_1632 accepted
   class ADR_1639 accepted
   class ADR_1642 accepted
@@ -737,7 +740,7 @@ flowchart TD
 
 - [`adr-tooling`](graph/adr-tooling.md) — 10 ADRs
 - [`app-ui`](graph/app-ui.md) — 41 ADRs
-- [`build`](graph/build.md) — 63 ADRs
+- [`build`](graph/build.md) — 64 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 19 ADRs

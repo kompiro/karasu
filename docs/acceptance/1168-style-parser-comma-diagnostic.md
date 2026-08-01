@@ -14,7 +14,7 @@ type: product
   - `packages/core/src/parser/diagnostic-legacy-format.ts`
   - `packages/app/src/i18n/{en,ja,types,format-diagnostic}.ts`
   - `docs/spec/style.md`
-- **関連 Design Doc**: [`docs/design/style-ast-shape.md`](../design/style-ast-shape.md) — Phase 1 のスコープ
+- **関連 ADR**: [ADR-1168](../adr/1168-style-ast-position-and-recovery.md) — Phase 1 のスコープ（Design Doc `docs/design/style-ast-shape.md` から昇格・削除済み）
 
 ## 受け入れ条件
 

@@ -79,7 +79,7 @@ retention の hook は「**残す**」= rot しない text-based な living arch
 ADR が*決定*に対してするものを、karasu は*構造*に対してする、という位置づけ。
 
 **既存資産が既にこの線を指している**: 進化/差分の thread（`docs/guide/03-evolution.md` /
-`docs/design/diff-open-file-as-entry.md` / app の compare mode = `useAppViews` の
+[ADR-811](../adr/811-diff-open-file-as-entry.md) / app の compare mode = `useAppViews` の
 `compareEntryPath`・snapshot overlay）。「変わったら戻ってくる」retention を支える土台が既にある。
 
 ### sharpened straw man（訂正版）
