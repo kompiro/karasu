@@ -17,7 +17,7 @@ import { encodeShare } from "../utils/inline-share.js";
  * (`functions/r/[[path]].ts`) 302-redirects the result to the existing `/s`
  * page, so this whole surface reuses the inline-share render path — no new
  * package, DB, render layer, or anchor grammar (design:
- * docs/design/repo-backed-ref-pinned-permalink.md, Issue #1828).
+ * docs/adr/1828-repo-backed-ref-pinned-permalink.md, Issue #1828).
  *
  * Framework-agnostic (mirrors share-render.ts / share-page.ts): the `fetch`
  * used to reach GitHub is injected, so the logic is unit-testable without the

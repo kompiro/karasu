@@ -83,4 +83,4 @@ Alternatives considered and rejected (only when useful for posterity).
 - When `status: superseded`, `superseded_by` is required **and** the new ADR must list this ID in its `supersedes`. The validator enforces bidirectional consistency.
 - The prose header (`- **日付**:`, `- **ステータス**:`, `- **関連**:`) stays for human readers; frontmatter is for tooling. Both coexist.
 
-See `docs/design/adr-knowledge-graph.md` for the full schema rationale, or run `pnpm adr:validate` to check your ADR locally.
+See [ADR-788](./788-adr-knowledge-graph.md) for the full schema rationale, or run `pnpm adr:validate` to check your ADR locally.
