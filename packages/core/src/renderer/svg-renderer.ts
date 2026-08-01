@@ -236,6 +236,9 @@ export function render(
     groupBy: options?.groupBy,
     collapsedGroups: options?.collapsedGroups,
     edgeDiffState: options?.edgeDiffState,
+    // Diff state reaches the layout so a removed node cannot be claimed by a
+    // band-less boundary (#2176); it must stay in the frame ADR-1886 returns it to.
+    nodeDiffState: options?.nodeDiffState,
   });
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode

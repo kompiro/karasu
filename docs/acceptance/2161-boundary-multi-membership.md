@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-30
 - **Issue**: #2161（親） / slice A #2178 / slice B #2179 / slice C #2180 / 配置 #2176
-- **PR**: slice A（この PR）
+- **PR**: slice A #2213 / 配置 #2176（この PR）
 - **関連 ADR**: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（決定 2 の refine 対象 — 1:1 + first-wins）、[ADR-2036](../adr/2036-scoped-boundary-declaration.md)（スコープ宣言 — scoped が勝つ）、[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff backfill）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（experimental 据え置き）
 - **設計**: `docs/design/boundary-membership-1n.md`（全体）、`docs/design/boundary-membership-slice-a.md`（slice A）
 - **Related TPLs**:
@@ -53,6 +53,34 @@ parse / merge 3 経路（multi-file import・diff・scope 合成）/ 群の並�
 - [ ] **手動**: 同じファイルで診断リストを開き、`duplicate-boundary-assignment` が **info** として出る。
       文言が「複数の boundary に所属する」という事実だけを述べ、「最初に宣言された boundary を採用」
       のようなビューの解決規則を含んでいない（en / ja 両方）。
+
+### 配置（#2176）— seam 配置 + co-membership band 順
+
+自動化済み: band 順のコスト項・seam bias・band 無し boundary の member 引き取り・
+配置のちょうど一度は `packages/core/src/renderer/group-layout.test.ts` と
+`packages/core/src/renderer/boundary-membership.test.ts`、P2c の再計測
+（penetration 0 / collinear overlap 0）は
+`packages/core/src/renderer/edge-routing-groups.test.ts` で固定済み。
+
+検証用サンプルは slice A と同じ
+`examples/en/feature-samples/boundary-multi-membership.krs`。
+
+#### AC-3: 共有する boundary が隣り合い、共有ノードが継ぎ目に座る
+
+- [ ] **手動**: サンプルを Group by: **Boundary** で開く。`payments` と `pci` の帯が隣り合い、
+      共有メンバーの `Ledger` が `payments` の**最下行**（`pci` に接する側）に座っている。
+      枠・エッジが視覚的に破綻していない。
+- [ ] **手動**: `boundary` を 3 つ以上持つモデル（共有するペアが宣言順では離れているもの）で、
+      共有するペアの帯が隣り合う位置まで寄る。かつ**依存の矢印が上から下に流れる**ままである
+      （co-membership のために依存の流れが逆転していない）。
+
+#### AC-4: band を持てない boundary が枠を得る
+
+- [ ] **手動**: メンバー全員が他の boundary と共有の `boundary` を書き足す
+      （例: サンプルに `boundary audit { label "Audit" contains Ledger contains CardVault }` を追加）。
+      その boundary の枠とラベルが図に現れ、引き取られたノードは**図中にちょうど 1 つ**のまま。
+      引き取られた元の boundary の枠も残っている（空にならない）。
+- [ ] **手動**: 引き取りが起きた図で、**どの枠も非メンバーを囲んでいない**（偽の包含が無い）。
 
 ### slice B（#2179）— 未着手
 
