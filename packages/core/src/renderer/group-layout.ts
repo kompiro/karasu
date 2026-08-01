@@ -452,7 +452,7 @@ function applySeamBias(
 }
 
 /** The placement axis plus the band order it implies — see {@link resolvePlacementAxis}. */
-export interface PlacementAxis {
+interface PlacementAxis {
   /** Node id → the group whose band places it. */
   axis: Map<string, string>;
   /**
