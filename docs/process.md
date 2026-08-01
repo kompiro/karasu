@@ -95,7 +95,7 @@ ready → implementing → in-review → (close)
 | 何を | どこに | 誰が更新するか |
 | --- | --- | --- |
 | どのスライスが落ちたか | **GitHub sub-issue**（親 Issue に登録する） | GitHub。Issue の open/closed がそのまま進捗バーになる |
-| 各スライスで何ができるようになるか / その時点でまだできないこと | **親 Issue body の `## Slice status` 表** | 人。スライスを切ったときに書き、以後は原則書き換えない |
+| 各スライスで何ができるようになるか / その時点でまだできないこと | **親 Issue body の `## Slice status` 表** | 人。スライスを切ったときに書き、**スライスが増減した / 依存や順序が変わったとき**に直す（進捗の記録として書き換えるのではない） |
 
 ```
 gh api repos/kompiro/karasu/issues/<parent>/sub_issues \
@@ -113,6 +113,14 @@ gh api repos/kompiro/karasu/issues/<parent>/sub_issues \
 - **「その時点でできないこと」を必ず書く。** 途中のスライスを実際に使った人が
   「壊れている」と読むのを防ぐのがこの表の主目的で、「できること」だけの表は
   その役目を果たさない。
+
+**スライスの開発中に見つけたバグは、そのスライスが作った（または到達可能にした）欠陥なら、
+独立 Issue にせず親の sub-issue として登録し表に 1 行足す。** 判定はこの 1 つで、「バグか
+機能か」では分けない。バグ行は前提列に**どのスライスが生んだ欠陥か**を書き（後から原因を
+辿れるように）、「できないこと」列は `—` でよい。分母が動くのは正直な動きで、隠すと実態より
+進んで見える。実例は [#2221](https://github.com/kompiro/karasu/issues/2221)（boundary
+slice A [#2178](https://github.com/kompiro/karasu/issues/2178) が cross-file 多重所属を
+正常状態にしたが、その状態が無診断だった）。
 
 Design Doc は**なぜその切り方にしたか**（スライスの依存関係・各スライスの実装手順）を
 持ち、到達点の一覧は持たない。Design Doc は ADR 昇格時に削除されるため、そこに置くと
