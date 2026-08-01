@@ -53,6 +53,14 @@ pre-push:
       # scripts/lint runs it in CI.
       glob: "{adr.config.json,tpl.config.json,scripts/lint/config-topics-sync.ts}"
       run: pnpm run lint:config-topics-sync
+    vitest-projects-sync:
+      # Vitest config breakage is silent: #675's vitest.workspace.ts went inert
+      # on the Vitest 4 upgrade and the root run quietly went back to scanning
+      # .claude/worktrees/, and a package without its own config resolves the
+      # root `projects` list against itself. Fires on any vitest config edit.
+      # The vitest mirror in scripts/lint runs it in CI.
+      glob: "{vitest.config.ts,vitest.workspace.*,packages/*/vitest.config.ts,scripts/vitest.config.ts,scripts/lint/vitest-projects-sync.ts}"
+      run: pnpm run lint:vitest-projects-sync
     at-check-coverage:
       # Also globs packages/e2e/tests/** so the exact e2e linkage guards
       # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added
