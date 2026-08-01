@@ -297,12 +297,21 @@ C-1 の帰結として決めること:
 - band 無し boundary は宣言順、候補は membership 順で解決し、各引き取りが次の判定に反映される
   （決定的・同じメンバーを二度取らない）。
 - 候補が 1 つも無ければ band を持たないままにする（唯一の候補が自分の band の最後の 1 人のとき）。
-- **diff / compare モードの `removed` ノードは候補にしない。** removed ノードの所属は
-  「元のフレームに戻すため」だけに before 側から backfill されている（[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)）ので、
-  これを引き取り候補にすると (1) そのノードが元のフレームから出てしまい、(2) after モデルでは
-  メンバーが 1 人もいない boundary に枠が生える。実装レビューで実測して直した（`nodeDiffState` を
-  `layout()` まで通し、`claimableNodeIds` で除外）。removed ノード自身の primary は従来どおり保つ —
-  他の boundary に取られなくなるだけ。
+- **diff / compare モードの `removed` ノードは primary だけに切り詰める。** removed ノードの所属は
+  「元のフレームに戻すため」だけに before 側から backfill されている（[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)）。
+  この配列が #2176 の機構に届くと、**モデルから消えたノードが生きているノードの配置を決める**:
+  (1) band 無し boundary に body を与える、(2) 生きた band 同士を co-membership で隣接させる、
+  (3) seam bias で行を寄せる。いずれも after 単独のレンダリングには現れない枠・並びになる。
+  そこで `placementMembership` で removed ノードの所属を primary 1 件に落とす（`nodeDiffState` を
+  `layout()` まで通す）。primary は残るので**元のフレームには従来どおり戻る** — 他者の配置を
+  決めなくなるだけ。
+
+  > **ノード集合を絞るのではなく membership を絞る。** 最初の実装は removed ノードを
+  > `presentNodeIds` から外したが、この集合は「引き取り候補か」と「その群は既にメンバーを
+  > 持っているか（`held`）」の 2 つの判定を兼ねている。removed ノードは元のフレームの中に
+  > 現に描かれている以上、後者では**数えなければならない**。外すと群が空に見えて、
+  > 危険でもない群から band 無し boundary が横取りする / 安全な引き取りが拒否される、の
+  > 両方が起きた（レビューで実測）。判定を分けるより、所属側を 1 つの規則で切る方が短い。
 
 **band の並びは引き取り前の primary 軸から seed する。** 群の並びは軸の値の初出順（= 宣言順）から
 導かれるので、引き取った値をそのまま並びの導出に使うと **body を与えた副作用で stack が並び替わる**

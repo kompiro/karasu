@@ -253,6 +253,25 @@ describe("co-membership band ordering (#2176)", () => {
     expect(order).toEqual(["b", "a", "c"]);
   });
 
+  it("stays deterministic on the greedy branch with a co-membership term", () => {
+    // The #1860 determinism guard covers the two-argument form; the swap pass
+    // added here is new iteration order over new maps, so it needs the same fence.
+    const ids = Array.from({ length: 10 }, (_, i) => `g${i}`);
+    const w = weights([
+      ["g0", "g1", 2],
+      ["g1", "g2", 1],
+      ["g9", "g0", 1],
+      ["g5", "g3", 1],
+      ["g3", "g8", 2],
+    ]);
+    const shared = co([
+      ["g0", "g7", 1],
+      ["g2", "g9", 2],
+    ]);
+    expect(orderGroups(ids, w, shared)).toEqual(orderGroups(ids, w, shared));
+    expect(new Set(orderGroups(ids, w, shared))).toEqual(new Set(ids));
+  });
+
   it("improves adjacency greedily beyond the exhaustive limit without adding back edges", () => {
     // 9 groups → the Eades–Lin–Smyth branch. i0 and i8 share a member; the
     // swap pass may only close the gap where the arc set does not object.

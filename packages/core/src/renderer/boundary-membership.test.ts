@@ -546,6 +546,144 @@ boundary audit {
     expect(result.svg).not.toContain('data-container-id="__group_audit__"');
   });
 
+  it("does not let a removed node's stale membership reorder the live bands", async () => {
+    // The co-membership term and the seam bias read the same backfilled array.
+    // A node that is gone from the model must not pull two live boundaries
+    // together — the diff order has to match the after-only order.
+    const AFTER = `
+system Shop {
+  service Billing {}
+  service Cat {}
+  service Aud {}
+}
+boundary payments {
+  contains Billing
+}
+boundary finance {
+  contains Cat
+}
+boundary audit {
+  contains Aud
+}
+`;
+    const BEFORE = `
+system Shop {
+  service Ledger {}
+  service Billing {}
+  service Cat {}
+  service Aud {}
+}
+boundary payments {
+  contains Billing
+  contains Ledger
+}
+boundary finance {
+  contains Cat
+}
+boundary audit {
+  contains Aud
+  contains Ledger
+}
+`;
+    const bandOrder = (svg: string): string[] =>
+      [...svg.matchAll(/data-container-id="(__group_[^"]+)"/g)].map((m) => m[1]);
+
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/p/before.krs", BEFORE);
+    await fs.writeFile("/p/after.krs", AFTER);
+    await fs.writeFile("/p/only.krs", AFTER);
+    const diff = await compileSystemDiff({
+      beforeEntryPath: "/p/before.krs",
+      afterEntryPath: "/p/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    const afterOnly = await compileProject("/p/only.krs", fs, { groupBy: "boundary" });
+    expect(diff.nodeDiff.get("Ledger")?.state).toBe("removed");
+    expect(bandOrder(diff.svg)).toEqual(bandOrder(afterOnly.svg));
+  });
+
+  it("still counts a removed node when asking whether its boundary holds a member", async () => {
+    // A removed node keeps its primary and renders inside it, so its group is
+    // not empty. Treating it as absent makes the group look raidable and denies
+    // a claim that was safe all along.
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(
+      "/p/before.krs",
+      `system Shop {
+  service Reporting {}
+  service Billing {}
+}
+boundary ops {
+  contains Reporting
+  contains Billing
+}
+boundary finance {
+  contains Reporting
+}
+`,
+    );
+    await fs.writeFile(
+      "/p/after.krs",
+      `system Shop {
+  service Reporting {}
+}
+boundary ops {
+  contains Reporting
+}
+boundary finance {
+  contains Reporting
+}
+`,
+    );
+    const result = await compileSystemDiff({
+      beforeEntryPath: "/p/before.krs",
+      afterEntryPath: "/p/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    expect(result.nodeDiff.get("Billing")?.state).toBe("removed");
+    // `ops` keeps the removed Billing, so `finance` may take Reporting.
+    expect(result.svg).toContain('data-container-id="__group_ops__"');
+    expect(result.svg).toContain('data-container-id="__group_finance__"');
+  });
+
+  it("claims inside each system frame of the multi-system root view (#1884, TPL-219)", async () => {
+    // `layoutMultipleSystems` is a parallel branch of the same placement, and
+    // the option it needs has been dropped there before (#1884).
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(
+      "/p/index.krs",
+      `system Shop {
+  service Billing {}
+  service Wallet {}
+}
+system Ops {
+  service Metrics {}
+  service Alerts {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+boundary finance {
+  contains Billing
+}
+boundary telemetry {
+  contains Metrics
+  contains Alerts
+}
+boundary oncall {
+  contains Metrics
+}
+`,
+    );
+    const result = await compileProject("/p/index.krs", fs, { groupBy: "boundary" });
+    for (const id of ["payments", "finance", "telemetry", "oncall"]) {
+      expect(result.svg).toContain(`data-container-id="__group_${id}__"`);
+    }
+  });
+
   it("compileProject frames the boundary", async () => {
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile("/p/index.krs", MULTI_SRC);

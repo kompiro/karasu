@@ -986,11 +986,11 @@ interface LayoutOptions {
   declaredGroupOrder?: readonly string[];
   /**
    * Node id → diff state in compare/diff mode, from `nodeDiffState` upstream.
-   * Only the boundary axis reads it, and only to keep a `removed` node out of
-   * the #2176 claim: its membership was backfilled purely so it could return to
-   * its former frame (ADR-1886), so letting a band-less boundary take it would
-   * both move the node out of that frame and mint a frame for a boundary with
-   * no live members at all.
+   * Only the boundary axis reads it, and only to cut a `removed` node back to
+   * its primary membership before placement (`placementMembership`, #2176): the
+   * rest of its membership was backfilled purely so it could return to its
+   * former frame (ADR-1886), and a node the model no longer has must not decide
+   * where the live ones go.
    */
   nodeDiffState?: ReadonlyMap<string, string>;
   /**
@@ -1080,23 +1080,36 @@ function boundaryAxisFor(
 /**
  * The nodes a band-less boundary may claim on this canvas (#2176).
  *
- * Every drawn node, minus the ones diff mode only drew because they were
- * *removed*. Their membership was restored from the before model purely so they
- * return to their former frame (ADR-1886) — claiming one would move it out of
- * that frame and hand a body to a boundary the after model gives no members at
- * all. A removed node still keeps its own primary; it is only barred from being
- * taken by another boundary.
+ * The diff restores a `removed` node's whole before-side membership so it
+ * returns to its former frame (ADR-1886). Returning it is *all* those entries
+ * are for. Let them reach the #2176 machinery and a node the model no longer
+ * has starts placing the ones it does: handing a band-less boundary a body,
+ * pulling two live bands next to each other, or biasing a seam row — each of
+ * them a frame or an order the equivalent after-only render never shows.
+ *
+ * So a removed node is cut back to its primary, which is the entry that returns
+ * it. It keeps its frame; it stops deciding anyone else's.
+ *
+ * Reducing the *membership* rather than filtering the node set matters: the
+ * node stays present for `resolvePlacementAxis`'s "does this group already hold
+ * a member" count, which is exactly what a removed node still does inside its
+ * former frame. Filtering it out of that count instead makes its group look
+ * empty and lets a band-less boundary raid a group that was never at risk.
+ *
+ * Identity when nothing is removed — every non-diff render.
  */
-function claimableNodeIds(
-  nodes: readonly KrsNode[],
+function placementMembership(
+  membership: Map<string, string[]> | undefined,
   nodeDiffState: ReadonlyMap<string, string> | undefined,
-): Set<string> {
-  const ids = new Set<string>();
-  for (const n of nodes) {
-    if (nodeDiffState?.get(n.id) === "removed") continue;
-    ids.add(n.id);
+): Map<string, string[]> | undefined {
+  if (membership === undefined || nodeDiffState === undefined) return membership;
+  let reduced: Map<string, string[]> | undefined;
+  for (const [nodeId, groupIds] of membership) {
+    if (groupIds.length < 2 || nodeDiffState.get(nodeId) !== "removed") continue;
+    reduced ??= new Map(membership);
+    reduced.set(nodeId, [groupIds[0]]);
   }
-  return ids;
+  return reduced ?? membership;
 }
 
 /*
@@ -1259,10 +1272,12 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     viewSlice.containerNode !== null
       ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
       : [];
-  const canvasMembership =
+  const canvasMembership = placementMembership(
     groupBy === "boundary"
       ? boundaryAxisFor(scopePath, boundaryMembership, scopedBoundaryMembership)
-      : undefined;
+      : undefined,
+    nodeDiffState,
+  );
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -1307,7 +1322,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       ? resolvePlacementAxis(
           canvasMembership,
           declaredGroupOrder,
-          claimableNodeIds(allNodes, nodeDiffState),
+          new Set(allNodes.map((n) => n.id)),
         )
       : undefined;
   const groupIndex = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
@@ -1911,9 +1926,12 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // `system X { … }` applies inside X's frame and nowhere else (#2036). Resolved
   // per system in the loop below; the team axis stays model-wide.
   const membershipForSystem = (systemId: string): Map<string, string[]> | undefined =>
-    groupBy === "boundary"
-      ? boundaryAxisFor([systemId], boundaryMembership, scopedBoundaryMembership)
-      : undefined;
+    placementMembership(
+      groupBy === "boundary"
+        ? boundaryAxisFor([systemId], boundaryMembership, scopedBoundaryMembership)
+        : undefined,
+      nodeDiffState,
+    );
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
@@ -1965,7 +1983,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
         ? resolvePlacementAxis(
             systemMembership,
             declaredGroupOrder,
-            claimableNodeIds(rawNodes, nodeDiffState),
+            new Set(rawNodes.map((n) => n.id)),
           )
         : undefined;
     const systemGroupIndex = systemPlacement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
