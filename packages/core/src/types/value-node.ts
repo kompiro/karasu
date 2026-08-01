@@ -3,7 +3,7 @@ import type { SourceRange } from "./tokens.js";
 /**
  * Structured representation of a single `.krs.style` property value.
  *
- * Phase 3 of `docs/design/style-ast-shape.md`. The parser produces a
+ * Phase 3 of the style-AST plan (ADR-1178). The parser produces a
  * `ValueNode` alongside the existing `properties: Record<string, string>`
  * so a future validator pass (PR-B) can emit value-level diagnostics
  * without re-parsing strings, and so each ValueNode carries enough

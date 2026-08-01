@@ -8,6 +8,8 @@ related_to:
   - ADR-8
   - ADR-108
   - ADR-1142
+  - ADR-1177
+  - ADR-1178
 scope:
   packages: [core]
 assumptions:
@@ -23,7 +25,8 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - 引き金 Issue/PR: [#1168](https://github.com/kompiro/karasu/issues/1168) / [#1173](https://github.com/kompiro/karasu/pull/1173)
-  - Design Doc（フェーズ計画全体）: [`docs/design/style-ast-shape.md`](../design/style-ast-shape.md)
+  - Design Doc（フェーズ計画全体）: `docs/design/style-ast-shape.md`（全 3 フェーズが ADR 化された時点で削除、[#2233](https://github.com/kompiro/karasu/issues/2233)）
+  - 後続 ADR: [ADR-1177](./1177-tidy-style-and-trivia.md)（フェーズ 2 — trivia + Tidy）、[ADR-1178](./1178-style-value-diagnostics.md)（フェーズ 3 — 構造化 value AST + 診断）
   - 関連 ADR: [ADR-8](./8-builtin-style-and-reference.md)（builtin + cascade）、
     [ADR-108](./108-unified-style-pipeline.md)（resolver 一元化）
 
@@ -44,11 +47,13 @@ properties: Record<string, string>, specificity, sourceIndex }` という
 - **シート横断のルール出自が不明**: 複数 `.krs.style` を解決した後、
   各 rule がどのファイル由来かを遡れなかった
 
-`docs/design/style-ast-shape.md` ではこれらを 3 フェーズで段階的に
+Design Doc `docs/design/style-ast-shape.md` ではこれらを 3 フェーズで段階的に
 解消する方針を立てた。本 ADR はそのうち **フェーズ 1**（位置情報
 追加 + sheetId 追加 + parser の error recovery 明示）の決定を記録する。
-フェーズ 2（trivia 保持）／ 3（構造化 value AST）は依然 Design Doc 上で
-方向性のみ保持し、機能要請が立ち上がった時に再検討する。
+フェーズ 2（trivia 保持）／ 3（構造化 value AST）は本 ADR の時点では
+Design Doc 上で方向性のみ保持していたが、その後それぞれ
+[ADR-1177](./1177-tidy-style-and-trivia.md) / [ADR-1178](./1178-style-value-diagnostics.md)
+として決定・実装され、Design Doc は役目を終えて削除された。
 
 ## 決定
 
