@@ -31,6 +31,14 @@ export interface GroupedNode {
    * below every group. Lower ranks sit higher (e.g. infra above external).
    */
   ungroupedRank: number;
+  /**
+   * Every group this node is *declared* in, in declaration order (#2176). The
+   * node is still placed exactly once, in `groupId` — this is what lets the
+   * band order pull its other groups next door and the seam bias put it on the
+   * row that touches them. Omitted (the team axis, which stays 1:1) reduces to
+   * `[groupId]`, so both terms below vanish and the layout is what it was.
+   */
+  memberships?: readonly string[];
 }
 
 export interface GroupedEdge {
@@ -61,6 +69,16 @@ interface GroupedLayerResult {
  * separator.
  */
 export type GroupEdgeWeights = Map<string, Map<string, number>>;
+
+/**
+ * Undirected group↔group co-membership counts: how many nodes each pair of
+ * groups shares (#2176). Stored symmetrically (both directions carry the same
+ * count) so a lookup never has to normalise the pair order.
+ *
+ * Empty on the team axis and on any model without multi-membership, which is
+ * what keeps the ordering below identical to what it was.
+ */
+export type CoMembershipWeights = Map<string, Map<string, number>>;
 
 /** Threshold below which group ordering is solved exactly (n! permutations). */
 const EXHAUSTIVE_GROUP_LIMIT = 8;
@@ -121,6 +139,57 @@ function aggregateGroupEdges(
   return weights;
 }
 
+/**
+ * Count the nodes each pair of groups shares, over `groups` only (#2176).
+ *
+ * Restricted to the groups that actually get a band: a membership naming a
+ * group with no band cannot be brought next door by reordering, so counting it
+ * would only bias the order towards a neighbour that is not drawn.
+ */
+function aggregateCoMembership(
+  nodes: readonly GroupedNode[],
+  groups: readonly string[],
+): CoMembershipWeights {
+  const banded = new Set(groups);
+  const weights: CoMembershipWeights = new Map();
+  const bump = (a: string, b: string): void => {
+    let tos = weights.get(a);
+    if (!tos) {
+      tos = new Map();
+      weights.set(a, tos);
+    }
+    tos.set(b, (tos.get(b) ?? 0) + 1);
+  };
+  for (const n of nodes) {
+    const ids = [...new Set(n.memberships ?? [])].filter((g) => banded.has(g));
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        bump(ids[i], ids[j]);
+        bump(ids[j], ids[i]);
+      }
+    }
+  }
+  return weights;
+}
+
+/**
+ * How far apart a permutation leaves the groups that share members: each shared
+ * node costs the number of bands between its two groups, so adjacent groups
+ * cost nothing (#2176). Zero for every permutation when nothing is shared.
+ */
+function coMembershipSeparation(weights: CoMembershipWeights, pos: Map<string, number>): number {
+  let cost = 0;
+  for (const [a, tos] of weights) {
+    for (const [b, count] of tos) {
+      // Each unordered pair is stored twice; count it once.
+      if (a >= b) continue;
+      const gap = Math.abs((pos.get(a) ?? 0) - (pos.get(b) ?? 0));
+      cost += count * Math.max(0, gap - 1);
+    }
+  }
+  return cost;
+}
+
 function permutations<T>(arr: T[]): T[][] {
   if (arr.length <= 1) return [arr];
   const out: T[][] = [];
@@ -137,19 +206,31 @@ function permutations<T>(arr: T[]): T[][] {
  * acyclic node graph can still aggregate into a cyclic group graph (design §
  * "計測 4"), so a strict topological order need not exist.
  *
- * Tie-break order: fewer backward *edges*, then smaller total span, then the
- * declared order — every tie resolves deterministically and the author's
- * declaration order wins when nothing else distinguishes two layouts.
+ * Tie-break order: fewer backward *edges*, then less co-membership separation
+ * (#2176), then smaller total span, then the declared order — every tie
+ * resolves deterministically and the author's declaration order wins when
+ * nothing else distinguishes two layouts.
+ *
+ * The co-membership term sits *below* the feedback-arc-set terms, so pulling
+ * two boundaries together never costs the diagram its top-to-bottom dependency
+ * flow, and *above* the span term, so a share that can be made adjacent is —
+ * a shared node's two frames can only overlap when their bands touch (#2179).
+ * It is identically 0 for every permutation when nothing is shared, so the
+ * comparison falls straight through to `span` and the order is unchanged.
  *
  * ≤ 8 groups: exhaustive (≤ 40 320 perms). Beyond: a greedy Eades–Lin–Smyth
  * sweep (linear), which is a good FAS approximation for larger group counts.
  */
-export function orderGroups(declaredOrder: string[], weights: GroupEdgeWeights): string[] {
+export function orderGroups(
+  declaredOrder: string[],
+  weights: GroupEdgeWeights,
+  coWeights: CoMembershipWeights = new Map(),
+): string[] {
   if (declaredOrder.length <= 1) return [...declaredOrder];
   const triples = edgeTriples(weights);
 
   if (declaredOrder.length <= EXHAUSTIVE_GROUP_LIMIT) {
-    let best: { order: string[]; w: number; n: number; span: number } | null = null;
+    let best: { order: string[]; w: number; n: number; co: number; span: number } | null = null;
     for (const perm of permutations(declaredOrder)) {
       const pos = new Map(perm.map((g, i) => [g, i]));
       let w = 0;
@@ -163,14 +244,16 @@ export function orderGroups(declaredOrder: string[], weights: GroupEdgeWeights):
           n += 1;
         }
       }
+      const co = coMembershipSeparation(coWeights, pos);
       // `permutations` yields the identity (declared) permutation first, and the
       // strict `<` comparisons keep it unless a later permutation is strictly
       // better — so declaration order is the final tie-break winner.
       const better =
         best === null ||
         w < best.w ||
-        (w === best.w && (n < best.n || (n === best.n && span < best.span)));
-      if (better) best = { order: [...perm], w, n, span };
+        (w === best.w &&
+          (n < best.n || (n === best.n && (co < best.co || (co === best.co && span < best.span)))));
+      if (better) best = { order: [...perm], w, n, co, span };
     }
     return best!.order;
   }
@@ -233,7 +316,57 @@ export function orderGroups(declaredOrder: string[], weights: GroupEdgeWeights):
       remaining.delete(pick);
     }
   }
-  return [...head, ...tail];
+  return improveCoMembership([...head, ...tail], triples, coWeights);
+}
+
+/**
+ * Best-effort co-membership pass for the greedy branch (> 8 groups, #2176).
+ *
+ * The exhaustive branch gets adjacency for free by scoring it in the cost
+ * tuple; the greedy sweep has no such knob, so instead we take its answer and
+ * swap adjacent pairs that bring shared groups closer **without worsening the
+ * feedback-arc-set** — the same precedence, applied locally. Bounded by the
+ * group count, and a no-op when nothing is shared.
+ *
+ * Explicitly weaker than the exhaustive branch: a share that only a non-local
+ * move could make adjacent stays non-adjacent, and falls back to the 縮退 tab
+ * (#2179). Large group counts trade optimality for a linear ordering pass.
+ */
+function improveCoMembership(
+  order: string[],
+  triples: { from: string; to: string; weight: number }[],
+  coWeights: CoMembershipWeights,
+): string[] {
+  if (coWeights.size === 0 || order.length < 3) return order;
+  const score = (candidate: string[]): { w: number; n: number; co: number } => {
+    const pos = new Map(candidate.map((g, i) => [g, i]));
+    let w = 0;
+    let n = 0;
+    for (const { from, to, weight } of triples) {
+      if ((pos.get(to) ?? 0) - (pos.get(from) ?? 0) < 0) {
+        w += weight;
+        n += 1;
+      }
+    }
+    return { w, n, co: coMembershipSeparation(coWeights, pos) };
+  };
+  let current = [...order];
+  let best = score(current);
+  for (let pass = 0; pass < order.length; pass++) {
+    let improved = false;
+    for (let i = 0; i + 1 < current.length; i++) {
+      const candidate = [...current];
+      [candidate[i], candidate[i + 1]] = [candidate[i + 1], candidate[i]];
+      const s = score(candidate);
+      if (s.w <= best.w && s.n <= best.n && s.co < best.co) {
+        current = candidate;
+        best = s;
+        improved = true;
+      }
+    }
+    if (!improved) break;
+  }
+  return current;
 }
 
 /**
@@ -267,6 +400,139 @@ export function groupOrderFor(
 }
 
 /**
+ * Move each shared member to the row of its band that **touches** the band of
+ * another group it belongs to — the seam (#2176).
+ *
+ * A shared node's two frames can only overlap when one reaches one row out of
+ * its band (#2179), so the closer the node sits to the seam, the smaller the
+ * reach and the overlap. Only an *adjacent* band is worth reaching for; a group
+ * two bands away cannot be reached whatever row the node takes, and falls back
+ * to the 縮退 tab.
+ *
+ * **The dependency flow wins.** A node only moves when its intra-group edges
+ * permit it: to the last row only if nothing inside the group depends on it, to
+ * the first only if it depends on nothing inside the group. (The latter is
+ * already where longest-path layering puts it, so the first-row branch is a
+ * no-op today — it is written out so the rule stays true if the layering ever
+ * changes.) A node that cannot move keeps the row it had.
+ *
+ * Mutates `sub` in place: this only rewrites row indexes, never adds or drops
+ * an entry, so every node is still placed exactly once (TPL-1738).
+ */
+function applySeamBias(
+  members: readonly GroupedNode[],
+  memberIds: readonly string[],
+  edges: readonly GroupedEdge[],
+  sub: Map<string, number>,
+  maxSub: number,
+  groupId: string,
+  groupPos: ReadonlyMap<string, number>,
+): void {
+  if (maxSub === 0) return; // A one-row band is its own seam, both ways.
+  const self = groupPos.get(groupId);
+  if (self === undefined) return;
+  const inGroup = new Set(memberIds);
+  const intra = edges.filter((e) => inGroup.has(e.from) && inGroup.has(e.to));
+  for (const n of members) {
+    // The first *adjacent* co-membership in declaration order decides the
+    // direction, so a node shared with a band above and one below resolves
+    // deterministically to whichever the author declared first.
+    let want: "first" | "last" | null = null;
+    for (const other of n.memberships ?? []) {
+      if (other === groupId) continue;
+      const d = (groupPos.get(other) ?? Number.NaN) - self;
+      if (d === -1) want = "first";
+      else if (d === 1) want = "last";
+      else continue;
+      break;
+    }
+    if (want === "last" && !intra.some((e) => e.from === n.id)) sub.set(n.id, maxSub);
+    else if (want === "first" && !intra.some((e) => e.to === n.id)) sub.set(n.id, 0);
+  }
+}
+
+/** The placement axis plus the band order it implies — see {@link resolvePlacementAxis}. */
+export interface PlacementAxis {
+  /** Node id → the group whose band places it. */
+  axis: Map<string, string>;
+  /**
+   * Group order for {@link assignGroupedLayers}, seeded from the *primary* axis
+   * so a claim gives a boundary a body without also reshuffling the stack.
+   */
+  groupOrder: string[];
+}
+
+/**
+ * The 1:1 axis a banded layout places by, resolved from the declared 1:N
+ * membership for one canvas (#2176).
+ *
+ * A node's placement group is its **primary** — the first boundary it was
+ * declared in (#2178) — with one exception. A boundary whose members are *all*
+ * claimed by an earlier one has nothing in the primary axis, so it gets no
+ * band, and with no band there is no frame and no label: it is declared,
+ * labelled, and absent from the diagram (the state TPL-1503 rules out, and the
+ * one #2161's prototype reproduced). Such a boundary instead **claims one of
+ * its shared members** on this canvas, which gives it a body to draw.
+ *
+ * The claim is bounded so it can only ever add a frame, never remove one:
+ *
+ * - only a member that is *present* on this canvas counts — the axis is
+ *   model-wide, the band machinery is per-canvas;
+ * - only a member whose current group keeps **another** present member is
+ *   taken, so filling one band can never empty another;
+ * - bandless boundaries are resolved in declaration order and members in
+ *   membership order, and each claim updates the counts the next one sees, so
+ *   the result is deterministic and no member is claimed twice.
+ *
+ * A boundary with no eligible member keeps no band — the honest answer when the
+ * only candidate is the last member of its own band. The node still appears
+ * exactly once either way (TPL-1738); what moves is which frame draws it, which
+ * is why this runs *before* the collapse pass, so the frame and the group a
+ * collapse folds into cannot disagree.
+ */
+export function resolvePlacementAxis(
+  membership: ReadonlyMap<string, readonly string[]>,
+  declaredGroupOrder: readonly string[] | undefined,
+  presentNodeIds: ReadonlySet<string>,
+): PlacementAxis {
+  const axis = new Map<string, string>();
+  for (const [nodeId, groupIds] of membership) {
+    // `primaryBoundaryOf` (types/ast.ts) is the definition of "primary"; it is
+    // spelled out rather than imported to keep this module free of AST imports.
+    // `boundary-membership.test.ts` pins the two to the same answer (TPL-1032).
+    if (groupIds.length > 0) axis.set(nodeId, groupIds[0]);
+  }
+  // Seeded from the *primary* axis, before any claim below: the band order is
+  // the author's declaration order (the parser fills membership in `contains`
+  // order), and giving a boundary a body must not also reshuffle the stack.
+  const groupOrder = groupOrderFor(axis, declaredGroupOrder);
+
+  /** Present members each group currently holds — the count a claim must not empty. */
+  const held = new Map<string, number>();
+  for (const [nodeId, groupId] of axis) {
+    if (presentNodeIds.has(nodeId)) held.set(groupId, (held.get(groupId) ?? 0) + 1);
+  }
+
+  const declared = declaredGroupOrder ?? [
+    ...new Set([...membership.values()].flatMap((ids) => [...ids])),
+  ];
+  for (const groupId of declared) {
+    if ((held.get(groupId) ?? 0) > 0) continue;
+    for (const [nodeId, groupIds] of membership) {
+      if (!presentNodeIds.has(nodeId) || !groupIds.includes(groupId)) continue;
+      const from = axis.get(nodeId);
+      if (from === undefined || from === groupId) continue;
+      if ((held.get(from) ?? 0) < 2) continue;
+      axis.set(nodeId, groupId);
+      held.set(from, (held.get(from) ?? 0) - 1);
+      held.set(groupId, 1);
+      break;
+    }
+  }
+  return { axis, groupOrder };
+}
+
+/**
  * Assign every node a row index so its group's members are contiguous and groups
  * stack in dependency order. Un-grouped nodes are placed in a trailing band
  * below all groups, ordered by `ungroupedRank` then intra-band longest path.
@@ -291,7 +557,9 @@ export function assignGroupedLayers(
   const presentGroups = declaredGroupOrder.filter((g) => nodes.some((n) => n.groupId === g));
   if (presentGroups.length === 0) return null;
 
-  const groupOrder = orderGroups(presentGroups, aggregateGroupEdges(edges, groupOf));
+  const coWeights = aggregateCoMembership(nodes, presentGroups);
+  const groupOrder = orderGroups(presentGroups, aggregateGroupEdges(edges, groupOf), coWeights);
+  const groupPos = new Map(groupOrder.map((g, i) => [g, i]));
 
   const layers = new Map<string, number>();
   const groupBands = new Map<string, GroupBand>();
@@ -320,13 +588,13 @@ export function assignGroupedLayers(
 
   // Team bands occupy the service tier's slot, in dependency order.
   for (const groupId of groupOrder) {
-    const memberIds = nodes.filter((n) => n.groupId === groupId).map((n) => n.id);
+    const members = nodes.filter((n) => n.groupId === groupId);
+    const memberIds = members.map((n) => n.id);
     const sub = longestPathLayers(memberIds, edges);
     let maxSub = 0;
-    for (const id of memberIds) {
-      layers.set(id, base + (sub.get(id) ?? 0));
-      maxSub = Math.max(maxSub, sub.get(id) ?? 0);
-    }
+    for (const id of memberIds) maxSub = Math.max(maxSub, sub.get(id) ?? 0);
+    applySeamBias(members, memberIds, edges, sub, maxSub, groupId, groupPos);
+    for (const id of memberIds) layers.set(id, base + (sub.get(id) ?? 0));
     groupBands.set(groupId, { min: base, max: base + maxSub });
     base += maxSub + 1;
   }

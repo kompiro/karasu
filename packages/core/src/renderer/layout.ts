@@ -4,13 +4,13 @@ import {
   OWNABLE_KIND_SET,
   boundaryScopeKey,
   displayGroupId,
-  primaryBoundaryOf,
   scopedBoundaryGroupId,
 } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import {
   assignGroupedLayers,
   groupOrderFor,
+  resolvePlacementAxis,
   type GroupedNode,
   type GroupBand,
 } from "./group-layout.js";
@@ -1061,25 +1061,14 @@ function boundaryAxisFor(
   return new Map([...boundaryMembership, ...qualified]);
 }
 
-/**
- * The 1:1 axis a banded layout places by: each node's primary membership.
- *
- * The single point where 1:N membership meets the view's one-band-per-node
- * requirement (TPL-2161). Everything downstream — `collapseGroups`, the band
- * assignment, the frames — keeps taking a plain `Map<nodeId, groupId>`, so this
- * slice moves no node (#2178); drawing the non-primary memberships is #2179.
+/*
+ * The 1:1 axis a banded layout places by — the single point where 1:N
+ * membership meets the view's one-band-per-node requirement (TPL-2161) — now
+ * lives in `resolvePlacementAxis` (group-layout.ts), which starts from the same
+ * primary and only departs from it to give a bandless boundary a body (#2176).
+ * Everything downstream — `collapseGroups`, the band assignment, the frames —
+ * keeps taking a plain `Map<nodeId, groupId>`.
  */
-function primaryAxisOf(
-  membership: Map<string, string[]> | undefined,
-): Map<string, string> | undefined {
-  if (membership === undefined) return undefined;
-  const primary = new Map<string, string>();
-  for (const [nodeId, boundaryIds] of membership) {
-    const boundaryId = primaryBoundaryOf(boundaryIds);
-    if (boundaryId !== undefined) primary.set(nodeId, boundaryId);
-  }
-  return primary;
-}
 
 function collapseAndAssignGroupLayers(
   nodes: readonly KrsNode[],
@@ -1089,8 +1078,19 @@ function collapseAndAssignGroupLayers(
   edgeDiffState: ReadonlyMap<string, string> | undefined,
   /** Namespaces collapse-stub ids (the enclosing system id); omitted in the single-system view. */
   stubScope: string | undefined,
-  /** Declared group ids for {@link groupOrderFor}; omitted keeps the axis-derived order. */
-  declaredGroupOrder?: readonly string[],
+  /**
+   * Band order for `assignGroupedLayers`. The boundary axis resolves it
+   * alongside the placement axis (`resolvePlacementAxis`, #2176); the team axis
+   * passes the declared ids and lets {@link groupOrderFor} merge them.
+   */
+  bandOrder: readonly string[] | undefined,
+  /**
+   * Full declared membership on the boundary axis (#2178), which lets the band
+   * order pull boundaries that share members together and the seam bias put a
+   * shared node on the row that touches them (#2176). Omitted on the team axis,
+   * which stays 1:1 — both terms then reduce to no-ops.
+   */
+  membership?: ReadonlyMap<string, readonly string[]>,
 ): {
   nodes: KrsNode[];
   edges: KrsEdge[];
@@ -1112,19 +1112,35 @@ function collapseAndAssignGroupLayers(
     groupIndex.get(id) ?? collapsed.stubGroup.get(id) ?? null;
   let grouped: GroupedLayerBands | null = null;
   if (groupIndex.size > 0) {
-    const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => ({
-      id: n.id,
-      groupId: groupIdOf(n.id),
-      ungroupedRank: systemTier(n),
-    }));
+    const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => {
+      const groupId = groupIdOf(n.id);
+      // A collapse stub stands in for one group and has no membership of its
+      // own, so it never carries a share — `membership` is keyed by real node.
+      const declared = membership?.get(n.id);
+      return {
+        id: n.id,
+        groupId,
+        ungroupedRank: systemTier(n),
+        // The placement group leads, so `applySeamBias` reads the node's *other*
+        // groups off the tail; a promoted member (#2176) is not in its own
+        // declared list twice.
+        ...(declared && groupId !== null
+          ? { memberships: [groupId, ...declared.filter((g) => g !== groupId)] }
+          : {}),
+      };
+    });
     // Group declaration order = first-appearance order in the axis map (the
     // parser inserts `owns` / `contains` in declaration order), so the
     // deterministic tie-break in `orderGroups` follows what the author wrote,
-    // plus the declared groups the axis map cannot name (#2178).
+    // plus the declared groups the axis map cannot name (#2178). On the
+    // boundary axis the caller already resolved it (#2176) so a claimed member
+    // cannot reshuffle the stack.
     const result = assignGroupedLayers(
       groupedNodes,
       collapsed.edges.map((e) => ({ from: e.from, to: e.to })),
-      groupOrderFor(groupIndex, declaredGroupOrder),
+      membership !== undefined && bandOrder !== undefined
+        ? [...bandOrder]
+        : groupOrderFor(groupIndex, bandOrder),
     );
     if (result) {
       grouped = {
@@ -1196,10 +1212,6 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     collapsedGroups,
     edgeDiffState,
   } = options;
-  // The grouping axis (#1858 P2a = team, #1822 P2b = boundary). `ownerIndex`
-  // stays the team-badge source on every card regardless of axis; only the
-  // *grouping* logic below switches to `groupIndex`.
-  //
   // The canvas being drawn is the container plus its ancestors — for the root
   // system view that is the system itself (`containerNode` is set, with an empty
   // ancestor chain), which is the scope a top-level-looking `system X { boundary
@@ -1208,12 +1220,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     viewSlice.containerNode !== null
       ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
       : [];
-  const groupIndex =
+  const canvasMembership =
     groupBy === "boundary"
-      ? primaryAxisOf(boundaryAxisFor(scopePath, boundaryMembership, scopedBoundaryMembership))
-      : groupBy === "team"
-        ? ownerIndex
-        : undefined;
+      ? boundaryAxisFor(scopePath, boundaryMembership, scopedBoundaryMembership)
+      : undefined;
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -1248,6 +1258,21 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   let allNodes = collapsedCat.nodes;
   let allEdges: KrsEdge[] = collapsedCat.edges;
 
+  // The grouping axis (#1858 P2a = team, #1822 P2b = boundary). `ownerIndex`
+  // stays the team-badge source on every card regardless of axis; only the
+  // *grouping* logic below switches to `groupIndex`. Resolved after the category
+  // collapse because a boundary with no band of its own claims one of its shared
+  // members (#2176), and only the nodes still on the canvas can be claimed.
+  const placement =
+    canvasMembership !== undefined
+      ? resolvePlacementAxis(
+          canvasMembership,
+          declaredGroupOrder,
+          new Set(allNodes.map((n) => n.id)),
+        )
+      : undefined;
+  const groupIndex = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
+
   // Per-group collapse (#1858 slice B): when a team is collapsed, fold its
   // members to a `<Team> (N)` stub and re-target cross-group edges onto it, so
   // "collapse all" yields the group-dependency-DAG view. Only meaningful in
@@ -1280,7 +1305,8 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       collapsedGroups,
       edgeDiffState,
       undefined,
-      declaredGroupOrder,
+      placement?.groupOrder ?? declaredGroupOrder,
+      canvasMembership,
     );
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
@@ -1840,20 +1866,14 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // Grouping axis (team = ownerIndex, boundary = the primary of
   // boundaryMembership); `ownerIndex` stays the per-card team badge source
   // regardless of axis (mirrors layout()).
-  const groupIndex =
-    groupBy === "boundary"
-      ? primaryAxisOf(boundaryMembership)
-      : groupBy === "team"
-        ? ownerIndex
-        : undefined;
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   // Each system frame is its own canvas, so a scoped boundary declared in
   // `system X { … }` applies inside X's frame and nowhere else (#2036). Resolved
   // per system in the loop below; the team axis stays model-wide.
-  const boundaryAxisForSystem = (systemId: string): Map<string, string> | undefined =>
+  const membershipForSystem = (systemId: string): Map<string, string[]> | undefined =>
     groupBy === "boundary"
-      ? primaryAxisOf(boundaryAxisFor([systemId], boundaryMembership, scopedBoundaryMembership))
-      : groupIndex;
+      ? boundaryAxisFor([systemId], boundaryMembership, scopedBoundaryMembership)
+      : undefined;
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
@@ -1897,7 +1917,18 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     let groupBandsS: Map<string, GroupBand> | null = null;
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
-    const systemGroupIndex = boundaryAxisForSystem(sys.id);
+    const systemMembership = membershipForSystem(sys.id);
+    // Same per-canvas resolution as `layout()`: a boundary with no band of its
+    // own claims one of the shared members present in *this* system (#2176).
+    const systemPlacement =
+      systemMembership !== undefined
+        ? resolvePlacementAxis(
+            systemMembership,
+            declaredGroupOrder,
+            new Set(rawNodes.map((n) => n.id)),
+          )
+        : undefined;
+    const systemGroupIndex = systemPlacement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
     if (groupBy && systemGroupIndex && systemGroupIndex.size > 0) {
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
@@ -1909,7 +1940,8 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
         collapsedGroups,
         edgeDiffState,
         sys.id,
-        declaredGroupOrder,
+        systemPlacement?.groupOrder ?? declaredGroupOrder,
+        systemMembership,
       );
       if (collapsed.grouped) {
         workNodes = collapsed.nodes;

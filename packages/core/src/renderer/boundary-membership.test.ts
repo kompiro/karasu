@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "../parser/parser.js";
 import { layout } from "./layout.js";
-import { groupOrderFor } from "./group-layout.js";
+import { groupOrderFor, resolvePlacementAxis } from "./group-layout.js";
 import { declaredGroupOrderOf } from "./group-labels.js";
 import { extractView } from "../view/view-extract.js";
 import { boundaryScopeKey, primaryBoundaryOf } from "../types/ast.js";
@@ -251,12 +251,54 @@ boundary shared {
   });
 });
 
-describe("slice A moves nothing", () => {
-  it("adding a second membership leaves every node position unchanged", () => {
-    // The visible surface of this slice is the diagnostic wording; placement
-    // stays on the primary axis until #2179 / #2176 (TPL-1738: a node is laid
-    // out exactly once, wherever it lands).
-    const single = `
+describe("placement moves only to give a boundary a band (#2176)", () => {
+  // Slice A placed strictly on the primary axis. #2176 keeps that as the rule
+  // and adds exactly one exception: a boundary whose members are *all* claimed
+  // by an earlier one has nothing to band, so it takes one of its shared
+  // members and gets a body. Everything else still lands on its primary.
+  const render = (src: string) => {
+    const parsed = Parser.parse(src).value;
+    const slice = extractView(parsed.systems, ["Shop"]);
+    return layout(slice, {
+      boundaryMembership: parsed.boundaryMembership,
+      declaredGroupOrder: declaredGroupOrderOf(parsed, "boundary"),
+      groupBy: "boundary",
+    });
+  };
+  const positions = (src: string): [string, number, number][] =>
+    [...render(src).nodes].map(([id, n]) => [id, n.x, n.y]);
+  const frames = (src: string): string[] =>
+    render(src)
+      .containers.filter((c) => c.group === true)
+      .map((c) => c.id);
+
+  const TWO_BANDED = `
+system Shop {
+  service Billing {}
+  service Wallet {}
+  service Ledger {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+boundary audit {
+  contains Ledger
+}
+`;
+
+  it("a second membership moves nothing when the other boundary already has a band", () => {
+    // `audit` bands `Ledger` on its own, so it needs no claim and `Billing`
+    // stays where its primary put it.
+    const shared = TWO_BANDED.replace(
+      "  contains Ledger\n",
+      "  contains Ledger\n  contains Billing\n",
+    );
+    expect(positions(shared)).toEqual(positions(TWO_BANDED));
+  });
+
+  it("a boundary whose members are all shared claims one, so it gets a frame", () => {
+    const bandless = `
 system Shop {
   service Billing {}
   service Wallet {}
@@ -265,22 +307,93 @@ boundary payments {
   contains Billing
   contains Wallet
 }
-`;
-    const multi = `${single}boundary finance {
+boundary finance {
   contains Billing
 }
 `;
-    const positions = (src: string): [string, number, number][] => {
-      const parsed = Parser.parse(src).value;
-      const slice = extractView(parsed.systems, ["Shop"]);
-      const res = layout(slice, {
-        boundaryMembership: parsed.boundaryMembership,
-        declaredGroupOrder: declaredGroupOrderOf(parsed, "boundary"),
-        groupBy: "boundary",
-      });
-      return [...res.nodes].map(([id, n]) => [id, n.x, n.y]);
-    };
-    expect(positions(multi)).toEqual(positions(single));
+    // Before #2176 `finance` was declared, labelled, and drawn nowhere.
+    expect(frames(bandless)).toEqual(["__group_payments__", "__group_finance__"]);
+  });
+
+  it("does not empty one band to fill another", () => {
+    // `payments` has a single member, and it is the only candidate `finance`
+    // could claim. Taking it would just move the hole, so no claim is made.
+    const soleMember = `
+system Shop {
+  service Billing {}
+}
+boundary payments {
+  contains Billing
+}
+boundary finance {
+  contains Billing
+}
+`;
+    expect(frames(soleMember)).toEqual(["__group_payments__"]);
+  });
+
+  it("places every node exactly once whether or not a claim happens (TPL-1738)", () => {
+    for (const src of [TWO_BANDED, MULTI_SRC]) {
+      const res = render(src);
+      const ids = [...res.nodes.keys()];
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it("bands boundaries that share a member next to each other, with the member on the seam", () => {
+    // Three boundaries with no dependency edges between them: every band order
+    // ties and declaration order wins today. The Ledger share is the only thing
+    // that can break the tie — and it must, because two frames can overlap over
+    // a shared card only when their bands touch (#2179).
+    const shared = `
+system Shop {
+  service Checkout {}
+  service Ledger {}
+  service Catalog {}
+  service Audit {}
+  Checkout -> Ledger "record"
+}
+boundary payments {
+  contains Checkout
+  contains Ledger
+}
+boundary catalog {
+  contains Catalog
+}
+boundary risk {
+  contains Ledger
+  contains Audit
+}
+`;
+    const res = render(shared);
+    const bandTop = (groupId: string): number =>
+      res.containers.find((c) => c.id === `__group_${groupId}__`)!.y;
+    // Declared payments, catalog, risk — catalog shares nothing, so it is the
+    // band that moves out from between the two that do.
+    expect(
+      ["payments", "catalog", "risk"]
+        .map((g) => [g, bandTop(g)] as const)
+        .sort((a, b) => a[1] - b[1])
+        .map(([g]) => g),
+    ).toEqual(["payments", "risk", "catalog"]);
+    // And Ledger takes payments' bottom row — the row that touches `risk`.
+    expect(res.nodes.get("Ledger")!.y).toBeGreaterThan(res.nodes.get("Checkout")!.y);
+    expect(bandTop("risk")).toBeGreaterThan(res.nodes.get("Ledger")!.y);
+  });
+
+  it("resolvePlacementAxis agrees with primaryBoundaryOf wherever no claim is made (TPL-1032)", () => {
+    // `resolvePlacementAxis` spells out the primary rule instead of importing
+    // it, so the two definitions are pinned to the same answer here.
+    const parsed = Parser.parse(MULTI_SRC).value;
+    const present = new Set(["Billing", "Wallet", "Ledger"]);
+    const { axis } = resolvePlacementAxis(
+      parsed.boundaryMembership,
+      declaredGroupOrderOf(parsed, "boundary"),
+      present,
+    );
+    for (const [nodeId, ids] of parsed.boundaryMembership) {
+      expect(axis.get(nodeId)).toBe(primaryBoundaryOf(ids));
+    }
   });
 });
 
