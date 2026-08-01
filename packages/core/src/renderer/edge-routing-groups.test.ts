@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { layout } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
+import { declaredGroupOrderOf } from "./group-labels.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 
@@ -784,5 +785,90 @@ describe("mixed channel routing on examples/en/getting-started (#1954)", () => {
       // ungrouped pipeline does not produce that shape for these edges.
       expect((edge(ungrouped, from, to).waypoints ?? []).length).toBeLessThan(3);
     }
+  });
+});
+
+// Re-measure after #2176 moved placement: the co-membership band order and the
+// seam bias both change which rows nodes occupy, and P2c routes around the
+// frames those rows produce. Sharing members must not cost the router its
+// guarantee (TPL-1927).
+const SHARED = `
+system Shop {
+  service Checkout { label "Checkout" }
+  service Ledger { label "Ledger" }
+  service Wallet { label "Wallet" }
+  service CardVault { label "Card vault" }
+  service Reporting { label "Reporting" }
+  database LedgerDB { label "Ledger DB" }
+  Checkout -> CardVault "tokenize"
+  Checkout -> Ledger "record"
+  Checkout -> Wallet "debit"
+  Ledger -> LedgerDB "persist"
+  Reporting -> LedgerDB "read"
+}
+boundary payments {
+  label "Payments"
+  contains Checkout
+  contains Ledger
+  contains Wallet
+}
+boundary pci {
+  label "PCI scope"
+  contains Ledger
+  contains CardVault
+}
+boundary audit {
+  label "Audit"
+  contains Reporting
+  contains Ledger
+}
+`;
+
+describe("P2c routing after seam placement (#2176, TPL-1927)", () => {
+  const boundaryLayout = (krs: string): LayoutResult => {
+    const parsed = Parser.parse(krs).value;
+    const slice = extractView(parsed.systems, []);
+    return layout(slice, {
+      boundaryMembership: parsed.boundaryMembership,
+      declaredGroupOrder: declaredGroupOrderOf(parsed, "boundary"),
+      groupBy: "boundary",
+    });
+  };
+
+  it("keeps penetration == 0 with boundaries that share members (AC-1)", () => {
+    const res = boundaryLayout(SHARED);
+    // The fixture still exercises the router: drawn straight, these edges would
+    // cut through the intermediate bands and frames.
+    expect(straightCenterPenetrations(res)).toBeGreaterThan(0);
+    expect(totalPenetrations(res)).toBe(0);
+    // Dual metric — crossings are observed, not asserted to a fixed value.
+    expect(Number.isFinite(totalCrossings(res))).toBe(true);
+  });
+
+  it("keeps frames disjoint, so no frame encloses a non-member", () => {
+    // Placement is still exactly-once and every band is a contiguous row range,
+    // so a card sits inside exactly one group frame. Reaching out of a band is
+    // #2179's polygon frame, not something placement may fake with a bbox.
+    const res = boundaryLayout(SHARED);
+    const frames = framesOf(res).filter((f) => f.id.startsWith("__group_"));
+    for (const n of res.nodes.values()) {
+      const enclosing = frames.filter(
+        (f) =>
+          n.x >= f.x &&
+          n.x + n.width <= f.x + f.width &&
+          n.y >= f.y &&
+          n.y + n.height <= f.y + f.height,
+      );
+      expect(enclosing.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("draws every node exactly once (TPL-1738)", () => {
+    const res = boundaryLayout(SHARED);
+    expect(res.nodes.size).toBe(6);
+  });
+
+  it("has no collinear horizontal overlap between distinct edges (#1927)", () => {
+    expect(collinearHorizontalOverlaps(boundaryLayout(SHARED))).toBe(0);
   });
 });

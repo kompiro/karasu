@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "../parser/parser.js";
 import { layout } from "./layout.js";
-import { groupOrderFor } from "./group-layout.js";
+import { groupOrderFor, resolvePlacementAxis } from "./group-layout.js";
 import { declaredGroupOrderOf } from "./group-labels.js";
 import { extractView } from "../view/view-extract.js";
 import { boundaryScopeKey, primaryBoundaryOf } from "../types/ast.js";
@@ -251,12 +251,54 @@ boundary shared {
   });
 });
 
-describe("slice A moves nothing", () => {
-  it("adding a second membership leaves every node position unchanged", () => {
-    // The visible surface of this slice is the diagnostic wording; placement
-    // stays on the primary axis until #2179 / #2176 (TPL-1738: a node is laid
-    // out exactly once, wherever it lands).
-    const single = `
+describe("placement moves only to give a boundary a band (#2176)", () => {
+  // Slice A placed strictly on the primary axis. #2176 keeps that as the rule
+  // and adds exactly one exception: a boundary whose members are *all* claimed
+  // by an earlier one has nothing to band, so it takes one of its shared
+  // members and gets a body. Everything else still lands on its primary.
+  const render = (src: string) => {
+    const parsed = Parser.parse(src).value;
+    const slice = extractView(parsed.systems, ["Shop"]);
+    return layout(slice, {
+      boundaryMembership: parsed.boundaryMembership,
+      declaredGroupOrder: declaredGroupOrderOf(parsed, "boundary"),
+      groupBy: "boundary",
+    });
+  };
+  const positions = (src: string): [string, number, number][] =>
+    [...render(src).nodes].map(([id, n]) => [id, n.x, n.y]);
+  const frames = (src: string): string[] =>
+    render(src)
+      .containers.filter((c) => c.group === true)
+      .map((c) => c.id);
+
+  const TWO_BANDED = `
+system Shop {
+  service Billing {}
+  service Wallet {}
+  service Ledger {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+boundary audit {
+  contains Ledger
+}
+`;
+
+  it("a second membership moves nothing when the other boundary already has a band", () => {
+    // `audit` bands `Ledger` on its own, so it needs no claim and `Billing`
+    // stays where its primary put it.
+    const shared = TWO_BANDED.replace(
+      "  contains Ledger\n",
+      "  contains Ledger\n  contains Billing\n",
+    );
+    expect(positions(shared)).toEqual(positions(TWO_BANDED));
+  });
+
+  it("a boundary whose members are all shared claims one, so it gets a frame", () => {
+    const bandless = `
 system Shop {
   service Billing {}
   service Wallet {}
@@ -265,22 +307,93 @@ boundary payments {
   contains Billing
   contains Wallet
 }
-`;
-    const multi = `${single}boundary finance {
+boundary finance {
   contains Billing
 }
 `;
-    const positions = (src: string): [string, number, number][] => {
-      const parsed = Parser.parse(src).value;
-      const slice = extractView(parsed.systems, ["Shop"]);
-      const res = layout(slice, {
-        boundaryMembership: parsed.boundaryMembership,
-        declaredGroupOrder: declaredGroupOrderOf(parsed, "boundary"),
-        groupBy: "boundary",
-      });
-      return [...res.nodes].map(([id, n]) => [id, n.x, n.y]);
-    };
-    expect(positions(multi)).toEqual(positions(single));
+    // Before #2176 `finance` was declared, labelled, and drawn nowhere.
+    expect(frames(bandless)).toEqual(["__group_payments__", "__group_finance__"]);
+  });
+
+  it("does not empty one band to fill another", () => {
+    // `payments` has a single member, and it is the only candidate `finance`
+    // could claim. Taking it would just move the hole, so no claim is made.
+    const soleMember = `
+system Shop {
+  service Billing {}
+}
+boundary payments {
+  contains Billing
+}
+boundary finance {
+  contains Billing
+}
+`;
+    expect(frames(soleMember)).toEqual(["__group_payments__"]);
+  });
+
+  it("places every node exactly once whether or not a claim happens (TPL-1738)", () => {
+    for (const src of [TWO_BANDED, MULTI_SRC]) {
+      const res = render(src);
+      const ids = [...res.nodes.keys()];
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it("bands boundaries that share a member next to each other, with the member on the seam", () => {
+    // Three boundaries with no dependency edges between them: every band order
+    // ties and declaration order wins today. The Ledger share is the only thing
+    // that can break the tie — and it must, because two frames can overlap over
+    // a shared card only when their bands touch (#2179).
+    const shared = `
+system Shop {
+  service Checkout {}
+  service Ledger {}
+  service Catalog {}
+  service Audit {}
+  Checkout -> Ledger "record"
+}
+boundary payments {
+  contains Checkout
+  contains Ledger
+}
+boundary catalog {
+  contains Catalog
+}
+boundary risk {
+  contains Ledger
+  contains Audit
+}
+`;
+    const res = render(shared);
+    const bandTop = (groupId: string): number =>
+      res.containers.find((c) => c.id === `__group_${groupId}__`)!.y;
+    // Declared payments, catalog, risk — catalog shares nothing, so it is the
+    // band that moves out from between the two that do.
+    expect(
+      ["payments", "catalog", "risk"]
+        .map((g) => [g, bandTop(g)] as const)
+        .sort((a, b) => a[1] - b[1])
+        .map(([g]) => g),
+    ).toEqual(["payments", "risk", "catalog"]);
+    // And Ledger takes payments' bottom row — the row that touches `risk`.
+    expect(res.nodes.get("Ledger")!.y).toBeGreaterThan(res.nodes.get("Checkout")!.y);
+    expect(bandTop("risk")).toBeGreaterThan(res.nodes.get("Ledger")!.y);
+  });
+
+  it("resolvePlacementAxis agrees with primaryBoundaryOf wherever no claim is made (TPL-1032)", () => {
+    // `resolvePlacementAxis` spells out the primary rule instead of importing
+    // it, so the two definitions are pinned to the same answer here.
+    const parsed = Parser.parse(MULTI_SRC).value;
+    const present = new Set(["Billing", "Wallet", "Ledger"]);
+    const { axis } = resolvePlacementAxis(
+      parsed.boundaryMembership,
+      declaredGroupOrderOf(parsed, "boundary"),
+      present,
+    );
+    for (const [nodeId, ids] of parsed.boundaryMembership) {
+      expect(axis.get(nodeId)).toBe(primaryBoundaryOf(ids));
+    }
   });
 });
 
@@ -306,6 +419,270 @@ boundary shared {
   contains ShippingDomain
 }
 `;
+
+  // The claim (#2176) is a second, distinct way the axis can reach a surface:
+  // a boundary with no band of its own takes a shared member. A surface that
+  // drops the axis loses the claimed frame the same way it loses any other, so
+  // it is asserted on every surface too — the drill-down path regressed exactly
+  // this way once before (#2033).
+  const CLAIM_SRC = `
+system Shop {
+  service Billing {}
+  service Wallet {}
+}
+boundary payments {
+  label "Payments"
+  contains Billing
+  contains Wallet
+}
+boundary finance {
+  label "Finance"
+  contains Billing
+}
+`;
+
+  const CLAIM_DRILL_SRC = `
+system Shop {
+  service Orders {
+    domain OrderDomain {}
+    domain ShippingDomain {}
+  }
+}
+boundary cluster {
+  label "Cluster"
+  contains OrderDomain
+  contains ShippingDomain
+}
+boundary shared {
+  label "Shared"
+  contains OrderDomain
+}
+`;
+
+  it("compileProject frames a boundary that only exists by claiming (#2176)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/p/index.krs", CLAIM_SRC);
+    const result = await compileProject("/p/index.krs", fs, { groupBy: "boundary" });
+    expect(result.svg).toContain('data-container-id="__group_payments__"');
+    expect(result.svg).toContain('data-container-id="__group_finance__"');
+  });
+
+  it("buildDrillDownSvg frames a claimed boundary on the drill level (#2176)", () => {
+    const krsFile = Parser.parse(CLAIM_DRILL_SRC).value;
+    const { svg } = buildDrillDownSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    expect(svg).toContain('data-container-id="__group_shared__"');
+  });
+
+  it("buildAllLayersSvg frames a claimed boundary (#2176)", () => {
+    const krsFile = Parser.parse(CLAIM_DRILL_SRC).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    expect(svg).toContain('data-container-id="__group_shared__"');
+  });
+
+  it("compileSystemDiff does not claim a removed node, so ADR-1886 still returns it to its former frame", async () => {
+    // The diff backfills a removed node's whole before-side membership so it can
+    // return to its former frame. Treating those entries as claim candidates
+    // both moved the node out of that frame and minted a frame for a boundary
+    // the after model gives no members at all.
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(
+      "/p/before.krs",
+      `system Shop {
+  service Billing {}
+  service Wallet {}
+  service Ledger {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+  contains Ledger
+}
+boundary audit {
+  label "Audit"
+  contains Ledger
+}
+`,
+    );
+    await fs.writeFile(
+      "/p/after.krs",
+      `system Shop {
+  service Billing {}
+  service Wallet {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+boundary audit {
+  label "Audit"
+}
+`,
+    );
+    const result = await compileSystemDiff({
+      beforeEntryPath: "/p/before.krs",
+      afterEntryPath: "/p/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    expect(result.nodeDiff.get("Ledger")?.state).toBe("removed");
+    expect(result.svg).toContain('data-node-id="Ledger"');
+    expect(result.svg).toContain('data-container-id="__group_payments__"');
+    expect(result.svg).not.toContain('data-container-id="__group_audit__"');
+  });
+
+  it("does not let a removed node's stale membership reorder the live bands", async () => {
+    // The co-membership term and the seam bias read the same backfilled array.
+    // A node that is gone from the model must not pull two live boundaries
+    // together — the diff order has to match the after-only order.
+    const AFTER = `
+system Shop {
+  service Billing {}
+  service Cat {}
+  service Aud {}
+}
+boundary payments {
+  contains Billing
+}
+boundary finance {
+  contains Cat
+}
+boundary audit {
+  contains Aud
+}
+`;
+    const BEFORE = `
+system Shop {
+  service Ledger {}
+  service Billing {}
+  service Cat {}
+  service Aud {}
+}
+boundary payments {
+  contains Billing
+  contains Ledger
+}
+boundary finance {
+  contains Cat
+}
+boundary audit {
+  contains Aud
+  contains Ledger
+}
+`;
+    const bandOrder = (svg: string): string[] =>
+      [...svg.matchAll(/data-container-id="(__group_[^"]+)"/g)].map((m) => m[1]);
+
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/p/before.krs", BEFORE);
+    await fs.writeFile("/p/after.krs", AFTER);
+    await fs.writeFile("/p/only.krs", AFTER);
+    const diff = await compileSystemDiff({
+      beforeEntryPath: "/p/before.krs",
+      afterEntryPath: "/p/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    const afterOnly = await compileProject("/p/only.krs", fs, { groupBy: "boundary" });
+    expect(diff.nodeDiff.get("Ledger")?.state).toBe("removed");
+    expect(bandOrder(diff.svg)).toEqual(bandOrder(afterOnly.svg));
+  });
+
+  it("still counts a removed node when asking whether its boundary holds a member", async () => {
+    // A removed node keeps its primary and renders inside it, so its group is
+    // not empty. Treating it as absent makes the group look raidable and denies
+    // a claim that was safe all along.
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(
+      "/p/before.krs",
+      `system Shop {
+  service Reporting {}
+  service Billing {}
+}
+boundary ops {
+  contains Reporting
+  contains Billing
+}
+boundary finance {
+  contains Reporting
+}
+`,
+    );
+    await fs.writeFile(
+      "/p/after.krs",
+      `system Shop {
+  service Reporting {}
+}
+boundary ops {
+  contains Reporting
+}
+boundary finance {
+  contains Reporting
+}
+`,
+    );
+    const result = await compileSystemDiff({
+      beforeEntryPath: "/p/before.krs",
+      afterEntryPath: "/p/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    expect(result.nodeDiff.get("Billing")?.state).toBe("removed");
+    // `ops` keeps the removed Billing, so `finance` may take Reporting.
+    expect(result.svg).toContain('data-container-id="__group_ops__"');
+    expect(result.svg).toContain('data-container-id="__group_finance__"');
+  });
+
+  it("claims inside each system frame of the multi-system root view (#1884, TPL-219)", async () => {
+    // `layoutMultipleSystems` is a parallel branch of the same placement, and
+    // the option it needs has been dropped there before (#1884).
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(
+      "/p/index.krs",
+      `system Shop {
+  service Billing {}
+  service Wallet {}
+}
+system Ops {
+  service Metrics {}
+  service Alerts {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+boundary finance {
+  contains Billing
+}
+boundary telemetry {
+  contains Metrics
+  contains Alerts
+}
+boundary oncall {
+  contains Metrics
+}
+`,
+    );
+    const result = await compileProject("/p/index.krs", fs, { groupBy: "boundary" });
+    for (const id of ["payments", "finance", "telemetry", "oncall"]) {
+      expect(result.svg).toContain(`data-container-id="__group_${id}__"`);
+    }
+  });
 
   it("compileProject frames the boundary", async () => {
     const fs = new InMemoryFileSystemProvider();

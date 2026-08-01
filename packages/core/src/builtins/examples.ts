@@ -2943,6 +2943,19 @@ system Shop {
 //      frame and NOTHING else changes — only the primary changed. If the
 //      second membership were being dropped, swapping could not move anything.
 //
+// The second membership does shape the layout, even though it is not drawn:
+// boundaries that share a node are banded next to each other where the
+// dependency flow allows it, and the shared node is seated on the row of its
+// band that TOUCHES the other one — here Ledger sits at the bottom of
+// \`payments\`, against \`pci\`. That is the seam the two frames will overlap over
+// once a frame can reach out of its band.
+//
+// There is one case where a shared node does move frames: a boundary whose
+// members are ALL claimed by earlier ones has nothing to band, so rather than
+// vanish from the diagram it takes one of its shared members — as long as the
+// boundary it takes from keeps another member. Not the case here: \`pci\` bands
+// Card vault on its own, so it needs nothing from \`payments\`.
+//
 // Boundaries group by meaning, and meanings overlap: Ledger is part of the
 // payments flow AND inside the PCI audit scope. Listing it in both is a normal
 // thing to write, not a mistake (see boundary-clusters.krs for the basics of
