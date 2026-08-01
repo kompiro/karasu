@@ -1057,7 +1057,18 @@ boundary payments {
   **ちょうど 1 つ**描かれる。これはそのビューの性質であってモデルの性質ではない — 残りの所属はモデルに
   残り、所属する**すべての**フレームに囲んで描く案は別途進めている
   （[#2161](https://github.com/kompiro/karasu/issues/2161)）。したがって、共有されたノードが今日どちらの
-  フレームに入るかは宣言順で決まる。
+  フレームに入るかは宣言順で決まる — 次の 1 つだけ例外がある。
+- **band を持てる boundary は必ず持つ。** メンバー全員が先行する boundary に取られた boundary は
+  band にするものが無く、フレームもラベルも出ない。消えるかわりに、その canvas で**共有メンバーを
+  1 つ引き取る** — そこに描かれている宣言順で最初のメンバーのうち、元の boundary に別のメンバーが
+  残るもの。したがって片方の band を埋めてもう片方を空にすることはない。条件を満たすメンバーが
+  1 つも無い場合（唯一の候補が自分の band の最後の 1 人）は band を持たないままにする。
+  ノードはどちらの場合も**ちょうど 1 つ**描かれ、フレームが非メンバーを囲むことはない。
+- **共有メンバーが配置を動かす。** メンバーを共有する boundary 同士は、依存の流れが許す限り
+  隣り合う band に置かれ、共有ノードは相手の band に接する行に座る。どちらも図の上から下への
+  依存順を犠牲にしない — band の並びは依然として min feedback-arc-set が最優先で、band 内の
+  移動も「その band の中で誰もそのノードに依存していない」ときだけ行われる。共有メンバーの無い
+  モデルの配置は従来と完全に同一（[#2176](https://github.com/kompiro/karasu/issues/2176)）。
 - **membership index は配置ごとに parse 時に導出される**。top-level 形はフラットな
   **`boundaryMembership`**（`node id → boundary id の配列`、org の `ownerIndex` と同型）を、
   スコープ宣言は per-scope の **`scopedBoundaryMembership`**
@@ -1133,7 +1144,7 @@ system Shop {
 どちらの *Group by* 軸でも、グループフレームのタイトルにはグループの `label` が表示される。
 label が無い場合は id にフォールバックする（#2133）。
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary の所属はモデル層で 1:N。banded view の primary はビュー側の解決であり、群の並びは軸 index の値集合ではなく宣言から導く（#2178）。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary の所属はモデル層で 1:N。banded view の primary はビュー側の解決であり、群の並びは軸 index の値集合ではなく宣言から導く（#2178）。 [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — band 機構全体で配置はちょうど一度。seam bias と band 無し boundary の member 引き取りはノードの band と行を書き換えるが、どちらも drop / duplicate を起こしてはならない（#2176）。
 
 ---
 

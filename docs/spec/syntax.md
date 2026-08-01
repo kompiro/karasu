@@ -1136,7 +1136,24 @@ boundary payments {
   the other memberships stay in the model for every other consumer, and drawing
   a node inside *all* the frames it belongs to is planned separately
   ([#2161](https://github.com/kompiro/karasu/issues/2161)). Declaration order
-  therefore decides which frame a shared node sits in today.
+  therefore decides which frame a shared node sits in today, with the one
+  exception below.
+- **A boundary always gets a band if it can.** A boundary whose members are
+  *all* claimed by earlier ones would have nothing to band, and so no frame and
+  no label at all. Rather than vanish, it **claims one of its shared members**
+  on that canvas — the first declared member that is drawn there and whose
+  current boundary keeps another member, so filling one band never empties
+  another. When no member qualifies (the only candidate is the last member of
+  its own band) the boundary keeps no band. Every node is still drawn exactly
+  once, and no frame ever encloses a node that is not its member.
+- **Shared members shape the layout.** Boundaries that share members are banded
+  next to each other where the dependency flow allows it, and a shared node is
+  seated on the row of its band that touches the other boundary's band. Neither
+  ever costs the diagram its top-to-bottom dependency order: the band stack is
+  still a minimum feedback-arc-set first, and a node only moves within its band
+  when nothing inside that band depends on the move. Models without shared
+  members lay out exactly as before
+  ([#2176](https://github.com/kompiro/karasu/issues/2176)).
 - **Membership indexes** are derived at parse time, per placement. The
   top-level form builds the flat **`boundaryMembership`**
   (`node id → boundary ids`), analogous to the org `ownerIndex`; scoped
@@ -1224,7 +1241,7 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 Under either *Group by* axis the group frame is titled with the group's declared
 `label`, falling back to the group id when no label is given (#2133).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this). [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary membership is 1:N in the model; the banded view's primary is a view-side resolution, and the group order comes from the declarations rather than from the axis map's values (#2178).
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this). [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary membership is 1:N in the model; the banded view's primary is a view-side resolution, and the group order comes from the declarations rather than from the axis map's values (#2178). [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — placement is exactly-once across the whole band machinery: the seam bias and the band-less boundary's claim rewrite which band and which row a node takes, and neither may drop or duplicate one (#2176).
 
 ---
 

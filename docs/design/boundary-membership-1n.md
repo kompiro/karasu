@@ -227,7 +227,7 @@ C-1 の帰結として決めること:
 | --- | --- | --- | --- | --- |
 | **A** model 層の 1:N 化<br>[#2178](https://github.com/kompiro/karasu/issues/2178) ✅ | 宣言された所属を**モデルが全量保持**する。merge 3 経路（multi-file import の和集合 / diff の removed 限定 backfill / scope 合成）が同じ多値の意味論に従う。群の**存在**を宣言リストから導く | 診断 `duplicate-boundary-assignment` の文言（事実の register へ）。副次的に、**import 先ファイルで宣言された `boundary` が効くようになる**（従来は parse されて消えていた） | 多重所属を**図から**確認できない。共有ノードは primary の枠にしか入らず、全メンバー共有の boundary は枠を持たない。2 つ目の所属の観測手段は info 診断と「宣言順を入れ替えると primary が移る」ことだけ | — |
 | **B** 多重包含 geometry<br>[#2179](https://github.com/kompiro/karasu/issues/2179) | 共有ノードを**所属するすべての枠が囲む**（矩形直交ポリゴン frame）。boundary ごとの識別色で重なりが入れ子と区別できる。届かない共有は `◇ <boundary>` の破線タブに縮退する | 図が変わる。帯が隣接する共有は 2 枚の枠に囲まれて見える。frame の描画・ラベル・P2c routing の障害物判定が更新される | 重なりは**日和見的** — band 順が味方したときだけ枠が届く。届かない共有はタブ表示に落ちる。自前の band を持たない boundary は依然 body を持たない | A |
-| **配置** seam 配置 + band 順<br>[#2176](https://github.com/kompiro/karasu/issues/2176) | `orderGroups` に co-membership 項を入れ、共有ノードを帯の**継ぎ目**に寄せる。全メンバー共有の boundary が body を得る | 共有が狙って重なる（B の日和見性が解消）。縮退タブに落ちるケースが減る | 3 重以上・非隣接の共有はなお縮退しうる（corridor 描画は corpus 証拠待ち） | B |
+| **配置** seam 配置 + band 順<br>[#2176](https://github.com/kompiro/karasu/issues/2176) ✅ | `orderGroups` に co-membership 項を入れ、共有ノードを帯の**継ぎ目**に寄せる。全メンバー共有の boundary が body を得る | 共有する boundary が隣り合う band に来て、共有ノードがその継ぎ目の行に座る。全メンバー共有の boundary が枠とラベルを得る | 枠はまだ矩形なので、隣り合わせた**その先**（枠が相手のカードまで届く）は B 待ち。3 重以上・非隣接の共有はなお縮退しうる（corridor 描画は corpus 証拠待ち） | A（**B より先に実施**。下記「#2176 を B より先に実施した」節） |
 | **C** collapse 二重性<br>[#2180](https://github.com/kompiro/karasu/issues/2180) | **所属がすべて collapsed のときだけ**ノードを畳む。0 件 stub を出さない。bulk collapse は primary の stub に集約する | 片方の boundary を畳んでも、他方が expanded ならノードは消えない。両方畳むと消える | — （本設計の到達点） | A（C-1 の判定は membership だけで決まる。ただし stub と枠の見え方は B と併せて確認する） |
 
 > **slice A 時点の「できないこと」は仕様である。** 多重所属ノードが 1 つの枠にしか
@@ -261,6 +261,60 @@ C-1 の帰結として決めること:
 
 > 配置（`orderGroups` の co-membership 項・seam 行）は **slice B に含めない** — [#2176](https://github.com/kompiro/karasu/issues/2176)。
 > したがって slice B 時点の多重包含は日和見的で、届かない共有は縮退タブで示される。
+
+**配置 — seam 配置 + co-membership band 順（✅ [#2176](https://github.com/kompiro/karasu/issues/2176)）**
+
+1. `orderGroups` のコスト tuple を `(逆流エッジ重み, 逆流エッジ本数, co-membership 分離, 総スパン)` にする。
+   min-FAS を先頭、宣言順を最終 tie-break に据えたまま、共有メンバーを持つ群を隣接させる項を
+   span の**上**に挟む。共有が無いモデルでは全 permutation で 0 になり比較を素通りするので、
+   **今日の band 順は完全に不変**。群が 8 を超える greedy 分岐は、`(w, n)` を悪化させない
+   隣接スワップ改善パスのみの best-effort（保証しない — 到達できない共有は縮退に落ちる）。
+2. band 内の seam bias。共有ノードは、相手の band が**真上**なら先頭行、**真下**なら最終行へ寄せる。
+   ただし band 内の依存エッジが許すときだけ（最終行へは band 内の後続を持たないとき、先頭行へは
+   band 内の先行を持たないとき）。**依存の流れが優先**する。行 index を書き換えるだけで
+   entry の増減が無いため「全要素ちょうど一度」は構造的に保たれる（[TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)）。
+3. 自前の band を持たない boundary（下記「#2176 決定 3」）。
+4. P2c routing の再計測（[TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)）:
+   共有ありフィクスチャで penetration == 0 / collinear overlap 0 を維持、crossings は観測値として記録。
+
+### #2176 決定 3 — 自前の band を持たない boundary は共有メンバーを 1 つ引き取る
+
+メンバー全員が先行 boundary に取られた boundary は primary 軸に 1 件も現れず、
+`presentGroups` に落とされて **band もフレームもラベルも出ない**（spike 実測で再現、
+[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) が禁ずる
+「受理・無効果」に隣接）。検討した案:
+
+| 案 | 内容 | 評価 |
+| --- | --- | --- |
+| **採用: 共有メンバーの引き取り** | その canvas に限り、共有メンバー 1 つを model-primary ではなくこの boundary に配置する | slice B 無しで枠とラベルが出る。配置はちょうど一度のまま。placement-primary が model-primary と乖離する |
+| 報告のみ | info 診断で「band を持てなかった」と述べ、body は slice B の reaching outline に委ねる | 正直だが図からは消えたまま。#2176 の決定ではなく先送りになる |
+| 空 band | メンバーのいない群にも band を割り当てる | slice A 設計で却下済み — 空行が空くだけで枠は出ず、今日より悪化 |
+
+引き取りの境界条件（`resolvePlacementAxis`）:
+
+- **その canvas に描かれているメンバーだけ**が候補（軸は model-wide、band 機構は per-canvas）。
+- **元の boundary に別の present メンバーが残る**メンバーだけを取る。片方を埋めて他方を空にしない。
+- band 無し boundary は宣言順、候補は membership 順で解決し、各引き取りが次の判定に反映される
+  （決定的・同じメンバーを二度取らない）。
+- 候補が 1 つも無ければ band を持たないままにする（唯一の候補が自分の band の最後の 1 人のとき）。
+
+**band の並びは引き取り前の primary 軸から seed する。** 群の並びは軸の値の初出順（= 宣言順）から
+導かれるので、引き取った値をそのまま並びの導出に使うと **body を与えた副作用で stack が並び替わる**
+（実装時に実測）。`resolvePlacementAxis` が `{ axis, groupOrder }` を返し、`groupOrder` は
+引き取り前の primary 軸 + 宣言リスト補完（slice A 案 2'）で作る。
+
+引き取りは **collapse より前**に軸へ適用する。フレームと「collapse が畳む先の群」が食い違わないため。
+
+### #2176 を B より先に実施した
+
+当初の順序は A → B → 配置 だったが、実装は A → 配置 → B の順になった（2026-08-01、ユーザー判断）。
+影響:
+
+- 配置単体でも**目に見える成果が出る**: 共有する boundary が隣り合い、共有ノードが継ぎ目に座り、
+  消えていた boundary が枠を得る。
+- ただし枠は矩形のままなので、**隣り合わせた先で枠が相手のカードに届くのは B 待ち**。
+  #2176 は「B の日和見性を解消する」のではなく「B が届く条件を先に整える」回になった。
+- B の受け入れ条件（隣接する共有が両方の枠に囲まれる）は、本スライスが作った band 順の上で測る。
 
 **slice C — collapse 二重性**
 
