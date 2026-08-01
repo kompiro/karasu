@@ -297,6 +297,12 @@ C-1 の帰結として決めること:
 - band 無し boundary は宣言順、候補は membership 順で解決し、各引き取りが次の判定に反映される
   （決定的・同じメンバーを二度取らない）。
 - 候補が 1 つも無ければ band を持たないままにする（唯一の候補が自分の band の最後の 1 人のとき）。
+- **diff / compare モードの `removed` ノードは候補にしない。** removed ノードの所属は
+  「元のフレームに戻すため」だけに before 側から backfill されている（[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)）ので、
+  これを引き取り候補にすると (1) そのノードが元のフレームから出てしまい、(2) after モデルでは
+  メンバーが 1 人もいない boundary に枠が生える。実装レビューで実測して直した（`nodeDiffState` を
+  `layout()` まで通し、`claimableNodeIds` で除外）。removed ノード自身の primary は従来どおり保つ —
+  他の boundary に取られなくなるだけ。
 
 **band の並びは引き取り前の primary 軸から seed する。** 群の並びは軸の値の初出順（= 宣言順）から
 導かれるので、引き取った値をそのまま並びの導出に使うと **body を与えた副作用で stack が並び替わる**
