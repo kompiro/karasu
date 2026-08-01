@@ -156,8 +156,12 @@ trigger を満たしたらその時点で Issue を起こして着手する。
 | --- | --- | --- |
 | `translate` の domain 推論（adapter 課題） | scaffold → readable の手作業が実利用の痛みとして再発したら評価。core 構文に gap なし | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) / [#1567](https://github.com/kompiro/karasu/issues/1567) finding C |
 | edge の first-class protocol / cardinality | 当面 tag + `description`/`link` の散文に逃がす（first-class 化は実装詳細を edge に持ち込む圧力 — 境界が灰色）。需要が corpus で再発したら評価 | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) / [#1567](https://github.com/kompiro/karasu/issues/1567) finding D |
-| `database [cache]` role tag（KV の cache 用途。`database` は SoR 含意を持つ） | 据え置き。`--from wrangler` adapter は素の `database` へ degrade（warning）。cache パターンが複数 source で再発したら gate へ | [ADR-1935](adr/1935-wrangler-translate-adapter.md) |
 | stateful compute（Durable Object = compute かつ store で clean な infra kind が無い） | 据え置き。adapter は `service [external]` + RPC edge へ degrade（`[external]` は所有境界を過大表現）。honest な modeling 需要が corpus で溜まれば再評価 | [ADR-1935](adr/1935-wrangler-translate-adapter.md) |
+
+`database [cache]` role tag は **trigger 発火済み**（cache パターンが複数 source で再発）で
+builtin 昇格レビュー [#2172](https://github.com/kompiro/karasu/issues/2172)（`epic: facets`）へ
+移したため、本表から外した。本表のルールどおり **Issue が生えた gap は台帳に残さない** —
+残すと台帳と tracker の二重管理になり、どちらが現状か分からなくなる。
 
 stable 側の earn-its-keep 観察: **CRUD verb-decoration 1:N** は v1.0 で維持
 （判断 = [ADR-1314](adr/1314-krs-spec-v1-freeze.md)、経緯 =
@@ -169,7 +173,7 @@ gate で評価する。
 
 | candidate | 状態 | 依存 |
 | --- | --- | --- |
-| **interop**（draw.io / mermaid / C4 への入出力） | 未着手の戦略テーマ。physical realize（[#1632](https://github.com/kompiro/karasu/issues/1632)）とは切り離して単独管理 | keystone 決定済みで評価可能 |
+| **interop**（mermaid / C4・Structurizr への入出力） | **demand-gated で見送り**（壁打ち [#1832](https://github.com/kompiro/karasu/issues/1832) を 2026-07-15 に not_planned で close）。draw.io export は出荷済み（[ADR-649](adr/649-drawio-export.md)）、structured-source import は `karasu translate` が担う。**flat-diagram import は ill-posed** と結論済み（typed でない mermaid `flowchart` から karasu の意味論は復元できない）。残る tractable な面は export（mermaid = 低摩擦 / C4・Structurizr DSL = 高忠実）と typed-source import のみ | 実ユーザー需要が観測されたら新規 Issue を起こす |
 | **AI authoring 深度 / Chat 去就** | **評価待ち**。Chat が出荷面か実験かは [#638](https://github.com/kompiro/karasu/issues/638) の user testing データで決める | [#638](https://github.com/kompiro/karasu/issues/638) |
 
 ### 既存に集約（新規スレッド不要）
