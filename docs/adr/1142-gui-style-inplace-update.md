@@ -25,7 +25,7 @@ assumptions:
 - **関連**:
   - 親 Issue: [#1142](https://github.com/kompiro/karasu/issues/1142)
   - 上位 Issue: [#1076](https://github.com/kompiro/karasu/issues/1076) — GUI-driven style editing 全体
-  - Design Doc: [`docs/design/inplace-update-style-rule.md`](../design/inplace-update-style-rule.md)
+  - Design Doc: `docs/design/inplace-update-style-rule.md`（本 ADR に集約して削除、[#2233](https://github.com/kompiro/karasu/issues/2233)）
   - 旧決定: [ADR-1076](./1076-gui-driven-style-editing.md)（append-only round-trip — 本 ADR で supersede）
   - 前提: [ADR-1096](./1096-edge-id-selector.md)（`edge#<canonicalId>` selector）
 

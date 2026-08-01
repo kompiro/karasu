@@ -32,7 +32,7 @@ assumptions:
   - 実装 PR: [#1244](https://github.com/kompiro/karasu/pull/1244)（PR-A: ValueNode AST）、
     [#1254](https://github.com/kompiro/karasu/pull/1254)（PR-B: validator + schema）、
     [#1258](https://github.com/kompiro/karasu/pull/1258)（PR-C: LSP / CLI / App surface 統合）
-  - 親 Design Doc（フェーズ計画）: [`docs/design/style-ast-shape.md`](../design/style-ast-shape.md)
+  - 親 Design Doc（フェーズ計画）: `docs/design/style-ast-shape.md`（本 ADR で全 3 フェーズが出揃ったため削除、[#2233](https://github.com/kompiro/karasu/issues/2233)）
   - 前提 ADR: [ADR-1168](./1168-style-ast-position-and-recovery.md)（Phase 1 — AST loc + recovery）、
     [ADR-1177](./1177-tidy-style-and-trivia.md)（Phase 2 — trivia + Tidy）
   - フォローアップ Issue: [#1285](https://github.com/kompiro/karasu/issues/1285)（既存

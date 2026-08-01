@@ -26,7 +26,7 @@ scope:
   - ADR-739 — diff paste-input UI
   - ADR-740 — OPFS snapshot diff source
   - ADR-110 — permanent link（URL ハッシュ仕様の前身）
-  - 設計過程: [docs/design/diff-open-file-as-entry.md](../design/diff-open-file-as-entry.md)
+  - 設計過程: `docs/design/diff-open-file-as-entry.md`（本 ADR に集約して削除、[#2233](https://github.com/kompiro/karasu/issues/2233)）
 
 ## 背景
 

@@ -251,7 +251,7 @@ ADR の内容:
 設計ドキュメントに詳細な分析が残っている場合は、ADR 作成後に設計ドキュメントを削除する。
 （詳細は GitHub Issue のディスカッションや PR コメントで追えるため）
 
-Frontmatter スキーマ・関係性セマンティクス・バリデータの詳細は `docs/design/adr-knowledge-graph.md` を参照。
+Frontmatter スキーマ・関係性セマンティクス・バリデータの詳細は [ADR-788](adr/788-adr-knowledge-graph.md) を参照。
 
 ### spec / concepts 改訂時の proactive TPL 同梱
 

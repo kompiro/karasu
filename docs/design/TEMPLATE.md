@@ -47,7 +47,8 @@
      事実（どのファイルが何をしているか、既存 API の signature、
      既知の制約）をここに集める。
 
-     例（`style-ast-shape.md` より）:
+     例（`.krs.style` AST のフェーズ計画 doc より。ADR-1168 / 1177 / 1178 に
+     昇格して削除済み）:
      | 観点 | 現状 |
      | --- | --- |
      | token / lexer | 空白・コメントは skip。各 token に loc を持つ |
@@ -145,7 +146,10 @@
 
 <!-- 任意。本 Design Doc では意図的に決めない範囲を明示する。
      フェーズ分けして将来検討する項目を残すときに有用
-     （例: `style-ast-shape.md` のフェーズ 2/3）。 -->
+     （例: `.krs.style` AST のフェーズ計画 — フェーズ 1 を [ADR-1168](../adr/1168-style-ast-position-and-recovery.md)
+     として先に確定し、2/3 は Design Doc に残して後から
+     [ADR-1177](../adr/1177-tidy-style-and-trivia.md) / [ADR-1178](../adr/1178-style-value-diagnostics.md)
+     に昇格した）。 -->
 
 - <未解決1>
 - <意図的に決めない事項とその理由>

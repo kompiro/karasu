@@ -28,7 +28,7 @@ assumptions:
 - **関連**:
   - 引き金 Issue: [#1177](https://github.com/kompiro/karasu/issues/1177)
   - 実装 PR: [#1183](https://github.com/kompiro/karasu/pull/1183)（PR-A: AST trivia）、[#1188](https://github.com/kompiro/karasu/pull/1188)（PR-B: tidy core）、[#1191](https://github.com/kompiro/karasu/pull/1191)（PR-C: surface integration）
-  - 親 Design Doc（フェーズ計画）: [`docs/design/style-ast-shape.md`](../design/style-ast-shape.md)
+  - 親 Design Doc（フェーズ計画）: `docs/design/style-ast-shape.md`（全 3 フェーズが ADR 化された時点で削除、[#2233](https://github.com/kompiro/karasu/issues/2233)）
   - 前提 ADR: [ADR-1168](./1168-style-ast-position-and-recovery.md)（Phase 1 — AST `loc` + recovery）
   - 関連 ADR: [ADR-1142](./1142-gui-style-inplace-update.md)（GUI in-place update — Tidy が後始末する累積を予防する片側）
 
@@ -42,7 +42,7 @@ ADR-1142 で GUI 編集が単一プロパティの場合に in-place update す�
 - AI / Translate 機能（#355 系）が複数 `.krs.style` を生成するケース
 - 著者が手で大量に rule を書いて並びがバラバラなケース
 
-`docs/design/style-ast-shape.md` のフェーズ 2 で示した「trivia 保持 +
+Design Doc `docs/design/style-ast-shape.md` のフェーズ 2 で示した「trivia 保持 +
 正規化 round-trip」を、ここで Tidy Style コマンドとして具現化する。
 Phase 1 で AST に `loc` / `sheetId` が入った上に **コメント・空行を
 保持する trivia 層** を additive に重ね、`tidyStyleSheet` 関数が

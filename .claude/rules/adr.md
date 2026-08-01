@@ -25,7 +25,7 @@ ADR（Architecture Decision Record）と、ADR に昇格させる前の Design D
 
 ADR の必須要素は `docs/adr/TEMPLATE.md` を参照。frontmatter スキーマと
 関係性セマンティクス（`supersedes` / `depends_on` / `related_to` など）の
-詳細は `docs/design/adr-knowledge-graph.md` および `pnpm adr:validate` の
+詳細は `docs/adr/788-adr-knowledge-graph.md` および `pnpm adr:validate` の
 バリデータが正となる。
 
 ### Frontmatter で必須なもの
