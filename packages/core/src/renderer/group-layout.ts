@@ -526,6 +526,11 @@ export function resolvePlacementAxis(
       axis.set(nodeId, groupId);
       held.set(from, (held.get(from) ?? 0) - 1);
       held.set(groupId, 1);
+      // A claimed group now has a member, so it must be in the band order or
+      // `assignGroupedLayers` would filter it out of `presentGroups` and leave
+      // its member with no row at all. Already there whenever the caller passed
+      // `declaredGroupOrder`; this covers the callers that do not.
+      if (!groupOrder.includes(groupId)) groupOrder.push(groupId);
       break;
     }
   }

@@ -423,6 +423,30 @@ describe("resolvePlacementAxis (#2176)", () => {
     expect(axis.get("Billing")).toBe("finance");
   });
 
+  it("puts a claimed group in the band order even with no declaredGroupOrder", () => {
+    // `groupOrderFor` derives its order from the axis's values, so without the
+    // declared list the claimed group would be absent from the band order and
+    // `assignGroupedLayers` would filter it out of `presentGroups` — leaving its
+    // member with no row at all (TPL-1738).
+    const membership = new Map([
+      ["Billing", ["payments", "finance"]],
+      ["Wallet", ["payments"]],
+    ]);
+    const { axis, groupOrder } = resolvePlacementAxis(
+      membership,
+      undefined,
+      present("Billing", "Wallet"),
+    );
+    expect(axis.get("Billing")).toBe("finance");
+    expect(groupOrder).toContain("finance");
+    const nodes: GroupedNode[] = [...membership.keys()].map((id) => ({
+      id,
+      groupId: axis.get(id)!,
+      ungroupedRank: 0,
+    }));
+    expect(assignGroupedLayers(nodes, [], groupOrder)!.layers.size).toBe(nodes.length);
+  });
+
   it("keeps the band order seeded from the primary axis, not from the claim", () => {
     const membership = new Map([
       ["Billing", ["payments", "finance"]],

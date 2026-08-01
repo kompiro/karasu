@@ -420,6 +420,132 @@ boundary shared {
 }
 `;
 
+  // The claim (#2176) is a second, distinct way the axis can reach a surface:
+  // a boundary with no band of its own takes a shared member. A surface that
+  // drops the axis loses the claimed frame the same way it loses any other, so
+  // it is asserted on every surface too — the drill-down path regressed exactly
+  // this way once before (#2033).
+  const CLAIM_SRC = `
+system Shop {
+  service Billing {}
+  service Wallet {}
+}
+boundary payments {
+  label "Payments"
+  contains Billing
+  contains Wallet
+}
+boundary finance {
+  label "Finance"
+  contains Billing
+}
+`;
+
+  const CLAIM_DRILL_SRC = `
+system Shop {
+  service Orders {
+    domain OrderDomain {}
+    domain ShippingDomain {}
+  }
+}
+boundary cluster {
+  label "Cluster"
+  contains OrderDomain
+  contains ShippingDomain
+}
+boundary shared {
+  label "Shared"
+  contains OrderDomain
+}
+`;
+
+  it("compileProject frames a boundary that only exists by claiming (#2176)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/p/index.krs", CLAIM_SRC);
+    const result = await compileProject("/p/index.krs", fs, { groupBy: "boundary" });
+    expect(result.svg).toContain('data-container-id="__group_payments__"');
+    expect(result.svg).toContain('data-container-id="__group_finance__"');
+  });
+
+  it("buildDrillDownSvg frames a claimed boundary on the drill level (#2176)", () => {
+    const krsFile = Parser.parse(CLAIM_DRILL_SRC).value;
+    const { svg } = buildDrillDownSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    expect(svg).toContain('data-container-id="__group_shared__"');
+  });
+
+  it("buildAllLayersSvg frames a claimed boundary (#2176)", () => {
+    const krsFile = Parser.parse(CLAIM_DRILL_SRC).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    expect(svg).toContain('data-container-id="__group_shared__"');
+  });
+
+  it("compileSystemDiff does not claim a removed node, so ADR-1886 still returns it to its former frame", async () => {
+    // The diff backfills a removed node's whole before-side membership so it can
+    // return to its former frame. Treating those entries as claim candidates
+    // both moved the node out of that frame and minted a frame for a boundary
+    // the after model gives no members at all.
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(
+      "/p/before.krs",
+      `system Shop {
+  service Billing {}
+  service Wallet {}
+  service Ledger {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+  contains Ledger
+}
+boundary audit {
+  label "Audit"
+  contains Ledger
+}
+`,
+    );
+    await fs.writeFile(
+      "/p/after.krs",
+      `system Shop {
+  service Billing {}
+  service Wallet {}
+}
+boundary payments {
+  contains Billing
+  contains Wallet
+}
+boundary audit {
+  label "Audit"
+}
+`,
+    );
+    const result = await compileSystemDiff({
+      beforeEntryPath: "/p/before.krs",
+      afterEntryPath: "/p/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    expect(result.nodeDiff.get("Ledger")?.state).toBe("removed");
+    expect(result.svg).toContain('data-node-id="Ledger"');
+    expect(result.svg).toContain('data-container-id="__group_payments__"');
+    expect(result.svg).not.toContain('data-container-id="__group_audit__"');
+  });
+
   it("compileProject frames the boundary", async () => {
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile("/p/index.krs", MULTI_SRC);

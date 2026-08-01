@@ -955,8 +955,10 @@ interface LayoutOptions {
    * Declared-boundary axis (P2b): node id → every boundary it is declared in
    * (#2178). Selected as the grouping axis when `groupBy === "boundary"`;
    * `ownerIndex` remains the team badge source regardless of axis. The banded
-   * layout places each node in its primary boundary (`primaryBoundaryOf`); the
-   * rest of the membership is carried for the views that draw it (#2179).
+   * layout places each node in its primary boundary (`primaryBoundaryOf`),
+   * except where a boundary with no band of its own claims one of its shared
+   * members (`resolvePlacementAxis`, #2176); the rest of the membership is
+   * carried for the views that draw it (#2179).
    * See docs/design/boundary-membership-slice-a.md.
    */
   boundaryMembership?: Map<string, string[]>;
@@ -975,8 +977,22 @@ interface LayoutOptions {
    * machinery at all, because their order was derived from the axis map's
    * values (TPL-2161, #2178). Appended after the axis order, so the order of
    * groups that do have members is exactly what it was before.
+   *
+   * On the boundary axis this also drives the claim in `resolvePlacementAxis`
+   * (#2176): a group named here but absent from the axis is one that may take a
+   * shared member, so what changes is no longer only the order — which groups
+   * end up with members can change too.
    */
   declaredGroupOrder?: readonly string[];
+  /**
+   * Node id → diff state in compare/diff mode, from `nodeDiffState` upstream.
+   * Only the boundary axis reads it, and only to keep a `removed` node out of
+   * the #2176 claim: its membership was backfilled purely so it could return to
+   * its former frame (ADR-1886), so letting a band-less boundary take it would
+   * both move the node out of that frame and mint a frame for a boundary with
+   * no live members at all.
+   */
+  nodeDiffState?: ReadonlyMap<string, string>;
   /**
    * Declared group labels for the active axis (#2133), from
    * `buildGroupLabelIndex`. Resolved per canvas via `groupLabelsFor`; scoped
@@ -1059,6 +1075,28 @@ function boundaryAxisFor(
   // keeps its reach on every other canvas (ADR-2036). 1:N does not turn that
   // into a union — the two are different statements, not two halves of one.
   return new Map([...boundaryMembership, ...qualified]);
+}
+
+/**
+ * The nodes a band-less boundary may claim on this canvas (#2176).
+ *
+ * Every drawn node, minus the ones diff mode only drew because they were
+ * *removed*. Their membership was restored from the before model purely so they
+ * return to their former frame (ADR-1886) — claiming one would move it out of
+ * that frame and hand a body to a boundary the after model gives no members at
+ * all. A removed node still keeps its own primary; it is only barred from being
+ * taken by another boundary.
+ */
+function claimableNodeIds(
+  nodes: readonly KrsNode[],
+  nodeDiffState: ReadonlyMap<string, string> | undefined,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const n of nodes) {
+    if (nodeDiffState?.get(n.id) === "removed") continue;
+    ids.add(n.id);
+  }
+  return ids;
 }
 
 /*
@@ -1211,6 +1249,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     groupBy,
     collapsedGroups,
     edgeDiffState,
+    nodeDiffState,
   } = options;
   // The canvas being drawn is the container plus its ancestors — for the root
   // system view that is the system itself (`containerNode` is set, with an empty
@@ -1268,7 +1307,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       ? resolvePlacementAxis(
           canvasMembership,
           declaredGroupOrder,
-          new Set(allNodes.map((n) => n.id)),
+          claimableNodeIds(allNodes, nodeDiffState),
         )
       : undefined;
   const groupIndex = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
@@ -1861,6 +1900,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     groupBy,
     collapsedGroups,
     edgeDiffState,
+    nodeDiffState,
   } = options;
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Grouping axis (team = ownerIndex, boundary = the primary of
@@ -1925,7 +1965,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
         ? resolvePlacementAxis(
             systemMembership,
             declaredGroupOrder,
-            new Set(rawNodes.map((n) => n.id)),
+            claimableNodeIds(rawNodes, nodeDiffState),
           )
         : undefined;
     const systemGroupIndex = systemPlacement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
