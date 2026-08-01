@@ -46,7 +46,10 @@ prompt（本体プロンプトの大幅削減）以降、書き方が悪いル�
 ## このリポジトリでの参考実装
 
 - 到達状態 + 機械検証: `changesets.md`（`pnpm changeset status --since=main`）、
-  `examples-sync.md`（`examples.test.ts` の drift ガード）
+  `examples-sync.md`（`examples.test.ts` の drift ガード）、
+  `program-slices.md`（`pnpm program:slices`）
+- ファイル編集を伴わない作業への入口宣言: `program-slices.md`（Issue の分割起票は
+  `paths:` で発火しないので「分割起票しようとしたら本ファイルを読む」を冒頭に置く）
 - 観測可能な発火条件: `dependabot.md`（`ERR_PNPM_*` エラーコードで失敗モードを判別）
 - 事後検証可能な出力要求: `spec-audit.md`（指摘に「何を grep したか」を含める）
 - 既定動作への明示的例外: `adr.md`「ADR PR の auto-merge」
