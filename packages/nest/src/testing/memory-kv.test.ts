@@ -52,12 +52,17 @@ describe("MemoryKV", () => {
 
   it("expires an entry once its TTL has passed", async () => {
     const kv = new MemoryKV();
-    await kv.put("k/1", "v", { expirationTtl: 10 });
-    kv.advance(9);
+    await kv.put("k/1", "v", { expirationTtl: 60 });
+    kv.advance(59);
     expect(await kv.get("k/1")).toBe("v");
     kv.advance(2);
     expect(await kv.get("k/1")).toBeNull();
     expect((await kv.list({ prefix: "k/" })).keys).toEqual([]);
+  });
+
+  it("rejects a TTL the real binding would reject", async () => {
+    const kv = new MemoryKV();
+    await expect(kv.put("k/1", "v", { expirationTtl: 59 })).rejects.toThrowError(/60 seconds/);
   });
 
   it("keeps an entry with no TTL", async () => {

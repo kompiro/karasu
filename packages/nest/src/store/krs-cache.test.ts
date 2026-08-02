@@ -53,6 +53,21 @@ describe("KrsCache", () => {
     expect(await new KrsCache(kv).get(ref)).toBeUndefined();
   });
 
+  it("refuses a TTL the real binding would reject, at construction", async () => {
+    // Caught when the cache is built rather than on whichever request happens
+    // to be the first to write. KV's floor is 60 seconds.
+    expect(() => new KrsCache(new MemoryKV(), { ttlSeconds: 59 })).toThrowError(/at least 60/);
+    expect(() => new KrsCache(new MemoryKV(), { ttlSeconds: 60.5 })).toThrowError(/at least 60/);
+  });
+
+  it("re-checks the document at write time, not only at markGenerated", async () => {
+    // The brand is a compile-time cast, so it cannot be the enforcement point.
+    const forged = "  " as ReturnType<typeof markGenerated>;
+    await expect(
+      new KrsCache(new MemoryKV()).put(ref, { krs: forged, generatedAt: entry.generatedAt }),
+    ).rejects.toThrowError(/empty/);
+  });
+
   it("treats an unreadable value as a miss rather than a permanent failure", async () => {
     const kv = new MemoryKV();
     const cache = new KrsCache(kv);
@@ -112,6 +127,56 @@ describe("KrsCache", () => {
 
     it("reports zero rather than failing when there is nothing to delete", async () => {
       expect(await new KrsCache(new MemoryKV()).purgeInstallation(42)).toBe(0);
+    });
+
+    it("reaches a key written after the purge started", async () => {
+      // The reason the loop re-lists instead of walking a cursor. A cache
+      // write racing an uninstall webhook must not survive it.
+      const kv = new MemoryKV();
+      const cache = new KrsCache(kv);
+      await cache.put(ref, entry);
+      let injected = false;
+      const original = kv.list.bind(kv);
+      kv.list = async (options) => {
+        const page = await original(options);
+        if (!injected) {
+          injected = true;
+          await cache.put({ ...ref, sha: OTHER_SHA }, entry);
+        }
+        return page;
+      };
+      expect(await cache.purgeInstallation(42)).toBe(2);
+      expect(kv.keys()).toEqual([]);
+    });
+
+    it("counts a re-listed key once", async () => {
+      // KV's list is eventually consistent, so a key can come back on the next
+      // page before its delete has propagated. Counting it twice would report
+      // a purge as larger than it was.
+      const kv = new MemoryKV();
+      const cache = new KrsCache(kv);
+      await cache.put(ref, entry);
+      let replayed = false;
+      const original = kv.list.bind(kv);
+      kv.list = async (options) => {
+        const page = await original(options);
+        if (page.keys.length === 0 && !replayed) {
+          replayed = true;
+          return { keys: [{ name: `krs/v1/42/kompiro/karasu/${SHA}` }], list_complete: true };
+        }
+        return page;
+      };
+      expect(await cache.purgeInstallation(42)).toBe(1);
+    });
+
+    it("fails loudly rather than looping when deletes do not stick", async () => {
+      // The one branch whose entire job is to turn a silent partial purge into
+      // a visible failure.
+      const kv = new MemoryKV();
+      const cache = new KrsCache(kv, { maxPurgePages: 3 });
+      await cache.put(ref, entry);
+      kv.delete = () => Promise.resolve();
+      await expect(cache.purgeInstallation(42)).rejects.toThrowError(/did not converge/);
     });
 
     it("does not reach a neighbouring installation whose id shares a prefix", async () => {

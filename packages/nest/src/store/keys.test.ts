@@ -66,6 +66,20 @@ describe("cache keys", () => {
     expect(installationPrefix("42")).toBe(installationPrefix(42));
   });
 
+  it("canonicalises a zero-padded installation id to one purge scope", () => {
+    // A webhook payload and a route parameter both hand this over as text. If
+    // "042" and 42 were two prefixes, half an installation's entries would sit
+    // outside the reach of purgeInstallation — the exact failure this module
+    // exists to prevent.
+    expect(installationPrefix("042")).toBe(installationPrefix(42));
+    expect(cacheKey({ ...ref, installationId: "0042" })).toBe(cacheKey(ref));
+  });
+
+  it("rejects installation id zero", () => {
+    expect(() => installationPrefix("0")).toThrowError(InvalidRefError);
+    expect(() => installationPrefix("000")).toThrowError(InvalidRefError);
+  });
+
   it("rejects anything but a full 40-hex SHA", () => {
     // Short SHAs, branches and `HEAD` are mutable, and a mutable cache key is
     // how a stale diagram outlives the commit it described.

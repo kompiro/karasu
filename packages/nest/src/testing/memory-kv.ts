@@ -49,6 +49,14 @@ export class MemoryKV implements KVNamespaceLike {
     value: string,
     options?: { expirationTtl?: number; metadata?: unknown },
   ): Promise<void> {
+    // Real KV rejects a TTL below 60 seconds. Without this the fake would
+    // happily accept a value the binding refuses, and a misconfigured TTL
+    // would pass every unit test and fail only in production.
+    if (options?.expirationTtl !== undefined && options.expirationTtl < 60) {
+      // Rejected, not thrown: the real binding surfaces this asynchronously,
+      // and a synchronous throw would let a caller's `.catch` miss it.
+      return Promise.reject(new Error("KV rejects an expirationTtl below 60 seconds"));
+    }
     this.puts.push({ key, options });
     this.entries.set(key, {
       value,

@@ -55,12 +55,23 @@ function normaliseSegment(value: string, field: string): string {
   return trimmed.toLowerCase();
 }
 
+/**
+ * The installation id is the purge scope, so two spellings of the same id
+ * must not produce two prefixes. `installationId` is typed `number | string`
+ * because a webhook payload and a route parameter both hand it over as text,
+ * and `"042"` from one path would otherwise be a different scope from `42`
+ * from another — leaving half an installation's entries beyond the reach of
+ * `purgeInstallation`. Leading zeros are stripped for that reason, not for
+ * tidiness.
+ */
 function normaliseInstallation(installationId: number | string): string {
   const value = String(installationId).trim();
   if (!/^[0-9]+$/.test(value)) {
     throw new InvalidRefError("installationId must be a positive integer");
   }
-  return value;
+  const canonical = value.replace(/^0+(?=[0-9])/, "");
+  if (canonical === "0") throw new InvalidRefError("installationId must be a positive integer");
+  return canonical;
 }
 
 /**
