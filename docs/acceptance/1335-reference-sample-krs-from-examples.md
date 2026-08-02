@@ -22,5 +22,5 @@ type: product
 - [ ] AT-C: `reference.ts` から `SAMPLE_KRS_*` のインライン定義が消え、`examples/ja/getting-started/` が `sampleKrs` の唯一の真実の源になっている（重複コピーの除去）
   > ✅ Automated — knip / typecheck（`SAMPLE_KRS` への参照が残っていればビルドが壊れる）。`examples/ ↔ examples.ts` の同期は既存の `.claude/rules/examples-sync.md` と `/update-examples` スキルが担保
 
-- [ ] AT-D（manual）: アプリ（`pnpm dev`）で Reference パネル → Samples タブを開き、現行の Getting Started サンプル（`@import "default.krs.style"` 行・`operations` CRUD・`capability` 等を含む）が表示されること、コピーボタンが動くこと、locale を `ja` / `en` で切り替えて内容が切り替わることを目視確認する
+- [ ] AT-D（manual）: 本番 app（https://karasu.kompiro.dev/）で Reference パネル → Samples タブを開き、現行の Getting Started サンプル（`@import "default.krs.style"` 行・`operations` CRUD・`capability` 等を含む）が表示されること、コピーボタンが動くこと、locale を `ja` / `en` で切り替えて内容が切り替わることを目視確認する
   > 🧑 Manual — Samples タブの表示内容の目視確認。リファクタ前の古い SAMPLE_KRS から現行 getting-started に内容が変わっている点に注意（= staleness 解消）

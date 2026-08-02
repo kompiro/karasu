@@ -36,7 +36,7 @@ type: product
   > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge direction hint reaches the layered layout > \`direction: right\` places the source to the right of the target within the same layer`
 
 - [ ] AT-G（manual）: 実際の Preview で edge を右クリック → Direction ▸ Right を選び、source ノードが target の右に並び替わることを確認する。drill-down / forced kind system view どちらでも有効
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`service A -> service C` のような典型エッジで操作し、x 座標が変化することを目視
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）を開き、`service A -> service C` のような典型エッジで操作し、x 座標が変化することを目視
 
 ## 補足
 

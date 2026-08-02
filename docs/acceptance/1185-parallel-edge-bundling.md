@@ -44,7 +44,7 @@ type: product
   - `Client -> API` の `create` / `update` ラベルが両方読める（重なっていない）
   - `API -> C` の sync 線（実線）と async 線（破線）が両方視認できる
   - すべての矢印頭が見える
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動し、左ペインで `parallel-edges.krs` の内容を貼り付けて確認する
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）を開き、左ペインで `parallel-edges.krs` の内容を貼り付けて確認する
 
 - [ ] AT-J（manual / regression）: 並列エッジを含まない既存の図（`examples/ja/getting-started/index.krs` 等）の SVG が、本変更後も視覚的に変わらない
   > 🧑 Manual — Preview で `examples/ja/getting-started/index.krs` を開き、merge 前後の screenshot 差分を目視で確認

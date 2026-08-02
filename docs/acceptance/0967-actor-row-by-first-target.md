@@ -20,7 +20,7 @@
 
 - [ ] EC Platform の例（`examples/ja/ec-platform/02.5-clients.krs`）をプレビューで開いたとき、actor → client → service の流れが視覚的に綺麗に並び、エッジが他のノードカードを貫通しない
 
-  > 🧑 Manual — `pnpm dev` でアプリを起動し、`examples/ja/ec-platform/02.5-clients.krs` を読み込んで目視確認する。
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）を開き、`examples/ja/ec-platform/02.5-clients.krs` を読み込んで目視確認する。
 
 ## 補足
 

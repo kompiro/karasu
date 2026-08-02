@@ -108,6 +108,6 @@
 # 自動テスト
 pnpm --filter @karasu-tools/core test
 
-# 人間確認: app を起動して examples/en/feature-samples/legend.krs を index.krs として開く
-pnpm --filter @karasu-tools/app dev
+# 人間確認は本番 app（https://karasu.kompiro.dev/）で行う。
+# examples/en/feature-samples/legend.krs を index.krs として開く。
 ```

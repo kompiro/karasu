@@ -34,7 +34,7 @@
   > ✅ Automated — `pnpm gen:reference --check`（lefthook pre-push / `ci.yml` / `reference-docs-check.yml` / `scripts/reference/gen-docs.test.ts`）
 
 - [ ] AT-H: app の Reference パネル（Syntax タブ / system ビュー）の Node Kinds 表に `entity` 行が表示され、`client` 行に `capability` が、`resource` 行に `operations` が並び、`service` / `domain` 行から `team` が消えている
-  > 🖐 手動確認 — `pnpm dev` で app を開き Reference パネルを表示。en / ja 両ロケールで確認する（`entity` の description は locale 別）
+  > 🖐 手動確認 — 本番 app（https://karasu.kompiro.dev/）を開き、Reference パネルを表示。en / ja 両ロケールで確認する（`entity` の description は locale 別）
 
 - [ ] AT-I: VS Code 拡張の webview でも同じ Node Kinds 表が更新されている
   > 🖐 手動確認 — 拡張ホストで preview を開き Reference パネルを確認

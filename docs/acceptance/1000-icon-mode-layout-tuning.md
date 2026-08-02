@@ -38,7 +38,7 @@
 
 - [ ] **Preview UI で `getting-started` を開き、Display mode を Icon に切替えたとき、shape mode と比較してアイコンが詰まって配置されているのを目視確認する。**
 
-  > 検証方法: `pnpm --filter @karasu-tools/app dev` で起動し、Project selector から `getting-started` を選ぶ。Display mode toggle で Icon に切替え、shape mode 表示と並べて以下を確認する:
+  > 検証方法: 本番 app（https://karasu.kompiro.dev/）を開き、Project selector から `getting-started` を選ぶ。Display mode toggle で Icon に切替え、shape mode 表示と並べて以下を確認する:
   > - 同じレイヤ内のアイコン間の余白が以前より狭く（36px ≒ アイコン幅の 22%）見える
   > - レイヤ間の縦間隔が以前より縮まって見える（説明なしカード 56px 高 + LAYER_GAP 80）
   > - sub-row 折返しが以前と同じ位置（または 1 つ早く）に発生する

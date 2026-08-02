@@ -38,7 +38,7 @@
   > ✅ Automated — `pnpm gen:reference --check`（lefthook pre-push / `ci.yml` / `reference-docs-check.yml`）
 
 - [ ] AT-I: app の警告パネルに `node-not-in-context` が warning として（error ではなく）表示され、該当ノードは図に描かれたままである
-  > 🖐 手動確認 — `pnpm dev` で `system S { client C { usecase U {} } }` を入力し、警告パネルの severity 表示とキャンバスを確認する
+  > 🖐 手動確認 — 本番 app（https://karasu.kompiro.dev/）を開き、`system S { client C { usecase U {} } }` を入力し、警告パネルの severity 表示とキャンバスを確認する
 
 - [ ] AT-J: VS Code 拡張で同じ診断が Problems パネルに Warning として出る（Error ではない）
   > 🖐 手動確認 — 拡張ホストで同じ `.krs` を開く

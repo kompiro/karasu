@@ -34,7 +34,7 @@ type: product
   > ✅ Automated — `packages/app/src/components/EdgeContextMenu.tsx` の文言は実装側に固定。手動目視は AT-H（manual）でカバー
 
 - [ ] AT-G（manual）: 実際の Preview で `.krs.style` を開いた状態で edge を右クリック → Direction ▸ Right を選び、編集中の `.krs.style` 末尾に rule が追加されることを確認する
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview 起動。`.krs.style` をエディタで開き、Preview の edge を右クリック、direction を選択。エディタ側で rule 追加を目視
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）を開き、`.krs.style` をエディタで開き、Preview の edge を右クリック、direction を選択。エディタ側で rule 追加を目視
 
 - [ ] AT-H（manual）: `.krs` で `@import` が無いファイルを開いて edge を右クリックすると、Direction items が disabled になり、ヒント文言が「`.krs.style` を直接開くか、`@import` を追加してください」と読める
   > 🧑 Manual — disabled 状態の menu 表示を目視

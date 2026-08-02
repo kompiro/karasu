@@ -22,7 +22,7 @@
   > ✅ Automated — `packages/core/src/renderer/legend-footer.test.ts` › 既存の `resolves a ref [tag] through the builtin style sheet` 系テストが回帰なしで通過
 
 - [ ] Getting Started 例（`@example getting-started`）の preview で `[human]` legend エントリが表示される
-  > 🧑 Manual — Preview URL（`https://fix-legend-human-annotation.karasu.pages.dev`）または `pnpm dev` でローカル起動して凡例の `人間ユーザー` 行が swatch + ラベル付きで描画されることを確認する。
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）で凡例の `人間ユーザー` 行が swatch + ラベル付きで描画されることを確認する。
 
 ## 補足
 

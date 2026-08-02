@@ -59,7 +59,7 @@ type: product
   > ✅ Automated — `packages/core/src/builtins/reference-data.test.ts` › `SELECTOR_SPECIFICITY › every row's score matches what the style parser computes for its example`
 
 - [ ] AT-M（manual）: 実際の Preview で、複数のエッジを持つハブ（例: `examples/ja/getting-started/index.krs` の中心ノード）に対し `.krs.style` で `edge[from=<Hub>] { color: #3B82F6; }` を書くと、当該ハブから出る全エッジだけが一括で青くなることを目視確認する
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app run dev` で Preview を起動し、`index.krs` + style を編集して確認
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）を開き、`index.krs` + style を編集して確認
 
 ## 補足
 
