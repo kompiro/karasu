@@ -88,30 +88,14 @@ describe("handleRequest", () => {
     expect((await routes.handle(new Request("https://nest.example/healthz"), {}, ctx)).status).toBe(
       200,
     );
-    // `/<owner>/<repo>` is served as of #2285, so it is absent here; a bare
-    // root and the webhook endpoint are still unclaimed. `/webhooks/github`
-    // has two segments and would be swallowed by the `/:owner/:repo` pattern
-    // if it were ever registered after it — this pins that it is not yet
-    // reachable at all, so #2286 has to register it deliberately and above.
-    const notYetServed = ["/", "/webhooks/github"];
-    const statuses = await Promise.all(
-      notYetServed.map(async (path) => [
-        path,
-        (
-          await routes.handle(
-            new Request(`https://nest.example${path}`),
-            { KRS_CACHE: new MemoryKV() },
-            ctx,
-          )
-        ).status,
-      ]),
-    );
-    expect(statuses).toEqual([
-      ["/", 404],
-      // Currently matched by `/:owner/:repo` and answered as "nothing
-      // generated for webhooks/github", which is a wrong answer that #2286
-      // must replace with a real route rather than leave to the catch-all.
-      ["/webhooks/github", 404],
-    ]);
+    // `/<owner>/<repo>` (#2285) and `POST /webhooks/github` (#2286) are both
+    // served now. A bare root is still unclaimed, and the webhook path must
+    // answer 405 to a GET rather than falling through to the repository route,
+    // which would confidently report "nothing generated for webhooks/github".
+    const configured = { KRS_CACHE: new MemoryKV() };
+    const statusOf = async (path: string): Promise<number> =>
+      (await routes.handle(new Request(`https://nest.example${path}`), configured, ctx)).status;
+    expect(await statusOf("/")).toBe(404);
+    expect(await statusOf("/webhooks/github")).toBe(405);
   });
 });

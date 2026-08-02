@@ -47,6 +47,33 @@ describe("Router", () => {
     expect(await (await run(router, "GET", "/other")).text()).toBe("capture");
   });
 
+  it("prefers the literal route even when it was registered last", async () => {
+    const router = new Router()
+      .get("/:anything", () => new Response("capture"))
+      .get("/healthz", () => new Response("literal"));
+    expect(await (await run(router, "GET", "/healthz")).text()).toBe("literal");
+  });
+
+  it("does not let a capture answer for a path a literal route owns", async () => {
+    // A `GET` on a POST-only literal path is a 405, not a fall-through to the
+    // pattern route, which would give a confident wrong answer about a
+    // repository named `webhooks/github`.
+    const router = new Router()
+      .post("/webhooks/github", () => new Response("hook"))
+      .get("/:owner/:repo", () => new Response("repo"));
+    const response = await run(router, "GET", "/webhooks/github");
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("POST");
+  });
+
+  it("ranks by capture count, not by segment count", async () => {
+    const router = new Router()
+      .get("/:a/:b", () => new Response("two captures"))
+      .get("/fixed/:b", () => new Response("one capture"));
+    expect(await (await run(router, "GET", "/fixed/x")).text()).toBe("one capture");
+    expect(await (await run(router, "GET", "/other/x")).text()).toBe("two captures");
+  });
+
   it("serves HEAD from the GET handler", async () => {
     const router = new Router().get("/healthz", () => new Response("ok"));
     expect((await run(router, "HEAD", "/healthz")).status).toBe(200);

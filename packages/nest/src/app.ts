@@ -13,12 +13,18 @@ import { error } from "./http.js";
 import { logError } from "./log.js";
 import { health } from "./routes/health.js";
 import { repoKrs } from "./routes/repo.js";
+import { githubWebhook } from "./routes/webhook.js";
 import { Router } from "./router.js";
 
 export function createRouter(): Router {
   // Registration order is match order, so the literal routes go first and the
-  // `/:owner/:repo` catch-all cannot shadow them.
-  return new Router().get("/healthz", health).get("/:owner/:repo", repoKrs);
+  // `/:owner/:repo` catch-all cannot shadow them. `/webhooks/github` has two
+  // segments and would otherwise be answered as a repository named
+  // `webhooks/github`.
+  return new Router()
+    .get("/healthz", health)
+    .post("/webhooks/github", githubWebhook)
+    .get("/:owner/:repo", repoKrs);
 }
 
 const router = createRouter();

@@ -78,12 +78,30 @@ export class Router {
     return this.add("POST", pattern, handler);
   }
 
-  /** Every route whose path pattern matches, in registration order. */
+  /**
+   * The routes that own this path, most specific only.
+   *
+   * "Most specific" means fewest capture segments, and the group is exclusive:
+   * once a literal route claims a path, a `/:owner/:repo` pattern does not get
+   * to answer for it under a different method. Without that, a `GET
+   * /webhooks/github` falls through to the repository route and is answered
+   * with "no model has been generated for webhooks/github" — a confident,
+   * wrong answer where 405 is the true one. Registration order still decides
+   * within a group.
+   */
   private candidates(actual: readonly string[]): Match[] {
     const matches: Match[] = [];
+    let bestCaptures = Number.POSITIVE_INFINITY;
     for (const route of this.routes) {
       const params = matchSegments(route.segments, actual);
-      if (params !== undefined) matches.push({ route, params });
+      if (params === undefined) continue;
+      const captures = Object.keys(params).length;
+      if (captures > bestCaptures) continue;
+      if (captures < bestCaptures) {
+        bestCaptures = captures;
+        matches.length = 0;
+      }
+      matches.push({ route, params });
     }
     return matches;
   }
