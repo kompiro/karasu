@@ -157,6 +157,7 @@ URL hash・ブラウザ履歴・マルチファイル間のナビゲーション
 - [ADR-461](461-export-project-zip.md) — Export Project as ZIP — `fflate` による OPFS エクスポート
 - [ADR-462](462-import-project-zip.md) — Import Project from ZIP — `fflate` 再利用 + トップレベル除去
 - [ADR-1990](1990-karasu-nest-pivot-server-reverse.md) — karasu-nest ピボット — GitHub App による server-side reverse の hosted サービス化（ADR-1783 を supersede）
+- [ADR-2262](2262-nest-intake-and-completion.md) — karasu-nest の受付と完了通知 — installer 起動 + PR 還元、reader は無通知のリクエスト受付（ADR-1990 を refine）
 
 ### Chat / AI
 
