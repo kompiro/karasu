@@ -2,6 +2,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { generateTestKeyPair, type TestKeyPair } from "../testing/rsa-keys.js";
 import { GitHubApiError, GitHubClient } from "./client.js";
 
+const TREE_SHA = "c".repeat(40);
+const BLOB_SHA = "a".repeat(40);
+
 let keys: TestKeyPair;
 beforeAll(async () => {
   keys = await generateTestKeyPair();
@@ -144,6 +147,40 @@ describe("GitHubClient", () => {
       expect(minted).toBe(2);
     });
 
+    it("mints once for a burst of concurrent callers", async () => {
+      // A Workers isolate serves requests concurrently and the pipeline reads
+      // blobs with Promise.all, so a per-call mint is a real burst against
+      // GitHub's token endpoint, not a hypothetical one.
+      let minted = 0;
+      const { fetchImpl } = stubFetch({
+        [path]: () => {
+          minted += 1;
+          return tokenResponse(`ghs_token_${minted}`, "2026-08-02T13:00:00Z");
+        },
+      });
+      const github = client(fetchImpl);
+      const tokens = await Promise.all([
+        github.installationToken("42"),
+        github.installationToken("42"),
+        github.installationToken("42"),
+      ]);
+      expect(minted).toBe(1);
+      expect(new Set(tokens).size).toBe(1);
+    });
+
+    it("does not replay one failed mint to every later caller", async () => {
+      let attempts = 0;
+      const { fetchImpl } = stubFetch({
+        [path]: () => {
+          attempts += 1;
+          return attempts === 1 ? json({}, 500) : tokenResponse("good", "2026-08-02T13:00:00Z");
+        },
+      });
+      const github = client(fetchImpl);
+      await expect(github.installationToken("42")).rejects.toThrowError(GitHubApiError);
+      expect(await github.installationToken("42")).toBe("good");
+    });
+
     it("rejects a malformed token response instead of caching nonsense", async () => {
       const { fetchImpl } = stubFetch({ [path]: () => json({ token: 42 }) });
       await expect(client(fetchImpl).installationToken("42")).rejects.toThrowError(GitHubApiError);
@@ -151,7 +188,7 @@ describe("GitHubClient", () => {
   });
 
   describe("tree", () => {
-    const path = "/repos/kompiro/karasu/git/trees/abc?recursive=1";
+    const path = `/repos/kompiro/karasu/git/trees/${TREE_SHA}?recursive=1`;
 
     it("returns blob entries with a token, not the App JWT", async () => {
       const { fetchImpl, calls } = stubFetch({
@@ -159,35 +196,39 @@ describe("GitHubClient", () => {
           tokenResponse("ghs_token", "2026-08-02T13:00:00Z"),
         [path]: () =>
           json({
-            sha: "abc",
+            sha: TREE_SHA,
             truncated: false,
             tree: [
-              { path: "src/a.ts", sha: "aaa", size: 10, type: "blob" },
-              { path: "src", sha: "bbb", type: "tree" },
+              { path: "src/a.ts", sha: BLOB_SHA, size: 10, type: "blob" },
+              { path: "src", sha: "b".repeat(40), type: "tree" },
             ],
           }),
       });
-      const result = await client(fetchImpl).tree("42", "kompiro", "karasu", "abc");
+      const result = await client(fetchImpl).tree("42", "kompiro", "karasu", TREE_SHA);
       // Trees are not files; including them would inflate the file count the
       // pipeline reasons about.
-      expect(result.entries).toEqual([{ path: "src/a.ts", sha: "aaa", size: 10 }]);
+      expect(result.entries).toEqual([{ path: "src/a.ts", sha: BLOB_SHA, size: 10 }]);
       expect(calls.at(-1)?.authorization).toBe("Bearer ghs_token");
     });
 
     it("reports truncation rather than silently describing part of a repo", async () => {
       const { fetchImpl } = stubFetch({
         "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
-        [path]: () => json({ sha: "abc", truncated: true, tree: [] }),
+        [path]: () => json({ sha: TREE_SHA, truncated: true, tree: [] }),
       });
-      expect((await client(fetchImpl).tree("42", "kompiro", "karasu", "abc")).truncated).toBe(true);
+      expect((await client(fetchImpl).tree("42", "kompiro", "karasu", TREE_SHA)).truncated).toBe(
+        true,
+      );
     });
 
     it("survives a tree entry missing the fields it needs", async () => {
       const { fetchImpl } = stubFetch({
         "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
-        [path]: () => json({ sha: "abc", tree: [{ type: "blob" }, null, "nonsense"] }),
+        [path]: () => json({ sha: TREE_SHA, tree: [{ type: "blob" }, null, "nonsense"] }),
       });
-      expect((await client(fetchImpl).tree("42", "kompiro", "karasu", "abc")).entries).toEqual([]);
+      expect((await client(fetchImpl).tree("42", "kompiro", "karasu", TREE_SHA)).entries).toEqual(
+        [],
+      );
     });
 
     it("retries once with a fresh token when GitHub says the token is dead", async () => {
@@ -202,10 +243,12 @@ describe("GitHubClient", () => {
         },
         [path]: () => {
           treeCalls += 1;
-          return treeCalls === 1 ? json({}, 401) : json({ sha: "abc", tree: [] });
+          return treeCalls === 1 ? json({}, 401) : json({ sha: TREE_SHA, tree: [] });
         },
       });
-      await expect(client(fetchImpl).tree("42", "kompiro", "karasu", "abc")).resolves.toBeDefined();
+      await expect(
+        client(fetchImpl).tree("42", "kompiro", "karasu", TREE_SHA),
+      ).resolves.toBeDefined();
       expect(minted).toBe(2);
       expect(treeCalls).toBe(2);
     });
@@ -219,15 +262,15 @@ describe("GitHubClient", () => {
           return json({}, 401);
         },
       });
-      await expect(client(fetchImpl).tree("42", "kompiro", "karasu", "abc")).rejects.toThrowError(
-        GitHubApiError,
-      );
+      await expect(
+        client(fetchImpl).tree("42", "kompiro", "karasu", TREE_SHA),
+      ).rejects.toThrowError(GitHubApiError);
       expect(treeCalls).toBe(2);
     });
   });
 
   describe("blob", () => {
-    const path = "/repos/kompiro/karasu/git/blobs/aaa";
+    const path = `/repos/kompiro/karasu/git/blobs/${BLOB_SHA}`;
 
     it("decodes base64 content, including GitHub's line wrapping", async () => {
       const content = "export const answer = 42;\n".repeat(10);
@@ -239,7 +282,7 @@ describe("GitHubClient", () => {
         "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
         [path]: () => json({ content: base64, encoding: "base64" }),
       });
-      expect(await client(fetchImpl).blob("42", "kompiro", "karasu", "aaa")).toBe(content);
+      expect(await client(fetchImpl).blob("42", "kompiro", "karasu", BLOB_SHA)).toBe(content);
     });
 
     it("decodes UTF-8 rather than mangling non-ASCII", async () => {
@@ -251,7 +294,7 @@ describe("GitHubClient", () => {
         "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
         [path]: () => json({ content: btoa(binary), encoding: "base64" }),
       });
-      expect(await client(fetchImpl).blob("42", "kompiro", "karasu", "aaa")).toBe(content);
+      expect(await client(fetchImpl).blob("42", "kompiro", "karasu", BLOB_SHA)).toBe(content);
     });
 
     it("refuses an encoding it does not understand", async () => {
@@ -259,9 +302,9 @@ describe("GitHubClient", () => {
         "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
         [path]: () => json({ content: "x", encoding: "none" }),
       });
-      await expect(client(fetchImpl).blob("42", "kompiro", "karasu", "aaa")).rejects.toThrowError(
-        /unexpected blob encoding/,
-      );
+      await expect(
+        client(fetchImpl).blob("42", "kompiro", "karasu", BLOB_SHA),
+      ).rejects.toThrowError(/unexpected blob encoding/);
     });
   });
 
@@ -276,6 +319,26 @@ describe("GitHubClient", () => {
         "d".repeat(40),
       );
     });
+  });
+
+  it("refuses a SHA that is not a full commit hash", async () => {
+    // Unencoded interpolation of a caller-supplied ref is how a request lands
+    // on a different endpoint while still carrying the installation token.
+    const { fetchImpl, calls } = stubFetch({});
+    await expect(
+      client(fetchImpl).tree("42", "kompiro", "karasu", "../../../user/repos"),
+    ).rejects.toThrowError(/40 hexadecimal/);
+    expect(calls).toEqual([]);
+  });
+
+  it("percent-encodes an owner or repo rather than letting it shape the path", async () => {
+    const seen: string[] = [];
+    const fetchImpl = ((input: RequestInfo | URL) => {
+      seen.push(String(input));
+      return Promise.resolve(json({ id: 42 }));
+    }) as typeof fetch;
+    await client(fetchImpl).installationIdFor("../..", "a?b#c");
+    expect(seen[0]).toBe("https://api.github.com/repos/..%2F../a%3Fb%23c/installation");
   });
 
   it("keeps GitHub's response body out of the error it raises", async () => {

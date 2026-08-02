@@ -59,13 +59,18 @@ function readLength(der: Uint8Array, offset: number): number {
   return value;
 }
 
-export async function generateTestKeyPair(): Promise<TestKeyPair> {
+/**
+ * `modulusLength` defaults to 2048 because generation time is quadratic and
+ * most tests care about structure, not key strength. GitHub actually issues
+ * 4096-bit App keys, so at least one test passes 4096: the DER length
+ * encoding crosses no threshold between the two, but asserting that costs one
+ * test and assuming it costs a production outage.
+ */
+export async function generateTestKeyPair(modulusLength = 2048): Promise<TestKeyPair> {
   const pair = await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
-      // 2048 rather than GitHub's 4096: the tests verify structure and
-      // signatures, not key strength, and generation time is quadratic.
-      modulusLength: 2048,
+      modulusLength,
       publicExponent: new Uint8Array([1, 0, 1]),
       hash: "SHA-256",
     },

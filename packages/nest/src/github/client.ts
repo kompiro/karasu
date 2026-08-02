@@ -24,6 +24,29 @@ const BASE_HEADERS: Record<string, string> = {
   "User-Agent": "karasu-nest",
 };
 
+/**
+ * Everything interpolated into an API path goes through here.
+ *
+ * `keys.ts` already canonicalises owner and repo before they become cache
+ * keys, but this module is the one that sends an authenticated request, and
+ * it must not depend on every future caller having remembered. Unencoded, a
+ * segment containing `../` is normalised away by the URL parser and the
+ * request lands on a different endpoint **still carrying the installation
+ * token**; a `#` truncates the rest of the URL, silently dropping
+ * `?recursive=1` and returning a partial tree with `truncated: false`.
+ */
+function segment(value: string): string {
+  return encodeURIComponent(value);
+}
+
+/** A commit SHA is always full 40-hex here; anything else is a caller bug. */
+function shaSegment(value: string): string {
+  if (!/^[0-9a-fA-F]{40}$/.test(value)) {
+    throw new GitHubApiError(0, "", "a commit SHA must be 40 hexadecimal characters");
+  }
+  return value.toLowerCase();
+}
+
 export class GitHubApiError extends Error {
   constructor(
     readonly status: number,
@@ -77,21 +100,40 @@ export class GitHubClient {
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
   private readonly tokens = new Map<string, CachedToken>();
+  /**
+   * In-flight mints, so a burst of concurrent blob reads shares one token
+   * request instead of each issuing its own. A Workers isolate serves requests
+   * concurrently and the pipeline fetches blobs with `Promise.all`, so this
+   * races for real, not hypothetically.
+   */
+  private readonly minting = new Map<string, Promise<string>>();
 
   constructor(private readonly options: GitHubClientOptions) {
-    // Bound before it is stored. The Workers runtime throws "Illegal
-    // invocation" when the global `fetch` is later called as a detached
-    // reference; Node tolerates it, so the unit tests would not catch it.
-    const impl = options.fetchImpl ?? fetch;
-    this.fetchImpl = (input, init) => impl(input, init);
+    // The global `fetch` is called by name inside the wrapper, never captured
+    // into a variable first. The Workers runtime throws "Illegal invocation"
+    // when it is invoked through a detached reference, and capturing it into a
+    // local before wrapping is exactly that — the closure has to re-resolve
+    // the global binding at call time for the receiver check to pass. Node
+    // tolerates the detached form, so no unit test can catch this; the same
+    // guard is documented in `functions/r/[[path]].ts`.
+    const injected = options.fetchImpl;
+    this.fetchImpl =
+      injected === undefined
+        ? (input, init) => fetch(input, init)
+        : (input, init) => injected(input, init);
     this.now = options.now ?? (() => Date.now());
   }
 
   /** Which installation, if any, can read this repository. */
   async installationIdFor(owner: string, repo: string): Promise<string | undefined> {
-    const response = await this.callWithAppJwt(`/repos/${owner}/${repo}/installation`);
+    const response = await this.callWithAppJwt(
+      `/repos/${segment(owner)}/${segment(repo)}/installation`,
+    );
     if (response.status === 404) return undefined;
-    const body = await this.readJson(response, `/repos/${owner}/${repo}/installation`);
+    const body = await this.readJson(
+      response,
+      `/repos/${segment(owner)}/${segment(repo)}/installation`,
+    );
     const id = (body as { id?: unknown }).id;
     if (typeof id !== "number" && typeof id !== "string") return undefined;
     return String(id);
@@ -105,11 +147,25 @@ export class GitHubClient {
    * between installations and it evaporates when the isolate does, so a
    * revoked installation cannot keep a token alive beyond an hour.
    */
-  async installationToken(installationId: string): Promise<string> {
+  installationToken(installationId: string): Promise<string> {
     const cached = this.tokens.get(installationId);
-    if (cached && cached.expiresAtMs - TOKEN_RENEWAL_MARGIN_MS > this.now()) return cached.token;
+    if (cached && cached.expiresAtMs - TOKEN_RENEWAL_MARGIN_MS > this.now()) {
+      return Promise.resolve(cached.token);
+    }
+    const inFlight = this.minting.get(installationId);
+    if (inFlight) return inFlight;
 
-    const path = `/app/installations/${installationId}/access_tokens`;
+    const mint = this.mintToken(installationId).finally(() => {
+      // Cleared whether it resolved or rejected: a rejected promise left here
+      // would replay one failure to every later caller.
+      this.minting.delete(installationId);
+    });
+    this.minting.set(installationId, mint);
+    return mint;
+  }
+
+  private async mintToken(installationId: string): Promise<string> {
+    const path = `/app/installations/${segment(installationId)}/access_tokens`;
     const response = await this.callWithAppJwt(path, { method: "POST" });
     const body = await this.readJson(response, path);
     const { token, expires_at: expiresAt } = body as Record<string, unknown>;
@@ -134,7 +190,7 @@ export class GitHubClient {
 
   /** The full recursive tree at a commit. */
   async tree(installationId: string, owner: string, repo: string, sha: string): Promise<RepoTree> {
-    const path = `/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`;
+    const path = `/repos/${segment(owner)}/${segment(repo)}/git/trees/${shaSegment(sha)}?recursive=1`;
     const body = await this.readJson(await this.callWithInstallation(installationId, path), path);
     const { sha: treeSha, tree, truncated } = body as Record<string, unknown>;
     const entries: TreeEntry[] = [];
@@ -163,7 +219,7 @@ export class GitHubClient {
 
   /** The default branch's head commit SHA. */
   async defaultBranchSha(installationId: string, owner: string, repo: string): Promise<string> {
-    const repoPath = `/repos/${owner}/${repo}`;
+    const repoPath = `/repos/${segment(owner)}/${segment(repo)}`;
     const meta = await this.readJson(
       await this.callWithInstallation(installationId, repoPath),
       repoPath,
@@ -172,7 +228,7 @@ export class GitHubClient {
     if (typeof branch !== "string") {
       throw new GitHubApiError(200, repoPath, "the repository has no default branch");
     }
-    const refPath = `/repos/${owner}/${repo}/commits/${branch}`;
+    const refPath = `${repoPath}/commits/${segment(branch)}`;
     const commit = await this.readJson(
       await this.callWithInstallation(installationId, refPath),
       refPath,
@@ -186,7 +242,7 @@ export class GitHubClient {
 
   /** One blob's contents as text. */
   async blob(installationId: string, owner: string, repo: string, sha: string): Promise<string> {
-    const path = `/repos/${owner}/${repo}/git/blobs/${sha}`;
+    const path = `/repos/${segment(owner)}/${segment(repo)}/git/blobs/${shaSegment(sha)}`;
     const body = await this.readJson(await this.callWithInstallation(installationId, path), path);
     const { content, encoding } = body as Record<string, unknown>;
     if (typeof content !== "string") {
@@ -237,6 +293,12 @@ export class GitHubClient {
       });
     const first = await call();
     if (first.status !== 401) return first;
+    // Only replay a request that is safe to replay. Every caller today is a
+    // GET, but this helper is where a future write would go, and re-sending a
+    // write against a genuinely revoked installation is a different kind of
+    // mistake from re-sending a read.
+    const method = (init.method ?? "GET").toUpperCase();
+    if (method !== "GET" && method !== "HEAD") return first;
     this.forgetToken(installationId);
     return await call();
   }

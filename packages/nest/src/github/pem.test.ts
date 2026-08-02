@@ -59,11 +59,35 @@ describe("toPkcs8", () => {
     expect(() => toPkcs8(armour("PUBLIC KEY", "Zm9v"))).toThrowError(InvalidPrivateKeyError);
   });
 
-  it("encodes DER lengths in long form for a real key", () => {
-    // A 2048-bit key's body is well over 127 bytes, so a short-form length
-    // would silently truncate the structure and Web Crypto would reject it.
+  it("encodes the outer DER length correctly, not merely in long form", () => {
+    // A real key's body is well over 127 bytes, so the length must be long
+    // form — but setting the flag and miscomputing the value would also look
+    // "long form". Decode it and check it against the bytes that follow.
     const der = toPkcs8(keys.pkcs1Pem);
     expect(der[0]).toBe(0x30);
-    expect(der[1]).toBeGreaterThanOrEqual(0x80);
+    const first = der[1] as number;
+    expect(first).toBeGreaterThan(0x80);
+    const lengthBytes = first & 0x7f;
+    let declared = 0;
+    for (let index = 0; index < lengthBytes; index += 1) {
+      declared = declared * 256 + (der[2 + index] as number);
+    }
+    expect(declared).toBe(der.length - 2 - lengthBytes);
   });
+
+  it("handles the 4096-bit key GitHub actually issues", async () => {
+    // Larger than the 2048 the other tests use, and the size that turns a
+    // two-byte DER length into a two-byte DER length with different content.
+    const big = await generateTestKeyPair(4096);
+    await expect(
+      crypto.subtle.importKey(
+        "pkcs8",
+        toPkcs8(big.pkcs1Pem) as unknown as ArrayBuffer,
+        { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+        false,
+        ["sign"],
+      ),
+    ).resolves.toBeDefined();
+    expect([...toPkcs8(big.pkcs1Pem)]).toEqual([...toPkcs8(big.pkcs8Pem)]);
+  }, 30_000);
 });

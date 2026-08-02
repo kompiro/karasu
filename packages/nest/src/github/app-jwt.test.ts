@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { generateTestKeyPair, type TestKeyPair } from "../testing/rsa-keys.js";
 import { createAppJwt } from "./app-jwt.js";
 import { InvalidPrivateKeyError } from "./pem.js";
@@ -81,6 +81,30 @@ describe("createAppJwt", () => {
       createAppJwt({ appId: "1234", privateKeyPem: "not a key", now: NOW }),
     ).rejects.toThrowError(InvalidPrivateKeyError);
   });
+
+  it("imports a given key once and reuses it", async () => {
+    // The cache is the reason this module is not re-parsing DER on every
+    // request. Without this, dropping it would be invisible.
+    const fresh = await generateTestKeyPair();
+    const spy = vi.spyOn(crypto.subtle, "importKey");
+    await createAppJwt({ appId: "1", privateKeyPem: fresh.pkcs8Pem, now: NOW });
+    await createAppJwt({ appId: "1", privateKeyPem: fresh.pkcs8Pem, now: NOW });
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it("keys the cache on the PEM, so a rotated secret is not the old key", async () => {
+    // Every other test in this file shares one key pair, which would hide a
+    // cache key that collapses distinct PEMs together — and that failure mode
+    // is "the App signs with the key it was supposed to have rotated away
+    // from", which is exactly the kind of thing rotation exists to fix.
+    const [first, second] = await Promise.all([generateTestKeyPair(), generateTestKeyPair()]);
+    const fromFirst = await createAppJwt({ appId: "1", privateKeyPem: first.pkcs8Pem, now: NOW });
+    const fromSecond = await createAppJwt({ appId: "1", privateKeyPem: second.pkcs8Pem, now: NOW });
+    expect(fromFirst).not.toBe(fromSecond);
+    expect(await verify(fromSecond, second.publicKey)).toBe(true);
+    expect(await verify(fromSecond, first.publicKey)).toBe(false);
+  }, 30_000);
 
   it("does not cache a failed key import", async () => {
     // A rejected promise left in the cache would poison the isolate for every
