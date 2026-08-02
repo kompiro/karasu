@@ -1,4 +1,5 @@
 import type { KrsFile, TeamNode, HierarchyNode, Diagnostic } from "../types/ast.js";
+import { resolveFacetOverlay } from "./facet-overlay.js";
 import type { StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
@@ -217,6 +218,12 @@ export function buildAllLayersSvg(
   theme?: DiagramTheme,
   badgeLabels?: AnnotationBadgeLabels,
   groupBy?: "team" | "boundary",
+  /**
+   * Facet ids selected for the overlay (#2174). Same shape as `groupBy`: viewer
+   * state threaded to every render surface so a static bundle shows what the app
+   * shows (TPL-219).
+   */
+  selectedFacets?: readonly string[],
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
@@ -234,6 +241,7 @@ export function buildAllLayersSvg(
   const ownerIndex = krsFile.ownerIndex ?? new Map();
   const teamLabels = buildTeamLabelIndex(krsFile);
   const groupLabels = buildGroupLabelIndex(krsFile, groupBy);
+  const facetOverlay = resolveFacetOverlay(krsFile, selectedFacets);
   const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
   const levels: AllLayersLevel[] = [];
@@ -255,6 +263,9 @@ export function buildAllLayersSvg(
           // level (#1983). Collapse stays off by design so the export reveals
           // the full structure, grouped.
           groupBy,
+          // Resolved once outside the loop: the overlay is model-wide, so every
+          // level of the bundle paints from the same selection (TPL-219).
+          facetOverlay,
           boundaryMembership: krsFile.boundaryMembership,
           scopedBoundaryMembership: krsFile.scopedBoundaryMembership,
           declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),

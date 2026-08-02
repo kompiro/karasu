@@ -51,6 +51,10 @@ export type {
   FormattedWarning,
 } from "./types/warnings.js";
 export { warningSeverity } from "./types/warnings.js";
+// The facet overlay's palette is public so the app's selector can paint the
+// same colour dot the diagram paints (#2174). One source of truth — a second
+// palette in the app would drift the moment either side is edited.
+export { FACET_OVERLAY_COLORS } from "./renderer/facet-overlay.js";
 export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.js";
 export { serializeStyleSheet } from "./style/serialize.js";
 export { validateStyleValues } from "./style/value-validator.js";

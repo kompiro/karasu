@@ -16,6 +16,7 @@ import {
 } from "../resolver/canonical-id.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { render } from "../renderer/svg-renderer.js";
+import { resolveFacetOverlay } from "../renderer/facet-overlay.js";
 import {
   buildGroupLabelIndex,
   buildTeamLabelIndex,
@@ -135,6 +136,13 @@ export interface CompileSystemDiffOptions {
    * for the default un-grouped layout.
    */
   groupBy?: "team" | "boundary";
+  /**
+   * Facet ids selected for the overlay (#2174). Diff mode gets it for the same
+   * reason `groupBy` does (#1873): the compare view is a system view, and a
+   * viewer state that works in one and not the other is the split TPL-1983
+   * rules out.
+   */
+  selectedFacets?: readonly string[];
   /** Teams collapsed to a `<Team> (N)` stub in the diff (Issue #1858). Only with `groupBy: "team"`. */
   collapsedGroups?: ReadonlySet<string>;
   /**
@@ -172,6 +180,7 @@ export async function compileSystemDiff(
     emptyStateLabels,
     theme,
     groupBy,
+    selectedFacets,
     collapsedGroups,
     collapsedCategories,
     interactive,
@@ -238,6 +247,29 @@ export async function compileSystemDiff(
   // membership is 1:N the backfill restores the node's whole before-side
   // membership array (#2178) — but still only for `removed` nodes, so a node
   // that merely lost a `contains` does not inherit its stale before state.
+  // Facet membership needs the same removed-node backfill the boundary axis
+  // gets above (ADR-1886). A node deleted in the after-version is absent from
+  // `afterResolved.krsFile.facetIndex`, so resolving the overlay against the
+  // after-side alone renders it *dimmed and unringed* — telling a reader
+  // looking for "what used to carry PII" that the removed node never did.
+  const mergedFacetIndex = new Map<string, Set<string>>();
+  for (const [id, facetIds] of afterResolved.krsFile.facetIndex) {
+    mergedFacetIndex.set(id, new Set(facetIds));
+  }
+  for (const [id, meta] of diffed.nodes) {
+    if (meta.state !== "removed" || mergedFacetIndex.has(id)) continue;
+    const former = beforeResolved.krsFile.facetIndex.get(id);
+    if (former !== undefined) mergedFacetIndex.set(id, new Set(former));
+  }
+  // Declarations come from the after side (labels and colour order follow the
+  // current model); only membership is backfilled. A facet that existed only
+  // before is still reachable through the merged index, so its removed members
+  // keep a ring even though the declaration is gone.
+  const mergedFacetOverlay = resolveFacetOverlay(
+    { ...afterResolved.krsFile, facetIndex: mergedFacetIndex },
+    selectedFacets,
+  );
+
   const mergedBoundaryMembership = new Map<string, string[]>();
   for (const [id, boundaryIds] of afterResolved.krsFile.boundaryMembership) {
     mergedBoundaryMembership.set(id, [...boundaryIds]);
@@ -333,6 +365,7 @@ export async function compileSystemDiff(
     emptyLabels: emptyStateLabels,
     theme,
     groupBy,
+    facetOverlay: mergedFacetOverlay,
     boundaryMembership: mergedBoundaryMembership,
     scopedBoundaryMembership: mergedScopedBoundaryMembership,
     declaredGroupOrder: mergedDeclaredGroupOrder,
