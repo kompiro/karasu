@@ -1108,7 +1108,7 @@ interface LayoutOptions {
    * except where a boundary with no band of its own claims one of its shared
    * members (`resolvePlacementAxis`, #2176); the rest of the membership is
    * carried for the views that draw it (#2179).
-   * See docs/design/boundary-membership-slice-a.md.
+   * See ADR-2161 (docs/adr/2161-boundary-membership-1n.md).
    */
   boundaryMembership?: Map<string, string[]>;
   /**
