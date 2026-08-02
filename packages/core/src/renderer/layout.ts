@@ -1285,10 +1285,12 @@ function collapseAndAssignGroupLayers(
    */
   bandOrder: readonly string[] | undefined,
   /**
-   * Full declared membership on the boundary axis (#2178), which lets the band
-   * order pull boundaries that share members together and the seam bias put a
-   * shared node on the row that touches them (#2176). Omitted on the team axis,
-   * which stays 1:1 — both terms then reduce to no-ops.
+   * Full declared membership on the boundary axis (#2178). Three consumers: the
+   * band order pulls boundaries that share members together and the seam bias
+   * puts a shared node on the row that touches them (#2176), and the collapse
+   * predicate folds a node only when every boundary it belongs to here is
+   * collapsed (#2180). Omitted on the team axis, which stays 1:1 — all three
+   * then reduce to no-ops.
    */
   membership?: ReadonlyMap<string, readonly string[]>,
 ): {
@@ -1298,8 +1300,29 @@ function collapseAndAssignGroupLayers(
   remapEndpoint: (id: string) => string;
   foldedEdgeDiffState: Map<string, string>;
   groupIdOf: (id: string) => string | null;
+  /**
+   * Nodes that survived the collapse because one of their boundaries is still
+   * expanded, mapped to that boundary (#2180). The caller has its own group
+   * resolver for the frames and has to consult this too, or the collapsed
+   * group's frame keeps enclosing the survivor.
+   */
+  survivorGroup: Map<string, string>;
   grouped: GroupedLayerBands | null;
 } {
+  // Membership restricted to the boundaries that actually hold a band here.
+  //
+  // A declared boundary can end up with no band on this canvas — its members
+  // live on other drill levels, or `resolvePlacementAxis` refused a claim that
+  // would have emptied the band it takes from (#2176). Such a boundary draws no
+  // frame, so the app (which builds its collapsible set from the rendered
+  // `data-collapse-group` frames) can never collapse it. Judging "are all of
+  // this node's boundaries collapsed?" against it would leave the node
+  // permanently unfoldable, breaking the collapse-all view ADR-2120 promises.
+  // The values of the placement axis are exactly the groups that get a band.
+  const onCanvas = new Set(groupIndex.values());
+  const onCanvasMembership =
+    membership &&
+    new Map([...membership].map(([id, groupIds]) => [id, groupIds.filter((g) => onCanvas.has(g))]));
   const collapsed = collapseGroups(
     nodes,
     edges,
@@ -1310,17 +1333,31 @@ function collapseAndAssignGroupLayers(
     // Boundary axis only: a shared node folds when every boundary it belongs to
     // here is collapsed (#2180). The team axis passes nothing and keeps its 1:1
     // predicate.
-    membership,
+    onCanvasMembership,
   );
+  // A node that survived the collapse did so because one of its boundaries is
+  // still expanded — so that is the frame it belongs in. Without this it keeps
+  // the band it was placed in before the collapse, and the *collapsed* group's
+  // frame goes on enclosing it while the expanded one does not (#2180 C-1:
+  // 「1 つでも expanded なら X は可視のまま、その expanded フレームの中に描かれる」).
+  const survivorGroup = new Map<string, string>();
+  if (onCanvasMembership !== undefined && collapsedGroups !== undefined) {
+    for (const node of collapsed.nodes) {
+      const placed = groupIndex.get(node.id);
+      if (placed === undefined || !collapsedGroups.has(placed)) continue;
+      const expanded = onCanvasMembership.get(node.id)?.find((g) => !collapsedGroups.has(g));
+      if (expanded !== undefined) survivorGroup.set(node.id, expanded);
+    }
+  }
   const groupIdOf = (id: string): string | null =>
-    groupIndex.get(id) ?? collapsed.stubGroup.get(id) ?? null;
+    survivorGroup.get(id) ?? groupIndex.get(id) ?? collapsed.stubGroup.get(id) ?? null;
   let grouped: GroupedLayerBands | null = null;
   if (groupIndex.size > 0) {
     const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => {
       const groupId = groupIdOf(n.id);
       // A collapse stub stands in for one group and has no membership of its
       // own, so it never carries a share — `membership` is keyed by real node.
-      const declared = membership?.get(n.id);
+      const declared = onCanvasMembership?.get(n.id) ?? membership?.get(n.id);
       return {
         id: n.id,
         groupId,
@@ -1358,6 +1395,7 @@ function collapseAndAssignGroupLayers(
     nodes: collapsed.nodes,
     edges: collapsed.edges,
     stubGroup: collapsed.stubGroup,
+    survivorGroup,
     remapEndpoint: collapsed.remapEndpoint,
     foldedEdgeDiffState: collapsed.foldedEdgeDiffState,
     groupIdOf,
@@ -1486,6 +1524,9 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // group-by mode with an ownerIndex; a no-op otherwise. `stubGroup` tells the
   // grouping code which group a stub stands in for.
   let stubGroup = new Map<string, string>();
+  // Survivors of a partial collapse belong to the boundary that is still
+  // expanded, and the frames are built from the resolver below (#2180).
+  let survivorGroup = new Map<string, string>();
   // Ghost-edge lists on the ViewSlice are separate fields that neither collapse
   // pass rewrites (they only touch childNodes/childEdges), so re-anchor a
   // collapsed member's ghost connectors onto its stub with the *same* remap the
@@ -1518,6 +1559,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
     stubGroup = collapsed.stubGroup;
+    survivorGroup = collapsed.survivorGroup;
     const groupRemap = collapsed.remapEndpoint;
     remapGhostEndpoint = (id) => groupRemap(collapsedCat.remapEndpoint(id));
     foldedEdgeDiffState = collapsed.foldedEdgeDiffState;
@@ -1541,7 +1583,11 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const isExpanding = expandMembership.size > 0;
 
   const groupIdOf = (id: string): string | null =>
-    groupIndex?.get(id) ?? stubGroup.get(id) ?? expandMembership.get(id) ?? null;
+    survivorGroup.get(id) ??
+    groupIndex?.get(id) ??
+    stubGroup.get(id) ??
+    expandMembership.get(id) ??
+    null;
 
   // Expansion groups *only* by the expanded container — never by team owner
   // (#1921). A model with `owns` populates `ownerIndex`, and the shared

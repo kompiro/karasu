@@ -77,6 +77,19 @@ const stubs = (res: LayoutResult): string[] =>
 const labelOf = (res: LayoutResult, groupId: string): string | undefined =>
   res.nodes.get(`__group_collapsed_${groupId}__`)?.label;
 
+/** Does `groupId`'s frame enclose the card of `nodeId`? */
+function frameHolds(res: LayoutResult, groupId: string, nodeId: string): boolean {
+  const frame = res.containers.find((c) => c.group === true && c.groupId === groupId);
+  const node = res.nodes.get(nodeId);
+  if (!frame || !node) return false;
+  return (
+    node.x >= frame.x &&
+    node.x + node.width <= frame.x + frame.width &&
+    node.y >= frame.y &&
+    node.y + node.height <= frame.y + frame.height
+  );
+}
+
 describe("a shared node survives while any of its boundaries is expanded (#2180)", () => {
   it("stays visible when only one of its two boundaries collapses", () => {
     const res = laidOut(SHARED, ["payments"]);
@@ -172,5 +185,62 @@ organization Org {
     expect(res.nodes.has("Checkout")).toBe(false);
     expect(res.nodes.has("Ledger")).toBe(false);
     expect(res.nodes.get("__group_collapsed_platform__")?.label).toBe("platform (2)");
+  });
+});
+
+describe("a survivor is drawn inside the frame that is still expanded (#2180)", () => {
+  it("moves out of the collapsed frame and into the expanded one", () => {
+    // The rule is not just "stays visible" — decision C-1 says the node is drawn
+    // 「その expanded フレームの中に」, and the acceptance doc promises the reader
+    // will see `Ledger` inside `PCI scope`. Placement is resolved before collapse
+    // is known, so without re-routing the survivor keeps the band it was placed
+    // in and the *collapsed* group's frame goes on enclosing it.
+    const res = laidOut(SHARED, ["payments"]);
+    expect(res.nodes.has("Ledger")).toBe(true);
+    expect(frameHolds(res, "pci", "Ledger")).toBe(true);
+    expect(frameHolds(res, "payments", "Ledger")).toBe(false);
+  });
+
+  it("puts it back when the collapse is undone", () => {
+    const res = laidOut(SHARED, []);
+    expect(frameHolds(res, "payments", "Ledger")).toBe(true);
+  });
+});
+
+describe("a boundary with no band on this canvas cannot block folding (#2180)", () => {
+  // `solo` holds `N` as its only present member, so `resolvePlacementAxis`
+  // refuses `shadow`'s claim rather than empty it (group-layout.ts). `shadow`
+  // therefore draws no frame — and the app builds its collapsible set from the
+  // rendered `data-collapse-group` frames, so `shadow` can never be collapsed.
+  // Judging "are all its boundaries collapsed?" against it would leave `N`
+  // permanently unfoldable and break the collapse-all view of ADR-2120.
+  const BANDLESS = `
+system Shop {
+  service N {}
+  service Other {}
+
+  N -> Other "call"
+}
+
+boundary solo {
+  contains N
+}
+
+boundary shadow {
+  contains N
+}
+`;
+
+  it("does not render a frame for the bandless boundary", () => {
+    const res = laidOut(BANDLESS, []);
+    const frames = res.containers.filter((c) => c.group === true).map((c) => c.groupId);
+    expect(frames).toContain("solo");
+    expect(frames).not.toContain("shadow");
+  });
+
+  it("folds the node when the only collapsible boundary is collapsed", () => {
+    const res = laidOut(BANDLESS, ["solo"]);
+    expect(res.nodes.has("N")).toBe(false);
+    expect(labelOf(res, "solo")).toBe("solo (1)");
   });
 });
