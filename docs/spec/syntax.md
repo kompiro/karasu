@@ -1137,6 +1137,10 @@ boundary payments {
   it, the two outlines overlapping over its card. Each boundary carries its own
   colour, cycled by declaration order, and fills it faintly; that is how an
   overlap reads as an overlap rather than as one frame nested in another.
+- **The colours are settable.** The cycle is a default, not a claim by the
+  author. A `.krs.style` sheet can name a boundary and take its frame colour
+  over (`boundary#pci { border-color: ... }`); see
+  [style.md § Boundary frame selectors](style.md#boundary-frame-selectors-boundary--boundaryid).
 - **When a frame cannot reach, the membership goes on the card.** A frame is
   only widened when the corridor to the card holds no **non-member**: a frame
   must never enclose a node that is not its member, and that rule outranks
