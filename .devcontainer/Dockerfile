@@ -5,11 +5,18 @@ FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
 RUN mkdir -p /workspaces && chown node:node /workspaces
 
 # delta のインストール
+# arch は列挙しない — delta のリリース資産は `git-delta_<ver>_<arch>.deb` で、
+# <arch> が dpkg の語彙（amd64 / arm64 / armhf / i386）とそのまま一致するため、
+# `dpkg --print-architecture` を URL に埋めれば新しい arch でも Dockerfile を
+# 触らずに済む。下の gitleaks が case を持つのは、あちらが amd64 を "x64" と
+# 呼ぶ語彙のズレがあるからで、delta にそれは無い。
 ARG DELTA_VERSION="0.18.2"
-RUN curl -fsSL "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/git-delta_${DELTA_VERSION}_arm64.deb" \
-    -o /tmp/delta.deb \
+RUN ARCH="$(dpkg --print-architecture)" \
+  && curl -fsSL "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/git-delta_${DELTA_VERSION}_${ARCH}.deb" \
+       -o /tmp/delta.deb \
   && dpkg -i /tmp/delta.deb \
-  && rm /tmp/delta.deb
+  && rm /tmp/delta.deb \
+  && delta --version
 
 # gitleaks のインストール（秘密情報スキャン — ローカル/CI で同一バージョンを使う）
 # CI 側 (.github/workflows/secret-scan.yml) と version を揃えること。

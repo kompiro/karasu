@@ -1,0 +1,66 @@
+{
+  // クラウド開発環境（GitHub Codespaces / Devin 等、devcontainer を読むホスト型サービス）用。
+  // Codespace 作成時の "Dev container configuration" ドロップダウンにこの名前で出る。
+  //
+  // ルートの `.devcontainer/devcontainer.json` との唯一の違いは `mounts` を持たないこと。
+  // あちらはホストの `~/.claude` と `~/.config/git/` を bind mount して**開発者のマシン上の
+  // 設定を共有する**ためのもので、クラウドにはその「ホスト」が存在しない。
+  //
+  // クラウド側でそれぞれをどう埋めるか:
+  //   - git identity / gh 認証 … Codespaces が GitHub アカウントから自動設定する
+  //   - 個人の git 設定（delta の pager 設定など）… dotfiles リポジトリを使う
+  //     https://docs.github.com/en/codespaces/setting-your-user-preferences/personalizing-github-codespaces-for-your-account
+  //   - Claude Code の認証 … `CLAUDE_CODE_OAUTH_TOKEN` を Codespaces secret に置く
+  //
+  // `Dockerfile` は意図的にルート構成と共有している。分けるとツールチェーンが黙って
+  // 乖離する（delta の arch 決め打ちが arm64 でだけ通っていたのが実例 — #2252）。
+  // 共有が守られていることは `pnpm lint:devcontainer-variants-sync` が検証する。
+  "name": "karasu (cloud)",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1.3.8": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude"
+  },
+  "remoteUser": "node",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite Dev Server",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "oxc.oxc-vscode",
+        "vitest.explorer",
+        "ms-vscode.vscode-typescript-next",
+        "ms-azuretools.vscode-containers",
+        "peakchen90.open-html-in-browser",
+        "Anthropic.claude-code"
+      ],
+      "settings": {
+        "js/ts.tsdk.path": "node_modules/typescript/lib",
+        "editor.formatOnSave": true,
+        "[typescript]": {
+          "editor.defaultFormatter": "oxc.oxc-vscode"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "oxc.oxc-vscode"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "oxc.oxc-vscode"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "oxc.oxc-vscode"
+        }
+      }
+    }
+  }
+}

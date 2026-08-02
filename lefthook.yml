@@ -107,6 +107,17 @@ pre-push:
       # vitest test (scripts/guide/gen-guide-diagrams.test.ts) mirrors it too.
       glob: "{docs/guide/**,scripts/guide/**}"
       run: pnpm exec tsx scripts/guide/gen-guide-diagrams.ts --check
+    devcontainer-variants-sync:
+      # The local and cloud dev container configs describe the same project and
+      # must not drift apart on anything except the `mounts` the cloud variant
+      # exists to drop (Issue #2252). Also fails if the cloud config grows a
+      # `${localEnv:…}` reference, which reaches for a developer machine that a
+      # hosted service does not have. The vitest mirror in scripts/lint runs it
+      # in CI, and additionally asserts the Dockerfile derives each download's
+      # architecture instead of hardcoding one — the delta install was pinned to
+      # arm64 and would have failed on the first amd64 build.
+      glob: "{.devcontainer/**,scripts/lint/devcontainer-variants-sync.ts}"
+      run: pnpm run lint:devcontainer-variants-sync
     roadmap-issue-state:
       # docs/roadmap.md tracks not-yet-issued work in watch ledgers ("子 Issue は
       # 起こさず本表で追跡し、trigger を満たしたら Issue を起こす"), and nothing

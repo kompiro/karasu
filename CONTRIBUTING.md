@@ -93,6 +93,29 @@ Issue with the templates and the maintainer will pick the right path.
 
 ## Setup
 
+### In a dev container
+
+The repository ships two dev container configurations. Both build the same
+[`.devcontainer/Dockerfile`](.devcontainer/Dockerfile), so the toolchain is
+identical; they differ only in whether they mount configuration from a
+developer's own machine.
+
+| Configuration | For | Mounts host config |
+| --- | --- | --- |
+| `.devcontainer/devcontainer.json` | your own machine (VS Code, Docker Desktop) | yes — `~/.claude` and `~/.config/git` |
+| `.devcontainer/cloud/devcontainer.json` | hosted services (GitHub Codespaces, Devin) | no — there is no host to mount from |
+
+In Codespaces, pick **karasu (cloud)** from the *Dev container configuration*
+dropdown on the creation page. Git identity and `gh` authentication are supplied
+by the platform; to carry your personal git configuration (the `delta` pager
+setup, for instance) use a
+[dotfiles repository](https://docs.github.com/en/codespaces/setting-your-user-preferences/personalizing-github-codespaces-for-your-account).
+
+`pnpm lint:devcontainer-variants-sync` fails if the two configurations drift
+apart on anything other than those mounts.
+
+### On your own machine, without a container
+
 Prerequisites: **Node.js 22+** and **pnpm 10+** (matching the
 `packageManager` field in `package.json`).
 
