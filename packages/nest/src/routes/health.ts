@@ -17,6 +17,7 @@ const REPORTED_BINDINGS = [
   "GITHUB_APP_ID",
   "GITHUB_APP_PRIVATE_KEY",
   "GITHUB_WEBHOOK_SECRET",
+  "LLM_API_KEY",
 ] as const satisfies readonly (keyof NestEnv)[];
 
 function configuredBindings(env: NestEnv): Record<string, boolean> {
