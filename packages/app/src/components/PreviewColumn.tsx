@@ -1,3 +1,4 @@
+import { FACET_OVERLAY_COLORS } from "@karasu-tools/core";
 import { useEffect, useState } from "react";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
@@ -288,6 +289,48 @@ export function PreviewColumn() {
               ))}
             </select>
           </span>
+        )}
+        {activeView === "system" && (view.facets?.length ?? 0) > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="actionable" aria-pressed={(view.selectedFacets?.length ?? 0) > 0}>
+                {(view.selectedFacets?.length ?? 0) > 0
+                  ? t("preview.facets.active", { count: view.selectedFacets?.length ?? 0 })
+                  : `◎ ${t("preview.facets.label")}`}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {view.facets?.map((facet, i) => {
+                const selected = view.selectedFacets?.includes(facet.id) ?? false;
+                return (
+                  <DropdownMenuItem
+                    key={facet.id}
+                    // Radix closes on select; the selector is multi-select, so
+                    // keep it open for the next tick of the same decision.
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      view.onFacetToggle?.(facet.id);
+                    }}
+                    aria-checked={selected}
+                    role="menuitemcheckbox"
+                  >
+                    <span
+                      className="facet-swatch"
+                      style={{
+                        // Same palette the renderer uses, indexed the same way
+                        // — `facets` arrives in known-facet order, so the dot
+                        // and the ring can never disagree.
+                        background: FACET_OVERLAY_COLORS[i % FACET_OVERLAY_COLORS.length],
+                      }}
+                      aria-hidden="true"
+                    />
+                    {selected ? "✓ " : "  "}
+                    {facet.label ?? facet.id}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {activeView === "system" && view.anyCollapsible && (
           <Button

@@ -2140,6 +2140,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
+//   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
 
 system FeatureSamples {
   label "Feature samples"
@@ -2917,6 +2918,118 @@ system Shop {
 
   Web -> Checkout "order"
   Mobile -> Checkout "order"
+}
+`,
+    },
+    {
+      path: "facets.krs",
+      content: `// Cross-cutting membership with \`facet\`, and the overlay that shows it
+// (Issue #2174 — experimental).
+//
+// A \`facet\` is a set defined OUTSIDE the architecture — a regulation, a policy,
+// an audit scope. A tag says what an element *is*; a facet says what
+// externally-defined set it *belongs to*.
+//
+// Nothing here changes the diagram on its own. Pick facets in the preview's
+// "Facets" selector: members get a coloured ring, everything else dims, and the
+// legend gains a colour key. The selection lives in the viewer — it is never
+// written to this file, so every reader opens the same picture until they
+// choose something.
+//
+// Things worth trying, in this order:
+//
+//   1. Select \`pii\` alone. Two services and one store light up; the rest recede.
+//      Follow the edges that stay bright — that is where personal data crosses
+//      into the parts of the system that do not hold it.
+//   2. Add \`pci\` (the menu stays open). \`Checkout\` now carries TWO rings, one
+//      per facet, and the ring order is the same on every card that has both.
+//      Multi-membership is drawn, not collapsed to a "primary".
+//   3. Turn on "Group by: team" while both are still selected. The team bands
+//      and the facet rings are readable at the same time — the overlay paints
+//      per element and never touches band geometry.
+//   4. Collapse a team frame. The stub keeps the rings of the members it hides,
+//      so folding does not read as "nothing here belongs".
+//   5. Deselect everything. The diagram returns to exactly what it looked like
+//      before you started.
+
+facet pii {
+  label "Personal data"
+  description "Holds or transits data identifying a natural person (GDPR Art. 4)"
+}
+
+facet pci {
+  label "Cardholder data"
+  description "In scope for PCI DSS — stores, processes or transmits card numbers"
+}
+
+organization Acme {
+  team Storefront {
+    owns Checkout
+    owns Catalogue
+  }
+  team Platform {
+    owns Accounts
+    owns Search
+  }
+}
+
+system Shop {
+  label "Online shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  client WebApp [web] {
+    label "Web storefront"
+    facets pii
+  }
+
+  service Accounts {
+    label "Accounts"
+    description "Profiles, addresses, consent records"
+    facets pii
+  }
+
+  service Checkout {
+    label "Checkout"
+    description "Takes payment — sees both the buyer and the card"
+    facets pii, pci
+  }
+
+  service Catalogue {
+    label "Catalogue"
+    description "Products and prices. Holds nothing about anyone."
+  }
+
+  service Search {
+    label "Search"
+    description "Query service over the catalogue"
+  }
+
+  database ProfileStore [index] {
+    label "Profile store"
+    facets pii
+  }
+
+  database Ledger {
+    label "Payment ledger"
+    facets pci
+  }
+
+  storage ProductImages {
+    label "Product images"
+  }
+
+  Customer -> WebApp "browses"
+  WebApp -> Accounts "sign in"
+  WebApp -> Checkout "pay"
+  WebApp -> Catalogue "browse"
+  Catalogue -> Search "index"
+  Catalogue -> ProductImages "read"
+  Accounts -> ProfileStore "read/write"
+  Checkout -> Accounts "billing address"
+  Checkout -> Ledger "record"
 }
 `,
     },

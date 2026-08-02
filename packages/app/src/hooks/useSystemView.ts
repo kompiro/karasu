@@ -64,6 +64,12 @@ interface SystemViewState {
   hasDeployDiagram: boolean;
   hasOrgDiagram: boolean;
   hasBoundaries: boolean;
+  /**
+   * Every facet the model knows (#2174). The Facets selector offers exactly
+   * this; an empty list hides the control entirely, so a model that uses no
+   * facets keeps the toolbar it has today.
+   */
+  facets: { id: string; label?: string }[];
   systems: SystemNode[];
   nodeFileIndex: Map<string, string>;
   /**
@@ -180,6 +186,9 @@ export function useSystemView(
   toggleCategory: (category: CategoryId) => void;
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
+  /** Facets selected for the overlay (#2174). Orthogonal to `groupBy`. */
+  selectedFacets: readonly string[];
+  toggleFacet: (facetId: string) => void;
   toggleGroup: (groupId: string) => void;
   /** Service ids currently expanded in place (#1921/#1923). Several at once in Phase 2. */
   expandedContainers: ReadonlySet<string>;
@@ -228,6 +237,18 @@ export function useSystemView(
   // `collapsedCategories` — the `.krs` is untouched.
   const [groupBy, setGroupBy] = useState<GroupByMode>("none");
 
+  // Facets selected for the overlay (#2174). View state in the same sense as
+  // `groupBy` and `collapsedCategories` — the `.krs` is untouched. Not
+  // persisted to the URL hash or the share bundle; `groupBy` is not either, and
+  // widening that is its own decision (#1094).
+  const [selectedFacets, setSelectedFacets] = useState<readonly string[]>([]);
+  const facetsKey = [...selectedFacets].sort().join(",");
+  const toggleFacet = useCallback((facetId: string) => {
+    setSelectedFacets((prev) =>
+      prev.includes(facetId) ? prev.filter((id) => id !== facetId) : [...prev, facetId],
+    );
+  }, []);
+
   // Collapsed teams in Group-by mode (Issue #1858 slice B). Each folds to a
   // `<Team> (N)` stub, toggled via the on-SVG ⊖/⊕ control (per group). View
   // state, like `collapsedCategories` — recompiles via the core option.
@@ -253,7 +274,7 @@ export function useSystemView(
   // empty. Without this, switching view tabs while the initial compile is
   // pending keeps resetting the 300ms timer and never renders an SVG. See #1171.
   const viewPathKey = viewPath.join("/");
-  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}:collapsed=${collapsedKey}:groupBy=${groupBy}:groups=${groupsKey}:expanded=${expandKey}`;
+  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}:collapsed=${collapsedKey}:groupBy=${groupBy}:groups=${groupsKey}:expanded=${expandKey}:facets=${facetsKey}`;
 
   const compile = async (): Promise<CompileOutcome<SystemViewState> | null> => {
     if (!entryPath || !fs) return null;
@@ -279,6 +300,9 @@ export function useSystemView(
       // In-place expansion is Phase 1-scoped to the ungrouped system view
       // (#1921); suppressed under any Group-by axis.
       expandedContainers: groupBy !== "none" ? undefined : expandedContainers,
+      // Orthogonal to the Group-by axis on purpose: the overlay paints per
+      // element and never touches band geometry, so both are usable at once.
+      selectedFacets,
       interactive: true,
     });
 
@@ -298,6 +322,7 @@ export function useSystemView(
             groupBy: groupBy === "none" ? undefined : groupBy,
             collapsedGroups: groupBy !== "none" ? collapsedGroups : undefined,
             expandedContainers: groupBy !== "none" ? undefined : expandedContainers,
+            selectedFacets,
             interactive: true,
           })
         : null,
@@ -314,6 +339,7 @@ export function useSystemView(
       hasDeployDiagram: sysBase.hasDeployDiagram,
       hasOrgDiagram: sysBase.hasOrgDiagram,
       hasBoundaries: sysBase.hasBoundaries,
+      facets: sysBase.facets,
       systems: sysBase.systems,
       nodeFileIndex: sysBase.nodeFileIndex,
       nodeDiff,
@@ -343,6 +369,7 @@ export function useSystemView(
       hasDeployDiagram: false,
       hasOrgDiagram: false,
       hasBoundaries: false,
+      facets: [],
       systems: [],
       nodeFileIndex: new Map(),
     },
@@ -365,6 +392,11 @@ export function useSystemView(
       groupBy,
       groupsKey,
       expandKey,
+      // Without this the debounce never restarts on a facet toggle, so the
+      // selection changes and the diagram does not — the control looks dead.
+      // `currentKey` alone is not enough: it is read inside the debounced
+      // callback for the stale-SVG lookup, not used as an effect dependency.
+      facetsKey,
     ],
   });
   // Bulk collapse (#1872) + bulk expand-all-services (#1955). All id lists come
@@ -418,12 +450,22 @@ export function useSystemView(
     replaceExpansions,
   ]);
 
+  // Self-cleaning selection (TPL-1032): a facet edited out of the `.krs` must
+  // not linger in the selection, where it would keep a legend row alive for a
+  // facet the model no longer has. Intersecting on read rather than syncing on
+  // change keeps one source of truth — `result.facets` — instead of two states
+  // that can disagree.
+  const knownFacets = new Set(result.facets.map((f) => f.id));
+  const liveSelectedFacets = selectedFacets.filter((id) => knownFacets.has(id));
+
   return {
     ...result,
     collapsedCategories,
     toggleCategory,
     groupBy,
     setGroupBy,
+    selectedFacets: liveSelectedFacets,
+    toggleFacet,
     toggleGroup,
     expandedContainers,
     toggleExpand,
