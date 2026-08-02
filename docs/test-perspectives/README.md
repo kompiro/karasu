@@ -494,4 +494,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) | parse を通った構造は、どこかの view で描画されるか診断されるかのどちらかである — view 抽出の filter が作る silent drop を第 3 の状態として許さない | resolver | docs/spec/syntax.md (Edge declaration), #2075 |
 | [TPL-2047](TPL-2047-doc-embedded-krs-is-parsed-not-prose.md) | ドキュメントに埋めた `.krs` は散文でなく入力として parse する — 抜粋は `krs fragment`、診断デモは `krs invalid` と fence で宣言し、`invalid` は「いまも不正か」を逆向きに検証する | testing | #2047 |
 | [TPL-2172](TPL-2172-builtin-vocabulary-addition-gate.md) | builtin 語彙の追加は register 判定・既存表現の有無・停止規則の 3 問を通す — 通ったものは同 PR で効果を持たせ、却下したものも理由を記録する | core-concepts | #2172, docs/spec/tags-annotations.md |
+| [TPL-2221](TPL-2221-merge-only-facts-decided-on-merged-model.md) | マージ後にしか成立しない事実（重複・多重所属・件数）を述べる診断は、マージ後のモデルで判定する — per-file 判定は偽陽性ではなく**沈黙**して落ちる | resolver | #2221 |
 | [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) | 要素に届かせるために広げた図形は実被覆で測る（bbox でも記録矩形でもなく）— 広げる述語は「回廊に非メンバーが無いこと」で書き、一括シフトは派生ジオメトリも動かす | renderer | #2179, #2240, docs/spec/syntax.md |

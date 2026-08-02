@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { InMemoryFileSystemProvider } from "./in-memory-provider";
 import { ImportResolver } from "./import-resolver";
 import { analyze } from "../resolver/warnings";
+import { compile } from "../compile/compile";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1775,6 +1776,129 @@ system Blog {
         { endpointId: "Drafting", ownerId: "Authoring" },
         { endpointId: "Review", ownerId: "Moderation" },
       ]);
+    });
+  });
+  // A node listed in `boundary p` in one file and `boundary q` in another
+  // belongs to both — but neither file can see that on its own, so the per-file
+  // build reported nothing and the fact went unobserved through the path the
+  // CLI, app and LSP actually use (#2221). The failure here is silence, not a
+  // false positive, so every case below asserts a *count* rather than an
+  // absence (TPL-2221).
+  describe("cross-file multi-membership is reported on the merged model (#2221)", () => {
+    const multiMembership = (ds: { code: string; severity: string; params?: unknown }[]) =>
+      ds.filter((d) => d.code === "duplicate-boundary-assignment" && d.severity === "info");
+
+    const BODY = `system Shop {\n  service Billing {}\n}\n`;
+    const PAYMENTS = `boundary payments {\n  contains Billing\n}\n`;
+    const FINANCE = `boundary finance {\n  contains Billing\n}\n`;
+
+    it("reports once when the two boundaries are declared in different files", async () => {
+      await fs.writeFile("/p/index.krs", `import "./finance.krs"\n${BODY}${PAYMENTS}`);
+      await fs.writeFile("/p/finance.krs", FINANCE);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.boundaryMembership.get("Billing")).toEqual(["payments", "finance"]);
+      const found = multiMembership(result.diagnostics);
+      expect(found).toHaveLength(1);
+      expect(found[0].params).toEqual({ nodeId: "Billing", existingBoundary: "payments" });
+    });
+
+    it("reports once — not twice — when both are declared in one file", async () => {
+      // The per-file verdict is suppressed and re-derived, so the count must not
+      // double up on the path where the parser already had the answer.
+      await fs.writeFile("/p/index.krs", `${BODY}${PAYMENTS}${FINANCE}`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(multiMembership(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("gives the same answer however the model is split across files", async () => {
+      // The property the fix is really about: the diagnostic depends on what was
+      // modelled, not on how the files were arranged.
+      await fs.writeFile("/p/one.krs", `${BODY}${PAYMENTS}${FINANCE}`);
+      await fs.writeFile("/p/split.krs", `import "./more.krs"\n${BODY}${PAYMENTS}`);
+      await fs.writeFile("/p/more.krs", FINANCE);
+
+      const together = await new ImportResolver(fs).resolve("/p/one.krs");
+      const apart = await new ImportResolver(fs).resolve("/p/split.krs");
+      expect(multiMembership(apart.diagnostics).length).toBe(
+        multiMembership(together.diagnostics).length,
+      );
+      expect(apart.krsFile.boundaryMembership.get("Billing")).toEqual(
+        together.krsFile.boundaryMembership.get("Billing"),
+      );
+    });
+
+    it("has no cross-file path on a service, because a service reopen is an error", async () => {
+      // Scoped membership resolves against the declaring node's direct children,
+      // and a same-id non-infra child arriving from another file is
+      // `duplicate-node-in-system` by design (ADR-1381) — so a scoped boundary
+      // on a service cannot legitimately be split across files. Pinned here so
+      // the absence of a scoped cross-file case reads as a decision, not a gap.
+      //
+      // The system node itself does merge, and a scoped boundary declared there
+      // is currently dropped — tracked separately in #2246, not fenced here.
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./more.krs"
+system Shop {
+  service Checkout {
+    boundary core {
+      contains Ledger
+    }
+    domain Ledger {}
+  }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/more.krs",
+        `system Shop {
+  service Checkout {
+    boundary audit {
+      contains Ledger
+    }
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.diagnostics.filter((d) => d.code === "duplicate-node-in-system")).toHaveLength(
+        1,
+      );
+    });
+
+    it("still reports it on the single-file compile path", async () => {
+      // The suppression lives in the resolver, so `compile()` — which parses
+      // directly — must keep the parser's verdict.
+      const result = compile(`${BODY}${PAYMENTS}${FINANCE}`, { diagramType: "system" });
+      expect(multiMembership(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("keeps duplicate-boundary-id a per-file verdict", async () => {
+      // Only the multi-membership fact moved to the merged model; a scope
+      // declaring one id twice is visible without the merge, and re-emitting it
+      // from the rebuild would double-report.
+      await fs.writeFile(
+        "/p/index.krs",
+        `system Shop {
+  service Checkout {
+    boundary core {
+      contains Ledger
+    }
+    boundary core {
+      contains Cart
+    }
+    domain Ledger {}
+    domain Cart {}
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(1);
     });
   });
 });

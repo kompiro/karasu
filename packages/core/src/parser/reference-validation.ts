@@ -17,12 +17,14 @@
 
 import type {
   Diagnostic,
+  BoundaryBlock,
   FacetBlock,
   KrsFile,
   KrsNode,
   OrganizationBlock,
   TeamNode,
 } from "../types/ast.js";
+import { boundaryScopeKey } from "../types/ast.js";
 
 export function validateOwnsReferences(
   organizations: OrganizationBlock[],
@@ -193,4 +195,141 @@ function collectContainableIds(file: KrsFile): Set<string> {
   walk(file.queues);
   walk(file.storages);
   return ids;
+}
+
+// ---------------------------------------------------------------------------
+// Boundary membership builders (#2178, #2221).
+//
+// Pure like the validators above, and for the same reason: the answer depends
+// on which model you ask. A node listed in `boundary p` in one file and
+// `boundary q` in another belongs to both — but neither file can see that, so
+// the per-file build reports nothing (TPL-2221). The Parser builds against the
+// file it just parsed; the ImportResolver rebuilds against the merged model and
+// its diagnostics are the ones a project-mode user sees.
+// ---------------------------------------------------------------------------
+
+/** A membership index plus the diagnostics building it produced. */
+interface MembershipResult<T> {
+  membership: T;
+  diagnostics: Diagnostic[];
+}
+// Build the 1:N boundaryMembership (node id → every declared boundary id, in
+// declaration order), the P2b analogue of buildOwnerIndex (#2178).
+//
+// Nothing declared is dropped: a node listed in three boundaries gets three
+// entries, and the view that can only draw one band picks the primary at
+// placement time (`primaryBoundaryOf`) — TPL-2161. Re-listing the *same*
+// boundary is idempotent rather than an extra entry, so the merge paths can
+// union without growing duplicates.
+//
+// The info diagnostic states the model fact — this node belongs to more than
+// one boundary — and says nothing about how a view resolves it (TPL-1386);
+// the resolution rule lives in docs/spec/syntax.md. It fires once per
+// *additional distinct* boundary, so re-listing one boundary stays silent:
+// "belongs to more than one" would not be true there.
+export function buildBoundaryMembership(
+  boundaries: readonly BoundaryBlock[],
+): MembershipResult<Map<string, string[]>> {
+  const diagnostics: Diagnostic[] = [];
+  const membership = new Map<string, string[]>();
+  for (const boundary of boundaries) {
+    for (const memberId of boundary.contains) {
+      const declared = membership.get(memberId);
+      if (declared === undefined) {
+        membership.set(memberId, [boundary.id]);
+        continue;
+      }
+      if (declared.includes(boundary.id)) continue;
+      diagnostics.push({
+        severity: "info",
+        code: "duplicate-boundary-assignment",
+        params: { nodeId: memberId, existingBoundary: declared[0] },
+        loc: boundary.loc,
+      });
+      declared.push(boundary.id);
+    }
+  }
+  return { membership, diagnostics };
+}
+
+/**
+ * Build the scope-keyed membership map for `boundary` blocks declared inside
+ * node blocks (#2036), the scoped counterpart of {@link buildBoundaryMembership}
+ * — and 1:N for the same reason (#2178).
+ *
+ * The key carries the declaring scope because node ids are unique only among
+ * siblings, so `nodeId` alone does not identify a node (TPL-1352).
+ *
+ * Members resolve against the scope's **direct children** only. That is both
+ * the set sibling-uniqueness makes unambiguous — the whole reason this form
+ * avoids the top-level ambiguity of #2036 — and the set drawn as top-level
+ * nodes on that scope's canvas. A `contains` naming anything else is left
+ * unindexed and reported by reference validation, never silently framed.
+ */
+export function buildScopedBoundaryMembership(
+  roots: readonly KrsNode[],
+): MembershipResult<Map<string, Map<string, string[]>>> {
+  const diagnostics: Diagnostic[] = [];
+  const index = new Map<string, Map<string, string[]>>();
+
+  const walk = (node: KrsNode, ancestorIds: string[]): void => {
+    const scopePath = [...ancestorIds, node.id];
+    if (node.boundaries !== undefined && node.boundaries.length > 0) {
+      const childIds = new Set(node.children.map((child) => child.id));
+      const membership = new Map<string, string[]>();
+      const declaredIds = new Set<string>();
+
+      for (const boundary of node.boundaries) {
+        // Same id twice in one scope: the two blocks are indistinguishable,
+        // so the second cannot be addressed. Top-level blocks keep their
+        // existing merge behaviour (ADR-1974) — only the scoped form is
+        // constrained, matching the compatibility rule for the new syntax.
+        if (declaredIds.has(boundary.id)) {
+          diagnostics.push({
+            severity: "error",
+            code: "duplicate-boundary-id",
+            params: { boundaryId: boundary.id },
+            loc: boundary.loc,
+          });
+          continue;
+        }
+        declaredIds.add(boundary.id);
+
+        for (const memberId of boundary.contains) {
+          if (!childIds.has(memberId)) continue;
+          const declared = membership.get(memberId);
+          if (declared === undefined) {
+            membership.set(memberId, [boundary.id]);
+            continue;
+          }
+          // Multi-membership within one scope: keep both, report the fact
+          // (same register as the top-level form, #2178). A repeat of the
+          // same boundary is idempotent — `duplicate-boundary-id` above
+          // already rejects a second block with this id, so this only
+          // catches `contains X` twice inside one block.
+          if (declared.includes(boundary.id)) continue;
+          diagnostics.push({
+            severity: "info",
+            code: "duplicate-boundary-assignment",
+            params: { nodeId: memberId, existingBoundary: declared[0] },
+            loc: boundary.loc,
+          });
+          declared.push(boundary.id);
+        }
+      }
+
+      if (membership.size > 0) {
+        index.set(boundaryScopeKey(scopePath), membership);
+      }
+    }
+
+    for (const child of node.children) {
+      walk(child, scopePath);
+    }
+  };
+
+  for (const root of roots) {
+    walk(root, []);
+  }
+  return { membership: index, diagnostics };
 }
