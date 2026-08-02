@@ -7,6 +7,7 @@ import {
   scopedBoundaryGroupId,
 } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
+import { foldFacetMembership } from "./facet-overlay.js";
 import {
   assignGroupedLayers,
   groupOrderFor,
@@ -1119,6 +1120,16 @@ interface LayoutOptions {
    */
   scopedBoundaryMembership?: Map<string, Map<string, string[]>>;
   /**
+   * Selected-facet membership per node id, already resolved against the
+   * selection (`resolveFacetOverlay`). Layout needs it only to re-derive the
+   * decoration onto collapse stubs — placement and geometry never read it, which
+   * is what keeps the overlay orthogonal to the Group-by axis.
+   */
+  facetMembership?: ReadonlyMap<string, readonly string[]>;
+  /** Known-facet order, so a stub's folded membership stacks like every other element's. */
+  facetOrder?: readonly string[];
+
+  /**
    * Every group id the model *declares* on the active axis, in declaration
    * order (`declaredGroupOrderOf` in group-labels.ts). Groups the axis map cannot
    * name — a boundary whose members are all claimed by an earlier one, or one
@@ -2054,6 +2065,12 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     width: totalWidth,
     height: totalHeight,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
+    foldedFacetMembership: foldFacetMembership(
+      viewSlice.childNodes,
+      remapGhostEndpoint,
+      options.facetMembership,
+      options.facetOrder ?? [],
+    ),
     crossingMarks,
     degradedMemberships,
   };

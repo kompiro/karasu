@@ -35,6 +35,7 @@ import type { Diagnostic, LegendBlock, LegendViewScope } from "../types/ast.js";
 import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
+import { FACET_DIM_OPACITY } from "./facet-overlay.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -1185,6 +1186,15 @@ function renderNode(
   childLevelLinks?: Map<string, string>,
   diffState?: string,
   diffMeta?: NodeDiffMeta,
+  /**
+   * Selected facets this node belongs to, in known-facet order (#2174). Empty
+   * when the overlay is off *or* the node is a non-member — the two are told
+   * apart by `overlayOn`, because a non-member has to dim while an overlay-off
+   * node must render exactly as before.
+   */
+  facets: readonly string[] = [],
+  overlayOn = false,
+  facetColorOf?: ReadonlyMap<string, string>,
 ): string {
   const children: string[] = [];
 
@@ -1288,6 +1298,23 @@ function renderNode(
   // 縮退 tabs paint last so they sit on top of the card body (#2179).
   children.push(...renderDegradedTabs(node, style, palette));
 
+  // Facet rings sit above the card body but below the interactive chrome the
+  // caller layers on later (category / group / expand controls), so a control
+  // is never buried under a ring (TPL-2044).
+  if (facets.length > 0 && facetColorOf) {
+    children.push(...renderFacetRings(node, facets, facetColorOf));
+  }
+
+  // A non-member dims; a member keeps the style's own opacity. When the overlay
+  // is off neither applies, which is what makes the no-selection output
+  // byte-identical to before this feature existed.
+  const dimmed = overlayOn && facets.length === 0;
+  const resolvedOpacity = dimmed
+    ? FACET_DIM_OPACITY
+    : style.opacity < 1
+      ? style.opacity
+      : undefined;
+
   const nodeEl = el(
     "g",
     {
@@ -1299,8 +1326,9 @@ function renderNode(
       "data-diff-state": diffState,
       "data-annotation-added": annotationAddedAttr,
       "data-annotation-removed": annotationRemovedAttr,
+      "data-facet-member": facets.length > 0 ? facets.join(" ") : undefined,
       style: node.hasChildren ? "cursor: pointer" : undefined,
-      opacity: style.opacity < 1 ? style.opacity : undefined,
+      opacity: resolvedOpacity,
     },
     ...children,
   );
@@ -1310,6 +1338,48 @@ function renderNode(
     return el("a", { href: `#${childLevelId}` }, nodeEl);
   }
   return nodeEl;
+}
+
+/**
+ * Concentric rings, one per selected facet the node belongs to.
+ *
+ * Drawn off the node's bounding box rather than its shape, so a cylinder, a
+ * hexagon and an icon card all get the same treatment (TPL-1001) — matching the
+ * outline of every built-in shape would mean a per-shape ring path, and the
+ * rings would still read inconsistently between them.
+ *
+ * Rings grow **outward** in known-facet order, so the innermost ring is the same
+ * facet on every node. That is what makes two nodes comparable at a glance; if
+ * the order followed each node's own membership the same colour would sit at a
+ * different radius from card to card.
+ */
+function renderFacetRings(
+  node: LayoutNode,
+  facets: readonly string[],
+  colorOf: ReadonlyMap<string, string>,
+): string[] {
+  const RING_WIDTH = 3;
+  const RING_GAP = 1;
+  return facets.flatMap((facetId, i) => {
+    const color = colorOf.get(facetId);
+    if (!color) return [];
+    // Ring i sits outside the card by its own half-width plus everything drawn
+    // inside it, so strokes never overlap and each colour stays readable.
+    const offset = RING_WIDTH / 2 + i * (RING_WIDTH + RING_GAP);
+    return [
+      el("rect", {
+        x: node.x - offset,
+        y: node.y - offset,
+        width: node.width + offset * 2,
+        height: node.height + offset * 2,
+        rx: 6 + offset,
+        fill: "none",
+        stroke: color,
+        "stroke-width": RING_WIDTH,
+        "data-facet-ring": facetId,
+      }),
+    ];
+  });
 }
 
 /**
