@@ -1057,7 +1057,7 @@ function boundaryHueAt(hueIndex: number | undefined, palette?: DiagramPalette): 
 }
 
 /** How one boundary is painted, on every surface that paints it. */
-export interface BoundaryPaint {
+interface BoundaryPaint {
   stroke: string;
   /** The low-alpha frame fill. Follows `stroke` unless `background-color` says otherwise. */
   fill: string;

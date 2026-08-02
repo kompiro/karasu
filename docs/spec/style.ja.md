@@ -612,7 +612,7 @@ team フレーム（*Group by: team*）はまだこの方法で指定できな�
 [#2269](https://github.com/kompiro/karasu/issues/2269) を参照。
 
 `boundary` は experimental notation なので、本セレクタもスタイルを当てる構文と同じく
-後方互換を約束しない（[syntax.ja.md](syntax.ja.md#grouping-the-system-view-boundary--experimental)）。
+後方互換を約束しない（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary-experimental)）。
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — boundary の色はフレームと `◇` タブに届き、両者は別のコードが描く。1 つの resolver を読むことで、style の上書きが片方だけを塗り替える事故を防ぐ。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 裸の `boundary` ルールは本セレクタ以前は parse されて無効果だった。今は効果を持つ。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — 上の specificity 行は `reference-data.ts` からの生成物で、ここに手書きしない。
 
