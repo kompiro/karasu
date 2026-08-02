@@ -107,6 +107,15 @@ pre-push:
       # vitest test (scripts/guide/gen-guide-diagrams.test.ts) mirrors it too.
       glob: "{docs/guide/**,scripts/guide/**}"
       run: pnpm exec tsx scripts/guide/gen-guide-diagrams.ts --check
+    docs-site-ci-paths-sync:
+      # The docs site's PR guards fire from `reference-docs-check.yml`, whose
+      # `paths:` is a hand-written mirror of `PUBLISHED_EN_FILES`. A doc added
+      # to the published set but not to `paths:` silently stops triggering the
+      # guards (Issue #2257, TPL-2253). Also keeps the skip workflow's
+      # `paths-ignore:` complementary, which ADR-953 requires or the required
+      # check hangs pending. The vitest mirror in scripts/lint runs it in CI.
+      glob: "{packages/docs-site/scripts/lib/site-map.ts,.github/workflows/reference-docs-check*.yml,scripts/lint/docs-site-ci-paths-sync.ts}"
+      run: pnpm run lint:docs-site-ci-paths-sync
     devcontainer-variants-sync:
       # The local and cloud dev container configs describe the same project and
       # must not drift apart on anything except the `mounts` the cloud variant
