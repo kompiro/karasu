@@ -18,6 +18,15 @@
  * - **Unknown events acknowledge.** A 500 on an event we do not handle makes
  *   GitHub retry it forever and eventually disable the endpoint, taking the
  *   events we *do* handle down with it.
+ *
+ * **Out-of-order delivery is resolved towards deletion.** GitHub delivers at
+ * least once and not in order, so a delayed `removed` can arrive after the
+ * repository was re-added and republished, and purge something currently
+ * valid. That is deliberate rather than unhandled: the two ways to be wrong
+ * are not symmetric. Deleting a derived artifact too eagerly costs one
+ * recompute; keeping one too long is the data-trust failure decision 6 exists
+ * to prevent. Sequencing on the payload would trade a cheap, self-healing
+ * error for an expensive, silent one.
  */
 import { requireBinding } from "../env.js";
 import { error, json } from "../http.js";
@@ -87,13 +96,43 @@ async function handleInstallationRepositories(
   return total;
 }
 
+/**
+ * A ceiling on the body this endpoint will buffer.
+ *
+ * The signature cannot be checked until the whole body is in memory, so an
+ * unauthenticated caller gets to decide how much this Worker allocates. Real
+ * `installation` payloads are a few kilobytes and the largest plausible
+ * `installation_repositories` list is far inside this, so the cap costs
+ * nothing legitimate and closes the one pre-auth resource an unsigned request
+ * can consume.
+ */
+const MAX_BODY_BYTES = 1024 * 1024;
+
 export async function githubWebhook(context: RouteContext): Promise<Response> {
   const { request, env } = context;
   const secret = requireBinding(env, "GITHUB_WEBHOOK_SECRET");
 
+  const declaredLength = Number(request.headers.get("Content-Length") ?? "");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return error(
+      413,
+      "payload_too_large",
+      "The webhook body is larger than this endpoint accepts.",
+    );
+  }
+
   // Read once, as text. The signature covers these exact bytes; verifying a
   // re-serialised parse would verify a different document.
   const body = await request.text();
+  // Re-checked after reading: `Content-Length` is the sender's claim, and a
+  // chunked request does not carry one at all.
+  if (body.length > MAX_BODY_BYTES) {
+    return error(
+      413,
+      "payload_too_large",
+      "The webhook body is larger than this endpoint accepts.",
+    );
+  }
   const signature = request.headers.get("X-Hub-Signature-256");
   if (!(await verifyWebhookSignature(secret, signature, body))) {
     // No detail. A prober has no legitimate use for knowing which half of the

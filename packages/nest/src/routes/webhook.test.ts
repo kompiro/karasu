@@ -136,6 +136,82 @@ describe("POST /webhooks/github", () => {
     expect((await response.json()).purged).toEqual({ documents: 1, pointers: 1 });
   });
 
+  it("does not purge on unsuspend", async () => {
+    // The action closest to `suspend`, and the one where an accidental purge
+    // would be both most likely and most obviously wrong.
+    const kv = await seededKv();
+    const response = await deliver(
+      "installation",
+      { action: "unsuspend", installation: { id: 42 } },
+      { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
+    );
+    expect((await response.json()).purged).toBeNull();
+    expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeDefined();
+  });
+
+  it("does not purge on new_permissions_accepted", async () => {
+    const kv = await seededKv();
+    const response = await deliver(
+      "installation",
+      { action: "new_permissions_accepted", installation: { id: 42 } },
+      { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
+    );
+    expect((await response.json()).purged).toBeNull();
+    expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeDefined();
+  });
+
+  it("purges a late removal even though the repo was republished", async () => {
+    // GitHub delivers at least once and out of order, so this is reachable.
+    // Resolved towards deletion on purpose: deleting a derived artifact too
+    // eagerly costs one recompute, keeping one too long is the data-trust
+    // failure ADR-1990 decision 6 exists to prevent.
+    const kv = await seededKv();
+    const response = await deliver(
+      "installation_repositories",
+      {
+        action: "removed",
+        installation: { id: 42 },
+        repositories_removed: [{ full_name: "kompiro/karasu" }],
+      },
+      { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
+    );
+    expect((await response.json()).purged).toEqual({ documents: 1, pointers: 1 });
+    expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeUndefined();
+  });
+
+  it("refuses a body larger than it will buffer, before verifying anything", async () => {
+    // The signature cannot be checked until the whole body is in memory, so
+    // this is the one resource an unsigned caller can otherwise consume.
+    const response = await handleRequest(
+      new Request("https://nest.example/webhooks/github", {
+        method: "POST",
+        body: "{}",
+        headers: {
+          "X-GitHub-Event": "installation",
+          "Content-Length": String(2 * 1024 * 1024),
+        },
+      }),
+      { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: await seededKv() },
+      ctx,
+    );
+    expect(response.status).toBe(413);
+    expect((await response.json()).error.code).toBe("payload_too_large");
+  });
+
+  it("refuses an oversized body that declared no length", async () => {
+    const body = JSON.stringify({ padding: "x".repeat(1024 * 1024 + 16) });
+    const response = await handleRequest(
+      new Request("https://nest.example/webhooks/github", {
+        method: "POST",
+        body,
+        headers: { "X-GitHub-Event": "installation", "X-Hub-Signature-256": await sign(body) },
+      }),
+      { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: await seededKv() },
+      ctx,
+    );
+    expect(response.status).toBe(413);
+  });
+
   it("is idempotent, so a redelivery is safe", async () => {
     const kv = await seededKv();
     const env = { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv };
@@ -236,6 +312,33 @@ describe("POST /webhooks/github", () => {
     );
     expect(response.status).toBe(500);
     expect((await response.json()).error.code).toBe("purge_failed");
+  });
+
+  it("fails towards invisibility when the purge dies part-way through", async () => {
+    // The interesting failure is not the first call but a death *between* the
+    // pointer removal and the document deletion. NestStore removes the pointer
+    // first precisely so this leaves a repo invisible rather than a pointer
+    // advertising a diagram that is gone.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const kv = await seededKv();
+    const store = new NestStore(kv);
+    const realDelete = kv.delete.bind(kv);
+    kv.delete = (key: string) =>
+      key.startsWith("krs/") ? Promise.reject(new Error("KV unavailable")) : realDelete(key);
+
+    const response = await deliver(
+      "installation",
+      { action: "deleted", installation: { id: 42 } },
+      { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
+    );
+    expect(response.status).toBe(500);
+    // Pointers gone, documents still there: nothing resolves, and a retry
+    // finishes the job.
+    expect(await store.latest("kompiro", "karasu")).toBeUndefined();
+    expect(kv.keys().some((key) => key.startsWith("krs/v1/42/"))).toBe(true);
+    expect(kv.keys()).not.toContain("idx/v1/kompiro/karasu");
+    // Installation 43 is untouched throughout.
+    expect(kv.keys()).toContain("idx/v1/other/repo");
   });
 
   it("is not shadowed by the /<owner>/<repo> route", async () => {
