@@ -1,0 +1,107 @@
+name: Spike Preview
+
+# Spikes (PoC branches) are looked at once and then thrown away, so they never get a PR
+# and `preview.yml` — which fires on `pull_request` — cannot reach them. This is a
+# separate workflow rather than another trigger on `preview.yml` so the PR preview path
+# keeps its exact behaviour: the two share a Cloudflare Pages project, nothing else.
+
+on:
+  # No `paths:` filter on purpose: pushing a spike branch is an explicit act, and a push
+  # that silently deploys nothing is worse than an occasional redundant build.
+  push:
+    branches:
+      - "spike/**"
+
+  # Branch deletion is the only cleanup signal a spike preview has (there is no PR to
+  # close). `delete` cannot be filtered by branch in `on:`, so the job below filters.
+  delete:
+
+concurrency:
+  # `github.ref_name` on push is the branch; on delete it is the default branch, so take
+  # the deleted branch from the payload. Both events therefore key on the same string:
+  # deleting a branch cancels an in-flight deploy for it instead of racing to recreate it.
+  group: spike-preview-${{ github.event_name == 'delete' && github.event.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Spike Preview to Cloudflare Pages
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      # These build steps mirror `preview.yml` on purpose. Extracting them would mean
+      # editing `preview.yml`, which is what keeping the spike path separate is meant to
+      # avoid; a spike route that breaks the PR route defeats its own purpose.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build (core)
+        run: pnpm --filter @karasu-tools/core run build
+
+      - name: Build (app)
+        run: pnpm --filter @karasu-tools/app run build
+
+      - name: Deploy Spike Preview to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # wrangler runs from the repo root and picks up the root `functions/`
+          # dir (the /render Pages Function) alongside the deployed assets.
+          command: pages deploy packages/app/dist --project-name=karasu --branch=${{ github.ref_name }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      # A PR gets the URL from its deployment status; a spike push has nowhere to put it,
+      # so report the URL wrangler actually returned. Cloudflare slugs and truncates the
+      # branch alias, so it cannot be reconstructed from the branch name.
+      - name: Report preview URL
+        env:
+          BRANCH: ${{ github.ref_name }}
+          ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          {
+            echo "### Spike preview deployed"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Branch | \`${BRANCH}\` |"
+            echo "| Branch alias | ${ALIAS_URL:-(none)} |"
+            echo "| This deployment | ${DEPLOY_URL:-(none)} |"
+            echo
+            echo "Delete the branch to tear this down: \`git push origin --delete ${BRANCH}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup:
+    name: Delete Spike Preview Deployments
+    # Only spike branches: PR previews are cleaned up by `preview.yml` on PR close, and
+    # running both on a merge-and-delete would just race over the same deployments.
+    if: >-
+      github.event_name == 'delete' &&
+      github.event.ref_type == 'branch' &&
+      startsWith(github.event.ref, 'spike/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/purge-preview-deployments
+        with:
+          # On `delete`, `github.event.ref` is the bare branch name (no `refs/heads/`),
+          # which is exactly what was passed to `pages deploy --branch=`.
+          branch: ${{ github.event.ref }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -37,7 +37,8 @@
 - `main` への直接コミット・push は禁止 — PR 経由でマージする
 - 機能開発は `git worktree add` により worktree を作成して行う
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
-- ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
+- ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
+- `spike/` はマージを前提としない PoC 用。この prefix だけは CI 上の意味を持ち、push で preview がデプロイされる（「spike を PR なしで preview で動かす」節）
 - **PR を出す前に main を取り込む — `rebase` は使わない。** `git fetch origin main` で main を最新化し、`git merge --no-edit origin/main` で作業ブランチに main を取り込んでから PR を作成する。rebase は事故になる（interactive rebase の todo 重複 / hook 干渉でスタックする、また main を取り込まないまま分岐の古い stale ブランチを squash すると他 PR のマージ済み成果を巻き添えで revert しうる）。merge なら乖離が通常のコンフリクトとして可視化され、履歴も非破壊。
 
 ### Issue・PR 記述ルール
@@ -159,6 +160,41 @@ sub-issue を取りこぼしていると非ゼロ終了する。
 ```
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
+
+### spike を PR なしで preview で動かす
+
+**到達状態**: `spike/` ブランチを push すると、PR を作らずに
+`https://<slug>.karasu.pages.dev` で実物を触れる。実 URL は Actions の該当 run の
+Summary（"Spike preview deployed" 表）に出る。
+
+```
+git switch -c spike/<name> origin/main
+# 実装して commit
+git push -u origin spike/<name>
+gh run list --workflow=spike-preview.yml --branch=spike/<name>   # run id を得る
+gh run view <run-id>                                             # Summary に Preview URL
+```
+
+`.github/workflows/spike-preview.yml` が `push: branches: [spike/**]` で発火する。
+判断基準は 1 つ、**ブランチ名が `spike/` で始まるかどうか**だけ。
+
+PR preview（`preview.yml`）とは**別ワークフロー**にしてある。共有しているのは
+Cloudflare Pages プロジェクトだけで、PR 側の発火条件・concurrency・後始末は
+spike の都合で一切変えない。spike の経路をいじって PR の経路を壊したら本末転倒になる。
+
+- **`paths:` フィルタは spike 側には掛けない。** spike の push は意図的な行為なので、
+  「push したのに何も起きない」ほうが余分なビルド 1 回より損。
+- **URL は Summary に出たものを読む。** Cloudflare のブランチ alias は slug 化 +
+  長さ切り詰めが入るため、ブランチ名から組み立てると外れる。
+- **後始末はブランチ削除。** `git push origin --delete spike/<name>` で `delete`
+  イベントが走り、そのブランチの preview デプロイが消える。spike を残したまま放置
+  すると preview も残る。
+- **この URL を記録に残さない。** ブランチを消した時点で 404 になるので、AT や
+  ドキュメントの到達先には書かない（「手動確認の到達先は本番 URL で書く」節）。
+
+> `push` イベントで使われるワークフロー定義は push されたブランチ自身のものなので、
+> `spike-preview.yml` が main に入るより前に切ったブランチでは発火しない（エラーも
+> 出ずに無反応になる）。上のコマンドのように `origin/main` から切る。
 
 ### Claude Code plugin のセットアップ
 
