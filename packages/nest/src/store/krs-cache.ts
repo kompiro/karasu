@@ -157,6 +157,29 @@ export class KrsCache {
   }
 
   /**
+   * The distinct repos this installation has cached anything for.
+   *
+   * Exists so a purge can clean up the out-of-prefix directory entries that
+   * point into this installation *before* the keys naming those repos are
+   * deleted. Reading it after the purge would find nothing.
+   */
+  async listRepos(installationId: number | string): Promise<{ owner: string; repo: string }[]> {
+    const prefix = installationPrefix(installationId);
+    const seen = new Map<string, { owner: string; repo: string }>();
+    let cursor: string | undefined;
+    do {
+      const page = await this.kv.list({ prefix, cursor, limit: LIST_PAGE_SIZE });
+      for (const key of page.keys) {
+        const [owner, repo] = key.name.slice(prefix.length).split("/");
+        if (owner === undefined || repo === undefined) continue;
+        seen.set(`${owner}/${repo}`, { owner, repo });
+      }
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor !== undefined);
+    return [...seen.values()];
+  }
+
+  /**
    * List a page, delete it, and list again from the start.
    *
    * Not a cursor walk. We are deleting the very keys we are iterating, and a

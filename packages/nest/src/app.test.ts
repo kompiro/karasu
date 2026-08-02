@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRouter, handleRequest } from "./app.js";
 import { MissingBindingError, type NestEnv, type NestExecutionContext } from "./env.js";
 import { Router } from "./router.js";
+import { MemoryKV } from "./testing/memory-kv.js";
 
 const ctx: NestExecutionContext = { waitUntil: () => {} };
 
@@ -87,13 +88,30 @@ describe("handleRequest", () => {
     expect((await routes.handle(new Request("https://nest.example/healthz"), {}, ctx)).status).toBe(
       200,
     );
-    const notYetServed = ["/", "/kompiro/karasu", "/webhooks/github"];
+    // `/<owner>/<repo>` is served as of #2285, so it is absent here; a bare
+    // root and the webhook endpoint are still unclaimed. `/webhooks/github`
+    // has two segments and would be swallowed by the `/:owner/:repo` pattern
+    // if it were ever registered after it — this pins that it is not yet
+    // reachable at all, so #2286 has to register it deliberately and above.
+    const notYetServed = ["/", "/webhooks/github"];
     const statuses = await Promise.all(
       notYetServed.map(async (path) => [
         path,
-        (await routes.handle(new Request(`https://nest.example${path}`), {}, ctx)).status,
+        (
+          await routes.handle(
+            new Request(`https://nest.example${path}`),
+            { KRS_CACHE: new MemoryKV() },
+            ctx,
+          )
+        ).status,
       ]),
     );
-    expect(statuses).toEqual(notYetServed.map((path) => [path, 404]));
+    expect(statuses).toEqual([
+      ["/", 404],
+      // Currently matched by `/:owner/:repo` and answered as "nothing
+      // generated for webhooks/github", which is a wrong answer that #2286
+      // must replace with a real route rather than leave to the catch-all.
+      ["/webhooks/github", 404],
+    ]);
   });
 });

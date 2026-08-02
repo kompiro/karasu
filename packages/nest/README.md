@@ -48,5 +48,17 @@ pnpm --filter @karasu-tools/nest test
 pnpm --filter @karasu-tools/nest typecheck
 ```
 
-Deploy configuration (`wrangler.toml`, the deploy workflow and the secret list)
-lands with the routing slice, [#2285](https://github.com/kompiro/karasu/issues/2285).
+## Deploy
+
+`wrangler.toml` lives in this directory and is deployed by
+`.github/workflows/nest-deploy.yml`, which runs wrangler with
+`workingDirectory: packages/nest` so the repo-root Pages config is not picked
+up. The workflow is `workflow_dispatch` only: the service holds no consent copy
+yet ([#1996](https://github.com/kompiro/karasu/issues/1996)), and ADR-1990
+decision 6 forbids pointing it at other people's private repositories until it
+does.
+
+One KV namespace is bound as `KRS_CACHE`; the cache and the directory share it
+and are separated by key prefix, because a purge has to see both. Secrets are
+set with `wrangler secret put` and never appear in the repository. `GET
+/healthz` reports which of them the running deploy actually has, as booleans.

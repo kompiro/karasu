@@ -1,0 +1,37 @@
+# karasu-nest: a Worker deployed independently of the Pages app.
+#
+# ADR-1990 decision 5. The root `wrangler.toml` describes the Pages project
+# (`pages_build_output_dir = "packages/app/dist"`) and must stay untouched by
+# this service: sharing a deploy would put this Worker's secrets and KV
+# namespace in the same blast radius as the static app, and would make the two
+# impossible to roll back separately.
+#
+# Deployed by `.github/workflows/nest-deploy.yml`, which runs wrangler from
+# this directory so the root config is not picked up.
+
+name = "karasu-nest"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+# The generated-`.krs` cache and the `owner/repo` directory share one
+# namespace; they are separated by key prefix (`krs/v1/` and `idx/v1/`) rather
+# than by binding, because a purge has to see both.
+#
+# `id` is filled in per account by `wrangler kv namespace create KRS_CACHE`.
+# It is a namespace identifier, not a credential.
+[[kv_namespaces]]
+binding = "KRS_CACHE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Secrets are NOT declared here. `wrangler secret put` sets them on the
+# deployed Worker, so they never enter the repository:
+#
+#   wrangler secret put GITHUB_APP_ID           # 1992
+#   wrangler secret put GITHUB_APP_PRIVATE_KEY  # 1992
+#   wrangler secret put GITHUB_WEBHOOK_SECRET   # 2286
+#
+# `GET /healthz` reports which of these the running deploy actually has, as
+# booleans, so a deploy missing one is diagnosable without reading them back.

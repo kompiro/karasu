@@ -44,7 +44,7 @@ export class InvalidRefError extends Error {
  * handed — a purge that silently leaves data behind is worse than one that
  * fails loudly.
  */
-function normaliseSegment(value: string, field: string): string {
+export function normaliseName(value: string, field: string): string {
   const trimmed = value.trim();
   if (trimmed.length === 0) throw new InvalidRefError(`${field} must not be empty`);
   // `/` would forge a key boundary and let one repo's entry land inside
@@ -84,7 +84,7 @@ export function installationPrefix(installationId: number | string): string {
 
 /** The prefix covering every SHA cached for one repo under one installation. */
 export function repoPrefix(ref: RepoRef): string {
-  return `${installationPrefix(ref.installationId)}${normaliseSegment(ref.owner, "owner")}/${normaliseSegment(
+  return `${installationPrefix(ref.installationId)}${normaliseName(ref.owner, "owner")}/${normaliseName(
     ref.repo,
     "repo",
   )}/`;
