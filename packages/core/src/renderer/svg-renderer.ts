@@ -35,7 +35,7 @@ import type { Diagnostic, LegendBlock, LegendViewScope } from "../types/ast.js";
 import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
-import { FACET_DIM_OPACITY } from "./facet-overlay.js";
+import { FACET_DIM_OPACITY, type FacetOverlay } from "./facet-overlay.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -211,6 +211,18 @@ export interface RenderOptions {
    * that degrades at several levels of one bundle is stated once.
    */
   diagnosticSink?: Diagnostic[];
+  /**
+   * Resolved facet overlay (#2174). Absent means the overlay is off, and the
+   * renderer then emits nothing extra — that absence is what keeps
+   * "no facet selected ⇒ byte-identical output" true.
+   */
+  facetOverlay?: FacetOverlay;
+  /**
+   * Localized heading for the overlay's legend block. Core keeps an English
+   * default, the way `emptyLabels` / `annotationBadgeLabels` do — the renderer
+   * never reaches for a translation table.
+   */
+  facetLegendTitle?: string;
 }
 
 /**
@@ -261,6 +273,11 @@ export function render(
     // Diff state reaches the layout so a removed node cannot be claimed by a
     // band-less boundary (#2176); it must stay in the frame ADR-1886 returns it to.
     nodeDiffState: options?.nodeDiffState,
+    // Layout needs the membership only to re-derive it onto collapse stubs; it
+    // never influences placement, which is what keeps the overlay orthogonal to
+    // the Group-by axis (#2174).
+    facetMembership: options?.facetOverlay?.membership,
+    facetOrder: options?.facetOverlay?.entries.map((e) => e.id),
   });
   const sink = options?.diagnosticSink;
   if (sink) {
@@ -409,6 +426,21 @@ export function renderFromLayout(
   // `layout` folds their diff state onto the stub key, so overlay it here so the
   // stub edge keeps its `data-diff-state` (#1886). Stub keys use the reserved
   // `__group_collapsed_*__` prefix, so they never collide with real edge keys.
+  // Same shape as the diff-state merge below: a collapse stub is keyed by the
+  // stub id, which the pre-collapse membership cannot match, so the folded map
+  // overlays it (#2174 / TPL-1886).
+  const overlay = options?.facetOverlay;
+  const facetMembership: ReadonlyMap<string, readonly string[]> | undefined = overlay
+    ? layoutResult.foldedFacetMembership
+      ? new Map<string, readonly string[]>([
+          ...overlay.membership,
+          ...layoutResult.foldedFacetMembership,
+        ])
+      : overlay.membership
+    : undefined;
+  const facetsFor = (nodeId: string, layoutId: string): readonly string[] =>
+    facetMembership?.get(nodeId) ?? facetMembership?.get(layoutId) ?? [];
+
   const effectiveEdgeDiffState = layoutResult.foldedEdgeDiffState
     ? new Map<string, string>([
         ...(options?.edgeDiffState ?? new Map<string, string>()),
@@ -460,6 +492,13 @@ export function renderFromLayout(
     edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     const diffState = effectiveEdgeDiffState?.get(edgeKey);
+    // Dim only when *both* endpoints are outside the selection. Where the
+    // highlighted set touches the rest of the model is the main thing an overlay
+    // is read for, so an edge with one member endpoint stays at full strength.
+    const edgeDimmed =
+      overlay !== undefined &&
+      facetsFor(edgeLayout.from, edgeLayout.from).length === 0 &&
+      facetsFor(edgeLayout.to, edgeLayout.to).length === 0;
     const rendered = renderEdge(
       edgeLayout,
       edgeStyle,
@@ -469,12 +508,13 @@ export function renderFromLayout(
       labelPlacements.get(edgeIndex),
     );
     edgeIndex++;
+    const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;
     const isDimmedGhost =
       edgeLayout.ghost && (diffState === undefined || diffState === "unchanged");
     if (isDimmedGhost) {
-      ghostEdgeParts.push(rendered);
+      ghostEdgeParts.push(withDim);
     } else {
-      normalEdgeParts.push(rendered);
+      normalEdgeParts.push(withDim);
     }
   }
   if (ghostEdgeParts.length > 0) {
@@ -520,7 +560,13 @@ export function renderFromLayout(
       options?.nodeDiffState?.get(layoutNode.id) ??
       options?.nodeDiffState?.get(nodeId);
     const rendered = layoutNode.tags?.includes(CATEGORY_STUB_TAG)
-      ? renderCategoryStub(layoutNode, palette)
+      ? renderCategoryStub(
+          layoutNode,
+          palette,
+          facetsFor(nodeId, layoutNode.id),
+          overlay !== undefined,
+          overlay?.colorOf,
+        )
       : renderNode(
           layoutNode,
           nodeStyle,
@@ -531,6 +577,9 @@ export function renderFromLayout(
           childLevelLinks,
           diffState,
           diffMeta,
+          facetsFor(nodeId, layoutNode.id),
+          overlay !== undefined,
+          overlay?.colorOf,
         );
     const isDimmedGhost =
       layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
@@ -569,14 +618,28 @@ export function renderFromLayout(
   // The footer's height extends the outer viewBox; positioning is handled
   // via a translate at y=height of the diagram body.
   let totalHeight = height;
-  if (options?.legends && options?.legends.length > 0 && options?.viewScope) {
+  // The overlay contributes its own colour key, so the band is drawn whenever
+  // *either* an authored legend applies or facets are selected — a reader
+  // looking at coloured rings must be able to find out what they mean, even in a
+  // model that declares no `legend` at all (#2174).
+  const facetLegendBlock =
+    overlay && overlay.entries.length > 0
+      ? {
+          title: options?.facetLegendTitle ?? "Facets",
+          rows: overlay.entries.map((e) => ({ color: e.color, label: e.label })),
+        }
+      : undefined;
+  const hasAuthoredLegend =
+    !!options?.legends && options.legends.length > 0 && !!options?.viewScope;
+  if (hasAuthoredLegend || facetLegendBlock) {
     const footer = buildLegendFooter(
-      options.legends,
-      options.viewScope,
-      options.styleSheets ?? [],
+      options?.legends ?? [],
+      options?.viewScope ?? "system",
+      options?.styleSheets ?? [],
       width,
       palette,
-      options.legendUsage,
+      options?.legendUsage,
+      facetLegendBlock,
     );
     if (footer) {
       parts.push(el("g", { transform: `translate(0,${height})` }, footer.svg));
@@ -702,19 +765,35 @@ function renderCrossingMarks(
  * stub node's laid-out box. Carries `data-collapse-category` so the app's click
  * delegation expands the category (toggling it out of `collapsedCategories`).
  */
-function renderCategoryStub(node: LayoutNode, palette: DiagramPalette): string {
+function renderCategoryStub(
+  node: LayoutNode,
+  palette: DiagramPalette,
+  /**
+   * Facets folded onto this stub (#2174). A collapsed category that hides
+   * members of a selected facet still has to say so, or collapsing reads as
+   * "nothing here belongs" (TPL-1886).
+   */
+  facets: readonly string[] = [],
+  overlayOn = false,
+  facetColorOf?: ReadonlyMap<string, string>,
+): string {
   const cat = categoryOf(node) ?? "";
   const cx = node.x + 18;
   const cy = node.y + node.height / 2;
+  const rings =
+    facets.length > 0 && facetColorOf ? renderFacetRings(node, facets, facetColorOf) : [];
   return el(
     "g",
     {
       class: "krs-category-stub",
       "data-node-id": escapeXml(node.id),
       "data-collapse-category": cat,
+      "data-facet-member": facets.length > 0 ? facets.join(" ") : undefined,
       role: "button",
       tabindex: "0",
+      opacity: overlayOn && facets.length === 0 ? FACET_DIM_OPACITY : undefined,
     },
+    ...rings,
     el("rect", {
       x: node.x,
       y: node.y,

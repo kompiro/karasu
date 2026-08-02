@@ -159,21 +159,3 @@ export function foldFacetMembership(
   if (accum.size === 0) return undefined;
   return new Map([...accum].map(([stubId, ids]) => [stubId, order.filter((id) => ids.has(id))]));
 }
-
-/**
- * Facets the given element belongs to, in known-facet order.
- *
- * `layoutId` is the fallback for layout forms that do not equal the model id
- * (deploy's `container::unit`), matching how diff decoration looks itself up
- * (TPL-1666).
- */
-export function facetsOf(
-  overlay: FacetOverlay | undefined,
-  nodeId: string,
-  layoutId?: string,
-): string[] {
-  if (!overlay) return [];
-  return (
-    overlay.membership.get(nodeId) ?? (layoutId ? (overlay.membership.get(layoutId) ?? []) : [])
-  );
-}
