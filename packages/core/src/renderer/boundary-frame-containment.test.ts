@@ -6,7 +6,7 @@ import { declaredGroupOrderOf } from "./group-labels.js";
 import type { LayoutResult } from "./layout-types.js";
 
 // A boundary frame must never enclose a card that is not its member — 縮退規則 4
-// ("偽の包含は作らない") of docs/design/boundary-membership-1n.md.
+// ("偽の包含は作らない") of ADR-2161 (docs/adr/2161-boundary-membership-1n.md).
 //
 // Since #2179 a frame is widened toward a member placed in another band, and a
 // reach decided by *band adjacency* walks straight through the rows in between.

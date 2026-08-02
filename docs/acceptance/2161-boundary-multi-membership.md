@@ -4,7 +4,7 @@
 - **Issue**: #2161（親） / slice A #2178 / slice B #2179 / slice C #2180 / 配置 #2176
 - **PR**: slice A #2213 / 配置 #2176 / slice B #2248 / slice C（この PR）
 - **関連 ADR**: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（決定 2 の refine 対象 — 1:1 + first-wins）、[ADR-2036](../adr/2036-scoped-boundary-declaration.md)（スコープ宣言 — scoped が勝つ）、[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff backfill）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（experimental 据え置き）
-- **設計**: `docs/design/boundary-membership-1n.md`（全体）、`docs/design/boundary-membership-slice-a.md`（slice A）
+- **ADR**: [ADR-2161](../adr/2161-boundary-membership-1n.md)（設計 doc から昇格）
 - **Related TPLs**:
   - [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（宣言された多重所属を派生 index で捨てない）
   - [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)（派生 state の二重持ち）
