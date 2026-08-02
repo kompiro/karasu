@@ -467,6 +467,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-1799](TPL-1799-raster-pipeline-glyph-coverage.md) | 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする（PNG の絵文字フォント等） | renderer | #1799 |
 | [TPL-1827](TPL-1827-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |
 | [TPL-1842](TPL-1842-restore-state-survive-later-reset.md) | URL/共有から復元する state は、後発の seed reset を越えて再適用する | navigation | #1842 |
+| [TPL-2249](TPL-2249-resolution-stays-deterministic.md) | 解決（resolution）に生成・パーソナライズを混ぜない — URL が内容を決める性質を壊さず、生成は別資源として mint する | navigation | #2249 |
 | [TPL-1829](TPL-1829-adr-permalink-records-source.md) | ADR permalink は record ではなく pointer — in-repo `.krs` source を必須で記録する | adr-tooling | #1829 |
 | [TPL-1882](TPL-1882-entity-carries-no-attributes.md) | `entity` は名前・関連・物理対応のみを受け付け、属性（カラム・型・主キー）を持たせない | parser | #1870 |
 | [TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-1858, #1859 |
