@@ -425,7 +425,7 @@ export interface OrganizationBlock {
 // （node id → 宣言されたすべての boundary id、1:N）を成す。team（`ownerIndex`）
 // と直交する第二の Group-by 軸になる。experimental notation（ADR-1820）。
 // 設計: docs/design/system-view-grouping.md「P2b 詳細設計」、
-// docs/design/boundary-membership-slice-a.md（1:N 化、#2178）。
+// docs/adr/2161-boundary-membership-1n.md（1:N 化、#2178）。
 export interface BoundaryBlock {
   kind: "boundary";
   id: string;

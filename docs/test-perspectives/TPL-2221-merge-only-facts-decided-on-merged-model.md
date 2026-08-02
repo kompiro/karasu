@@ -75,4 +75,4 @@ scope:
 ## 派生元 spec
 
 - `docs/spec/diagnostics.md` — 診断コードの一覧。ここに載る診断のうち「複数宣言を突き合わせて成立する事実」を述べるものが本観点の対象。
-- 設計: `docs/design/boundary-membership-1n.md`（#2161 slice A で cross-file 多重所属が到達可能になった経緯）。
+- 決定: [ADR-2161](../adr/2161-boundary-membership-1n.md)（#2161 slice A で cross-file 多重所属が到達可能になった経緯）。
