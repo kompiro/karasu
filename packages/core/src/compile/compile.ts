@@ -466,6 +466,9 @@ function _compileFromPreparedInput(
     groupLabels: buildGroupLabelIndex(krsFile, groupBy),
     teamLabels,
     collapsedGroups,
+    // A membership the banded view could not frame is only knowable after
+    // layout, so `render` reports it here rather than the parser (#2179).
+    diagnosticSink: diagnostics,
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,

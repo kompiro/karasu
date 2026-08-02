@@ -416,6 +416,8 @@ export const en: Translations = {
     `"${nodeId}" is owned by more than one team; "${existingTeam}" is kept as its primary owner`,
   "diagnostic.duplicateBoundaryAssignment.message": ({ nodeId, existingBoundary }) =>
     `"${nodeId}" belongs to more than one boundary (including "${existingBoundary}")`,
+  "diagnostic.boundaryMembershipNotDrawn.message": ({ nodeId, boundaryId }) =>
+    `The "${boundaryId}" frame does not reach "${nodeId}" in this view; the membership is marked on the card`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"${memberId}" referenced in "contains" was not found in the system hierarchy`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>

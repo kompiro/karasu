@@ -899,6 +899,19 @@ export interface DiagnosticParamsByCode {
   "circular-style-import": { filePath: string };
   "style-file-not-found": { filePath: string };
 
+  // ── Renderer: what a view resolved ──────────────────────────────────────
+  // Stated by the laid-out view, not by the parser, and so carries no `loc`:
+  // whether a membership can be drawn depends on where the cards landed, which
+  // only exists after layout. Emitted per render, and only under
+  // `groupBy: "boundary"` — the other axes draw no boundary frames.
+  //
+  // Distinct from `duplicate-boundary-assignment` on purpose (TPL-1386): that
+  // one states a fact about the *model* ("this node is in two boundaries"),
+  // this one states a fact about *this drawing* ("that frame could not reach
+  // it, so it is on the card as a tab"). Folding them together would make the
+  // model diagnostic change with the viewport.
+  "boundary-membership-not-drawn": { nodeId: string; boundaryId: string };
+
   // ── App-level synthetic diagnostics ─────────────────────────────────────
   // Constructed by the app when compile() throws, to surface a generic
   // error in the diagnostic banner without pulling in exception details.
