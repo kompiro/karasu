@@ -1263,12 +1263,19 @@ Under either *Group by* axis the group frame is titled with the group's declared
 > a v1.0-stable construct is gated on real-usage evidence (the notation
 > promotion gate, [ADR-1820](../adr/1820-notation-promotion-gate.md)).
 >
-> **This slice has no visual effect yet.** Facet membership is parsed, indexed,
-> merged across files, and validated, but nothing on the diagram changes: the
-> overlay that highlights a facet's members, the `.krs.style` facet selectors,
-> and the derived "everything in facet X" overview arrive in the follow-up
-> slices of [#2160](https://github.com/kompiro/karasu/issues/2160). What a
-> declaration buys you today is the reference check below.
+> **Membership is shown by the overlay, which the reader turns on.** Pick facets
+> in the preview's *Facets* selector: members get a coloured ring, everything
+> else dims, and the legend gains a colour key. Several facets can be on at once,
+> and an element in more than one gets one ring per facet. The overlay is
+> **orthogonal to Group by** — team or boundary banding stays readable at the
+> same time — and it survives drill-down, collapse and SVG export.
+>
+> **The selection lives in the viewer, not in the model.** Nothing about which
+> facets are highlighted is written to `.krs`; a `.krs` file renders identically
+> for every reader until one of them selects something. Styling a facet from a
+> sheet (`.krs.style` facet selectors) and the derived "everything in facet X"
+> overview arrive in the follow-up slices of
+> [#2160](https://github.com/kompiro/karasu/issues/2160).
 
 A `facet` declares a set that is defined **outside** the architecture — by a
 regulation, a policy, or an audit scope — and that elements belong to. A
@@ -1361,9 +1368,7 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 - `duplicate-facet-id` (error) — two `facet` blocks declare the same id, in one file or across merged files. The first declaration is the one references resolve to.
 - `positional-label-removed` (error) — a positional label after the facet id (`facet pii "Personal data"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md)).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; until the overlay slice lands, the effect of a `facet` declaration is the reference check above, and this section states the interim explicitly rather than leaving the construct silently inert. [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere. [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword.
-
----
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; the overlay above is that effect. [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — the overlay is opt-in, so it must emit nothing at all when no facet is selected. [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere. [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword.
 
 ## Diagram legend
 

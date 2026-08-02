@@ -119,6 +119,15 @@ The preview toolbar offers:
 - **Group by** (System view, when the model has an `organization` block) —
   choose **Team** to wrap each owning team's services in a collapsible boundary
   frame. Each frame has a ⊖/⊕ toggle.
+- **Facets** (System view, when the model declares or references a `facet`) —
+  pick one or more facets to highlight. Members get a coloured ring, everything
+  else dims, and the legend gains a colour key. The menu stays open so you can
+  pick several. An element in more than one selected facet gets one ring per
+  facet, always in the same order, so two cards can be compared at a glance.
+  The overlay is **orthogonal to Group by** — team or boundary banding stays
+  readable at the same time — and it survives drill-down, collapse and export.
+  The selection lives in the viewer: nothing is written to your `.krs`, and
+  clearing it returns the diagram to exactly its unmodified appearance.
 - **Collapse all / Expand all** (System view) — whenever the view has anything
   collapsible — team boundary frames **or** the external / infra layer bands —
   this button folds or unfolds all of them at once, reaching the compact overview
