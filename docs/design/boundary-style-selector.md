@@ -65,6 +65,21 @@ Org tree view の節が前例。「Supported properties」の表を出し、効�
 
 `WarningKind` に「どのノードにもマッチしなかったセレクタ」に相当するものは無い（`style-conflict` は別概念）。したがって今日 `boundary { ... }` と書くと、**parse は通り、何にもマッチせず、警告も出ない**。TPL-1503 が禁じる「受理・無効果」に隣接した状態が既にある。
 
+### 現在の parse 結果（実測）
+
+`kind#id` の綴りが今どう解釈されるかを `StyleParser.parse` で確認した。`#` を消費する分岐は `edge` にしか無いので、それ以外の kind に `#` を付けると **parse error になる**。
+
+| 入力 | 現在の結果 |
+| --- | --- |
+| `#Platform` | `id = Platform`、specificity 100。org tree view の team カードに当たる |
+| `team` | `nodeType = team`、specificity 1。org tree view の team カード全部 |
+| `team#Platform` | **parse error**（`style-token-type-mismatch` / `expected-style-property-name`） |
+| `boundary` | `nodeType = boundary`、specificity 1。何にもマッチしない |
+| `boundary#pci` | **parse error**（同上） |
+| `edge#foo` | `nodeType = edge` + `edgeId = foo`、specificity 101 |
+
+`boundary#pci` も `team#Platform` も現在は書けないので、**どちらを定義しても後方互換の問題は無い**。制約は互換性ではなく意味論の側にある（次節）。
+
 ## 制約・前提
 
 - **`boundary` は experimental**（[ADR-1820](../adr/1820-notation-promotion-gate.md)）。本件は昇格ではない。
@@ -146,6 +161,28 @@ boundary#pci        { border-color: #c0392b; } /* 特定の boundary */
 
 破っている慣習は無い。唯一の新規性は `.krs` 側の宣言（`boundary` ブロック）が `.krs.style` から名指しされる初めてのケースだが、これは `#NodeId` が `.krs` のノード宣言を名指しているのと同じ関係である。
 
+### team フレームを同じ回で扱わない理由
+
+system view の Group by: team も `__group_<team>__` というフレームを出すので、機構としては同じものが使える。実装コストだけを見れば同じ回で入る。それでも本 Design Doc では扱わず follow-up にする。理由は工数ではなく、**`team` は `boundary` と違って既に style の語彙であり、綴りに競合する自然な読みが存在する**ため。
+
+| | `boundary` | `team` |
+| --- | --- | --- |
+| その kind のノードは存在するか | しない。boundary はノードではない | **する**。org tree view で team はカード（ノード）である |
+| 裸の `#id` が今指すもの | 何も指さない | **org tree の team カード**（specificity 100） |
+| `kind#id` の CSS 的に自然な読み | 「edge のうち id が foo」= `edge#foo` と同型。曖昧さ無し | 「kind team かつ id Platform」= 複合セレクタ。つまり `#Platform` の**より具体的な言い換え**であり、指す先はカード |
+
+`boundary#pci` は `edge#foo` と同じく「他に読みようが無いので `#` で id 空間を分ける」形だが、`team#Platform` は素直に読むと**カードを指す複合セレクタ**になる。ここにフレームという別のレンダリングを割り当てると、`#Platform`（カード）と `team#Platform`（フレーム）が同じ team の別の見た目を指す非対称が生まれ、CSS の直感（複合セレクタは対象を絞るのであって別の対象に移らない）と衝突する。
+
+回避するには次のどれかを決める必要があり、いずれも本件より広い議論になる。
+
+- カードとフレームを 1 つのスタイルとして扱う（`#Platform` が両方に効く）。単純だが、塗りつぶしのカードと囲みのフレームで `background-color` の意味が大きく違う。
+- フレームを指す別の言い方を導入する（疑似要素相当の `::frame` など）。文法機構が増える。
+- team 側だけ別キーワードを充てる。語彙が増える。
+
+`boundary` にはこの分岐が無く、`edge` の前例をなぞるだけで済む。**綴りの決定が要る面と要らない面を 1 つの PR に混ぜると、決まっている方まで止まる**ので分ける。
+
+follow-up 側が再設計にならないことは確認済み。`ResolvedStyles` は対象ごとに別マップという既存の型なので、team が来たときも `nodes` / `edges` / `boundaries` と並べて 1 本足すだけで、`boundaries` の構造を変える必要は無い。逆に今から「軸に依存しない group frame マップ」を用意して抽象化しておくことはしない。team の綴りが決まっていない以上、キーの形（group id だけで足りるのか、軸との組が要るのか）も決まらないためで、使われ方が決まる前の一般化は避ける。
+
 ### 効くプロパティ
 
 `ResolvedNodeStyle` のうちフレームに意味があるものだけを開ける。
@@ -193,5 +230,5 @@ PoC で発見。`svg-renderer.ts` は hue を 2 箇所で読んでいる。フ�
 ## 未解決の問い / 決めないこと
 
 - **scoped boundary をどう指すか**。[ADR-2036](../adr/2036-scoped-boundary-declaration.md) で boundary の identity は（宣言スコープ, id）であり、同名の boundary が別スコープに存在しうる。`boundary#pci` は top-level の `pci` を指すのか、全スコープの `pci` を指すのか。実装時に、まず**全スコープの同 id にマッチする**（スコープ修飾を持たない = 修飾を問わない、という素直な読み）で入れ、スコープ限定が必要になったら修飾構文を後から足す方針を提案する。TPL-1352 の系なので、決めた解釈は spec に明記する。
-- **team フレームの色指定**。同じ機構で `team#platform` も作れるが、team 軸は #2179 が単色のままと決めた面であり、要求も出ていない。本件では扱わない。
+- **team フレームの色指定**。要求はある（#2234 のレビューで挙がった）が、`team#Platform` の綴りに競合する読みがあるため follow-up にする。判断の根拠と、follow-up が再設計にならない理由は上記「team フレームを同じ回で扱わない理由」に書いた。本 Design Doc がマージされたら Issue を起票する。なお #2179 が team フレームを単色のままと決めたのは**固定サイクルの hue を配らない**という話であって、著者による上書きを禁じたものではない。team フレームは重ならない（1:1 の軸）ので、上書きを許しても多重包含の可読性の問題は発生しない。
 - **legend の drift**。上述のとおり `swatch` 全般の性質として残す。
