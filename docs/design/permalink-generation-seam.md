@@ -28,6 +28,53 @@ ADR-1990 は「GitHub App で任意の repo を読み、server-side で AI rever
 
 この 2 つを固定すると、`.krs` が無い miss で permalink 面がすべきことは 1 つに絞られる — **karasu-nest（および今日すでにあるローカル reverse 手順）へ案内すること**である。生成も、受付も、待ちも、通知も持たない。
 
+## 役割分担 — どこまでが karasu 本体で、どこからが karasu-nest か
+
+面が 2 つあるのは実装都合ではない。**扱える規模が違う**からである。
+
+### karasu 本体の permalink: 手が届く規模を、インフラなしで共有する
+
+permalink（inline `#s=` / `/s?s=` / repo-backed `/r/`）の強みは、**サービスを何も持たずに成立する**ことにある — 認証なし、state なし、コストなし、ステートレス。ADR に貼れる pointer（ADR-1829）として機能するのも、この軽さゆえである。
+
+その代償として**規模の天井が実在する**。payload は URL に載るので、`MAX_UNFURL_PAYLOAD = 8000`（encoded 文字数）という明示的な上限がコード側にある（`packages/app/src/utils/inline-share.ts`）。Cloudflare の ~16 KB URL 上限と crawler 側の制限に対する余裕を見た値である。
+
+実測（本 repo の examples を `encodeShare` にかけたもの。複数ファイルのディレクトリは、resolver が import を平坦化した後の payload に相当する）:
+
+| モデル | raw `.krs` | encoded | 上限比 |
+| --- | --- | --- | --- |
+| `examples/en/getting-started`（1 ファイル） | 4.9 KB | 2,123 | 27% |
+| `examples/en/multi-file-system`（5 ファイル） | 7.0 KB | 3,247 | 41% |
+| `examples/en/ec-platform`（15 ファイル） | 14.6 KB | 4,582 | **57%** |
+| `examples/en/feature-samples`（19 ファイル） | 27.5 KB | 12,402 | **155%（超過）** |
+
+圧縮率はおおむね 0.53 なので、**天井は flattened `.krs` でおよそ 15 KB** に相当する。ADR-1783 が実測した「実 repo を reverse した `.krs`」が encoded ~5k（上限の 63%）だったことと合わせると、**現実的な reverse 出力はすでに天井の半分以上を使っている**。その 1.5〜2 倍の規模で線を越える。
+
+> 補足: 今日 repo に入っている examples は、**単体 URL では天井に届かない**。上表の超過分はディレクトリ全体を連結した集計値で、`feature-samples` の `index.krs` は他ファイルを import していないため 1 つの payload にはならない。天井の位置を示す数値であって、既存 URL が壊れているという意味ではない。
+
+規模の壁は payload だけではない:
+
+- **可読性** — 大きな図はそもそも人が読めない（[#1817](https://github.com/kompiro/karasu/issues/1817) comprehension epic が扱う別の壁）。
+- **多ファイル解決** — repo-backed resolver は import ごとに GitHub raw を叩き、directory listing は v1 では持たない（ADR-1828）。ファイル数に比例してレイテンシが伸びる。
+- **そもそも手で書けない** — 大規模 repo の `.krs` を人が書き起こすのは非現実的。これが reverse が要る理由そのものである。
+
+### karasu-nest: その先を引き受けるサービス
+
+karasu-nest（= GitHub App）は、permalink が届かない側を担当する。**AI reverse で `.krs` を起こし**、生成・state・認証・推論コストを引き受ける。ADR-1990 がサービス・secret・quota を導入したのは、この規模帯に踏み込むための代償である。
+
+| | karasu 本体の permalink | karasu-nest |
+| --- | --- | --- |
+| 想定規模 | 人が書ける / repo に commit されている `.krs`（flattened で〜15 KB 目安） | 実在の大規模 repo（手では書けない規模） |
+| `.krs` の出どころ | 既にある（人が書いた / reverse 済みで commit された） | **その場で生成する** |
+| 持つもの | 何も持たない（認証・state・コストなし） | App 認証・KV/D1・LLM キー・推論コスト |
+| 強み | 軽さ。ADR に貼れる恒久 pointer | 規模。ゼロ設定で実 repo が図になる |
+| 制約 | URL 長・可読性・手で書ける範囲 | コスト・レイテンシ（12〜19 分）・data-trust |
+
+**この分担が、本 doc の seam の理由そのものである。** permalink 面に生成を持ち込まないのは責務分割の美学ではなく、**軽さこそが permalink の価値だから**である。生成（コスト・state・認証・待ち時間）を載せた瞬間、permalink は「サービスを持たずに成立する」という強みを失う。逆に karasu-nest がそれらを持つのは、規模の壁を越えるために避けられない対価である。
+
+そして 2 つは対立しない — **karasu-nest の出力が repo に commit されれば、それは permalink が扱える形になる**（後述「2 つの面はどこで合流するのか」）。nest は permalink の代替ではなく、**permalink に載る `.krs` を用意する上流**である。
+
+> **見つかった不足**: `resolveRepoPermalink` は `encodeShare` の結果を `MAX_UNFURL_PAYLOAD` と照合していない（`packages/app/src/render/repo-permalink.ts`）。クライアントの Share ボタン（`buildShareUrls`）は上限超過時に unfurl URL を諦めて fragment 形に degrade するが、**repo-backed route は上限を超えた payload でもそのまま `/s?s=` へ 302 する**。大きなモデルを指す `/r/` URL は、crawler 側の制限と Cloudflare の URL 上限のどちらかで破綻する。本 doc の範囲外なので [#2259](https://github.com/kompiro/karasu/issues/2259) に切り出した。
+
 ## 現状（インベントリ）
 
 | | permalink 面（今日動いている） | karasu-nest = GitHub App（未実装） |
