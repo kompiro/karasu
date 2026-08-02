@@ -157,13 +157,23 @@ ref 省略を許す（= `@` を判別子に使えない）以上、guard は「�
 
 **案5 の deterministic-negative fallthrough は、生成が拾うべきケースをちょうど飲み込む。** ref 省略の `…/<owner>/<repo>` が 404 になるのは「その repo にはまだ `.krs` が無い」ときで、ADR-1990 の世界ではそれは失敗ではなく**生成のトリガ**である。本 doc の推奨をそのまま実装すると、その入口が黙って SPA に化ける。
 
-この境界は本 doc の範囲を超えるため、[#2249](https://github.com/kompiro/karasu/issues/2249) に切り出して `docs/design/permalink-generation-seam.md`（[PR #2251](https://github.com/kompiro/karasu/pull/2251)）で決める。決めるべきは次の 3 点で、いずれも #1961 単独では決められない:
+この境界は本 doc の範囲を超えるため、[#2249](https://github.com/kompiro/karasu/issues/2249) に切り出して `docs/design/permalink-generation-seam.md`（[PR #2251](https://github.com/kompiro/karasu/pull/2251)）で決めた。当初そこで問うたのは次の 3 点だった:
 
 1. **ホスト**: `karasu.kompiro.dev/<owner>/<repo>` を最終的に持つのは Pages app と nest サービスのどちらか。ADR-1990 decision 5 は secret / state / webhook を Pages app に同居させないと決めているので、生成を伴う面は別サービスに置かれる。両者が同じ hostname を分け合うのか、サービスを別 hostname に置くのかは未決。
 2. **miss 時の振る舞い**: SPA へ差し戻す（案5）／生成を提案する UI を返す／生成を起動する、のいずれか。生成起動は同期では成立しない — spike 実測で **85 ファイルの最小 repo でも 12〜19 分**（ADR-1990 未決事項）であり、302 の裏に隠せる時間ではない。非同期 job + 進捗ページという別の設計面が要る。
 3. **ゼロ設定 vs リクエスト駆動**: ADR-1990 の売りは「App を入れる → 図が出る」ゼロ設定である。「利用者のリクエスト文（どの観点で見たいか）を入力に取る生成」は decision 4 の agentic reverse とは別の入力モードで、ADR-1990 には無い。
 
-**本 doc の推奨（案5）は、この境界が決まるまでの Pages app 面の振る舞いとしては整合する** — 生成が別サービスに載るなら Pages app の miss は SPA で正しい。だが「同じ URL で生成まで通す」なら #1961 の実装は待つべきで、その場合の正しい順序は #2227 → #1961 である。**この依存関係は #1961 に status を付ける前に決着させる必要がある。**
+### #2249 の結論（2026-08-02）— #1961 は unblock された
+
+役割を言い切ることで解けた: **#1961 / ADR-1828 は「repo に `.krs` が存在する前提のレンダリング機能」であり、生成は一切持たない。** karasu-nest とは GitHub App そのもので、読む・reverse する・生成するはすべてそちらの責務である。
+
+したがって 3 点の答えは:
+
+1. **ホスト**: permalink 面が `/<owner>/<repo>` を持ち、**生成面とは実行時に結合しない**（service binding も zone route も使わない）。2 つの面が合流するのは repo — karasu-nest が生成 `.krs` を PR し、merge されれば committed `.krs` として本 doc の resolver がそのまま解決する。
+2. **miss 時の振る舞い**: **案内ページ**（karasu-nest への導線 + 既存の BYO reverse 手順 `docs/guide/reverse-engineering-with-ai.md`）。生成も受付も待ちも持たない。
+3. **リクエスト駆動**: karasu-nest 側の設計課題であり、permalink 面には関わらない。
+
+**#1961 に残る変更は 1 つだけ**: 案5 の deterministic-negative fallthrough の行き先を、SPA ではなく**案内ページ**にする。これは自己完結した変更で、karasu-nest の設計にも #2227 にも依存しない。**着手を待つ必要はない。**
 
 ## 検討した選択肢
 
@@ -273,7 +283,8 @@ ref 省略を第一級にすると `@` を判別子に使えず、guard は形�
    - `looksLikeBarePermalink()`: 2 セグメント以上 / owner・repo が `repo-permalink.ts` の `OWNER_RE`・`REPO_RE` に一致 / 先頭セグメントが予約リストに無い。**`@` の有無は問わない。**
    - 非該当・非 GET は `context.next()` で差し戻す。
    - 該当時は `resolveRepoPermalink()` に渡す。`status === 200` なら 302。
-   - **`(status === 400 || status === 404) && !pathname.includes("@")` なら `context.next()`** で SPA へ差し戻す。502 / 500 は差し戻さずそのまま返す（結果 4）。
+   - **`(status === 400 || status === 404) && !pathname.includes("@")` なら案内ページを返す**（#2249 の結論。`.krs` が無いことを伝え、karasu-nest / BYO reverse 手順へ促す）。502 / 500 はそのまま返す（結果 4）。
+     - **1 セグメントや `.krs` 形でないパス**（`/nope`、`/docs/getting-started/intro` 等）は案内ページではなく従来どおり `context.next()` で SPA へ。案内を出すのは `<owner>/<repo>` 形として解決を試み、確定的に見つからなかったときだけにする。
 2. **302 生成と cache 処理を `functions/r/[[path]].ts` と共有する。** 現行 `/r/` handler の本体を `packages/app/src/render/` 側の関数に切り出し、両 Function を薄い adapter にする。`Cache-Control` の分岐や `boundFetch` の "Illegal invocation" 回避（`functions/r/[[path]].ts` のコメント参照）を二重管理しない。
 3. `packages/app/public/_routes.json` を追加する。`include: ["/*"]`、`exclude` は `/`, `/index.html`, `/assets/*`, `/fonts/*`, root の静的ファイル（`favicon.svg` / `logo.svg` / `karasu-logo-1200w.png`）、`/projects/*`。上限は 100 ルール・各 100 文字。
 4. 予約リストと `_routes.json` の `exclude` を **1 箇所から導出**する。SPA のルート定義（現状 `PROJECT_PATH_RE` が持つ `/projects/`）を単一の出所とし、ルートを足したのに両方へ反映されないと落ちるテストを置く（proactive TPL-1961）。案5 では抜けても 404 にはならないが、抜ければ静かに 200 ms 遅くなるので、機械チェックは残す価値がある。
@@ -300,7 +311,7 @@ ref 省略を第一級にすると `@` を判別子に使えず、guard は形�
 
 ## 未解決の問い / 決めないこと
 
-- **ADR-1990 との URL 名前空間の分担**（最優先・**別 doc に切り出し済み**）: [#2249](https://github.com/kompiro/karasu/issues/2249) / `docs/design/permalink-generation-seam.md`（[PR #2251](https://github.com/kompiro/karasu/pull/2251)）で決める。同 doc の現時点の方針は「Pages Function が service binding で nest Worker に委譲し、miss は SPA ではなく**状態説明ページ**を返す」で、これは**本 doc の案5 の fallthrough 行き先を差し替える**。**#1961 の実装着手は #2249 の合意後**とする。
+- ~~ADR-1990 との URL 名前空間の分担~~ — **解決済み**（[#2249](https://github.com/kompiro/karasu/issues/2249) / [PR #2251](https://github.com/kompiro/karasu/pull/2251)）。permalink 面は生成に関与せず、案5 の fallthrough 行き先だけが SPA → 案内ページに変わる。「ADR-1990 との境界」節を参照。
 - **そもそも払う価値があるか**: 案5 は技術的に安全だが、得られるのは URL の形だけである（ref 省略 = HEAD は `/r/` で既に動く）。`_routes.json` の自前管理・root catch-all・未知 2 セグメントパスのレイテンシと引き換えにするかは、レビューでの判断に委ねる（案3 も妥当な結論）。
 - **`DEFAULT_ENTRIES` を 1 つに絞るか**: ref 省略の 2 セグメント fallthrough は `index.krs` → `karasu.krs` の 2 fetch を払う。`karasu.krs` を落とせば半減するが ADR-1828 の既定を変えることになるため、本 doc では決めない。
 - **karasu repo 自身に root `index.krs` を置くか**: 置けば `karasu.kompiro.dev/kompiro/karasu` が最短のショーケース URL になる（結果 6）。model の置き場所の判断なので別 Issue。
