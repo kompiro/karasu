@@ -105,27 +105,40 @@ jobs:
           BRANCH: ${{ github.event.ref }}
         run: |
           api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/karasu/deployments"
-          per_page=100
-          max_pages=20
+          max_pages=50
+          body=$(mktemp)
 
+          # `per_page` is deliberately not sent: `per_page=100` made this endpoint answer
+          # 400 (#2291). Only `page` is varied, so the page size is whatever Cloudflare
+          # defaults to, and the loop must not assume a size — it stops on an empty page.
+          #
           # A spike branch collects one deployment per push and lives longer than a PR
           # branch, so its older deployments routinely sit past the first page. Reading
           # only page 1 would leave previews alive after the branch is gone.
           page=1
           ids=""
           while [ "$page" -le "$max_pages" ]; do
-            body=$(curl -sS --fail-with-body \
-              "${api}?env=preview&per_page=${per_page}&page=${page}" \
+            # Write to a file rather than capture stdout: on an error status the body is
+            # the only thing that names the offending parameter, and a command
+            # substitution would swallow it before it could be logged (#2291).
+            status=$(curl -sS -o "$body" -w '%{http_code}' \
+              "${api}?env=preview&page=${page}" \
               -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
 
-            found=$(printf '%s' "$body" | jq -r --arg branch "$BRANCH" \
-              '.result[]? | select(.deployment_trigger.metadata.branch == $branch) | .id')
+            if [ "$status" != "200" ]; then
+              echo "::error::Cloudflare deployments API returned HTTP ${status} for page ${page}"
+              cat "$body"
+              exit 1
+            fi
+
+            found=$(jq -r --arg branch "$BRANCH" \
+              '.result[]? | select(.deployment_trigger.metadata.branch == $branch) | .id' "$body")
             if [ -n "$found" ]; then
               ids="${ids}${found}"$'\n'
             fi
 
-            got=$(printf '%s' "$body" | jq -r '.result | length')
-            if [ "$got" -lt "$per_page" ]; then
+            got=$(jq -r '.result | length' "$body")
+            if [ "$got" -eq 0 ]; then
               break
             fi
             page=$((page + 1))
