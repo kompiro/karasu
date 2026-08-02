@@ -157,7 +157,7 @@ ref 省略を許す（= `@` を判別子に使えない）以上、guard は「�
 
 **案5 の deterministic-negative fallthrough は、生成が拾うべきケースをちょうど飲み込む。** ref 省略の `…/<owner>/<repo>` が 404 になるのは「その repo にはまだ `.krs` が無い」ときで、ADR-1990 の世界ではそれは失敗ではなく**生成のトリガ**である。本 doc の推奨をそのまま実装すると、その入口が黙って SPA に化ける。
 
-この境界は本 doc の範囲を超える。決めるべきは次の 3 点で、いずれも #1961 単独では決められない:
+この境界は本 doc の範囲を超えるため、[#2249](https://github.com/kompiro/karasu/issues/2249) に切り出して `docs/design/permalink-generation-seam.md`（[PR #2251](https://github.com/kompiro/karasu/pull/2251)）で決める。決めるべきは次の 3 点で、いずれも #1961 単独では決められない:
 
 1. **ホスト**: `karasu.kompiro.dev/<owner>/<repo>` を最終的に持つのは Pages app と nest サービスのどちらか。ADR-1990 decision 5 は secret / state / webhook を Pages app に同居させないと決めているので、生成を伴う面は別サービスに置かれる。両者が同じ hostname を分け合うのか、サービスを別 hostname に置くのかは未決。
 2. **miss 時の振る舞い**: SPA へ差し戻す（案5）／生成を提案する UI を返す／生成を起動する、のいずれか。生成起動は同期では成立しない — spike 実測で **85 ファイルの最小 repo でも 12〜19 分**（ADR-1990 未決事項）であり、302 の裏に隠せる時間ではない。非同期 job + 進捗ページという別の設計面が要る。
@@ -300,7 +300,7 @@ ref 省略を第一級にすると `@` を判別子に使えず、guard は形�
 
 ## 未解決の問い / 決めないこと
 
-- **ADR-1990 との URL 名前空間の分担**（最優先）: 「ADR-1990 との境界」節の 3 点。**#1961 に着手 status を付ける前に決着させる。** 生成が別 hostname / 別サービスに載るなら本 doc はこのまま進められるが、同じ URL で生成まで通すなら #2227 が先。
+- **ADR-1990 との URL 名前空間の分担**（最優先・**別 doc に切り出し済み**）: [#2249](https://github.com/kompiro/karasu/issues/2249) / `docs/design/permalink-generation-seam.md`（[PR #2251](https://github.com/kompiro/karasu/pull/2251)）で決める。同 doc の現時点の方針は「Pages Function が service binding で nest Worker に委譲し、miss は SPA ではなく**状態説明ページ**を返す」で、これは**本 doc の案5 の fallthrough 行き先を差し替える**。**#1961 の実装着手は #2249 の合意後**とする。
 - **そもそも払う価値があるか**: 案5 は技術的に安全だが、得られるのは URL の形だけである（ref 省略 = HEAD は `/r/` で既に動く）。`_routes.json` の自前管理・root catch-all・未知 2 セグメントパスのレイテンシと引き換えにするかは、レビューでの判断に委ねる（案3 も妥当な結論）。
 - **`DEFAULT_ENTRIES` を 1 つに絞るか**: ref 省略の 2 セグメント fallthrough は `index.krs` → `karasu.krs` の 2 fetch を払う。`karasu.krs` を落とせば半減するが ADR-1828 の既定を変えることになるため、本 doc では決めない。
 - **karasu repo 自身に root `index.krs` を置くか**: 置けば `karasu.kompiro.dev/kompiro/karasu` が最短のショーケース URL になる（結果 6）。model の置き場所の判断なので別 Issue。
