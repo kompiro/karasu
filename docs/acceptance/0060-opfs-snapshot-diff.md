@@ -14,7 +14,7 @@ modal, and the diff banner reflecting snapshot metadata.
 
 ## Prerequisites
 
-- App is running in OPFS / Project mode (`pnpm --filter @karasu-tools/app dev`)
+- The app is open at <https://karasu.kompiro.dev/> in OPFS / Project mode
 - A project exists with an `index.krs` file
 
 ---

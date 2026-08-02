@@ -14,7 +14,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ## Prerequisites
 
 - App running (`npm run dev`)
-- Browser open at `http://localhost:5173`
+- Browser open at <https://karasu.kompiro.dev/>
 - A project is selected (e.g., Getting Started)
 
 ## Test Cases

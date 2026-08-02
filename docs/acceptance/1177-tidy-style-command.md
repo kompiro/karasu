@@ -42,7 +42,7 @@ type: product
 - [x] AT-I: Tidy ボタンを click すると `onTidyStyle` が呼ばれる
   > ✅ Automated — `packages/app/src/components/EditPaneToolbar.test.tsx` › `... clicking Tidy button calls onTidyStyle`
 
-- [ ] AT-J（manual）: App の `pnpm --filter @karasu-tools/app dev` Preview で `.krs.style` を開き、`✨ Tidy` を押す。**サイドバーや preview のリロードを挟まずに** バッファが整形される（軸グループ順で再配置、コメント保持）
+- [ ] AT-J（manual）: 本番 app（https://karasu.kompiro.dev/）で `.krs.style` を開き、`✨ Tidy` を押す。**サイドバーや preview のリロードを挟まずに** バッファが整形される（軸グループ順で再配置、コメント保持）
   > 🧑 Manual — ObservableFileSystemProvider 経由のリロードまで含めて目視確認
 
 - [ ] AT-K（manual）: `.krs` を開いている時、`✨ Tidy` ボタンは現れない（誤誘導しない）

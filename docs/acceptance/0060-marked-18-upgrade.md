@@ -25,7 +25,7 @@ Both paths pass the parsed HTML through DOMPurify before mounting.
 ## Prerequisites
 
 - Checkout of `chore/marked-18` branch (or the replacement PR once opened).
-- App running: `pnpm --filter @karasu-tools/app dev`.
+- The app is open at <https://karasu.kompiro.dev/>.
 - A `.krs` file with rich node descriptions available (see fixtures below).
 
 ---

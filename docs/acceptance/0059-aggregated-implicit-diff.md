@@ -16,7 +16,7 @@ Follow-up to Issue #650 (axis C-2 in
 
 ## Prerequisites
 
-- App is running (`pnpm --filter @karasu-tools/app dev`)
+- The app is open at <https://karasu.kompiro.dev/>
 - A project with two `.krs` files selectable from the diff viewer
 
 ---

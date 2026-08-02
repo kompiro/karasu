@@ -58,4 +58,4 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 
 ## 手動確認
 
-App（`pnpm --filter @karasu-tools/app dev`）で Translate ダイアログを開き、format に "Cloudflare wrangler.toml" を選択、AC-1 のサンプル `wrangler.toml` を貼り付けて translate。system + deploy が出力され、`store` に技術名が入り論理ラベルに漏れないことを目視する。
+本番 app（https://karasu.kompiro.dev/）で Translate ダイアログを開き、format に "Cloudflare wrangler.toml" を選択、AC-1 のサンプル `wrangler.toml` を貼り付けて translate。system + deploy が出力され、`store` に技術名が入り論理ラベルに漏れないことを目視する。

@@ -62,4 +62,4 @@ system view の **external**（`[external]` service）と **infra**（database/q
 ## 検証方法
 
 - 自動: `pnpm --filter @karasu-tools/core test -- category-collapse` / `pnpm --filter @karasu-tools/app exec vitest run src/components/PreviewPane.test.tsx`。
-- 手動: app（`pnpm --filter @karasu-tools/app dev`）で `examples/en/getting-started/index.krs` を開き AC-5 を確認。`/render` 不変は CLI render の出力で確認（AC-4）。
+- 手動: 本番 app（https://karasu.kompiro.dev/）で `examples/en/getting-started/index.krs` を開き AC-5 を確認。`/render` 不変は CLI render の出力で確認（AC-4）。
