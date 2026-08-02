@@ -227,6 +227,26 @@ karasu 側のセッション内で `/workspaces/adr-tools` / `/workspaces/tpl-to
 
 自動化されたケースを `docs/acceptance/*.md` に反映するときは、`/hane:acceptance-test` スキル（plugin: `kompiro/hane`）の「自動化アノテーション」節に従って `> ✅ Automated — ... › ...` 形式の blockquote を箇条書き直下に添える。書式は repo 全体で統一されており、過去の "Verified by" メタ欄や "Automated Checks" 節分割は順次本方式に畳まれる（#916）。
 
+### 手動確認の到達先は本番 URL で書く
+
+AT の `🧑 Manual` 項目は**一度 OK にして終わるものではない**（実機確認は再実行される
+前提で、チェックは常に未チェックのまま置かれる）。そのため到達先には、記録より
+寿命の短い参照を書かない。
+
+| 対象 | 書く URL |
+| --- | --- |
+| app | `https://karasu.kompiro.dev/`（[ADR-1809](adr/1809-app-custom-domain-karasu-kompiro-dev.md)、`deploy.yml` が main への push で更新） |
+| docs-site | `https://kompiro.github.io/karasu/`（`pages.yml` が main への push で更新） |
+
+**ローカル dev サーバの起動コマンドも、ブランチ名入りの Cloudflare preview URL も
+書かない。** 前者は読み手にチェックアウトを要求し、後者は PR がマージされた時点で
+404 になる（実例: `https://fix-legend-human-annotation.karasu.pages.dev` 等 3 件が
+腐ったまま残っていた — [#2254](https://github.com/kompiro/karasu/issues/2254)）。
+PR 内で変更を先に見たいときは preview を使ってよいが、それは PR 本文の Preview URL
+欄の役割であって、AT に残す情報ではない。
+
+観点は [TPL-2254](test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)。
+
 ### AT に埋める `.krs` スニペットの fence 規約
 
 手順に書いた `.krs` は誰も実行しないため、放っておくと文法から静かにズレる（AT-0006 AC-1.2 が現行文法で parse できない状態のまま放置されていた — #2047）。`pnpm at:check-coverage` が `docs/acceptance/*.md` の ` ```krs ` ブロックを実際に parse するので、fence の情報文字列でスニペットの主張を宣言する。
