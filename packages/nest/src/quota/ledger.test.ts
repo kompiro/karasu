@@ -51,16 +51,16 @@ describe("QuotaLedger", () => {
   describe("the in-flight counter", () => {
     it("counts a taken slot and stops counting a released one", async () => {
       const ledger = new QuotaLedger(new MemoryKV());
-      await ledger.takeSlot("run-a", NOW);
+      await ledger.takeSlot("42", "run-a", NOW);
       expect(await ledger.inFlight(NOW)).toBe(1);
-      await ledger.releaseSlot("run-a");
+      await ledger.releaseSlot("42", "run-a");
       expect(await ledger.inFlight(NOW)).toBe(0);
     });
 
     it("is idempotent for the same instance, so a retry takes no second slot", async () => {
       const ledger = new QuotaLedger(new MemoryKV());
-      await ledger.takeSlot("run-a", NOW);
-      await ledger.takeSlot("run-a", NOW);
+      await ledger.takeSlot("42", "run-a", NOW);
+      await ledger.takeSlot("42", "run-a", NOW);
       expect(await ledger.inFlight(NOW)).toBe(1);
     });
 
@@ -68,14 +68,14 @@ describe("QuotaLedger", () => {
       // A run killed by the platform never reaches its `finally`. Without an
       // expiry, one such death wedges the whole deployment.
       const ledger = new QuotaLedger(new MemoryKV());
-      await ledger.takeSlot("abandoned", NOW);
+      await ledger.takeSlot("42", "abandoned", NOW);
       const muchLater = NOW + 2 * 60 * 60 * 1000;
       expect(await ledger.inFlight(muchLater)).toBe(0);
     });
 
     it("survives releasing a slot that is already gone", async () => {
       const ledger = new QuotaLedger(new MemoryKV());
-      await expect(ledger.releaseSlot("never-taken")).resolves.toBeUndefined();
+      await expect(ledger.releaseSlot("42", "never-taken")).resolves.toBeUndefined();
     });
 
     it("reads slots from list metadata, not one fetch per slot", async () => {
@@ -83,25 +83,30 @@ describe("QuotaLedger", () => {
       // subrequest per slot would put a ceiling on the accept path itself.
       const kv = new MemoryKV();
       const ledger = new QuotaLedger(kv);
-      await ledger.takeSlot("run-a", NOW);
+      await ledger.takeSlot("42", "run-a", NOW);
       const before = kv.puts.length;
       await ledger.inFlight(NOW);
       expect(kv.puts.length).toBe(before);
-      expect((await kv.list({ prefix: "busy/v1/runs/" })).keys[0]?.metadata).toEqual({
+      expect((await kv.list({ prefix: "busy/" })).keys[0]?.metadata).toEqual({
         expiresAt: NOW + 90 * 60 * 1000,
       });
     });
   });
 
   describe("purge", () => {
-    it("takes an installation's counters with the rest of it", async () => {
+    it("takes an installation's counters and its slots with the rest of it", async () => {
+      // A slot expires within 90 minutes on its own, but "it goes away
+      // eventually" is not what ADR-1990 decision 6 promises, and the key
+      // carries the owner and repo names (TPL-2226).
       const ledger = new QuotaLedger(new MemoryKV());
       await ledger.charge("42", AT);
       await ledger.charge("42", new Date("2026-09-01T00:00:00Z"));
+      await ledger.takeSlot("42", "42-kompiro-shop-abc", NOW);
       await ledger.charge("99", AT);
 
-      expect(await ledger.purgeInstallation("42")).toBe(2);
+      expect(await ledger.purgeInstallation("42")).toBe(3);
       expect([await ledger.used("42", AT), await ledger.used("99", AT)]).toEqual([0, 1]);
+      expect(await ledger.inFlight(NOW)).toBe(0);
     });
 
     it("does not let installation 4 sweep installation 42", async () => {

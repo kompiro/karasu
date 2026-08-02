@@ -32,7 +32,7 @@ describe("checkQuota", () => {
     // both their wait and our reads.
     const ledger = new QuotaLedger(new MemoryKV());
     for (let index = 0; index < MONTHLY_REVERSES; index += 1) await ledger.charge("42", AT);
-    await ledger.takeSlot("someone-elses-run", AT.getTime());
+    await ledger.takeSlot("42", "someone-elses-run", AT.getTime());
 
     const verdict = await checkQuota(ledger, "42", AT);
     expect(verdict).toMatchObject({ reason: "exhausted" });
@@ -40,7 +40,7 @@ describe("checkQuota", () => {
 
   it("refuses while the deployment is already running one", async () => {
     const ledger = new QuotaLedger(new MemoryKV());
-    await ledger.takeSlot("some-run", AT.getTime());
+    await ledger.takeSlot("42", "some-run", AT.getTime());
 
     expect(await checkQuota(ledger, "42", AT)).toEqual({
       allowed: false,

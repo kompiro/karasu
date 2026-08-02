@@ -3,24 +3,33 @@
  *
  * Two counters, both in KV, both under prefixes the purge sweeps (TPL-2226):
  *
- * - `quota/v1/<installation>/<YYYY-MM>` — reverses started this month
- * - `busy/v1/runs` — generations in flight across the deployment
+ * - `quota/<installation prefix>/<YYYY-MM>` — reverses started this month
+ * - `busy/<installation prefix>/<instance id>` — one key per run in flight
  *
- * **Neither is exact, and the design leans on which way each one errs.** KV
- * has no atomic increment, so both are read-modify-write and a genuine race
- * can let two callers through. The monthly counter is allowed to *undercount*
- * (a lost increment gives someone a free extra reverse, costing about $3.60);
- * the in-flight counter is written to *overcount* under doubt, because an
- * inflated in-flight number refuses work rather than authorising it.
+ * **Neither is exact, and they are inexact in different ways.** Say so
+ * plainly, because the reason there is no Durable Object here is that the
+ * imprecision is affordable, and that argument only survives if the
+ * imprecision is described honestly.
  *
- * Buying exactness would mean a Durable Object per installation. That trade
- * is available if the quota ever becomes the thing standing between the
- * service and a bill it cannot pay; at three reverses a month it is not.
+ * The monthly counter is a read-modify-write, so a genuine race can lose an
+ * increment. That gives someone one extra reverse, costing about $3.60. It is
+ * the counter that actually bounds spend, and it errs by at most one per
+ * race.
  *
- * The in-flight counter needs a floor as much as a ceiling. A run that dies
- * without decrementing — an evicted isolate, a platform cancellation — would
- * otherwise hold a slot forever and wedge the whole deployment. Each slot
- * carries an expiry, and expired slots are ignored and swept.
+ * The in-flight counter is not a counter at all: it is one key per run, and
+ * `inFlight` counts the live ones. It can only ever read **low** — a
+ * `list` is eventually consistent, a slot whose metadata did not survive is
+ * not counted, and the route's check-then-create window admits a second
+ * caller. So concurrency is a *soft* bound: it smooths the rate of spend, and
+ * the monthly quota is what makes the bill finite. An earlier version of this
+ * comment claimed the opposite (that it overcounts, and therefore fails
+ * safe); it does not, and a design that leaned on that would be leaning on
+ * nothing.
+ *
+ * Slots also need a floor. A run that dies without releasing — an evicted
+ * isolate, a platform cancellation — would otherwise hold its slot until
+ * something notices. Each slot carries an expiry, and expired slots are
+ * ignored.
  */
 import type { KVNamespaceLike } from "../env.js";
 import { installationPrefix } from "../store/keys.js";
@@ -47,9 +56,16 @@ function quotaKey(installationId: number | string, period: string): string {
   return `quota/${installationPrefix(installationId)}${period}`;
 }
 
-/** One slot per in-flight run, so an abandoned one expires by itself. */
-function slotKey(instanceId: string): string {
-  return `busy/v1/runs/${instanceId}`;
+/**
+ * One key per in-flight run, so an abandoned one expires by itself.
+ *
+ * Under the installation prefix rather than a flat `busy/v1/runs/` namespace,
+ * so that uninstalling sweeps it with everything else (TPL-2226). The
+ * instance id already begins with the installation id, but a prefix a purge
+ * can scan is not the same thing as a substring.
+ */
+function slotKey(installationId: number | string, instanceId: string): string {
+  return `busy/${installationPrefix(installationId)}${instanceId}`;
 }
 
 export class QuotaLedger {
@@ -96,12 +112,17 @@ export class QuotaLedger {
     });
   }
 
-  /** Live slots, ignoring any whose holder is presumed dead. */
+  /**
+   * Live slots across the whole deployment, ignoring any whose holder is
+   * presumed dead.
+   *
+   * Reads low under doubt; see the note at the top of this file.
+   */
   async inFlight(nowMs: number): Promise<number> {
     let live = 0;
     let cursor: string | undefined;
     for (let page = 0; page < MAX_PAGES; page += 1) {
-      const listed = await this.kv.list({ prefix: "busy/v1/runs/", limit: 1000, cursor });
+      const listed = await this.kv.list({ prefix: "busy/", limit: 1000, cursor });
       for (const key of listed.keys) {
         // From metadata: one `get` per slot would be a subrequest per slot,
         // and this runs on the accept path of every generation request.
@@ -118,17 +139,25 @@ export class QuotaLedger {
     return live;
   }
 
-  /** Take a slot. The instance id makes a duplicate take idempotent. */
-  async takeSlot(instanceId: string, nowMs: number): Promise<void> {
-    await this.kv.put(slotKey(instanceId), "1", {
+  /**
+   * Take a slot. Keyed on the instance id, so a duplicate take is idempotent
+   * rather than a second slot — and so the run that owns the id is the one
+   * that can give it back.
+   */
+  async takeSlot(
+    installationId: number | string,
+    instanceId: string,
+    nowMs: number,
+  ): Promise<void> {
+    await this.kv.put(slotKey(installationId, instanceId), "1", {
       expirationTtl: SLOT_TTL_SECONDS,
       metadata: { expiresAt: nowMs + SLOT_TTL_SECONDS * 1000 },
     });
   }
 
   /** Give a slot back. Safe to call for a slot that is already gone. */
-  async releaseSlot(instanceId: string): Promise<void> {
-    await this.kv.delete(slotKey(instanceId));
+  async releaseSlot(installationId: number | string, instanceId: string): Promise<void> {
+    await this.kv.delete(slotKey(installationId, instanceId));
   }
 
   /**
@@ -141,7 +170,16 @@ export class QuotaLedger {
    * abuse that costs the abuser more effort than three reverses are worth.
    */
   async purgeInstallation(installationId: number | string): Promise<number> {
-    const prefix = `quota/${installationPrefix(installationId)}`;
+    // Both prefixes. A slot expires within 90 minutes on its own, but "it
+    // goes away eventually" is not what decision 6 promises, and the key
+    // carries the owner and repo names.
+    return (
+      (await this.purgePrefix(`quota/${installationPrefix(installationId)}`)) +
+      (await this.purgePrefix(`busy/${installationPrefix(installationId)}`))
+    );
+  }
+
+  private async purgePrefix(prefix: string): Promise<number> {
     const seen = new Set<string>();
     for (let page = 0; page < MAX_PAGES; page += 1) {
       const listed = await this.kv.list({ prefix, limit: 1000 });

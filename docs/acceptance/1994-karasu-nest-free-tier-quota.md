@@ -35,9 +35,13 @@
 
   > ✅ Automated — `gate.test.ts` › `checks quota before capacity, so a refusal is one a caller can act on`
 
-- [x] AT-F: 断るときに GitHub API を呼ばない
+- [x] AT-F: quota 判定より先に commit を解決する（生成済み commit の再要求を無料に保つため）
 
-  > ✅ Automated — `generate.test.ts` › `refuses before spending a GitHub API call`
+  > ✅ Automated — `generate.test.ts` › `resolves the commit before checking quota, so a cached commit stays free`
+
+- [x] AT-F2: 生成済みの commit を再要求しても課金されず、dispatch もされない
+
+  > ✅ Automated — `generate.test.ts` › `serves an already-generated commit from the cache without charging`
 
 - [x] AT-G: dispatch した時点で課金し、スロットを取る
 
@@ -47,9 +51,13 @@
 
   > ✅ Automated — `generate.test.ts` › `does not charge a caller who is only polling an existing run`
 
-- [x] AT-I: dispatch が重複だった場合は課金を戻す
+- [x] AT-I: dispatch に失敗したら課金を戻し、**スロットも掴まない**（同時実行 1 のサービスを止めない）
 
-  > ✅ Automated — `generate.test.ts` › `gives the charge back when the dispatch turns out to be a duplicate`
+  > ✅ Automated — `generate.test.ts` › `does not hold a concurrency slot for a dispatch that failed`
+
+- [x] AT-I2: 手前で短絡されなかった重複 create は 202 ではなく 503（走っていない run を「走っている」と答えない）
+
+  > ✅ Automated — `generate.test.ts` › `keys the Workflow instance on the commit, so a duplicate cannot start`
 
 - [x] AT-J: ある installation の使用量が別の installation を断らない
 
@@ -83,9 +91,9 @@
 
   > ✅ Automated — `ledger.test.ts` › `does not refund below zero`
 
-- [x] AT-R: quota 台帳もアンインストールで消える。installation 4 の purge が 42 を巻き込まない
+- [x] AT-R: quota 台帳（`quota/`）と in-flight スロット（`busy/`）の**両方**がアンインストールで消える。installation 4 の purge が 42 を巻き込まない
 
-  > ✅ Automated — `packages/nest/src/store/nest-purge-coverage.test.ts` › `leaves nothing behind when an installation is removed` / `counts what it deleted in every category, so a webhook can say so`、`ledger.test.ts` › `does not let installation 4 sweep installation 42`
+  > ✅ Automated — `packages/nest/src/store/nest-purge-coverage.test.ts` › `leaves nothing behind when an installation is removed` / `counts what it deleted in every category, so a webhook can say so`、`ledger.test.ts` › `takes an installation's counters and its slots with the rest of it` / `does not let installation 4 sweep installation 42`
 
 - [x] AT-S: repo が 1 つ外れても月の割当は戻らない（quota は installation 単位）
 
@@ -104,5 +112,5 @@ ADR-1990 決定 6 により、#1996 が入るまで他人の private repo には
 - [ ] M-3: 実行中に別の repo へ POST すると 429 `busy` が返り、`Retry-After: 300` になる
 - [ ] M-4: 実行が完了すると次の POST が通る（`finally` のスロット返却が効いている）
 - [ ] M-5: 実行中に Worker を強制再デプロイして run を殺した場合、90 分後にはスロットが空く（期限切れの床が効いている）
-- [ ] M-6: `GET /admin/metrics` の `runs` と quota の消費数が一致する（失敗した試行も両方に数えられている）
+- [ ] M-6: `GET /admin/metrics` の `runs` と quota の消費数が一致する（失敗した試行も両方に数えられている＝ step のリトライが 0 で効いている）
 - [ ] M-7: アンインストール後に再インストールすると月の割当が戻っている（ADR-1994 が受け入れた副作用の確認）

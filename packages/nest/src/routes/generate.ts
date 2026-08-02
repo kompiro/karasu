@@ -20,7 +20,7 @@ import { requireBinding } from "../env.js";
 import { generationInstanceId } from "../generate/dispatch.js";
 import { GitHubClient } from "../github/client.js";
 import { error, json } from "../http.js";
-import { logInfo } from "../log.js";
+import { logError, logInfo } from "../log.js";
 import { checkQuota } from "../quota/gate.js";
 import { QuotaLedger } from "../quota/ledger.js";
 import { LOCAL_REVERSE_GUIDE } from "../quota/policy.js";
@@ -130,32 +130,58 @@ export async function requestGeneration(context: RouteContext): Promise<Response
     logInfo(`karasu-nest retrying ${owner}/${repo}: previous run went stale`);
   }
 
-  // Checked after the in-flight short-circuit above, so a caller polling by
-  // re-POSTing is not charged for a run that is already going, and before the
-  // SHA lookup, so a refusal costs no GitHub API call.
+  const sha = await github.defaultBranchSha(installationId, owner, repo);
+
+  // Before the quota, so re-asking for a commit we have already reversed
+  // costs nothing. This is what makes ADR-1994's "same-SHA re-request does
+  // not consume quota" true; a caller who polls by re-POSTing must not spend
+  // their month on answers we can give from the cache.
+  const published = await new NestStore(kv).latest(owner, repo);
+  if (published?.sha === sha) {
+    return json({
+      state: "done",
+      sha,
+      generatedAt: published.generatedAt,
+      krs: `/${owner}/${repo}`,
+    });
+  }
+
   const now = new Date();
   const ledger = new QuotaLedger(kv);
   const verdict = await checkQuota(ledger, installationId, now);
   if (!verdict.allowed) return refuse(verdict);
 
-  const sha = await github.defaultBranchSha(installationId, owner, repo);
   const instanceId = generationInstanceId({ installationId, owner, repo }, sha);
 
-  // Charged and the slot taken before dispatch, not after. Between the check
-  // and the create is where a second caller would otherwise slip through, and
-  // the cost of being early is a refund on a create that fails.
+  // Charged before the dispatch: between the check and the create is where a
+  // second caller would otherwise slip through, and the cost of being early
+  // is a refund on a create that never happened.
   const used = await ledger.charge(installationId, now);
-  await ledger.takeSlot(instanceId, now.getTime());
   try {
     await workflow.create({ id: instanceId, params: { installationId, owner, repo } });
-  } catch {
-    // A duplicate instance id means the platform already has this exact run.
-    // That is the answer the caller wanted, not an error -- but nothing new
-    // was started, so the charge goes back. The slot stays: the run that owns
-    // this id is still going, and it will release it.
+  } catch (cause) {
+    // Nothing started, so the charge goes back.
+    //
+    // An earlier version treated every failure here as a benign duplicate and
+    // answered 202. It is not benign: the two paths that would produce a
+    // duplicate (a run in flight, a commit already reversed) are both
+    // short-circuited above, so reaching this means the platform refused, and
+    // reporting a run that does not exist leaves a caller polling forever.
     await ledger.refund(installationId, now);
-    return json({ state: "running", sha }, { status: 202, headers: { Location: location } });
+    logError(`karasu-nest could not start a generation for ${owner}/${repo}`, cause);
+    return error(
+      503,
+      "dispatch_failed",
+      "karasu-nest could not start a generation just now. Try again shortly.",
+    );
   }
+
+  // Taken *after* the create, not before. A slot taken before a create that
+  // fails is a slot nobody owns: the Workflow that would have released it was
+  // never started, so it sits until its 90-minute expiry -- and with a
+  // deployment-wide concurrency of one, that is the whole service stalled by
+  // a failed dispatch.
+  await ledger.takeSlot(installationId, instanceId, now.getTime());
 
   return json(
     { state: "running", sha, quota: { used, limit: verdict.limit } },

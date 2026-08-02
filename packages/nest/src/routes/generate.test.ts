@@ -88,23 +88,53 @@ describe("POST /<owner>/<repo>/generate", () => {
   });
 
   it("keys the Workflow instance on the commit, so a duplicate cannot start", async () => {
-    // The in-flight check is a read-then-write; this is what makes a genuine
-    // race harmless rather than doubling a service-paid inference bill.
+    // The in-flight check is a read-then-write; the instance id is what makes
+    // a genuine race harmless rather than doubling a service-paid bill.
     installedAs("42");
     vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const env = configured(new MemoryKV());
+    const instanceId = `42-kompiro-shop-${SHA.slice(0, 12)}`;
 
     const first = await call("POST", "/kompiro/shop/generate", env);
-    // The first run holds the only concurrency slot, so release it: this test
-    // is about the instance id, not about capacity.
-    await new QuotaLedger(env.KRS_CACHE as MemoryKV).releaseSlot(
-      `42-kompiro-shop-${SHA.slice(0, 12)}`,
-    );
+    // Clear the state that would legitimately short-circuit the second call,
+    // so it reaches `create` and the platform's uniqueness is what stops it.
+    await new QuotaLedger(env.KRS_CACHE as MemoryKV).releaseSlot("42", instanceId);
     const second = await call("POST", "/kompiro/shop/generate", env);
+
     expect(first.status).toBe(202);
-    expect(second.status).toBe(202);
-    // The loser gets the answer it wanted; only one run exists.
-    expect(env.GENERATE_WORKFLOW.created).toEqual([`42-kompiro-shop-${SHA.slice(0, 12)}`]);
+    // 503, not 202: both benign duplicate paths are short-circuited earlier,
+    // so reaching a rejected `create` means nothing started, and saying
+    // "running" would leave the caller polling a run that does not exist.
+    expect(second.status).toBe(503);
+    expect(env.GENERATE_WORKFLOW.created).toEqual([instanceId]);
+    // And the charge for the dispatch that did not happen went back.
+    expect(await new QuotaLedger(env.KRS_CACHE as MemoryKV).used("42", new Date())).toBe(1);
+  });
+
+  it("serves an already-generated commit from the cache without charging", async () => {
+    // ADR-1994 says a same-SHA re-request does not consume quota. Polling by
+    // re-POSTing is a plausible thing to do, and it must not spend a month's
+    // allowance on an answer the cache already has.
+    installedAs("42");
+    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    const kv = new MemoryKV();
+    await new NestStore(kv).publish(
+      { installationId: 42, owner: "kompiro", repo: "shop", sha: SHA },
+      { krs: markGenerated("system Shop {}\n"), generatedAt: "2026-08-02T00:00:00Z" },
+    );
+    const env = configured(kv);
+
+    const response = await call("POST", "/kompiro/shop/generate", env);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      state: "done",
+      sha: SHA,
+      generatedAt: "2026-08-02T00:00:00Z",
+      krs: "/kompiro/shop",
+    });
+    expect(env.GENERATE_WORKFLOW.created).toEqual([]);
+    expect(await new QuotaLedger(kv).used("42", new Date())).toBe(0);
   });
 
   it("404s a repository no installation can read", async () => {
@@ -180,6 +210,7 @@ describe("POST /<owner>/<repo>/generate", () => {
       // A refusal with no alternative is a dead end. The alternative is real:
       // the same reverse runs locally with the caller's own key.
       installedAs("42");
+      vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
       const kv = new MemoryKV();
       const ledger = new QuotaLedger(kv);
       for (let index = 0; index < MONTHLY_REVERSES; index += 1) {
@@ -199,8 +230,9 @@ describe("POST /<owner>/<repo>/generate", () => {
 
     it("refuses while another generation is running, with a shorter wait", async () => {
       installedAs("42");
+      vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
       const kv = new MemoryKV();
-      await new QuotaLedger(kv).takeSlot("someone-elses-run", Date.now());
+      await new QuotaLedger(kv).takeSlot("42", "someone-elses-run", Date.now());
       const env = configured(kv);
 
       const response = await call("POST", "/kompiro/shop/generate", env);
@@ -210,14 +242,17 @@ describe("POST /<owner>/<repo>/generate", () => {
       expect(env.GENERATE_WORKFLOW.created).toEqual([]);
     });
 
-    it("refuses before spending a GitHub API call", async () => {
+    it("resolves the commit before checking quota, so a cached commit stays free", async () => {
+      // The cheaper ordering would refuse before the SHA lookup, but then an
+      // exhausted caller could not be told "you already have this one" -- and
+      // being charged for a commit already in the cache is the worse failure.
       installedAs("42");
+      const resolved = vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
       const kv = new MemoryKV();
-      await new QuotaLedger(kv).takeSlot("someone-elses-run", Date.now());
-      const resolved = vi.spyOn(GitHubClient.prototype, "defaultBranchSha");
+      await new QuotaLedger(kv).takeSlot("42", "someone-elses-run", Date.now());
 
-      await call("POST", "/kompiro/shop/generate", configured(kv));
-      expect(resolved).not.toHaveBeenCalled();
+      expect((await call("POST", "/kompiro/shop/generate", configured(kv))).status).toBe(429);
+      expect(resolved).toHaveBeenCalled();
     });
 
     it("charges the installation when a run is dispatched", async () => {
@@ -249,20 +284,24 @@ describe("POST /<owner>/<repo>/generate", () => {
       expect(await new QuotaLedger(kv).used("42", new Date())).toBe(0);
     });
 
-    it("gives the charge back when the dispatch turns out to be a duplicate", async () => {
+    it("does not hold a concurrency slot for a dispatch that failed", async () => {
+      // A slot taken before a failed `create` is a slot nobody owns: the
+      // Workflow that would release it never started. With a deployment-wide
+      // concurrency of one, that is the whole service stalled for 90 minutes
+      // by a failed dispatch.
       installedAs("42");
       vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+      vi.spyOn(console, "error").mockImplementation(() => {});
       const kv = new MemoryKV();
-      const env = configured(kv);
-      const instanceId = `42-kompiro-shop-${SHA.slice(0, 12)}`;
+      const refusing: GenerationDispatcher & { created: string[] } = {
+        created: [],
+        create: () => Promise.reject(new Error("the platform said no")),
+      };
 
-      await call("POST", "/kompiro/shop/generate", env);
-      await new QuotaLedger(kv).releaseSlot(instanceId);
-      const second = await call("POST", "/kompiro/shop/generate", env);
-
-      expect(second.status).toBe(202);
-      // One dispatch happened, so one charge stands.
-      expect(await new QuotaLedger(kv).used("42", new Date())).toBe(1);
+      const response = await call("POST", "/kompiro/shop/generate", configured(kv, refusing));
+      expect(response.status).toBe(503);
+      expect(await new QuotaLedger(kv).inFlight(Date.now())).toBe(0);
+      expect(await new QuotaLedger(kv).used("42", new Date())).toBe(0);
     });
 
     it("does not let one installation's usage refuse another", async () => {

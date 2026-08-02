@@ -104,6 +104,12 @@ const SEEDERS: { prefix: string; seed: (kv: MemoryKV) => Promise<void> }[] = [
       await new QuotaLedger(kv).charge("42", new Date("2026-08-02T00:00:00Z"));
     },
   },
+  {
+    prefix: "busy/",
+    seed: async (kv) => {
+      await new QuotaLedger(kv).takeSlot("42", "42-kompiro-shop-abc", Date.parse("2026-08-02"));
+    },
+  },
 ];
 
 async function seedEverything(kv: MemoryKV): Promise<void> {
@@ -129,8 +135,12 @@ describe("purge coverage (ADR-1990 decision 6)", () => {
 
     await new NestStore(kv).purgeRepo(ref);
     // The quota is per installation, and one repo leaving does not hand the
-    // month's allowance back. Everything keyed by repo goes.
-    expect(await remaining(kv)).toEqual(["quota/krs/v1/42/2026-08"]);
+    // month's allowance back. Everything keyed by repo goes. The slot is
+    // left too: the run holding it is still going.
+    expect(await remaining(kv)).toEqual([
+      "busy/krs/v1/42/42-kompiro-shop-abc",
+      "quota/krs/v1/42/2026-08",
+    ]);
   });
 
   it("counts what it deleted in every category, so a webhook can say so", async () => {
@@ -145,7 +155,8 @@ describe("purge coverage (ADR-1990 decision 6)", () => {
       runs: 1,
       metrics: 1,
       reads: 1,
-      quota: 1,
+      // Both the monthly counter and the in-flight slot.
+      quota: 2,
       failed: 1,
     });
   });

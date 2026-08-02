@@ -91,7 +91,7 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
       // which is why slots also expire. This is the fast path; the expiry is
       // the floor under it.
       try {
-        await ledger.releaseSlot(event.instanceId);
+        await ledger.releaseSlot(installationId, event.instanceId);
       } catch (cause) {
         logError("karasu-nest could not release a concurrency slot", cause);
       }
