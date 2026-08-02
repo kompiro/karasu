@@ -34,3 +34,12 @@ export type { GitHubClientOptions, RepoTree, TreeEntry } from "./github/client.j
 export { createAppJwt } from "./github/app-jwt.js";
 export type { AppJwtOptions } from "./github/app-jwt.js";
 export { toPkcs8, InvalidPrivateKeyError } from "./github/pem.js";
+export {
+  redact,
+  redactFiles,
+  assertStructureOnly,
+  StructureOnlyViolation,
+} from "./redact/redact.js";
+export type { Finding, RedactionResult } from "./redact/redact.js";
+export { REDACTION_RULES } from "./redact/rules.js";
+export type { RedactionRule } from "./redact/rules.js";
