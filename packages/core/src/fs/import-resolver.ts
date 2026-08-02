@@ -10,7 +10,7 @@ import type {
   OrganizationBlock,
   ImportDeclaration,
 } from "../types/ast.js";
-import { createEmptyKrsFile, mergeMembership } from "../types/ast.js";
+import { createEmptyKrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import {
@@ -19,6 +19,8 @@ import {
   validateScopedContainsReferences,
   validateFacetDeclarations,
   buildFacetIndex,
+  buildBoundaryMembership,
+  buildScopedBoundaryMembership,
 } from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
 import type { StyleSheet } from "../types/style.js";
@@ -36,6 +38,16 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // duplicate split across two files would go unreported, and a duplicate inside
   // one file would be reported twice (#2065 Part B).
   "duplicate-facet-id",
+  // Multi-membership is a property of the merged declarations for the same
+  // reason, and fails in the more dangerous direction: two files each listing
+  // one boundary for the same node is a fact no single file can see, so a
+  // per-file verdict does not over-report — it reports nothing at all
+  // (#2221, TPL-2221).
+  "duplicate-boundary-assignment",
+  // Same reasoning, reachable since #2246: a reopened `system` (or infra block)
+  // carries its scoped `boundary` blocks across, so two files can now declare
+  // the same id in one scope. Neither file sees the collision alone.
+  "duplicate-boundary-id",
 ]);
 
 export interface ResolvedProject {
@@ -56,6 +68,7 @@ export interface ResolvedProject {
  *           - ワイルドカード import: 同名 system/deploy/org をマージ（重複 ID は error）
  *           - Named import: 指定 ID のノードのみをマージ（既存動作）
  */
+
 export class ImportResolver {
   /** Pass 1: 現在ロード中スタック（push on enter / pop on exit）— 真の循環検出に使う */
   private loadingKrs = new Set<string>();
@@ -130,6 +143,24 @@ export class ImportResolver {
       ...krsFile.queues,
       ...krsFile.storages,
     ]);
+    // Boundary membership is rebuilt from the merged declarations rather than
+    // unioned per file, so the index and the diagnostic come from one derivation
+    // (#2221). Both diagnostics the rebuild produces are merged-model verdicts:
+    // multi-membership (#2221) and, since a reopened scope can now collect
+    // blocks from two files, `duplicate-boundary-id` (#2246).
+    const mergedMembership = buildBoundaryMembership(krsFile.boundaries);
+    krsFile.boundaryMembership = mergedMembership.membership;
+    const mergedScoped = buildScopedBoundaryMembership([
+      ...krsFile.systems,
+      ...krsFile.services,
+      ...krsFile.clients,
+      ...krsFile.domains,
+      ...krsFile.databases,
+      ...krsFile.queues,
+      ...krsFile.storages,
+    ]);
+    krsFile.scopedBoundaryMembership = mergedScoped.membership;
+    this.diagnostics.push(...mergedMembership.diagnostics, ...mergedScoped.diagnostics);
     // `facet` declarations from every file share one flat namespace, so the
     // duplicate check only makes sense here (#2065 Part B). Unlike the reference
     // checks above, the per-file verdict was suppressed to avoid *under*-
@@ -285,29 +316,10 @@ export class ImportResolver {
     for (const [ownedId, teamId] of file.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
     }
-    // Boundary membership is 1:N, so files **union** (#2178): a node grouped in
-    // one file and grouped again in another belongs to both, exactly as if both
-    // declarations sat in one file. First-wins here would resurrect across
-    // files the truncation the parser stopped doing (TPL-2161). Repeats of the
-    // same (node, boundary) merge idempotently, and order stays first-seen so
-    // the primary — and with it the banded placement — is deterministic.
-    for (const [memberId, boundaryIds] of file.boundaryMembership ?? []) {
-      mergeMembership(mergedFile.boundaryMembership, memberId, boundaryIds);
-    }
-    // Scoped membership (#2036) unions per scope, by the same rule. Scopes from
-    // different files cannot overlap in practice — a scoped boundary only names
-    // its own direct children — but merging by scope rather than replacing
-    // keeps that an observation, not an assumption.
-    for (const [scope, membership] of file.scopedBoundaryMembership ?? []) {
-      let merged = mergedFile.scopedBoundaryMembership.get(scope);
-      if (merged === undefined) {
-        merged = new Map<string, string[]>();
-        mergedFile.scopedBoundaryMembership.set(scope, merged);
-      }
-      for (const [memberId, boundaryIds] of membership) {
-        mergeMembership(merged, memberId, boundaryIds);
-      }
-    }
+    // Boundary membership is not merged here: `resolve()` rebuilds it from the
+    // merged declarations, so the index and its diagnostic have one derivation
+    // and cannot disagree (#2221). What has to travel is the declarations
+    // themselves, which `boundaries` above and the wildcard merge below carry.
     // `facetIndex` is deliberately NOT merged entry-by-entry here. It is a pure
     // derivation of the `facets` properties on the merged tree, so `resolve()`
     // rebuilds it once at the end instead — one derivation rather than one per
@@ -489,22 +501,6 @@ export class ImportResolver {
         mergedFile.boundaries.push(boundary);
       }
     }
-    for (const [memberId, boundaryIds] of resolved.boundaryMembership) {
-      mergeMembership(mergedFile.boundaryMembership, memberId, boundaryIds);
-    }
-    // Scoped membership (#2036) rides along with the nodes it is declared in,
-    // keyed by its declaring scope, so it merges per scope for the same reason.
-    for (const [scope, membership] of resolved.scopedBoundaryMembership) {
-      let merged = mergedFile.scopedBoundaryMembership.get(scope);
-      if (merged === undefined) {
-        merged = new Map<string, string[]>();
-        mergedFile.scopedBoundaryMembership.set(scope, merged);
-      }
-      for (const [memberId, boundaryIds] of membership) {
-        mergeMembership(merged, memberId, boundaryIds);
-      }
-    }
-
     for (const [ownedId, teamId] of resolved.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
     }
@@ -541,6 +537,7 @@ export class ImportResolver {
    */
   private mergeInfraBody(target: KrsNode & { id: string; kind: string }, source: KrsNode): void {
     if (target === source) return;
+    this.mergeScopedBoundaries(target, source);
     const infraKind =
       target.kind === "database" || target.kind === "queue" || target.kind === "storage"
         ? (target.kind as "database" | "queue" | "storage")
@@ -598,8 +595,32 @@ export class ImportResolver {
     }
   }
 
+  /**
+   * Carry a reopened node's scoped `boundary` blocks (#2036) into the node that
+   * survives the merge.
+   *
+   * A `system` (and a same-id infra block) may be reopened in another file, and
+   * only the merged node is ever drawn — so a boundary declared on the incoming
+   * copy is lost unless it is moved across. It parsed, it resolved a label, and
+   * it framed nothing: the accepted-but-inert state TPL-1503 forbids (#2246).
+   *
+   * Same-id blocks are kept rather than deduped here. Two files declaring the
+   * same boundary id in one scope is a duplicate only the merged model can see,
+   * and `buildScopedBoundaryMembership` is what reports it (`duplicate-boundary-id`)
+   * when the resolver rebuilds membership — dropping one here would silence it.
+   */
+  private mergeScopedBoundaries(target: KrsNode, source: KrsNode): void {
+    if (source.boundaries === undefined || source.boundaries.length === 0) return;
+    const carried = (target.boundaries ??= []);
+    for (const boundary of source.boundaries) {
+      // Identity dedup only: the same block re-arriving through a DAG path.
+      if (!carried.includes(boundary)) carried.push(boundary);
+    }
+  }
+
   private mergeSystemIntoExisting(target: SystemNode, source: SystemNode): void {
     if (target === source) return;
+    this.mergeScopedBoundaries(target, source);
     this.reconcileLabel(target, source, "system");
     this.reconcileDescription(
       target.properties as { description?: string },

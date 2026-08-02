@@ -13,8 +13,7 @@
     "source=gh-config,target=/home/node/.config/gh,type=volume"
   ],
   "containerEnv": {
-    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
-    "NODE_AUTH_TOKEN": "${localEnv:NODE_AUTH_TOKEN}"
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude"
   },
   "remoteUser": "node",
   "forwardPorts": [5173],

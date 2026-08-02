@@ -16,6 +16,7 @@ discovered_from:
   - root_cause_file: "packages/core/src/fs/import-resolver.ts"
 related_to:
   - TPL-1608
+  - TPL-2221
 topic: resolver
 scope:
   packages:
@@ -47,6 +48,10 @@ Parser は 1 ファイル単位で走るため、per-file の存在検証は「�
 存在検証（id が在るか）と種別検証（kind が妥当か / `invalid-contains` の類）は
 分けて考える。後者は宣言そのものの静的性質なので per-file で確定してよい。
 per-file で消してよいのは **他ファイルの宣言で解決が変わりうる診断だけ**。
+
+**重複・多重所属・件数を述べる診断はこの TPL の対象ではない** — 同じ「マージ後で判定する」
+結論に至るが、per-file 判定が生む失敗が偽陽性ではなく**見落とし（沈黙）**で、気づき方が
+まったく違う。そちらは [[TPL-2221]] を参照する（#2221 は本 TPL を引用した PR で作り込まれた）。
 
 ## 想定される失敗モード
 
