@@ -24,6 +24,10 @@ on:
       - "scripts/lint/spec-structure-sync.ts"
       - "docs/roadmap.md"
       - "scripts/lint/roadmap-issue-state.ts"
+      - "docs/glossary.md"
+      - "docs/tools/**"
+      - "packages/docs-site/**"
+      - "scripts/lint/docs-site-ci-paths-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
