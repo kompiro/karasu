@@ -209,7 +209,7 @@ function collectContainableIds(file: KrsFile): Set<string> {
 // ---------------------------------------------------------------------------
 
 /** A membership index plus the diagnostics building it produced. */
-export interface MembershipResult<T> {
+interface MembershipResult<T> {
   membership: T;
   diagnostics: Diagnostic[];
 }
@@ -228,9 +228,9 @@ export interface MembershipResult<T> {
 // *additional distinct* boundary, so re-listing one boundary stays silent:
 // "belongs to more than one" would not be true there.
 export function buildBoundaryMembership(
-boundaries: readonly BoundaryBlock[],
+  boundaries: readonly BoundaryBlock[],
 ): MembershipResult<Map<string, string[]>> {
-const diagnostics: Diagnostic[] = [];
+  const diagnostics: Diagnostic[] = [];
   const membership = new Map<string, string[]>();
   for (const boundary of boundaries) {
     for (const memberId of boundary.contains) {
@@ -267,9 +267,9 @@ const diagnostics: Diagnostic[] = [];
  * unindexed and reported by reference validation, never silently framed.
  */
 export function buildScopedBoundaryMembership(
-roots: readonly KrsNode[],
+  roots: readonly KrsNode[],
 ): MembershipResult<Map<string, Map<string, string[]>>> {
-const diagnostics: Diagnostic[] = [];
+  const diagnostics: Diagnostic[] = [];
   const index = new Map<string, Map<string, string[]>>();
 
   const walk = (node: KrsNode, ancestorIds: string[]): void => {

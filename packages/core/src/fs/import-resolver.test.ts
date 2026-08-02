@@ -1864,9 +1864,9 @@ system Shop {
       );
 
       const result = await resolver.resolve("/p/index.krs");
-      expect(
-        result.diagnostics.filter((d) => d.code === "duplicate-node-in-system"),
-      ).toHaveLength(1);
+      expect(result.diagnostics.filter((d) => d.code === "duplicate-node-in-system")).toHaveLength(
+        1,
+      );
     });
 
     it("still reports it on the single-file compile path", async () => {
@@ -1898,9 +1898,7 @@ system Shop {
       );
 
       const result = await resolver.resolve("/p/index.krs");
-      expect(
-        result.diagnostics.filter((d) => d.code === "duplicate-boundary-id"),
-      ).toHaveLength(1);
+      expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(1);
     });
   });
 });
