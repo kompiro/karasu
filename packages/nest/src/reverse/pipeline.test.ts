@@ -4,17 +4,30 @@ import { reverseRepository, ReverseFailed, type RedactedRepo } from "./pipeline.
 
 const usage = { inputTokens: 100, outputTokens: 200 };
 
-/** Replies in order, and records the prompts it was given. */
-function scriptedLlm(replies: string[]): LlmClient & { prompts: string[] } {
+interface Call {
+  prompt: string;
+  maxTokens?: number;
+}
+
+/** Replies in order, and records the prompts and options it was given. */
+function scriptedLlm(
+  replies: (string | LlmResponse)[],
+): LlmClient & { prompts: string[]; calls: Call[] } {
   const prompts: string[] = [];
+  const calls: Call[] = [];
   let index = 0;
   return {
     prompts,
-    complete(prompt: string): Promise<LlmResponse> {
+    calls,
+    complete(prompt: string, options?: { maxTokens?: number }): Promise<LlmResponse> {
       prompts.push(prompt);
-      const text = replies[index] ?? "";
+      calls.push({
+        prompt,
+        ...(options?.maxTokens === undefined ? {} : { maxTokens: options.maxTokens }),
+      });
+      const reply = replies[index] ?? "";
       index += 1;
-      return Promise.resolve({ text, usage });
+      return Promise.resolve(typeof reply === "string" ? { text: reply, usage } : reply);
     },
   };
 }
@@ -151,7 +164,81 @@ describe("reverseRepository", () => {
     expect((await reverseRepository(repo, llm)).krs).toContain("system Library");
   });
 
+  it("gives the synthesis pass a far larger output budget than the JSON passes", async () => {
+    // Synthesis writes a document; the others reply with a short object. One
+    // shared ceiling either truncates the document or overpays for the JSON.
+    const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+    await reverseRepository(repo, llm);
+    const budgets = llm.calls.map((call) => call.maxTokens);
+    expect(budgets[2]).toBeGreaterThan(budgets[1] as number);
+    expect(budgets.every((budget) => typeof budget === "number")).toBe(true);
+  });
+
+  it("bounds total bytes read, not just the file count", async () => {
+    // `maxFilesRead` alone lets one huge file through, and prompt size, token
+    // bill and Worker memory all scale with bytes.
+    const big: RedactedRepo = {
+      ...repo,
+      files: [
+        { path: "src/huge.ts", content: "x".repeat(5000) },
+        { path: "src/small.ts", content: "export const ok = 1;" },
+      ],
+    };
+    const survey = JSON.stringify({
+      contexts: [{ name: "All", why: "everything", readPaths: big.files.map((f) => f.path) }],
+    });
+    const llm = scriptedLlm([survey, DECOMPOSE, KRS]);
+    await reverseRepository(big, llm, { maxBytesRead: 1000 });
+    expect(llm.prompts[1]).not.toContain("x".repeat(100));
+    // The oversized file is skipped, not truncated — half a file is a
+    // misleading input — and the small one still gets through.
+    expect(llm.prompts[1]).toContain("export const ok = 1;");
+  });
+
+  it("takes the largest fenced block, not the first", async () => {
+    // A reply that opens with a short illustrative snippet would otherwise be
+    // truncated to the snippet, and the snippet still parses.
+    const twoBlocks = [
+      "For example:",
+      "```krs",
+      "system Tiny {\n  service A\n}",
+      "```",
+      "Here is the real model:",
+      "```krs",
+      "system Library {\n  service Circulation {\n    domain Lending\n  }\n}",
+      "```",
+    ].join("\n");
+    const llm = scriptedLlm([SURVEY, DECOMPOSE, twoBlocks]);
+    expect((await reverseRepository(repo, llm)).krs).toContain("domain Lending");
+  });
+
+  it("finds the JSON object even when prose after it contains a brace", async () => {
+    const llm = scriptedLlm([`${SURVEY}\nNote: the {api} module needs care.`, DECOMPOSE, KRS]);
+    await expect(reverseRepository(repo, llm)).resolves.toBeDefined();
+  });
+
+  it("is not confused by a brace inside a JSON string", async () => {
+    const survey = JSON.stringify({
+      contexts: [{ name: "A}B", why: "a } in a value", readPaths: ["src/catalog/book.ts"] }],
+    });
+    const llm = scriptedLlm([survey, DECOMPOSE, KRS]);
+    await expect(reverseRepository(repo, llm)).resolves.toBeDefined();
+  });
+
   describe("what it refuses", () => {
+    it("refuses a truncated reply rather than caching it as complete", async () => {
+      // The dangerous case: a cut-off `.krs` that still parses would be served
+      // as a complete model of the repository.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, { text: KRS, usage, stopReason: "max_tokens" }]);
+      await expect(reverseRepository(repo, llm)).rejects.toThrowError(/output limit/);
+    });
+
+    it("refuses a document that parses but describes no system", async () => {
+      // Comment-only and deploy-only documents both compile without errors.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\n// nothing here\n```"]);
+      await expect(reverseRepository(repo, llm)).rejects.toThrowError(/describes no system/);
+    });
+
     it("fails when the survey returns no JSON", async () => {
       const llm = scriptedLlm(["I could not read the repository.", DECOMPOSE, KRS]);
       await expect(reverseRepository(repo, llm)).rejects.toThrowError(/survey/);

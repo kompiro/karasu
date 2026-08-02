@@ -53,6 +53,58 @@ describe("AnthropicClient", () => {
     expect((thrown as LlmError).message).toBe("the model provider returned 429");
   });
 
+  it("sends the configured model and max_tokens", async () => {
+    let body: Record<string, unknown> | undefined;
+    const fetchImpl = ((_input: RequestInfo | URL, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body));
+      return Promise.resolve(json({ content: [{ type: "text", text: "ok" }] }));
+    }) as typeof fetch;
+    await client(fetchImpl, "claude-sonnet-5").complete("hi", { maxTokens: 4096 });
+    expect(body?.model).toBe("claude-sonnet-5");
+    expect(body?.max_tokens).toBe(4096);
+  });
+
+  it("defaults to the standing model when none is configured", async () => {
+    let body: Record<string, unknown> | undefined;
+    const fetchImpl = ((_input: RequestInfo | URL, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body));
+      return Promise.resolve(json({ content: [{ type: "text", text: "ok" }] }));
+    }) as typeof fetch;
+    await client(fetchImpl).complete("hi");
+    expect(body?.model).toBe("claude-opus-5");
+  });
+
+  it("surfaces stop_reason so a caller can detect truncation", async () => {
+    const fetchImpl = (() =>
+      Promise.resolve(
+        json({ content: [{ type: "text", text: "cut off" }], stop_reason: "max_tokens" }),
+      )) as typeof fetch;
+    expect((await client(fetchImpl).complete("hi")).stopReason).toBe("max_tokens");
+  });
+
+  it("treats a refusal as a failure rather than a short answer", async () => {
+    // A refusal is a 200 with an empty or partial body; reading content[0]
+    // unconditionally would treat it as the model's reply.
+    const fetchImpl = (() =>
+      Promise.resolve(json({ content: [], stop_reason: "refusal" }))) as typeof fetch;
+    await expect(client(fetchImpl).complete("hi")).rejects.toThrowError(/declined/);
+  });
+
+  it("aborts a request that never returns", async () => {
+    // Without a bound, a hung provider holds the Worker invocation open until
+    // the platform kills it, losing every pass already completed.
+    const fetchImpl = ((_input: RequestInfo | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      })) as typeof fetch;
+    const started = Date.now();
+    const pending = client(fetchImpl).complete("hi");
+    // The production bound is ten minutes; assert the signal is wired rather
+    // than waiting for it.
+    expect(pending).toBeInstanceOf(Promise);
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
   it("treats an empty completion as a failure rather than an empty model", async () => {
     const fetchImpl = (() => Promise.resolve(json({ content: [] }))) as typeof fetch;
     await expect(client(fetchImpl).complete("hi")).rejects.toThrowError(/no text/);

@@ -17,6 +17,8 @@ export interface LlmUsage {
 export interface LlmResponse {
   text: string;
   usage: LlmUsage;
+  /** Why generation stopped. `max_tokens` means the reply is truncated. */
+  stopReason?: string;
 }
 
 export interface LlmClient {
@@ -41,8 +43,28 @@ interface AnthropicClientOptions {
 }
 
 const API_URL = "https://api.anthropic.com/v1/messages";
-const DEFAULT_MODEL = "claude-sonnet-5";
+
+/**
+ * The standing default for new Anthropic integrations. Quality is the product
+ * here — ADR-1990 decision 4 makes domain-analysis quality the differentiator
+ * the whole pivot rests on — so the cheaper tier is a decision to take after
+ * #2226 measures what it costs, not before.
+ */
+const DEFAULT_MODEL = "claude-opus-5";
+
+/**
+ * Non-streaming, so this has to stay inside the SDK/HTTP timeout envelope.
+ * The synthesis pass raises it explicitly; a truncated `.krs` is caught by
+ * the `stop_reason` check rather than cached as complete.
+ */
 const DEFAULT_MAX_TOKENS = 16_000;
+
+/**
+ * A wall-clock bound on one model call. Without it a hung provider request
+ * holds a Worker invocation open until the platform kills it, and every pass
+ * already completed is lost with it.
+ */
+const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
 
 /** The Anthropic Messages API, as much of it as this service uses. */
 export class AnthropicClient implements LlmClient {
@@ -61,19 +83,27 @@ export class AnthropicClient implements LlmClient {
   }
 
   async complete(prompt: string, options: { maxTokens?: number } = {}): Promise<LlmResponse> {
-    const response = await this.fetchImpl(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.options.apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), REQUEST_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(API_URL, {
+        method: "POST",
+        signal: abort.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": this.options.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: this.model,
+          max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (!response.ok) {
       // The body is the provider's and may quote the prompt, which is derived
@@ -83,8 +113,14 @@ export class AnthropicClient implements LlmClient {
 
     const body = (await response.json()) as {
       content?: { type?: string; text?: string }[];
+      stop_reason?: string;
       usage?: { input_tokens?: number; output_tokens?: number };
     };
+    // A refusal is a 200 with an empty or partial body. Reading `content[0]`
+    // unconditionally would treat it as a short answer.
+    if (body.stop_reason === "refusal") {
+      throw new LlmError(200, "the model declined the request");
+    }
     const text = (body.content ?? [])
       .filter((block) => block.type === "text" && typeof block.text === "string")
       .map((block) => block.text)
@@ -93,6 +129,7 @@ export class AnthropicClient implements LlmClient {
 
     return {
       text,
+      ...(body.stop_reason === undefined ? {} : { stopReason: body.stop_reason }),
       usage: {
         inputTokens: body.usage?.input_tokens ?? 0,
         outputTokens: body.usage?.output_tokens ?? 0,

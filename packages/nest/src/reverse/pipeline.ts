@@ -31,6 +31,9 @@ export interface RedactedRepo {
   findings: readonly Finding[];
 }
 
+/** Per-pass output ceilings. Synthesis writes a document; the others reply with JSON. */
+const MAX_TOKENS = { survey: 8_000, decompose: 12_000, synthesise: 64_000 } as const;
+
 export interface ReverseOptions {
   /**
    * How many files the decomposition and synthesis passes may read. The
@@ -39,6 +42,13 @@ export interface ReverseOptions {
    * unboundedly more.
    */
   maxFilesRead?: number;
+  /**
+   * Total bytes of file content any one pass may carry. `maxFilesRead` bounds
+   * the file *count*, which a single 10 MB file walks straight past — and the
+   * prompt, the token bill and the Worker's memory all scale with bytes, not
+   * files.
+   */
+  maxBytesRead?: number;
 }
 
 export interface ReverseResult {
@@ -66,6 +76,7 @@ export class ReverseFailed extends Error {
 }
 
 const DEFAULT_MAX_FILES_READ = 60;
+const DEFAULT_MAX_BYTES_READ = 400_000;
 
 /**
  * Pull JSON out of a reply.
@@ -76,21 +87,61 @@ const DEFAULT_MAX_FILES_READ = 60;
  */
 function extractJson(text: string, pass: string): unknown {
   const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) {
-    throw new ReverseFailed(pass, "the reply contained no JSON object");
+  if (start === -1) throw new ReverseFailed(pass, "the reply contained no JSON object");
+  // Balanced scan rather than first-`{`-to-last-`}`: a model that adds a
+  // closing remark containing a brace would otherwise extend the slice past
+  // the real end and fail to parse perfectly good JSON. Quotes and escapes
+  // are tracked so a brace inside a string does not shift the depth.
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index] as string;
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\" && inString) {
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          return JSON.parse(text.slice(start, index + 1));
+        } catch {
+          throw new ReverseFailed(pass, "the reply's JSON did not parse");
+        }
+      }
+    }
   }
-  try {
-    return JSON.parse(text.slice(start, end + 1));
-  } catch {
-    throw new ReverseFailed(pass, "the reply's JSON did not parse");
-  }
+  throw new ReverseFailed(pass, "the reply's JSON object was never closed");
 }
 
-/** Pull the `.krs` out of a fenced reply, tolerating an unfenced one. */
+/**
+ * Pull the `.krs` out of a fenced reply, tolerating an unfenced one.
+ *
+ * The **largest** fenced block wins, not the first. A reply that opens with a
+ * short illustrative snippet before the real document would otherwise be
+ * truncated to the snippet — and the result still parses, so nothing
+ * downstream would notice.
+ */
 function extractKrs(text: string): string {
-  const fenced = /```(?:krs)?\n([\s\S]*?)```/.exec(text);
-  const body = (fenced?.[1] ?? text).trim();
+  const blocks = [...text.matchAll(/```(?:krs)?\n([\s\S]*?)```/g)]
+    .map((match) => (match[1] ?? "").trim())
+    .filter((block) => block.length > 0);
+  const largest = blocks.reduce<string>(
+    (best, block) => (block.length > best.length ? block : best),
+    "",
+  );
+  const body = largest.length > 0 ? largest : text.trim();
   return body.endsWith("\n") ? body : `${body}\n`;
 }
 
@@ -111,13 +162,19 @@ export async function reverseRepository(
   options: ReverseOptions = {},
 ): Promise<ReverseResult> {
   const maxFilesRead = options.maxFilesRead ?? DEFAULT_MAX_FILES_READ;
+  const maxBytesRead = options.maxBytesRead ?? DEFAULT_MAX_BYTES_READ;
   const passes: { name: string; usage: LlmUsage }[] = [];
   let usage: LlmUsage = { inputTokens: 0, outputTokens: 0 };
 
-  const run = async (name: string, prompt: string): Promise<string> => {
-    const response = await llm.complete(prompt);
+  const run = async (name: keyof typeof MAX_TOKENS, prompt: string): Promise<string> => {
+    const response = await llm.complete(prompt, { maxTokens: MAX_TOKENS[name] });
     passes.push({ name, usage: response.usage });
     usage = addUsage(usage, response.usage);
+    // A truncated reply that still parses is the dangerous case: it would be
+    // cached and served as a complete model of the repository.
+    if (response.stopReason === "max_tokens") {
+      throw new ReverseFailed(name, "the reply hit the output limit and is incomplete");
+    }
     return response.text;
   };
 
@@ -152,16 +209,20 @@ export async function reverseRepository(
   const byPath = new Map(repo.files.map((file) => [file.path, file]));
   const wanted: { path: string; content: string }[] = [];
   const seen = new Set<string>();
-  for (const context of contexts) {
+  let bytes = 0;
+  outer: for (const context of contexts) {
     for (const path of context.readPaths) {
       if (seen.has(path)) continue;
       const file = byPath.get(path);
       if (file === undefined) continue;
       seen.add(path);
+      // Skipped rather than truncated: half a file is a misleading input, and
+      // a file this large is rarely the one carrying the seam evidence.
+      if (bytes + file.content.length > maxBytesRead) continue;
+      bytes += file.content.length;
       wanted.push(file);
-      if (wanted.length >= maxFilesRead) break;
+      if (wanted.length >= maxFilesRead) break outer;
     }
-    if (wanted.length >= maxFilesRead) break;
   }
   if (wanted.length === 0) throw new ReverseFailed("survey", "no readable files were selected");
 
@@ -215,6 +276,12 @@ export async function reverseRepository(
       "synthesise",
       `the generated .krs did not parse (${errors.length} error(s), first: ${errors[0]?.code})`,
     );
+  }
+  // Parsing is not enough. A comment-only document, or one describing only a
+  // deploy or org view, produces zero errors and zero systems — and would be
+  // cached and served as a diagram of nothing.
+  if (!("systems" in compiled) || compiled.systems.length === 0) {
+    throw new ReverseFailed("synthesise", "the generated .krs describes no system");
   }
 
   return { krs, domains, usage, passes };
