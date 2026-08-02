@@ -147,6 +147,60 @@ describe("boundary#<id> selector (#2234)", () => {
     expect(svgOf()).toBe(svgOf(""));
   });
 
+  it("reaches a scoped boundary, whose group id carries its scope", () => {
+    // A scoped `boundary` (#2036) has identity (declaring scope, id), so its
+    // frame's group id is scope-qualified while a style sheet only ever writes
+    // the bare name. Keyed on the group id, the rule parses, scores 101 and
+    // does nothing, which reads as a typo (TPL-1666 / TPL-1352).
+    const scoped = `
+system Shop {
+  service Ledger { label "Ledger" }
+  service Vault { label "Vault" }
+  Ledger -> Vault "tokenize"
+  boundary pci {
+    label "PCI scope"
+    contains Ledger
+    contains Vault
+  }
+}
+`;
+    const styled = compile(scoped, {
+      diagramType: "system",
+      groupBy: "boundary",
+      styleSource: "boundary#pci { border-color: #c0392b; }",
+    });
+    if (styled.diagramType !== "system") throw new Error("expected system view");
+    // The group id really is qualified here, or this case tests nothing.
+    expect(styled.svg).toContain("__group_[");
+    expect(styled.svg).toContain('stroke="#c0392b"');
+  });
+
+  it("matches the same bare id in every scope", () => {
+    // An unqualified selector does not ask about the scope, so it does not
+    // discriminate on it. A way to name one scope can be added later.
+    const twoScopes = `
+system Shop {
+  service Ledger { label "Ledger" }
+  service Vault { label "Vault" }
+  Ledger -> Vault "tokenize"
+  boundary pci { label "Shop PCI" contains Ledger contains Vault }
+}
+system Ops {
+  service Audit { label "Audit" }
+  service Logs { label "Logs" }
+  Audit -> Logs "write"
+  boundary pci { label "Ops PCI" contains Audit contains Logs }
+}
+`;
+    const styled = compile(twoScopes, {
+      diagramType: "system",
+      groupBy: "boundary",
+      styleSource: "boundary#pci { border-color: #c0392b; }",
+    });
+    if (styled.diagramType !== "system") throw new Error("expected system view");
+    expect(styled.svg.match(/stroke="#c0392b"/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("does not touch team frames", () => {
     // The team axis is out of scope (#2269); a boundary rule must not leak onto it.
     const src = `

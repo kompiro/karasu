@@ -35,7 +35,7 @@ import {
 import { edgeStyleKey, nodeStyleKey } from "../resolver/style-resolver.js";
 import type { NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
-import { DEPLOY_AFFORDANCE_KIND_SET } from "../types/ast.js";
+import { DEPLOY_AFFORDANCE_KIND_SET, displayGroupId } from "../types/ast.js";
 import type { Diagnostic, LegendBlock, LegendViewScope } from "../types/ast.js";
 import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
@@ -1037,15 +1037,8 @@ export function rectUnionPath(rects: readonly Rect[]): string | null {
 const BOUNDARY_FILL_OPACITY = "0.1";
 
 /**
- * The colour of one boundary, and the only place that answers the question.
- *
- * A boundary's hue is painted on more than one surface: its frame (stroke, tint
- * and title) and the `◇` 縮退 tab on any card the frame could not reach. Those
- * are drawn by different functions, so the colour has to be decided once and
- * read from here by all of them. Resolve it twice and a boundary's identity
- * splits across two colours the moment the two derivations stop agreeing, which
- * is exactly what a `.krs.style` override does to a second, unaware reader
- * (#2234; TPL-2179 / TPL-219 — one definition, every consumer).
+ * The cycled default for a boundary, before any `.krs.style` rule is consulted.
+ * Callers want {@link resolveBoundaryPaint}, which is the answer surfaces read.
  *
  * `hueIndex` is the boundary's position in the declared order (#2179), so the
  * assignment is stable for a model regardless of band order or collapse state.
@@ -1068,8 +1061,16 @@ interface BoundaryPaint {
 }
 
 /**
- * Resolve a boundary's paint: the author's `.krs.style` rule where there is one,
- * the cycled hue otherwise (#2234 over #2179).
+ * A boundary's paint, and the only place that answers the question: the author's
+ * `.krs.style` rule where there is one, the cycled hue otherwise (#2234 over
+ * #2179).
+ *
+ * A boundary's colour is painted on more than one surface, its frame (stroke,
+ * tint and title) and the `◇` 縮退 tab on any card the frame could not reach.
+ * Those are drawn by different functions, so the colour is decided once here and
+ * read from here by both. Derive it twice and a boundary's identity splits
+ * across two colours the moment the derivations stop agreeing, which is exactly
+ * what an override does to a second, unaware reader (TPL-2234).
  *
  * `border-color` alone repaints the stroke, the fill and the title together.
  * #2179 established one colour per boundary as a legibility condition rather
@@ -1085,8 +1086,17 @@ function resolveBoundaryPaint(
 ): BoundaryPaint | undefined {
   const cycled = boundaryHueAt(hueIndex, palette);
   if (cycled === undefined) return undefined;
-  const sheet =
-    (boundaryId !== undefined ? frames?.byId.get(boundaryId) : undefined) ?? frames?.base;
+  // By the author-facing id, not the group id. A scoped `boundary` (#2036) has
+  // identity (declaring scope, id) and carries a scope-qualified group id, while
+  // a style sheet only ever writes the bare name. Keying the lookup on the group
+  // id would make `boundary#pci` silently inert for every scoped boundary, which
+  // reads as a typo rather than as a limitation (TPL-1666 / TPL-1352).
+  //
+  // So an unqualified selector matches that id in every scope, which is the
+  // plain reading of "no qualifier means the qualifier is not being asked
+  // about". A way to name one scope can be added later without changing this.
+  const key = boundaryId !== undefined ? displayGroupId(boundaryId) : undefined;
+  const sheet = (key !== undefined ? frames?.byId.get(key) : undefined) ?? frames?.base;
   const stroke = sheet?.borderColor ?? cycled;
   return {
     stroke,

@@ -628,6 +628,13 @@ scores 1, `boundary#pci` scores 101 (100 for the id + 1 for the kind).
 Boundaries a sheet does not name keep their cycled colour, so naming one does
 not disturb the rest.
 
+**Scoped boundaries.** A `boundary` declared inside a node block has identity
+(declaring scope, id), so two scopes may each hold a `pci`. `boundary#pci` names
+the id without naming a scope, and therefore matches that id in **every** scope,
+including the top level. There is no way to target one scope's boundary today; if
+that turns out to be needed, a qualified form can be added without changing what
+the unqualified one means.
+
 **Supported properties:**
 
 | Property | Effect |
