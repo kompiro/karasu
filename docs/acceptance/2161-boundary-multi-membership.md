@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-30
 - **Issue**: #2161（親） / slice A #2178 / slice B #2179 / slice C #2180 / 配置 #2176
-- **PR**: slice A #2213 / 配置 #2176 / slice B #2179（この PR）
+- **PR**: slice A #2213 / 配置 #2176 / slice B #2248 / slice C（この PR）
 - **関連 ADR**: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（決定 2 の refine 対象 — 1:1 + first-wins）、[ADR-2036](../adr/2036-scoped-boundary-declaration.md)（スコープ宣言 — scoped が勝つ）、[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff backfill）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（experimental 据え置き）
 - **設計**: `docs/design/boundary-membership-1n.md`（全体）、`docs/design/boundary-membership-slice-a.md`（slice A）
 - **Related TPLs**:
@@ -122,6 +122,16 @@ P2c の再計測（penetration 0 / collinear overlap 0）は
 - [ ] **手動**: その状態で**どの枠も非メンバーを囲んでいない**（`pci` の枠が `Wallet` を含んでいない）。
 - [ ] **手動**: 同じ図を PNG に書き出し、`◇` が豆腐（□）にならない。
 
-### slice C（#2180）— 未着手
+### slice C（#2180）
 
-- [ ] **手動**: 一方の boundary を畳んでも、他方が expanded ならそのノードが消えない。両方畳むと消える。
+判定ロジック（可視性・stub のカウント・0 件 stub の抑止・端点保持・bulk collapse・team 軸不変）は
+`packages/core/src/renderer/boundary-collapse-duality.test.ts` で自動化済み。
+本節は**畳む操作を実際に行って読める図になるか**だけを見る。
+
+- [ ] **手動**: `boundary-multi-membership.krs` を app で開き Group by: **Boundary** にして、
+      `payments` だけを畳む。`Ledger` は**消えず**、`PCI scope` の枠の中に残る。
+      `payments` の stub は畳んだ数（`Ledger` を含まない）を表示する。
+- [ ] **手動**: 続けて `PCI scope` も畳む。`Ledger` が消え、**どちらか一方の stub にだけ**数えられる
+      （両方の stub の合計がノード数を超えない）。
+- [ ] **手動**: 畳んだ状態から片方を開くと、`Ledger` が元の位置に戻り、エッジが枠の縁ではなく
+      カードに接続している。

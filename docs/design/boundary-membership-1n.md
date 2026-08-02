@@ -211,7 +211,8 @@ C-1 の帰結として決めること:
 - **stub のカウント**: `<Boundary> (N)` の N は **実際に畳まれた（不可視になった）ノード数**とする。今日の `collapseGroups` の数え方（畳んだノードを数える）をそのまま維持でき、「N 個が隠れている」という stub の意味とも一致する。model 上の総メンバー数は詳細パネル側の情報。
 - **0 件の stub は出さない**: collapsed な A のメンバーが全員 expanded な他フレームで可視なら、畳むものが無い。`A (0)` を描かず **stub を生成しない**（A のフレームは collapsed の間ただ描かれない）。
 - **エッジの再ターゲット**: `collapseGroups` の remap は「不可視になったノード」だけに適用する。可視のまま残る X を端点に持つエッジは id が変わらないので、[TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md) / [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) の端点保持はむしろ易しくなる。ただし `remapEndpoint` を使う **ghost edge を含む全 parallel edge リスト**が同じ述語を通ることは従来どおり柵にする。
-- **bulk collapse**（[ADR-2120](../adr/2120-group-by-bulk-collapse.md)）: 全群 collapsed は「すべての所属が collapsed」を自動的に満たすので、今日の「群依存 DAG ビュー」は不変。共有ノードは、どの stub に畳まれるか（= primary の stub）を決める必要がある — **primary（宣言順の先頭）の stub に畳む**。畳まれたノードは 1 つの stub にだけ数えられる（重複カウントしない）。
+- **bulk collapse**（[ADR-2120](../adr/2120-group-by-bulk-collapse.md)）: 全群 collapsed は「すべての所属が collapsed」を自動的に満たすので、今日の「群依存 DAG ビュー」は不変。共有ノードは、どの stub に畳まれるかを決める必要がある — **配置された群の stub に畳む**。畳まれたノードは 1 つの stub にだけ数えられる（重複カウントしない）。
+  > **実装時の訂正**（#2180）: 本節は当初「primary の stub」と書いていたが、[#2176](https://github.com/kompiro/karasu/issues/2176) の `resolvePlacementAxis` は body を持たない boundary に体を与えるためノードを primary 以外へ claim しうる。stub はそのノードが占めていた帯に置かれるので、畳み先は**配置された群**とした。claim が起きていなければ両者は一致する。
 
 ## 現時点の方針
 

@@ -94,6 +94,13 @@ export function collapseGroups(
    * rather than a single colliding id (#1884). Omitted in the single-system view.
    */
   stubScope?: string,
+  /**
+   * Full declared membership for this canvas on the boundary axis (#2180).
+   * Supplied, a node folds only when **every** boundary it belongs to here is
+   * collapsed; omitted (the team axis, which is 1:1) the predicate reduces to
+   * "this node's group is collapsed", exactly as before.
+   */
+  membership?: ReadonlyMap<string, readonly string[]>,
 ): GroupCollapseResult {
   const stubGroup = new Map<string, string>();
   if (!collapsed || collapsed.size === 0) {
@@ -106,9 +113,28 @@ export function collapseGroups(
     };
   }
 
+  /**
+   * The stub a node folds into, or `null` when it stays visible.
+   *
+   * Collapse folds a *frame*, not a set of nodes (#2180, design Part C): a node
+   * that also belongs to a boundary still expanded on this canvas keeps being
+   * drawn, inside that expanded frame. Folding on the first collapsed
+   * membership would let collapsing A silently empty an unrelated expanded B —
+   * the operation and its effect would not match, and ADR-2036 established that
+   * collapse state is per group.
+   *
+   * The node folds into the group it was *placed* in rather than its primary.
+   * The two are the same unless #2176 promoted it to give a bandless boundary a
+   * body, and the stub takes the place the node occupied — its band.
+   */
   const collapsedGroupOf = (id: string): string | null => {
     const g = ownerIndex.get(id);
-    return g !== undefined && collapsed.has(g) ? g : null;
+    if (g === undefined || !collapsed.has(g)) return null;
+    const declared = membership?.get(id);
+    if (declared !== undefined && declared.some((groupId) => !collapsed.has(groupId))) {
+      return null;
+    }
+    return g;
   };
 
   const kept: KrsNode[] = [];
@@ -119,7 +145,10 @@ export function collapseGroups(
     else kept.push(node);
   }
   for (const [groupId, count] of counts) {
-    // `counts` only ever holds ids seen at least once, so count >= 1 always.
+    // `counts` only ever holds ids seen at least once, so count >= 1 always —
+    // which is also why a collapsed boundary whose members all stayed visible
+    // through another expanded frame emits no stub at all rather than `A (0)`
+    // (#2180). Nothing folded, so nothing stands in for it.
     kept.push(stubNode(groupId, count, stubScope));
     stubGroup.set(groupStubId(groupId, stubScope), groupId);
   }
