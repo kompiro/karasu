@@ -44,6 +44,10 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // per-file verdict does not over-report — it reports nothing at all
   // (#2221, TPL-2221).
   "duplicate-boundary-assignment",
+  // Same reasoning, reachable since #2246: a reopened `system` (or infra block)
+  // carries its scoped `boundary` blocks across, so two files can now declare
+  // the same id in one scope. Neither file sees the collision alone.
+  "duplicate-boundary-id",
 ]);
 
 export interface ResolvedProject {
@@ -64,6 +68,7 @@ export interface ResolvedProject {
  *           - ワイルドカード import: 同名 system/deploy/org をマージ（重複 ID は error）
  *           - Named import: 指定 ID のノードのみをマージ（既存動作）
  */
+
 export class ImportResolver {
   /** Pass 1: 現在ロード中スタック（push on enter / pop on exit）— 真の循環検出に使う */
   private loadingKrs = new Set<string>();
@@ -140,9 +145,9 @@ export class ImportResolver {
     ]);
     // Boundary membership is rebuilt from the merged declarations rather than
     // unioned per file, so the index and the diagnostic come from one derivation
-    // (#2221). Only the multi-membership fact is re-emitted here:
-    // `duplicate-boundary-id` stays a per-file verdict, since a scope declaring
-    // the same boundary id twice is visible without the merge.
+    // (#2221). Both diagnostics the rebuild produces are merged-model verdicts:
+    // multi-membership (#2221) and, since a reopened scope can now collect
+    // blocks from two files, `duplicate-boundary-id` (#2246).
     const mergedMembership = buildBoundaryMembership(krsFile.boundaries);
     krsFile.boundaryMembership = mergedMembership.membership;
     const mergedScoped = buildScopedBoundaryMembership([
@@ -155,11 +160,7 @@ export class ImportResolver {
       ...krsFile.storages,
     ]);
     krsFile.scopedBoundaryMembership = mergedScoped.membership;
-    this.diagnostics.push(
-      ...[...mergedMembership.diagnostics, ...mergedScoped.diagnostics].filter(
-        (d) => d.code === "duplicate-boundary-assignment",
-      ),
-    );
+    this.diagnostics.push(...mergedMembership.diagnostics, ...mergedScoped.diagnostics);
     // `facet` declarations from every file share one flat namespace, so the
     // duplicate check only makes sense here (#2065 Part B). Unlike the reference
     // checks above, the per-file verdict was suppressed to avoid *under*-
@@ -536,6 +537,7 @@ export class ImportResolver {
    */
   private mergeInfraBody(target: KrsNode & { id: string; kind: string }, source: KrsNode): void {
     if (target === source) return;
+    this.mergeScopedBoundaries(target, source);
     const infraKind =
       target.kind === "database" || target.kind === "queue" || target.kind === "storage"
         ? (target.kind as "database" | "queue" | "storage")
@@ -593,8 +595,32 @@ export class ImportResolver {
     }
   }
 
+  /**
+   * Carry a reopened node's scoped `boundary` blocks (#2036) into the node that
+   * survives the merge.
+   *
+   * A `system` (and a same-id infra block) may be reopened in another file, and
+   * only the merged node is ever drawn — so a boundary declared on the incoming
+   * copy is lost unless it is moved across. It parsed, it resolved a label, and
+   * it framed nothing: the accepted-but-inert state TPL-1503 forbids (#2246).
+   *
+   * Same-id blocks are kept rather than deduped here. Two files declaring the
+   * same boundary id in one scope is a duplicate only the merged model can see,
+   * and `buildScopedBoundaryMembership` is what reports it (`duplicate-boundary-id`)
+   * when the resolver rebuilds membership — dropping one here would silence it.
+   */
+  private mergeScopedBoundaries(target: KrsNode, source: KrsNode): void {
+    if (source.boundaries === undefined || source.boundaries.length === 0) return;
+    const carried = (target.boundaries ??= []);
+    for (const boundary of source.boundaries) {
+      // Identity dedup only: the same block re-arriving through a DAG path.
+      if (!carried.includes(boundary)) carried.push(boundary);
+    }
+  }
+
   private mergeSystemIntoExisting(target: SystemNode, source: SystemNode): void {
     if (target === source) return;
+    this.mergeScopedBoundaries(target, source);
     this.reconcileLabel(target, source, "system");
     this.reconcileDescription(
       target.properties as { description?: string },
