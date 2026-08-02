@@ -62,6 +62,7 @@
     "lint:skill-cli-refs": "tsx scripts/lint/skill-cli-refs.ts",
     "lint:config-topics-sync": "tsx scripts/lint/config-topics-sync.ts",
     "lint:vitest-projects-sync": "tsx scripts/lint/vitest-projects-sync.ts",
+    "lint:devcontainer-variants-sync": "tsx scripts/lint/devcontainer-variants-sync.ts",
     "lint:roadmap-issue-state": "tsx scripts/lint/roadmap-issue-state.ts",
     "program:slices": "tsx scripts/program-slices.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages",
