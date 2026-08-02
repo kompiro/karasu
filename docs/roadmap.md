@@ -150,7 +150,13 @@ gate の生きた適用状態。ここに載る構文は **後方互換を約束
 #### watch 対象の notation gap（構文未満の欠落）
 
 まだ構文にしていない欠落の watch 台帳。子 Issue は起こさず本表で追跡し、promotion
-trigger を満たしたらその時点で Issue を起こして着手する。
+trigger を満たしたらその時点で Issue を起こして着手する（起票したら本表からは外す
+— 台帳と tracker の二重管理を避ける）。
+
+> 本書の台帳は「trigger が発火しても誰も行を読み返さない」形で腐る。`pnpm lint:roadmap-issue-state`
+> がその一部を機械検出する — **未着手と書いたセルが closed な Issue を指している**、
+> **未起票と書いたセルが Issue を指している**の 2 つ。判定は行ではなくセル単位
+> （[#2245](https://github.com/kompiro/karasu/issues/2245)）。
 
 | gap | disposition / promotion trigger | 出典 |
 | --- | --- | --- |
