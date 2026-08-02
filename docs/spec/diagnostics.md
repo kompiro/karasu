@@ -166,6 +166,7 @@ tool vocabulary only — see [tags-annotations.md](./tags-annotations.md)).
 | `annotation-param-unsupported` | warning | An annotation parameter key is not recognised for that annotation. |
 | `annotation-possible-typo` | info | An annotation name is a near-match to a builtin (typo hint). |
 | `tag-not-builtin` | warning | A tag name is outside the tool vocabulary (builtin + system-assigned tags). Deprecated in v1.x; no suppression condition. |
+| `tag-not-applicable` | warning | A builtin tag is written on a node kind outside its applicability (e.g. `service Api [index]` — `[index]` applies to `database`). The tag has no effect there. Never fires together with `tag-not-builtin`: a non-builtin name has no applicability to violate. |
 | `annotation-not-builtin` | warning | An annotation name is outside the builtin set. Deprecated in v1.x; no suppression condition. |
 | `team-property-removed` | error | The removed `team` property is used (see [ADR-1564](../adr/1564-remove-team-property.md)). |
 

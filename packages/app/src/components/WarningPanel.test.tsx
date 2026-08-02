@@ -159,6 +159,11 @@ function makeWarning(kind: Warning["kind"]): Warning {
       };
     case "tag-not-builtin":
       return { kind, params: { nodeId: "test-node", tag: "cache" } };
+    case "tag-not-applicable":
+      return {
+        kind,
+        params: { nodeId: "test-node", tag: "index", nodeKind: "service", appliesTo: ["database"] },
+      };
     case "annotation-not-builtin":
       return { kind, params: { nodeId: "test-node", annotation: "canary" } };
     case "facet-not-declared":

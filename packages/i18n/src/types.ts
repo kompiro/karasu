@@ -305,6 +305,13 @@ export type Translations = {
   "warning.annotationPossibleTypo.openSetNote": string;
   "warning.tagNotBuiltin.message": (params: { nodeId: string; tag: string }) => string;
   "warning.tagNotBuiltin.migrationNote": string;
+  "warning.tagNotApplicable.message": (params: {
+    nodeId: string;
+    tag: string;
+    nodeKind: string;
+    appliesTo: string;
+  }) => string;
+  "warning.tagNotApplicable.applicabilityNote": string;
   "warning.annotationNotBuiltin.message": (params: {
     nodeId: string;
     annotation: string;

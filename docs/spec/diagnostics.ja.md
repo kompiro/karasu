@@ -159,6 +159,7 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | `annotation-param-unsupported` | warning | annotation のパラメータ key がその annotation で認識されない。 |
 | `annotation-possible-typo` | info | annotation 名が builtin の near-match（typo の示唆）。 |
 | `tag-not-builtin` | warning | tag 名がツール語彙（builtin + system-assigned tag）の外にある。v1.x で非推奨。抑制条件なし。 |
+| `tag-not-applicable` | warning | 組み込み tag が適用範囲外の kind に書かれている（例: `service Api [index]` — `[index]` は `database` に適用）。その場所では効果を持たない。`tag-not-builtin` と同時には発火しない（builtin 外の名前には違反する適用範囲が無いため）。 |
 | `annotation-not-builtin` | warning | annotation 名が builtin 集合の外にある。v1.x で非推奨。抑制条件なし。 |
 | `team-property-removed` | error | 削除済みの `team` プロパティが使われる（[ADR-1564](../adr/1564-remove-team-property.md) 参照）。 |
 

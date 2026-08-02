@@ -314,6 +314,10 @@ export const en: Translations = {
     `"[${tag}]" on ${nodeId} is not a builtin tag — deprecated. Syntax v2.0 accepts tool vocabulary only (warned, files still parse).`,
   "warning.tagNotBuiltin.migrationNote":
     "For membership or model-specific labeling, migrate to the facet construct (#2065). For a missing archetype, request a builtin tag addition instead.",
+  "warning.tagNotApplicable.message": ({ nodeId, tag, nodeKind, appliesTo }) =>
+    `"[${tag}]" on ${nodeId} has no effect: the tag applies to ${appliesTo}, but ${nodeId} is a ${nodeKind}.`,
+  "warning.tagNotApplicable.applicabilityNote":
+    "A builtin tag only carries meaning on the kinds listed in its applicability. Remove it, or move it to a node of an applicable kind.",
   "warning.annotationNotBuiltin.message": ({ nodeId, annotation }) =>
     `"@${annotation}" on ${nodeId} is not a builtin annotation — deprecated. Syntax v2.0 accepts tool vocabulary only (warned, files still parse).`,
   "warning.annotationNotBuiltin.migrationNote":

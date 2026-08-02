@@ -117,6 +117,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "tag-not-builtin",
     params: { nodeId: "SessionStore", tag: "cache" },
   },
+  "tag-not-applicable": {
+    kind: "tag-not-applicable",
+    params: { nodeId: "Api", tag: "index", nodeKind: "service", appliesTo: ["database"] },
+  },
   "annotation-not-builtin": {
     kind: "annotation-not-builtin",
     params: { nodeId: "OrderService", annotation: "canary" },
@@ -198,6 +202,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "client-capability-duplicate": ["WebApp", "camera"],
   "annotation-possible-typo": ["Legacy", "@depracated", "@deprecated"],
   "tag-not-builtin": ["SessionStore", "[cache]"],
+  "tag-not-applicable": ["Api", "[index]", "database", "service"],
   "annotation-not-builtin": ["OrderService", "@canary"],
   "facet-not-declared": ["Order", "pcl"],
   "legend-ref-unresolved": ["@missing"],

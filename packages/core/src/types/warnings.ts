@@ -27,6 +27,7 @@ export type WarningKind =
   | "client-capability-duplicate"
   | "annotation-possible-typo"
   | "tag-not-builtin"
+  | "tag-not-applicable"
   | "annotation-not-builtin"
   | "facet-not-declared"
   | "entity-anchor-collision"
@@ -227,6 +228,33 @@ export interface WarningParamsByKind {
     nodeId: string;
     /** the tag name as written, without the `[...]` brackets */
     tag: string;
+  };
+  /**
+   * A **builtin** tag is written on a node kind outside its declared
+   * `appliesTo` (#2225) — e.g. `service Api [index]`, where `[index]` applies
+   * to `database`. The tag parses, renders no badge and, before this
+   * diagnostic, said nothing: TPL-1503's fourth state (accepted, inert,
+   * undocumented) in the **kind** dimension, after #2159 closed it in the
+   * **name** dimension.
+   *
+   * Same `warning` register as `tag-not-builtin` deliberately — the author's
+   * symptom is identical ("I wrote a tag and nothing happened"), so a
+   * different severity would only ask them to learn a distinction that does
+   * not help them. Never a parse error: models that are inert today keep
+   * parsing (same posture as #2159).
+   *
+   * Mutually exclusive with `tag-not-builtin` by construction: a name outside
+   * the builtin set has no `appliesTo` to violate.
+   */
+  "tag-not-applicable": {
+    /** id of the node carrying the tag, or `"<from> -> <to>"` for an edge */
+    nodeId: string;
+    /** the tag name as written, without the `[...]` brackets */
+    tag: string;
+    /** the node kind the tag was written on, or `"edge"` for an edge tag */
+    nodeKind: string;
+    /** the kinds the tag is declared to apply to, in `reference-data` order */
+    appliesTo: string[];
   };
   /**
    * An annotation name is outside the builtin lifecycle vocabulary. Same

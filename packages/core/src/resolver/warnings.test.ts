@@ -1395,6 +1395,157 @@ system S {
   });
 });
 
+describe("tag-not-applicable — builtin tag on a kind outside appliesTo (#2225)", () => {
+  function applicabilityWarnings(krs: string) {
+    const file = Parser.parse(krs).value;
+    return analyze(file, [getBuiltinStyleSheet()]).filter((w) => w.kind === "tag-not-applicable");
+  }
+
+  it("warns on each of the issue's verified cases and stays silent on the control", () => {
+    const warnings = applicabilityWarnings(`
+system S {
+  service Api [index] {}
+  user U [table] {}
+  database DB [mobile] {}
+  database Ok [index] {}
+}
+    `);
+    expect(
+      warnings.map((w) =>
+        w.kind === "tag-not-applicable" ? `${w.params.nodeId}[${w.params.tag}]` : "",
+      ),
+    ).toEqual(["Api[index]", "U[table]", "DB[mobile]"]);
+  });
+
+  it("reports the kind written and the kinds the tag applies to", () => {
+    const warnings = applicabilityWarnings(`
+system S {
+  service Api [index] {}
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-applicable") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({
+      nodeId: "Api",
+      tag: "index",
+      nodeKind: "service",
+      appliesTo: ["database"],
+    });
+  });
+
+  it("warns on a redundant shape tag — `storage Bucket [storage]` (#2225, called out in the changeset)", () => {
+    const warnings = applicabilityWarnings(`
+system S {
+  storage Bucket [storage] {}
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-applicable") throw new Error("kind mismatch");
+    expect(warnings[0].params.nodeKind).toBe("storage");
+  });
+
+  it("checks edge tags against the literal kind `edge`", () => {
+    // `[sync]`/`[async]` declare appliesTo: ["edge"], so a client-form tag on
+    // an edge must warn while the communication-mode tags must not.
+    const warnings = applicabilityWarnings(`
+system S {
+  service A {}
+  service B {}
+  A -> B "ok" [sync]
+  A --> B "ok" [async]
+  A -> B "bad" [mobile]
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-applicable") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({
+      nodeId: "A -> B",
+      tag: "mobile",
+      nodeKind: "edge",
+      appliesTo: ["client"],
+    });
+  });
+
+  it("stays silent for system-assigned tags — they carry no appliesTo to violate", () => {
+    expect(
+      applicabilityWarnings(`
+system S {
+  service A {}
+  service B {}
+  A -> B [inferred]
+}
+      `),
+    ).toHaveLength(0);
+  });
+
+  it("never fires together with tag-not-builtin — one tag, one register", () => {
+    const file = Parser.parse(`
+system S {
+  service Billing [pci] {}
+}
+    `).value;
+    const kinds = analyze(file, [getBuiltinStyleSheet()])
+      .filter((w) => w.kind === "tag-not-builtin" || w.kind === "tag-not-applicable")
+      .map((w) => w.kind);
+    expect(kinds).toEqual(["tag-not-builtin"]);
+  });
+
+  it("does not fire on infra sub-resources — their shape tags are inferred, never in node.tags", () => {
+    // buildInferredTagMap (style-resolver) derives [table]/[queue]/[storage]
+    // from the sub-kind against dot-notation ids; nothing writes them into the
+    // AST. Pin that here so a future change to the inference path cannot start
+    // producing false positives in this walk (#2225).
+    expect(
+      applicabilityWarnings(`
+system S {
+  database OrderDB {
+    table OrderTable {}
+  }
+  queue Events {
+    queue-item OrderPlaced {}
+  }
+  storage Assets {
+    bucket Images {}
+  }
+}
+      `),
+    ).toHaveLength(0);
+  });
+
+  it("walks nested nodes", () => {
+    const warnings = applicabilityWarnings(`
+system S {
+  service Svc {
+    domain Orders {
+      usecase Do {
+        resource OrderRef [table] {}
+        resource Bad [index] {}
+      }
+    }
+  }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-applicable") throw new Error("kind mismatch");
+    expect(warnings[0].params.nodeId).toBe("Bad");
+  });
+
+  it("renders as warning — same register as tag-not-builtin, the author's symptom is identical", () => {
+    expect(warningSeverity("tag-not-applicable")).toBe("warning");
+  });
+
+  it("covers every builtin tag: each applies cleanly to at least one declared kind (TPL-2172)", () => {
+    // The applicability table is the enforcement input now. A tag whose
+    // appliesTo is empty (or names a kind that does not exist) would make the
+    // diagnostic fire everywhere and nowhere — catch that at the source.
+    const kinds = new Set<string>([...REFERENCE_DATA.nodeKinds.map((k) => k.kind), "edge"]);
+    const broken = REFERENCE_DATA.tags.filter(
+      (t) => t.appliesTo.length === 0 || t.appliesTo.some((k) => !kinds.has(k)),
+    );
+    expect(broken.map((t) => t.name)).toEqual([]);
+  });
+});
+
 describe("annotation-not-builtin deprecation warning (#2159)", () => {
   function annotationWarnings(krs: string, userStyle?: string) {
     const file = Parser.parse(krs).value;
@@ -2859,6 +3010,11 @@ describe("warningSeverity — exhaustive register map", () => {
     // a definite migration fact, not a low-confidence hint (#2159,
     // TPL-1503 state (2)).
     "tag-not-builtin": "warning",
+    // Same register as tag-not-builtin on purpose: from the author's side the
+    // symptom is identical ("I wrote a tag and nothing happened"), so a
+    // different severity would only ask them to learn a distinction that does
+    // not help them (#2225).
+    "tag-not-applicable": "warning",
     "annotation-not-builtin": "warning",
     // A `facets` reference to an undeclared facet is a broken reference with a
     // definite fix (declare it, or fix the spelling) — the same register as the
