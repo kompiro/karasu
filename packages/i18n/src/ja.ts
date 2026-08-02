@@ -410,6 +410,8 @@ export const ja: Partial<Translations> = {
     `"${nodeId}" は複数の team が owns しています。主オーナーとして "${existingTeam}" を採用します`,
   "diagnostic.duplicateBoundaryAssignment.message": ({ nodeId, existingBoundary }) =>
     `"${nodeId}" は複数の boundary に所属しています（"${existingBoundary}" を含む）`,
+  "diagnostic.boundaryMembershipNotDrawn.message": ({ nodeId, boundaryId }) =>
+    `このビューでは boundary "${boundaryId}" の枠が "${nodeId}" に届きません。所属はカード上に表示しています`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"contains" で参照されている "${memberId}" が system 階層内に見つかりません`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>

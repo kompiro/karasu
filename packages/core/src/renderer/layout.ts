@@ -52,6 +52,7 @@ import type {
   ContainerRect,
   LayoutResult,
   DisplayMode,
+  Rect,
 } from "./layout-types.js";
 
 export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
@@ -72,12 +73,80 @@ const GROUP_FRAME_PAD_BOTTOM = 16;
 const GROUP_FRAME_TITLE_GAP = GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM;
 
 /**
+ * How far a reach strip (#2179) is padded around the card it wraps. The top pad
+ * of a band body is reserved for its title; a strip carries no title, so it uses
+ * the bottom pad on both of its ends.
+ */
+const REACH_STRIP_PAD_Y = GROUP_FRAME_PAD_BOTTOM;
+
+/** Multi-containment inputs for the boundary axis (#2179); omitted on the team axis. */
+interface FrameReach {
+  /** Every boundary a node was declared in on this canvas — not just its placement group. */
+  membershipOf: (nodeId: string) => readonly string[];
+  /** Position of a boundary in the declared order; the renderer maps it to a hue. */
+  hueIndexOf: (groupId: string) => number;
+}
+
+/**
+ * The strip that would widen `body` to enclose `card`, or `null` when it must
+ * not be drawn (#2179).
+ *
+ * Refused in two cases, and the caller falls back to the 縮退 tab:
+ *
+ * - the card is not wholly above or below the band body, so a strip would have
+ *   to run sideways through the band's own rows;
+ * - **the corridor holds a card that is not a member** — 縮退規則 4, "偽の包含は
+ *   作らない". This is the load-bearing condition. A reach decided by band
+ *   *adjacency* instead walks across whatever rows lie between: measured on the
+ *   prototype, it covered 100% of one non-member's card and 23% of another, on
+ *   models a user would plausibly write. #2176's seam placement narrows that
+ *   without removing it (it declines to move a node its intra-group dependents
+ *   pin, and a node shared with three boundaries can only be seated toward one
+ *   of them), so the gate is on the corridor, not on the band order.
+ */
+function reachStrip(
+  body: Rect,
+  card: LayoutNode,
+  nodes: readonly LayoutNode[],
+  isMember: (nodeId: string) => boolean,
+): Rect | null {
+  const above = card.y + card.height <= body.y;
+  const below = card.y >= body.y + body.height;
+  if (above === below) return null;
+  const top = above ? card.y - REACH_STRIP_PAD_Y : body.y + body.height;
+  const bottom = above ? body.y : card.y + card.height + REACH_STRIP_PAD_Y;
+  const strip: Rect = {
+    x: card.x - GROUP_FRAME_PAD_X,
+    y: top,
+    width: card.width + GROUP_FRAME_PAD_X * 2,
+    height: bottom - top,
+  };
+  if (strip.height <= 0) return null;
+  for (const other of nodes) {
+    if (other.id === card.id || isMember(other.id)) continue;
+    if (rectsOverlap(strip, other)) return null;
+  }
+  return strip;
+}
+
+function rectsOverlap(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+/**
  * Build one dashed titled boundary frame per team from final node positions and
  * append them to `out`. Members of a group occupy a contiguous row band
- * (guaranteed by `assignGroupedLayers`), so the frames are disjoint by
- * construction. Shared by the single-system focus path and the multi-system
- * root path (#1884) — both mint the same `__group_<team>__` frame, so the two
- * grouping paths cannot drift on frame geometry (TPL-219).
+ * (guaranteed by `assignGroupedLayers`). Shared by the single-system focus path
+ * and the multi-system root path (#1884) — both mint the same `__group_<team>__`
+ * frame, so the two grouping paths cannot drift on frame geometry (TPL-219).
+ *
+ * On the boundary axis (`reach` supplied) a frame is no longer just its band's
+ * bounding box: a node declared in this boundary but *placed* in another band is
+ * enclosed too, by widening the frame into a rectilinear outline (#2179). The
+ * recorded rect stays the band body; the full shape is in `coverage`.
+ *
+ * Returns the memberships that could not be reached, for the caller to mark on
+ * the card and report.
  */
 function buildGroupFrames(
   nodes: readonly LayoutNode[],
@@ -91,7 +160,9 @@ function buildGroupFrames(
    * Omitted → the frame reuses the team defaults (label = group id).
    */
   metaOf?: (groupId: string) => { label?: string; expanded?: boolean; nodeId?: string } | undefined,
-): void {
+  reach?: FrameReach,
+): { degraded: { nodeId: string; boundaryId: string }[] } {
+  const degraded: { nodeId: string; boundaryId: string }[] = [];
   for (const groupId of groupOrder) {
     const members = nodes.filter((n) => groupIdOf(n.id) === groupId);
     if (members.length === 0) continue;
@@ -100,20 +171,73 @@ function buildGroupFrames(
     const maxX = Math.max(...members.map((n) => n.x + n.width));
     const maxY = Math.max(...members.map((n) => n.y + n.height));
     const meta = metaOf?.(groupId);
+    const body: Rect = {
+      x: minX - GROUP_FRAME_PAD_X,
+      y: minY - GROUP_FRAME_PAD_TOP,
+      width: maxX - minX + GROUP_FRAME_PAD_X * 2,
+      height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
+    };
+    const coverage: Rect[] = [body];
+    if (reach) {
+      const isMember = (nodeId: string): boolean => reach.membershipOf(nodeId).includes(groupId);
+      for (const card of nodes) {
+        if (groupIdOf(card.id) === groupId || !isMember(card.id)) continue;
+        const strip = reachStrip(body, card, nodes, isMember);
+        if (strip) coverage.push(strip);
+        else degraded.push({ nodeId: card.id, boundaryId: groupId });
+      }
+    }
     out.push({
       id: `__group_${groupId}__`,
       // displayGroupId strips the scope qualifier of a scoped boundary's group
       // id (#2036) so the qualifier never surfaces as a title.
       label: meta?.label ?? displayGroupId(groupId),
-      x: minX - GROUP_FRAME_PAD_X,
-      y: minY - GROUP_FRAME_PAD_TOP,
-      width: maxX - minX + GROUP_FRAME_PAD_X * 2,
-      height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
+      ...body,
       ghost: false,
       group: true,
       groupId,
+      // Left unset for a plain frame so everything downstream keeps reading the
+      // recorded rect on the paths that never reach.
+      ...(coverage.length > 1 ? { coverage } : {}),
+      ...(reach ? { hueIndex: reach.hueIndexOf(groupId) } : {}),
       ...(meta?.expanded ? { expanded: true, nodeId: meta.nodeId ?? groupId } : {}),
     });
+  }
+  return { degraded };
+}
+
+/**
+ * Boundary → its position in the **declared** order (#2179), which is what the
+ * renderer's hue cycle indexes by: the colour of a boundary then depends only on
+ * where the author declared it, so it is stable across canvases, across collapse
+ * state, and across a band reorder. Falls back to the band order for callers with
+ * no declared list, and to 0 for a group in neither (the renderer wraps anyway).
+ */
+function boundaryHueIndexer(
+  declaredGroupOrder: readonly string[] | undefined,
+  groupOrder: readonly string[],
+): (groupId: string) => number {
+  const order = declaredGroupOrder ?? groupOrder;
+  return (groupId) => Math.max(0, order.indexOf(groupId));
+}
+
+/**
+ * Attach the 縮退 fallbacks to the cards that carry them (#2179), so the renderer
+ * can draw a `◇ <boundary>` tab without re-deriving which frame missed which node.
+ */
+function markDegradedMemberships(
+  degraded: readonly { nodeId: string; boundaryId: string }[],
+  layoutNodes: Map<string, LayoutNode>,
+  labelOf: (groupId: string) => string,
+  hueIndexOf: (groupId: string) => number,
+): void {
+  for (const { nodeId, boundaryId } of degraded) {
+    const node = layoutNodes.get(nodeId);
+    if (!node) continue;
+    node.degradedBoundaries = [
+      ...(node.degradedBoundaries ?? []),
+      { id: boundaryId, label: labelOf(boundaryId), hueIndex: hueIndexOf(boundaryId) },
+    ];
   }
 }
 
@@ -745,6 +869,17 @@ function normalizeCoordinates(
     for (const c of containers) {
       c.x += shiftX;
       c.y += shiftY;
+      // A widened frame's `coverage` is geometry of its own (#2179), not derived
+      // from the recorded rect, so it has to be shifted with it. Miss this and
+      // the strip stays behind: the outline is drawn in the wrong place, routing
+      // treats the wrong rows as covered, and the false-containment guard reads
+      // a frame that no longer matches the cards it is measured against.
+      if (c.coverage) {
+        for (const piece of c.coverage) {
+          piece.x += shiftX;
+          piece.y += shiftY;
+        }
+      }
     }
     for (const [, node] of layoutNodes) {
       node.x += shiftX;
@@ -1676,6 +1811,9 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // Reverse so outermost is first
   containers.reverse();
 
+  /** Memberships this canvas showed as a 縮退 tab rather than a frame (#2179). */
+  let degradedMemberships: { nodeId: string; boundaryId: string }[] | undefined;
+
   // Group boundary frames (#1858, P2a): one dashed titled frame enclosing each
   // team's members (design § P1 measurement 1). Built from final node positions
   // via the shared helper the multi-system path also uses (#1884).
@@ -1703,7 +1841,29 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       const label = canvasLabels?.get(groupId);
       return label !== undefined ? { label } : undefined;
     };
-    buildGroupFrames([...layoutNodes.values()], groupOrder, frameGroupIdOf, containers, frameMeta);
+    // Multi-containment (#2179) is a boundary-axis affordance: only there does a
+    // node carry more than one group, and only there are overlapping frames the
+    // intended reading. Team frames pass no `reach` and stay exactly as before.
+    const hueIndexOf = boundaryHueIndexer(declaredGroupOrder, groupOrder);
+    const reach: FrameReach | undefined =
+      groupBy === "boundary" && canvasMembership && !isExpanding
+        ? { membershipOf: (id) => canvasMembership.get(id) ?? [], hueIndexOf }
+        : undefined;
+    const { degraded } = buildGroupFrames(
+      [...layoutNodes.values()],
+      groupOrder,
+      frameGroupIdOf,
+      containers,
+      frameMeta,
+      reach,
+    );
+    markDegradedMemberships(
+      degraded,
+      layoutNodes,
+      (groupId) => canvasLabels?.get(groupId) ?? displayGroupId(groupId),
+      hueIndexOf,
+    );
+    if (degraded.length > 0) degradedMemberships = degraded;
   }
 
   // Place ghost nodes
@@ -1831,6 +1991,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     height: totalHeight,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
     crossingMarks,
+    degradedMemberships,
   };
 }
 
@@ -1946,6 +2107,8 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // stub instead of being dropped (#1884; mirrors the single-system ghost-edge
   // remap). Identity for un-collapsed endpoints.
   const crossSystemRemap = new Map<string, string>();
+  /** 縮退 fallbacks across every system frame (#2179), in system order. */
+  const allDegradedMemberships: { nodeId: string; boundaryId: string }[] = [];
 
   let offsetX = CONTAINER_PADDING;
   const offsetY = CONTAINER_PADDING;
@@ -2217,7 +2380,15 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       // Labels resolve per system canvas ([sys.id]), matching the axis
       // resolution in boundaryAxisForSystem (#2133).
       const systemLabels = groupLabelsFor(groupLabels, [sys.id]);
-      buildGroupFrames(
+      // Multi-containment per system frame (#2179): a boundary spans one system
+      // here (cross-system frames are out of scope), so the reach is resolved
+      // against this system's membership and this system's cards only.
+      const hueIndexOf = boundaryHueIndexer(declaredGroupOrder, groupOrderS);
+      const reach: FrameReach | undefined =
+        groupBy === "boundary" && systemMembership
+          ? { membershipOf: (id) => systemMembership.get(id) ?? [], hueIndexOf }
+          : undefined;
+      const { degraded } = buildGroupFrames(
         [...localNodes.values()],
         groupOrderS,
         groupIdOf,
@@ -2226,7 +2397,15 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
           const label = systemLabels?.get(groupId);
           return label !== undefined ? { label } : undefined;
         },
+        reach,
       );
+      markDegradedMemberships(
+        degraded,
+        localNodes,
+        (groupId) => systemLabels?.get(groupId) ?? displayGroupId(groupId),
+        hueIndexOf,
+      );
+      allDegradedMemberships.push(...degraded);
     }
 
     // Move [external] services to side columns for this system (#1728). Skipped
@@ -2321,6 +2500,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     width: totalWidth,
     height: totalHeight,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
+    degradedMemberships: allDegradedMemberships.length > 0 ? allDegradedMemberships : undefined,
   };
 }
 

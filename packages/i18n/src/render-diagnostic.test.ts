@@ -167,6 +167,11 @@ const SAMPLES: SamplesByCode = {
     code: "duplicate-boundary-assignment",
     params: { nodeId: "OrderService", existingBoundary: "OrderIntake" },
   },
+  "boundary-membership-not-drawn": {
+    severity: "info",
+    code: "boundary-membership-not-drawn",
+    params: { nodeId: "OrderService", boundaryId: "PciScope" },
+  },
   "boundary-not-in-context": {
     severity: "error",
     code: "boundary-not-in-context",
@@ -423,6 +428,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-crud-decoration-target": ["manage", "read", "Order"],
   "duplicate-owner-assignment": ["OrderService", "Checkout"],
   "duplicate-boundary-assignment": ["OrderService", "OrderIntake"],
+  "boundary-membership-not-drawn": ["OrderService", "PciScope"],
   "boundary-not-in-context": ["entity"],
   "duplicate-boundary-id": ["OrderIntake"],
   "duplicate-facet-id": ["pii"],

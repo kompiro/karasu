@@ -52,6 +52,16 @@ export interface LayoutNode {
   ghost?: boolean;
   /** Optional sub-label rendered below the main label (e.g., parent service name for ghost domains). */
   subLabel?: string;
+  /**
+   * Boundaries this node belongs to whose frame could **not** be widened to
+   * enclose it (#2179) — the 縮退 fallback. The renderer draws one `◇ <label>`
+   * tab per entry on the card's bottom edge, in that frame's stroke language, so
+   * a membership the geometry cannot show is still readable on the card.
+   *
+   * Expect this to be the common outcome rather than the exception: reaching is
+   * refused whenever the corridor to the card holds a non-member (縮退規則 4).
+   */
+  degradedBoundaries?: readonly { id: string; label: string; hueIndex: number }[];
 }
 
 export interface LayoutEdge {
@@ -110,6 +120,14 @@ export interface LayoutEdge {
   trunkId?: string;
 }
 
+/** Axis-aligned box. The unit `ContainerRect.coverage` is built from. */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface ContainerRect {
   id: string;
   label: string;
@@ -118,6 +136,29 @@ export interface ContainerRect {
   width: number;
   height: number;
   ghost: boolean;
+  /**
+   * The rects this frame actually covers (#2179): its band body first, then one
+   * strip per out-of-band member it reaches. Set only when a frame reaches — a
+   * plain frame leaves it `undefined`, its single rect being the degenerate case.
+   *
+   * The recorded `x/y/width/height` stay the **band body** even when this is set.
+   * The title is drawn from them, and growing them drops it onto the very card
+   * the strip wraps (measured on the prototype). Anything asking "what does this
+   * frame cover?" — the renderer's outline, routing obstacles, the
+   * false-containment guard — must read this, not the bounding box: an L-shaped
+   * frame's bbox includes rows it does not enclose.
+   */
+  coverage?: readonly Rect[];
+  /**
+   * Position of this boundary in the declared group order (#2179), which the
+   * renderer maps to a hue in `DiagramPalette.boundaryHues`. Set on the boundary
+   * axis only; team frames leave it `undefined` and stay monochrome.
+   *
+   * Boundary frames overlap by design, and with one shared stroke colour the
+   * overlap reads as *nesting* — the prototype's two plates differed in colour
+   * alone. The hue is what makes multi-containment legible, not decoration.
+   */
+  hueIndex?: number;
   /**
    * Kind band marker (deploy view, #1738). Set on the job band wrapper and its
    * member containers so the renderer can emit `data-kind-band` for styling /
@@ -171,6 +212,16 @@ export interface LayoutResult {
    * when present. See docs/design/system-view-grouping.md § "P2c-C 詳細設計".
    */
   crossingMarks?: CrossingMarks;
+  /**
+   * Memberships this canvas resolved to a 縮退 tab instead of a frame (#2179),
+   * in the order the frames were built. The renderer turns each into the info
+   * diagnostic `boundary-membership-not-drawn`.
+   *
+   * Kept alongside `LayoutNode.degradedBoundaries` rather than derived from it
+   * because the diagnostic names the boundary by **id** while the tab shows its
+   * label, and only the geometry pass knows both (TPL-2167).
+   */
+  degradedMemberships?: readonly { nodeId: string; boundaryId: string }[];
 }
 
 /**

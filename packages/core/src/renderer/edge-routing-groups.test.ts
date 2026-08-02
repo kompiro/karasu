@@ -52,25 +52,64 @@ function layoutOf(
   return layout(slice, { ownerIndex, groupBy, collapsedGroups });
 }
 
-/** The group boundary frames in a layout result. */
-function framesOf(res: LayoutResult): (Rect & { id: string })[] {
+/**
+ * The group boundary frames in a layout result, each as the rects it actually
+ * covers. A boundary frame widened to reach an out-of-band member (#2179) is a
+ * rectilinear polygon, and measuring its *bounding box* would both invent
+ * penetrations across rows it does not enclose and hide the strip it does.
+ */
+function framesOf(res: LayoutResult): { id: string; pieces: Rect[] }[] {
   return res.containers
     .filter((c) => c.group)
-    .map((c) => ({ id: c.id, x: c.x, y: c.y, width: c.width, height: c.height }));
+    .map((c) => ({
+      id: c.id,
+      pieces: (c.coverage ?? [c]).map((r) => ({
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.height,
+      })),
+    }));
 }
 
-/** Frame id enclosing a node, or null. Frames are disjoint (P2a). */
-function frameOfNode(n: LayoutNode, frames: (Rect & { id: string })[]): string | null {
+/**
+ * Frame ids enclosing a node — a **set**, because a boundary frame widened to
+ * reach a shared member overlaps its neighbour there (#2179). One definition for
+ * both axes: on the team axis the sets are all of size ≤ 1 and this reduces to
+ * the disjoint-frames rule P2a relied on.
+ */
+function framesOfNode(n: LayoutNode, frames: { id: string; pieces: Rect[] }[]): Set<string> {
+  const ids = new Set<string>();
   for (const f of frames) {
-    if (
-      n.x >= f.x &&
-      n.x + n.width <= f.x + f.width &&
-      n.y >= f.y &&
-      n.y + n.height <= f.y + f.height
-    )
-      return f.id;
+    const inside = f.pieces.some(
+      (p) =>
+        n.x >= p.x &&
+        n.x + n.width <= p.x + p.width &&
+        n.y >= p.y &&
+        n.y + n.height <= p.y + p.height,
+    );
+    if (inside) ids.add(f.id);
   }
-  return null;
+  return ids;
+}
+
+/**
+ * Obstacles for one edge: every non-endpoint card, plus every piece of every
+ * frame that encloses neither endpoint. Exempting a frame at *either* endpoint
+ * is what makes an intra-boundary edge crossing an overlap region not a
+ * penetration (#2179).
+ */
+function obstaclesForEdge(
+  e: LayoutEdge,
+  nodes: LayoutNode[],
+  frames: { id: string; pieces: Rect[] }[],
+  fFrom: Set<string>,
+  fTo: Set<string>,
+): Rect[] {
+  return [
+    ...nodes.filter((n) => n.id !== e.from && n.id !== e.to),
+    ...frames.filter((f) => !fFrom.has(f.id) && !fTo.has(f.id)).flatMap((f) => f.pieces),
+  ];
 }
 
 /**
@@ -84,12 +123,9 @@ function totalPenetrations(res: LayoutResult): number {
   let total = 0;
   for (const e of res.edges) {
     if (e.ghost || e.cyclic) continue;
-    const fFrom = frameOfNode(res.nodes.get(e.from)!, frames);
-    const fTo = frameOfNode(res.nodes.get(e.to)!, frames);
-    const obstacles: Rect[] = [
-      ...nodes.filter((n) => n.id !== e.from && n.id !== e.to),
-      ...frames.filter((f) => f.id !== fFrom && f.id !== fTo),
-    ];
+    const fFrom = framesOfNode(res.nodes.get(e.from)!, frames);
+    const fTo = framesOfNode(res.nodes.get(e.to)!, frames);
+    const obstacles = obstaclesForEdge(e, nodes, frames, fFrom, fTo);
     const pts: Point[] = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
     total += countPolylinePenetrations(pts, obstacles);
   }
@@ -110,12 +146,13 @@ function straightCenterPenetrations(res: LayoutResult): number {
     if (e.ghost || e.cyclic) continue;
     const from = res.nodes.get(e.from)!;
     const to = res.nodes.get(e.to)!;
-    const fFrom = frameOfNode(from, frames);
-    const fTo = frameOfNode(to, frames);
-    const obstacles: Rect[] = [
-      ...nodes.filter((n) => n.id !== e.from && n.id !== e.to),
-      ...frames.filter((f) => f.id !== fFrom && f.id !== fTo),
-    ];
+    const obstacles = obstaclesForEdge(
+      e,
+      nodes,
+      frames,
+      framesOfNode(from, frames),
+      framesOfNode(to, frames),
+    );
     total += countPolylinePenetrations([center(from), center(to)], obstacles);
   }
   return total;
@@ -845,21 +882,21 @@ describe("P2c routing after seam placement (#2176, TPL-1927)", () => {
     expect(Number.isFinite(totalCrossings(res))).toBe(true);
   });
 
-  it("keeps frames disjoint, so no frame encloses a non-member", () => {
-    // Placement is still exactly-once and every band is a contiguous row range,
-    // so a card sits inside exactly one group frame. Reaching out of a band is
-    // #2179's polygon frame, not something placement may fake with a bbox.
+  it("encloses a card in more than one frame only where it is a member of both", () => {
+    // Before #2179 this asserted "at most one frame per card", which held
+    // because a frame was its own band's bounding box. Widening a frame to reach
+    // a shared member makes multi-enclosure the intended reading — but only for
+    // cards that really are shared. A frame enclosing a card it does not contain
+    // is 縮退規則 4, and stays forbidden.
+    const parsed = Parser.parse(SHARED).value;
     const res = boundaryLayout(SHARED);
     const frames = framesOf(res).filter((f) => f.id.startsWith("__group_"));
     for (const n of res.nodes.values()) {
-      const enclosing = frames.filter(
-        (f) =>
-          n.x >= f.x &&
-          n.x + n.width <= f.x + f.width &&
-          n.y >= f.y &&
-          n.y + n.height <= f.y + f.height,
-      );
-      expect(enclosing.length).toBeLessThanOrEqual(1);
+      const declared = parsed.boundaryMembership.get(n.id) ?? [];
+      // Reported as a pair list so a failure names the frame and the card it
+      // swallowed, rather than just "expected true".
+      const enclosing = [...framesOfNode(n, frames)].map((id) => id.replace(/^__group_|__$/g, ""));
+      expect(enclosing.filter((groupId) => !declared.includes(groupId))).toEqual([]);
     }
   });
 
@@ -870,5 +907,34 @@ describe("P2c routing after seam placement (#2176, TPL-1927)", () => {
 
   it("has no collinear horizontal overlap between distinct edges (#1927)", () => {
     expect(collinearHorizontalOverlaps(boundaryLayout(SHARED))).toBe(0);
+  });
+
+  // Re-measure after #2179 widened the frames themselves. The strips are new
+  // obstacle geometry, and a card enclosed by two frames is exempt from both —
+  // either could have moved the numbers, so the dual metric is taken again on
+  // the same fixture rather than assumed to carry over.
+  it("keeps penetration == 0 once frames are widened (TPL-1927)", () => {
+    const res = boundaryLayout(SHARED);
+    const widened = res.containers.filter((c) => c.group && c.coverage !== undefined);
+    // Guard the guard: with no widened frame this case would just repeat the
+    // one above and quietly stop measuring what it is named for.
+    expect(widened.length).toBeGreaterThan(0);
+    expect(totalPenetrations(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+  });
+
+  it("does not count an intra-boundary edge through an overlap as a penetration", () => {
+    // The overlap of two boundary frames is inside both of them. An edge between
+    // two members of one boundary is exempt from that boundary's frame over its
+    // whole coverage, so passing through the shared region is not a penetration
+    // — the redefinition #2179 owed TPL-1927.
+    const res = boundaryLayout(SHARED);
+    const frames = framesOf(res).filter((f) => f.id.startsWith("__group_"));
+    const shared = res.nodes.get("Ledger")!;
+    // Ledger is the shared card; whichever frames reach it, they are exempt for
+    // its own edges, which is what keeps the count at zero above.
+    expect(framesOfNode(shared, frames).size).toBeGreaterThanOrEqual(1);
+    expect(totalPenetrations(res)).toBe(0);
   });
 });

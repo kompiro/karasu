@@ -80,6 +80,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-crud-decoration-target` | warning | CRUD decoration が同じ operation を複数回対象にする。 |
 | `duplicate-owner-assignment` | info | node が複数の team に owned として割り当てられる（事実。[ADR-1566](../adr/1566-ownership-during-migration.md) 参照）。 |
 | `duplicate-boundary-assignment` | info | node が複数の `boundary` に所属する（事実。所属は 1:N — ビュー側の解決規則は [syntax.ja.md](syntax.ja.md) を参照）。 |
+| `boundary-membership-not-drawn` | info | Group by: boundary で、非メンバーを覆わずに boundary の枠をメンバーまで広げられなかったため、その所属をカード上の `◇` タブで示した。model の事実を述べる `duplicate-boundary-assignment` と違い、**この描画**が何をしたかを述べる。したがって位置情報を持たず、この軸でのみ出る。 |
 | `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
 | `duplicate-facet-id` | error | 2 つの `facet` ブロックが同じ id を宣言しており、`facets` の参照がどちらのメタデータを指すか決まらない。マージ後のモデルで判定するのでファイルをまたぐ重複も検出する。参照が解決するのは最初の宣言。 |
 | `positional-label-removed` | error | `boundary` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、experimental な `boundary` では未文書の位置ラベル記法を deprecation を挟まず削除した（#2133）。 |

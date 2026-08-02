@@ -453,6 +453,15 @@ export type Translations = {
     nodeId: string;
     existingBoundary: string;
   }) => string;
+  /**
+   * The counterpart for the *view* (#2179): this drawing could not widen the
+   * boundary's frame to reach the card, so the membership is on the card as a
+   * `◇` tab instead. Says what the picture does, and leaves why to the spec.
+   */
+  "diagnostic.boundaryMembershipNotDrawn.message": (params: {
+    nodeId: string;
+    boundaryId: string;
+  }) => string;
   "diagnostic.containsTargetNotFound.message": (params: { memberId: string }) => string;
   "diagnostic.boundaryNotInContext.message": (params: { parentKind: string }) => string;
   "diagnostic.duplicateBoundaryId.message": (params: { boundaryId: string }) => string;

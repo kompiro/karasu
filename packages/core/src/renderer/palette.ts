@@ -58,6 +58,17 @@ export interface DiagramPalette {
   accent: string;
   /** Fallback badge color when a node's style supplies none. */
   badgeFallback: string;
+  /**
+   * Identifying hues for boundary frames (#2179), cycled by the boundary's
+   * position in the declared order. Not decoration: boundary frames overlap by
+   * design, and with one shared stroke colour the overlap reads as *nesting* —
+   * the prototype's two plates differed in colour alone. Each frame also fills
+   * its own hue at low alpha, so a shared cell composites to a third tone and the
+   * outer frame visibly extends past the inner one.
+   *
+   * Team frames (ADR-1858) are not on this axis and stay monochrome.
+   */
+  boundaryHues: readonly string[];
 }
 
 /**
@@ -80,6 +91,9 @@ export const darkPalette: DiagramPalette = {
   link: "#60A5FA",
   accent: "#3B82F6",
   badgeFallback: "#EF4444",
+  // The six hues the #2179 prototype rendered and compared, kept as-is: they were
+  // chosen against this canvas (`#0F172A`) and are the values the plates show.
+  boundaryHues: ["#e0765b", "#4aa3df", "#7bbf6a", "#c07bd6", "#d9a441", "#4fc3b8"],
 };
 
 /**
@@ -103,6 +117,12 @@ export const lightPalette: DiagramPalette = {
   link: "#2563EB",
   accent: "#2563EB",
   badgeFallback: "#DC2626",
+  // Same six hues, darkened for a near-white canvas. The prototype only rendered
+  // the dark theme, so these are the light-theme counterparts rather than a
+  // second reading of its plates: same hue order (so a model keeps its colour
+  // assignment across themes), enough lightness dropped that a 2px stroke and a
+  // low-alpha fill both stay legible on `#FFFFFF`.
+  boundaryHues: ["#c0492f", "#1d6fa5", "#4a8b3a", "#8b4aa3", "#a1720d", "#1d857a"],
 };
 
 /**

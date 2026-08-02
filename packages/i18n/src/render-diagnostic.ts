@@ -99,6 +99,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.duplicateOwnerAssignment.message", d.params);
     case "duplicate-boundary-assignment":
       return t("diagnostic.duplicateBoundaryAssignment.message", d.params);
+    case "boundary-membership-not-drawn":
+      return t("diagnostic.boundaryMembershipNotDrawn.message", d.params);
     case "contains-target-not-found":
       return t("diagnostic.containsTargetNotFound.message", d.params);
     case "boundary-not-in-context":
