@@ -260,6 +260,61 @@ describe("縮退 tab rendering (#2179)", () => {
     expect(found[0].params).toEqual({ nodeId: "Ledger", boundaryId: "pci" });
   });
 
+  it("keeps every tab inside the card it hangs off, however long the labels", () => {
+    // Boundary labels are author-written, and `charDisplayWidth` counts CJK at
+    // 1.5×, so an unmeasured pill overflows its own border and a stack of them
+    // walks off the card's left edge.
+    const src = `
+system Payments {
+  service Checkout { label "Checkout" }
+  service Ledger { label "L" }
+  service Wallet { label "Wallet" }
+  service CardVault { label "Card vault" }
+  service Fraud { label "Fraud" }
+
+  Checkout -> Ledger "record"
+  Ledger -> Wallet "debit"
+  Ledger -> CardVault "tokenize"
+  Ledger -> Fraud "score"
+}
+
+boundary payments {
+  label "Payments"
+  contains Checkout
+  contains Ledger
+  contains Wallet
+}
+
+boundary pci {
+  label "PCI 決済カード情報保護スコープ（監査対象）"
+  contains Ledger
+  contains CardVault
+}
+
+boundary risk {
+  label "Risk and fraud scoring perimeter, reviewed quarterly"
+  contains Ledger
+  contains Fraud
+}
+`;
+    const result = layoutOf(src);
+    const ledger = result.nodes.get("Ledger")!;
+    expect(ledger.degradedBoundaries?.length).toBeGreaterThan(0);
+
+    const compiled = compile(src, { diagramType: "system", groupBy: "boundary" });
+    if (compiled.diagramType !== "system") throw new Error("expected system view");
+    // Every dashed pill on the card's bottom edge stays within the card's span.
+    const pills = [
+      ...compiled.svg.matchAll(/<rect x="([-\d.]+)"[^>]*width="([\d.]+)"[^>]*rx="9"/g),
+    ];
+    expect(pills.length).toBeGreaterThan(0);
+    for (const [, xs, ws] of pills) {
+      const x = Number(xs);
+      expect(x).toBeGreaterThanOrEqual(ledger.x);
+      expect(x + Number(ws)).toBeLessThanOrEqual(ledger.x + ledger.width);
+    }
+  });
+
   it("says nothing on an axis that draws no boundary frames", () => {
     // The diagnostic states what *this drawing* did, so it must not leak into a
     // view that never had a boundary frame to widen.

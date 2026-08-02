@@ -21,6 +21,7 @@ import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "
 import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
+  estimateTextWidth,
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
   ICON_DESC_MAX_WIDTH,
@@ -1080,6 +1081,10 @@ function renderContainer(
   );
 }
 
+/** Approximate px per character in a 縮退 tab's 10px label, and its horizontal padding. */
+const DEGRADED_TAB_CHAR_WIDTH = 6;
+const DEGRADED_TAB_PAD = 8;
+
 /**
  * `◇ <boundary>` tabs for memberships no frame could reach (#2179) — the 縮退
  * fallback. Drawn as dashed pills on the card's bottom edge in the frame's own
@@ -1100,13 +1105,24 @@ function renderDegradedTabs(
   const hues = palette.boundaryHues;
   const out: string[] = [];
   // Right-aligned and stacked leftwards, so a card in three boundaries shows all
-  // of them rather than silently keeping the first.
+  // of them rather than silently keeping the first. Each pill is sized from the
+  // text it will actually hold and clipped to the room still left on the card:
+  // boundary labels are author-written and `charDisplayWidth` counts CJK at
+  // 1.5×, so an unmeasured pill overflows its own border and the stack walks off
+  // the card's left edge.
   let right = node.x + node.width - 12;
+  const y = node.y + node.height - 9;
   for (const tab of tabs) {
-    const label = `◇ ${tab.label}`;
-    const width = Math.min(node.width - 8, 6.5 * [...label].length + 16);
+    const room = right - (node.x + 4);
+    // Below one glyph plus the ellipsis there is nothing legible left to draw.
+    if (room < DEGRADED_TAB_PAD * 2 + DEGRADED_TAB_CHAR_WIDTH * 3) break;
+    const label = truncateToWidth(
+      `◇ ${tab.label}`,
+      room - DEGRADED_TAB_PAD * 2,
+      DEGRADED_TAB_CHAR_WIDTH,
+    );
+    const width = estimateTextWidth(label, DEGRADED_TAB_CHAR_WIDTH) + DEGRADED_TAB_PAD * 2;
     const x = right - width;
-    const y = node.y + node.height - 9;
     const hue = hues.length > 0 ? hues[tab.hueIndex % hues.length] : palette.mutedBorder;
     out.push(
       el("rect", {
