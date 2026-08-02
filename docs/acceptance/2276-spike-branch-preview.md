@@ -20,7 +20,7 @@
   > 🧑 Manual — spike ブランチで `docs/` のみを変更した commit を push し、Spike Preview ワークフローが skip されずに走ることを確認する。
 
 - [ ] spike ブランチを削除すると、その preview デプロイが消える
-  > 🧑 Manual — `git push origin --delete spike/<name>` の後、`Delete Spike Preview Deployments` ジョブが走ること、および直前に開けた Branch alias URL が 404 になることを確認する。
+  > 🧑 Manual — `git push origin --delete spike/<name>` の後、`Delete Spike Preview Deployments` ジョブが **success** で終わること、および直前に開けた Branch alias URL が 404 になることを確認する。ジョブが緑であることだけでなく URL が実際に落ちることまで見る（#2291 はジョブ失敗で気付けたが、API が 200 を返しつつ対象を取りこぼす失敗はジョブの色に出ない）。
 
 - [ ] PR preview の挙動が変わらない — PR を開くと従来どおり preview がデプロイされ、PR を閉じると掃除される
   > 🧑 Manual — `packages/app` を触る PR を 1 件開き、Preview がデプロイされて PR に Preview URL が付くこと、close 後に `Delete Preview Deployments` が走ることを確認する。`preview.yml` は本 PR で変更していないので、差分としては no-op であることの確認。
@@ -30,7 +30,9 @@
 
 ## 補足
 
-- クリーンアップは Cloudflare の deployments API を `per_page=100` で最大 20 ページまで辿る。spike ブランチは push ごとに deployment が 1 件積まれるため、1 ページ目だけを見ると古い deployment が消え残る。ページング・該当なし・空レスポンスの分岐はモック API に対して検証済み（3 ページ 71 件の削除、該当なしで exit 0）。
+- クリーンアップは Cloudflare の deployments API を `page` のみ変えて最大 50 ページ辿り、空ページで停止する。spike ブランチは push ごとに deployment が 1 件積まれるため、1 ページ目だけを見ると古い deployment が消え残る。
+- **`per_page` は送らない。** 初版は `per_page=100` を送って実 API に 400 で弾かれ、cleanup が丸ごと失敗した（[#2291](https://github.com/kompiro/karasu/issues/2291)）。モック API に対するテストは緑だった — モックはクエリを見ずに応答していたため。観点は [TPL-2291](../test-perspectives/TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md)。
+- 非 200 のときはレスポンスボディをログに出してから失敗する。初版は `body=$(curl --fail-with-body ...)` でボディをコマンド置換に飲まれ、ログに `curl: (22)` しか残らなかった。
 - `delete` イベントはブランチ名で `on:` フィルタできないため、ジョブ側で `startsWith(github.event.ref, 'spike/')` を条件にしている。対象は `env=preview` かつブランチ名一致のデプロイのみで、production（main）のデプロイには触れない。
 - `push` イベントのワークフロー定義は push されたブランチ自身のものが使われるため、`spike-preview.yml` が main に入る前に切られたブランチでは発火しない。既存 spike ブランチの救済は行わない方針（`origin/main` から切り直す）。
 - ここで得られる preview URL はブランチ削除で失効するため、AT やドキュメントの到達先としては書かない（`docs/process.md`「手動確認の到達先は本番 URL で書く」/ [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）。
