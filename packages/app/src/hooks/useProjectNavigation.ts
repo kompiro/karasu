@@ -3,16 +3,19 @@ import type { Dispatch } from "react";
 import type { Project } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
 import { buildHash } from "./useHistoryNavigation.js";
+import { PROJECTS_SEGMENT } from "../routes.js";
 
 export const LAST_PROJECT_KEY = "karasu-last-project-id";
-const PROJECT_PATH_RE = /^\/projects\/([^/]+)/;
+// Derived from the shared route table so the bare-permalink guard and this
+// hook can never disagree about which segment ProjectMode owns (#1961).
+const PROJECT_PATH_RE = new RegExp(`^/${PROJECTS_SEGMENT}/([^/]+)`);
 
 export function getProjectIdFromPath(): string | null {
   return location.pathname.match(PROJECT_PATH_RE)?.[1] ?? null;
 }
 
 export function buildProjectPath(projectId: string, hash = ""): string {
-  return `/projects/${projectId}${hash}`;
+  return `/${PROJECTS_SEGMENT}/${projectId}${hash}`;
 }
 
 /**

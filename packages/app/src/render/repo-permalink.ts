@@ -57,10 +57,10 @@ const RAW_HOST = "https://raw.githubusercontent.com";
  */
 const DEFAULT_ENTRIES = ["index.krs", "karasu.krs"] as const;
 
-/** GitHub owner (user / org): alphanumeric + hyphen, no slash. */
-const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
-/** GitHub repo name: alphanumeric, dot, underscore, hyphen. */
-const REPO_RE = /^[A-Za-z0-9._-]+$/;
+/** GitHub owner (user / org): alphanumeric + hyphen, no slash. Shared with the bare-route guard. */
+export const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
+/** GitHub repo name: alphanumeric, dot, underscore, hyphen. Shared with the bare-route guard. */
+export const REPO_RE = /^[A-Za-z0-9._-]+$/;
 /**
  * ref: a full/short commit SHA, or a slash-free branch/tag name. Slash-bearing
  * refs are not supported in v1 (they collide with the path grammar and SHA is
@@ -240,7 +240,7 @@ export class GitHubRawFileSystemProvider implements FileSystemProvider {
   }
 }
 
-interface ResolveResult {
+export interface ResolveResult {
   status: number;
   /** Present on 200: the `encodeShare` payload for `/s?s=<payload>`. */
   encodedPayload?: string;

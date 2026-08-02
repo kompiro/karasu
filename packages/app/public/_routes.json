@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/",
+    "/index.html",
+    "/favicon.svg",
+    "/logo.svg",
+    "/karasu-logo-1200w.png",
+    "/assets/*",
+    "/fonts/*",
+    "/projects/*"
+  ]
+}

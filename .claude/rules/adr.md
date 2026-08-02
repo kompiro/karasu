@@ -67,7 +67,8 @@ permalink:
   復元は `source` から
 - 要素ドリルは `source` に anchor を添える（例 `system.krs#krs-system-payment-api`）。
   identity は author-given `id` であり `label` ではない
-- repo-backed permalink（`karasu.kompiro.dev/r/...`）を `short` に貼るなら
+- repo-backed permalink（`karasu.kompiro.dev/<owner>/<repo>...`。`/r/` prefix は
+  ADR-1961 で廃止、301 で bare に着地する）を `short` に貼るなら
   **full 40-hex の commit SHA で pin** する（`…@<40-hex>#krs-…`）。
   branch / tag / HEAD / 短縮 SHA は mutable で link rot する。非準拠は
   `adr:check-permalinks` が warning を出すが CI は落とさない
