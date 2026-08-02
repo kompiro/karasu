@@ -169,7 +169,7 @@ ref 省略を許す（= `@` を判別子に使えない）以上、guard は「�
 
 **案5 の deterministic-negative fallthrough は、生成が拾うべきケースをちょうど飲み込む。** ref 省略の `…/<owner>/<repo>` が 404 になるのは「その repo にはまだ `.krs` が無い」ときで、ADR-1990 の世界ではそれは失敗ではなく**生成のトリガ**である。本 doc の推奨をそのまま実装すると、その入口が黙って SPA に化ける。
 
-この境界は本 doc の範囲を超えるため、[#2249](https://github.com/kompiro/karasu/issues/2249) に切り出して `docs/design/permalink-generation-seam.md`（[PR #2251](https://github.com/kompiro/karasu/pull/2251)）で決めた。当初そこで問うたのは次の 3 点だった:
+この境界は本 doc の範囲を超えるため、[#2249](https://github.com/kompiro/karasu/issues/2249) に切り出して [ADR-2249](../adr/2249-permalink-generation-seam.md) で決めた。当初そこで問うたのは次の 3 点だった:
 
 1. **ホスト**: `karasu.kompiro.dev/<owner>/<repo>` を最終的に持つのは Pages app と nest サービスのどちらか。ADR-1990 decision 5 は secret / state / webhook を Pages app に同居させないと決めているので、生成を伴う面は別サービスに置かれる。両者が同じ hostname を分け合うのか、サービスを別 hostname に置くのかは未決。
 2. **miss 時の振る舞い**: SPA へ差し戻す（案5）／生成を提案する UI を返す／生成を起動する、のいずれか。生成起動は同期では成立しない — spike 実測で **85 ファイルの最小 repo でも 12〜19 分**（ADR-1990 未決事項）であり、302 の裏に隠せる時間ではない。非同期 job + 進捗ページという別の設計面が要る。
