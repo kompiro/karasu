@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1961](https://github.com/kompiro/karasu/issues/1961)（親: [#1828](https://github.com/kompiro/karasu/issues/1828) / エピック [#1826](https://github.com/kompiro/karasu/issues/1826)）
-  - 関連 ADR: [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink。本 doc はその「決着した論点 #4 route precedence」を再開する）、[ADR-1827](../adr/1827-permalink-deep-element.md)、[ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)、[ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)
+  - 関連 ADR: [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（repo-backed + ref-pinned permalink。本 doc はその「決着した論点 #4 route precedence」を再開する）、[ADR-1827](../adr/1827-permalink-deep-element.md)、[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)（**nest ピボット — 同じ URL 名前空間を要求する。「ADR-1990 との境界」節を参照**）、[ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（ADR-1990 が supersede 済み）、[ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)
   - 関連 TPL: [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)、[TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md)、[TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)、本 PR で起こす proactive [TPL-1961](../test-perspectives/TPL-1961-catch-all-route-inverts-default.md)
   - コード: `functions/r/[[path]].ts`、`packages/app/src/render/repo-permalink.ts`、`packages/app/public/_redirects`、`packages/app/src/hooks/useProjectNavigation.ts`
 
@@ -43,7 +43,7 @@ nest deployment（`karasu.kompiro.dev` / `karasu.pages.dev`、Cloudflare Pages�
 - **ref 省略が第一級**（本 doc の必須要件）: `…/<owner>/<repo>` が default branch を開く。`@<ref>` は任意の pin 手段。
 - **後方互換**: すでに公開済みの `/r/…` permalink を壊さない（#1961 本文の要求）。ADR の `permalink[].short` に貼られたリンクを含む。
 - **未知パスの既定を変えない**: 今日 SPA fallback に落ちているパスは、明日も SPA fallback に落ちる。
-- **stateless 原則**（ADR-1783）: 新しい永続ストアを作らない。cache は Cache API の ephemeral に留める。
+- **Pages app 面は stateless のまま**: ADR-1990 は ADR-1783 を supersede したが、それは nest の **service 面**に限った反転であり、inline 共有・`/render`・静的 Pages app は「引き継ぐ決定」として無傷である。本 doc が触るのは Pages app 面なので、ここに永続ストアを作らない制約は生きている（cache は Cache API の ephemeral に留める）。生成 `.krs` の SHA-keyed cache は ADR-1990 の別 Workers サービス側の話。
 - **hot path で GitHub API を叩かない**（ADR-1828）: ref 解決は `raw.githubusercontent.com` で済ませる。REST API（repo 存在確認など）は rate limit を hot path に持ち込むので使わない。
 - **Functions 実行回数**: Cloudflare Pages Functions は invocation 課金・制限がある。全リクエストを Worker に通す構成はコスト面で受け入れられない。
 - **out of scope**: private repo（#1960）、deep anchor 文法の変更（ADR-1827 / `docs/spec/permalink.md` のまま）、shortener（taka）側の形。
@@ -137,6 +137,33 @@ ref 省略を許す（= `@` を判別子に使えない）以上、guard は「�
 - **`_redirects` の local 警告**: `wrangler pages dev` は `/* /index.html 200` を "Infinite loop detected" として無視する。それでも fallback は効いた（アセットサーバの not-found 処理）。local と production で SPA fallback の経路が微妙に違うため、**この 1 点だけは本番 preview deployment で確認が要る**。
 - **`adr:check-permalinks` は route 形に非依存**: `@kompiro/adr-tools` の `checkRepoBackedPin` は `hostname` の allowlist 照合と `pathname` の最後の `@` しか見ない（`dist/cli.js`）。bare 形でも `@<40-hex-sha>` 推奨 warning はそのまま効くので、adr-tools 側の変更は不要。
 - **karasu 自身は短い形を持たない**: ref 省略の最短形 `…/<owner>/<repo>` が成立するのは repo root に `index.krs` か `karasu.krs` がある場合だけ（`DEFAULT_ENTRIES`）。karasu repo には無いので、自リポジトリを指す例は `…/kompiro/karasu/examples/en/hato/index.krs` になる。ショーケース URL を短くしたいなら repo root に `index.krs` を置く別判断が要る。
+
+## ADR-1990 との境界（未解決 — 本 doc 単独では決められない）
+
+[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)（2026-07-30 決定済み、gate 通過）は nest を「GitHub App で任意の repo を読み、**server-side で AI reverse して `.krs` を生成し**、返すと同時に図示する hosted サービス」へ転換すると決めている。その動機の 1 つが、まさに本 doc の resolver の前提である:
+
+> **「repo に `.krs` が commit されている」前提** — repo-backed permalink（ADR-1828）の resolver は committed `.krs` を要求するが、それを持つ repo は現実にはほぼ無い。
+
+そして子 Issue [#2227](https://github.com/kompiro/karasu/issues/2227) の scope には次がある:
+
+> Routing: repo URL → cached `.krs` if present, **otherwise trigger the reverse pipeline (#1993)** → render
+
+つまり **`/<owner>/<repo>` という URL 名前空間を、2 つの面が同時に要求している**:
+
+| | 面 | 入力 | miss したとき |
+| --- | --- | --- | --- |
+| 本 doc（#1961 / ADR-1828） | 静的 Pages app の Function | repo に commit 済みの `.krs` | **SPA へ差し戻す**（案5） |
+| ADR-1990 / #2227 | **別の Workers サービス**（decision 5） | 任意の repo（`.krs` 不要） | **reverse pipeline を起動して生成する** |
+
+**案5 の deterministic-negative fallthrough は、生成が拾うべきケースをちょうど飲み込む。** ref 省略の `…/<owner>/<repo>` が 404 になるのは「その repo にはまだ `.krs` が無い」ときで、ADR-1990 の世界ではそれは失敗ではなく**生成のトリガ**である。本 doc の推奨をそのまま実装すると、その入口が黙って SPA に化ける。
+
+この境界は本 doc の範囲を超える。決めるべきは次の 3 点で、いずれも #1961 単独では決められない:
+
+1. **ホスト**: `karasu.kompiro.dev/<owner>/<repo>` を最終的に持つのは Pages app と nest サービスのどちらか。ADR-1990 decision 5 は secret / state / webhook を Pages app に同居させないと決めているので、生成を伴う面は別サービスに置かれる。両者が同じ hostname を分け合うのか、サービスを別 hostname に置くのかは未決。
+2. **miss 時の振る舞い**: SPA へ差し戻す（案5）／生成を提案する UI を返す／生成を起動する、のいずれか。生成起動は同期では成立しない — spike 実測で **85 ファイルの最小 repo でも 12〜19 分**（ADR-1990 未決事項）であり、302 の裏に隠せる時間ではない。非同期 job + 進捗ページという別の設計面が要る。
+3. **ゼロ設定 vs リクエスト駆動**: ADR-1990 の売りは「App を入れる → 図が出る」ゼロ設定である。「利用者のリクエスト文（どの観点で見たいか）を入力に取る生成」は decision 4 の agentic reverse とは別の入力モードで、ADR-1990 には無い。
+
+**本 doc の推奨（案5）は、この境界が決まるまでの Pages app 面の振る舞いとしては整合する** — 生成が別サービスに載るなら Pages app の miss は SPA で正しい。だが「同じ URL で生成まで通す」なら #1961 の実装は待つべきで、その場合の正しい順序は #2227 → #1961 である。**この依存関係は #1961 に status を付ける前に決着させる必要がある。**
 
 ## 検討した選択肢
 
@@ -273,6 +300,7 @@ ref 省略を第一級にすると `@` を判別子に使えず、guard は形�
 
 ## 未解決の問い / 決めないこと
 
+- **ADR-1990 との URL 名前空間の分担**（最優先）: 「ADR-1990 との境界」節の 3 点。**#1961 に着手 status を付ける前に決着させる。** 生成が別 hostname / 別サービスに載るなら本 doc はこのまま進められるが、同じ URL で生成まで通すなら #2227 が先。
 - **そもそも払う価値があるか**: 案5 は技術的に安全だが、得られるのは URL の形だけである（ref 省略 = HEAD は `/r/` で既に動く）。`_routes.json` の自前管理・root catch-all・未知 2 セグメントパスのレイテンシと引き換えにするかは、レビューでの判断に委ねる（案3 も妥当な結論）。
 - **`DEFAULT_ENTRIES` を 1 つに絞るか**: ref 省略の 2 セグメント fallthrough は `index.krs` → `karasu.krs` の 2 fetch を払う。`karasu.krs` を落とせば半減するが ADR-1828 の既定を変えることになるため、本 doc では決めない。
 - **karasu repo 自身に root `index.krs` を置くか**: 置けば `karasu.kompiro.dev/kompiro/karasu` が最短のショーケース URL になる（結果 6）。model の置き場所の判断なので別 Issue。
