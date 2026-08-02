@@ -41,7 +41,17 @@ const KNOWN_BUILDERS: Record<string, string> = {
     "reflector — og:url self-reference for a payload that already arrived in the request",
 };
 
-/** Strip `//` and block comments so prose mentioning `/s?s=` does not count (TPL-2185). */
+/**
+ * Strip block comments and whole-line `//` comments so prose mentioning
+ * `/s?s=` is not counted as a builder (TPL-2185).
+ *
+ * Trailing `//` comments are deliberately left in place: stripping from `//`
+ * to end of line would also cut a line at the `//` of a `https://…` literal,
+ * and a builder written as `` `https://host/s?s=${x}` `` would then go
+ * unnoticed. A leftover trailing comment can only cause a false failure, which
+ * announces itself and is fixed by moving the comment to its own line; a false
+ * pass would silently defeat the guard.
+ */
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
 }
