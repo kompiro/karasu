@@ -57,3 +57,7 @@ export { AnthropicClient, LlmError } from "./reverse/llm.js";
 export type { LlmClient, LlmResponse, LlmUsage } from "./reverse/llm.js";
 export { BOUNDED_CONTEXT_DIRECTIVE, repairPrompt } from "./reverse/prompts.js";
 export type { RepairDiagnostic } from "./reverse/prompts.js";
+export { generate, GenerateFailed } from "./generate/run.js";
+export type { GenerateInput, GenerateDeps, GenerateOutcome } from "./generate/run.js";
+export { RunStatusStore } from "./store/run-status.js";
+export type { RunStatus, RunState } from "./store/run-status.js";

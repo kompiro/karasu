@@ -98,5 +98,8 @@ describe("handleRequest", () => {
       (await routes.handle(new Request(`https://nest.example${path}`), configured, ctx)).status;
     expect(await statusOf("/")).toBe(404);
     expect(await statusOf("/webhooks/github")).toBe(405);
+    // `/generate` is POST-only and `/status` needs the App bindings, so both
+    // answer without falling through to the `/:owner/:repo` catch-all.
+    expect(await statusOf("/kompiro/shop/generate")).toBe(405);
   });
 });
