@@ -165,18 +165,22 @@ sub-issue を取りこぼしていると非ゼロ終了する。
 
 **到達状態**: `spike/` ブランチを push すると、PR を作らずに
 `https://<slug>.karasu.pages.dev` で実物を触れる。実 URL は Actions の該当 run の
-Summary（"Preview deployed" 表）に出る。
+Summary（"Spike preview deployed" 表）に出る。
 
 ```
-git switch -c spike/<name>
+git switch -c spike/<name> origin/main
 # 実装して commit
 git push -u origin spike/<name>
-gh run list --workflow=preview.yml --branch=spike/<name>   # Summary に Preview URL
+gh run list --workflow=spike-preview.yml --branch=spike/<name>   # run id を得る
+gh run view <run-id>                                             # Summary に Preview URL
 ```
 
-`.github/workflows/preview.yml` が `push: branches: [spike/**]` で発火する。
-判断基準は 1 つ、**ブランチ名が `spike/` で始まるかどうか**だけ。PR ブランチ側の
-発火条件（`pull_request` + `paths:` フィルタ）は従来どおりで、そちらは変わらない。
+`.github/workflows/spike-preview.yml` が `push: branches: [spike/**]` で発火する。
+判断基準は 1 つ、**ブランチ名が `spike/` で始まるかどうか**だけ。
+
+PR preview（`preview.yml`）とは**別ワークフロー**にしてある。共有しているのは
+Cloudflare Pages プロジェクトだけで、PR 側の発火条件・concurrency・後始末は
+spike の都合で一切変えない。spike の経路をいじって PR の経路を壊したら本末転倒になる。
 
 - **`paths:` フィルタは spike 側には掛けない。** spike の push は意図的な行為なので、
   「push したのに何も起きない」ほうが余分なビルド 1 回より損。
@@ -187,6 +191,10 @@ gh run list --workflow=preview.yml --branch=spike/<name>   # Summary に Preview
   すると preview も残る。
 - **この URL を記録に残さない。** ブランチを消した時点で 404 になるので、AT や
   ドキュメントの到達先には書かない（「手動確認の到達先は本番 URL で書く」節）。
+
+> `push` イベントで使われるワークフロー定義は push されたブランチ自身のものなので、
+> `spike-preview.yml` が main に入るより前に切ったブランチでは発火しない（エラーも
+> 出ずに無反応になる）。上のコマンドのように `origin/main` から切る。
 
 ### Claude Code plugin のセットアップ
 
