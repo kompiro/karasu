@@ -21,6 +21,7 @@ export default defineConfig({
       "packages/app/vitest.config.ts",
       "packages/cli/vitest.config.ts",
       "packages/lsp/vitest.config.ts",
+      "packages/nest/vitest.config.ts",
       "packages/vscode/vitest.config.ts",
       "packages/docs-site/vitest.config.ts",
       "scripts/vitest.config.ts",
