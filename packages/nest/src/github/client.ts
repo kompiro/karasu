@@ -47,6 +47,20 @@ function shaSegment(value: string): string {
   return value.toLowerCase();
 }
 
+/**
+ * Base64 of UTF-8 bytes.
+ *
+ * `btoa` takes a binary string, so text has to be encoded first: passing a
+ * `.krs` containing any non-ASCII character straight to `btoa` throws, and
+ * karasu documents routinely carry Japanese labels.
+ */
+function base64Utf8(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 import { readGzippedArchive, type ReadArchiveOptions, type ReadArchiveResult } from "./tar.js";
 
 export class GitHubApiError extends Error {
@@ -240,6 +254,147 @@ export class GitHubClient {
       throw new GitHubApiError(200, refPath, "the default branch has no commit");
     }
     return sha;
+  }
+
+  /**
+   * A ref's current commit, or `undefined` if the ref does not exist.
+   *
+   * `ref` is the part after `refs/`, e.g. `heads/karasu-nest/model-abc123`.
+   */
+  async refSha(
+    installationId: string,
+    owner: string,
+    repo: string,
+    ref: string,
+  ): Promise<string | undefined> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/git/ref/${ref
+      .split("/")
+      .map(segment)
+      .join("/")}`;
+    const response = await this.callWithInstallation(installationId, path);
+    if (response.status === 404) return undefined;
+    const body = await this.readJson(response, path);
+    const sha = (body as { object?: { sha?: unknown } }).object?.sha;
+    return typeof sha === "string" ? sha : undefined;
+  }
+
+  /** Create a branch at a commit. Throws if the ref already exists. */
+  async createRef(
+    installationId: string,
+    owner: string,
+    repo: string,
+    ref: string,
+    sha: string,
+  ): Promise<void> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/git/refs`;
+    const response = await this.callWithInstallation(installationId, path, {
+      method: "POST",
+      body: JSON.stringify({ ref: `refs/${ref}`, sha }),
+    });
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, `could not create ${ref}`);
+    }
+  }
+
+  /** The blob sha of a file on a branch, or `undefined` if it is not there. */
+  async fileSha(
+    installationId: string,
+    owner: string,
+    repo: string,
+    filePath: string,
+    ref: string,
+  ): Promise<string | undefined> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/contents/${filePath
+      .split("/")
+      .map(segment)
+      .join("/")}?ref=${encodeURIComponent(ref)}`;
+    const response = await this.callWithInstallation(installationId, path);
+    if (response.status === 404) return undefined;
+    const body = await this.readJson(response, path);
+    const sha = (body as { sha?: unknown }).sha;
+    return typeof sha === "string" ? sha : undefined;
+  }
+
+  /**
+   * Write a file on a branch.
+   *
+   * `sha` must be the file's current blob sha when replacing one, and absent
+   * when creating it. Getting that wrong is a 409 rather than a lost write,
+   * which is why the caller looks it up rather than this guessing.
+   */
+  async putFile(
+    installationId: string,
+    owner: string,
+    repo: string,
+    file: { path: string; content: string; message: string; branch: string; sha?: string },
+  ): Promise<void> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/contents/${file.path
+      .split("/")
+      .map(segment)
+      .join("/")}`;
+    const response = await this.callWithInstallation(installationId, path, {
+      method: "PUT",
+      body: JSON.stringify({
+        message: file.message,
+        content: base64Utf8(file.content),
+        branch: file.branch,
+        ...(file.sha === undefined ? {} : { sha: file.sha }),
+      }),
+    });
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, `could not write ${file.path}`);
+    }
+  }
+
+  /** An open pull request from `head`, if one is already there. */
+  async openPullRequest(
+    installationId: string,
+    owner: string,
+    repo: string,
+    head: string,
+  ): Promise<{ number: number; url: string } | undefined> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/pulls?state=open&head=${encodeURIComponent(
+      `${owner}:${head}`,
+    )}`;
+    const body = await this.readJson(await this.callWithInstallation(installationId, path), path);
+    if (!Array.isArray(body) || body.length === 0) return undefined;
+    const first = body[0] as { number?: unknown; html_url?: unknown };
+    if (typeof first.number !== "number" || typeof first.html_url !== "string") return undefined;
+    return { number: first.number, url: first.html_url };
+  }
+
+  /** Open a pull request. */
+  async createPullRequest(
+    installationId: string,
+    owner: string,
+    repo: string,
+    pull: { title: string; head: string; base: string; body: string },
+  ): Promise<{ number: number; url: string }> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/pulls`;
+    const response = await this.callWithInstallation(installationId, path, {
+      method: "POST",
+      body: JSON.stringify(pull),
+    });
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, "could not open a pull request");
+    }
+    const body = await this.readJson(response, path);
+    const { number, html_url: url } = body as Record<string, unknown>;
+    if (typeof number !== "number" || typeof url !== "string") {
+      throw new GitHubApiError(response.status, path, "the pull-request response was malformed");
+    }
+    return { number, url };
+  }
+
+  /** The default branch's name (the PR base). */
+  async defaultBranch(installationId: string, owner: string, repo: string): Promise<string> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}`;
+    const body = await this.readJson(await this.callWithInstallation(installationId, path), path);
+    const branch = (body as { default_branch?: unknown }).default_branch;
+    if (typeof branch !== "string") {
+      throw new GitHubApiError(200, path, "the repository has no default branch");
+    }
+    return branch;
   }
 
   /**

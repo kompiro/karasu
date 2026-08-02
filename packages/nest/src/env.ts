@@ -61,6 +61,16 @@ export interface NestEnv {
   LLM_API_KEY?: string;
   /** Bearer token for `GET /admin/metrics`. Absent means the route is off. */
   METRICS_TOKEN?: string;
+  /**
+   * `"on"` to deliver a generated model as a pull request (#2289).
+   *
+   * Off unless a deploy sets it. PR-back needs `contents:write` and
+   * `pull_requests:write`, which is wider than the `contents:read` that
+   * ADR-1990 decision 6 scoped the install consent to; #1996 owns the copy
+   * that makes asking for it legitimate. Until then a deploy that turns this
+   * on is writing to repositories on a consent nobody gave.
+   */
+  PR_DELIVERY?: string;
   /** Deploy environment name, surfaced by `/healthz` for smoke checks. */
   ENVIRONMENT?: string;
 }

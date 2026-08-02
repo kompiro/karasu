@@ -14,6 +14,7 @@
  * keeps everything else, because a rule that guesses at "important" would
  * decide the architecture before the reverse starts.
  */
+import type { DeliveryInput, DeliveryResult } from "../deliver/pull-request.js";
 import { GitHubApiError, type GitHubClient } from "../github/client.js";
 import { logError } from "../log.js";
 import { StructureOnlyViolation } from "../redact/redact.js";
@@ -83,6 +84,14 @@ export interface GenerateDeps {
    * the reason a generation fails.
    */
   failed?: FailedDocumentStore;
+  /**
+   * Opens the pull request carrying the model, when delivery is enabled.
+   *
+   * Optional and last, like `metrics`: a model that was generated and cached
+   * but could not be delivered is a worse outcome than one that was
+   * delivered, and a much better one than none at all.
+   */
+  deliver?: (input: DeliveryInput) => Promise<DeliveryResult>;
   /** Injected so the run is clock-free and its records are assertable. */
   now: () => Date;
 }
@@ -100,6 +109,8 @@ export interface GenerateOutcome {
   unreadableFiles: number;
   /** Wall-clock for the whole run, milliseconds. */
   durationMs: number;
+  /** The pull request carrying the model, when delivery is on. */
+  delivery?: DeliveryResult;
 }
 
 export class GenerateFailed extends Error {
@@ -142,7 +153,7 @@ function callerSafeMessage(cause: unknown): string {
  * detached does not have to remember to write the status itself.
  */
 export async function generate(input: GenerateInput, deps: GenerateDeps): Promise<GenerateOutcome> {
-  const { github, llm, store, runs, metrics, failed, now } = deps;
+  const { github, llm, store, runs, metrics, failed, deliver, now } = deps;
   const { installationId, owner, repo } = input;
   const ref = { installationId, owner, repo };
   const startedAtMs = now().getTime();
@@ -262,7 +273,28 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
     spent = reverse.usage;
     await meter("done", reverse.model ?? "unknown");
 
+    // After the publish, and never able to fail the run. The document is
+    // already cached and served by `GET /<owner>/<repo>`; a delivery failure
+    // costs the pull request, not the model (#2289).
+    let delivery: DeliveryResult | undefined;
+    if (deliver !== undefined) {
+      try {
+        delivery = await deliver({
+          installationId,
+          owner,
+          repo,
+          sha,
+          krs: reverse.krs,
+          domains: reverse.domains,
+          redactions: redactions,
+        });
+      } catch (cause) {
+        logError(`karasu-nest could not open a pull request for ${owner}/${repo}`, cause);
+      }
+    }
+
     return {
+      ...(delivery === undefined ? {} : { delivery }),
       sha,
       reverse,
       redactions: redacted.findings.length,

@@ -68,5 +68,10 @@ class_name = "GenerateWorkflow"
 #   wrangler secret put LLM_API_KEY             # 2288
 #   wrangler secret put METRICS_TOKEN           # 2226 (GET /admin/metrics)
 #
+# PR-back delivery (#2289) is off unless `PR_DELIVERY=on` is set as a plain
+# var. It needs contents:write and pull_requests:write, which is wider than
+# the contents:read the install consent covers today -- #1996 owns the copy
+# that makes asking for it legitimate. Do not turn this on before it lands.
+#
 # `GET /healthz` reports which of these the running deploy actually has, as
 # booleans, so a deploy missing one is diagnosable without reading them back.

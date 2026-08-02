@@ -366,4 +366,57 @@ describe("generate", () => {
       await expect(generate(input, rest)).resolves.toBeDefined();
     });
   });
+
+  describe("pull-request delivery (#2289)", () => {
+    it("delivers the model it just published, with the domains it found", async () => {
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const delivered: unknown[] = [];
+      const d = {
+        ...deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm),
+        deliver: (received: unknown) => {
+          delivered.push(received);
+          return Promise.resolve({
+            number: 7,
+            url: "https://github.com/kompiro/shop/pull/7",
+            created: true,
+            branch: "karasu-nest/model-aaaaaaaaaaaa",
+            path: "docs/architecture.krs",
+          });
+        },
+      };
+
+      const outcome = await generate(input, d);
+      expect(outcome.delivery).toMatchObject({ number: 7, created: true });
+      expect(delivered[0]).toMatchObject({
+        owner: "kompiro",
+        repo: "shop",
+        sha: SHA,
+        domains: [{ name: "Payments" }],
+      });
+    });
+
+    it("keeps the model when the pull request cannot be opened", async () => {
+      // The document is already cached and served by GET /<owner>/<repo>. A
+      // delivery failure costs the pull request, not the model.
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = {
+        ...deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm),
+        deliver: () => Promise.reject(new Error("no write permission")),
+      };
+
+      const outcome = await generate(input, d);
+      expect(outcome.delivery).toBeUndefined();
+      expect(await d.store.latest("kompiro", "shop")).toBeDefined();
+      expect((await d.runs.get(input))?.state).toBe("done");
+    });
+
+    it("does not deliver at all when no deliverer is wired", async () => {
+      // Off by default: PR-back needs write scopes the install consent does
+      // not cover until #1996 lands.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      expect((await generate(input, d)).delivery).toBeUndefined();
+    });
+  });
 });

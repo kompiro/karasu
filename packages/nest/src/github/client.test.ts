@@ -14,6 +14,8 @@ interface Call {
   url: string;
   method: string;
   authorization: string | null;
+  /** Present for the write surface (#2289); reads send none. */
+  body?: string;
 }
 
 /** A fetch double that answers from a path -> response table and records calls. */
@@ -29,6 +31,7 @@ function stubFetch(routes: Record<string, (call: Call) => Response>): {
       url,
       method: init?.method ?? "GET",
       authorization: headers.get("Authorization"),
+      ...(typeof init?.body === "string" ? { body: init.body } : {}),
     };
     calls.push(call);
     const path = url.replace("https://api.github.com", "");
@@ -305,6 +308,66 @@ describe("GitHubClient", () => {
       await expect(
         client(fetchImpl).blob("42", "kompiro", "karasu", BLOB_SHA),
       ).rejects.toThrowError(/unexpected blob encoding/);
+    });
+  });
+
+  describe("the write surface (#2289)", () => {
+    it("base64-encodes UTF-8 content so a Japanese label survives", async () => {
+      // `btoa` takes a binary string and throws on non-ASCII, and karasu
+      // documents routinely carry Japanese labels.
+      const krs = "system 決済 {\n  service 請求\n}\n";
+      let sent: Record<string, unknown> = {};
+      const { fetchImpl } = stubFetch({
+        "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
+        "/repos/kompiro/karasu/contents/docs/architecture.krs": (call) => {
+          sent = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+          return json({});
+        },
+      });
+
+      await client(fetchImpl).putFile("42", "kompiro", "karasu", {
+        path: "docs/architecture.krs",
+        content: krs,
+        message: "docs: add a model",
+        branch: "karasu-nest/model-abc",
+      });
+
+      const decoded = new TextDecoder().decode(
+        Uint8Array.from(atob(String(sent.content)), (character) => character.charCodeAt(0)),
+      );
+      expect(decoded).toBe(krs);
+    });
+
+    it("reports a missing ref as absent rather than as an error", async () => {
+      const { fetchImpl } = stubFetch({
+        "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
+        "/repos/kompiro/karasu/git/ref/heads/nope": () => new Response("", { status: 404 }),
+      });
+      expect(
+        await client(fetchImpl).refSha("42", "kompiro", "karasu", "heads/nope"),
+      ).toBeUndefined();
+    });
+
+    it("does not replay a failed write against a revoked installation", async () => {
+      // `callWithInstallation` retries a 401 only for GET and HEAD. Re-sending
+      // a write is a different kind of mistake from re-sending a read.
+      let attempts = 0;
+      const { fetchImpl } = stubFetch({
+        "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
+        "/repos/kompiro/karasu/pulls": () => {
+          attempts += 1;
+          return new Response("", { status: 401 });
+        },
+      });
+      await expect(
+        client(fetchImpl).createPullRequest("42", "kompiro", "karasu", {
+          title: "t",
+          head: "h",
+          base: "main",
+          body: "b",
+        }),
+      ).rejects.toThrowError(GitHubApiError);
+      expect(attempts).toBe(1);
     });
   });
 
