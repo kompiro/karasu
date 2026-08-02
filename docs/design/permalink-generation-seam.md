@@ -3,11 +3,11 @@
 - **日付**: 2026-08-02
 - **ステータス**: 検討中
 - **関連**:
-  - 引き金 Issue: [#2249](https://github.com/kompiro/karasu/issues/2249)（親: [#1990](https://github.com/kompiro/karasu/issues/1990) nest ピボット epic）。[#1961](https://github.com/kompiro/karasu/issues/1961)（bare permalink route）を blocking
+  - 引き金 Issue: [#2249](https://github.com/kompiro/karasu/issues/2249)（親: [#1990](https://github.com/kompiro/karasu/issues/1990) nest ピボット epic）
   - 関連 ADR: [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)（nest ピボット — server-side reverse）、[ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（repo-backed permalink resolver）、[ADR-1829](../adr/1829-adr-permalink-convention.md)（permalink は record ではなく pointer）、[ADR-1895](../adr/1895-reverse-architecture-harness.md)（reverse harness）、[ADR-2077](../adr/2077-reverse-bc-granularity.md)（BC 粒度）、[ADR-9017](../adr/9017-cloudflare-deployment-and-byok-ai.md)（BYOK・認証なし）
   - 関連 TPL: [TPL-1829](../test-perspectives/TPL-1829-adr-permalink-records-source.md)、[TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)、本 PR で起こす proactive [TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md)
-  - 関連 design doc: `docs/design/bare-permalink-route.md`（#1961。本 doc が blocking している）
-  - コード: `packages/app/src/render/repo-permalink.ts`、`functions/r/[[path]].ts`
+  - 関連 design doc: `docs/design/bare-permalink-route.md`（[#1961](https://github.com/kompiro/karasu/issues/1961)。本 doc の結論により **unblock される** — 後述）
+  - コード: `packages/app/src/render/repo-permalink.ts`、`functions/r/[[path]].ts`、`docs/guide/reverse-engineering-with-ai.md`
 
 ## 背景・課題
 
@@ -15,70 +15,70 @@
 
 > **「repo に `.krs` が commit されている」前提** — repo-backed permalink（ADR-1828）の resolver は committed `.krs` を要求するが、それを持つ repo は現実にはほぼ無い。
 
-ADR-1990 は「GitHub App で任意の repo を読み、server-side で AI reverse して `.krs` を生成する」と決め、子 Issue [#2227](https://github.com/kompiro/karasu/issues/2227) の scope に「repo URL → cached `.krs` if present, **otherwise trigger the reverse pipeline**」と書いている。
+ADR-1990 は「GitHub App で任意の repo を読み、server-side で AI reverse して `.krs` を生成する」と決め、子 Issue [#2227](https://github.com/kompiro/karasu/issues/2227) の scope に「repo URL → cached `.krs` if present, **otherwise trigger the reverse pipeline**」と書いている。一方 [#1961](https://github.com/kompiro/karasu/issues/1961) は同じ `/<owner>/<repo>` を Pages app 側の route として実装しようとしており、その design doc は miss を黙って SPA に差し戻すことを推奨していた。
 
-一方 [#1961](https://github.com/kompiro/karasu/issues/1961) は同じ `/<owner>/<repo>` を Pages app 側の route として実装しようとしている。その design doc の推奨（deterministic-negative fallthrough）は、**`.krs` が無い miss を黙って SPA に差し戻す** — ADR-1990 の世界ではそれこそが生成のトリガであるにもかかわらず。
+**2 つの面が同じ URL 名前空間を要求しているように見え、その境界を誰も持っていなかった。** 本 doc はその境界を決める。
 
-**2 つの面が同じ URL 名前空間を要求しており、その境界を誰も持っていない。** 本 doc はその境界だけを決める。生成 pipeline の中身（#1993）・quota 水準（#2226 / #1994）・data-trust と法務（#1996）は決めない。
+### 前提の整理（ここが本 doc の出発点）
+
+議論を難しくしていたのは、**permalink 面を「生成もしうる面」の候補として扱っていた**ことである。役割を言い切ると解ける:
+
+- **#1961 / ADR-1828 の permalink 面は、指定 repo に `.krs` が存在する前提のレンダリング機能である。** resolution だけを行い、生成はしない。
+- **karasu-nest とは GitHub App そのものである。** ADR-1990 が決めた「読む・reverse する・生成する」は全部その App の責務であって、permalink 面の責務ではない。
+
+この 2 つを固定すると、`.krs` が無い miss で permalink 面がすべきことは 1 つに絞られる — **karasu-nest（および今日すでにあるローカル reverse 手順）へ案内すること**である。生成も、受付も、待ちも、通知も持たない。
 
 ## 現状（インベントリ）
 
-| | permalink resolver（今日動いている） | nest service（未実装） |
+| | permalink 面（今日動いている） | karasu-nest = GitHub App（未実装） |
 | --- | --- | --- |
-| 出典 | ADR-1828 / #1961 | ADR-1990 decision 5 / #2227 |
-| 実体 | 静的 Pages app の Function | **別の** Cloudflare Workers サービス |
-| 入力 | repo に commit 済みの `.krs` | 任意の repo（`.krs` 不要） |
-| 想定利用者 | **reader**（リンクを踏む人。誰でも） | **installer**（App を入れた人） |
+| 出典 | ADR-1828 / #1961 | ADR-1990 / #1992・#1993・#2227 |
+| 責務 | **committed `.krs` のレンダリングのみ** | 読む・reverse する・`.krs` を生成する |
+| 実体 | 静的 Pages app の Function | 別の Cloudflare Workers サービス + GitHub App |
+| 想定利用者 | **reader**（リンクを踏む人。誰でも） | **installer**（App を入れる repo 所有者） |
 | 認証 | 無し（ADR-9017） | GitHub App installation |
-| state / secret | 持たない（Pages app 面は stateless のまま） | KV/D1 + App private key + LLM key |
+| state / secret | 持たない | KV/D1 + App private key + LLM key |
 | レイテンシ | 40–500 ms | **12–19 分**（85 ファイルの最小 repo。実測値、ADR-1990） |
-| コスト | 実質ゼロ | service-paid。**per-installation の月次 quota**（decision 3） |
-| miss したとき | SPA へ差し戻す（#1961 案5） | reverse pipeline を起動する（#2227） |
+| コスト | 実質ゼロ | service-paid。per-installation の月次 quota（decision 3） |
 
 補足:
 
-- 生成ロジック自体は既に存在する（[ADR-1895](../adr/1895-reverse-architecture-harness.md) の 4-phase harness、[ADR-2077](../adr/2077-reverse-bc-granularity.md) の BC 粒度指示）。ただし今日それは Agent Skill としてクライアント側で回る。#1993 がそれを server 側へ載せる。
-- 描画は両者とも `packages/app` の `MemoryModeApp` を `/s?s=<payload>` 経由で再利用する（ADR-1783 から引き継がれた決定）。生成された `.krs` も最終的には同じ描画面に落ちる。
+- 生成ロジック自体は既に存在する（[ADR-1895](../adr/1895-reverse-architecture-harness.md) の 4-phase harness、[ADR-2077](../adr/2077-reverse-bc-granularity.md) の BC 粒度指示）。今日それは Agent Skill としてクライアント側で回り、手順は [`docs/guide/reverse-engineering-with-ai.md`](../guide/reverse-engineering-with-ai.md)（ADR-1783 から引き継がれた決定）にある。#1993 がそれを server 側へ載せる。
+- 描画は両者とも `packages/app` の `MemoryModeApp` を `/s?s=<payload>` 経由で再利用する。
 
 ## 制約・前提
 
 - **permalink の JTBD は「読者が誰でもクリックして見える恒久リンク」**（ADR-1828）。URL が内容を決めることが前提で、ADR-1829 は permalink を record ではなく pointer と位置づけている。
-- **ADR-1990 decision 5**: secret・state・webhook を静的 Pages app に同居させない。生成を伴う面は別サービスに置く。
-- **ADR-1990 decision 3**: 推論コストは service-paid で、**per-installation** の月次 quota + global rate-limit で cap する。
-- **ADR-1990 decision 6**: data-trust（同意・生コード非保存・zero-retention・uninstall purge・開示）は成立条件であって follow-up ではない。**これが揃うまで他者の private コードに触れてはならない。**
+- **ADR-1990 decision 5**: secret・state・webhook を静的 Pages app に同居させない。
+- **ADR-1990 decision 6**: data-trust（同意・生コード非保存・zero-retention・uninstall purge・開示）は成立条件。
 - **生成は 12–19 分**（85 ファイル。`Dify` 規模はその数倍）。同期 HTTP に載らない。
 - **Pages app 面は認証なし**（ADR-9017）。反転するなら別 ADR が要る。
-- **今日の karasu-nest は個人情報を一切持たない。** ADR-1990 decision 6 の data-trust は**コード**を対象にした設計で、個人データは想定していない。ここに personal data を入れるなら、privacy policy・purge・保管期間の対象を広げる必要がある（軸4 を参照）。
-- out of scope: reverse pipeline の中身、quota の水準、法務、描画側（#1817 の大規模図の可読性）。
+- out of scope: reverse pipeline の中身（#1993）、quota 水準（#2226 / #1994）、karasu-nest 側の UI と受付設計、描画側（#1817）。
 
 ## 3 つの緊張
 
-本 doc の主眼は選択肢の列挙ではなく、**素朴に繋ぐと壊れる 3 点**を先に固定することにある。
+素朴に「miss したら生成する」と繋ぐと壊れる 3 点。**結論を先に言うと、役割を分けた本 doc の方針では 3 つとも permalink 面から出ていき、karasu-nest 側の設計課題になる。** それでも列挙するのは、なぜ permalink 面が生成を持ってはいけないかの根拠がここにあるためである。
 
 ### 緊張 1: reader 向けの URL に、installer 向けの行為をぶら下げている
 
-permalink を踏むのは reader で、認証も installation も持たない通りすがりである。一方 ADR-1990 の推論コストは **installation 単位**で計量される。
+permalink を踏むのは reader で、認証も installation も持たない通りすがりである。一方 ADR-1990 の推論コストは **installation 単位**で計量される。App が入っていない repo の URL から生成を起動できるなら、**そのコストの課金先が存在しない**。誰でも踏める URL が誰かの quota を焼く構造は、そのまま abuse 面でもある。
 
-`karasu.kompiro.dev/someorg/somerepo` に App が入っていなかったら、**その生成のコストを誰に付けるのか**。誰でも踏める URL が誰かの quota を焼く構造は、そのまま abuse 面でもある（URL を撒けば他人の quota を消費できる）。
-
-これは quota の**水準**の問題（#2226 / #1994）ではなく、**課金先が存在するか**という構造の問題なので、水準が決まるのを待たずに決められるし、決めておかないと #2227 の routing が書けない。
+これは quota の**水準**の問題（#2226 / #1994）ではなく、**課金先が存在するか**という構造の問題である。
 
 ### 緊張 2: リクエスト駆動の生成は permalink の determinism を壊す
 
-「ユーザーのリクエストを基に生成する」を素朴に permalink に載せると、**同じ URL が読者ごとに違う内容を返す**。これは permalink が唯一保証すべき性質を壊す。ADR-1828 の immutability も ADR-1829 の pointer 論も、「URL → 内容」が関数であることに乗っている。
+「ユーザーのリクエストを基に生成する」を素朴に permalink に載せると、**同じ URL が読者ごとに違う内容を返す**。ADR-1828 の immutability も ADR-1829 の pointer 論も、「URL → 内容」が関数であることに乗っている。
 
-解きほぐすと、性質の違う 2 つの操作が混ざっている:
+性質の違う 2 つの操作が混ざっている:
 
-- **resolution**（解決）— URL を内容へ写す。冪等・決定的・誰にとっても同じ。
-- **creation**（生成）— 入力から新しい成果物を作る。副作用があり、コストを伴い、入力ごとに違う結果になる。
+- **resolution（解決）** — URL を内容へ写す。冪等・決定的・誰にとっても同じ。
+- **creation（生成）** — 入力から新しい成果物を作る。副作用があり、コストと時間を伴い、入力ごとに違う結果になる。
 
-**生成は resolution ではなく creation である。** したがって生成はその場で permalink の応答をすげ替えるのではなく、**新しい安定した URL を mint してそこへ送る**べきである。`/<owner>/<repo>` は「その repo の正準 `.krs`」を指し続け（committed でも生成済みでも）、リクエストで観点を変えたものは別の資源になる。
+**生成は resolution ではなく creation である。** 混ぜてはならない（[TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md)）。
 
 ### 緊張 3: 12–19 分は同期 HTTP に載らない
 
-302 の裏に隠せる時間ではない。そして permalink を踏んだ reader にとって「12 分待て」は導線として重い — その人は図を見に来ただけで、生成を依頼しに来たわけではない。
-
-**miss 時に同期で誠実に返せるのは「今どういう状態か」と「次の一手」だけ**である。生成そのものは非同期 job + 進捗導線という別の surface になる。
+302 の裏に隠せる時間ではない。permalink を踏んだ reader にとって「12 分待て」は導線として重い — その人は図を見に来ただけで、生成を依頼しに来たわけではない。**miss 時に同期で誠実に返せるのは「今どういう状態か」と「次の一手」だけ**である。
 
 ## 検討した選択肢
 
@@ -86,182 +86,139 @@ permalink を踏むのは reader で、認証も installation も持たない通
 
 | | 案 | 内容 |
 | --- | --- | --- |
-| 1-A | **別 hostname** | nest サービスを `nest.karasu.kompiro.dev` 等に置き、名前空間を分ける |
-| 1-B | **Pages Function が service binding で委譲** | route 判定は Pages app 側（#1961 の PoC 資産）、生成を伴う面は service binding で nest Worker を呼ぶ |
-| 1-C | **nest Worker が zone route で先取り** | `karasu.kompiro.dev/*` を Worker route で Worker に向け、Pages は SPA だけを持つ |
+| 1-A | **permalink 面が持ち、生成面とは HTTP で繋がない** | permalink 面は committed `.krs` の解決だけ。karasu-nest は独立したサービス・独立した導線 |
+| 1-B | **Pages Function が service binding で生成面に委譲** | route 判定は Pages app 側、生成を伴う面は binding で nest Worker を呼ぶ |
+| 1-C | **nest Worker が zone route で先取り** | `karasu.kompiro.dev/*` を Worker に向け、Pages は SPA だけを持つ |
 
-- **1-A メリット**: 完全に独立。secret も state も物理的に分離され、ADR-1990 decision 5 に最も素直。**デメリット**: URL の見栄えが #1961 の目的から遠ざかる（`nest.` が付く）。ADR に貼る permalink の host が増え、`adr.config.json` の `repoBackedHosts` も増える。
-- **1-B メリット**: hostname は 1 つ。#1961 で実測済みの guard・`_routes.json`・`context.next()` fallthrough がそのまま生きる。secret は Worker 側に留まる（Pages app は binding を呼ぶだけで鍵を持たない）。**デメリット**: Pages app と nest サービスのデプロイが binding で結合する。どちらかの単独ロールバックがしにくい。
-- **1-C メリット**: 生成面が名前空間を完全に所有し、境界の二重管理が無い。**デメリット**: #1961 の実装が丸ごと無駄になる（route 判定が Worker 側へ移る）。`/s`・`/render`・SPA も Worker 経由になり、今日動いている面のリスクが上がる。
+- **1-A メリット**: 2 つの面が**実行時に一切結合しない**。permalink 面は今日の責務のまま、state も secret も持たない（decision 5 に自明に適合）。karasu-nest 側の障害・未デプロイが permalink の解決に影響しない。#1961 が nest の完成を待たずに出せる。**デメリット**: 生成物を permalink 面に載せる経路が別途要る（後述のとおり、それは「repo に commit される」ことで自然に解決する）。
+- **1-B メリット**: 生成結果をそのまま同じ URL で返せる。**デメリット**: Pages app と nest のデプロイが結合し、単独ロールバックがしにくい。permalink 面が生成面の可用性に依存する。そして **permalink 面に「生成もしうる」責務が滲む** — 緊張 1〜3 が permalink 面に流れ込む。
+- **1-C メリット**: 生成面が名前空間を完全に所有する。**デメリット**: #1961 の実装が丸ごと無駄になり、`/s`・`/render`・SPA も Worker 経由になって今日動いている面のリスクが上がる。
 
 ### 軸2: `.krs` が無い miss に何を返すか
 
 | | 案 | 内容 |
 | --- | --- | --- |
-| 2-A | **SPA へ差し戻す** | #1961 案5 のまま。miss は無かったことになる |
-| 2-B | **状態説明ページ** | 「この repo にはまだ `.krs` がありません」＋次の一手（install 導線 / 生成の開始）を 200 で返す |
-| 2-C | **即座に生成を起動** | miss がそのまま job になる |
+| 2-A | **SPA へ差し戻す** | #1961 の当初案。miss は無かったことになる |
+| 2-B | **案内ページ** | 「この repo にはまだ `.krs` がありません」＋ **karasu-nest / ローカル reverse 手順への導線**を 200 で返す |
+| 2-C | **受付ページ**（リクエストを permalink 面が受ける） | miss ページがリクエストのカウンタを持つ |
+| 2-D | **即座に生成を起動** | miss がそのまま job になる |
 
-- **2-A メリット**: 実装ゼロ、レイテンシ最小。**デメリット**: ピボットの入口をちょうど塞ぐ。ADR-1990 が壊しにいった壁の前で黙って引き返す。
-- **2-B メリット**: 緊張 3 に対する唯一の誠実な同期応答。reader は 12 分待たされず、状況が分かる。生成を望む人だけが次へ進む。**デメリット**: 1 画面ぶんの UI が要る。「ゼロ設定で図が出る」体験に 1 クリック挟まる。
-- **2-C メリット**: ゼロ設定に最も近い。**デメリット**: 緊張 1・3 の両方を踏む。課金先の無い訪問者が 12 分の job を起動でき、abuse 面がそのまま開く。
+- **2-A メリット**: 実装ゼロ。**デメリット**: 「この repo には `.krs` が無い」という有用な事実を握りつぶし、次の一手も示さない。
+- **2-B メリット**: 同期で誠実に返せる範囲ちょうど。**permalink 面に state を持ち込まない**（decision 5 に触れない）。karasu-nest がまだ無い今日でも、既にある [`reverse-engineering-with-ai.md`](../guide/reverse-engineering-with-ai.md) を行き先にできるので**即出せる**。**デメリット**: 1 画面ぶんの UI が要る。
+- **2-C メリット**: 需要シグナルが取れる。**デメリット**: permalink 面が KV を持つことになり decision 5 への例外が要る。受付は karasu-nest の責務なので、置き場所として筋が悪い。
+- **2-D**: 緊張 1・3 の両方を踏む。却下。
 
-### 軸3: 生成の入力
+### 軸3: 生成の入力（リクエスト駆動）／ 軸4: 完了通知
 
-| | 案 | 内容 |
+**いずれも karasu-nest 側の設計課題であり、本 doc の範囲外に移す。** 役割を分けた結果、permalink 面はリクエストも受けず完了も通知しないので、ここで決めることが無くなった。
+
+参考として、これまでの検討で出た論点を karasu-nest 側へ引き継ぐ:
+
+- 入力: ゼロ設定（ADR-1990 のまま）か、「どの観点で見たいか」を受けるか。後者は cache key に入力が入り、生成物は**別 URL に mint** する必要がある（緊張 2）。
+- 通知: 進捗ページ / メール / PR-back / **リクエスト受付のみ（通知なし・人手実行）**。先行例として DeepWiki は、未 index の repo にはメール登録で完了通知、private repo は Devin アカウント必須、onboarding で接続した repo は自動生成、と **owner 導線と reader 導線で手段を分けている**。
+- 摩擦: reader に GitHub Issue を書かせるような導線は、「気軽に試したい」層を取りこぼし、**需要データを歪める**。受付を作るならボタン 1 つに留める。
+- 個人データ: メール通知を採ると karasu-nest が初めて personal data を預かる。預かるものが増えるほどプライバシーポリシーが厚くなる（後述）。
+
+## 現時点の方針
+
+**軸1 = 1-A、軸2 = 2-B。** permalink 面と karasu-nest を**実行時に結合させない**。
+
+### 役割
+
+| | permalink 面（#1961 / ADR-1828） | karasu-nest = GitHub App（ADR-1990） |
 | --- | --- | --- |
-| 3-A | **ゼロ設定のみ** | ADR-1990 のまま。repo を入力に自動 reverse |
-| 3-B | **リクエスト駆動を足す** | 「どの観点で見たいか」を入力に取る。生成物は**別 URL に mint** する（緊張 2） |
+| すること | committed `.krs` を解決して描画する | repo を読み、reverse し、`.krs` を生成する |
+| `.krs` が無いとき | **案内ページを返して karasu-nest へ促す** | 生成する（受付・通知・quota はこちらの設計課題） |
+| 持つもの | 何も持たない（state も secret も個人データも） | KV/D1・App private key・LLM key・（採るなら）個人データ |
 
-- **3-A メリット**: ADR-1990 の決定そのまま。cache が SHA だけで keyed でき単純。**デメリット**: 「この repo の決済まわりだけ見たい」に応えられない。
-- **3-B メリット**: #2249 の出発点である「利用者のリクエストを基に」を満たす。ADR-2077 の BC 粒度指示が既にプロンプト側のレバーとして効くと実証済みなので、指示を受け取る器としては自然。**デメリット**: cache key にリクエスト文が入る（同じ repo でも別成果物）。permalink の determinism を守るには mint した URL 側に安定 id が要り、それは**新しい永続資源**なので ADR-1990 decision 6 の purge 範囲に入る。
+`/<owner>/<repo>` の意味:
 
-### 軸4: 12〜19 分の完了をどう伝えるか
+| 状態 | 応答 |
+| --- | --- |
+| committed `.krs` がある | 302 → `/s?s=…`（今日どおり） |
+| `.krs` が無い | **200 案内ページ**（karasu-nest への導線 + ローカル reverse 手順） |
+| 明示 `@<ref>` があって解決できない | エラー（permalink 意図が明示されているので診断を出す） |
 
-緊張 3 より、生成は非同期になる。では「終わったこと」をどう届けるか。
+### 2 つの面はどこで合流するのか — repo である
 
-**先行例（DeepWiki）**: 未 index の repo は **メールアドレスを登録して完了通知を受け取る**（通常 1 時間以内）。private repo は Devin アカウントが必要で、repo を接続した owner には onboarding 時に自動生成される。つまり **owner 導線とreader 導線で通知手段が分かれている**。karasu の installer / reader の分裂とそのまま重なる。
+1-A の唯一の弱点は「生成物をどうやって permalink 面に載せるか」だが、これは **karasu-nest が生成した `.krs` を repo に PR する**ことで解ける。merge されればそれは committed `.krs` になり、**permalink 面は何も変えずにそれを解決する**。
 
-| | 案 | 内容 |
+この合流点の置き方には 3 つ利点がある:
+
+- **HTTP 境界も binding も要らない。** 2 つのサービスは repo を介して疎に繋がる。
+- **[ADR-1829](../adr/1829-adr-permalink-convention.md) の record / pointer 分離と一致する。** 記録の正本は in-repo `.krs`、permalink はそれを指す pointer — 生成物も同じ形に着地する。
+- **ADR-1990 decision 4 の human PR-back ラチェット（[#2228](https://github.com/kompiro/karasu/issues/2228)）と同じ機構である。** 通知・成果物の配達・ラチェットが 1 つの仕組みで済む。
+
+PR が merge されない repo（または private repo）の生成物は karasu-nest 側でホストされ、nest の URL で見る。それは permalink 面の関心事ではない。
+
+### 3 つの緊張の行き先
+
+| | permalink 面 | karasu-nest 側 |
 | --- | --- | --- |
-| 4-A | **進捗ページ（polling / SSE）** | タブを開いたまま待たせる |
-| 4-B | **メール通知** | miss ページでアドレスを登録し、完成したら mint した URL を送る |
-| 4-C | **PR-back** | 生成した `.krs` を repo への PR として出す。PR 通知が完了通知を兼ねる |
-| 4-D | **リクエスト受付のみ（通知なし・人手実行）** | 「この repo を見たい」という要求だけ受け、生成の実行タイミングは maintainer が握る |
+| 緊張 1（課金先が居ない） | **消える** — 生成を起動しない | 残る。誰が生成を起動できるかを nest が決める |
+| 緊張 2（determinism） | **消える** — resolution しかしない | 残る。リクエスト駆動を採るなら別 URL に mint する |
+| 緊張 3（12〜19 分） | **消える** — 待たせる処理が無い | 残る。受付・通知の設計課題 |
 
-- **4-A メリット**: 個人情報を預からない。実装が最も軽い。**デメリット**: 12〜19 分タブを占有させるのは、図を見に来ただけの reader に対して重すぎる。閉じたら結果に辿り着けない。
-- **4-B メリット**: reader が離席できる唯一の手段。**緊張 2 の結論と噛み合う** — 通知メールに載せるのは mint した URL そのもので、メールが creation 成果物の受け渡しになる（後付けではなく設計上の必然）。緊張 1 に対しても、installation が無い経路に attribution の handle を与える。**デメリット**: **karasu-nest が初めて個人情報を預かる**。privacy policy・purge・保管期間の対象が広がり、メール送信基盤が新しい subprocessor になる（decision 6 の開示対象）。加えて未認証で任意アドレスにメールを送れる口は spam / joe-job の経路になる。そして **abuse 対策としては弱い** — アドレスは無限に作れるので、attribution は得られても accountability は得られない。
-- **4-C メリット**: 個人情報ゼロ。通知が GitHub 側の既存機構に乗る。さらに **ADR-1990 decision 4 の human PR-back ラチェット（#2228）そのもの**であり、[ADR-1829](../adr/1829-adr-permalink-convention.md) の「記録は in-repo `.krs`、URL は pointer」とも一致する — 成果物が正しい置き場所に着地する。**デメリット**: write 権限のある installation が要る。他人の repo を見に来た reader には使えない。
+### #1961 は unblock される
 
-- **4-D メリット**: **緊張 1 と緊張 3 が両方消える。** 実行を人が握るので、課金先の居ない自動起動が原理的に発生しない（quota の代わりに maintainer が rate limiter になる）。非同期 job も進捗導線も要らない。通知しないので**個人情報を預からず**、メール送信基盤も subprocessor も増えない。さらに副産物として、**リクエストの集計がそのまま需要シグナル**になる — solo maintainer が限られた推論予算をどの repo に使うか決める材料は、他に得る手段が無い。**デメリット**: リクエストした人は完成を知る手段が無い（後述の緩和策あり）。生成までのリードタイムが maintainer の可用性に依存する。
+本 doc は当初 #1961 を blocking していたが、**役割を分けた結果ブロックは解ける**。permalink 面は生成に一切関与しないので、karasu-nest の設計が固まるのを待つ必要がない。
 
-**軸4 と緊張 1 は同じ問いである。** メールが要るのは「installation が無い repo を reader が自動生成したい」経路だけで、その経路はまさに課金先が居ない経路でもある。生成を installer 限定にするか、実行を人手ゲートにするなら、メールは要らない。
+#1961 に残る変更は 1 つだけ: **deterministic-negative fallthrough の行き先を SPA ではなく案内ページにする**（案5 の差し替え）。これは自己完結した変更で、nest の内部設計に依存しない。
 
-#### 4-D の最小実装: 1 クリックのリクエストボタン
+### 今日から出せる形（karasu-nest 以前）
 
-**摩擦を足さないことが v1 の設計要件である。** miss ページに来る人は「図を見に来ただけ」で、その場で何かを書く気は無い。ここに入力を要求すると、**v1 が測ろうとしている需要そのものを削る** — 集まるのは熱量の高い一部だけになり、シグナルとして歪む。
+karasu-nest はまだ無いが、**案内ページは今日出せる**。行き先として [`docs/guide/reverse-engineering-with-ai.md`](../guide/reverse-engineering-with-ai.md) が既にある（ADR-1783 から引き継がれた BYO reverse 手順）。
 
-したがって受付は **ボタン 1 つ**にする。
+- 今日: 案内ページ →「自分の LLM で `.krs` を作る手順」＋「作った `.krs` を repo に commit すればこの URL で開けます」
+- karasu-nest 後: 同じページに karasu-nest の導線を足す
 
-- 押すと `owner/repo` に対するカウンタが 1 増え、その場で「リクエストを受け付けました」に変わる。
-- **識別子を一切取らない。** 保存するのは `owner/repo → 件数 + 最終リクエスト日時` だけで、アドレスもアカウントも IP も保存しない。
-- 連打の抑止は **Cloudflare のレートリミット**に任せる（こちらが per-requester の値を保存しないで済む）。ブラウザ側 `localStorage` で「送信済み」表示に切り替えるのは表示上の配慮に留め、識別には使わない。
-- **戻り道は URL そのもの。** 通知は無いが、その人は今まさに `/<owner>/<repo>` を開いている。「生成されるとこのページに図が出ます」と書いてブックマークを促せば、通知の代わりになる。4-D の弱点は、通知基盤ではなく**文言**で相当ぶん埋まる。
+**この段階では新しいインフラが 1 つも要らない。** ページ 1 枚である。
 
-**カウンタの水増しは許容する。** 匿名カウンタは容易に膨らませられるが、**実行は人が握っているので、水増しのコストは金銭ではなくシグナル品質だけ**である（緊張 1 が消えている効果がここにも効く）。maintainer はキューを目視で裁くので、不自然な repo は弾ける。厳密な計量を目指して識別子を取り始めると、摩擦と個人データの両方を招いて元が取れない。
+### 既存 Issue への落とし込み
 
-#### 却下: リクエスト = GitHub Issue
-
-事前入力済みの Issue 作成 URL に送れば、バックエンドも保存も持たずに済み、通知（起票者の購読）と spam 対策（GitHub の認証）まで肩代わりできる — 実装コストだけを見れば最小である。
-
-**却下する。** Issue を書かせるのは、v1 が対象にしている「気軽に試したい」利用者にとって重すぎる。GitHub アカウントを要求し、タイトルと本文を書かせ、公開の場に自分の名前で投稿させる — 図を 1 枚見たかっただけの人はそこで離脱する。残るのは元から熱量の高い層だけで、**得られる需要データが実態からずれる**。実装コストの安さは、測りたいものを測れなくなる代償に見合わない。
-
-（`karasu-index-requests` のような別 repo に逃がしても、書かせること自体の摩擦は消えないので同じ理由で却下する。）
+| 決定 | 落とし先 |
+| --- | --- |
+| 2-B 案内ページ（fallthrough の行き先） | [#1961](https://github.com/kompiro/karasu/issues/1961)（案5 を差し替える。unblock 済み） |
+| 1-A（HTTP 結合しない）を scaffold の前提にする | [#2227](https://github.com/kompiro/karasu/issues/2227)（routing scope から「permalink 面からの委譲」を外す） |
+| 生成物の PR-back を配達経路にする | [#2228](https://github.com/kompiro/karasu/issues/2228)（ラチェットと同じ機構。配達としての用途を scope に足す） |
+| 受付・通知・リクエスト駆動の設計 | **karasu-nest 側で新規起票**（#1990 の子。本 doc の「軸3 / 軸4」節を引き継ぎ材料にする） |
+| 利用規約 + プライバシーポリシー | [#1996](https://github.com/kompiro/karasu/issues/1996)（下記の段階分けを反映） |
 
 ## 法務（日本向けに karasu-nest を提供する場合）
 
 本節は「設計が何を引き起こすか」の整理であって、法的助言ではない。実際の文面は専門家のレビューを前提とする。
 
-重要なのは、**個人情報を一切預からなくても利用規約は要る**という点である。karasu-nest は他者の public repo から **AI が導出した成果物を自ドメインで公開する**サービスなので、personal data とは独立に次が発生する:
+**個人情報を一切預からなくても利用規約は要る。** karasu-nest は他者の repo から **AI が導出した成果物を提供する**サービスなので、personal data とは独立に次が発生する:
 
-- **成果物の正確性と免責** — 生成された構造図はその project の公式見解ではなく、誤りうる。「AI 生成物であり無保証」を明示する責任。
-- **取り下げ導線** — repo の所有者から「掲載をやめてほしい」と言われたときの窓口と手順。
-- **派生物の扱い** — 元 repo のライセンスと、生成 `.krs` の位置づけ。
+- **成果物の正確性と免責** — 生成された構造図はその project の公式見解ではなく、誤りうる。「AI 生成物であり無保証」の明示。
+- **取り下げ導線** — repo 所有者から「やめてほしい」と言われたときの窓口と手順。
+- **派生物の扱い** — 元 repo のライセンスと生成 `.krs` の位置づけ。
 
-一方でプライバシーポリシーの厚みは**何を預かるかに完全に従属する**:
+プライバシーポリシーの厚みは**何を預かるかに完全に従属する**:
 
 | 段階 | 預かる個人データ | ポリシーの範囲 |
 | --- | --- | --- |
-| v1（4-D、1 クリックのリクエスト） | **なし** — 保存するのは `owner/repo → 件数` のみ。IP もアドレスもアカウントも取らない（Cloudflare のアクセスログは別途存在する） | アクセスログと cookie 相当の最小限 |
-| メール通知（4-B）を足す | メールアドレス | 利用目的・保管期間・削除請求・**送信 provider を第三者提供先として開示** |
-| private repo に踏み込む | 他者のコード（ADR-1990 decision 6） | 委託先管理・安全管理措置・越境移転（LLM provider） |
+| permalink 面（本 doc の方針） | **なし** | 変更不要 |
+| karasu-nest / 受付のみ・匿名 | なし | アクセスログ相当の最小限 |
+| karasu-nest / メール通知 | メールアドレス | 利用目的・保管期間・削除要求・**送信 provider を第三者提供先として開示** |
+| karasu-nest / private repo | 他者のコード | 委託先管理・安全管理措置・越境移転（LLM provider） |
 
-日本向けでは**個人情報保護法**が軸になり、メールアドレスを取得した時点で利用目的の特定・通知が要る。無償提供である限り特定商取引法は絡まない。EU 圏の利用者に開く場合は GDPR が別途乗る（IP アドレスも個人データ扱いになる点が日本より厳しい）。
+日本向けでは**個人情報保護法**が軸になり、メールアドレスを取得した時点で利用目的の特定・通知が要る。無償提供である限り特定商取引法は絡まない。EU 圏に開くなら GDPR が別途乗る（IP アドレスも個人データ扱いになる点が日本より厳しい）。
 
-**したがって v1 を 4-D に留めると、必要なのは利用規約 + 薄いプライバシーポリシーだけで済む。** これは #1996 が「solo 運用の重り」と呼んだ負担を、サービスを止めずに最小化する道筋になる。#1996 の scope は現状 private コードを前提に書かれているので、この段階分けを反映する必要がある。
-
-## 現時点の方針
-
-**段階を分ける。** v1 は人手ゲートで最小に出し、自動化は需要と法務の準備ができてから足す。
-
-### v1（今すぐ出せる形）
-
-**軸1 = 1-B、軸2 = 2-B、軸3 = 3-A、軸4 = 4-D（1 クリックのリクエストボタン）。**
-
-- `.krs` が無い miss は**状態説明ページ**を返し、次の一手は「**この repo をリクエストする**」ボタン 1 つだけ。入力欄は置かない（摩擦が需要データを歪めるため）。
-- ページには「生成されるとこの URL に図が出ます」と書き、ブックマークを促す。通知は持たない。
-- 生成の実行は maintainer が任意のタイミングで、**既に動いている** reverse harness（[ADR-1895](../adr/1895-reverse-architecture-harness.md) の Agent Skill + [ADR-2077](../adr/2077-reverse-bc-granularity.md) の BC 粒度指示）を手で回す。
-- 成果は PR-back（4-C）で元 repo へ、または karasu 側にホストする。
-
-**この v1 が要求するもの**: 状態説明ページ 1 枚、リクエスト受付エンドポイント 1 本、`owner/repo → 件数` の KV 1 つ。
-
-> **decision 5 への narrow exception**: ADR-1990 は state を Pages app に置かないと決めているが、この KV は**秘密も個人データも含まない公開カウンタ**である。これだけのために #2227 のサービスを先に立ち上げるのは不釣り合いなので、**「秘密・個人データを含まないカウンタに限る」という明示的な例外**として Pages app 側に置く。ADR 昇格時にこの例外を明記する。v2 で #2227 が立ったら移す。
-
-**この v1 が要求しないもの**: GitHub App（#1992）、server-side pipeline（#1993）、quota（#1994）、非同期 job、メール送信基盤、個人データの保管。ADR-1990 の重いスライス群はすべて後段に回る。
-
-緊張との対応:
-
-| | v1 での状態 |
-| --- | --- |
-| 緊張 1（課金先が居ない） | **消える** — 人手ゲートが rate limiter を兼ね、自動起動の経路が存在しない |
-| 緊張 2（determinism） | **残る** — 生成物の置き場所は依然 creation として扱う（v1 では手動なので、置き場所を決めるだけ） |
-| 緊張 3（12〜19 分） | **消える** — 同期処理も非同期 job も無い |
-
-### v2 以降（需要が示されてから）
-
-- **軸3 = 3-B（リクエスト駆動）**: v1 はあえて入力欄を持たないので、「どの観点で見たいか」を集める器は v2 で足す。**リクエスト数が集まってから**、既にボタンを押した層に対して任意入力を出す形なら、摩擦を最初から課さずに観測できる。
-- **軸4 = 4-C / 4-B**: installer 導線は PR-back を既定に。reader 導線のメール通知は、v1 のリクエスト量が「自動化に見合う」と示してから。
-- **自動生成**: #1992 / #1993 / #1994 を順に。
-
-### 全段階に共通する方針の中身
-
-- **1-B（service binding で委譲）**: hostname を 1 つに保ちながら、ADR-1990 decision 5 の「secret を Pages app に置かない」を守れる唯一の案である。Pages app は route を判定して binding を呼ぶだけで、App private key も LLM key も Worker 側に留まる。#1961 で実測済みの資産（guard・`_routes.json`・`context.next()` fallthrough）がそのまま活き、1-C のように今日動いている `/s`・`/render` をリスクに晒さない。
-- **2-B（状態説明ページ）**: 緊張 3 より、同期で返せるのは状態と次の一手だけである。これは #1961 案5 の fallthrough を**置き換える**もので、「deterministic な 404 → SPA」ではなく「deterministic な 404 → 状態説明」になる。**次の一手が何かは段階で変わる**（v1 = リクエスト送信、v2 = 生成開始）が、ページの役割は変わらない。
-- **3-B（リクエスト駆動、ただし別 URL）**: `/<owner>/<repo>` は「その repo の正準 `.krs`」を指し続ける。リクエストで観点を変えた生成物は creation の成果として別の安定 URL を得る。これで permalink の determinism（緊張 2）を壊さずに要望を容れられる。v1 では手動運用なので、守るべきは「置き場所を分ける」ことだけになる。
-- **軸4 は導線で分ける（v2 以降）**: **installer 導線は 4-C（PR-back）を既定**にする。個人情報を預からずに済み、decision 4 のラチェット（#2228）と同じ機構で、成果物が ADR-1829 の言う正しい置き場所（in-repo `.krs`）に着地する。**reader 導線でだけ 4-B（メール）を採る**。ただしこれは **karasu-nest が個人情報を預かる最初のケース**になるので、次を満たさない実装は採らない: 預かるのは「アドレス + job id + 有効期限」だけ／**送信後（と TTL 超過）に破棄**／1 job 1 通／**要求元以外のアドレスには送らない**。実質的なコスト cap は per-address quota ではなく #1994 の global rate-limit と IP 制限が担う（アドレスは無限に作れるため）。
-
-結果として `/<owner>/<repo>` の意味は次のように整理される:
-
-| 状態 | v1 の応答 | v2 以降 |
-| --- | --- | --- |
-| committed `.krs` がある | 302 → `/s?s=…`（今日どおり） | 同左 |
-| 生成済み `.krs` がある | 302 → `/s?s=…`（reader から見て区別されない） | 同左 |
-| どちらも無い | 200 状態説明ページ ＋ **リクエストボタン**（1 クリック・入力欄なし） | installation あり: 生成開始 → **PR-back** で通知<br>installation なし: install 導線 ＋ **メール登録** |
-| 明示 `@<ref>` があって解決できない | エラー（permalink 意図が明示されているので診断を出す） | 同左 |
-
-**この方針は #1961 の案5 を上書きする。** #1961 の実装は本 doc の合意後に着手し、fallthrough の行き先を SPA ではなく状態説明ページにする。
-
-### 既存 Issue への落とし込み
-
-新しいスライス群は起こさない。本 doc が決めるのは境界であり、実装は既存スライスの中に落ちる。
-
-| 段階 | 決定 | 落とし先 |
-| --- | --- | --- |
-| **v1** | 2-B 状態説明ページ + 4-D リクエスト導線 | [#1961](https://github.com/kompiro/karasu/issues/1961)（fallthrough の行き先として。案5 を差し替える） |
-| **v1** | 利用規約 + 薄いプライバシーポリシー | [#1996](https://github.com/kompiro/karasu/issues/1996)（**段階分けを反映して scope を組み替える** — v1 は個人データ無しで成立する） |
-| **v1** | リクエスト受付エンドポイント + `owner/repo → 件数` の KV（decision 5 への narrow exception） | #1961 と同 PR（または軽量な follow-up） |
-| v2 | 1-B service binding の配線 | [#2227](https://github.com/kompiro/karasu/issues/2227)（scaffold の routing scope に既に含まれる） |
-| v2 | installation 有無による分岐 | [#1992](https://github.com/kompiro/karasu/issues/1992)（App auth） |
-| v2 | 3-B リクエスト駆動 + 別 URL mint | **ADR-1990 に無い入力モードなので、#1990 の子として新規起票が要る** |
-| v2 | 4-C PR-back を完了通知に使う | [#2228](https://github.com/kompiro/karasu/issues/2228)（ラチェット検証と同じ機構。通知としての用途を scope に足す） |
-| v2 | 4-B メール通知 | **新規起票が要る**（非同期 job + 送信基盤 + 破棄 + ポリシー拡張） |
-| v2 | 生成物 URL とメールアドレスの purge 範囲 | [#1996](https://github.com/kompiro/karasu/issues/1996)（**personal data まで scope を広げる** — 現状の decision 6 はコードだけを対象にしている） |
+**役割を分けた効果がここにも出る**: permalink 面は個人データを一切持たないので、法務の負担は karasu-nest 側に閉じる。#1996 の scope はこの段階分けを反映して組み替える。
 
 ### 影響範囲・マイグレーション
 
-- 既存ユーザーへの影響: なし（`/r/…` も committed `.krs` の解決も変わらない）。miss の応答だけが SPA から状態説明ページに変わる。
-- **v1 で新たに預かる個人データ: なし。** 保存するのは `owner/repo → 件数 + 最終リクエスト日時` だけで、IP もアドレスもアカウントも取らない。
-- ドキュメント更新: `docs/design/bare-permalink-route.md`（案5 の fallthrough 行き先を差し替え）、`docs/spec/permalink.md`（`/<owner>/<repo>` の意味表）。
-- ADR: 本 doc 合意後、`docs/adr/2249-permalink-generation-seam.md` として昇格し（`refines: [ADR-1990, ADR-1828]`）、本 Design Doc は同 PR で削除する。
+- 既存ユーザーへの影響: なし（`/r/…` も committed `.krs` の解決も変わらない）。miss の応答だけが SPA から案内ページに変わる。
+- permalink 面が新たに預かるデータ: **なし**。state も secret も持たない。
+- ドキュメント更新: `docs/design/bare-permalink-route.md`（案5 の fallthrough 行き先）、`docs/spec/permalink.md`（`/<owner>/<repo>` の意味表）。
+- ADR: 合意後 `docs/adr/2249-permalink-generation-seam.md` として昇格し（`refines: [ADR-1990, ADR-1828]`）、本 Design Doc は同 PR で削除する。
 
 ## 未解決の問い / 決めないこと
 
-- **service binding のデプロイ結合をどう切るか**: 1-B は Pages app と nest サービスを binding で結ぶ。binding 先が未デプロイ / 障害中のときに Pages app 側が何を返すかは、#2227 着手時に決める（フェイルセーフは「committed `.krs` の解決だけは binding 無しで完結する」ことを保つ形になるはず）。
-- **生成物 URL の形**: 3-B が mint する安定 URL の文法（`/g/<id>` か、repo + リクエストのハッシュか）は決めない。permalink の deep anchor 文法（ADR-1827）を共有するかも含めて、新規起票側で決める。
-- **v1 → v2 に進む条件**: リクエストがどれだけ溜まったら自動化に見合うのか。v1 を出すと**その判断材料が実データで取れる**（それ自体が v1 の狙いの 1 つ）ので、閾値は今決めない。
-- **public repo の扱い（v2 の入口）**: public repo は installation 無しでも読めるが、**推論コストは同じくかかる**。「public なら誰でも生成を起動してよい」とすると緊張 1 が戻る。メール（4-B）は attribution を与えるが accountability は与えない。**そもそも reader 導線の自動生成を提供するのか**（提供しないなら 4-B もメール保管も不要で、v1 の人手ゲートが恒久的な答えになる）、提供するなら訪問者サインイン（GitHub OAuth — ADR-9017 の認証なしを app 面でも反転、DeepWiki が private で Devin アカウントを要求しているのと同じ判断）まで踏み込むかは本 doc では決めない。**軸4 の最終形はこの問いに従属する。**
-- **カウンタの水増しをどこまで抑えるか**: v1 は Cloudflare のレートリミットだけに任せ、識別子を保存しない前提を採った。シグナルが実際に使い物にならないほど歪んだら、Turnstile を足すか、maintainer の目視裁定で足りるかを実データを見て決める。
-- **v1 の成果物をどこに置くか**: maintainer が手で生成した `.krs` を、元 repo への PR（4-C）で置くか、karasu 側にホストするか。前者は ADR-1829 の record/pointer 分離に沿うが、他者 repo への PR が受け入れられるとは限らない。
-- **メール送信基盤の選定と法務**: 送信 provider は decision 6 の subprocessor 開示対象になる。個人データの保管期間・削除要求への応答は #1996 の法務側と一体で決める（v2 の話）。
-- **cache hit を reader にどう見せるか**: 生成済み `.krs` を 302 で返すとき、それが AI 生成物である事実（と confidence、#1995）をどこで伝えるか。描画面の話なので #1995 / #1817 側。
+- **案内ページの中身**: karasu-nest への導線と BYO 手順をどう並べるか。i18n（`docs/spec/i18n.md`）の対象になる文字列が増える。
+- **karasu-nest 側の受付・通知・リクエスト駆動**: 本 doc の軸3 / 軸4 節を引き継ぎ材料として、nest 側で決める。特に「reader が他人の repo の生成を起動できるのか」は緊張 1 が残る場所で、答え次第でメール保管の要否も決まる。
+- **生成物が PR として受け入れられなかったとき**: nest 側でホストする URL の形（`/g/<id>` か repo + 入力のハッシュか）、deep anchor 文法（ADR-1827）を共有するか。nest 側で決める。
+- **karasu-nest のホスト名**: permalink 面と HTTP 結合しないので、別 hostname でもサブパスでも成立する。nest 側で決める。
+- **cache hit を reader にどう見せるか**: 生成由来の `.krs`（と confidence、#1995）であることをどこで伝えるか。描画面の話なので #1995 / #1817 側。
 - **quota の水準**: #2226 の実測待ち（ADR-1990 の未決事項のまま）。
