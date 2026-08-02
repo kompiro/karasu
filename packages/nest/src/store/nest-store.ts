@@ -120,6 +120,9 @@ export class NestStore {
     const canonical = canonicalInstallationId(ref.installationId);
     const removed = await this.directory.unpublishOwnedBy(ref.owner, ref.repo, canonical);
     const documents = await this.cache.purgeRepo({ ...ref, installationId: canonical });
-    return { documents, pointers: removed ? 1 : 0, runs: 0 };
+    // A repo leaving an installation is a revocation too, so its run record
+    // goes with it rather than lingering until its TTL.
+    const runs = (await this.runs.deleteRepo({ ...ref, installationId: canonical })) ? 1 : 0;
+    return { documents, pointers: removed ? 1 : 0, runs };
   }
 }

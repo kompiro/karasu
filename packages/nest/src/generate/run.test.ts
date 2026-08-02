@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { GitHubClient } from "../github/client.js";
+import { GitHubApiError, GitHubClient } from "../github/client.js";
 import type { LlmClient, LlmResponse } from "../reverse/llm.js";
 import { NestStore } from "../store/nest-store.js";
 import { RunStatusStore } from "../store/run-status.js";
@@ -37,7 +37,9 @@ function stubGithub(
     const index = Number.parseInt(blobSha, 16);
     const file = files[index];
     if (file === undefined) return Promise.reject(new Error("unknown blob"));
-    if (overrides.blobFailsFor === file.path) return Promise.reject(new Error("blob read failed"));
+    if (overrides.blobFailsFor === file.path) {
+      return Promise.reject(new GitHubApiError(404, `/blobs/${blobSha}`, "blob read failed"));
+    }
     return Promise.resolve(file.content);
   });
   return github;
@@ -181,7 +183,76 @@ describe("generate", () => {
     it("reports a truncated tree rather than implying the whole repo", async () => {
       const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
       const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }], { truncated: true }), llm);
-      expect((await generate(input, d)).truncatedTree).toBe(true);
+      const outcome = await generate(input, d);
+      expect([outcome.truncatedTree, outcome.truncatedByCap]).toEqual([true, false]);
+    });
+
+    it("reports its own file cap separately from GitHub's truncation", async () => {
+      // Two different reasons the model saw less than the repository, and a
+      // caller reading "truncated" needs to know which one it was: one is ours
+      // to raise, the other is not.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      // The first entry is the one the scripted survey asks to read back.
+      const many = [
+        { path: "src/pay.ts", content: "export class Payment {}" },
+        ...Array.from({ length: 204 }, (_unused, index) => ({
+          path: `src/f${index}.ts`,
+          content: "export const x = 1;",
+        })),
+      ];
+      const outcome = await generate(input, deps(stubGithub(many), llm));
+      expect([outcome.truncatedTree, outcome.truncatedByCap]).toEqual([false, true]);
+    });
+
+    it("skips a blob it cannot read rather than discarding the whole run", async () => {
+      // Minutes and real inference spend are already committed by the time a
+      // single blob 404s. A model missing one file beats no model at all.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(
+        stubGithub(
+          [
+            { path: "src/gone.ts", content: "UNREADABLE" },
+            { path: "src/pay.ts", content: "export class Payment {}" },
+          ],
+          { blobFailsFor: "src/gone.ts" },
+        ),
+        llm,
+      );
+      const outcome = await generate(input, d);
+      expect(outcome.unreadableFiles).toBe(1);
+      expect(llm.prompts[0]).not.toContain("UNREADABLE");
+      expect((await d.runs.get(input))?.state).toBe("done");
+    });
+
+    it("fails when every blob is unreadable, rather than reversing an empty repo", async () => {
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(
+        stubGithub([{ path: "src/gone.ts", content: "x" }], { blobFailsFor: "src/gone.ts" }),
+        llm,
+      );
+      await expect(generate(input, d)).rejects.toThrowError(/every source file failed to read/);
+    });
+  });
+
+  describe("what a failure message may say", () => {
+    it("passes through a message this codebase wrote", async () => {
+      const llm = scriptedLlm(["not json", DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/survey/);
+      expect((await d.runs.get(input))?.error).toContain("survey");
+    });
+
+    it("replaces a message from anywhere else", async () => {
+      // An allowlist, not a denylist: a runtime `TypeError` raised inside a
+      // fetch or a decode carries text nobody vetted, and this endpoint is
+      // public while the repository it read may be private.
+      const llm: LlmClient = {
+        complete: () => Promise.reject(new TypeError("connect ECONNREFUSED 10.0.0.7:443")),
+      };
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/ECONNREFUSED/);
+      const status = await d.runs.get(input);
+      expect(status?.error).toBe("the generation failed");
     });
   });
 });

@@ -40,8 +40,34 @@ function statusKey(ref: RepoRef): string {
 /** How long a status record outlives its run. */
 const TTL_SECONDS = 24 * 60 * 60;
 
+/**
+ * After this, a `running` record is treated as abandoned.
+ *
+ * A run that dies without writing a terminal state — an evicted isolate, a
+ * platform cancellation, a crash — otherwise leaves the record saying
+ * `running` until its TTL expires, and the in-flight check refuses every
+ * retry for a day on behalf of a job that is not executing. Generously above
+ * the 12-19 minutes the gate spike measured, so a slow real run is never
+ * mistaken for a dead one.
+ */
+const STALE_AFTER_MS = 90 * 60 * 1000;
+
+/** Whether a `running` record is old enough that nothing is plausibly running. */
+export function isStale(status: RunStatus, nowMs: number): boolean {
+  if (status.state !== "running") return false;
+  const started = Date.parse(status.startedAt);
+  return Number.isNaN(started) || nowMs - started > STALE_AFTER_MS;
+}
+
 export class RunStatusStore {
   constructor(private readonly kv: KVNamespaceLike) {}
+
+  /** Delete one repo's record. Used when a repo leaves an installation. */
+  async deleteRepo(ref: RepoRef): Promise<boolean> {
+    if ((await this.kv.get(statusKey(ref))) === null) return false;
+    await this.kv.delete(statusKey(ref));
+    return true;
+  }
 
   async get(ref: RepoRef): Promise<RunStatus | undefined> {
     const raw = await this.kv.get(statusKey(ref));

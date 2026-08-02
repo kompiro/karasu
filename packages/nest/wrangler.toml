@@ -51,6 +51,14 @@ ENVIRONMENT = "production"
 binding = "KRS_CACHE"
 id = "6c08ed60d4754649bf396e1063e331a3"
 
+# The durable host for a generation. A run takes 12-19 minutes, which no
+# request-scoped mechanism can hold — `ctx.waitUntil` buys about 30 seconds
+# past a response this route sends immediately.
+[[workflows]]
+name = "karasu-nest-generate"
+binding = "GENERATE_WORKFLOW"
+class_name = "GenerateWorkflow"
+
 # Secrets are NOT declared here. `wrangler secret put` sets them on the
 # deployed Worker, so they never enter the repository:
 #

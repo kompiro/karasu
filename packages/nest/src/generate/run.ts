@@ -14,7 +14,10 @@
  * keeps everything else, because a rule that guesses at "important" would
  * decide the architecture before the reverse starts.
  */
-import type { GitHubClient } from "../github/client.js";
+import { GitHubApiError, type GitHubClient } from "../github/client.js";
+import { StructureOnlyViolation } from "../redact/redact.js";
+import { LlmError } from "../reverse/llm.js";
+import { ReverseFailed } from "../reverse/pipeline.js";
 import type { LlmClient } from "../reverse/llm.js";
 import { redactFiles } from "../redact/redact.js";
 import { reverseRepository, type ReverseResult } from "../reverse/pipeline.js";
@@ -62,7 +65,12 @@ export interface GenerateOutcome {
   reverse: ReverseResult;
   /** How many redactions fired on the way in. Counts only; never the values. */
   redactions: number;
+  /** GitHub could not return the whole tree. */
   truncatedTree: boolean;
+  /** We stopped short of the whole tree ourselves, at `MAX_FILES_FETCHED`. */
+  truncatedByCap: boolean;
+  /** Files whose blob read failed and were skipped rather than aborting. */
+  unreadableFiles: number;
 }
 
 export class GenerateFailed extends Error {
@@ -70,6 +78,32 @@ export class GenerateFailed extends Error {
     super(message);
     this.name = "GenerateFailed";
   }
+}
+
+/**
+ * Error types whose message this module wrote, and may therefore show a
+ * caller.
+ *
+ * An allowlist, not a denylist. The first version excluded only the base
+ * `Error` class, which is exactly backwards: a `TypeError` raised deep inside
+ * a fetch or a decode has `name !== "Error"` and sailed through with whatever
+ * the runtime put in it, while a deliberately safe `new Error("refusing to
+ * cache an empty .krs")` was thrown away. This is the one place a message
+ * crosses from "something that happened while reading someone's private
+ * repository" to a public status endpoint (ADR-1990 decision 6).
+ */
+const SAFE_ERRORS = [
+  GenerateFailed,
+  GitHubApiError,
+  LlmError,
+  ReverseFailed,
+  StructureOnlyViolation,
+] as const;
+
+function callerSafeMessage(cause: unknown): string {
+  return SAFE_ERRORS.some((type) => cause instanceof type) && cause instanceof Error
+    ? cause.message
+    : "the generation failed";
 }
 
 /**
@@ -89,21 +123,31 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
 
   try {
     const tree = await github.tree(installationId, owner, repo, sha);
-    const wanted = tree.entries
+    const eligible = tree.entries
       .filter((entry) => !SKIPPED_PATH.test(entry.path))
-      .filter((entry) => (entry.size ?? 0) <= MAX_FILE_BYTES)
-      .slice(0, MAX_FILES_FETCHED);
+      .filter((entry) => (entry.size ?? 0) <= MAX_FILE_BYTES);
+    const wanted = eligible.slice(0, MAX_FILES_FETCHED);
     if (wanted.length === 0) throw new GenerateFailed("no readable source files");
 
     // Sequential rather than Promise.all: a burst of blob reads is the fastest
     // way to a secondary rate limit, and this path is already minutes long.
     const files: { path: string; content: string }[] = [];
+    let unreadableFiles = 0;
     for (const entry of wanted) {
-      files.push({
-        path: entry.path,
-        content: await github.blob(installationId, owner, repo, entry.sha),
-      });
+      try {
+        files.push({
+          path: entry.path,
+          content: await github.blob(installationId, owner, repo, entry.sha),
+        });
+      } catch (cause) {
+        // One unreadable blob must not discard the minutes already spent. A
+        // reverse missing one file is a worse model; a reverse that never
+        // finishes is no model at all.
+        if (!(cause instanceof GitHubApiError)) throw cause;
+        unreadableFiles += 1;
+      }
     }
+    if (files.length === 0) throw new GenerateFailed("every source file failed to read");
 
     // The one-way door. Everything downstream sees redacted text only.
     const redacted = redactFiles(files);
@@ -123,19 +167,16 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       reverse,
       redactions: redacted.findings.length,
       truncatedTree: tree.truncated,
+      truncatedByCap: eligible.length > wanted.length,
+      unreadableFiles,
     };
   } catch (cause) {
-    // The message is ours by construction: every error type this path can
-    // raise carries a rule id, a pass name or a status code, never repository
-    // content. An unrecognised one is reported as a category, not echoed.
-    const message =
-      cause instanceof Error && cause.name !== "Error" ? cause.message : "the generation failed";
     await runs.put(ref, {
       state: "failed",
       sha,
       startedAt,
       finishedAt: now().toISOString(),
-      error: message,
+      error: callerSafeMessage(cause),
     });
     throw cause;
   }

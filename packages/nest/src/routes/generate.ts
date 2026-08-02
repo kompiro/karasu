@@ -11,16 +11,19 @@
  * measured 12-19 minutes for an 85-file repository; nothing about that fits in
  * an HTTP response, and holding a connection open for it would be a worse
  * answer than a poll.
+ *
+ * The work is handed to a Workflow rather than to `ctx.waitUntil`. `waitUntil`
+ * buys about 30 seconds past the response — and the response is immediate, by
+ * design — so it could never have hosted this; see `generate/dispatch.ts`.
  */
 import { requireBinding } from "../env.js";
-import { generate } from "../generate/run.js";
+import { generationInstanceId } from "../generate/dispatch.js";
 import { GitHubClient } from "../github/client.js";
 import { error, json } from "../http.js";
-import { logError, logInfo } from "../log.js";
-import { AnthropicClient } from "../reverse/llm.js";
+import { logInfo } from "../log.js";
 import { InvalidRefError, normaliseName } from "../store/keys.js";
 import { NestStore } from "../store/nest-store.js";
-import { RunStatusStore } from "../store/run-status.js";
+import { isStale, RunStatusStore } from "../store/run-status.js";
 import type { RouteContext } from "../router.js";
 
 /** Canonicalise the path parameters, or explain why they cannot be. */
@@ -32,7 +35,7 @@ function repoFrom(params: Readonly<Record<string, string>>): { owner: string; re
 }
 
 export async function requestGeneration(context: RouteContext): Promise<Response> {
-  const { params, env, ctx, url } = context;
+  const { params, env, url } = context;
   let owner: string;
   let repo: string;
   try {
@@ -43,6 +46,7 @@ export async function requestGeneration(context: RouteContext): Promise<Response
   }
 
   const kv = requireBinding(env, "KRS_CACHE");
+  const workflow = requireBinding(env, "GENERATE_WORKFLOW");
   const github = new GitHubClient({
     appId: requireBinding(env, "GITHUB_APP_ID"),
     privateKeyPem: requireBinding(env, "GITHUB_APP_PRIVATE_KEY"),
@@ -61,51 +65,38 @@ export async function requestGeneration(context: RouteContext): Promise<Response
   }
 
   const runs = new RunStatusStore(kv);
-  const store = new NestStore(kv);
   const ref = { installationId, owner, repo };
+  const location = `${url.origin}/${owner}/${repo}/status`;
 
   const existing = await runs.get(ref);
-  if (existing?.state === "running") {
-    // Idempotent by state rather than by lock: two requests a second apart
-    // must not start two 15-minute runs against the same repository.
+  if (existing !== undefined && existing.state === "running" && !isStale(existing, Date.now())) {
+    // Two clicks a second apart must not buy two fifteen-minute runs. This is
+    // a read-then-write, so a genuine race can still pass both — the Workflow
+    // instance id below is what actually makes that harmless: the loser's
+    // create fails and no second run starts.
     return json(
       { state: "running", sha: existing.sha, startedAt: existing.startedAt },
-      { status: 202, headers: { Location: `${url.origin}/${owner}/${repo}/status` } },
+      { status: 202, headers: { Location: location } },
     );
   }
+  if (existing !== undefined && isStale(existing, Date.now())) {
+    // A record stuck on `running` because its run died. Refusing every retry
+    // for a day on behalf of a job that is not executing is worse than
+    // starting another one.
+    logInfo(`karasu-nest retrying ${owner}/${repo}: previous run went stale`);
+  }
 
-  const llm = new AnthropicClient({ apiKey: requireBinding(env, "LLM_API_KEY") });
-  const started = generate(
-    { installationId, owner, repo },
-    {
-      github,
-      llm,
-      store,
-      runs,
-      now: () => new Date(),
-    },
-  )
-    .then((outcome) => {
-      logInfo(
-        `karasu-nest generated ${owner}/${repo}@${outcome.sha}: ` +
-          `${outcome.redactions} redaction(s), ` +
-          `${outcome.reverse.usage.inputTokens}/${outcome.reverse.usage.outputTokens} tokens` +
-          (outcome.truncatedTree ? ", tree truncated" : ""),
-      );
-    })
-    .catch((cause: unknown) => {
-      // `generate` already recorded the failure; this is the operator-facing
-      // half. The run must not surface as an unhandled rejection.
-      logError(`karasu-nest generation failed for ${owner}/${repo}`, cause);
-    });
+  const sha = await github.defaultBranchSha(installationId, owner, repo);
+  const instanceId = generationInstanceId({ installationId, owner, repo }, sha);
+  try {
+    await workflow.create({ id: instanceId, params: { installationId, owner, repo } });
+  } catch {
+    // A duplicate instance id means the platform already has this exact run.
+    // That is the answer the caller wanted, not an error.
+    return json({ state: "running", sha }, { status: 202, headers: { Location: location } });
+  }
 
-  // The whole point of the 202: the work outlives the response.
-  ctx.waitUntil(started);
-
-  return json(
-    { state: "running" },
-    { status: 202, headers: { Location: `${url.origin}/${owner}/${repo}/status` } },
-  );
+  return json({ state: "running", sha }, { status: 202, headers: { Location: location } });
 }
 
 /**
@@ -147,5 +138,10 @@ export async function generationStatus(context: RouteContext): Promise<Response>
 
   const status = await new RunStatusStore(kv).get({ installationId, owner, repo });
   if (status === undefined) return json({ state: "never_requested" }, { status: 404 });
+  if (isStale(status, Date.now())) {
+    // Reported honestly rather than as a run that is still going: a caller
+    // polling this needs to know it can ask again.
+    return json({ ...status, state: "failed", error: "the run stopped without finishing" });
+  }
   return json(status);
 }

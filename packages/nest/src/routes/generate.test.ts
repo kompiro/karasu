@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleRequest } from "../app.js";
 import type { NestEnv, NestExecutionContext } from "../env.js";
+import type { GenerationDispatcher } from "../generate/dispatch.js";
 import { GitHubClient } from "../github/client.js";
 import { markGenerated } from "../store/krs-cache.js";
 import { NestStore } from "../store/nest-store.js";
@@ -8,21 +9,41 @@ import { RunStatusStore } from "../store/run-status.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 
 const SHA = "a".repeat(40);
-const pending: Promise<unknown>[] = [];
-const ctx: NestExecutionContext = { waitUntil: (promise) => void pending.push(promise) };
+const ctx: NestExecutionContext = { waitUntil: () => {} };
 
 afterEach(() => {
   vi.restoreAllMocks();
-  pending.length = 0;
 });
 
+/** Records dispatches and rejects a duplicate instance id, like the binding. */
+function fakeWorkflow(): GenerationDispatcher & { created: string[] } {
+  const created: string[] = [];
+  return {
+    created,
+    create({ id, params }) {
+      const instanceId = id ?? `${params.owner}-${params.repo}`;
+      if (created.includes(instanceId)) {
+        return Promise.reject(new Error("instance already exists"));
+      }
+      created.push(instanceId);
+      return Promise.resolve({ id: instanceId });
+    },
+  };
+}
+
 /** Every binding present, so a test failure is never "not configured". */
-function configured(kv: MemoryKV): NestEnv {
+function configured(
+  kv: MemoryKV,
+  workflow = fakeWorkflow(),
+): NestEnv & {
+  GENERATE_WORKFLOW: GenerationDispatcher & { created: string[] };
+} {
   return {
     KRS_CACHE: kv,
     GITHUB_APP_ID: "1",
     GITHUB_APP_PRIVATE_KEY: "unused",
     LLM_API_KEY: "unused",
+    GENERATE_WORKFLOW: workflow,
   };
 }
 
@@ -35,31 +56,33 @@ const call = (method: string, path: string, env: NestEnv): Promise<Response> =>
   handleRequest(new Request(`https://nest.example${path}`, { method }), env, ctx);
 
 describe("POST /<owner>/<repo>/generate", () => {
-  it("accepts with 202 and a status location, never the model", async () => {
-    // 12-19 minutes does not fit in an HTTP response.
+  it("hands the work to a Workflow and answers 202 with a status location", async () => {
+    // Not `ctx.waitUntil`: that extends the request by about 30 seconds past a
+    // response this route sends immediately, and a run takes 12-19 minutes.
     installedAs("42");
-    // Let the detached run fail immediately; the response is what is asserted.
-    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockRejectedValue(new Error("stop"));
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    const env = configured(new MemoryKV());
 
-    const response = await call("POST", "/kompiro/shop/generate", configured(new MemoryKV()));
+    const response = await call("POST", "/kompiro/shop/generate", env);
     expect(response.status).toBe(202);
-    expect(await response.json()).toEqual({ state: "running" });
+    expect(await response.json()).toEqual({ state: "running", sha: SHA });
     expect(response.headers.get("Location")).toBe("https://nest.example/kompiro/shop/status");
-    await Promise.allSettled(pending);
+    expect(env.GENERATE_WORKFLOW.created).toHaveLength(1);
   });
 
-  it("runs the work detached, so the response does not wait for it", async () => {
+  it("keys the Workflow instance on the commit, so a duplicate cannot start", async () => {
+    // The in-flight check is a read-then-write; this is what makes a genuine
+    // race harmless rather than doubling a service-paid inference bill.
     installedAs("42");
-    let resolveRun: (() => void) | undefined;
-    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockImplementation(
-      () => new Promise((resolve) => (resolveRun = () => resolve(SHA))),
-    );
-    const response = await call("POST", "/kompiro/shop/generate", configured(new MemoryKV()));
-    expect(response.status).toBe(202);
-    // The run is still in flight and was handed to waitUntil.
-    expect(pending).toHaveLength(1);
-    resolveRun?.();
+    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    const env = configured(new MemoryKV());
+
+    const first = await call("POST", "/kompiro/shop/generate", env);
+    const second = await call("POST", "/kompiro/shop/generate", env);
+    expect(first.status).toBe(202);
+    expect(second.status).toBe(202);
+    // The loser gets the answer it wanted; only one run exists.
+    expect(env.GENERATE_WORKFLOW.created).toEqual([`42-kompiro-shop-${SHA.slice(0, 12)}`]);
   });
 
   it("404s a repository no installation can read", async () => {
@@ -71,21 +94,38 @@ describe("POST /<owner>/<repo>/generate", () => {
     expect((await response.json()).error.code).toBe("not_installed");
   });
 
-  it("does not start a second run while one is in flight", async () => {
-    // Two clicks a second apart must not buy two fifteen-minute runs.
+  it("does not dispatch while a fresh run is recorded", async () => {
     installedAs("42");
     const kv = new MemoryKV();
     await new RunStatusStore(kv).put(
       { installationId: "42", owner: "kompiro", repo: "shop" },
-      { state: "running", sha: SHA, startedAt: "2026-08-02T12:00:00Z" },
+      { state: "running", sha: SHA, startedAt: new Date().toISOString() },
     );
-    const started = vi.spyOn(GitHubClient.prototype, "defaultBranchSha");
+    const env = configured(kv);
+    const resolved = vi.spyOn(GitHubClient.prototype, "defaultBranchSha");
 
-    const response = await call("POST", "/kompiro/shop/generate", configured(kv));
+    const response = await call("POST", "/kompiro/shop/generate", env);
     expect(response.status).toBe(202);
-    expect((await response.json()).sha).toBe(SHA);
-    expect(started).not.toHaveBeenCalled();
-    expect(pending).toHaveLength(0);
+    expect(env.GENERATE_WORKFLOW.created).toEqual([]);
+    expect(resolved).not.toHaveBeenCalled();
+  });
+
+  it("retries past a run that went stale", async () => {
+    // A run killed by the platform leaves `running` behind. Refusing every
+    // retry for a day on behalf of a job that is not executing is worse than
+    // starting another one.
+    installedAs("42");
+    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const kv = new MemoryKV();
+    await new RunStatusStore(kv).put(
+      { installationId: "42", owner: "kompiro", repo: "shop" },
+      { state: "running", sha: SHA, startedAt: "2020-01-01T00:00:00Z" },
+    );
+    const env = configured(kv);
+
+    expect((await call("POST", "/kompiro/shop/generate", env)).status).toBe(202);
+    expect(env.GENERATE_WORKFLOW.created).toHaveLength(1);
   });
 
   it("400s a malformed repository name before any lookup", async () => {
@@ -95,17 +135,16 @@ describe("POST /<owner>/<repo>/generate", () => {
     expect(looked).not.toHaveBeenCalled();
   });
 
-  it("refuses rather than 500s when the LLM key is missing", async () => {
-    installedAs("42");
+  it("refuses rather than 500s when the Workflow binding is missing", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const kv = new MemoryKV();
     const response = await call("POST", "/kompiro/shop/generate", {
-      KRS_CACHE: kv,
+      KRS_CACHE: new MemoryKV(),
       GITHUB_APP_ID: "1",
       GITHUB_APP_PRIVATE_KEY: "unused",
+      LLM_API_KEY: "unused",
     });
     expect(response.status).toBe(503);
-    expect((await response.json()).error.message).toContain("LLM_API_KEY");
+    expect((await response.json()).error.message).toContain("GENERATE_WORKFLOW");
   });
 
   it("405s a GET on the generate path rather than treating it as a repo", async () => {
@@ -139,7 +178,10 @@ describe("GET /<owner>/<repo>/status", () => {
     const kv = new MemoryKV();
     await new RunStatusStore(kv).put(
       { installationId: "42", owner: "kompiro", repo: "shop" },
-      { state: "running", sha: SHA, startedAt: "2026-08-02T12:00:00Z" },
+      // Relative to now, not a fixed date: a pinned timestamp turns into a
+      // stale record once the wall clock passes it by 90 minutes, and the test
+      // starts failing on a day nobody changed anything.
+      { state: "running", sha: SHA, startedAt: new Date().toISOString() },
     );
     expect((await (await call("GET", "/kompiro/shop/status", configured(kv))).json()).state).toBe(
       "running",
@@ -155,6 +197,17 @@ describe("GET /<owner>/<repo>/status", () => {
     );
     const body = await (await call("GET", "/kompiro/shop/status", configured(kv))).json();
     expect(body).toMatchObject({ state: "failed", error: "survey: no JSON" });
+  });
+
+  it("reports a stale run as failed rather than as still going", async () => {
+    installedAs("42");
+    const kv = new MemoryKV();
+    await new RunStatusStore(kv).put(
+      { installationId: "42", owner: "kompiro", repo: "shop" },
+      { state: "running", sha: SHA, startedAt: "2020-01-01T00:00:00Z" },
+    );
+    const body = await (await call("GET", "/kompiro/shop/status", configured(kv))).json();
+    expect(body).toMatchObject({ state: "failed", error: "the run stopped without finishing" });
   });
 
   it("distinguishes never-requested from not-installed", async () => {
