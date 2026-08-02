@@ -47,6 +47,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectDuplicateClientCapabilities(file));
   warnings.push(...detectAnnotationPossibleTypos(file, stylesIndex));
   warnings.push(...detectTagsNotBuiltin(file));
+  warnings.push(...detectTagsNotApplicable(file));
   warnings.push(...detectAnnotationsNotBuiltin(file));
   warnings.push(...detectFacetsNotDeclared(file));
   warnings.push(...detectUnresolvedLegendRefs(file, stylesIndex));
@@ -269,6 +270,65 @@ function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelector
  * warning on these would flag the tool's own vocabulary as foreign.
  */
 export const SYSTEM_ASSIGNED_TAGS = ["implicit", "cyclic", "read", "write", "inferred"];
+
+/**
+ * A builtin tag written on a node kind outside its declared `appliesTo`
+ * (#2225). `appliesTo` was declared for every builtin tag, exposed through
+ * `reference.ts` and printed in the generated spec table, but no consumer
+ * validated it — so `service Api [index]` parsed, rendered no badge, and
+ * emitted nothing. That is TPL-1503's forbidden fourth state (accepted,
+ * inert, undocumented) surviving in the **kind** dimension after #2159
+ * resolved it in the **name** dimension; from the author's side the two are
+ * indistinguishable ("I wrote a tag and nothing happened").
+ *
+ * Only builtin names are checked: a non-builtin name has no `appliesTo` to
+ * violate and already draws `tag-not-builtin`, so warning twice on one tag
+ * would say the same thing in two registers. System-assigned tags
+ * ({@link SYSTEM_ASSIGNED_TAGS}) are absent from `REFERENCE_DATA.tags` and so
+ * are skipped by the same lookup rather than by a second exclusion list.
+ *
+ * The shape tags inferred from infra sub-kinds (`table` / `queue-item` /
+ * `bucket` → `[table]` / `[queue]` / `[storage]`) are derived in the style
+ * resolver against dot-notation ids and never enter `node.tags`, so they
+ * cannot reach this walk; `warnings.test.ts` pins that so a future change to
+ * the inference path cannot start producing false positives here.
+ */
+function detectTagsNotApplicable(file: KrsFile): Warning[] {
+  const applicability = new Map<string, string[]>(
+    REFERENCE_DATA.tags.map((t) => [t.name, t.appliesTo]),
+  );
+  const warnings: Warning[] = [];
+
+  const checkTags = (tags: string[], kind: string, nodeId: string, loc: KrsNode["loc"]): void => {
+    for (const tag of tags) {
+      const appliesTo = applicability.get(tag);
+      if (!appliesTo || appliesTo.includes(kind)) continue;
+      warnings.push({
+        kind: "tag-not-applicable",
+        params: { nodeId, tag, nodeKind: kind, appliesTo },
+        loc,
+      });
+    }
+  };
+  const visit = (node: KrsNode): void => {
+    checkTags(node.tags, node.kind, node.id, node.loc);
+    // `[async]` / `[sync]` declare appliesTo: ["edge"], so edges are checked
+    // against the literal kind "edge" rather than the node they hang off.
+    for (const edge of node.edges) {
+      checkTags(edge.tags, "edge", `${edge.from} -> ${edge.to}`, edge.loc);
+    }
+    for (const child of node.children) visit(child);
+  };
+
+  for (const system of file.systems) visit(system);
+  for (const client of file.clients) visit(client);
+  for (const service of file.services) visit(service);
+  for (const domain of file.domains) visit(domain);
+  for (const database of file.databases) visit(database);
+  for (const queue of file.queues) visit(queue);
+  for (const storage of file.storages) visit(storage);
+  return warnings;
+}
 
 /**
  * v1.x deprecation for tag names outside the tool vocabulary

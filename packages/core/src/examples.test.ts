@@ -327,6 +327,23 @@ describe("examples: every shipped .krs is free of node-not-in-context warnings",
       expect(systemNested).toEqual([]);
     },
   );
+
+  // Applicability fence (#2225): `tag-not-applicable` fires when a builtin tag
+  // sits on a kind outside its `appliesTo`. Every example we ship is also a
+  // teaching artifact — a tutorial that warns while the reader follows it
+  // teaches the wrong tag placement. Narrowing an `appliesTo` column would
+  // silently turn examples into warning sources, the same way #2165 did for
+  // containment.
+  it.each(krsFiles.map((f) => [f.replace(`${examplesRoot}/`, ""), f] as const))(
+    "%s puts every builtin tag on an applicable kind",
+    (_name, path) => {
+      const file = Parser.parse(readFileSync(path, "utf8")).value;
+      const offenders = analyze(file, [])
+        .filter((w) => w.kind === "tag-not-applicable")
+        .map((w) => (w.kind === "tag-not-applicable" ? `${w.params.nodeId}[${w.params.tag}]` : ""));
+      expect(offenders).toEqual([]);
+    },
+  );
 });
 
 // Scope fence (#2075): `edge-endpoint-not-at-scope` reports an edge whose
