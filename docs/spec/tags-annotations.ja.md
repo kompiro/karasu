@@ -71,6 +71,7 @@ user AIAgent "注文自動化エージェント" [ai]
 | `@deprecated` | 廃止予定 | ⚠バッジ、ノードを半透明に |
 | `@new` | 新規追加 | ✦バッジ |
 | `@experimental` | 実験的 | ⚗バッジ |
+| `@draft` | 主張されているが人手で確認されていない | ✎バッジ |
 | `@migration_target` | 移行先 | →バッジ |
 <!-- /gen:reference:annotations -->
 
@@ -138,6 +139,7 @@ service NewSvc @migration_target(from: LegacyMonolith)
 |----------------|------|------|
 | `@deprecated` / `@experimental` | `until` | 廃止 / 安定化の目標時期 |
 | `@migration_target` | `from` | 移行元のノード |
+| `@draft` | `confidence` | その記述にどれだけ自信があるか — `low` / `medium` / `high` |
 
 - **精度による graceful degradation**: `until` の値が日付（`YYYY-MM-DD`）/ 年月（`YYYY-MM`）/ 四半期（`YYYY-Qn`）としてパースできれば machine-usable（ソート / filter 可能）。それ以外の文字列（例: `"来年あたり"`）はそのまま opaque な表示専用値として保持する。opaque 値にバリデーションエラーは出さない。
 - **実行時評価はしない**: `until` は記録された **intent** であって期限ではない — karasu は現在日付と比較しない（「期限超過」診断は出さない）。`job.schedule`（保持するが simulate しない）や warn-don't-error の立場と整合。
@@ -145,6 +147,31 @@ service NewSvc @migration_target(from: LegacyMonolith)
 - パラメータはアノテーションの**名前リストを変えない**ため、`.krs.style` のアノテーションセレクタ（`@deprecated`）や継承には影響しない。
 
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 未認識キー/アノテーションへの `@name(key: …)` は warn され、黙って受理されない。
+
+### `@draft` — 主張されているが未確認
+
+`@draft` は、**モデルがそう言っているが誰も確認していない**記述に付ける印である。手で書いていないモデルのための正直さの層で、karasu-nest は LLM でリポジトリを `.krs` に reverse する（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 4）。どこが推測かを自分で言えない生成モデルは、読み手に全体を同じ確度で信じさせてしまう。
+
+```krs
+system Payments {
+  service Ledger "Ledger" {
+    domain Posting
+  }
+  service Reconciliation "Reconciliation" @draft(confidence: "low") {
+    // posting と reconciliation の継ぎ目は判断が割れた
+    domain Settlement @draft
+  }
+}
+```
+
+- **印が単位で、水準は refinement。** 裸の `@draft` で完結する。`confidence` は任意で `low` / `medium` / `high` を取り、それ以外の文字列は `until` と同じく opaque な表示専用値として保持する。レビュアーが `confidence: "ここは議論が割れた"` と書くのは実在の情報であり、弾けばその注記は機械の読めないコメントへ逃げる。
+- **文書単位ではなくノード単位。** 決定 4 の裏付けとなった spike は、生成された分解の誤りが全体に散らばらず**人間でも判断の割れる継ぎ目に集中する**ことを示した。有用なのは「どの継ぎ目が怪しいか」であり、文書単位のスコアはそれを平均で消してしまう。
+- **ゲートにしない。** karasu は低確度ノードの描画を拒まないし、警告も降格もしない。`until` が期限ではなく intent であるのと同じく、水準は記録された判断である。
+- **消されることが目的。** `@draft` は人手レビューが削除するものであり、その削除が ADR-1990 決定 4 の人手ラチェット（[#2228](https://github.com/kompiro/karasu/issues/2228)）そのものになる。だから 1 トークン消すだけで済み、構造の変更を要求しない形にしてある。
+
+`@draft` は tag でも facet でもなく lifecycle アノテーションである。レビュー過程における記述の状態を表しており、`@new` / `@experimental` と同じ register に属し、ユーザー宣言の集合ではなくツール所有の語彙である。
+
+> Related TPLs: [TPL-1995](../test-perspectives/TPL-1995-generated-content-is-marked-at-its-seams.md) — 生成物は不確かな場所で不確かさを述べ、解決した人が印を消せる形にする。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `@draft` は名前を受理するのと同じ PR で既定バッジを持つ。[TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — builtin アノテーション追加の 3 問 gate。
 
 ---
 

@@ -13,6 +13,7 @@ export interface AnnotationBadgeLabels {
   deprecated?: string;
   new?: string;
   experimental?: string;
+  draft?: string;
   migrationTarget?: string;
 }
 
@@ -21,6 +22,7 @@ const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> = {
   deprecated: "deprecated",
   new: "new",
   experimental: "experimental",
+  draft: "draft",
   migration_target: "migrationTarget",
 };
 
@@ -33,6 +35,7 @@ const LIGHT_BADGE_COLORS: Record<string, string> = {
   deprecated: "#DC2626",
   new: "#059669",
   experimental: "#D97706",
+  draft: "#7C3AED",
   migration_target: "#2563EB",
 };
 
@@ -42,7 +45,7 @@ function escapeStyleString(s: string): string {
 }
 
 /**
- * Generate the `@deprecated` / `@new` / `@experimental` /
+ * Generate the `@deprecated` / `@new` / `@experimental` / `@draft` /
  * `@migration_target` rule blocks from `reference-data.ts` (colors /
  * icons / en label defaults) plus optional injected labels.
  */

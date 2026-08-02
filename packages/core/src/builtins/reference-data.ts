@@ -510,6 +510,15 @@ export const REFERENCE_DATA = {
       defaultBadge: { color: "#F59E0B", icon: "⚗", label: { en: "Experimental", ja: "実験的" } },
     },
     {
+      name: "draft",
+      description: {
+        en: "Asserted but not confirmed by a human",
+        ja: "主張されているが人手で確認されていない",
+      },
+      defaultRendering: { en: "✎ badge", ja: "✎バッジ" },
+      defaultBadge: { color: "#A78BFA", icon: "✎", label: { en: "Draft", ja: "下書き" } },
+    },
+    {
       name: "migration_target",
       description: { en: "Migration target", ja: "移行先" },
       defaultRendering: { en: "→ badge", ja: "→バッジ" },
