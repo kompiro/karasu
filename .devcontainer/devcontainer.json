@@ -1,4 +1,10 @@
 {
+  // ローカル開発用。クラウド（Codespaces / Devin 等）用は `.devcontainer/cloud/devcontainer.json`
+  // にあり、Codespace 作成時のドロップダウンで選べる。差分は `mounts` の有無だけで、
+  // それ以外が一致していることは `pnpm lint:devcontainer-variants-sync` が検証する。
+  //
+  // 下の `mounts` はホストの設定をコンテナへ共有するためのもの（意図的）。
+  // クラウドにはその「ホスト」が無いので、あちらは持たない。
   "name": "karasu",
   "build": {
     "dockerfile": "Dockerfile"
