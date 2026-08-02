@@ -1053,11 +1053,17 @@ boundary payments {
   `duplicate-boundary-assignment` で観測する — error ではなく、見えるべき事実
   （`duplicate-owner-assignment` と同じ register）。
 - **ビューによる多重所属の解決**: banded な *Group by: boundary* レイアウトは 1 ノードを 1 band にしか
-  置けないため、**最初に宣言された** boundary（*primary*）を使い、ノードはその boundary のフレームの中に
-  **ちょうど 1 つ**描かれる。これはそのビューの性質であってモデルの性質ではない — 残りの所属はモデルに
-  残り、所属する**すべての**フレームに囲んで描く案は別途進めている
-  （[#2161](https://github.com/kompiro/karasu/issues/2161)）。したがって、共有されたノードが今日どちらの
-  フレームに入るかは宣言順で決まる — 次の 1 つだけ例外がある。
+  **配置**できないため、配置先は**最初に宣言された** boundary（*primary*）になる。ただしフレームの側は
+  自分の band に閉じない — 他の band に置かれたメンバーを囲むところまで矩形直交の輪郭に広げるので、
+  共有ノードは**ちょうど 1 つ**描かれたまま、届く**すべての**フレームに囲まれ、2 つの輪郭がその
+  カードの上で重なる。boundary ごとに宣言順で循環する識別色を持ち、薄く塗る。重なりが「入れ子」ではなく
+  「重なり」に読めるのはこの色による。
+- **届かないときは、所属をカードの上に出す。** フレームを広げるのは、届く先までの回廊に**非メンバー**が
+  1 枚も無いときだけ — フレームが非メンバーを囲んではならず、この規則は包含を見せることより優先する。
+  広げられない場合はカードにその boundary の色で破線のタブ `◇ <boundary>` が付き、ビューは info 診断
+  `boundary-membership-not-drawn` を報告する。**タブになるのが例外ではなく普通**だと考えてよい:
+  回廊が空いているかどうかは依存の流れがカードをどこに置いたか次第で、著者が選んだことではない。
+  どちらも*ビュー*の話であり、モデルはいずれの場合もすべての所属を保持している。
 - **band を持てる boundary は必ず持つ。** メンバー全員が先行する boundary に取られた boundary は
   band にするものが無く、フレームもラベルも出ない。消えるかわりに、その canvas で**共有メンバーを
   1 つ引き取る** — そこに描かれている宣言順で最初のメンバーのうち、元の boundary に別のメンバーが
@@ -1144,7 +1150,7 @@ system Shop {
 どちらの *Group by* 軸でも、グループフレームのタイトルにはグループの `label` が表示される。
 label が無い場合は id にフォールバックする（#2133）。
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary の所属はモデル層で 1:N。banded view の primary はビュー側の解決であり、群の並びは軸 index の値集合ではなく宣言から導く（#2178）。 [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — band 機構全体で配置はちょうど一度。seam bias と band 無し boundary の member 引き取りはノードの band と行を書き換えるが、どちらも drop / duplicate を起こしてはならない（#2176）。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ（宣言された `boundary` は *Group by: boundary* で必ずフレームを生み、parse-and-vanish しない）。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は本 spec に文書化する（撤去した positional label は accepted-but-unspecified だった、#2133）。[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — 上記のビューごとの適用範囲は全 render surface（interactive compile・静的 export bundle・entity view）で同一に成立させる。一部 surface だけの gate 追加・撤去は undocumented な挙動割れを出荷する（#1983）。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — スコープ membership index とスコープ group identity は（宣言スコープ, id）でキーする。スコープ次元を落とすと別スコープの同名 boundary が融合する（#2036）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — スコープブロックも `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードはノード内構文を守らない。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — スコープの `contains-target-not-found` も他の存在検証と同様マージ後モデルで再導出する（#2036 slice A がまさにこれを踏んだ）。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary の所属はモデル層で 1:N。banded view の primary はビュー側の解決であり、群の並びは軸 index の値集合ではなく宣言から導く（#2178）。 [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — band 機構全体で配置はちょうど一度。seam bias と band 無し boundary の member 引き取りはノードの band と行を書き換えるが、どちらも drop / duplicate を起こしてはならない（#2176）。 [TPL-2179](../test-perspectives/TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) — メンバーまで広げたフレームは実被覆で測り、回廊に非メンバーが無いときだけ広げる。「フレームは非メンバーを囲まない」が包含を見せることより優先し、届かない場合の縮退が上記の `◇` タブである（#2179）。
 
 ---
 

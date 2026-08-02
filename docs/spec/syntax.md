@@ -1130,14 +1130,22 @@ boundary payments {
   diagnostic `duplicate-boundary-assignment` — a fact worth seeing, not an error
   (the same "smell is representable" register as `duplicate-owner-assignment`).
 - **How a view resolves multi-membership**: the banded *Group by: boundary*
-  layout can place a node in only one band, so it uses the node's
-  **first-declared** boundary (its *primary*) and the node is drawn once, inside
-  that boundary's frame. This is a property of that view, not of the model —
-  the other memberships stay in the model for every other consumer, and drawing
-  a node inside *all* the frames it belongs to is planned separately
-  ([#2161](https://github.com/kompiro/karasu/issues/2161)). Declaration order
-  therefore decides which frame a shared node sits in today, with the one
-  exception below.
+  layout can *place* a node in only one band — its **first-declared** boundary
+  (its *primary*) — but the frames are not limited to their band. A frame is
+  widened into a rectilinear outline to enclose a member placed elsewhere, so a
+  shared node is drawn **once** and sits inside **every** frame that can reach
+  it, the two outlines overlapping over its card. Each boundary carries its own
+  colour, cycled by declaration order, and fills it faintly; that is how an
+  overlap reads as an overlap rather than as one frame nested in another.
+- **When a frame cannot reach, the membership goes on the card.** A frame is
+  only widened when the corridor to the card holds no **non-member**: a frame
+  must never enclose a node that is not its member, and that rule outranks
+  showing the containment. Where it cannot, the card gets a dashed `◇
+  <boundary>` tab in that boundary's colour, and the view reports the info
+  diagnostic `boundary-membership-not-drawn`. Expect the tab to be the common
+  case: whether the corridor is clear depends on where the dependency flow put
+  the cards, which the author did not choose. Both readings are of the *view* —
+  the model holds every membership either way.
 - **A boundary always gets a band if it can.** A boundary whose members are
   *all* claimed by earlier ones would have nothing to band, and so no frame and
   no label at all. Rather than vanish, it **claims one of its shared members**
@@ -1241,7 +1249,7 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 Under either *Group by* axis the group frame is titled with the group's declared
 `label`, falling back to the group id when no label is given (#2133).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this). [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary membership is 1:N in the model; the banded view's primary is a view-side resolution, and the group order comes from the declarations rather than from the axis map's values (#2178). [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — placement is exactly-once across the whole band machinery: the seam bias and the band-less boundary's claim rewrite which band and which row a node takes, and neither may drop or duplicate one (#2176).
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a newly-accepted keyword must have a visible effect (a declared `boundary` must produce a frame under *Group by: boundary*, not parse-and-vanish). [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — forms the parser accepts must be documented here (the retired positional label was accepted-but-unspecified, #2133). [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md) — the per-view scope promised above must hold identically on every render surface (interactive compile, the static export bundles, the entity view); a gate added or removed on one surface only ships an undocumented split (#1983). [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — the scoped membership index and the scoped group identity key by (declaring scope, id); dropping the scope dimension fuses same-named boundaries across scopes (#2036). [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the scoped block must round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover per-node constructs. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — the scoped `contains-target-not-found` is re-derived on the merged model, like every existence check (#2036 slice A regressed exactly this). [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — boundary membership is 1:N in the model; the banded view's primary is a view-side resolution, and the group order comes from the declarations rather than from the axis map's values (#2178). [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md) — placement is exactly-once across the whole band machinery: the seam bias and the band-less boundary's claim rewrite which band and which row a node takes, and neither may drop or duplicate one (#2176). [TPL-2179](../test-perspectives/TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) — a frame widened to reach a member is measured on what it actually covers, and is widened only when the corridor holds no non-member; "no frame encloses a non-member" outranks showing the containment, and the fallback is the `◇` tab above (#2179).
 
 ---
 

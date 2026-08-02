@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-30
 - **Issue**: #2161（親） / slice A #2178 / slice B #2179 / slice C #2180 / 配置 #2176
-- **PR**: slice A #2213 / 配置 #2176（この PR）
+- **PR**: slice A #2213 / 配置 #2176 / slice B #2179（この PR）
 - **関連 ADR**: [ADR-1974](../adr/1974-boundary-declaration-syntax.md)（決定 2 の refine 対象 — 1:1 + first-wins）、[ADR-2036](../adr/2036-scoped-boundary-declaration.md)（スコープ宣言 — scoped が勝つ）、[ADR-1886](../adr/1886-group-by-diff-removed-node-placement-and-aggregated-edge-state.md)（diff backfill）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（experimental 据え置き）
 - **設計**: `docs/design/boundary-membership-1n.md`（全体）、`docs/design/boundary-membership-slice-a.md`（slice A）
 - **Related TPLs**:
@@ -12,6 +12,9 @@
   - [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)（診断の register）
   - [TPL-1738](../test-perspectives/TPL-1738-relayout-into-group-preserves-placement-and-edges.md)（全要素ちょうど一度配置）
   - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理・無効果の禁止）
+  - [TPL-2179](../test-perspectives/TPL-2179-derived-outline-measured-on-coverage-not-bbox.md)（広げた図形は実被覆で測る — slice B の proactive）
+  - [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通 0 + 共線オーバーラップ 0 の再計測）
+  - [TPL-1799](../test-perspectives/TPL-1799-raster-pipeline-glyph-coverage.md)（`◇` の PNG グリフカバレッジ）
 - **対象**: `packages/core/src/parser/parser.ts`（`buildBoundaryMembership` / `buildScopedBoundaryMembership`）、`packages/core/src/types/ast.ts`（`boundaryMembership` / `primaryBoundaryOf` / `mergeMembership`）、`packages/core/src/fs/import-resolver.ts`、`packages/core/src/compile/compile-diff.ts`、`packages/core/src/renderer/layout.ts` / `group-layout.ts` / `group-labels.ts`、`packages/i18n`
 
 ## 概要
@@ -82,12 +85,38 @@ parse / merge 3 経路（multi-file import・diff・scope 合成）/ 群の並�
       引き取られた元の boundary の枠も残っている（空にならない）。
 - [ ] **手動**: 引き取りが起きた図で、**どの枠も非メンバーを囲んでいない**（偽の包含が無い）。
 
-### slice B（#2179）— 未着手
+### slice B（#2179）— 多重包含 geometry + 識別色 + 縮退タブ
 
-- [ ] **手動**: 帯が隣接する共有で、ノードが**両方の枠に囲まれて**見える（枠が重なる）。
-- [ ] **手動**: boundary ごとの識別色で、重なりが**入れ子ではなく重なり**として読める。
-- [ ] **手動**: 縮退したノードに `◇ <boundary>` のタブが出て、そのグリフが PNG 書き出しでも豆腐にならない。
-- [ ] **手動**: 縮退に落ちたケースで、偽の包含（非メンバーが枠に入る）が起きていない。
+自動化済み: reach の成立・縮退への分岐・記録矩形が帯本体のままであること・輪郭
+ポリゴンの生成・hue の宣言順割り当て・タブと診断は
+`packages/core/src/renderer/boundary-multi-containment.test.ts`、
+偽の包含が無いことは `packages/core/src/renderer/boundary-frame-containment.test.ts`
+（実被覆に対する全ペア absence assertion + 検出器自身の柵 2 本）、
+P2c の再計測（penetration 0 / collinear overlap 0）は
+`packages/core/src/renderer/edge-routing-groups.test.ts`、
+`◇`（U+25C7）の PNG カバレッジは
+`packages/app/src/render/png-font-coverage.test.ts` で固定済み。
+
+検証用サンプルは slice A / 配置と同じ
+`examples/en/feature-samples/boundary-multi-membership.krs`。
+
+#### AC-5: 共有ノードが両方の枠に囲まれ、重なりが重なりとして読める
+
+- [ ] **手動**: サンプルを Group by: **Boundary** で開く。`Ledger` が `payments` と
+      `pci` の**両方の枠に囲まれて**見える（`pci` の枠が自分の帯から上に伸びて `Ledger` を包む）。
+      `Ledger` は図中に**ちょうど 1 つ**しか現れない。
+- [ ] **手動**: 2 つの枠が**別々の色**で描かれ、重なりが**入れ子ではなく重なり**として読める
+      （枠線・薄い塗り・タイトルが同じ色で、重なったセルが第 3 の色味になる）。
+      **light / dark 両テーマ**で確認する（識別色はテーマごとに別の値を持つ）。
+- [ ] **手動**: 枠のタイトルが伸びた先のカードに重なっていない（タイトルは帯の本体に載ったまま）。
+
+#### AC-6: 届かない共有が縮退タブに落ち、偽の包含を作らない
+
+- [ ] **手動**: サンプルに `Ledger -> Wallet "settle"` を足す（サンプル冒頭のコメントに手順あり）。
+      `pci` の枠は伸びなくなり、`Ledger` の下端に `◇ PCI scope` の破線タブが出る。
+      診断リストに `boundary-membership-not-drawn` が **info** で出る。
+- [ ] **手動**: その状態で**どの枠も非メンバーを囲んでいない**（`pci` の枠が `Wallet` を含んでいない）。
+- [ ] **手動**: 同じ図を PNG に書き出し、`◇` が豆腐（□）にならない。
 
 ### slice C（#2180）— 未着手
 
