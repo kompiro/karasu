@@ -21,6 +21,8 @@
 | エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
 | エッジ 終点 | `edge[to=ApiGateway]` | 指定ノードを終点とする全エッジ |
 | エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
+| バウンダリ | `boundary` | 全 boundary フレーム（*Group by: boundary*） |
+| バウンダリ ID | `boundary#pci` | 特定 boundary のフレームのみ |
 
 ---
 
@@ -40,6 +42,8 @@
 | エッジ + タグ | `edge[async]` | 11 |
 | エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
 | エッジ ID | `edge#criticalWrite` | 101 |
+| バウンダリ | `boundary` | 1 |
+| バウンダリ ID | `boundary#pci` | 101 |
 <!-- /gen:reference:selector-specificity -->
 
 `edge#criticalWrite` は 101（ID 100 + `edge` 種別 1）。
@@ -565,6 +569,52 @@ member {
   border-width: 2px;
 }
 ```
+
+---
+
+## boundary フレームセレクタ（`boundary` / `boundary#<id>`）
+
+*Group by: boundary* では、system view が各 `boundary` のメンバーを破線のフレームで囲み、
+宣言順に循環する識別色を付ける。style シートはこの色を引き取れる。
+
+```css
+boundary            { border-style: solid; }   /* 全フレーム */
+boundary#pci        { border-color: #C0392B; } /* 特定の boundary */
+```
+
+id 空間を選ぶのはキーワードの側である。boundary はノードではないので、裸の `#pci` は
+`pci` という名前の**ノード**を指し、フレームには決して当たらない。`#criticalWrite` が
+`edge#criticalWrite` の指すエッジではなくノードを指すのと同じ関係。specificity も他と
+同じ部品から導かれる: `boundary` が 1、`boundary#pci` が 101（id の 100 + 種別の 1）。
+
+シートが名指ししなかった boundary は循環色のままなので、1 つ指定しても他は動かない。
+
+**サポートするプロパティ:**
+
+| プロパティ | 効果 |
+|----------|------|
+| `border-color` | フレームの色。明示指定が無ければ塗りとタイトルもこの色になる |
+| `background-color` | フレームの薄い塗り。`border-color` と分けたいときだけ |
+| `color` | フレームのタイトル。`border-color` と分けたいときだけ |
+| `border-width` | 枠線の太さ（px） |
+| `border-style` | `solid` / `dashed` / `dotted`。既定は `dashed` |
+
+> **Note**: `border-color` の 1 宣言が枠線・塗り・タイトルをまとめて塗り替える。
+> boundary の色は、重なった 2 つのフレームが「入れ子」ではなく「重なり」に読めるための
+> 条件なので、1 つの宣言でそれが 2 色に割れてはならない。分けたいときは
+> `background-color` / `color` を明示する。
+
+> **Note**: `shape` / `opacity` / `border-radius` / `font-*` / `badge-*` はフレームでは
+> 無視される。帯の外へ伸びたフレームは矩形直交の輪郭として描かれるため、設定できる
+> 角丸が存在しない。
+
+team フレーム（*Group by: team*）はまだこの方法で指定できない。
+[#2269](https://github.com/kompiro/karasu/issues/2269) を参照。
+
+`boundary` は experimental notation なので、本セレクタもスタイルを当てる構文と同じく
+後方互換を約束しない（[syntax.ja.md](syntax.ja.md#grouping-the-system-view-boundary--experimental)）。
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — boundary の色はフレームと `◇` タブに届き、両者は別のコードが描く。1 つの resolver を読むことで、style の上書きが片方だけを塗り替える事故を防ぐ。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 裸の `boundary` ルールは本セレクタ以前は parse されて無効果だった。今は効果を持つ。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — 上の specificity 行は `reference-data.ts` からの生成物で、ここに手書きしない。
 
 ---
 

@@ -251,6 +251,7 @@ function makeStyles(
   return {
     nodes,
     edges: new Map(),
+    boundaryFrames: { base: {}, byId: new Map() },
     defaultNodeStyle: base,
     defaultEdgeStyle: baseEdge,
     layoutHints: new Map(),

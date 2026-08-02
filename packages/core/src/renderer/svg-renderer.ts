@@ -1,4 +1,9 @@
-import type { EdgeDirection, ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
+import type {
+  EdgeDirection,
+  ResolvedBoundaryFrames,
+  ResolvedNodeStyle,
+  ResolvedStyles,
+} from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { layout } from "./layout.js";
 import type { GroupLabelIndex } from "./group-labels.js";
@@ -393,7 +398,16 @@ export function renderFromLayout(
     if (!container.ghost) {
       const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
       const diffState = options?.containerDiffState?.get(container.id);
-      parts.push(renderContainer(container, containerStyle, false, diffState, palette));
+      parts.push(
+        renderContainer(
+          container,
+          containerStyle,
+          false,
+          diffState,
+          palette,
+          styles.boundaryFrames,
+        ),
+      );
     }
   }
 
@@ -530,6 +544,7 @@ export function renderFromLayout(
           childLevelLinks,
           diffState,
           diffMeta,
+          styles.boundaryFrames,
         );
     const isDimmedGhost =
       layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
@@ -1021,10 +1036,65 @@ export function rectUnionPath(rects: readonly Rect[]): string | null {
 /** Frame tint opacity — low enough that two overlapping fills stay distinguishable. */
 const BOUNDARY_FILL_OPACITY = "0.1";
 
-function boundaryHue(container: ContainerRect, palette?: DiagramPalette): string | undefined {
-  if (container.hueIndex === undefined || palette === undefined) return undefined;
+/**
+ * The colour of one boundary, and the only place that answers the question.
+ *
+ * A boundary's hue is painted on more than one surface: its frame (stroke, tint
+ * and title) and the `◇` 縮退 tab on any card the frame could not reach. Those
+ * are drawn by different functions, so the colour has to be decided once and
+ * read from here by all of them. Resolve it twice and a boundary's identity
+ * splits across two colours the moment the two derivations stop agreeing, which
+ * is exactly what a `.krs.style` override does to a second, unaware reader
+ * (#2234; TPL-2179 / TPL-219 — one definition, every consumer).
+ *
+ * `hueIndex` is the boundary's position in the declared order (#2179), so the
+ * assignment is stable for a model regardless of band order or collapse state.
+ */
+function boundaryHueAt(hueIndex: number | undefined, palette?: DiagramPalette): string | undefined {
+  if (hueIndex === undefined || palette === undefined) return undefined;
   const hues = palette.boundaryHues;
-  return hues.length > 0 ? hues[container.hueIndex % hues.length] : undefined;
+  return hues.length > 0 ? hues[hueIndex % hues.length] : undefined;
+}
+
+/** How one boundary is painted, on every surface that paints it. */
+export interface BoundaryPaint {
+  stroke: string;
+  /** The low-alpha frame fill. Follows `stroke` unless `background-color` says otherwise. */
+  fill: string;
+  /** The frame title. Follows `stroke` unless `color` says otherwise. */
+  title: string;
+  strokeWidth: number;
+  dashed: boolean;
+}
+
+/**
+ * Resolve a boundary's paint: the author's `.krs.style` rule where there is one,
+ * the cycled hue otherwise (#2234 over #2179).
+ *
+ * `border-color` alone repaints the stroke, the fill and the title together.
+ * #2179 established one colour per boundary as a legibility condition rather
+ * than a preference, so letting a single declaration split a boundary across
+ * two colours would undo the thing the hue exists for. An author who wants them
+ * apart says so with `background-color` / `color`.
+ */
+function resolveBoundaryPaint(
+  boundaryId: string | undefined,
+  hueIndex: number | undefined,
+  frames: ResolvedBoundaryFrames | undefined,
+  palette: DiagramPalette | undefined,
+): BoundaryPaint | undefined {
+  const cycled = boundaryHueAt(hueIndex, palette);
+  if (cycled === undefined) return undefined;
+  const sheet =
+    (boundaryId !== undefined ? frames?.byId.get(boundaryId) : undefined) ?? frames?.base;
+  const stroke = sheet?.borderColor ?? cycled;
+  return {
+    stroke,
+    fill: sheet?.backgroundColor ?? stroke,
+    title: sheet?.color ?? stroke,
+    strokeWidth: sheet?.borderWidth ?? 2,
+    dashed: (sheet?.borderStyle ?? "dashed") !== "solid",
+  };
 }
 
 function renderContainer(
@@ -1033,6 +1103,7 @@ function renderContainer(
   ghost: boolean,
   diffState?: string,
   palette?: DiagramPalette,
+  boundaryFrames?: ResolvedBoundaryFrames,
 ): string {
   const children: string[] = [];
   // An in-place-expanded container is an active user action (#1921): render it
@@ -1045,14 +1116,22 @@ function renderContainer(
   // The fill is what makes an overlap read as an overlap: two dashed outlines of
   // the same colour read as nesting, while two tints composite to a third tone
   // in the shared cell. No code draws the intersection — alpha does.
-  const hue = boundaryHue(container, palette);
+  // A `.krs.style` rule may repaint this frame (#2234); absent one, the cycled
+  // hue stands.
+  const paint = resolveBoundaryPaint(
+    container.groupId,
+    container.hueIndex,
+    boundaryFrames,
+    palette,
+  );
   const outline = container.coverage ? rectUnionPath(container.coverage) : null;
+  const dashed = paint ? paint.dashed : ghost || container.group === true;
   const frameShape = {
-    fill: expanded && accent ? accent : (hue ?? "transparent"),
-    "fill-opacity": expanded && accent ? "0.06" : hue ? BOUNDARY_FILL_OPACITY : undefined,
-    stroke: expanded && accent ? accent : (hue ?? style.borderColor),
-    "stroke-width": expanded ? 2 : hue ? 2 : style.borderWidth,
-    "stroke-dasharray": !expanded && (ghost || container.group) ? "8 4" : undefined,
+    fill: expanded && accent ? accent : (paint?.fill ?? "transparent"),
+    "fill-opacity": expanded && accent ? "0.06" : paint ? BOUNDARY_FILL_OPACITY : undefined,
+    stroke: expanded && accent ? accent : (paint?.stroke ?? style.borderColor),
+    "stroke-width": expanded ? 2 : (paint?.strokeWidth ?? style.borderWidth),
+    "stroke-dasharray": !expanded && dashed ? "8 4" : undefined,
   };
   children.push(
     outline
@@ -1077,11 +1156,11 @@ function renderContainer(
         // The title takes the hue too. Without it the colour ↔ boundary mapping
         // cannot be recovered from the diagram, and the muted 0.7 the team frames
         // use leaves it close to unreadable (#2179).
-        fill: expanded && accent ? accent : (hue ?? style.color),
+        fill: expanded && accent ? accent : (paint?.title ?? style.color),
         "font-size": "12px",
         "font-family": style.fontFamily,
         "font-weight": "bold",
-        opacity: expanded || hue ? undefined : 0.7,
+        opacity: expanded || paint ? undefined : 0.7,
       },
       escapeXml(container.label),
     ),
@@ -1119,10 +1198,10 @@ function renderDegradedTabs(
   node: LayoutNode,
   style: ResolvedNodeStyle,
   palette: DiagramPalette,
+  boundaryFrames?: ResolvedBoundaryFrames,
 ): string[] {
   const tabs = node.degradedBoundaries;
   if (!tabs || tabs.length === 0) return [];
-  const hues = palette.boundaryHues;
   const out: string[] = [];
   // Right-aligned and stacked leftwards, so a card in three boundaries shows all
   // of them rather than silently keeping the first. Each pill is sized from the
@@ -1143,7 +1222,12 @@ function renderDegradedTabs(
     );
     const width = estimateTextWidth(label, DEGRADED_TAB_CHAR_WIDTH) + DEGRADED_TAB_PAD * 2;
     const x = right - width;
-    const hue = hues.length > 0 ? hues[tab.hueIndex % hues.length] : palette.mutedBorder;
+    // Through `resolveBoundaryPaint`, not the palette directly: the tab and the
+    // frame are two surfaces of one boundary and must never disagree about its
+    // colour, including when a `.krs.style` rule repaints it (#2234).
+    const hue =
+      resolveBoundaryPaint(tab.id, tab.hueIndex, boundaryFrames, palette)?.stroke ??
+      palette.mutedBorder;
     out.push(
       el("rect", {
         x,
@@ -1185,6 +1269,8 @@ function renderNode(
   childLevelLinks?: Map<string, string>,
   diffState?: string,
   diffMeta?: NodeDiffMeta,
+  /** Boundary frame styles, for the `◇` tabs this card may carry (#2234). */
+  boundaryFrames?: ResolvedBoundaryFrames,
 ): string {
   const children: string[] = [];
 
@@ -1286,7 +1372,7 @@ function renderNode(
   }
 
   // 縮退 tabs paint last so they sit on top of the card body (#2179).
-  children.push(...renderDegradedTabs(node, style, palette));
+  children.push(...renderDegradedTabs(node, style, palette, boundaryFrames));
 
   const nodeEl = el(
     "g",
