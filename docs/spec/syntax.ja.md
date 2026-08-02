@@ -1120,8 +1120,11 @@ system Shop {
   ちょうど 1 ノードを指し、top-level 形が持つ曖昧さ（[#2036](https://github.com/kompiro/karasu/issues/2036)）は
   構造的に発生しない。孫をグルーピングしたければ**孫の親のブロックに** boundary を書く —
   層ごとの関心事は層ごとに書く。直下の子でない `contains` 先は報告され
-  （`contains-target-not-found`）、inert に留まる。メンバが直下の子に限られるため、
-  スコープ宣言の `contains` はファイル横断参照になりえない。
+  （`contains-target-not-found`）、inert に留まる。メンバは直下の子に限られるが、
+  `system`（および infra ブロック）は**別ファイルで再オープン**でき、スコープ宣言の
+  `contains` はマージ後のノードの子に対して解決される。したがってメンバも
+  `boundary` ブロック自体も、読んでいるファイルとは別のファイル由来でありうる —
+  変わらないのは「どちらも同じ宣言ノードに載る」ことである。
 - **identity = 宣言スコープ + id。** 別スコープの同名 `boundary` は**別の boundary**である:
   それぞれ自分のキャンバスに自分の group identity でフレームを持ち、自分の `label` で
   タイトルされ、**collapse も独立**する — フレームの group id は内部的にスコープ修飾されるため、

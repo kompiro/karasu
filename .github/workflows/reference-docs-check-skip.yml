@@ -22,6 +22,8 @@ on:
       - "scripts/reference/**"
       - "scripts/guide/**"
       - "scripts/lint/spec-structure-sync.ts"
+      - "docs/roadmap.md"
+      - "scripts/lint/roadmap-issue-state.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:

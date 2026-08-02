@@ -3,8 +3,9 @@ name: Reference docs check
 # Companion of `reference-docs-check-skip.yml`. This workflow runs the real
 # reference-docs drift guard (`gen-docs.ts --check`) plus the en/ja spec
 # structure guard (`spec-structure-sync.ts`, Issue #1501) plus the guide
-# diagram drift guard (`gen-guide-diagrams.ts --check`, Issue #1574) on PRs
-# that touch the reference single-source / guide paths. The skip workflow emits a no-op
+# diagram drift guard (`gen-guide-diagrams.ts --check`, Issue #1574) plus the
+# roadmap ledger guard (`roadmap-issue-state.ts`, Issue #2245) on PRs
+# that touch the reference single-source / guide / roadmap paths. The skip workflow emits a no-op
 # `Reference docs` job for all other PRs so a Required status named
 # `Reference docs` stays green repository-wide.
 #
@@ -15,7 +16,8 @@ name: Reference docs check
 # but a contributor who bypasses lefthook would slip through. Issue #1342.
 #
 # Keep the `paths:` list below in sync with `reference-docs-check-skip.yml`'s
-# `paths-ignore:` and with lefthook's `reference-docs-check` glob.
+# `paths-ignore:` and with lefthook's `reference-docs-check` /
+# `roadmap-issue-state` globs.
 
 on:
   pull_request:
@@ -29,6 +31,8 @@ on:
       - "scripts/reference/**"
       - "scripts/guide/**"
       - "scripts/lint/spec-structure-sync.ts"
+      - "docs/roadmap.md"
+      - "scripts/lint/roadmap-issue-state.ts"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
@@ -41,6 +45,8 @@ on:
       - "scripts/reference/**"
       - "scripts/guide/**"
       - "scripts/lint/spec-structure-sync.ts"
+      - "docs/roadmap.md"
+      - "scripts/lint/roadmap-issue-state.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
@@ -49,6 +55,8 @@ concurrency:
 
 permissions:
   contents: read
+  # roadmap-issue-state reads issue state through the GraphQL API.
+  issues: read
 
 jobs:
   reference-docs-check:
@@ -74,3 +82,13 @@ jobs:
 
       - name: Guide diagrams in sync
         run: pnpm exec tsx scripts/guide/gen-guide-diagrams.ts --check
+
+      # The roadmap's watch ledgers track work that has no Issue yet, and
+      # nothing re-reads a row once its promotion trigger fires (Issue #2245).
+      # This is the only guard here that needs the network — it reads issue
+      # state — so it self-skips when the API is unreachable rather than
+      # reddening a required check on a blip.
+      - name: Roadmap does not contradict issue state
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run lint:roadmap-issue-state

@@ -107,6 +107,18 @@ pre-push:
       # vitest test (scripts/guide/gen-guide-diagrams.test.ts) mirrors it too.
       glob: "{docs/guide/**,scripts/guide/**}"
       run: pnpm exec tsx scripts/guide/gen-guide-diagrams.ts --check
+    roadmap-issue-state:
+      # docs/roadmap.md tracks not-yet-issued work in watch ledgers ("子 Issue は
+      # 起こさず本表で追跡し、trigger を満たしたら Issue を起こす"), and nothing
+      # re-reads a row after its trigger fires — two rows were stale when this
+      # guard was added (Issue #2245). Fails when a cell calls work not-started
+      # while linking a closed issue, or claims nothing is issued while linking
+      # one. Needs the network, so it degrades to a no-op when the API is
+      # unreachable instead of blocking a local push. `reference-docs-check.yml`
+      # runs it for real — not ci.yml, whose `paths-ignore: docs/**` would skip
+      # exactly the roadmap-only PRs this guards.
+      glob: "{docs/roadmap.md,scripts/lint/roadmap-issue-state.ts}"
+      run: pnpm run lint:roadmap-issue-state
     concept-adr-refs:
       # The bidirectional reference layer between docs/concepts*.md and the
       # ADR topic vocabulary (Issue #1389) — fail if a concept anchor or a

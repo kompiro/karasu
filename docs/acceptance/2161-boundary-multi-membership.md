@@ -35,6 +35,8 @@ parse / merge 3 経路（multi-file import・diff・scope 合成）/ 群の並�
 `packages/i18n/src/render-diagnostic.test.ts` で自動化済み。
 cross-file の多重所属が診断されること（#2221）は
 `packages/core/src/fs/import-resolver.test.ts` で自動化済み。
+再オープンされた system / infra ブロックの scoped boundary が伝搬すること（#2246）も
+同ファイルで自動化済み。
 本 AT は**目視でしか判定できない項目**のみを扱う。
 
 ## 受け入れ条件
