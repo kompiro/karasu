@@ -65,8 +65,26 @@ export class RepoDirectory {
     return { installationId, sha, generatedAt };
   }
 
-  async publish(owner: string, repo: string, entry: DirectoryEntry): Promise<void> {
-    await this.kv.put(indexKey(owner, repo), JSON.stringify(entry));
+  /**
+   * `ttlSeconds` is not optional by accident.
+   *
+   * The document it points at expires on a TTL. If the pointer did not, a
+   * document that aged out before its installation was uninstalled would
+   * leave a pointer that `purgeInstallation` never sees — the repo list a
+   * purge works from is derived from live documents — and that pointer would
+   * go on naming a revoked installation forever. Giving the pointer the same
+   * lifetime as the document closes that hole by construction rather than by
+   * a sweeper nobody would run.
+   */
+  async publish(
+    owner: string,
+    repo: string,
+    entry: DirectoryEntry,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.kv.put(indexKey(owner, repo), JSON.stringify(entry), {
+      expirationTtl: ttlSeconds,
+    });
   }
 
   /**

@@ -7,21 +7,21 @@ const pointer = { installationId: "42", sha: "a".repeat(40), generatedAt: "2026-
 describe("RepoDirectory", () => {
   it("round-trips a pointer", async () => {
     const directory = new RepoDirectory(new MemoryKV());
-    await directory.publish("kompiro", "karasu", pointer);
+    await directory.publish("kompiro", "karasu", pointer, 3600);
     expect(await directory.get("kompiro", "karasu")).toEqual(pointer);
   });
 
   it("keys case-insensitively, like GitHub", async () => {
     const directory = new RepoDirectory(new MemoryKV());
-    await directory.publish("Kompiro", "Karasu", pointer);
+    await directory.publish("Kompiro", "Karasu", pointer, 3600);
     expect(await directory.get("kompiro", "karasu")).toEqual(pointer);
   });
 
   it("keeps repos with a shared name prefix apart", async () => {
     const kv = new MemoryKV();
     const directory = new RepoDirectory(kv);
-    await directory.publish("kompiro", "kara", pointer);
-    await directory.publish("kompiro", "karasu", { ...pointer, installationId: "43" });
+    await directory.publish("kompiro", "kara", pointer, 3600);
+    await directory.publish("kompiro", "karasu", { ...pointer, installationId: "43" }, 3600);
     expect((await directory.get("kompiro", "kara"))?.installationId).toBe("42");
   });
 
@@ -31,6 +31,14 @@ describe("RepoDirectory", () => {
     const directory = new RepoDirectory(new MemoryKV());
     expect(await directory.get("a/b", "c")).toBeUndefined();
     expect(await directory.get("", "c")).toBeUndefined();
+  });
+
+  it("expires with the document it points at", async () => {
+    const kv = new MemoryKV();
+    const directory = new RepoDirectory(kv);
+    await directory.publish("kompiro", "karasu", pointer, 60);
+    kv.advance(61);
+    expect(await directory.get("kompiro", "karasu")).toBeUndefined();
   });
 
   it("reads a corrupt or incomplete value as absent", async () => {
@@ -45,14 +53,14 @@ describe("RepoDirectory", () => {
   describe("unpublishOwnedBy", () => {
     it("removes the entry when the installation matches", async () => {
       const directory = new RepoDirectory(new MemoryKV());
-      await directory.publish("kompiro", "karasu", pointer);
+      await directory.publish("kompiro", "karasu", pointer, 3600);
       expect(await directory.unpublishOwnedBy("kompiro", "karasu", "42")).toBe(true);
       expect(await directory.get("kompiro", "karasu")).toBeUndefined();
     });
 
     it("leaves an entry a different installation now owns", async () => {
       const directory = new RepoDirectory(new MemoryKV());
-      await directory.publish("kompiro", "karasu", { ...pointer, installationId: "43" });
+      await directory.publish("kompiro", "karasu", { ...pointer, installationId: "43" }, 3600);
       expect(await directory.unpublishOwnedBy("kompiro", "karasu", "42")).toBe(false);
       expect(await directory.get("kompiro", "karasu")).toBeDefined();
     });

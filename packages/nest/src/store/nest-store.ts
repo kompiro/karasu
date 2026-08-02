@@ -59,8 +59,11 @@ export class NestStore {
       sha: pointer.sha,
     });
     // A pointer with no document reads as "nothing generated" rather than as
-    // an error: it is the state a half-finished purge leaves behind, and the
-    // honest answer to a reader is the same either way.
+    // an error. Publish writes the document first and purge removes the
+    // pointer first, so neither ordering produces this state deliberately —
+    // it is what a lost write or an eventually-consistent read looks like,
+    // and the honest answer to a reader is the same as for a repo that was
+    // never generated.
     if (entry === undefined) return undefined;
     return { ...entry, installationId: pointer.installationId, sha: pointer.sha };
   }
@@ -70,11 +73,20 @@ export class NestStore {
     // Document first: a pointer is only ever published once the thing it
     // points at exists.
     await this.cache.put(ref, entry);
-    await this.directory.publish(ref.owner, ref.repo, {
-      installationId: canonicalInstallationId(ref.installationId),
-      sha: ref.sha.trim().toLowerCase(),
-      generatedAt: entry.generatedAt,
-    });
+    // Same lifetime as the document. A pointer that outlived its document
+    // would survive `purgeInstallation` too, because the repo list a purge
+    // works from is derived from live documents — so it would go on naming a
+    // revoked installation forever.
+    await this.directory.publish(
+      ref.owner,
+      ref.repo,
+      {
+        installationId: canonicalInstallationId(ref.installationId),
+        sha: ref.sha.trim().toLowerCase(),
+        generatedAt: entry.generatedAt,
+      },
+      this.cache.ttlSeconds,
+    );
   }
 
   /**

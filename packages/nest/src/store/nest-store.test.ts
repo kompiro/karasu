@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MemoryKV } from "../testing/memory-kv.js";
-import { markGenerated } from "./krs-cache.js";
+import { KrsCache, markGenerated } from "./krs-cache.js";
 import { NestStore } from "./nest-store.js";
 import { RepoDirectory } from "./repo-directory.js";
 
@@ -43,8 +43,21 @@ describe("NestStore", () => {
     const store = new NestStore(kv);
     await store.publish({ ...ref, installationId: "0042" }, entry);
     expect((await store.latest("kompiro", "karasu"))?.installationId).toBe("42");
-    // And a purge given the other spelling still reaches it.
-    expect((await store.purgeInstallation(42)).documents).toBe(1);
+    // And a purge given the other spelling still reaches both halves.
+    expect(await store.purgeInstallation(42)).toEqual({ documents: 1, pointers: 1 });
+  });
+
+  it("expires the pointer with the document, so no orphan outlives an uninstall", async () => {
+    // The purge derives its repo list from live documents. A pointer that
+    // outlived its document would never appear in that list, and would go on
+    // naming a revoked installation forever — the exact promise ADR-1990
+    // decision 6 makes.
+    const kv = new MemoryKV();
+    const store = new NestStore(kv, new KrsCache(kv, { ttlSeconds: 60 }));
+    await store.publish(ref, entry);
+    kv.advance(61);
+    expect(kv.keys()).toEqual([]);
+    expect(await store.latest("kompiro", "karasu")).toBeUndefined();
   });
 
   it("reads a pointer with no document as nothing generated", async () => {
@@ -52,11 +65,12 @@ describe("NestStore", () => {
     // reader is the same as for a repo that was never generated.
     const kv = new MemoryKV();
     const store = new NestStore(kv);
-    await new RepoDirectory(kv).publish("kompiro", "karasu", {
-      installationId: "42",
-      sha: SHA,
-      generatedAt: entry.generatedAt,
-    });
+    await new RepoDirectory(kv).publish(
+      "kompiro",
+      "karasu",
+      { installationId: "42", sha: SHA, generatedAt: entry.generatedAt },
+      3600,
+    );
     expect(await store.latest("kompiro", "karasu")).toBeUndefined();
   });
 
@@ -91,8 +105,9 @@ describe("NestStore", () => {
       await store.publish(ref, entry);
       await store.publish({ ...ref, installationId: 43, sha: OTHER_SHA }, entry);
 
-      const result = await store.purgeInstallation(42);
-      expect(result.pointers).toBe(0);
+      // The old installation's documents still go; only the pointer stays,
+      // because it now belongs to someone else.
+      expect(await store.purgeInstallation(42)).toEqual({ documents: 1, pointers: 0 });
       expect((await store.latest("kompiro", "karasu"))?.installationId).toBe("43");
     });
 

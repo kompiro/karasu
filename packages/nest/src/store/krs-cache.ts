@@ -81,7 +81,8 @@ const LIST_PAGE_SIZE = 1000;
 const DEFAULT_MAX_PURGE_PAGES = 10_000;
 
 export class KrsCache {
-  private readonly ttlSeconds: number;
+  /** Exposed so a pointer into this cache can be given the same lifetime. */
+  readonly ttlSeconds: number;
   private readonly maxPurgePages: number;
 
   constructor(
