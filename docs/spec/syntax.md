@@ -1207,8 +1207,11 @@ system Shop {
   group grandchildren, declare a `boundary` in *their* parent's block — a
   per-layer concern is written in its layer. A `contains` target that is not a
   direct child is reported (`contains-target-not-found`) and stays inert.
-  Because members are direct children, a scoped `contains` can never reference
-  across files.
+  Members are direct children — but a `system` (or an infra block) may be
+  **reopened in another file**, and the merged node's children are what a scoped
+  `contains` resolves against. So a member, and the `boundary` block itself, may
+  come from a different file than the one you are reading; what stays true is
+  that both end up on the same declaring node.
 - **Identity = declaring scope + id.** A same-named `boundary` in another scope
   is a **different boundary**: each frames its own canvas under its own group
   identity, is titled by its own `label`, and **collapses independently** — the

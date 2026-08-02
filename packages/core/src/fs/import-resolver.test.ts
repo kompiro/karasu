@@ -6,6 +6,7 @@ import { InMemoryFileSystemProvider } from "./in-memory-provider";
 import { ImportResolver } from "./import-resolver";
 import { analyze } from "../resolver/warnings";
 import { compile } from "../compile/compile";
+import { boundaryScopeKey } from "../types/ast";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1899,6 +1900,157 @@ system Shop {
 
       const result = await resolver.resolve("/p/index.krs");
       expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(1);
+    });
+  });
+  // A reopened `system` (or infra block) is merged into one node, and only the
+  // merged node is drawn — so a scoped `boundary` declared on the incoming copy
+  // used to be dropped on the floor: parsed, labelled, framing nothing (#2246,
+  // TPL-1503). Carrying it across also makes a cross-file id collision possible
+  // for the first time, which is why `duplicate-boundary-id` becomes a
+  // merged-model verdict here (TPL-2221).
+  describe("scoped boundaries survive a cross-file reopen (#2246)", () => {
+    const duplicateId = (ds: { code: string; severity: string; params?: unknown }[]) =>
+      ds.filter((d) => d.code === "duplicate-boundary-id" && d.severity === "error");
+
+    it("carries a boundary declared in a reopened system", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./more.krs"
+system Shop {
+  boundary edge {
+    contains Web
+  }
+  service Web {}
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/more.krs",
+        `system Shop {
+  boundary core {
+    contains Api
+  }
+  service Api {}
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const scope = result.krsFile.scopedBoundaryMembership.get(boundaryScopeKey(["Shop"]));
+      expect(scope?.get("Web")).toEqual(["edge"]);
+      expect(scope?.get("Api")).toEqual(["core"]);
+      expect(duplicateId(result.diagnostics)).toHaveLength(0);
+    });
+
+    it("carries a boundary declared in a reopened infra block", async () => {
+      // database / queue / storage reopen through mergeInfraBody, a different
+      // path from the system merge — both had the same gap.
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./more.krs"
+system Shop {
+  database ShopDB {
+    boundary hot {
+      contains orders
+    }
+    table orders
+  }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/more.krs",
+        `system Shop {
+  database ShopDB {
+    boundary cold {
+      contains archive
+    }
+    table archive
+  }
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const scope = result.krsFile.scopedBoundaryMembership.get(
+        boundaryScopeKey(["Shop", "ShopDB"]),
+      );
+      expect(scope?.get("orders")).toEqual(["hot"]);
+      expect(scope?.get("archive")).toEqual(["cold"]);
+    });
+
+    it("reports a cross-file id collision in one scope, once", async () => {
+      // Neither file declares `core` twice, so neither can see the collision —
+      // the merged scope is the only place it exists.
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./more.krs"
+system Shop {
+  boundary core {
+    contains Web
+  }
+  service Web {}
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/more.krs",
+        `system Shop {
+  boundary core {
+    contains Api
+  }
+  service Api {}
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const found = duplicateId(result.diagnostics);
+      expect(found).toHaveLength(1);
+      expect(found[0].params).toEqual({ boundaryId: "core" });
+      // The second block is unaddressable, so its member stays unindexed —
+      // the same resolution the single-file case has always had.
+      const scope = result.krsFile.scopedBoundaryMembership.get(boundaryScopeKey(["Shop"]));
+      expect(scope?.get("Web")).toEqual(["core"]);
+      expect(scope?.has("Api")).toBe(false);
+    });
+
+    it("does not double-report a collision that sits inside one file", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `system Shop {
+  boundary core {
+    contains Web
+  }
+  boundary core {
+    contains Api
+  }
+  service Web {}
+  service Api {}
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(duplicateId(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("still reports a collision on the single-file compile path", async () => {
+      const result = compile(
+        `system Shop {
+  boundary core {
+    contains Web
+  }
+  boundary core {
+    contains Api
+  }
+  service Web {}
+  service Api {}
+}
+`,
+        { diagramType: "system" },
+      );
+      expect(duplicateId(result.diagnostics)).toHaveLength(1);
     });
   });
 });
