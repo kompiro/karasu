@@ -19,7 +19,7 @@ import { logError } from "../log.js";
 import { StructureOnlyViolation } from "../redact/redact.js";
 import { LlmError } from "../reverse/llm.js";
 import { ReverseFailed } from "../reverse/pipeline.js";
-import type { LlmClient } from "../reverse/llm.js";
+import type { LlmClient, LlmUsage } from "../reverse/llm.js";
 import { redactFiles } from "../redact/redact.js";
 import { reverseRepository, type ReverseResult } from "../reverse/pipeline.js";
 import { MetricsStore } from "../meter/record.js";
@@ -143,6 +143,49 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
   const sha = input.sha ?? (await github.defaultBranchSha(installationId, owner, repo));
   await runs.put(ref, { state: "running", sha, startedAt });
 
+  // Accumulated outside the try so the failure path can report what a run
+  // spent before it died. A retried generation pays for every attempt, and a
+  // report that counts only the attempt that succeeded understates the bill
+  // by exactly the amount the retries cost (#2226).
+  let spent: LlmUsage = { inputTokens: 0, outputTokens: 0 };
+  // Built as the passes complete rather than read off the result, because a
+  // failed run has no result -- and "how many passes did we pay for" is the
+  // question a failure makes worth asking (#2226).
+  const observedPasses: { name: string; inputTokens: number; outputTokens: number }[] = [];
+  let bytesRead = 0;
+  let fileCount = 0;
+  let redactions = 0;
+  // Structurally zero since the repository arrives as one archive: an entry
+  // already in hand cannot fail its own read. Kept because the metrics record
+  // is retained for 400 days and its shape should not shift under a reader.
+  const unreadableFiles = 0;
+
+  const meter = async (outcome: "done" | "failed", model: string): Promise<void> => {
+    if (metrics === undefined) return;
+    try {
+      await metrics.record(ref, {
+        sha,
+        finishedAt: now().toISOString(),
+        outcome,
+        model,
+        durationMs: now().getTime() - startedAtMs,
+        inputTokens: spent.inputTokens,
+        outputTokens: spent.outputTokens,
+        passes: recordedPasses,
+        files: fileCount,
+        bytesRead,
+        redactions,
+        unreadableFiles,
+      });
+    } catch (cause) {
+      // A run that produced a model and could not write its token count has
+      // succeeded. Failing it to protect a number would be the wrong trade in
+      // both directions.
+      logError("karasu-nest could not record run metrics", cause);
+    }
+  };
+  let recordedPasses: { name: string; inputTokens: number; outputTokens: number }[] = [];
+
   try {
     // One request for the whole repository, not one per file. Workers caps
     // subrequests per invocation and KV operations count toward the same
@@ -158,16 +201,34 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
     const files = archive.files;
     if (files.length === 0) throw new GenerateFailed("no readable source files");
 
-    // Measured before redaction, because "how big is a repo we were asked to
-    // reverse" is the input a quota is set against (#2226). Redaction only
-    // ever shrinks it, and by an amount the record reports separately.
-    const bytesRead = files.reduce((total, file) => total + file.content.length, 0);
+    // Bytes, not code units: the archive is decoded to text, so `.length`
+    // would count a 3-byte CJK character as 1 and report a third of the real
+    // size for a repository whose sources are not ASCII (#2226).
+    const encoder = new TextEncoder();
+    bytesRead = files.reduce((total, file) => total + encoder.encode(file.content).length, 0);
 
     // The one-way door. Everything downstream sees redacted text only.
     const redacted = redactFiles(files);
+    redactions = redacted.findings.length;
+    fileCount = files.length;
     const reverse = await reverseRepository(
       { owner, repo, sha, files: redacted.files, findings: redacted.findings },
       llm,
+      {
+        // Spend is captured as it happens, so a run that throws on the third
+        // pass still reports what the first two cost.
+        onUsage: (usage, pass) => {
+          // `usage` is cumulative, so a pass costs the difference. Attributing
+          // the running total to each pass would make the last one look like
+          // it cost everything.
+          observedPasses.push({
+            name: pass,
+            inputTokens: usage.inputTokens - spent.inputTokens,
+            outputTokens: usage.outputTokens - spent.outputTokens,
+          });
+          spent = usage;
+        },
+      },
     );
 
     await store.publish(
@@ -178,35 +239,13 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
     await runs.put(ref, { state: "done", sha, startedAt, finishedAt });
 
     const durationMs = now().getTime() - startedAtMs;
-    if (metrics !== undefined) {
-      // After the publish and after the status write, and swallowing its own
-      // failure: a run that produced a model and then could not write its
-      // token count has succeeded. Reporting it as failed would delete a
-      // model someone waited a quarter of an hour for, to protect a number.
-      try {
-        await metrics.record(ref, {
-          sha,
-          finishedAt,
-          model: reverse.model ?? "unknown",
-          durationMs,
-          inputTokens: reverse.usage.inputTokens,
-          outputTokens: reverse.usage.outputTokens,
-          passes: reverse.passes.map((pass) => ({
-            name: pass.name,
-            inputTokens: pass.usage.inputTokens,
-            outputTokens: pass.usage.outputTokens,
-          })),
-          files: files.length,
-          bytesRead,
-          redactions: redacted.findings.length,
-          // Structurally zero now that the repository arrives as one archive:
-          // an entry already in hand cannot fail its own read.
-          unreadableFiles: 0,
-        });
-      } catch (cause) {
-        logError("karasu-nest could not record run metrics", cause);
-      }
-    }
+    recordedPasses = reverse.passes.map((pass) => ({
+      name: pass.name,
+      inputTokens: pass.usage.inputTokens,
+      outputTokens: pass.usage.outputTokens,
+    }));
+    spent = reverse.usage;
+    await meter("done", reverse.model ?? "unknown");
 
     return {
       sha,
@@ -218,7 +257,7 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       // early", and only the second can now happen.
       truncatedTree: false,
       truncatedByCap: archive.truncated,
-      unreadableFiles: 0,
+      unreadableFiles,
       durationMs,
     };
   } catch (cause) {
@@ -229,6 +268,14 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       finishedAt: now().toISOString(),
       error: callerSafeMessage(cause),
     });
+    // Metered before rethrowing. The tokens this attempt burned are already
+    // billed whether or not it produced anything, and a Workflow will retry.
+    if (spent.inputTokens > 0 || spent.outputTokens > 0) {
+      // Every pass that ran, not just the last one. Collapsing them lost the
+      // one fact a failed run can still establish: how far it got.
+      recordedPasses = observedPasses;
+      await meter("failed", "unknown");
+    }
     throw cause;
   }
 }

@@ -13,6 +13,7 @@ function run(overrides: Partial<RunMetrics> = {}): RunMetrics {
   return {
     sha: "a".repeat(40),
     finishedAt: "2026-08-02T12:00:00Z",
+    outcome: "done",
     model: "claude-opus-5",
     durationMs: 900_000,
     inputTokens: 400_000,
@@ -76,6 +77,28 @@ describe("GET /admin/metrics", () => {
     const raw = await (await call(env(kv), TOKEN)).text();
     expect(raw).not.toContain("kompiro");
     expect(raw).not.toContain("shop");
+  });
+
+  it("labels the read count as a lower bound rather than letting it read as exact", async () => {
+    // KV serves the counter's read from a per-colo cache, so bursts collapse.
+    // A reader who takes this for a count draws the wrong conclusion from it.
+    const body = await (await call(env(new MemoryKV()), TOKEN)).json();
+    expect(body.readsAreLowerBound).toBe(true);
+  });
+
+  it("says so when a total is partial rather than presenting it as final", async () => {
+    const kv = new MemoryKV();
+    await new MetricsStore(kv).record(ref, run());
+    await kv.put(`metrics/krs/v1/42/kompiro/shop/${"c".repeat(40)}/x`, "{not json");
+    const body = await (await call(env(kv), TOKEN)).json();
+    expect(body.incomplete).toEqual({ truncated: false, skippedRecords: 1 });
+  });
+
+  it("counts a failed attempt, because it was billed", async () => {
+    const kv = new MemoryKV();
+    await new MetricsStore(kv).record(ref, run({ outcome: "failed" }));
+    const body = await (await call(env(kv), TOKEN)).json();
+    expect([body.runs, body.failedRuns]).toEqual([1, 1]);
   });
 
   it("answers zeroes rather than NaN before anything has run", async () => {

@@ -88,6 +88,15 @@ export interface ReverseOptions {
    * files.
    */
   maxBytesRead?: number;
+  /**
+   * Called after every completed pass, with everything spent so far.
+   *
+   * A failed reverse still costs money — the passes before the throw were
+   * billed — and the caller cannot learn that from an exception. Without this
+   * the cost report silently omits every failed attempt and every retry,
+   * which is the direction that makes the service look affordable (#2226).
+   */
+  onUsage?: (usage: LlmUsage, pass: string) => void;
 }
 
 export interface ReverseResult {
@@ -253,6 +262,7 @@ export async function reverseRepository(
     logInfo(
       `karasu-nest ${name}: ${response.usage.inputTokens}/${response.usage.outputTokens} tokens`,
     );
+    options.onUsage?.(usage, name);
     // A truncated reply that still parses is the dangerous case: it would be
     // cached and served as a complete model of the repository.
     if (response.stopReason === "max_tokens") {

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitHubClient } from "../github/client.js";
 import type { LlmClient, LlmResponse } from "../reverse/llm.js";
 import { MetricsStore } from "../meter/record.js";
@@ -77,6 +77,12 @@ function deps(
 }
 
 const input = { installationId: "42", owner: "kompiro", repo: "shop" };
+
+// Prototype spies (the metrics-failure test mocks `MetricsStore.record`) leak
+// into every later test in the file without this.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("generate", () => {
   it("publishes a model and records the run as done", async () => {
@@ -186,8 +192,8 @@ describe("generate", () => {
 
     it("reports no GitHub-side truncation, because an archive is never partial", async () => {
       // The tree API can answer "there is more than I will list"; a tarball
-      // cannot. The field stays so the pull-request body can keep saying which
-      // kind of partial happened, and only our own cap can now cause one.
+      // cannot. The field stays so the pull-request body keeps distinguishing
+      // the two kinds of partial, and only our own cap can now cause one.
       const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
       const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
       const outcome = await generate(input, d);
@@ -195,9 +201,6 @@ describe("generate", () => {
     });
 
     it("never reports an unreadable file, because there are no per-file reads", async () => {
-      // A blob call could 404 on its own; an entry inside an archive we
-      // already hold cannot. The count stays in the record because the metrics
-      // schema is retained for 400 days and its meaning is unchanged.
       const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
       const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
       expect((await generate(input, d)).unreadableFiles).toBe(0);
@@ -257,9 +260,10 @@ describe("generate", () => {
       const d = deps(stubGithub([{ path: "src/pay.ts", content: "export class Payment {}" }]), llm);
       await generate(input, d);
 
-      const recorded = await new MetricsStore(d.kv).get(input, SHA);
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
       expect(recorded).toMatchObject({
         sha: SHA,
+        outcome: "done",
         inputTokens: 30,
         outputTokens: 60,
         files: 1,
@@ -268,7 +272,7 @@ describe("generate", () => {
         unreadableFiles: 0,
       });
       // Three passes, so a cost report can say which one is expensive.
-      expect(recorded?.passes.map((pass) => pass.name)).toEqual([
+      expect(recorded?.passes.map((pass: { name: string }) => pass.name)).toEqual([
         "survey",
         "decompose",
         "synthesise",
@@ -281,7 +285,7 @@ describe("generate", () => {
       const d = deps(stubGithub([{ path: "src/pay.ts", content: secret }]), llm);
       await generate(input, d);
 
-      const recorded = await new MetricsStore(d.kv).get(input, SHA);
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
       expect(recorded?.bytesRead).toBe(secret.length);
       expect(recorded?.redactions).toBeGreaterThan(0);
     });
@@ -298,6 +302,31 @@ describe("generate", () => {
       await expect(generate(input, d)).resolves.toBeDefined();
       expect((await d.runs.get(input))?.state).toBe("done");
       expect(await d.store.latest("kompiro", "shop")).toBeDefined();
+    });
+
+    it("records what a failed attempt spent before it threw", async () => {
+      // A Workflow retries, and every attempt is billed. A report that counts
+      // only the attempt that succeeded understates the bill by exactly the
+      // amount the retries cost.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, "not a krs document", "still not one"]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/synthesise/);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded?.outcome).toBe("failed");
+      // Four passes ran before the failure -- survey, decompose, synthesise
+      // and the repair attempt -- and every one of them was billed.
+      expect(recorded?.outputTokens).toBe(80);
+      // Named individually, because "did the repair actually run" is a
+      // question a failed run has to be able to answer from its own record.
+      expect(recorded?.passes.map((pass) => pass.name)).toEqual([
+        "survey",
+        "decompose",
+        "synthesise",
+        "repair",
+      ]);
+      // And each carries its own cost, not the running total.
+      expect(recorded?.passes.every((pass) => pass.outputTokens === 20)).toBe(true);
     });
 
     it("runs without a metrics store at all", async () => {

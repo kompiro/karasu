@@ -4,6 +4,7 @@
 - **関連 Issue**: [#2226](https://github.com/kompiro/karasu/issues/2226)（metering）／親 [#1990](https://github.com/kompiro/karasu/issues/1990)／gates [#1994](https://github.com/kompiro/karasu/issues/1994)
 - **関連 ADR**: [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 3・6
 - **関連 design**: [2226-nest-cost-model.md](../design/2226-nest-cost-model.md)
+- **関連 TPL**: [TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)（新 prefix の purge 配線）、[TPL-2288](../test-perspectives/TPL-2288-background-work-platform-ceiling.md)（器の上限）
 - **対象ファイル**:
   - `packages/nest/src/meter/cost.ts`（単価と換算）
   - `packages/nest/src/meter/record.ts`（run 単位の記録と集計）
@@ -42,9 +43,9 @@
 
   > ✅ Automated — `record.test.ts` › `reports percentiles, not just a mean`
 
-- [x] AT-H: 壊れたレコード 1 件がレポート全体を落とさない
+- [x] AT-H: 壊れたレコード 1 件がレポート全体を落とさず、落とした件数を報告する
 
-  > ✅ Automated — `record.test.ts` › `skips a corrupt record rather than refusing to produce a report`
+  > ✅ Automated — `record.test.ts` › `counts a record with no usable summary as skipped, not as a run`
 
 - [x] AT-I: 単価は日付つきスナップショットで、未知モデルは推測せずエラーにする
 
@@ -86,9 +87,23 @@
 
   > ✅ Automated — `metrics.test.ts` › `names a model it cannot price instead of quietly dropping its spend`
 
-- [x] AT-S: 計測データも purge に含まれる（installation 単位・repo 単位とも）
+- [x] AT-S: 計測データも purge に含まれる。**ファサード経由**で検証する（installation 単位・repo 単位とも）
 
-  > ✅ Automated — `record.test.ts` › `takes cost records with the rest of an installation` / `removes one repo's records when it leaves an installation`、`reads.test.ts` › `takes read buckets with the rest of an installation`
+  > ✅ Automated — `packages/nest/src/store/nest-purge-coverage.test.ts` › `leaves nothing behind when an installation is removed` / `leaves nothing behind when one repo leaves an installation` / `counts what it deleted in every category, so a webhook can say so`
+  >
+  > 各ストアの `purgeInstallation` を直接呼ぶテスト（`record.test.ts` / `reads.test.ts`）は**配線漏れを検出しない**。実際 `reads/` はこの AT が緑のまま `NestStore` に配線されていなかった（[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)）。ここが参照するのは `NestStore` を経由し、purge 後にストアが**空である**ことを見るテストに限る。
+
+- [x] AT-S2: 失敗した試行も課金されるので記録される。同一 commit の複数試行が上書きし合わない
+
+  > ✅ Automated — `packages/nest/src/meter/record.test.ts` › `keeps every attempt at one commit, because every attempt was billed`、`packages/nest/src/generate/run.test.ts` › `records what a failed attempt spent before it threw`
+
+- [x] AT-S3: 集計は list metadata から読み、鍵ごとの `get` を発行しない（Workers の subrequest 上限）
+
+  > ✅ Automated — `record.test.ts` › `reads its totals from list metadata, not by fetching every record`
+
+- [x] AT-S4: read 計数が下限値であることをレポートが明示する
+
+  > ✅ Automated — `packages/nest/src/routes/metrics.test.ts` › `labels the read count as a lower bound rather than letting it read as exact`
 
 - [x] AT-T: 何も走っていないとき NaN ではなくゼロを返す
 
@@ -100,8 +115,8 @@ ADR-1990 決定 6 により、#1996 が入るまで他人の private repo には
 
 - [ ] M-1: `wrangler secret put METRICS_TOKEN` 後、`/healthz` の `bindings.METRICS_TOKEN` が `true` になる
 - [ ] M-2: 生成を 1 回走らせたあと `GET /admin/metrics` が `runs: 1` と実測トークン数を返す
-- [ ] M-3: レポートの `cost.perRunUsd` が [design doc](../design/2226-nest-cost-model.md) の投影（小規模 約 $12）と同じ桁である
+- [ ] M-3: レポートの `cost.perRunUsd` が [design doc](../design/2226-nest-cost-model.md) の投影（想定 約 $2.15、構造的上限 $3.60）を**超えていない**。超えていたら上限定数の理解が誤っている
 - [ ] M-4: レポートの `duration.p95Ms` が spike の 12〜19 分と同じ桁である
 - [ ] M-5: `GET /<owner>/<repo>` を数回叩いたあと `readsPerRun` が増える
-- [ ] M-6: App をアンインストールすると `runs` が 0 に戻る（計測データも purge される）
+- [ ] M-6: App をアンインストールすると `runs` と `reads` の**両方**が 0 に戻る（`wrangler kv key list` で `metrics/` と `reads/` に鍵が残っていないことも確認する）
 - [ ] M-7: 実測が揃った時点で design doc の投影表を実測表に差し替え、#1994 の quota を再評価する

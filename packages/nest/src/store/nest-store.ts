@@ -16,6 +16,7 @@
  * whose purge is a data-trust promise (ADR-1990 decision 6).
  */
 import type { KVNamespaceLike } from "../env.js";
+import { ReadCounter } from "../meter/reads.js";
 import { MetricsStore } from "../meter/record.js";
 import type { CachedRef, RepoRef } from "./keys.js";
 import { installationPrefix } from "./keys.js";
@@ -37,6 +38,8 @@ export interface PurgeResult {
   runs: number;
   /** Cost records deleted. */
   metrics: number;
+  /** Read-count buckets deleted. */
+  reads: number;
 }
 
 /** The installation id as the directory records it, canonical and comparable. */
@@ -51,16 +54,20 @@ export class NestStore {
 
   private readonly runs: RunStatusStore;
   private readonly metrics: MetricsStore;
+  private readonly reads: ReadCounter;
 
   constructor(kv: KVNamespaceLike, cache = new KrsCache(kv), directory = new RepoDirectory(kv)) {
     this.cache = cache;
     this.directory = directory;
-    // Run and cost records live under their own prefixes, so the document
-    // purge does not reach them. Owning all of it here means no caller has to
-    // know that — and a caller who did not know would leave a metrics key
-    // naming an uninstalled repo behind (ADR-1990 decision 6).
+    // Run records, cost records and read buckets each live under their own
+    // prefix, so the document purge does not reach them. Owning all of it here
+    // means no caller has to know that — and a caller who did not know would
+    // leave a key naming an uninstalled repo behind (ADR-1990 decision 6).
+    // Every prefix this package writes must appear in both purge methods
+    // below; `nest-purge-coverage.test.ts` fails the build if one does not.
     this.runs = new RunStatusStore(kv);
     this.metrics = new MetricsStore(kv);
+    this.reads = new ReadCounter(kv);
   }
 
   /** The current generated `.krs` for a repo, or `undefined` if there is none. */
@@ -120,7 +127,8 @@ export class NestStore {
     const documents = await this.cache.purgeInstallation(canonical);
     const runs = await this.runs.purgeInstallation(canonical);
     const metrics = await this.metrics.purgeInstallation(canonical);
-    return { documents, pointers, runs, metrics };
+    const reads = await this.reads.purgeInstallation(canonical);
+    return { documents, pointers, runs, metrics, reads };
   }
 
   /** Delete one repo's documents and its pointer. */
@@ -132,6 +140,7 @@ export class NestStore {
     // goes with it rather than lingering until its TTL.
     const runs = (await this.runs.deleteRepo({ ...ref, installationId: canonical })) ? 1 : 0;
     const metrics = await this.metrics.deleteRepo({ ...ref, installationId: canonical });
-    return { documents, pointers: removed ? 1 : 0, runs, metrics };
+    const reads = await this.reads.deleteRepo({ ...ref, installationId: canonical });
+    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads };
   }
 }

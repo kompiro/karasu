@@ -75,6 +75,7 @@ describe("POST /webhooks/github", () => {
       pointers: 2,
       runs: 0,
       metrics: 0,
+      reads: 0,
     });
     // The other installation is untouched.
     expect(await new NestStore(kv).latest("other", "repo")).toBeDefined();
@@ -95,6 +96,7 @@ describe("POST /webhooks/github", () => {
       pointers: 2,
       runs: 0,
       metrics: 0,
+      reads: 0,
     });
   });
 
@@ -125,6 +127,7 @@ describe("POST /webhooks/github", () => {
       pointers: 1,
       runs: 0,
       metrics: 0,
+      reads: 0,
     });
     expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeUndefined();
     expect(await new NestStore(kv).latest("kompiro", "hane")).toBeDefined();
@@ -153,6 +156,7 @@ describe("POST /webhooks/github", () => {
       pointers: 1,
       runs: 0,
       metrics: 0,
+      reads: 0,
     });
   });
 
@@ -200,6 +204,7 @@ describe("POST /webhooks/github", () => {
       pointers: 1,
       runs: 0,
       metrics: 0,
+      reads: 0,
     });
     expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeUndefined();
   });
@@ -246,12 +251,14 @@ describe("POST /webhooks/github", () => {
       pointers: 2,
       runs: 0,
       metrics: 0,
+      reads: 0,
     });
     expect((await (await deliver("installation", payload, { env })).json()).purged).toEqual({
       documents: 0,
       pointers: 0,
       runs: 0,
       metrics: 0,
+      reads: 0,
     });
   });
 

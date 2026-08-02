@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MemoryKV } from "../testing/memory-kv.js";
 import { MetricsStore, type RunMetrics } from "./record.js";
 
@@ -8,6 +8,7 @@ function metrics(overrides: Partial<RunMetrics> = {}): RunMetrics {
   return {
     sha: SHA,
     finishedAt: "2026-08-02T12:00:00Z",
+    outcome: "done",
     model: "claude-opus-5",
     durationMs: 900_000,
     inputTokens: 400_000,
@@ -27,7 +28,7 @@ describe("MetricsStore", () => {
   it("round-trips a run record", async () => {
     const store = new MetricsStore(new MemoryKV());
     await store.record(ref, metrics());
-    expect(await store.get(ref, SHA)).toEqual(metrics());
+    expect(await store.latestFor(ref, SHA)).toEqual(metrics());
   });
 
   it("keys on the commit, so re-generating the same repo does not overwrite history", async () => {
@@ -39,12 +40,27 @@ describe("MetricsStore", () => {
     expect([total.runs, total.outputTokens]).toEqual([2, 300_010]);
   });
 
+  it("keeps every attempt at one commit, because every attempt was billed", async () => {
+    // A Workflow retries. Keying on the commit alone would let a successful
+    // third attempt overwrite the two that were also paid for.
+    const store = new MetricsStore(new MemoryKV());
+    await store.record(ref, metrics({ finishedAt: "2026-08-02T12:00:00Z", outcome: "failed" }));
+    await store.record(ref, metrics({ finishedAt: "2026-08-02T12:20:00Z", outcome: "failed" }));
+    await store.record(ref, metrics({ finishedAt: "2026-08-02T12:40:00Z" }));
+
+    const total = await store.summarise();
+    expect([total.runs, total.failedRuns]).toEqual([3, 2]);
+    expect(await store.attemptsFor(ref, SHA)).toBe(3);
+    // The latest attempt is the one a status reader wants.
+    expect((await store.latestFor(ref, SHA))?.finishedAt).toBe("2026-08-02T12:40:00Z");
+  });
+
   it("keeps no repository content in the body", async () => {
     // A metrics store is the classic sideways leak: it outlives the run, it is
     // read by different code, and nobody thinks of it as holding source.
     const kv = new MemoryKV();
     await new MetricsStore(kv).record(ref, metrics());
-    const raw = (await kv.get(`metrics/krs/v1/42/kompiro/shop/${SHA}`)) ?? "";
+    const raw = (await kv.get(`metrics/krs/v1/42/kompiro/shop/${SHA}/2026-08-02T12:00:00Z`)) ?? "";
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     expect(Object.keys(parsed).sort()).toEqual([
       "bytesRead",
@@ -53,6 +69,7 @@ describe("MetricsStore", () => {
       "finishedAt",
       "inputTokens",
       "model",
+      "outcome",
       "outputTokens",
       "passes",
       "redactions",
@@ -97,12 +114,37 @@ describe("MetricsStore", () => {
       expect([mine.runs, everything.runs]).toEqual([1, 2]);
     });
 
-    it("skips a corrupt record rather than refusing to produce a report", async () => {
+    it("counts a record with no usable summary as skipped, not as a run", async () => {
+      // A report that refuses to produce a number because one key is corrupt
+      // is a report nobody uses; one that silently drops it is worse.
       const kv = new MemoryKV();
       const store = new MetricsStore(kv);
       await store.record(ref, metrics());
-      await kv.put(`metrics/krs/v1/42/kompiro/shop/${"c".repeat(40)}`, "{not json");
-      expect((await store.summarise()).runs).toBe(1);
+      await kv.put(`metrics/krs/v1/42/kompiro/shop/${"c".repeat(40)}/x`, "{not json");
+      const total = await store.summarise();
+      expect([total.runs, total.skipped]).toEqual([1, 1]);
+    });
+
+    it("reads its totals from list metadata, not by fetching every record", async () => {
+      // One `get` per key would cap this report at roughly a thousand runs,
+      // which is when it first becomes worth reading (Workers subrequests).
+      const kv = new MemoryKV();
+      const store = new MetricsStore(kv);
+      await store.record(ref, metrics());
+      const fetched = vi.spyOn(kv, "get");
+      await store.summarise();
+      expect(fetched).not.toHaveBeenCalled();
+    });
+
+    it("does not lose a model whose name collides with an object prototype key", async () => {
+      // The name comes from the provider. On an object literal, `__proto__`
+      // writes to the prototype and the entry vanishes from the report --
+      // the exact silent omission the cost report exists to prevent.
+      const store = new MetricsStore(new MemoryKV());
+      await store.record(ref, metrics({ model: "__proto__" }));
+      const total = await store.summarise();
+      expect(Object.keys(total.byModel)).toEqual(["__proto__"]);
+      expect(total.runs).toBe(1);
     });
 
     it("answers zero rather than NaN when nothing has run", async () => {
