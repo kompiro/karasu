@@ -228,6 +228,16 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [t("warning.tagNotBuiltin.migrationNote")],
       };
+    case "tag-not-applicable":
+      return {
+        message: t("warning.tagNotApplicable.message", {
+          nodeId: w.params.nodeId,
+          tag: w.params.tag,
+          nodeKind: w.params.nodeKind,
+          appliesTo: w.params.appliesTo.join(", "),
+        }),
+        details: [t("warning.tagNotApplicable.applicabilityNote")],
+      };
     case "annotation-not-builtin":
       return {
         message: t("warning.annotationNotBuiltin.message", {

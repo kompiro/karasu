@@ -21,7 +21,7 @@ Mirrors AT-0057 (top-level service). See design doc
 
 ## Prerequisites
 
-- App is running (`pnpm dev` in `packages/app`)
+- The app is open at <https://karasu.kompiro.dev/>
 - CLI is built (`pnpm build` in `packages/cli`)
 
 ---

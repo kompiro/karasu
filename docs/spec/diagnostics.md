@@ -86,6 +86,7 @@ primary owner.
 | `duplicate-crud-decoration-target` | warning | A CRUD decoration targets the same operation more than once. |
 | `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
 | `duplicate-boundary-assignment` | info | A node belongs to more than one `boundary` (a fact; membership is 1:N — see [syntax.md](syntax.md#grouping-the-system-view-boundary--experimental) for how a view resolves it). |
+| `boundary-membership-not-drawn` | info | Under *Group by: boundary*, a boundary's frame could not be widened to enclose one of its members without covering a non-member, so the membership is marked on the card as a `◇` tab instead. States what **this drawing** did, unlike `duplicate-boundary-assignment`, which states a fact about the model; it therefore carries no source location and appears only on that axis. |
 | `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
 | `duplicate-facet-id` | error | Two `facet` blocks declare the same id, so a `facets` reference cannot say whose metadata it means. Decided on the merged model, so a duplicate split across two files is caught; the first declaration is the one references resolve to. |
 | `positional-label-removed` | error | A `boundary` id is followed by a positional label string. ADR-19 made `label` a property; `boundary` is experimental, so the undocumented positional form is removed outright instead of deprecated (#2133). |
@@ -166,6 +167,7 @@ tool vocabulary only — see [tags-annotations.md](./tags-annotations.md)).
 | `annotation-param-unsupported` | warning | An annotation parameter key is not recognised for that annotation. |
 | `annotation-possible-typo` | info | An annotation name is a near-match to a builtin (typo hint). |
 | `tag-not-builtin` | warning | A tag name is outside the tool vocabulary (builtin + system-assigned tags). Deprecated in v1.x; no suppression condition. |
+| `tag-not-applicable` | warning | A builtin tag is written on a node kind outside its applicability (e.g. `service Api [index]` — `[index]` applies to `database`). The tag has no effect there. Never fires together with `tag-not-builtin`: a non-builtin name has no applicability to violate. |
 | `annotation-not-builtin` | warning | An annotation name is outside the builtin set. Deprecated in v1.x; no suppression condition. |
 | `team-property-removed` | error | The removed `team` property is used (see [ADR-1564](../adr/1564-remove-team-property.md)). |
 

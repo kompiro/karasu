@@ -21,4 +21,4 @@
 
 - [ ] `astro dev` でサイドバーに **Tools → Using the karasu App** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
 
-  > 🧑 Manual — `pnpm --filter @karasu-tools/docs-site dev` を起動し、`/tools/app/` と `/ja/tools/app/` を開いて目視確認する（サイドバー配置・見出し・テーブル・外部リンク）。
+  > 🧑 Manual — 公開ドキュメントサイト（https://kompiro.github.io/karasu/）の `/tools/app/` と `/ja/tools/app/` を開いて目視確認する（サイドバー配置・見出し・テーブル・外部リンク）。

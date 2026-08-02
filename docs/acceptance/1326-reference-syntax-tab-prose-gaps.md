@@ -25,5 +25,5 @@ type: product
 - [ ] AT-D: `getReference(locale)` は両ロケールでこれまでどおり解決し、`reference-spec-sync.test.ts` は無変更で green（本変更は `reference-data.ts` / `docs/spec/*` に触れていない）
   > ✅ Automated — `packages/core/src/builtins/reference.test.ts` / `reference-spec-sync.test.ts` / `packages/app/src/i18n/locale-coverage.test.tsx`（無変更で pass）
 
-- [ ] AT-E（manual）: アプリ（`pnpm dev`）で Reference パネル → Syntax タブ（system view）に Resource Operations ブロックと Edge Syntax の `#<id>` 例が、Styles タブに `Edge ID` の specificity 行と `direction` の例が表示されることを目視確認する。`docs/spec/syntax.md` の `#### operations property` / `#### Optional edge id` / `docs/spec/style.md` の `## Edge ID selector` と内容が齟齬していないことも確認する
+- [ ] AT-E（manual）: 本番 app（https://karasu.kompiro.dev/）で Reference パネル → Syntax タブ（system view）に Resource Operations ブロックと Edge Syntax の `#<id>` 例が、Styles タブに `Edge ID` の specificity 行と `direction` の例が表示されることを目視確認する。`docs/spec/syntax.md` の `#### operations property` / `#### Optional edge id` / `docs/spec/style.md` の `## Edge ID selector` と内容が齟齬していないことも確認する
   > 🧑 Manual — UI 表示と spec doc との整合の目視確認

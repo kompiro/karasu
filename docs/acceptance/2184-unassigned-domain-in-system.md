@@ -42,7 +42,7 @@
 
 - [ ] AT-G: app の警告パネルに `unassigned-domain` が warning として表示され、その domain は `(Unassigned)` 枠ではなく**元の system の中**に描かれたままである
 
-  > 🖐 手動確認 — `pnpm dev` で `index.krs` に `system EC { domain Ordering { usecase PlaceOrder {} } }` を入力し、警告パネルの表示とキャンバス上の配置を確認する
+  > 🖐 手動確認 — 本番 app（https://karasu.kompiro.dev/）を開き、`index.krs` に `system EC { domain Ordering { usecase PlaceOrder {} } }` を入力し、警告パネルの表示とキャンバス上の配置を確認する
 
 - [ ] AT-H: VS Code 拡張の Problems パネルに同じ診断が Warning（Error ではない）として出る
 

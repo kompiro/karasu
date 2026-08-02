@@ -312,6 +312,10 @@ export const ja: Partial<Translations> = {
     `${nodeId} の "[${tag}]" は組み込みタグではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
   "warning.tagNotBuiltin.migrationNote":
     "所属やモデル固有のラベリングは facet 構文（#2065）へ移行してください。新しいアーキタイプが必要な場合は組み込みタグの追加要望を出してください。",
+  "warning.tagNotApplicable.message": ({ nodeId, tag, nodeKind, appliesTo }) =>
+    `${nodeId} の "[${tag}]" は効果がありません: このタグは ${appliesTo} に適用されますが、${nodeId} は ${nodeKind} です。`,
+  "warning.tagNotApplicable.applicabilityNote":
+    "組み込みタグは適用範囲に挙げられた kind の上でのみ意味を持ちます。タグを外すか、適用範囲に含まれる kind のノードへ移してください。",
   "warning.annotationNotBuiltin.message": ({ nodeId, annotation }) =>
     `${nodeId} の "@${annotation}" は組み込みアノテーションではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
   "warning.annotationNotBuiltin.migrationNote":
@@ -410,6 +414,8 @@ export const ja: Partial<Translations> = {
     `"${nodeId}" は複数の team が owns しています。主オーナーとして "${existingTeam}" を採用します`,
   "diagnostic.duplicateBoundaryAssignment.message": ({ nodeId, existingBoundary }) =>
     `"${nodeId}" は複数の boundary に所属しています（"${existingBoundary}" を含む）`,
+  "diagnostic.boundaryMembershipNotDrawn.message": ({ nodeId, boundaryId }) =>
+    `このビューでは boundary "${boundaryId}" の枠が "${nodeId}" に届きません。所属はカード上に表示しています`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"contains" で参照されている "${memberId}" が system 階層内に見つかりません`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>

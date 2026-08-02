@@ -24,7 +24,7 @@
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `propagates pull-up through a dep-on-dep chain regardless of declaration order (Issue #974)`
 
 - [ ] 既存の図（深いサービスチェーンを含まない一般的な構成）で目視で regression が無いこと
-  > 🧑 Manual — Preview URL（`https://feat-auto-layout-infra-by-consumer.karasu.pages.dev`）または `pnpm dev` で Getting Started サンプルを開き、視覚的に確認する。
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）で Getting Started サンプルを開き、視覚的に確認する。
 
 ## 補足
 

@@ -305,6 +305,13 @@ export type Translations = {
   "warning.annotationPossibleTypo.openSetNote": string;
   "warning.tagNotBuiltin.message": (params: { nodeId: string; tag: string }) => string;
   "warning.tagNotBuiltin.migrationNote": string;
+  "warning.tagNotApplicable.message": (params: {
+    nodeId: string;
+    tag: string;
+    nodeKind: string;
+    appliesTo: string;
+  }) => string;
+  "warning.tagNotApplicable.applicabilityNote": string;
   "warning.annotationNotBuiltin.message": (params: {
     nodeId: string;
     annotation: string;
@@ -452,6 +459,15 @@ export type Translations = {
   "diagnostic.duplicateBoundaryAssignment.message": (params: {
     nodeId: string;
     existingBoundary: string;
+  }) => string;
+  /**
+   * The counterpart for the *view* (#2179): this drawing could not widen the
+   * boundary's frame to reach the card, so the membership is on the card as a
+   * `◇` tab instead. Says what the picture does, and leaves why to the spec.
+   */
+  "diagnostic.boundaryMembershipNotDrawn.message": (params: {
+    nodeId: string;
+    boundaryId: string;
   }) => string;
   "diagnostic.containsTargetNotFound.message": (params: { memberId: string }) => string;
   "diagnostic.boundaryNotInContext.message": (params: { parentKind: string }) => string;

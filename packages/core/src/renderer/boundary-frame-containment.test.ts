@@ -8,19 +8,22 @@ import type { LayoutResult } from "./layout-types.js";
 // A boundary frame must never enclose a card that is not its member — 縮退規則 4
 // ("偽の包含は作らない") of docs/design/boundary-membership-1n.md.
 //
-// Today every frame is the bounding box of its own band, so this holds by
-// construction and these cases pass without effort. They are here for what
-// comes next: #2179 widens a frame toward a member that was placed in another
-// band, and a reach decided by *band adjacency* walks straight through the rows
-// in between. Measured on a prototype (see the spike branch referenced in
-// #2179), that reach covered 100% of a non-member's card in one model and 23%
-// in another — both on models a user would plausibly write.
+// Since #2179 a frame is widened toward a member placed in another band, and a
+// reach decided by *band adjacency* walks straight through the rows in between.
+// Measured on a prototype (see the spike branch referenced in #2179), that reach
+// covered 100% of a non-member's card in one model and 23% in another — both on
+// models a user would plausibly write. The seam placement of #2176 narrows the
+// problem but cannot remove it: it declines to move a node whose intra-group
+// dependents forbid it, and a node shared with three boundaries can only be
+// seated toward one of them. So the widening predicate is "no non-member card in
+// the corridor", and this file is what holds it to that.
 //
-// The seam placement of #2176 narrows the problem but cannot remove it: it
-// declines to move a node whose intra-group dependents forbid it, and a node
-// shared with three boundaries can only be seated toward one of them. So the
-// widening predicate has to be "no non-member card in the corridor", and this
-// file is what says so out loud.
+// **Measured against `coverage`, not the recorded rect.** A widened frame keeps
+// its band body as `x/y/width/height` (the title is drawn from it), so measuring
+// the recorded rect would silently stop seeing the reach — the exact regression
+// that would make this file pass no matter what the renderer does. It would also
+// over-report in the other direction: an L-shaped frame's *bounding box* spans
+// rows the frame does not enclose.
 //
 // The fixtures are the three the prototype measured, so a regression here maps
 // back to a picture someone has already looked at.
@@ -132,7 +135,8 @@ function layoutOf(src: string): { result: LayoutResult; membership: Map<string, 
 }
 
 /**
- * Every (frame, non-member) pair whose rectangles overlap, as readable strings.
+ * Every (frame, non-member) pair the frame's covered area overlaps, as readable
+ * strings.
  *
  * Reported as a list rather than a boolean so a failure names the frame, the
  * card it swallowed, and how much of it — the same three facts the prototype's
@@ -140,6 +144,10 @@ function layoutOf(src: string): { result: LayoutResult; membership: Map<string, 
  */
 function falseContainments(src: string): string[] {
   const { result, membership } = layoutOf(src);
+  return containmentsIn(result, membership);
+}
+
+function containmentsIn(result: LayoutResult, membership: Map<string, string[]>): string[] {
   const found: string[] = [];
   for (const container of result.containers) {
     if (container.group !== true || container.groupId === undefined) continue;
@@ -147,12 +155,15 @@ function falseContainments(src: string): string[] {
     const members = new Set(
       [...membership].filter(([, groups]) => groups.includes(groupId)).map(([id]) => id),
     );
+    // The band body plus every reach strip. A plain frame has no `coverage`, and
+    // its recorded rect is the whole of it.
+    const pieces = container.coverage ?? [container];
     for (const [nodeId, node] of result.nodes) {
       if (members.has(nodeId)) continue;
       // A collapse stub stands in for a whole group rather than for a card, so
       // it is not a "non-member" in the sense this rule protects.
       if (nodeId.startsWith("__group_collapsed_")) continue;
-      const area = overlapArea(container, node);
+      const area = pieces.reduce((sum, piece) => sum + overlapArea(piece, node), 0);
       if (area === 0) continue;
       const pct = Math.round((area / (node.width * node.height)) * 100);
       found.push(`frame "${groupId}" covers ${pct}% of non-member "${nodeId}"`);
@@ -172,16 +183,21 @@ describe("a boundary frame never encloses a non-member (縮退規則 4, #2179)",
     expect(falseContainments(src)).toEqual([]);
   });
 
-  it("detects the violation it is written to catch", () => {
-    // Guard for the guard: if the geometry check itself regressed to a no-op,
-    // the cases above would pass no matter what the renderer does. Feeding it a
-    // frame that provably contains a foreign card must produce a finding.
+  // Guards for the guard: if the geometry check regressed to a no-op, the cases
+  // above would pass no matter what the renderer does. Both ways a frame can
+  // grow must produce a finding — and they are separate reads, since a widened
+  // frame keeps its band body as the recorded rect and puts the reach in
+  // `coverage`.
+  it("detects a stretched frame rect", () => {
     const { result, membership } = layoutOf(PINNED);
     const wallet = result.nodes.get("Wallet");
     expect(wallet).toBeDefined();
     const pci = result.containers.find((c) => c.group === true && c.groupId === "pci");
     expect(pci).toBeDefined();
     expect(membership.get("Wallet")).not.toContain("pci");
+    // The fallback path: this frame degraded, so it has no `coverage` and the
+    // recorded rect is the whole of it.
+    expect(pci!.coverage).toBeUndefined();
 
     // Stretch pci's frame over Wallet, the way an unguarded reach would.
     pci!.y = Math.min(pci!.y, wallet!.y);
@@ -189,14 +205,21 @@ describe("a boundary frame never encloses a non-member (縮退規則 4, #2179)",
     pci!.x = Math.min(pci!.x, wallet!.x);
     pci!.width = Math.max(pci!.x + pci!.width, wallet!.x + wallet!.width) - pci!.x;
 
-    const found: string[] = [];
-    const members = new Set(
-      [...membership].filter(([, groups]) => groups.includes("pci")).map(([id]) => id),
-    );
-    for (const [nodeId, node] of result.nodes) {
-      if (members.has(nodeId)) continue;
-      if (overlapArea(pci!, node) > 0) found.push(nodeId);
-    }
-    expect(found).toContain("Wallet");
+    expect(containmentsIn(result, membership).join("\n")).toContain('non-member "Wallet"');
+  });
+
+  it("detects a reach strip laid over a non-member", () => {
+    const { result, membership } = layoutOf(PINNED);
+    const wallet = result.nodes.get("Wallet")!;
+    const pci = result.containers.find((c) => c.group === true && c.groupId === "pci")!;
+
+    // The `coverage` path: leave the recorded rect alone (as a real reach does)
+    // and add the strip an adjacency-based reach would have drawn.
+    pci.coverage = [
+      { x: pci.x, y: pci.y, width: pci.width, height: pci.height },
+      { x: wallet.x, y: wallet.y, width: wallet.width, height: pci.y - wallet.y },
+    ];
+
+    expect(containmentsIn(result, membership).join("\n")).toContain('non-member "Wallet"');
   });
 });

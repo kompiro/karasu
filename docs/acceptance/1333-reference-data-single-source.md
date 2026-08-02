@@ -24,5 +24,5 @@ type: product
 - [ ] AT-C: `getReference(locale)` が `en` / `ja` の両 locale で `undefined` の description を返さない（i18n 片落ち回帰リハーサル）
   > ✅ Automated — `reference-data.test.ts`（ソース側の両 locale 存在を担保）+ `packages/app/src/i18n/locale-coverage.test.tsx`（パネル表示側の locale カバレッジ）
 
-- [ ] AT-D（manual）: アプリ（`pnpm dev`）で `index.krs` を開き、Reference パネルの Syntax / Styles / Tags & Annotations / Built-in Theme / Samples の各タブが Phase 1 前と同じ内容で表示されることを目視確認する。locale を `ja` に切り替え、各 description が日本語で表示され空欄や `undefined` が出ないことも確認する
+- [ ] AT-D（manual）: 本番 app（https://karasu.kompiro.dev/）で `index.krs` を開き、Reference パネルの Syntax / Styles / Tags & Annotations / Built-in Theme / Samples の各タブが Phase 1 前と同じ内容で表示されることを目視確認する。locale を `ja` に切り替え、各 description が日本語で表示され空欄や `undefined` が出ないことも確認する
   > 🧑 Manual — リファクタ前後で UI 表示が不変であることの目視確認。自動テストは `getReference()` の構造一致を担保するが、パネル上での実際の見え方は目視で確認する

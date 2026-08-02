@@ -34,6 +34,11 @@ const MARKER_CODEPOINTS: ReadonlyArray<{ cp: number; label: string }> = [
   { cp: 0x2726, label: "✦ new badge" },
   { cp: 0x2697, label: "⚗ experimental badge" },
   { cp: 0x2212, label: "− removed-annotation ghost badge" },
+  // ◇ marks a boundary membership the banded view could not draw as a frame
+  // (#2179, svg-renderer.ts `renderDegradedTabs`). The first candidate ⧉ (U+29C9)
+  // is outside the bundled fonts and rasterised as tofu — this line is why the
+  // notation changed.
+  { cp: 0x25c7, label: "◇ degraded boundary membership tab" },
 ];
 
 // The fonts the PNG render path loads. The second test below asserts this set

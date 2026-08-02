@@ -17,7 +17,7 @@
   > ✅ Automated — `packages/core/src/renderer/legend-footer.test.ts` 全 18 件が green
 
 - [ ] Getting Started 例を Icon mode で開いたとき、凡例の swatch が shape mode と同じ色を保ったまま描画されること
-  > 🧑 Manual — Preview URL（`https://fix-icon-mode-legend.karasu.pages.dev`）または `pnpm dev` で Icon mode に切り替えて、凡例ブロックの swatch 色が shape mode と一致することを確認する。
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）で Icon mode に切り替えて、凡例ブロックの swatch 色が shape mode と一致することを確認する。
 
 ## 補足
 

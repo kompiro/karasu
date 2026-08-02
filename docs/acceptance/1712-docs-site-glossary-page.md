@@ -26,4 +26,4 @@
 
 - [ ] `astro dev` でサイドバーに **Reference → Glossary** が英語・日本語の両ロケールで表示され、ページが正しくレンダリングされる
 
-  > 🧑 Manual — `pnpm --filter @karasu-tools/docs-site dev` を起動し、`/spec/glossary/` と `/ja/spec/glossary/` を開いて目視確認する（サイドバー配置・見出し・各グループのリスト・出典リンクの遷移）。
+  > 🧑 Manual — 公開ドキュメントサイト（https://kompiro.github.io/karasu/）の `/spec/glossary/` と `/ja/spec/glossary/` を開いて目視確認する（サイドバー配置・見出し・各グループのリスト・出典リンクの遷移）。

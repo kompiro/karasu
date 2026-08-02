@@ -37,7 +37,7 @@ type: product
   > ✅ Automated — `pnpm --filter @karasu-tools/core test --run` で 1267+ tests 通過
 
 - [ ] AT-G（manual）: VS Code / app の Monaco エディタで `.krs.style` を開き、`color: red, direction: down;` を書くと該当箇所に diagnostic（赤波線 / メッセージ）が表示される
-  > 🧑 Manual — LSP 経由の表示確認。`pnpm --filter @karasu-tools/app dev` の Preview で `.krs.style` を開いて目視
+  > 🧑 Manual — LSP 経由の表示確認。本番 app（https://karasu.kompiro.dev/）で `.krs.style` を開いて目視
 
 ## 補足
 

@@ -468,6 +468,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-1827](TPL-1827-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |
 | [TPL-1842](TPL-1842-restore-state-survive-later-reset.md) | URL/共有から復元する state は、後発の seed reset を越えて再適用する | navigation | #1842 |
 | [TPL-1961](TPL-1961-catch-all-route-inverts-default.md) | 既定を反転させる catch-all ルートは、判別子・安全側 fallthrough・機械チェック付き予約リストのどれで止めるか明示する — 素の予約リストだけでは後から足したルートが 404 になる | navigation | #1961 |
+| [TPL-2249](TPL-2249-resolution-stays-deterministic.md) | 解決（resolution）に生成・パーソナライズを混ぜない — URL が内容を決める性質を壊さず、生成は別資源として mint する | navigation | #2249 |
 | [TPL-1829](TPL-1829-adr-permalink-records-source.md) | ADR permalink は record ではなく pointer — in-repo `.krs` source を必須で記録する | adr-tooling | #1829 |
 | [TPL-1882](TPL-1882-entity-carries-no-attributes.md) | `entity` は名前・関連・物理対応のみを受け付け、属性（カラム・型・主キー）を持たせない | parser | #1870 |
 | [TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-1858, #1859 |
@@ -497,3 +498,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2172](TPL-2172-builtin-vocabulary-addition-gate.md) | builtin 語彙の追加は register 判定・既存表現の有無・停止規則の 3 問を通す — 通ったものは同 PR で効果を持たせ、却下したものも理由を記録する | core-concepts | #2172, docs/spec/tags-annotations.md |
 | [TPL-2221](TPL-2221-merge-only-facts-decided-on-merged-model.md) | マージ後にしか成立しない事実（重複・多重所属・件数）を述べる診断は、マージ後のモデルで判定する — per-file 判定は偽陽性ではなく**沈黙**して落ちる | resolver | #2221 |
 | [TPL-2253](TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md) | 「どこからも消す」変更の完了条件は検索式で書く — 手書きのファイル一覧は計画であって条件ではなく、漏れた残骸は使われていないがゆえに CI で落ちない | build | #2253, #1700 |
+| [TPL-2254](TPL-2254-durable-record-points-at-durable-address.md) | 再実行される記録は、記録より長生きするアドレスを指す — PR 作業中に見えている preview URL やローカル起動は、書いた瞬間だけ正しくマージした瞬間に嘘になる | testing | #2254 |
+| [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) | 要素に届かせるために広げた図形は実被覆で測る（bbox でも記録矩形でもなく）— 広げる述語は「回廊に非メンバーが無いこと」で書き、一括シフトは派生ジオメトリも動かす | renderer | #2179, #2240, docs/spec/syntax.md |

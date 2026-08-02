@@ -2139,7 +2139,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
-//   boundary-multi-membership.krs  a node listed in two boundaries — every membership is kept (experimental)
+//   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
 
 system FeatureSamples {
   label "Feature samples"
@@ -2925,36 +2925,50 @@ system Shop {
       content: `// A node in more than one \`boundary\` (Issue #2161 — experimental).
 //
 // Ledger is listed in BOTH \`payments\` and \`pci\` below. Both memberships are
-// kept in the model — but with "Group by: Boundary" on you will see Ledger
-// inside the \`payments\` frame ONLY, and \`pci\` framing just Card vault.
+// kept in the model, and with "Group by: Boundary" on you can see both: the
+// \`pci\` frame reaches up out of its own band to wrap Ledger where it sits at
+// the bottom of \`payments\`, so the two frames OVERLAP over that one card.
 //
-// THAT IS EXPECTED TODAY, and it is the thing this sample is here to show:
-// a banded layout puts each node in exactly one band, so it uses the node's
-// FIRST-declared boundary (its "primary"). Drawing a node inside all the
-// frames it belongs to is being built separately (#2161).
+// Ledger is still drawn exactly ONCE. What overlaps is the frames, not the
+// node — a banded layout gives every node one row, and multi-membership is
+// expressed by letting a frame leave its band, never by copying the card.
 //
-// So the second membership is invisible in the diagram. Two ways to confirm it
-// is really there:
+// Each boundary has its own colour, cycled by declaration order, and fills it
+// faintly. That is not decoration: in one shared colour, two dashed outlines
+// around the same card read as one frame NESTED in the other. The colours (and
+// the third tone where the two fills composite) are what make it read as a
+// crossing instead. The frame titles take the same colour, so you can tell
+// which outline belongs to which boundary.
 //
-//   1. The diagnostics panel reports Ledger as an \`info\` — it belongs to more
-//      than one boundary. A fact worth seeing, not an error, the same register
-//      as a node owned by two teams.
-//   2. Swap the \`payments\` and \`pci\` blocks around. Ledger moves into \`pci\`'s
-//      frame and NOTHING else changes — only the primary changed. If the
-//      second membership were being dropped, swapping could not move anything.
+// Two things decide whether you see the overlap at all:
 //
-// The second membership does shape the layout, even though it is not drawn:
-// boundaries that share a node are banded next to each other where the
-// dependency flow allows it, and the shared node is seated on the row of its
-// band that TOUCHES the other one — here Ledger sits at the bottom of
-// \`payments\`, against \`pci\`. That is the seam the two frames will overlap over
-// once a frame can reach out of its band.
+//   1. Boundaries that share a member are banded next to each other where the
+//      dependency flow allows it, and the shared node is seated on the row that
+//      TOUCHES the other band. Here Ledger sits at the bottom of \`payments\`,
+//      against \`pci\`. Without that seam there is nothing to reach across.
+//   2. A frame is widened only when the corridor to the card holds no card that
+//      is NOT its member. A frame must never enclose a non-member, and that
+//      rule wins over showing the containment.
 //
-// There is one case where a shared node does move frames: a boundary whose
-// members are ALL claimed by earlier ones has nothing to band, so rather than
-// vanish from the diagram it takes one of its shared members — as long as the
-// boundary it takes from keeps another member. Not the case here: \`pci\` bands
-// Card vault on its own, so it needs nothing from \`payments\`.
+// To watch rule 2 refuse — and see what it falls back to — add an edge
+// \`Ledger -> Wallet "settle"\`. That pins Ledger above Wallet inside \`payments\`,
+// so the corridor from \`pci\` up to Ledger now runs through Wallet, which is not
+// in \`pci\`. The frame stays where it is and Ledger gets a dashed \`◇ PCI scope\`
+// tab on its bottom edge instead, plus an \`info\` diagnostic saying the frame
+// could not reach it. Expect the tab to be the common outcome rather than the
+// exception: whether the corridor is clear depends on where the dependency flow
+// put the cards, which is not something you chose.
+//
+// The diagnostics panel also reports Ledger as an \`info\` for the model fact —
+// it belongs to more than one boundary. A fact worth seeing, not an error, the
+// same register as a node owned by two teams. That one is about the MODEL; the
+// reach diagnostic above is about THIS DRAWING.
+//
+// There is one case where a shared node moves frames: a boundary whose members
+// are ALL claimed by earlier ones has nothing to band, so rather than vanish it
+// takes one of its shared members — as long as the boundary it takes from keeps
+// another member. Not the case here: \`pci\` bands Card vault on its own, so it
+// needs nothing from \`payments\`.
 //
 // Boundaries group by meaning, and meanings overlap: Ledger is part of the
 // payments flow AND inside the PCI audit scope. Listing it in both is a normal
@@ -2993,8 +3007,8 @@ boundary payments {
 
 boundary pci {
   label "PCI scope"
-  // Ledger is already in \`payments\` above. Both memberships are kept; the
-  // frame you see it in is the first one declared.
+  // Ledger is already in \`payments\` above. Both memberships are kept, and both
+  // frames enclose it — this one reaches up to the row Ledger sits on.
   contains Ledger
   contains CardVault
 }
