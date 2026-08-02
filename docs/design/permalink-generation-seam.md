@@ -48,6 +48,7 @@ ADR-1990 は「GitHub App で任意の repo を読み、server-side で AI rever
 - **ADR-1990 decision 6**: data-trust（同意・生コード非保存・zero-retention・uninstall purge・開示）は成立条件であって follow-up ではない。**これが揃うまで他者の private コードに触れてはならない。**
 - **生成は 12–19 分**（85 ファイル。`Dify` 規模はその数倍）。同期 HTTP に載らない。
 - **Pages app 面は認証なし**（ADR-9017）。反転するなら別 ADR が要る。
+- **今日の karasu-nest は個人情報を一切持たない。** ADR-1990 decision 6 の data-trust は**コード**を対象にした設計で、個人データは想定していない。ここに personal data を入れるなら、privacy policy・purge・保管期間の対象を広げる必要がある（軸4 を参照）。
 - out of scope: reverse pipeline の中身、quota の水準、法務、描画側（#1817 の大規模図の可読性）。
 
 ## 3 つの緊張
@@ -115,13 +116,32 @@ permalink を踏むのは reader で、認証も installation も持たない通
 - **3-A メリット**: ADR-1990 の決定そのまま。cache が SHA だけで keyed でき単純。**デメリット**: 「この repo の決済まわりだけ見たい」に応えられない。
 - **3-B メリット**: #2249 の出発点である「利用者のリクエストを基に」を満たす。ADR-2077 の BC 粒度指示が既にプロンプト側のレバーとして効くと実証済みなので、指示を受け取る器としては自然。**デメリット**: cache key にリクエスト文が入る（同じ repo でも別成果物）。permalink の determinism を守るには mint した URL 側に安定 id が要り、それは**新しい永続資源**なので ADR-1990 decision 6 の purge 範囲に入る。
 
+### 軸4: 12〜19 分の完了をどう伝えるか
+
+緊張 3 より、生成は非同期になる。では「終わったこと」をどう届けるか。
+
+**先行例（DeepWiki）**: 未 index の repo は **メールアドレスを登録して完了通知を受け取る**（通常 1 時間以内）。private repo は Devin アカウントが必要で、repo を接続した owner には onboarding 時に自動生成される。つまり **owner 導線とreader 導線で通知手段が分かれている**。karasu の installer / reader の分裂とそのまま重なる。
+
+| | 案 | 内容 |
+| --- | --- | --- |
+| 4-A | **進捗ページ（polling / SSE）** | タブを開いたまま待たせる |
+| 4-B | **メール通知** | miss ページでアドレスを登録し、完成したら mint した URL を送る |
+| 4-C | **PR-back** | 生成した `.krs` を repo への PR として出す。PR 通知が完了通知を兼ねる |
+
+- **4-A メリット**: 個人情報を預からない。実装が最も軽い。**デメリット**: 12〜19 分タブを占有させるのは、図を見に来ただけの reader に対して重すぎる。閉じたら結果に辿り着けない。
+- **4-B メリット**: reader が離席できる唯一の手段。**緊張 2 の結論と噛み合う** — 通知メールに載せるのは mint した URL そのもので、メールが creation 成果物の受け渡しになる（後付けではなく設計上の必然）。緊張 1 に対しても、installation が無い経路に attribution の handle を与える。**デメリット**: **karasu-nest が初めて個人情報を預かる**。privacy policy・purge・保管期間の対象が広がり、メール送信基盤が新しい subprocessor になる（decision 6 の開示対象）。加えて未認証で任意アドレスにメールを送れる口は spam / joe-job の経路になる。そして **abuse 対策としては弱い** — アドレスは無限に作れるので、attribution は得られても accountability は得られない。
+- **4-C メリット**: 個人情報ゼロ。通知が GitHub 側の既存機構に乗る。さらに **ADR-1990 decision 4 の human PR-back ラチェット（#2228）そのもの**であり、[ADR-1829](../adr/1829-adr-permalink-convention.md) の「記録は in-repo `.krs`、URL は pointer」とも一致する — 成果物が正しい置き場所に着地する。**デメリット**: write 権限のある installation が要る。他人の repo を見に来た reader には使えない。
+
+**軸4 と緊張 1 は同じ問いである。** メールが要るのは「installation が無い repo を reader が生成したい」経路だけで、その経路はまさに課金先が居ない経路でもある。生成を installer 限定にするなら、メールは要らない（4-C で足りる）。
+
 ## 現時点の方針
 
-**軸1 = 1-B、軸2 = 2-B、軸3 = 3-B（ただし生成物は別 URL に mint）** を採る。
+**軸1 = 1-B、軸2 = 2-B、軸3 = 3-B（ただし生成物は別 URL に mint）、軸4 = 導線ごとに 4-C / 4-B** を採る。
 
 - **1-B（service binding で委譲）**: hostname を 1 つに保ちながら、ADR-1990 decision 5 の「secret を Pages app に置かない」を守れる唯一の案である。Pages app は route を判定して binding を呼ぶだけで、App private key も LLM key も Worker 側に留まる。#1961 で実測済みの資産（guard・`_routes.json`・`context.next()` fallthrough）がそのまま活き、1-C のように今日動いている `/s`・`/render` をリスクに晒さない。
 - **2-B（状態説明ページ）**: 緊張 3 より、同期で返せるのは状態と次の一手だけである。これは #1961 案5 の fallthrough を**置き換える**もので、「deterministic な 404 → SPA」ではなく「deterministic な 404 → 状態説明」になる。ただし **installation が無い repo では生成を提案せず、install 導線だけを出す**（緊張 1）— 課金先の無い生成は起動させない。
 - **3-B（リクエスト駆動、ただし別 URL）**: `/<owner>/<repo>` は「その repo の正準 `.krs`」を指し続ける。リクエストで観点を変えた生成物は creation の成果として別の安定 URL を得る。これで permalink の determinism（緊張 2）を壊さずに要望を容れられる。
+- **軸4 は導線で分ける**: **installer 導線は 4-C（PR-back）を既定**にする。個人情報を預からずに済み、decision 4 のラチェット（#2228）と同じ機構で、成果物が ADR-1829 の言う正しい置き場所（in-repo `.krs`）に着地する。**reader 導線でだけ 4-B（メール）を採る** — DeepWiki が同じ分け方に落ち着いているのは偶然ではなく、離席できる通知手段が他に無いためである。ただしこれは **karasu-nest が個人情報を預かる最初のケース**になるので、次を満たさない実装は採らない: 預かるのは「アドレス + job id + 有効期限」だけ／**送信後（と TTL 超過）に破棄**／1 job 1 通／**要求元以外のアドレスには送らない**。実質的なコスト cap は per-address quota ではなく #1994 の global rate-limit と IP 制限が担う（アドレスは無限に作れるため）。
 
 結果として `/<owner>/<repo>` の意味は次のように整理される:
 
@@ -129,8 +149,8 @@ permalink を踏むのは reader で、認証も installation も持たない通
 | --- | --- |
 | committed `.krs` がある | 302 → `/s?s=…`（今日どおり） |
 | 生成済み `.krs` が cache にある | 302 → `/s?s=…`（reader から見て区別されない） |
-| どちらも無い + installation あり | 200 状態説明ページ（生成を開始できる） |
-| どちらも無い + installation なし | 200 状態説明ページ（install 導線のみ） |
+| どちらも無い + installation あり | 200 状態説明ページ（生成を開始できる。完了は **PR-back** で届く） |
+| どちらも無い + installation なし | 200 状態説明ページ（install 導線 ＋ **メール登録**で完了通知） |
 | 明示 `@<ref>` があって解決できない | エラー（permalink 意図が明示されているので診断を出す） |
 
 **この方針は #1961 の案5 を上書きする。** #1961 の実装は本 doc の合意後に着手し、fallthrough の行き先を SPA ではなく状態説明ページにする。
@@ -145,7 +165,9 @@ permalink を踏むのは reader で、認証も installation も持たない通
 | 2-B 状態説明ページ | [#1961](https://github.com/kompiro/karasu/issues/1961)（fallthrough の行き先として。案5 を差し替える） |
 | installation 有無による分岐 | [#1992](https://github.com/kompiro/karasu/issues/1992)（App auth） |
 | 3-B リクエスト駆動 + 別 URL mint | **ADR-1990 に無い入力モードなので、#1990 の子として新規起票が要る**（本 doc 合意後） |
-| 生成物 URL の purge 範囲 | [#1996](https://github.com/kompiro/karasu/issues/1996)（data-trust。mint した資源も purge 対象に含める） |
+| 4-C PR-back を完了通知に使う | [#2228](https://github.com/kompiro/karasu/issues/2228)（ラチェット検証と同じ機構。通知としての用途を scope に足す） |
+| 4-B メール通知 | **新規起票が要る**（3-B と同じ PR で。非同期 job + 送信基盤 + 破棄） |
+| 生成物 URL とメールアドレスの purge 範囲 | [#1996](https://github.com/kompiro/karasu/issues/1996)（data-trust。**personal data まで scope を広げる** — 現状の decision 6 はコードだけを対象にしている） |
 
 ### 影響範囲・マイグレーション
 
@@ -157,6 +179,7 @@ permalink を踏むのは reader で、認証も installation も持たない通
 
 - **service binding のデプロイ結合をどう切るか**: 1-B は Pages app と nest サービスを binding で結ぶ。binding 先が未デプロイ / 障害中のときに Pages app 側が何を返すかは、#2227 着手時に決める（フェイルセーフは「committed `.krs` の解決だけは binding 無しで完結する」ことを保つ形になるはず）。
 - **生成物 URL の形**: 3-B が mint する安定 URL の文法（`/g/<id>` か、repo + リクエストのハッシュか）は決めない。permalink の deep anchor 文法（ADR-1827）を共有するかも含めて、新規起票側で決める。
-- **public repo の扱い**: public repo は installation 無しでも読めるが、**推論コストは同じくかかる**。「public なら誰でも生成を起動してよい」とすると緊張 1 がそのまま残る。訪問者サインイン（ADR-9017 の認証なしを app 面でも反転）まで踏み込むかは本 doc では決めない。
+- **public repo の扱い**: public repo は installation 無しでも読めるが、**推論コストは同じくかかる**。「public なら誰でも生成を起動してよい」とすると緊張 1 がそのまま残る。メール（4-B）は attribution を与えるが accountability は与えない。**そもそも reader 導線の生成を提供するのか**（提供しないなら 4-B もメール保管も不要になる）、提供するなら訪問者サインイン（GitHub OAuth — ADR-9017 の認証なしを app 面でも反転、DeepWiki が private で Devin アカウントを要求しているのと同じ判断）まで踏み込むかは本 doc では決めない。**軸4 の最終形はこの問いに従属する。**
+- **メール送信基盤の選定と法務**: 送信 provider は decision 6 の subprocessor 開示対象になる。個人データの保管期間・削除要求への応答は #1996 の法務側と一体で決める。
 - **cache hit を reader にどう見せるか**: 生成済み `.krs` を 302 で返すとき、それが AI 生成物である事実（と confidence、#1995）をどこで伝えるか。描画面の話なので #1995 / #1817 側。
 - **quota の水準**: #2226 の実測待ち（ADR-1990 の未決事項のまま）。
