@@ -63,6 +63,7 @@
     "lint:config-topics-sync": "tsx scripts/lint/config-topics-sync.ts",
     "lint:vitest-projects-sync": "tsx scripts/lint/vitest-projects-sync.ts",
     "lint:roadmap-issue-state": "tsx scripts/lint/roadmap-issue-state.ts",
+    "program:slices": "tsx scripts/program-slices.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages",
     "tpl:related": "tpl related --config tpl.config.json",
     "tpl:review:body": "tpl review-body --repo kompiro/karasu",
