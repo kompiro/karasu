@@ -217,20 +217,22 @@ C-1 の帰結として決めること:
 
 **Part A（1:N 化）→ Part B（直交ポリゴン frame）→ Part C（collapse 二重性）の順に、独立して出荷できる 3 スライスで積む。** 各スライス単体でも図が悪化しないことを [ADR-1974](../adr/1974-boundary-declaration-syntax.md) の実装分割（A/B/C）と同じ規律で守る。
 
-### スライス別にできること
+### スライス別の切り方
 
-各スライスが**何を可能にするか**と、**その時点でまだできないこと**を 1 枚にする。
-「できないこと」を並べているのは、途中のスライスを実際に使ったとき「壊れている」と
-読まれるのを防ぐため（slice A の多重所属ノードが 1 つの枠にしか入らないのは仕様であって欠陥ではない）。
+各スライスを独立に出荷できると判断した根拠と、依存関係だけをここに置く。
+**各スライスで何ができるようになるか / その時点でまだできないことは、親 Issue
+[#2161](https://github.com/kompiro/karasu/issues/2161) の `## Slice status` を参照する**
+（`docs/process.md`「複数スライスに分けるときの追跡」— 到達点の一覧は本 Doc が
+ADR 昇格で削除されても残る場所に置く）。
 
-| スライス | できるようになること | ユーザー可視の変化 | その時点でできないこと | 前提 |
-| --- | --- | --- | --- | --- |
-| **A** model 層の 1:N 化<br>[#2178](https://github.com/kompiro/karasu/issues/2178) ✅ | 宣言された所属を**モデルが全量保持**する。merge 3 経路（multi-file import の和集合 / diff の removed 限定 backfill / scope 合成）が同じ多値の意味論に従う。群の**存在**を宣言リストから導く | 診断 `duplicate-boundary-assignment` の文言（事実の register へ）。副次的に、**import 先ファイルで宣言された `boundary` が効くようになる**（従来は parse されて消えていた） | 多重所属を**図から**確認できない。共有ノードは primary の枠にしか入らず、全メンバー共有の boundary は枠を持たない。2 つ目の所属の観測手段は info 診断と「宣言順を入れ替えると primary が移る」ことだけ | — |
-| **B** 多重包含 geometry<br>[#2179](https://github.com/kompiro/karasu/issues/2179) | 共有ノードを**所属するすべての枠が囲む**（矩形直交ポリゴン frame）。boundary ごとの識別色で重なりが入れ子と区別できる。届かない共有は `◇ <boundary>` の破線タブに縮退する | 図が変わる。帯が隣接する共有は 2 枚の枠に囲まれて見える。frame の描画・ラベル・P2c routing の障害物判定が更新される | 重なりは**日和見的** — band 順が味方したときだけ枠が届く。届かない共有はタブ表示に落ちる。自前の band を持たない boundary は依然 body を持たない | A |
-| **配置** seam 配置 + band 順<br>[#2176](https://github.com/kompiro/karasu/issues/2176) ✅ | `orderGroups` に co-membership 項を入れ、共有ノードを帯の**継ぎ目**に寄せる。全メンバー共有の boundary が body を得る | 共有する boundary が隣り合う band に来て、共有ノードがその継ぎ目の行に座る。全メンバー共有の boundary が枠とラベルを得る | 枠はまだ矩形なので、隣り合わせた**その先**（枠が相手のカードまで届く）は B 待ち。3 重以上・非隣接の共有はなお縮退しうる（corridor 描画は corpus 証拠待ち） | A（**B より先に実施**。下記「#2176 を B より先に実施した」節） |
-| **C** collapse 二重性<br>[#2180](https://github.com/kompiro/karasu/issues/2180) | **所属がすべて collapsed のときだけ**ノードを畳む。0 件 stub を出さない。bulk collapse は primary の stub に集約する | 片方の boundary を畳んでも、他方が expanded ならノードは消えない。両方畳むと消える | — （本設計の到達点） | A（C-1 の判定は membership だけで決まる。ただし stub と枠の見え方は B と併せて確認する） |
+| スライス | 前提 | 独立に出荷できる理由 |
+| --- | --- | --- |
+| **A** model 層の 1:N 化（[#2178](https://github.com/kompiro/karasu/issues/2178)） | — | 描画は primary で従来どおり。モデルが多値を保持しても banded view の見た目は変わらないため、A 単体で図が悪化しない |
+| **B** 多重包含 geometry（[#2179](https://github.com/kompiro/karasu/issues/2179)） | A | 届かない共有は縮退タブに落ちるので、band 順が味方しないケースでも「囲めていない」ことが図の上で明示され、壊れた見え方にならない |
+| **配置** seam 配置 + band 順（[#2176](https://github.com/kompiro/karasu/issues/2176)） | A（**B より先に実施した** — 下記「#2176 を B より先に実施した」節） | 枠は矩形のまま隣接と行位置だけを動かすので、B 未達でも図として成立する。共有が無いモデルではコスト項が全 permutation で 0 になり band 順が完全に不変 |
+| **C** collapse 二重性（[#2180](https://github.com/kompiro/karasu/issues/2180)） | A | 判定は membership だけで決まり geometry に依存しない。ただし stub と枠の見え方は B と併せて確認する |
 
-> **slice A 時点の「できないこと」は仕様である。** 多重所属ノードが 1 つの枠にしか
+> **途中スライスの縮退は仕様である。** slice A で多重所属ノードが 1 つの枠にしか
 > 現れないのは banded layout が 1 ノード 1 band だからで、モデルは両方の所属を持っている。
 > 検証用サンプル `examples/en/feature-samples/boundary-multi-membership.krs` は
 > この点を先頭のコメントで明示している。
@@ -239,7 +241,7 @@ C-1 の帰結として決めること:
 
 本 Design Doc の合意後、次の 3 Issue に分割起票する（#2161 は親として残す）。
 
-**slice A — model 層の 1:N 化（✅ [#2178](https://github.com/kompiro/karasu/issues/2178) / PR [#2213](https://github.com/kompiro/karasu/pull/2213)）**
+**slice A — model 層の 1:N 化（[#2178](https://github.com/kompiro/karasu/issues/2178) / PR [#2213](https://github.com/kompiro/karasu/pull/2213)）**
 
 > 実装粒度の設計と、A-4 の到達点の決め直しは `docs/design/boundary-membership-slice-a.md` にある。
 
@@ -262,7 +264,7 @@ C-1 の帰結として決めること:
 > 配置（`orderGroups` の co-membership 項・seam 行）は **slice B に含めない** — [#2176](https://github.com/kompiro/karasu/issues/2176)。
 > したがって slice B 時点の多重包含は日和見的で、届かない共有は縮退タブで示される。
 
-**配置 — seam 配置 + co-membership band 順（✅ [#2176](https://github.com/kompiro/karasu/issues/2176)）**
+**配置 — seam 配置 + co-membership band 順（[#2176](https://github.com/kompiro/karasu/issues/2176)）**
 
 1. `orderGroups` のコスト tuple を `(逆流エッジ重み, 逆流エッジ本数, co-membership 分離, 総スパン)` にする。
    min-FAS を先頭、宣言順を最終 tie-break に据えたまま、共有メンバーを持つ群を隣接させる項を

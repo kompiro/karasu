@@ -84,6 +84,60 @@ ready → implementing → in-review → (close)
 
 > `close` は PR に `Closes #N` を記載することで GitHub が自動で行う。
 
+### 複数スライスに分けるときの追跡
+
+**到達状態**: 親 Issue を開けば「何スライス中いくつ落ちたか」と「今なにができて、
+なにがまだできないか」が同時に読める。`pnpm program:slices` が問題を報告しない。
+
+1 つの仕事を複数の Issue に割って実装するときは、親 Issue に次の 2 つを置く。
+どちらか片方だけでは「全体としてどこまで実現できているか」に答えられない。
+
+| 何を | どこに | 誰が更新するか |
+| --- | --- | --- |
+| どのスライスが落ちたか | **GitHub sub-issue**（親 Issue に登録する） | GitHub。Issue の open/closed がそのまま進捗バーになる |
+| 各スライスで何ができるようになるか / その時点でまだできないこと | **親 Issue body の `## Slice status` 表** | 人。スライスを切ったときに書き、**スライスが増減した / 依存や順序が変わったとき**に直す（進捗の記録として書き換えるのではない） |
+
+```
+gh api repos/kompiro/karasu/issues/<parent>/sub_issues \
+  -F sub_issue_id=$(gh api repos/kompiro/karasu/issues/<child> --jq .id)
+```
+
+> `sub_issue_id` は Issue 番号ではなく GitHub の内部 id。`-f` は値を文字列で送るので
+> 422 になる — `-F` を使う。
+
+規律は 2 つだけ:
+
+- **完了マークを手で書かない。** `## Slice status` 表に ✅ 列を作らない。完了は
+  sub-issue の state が唯一の正であり、表に持つと二重管理になって必ず drift する
+  （[TPL-1032](test-perspectives/TPL-1032-derived-state-staleness.md) — 派生 state の二重持ち）。
+- **「その時点でできないこと」を必ず書く。** 途中のスライスを実際に使った人が
+  「壊れている」と読むのを防ぐのがこの表の主目的で、「できること」だけの表は
+  その役目を果たさない。
+
+**スライスの開発中に見つけたバグは、そのスライスが作った（または到達可能にした）欠陥なら、
+独立 Issue にせず親の sub-issue として登録し表に 1 行足す。** 判定はこの 1 つで、「バグか
+機能か」では分けない。バグ行は前提列に**どのスライスが生んだ欠陥か**を書き（後から原因を
+辿れるように）、「できないこと」列は `—` でよい。分母が動くのは正直な動きで、隠すと実態より
+進んで見える。実例は [#2221](https://github.com/kompiro/karasu/issues/2221)（boundary
+slice A [#2178](https://github.com/kompiro/karasu/issues/2178) が cross-file 多重所属を
+正常状態にしたが、その状態が無診断だった）。
+
+Design Doc は**なぜその切り方にしたか**（スライスの依存関係・各スライスの実装手順）を
+持ち、到達点の一覧は持たない。Design Doc は ADR 昇格時に削除されるため、そこに置くと
+プログラムが完成した瞬間に一覧が失われる。この配線は ADR-2218 の
+「決定 = ADR / 適用状態 = roadmap」を Issue 軸に広げたもので、`docs/roadmap.md` は
+プログラム 1 本につき 1 行のみ保持する（ADR-2218 が ✅ による完了マークを禁じている）。
+
+検証:
+
+```
+pnpm program:slices          # open な親 Issue を全件チェック
+pnpm program:slices 2161     # 1 本だけ
+```
+
+sub-issue を持つ親 Issue の body に `## Slice status` 節が無い、または節が
+sub-issue を取りこぼしていると非ゼロ終了する。
+
 ### PR ワークフロー
 
 ```
