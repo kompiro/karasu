@@ -20,13 +20,29 @@
 
   > ✅ Automated — `pull-request.test.ts` › `returns the existing pull request rather than opening a second`
 
+- [x] AT-B2: 重複判定は owner の**正準表記**で行う（route 側で小文字化されているため、そのままでは GitHub の head フィルタに一致しない）
+
+  > ✅ Automated — `pull-request.test.ts` › `looks for a duplicate under the owner's canonical login`
+
+- [x] AT-B3: head フィルタの結果を鵜呑みにせず `head.ref` を突き合わせる（他人の PR を「自分のもの」と誤認しない）
+
+  > ✅ Automated — `packages/nest/src/github/client.test.ts` › `ignores a pull request whose head is not the branch we asked about`
+
 - [x] AT-C: 前回の delivery が残したブランチを再利用する（PR が閉じられた／途中で死んだ場合）
 
   > ✅ Automated — `pull-request.test.ts` › `reuses a branch left behind by an earlier delivery`
 
-- [x] AT-D: ブランチ作成の競合（422）は成功として扱い、それ以外の失敗は握り潰さない
+- [x] AT-C2: ブランチが**別の commit を指している**ときは再利用せず失敗する（PR の diff が 1 ファイルでなくなるため）
 
-  > ✅ Automated — `pull-request.test.ts` › `tolerates losing a race to create the branch` / `does not swallow a branch creation failure that is not a race`
+  > ✅ Automated — `pull-request.test.ts` › `refuses a branch that exists but points at another commit`
+
+- [x] AT-D: ブランチ作成の競合（422）は成功として扱い、それ以外の失敗は握り潰さない。**ruleset による 422 は競合と区別する**（ref の実在で判定する）
+
+  > ✅ Automated — `pull-request.test.ts` › `tolerates losing a race to create the branch` / `does not swallow a branch creation failure that is not a race` / `reports a 422 that was a rule refusal rather than a lost race`
+
+- [x] AT-D2: PR が開けなかったとき、**自分が作ったブランチは消す**（他人の repo に無通知のゴミを残さない）。自分が作っていないブランチは残す
+
+  > ✅ Automated — `pull-request.test.ts` › `deletes the branch it created when the pull request cannot be opened` / `leaves a branch it did not create`
 
 - [x] AT-E: 既存ファイルがあるときは blob sha を添えて置き換える（409 で落ちない）
 
@@ -44,6 +60,18 @@
 
   > ✅ Automated — `pull-request.test.ts` › `does not break its own table when a summary contains a pipe`
 
+- [x] AT-H2: **モデルが書いた文字列で PR 本文に指示を注入できない**（改行を潰す。`Closes #N` や `@team` が本文の行頭に立たない）
+
+  > ✅ Automated — `pull-request.test.ts` › `cannot be made to inject directives into the body it is embedded in`
+
+- [x] AT-H3: モデルが summary に credential を再生産した場合、本文に出る前に redact され、件数に加算される
+
+  > ✅ Automated — `pull-request.test.ts` › `redacts a credential a model reproduced in a summary, and counts it`
+
+- [x] AT-H4: 暴走した summary は切り詰める
+
+  > ✅ Automated — `pull-request.test.ts` › `truncates a summary that ran away`
+
 - [x] AT-I: PR 本文が「ソースは保存していない」「redaction が何件あったか」を述べる
 
   > ✅ Automated — `pull-request.test.ts` › `says what was read and that it was not kept` / `does not imply a redaction happened when none did`
@@ -60,9 +88,29 @@
 
   > ✅ Automated — `run.test.ts` › `keeps the model when the pull request cannot be opened`
 
-- [x] AT-M: **既定では delivery しない**（`PR_DELIVERY=on` の deploy だけが有効化する）
+- [x] AT-M: **既定では delivery しない**。スイッチは完全一致でのみ on（`ON` / `true` / `1` / 前後空白はすべて off に倒れる）
 
-  > ✅ Automated — `run.test.ts` › `does not deliver at all when no deliverer is wired`、`packages/nest/src/app.test.ts` › `serves /healthz`（`PR_DELIVERY: false` を報告）
+  > ✅ Automated — `pull-request.test.ts` › `is on only for the exact value, so a typo fails closed`、`run.test.ts` › `does not deliver at all when no deliverer is wired`、`packages/nest/src/app.test.ts` › `serves /healthz`（`PR_DELIVERY: false` を報告）
+
+- [x] AT-O: スキャンが repo 全体を覆っていないときは PR 本文がそう言う（ファイル上限は 200 で、超える repo では常態）
+
+  > ✅ Automated — `pull-request.test.ts` › `says when the scan did not cover the whole repository`
+
+- [x] AT-P: 書き込みは 401 で再送しない（revoke されたインストールに write を二重送信しない）
+
+  > ✅ Automated — `packages/nest/src/github/client.test.ts` › `does not replay a failed write against a revoked installation`
+
+- [x] AT-Q: 存在しない ref は 404 ではなく「無い」として返る
+
+  > ✅ Automated — `client.test.ts` › `reports a missing ref as absent rather than as an error`
+
+- [x] AT-R: ファイルパスに `..` を含む書き込みは拒否する（`encodeURIComponent` は `..` を素通しする）
+
+  > ✅ Automated — `client.test.ts` › `refuses a file path that could traverse out of the repository`
+
+- [x] AT-S: delivery した PR の URL を run 記録に残し、status から見える（書き込んだ事実をサービス自身が言えるようにする）
+
+  > ✅ Automated — `run.test.ts` › `records the pull request on the run, so the status endpoint can report the write`
 
 - [x] AT-N: 非 ASCII を含む `.krs`（日本語ラベル等）が base64 化で壊れない
 

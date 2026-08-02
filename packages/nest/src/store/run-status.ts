@@ -26,6 +26,14 @@ export interface RunStatus {
   finishedAt?: string;
   /** Present only when `state` is `failed`. Safe to show a caller. */
   error?: string;
+  /**
+   * The pull request carrying the model, when delivery is on (#2289).
+   *
+   * A service that writes to someone's repository should be able to say so on
+   * its own status endpoint, rather than leaving GitHub's notification as the
+   * only place the write is visible.
+   */
+  pullRequest?: string;
 }
 
 /**

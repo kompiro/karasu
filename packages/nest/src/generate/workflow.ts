@@ -12,7 +12,11 @@
  * interrupts it, and who gives the concurrency slot back".
  */
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
-import { deliverPullRequest, type DeliveryInput } from "../deliver/pull-request.js";
+import {
+  deliverPullRequest,
+  deliveryEnabled,
+  type DeliveryInput,
+} from "../deliver/pull-request.js";
 import { requireBinding, type NestEnv } from "../env.js";
 import { GitHubClient } from "../github/client.js";
 import { logError, logInfo } from "../log.js";
@@ -65,7 +69,7 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
               // Delivery is off unless the deploy says otherwise: it needs
               // `contents:write` and `pull_requests:write`, wider than the
               // `contents:read` the install consent covers until #1996 lands.
-              ...(env.PR_DELIVERY === "on"
+              ...(deliveryEnabled(env)
                 ? {
                     deliver: (input: DeliveryInput) =>
                       deliverPullRequest(input, {

@@ -338,6 +338,47 @@ describe("GitHubClient", () => {
       expect(decoded).toBe(krs);
     });
 
+    it("ignores a pull request whose head is not the branch we asked about", async () => {
+      // If GitHub ever ignores an unmatched head filter and returns the full
+      // list, taking the first element would report someone else's pull
+      // request as ours and skip the delivery entirely.
+      const { fetchImpl } = stubFetch({
+        "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
+        [`/repos/kompiro/karasu/pulls?state=open&head=${encodeURIComponent(
+          "Kompiro:karasu-nest/model-abc",
+        )}`]: () =>
+          json([
+            { number: 1, html_url: "https://example/1", head: { ref: "someone-elses-branch" } },
+            { number: 2, html_url: "https://example/2", head: { ref: "karasu-nest/model-abc" } },
+          ]),
+      });
+      expect(
+        await client(fetchImpl).openPullRequest(
+          "42",
+          "kompiro",
+          "karasu",
+          "karasu-nest/model-abc",
+          "Kompiro",
+        ),
+      ).toEqual({ number: 2, url: "https://example/2" });
+    });
+
+    it("refuses a file path that could traverse out of the repository", async () => {
+      // `encodeURIComponent("..")` is `".."`, and the separators are preserved
+      // by design -- so a traversal survives intact on a PUT helper.
+      const { fetchImpl } = stubFetch({
+        "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),
+      });
+      await expect(
+        client(fetchImpl).putFile("42", "kompiro", "karasu", {
+          path: "../../orgs/evil/x",
+          content: "x",
+          message: "m",
+          branch: "b",
+        }),
+      ).rejects.toThrowError(/may not contain \. or \.\. segments/);
+    });
+
     it("reports a missing ref as absent rather than as an error", async () => {
       const { fetchImpl } = stubFetch({
         "/app/installations/42/access_tokens": () => tokenResponse("t", "2026-08-02T13:00:00Z"),

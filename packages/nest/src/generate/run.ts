@@ -286,7 +286,20 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
           sha,
           krs: reverse.krs,
           domains: reverse.domains,
-          redactions: redactions,
+          redactions,
+          // An archive is never partial the way a tree listing can be, so the
+          // only "you did not see all of it" the body can report is our cap.
+          truncatedTree: false,
+          truncatedByCap: archive.truncated,
+        });
+        // Re-stated on the run record, so `GET /<owner>/<repo>/status` can
+        // report the write this service made to someone else's repository.
+        await runs.put(ref, {
+          state: "done",
+          sha,
+          startedAt,
+          finishedAt,
+          pullRequest: delivery.url,
         });
       } catch (cause) {
         logError(`karasu-nest could not open a pull request for ${owner}/${repo}`, cause);

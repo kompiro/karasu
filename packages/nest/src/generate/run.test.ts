@@ -395,6 +395,30 @@ describe("generate", () => {
       });
     });
 
+    it("records the pull request on the run, so the status endpoint can report the write", async () => {
+      // A service that writes to someone's repository should be able to say
+      // so itself rather than leaving GitHub's notification as the only place
+      // the write is visible.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = {
+        ...deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm),
+        deliver: () =>
+          Promise.resolve({
+            number: 7,
+            url: "https://github.com/kompiro/shop/pull/7",
+            created: true,
+            branch: "karasu-nest/model-aaaaaaaaaaaa",
+            path: "docs/architecture.krs",
+          }),
+      };
+
+      await generate(input, d);
+      expect(await d.runs.get(input)).toMatchObject({
+        state: "done",
+        pullRequest: "https://github.com/kompiro/shop/pull/7",
+      });
+    });
+
     it("keeps the model when the pull request cannot be opened", async () => {
       // The document is already cached and served by GET /<owner>/<repo>. A
       // delivery failure costs the pull request, not the model.
