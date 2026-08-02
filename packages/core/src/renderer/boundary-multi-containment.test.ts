@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { compile } from "../index.js";
+import {
+  buildAllLayersSvg,
+  buildDrillDownSvg,
+  compile,
+  compileSystemDiff,
+  InMemoryFileSystemProvider,
+} from "../index.js";
 import { Parser } from "../parser/parser.js";
 import { extractView } from "../view/view-extract.js";
 import { layout } from "./layout.js";
@@ -168,6 +174,80 @@ describe("multi-containment geometry (#2179)", () => {
     expect(result.degradedMemberships).toEqual([{ nodeId: "Ledger", boundaryId: "pci" }]);
   });
 
+  it("refuses a strip that would float beside the body instead of joining it", () => {
+    // Every row is centred independently against the widest row, so a shared
+    // member can land in a different x-column from the boundary's own band. The
+    // vertical checks pass and the corridor is empty, but the strip is a second
+    // island: `rectUnionPath` refuses a coverage set with a gap along x, so
+    // without this gate the outline silently fell back to the plain body rect —
+    // no widened frame drawn AND no tab, because the reach had "succeeded".
+    const src = `
+system Payments {
+  service Root { label "Root" }
+  service Ledger { label "Ledger" }
+  service B2 { label "B2" }
+  service B3 { label "B3" }
+  service B4 { label "B4" }
+  service B5 { label "B5" }
+  service CardVault { label "Card vault" }
+
+  Root -> Ledger "a"
+  Root -> B2 "b"
+  Root -> B3 "c"
+  Root -> B4 "d"
+  Root -> B5 "e"
+  Ledger -> CardVault "tokenize"
+}
+
+boundary payments {
+  label "Payments"
+  contains Root
+  contains Ledger
+  contains B2
+  contains B3
+  contains B4
+  contains B5
+}
+
+boundary pci {
+  label "PCI scope"
+  contains Ledger
+  contains CardVault
+}
+`;
+    const result = layoutOf(src);
+    const pci = frameOf(result, "pci");
+    const ledger = result.nodes.get("Ledger")!;
+
+    // The fixture must actually put the two in different x-columns, or this
+    // case stops testing what it is named for.
+    const bodyRight = pci.x + pci.width;
+    const cardRight = ledger.x + ledger.width;
+    const joint = Math.min(cardRight, bodyRight) - Math.max(ledger.x, pci.x);
+    expect(joint).toBeLessThan(0);
+
+    // Refused, so the membership takes the path the spec promises instead.
+    expect(pci.coverage).toBeUndefined();
+    expect(ledger.degradedBoundaries?.map((t) => t.id)).toEqual(["pci"]);
+    expect(result.degradedMemberships).toContainEqual({
+      nodeId: "Ledger",
+      boundaryId: "pci",
+    });
+  });
+
+  it("never records coverage that rectUnionPath would refuse to trace", () => {
+    // The general form of the case above: whatever a frame records as covered
+    // has to be drawable as one outline, or the drawing and the geometry the
+    // routing and containment checks read would disagree.
+    for (const src of [SEATABLE, PINNED]) {
+      const result = layoutOf(src);
+      for (const container of result.containers) {
+        if (!container.coverage) continue;
+        expect(rectUnionPath(container.coverage)).not.toBeNull();
+      }
+    }
+  });
+
   it("leaves a model with no shared members exactly as it was", () => {
     const result = layoutOf(DISJOINT);
     for (const container of result.containers) {
@@ -313,6 +393,69 @@ boundary risk {
       expect(x).toBeGreaterThanOrEqual(ledger.x);
       expect(x + Number(ws)).toBeLessThanOrEqual(ledger.x + ledger.width);
     }
+  });
+
+  it("reports it on every surface that draws boundary frames (TPL-1983)", () => {
+    // The `◇` tab comes off the layout, so it is drawn on all of these. A
+    // surface that draws the fallback but leaves its diagnostics list silent is
+    // exactly the split TPL-1983 rules out — the picture and the panel would
+    // disagree about what happened.
+    const has = (ds: readonly { code: string }[]): boolean =>
+      ds.some((d) => d.code === "boundary-membership-not-drawn");
+
+    const drill = buildDrillDownSvg(
+      PINNED,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    expect(drill.svg).toContain("◇");
+    expect(has(drill.diagnostics)).toBe(true);
+
+    const all = buildAllLayersSvg(
+      PINNED,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    expect(all.svg).toContain("◇");
+    expect(has(all.diagnostics)).toBe(true);
+  });
+
+  it("reports it in compare mode too (TPL-1983)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/before.krs", PINNED);
+    await fs.writeFile("/after.krs", PINNED);
+    const diff = await compileSystemDiff({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+      groupBy: "boundary",
+    });
+    expect(diff.svg).toContain("◇");
+    expect(diff.diagnostics.some((d) => d.code === "boundary-membership-not-drawn")).toBe(true);
+  });
+
+  it("states one degraded membership once, however many levels show it", () => {
+    // The drill-down bundle renders every level through the same `render` call,
+    // and a membership can degrade on more than one of them. One fact, one entry.
+    const drill = buildDrillDownSvg(
+      PINNED,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "boundary",
+    );
+    const reported = drill.diagnostics.filter((d) => d.code === "boundary-membership-not-drawn");
+    expect(reported).toHaveLength(1);
   });
 
   it("says nothing on an axis that draws no boundary frames", () => {

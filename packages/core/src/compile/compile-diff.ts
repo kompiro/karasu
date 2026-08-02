@@ -341,6 +341,9 @@ export async function compileSystemDiff(
     collapsedGroups,
     collapsedCategories,
     interactive,
+    // Compare mode draws the 縮退 tab like any other surface, so it reports the
+    // membership too (#2179) — a tab with no diagnostic is the TPL-1983 split.
+    diagnosticSink: diagnostics,
   });
 
   return {

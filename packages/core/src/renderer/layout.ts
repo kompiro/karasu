@@ -91,7 +91,7 @@ interface FrameReach {
  * The strip that would widen `body` to enclose `card`, or `null` when it must
  * not be drawn (#2179).
  *
- * Refused in two cases, and the caller falls back to the 縮退 tab:
+ * Refused in three cases, and the caller falls back to the 縮退 tab:
  *
  * - the card is not wholly above or below the band body, so a strip would have
  *   to run sideways through the band's own rows;
@@ -102,7 +102,15 @@ interface FrameReach {
  *   models a user would plausibly write. #2176's seam placement narrows that
  *   without removing it (it declines to move a node its intra-group dependents
  *   pin, and a node shared with three boundaries can only be seated toward one
- *   of them), so the gate is on the corridor, not on the band order.
+ *   of them), so the gate is on the corridor, not on the band order;
+ * - **the strip does not join the body widthwise.** Every row is centred
+ *   independently against the widest row, so a shared member can sit in a
+ *   different x-column from the boundary's own band entirely. A strip there is
+ *   a second island rather than a reach: `rectUnionPath` refuses to trace a
+ *   coverage set with a gap along x, so the outline would quietly fall back to
+ *   the plain body rect — no widened frame drawn, and no tab either, because
+ *   the reach had "succeeded". Refusing here is what keeps every membership on
+ *   one of the two paths the spec promises.
  */
 function reachStrip(
   body: Rect,
@@ -122,6 +130,12 @@ function reachStrip(
     height: bottom - top,
   };
   if (strip.height <= 0) return null;
+  // The joint has to be wide enough to read as one shape. A bare overlap of a
+  // pixel or two traces as a hairline neck, and a zero-width one pinches the
+  // polygon at a corner; the frame's own horizontal padding is the smallest
+  // width already established as "a frame edge you can see".
+  const joint = Math.min(strip.x + strip.width, body.x + body.width) - Math.max(strip.x, body.x);
+  if (joint < GROUP_FRAME_PAD_X) return null;
   for (const other of nodes) {
     if (other.id === card.id || isMember(other.id)) continue;
     if (rectsOverlap(strip, other)) return null;

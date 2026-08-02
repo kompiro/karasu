@@ -197,10 +197,17 @@ export interface RenderOptions {
    * can reach a card depends on where the cards landed, so the parser cannot
    * know it and the compile pipeline cannot derive it without laying out.
    *
-   * A sink rather than a return value because `render` returns the SVG string on
-   * every surface (drill-down, all-layers, deploy) and only the system compile
-   * has a diagnostic list to add to; this mirrors how `ResolvedStyles.warnings`
-   * is collected. Callers that pass nothing simply do not receive them.
+   * A sink rather than a return value because `render` returns the SVG string,
+   * and it is called from surfaces that render *many* views into one artifact
+   * (the drill-down and all-layers bundles call it once per level); collecting
+   * into a caller-owned array is what lets those accumulate. This mirrors how
+   * `ResolvedStyles.warnings` is collected.
+   *
+   * **Every surface that passes `groupBy` should pass this too** — the `◇` tab
+   * is drawn from the layout on all of them, so a surface that omits the sink
+   * draws the fallback while its diagnostics list stays silent, which is the
+   * split TPL-1983 rules out. Entries are deduplicated on push, so a membership
+   * that degrades at several levels of one bundle is stated once.
    */
   diagnosticSink?: Diagnostic[];
 }
@@ -254,12 +261,25 @@ export function render(
     // band-less boundary (#2176); it must stay in the frame ADR-1886 returns it to.
     nodeDiffState: options?.nodeDiffState,
   });
-  for (const { nodeId, boundaryId } of layoutResult.degradedMemberships ?? []) {
-    options?.diagnosticSink?.push({
-      severity: "info",
-      code: "boundary-membership-not-drawn",
-      params: { nodeId, boundaryId },
-    });
+  const sink = options?.diagnosticSink;
+  if (sink) {
+    for (const { nodeId, boundaryId } of layoutResult.degradedMemberships ?? []) {
+      // The drill-down and all-layers bundles render every level into one
+      // artifact through this same call, and a membership can degrade on more
+      // than one of them. The fact is the same fact, so state it once.
+      const already = sink.some(
+        (d) =>
+          d.code === "boundary-membership-not-drawn" &&
+          d.params.nodeId === nodeId &&
+          d.params.boundaryId === boundaryId,
+      );
+      if (already) continue;
+      sink.push({
+        severity: "info",
+        code: "boundary-membership-not-drawn",
+        params: { nodeId, boundaryId },
+      });
+    }
   }
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode

@@ -1,4 +1,4 @@
-import type { KrsFile, KrsNode, TeamNode } from "../types/ast.js";
+import type { Diagnostic, KrsFile, KrsNode, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout-types.js";
 import { extractView, extractEntityView } from "../view/view-extract.js";
@@ -149,6 +149,9 @@ export function buildDrillDownSvg(
           declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
           groupLabels,
           teamLabels,
+          // Every level of the bundle reports into one list; `render` dedupes,
+          // so a membership degraded on several levels is stated once (#2179).
+          diagnosticSink: diagnostics,
         }),
     },
     [],
@@ -176,6 +179,7 @@ export function buildDrillDownSvg(
     krsFile.scopedBoundaryMembership,
     declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
+    diagnostics,
   );
   for (const level of entityLevels) levels.push(level.element);
 
@@ -242,6 +246,9 @@ export function renderEntityView(
     declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
     groupLabels: buildGroupLabelIndex(krsFile, groupBy),
     teamLabels: buildTeamLabelIndex(krsFile),
+    // This view frames boundaries too, so it reports a membership it could not
+    // draw rather than showing the `◇` tab with nothing to explain it (#2179).
+    diagnosticSink: diagnostics,
   });
   return { svg, diagnostics, hasContent: true };
 }
@@ -387,6 +394,8 @@ function collectEntityLevels(
   scopedBoundaryMembership?: Map<string, Map<string, string[]>>,
   declaredGroupOrder?: readonly string[],
   groupLabels?: GroupLabelIndex,
+  /** Caller's diagnostics list; the entity levels report into it (#2179). */
+  diagnostics?: Diagnostic[],
 ): BundledLevel[] {
   const levels: BundledLevel[] = [];
   const styles = resolveStyles(effectiveSystems, sheets, []);
@@ -419,6 +428,9 @@ function collectEntityLevels(
       declaredGroupOrder,
       groupLabels,
       teamLabels,
+      // Every level of the bundle reports into one list; `render` dedupes,
+      // so a membership degraded on several levels is stated once (#2179).
+      diagnosticSink: diagnostics,
     });
     const { viewBox, innerContent } = extractSvgParts(svg);
     // Back target: the domain's usecase view when it exists (the domain has
@@ -566,6 +578,9 @@ export function buildAllViewsSvg(
             declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
             groupLabels,
             teamLabels,
+            // Every level of the bundle reports into one list; `render` dedupes,
+            // so a membership degraded on several levels is stated once (#2179).
+            diagnosticSink: diagnostics,
           }),
       },
       [],
@@ -591,6 +606,7 @@ export function buildAllViewsSvg(
     krsFile.scopedBoundaryMembership,
     declaredGroupOrderOf(krsFile, groupBy),
     groupLabels,
+    diagnostics,
   );
 
   // Collect deploy level

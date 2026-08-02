@@ -260,6 +260,9 @@ export function buildAllLayersSvg(
           declaredGroupOrder: declaredGroupOrderOf(krsFile, groupBy),
           groupLabels,
           teamLabels,
+          // Every level of the bundle reports into one list; `render` dedupes,
+          // so a membership degraded on several levels is stated once (#2179).
+          diagnosticSink: diagnostics,
         }),
     },
     [],
