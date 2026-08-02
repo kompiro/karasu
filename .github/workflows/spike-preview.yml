@@ -96,66 +96,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Delete preview deployments for the branch
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/purge-preview-deployments
+        with:
           # On `delete`, `github.event.ref` is the bare branch name (no `refs/heads/`),
           # which is exactly what was passed to `pages deploy --branch=`.
-          BRANCH: ${{ github.event.ref }}
-        run: |
-          api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/karasu/deployments"
-          max_pages=50
-          body=$(mktemp)
-
-          # `per_page` is deliberately not sent: `per_page=100` made this endpoint answer
-          # 400 (#2291). Only `page` is varied, so the page size is whatever Cloudflare
-          # defaults to, and the loop must not assume a size — it stops on an empty page.
-          #
-          # A spike branch collects one deployment per push and lives longer than a PR
-          # branch, so its older deployments routinely sit past the first page. Reading
-          # only page 1 would leave previews alive after the branch is gone.
-          page=1
-          ids=""
-          while [ "$page" -le "$max_pages" ]; do
-            # Write to a file rather than capture stdout: on an error status the body is
-            # the only thing that names the offending parameter, and a command
-            # substitution would swallow it before it could be logged (#2291).
-            status=$(curl -sS -o "$body" -w '%{http_code}' \
-              "${api}?env=preview&page=${page}" \
-              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
-
-            if [ "$status" != "200" ]; then
-              echo "::error::Cloudflare deployments API returned HTTP ${status} for page ${page}"
-              cat "$body"
-              exit 1
-            fi
-
-            found=$(jq -r --arg branch "$BRANCH" \
-              '.result[]? | select(.deployment_trigger.metadata.branch == $branch) | .id' "$body")
-            if [ -n "$found" ]; then
-              ids="${ids}${found}"$'\n'
-            fi
-
-            got=$(jq -r '.result | length' "$body")
-            if [ "$got" -eq 0 ]; then
-              break
-            fi
-            page=$((page + 1))
-          done
-
-          if [ "$page" -gt "$max_pages" ]; then
-            echo "::warning::Stopped after ${max_pages} pages; some deployments for ${BRANCH} may remain."
-          fi
-
-          ids=$(printf '%s\n' "$ids" | awk 'NF')
-          if [ -z "$ids" ]; then
-            echo "No preview deployments found for branch: $BRANCH"
-            exit 0
-          fi
-
-          echo "$ids" | while read -r id; do
-            echo "Deleting deployment $id"
-            curl -sS -X DELETE "${api}/${id}" \
-              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -o /dev/null
-          done
+          branch: ${{ github.event.ref }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

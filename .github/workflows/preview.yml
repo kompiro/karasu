@@ -61,25 +61,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Delete preview deployments for branch
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          BRANCH: ${{ github.head_ref }}
-        run: |
-          deployment_ids=$(curl -s \
-            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/karasu/deployments?env=preview" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" | \
-            jq -r --arg branch "$BRANCH" '.result[] | select(.deployment_trigger.metadata.branch == $branch) | .id')
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-          if [ -z "$deployment_ids" ]; then
-            echo "No preview deployments found for branch: $BRANCH"
-            exit 0
-          fi
-
-          for id in $deployment_ids; do
-            echo "Deleting deployment $id"
-            curl -s -X DELETE \
-              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/karasu/deployments/${id}" \
-              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
-          done
+      - uses: ./.github/actions/purge-preview-deployments
+        with:
+          branch: ${{ github.head_ref }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
