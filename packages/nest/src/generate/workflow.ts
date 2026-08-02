@@ -14,6 +14,7 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { requireBinding, type NestEnv } from "../env.js";
 import { GitHubClient } from "../github/client.js";
+import { MetricsStore } from "../meter/record.js";
 import { AnthropicClient } from "../reverse/llm.js";
 import { NestStore } from "../store/nest-store.js";
 import { RunStatusStore } from "../store/run-status.js";
@@ -53,6 +54,7 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
           llm: new AnthropicClient({ apiKey: requireBinding(env, "LLM_API_KEY") }),
           store: new NestStore(requireBinding(env, "KRS_CACHE")),
           runs: new RunStatusStore(requireBinding(env, "KRS_CACHE")),
+          metrics: new MetricsStore(requireBinding(env, "KRS_CACHE")),
           now: () => new Date(),
         },
       );
@@ -60,7 +62,8 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
       logInfo(
         `karasu-nest generated ${owner}/${repo}@${outcome.sha}: ` +
           `${outcome.redactions} redaction(s), ${outcome.unreadableFiles} unreadable, ` +
-          `${outcome.reverse.usage.inputTokens}/${outcome.reverse.usage.outputTokens} tokens` +
+          `${outcome.reverse.usage.inputTokens}/${outcome.reverse.usage.outputTokens} tokens ` +
+          `in ${Math.round(outcome.durationMs / 1000)}s` +
           (outcome.truncatedTree ? ", tree truncated by GitHub" : "") +
           (outcome.truncatedByCap ? ", stopped at our file cap" : ""),
       );

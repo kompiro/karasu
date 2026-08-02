@@ -15,12 +15,14 @@
  * decide the architecture before the reverse starts.
  */
 import { GitHubApiError, type GitHubClient } from "../github/client.js";
+import { logError } from "../log.js";
 import { StructureOnlyViolation } from "../redact/redact.js";
 import { LlmError } from "../reverse/llm.js";
 import { ReverseFailed } from "../reverse/pipeline.js";
 import type { LlmClient } from "../reverse/llm.js";
 import { redactFiles } from "../redact/redact.js";
 import { reverseRepository, type ReverseResult } from "../reverse/pipeline.js";
+import { MetricsStore } from "../meter/record.js";
 import { markGenerated } from "../store/krs-cache.js";
 import type { NestStore } from "../store/nest-store.js";
 import type { RunStatusStore } from "../store/run-status.js";
@@ -65,6 +67,14 @@ export interface GenerateDeps {
   llm: LlmClient;
   store: NestStore;
   runs: RunStatusStore;
+  /**
+   * Where the cost of this run is written (#2226).
+   *
+   * Optional because metering must never be the reason a generation fails —
+   * ADR-1990 decision 3 makes the numbers a prerequisite for choosing a quota
+   * level, not a prerequisite for producing a model.
+   */
+  metrics?: MetricsStore;
   /** Injected so the run is clock-free and its records are assertable. */
   now: () => Date;
 }
@@ -80,6 +90,8 @@ export interface GenerateOutcome {
   truncatedByCap: boolean;
   /** Files whose blob read failed and were skipped rather than aborting. */
   unreadableFiles: number;
+  /** Wall-clock for the whole run, milliseconds. */
+  durationMs: number;
 }
 
 export class GenerateFailed extends Error {
@@ -122,10 +134,11 @@ function callerSafeMessage(cause: unknown): string {
  * detached does not have to remember to write the status itself.
  */
 export async function generate(input: GenerateInput, deps: GenerateDeps): Promise<GenerateOutcome> {
-  const { github, llm, store, runs, now } = deps;
+  const { github, llm, store, runs, metrics, now } = deps;
   const { installationId, owner, repo } = input;
   const ref = { installationId, owner, repo };
-  const startedAt = now().toISOString();
+  const startedAtMs = now().getTime();
+  const startedAt = new Date(startedAtMs).toISOString();
 
   const sha = input.sha ?? (await github.defaultBranchSha(installationId, owner, repo));
   await runs.put(ref, { state: "running", sha, startedAt });
@@ -145,6 +158,11 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
     const files = archive.files;
     if (files.length === 0) throw new GenerateFailed("no readable source files");
 
+    // Measured before redaction, because "how big is a repo we were asked to
+    // reverse" is the input a quota is set against (#2226). Redaction only
+    // ever shrinks it, and by an amount the record reports separately.
+    const bytesRead = files.reduce((total, file) => total + file.content.length, 0);
+
     // The one-way door. Everything downstream sees redacted text only.
     const redacted = redactFiles(files);
     const reverse = await reverseRepository(
@@ -156,7 +174,39 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       { installationId, owner, repo, sha },
       { krs: markGenerated(reverse.krs), generatedAt: now().toISOString() },
     );
-    await runs.put(ref, { state: "done", sha, startedAt, finishedAt: now().toISOString() });
+    const finishedAt = now().toISOString();
+    await runs.put(ref, { state: "done", sha, startedAt, finishedAt });
+
+    const durationMs = now().getTime() - startedAtMs;
+    if (metrics !== undefined) {
+      // After the publish and after the status write, and swallowing its own
+      // failure: a run that produced a model and then could not write its
+      // token count has succeeded. Reporting it as failed would delete a
+      // model someone waited a quarter of an hour for, to protect a number.
+      try {
+        await metrics.record(ref, {
+          sha,
+          finishedAt,
+          model: reverse.model ?? "unknown",
+          durationMs,
+          inputTokens: reverse.usage.inputTokens,
+          outputTokens: reverse.usage.outputTokens,
+          passes: reverse.passes.map((pass) => ({
+            name: pass.name,
+            inputTokens: pass.usage.inputTokens,
+            outputTokens: pass.usage.outputTokens,
+          })),
+          files: files.length,
+          bytesRead,
+          redactions: redacted.findings.length,
+          // Structurally zero now that the repository arrives as one archive:
+          // an entry already in hand cannot fail its own read.
+          unreadableFiles: 0,
+        });
+      } catch (cause) {
+        logError("karasu-nest could not record run metrics", cause);
+      }
+    }
 
     return {
       sha,
@@ -169,6 +219,7 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       truncatedTree: false,
       truncatedByCap: archive.truncated,
       unreadableFiles: 0,
+      durationMs,
     };
   } catch (cause) {
     await runs.put(ref, {

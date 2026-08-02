@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { GitHubClient } from "../github/client.js";
 import type { LlmClient, LlmResponse } from "../reverse/llm.js";
+import { MetricsStore } from "../meter/record.js";
 import { NestStore } from "../store/nest-store.js";
 import { RunStatusStore } from "../store/run-status.js";
 import { MemoryKV } from "../testing/memory-kv.js";
@@ -69,6 +70,7 @@ function deps(
     llm,
     store: new NestStore(kv),
     runs: new RunStatusStore(kv),
+    metrics: new MetricsStore(kv),
     now: () => CLOCK,
     kv,
   };
@@ -246,6 +248,67 @@ describe("generate", () => {
       await expect(generate(input, d)).rejects.toThrowError(/ECONNREFUSED/);
       const status = await d.runs.get(input);
       expect(status?.error).toBe("the generation failed");
+    });
+  });
+
+  describe("what it records for #2226", () => {
+    it("writes tokens, wall-clock and input size against the commit", async () => {
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "export class Payment {}" }]), llm);
+      await generate(input, d);
+
+      const recorded = await new MetricsStore(d.kv).get(input, SHA);
+      expect(recorded).toMatchObject({
+        sha: SHA,
+        inputTokens: 30,
+        outputTokens: 60,
+        files: 1,
+        bytesRead: 23,
+        redactions: 0,
+        unreadableFiles: 0,
+      });
+      // Three passes, so a cost report can say which one is expensive.
+      expect(recorded?.passes.map((pass) => pass.name)).toEqual([
+        "survey",
+        "decompose",
+        "synthesise",
+      ]);
+    });
+
+    it("measures input size before redaction, which only ever shrinks it", async () => {
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const secret = 'password = "s3cr3t-value-not-a-placeholder"';
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: secret }]), llm);
+      await generate(input, d);
+
+      const recorded = await new MetricsStore(d.kv).get(input, SHA);
+      expect(recorded?.bytesRead).toBe(secret.length);
+      expect(recorded?.redactions).toBeGreaterThan(0);
+    });
+
+    it("keeps a model that was produced even if the metric cannot be written", async () => {
+      // A run that took a quarter of an hour and produced a document has
+      // succeeded. Failing it to protect a token count would be the wrong
+      // trade in both directions.
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      vi.spyOn(MetricsStore.prototype, "record").mockRejectedValue(new Error("KV is down"));
+
+      await expect(generate(input, d)).resolves.toBeDefined();
+      expect((await d.runs.get(input))?.state).toBe("done");
+      expect(await d.store.latest("kompiro", "shop")).toBeDefined();
+    });
+
+    it("runs without a metrics store at all", async () => {
+      // Optional on purpose: measurement must never be the reason a
+      // generation fails.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const { metrics: _unused, ...rest } = deps(
+        stubGithub([{ path: "src/pay.ts", content: "x" }]),
+        llm,
+      );
+      await expect(generate(input, rest)).resolves.toBeDefined();
     });
   });
 });

@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { handleRequest } from "../app.js";
 import type { NestEnv, NestExecutionContext } from "../env.js";
+import { ReadCounter } from "../meter/reads.js";
 import { markGenerated } from "../store/krs-cache.js";
 import { NestStore } from "../store/nest-store.js";
 import { MemoryKV } from "../testing/memory-kv.js";
+
+/** Collects the detached work so a test can await it, as the runtime does. */
+function recordingCtx(): NestExecutionContext & { settled: () => Promise<unknown[]> } {
+  const pending: Promise<unknown>[] = [];
+  return {
+    waitUntil: (promise) => void pending.push(promise),
+    settled: () => Promise.all(pending),
+  };
+}
 
 const ctx: NestExecutionContext = { waitUntil: () => {} };
 const SHA = "a".repeat(40);
@@ -110,5 +120,42 @@ describe("GET /<owner>/<repo>", () => {
 
   it("404s a path with more segments than owner/repo", async () => {
     expect((await get("/kompiro/karasu/extra", await seeded())).status).toBe(404);
+  });
+
+  describe("read counting (#2226)", () => {
+    it("counts a served model, off the response path", async () => {
+      // The count is the other half of the cost question: a generation read
+      // once is a very expensive way to render one diagram.
+      const kv = new MemoryKV();
+      await new NestStore(kv).publish(
+        { installationId: 42, owner: "kompiro", repo: "karasu", sha: SHA },
+        entry,
+      );
+      const counting = recordingCtx();
+      const response = await handleRequest(
+        new Request("https://nest.example/kompiro/karasu"),
+        { KRS_CACHE: kv },
+        counting,
+      );
+
+      // Handed to `waitUntil` rather than awaited inline, so a slow KV write
+      // cannot delay a reader. (The fake KV settles on a microtask, so the
+      // count may already be in by the time this runs -- what is asserted is
+      // that the work was handed over, not when it finished.)
+      expect(response.status).toBe(200);
+      expect((await counting.settled()).length).toBe(1);
+      expect(await new ReadCounter(kv).totalReads()).toBe(1);
+    });
+
+    it("does not count a repository it had nothing for", async () => {
+      const counting = recordingCtx();
+      await handleRequest(
+        new Request("https://nest.example/kompiro/nothing"),
+        { KRS_CACHE: new MemoryKV() },
+        counting,
+      );
+      await counting.settled();
+      expect((await counting.settled()).length).toBe(0);
+    });
   });
 });

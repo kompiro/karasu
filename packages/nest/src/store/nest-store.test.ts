@@ -44,7 +44,12 @@ describe("NestStore", () => {
     await store.publish({ ...ref, installationId: "0042" }, entry);
     expect((await store.latest("kompiro", "karasu"))?.installationId).toBe("42");
     // And a purge given the other spelling still reaches both halves.
-    expect(await store.purgeInstallation(42)).toEqual({ documents: 1, pointers: 1, runs: 0 });
+    expect(await store.purgeInstallation(42)).toEqual({
+      documents: 1,
+      pointers: 1,
+      runs: 0,
+      metrics: 0,
+    });
   });
 
   it("expires the pointer with the document, so no orphan outlives an uninstall", async () => {
@@ -82,7 +87,12 @@ describe("NestStore", () => {
       await store.publish({ ...ref, sha: OTHER_SHA }, entry);
       await store.publish({ ...ref, repo: "hane" }, entry);
 
-      expect(await store.purgeInstallation(42)).toEqual({ documents: 3, pointers: 2, runs: 0 });
+      expect(await store.purgeInstallation(42)).toEqual({
+        documents: 3,
+        pointers: 2,
+        runs: 0,
+        metrics: 0,
+      });
       expect(kv.keys()).toEqual([]);
       expect(await store.latest("kompiro", "karasu")).toBeUndefined();
     });
@@ -93,7 +103,12 @@ describe("NestStore", () => {
       await store.publish(ref, entry);
       await store.publish({ ...ref, installationId: 43, repo: "hane" }, entry);
 
-      expect(await store.purgeInstallation(42)).toEqual({ documents: 1, pointers: 1, runs: 0 });
+      expect(await store.purgeInstallation(42)).toEqual({
+        documents: 1,
+        pointers: 1,
+        runs: 0,
+        metrics: 0,
+      });
       expect(await store.latest("kompiro", "hane")).toBeDefined();
     });
 
@@ -107,7 +122,12 @@ describe("NestStore", () => {
 
       // The old installation's documents still go; only the pointer stays,
       // because it now belongs to someone else.
-      expect(await store.purgeInstallation(42)).toEqual({ documents: 1, pointers: 0, runs: 0 });
+      expect(await store.purgeInstallation(42)).toEqual({
+        documents: 1,
+        pointers: 0,
+        runs: 0,
+        metrics: 0,
+      });
       expect((await store.latest("kompiro", "karasu"))?.installationId).toBe("43");
     });
 
@@ -116,6 +136,7 @@ describe("NestStore", () => {
         documents: 0,
         pointers: 0,
         runs: 0,
+        metrics: 0,
       });
     });
 
@@ -125,7 +146,12 @@ describe("NestStore", () => {
       const kv = new MemoryKV(1);
       const store = new NestStore(kv);
       for (const repo of ["a", "b", "c"]) await store.publish({ ...ref, repo }, entry);
-      expect(await store.purgeInstallation(42)).toEqual({ documents: 3, pointers: 3, runs: 0 });
+      expect(await store.purgeInstallation(42)).toEqual({
+        documents: 3,
+        pointers: 3,
+        runs: 0,
+        metrics: 0,
+      });
       expect(kv.keys()).toEqual([]);
     });
   });
@@ -138,7 +164,12 @@ describe("NestStore", () => {
       await store.publish({ ...ref, sha: OTHER_SHA }, entry);
       await store.publish({ ...ref, repo: "hane" }, entry);
 
-      expect(await store.purgeRepo(ref)).toEqual({ documents: 2, pointers: 1, runs: 0 });
+      expect(await store.purgeRepo(ref)).toEqual({
+        documents: 2,
+        pointers: 1,
+        runs: 0,
+        metrics: 0,
+      });
       expect(await store.latest("kompiro", "karasu")).toBeUndefined();
       expect(await store.latest("kompiro", "hane")).toBeDefined();
     });
@@ -151,6 +182,7 @@ describe("NestStore", () => {
         documents: 0,
         pointers: 0,
         runs: 0,
+        metrics: 0,
       });
       expect(await store.latest("kompiro", "karasu")).toBeDefined();
     });

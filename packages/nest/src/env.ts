@@ -59,6 +59,8 @@ export interface NestEnv {
   GITHUB_WEBHOOK_SECRET?: string;
   /** LLM API key for the reverse pipeline. Wired in #2288. */
   LLM_API_KEY?: string;
+  /** Bearer token for `GET /admin/metrics`. Absent means the route is off. */
+  METRICS_TOKEN?: string;
   /** Deploy environment name, surfaced by `/healthz` for smoke checks. */
   ENVIRONMENT?: string;
 }

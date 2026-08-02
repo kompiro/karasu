@@ -70,7 +70,12 @@ describe("POST /webhooks/github", () => {
       { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
     );
     expect(response.status).toBe(200);
-    expect((await response.json()).purged).toEqual({ documents: 2, pointers: 2, runs: 0 });
+    expect((await response.json()).purged).toEqual({
+      documents: 2,
+      pointers: 2,
+      runs: 0,
+      metrics: 0,
+    });
     // The other installation is untouched.
     expect(await new NestStore(kv).latest("other", "repo")).toBeDefined();
     expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeUndefined();
@@ -85,7 +90,12 @@ describe("POST /webhooks/github", () => {
       { action: "suspend", installation: { id: 42 } },
       { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
     );
-    expect((await response.json()).purged).toEqual({ documents: 2, pointers: 2, runs: 0 });
+    expect((await response.json()).purged).toEqual({
+      documents: 2,
+      pointers: 2,
+      runs: 0,
+      metrics: 0,
+    });
   });
 
   it("does not purge on an installation event that is not a revocation", async () => {
@@ -110,7 +120,12 @@ describe("POST /webhooks/github", () => {
       },
       { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
     );
-    expect((await response.json()).purged).toEqual({ documents: 1, pointers: 1, runs: 0 });
+    expect((await response.json()).purged).toEqual({
+      documents: 1,
+      pointers: 1,
+      runs: 0,
+      metrics: 0,
+    });
     expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeUndefined();
     expect(await new NestStore(kv).latest("kompiro", "hane")).toBeDefined();
   });
@@ -133,7 +148,12 @@ describe("POST /webhooks/github", () => {
       },
       { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
     );
-    expect((await response.json()).purged).toEqual({ documents: 1, pointers: 1, runs: 0 });
+    expect((await response.json()).purged).toEqual({
+      documents: 1,
+      pointers: 1,
+      runs: 0,
+      metrics: 0,
+    });
   });
 
   it("does not purge on unsuspend", async () => {
@@ -175,7 +195,12 @@ describe("POST /webhooks/github", () => {
       },
       { env: { GITHUB_WEBHOOK_SECRET: SECRET, KRS_CACHE: kv } },
     );
-    expect((await response.json()).purged).toEqual({ documents: 1, pointers: 1, runs: 0 });
+    expect((await response.json()).purged).toEqual({
+      documents: 1,
+      pointers: 1,
+      runs: 0,
+      metrics: 0,
+    });
     expect(await new NestStore(kv).latest("kompiro", "karasu")).toBeUndefined();
   });
 
@@ -220,11 +245,13 @@ describe("POST /webhooks/github", () => {
       documents: 2,
       pointers: 2,
       runs: 0,
+      metrics: 0,
     });
     expect((await (await deliver("installation", payload, { env })).json()).purged).toEqual({
       documents: 0,
       pointers: 0,
       runs: 0,
+      metrics: 0,
     });
   });
 

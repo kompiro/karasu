@@ -96,6 +96,13 @@ export interface ReverseResult {
   usage: LlmUsage;
   /** One entry per pass, so a cost report can attribute spend. */
   passes: { name: string; usage: LlmUsage }[];
+  /**
+   * The model the provider says served these passes.
+   *
+   * `undefined` only when no pass reported one, which a fake client is free to
+   * do; a cost report treats that as unpriceable rather than assuming a tier.
+   */
+  model?: string;
 }
 
 export interface DomainSketch {
@@ -233,10 +240,12 @@ export async function reverseRepository(
   const maxBytesRead = options.maxBytesRead ?? DEFAULT_MAX_BYTES_READ;
   const passes: { name: string; usage: LlmUsage }[] = [];
   let usage: LlmUsage = { inputTokens: 0, outputTokens: 0 };
+  let model: string | undefined;
 
   const run = async (name: keyof typeof MAX_TOKENS, prompt: string): Promise<string> => {
     const response = await llm.complete(prompt, { maxTokens: MAX_TOKENS[name] });
     passes.push({ name, usage: response.usage });
+    model ??= response.model;
     usage = addUsage(usage, response.usage);
     // A run is 12-19 minutes with nothing to show for it until the end. The
     // pass name and its token counts are ours, not the repository's, so they
@@ -442,5 +451,5 @@ export async function reverseRepository(
     throw new ReverseFailed("synthesise", "the generated .krs describes no system");
   }
 
-  return { krs, domains, usage, passes };
+  return { krs, domains, usage, passes, ...(model === undefined ? {} : { model }) };
 }
