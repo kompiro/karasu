@@ -71,8 +71,8 @@ Annotations are metadata expressing **lifecycle and state**. They are a separate
 | `@deprecated` | Slated for removal | ⚠ badge, node rendered semi-transparent |
 | `@new` | Newly added | ✦ badge |
 | `@experimental` | Experimental | ⚗ badge |
-| `@draft` | Asserted but not confirmed by a human | ✎ badge |
 | `@migration_target` | Migration target | → badge |
+| `@draft` | Asserted but not confirmed by a human | ✎ badge |
 <!-- /gen:reference:annotations -->
 
 ### Example
@@ -167,6 +167,8 @@ system Payments {
 - **Per node, not per document.** The spike behind decision 4 found that a generated decomposition errs by splitting at genuine judgement-call seams rather than by scrambling, so the useful signal is *which seam* was uncertain. A document-level score would average that away.
 - **No gate.** karasu never refuses to render, warns about, or downranks a low-confidence node. The level is recorded judgement, consistent with `until` being intent rather than a deadline.
 - **Removing the mark is the point.** `@draft` is what a human review deletes. That deletion is the human ratchet ADR-1990 decision 4 rests on ([#2228](https://github.com/kompiro/karasu/issues/2228)), so the annotation is designed to be cheap to remove: one token, no restructuring.
+
+- **An absent mark means nothing was claimed, not that something was checked.** karasu does not track review state, so a node without `@draft` is simply a node nobody marked. In a hand-written model that is the normal case; in a generated one, treat the generator's marking as the only signal about itself. A generated model that carries no `@draft` anywhere is making a strong claim, and is worth doubting.
 
 `@draft` is a lifecycle annotation, not a tag or a facet: it describes the state of a statement in a review process, the same register as `@new` and `@experimental`, and it is tool-owned rather than a user-declared set.
 

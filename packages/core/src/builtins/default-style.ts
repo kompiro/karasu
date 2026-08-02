@@ -18,7 +18,7 @@ export interface AnnotationBadgeLabels {
 }
 
 /** reference-data annotation name → AnnotationBadgeLabels key. */
-const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> = {
+export const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> = {
   deprecated: "deprecated",
   new: "new",
   experimental: "experimental",
@@ -605,14 +605,16 @@ export const BUILTIN_STYLE_SOURCE_LIGHT: string = buildBuiltinStyleSource("light
 const _sheetCache = new Map<string, StyleSheet>();
 
 function sheetCacheKey(theme: DiagramTheme, badgeLabels?: AnnotationBadgeLabels): string {
+  // Derived from `REFERENCE_DATA.annotations` rather than listed by hand: a
+  // hand-written list silently stops covering a newly added annotation, and
+  // the symptom is a *wrong label served from cache*, which no test of the
+  // sheet's content would notice. `@draft` shipped that way (#1995).
+  //
   // JSON.stringify gives an unambiguous key — a join() separator could
   // collide with a separator-containing label from an external caller.
   return JSON.stringify([
     theme,
-    badgeLabels?.deprecated ?? "",
-    badgeLabels?.new ?? "",
-    badgeLabels?.experimental ?? "",
-    badgeLabels?.migrationTarget ?? "",
+    ...REFERENCE_DATA.annotations.map((a) => badgeLabels?.[ANNOTATION_LABEL_KEYS[a.name]] ?? ""),
   ]);
 }
 

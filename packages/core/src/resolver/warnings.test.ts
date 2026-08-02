@@ -1565,14 +1565,20 @@ system S {
     expect(warnings[0].params).toEqual({ nodeId: "Api", annotation: "canary" });
   });
 
-  it("stays silent for the four builtin annotations", () => {
+  it("stays silent for every builtin annotation", () => {
+    // Generated from REFERENCE_DATA so a newly added builtin cannot ship
+    // still emitting `annotation-not-builtin` (#1995 added `@draft`).
+    const services = REFERENCE_DATA.annotations
+      .map((a, index) => `  service S${index} @${a.name} {}`)
+      .join("\n");
+    expect(annotationWarnings(`\nsystem S {\n${services}\n}\n`)).toHaveLength(0);
+  });
+
+  it("recognises the confidence parameter on @draft", () => {
     expect(
       annotationWarnings(`
 system S {
-  service A @deprecated {}
-  service B @new {}
-  service C @experimental {}
-  service D @migration_target {}
+  service A @draft(confidence: "low") {}
 }
     `),
     ).toHaveLength(0);

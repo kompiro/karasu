@@ -22,8 +22,13 @@ decomposition errs at judgement-call seams rather than uniformly. karasu never
 warns about, downranks or refuses to render a low-confidence node: penalising
 the mark would just remove the mark.
 
-`@draft` renders with a ✎ badge in both themes, and `NodeDetail.draft` exposes
-the interpreted level to consumers.
+`@draft` renders with a ✎ badge in both themes. A node renders one badge, and
+`@draft` is ordered to win that tie: it is the mark that changes how a reader
+should treat everything else on the node.
+
+`NodeMetadata.draft` carries the interpreted level for consumers to read. No
+surface displays it yet — the badge is the effect that ships here; a detail-panel
+row is a separate change.
 
 **Behaviour change for anyone already writing `@draft`**: it was accepted as a
 non-builtin annotation and warned with `annotation-not-builtin`. That warning

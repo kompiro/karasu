@@ -206,6 +206,24 @@ system Test {
     expect(beta.annotationParams).toBeUndefined();
   });
 
+  it("records the confidence parameter on @draft", () => {
+    const result = Parser.parse(`
+system S {
+  service Guessed @draft(confidence: "low") {}
+  service Bare @draft {}
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.code === "annotation-param-unsupported")).toEqual([]);
+    const system = result.value.systems[0];
+    const guessed = system.children.find((c) => c.id === "Guessed");
+    const bare = system.children.find((c) => c.id === "Bare");
+    expect(guessed?.annotations).toContain("draft");
+    expect(guessed?.annotationParams).toEqual({ draft: { confidence: "low" } });
+    // A bare @draft is complete; it must not synthesise a level.
+    expect(bare?.annotations).toContain("draft");
+    expect(bare?.annotationParams).toBeUndefined();
+  });
+
   it("parses sync edges", () => {
     const result = Parser.parse(`
 system Test {

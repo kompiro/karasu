@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { compile } from "../index.js";
 import { getDraftState, interpretConfidence } from "./draft-confidence.js";
 
 describe("interpretConfidence", () => {
@@ -61,5 +62,79 @@ describe("getDraftState", () => {
 
   it("ignores another annotation's params", () => {
     expect(getDraftState(["draft"], { deprecated: { until: "2026-Q3" } })).toEqual({});
+  });
+});
+
+describe("@draft end to end", () => {
+  const metadataFor = (krs: string, id: string) => {
+    const result = compile(krs, { diagramType: "system" });
+    // `CompileResult` is a union; the org variant carries no nodeMetadata.
+    if (!("nodeMetadata" in result)) throw new Error("expected a system compile result");
+    return result.nodeMetadata.get(id);
+  };
+
+  it("reaches NodeMetadata from real source", () => {
+    const meta = metadataFor(
+      `system S {
+  service Guessed @draft(confidence: "low") {}
+}
+`,
+      "Guessed",
+    );
+    expect(meta?.draft).toEqual({
+      confidence: { kind: "machine", level: "low", rank: 0, raw: "low" },
+    });
+  });
+
+  it("marks a bare @draft without inventing a level", () => {
+    expect(metadataFor(`system S {\n  service Bare @draft {}\n}\n`, "Bare")?.draft).toEqual({});
+  });
+
+  it("leaves an unmarked node undefined", () => {
+    expect(metadataFor(`system S {\n  service Plain {}\n}\n`, "Plain")?.draft).toBeUndefined();
+  });
+
+  it("does not mark a child that merely sits inside a draft parent", () => {
+    // Whether the badge is inherited for rendering is a style-cascade
+    // question; the metadata reports what the node itself asserts, so a
+    // consumer counting unreviewed statements does not double-count a
+    // subtree. Pinned because the two can drift apart silently.
+    const krs = `system S {
+  service Parent @draft {
+    domain Child {}
+  }
+}
+`;
+    expect(metadataFor(krs, "Parent")?.draft).toEqual({});
+    expect(metadataFor(krs, "Child")?.draft).toBeUndefined();
+  });
+
+  it("keeps an unknown level as written, all the way through", () => {
+    const meta = metadataFor(
+      `system S {\n  service Odd @draft(confidence: "we argued about this one") {}\n}\n`,
+      "Odd",
+    );
+    expect(meta?.draft?.confidence).toEqual({
+      kind: "opaque",
+      raw: "we argued about this one",
+    });
+  });
+
+  it("renders the draft badge in preference to another annotation on the same node", () => {
+    // A node renders one badge. `@draft` is ordered last in REFERENCE_DATA so
+    // it wins the cascade tie: it is the mark that changes how a reader should
+    // treat everything else on the node, so it is the one that must survive.
+    const svg = compile(`system S {\n  service Both @deprecated @draft {}\n}\n`, {
+      diagramType: "system",
+    }).svg;
+    expect(svg).toContain(">Draft</text>");
+    expect(svg).not.toContain(">Deprecated</text>");
+  });
+
+  it("does not warn about @draft or its confidence parameter", () => {
+    const result = compile(`system S {\n  service Guessed @draft(confidence: "high") {}\n}\n`, {
+      diagramType: "system",
+    });
+    expect(result.diagnostics.filter((d) => d.code.startsWith("annotation-"))).toEqual([]);
   });
 });
