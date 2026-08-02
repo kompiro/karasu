@@ -29,3 +29,8 @@ export { RepoDirectory } from "./store/repo-directory.js";
 export type { DirectoryEntry } from "./store/repo-directory.js";
 export type { GeneratedKrs, KrsCacheEntry } from "./store/krs-cache.js";
 export type { CachedRef, RepoRef } from "./store/keys.js";
+export { GitHubClient, GitHubApiError } from "./github/client.js";
+export type { GitHubClientOptions, RepoTree, TreeEntry } from "./github/client.js";
+export { createAppJwt } from "./github/app-jwt.js";
+export type { AppJwtOptions } from "./github/app-jwt.js";
+export { toPkcs8, InvalidPrivateKeyError } from "./github/pem.js";
