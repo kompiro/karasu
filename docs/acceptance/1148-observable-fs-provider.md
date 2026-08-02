@@ -48,7 +48,7 @@ type: product
 - [x] AT-K: delegate の `exists` が throw した場合でも `writeFile` 自体は通り、`create` として扱う（exists の失敗を理由にユーザー操作を止めない）
   > ✅ Automated — `packages/app/src/fs/observable-provider.test.ts` › `error handling › treats an "exists" failure as "create" ...`
 
-- [ ] AT-L（manual）: brand-new な `.krs`（`@import` 無し）を `pnpm --filter @karasu-tools/app dev` の Preview で開き、edge を右クリック → Direction ▸ Down を選ぶ。**サイドバーに `<basename>.krs.style` がリロード操作なしで現れる** ことを目視
+- [ ] AT-L（manual）: brand-new な `.krs`（`@import` 無し）を本番 app（https://karasu.kompiro.dev/）で開き、edge を右クリック → Direction ▸ Down を選ぶ。**サイドバーに `<basename>.krs.style` がリロード操作なしで現れる** ことを目視
   > 🧑 Manual — PR #1145 で実装済みの bootstrap 経路と組み合わせた end-to-end 確認。本 PR の主要な体験改善ポイント
 
 - [ ] AT-M（manual）: 同じ Preview で複数回 Direction を変更しても、`@import` 行は重複追記されず、サイドバーの `.krs.style` 表示も一定（リロードが過剰に走らないこと、エディタのフォーカスが保たれること）

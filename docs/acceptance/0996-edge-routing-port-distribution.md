@@ -32,7 +32,7 @@
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `spreads multiple downward edges from a hub across distinct x ports`
 
 - [ ] Getting Started 例（`@example getting-started`）の `ECommerce` 周辺のエッジラベルが目視で重なっていないこと、エッジが扇状に広がって見えること
-  > 🧑 Manual — Preview URL（`https://feat-edge-routing-phase3.karasu.pages.dev`）または `pnpm dev` でローカル起動して Getting Started サンプルを開き、視覚的に確認する。
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）で Getting Started サンプルを開き、視覚的に確認する。
 
 ## スコープ外（follow-up）
 

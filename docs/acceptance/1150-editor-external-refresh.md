@@ -37,7 +37,7 @@ type: product
   > ✅ Automated — `useEditorExternalRefresh.test.ts › does not throw on a delete event for the open file`
 
 - [ ] AT-H（manual）: Preview で `.krs.style` を開いた状態で edge を右クリック → Direction ▸ Right を選び、エディタ右ペインの buffer 表示が GUI append された rule を含む状態に **即座に更新** されることを目視
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview 起動。GUI flow を実行し、Monaco の表示行が disk と一致することを確認
+  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）を開き、GUI flow を実行し、Monaco の表示行が disk と一致することを確認
 
 ## 補足
 

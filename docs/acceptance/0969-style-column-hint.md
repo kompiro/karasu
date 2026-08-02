@@ -56,6 +56,6 @@
 
 - [ ] **Preview UI で getting-started を開き、最下段が `[Notification] [DB / Order events / Media storage] [Payment / Inventory]` の並びで読めることを目視確認する。**
 
-  > 検証方法: `pnpm --filter @karasu-tools/app dev` で起動し、Project selector から `getting-started`（または `getting-started-en`）を選ぶ。`default.krs.style` で `service[external] { column: right; }` が効いているため、Payment と Inventory が右端、内部の Notification や infra（EC Site DB / Order events / Media storage）はそれより左に配置される。
+  > 検証方法: 本番 app（https://karasu.kompiro.dev/）を開き、Project selector から `getting-started`（または `getting-started-en`）を選ぶ。`default.krs.style` で `service[external] { column: right; }` が効いているため、Payment と Inventory が右端、内部の Notification や infra（EC Site DB / Order events / Media storage）はそれより左に配置される。
 
   > Manual rationale: 自動レイアウトの最終的な見た目は SVG snapshot test では確認できるが、「人間が読みやすいか」の判定は人手の目視が必要。代表ケースで意図どおり並んでいることを Issue #969 の motivating example として確認したい。

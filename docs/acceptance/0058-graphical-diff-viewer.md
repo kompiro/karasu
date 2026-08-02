@@ -15,7 +15,7 @@ are tracked as follow-ups.
 
 ## Prerequisites
 
-- App is running (`pnpm --filter @karasu-tools/app dev`)
+- The app is open at <https://karasu.kompiro.dev/>
 - A project containing at least two `.krs` files
 
 ---

@@ -27,5 +27,5 @@ type: product
 - [ ] AT-D: Reference パネルの **Styles タブ**を開くと、Style Properties テーブルに `direction` / `label-position` / `label-offset` / `column` の行が description 付きで表示される
   > ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `Styles tab lists the edge / layout style properties from the spec`
 
-- [ ] AT-E（manual）: アプリ（`pnpm dev`）で `index.krs` を開き、Reference パネル → Styles タブで上記 4 プロパティの行が表示され、説明文が読めることを目視確認する。locale を `ja` に切り替えて日本語の説明文が出ることも確認する
+- [ ] AT-E（manual）: 本番 app（https://karasu.kompiro.dev/）で `index.krs` を開き、Reference パネル → Styles タブで上記 4 プロパティの行が表示され、説明文が読めることを目視確認する。locale を `ja` に切り替えて日本語の説明文が出ることも確認する
   > 🧑 Manual — UI レンダリングの目視確認。RTL test で文字列の存在は担保しているが、テーブル内での見え方（折り返し等）は目視で確認する

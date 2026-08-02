@@ -108,7 +108,7 @@ OS のカラースキームは Playwright の `colorScheme` で emulate する�
 ## 受け入れ条件（手動 / 目視）
 
 > 上の e2e で fence できない「見た目の質」だけが残る。
-> `pnpm --filter @karasu-tools/app run dev` で起動して確認する。
+> 本番 app（https://karasu.kompiro.dev/）を開いて確認する。
 
 - [ ] light テーマで、チャット / コンテキストメニュー / ノード詳細 /
       Reference パネル（e2e が到達していない surface）の文字が判読できる
