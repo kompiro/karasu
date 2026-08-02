@@ -1307,6 +1307,10 @@ function collapseAndAssignGroupLayers(
     collapsedGroups,
     edgeDiffState,
     stubScope,
+    // Boundary axis only: a shared node folds when every boundary it belongs to
+    // here is collapsed (#2180). The team axis passes nothing and keeps its 1:1
+    // predicate.
+    membership,
   );
   const groupIdOf = (id: string): string | null =>
     groupIndex.get(id) ?? collapsed.stubGroup.get(id) ?? null;
