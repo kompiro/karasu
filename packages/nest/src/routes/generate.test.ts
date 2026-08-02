@@ -5,6 +5,8 @@ import type { GenerationDispatcher } from "../generate/dispatch.js";
 import { GitHubClient } from "../github/client.js";
 import { markGenerated } from "../store/krs-cache.js";
 import { NestStore } from "../store/nest-store.js";
+import { QuotaLedger } from "../quota/ledger.js";
+import { LOCAL_REVERSE_GUIDE, MONTHLY_REVERSES } from "../quota/policy.js";
 import { RunStatusStore } from "../store/run-status.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 
@@ -76,7 +78,11 @@ describe("POST /<owner>/<repo>/generate", () => {
 
     const response = await call("POST", "/kompiro/shop/generate", env);
     expect(response.status).toBe(202);
-    expect(await response.json()).toEqual({ state: "running", sha: SHA });
+    expect(await response.json()).toEqual({
+      state: "running",
+      sha: SHA,
+      quota: { used: 1, limit: 3 },
+    });
     expect(response.headers.get("Location")).toBe("https://nest.example/kompiro/shop/status");
     expect(env.GENERATE_WORKFLOW.created).toHaveLength(1);
   });
@@ -89,6 +95,11 @@ describe("POST /<owner>/<repo>/generate", () => {
     const env = configured(new MemoryKV());
 
     const first = await call("POST", "/kompiro/shop/generate", env);
+    // The first run holds the only concurrency slot, so release it: this test
+    // is about the instance id, not about capacity.
+    await new QuotaLedger(env.KRS_CACHE as MemoryKV).releaseSlot(
+      `42-kompiro-shop-${SHA.slice(0, 12)}`,
+    );
     const second = await call("POST", "/kompiro/shop/generate", env);
     expect(first.status).toBe(202);
     expect(second.status).toBe(202);
@@ -162,6 +173,108 @@ describe("POST /<owner>/<repo>/generate", () => {
     const response = await call("GET", "/kompiro/shop/generate", configured(new MemoryKV()));
     expect(response.status).toBe(405);
     expect(response.headers.get("Allow")).toBe("POST");
+  });
+
+  describe("the free-tier quota (#1994)", () => {
+    it("refuses once the month's allowance is gone, and points somewhere useful", async () => {
+      // A refusal with no alternative is a dead end. The alternative is real:
+      // the same reverse runs locally with the caller's own key.
+      installedAs("42");
+      const kv = new MemoryKV();
+      const ledger = new QuotaLedger(kv);
+      for (let index = 0; index < MONTHLY_REVERSES; index += 1) {
+        await ledger.charge("42", new Date());
+      }
+      const env = configured(kv);
+
+      const response = await call("POST", "/kompiro/shop/generate", env);
+      expect(response.status).toBe(429);
+      const body = await response.json();
+      expect(body.error.code).toBe("quota_exhausted");
+      expect(body.error.message).toContain(LOCAL_REVERSE_GUIDE);
+      expect(body.quota).toMatchObject({ used: MONTHLY_REVERSES, limit: MONTHLY_REVERSES });
+      expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
+      expect(env.GENERATE_WORKFLOW.created).toEqual([]);
+    });
+
+    it("refuses while another generation is running, with a shorter wait", async () => {
+      installedAs("42");
+      const kv = new MemoryKV();
+      await new QuotaLedger(kv).takeSlot("someone-elses-run", Date.now());
+      const env = configured(kv);
+
+      const response = await call("POST", "/kompiro/shop/generate", env);
+      expect(response.status).toBe(429);
+      expect((await response.json()).error.code).toBe("busy");
+      expect(response.headers.get("Retry-After")).toBe("300");
+      expect(env.GENERATE_WORKFLOW.created).toEqual([]);
+    });
+
+    it("refuses before spending a GitHub API call", async () => {
+      installedAs("42");
+      const kv = new MemoryKV();
+      await new QuotaLedger(kv).takeSlot("someone-elses-run", Date.now());
+      const resolved = vi.spyOn(GitHubClient.prototype, "defaultBranchSha");
+
+      await call("POST", "/kompiro/shop/generate", configured(kv));
+      expect(resolved).not.toHaveBeenCalled();
+    });
+
+    it("charges the installation when a run is dispatched", async () => {
+      installedAs("42");
+      vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+      const kv = new MemoryKV();
+      await call("POST", "/kompiro/shop/generate", configured(kv));
+      expect(await new QuotaLedger(kv).used("42", new Date())).toBe(1);
+    });
+
+    it("takes a concurrency slot when a run is dispatched", async () => {
+      installedAs("42");
+      vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+      const kv = new MemoryKV();
+      await call("POST", "/kompiro/shop/generate", configured(kv));
+      expect(await new QuotaLedger(kv).inFlight(Date.now())).toBe(1);
+    });
+
+    it("does not charge a caller who is only polling an existing run", async () => {
+      // Re-POSTing is a plausible way to poll. Charging for it would burn a
+      // month's allowance on a run the caller already has.
+      installedAs("42");
+      const kv = new MemoryKV();
+      await new RunStatusStore(kv).put(
+        { installationId: "42", owner: "kompiro", repo: "shop" },
+        { state: "running", sha: SHA, startedAt: new Date().toISOString() },
+      );
+      await call("POST", "/kompiro/shop/generate", configured(kv));
+      expect(await new QuotaLedger(kv).used("42", new Date())).toBe(0);
+    });
+
+    it("gives the charge back when the dispatch turns out to be a duplicate", async () => {
+      installedAs("42");
+      vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+      const kv = new MemoryKV();
+      const env = configured(kv);
+      const instanceId = `42-kompiro-shop-${SHA.slice(0, 12)}`;
+
+      await call("POST", "/kompiro/shop/generate", env);
+      await new QuotaLedger(kv).releaseSlot(instanceId);
+      const second = await call("POST", "/kompiro/shop/generate", env);
+
+      expect(second.status).toBe(202);
+      // One dispatch happened, so one charge stands.
+      expect(await new QuotaLedger(kv).used("42", new Date())).toBe(1);
+    });
+
+    it("does not let one installation's usage refuse another", async () => {
+      installedAs("99");
+      vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+      const kv = new MemoryKV();
+      const ledger = new QuotaLedger(kv);
+      for (let index = 0; index < MONTHLY_REVERSES; index += 1) {
+        await ledger.charge("42", new Date());
+      }
+      expect((await call("POST", "/kompiro/other/generate", configured(kv))).status).toBe(202);
+    });
   });
 });
 

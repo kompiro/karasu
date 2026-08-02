@@ -83,6 +83,7 @@ async function handleInstallationRepositories(
     runs: 0,
     metrics: 0,
     reads: 0,
+    quota: 0,
     failed: 0,
   };
   for (const raw of removed) {
@@ -95,6 +96,7 @@ async function handleInstallationRepositories(
       total.runs += result.runs;
       total.metrics += result.metrics;
       total.reads += result.reads;
+      total.quota += result.quota;
       total.failed += result.failed;
     } catch (cause) {
       // One unroutable name in the list must not abandon the rest of the

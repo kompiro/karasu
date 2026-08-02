@@ -13,9 +13,15 @@ declare module "cloudflare:workers" {
     instanceId: string;
   }
 
+  export interface StepConfig {
+    retries?: { limit: number; delay: string | number; backoff?: string };
+    timeout?: string | number;
+  }
+
   export interface WorkflowStep {
     /** Checkpointed and retried independently of the rest of the run. */
     do<T>(name: string, callback: () => Promise<T>): Promise<T>;
+    do<T>(name: string, config: StepConfig, callback: () => Promise<T>): Promise<T>;
   }
 
   export abstract class WorkflowEntrypoint<Env = unknown, Params = unknown> {

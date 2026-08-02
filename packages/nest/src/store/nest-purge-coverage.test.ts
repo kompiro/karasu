@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import { FailedDocumentStore } from "../meter/failed-document.js";
 import { ReadCounter } from "../meter/reads.js";
 import { MetricsStore } from "../meter/record.js";
+import { QuotaLedger } from "../quota/ledger.js";
 import { markGenerated } from "./krs-cache.js";
 import { NestStore } from "./nest-store.js";
 import { RunStatusStore } from "./run-status.js";
@@ -88,13 +89,19 @@ const SEEDERS: { prefix: string; seed: (kv: MemoryKV) => Promise<void> }[] = [
   {
     prefix: "failed/",
     seed: async (kv) => {
-      await new FailedDocumentStore(kv).put(ref, SHA, "system Shop { not valid");
+      await new FailedDocumentStore(kv).put(ref, SHA, "system Shop { broken");
     },
   },
   {
     prefix: "reads/",
     seed: async (kv) => {
       await new ReadCounter(kv).increment(ref, new Date("2026-08-02T00:20:00Z"));
+    },
+  },
+  {
+    prefix: "quota/",
+    seed: async (kv) => {
+      await new QuotaLedger(kv).charge("42", new Date("2026-08-02T00:00:00Z"));
     },
   },
 ];
@@ -116,12 +123,14 @@ describe("purge coverage (ADR-1990 decision 6)", () => {
     expect(await remaining(kv)).toEqual([]);
   });
 
-  it("leaves nothing behind when one repo leaves an installation", async () => {
+  it("leaves nothing repo-scoped behind when one repo leaves an installation", async () => {
     const kv = new MemoryKV();
     await seedEverything(kv);
 
     await new NestStore(kv).purgeRepo(ref);
-    expect(await remaining(kv)).toEqual([]);
+    // The quota is per installation, and one repo leaving does not hand the
+    // month's allowance back. Everything keyed by repo goes.
+    expect(await remaining(kv)).toEqual(["quota/krs/v1/42/2026-08"]);
   });
 
   it("counts what it deleted in every category, so a webhook can say so", async () => {
@@ -136,6 +145,7 @@ describe("purge coverage (ADR-1990 decision 6)", () => {
       runs: 1,
       metrics: 1,
       reads: 1,
+      quota: 1,
       failed: 1,
     });
   });

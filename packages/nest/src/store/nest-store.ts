@@ -19,6 +19,7 @@ import type { KVNamespaceLike } from "../env.js";
 import { ReadCounter } from "../meter/reads.js";
 import { FailedDocumentStore } from "../meter/failed-document.js";
 import { MetricsStore } from "../meter/record.js";
+import { QuotaLedger } from "../quota/ledger.js";
 import type { CachedRef, RepoRef } from "./keys.js";
 import { installationPrefix } from "./keys.js";
 import { KrsCache, type KrsCacheEntry } from "./krs-cache.js";
@@ -43,6 +44,8 @@ export interface PurgeResult {
   reads: number;
   /** Documents kept from failed runs. */
   failed: number;
+  /** Monthly quota counters deleted. */
+  quota: number;
 }
 
 /** The installation id as the directory records it, canonical and comparable. */
@@ -58,6 +61,7 @@ export class NestStore {
   private readonly runs: RunStatusStore;
   private readonly metrics: MetricsStore;
   private readonly reads: ReadCounter;
+  private readonly quota: QuotaLedger;
   private readonly failed: FailedDocumentStore;
 
   constructor(kv: KVNamespaceLike, cache = new KrsCache(kv), directory = new RepoDirectory(kv)) {
@@ -72,6 +76,7 @@ export class NestStore {
     this.runs = new RunStatusStore(kv);
     this.metrics = new MetricsStore(kv);
     this.reads = new ReadCounter(kv);
+    this.quota = new QuotaLedger(kv);
     this.failed = new FailedDocumentStore(kv);
   }
 
@@ -133,8 +138,9 @@ export class NestStore {
     const runs = await this.runs.purgeInstallation(canonical);
     const metrics = await this.metrics.purgeInstallation(canonical);
     const reads = await this.reads.purgeInstallation(canonical);
+    const quota = await this.quota.purgeInstallation(canonical);
     const failed = await this.failed.purgeInstallation(canonical);
-    return { documents, pointers, runs, metrics, reads, failed };
+    return { documents, pointers, runs, metrics, reads, quota, failed };
   }
 
   /** Delete one repo's documents and its pointer. */
@@ -147,7 +153,9 @@ export class NestStore {
     const runs = (await this.runs.deleteRepo({ ...ref, installationId: canonical })) ? 1 : 0;
     const metrics = await this.metrics.deleteRepo({ ...ref, installationId: canonical });
     const reads = await this.reads.deleteRepo({ ...ref, installationId: canonical });
+    // Not the quota: it is per installation, and one repo leaving does not
+    // hand the month's allowance back.
     const failed = await this.failed.deleteRepo({ ...ref, installationId: canonical });
-    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads, failed };
+    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads, quota: 0, failed };
   }
 }

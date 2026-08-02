@@ -21,10 +21,54 @@ import { generationInstanceId } from "../generate/dispatch.js";
 import { GitHubClient } from "../github/client.js";
 import { error, json } from "../http.js";
 import { logInfo } from "../log.js";
+import { checkQuota } from "../quota/gate.js";
+import { QuotaLedger } from "../quota/ledger.js";
+import { LOCAL_REVERSE_GUIDE } from "../quota/policy.js";
 import { InvalidRefError, normaliseName } from "../store/keys.js";
 import { NestStore } from "../store/nest-store.js";
 import { isStale, RunStatusStore } from "../store/run-status.js";
+import type { QuotaOutcome } from "../quota/policy.js";
 import type { RouteContext } from "../router.js";
+
+/**
+ * Say no in a way a caller can act on.
+ *
+ * A refusal with no alternative is a dead end, and the alternative here is
+ * real: the same reverse runs locally with the caller's own key. ADR-1990
+ * decision 3 makes the quota strict precisely so the service survives; that
+ * argument only holds up if being refused still leaves someone with a way to
+ * get a model.
+ */
+function refuse(verdict: Extract<QuotaOutcome, { allowed: false }>): Response {
+  if (verdict.reason === "busy") {
+    return json(
+      {
+        error: {
+          code: "busy",
+          message: `karasu-nest runs one generation at a time. Try again in about ${Math.round(
+            verdict.retryAfterSeconds / 60,
+          )} minutes, or build one locally with your own LLM: ${LOCAL_REVERSE_GUIDE}`,
+        },
+      },
+      { status: 429, headers: { "Retry-After": verdict.retryAfterSeconds.toString() } },
+    );
+  }
+  return json(
+    {
+      error: {
+        code: "quota_exhausted",
+        message: `This installation has used its ${verdict.limit} free generations for the month. The quota resets on ${verdict.resetsAt.slice(0, 10)}. In the meantime you can build a model locally with your own LLM: ${LOCAL_REVERSE_GUIDE}`,
+      },
+      quota: { used: verdict.used, limit: verdict.limit, resetsAt: verdict.resetsAt },
+    },
+    { status: 429, headers: { "Retry-After": secondsUntil(verdict.resetsAt) } },
+  );
+}
+
+/** Whole seconds until an ISO instant, floored at a minute. */
+function secondsUntil(iso: string): string {
+  return Math.max(60, Math.ceil((Date.parse(iso) - Date.now()) / 1000)).toString();
+}
 
 /** Canonicalise the path parameters, or explain why they cannot be. */
 function repoFrom(params: Readonly<Record<string, string>>): { owner: string; repo: string } {
@@ -86,17 +130,37 @@ export async function requestGeneration(context: RouteContext): Promise<Response
     logInfo(`karasu-nest retrying ${owner}/${repo}: previous run went stale`);
   }
 
+  // Checked after the in-flight short-circuit above, so a caller polling by
+  // re-POSTing is not charged for a run that is already going, and before the
+  // SHA lookup, so a refusal costs no GitHub API call.
+  const now = new Date();
+  const ledger = new QuotaLedger(kv);
+  const verdict = await checkQuota(ledger, installationId, now);
+  if (!verdict.allowed) return refuse(verdict);
+
   const sha = await github.defaultBranchSha(installationId, owner, repo);
   const instanceId = generationInstanceId({ installationId, owner, repo }, sha);
+
+  // Charged and the slot taken before dispatch, not after. Between the check
+  // and the create is where a second caller would otherwise slip through, and
+  // the cost of being early is a refund on a create that fails.
+  const used = await ledger.charge(installationId, now);
+  await ledger.takeSlot(instanceId, now.getTime());
   try {
     await workflow.create({ id: instanceId, params: { installationId, owner, repo } });
   } catch {
     // A duplicate instance id means the platform already has this exact run.
-    // That is the answer the caller wanted, not an error.
+    // That is the answer the caller wanted, not an error -- but nothing new
+    // was started, so the charge goes back. The slot stays: the run that owns
+    // this id is still going, and it will release it.
+    await ledger.refund(installationId, now);
     return json({ state: "running", sha }, { status: 202, headers: { Location: location } });
   }
 
-  return json({ state: "running", sha }, { status: 202, headers: { Location: location } });
+  return json(
+    { state: "running", sha, quota: { used, limit: verdict.limit } },
+    { status: 202, headers: { Location: location } },
+  );
 }
 
 /**

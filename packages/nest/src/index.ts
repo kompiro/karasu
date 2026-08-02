@@ -71,5 +71,18 @@ export { FailedDocumentStore } from "./meter/failed-document.js";
 export { MetricsStore } from "./meter/record.js";
 export type { Aggregate, PassMetrics, RunMetrics } from "./meter/record.js";
 export { ReadCounter, utcDay } from "./meter/reads.js";
+// The free-tier quota (#1994), levels derived in docs/design/2226-nest-cost-model.md.
+export { checkQuota } from "./quota/gate.js";
+export type { GateOptions } from "./quota/gate.js";
+export { QuotaLedger } from "./quota/ledger.js";
+export {
+  BUSY_RETRY_AFTER_SECONDS,
+  LOCAL_REVERSE_GUIDE,
+  MAX_CONCURRENT_RUNS,
+  MONTHLY_REVERSES,
+  nextPeriodStart,
+  quotaPeriod,
+} from "./quota/policy.js";
+export type { QuotaOutcome } from "./quota/policy.js";
 export { RunStatusStore } from "./store/run-status.js";
 export type { RunStatus, RunState } from "./store/run-status.js";
