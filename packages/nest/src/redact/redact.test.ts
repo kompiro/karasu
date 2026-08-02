@@ -29,11 +29,13 @@ describe("redact", () => {
     ["google-api-key", fake.google],
     ["anthropic-key", fake.anthropic],
     ["jwt", fake.jwt],
-  ])("redacts a %s", (ruleId, secret) => {
+  ])("redacts a %s and nothing around it", (ruleId, secret) => {
+    // The exact text matters. A `contains` assertion passes even if the rule
+    // is `/\S+/` and shredded the whole line, which is how an unanchored
+    // pattern would ship looking tested.
     const result = redact(`const key = "${secret}";`);
-    expect(result.text).not.toContain(secret);
-    expect(result.text).toContain(`[REDACTED:${ruleId}]`);
-    expect(result.findings.map((f) => f.ruleId)).toContain(ruleId);
+    expect(result.text).toBe(`const key = "[REDACTED:${ruleId}]";`);
+    expect(result.findings).toEqual([{ ruleId, where: "input", length: secret.length }]);
   });
 
   it("redacts a whole PEM block, not just its armour", () => {
@@ -109,6 +111,84 @@ describe("redact", () => {
     it("leaves a short assigned value alone", () => {
       expect(redact('token = "abc"').findings).toEqual([]);
     });
+
+    it("leaves a dotted reference alone", () => {
+      expect(redact("apiKey = config.credentials.token").findings).toEqual([]);
+    });
+
+    it("leaves an empty document alone", () => {
+      expect(redact("")).toEqual({ text: "", findings: [] });
+    });
+
+    it("defaults the finding's location to input", () => {
+      expect(redact(`const k = "${fake.githubToken}";`).findings[0]?.where).toBe("input");
+    });
+  });
+});
+
+describe("what the review found leaking", () => {
+  it("redacts the value, not an earlier copy of it in the key name", () => {
+    // `match.replace(secret, ...)` replaced the *first* occurrence inside the
+    // match, so the key name was redacted and the value shipped.
+    expect(redact('hunter2plus_password = "hunter2plus"').text).toBe(
+      'hunter2plus_password = "[REDACTED:assigned-secret]"',
+    );
+  });
+
+  it("redacts the password, not a matching substring of the username", () => {
+    expect(redact("postgres://s3cr3tadmin:s3cr3t@db.internal:5432/orders").text).toBe(
+      "postgres://s3cr3tadmin:[REDACTED:connection-string-password]@db.internal:5432/orders",
+    );
+  });
+
+  it("redacts a bcrypt hash instead of reading it as an env reference", () => {
+    // `^[$<{]` treated every `$2b$…` as `${VAR}`.
+    const hash = `$2b$10$${"N9qo8uLOickgx2ZMRZoMye".padEnd(53, "IjZAgcfl7p92ldGxad68LJZd")}`;
+    const result = redact(`users.push({ hash: "${hash}" });`);
+    expect(result.text).not.toContain(hash);
+    expect(result.findings.map((f) => f.ruleId)).toContain("bcrypt-hash");
+  });
+
+  // Values are assembled at runtime so this file holds no literal that a
+  // secret scanner will match — the same reason `fake` is built above.
+  const configValue = ["aBcDeFgHiJ", "kLmNoPqRsT", "uVwXyZ0123"].join("");
+  it.each([
+    [".env", `API_KEY=${configValue}`],
+    [".npmrc", `//registry.npmjs.org/:_authToken=${configValue}`],
+    ["YAML", `  client_secret: ${configValue}`],
+    ["JSON", `  "clientSecret": "${configValue}",`],
+    ["Dockerfile", `ENV DB_PASSWORD=${configValue}`],
+  ])("redacts an unquoted or config-style secret in %s", (_name, line) => {
+    // The most common place a real credential lives does not use quotes.
+    const result = redact(line);
+    expect(result.findings.length).toBeGreaterThan(0);
+    expect(result.text).not.toContain(configValue);
+    expect(result.text).toContain("[REDACTED:");
+  });
+
+  it("keeps a specific finding rather than letting a generic rule overwrite it", () => {
+    // `github_token = "ghp_…"` matched github-token, then assigned-secret
+    // re-matched the placeholder and relabelled it.
+    const result = redact(`github_token = "${fake.githubToken}"`);
+    expect(result.findings.map((f) => f.ruleId)).toEqual(["github-token"]);
+    expect(result.text).toBe('github_token = "[REDACTED:github-token]"');
+  });
+
+  it("does not refuse a document that quotes its own placeholder", () => {
+    // A plausible echo of redacted input, and it made assertStructureOnly
+    // throw on output it had itself produced.
+    expect(() =>
+      assertStructureOnly('system S {\n  service Api\n  description "token: [REDACTED:jwt]"\n}\n'),
+    ).not.toThrow();
+  });
+
+  it("scans a pathological near-miss input in bounded time", () => {
+    // The old `prefix + keyword + suffix` regex was quadratic here: 240 KB
+    // took about four seconds, which is a CPU-limit kill on a Worker.
+    const hostile = `${"token_".repeat(40_000)}x`;
+    const started = performance.now();
+    redact(hostile);
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 });
 

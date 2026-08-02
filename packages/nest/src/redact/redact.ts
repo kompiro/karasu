@@ -10,7 +10,13 @@
  * something it should never have seen, or a rule missed on the way in — and
  * quietly scrubbing it would hide the failure while shipping the artifact.
  */
-import { isPlaceholder, REDACTION_RULES, type RedactionRule } from "./rules.js";
+import {
+  isOwnPlaceholder,
+  isPlaceholder,
+  isSecretKey,
+  REDACTION_RULES,
+  type RedactionRule,
+} from "./rules.js";
 
 export interface Finding {
   /** Which rule matched. */
@@ -31,9 +37,18 @@ export interface RedactionResult {
 
 const placeholderFor = (ruleId: string): string => `[REDACTED:${ruleId}]`;
 
-/** Fresh, global-flagged copy of a rule's pattern; the rules are stateless. */
-const globalPattern = (rule: RedactionRule): RegExp =>
-  new RegExp(rule.pattern.source, `${rule.pattern.flags.replace("g", "")}g`);
+/**
+ * Fresh copy of a rule's pattern with `g` and `d`.
+ *
+ * `d` (hasIndices) is what makes the splice exact. The previous version did
+ * `match.replace(secret, placeholder)`, which replaces the *first* occurrence
+ * of the secret text inside the match — so `hunter2plus_password =
+ * "hunter2plus"` redacted the key name and shipped the value, and
+ * `postgres://s3cr3t_admin:s3cr3t@host` redacted part of the username and
+ * shipped the password. Group indices remove the guesswork.
+ */
+const scanPattern = (rule: RedactionRule): RegExp =>
+  new RegExp(rule.pattern.source, `${rule.pattern.flags.replace(/[gd]/g, "")}gd`);
 
 /**
  * Replace credential-shaped material with typed placeholders.
@@ -48,19 +63,34 @@ export function redact(text: string, where = "input"): RedactionResult {
   let current = text;
 
   for (const rule of REDACTION_RULES) {
-    const pattern = globalPattern(rule);
-    current = current.replace(pattern, (match, ...groups: unknown[]) => {
-      const secret =
-        rule.secretGroup === 0 ? match : ((groups[rule.secretGroup - 1] as string) ?? "");
-      if (secret.length === 0) return match;
-      if (isPlaceholder(secret)) return match;
+    let out = "";
+    let copiedTo = 0;
+    for (const match of current.matchAll(scanPattern(rule))) {
+      const span = match.indices?.[rule.secretGroup];
+      if (span === undefined) continue;
+      const [start, end] = span;
+      const secret = current.slice(start, end);
+      if (secret.length === 0) continue;
+      // Never re-process what this module already wrote — that is how a
+      // specific `github-token` finding got overwritten by a generic
+      // `assigned-secret` one, and how `assertStructureOnly` came to refuse
+      // its own output.
+      if (isOwnPlaceholder(secret)) continue;
+      // The reference and placeholder heuristics apply only where the value
+      // is not itself format-constrained. See `isPlaceholder`.
+      if (rule.secretGroup > 0 && isPlaceholder(secret)) continue;
+      // An assignment rule fires on the name, not the value, which is what
+      // lets its value pattern be wide enough to cover `.env` and YAML.
+      if (rule.keyGroup !== undefined) {
+        const keySpan = match.indices?.[rule.keyGroup];
+        if (keySpan === undefined) continue;
+        if (!isSecretKey(current.slice(keySpan[0], keySpan[1]))) continue;
+      }
       findings.push({ ruleId: rule.id, where, length: secret.length });
-      // For a group rule, splice the placeholder in and keep the surroundings
-      // — the scheme, host and key name are structure worth preserving.
-      return rule.secretGroup === 0
-        ? placeholderFor(rule.id)
-        : match.replace(secret, placeholderFor(rule.id));
-    });
+      out += current.slice(copiedTo, start) + placeholderFor(rule.id);
+      copiedTo = end;
+    }
+    current = out + current.slice(copiedTo);
   }
 
   return { text: current, findings };
