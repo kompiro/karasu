@@ -1,6 +1,6 @@
-# bare `/<owner>/<repo>@<ref>` permalink route（`/r/` prefix の除去）
+# bare `/<owner>/<repo>[@<ref>]` permalink route（`/r/` prefix の除去）
 
-- **日付**: 2026-08-01
+- **日付**: 2026-08-02
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1961](https://github.com/kompiro/karasu/issues/1961)（親: [#1828](https://github.com/kompiro/karasu/issues/1828) / エピック [#1826](https://github.com/kompiro/karasu/issues/1826)）
@@ -10,9 +10,14 @@
 
 ## 背景・課題
 
-ADR-1828 が定めた repo-backed permalink の URL 形は `…/r/<owner>/<repo>[/<path>][@<ref>]` で、`/r/` prefix が付いている。design doc が本来目指していたのは prefix なしの `…/<owner>/<repo>@<sha>` だったが、実装（PR #1945）時点で「Cloudflare Pages では root の catch-all Function が静的アセットより **先に** 走るため、bare な 2-segment catch-all は `/s`・`/render`・SPA ルートを丸ごと shadow してしまう」と判断し、prefix で route を隔離した。ADR-1828 はこれを「#1961 で別途検討」として明示的に後続化している。
+ADR-1828 が定めた repo-backed permalink の URL 形は `…/r/<owner>/<repo>[/<path>][@<ref>]` で、`/r/` prefix が付いている。design doc が本来目指していたのは prefix なしの `…/<owner>/<repo>` だったが、実装（PR #1945）時点で「Cloudflare Pages では root の catch-all Function が静的アセットより **先に** 走るため、bare な 2-segment catch-all は `/s`・`/render`・SPA ルートを丸ごと shadow してしまう」と判断し、prefix で route を隔離した。ADR-1828 はこれを「#1961 で別途検討」として明示的に後続化している。
 
-`/r/` は今日動いており、機能上の不足はない。#1961 が問うのは **URL の見栄え**（GitHub 風の bare な `owner/repo@sha`）だけである。したがって本 doc の役割は「やる／やらない」を美観だけで決めることではなく、**当時 shadow を恐れて避けた route が本当に不可能なのか、可能ならどんな代償が付くのかを実測で確定させる**ことにある。
+`/r/` は今日動いており、機能上の不足はない。#1961 が問うのは URL の形だけである。求める到達点は **`github.com/<owner>/<repo>` と同じ手触り** — つまり:
+
+- `karasu.kompiro.dev/<owner>/<repo>` と打てば **default branch の HEAD** が開く。読者に commit SHA を調べさせない。
+- `@<ref>` を足したときだけ、その ref に固定される。
+
+**ref 省略が第一級であること**が本 doc の必須要件である。SHA を要求する形は「その決定時点の構造を指す」ADR permalink には正しいが、人が手で打つ・口頭で伝える discovery の導線としては使えない。
 
 ## 現状（インベントリ）
 
@@ -25,17 +30,21 @@ nest deployment（`karasu.kompiro.dev` / `karasu.pages.dev`、Cloudflare Pages�
 | `/fonts/*`, `/favicon.svg`, `/logo.svg`, `/karasu-logo-1200w.png` | 静的 | `/render` の PNG 用フォントを含む |
 | `/s` | Function `functions/s.ts` | share page（OGP + human bounce） |
 | `/render` | Function `functions/render.ts` | SVG / PNG レンダリング |
-| `/r/<owner>/<repo>…` | Function `functions/r/[[path]].ts` | repo-backed permalink resolver |
+| `/r/<owner>/<repo>…` | Function `functions/r/[[path]].ts` | repo-backed permalink resolver。**すでに ref 省略 = HEAD** |
 | `/projects/<id>` | **SPA ルート（2 セグメント）** | `useProjectNavigation.ts` の `PROJECT_PATH_RE = /^\/projects\/([^/]+)/` |
 | その他すべて | `_redirects` の `/* /index.html 200` | SPA fallback |
 
-**`/projects/<id>` の存在が本件の核心**である。これは pushState で作られるが、リロード・ブックマーク・共有時にはサーバへ到達する実ルートであり、形が `/<owner>/<repo>` と完全に同型である。ADR-1828 執筆時に想定されていた「SPA ルート」は具体的にはこれを指す。
+**`/projects/<id>` の存在が本件の核心**である。pushState で作られるが、リロード・ブックマーク・共有時にはサーバへ到達する実ルートであり、形が `/<owner>/<repo>` と完全に同型である。ADR-1828 執筆時に想定されていた「SPA ルート」は具体的にはこれを指す。
+
+なお ref 省略 = HEAD の解決自体は `/r/` で既に動いており（`raw.githubusercontent.com/<owner>/<repo>/HEAD/…` が GitHub API hop なしで default branch を解決する）、本件で新たに作る必要はない。**本 doc が解くのは resolver ではなく route の切り分けだけ**である。
 
 ## 制約・前提
 
+- **ref 省略が第一級**（本 doc の必須要件）: `…/<owner>/<repo>` が default branch を開く。`@<ref>` は任意の pin 手段。
 - **後方互換**: すでに公開済みの `/r/…` permalink を壊さない（#1961 本文の要求）。ADR の `permalink[].short` に貼られたリンクを含む。
+- **未知パスの既定を変えない**: 今日 SPA fallback に落ちているパスは、明日も SPA fallback に落ちる。
 - **stateless 原則**（ADR-1783）: 新しい永続ストアを作らない。cache は Cache API の ephemeral に留める。
-- **hot path で GitHub API を叩かない**（ADR-1828）: ref 解決は `raw.githubusercontent.com/<owner>/<repo>/HEAD/…` で済ませる。
+- **hot path で GitHub API を叩かない**（ADR-1828）: ref 解決は `raw.githubusercontent.com` で済ませる。REST API（repo 存在確認など）は rate limit を hot path に持ち込むので使わない。
 - **Functions 実行回数**: Cloudflare Pages Functions は invocation 課金・制限がある。全リクエストを Worker に通す構成はコスト面で受け入れられない。
 - **out of scope**: private repo（#1960）、deep anchor 文法の変更（ADR-1827 / `docs/spec/permalink.md` のまま）、shortener（taka）側の形。
 
@@ -43,39 +52,27 @@ nest deployment（`karasu.kompiro.dev` / `karasu.pages.dev`、Cloudflare Pages�
 
 ### 検証方法
 
-`wrangler pages dev packages/app/dist`（wrangler 4.118.0 / workerd 1.20260730.1、実 Pages ルーティング実装）を worktree 内で起動し、`curl` で経路ごとの応答を観測した。PoC 用に以下を追加した（**本 PR には含めない** — 検証済みコードは「実装の指針」に転記する）:
+`wrangler pages dev packages/app/dist`（wrangler 4.118.0 / workerd 1.20260730.1、実 Pages ルーティング実装）を worktree 内で起動し、`curl` で経路ごとの応答とレイテンシを観測した。PoC 用に以下を追加した（**本 PR には含めない** — 検証済みの内容は「実装の指針」に転記する）:
 
-- `functions/[[path]].ts` — root catch-all。permalink 形でなければ `context.next()` で静的アセット側へ差し戻す。差し戻し時に `x-karasu-bare-guard: fallthrough` ヘッダを付け、「Function が起動して辞退した」のか「そもそも起動していない」のかを外から判別できるようにした。
+- `functions/[[path]].ts` — root catch-all。permalink 形でなければ `context.next()` で静的アセット側へ差し戻す。差し戻し時に `x-karasu-bare-guard` ヘッダを付け、「Function が起動して辞退した」のか「そもそも起動していない」のかを外から判別できるようにした。
 - `packages/app/public/_routes.json` — `include: ["/*"]` + 静的パス・`/projects/*` の `exclude`。
-- guard は 2 変種を `KARASU_BARE_GUARD` binding で切り替え: `shape`（`@<ref>` 任意。`/r/` と同じ受理範囲）と `at`（`@<ref>` 必須）。
+- guard は 3 変種を `KARASU_BARE_GUARD` binding で切り替え: `shape`（ref 省略可・素の形）、`at`（`@<ref>` 必須）、`fallback`（ref 省略可 + 後述の deterministic-negative fallthrough）。
 
 再現手順:
 
 ```
 pnpm add -w -D wrangler
 pnpm --filter @karasu-tools/core run build && pnpm --filter @karasu-tools/app run build
-npx wrangler pages dev packages/app/dist --port 8788 --binding KARASU_BARE_GUARD=at
+npx wrangler pages dev packages/app/dist --port 8788 --binding KARASU_BARE_GUARD=fallback
 ```
 
-### 結果 1: bare route は成立する
+### 結果 1: bare route 自体は成立する
 
-`@`-required guard + `_routes.json` 構成での実測（SHA は `03e906d7259d440b2a59855b5459da734a0adb30`）:
-
-| リクエスト | 結果 | 期待どおりか |
-| --- | --- | --- |
-| `/kompiro/karasu/examples/en/hato/index.krs@<sha>` | `302 → /s?s=lVZdb9s2…` | ✅ bare が解決する |
-| `/r/kompiro/karasu/examples/en/hato/index.krs@<sha>` | `302 → /s?s=lVZdb9s2…`（同一 payload） | ✅ `/r/` も同時に生きる |
-| `/` , `/favicon.svg` , `/logo.svg` , `/fonts/…` | `200` 静的 | ✅ |
-| `/s` , `/render` | `400 Missing 's' query parameter.` | ✅ 兄弟 Function が catch-all に勝つ |
-| `/projects/my-project` | `200` SPA | ✅ |
-| `/nope` , `/nope/deeper` | `200` SPA fallback | ✅ |
-| `/kompiro/karasu`（`@` なし） | `200` SPA | 仕様どおり（後述） |
-
-**bare route は技術的に可能**。しかも `/r/` と併存でき、リダイレクトによる余計な hop も要らない。ADR-1828 が避けた「shadow」は、次の 2 つの仕組みで回避できる。
+`/kompiro/karasu/examples/en/hato/index.krs@<sha>` は `/r/…` と同一の payload へ 302 し、`/r/` 形も同時に生き続けた。兄弟 Function（`/s`・`/render`・`/r/[[path]]`）は root catch-all に勝ち、`/`・静的アセットも従来どおり返る。**catch-all の設置は SPA の全滅を意味しない** — これが ADR-1828 時点で検証されていなかった前提である。リダイレクト hop も不要で、bare と `/r/` は素直に併存する。
 
 ### 結果 2: `context.next()` は静的アセットにも SPA fallback にも正しく戻る
 
-root catch-all の中で `context.next()` を返すと、静的アセットがそのまま返り、存在しないパスは `_redirects` の SPA fallback（`index.html` 200）に落ちる。`x-karasu-bare-guard` ヘッダ付きで `/nope` が `200 index.html` を返したことで「Function が起動 → 辞退 → SPA」の経路が成立していることを確認した。**catch-all の設置は SPA の全滅を意味しない** — これが ADR-1828 時点で検証されていなかった前提である。
+root catch-all の中で `context.next()` を返すと、静的アセットがそのまま返り、存在しないパスは `_redirects` の SPA fallback（`index.html` 200）に落ちる。`/nope` が `x-karasu-bare-guard` ヘッダ付きで `200 index.html` を返したことで、「Function が起動 → 辞退 → SPA」の経路が成立していることを確認した。**この差し戻しは GitHub への fetch を await した後でも機能する**（結果 4 の土台）。
 
 ### 結果 3: 手書き `_routes.json` は honor される（コスト面で必須）
 
@@ -88,58 +85,88 @@ root catch-all の中で `context.next()` を返すと、静的アセットが�
 
 `_routes.json` を置かないと **186 個のアセット chunk すべてが Worker invocation を消費する**。bare route は「Function を 1 個足す」話ではなく「`_routes.json` を自前管理し始める」話であり、これが最大の恒久コストである。なお `include: ["/*"]` のままなので、**新しい Function を足しても include 漏れは起きない**（メンテが要るのは exclude 側だけ）。
 
-### 結果 4: guard の受理範囲を誤ると既定が反転する
+### 結果 4: 素の shape guard は既定を反転させるが、fallthrough で戻せる
 
-`shape` 変種（`@` 任意、`/r/` と同じ受理範囲）での実測:
+ref 省略を許す（= `@` を判別子に使えない）以上、guard は「形が `<owner>/<repo>` に見えるか」しか判定できない。素朴にそれだけで受けると（`shape` 変種）:
 
-| リクエスト | `shape` guard | `at` guard |
+| リクエスト | `shape` guard | 期待 |
 | --- | --- | --- |
-| `/nope/deeper` | **`404 No .krs found at nope/deeper@HEAD`** | `200` SPA fallback |
-| `/docs/getting-started` | **`404 No .krs found at docs/getting-started@HEAD`** | `200` SPA fallback |
+| `/nope/deeper` | **`404 No .krs found at nope/deeper@HEAD`** | SPA fallback |
+| `/docs/getting-started` | **`404 No .krs found at docs/getting-started@HEAD`** | SPA fallback |
 
-`@` を要求しない bare catch-all は、**「未知の 2 セグメントパス = SPA」という既定を「未知の 2 セグメントパス = GitHub への repo 照会」に反転させる**。`/projects/*` のような既知ルートは予約リストで守れるが、守るべき対象が「今ある SPA ルート」ではなく「今後増えるすべての SPA ルート」になる点が問題で、これは恒久的な設計税になる。
+**「未知の 2 セグメントパス = SPA」という既定が「= GitHub への repo 照会」に反転する。**
 
-`@` を必須にすると判別子が URL 内に明示的に存在するため、この税がほぼゼロになる。`@` を含む SPA ルートは現在も将来も想定しにくい（`/projects/<id>` の id は OPFS のプロジェクト id）。
+`fallback` 変種はこれを解く。resolver が **deterministic な negative**（400「`.krs` パスではない」/ 404「そこに `.krs` が無い」）を返し、かつ URL に明示的な `@<ref>` が無いなら、**エラーを返さず `context.next()` で SPA へ差し戻す**。transient な失敗（502 upstream / 500）は差し戻さずそのまま出す — GitHub 障害時に SPA を出すと、実在する permalink が白紙のエディタの裏に隠れてしまうため。
 
-### 結果 5: 実装上の落とし穴
+実測:
 
-- **percent-encoding**: `url.pathname` は `%40` を復号しない。`/r/` は Pages が復号済みの `params.path` を渡すため無意識に救われていたが、bare guard を `url.pathname` に直接当てると `/<owner>/<repo>%40<sha>` が判別子 `@` に一致せず **黙って SPA に落ちる**。guard の前に `decodeURIComponent` を通すことで解消することを実測で確認した（修正後 `%40` 形も `302` になる）。
-- **`caches.default`**: 現行 `/r/` は Cache API で 302 をキャッシュしている。bare 側にも同じロジックが要る（同一内容が 2 つのキャッシュキーを持つが、ephemeral なので許容）。
+| リクエスト | 結果 | 判定 |
+| --- | --- | --- |
+| `/kompiro/karasu/examples/en/hato/index.krs`（**ref 省略**） | `302 → /s?s=…` | ✅ GitHub 同様、HEAD が開く |
+| `/kompiro/karasu/examples/en/hato/index.krs@<sha>` | `302 → /s?s=…` | ✅ pin も効く |
+| `/nope/deeper` | `200` SPA | ✅ 既定が保たれる |
+| `/docs/getting-started/intro` | `200` SPA | ✅ |
+| `/guide/boundary/design` | `200` SPA | ✅ |
+| `/kompiro/karasu/docs/foo.txt` | `200` SPA | ✅ |
+| `/projects/my-project` | `200` SPA | ✅ |
+| `/nope` | `200` SPA | ✅ |
+| `/kompiro/karasu/examples/en/hato/nope.krs@<sha>`（**明示 ref**） | `404 No .krs found at …` | ✅ permalink 意図には診断を出す |
+
+「明示 `@<ref>` があればエラーを出す / 無ければ黙って SPA」という非対称が要点で、**`@` を必須にせずに `@` を意図のシグナルとして使う**。読者が SHA を調べる必要はどこにも無い。
+
+### 結果 5: fallthrough のレイテンシ代償は狭い
+
+`context.next()` に落ちる前に GitHub を叩くので、未知パスが遅くなる。3 回計測（ローカル dev サーバ、GitHub raw への実 fetch を含む）:
+
+| パスの種類 | 実測 | GitHub への fetch |
+| --- | --- | --- |
+| `/`, `/projects/my-project`（`_routes.json` で exclude） | 3–6 ms | 0 |
+| `/nope`（1 セグメント → guard が即却下） | 2–5 ms | 0 |
+| `/docs/getting-started/intro`, `/guide/boundary/design`（`.krs` で終わらない 3+ セグメント → parse が**ローカルで** 400） | 2–4 ms | **0** |
+| `/nope/deeper`, `/kompiro/karasu`（ref 省略のちょうど 2 セグメント） | **110–430 ms** | 2（`index.krs` → `karasu.krs`） |
+| 解決成功（`…/index.krs`） | 37–82 ms | 1–2 |
+
+**遅くなるのは「ref 省略のちょうど 2 セグメント」だけ**である。`/docs/getting-started/intro` のような多くの SPA ルート候補は、`.krs` サフィックス要件によって GitHub に触れる前にローカルで弾かれる。既知の 2 セグメントルート（`/projects/*`）は `_routes.json` の exclude が 4 ms 側に留める。露出範囲は当初の懸念よりかなり狭い。
+
+残る代償は、**未知の 2 セグメントパスへのアクセスが GitHub raw への 2 fetch を発生させる**こと。クローラや scanner が増幅させうるので、negative 結果も Cache API に短命でキャッシュする必要がある（実装の指針 5）。
+
+### 結果 6: 実装上の落とし穴
+
+- **percent-encoding**: `url.pathname` は `%40` を復号しない。`/r/` は Pages が復号済みの `params.path` を渡すため無意識に救われていたが、bare guard を `url.pathname` に直接当てると `%40` 形の pin が判別されない。guard の前に `decodeURIComponent` を通すことで解消することを実測で確認した。
+- **`caches.default`**: 現行 `/r/` は Cache API で 302 をキャッシュしている。bare 側にも同じロジックが要る。
 - **`_redirects` の local 警告**: `wrangler pages dev` は `/* /index.html 200` を "Infinite loop detected" として無視する。それでも fallback は効いた（アセットサーバの not-found 処理）。local と production で SPA fallback の経路が微妙に違うため、**この 1 点だけは本番 preview deployment で確認が要る**。
-- **`adr:check-permalinks` は route 形に非依存**: `@kompiro/adr-tools` の `checkRepoBackedPin` は `hostname` の allowlist 照合と `pathname` の最後の `@` しか見ない（`dist/cli.js`）。bare 形でも `@<40-hex-sha>` 推奨検証はそのまま効くので、adr-tools 側の変更は不要。
+- **`adr:check-permalinks` は route 形に非依存**: `@kompiro/adr-tools` の `checkRepoBackedPin` は `hostname` の allowlist 照合と `pathname` の最後の `@` しか見ない（`dist/cli.js`）。bare 形でも `@<40-hex-sha>` 推奨 warning はそのまま効くので、adr-tools 側の変更は不要。
+- **karasu 自身は短い形を持たない**: ref 省略の最短形 `…/<owner>/<repo>` が成立するのは repo root に `index.krs` か `karasu.krs` がある場合だけ（`DEFAULT_ENTRIES`）。karasu repo には無いので、自リポジトリを指す例は `…/kompiro/karasu/examples/en/hato/index.krs` になる。ショーケース URL を短くしたいなら repo root に `index.krs` を置く別判断が要る。
 
 ## 検討した選択肢
 
-### 案1: bare catch-all（`@<ref>` 任意 — `/r/` と同じ受理範囲）
+### 案1: 素の bare catch-all（shape guard のみ）
 
-root catch-all が `<owner>/<repo>[/<path>][@<ref>]` 形すべてを受ける。`/r/` は別名として残す。
+形が `<owner>/<repo>` に見えたら resolver に渡し、解決できなければエラーを返す。
 
 **メリット**
 
-- `/r/` と bare が完全に等価。説明が「prefix は省略可」の 1 行で済む。
+- 実装が単純。ref 省略も自然に通る。
 
 **デメリット**
 
 - 結果 4 のとおり既定が反転する。未知の 2 セグメントパスが SPA fallback ではなく GitHub 404 になる。
-- 予約リスト（`projects`, `docs`, …）の維持が、SPA ルートを増やすたびに発生する恒久税になる。しかも破ったときの症状が「新ルートが 404 になる」という遠い場所での失敗で、原因に辿り着きにくい。
+- 予約リストの維持が、SPA ルートを増やすたびに発生する恒久税になる。破ったときの症状は「新ルートだけ 404」で、原因は無関係に見える別ファイルにある。
 
-### 案2: bare catch-all（`@<ref>` **必須**）+ `/r/` は ref-less/discovery 用に存続
+### 案2: `@<ref>` を必須にする
 
-- `…/<owner>/<repo>[/<path>]@<ref>` — bare。`@` が判別子なので SPA ルートと衝突しない。
-- `…/r/<owner>/<repo>[/<path>][@<ref>]` — 現行のまま。`@` を省いた「今の default branch を見る」形はこちらだけ。
+bare 形は `…/<owner>/<repo>@<ref>` のみ受け、ref 省略形は `/r/` に残す。
 
 **メリット**
 
-- 実測で SPA・静的・fallback・兄弟 Function のすべてが今日と同じ挙動のまま（結果 1）。
-- 既定が反転しない。予約リストは defense-in-depth に格下げでき、設計税がほぼ消える。
-- ADR-1828 が別途規約で担保しようとしていた「ADR permalink は `@<sha>` で pin する」が、**URL 文法そのものに埋まる**。見栄えのよい短い形＝pin された形になる。
-- 公開済み `/r/…` はそのまま動く（リダイレクト hop なし）。
+- `@` が判別子になるので SPA ルートと構造的に排他。予約リストがほぼ不要。
 
 **デメリット**
 
-- 形が 2 つになり、能力が非対称（bare は ref 必須、`/r/` は任意）。ドキュメントで説明が要る。
-- `_routes.json` の自前管理が始まる（案1 も同じ）。
-- `@` を含む SPA ルートを将来作れなくなる（現実的な制約とは考えにくい）。
+- **読者に ref を調べさせる**。手打ち・口頭伝達の discovery 導線として使えず、本 doc の必須要件を満たさない。
+- 「短くて綺麗な形」と「ref 省略で気軽に開ける形」が別 URL に分かれ、覚えることが増える。
+
+→ **却下**（要件不成立）。
 
 ### 案3: 現状維持（`/r/` のみ）
 
@@ -149,7 +176,7 @@ root catch-all が `<owner>/<repo>[/<path>][@<ref>]` 形すべてを受ける。
 
 **デメリット**
 
-- ADR-1828 が目指した URL 形に到達しない。#1961 は open のまま。
+- ADR-1828 が目指した URL 形に到達しない。
 
 ### 案4: bare を受けて `/r/…` へ 301 リダイレクト
 
@@ -159,61 +186,96 @@ root catch-all が `<owner>/<repo>[/<path>][@<ref>]` 形すべてを受ける。
 
 **デメリット**
 
-- 301 → 302 → `/s` の 3 hop になる。permalink を踏むたびに余計な往復が増える。resolver を共有すれば実体の重複は案2 でも起きないので、hop を払う理由がない。
+- 301 → 302 → `/s` の 3 hop になる。resolver 共有は案5 でも実現できるので、hop を払う理由がない。
+- 判別の問題（案1 のデメリット）は解決しない。リダイレクト前に同じ guard が要る。
+
+### 案5: bare catch-all（ref 省略可）+ deterministic-negative fallthrough
+
+`@<ref>` は任意。形が合えば resolver に渡すが、**deterministic な negative（400 / 404）で明示 `@<ref>` が無いなら SPA へ差し戻す**。予約リストと `_routes.json` はレイテンシと多層防御のために残す。
+
+**メリット**
+
+- **GitHub と同じ手触り**: `…/<owner>/<repo>` で HEAD、`@<sha>` で pin。要件を満たす。
+- 既定が反転しない（結果 4 で実測）。しかも予約リストが**完全でなくても壊れない** — 漏れた SPA ルートは fallthrough が拾う。予約リストは正しさの前提から、レイテンシ最適化と多層防御に格下げされる。
+- 明示 `@<ref>` のときだけエラーを出すので、permalink を意図した読者は診断を受け取れる。
+- 公開済み `/r/…` はそのまま動く（hop なし）。
+- ADR-1828 の「resolver は permissive に保ち、immutability は上位規約（`adr:check-permalinks` の warn）で担保する」という philosophy と**同じ方向**。案2 が文法で規約を強制しようとしたのに対し、案5 は resolver を permissive なまま据え置く。
+
+**デメリット**
+
+- 未知の 2 セグメントパスが 110–430 ms かかる（結果 5）。negative cache が要る。
+- 「repo は実在するが `.krs` が無い」と「そんなパスは無い」を区別せず、どちらも SPA を出す。区別には GitHub REST API hop が要り、ADR-1828 の制約に反するので採らない。
+- `_routes.json` の自前管理が始まる（案1・案4 も同じ）。
 
 ## 比較
 
-| 観点 | 案1 bare（`@` 任意） | 案2 bare（`@` 必須） | 案3 現状維持 | 案4 bare→`/r/` 301 |
-| --- | --- | --- | --- | --- |
-| URL の見栄え（#1961 の目的） | ◎ | ◎ | ✕ | ◎ |
-| SPA ルートとの衝突 | **✕ 既定が反転** | ◎ 衝突なし（実測） | ◎ | ✕ 案1 と同じ guard 問題 |
-| 既存 `/r/` permalink | ◎ 併存 | ◎ 併存 | ◎ | ◎ |
-| 恒久的な設計税 | 大（SPA ルート追加のたびに予約リスト） | 小（`_routes.json` の exclude のみ） | なし | 大 |
-| リクエスト hop | 1 | 1 | 1 | 2 |
-| `@<sha>` pin 規約との整合 | 中立 | ◎ 文法が規約を体現 | 中立 | 中立 |
-| 実装量 | 中 | 中 | ゼロ | 中 |
+| 観点 | 案1 素の shape | 案2 `@` 必須 | 案3 現状維持 | 案4 301 | **案5 fallthrough** |
+| --- | --- | --- | --- | --- | --- |
+| ref 省略で HEAD（**必須要件**） | ◎ | **✕ 要件不成立** | ◎（`/r/` で） | ◎ | ◎ |
+| SPA ルートとの衝突 | ✕ 既定が反転 | ◎ | ◎ | ✕ | ◎ 実測で衝突なし |
+| 予約リストの正しさへの依存 | 大（漏れ = 404） | 小 | — | 大 | **小（漏れても SPA に落ちる）** |
+| 未知パスのレイテンシ | 即 404 | 即 SPA | 即 SPA | 即 404 | 110–430 ms（2 セグメントのみ） |
+| 既存 `/r/` permalink | ◎ 併存 | ◎ 併存 | ◎ | ◎ | ◎ 併存 |
+| リクエスト hop | 1 | 1 | 1 | 2 | 1 |
+| 実装量 | 中 | 中 | ゼロ | 中 | 中 |
 
 ## 現時点の方針
 
-**案2 を採用する** — PoC で「bare route は可能」と「愚直な bare catch-all は既定を反転させる」の両方が実測で出た。`@<ref>` を bare 形の必須要素にすると、判別子が URL に明示されるので guard が SPA ルートの列挙に依存しなくなり、ADR-1828 が恐れた shadow が構造的に起きない。加えて ADR-1828 が「resolver ではなく上位規約で担保する」とした `@<sha>` pin が、短い bare 形を使う限り自動的に満たされる — 規約と文法が同じ方向を向く。
+**案5 を採用する。** URL 形は次の 2 つで、どちらも同じ resolver に落ちる:
 
-`/r/` は廃止せず、**ref-less な discovery 形の正規の置き場**として残す。これは後方互換のための deprecated alias ではなく役割分担であり、そう位置づけることで「いつ `/r/` を消すか」という宿題を作らずに済む。
+```
+…/<owner>/<repo>[/<path>]           → default branch HEAD（GitHub と同じ手触り）
+…/<owner>/<repo>[/<path>]@<ref>     → その ref に固定
+…/r/<owner>/<repo>[/<path>][@<ref>] → 現行のまま（公開済みリンクの互換）
+```
 
-一方で、これは **URL の美観のための変更であり、機能追加ではない**。`_routes.json` の自前管理と root catch-all という恒久コストを払う判断は、#1961 が low priority と自認していることと突き合わせて決める価値がある。採用しない（案3）という結論も本 doc の実測結果と矛盾しない。
+ref 省略を第一級にすると `@` を判別子に使えず、guard は形しか見られない。そこで判別を **guard から resolver の結果へ後ろ倒しする** — GitHub が「そこに `.krs` は無い」と確定的に答えたなら、それは permalink ではなかったのだから SPA へ返す。これで「未知パス = SPA」という既定が保たれ、しかも予約リストの完全性に正しさが依存しなくなる。予約リストと `_routes.json` は残すが、役割はレイテンシ最適化と多層防御であって、抜けても 404 にはならない。
+
+代償はレイテンシで、**ref 省略のちょうど 2 セグメントのパスだけ** 110–430 ms かかる。`.krs` サフィックス要件のおかげで他の SPA ルート形はローカルで弾かれ、既知の 2 セグメントルートは `_routes.json` が守る。negative 結果を短命キャッシュすれば増幅も抑えられる。
+
+`/r/` は廃止せず、**公開済みリンクの互換経路**として残す。bare と機能が完全に等価になるので「いつ消すか」の宿題は残るが、消さなくても害はない。
+
+一方で、これは **URL の形のための変更であり、機能追加ではない**（ref 省略 = HEAD は `/r/` で既に動く）。`_routes.json` の自前管理・root catch-all・未知 2 セグメントパスのレイテンシという恒久コストを払う判断は、#1961 が low priority と自認していることと突き合わせて決める価値がある。**案3（やらない）も本 doc の実測と矛盾しない。**
 
 ### 実装の指針
 
 実装は 1 PR で収まる規模のため、スライス分割はしない。
 
-
 1. `functions/[[path]].ts` を追加する。`onRequest` で以下を行う:
-   - `decodeURIComponent(url.pathname)` を **guard の前に** 通す（結果 5）。復号に失敗したら `context.next()`（SPA に 404 させる）。
-   - `looksLikeBarePermalink()`: `@` の存在必須 / `@` 以降が非空 / 2 セグメント以上 / owner・repo が `repo-permalink.ts` の `OWNER_RE`・`REPO_RE` に一致 / 先頭セグメントが予約リストに無い。
+   - `decodeURIComponent(url.pathname)` を **guard の前に** 通す（結果 6）。復号に失敗したら `context.next()`。
+   - `looksLikeBarePermalink()`: 2 セグメント以上 / owner・repo が `repo-permalink.ts` の `OWNER_RE`・`REPO_RE` に一致 / 先頭セグメントが予約リストに無い。**`@` の有無は問わない。**
    - 非該当・非 GET は `context.next()` で差し戻す。
-   - 該当時は `resolveRepoPermalink()` に渡し、`functions/r/[[path]].ts` と同じ 302 + `Cache-Control` + `caches.default` 処理を行う。
-2. **302 生成と cache 処理を `functions/r/[[path]].ts` と共有する。** 現行の `/r/` handler の本体を `packages/app/src/render/repo-permalink.ts` 側（または隣接モジュール）の関数に切り出し、両 Function を薄い adapter にする。`Cache-Control` の分岐や `boundFetch` の "Illegal invocation" 回避（`functions/r/[[path]].ts` のコメント参照）を二重管理しない。
+   - 該当時は `resolveRepoPermalink()` に渡す。`status === 200` なら 302。
+   - **`(status === 400 || status === 404) && !pathname.includes("@")` なら `context.next()`** で SPA へ差し戻す。502 / 500 は差し戻さずそのまま返す（結果 4）。
+2. **302 生成と cache 処理を `functions/r/[[path]].ts` と共有する。** 現行 `/r/` handler の本体を `packages/app/src/render/` 側の関数に切り出し、両 Function を薄い adapter にする。`Cache-Control` の分岐や `boundFetch` の "Illegal invocation" 回避（`functions/r/[[path]].ts` のコメント参照）を二重管理しない。
 3. `packages/app/public/_routes.json` を追加する。`include: ["/*"]`、`exclude` は `/`, `/index.html`, `/assets/*`, `/fonts/*`, root の静的ファイル（`favicon.svg` / `logo.svg` / `karasu-logo-1200w.png`）、`/projects/*`。上限は 100 ルール・各 100 文字。
-4. 予約リストと `_routes.json` の `exclude` を **1 箇所から導出**し、SPA ルートの追加が両方に反映されないと落ちるようにする（proactive TPL-1961）。最低でも `looksLikeBarePermalink` の unit test に `/projects/<id>` を含む「SPA が所有する経路」の表を置き、SPA 側のルート定義（`PROJECT_PATH_RE`）と突き合わせる。
-5. ドキュメント更新: `docs/spec/permalink.md`（route 形の節を足すなら proactive TPL の紐付けも同 PR — CLAUDE.md の spec 改訂ルール）、`README.md` / `README.ja.md` の permalink 例、`docs/adr/1828-…` は書き換えず新 ADR から `refines` で参照する。
-6. AT: `docs/acceptance/` に新規ファイル。TC は:
-   - bare `@<sha>` が `/s?s=…` へ 302 し、開いた画面が `/r/` 形と同一であること
+4. 予約リストと `_routes.json` の `exclude` を **1 箇所から導出**する。SPA のルート定義（現状 `PROJECT_PATH_RE` が持つ `/projects/`）を単一の出所とし、ルートを足したのに両方へ反映されないと落ちるテストを置く（proactive TPL-1961）。案5 では抜けても 404 にはならないが、抜ければ静かに 200 ms 遅くなるので、機械チェックは残す価値がある。
+5. **negative fallthrough もキャッシュする。** 差し戻す `context.next()` の応答を `caches.default` に短い `s-maxage` で載せ、クローラが同じ未知パスを叩き続けても GitHub raw への fetch が増えないようにする。TTL は短く（`@<sha>` の 302 と違い、後から実在する repo になりうる）。
+6. ドキュメント更新: `docs/spec/permalink.md`（route 形の節を足すなら proactive TPL の紐付けも同 PR — CLAUDE.md の spec 改訂ルール）、`README.md` / `README.ja.md` の permalink 例、`docs/guide/adr-permalinks.md`。ADR-1828 は書き換えず新 ADR から `refines` で参照する。
+7. AT: `docs/acceptance/` に新規ファイル。TC は:
+   - **ref 省略の bare**（`…/<owner>/<repo>/<path>.krs`）が default branch の内容で開くこと
+   - bare `@<sha>` が pin された内容で開くこと
    - `/r/<owner>/<repo>@<sha>`（公開済み形）が引き続き 302 すること
+   - 未知の 2 セグメントパスが SPA fallback すること（既定が反転していないこと）
+   - 明示 `@<ref>` 付きの解決不能パスは **エラーを表示**すること（SPA に飲まれないこと）
    - `/projects/<id>` を直接リロードして SPA が開くこと
    - `/s` / `/render` / 静的アセットが今日と同じ応答であること
-   - 存在しないパス（1 セグメント / 2 セグメント）が SPA fallback すること
-   - **手動**: preview deployment（本番 Pages）で SPA fallback と `/assets/*` の Function 非起動を確認する（`wrangler pages dev` は `_redirects` の扱いが本番と異なる — 結果 5）
-7. ADR 昇格: 実装完了後、`docs/adr/1961-bare-permalink-route.md` として昇格し（`refines: [ADR-1828]`）、本 Design Doc は同 PR で削除する。
+   - **手動**: preview deployment（本番 Pages）で SPA fallback と `/assets/*` の Function 非起動を確認する（`wrangler pages dev` は `_redirects` の扱いが本番と異なる — 結果 6）
+8. ADR 昇格: 実装完了後、`docs/adr/1961-bare-permalink-route.md` として昇格し（`refines: [ADR-1828]`）、本 Design Doc は同 PR で削除する。
 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: なし（`/r/…` は併存、SPA・静的・`/s`・`/render` は実測で不変）。
 - 新規リスク: `_routes.json` を自前管理し始めるため、`exclude` に載ったパスは **Function から永久に見えなくなる**。将来 `/projects/…` を Function で処理したくなったら exclude を外す必要がある。
-- ドキュメント更新: `docs/spec/permalink.md`、`README*.md`、ADR-1828 を参照している箇所。
+- 新規リスク: 未知の 2 セグメントパスが GitHub raw への fetch を発生させる（negative cache で緩和）。
+- ドキュメント更新: `docs/spec/permalink.md`、`README*.md`、`docs/guide/adr-permalinks.md`、ADR-1828 を参照している箇所。
 - テスト・examples への影響: なし。
 
 ## 未解決の問い / 決めないこと
 
-- **そもそも払う価値があるか**: 案2 は技術的に安全だが、得られるのは URL の見栄えだけである。`_routes.json` の自前管理と root catch-all の恒久コストと引き換えにするか否かは、レビューでの判断に委ねる（案3 も妥当な結論）。
-- **どちらを canonical と呼ぶか**: bare と `/r/` の両方が動くとき、ADR の `permalink[].short` に貼るのはどちらかを規約で決めるか、決めずに放置するか。決めるなら `adr:check-permalinks` に足すのが自然だが、adr-tools 側の変更が要るので本 doc では決めない。
+- **そもそも払う価値があるか**: 案5 は技術的に安全だが、得られるのは URL の形だけである（ref 省略 = HEAD は `/r/` で既に動く）。`_routes.json` の自前管理・root catch-all・未知 2 セグメントパスのレイテンシと引き換えにするかは、レビューでの判断に委ねる（案3 も妥当な結論）。
+- **`DEFAULT_ENTRIES` を 1 つに絞るか**: ref 省略の 2 セグメント fallthrough は `index.krs` → `karasu.krs` の 2 fetch を払う。`karasu.krs` を落とせば半減するが ADR-1828 の既定を変えることになるため、本 doc では決めない。
+- **karasu repo 自身に root `index.krs` を置くか**: 置けば `karasu.kompiro.dev/kompiro/karasu` が最短のショーケース URL になる（結果 6）。model の置き場所の判断なので別 Issue。
+- **どちらを canonical と呼ぶか**: bare と `/r/` の両方が動くとき、ADR の `permalink[].short` に貼るのはどちらかを規約で決めるか。決めるなら `adr:check-permalinks` に足すのが自然だが adr-tools 側の変更が要るので本 doc では決めない。
 - **短縮 URL（taka）側**: 短縮後の形は本 doc の対象外。
 - **private repo（#1960）との相互作用**: private 対応が入ったとき bare 形も同じ扱いにするかは #1960 側で決める。
