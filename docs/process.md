@@ -180,7 +180,7 @@ karasu 側のセッション内で編集・コミット・PR 作成ができる�
 
 ### 循環依存チェック
 
-`pnpm check:cycles` で `madge --circular` を 5 つのプロダクションパッケージ（core / app / cli / lsp / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
+`pnpm check:cycles` で `madge --circular` を 7 つのプロダクションパッケージ（core / i18n / app / cli / lsp / nest / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
 
 - pre-push の lefthook と CI の `Check` ジョブで自動実行されるため、ローカル / PR どちらでも循環導入時にブロックされる
 - 型のみの import (`import type`) でも madge は循環として検出する。共有契約は専用の leaf module（例: `renderer/layout-types.ts`）に分離して回避する

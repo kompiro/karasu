@@ -16,10 +16,15 @@ interface ResponseOptions {
 }
 
 function baseHeaders(contentType: string, options: ResponseOptions): Record<string, string> {
+  // `Content-Type` and `Cache-Control` are written *after* the caller's extra
+  // headers, so neither can be shadowed by one. Spreading them the other way
+  // round would let an `options.headers` entry quietly re-introduce a
+  // cacheable response, which is the one thing this module exists to prevent
+  // — `cacheControl` is the only supported way to opt out of `no-store`.
   return {
+    ...options.headers,
     "Content-Type": contentType,
     "Cache-Control": options.cacheControl ?? NO_STORE,
-    ...options.headers,
   };
 }
 

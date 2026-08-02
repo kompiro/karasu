@@ -52,6 +52,26 @@ describe("Router", () => {
     expect((await run(router, "HEAD", "/healthz")).status).toBe(200);
   });
 
+  it("sends no body for a HEAD served from GET", async () => {
+    // workerd does not strip the body for us, so returning the GET response
+    // unchanged would answer a HEAD with a full payload.
+    const router = new Router().get(
+      "/healthz",
+      () => new Response("a body", { headers: { "X-Kept": "1" } }),
+    );
+    const response = await run(router, "HEAD", "/healthz");
+    expect(await response.text()).toBe("");
+    expect(response.headers.get("X-Kept")).toBe("1");
+  });
+
+  it("prefers an explicitly registered HEAD route over the GET fallback", async () => {
+    const router = new Router()
+      .get("/thing", () => new Response("from GET"))
+      .add("HEAD", "/thing", () => new Response(null, { headers: { "X-From": "HEAD" } }));
+    const response = await run(router, "HEAD", "/thing");
+    expect(response.headers.get("X-From")).toBe("HEAD");
+  });
+
   it("answers 405 with Allow when the path matches but the method does not", async () => {
     const router = new Router()
       .get("/thing", () => new Response("ok"))

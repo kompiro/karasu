@@ -44,4 +44,16 @@ describe("http helpers", () => {
     expect(response.headers.get("X-Trace")).toBe("1");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
+
+  it("does not let an extra header shadow Cache-Control or Content-Type", () => {
+    // `cacheControl` is the only supported way out of `no-store`. If a stray
+    // `headers` entry could re-introduce caching, the guarantee this module
+    // exists for would be one typo away from gone.
+    const response = json(
+      {},
+      { headers: { "Cache-Control": "public, max-age=31536000", "Content-Type": "text/html" } },
+    );
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+  });
 });

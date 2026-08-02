@@ -30,6 +30,11 @@ interface Route {
   handler: RouteHandler;
 }
 
+interface Match {
+  route: Route;
+  params: Record<string, string>;
+}
+
 /** Split a path into segments, tolerating a leading and trailing slash. */
 function segmentsOf(path: string): string[] {
   return path.split("/").filter((segment) => segment.length > 0);
@@ -73,32 +78,44 @@ export class Router {
     return this.add("POST", pattern, handler);
   }
 
+  /** Every route whose path pattern matches, in registration order. */
+  private candidates(actual: readonly string[]): Match[] {
+    const matches: Match[] = [];
+    for (const route of this.routes) {
+      const params = matchSegments(route.segments, actual);
+      if (params !== undefined) matches.push({ route, params });
+    }
+    return matches;
+  }
+
   /**
    * Resolve a request to a handler.
    *
-   * `HEAD` is served by the `GET` handler — the runtime strips the body — so a
-   * health check or link checker does not get a spurious 405.
+   * `HEAD` falls back to the `GET` handler so a health check or link checker
+   * does not get a spurious 405, but only after an explicitly registered
+   * `HEAD` route has had its chance. The fallback discards the body itself:
+   * workerd does **not** strip it for us, so returning the `GET` response
+   * unchanged would answer a HEAD with a full body.
    */
   async handle(request: Request, env: NestEnv, ctx: NestExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    const actual = segmentsOf(url.pathname);
+    const matches = this.candidates(segmentsOf(url.pathname));
+    if (matches.length === 0) return notFound();
+
     const method = request.method.toUpperCase();
-    const effectiveMethod = method === "HEAD" ? "GET" : method;
+    const invoke = ({ route, params }: Match): Response | Promise<Response> =>
+      route.handler({ request, env, ctx, url, params });
 
-    const allowed = new Set<string>();
-    for (const route of this.routes) {
-      const params = matchSegments(route.segments, actual);
-      if (params === undefined) continue;
-      if (route.method === effectiveMethod) {
-        return await route.handler({ request, env, ctx, url, params });
-      }
-      allowed.add(route.method);
+    const direct = matches.find((match) => match.route.method === method);
+    if (direct) return await invoke(direct);
+
+    if (method === "HEAD") {
+      const viaGet = matches.find((match) => match.route.method === "GET");
+      if (viaGet) return new Response(null, await invoke(viaGet));
     }
 
-    if (allowed.size > 0) {
-      if (allowed.has("GET")) allowed.add("HEAD");
-      return methodNotAllowed([...allowed].sort());
-    }
-    return notFound();
+    const allowed = new Set(matches.map((match) => match.route.method));
+    if (allowed.has("GET")) allowed.add("HEAD");
+    return methodNotAllowed([...allowed].sort());
   }
 }
