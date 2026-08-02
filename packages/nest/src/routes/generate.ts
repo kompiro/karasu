@@ -23,7 +23,7 @@ import { error, json } from "../http.js";
 import { logError, logInfo } from "../log.js";
 import { checkQuota } from "../quota/gate.js";
 import { QuotaLedger } from "../quota/ledger.js";
-import { LOCAL_REVERSE_GUIDE } from "../quota/policy.js";
+import { LOCAL_REVERSE_GUIDE, quotaPeriod } from "../quota/policy.js";
 import { InvalidRefError, normaliseName } from "../store/keys.js";
 import { NestStore } from "../store/nest-store.js";
 import { isStale, RunStatusStore } from "../store/run-status.js";
@@ -39,7 +39,16 @@ import type { RouteContext } from "../router.js";
  * argument only holds up if being refused still leaves someone with a way to
  * get a model.
  */
-function refuse(verdict: Extract<QuotaOutcome, { allowed: false }>): Response {
+function refuse(
+  verdict: Extract<QuotaOutcome, { allowed: false }>,
+  /** Present when a generated model already exists for this repository. */
+  cached: URL | undefined,
+  repo: { owner: string; repo: string },
+): Response {
+  const alsoAvailable =
+    cached === undefined
+      ? ""
+      : ` A model generated earlier is still available at ${cached.origin}/${repo.owner}/${repo.repo}.`;
   if (verdict.reason === "busy") {
     return json(
       {
@@ -47,7 +56,7 @@ function refuse(verdict: Extract<QuotaOutcome, { allowed: false }>): Response {
           code: "busy",
           message: `karasu-nest runs one generation at a time. Try again in about ${Math.round(
             verdict.retryAfterSeconds / 60,
-          )} minutes, or build one locally with your own LLM: ${LOCAL_REVERSE_GUIDE}`,
+          )} minutes, or build one locally with your own LLM: ${LOCAL_REVERSE_GUIDE}${alsoAvailable}`,
         },
       },
       { status: 429, headers: { "Retry-After": verdict.retryAfterSeconds.toString() } },
@@ -57,7 +66,7 @@ function refuse(verdict: Extract<QuotaOutcome, { allowed: false }>): Response {
     {
       error: {
         code: "quota_exhausted",
-        message: `This installation has used its ${verdict.limit} free generations for the month. The quota resets on ${verdict.resetsAt.slice(0, 10)}. In the meantime you can build a model locally with your own LLM: ${LOCAL_REVERSE_GUIDE}`,
+        message: `This installation has used its ${verdict.limit} free generations for the month. The quota resets on ${verdict.resetsAt.slice(0, 10)}. In the meantime you can build a model locally with your own LLM: ${LOCAL_REVERSE_GUIDE}${alsoAvailable}`,
       },
       quota: { used: verdict.used, limit: verdict.limit, resetsAt: verdict.resetsAt },
     },
@@ -130,44 +139,63 @@ export async function requestGeneration(context: RouteContext): Promise<Response
     logInfo(`karasu-nest retrying ${owner}/${repo}: previous run went stale`);
   }
 
-  const sha = await github.defaultBranchSha(installationId, owner, repo);
+  const now = new Date();
+  const ledger = new QuotaLedger(kv);
+  const store = new NestStore(kv);
 
-  // Before the quota, so re-asking for a commit we have already reversed
-  // costs nothing. This is what makes ADR-1994's "same-SHA re-request does
-  // not consume quota" true; a caller who polls by re-POSTing must not spend
-  // their month on answers we can give from the cache.
-  const published = await new NestStore(kv).latest(owner, repo);
-  if (published?.sha === sha) {
-    return json({
-      state: "done",
-      sha,
-      generatedAt: published.generatedAt,
-      krs: `/${owner}/${repo}`,
+  // Before the SHA lookup, so being refused costs no GitHub API call. A
+  // caller who polls by re-POSTing while exhausted would otherwise burn our
+  // installation rate limit to be told no.
+  const verdict = await checkQuota(ledger, installationId, now);
+  if (!verdict.allowed) {
+    // A refusal is more useful when it mentions the model we already have.
+    // `latest` needs no GitHub call, so this stays cheap.
+    return refuse(verdict, (await store.latest(owner, repo)) === undefined ? undefined : url, {
+      owner,
+      repo,
     });
   }
 
-  const now = new Date();
-  const ledger = new QuotaLedger(kv);
-  const verdict = await checkQuota(ledger, installationId, now);
-  if (!verdict.allowed) return refuse(verdict);
+  const sha = await github.defaultBranchSha(installationId, owner, repo);
 
-  const instanceId = generationInstanceId({ installationId, owner, repo }, sha);
+  // Re-asking for a commit already reversed costs nothing, which is what
+  // makes ADR-1994's "same-SHA re-request does not consume quota" true rather
+  // than an accident of charging and refunding.
+  const published = await store.latest(owner, repo);
+  if (published?.sha === sha) {
+    return json(
+      { state: "done", sha, generatedAt: published.generatedAt, krs: `/${owner}/${repo}` },
+      { headers: { Location: location } },
+    );
+  }
 
   // Charged before the dispatch: between the check and the create is where a
   // second caller would otherwise slip through, and the cost of being early
-  // is a refund on a create that never happened.
+  // is a refund on a create that never happened. The charge also supplies the
+  // attempt discriminator below, so a retry after a failure gets a new id.
   const used = await ledger.charge(installationId, now);
+  const instanceId = generationInstanceId(
+    { installationId, owner, repo },
+    sha,
+    `${quotaPeriod(now)}.${used}`,
+  );
   try {
     await workflow.create({ id: instanceId, params: { installationId, owner, repo } });
   } catch (cause) {
-    // Nothing started, so the charge goes back.
-    //
-    // An earlier version treated every failure here as a benign duplicate and
-    // answered 202. It is not benign: the two paths that would produce a
-    // duplicate (a run in flight, a commit already reversed) are both
-    // short-circuited above, so reaching this means the platform refused, and
-    // reporting a run that does not exist leaves a caller polling forever.
+    // Two callers who raced to the same charge computed the same id, so one
+    // of them lands here while a run really is starting. Ask the store rather
+    // than guessing: if a run is now recorded, the caller gets the answer
+    // they wanted.
     await ledger.refund(installationId, now);
+    const started = await runs.get(ref);
+    if (started !== undefined && started.state === "running") {
+      return json(
+        { state: "running", sha: started.sha, startedAt: started.startedAt },
+        { status: 202, headers: { Location: location } },
+      );
+    }
+    // Otherwise nothing started, and reporting a run that does not exist
+    // would leave the caller polling forever.
     logError(`karasu-nest could not start a generation for ${owner}/${repo}`, cause);
     return error(
       503,
@@ -181,7 +209,7 @@ export async function requestGeneration(context: RouteContext): Promise<Response
   // never started, so it sits until its 90-minute expiry -- and with a
   // deployment-wide concurrency of one, that is the whole service stalled by
   // a failed dispatch.
-  await ledger.takeSlot(installationId, instanceId, now.getTime());
+  await ledger.takeSlot(installationId, instanceId, now.getTime(), `${owner}/${repo}`);
 
   return json(
     { state: "running", sha, quota: { used, limit: verdict.limit } },

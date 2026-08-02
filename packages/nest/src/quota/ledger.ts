@@ -148,11 +148,50 @@ export class QuotaLedger {
     installationId: number | string,
     instanceId: string,
     nowMs: number,
+    /** `owner/repo`, so a repo leaving an installation can drop its slots. */
+    repo?: string,
   ): Promise<void> {
     await this.kv.put(slotKey(installationId, instanceId), "1", {
       expirationTtl: SLOT_TTL_SECONDS,
-      metadata: { expiresAt: nowMs + SLOT_TTL_SECONDS * 1000 },
+      metadata: {
+        expiresAt: nowMs + SLOT_TTL_SECONDS * 1000,
+        ...(repo === undefined ? {} : { repo }),
+      },
     });
+  }
+
+  /**
+   * Drop every slot belonging to one repo.
+   *
+   * For a repo leaving an installation: the slot key names it, and the run it
+   * belongs to is about to lose its access anyway. The instance id begins
+   * with the installation id and carries the commit, not the repo name, so
+   * this matches on the recorded owner and repo instead — which means it has
+   * to read them from the value rather than the key.
+   */
+  async releaseRepoSlots(ref: {
+    installationId: number | string;
+    owner: string;
+    repo: string;
+  }): Promise<number> {
+    const prefix = `busy/${installationPrefix(ref.installationId)}`;
+    const wanted = `${ref.owner}/${ref.repo}`;
+    let deleted = 0;
+    for (let page = 0; page < MAX_PAGES; page += 1) {
+      const listed = await this.kv.list({ prefix, limit: 1000 });
+      const matching = listed.keys.filter((key) => {
+        const meta = key.metadata;
+        return (
+          typeof meta === "object" && meta !== null && (meta as { repo?: unknown }).repo === wanted
+        );
+      });
+      if (matching.length === 0) return deleted;
+      for (const key of matching) {
+        await this.kv.delete(key.name);
+        deleted += 1;
+      }
+    }
+    throw new Error(`slot release did not converge for prefix ${prefix}`);
   }
 
   /** Give a slot back. Safe to call for a slot that is already gone. */

@@ -35,9 +35,13 @@
 
   > ✅ Automated — `gate.test.ts` › `checks quota before capacity, so a refusal is one a caller can act on`
 
-- [x] AT-F: quota 判定より先に commit を解決する（生成済み commit の再要求を無料に保つため）
+- [x] AT-F: 断るときに GitHub API を呼ばない（断られた呼び出しが installation rate limit を焼かない）
 
-  > ✅ Automated — `generate.test.ts` › `resolves the commit before checking quota, so a cached commit stays free`
+  > ✅ Automated — `generate.test.ts` › `refuses before spending a GitHub API call`
+
+- [x] AT-F3: 断り文は、既に持っているモデルの在り処を伝える
+
+  > ✅ Automated — `generate.test.ts` › `points a refused caller at the model they already have`
 
 - [x] AT-F2: 生成済みの commit を再要求しても課金されず、dispatch もされない
 
@@ -47,6 +51,10 @@
 
   > ✅ Automated — `generate.test.ts` › `charges the installation when a run is dispatched` / `takes a concurrency slot when a run is dispatched`
 
+- [x] AT-G2: 同一 commit への競合 dispatch は 1 本しか走らない
+
+  > ✅ Automated — `generate.test.ts` › `keys the Workflow instance so two callers racing one commit cannot both run`
+
 - [x] AT-H: 既存 run を polling している呼び出しには課金しない
 
   > ✅ Automated — `generate.test.ts` › `does not charge a caller who is only polling an existing run`
@@ -55,9 +63,13 @@
 
   > ✅ Automated — `generate.test.ts` › `does not hold a concurrency slot for a dispatch that failed`
 
-- [x] AT-I2: 手前で短絡されなかった重複 create は 202 ではなく 503（走っていない run を「走っている」と答えない）
+- [x] AT-I2: create に失敗しても run が実際に走っていれば 202、走っていなければ 503
 
-  > ✅ Automated — `generate.test.ts` › `keys the Workflow instance on the commit, so a duplicate cannot start`
+  > ✅ Automated — `generate.test.ts` › `answers 202 when a racing caller lost the create but a run did start` / `does not hold a concurrency slot for a dispatch that failed`
+
+- [x] AT-I3: **失敗した生成は同じ commit で再試行できる**（インスタンス id が試行ごとに変わる）
+
+  > ✅ Automated — `generate.test.ts` › `gives a later attempt at the same commit a new id, so a failure is retryable`
 
 - [x] AT-J: ある installation の使用量が別の installation を断らない
 
@@ -111,6 +123,7 @@ ADR-1990 決定 6 により、#1996 が入るまで他人の private repo には
 - [ ] M-2: 429 の `Retry-After` が翌月 1 日までの秒数と一致する
 - [ ] M-3: 実行中に別の repo へ POST すると 429 `busy` が返り、`Retry-After: 300` になる
 - [ ] M-4: 実行が完了すると次の POST が通る（`finally` のスロット返却が効いている）
+- [ ] M-4b: 失敗した生成に対して同じ commit で再 POST すると、新しい run が起動する（quota は 1 消費される）
 - [ ] M-5: 実行中に Worker を強制再デプロイして run を殺した場合、90 分後にはスロットが空く（期限切れの床が効いている）
 - [ ] M-6: `GET /admin/metrics` の `runs` と quota の消費数が一致する（失敗した試行も両方に数えられている＝ step のリトライが 0 で効いている）
 - [ ] M-7: アンインストール後に再インストールすると月の割当が戻っている（ADR-1994 が受け入れた副作用の確認）

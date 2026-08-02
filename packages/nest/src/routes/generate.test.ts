@@ -87,29 +87,65 @@ describe("POST /<owner>/<repo>/generate", () => {
     expect(env.GENERATE_WORKFLOW.created).toHaveLength(1);
   });
 
-  it("keys the Workflow instance on the commit, so a duplicate cannot start", async () => {
-    // The in-flight check is a read-then-write; the instance id is what makes
-    // a genuine race harmless rather than doubling a service-paid bill.
+  it("keys the Workflow instance so two callers racing one commit cannot both run", async () => {
     installedAs("42");
     vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
-    vi.spyOn(console, "error").mockImplementation(() => {});
     const env = configured(new MemoryKV());
-    const instanceId = `42-kompiro-shop-${SHA.slice(0, 12)}`;
 
     const first = await call("POST", "/kompiro/shop/generate", env);
-    // Clear the state that would legitimately short-circuit the second call,
-    // so it reaches `create` and the platform's uniqueness is what stops it.
-    await new QuotaLedger(env.KRS_CACHE as MemoryKV).releaseSlot("42", instanceId);
-    const second = await call("POST", "/kompiro/shop/generate", env);
-
     expect(first.status).toBe(202);
-    // 503, not 202: both benign duplicate paths are short-circuited earlier,
-    // so reaching a rejected `create` means nothing started, and saying
-    // "running" would leave the caller polling a run that does not exist.
-    expect(second.status).toBe(503);
-    expect(env.GENERATE_WORKFLOW.created).toEqual([instanceId]);
-    // And the charge for the dispatch that did not happen went back.
-    expect(await new QuotaLedger(env.KRS_CACHE as MemoryKV).used("42", new Date())).toBe(1);
+    expect(env.GENERATE_WORKFLOW.created).toHaveLength(1);
+  });
+
+  it("gives a later attempt at the same commit a new id, so a failure is retryable", async () => {
+    // Instance ids stay unique for the platform's retention window, not just
+    // for the run's lifetime. Keying on the commit alone meant that once a
+    // generation failed, every retry at that commit was refused forever --
+    // and ADR-1994's cost model assumes a caller can re-POST.
+    installedAs("42");
+    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    const kv = new MemoryKV();
+    const env = configured(kv);
+
+    await call("POST", "/kompiro/shop/generate", env);
+    // The first attempt failed: a status record says so, nothing is published
+    // and no slot is held.
+    await new RunStatusStore(kv).put(
+      { installationId: "42", owner: "kompiro", repo: "shop" },
+      { state: "failed", sha: SHA, startedAt: new Date().toISOString(), error: "survey" },
+    );
+    await new QuotaLedger(kv).releaseSlot("42", env.GENERATE_WORKFLOW.created[0] as string);
+
+    const retry = await call("POST", "/kompiro/shop/generate", env);
+    expect(retry.status).toBe(202);
+    expect(env.GENERATE_WORKFLOW.created).toHaveLength(2);
+    expect(env.GENERATE_WORKFLOW.created[0]).not.toBe(env.GENERATE_WORKFLOW.created[1]);
+    // Both attempts were billed, so both consumed quota.
+    expect(await new QuotaLedger(kv).used("42", new Date())).toBe(2);
+  });
+
+  it("answers 202 when a racing caller lost the create but a run did start", async () => {
+    installedAs("42");
+    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    const kv = new MemoryKV();
+    const runs = new RunStatusStore(kv);
+    const refusing: GenerationDispatcher & { created: string[] } = {
+      created: [],
+      create: async () => {
+        // The winner's run lands between our charge and our create.
+        await runs.put(
+          { installationId: "42", owner: "kompiro", repo: "shop" },
+          { state: "running", sha: SHA, startedAt: new Date().toISOString() },
+        );
+        throw new Error("instance already exists");
+      },
+    };
+
+    const response = await call("POST", "/kompiro/shop/generate", configured(kv, refusing));
+    expect(response.status).toBe(202);
+    expect((await response.json()).state).toBe("running");
+    // The loser is not charged for the winner's run.
+    expect(await new QuotaLedger(kv).used("42", new Date())).toBe(0);
   });
 
   it("serves an already-generated commit from the cache without charging", async () => {
@@ -242,17 +278,29 @@ describe("POST /<owner>/<repo>/generate", () => {
       expect(env.GENERATE_WORKFLOW.created).toEqual([]);
     });
 
-    it("resolves the commit before checking quota, so a cached commit stays free", async () => {
-      // The cheaper ordering would refuse before the SHA lookup, but then an
-      // exhausted caller could not be told "you already have this one" -- and
-      // being charged for a commit already in the cache is the worse failure.
+    it("refuses before spending a GitHub API call", async () => {
+      // A caller who polls by re-POSTing while exhausted would otherwise burn
+      // our installation rate limit to be told no.
       installedAs("42");
-      const resolved = vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+      const resolved = vi.spyOn(GitHubClient.prototype, "defaultBranchSha");
       const kv = new MemoryKV();
       await new QuotaLedger(kv).takeSlot("42", "someone-elses-run", Date.now());
 
       expect((await call("POST", "/kompiro/shop/generate", configured(kv))).status).toBe(429);
-      expect(resolved).toHaveBeenCalled();
+      expect(resolved).not.toHaveBeenCalled();
+    });
+
+    it("points a refused caller at the model they already have", async () => {
+      installedAs("42");
+      const kv = new MemoryKV();
+      await new NestStore(kv).publish(
+        { installationId: 42, owner: "kompiro", repo: "shop", sha: SHA },
+        { krs: markGenerated("system Shop {}\n"), generatedAt: "2026-08-02T00:00:00Z" },
+      );
+      await new QuotaLedger(kv).takeSlot("42", "someone-elses-run", Date.now());
+
+      const body = await (await call("POST", "/kompiro/shop/generate", configured(kv))).json();
+      expect(body.error.message).toContain("https://nest.example/kompiro/shop");
     });
 
     it("charges the installation when a run is dispatched", async () => {

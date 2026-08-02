@@ -35,8 +35,9 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
       // One step, not several: the pipeline's own passes are not individually
       // resumable — a half-finished reverse has nothing to hand the next pass
       // — so splitting here would checkpoint state that cannot be restarted
-      // from. What the step boundary does buy is a retry of the whole run on
-      // a platform interruption, which is the failure this exists to survive.
+      // from. With retries off (below) the boundary buys no recovery either;
+      // what it buys is that the run is hosted by a Workflow at all, which is
+      // the only place a 12-19 minute job can live (see `dispatch.ts`).
       // The step returns nothing on purpose.
       //
       // A step's return value is checkpointed to Workflow storage. Returning
