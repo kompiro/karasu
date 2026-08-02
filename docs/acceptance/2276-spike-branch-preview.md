@@ -3,6 +3,7 @@
 - **日付**: 2026-08-02
 - **関連 Issue**: [#2276](https://github.com/kompiro/karasu/issues/2276)
 - **対象ファイル**:
+  - `.github/actions/purge-preview-deployments/action.yml`（cleanup 実体 — `preview.yml` と共有）
   - `.github/workflows/spike-preview.yml`（新規 — `push: spike/**` / `delete` トリガー、Preview URL の Summary 出力、ページング付きクリーンアップ）
   - `docs/process.md`（「spike を PR なしで preview で動かす」節）
   - `CLAUDE.md`（ブランチ命名規則に `spike/` を追加）
@@ -31,6 +32,7 @@
 ## 補足
 
 - クリーンアップは Cloudflare の deployments API を `page` のみ変えて最大 50 ページ辿り、空ページで停止する。spike ブランチは push ごとに deployment が 1 件積まれるため、1 ページ目だけを見ると古い deployment が消え残る。
+- **削除は `force=true` を付ける。** ブランチ alias が指すデプロイ（= URL で到達できる唯一のもの）は、これがないと Cloudflare に拒否される。しかも初版は削除の応答を `-o /dev/null` で捨てていたため、拒否されてもジョブは緑で「Deleting deployment X」と出ていた（[#2294](https://github.com/kompiro/karasu/issues/2294)）。削除の応答も HTTP status と `.success` で検査する。
 - **`per_page` は送らない。** 初版は `per_page=100` を送って実 API に 400 で弾かれ、cleanup が丸ごと失敗した（[#2291](https://github.com/kompiro/karasu/issues/2291)）。モック API に対するテストは緑だった — モックはクエリを見ずに応答していたため。観点は [TPL-2291](../test-perspectives/TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md)。
 - 非 200 のときはレスポンスボディをログに出してから失敗する。初版は `body=$(curl --fail-with-body ...)` でボディをコマンド置換に飲まれ、ログに `curl: (22)` しか残らなかった。
 - `delete` イベントはブランチ名で `on:` フィルタできないため、ジョブ側で `startsWith(github.event.ref, 'spike/')` を条件にしている。対象は `env=preview` かつブランチ名一致のデプロイのみで、production（main）のデプロイには触れない。
