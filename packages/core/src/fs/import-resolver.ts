@@ -10,7 +10,7 @@ import type {
   OrganizationBlock,
   ImportDeclaration,
 } from "../types/ast.js";
-import { createEmptyKrsFile, mergeMembership } from "../types/ast.js";
+import { createEmptyKrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import {
@@ -19,6 +19,8 @@ import {
   validateScopedContainsReferences,
   validateFacetDeclarations,
   buildFacetIndex,
+  buildBoundaryMembership,
+  buildScopedBoundaryMembership,
 } from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
 import type { StyleSheet } from "../types/style.js";
@@ -36,6 +38,12 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // duplicate split across two files would go unreported, and a duplicate inside
   // one file would be reported twice (#2065 Part B).
   "duplicate-facet-id",
+  // Multi-membership is a property of the merged declarations for the same
+  // reason, and fails in the more dangerous direction: two files each listing
+  // one boundary for the same node is a fact no single file can see, so a
+  // per-file verdict does not over-report — it reports nothing at all
+  // (#2221, TPL-2221).
+  "duplicate-boundary-assignment",
 ]);
 
 export interface ResolvedProject {
@@ -130,6 +138,28 @@ export class ImportResolver {
       ...krsFile.queues,
       ...krsFile.storages,
     ]);
+    // Boundary membership is rebuilt from the merged declarations rather than
+    // unioned per file, so the index and the diagnostic come from one derivation
+    // (#2221). Only the multi-membership fact is re-emitted here:
+    // `duplicate-boundary-id` stays a per-file verdict, since a scope declaring
+    // the same boundary id twice is visible without the merge.
+    const mergedMembership = buildBoundaryMembership(krsFile.boundaries);
+    krsFile.boundaryMembership = mergedMembership.membership;
+    const mergedScoped = buildScopedBoundaryMembership([
+      ...krsFile.systems,
+      ...krsFile.services,
+      ...krsFile.clients,
+      ...krsFile.domains,
+      ...krsFile.databases,
+      ...krsFile.queues,
+      ...krsFile.storages,
+    ]);
+    krsFile.scopedBoundaryMembership = mergedScoped.membership;
+    this.diagnostics.push(
+      ...[...mergedMembership.diagnostics, ...mergedScoped.diagnostics].filter(
+        (d) => d.code === "duplicate-boundary-assignment",
+      ),
+    );
     // `facet` declarations from every file share one flat namespace, so the
     // duplicate check only makes sense here (#2065 Part B). Unlike the reference
     // checks above, the per-file verdict was suppressed to avoid *under*-
@@ -285,29 +315,10 @@ export class ImportResolver {
     for (const [ownedId, teamId] of file.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
     }
-    // Boundary membership is 1:N, so files **union** (#2178): a node grouped in
-    // one file and grouped again in another belongs to both, exactly as if both
-    // declarations sat in one file. First-wins here would resurrect across
-    // files the truncation the parser stopped doing (TPL-2161). Repeats of the
-    // same (node, boundary) merge idempotently, and order stays first-seen so
-    // the primary — and with it the banded placement — is deterministic.
-    for (const [memberId, boundaryIds] of file.boundaryMembership ?? []) {
-      mergeMembership(mergedFile.boundaryMembership, memberId, boundaryIds);
-    }
-    // Scoped membership (#2036) unions per scope, by the same rule. Scopes from
-    // different files cannot overlap in practice — a scoped boundary only names
-    // its own direct children — but merging by scope rather than replacing
-    // keeps that an observation, not an assumption.
-    for (const [scope, membership] of file.scopedBoundaryMembership ?? []) {
-      let merged = mergedFile.scopedBoundaryMembership.get(scope);
-      if (merged === undefined) {
-        merged = new Map<string, string[]>();
-        mergedFile.scopedBoundaryMembership.set(scope, merged);
-      }
-      for (const [memberId, boundaryIds] of membership) {
-        mergeMembership(merged, memberId, boundaryIds);
-      }
-    }
+    // Boundary membership is not merged here: `resolve()` rebuilds it from the
+    // merged declarations, so the index and its diagnostic have one derivation
+    // and cannot disagree (#2221). What has to travel is the declarations
+    // themselves, which `boundaries` above and the wildcard merge below carry.
     // `facetIndex` is deliberately NOT merged entry-by-entry here. It is a pure
     // derivation of the `facets` properties on the merged tree, so `resolve()`
     // rebuilds it once at the end instead — one derivation rather than one per
@@ -489,22 +500,6 @@ export class ImportResolver {
         mergedFile.boundaries.push(boundary);
       }
     }
-    for (const [memberId, boundaryIds] of resolved.boundaryMembership) {
-      mergeMembership(mergedFile.boundaryMembership, memberId, boundaryIds);
-    }
-    // Scoped membership (#2036) rides along with the nodes it is declared in,
-    // keyed by its declaring scope, so it merges per scope for the same reason.
-    for (const [scope, membership] of resolved.scopedBoundaryMembership) {
-      let merged = mergedFile.scopedBoundaryMembership.get(scope);
-      if (merged === undefined) {
-        merged = new Map<string, string[]>();
-        mergedFile.scopedBoundaryMembership.set(scope, merged);
-      }
-      for (const [memberId, boundaryIds] of membership) {
-        mergeMembership(merged, memberId, boundaryIds);
-      }
-    }
-
     for (const [ownedId, teamId] of resolved.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
     }
