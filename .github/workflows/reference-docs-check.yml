@@ -33,6 +33,10 @@ on:
       - "scripts/lint/spec-structure-sync.ts"
       - "docs/roadmap.md"
       - "scripts/lint/roadmap-issue-state.ts"
+      - "docs/glossary.md"
+      - "docs/tools/**"
+      - "packages/docs-site/**"
+      - "scripts/lint/docs-site-ci-paths-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
@@ -47,6 +51,10 @@ on:
       - "scripts/lint/spec-structure-sync.ts"
       - "docs/roadmap.md"
       - "scripts/lint/roadmap-issue-state.ts"
+      - "docs/glossary.md"
+      - "docs/tools/**"
+      - "packages/docs-site/**"
+      - "scripts/lint/docs-site-ci-paths-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
@@ -88,6 +96,22 @@ jobs:
       # This is the only guard here that needs the network — it reads issue
       # state — so it self-skips when the API is unreachable rather than
       # reddening a required check on a blip.
+      # The docs site is generated from `docs/` by `sync.ts`, and its two
+      # guards used to run only on the deploy to main: `check-links` lives
+      # inside docs-site's own `build`, which the root `build` does not call,
+      # and `site-map.test.ts` runs under `ci.yml`, which `paths-ignore:
+      # docs/**` skips for exactly the PRs that feed the site (Issue #2257).
+      # Running them here — no `astro build`, ~2.5s total, no core build
+      # needed — moves link and route breakage from post-merge to the PR.
+      - name: docs-site content in sync
+        run: pnpm --filter @karasu-tools/docs-site run sync
+
+      - name: docs-site in-site links and anchors resolve
+        run: pnpm --filter @karasu-tools/docs-site run check-links
+
+      - name: docs-site unit tests
+        run: pnpm --filter @karasu-tools/docs-site run test
+
       - name: Roadmap does not contradict issue state
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
