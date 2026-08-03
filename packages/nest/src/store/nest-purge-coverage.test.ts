@@ -43,7 +43,11 @@ const SEEDERS: { prefix: string; seed: (kv: MemoryKV) => Promise<void> }[] = [
     seed: async (kv) => {
       await new NestStore(kv).publish(
         { ...ref, sha: SHA },
-        { krs: markGenerated("system Shop {}\n"), generatedAt: "2026-08-02T00:00:00Z" },
+        {
+          krs: markGenerated("system Shop {}\n"),
+          generatedAt: "2026-08-02T00:00:00Z",
+          private: false,
+        },
       );
     },
   },
@@ -53,7 +57,11 @@ const SEEDERS: { prefix: string; seed: (kv: MemoryKV) => Promise<void> }[] = [
     seed: async (kv) => {
       await new NestStore(kv).publish(
         { ...ref, sha: SHA },
-        { krs: markGenerated("system Shop {}\n"), generatedAt: "2026-08-02T00:00:00Z" },
+        {
+          krs: markGenerated("system Shop {}\n"),
+          generatedAt: "2026-08-02T00:00:00Z",
+          private: false,
+        },
       );
     },
   },

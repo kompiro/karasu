@@ -212,6 +212,11 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
   let recordedPasses: { name: string; inputTokens: number; outputTokens: number }[] = [];
 
   try {
+    // Fetched here rather than at delivery time because the *document* needs
+    // to carry it: whether this repository is private decides, later and on a
+    // path with no token, whether the model may be served to an anonymous
+    // reader (ADR-1990 decision 6).
+    const { private: isPrivate } = await github.repoInfo(installationId, owner, repo);
     // One request for the whole repository, not one per file. Workers caps
     // subrequests per invocation and KV operations count toward the same
     // budget, so per-file fetching capped repository size for a reason that
@@ -259,7 +264,7 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
 
     await store.publish(
       { installationId, owner, repo, sha },
-      { krs: markGenerated(reverse.krs), generatedAt: now().toISOString() },
+      { krs: markGenerated(reverse.krs), generatedAt: now().toISOString(), private: isPrivate },
     );
     const finishedAt = now().toISOString();
     await runs.put(ref, { state: "done", sha, startedAt, finishedAt });

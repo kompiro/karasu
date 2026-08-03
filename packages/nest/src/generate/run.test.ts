@@ -21,10 +21,15 @@ const KRS = "```krs\nsystem Shop {\n  service Payments\n}\n```";
 /** A GitHubClient whose archive read is a table, so no network and no App key. */
 function stubGithub(
   files: { path: string; content: string; size?: number }[],
-  overrides: { truncated?: boolean } = {},
+  overrides: { truncated?: boolean; private?: boolean } = {},
 ): GitHubClient {
   const github = new GitHubClient({ appId: "1", privateKeyPem: "unused", fetchImpl: fetch });
   vi.spyOn(github, "defaultBranchSha").mockResolvedValue(SHA);
+  vi.spyOn(github, "repoInfo").mockResolvedValue({
+    defaultBranch: "main",
+    ownerLogin: "kompiro",
+    private: overrides.private ?? false,
+  });
   // Mirrors `readGzippedArchive`: the caller's predicate and caps decide, so
   // the filter tests below exercise the real policy rather than a stub's.
   vi.spyOn(github, "sourceFiles").mockImplementation((_i, _o, _r, _s, options) => {

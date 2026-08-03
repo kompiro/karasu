@@ -51,6 +51,30 @@ export async function repoKrs(context: RouteContext): Promise<Response> {
     return error(404, "not_generated", NOT_GENERATED_HINT);
   }
 
+  // A model of a private repository is not public information.
+  //
+  // This route has no authentication and cannot have any useful kind: a
+  // reader arrives with a URL and nothing else. So the question is not "who
+  // is asking" but "may this document be shown to anyone", and for a private
+  // repository the answer is no — the domain names, component names and
+  // dependency edges in it are derived from source its owner chose not to
+  // publish. Serving it here would also make this route an existence oracle
+  // for private repositories, which is the disclosure `POST .../generate`
+  // deliberately refuses to make by answering 404 for both "not installed"
+  // and "not visible".
+  //
+  // The same 404 as "never generated", for the same reason. Delivery for a
+  // private repository is the pull request (#2289), which arrives inside the
+  // repository's own access control.
+  //
+  // A document stored before this field existed has no `private` flag and is
+  // treated as private. Being wrong in that direction withholds a public
+  // repository's model until it is regenerated; being wrong in the other
+  // publishes a private one.
+  if (published.private !== false) {
+    return error(404, "not_generated", NOT_GENERATED_HINT);
+  }
+
   // Counted after the lookup succeeded, so the number means "a model was
   // served" rather than "someone typed a URL". Handed to `waitUntil` because
   // a reader must not wait on a metric, and swallowed because a lost count is

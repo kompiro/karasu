@@ -18,7 +18,7 @@ function recordingCtx(): NestExecutionContext & { settled: () => Promise<unknown
 const ctx: NestExecutionContext = { waitUntil: () => {} };
 const SHA = "a".repeat(40);
 const KRS = "system Payments {\n  service api\n}\n";
-const entry = { krs: markGenerated(KRS), generatedAt: "2026-08-02T00:00:00Z" };
+const entry = { krs: markGenerated(KRS), generatedAt: "2026-08-02T00:00:00Z", private: false };
 
 async function seeded(): Promise<NestEnv> {
   const kv = new MemoryKV();
@@ -120,6 +120,66 @@ describe("GET /<owner>/<repo>", () => {
 
   it("404s a path with more segments than owner/repo", async () => {
     expect((await get("/kompiro/karasu/extra", await seeded())).status).toBe(404);
+  });
+
+  describe("a private repository's model is not public (#1996)", () => {
+    it("does not serve a model generated from a private repository", async () => {
+      // This route has no authentication and cannot usefully have any: a
+      // reader arrives with a URL and nothing else. So the question is not
+      // who is asking but whether the document may be shown to anyone, and
+      // for a private repository it may not.
+      const kv = new MemoryKV();
+      await new NestStore(kv).publish(
+        { installationId: 42, owner: "kompiro", repo: "secret", sha: SHA },
+        { ...entry, private: true },
+      );
+      const response = await get("/kompiro/secret", { KRS_CACHE: kv });
+      expect(response.status).toBe(404);
+    });
+
+    it("answers a private repository exactly as it answers a missing one", async () => {
+      // Otherwise this route is an existence oracle for private repositories
+      // -- the disclosure `POST .../generate` deliberately refuses to make.
+      const kv = new MemoryKV();
+      await new NestStore(kv).publish(
+        { installationId: 42, owner: "kompiro", repo: "secret", sha: SHA },
+        { ...entry, private: true },
+      );
+      const hidden = await get("/kompiro/secret", { KRS_CACHE: kv });
+      const missing = await get("/kompiro/never-generated", { KRS_CACHE: kv });
+      expect([hidden.status, await hidden.text()]).toEqual([missing.status, await missing.text()]);
+    });
+
+    it("treats a document with no recorded visibility as private", async () => {
+      // Documents written before the flag existed. Being wrong this way
+      // withholds a public model until it is regenerated; being wrong the
+      // other way publishes a private one.
+      const kv = new MemoryKV();
+      await kv.put(
+        `krs/v1/42/kompiro/legacy/${SHA}`,
+        JSON.stringify({ krs: KRS, generatedAt: "2026-08-02T00:00:00Z" }),
+      );
+      await kv.put(
+        "idx/v1/kompiro/legacy",
+        JSON.stringify({ installationId: "42", sha: SHA, generatedAt: "2026-08-02T00:00:00Z" }),
+      );
+      expect((await get("/kompiro/legacy", { KRS_CACHE: kv })).status).toBe(404);
+    });
+
+    it("does not count a read it refused", async () => {
+      const kv = new MemoryKV();
+      await new NestStore(kv).publish(
+        { installationId: 42, owner: "kompiro", repo: "secret", sha: SHA },
+        { ...entry, private: true },
+      );
+      const counting = recordingCtx();
+      await handleRequest(
+        new Request("https://nest.example/kompiro/secret"),
+        { KRS_CACHE: kv },
+        counting,
+      );
+      expect((await counting.settled()).length).toBe(0);
+    });
   });
 
   describe("read counting (#2226)", () => {

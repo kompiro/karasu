@@ -43,6 +43,17 @@ export interface KrsCacheEntry {
   krs: GeneratedKrs;
   /** ISO-8601. Supplied by the caller so the store stays clock-free and testable. */
   generatedAt: string;
+  /**
+   * Whether the repository this was generated from is private.
+   *
+   * Stored with the document because the decision it drives — whether
+   * `GET /<owner>/<repo>` may serve it to an anonymous caller — is made on a
+   * read path that has no installation token and no business minting one.
+   * Absent on documents written before this field existed; those are treated
+   * as private, because guessing wrong in the other direction publishes
+   * someone's private architecture.
+   */
+  private?: boolean;
 }
 
 /** What KV keeps alongside the value, so a listing needs no reads. */
@@ -112,9 +123,20 @@ export class KrsCache {
       return undefined;
     }
     if (typeof parsed !== "object" || parsed === null) return undefined;
-    const { krs, generatedAt } = parsed as Partial<Record<"krs" | "generatedAt", unknown>>;
+    const {
+      krs,
+      generatedAt,
+      private: isPrivate,
+    } = parsed as Partial<Record<"krs" | "generatedAt" | "private", unknown>>;
     if (typeof krs !== "string" || typeof generatedAt !== "string") return undefined;
-    return { krs: krs as GeneratedKrs, generatedAt };
+    return {
+      krs: krs as GeneratedKrs,
+      generatedAt,
+      // Only an explicit `false` makes a document public. A missing or
+      // malformed flag stays private, because the read path uses this to
+      // decide whether an anonymous caller may see it.
+      private: isPrivate !== false,
+    };
   }
 
   async put(ref: CachedRef, entry: KrsCacheEntry): Promise<void> {

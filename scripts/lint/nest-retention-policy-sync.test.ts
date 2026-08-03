@@ -30,8 +30,13 @@ const read = (path: string): string => readFileSync(join(root, path), "utf8");
 
 /** Pull `const NAME = <expression>;` out of a source file and evaluate it. */
 function constant(path: string, name: string): number {
-  const source = read(path);
-  const match = new RegExp(`const ${name} = ([^;]+);`).exec(source);
+  // Block comments stripped first, and the declaration anchored to the start
+  // of a line. Unanchored, the regex takes the first textual match — and a
+  // comment mentioning an old value ("Was: const TTL_SECONDS = 400 * …")
+  // would shadow the real declaration and certify a number the code does not
+  // use. Every file this reads is heavily commented, several about durations.
+  const source = read(path).replaceAll(/\/\*[\s\S]*?\*\//g, "");
+  const match = new RegExp(`^const ${name} = ([^;]+);`, "m").exec(source);
   if (match?.[1] === undefined) {
     throw new Error(`${name} is not declared in ${path} any more`);
   }
@@ -70,7 +75,8 @@ const RETENTIONS: { what: string; file: string; name: string; days: number; row:
     file: "packages/nest/src/store/run-status.ts",
     name: "TTL_SECONDS",
     days: 1,
-    row: /`runs\/krs\/v1\/<installation>\/<owner>\/<repo>` \| 24 時間/,
+    // Trailing slash: `repoPrefix` ends in one, so that is the real key.
+    row: /`runs\/krs\/v1\/<installation>\/<owner>\/<repo>\/` \| 24 時間/,
   },
   {
     what: "the cost record",
@@ -119,20 +125,47 @@ describe("the data-handling document matches the code (#1996)", () => {
     expect(constant("packages/nest/src/reverse/pipeline.ts", "DEFAULT_MAX_BYTES_READ")).toBe(
       400_000,
     );
-    expect(policy).toContain("最大 60 ファイル・合計 400KB");
+    // Characters, not bytes: the accumulator counts UTF-16 code units, so a
+    // CJK source's real payload exceeds the number. The document says so.
+    expect(read("packages/nest/src/reverse/pipeline.ts")).toContain("bytes + file.content.length");
+    expect(policy).toContain(
+      "最大 60 ファイル分の、**redact 済み**ソース本文（1 パスあたり合計 40 万文字",
+    );
   });
 
-  it("names every prefix the purge sweeps, and no others", () => {
-    // The document promises uninstall removes all of it. The authority on
-    // what "all of it" is is `NestStore`, so the two lists have to agree.
+  it("names each prefix the purge is wired for (not that the list is complete)", () => {
+    // Deliberately narrow, and named for what it does. Both lists below are
+    // written here, so a *new* prefix with no doc row and no purge wiring
+    // passes this untouched — the gap TPL-2226 exists for, closed by a human
+    // reading `nest-purge-coverage.test.ts`'s seeder ledger rather than by
+    // this file. Claiming otherwise in the test name would be worse than the
+    // gap, because it would stop anyone looking.
     const store = read("packages/nest/src/store/nest-store.ts");
     const purged = ["cache", "directory", "runs", "metrics", "reads", "quota"];
     for (const member of purged) {
       expect(store).toMatch(new RegExp(`this\\.${member}\\.(purgeInstallation|unpublishOwnedBy)`));
     }
-    for (const prefix of ["krs/v1/", "idx/v1/", "runs/", "metrics/", "reads/", "quota/", "busy/"]) {
-      expect(policy).toContain(prefix);
+    // Full key shapes, not bare prefixes: `krs/v1/` alone is satisfied by the
+    // `runs/krs/v1/…` row, which would let a missing row pass.
+    for (const key of [
+      "`krs/v1/<installation>/<owner>/<repo>/<sha>`",
+      "`idx/v1/<owner>/<repo>`",
+      "`runs/krs/v1/<installation>/<owner>/<repo>/`",
+      "`metrics/krs/v1/",
+      "`reads/krs/v1/",
+      "`quota/krs/v1/<installation>/<YYYY-MM>`",
+      "`busy/krs/v1/",
+    ]) {
+      expect(policy).toContain(key);
     }
+  });
+
+  it("says a private repository's model is not served", () => {
+    // The single most consequential fact about this service for a repository
+    // owner, and the one a privacy policy drafted from this document would
+    // otherwise be silent on.
+    expect(read("packages/nest/src/routes/repo.ts")).toContain("published.private !== false");
+    expect(policy).toContain("private repository のモデルは配信しない");
   });
 
   it("does not claim PR-back is enabled while the switch defaults off", () => {

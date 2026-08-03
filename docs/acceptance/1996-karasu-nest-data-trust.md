@@ -9,7 +9,7 @@
   - `scripts/lint/nest-retention-policy-sync.test.ts`（文書とコードの drift ガード）
   - `packages/nest/src/store/nest-purge-coverage.test.ts`（削除の網羅）
 
-> ADR-1990 決定 6 は成立条件であって follow-up ではない。この AT が全部緑でも**未了 6〜10（契約・法務文書）が残っている限り条件は満たされていない**。技術側の緑を「準備完了」と読まないための注記をここに置く。
+> ADR-1990 決定 6 は成立条件であって follow-up ではない。この AT が全部緑でも**下の H-1〜H-9（契約・法務文書）が残っている限り条件は満たされていない**。技術側の緑を「準備完了」と読まないための注記をここに置く。
 
 ## 受け入れ条件
 
@@ -25,17 +25,33 @@
 
   > ✅ Automated — `nest-retention-policy-sync.test.ts` › `states the file limits the model actually sees`
 
-- [x] AT-D: 文書が挙げる KV prefix と、purge が実際に掃く対象が一致する
+- [x] AT-D: 文書が挙げる各 KV 鍵が purge に配線されている（**一覧が網羅的であることは検証していない** — 新しい prefix が増えたことは機械的に検出できず、`nest-purge-coverage.test.ts` の seeder 台帳を人が読んで塞ぐ。[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)）
 
-  > ✅ Automated — `nest-retention-policy-sync.test.ts` › `names every prefix the purge sweeps, and no others`、`packages/nest/src/store/nest-purge-coverage.test.ts` › `leaves nothing behind when an installation is removed`
+  > ✅ Automated — `nest-retention-policy-sync.test.ts` › `names each prefix the purge is wired for (not that the list is complete)`、`packages/nest/src/store/nest-purge-coverage.test.ts` › `leaves nothing behind when an installation is removed`
 
 - [x] AT-E: PR-back が既定で無効であることを、文書とコードの両方が言っている（片方だけ変わったら落ちる）
 
   > ✅ Automated — `nest-retention-policy-sync.test.ts` › `does not claim PR-back is enabled while the switch defaults off`
 
-- [x] AT-F: 生ソースは保存されず、ログにも出ない
+- [x] AT-F: 生ソースは redact を通さずにモデルへ渡らず、ストアにも残らない（**ログに出ないことは型では担保していない** — 文書もそう書いている）
 
   > ✅ Automated — `packages/nest/src/generate/run.test.ts` › `redacts before the model sees anything`、`packages/nest/src/meter/record.test.ts` › `keeps no repository content in the body`
+
+- [x] AT-K: **private repository のモデルは配信しない。** 応答は「未生成」と完全に同じで、存在の判別材料にならない
+
+  > ✅ Automated — `packages/nest/src/routes/repo.test.ts` › `does not serve a model generated from a private repository` / `answers a private repository exactly as it answers a missing one`
+
+- [x] AT-L: 可視性が記録されていない旧文書は private として扱う（安全側に倒す）
+
+  > ✅ Automated — `repo.test.ts` › `treats a document with no recorded visibility as private`、`packages/nest/src/store/krs-cache.test.ts` › `round-trips an entry`
+
+- [x] AT-M: 配信を拒否した読み取りは計数しない
+
+  > ✅ Automated — `repo.test.ts` › `does not count a read it refused`
+
+- [x] AT-N: 文書が「private は配信しない」と言っていることを機械検証する（コードだけ変えて文書が古くなる事故を防ぐ）
+
+  > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `says a private repository's model is not served`
 
 - [x] AT-G: アンインストールで全カテゴリが消え、件数が報告される
 
@@ -65,3 +81,4 @@
 - [ ] H-6: 削除請求・照会の窓口を決める
 - [ ] H-7: H-1〜H-6 が済んだら、GitHub App の権限と install prompt の文面を更新し、その後にはじめて `PR_DELIVERY=on` を検討する
 - [ ] H-8: 未了が長期化する場合、ADR-1990 の退避先（public repo のみへの縮小）を別 ADR で検討する
+- [ ] H-9: `POST /<owner>/<repo>/generate` に認証が無いため、第三者が他人の installation の月間 quota を消費できる。生成物は返らないので情報漏洩ではないが、いたずらの余地として残っている。認証を足すか、許容として明文化するかを決める

@@ -183,7 +183,11 @@ describe("POST /<owner>/<repo>/generate", () => {
     const kv = new MemoryKV();
     await new NestStore(kv).publish(
       { installationId: 42, owner: "kompiro", repo: "shop", sha: SHA },
-      { krs: markGenerated("system Shop {}\n"), generatedAt: "2026-08-02T00:00:00Z" },
+      {
+        krs: markGenerated("system Shop {}\n"),
+        generatedAt: "2026-08-02T00:00:00Z",
+        private: false,
+      },
     );
     const env = configured(kv);
 
@@ -321,7 +325,11 @@ describe("POST /<owner>/<repo>/generate", () => {
       const kv = new MemoryKV();
       await new NestStore(kv).publish(
         { installationId: 42, owner: "kompiro", repo: "shop", sha: SHA },
-        { krs: markGenerated("system Shop {}\n"), generatedAt: "2026-08-02T00:00:00Z" },
+        {
+          krs: markGenerated("system Shop {}\n"),
+          generatedAt: "2026-08-02T00:00:00Z",
+          private: false,
+        },
       );
       await new QuotaLedger(kv).takeSlot("42", "someone-elses-run", Date.now());
 
@@ -396,7 +404,11 @@ describe("GET /<owner>/<repo>/status", () => {
     const kv = new MemoryKV();
     await new NestStore(kv).publish(
       { installationId: 42, owner: "kompiro", repo: "shop", sha: SHA },
-      { krs: markGenerated("system Shop {}\n"), generatedAt: "2026-08-02T00:00:00Z" },
+      {
+        krs: markGenerated("system Shop {}\n"),
+        generatedAt: "2026-08-02T00:00:00Z",
+        private: false,
+      },
     );
     const looked = vi.spyOn(GitHubClient.prototype, "installationIdFor");
 
