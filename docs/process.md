@@ -281,6 +281,11 @@ AT の `🧑 Manual` 項目は**一度 OK にして終わるものではない**
 PR 内で変更を先に見たいときは preview を使ってよいが、それは PR 本文の Preview URL
 欄の役割であって、AT に残す情報ではない。
 
+> 「マージ時点で 404 になる」が実際に成り立つようになったのは
+> [#2294](https://github.com/kompiro/karasu/issues/2294) 以降。それ以前は削除が
+> Cloudflare に拒否されており、上記 3 件を含む過去の preview URL は腐るどころか
+> 生きたまま残っていた。溜まった分の掃除は `preview-janitor.yml`（手動実行）。
+
 観点は [TPL-2254](test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)。
 
 ### AT に埋める `.krs` スニペットの fence 規約
