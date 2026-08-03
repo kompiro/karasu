@@ -20,8 +20,8 @@ export default {
   },
 };
 
-// The Workflow that hosts a generation. Exported from the entry because that
-// is how wrangler discovers a `[[workflows]]` class binding.
+// Re-exported for tests and callers. The copy that matters to wrangler is on
+// `worker.ts`, which is where a `[[workflows]]` class binding is resolved.
 export { GenerateWorkflow } from "./generate/workflow.js";
 export { handleRequest, createRouter } from "./app.js";
 export type { NestEnv, NestExecutionContext } from "./env.js";
