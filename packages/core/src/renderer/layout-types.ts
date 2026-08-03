@@ -204,6 +204,14 @@ export interface LayoutResult {
    */
   foldedEdgeDiffState?: Map<string, string>;
   /**
+   * Selected-facet membership re-derived onto collapse stubs, keyed by stub id
+   * (#2174). Present only when something collapsed while the overlay was on.
+   * Without it a collapsed group would drop its overlay entirely, reading as
+   * "nothing here belongs" rather than "the members are folded away" — the same
+   * re-derivation `foldedEdgeDiffState` does for diff state (TPL-1886).
+   */
+  foldedFacetMembership?: Map<string, string[]>;
+  /**
    * Hop/junction crossing marks for the system view (#1859 P2c-C). Set by every
    * single-system layout — grouped and, since #1956, ungrouped (Group by: none) —
    * from final coordinates; junction dots stay grouped-only (no trunks ungrouped).
