@@ -10,7 +10,7 @@
 # this directory so the root config is not picked up.
 
 name = "karasu-nest"
-main = "src/index.ts"
+main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 
 [vars]
