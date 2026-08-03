@@ -82,7 +82,7 @@
     "@kompiro/tpl-tools": "^0.0.7",
     "@types/node": "^25.6.0",
     "knip": "^6.6.0",
-    "lefthook": "^2.1.6",
+    "lefthook": "^2.1.10",
     "madge": "^8.0.0",
     "oxfmt": "^0.46.0",
     "oxlint": "1.61.0",
