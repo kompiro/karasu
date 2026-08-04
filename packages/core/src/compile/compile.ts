@@ -61,6 +61,7 @@ import type { DisplayMode } from "../renderer/layout.js";
 import { type DiagramTheme } from "../renderer/palette.js";
 import { renderOrgView as _renderOrgView } from "../renderer/org-renderer.js";
 import { collectLegendUsage } from "../legend/usage.js";
+import { resolveFacetOverlay, knownFacetIds } from "../renderer/facet-overlay.js";
 import { renderDeploy } from "../renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
@@ -178,6 +179,12 @@ export interface CompileOptions {
    */
   groupBy?: "team" | "boundary";
   /**
+   * Facet ids the viewer has selected for the overlay (#2174). Viewer state,
+   * never model state — nothing here is written back to `.krs`. An empty or
+   * absent selection renders exactly as before.
+   */
+  selectedFacets?: readonly string[];
+  /**
    * System-view team ids collapsed to a `<Team> (N)` stub (Issue #1858, P2a).
    * Only meaningful with `groupBy: "team"`. Cross-group edges re-target onto the
    * stub, so collapsing every team yields the group-dependency-DAG view. Omit
@@ -224,6 +231,13 @@ export interface SystemCompileResult {
   systems: SystemNode[];
   /** Maps each node id to the file path where it is defined. */
   nodeFileIndex: Map<string, string>;
+  /**
+   * Every facet the model knows, declared-first then reference-only, in the
+   * order the overlay assigns colours (#2174). This is what the app's selector
+   * offers; intersecting the user's selection with it is what keeps a facet that
+   * was edited out of the model from lingering in the selection (TPL-1032).
+   */
+  facets: { id: string; label?: string }[];
 }
 
 export interface DeployCompileResult {
@@ -288,6 +302,7 @@ function _compileFromPreparedInput(
     collapsedCategories,
     interactive,
     groupBy,
+    selectedFacets,
     collapsedGroups,
     expandedContainers,
   } = opts;
@@ -469,6 +484,7 @@ function _compileFromPreparedInput(
     // A membership the banded view could not frame is only knowable after
     // layout, so `render` reports it here rather than the parser (#2179).
     diagnosticSink: diagnostics,
+    facetOverlay: resolveFacetOverlay(krsFile, selectedFacets),
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,
@@ -486,6 +502,10 @@ function _compileFromPreparedInput(
     hasDeployDiagram,
     hasOrgDiagram,
     hasBoundaries,
+    facets: knownFacetIds(krsFile).map((id) => {
+      const declared = krsFile.facets.find((f) => f.id === id);
+      return declared?.label ? { id, label: declared.label } : { id };
+    }),
     deployBlocks,
     systems: effectiveSystems,
     nodeFileIndex,
@@ -791,6 +811,12 @@ export function buildDrillDownSvg(
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
   groupBy?: "team" | "boundary",
+  /**
+   * Facet ids selected for the overlay (#2174). Same shape as `groupBy`: viewer
+   * state threaded to every render surface so a static bundle shows what the app
+   * shows (TPL-219).
+   */
+  selectedFacets?: readonly string[],
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvg(
@@ -801,6 +827,7 @@ export function buildDrillDownSvg(
     theme,
     annotationBadgeLabels,
     groupBy,
+    selectedFacets,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -824,6 +851,12 @@ export function renderEntityView(
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
   groupBy?: "team" | "boundary",
+  /**
+   * Facet ids selected for the overlay (#2174). Same shape as `groupBy`: viewer
+   * state threaded to every render surface so a static bundle shows what the app
+   * shows (TPL-219).
+   */
+  selectedFacets?: readonly string[],
 ): EntityViewResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _renderEntityView(
@@ -835,6 +868,7 @@ export function renderEntityView(
     theme,
     annotationBadgeLabels,
     groupBy,
+    selectedFacets,
   );
   return {
     svg: result.svg,
@@ -855,6 +889,12 @@ export function buildAllLayersSvg(
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
   groupBy?: "team" | "boundary",
+  /**
+   * Facet ids selected for the overlay (#2174). Same shape as `groupBy`: viewer
+   * state threaded to every render surface so a static bundle shows what the app
+   * shows (TPL-219).
+   */
+  selectedFacets?: readonly string[],
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllLayersSvg(
@@ -865,6 +905,7 @@ export function buildAllLayersSvg(
     theme,
     annotationBadgeLabels,
     groupBy,
+    selectedFacets,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -929,6 +970,12 @@ export function buildAllViewsSvg(
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
   groupBy?: "team" | "boundary",
+  /**
+   * Facet ids selected for the overlay (#2174). Same shape as `groupBy`: viewer
+   * state threaded to every render surface so a static bundle shows what the app
+   * shows (TPL-219).
+   */
+  selectedFacets?: readonly string[],
 ): AllViewsSvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllViewsSvg(
@@ -939,6 +986,7 @@ export function buildAllViewsSvg(
     theme,
     annotationBadgeLabels,
     groupBy,
+    selectedFacets,
   );
   return {
     svg: result.svg,
