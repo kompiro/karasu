@@ -70,9 +70,7 @@ test.describe("AT-XXXX scenario", () => {
     test(`scenario X (${mode})`, async ({ page, opfs }) => {
       await opfs.seed({
         mode,
-        projects: [
-          /* ... */
-        ],
+        projects: [/* ... */],
       });
       await opfs.gotoApp();
       // ...
