@@ -72,6 +72,31 @@ root で開く。開く際、app は history hook の mount より前に URL を
 `#krs-…` アンカーへ正規化する。未知 / rename 済みの target はモデル全体 /
 最近接の解決可能階層へ degrade し、決して throw しない。
 
+## アンカーを運ぶ route の形
+
+上記のアンカーは、karasu が配信するどの URL でも同じように解決する。そのうち 2 つは
+**モデル**のアドレスで、残りは **payload** のアドレスである。
+
+| 形 | 何を指すか |
+| --- | --- |
+| `…/<owner>/<repo>[/<path>][@<ref>]#krs-…` | GitHub repo に commit された `.krs` を `<ref>` 時点で解決（省略時は default branch） |
+| `…/s?s=<payload>#…` / `…/#s=<payload>` | URL に凍結したインラインスナップショット |
+
+repo-backed 形は GitHub のパスをそのまま取るので、**host を差し替えるだけで変換が完了する**:
+`github.com/<owner>/<repo>` → `karasu.kompiro.dev/<owner>/<repo>`。host と owner の間には
+何も挟まらない。`/r/` prefix は [#1961](https://github.com/kompiro/karasu/issues/1961) まで
+使われていたが、現在は bare 形へ 301 する。新しいリンクをこの形で書かないこと。
+
+repo-backed 形が **generation ではなく resolution** であることから 2 つの帰結がある
+（[ADR-2249](../adr/2249-permalink-generation-seam.md)）:
+
+- `.krs` を持たない repo にはその旨を伝えるページが返る。図でもアプリでもない。
+  karasu が URL からモデルを作り出すことはない。
+- 描画される内容は URL だけで決まる。訪問者の識別・履歴・入力したリクエストなど、
+  訪問者側の事情が結果を変えてはならない。変えた瞬間、リンクが人によって別物になる。
+
+> Related TPLs: [TPL-1961](../test-perspectives/TPL-1961-catch-all-route-inverts-default.md) — bare 形は root catch-all なので、SPA と兄弟 Function が持つ経路は常に辞退できる状態に保つ; [TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md) — resolution に generation やパーソナライズを混ぜない。
+
 ## 安定性に関する注意
 
 アンカーは要素を `id` で固定する。**要素の `id` を rename するとアンカーは壊れる**

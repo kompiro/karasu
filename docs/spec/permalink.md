@@ -76,6 +76,33 @@ model at its root. On open, the app normalizes the URL to the canonical
 renamed target degrades to a whole-model / nearest-resolvable open — it never
 throws.
 
+## Route forms that carry an anchor
+
+The anchor above is portable across every URL karasu serves it on. Two of those
+URLs are addresses of a *model*; the rest are addresses of a *payload*.
+
+| Form | What it addresses |
+| --- | --- |
+| `…/<owner>/<repo>[/<path>][@<ref>]#krs-…` | A `.krs` committed in a GitHub repo, resolved at `<ref>` (default branch when omitted) |
+| `…/s?s=<payload>#…` / `…/#s=<payload>` | An inline snapshot frozen into the URL |
+
+The repo-backed form takes the GitHub path verbatim, so **swapping the host is
+the whole transformation**: `github.com/<owner>/<repo>` →
+`karasu.kompiro.dev/<owner>/<repo>`. Nothing is inserted between the host and the
+owner. A `/r/` prefix was used until [#1961](https://github.com/kompiro/karasu/issues/1961)
+and now answers 301 to the bare form; do not write new links in that shape.
+
+Two consequences follow from the repo-backed form being a *resolution*, never a
+generation ([ADR-2249](../adr/2249-permalink-generation-seam.md)):
+
+- A repo with no `.krs` gets a page saying so, not a diagram and not the app.
+  karasu never invents a model for a URL.
+- The URL alone determines what is rendered. Nothing about the visitor — their
+  identity, their history, a request they typed — may change the result, or the
+  link stops meaning one thing to everybody.
+
+> Related TPLs: [TPL-1961](../test-perspectives/TPL-1961-catch-all-route-inverts-default.md) — the bare form is a root catch-all, so every path the SPA and the sibling Functions own has to stay declinable; [TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md) — resolution must not acquire generation or personalization.
+
 ## Stability caveat
 
 An anchor pins an element by `id`. **Renaming the element's `id` breaks the
