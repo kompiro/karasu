@@ -61,4 +61,4 @@ scope:
 
 45 件の AT が `pnpm --filter @karasu-tools/app dev` などローカル dev サーバの起動を指示しており、うち 3 件は**既に腐ったブランチ名入り preview URL**（`https://fix-legend-human-annotation.karasu.pages.dev` 等）を代替として併記していた（[#2254](https://github.com/kompiro/karasu/issues/2254)）。いずれも「書いた PR の中では正しかった」もので、記録の寿命とアドレスの寿命が合っていないという 1 つの原因の別々の現れ方である。
 
-同じ原因の 3 つ目の現れ方が [#2259](https://github.com/kompiro/karasu/issues/2259) の後で見つかった。AT から `docs/design/` への 46 参照のうち **27 が既に解決しない**アドレスを指しており、うち 1 件（`1821-layer-toggle-external-infra.md`）は main に残った壊れた markdown リンクだった。preview URL と違い削除は規約が保証しているので、これは「腐りうる」ではなく「必ず腐る」参照である。
+同じ原因の 3 つ目の現れ方が [#2259](https://github.com/kompiro/karasu/issues/2259) の後で見つかった。AT から `docs/design/` への 46 参照のうち **39 が既に解決しない**アドレスを指しており、うち 1 件（`1821-layer-toggle-external-infra.md`）は main に残った壊れた markdown リンクだった。preview URL と違い削除は規約が保証しているので、これは「腐りうる」ではなく「必ず腐る」参照である。

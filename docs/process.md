@@ -311,7 +311,7 @@ PR 内で変更を先に見たいときは preview を使ってよいが、そ�
 `docs/acceptance/**` から `docs/design/` への参照が 1 つでもあれば finding として
 報告し、`--strict` で落ちる。観点は同じく TPL-2254。
 
-> この規約を入れた時点で、AT から Design Doc への 46 参照のうち **27 が既に
+> この規約を入れた時点で、AT から Design Doc への 46 参照のうち **39 が既に
 > 解決しない**アドレスを指しており、うち 1 件
 > （`1821-layer-toggle-external-infra.md`）は main に残った壊れた markdown
 > リンクだった。既存の link check は `packages/docs-site`（公開サブセット）しか
