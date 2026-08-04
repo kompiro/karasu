@@ -1,6 +1,6 @@
 # ADR Topic: navigation
 
-13 ADRs in this topic. Solid nodes belong to `navigation`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+14 ADRs in this topic. Solid nodes belong to `navigation`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -17,6 +17,7 @@ flowchart TD
     ADR_1094["ADR-1094<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
     ADR_1827["ADR-1827<br/>Deep permalink — 構造要素 / view への深いパーマリンク"]
     ADR_1828["ADR-1828<br/>repo-backed + ref-pinned permalink（nest Phase 2..."]
+    ADR_1961["ADR-1961<br/>permalink を bare `/<owner>/<repo>` で配信し、`/r/` p..."]
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
   end
@@ -54,6 +55,7 @@ flowchart TD
   class ADR_1094 accepted
   class ADR_1827 accepted
   class ADR_1828 accepted
+  class ADR_1961 accepted
   class ADR_2249 accepted
   class ADR_2259 accepted
   class ADR_211 ghost

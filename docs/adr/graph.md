@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-297 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+298 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -206,6 +206,7 @@ flowchart TD
     ADR_1094["ADR-1094<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
     ADR_1827["ADR-1827<br/>Deep permalink — 構造要素 / view への深いパーマリンク"]
     ADR_1828["ADR-1828<br/>repo-backed + ref-pinned permalink（nest Phase 2..."]
+    ADR_1961["ADR-1961<br/>permalink を bare `/<owner>/<repo>` で配信し、`/r/` p..."]
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
   end
@@ -696,6 +697,7 @@ flowchart TD
   class ADR_1911 accepted
   class ADR_1935 accepted
   class ADR_1955 accepted
+  class ADR_1961 accepted
   class ADR_1974 accepted
   class ADR_1983 accepted
   class ADR_1990 accepted
@@ -759,7 +761,7 @@ flowchart TD
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 20 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
-- [`navigation`](graph/navigation.md) — 13 ADRs
+- [`navigation`](graph/navigation.md) — 14 ADRs
 - [`parser`](graph/parser.md) — 22 ADRs
 - [`project`](graph/project.md) — 10 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
