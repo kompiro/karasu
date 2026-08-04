@@ -35,7 +35,7 @@ const SCANNED = ["packages/app/src", "functions"];
 const KNOWN_BUILDERS: Record<string, string> = {
   "packages/app/src/utils/inline-share.ts":
     "producer — buildShareUrls gates on fitsUnfurlPayload and returns null past the cap",
-  "functions/r/[[path]].ts":
+  "functions/[[path]].ts":
     "producer — payload comes from resolveRepoPermalink, which refuses (413) past the cap",
   "packages/app/src/render/share-page.ts":
     "reflector — og:url self-reference for a payload that already arrived in the request",
