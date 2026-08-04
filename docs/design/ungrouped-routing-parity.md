@@ -83,38 +83,58 @@ co-membership/seam bias・group diff 配置（#1886）・`groupBackward` 破線
   尊重すること（TPL-1761）。
 - **out of scope**: 配置アルゴリズム自体の改善（barycenter 導入・#966 系の
   crossing 最小化）はルーティングと独立の論点なので本設計に含めない。
-  必要なら別 Issue を起こす。
+  Issue も起こさない — 単一 system の row 内が宣言順なのは「書いた順に並ぶ」
+  という予測可能性でもあり、問題が観測されてから再検討する（レビューで決定）。
 
 ## 検討した選択肢
 
-### 案1: grouped パイプラインを frames 空で ungrouped にも通す（単一ルーター化）
+### 案1: 両ルーターを 1 本の候補列に合成し、両モードで走らせる（併用合成）
 
-`if (groupBands)` の分岐を「常に grouped パイプライン」へ畳む。ungrouped では
-`frames: []`・trunk/backward 判定は band 情報が無いので自然に縮退（または明示
-skip）。`routeOrthogonalEdges`（`edge-routing-channels.ts`）は退役させ、
-`distributeChannelLanes` など共有パスは残す。
+`if (groupBands)` の routing fork を廃し、**グループ軸（none / team / boundary）
+とルーティング能力を独立の軸として扱う**。両モジュールは残し、共通の候補列に
+合成する:
+
+```
+straight（clear ならそのまま）
+  → 内側 channel L 字（edge-routing-channels.ts — obstacles に frames を
+    渡せるよう拡張。grouped ではフレーム障害物で不成立なら次へ）
+  → gutter / mixed channel（edge-routing-groups.ts — ungrouped では
+    frames: [] で縮退）
+```
+
+後段の lane 分離・port fan-out・trunk 集約・marks も両モードで走らせる。
+band 順序が前提の `groupBackward` 破線だけは grouped 限定のまま。
+
+なお両ルーターは互いの上位互換ではない: 旧ルーターの「図の内側の channel L」
+経路形を新ルーターは持たず（grouped では帯が全幅を占め内側経路が通らないため
+不要だった）、逆に旧ルーターは downward 限定で貫通 0 保証もない。合成は
+「どちらかに寄せる」のではなく、経路形の語彙を足し合わせる操作になる。
 
 **メリット**
 
 - ungrouped が同層・上向き edge の直交化、mixed channel 迂回、gutter lane
-  分離、4 辺 port fan-out を即座に獲得。貫通 0 の柵を ungrouped にも張れる。
-- ルーターが 1 系統になり、以後の改善（#1954 のような fix）が両モードに同時に
-  効く。二重メンテが消える。
+  分離、4 辺 port fan-out を獲得。貫通 0 の柵を ungrouped にも張れる。
+- grouped 側も内側 channel L 候補を獲得し、gutter まで出ない近道が増える。
+- 単純な図では channel L が先に成立するため、外縁 gutter への遠回りが増えず
+  snapshot churn も抑えられる。
+- 経路形 1 つ = モジュール 1 つの構成が保たれ、以後の経路形追加も候補列への
+  挿入で済む。改善が両モードに同時に効く。
 - in-place expansion で既に「ungrouped キャンバス上で grouped ルーターが走る」
   実績があり、リスクの下限が実証済み。
 
 **デメリット**
 
-- ungrouped snapshot の大規模更新（AC-5 の放棄）。目視レビューのコストが
-  一度発生する。
-- grouped ルーターは gutter（キャンバス外縁）経由を好むため、単純な図では
-  現行の「素直な L 字」より遠回りな経路になるケースがありうる。経路選択の
-  優先順位（straight → 現行 L 字相当 → gutter/mixed）の調律が必要。
+- ungrouped snapshot の更新（AC-5 の放棄）は避けられない。目視レビューの
+  コストが一度発生する。
+- grouped の既存 snapshot も内側 channel L の獲得で一部変わる（改善方向だが
+  churn は増える）。
+- 候補列の順序が両モードの見た目を同時に決めるため、順序変更の影響範囲が
+  広がる。
 
-### 案2: `routeOrthogonalEdges` を拡張して追いつかせる
+### 案2: `routeOrthogonalEdges` を単独で拡張して追いつかせる
 
 現行 ungrouped ルーターに同層・上向き対応、fallback 時の再試行、lane 参加を
-継ぎ足す。
+継ぎ足す（grouped 側とは合流しない）。
 
 **メリット**
 
@@ -123,10 +143,21 @@ skip）。`routeOrthogonalEdges`（`edge-routing-channels.ts`）は退役させ�
 **デメリット**
 
 - ADR-1859 が「両モードのロジックが絡む」として却下した形の裏返しで、
-  結局 2 つのルーターを恒久メンテすることになる。
+  2 系統が**別々に**進化し続ける。候補列合成（案1）と違い改善が片側にしか
+  効かない。
 - 継ぎ足しの終着点は `edge-routing-groups.ts` の再実装。#1927/#1954 で得た
   教訓（progressively-outer gutter の失敗、素朴 channel routing の overlap）を
   もう一度踏み直すリスクが高い。
+
+### 案1' （案1 の当初形）: grouped パイプラインへ一本化し旧モジュールを削除
+
+検討初期の形。`edge-routing-channels.ts` を削除し、内側 channel L の経路形を
+`edge-routing-groups.ts` に吸収して単一モジュール化する。
+
+**却下理由**: グループ軸とルーティング能力は独立の軸であり、経路形ごとに
+モジュールを保って候補列で合成する方が、軸の直交性がコード構成に残る
+（レビューでの指摘を受けて案1 を併用合成の形に修正）。機能面の到達点は
+案1 と同じ。
 
 ### 案3: 現状維持（marks 共有のみ）
 
@@ -136,25 +167,27 @@ skip）。`routeOrthogonalEdges`（`edge-routing-channels.ts`）は退役させ�
 
 ## 比較
 
-| 観点 | 案1 単一ルーター化 | 案2 現行拡張 | 案3 現状維持 |
-| --- | --- | --- | --- |
-| ungrouped の貫通 0 保証 | 可能（柵も移植） | 理論上可能だが再発明 | なし |
-| メンテ系統 | 1 系統 | 2 系統恒久化 | 2 系統（片方停滞） |
-| snapshot churn | 一度に大 | 小刻みに複数回 | なし |
-| 実証済みの土台 | あり（P2c + expansion 先例） | なし | — |
-| multi-system root への波及 | 同じパスを配線するだけ | 別途実装 | なし |
+| 観点 | 案1 併用合成 | 案1' 一本化・削除 | 案2 単独拡張 | 案3 現状維持 |
+| --- | --- | --- | --- | --- |
+| ungrouped の貫通 0 保証 | 可能（柵も移植） | 可能 | 理論上可能だが再発明 | なし |
+| grouped への還元 | 内側 channel L を獲得 | 同左 | なし | なし |
+| モジュール構成 | 経路形ごとに分離、候補列で合成 | 単一巨大モジュール | 2 系統が別進化 | 2 系統（片方停滞） |
+| snapshot churn | 中（channel L が先に成立し遠回りが増えない） | 大（gutter 経由が増える） | 小刻みに複数回 | なし |
+| multi-system root への波及 | 同じ候補列を配線するだけ | 同左 | 別途実装 | なし |
 
 ## 現時点の方針
 
-**案1 を採用する** — ルーターを 1 系統に畳み、grouped で実証済みの品質
-（貫通 0・overlap 0・決定論）を ungrouped の既定ビューに移植する。snapshot
-churn は一度きりのコストであり、TPL-1927 の crossing/penetration 計測を
-ungrouped fixture（`getting-started` ほか実サンプル）へ拡張して before/after を
-数値で示すことで、目視レビューの負担を「悪化していないことの確認」まで下げる。
+**案1（併用合成）を採用する** — グループ軸とルーティング能力を独立の軸として
+扱い、両モジュールを共通の候補列（straight → 内側 channel L → gutter/mixed）
+に合成して、grouped / ungrouped の両モードで同じパイプラインを走らせる。
+grouped で実証済みの品質（貫通 0・overlap 0・決定論）が ungrouped の既定
+ビューに届き、逆に ungrouped で実証済みの内側 channel L が grouped に届く。
 
-経路選択の優先順位は「straight が clear なら straight → 帯間チャネル L 字
-（現行 ADR-968 相当）→ gutter/mixed」とし、単純な図の見た目を現行から
-大きく変えない。この優先順位はユーザーレビュー時の主要確認点。
+snapshot churn は一度きりのコストであり、TPL-1927 の crossing/penetration
+計測を ungrouped fixture（`getting-started` ほか実サンプル）へ拡張して
+before/after を数値で示すことで、目視レビューの負担を「悪化していないことの
+確認」まで下げる。候補列の順序（内側 channel L を gutter より先に試す）が
+両モードの見た目を決める主要パラメータであり、ユーザーレビュー時の主要確認点。
 
 ### スライス（実装ステップ）
 
@@ -169,11 +202,13 @@ ungrouped fixture（`getting-started` ほか実サンプル）へ拡張して be
 
 ### 実装の指針
 
-1. **A**: `layout.ts` のルーティング fork を共通化。ungrouped では
-   `frames: []` を渡し、`groupBackward` / trunk は band 情報なしとして skip。
-   `routeOrthogonalEdges` と `edge-routing-channels.ts` を削除（knip が
-   dead code を検出することを確認）。経路優先順位（straight → channel L →
-   gutter/mixed）を router 側に実装。
+1. **A**: `layout.ts` のルーティング fork を廃し、共通の候補列
+   （straight → channel L → gutter/mixed）を両モードに配線する。
+   `edge-routing-channels.ts` は残し、obstacles を外から受け取れるよう拡張
+   （grouped ではフレーム片を含む障害物集合、ungrouped では従来どおりノード
+   カードのみ）。downward 限定も外し、channel L が不成立なら
+   `edge-routing-groups.ts` の gutter/mixed に落ちる。ungrouped では
+   `frames: []`、`groupBackward` は band 情報なしとして skip。
 2. **A の柵**: TPL-1927 の二重計測（crossing + penetration）を ungrouped
    fixture へ拡張し、実サンプル（`examples/` の `getting-started` 等）で
    **貫通 == 0 / collinear overlap == 0** を assert。TPL-1761（external
@@ -202,11 +237,13 @@ ungrouped fixture（`getting-started` ほか実サンプル）へ拡張して be
 - テスト・examples への影響: ungrouped の snapshot 大規模更新（一度きり）。
   examples の `.krs` 自体は不変。
 
-## 未解決の問い
+## 決めたこと（レビューでの解消記録）
 
-- **スライス C（trunk 集約）を本プログラムに含めるか**: 含めて「評価の結果
-  見送り」も許容する形を提案するが、最初から切り離して別 Issue でもよい。
-- **barycenter（単一 system の row 内順序が宣言順のみ）**: 本設計は out of
-  scope としたが、別 Issue として起票するか。
-- **`routeOrthogonalEdges` の扱い**: 完全削除（提案）か、フォールバックとして
-  残すか。残す場合は 2 系統メンテが続くため、削除を推奨する。
+- **スライス C（trunk 集約）は本プログラムに含める**。評価スライスとし、
+  「評価の結果見送り」も許容する。
+- **barycenter は起票しない**。宣言順の予測可能性を維持し、問題が観測されて
+  から再検討する（「制約・前提」の out of scope 参照）。
+- **旧ルーターはモジュールごと残して併用合成する**。グループ軸（none / team /
+  boundary）とルーティング能力の切り替えは独立の軸であり、boundary / team の
+  どちらのグループでも edge-routing の全能力が使え、グループなしでも gutter
+  ルーティングが使える状態を到達点とする（案1' の却下理由も参照）。
