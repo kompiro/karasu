@@ -137,6 +137,22 @@ export function buildShareUrl(
  */
 export const MAX_UNFURL_PAYLOAD = 8000;
 
+/**
+ * True when `encoded` fits the server-visible URL budget — i.e. it may be put
+ * into a `/s?s=` link (which echoes it again into `/render?s=`).
+ *
+ * Every producer of a server-visible `s=` URL MUST gate on this predicate, not
+ * on its own comparison against {@link MAX_UNFURL_PAYLOAD}. Exporting only the
+ * constant is what let the two producers drift: `buildShareUrls` compared
+ * against it while `resolveRepoPermalink` did not, so a repo-backed permalink
+ * could emit exactly the over-length redirect the constant exists to prevent
+ * (Issue #2259). Sharing the comparison keeps the budget enforced in one place
+ * as more producers appear (#1961 bare route, #1960 private repos) — TPL-2259.
+ */
+export function fitsUnfurlPayload(encoded: string): boolean {
+  return encoded.length <= MAX_UNFURL_PAYLOAD;
+}
+
 /** Path of the server-rendered share page (OGP unfurl). */
 const SHARE_PAGE_PATH = "/s";
 
@@ -157,10 +173,9 @@ export function buildShareUrls(
 ): { fragmentUrl: string; unfurlUrl: string | null } {
   const encoded = encodeShare(payload);
   const fragmentUrl = `${locationLike.origin}${locationLike.pathname}#${SHARE_FRAGMENT_PREFIX}${encoded}`;
-  const unfurlUrl =
-    encoded.length > MAX_UNFURL_PAYLOAD
-      ? null
-      : `${locationLike.origin}${SHARE_PAGE_PATH}?${SHARE_FRAGMENT_PREFIX}${encoded}`;
+  const unfurlUrl = fitsUnfurlPayload(encoded)
+    ? `${locationLike.origin}${SHARE_PAGE_PATH}?${SHARE_FRAGMENT_PREFIX}${encoded}`
+    : null;
   return { fragmentUrl, unfurlUrl };
 }
 

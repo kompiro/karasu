@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decodeShare } from "../utils/inline-share.js";
+import { decodeShare, MAX_UNFURL_PAYLOAD } from "../utils/inline-share.js";
 import {
   parseRepoPermalink,
   resolveRepoPermalink,
@@ -204,5 +204,78 @@ describe("resolveRepoPermalink", () => {
     const res = await resolveRepoPermalink("o/r@sha", stubFetch({ "index.krs": entry }));
     expect(res.status).toBe(200);
     expect(decodeShare(res.encodedPayload!)?.krs).toContain("system Shop");
+  });
+});
+
+/**
+ * Issue #2259 — the resolver hands its payload to `Location: /s?s=…`, which
+ * `/s` echoes again into the `/render?s=…` OGP image URL. Both ride a request
+ * line bounded by Cloudflare's 16 KB URL limit, so the resolver must refuse
+ * above `MAX_UNFURL_PAYLOAD` rather than emit an unusable redirect (TPL-2259).
+ */
+describe("resolveRepoPermalink — unfurl payload cap", () => {
+  const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  /**
+   * A parseable `.krs` with `n` services whose ids and labels come from a
+   * deterministic LCG. The randomness is load-bearing: uniform boilerplate
+   * deflates ~4x better than a real model, so a compressible fixture would need
+   * thousands of nodes to reach the cap. At ~0.52 encoded/raw this matches the
+   * ratio measured over `examples/` (Issue #2259).
+   */
+  function krsWithServices(n: number): string {
+    let seed = 12345;
+    const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648);
+    const word = (len: number) =>
+      Array.from({ length: len }, () => ALPHABET[next() % ALPHABET.length]).join("");
+    const lines = ["system Shop {"];
+    for (let i = 0; i < n; i++) {
+      lines.push(`  service Svc${i}${word(6)} { label "${word(24)}" }`);
+    }
+    lines.push("}");
+    return lines.join("\n");
+  }
+
+  const resolveWith = (n: number) =>
+    resolveRepoPermalink("o/r@sha", stubFetch({ "index.krs": krsWithServices(n) }));
+
+  /** Encoded length the resolver reported it could not fit. */
+  function reportedLength(message: string | undefined): number {
+    const m = /encodes to (\d+) characters/.exec(message ?? "");
+    if (m === null) throw new Error(`message should name the encoded length, got: ${message}`);
+    return Number(m[1]);
+  }
+
+  it("refuses an over-cap model with a diagnostic naming the cause (413)", async () => {
+    const res = await resolveWith(400);
+    expect(res.status).toBe(413);
+    // No payload to redirect to — the caller must not build a `/s?s=` URL.
+    expect(res.encodedPayload).toBeUndefined();
+    expect(res.message).toContain("Model too large for a permalink: o/r@sha");
+    expect(res.message).toContain(String(MAX_UNFURL_PAYLOAD));
+    expect(reportedLength(res.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
+    // Names the remedy, not just the failure.
+    expect(res.message).toContain("narrower entry .krs");
+  });
+
+  it("accepts right up to the cap and refuses one node past it", async () => {
+    // Binary-search the service count where the resolver flips, then assert the
+    // flip sits on MAX_UNFURL_PAYLOAD itself rather than on some other
+    // threshold — i.e. the gate is the shared predicate, not a stricter guess.
+    let fits = 1; // 1 service always fits
+    let overflows = 400; // 400 services never fits (asserted above)
+    while (overflows - fits > 1) {
+      const mid = Math.floor((fits + overflows) / 2);
+      if ((await resolveWith(mid)).status === 200) fits = mid;
+      else overflows = mid;
+    }
+
+    const accepted = await resolveWith(fits);
+    expect(accepted.status).toBe(200);
+    expect(accepted.encodedPayload!.length).toBeLessThanOrEqual(MAX_UNFURL_PAYLOAD);
+
+    const refused = await resolveWith(overflows);
+    expect(refused.status).toBe(413);
+    expect(reportedLength(refused.message)).toBeGreaterThan(MAX_UNFURL_PAYLOAD);
   });
 });
