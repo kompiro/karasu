@@ -68,6 +68,24 @@ export interface OrgKindInfo {
   properties: string[];
 }
 
+/**
+ * A top-level construct that groups or labels existing elements instead of
+ * declaring one — `boundary` and `facet` (#2316). Neither is a node kind nor an
+ * org kind, so they are their own list rather than rows appended to one.
+ *
+ * `experimental` is true while the notation has not passed the promotion gate
+ * (ADR-1820). Consumers must surface it: the construct is listed so it can be
+ * found, and flagged so being listed does not read as a stability promise.
+ */
+export interface GroupingConstructInfo {
+  construct: string;
+  description: string;
+  properties: string[];
+  /** How an element is written into the set, in one line. */
+  membership: string;
+  experimental: boolean;
+}
+
 // Re-export the snippet types (defined alongside the data in reference-data.ts,
 // since — unlike the locale-split reference entries — they have no en/ja split)
 // so consumers import the whole reference surface from one place.
@@ -83,6 +101,8 @@ export interface KarasuReference {
   nodeKinds: NodeKindInfo[];
   deployUnitKinds: DeployUnitKindInfo[];
   orgKinds: OrgKindInfo[];
+  /** `boundary` / `facet` — grouping and membership constructs over elements (#2316). */
+  groupingConstructs: GroupingConstructInfo[];
   tags: TagInfo[];
   annotations: AnnotationInfo[];
   styleProperties: StylePropertyInfo[];
@@ -154,6 +174,13 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
       description: k.description[locale],
       canContain: k.canContain,
       properties: k.properties,
+    })),
+    groupingConstructs: data.groupingConstructs.map((g) => ({
+      construct: g.construct,
+      description: g.description[locale],
+      properties: g.properties,
+      membership: g.membership[locale],
+      experimental: g.experimental,
     })),
     tags: data.tags.map((t) => ({
       name: t.name,
