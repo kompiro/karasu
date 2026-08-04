@@ -53,6 +53,12 @@ export interface SystemViewData {
   groupBy?: GroupByMode;
   /** Called when the user changes the Group-by selector (#1858). */
   onGroupByChange?: (mode: GroupByMode) => void;
+  /** Facets selected for the overlay (#2174). Orthogonal to `groupBy` — both apply at once. */
+  selectedFacets?: readonly string[];
+  /** Called when the user toggles a facet in the Facets selector (#2174). */
+  onFacetToggle?: (facetId: string) => void;
+  /** Every facet the model knows — the selector's options. Empty hides the control. */
+  facets?: { id: string; label?: string }[];
   /** Whether the team axis has data — gates the "team" option (#1822 P2b). */
   hasTeamAxis?: boolean;
   /** Whether the boundary axis has data — gates the "boundary" option (#1822 P2b). */

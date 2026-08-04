@@ -180,6 +180,8 @@ export const en: Translations = {
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
 
   // Group by (system-view team grouping, #1858)
+  "preview.facets.label": "Facets",
+  "preview.facets.active": ({ count }) => `◎ Facets (${count})`,
   "preview.groupBy.label": "Group by",
   "preview.groupBy.none": "None",
   "preview.groupBy.team": "Team",

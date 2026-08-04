@@ -145,3 +145,15 @@
   font-size: 11px;
   font-family: var(--font-ui);
 }
+
+/* Facet selector colour dot (#2174). Mirrors the ring colour the renderer
+   paints, so the menu and the diagram read as one thing. */
+.facet-swatch {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-right: 0.5em;
+  border-radius: 2px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}

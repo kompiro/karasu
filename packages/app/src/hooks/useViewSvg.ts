@@ -34,6 +34,17 @@ export function useViewSvg(
   // The current system-view drill path — drives the live entity view, which is
   // scoped to the drilled domain (unlike the whole-model export builders above).
   viewPath?: string[],
+  /**
+   * Facets selected for the overlay (#2174). An export must show what the
+   * screen shows — a reader who highlights PII and hits Export expects the
+   * export to carry it (TPL-219).
+   *
+   * Appended rather than slotted next to `groupBy`: every caller passes these
+   * positionally, so inserting mid-list silently shifts `viewPath` — which is
+   * exactly what happened on the first attempt, and the entity-view tests are
+   * what caught it.
+   */
+  selectedFacets?: readonly string[],
 ) {
   const emptyStateLabels = useEmptyStateLabels();
   const badgeLabels = useAnnotationBadgeLabels();
@@ -52,9 +63,19 @@ export function useViewSvg(
         theme,
         badgeLabels,
         groupBy,
+        selectedFacets,
       ),
     );
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
+  }, [
+    fileContent,
+    displayMode,
+    styleSource,
+    emptyStateLabels,
+    theme,
+    badgeLabels,
+    groupBy,
+    selectedFacets,
+  ]);
 
   const allLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
@@ -67,9 +88,19 @@ export function useViewSvg(
         theme,
         badgeLabels,
         groupBy,
+        selectedFacets,
       ),
     );
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
+  }, [
+    fileContent,
+    displayMode,
+    styleSource,
+    emptyStateLabels,
+    theme,
+    badgeLabels,
+    groupBy,
+    selectedFacets,
+  ]);
 
   // Org builders take no `groupBy` — grouping is a system-view concept.
   const orgAllLayersResult = useMemo(() => {
@@ -111,9 +142,19 @@ export function useViewSvg(
         theme,
         badgeLabels,
         groupBy,
+        selectedFacets,
       ),
     );
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
+  }, [
+    fileContent,
+    displayMode,
+    styleSource,
+    emptyStateLabels,
+    theme,
+    badgeLabels,
+    groupBy,
+    selectedFacets,
+  ]);
 
   // The live, single-level entity view of the drilled domain. Scoped to the
   // current viewPath (unlike the whole-model export builders), so it recomputes
@@ -133,6 +174,7 @@ export function useViewSvg(
         theme,
         badgeLabels,
         groupBy,
+        selectedFacets,
       ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewPathKey stands in for the viewPath array identity

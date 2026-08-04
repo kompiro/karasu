@@ -231,6 +231,9 @@ export function AppShell({
     // `=== "team"` hardcode here silently dropped the boundary axis).
     groupByAxis(views.system.groupBy),
     viewPath,
+    // Same reason, same trap: an export that silently drops the overlay shows a
+    // different diagram than the one the reader is looking at (#2174).
+    views.system.selectedFacets,
   );
 
   const hasSidebar = !!(sidebarHeaderContent || sidebarContent);

@@ -101,6 +101,11 @@ export interface SystemViewBundle {
   /** System-view grouping axis and its setter (Issue #1858). */
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
+  /** Facets selected for the overlay, and the toggle (#2174). */
+  selectedFacets: readonly string[];
+  toggleFacet: (facetId: string) => void;
+  /** Every facet the model knows — the selector's options. Empty hides the control. */
+  facets: { id: string; label?: string }[];
   /**
    * Whether the team axis has data (an `organization`/`owns` block) — gates the
    * "team" option (#1822 P2b). Grouping works in compare mode too (the diff
@@ -223,6 +228,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleCategory,
     groupBy,
     setGroupBy,
+    selectedFacets,
+    toggleFacet,
+    facets,
     toggleGroup,
     expandedContainers,
     toggleExpand,
@@ -366,6 +374,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       toggleCategory,
       groupBy,
       setGroupBy,
+      selectedFacets,
+      toggleFacet,
+      facets,
       hasTeamAxis: hasOrgDiagram,
       hasBoundaryAxis: hasBoundaries,
       toggleGroup,
