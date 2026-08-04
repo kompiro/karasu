@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-294 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+295 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -14,6 +14,7 @@ flowchart TD
     ADR_2092["ADR-2092<br/>TPL の reference-data 設定を `tpl.config.json` に分離し..."]
     ADR_2125["ADR-2125<br/>id-migration-map と専用 lint を退役する — 移行完了後の map は「..."]
     ADR_2188["ADR-2188<br/>TPL の採番を issue-number（TPL-<n>）へ移行する"]
+    ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -722,6 +723,7 @@ flowchart TD
   class ADR_2249 accepted
   class ADR_2259 accepted
   class ADR_2318 accepted
+  class ADR_2331 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -746,7 +748,7 @@ flowchart TD
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 10 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 11 ADRs
 - [`app-ui`](graph/app-ui.md) — 41 ADRs
 - [`build`](graph/build.md) — 65 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
