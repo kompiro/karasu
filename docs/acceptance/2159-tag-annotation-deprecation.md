@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-29
 - **関連 Issue**: [#2159](https://github.com/kompiro/karasu/issues/2159)（tags-and-facets Part A、親 [#2065](https://github.com/kompiro/karasu/issues/2065)）
-- **関連 Design Doc**: `docs/design/tags-and-facets.md`（ADR 昇格は Part B 完了後）
+- **関連 ADR**: [ADR-2065](../adr/2065-tags-and-facets.md)（Part A の決定源。slice 4 / #2177 で昇格）
 - **関連 spec**: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)（Non-builtin tag / annotation names are deprecated、Vocabulary registers）/ [`docs/spec/diagnostics.md`](../spec/diagnostics.md)
 - **関連 TPL**: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（第 4 状態を状態 (2) に解消）
 - **対象ファイル**:

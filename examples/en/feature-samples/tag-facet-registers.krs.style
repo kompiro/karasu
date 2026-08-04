@@ -1,0 +1,37 @@
+/* Styling each register with the selector that belongs to it (Issue #2175).
+ *
+ * The point of this sheet is which selector goes with which register — and that
+ * the facet selector is the one that used to be faked with an arbitrary tag.
+ */
+
+/* facet — style by MEMBERSHIP. This is the selector that replaces writing
+ * `[pci] { … }` against a made-up tag. It scores 10, exactly what that tag
+ * selector scored, so a sheet can be migrated one rule at a time.
+ *
+ * Deprecated form, for comparison:
+ *   [pci] { border-color: #F59E0B; }      ← warns: style-tag-selector-not-builtin
+ */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* Both at once — repeating the predicate ANDs it, like tags do. */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* tag — style by ARCHETYPE. A builtin name, so no deprecation. */
+service[external] {
+  background-color: #f3f4f6;
+}
+
+/* annotation — style by LIFECYCLE. Also a builtin name. */
+@deprecated {
+  opacity: 0.7;
+}

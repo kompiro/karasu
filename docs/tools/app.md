@@ -128,6 +128,11 @@ The preview toolbar offers:
   readable at the same time — and it survives drill-down, collapse and export.
   The selection lives in the viewer: nothing is written to your `.krs`, and
   clearing it returns the diagram to exactly its unmodified appearance.
+  At the bottom of the same menu, **Membership overview** answers the other
+  question — *which elements are in facet X* — in one panel, with each facet's
+  description, policy links and member list. That list is derived from the
+  `facets` properties on every compile, so it is never something you maintain.
+  Clicking a facet's name there toggles its highlight, the same as the menu.
 - **Collapse all / Expand all** (System view) — whenever the view has anything
   collapsible — team boundary frames **or** the external / infra layer bands —
   this button folds or unfolds all of them at once, reaching the compact overview

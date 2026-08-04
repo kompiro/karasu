@@ -28,7 +28,7 @@ scope:
 
 ## 観点
 
-karasu は v2.0 で tag / annotation をツール語彙に閉じる（[ADR-2065 系](../design/tags-and-facets.md)）。
+karasu は v2.0 で tag / annotation をツール語彙に閉じる（[ADR-2065](../adr/2065-tags-and-facets.md)）。
 その移行は **model 側**（`[pci]` をノードに書く）と **style 側**（`[pci] { … }` を
 シートに書く）の 2 面を持つ。#2159 は model 側だけを deprecate し、style 側を
 **意図的に据え置いた** — その時点では任意名セレクタが横断的関心事をスタイリングする

@@ -178,6 +178,16 @@ export type Translations = {
   "preview.export.drawio.title": string;
   "preview.export.drawio.failed": (params: { detail: string }) => string;
 
+  // Facet overview panel — derived "who belongs to facet X" (#2177)
+  "facetOverview.title": string;
+  "facetOverview.close": string;
+  "facetOverview.open": string;
+  "facetOverview.derivedNote": string;
+  "facetOverview.memberCount": (params: { count: number }) => string;
+  "facetOverview.noMembers": string;
+  "facetOverview.undeclared": string;
+  "facetOverview.highlightHint": string;
+
   // Preview toolbar — Group by (system-view team grouping, #1858)
   "preview.facets.label": string;
   "preview.facets.active": (params: { count: number }) => string;

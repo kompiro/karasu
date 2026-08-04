@@ -13,7 +13,7 @@ import type { KrsFile } from "../types/ast.js";
  * whenever nothing is selected (or the selection names no facet the model
  * knows), and the renderer emits nothing at all in that case. That is what
  * keeps "no facet selected ⇒ byte-identical output" true, which the rest of the
- * design leans on — see `docs/design/facet-overlay.md`.
+ * design leans on — see ADR-2174.
  */
 
 /**

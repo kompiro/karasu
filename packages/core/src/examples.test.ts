@@ -23,10 +23,17 @@ import { analyze } from "./resolver/warnings.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dir = resolve(__dirname, "../../../examples/en/feature-samples");
 
-const files = readdirSync(dir).filter((f: string) => f.endsWith(".krs"));
+// Both halves of the directory. A sample may ship a companion `.krs.style`
+// (`tag-facet-registers.krs.style`, #2177), and the bundled project carries it
+// too — so the drift guard below has to see it, or a hand edit to the sheet
+// would land on one side only.
+const featureSampleKrsFiles = readdirSync(dir).filter((f: string) => f.endsWith(".krs"));
+const files = readdirSync(dir).filter(
+  (f: string) => f.endsWith(".krs") || f.endsWith(".krs.style"),
+);
 
 describe("feature-samples: all files parse without errors", () => {
-  it.each(files)("%s", (file) => {
+  it.each(featureSampleKrsFiles)("%s", (file) => {
     const src = readFileSync(resolve(dir, file), "utf8");
     const result = Parser.parse(src);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
@@ -39,7 +46,7 @@ describe("feature-samples: all files parse without errors", () => {
 // on-disk files. The `.claude/rules/examples-sync.md` mapping and `/update-examples`
 // skill keep them in sync; this test fails if a hand edit lands on only one side.
 describe("feature-samples: bundled examples.ts content matches examples/en/feature-samples/", () => {
-  it("registers index.krs plus every .krs file in the directory, and nothing else", () => {
+  it("registers index.krs plus every .krs / .krs.style file in the directory, and nothing else", () => {
     const bundledPaths = FEATURE_SAMPLES_PROJECT.files.map((f) => f.path).sort();
     const expectedPaths = ["index.krs", ...files.filter((f) => f !== "index.krs")].sort();
     expect(bundledPaths).toEqual(expectedPaths);

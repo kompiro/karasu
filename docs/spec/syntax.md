@@ -1272,10 +1272,16 @@ Under either *Group by* axis the group frame is titled with the group's declared
 >
 > **The selection lives in the viewer, not in the model.** Nothing about which
 > facets are highlighted is written to `.krs`; a `.krs` file renders identically
-> for every reader until one of them selects something. Styling a facet from a
-> sheet (`.krs.style` facet selectors) and the derived "everything in facet X"
-> overview arrive in the follow-up slices of
-> [#2160](https://github.com/kompiro/karasu/issues/2160).
+> for every reader until one of them selects something.
+>
+> Two surfaces sit alongside the overlay. A sheet can style by membership —
+> [`[facets=<id>]`](style.md#facet-selectors-facetsid--experimental), the
+> replacement for abusing an arbitrary tag selector. And **Membership overview**,
+> at the bottom of the Facets menu, answers "which elements are in facet X" in
+> one view. That list is **derived from the `facets` properties on every
+> compile, never authored** — writing membership element-side is what costs the
+> centralized list, and deriving it is how the cost is paid without giving up
+> the locality.
 
 A `facet` declares a set that is defined **outside** the architecture — by a
 regulation, a policy, or an audit scope — and that elements belong to. A

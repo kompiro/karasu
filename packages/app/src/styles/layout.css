@@ -94,6 +94,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Containing block for the facet overview panel (#2177), which anchors to the
+     toolbar's corner rather than to the diagram — it is about the model, not
+     about a node under the cursor. */
+  position: relative;
 }
 
 .preview-pane {

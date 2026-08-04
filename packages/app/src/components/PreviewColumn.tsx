@@ -20,7 +20,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { FacetOverviewPanel } from "./FacetOverviewPanel.js";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
@@ -126,6 +128,7 @@ export function PreviewColumn() {
 
   const { t, locale } = useTranslation();
   const [exportError, setExportError] = useState<string | null>(null);
+  const [facetOverviewOpen, setFacetOverviewOpen] = useState(false);
 
   const shareAvailable = !!hasKrsSource && !!getShareBundle;
   const { handleShare, shareDialogProps } = useShareDialog({
@@ -329,6 +332,14 @@ export function PreviewColumn() {
                   </DropdownMenuItem>
                 );
               })}
+              <DropdownMenuSeparator />
+              {/* The audit surface. Membership is written element-side, so the
+                  centralized "who is in facet X" list is derived — and it is
+                  reached from the same control that selects facets, because
+                  that is where someone asking the question already is (#2177). */}
+              <DropdownMenuItem onSelect={() => setFacetOverviewOpen(true)}>
+                ▤ {t("facetOverview.open")}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -475,6 +486,14 @@ export function PreviewColumn() {
           {previewFocused ? "↙ Exit Focus" : "↗ Focus"}
         </Button>
       </div>
+      {facetOverviewOpen && (view.facetOverview?.length ?? 0) > 0 && (
+        <FacetOverviewPanel
+          facets={view.facetOverview ?? []}
+          selectedFacets={view.selectedFacets ?? []}
+          onFacetToggle={view.onFacetToggle}
+          onClose={() => setFacetOverviewOpen(false)}
+        />
+      )}
       {exportError && (
         <div className="export-error" role="alert">
           <span className="export-error-message">{exportError}</span>

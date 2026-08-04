@@ -239,6 +239,11 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
         ["domain-drift", "Domain drift warning", "ドメイン分散の警告"],
         ["legend", "Legend block", "legend ブロック"],
         ["resource-operations", "resource operations (CRUD)", "resource の operations（CRUD）"],
+        [
+          "tag-facet-registers",
+          "tag / annotation / facet / boundary — which register says what",
+          "tag / annotation / facet / boundary — どの register が何を言うか",
+        ],
       ] as const
     ).map(([file, en, ja]) => ({
       entry: `examples/en/feature-samples/${file}.krs`,

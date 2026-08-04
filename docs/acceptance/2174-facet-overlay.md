@@ -2,7 +2,7 @@
 
 - **日付**: 2026-08-02
 - **関連 Issue**: [#2174](https://github.com/kompiro/karasu/issues/2174)（Part B slice 2。親 [#2160](https://github.com/kompiro/karasu/issues/2160)、program [#2065](https://github.com/kompiro/karasu/issues/2065)）
-- **関連 Design Doc**: `docs/design/facet-overlay.md`（ADR 昇格は Part B 全スライス完了後）
+- **関連 ADR**: [ADR-2174](../adr/2174-facet-overlay.md)（本スライスの実装設計）/ [ADR-2065](../adr/2065-tags-and-facets.md)（プログラム決定）。どちらも slice 4（#2177）で昇格
 - **関連 spec**: [`docs/spec/syntax.md`](../spec/syntax.md) §Cross-cutting membership（+ja）/ [`docs/tools/app.md`](../tools/app.md) §Toolbar（+ja）
 - **関連 TPL**: **新規** [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md)（opt-in な視覚レイヤの無効時 inert）、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)、[TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)、[TPL-1886](../test-perspectives/TPL-1886-rekey-transform-preserves-per-element-decoration.md)、[TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)、[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)、[TPL-1402](../test-perspectives/TPL-1402-involutive-toggle-renders-both-states.md)、[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
 - **対象ファイル**:

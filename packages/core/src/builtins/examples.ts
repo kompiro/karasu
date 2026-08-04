@@ -2141,6 +2141,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
 //   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
+//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what (experimental)
 
 system FeatureSamples {
   label "Feature samples"
@@ -3030,6 +3031,191 @@ system Shop {
   Accounts -> ProfileStore "read/write"
   Checkout -> Accounts "billing address"
   Checkout -> Ledger "record"
+}
+`,
+    },
+    {
+      path: "tag-facet-registers.krs",
+      content: `// The four vocabulary registers, side by side (Issue #2177 — \`facet\` and
+// \`boundary\` are experimental).
+//
+// karasu has four ways to say something extra about an element, and they are
+// not interchangeable. Picking the wrong one is the most common modelling
+// mistake, so this file puts all four on one diagram:
+//
+//   tag        [external] [index] [web]   what the element IS — its archetype
+//   annotation @deprecated @new           where it is in its LIFECYCLE
+//   facet      facets pci, pii            what externally-defined SET it is in
+//   boundary   boundary … contains        how you want the VIEW grouped
+//
+// The test that separates them: could the element change without the model
+// changing? A database is a database whether or not PCI scope covers it — PCI
+// is imposed from outside, so it is a facet. \`@deprecated\` is a fact about this
+// model's timeline. \`[index]\` says what the store is for. And \`boundary\` is not
+// about the element at all; it is about how you want to look at the picture.
+//
+// Things worth trying, in this order:
+//
+//   1. Select \`pci\` in the "Facets" selector. The members ring; everything else
+//      dims. Notice what the tags did NOT do — \`[external]\` never grouped
+//      anything, because it was never a membership.
+//   2. Open "Membership overview" at the bottom of that menu. The list of
+//      what is in \`pci\` is DERIVED from the \`facets\` lines below; nothing in
+//      this file authors it, so it cannot be out of date.
+//   3. Switch "Group by" to \`boundary\` while \`pci\` is still selected. The
+//      frames and the rings coexist — one is a layout, the other is a paint.
+//   4. Look at \`tag-facet-registers.krs.style\`. \`[facets=pci]\` styles by
+//      membership, which is what an arbitrary \`[pci]\` tag selector used to be
+//      abused for. The tag route is deprecated; this is the replacement.
+
+@import "tag-facet-registers.krs.style"
+
+// ── facet: externally-defined sets ────────────────────────────────
+// The declaration carries the concern's metadata and nothing else. There is no
+// \`contains\` list — membership is written on the elements, so a rename never
+// means editing a distant list. Deliberately no predicates, ever: a facet says
+// WHICH things a policy covers, never what the policy says (ADR-832).
+
+facet pci {
+  label "Cardholder data"
+  description "In scope for the annual PCI DSS assessment"
+  link "https://example.com/policies/pci" "PCI policy"
+}
+
+facet pii {
+  label "Personal data"
+  description "Holds or transits data identifying a natural person"
+}
+
+// ── boundary: a grouping you draw over the view ───────────────────
+// Not a property of the elements. Two people can group the same system
+// differently and both be right, which is why this is by reference and why it
+// only draws under "Group by: boundary".
+
+boundary money {
+  label "Money path"
+  contains Checkout
+  contains Ledger
+}
+
+boundary discovery {
+  label "Discovery"
+  contains Catalogue
+  contains Search
+}
+
+system Shop {
+  label "Online shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  // \`[web]\` is an archetype: it says what kind of client this is. It is not a
+  // set anyone outside the architecture defined.
+  client WebApp [web] {
+    label "Web storefront"
+    facets pii
+  }
+
+  service Checkout {
+    label "Checkout"
+    description "Takes payment — sees both the buyer and the card"
+    // Two facets at once. Multi-membership is a normal state, not a conflict:
+    // an element can be in PCI scope and hold personal data.
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "Accounts"
+    description "Profiles, addresses, consent records"
+    facets pii
+  }
+
+  service Catalogue {
+    label "Catalogue"
+    description "Products and prices. Holds nothing about anyone."
+  }
+
+  // All three registers on one element, each saying a different kind of thing.
+  service Search @new {
+    label "Search"
+    description "Query service over the catalogue"
+  }
+
+  // \`@deprecated\` is lifecycle; \`[external]\` is archetype. Neither is
+  // membership — the card processor is not "in" PCI scope, it IS the outside.
+  service LegacyCardTerminal [external] @deprecated {
+    label "In-store card terminal"
+    description "Being retired once the new gateway lands"
+  }
+
+  // \`[index]\` is an archetype tag: what the store is for. \`facets pci\` is the
+  // regulation that happens to cover it. Same element, two different registers.
+  database Ledger [index] {
+    label "Payment ledger"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "Profile store"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "Product images"
+  }
+
+  Customer -> WebApp "browses"
+  WebApp -> Accounts "sign in"
+  WebApp -> Checkout "pay"
+  WebApp -> Catalogue "browse"
+  Catalogue -> Search "index"
+  Catalogue -> ProductImages "read"
+  Accounts -> ProfileStore "read/write"
+  Checkout -> Ledger "record"
+  Checkout --> LegacyCardTerminal "settle"
+}
+`,
+    },
+    {
+      path: "tag-facet-registers.krs.style",
+      content: `/* Styling each register with the selector that belongs to it (Issue #2175).
+ *
+ * The point of this sheet is which selector goes with which register — and that
+ * the facet selector is the one that used to be faked with an arbitrary tag.
+ */
+
+/* facet — style by MEMBERSHIP. This is the selector that replaces writing
+ * \`[pci] { … }\` against a made-up tag. It scores 10, exactly what that tag
+ * selector scored, so a sheet can be migrated one rule at a time.
+ *
+ * Deprecated form, for comparison:
+ *   [pci] { border-color: #F59E0B; }      ← warns: style-tag-selector-not-builtin
+ */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* Both at once — repeating the predicate ANDs it, like tags do. */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* tag — style by ARCHETYPE. A builtin name, so no deprecation. */
+service[external] {
+  background-color: #f3f4f6;
+}
+
+/* annotation — style by LIFECYCLE. Also a builtin name. */
+@deprecated {
+  opacity: 0.7;
 }
 `,
     },

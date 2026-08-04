@@ -4,6 +4,7 @@ import type {
   NodeDiffMeta,
   Warning,
   CategoryId,
+  FacetOverviewEntry,
 } from "@karasu-tools/core";
 import { usePreview, type GroupByMode, type PreviewContextValue } from "./preview-context.js";
 
@@ -50,6 +51,8 @@ export interface ActiveViewData {
   onFacetToggle?: (facetId: string) => void;
   /** Every facet the model knows — the selector's options. Empty hides the control. */
   facets?: { id: string; label?: string }[];
+  /** Derived membership for the overview panel (#2177). System view only. */
+  facetOverview?: FacetOverviewEntry[];
   /** system: whether the team axis has data — gates the "team" option (#1822 P2b). */
   hasTeamAxis?: boolean;
   /** system: whether the boundary axis has data — gates the "boundary" option (#1822 P2b). */
@@ -132,6 +135,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         selectedFacets: systemView.selectedFacets,
         onFacetToggle: systemView.onFacetToggle,
         facets: systemView.facets,
+        facetOverview: systemView.facetOverview,
         hasTeamAxis: systemView.hasTeamAxis,
         hasBoundaryAxis: systemView.hasBoundaryAxis,
         anyCollapsible: systemView.anyCollapsible,

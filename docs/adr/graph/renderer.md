@@ -1,6 +1,6 @@
 # ADR Topic: renderer
 
-39 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+40 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -42,6 +42,7 @@ flowchart TD
     ADR_1886["ADR-1886<br/>差分モードの Group by で除去ノードを元の team フレームに残し、集約エッジの d..."]
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
+    ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -57,7 +58,9 @@ flowchart TD
   ADR_1046["ADR-1046<br/>[parser] usecase 内 resource に CRUD operations プロパティを追加する"]
   ADR_1974["ADR-1974<br/>[parser] system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
   ADR_2036["ADR-2036<br/>[parser] boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
+  ADR_2065["ADR-2065<br/>[core-concepts] 語彙 register の確定 — tag / annotation をツール語彙に閉じ、fa..."]
   ADR_2120["ADR-2120<br/>[app-ui] bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
+  ADR_2173["ADR-2173<br/>[parser] facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
   ADR_9008["ADR-9008<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
   ADR_9009["ADR-9009<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_9011["ADR-9011<br/>[app-ui] Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -75,6 +78,8 @@ flowchart TD
   ADR_702 --> ADR_681
   ADR_702 --> ADR_316
   ADR_1061 --> ADR_1046
+  ADR_2174 --> ADR_2065
+  ADR_2174 --> ADR_2173
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9015 --> ADR_22
@@ -90,6 +95,7 @@ flowchart TD
   ADR_2036 --> ADR_1983
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
+  ADR_2173 --> ADR_2065
   ADR_9011 --> ADR_9007
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -134,6 +140,7 @@ flowchart TD
   class ADR_1886 accepted
   class ADR_1983 accepted
   class ADR_2048 accepted
+  class ADR_2174 accepted
   class ADR_9005 accepted
   class ADR_9007 accepted
   class ADR_9015 accepted
@@ -148,7 +155,9 @@ flowchart TD
   class ADR_1046 ghost
   class ADR_1974 ghost
   class ADR_2036 ghost
+  class ADR_2065 ghost
   class ADR_2120 ghost
+  class ADR_2173 ghost
   class ADR_9008 ghost
   class ADR_9009 ghost
   class ADR_9011 ghost
