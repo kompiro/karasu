@@ -46,7 +46,7 @@ bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する�
 - **所属やモデル固有のラベリング**（PCI スコープ、PII、「認証必須」）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental): 集合を top-level で 1 度宣言し、要素に `facets <id>` を書く。
 - **足りないアーキタイプ**（`[cache]`、`[bff]` など）→ 組み込みタグの追加要望（roadmap の `[cache]` watch がその経路の実例）。非推奨タグは告知の間も動き続ける — 警告されるだけで、既定描画への効果は持たない。
 
-`.krs.style` 側でそうした名前を**狙っているルール**（`[pci] { … }`）も同じ条件で非推奨になり（`style-tag-selector-not-builtin`）、[facet セレクタ](./style.ja.md#ファセットセレクタfacetsid--experimental)へ書き換える。両方が警告されるのは、ノード側のタグとシート側のセレクタが別々の編集だからで、片方しか報告しないと残った方が見つからない。
+`.krs.style` 側でそうした名前を**狙っているルール**（`[pci] { … }`）も同じ条件で非推奨になり（`style-tag-selector-not-builtin`）、[facet セレクタ](./style.ja.md#ファセットセレクタfacetsid-experimental)へ書き換える。両方が警告されるのは、ノード側のタグとシート側のセレクタが別々の編集だからで、片方しか報告しないと残った方が見つからない。
 
 どの構文を選ぶかは下記[「語彙の register」](#語彙の-register--boundary--annotation--tag--facet)を参照。
 
@@ -111,7 +111,7 @@ system OrderSystem {
 
 ### 非 builtin のアノテーション名は非推奨（v1.x）
 
-`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし 4 つの組み込みの外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能するが、**その用法も非推奨になった**（`style-annotation-selector-not-builtin`）— styling フックは [facet セレクタ](./style.ja.md#ファセットセレクタfacetsid--experimental)へ移った（移行前後の書き換え例もそこにある）。移行先:
+`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし 4 つの組み込みの外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能するが、**その用法も非推奨になった**（`style-annotation-selector-not-builtin`）— styling フックは [facet セレクタ](./style.ja.md#ファセットセレクタfacetsid-experimental)へ移った（移行前後の書き換え例もそこにある）。移行先:
 
 - **所属やモデル固有のラベリング**（チーム所有マーク、audience ラベルなど）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)。
 - **足りない lifecycle 状態**（`@canary`、`@sunset` など）→ 組み込みアノテーションの追加要望。

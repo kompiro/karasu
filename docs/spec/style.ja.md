@@ -58,7 +58,7 @@
 > 条件とする（[ADR-1820](../adr/1820-notation-promotion-gate.md)）。
 
 宣言済み `facet` に所属する要素をスタイリングする
-（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet--experimental)）。
+（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet-experimental)）。
 
 ```css
 [facets=pii] {
