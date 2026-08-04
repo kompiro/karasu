@@ -67,9 +67,8 @@ describe("PreviewPane", () => {
       );
 
       const previewContainer = container.querySelector(".preview-container")!;
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-node-id='svc']")!,
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-node-id='svc']")!,
       );
 
       expect(onClearHighlight).toHaveBeenCalledOnce();
@@ -85,9 +84,8 @@ describe("PreviewPane", () => {
       );
 
       const previewContainer = container.querySelector(".preview-container")!;
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-node-id='leaf']")!,
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-node-id='leaf']")!,
       );
 
       expect(onClearHighlight).toHaveBeenCalledOnce();
@@ -108,9 +106,8 @@ describe("PreviewPane", () => {
       );
 
       const previewContainer = container.querySelector(".preview-container")!;
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-container-id='zone-a']")!,
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-container-id='zone-a']")!,
       );
 
       expect(onContainerClick).toHaveBeenCalledWith("zone-a");
@@ -128,9 +125,8 @@ describe("PreviewPane", () => {
         );
 
         const previewContainer = container.querySelector(".preview-container")!;
-        click(
-          previewContainer as HTMLElement,
-          () => container.querySelector(`[data-container-id='${syntheticId}']`)!,
+        click(previewContainer as HTMLElement, () =>
+          container.querySelector(`[data-container-id='${syntheticId}']`)!,
         );
 
         // Synthetic containers are not real services → no dead navigation.
@@ -191,9 +187,8 @@ describe("PreviewPane", () => {
 
       const previewContainer = container.querySelector(".preview-container")!;
       // Click the leaf node to open the detail panel
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-node-id='leaf-svc']")!,
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-node-id='leaf-svc']")!,
       );
 
       // Click "Jump to editor" in the detail panel
@@ -564,9 +559,8 @@ describe("PreviewPane", () => {
       );
       const previewContainer = container.querySelector(".preview-container")!;
       // Open the node detail panel by clicking the leaf node.
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-node-id='leaf']")!,
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-node-id='leaf']")!,
       );
 
       const panel = container.querySelector("[data-wheel-zoom-ignore]");
@@ -596,9 +590,8 @@ describe("PreviewPane category collapse controls (#1821)", () => {
         <PreviewPane {...baseProps()} svg={svg} onCategoryToggle={onCategoryToggle} />,
       );
       const previewContainer = container.querySelector(".preview-container")!;
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector(`[data-collapse-category='${category}']`)!,
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector(`[data-collapse-category='${category}']`)!,
       );
       expect(onCategoryToggle).toHaveBeenCalledWith(category);
     },
@@ -611,9 +604,8 @@ describe("PreviewPane category collapse controls (#1821)", () => {
       <PreviewPane {...baseProps()} svg={svg} onCategoryToggle={onCategoryToggle} />,
     );
     const previewContainer = container.querySelector(".preview-container")!;
-    click(
-      previewContainer as HTMLElement,
-      () => container.querySelector(`[data-collapse-category='bogus']`)!,
+    click(previewContainer as HTMLElement, () =>
+      container.querySelector(`[data-collapse-category='bogus']`)!,
     );
     expect(onCategoryToggle).not.toHaveBeenCalled();
   });
@@ -627,9 +619,8 @@ describe("PreviewPane group collapse controls (#1858)", () => {
       <PreviewPane {...baseProps()} svg={svg} onGroupToggle={onGroupToggle} />,
     );
     const previewContainer = container.querySelector(".preview-container")!;
-    click(
-      previewContainer as HTMLElement,
-      () => container.querySelector(`[data-collapse-group='payments']`)!,
+    click(previewContainer as HTMLElement, () =>
+      container.querySelector(`[data-collapse-group='payments']`)!,
     );
     expect(onGroupToggle).toHaveBeenCalledWith("payments");
   });
@@ -643,9 +634,8 @@ describe("PreviewPane in-place expansion controls (#1921)", () => {
       <PreviewPane {...baseProps()} svg={svg} onExpandToggle={onExpandToggle} />,
     );
     const previewContainer = container.querySelector(".preview-container")!;
-    click(
-      previewContainer as HTMLElement,
-      () => container.querySelector(`[data-expand-node='OrderService']`)!,
+    click(previewContainer as HTMLElement, () =>
+      container.querySelector(`[data-expand-node='OrderService']`)!,
     );
     expect(onExpandToggle).toHaveBeenCalledWith("OrderService");
   });

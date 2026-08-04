@@ -10,9 +10,20 @@
     "no-console": "warn",
     "react/react-in-jsx-scope": "off",
     "no-await-in-loop": "off",
-    "import/no-unassigned-import": "off"
+    "import/no-unassigned-import": "off",
+    "vitest/expect-expect": [
+      "error",
+      { "assertFunctionNames": ["expect", "expect*", "assert*"] }
+    ],
+    "no-underscore-dangle": "off"
   },
   "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
+      "rules": {
+        "react/no-object-type-as-default-prop": "off"
+      }
+    },
     {
       "files": ["packages/vscode-e2e/tests/**/*.ts"],
       "rules": {
