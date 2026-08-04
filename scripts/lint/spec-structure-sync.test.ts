@@ -19,6 +19,7 @@ describe("spec-structure-sync validator", () => {
       "docs/spec/style.md",
       "docs/spec/tags-annotations.md",
       "docs/spec/diagnostics.md",
+      "docs/spec/permalink.md",
       "docs/concepts.md",
     ]);
   });
