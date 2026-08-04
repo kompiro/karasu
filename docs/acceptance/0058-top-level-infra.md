@@ -14,8 +14,7 @@ and that they appear in the preview SVG inside an "Unassigned" frame alongside a
 top-level nodes. Also verifies the zero-system case and the end-to-end `translate --from db`
 pipeline.
 
-Mirrors AT-0057 (top-level service). See design doc
-`docs/design/top-level-infra-rendering.md`.
+Mirrors AT-0057 (top-level service).
 
 ---
 

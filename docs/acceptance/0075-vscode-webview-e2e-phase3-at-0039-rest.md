@@ -8,8 +8,7 @@ type: tooling
 
 AT-0071 (#964) で TC-01 まで自動化していた AT-0039（Phase 6 detail panel）の
 残り TC を ExTester WebView ハーネスへ移植する
-（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3、設計は
-`docs/design/vscode-webview-e2e-harness.md`）。
+（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3）。
 
 ## スコープ
 
@@ -116,6 +115,5 @@ OrderManagement と Inventory を追加（OrderService が drill 可能になる
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
-- 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 既存 TC-01 自動化: `docs/acceptance/0071-vscode-webview-e2e-phase2.md`
 - 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）
