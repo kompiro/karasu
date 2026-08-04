@@ -89,7 +89,7 @@ URLs are addresses of a *model*; the rest are addresses of a *payload*.
 The repo-backed form takes the GitHub path verbatim, so **swapping the host is
 the whole transformation**: `github.com/<owner>/<repo>` →
 `karasu.kompiro.dev/<owner>/<repo>`. Nothing is inserted between the host and the
-owner. A `/r/` prefix was used until [#1961](https://github.com/kompiro/karasu/issues/1961)
+owner. A `/r/` prefix was retired by [ADR-1961](../adr/1961-bare-permalink-route.md)
 and now answers 301 to the bare form; do not write new links in that shape.
 
 Two consequences follow from the repo-backed form being a *resolution*, never a
