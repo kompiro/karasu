@@ -72,10 +72,14 @@ type DetailPanelState =
 
 const CLICK_THRESHOLD = 3;
 
+// Stable identity for the default: an inline `[]` is a fresh array on every
+// render, which breaks referential equality for memoized consumers.
+const EMPTY_VIEW_PATH: string[] = [];
+
 export function PreviewPane({
   svg,
   diagnostics,
-  viewPath = [],
+  viewPath = EMPTY_VIEW_PATH,
   nodeMetadata,
   onDrillDown,
   onContainerClick,

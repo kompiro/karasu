@@ -1,0 +1,164 @@
+name: Purge preview deployments
+description: >-
+  Delete Cloudflare Pages preview deployments — either every deployment recorded
+  against one branch, or every deployment whose branch no longer exists. Shared by
+  preview.yml (PR close), spike-preview.yml (branch delete) and preview-janitor.yml
+  (backlog sweep) so the paging and delete logic cannot drift apart again — it has
+  broken twice while duplicated (#2291, #2294). Sharing the script does not couple
+  the workflows' triggers, which is why those stay separate files.
+
+inputs:
+  mode:
+    description: >-
+      `branch` deletes the deployments recorded against `branch`.
+      `orphans` deletes every deployment whose branch is absent from `keep-branches`.
+    required: false
+    default: branch
+  branch:
+    description: Branch name exactly as passed to `pages deploy --branch=`. Required in `branch` mode.
+    required: false
+  keep-branches:
+    description: >-
+      Newline-separated branch names to preserve. Required in `orphans` mode; a blank
+      value aborts rather than treating "no branches" as "delete everything".
+    required: false
+  dry-run:
+    description: When `true`, report what would be deleted and delete nothing.
+    required: false
+    default: "false"
+  api-token:
+    description: Cloudflare API token.
+    required: true
+  account-id:
+    description: Cloudflare account id.
+    required: true
+  project:
+    description: Cloudflare Pages project name.
+    required: false
+    default: karasu
+
+runs:
+  using: composite
+  steps:
+    - name: Delete preview deployments for the branch
+      shell: bash
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
+        PROJECT: ${{ inputs.project }}
+        MODE: ${{ inputs.mode }}
+        BRANCH: ${{ inputs.branch }}
+        KEEP_BRANCHES: ${{ inputs.keep-branches }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        case "$MODE" in
+          branch)
+            if [ -z "$BRANCH" ]; then
+              echo "No branch name given; nothing to clean up."
+              exit 0
+            fi
+            ;;
+          orphans)
+            # An empty keep-list means the branch lookup failed, not that the repo has no
+            # branches. Reading it the second way would delete every preview there is, so
+            # the only safe response is to stop.
+            if [ -z "$(printf '%s' "$KEEP_BRANCHES" | tr -d '[:space:]')" ]; then
+              echo "::error::orphans mode was given an empty keep-branches list; refusing to run"
+              exit 1
+            fi
+            keep_json=$(printf '%s\n' "$KEEP_BRANCHES" | jq -R . | jq -sc 'map(select(length > 0))')
+            echo "Keeping deployments for $(printf '%s' "$keep_json" | jq 'length') branch(es)"
+            ;;
+          *)
+            echo "::error::unknown mode: ${MODE}"
+            exit 1
+            ;;
+        esac
+
+        api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${PROJECT}/deployments"
+        max_pages=50
+        body=$(mktemp)
+
+        # `per_page` is deliberately not sent: `per_page=100` made this endpoint answer
+        # 400 (#2291). Only `page` is varied, so the page size is whatever Cloudflare
+        # defaults to, and the loop must not assume a size — it stops on an empty page.
+        # A branch collects one deployment per push, so its older deployments routinely
+        # sit past the first page and reading only page 1 leaves previews alive.
+        page=1
+        ids=""
+        while [ "$page" -le "$max_pages" ]; do
+          # Write to a file rather than capture stdout: on an error status the body is
+          # the only thing that names the offending parameter, and a command
+          # substitution would swallow it before it could be logged (#2291).
+          status=$(curl -sS -o "$body" -w '%{http_code}' \
+            "${api}?env=preview&page=${page}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Cloudflare deployments API returned HTTP ${status} for page ${page}"
+            cat "$body"
+            exit 1
+          fi
+
+          if [ "$MODE" = "branch" ]; then
+            found=$(jq -r --arg branch "$BRANCH" \
+              '.result[]? | select(.deployment_trigger.metadata.branch == $branch) | .id' "$body")
+          else
+            found=$(jq -r --argjson keep "$keep_json" \
+              '.result[]? | select((.deployment_trigger.metadata.branch // "") as $b | ($keep | index($b)) == null) | .id' "$body")
+          fi
+          if [ -n "$found" ]; then
+            ids="${ids}${found}"$'\n'
+          fi
+
+          got=$(jq -r '.result | length' "$body")
+          if [ "$got" -eq 0 ]; then
+            break
+          fi
+          page=$((page + 1))
+        done
+
+        if [ "$page" -gt "$max_pages" ]; then
+          echo "::warning::Stopped after ${max_pages} pages; some deployments for ${BRANCH} may remain."
+        fi
+
+        ids=$(printf '%s\n' "$ids" | awk 'NF')
+        if [ -z "$ids" ]; then
+          echo "Nothing to delete (mode=${MODE}${BRANCH:+, branch=${BRANCH}})."
+          exit 0
+        fi
+
+        if [ "$DRY_RUN" = "true" ]; then
+          echo "Dry run — would delete $(printf '%s\n' "$ids" | wc -l) deployment(s):"
+          printf '%s\n' "$ids"
+          exit 0
+        fi
+
+        failed=0
+        # Word splitting is safe here: deployment ids are UUIDs. A `while read` loop fed
+        # by a pipe would run in a subshell and lose `failed`.
+        for id in $ids; do
+          # `force=true` is required for the deployment the branch alias points at —
+          # without it Cloudflare rejects the delete, which is the one deployment anyone
+          # actually reaches by URL. Every preview URL in this project's history stayed
+          # live because of that (#2294). Only `env=preview` ids reach this loop, so no
+          # production deployment is in scope.
+          status=$(curl -sS -o "$body" -w '%{http_code}' -X DELETE \
+            "${api}/${id}?force=true" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+
+          # The response is checked, not discarded: a rejected delete used to log exactly
+          # like a successful one and leave the job green (#2294).
+          if [ "$status" = "200" ] && [ "$(jq -r '.success' "$body")" = "true" ]; then
+            echo "Deleted deployment $id"
+          else
+            echo "::error::Failed to delete deployment ${id} (HTTP ${status})"
+            cat "$body"
+            failed=$((failed + 1))
+          fi
+        done
+
+        if [ "$failed" -gt 0 ]; then
+          echo "::error::${failed} deployment(s) for ${BRANCH} could not be deleted"
+          exit 1
+        fi

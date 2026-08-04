@@ -1,0 +1,62 @@
+name: Preview Janitor
+
+# Deletes preview deployments whose branch no longer exists.
+#
+# `preview.yml` and `spike-preview.yml` delete a branch's previews when its PR closes or
+# the branch is deleted. Until #2294 that delete was silently rejected for the one
+# deployment a branch alias points at, so every preview the project had ever built was
+# still public. This sweeps that backlog.
+#
+# Manual only. A recurring destructive job is a commitment worth making deliberately, not
+# as a side effect of a cleanup PR — if the per-branch cleanups ever regress, add a
+# `schedule:` here rather than discovering the backlog again by hand (#2307).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List what would be deleted without deleting anything
+        type: boolean
+        default: true
+
+concurrency:
+  group: preview-janitor
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    name: Purge orphaned preview deployments
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Collect branches that still exist
+        id: branches
+        run: |
+          # Ask the remote rather than reading local refs: this runs from a shallow
+          # checkout that knows nothing about other branches.
+          branches=$(git ls-remote --heads origin | sed 's#.*refs/heads/##')
+
+          if [ -z "$branches" ]; then
+            echo "::error::git ls-remote returned no branches; refusing to continue"
+            exit 1
+          fi
+
+          echo "$branches" | sed 's/^/  /'
+          {
+            echo "list<<BRANCHES_EOF"
+            echo "$branches"
+            echo "BRANCHES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/purge-preview-deployments
+        with:
+          mode: orphans
+          keep-branches: ${{ steps.branches.outputs.list }}
+          # Defaults to reporting only, so the sweep can always be inspected before it is
+          # trusted.
+          dry-run: ${{ inputs.dry_run }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

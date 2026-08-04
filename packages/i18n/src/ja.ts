@@ -179,6 +179,8 @@ export const ja: Partial<Translations> = {
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
   // グループ化（system view のチーム別グルーピング、#1858）
+  "preview.facets.label": "ファセット",
+  "preview.facets.active": ({ count }) => `◎ ファセット (${count})`,
   "preview.groupBy.label": "グループ化",
   "preview.groupBy.none": "なし",
   "preview.groupBy.team": "チーム",

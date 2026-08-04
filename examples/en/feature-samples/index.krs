@@ -22,6 +22,7 @@
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
+//   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
 
 system FeatureSamples {
   label "Feature samples"

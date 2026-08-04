@@ -5,6 +5,7 @@ import {
   decodeShare,
   buildShareUrl,
   buildShareUrls,
+  fitsUnfurlPayload,
   MAX_UNFURL_PAYLOAD,
   readSharedProjectFromHash,
   SHARE_FRAGMENT_KEY,
@@ -169,6 +170,17 @@ describe("buildShareUrls", () => {
     const { fragmentUrl, unfurlUrl } = buildShareUrls({ krs }, loc);
     expect(unfurlUrl).toBeNull();
     expect(fragmentUrl).toContain(`/#${SHARE_FRAGMENT_KEY}=`);
+  });
+});
+
+describe("fitsUnfurlPayload", () => {
+  // The shared gate every producer of a server-visible `s=` URL must use
+  // (TPL-2259). Exporting only the constant let `resolveRepoPermalink` drift
+  // from `buildShareUrls` — Issue #2259.
+  it("accepts exactly the cap and refuses one character past it", () => {
+    expect(fitsUnfurlPayload("x".repeat(MAX_UNFURL_PAYLOAD))).toBe(true);
+    expect(fitsUnfurlPayload("x".repeat(MAX_UNFURL_PAYLOAD + 1))).toBe(false);
+    expect(fitsUnfurlPayload("")).toBe(true);
   });
 });
 

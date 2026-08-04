@@ -66,15 +66,18 @@ true ref-pinning of the source is tracked separately in
 A third form, [#1828](https://github.com/kompiro/karasu/issues/1828), is
 **repo-backed**: instead of embedding a snapshot, the link resolves a `.krs`
 straight from a GitHub repo at a git ref —
-`https://karasu.kompiro.dev/r/<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`.
-The resolver is deliberately permissive: **`@<ref>` is optional**, and when it is
-omitted (or is a branch/tag) the link tracks the *moving* default branch.
+`https://karasu.kompiro.dev/<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`.
+
+The path after the host is the GitHub path, so a repo URL becomes a karasu URL by
+swapping the host and nothing else. The resolver is deliberately permissive:
+**`@<ref>` is optional**, and when it is omitted (or is a branch/tag) the link
+tracks the *moving* default branch.
 
 For an ADR — which should point at the structure **as of the decision** — pin the
 link to a **full 40-hex commit SHA**:
 
 ```
-https://karasu.kompiro.dev/r/kompiro/karasu@3f1a…<40 hex>…9c/examples/en/payment-platform/system.krs#krs-system-Gateway
+https://karasu.kompiro.dev/kompiro/karasu@3f1a…<40 hex>…9c/examples/en/payment-platform/system.krs#krs-system-Gateway
 ```
 
 A ref-less, `@HEAD`, `@branch`, `@tag`, or abbreviated-SHA link is mutable and

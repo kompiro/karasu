@@ -289,9 +289,21 @@ export function buildLegendFooter(
   width: number,
   palette: DiagramPalette,
   usage?: LegendUsage,
+  /**
+   * A block the renderer synthesizes rather than the author declaring it — the
+   * facet overlay's colour key (#2174).
+   *
+   * Deliberately **not** filtered by `scope`: an authored legend is scoped so a
+   * drill level shows only its own vocabulary, but the overlay's colours are on
+   * screen at whatever level the reader is looking at, and a colour whose meaning
+   * is not stated is worse than no colour. So the band is drawn when either an
+   * authored block applies **or** this one is present.
+   */
+  extraBlock?: { title?: string; rows: { color: string; label: string }[] },
 ): LegendFooter | null {
   const applicable = legends.filter((l) => legendScopeMatches(l.scope, scope));
-  if (applicable.length === 0) return null;
+  const extra = extraBlock && extraBlock.rows.length > 0 ? extraBlock : undefined;
+  if (applicable.length === 0 && !extra) return null;
 
   const blocks: { title?: string; rows: { color: string; label: string }[] }[] = [];
   let totalRows = 0;
@@ -307,6 +319,13 @@ export function buildLegendFooter(
     blocks.push({ title: legend.title, rows });
     if (legend.title) totalTitles++;
     totalRows += rows.length;
+  }
+  // Appended last so the author's own legend keeps the top of the band; the
+  // overlay key is viewer state and reads as an addendum to what was authored.
+  if (extra) {
+    blocks.push(extra);
+    if (extra.title) totalTitles++;
+    totalRows += extra.rows.length;
   }
   if (blocks.length === 0) return null;
 

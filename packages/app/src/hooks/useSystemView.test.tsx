@@ -114,6 +114,38 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("recompiles the overlay when a facet is toggled (#2174)", async () => {
+    // The recompile deps are hand-listed, so a new view-state key is easy to
+    // add to the cache key and forget in `deps`. When that happens the state
+    // changes and the diagram does not — the control looks dead, and no test
+    // that mocks the context can see it. Only driving the real hook can.
+    vi.useFakeTimers();
+    const fs = makeFs(`
+facet pii { label "Personal data" }
+system Shop {
+  service Api { facets pii }
+  service Search {}
+}
+`);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.facets).toEqual([{ id: "pii", label: "Personal data" }]);
+    expect(result.current.svg).not.toContain("data-facet-ring");
+
+    act(() => result.current.toggleFacet("pii"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.selectedFacets).toEqual(["pii"]);
+    expect(result.current.svg).toContain('data-facet-ring="pii"');
+
+    // …and back off again, so the toggle is genuinely involutive (TPL-1402).
+    act(() => result.current.toggleFacet("pii"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).not.toContain("data-facet-ring");
+    vi.useRealTimers();
+  });
+
   it("toggleGroup collapses a team to a stub on recompile (#1858 slice B)", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_TWO_TEAMS);

@@ -32,6 +32,9 @@ interface UsePreviewContextValueArgs {
     | "toggleExpand"
     | "groupBy"
     | "setGroupBy"
+    | "selectedFacets"
+    | "toggleFacet"
+    | "facets"
     | "hasTeamAxis"
     | "hasBoundaryAxis"
     | "anyCollapsible"
@@ -148,6 +151,9 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onExpandToggle: system.toggleExpand,
         groupBy: system.groupBy,
         onGroupByChange: system.setGroupBy,
+        selectedFacets: system.selectedFacets,
+        onFacetToggle: system.toggleFacet,
+        facets: system.facets,
         hasTeamAxis: system.hasTeamAxis,
         hasBoundaryAxis: system.hasBoundaryAxis,
         anyCollapsible: system.anyCollapsible,
@@ -234,6 +240,9 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.toggleExpand,
       system.groupBy,
       system.setGroupBy,
+      system.selectedFacets,
+      system.toggleFacet,
+      system.facets,
       system.hasTeamAxis,
       system.hasBoundaryAxis,
       system.anyCollapsible,

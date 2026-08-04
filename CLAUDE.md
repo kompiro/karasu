@@ -69,7 +69,8 @@ karasu/
 
 - `main` への直接コミット・push は禁止 — 必ずブランチ + PR 経由でマージする
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
-- ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
+- ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
+- `spike/` はマージを前提としない PoC 用。push すると PR なしで Cloudflare preview にデプロイされる（`docs/process.md`「spike を PR なしで preview で動かす」）
 
 ### Issue・PR 記述ルール
 

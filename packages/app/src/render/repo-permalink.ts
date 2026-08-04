@@ -5,7 +5,7 @@ import {
   type FileSystemProvider,
   type DirEntry,
 } from "@karasu-tools/core";
-import { encodeShare } from "../utils/inline-share.js";
+import { encodeShare, fitsUnfurlPayload, MAX_UNFURL_PAYLOAD } from "../utils/inline-share.js";
 
 /**
  * Repo-backed + ref-pinned permalink resolver for karasu-nest (Phase 2).
@@ -57,10 +57,10 @@ const RAW_HOST = "https://raw.githubusercontent.com";
  */
 const DEFAULT_ENTRIES = ["index.krs", "karasu.krs"] as const;
 
-/** GitHub owner (user / org): alphanumeric + hyphen, no slash. */
-const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
-/** GitHub repo name: alphanumeric, dot, underscore, hyphen. */
-const REPO_RE = /^[A-Za-z0-9._-]+$/;
+/** GitHub owner (user / org): alphanumeric + hyphen, no slash. Shared with the bare-route guard. */
+export const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
+/** GitHub repo name: alphanumeric, dot, underscore, hyphen. Shared with the bare-route guard. */
+export const REPO_RE = /^[A-Za-z0-9._-]+$/;
 /**
  * ref: a full/short commit SHA, or a slash-free branch/tag name. Slash-bearing
  * refs are not supported in v1 (they collide with the path grammar and SHA is
@@ -240,7 +240,7 @@ export class GitHubRawFileSystemProvider implements FileSystemProvider {
   }
 }
 
-interface ResolveResult {
+export interface ResolveResult {
   status: number;
   /** Present on 200: the `encodeShare` payload for `/s?s=<payload>`. */
   encodedPayload?: string;
@@ -260,6 +260,16 @@ interface ResolveResult {
 }
 
 /**
+ * Status returned when the resolved model encodes above {@link MAX_UNFURL_PAYLOAD}.
+ *
+ * No HTTP status names this exactly: 413 and 414 both describe an oversized
+ * *request*, whereas here the request is small and it is the `/s?s=` URL we
+ * would have to hand back that is too long. 413 is used because "too large" is
+ * the actual cause and is what an operator reading logs needs to see.
+ */
+const STATUS_PAYLOAD_TOO_LARGE = 413;
+
+/**
  * A ref is treated as immutable only when it is a full 40-char hex commit SHA.
  * Abbreviated SHAs (7–39 hex) are indistinguishable from a hex-looking branch
  * name without resolving against GitHub, so they are conservatively treated as
@@ -276,8 +286,9 @@ function isImmutableRef(ref: string): boolean {
  * @param fetchImpl injected fetch (the Workers runtime passes global `fetch`)
  *
  * Status: 200 (payload), 400 (bad permalink), 404 (no `.krs` at the ref),
- * 502 (upstream GitHub failure), 500 (unexpected). A directory/wildcard import
- * degrades gracefully (opens without those files), not an error.
+ * 413 (the model encodes above {@link MAX_UNFURL_PAYLOAD}), 502 (upstream
+ * GitHub failure), 500 (unexpected). A directory/wildcard import degrades
+ * gracefully (opens without those files), not an error.
  */
 export async function resolveRepoPermalink(
   rawPath: string,
@@ -301,9 +312,32 @@ export async function resolveRepoPermalink(
       };
     }
     const payload = await synthesizeSharePayload(entry, fs);
+    const encodedPayload = encodeShare(payload);
+    if (!fitsUnfurlPayload(encodedPayload)) {
+      // The caller would put this straight into `Location: /s?s=…`, and `/s`
+      // echoes it again into the `/render?s=…` OGP image URL — both travel in a
+      // request line bounded by Cloudflare's 16 KB URL limit. Refuse with a
+      // diagnostic instead of emitting a link that fails as a 414 or a crawler
+      // timeout, neither of which names the cause (Issue #2259).
+      //
+      // Degrading to a `Location: /#s=…` fragment redirect (what the client
+      // does) is NOT equivalent here: per RFC 9110 §10.2.2 a Location that
+      // carries its own fragment suppresses inheritance, so the incoming
+      // `#krs-…` deep anchor would be silently dropped (TPL-1827). The
+      // rejected alternatives are recorded on Issue #2259.
+      return {
+        status: STATUS_PAYLOAD_TOO_LARGE,
+        message:
+          `Model too large for a permalink: ${owner}/${repo}@${ref} encodes to ` +
+          `${encodedPayload.length} characters, over the ${MAX_UNFURL_PAYLOAD} a ` +
+          `shareable URL can carry. Point the permalink at a narrower entry .krs, ` +
+          `or split the model.`,
+        contentType: PLAIN,
+      };
+    }
     return {
       status: 200,
-      encodedPayload: encodeShare(payload),
+      encodedPayload,
       immutable: isImmutableRef(ref),
       contentType: PLAIN,
     };

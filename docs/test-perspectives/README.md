@@ -499,5 +499,8 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2221](TPL-2221-merge-only-facts-decided-on-merged-model.md) | マージ後にしか成立しない事実（重複・多重所属・件数）を述べる診断は、マージ後のモデルで判定する — per-file 判定は偽陽性ではなく**沈黙**して落ちる | resolver | #2221 |
 | [TPL-2253](TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md) | 「どこからも消す」変更の完了条件は検索式で書く — 手書きのファイル一覧は計画であって条件ではなく、漏れた残骸は使われていないがゆえに CI で落ちない | build | #2253, #1700 |
 | [TPL-2254](TPL-2254-durable-record-points-at-durable-address.md) | 再実行される記録は、記録より長生きするアドレスを指す — PR 作業中に見えている preview URL やローカル起動は、書いた瞬間だけ正しくマージした瞬間に嘘になる | testing | #2254 |
+| [TPL-2259](TPL-2259-shared-budget-enforced-at-every-producer.md) | 共有された予算・上限は、定数を export するのではなく判定そのものを共有し、生成点すべてで強制する — 強制すべきは生成であって受信ではない | navigation | #2259 |
+| [TPL-2291](TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md) | 通信相手をモックしたテストは、こちらのロジックしか検証しない — 相手が受理するかは別に確かめる。モックの網羅度を上げても「400 で弾かれる」には一歩も近づかない | testing | #2291, #2278 |
 | [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) | 要素に届かせるために広げた図形は実被覆で測る（bbox でも記録矩形でもなく）— 広げる述語は「回廊に非メンバーが無いこと」で書き、一括シフトは派生ジオメトリも動かす | renderer | #2179, #2240, docs/spec/syntax.md |
+| [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) | opt-in な視覚レイヤは無効時に自分のマーカーを 1 つも出さない — 等値テストは無条件出力を相殺して見逃すので、マーカーを名前で列挙して不在を assert する | renderer | #2174 |
 | [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) | 1 つのエンティティの見た目を複数の面が描くなら決定を 1 つの関数に閉じる — 既定値しか無いうちは一致して隠れ、上書き手段を足した瞬間に片面だけ変わる | renderer | #2234, #2179 |

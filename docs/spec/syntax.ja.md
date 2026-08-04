@@ -1167,11 +1167,17 @@ label が無い場合は id にフォールバックする（#2133）。
 > エビデンスを条件とする（notation promotion gate、
 > [ADR-1820](../adr/1820-notation-promotion-gate.md)）。
 >
-> **本スライスの時点で描画には影響しない。** facet の所属は parse され、index 化され、
-> ファイル横断でマージされ、検証されるが、図の見た目は何も変わらない。所属要素を
-> 強調する overlay、`.krs.style` の facet セレクタ、「facet X の所属一覧」の導出ビューは
-> [#2160](https://github.com/kompiro/karasu/issues/2160) の後続スライスで入る。
-> 現時点で宣言が与えるのは下記の参照チェックである。
+> **所属は overlay で見る。表示するかは読み手が決める。** プレビューの *Facets*
+> セレクタで facet を選ぶと、所属要素に色付きのリングが付き、それ以外は減光し、
+> legend に色の凡例が出る。複数の facet を同時に選べ、複数に属する要素には所属数
+> だけリングが重なる。overlay は **Group by と直交する** — team / boundary の
+> バンド表示と同時に読める — し、ドリルダウン・畳み込み・SVG 書き出しでも残る。
+>
+> **選択はビューア側の状態であり、モデルには書かない。** どの facet を強調して
+> いるかは `.krs` に一切書かれない。同じ `.krs` は、誰かが選択するまでどの読み手
+> にも同じように描画される。`.krs.style` の facet セレクタと「facet X の所属一覧」
+> の導出ビューは [#2160](https://github.com/kompiro/karasu/issues/2160) の後続
+> スライスで入る。
 
 `facet` は、アーキテクチャの**外側**で定義された集合 — 規制・ポリシー・監査スコープ — を
 宣言し、要素がそこに所属することを表す。`database` は PCI スコープに入っていようが
@@ -1259,9 +1265,7 @@ system Shop {
 - `duplicate-facet-id`（error）— 同じ id の `facet` ブロックが 2 つある（同一ファイル内でも、マージされた複数ファイルにまたがっていても）。参照が解決するのは最初の宣言。
 - `positional-label-removed`（error）— facet id 直後の位置ラベル（`facet pii "個人情報"`）。label は `label` プロパティのみ（[ADR-19](../adr/19-required-id-label-as-property.md)）。
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ。overlay スライスが入るまでの `facet` 宣言の効果は上記の参照チェックであり、本節はその暫定状態を明示して inert なまま放置しない。[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` は cross-reference プロパティなので、parser の受理だけでなく resolver 側の検証と unresolved warning を伴う。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 上記の 1:N は派生 index でも全マージ経路でも保持する。単一値が要るビューはビュー側で解決する。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` と `duplicate-facet-id` はマージ後のモデルで判定する（宣言と参照が別ファイルにありうるため）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — 宣言ブロックと per-node の `facets` プロパティは双方 `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードは per-node プロパティを守らない。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が全 kind で受理するので、受理する kind を本節に列挙する。[TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 「所属」から「ルール言語」への引力は、キーワードの選び直しではなく上記リンクの ADR-832 を外部 fence として縛る。
-
----
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ。上記の overlay がその効果である。[TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — overlay は opt-in なので、facet を 1 つも選択していないときは何も出してはならない。[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` は cross-reference プロパティなので、parser の受理だけでなく resolver 側の検証と unresolved warning を伴う。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 上記の 1:N は派生 index でも全マージ経路でも保持する。単一値が要るビューはビュー側で解決する。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` と `duplicate-facet-id` はマージ後のモデルで判定する（宣言と参照が別ファイルにありうるため）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — 宣言ブロックと per-node の `facets` プロパティは双方 `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードは per-node プロパティを守らない。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が全 kind で受理するので、受理する kind を本節に列挙する。[TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 「所属」から「ルール言語」への引力は、キーワードの選び直しではなく上記リンクの ADR-832 を外部 fence として縛る。
 
 ## 図の凡例（legend ブロック）
 

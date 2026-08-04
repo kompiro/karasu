@@ -179,6 +179,8 @@ export type Translations = {
   "preview.export.drawio.failed": (params: { detail: string }) => string;
 
   // Preview toolbar — Group by (system-view team grouping, #1858)
+  "preview.facets.label": string;
+  "preview.facets.active": (params: { count: number }) => string;
   "preview.groupBy.label": string;
   "preview.groupBy.none": string;
   "preview.groupBy.team": string;

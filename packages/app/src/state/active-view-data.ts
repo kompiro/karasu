@@ -45,6 +45,11 @@ export interface ActiveViewData {
   groupBy?: GroupByMode;
   /** system: change the Group-by axis (#1858). */
   onGroupByChange?: (mode: GroupByMode) => void;
+  /** Facets selected for the overlay, and the toggle (#2174). Orthogonal to `groupBy`. */
+  selectedFacets?: readonly string[];
+  onFacetToggle?: (facetId: string) => void;
+  /** Every facet the model knows — the selector's options. Empty hides the control. */
+  facets?: { id: string; label?: string }[];
   /** system: whether the team axis has data — gates the "team" option (#1822 P2b). */
   hasTeamAxis?: boolean;
   /** system: whether the boundary axis has data — gates the "boundary" option (#1822 P2b). */
@@ -124,6 +129,9 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         onExpandToggle: systemView.onExpandToggle,
         groupBy: systemView.groupBy,
         onGroupByChange: systemView.onGroupByChange,
+        selectedFacets: systemView.selectedFacets,
+        onFacetToggle: systemView.onFacetToggle,
+        facets: systemView.facets,
         hasTeamAxis: systemView.hasTeamAxis,
         hasBoundaryAxis: systemView.hasBoundaryAxis,
         anyCollapsible: systemView.anyCollapsible,
