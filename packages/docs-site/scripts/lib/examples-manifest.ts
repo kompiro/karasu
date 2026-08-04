@@ -54,8 +54,15 @@ export const GROUP_LABELS: Record<GroupKey, LocalizedString> = {
 
 export const GROUP_ORDER: readonly GroupKey[] = ["getting-started", "scenarios", "feature-samples"];
 
-// An English-authored example with no Japanese counterpart (e.g. client-mcp);
-// it lives under examples/en/ and is shared across locales.
+// An English-authored example with no Japanese counterpart; it lives under
+// examples/en/ and the same source is shared across locales (only the title and
+// blurb are localized).
+//
+// ADR-1642's headline — "make the gallery fully en/ja" — reads unconditional,
+// but three entries here are deliberately en-only. The exception classes and
+// the reason each qualifies are written down once, in `examples/README.md`
+// § "en-only examples (and why)". Add an en-only example only if it fits a
+// class named there; otherwise author the `ja` counterpart (#2310).
 const single = (
   slug: string,
   group: GroupKey,
@@ -111,6 +118,23 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       },
     ],
   },
+  // The staged tutorial (01-system … 07-cross-system) reads as a sequence, not
+  // as a page; publishing all seven stages would bury the point. So the gallery
+  // carries ONE representative — `03-domains.krs`, the full drill-down system
+  // view — and links the rest through the "view on GitHub" link. This was
+  // decided when ADR-1628's design doc was promoted (#2235) and then not
+  // implemented (#2310).
+  localized(
+    "ec-platform",
+    "getting-started",
+    "ec-platform",
+    "03-domains.krs",
+    { en: "EC platform — staged tutorial", ja: "EC プラットフォーム — 段階的チュートリアル" },
+    {
+      en: "The language taught one construct at a time, in seven self-contained files. Shown here at stage 3 (`domain` / `usecase` / `resource`); the rest are in the repository.",
+      ja: "1 ファイル 1 構文で段階的に言語を学ぶ 7 本のチュートリアル。ここでは stage 3（`domain` / `usecase` / `resource`）を代表として表示している。残りはリポジトリ側にある。",
+    },
+  ),
   localized(
     "multi-file-system",
     "getting-started",
@@ -216,6 +240,21 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
     {
       en: "`client` nodes with `resource` and `capability`, including an MCP client.",
       ja: "`resource` / `capability` を持つ `client` ノード（MCP クライアントを含む）。",
+    },
+  ),
+  // en-only: a model of a real system, so its labels are the system's own
+  // vocabulary rather than prose to translate. It is also the measured model
+  // behind ADR-1724 / ADR-1728 — the `.krs.style` `column` override is load
+  // bearing, and a second copy would be a second thing to keep measuring.
+  single(
+    "hato",
+    "scenarios",
+    "hato",
+    "index.krs",
+    { en: "Multi-hub system (hato)", ja: "マルチハブ構成（hato）" },
+    {
+      en: "A real running system: two front doors and a core API fanning out to SaaS integrations, laid out with `[external]` nodes on the sides.",
+      ja: "実運用中のシステム。2 つのフロントドアと、SaaS 連携にファンアウトする API を `[external]` のサイド配置で描いた例。",
     },
   ),
   {
