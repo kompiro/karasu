@@ -178,6 +178,24 @@ export const ja: Partial<Translations> = {
     "draw.io (mxGraph XML) にエクスポート — diagrams.net でレイアウトを仕上げるための逃げ道です",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
+  // 表示状態のトグルと別ウィンドウを開く操作
+  "preview.iconMode.label": "アイコンモード",
+  "preview.iconMode.ariaLabel": "アイコンモードを切り替える",
+  "preview.orgTree.label": "ツリー表示",
+  "preview.orgTree.ariaLabel": "組織のツリー表示を切り替える",
+  "preview.entities.label": "エンティティ",
+  "preview.entities.ariaLabel": "エンティティ表示を切り替える",
+  "preview.allLayers.label": "全レイヤー表示",
+  "preview.allLayers.ariaLabel": "全レイヤー表示を切り替える",
+  "preview.openAllViews.label": "全ビューを開く",
+  "preview.openAllViews.ariaLabel": "全ビューを別ウィンドウで開く",
+  "preview.focus.label": "フォーカス",
+  "preview.focus.ariaLabel": "フォーカスモードに入る",
+  "preview.focus.exit.label": "フォーカス解除",
+  "preview.focus.exit.ariaLabel": "フォーカスモードを抜ける",
+  "preview.exportError.dismiss.label": "閉じる",
+  "preview.exportError.dismiss.ariaLabel": "エクスポートエラーを閉じる",
+
   // グループ化（system view のチーム別グルーピング、#1858）
   "preview.facets.label": "ファセット",
   "preview.facets.active": ({ count }) => `◎ ファセット (${count})`,

@@ -179,6 +179,24 @@ export const en: Translations = {
     "Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
 
+  // View-state toggles and window-opening controls
+  "preview.iconMode.label": "Icon Mode",
+  "preview.iconMode.ariaLabel": "Toggle icon mode",
+  "preview.orgTree.label": "Tree View",
+  "preview.orgTree.ariaLabel": "Toggle org tree view",
+  "preview.entities.label": "Entities",
+  "preview.entities.ariaLabel": "Toggle entity view",
+  "preview.allLayers.label": "Show All Layers",
+  "preview.allLayers.ariaLabel": "Toggle all layers",
+  "preview.openAllViews.label": "Open All Views",
+  "preview.openAllViews.ariaLabel": "Open all views in new window",
+  "preview.focus.label": "Focus",
+  "preview.focus.ariaLabel": "Enter focus mode",
+  "preview.focus.exit.label": "Exit Focus",
+  "preview.focus.exit.ariaLabel": "Exit focus mode",
+  "preview.exportError.dismiss.label": "Dismiss",
+  "preview.exportError.dismiss.ariaLabel": "Dismiss export error",
+
   // Group by (system-view team grouping, #1858)
   "preview.facets.label": "Facets",
   "preview.facets.active": ({ count }) => `◎ Facets (${count})`,

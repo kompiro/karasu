@@ -178,6 +178,24 @@ export type Translations = {
   "preview.export.drawio.title": string;
   "preview.export.drawio.failed": (params: { detail: string }) => string;
 
+  // Preview toolbar — view-state toggles and window-opening controls
+  "preview.iconMode.label": string;
+  "preview.iconMode.ariaLabel": string;
+  "preview.orgTree.label": string;
+  "preview.orgTree.ariaLabel": string;
+  "preview.entities.label": string;
+  "preview.entities.ariaLabel": string;
+  "preview.allLayers.label": string;
+  "preview.allLayers.ariaLabel": string;
+  "preview.openAllViews.label": string;
+  "preview.openAllViews.ariaLabel": string;
+  "preview.focus.label": string;
+  "preview.focus.ariaLabel": string;
+  "preview.focus.exit.label": string;
+  "preview.focus.exit.ariaLabel": string;
+  "preview.exportError.dismiss.label": string;
+  "preview.exportError.dismiss.ariaLabel": string;
+
   // Preview toolbar — Group by (system-view team grouping, #1858)
   "preview.facets.label": string;
   "preview.facets.active": (params: { count: number }) => string;
