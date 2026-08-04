@@ -10,6 +10,16 @@ updates:
       semver-major-days: 7
       semver-minor-days: 7
       semver-patch-days: 7
+    groups:
+      # react と react-dom は版が一致していないと import 時に throw するため、
+      # 別々の PR に割れるとどちらも単独ではマージできなくなる（ADR-2318）。
+      # 型定義も同じ版系列に追随させるため同居させる。
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
 
   - package-ecosystem: "github-actions"
     directory: "/"
