@@ -84,8 +84,8 @@ root で開く。開く際、app は history hook の mount より前に URL を
 
 repo-backed 形は GitHub のパスをそのまま取るので、**host を差し替えるだけで変換が完了する**:
 `github.com/<owner>/<repo>` → `karasu.kompiro.dev/<owner>/<repo>`。host と owner の間には
-何も挟まらない。`/r/` prefix は [#1961](https://github.com/kompiro/karasu/issues/1961) まで
-使われていたが、現在は bare 形へ 301 する。新しいリンクをこの形で書かないこと。
+何も挟まらない。`/r/` prefix は [ADR-1961](../adr/1961-bare-permalink-route.md) で廃止され、
+現在は bare 形へ 301 する。新しいリンクをこの形で書かないこと。
 
 repo-backed 形が **generation ではなく resolution** であることから 2 つの帰結がある
 （[ADR-2249](../adr/2249-permalink-generation-seam.md)）:
