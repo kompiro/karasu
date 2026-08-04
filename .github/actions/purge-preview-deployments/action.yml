@@ -1,15 +1,31 @@
 name: Purge preview deployments
 description: >-
-  Delete every Cloudflare Pages preview deployment recorded against a branch.
-  Shared by preview.yml (PR close) and spike-preview.yml (branch delete) so the
-  two cannot drift apart again — this logic has broken twice while duplicated
-  (#2291, #2294). Sharing the script does not couple the workflows' triggers,
-  which is why they are separate files.
+  Delete Cloudflare Pages preview deployments — either every deployment recorded
+  against one branch, or every deployment whose branch no longer exists. Shared by
+  preview.yml (PR close), spike-preview.yml (branch delete) and preview-janitor.yml
+  (backlog sweep) so the paging and delete logic cannot drift apart again — it has
+  broken twice while duplicated (#2291, #2294). Sharing the script does not couple
+  the workflows' triggers, which is why those stay separate files.
 
 inputs:
+  mode:
+    description: >-
+      `branch` deletes the deployments recorded against `branch`.
+      `orphans` deletes every deployment whose branch is absent from `keep-branches`.
+    required: false
+    default: branch
   branch:
-    description: Branch name exactly as passed to `pages deploy --branch=`.
-    required: true
+    description: Branch name exactly as passed to `pages deploy --branch=`. Required in `branch` mode.
+    required: false
+  keep-branches:
+    description: >-
+      Newline-separated branch names to preserve. Required in `orphans` mode; a blank
+      value aborts rather than treating "no branches" as "delete everything".
+    required: false
+  dry-run:
+    description: When `true`, report what would be deleted and delete nothing.
+    required: false
+    default: "false"
   api-token:
     description: Cloudflare API token.
     required: true
@@ -30,12 +46,34 @@ runs:
         CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
         CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
         PROJECT: ${{ inputs.project }}
+        MODE: ${{ inputs.mode }}
         BRANCH: ${{ inputs.branch }}
+        KEEP_BRANCHES: ${{ inputs.keep-branches }}
+        DRY_RUN: ${{ inputs.dry-run }}
       run: |
-        if [ -z "$BRANCH" ]; then
-          echo "No branch name given; nothing to clean up."
-          exit 0
-        fi
+        case "$MODE" in
+          branch)
+            if [ -z "$BRANCH" ]; then
+              echo "No branch name given; nothing to clean up."
+              exit 0
+            fi
+            ;;
+          orphans)
+            # An empty keep-list means the branch lookup failed, not that the repo has no
+            # branches. Reading it the second way would delete every preview there is, so
+            # the only safe response is to stop.
+            if [ -z "$(printf '%s' "$KEEP_BRANCHES" | tr -d '[:space:]')" ]; then
+              echo "::error::orphans mode was given an empty keep-branches list; refusing to run"
+              exit 1
+            fi
+            keep_json=$(printf '%s\n' "$KEEP_BRANCHES" | jq -R . | jq -sc 'map(select(length > 0))')
+            echo "Keeping deployments for $(printf '%s' "$keep_json" | jq 'length') branch(es)"
+            ;;
+          *)
+            echo "::error::unknown mode: ${MODE}"
+            exit 1
+            ;;
+        esac
 
         api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/${PROJECT}/deployments"
         max_pages=50
@@ -62,8 +100,13 @@ runs:
             exit 1
           fi
 
-          found=$(jq -r --arg branch "$BRANCH" \
-            '.result[]? | select(.deployment_trigger.metadata.branch == $branch) | .id' "$body")
+          if [ "$MODE" = "branch" ]; then
+            found=$(jq -r --arg branch "$BRANCH" \
+              '.result[]? | select(.deployment_trigger.metadata.branch == $branch) | .id' "$body")
+          else
+            found=$(jq -r --argjson keep "$keep_json" \
+              '.result[]? | select((.deployment_trigger.metadata.branch // "") as $b | ($keep | index($b)) == null) | .id' "$body")
+          fi
           if [ -n "$found" ]; then
             ids="${ids}${found}"$'\n'
           fi
@@ -81,7 +124,13 @@ runs:
 
         ids=$(printf '%s\n' "$ids" | awk 'NF')
         if [ -z "$ids" ]; then
-          echo "No preview deployments found for branch: $BRANCH"
+          echo "Nothing to delete (mode=${MODE}${BRANCH:+, branch=${BRANCH}})."
+          exit 0
+        fi
+
+        if [ "$DRY_RUN" = "true" ]; then
+          echo "Dry run — would delete $(printf '%s\n' "$ids" | wc -l) deployment(s):"
+          printf '%s\n' "$ids"
           exit 0
         fi
 
