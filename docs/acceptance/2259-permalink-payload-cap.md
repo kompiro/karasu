@@ -2,7 +2,7 @@
 
 - **日付**: 2026-08-02
 - **関連 Issue**: [#2259](https://github.com/kompiro/karasu/issues/2259)（permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826)）
-- **設計**: [`docs/design/permalink-payload-cap.md`](../design/permalink-payload-cap.md)（上限超過時は degrade せず診断を返す。実装完了後 ADR-2259 に昇格）
+- **設計 (ADR)**: [ADR-2259](../adr/2259-permalink-payload-cap.md)（上限超過時は degrade せず診断を返す）
 - **前提 ADR**: [ADR-1801](../adr/1801-karasu-nest-ogp-share-page.md)（`MAX_UNFURL_PAYLOAD` を定義）／ [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（resolver）／ [ADR-2249](../adr/2249-permalink-generation-seam.md)（上限を permalink 面の天井として参照）
 - **関連 TPL**: [TPL-2259](../test-perspectives/TPL-2259-shared-budget-enforced-at-every-producer.md)（本 PR で起票。共有予算は生成点すべてで強制する）／ [TPL-1827](../test-perspectives/TPL-1827-deep-link-anchor-cross-surface-parity.md)（fragment degrade を却下した根拠）／ [TPL-2185](../test-perspectives/TPL-2185-drift-guard-distinguishes-declaration-from-mention.md)（ドリフトガードは宣言と言及を区別する）
 - **対象ファイル**:
