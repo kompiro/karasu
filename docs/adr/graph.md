@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-294 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+298 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -14,6 +14,7 @@ flowchart TD
     ADR_2092["ADR-2092<br/>TPL の reference-data 設定を `tpl.config.json` に分離し..."]
     ADR_2125["ADR-2125<br/>id-migration-map と専用 lint を退役する — 移行完了後の map は「..."]
     ADR_2188["ADR-2188<br/>TPL の採番を issue-number（TPL-<n>）へ移行する"]
+    ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -122,6 +123,8 @@ flowchart TD
     ADR_2142["ADR-2142<br/>Dependabot security 第 3 便 — brace-expansion OOM..."]
     ADR_2152["ADR-2152<br/>Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の pu..."]
     ADR_2318["ADR-2318<br/>Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロ..."]
+    ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
+    ADR_2341["ADR-2341<br/>Security alert 2026-08-04 — brace-expansion / f..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -203,6 +206,7 @@ flowchart TD
     ADR_1094["ADR-1094<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
     ADR_1827["ADR-1827<br/>Deep permalink — 構造要素 / view への深いパーマリンク"]
     ADR_1828["ADR-1828<br/>repo-backed + ref-pinned permalink（nest Phase 2..."]
+    ADR_1961["ADR-1961<br/>permalink を bare `/<owner>/<repo>` で配信し、`/r/` p..."]
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
   end
@@ -693,6 +697,7 @@ flowchart TD
   class ADR_1911 accepted
   class ADR_1935 accepted
   class ADR_1955 accepted
+  class ADR_1961 accepted
   class ADR_1974 accepted
   class ADR_1983 accepted
   class ADR_1990 accepted
@@ -722,6 +727,9 @@ flowchart TD
   class ADR_2249 accepted
   class ADR_2259 accepted
   class ADR_2318 accepted
+  class ADR_2331 accepted
+  class ADR_2333 accepted
+  class ADR_2341 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -746,14 +754,14 @@ flowchart TD
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 10 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 11 ADRs
 - [`app-ui`](graph/app-ui.md) — 41 ADRs
-- [`build`](graph/build.md) — 65 ADRs
+- [`build`](graph/build.md) — 67 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 20 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
-- [`navigation`](graph/navigation.md) — 13 ADRs
+- [`navigation`](graph/navigation.md) — 14 ADRs
 - [`parser`](graph/parser.md) — 22 ADRs
 - [`project`](graph/project.md) — 10 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs

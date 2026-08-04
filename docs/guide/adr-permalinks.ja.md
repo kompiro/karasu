@@ -60,14 +60,16 @@ ref-pin は [#1828](https://github.com/kompiro/karasu/issues/1828) で別途追�
 
 第 3 の形 [#1828](https://github.com/kompiro/karasu/issues/1828) が **repo-backed**
 である: スナップショットを埋め込む代わりに、GitHub repo の `.krs` を git ref の
-時点で解決する — `https://karasu.kompiro.dev/r/<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`。
-resolver は意図的に permissive で、**`@<ref>` は任意**。省略時（や branch/tag 指定時）は
-*動く* default branch を追ってしまう。
+時点で解決する — `https://karasu.kompiro.dev/<owner>/<repo>[/<path>][@<ref>]#krs-<view>-<id>`。
+
+host の後ろは GitHub のパスそのものなので、repo の URL は **host を差し替えるだけ**で
+karasu の URL になる。resolver は意図的に permissive で、**`@<ref>` は任意**。省略時
+（や branch/tag 指定時）は *動く* default branch を追ってしまう。
 
 ADR は「決定時点の構造」を指すべきなので、**full 40-hex の commit SHA** で pin する:
 
 ```
-https://karasu.kompiro.dev/r/kompiro/karasu@3f1a…<40 hex>…9c/examples/en/payment-platform/system.krs#krs-system-Gateway
+https://karasu.kompiro.dev/kompiro/karasu@3f1a…<40 hex>…9c/examples/en/payment-platform/system.krs#krs-system-Gateway
 ```
 
 ref-less・`@HEAD`・`@branch`・`@tag`・短縮 SHA のリンクは mutable で、ADR の主張から
