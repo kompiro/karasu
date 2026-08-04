@@ -69,5 +69,5 @@ nest はまだ GitHub App（[#1992](https://github.com/kompiro/karasu/issues/199
 - [ ] M-3: `wrangler secret put GITHUB_APP_ID` 後、`/healthz` の該当 binding が `true` に変わり、**値そのものは応答に出ない**
 - [ ] M-4: 生成物が無い状態で `GET /<自分の owner>/<repo>` が 404 を返し、本文の案内リンクから BYO reverse ガイドに到達できる
 - [ ] M-5: 手で `.krs` を投入した状態で同じ URL が `.krs` を返し、`X-Karasu-Source-Sha` が投入した SHA と一致する
-- [ ] M-6: Pages app（`karasu.kompiro.dev`）の `/`, `/s`, `/render`, `/r/...` が nest のデプロイ後も従来どおり動作する（2 つのデプロイが独立していること）
+- [ ] M-6: Pages app（`karasu.kompiro.dev`）の `/`, `/s`, `/render`, および bare permalink `/<owner>/<repo>` が nest のデプロイ後も従来どおり動作する（2 つのデプロイが独立していること）。`/r/` は [ADR-1961](../adr/1961-bare-permalink-route.md) で 301 リダイレクトに縮退済みなので、リダイレクトが残っていることまでを見る
 - [ ] M-7: nest Worker のみをロールバックしても Pages app が影響を受けない
