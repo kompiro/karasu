@@ -58,6 +58,40 @@ Useful for isolating rendering bugs and providing minimal reproducible cases.
 | [`legend.krs`](feature-samples/legend.krs) | `legend` block — `swatch` + `ref` entries, unscoped + per-view scope |
 | [`resource-operations.krs`](feature-samples/resource-operations.krs) | `operations` property on `resource` — comma-separated, multi-line, omission |
 
+## Directory layout — `en/` and `ja/`
+
+Every example lives under `examples/<lang>/<name>/`. `en` and `ja` are matched
+variants of the same model: identical structure and identical `.krs` file sets,
+differing only in the `label` / `description` / `role` strings. Both are rendered
+into the documentation gallery ([ADR-1642](../docs/adr/1642-en-ja-example-parity.md)).
+
+### en-only examples (and why)
+
+Three entries are deliberately English-only. ADR-1642's headline reads
+unconditional, so the exception classes are named here once, and
+`packages/docs-site/scripts/lib/examples-manifest.ts` points back at this
+section rather than re-explaining each case at its call site (#2310).
+
+An example may be en-only when it falls into one of these classes:
+
+| Class | Why a `ja` copy would not help | Current members |
+|---|---|---|
+| **Code-first** — the content is `.krs` snippets, not prose | The snippets are the same in either locale; only the surrounding captions carry language, and those are localized in the manifest | `feature-samples/` |
+| **Protocol / vocabulary is English** — the model's labels are the names of an external specification | Translating `capability camera` or an MCP method name would make the example less accurate, not more accessible | `client-mcp/` |
+| **A model of a real system** — the labels are that system's own vocabulary | Same reason as above, plus: a second copy is a second thing to keep true as the real system changes | `hato/` |
+
+Anything outside these classes gets a `ja` counterpart. If you find yourself
+wanting a fourth class, add it to this table in the same PR — an unexplained
+en-only directory is indistinguishable from a forgotten translation, which is
+exactly what #2310 was filed about.
+
+`hato/` carries one extra obligation: it is the **measured model** behind
+[ADR-1724](../docs/adr/1724-system-view-infra-external-tier-split.md) and
+[ADR-1728](../docs/adr/1728-external-on-sides-layout.md) (33 → 0 edge crossings),
+so [`docs/acceptance/1728-external-on-sides.md`](../docs/acceptance/1728-external-on-sides.md)
+renders it from this path. Its `hato.krs.style` `column` override is load
+bearing — changing either file changes what those records measured.
+
 ## How to use
 
 **Single file** (all themed scenarios + 01–04 + feature-samples):
