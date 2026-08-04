@@ -67,7 +67,8 @@ permalink:
   復元は `source` から
 - 要素ドリルは `source` に anchor を添える（例 `system.krs#krs-system-payment-api`）。
   identity は author-given `id` であり `label` ではない
-- repo-backed permalink（`karasu.kompiro.dev/r/...`）を `short` に貼るなら
+- repo-backed permalink（`karasu.kompiro.dev/<owner>/<repo>...`。`/r/` prefix は
+  ADR-1961 で廃止、301 で bare に着地する）を `short` に貼るなら
   **full 40-hex の commit SHA で pin** する（`…@<40-hex>#krs-…`）。
   branch / tag / HEAD / 短縮 SHA は mutable で link rot する。非準拠は
   `adr:check-permalinks` が warning を出すが CI は落とさない
@@ -112,8 +113,7 @@ Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083
 
 > この節は「PR のマージはユーザー確認を経る」という本リポジトリの既定運用に
 > **優先する明示的な例外**。例外が成立するのは下の適用条件をすべて満たす
-> 場合のみで、判定はすべて変更ファイル集合と PR タイトルという観測可能な
-> 事実で行う。
+> 場合のみで、判定はすべて PR タイトルと diff という観測可能な事実で行う。
 
 ```
 gh pr merge <pr-number> --auto --squash --delete-branch
@@ -122,24 +122,37 @@ gh pr merge <pr-number> --auto --squash --delete-branch
 ### 適用条件（すべて満たすこと）
 
 1. PR タイトルが `docs(adr): ` で始まる
-2. 変更ファイルが以下の集合のみ（ほかディレクトリの変更が 1 ファイルでも
-   あれば対象外）:
-   - `docs/adr/**`（新 ADR、`effective.md` / `graph.md` / `graph/*.md` などの
-     生成物を含む）
-   - `docs/design/<name>.md` の **削除** または **更新**:
+2. **差分が「決定の記録」と「その記録に伴うリンクの整合」だけで構成されている**。
+   具体的には次の 3 種以外の差分が 1 行もない:
+   - `docs/adr/**` の変更（新 ADR、`effective.md` / `graph.md` / `graph/*.md`
+     などの生成物を含む）
+   - 昇格対象 `docs/design/<name>.md` の **削除** または **更新**:
      - 削除 — Design Doc 全体を ADR に昇格させて元ファイルを消すケース
      - 更新 — 部分昇格（複数フェーズの一部だけ ADR 化し、残りを Design Doc
        に保持するケース。例: ADR-1168）
-3. `gh pr view <N> --json files,title` で 1〜2 を確認した直後にコマンドを
-   実行する
+   - **その Design Doc を指していた参照を、新 ADR に張り替える差分**
+     （ディレクトリは問わない — `docs/acceptance/` / `docs/spec/` /
+     `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md` のいずれでも
+     よい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部であって、
+     別の判断ではない）
+3. `gh pr view <N> --json files,title` と `gh pr diff <N>` で 1〜2 を確認した
+   直後にコマンドを実行する
 
 ### 補足
 
+- ディレクトリではなく**差分の中身**で判定するのは、参照元が
+  `docs/acceptance/` に限らないため（[#2259](https://github.com/kompiro/karasu/issues/2259)
+  の昇格 PR が acceptance 1 行で止まった）。許可ディレクトリを数え上げる形だと、
+  次に spec や TPL が参照元になったとき同じ理由でまた止まる
+  （`.claude/rules/README.md` チェックリスト 5「単一の判定条件に畳む」）
+- **張り替え以外の変更が同じファイルに混ざったら例外は成立しない。** とくに
+  `docs/acceptance/` の受け入れ条件そのもの（TC の増減、手動項目のチェック
+  状態）を変える差分が含まれるなら、**通常通りユーザー確認を経る** — AT は
+  「何を検証したか」の記録なので、レビューなしに書き換わってよい対象ではない
+- 適用条件のいずれかが満たされない場合（例: `packages/**` のファイルが 1 つでも
+  差分に含まれる場合）も同様に例外を適用せず、通常通りユーザー確認を経る
 - `--auto` を使うので CI 完走前にコマンド発行して構わない（GitHub 側が
   required check 通過を待つ）
 - リポジトリ設定で `allow_auto_merge=true` 済み
-- 適用条件のいずれかが満たされない場合（例: ADR 昇格に伴って `docs/spec/` や
-  `packages/**` のファイルが 1 つでも変更ファイル集合に含まれる場合）は例外を
-  適用せず、**通常通りユーザー確認を経る**
 - ブランチ保護で required check が落ちた場合は通常通り失敗する
   （auto-merge は強制ではなく「揃ったら入れる」セマンティクス）

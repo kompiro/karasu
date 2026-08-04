@@ -63,3 +63,7 @@ permalink・共有 URL・deep anchor は、**URL が内容を決める**とい�
 - **生成物に独自の identity を与える**: 生成した成果物は自分の安定 URL を持つ。元の URL は正準な内容（commit 済み / 既定生成物）を指し続け、リクエストで観点を変えたものは別資源として並ぶ。
 - **pointer と record を分ける**（[TPL-1829](TPL-1829-adr-permalink-records-source.md) と同型）: 復元できる正本を repo 側に持ち、URL はそれを指す pointer に留める。生成物にも同じ形を適用すると、サービスが消えても記録が残る。
 - **合流点を HTTP ではなく成果物の置き場所に取る**: resolution する面と creation する面を、API 呼び出しや service binding で繋ぐと、resolution 側に creation の都合（コスト・待ち時間・認証）が流れ込む。**creation 側の出力を resolution 側が元から読んでいる場所（repo の commit など）に書き込む**形にすると、2 つの面は実行時に結合せず、resolution 側は何も変えずに新しい成果物を扱える。#2249 では karasu-nest が生成 `.krs` を repo へ PR し、permalink 面は committed `.krs` を解決するだけ、という形にした。
+
+## 派生元 spec
+
+- `docs/spec/permalink.md` / `docs/spec/permalink.ja.md` — 「Route forms that carry an anchor」。spec は repo-backed 形が resolution であって generation ではないこと、描画内容が URL だけで決まることを規定する。本 TPL はその規定が破られたときに検出する proactive TPL。
