@@ -65,4 +65,8 @@ catch-all ルート、または「どのリクエストがアプリに届くか�
 - **`_routes.json` の `include` は広く、`exclude` だけを絞る**: `include: ["/*"]` にしておけば、新しい Function を足したときの include 漏れが起きない。メンテ対象を `exclude` 側だけに閉じ込める。
 - **実測は dev サーバで**: `wrangler pages dev` は実 workerd + 実 Pages ルーティングでこの手の precedence を再現する。ただし `_redirects` の SPA fallback の扱いは本番と差があるため、fallback だけは preview deployment で確認する。
 
-karasu での route 形の決定は [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（`/r/` prefix）と #1961（bare 形）にある。anchor 文法は別レイヤで、[`docs/spec/permalink.md`](../spec/permalink.md) が持つ。
+karasu での route 形の決定は [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（`/r/` prefix）と #1961（bare 形）にある。
+
+## 派生元 spec
+
+- `docs/spec/permalink.md` / `docs/spec/permalink.ja.md` — 「Route forms that carry an anchor」。bare 形は root catch-all なので、spec が定める「SPA と兄弟 Function が持つ経路には手を出さない」が破られたときに検出する proactive TPL。
