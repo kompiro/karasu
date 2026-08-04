@@ -15,6 +15,8 @@
 | Compound (kind + tag) | `service[external]` | Matches both kind and tag |
 | Compound (tag + annotation) | `[external]@deprecated` | Matches both tag and annotation |
 | Compound (kind + tag + annotation) | `service[external]@deprecated` | Matches all three |
+| Facet | `[facets=pii]` | All elements belonging to the given `facet` |
+| Compound (kind + facet) | `service[facets=pii]` | Matches both kind and facet membership |
 | ID | `#ECommerce` | A specific node only |
 | Edge | `edge` | All edges |
 | Edge + tag | `edge[async]` | Edges with the given tag |
@@ -35,6 +37,8 @@
 | Kind + tag | `service[external]` | 11 |
 | Tag + annotation | `[external]@deprecated` | 20 |
 | Kind + tag + annotation | `service[external]@deprecated` | 21 |
+| Facet | `[facets=pii]` | 10 |
+| Kind + facet | `service[facets=pii]` | 11 |
 | ID | `#ECommerce` | 100 |
 | Edge | `edge` | 1 |
 | Edge + tag | `edge[async]` | 11 |
@@ -44,6 +48,105 @@
 
 `edge#criticalWrite` scores 101 = 100 for the id + 1 for the `edge` kind.
 When scores are equal, the later declaration wins (same as CSS).
+
+---
+
+## Facet selectors (`[facets=<id>]`) — experimental
+
+> **Experimental notation (post-v1.0 watch).** `facet` is experimental, so this
+> selector is too — backward compatibility is not yet promised, and promotion is
+> gated on real-usage evidence ([ADR-1820](../adr/1820-notation-promotion-gate.md)).
+
+Style the elements belonging to a declared `facet` (see
+[syntax.md § Cross-cutting membership](syntax.md#cross-cutting-membership-facet--experimental)).
+
+```css
+[facets=pii] {
+  border-color: #14B8A6;
+  border-width: 2px;
+}
+
+/* Compound with a kind — only the databases in PCI scope. */
+database[facets=pci_scope] {
+  background-color: #FEF3C7;
+}
+
+/* Repeat to require several memberships at once (AND, like tags). */
+[facets=pii][facets=gdpr] {
+  border-style: dashed;
+}
+```
+
+- **Nodes only.** `facets` is a node property in v1, so `edge[facets=...]`
+  matches nothing rather than matching every edge.
+- **Membership is read from the element**, which is where `facets <id>` is
+  written. Nothing about the selector reaches back into the `facet` declaration;
+  the declaration carries the concern's metadata, not its members.
+- **Undeclared facet ids are not a style-side error.** A `facets pcl` typo is
+  reported once, where it is written, by `facet-not-declared` — a selector
+  naming the same misspelling simply matches nothing. Reporting it twice would
+  ask the author to fix one mistake in two places.
+- **Fact and style stay split.** Membership is a fact and lives in `.krs`;
+  what a facet looks like is a choice and lives here. The overlay in the
+  preview is a third, separate thing: a reader's temporary selection, written
+  nowhere.
+
+### Migrating an arbitrary-name tag or annotation selector
+
+`.krs.style` has always matched arbitrary tag and annotation names, and until
+now that was the only way to style a cross-cutting concern. Facet selectors are
+the replacement, so those selectors are **deprecated in v1.x**
+(`style-tag-selector-not-builtin` / `style-annotation-selector-not-builtin`) and
+stop matching in syntax v2.0. They keep working meanwhile — dropping a rule
+silently would change how existing models look.
+
+**Before** — the name carries the concern, and nothing declares what it means:
+
+```krs
+system Shop {
+  database CardVault [pci] {}
+  service Payments [pci] {}
+}
+```
+
+```css
+[pci] {
+  border-color: #F59E0B;
+}
+```
+
+**After** — the concern is declared once, membership moves to `facets`, and the
+selector targets it:
+
+```krs
+facet pci {
+  label "PCI scope"
+  description "In scope for the annual PCI DSS assessment"
+  link "https://example.com/policies/pci" "PCI policy"
+}
+
+system Shop {
+  database CardVault { facets pci }
+  service Payments { facets pci }
+}
+```
+
+```css
+[facets=pci] {
+  border-color: #F59E0B;
+}
+```
+
+**Specificity is unchanged** — `[facets=pci]` scores 10, exactly as `[pci]` did.
+That is deliberate: a sheet part-way through the migration must not change which
+rule wins, or the rewrite would have to be done in one commit.
+
+Three things the model gains that the tag never had: a place for the concern's
+own metadata (`description`, `link`), typo detection against the declared set
+(`facets pcl` is reported; `[pcl]` was silently a different tag), and the
+overlay — a reader can highlight the facet without editing anything.
+
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — the selector is the effect that keeps `facet` from being inert in the styling dimension. [TPL-2175](../test-perspectives/TPL-2175-deprecation-announced-only-with-a-migration-target.md) — a deprecation is announced in the release that ships its migration target, never before. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — the new selector form round-trips through `karasu fmt` / the sheet tidier.
 
 ---
 

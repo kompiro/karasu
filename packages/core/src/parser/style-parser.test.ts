@@ -345,15 +345,17 @@ describe("StyleParser comma-as-separator recovery (#1168)", () => {
 
 describe("computeSpecificity", () => {
   it("type selector = 1", () => {
-    expect(computeSpecificity({ nodeType: "service", tags: [], annotations: [] })).toBe(1);
+    expect(computeSpecificity({ nodeType: "service", tags: [], annotations: [], facets: [] })).toBe(
+      1,
+    );
   });
 
   it("tag selector = 10", () => {
-    expect(computeSpecificity({ tags: ["external"], annotations: [] })).toBe(10);
+    expect(computeSpecificity({ tags: ["external"], annotations: [], facets: [] })).toBe(10);
   });
 
   it("annotation selector = 10", () => {
-    expect(computeSpecificity({ tags: [], annotations: ["deprecated"] })).toBe(10);
+    expect(computeSpecificity({ tags: [], annotations: ["deprecated"], facets: [] })).toBe(10);
   });
 
   it("type + tag = 11", () => {
@@ -362,36 +364,56 @@ describe("computeSpecificity", () => {
         nodeType: "service",
         tags: ["external"],
         annotations: [],
+        facets: [],
       }),
     ).toBe(11);
   });
 
   it("tag + annotation = 20", () => {
-    expect(computeSpecificity({ tags: ["external"], annotations: ["deprecated"] })).toBe(20);
+    expect(
+      computeSpecificity({ tags: ["external"], annotations: ["deprecated"], facets: [] }),
+    ).toBe(20);
   });
 
   it("id = 100", () => {
-    expect(computeSpecificity({ id: "ECommerce", tags: [], annotations: [] })).toBe(100);
+    expect(computeSpecificity({ id: "ECommerce", tags: [], annotations: [], facets: [] })).toBe(
+      100,
+    );
   });
 
   it("edge id = 100, edge#<id> with type = 101", () => {
-    expect(computeSpecificity({ edgeId: "criticalWrite", tags: [], annotations: [] })).toBe(100);
+    expect(
+      computeSpecificity({ edgeId: "criticalWrite", tags: [], annotations: [], facets: [] }),
+    ).toBe(100);
     expect(
       computeSpecificity({
         nodeType: "edge",
         edgeId: "criticalWrite",
         tags: [],
         annotations: [],
+        facets: [],
       }),
     ).toBe(101);
   });
 
   it("edge[from=X] / edge[to=X] = 11 (edge kind + endpoint predicate)", () => {
     expect(
-      computeSpecificity({ nodeType: "edge", edgeFrom: "ApiGateway", tags: [], annotations: [] }),
+      computeSpecificity({
+        nodeType: "edge",
+        edgeFrom: "ApiGateway",
+        tags: [],
+        annotations: [],
+        facets: [],
+      }),
     ).toBe(11);
     expect(
-      computeSpecificity({ nodeType: "edge", edgeTo: "ApiGateway", tags: [], annotations: [] }),
+      computeSpecificity({
+        nodeType: "edge",
+        edgeTo: "ApiGateway",
+        tags: [],
+        annotations: [],
+        facets: [],
+      }),
     ).toBe(11);
   });
 });

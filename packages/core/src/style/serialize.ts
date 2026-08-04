@@ -99,6 +99,11 @@ export function formatSelector(selector: StyleSelector): string {
   for (const tag of selector.tags) {
     out += `[${tag}]`;
   }
+  // Facet predicates (`[facets=<id>]`, #2175) after tags and before
+  // annotations, mirroring the order the parser accepts them in.
+  for (const facet of selector.facets) {
+    out += `[facets=${facet}]`;
+  }
   for (const annotation of selector.annotations) {
     out += `@${annotation}`;
   }

@@ -162,6 +162,8 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | `tag-not-builtin` | warning | tag 名がツール語彙（builtin + system-assigned tag）の外にある。v1.x で非推奨。抑制条件なし。 |
 | `tag-not-applicable` | warning | 組み込み tag が適用範囲外の kind に書かれている（例: `service Api [index]` — `[index]` は `database` に適用）。その場所では効果を持たない。`tag-not-builtin` と同時には発火しない（builtin 外の名前には違反する適用範囲が無いため）。 |
 | `annotation-not-builtin` | warning | annotation 名が builtin 集合の外にある。v1.x で非推奨。抑制条件なし。 |
+| `style-tag-selector-not-builtin` | warning | `.krs.style` のセレクタがツール語彙の外の tag 名を狙っている（例 `[pci] { … }`）。v1.x で非推奨 — ルール自体は引き続き一致する。構文 v2.0 はツール語彙のみに一致する。facet セレクタ（`[facets=<id>]`）へ移行する。モデル側の `tag-not-builtin` とは独立にセレクタ単位で発火する（両者は別々の編集を指しており、片方だけ警告すると残った方が見つからない）。builtin テーマや注入された system sheet では発火しない。 |
+| `style-annotation-selector-not-builtin` | warning | `.krs.style` のセレクタが builtin 集合の外の annotation 名を狙っている（例 `@canary { … }`）。契約は `style-tag-selector-not-builtin` と同じ。 |
 | `team-property-removed` | error | 削除済みの `team` プロパティが使われる（[ADR-1564](../adr/1564-remove-team-property.md) 参照）。 |
 
 ### import とファイル

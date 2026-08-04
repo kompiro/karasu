@@ -29,6 +29,8 @@ export type WarningKind =
   | "tag-not-builtin"
   | "tag-not-applicable"
   | "annotation-not-builtin"
+  | "style-tag-selector-not-builtin"
+  | "style-annotation-selector-not-builtin"
   | "facet-not-declared"
   | "entity-anchor-collision"
   | "legend-ref-unresolved"
@@ -268,6 +270,39 @@ export interface WarningParamsByKind {
     nodeId: string;
     /** the annotation name as written, without the `@` sigil */
     annotation: string;
+  };
+  /**
+   * A `.krs.style` **selector** targets a tag name outside the tool vocabulary
+   * (#2175, design `tags-and-facets.md` (B8)). The style-side counterpart of
+   * `tag-not-builtin`, held back until now because announcing a deprecation
+   * without a migration target only tells the author to stop doing the one
+   * thing that works. Facet selectors (`[facets=<id>]`) are that target, so
+   * this fires from the same release they ship in.
+   *
+   * v1.x keeps matching these selectors unchanged — ADR-1314 freezes the
+   * behaviour, and silently dropping a rule would change how existing models
+   * look. Disablement is v2.0.
+   *
+   * Model-side and style-side both fire for one name (`[pci]` on a node and
+   * `[pci] { … }` in a sheet), which is intentional: they are two edits the
+   * author has to make, and one warning would leave the other site unfound.
+   */
+  "style-tag-selector-not-builtin": {
+    /** the tag name as written in the selector, without the `[...]` brackets */
+    tag: string;
+    /** the full selector text, so the author can find the rule */
+    selector: string;
+  };
+  /**
+   * A `.krs.style` selector targets an annotation name outside the builtin
+   * lifecycle vocabulary. Same contract as
+   * {@link WarningParams["style-tag-selector-not-builtin"]}.
+   */
+  "style-annotation-selector-not-builtin": {
+    /** the annotation name as written in the selector, without the `@` sigil */
+    annotation: string;
+    /** the full selector text, so the author can find the rule */
+    selector: string;
   };
   /**
    * A `facets <id>` reference names no declared `facet` block (#2065 Part B).

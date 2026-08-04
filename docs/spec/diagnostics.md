@@ -169,6 +169,8 @@ tool vocabulary only — see [tags-annotations.md](./tags-annotations.md)).
 | `tag-not-builtin` | warning | A tag name is outside the tool vocabulary (builtin + system-assigned tags). Deprecated in v1.x; no suppression condition. |
 | `tag-not-applicable` | warning | A builtin tag is written on a node kind outside its applicability (e.g. `service Api [index]` — `[index]` applies to `database`). The tag has no effect there. Never fires together with `tag-not-builtin`: a non-builtin name has no applicability to violate. |
 | `annotation-not-builtin` | warning | An annotation name is outside the builtin set. Deprecated in v1.x; no suppression condition. |
+| `style-tag-selector-not-builtin` | warning | A `.krs.style` selector targets a tag name outside the tool vocabulary (e.g. `[pci] { … }`). Deprecated in v1.x — the rule still matches; syntax v2.0 matches tool vocabulary only. Migrate to a facet selector (`[facets=<id>]`). Fires per selector, independently of the model-side `tag-not-builtin`: the two name two edits, and warning once would leave the other site unfound. Never fires for the builtin theme or injected system sheets. |
+| `style-annotation-selector-not-builtin` | warning | A `.krs.style` selector targets an annotation name outside the builtin set (e.g. `@canary { … }`). Same contract as `style-tag-selector-not-builtin`. |
 | `team-property-removed` | error | The removed `team` property is used (see [ADR-1564](../adr/1564-remove-team-property.md)). |
 
 ### Imports & files

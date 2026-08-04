@@ -322,6 +322,12 @@ export const ja: Partial<Translations> = {
     `${nodeId} の "@${annotation}" は組み込みアノテーションではありません — 非推奨です。構文 v2.0 はツール語彙のみを受理します（警告であり、パースは通ります）。`,
   "warning.annotationNotBuiltin.migrationNote":
     "所属やモデル固有のラベリングは facet 構文（#2065）へ移行してください。新しい lifecycle 状態が必要な場合は組み込みアノテーションの追加要望を出してください。",
+  "warning.styleTagSelectorNotBuiltin.message": ({ tag, selector }) =>
+    `セレクタ "${selector}" が指す "[${tag}]" は組み込みタグではありません — 非推奨です。v1.x ではこのルールは引き続き適用されますが、構文 v2.0 はツール語彙のみに一致します。`,
+  "warning.styleAnnotationSelectorNotBuiltin.message": ({ annotation, selector }) =>
+    `セレクタ "${selector}" が指す "@${annotation}" は組み込みアノテーションではありません — 非推奨です。v1.x ではこのルールは引き続き適用されますが、構文 v2.0 はツール語彙のみに一致します。`,
+  "warning.styleSelectorNotBuiltin.migrationNote":
+    '移行は 3 手順です: 関心事を宣言し（facet <id> { label "..." }）、対象要素に "facets <id>" を書き、セレクタを [facets=<id>] に書き換えます。specificity は同じなので、カスケードの他の部分は動きません。',
   "warning.facetNotDeclared.message": ({ nodeId, facetId }) =>
     `${nodeId} の "facets ${facetId}" は宣言済みの facet を指していません`,
   "warning.facetNotDeclared.declarationNote":

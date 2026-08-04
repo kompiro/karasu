@@ -246,6 +246,22 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [t("warning.annotationNotBuiltin.migrationNote")],
       };
+    case "style-tag-selector-not-builtin":
+      return {
+        message: t("warning.styleTagSelectorNotBuiltin.message", {
+          tag: w.params.tag,
+          selector: w.params.selector,
+        }),
+        details: [t("warning.styleSelectorNotBuiltin.migrationNote")],
+      };
+    case "style-annotation-selector-not-builtin":
+      return {
+        message: t("warning.styleAnnotationSelectorNotBuiltin.message", {
+          annotation: w.params.annotation,
+          selector: w.params.selector,
+        }),
+        details: [t("warning.styleSelectorNotBuiltin.migrationNote")],
+      };
     case "facet-not-declared":
       return {
         message: t("warning.facetNotDeclared.message", {

@@ -1031,6 +1031,16 @@ export const SELECTOR_SPECIFICITY: SelectorSpecificityData[] = [
     example: "service[external]@deprecated",
     specificity: 21,
   },
+  {
+    label: { en: "Facet", ja: "ファセット" },
+    example: "[facets=pii]",
+    specificity: 10,
+  },
+  {
+    label: { en: "Kind + facet", ja: "種別 + ファセット" },
+    example: "service[facets=pii]",
+    specificity: 11,
+  },
   { label: { en: "ID", ja: "ID" }, example: "#ECommerce", specificity: 100 },
   { label: { en: "Edge", ja: "エッジ" }, example: "edge", specificity: 1 },
   { label: { en: "Edge + tag", ja: "エッジ + タグ" }, example: "edge[async]", specificity: 11 },

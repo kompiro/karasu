@@ -319,6 +319,15 @@ export type Translations = {
     annotation: string;
   }) => string;
   "warning.annotationNotBuiltin.migrationNote": string;
+  "warning.styleTagSelectorNotBuiltin.message": (params: {
+    tag: string;
+    selector: string;
+  }) => string;
+  "warning.styleAnnotationSelectorNotBuiltin.message": (params: {
+    annotation: string;
+    selector: string;
+  }) => string;
+  "warning.styleSelectorNotBuiltin.migrationNote": string;
   "warning.facetNotDeclared.message": (params: { nodeId: string; facetId: string }) => string;
   "warning.facetNotDeclared.declarationNote": string;
   "warning.legendRefUnresolved.message": (params: {

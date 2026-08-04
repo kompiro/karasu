@@ -46,6 +46,8 @@ Bare `[<identifier>]` still accepts any name in v1.x — the v1.0 freeze ([ADR-1
 - **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental): declare the set once at the top level and write `facets <id>` on the elements.
 - **A missing archetype** (`[cache]`, `[bff]`, …) → request a builtin tag addition (the roadmap `[cache]` watch is the exemplar route). A deprecated tag keeps working meanwhile — warned, without default-rendering effect.
 
+A `.krs.style` rule that **targets** such a name (`[pci] { … }`) is deprecated on the same terms (`style-tag-selector-not-builtin`) and rewrites to a [facet selector](./style.md#facet-selectors-facetsid--experimental). Both halves warn: the tag on the node and the selector in the sheet are two edits, and reporting only one leaves the other unfound.
+
 See [*Vocabulary registers*](#vocabulary-registers--boundary--annotation--tag--facet) below for how to pick the right construct.
 
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — non-builtin tag names previously sat in the forbidden fourth state (accepted, inert, undocumented); `tag-not-builtin` resolves them into state (2), *warned as unknown*. [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — a builtin-addition request arriving through this route is judged by three questions (register / already expressible / stopping rule), and rejections are recorded.
@@ -108,7 +110,7 @@ system OrderSystem {
 
 ### Non-builtin annotation names are deprecated (v1.x)
 
-`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)), a hook that migrates to facet selectors in a later slice of #2160. Migration targets:
+`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style`, and **that use is now deprecated too** (`style-annotation-selector-not-builtin`) — the styling hook has moved to [facet selectors](./style.md#facet-selectors-facetsid--experimental), which is where the before/after rewrite is written out. Migration targets:
 
 - **Membership or model-specific labeling** (team ownership marks, audience labels) → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental).
 - **A missing lifecycle state** (`@canary`, `@sunset`, …) → request a builtin annotation addition.

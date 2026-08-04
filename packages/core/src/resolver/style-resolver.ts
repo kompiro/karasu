@@ -317,8 +317,10 @@ function orgNodeSelectorMatches(node: OrgNodeDescriptor, sel: StyleSelector): bo
   if (sel.id) return sel.id === node.id;
   if (sel.nodeType === "edge") return false;
   if (sel.nodeType && sel.nodeType !== node.kind) return false;
-  // Org nodes carry no tags, so tag selectors never match.
+  // Org nodes carry no tags, so tag selectors never match. Same for `facets`:
+  // the property is on logical nodes, not on `team` / `member`.
   if (sel.tags.length > 0) return false;
+  if (sel.facets.length > 0) return false;
   // Annotation selectors (e.g. the default-style `@migration_target` / `@deprecated`
   // badge rules) match a team carrying every required annotation — same semantics
   // as nodeSelectorMatches, so org teams get migration/deprecation badges too (#1583).
@@ -393,6 +395,8 @@ function deployNodeSelectorMatches(unit: DeployNode, sel: StyleSelector): boolea
   if (sel.nodeType && sel.nodeType !== unit.kind) return false;
   if (sel.tags.length > 0) return false;
   if (sel.annotations.length > 0) return false;
+  // Deploy units are not logical nodes and carry no `facets` property.
+  if (sel.facets.length > 0) return false;
   if (!sel.nodeType && !sel.id) return false;
   return true;
 }
@@ -436,11 +440,21 @@ function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
   if (selector.annotations.length > 0) {
     if (!selector.annotations.every((a) => node.annotations.includes(a))) return false;
   }
-  // A bare selector with no type, tags, annotations, or id shouldn't match anything
+  // `[facets=<id>]` (#2175). Read straight off the node: membership is written
+  // element-side, so no facet index has to reach the style resolver. ANDed like
+  // tags — `[facets=pii][facets=gdpr]` wants both.
+  if (selector.facets.length > 0) {
+    const facets = node.facets;
+    if (!facets) return false;
+    if (!selector.facets.every((f) => facets.includes(f))) return false;
+  }
+  // A bare selector with no type, tags, annotations, facets, or id shouldn't
+  // match anything.
   if (
     !selector.nodeType &&
     selector.tags.length === 0 &&
     selector.annotations.length === 0 &&
+    selector.facets.length === 0 &&
     !selector.id
   ) {
     return false;
@@ -452,6 +466,10 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
   // Edge selectors require the explicit `edge` type; tag-only selectors
   // (nodeType === undefined) never match edges.
   if (selector.nodeType !== "edge") return false;
+  // `facets` is not accepted on edges in v1 (design `tags-and-facets.md` (B1)),
+  // so an `edge[facets=…]` selector matches nothing. Returning false here — not
+  // ignoring the predicate — keeps it from silently widening to every edge.
+  if (selector.facets.length > 0) return false;
   if (selector.edgeId !== undefined) {
     if (edge.canonicalId === undefined) return false;
     if (edge.canonicalId !== selector.edgeId) return false;

@@ -503,3 +503,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2291](TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md) | 通信相手をモックしたテストは、こちらのロジックしか検証しない — 相手が受理するかは別に確かめる。モックの網羅度を上げても「400 で弾かれる」には一歩も近づかない | testing | #2291, #2278 |
 | [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) | 要素に届かせるために広げた図形は実被覆で測る（bbox でも記録矩形でもなく）— 広げる述語は「回廊に非メンバーが無いこと」で書き、一括シフトは派生ジオメトリも動かす | renderer | #2179, #2240, docs/spec/syntax.md |
 | [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) | opt-in な視覚レイヤは無効時に自分のマーカーを 1 つも出さない — 等値テストは無条件出力を相殺して見逃すので、マーカーを名前で列挙して不在を assert する | renderer | #2174 |
+| [TPL-2175](TPL-2175-deprecation-announced-only-with-a-migration-target.md) | 非推奨は移行先が出荷される release で告知する — 移行先の無い deprecation は「唯一動く手段をやめろ」と言っているだけで、警告を無視する習慣を教える。1 つの誤りが複数箇所に書かれるなら全箇所で警告する | core-concepts | #2175, #2159 |
