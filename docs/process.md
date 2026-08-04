@@ -288,6 +288,36 @@ PR 内で変更を先に見たいときは preview を使ってよいが、そ�
 
 観点は [TPL-2254](test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)。
 
+### AT レコードは `docs/design/` を指さない
+
+同じ理由で、**AT から Design Doc を参照しない**。Design Doc は ADR 昇格時に
+削除されるので（前掲「設計判断を ADR に残すタイミング」）、AT が指した瞬間から
+**規約上いつか必ず切れるアドレス**になる。
+
+設計根拠は **Issue** で指す。Issue は削除されず、design PR と実装 PR の両方へ
+辿れる。ADR が既にあるなら併記する:
+
+```markdown
+- **関連 Issue**: [#2259](https://github.com/kompiro/karasu/issues/2259)
+- **設計 (ADR)**: [ADR-2259](../adr/2259-permalink-payload-cap.md)
+```
+
+実装 PR の時点ではまだ ADR が無いので Issue だけでよい。ADR 番号は起点 Issue 番号と
+一致する（[ADR-2188](adr/2188-tpl-issue-number-ids.md)）が、**ファイルが無いうちに
+リンクを書かない** — 前方参照は切れたリンクと区別がつかない。昇格 PR で
+`- **設計 (ADR)**: …` を足す。
+
+強制は `pnpm at:check-coverage`（`scripts/acceptance/design-refs.ts`）。
+`docs/acceptance/**` から `docs/design/` への参照が 1 つでもあれば finding として
+報告し、`--strict` で落ちる。観点は同じく TPL-2254。
+
+> この規約を入れた時点で、AT から Design Doc への 46 参照のうち **27 が既に
+> 解決しない**アドレスを指しており、うち 1 件
+> （`1821-layer-toggle-external-infra.md`）は main に残った壊れた markdown
+> リンクだった。既存の link check は `packages/docs-site`（公開サブセット）しか
+> 見ておらず、残りはバッククォートの地の文なのでどのリンクチェッカでも
+> 検出できない形だった。
+
 ### AT に埋める `.krs` スニペットの fence 規約
 
 手順に書いた `.krs` は誰も実行しないため、放っておくと文法から静かにズレる（AT-0006 AC-1.2 が現行文法で parse できない状態のまま放置されていた — #2047）。`pnpm at:check-coverage` が `docs/acceptance/*.md` の ` ```krs ` ブロックを実際に parse するので、fence の情報文字列でスニペットの主張を宣言する。

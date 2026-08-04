@@ -39,5 +39,5 @@ type: feature
 
 ## 関連
 
-- 設計 Doc: `docs/design/karasu-position-on-style-prescriptions.md` (`info` severity 採用の経緯、#1388)
+- `info` severity 採用の経緯: [#1388](https://github.com/kompiro/karasu/issues/1388)
 - フォローアップ Issue: [#1386](https://github.com/kompiro/karasu/issues/1386) — 既存 `domain-dispersal` warning を info に再分類するか

@@ -9,7 +9,7 @@
 
 ## 受け入れ条件
 
-該当する観点は [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理される語彙は効果を持つ）。設計の経緯は `docs/design/vector-store-vs-database.md`。
+該当する観点は [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理される語彙は効果を持つ）。設計の経緯は [#1718](https://github.com/kompiro/karasu/issues/1718)。
 
 - [x] `database X [index]` をパースし、`tags` に `index` が入る
 

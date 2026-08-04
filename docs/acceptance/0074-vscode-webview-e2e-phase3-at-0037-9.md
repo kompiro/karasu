@@ -9,8 +9,7 @@ type: tooling
 Phase 3 の続編として、AT-0037-9（Phase 5 の no-regression テスト
 "Bidirectional Jump Still Works"）の **editor cursor → SVG highlight
 方向** を ExTester WebView ハーネスへ移植する
-（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3、設計は
-`docs/design/vscode-webview-e2e-harness.md`）。
+（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3）。
 
 AT-0037-9 のもう一方の direction（SVG node click → editor jump）は、
 Phase 6 (#250) で実装方針が変わった後の現行挙動が以下 2 つの AT で
@@ -103,6 +102,5 @@ Phase 6 (#250) で実装方針が変わった後の現行挙動が以下 2 つ�
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
-- 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 関連 AT: `docs/acceptance/0072-vscode-webview-e2e-phase3-at-0038.md` (hint), `docs/acceptance/0073-vscode-webview-e2e-phase3-at-0038-jump.md` (editor jump)
 - 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）

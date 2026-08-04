@@ -3,7 +3,6 @@
 - **日付**: 2026-04-29
 - **関連 Issue**: [#974](https://github.com/kompiro/karasu/issues/974)（親 [#966](https://github.com/kompiro/karasu/issues/966)）
 - **対象ファイル**: `packages/core/src/renderer/layout.ts`
-- **設計**: `docs/design/auto-layout-infra-by-consumer.md`
 - **姉妹**: [AT-0967](./0967-actor-row-by-first-target.md)（A — actor row by first target）
 
 ## 受け入れ条件
