@@ -115,7 +115,7 @@ export class GitHubClient {
     // local before wrapping is exactly that — the closure has to re-resolve
     // the global binding at call time for the receiver check to pass. Node
     // tolerates the detached form, so no unit test can catch this; the same
-    // guard is documented in `functions/r/[[path]].ts`.
+    // guard is documented in `functions/[[path]].ts`.
     const injected = options.fetchImpl;
     this.fetchImpl =
       injected === undefined
