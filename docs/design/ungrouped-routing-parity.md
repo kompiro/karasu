@@ -2,7 +2,7 @@
 
 - **日付**: 2026-08-04
 - **ステータス**: 検討中
-- **PR**: （作成後に記入）
+- **PR**: [#2338](https://github.com/kompiro/karasu/pull/2338)
 - **関連**:
   - 引き金 Issue: [#2330](https://github.com/kompiro/karasu/issues/2330)
   - 関連 ADR: [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)（ungrouped ルーターの現行憲章）,
