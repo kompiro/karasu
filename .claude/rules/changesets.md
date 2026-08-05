@@ -18,7 +18,7 @@ changeset はマージしても自動生成されない — 開発者が PR の�
 実行して `.changeset/<name>.md` を作り、PR に含める。付け忘れると次のリリースで
 bump されず公開されない（実例: #1754 で 7 PR 分を遡って backfill した）。
 背景は [ADR-1315](../../docs/adr/1315-release-automation-changesets.md)（changesets 採用）と
-`docs/process.md`「リリース運用」。
+`docs/release.md`。
 
 ## changeset が必要な変更
 
@@ -90,7 +90,7 @@ pnpm changeset status --since=main   # ブランチに changeset が含まれる
 
 changeset を**溜める**のが PR の責務、**消費**するのはリリース時
 （`release-prepare.yml` の `changeset version`）。リリース手順は
-`docs/process.md` 「リリースの流れ」を参照。
+`docs/release.md`「リリースの流れ」を参照。
 
 > 将来 changeset-bot（GitHub App）を導入すれば、PR への付け忘れを
-> 自動でコメント検出できる（`docs/process.md` 末尾の TODO）。
+> 自動でコメント検出できる（`docs/release.md` 末尾の TODO）。
