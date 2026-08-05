@@ -183,19 +183,55 @@ band 順序が前提の `groupBackward` 破線だけは grouped 限定のまま�
 grouped で実証済みの品質（貫通 0・overlap 0・決定論）が ungrouped の既定
 ビューに届き、逆に ungrouped で実証済みの内側 channel L が grouped に届く。
 
-snapshot churn は一度きりのコストであり、TPL-1927 の crossing/penetration
-計測を ungrouped fixture（`getting-started` ほか実サンプル）へ拡張して
-before/after を数値で示すことで、目視レビューの負担を「悪化していないことの
-確認」まで下げる。候補列の順序（内側 channel L を gutter より先に試す）が
-両モードの見た目を決める主要パラメータであり、ユーザーレビュー時の主要確認点。
+候補列の順序（内側 channel L を gutter より先に試す）が両モードの見た目を
+決める主要パラメータであり、ユーザーレビュー時の主要確認点。
+
+## PoC の実測（2026-08-05, `spike/composed-router`）
+
+方針の妥当性を判断するため、案1 を実装して実サンプル 12 本・18 レイアウトで
+計測した。実装差分は `layout.ts` / `edge-routing-channels.ts` /
+`edge-routing-groups.ts` の 3 ファイル、+84 / −28 行、新規モジュールなし。
+
+| 指標 | before | after |
+| --- | --- | --- |
+| 貫通（ungrouped 合計） | 10 | **0** |
+| 交差（ungrouped 合計） | 17 | 30（全数 hop マーク付き） |
+| 斜め線（ungrouped 合計） | 89 | 81 |
+| collinear overlap（縦・横とも） | 0 | 0 |
+| grouped 4 レイアウトの全指標 | — | **before と完全一致** |
+
+**得られた知見（当初の想定と食い違った点）:**
+
+1. **churn は想定より遥かに小さい。** 「一度きりの大規模 snapshot 更新」を
+   覚悟していたが、実際に更新が必要だったのは commit 済み guide 図 3 枚のみ。
+   core 3,108 件・repo 全体 5,651 件のテストが無変更で通過した。
+2. **その理由は、ungrouped ルーティングが柵で守られていないため。**
+   貫通 10 → 0 という明確な挙動変化に対して落ちたテストが 0 件だった。
+   ADR-1859 の AC-5（byte-identity）は**ゲートという構造**で成立していたので
+   あり、テストが固定していたわけではない。したがってスライス A の主眼は
+   「churn の吸収」ではなく**柵の新設**にある。TPL-1927 の ungrouped 拡張は
+   churn 正当化の手段ではなく、それ自体が本体の成果物になる。
+3. **ガター迂回が図を横に広げる。** `hr-tool`（貫通 6 の最大ケース）は貫通が
+   消える代わりに右側にガター経由の走行帯ができ、図幅が約 10% 増えた。交差
+   4 → 11 もこの走行帯どうしの交差である。数値（貫通・overlap）には表れない
+   品質劣化なので、スライスを分けて別途扱う（スライス D）。
+4. **ラベルが他エッジの線に乗る問題は本件と独立**（before 18 / after 20）。
+   ADR-2048 の障害物集合がエッジ polyline を含まないことが原因で、grouped /
+   ungrouped の双方で発生する既存欠陥。[#2360](https://github.com/kompiro/karasu/issues/2360)
+   として分離した。
 
 ### スライス（実装ステップ）
 
+PoC の結果を受けて 4 スライスに分割する。当初 3 スライスに **D** を追加したのは、
+PoC で「貫通ゼロ（正しさ）」と「図のコンパクトさ（見た目）」が別々に動く量だと
+判明したため。A だけでも貫通ゼロは達成でき、D は独立に効果を測れる。
+
 | スライス | 前提 | 独立に出荷できる理由 |
 | --- | --- | --- |
-| **A** 単一 system ungrouped を共通パイプラインへ切替 + 計測柵 | — | grouped は不変。ungrouped は計測（貫通数減）で悪化がないことを PR 内で示す |
-| **B** multi-system root へ同パイプラインを配線 | A | root view は現状ルーティング皆無なので純増。A で確立した柵をそのまま使う |
-| **C** ungrouped での trunk 集約の評価・適用判断 | A | trunk なしでも A の貫通 0 は成立。C は可読性の追加改善で、評価の結果「見送り」も許容 |
+| **A** 単一 system を共通候補列へ切替 + 柵の新設 | — | grouped は PoC で全指標不変を実証済み。ungrouped は貫通 10 → 0 で、悪化する指標は交差のみ（全数 hop マーク付きで ADR-1859 のスタンス内） |
+| **B** multi-system root へ同候補列を配線 | A | root view は現状ルーティングが皆無なので純増。A で確立した柵をそのまま適用できる |
+| **C** ungrouped での trunk 集約の評価・適用判断 | A | trunk なしでも A の貫通 0 は成立。評価の結果「見送り」も許容する。external サイド配置（ADR-1728）と trunk lane が外縁で初めて同居するため、A の結果を見てからでないと評価できない |
+| **D** ガター迂回の距離を抑える中間候補の追加 | A | A が作った「図が横に広がる」縮退の緩和。候補列への挿入なので A の貫通ゼロを壊さず、効果は図幅と交差数で独立に測れる |
 
 > 各スライスで何ができるようになるか / その時点でまだできないことは
 > 親 Issue [#2330](https://github.com/kompiro/karasu/issues/2330) の `## Slice status` を参照。
@@ -220,25 +256,35 @@ before/after を数値で示すことで、目視レビューの負担を「悪�
 4. **C**: 共有 infra/external target への fan-in が多い実サンプルで trunk
    集約の有無を比較し、採用可否を判断。採用時も junction dot 規約
    （ADR-1859 P2c-C）をそのまま使う。
-5. AT: `docs/acceptance/` に ungrouped ルーティングの AT を追加。TC は:
+5. **D**: 候補列の 1 と 2 の間に中間候補（最寄りの列間を縦に降りる回廊）を
+   挿入し、外縁ガターまで出る経路を減らす。効果は**図幅**と交差数で測る
+   （貫通・overlap は A が 0 にしているので判定材料にならない）。
+6. AT: `docs/acceptance/` に ungrouped ルーティングの AT を追加。TC は:
    - 同層・上向き edge が直交化され貫通しない
    - external 左右配置（ADR-1728）の見た目が保たれる
    - Group by 切替で edge の identity（id selector / direction style）が保たれる
-6. ADR 昇格: 実装完了後、ADR-1859 の AC-5 を部分 supersede する ADR を
+7. ADR 昇格: 実装完了後、ADR-1859 の AC-5 を部分 supersede する ADR を
    `docs/adr/2330-ungrouped-routing-parity.md` として起こし、本 Design Doc は
    同 PR で削除する。
 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: ungrouped ビューの edge 経路が変わる（貫通の解消・
-  直交化）。`.krs` 文法・スタイルへの影響なし。
+  直交化）。図が横に広がるケースがある（スライス D で緩和）。`.krs` 文法・
+  スタイルへの影響なし。
 - ドキュメント更新: `docs/spec/` への影響なし（view-mode 局所）。
   必要なら `docs/concepts.md` のレイアウト説明を微修正。
-- テスト・examples への影響: ungrouped の snapshot 大規模更新（一度きり）。
+- テスト・examples への影響: PoC 実測で、更新が必要なのは commit 済み guide 図
+  3 枚のみ（`pnpm gen:guide-diagrams` で再生成）。既存テストの失敗は 0 件。
   examples の `.krs` 自体は不変。
 
 ## 決めたこと（レビューでの解消記録）
 
+- **実装は 4 スライスに分割する**（A / B / C / D — 上の「スライス」節）。
+  PoC で「貫通ゼロ（正しさ）」と「図のコンパクトさ（見た目）」が別々に動く量
+  だと判明したため、当初の 3 スライスに D（ガター迂回の距離を抑える中間候補）
+  を追加した。各スライスは sub-issue として親 [#2330](https://github.com/kompiro/karasu/issues/2330)
+  に登録し、到達点の一覧は親 Issue の `## Slice status` が持つ。
 - **スライス C（trunk 集約）は本プログラムに含める**。評価スライスとし、
   「評価の結果見送り」も許容する。
 - **barycenter は起票しない**。宣言順の予測可能性を維持し、問題が観測されて
@@ -256,6 +302,10 @@ before/after を数値で示すことで、目視レビューの負担を「悪�
   無害化する現行スタンスを継続する。なお同層は水平線・x が揃った隣接行は垂直線
   と、真横・真上下の接続は既に矩形線であり、本判断が変えるのは斜め線の扱い
   だけである。
+- **ラベルがエッジの線に乗る問題は本件から分離する**。ADR-2048 の障害物集合が
+  エッジ polyline を含まないことが原因の既存欠陥で、grouped / ungrouped の
+  双方で発生し（実測 before 18 / after 20 件）、本設計の候補列合成とは独立に
+  直せる。[#2360](https://github.com/kompiro/karasu/issues/2360) として起票済み。
 - **reach strip（フレーム coverage 適応）の ungrouped 開放は不要**。
   ungrouped には帯外メンバーを持つフレームが構成的に存在せず（in-place
   expansion は帯機構で連続配置、multi-system frame は system ブロック内で
