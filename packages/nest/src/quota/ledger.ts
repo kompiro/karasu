@@ -98,6 +98,33 @@ export class QuotaLedger {
   }
 
   /**
+   * The next attempt number for one commit, which only ever goes up.
+   *
+   * The instance id needs a discriminator with two properties that pull in
+   * opposite directions: two callers racing the same dispatch must compute the
+   * *same* id (so the platform rejects the loser instead of starting a second
+   * billed run), while a retry after a failure must compute a *different* one
+   * (so it is not rejected as a duplicate of the attempt that failed).
+   *
+   * The monthly charge count looked like it satisfied both, and it does not:
+   * `refund` moves it backwards, so the next dispatch reuses a number, and the
+   * platform answers `(instance.already_exists)`. Clearing the counter by hand
+   * -- which an operator will do -- has the same effect. This counter is never
+   * refunded and never reset, so a number is never handed out twice.
+   *
+   * Under the `quota/` prefix on purpose: it is already swept by
+   * `purgeInstallation`, so no new key space escapes the purge (TPL-2226).
+   */
+  async nextAttempt(installationId: number | string, sha: string): Promise<number> {
+    const key = `quota/${installationPrefix(installationId)}seq/${sha.slice(0, 12)}`;
+    const raw = await this.kv.get(key);
+    const parsed = raw === null ? 0 : Number.parseInt(raw, 10);
+    const next = (Number.isFinite(parsed) && parsed > 0 ? parsed : 0) + 1;
+    await this.kv.put(key, next.toString(), { expirationTtl: QUOTA_TTL_SECONDS });
+    return next;
+  }
+
+  /**
    * Give a charge back.
    *
    * Only for a dispatch that never happened — the Workflow refused to start,

@@ -42,15 +42,9 @@ export interface PurgeResult {
   metrics: number;
   /** Read-count buckets deleted. */
   reads: number;
-<<<<<<< HEAD
   /** Documents kept from failed runs. */
   failed: number;
-  /** Monthly quota counters deleted. */
-||||||| parent of d821fa8c (fix(nest): make a failed generation retryable at the same commit)
-  /** Monthly quota counters deleted. */
-=======
   /** Quota ledger keys deleted: monthly counters plus in-flight slots. */
->>>>>>> d821fa8c (fix(nest): make a failed generation retryable at the same commit)
   quota: number;
 }
 
@@ -159,22 +153,12 @@ export class NestStore {
     const runs = (await this.runs.deleteRepo({ ...ref, installationId: canonical })) ? 1 : 0;
     const metrics = await this.metrics.deleteRepo({ ...ref, installationId: canonical });
     const reads = await this.reads.deleteRepo({ ...ref, installationId: canonical });
-<<<<<<< HEAD
-    // Not the quota: it is per installation, and one repo leaving does not
-    // hand the month's allowance back.
     const failed = await this.failed.deleteRepo({ ...ref, installationId: canonical });
-    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads, quota: 0, failed };
-||||||| parent of d821fa8c (fix(nest): make a failed generation retryable at the same commit)
-    // Not the quota: it is per installation, and one repo leaving does not
-    // hand the month's allowance back.
-    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads, quota: 0 };
-=======
     // The monthly counter stays -- it is per installation, and one repo
     // leaving does not hand the allowance back. The in-flight slot does not:
     // its key names the repo that just left, and the argument for purging
     // slots at all is that the key carries that name.
     const quota = await this.quota.releaseRepoSlots({ ...ref, installationId: canonical });
-    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads, quota };
->>>>>>> d821fa8c (fix(nest): make a failed generation retryable at the same commit)
+    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads, quota, failed };
   }
 }

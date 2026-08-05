@@ -23,7 +23,7 @@ import { error, json } from "../http.js";
 import { logError, logInfo } from "../log.js";
 import { checkQuota } from "../quota/gate.js";
 import { QuotaLedger } from "../quota/ledger.js";
-import { LOCAL_REVERSE_GUIDE, quotaPeriod } from "../quota/policy.js";
+import { LOCAL_REVERSE_GUIDE } from "../quota/policy.js";
 import { InvalidRefError, normaliseName } from "../store/keys.js";
 import { NestStore } from "../store/nest-store.js";
 import { isStale, RunStatusStore } from "../store/run-status.js";
@@ -174,11 +174,12 @@ export async function requestGeneration(context: RouteContext): Promise<Response
   // is a refund on a create that never happened. The charge also supplies the
   // attempt discriminator below, so a retry after a failure gets a new id.
   const used = await ledger.charge(installationId, now);
-  const instanceId = generationInstanceId(
-    { installationId, owner, repo },
-    sha,
-    `${quotaPeriod(now)}.${used}`,
-  );
+  // The discriminator is a counter that only goes up, not the charge count.
+  // A refund moves the charge count backwards, and so does an operator
+  // clearing it, and either one makes the next dispatch reuse an instance id
+  // the platform already has.
+  const attempt = await ledger.nextAttempt(installationId, sha);
+  const instanceId = generationInstanceId({ installationId, owner, repo }, sha, `${attempt}`);
   try {
     await workflow.create({ id: instanceId, params: { installationId, owner, repo } });
   } catch (cause) {

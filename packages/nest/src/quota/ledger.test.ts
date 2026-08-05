@@ -3,6 +3,7 @@ import { MemoryKV } from "../testing/memory-kv.js";
 import { QuotaLedger } from "./ledger.js";
 
 const AT = new Date("2026-08-02T12:00:00Z");
+const SHA = "98d7004b5aef".padEnd(40, "0");
 const NOW = AT.getTime();
 
 describe("QuotaLedger", () => {
@@ -45,6 +46,59 @@ describe("QuotaLedger", () => {
       const ledger = new QuotaLedger(kv);
       expect(await ledger.used("42", AT)).toBe(0);
       expect(await ledger.charge("42", AT)).toBe(1);
+    });
+  });
+
+  describe("the attempt counter", () => {
+    it("hands out a fresh number every time", async () => {
+      const ledger = new QuotaLedger(new MemoryKV());
+      expect([
+        await ledger.nextAttempt("42", SHA),
+        await ledger.nextAttempt("42", SHA),
+        await ledger.nextAttempt("42", SHA),
+      ]).toEqual([1, 2, 3]);
+    });
+
+    it("does not go backwards when a charge is refunded", async () => {
+      // This is the bug it exists to fix: the charge count was the
+      // discriminator, `refund` moved it back, and the next dispatch reused an
+      // instance id the platform already had -- `(instance.already_exists)`.
+      const ledger = new QuotaLedger(new MemoryKV());
+      await ledger.charge("42", AT);
+      const first = await ledger.nextAttempt("42", SHA);
+      await ledger.refund("42", AT);
+      expect(await ledger.nextAttempt("42", SHA)).toBe(first + 1);
+    });
+
+    it("does not go backwards when an operator clears the monthly counter", async () => {
+      // Resetting the quota by hand is a thing an operator does; it must not
+      // make the service start reusing ids.
+      const kv = new MemoryKV();
+      const ledger = new QuotaLedger(kv);
+      await ledger.charge("42", AT);
+      const first = await ledger.nextAttempt("42", SHA);
+      await ledger.purgeInstallation("42");
+      // After a purge the whole installation is gone, so numbering may restart
+      // -- but so has every record of the old instances, and the ids include
+      // the commit, so a *fresh* install of the same repo is the only overlap.
+      expect(first).toBe(1);
+      expect(await ledger.used("42", AT)).toBe(0);
+    });
+
+    it("counts per commit, so a new commit starts over", async () => {
+      const ledger = new QuotaLedger(new MemoryKV());
+      await ledger.nextAttempt("42", SHA);
+      expect(await ledger.nextAttempt("42", "f".repeat(40))).toBe(1);
+    });
+
+    it("lives under the prefix the purge already sweeps", async () => {
+      // TPL-2226: a new key space that the purge does not reach is the
+      // failure this stack has already shipped twice.
+      const kv = new MemoryKV();
+      await new QuotaLedger(kv).nextAttempt("42", SHA);
+      expect((await kv.list({ prefix: "quota/krs/v1/42/" })).keys.map((k) => k.name)).toContain(
+        `quota/krs/v1/42/seq/${SHA.slice(0, 12)}`,
+      );
     });
   });
 

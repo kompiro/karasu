@@ -97,6 +97,32 @@ describe("POST /<owner>/<repo>/generate", () => {
     expect(env.GENERATE_WORKFLOW.created).toHaveLength(1);
   });
 
+  it("keeps handing out fresh ids after a refund, so a retry is not a duplicate", async () => {
+    // The discriminator used to be the charge count. A refund moved it back,
+    // so the next dispatch reused an id the platform already had and every
+    // retry answered `(instance.already_exists)` -- observed in production.
+    installedAs("42");
+    vi.spyOn(GitHubClient.prototype, "defaultBranchSha").mockResolvedValue(SHA);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const kv = new MemoryKV();
+    const refusingOnce: GenerationDispatcher & { created: string[] } = {
+      created: [],
+      create: ({ id }) => {
+        if (refusingOnce.created.length === 0) {
+          refusingOnce.created.push(id ?? "");
+          return Promise.reject(new Error("transient"));
+        }
+        refusingOnce.created.push(id ?? "");
+        return Promise.resolve({ id: id ?? "" });
+      },
+    };
+
+    // First dispatch fails and refunds; second must not reuse the id.
+    await call("POST", "/kompiro/shop/generate", configured(kv, refusingOnce));
+    await call("POST", "/kompiro/shop/generate", configured(kv, refusingOnce));
+    expect(refusingOnce.created[0]).not.toBe(refusingOnce.created[1]);
+  });
+
   it("gives a later attempt at the same commit a new id, so a failure is retryable", async () => {
     // Instance ids stay unique for the platform's retention window, not just
     // for the run's lifetime. Keying on the commit alone meant that once a
