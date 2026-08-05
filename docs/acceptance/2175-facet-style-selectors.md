@@ -2,7 +2,7 @@
 
 - **日付**: 2026-08-04
 - **関連 Issue**: [#2175](https://github.com/kompiro/karasu/issues/2175)（Part B slice 3。親 [#2160](https://github.com/kompiro/karasu/issues/2160)、program [#2065](https://github.com/kompiro/karasu/issues/2065)）。設計の (B8) を解消する
-- **関連 Design Doc**: `docs/design/tags-and-facets.md`（ADR 昇格は Part B 全スライス完了後 — slice 4 / #2177）
+- **関連プログラム決定**: [#2065](https://github.com/kompiro/karasu/issues/2065)（本スライスが解消する (B8) を含む語彙 register の決定。ADR 昇格は Part B 全スライス完了後 = slice 4 / [#2177](https://github.com/kompiro/karasu/issues/2177)）
 - **関連 spec**: [`docs/spec/style.md`](../spec/style.md) §Facet selectors（+ja）/ [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)（+ja）/ [`docs/spec/diagnostics.md`](../spec/diagnostics.md)（+ja）
 - **関連 TPL**: **新規** [TPL-2175](../test-perspectives/TPL-2175-deprecation-announced-only-with-a-migration-target.md)（非推奨は移行先と同じ release で告知する）、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md)、[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)、[TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md)
 - **対象ファイル**:
