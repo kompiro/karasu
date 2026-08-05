@@ -40,8 +40,17 @@ const SKIPPED_PATH = new RegExp(
 /** Above this, a file is a data dump rather than source. */
 const MAX_FILE_BYTES = 200_000;
 
-/** A ceiling on how many blobs one run will read. */
+/** A ceiling on how many files one run will read out of the archive. */
 const MAX_FILES_FETCHED = 200;
+
+/**
+ * A ceiling on the source a single run holds in memory at once.
+ *
+ * The archive arrives as one stream and is read into strings, so this is what
+ * keeps a large repository inside a Worker's memory rather than the file
+ * count -- 200 files of 200 KB each would be 40 MB.
+ */
+const MAX_ARCHIVE_BYTES = 8_000_000;
 
 export interface GenerateInput {
   installationId: string;
@@ -122,32 +131,19 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
   await runs.put(ref, { state: "running", sha, startedAt });
 
   try {
-    const tree = await github.tree(installationId, owner, repo, sha);
-    const eligible = tree.entries
-      .filter((entry) => !SKIPPED_PATH.test(entry.path))
-      .filter((entry) => (entry.size ?? 0) <= MAX_FILE_BYTES);
-    const wanted = eligible.slice(0, MAX_FILES_FETCHED);
-    if (wanted.length === 0) throw new GenerateFailed("no readable source files");
-
-    // Sequential rather than Promise.all: a burst of blob reads is the fastest
-    // way to a secondary rate limit, and this path is already minutes long.
-    const files: { path: string; content: string }[] = [];
-    let unreadableFiles = 0;
-    for (const entry of wanted) {
-      try {
-        files.push({
-          path: entry.path,
-          content: await github.blob(installationId, owner, repo, entry.sha),
-        });
-      } catch (cause) {
-        // One unreadable blob must not discard the minutes already spent. A
-        // reverse missing one file is a worse model; a reverse that never
-        // finishes is no model at all.
-        if (!(cause instanceof GitHubApiError)) throw cause;
-        unreadableFiles += 1;
-      }
-    }
-    if (files.length === 0) throw new GenerateFailed("every source file failed to read");
+    // One request for the whole repository, not one per file. Workers caps
+    // subrequests per invocation and KV operations count toward the same
+    // budget, so per-file fetching capped repository size for a reason that
+    // had nothing to do with the model -- an 85-file repository died partway
+    // through with `Too many subrequests` (see `github/tar.ts`).
+    const archive = await github.sourceFiles(installationId, owner, repo, sha, {
+      accept: ({ path, size }) =>
+        SKIPPED_PATH.test(path) || size > MAX_FILE_BYTES ? "skip" : "read",
+      maxFiles: MAX_FILES_FETCHED,
+      maxTotalBytes: MAX_ARCHIVE_BYTES,
+    });
+    const files = archive.files;
+    if (files.length === 0) throw new GenerateFailed("no readable source files");
 
     // The one-way door. Everything downstream sees redacted text only.
     const redacted = redactFiles(files);
@@ -166,9 +162,13 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       sha,
       reverse,
       redactions: redacted.findings.length,
-      truncatedTree: tree.truncated,
-      truncatedByCap: eligible.length > wanted.length,
-      unreadableFiles,
+      // GitHub's archive is never partial the way its tree API can be, so
+      // this stays false; the field is kept because the pull-request body
+      // distinguishes "GitHub could not give us everything" from "we stopped
+      // early", and only the second can now happen.
+      truncatedTree: false,
+      truncatedByCap: archive.truncated,
+      unreadableFiles: 0,
     };
   } catch (cause) {
     await runs.put(ref, {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { GitHubApiError, GitHubClient } from "../github/client.js";
+import { GitHubClient } from "../github/client.js";
 import type { LlmClient, LlmResponse } from "../reverse/llm.js";
 import { NestStore } from "../store/nest-store.js";
 import { RunStatusStore } from "../store/run-status.js";
@@ -17,30 +17,30 @@ const DECOMPOSE = JSON.stringify({
 });
 const KRS = "```krs\nsystem Shop {\n  service Payments\n}\n```";
 
-/** A GitHubClient whose HTTP layer is a table, so no network and no App key path. */
+/** A GitHubClient whose archive read is a table, so no network and no App key. */
 function stubGithub(
-  files: { path: string; content: string; sha?: string; size?: number }[],
-  overrides: { truncated?: boolean; blobFailsFor?: string } = {},
+  files: { path: string; content: string; size?: number }[],
+  overrides: { truncated?: boolean } = {},
 ): GitHubClient {
   const github = new GitHubClient({ appId: "1", privateKeyPem: "unused", fetchImpl: fetch });
   vi.spyOn(github, "defaultBranchSha").mockResolvedValue(SHA);
-  vi.spyOn(github, "tree").mockResolvedValue({
-    sha: SHA,
-    truncated: overrides.truncated ?? false,
-    entries: files.map((file, index) => ({
-      path: file.path,
-      sha: file.sha ?? index.toString(16).padStart(40, "0"),
-      ...(file.size === undefined ? {} : { size: file.size }),
-    })),
-  });
-  vi.spyOn(github, "blob").mockImplementation((_i, _o, _r, blobSha) => {
-    const index = Number.parseInt(blobSha, 16);
-    const file = files[index];
-    if (file === undefined) return Promise.reject(new Error("unknown blob"));
-    if (overrides.blobFailsFor === file.path) {
-      return Promise.reject(new GitHubApiError(404, `/blobs/${blobSha}`, "blob read failed"));
+  // Mirrors `readGzippedArchive`: the caller's predicate and caps decide, so
+  // the filter tests below exercise the real policy rather than a stub's.
+  vi.spyOn(github, "sourceFiles").mockImplementation((_i, _o, _r, _s, options) => {
+    const kept: { path: string; content: string }[] = [];
+    let truncated = overrides.truncated ?? false;
+    let bytes = 0;
+    for (const file of files) {
+      const size = file.size ?? file.content.length;
+      if (options.accept({ path: file.path, size }) === "skip") continue;
+      if (kept.length >= options.maxFiles || bytes + size > options.maxTotalBytes) {
+        truncated = true;
+        break;
+      }
+      kept.push({ path: file.path, content: file.content });
+      bytes += size;
     }
-    return Promise.resolve(file.content);
+    return Promise.resolve({ files: kept, truncated });
   });
   return github;
 }
@@ -132,7 +132,9 @@ describe("generate", () => {
   });
 
   it("does not publish anything when the reverse fails", async () => {
-    const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\nnot karasu syntax\n```"]);
+    // Four replies: the pipeline asks for a repair before it gives up.
+    const broken = "```krs\nnot karasu syntax\n```";
+    const llm = scriptedLlm([SURVEY, DECOMPOSE, broken, broken]);
     const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
     await expect(generate(input, d)).rejects.toThrowError(/did not parse/);
     expect(await d.store.latest("kompiro", "shop")).toBeUndefined();
@@ -180,14 +182,26 @@ describe("generate", () => {
       await expect(generate(input, d)).rejects.toThrowError(/no readable source files/);
     });
 
-    it("reports a truncated tree rather than implying the whole repo", async () => {
+    it("reports no GitHub-side truncation, because an archive is never partial", async () => {
+      // The tree API can answer "there is more than I will list"; a tarball
+      // cannot. The field stays so the pull-request body can keep saying which
+      // kind of partial happened, and only our own cap can now cause one.
       const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
-      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }], { truncated: true }), llm);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
       const outcome = await generate(input, d);
-      expect([outcome.truncatedTree, outcome.truncatedByCap]).toEqual([true, false]);
+      expect([outcome.truncatedTree, outcome.truncatedByCap]).toEqual([false, false]);
     });
 
-    it("reports its own file cap separately from GitHub's truncation", async () => {
+    it("never reports an unreadable file, because there are no per-file reads", async () => {
+      // A blob call could 404 on its own; an entry inside an archive we
+      // already hold cannot. The count stays in the record because the metrics
+      // schema is retained for 400 days and its meaning is unchanged.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      expect((await generate(input, d)).unreadableFiles).toBe(0);
+    });
+
+    it("reports its own file cap as the reason the model saw less", async () => {
       // Two different reasons the model saw less than the repository, and a
       // caller reading "truncated" needs to know which one it was: one is ours
       // to raise, the other is not.
@@ -204,33 +218,12 @@ describe("generate", () => {
       expect([outcome.truncatedTree, outcome.truncatedByCap]).toEqual([false, true]);
     });
 
-    it("skips a blob it cannot read rather than discarding the whole run", async () => {
-      // Minutes and real inference spend are already committed by the time a
-      // single blob 404s. A model missing one file beats no model at all.
+    it("fails when the archive yields nothing usable", async () => {
+      // Every file skipped by the filter, or an empty repository. Reversing
+      // nothing would produce a confident model of no system.
       const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
-      const d = deps(
-        stubGithub(
-          [
-            { path: "src/gone.ts", content: "UNREADABLE" },
-            { path: "src/pay.ts", content: "export class Payment {}" },
-          ],
-          { blobFailsFor: "src/gone.ts" },
-        ),
-        llm,
-      );
-      const outcome = await generate(input, d);
-      expect(outcome.unreadableFiles).toBe(1);
-      expect(llm.prompts[0]).not.toContain("UNREADABLE");
-      expect((await d.runs.get(input))?.state).toBe("done");
-    });
-
-    it("fails when every blob is unreadable, rather than reversing an empty repo", async () => {
-      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
-      const d = deps(
-        stubGithub([{ path: "src/gone.ts", content: "x" }], { blobFailsFor: "src/gone.ts" }),
-        llm,
-      );
-      await expect(generate(input, d)).rejects.toThrowError(/every source file failed to read/);
+      const d = deps(stubGithub([{ path: "pnpm-lock.yaml", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/no readable source files/);
     });
   });
 
