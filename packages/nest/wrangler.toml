@@ -29,6 +29,15 @@ compatibility_date = "2025-01-01"
 [limits]
 cpu_ms = 60_000
 
+# Keep the logs, rather than requiring someone to be watching.
+#
+# A generation runs for minutes and costs real inference money, and the only
+# record of *why* one failed is what it logged. Without this, that record
+# exists only while a `wrangler tail` happens to be open -- so diagnosing a
+# failure means paying to reproduce it, with someone watching.
+[observability]
+enabled = true
+
 [vars]
 ENVIRONMENT = "production"
 
