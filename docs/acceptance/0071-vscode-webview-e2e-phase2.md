@@ -7,7 +7,7 @@ type: tooling
 ## 概要
 
 Phase 1 (#928 / AT-0069) で wired した ExTester ランナー上で、**WebView の iframe DOM へ降りて leaf node をクリックし、詳細パネルが表示されることを確認する**第一の AT を migrate する
-（Issue [#928](https://github.com/kompiro/karasu/issues/928) Phase 2、設計は `docs/design/vscode-webview-e2e-harness.md`）。
+（Issue [#928](https://github.com/kompiro/karasu/issues/928) Phase 2）。
 
 Phase 2 のスコープ:
 
@@ -58,6 +58,5 @@ Phase 2 の鍵となる技術ポイント:
 ## 関連
 
 - Issue: [#928](https://github.com/kompiro/karasu/issues/928)
-- 設計: `docs/design/vscode-webview-e2e-harness.md`
 - Phase 1 AT: `docs/acceptance/0069-vscode-webview-e2e-phase1.md`
 - 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 で supersede 予定）

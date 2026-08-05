@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-299 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+301 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -126,6 +126,7 @@ flowchart TD
     ADR_2318["ADR-2318<br/>Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロ..."]
     ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
     ADR_2341["ADR-2341<br/>Security alert 2026-08-04 — brace-expansion / f..."]
+    ADR_2351["ADR-2351<br/>docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issu..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -321,6 +322,7 @@ flowchart TD
     ADR_1014["ADR-1014<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
     ADR_1192["ADR-1192<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
     ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
+    ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -732,6 +734,8 @@ flowchart TD
   class ADR_2331 accepted
   class ADR_2333 accepted
   class ADR_2341 accepted
+  class ADR_2348 accepted
+  class ADR_2351 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -758,7 +762,7 @@ flowchart TD
 
 - [`adr-tooling`](graph/adr-tooling.md) — 11 ADRs
 - [`app-ui`](graph/app-ui.md) — 42 ADRs
-- [`build`](graph/build.md) — 67 ADRs
+- [`build`](graph/build.md) — 68 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 20 ADRs
@@ -769,5 +773,5 @@ flowchart TD
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 9 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
-- [`testing`](graph/testing.md) — 12 ADRs
+- [`testing`](graph/testing.md) — 13 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs

@@ -6,7 +6,6 @@
   - `packages/core/src/renderer/edge-routing-channels.ts`（新規）
   - `packages/core/src/renderer/edge-routing.ts`
   - `packages/core/src/renderer/layout.ts`
-- **設計**: `docs/design/auto-layout-edge-routing-orthogonal.md`
 
 ## 受け入れ条件
 

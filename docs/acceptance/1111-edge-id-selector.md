@@ -55,5 +55,5 @@ type: product
 ## 補足
 
 - `edge#<id>` は **per-edge surgical override 用**。read/write のような分類に応じた上書きは `edge[write]` / `edge[read]` を優先する（`docs/spec/style.md` §Edge ID selector）
-- `canonicalId` は parse + view 抽出の後段（`assignEdgeCanonicalIds`）で確定する。author id 重複は error、base 衝突は warning + `canonicalId` クリアで silent breakage を防ぐ（`docs/design/edge-id-selector.md`、Phase A の AT-1110）
+- `canonicalId` は parse + view 抽出の後段（`assignEdgeCanonicalIds`）で確定する。author id 重複は error、base 衝突は warning + `canonicalId` クリアで silent breakage を防ぐ（[ADR-1096](../adr/1096-edge-id-selector.md)、Phase A の AT-1110）
 - 本 AT は GUI 編集器（#1076 / #1098）の前段。GUI からの append 書き戻しは別 AT で扱う
