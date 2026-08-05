@@ -22,6 +22,7 @@ import { ReverseFailed } from "../reverse/pipeline.js";
 import type { LlmClient, LlmUsage } from "../reverse/llm.js";
 import { redactFiles } from "../redact/redact.js";
 import { reverseRepository, type ReverseResult } from "../reverse/pipeline.js";
+import type { FailedDocumentStore } from "../meter/failed-document.js";
 import { MetricsStore } from "../meter/record.js";
 import { markGenerated } from "../store/krs-cache.js";
 import type { NestStore } from "../store/nest-store.js";
@@ -75,6 +76,13 @@ export interface GenerateDeps {
    * level, not a prerequisite for producing a model.
    */
   metrics?: MetricsStore;
+  /**
+   * Where a document that would not parse is kept for a day.
+   *
+   * Optional for the same reason `metrics` is: investigation must never be
+   * the reason a generation fails.
+   */
+  failed?: FailedDocumentStore;
   /** Injected so the run is clock-free and its records are assertable. */
   now: () => Date;
 }
@@ -134,7 +142,7 @@ function callerSafeMessage(cause: unknown): string {
  * detached does not have to remember to write the status itself.
  */
 export async function generate(input: GenerateInput, deps: GenerateDeps): Promise<GenerateOutcome> {
-  const { github, llm, store, runs, metrics, now } = deps;
+  const { github, llm, store, runs, metrics, failed, now } = deps;
   const { installationId, owner, repo } = input;
   const ref = { installationId, owner, repo };
   const startedAtMs = now().getTime();
@@ -278,7 +286,18 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       // one fact a failed run can still establish: how far it got.
       recordedPasses = observedPasses;
       // And why it stopped, when the parser can say so structurally.
-      if (cause instanceof ReverseFailed) failureDiagnostics = cause.diagnostics;
+      if (cause instanceof ReverseFailed) {
+        failureDiagnostics = cause.diagnostics;
+        // Plus the document itself, briefly. Line numbers without the lines
+        // are not an investigation.
+        if (cause.document !== undefined && failed !== undefined) {
+          try {
+            await failed.put(ref, sha, cause.document);
+          } catch (writeFailure) {
+            logError("karasu-nest could not keep the failed document", writeFailure);
+          }
+        }
+      }
       await meter("failed", "unknown");
     }
     throw cause;

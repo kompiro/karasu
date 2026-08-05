@@ -14,6 +14,7 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 import { requireBinding, type NestEnv } from "../env.js";
 import { GitHubClient } from "../github/client.js";
+import { FailedDocumentStore } from "../meter/failed-document.js";
 import { MetricsStore } from "../meter/record.js";
 import { AnthropicClient } from "../reverse/llm.js";
 import { NestStore } from "../store/nest-store.js";
@@ -55,6 +56,7 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
           store: new NestStore(requireBinding(env, "KRS_CACHE")),
           runs: new RunStatusStore(requireBinding(env, "KRS_CACHE")),
           metrics: new MetricsStore(requireBinding(env, "KRS_CACHE")),
+          failed: new FailedDocumentStore(requireBinding(env, "KRS_CACHE")),
           now: () => new Date(),
         },
       );

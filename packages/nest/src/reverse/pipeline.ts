@@ -153,6 +153,15 @@ export class ReverseFailed extends Error {
      * the log that does name it only exists while something is watching.
      */
     readonly diagnostics?: StructuralDiagnostic[],
+    /**
+     * The document that would not parse.
+     *
+     * Carried so the caller can keep it briefly for investigation: a
+     * diagnostic's line numbers are not much use without the lines. It has
+     * already been through `assertStructureOnly`, so it is the same artifact
+     * that would have been published had it parsed.
+     */
+    readonly document?: string,
   ) {
     super(`${pass}: ${message}`);
     this.name = "ReverseFailed";
@@ -452,6 +461,7 @@ export async function reverseRepository(
           ? {}
           : { at: `${diagnostic.loc.start.line}:${diagnostic.loc.start.column}` }),
       })),
+      krs,
     );
   }
   // Parsing is not enough. A comment-only document, or one describing only a

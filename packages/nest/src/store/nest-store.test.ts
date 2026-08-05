@@ -50,6 +50,7 @@ describe("NestStore", () => {
       runs: 0,
       metrics: 0,
       reads: 0,
+      failed: 0,
     });
   });
 
@@ -94,6 +95,7 @@ describe("NestStore", () => {
         runs: 0,
         metrics: 0,
         reads: 0,
+        failed: 0,
       });
       expect(kv.keys()).toEqual([]);
       expect(await store.latest("kompiro", "karasu")).toBeUndefined();
@@ -111,6 +113,7 @@ describe("NestStore", () => {
         runs: 0,
         metrics: 0,
         reads: 0,
+        failed: 0,
       });
       expect(await store.latest("kompiro", "hane")).toBeDefined();
     });
@@ -131,6 +134,7 @@ describe("NestStore", () => {
         runs: 0,
         metrics: 0,
         reads: 0,
+        failed: 0,
       });
       expect((await store.latest("kompiro", "karasu"))?.installationId).toBe("43");
     });
@@ -142,6 +146,7 @@ describe("NestStore", () => {
         runs: 0,
         metrics: 0,
         reads: 0,
+        failed: 0,
       });
     });
 
@@ -157,6 +162,7 @@ describe("NestStore", () => {
         runs: 0,
         metrics: 0,
         reads: 0,
+        failed: 0,
       });
       expect(kv.keys()).toEqual([]);
     });
@@ -176,6 +182,7 @@ describe("NestStore", () => {
         runs: 0,
         metrics: 0,
         reads: 0,
+        failed: 0,
       });
       expect(await store.latest("kompiro", "karasu")).toBeUndefined();
       expect(await store.latest("kompiro", "hane")).toBeDefined();
@@ -191,6 +198,7 @@ describe("NestStore", () => {
         runs: 0,
         metrics: 0,
         reads: 0,
+        failed: 0,
       });
       expect(await store.latest("kompiro", "karasu")).toBeDefined();
     });

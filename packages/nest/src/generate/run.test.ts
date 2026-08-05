@@ -333,7 +333,10 @@ describe("generate", () => {
       // Otherwise diagnosing a failed run means paying to reproduce it with a
       // `wrangler tail` open -- and the failure record is the one thing that
       // outlives the run.
-      const broken = "```krs\nsystem S {\n  domain D {\n    nonsense here\n  }\n}\n```";
+      // Attributes on a brace-carrying line: the deterministic prune refuses
+      // to delete it, so this still reaches the diagnostics path.
+      const broken =
+        "```krs\nsystem S {\n  service Svc {\n    domain D {\n      entity B { id: UUID }\n    }\n  }\n}\n```";
       const llm = scriptedLlm([SURVEY, DECOMPOSE, broken, broken]);
       const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
       await expect(generate(input, d)).rejects.toThrowError(/did not parse/);
@@ -342,7 +345,7 @@ describe("generate", () => {
       expect(recorded?.diagnostics?.length).toBeGreaterThan(0);
       expect(recorded?.diagnostics?.[0]?.at).toMatch(/^\d+:\d+$/);
       // The record still carries no repository or generated text.
-      expect(JSON.stringify(recorded)).not.toContain("nonsense");
+      expect(JSON.stringify(recorded)).not.toContain("UUID");
     });
 
     it("runs without a metrics store at all", async () => {

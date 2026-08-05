@@ -14,7 +14,10 @@
  * enumerates KV is a free way to make the service pay for reads.
  */
 import { requireBinding } from "../env.js";
-import { error, json } from "../http.js";
+import { GitHubClient } from "../github/client.js";
+import { error, json, text } from "../http.js";
+import { FailedDocumentStore } from "../meter/failed-document.js";
+import { InvalidRefError, normaliseName } from "../store/keys.js";
 import { costUsd, isPricedModel, PRICING_AS_OF } from "../meter/cost.js";
 import { ReadCounter } from "../meter/reads.js";
 import { MetricsStore } from "../meter/record.js";
@@ -52,6 +55,61 @@ function bearerFrom(request: Request): string | undefined {
   // debugging session nobody needs to have.
   const match = /^Bearer\s+(.+)$/i.exec(header);
   return match?.[1];
+}
+
+/**
+ * `GET /admin/failed/<owner>/<repo>` — the document a failed run produced.
+ *
+ * Behind the same bearer token as the report, and deliberately not behind
+ * `GET /<owner>/<repo>`. That route serves generated models to anyone, and a
+ * document that failed to parse has had no structural review at all -- the
+ * repository it came from may be private, and this is the one artifact of a
+ * run nobody has looked at.
+ *
+ * It exists because a diagnostic's line numbers are not an investigation
+ * without the lines to apply them to.
+ */
+export async function failedDocument(context: RouteContext): Promise<Response> {
+  const { request, env, params } = context;
+  const expected = requireBinding(env, "METRICS_TOKEN");
+  const presented = bearerFrom(request);
+  if (presented === undefined || !(await secretsMatch(presented, expected))) {
+    return error(401, "unauthorized", "This endpoint requires a bearer token.");
+  }
+
+  let owner: string;
+  let repo: string;
+  try {
+    owner = normaliseName(params.owner ?? "", "owner");
+    repo = normaliseName(params.repo ?? "", "repo");
+  } catch (cause) {
+    if (cause instanceof InvalidRefError) return error(400, "invalid_repo", `${cause.message}.`);
+    throw cause;
+  }
+
+  const kv = requireBinding(env, "KRS_CACHE");
+  const github = new GitHubClient({
+    appId: requireBinding(env, "GITHUB_APP_ID"),
+    privateKeyPem: requireBinding(env, "GITHUB_APP_PRIVATE_KEY"),
+  });
+  const installationId = await github.installationIdFor(owner, repo);
+  if (installationId === undefined) return error(404, "not_installed", "No installation.");
+
+  const found = await new FailedDocumentStore(kv).latest({ installationId, owner, repo });
+  if (found === undefined) {
+    return error(
+      404,
+      "no_failed_document",
+      "No failed document is being kept for this repository.",
+    );
+  }
+  return text(found.krs, {
+    headers: {
+      "X-Karasu-Source-Sha": found.sha,
+      // Named so a download is obviously the broken one, not a model to use.
+      "Content-Disposition": `inline; filename="${owner}-${repo}-failed.krs"`,
+    },
+  });
 }
 
 export async function metricsReport(context: RouteContext): Promise<Response> {

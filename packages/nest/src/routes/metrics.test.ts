@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { handleRequest } from "../app.js";
 import type { NestEnv, NestExecutionContext } from "../env.js";
+import { FailedDocumentStore } from "../meter/failed-document.js";
+import { GitHubClient } from "../github/client.js";
 import { MetricsStore, type RunMetrics } from "../meter/record.js";
 import { ReadCounter } from "../meter/reads.js";
 import { MemoryKV } from "../testing/memory-kv.js";
@@ -142,5 +144,61 @@ describe("GET /admin/metrics", () => {
       const response = await call(env(new MemoryKV()), TOKEN);
       expect(response.status).toBe(200);
     });
+  });
+});
+
+describe("GET /admin/failed/<owner>/<repo>", () => {
+  const failedCall = (kvEnv: NestEnv, token?: string): Promise<Response> =>
+    handleRequest(
+      new Request("https://nest.example/admin/failed/kompiro/shop", {
+        headers: token === undefined ? {} : { Authorization: `Bearer ${token}` },
+      }),
+      kvEnv,
+      ctx,
+    );
+
+  const configuredWithApp = (kv: MemoryKV): NestEnv => ({
+    ...env(kv),
+    GITHUB_APP_ID: "1",
+    GITHUB_APP_PRIVATE_KEY: "unused",
+  });
+
+  it("serves the document a failed run produced", async () => {
+    // A diagnostic's line numbers are not an investigation without the lines.
+    vi.spyOn(GitHubClient.prototype, "installationIdFor").mockResolvedValue("42");
+    const kv = new MemoryKV();
+    await new FailedDocumentStore(kv).put(ref, "a".repeat(40), "system Shop { broken");
+
+    const response = await failedCall(configuredWithApp(kv), TOKEN);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("system Shop { broken");
+    expect(response.headers.get("X-Karasu-Source-Sha")).toBe("a".repeat(40));
+  });
+
+  it("is not public, unlike the route that serves generated models", async () => {
+    // A document that failed to parse has had no structural review at all,
+    // and the repository it came from may be private.
+    vi.spyOn(GitHubClient.prototype, "installationIdFor").mockResolvedValue("42");
+    const kv = new MemoryKV();
+    await new FailedDocumentStore(kv).put(ref, "a".repeat(40), "system Shop { broken");
+
+    expect((await failedCall(configuredWithApp(kv))).status).toBe(401);
+    expect((await failedCall(configuredWithApp(kv), "wrong")).status).toBe(401);
+  });
+
+  it("404s when nothing is being kept", async () => {
+    vi.spyOn(GitHubClient.prototype, "installationIdFor").mockResolvedValue("42");
+    const response = await failedCall(configuredWithApp(new MemoryKV()), TOKEN);
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.code).toBe("no_failed_document");
+  });
+
+  it("is not shadowed by the /<owner>/<repo> route", async () => {
+    // `/admin/failed/kompiro/shop` has four segments and would otherwise be
+    // answered as a repository named `admin/failed`.
+    vi.spyOn(GitHubClient.prototype, "installationIdFor").mockResolvedValue("42");
+    const response = await failedCall(configuredWithApp(new MemoryKV()), TOKEN);
+    expect([404]).toContain(response.status);
+    expect((await response.json()).error.code).toBe("no_failed_document");
   });
 });

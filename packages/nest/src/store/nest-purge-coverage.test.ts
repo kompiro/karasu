@@ -18,6 +18,7 @@
  * See TPL-2226.
  */
 import { describe, expect, it } from "vitest";
+import { FailedDocumentStore } from "../meter/failed-document.js";
 import { ReadCounter } from "../meter/reads.js";
 import { MetricsStore } from "../meter/record.js";
 import { markGenerated } from "./krs-cache.js";
@@ -85,6 +86,12 @@ const SEEDERS: { prefix: string; seed: (kv: MemoryKV) => Promise<void> }[] = [
     },
   },
   {
+    prefix: "failed/",
+    seed: async (kv) => {
+      await new FailedDocumentStore(kv).put(ref, SHA, "system Shop { not valid");
+    },
+  },
+  {
     prefix: "reads/",
     seed: async (kv) => {
       await new ReadCounter(kv).increment(ref, new Date("2026-08-02T00:20:00Z"));
@@ -123,7 +130,14 @@ describe("purge coverage (ADR-1990 decision 6)", () => {
     const kv = new MemoryKV();
     await seedEverything(kv);
     const result = await new NestStore(kv).purgeInstallation("42");
-    expect(result).toEqual({ documents: 1, pointers: 1, runs: 1, metrics: 1, reads: 1 });
+    expect(result).toEqual({
+      documents: 1,
+      pointers: 1,
+      runs: 1,
+      metrics: 1,
+      reads: 1,
+      failed: 1,
+    });
   });
 
   it("touches nothing belonging to another installation", async () => {

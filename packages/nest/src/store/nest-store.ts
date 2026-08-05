@@ -17,6 +17,7 @@
  */
 import type { KVNamespaceLike } from "../env.js";
 import { ReadCounter } from "../meter/reads.js";
+import { FailedDocumentStore } from "../meter/failed-document.js";
 import { MetricsStore } from "../meter/record.js";
 import type { CachedRef, RepoRef } from "./keys.js";
 import { installationPrefix } from "./keys.js";
@@ -40,6 +41,8 @@ export interface PurgeResult {
   metrics: number;
   /** Read-count buckets deleted. */
   reads: number;
+  /** Documents kept from failed runs. */
+  failed: number;
 }
 
 /** The installation id as the directory records it, canonical and comparable. */
@@ -55,6 +58,7 @@ export class NestStore {
   private readonly runs: RunStatusStore;
   private readonly metrics: MetricsStore;
   private readonly reads: ReadCounter;
+  private readonly failed: FailedDocumentStore;
 
   constructor(kv: KVNamespaceLike, cache = new KrsCache(kv), directory = new RepoDirectory(kv)) {
     this.cache = cache;
@@ -68,6 +72,7 @@ export class NestStore {
     this.runs = new RunStatusStore(kv);
     this.metrics = new MetricsStore(kv);
     this.reads = new ReadCounter(kv);
+    this.failed = new FailedDocumentStore(kv);
   }
 
   /** The current generated `.krs` for a repo, or `undefined` if there is none. */
@@ -128,7 +133,8 @@ export class NestStore {
     const runs = await this.runs.purgeInstallation(canonical);
     const metrics = await this.metrics.purgeInstallation(canonical);
     const reads = await this.reads.purgeInstallation(canonical);
-    return { documents, pointers, runs, metrics, reads };
+    const failed = await this.failed.purgeInstallation(canonical);
+    return { documents, pointers, runs, metrics, reads, failed };
   }
 
   /** Delete one repo's documents and its pointer. */
@@ -141,6 +147,7 @@ export class NestStore {
     const runs = (await this.runs.deleteRepo({ ...ref, installationId: canonical })) ? 1 : 0;
     const metrics = await this.metrics.deleteRepo({ ...ref, installationId: canonical });
     const reads = await this.reads.deleteRepo({ ...ref, installationId: canonical });
-    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads };
+    const failed = await this.failed.deleteRepo({ ...ref, installationId: canonical });
+    return { documents, pointers: removed ? 1 : 0, runs, metrics, reads, failed };
   }
 }
