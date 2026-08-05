@@ -52,7 +52,7 @@ scope:
 
 ## 既知の対処パターン
 
-- **本番 URL を単一の到達先にする** — `docs/process.md`「手動確認の到達先は本番 URL で書く」に app / docs-site の正典 URL を表で置き、AT 側はそれを指す
+- **本番 URL を単一の到達先にする** — `.claude/rules/acceptance.md`「手動項目の到達先は本番 URL」に app / docs-site の正典 URL を表で置く。AT を編集すると自動で読み込まれる
 - **preview は PR の欄に置き、記録には残さない** — PR テンプレートの `## Preview URL` 欄が preview の正しい住所。AT に写すと寿命が合わない
 - **AT からは Issue を指す** — Issue は削除されず design PR と実装 PR の両方へ辿れる。ADR があれば併記する。強制は `pnpm at:check-coverage`（`scripts/acceptance/design-refs.ts`）で、`docs/acceptance/**` から `docs/design/` への参照を finding として落とす
 - **確認手段が本番にしかない構造を認める** — docs-site は PR preview を持たない（`pages.yml` は main への push でのみデプロイ）。この場合「マージ後に確認する」ことを隠さずに書く。preview がある前提で書くと、実行できない手順になる

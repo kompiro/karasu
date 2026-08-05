@@ -40,11 +40,13 @@ ADR の必須要素は `docs/adr/TEMPLATE.md` を参照。frontmatter スキー�
 
 ## 既存 ADR を覆すとき
 
-旧 ADR を書き換えず、新 ADR で `supersedes` する。
-- 旧 ADR の `status: superseded` + `superseded_by: ADR-...` を設定
-- 新 ADR の `supersedes: [ADR-...]` を設定
-- `pnpm adr:validate` が双方向整合をチェックする
-- 詳細は `docs/process.md` の「既存 ADR を見直すとき」を参照
+旧 ADR を書き換えず、新 ADR で `supersedes` する。旧 ADR は歴史的記録として残す。
+
+- 新 ADR の**背景に「何が変わったためこの再評価に至ったか」を書く**
+- 旧 ADR の body ステータス行を `決定済み` から `Superseded by ADR-<n>` に更新する
+- frontmatter は旧 ADR に `status: superseded` + `superseded_by: ADR-<n>`、新 ADR に
+  `supersedes: [ADR-<n>]`。`pnpm adr:validate` が双方向整合をチェックする
+- 新 ADR の「関連」に旧 ADR へのリンクを置く
 
 ## ADR から karasu 構造へリンクする（permalink）
 
@@ -91,8 +93,9 @@ pnpm adr:regenerate        # docs/adr/effective.md, graph/*.md を再生成
 
 ## Design Doc → ADR への昇格
 
-`docs/design/<name>.md` で設計検討して合意したら、ADR に昇格させ
-`docs/design/<name>.md` を削除する（履歴は PR / Issue で追える）。
+**Design Doc のステータスが「採用」または「取りやめ」に確定したら ADR を作成する。**
+`docs/design/<name>.md` の内容を ADR に集約し、元ファイルを削除する（履歴は PR / Issue
+で追える）。新規 Design Doc の書き出しは `docs/design/TEMPLATE.md`。
 昇格時のファイル名は `docs/adr/<n>-<name>.md`。`<n>` は **起点の GitHub Issue 番号**、
 Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083](https://github.com/kompiro/karasu/issues/2083)）。
 ゼロ埋めしない。GitHub の番号は大域的に一意なので、並行 PR 間で採番が衝突しない
@@ -103,8 +106,7 @@ Issue が無ければ **その ADR を書いた PR の番号**を使う（[#2083
 
 新規 Design Doc の雛形は `docs/design/TEMPLATE.md` を参照。
 
-詳細フローは `docs/process.md` の「設計判断を ADR に残すタイミング」と
-`/start-dev` スキルのステップ 9.5 を参照。
+昇格フローの位置づけは `/start-dev` スキルのステップ 9.5 を参照。
 
 ## ADR PR の auto-merge
 

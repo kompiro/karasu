@@ -16,7 +16,7 @@ assumptions:
   - "file: scripts/acceptance/design-refs.ts"
   - "symbol: scripts/acceptance/design-refs.ts :: analyzeDesignRefs"
   - "file: .claude/rules/acceptance.md"
-  - "grep: docs/process.md :: AT レコードは"
+  - "grep: .claude/rules/acceptance.md :: 設計根拠は Issue で指す"
 ---
 
 # ADR-2348: AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定しているアドレスを記録に埋めない
