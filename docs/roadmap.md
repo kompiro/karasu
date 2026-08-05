@@ -113,8 +113,6 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
 comprehension の残余は下の [§comprehension の残余](#comprehension-の残余)、boundary の
 残余は [§watch 登録](#watch-対象の-experimental-notation登録) の `boundary` 行に持つ。
-`epic: permalink-layer` は [#1828](https://github.com/kompiro/karasu/issues/1828) が宣言した
-スライスがすべて着地し、親の close 判断だけが残る（現在地は [§sequencing](#sequencing)）。
 
 #### comprehension の残余
 
@@ -198,11 +196,10 @@ gate で評価する。
 
 ### sequencing
 
-1. **permalink layer**（retained の背骨）は完成形に到達した。deep permalink・repo-backed / ref-pinned resolver・ADR 側の `@<sha>` 検査に加え、URL は [ADR-1961](adr/1961-bare-permalink-route.md) で `/<owner>/<repo>@<sha>` の裸形になり、payload 上限は [ADR-2259](adr/2259-permalink-payload-cap.md) で決着した。残るのは親 [#1828](https://github.com/kompiro/karasu/issues/1828) の close 判断のみで、律速ではない。
-2. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。scaffold → App auth → pipeline の依存順のまま実装スタックがレビューに入っており、data-trust（[#1996](https://github.com/kompiro/karasu/issues/1996)）は他人の private code に触る前の**前提条件**。
-3. **syntax 2.0 の二本柱**（facets [#2065](https://github.com/kompiro/karasu/issues/2065) / boundary は残る colour override [#2234](https://github.com/kompiro/karasu/issues/2234)）はどちらも v1.x の最終スライスがレビュー中で、`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載った（閉鎖・core 昇格そのものは [§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
-4. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は評価可能。
-5. **非ゴール圧力 log** は随時追記（安価）。
+1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。scaffold → App auth → pipeline の依存順のまま実装スタックがレビューに入っており、data-trust（[#1996](https://github.com/kompiro/karasu/issues/1996)）は他人の private code に触る前の**前提条件**。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
+2. **syntax 2.0 の二本柱**（facets [#2065](https://github.com/kompiro/karasu/issues/2065) / boundary は残る colour override [#2234](https://github.com/kompiro/karasu/issues/2234)）はどちらも v1.x の最終スライスがレビュー中で、`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載った（閉鎖・core 昇格そのものは [§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
+3. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は評価可能。
+4. **非ゴール圧力 log** は随時追記（安価）。
 
 ---
 
