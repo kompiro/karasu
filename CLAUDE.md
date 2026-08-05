@@ -22,6 +22,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | 受け入れテスト基準                                  | `docs/acceptance/`              |
 | テスト観点ライブラリ（過去 bug から抽出した再発防止観点） | `docs/test-perspectives/`       |
 | 開発プロセス（ドキュメントライフサイクル・PR フロー） | `docs/process.md`               |
+| リリース・依存更新の運用（リリース時・Dependabot 処理時に読む） | `docs/release.md`               |
 | ロードマップ（全体方針 — 現在と次の一手のみ、完了内容は pruning）— living | `docs/roadmap.md`               |
 | サンプル `.krs` ファイル（チュートリアル・AT用）     | `examples/`                     |
 

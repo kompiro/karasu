@@ -3,8 +3,7 @@
 ## Summary
 
 Verify the MVP graphical diff viewer renders semantic differences between two
-`.krs` files directly on the system diagram. Issue #650 design doc:
-`docs/design/graphical-diff-viewer.md`.
+`.krs` files directly on the system diagram. Issue #650.
 
 This MVP covers the **system view only** with the **file-picker source**
 (workspace file → workspace file). Deploy / org views, paste input, OPFS

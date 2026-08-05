@@ -1,6 +1,6 @@
 # ADR Topic: app-ui
 
-41 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+42 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -42,6 +42,7 @@ flowchart TD
     ADR_1646["ADR-1646<br/>gallery の example は id 指定・固定 origin fetch で app..."]
     ADR_1955["ADR-1955<br/>全 service をその場一括展開する — Collapse all / Expand al..."]
     ADR_2120["ADR-2120<br/>bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
+    ADR_2316["ADR-2316<br/>experimental notation は Reference に載せ、experimen..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -128,6 +129,7 @@ flowchart TD
   class ADR_1646 accepted
   class ADR_1955 accepted
   class ADR_2120 accepted
+  class ADR_2316 accepted
   class ADR_9009 accepted
   class ADR_9010 accepted
   class ADR_9011 accepted

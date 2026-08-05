@@ -17,10 +17,10 @@ Dependabot 設定・依存更新 ADR を編集するとき、または Dependabo
   ない。トリアージ（`/hane:dependabot` スキル実行を含む）を開始したら、最初に
   本ファイルを明示的に読むこと
 
-正本は `docs/process.md`「Dependabot 運用ルール」セクションと
+正本は `docs/release.md`「Dependabot 運用ルール」セクションと
 `ADR-128`（採用判断）、`ADR-784`（cooldown 7 日）、
 `ADR-1038`（security update 重複 PR の処理）。本ファイルは要点の
-ショートカットで、矛盾があれば process.md と ADR が優先する。
+ショートカットで、矛盾があれば release.md と ADR が優先する。
 
 ## スケジュールと cooldown
 

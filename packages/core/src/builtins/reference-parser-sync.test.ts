@@ -231,3 +231,48 @@ describe("REFERENCE_DATA.nodeKinds ↔ parser", () => {
     },
   );
 });
+
+// The same both-directions check for `groupingConstructs` (#2316). Advertising
+// a property the parser rejects is as wrong as omitting one it accepts — the
+// Reference is a promise about what you can write.
+describe("REFERENCE_DATA.groupingConstructs ↔ parser", () => {
+  /** One writable form per property a grouping construct's block may take. */
+  const GROUPING_PROPERTY_SNIPPETS: Record<string, string> = {
+    label: 'label "L"',
+    description: 'description "D"',
+    link: 'link "https://example.com" "L"',
+    contains: "contains Sv",
+  };
+
+  /** A minimal model the construct's declaration can be appended to. */
+  const PRELUDE = "system S {\n  service Sv {}\n}\n";
+
+  function groupingAccepts(construct: string, property: string): boolean {
+    const source = `${PRELUDE}${construct} g {\n  ${GROUPING_PROPERTY_SNIPPETS[property]!}\n}\n`;
+    return !Parser.parse(source).diagnostics.some(
+      (d) => d.severity === "error" && REJECTION_CODES.has(d.code),
+    );
+  }
+
+  it("covers every property any construct advertises", () => {
+    const uncovered = REFERENCE_DATA.groupingConstructs
+      .flatMap((g) => g.properties)
+      .filter((p) => !GROUPING_PROPERTY_SNIPPETS[p]);
+    expect([...new Set(uncovered)]).toEqual([]);
+  });
+
+  it.each(REFERENCE_DATA.groupingConstructs.map((g) => g.construct))(
+    "`%s`: every listed property parses, and every property that parses is listed",
+    (construct) => {
+      const listed = new Set(
+        REFERENCE_DATA.groupingConstructs.find((g) => g.construct === construct)!.properties,
+      );
+      const accepted = Object.keys(GROUPING_PROPERTY_SNIPPETS).filter((p) =>
+        groupingAccepts(construct, p),
+      );
+
+      expect([...listed].filter((p) => !accepted.includes(p))).toEqual([]);
+      expect(accepted.filter((p) => !listed.has(p))).toEqual([]);
+    },
+  );
+});

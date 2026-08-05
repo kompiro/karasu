@@ -9,8 +9,7 @@ type: tooling
 Phase 3 / AT-0038 の続編として、AT-0072 (#1017) で hint visibility（TC-01,
 TC-02）まで自動化していた `at-0038-cmd-click-hint.test.ts` に **modifier-click
 で editor cursor が移動する** TC-03 / TC-04 を追加する
-（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3、設計は
-`docs/design/vscode-webview-e2e-harness.md`）。
+（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3）。
 
 実装と AT 記録は当初 #1023 で `it.skip` 状態で merge された（karasu 拡張本体の
 LSP server module パス問題が ExTester の installed-mode 経路で破綻していたため）。
@@ -107,6 +106,5 @@ un-skip** が含まれる。
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014), [#1024](https://github.com/kompiro/karasu/issues/1024) (本 PR で close)
-- 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 同 Phase の hint visibility AT: `docs/acceptance/0072-vscode-webview-e2e-phase3-at-0038.md`
 - 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）

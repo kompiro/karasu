@@ -16,8 +16,7 @@ type: process
   - `.gitignore`（`THIRD_PARTY_NOTICES.md` を除外）
   - `.github/PULL_REQUEST_TEMPLATE.md`（`Dependency & license impact` セクション）
   - `CONTRIBUTING.md`（新規 — `License compliance` 節）
-  - `docs/design/license-compliance-automation.md`
-- **ADR**: 実装完了後に昇格予定（`docs/design/license-compliance-automation.md` 参照）
+- **ADR**: [ADR-1320](../adr/1320-license-compliance-automation.md)
 
 ## 受け入れ条件
 

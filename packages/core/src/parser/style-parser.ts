@@ -222,6 +222,17 @@ export class StyleParser {
       selector.nodeType = lastToken.value;
     }
 
+    // boundary#<id> selector (#2234) — only meaningful after `boundary`, the
+    // same shape as edge#<id> below. A boundary is not a node, so a bare
+    // `#<id>` would address the node id space instead; the keyword is what
+    // selects which space the id is read in.
+    if (selector.nodeType === "boundary" && this.peek().type === TokenType.Hash) {
+      this.advance(); // #
+      const id = this.expect(TokenType.Identifier);
+      selector.boundaryId = id.value;
+      lastToken = id;
+    }
+
     // edge#<id> selector — only meaningful after `edge`. Accepts either an
     // author identifier (`edge#criticalWrite`) or a base form
     // (`edge#A->B` / `edge#A-->B`).
@@ -555,6 +566,9 @@ export function computeSpecificity(selector: Omit<StyleSelector, "loc">): number
   let score = 0;
   if (selector.id) score += 100;
   if (selector.edgeId) score += 100;
+  // An id is an id whichever space it names, so `boundary#pci` lands at 101 by
+  // the same 100 + 1 the `edge#<id>` form is built from (#2234).
+  if (selector.boundaryId) score += 100;
   score += selector.tags.length * 10;
   score += selector.annotations.length * 10;
   // `from=` / `to=` endpoint predicates score like a tag (10 each), so

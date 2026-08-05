@@ -16,7 +16,7 @@ scope:
     - cli
 assumptions:
   - "file: docs/roadmap.md"
-  - "file: docs/process.md"
+  - "file: docs/release.md"
   - "file: packages/cli/src/index.ts"
   - "file: docs/test-perspectives/TPL-2005-keystone-terms-single-home.md"
 ---

@@ -266,9 +266,9 @@ export function PreviewColumn() {
           variant="actionable"
           aria-pressed={displayMode === "icon"}
           onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
-          aria-label="Toggle icon mode"
+          aria-label={t("preview.iconMode.ariaLabel")}
         >
-          ◇ Icon Mode
+          ◇ {t("preview.iconMode.label")}
         </Button>
         {activeView === "system" && groupByAxes.length > 0 && (
           <span className="group-by-selector-label">
@@ -359,9 +359,9 @@ export function PreviewColumn() {
             variant="actionable"
             aria-pressed={isOrgTreeViewOpen}
             onClick={onOrgTreeViewToggle}
-            aria-label="Toggle org tree view"
+            aria-label={t("preview.orgTree.ariaLabel")}
           >
-            ⬡ Tree View
+            ⬡ {t("preview.orgTree.label")}
           </Button>
         )}
         {activeView === "system" && hasEntityView && (
@@ -369,27 +369,27 @@ export function PreviewColumn() {
             variant="actionable"
             aria-pressed={isEntityViewOpen}
             onClick={onEntityViewToggle}
-            aria-label="Toggle entity view"
+            aria-label={t("preview.entities.ariaLabel")}
           >
-            ◇ Entities
+            ◇ {t("preview.entities.label")}
           </Button>
         )}
         <Button
           variant="actionable"
           aria-pressed={isAllLayersOpen}
           onClick={onAllLayersToggle}
-          aria-label="Toggle all layers"
+          aria-label={t("preview.allLayers.ariaLabel")}
           disabled={!allLayersAvailable}
         >
-          ⊞ Show All Layers
+          ⊞ {t("preview.allLayers.label")}
         </Button>
         <Button
           variant="actionable"
           onClick={handleOpenAllViews}
-          aria-label="Open all views in new window"
+          aria-label={t("preview.openAllViews.ariaLabel")}
           disabled={!allViewsSvg}
         >
-          ⊟ Open All Views
+          ⊟ {t("preview.openAllViews.label")}
         </Button>
 
         {/* Split export button: left = export current/full, right = drill-down export */}
@@ -470,9 +470,11 @@ export function PreviewColumn() {
           variant="actionable"
           aria-pressed={previewFocused}
           onClick={onPreviewFocusToggle}
-          aria-label={previewFocused ? "Exit focus mode" : "Enter focus mode"}
+          aria-label={
+            previewFocused ? t("preview.focus.exit.ariaLabel") : t("preview.focus.ariaLabel")
+          }
         >
-          {previewFocused ? "↙ Exit Focus" : "↗ Focus"}
+          {previewFocused ? `↙ ${t("preview.focus.exit.label")}` : `↗ ${t("preview.focus.label")}`}
         </Button>
       </div>
       {exportError && (
@@ -481,9 +483,9 @@ export function PreviewColumn() {
           <Button
             className="export-error-dismiss"
             onClick={() => setExportError(null)}
-            aria-label="Dismiss export error"
+            aria-label={t("preview.exportError.dismiss.ariaLabel")}
           >
-            ✕ Dismiss
+            ✕ {t("preview.exportError.dismiss.label")}
           </Button>
         </div>
       )}
