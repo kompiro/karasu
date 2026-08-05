@@ -166,7 +166,7 @@ export const ja: Partial<Translations> = {
   "referencePanel.samples.description": "system + deploy + organization をまとめたサンプル",
   "referencePanel.copy.label": "コピー",
   "referencePanel.copy.copied": "コピーしました！",
-  "referencePanel.experimental.badge": "experimental",
+  "referencePanel.experimental.badge": "実験的",
   "referencePanel.experimental.hint":
     "この記法は後方互換をまだ約束していない。実利用の証拠が promotion gate を通るまで experimental のまま。",
   "referencePanel.grouping.construct": "構文",

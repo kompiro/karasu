@@ -95,7 +95,10 @@ interface ShapeData {
  * A top-level construct that groups or labels *existing* elements rather than
  * declaring one — `boundary` and `facet`. They are neither node kinds nor org
  * kinds, so they get their own catalog (#2316); the Reference panel renders it
- * as its own table and `gen-docs.ts` generates it into `docs/spec/syntax.md`.
+ * as its own table. It is deliberately NOT generated into `docs/spec/syntax.md`:
+ * `boundary` and `facet` each already own a long hand-written section there, and
+ * a generated table beside that prose would make the spec check circular, the
+ * failure mode TPL-2158 names. See the note in `reference-spec-sync.test.ts`.
  *
  * `experimental` is carried as data, not implied by membership in this list: a
  * construct promoted through the gate (ADR-1820) flips the flag and keeps its
