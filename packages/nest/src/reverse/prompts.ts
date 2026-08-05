@@ -170,6 +170,50 @@ const GRAMMAR_EXAMPLE = (
   .join("\n")
   .trim();
 
+/**
+ * The one rule the worked example cannot show, and the one a model breaks
+ * first.
+ *
+ * `docs/spec/syntax.md` predicts this exact failure: "any node inside an
+ * `entity` → `unexpected-token-in-block` — an entity carries a name, its
+ * relations and a `table` mapping, never attributes". Modelling a DDD
+ * repository, the most natural thing to write is
+ * `entity Book { title String }`, which is precisely what karasu forbids --
+ * the "no attributes" line is what keeps entities on the structural side of
+ * the DB-schema non-goal (`docs/concepts.md` → Non-goals).
+ *
+ * The prompt told the model to use `entity` and never showed one: no bundled
+ * example contains one, so the model had to invent the syntax. Real runs
+ * failed with 22-47 `unexpected-token-in-block` errors.
+ *
+ * The snippet is taken from the spec's own `entity` section and compiled by
+ * `prompts.test.ts`, so it cannot drift into teaching something that does not
+ * parse.
+ */
+const ENTITY_RULE = [
+  "An `entity` is a name, its relations and an optional `table` mapping -- **never**",
+  "attributes, columns, types or indexes. This is a hard rule of the notation, not a",
+  "style preference: anything else inside an `entity` block is a parse error.",
+  "",
+  "```krs",
+  "service OrderService {",
+  "  domain Ordering {",
+  "    entity Order {",
+  '      label "Order"',
+  "      table OrderDB.orders",
+  '      Order -> LineItem "line item"',
+  '      Order -> Customers.Customer "placed by"',
+  "    }",
+  "    entity LineItem {}",
+  "    entity Payment {}",
+  "  }",
+  "}",
+  "```",
+  "",
+  "A relation is written once, inside the block of the entity that holds the",
+  "reference, and must start at that entity. The reverse direction is implied.",
+].join("\n");
+
 export function synthesisePrompt({ owner, repo, domains, files }: SynthesiseInput): string {
   return [
     `Write a karasu \`.krs\` model of ${owner}/${repo} using the decomposition below.`,
@@ -188,6 +232,8 @@ export function synthesisePrompt({ owner, repo, domains, files }: SynthesiseInpu
     ),
     "",
     "Aggregates belong inside a domain as `usecase` and `entity`, never as domains of their own.",
+    "",
+    ENTITY_RULE,
     "",
     HONESTY_DIRECTIVE,
     "",
