@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-30
 - **関連 Issue**: [#2173](https://github.com/kompiro/karasu/issues/2173)（tags-and-facets Part B slice 1、親 [#2160](https://github.com/kompiro/karasu/issues/2160) / [#2065](https://github.com/kompiro/karasu/issues/2065)）
-- **関連 ADR**: [ADR-2173](../adr/2173-facet-grammar-and-model.md)（本スライスの実装設計）/ [ADR-2065](../adr/2065-tags-and-facets.md)（プログラム決定）。どちらも slice 4（#2177）で昇格
+- **関連 ADR**: [ADR-2173](../adr/2173-facet-grammar-and-model.md)（本スライスの実装設計）/ [ADR-2065](../adr/2065-tags-and-facets.md)（プログラム決定）。どちらも [#2177](https://github.com/kompiro/karasu/issues/2177) で昇格
 - **関連 spec**: [`docs/spec/syntax.md`](../spec/syntax.md)（Cross-cutting membership (`facet`)）/ [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)（Vocabulary registers）/ [`docs/spec/diagnostics.md`](../spec/diagnostics.md)
 - **関連 TPL**: [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md)（cross-reference は resolver 検証 + unresolved warning）/ [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（多重所属を派生 index で捨てない）/ [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)（マージ後空間で検証）/ [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（round-trip）/ [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理語彙は効果を持つ）/ [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md)（受理形は spec に文書化）
 - **対象ファイル**:

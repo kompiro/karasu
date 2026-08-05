@@ -166,6 +166,13 @@ export const ja: Partial<Translations> = {
   "referencePanel.samples.description": "system + deploy + organization をまとめたサンプル",
   "referencePanel.copy.label": "コピー",
   "referencePanel.copy.copied": "コピーしました！",
+  "referencePanel.experimental.badge": "実験的",
+  "referencePanel.experimental.hint":
+    "この記法は後方互換をまだ約束していない。実利用の証拠が promotion gate を通るまで experimental のまま。",
+  "referencePanel.grouping.construct": "構文",
+  "referencePanel.grouping.description": "説明",
+  "referencePanel.grouping.membership": "所属の書き方",
+  "referencePanel.grouping.properties": "プロパティ",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ SVG をエクスポート",
@@ -178,6 +185,23 @@ export const ja: Partial<Translations> = {
     "draw.io (mxGraph XML) にエクスポート — diagrams.net でレイアウトを仕上げるための逃げ道です",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
+  // 表示状態のトグルと別ウィンドウを開く操作
+  "preview.iconMode.label": "アイコンモード",
+  "preview.iconMode.ariaLabel": "アイコンモードを切り替える",
+  "preview.orgTree.label": "ツリー表示",
+  "preview.orgTree.ariaLabel": "組織のツリー表示を切り替える",
+  "preview.entities.label": "エンティティ",
+  "preview.entities.ariaLabel": "エンティティ表示を切り替える",
+  "preview.allLayers.label": "全レイヤー表示",
+  "preview.allLayers.ariaLabel": "全レイヤー表示を切り替える",
+  "preview.openAllViews.label": "全ビューを開く",
+  "preview.openAllViews.ariaLabel": "全ビューを別ウィンドウで開く",
+  "preview.focus.label": "フォーカス",
+  "preview.focus.ariaLabel": "フォーカスモードに入る",
+  "preview.focus.exit.label": "フォーカス解除",
+  "preview.focus.exit.ariaLabel": "フォーカスモードを抜ける",
+  "preview.exportError.dismiss.label": "閉じる",
+  "preview.exportError.dismiss.ariaLabel": "エクスポートエラーを閉じる",
   // ファセット所属一覧パネル（#2177）
   "facetOverview.title": "ファセット所属一覧",
   "facetOverview.close": "ファセット所属一覧を閉じる",

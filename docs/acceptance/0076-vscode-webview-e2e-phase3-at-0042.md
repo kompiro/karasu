@@ -8,8 +8,7 @@ type: tooling
 
 Phase 3 の最終 AT として、AT-0042-vscode（detail panel の cross-diagram
 navigation）を ExTester WebView ハーネスへ移植する
-（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3、設計は
-`docs/design/vscode-webview-e2e-harness.md`）。
+（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3）。
 
 これで Phase 3 のテスト移植は完了。次は ADR-926 を supersede する
 後継 ADR を起こして Phase 3 を締める。
@@ -103,6 +102,5 @@ UserService（team あり / deploy なし）と `deploy "production"` ブロッ�
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
-- 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 同 file 内の関連 AT: `docs/acceptance/0075-vscode-webview-e2e-phase3-at-0039-rest.md` (AT-0039 残り)
 - 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）

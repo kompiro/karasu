@@ -7,7 +7,7 @@ type: tooling
 ## 概要
 
 `packages/vscode-e2e` に `vscode-extension-tester` (ExTester) ベースの WebView ランナーを追加し、ExTester から karasu 拡張を VS Code に install → 起動 → コマンド実行までを CI で再現できることを確認する
-（Issue [#928](https://github.com/kompiro/karasu/issues/928)、設計は `docs/design/vscode-webview-e2e-harness.md`）。
+（Issue [#928](https://github.com/kompiro/karasu/issues/928)）。
 
 Phase 1 のスコープは **runner 選定の妥当性確認に必要な最小限**:
 
@@ -81,5 +81,4 @@ WebView の iframe に降りてカード/詳細パネルを assert するのは 
 ## 関連
 
 - Issue: [#928](https://github.com/kompiro/karasu/issues/928)
-- 設計: `docs/design/vscode-webview-e2e-harness.md`
 - 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用）

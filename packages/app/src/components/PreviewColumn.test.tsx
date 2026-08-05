@@ -965,3 +965,81 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
     expect(await navigator.clipboard.readText()).toBe(copied);
   });
 });
+
+// Fence for #2317: the toolbar mixed t()-driven and hardcoded-English labels,
+// so the `ja` locale rendered a half-translated row. Rather than asserting each
+// Japanese string (which would break on any wording change), assert the
+// property that was actually violated: under `ja`, no toolbar control renders
+// its English label. A future control added with a literal string fails here.
+describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja", () => {
+  // Every visible label and aria-label the toolbar can render, in `en`.
+  const EN_TOOLBAR_STRINGS = [
+    "Icon Mode",
+    "Toggle icon mode",
+    "Tree View",
+    "Toggle org tree view",
+    "Entities",
+    "Toggle entity view",
+    "Show All Layers",
+    "Toggle all layers",
+    "Open All Views",
+    "Open all views in new window",
+    "Focus",
+    "Enter focus mode",
+    "Exit Focus",
+    "Exit focus mode",
+    "Group by",
+    "Collapse all",
+    "Facets",
+  ];
+
+  function renderJaToolbar(overrides: Partial<PreviewContextValue> = {}) {
+    const { container } = render(
+      <PreviewProvider value={makeProps(overrides)}>
+        <PreviewColumn />
+      </PreviewProvider>,
+      "ja",
+    );
+    return container.querySelector(".preview-toolbar") as HTMLElement;
+  }
+
+  it("system view with every conditional control present renders no English", () => {
+    const toolbar = renderJaToolbar({
+      hasEntityView: true,
+      allLayersSvg: emptySvg,
+      systemView: {
+        ...makeProps().systemView,
+        hasBoundaryAxis: true,
+        anyCollapsible: true,
+        allCollapsed: false,
+        facets: [{ id: "pii", label: "個人情報" }],
+        selectedFacets: [],
+        onFacetToggle: vi.fn<() => void>(),
+      },
+    });
+
+    // Guard the guard: assert the conditional controls actually rendered, so
+    // this test cannot pass by simply not showing them.
+    expect(toolbar.textContent).toContain("ファセット");
+    expect(toolbar.textContent).toContain("すべて畳む");
+    expect(toolbar.textContent).toContain("エンティティ");
+
+    const rendered = [
+      toolbar.textContent ?? "",
+      ...Array.from(toolbar.querySelectorAll("[aria-label]")).map(
+        (el) => el.getAttribute("aria-label") ?? "",
+      ),
+    ].join(" | ");
+
+    for (const english of EN_TOOLBAR_STRINGS) {
+      expect(rendered).not.toContain(english);
+    }
+  });
+
+  it("org view Tree View toggle renders no English", () => {
+    const toolbar = renderJaToolbar({ activeView: "org" });
+    expect(toolbar.textContent).toContain("ツリー表示");
+    expect(toolbar.textContent).not.toContain("Tree View");
+    expect(toolbar.querySelector('[aria-label="Toggle org tree view"]')).toBeNull();
+  });
+});

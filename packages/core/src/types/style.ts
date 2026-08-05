@@ -27,6 +27,16 @@ export interface StyleSelector {
    */
   edgeId?: string;
   /**
+   * Boundary id targeted by a `boundary#<id>` selector (#2234). Compared against
+   * the `boundary` block's declared id.
+   *
+   * Spelled with `#` after the keyword rather than bare, for the same reason
+   * `edge#<id>` is: `#<id>` already addresses a *node*, and a boundary is not a
+   * node, so the keyword is what says which id space is meant. See
+   * `docs/spec/style.md` §Boundary frame selectors.
+   */
+  boundaryId?: string;
+  /**
    * Source node id targeted by an `edge[from=<id>]` selector — matches every
    * edge whose `KrsEdge.from` equals this id. `<id>` may be a dot-notation
    * endpoint (e.g. `OrderDB.OrderTable`) for synthesized usecase→resource
@@ -222,9 +232,48 @@ export interface ResolvedLayoutHints {
   gridColumns?: number;
 }
 
+/**
+ * What a `.krs.style` sheet said about a boundary frame (#2234). Every field is
+ * optional: absent means "the renderer's own answer stands", which for colour is
+ * the cycled hue #2179 assigns by declaration order.
+ *
+ * Deliberately not a `ResolvedNodeStyle`. A frame is not a card, and most node
+ * properties (`shape`, `opacity`, the `badge-*` family) have no meaning on one;
+ * carrying them would promise an effect the renderer does not deliver
+ * (TPL-1503). `docs/spec/style.md` lists exactly this set.
+ */
+export interface ResolvedBoundaryFrameStyle {
+  /**
+   * The frame's identifying colour. Drives the stroke, the low-alpha fill and
+   * the title together, because #2179 established one colour per boundary as a
+   * legibility condition rather than a preference: split them and two
+   * overlapping frames stop reading as an overlap. `backgroundColor` / `color`
+   * override the derived fill and title individually.
+   */
+  borderColor?: string;
+  backgroundColor?: string;
+  color?: string;
+  borderWidth?: number;
+  borderStyle?: "solid" | "dashed" | "dotted";
+}
+
+/** Boundary frame styles, in the two tiers `boundary` / `boundary#<id>` produce. */
+export interface ResolvedBoundaryFrames {
+  /** From bare `boundary { }` rules. Applies to every frame. */
+  base: ResolvedBoundaryFrameStyle;
+  /** From `boundary#<id>` rules, already merged over {@link base}. */
+  byId: Map<string, ResolvedBoundaryFrameStyle>;
+}
+
 export interface ResolvedStyles {
   nodes: Map<string, ResolvedNodeStyle>;
   edges: Map<string, ResolvedEdgeStyle>;
+  /**
+   * Boundary frame styles (#2234). Keyed by boundary id, which is a different
+   * space from `nodes` — a boundary is not a node, so `#pci` and `boundary#pci`
+   * never collide.
+   */
+  boundaryFrames: ResolvedBoundaryFrames;
   defaultNodeStyle: ResolvedNodeStyle;
   defaultEdgeStyle: ResolvedEdgeStyle;
   /**

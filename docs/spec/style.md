@@ -23,6 +23,8 @@
 | Edge source | `edge[from=ApiGateway]` | All edges originating at the node |
 | Edge target | `edge[to=ApiGateway]` | All edges terminating at the node |
 | Edge ID | `edge#criticalWrite`, `edge#A->B`, `edge#A-->B` | A specific edge only |
+| Boundary | `boundary` | All boundary frames (*Group by: boundary*) |
+| Boundary ID | `boundary#pci` | One boundary's frame only |
 
 ---
 
@@ -44,6 +46,8 @@
 | Edge + tag | `edge[async]` | 11 |
 | Edge source/target | `edge[from=ApiGateway]` | 11 |
 | Edge ID | `edge#criticalWrite` | 101 |
+| Boundary | `boundary` | 1 |
+| Boundary ID | `boundary#pci` | 101 |
 <!-- /gen:reference:selector-specificity -->
 
 `edge#criticalWrite` scores 101 = 100 for the id + 1 for the `edge` kind.
@@ -704,6 +708,64 @@ member {
   border-width: 2px;
 }
 ```
+
+---
+
+## Boundary frame selectors (`boundary` / `boundary#<id>`)
+
+Under *Group by: boundary* the system view draws a dashed frame around each
+`boundary`'s members, in an identifying colour cycled by declaration order. A
+style sheet can take that colour over.
+
+```css
+boundary            { border-style: solid; }   /* every frame */
+boundary#pci        { border-color: #C0392B; } /* one boundary */
+```
+
+The keyword is what selects the id space. A boundary is not a node, so a bare
+`#pci` addresses a *node* called `pci` and never reaches the frame, exactly as
+`#criticalWrite` addresses a node rather than the edge `edge#criticalWrite`
+names. Specificity follows from the same parts as everywhere else: `boundary`
+scores 1, `boundary#pci` scores 101 (100 for the id + 1 for the kind).
+
+Boundaries a sheet does not name keep their cycled colour, so naming one does
+not disturb the rest.
+
+**Scoped boundaries.** A `boundary` declared inside a node block has identity
+(declaring scope, id), so two scopes may each hold a `pci`. `boundary#pci` names
+the id without naming a scope, and therefore matches that id in **every** scope,
+including the top level. There is no way to target one scope's boundary today; if
+that turns out to be needed, a qualified form can be added without changing what
+the unqualified one means.
+
+**Supported properties:**
+
+| Property | Effect |
+|----------|--------|
+| `border-color` | The frame's colour. Also drives the fill and the title, unless those are set explicitly |
+| `background-color` | The frame's low-alpha fill, when it should differ from `border-color` |
+| `color` | The frame title, when it should differ from `border-color` |
+| `border-width` | Frame line width (px) |
+| `border-style` | `solid` / `dashed` / `dotted`. Default `dashed` |
+
+> **Note**: one declaration of `border-color` repaints the stroke, the fill and
+> the title together. A boundary's colour is what lets two overlapping frames
+> read as an overlap rather than as one nested in the other, so a single
+> declaration must not split it in two. Set `background-color` / `color` when
+> you want them apart.
+
+> **Note**: `shape` / `opacity` / `border-radius` / `font-*` / `badge-*` are
+> ignored on a frame. A frame that reaches out of its band is drawn as a
+> rectilinear outline, which has no corner radius to set.
+
+Team frames (*Group by: team*) are not addressable this way yet; see
+[#2269](https://github.com/kompiro/karasu/issues/2269).
+
+`boundary` is experimental notation, so this selector carries the same
+no-compatibility-promise as the construct it styles
+([syntax.md](syntax.md#grouping-the-system-view-boundary--experimental)).
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — a boundary's colour reaches the frame and the `◇` tab, which are drawn by different code; both read one resolver so a style override cannot repaint only half of it. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — a bare `boundary` rule parsed and did nothing before this selector existed; it now has an effect. [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the specificity rows above are generated from `reference-data.ts`, not written here.
 
 ---
 

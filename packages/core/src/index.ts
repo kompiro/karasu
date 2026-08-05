@@ -191,6 +191,7 @@ export {
   type ShapeInfo,
   type DeployUnitKindInfo,
   type OrgKindInfo,
+  type GroupingConstructInfo,
   type RefView,
   type SyntaxSection,
   type SyntaxByView,

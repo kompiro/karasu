@@ -9,8 +9,7 @@ that make up an aggregated implicit service edge, the diff viewer:
 2. Opens the `EdgeDetailPanel` with constituent rows showing `+` / `-` / ` `
    markers and color coding for added / removed / unchanged underlying edges
 
-Follow-up to Issue #650 (axis C-2 in
-`docs/design/graphical-diff-viewer.md`).
+Follow-up to Issue #650 (axis C-2).
 
 ---
 

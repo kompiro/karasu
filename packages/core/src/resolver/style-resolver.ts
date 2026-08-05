@@ -15,6 +15,8 @@ import type {
   StyleSelector,
   ResolvedNodeStyle,
   ResolvedEdgeStyle,
+  ResolvedBoundaryFrameStyle,
+  ResolvedBoundaryFrames,
   ResolvedStyles,
   ResolvedLayoutHints,
   ResolvedStyleWarning,
@@ -233,6 +235,7 @@ export function resolveStyles(
   return {
     nodes: nodeStyles,
     edges: edgeStyles,
+    boundaryFrames: resolveBoundaryFrames(allRules),
     defaultNodeStyle: { ...DEFAULT_NODE_STYLE },
     defaultEdgeStyle: resolveDefaultEdgeStyle(allRules),
     layoutHints,
@@ -341,6 +344,66 @@ function resolveDefaultEdgeStyle(rules: StyleRule[]): ResolvedEdgeStyle {
     Object.assign(merged, rule.properties);
   }
   return toResolvedEdgeStyle(merged);
+}
+
+/**
+ * Boundary frame styles from `boundary` / `boundary#<id>` rules (#2234).
+ *
+ * Built from the *rules* rather than from the model's boundary declarations, so
+ * `resolveStyles` needs no new input: a rule naming a boundary that does not
+ * exist simply never gets looked up, which is how `#NoSuchNode` already behaves.
+ *
+ * Cascade is the shared one (specificity, then declaration order), so a bare
+ * `boundary` rule is overridden by `boundary#<id>` at 1 vs 101 without this
+ * function knowing the scores.
+ */
+function resolveBoundaryFrames(rules: StyleRule[]): ResolvedBoundaryFrames {
+  const boundaryRules = rules.filter((rule) => rule.selector.nodeType === "boundary");
+  const merge = (matching: StyleRule[]): ResolvedBoundaryFrameStyle => {
+    const sorted = [...matching].sort(
+      (a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex,
+    );
+    const props: Record<string, string> = {};
+    for (const rule of sorted) Object.assign(props, rule.properties);
+    return toResolvedBoundaryFrameStyle(props);
+  };
+
+  const base = merge(boundaryRules.filter((rule) => rule.selector.boundaryId === undefined));
+  const byId = new Map<string, ResolvedBoundaryFrameStyle>();
+  const namedIds = new Set(
+    boundaryRules
+      .map((rule) => rule.selector.boundaryId)
+      .filter((boundaryId): boundaryId is string => boundaryId !== undefined),
+  );
+  for (const boundaryId of namedIds) {
+    byId.set(
+      boundaryId,
+      merge(
+        boundaryRules.filter(
+          (rule) =>
+            rule.selector.boundaryId === undefined || rule.selector.boundaryId === boundaryId,
+        ),
+      ),
+    );
+  }
+  return { base, byId };
+}
+
+/**
+ * The frame-relevant subset of the property list. Anything outside it is
+ * ignored rather than half-applied, matching how the Org Tree View documents
+ * its own subset (`docs/spec/style.md`).
+ */
+function toResolvedBoundaryFrameStyle(props: Record<string, string>): ResolvedBoundaryFrameStyle {
+  const style: ResolvedBoundaryFrameStyle = {};
+  if (props["border-color"]) style.borderColor = props["border-color"];
+  if (props["background-color"]) style.backgroundColor = props["background-color"];
+  if (props["color"]) style.color = props["color"];
+  if (props["border-width"]) style.borderWidth = parseFloat(props["border-width"]);
+  if (props["border-style"]) {
+    style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
+  }
+  return style;
 }
 
 function collectEdges(node: KrsNode): KrsEdge[] {

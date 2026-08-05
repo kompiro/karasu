@@ -63,4 +63,4 @@ type: product
 
 - 設計どおり **MVP では layout エンジンは `direction` を honor しない**。ユーザーから見ると「メニューを選ぶと style ファイルが書き換わる」だけで、図そのものは変わらない。これは spec の MVP 制約として `docs/spec/style.md` に明記済み（#1124 で解消予定）
 - canonical ID は parse 後に確定する。base 衝突で `canonicalId` がクリアされた edge は SVG attr が空になるため、コンテキストメニュー自体が開かない（AT-B の前提）
-- 書き戻し方針は `docs/design/gui-driven-style-editing.md` に従い、**append-only の cascade override**（既存ルールには触れない、より specificity の高い rule を最後に追記）
+- 書き戻し方針は [ADR-1142](../adr/1142-gui-style-inplace-update.md) に従い、**append-only の cascade override**（既存ルールには触れない、より specificity の高い rule を最後に追記）
