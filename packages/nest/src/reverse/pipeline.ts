@@ -113,8 +113,15 @@ export interface DomainSketch {
  */
 export interface StructuralDiagnostic {
   code: string;
-  /** Which block the parser was inside, when it says so. */
-  blockKind?: string;
+  /**
+   * The class of token the parser rejected -- `Identifier`, `Colon`, `Comma`.
+   *
+   * A class, never the text. This is what identifies the invented syntax: a
+   * line answering `Identifier Colon Identifier Comma` is a schema field
+   * list, which is the one shape an `entity` forbids. `blockKind` was tried
+   * first and is empty in every diagnostic this parser emits.
+   */
+  tokenType?: string;
   /** `line:column`, when the parser gave a range. */
   at?: string;
 }
@@ -398,8 +405,9 @@ export async function reverseRepository(
       `the generated .krs did not parse (${errors.length} error(s), first: ${errors[0]?.code})`,
       errors.slice(0, LOGGED_DIAGNOSTICS).map((diagnostic) => ({
         code: diagnostic.code,
-        ...(typeof (diagnostic.params as { blockKind?: unknown }).blockKind === "string"
-          ? { blockKind: (diagnostic.params as { blockKind: string }).blockKind }
+        ...(typeof (diagnostic.params as { tokenType?: unknown }).tokenType === "string" &&
+        (diagnostic.params as { tokenType: string }).tokenType.length > 0
+          ? { tokenType: (diagnostic.params as { tokenType: string }).tokenType }
           : {}),
         ...(diagnostic.loc === undefined
           ? {}

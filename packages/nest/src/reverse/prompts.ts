@@ -273,7 +273,12 @@ export function repairPrompt(krs: string, diagnostics: RepairDiagnostic[]): stri
     ),
     "",
     "These are usually one or two structural mistakes repeated, not many separate",
-    "ones. Re-read the worked example's block nesting before changing anything.",
+    "ones. Re-read the rules and the worked example before changing anything.",
+    "",
+    // The rule the repair is most often called about. Sending the example
+    // without it asked the model to re-derive a prohibition from an omission,
+    // which is what it got wrong the first time.
+    ENTITY_RULE,
     "",
     "```krs",
     GRAMMAR_EXAMPLE,

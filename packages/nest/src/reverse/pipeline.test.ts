@@ -275,6 +275,9 @@ describe("reverseRepository", () => {
       expect(diagnostics.length).toBeGreaterThan(0);
       expect(diagnostics[0]?.code).toBeTruthy();
       expect(diagnostics[0]?.at).toMatch(/^\d+:\d+$/);
+      // The token *class* is what identifies invented syntax. `blockKind` was
+      // recorded first and is empty in every diagnostic this parser emits.
+      expect(diagnostics.some((diagnostic) => diagnostic.tokenType)).toBe(true);
       // No field carries the generated text itself.
       expect(JSON.stringify(diagnostics)).not.toContain("nonsense");
     });
@@ -301,6 +304,18 @@ describe("reverseRepository", () => {
         "synthesise",
         "repair",
       ]);
+    });
+
+    it("sends the entity rule with the repair, not only the example", async () => {
+      // The repair is called *because* a rule was broken, and the rule most
+      // often broken is the one an example cannot express: an entity carries
+      // no attributes. Sending the example alone asked the model to re-derive
+      // a prohibition from an omission -- the thing it just got wrong.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\nnot syntax\n```", KRS]);
+      await reverseRepository(repo, llm);
+      const repair = llm.prompts[3] ?? "";
+      expect(repair).toContain("never");
+      expect(repair).toContain("entity Order {");
     });
 
     it("shows the repair the parser's complaints, not the whole pile", async () => {
