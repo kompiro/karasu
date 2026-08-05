@@ -267,7 +267,11 @@ describe("reverseRepository", () => {
       // A count and a code do not name the problem, and the log that does
       // only exists while something is watching. This travels into the run's
       // record, so it identifies the construct and quotes none of it.
-      const broken = "```krs\nsystem S {\n  domain D {\n    nonsense here\n  }\n}\n```";
+      // Attributes on a brace-carrying line: the deterministic prune refuses
+      // to delete it (removing a brace would break the nesting), so this
+      // reaches the diagnostics path -- and it is a shape a real run produced.
+      const broken =
+        "```krs\nsystem S {\n  service Svc {\n    domain D {\n      entity B { id: UUID }\n    }\n  }\n}\n```";
       const llm = scriptedLlm([SURVEY, DECOMPOSE, broken, broken]);
       const error = await reverseRepository(repo, llm).catch((cause: unknown) => cause);
       expect(error).toBeInstanceOf(ReverseFailed);
@@ -279,7 +283,7 @@ describe("reverseRepository", () => {
       // recorded first and is empty in every diagnostic this parser emits.
       expect(diagnostics.some((diagnostic) => diagnostic.tokenType)).toBe(true);
       // No field carries the generated text itself.
-      expect(JSON.stringify(diagnostics)).not.toContain("nonsense");
+      expect(JSON.stringify(diagnostics)).not.toContain("Svc");
     });
 
     it("refuses output that is not a model, after one repair attempt", async () => {

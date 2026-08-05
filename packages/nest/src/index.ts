@@ -43,6 +43,8 @@ export {
 export type { Finding, RedactionResult } from "./redact/redact.js";
 export { REDACTION_RULES } from "./redact/rules.js";
 export type { RedactionRule } from "./redact/rules.js";
+export { pruneUnparseableLines } from "./reverse/prune.js";
+export type { PruneResult } from "./reverse/prune.js";
 export { reverseRepository, ReverseFailed } from "./reverse/pipeline.js";
 export type { StructuralDiagnostic } from "./reverse/pipeline.js";
 export type {

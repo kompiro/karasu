@@ -19,6 +19,7 @@
  */
 import { compile } from "@karasu-tools/core";
 import { logError, logInfo } from "../log.js";
+import { pruneUnparseableLines } from "./prune.js";
 import { assertStructureOnly, type Finding } from "../redact/redact.js";
 import type { LlmClient, LlmUsage } from "./llm.js";
 import { decomposePrompt, repairPrompt, surveyPrompt, synthesisePrompt } from "./prompts.js";
@@ -351,6 +352,18 @@ export async function reverseRepository(
   // shot either. Without the loop, one missed brace throws away three paid
   // passes -- which is exactly what a real run did, over 824 errors that were
   // the same mistake repeated.
+  // Deterministic repair first, because it is free, instant and identical
+  // every time. Most of what fails here is a construct the notation has no
+  // home for -- attributes inside an `entity` -- and a line rejected for that
+  // reason carries nothing the model could have expressed. Asking a model to
+  // fix it is another sample from the distribution that produced it: real
+  // runs wandered 824 -> 31 -> 47 -> 22 -> 40 rather than converging.
+  const pruned = pruneUnparseableLines(krs);
+  if (pruned.removed > 0) {
+    krs = pruned.krs;
+    logInfo(`karasu-nest pruned ${pruned.removed} unrepresentable line(s) from the .krs`);
+  }
+
   let compiled = compile(krs, { diagramType: "system" });
   for (let attempt = 0; attempt < MAX_REPAIR_ATTEMPTS; attempt += 1) {
     const errors = compiled.diagnostics.filter((d) => d.severity === "error");
@@ -374,6 +387,13 @@ export async function reverseRepository(
     // A repair is model output like any other, so it goes through the same
     // one-way door before anything else looks at it.
     assertStructureOnly(krs);
+    // And prune what the model handed back, for the same reason: a repair
+    // that reintroduces one unrepresentable line should not cost the run.
+    const prunedRepair = pruneUnparseableLines(krs);
+    if (prunedRepair.removed > 0) {
+      krs = prunedRepair.krs;
+      logInfo(`karasu-nest pruned ${prunedRepair.removed} line(s) from the repaired .krs`);
+    }
     compiled = compile(krs, { diagramType: "system" });
   }
 
