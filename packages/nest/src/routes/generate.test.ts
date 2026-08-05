@@ -15,13 +15,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Records dispatches and rejects a duplicate instance id, like the binding. */
+/**
+ * Records dispatches and refuses what the real binding refuses.
+ *
+ * Both rules matter. Duplicate ids are rejected, which is what makes the
+ * route's read-then-write race harmless. And the id's character set is
+ * checked, because the platform rejects anything outside `[A-Za-z0-9_-]`
+ * with `(instance.invalid_id)` -- a double that accepts any string let a `.`
+ * ship, and the first real dispatch was the first thing to notice.
+ */
 function fakeWorkflow(): GenerationDispatcher & { created: string[] } {
   const created: string[] = [];
   return {
     created,
     create({ id, params }) {
       const instanceId = id ?? `${params.owner}-${params.repo}`;
+      if (!/^[A-Za-z0-9_-]+$/.test(instanceId) || instanceId.length > 64) {
+        return Promise.reject(new Error("(instance.invalid_id) Instance has invalid id"));
+      }
       if (created.includes(instanceId)) {
         return Promise.reject(new Error("instance already exists"));
       }

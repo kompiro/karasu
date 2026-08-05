@@ -40,6 +40,34 @@ export interface GenerationDispatcher {
  * inference cost, last write wins" into "one run, one loser that gets the
  * same answer the winner would have given".
  */
+/**
+ * Characters a Workflow instance id may contain.
+ *
+ * The platform rejects anything else with `(instance.invalid_id)`, and it is
+ * the only thing that enforces this: an id is a plain string to the type
+ * system, and a test double takes whatever it is handed. Owner and repo names
+ * reach this function from a URL, so the id is only as constrained as they
+ * are.
+ *
+ * Sanitising here rather than at the call site because this function owns the
+ * contract with the platform. A caller composing a new id component should
+ * not have to know the rule.
+ */
+const DISALLOWED_IN_INSTANCE_ID = /[^A-Za-z0-9_-]/g;
+
+/** The platform's ceiling on instance id length. */
+export const MAX_INSTANCE_ID_LENGTH = 64;
+
 export function generationInstanceId(params: GenerationParams, sha: string): string {
-  return `${params.installationId}-${params.owner}-${params.repo}-${sha.slice(0, 12)}`;
+  const id = `${params.installationId}-${params.owner}-${params.repo}-${sha.slice(0, 12)}`.replace(
+    DISALLOWED_IN_INSTANCE_ID,
+    "-",
+  );
+  // Not truncated: a silently shortened id could collide with another run's,
+  // and uniqueness is the one property this id exists to provide. Exceeding
+  // the ceiling means the shape needs rethinking, not trimming.
+  if (id.length > MAX_INSTANCE_ID_LENGTH) {
+    throw new Error(`generation instance id is too long for the platform: ${id.length} characters`);
+  }
+  return id;
 }
