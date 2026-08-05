@@ -9,8 +9,7 @@ type: product
 `client` kind に対して、サブタイプタグ（`[mobile]` / `[web]` / `[desktop]` /
 `[cli]` / `[device]` / `[extension]` / `[embed]`）ごとに視覚的に区別できる
 SVG icon が割り当てられることを確認する
-（Issue [#877](https://github.com/kompiro/karasu/issues/877)、設計は
-`docs/design/client-mcp-modeling.md` Q13 / Phase 13）。
+（Issue [#877](https://github.com/kompiro/karasu/issues/877)）。
 
 Phase 2（[#851](https://github.com/kompiro/karasu/issues/851) /
 [AT-0065](./0065-client-kind-phase2-icon.md)）で導入した汎用 `client.svg`
@@ -110,4 +109,3 @@ client[mobile] { shape: box; }
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823)
 - 本 Phase: [#877](https://github.com/kompiro/karasu/issues/877)
 - 依存: [#851](https://github.com/kompiro/karasu/issues/851) / PR #876（Phase 2）
-- 設計ドキュメント: `docs/design/client-mcp-modeling.md` Phase 2 / Q13

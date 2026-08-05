@@ -14,7 +14,7 @@ type: product
   - `packages/core/src/parser/diagnostic-legacy-format.ts`
   - `packages/app/src/i18n/{en,ja,types,format-diagnostic}.ts`
   - `docs/spec/style.md`
-- **関連 ADR**: [ADR-1168](../adr/1168-style-ast-position-and-recovery.md) — Phase 1 のスコープ（Design Doc `docs/design/style-ast-shape.md` から昇格・削除済み）
+- **関連 ADR**: [ADR-1168](../adr/1168-style-ast-position-and-recovery.md) — Phase 1 のスコープ（Design Doc から昇格・削除済み）
 
 ## 受け入れ条件
 
@@ -41,7 +41,7 @@ type: product
 
 ## 補足
 
-- 本 PR は Design Doc `docs/design/style-ast-shape.md` の **フェーズ 1**
+- 本 PR は [ADR-1168](../adr/1168-style-ast-position-and-recovery.md) の **フェーズ 1**
   （位置情報追加 + `,` 誤用検出）に対応する。フェーズ 2/3（trivia 保持・
   構造化 value AST）は据え置き、機能要請が立ち上がった時に再検討する
 - builtin / icon-theme は `<builtin>` / `<icon-theme>` の sentinel sheetId

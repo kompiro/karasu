@@ -8,8 +8,7 @@ services, and that they appear in the system view SVG alongside top-level
 domains and system children. Also verifies the zero-system case where the
 file contains only unassigned services / domains.
 
-Mirrors AT-0040 (top-level domain). See design doc
-`docs/design/top-level-service-rendering.md`.
+Mirrors AT-0040 (top-level domain).
 
 ---
 

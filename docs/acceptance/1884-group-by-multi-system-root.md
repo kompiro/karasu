@@ -20,7 +20,7 @@ collapse も描かなくなり、利用者からは「ghost エッジがある�
 
 本 AT は、**各 system フレームの内側**に P2a grouping を適用する修正（per-(system, team) フレーム）を
 fence する。team が複数 system をまたいで `owns` する場合、各 system に 1 つずつフレームが描かれる
-（cross-system をまたぐ 1 枚のフレームは scope 外 — `docs/design/system-view-grouping.md`）。
+（cross-system をまたぐ 1 枚のフレームは scope 外 — [ADR-1858](../adr/1858-system-view-group-by-team.md)）。
 
 ## 受け入れ条件
 

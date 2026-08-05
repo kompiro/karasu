@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 別ファイルの `system` 配下にネストされた `service` / `domain` / `usecase` を、`import { Sys.Svc.Dom } from "./other.krs"` のような明示 path 構文で取り込めることを確認する
-（Issue [#927](https://github.com/kompiro/karasu/issues/927)、設計は `docs/design/import-system-nested.md`）。
+（Issue [#927](https://github.com/kompiro/karasu/issues/927)）。
 
 PR #913 (`unresolved-realizes`) で生まれた validation gap — クロスファイル参照で深いネストにアクセスできなかった問題 — を解消する。
 
@@ -150,5 +150,4 @@ merged AST には `ECPlatform.ECommerce` が **共通の stub** として 1 つ�
 ## 関連
 
 - 親 Issue: [#927](https://github.com/kompiro/karasu/issues/927)
-- 設計ドキュメント: `docs/design/import-system-nested.md`
 - 動機元: PR #913 / Issue #907 (`unresolved-realizes`)
