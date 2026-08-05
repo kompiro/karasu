@@ -2,7 +2,7 @@
 
 - **日付**: 2026-08-02
 - **Issue**: [#2234](https://github.com/kompiro/karasu/issues/2234)（`epic: boundary` / 親 [#2161](https://github.com/kompiro/karasu/issues/2161)）。follow-up = [#2269](https://github.com/kompiro/karasu/issues/2269)（team フレーム）
-- **設計**: `docs/design/boundary-style-selector.md`
+- **設計**: design PR [#2266](https://github.com/kompiro/karasu/pull/2266)（マージ後に ADR 昇格予定、昇格時に併記）
 - **関連 ADR**: [ADR-9004](../adr/9004-css-inspired-styling.md)（CSS インスパイアの styling）、[ADR-833](../adr/833-diagram-legend-syntax.md)（legend。本件は legend 語彙を足さないと決めた相手）、[ADR-1820](../adr/1820-notation-promotion-gate.md)（`boundary` は experimental 据え置き）
 - **Related TPLs**:
   - [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md)（見た目の決定を 1 つの関数に閉じる。本 PR の proactive）
