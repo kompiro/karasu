@@ -78,6 +78,23 @@ describe("MetricsStore", () => {
     ]);
   });
 
+  it("adds only structural fields when a run failed to parse", async () => {
+    // The failure record is the one thing that outlives a run, so it carries
+    // why -- but a diagnostic's token value would be the generated text, and
+    // "no repository content in the body" does not bend for debugging.
+    const kv = new MemoryKV();
+    await new MetricsStore(kv).record(
+      ref,
+      metrics({
+        outcome: "failed",
+        diagnostics: [{ code: "unexpected-token-in-block", blockKind: "domain", at: "42:7" }],
+      }),
+    );
+    const raw = (await kv.get(`metrics/krs/v1/42/kompiro/shop/${SHA}/2026-08-02T12:00:00Z`)) ?? "";
+    const parsed = JSON.parse(raw) as { diagnostics?: Record<string, unknown>[] };
+    expect(Object.keys(parsed.diagnostics?.[0] ?? {}).sort()).toEqual(["at", "blockKind", "code"]);
+  });
+
   describe("summarise", () => {
     it("splits token totals by model, because costs cannot be summed across them", async () => {
       const store = new MetricsStore(new MemoryKV());

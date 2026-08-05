@@ -160,6 +160,8 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
   // is retained for 400 days and its shape should not shift under a reader.
   const unreadableFiles = 0;
 
+  let failureDiagnostics: { code: string; blockKind?: string; at?: string }[] | undefined;
+
   const meter = async (outcome: "done" | "failed", model: string): Promise<void> => {
     if (metrics === undefined) return;
     try {
@@ -176,6 +178,7 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
         bytesRead,
         redactions,
         unreadableFiles,
+        ...(failureDiagnostics === undefined ? {} : { diagnostics: failureDiagnostics }),
       });
     } catch (cause) {
       // A run that produced a model and could not write its token count has
@@ -274,6 +277,8 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       // Every pass that ran, not just the last one. Collapsing them lost the
       // one fact a failed run can still establish: how far it got.
       recordedPasses = observedPasses;
+      // And why it stopped, when the parser can say so structurally.
+      if (cause instanceof ReverseFailed) failureDiagnostics = cause.diagnostics;
       await meter("failed", "unknown");
     }
     throw cause;

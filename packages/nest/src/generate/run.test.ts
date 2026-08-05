@@ -329,6 +329,22 @@ describe("generate", () => {
       expect(recorded?.passes.every((pass) => pass.outputTokens === 20)).toBe(true);
     });
 
+    it("records why a parse failure failed, without the generated text", async () => {
+      // Otherwise diagnosing a failed run means paying to reproduce it with a
+      // `wrangler tail` open -- and the failure record is the one thing that
+      // outlives the run.
+      const broken = "```krs\nsystem S {\n  domain D {\n    nonsense here\n  }\n}\n```";
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, broken, broken]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/did not parse/);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded?.diagnostics?.length).toBeGreaterThan(0);
+      expect(recorded?.diagnostics?.[0]?.at).toMatch(/^\d+:\d+$/);
+      // The record still carries no repository or generated text.
+      expect(JSON.stringify(recorded)).not.toContain("nonsense");
+    });
+
     it("runs without a metrics store at all", async () => {
       // Optional on purpose: measurement must never be the reason a
       // generation fails.

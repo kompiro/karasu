@@ -58,6 +58,19 @@ export interface RunMetrics {
   redactions: number;
   /** Files a blob read failed on and that were skipped. */
   unreadableFiles: number;
+  /**
+   * Why a failed run failed, structurally.
+   *
+   * Present only for a parse failure. The code and block kind name the
+   * construct the model invented; the position locates it. **No token values**
+   * -- those would be the generated text, and the rule that this body carries
+   * no repository content does not bend for debugging convenience.
+   *
+   * Kept here rather than only in a log because a log exists while something
+   * is watching, and a run that costs minutes and money should not have to be
+   * repeated to be understood.
+   */
+  diagnostics?: { code: string; blockKind?: string; at?: string }[];
 }
 
 /**
