@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-301 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+302 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -308,6 +308,7 @@ flowchart TD
     ADR_999["ADR-999<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_1508["ADR-1508<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
+    ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   subgraph testing["testing"]
@@ -436,6 +437,9 @@ flowchart TD
   ADR_2165 --> ADR_1314
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
+  ADR_2234 --> ADR_9004
+  ADR_2234 --> ADR_1974
+  ADR_2234 --> ADR_2036
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -727,6 +731,7 @@ flowchart TD
   class ADR_2184 accepted
   class ADR_2188 accepted
   class ADR_2218 accepted
+  class ADR_2234 accepted
   class ADR_2249 accepted
   class ADR_2259 accepted
   class ADR_2316 accepted
@@ -772,6 +777,6 @@ flowchart TD
 - [`project`](graph/project.md) — 10 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 9 ADRs
-- [`styling`](graph/styling.md) — 8 ADRs
+- [`styling`](graph/styling.md) — 9 ADRs
 - [`testing`](graph/testing.md) — 13 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs

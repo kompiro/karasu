@@ -1,6 +1,6 @@
 # ADR Topic: styling
 
-8 ADRs in this topic. Solid nodes belong to `styling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+9 ADRs in this topic. Solid nodes belong to `styling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -13,14 +13,21 @@ flowchart TD
     ADR_999["ADR-999<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_1508["ADR-1508<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
+    ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   ADR_477["ADR-477<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
   ADR_1296["ADR-1296<br/>[build] in-app Reference データを `reference-data.ts` に集約し、..."]
+  ADR_1974["ADR-1974<br/>[parser] system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
+  ADR_2036["ADR-2036<br/>[parser] boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
   ADR_108 --> ADR_9004
   ADR_108 --> ADR_8
   ADR_517 --> ADR_477
+  ADR_2234 --> ADR_9004
+  ADR_2234 --> ADR_1974
+  ADR_2234 --> ADR_2036
   ADR_1296 --> ADR_8
+  ADR_2036 --> ADR_1974
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -35,7 +42,10 @@ flowchart TD
   class ADR_999 accepted
   class ADR_1508 accepted
   class ADR_1755 accepted
+  class ADR_2234 accepted
   class ADR_9004 accepted
   class ADR_477 ghost
   class ADR_1296 ghost
+  class ADR_1974 ghost
+  class ADR_2036 ghost
 ```
