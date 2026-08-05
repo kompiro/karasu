@@ -31,8 +31,19 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
     // so splitting here would checkpoint state that cannot be restarted from.
     // What the step boundary does buy is a retry of the whole run on a
     // platform interruption, which is the failure this exists to survive.
-    const outcome = await step.do("generate", async () =>
-      generate(
+    // The step returns nothing on purpose.
+    //
+    // A step's return value is checkpointed to Workflow storage. Returning the
+    // outcome put the whole generated `.krs` there -- a payload that grows
+    // with the repository, for a value used to write one log line. It is also
+    // at odds with why this pipeline runs in a single step: source and
+    // generated document stay inside one invocation's memory rather than being
+    // persisted somewhere whose retention and purge are not the documented
+    // ones (ADR-1990 decision 6).
+    //
+    // So the logging happens inside the step and the checkpoint stays empty.
+    await step.do("generate", async () => {
+      const outcome = await generate(
         { installationId, owner, repo },
         {
           github: new GitHubClient({
@@ -44,15 +55,15 @@ export class GenerateWorkflow extends WorkflowEntrypoint<NestEnv, GenerationPara
           runs: new RunStatusStore(requireBinding(env, "KRS_CACHE")),
           now: () => new Date(),
         },
-      ),
-    );
+      );
 
-    logInfo(
-      `karasu-nest generated ${owner}/${repo}@${outcome.sha}: ` +
-        `${outcome.redactions} redaction(s), ${outcome.unreadableFiles} unreadable, ` +
-        `${outcome.reverse.usage.inputTokens}/${outcome.reverse.usage.outputTokens} tokens` +
-        (outcome.truncatedTree ? ", tree truncated by GitHub" : "") +
-        (outcome.truncatedByCap ? ", tree truncated by our file cap" : ""),
-    );
+      logInfo(
+        `karasu-nest generated ${owner}/${repo}@${outcome.sha}: ` +
+          `${outcome.redactions} redaction(s), ${outcome.unreadableFiles} unreadable, ` +
+          `${outcome.reverse.usage.inputTokens}/${outcome.reverse.usage.outputTokens} tokens` +
+          (outcome.truncatedTree ? ", tree truncated by GitHub" : "") +
+          (outcome.truncatedByCap ? ", stopped at our file cap" : ""),
+      );
+    });
   }
 }
