@@ -96,7 +96,7 @@ export interface ReverseOptions {
    * the cost report silently omits every failed attempt and every retry,
    * which is the direction that makes the service look affordable (#2226).
    */
-  onUsage?: (usage: LlmUsage, pass: string) => void;
+  onUsage?: (usage: LlmUsage, pass: string, model?: string) => void;
 }
 
 export interface ReverseResult {
@@ -271,7 +271,10 @@ export async function reverseRepository(
     logInfo(
       `karasu-nest ${name}: ${response.usage.inputTokens}/${response.usage.outputTokens} tokens`,
     );
-    options.onUsage?.(usage, name);
+    // The model the provider says served this pass. A failed run has no
+    // result to read it off, and a cost record that cannot name the model
+    // cannot be priced -- which is most of what a cost record is for (#2226).
+    options.onUsage?.(usage, name, response.model);
     // A truncated reply that still parses is the dangerous case: it would be
     // cached and served as a complete model of the repository.
     if (response.stopReason === "max_tokens") {

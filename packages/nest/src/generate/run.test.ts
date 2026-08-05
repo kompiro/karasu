@@ -55,7 +55,11 @@ function scriptedLlm(replies: string[]): LlmClient & { prompts: string[] } {
       prompts.push(prompt);
       const text = replies[index] ?? "";
       index += 1;
-      return Promise.resolve({ text, usage: { inputTokens: 10, outputTokens: 20 } });
+      return Promise.resolve({
+        text,
+        model: "claude-opus-5",
+        usage: { inputTokens: 10, outputTokens: 20 },
+      });
     },
   };
 }
@@ -314,6 +318,9 @@ describe("generate", () => {
 
       const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
       expect(recorded?.outcome).toBe("failed");
+      // Named, not "unknown": a cost record that cannot say which model ran
+      // cannot be priced, and pricing is most of what it is for.
+      expect(recorded?.model).toBe("claude-opus-5");
       // Four passes ran before the failure -- survey, decompose, synthesise
       // and the repair attempt -- and every one of them was billed.
       expect(recorded?.outputTokens).toBe(80);

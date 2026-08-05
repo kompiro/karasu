@@ -160,6 +160,9 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
   // failed run has no result -- and "how many passes did we pay for" is the
   // question a failure makes worth asking (#2226).
   const observedPasses: { name: string; inputTokens: number; outputTokens: number }[] = [];
+  // Captured as the passes report it, so a run that throws can still be
+  // priced. Taking it from the result works only when there is a result.
+  let observedModel: string | undefined;
   let bytesRead = 0;
   let fileCount = 0;
   let redactions = 0;
@@ -228,7 +231,8 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       {
         // Spend is captured as it happens, so a run that throws on the third
         // pass still reports what the first two cost.
-        onUsage: (usage, pass) => {
+        onUsage: (usage, pass, model) => {
+          observedModel ??= model;
           // `usage` is cumulative, so a pass costs the difference. Attributing
           // the running total to each pass would make the last one look like
           // it cost everything.
@@ -298,7 +302,7 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
           }
         }
       }
-      await meter("failed", "unknown");
+      await meter("failed", observedModel ?? "unknown");
     }
     throw cause;
   }
