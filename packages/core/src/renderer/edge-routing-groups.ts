@@ -147,6 +147,32 @@ function contentBounds(
   return { minLeft, maxRight };
 }
 
+/**
+ * The frame obstacles an edge must not cross, with the same per-endpoint
+ * exemption `obstaclesFor` applies — but without the node cards, which the
+ * interior channel-L pass (`edge-routing-channels.ts`) already collects itself.
+ * Supplied to that pass so the first candidate in the shared chain cannot bend
+ * an edge straight through a frame it does not belong to (#2362).
+ *
+ * Returns an empty set on an ungrouped canvas, which is exactly what makes the
+ * shared chain degrade to the ADR-968 behaviour there.
+ */
+export function frameObstaclesFor(
+  layoutNodes: Map<string, LayoutNode>,
+  frames: ContainerRect[],
+  expandedFrames?: Map<string, ContainerRect>,
+): (edge: LayoutEdge) => Rect[] {
+  if (frames.length === 0) return () => [];
+  const { framesOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
+  return (edge) => {
+    const fFrom = framesOfNode.get(edge.from);
+    const fTo = framesOfNode.get(edge.to);
+    return frames
+      .filter((f) => !fFrom?.has(f.id) && !fTo?.has(f.id))
+      .flatMap((f) => framePieces(f));
+  };
+}
+
 export function routeGroupedEdges(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
@@ -158,6 +184,12 @@ export function routeGroupedEdges(
    * own frame. Omitted for Group-by team (no frame endpoints there).
    */
   expandedFrames?: Map<string, ContainerRect>,
+  /**
+   * Whether an against-flow edge is flagged for dashing. "Backward" is defined
+   * by the band stack, so it is meaningless without one — the shared chain
+   * passes `false` on an ungrouped canvas (#2362).
+   */
+  markBackward = true,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
@@ -178,7 +210,7 @@ export function routeGroupedEdges(
 
     // Against-flow (target band above source) → dash it. Independent of whether
     // the edge needs rerouting; a clear backward edge is still dashed.
-    if (to.y + to.height <= from.y) edge.groupBackward = true;
+    if (markBackward && to.y + to.height <= from.y) edge.groupBackward = true;
 
     const obstacles = obstaclesFor(edge, nodes, frames, framesOfNode);
 

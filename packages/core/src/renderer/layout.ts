@@ -41,6 +41,7 @@ import {
   aggregateGroupTrunks,
   distributeGutterLanes,
   fanOutGutterPorts,
+  frameObstaclesFor,
 } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
@@ -2002,34 +2003,49 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // See ADR-968 and Issue #996.
   distributePorts(layoutNodes, layoutEdges);
 
-  // Orthogonal routing. In Group-by mode the two-level band layout adds group
-  // frames a straight edge would pierce, which the skip-layer router does not
-  // treat as obstacles; route through side gutters instead so no edge crosses a
-  // node or frame interior (#1859, P2c-A). Ungrouped keeps the skip-layer
-  // channel router unchanged, so "Group by: none" stays byte-identical.
-  // See ADR-968 and docs/design/system-view-grouping.md § "P2c 実装設計".
+  // Shared routing candidate chain (#2362, ADR-1859 AC-5 superseded). The
+  // grouping axis (none / team / boundary) and routing capability are
+  // independent axes, so instead of forking on `groupBands` both routers run,
+  // in priority order, in every mode:
+  //
+  //   straight (left alone when already clear)
+  //     → interior channel-L  (edge-routing-channels.ts, ADR-968)
+  //     → side gutter / mixed (edge-routing-groups.ts, #1859 P2c-A + #1954)
+  //
+  // Each pass skips an edge that a previous one routed (`waypoints` set) or that
+  // needs no routing, so the chain is "cheapest clear candidate wins". The
+  // grouped passes degrade to node-cards-only when `groupFrames` is empty, which
+  // is what lets an ungrouped canvas gain gutter routing without a second
+  // implementation. The ungrouped result is held by the TPL-1927 dual metric
+  // (`routing-parity.test.ts`) instead of by the old byte-identity gate.
+  const groupFrames = containers.filter((c) => c.group);
+  // Candidate 1: interior channel-L. Frames become obstacles (per-endpoint
+  // exemption) so the near route cannot be bent through a frame it is not in.
+  routeOrthogonalEdges(
+    layoutNodes,
+    layoutEdges,
+    frameObstaclesFor(layoutNodes, groupFrames, expandedFrameRects),
+  );
+  // Candidate 2: side gutter, then mixed channel, for whatever is still blocked.
+  // In-place expansion (#1921/#1923) shares this router: passing the expanded
+  // frame rects lets a service-level edge anchor on the frame border and detour
+  // around the *other* frames, while an edge to an interior domain still enters
+  // its own frame. `groupBackward` dashing stays band-gated — "against the flow"
+  // is only defined where there is a band stack.
+  routeGroupedEdges(layoutNodes, layoutEdges, groupFrames, expandedFrameRects, groupBands !== null);
+  // Merge edges sharing an infra/external target onto one trunk lane per target
+  // so distinct targets' spines no longer overlap (#1859 P2c-B). Grouped-only
+  // for now — extending trunks to the ungrouped canvas is slice C's evaluation.
   if (groupBands) {
-    const groupFrames = containers.filter((c) => c.group);
-    // In-place expansion (#1921/#1923) shares the group router: passing the
-    // expanded frame rects lets a service-level edge anchor on the frame border
-    // and detour around the *other* frames, while an edge to an interior domain
-    // still enters its own frame. With multiple expansions this keeps every
-    // frame's edges connected instead of piercing the neighbours.
-    routeGroupedEdges(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
-    // Merge edges sharing an infra/external target onto one trunk lane per
-    // target so distinct targets' spines no longer overlap (#1859 P2c-B).
-    // `expandedFrameRects` lets frame-anchored expansion edges trunk/fan-out too.
     aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
-    // Give the remaining non-trunked gutter corridors distinct lanes so two
-    // single-incoming edges no longer share a collinear vertical segment (#1927).
-    // Waypoint-based, so it already covers frame-anchored edges.
-    distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
-    // Fan out the anchors of edges leaving *or entering* one node/frame on the
-    // same side, so their horizontal stubs no longer overlap into one line (#1927).
-    fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
-  } else {
-    routeOrthogonalEdges(layoutNodes, layoutEdges);
   }
+  // Give the remaining non-trunked gutter corridors distinct lanes so two
+  // single-incoming edges no longer share a collinear vertical segment (#1927),
+  // and fan out the anchors of edges leaving *or entering* one node/frame on the
+  // same side. Both are waypoint-driven, so every route shape the chain can
+  // produce takes part in the overlap passes (TPL-1954) in both modes.
+  distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
+  fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
 
   // Phase 3: stagger horizontal segments that share an inter-row channel
   // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
