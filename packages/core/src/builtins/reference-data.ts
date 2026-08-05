@@ -1145,4 +1145,10 @@ export const SELECTOR_SPECIFICITY: SelectorSpecificityData[] = [
     specificity: 11,
   },
   { label: { en: "Edge ID", ja: "エッジ ID" }, example: "edge#criticalWrite", specificity: 101 },
+  { label: { en: "Boundary", ja: "バウンダリ" }, example: "boundary", specificity: 1 },
+  {
+    label: { en: "Boundary ID", ja: "バウンダリ ID" },
+    example: "boundary#pci",
+    specificity: 101,
+  },
 ];
