@@ -37,7 +37,7 @@
 
 本節が版語彙の**単一の正典**（決定 = [ADR-2124](adr/2124-version-vocabulary.md)。
 [TPL-2005](test-perspectives/TPL-2005-keystone-terms-single-home.md) の
-単一正典原則をこの語彙に適用）。`docs/process.md`（リリース運用）・`docs/glossary.md` は
+単一正典原則をこの語彙に適用）。`docs/release.md`・`docs/glossary.md` は
 本節を参照し、定義を再掲しない。
 
 #### 互換性の軸
@@ -47,7 +47,7 @@
 | 軸 | 対象 | 現在の版 | 約束 | 定義元 |
 | --- | --- | --- | --- | --- |
 | **言語**（`.krs` / `.krs.style`） | 構文・診断 register | 言語 v1.0（frozen） | 後方互換。追加は言語 v1.x、破壊は言語 v2.0 でのみ | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) |
-| **CLI**（`karasu`） | コマンド UX・配布物 | 0.x（npm） | npm semver（0.x = 安定約束なし。floor 0.6.0 — #1774） | `docs/process.md` リリース運用 |
+| **CLI**（`karasu`） | コマンド UX・配布物 | 0.x（npm） | npm semver（0.x = 安定約束なし。floor 0.6.0 — #1774） | `docs/release.md` |
 | **TS API**（`@karasu-tools/core`） | ライブラリ API | 0.x（npm） | **明示的に約束なし**（minor で変わりうる） | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) 非スコープ節 |
 | **VS Code 拡張**（`karasu-vscode`） | Marketplace 配布 | 0.x | 別ケイデンス（changesets bump、公開は手動） | [ADR-1758](adr/1758-vscode-changeset-versioning.md) |
 
@@ -56,7 +56,7 @@
   実装 [#2181](https://github.com/kompiro/karasu/issues/2181)。
 - **言語版が動くリリース**は changeset / CHANGELOG に**言語版遷移を明記**する。パッケージの
   bump レベルは semver 規約で独立に決める（[§promotion gate](#promotion-gatenotation-評価の規律)
-  の発火 touchpoint は `docs/process.md` リリース運用）。
+  の発火 touchpoint は `docs/release.md`）。
 
 #### 正準語彙
 
@@ -135,7 +135,7 @@ experimental notation を stable へ昇格させる判断の規律（決定は [
 - **既定 = experimental 据え置き**。追加しない/据え置くコストは低く、削除コストは高い。昇格に渋く、open/既存構文での表現に寛容に、灰色は experimental に留める。問いは「**stable へ昇格するに足る実利用証拠があるか**」であって「廃止すべきか」ではない。
 - **トリガー**: (i) その notation に触れるリリースの直前（載せる版が言語 v1.x minor（追加互換）か v2.0 major（破壊的変更を伴う昇格）かの判断も含む）、(ii) 実利用データが溜まった時、(iii) 混乱/bug Issue の再発時。
 - **証拠源 = karasu-nest の共有 corpus**。実 OSS を書いた `.krs` が watch tier の必要とする「実利用 pain」の観測装置になる。
-- 配置は **三点配線** — **[ADR-1820](adr/1820-notation-promotion-gate.md)（決定）+ 本書（生きた適用状態）+ [`docs/process.md` リリース運用](process.md#リリース運用)（発火 touchpoint）**。gate を実際に invoke するのは process.md 側で、これにより決定が絵に描いた餅にならないようにする。
+- 配置は **三点配線** — **[ADR-1820](adr/1820-notation-promotion-gate.md)（決定）+ 本書（生きた適用状態）+ [`docs/release.md`](release.md#リリース運用)（発火 touchpoint）**。gate を実際に invoke するのは release.md 側で、これにより決定が絵に描いた餅にならないようにする。
 
 #### watch 対象の experimental notation（登録）
 
