@@ -218,6 +218,73 @@ describe("Reference data ↔ docs/spec agreement (TPL-1296)", () => {
     expect(unknown).toEqual([]);
   });
 
+  // `groupingConstructs` (#2316) is deliberately NOT generated into
+  // `docs/spec/syntax.md`. `boundary` and `facet` each already own a long
+  // hand-written section there, and a generated table beside that prose would
+  // make the check below circular — the failure mode TPL-2158 names. So the
+  // spec stays the independent source and the catalog is fenced against it, in
+  // the same forward direction as the rest of this file.
+
+  it("syntax.md: every grouping construct has its own section, and the section agrees on experimental", () => {
+    const syntaxMd = readSpec("syntax.md");
+    for (const g of ref.groupingConstructs) {
+      // e.g. "## Grouping the system view (`boundary`) — experimental"
+      const heading = syntaxMd
+        .split("\n")
+        .find((l) => /^##\s/.test(l) && l.includes(`\`${g.construct}\``));
+      // A missing heading fails here as `undefined`, naming the construct via
+      // the `for` loop's `it` context.
+      expect({ construct: g.construct, hasSection: heading !== undefined }).toEqual({
+        construct: g.construct,
+        hasSection: true,
+      });
+      expect({ construct: g.construct, experimental: /experimental/i.test(heading!) }).toEqual({
+        construct: g.construct,
+        experimental: g.experimental,
+      });
+    }
+  });
+
+  it("syntax.md: every documented grouping-construct property is in the catalog", () => {
+    const syntaxMd = readSpec("syntax.md");
+    for (const g of ref.groupingConstructs) {
+      const section = sectionLines(syntaxMd, new RegExp(`^##\\s.*\`${g.construct}\``));
+      // The properties the section's `krs` snippets actually write directly
+      // inside a top-level `<construct> <id> { … }` block — `label "x"`,
+      // `contains Id`, `link "u" "l"`. Nested declarations (a `service` inside
+      // a `system`, a scoped `boundary` inside a node) sit at deeper indent and
+      // are not this construct's properties.
+      const written = new Set<string>();
+      for (const block of fencedBlocks(section.join("\n"), "krs")) {
+        const lines = block.split("\n");
+        let inside = false;
+        for (const line of lines) {
+          if (!inside) {
+            if (new RegExp(`^${g.construct}\\s+\\S+\\s*\\{`).test(line)) inside = true;
+            continue;
+          }
+          if (/^}/.test(line)) {
+            inside = false;
+            continue;
+          }
+          const m = line.match(/^ {2}([a-z]+)\s/);
+          if (m) written.add(m[1]);
+        }
+      }
+      // sanity: the extractor actually found something to check
+      expect({ construct: g.construct, extracted: written.size > 0 }).toEqual({
+        construct: g.construct,
+        extracted: true,
+      });
+
+      const undocumented = [...written].filter((p) => !g.properties.includes(p));
+      expect({ construct: g.construct, undocumented }).toEqual({
+        construct: g.construct,
+        undocumented: [],
+      });
+    }
+  });
+
   // The `## Specificity rules (cascade)` table is now GENERATED from
   // `SELECTOR_SPECIFICITY` (#1610) via `scripts/reference/gen-docs.ts`, so a
   // doc↔data parse-and-compare here would be circular. The two stronger guards

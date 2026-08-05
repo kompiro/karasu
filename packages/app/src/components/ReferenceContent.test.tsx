@@ -47,6 +47,42 @@ describe("ReferenceContent", () => {
     expect(body).toContain("#criticalWrite");
   });
 
+  it("Syntax tab reaches boundary and facet, and says how membership is written (#2316)", () => {
+    render(<ReferenceContent />);
+    const body = bodyText();
+    expect(body).toContain("Grouping & Membership");
+    expect(body).toContain("boundary");
+    expect(body).toContain("facet");
+    // The point of the table: `facets` is listed on every node kind, so the
+    // panel has to be able to say what it points at.
+    expect(body).toContain("facets");
+    expect(body).toContain("contains");
+  });
+
+  it("marks the experimental Syntax sections with a badge, and only those", () => {
+    const { container } = render(<ReferenceContent />);
+    const badges = container.querySelectorAll(".reference-experimental-badge");
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) {
+      expect(badge.textContent).toBe("experimental");
+      // The badge belongs to a heading, so a reader cannot see the notation
+      // without also seeing the caveat.
+      expect(badge.parentElement?.tagName).toBe("H3");
+    }
+    // Node Kinds is v1.0-stable — it must not pick up the badge.
+    const headings = Array.from(container.querySelectorAll("h3"));
+    const nodeKinds = headings.find((h) => h.textContent?.startsWith("Node Kinds"));
+    expect(nodeKinds?.querySelector(".reference-experimental-badge")).toBeNull();
+  });
+
+  it("Syntax tab documents the import forms (#2316)", () => {
+    render(<ReferenceContent />);
+    const body = bodyText();
+    expect(body).toContain("Multi-file (import)");
+    expect(body).toContain('@import "theme.krs.style"');
+    expect(body).toContain('import { Foo, Bar.Baz } from "p.krs"');
+  });
+
   it("Syntax tab shows deploy unit kinds when activeView=deploy", () => {
     render(<ReferenceContent activeView="deploy" />);
     const body = bodyText();

@@ -91,10 +91,37 @@ interface ShapeData {
   defaultFor?: string;
 }
 
+/**
+ * A top-level construct that groups or labels *existing* elements rather than
+ * declaring one — `boundary` and `facet`. They are neither node kinds nor org
+ * kinds, so they get their own catalog (#2316); the Reference panel renders it
+ * as its own table. It is deliberately NOT generated into `docs/spec/syntax.md`:
+ * `boundary` and `facet` each already own a long hand-written section there, and
+ * a generated table beside that prose would make the spec check circular, the
+ * failure mode TPL-2158 names. See the note in `reference-spec-sync.test.ts`.
+ *
+ * `experimental` is carried as data, not implied by membership in this list: a
+ * construct promoted through the gate (ADR-1820) flips the flag and keeps its
+ * row. Experimental notation is listed here **on purpose** — hiding it would
+ * suppress the very real-usage evidence the gate needs (ADR-2316).
+ */
+interface GroupingConstructData {
+  /** The declaration keyword (`boundary` / `facet`). */
+  construct: string;
+  description: LocalizedString;
+  /** Properties the declaration block accepts. */
+  properties: string[];
+  /** How an element is written into the set — the answer to "and how do I join one?". */
+  membership: LocalizedString;
+  /** True while backward compatibility is not yet promised (ADR-1820). */
+  experimental: boolean;
+}
+
 interface ReferenceData {
   nodeKinds: NodeKindData[];
   deployUnitKinds: DeployUnitKindData[];
   orgKinds: OrgKindData[];
+  groupingConstructs: GroupingConstructData[];
   tags: TagData[];
   annotations: AnnotationData[];
   styleProperties: StylePropertyData[];
@@ -749,6 +776,34 @@ export const REFERENCE_DATA = {
       properties: ["label", "description", "slack", "github", "link"],
     },
   ],
+  groupingConstructs: [
+    {
+      construct: "boundary",
+      description: {
+        en: "A semantic cluster of system-view nodes — the second Group-by axis, drawn as a frame when selected",
+        ja: "system view のノードの意味的クラスタ — 2 つ目の Group by 軸。選択時に枠として描かれる",
+      },
+      properties: ["label", "description", "contains", "link"],
+      membership: {
+        en: "By reference, from the declaration: `contains <id>`, one member per line (1:N)",
+        ja: "宣言側から参照で記述: `contains <id>` を 1 行 1 メンバー（1:N）",
+      },
+      experimental: true,
+    },
+    {
+      construct: "facet",
+      description: {
+        en: "An externally-defined set (a regulation, policy or audit scope) that elements belong to. Highlighted by the opt-in Facets overlay; no effect on default rendering",
+        ja: "規制・ポリシー・監査スコープなど、外部で定義された集合。opt-in の Facets overlay で強調される（既定の描画には影響しない）",
+      },
+      properties: ["label", "description", "link"],
+      membership: {
+        en: "On the element: `facets <id>, <id>` — repeatable and merged (1:N). The declaration has no member list",
+        ja: "要素側に記述: `facets <id>, <id>`（繰り返し可・マージされる。1:N）。宣言側にメンバーリストは無い",
+      },
+      experimental: true,
+    },
+  ],
   shapes: [
     {
       name: "box",
@@ -818,11 +873,19 @@ export const LOGICAL_CONTAINMENT: ReadonlyMap<string, ReadonlySet<string>> = new
 /** The diagram families the reference content is keyed on (matrix → system). */
 export type RefView = "system" | "deploy" | "org";
 
-/** A Syntax-tab section: a literal code snippet, or the per-view kind table the
- *  app renders from `nodeKinds` / `deployUnitKinds` / `orgKinds`. */
+/**
+ * A Syntax-tab section: a literal code snippet, the per-view kind table the app
+ * renders from `nodeKinds` / `deployUnitKinds` / `orgKinds`, or the grouping /
+ * membership construct table (#2316).
+ *
+ * `experimental` marks a section whose notation has not passed the promotion
+ * gate (ADR-1820). The panel renders a badge so listing the notation does not
+ * read as a stability promise.
+ */
 export type SyntaxSection =
-  | { heading: string; code: string }
-  | { heading: string; kindTable: true };
+  | { heading: string; code: string; experimental?: boolean }
+  | { heading: string; kindTable: true; experimental?: boolean }
+  | { heading: string; groupingTable: true; experimental?: boolean };
 
 export type SyntaxByView = Record<RefView, SyntaxSection[]>;
 export type StyleSelectorExamplesByView = Record<RefView, string>;
@@ -915,6 +978,48 @@ legend "<title>"? {
 legend deploy "Hosting tier" {       // scope to a single view
   swatch #0EA5E9 "Cloud Run"
 }`,
+    },
+    {
+      heading: "Multi-file (import)",
+      code: `@import "theme.krs.style"             // style import — applies to every view
+import { Foo, Bar.Baz } from "p.krs"  // named import — pull specific ids
+import "p.krs"                        // whole-file import — merge everything
+import "dir/"                         // directory import — every .krs directly under dir/`,
+    },
+    { heading: "Grouping & Membership", groupingTable: true, experimental: true },
+    {
+      heading: "Grouping & Membership — Declaration",
+      experimental: true,
+      code: `// boundary — a semantic cluster. Members are listed BY REFERENCE, so a
+// boundary can gather nodes declared anywhere (including imported files).
+// Drawn only under "Group by: boundary".
+boundary payments {
+  label "Payments"
+  contains Billing        // one member per line; a node may be in several
+  contains Wallet
+}
+
+// A boundary may also be declared INSIDE a node block, scoping the bare ids
+// it lists to that block's children:
+service Checkout {
+  boundary core { contains Ordering }
+}
+
+// facet — an externally-defined set (regulation / policy / audit scope).
+// The declaration carries metadata only: no contains, no predicates, ever.
+facet pii {
+  label "Personal data"
+  description "Handling follows ADR-1421"
+  link "https://example.com/adr/1421" "ADR-1421"
+}
+
+// Membership is written ON THE ELEMENT, next to the thing that has it.
+// Repeatable and merged; an element may belong to any number of facets.
+entity Order {
+  facets pii, gdpr
+}
+
+// Nothing renders differently until a reader turns the Facets overlay on.`,
     },
   ],
   deploy: [
@@ -1040,4 +1145,10 @@ export const SELECTOR_SPECIFICITY: SelectorSpecificityData[] = [
     specificity: 11,
   },
   { label: { en: "Edge ID", ja: "エッジ ID" }, example: "edge#criticalWrite", specificity: 101 },
+  { label: { en: "Boundary", ja: "バウンダリ" }, example: "boundary", specificity: 1 },
+  {
+    label: { en: "Boundary ID", ja: "バウンダリ ID" },
+    example: "boundary#pci",
+    specificity: 101,
+  },
 ];

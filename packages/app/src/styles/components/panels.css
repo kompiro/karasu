@@ -423,6 +423,23 @@
   margin-top: 0;
 }
 
+/* Marks a Syntax-tab section whose notation has not passed the promotion gate
+   (ADR-1820). The section is listed so the notation can be found; the badge is
+   what keeps being listed from reading as a stability promise (#2316). */
+.reference-experimental-badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  vertical-align: middle;
+  cursor: help;
+}
+
 .reference-table {
   width: 100%;
   border-collapse: collapse;
