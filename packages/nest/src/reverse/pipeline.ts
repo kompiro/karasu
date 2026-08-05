@@ -103,10 +103,32 @@ export interface DomainSketch {
   confidence?: string;
 }
 
+/**
+ * What a parse failure can say about itself without quoting the document.
+ *
+ * The code and the block kind identify the construct the model invented; the
+ * position lets a reader find it if they still have the document. The token's
+ * *value* is deliberately absent -- it is the one field that would carry the
+ * generated text itself, and this travels into a stored record.
+ */
+export interface StructuralDiagnostic {
+  code: string;
+  /** Which block the parser was inside, when it says so. */
+  blockKind?: string;
+  /** `line:column`, when the parser gave a range. */
+  at?: string;
+}
+
 export class ReverseFailed extends Error {
   constructor(
     readonly pass: string,
     message: string,
+    /**
+     * Present for a parse failure. Carried on the error so the caller can put
+     * it in the run's record: a count and a code do not name the problem, and
+     * the log that does name it only exists while something is watching.
+     */
+    readonly diagnostics?: StructuralDiagnostic[],
   ) {
     super(`${pass}: ${message}`);
     this.name = "ReverseFailed";
@@ -374,6 +396,15 @@ export async function reverseRepository(
     throw new ReverseFailed(
       "synthesise",
       `the generated .krs did not parse (${errors.length} error(s), first: ${errors[0]?.code})`,
+      errors.slice(0, LOGGED_DIAGNOSTICS).map((diagnostic) => ({
+        code: diagnostic.code,
+        ...(typeof (diagnostic.params as { blockKind?: unknown }).blockKind === "string"
+          ? { blockKind: (diagnostic.params as { blockKind: string }).blockKind }
+          : {}),
+        ...(diagnostic.loc === undefined
+          ? {}
+          : { at: `${diagnostic.loc.start.line}:${diagnostic.loc.start.column}` }),
+      })),
     );
   }
   // Parsing is not enough. A comment-only document, or one describing only a

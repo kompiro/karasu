@@ -263,6 +263,22 @@ describe("reverseRepository", () => {
       await expect(reverseRepository(repo, llm)).rejects.toThrowError(/credential patterns/);
     });
 
+    it("carries structural diagnostics on the failure, without the tokens", async () => {
+      // A count and a code do not name the problem, and the log that does
+      // only exists while something is watching. This travels into the run's
+      // record, so it identifies the construct and quotes none of it.
+      const broken = "```krs\nsystem S {\n  domain D {\n    nonsense here\n  }\n}\n```";
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, broken, broken]);
+      const error = await reverseRepository(repo, llm).catch((cause: unknown) => cause);
+      expect(error).toBeInstanceOf(ReverseFailed);
+      const diagnostics = (error as ReverseFailed).diagnostics ?? [];
+      expect(diagnostics.length).toBeGreaterThan(0);
+      expect(diagnostics[0]?.code).toBeTruthy();
+      expect(diagnostics[0]?.at).toMatch(/^\d+:\d+$/);
+      // No field carries the generated text itself.
+      expect(JSON.stringify(diagnostics)).not.toContain("nonsense");
+    });
+
     it("refuses output that is not a model, after one repair attempt", async () => {
       // Prose that reaches the cache would be served as a diagram. The fourth
       // reply is the repair the pipeline asks for before giving up.

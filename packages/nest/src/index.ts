@@ -44,6 +44,7 @@ export type { Finding, RedactionResult } from "./redact/redact.js";
 export { REDACTION_RULES } from "./redact/rules.js";
 export type { RedactionRule } from "./redact/rules.js";
 export { reverseRepository, ReverseFailed } from "./reverse/pipeline.js";
+export type { StructuralDiagnostic } from "./reverse/pipeline.js";
 export type {
   RedactedRepo,
   ReverseOptions,
