@@ -20,7 +20,7 @@
 import { compile } from "@karasu-tools/core";
 import { assertStructureOnly, type Finding } from "../redact/redact.js";
 import type { LlmClient, LlmUsage } from "./llm.js";
-import { decomposePrompt, surveyPrompt, synthesisePrompt } from "./prompts.js";
+import { decomposePrompt, repairPrompt, surveyPrompt, synthesisePrompt } from "./prompts.js";
 
 /** A file set that has been through `redactFiles`. */
 export interface RedactedRepo {
@@ -32,7 +32,25 @@ export interface RedactedRepo {
 }
 
 /** Per-pass output ceilings. Synthesis writes a document; the others reply with JSON. */
-const MAX_TOKENS = { survey: 8_000, decompose: 12_000, synthesise: 64_000 } as const;
+const MAX_TOKENS = {
+  survey: 8_000,
+  decompose: 12_000,
+  synthesise: 64_000,
+  // A repair rewrites the same document, so it needs the same room.
+  repair: 64_000,
+} as const;
+
+/**
+ * How many parse errors are shown to the model when asking for a repair.
+ *
+ * A document with hundreds of errors has one or two structural mistakes
+ * repeated, and sending all of them buries the signal in noise it has to pay
+ * to read.
+ */
+const REPAIRED_DIAGNOSTICS_SHOWN = 8;
+
+/** How many times a document may be handed back for repair. */
+const MAX_REPAIR_ATTEMPTS = 1;
 
 export interface ReverseOptions {
   /**
@@ -260,7 +278,7 @@ export async function reverseRepository(
     "synthesise",
     synthesisePrompt({ owner: repo.owner, repo: repo.repo, domains, files: wanted }),
   );
-  const krs = extractKrs(synthesised);
+  let krs = extractKrs(synthesised);
   if (krs.trim().length === 0) throw new ReverseFailed("synthesise", "empty .krs");
 
   // Refuse output that carries a credential. This throws rather than
@@ -269,7 +287,41 @@ export async function reverseRepository(
 
   // And refuse output that is not a model. A document that does not parse is
   // prose the caller would otherwise cache and serve as a diagram.
-  const compiled = compile(krs, { diagramType: "system" });
+  //
+  // Refusing is the last resort, not the first answer. The reverse skill this
+  // pipeline descends from splits judgement from validation and runs a
+  // **validate-and-repair loop** with the parser as the validator
+  // (`.claude/skills/reverse-architecture/SKILL.md`, Phase 4); the spike that
+  // cleared this pivot's gate never produced a parse-clean document in one
+  // shot either. Without the loop, one missed brace throws away three paid
+  // passes -- which is exactly what a real run did, over 824 errors that were
+  // the same mistake repeated.
+  let compiled = compile(krs, { diagramType: "system" });
+  for (let attempt = 0; attempt < MAX_REPAIR_ATTEMPTS; attempt += 1) {
+    const errors = compiled.diagnostics.filter((d) => d.severity === "error");
+    if (errors.length === 0) break;
+    krs = extractKrs(
+      await run(
+        "repair",
+        repairPrompt(
+          krs,
+          errors.slice(0, REPAIRED_DIAGNOSTICS_SHOWN).map((diagnostic) => ({
+            where:
+              diagnostic.loc === undefined
+                ? "somewhere"
+                : `line ${diagnostic.loc.start.line}, column ${diagnostic.loc.start.column}`,
+            code: diagnostic.code,
+            params: diagnostic.params,
+          })),
+        ),
+      ),
+    );
+    // A repair is model output like any other, so it goes through the same
+    // one-way door before anything else looks at it.
+    assertStructureOnly(krs);
+    compiled = compile(krs, { diagramType: "system" });
+  }
+
   const errors = compiled.diagnostics.filter((d) => d.severity === "error");
   if (errors.length > 0) {
     throw new ReverseFailed(

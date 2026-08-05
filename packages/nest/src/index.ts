@@ -52,4 +52,5 @@ export type {
 } from "./reverse/pipeline.js";
 export { AnthropicClient, LlmError } from "./reverse/llm.js";
 export type { LlmClient, LlmResponse, LlmUsage } from "./reverse/llm.js";
-export { BOUNDED_CONTEXT_DIRECTIVE } from "./reverse/prompts.js";
+export { BOUNDED_CONTEXT_DIRECTIVE, repairPrompt } from "./reverse/prompts.js";
+export type { RepairDiagnostic } from "./reverse/prompts.js";

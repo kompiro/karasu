@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LlmClient, LlmResponse } from "./llm.js";
+import { StructureOnlyViolation } from "../redact/redact.js";
 import { reverseRepository, ReverseFailed, type RedactedRepo } from "./pipeline.js";
 
 const usage = { inputTokens: 100, outputTokens: 200 };
@@ -262,14 +263,56 @@ describe("reverseRepository", () => {
       await expect(reverseRepository(repo, llm)).rejects.toThrowError(/credential patterns/);
     });
 
-    it("refuses output that is not a model", async () => {
-      // Prose that reaches the cache would be served as a diagram.
-      const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\nthis is not karasu syntax\n```"]);
+    it("refuses output that is not a model, after one repair attempt", async () => {
+      // Prose that reaches the cache would be served as a diagram. The fourth
+      // reply is the repair the pipeline asks for before giving up.
+      const broken = "```krs\nthis is not karasu syntax\n```";
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, broken, broken]);
       await expect(reverseRepository(repo, llm)).rejects.toThrowError(/did not parse/);
     });
 
+    it("asks the model to fix a document that does not parse, and uses the fix", async () => {
+      // The skill this descends from validates with the parser and repairs;
+      // it never asks for a parse-clean document in one shot. Without the
+      // loop, one missed brace throws away three paid passes -- which is what
+      // a real run did, over 824 errors that were one mistake repeated.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\nnot syntax\n```", KRS]);
+      const result = await reverseRepository(repo, llm);
+      expect(result.krs).toContain("system Library");
+      expect(result.passes.map((pass) => pass.name)).toEqual([
+        "survey",
+        "decompose",
+        "synthesise",
+        "repair",
+      ]);
+    });
+
+    it("shows the repair the parser's complaints, not the whole pile", async () => {
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\nnot syntax\n```", KRS]);
+      await reverseRepository(repo, llm);
+      const repair = llm.prompts[3] ?? "";
+      expect(repair).toContain("does not parse");
+      expect(repair).toMatch(/line \d+, column \d+: [a-z-]+/);
+      // The worked example goes back with it: the mistake is usually that the
+      // model stopped following it.
+      expect(repair).toContain("system ECPlatform");
+    });
+
+    it("puts a repaired document through the same credential scan", async () => {
+      // A repair is model output like any other. Letting it skip the one-way
+      // door would make "fix this" the way a secret gets cached.
+      const token = `ghp_${"A1b2C3d4E5f6G7h8I9j0".repeat(2)}`;
+      const llm = scriptedLlm([
+        SURVEY,
+        DECOMPOSE,
+        "```krs\nnot syntax\n```",
+        `\`\`\`krs\nsystem Library {\n  // ${token}\n}\n\`\`\``,
+      ]);
+      await expect(reverseRepository(repo, llm)).rejects.toThrowError(StructureOnlyViolation);
+    });
+
     it("refuses an empty .krs", async () => {
-      const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\n\n```"]);
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, "```krs\n\n```", "```krs\n\n```"]);
       await expect(reverseRepository(repo, llm)).rejects.toThrowError(ReverseFailed);
     });
   });

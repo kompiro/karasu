@@ -23,6 +23,8 @@
  */
 
 /** Verbatim from ADR-2077 decision 1. Do not summarise (ADR-2077 rejected options). */
+import { GETTING_STARTED_PROJECT_EN } from "@karasu-tools/core";
+
 export const BOUNDED_CONTEXT_DIRECTIVE = `Decompose at **bounded-context granularity**, not per-aggregate. A bounded context
 groups the aggregates that share a consistency boundary / ubiquitous language (e.g. all
 of "Lending" — patron, book, hold, checkout, daily-sheet — is ONE domain, not five).
@@ -139,9 +141,46 @@ interface SynthesiseInput {
 }
 
 /** Pass 3 writes the `.krs`. */
+/**
+ * A complete, real `.krs` document, shown to the model as the grammar.
+ *
+ * karasu's notation is this repository's own invention, so a model has no
+ * useful prior for it: asked to "write a karasu `.krs` model" it writes
+ * something that looks like a diagram DSL and parses as none. A real run
+ * failed with **824 parse errors**, the first `unexpected-token-root` --
+ * the signature of invented syntax rather than a near miss.
+ *
+ * Showing one worked document beats describing the grammar, and this one is
+ * already maintained: it is the example the app ships, kept byte-equal to
+ * `examples/en/getting-started/` by `.claude/rules/examples-sync.md`. It
+ * exercises `system`, `user`, `client`, `service`, `domain`, `usecase`,
+ * `resource`, and domain-to-domain edges, which is the whole surface the
+ * reverse produces.
+ *
+ * About 1,200 input tokens, or roughly $0.006 a run at the prices in
+ * `meter/cost.ts` -- against a run that produced nothing at all.
+ */
+const GRAMMAR_EXAMPLE = (
+  GETTING_STARTED_PROJECT_EN.files.find((file) => file.path === "index.krs")?.content ?? ""
+)
+  // The `@import` points at a style file this service does not write, and a
+  // model that copies the line emits a dangling reference.
+  .split("\n")
+  .filter((line) => !line.startsWith("@import"))
+  .join("\n")
+  .trim();
+
 export function synthesisePrompt({ owner, repo, domains, files }: SynthesiseInput): string {
   return [
     `Write a karasu \`.krs\` model of ${owner}/${repo} using the decomposition below.`,
+    "",
+    "`.krs` is a notation specific to karasu. Do not infer it from other diagram",
+    "languages -- follow the worked example exactly, including block nesting and",
+    "the absence of punctuation between fields.",
+    "",
+    "```krs",
+    GRAMMAR_EXAMPLE,
+    "```",
     "",
     ...domains.map(
       (domain) =>
@@ -155,7 +194,62 @@ export function synthesisePrompt({ owner, repo, domains, files }: SynthesiseInpu
     REDACTION_NOTE,
     "",
     "Reply with the `.krs` source only, in a single ```krs fenced block, and nothing else.",
+    "Do not include an `@import` line: this model is delivered on its own.",
     "",
     ...fenceFiles(files),
   ].join("\n");
+}
+
+/**
+ * Hand the parser's complaints back to the model.
+ *
+ * `.claude/skills/reverse-architecture/SKILL.md` splits this work in two:
+ * judgement belongs to the model, **validation is deterministic and belongs to
+ * the tool**, and its Phase 4 is a validate-and-repair loop with
+ * `karasu render` as the validator. The spike that cleared this pivot's gate
+ * relied on that loop; it never asked for a parse-clean document in one shot.
+ *
+ * This service had the judgement half and not the structural half, so a first
+ * attempt that missed produced nothing at all -- a real run threw away three
+ * paid passes over 824 parse errors. The parser is a library this package
+ * already imports, so the loop is available without the CLI the skill assumes.
+ *
+ * Only the first few diagnostics are sent. A document with 824 errors has one
+ * or two structural mistakes repeated, and a wall of them buries the signal.
+ */
+export function repairPrompt(krs: string, diagnostics: RepairDiagnostic[]): string {
+  return [
+    "The `.krs` document below does not parse. Fix it.",
+    "",
+    ...diagnostics.map(
+      (diagnostic) =>
+        `- ${diagnostic.where}: ${diagnostic.code} ${JSON.stringify(diagnostic.params)}`,
+    ),
+    "",
+    "These are usually one or two structural mistakes repeated, not many separate",
+    "ones. Re-read the worked example's block nesting before changing anything.",
+    "",
+    "```krs",
+    GRAMMAR_EXAMPLE,
+    "```",
+    "",
+    "Reply with the corrected `.krs` only, in a single ```krs fenced block, and",
+    "nothing else. Do not explain the changes. Do not include an `@import` line.",
+    "",
+    "```krs",
+    krs,
+    "```",
+  ].join("\n");
+}
+
+export interface RepairDiagnostic {
+  /** `line 12, column 3`, or `somewhere` when the parser gave no range. */
+  where: string;
+  code: string;
+  /**
+   * The diagnostic's structured params. Diagnostics carry no message string --
+   * i18n moved rendering to the presentation layer -- so the params are the
+   * detail, and they name the token that broke, which is what a repair needs.
+   */
+  params: unknown;
 }
