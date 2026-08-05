@@ -166,6 +166,13 @@ export const ja: Partial<Translations> = {
   "referencePanel.samples.description": "system + deploy + organization をまとめたサンプル",
   "referencePanel.copy.label": "コピー",
   "referencePanel.copy.copied": "コピーしました！",
+  "referencePanel.experimental.badge": "実験的",
+  "referencePanel.experimental.hint":
+    "この記法は後方互換をまだ約束していない。実利用の証拠が promotion gate を通るまで experimental のまま。",
+  "referencePanel.grouping.construct": "構文",
+  "referencePanel.grouping.description": "説明",
+  "referencePanel.grouping.membership": "所属の書き方",
+  "referencePanel.grouping.properties": "プロパティ",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ SVG をエクスポート",

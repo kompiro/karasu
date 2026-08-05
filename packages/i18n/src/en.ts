@@ -167,6 +167,13 @@ export const en: Translations = {
   "referencePanel.samples.description": "Complete example — system + deploy + org",
   "referencePanel.copy.label": "Copy",
   "referencePanel.copy.copied": "Copied!",
+  "referencePanel.experimental.badge": "experimental",
+  "referencePanel.experimental.hint":
+    "Backward compatibility is not yet promised for this notation. It stays experimental until real-usage evidence carries it through the promotion gate.",
+  "referencePanel.grouping.construct": "Construct",
+  "referencePanel.grouping.description": "Description",
+  "referencePanel.grouping.membership": "Membership",
+  "referencePanel.grouping.properties": "Properties",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ Export SVG",

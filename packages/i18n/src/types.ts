@@ -167,6 +167,12 @@ export type Translations = {
   "referencePanel.samples.description": string;
   "referencePanel.copy.label": string;
   "referencePanel.copy.copied": string;
+  "referencePanel.experimental.badge": string;
+  "referencePanel.experimental.hint": string;
+  "referencePanel.grouping.construct": string;
+  "referencePanel.grouping.description": string;
+  "referencePanel.grouping.membership": string;
+  "referencePanel.grouping.properties": string;
 
   // Preview toolbar — export controls
   "preview.export.svg.label": string;

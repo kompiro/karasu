@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { getReference } from "@karasu-tools/core";
-import type { RefView } from "@karasu-tools/core";
+import type { GroupingConstructInfo, RefView } from "@karasu-tools/core";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
@@ -113,8 +113,46 @@ function KindTable({ kinds, showContains }: { kinds: KindRow[]; showContains: bo
   );
 }
 
+/**
+ * `boundary` / `facet` — constructs that group or label existing elements
+ * rather than declaring one, so they belong in neither the kind table nor the
+ * tag list (#2316). The "Membership" column is the point of the table: it is
+ * what the `facets` property listed on every node kind actually points at.
+ */
+function GroupingConstructTable({ constructs }: { constructs: GroupingConstructInfo[] }) {
+  const { t } = useTranslation();
+  return (
+    <table className="reference-table">
+      <thead>
+        <tr>
+          <th>{t("referencePanel.grouping.construct")}</th>
+          <th>{t("referencePanel.grouping.description")}</th>
+          <th>{t("referencePanel.grouping.membership")}</th>
+          <th>{t("referencePanel.grouping.properties")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {constructs.map((g) => (
+          <tr key={g.construct}>
+            <td>
+              <code>{g.construct}</code>
+            </td>
+            <td>{g.description}</td>
+            <td>{g.membership}</td>
+            <td>
+              {g.properties.map((p) => (
+                <code key={p}>{p}</code>
+              ))}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function SyntaxTab({ activeView }: { activeView: ActiveView }) {
-  const { locale } = useTranslation();
+  const { locale, t } = useTranslation();
   const ref = getReference(locale);
   const view = refViewOf(activeView);
   const kinds: KindRow[] =
@@ -124,11 +162,23 @@ function SyntaxTab({ activeView }: { activeView: ActiveView }) {
     <div className="reference-tab-body">
       {ref.syntaxByView[view].map((section) => (
         <Fragment key={section.heading}>
-          <h3>{section.heading}</h3>
+          <h3>
+            {section.heading}
+            {section.experimental && (
+              <span
+                className="reference-experimental-badge"
+                title={t("referencePanel.experimental.hint")}
+              >
+                {t("referencePanel.experimental.badge")}
+              </span>
+            )}
+          </h3>
           {"code" in section ? (
             <div className="reference-code-block">
               <pre>{section.code}</pre>
             </div>
+          ) : "groupingTable" in section ? (
+            <GroupingConstructTable constructs={ref.groupingConstructs} />
           ) : (
             <KindTable kinds={kinds} showContains={view !== "deploy"} />
           )}
