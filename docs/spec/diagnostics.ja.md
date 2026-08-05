@@ -193,7 +193,7 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | `style-token-type-mismatch` | error | スタイルの token が期待された型と一致しない。 |
 | `expected-style-property-name` | error | スタイルパーサがプロパティ名を期待した。 |
 | `expected-semicolon-between-properties` | error | スタイルパーサがプロパティ間の `;` を期待した。 |
-| `unknown-edge-selector-attribute` | error | エッジセレクタが `from` / `to` 以外の属性を使っている（例: `edge[source=X]`）。 |
+| `unknown-edge-selector-attribute` | error | セレクタが `from` / `to` / `facets` 以外の属性を使っている（例: `edge[source=X]`）。コード名は `facets` より前からあるもので、`facets` は `edge` 限定ではなくノードセレクタでも受理される。 |
 | `style-conflict` | warning | セレクタが複数のユーザースタイルシートで定義される。 |
 | `style-column-invalid-value` | warning | スタイル `column` 値が `left` / `center` / `right` でない。 |
 | `style-column-ignored-non-system-view` | warning | `column` ヒントが deploy / org ビューに適用される（無視）。 |

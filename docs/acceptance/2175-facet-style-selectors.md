@@ -77,6 +77,10 @@
 
   > ✅ Automated — 同 describe › `warns on the model side AND the style side for one name`
 
+- [x] AT-P2: シートが 1 枚も無いとき（LSP の単一ドキュメント文脈）に style 側の 2 診断が発火しない。model 側の `tag-not-builtin` は従来どおり出る
+
+  > ✅ Automated — 同 describe › `emits nothing when there are no sheets — the LSP's single-document case`。TPL-1522 は style 結合の新診断に「どちら側に倒すか」を決めて記録することを求めており、`packages/lsp/src/diagnostics.ts` の `analyze()` 呼び出し地点にも同じ判断をコメントで残した。ここでの「出ない」は不足ではなく正しい — 2 診断はシートの中身について述べるもので、編集中のドキュメントは `.krs` だから言うことが無い
+
 - [x] AT-P: 非推奨セレクタが **v1.x では引き続き適用される**（告知しただけで挙動を変えていない）
 
   > ✅ Automated — 同 describe › `still applies the deprecated rule — v1.x behaviour is unchanged`。ADR-1314 の freeze がここに掛かる
