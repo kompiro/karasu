@@ -2473,6 +2473,9 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // (offset) node positions. A team that spans systems is framed once per
     // system, so two frames intentionally share the same `__group_<team>__`
     // container id (app collapse is keyed by team id → collapse-everywhere).
+    // Where this system's group frames start in `allContainers`, so the routing
+    // passes below can be handed exactly this system's frames (#2363).
+    const frameStart = allContainers.length;
     if (groupBandsS) {
       // Labels resolve per system canvas ([sys.id]), matching the axis
       // resolution in boundaryAxisForSystem (#2133).
@@ -2521,18 +2524,53 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
         );
 
     // Intra-system edges
+    const systemEdges: LayoutEdge[] = [];
     for (const edge of workEdges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
           if (isGhost) le.ghost = true;
+          systemEdges.push(le);
           allEdges.push(le);
         }
       }
     }
 
-    // Use the container's final width (may have been widened by side columns).
-    offsetX += containerRect.width + GHOST_MARGIN * 3;
+    // Route this system's edges (#2363). Until now the root view ran none of the
+    // routing passes, so even a *grouped* root got bands and frames but
+    // straight-line edges that pierced whatever lay between their endpoints.
+    //
+    // Scoped per system rather than across the canvas: obstacles, content bounds
+    // and therefore gutter x are all derived from the nodes handed in, and a
+    // canvas-wide gutter would send an edge inside one system out past every
+    // other system. Each system block is its own routing surface, the same way
+    // `placeExternalServicesOnSides` is already applied per system.
+    const systemFrames = allContainers.slice(frameStart).filter((c) => c.group);
+    distributePorts(localNodes, systemEdges);
+    routeOrthogonalEdges(localNodes, systemEdges, frameObstaclesFor(localNodes, systemFrames));
+    routeGroupedEdges(localNodes, systemEdges, systemFrames, undefined, groupBandsS !== null);
+    if (groupBandsS) {
+      aggregateGroupTrunks(localNodes, systemEdges, systemFrames);
+    }
+    distributeGutterLanes(localNodes, systemEdges, systemFrames);
+    fanOutGutterPorts(localNodes, systemEdges, systemFrames);
+    distributeChannelLanes(systemEdges);
+
+    // A gutter route runs outside the system's cards, so it can reach past the
+    // container rect. Advance by the routed extent, not just the rect, or the
+    // next system's cards would sit on top of this one's edges.
+    //
+    // The baseline stays `offsetX + width`, not `containerRect.x + width`: a
+    // left side column (#1728) shifts the rect's own x leftwards, so measuring
+    // from it would hand the next system less room than before and let the two
+    // containers overlap.
+    let routedRight = offsetX + containerRect.width;
+    for (const e of systemEdges) {
+      for (const p of [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]) {
+        routedRight = Math.max(routedRight, p.x);
+      }
+    }
+    offsetX = routedRight + GHOST_MARGIN * 3;
   }
 
   // Cross-system edges. When a team is collapsed (#1884), an endpoint here may
@@ -2590,12 +2628,18 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     totalHeight = Math.max(totalHeight, c.y + c.height + CONTAINER_PADDING);
   }
 
+  // Hop marks for the root view too (#2363). Derived from final coordinates like
+  // the single-system path, and computed over *all* edges so a cross-system line
+  // crossing an intra-system one is marked as well.
+  const crossingMarks = computeCrossingMarks(allEdges);
+
   return {
     nodes: allLayoutNodes,
     edges: allEdges,
     containers: allContainers,
     width: totalWidth,
     height: totalHeight,
+    crossingMarks,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
     degradedMemberships: allDegradedMemberships.length > 0 ? allDegradedMemberships : undefined,
   };

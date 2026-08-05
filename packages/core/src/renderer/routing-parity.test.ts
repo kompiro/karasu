@@ -342,6 +342,89 @@ describe("shared routing chain — ungrouped-only affordances survive (#2362)", 
   );
 });
 
+describe("multi-system root view routes its edges (#2363)", () => {
+  // Two systems force `layoutMultipleSystems`. Each has a skip-layer edge whose
+  // straight line crosses an intermediate card, which the root view previously
+  // drew straight through because it ran no routing passes at all.
+  const TWO_SYSTEMS = `
+system Shop {
+  user Admin {}
+  client Web {}
+  service Orders {}
+  database ShopDB {}
+  Admin -> Orders "administer"
+  Web -> Orders "browse"
+  Orders -> ShopDB "persist"
+}
+system Billing {
+  user Clerk {}
+  client Portal {}
+  service Invoices {}
+  database BillingDB {}
+  Clerk -> Invoices "reconcile"
+  Portal -> Invoices "view"
+  Invoices -> BillingDB "persist"
+}
+`;
+
+  function rootLayout(groupBy?: GroupBy): LayoutResult {
+    const parsed = Parser.parse(TWO_SYSTEMS);
+    const krsFile = parsed.value;
+    return layout(extractView(krsFile.systems, []), {
+      ownerIndex: krsFile.ownerIndex,
+      groupBy,
+      boundaryMembership: krsFile.boundaryMembership,
+    });
+  }
+
+  it("draws at least two systems side by side", () => {
+    const res = rootLayout();
+    expect(res.containers.filter((c) => c.id === "Shop" || c.id === "Billing")).toHaveLength(2);
+  });
+
+  it("no edge pierces a node card", () => {
+    expect(totalPenetrations(rootLayout())).toBe(0);
+  });
+
+  it("no two edges share a collinear corridor", () => {
+    const res = rootLayout();
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("emits crossing marks, which the root view never did before", () => {
+    // Not "there are marks" — an uncrossed layout legitimately has none. The
+    // contract is that the field is populated rather than absent, so the marks
+    // layer is reachable on this surface at all (TPL-1983: the same view state
+    // must behave the same across surfaces).
+    expect(rootLayout().crossingMarks).toBeDefined();
+  });
+
+  it("keeps system containers from overlapping once routes widen them", () => {
+    const res = rootLayout();
+    const shop = res.containers.find((c) => c.id === "Shop");
+    const billing = res.containers.find((c) => c.id === "Billing");
+    expect(shop && billing).toBeTruthy();
+    const a = shop!;
+    const b = billing!;
+    expect(a.x + a.width <= b.x + 0.5 || b.x + b.width <= a.x + 0.5).toBe(true);
+  });
+
+  it("routes each system against its own bounds, not the whole canvas", () => {
+    // A canvas-wide gutter would send an edge inside the left system out past
+    // the right one. Every routed corridor must stay left of the next system.
+    const res = rootLayout();
+    const billing = res.containers.find((c) => c.id === "Billing")!;
+    const shopIds = new Set(
+      [...res.nodes.keys()].filter((id) => ["Admin", "Web", "Orders", "ShopDB"].includes(id)),
+    );
+    for (const e of res.edges) {
+      if (!shopIds.has(e.from) || !shopIds.has(e.to)) continue;
+      for (const p of pointsOf(e)) expect(p.x).toBeLessThan(billing.x);
+    }
+  });
+});
+
 /** x range every card occupies — the region an interior corridor runs inside of. */
 function contentBounds(res: LayoutResult): { minLeft: number; maxRight: number } {
   const nodes = [...res.nodes.values()];
