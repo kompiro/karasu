@@ -93,4 +93,3 @@ export function generationInstanceId(
   }
   return id;
 }
-}

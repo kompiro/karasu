@@ -3,9 +3,10 @@
  *
  * Cloudflare rejects an id outside `[A-Za-z0-9_-]` with
  * `(instance.invalid_id)`. Nothing else notices: the id is a plain string to
- * the type system, and a test double accepts whatever it is given. Owner and
- * repo names arrive from a URL, and a long repo name walks straight past the
- * length ceiling.
+ * the type system, and a test double accepts whatever it is given. This is
+ * not hypothetical -- the attempt discriminator below is built from a
+ * calendar period and a count, and the first version joined them with a `.`,
+ * which passed every test here and failed on the first real dispatch.
  */
 import { describe, expect, it } from "vitest";
 import { generationInstanceId, MAX_INSTANCE_ID_LENGTH } from "./dispatch.js";
@@ -15,40 +16,43 @@ const params = { installationId: "12345678", owner: "kompiro", repo: "ddd-librar
 
 describe("generationInstanceId", () => {
   it("contains only characters the platform accepts", () => {
-    expect(generationInstanceId(params, SHA)).toMatch(/^[A-Za-z0-9_-]+$/);
+    // `2026-08.1` is the discriminator shape that actually shipped and broke.
+    expect(generationInstanceId(params, SHA, "2026-08.1")).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 
-  it("sanitises a name that would be rejected", () => {
-    // `.` is legal in a GitHub repository name and illegal in an instance id.
-    const id = generationInstanceId({ ...params, repo: "docs.karasu.dev" }, SHA);
-    expect(id).toMatch(/^[A-Za-z0-9_-]+$/);
-    expect(id).toContain("docs-karasu-dev");
-  });
-
-  it("is the same for two callers racing the same commit", () => {
-    // What makes the route's read-then-write race harmless: the loser's
-    // create is rejected rather than starting a second billed run.
-    expect(generationInstanceId(params, SHA)).toBe(generationInstanceId(params, SHA));
-  });
-
-  it("differs per repository and per commit", () => {
-    expect(generationInstanceId(params, SHA)).not.toBe(
-      generationInstanceId({ ...params, repo: "other" }, SHA),
-    );
-    expect(generationInstanceId(params, SHA)).not.toBe(
-      generationInstanceId(params, "f".repeat(40)),
+  it("still tells attempts apart after sanitising", () => {
+    // Sanitising must not collapse two attempts onto one id -- that would
+    // reintroduce the un-retryable failure the discriminator exists to fix.
+    expect(generationInstanceId(params, SHA, "2026-08.1")).not.toBe(
+      generationInstanceId(params, SHA, "2026-08.2"),
     );
   });
 
-  it("stays inside the length ceiling for a realistic name", () => {
-    expect(generationInstanceId(params, SHA).length).toBeLessThanOrEqual(MAX_INSTANCE_ID_LENGTH);
+  it("is the same for two callers racing the same charge", () => {
+    // The other half of the contract: same charge, same id, so the platform
+    // rejects the loser rather than starting a second billed run.
+    expect(generationInstanceId(params, SHA, "2026-08.1")).toBe(
+      generationInstanceId(params, SHA, "2026-08.1"),
+    );
   });
 
-  it("refuses rather than truncating when a name outgrows the ceiling", () => {
-    // Truncating would let two repositories share an id, and the second one
-    // would silently never run.
-    expect(() => generationInstanceId({ ...params, repo: "x".repeat(80) }, SHA)).toThrowError(
-      /too long/,
+  it("differs per installation and per commit", () => {
+    const base = generationInstanceId(params, SHA, "2026-08.1");
+    expect(base).not.toBe(
+      generationInstanceId({ ...params, installationId: "99" }, SHA, "2026-08.1"),
     );
+    expect(base).not.toBe(generationInstanceId(params, "f".repeat(40), "2026-08.1"));
+  });
+
+  it("stays inside the length ceiling", () => {
+    expect(generationInstanceId(params, SHA, "2026-08.1").length).toBeLessThanOrEqual(
+      MAX_INSTANCE_ID_LENGTH,
+    );
+  });
+
+  it("refuses rather than truncating when the shape outgrows the ceiling", () => {
+    // Truncating would let two attempts share an id, and the second would
+    // silently never run.
+    expect(() => generationInstanceId(params, SHA, "x".repeat(80))).toThrowError(/too long/);
   });
 });
