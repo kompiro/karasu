@@ -62,9 +62,9 @@ describe("boundary#<id> selector (#2234)", () => {
     expect(selector.boundaryId).toBe("pci");
     // 100 for the id + 1 for the kind, exactly how edge#<id> reaches 101.
     expect(parsed.value.rules[0].specificity).toBe(101);
-    expect(computeSpecificity({ nodeType: "edge", edgeId: "x", tags: [], annotations: [] })).toBe(
-      101,
-    );
+    expect(
+      computeSpecificity({ nodeType: "edge", edgeId: "x", tags: [], annotations: [], facets: [] }),
+    ).toBe(101);
   });
 
   it("does not collide with the node id space", () => {
