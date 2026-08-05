@@ -167,6 +167,13 @@ export const en: Translations = {
   "referencePanel.samples.description": "Complete example — system + deploy + org",
   "referencePanel.copy.label": "Copy",
   "referencePanel.copy.copied": "Copied!",
+  "referencePanel.experimental.badge": "experimental",
+  "referencePanel.experimental.hint":
+    "Backward compatibility is not yet promised for this notation. It stays experimental until real-usage evidence carries it through the promotion gate.",
+  "referencePanel.grouping.construct": "Construct",
+  "referencePanel.grouping.description": "Description",
+  "referencePanel.grouping.membership": "Membership",
+  "referencePanel.grouping.properties": "Properties",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ Export SVG",
@@ -178,6 +185,24 @@ export const en: Translations = {
   "preview.export.drawio.title":
     "Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
+
+  // View-state toggles and window-opening controls
+  "preview.iconMode.label": "Icon Mode",
+  "preview.iconMode.ariaLabel": "Toggle icon mode",
+  "preview.orgTree.label": "Tree View",
+  "preview.orgTree.ariaLabel": "Toggle org tree view",
+  "preview.entities.label": "Entities",
+  "preview.entities.ariaLabel": "Toggle entity view",
+  "preview.allLayers.label": "Show All Layers",
+  "preview.allLayers.ariaLabel": "Toggle all layers",
+  "preview.openAllViews.label": "Open All Views",
+  "preview.openAllViews.ariaLabel": "Open all views in new window",
+  "preview.focus.label": "Focus",
+  "preview.focus.ariaLabel": "Enter focus mode",
+  "preview.focus.exit.label": "Exit Focus",
+  "preview.focus.exit.ariaLabel": "Exit focus mode",
+  "preview.exportError.dismiss.label": "Dismiss",
+  "preview.exportError.dismiss.ariaLabel": "Dismiss export error",
 
   // Group by (system-view team grouping, #1858)
   "preview.facets.label": "Facets",

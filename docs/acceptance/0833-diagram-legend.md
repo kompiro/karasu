@@ -9,8 +9,7 @@ type: product
 `.krs` の `legend` ブロックが各ビューの SVG にフッター帯として描画され、
 `swatch` / `ref` 両方のエントリ種別、scope 省略・指定、未解決 ref の警告が
 期待通りに動作することを確認する
-（Issue [#833](https://github.com/kompiro/karasu/issues/833)、
-設計は `docs/design/diagram-legend.md`）。
+（Issue [#833](https://github.com/kompiro/karasu/issues/833)）。
 
 Phase 5 の deliverable として `examples/en/feature-samples/legend.krs` を追加した。
 
@@ -101,7 +100,6 @@ pnpm --filter @karasu-tools/core test -- parser.test legend-footer warnings
 
 ## 関連
 
-- 設計ドキュメント: `docs/design/diagram-legend.md`
 - 親 Issue: [#833](https://github.com/kompiro/karasu/issues/833)
 - Phase 1 PR: [#881](https://github.com/kompiro/karasu/pull/881)
 - Phase 2 PR: [#932](https://github.com/kompiro/karasu/pull/932)

@@ -10,7 +10,9 @@ applicable_to:
 known_consumers: []
 discovered_from:
   - issue: "#2254"
+  - issue: "#2259"
   - root_cause_file: "docs/acceptance/0999-legend-in-use-fallback.md"
+  - root_cause_file: "docs/acceptance/1821-layer-toggle-external-infra.md"
 related_to:
   - TPL-1032
   - TPL-2253
@@ -33,6 +35,7 @@ scope:
 
 - ブランチ名入りの preview URL がマージ後に 404 になる。記録は残るが手順は実行不能で、しかも**壊れていることが読むまで分からない**（リンク切れは CI が見ていない）
 - ローカル起動コマンドが、確認したいだけの人に checkout・install・ビルドを要求する。実際には本番を開けば済む
+- **記録が、削除されると分かっているファイルを指す。** AT が `docs/design/` を指すと、ADR 昇格が Design Doc を消した瞬間に切れる。URL の腐り方と違い、これは偶発ではなく**規約が保証する**破れである
 - 再実行されないまま放置され、「未チェックの項目」として永久に残る。手順が実行不能だと気付かれず、単に優先度が低いと読まれる
 - 手順に書かれたコマンドが後でリネームされても、誰も走らせていないので気付かれない（`pnpm dev` の綴りが 4 通りに分かれていた）
 
@@ -41,6 +44,7 @@ scope:
 手動確認の手順を書く / 直すときに確認する:
 
 - [ ] 到達先はデプロイ済みの本番 URL か（app なら `karasu.kompiro.dev`、docs なら公開ドキュメントサイト）
+- [ ] 指しているファイルは、この記録より長生きするか（`docs/design/` は昇格時に削除される — 代わりに Issue と ADR を指す）
 - [ ] ブランチ名・PR 番号・セッション固有のパスが URL に含まれていないか
 - [ ] ローカル起動コマンドを書いていないか。書くなら「本番では確認できない理由」を併記したか
 - [ ] その機能が**まだ本番に出ていない**場合、記録に preview URL を焼き付けるのではなく、PR 本文の Preview URL 欄に置いたか
@@ -48,10 +52,13 @@ scope:
 
 ## 既知の対処パターン
 
-- **本番 URL を単一の到達先にする** — `docs/process.md`「手動確認の到達先は本番 URL で書く」に app / docs-site の正典 URL を表で置き、AT 側はそれを指す
+- **本番 URL を単一の到達先にする** — `.claude/rules/acceptance.md`「手動項目の到達先は本番 URL」に app / docs-site の正典 URL を表で置く。AT を編集すると自動で読み込まれる
 - **preview は PR の欄に置き、記録には残さない** — PR テンプレートの `## Preview URL` 欄が preview の正しい住所。AT に写すと寿命が合わない
+- **AT からは Issue を指す** — Issue は削除されず design PR と実装 PR の両方へ辿れる。ADR があれば併記する。強制は `pnpm at:check-coverage`（`scripts/acceptance/design-refs.ts`）で、`docs/acceptance/**` から `docs/design/` への参照を finding として落とす
 - **確認手段が本番にしかない構造を認める** — docs-site は PR preview を持たない（`pages.yml` は main への push でのみデプロイ）。この場合「マージ後に確認する」ことを隠さずに書く。preview がある前提で書くと、実行できない手順になる
 
 ## 由来
 
 45 件の AT が `pnpm --filter @karasu-tools/app dev` などローカル dev サーバの起動を指示しており、うち 3 件は**既に腐ったブランチ名入り preview URL**（`https://fix-legend-human-annotation.karasu.pages.dev` 等）を代替として併記していた（[#2254](https://github.com/kompiro/karasu/issues/2254)）。いずれも「書いた PR の中では正しかった」もので、記録の寿命とアドレスの寿命が合っていないという 1 つの原因の別々の現れ方である。
+
+同じ原因の 3 つ目の現れ方が [#2259](https://github.com/kompiro/karasu/issues/2259) の後で見つかった。AT から `docs/design/` への 46 参照のうち **39 が既に解決しない**アドレスを指しており、うち 1 件（`1821-layer-toggle-external-infra.md`）は main に残った壊れた markdown リンクだった。preview URL と違い削除は規約が保証しているので、これは「腐りうる」ではなく「必ず腐る」参照である。

@@ -22,6 +22,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | 受け入れテスト基準                                  | `docs/acceptance/`              |
 | テスト観点ライブラリ（過去 bug から抽出した再発防止観点） | `docs/test-perspectives/`       |
 | 開発プロセス（ドキュメントライフサイクル・PR フロー） | `docs/process.md`               |
+| リリース・依存更新の運用（リリース時・Dependabot 処理時に読む） | `docs/release.md`               |
 | ロードマップ（全体方針 — 現在と次の一手のみ、完了内容は pruning）— living | `docs/roadmap.md`               |
 | サンプル `.krs` ファイル（チュートリアル・AT用）     | `examples/`                     |
 
@@ -85,5 +86,5 @@ karasu/
 - **DesignDoc 作成時 / 新機能実装時 / bug 修正時** に該当する `topic` / `scope.packages` の TPL を確認する
 - 該当する観点が見つかったら、DesignDoc または PR description で TPL の ID を引用する
 - **DesignDoc 作成時は既存 TPL の確認に加えて `docs/concepts.ja.md` と関連 ADR もスキャン** し、まだ TPL になっていない原則で今回の設計が違反しうるものがあれば proactive TPL を同じ PR で起こす（理想ライフサイクルは concept → proactive TPL → development → bug → retrospective TPL — `docs/test-perspectives/README.md` 「TPL のライフサイクル」節）
-- **`docs/spec/` または `docs/concepts*.md` に新規セクションを追加する PR** は、そのセクションの規定が破られたときに検出する proactive TPL を最低 1 件同 PR で起こす（または既存 TPL を当該 spec に back-ref で紐付ける）。spec 章末尾に `> Related TPLs:` 注釈、TPL 本文末尾に「## 派生元 spec」セクションを置いて双方向リンクする。詳細は `docs/process.md` 「spec / concepts 改訂時の proactive TPL 同梱」節
+- **`docs/spec/` または `docs/concepts*.md` に新規セクションを追加する PR** は、そのセクションの規定が破られたときに検出する proactive TPL を最低 1 件同 PR で起こす（または既存 TPL を当該 spec に back-ref で紐付ける）。spec 章末尾に `> Related TPLs:` 注釈、TPL 本文末尾に「## 派生元 spec」セクションを置いて双方向リンクする。詳細は `.claude/rules/spec-audit.md`（`docs/spec/**` / `docs/concepts*.md` の編集時に自動で読み込まれる）
 - bug 修正時、3-Yes ルール（横展開しうる / 構造的に再発しうる / 既存 TPL に未掲載）すべて満たすなら新規 TPL を起こす（詳細は `docs/test-perspectives/README.md`）

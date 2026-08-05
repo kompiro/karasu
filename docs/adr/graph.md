@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-294 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+303 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -14,6 +14,7 @@ flowchart TD
     ADR_2092["ADR-2092<br/>TPL の reference-data 設定を `tpl.config.json` に分離し..."]
     ADR_2125["ADR-2125<br/>id-migration-map と専用 lint を退役する — 移行完了後の map は「..."]
     ADR_2188["ADR-2188<br/>TPL の採番を issue-number（TPL-<n>）へ移行する"]
+    ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -52,6 +53,7 @@ flowchart TD
     ADR_1646["ADR-1646<br/>gallery の example は id 指定・固定 origin fetch で app..."]
     ADR_1955["ADR-1955<br/>全 service をその場一括展開する — Collapse all / Expand al..."]
     ADR_2120["ADR-2120<br/>bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
+    ADR_2316["ADR-2316<br/>experimental notation は Reference に載せ、experimen..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -122,6 +124,10 @@ flowchart TD
     ADR_2142["ADR-2142<br/>Dependabot security 第 3 便 — brace-expansion OOM..."]
     ADR_2152["ADR-2152<br/>Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の pu..."]
     ADR_2318["ADR-2318<br/>Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロ..."]
+    ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
+    ADR_2341["ADR-2341<br/>Security alert 2026-08-04 — brace-expansion / f..."]
+    ADR_2351["ADR-2351<br/>docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issu..."]
+    ADR_2356["ADR-2356<br/>開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層"]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -203,6 +209,7 @@ flowchart TD
     ADR_1094["ADR-1094<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
     ADR_1827["ADR-1827<br/>Deep permalink — 構造要素 / view への深いパーマリンク"]
     ADR_1828["ADR-1828<br/>repo-backed + ref-pinned permalink（nest Phase 2..."]
+    ADR_1961["ADR-1961<br/>permalink を bare `/<owner>/<repo>` で配信し、`/r/` p..."]
     ADR_2249["ADR-2249<br/>permalink 面と karasu-nest の境界 — 解決は本体、生成は nest、合..."]
     ADR_2259["ADR-2259<br/>repo-backed permalink の payload 上限 — degrade せず..."]
   end
@@ -302,6 +309,7 @@ flowchart TD
     ADR_999["ADR-999<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_1508["ADR-1508<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
+    ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   subgraph testing["testing"]
@@ -316,6 +324,7 @@ flowchart TD
     ADR_1014["ADR-1014<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
     ADR_1192["ADR-1192<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
     ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
+    ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -429,6 +438,9 @@ flowchart TD
   ADR_2165 --> ADR_1314
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
+  ADR_2234 --> ADR_9004
+  ADR_2234 --> ADR_1974
+  ADR_2234 --> ADR_2036
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -693,6 +705,7 @@ flowchart TD
   class ADR_1911 accepted
   class ADR_1935 accepted
   class ADR_1955 accepted
+  class ADR_1961 accepted
   class ADR_1974 accepted
   class ADR_1983 accepted
   class ADR_1990 accepted
@@ -719,9 +732,17 @@ flowchart TD
   class ADR_2184 accepted
   class ADR_2188 accepted
   class ADR_2218 accepted
+  class ADR_2234 accepted
   class ADR_2249 accepted
   class ADR_2259 accepted
+  class ADR_2316 accepted
   class ADR_2318 accepted
+  class ADR_2331 accepted
+  class ADR_2333 accepted
+  class ADR_2341 accepted
+  class ADR_2348 accepted
+  class ADR_2351 accepted
+  class ADR_2356 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -746,18 +767,18 @@ flowchart TD
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 10 ADRs
-- [`app-ui`](graph/app-ui.md) — 41 ADRs
-- [`build`](graph/build.md) — 65 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 11 ADRs
+- [`app-ui`](graph/app-ui.md) — 42 ADRs
+- [`build`](graph/build.md) — 69 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 20 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
-- [`navigation`](graph/navigation.md) — 13 ADRs
+- [`navigation`](graph/navigation.md) — 14 ADRs
 - [`parser`](graph/parser.md) — 22 ADRs
 - [`project`](graph/project.md) — 10 ADRs
 - [`renderer`](graph/renderer.md) — 39 ADRs
 - [`resolver`](graph/resolver.md) — 9 ADRs
-- [`styling`](graph/styling.md) — 8 ADRs
-- [`testing`](graph/testing.md) — 12 ADRs
+- [`styling`](graph/styling.md) — 9 ADRs
+- [`testing`](graph/testing.md) — 13 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs

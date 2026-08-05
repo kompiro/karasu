@@ -3,8 +3,7 @@
 ## Summary
 
 Verify that OPFS history snapshots (auto-captured on idle + user-labeled) can be
-picked as the "before" side of the graphical diff viewer. Design doc:
-`docs/design/opfs-snapshot-diff-source.md`.
+picked as the "before" side of the graphical diff viewer.
 
 Phase 1 (#650) shipped the viewer with file-to-file comparison. This test covers
 the snapshot source extension: auto-capture, manual capture with label, picker

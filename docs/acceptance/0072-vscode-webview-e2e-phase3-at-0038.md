@@ -8,8 +8,7 @@ type: tooling
 
 Phase 2 (#964 / AT-0071) の harness 上で、AT-0038 の **WebView ツールバー hint
 テキスト** に関する 2 つの TC を migrate する
-（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3、設計は
-`docs/design/vscode-webview-e2e-harness.md`）。
+（Issue [#1014](https://github.com/kompiro/karasu/issues/1014) Phase 3）。
 
 Phase 3 / AT-0038 のスコープ:
 
@@ -92,6 +91,5 @@ Phase 3 / AT-0038 のスコープ:
 ## 関連
 
 - Issue: [#1014](https://github.com/kompiro/karasu/issues/1014)
-- 設計: `docs/design/vscode-webview-e2e-harness.md`
 - Phase 2 AT: `docs/acceptance/0071-vscode-webview-e2e-phase2.md`
 - 既存 ADR: ADR-863（拡張ホスト smoke）, ADR-926（マニュアル運用 — Phase 3 完了時に supersede 予定）
