@@ -2034,8 +2034,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // is only defined where there is a band stack.
   routeGroupedEdges(layoutNodes, layoutEdges, groupFrames, expandedFrameRects, groupBands !== null);
   // Merge edges sharing an infra/external target onto one trunk lane per target
-  // so distinct targets' spines no longer overlap (#1859 P2c-B). Grouped-only
-  // for now — extending trunks to the ungrouped canvas is slice C's evaluation.
+  // so distinct targets' spines no longer overlap (#1859 P2c-B). Grouped only:
+  // trunk lanes live in the right gutter, so on an ungrouped canvas they pull
+  // fan-in edges back out to the canvas edge and undo the interior corridors
+  // (#2365) those edges would otherwise take. Measured and rejected in #2364.
   if (groupBands) {
     aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
   }
