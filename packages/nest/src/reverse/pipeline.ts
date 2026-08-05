@@ -18,6 +18,7 @@
  * document.
  */
 import { compile } from "@karasu-tools/core";
+import { logError, logInfo } from "../log.js";
 import { assertStructureOnly, type Finding } from "../redact/redact.js";
 import type { LlmClient, LlmUsage } from "./llm.js";
 import { decomposePrompt, repairPrompt, surveyPrompt, synthesisePrompt } from "./prompts.js";
@@ -51,6 +52,25 @@ const REPAIRED_DIAGNOSTICS_SHOWN = 8;
 
 /** How many times a document may be handed back for repair. */
 const MAX_REPAIR_ATTEMPTS = 1;
+
+/** How many diagnostics reach the log when a document will not parse. */
+const LOGGED_DIAGNOSTICS = 12;
+
+/** Longest token value written to a log line. */
+const LOGGED_VALUE_LENGTH = 40;
+
+/** Shorten any string inside a diagnostic's params before it is logged. */
+function truncateParams(params: unknown): unknown {
+  if (typeof params !== "object" || params === null) return params;
+  return Object.fromEntries(
+    Object.entries(params as Record<string, unknown>).map(([key, value]) => [
+      key,
+      typeof value === "string" && value.length > LOGGED_VALUE_LENGTH
+        ? `${value.slice(0, LOGGED_VALUE_LENGTH)}…`
+        : value,
+    ]),
+  );
+}
 
 export interface ReverseOptions {
   /**
@@ -188,6 +208,12 @@ export async function reverseRepository(
     const response = await llm.complete(prompt, { maxTokens: MAX_TOKENS[name] });
     passes.push({ name, usage: response.usage });
     usage = addUsage(usage, response.usage);
+    // A run is 12-19 minutes with nothing to show for it until the end. The
+    // pass name and its token counts are ours, not the repository's, so they
+    // can be logged without touching the boundary decision 6 draws.
+    logInfo(
+      `karasu-nest ${name}: ${response.usage.inputTokens}/${response.usage.outputTokens} tokens`,
+    );
     // A truncated reply that still parses is the dangerous case: it would be
     // cached and served as a complete model of the repository.
     if (response.stopReason === "max_tokens") {
@@ -324,6 +350,27 @@ export async function reverseRepository(
 
   const errors = compiled.diagnostics.filter((d) => d.severity === "error");
   if (errors.length > 0) {
+    // Logged server-side, not returned. The caller gets a count and a code
+    // (ADR-1990 decision 6: a message it can see is ours, never something the
+    // model or the repository produced), while an operator needs the actual
+    // construct to know whether the prompt or the parser is at fault --
+    // `unexpected-token-in-block` without its `blockKind` names no problem.
+    //
+    // Token values are truncated. They are model output rather than source,
+    // and the document has already passed `assertStructureOnly`, but a
+    // generated identifier can still echo a repository's vocabulary and a log
+    // line is not the place to spell all of it out.
+    logError(
+      "karasu-nest could not parse the generated .krs",
+      errors.slice(0, LOGGED_DIAGNOSTICS).map((diagnostic) => ({
+        code: diagnostic.code,
+        at:
+          diagnostic.loc === undefined
+            ? undefined
+            : `${diagnostic.loc.start.line}:${diagnostic.loc.start.column}`,
+        params: truncateParams(diagnostic.params),
+      })),
+    );
     throw new ReverseFailed(
       "synthesise",
       `the generated .krs did not parse (${errors.length} error(s), first: ${errors[0]?.code})`,
