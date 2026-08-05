@@ -86,6 +86,8 @@ runs:
         # sit past the first page and reading only page 1 leaves previews alive.
         page=1
         ids=""
+        seen=0
+        branch_tally=""
         while [ "$page" -le "$max_pages" ]; do
           # Write to a file rather than capture stdout: on an error status the body is
           # the only thing that names the offending parameter, and a command
@@ -111,12 +113,27 @@ runs:
             ids="${ids}${found}"$'\n'
           fi
 
+          branch_tally="${branch_tally}$(jq -r '.result[]? | .deployment_trigger.metadata.branch // "(none)"' "$body")"$'\n'
+
           got=$(jq -r '.result | length' "$body")
+          seen=$((seen + got))
+
+          # Report what each page contained. Without this, "nothing to delete" is
+          # indistinguishable from "the listing stopped early" — the janitor's first real
+          # run said exactly that while orphaned previews were demonstrably still serving
+          # (#2357), and there was no way to tell which had happened.
+          oldest=$(jq -r '[.result[]?.created_on] | min // "-"' "$body")
+          echo "  page ${page}: ${got} deployment(s), oldest ${oldest}"
+
           if [ "$got" -eq 0 ]; then
             break
           fi
           page=$((page + 1))
         done
+
+        echo "Examined ${seen} preview deployment(s) across $((page - 1)) page(s)."
+        printf '%s' "$branch_tally" | awk 'NF' | sort | uniq -c | sort -rn |
+          awk '{ printf "  %s deployment(s): %s\n", $1, $2 }'
 
         if [ "$page" -gt "$max_pages" ]; then
           echo "::warning::Stopped after ${max_pages} pages; some deployments for ${BRANCH} may remain."
