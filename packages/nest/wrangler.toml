@@ -13,6 +13,22 @@ name = "karasu-nest"
 main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 
+# This service needs a paid Workers plan, and the reason is CPU rather than
+# anything about scale.
+#
+# The free plan allows 10ms of CPU per invocation. Decompressing a repository
+# archive, walking its tar headers, running the redaction rules over ~400KB of
+# source and parsing three model replies are all well past that -- a real run
+# died in 3 seconds of wall time with `Worker exceeded CPU time limit`, which
+# is only possible if the ceiling is far below a second.
+#
+# Declared rather than left to be discovered: an unset limit means the default,
+# and the default is the thing that killed a run. 60 seconds is generous
+# against the few seconds of parsing this actually does, and still bounded, so
+# a runaway is stopped rather than billed. Model calls are I/O and cost no CPU.
+[limits]
+cpu_ms = 60_000
+
 [vars]
 ENVIRONMENT = "production"
 

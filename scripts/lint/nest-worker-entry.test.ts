@@ -23,6 +23,15 @@ describe("the nest Worker entry", () => {
     expect(config).toMatch(/^main = "src\/worker\.ts"$/m);
   });
 
+  it("declares the CPU limit the pipeline needs", () => {
+    // The free plan's 10ms killed a real run in 3 seconds of wall time. An
+    // unset limit means the default, and the default is what killed it, so
+    // the requirement is written down rather than left to be rediscovered.
+    const config = readFileSync(join(root, "packages/nest/wrangler.toml"), "utf8");
+    expect(config).toMatch(/^\[limits\]$/m);
+    expect(config).toMatch(/^cpu_ms = /m);
+  });
+
   it("is a module whose exports the runtime will accept", () => {
     // Read rather than imported: this file runs in Node, and the entry pulls
     // in Workers globals. The rule is textual anyway -- a named export of
