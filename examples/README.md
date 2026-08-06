@@ -36,6 +36,15 @@ A system mid-migration from a legacy monolith to microservices. Demonstrates `@d
 
 A retail platform focused on the **deploy diagram**. Shows all artifact types side by side: `war`, `jar`, `oci`, `lambda`, `function`, `assets`, `job` (with and without schedule), and `artifact` (catch-all). Useful as a syntax reference for the physical structure view.
 
+### `facet-styling/index.krs` + `facets.krs.style`
+
+An online shop with two cross-cutting concerns declared as `facet` blocks (PCI
+scope, personal data), styled from a sheet with `[facets=<id>]` selectors. Shows
+the three forms side by side: bare membership, membership compounded with a kind
+(`database[facets=pci]`), and two predicates ANDed. The sheet's footer carries
+the migration recipe from the arbitrary-name tag selectors this replaces.
+`facet` is experimental notation.
+
 ### `org/system.krs`
 
 An EC platform with a **full organization diagram**. Shows `organization`, nested `team`, `member`, `owns`, and contact properties (`slack`, `github`). Demonstrates sub-teams and team ownership of services and domains.

@@ -1,0 +1,98 @@
+// facet-styling/index.krs
+// 対象: `[facets=<id>]` による facet 所属でのスタイリング（#2175 — experimental）。
+//
+// `facet` は、アーキテクチャの**外側**で定義された集合 — 規制・ポリシー・監査
+// スコープ — を表す。tag は要素が「何であるか」を述べ、facet は「外部定義の
+// どの集合に属するか」を述べる。所属は要素側に書く（`facets pci`）ので、
+// 要素をリネームしても遠くのリストを直しに行く必要がない。
+//
+// このサンプルが扱うのは**スタイリングの側**。隣の `facets.krs.style` を一緒に
+// 開くこと。シートは所属で照合しており、これが `[pci] { … }` のような任意名
+// タグセレクタを流用していた用途の置き換えにあたる。
+//
+// 描画結果で見るポイントは 3 つ:
+//
+//   1. `[facets=pci]` のルールは `Checkout`（service）と `Ledger`（database）の
+//      両方に一致する。セレクタが問うのは形ではなく集合だから。`Ledger` は
+//      その結果を琥珀色の枠として身にまとうが、`Checkout` では後続のルールに
+//      上書きされる（3 を参照）。これはカスケードの結果であって、一致しなかった
+//      わけではない。
+//   2. `Ledger` にはさらに塗りが付く。`database[facets=pci]` が所属と kind を
+//      複合しているため。`Checkout` は database ではないので付かない。
+//   3. `Checkout` は 2 つの facet に属するので、`[facets=pci][facets=pii]`
+//      （スコア 20）が単独 facet のルール（スコア 10）に勝ち、枠が破線になる。
+//      ただし枠の**色**は `pci` の琥珀ではなく `pii` の teal になる。単独 facet の
+//      2 ルールがスコア 10 で同点なので、後に宣言したほうが勝つ — タグセレクタ
+//      2 つの場合とまったく同じ挙動である。この同点処理こそが、シートを 1
+//      ルールずつ移行できる理由そのものにあたる。
+//
+// プレビューの「ファセット」セレクタの overlay は別物で、読み手側の一時的な
+// 強調でありモデルには何も書かれない。ここで見えているのは作者が書いた
+// スタイルであり、どの読み手にも同じように効く。
+
+@import "facets.krs.style"
+
+facet pci {
+  label "カード会員データ"
+  description "年次 PCI DSS 評価の対象"
+  link "https://example.com/policies/pci" "PCI ポリシー"
+}
+
+facet pii {
+  label "個人情報"
+  description "自然人を識別できるデータを保持または通過させる"
+}
+
+system Shop {
+  label "オンラインショップ"
+
+  user Customer [human] {
+    label "顧客"
+  }
+
+  client WebApp [web] {
+    label "Web ストアフロント"
+    facets pii
+  }
+
+  // 2 つの facet に属する。購入者とカードの両方を見るため。枠が破線になる。
+  service Checkout {
+    label "チェックアウト"
+    description "決済を行う — 購入者とカードの双方を見る"
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "アカウント"
+    description "プロフィール・住所・同意記録"
+    facets pii
+  }
+
+  // どちらの facet にも属さない。誰の情報も持たず、カードも扱わない。
+  service Catalogue {
+    label "カタログ"
+    description "商品と価格"
+  }
+
+  database Ledger {
+    label "決済台帳"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "プロフィールストア"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "商品画像"
+  }
+
+  Customer -> WebApp "閲覧する"
+  WebApp -> Accounts "サインイン"
+  WebApp -> Checkout "支払う"
+  WebApp -> Catalogue "商品を見る"
+  Accounts -> ProfileStore "読み書き"
+  Checkout -> Ledger "記録する"
+  Catalogue -> ProductImages "読み取り"
+}
