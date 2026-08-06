@@ -11,6 +11,7 @@
     "@karasu-tools/app",
     "@karasu-tools/i18n",
     "@karasu-tools/lsp",
+    "@karasu-tools/nest",
     "@karasu-tools/e2e",
     "@karasu-tools/vscode-e2e"
   ]

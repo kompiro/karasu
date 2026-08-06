@@ -13,6 +13,7 @@ known_consumers:
   - project-zip-import
   - link-property-rendering
   - karasu-nest-share-page
+  - karasu-nest-service
 related_to: []
 discovered_from:
   - issue: "#168"
@@ -28,6 +29,7 @@ scope:
     - cli
     - vscode
     - app
+    - nest
     - core
 ---
 

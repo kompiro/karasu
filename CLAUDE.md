@@ -40,6 +40,7 @@ karasu/
 │   ├── app/           ← Vite + React のプレビューUI
 │   ├── cli/           ← karasu serve / render コマンド
 │   ├── lsp/           ← Language Server Protocol 実装
+│   ├── nest/          ← karasu-nest サービス（Cloudflare Workers、GitHub App + server-side reverse。Pages app とは別デプロイ）
 │   ├── vscode/        ← VS Code 拡張
 │   ├── i18n/          ← ユーザー向け文字列の i18n（warning メッセージ等）
 │   ├── docs-site/     ← ドキュメントサイト（GitHub Pages）
