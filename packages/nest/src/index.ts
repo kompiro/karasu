@@ -64,5 +64,12 @@ export { generate, GenerateFailed } from "./generate/run.js";
 export { generationInstanceId } from "./generate/dispatch.js";
 export type { GenerationDispatcher, GenerationParams } from "./generate/dispatch.js";
 export type { GenerateInput, GenerateDeps, GenerateOutcome } from "./generate/run.js";
+// The cost surface (#2226): the numbers that decide #1994's quota level.
+export { costUsd, isPricedModel, toCents, PRICING_AS_OF, UnknownModelError } from "./meter/cost.js";
+export type { TokenUsage } from "./meter/cost.js";
+export { FailedDocumentStore } from "./meter/failed-document.js";
+export { MetricsStore } from "./meter/record.js";
+export type { Aggregate, PassMetrics, RunMetrics } from "./meter/record.js";
+export { ReadCounter, utcDay } from "./meter/reads.js";
 export { RunStatusStore } from "./store/run-status.js";
 export type { RunStatus, RunState } from "./store/run-status.js";

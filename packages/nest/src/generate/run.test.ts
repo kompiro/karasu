@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitHubClient } from "../github/client.js";
 import type { LlmClient, LlmResponse } from "../reverse/llm.js";
+import { MetricsStore } from "../meter/record.js";
 import { NestStore } from "../store/nest-store.js";
 import { RunStatusStore } from "../store/run-status.js";
 import { MemoryKV } from "../testing/memory-kv.js";
@@ -54,7 +55,11 @@ function scriptedLlm(replies: string[]): LlmClient & { prompts: string[] } {
       prompts.push(prompt);
       const text = replies[index] ?? "";
       index += 1;
-      return Promise.resolve({ text, usage: { inputTokens: 10, outputTokens: 20 } });
+      return Promise.resolve({
+        text,
+        model: "claude-opus-5",
+        usage: { inputTokens: 10, outputTokens: 20 },
+      });
     },
   };
 }
@@ -69,12 +74,19 @@ function deps(
     llm,
     store: new NestStore(kv),
     runs: new RunStatusStore(kv),
+    metrics: new MetricsStore(kv),
     now: () => CLOCK,
     kv,
   };
 }
 
 const input = { installationId: "42", owner: "kompiro", repo: "shop" };
+
+// Prototype spies (the metrics-failure test mocks `MetricsStore.record`) leak
+// into every later test in the file without this.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("generate", () => {
   it("publishes a model and records the run as done", async () => {
@@ -184,8 +196,8 @@ describe("generate", () => {
 
     it("reports no GitHub-side truncation, because an archive is never partial", async () => {
       // The tree API can answer "there is more than I will list"; a tarball
-      // cannot. The field stays so the pull-request body can keep saying which
-      // kind of partial happened, and only our own cap can now cause one.
+      // cannot. The field stays so the pull-request body keeps distinguishing
+      // the two kinds of partial, and only our own cap can now cause one.
       const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
       const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
       const outcome = await generate(input, d);
@@ -193,9 +205,6 @@ describe("generate", () => {
     });
 
     it("never reports an unreadable file, because there are no per-file reads", async () => {
-      // A blob call could 404 on its own; an entry inside an archive we
-      // already hold cannot. The count stays in the record because the metrics
-      // schema is retained for 400 days and its meaning is unchanged.
       const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
       const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
       expect((await generate(input, d)).unreadableFiles).toBe(0);
@@ -246,6 +255,115 @@ describe("generate", () => {
       await expect(generate(input, d)).rejects.toThrowError(/ECONNREFUSED/);
       const status = await d.runs.get(input);
       expect(status?.error).toBe("the generation failed");
+    });
+  });
+
+  describe("what it records for #2226", () => {
+    it("writes tokens, wall-clock and input size against the commit", async () => {
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "export class Payment {}" }]), llm);
+      await generate(input, d);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded).toMatchObject({
+        sha: SHA,
+        outcome: "done",
+        inputTokens: 30,
+        outputTokens: 60,
+        files: 1,
+        bytesRead: 23,
+        redactions: 0,
+        unreadableFiles: 0,
+      });
+      // Three passes, so a cost report can say which one is expensive.
+      expect(recorded?.passes.map((pass: { name: string }) => pass.name)).toEqual([
+        "survey",
+        "decompose",
+        "synthesise",
+      ]);
+    });
+
+    it("measures input size before redaction, which only ever shrinks it", async () => {
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const secret = 'password = "s3cr3t-value-not-a-placeholder"';
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: secret }]), llm);
+      await generate(input, d);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded?.bytesRead).toBe(secret.length);
+      expect(recorded?.redactions).toBeGreaterThan(0);
+    });
+
+    it("keeps a model that was produced even if the metric cannot be written", async () => {
+      // A run that took a quarter of an hour and produced a document has
+      // succeeded. Failing it to protect a token count would be the wrong
+      // trade in both directions.
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      vi.spyOn(MetricsStore.prototype, "record").mockRejectedValue(new Error("KV is down"));
+
+      await expect(generate(input, d)).resolves.toBeDefined();
+      expect((await d.runs.get(input))?.state).toBe("done");
+      expect(await d.store.latest("kompiro", "shop")).toBeDefined();
+    });
+
+    it("records what a failed attempt spent before it threw", async () => {
+      // A Workflow retries, and every attempt is billed. A report that counts
+      // only the attempt that succeeded understates the bill by exactly the
+      // amount the retries cost.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, "not a krs document", "still not one"]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/synthesise/);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded?.outcome).toBe("failed");
+      // Named, not "unknown": a cost record that cannot say which model ran
+      // cannot be priced, and pricing is most of what it is for.
+      expect(recorded?.model).toBe("claude-opus-5");
+      // Four passes ran before the failure -- survey, decompose, synthesise
+      // and the repair attempt -- and every one of them was billed.
+      expect(recorded?.outputTokens).toBe(80);
+      // Named individually, because "did the repair actually run" is a
+      // question a failed run has to be able to answer from its own record.
+      expect(recorded?.passes.map((pass) => pass.name)).toEqual([
+        "survey",
+        "decompose",
+        "synthesise",
+        "repair",
+      ]);
+      // And each carries its own cost, not the running total.
+      expect(recorded?.passes.every((pass) => pass.outputTokens === 20)).toBe(true);
+    });
+
+    it("records why a parse failure failed, without the generated text", async () => {
+      // Otherwise diagnosing a failed run means paying to reproduce it with a
+      // `wrangler tail` open -- and the failure record is the one thing that
+      // outlives the run.
+      // Attributes on a brace-carrying line: the deterministic prune refuses
+      // to delete it, so this still reaches the diagnostics path.
+      const broken =
+        "```krs\nsystem S {\n  service Svc {\n    domain D {\n      entity B { id: UUID }\n    }\n  }\n}\n```";
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, broken, broken]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/did not parse/);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded?.diagnostics?.length).toBeGreaterThan(0);
+      expect(recorded?.diagnostics?.[0]?.at).toMatch(/^\d+:\d+$/);
+      // The record still carries no repository or generated text.
+      expect(JSON.stringify(recorded)).not.toContain("UUID");
+    });
+
+    it("runs without a metrics store at all", async () => {
+      // Optional on purpose: measurement must never be the reason a
+      // generation fails.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const { metrics: _unused, ...rest } = deps(
+        stubGithub([{ path: "src/pay.ts", content: "x" }]),
+        llm,
+      );
+      await expect(generate(input, rest)).resolves.toBeDefined();
     });
   });
 });

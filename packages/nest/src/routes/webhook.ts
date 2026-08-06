@@ -77,7 +77,14 @@ async function handleInstallationRepositories(
 ): Promise<PurgeResult | undefined> {
   const removed = payload.repositories_removed;
   if (!Array.isArray(removed)) return undefined;
-  const total: PurgeResult = { documents: 0, pointers: 0, runs: 0 };
+  const total: PurgeResult = {
+    documents: 0,
+    pointers: 0,
+    runs: 0,
+    metrics: 0,
+    reads: 0,
+    failed: 0,
+  };
   for (const raw of removed) {
     const name = repoFromPayload(raw);
     if (name === undefined) continue;
@@ -86,6 +93,9 @@ async function handleInstallationRepositories(
       total.documents += result.documents;
       total.pointers += result.pointers;
       total.runs += result.runs;
+      total.metrics += result.metrics;
+      total.reads += result.reads;
+      total.failed += result.failed;
     } catch (cause) {
       // One unroutable name in the list must not abandon the rest of the
       // purge. Skipping it is safe because a name we cannot key on is a name

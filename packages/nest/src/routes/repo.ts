@@ -16,6 +16,8 @@
  * "cacheable" is the wrong guess to be wrong about.
  */
 import { error, json, text } from "../http.js";
+import { logError } from "../log.js";
+import { ReadCounter } from "../meter/reads.js";
 import type { RouteContext } from "../router.js";
 import { InvalidRefError, normaliseName } from "../store/keys.js";
 import { NestStore } from "../store/nest-store.js";
@@ -26,7 +28,7 @@ const NOT_GENERATED_HINT =
   "karasu-nest has not generated a model for this repository. Install the GitHub App to have one generated, or build one locally with your own LLM: https://github.com/kompiro/karasu/blob/main/docs/guide/reverse-engineering-with-ai.md";
 
 export async function repoKrs(context: RouteContext): Promise<Response> {
-  const { params, url, env } = context;
+  const { params, url, env, ctx } = context;
   let owner: string;
   let repo: string;
   try {
@@ -48,6 +50,18 @@ export async function repoKrs(context: RouteContext): Promise<Response> {
   if (published === undefined) {
     return error(404, "not_generated", NOT_GENERATED_HINT);
   }
+
+  // Counted after the lookup succeeded, so the number means "a model was
+  // served" rather than "someone typed a URL". Handed to `waitUntil` because
+  // a reader must not wait on a metric, and swallowed because a lost count is
+  // a worse report, not a worse response (#2226).
+  ctx.waitUntil(
+    new ReadCounter(requireBinding(env, "KRS_CACHE"))
+      .increment({ installationId: published.installationId, owner, repo }, new Date())
+      .catch((cause: unknown) => {
+        logError("karasu-nest could not count a read", cause);
+      }),
+  );
 
   const provenance = {
     "X-Karasu-Source-Sha": published.sha,

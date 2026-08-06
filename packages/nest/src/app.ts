@@ -12,6 +12,7 @@ import { MissingBindingError, type NestEnv, type NestExecutionContext } from "./
 import { error } from "./http.js";
 import { logError } from "./log.js";
 import { health } from "./routes/health.js";
+import { failedDocument, metricsReport } from "./routes/metrics.js";
 import { repoKrs } from "./routes/repo.js";
 import { generationStatus, requestGeneration } from "./routes/generate.js";
 import { githubWebhook } from "./routes/webhook.js";
@@ -24,6 +25,8 @@ export function createRouter(): Router {
   // `webhooks/github`.
   return new Router()
     .get("/healthz", health)
+    .get("/admin/metrics", metricsReport)
+    .get("/admin/failed/:owner/:repo", failedDocument)
     .post("/webhooks/github", githubWebhook)
     .post("/:owner/:repo/generate", requestGeneration)
     .get("/:owner/:repo/status", generationStatus)

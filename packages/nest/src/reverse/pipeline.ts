@@ -88,6 +88,15 @@ export interface ReverseOptions {
    * files.
    */
   maxBytesRead?: number;
+  /**
+   * Called after every completed pass, with everything spent so far.
+   *
+   * A failed reverse still costs money — the passes before the throw were
+   * billed — and the caller cannot learn that from an exception. Without this
+   * the cost report silently omits every failed attempt and every retry,
+   * which is the direction that makes the service look affordable (#2226).
+   */
+  onUsage?: (usage: LlmUsage, pass: string, model?: string) => void;
 }
 
 export interface ReverseResult {
@@ -96,6 +105,13 @@ export interface ReverseResult {
   usage: LlmUsage;
   /** One entry per pass, so a cost report can attribute spend. */
   passes: { name: string; usage: LlmUsage }[];
+  /**
+   * The model the provider says served these passes.
+   *
+   * `undefined` only when no pass reported one, which a fake client is free to
+   * do; a cost report treats that as unpriceable rather than assuming a tier.
+   */
+  model?: string;
 }
 
 export interface DomainSketch {
@@ -137,6 +153,15 @@ export class ReverseFailed extends Error {
      * the log that does name it only exists while something is watching.
      */
     readonly diagnostics?: StructuralDiagnostic[],
+    /**
+     * The document that would not parse.
+     *
+     * Carried so the caller can keep it briefly for investigation: a
+     * diagnostic's line numbers are not much use without the lines. It has
+     * already been through `assertStructureOnly`, so it is the same artifact
+     * that would have been published had it parsed.
+     */
+    readonly document?: string,
   ) {
     super(`${pass}: ${message}`);
     this.name = "ReverseFailed";
@@ -233,10 +258,12 @@ export async function reverseRepository(
   const maxBytesRead = options.maxBytesRead ?? DEFAULT_MAX_BYTES_READ;
   const passes: { name: string; usage: LlmUsage }[] = [];
   let usage: LlmUsage = { inputTokens: 0, outputTokens: 0 };
+  let model: string | undefined;
 
   const run = async (name: keyof typeof MAX_TOKENS, prompt: string): Promise<string> => {
     const response = await llm.complete(prompt, { maxTokens: MAX_TOKENS[name] });
     passes.push({ name, usage: response.usage });
+    model ??= response.model;
     usage = addUsage(usage, response.usage);
     // A run is 12-19 minutes with nothing to show for it until the end. The
     // pass name and its token counts are ours, not the repository's, so they
@@ -244,6 +271,10 @@ export async function reverseRepository(
     logInfo(
       `karasu-nest ${name}: ${response.usage.inputTokens}/${response.usage.outputTokens} tokens`,
     );
+    // The model the provider says served this pass. A failed run has no
+    // result to read it off, and a cost record that cannot name the model
+    // cannot be priced -- which is most of what a cost record is for (#2226).
+    options.onUsage?.(usage, name, response.model);
     // A truncated reply that still parses is the dangerous case: it would be
     // cached and served as a complete model of the repository.
     if (response.stopReason === "max_tokens") {
@@ -433,6 +464,7 @@ export async function reverseRepository(
           ? {}
           : { at: `${diagnostic.loc.start.line}:${diagnostic.loc.start.column}` }),
       })),
+      krs,
     );
   }
   // Parsing is not enough. A comment-only document, or one describing only a
@@ -442,5 +474,5 @@ export async function reverseRepository(
     throw new ReverseFailed("synthesise", "the generated .krs describes no system");
   }
 
-  return { krs, domains, usage, passes };
+  return { krs, domains, usage, passes, ...(model === undefined ? {} : { model }) };
 }
