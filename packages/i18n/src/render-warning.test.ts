@@ -125,6 +125,14 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "annotation-not-builtin",
     params: { nodeId: "OrderService", annotation: "canary" },
   },
+  "style-tag-selector-not-builtin": {
+    kind: "style-tag-selector-not-builtin",
+    params: { tag: "pci", selector: "[pci]" },
+  },
+  "style-annotation-selector-not-builtin": {
+    kind: "style-annotation-selector-not-builtin",
+    params: { annotation: "canary", selector: "service@canary" },
+  },
   "facet-not-declared": {
     kind: "facet-not-declared",
     params: { nodeId: "Order", facetId: "pcl" },
@@ -204,6 +212,8 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "tag-not-builtin": ["SessionStore", "[cache]"],
   "tag-not-applicable": ["Api", "[index]", "database", "service"],
   "annotation-not-builtin": ["OrderService", "@canary"],
+  "style-tag-selector-not-builtin": ["[pci]", "pci"],
+  "style-annotation-selector-not-builtin": ["service@canary", "canary"],
   "facet-not-declared": ["Order", "pcl"],
   "legend-ref-unresolved": ["@missing"],
   "style-column-invalid-value": ["OrderService", "centre"],

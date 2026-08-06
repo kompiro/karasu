@@ -3022,6 +3022,11 @@ describe("warningSeverity — exhaustive register map", () => {
     // not help them (#2225).
     "tag-not-applicable": "warning",
     "annotation-not-builtin": "warning",
+    // Style-side halves of the same deprecation (#2175). Same register as the
+    // model-side ones: both name a rewrite the author has to perform before
+    // v2.0, and splitting the severity would suggest one is optional.
+    "style-tag-selector-not-builtin": "warning",
+    "style-annotation-selector-not-builtin": "warning",
     // A `facets` reference to an undeclared facet is a broken reference with a
     // definite fix (declare it, or fix the spelling) — the same register as the
     // other unresolved-reference kinds, not the info hint register (#2173).

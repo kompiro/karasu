@@ -6,6 +6,8 @@ import {
   EC_PLATFORM_PROJECTS,
   EC_PLATFORM_PROJECTS_EN,
   FEATURE_SAMPLES_PROJECT,
+  FACET_STYLING_PROJECT,
+  FACET_STYLING_PROJECT_EN,
   MULTI_FILE_SYSTEM_PROJECT,
   MULTI_FILE_SYSTEM_PROJECT_EN,
   DEPLOY_ONLY_PROJECT,
@@ -79,6 +81,40 @@ describe.each([
       const entry = project.files.find((f) => f.path === file);
       expect(entry).toBeDefined();
       expect(entry?.content).toBe(onDisk);
+    });
+  },
+);
+
+// Drift guard for the facet-styling scenario (#2175). Unlike the other seeded
+// projects this one bundles a `.krs.style` alongside its `.krs`: the whole point
+// of the example is the sheet, and an `index.krs` without it demonstrates
+// nothing. So the file filter here covers both extensions — a `.krs`-only
+// filter would let a hand edit to the sheet land on one side unnoticed.
+describe.each([["ja", FACET_STYLING_PROJECT] as const, ["en", FACET_STYLING_PROJECT_EN] as const])(
+  "facet-styling (%s): bundled content matches the on-disk example",
+  (lang, project) => {
+    const facetStylingDir = resolve(__dirname, `../../../examples/${lang}/facet-styling`);
+    const facetStylingFiles = readdirSync(facetStylingDir).filter(
+      (f: string) => f.endsWith(".krs") || f.endsWith(".krs.style"),
+    );
+
+    it("registers every .krs / .krs.style file in the directory, and nothing else", () => {
+      expect(project.files.map((f) => f.path).sort()).toEqual([...facetStylingFiles].sort());
+    });
+
+    it.each(facetStylingFiles)("%s content is byte-identical to the bundled entry", (file) => {
+      const onDisk = readFileSync(resolve(facetStylingDir, file), "utf8");
+      const entry = project.files.find((f) => f.path === file);
+      expect(entry).toBeDefined();
+      expect(entry?.content).toBe(onDisk);
+    });
+
+    it("keeps the sheet reachable from the entry — the @import must resolve", () => {
+      // The bundled pair is only useful if `index.krs` still points at the sheet
+      // by the name it is bundled under. Renaming one side silently would leave a
+      // project that opens with an unresolved import.
+      const index = project.files.find((f) => f.path === "index.krs");
+      expect(index?.content).toContain('@import "facets.krs.style"');
     });
   },
 );

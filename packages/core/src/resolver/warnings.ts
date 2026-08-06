@@ -14,6 +14,7 @@ import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
 import { buildEntityResolver } from "./resource-entity.js";
 import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
+import { formatSelector } from "../style/serialize.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   const warnings: Warning[] = [];
@@ -49,6 +50,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectTagsNotBuiltin(file));
   warnings.push(...detectTagsNotApplicable(file));
   warnings.push(...detectAnnotationsNotBuiltin(file));
+  warnings.push(...detectStyleSelectorsNotBuiltin(sheets, systemSheetCount));
   warnings.push(...detectFacetsNotDeclared(file));
   warnings.push(...detectUnresolvedLegendRefs(file, stylesIndex));
 
@@ -412,6 +414,63 @@ function detectAnnotationsNotBuiltin(file: KrsFile): Warning[] {
   for (const storage of file.storages) visit(storage);
   for (const organization of file.organizations) {
     for (const team of organization.teams) visitTeam(team);
+  }
+  return warnings;
+}
+
+/**
+ * v1.x deprecation for `.krs.style` **selectors** that target a tag or
+ * annotation name outside the tool vocabulary (#2175, design
+ * `tags-and-facets.md` (B8)).
+ *
+ * #2159 deprecated the names on the *model* side and deliberately stopped
+ * there: at that point a sheet's `[pci] { … }` rule was the only way to style
+ * a cross-cutting concern, and warning about it would have told the author to
+ * stop doing the one thing that worked. Facet selectors (`[facets=<id>]`) are
+ * the migration target, so the style-side half fires from the release that
+ * ships them — never before.
+ *
+ * Both halves fire for one name, on purpose. `[pci]` written on a node and
+ * `[pci] { … }` written in a sheet are two separate edits, and warning only
+ * once would leave whichever site was quiet unfound.
+ *
+ * System sheets are skipped: the builtin theme and any injected theme sheets
+ * are not the author's to edit, and they use builtin vocabulary by
+ * construction. The `sourceIndex` split is the same one `detectStyleConflicts`
+ * uses.
+ *
+ * Matching is untouched — v1.x keeps applying these rules (ADR-1314). Dropping
+ * them now would silently change how existing models look, which is a v2.0
+ * decision (design Part A step 4).
+ */
+function detectStyleSelectorsNotBuiltin(sheets: StyleSheet[], systemSheetCount: number): Warning[] {
+  const allowedTags = new Set<string>([
+    ...REFERENCE_DATA.tags.map((t) => t.name),
+    ...SYSTEM_ASSIGNED_TAGS,
+  ]);
+  const allowedAnnotations = new Set<string>(REFERENCE_DATA.annotations.map((a) => a.name));
+  const warnings: Warning[] = [];
+
+  for (const sheet of sheets.slice(systemSheetCount)) {
+    for (const rule of sheet.rules) {
+      const selector = formatSelector(rule.selector);
+      for (const tag of rule.selector.tags) {
+        if (allowedTags.has(tag)) continue;
+        warnings.push({
+          kind: "style-tag-selector-not-builtin",
+          params: { tag, selector },
+          loc: rule.selector.loc,
+        });
+      }
+      for (const annotation of rule.selector.annotations) {
+        if (allowedAnnotations.has(annotation)) continue;
+        warnings.push({
+          kind: "style-annotation-selector-not-builtin",
+          params: { annotation, selector },
+          loc: rule.selector.loc,
+        });
+      }
+    }
   }
   return warnings;
 }
@@ -1766,12 +1825,16 @@ function serializeSelector(selector: {
   nodeType?: string;
   tags: string[];
   annotations: string[];
+  facets?: string[];
   id?: string;
 }): string {
   const parts: string[] = [];
   if (selector.id) parts.push(`#${selector.id}`);
   if (selector.nodeType) parts.push(selector.nodeType);
   for (const tag of selector.tags) parts.push(`[${tag}]`);
+  // Included so `[facets=pii]` and `[facets=gdpr]` are distinct keys for the
+  // style-conflict grouping; omitting them would merge two different rules.
+  for (const facet of selector.facets ?? []) parts.push(`[facets=${facet}]`);
   for (const ann of selector.annotations) parts.push(`@${ann}`);
   return parts.join("");
 }

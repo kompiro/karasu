@@ -4,6 +4,8 @@ import {
   EC_PLATFORM_PROJECTS,
   EC_PLATFORM_PROJECTS_EN,
   FEATURE_SAMPLES_PROJECT,
+  FACET_STYLING_PROJECT,
+  FACET_STYLING_PROJECT_EN,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
   MULTI_FILE_SYSTEM_PROJECT,
@@ -119,6 +121,15 @@ export function useProjectInitialization({
             FEATURE_SAMPLES_PROJECT.files,
           );
           initialProjects.push(featureSamplesProject);
+          // Seeded as a pair: the `.krs` alone shows nothing of what this
+          // example is about, since the whole demonstration lives in the
+          // `.krs.style` it imports (#2175).
+          const facetStylingTemplate = isJa ? FACET_STYLING_PROJECT : FACET_STYLING_PROJECT_EN;
+          const facetStylingProject = await pm.createProject(
+            facetStylingTemplate.name,
+            facetStylingTemplate.files,
+          );
+          initialProjects.push(facetStylingProject);
           dispatch({ type: "SET_PROJECTS", projects: initialProjects });
         } else {
           dispatch({ type: "SET_PROJECTS", projects: projectList });

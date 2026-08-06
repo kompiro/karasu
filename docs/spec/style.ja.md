@@ -15,6 +15,8 @@
 | 複合（種別+タグ） | `service[external]` | 種別とタグの両方に一致 |
 | 複合（タグ+アノテーション） | `[external]@deprecated` | タグとアノテーションの両方に一致 |
 | 複合（種別+タグ+アノテーション） | `service[external]@deprecated` | すべてに一致 |
+| ファセット | `[facets=pii]` | 指定 `facet` に所属する全要素 |
+| 複合（種別+ファセット） | `service[facets=pii]` | 種別と facet 所属の両方に一致 |
 | ID | `#ECommerce` | 特定ノードのみ |
 | エッジ | `edge` | 全エッジ |
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
@@ -37,6 +39,8 @@
 | 種別 + タグ | `service[external]` | 11 |
 | タグ + アノテーション | `[external]@deprecated` | 20 |
 | 種別 + タグ + アノテーション | `service[external]@deprecated` | 21 |
+| ファセット | `[facets=pii]` | 10 |
+| 種別 + ファセット | `service[facets=pii]` | 11 |
 | ID | `#ECommerce` | 100 |
 | エッジ | `edge` | 1 |
 | エッジ + タグ | `edge[async]` | 11 |
@@ -48,6 +52,102 @@
 
 `edge#criticalWrite` は 101（ID 100 + `edge` 種別 1）。
 同スコアなら後に書いた方が優先（CSS同様）。
+
+---
+
+## ファセットセレクタ（`[facets=<id>]`）— experimental
+
+> **Experimental notation（post-v1.0 watch）。** `facet` が experimental なので
+> このセレクタも experimental。後方互換はまだ約束しておらず、昇格は実利用の証拠を
+> 条件とする（[ADR-1820](../adr/1820-notation-promotion-gate.md)）。
+
+宣言済み `facet` に所属する要素をスタイリングする
+（[syntax.ja.md § 横断的な所属](syntax.ja.md#横断的な所属facet-experimental)）。
+
+```css
+[facets=pii] {
+  border-color: #14B8A6;
+  border-width: 2px;
+}
+
+/* 種別との複合 — PCI スコープの database だけ。 */
+database[facets=pci_scope] {
+  background-color: #FEF3C7;
+}
+
+/* 繰り返すと複数所属を同時に要求する（タグと同じく AND）。 */
+[facets=pii][facets=gdpr] {
+  border-style: dashed;
+}
+```
+
+- **ノード限定。** v1 では `facets` はノードのプロパティなので、`edge[facets=...]`
+  は全エッジに一致するのではなく何にも一致しない。
+- **所属は要素側から読む** — `facets <id>` が書かれている場所そのもの。セレクタが
+  `facet` 宣言側を参照することはない。宣言が持つのは関心事のメタデータであって
+  メンバーリストではない。
+- **未宣言の facet id はスタイル側のエラーにしない。** `facets pcl` の打ち間違いは
+  それが書かれた場所で `facet-not-declared` が 1 度だけ報告する。同じ綴りを指す
+  セレクタは単に何にも一致しない。2 度報告すると、1 つの間違いを 2 箇所で直せと
+  言うことになる。
+- **fact と style の分離は不変。** 所属は事実なので `.krs`、見た目は選択なのでここ。
+  プレビューの overlay はさらに別のもので、読み手の一時的な選択であり、どこにも
+  書き込まれない。
+
+### 任意名タグ / アノテーションセレクタからの移行
+
+`.krs.style` は以前から任意のタグ名 / アノテーション名に一致してきた。そして今まで、
+それが横断的関心事をスタイリングする唯一の手段だった。facet セレクタがその置き換えなので、
+任意名セレクタは **v1.x で非推奨**（`style-tag-selector-not-builtin` /
+`style-annotation-selector-not-builtin`）とし、構文 v2.0 で一致しなくなる。それまでは
+引き続き動く — ルールを黙って落とすと既存モデルの見た目が変わってしまう。
+
+**移行前** — 名前が関心事を担っており、その意味はどこにも宣言されていない:
+
+```krs
+system Shop {
+  database CardVault [pci] {}
+  service Payments [pci] {}
+}
+```
+
+```css
+[pci] {
+  border-color: #F59E0B;
+}
+```
+
+**移行後** — 関心事を 1 度宣言し、所属を `facets` へ移し、セレクタでそれを狙う:
+
+```krs
+facet pci {
+  label "PCI スコープ"
+  description "年次 PCI DSS 評価の対象"
+  link "https://example.com/policies/pci" "PCI ポリシー"
+}
+
+system Shop {
+  database CardVault { facets pci }
+  service Payments { facets pci }
+}
+```
+
+```css
+[facets=pci] {
+  border-color: #F59E0B;
+}
+```
+
+**specificity は変わらない** — `[facets=pci]` は `[pci]` と同じく 10 点。これは意図的で、
+移行途中のシートでどのルールが勝つかが変わってしまうと、書き換えを 1 コミットで
+やり切らねばならなくなる。
+
+タグには無くて facet にあるものが 3 つある: 関心事自身のメタデータの置き場
+（`description` / `link`）、宣言集合に対する打ち間違い検出（`facets pcl` は報告されるが、
+`[pcl]` は黙って別のタグだった）、そして overlay — 読み手が何も編集せずに facet を
+強調できる。
+
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — このセレクタが、styling の次元で `facet` を inert にしないための効果にあたる。[TPL-2175](../test-perspectives/TPL-2175-deprecation-announced-only-with-a-migration-target.md) — 非推奨は、移行先が出荷される release で告知する（それより早く告知しない）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — 新しいセレクタ形式が `karasu fmt` / シート tidy で round-trip すること。
 
 ---
 

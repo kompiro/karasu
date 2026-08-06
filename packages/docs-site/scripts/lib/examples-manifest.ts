@@ -231,6 +231,17 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "`organization` ブロックだけを持つファイル。",
     },
   ),
+  localized(
+    "facet-styling",
+    "scenarios",
+    "facet-styling",
+    "index.krs",
+    { en: "Styling by facet membership", ja: "ファセット所属によるスタイリング" },
+    {
+      en: "`[facets=<id>]` in a `.krs.style` sheet — style by what a set an element belongs to, not by what it is.",
+      ja: "`.krs.style` の `[facets=<id>]` — 要素が「何であるか」ではなく「どの集合に属するか」でスタイリングする。",
+    },
+  ),
   single(
     "client-mcp",
     "scenarios",

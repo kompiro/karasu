@@ -201,6 +201,7 @@ export class StyleParser {
     const selector: StyleSelector = {
       tags: [],
       annotations: [],
+      facets: [],
       loc: this.rangeBetween(startToken, startToken),
     };
 
@@ -250,10 +251,11 @@ export class StyleParser {
       }
     }
 
-    // Tag selectors `[tag]` and edge endpoint selectors `[from=<id>]` /
-    // `[to=<id>]`. The two share the `[...]` bracket; an `=` after the inner
-    // identifier distinguishes an endpoint predicate from a plain tag (a tag
-    // is always `[ident]` with no `=`, so this never shadows tag parsing).
+    // Tag selectors `[tag]`, edge endpoint selectors `[from=<id>]` /
+    // `[to=<id>]`, and facet selectors `[facets=<id>]` (#2175). All share the
+    // `[...]` bracket; an `=` after the inner identifier distinguishes an
+    // attribute predicate from a plain tag (a tag is always `[ident]` with no
+    // `=`, so this never shadows tag parsing).
     while (this.peek().type === TokenType.LeftBracket) {
       this.advance(); // [
       const inner = this.expect(TokenType.Identifier);
@@ -266,6 +268,11 @@ export class StyleParser {
           selector.edgeFrom = value.value;
         } else if (inner.value === "to") {
           selector.edgeTo = value.value;
+        } else if (inner.value === "facets") {
+          // Repeatable and ANDed, like tags. Deliberately the same spelling as
+          // the `.krs` property, so the sheet reads as "the thing I wrote over
+          // there" rather than as a second vocabulary to learn.
+          selector.facets.push(value.value);
         } else {
           this.diagnostics.push({
             severity: "error",
@@ -568,6 +575,11 @@ export function computeSpecificity(selector: Omit<StyleSelector, "loc">): number
   // `edge[from=X]` lands at 11 — same tier as `edge[tag]`.
   if (selector.edgeFrom !== undefined) score += 10;
   if (selector.edgeTo !== undefined) score += 10;
+  // `[facets=<id>]` scores like a tag too (#2175). Deliberate: a facet
+  // selector is the migration target for an arbitrary-name tag selector, so
+  // rewriting `[pci] { … }` as `[facets=pci] { … }` must not change which rule
+  // wins in a sheet that mixes the two during the migration.
+  score += selector.facets.length * 10;
   if (selector.nodeType) score += 1;
   return score;
 }

@@ -26,6 +26,8 @@ export const OPENABLE_EXAMPLES: readonly OpenableExample[] = [
   { slug: "deploy-only", langs: ["en", "ja"], entry: "index.krs" },
   { slug: "multi-file-system", langs: ["en", "ja"], entry: "editor.krs" },
   { slug: "deploy-org", langs: ["en", "ja"], entry: "index.krs" },
+  // Opens as a pair — `index.krs` plus the `facets.krs.style` it imports.
+  { slug: "facet-styling", langs: ["en", "ja"], entry: "index.krs" },
   // English-authored, no Japanese counterpart (examples/en/ only).
   { slug: "client-mcp", langs: ["en"], entry: "index.krs" },
 ];

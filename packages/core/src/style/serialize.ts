@@ -99,6 +99,15 @@ export function formatSelector(selector: StyleSelector): string {
   for (const tag of selector.tags) {
     out += `[${tag}]`;
   }
+  // Facet predicates (`[facets=<id>]`, #2175) after tags and before
+  // annotations. This is a canonical order, not the source order: the parser
+  // takes `[tag]` and `[facets=<id>]` interleaved in one bracket loop, so
+  // `[facets=pii][pci]` re-emits as `[pci][facets=pii]`. Both are ANDed, so the
+  // reordering is semantically inert and the round-trip guarantee holds at the
+  // AST level, which is where TPL-1101 states it.
+  for (const facet of selector.facets) {
+    out += `[facets=${facet}]`;
+  }
   for (const annotation of selector.annotations) {
     out += `@${annotation}`;
   }

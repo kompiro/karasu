@@ -41,13 +41,17 @@ const ZERO_RANGE = {
 };
 
 function makeRule(
-  selectorPartial: Omit<StyleRule["selector"], "loc"> & { loc?: StyleRule["selector"]["loc"] },
+  selectorPartial: Omit<StyleRule["selector"], "loc" | "facets"> & {
+    facets?: string[];
+    loc?: StyleRule["selector"]["loc"];
+  },
   properties: Record<string, string>,
   specificity: number,
   sourceIndex = 0,
 ): StyleRule {
   const selector: StyleRule["selector"] = {
     ...selectorPartial,
+    facets: selectorPartial.facets ?? [],
     loc: selectorPartial.loc ?? ZERO_RANGE,
   };
   return {

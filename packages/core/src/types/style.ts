@@ -50,6 +50,18 @@ export interface StyleSelector {
    * {@link edgeFrom}.
    */
   edgeTo?: string;
+  /**
+   * Facet ids targeted by `[facets=<id>]` selectors (#2175). Repeatable and
+   * ANDed, like {@link tags}: `[facets=pii][facets=gdpr]` matches an element
+   * in both. Matched against the element-side `BaseNodeFields.facets`, which
+   * is why no facet index has to be threaded here — membership is written on
+   * the element (the locality property the by-reference form was rejected for).
+   *
+   * Nodes only. `facets` is not accepted on edges in v1 (design
+   * `tags-and-facets.md` (B1)), so an `edge[facets=…]` selector matches
+   * nothing rather than matching every edge.
+   */
+  facets: string[];
   loc: SourceRange;
 }
 
