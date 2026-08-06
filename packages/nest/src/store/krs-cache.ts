@@ -81,7 +81,8 @@ const LIST_PAGE_SIZE = 1000;
 const DEFAULT_MAX_PURGE_PAGES = 10_000;
 
 export class KrsCache {
-  private readonly ttlSeconds: number;
+  /** Exposed so a pointer into this cache can be given the same lifetime. */
+  readonly ttlSeconds: number;
   private readonly maxPurgePages: number;
 
   constructor(
@@ -154,6 +155,29 @@ export class KrsCache {
   /** Delete every SHA cached for one repo under one installation. */
   purgeRepo(ref: RepoRef): Promise<number> {
     return this.purgeByPrefix(repoPrefix(ref));
+  }
+
+  /**
+   * The distinct repos this installation has cached anything for.
+   *
+   * Exists so a purge can clean up the out-of-prefix directory entries that
+   * point into this installation *before* the keys naming those repos are
+   * deleted. Reading it after the purge would find nothing.
+   */
+  async listRepos(installationId: number | string): Promise<{ owner: string; repo: string }[]> {
+    const prefix = installationPrefix(installationId);
+    const seen = new Map<string, { owner: string; repo: string }>();
+    let cursor: string | undefined;
+    do {
+      const page = await this.kv.list({ prefix, cursor, limit: LIST_PAGE_SIZE });
+      for (const key of page.keys) {
+        const [owner, repo] = key.name.slice(prefix.length).split("/");
+        if (owner === undefined || repo === undefined) continue;
+        seen.set(`${owner}/${repo}`, { owner, repo });
+      }
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor !== undefined);
+    return [...seen.values()];
   }
 
   /**

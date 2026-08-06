@@ -12,10 +12,13 @@ import { MissingBindingError, type NestEnv, type NestExecutionContext } from "./
 import { error } from "./http.js";
 import { logError } from "./log.js";
 import { health } from "./routes/health.js";
+import { repoKrs } from "./routes/repo.js";
 import { Router } from "./router.js";
 
 export function createRouter(): Router {
-  return new Router().get("/healthz", health);
+  // Registration order is match order, so the literal routes go first and the
+  // `/:owner/:repo` catch-all cannot shadow them.
+  return new Router().get("/healthz", health).get("/:owner/:repo", repoKrs);
 }
 
 const router = createRouter();
