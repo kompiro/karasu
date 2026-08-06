@@ -16,3 +16,12 @@ export function logError(message: string, detail?: unknown): void {
   if (detail === undefined) console.error(message);
   else console.error(message, detail);
 }
+
+/**
+ * For the handful of events worth a trace even when nothing went wrong — a
+ * purge, above all, since "it ran" is the only thing anyone can check after
+ * the fact.
+ */
+export function logInfo(message: string): void {
+  console.log(message);
+}
