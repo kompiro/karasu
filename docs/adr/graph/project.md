@@ -1,6 +1,6 @@
 # ADR Topic: project
 
-10 ADRs in this topic. Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+11 ADRs in this topic. Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -15,6 +15,7 @@ flowchart TD
     ADR_1809["ADR-1809<br/>プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する"]
     ADR_1990["ADR-1990<br/>karasu-nest ピボット — GitHub App による server-side r..."]
     ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
+    ADR_2262["ADR-2262<br/>karasu-nest の受付と完了通知 — installer 起動 + PR 還元、rea..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   ADR_357["ADR-357<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
@@ -46,6 +47,7 @@ flowchart TD
   class ADR_1809 accepted
   class ADR_1990 accepted
   class ADR_2218 accepted
+  class ADR_2262 accepted
   class ADR_9006 accepted
   class ADR_357 ghost
   class ADR_650 ghost
