@@ -1,6 +1,6 @@
 # ADR Topic: project
 
-11 ADRs in this topic. Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+12 ADRs in this topic. Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -14,6 +14,7 @@ flowchart TD
     ADR_1801["ADR-1801<br/>karasu-nest — 共有リンクの OGP 画像（system 図 unfurl）"]
     ADR_1809["ADR-1809<br/>プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する"]
     ADR_1990["ADR-1990<br/>karasu-nest ピボット — GitHub App による server-side r..."]
+    ADR_1994["ADR-1994<br/>karasu-nest の free-tier quota — installation あた..."]
     ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
     ADR_2262["ADR-2262<br/>karasu-nest の受付と完了通知 — installer 起動 + PR 還元、rea..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -28,6 +29,7 @@ flowchart TD
   ADR_462 --> ADR_9018
   ADR_462 --> ADR_461
   ADR_740 --> ADR_650
+  ADR_1994 --> ADR_1990
   ADR_357 --> ADR_9006
   ADR_9013 --> ADR_9006
   ADR_1990 -.supersedes.-> ADR_1783
@@ -46,6 +48,7 @@ flowchart TD
   class ADR_1801 accepted
   class ADR_1809 accepted
   class ADR_1990 accepted
+  class ADR_1994 accepted
   class ADR_2218 accepted
   class ADR_2262 accepted
   class ADR_9006 accepted
