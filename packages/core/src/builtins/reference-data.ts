@@ -519,6 +519,19 @@ export const REFERENCE_DATA = {
         label: { en: "Migration target", ja: "移行先" },
       },
     },
+    // Last on purpose. A node can carry several annotations but renders one
+    // badge, and the built-in sheet's rules tie on specificity, so the later
+    // rule wins. `@draft` is the one that changes how a reader should treat
+    // everything else on the node, so it is the one that must stay visible.
+    {
+      name: "draft",
+      description: {
+        en: "Asserted but not confirmed by a human",
+        ja: "主張されているが人手で確認されていない",
+      },
+      defaultRendering: { en: "✎ badge", ja: "✎バッジ" },
+      defaultBadge: { color: "#A78BFA", icon: "✎", label: { en: "Draft", ja: "下書き" } },
+    },
   ],
   styleProperties: [
     {

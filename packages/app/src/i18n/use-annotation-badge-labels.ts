@@ -18,6 +18,7 @@ export function useAnnotationBadgeLabels(): AnnotationBadgeLabels {
       deprecated: translate(locale, "badge.deprecated"),
       new: translate(locale, "badge.new"),
       experimental: translate(locale, "badge.experimental"),
+      draft: translate(locale, "badge.draft"),
       migrationTarget: translate(locale, "badge.migrationTarget"),
     }),
     [locale],

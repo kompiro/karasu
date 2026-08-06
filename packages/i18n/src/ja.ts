@@ -157,6 +157,7 @@ export const ja: Partial<Translations> = {
   "badge.deprecated": "非推奨",
   "badge.new": "NEW",
   "badge.experimental": "実験的",
+  "badge.draft": "下書き",
   "badge.migrationTarget": "移行先",
 
   // ReferencePanel
