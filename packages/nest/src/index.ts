@@ -43,3 +43,17 @@ export {
 export type { Finding, RedactionResult } from "./redact/redact.js";
 export { REDACTION_RULES } from "./redact/rules.js";
 export type { RedactionRule } from "./redact/rules.js";
+export { pruneUnparseableLines } from "./reverse/prune.js";
+export type { PruneResult } from "./reverse/prune.js";
+export { reverseRepository, ReverseFailed } from "./reverse/pipeline.js";
+export type { StructuralDiagnostic } from "./reverse/pipeline.js";
+export type {
+  RedactedRepo,
+  ReverseOptions,
+  ReverseResult,
+  DomainSketch,
+} from "./reverse/pipeline.js";
+export { AnthropicClient, LlmError } from "./reverse/llm.js";
+export type { LlmClient, LlmResponse, LlmUsage } from "./reverse/llm.js";
+export { BOUNDED_CONTEXT_DIRECTIVE, repairPrompt } from "./reverse/prompts.js";
+export type { RepairDiagnostic } from "./reverse/prompts.js";

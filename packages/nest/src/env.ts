@@ -50,6 +50,8 @@ export interface NestEnv {
   GITHUB_APP_PRIVATE_KEY?: string;
   /** Shared secret for webhook signature verification. Wired in #2286. */
   GITHUB_WEBHOOK_SECRET?: string;
+  /** LLM API key for the reverse pipeline. Wired in #2288. */
+  LLM_API_KEY?: string;
   /** Deploy environment name, surfaced by `/healthz` for smoke checks. */
   ENVIRONMENT?: string;
 }

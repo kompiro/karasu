@@ -26,6 +26,7 @@ describe("handleRequest", () => {
         GITHUB_APP_ID: false,
         GITHUB_APP_PRIVATE_KEY: false,
         GITHUB_WEBHOOK_SECRET: false,
+        LLM_API_KEY: false,
       },
     });
   });

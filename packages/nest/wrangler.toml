@@ -57,6 +57,7 @@ id = "6c08ed60d4754649bf396e1063e331a3"
 #   wrangler secret put GITHUB_APP_ID           # 1992
 #   wrangler secret put GITHUB_APP_PRIVATE_KEY  # 1992
 #   wrangler secret put GITHUB_WEBHOOK_SECRET   # 2286
+#   wrangler secret put LLM_API_KEY             # 2288
 #
 # `GET /healthz` reports which of these the running deploy actually has, as
 # booleans, so a deploy missing one is diagnosable without reading them back.
