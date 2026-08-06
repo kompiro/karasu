@@ -29,6 +29,7 @@ describe("handleRequest", () => {
         LLM_API_KEY: false,
         GENERATE_WORKFLOW: false,
         METRICS_TOKEN: false,
+        PR_DELIVERY: false,
       },
     });
   });

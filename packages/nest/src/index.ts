@@ -71,6 +71,15 @@ export { FailedDocumentStore } from "./meter/failed-document.js";
 export { MetricsStore } from "./meter/record.js";
 export type { Aggregate, PassMetrics, RunMetrics } from "./meter/record.js";
 export { ReadCounter, utcDay } from "./meter/reads.js";
+// PR-back delivery (#2289). Off unless a deploy sets PR_DELIVERY=on.
+export {
+  deliverPullRequest,
+  deliveryBranch,
+  pullRequestBody,
+  DeliveryFailed,
+  KRS_PATH,
+} from "./deliver/pull-request.js";
+export type { DeliveryInput, DeliveryResult, DeliveryDeps } from "./deliver/pull-request.js";
 // The free-tier quota (#1994), levels derived in docs/design/2226-nest-cost-model.md.
 export { checkQuota } from "./quota/gate.js";
 export type { GateOptions } from "./quota/gate.js";

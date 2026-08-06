@@ -47,6 +47,38 @@ function shaSegment(value: string): string {
   return value.toLowerCase();
 }
 
+/**
+ * Base64 of UTF-8 bytes.
+ *
+ * `btoa` takes a binary string, so text has to be encoded first: passing a
+ * `.krs` containing any non-ASCII character straight to `btoa` throws, and
+ * karasu documents routinely carry Japanese labels.
+ */
+/**
+ * Encode a repository-relative file path for a URL.
+ *
+ * `segment()` alone will not do: a path has `/` separators that must survive,
+ * so they are preserved and each part encoded. That leaves `..`, which
+ * `encodeURIComponent` passes through unchanged — and on a `PUT` helper a
+ * traversal is a write to a normalised endpoint, which is exactly what
+ * `segment()` exists to prevent. Rejected rather than escaped: escaping needs
+ * a matching unescape somewhere, and there is nothing here to unescape it.
+ */
+function filePathSegments(filePath: string): string {
+  const parts = filePath.split("/");
+  if (parts.some((part) => part === "" || part === "." || part === "..")) {
+    throw new GitHubApiError(0, filePath, "a file path may not contain . or .. segments");
+  }
+  return parts.map(segment).join("/");
+}
+
+function base64Utf8(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 import { readGzippedArchive, type ReadArchiveOptions, type ReadArchiveResult } from "./tar.js";
 
 export class GitHubApiError extends Error {
@@ -240,6 +272,191 @@ export class GitHubClient {
       throw new GitHubApiError(200, refPath, "the default branch has no commit");
     }
     return sha;
+  }
+
+  /**
+   * A ref's current commit, or `undefined` if the ref does not exist.
+   *
+   * `ref` is the part after `refs/`, e.g. `heads/karasu-nest/model-abc123`.
+   */
+  async refSha(
+    installationId: string,
+    owner: string,
+    repo: string,
+    ref: string,
+  ): Promise<string | undefined> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/git/ref/${ref
+      .split("/")
+      .map(segment)
+      .join("/")}`;
+    const response = await this.callWithInstallation(installationId, path);
+    if (response.status === 404) return undefined;
+    const body = await this.readJson(response, path);
+    const sha = (body as { object?: { sha?: unknown } }).object?.sha;
+    return typeof sha === "string" ? sha : undefined;
+  }
+
+  /** Create a branch at a commit. Throws if the ref already exists. */
+  async createRef(
+    installationId: string,
+    owner: string,
+    repo: string,
+    ref: string,
+    sha: string,
+  ): Promise<void> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/git/refs`;
+    const response = await this.callWithInstallation(installationId, path, {
+      method: "POST",
+      body: JSON.stringify({ ref: `refs/${ref}`, sha }),
+    });
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, `could not create ${ref}`);
+    }
+  }
+
+  /** The blob sha of a file on a branch, or `undefined` if it is not there. */
+  async fileSha(
+    installationId: string,
+    owner: string,
+    repo: string,
+    filePath: string,
+    ref: string,
+  ): Promise<string | undefined> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/contents/${filePathSegments(
+      filePath,
+    )}?ref=${encodeURIComponent(ref)}`;
+    const response = await this.callWithInstallation(installationId, path);
+    if (response.status === 404) return undefined;
+    const body = await this.readJson(response, path);
+    const sha = (body as { sha?: unknown }).sha;
+    return typeof sha === "string" ? sha : undefined;
+  }
+
+  /**
+   * Write a file on a branch.
+   *
+   * `sha` must be the file's current blob sha when replacing one, and absent
+   * when creating it. Getting that wrong is a 409 rather than a lost write,
+   * which is why the caller looks it up rather than this guessing.
+   */
+  async putFile(
+    installationId: string,
+    owner: string,
+    repo: string,
+    file: { path: string; content: string; message: string; branch: string; sha?: string },
+  ): Promise<void> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/contents/${filePathSegments(file.path)}`;
+    const response = await this.callWithInstallation(installationId, path, {
+      method: "PUT",
+      body: JSON.stringify({
+        message: file.message,
+        content: base64Utf8(file.content),
+        branch: file.branch,
+        ...(file.sha === undefined ? {} : { sha: file.sha }),
+      }),
+    });
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, `could not write ${file.path}`);
+    }
+  }
+
+  /**
+   * An open pull request whose head is `branch`, if one is already there.
+   *
+   * Two things the obvious version gets wrong. GitHub's `head=` filter matches
+   * the head *label*, which carries the owner login in its canonical case —
+   * and the owner reaching this code has been lower-cased on its way through
+   * the key normaliser, so `Kompiro:branch` would never match and the
+   * duplicate guard would never fire. `ownerLogin` is the canonical spelling,
+   * read from the repository metadata.
+   *
+   * And the filter is not trusted to have worked: every candidate's
+   * `head.ref` is compared here. If GitHub ever ignores an unmatched filter
+   * and returns the full list, accepting the first element would report
+   * somebody else's pull request as ours and skip the delivery entirely.
+   */
+  async openPullRequest(
+    installationId: string,
+    owner: string,
+    repo: string,
+    branch: string,
+    ownerLogin: string,
+  ): Promise<{ number: number; url: string } | undefined> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/pulls?state=open&head=${encodeURIComponent(
+      `${ownerLogin}:${branch}`,
+    )}`;
+    const body = await this.readJson(await this.callWithInstallation(installationId, path), path);
+    if (!Array.isArray(body)) return undefined;
+    for (const raw of body) {
+      if (typeof raw !== "object" || raw === null) continue;
+      const pull = raw as { number?: unknown; html_url?: unknown; head?: { ref?: unknown } };
+      if (pull.head?.ref !== branch) continue;
+      if (typeof pull.number !== "number" || typeof pull.html_url !== "string") continue;
+      return { number: pull.number, url: pull.html_url };
+    }
+    return undefined;
+  }
+
+  /** Delete a ref. Used to clean up a branch whose pull request never opened. */
+  async deleteRef(installationId: string, owner: string, repo: string, ref: string): Promise<void> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/git/refs/${ref
+      .split("/")
+      .map(segment)
+      .join("/")}`;
+    const response = await this.callWithInstallation(installationId, path, { method: "DELETE" });
+    if (!response.ok && response.status !== 404 && response.status !== 422) {
+      throw new GitHubApiError(response.status, path, `could not delete ${ref}`);
+    }
+  }
+
+  /** Open a pull request. */
+  async createPullRequest(
+    installationId: string,
+    owner: string,
+    repo: string,
+    pull: { title: string; head: string; base: string; body: string },
+  ): Promise<{ number: number; url: string }> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/pulls`;
+    const response = await this.callWithInstallation(installationId, path, {
+      method: "POST",
+      body: JSON.stringify(pull),
+    });
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, "could not open a pull request");
+    }
+    const body = await this.readJson(response, path);
+    const { number, html_url: url } = body as Record<string, unknown>;
+    if (typeof number !== "number" || typeof url !== "string") {
+      throw new GitHubApiError(response.status, path, "the pull-request response was malformed");
+    }
+    return { number, url };
+  }
+
+  /**
+   * The default branch and the owner's canonical login.
+   *
+   * One request for both, because delivery needs both and the login's case
+   * matters: everything downstream of the route has been lower-cased, and
+   * GitHub's pull-request head filter is not.
+   */
+  async repoInfo(
+    installationId: string,
+    owner: string,
+    repo: string,
+  ): Promise<{ defaultBranch: string; ownerLogin: string }> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}`;
+    const body = await this.readJson(await this.callWithInstallation(installationId, path), path);
+    const { default_branch: branch, owner: repoOwner } = body as {
+      default_branch?: unknown;
+      owner?: { login?: unknown };
+    };
+    if (typeof branch !== "string") {
+      throw new GitHubApiError(200, path, "the repository has no default branch");
+    }
+    return {
+      defaultBranch: branch,
+      ownerLogin: typeof repoOwner?.login === "string" ? repoOwner.login : owner,
+    };
   }
 
   /**
