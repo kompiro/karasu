@@ -158,6 +158,7 @@ export const en: Translations = {
   "badge.deprecated": "Deprecated",
   "badge.new": "NEW",
   "badge.experimental": "Experimental",
+  "badge.draft": "Draft",
   "badge.migrationTarget": "Migration target",
 
   // ReferencePanel

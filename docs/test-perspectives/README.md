@@ -501,8 +501,14 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2254](TPL-2254-durable-record-points-at-durable-address.md) | 再実行される記録は、記録より長生きするアドレスを指す — PR 作業中に見えている preview URL やローカル起動は、書いた瞬間だけ正しくマージした瞬間に嘘になる | testing | #2254 |
 | [TPL-2259](TPL-2259-shared-budget-enforced-at-every-producer.md) | 共有された予算・上限は、定数を export するのではなく判定そのものを共有し、生成点すべてで強制する — 強制すべきは生成であって受信ではない | navigation | #2259 |
 | [TPL-2291](TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md) | 通信相手をモックしたテストは、こちらのロジックしか検証しない — 相手が受理するかは別に確かめる。モックの網羅度を上げても「400 で弾かれる」には一歩も近づかない | testing | #2291, #2278 |
+| [TPL-1995](TPL-1995-generated-content-is-marked-at-its-seams.md) | 生成物の不確かさは、不確かな場所に印を付け、解決した人が消せる形にする — 文書単位のスコアは平均で情報を消し、印に罰を与えると次から印が付かなくなる | core-concepts | #1995, #1991, ADR-1990 |
+| [TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md) | 削除を約束したストアに新しい鍵空間を足したら削除経路への配線を機械で確かめる — 新 prefix は既定で purge の対象外になり、消し残しは戻り値にも例外にも現れない | project | #2226, ADR-1990 |
+| [TPL-2288](TPL-2288-background-work-platform-ceiling.md) | 非同期実行の器は実測所要時間に対して上限を先に確かめる — `waitUntil` 等に打ち切られた仕事は失敗を記録する行にも届かず、`running` のまま沈黙して残る | project | #2288, ADR-1990 |
+| [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) | 検出器の false positive 予算は正しさの一部 — 当ててはいけない near-miss 事例が実質の仕様で、positive テストだけなら規則が `/\S+/` でも通る | testing | #2287, ADR-1990 |
+| [TPL-2284](TPL-2284-purge-scope-identity-is-canonical.md) | 削除範囲を決める識別子は canonical 化する — 同じ主体の 2 通りの綴りが別 prefix になると purge は片方しか消さず、残りは戻り値にも例外にも現れない | project | #2284, ADR-1990 |
 | [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) | 要素に届かせるために広げた図形は実被覆で測る（bbox でも記録矩形でもなく）— 広げる述語は「回廊に非メンバーが無いこと」で書き、一括シフトは派生ジオメトリも動かす | renderer | #2179, #2240, docs/spec/syntax.md |
 | [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) | opt-in な視覚レイヤは無効時に自分のマーカーを 1 つも出さない — 等値テストは無条件出力を相殺して見逃すので、マーカーを名前で列挙して不在を assert する | renderer | #2174 |
 | [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) | 宣言できる構文は Reference から到達できる — 半分だけ載っている状態（要素側プロパティだけ / 宣言ブロックだけ）は何も載っていないより悪く、載せない判断は書かなければ漏れと区別できない | app-ui | #2316, ADR-2316 |
 | [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) | 1 つのエンティティの見た目を複数の面が描くなら決定を 1 つの関数に閉じる — 既定値しか無いうちは一致して隠れ、上書き手段を足した瞬間に片面だけ変わる | renderer | #2234, #2179 |
+| [TPL-2374](TPL-2374-long-call-bounded-by-silence-not-duration.md) | 分単位になりうる外部呼び出しは、総所要時間ではなく無通信で打ち切る — 非ストリーミングでは「生成中」と「ハング」が同じ姿になり、こちらが設定していない中間層が先に切る | project | #2374, ADR-1990 |
 | [TPL-2175](TPL-2175-deprecation-announced-only-with-a-migration-target.md) | 非推奨は移行先が出荷される release で告知する — 移行先の無い deprecation は「唯一動く手段をやめろ」と言っているだけで、警告を無視する習慣を教える。1 つの誤りが複数箇所に書かれるなら全箇所で警告する | core-concepts | #2175, #2159 |

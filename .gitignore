@@ -28,3 +28,6 @@ THIRD_PARTY_NOTICES.md
 
 # Local screenshots shared in review conversations
 image.png
+
+# wrangler's local state and build cache (a `wrangler dev` run creates it)
+.wrangler/

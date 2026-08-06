@@ -26,6 +26,7 @@ describe("i18n locale coverage — empty-state pipeline", () => {
     expect(ja["badge.deprecated"]).toBeDefined();
     expect(ja["badge.new"]).toBeDefined();
     expect(ja["badge.experimental"]).toBeDefined();
+    expect(ja["badge.draft"]).toBeDefined();
     expect(ja["badge.migrationTarget"]).toBeDefined();
   });
 });
@@ -69,18 +70,20 @@ describe("i18n locale coverage — badge.* matches core reference-data defaults"
     "  service Legacy @deprecated {}",
     "  service Fresh @new {}",
     "  service Lab @experimental {}",
+    "  service Guessed @draft {}",
     "  service Next @migration_target {}",
     "}",
     "",
   ].join("\n");
 
-  // One compile is enough — all four badges render into the same SVG.
+  // One compile is enough — every badge renders into the same SVG.
   const svg = compile(krs, { diagramType: "system" }).svg;
 
   const cases = [
     ["deprecated", "badge.deprecated"],
     ["new", "badge.new"],
     ["experimental", "badge.experimental"],
+    ["draft", "badge.draft"],
     ["migration_target", "badge.migrationTarget"],
   ] as const;
 

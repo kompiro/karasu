@@ -6,8 +6,7 @@
 2. コピー先で本 HTML コメントブロック（先頭）を削除し、各セクションを埋める。
 3. 不要なセクションは削除してよい（特に「現状（インベントリ）」「未解決の問い」は任意）。
 4. ADR に昇格したら、コピーした Design Doc ファイルは **同じ PR で削除** する
-   （`docs/process.md` の「設計判断を ADR に残すタイミング」節および
-   `.claude/rules/adr.md` の「Design Doc → ADR への昇格」節を参照）。
+   （`.claude/rules/adr.md` の「Design Doc → ADR への昇格」節を参照）。
 
 規約メモ:
 - ファイル名: `docs/design/<kebab-case-name>.md`。ADR 昇格時のファイル名は
@@ -107,7 +106,7 @@
      ここに書くのは **なぜその切り方にしたか** — スライス間の依存と、各スライスを
      独立に出荷できると判断した根拠。**到達点の一覧（できること / できないこと）は
      ここではなく親 Issue の `## Slice status` 表に置く**（`docs/process.md`
-     「複数スライスに分けるときの追跡」）。Design Doc は ADR 昇格時に削除されるので、
+     `.claude/rules/program-slices.md`）。Design Doc は ADR 昇格時に削除されるので、
      一覧をここに置くとプログラムが完成した瞬間に失われる。
 
      完了マーク（✅）はどちらにも書かない — 完了は sub-issue の state が唯一の正。 -->

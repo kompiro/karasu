@@ -28,6 +28,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-834](834-security-modeling-stance.md) — セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion document に委ねる
 - [ADR-832](832-no-runtime-authz-modeling.md) — 実行時認可（usecase レベルの authz）は karasu の語彙に取り込まない
 - [ADR-1386](1386-style-prescription-stance.md) — karasu はスタイル流派を規定せず、流派が smell と呼ぶ構造は `info` 診断で事実通知する
+- [ADR-1995](1995-draft-confidence-annotation.md) — 生成物の不確かさは `@draft` アノテーションで表す — ノード単位・水準は任意・罰を与えない（ADR-1990 を refine）
 
 ### パーサー / 構文 / AST / フォーマッター
 
@@ -157,6 +158,7 @@ URL hash・ブラウザ履歴・マルチファイル間のナビゲーション
 - [ADR-461](461-export-project-zip.md) — Export Project as ZIP — `fflate` による OPFS エクスポート
 - [ADR-462](462-import-project-zip.md) — Import Project from ZIP — `fflate` 再利用 + トップレベル除去
 - [ADR-1990](1990-karasu-nest-pivot-server-reverse.md) — karasu-nest ピボット — GitHub App による server-side reverse の hosted サービス化（ADR-1783 を supersede）
+- [ADR-2262](2262-nest-intake-and-completion.md) — karasu-nest の受付と完了通知 — installer 起動 + PR 還元、reader は無通知のリクエスト受付（ADR-1990 を refine）
 
 ### Chat / AI
 

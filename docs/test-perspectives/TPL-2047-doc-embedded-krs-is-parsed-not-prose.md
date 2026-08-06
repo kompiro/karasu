@@ -104,4 +104,4 @@ pnpm --filter @karasu-tools/core test -- spec-syntax   # docs/spec/syntax.md の
 
 ## 派生元
 
-- `docs/process.md` §「AT に埋める `.krs` スニペットの fence 規約」（#2047 で新設）
+- `.claude/rules/acceptance.md` §「埋める `.krs` スニペットは fence で主張を宣言する」

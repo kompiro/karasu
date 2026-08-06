@@ -74,6 +74,7 @@ Annotations are metadata expressing **lifecycle and state**. They are a separate
 | `@new` | Newly added | ✦ badge |
 | `@experimental` | Experimental | ⚗ badge |
 | `@migration_target` | Migration target | → badge |
+| `@draft` | Asserted but not confirmed by a human | ✎ badge |
 <!-- /gen:reference:annotations -->
 
 ### Example
@@ -139,6 +140,7 @@ Recognized keys (built-ins only):
 |------------|-----|---------|
 | `@deprecated` / `@experimental` | `until` | When the node is expected to be removed / stabilized |
 | `@migration_target` | `from` | The node this one is migrating away from |
+| `@draft` | `confidence` | How sure the author is of this statement — `low` / `medium` / `high` |
 
 - **Graceful degradation by precision**: a `until` value that parses as a date (`YYYY-MM-DD`), year-month (`YYYY-MM`), or quarter (`YYYY-Qn`) is machine-usable (sortable / filterable); any other string (e.g. `"sometime next year"`) is kept verbatim as an opaque, display-only value. No validation error is raised for opaque values.
 - **No runtime evaluation**: `until` is recorded **intent**, not a deadline — karasu never compares it to the current date (no "overdue" diagnostic). Consistent with `job.schedule` (stored, not simulated) and the warn-don't-error stance.
@@ -146,6 +148,33 @@ Recognized keys (built-ins only):
 - The annotation **name list** is unchanged by parameters, so `.krs.style` annotation selectors (`@deprecated`) and annotation inheritance are unaffected.
 
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted.
+
+### `@draft` — asserted, not confirmed
+
+`@draft` marks a statement **the model makes but nobody has confirmed**. It is the honesty layer for models that were not written by hand: karasu-nest reverses a repository into `.krs` with an LLM ([ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) decision 4), and a generated model that cannot say which parts it guessed at invites the reader to trust all of it equally.
+
+```krs
+system Payments {
+  service Ledger "Ledger" {
+    domain Posting
+  }
+  service Reconciliation "Reconciliation" @draft(confidence: "low") {
+    // The seam between posting and reconciliation was a judgement call.
+    domain Settlement @draft
+  }
+}
+```
+
+- **The mark is the unit, the level is a refinement.** A bare `@draft` is complete. `confidence` is optional and takes `low` / `medium` / `high`; any other string is kept verbatim as an opaque, display-only value, exactly like `until`. A reviewer writing `confidence: "we argued about this one"` is recording something real, and rejecting it would push that note into a comment where nothing can read it.
+- **Per node, not per document.** The spike behind decision 4 found that a generated decomposition errs by splitting at genuine judgement-call seams rather than by scrambling, so the useful signal is *which seam* was uncertain. A document-level score would average that away.
+- **No gate.** karasu never refuses to render, warns about, or downranks a low-confidence node. The level is recorded judgement, consistent with `until` being intent rather than a deadline.
+- **Removing the mark is the point.** `@draft` is what a human review deletes. That deletion is the human ratchet ADR-1990 decision 4 rests on ([#2228](https://github.com/kompiro/karasu/issues/2228)), so the annotation is designed to be cheap to remove: one token, no restructuring.
+
+- **An absent mark means nothing was claimed, not that something was checked.** karasu does not track review state, so a node without `@draft` is simply a node nobody marked. In a hand-written model that is the normal case; in a generated one, treat the generator's marking as the only signal about itself. A generated model that carries no `@draft` anywhere is making a strong claim, and is worth doubting.
+
+`@draft` is a lifecycle annotation, not a tag or a facet: it describes the state of a statement in a review process, the same register as `@new` and `@experimental`, and it is tool-owned rather than a user-declared set.
+
+> Related TPLs: [TPL-1995](../test-perspectives/TPL-1995-generated-content-is-marked-at-its-seams.md) — generated content states its own uncertainty where the uncertainty is, and the mark is removable by the human who resolves it. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `@draft` has a default badge in the same PR that accepts the name. [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — the three-question gate for adding a builtin annotation.
 
 ---
 

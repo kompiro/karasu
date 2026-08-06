@@ -28,6 +28,7 @@ import type { Warning } from "../types/warnings.js";
 import type { FileSystemProvider } from "../fs/types.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
+import { type DraftState, getDraftState } from "../annotations/draft-confidence.js";
 import { getMigrationIntent, type MigrationIntent } from "../annotations/migration-intent.js";
 import { validateStyleValues } from "../style/value-validator.js";
 import {
@@ -105,6 +106,12 @@ export interface NodeMetadata {
    * carries any. Omitted otherwise so consumers can guard cheaply (#1595).
    */
   migrationIntent?: MigrationIntent;
+  /**
+   * Present when the node carries `@draft` — the statement is asserted but
+   * unconfirmed. `confidence` is set only when the annotation named a level,
+   * because a bare `@draft` is already the mark that matters (#1995).
+   */
+  draft?: DraftState;
   hasChildren: boolean;
   /** Client-only: operation-tied storage resources, in declaration order. */
   resources?: ClientResourceImpl[];
@@ -713,6 +720,7 @@ function buildNodeMetadata(
       tags: [...node.tags],
       annotations: [...node.annotations],
       migrationIntent: getMigrationIntent(node.annotationParams),
+      draft: getDraftState(node.annotations, node.annotationParams),
       hasChildren: node.children.length > 0,
       resources:
         node.kind === "client" && node.properties.resources.length > 0

@@ -126,6 +126,7 @@ const ANNOTATION_PARAM_KEYS: Record<string, ReadonlySet<string>> = {
   deprecated: new Set(["until"]),
   experimental: new Set(["until"]),
   migration_target: new Set(["from"]),
+  draft: new Set(["confidence"]),
 };
 
 // Migration-coexistence priority for picking the single winner of a 1:1 index
