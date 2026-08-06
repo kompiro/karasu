@@ -42,7 +42,11 @@ export interface NestEnv {
   KRS_CACHE?: KVNamespaceLike;
   /** GitHub App id. Wired in #1992. */
   GITHUB_APP_ID?: string;
-  /** GitHub App private key (PKCS#8 PEM). Wired in #1992. */
+  /**
+   * GitHub App private key, as a PEM. Paste the file GitHub gives you — it is
+   * PKCS#1 (`RSA PRIVATE KEY`) and `github/pem.ts` converts it, so there is no
+   * openssl step. PKCS#8 is accepted too.
+   */
   GITHUB_APP_PRIVATE_KEY?: string;
   /** Shared secret for webhook signature verification. Wired in #2286. */
   GITHUB_WEBHOOK_SECRET?: string;
