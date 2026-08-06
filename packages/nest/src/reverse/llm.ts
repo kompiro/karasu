@@ -127,8 +127,17 @@ export class AnthropicClient implements LlmClient {
 
       if (!response.ok) {
         // The body is the provider's and may quote the prompt, which is derived
-        // from someone's private repository. Status only.
-        throw new LlmError(response.status, `the model provider returned ${response.status}`);
+        // from someone's private repository — so only the error *type* comes
+        // out, and only when it looks like one. Reading it also drains the
+        // stream, which is not incidental: an unconsumed response body holds
+        // the invocation open and the runtime kills the Worker for hanging.
+        const type = await providerErrorType(response);
+        throw new LlmError(
+          response.status,
+          type === undefined
+            ? `the model provider returned ${response.status}`
+            : `the model provider returned ${response.status} (${type})`,
+        );
       }
       const body = response.body;
       if (body === null) {
@@ -233,6 +242,42 @@ export class AnthropicClient implements LlmClient {
       ...(stopReason === undefined ? {} : { stopReason }),
       usage: { inputTokens, outputTokens },
     };
+  }
+}
+
+/**
+ * A provider error type is a fixed vocabulary (`invalid_request_error`,
+ * `overloaded_error`, …). Anything else in that field is not one, and the
+ * safe reading of "not one" is that the provider put prose there — which is
+ * the thing that must not escape.
+ */
+const ERROR_TYPE_SHAPE = /^[a-z][a-z0-9_]{0,39}$/;
+
+/**
+ * The `error.type` of a failed response, if the body has one.
+ *
+ * Always leaves the body consumed or cancelled. Which of the two happens is
+ * not the caller's business, but that one of them happens is: a response
+ * stream nobody reads keeps the invocation alive until the runtime cancels it
+ * for hanging (#2379).
+ */
+async function providerErrorType(response: Response): Promise<string | undefined> {
+  let text: string;
+  try {
+    text = await response.text();
+  } catch {
+    await response.body?.cancel().catch(() => undefined);
+    return undefined;
+  }
+  try {
+    const body = JSON.parse(text) as { error?: { type?: unknown } };
+    const type = body.error?.type;
+    if (typeof type !== "string" || !ERROR_TYPE_SHAPE.test(type)) return undefined;
+    return type;
+  } catch {
+    // Not JSON. A provider that answers with prose has told us nothing we are
+    // allowed to repeat.
+    return undefined;
   }
 }
 

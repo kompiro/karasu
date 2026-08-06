@@ -97,6 +97,14 @@ export interface ReverseOptions {
    * which is the direction that makes the service look affordable (#2226).
    */
   onUsage?: (usage: LlmUsage, pass: string, model?: string) => void;
+  /**
+   * Called with a pass's name before that pass is attempted.
+   *
+   * `onUsage` can only report passes that came back, so a failed run's record
+   * says how far it got and stops there — leaving "which one broke" to be
+   * inferred by summing columns against the source (#2379).
+   */
+  onPass?: (pass: string) => void;
 }
 
 export interface ReverseResult {
@@ -261,6 +269,9 @@ export async function reverseRepository(
   let model: string | undefined;
 
   const run = async (name: keyof typeof MAX_TOKENS, prompt: string): Promise<string> => {
+    // Announced before the call, not after: the pass a run *died* on is the
+    // one that never reports usage, so the only place it can be named is here.
+    options.onPass?.(name);
     const response = await llm.complete(prompt, { maxTokens: MAX_TOKENS[name] });
     passes.push({ name, usage: response.usage });
     model ??= response.model;
