@@ -26,6 +26,8 @@ examples を変更したら `pnpm --filter @karasu-tools/core test` が通る状
 | `ja/getting-started/` | `GETTING_STARTED_PROJECT` |
 | `en/getting-started/` | `GETTING_STARTED_PROJECT_EN` |
 | `en/client-mcp/` | `CLIENT_MCP_PROJECT` |
+| `ja/facet-styling/` | `FACET_STYLING_PROJECT` |
+| `en/facet-styling/` | `FACET_STYLING_PROJECT_EN` |
 | `ja/ec-platform/` | `EC_PLATFORM_PROJECTS`（スキル管理） |
 | `en/ec-platform/` | `EC_PLATFORM_PROJECTS_EN`（スキル管理） |
 | `en/feature-samples/` | `FEATURE_SAMPLES_PROJECT`（スキル管理） |
@@ -45,6 +47,10 @@ examples を変更したら `pnpm --filter @karasu-tools/core test` が通る状
   bundled 時に `index.krs` にリネームされる（#1777）
 - `feature-samples/` に新サンプルを追加したら、カタログ役の `index.krs` にも
   1 行追記する（現在 14 個 → 追加のたびに増える）
+- `facet-styling/` は **`.krs` と `.krs.style` を対で**バンドルする唯一の登録済み
+  ディレクトリ。シートがサンプルの主題そのものなので、`.krs` だけ同期すると
+  「開いても何も起きないプロジェクト」になる。drift ガードの file filter も
+  `.krs.style` を含めてある
 - `deploy-only/` / `org-only/` は Reference ウィンドウの Samples タブ（#1548）で
   参照され、en ロケールでは `*_EN` 変種、ja では `ja/` 版が表示される（#1642）。
   `multi-file-system/`・`ec-platform/` も同様に en/ja のロケール一致版が

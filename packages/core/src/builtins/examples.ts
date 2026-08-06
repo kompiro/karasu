@@ -3220,6 +3220,354 @@ system UserSample {
   ],
 };
 
+/**
+ * facet 所属によるスタイリングのサンプル（#2175）。`index.krs` が `facet` を宣言し、
+ * `facets.krs.style` が `[facets=<id>]` でそれを狙う。**シートを同梱するのが要点**で、
+ * セレクタの効きは .krs 単体では見えない。ProjectMode の初回 seed に入る。
+ */
+export const FACET_STYLING_PROJECT: ExampleProject = {
+  name: "facet-styling",
+  files: [
+    {
+      path: "index.krs",
+      content: `// facet-styling/index.krs
+// 対象: \`[facets=<id>]\` による facet 所属でのスタイリング（#2175 — experimental）。
+//
+// \`facet\` は、アーキテクチャの**外側**で定義された集合 — 規制・ポリシー・監査
+// スコープ — を表す。tag は要素が「何であるか」を述べ、facet は「外部定義の
+// どの集合に属するか」を述べる。所属は要素側に書く（\`facets pci\`）ので、
+// 要素をリネームしても遠くのリストを直しに行く必要がない。
+//
+// このサンプルが扱うのは**スタイリングの側**。隣の \`facets.krs.style\` を一緒に
+// 開くこと。シートは所属で照合しており、これが \`[pci] { … }\` のような任意名
+// タグセレクタを流用していた用途の置き換えにあたる。
+//
+// 描画結果で見るポイントは 3 つ:
+//
+//   1. \`[facets=pci]\` のルールは \`Checkout\`（service）と \`Ledger\`（database）の
+//      両方に一致する。セレクタが問うのは形ではなく集合だから。\`Ledger\` は
+//      その結果を琥珀色の枠として身にまとうが、\`Checkout\` では後続のルールに
+//      上書きされる（3 を参照）。これはカスケードの結果であって、一致しなかった
+//      わけではない。
+//   2. \`Ledger\` にはさらに塗りが付く。\`database[facets=pci]\` が所属と kind を
+//      複合しているため。\`Checkout\` は database ではないので付かない。
+//   3. \`Checkout\` は 2 つの facet に属するので、\`[facets=pci][facets=pii]\`
+//      （スコア 20）が単独 facet のルール（スコア 10）に勝ち、枠が破線になる。
+//      ただし枠の**色**は \`pci\` の琥珀ではなく \`pii\` の teal になる。単独 facet の
+//      2 ルールがスコア 10 で同点なので、後に宣言したほうが勝つ — タグセレクタ
+//      2 つの場合とまったく同じ挙動である。この同点処理こそが、シートを 1
+//      ルールずつ移行できる理由そのものにあたる。
+//
+// プレビューの「ファセット」セレクタの overlay は別物で、読み手側の一時的な
+// 強調でありモデルには何も書かれない。ここで見えているのは作者が書いた
+// スタイルであり、どの読み手にも同じように効く。
+
+@import "facets.krs.style"
+
+facet pci {
+  label "カード会員データ"
+  description "年次 PCI DSS 評価の対象"
+  link "https://example.com/policies/pci" "PCI ポリシー"
+}
+
+facet pii {
+  label "個人情報"
+  description "自然人を識別できるデータを保持または通過させる"
+}
+
+system Shop {
+  label "オンラインショップ"
+
+  user Customer [human] {
+    label "顧客"
+  }
+
+  client WebApp [web] {
+    label "Web ストアフロント"
+    facets pii
+  }
+
+  // 2 つの facet に属する。購入者とカードの両方を見るため。枠が破線になる。
+  service Checkout {
+    label "チェックアウト"
+    description "決済を行う — 購入者とカードの双方を見る"
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "アカウント"
+    description "プロフィール・住所・同意記録"
+    facets pii
+  }
+
+  // どちらの facet にも属さない。誰の情報も持たず、カードも扱わない。
+  service Catalogue {
+    label "カタログ"
+    description "商品と価格"
+  }
+
+  database Ledger {
+    label "決済台帳"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "プロフィールストア"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "商品画像"
+  }
+
+  Customer -> WebApp "閲覧する"
+  WebApp -> Accounts "サインイン"
+  WebApp -> Checkout "支払う"
+  WebApp -> Catalogue "商品を見る"
+  Accounts -> ProfileStore "読み書き"
+  Checkout -> Ledger "記録する"
+  Catalogue -> ProductImages "読み取り"
+}
+`,
+    },
+    {
+      path: "facets.krs.style",
+      content: `/* facet-styling/facets.krs.style
+ *
+ * facet 所属によるスタイリング（#2175 — experimental）。
+ *
+ * \`[facets=<id>]\` は \`index.krs\` で \`facets <id>\` を宣言した全要素に一致する。
+ * カスケード上の振る舞いはタグセレクタと同じで、これは意図的 — 末尾の移行
+ * ノートを参照。
+ *
+ * fact と style の分離は保たれている: **どの要素が** PCI スコープかは事実なので
+ * \`.krs\` に、PCI スコープが**どう見えるか**は選択なのでここに書く。
+ */
+
+/* kind を問わない所属での照合。service（Checkout）も database（Ledger）も
+   一致する。セレクタが問うのは形ではなく集合だから。 */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* kind との複合 — PCI スコープの**ストア**だけが塗られる。Checkout は facet に
+   属しているが service なので、kind 側の条件で外れる。 */
+database[facets=pci] {
+  background-color: #fef3c7;
+}
+
+/* 述語を繰り返すと複数所属を同時に要求する（タグと同じく AND）。述語 2 つで
+   スコア 20 になるので、上の単独 facet ルールに勝ち、Checkout は破線になる。 */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* ── 任意名タグセレクタからの移行 ────────────────────────────────────────
+ *
+ * facet セレクタが無かった頃は、横断的関心事をスタイリングする唯一の手段が
+ * タグ名をでっち上げてそれに一致させることだった:
+ *
+ *     [pci] { border-color: #f59e0b; }
+ *
+ * v1.x では今も動くが、警告が出るようになり（\`style-tag-selector-not-builtin\`）、
+ * 構文 v2.0 では一致しなくなる。書き換えは 3 手順:
+ *
+ *     1. 関心事を宣言する   — facet pci { label "…" description "…" }
+ *     2. 所属を移す         — 要素の \`[pci]\` を \`facets pci\` に置き換える
+ *     3. セレクタを書き換え — \`[pci]\` を \`[facets=pci]\` にする
+ *
+ * \`[facets=pci]\` のスコアは 10 で、\`[pci]\` と同じ。これがシートを 1 ルールずつ
+ * 移行できる理由で、1 つ書き換えてもどのルールが勝つかが変わらないため、
+ * 一度に全部やり切る必要がない。
+ *
+ * タグには無くて facet にあるものが 3 つある: 関心事自身のメタデータの置き場
+ * （\`description\` / \`link\`）、宣言集合に対する打ち間違い検出（\`facets pcl\` は
+ * 報告されるが \`[pcl]\` は黙って別のタグだった）、そしてプレビューの overlay。
+ */
+`,
+    },
+  ],
+};
+
+/** English variant of {@link FACET_STYLING_PROJECT} (#1642 の en/ja 対応)。 */
+export const FACET_STYLING_PROJECT_EN: ExampleProject = {
+  name: "facet-styling",
+  files: [
+    {
+      path: "index.krs",
+      content: `// facet-styling/index.krs
+// Demonstrates: styling by facet membership with \`[facets=<id>]\` (#2175 — experimental).
+//
+// A \`facet\` is a set defined OUTSIDE the architecture — a regulation, a policy,
+// an audit scope. A tag says what an element *is*; a facet says what
+// externally-defined set it *belongs to*. Membership is written on the element
+// (\`facets pci\`), so renaming an element never means editing a distant list.
+//
+// This example is about the STYLING half. Open \`facets.krs.style\` beside it:
+// the sheet matches on membership, which is the replacement for abusing an
+// arbitrary tag selector like \`[pci] { … }\` for the same job.
+//
+// Three things to look for in the rendered diagram:
+//
+//   1. The \`[facets=pci]\` rule matches both \`Checkout\` (a service) and
+//      \`Ledger\` (a database): the selector asks about the set, not the shape.
+//      \`Ledger\` wears the result as the amber border; on \`Checkout\` the amber
+//      is overridden by a later rule (see 3), which is a cascade outcome, not
+//      a matching one.
+//   2. \`Ledger\` also gets a fill, because \`database[facets=pci]\` compounds the
+//      membership with a kind. \`Checkout\` does not — it is not a database.
+//   3. \`Checkout\` is in BOTH facets, so \`[facets=pci][facets=pii]\` (score 20)
+//      beats either single-facet rule (score 10) and dashes its border. Its
+//      border COLOUR, though, is the teal of \`pii\` rather than the amber of
+//      \`pci\`: the two single-facet rules tie at 10, so the later declaration
+//      wins, exactly as two tag selectors would. That tie-break is the whole
+//      reason a sheet can be migrated one rule at a time.
+//
+// The overlay in the preview's "Facets" selector is a separate, viewer-side
+// thing: it paints a temporary highlight and writes nothing. What you see here
+// is the author's own styling, and it is on for every reader.
+
+@import "facets.krs.style"
+
+facet pci {
+  label "Cardholder data"
+  description "In scope for the annual PCI DSS assessment"
+  link "https://example.com/policies/pci" "PCI policy"
+}
+
+facet pii {
+  label "Personal data"
+  description "Holds or transits data identifying a natural person"
+}
+
+system Shop {
+  label "Online shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  client WebApp [web] {
+    label "Web storefront"
+    facets pii
+  }
+
+  // In both facets: it sees the buyer and the card. Watch the dashed border.
+  service Checkout {
+    label "Checkout"
+    description "Takes payment — sees both the buyer and the card"
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "Accounts"
+    description "Profiles, addresses, consent records"
+    facets pii
+  }
+
+  // In neither facet. Holds nothing about anyone, and takes no card.
+  service Catalogue {
+    label "Catalogue"
+    description "Products and prices"
+  }
+
+  database Ledger {
+    label "Payment ledger"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "Profile store"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "Product images"
+  }
+
+  Customer -> WebApp "browses"
+  WebApp -> Accounts "sign in"
+  WebApp -> Checkout "pay"
+  WebApp -> Catalogue "browse"
+  Accounts -> ProfileStore "read/write"
+  Checkout -> Ledger "record"
+  Catalogue -> ProductImages "read"
+}
+`,
+    },
+    {
+      path: "facets.krs.style",
+      content: `/* facet-styling/facets.krs.style
+ *
+ * Styling by facet membership (#2175 — experimental).
+ *
+ * \`[facets=<id>]\` matches every element that declares \`facets <id>\` in
+ * \`index.krs\`. It behaves like a tag selector in every way that matters to the
+ * cascade, which is deliberate — see the migration note at the bottom.
+ *
+ * Fact and style stay split: WHICH elements are in PCI scope is a fact and
+ * lives in the .krs; what PCI scope LOOKS LIKE is a choice and lives here.
+ */
+
+/* Membership, whatever the kind. Both a service (Checkout) and a database
+   (Ledger) match, because the selector asks about the set, not the shape. */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* Compound with a kind — only the STORES in PCI scope get the fill. Checkout
+   is in the facet but is a service, so the kind half excludes it. */
+database[facets=pci] {
+  background-color: #fef3c7;
+}
+
+/* Repeat the predicate to require several memberships at once (AND, like
+   tags). Two predicates score 20, so this beats either single-facet rule
+   above and Checkout ends up dashed. */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* ── Migrating from an arbitrary-name tag selector ──────────────────────────
+ *
+ * Before facet selectors existed, the only way to style a cross-cutting
+ * concern was to invent a tag and match on its name:
+ *
+ *     [pci] { border-color: #f59e0b; }
+ *
+ * That still works in v1.x, but it now warns (\`style-tag-selector-not-builtin\`)
+ * and stops matching in syntax v2.0. The rewrite is three steps:
+ *
+ *     1. declare the concern   — facet pci { label "…" description "…" }
+ *     2. move membership       — replace \`[pci]\` on the element with \`facets pci\`
+ *     3. rewrite the selector  — \`[pci]\` becomes \`[facets=pci]\`
+ *
+ * \`[facets=pci]\` scores 10, exactly what \`[pci]\` scored. That is what lets a
+ * sheet be migrated one rule at a time: rewriting a single rule cannot flip
+ * which rule wins, so the change does not have to land all at once.
+ *
+ * Three things the facet gives you that the tag never did: a home for the
+ * concern's own metadata (\`description\`, \`link\`), typo detection against the
+ * declared set (\`facets pcl\` is reported; \`[pcl]\` was silently a different
+ * tag), and the preview's overlay.
+ */
+`,
+    },
+  ],
+};
+
 export const MULTI_FILE_SYSTEM_PROJECT: ExampleProject = {
   name: "multi-file-system",
   files: [
