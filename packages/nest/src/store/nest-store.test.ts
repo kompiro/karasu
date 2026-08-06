@@ -15,6 +15,10 @@ describe("NestStore", () => {
     await store.publish(ref, entry);
     expect(await store.latest("kompiro", "karasu")).toEqual({
       ...entry,
+      // A document with no recorded visibility reads back as private: the
+      // read path uses this to decide whether an anonymous caller may see it,
+      // and the safe default is to withhold.
+      private: true,
       installationId: "42",
       sha: SHA,
     });

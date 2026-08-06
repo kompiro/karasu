@@ -443,12 +443,17 @@ export class GitHubClient {
     installationId: string,
     owner: string,
     repo: string,
-  ): Promise<{ defaultBranch: string; ownerLogin: string }> {
+  ): Promise<{ defaultBranch: string; ownerLogin: string; private: boolean }> {
     const path = `/repos/${segment(owner)}/${segment(repo)}`;
     const body = await this.readJson(await this.callWithInstallation(installationId, path), path);
-    const { default_branch: branch, owner: repoOwner } = body as {
+    const {
+      default_branch: branch,
+      owner: repoOwner,
+      private: isPrivate,
+    } = body as {
       default_branch?: unknown;
       owner?: { login?: unknown };
+      private?: unknown;
     };
     if (typeof branch !== "string") {
       throw new GitHubApiError(200, path, "the repository has no default branch");
@@ -456,6 +461,10 @@ export class GitHubClient {
     return {
       defaultBranch: branch,
       ownerLogin: typeof repoOwner?.login === "string" ? repoOwner.login : owner,
+      // Anything but an explicit `false` counts as private. A malformed or
+      // missing field must not be the reason a private repository's model
+      // becomes publicly readable.
+      private: isPrivate !== false,
     };
   }
 

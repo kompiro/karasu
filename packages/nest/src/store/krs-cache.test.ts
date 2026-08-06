@@ -20,7 +20,7 @@ describe("KrsCache", () => {
     const kv = new MemoryKV();
     const cache = new KrsCache(kv);
     await cache.put(ref, entry);
-    expect(await cache.get(ref)).toEqual(entry);
+    expect(await cache.get(ref)).toEqual({ ...entry, private: true });
   });
 
   it("misses on a different SHA, so a push does not serve a stale diagram", async () => {
@@ -93,7 +93,9 @@ describe("KrsCache", () => {
     await cache.put({ ...ref, sha: OTHER_SHA }, entry);
     await cache.delete(ref);
     expect(await cache.get(ref)).toBeUndefined();
-    expect(await cache.get({ ...ref, sha: OTHER_SHA })).toEqual(entry);
+    // No recorded visibility reads back as private: the read path uses this
+    // to decide whether an anonymous caller may see the document.
+    expect(await cache.get({ ...ref, sha: OTHER_SHA })).toEqual({ ...entry, private: true });
   });
 
   it("is silent when deleting a key that is not there", async () => {

@@ -44,6 +44,7 @@ function stubGithub(
     defaultBranch: "main",
     // Canonical case, unlike the lower-cased owner every caller passes in.
     ownerLogin: "Kompiro",
+    private: true,
   });
   const deleted = vi.spyOn(github, "deleteRef").mockResolvedValue();
   let refLookups = 0;
@@ -181,6 +182,7 @@ describe("deliverPullRequest", () => {
     vi.spyOn(github, "repoInfo").mockResolvedValue({
       defaultBranch: "main",
       ownerLogin: "Kompiro",
+      private: true,
     });
     vi.spyOn(github, "openPullRequest").mockResolvedValue(undefined);
     vi.spyOn(github, "refSha").mockResolvedValue(undefined);
