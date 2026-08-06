@@ -13,6 +13,7 @@ import { error } from "./http.js";
 import { logError } from "./log.js";
 import { health } from "./routes/health.js";
 import { repoKrs } from "./routes/repo.js";
+import { generationStatus, requestGeneration } from "./routes/generate.js";
 import { githubWebhook } from "./routes/webhook.js";
 import { Router } from "./router.js";
 
@@ -24,6 +25,8 @@ export function createRouter(): Router {
   return new Router()
     .get("/healthz", health)
     .post("/webhooks/github", githubWebhook)
+    .post("/:owner/:repo/generate", requestGeneration)
+    .get("/:owner/:repo/status", generationStatus)
     .get("/:owner/:repo", repoKrs);
 }
 

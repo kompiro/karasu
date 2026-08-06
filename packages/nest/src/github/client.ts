@@ -47,6 +47,8 @@ function shaSegment(value: string): string {
   return value.toLowerCase();
 }
 
+import { readGzippedArchive, type ReadArchiveOptions, type ReadArchiveResult } from "./tar.js";
+
 export class GitHubApiError extends Error {
   constructor(
     readonly status: number,
@@ -238,6 +240,36 @@ export class GitHubClient {
       throw new GitHubApiError(200, refPath, "the default branch has no commit");
     }
     return sha;
+  }
+
+  /**
+   * Every source file in one request, as a repository archive.
+   *
+   * This replaced a `tree` call plus one `blob` call per file. Workers caps
+   * subrequests per invocation (50 free, 1000 paid) and KV operations count
+   * toward the same budget, so per-file fetching put a hard ceiling on
+   * repository size that had nothing to do with the model -- an 85-file
+   * repository died partway through with `Too many subrequests`.
+   *
+   * `accept` decides before any bytes are decoded, so a binary or a lockfile
+   * costs nothing but a header read.
+   */
+  async sourceFiles(
+    installationId: string,
+    owner: string,
+    repo: string,
+    sha: string,
+    options: ReadArchiveOptions,
+  ): Promise<ReadArchiveResult> {
+    const path = `/repos/${segment(owner)}/${segment(repo)}/tarball/${shaSegment(sha)}`;
+    const response = await this.callWithInstallation(installationId, path);
+    if (!response.ok) {
+      throw new GitHubApiError(response.status, path, "could not read the repository archive");
+    }
+    if (response.body === null) {
+      throw new GitHubApiError(response.status, path, "the repository archive was empty");
+    }
+    return await readGzippedArchive(response.body, options);
   }
 
   /** One blob's contents as text. */

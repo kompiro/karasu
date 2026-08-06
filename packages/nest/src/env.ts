@@ -10,6 +10,8 @@
  * handler that needs it.
  */
 
+import type { GenerationDispatcher } from "./generate/dispatch.js";
+
 /** A minimal structural stand-in for the Workers `ExecutionContext`. */
 export interface NestExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
@@ -38,6 +40,11 @@ export interface KVNamespaceLike {
 }
 
 export interface NestEnv {
+  /**
+   * Durable-execution binding for the reverse. A generation runs for 12-19
+   * minutes, which no request-scoped mechanism can host. Wired in #2288.
+   */
+  GENERATE_WORKFLOW?: GenerationDispatcher;
   /** Cache of generated `.krs`, keyed per installation. Wired in #2284. */
   KRS_CACHE?: KVNamespaceLike;
   /** GitHub App id. Wired in #1992. */

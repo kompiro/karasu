@@ -77,7 +77,7 @@ async function handleInstallationRepositories(
 ): Promise<PurgeResult | undefined> {
   const removed = payload.repositories_removed;
   if (!Array.isArray(removed)) return undefined;
-  const total: PurgeResult = { documents: 0, pointers: 0 };
+  const total: PurgeResult = { documents: 0, pointers: 0, runs: 0 };
   for (const raw of removed) {
     const name = repoFromPayload(raw);
     if (name === undefined) continue;
@@ -85,6 +85,7 @@ async function handleInstallationRepositories(
       const result = await store.purgeRepo({ installationId, ...name });
       total.documents += result.documents;
       total.pointers += result.pointers;
+      total.runs += result.runs;
     } catch (cause) {
       // One unroutable name in the list must not abandon the rest of the
       // purge. Skipping it is safe because a name we cannot key on is a name
@@ -180,7 +181,7 @@ export async function githubWebhook(context: RouteContext): Promise<Response> {
     // Logged so an uninstall leaves a trace that it ran. The counts are our
     // own bookkeeping about our own store; no repository content is involved.
     logInfo(
-      `karasu-nest purged installation ${installationId}: ${purged.documents} document(s), ${purged.pointers} pointer(s)`,
+      `karasu-nest purged installation ${installationId}: ${purged.documents} document(s), ${purged.pointers} pointer(s), ${purged.runs} run record(s)`,
     );
   }
 

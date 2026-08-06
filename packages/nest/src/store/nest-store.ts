@@ -20,6 +20,7 @@ import type { CachedRef, RepoRef } from "./keys.js";
 import { installationPrefix } from "./keys.js";
 import { KrsCache, type KrsCacheEntry } from "./krs-cache.js";
 import { RepoDirectory } from "./repo-directory.js";
+import { RunStatusStore } from "./run-status.js";
 
 export interface PublishedKrs extends KrsCacheEntry {
   installationId: string;
@@ -31,6 +32,8 @@ export interface PurgeResult {
   documents: number;
   /** Directory pointers removed. */
   pointers: number;
+  /** Run-status records deleted. */
+  runs: number;
 }
 
 /** The installation id as the directory records it, canonical and comparable. */
@@ -43,9 +46,14 @@ export class NestStore {
   private readonly cache: KrsCache;
   private readonly directory: RepoDirectory;
 
+  private readonly runs: RunStatusStore;
+
   constructor(kv: KVNamespaceLike, cache = new KrsCache(kv), directory = new RepoDirectory(kv)) {
     this.cache = cache;
     this.directory = directory;
+    // Run records live under their own prefix, so the document purge does not
+    // reach them. Owning both here means no caller has to know that.
+    this.runs = new RunStatusStore(kv);
   }
 
   /** The current generated `.krs` for a repo, or `undefined` if there is none. */
@@ -103,7 +111,8 @@ export class NestStore {
       if (await this.directory.unpublishOwnedBy(owner, repo, canonical)) pointers += 1;
     }
     const documents = await this.cache.purgeInstallation(canonical);
-    return { documents, pointers };
+    const runs = await this.runs.purgeInstallation(canonical);
+    return { documents, pointers, runs };
   }
 
   /** Delete one repo's documents and its pointer. */
@@ -111,6 +120,9 @@ export class NestStore {
     const canonical = canonicalInstallationId(ref.installationId);
     const removed = await this.directory.unpublishOwnedBy(ref.owner, ref.repo, canonical);
     const documents = await this.cache.purgeRepo({ ...ref, installationId: canonical });
-    return { documents, pointers: removed ? 1 : 0 };
+    // A repo leaving an installation is a revocation too, so its run record
+    // goes with it rather than lingering until its TTL.
+    const runs = (await this.runs.deleteRepo({ ...ref, installationId: canonical })) ? 1 : 0;
+    return { documents, pointers: removed ? 1 : 0, runs };
   }
 }

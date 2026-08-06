@@ -20,6 +20,9 @@ export default {
   },
 };
 
+// Re-exported for tests and callers. The copy that matters to wrangler is on
+// `worker.ts`, which is where a `[[workflows]]` class binding is resolved.
+export { GenerateWorkflow } from "./generate/workflow.js";
 export { handleRequest, createRouter } from "./app.js";
 export type { NestEnv, NestExecutionContext } from "./env.js";
 export { KrsCache, markGenerated } from "./store/krs-cache.js";
@@ -57,3 +60,9 @@ export { AnthropicClient, LlmError } from "./reverse/llm.js";
 export type { LlmClient, LlmResponse, LlmUsage } from "./reverse/llm.js";
 export { BOUNDED_CONTEXT_DIRECTIVE, repairPrompt } from "./reverse/prompts.js";
 export type { RepairDiagnostic } from "./reverse/prompts.js";
+export { generate, GenerateFailed } from "./generate/run.js";
+export { generationInstanceId } from "./generate/dispatch.js";
+export type { GenerationDispatcher, GenerationParams } from "./generate/dispatch.js";
+export type { GenerateInput, GenerateDeps, GenerateOutcome } from "./generate/run.js";
+export { RunStatusStore } from "./store/run-status.js";
+export type { RunStatus, RunState } from "./store/run-status.js";

@@ -18,6 +18,11 @@
 import { handleRequest } from "./app.js";
 import type { NestEnv, NestExecutionContext } from "./env.js";
 
+// A `[[workflows]]` binding is resolved by finding its `class_name` among the
+// entry's exports, so this one has to be here. It is a class, which is the
+// other thing the runtime accepts alongside the default handler.
+export { GenerateWorkflow } from "./generate/workflow.js";
+
 export default {
   fetch(request: Request, env: NestEnv, ctx: NestExecutionContext): Promise<Response> {
     return handleRequest(request, env, ctx);
