@@ -108,7 +108,32 @@ visibility の判定は generate の入口で行い、**private かつ installat
 
 - **デメリット**: 同じ資産を 2 面から配ることになり、SPA ルーティングと nest のルート表が衝突する。iframe 経由で payload を渡す形は 8000 文字上限に戻る。**不採用**。
 
-### 論点 4: リクエスト受付の形
+### 論点 4: quota の主体は誰か
+
+現行の quota（[ADR-1994](../adr/1994-karasu-nest-free-tier-quota.md)）は **installation ごとに月 3 reverse** で、鍵は `quota/<installation>/<YYYY-MM>`（`quota/ledger.ts`）。対象 repository は分散させてよく、「repository ごと 3 回」ではない。
+
+意図されていたのは **「1 人のユーザーが月 3 回まで」**（任意の repository 3 つを 1 回ずつでも、1 つを 3 回でもよい）だった。回数の数え方は合っているが、**主体がずれている** — 現行は「App を install した owner」に紐づくので、install していないユーザーには枠が存在せず、install した owner の枠を他人が使えてしまう（[`docs/policy/nest-data-handling.md`](../policy/nest-data-handling.md) が記録している穴）。
+
+| 案 | 主体 | 評価 |
+| --- | --- | --- |
+| **4-A** 現行維持（installation） | install した owner | 起動権限が operator に閉じると、主体が「起動した人」と一致しなくなり、数える意味が消える |
+| **4-B** 認証されたユーザー（採用） | GitHub アカウント | 「1 人 3 回」がそのまま鍵になる。起動には認証が要る（論点 1）ので主体は常に確定している |
+| **4-C** quota を廃止し deployment の予算だけで縛る | なし | operator しか起動しない当面は等価だが、開いた瞬間に 1 人が全部使える |
+
+**4-B を採る。** 鍵を `quota/usr/v1/<user id>/<YYYY-MM>` に置き替える（login 名ではなく**数値 id**。改名で枠がリセットされず、識別子としても弱い）。
+
+operator は別軸で縛る。operator を月 3 回に載せると自分のサービスを運用できないので、operator に効くのは **deployment 全体の月次予算と同時実行 1**（`MAX_CONCURRENT_RUNS`）であり、per-user quota ではない。整理すると:
+
+| 軸 | 対象 | 効き方 |
+| --- | --- | --- |
+| per-user quota（月 3 reverse） | operator 以外の認証ユーザー | 1 人あたりの公平性・濫用防止 |
+| deployment 予算 + 同時実行 1 | 全体（operator を含む） | 請求額の上限 |
+
+**当面 allowlist に居るのは operator だけなので、per-user quota は「主体が 1 人しか居ない台帳」として動く。** それでも最初から入れるのは、後で開くときの変更が **allowlist を広げるだけ**になり、鍵の形も purge の射程も動かさずに済むからである。
+
+削除の扱いに 1 点注意が要る。installation 台帳には uninstall という削除の引き金があったが、**ユーザー台帳には無い**。したがって (a) TTL を現行の 400 日から**その月 + 短い猶予**（90 日程度）へ縮め、(b) purge 網羅テスト（[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)）の射程に新 prefix を入れ、(c) 削除請求の窓口をスライス E で決める。
+
+### 論点 5: リクエスト受付の形
 
 [ADR-2262](../adr/2262-nest-intake-and-completion.md) 決定 3 が既に決めている（1 クリック・カウンタのみ・識別子非保存・通知しない）。本 doc は**実装の置き場所**だけを足す: 未生成時の HTML ページにボタンを置き、operator 用の `GET /admin/requests` で件数順に並べ、そこから起動する。
 
@@ -119,7 +144,7 @@ visibility の判定は generate の入口で行い、**private かつ installat
 | 起動権限 | installation を持つ誰でも | operator のみ（GitHub OAuth + allowlist） |
 | 読み取り資格 | installation token のみ | public = operator PAT／private = installation token |
 | 配信 | `.krs` テキスト | 同じ URL で HTML（図）／`format=json` は据え置き |
-| quota の意味 | installation ごとの無料枠 | operator の予算 cap（同時実行 1 は維持） |
+| quota の主体 | install した owner（月 3 reverse） | 認証されたユーザー（月 3 reverse）。operator は deployment 予算 + 同時実行 1 で縛る |
 | 公開ブロッカー | private を扱う前提の法務一式 | public 限定なら「生成物の免責・takedown・licence の扱い」まで |
 
 ## Related TPLs
@@ -132,7 +157,9 @@ visibility の判定は generate の入口で行い、**private かつ installat
 
 ## 現時点の方針
 
-**案 1-B・2-B・3-B を採り、リクエスト受付は [ADR-2262](../adr/2262-nest-intake-and-completion.md) 決定 3 のまま実装する。** 起動権限を operator に閉じることが全体の要で、これが決まると (a) コストの引き受け手が確定し、(b) public repository を installation 無しで読んでよい根拠（読むのは公開コード、起動するのは費用を負う本人）が立ち、(c) 既知の quota 濫用の穴が閉じる。描画面を nest 側に置くのは、2 面を runtime で繋がないという既存の決定を守ったまま「URL を開けば図」を成立させる唯一の形だからである。
+**案 1-B・2-B・3-B・4-B を採り、リクエスト受付は [ADR-2262](../adr/2262-nest-intake-and-completion.md) 決定 3 のまま実装する。** 起動権限を operator に閉じることが全体の要で、これが決まると (a) コストの引き受け手が確定し、(b) public repository を installation 無しで読んでよい根拠（読むのは公開コード、起動するのは費用を負う本人）が立ち、(c) 既知の quota 濫用の穴が閉じる。quota の主体を認証ユーザーに移すのは同じ変更の裏側で、**認証を入れて初めて「1 人 3 回」が鍵として書ける**。描画面を nest 側に置くのは、2 面を runtime で繋がないという既存の決定を守ったまま「URL を開けば図」を成立させる唯一の形だからである。
+
+`GET /<owner>/<repo>` は**最新を指す mutable な面**とし、ADR から貼れる immutable な形（`?sha=` の mint）は必要になるまで作らない。生成物は検索エンジンに載せない（`noindex`）— 他人の repository についての AI 由来の記述であり、正確性の保証をしない以上、既定は載せない側に置く。
 
 この形は [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) が退避先として記録していた「public repos only」であり、[ADR-1996](../adr/1996-karasu-nest-data-trust.md) の未了が発火する条件（他者の private repository を扱う）を踏まない。**public 公開を先に出し、private は法務が揃ってから開く**という順序になる。
 
@@ -140,13 +167,14 @@ visibility の判定は generate の入口で行い、**private かつ installat
 
 | スライス | 前提 | 独立に出荷できる理由 |
 | --- | --- | --- |
-| **A** GitHub OAuth + operator gate | — | 既存機能を絞る変更のみ。生成の挙動は変わらず、無認証起動が閉じるので単体で安全側に倒れる |
+| **A** GitHub OAuth + operator gate + per-user quota 台帳 | — | 既存機能を絞る変更のみ。生成の挙動は変わらず、無認証起動が閉じるので単体で安全側に倒れる |
 | **B** public repository の読み取り経路 | A | A の前に出すと、無認証の起動口が任意の public repository に開くことになる（順序制約） |
-| **C** HTML 描画面（SSR SVG + view 切替） | — | 既に生成済みのモデルに対して出荷でき、`format=json` の既存挙動を変えない |
+| **C** HTML 描画面（SSR SVG + view 切替 + `noindex`） | — | 既に生成済みのモデルに対して出荷でき、`format=json` の既存挙動を変えない |
 | **D** リクエスト受付 + operator キュー | A | 受付自体は無認証だが、キュー画面と起動導線が A の session に乗る |
-| **E** 公開運用（免責・takedown・install 文面・indexability） | B, C | 公開の直前に置く。技術面が確定してからでないと文面が書けない |
+| **E** 公開運用（免責・takedown・削除請求窓口・install 文面） | B, C | 公開の直前に置く。技術面が確定してからでないと文面が書けない |
+| **F** app の signpost から nest への静的リンク | C | 静的リンクなので nest の可用性に依存しない。C より前に出すと、辿った先が `.krs` テキストになる |
 
-依存は A → B / D の 1 本だけで、C は独立して先に出せる。
+依存は A → B / D と C → F の 2 本だけで、C は A を待たずに出せる。quota 台帳の置き換え（論点 4）は A に同梱する — 認証が入る PR と主体が変わる PR を分けると、その間だけ「主体の居ない台帳」が動くことになる。
 
 ### 実装の指針
 
@@ -156,6 +184,7 @@ visibility の判定は generate の入口で行い、**private かつ installat
    - session は **HMAC 署名した stateless cookie**（`HttpOnly` / `Secure` / `SameSite=Lax` / 短命）。中身は login 名と失効時刻のみ。**GitHub の access token は保存しない** — login を確定したら捨てる（[ADR-1996](../adr/1996-karasu-nest-data-trust.md) 決定 1 の「保存しない」と揃える）。
    - allowlist は secret（`NEST_OPERATORS`、カンマ区切り login）。空なら**全拒否**（`requireBinding` と同じく、未設定は degrade ではなく refuse）。
    - `POST /<owner>/<repo>/generate` を operator 限定にする。`/admin/*` は既存 bearer に加えて session でも通す（bearer は CLI 用に残す）。
+   - **quota の主体を移す**（論点 4）: 鍵を `quota/usr/v1/<user id>/<YYYY-MM>` に置き替え、TTL を 90 日程度へ縮め、purge 網羅テストの射程に入れる（[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)）。operator は per-user quota の対象外とし、deployment 全体の月次予算と `MAX_CONCURRENT_RUNS = 1` で縛る。旧 `quota/<installation>/...` は起動経路が消えるので参照されなくなる — 残置せず purge の対象として消す。
 2. **B: public 読み取り**
    - `GITHUB_PUBLIC_READ_TOKEN`（fine-grained PAT、public repo contents:read）を secret に足す。
    - `GitHubClient` に「installation token または public token」を選ぶ 1 か所を作り、呼び出し側が token の出所を意識しないようにする。
@@ -164,7 +193,8 @@ visibility の判定は generate の入口で行い、**private かつ installat
 3. **C: 描画面**
    - `routes/repo.ts` に content negotiation を足す。HTML は `core` の renderer で SVG を生成して埋め込む。
    - `?view=` の既定と一覧は core の view 語彙に合わせる。未知の view は 400 ではなく既定 view にフォールバックしない（URL が内容を決める性質を守る — [TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md)）。
-   - キャッシュ: 配信可能（= public）と判定された生成物にのみ `public, max-age=...` を許し、判定は 1 か所に閉じる（proactive TPL）。
+   - キャッシュ: 配信可能（= public）と判定された生成物にのみ `public, max-age=...` を許し、判定は 1 か所に閉じる（[TPL-2378](../test-perspectives/TPL-2378-public-and-restricted-share-a-route.md)）。
+   - `noindex`（`X-Robots-Tag` + meta）と `robots.txt` を置く。これも配信可否と同じ判定に乗せる（同 TPL）。
    - 未生成時の HTML は 404 のまま、本文にリクエストボタン（D）と local reverse ガイドへの導線を置く。
 4. **D: リクエスト受付**
    - `POST /<owner>/<repo>/request` — カウンタのみ、識別子非保存、レスポンスは受け付けた事実だけ。
@@ -172,29 +202,35 @@ visibility の判定は generate の入口で行い、**private かつ installat
    - `GET /admin/requests` — 件数順の一覧と起動導線（operator session）。
 5. **E: 公開運用**
    - 生成物の免責（下書きであって設計の保証ではない）、takedown 経路、元 repository の licence と生成物の関係を 1 枚に書く。[ADR-1996](../adr/1996-karasu-nest-data-trust.md) の未了のうち **public 限定でも要るもの**だけを切り出す。
-   - takedown の実行手段（operator による purge）を admin 経路に置く。
+   - takedown の実行手段（operator による purge）と、**per-user quota 台帳の削除請求窓口**を admin 経路に置く（ユーザー台帳には uninstall のような引き金が無い — 論点 4）。
    - install 時の同意文面を「public のみを対象に運用している」状態へ更新する（[`docs/policy/nest-data-handling.md`](../policy/nest-data-handling.md) の文面案）。
-6. **AT**: `docs/acceptance/` に新規。TC は少なくとも:
+6. **F: signpost の導線**
+   - `packages/app/src/render/no-krs-page.ts` に nest への**静的リンク**を足す。同ファイルが既に「生成は別の面に属するのでリンクするだけ、ここでは起動しない」と書いているとおりの形で、runtime 参照ではないので [ADR-2249](../adr/2249-permalink-generation-seam.md) の分離には抵触しない。
+   - リンク先は `karasu-nest.kompiro.dev/<owner>/<repo>`（生成済みなら図、未生成ならリクエストボタン）。app 側は nest の応答を見ないので、nest が落ちていてもこのページは壊れない。
+7. **AT**: `docs/acceptance/` に新規。TC は少なくとも:
    - 未ログインで `POST /<owner>/<repo>/generate` → 401（installation の有無で答えが変わらない）
    - allowlist 外の GitHub アカウントでログイン → generate は 403
    - installation の無い public repository を operator が起動 → 生成が走る
    - private repository（installation 無し）→ 404（「未生成」と同じ本文）
+   - 同一ユーザーが別々の repository を 3 回起動 → 4 回目が拒否される（枠は repository ではなくユーザーに紐づく）
+   - operator は per-user quota で止まらない（止まるのは同時実行と月次予算）
    - ブラウザで `GET /<owner>/<repo>` → 図が表示され、`?format=json` は従来どおり `.krs`
-   - private repository の生成物は HTML 面でも配信されない・キャッシュされない
+   - private repository の生成物は HTML 面でも配信されない・キャッシュされない・`noindex` が付く
    - リクエスト受付を 2 回押しても生成が走らない
-7. **ADR 昇格**: 実装完了後、本 doc を `docs/adr/<n>-nest-public-reading-service.md` として昇格し、同 PR で削除する。昇格時に [ADR-2262](../adr/2262-nest-intake-and-completion.md) 決定 1・2 を refine し、[ADR-2249](../adr/2249-permalink-generation-seam.md) の未決（PR にならなかった生成物のホスト URL の形）を閉じる。
+   - signpost（`karasu.kompiro.dev/<owner>/<repo>`）は nest が落ちていても表示され、リンクだけが残る
+8. **ADR 昇格**: 実装完了後、本 doc を `docs/adr/<n>-nest-public-reading-service.md` として昇格し、同 PR で削除する。昇格時に [ADR-2262](../adr/2262-nest-intake-and-completion.md) 決定 1・2 を refine し、[ADR-2249](../adr/2249-permalink-generation-seam.md) の未決（PR にならなかった生成物のホスト URL の形）を閉じる。
 
 ### 影響範囲・マイグレーション
 
 - **既存ユーザーへの影響**: 実質なし（installer は operator 本人のみ）。無認証だった generate が閉じる。
-- **ドキュメント更新**: `packages/nest/README.md`（ルート表・secret 一覧）、[`docs/policy/nest-data-handling.md`](../policy/nest-data-handling.md)（public 読み取り経路・新しい KV prefix・同意文面）、`docs/roadmap.md` の nest 行。
+- **quota 台帳の移行**: `quota/<installation>/<YYYY-MM>` → `quota/usr/v1/<user id>/<YYYY-MM>`。旧鍵はデータ移行せず捨てる（月次カウンタであり、翌月には意味が無くなる）。[ADR-1994](../adr/1994-karasu-nest-free-tier-quota.md) は数字（月 3 reverse・同時実行 1）を維持したまま**主体だけ**が変わるので、昇格時に refine する。
+- **ドキュメント更新**: `packages/nest/README.md`（ルート表・secret 一覧）、[`docs/policy/nest-data-handling.md`](../policy/nest-data-handling.md)（public 読み取り経路・新しい KV prefix と TTL・同意文面・「保存するもの」表への user id 追加）、`docs/roadmap.md` の nest 行。**保持期間表とコード定数の drift ガード**（`scripts/lint/nest-retention-policy-sync.test.ts`）があるので、TTL を変える PR は同時に表を直さないと落ちる。
 - **secret の追加**: `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` / `SESSION_SECRET` / `NEST_OPERATORS` / `GITHUB_PUBLIC_READ_TOKEN`。`GET /healthz` の boolean 一覧に足す。
 - **テストへの影響**: nest の既存テストは無認証前提で generate を叩いているので、session を組み立てるヘルパを `src/testing/` に足す。
 
-## 未解決の問い / 決めないこと
+## 決めないこと
 
-- **quota の読み替え。** 起動が operator だけになると per-installation の月 3 回は意味を失う。deployment 単位の月次上限へ読み替えるか、[ADR-1994](../adr/1994-karasu-nest-free-tier-quota.md) の数字をそのまま「operator の予算」として使うか。同時実行 1（`MAX_CONCURRENT_RUNS`）は維持する。
-- **immutable な URL の要否。** `GET /<owner>/<repo>` は「最新」を指す mutable な面である。ADR から貼れる immutable な形（`?sha=` を mint する等）が要るかは、[TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md) の観点で別途決める。
-- **indexability。** 他人の repository について AI 由来の記述を検索エンジンに載せるかどうか（`robots.txt` / `noindex`）。E で決める。
-- **app 側 signpost からの導線。** `karasu.kompiro.dev/<owner>/<repo>` の未解決ページから nest への**静的リンク**を置くか。runtime 参照ではないので [ADR-2249](../adr/2249-permalink-generation-seam.md) には抵触しないが、面の境界の説明が要る。
+- **immutable な URL**（`?sha=` の mint）は作らない。`GET /<owner>/<repo>` は最新を指す mutable な面と明示し、ADR から貼れる形が要求されたときに [TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md) の観点で別途決める。
 - **HTML 面のインタラクション**（drill-down・collapse）は初手では持たない。必要になったら、app の資産を再利用する形を別途検討する。
+- **allowlist を operator の外へ広げる時期**。per-user quota を先に入れておくので、広げる操作自体は secret の変更で済む。いつ広げるかは実運用のコスト実績を見て決める。
+- **課金**（Stripe）・**private repository の公開**・**メール通知**・**リクエスト駆動の入力** — いずれも本 doc の範囲外（[ADR-2262](../adr/2262-nest-intake-and-completion.md) 決定 4 の据え置きを含む）。
