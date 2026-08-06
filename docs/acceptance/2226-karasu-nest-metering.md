@@ -3,7 +3,6 @@
 - **日付**: 2026-08-02
 - **関連 Issue**: [#2226](https://github.com/kompiro/karasu/issues/2226)（metering）／親 [#1990](https://github.com/kompiro/karasu/issues/1990)／gates [#1994](https://github.com/kompiro/karasu/issues/1994)
 - **関連 ADR**: [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 3・6
-- **関連 design**: [2226-nest-cost-model.md](../design/2226-nest-cost-model.md)
 - **関連 TPL**: [TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)（新 prefix の purge 配線）、[TPL-2288](../test-perspectives/TPL-2288-background-work-platform-ceiling.md)（器の上限）
 - **対象ファイル**:
   - `packages/nest/src/meter/cost.ts`（単価と換算）
@@ -115,7 +114,7 @@ ADR-1990 決定 6 により、#1996 が入るまで他人の private repo には
 
 - [ ] M-1: `wrangler secret put METRICS_TOKEN` 後、`/healthz` の `bindings.METRICS_TOKEN` が `true` になる
 - [ ] M-2: 生成を 1 回走らせたあと `GET /admin/metrics` が `runs: 1` と実測トークン数を返す
-- [ ] M-3: レポートの `cost.perRunUsd` が [design doc](../design/2226-nest-cost-model.md) の投影（想定 約 $2.15、構造的上限 $3.60）を**超えていない**。超えていたら上限定数の理解が誤っている
+- [ ] M-3: レポートの `cost.perRunUsd` が構造的上限（`MAX_TOKENS` と `DEFAULT_MAX_BYTES_READ` から導かれる $3.60。算出は [#2226](https://github.com/kompiro/karasu/issues/2226)）を**超えていない**。超えていたら上限定数の理解が誤っている
 - [ ] M-4: レポートの `duration.p95Ms` が spike の 12〜19 分と同じ桁である
 - [ ] M-5: `GET /<owner>/<repo>` を数回叩いたあと `readsPerRun` が増える
 - [ ] M-6: App をアンインストールすると `runs` と `reads` の**両方**が 0 に戻る（`wrangler kv key list` で `metrics/` と `reads/` に鍵が残っていないことも確認する）
