@@ -22,7 +22,7 @@
       "project": ["src/**/*.ts"]
     },
     "packages/nest": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+      "project": ["src/**/*.ts", "!src/**/*.test.ts", "!src/testing/**"]
     },
     "packages/docs-site": {
       "entry": ["scripts/{sync,check-links}.ts"],

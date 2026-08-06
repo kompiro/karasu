@@ -22,3 +22,6 @@ export default {
 
 export { handleRequest, createRouter } from "./app.js";
 export type { NestEnv, NestExecutionContext } from "./env.js";
+export { KrsCache, markGenerated } from "./store/krs-cache.js";
+export type { GeneratedKrs, KrsCacheEntry } from "./store/krs-cache.js";
+export type { CachedRef, RepoRef } from "./store/keys.js";
