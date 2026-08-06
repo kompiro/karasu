@@ -508,3 +508,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) | opt-in な視覚レイヤは無効時に自分のマーカーを 1 つも出さない — 等値テストは無条件出力を相殺して見逃すので、マーカーを名前で列挙して不在を assert する | renderer | #2174 |
 | [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) | 宣言できる構文は Reference から到達できる — 半分だけ載っている状態（要素側プロパティだけ / 宣言ブロックだけ）は何も載っていないより悪く、載せない判断は書かなければ漏れと区別できない | app-ui | #2316, ADR-2316 |
 | [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) | 1 つのエンティティの見た目を複数の面が描くなら決定を 1 つの関数に閉じる — 既定値しか無いうちは一致して隠れ、上書き手段を足した瞬間に片面だけ変わる | renderer | #2234, #2179 |
+| [TPL-2374](TPL-2374-long-call-bounded-by-silence-not-duration.md) | 分単位になりうる外部呼び出しは、総所要時間ではなく無通信で打ち切る — 非ストリーミングでは「生成中」と「ハング」が同じ姿になり、こちらが設定していない中間層が先に切る | project | #2374, ADR-1990 |
