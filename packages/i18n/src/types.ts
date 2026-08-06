@@ -159,6 +159,7 @@ export type Translations = {
   "badge.deprecated": string;
   "badge.new": string;
   "badge.experimental": string;
+  "badge.draft": string;
   "badge.migrationTarget": string;
 
   // ReferencePanel (Phase C5)

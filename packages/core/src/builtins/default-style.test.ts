@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  ANNOTATION_LABEL_KEYS,
   getBuiltinStyleSheet,
   buildBuiltinStyleSource,
   BUILTIN_STYLE_SOURCE,
@@ -237,17 +238,31 @@ describe("getBuiltinStyleSheet — annotation badge labels (#1508)", () => {
     }
   });
 
-  it("injected labels replace the defaults for all four annotations", () => {
+  it("injected labels replace the defaults for every builtin annotation", () => {
     const sheet = getBuiltinStyleSheet("dark", {
       deprecated: "非推奨",
       new: "新規",
       experimental: "実験的",
+      draft: "下書き",
       migrationTarget: "移行先",
     });
     expect(annotationRule(sheet, "deprecated")?.properties["badge-label"]).toBe('"非推奨"');
     expect(annotationRule(sheet, "new")?.properties["badge-label"]).toBe('"新規"');
     expect(annotationRule(sheet, "experimental")?.properties["badge-label"]).toBe('"実験的"');
+    expect(annotationRule(sheet, "draft")?.properties["badge-label"]).toBe('"下書き"');
     expect(annotationRule(sheet, "migration_target")?.properties["badge-label"]).toBe('"移行先"');
+  });
+
+  it("gives every builtin annotation an injectable label key", () => {
+    // The cache key is derived from this mapping, so an annotation missing
+    // from it would silently share a cache entry with a different label set.
+    const injected = REFERENCE_DATA.annotations.map((a) => {
+      const sheet = getBuiltinStyleSheet("dark", {
+        [ANNOTATION_LABEL_KEYS[a.name]]: `X-${a.name}`,
+      });
+      return [a.name, annotationRule(sheet, a.name)?.properties["badge-label"]];
+    });
+    expect(injected).toEqual(REFERENCE_DATA.annotations.map((a) => [a.name, `"X-${a.name}"`]));
   });
 
   it("partially injected labels fall back to en for the omitted keys", () => {

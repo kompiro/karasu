@@ -90,54 +90,6 @@ ready → implementing → in-review → (close)
 
 > `close` は PR に `Closes #N` を記載することで GitHub が自動で行う。
 
-### 複数スライスに分けるときの追跡
-
-**到達状態**: 親 Issue を開けば「何スライス中いくつ落ちたか」と「今なにができて、
-なにがまだできないか」が同時に読める。`pnpm program:slices` が問題を報告しない。
-
-1 つの仕事を複数の Issue に割って実装するときは、親 Issue に次の 2 つを置く。
-どちらか片方だけでは「全体としてどこまで実現できているか」に答えられない。
-
-| 何を | どこに | 誰が更新するか |
-| --- | --- | --- |
-| どのスライスが落ちたか | **GitHub sub-issue**（親 Issue に登録する） | GitHub。Issue の open/closed がそのまま進捗バーになる |
-| 各スライスで何ができるようになるか / その時点でまだできないこと | **親 Issue body の `## Slice status` 表** | 人。スライスを切ったときに書き、**スライスが増減した / 依存や順序が変わったとき**に直す（進捗の記録として書き換えるのではない） |
-
-```
-gh api repos/kompiro/karasu/issues/<parent>/sub_issues \
-  -F sub_issue_id=$(gh api repos/kompiro/karasu/issues/<child> --jq .id)
-```
-
-> `sub_issue_id` は Issue 番号ではなく GitHub の内部 id。`-f` は値を文字列で送るので
-> 422 になる — `-F` を使う。
-
-規律は 2 つだけ:
-
-- **完了マークを手で書かない。** `## Slice status` 表に ✅ 列を作らない。完了は
-  sub-issue の state が唯一の正であり、表に持つと二重管理になって必ず drift する。
-- **「その時点でできないこと」を必ず書く。** 途中のスライスを実際に使った人が
-  「壊れている」と読むのを防ぐのがこの表の主目的で、「できること」だけの表は
-  その役目を果たさない。
-
-**スライスの開発中に見つけたバグは、そのスライスが作った（または到達可能にした）欠陥なら、
-独立 Issue にせず親の sub-issue として登録し表に 1 行足す。** 判定はこの 1 つで、「バグか
-機能か」では分けない。バグ行は前提列に**どのスライスが生んだ欠陥か**を書き、「できないこと」
-列は `—` でよい。分母が動くのは正直な動きで、隠すと実態より進んで見える。
-
-Design Doc は**なぜその切り方にしたか**を持ち、到達点の一覧は持たない（昇格時に削除される
-ため、置くとプログラム完成と同時に失われる）。`docs/roadmap.md` はプログラム 1 本につき
-1 行のみ。
-
-検証:
-
-```
-pnpm program:slices          # open な親 Issue を全件チェック
-pnpm program:slices 2161     # 1 本だけ
-```
-
-sub-issue を持つ親 Issue の body に `## Slice status` 節が無い、または節が
-sub-issue を取りこぼしていると非ゼロ終了する。
-
 ### PR ワークフロー
 
 ```
@@ -228,7 +180,7 @@ karasu 側のセッション内で編集・コミット・PR 作成ができる�
 
 ### 循環依存チェック
 
-`pnpm check:cycles` で `madge --circular` を 5 つのプロダクションパッケージ（core / app / cli / lsp / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
+`pnpm check:cycles` で `madge --circular` を 7 つのプロダクションパッケージ（core / i18n / app / cli / lsp / nest / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
 
 - pre-push の lefthook と CI の `Check` ジョブで自動実行されるため、ローカル / PR どちらでも循環導入時にブロックされる
 - 型のみの import (`import type`) でも madge は循環として検出する。共有契約は専用の leaf module（例: `renderer/layout-types.ts`）に分離して回避する
@@ -240,6 +192,22 @@ karasu 側のセッション内で編集・コミット・PR 作成ができる�
 
 - 内部モジュールは直接 deep path（例: `from "./parser/parser.js"`）で import する
 - テストファイル（`*.test.ts`, `*.spec.ts`）は引き続き `from "../index.js"` を許可（公開 API としての smoke test を兼ねるため）
+
+### 規約の所在
+
+編集行為に直結する規約は、その編集をしているときに自動で読み込まれる
+`.claude/rules/*.md` が正本。本ファイルは置き場と流れだけを持つ。
+
+| 何を書くとき | 正本 | 発火条件 |
+| --- | --- | --- |
+| 受け入れテスト（アノテーション書式・到達先・`.krs` fence） | `.claude/rules/acceptance.md` | `docs/acceptance/**` の編集 |
+| ADR / Design Doc（昇格・supersede・permalink・auto-merge） | `.claude/rules/adr.md` | `docs/adr/**` `docs/design/**` の編集 |
+| spec / concepts（proactive TPL 同梱・適合性監査） | `.claude/rules/spec-audit.md` | `docs/spec/**` `docs/concepts*.md` の編集 |
+| 複数スライスに分けた仕事の追跡 | `.claude/rules/program-slices.md` | Design Doc に `### スライス` を書いたとき |
+| changeset の要否と名指し | `.claude/rules/changesets.md` | 公開対象パッケージの編集 |
+| リリース・依存更新の手順 | `docs/release.md` | リリース時・Dependabot PR 処理時 |
+
+一覧と authoring 規約は `.claude/rules/README.md`。
 
 ### QA チェックリスト
 
@@ -255,90 +223,3 @@ karasu 側のセッション内で編集・コミット・PR 作成ができる�
 
 - 生成ファイルは git にコミットしない（`.gitignore` 対象）
 - 自動化（`packages/e2e/` の Playwright）は手動 QA を置き換えず補完する
-
-### 自動化アノテーションの書式
-
-自動化されたケースを `docs/acceptance/*.md` に反映するときは、`/hane:acceptance-test` スキルの「自動化アノテーション」節に従って `> ✅ Automated — ... › ...` 形式の blockquote を箇条書き直下に添える。
-
-### 手動確認の到達先は本番 URL で書く
-
-AT の `🧑 Manual` 項目は**一度 OK にして終わるものではない**（実機確認は再実行される
-前提で、チェックは常に未チェックのまま置かれる）。そのため到達先には、記録より
-寿命の短い参照を書かない。
-
-| 対象 | 書く URL |
-| --- | --- |
-| app | `https://karasu.kompiro.dev/`（[ADR-1809](adr/1809-app-custom-domain-karasu-kompiro-dev.md)、`deploy.yml` が main への push で更新） |
-| docs-site | `https://kompiro.github.io/karasu/`（`pages.yml` が main への push で更新） |
-
-**ローカル dev サーバの起動コマンドも、ブランチ名入りの Cloudflare preview URL も
-書かない。** 前者は読み手にチェックアウトを要求し、後者は PR がマージされた時点で
-404 になる。PR 内で変更を先に見たいときは preview を使ってよいが、それは PR 本文の
-Preview URL 欄の役割であって、AT に残す情報ではない。
-
-観点は [TPL-2254](test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)。
-
-### AT レコードは `docs/design/` を指さない
-
-同じ理由で、**AT から Design Doc を参照しない**。Design Doc は昇格時に削除されるので、
-AT が指した瞬間から**規約上いつか必ず切れるアドレス**になる。設計根拠は **Issue** で
-指す。ADR が既にあるなら併記する:
-
-```markdown
-- **関連 Issue**: [#2259](https://github.com/kompiro/karasu/issues/2259)
-- **設計 (ADR)**: [ADR-2259](../adr/2259-permalink-payload-cap.md)
-```
-
-実装 PR の時点ではまだ ADR が無いので Issue だけでよい。**ファイルが無いうちに ADR への
-リンクを書かない** — 前方参照は切れたリンクと区別がつかない。昇格 PR で
-`- **設計 (ADR)**: …` を足す。
-
-強制は `pnpm at:check-coverage`（`--strict` で落ちる）。観点は同じく TPL-2254。
-
-### AT に埋める `.krs` スニペットの fence 規約
-
-手順に書いた `.krs` は誰も実行しないため、放っておくと文法から静かにズレる。`pnpm at:check-coverage` が `docs/acceptance/*.md` の ` ```krs ` ブロックを実際に parse するので、fence の情報文字列でスニペットの主張を宣言する。
-
-| fence | 主張 | ガード |
-|-------|------|--------|
-| ` ```krs ` | 現行文法で通る完全なモデル | parse エラーゼロを検証 |
-| ` ```krs fragment ` | 抜粋（ファイル全体ではない） | parse しない |
-| ` ```krs invalid ` | 意図的に不正な入力（診断のデモ） | いまも parse エラーが出ることを検証 |
-
-`invalid` を逆向きにも検証するのは、文法が緩んで例が例でなくなる変化も拾うため。観点は [TPL-2047](test-perspectives/TPL-2047-doc-embedded-krs-is-parsed-not-prose.md)。
-
-### 設計判断を ADR に残すタイミング
-
-設計ドキュメントのステータスが「採用」または「取りやめ」に確定したら ADR を作成する。
-
-新規 Design Doc を書くときの雛形は `docs/design/TEMPLATE.md` を参照する。
-
-ADR の内容:
-- **Frontmatter**: `id` / `title` / `status` / `date` と、該当する関係性（`supersedes` / `depends_on` 等）を YAML frontmatter に記述する。雛形は `docs/adr/TEMPLATE.md` を参照。ローカル検証は `pnpm adr:validate`。
-- **背景**: なぜ検討することになったか
-- **決定**: 何を決めたか（一文で）
-- **理由**: 採用・見送りの根拠（箇条書き）
-- **関連**: GitHub Issue / 設計ドキュメントへのリンク
-
-ADR 作成後に設計ドキュメントを削除する。Frontmatter スキーマ・関係性セマンティクス・
-バリデータの詳細は [ADR-788](adr/788-adr-knowledge-graph.md) を参照。
-
-### spec / concepts 改訂時の proactive TPL 同梱
-
-`docs/spec/` または `docs/concepts*.md` に**新規セクションを追加する PR**は、そのセクションの規定が破られたときに検出する **proactive TPL を最低 1 件、同 PR で起こす**（または既存 TPL を当該 spec に back-ref で紐付ける）。
-
-運用:
-
-- spec 章末尾に `> Related TPLs:` 注釈を追加し、当該章を裏付ける TPL を一覧する（spec ↔ TPL の双方向リンク）
-- 新規 TPL の本文末尾に「## 派生元 spec」セクションを置き、`docs/spec/...#anchor` を引用する
-- spec 章の改訂 PR description のチェックリストに「対応する proactive TPL を起こした / 既存 TPL に back-ref した」を含める
-
-### 既存 ADR を見直すとき
-
-既に決定済みの ADR を覆す・方針変更する場合は、**旧 ADR を書き換えず新 ADR で supersede する**。
-
-- 旧 ADR はそのまま歴史的記録として残す
-- 新 ADR を作成し、背景に「何が変わったためこの再評価に至ったか」を明記する
-- 旧 ADR のステータス行を `決定済み` から `Superseded by ADR-<n>` に更新する
-- Frontmatter では旧 ADR を `status: superseded` + `superseded_by: ADR-<n>`、新 ADR を `supersedes: [旧 ADR ID]` とする。`pnpm adr:validate` が双方向整合をチェックする
-- 新 ADR の「関連」に旧 ADR へのリンクを記載する

@@ -122,6 +122,16 @@ export {
   type InterpretedUntil,
   type MigrationIntent,
 } from "./annotations/migration-intent.js";
+export {
+  CONFIDENCE_LEVELS,
+  getDraftState,
+  interpretConfidence,
+  type ConfidenceLevel,
+  type DraftState,
+  type InterpretedConfidence,
+  type MachineConfidence,
+  type OpaqueConfidence,
+} from "./annotations/draft-confidence.js";
 export { StyleParser } from "./parser/style-parser.js";
 export {
   assignEdgeCanonicalIds,

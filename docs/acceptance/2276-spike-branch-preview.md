@@ -37,4 +37,4 @@
 - 非 200 のときはレスポンスボディをログに出してから失敗する。初版は `body=$(curl --fail-with-body ...)` でボディをコマンド置換に飲まれ、ログに `curl: (22)` しか残らなかった。
 - `delete` イベントはブランチ名で `on:` フィルタできないため、ジョブ側で `startsWith(github.event.ref, 'spike/')` を条件にしている。対象は `env=preview` かつブランチ名一致のデプロイのみで、production（main）のデプロイには触れない。
 - `push` イベントのワークフロー定義は push されたブランチ自身のものが使われるため、`spike-preview.yml` が main に入る前に切られたブランチでは発火しない。既存 spike ブランチの救済は行わない方針（`origin/main` から切り直す）。
-- ここで得られる preview URL はブランチ削除で失効するため、AT やドキュメントの到達先としては書かない（`docs/process.md`「手動確認の到達先は本番 URL で書く」/ [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）。
+- ここで得られる preview URL はブランチ削除で失効するため、AT やドキュメントの到達先としては書かない（`.claude/rules/acceptance.md`「手動項目の到達先は本番 URL」/ [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)）。

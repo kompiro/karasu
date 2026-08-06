@@ -296,7 +296,7 @@ export interface WarningParamsByKind {
   /**
    * A `.krs.style` selector targets an annotation name outside the builtin
    * lifecycle vocabulary. Same contract as
-   * {@link WarningParams["style-tag-selector-not-builtin"]}.
+   * {@link WarningParamsByKind["style-tag-selector-not-builtin"]}.
    */
   "style-annotation-selector-not-builtin": {
     /** the annotation name as written in the selector, without the `@` sigil */

@@ -228,6 +228,25 @@ describe("arbitrary-name selector deprecation (#2175)", () => {
     expect(warnings.some((w) => w.kind === "style-tag-selector-not-builtin")).toBe(true);
   });
 
+  it("emits nothing when there are no sheets — the LSP's single-document case", () => {
+    // TPL-1522: a style-coupled diagnostic must decide and pin its behaviour in
+    // the single-document context. The LSP calls `analyze(file, [])`, so these
+    // two land on the "does not fire" side — and here that is correct rather
+    // than a shortfall, since they report on the content of a stylesheet and
+    // the document being edited is a `.krs` file. `packages/lsp/src/diagnostics.ts`
+    // records the same decision at the call site.
+    const model = `
+      system Shop {
+        service Payments [pci] {}
+      }
+    `;
+    const warnings = analyze(parseModel(model), [], 0);
+    expect(warnings.filter((w) => w.kind.startsWith("style-"))).toEqual([]);
+    // The model-side half still fires — the split is about sheets, not about
+    // switching the deprecation off.
+    expect(warnings.some((w) => w.kind === "tag-not-builtin")).toBe(true);
+  });
+
   it("still applies the deprecated rule — v1.x behaviour is unchanged", () => {
     // The deprecation is an announcement. Dropping the rule now would silently
     // change how existing models look; disablement is v2.0.

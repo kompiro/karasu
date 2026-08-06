@@ -1,0 +1,61 @@
+name: Deploy karasu-nest
+
+# A deploy of its own, on purpose. ADR-1990 decision 5 separates this service
+# from the Pages app so state, the GitHub App private key and the webhook
+# endpoint stay out of the static deploy; sharing a workflow with `deploy.yml`
+# would put them back in the same blast radius and make the two impossible to
+# roll back independently.
+#
+# `workflow_dispatch` only, for now. The service is not connected to a GitHub
+# App yet (#1992) and holds no consent copy (#1996), so ADR-1990 decision 6
+# forbids pointing it at anyone else's private repository. Automatic deploys on
+# `main` are the last wire to connect, not the first.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and validate without deploying"
+        type: boolean
+        default: false
+
+concurrency:
+  group: nest-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare Workers
+    # GitHub-hosted rather than Ubicloud: secret-bearing deploy jobs stay on
+    # GitHub runners per ADR-1890, and the policy is fenced by
+    # scripts/ci/workflow-runner-policy.test.ts.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (nest)
+        run: pnpm --filter @karasu-tools/nest run typecheck
+
+      - name: Test (nest)
+        run: pnpm --filter @karasu-tools/nest run test
+
+      - name: Deploy
+        if: ${{ !inputs.dry_run }}
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/nest
+          command: deploy

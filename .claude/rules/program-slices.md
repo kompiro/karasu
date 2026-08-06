@@ -80,5 +80,3 @@ pnpm program:slices <親番号>
 
 sub-issue を持つ親の body に `## Slice status` 節が無い、または節が sub-issue を
 取りこぼしていると非ゼロ終了する。引数なしで open な親を全件チェックする。
-
-詳細は `docs/process.md`「複数スライスに分けるときの追跡」。

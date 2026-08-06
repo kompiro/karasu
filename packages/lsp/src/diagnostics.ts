@@ -70,14 +70,22 @@ export function computeDiagnostics(
   // intended for App / LSP / CLI alike). `analyze()` needs a `KrsFile`, so this
   // applies to `.krs` documents only. Style sheets are not available in the
   // single-document LSP context, which cuts both ways: style-dependent
-  // warnings (`style-conflict`, `legend-ref-unresolved`) simply do not fire
-  // here, and style-*suppressed* hints fire without their suppression —
+  // warnings (`style-conflict`, `legend-ref-unresolved`,
+  // `style-tag-selector-not-builtin`, `style-annotation-selector-not-builtin`)
+  // simply do not fire here, and style-*suppressed* hints fire without their
+  // suppression —
   // `annotation-possible-typo` still flags a near-builtin name even when the
   // user defined a stylesheet annotation selector for it (the app, which has
   // the sheets, stays silent). Accepted asymmetry: the hint is info-register
   // and the intentional-name case is rare (#1522). New style-coupled
   // diagnostics must decide and record their side of this split here
   // (TPL-1522).
+  //
+  // The two `style-*-selector-not-builtin` deprecations (#2175) land on the
+  // "does not fire" side, and unlike the others that is not a shortfall: they
+  // report on the *content of a stylesheet*, and the document being edited is
+  // a `.krs` file. There is nothing for them to say about it. The app and the
+  // CLI, which do hold the sheets, are where an author sees them.
   if (!isStyleDocument && !("rules" in parseResult.value)) {
     for (const w of analyze(parseResult.value, [])) {
       // `unresolved-edge-endpoint` is import-coupled, not style-coupled: it only

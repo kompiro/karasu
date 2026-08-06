@@ -1,6 +1,6 @@
 # ADR Topic: core-concepts
 
-21 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+22 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -23,6 +23,7 @@ flowchart TD
     ADR_1718["ADR-1718<br/>vector store / search index は `database` の `[in..."]
     ADR_1720["ADR-1720<br/>client は realizes / owns の対象になれる（valid-target に..."]
     ADR_1870["ADR-1870<br/>ドメインエンティティと関連のモデリング（v1）— 非目標「DB スキーマ」の線引き直し"]
+    ADR_1995["ADR-1995<br/>生成物の不確かさは @draft アノテーションで表す — ノード単位・水準は任意・罰を与えない"]
     ADR_2065["ADR-2065<br/>語彙 register の確定 — tag / annotation をツール語彙に閉じ、fa..."]
     ADR_2161["ADR-2161<br/>boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
@@ -77,6 +78,7 @@ flowchart TD
   class ADR_1718 accepted
   class ADR_1720 accepted
   class ADR_1870 accepted
+  class ADR_1995 accepted
   class ADR_2065 accepted
   class ADR_2161 accepted
   class ADR_9002 accepted

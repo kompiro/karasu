@@ -2156,8 +2156,8 @@ system FeatureSamples {
     {
       path: "annotations.krs",
       content: `// annotations.krs
-// Demonstrates: all four lifecycle annotations — @deprecated, @new,
-// @experimental, @migration_target — individually and combined.
+// Demonstrates: every lifecycle annotation — @deprecated, @new,
+// @experimental, @migration_target, @draft — individually and combined.
 
 system AnnotationSample {
   label "Annotation Sample"
@@ -2182,9 +2182,15 @@ system AnnotationSample {
     description "Deprecated origin that is also the migration target stub."
   }
 
+  service SessionStore @draft(confidence: "low") {
+    label "Session Store"
+    description "Inferred from the code, not confirmed by a human. Delete the @draft to accept it."
+  }
+
   LegacyAuth -> MigrationBridge "migrate traffic"
   MigrationBridge -> NewAuth    "forward requests"
   NewAuth -> BetaSearch         "delegate search"
+  NewAuth -> SessionStore       "read session"
 }
 `,
     },

@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-304 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+310 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -127,6 +127,7 @@ flowchart TD
     ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
     ADR_2341["ADR-2341<br/>Security alert 2026-08-04 — brace-expansion / f..."]
     ADR_2351["ADR-2351<br/>docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issu..."]
+    ADR_2356["ADR-2356<br/>開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層"]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -175,6 +176,7 @@ flowchart TD
     ADR_1718["ADR-1718<br/>vector store / search index は `database` の `[in..."]
     ADR_1720["ADR-1720<br/>client は realizes / owns の対象になれる（valid-target に..."]
     ADR_1870["ADR-1870<br/>ドメインエンティティと関連のモデリング（v1）— 非目標「DB スキーマ」の線引き直し"]
+    ADR_1995["ADR-1995<br/>生成物の不確かさは @draft アノテーションで表す — ノード単位・水準は任意・罰を与えない"]
     ADR_2065["ADR-2065<br/>語彙 register の確定 — tag / annotation をツール語彙に閉じ、fa..."]
     ADR_2161["ADR-2161<br/>boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
@@ -247,7 +249,10 @@ flowchart TD
     ADR_1801["ADR-1801<br/>karasu-nest — 共有リンクの OGP 画像（system 図 unfurl）"]
     ADR_1809["ADR-1809<br/>プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する"]
     ADR_1990["ADR-1990<br/>karasu-nest ピボット — GitHub App による server-side r..."]
+    ADR_1994["ADR-1994<br/>karasu-nest の free-tier quota — installation あた..."]
+    ADR_1996["ADR-1996<br/>karasu-nest のデータ信頼 — 技術側は実装で閉じ、契約と法務文書は未了として残す"]
     ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
+    ADR_2262["ADR-2262<br/>karasu-nest の受付と完了通知 — installer 起動 + PR 還元、rea..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -311,6 +316,7 @@ flowchart TD
     ADR_999["ADR-999<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_1508["ADR-1508<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
+    ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   subgraph testing["testing"]
@@ -427,6 +433,8 @@ flowchart TD
   ADR_1911 --> ADR_460
   ADR_1974 --> ADR_1858
   ADR_1974 --> ADR_1820
+  ADR_1994 --> ADR_1990
+  ADR_1996 --> ADR_1990
   ADR_2036 --> ADR_1974
   ADR_2036 --> ADR_1983
   ADR_2065 --> ADR_1314
@@ -444,6 +452,9 @@ flowchart TD
   ADR_2174 --> ADR_2173
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
+  ADR_2234 --> ADR_9004
+  ADR_2234 --> ADR_1974
+  ADR_2234 --> ADR_2036
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -712,6 +723,9 @@ flowchart TD
   class ADR_1974 accepted
   class ADR_1983 accepted
   class ADR_1990 accepted
+  class ADR_1994 accepted
+  class ADR_1995 accepted
+  class ADR_1996 accepted
   class ADR_2036 accepted
   class ADR_2045 accepted
   class ADR_2048 accepted
@@ -738,8 +752,10 @@ flowchart TD
   class ADR_2184 accepted
   class ADR_2188 accepted
   class ADR_2218 accepted
+  class ADR_2234 accepted
   class ADR_2249 accepted
   class ADR_2259 accepted
+  class ADR_2262 accepted
   class ADR_2316 accepted
   class ADR_2318 accepted
   class ADR_2331 accepted
@@ -747,6 +763,7 @@ flowchart TD
   class ADR_2341 accepted
   class ADR_2348 accepted
   class ADR_2351 accepted
+  class ADR_2356 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
@@ -773,16 +790,16 @@ flowchart TD
 
 - [`adr-tooling`](graph/adr-tooling.md) — 11 ADRs
 - [`app-ui`](graph/app-ui.md) — 42 ADRs
-- [`build`](graph/build.md) — 68 ADRs
+- [`build`](graph/build.md) — 69 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 21 ADRs
+- [`core-concepts`](graph/core-concepts.md) — 22 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 14 ADRs
 - [`parser`](graph/parser.md) — 23 ADRs
-- [`project`](graph/project.md) — 10 ADRs
+- [`project`](graph/project.md) — 13 ADRs
 - [`renderer`](graph/renderer.md) — 40 ADRs
 - [`resolver`](graph/resolver.md) — 9 ADRs
-- [`styling`](graph/styling.md) — 8 ADRs
+- [`styling`](graph/styling.md) — 9 ADRs
 - [`testing`](graph/testing.md) — 13 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs

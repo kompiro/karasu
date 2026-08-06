@@ -1,13 +1,26 @@
 ---
 paths:
   - "docs/spec/**/*.md"
+  - "docs/concepts*.md"
   - "packages/core/src/types/warnings.ts"
 ---
 
 # Spec Conformance Audit Rules
 
-仕様適合性監査（spec ⇔ 実装の突き合わせ）で「仕様にある機能 X が未実装」
-という指摘を出す・Issue 化するときのルール。
+`docs/spec/` / `docs/concepts*.md` を触るときのルール。前半は**新規セクションを
+足すとき**、後半は仕様適合性監査で「仕様にある機能 X が未実装」という指摘を出す・
+Issue 化するとき。
+
+## 新規セクションには proactive TPL を同梱する
+
+`docs/spec/` または `docs/concepts*.md` に**新規セクションを追加する PR** は、その
+セクションの規定が破られたときに検出する **proactive TPL を最低 1 件、同 PR で起こす**
+（または既存 TPL を当該 spec に back-ref で紐付ける）。
+
+- spec 章末尾に `> Related TPLs:` 注釈を置き、当該章を裏付ける TPL を一覧する
+- 新規 TPL の本文末尾に「## 派生元 spec」節を置き、`docs/spec/...#anchor` を引用する
+- PR description のチェックリストに「対応する proactive TPL を起こした / 既存 TPL に
+  back-ref した」を含める
 
 ## 「未実装」と断定する前に repo-wide で経路を追う
 

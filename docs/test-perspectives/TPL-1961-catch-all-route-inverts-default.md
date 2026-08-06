@@ -10,6 +10,7 @@ applicable_to:
 known_consumers:
   - repo-permalink
   - useProjectNavigation
+  - karasu-nest-router
 discovered_from:
   - issue: "#1961"
   - root_cause_file: "functions/r/[[path]].ts"
@@ -20,6 +21,7 @@ topic: navigation
 scope:
   packages:
     - app
+    - nest
   concerns:
     - deployment
 ---
@@ -30,13 +32,15 @@ scope:
 
 catch-all ルートを追加すると、「未知のパスがどこへ行くか」という既定が静かに反転する。反転前は *未知 → アプリ（SPA fallback）*、反転後は *未知 → 新しい resolver* になる。この反転は追加した PR では見えず、**後から別のルートを足した人が踏む**。
 
-したがって catch-all を足すときの設計問題は「resolver が正しく動くか」ではなく「**resolver が受け取ってはいけないものを、何が止めるのか**」である。止め方は 3 通りで、どれを採るか明示する:
+したがって catch-all を足すときの設計問題は「resolver が正しく動くか」ではなく「**resolver が受け取ってはいけないものを、何が止めるのか**」である。止め方は 4 通りで、どれを採るか明示する:
 
 1. **判別子（discriminator）**: URL 自体に、アプリ側のルートが構造的に持ちえない印を要求する（例: `@<ref>` 必須）。予約リストが不要になるので後からルートを足す人が何も知らなくてよいが、**その印を必須にすることが機能要件を壊さないときだけ**選べる（#1961 では ref 省略を第一級にする要件と両立しなかった）。
 2. **安全側 fallthrough**: resolver が **deterministic な negative**（「そんなものは無い」と確定した答え）を返したら、エラーにせず元の既定（アプリ）へ差し戻す。判別を guard から resolver の結果へ後ろ倒しする形で、**予約リストが不完全でも既定が壊れない**のが効き目。transient な失敗（upstream 5xx）は差し戻さない — 障害を「そんなページは無い」と偽ってしまうため。代償は、差し戻す前に上流を叩くぶんのレイテンシ。
 3. **予約リスト + 機械チェック**: 単独で正しさを担う場合は、予約リストを「アプリ側のルート定義」から単一の出所で導出し、片方だけ増えたら落ちるテストを置く（TPL-1480 と同型 — 発火条件は「チェックが書いてある側」ではなく「破りうる変更」で決める）。2 と併用するなら、役割はレイテンシ最適化と多層防御に格下げできる。
 
-**1 も 2 も無い、機械チェックもされない予約リストは、書いた人が去った時点で腐る。**
+4. **specificity ranking（ルータが持つ場合）**: 同一 path にマッチする候補のうち **capture segment の少ない側だけ**を採用し、そのグループを排他にする。リテラルなルートが自分の path を全メソッドにわたって所有するので、予約リストも判別子も要らない。**採れるのはルーティングを自前のルータが握っているときだけ**で、Pages Functions のようにファイル配置が precedence を決める層では選べない。登録順ではなく形で決まるため、後からルートを足す人が順序を知らなくてよいのが効き目。
+
+**1 も 2 も 4 も無い、機械チェックもされない予約リストは、書いた人が去った時点で腐る。**
 
 ## 想定される失敗モード
 
@@ -51,7 +55,8 @@ catch-all ルートを追加すると、「未知のパスがどこへ行くか�
 catch-all ルート、または「どのリクエストがアプリに届くか」を変える設定を追加・改修するとき:
 
 - [ ] 反転しない側（アプリ・静的アセット・兄弟ルート）が今日と同じ応答を返すことを、**経路を列挙した表**で確認したか（`/`・静的・兄弟 Function・既知の path ルート・未知の 1 セグメント・未知の複数セグメント）
-- [ ] resolver に渡さない条件は、判別子（1）・安全側 fallthrough（2）・機械チェック付き予約リスト（3）のどれで実現しているか。どれでもないなら腐る前提で書き直す
+- [ ] resolver に渡さない条件は、判別子（1）・安全側 fallthrough（2）・機械チェック付き予約リスト（3）・specificity ranking（4）のどれで実現しているか。どれでもないなら腐る前提で書き直す
+- [ ] specificity ranking を採るなら、**メソッド違いでも catch-all に落ちない**ことを test で固定したか。`POST /webhooks/github` だけを登録した状態で `GET` すると 405 ではなく catch-all の 404 が返るのが典型的な取りこぼし
 - [ ] fallthrough を使うなら、差し戻す条件は **deterministic な negative に限定**されているか（upstream 5xx を差し戻して障害を隠していないか）
 - [ ] 予約リストを使うなら、その出所はアプリ側のルート定義か。ルート定義だけを増やしたとき落ちるテストがあるか
 - [ ] 上流に問い合わせてから差し戻す設計なら、その negative 結果をキャッシュしているか（未知パスへのクロールが上流への fetch に増幅しないか）
@@ -63,6 +68,8 @@ catch-all ルート、または「どのリクエストがアプリに届くか�
 - **deterministic negative で差し戻す**: #1961 の採用案。`<owner>/<repo>` 形を受けて GitHub に問い合わせ、「その `.krs` は無い」と確定した（400 / 404）なら SPA へ `context.next()` する。502 / 500 は差し戻さない。「未知パス = アプリ」の既定が保たれ、予約リストの漏れが 404 ではなく数百 ms の遅延に縮む。
 - **判別子は「意図のシグナル」としても使える**: 必須にできなくても、`@<ref>` が URL にあるときだけ差し戻さずエラーを出す、という非対称にできる。permalink を意図した読者は診断を受け取り、たまたま形が似ただけの人はアプリに着く。
 - **`_routes.json` の `include` は広く、`exclude` だけを絞る**: `include: ["/*"]` にしておけば、新しい Function を足したときの include 漏れが起きない。メンテ対象を `exclude` 側だけに閉じ込める。
+- **specificity ranking で literal を守る**: karasu-nest のルータ（[#2286](https://github.com/kompiro/karasu/issues/2286)）が採った形。`/webhooks/github` と `/:owner/:repo` は両方 2 セグメントなので登録順だけでは守れず、`GET /webhooks/github` が「webhooks/github という repo の図は無い」という**自信のある誤答**を返していた。capture 数の少ない側のみを候補に残し、そのグループを排他にすると 405 が返る。ルータを自前で持つ面でのみ選べる。
+
 - **実測は dev サーバで**: `wrangler pages dev` は実 workerd + 実 Pages ルーティングでこの手の precedence を再現する。ただし `_redirects` の SPA fallback の扱いは本番と差があるため、fallback だけは preview deployment で確認する。
 
 karasu での route 形の決定は [ADR-1828](../adr/1828-repo-backed-ref-pinned-permalink.md)（`/r/` prefix）と #1961（bare 形）にある。
