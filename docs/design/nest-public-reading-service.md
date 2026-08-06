@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-06
 - **ステータス**: 検討中
+- **PR**: [#2378](https://github.com/kompiro/karasu/pull/2378)
 - **関連**:
   - 親 Epic: [#1990](https://github.com/kompiro/karasu/issues/1990)（nest ピボット）
   - 関連 ADR: [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)（ピボット。決定 3 コスト・決定 6 データ信頼）／[ADR-2262](../adr/2262-nest-intake-and-completion.md)（受付と完了通知。**本 doc は決定 1・2 を改訂する**）／[ADR-2249](../adr/2249-permalink-generation-seam.md)（permalink と生成の境界。**未決だったホスト URL の形を決める**）／[ADR-1994](../adr/1994-karasu-nest-free-tier-quota.md)（quota）／[ADR-1996](../adr/1996-karasu-nest-data-trust.md)（データ信頼）／[ADR-2259](../adr/2259-permalink-payload-cap.md)（inline payload 上限）
@@ -127,7 +128,7 @@ visibility の判定は generate の入口で行い、**private かつ installat
 - [TPL-1961](../test-perspectives/TPL-1961-catch-all-route-inverts-default.md) — catch-all が既定を反転させる。`/:owner/:repo` の下に `/request` を足すので、リテラルルートの登録順（`app.ts` のコメントが根拠を持つ）を崩さない。
 - [TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md) — `<owner>/<repo>` は信頼境界を越える入力。public 読み取り経路でも `normaliseName` を通した後にしか URL を組み立てない。
 - [TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md) — 新しい KV prefix（リクエストカウンタ・session を KV に置く場合）は purge 網羅テストの射程に入れる。
-- proactive TPL（本 PR で起こす）— **公開してよい資源とそうでない資源が同じルートを通るとき、安全側を既定にし、反転を 1 か所の判定に閉じる**。HTML 面とキャッシュ可能化は、現在の `no-store` 既定を public 生成物についてだけ反転させる変更であり、反転条件が複数箇所（`Cache-Control` / CORS / ログ / OGP）に散ると、片方だけ private に効かなくなる形で壊れる。
+- [TPL-2378](../test-perspectives/TPL-2378-public-and-restricted-share-a-route.md)（本 PR で起こした proactive TPL）— **公開してよい資源とそうでない資源が同じルートを通るとき、安全側を既定にし、反転を 1 か所の判定に閉じる**。HTML 面とキャッシュ可能化は、現在の `no-store` 既定を public 生成物についてだけ反転させる変更であり、反転条件が複数箇所（`Cache-Control` / CORS / ログ / OGP）に散ると、片方だけ private に効かなくなる形で壊れる。導出元は [ADR-1996](../adr/1996-karasu-nest-data-trust.md) 決定 4（private のモデルは配信せず、応答は「未生成」と完全に同じ）。
 
 ## 現時点の方針
 
