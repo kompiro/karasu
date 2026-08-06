@@ -6,6 +6,7 @@ import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
   EC_PLATFORM_PROJECTS_EN,
+  FACET_STYLING_PROJECT,
   FEATURE_SAMPLES_PROJECT,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -68,9 +69,9 @@ describe("useProjectInitialization — bootstrap", () => {
     );
 
     // Getting Started first, then one createProject per ec-platform example,
-    // then the client-mcp sample, the multi-file-system sample, and finally
-    // the feature-samples catalog.
-    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length + 3;
+    // then the client-mcp sample, the multi-file-system sample, the
+    // feature-samples catalog, and finally the facet-styling pair (#2175).
+    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length + 4;
     expect(pm.createProject).toHaveBeenCalledTimes(expectedCalls);
     expect(pm.createProject).toHaveBeenNthCalledWith(
       1,
@@ -93,10 +94,18 @@ describe("useProjectInitialization — bootstrap", () => {
       MULTI_FILE_SYSTEM_PROJECT.name,
       MULTI_FILE_SYSTEM_PROJECT.files,
     );
-    expect(pm.createProject).toHaveBeenLastCalledWith(
+    expect(pm.createProject).toHaveBeenNthCalledWith(
+      1 + EC_PLATFORM_PROJECTS.length + 3,
       FEATURE_SAMPLES_PROJECT.name,
       FEATURE_SAMPLES_PROJECT.files,
     );
+    // Locale-matched like the rest, and seeded as a pair — the `.krs.style` is
+    // the subject of this example, so a seed that dropped it would produce a
+    // project that opens and demonstrates nothing (#2175).
+    expect(pm.createProject).toHaveBeenLastCalledWith(FACET_STYLING_PROJECT.name, [
+      expect.objectContaining({ path: "index.krs" }),
+      expect.objectContaining({ path: "facets.krs.style" }),
+    ]);
 
     const setProjectsCall = dispatch.mock.calls.find(
       (c) => (c[0] as { type: string }).type === "SET_PROJECTS",
@@ -105,7 +114,7 @@ describe("useProjectInitialization — bootstrap", () => {
     const projects = (setProjectsCall![0] as { projects: Project[] }).projects;
     expect(projects).toHaveLength(expectedCalls);
     expect(projects[0].name).toBe(GETTING_STARTED_PROJECT.name);
-    expect(projects[projects.length - 1].name).toBe(FEATURE_SAMPLES_PROJECT.name);
+    expect(projects[projects.length - 1].name).toBe(FACET_STYLING_PROJECT.name);
 
     expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
   });
@@ -244,7 +253,7 @@ describe("useProjectInitialization — bootstrap", () => {
     await waitFor(() =>
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false }),
     );
-    const expectedSeedCalls = 1 + EC_PLATFORM_PROJECTS.length + 3;
+    const expectedSeedCalls = 1 + EC_PLATFORM_PROJECTS.length + 4;
     expect(pm.createProject).toHaveBeenCalledTimes(expectedSeedCalls);
   });
 });

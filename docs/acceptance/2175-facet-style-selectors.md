@@ -99,6 +99,10 @@
 
 - [ ] AT-U: 🧑 Manual — `docs/spec/style.md` の before/after を実際に写して動かし、書き換え前後で**見た目が変わらない**こと（specificity 同点の主張の実地確認）
 
+- [ ] AT-V: 🧑 Manual — `examples/en/facet-styling/`（および `ja/`）を app で開き、**3 つのセレクタ形が同時に読み取れる**こと: `Ledger` に琥珀の枠 + 塗り（bare + kind 複合）、`Checkout` に破線（AND）、`Catalogue` は既定のまま。`Checkout` の枠色が琥珀ではなく teal になる（単独 facet の 2 ルールが同点で後宣言が勝つ）ことも、カスケードの実演として意図どおりかを確認する
+
+  > 到達先は <https://karasu.kompiro.dev/> か、docs gallery の Examples ページ。サンプルは gallery にも登録済み（`packages/docs-site/scripts/lib/examples-manifest.ts` の `facet-styling`）
+
 ## 補足 — 自動化しなかったもの
 
 **移行手順の読みやすさ**（AT-T）は自動化していない。テストが言えるのは「details に

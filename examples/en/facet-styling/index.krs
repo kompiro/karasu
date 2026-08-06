@@ -1,0 +1,98 @@
+// facet-styling/index.krs
+// Demonstrates: styling by facet membership with `[facets=<id>]` (#2175 — experimental).
+//
+// A `facet` is a set defined OUTSIDE the architecture — a regulation, a policy,
+// an audit scope. A tag says what an element *is*; a facet says what
+// externally-defined set it *belongs to*. Membership is written on the element
+// (`facets pci`), so renaming an element never means editing a distant list.
+//
+// This example is about the STYLING half. Open `facets.krs.style` beside it:
+// the sheet matches on membership, which is the replacement for abusing an
+// arbitrary tag selector like `[pci] { … }` for the same job.
+//
+// Three things to look for in the rendered diagram:
+//
+//   1. The `[facets=pci]` rule matches both `Checkout` (a service) and
+//      `Ledger` (a database): the selector asks about the set, not the shape.
+//      `Ledger` wears the result as the amber border; on `Checkout` the amber
+//      is overridden by a later rule (see 3), which is a cascade outcome, not
+//      a matching one.
+//   2. `Ledger` also gets a fill, because `database[facets=pci]` compounds the
+//      membership with a kind. `Checkout` does not — it is not a database.
+//   3. `Checkout` is in BOTH facets, so `[facets=pci][facets=pii]` (score 20)
+//      beats either single-facet rule (score 10) and dashes its border. Its
+//      border COLOUR, though, is the teal of `pii` rather than the amber of
+//      `pci`: the two single-facet rules tie at 10, so the later declaration
+//      wins, exactly as two tag selectors would. That tie-break is the whole
+//      reason a sheet can be migrated one rule at a time.
+//
+// The overlay in the preview's "Facets" selector is a separate, viewer-side
+// thing: it paints a temporary highlight and writes nothing. What you see here
+// is the author's own styling, and it is on for every reader.
+
+@import "facets.krs.style"
+
+facet pci {
+  label "Cardholder data"
+  description "In scope for the annual PCI DSS assessment"
+  link "https://example.com/policies/pci" "PCI policy"
+}
+
+facet pii {
+  label "Personal data"
+  description "Holds or transits data identifying a natural person"
+}
+
+system Shop {
+  label "Online shop"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  client WebApp [web] {
+    label "Web storefront"
+    facets pii
+  }
+
+  // In both facets: it sees the buyer and the card. Watch the dashed border.
+  service Checkout {
+    label "Checkout"
+    description "Takes payment — sees both the buyer and the card"
+    facets pci, pii
+  }
+
+  service Accounts {
+    label "Accounts"
+    description "Profiles, addresses, consent records"
+    facets pii
+  }
+
+  // In neither facet. Holds nothing about anyone, and takes no card.
+  service Catalogue {
+    label "Catalogue"
+    description "Products and prices"
+  }
+
+  database Ledger {
+    label "Payment ledger"
+    facets pci
+  }
+
+  database ProfileStore {
+    label "Profile store"
+    facets pii
+  }
+
+  storage ProductImages {
+    label "Product images"
+  }
+
+  Customer -> WebApp "browses"
+  WebApp -> Accounts "sign in"
+  WebApp -> Checkout "pay"
+  WebApp -> Catalogue "browse"
+  Accounts -> ProfileStore "read/write"
+  Checkout -> Ledger "record"
+  Catalogue -> ProductImages "read"
+}

@@ -1,0 +1,60 @@
+/* facet-styling/facets.krs.style
+ *
+ * Styling by facet membership (#2175 — experimental).
+ *
+ * `[facets=<id>]` matches every element that declares `facets <id>` in
+ * `index.krs`. It behaves like a tag selector in every way that matters to the
+ * cascade, which is deliberate — see the migration note at the bottom.
+ *
+ * Fact and style stay split: WHICH elements are in PCI scope is a fact and
+ * lives in the .krs; what PCI scope LOOKS LIKE is a choice and lives here.
+ */
+
+/* Membership, whatever the kind. Both a service (Checkout) and a database
+   (Ledger) match, because the selector asks about the set, not the shape. */
+[facets=pci] {
+  border-color: #f59e0b;
+  border-width: 2px;
+}
+
+[facets=pii] {
+  border-color: #14b8a6;
+  border-width: 2px;
+}
+
+/* Compound with a kind — only the STORES in PCI scope get the fill. Checkout
+   is in the facet but is a service, so the kind half excludes it. */
+database[facets=pci] {
+  background-color: #fef3c7;
+}
+
+/* Repeat the predicate to require several memberships at once (AND, like
+   tags). Two predicates score 20, so this beats either single-facet rule
+   above and Checkout ends up dashed. */
+[facets=pci][facets=pii] {
+  border-style: dashed;
+}
+
+/* ── Migrating from an arbitrary-name tag selector ──────────────────────────
+ *
+ * Before facet selectors existed, the only way to style a cross-cutting
+ * concern was to invent a tag and match on its name:
+ *
+ *     [pci] { border-color: #f59e0b; }
+ *
+ * That still works in v1.x, but it now warns (`style-tag-selector-not-builtin`)
+ * and stops matching in syntax v2.0. The rewrite is three steps:
+ *
+ *     1. declare the concern   — facet pci { label "…" description "…" }
+ *     2. move membership       — replace `[pci]` on the element with `facets pci`
+ *     3. rewrite the selector  — `[pci]` becomes `[facets=pci]`
+ *
+ * `[facets=pci]` scores 10, exactly what `[pci]` scored. That is what lets a
+ * sheet be migrated one rule at a time: rewriting a single rule cannot flip
+ * which rule wins, so the change does not have to land all at once.
+ *
+ * Three things the facet gives you that the tag never did: a home for the
+ * concern's own metadata (`description`, `link`), typo detection against the
+ * declared set (`facets pcl` is reported; `[pcl]` was silently a different
+ * tag), and the preview's overlay.
+ */
