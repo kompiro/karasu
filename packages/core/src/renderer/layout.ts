@@ -965,6 +965,14 @@ function computeTotalDimensions(
 const EXTERNAL_SIDE_GAP = 100;
 
 /**
+ * Spread below which the auto-assigned externals' hub barycenters count as one
+ * value, so the median split has nothing to divide (#2384). Sub-pixel, so it
+ * absorbs float noise from averaging node centres without ever merging two
+ * barycenters a reader could tell apart.
+ */
+const SIDE_SPLIT_EPSILON = 0.5;
+
+/**
  * Place `[external]` service nodes (systemTier 4) into left/right side columns
  * instead of the bottom band, so `service → external` edges run horizontally
  * and stop weaving through the downward infra fan-out (#1728, refines
@@ -1051,8 +1059,14 @@ function placeExternalServicesOnSides(
   // tie-break decides the whole set — the consuming hubs never get a say
   // (#2384). Fall back to the centre of the content span the side columns hug,
   // which keeps the rule coordinate-derived and deterministic (ADR-1728).
+  //
+  // "Coincide" is sub-pixel rather than bit-exact: these are means of node
+  // centres, so mathematically equal barycenters can differ in the last bits
+  // when the summation order differs between two externals. A spread thinner
+  // than a pixel cannot support a meaningful split either way.
+  const noSpread = autoVals[autoVals.length - 1] - autoVals[0] < SIDE_SPLIT_EPSILON;
   const threshold =
-    !autoVals.length || autoVals[0] === autoVals[autoVals.length - 1]
+    !autoVals.length || noSpread
       ? (minX + maxX) / 2
       : autoVals[Math.floor((autoVals.length - 1) / 2)];
   const sideOf = (n: LayoutNode): "left" | "right" => {
