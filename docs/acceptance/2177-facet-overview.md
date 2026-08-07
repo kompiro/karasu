@@ -81,6 +81,10 @@
 
   > ✅ Automated — `packages/core/src/examples.test.ts` の parse ガードと drift ガード（`.krs.style` も対象に含めるよう拡張した）、`packages/docs-site/scripts/lib/render-examples.test.ts`
 
+- [x] AT-J2: `facetOverview` が `useAppViews` の bundle から `PreviewContextValue.systemView` まで実際に届く
+
+  > ✅ Automated — `packages/app/src/hooks/usePreviewContextValue.test.tsx` › `usePreviewContextValue — system-view forwarding`。**実際に踏んだ不具合の再発防止**: この手書きマッピングに `facetOverview` を足し忘れていたため、メニュー項目を押しても `facetOverview.length` のガードが `undefined` を見てパネルが出なかった。`FacetSelector.test.tsx` は `PreviewContextValue` を手で組み立てるのでこの経路を通らず、検出できていなかった。転送を外すと落ちることを変異で確認済み
+
 - [ ] AT-R: 🧑 Manual — 所属一覧を開き、**「PCI スコープに何が入っているか」に 1 画面で答えられる**こと。要素側に所属を書く設計の代償をこの導出ビューが払えているかの確認で、払えていないならパネルの情報設計が足りない
 
 - [ ] AT-S: 🧑 Manual — 一覧が長いモデル（20 要素以上が 1 facet に属する）でパネルが読めること。スクロールが図を巻き込まないこと（`data-wheel-zoom-ignore`）

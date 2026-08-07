@@ -35,6 +35,7 @@ interface UsePreviewContextValueArgs {
     | "selectedFacets"
     | "toggleFacet"
     | "facets"
+    | "facetOverview"
     | "hasTeamAxis"
     | "hasBoundaryAxis"
     | "anyCollapsible"
@@ -154,6 +155,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         selectedFacets: system.selectedFacets,
         onFacetToggle: system.toggleFacet,
         facets: system.facets,
+        facetOverview: system.facetOverview,
         hasTeamAxis: system.hasTeamAxis,
         hasBoundaryAxis: system.hasBoundaryAxis,
         anyCollapsible: system.anyCollapsible,
@@ -243,6 +245,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.selectedFacets,
       system.toggleFacet,
       system.facets,
+      system.facetOverview,
       system.hasTeamAxis,
       system.hasBoundaryAxis,
       system.anyCollapsible,
