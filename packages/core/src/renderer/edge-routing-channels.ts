@@ -26,11 +26,18 @@
  * anchor logic are not disturbed.
  */
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
-import { type Point, segmentCrossesAnyRect } from "./edge-geometry.js";
+import { type Point, type Rect, segmentCrossesAnyRect } from "./edge-geometry.js";
 
 export function routeOrthogonalEdges(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
+  /**
+   * Extra obstacles this edge must not cross, beyond the node cards — the group
+   * frames neither endpoint belongs to (#2362). Supplied by the caller because
+   * the frame exemption is per-endpoint, and this module has no frame concept
+   * of its own. Omitted, the pass behaves exactly as ADR-968 shipped it.
+   */
+  extraObstaclesFor?: (edge: LayoutEdge) => Rect[],
 ): void {
   const nodes = [...layoutNodes.values()];
 
@@ -46,7 +53,10 @@ export function routeOrthogonalEdges(
     // edges already use side anchors via computeEdgePoints.
     if (!isDownwardEdge(edge.fromPoint, edge.toPoint, from, to)) continue;
 
-    const obstacles = nodes.filter((n) => n.id !== edge.from && n.id !== edge.to);
+    const obstacles: Rect[] = [
+      ...nodes.filter((n) => n.id !== edge.from && n.id !== edge.to),
+      ...(extraObstaclesFor?.(edge) ?? []),
+    ];
     if (!segmentCrossesAnyRect(edge.fromPoint, edge.toPoint, obstacles)) continue;
 
     // Channel sits in the gap between the previous row and the target row.

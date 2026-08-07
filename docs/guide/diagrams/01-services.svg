@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 761 784" width="761" height="784"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 789 784" width="789" height="784"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker>
 <marker id="arrow-0" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#D97706"/></marker></defs>
-<rect width="761" height="784" fill="#FFFFFF" rx="0"/>
+<rect width="789" height="784" fill="#FFFFFF" rx="0"/>
 <text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Online shop</text>
 <g class="edges"><g data-edge-from="Customer" data-edge-to="ShoppingService" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;ShoppingService" data-edge-label="shop" class="krs-edge krs-edge--interactive"><line x1="360.5" y1="126" x2="218.5" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="360.5" y1="126" x2="218.5" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
@@ -17,9 +17,9 @@
 <g data-edge-from="OrderService" data-edge-to="PaymentService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;PaymentService" data-edge-label="request payment" class="krs-edge krs-edge--interactive"><line x1="583.2" y1="312" x2="581" y2="432" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="583.2" y1="312" x2="581" y2="432" stroke="#D97706" stroke-width="1.5" marker-end="url(#arrow-0)"/>
 <text x="582.1" y="366" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">request payment</text></g>
-<g data-edge-from="OrderService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="OrderService--&gt;NotificationService" data-edge-label="notify order confirmed" class="krs-edge krs-edge--interactive"><line x1="538.4" y1="312" x2="329.1666666666667" y2="618" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="538.4" y1="312" x2="329.1666666666667" y2="618" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
-<text x="438.33424769283914" y="425.76915320831495" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">notify order confirmed</text></g>
+<g data-edge-from="OrderService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="OrderService--&gt;NotificationService" data-edge-label="notify order confirmed" class="krs-edge krs-edge--interactive"><polyline points="628,279 689,279 689,651 454.5,651" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="628,279 689,279 689,651 454.5,651" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
+<text x="689" y="414" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">notify order confirmed</text></g>
 <g data-edge-from="PaymentService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="PaymentService--&gt;NotificationService" data-edge-label="notify payment result" class="krs-edge krs-edge--interactive"><line x1="581" y1="498" x2="391.8333333333333" y2="618" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="581" y1="498" x2="391.8333333333333" y2="618" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
 <text x="486.41666666666663" y="552" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">notify payment result</text></g></g>
