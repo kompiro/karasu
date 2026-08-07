@@ -37,10 +37,20 @@
 
   > ✅ Automated — `packages/nest/src/generate/run.test.ts` › `leaves the failed pass unnamed when a run breaks after the model calls`
 
-## 手動確認（実デプロイでのみ検証可能）
+## 手動確認
 
-ADR-1990 決定 6 により、#1996 が入るまで他人の private repo には向けない。以下は自分の repo に対してのみ実施する。
+N/A — 自動テストですべて覆っている。
 
-- [ ] M-1: 生成が provider エラーで失敗したとき、`/status` の `error` に `(invalid_request_error)` のような型名が含まれる
-- [ ] M-2: その run の metrics レコード（`metrics/krs/v1/…`）に `failedPass` が入っている
-- [ ] M-3: provider エラーで失敗した直後に `The Workers runtime canceled this request` が出ない
+意図的に外したものがある。この 3 つは当初ここに置いていた:
+
+- 生成が provider エラーで失敗したとき、`/status` の `error` に型名が含まれる
+- その run の metrics レコードに `failedPass` が入っている
+- provider エラーの直後に `The Workers runtime canceled this request` が出ない
+
+**どれも「本番で失敗が起きたら見る」という形でしか実施できず、再実行できない。** AT の手動項目は
+実機確認が繰り返される前提で置くもの（`.claude/rules/acceptance.md`）なので、起きるかどうかが
+こちらの手にない事象を待つ項目は、記録としては「確認していない」と永久に同じ意味になる。
+
+エラー経路を意図した瞬間に観測する手段は、AT ではなく**決定論的な再現経路**の側で用意する
+（[#2383](https://github.com/kompiro/karasu/pull/2383) 第 2 段階）。それが入るまで、この経路の
+検証は上の自動テストが持つ。
