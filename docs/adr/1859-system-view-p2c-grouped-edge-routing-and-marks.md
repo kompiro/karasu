@@ -69,3 +69,5 @@ grouped（展開）ビュー専用の **routing / trunk / marks の 3 パスを�
 - **交差数と貫通数を両方 assert する**（TPL-1927）。P2c の AT は node/frame **貫通数 == 0** を厳密 assert し、交差は「全交差が mark 付き」を assert する（残存交差を欠陥視しない）。
 - **実サンプルにも柵を広げた**: 当初 TPL の貫通ゼロ assert が synthetic fixture にしか及ばず、実サンプル `getting-started` の 2 貫通を漏らしていた。#1954 で `getting-started` を Group by team でレイアウトし **貫通 == 0 かつ collinear overlap == 0** を assert。新 route 形が overlap 回避パスに参加しているかを問う proactive [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md) を新設。
 - **AC-5**（Group by: none 不変）は、新パスが gate 内でのみ走ることをテストで固定。#1956 で ungrouped にも marks を出したが、交差の無いビューは不変（レイヤは mark があるときだけ emit）。
+
+> **AC-5 はその後 [ADR-2330](2330-ungrouped-routing-parity.md) で置き換えられた**（2026-08-05）。gate は「ungrouped を変えない」ことは保証したが「ungrouped が良いこと」は保証しておらず、実測で ungrouped に貫通 10 件が無検出のまま残っていた。現在は両モードが 1 本の候補列を共有し、byte-identity ではなく `routing-parity.test.ts` の計測柵（貫通 0 / overlap 0 / 全交差に hop）が ungrouped を保証する。本 ADR の他の決定（gutter / mixed route・集約トランク・hop/junction マーク）はそのまま有効。

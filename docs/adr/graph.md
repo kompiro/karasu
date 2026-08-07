@@ -294,6 +294,7 @@ flowchart TD
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
+    ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -759,6 +760,7 @@ flowchart TD
   class ADR_2262 accepted
   class ADR_2316 accepted
   class ADR_2318 accepted
+  class ADR_2330 accepted
   class ADR_2331 accepted
   class ADR_2333 accepted
   class ADR_2341 accepted
@@ -800,7 +802,7 @@ flowchart TD
 - [`navigation`](graph/navigation.md) — 14 ADRs
 - [`parser`](graph/parser.md) — 23 ADRs
 - [`project`](graph/project.md) — 13 ADRs
-- [`renderer`](graph/renderer.md) — 40 ADRs
+- [`renderer`](graph/renderer.md) — 41 ADRs
 - [`resolver`](graph/resolver.md) — 9 ADRs
 - [`styling`](graph/styling.md) — 9 ADRs
 - [`testing`](graph/testing.md) — 13 ADRs
