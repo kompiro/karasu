@@ -315,7 +315,7 @@ edge[inferred] {
 }
 
 edge[delivers] {
-  color: #8B5CF6;
+  color: #A78BFA;
   border-style: dashed;
 }
 `;
@@ -546,7 +546,7 @@ store {
 
 /* ── エッジ ── */
 edge {
-  color: #64748B;
+  color: #475569;
   stroke-width: 1.5;
   font-size: 11;
   direction: auto;
@@ -574,7 +574,7 @@ edge[implicit] {
 }
 
 edge[inferred] {
-  color: #64748B;
+  color: #475569;
 }
 
 edge[delivers] {

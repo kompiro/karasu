@@ -7,9 +7,10 @@ describe("truncateToWidth", () => {
   });
 
   it("truncates ASCII text that exceeds maxWidth, reserving room for ellipsis", () => {
-    // textBudget = 50 - 7.5 = 42.5px; 5 chars = 37.5px fit, 6th (F) → 45 > 42.5 → "ABCDE…"
+    // Latin counts 0.8×charWidth (#2366 C): textBudget = 50 - 7.5 = 42.5px;
+    // 7 chars = 42px fit, 8th (H) → 48 > 42.5 → "ABCDEFG…"
     const result = truncateToWidth("ABCDEFGHIJ", 50, 7.5);
-    expect(result).toBe("ABCDE…");
+    expect(result).toBe("ABCDEFG…");
   });
 
   it("truncates CJK text reserving ellipsis width", () => {

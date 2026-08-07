@@ -309,7 +309,10 @@ describe("shared routing chain — ungrouped fences (#2362, TPL-1927)", () => {
 
 describe("shared routing chain — grouped output is unchanged (#2362, AC-5 replacement)", () => {
   const GROUPED: [string, GroupBy, number][] = [
-    ["en/getting-started/index.krs", "team", 3],
+    // getting-started re-pinned 3 -> 5 with #2366 C: narrower (0.8x Latin
+    // width) and taller (2-line description) cards shift the grouped layout;
+    // penetration/overlap invariants above are what must not regress.
+    ["en/getting-started/index.krs", "team", 5],
     ["en/feature-samples/team-ownership.krs", "team", 3],
     ["en/feature-samples/boundary-clusters.krs", "boundary", 7],
     ["en/feature-samples/boundary-multi-membership.krs", "boundary", 0],

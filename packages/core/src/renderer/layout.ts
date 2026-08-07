@@ -7,6 +7,7 @@ import {
   scopedBoundaryGroupId,
 } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
+import { wrapToWidth } from "./svg-builder.js";
 import { foldFacetMembership } from "./facet-overlay.js";
 import {
   assignGroupedLayers,
@@ -29,7 +30,9 @@ import {
   teamChipText,
   LINE_HEIGHT,
   DESCRIPTION_FONT_RATIO,
-  META_FONT_RATIO,
+  DESC_MAX_CONTENT_WIDTH,
+  DESC_MAX_LINES,
+  metaChipWidth,
 } from "./rendering-constants.js";
 import {
   sortByBarycenter,
@@ -3087,8 +3090,15 @@ function measureNode(
   const resources = node.kind === "client" ? node.properties.resources : [];
   const capabilities = node.kind === "client" ? node.properties.capabilities : [];
 
-  // Description should not widen the box beyond label width
-  const descWidth = 0;
+  // Description may widen the box up to DESC_MAX_CONTENT_WIDTH so short
+  // descriptions render whole; longer ones wrap into up to DESC_MAX_LINES
+  // lines before truncating (#2366 proposal C).
+  const descWidth = description
+    ? Math.min(
+        estimateTextWidth(description, CHAR_WIDTH * DESCRIPTION_FONT_RATIO),
+        DESC_MAX_CONTENT_WIDTH,
+      )
+    : 0;
   const roleWidth = role ? estimateTextWidth(role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO) : 0;
 
   // Meta row: link count icon + team chip
@@ -3096,16 +3106,10 @@ function measureNode(
   let metaWidth = 0;
   if (hasMetaRow) {
     if (node.properties.links.length > 0)
-      metaWidth += estimateTextWidth(
-        `🔗${node.properties.links.length}`,
-        CHAR_WIDTH * META_FONT_RATIO,
-      );
+      metaWidth += metaChipWidth(String(node.properties.links.length));
     if (owner) {
       if (metaWidth > 0) metaWidth += CHAR_WIDTH; // spacing
-      metaWidth += estimateTextWidth(
-        `👥${teamChipText(owner.label)}`,
-        CHAR_WIDTH * META_FONT_RATIO,
-      );
+      metaWidth += metaChipWidth(teamChipText(owner.label));
     }
   }
 
@@ -3114,15 +3118,11 @@ function measureNode(
 
   // Resource badge (client-only): "📦 ×N" — one line regardless of count.
   const hasResourceBadge = resources.length > 0;
-  const resourceBadgeWidth = hasResourceBadge
-    ? estimateTextWidth(`📦 ×${resources.length}`, CHAR_WIDTH * META_FONT_RATIO)
-    : 0;
+  const resourceBadgeWidth = hasResourceBadge ? metaChipWidth(`×${resources.length}`) : 0;
 
   // Capability badge (client-only): "🔐 ×N" — same single-line pattern as resource.
   const hasCapabilityBadge = capabilities.length > 0;
-  const capabilityBadgeWidth = hasCapabilityBadge
-    ? estimateTextWidth(`🔐 ×${capabilities.length}`, CHAR_WIDTH * META_FONT_RATIO)
-    : 0;
+  const capabilityBadgeWidth = hasCapabilityBadge ? metaChipWidth(`×${capabilities.length}`) : 0;
 
   const width =
     Math.max(
@@ -3137,7 +3137,17 @@ function measureNode(
     NODE_PADDING_X * 2 +
     infoButtonExtra;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
-  if (description) height += LINE_HEIGHT;
+  if (description) {
+    // Same wrap the renderer performs (renderDefaultText), so the reserved
+    // height always matches the drawn line count.
+    const descLines = wrapToWidth(
+      description,
+      width - NODE_PADDING_X * 2,
+      CHAR_WIDTH * DESCRIPTION_FONT_RATIO,
+      DESC_MAX_LINES,
+    ).length;
+    height += LINE_HEIGHT * descLines;
+  }
   if (role) height += LINE_HEIGHT;
   if (hasResourceBadge) height += LINE_HEIGHT;
   if (hasCapabilityBadge) height += LINE_HEIGHT;

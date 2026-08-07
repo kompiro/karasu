@@ -69,7 +69,8 @@ organization Org {
     it("system view shows the owning team on the owned service node", () => {
       const svg = renderSystemView(withOwns, ["Shop"]);
       expect(svg).toContain('data-team-button="Platform"');
-      expect(svg).toContain("👥Platform");
+      expect(svg).toContain('data-meta-glyph="team"');
+      expect(svg).toContain(">Platform</text>");
     });
 
     it("org view shows the owned service under the owning team", () => {
@@ -80,7 +81,7 @@ organization Org {
     it("regression rehearsal: removing the owns binding drops both markers", () => {
       const systemSvg = renderSystemView(withoutOwns, ["Shop"]);
       expect(systemSvg).not.toContain('data-team-button="Platform"');
-      expect(systemSvg).not.toContain("👥Platform");
+      expect(systemSvg).not.toContain(">Platform</text>");
 
       const orgSvg = renderOrg(withoutOwns);
       expect(orgSvg).not.toContain('data-owned-service-button="ECommerce"');
