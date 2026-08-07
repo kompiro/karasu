@@ -55,9 +55,6 @@ type: product
 - [x] AT-J: `karasu fmt` が装飾を `verb:c,d`（スペースなし）形式で emit し、idempotent（再 format で diff なし）
   > ✅ Automated — `formatter.test.ts` › `resource operations` 内 2 ケース
 
-- [ ] AT-K（manual）: `karasu matrix examples/en/feature-samples/crud-matrix.krs --format=md` を実行し、`SearchOrders` の cell が `R`（`R?` ではない）であること、`ReplaceOrderSnapshot` の cell が `CD` で OrderTable の ΣC / ΣD カラムにそれぞれ +1 されていることを目視確認する
-  > 🧑 Manual — terminal 出力で確認
-
 - [ ] AT-L（manual）: `examples/en/feature-samples/crud-matrix.krs` を `karasu fmt` にかけて、装飾済み行（`operations read, list:read` / `operations replace:create,delete`）が形を保ったまま戻ってくることを目視確認する
   > 🧑 Manual — `karasu fmt examples/en/feature-samples/crud-matrix.krs` を `--check` 付きで diff ゼロを確認
 
@@ -69,3 +66,4 @@ type: product
 - `translate openapi` / `translate db` の `--emit-crud-decoration` フラグは本 PR のスコープ外。両 translator が現状 `usecase` 内 `resource` を emit していないため、装飾以前に「usecase→resource bindings を emit する」機能が必要になる。これは別 Issue として切り出す。
 - `@karasu-tools/core` の `ResourceNode.properties.operations` は `string[]` から `ResourceOperation[]` への breaking change。core が pre-1.0 / npm 未公開のうちに入れる前提で進めた（design doc Q3 に明記）。
 - 1:N 乱用への lint warning は **入れない**（spec/docs ガイドラインのみ）。Design doc Q5 の方針に従う。
+- 旧 AT-K（`--format=md` の cell を目視する項目）は削除した（[#2387](https://github.com/kompiro/karasu/issues/2387)）。`R` / `CD` と ΣC / ΣD の増分は `packages/core/src/view/crud-matrix-extract.test.ts` の `decorated verb (list:read) …` / `decorated 1:N (replace:create,delete) …` が判定している。欠番の letter は既存の参照を保つためそのままにしている。

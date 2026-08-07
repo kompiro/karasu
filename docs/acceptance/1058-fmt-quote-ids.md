@@ -36,9 +36,6 @@
 - [x] `needsQuotes()` ヘルパーは lexer の identifier rule（`[\p{L}_][\p{L}\p{N}_]*`）と reserved keyword 集合を参照する
   > ✅ Automated — `packages/core/src/formatter/quote-id.test.ts`（bare-safe 7 ケース、unbare 8 ケース、reserved keyword 7 ケース）
 
-- [ ] CLI で実ファイルに対する `karasu fmt --write` を実行しても元ファイルが parse 可能なまま残る
-  > 🧑 Manual — quote 含み ID を持つ `.krs` を作成し `karasu fmt --write` を実行、`karasu render` または再 parse で確認する。
-
 ## 範囲外（follow-up）
 
 - **import 文の中の quoted ID 参照**: `import { "my-id" } from "other.krs"` は現状 parser が受け付けない。formatter 側の対応はあるが parser 側で許容するかは別 Issue（必要なら）。
