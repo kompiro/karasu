@@ -334,7 +334,7 @@ function detectTagsNotApplicable(file: KrsFile): Warning[] {
 
 /**
  * v1.x deprecation for tag names outside the tool vocabulary
- * (docs/design/tags-and-facets.md Part A, #2159). The name is still accepted
+ * (ADR-2065 Part A, #2159). The name is still accepted
  * unchanged — ADR-1314 freezes bare-tag acceptance for v1.x — but syntax
  * v2.0 keeps only tool-owned tags, so every non-builtin use is warned now.
  * Unlike `annotation-possible-typo` there is deliberately **no suppression

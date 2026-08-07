@@ -9,6 +9,7 @@ import type {
   DisplayMode,
   NodeDiffMeta,
   SystemNode,
+  FacetOverviewEntry,
 } from "@karasu-tools/core";
 import type { ActiveView } from "./app-reducer.js";
 import type { SharePayload } from "../utils/inline-share.js";
@@ -59,6 +60,12 @@ export interface SystemViewData {
   onFacetToggle?: (facetId: string) => void;
   /** Every facet the model knows — the selector's options. Empty hides the control. */
   facets?: { id: string; label?: string }[];
+  /**
+   * Derived "which elements belong to facet X" (#2177). Same list, same order
+   * as `facets` — the overview is a second *view* of one derivation, not a
+   * second source (TPL-1032).
+   */
+  facetOverview?: FacetOverviewEntry[];
   /** Whether the team axis has data — gates the "team" option (#1822 P2b). */
   hasTeamAxis?: boolean;
   /** Whether the boundary axis has data — gates the "boundary" option (#1822 P2b). */

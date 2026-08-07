@@ -204,6 +204,16 @@ export const en: Translations = {
   "preview.focus.exit.ariaLabel": "Exit focus mode",
   "preview.exportError.dismiss.label": "Dismiss",
   "preview.exportError.dismiss.ariaLabel": "Dismiss export error",
+  // Facet overview panel (#2177)
+  "facetOverview.title": "Facet membership",
+  "facetOverview.close": "Close the facet overview",
+  "facetOverview.open": "Membership overview",
+  "facetOverview.derivedNote":
+    "Derived from the model on every compile. Membership is written on the elements themselves — this list is never authored, so it cannot fall out of date.",
+  "facetOverview.memberCount": ({ count }) => (count === 1 ? "1 element" : `${count} elements`),
+  "facetOverview.noMembers": "No element declares this facet.",
+  "facetOverview.undeclared": "Referenced but never declared.",
+  "facetOverview.highlightHint": "Highlight this facet in the diagram",
 
   // Group by (system-view team grouping, #1858)
   "preview.facets.label": "Facets",

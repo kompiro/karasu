@@ -447,8 +447,7 @@ export interface BoundaryBlock {
 // 持たない。これは ADR-832（実行時 authz のルール言語を入れない）が求める
 // 「滑り落ちを構造的に防ぐ設計 = 語彙の凍結」であり、恒久的な制約である。
 // ルールの本文は description / link に prose として置く。
-// experimental notation（ADR-1820）。設計: docs/design/tags-and-facets.md /
-// docs/design/facet-grammar-and-model.md。
+// experimental notation（ADR-1820）。決定: ADR-2065（register）/ ADR-2173（文法・model 層）。
 export interface FacetBlock {
   kind: "facet";
   id: string;

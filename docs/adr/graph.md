@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-307 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+310 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -177,6 +177,7 @@ flowchart TD
     ADR_1720["ADR-1720<br/>client は realizes / owns の対象になれる（valid-target に..."]
     ADR_1870["ADR-1870<br/>ドメインエンティティと関連のモデリング（v1）— 非目標「DB スキーマ」の線引き直し"]
     ADR_1995["ADR-1995<br/>生成物の不確かさは @draft アノテーションで表す — ノード単位・水準は任意・罰を与えない"]
+    ADR_2065["ADR-2065<br/>語彙 register の確定 — tag / annotation をツール語彙に閉じ、fa..."]
     ADR_2161["ADR-2161<br/>boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
@@ -236,6 +237,7 @@ flowchart TD
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
     ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
+    ADR_2173["ADR-2173<br/>facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -290,6 +292,7 @@ flowchart TD
     ADR_1886["ADR-1886<br/>差分モードの Group by で除去ノードを元の team フレームに残し、集約エッジの d..."]
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
+    ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -434,6 +437,8 @@ flowchart TD
   ADR_1996 --> ADR_1990
   ADR_2036 --> ADR_1974
   ADR_2036 --> ADR_1983
+  ADR_2065 --> ADR_1314
+  ADR_2065 --> ADR_1820
   ADR_2075 --> ADR_1567
   ADR_2075 --> ADR_1386
   ADR_2075 --> ADR_1314
@@ -442,6 +447,9 @@ flowchart TD
   ADR_2124 --> ADR_1314
   ADR_2165 --> ADR_1296
   ADR_2165 --> ADR_1314
+  ADR_2173 --> ADR_2065
+  ADR_2174 --> ADR_2065
+  ADR_2174 --> ADR_2173
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
   ADR_2234 --> ADR_9004
@@ -721,6 +729,7 @@ flowchart TD
   class ADR_2036 accepted
   class ADR_2045 accepted
   class ADR_2048 accepted
+  class ADR_2065 accepted
   class ADR_2075 accepted
   class ADR_2076 accepted
   class ADR_2077 accepted
@@ -738,6 +747,8 @@ flowchart TD
   class ADR_2152 accepted
   class ADR_2161 accepted
   class ADR_2165 accepted
+  class ADR_2173 accepted
+  class ADR_2174 accepted
   class ADR_2184 accepted
   class ADR_2188 accepted
   class ADR_2218 accepted
@@ -782,12 +793,12 @@ flowchart TD
 - [`build`](graph/build.md) — 69 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 11 ADRs
 - [`cli`](graph/cli.md) — 12 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 21 ADRs
+- [`core-concepts`](graph/core-concepts.md) — 22 ADRs
 - [`edges`](graph/edges.md) — 15 ADRs
 - [`navigation`](graph/navigation.md) — 14 ADRs
-- [`parser`](graph/parser.md) — 22 ADRs
+- [`parser`](graph/parser.md) — 23 ADRs
 - [`project`](graph/project.md) — 13 ADRs
-- [`renderer`](graph/renderer.md) — 39 ADRs
+- [`renderer`](graph/renderer.md) — 40 ADRs
 - [`resolver`](graph/resolver.md) — 9 ADRs
 - [`styling`](graph/styling.md) — 9 ADRs
 - [`testing`](graph/testing.md) — 13 ADRs

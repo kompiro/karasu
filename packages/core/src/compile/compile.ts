@@ -63,6 +63,8 @@ import { type DiagramTheme } from "../renderer/palette.js";
 import { renderOrgView as _renderOrgView } from "../renderer/org-renderer.js";
 import { collectLegendUsage } from "../legend/usage.js";
 import { resolveFacetOverlay, knownFacetIds } from "../renderer/facet-overlay.js";
+import { buildFacetOverview } from "../renderer/facet-overview.js";
+import type { FacetOverviewEntry } from "../renderer/facet-overview.js";
 import { renderDeploy } from "../renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
@@ -245,6 +247,14 @@ export interface SystemCompileResult {
    * was edited out of the model from lingering in the selection (TPL-1032).
    */
   facets: { id: string; label?: string }[];
+  /**
+   * "Which elements belong to facet X", derived from the model (#2177).
+   *
+   * The centralized audit view the design owes for writing membership
+   * element-side. Derived on every compile — there is no authored second copy
+   * to drift (TPL-1032). Empty when the model knows no facets.
+   */
+  facetOverview: FacetOverviewEntry[];
 }
 
 export interface DeployCompileResult {
@@ -513,6 +523,7 @@ function _compileFromPreparedInput(
       const declared = krsFile.facets.find((f) => f.id === id);
       return declared?.label ? { id, label: declared.label } : { id };
     }),
+    facetOverview: buildFacetOverview(krsFile),
     deployBlocks,
     systems: effectiveSystems,
     nodeFileIndex,

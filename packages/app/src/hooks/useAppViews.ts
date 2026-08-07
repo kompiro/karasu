@@ -13,6 +13,7 @@ import type {
   Diagnostic,
   NodeDiffMeta,
   CategoryId,
+  FacetOverviewEntry,
 } from "@karasu-tools/core";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
 import type { GroupByMode } from "../state/preview-context.js";
@@ -106,6 +107,8 @@ export interface SystemViewBundle {
   toggleFacet: (facetId: string) => void;
   /** Every facet the model knows — the selector's options. Empty hides the control. */
   facets: { id: string; label?: string }[];
+  /** Derived membership behind the overview panel (#2177). Same order as `facets`. */
+  facetOverview: FacetOverviewEntry[];
   /**
    * Whether the team axis has data (an `organization`/`owns` block) — gates the
    * "team" option (#1822 P2b). Grouping works in compare mode too (the diff
@@ -231,6 +234,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     selectedFacets,
     toggleFacet,
     facets,
+    facetOverview,
     toggleGroup,
     expandedContainers,
     toggleExpand,
@@ -377,6 +381,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       selectedFacets,
       toggleFacet,
       facets,
+      facetOverview,
       hasTeamAxis: hasOrgDiagram,
       hasBoundaryAxis: hasBoundaries,
       toggleGroup,

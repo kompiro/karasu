@@ -203,6 +203,16 @@ export const ja: Partial<Translations> = {
   "preview.focus.exit.ariaLabel": "フォーカスモードを抜ける",
   "preview.exportError.dismiss.label": "閉じる",
   "preview.exportError.dismiss.ariaLabel": "エクスポートエラーを閉じる",
+  // ファセット所属一覧パネル（#2177）
+  "facetOverview.title": "ファセット所属一覧",
+  "facetOverview.close": "ファセット所属一覧を閉じる",
+  "facetOverview.open": "所属一覧",
+  "facetOverview.derivedNote":
+    "コンパイルのたびにモデルから導出している。所属は要素側に書かれており、この一覧は著述されないので古くなりようがない。",
+  "facetOverview.memberCount": ({ count }) => `${count} 要素`,
+  "facetOverview.noMembers": "このファセットを宣言している要素はない。",
+  "facetOverview.undeclared": "参照されているが宣言されていない。",
+  "facetOverview.highlightHint": "このファセットを図で強調する",
 
   // グループ化（system view のチーム別グルーピング、#1858）
   "preview.facets.label": "ファセット",

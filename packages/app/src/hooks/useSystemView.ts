@@ -12,6 +12,7 @@ import {
   type SystemNode,
   type NodeDiffMeta,
   type CategoryId,
+  type FacetOverviewEntry,
 } from "@karasu-tools/core";
 import { useCallback, useMemo, useState } from "react";
 import { groupByAxis, type GroupByMode } from "../state/preview-context.js";
@@ -70,6 +71,12 @@ interface SystemViewState {
    * facets keeps the toolbar it has today.
    */
   facets: { id: string; label?: string }[];
+  /**
+   * Derived membership, "which elements belong to facet X" (#2177). Same
+   * derivation as `facets`, in the same order — the overview panel reads it,
+   * the selector reads `facets`, and neither is an authored copy of the other.
+   */
+  facetOverview: FacetOverviewEntry[];
   systems: SystemNode[];
   nodeFileIndex: Map<string, string>;
   /**
@@ -340,6 +347,7 @@ export function useSystemView(
       hasOrgDiagram: sysBase.hasOrgDiagram,
       hasBoundaries: sysBase.hasBoundaries,
       facets: sysBase.facets,
+      facetOverview: sysBase.facetOverview,
       systems: sysBase.systems,
       nodeFileIndex: sysBase.nodeFileIndex,
       nodeDiff,
@@ -370,6 +378,7 @@ export function useSystemView(
       hasOrgDiagram: false,
       hasBoundaries: false,
       facets: [],
+      facetOverview: [],
       systems: [],
       nodeFileIndex: new Map(),
     },

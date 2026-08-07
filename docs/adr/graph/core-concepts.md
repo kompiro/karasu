@@ -1,6 +1,6 @@
 # ADR Topic: core-concepts
 
-21 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+22 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -24,24 +24,36 @@ flowchart TD
     ADR_1720["ADR-1720<br/>client は realizes / owns の対象になれる（valid-target に..."]
     ADR_1870["ADR-1870<br/>ドメインエンティティと関連のモデリング（v1）— 非目標「DB スキーマ」の線引き直し"]
     ADR_1995["ADR-1995<br/>生成物の不確かさは @draft アノテーションで表す — ノード単位・水準は任意・罰を与えない"]
+    ADR_2065["ADR-2065<br/>語彙 register の確定 — tag / annotation をツール語彙に閉じ、fa..."]
     ADR_2161["ADR-2161<br/>boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974..."]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
   ADR_237["ADR-237<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
+  ADR_1314["ADR-1314<br/>[build] .krs / .krs.style を v1.0 として凍結する（ハイブリッド版管理）"]
   ADR_1580["ADR-1580<br/>[chat-ai] 組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
   ADR_1819["ADR-1819<br/>[resolver] infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
+  ADR_1820["ADR-1820<br/>[build] notation promotion gate — experimental notation..."]
   ADR_2075["ADR-2075<br/>[resolver] 宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
+  ADR_2173["ADR-2173<br/>[parser] facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
+  ADR_2174["ADR-2174<br/>[renderer] facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
   ADR_9009["ADR-9009<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_14 --> ADR_9003
   ADR_14 --> ADR_9009
   ADR_309 --> ADR_14
   ADR_1564 --> ADR_14
   ADR_1583 --> ADR_1566
+  ADR_2065 --> ADR_1314
+  ADR_2065 --> ADR_1820
   ADR_237 --> ADR_9003
   ADR_1580 --> ADR_1583
   ADR_1819 --> ADR_1870
+  ADR_1820 --> ADR_1314
   ADR_2075 --> ADR_1386
+  ADR_2075 --> ADR_1314
+  ADR_2173 --> ADR_2065
+  ADR_2174 --> ADR_2065
+  ADR_2174 --> ADR_2173
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -67,12 +79,17 @@ flowchart TD
   class ADR_1720 accepted
   class ADR_1870 accepted
   class ADR_1995 accepted
+  class ADR_2065 accepted
   class ADR_2161 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
   class ADR_237 ghost
+  class ADR_1314 ghost
   class ADR_1580 ghost
   class ADR_1819 ghost
+  class ADR_1820 ghost
   class ADR_2075 ghost
+  class ADR_2173 ghost
+  class ADR_2174 ghost
   class ADR_9009 ghost
 ```

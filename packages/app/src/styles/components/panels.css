@@ -640,3 +640,186 @@
   font-weight: bold;
   text-align: center;
 }
+
+/* Facet overview — the derived "which elements belong to facet X" panel (#2177).
+   Membership is written element-side, so this is the only place that answers the
+   question in one view. Floats over the preview, anchored top-right, and scrolls
+   independently: an audit list for a real model is long. */
+.facet-overview-panel {
+  position: absolute;
+  /* Clears the toolbar however many rows it wraps to. `PreviewColumn` measures
+     the toolbar and publishes its height; the fallback only applies before the
+     first measurement lands. A constant here was wrong in the common case, since
+     the toolbar wraps to two rows at ordinary widths (#2317). */
+  top: calc(var(--preview-toolbar-h, 48px) + 8px);
+  right: 16px;
+  z-index: 100;
+  width: 360px;
+  max-width: calc(100% - 32px);
+  max-height: 60%;
+  overflow-y: auto;
+  padding: 12px 14px;
+  /* Opaque on purpose. This floats over the diagram, and a translucent panel
+     puts two texts on the same pixels — the failure the first cut shipped, via
+     a `--bg-panel` token that was never defined (an invalid `var()` computes to
+     transparent rather than falling back). */
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-node-detail);
+  font-size: 12px;
+}
+
+/* Dragged: position comes from inline left/top instead of the default corner. */
+.facet-overview-panel--dragging {
+  user-select: none;
+}
+
+.facet-overview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  /* The drag handle. The close button stops the gesture from starting. */
+  cursor: grab;
+  touch-action: none;
+}
+
+.facet-overview-panel--dragging .facet-overview-header {
+  cursor: grabbing;
+}
+
+.facet-overview-title {
+  flex: 1;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.facet-overview-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.facet-overview-close:hover {
+  color: var(--text-primary);
+}
+
+.facet-overview-derived-note {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.facet-overview-list,
+.facet-overview-members,
+.facet-overview-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.facet-overview-entry + .facet-overview-entry {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-faint);
+}
+
+.facet-overview-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* The facet name doubles as the overlay toggle, so someone reading the list can
+   light the facet up in the diagram without going back to the toolbar. */
+.facet-overview-name {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.facet-overview-name:hover,
+.facet-overview-name[aria-pressed="true"] {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.facet-overview-id {
+  background: var(--bg-void);
+  border-radius: var(--radius-xs);
+  padding: 1px 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.facet-overview-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.facet-overview-description,
+.facet-overview-empty,
+.facet-overview-undeclared {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.facet-overview-undeclared {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.facet-overview-links {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.facet-overview-members {
+  margin-top: 8px;
+}
+
+.facet-overview-member {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.facet-overview-member-kind {
+  flex-shrink: 0;
+  min-width: 62px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.facet-overview-member-name {
+  color: var(--text-primary);
+}
+
+/* Ancestors, shown because a bare id is ambiguous across scopes (ADR-927): two
+   `Payment` nodes in different services are two rows, and the path is what
+   tells them apart. */
+.facet-overview-member-path {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: right;
+}

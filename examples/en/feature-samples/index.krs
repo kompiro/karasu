@@ -23,6 +23,7 @@
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
 //   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
+//   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what (experimental)
 
 system FeatureSamples {
   label "Feature samples"

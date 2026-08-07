@@ -221,7 +221,7 @@ export interface WarningParamsByKind {
    * model-specific labeling moving to `facet` (#2065 Part B) and new
    * archetypes going through builtin-addition requests. Deliberately has no
    * suppression condition — a style selector or legend ref proves intent,
-   * but intent does not change the v2.0 outcome (docs/design/tags-and-facets.md
+   * but intent does not change the v2.0 outcome (ADR-2065
    * Part A). Warning register: resolves the TPL-1503 fourth state
    * into state (2), "warned as unknown".
    */

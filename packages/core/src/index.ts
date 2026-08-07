@@ -210,6 +210,11 @@ export {
   type StyleSelectorExamplesByView,
   type SelectorSpecificityRow,
 } from "./builtins/reference.js";
+export {
+  buildFacetOverview,
+  type FacetOverviewEntry,
+  type FacetMemberInfo,
+} from "./renderer/facet-overview.js";
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export type { SvgResult, AllViewsSvgResult } from "./renderer/all-layers-svg.js";
