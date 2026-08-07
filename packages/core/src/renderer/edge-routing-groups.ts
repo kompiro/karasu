@@ -147,6 +147,32 @@ function contentBounds(
   return { minLeft, maxRight };
 }
 
+/**
+ * The frame obstacles an edge must not cross, with the same per-endpoint
+ * exemption `obstaclesFor` applies — but without the node cards, which the
+ * interior channel-L pass (`edge-routing-channels.ts`) already collects itself.
+ * Supplied to that pass so the first candidate in the shared chain cannot bend
+ * an edge straight through a frame it does not belong to (#2362).
+ *
+ * Returns an empty set on an ungrouped canvas, which is exactly what makes the
+ * shared chain degrade to the ADR-968 behaviour there.
+ */
+export function frameObstaclesFor(
+  layoutNodes: Map<string, LayoutNode>,
+  frames: ContainerRect[],
+  expandedFrames?: Map<string, ContainerRect>,
+): (edge: LayoutEdge) => Rect[] {
+  if (frames.length === 0) return () => [];
+  const { framesOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
+  return (edge) => {
+    const fFrom = framesOfNode.get(edge.from);
+    const fTo = framesOfNode.get(edge.to);
+    return frames
+      .filter((f) => !fFrom?.has(f.id) && !fTo?.has(f.id))
+      .flatMap((f) => framePieces(f));
+  };
+}
+
 export function routeGroupedEdges(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
@@ -158,6 +184,12 @@ export function routeGroupedEdges(
    * own frame. Omitted for Group-by team (no frame endpoints there).
    */
   expandedFrames?: Map<string, ContainerRect>,
+  /**
+   * Whether an against-flow edge is flagged for dashing. "Backward" is defined
+   * by the band stack, so it is meaningless without one — the shared chain
+   * passes `false` on an ungrouped canvas (#2362).
+   */
+  markBackward = true,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
@@ -167,6 +199,22 @@ export function routeGroupedEdges(
   const { minLeft, maxRight } = contentBounds(nodes, frames);
   const rightGutter: Gutter = { x: maxRight + GUTTER_GAP, side: "right" };
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
+  // Vertical corridors *between* columns, tried before the outer gutters (#2365).
+  //
+  // Ungrouped canvases only. P2c's side gutter is penetration-safe *by
+  // construction* — every lane x lies beyond the content, where no card or frame
+  // exists — and `distributeGutterLanes` inherits that assumption when it widens
+  // a corridor into a free lane. An interior corridor has neither property: it is
+  // safe only because each route is verified, and it cannot be shifted sideways
+  // without re-checking. Rather than weaken the grouped guarantee, interior
+  // corridors are offered only where there are no frames, which is exactly where
+  // the long detours were observed.
+  const innerCorridors = frames.length === 0 ? corridorCandidates(nodes) : [];
+  // Corridors already taken, so two edges never lay collinear verticals on one
+  // interior lane. `distributeGutterLanes` cannot fix this after the fact (it only
+  // relocates corridors outside the content), so the collision is avoided here at
+  // routing time — the interior equivalent of lane separation (TPL-1954).
+  const claimed: { x: number; lo: number; hi: number }[] = [];
 
   for (const edge of layoutEdges) {
     if (edge.ghost || edge.cyclic) continue;
@@ -178,13 +226,27 @@ export function routeGroupedEdges(
 
     // Against-flow (target band above source) → dash it. Independent of whether
     // the edge needs rerouting; a clear backward edge is still dashed.
-    if (to.y + to.height <= from.y) edge.groupBackward = true;
+    if (markBackward && to.y + to.height <= from.y) edge.groupBackward = true;
 
     const obstacles = obstaclesFor(edge, nodes, frames, framesOfNode);
 
     // Leave clear edges (adjacent, intra-band) exactly as the shared pipeline
     // placed them — keeps simple edges simple and snapshots minimal.
     if (!segmentCrossesAnyRect(edge.fromPoint, edge.toPoint, obstacles)) continue;
+
+    // Nearest clear corridor first: a vertical gap *between* columns beats
+    // running out to the canvas edge, which is what made a detour stretch the
+    // whole width of the diagram (#2365). Corridors are ordered by distance from
+    // the midpoint between the endpoints, so the shortest usable one wins; when
+    // none is clear the outer gutters below still catch the edge, so this only
+    // ever shortens a route it would otherwise have taken.
+    const mid = midX(from, to);
+    const routedInner = innerCorridors
+      .slice()
+      .sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid))
+      .slice(0, MAX_CORRIDOR_TRIES)
+      .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, claimed));
+    if (routedInner) continue;
 
     // Try the right gutter, then the left, with plain side stubs (the common
     // 2-waypoint route). If a full side route is blocked on both gutters, fall
@@ -311,6 +373,91 @@ function tryMixedRoute(
   edge.fromPoint = path[0];
   edge.toPoint = path[path.length - 1];
   edge.waypoints = path.slice(1, -1);
+  return true;
+}
+
+/** Midpoint between two boxes' centres on the x axis — the yardstick for "nearest corridor". */
+function midX(from: EdgeBox, to: EdgeBox): number {
+  return (from.x + from.width / 2 + to.x + to.width / 2) / 2;
+}
+
+/**
+ * Candidate x positions for a vertical corridor that runs *between* columns of
+ * content rather than around the whole diagram (#2365).
+ *
+ * One candidate is offered just outside each card's left and right border. Rows
+ * are centred independently and vary in width, so the union of all card x-ranges
+ * usually spans the entire canvas — deriving candidates from gaps in that union
+ * finds nothing on a real diagram. Offering a lane beside every card and letting
+ * the existing whole-polyline verification reject the blocked ones finds the
+ * lanes that actually exist over the rows an edge crosses.
+ *
+ * Candidates are only *proposals*: `tryCorridorRoute` still verifies the whole
+ * route against the obstacle set, so a lane that is clear beside one row but
+ * blocked two rows down simply fails and the edge falls through to the outer
+ * gutters. On a grouped canvas the frames span the band width, so most of these
+ * are blocked and the grouped view keeps its gutter routes unchanged.
+ */
+function corridorCandidates(nodes: LayoutNode[]): number[] {
+  const half = GUTTER_GAP / 2;
+  const xs = new Set<number>();
+  for (const n of nodes) {
+    xs.add(n.x - half);
+    xs.add(n.x + n.width + half);
+  }
+  return [...xs];
+}
+
+/**
+ * How many corridor candidates one edge may try before falling through to the
+ * outer gutters. Candidates are sorted nearest-first, so the cap only discards
+ * lanes further away than the ones already rejected — and a route through a
+ * distant lane is barely shorter than the gutter route it would replace.
+ */
+const MAX_CORRIDOR_TRIES = 8;
+
+/**
+ * Attempt a route through a vertical corridor at `corridorX`, with each endpoint
+ * attaching on the side that faces it. Unlike {@link tryGutterRoute} the two
+ * ports may take opposite sides, which is what makes a corridor *between* the
+ * endpoints usable. An endpoint whose own box straddles the corridor has no
+ * facing side, so that corridor is rejected for this edge.
+ *
+ * Applied only when the whole polyline is obstacle-free — never worse (AC-1).
+ */
+function tryCorridorRoute(
+  edge: LayoutEdge,
+  from: EdgeBox,
+  to: EdgeBox,
+  corridorX: number,
+  obstacles: Rect[],
+  claimed: { x: number; lo: number; hi: number }[],
+): boolean {
+  const portFor = (b: EdgeBox): Point | null => {
+    const midY = b.y + b.height / 2;
+    if (corridorX >= b.x + b.width) return { x: b.x + b.width, y: midY };
+    if (corridorX <= b.x) return { x: b.x, y: midY };
+    return null;
+  };
+  const sourcePort = portFor(from);
+  const targetPort = portFor(to);
+  if (!sourcePort || !targetPort) return false;
+
+  const lo = Math.min(sourcePort.y, targetPort.y);
+  const hi = Math.max(sourcePort.y, targetPort.y);
+  const taken = claimed.some(
+    (c) => Math.abs(c.x - corridorX) < 1e-6 && Math.min(c.hi, hi) - Math.max(c.lo, lo) > 1e-6,
+  );
+  if (taken) return false;
+
+  const w0: Point = { x: corridorX, y: sourcePort.y };
+  const w1: Point = { x: corridorX, y: targetPort.y };
+  if (!polylineClearOf([sourcePort, w0, w1, targetPort], obstacles)) return false;
+
+  edge.fromPoint = sourcePort;
+  edge.toPoint = targetPort;
+  edge.waypoints = [w0, w1];
+  claimed.push({ x: corridorX, lo, hi });
   return true;
 }
 

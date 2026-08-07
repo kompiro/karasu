@@ -204,18 +204,26 @@ test.describe("AT-0006 built-in style rendering", () => {
     // a pair: a stylesheet that dashed *everything* would still satisfy a lone
     // "async is dashed" assertion.
     //
-    // Each edge group carries an invisible wide line first (the pointer
+    // Each edge group carries an invisible wide stroke first (the pointer
     // hit-area, `stroke: rgba(0,0,0,0)`, never dashed) followed by the painted
-    // line. Reading `querySelector("line")` picks the hit-area and always
+    // one. Reading `querySelector("line")` picks the hit-area and always
     // reports "none", so the *visible* stroke has to be selected explicitly.
+    //
+    // Match every shape an edge can be drawn as: `line` when it runs straight,
+    // `polyline` once it is routed around an obstacle, and `path` when a hop
+    // mark cuts it. Listing only some of them makes the query silently return
+    // nothing for the others and read as "not dashed" (TPL-1954 — a new route
+    // shape must not fall outside what consumes it).
     const dashByEdge = await svg.evaluate((root) => {
       const out: Record<string, string> = {};
       for (const edge of Array.from(root.querySelectorAll("[data-edge-from]"))) {
         const key = `${edge.getAttribute("data-edge-from")}->${edge.getAttribute("data-edge-to")}`;
-        const painted = Array.from(edge.querySelectorAll("line, path")).find((candidate) => {
-          const stroke = getComputedStyle(candidate).stroke;
-          return stroke !== "none" && !/rgba?\([^)]*,\s*0\)$/.test(stroke);
-        });
+        const painted = Array.from(edge.querySelectorAll("line, polyline, path")).find(
+          (candidate) => {
+            const stroke = getComputedStyle(candidate).stroke;
+            return stroke !== "none" && !/rgba?\([^)]*,\s*0\)$/.test(stroke);
+          },
+        );
         out[key] = painted
           ? (painted.getAttribute("stroke-dasharray") ?? getComputedStyle(painted).strokeDasharray)
           : "";

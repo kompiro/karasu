@@ -12,6 +12,7 @@ known_consumers:
 discovered_from:
   - root_cause_file: "packages/core/src/renderer/edge-routing-groups.ts"
   - issue: "#1954"
+  - issue: "#2362"
 related_to:
   - TPL-1927
 topic: renderer
@@ -39,6 +40,7 @@ scope:
 - 新 route 形を追加した PR が、**その形を後段パスに参加させ忘れる**。gate（`waypoints.length === N` 等）に一致しないので後段パスが黙ってスキップし、後段パスが守っていた不変条件（overlap ゼロ・レーン非衝突・fan-out・marks 付与）が新 route にだけ効かない。
 - 既存テストは**古い route 形の fixture しか無い**ため全部 green のまま。新形の退行は新 fixture を足すまで顕在化しない（#1954 は synthetic fixture が貫通・overlap ゼロを通す一方、実サンプルで漏れていた）。
 - gate が**構造ではなく偶然の形**（waypoint 数・特定 index の座標）に依存している。route 形が一つ増えるたびに gate の分岐が漏れる。
+- **消費側がテストのセレクタでも同じことが起きる。** #2362 で ungrouped のエッジが直交ルーティングされるようになると、それまで `<line>` だったエッジが `<polyline>` になった。E2E が `querySelectorAll("line, path")` と**要素型を数え上げて**いたため polyline を拾えず、`stroke-dasharray` が空文字として読まれて「async エッジが破線でない」と誤検出した（プロダクトは正しく `stroke-dasharray="8 4"` を出していた）。否定的アサーション（「どの図形にも diff 色が出ない」）で同じ数え上げをしていた箇所は、**落ちずに偽の pass** になる分さらに危ない。
 
 ## チェックリスト
 
@@ -49,6 +51,7 @@ scope:
 - [ ] 除外すべきでないパスには、gate を**形不変な述語**（「ガター回廊を持つか」「どの辺にアンカーするか」等）に一般化して新形を参加させた。除外してよいパス（例: 束ねは対象外）は**意図的な除外だと明記**した。
 - [ ] 一般化後も**既存 route 形の結果が不変**であることを既存テスト（snapshot / 不変条件 assert）で確認した（＝一般化の回帰柵）。
 - [ ] 新 route 形を**実際に生む fixture**で、下流パスが守る不変条件（[TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) の貫通ゼロ＋共線オーバーラップゼロ等）を assert した。synthetic fixture だけでなく、退行が出た**実サンプル**を柵に加えた。
+- [ ] **テスト・アサーション側の消費者も列挙**した。SVG 要素型を数え上げるセレクタ（`"line, path"` 等）は route 形が増えると黙って対象を落とす。エッジを引くセレクタは `line, polyline, path` を揃えるか、`[data-edge-from]` のような**形に依らない属性**で引く。とくに否定的アサーション（「〜が出ない」）は落ちずに偽の pass になるので優先して点検する。
 
 ## 既知の対処パターン
 
@@ -59,8 +62,11 @@ scope:
 ## 関連テスト
 
 - `packages/core/src/renderer/edge-routing-groups.test.ts`（`SYS`/`TRUNKS` = 旧 2-waypoint 形の回帰柵、`examples/en/getting-started` = mixed route を生む実サンプルで貫通・overlap ゼロを assert）
+- `packages/core/src/renderer/routing-parity.test.ts`（#2362 — 共有候補列が生む全 route 形について、実サンプルで貫通ゼロ・共線オーバーラップゼロを assert）
+- `packages/e2e/tests/at-0006-builtin-style.spec.ts` / `at-0058-diff-colors.spec.ts`（#2362 — エッジを引くセレクタが `line, polyline, path` を揃える）
 
 ## 派生元 spec / 設計
 
 - `docs/adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md`（ADR-1859）— mixed route ＋ #1927 パス一般化（本観点の一次ソース、#1954）
 - [TPL-1927](TPL-1927-routing-measures-crossings-and-penetrations.md) — 交差・貫通・共線オーバーラップの三重計測（本 TPL が守らせる不変条件の中身）
+- `docs/adr/2330-ungrouped-routing-parity.md`（ADR-2330）— 共有候補列。ungrouped のエッジが `<line>` から `<polyline>` に変わり、テストのセレクタが消費者として漏れていた事例（#2362）

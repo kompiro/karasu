@@ -71,6 +71,15 @@ export interface RunMetrics {
    * repeated to be understood.
    */
   diagnostics?: { code: string; blockKind?: string; at?: string }[];
+  /**
+   * The pass a failed run was attempting when it stopped.
+   *
+   * `passes` lists what came back, so the broken one is precisely the one
+   * missing from it — a subtraction the reader of a 400-day-old record should
+   * not have to perform against a source tree that has moved on (#2379).
+   * Absent when the run failed outside the model calls.
+   */
+  failedPass?: string;
 }
 
 /**
