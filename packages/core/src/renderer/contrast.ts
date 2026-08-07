@@ -22,7 +22,7 @@ function channelToLinear(v: number): number {
 }
 
 /** WCAG relative luminance of a hex color. Returns undefined for non-hex input. */
-export function relativeLuminance(color: string): number | undefined {
+function relativeLuminance(color: string): number | undefined {
   const rgb = parseHex(color);
   if (!rgb) return undefined;
   const [r, g, b] = rgb.map(channelToLinear);
