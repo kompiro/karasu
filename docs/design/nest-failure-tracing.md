@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-06
 - **ステータス**: 検討中
+- **PR**: [#2383](https://github.com/kompiro/karasu/pull/2383)
 - **関連**:
   - 引き金 Issue: [#2379](https://github.com/kompiro/karasu/issues/2379)（provider error detail + unread body）／親 [#1990](https://github.com/kompiro/karasu/issues/1990)
   - 関連 Issue: [#2374](https://github.com/kompiro/karasu/issues/2374)（ストリーミング化）、[#2226](https://github.com/kompiro/karasu/issues/2226)（計測）、[#1994](https://github.com/kompiro/karasu/issues/1994)（quota）
@@ -237,7 +238,7 @@ survey / decompose / synthesise のローカル再現は、運用者自身の re
 | 2 | ローカル再現ハーネスの置き場 | **`scripts/` の開発用** | nest のプロンプト組み立てを公開 API にしない。ADR-1996 により当面の対象は運用者自身の repo だけで、配布価値がまだ無い。後から CLI に出すことはできるが逆は難しい |
 | 3 | `running` 滞留の検出 | **status ルートが `startedAt` からの経過で判定し、超過していれば interrupted として返す** | 追加インフラゼロ。cron trigger という新しい実行面を増やさない |
 | 4 | 失敗文書の保存対象 | **provider エラー時の生成物まで広げる** | repair 再開とローカル再現の両方の入力になる。保存するのは構造のみの `.krs` で決定 6 の内側 |
-| 5 | 再開と quota | **本文書では決めない。[別 Issue](#別-issue-へ切り出したもの) へ** | 下記のとおり、論点が repair 再開ではなく quota の存在意義そのものだったため |
+| 5 | 再開と quota | **本文書では決めない。[#2382](https://github.com/kompiro/karasu/issues/2382) へ** | 下記のとおり、論点が repair 再開ではなく quota の適用条件そのものだったため |
 | 6 | 再開の入口 | **`METRICS_TOKEN` で守る admin 経路**（`POST /admin/repair/:owner/:repo`） | `GET /admin/failed` と同じ認証・同じ利用者。運用者専用のデバッグ経路になるので、quota 回避の抗弁が成立せず論点 5 に依存しない。将来 admin から公開へ降ろすことはできる |
 | 7 | 失敗文書の TTL | **7 日に延ばす** | 再開の入力になる以上、失敗に気付いてから叩くまでの時間がそのまま制限になる。週末を挟んでも間に合う。生成物キャッシュ自体が 90 日なので保持の説明とも矛盾しない |
 
@@ -245,6 +246,6 @@ survey / decompose / synthesise のローカル再現は、運用者自身の re
 
 **quota は、いまの運用形態に対して過剰である。** [ADR-1994](../adr/1994-karasu-nest-free-tier-quota.md) の月 3 回という水準は「サービスが推論費を負担し、複数の installation が使う」前提で導かれている。しかし現在は**運用者と利用者が同一人物**で、支出を止める主体と支出する主体が同じである。この状態では quota は支出を守っておらず、開発の摩擦にしかなっていない（実際、本日 KV のカウンタを手で消して枠を戻す作業が発生している）。
 
-karasu-nest を deepwiki のような公開サービスにする時点で、利用者からのリクエストを quota で縛る必然性は戻る。**したがって撤廃ではなく、「いまは効かせない」判断と、その復活条件を別途決める**。本文書の範囲外とし、Issue に切り出す。
+karasu-nest を deepwiki のような公開サービスにする時点で、利用者からのリクエストを quota で縛る必然性は戻る。**したがって撤廃ではなく、「いまは効かせない」判断と、その復活条件を別途決める**。本文書の範囲外とし、[#2382](https://github.com/kompiro/karasu/issues/2382) に切り出した。
 
 論点 5（repair 再開が枠を消費するか）は、論点 6 で admin 経路に決めた時点で実務上は消えている — 叩けるのは運用者だけなので、枠を回避する抗弁が成立しない。
