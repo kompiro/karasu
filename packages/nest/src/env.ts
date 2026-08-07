@@ -65,10 +65,12 @@ export interface NestEnv {
    * `"on"` to deliver a generated model as a pull request (#2289).
    *
    * Off unless a deploy sets it. PR-back needs `contents:write` and
-   * `pull_requests:write`, which is wider than the `contents:read` that
-   * ADR-1990 decision 6 scoped the install consent to; #1996 owns the copy
-   * that makes asking for it legitimate. Until then a deploy that turns this
-   * on is writing to repositories on a consent nobody gave.
+   * `pull_requests:write`, wider than the `contents:read` that ADR-1990
+   * decision 6 scoped the install consent to. What closes that gap is who
+   * installed the App, not what the code does: on repositories the operator
+   * owns, the party granting the permission and the party written to are the
+   * same. Turning this on for an install list that reaches further writes to
+   * repositories on a consent nobody gave — #1996 owns that copy.
    */
   PR_DELIVERY?: string;
   /** Deploy environment name, surfaced by `/healthz` for smoke checks. */

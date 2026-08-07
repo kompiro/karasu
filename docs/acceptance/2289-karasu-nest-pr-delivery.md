@@ -118,7 +118,7 @@
 
 ### 手動確認（実デプロイでのみ検証可能）
 
-**この節は #1996 が入るまで実施しない。** PR-back は `contents:write` と `pull_requests:write` を要求し、これは ADR-1990 決定 6 が install consent に定めた `contents:read` より広い。同意の文面が無いまま他人の repo に書き込むことになる。
+**この節は運用者自身が所有する repository に対してのみ実施する。** PR-back は `contents:write` と `pull_requests:write` を要求し、これは ADR-1990 決定 6 が install consent に定めた `contents:read` より広い。広い権限を与える側と書き込まれる側が同一人物である間はこの差が問題にならないが、App の install 先が運用者以外に届いた時点で `docs/policy/nest-data-handling.md`「未了」の 6 項目（うち 2 項目は PR-back があるから存在する）が再び前提条件になる。
 
 - [ ] M-1: `PR_DELIVERY` 未設定のデプロイでは生成しても PR が開かない（`/healthz` が `false` を報告する）
 - [ ] M-2: GitHub App の権限に `contents:write` と `pull_requests:write` を足し、install prompt の文面が #1996 のものに更新されている

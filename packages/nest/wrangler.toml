@@ -41,6 +41,22 @@ enabled = true
 [vars]
 ENVIRONMENT = "production"
 
+# Deliver the generated model as a pull request (#2289).
+#
+# This asks the App for `contents:write` and `pull_requests:write`, wider than
+# the `contents:read` ADR-1990 decision 6 scoped the install consent to. What
+# makes that admissible here is the installation, not the code: this App is
+# installed only on repositories its own operator owns, so the party granting
+# the wider permission and the party being written to are the same.
+#
+# That is also the boundary. The moment this App is installed anywhere the
+# operator does not own, the six unfinished items in
+# `docs/policy/nest-data-handling.md` (zero-retention contract, privacy policy,
+# ToS, DPA, publication, contact) are back in force -- and PR-back is the
+# reason two of them exist. Widening the install list without closing them is
+# the change this comment exists to stop, not the flag itself.
+PR_DELIVERY = "on"
+
 # The generated-`.krs` cache and the `owner/repo` directory share one
 # namespace; they are separated by key prefix (`krs/v1/` and `idx/v1/`) rather
 # than by binding, because a purge has to see both.
@@ -68,10 +84,9 @@ class_name = "GenerateWorkflow"
 #   wrangler secret put LLM_API_KEY             # 2288
 #   wrangler secret put METRICS_TOKEN           # 2226 (GET /admin/metrics)
 #
-# PR-back delivery (#2289) is off unless `PR_DELIVERY=on` is set as a plain
-# var. It needs contents:write and pull_requests:write, which is wider than
-# the contents:read the install consent covers today -- #1996 owns the copy
-# that makes asking for it legitimate. Do not turn this on before it lands.
+# PR-back delivery (#2289) is a plain var, set above. It is the one setting
+# here whose effect is outward: it writes to repositories. The condition that
+# makes it admissible is written beside it, not here.
 #
 # `GET /healthz` reports which of these the running deploy actually has, as
 # booleans, so a deploy missing one is diagnosable without reading them back.
