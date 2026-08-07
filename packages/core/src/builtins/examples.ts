@@ -2142,6 +2142,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
 //   facets.krs                facet / facets — the viewer-side highlight overlay (experimental)
 //   tag-facet-registers.krs   tag vs annotation vs facet vs boundary — which register says what (experimental)
+//   multi-system-root.krs     two \`system\` blocks in one file — the side-by-side root view
 
 system FeatureSamples {
   label "Feature samples"
@@ -3037,6 +3038,99 @@ system Shop {
   Accounts -> ProfileStore "read/write"
   Checkout -> Accounts "billing address"
   Checkout -> Ledger "record"
+}
+`,
+    },
+    {
+      path: "multi-system-root.krs",
+      content: `// multi-system-root.krs
+// Demonstrates: two \`system\` blocks in one file — the multi-system root view.
+//
+// With more than one system declared, karasu lays the systems out side by side
+// instead of drilling into a single one. Each system keeps its own tiers
+// (user / client / service / infra) and is routed against its own bounds, so an
+// edge inside one system never detours around its neighbour.
+//
+// Both systems here have an actor that skips the client tier (Ops -> Orders,
+// Auditor -> Ledger). A straight line for those crosses the client card sitting
+// between the endpoints, so the router has to route around it — this file is
+// what the multi-system routing fences measure.
+
+system Shop {
+  label "Shop"
+  description "Storefront and order handling"
+
+  user Shopper {
+    label "Shopper"
+    role "Buys things"
+  }
+
+  user Ops {
+    label "Ops"
+    role "Operates the platform, bypassing the storefront"
+  }
+
+  client Storefront [web] {
+    label "Storefront"
+    description "Public web storefront"
+  }
+
+  service Orders {
+    label "Orders"
+    description "Order placement and tracking"
+  }
+
+  service Catalog {
+    label "Catalog"
+    description "Product catalog"
+  }
+
+  database ShopDB {
+    label "Shop DB"
+  }
+
+  Shopper -> Storefront "browses"
+  Storefront -> Orders "places orders"
+  Storefront -> Catalog "lists products"
+  Ops -> Orders "reconciles"
+  Orders -> ShopDB "persists"
+  Catalog -> ShopDB "reads"
+}
+
+system Billing {
+  label "Billing"
+  description "Invoicing and the ledger"
+
+  user Auditor {
+    label "Auditor"
+    role "Reads the ledger directly"
+  }
+
+  client BillingConsole [web] {
+    label "Billing Console"
+    description "Internal console for finance"
+  }
+
+  service Invoicing {
+    label "Invoicing"
+    description "Issues and settles invoices"
+  }
+
+  service Ledger {
+    label "Ledger"
+    description "Double-entry record of every movement"
+  }
+
+  database BillingDB {
+    label "Billing DB"
+  }
+
+  Auditor -> Ledger "audits"
+  Auditor -> BillingConsole "uses"
+  BillingConsole -> Invoicing "issues invoices"
+  Invoicing -> Ledger "posts entries"
+  Invoicing -> BillingDB "persists"
+  Ledger -> BillingDB "persists"
 }
 `,
     },
