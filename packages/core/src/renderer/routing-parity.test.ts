@@ -342,6 +342,66 @@ describe("shared routing chain — ungrouped-only affordances survive (#2362)", 
   );
 });
 
+describe("multi-system root view routes its edges (#2363)", () => {
+  // A real bundled sample rather than an inline string: the #1954 lesson is that
+  // a fence covering only hand-built fixtures misses what users actually draw.
+  // `multi-system-root.krs` declares two systems, each with an actor that skips
+  // the client tier, so a straight line for those edges crosses the client card
+  // between the endpoints and the router has to route around it.
+  const MODEL = "en/feature-samples/multi-system-root.krs";
+
+  it("lays the two systems out side by side", () => {
+    const res = layoutOf(MODEL);
+    const shop = res.containers.find((c) => c.id === "Shop");
+    const billing = res.containers.find((c) => c.id === "Billing");
+    expect(shop, "Shop container").toBeDefined();
+    expect(billing, "Billing container").toBeDefined();
+    expect(shop!.x + shop!.width <= billing!.x || billing!.x + billing!.width <= shop!.x).toBe(
+      true,
+    );
+  });
+
+  it("the model actually exercises the router", () => {
+    // Straight centre-to-centre on the same placement pierces, so the zero below
+    // is the router's doing rather than a property of this particular layout.
+    expect(straightCentrePenetrations(layoutOf(MODEL))).toBeGreaterThan(0);
+    expect(
+      layoutOf(MODEL).edges.filter((e) => (e.waypoints?.length ?? 0) > 0).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("no edge pierces a node card", () => {
+    expect(totalPenetrations(layoutOf(MODEL))).toBe(0);
+  });
+
+  it("no two edges share a collinear corridor", () => {
+    const res = layoutOf(MODEL);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("emits crossing marks, which the root view never did before", () => {
+    // Not "there are marks" — an uncrossed layout legitimately has none. The
+    // contract is that the field is populated rather than absent, so the marks
+    // layer is reachable on this surface at all (TPL-1983: the same view state
+    // must behave the same across surfaces).
+    expect(layoutOf(MODEL).crossingMarks).toBeDefined();
+  });
+
+  it("routes each system against its own bounds, not the whole canvas", () => {
+    // A canvas-wide gutter would send an edge inside the left system out past
+    // the right one. Every point of a Shop-internal edge must stay left of the
+    // Billing block.
+    const res = layoutOf(MODEL);
+    const billing = res.containers.find((c) => c.id === "Billing")!;
+    const shopIds = new Set(["Shopper", "Ops", "Storefront", "Orders", "Catalog", "ShopDB"]);
+    for (const e of res.edges) {
+      if (!shopIds.has(e.from) || !shopIds.has(e.to)) continue;
+      for (const p of pointsOf(e)) expect(p.x).toBeLessThan(billing.x);
+    }
+  });
+});
+
 /** x range every card occupies — the region an interior corridor runs inside of. */
 function contentBounds(res: LayoutResult): { minLeft: number; maxRight: number } {
   const nodes = [...res.nodes.values()];
