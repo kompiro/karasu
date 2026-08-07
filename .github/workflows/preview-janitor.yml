@@ -3,9 +3,14 @@ name: Preview Janitor
 # Deletes preview deployments whose branch no longer exists.
 #
 # `preview.yml` and `spike-preview.yml` delete a branch's previews when its PR closes or
-# the branch is deleted. Until #2294 that delete was silently rejected for the one
-# deployment a branch alias points at, so every preview the project had ever built was
-# still public. This sweeps that backlog.
+# the branch is deleted. This catches what they miss: a branch whose own cleanup failed,
+# or previews that outlived a branch for any other reason.
+#
+# It was written to sweep the backlog left by #2294, where the delete was silently
+# rejected for the one deployment a branch alias points at. By the time it could run, that
+# backlog was gone — Cloudflare ages old preview deployments out on its own (the listing
+# reached back 23 days when measured, #2357). So this is a safety net inside that
+# retention window, not a periodic necessity.
 #
 # Manual only. A recurring destructive job is a commitment worth making deliberately, not
 # as a side effect of a cleanup PR — if the per-branch cleanups ever regress, add a
