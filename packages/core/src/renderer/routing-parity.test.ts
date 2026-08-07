@@ -341,3 +341,71 @@ describe("shared routing chain — ungrouped-only affordances survive (#2362)", 
     },
   );
 });
+
+/** x range every card occupies — the region an interior corridor runs inside of. */
+function contentBounds(res: LayoutResult): { minLeft: number; maxRight: number } {
+  const nodes = [...res.nodes.values()];
+  return {
+    minLeft: Math.min(...nodes.map((n) => n.x)),
+    maxRight: Math.max(...nodes.map((n) => n.x + n.width)),
+  };
+}
+
+/** The x of each edge's vertical corridor, if it routes through one. */
+function corridorXs(res: LayoutResult): number[] {
+  const out: number[] = [];
+  for (const e of res.edges) {
+    const wps = e.waypoints;
+    if (!wps || wps.length < 2) continue;
+    for (let i = 0; i < wps.length - 1; i++) {
+      if (wps[i].x === wps[i + 1].x && wps[i].y !== wps[i + 1].y) {
+        out.push(wps[i].x);
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+describe("interior corridors shorten detours (#2365)", () => {
+  // Models where a lane between columns is clear over the rows an edge crosses.
+  // Not every diagram has one: rows are centred and vary in width, so on models
+  // like hr-tool the cards overlap in x across every row an edge would traverse
+  // and the routes correctly fall through to the outer gutters.
+  const HAS_INTERIOR_LANE = [
+    "en/client-mcp/index.krs",
+    "en/ec-platform/04-annotations.krs",
+  ] as const;
+
+  it.each(HAS_INTERIOR_LANE)("%s: routes take a lane inside the content", (file) => {
+    const res = layoutOf(file);
+    const { minLeft, maxRight } = contentBounds(res);
+    const interior = corridorXs(res).filter((x) => x > minLeft && x < maxRight);
+    expect(interior.length).toBeGreaterThan(0);
+  });
+
+  it.each(HAS_INTERIOR_LANE)("%s: an interior lane is never shared (TPL-1954)", (file) => {
+    // `distributeGutterLanes` only relocates corridors *outside* the content, so
+    // interior corridors cannot be lane-separated after the fact — the router
+    // claims them as it goes. This is the fence on that claim.
+    const res = layoutOf(file);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it.each(["en/feature-samples/team-ownership.krs", "en/feature-samples/boundary-clusters.krs"])(
+    "%s: a grouped canvas keeps every corridor outside the content (P2c guarantee)",
+    (file) => {
+      // P2c's side gutter is penetration-safe by construction because it lies
+      // beyond every card and frame, and `distributeGutterLanes` widens lanes on
+      // that assumption. Interior corridors are deliberately not offered where
+      // frames exist, so that guarantee is not traded away for a shorter route.
+      const groupBy: GroupBy = file.includes("boundary") ? "boundary" : "team";
+      const res = layoutOf(file, groupBy);
+      const { minLeft, maxRight } = contentBounds(res);
+      for (const x of corridorXs(res)) {
+        expect(x > maxRight || x < minLeft).toBe(true);
+      }
+    },
+  );
+});
