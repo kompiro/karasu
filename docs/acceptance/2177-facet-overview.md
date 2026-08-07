@@ -87,7 +87,19 @@
 
 - [ ] AT-R: 🧑 Manual — 所属一覧を開き、**「PCI スコープに何が入っているか」に 1 画面で答えられる**こと。要素側に所属を書く設計の代償をこの導出ビューが払えているかの確認で、払えていないならパネルの情報設計が足りない
 
-- [ ] AT-S: 🧑 Manual — 一覧が長いモデル（20 要素以上が 1 facet に属する）でパネルが読めること。スクロールが図を巻き込まないこと（`data-wheel-zoom-ignore`）
+- [x] AT-S2: パネルが**不透明**で、背後の図やツールバーの文字が透けない
+
+  > ✅ Automated — `packages/app/src/components/FacetSelector.test.tsx` › `Facet membership overview — placement (#2177)` › `is styled from a background token that actually exists`。**実際に踏んだ不具合の再発防止**: `background: var(--bg-panel)` が未定義トークンを指しており、無効な `var()` はフォールバックせず透明になるため、図とツールバーの文字が重なって読めなかった。jsdom は CSS を適用しないので computed style では検出できず、スタイルシートのトークン名を themes.css と突き合わせる形にしている
+
+- [x] AT-S3: ツールバーが 2 段に折り返してもパネルがそれを覆わない
+
+  > ✅ Automated — 同 describe › `positions itself below the toolbar however many rows it wraps to`。定数オフセットは常用幅で誤り（#2317 が報告したとおりツールバーは 2 段になる）。`PreviewColumn` が実測した高さを CSS 変数で公開する
+
+- [x] AT-S4: ヘッダーのドラッグでパネルを移動でき、閉じるボタンからはドラッグが始まらない
+
+  > ✅ Automated — 同 describe › `moves when the header is dragged, and stops when released` / `does not start a drag from the close button`。jsdom は rect が 0 なので、座標計算ではなく配線（inline 座標が CSS の隅指定を置き換え、`right` が解除される）を固定している
+
+- [ ] AT-S: 🧑 Manual — 一覧が長いモデル（20 要素以上が 1 facet に属する）でパネルが読めること。スクロールが図を巻き込まないこと（`data-wheel-zoom-ignore`）。ドラッグで移動したあとも同様であること
 
 - [ ] AT-T: 🧑 Manual — light / dark 双方で swatch・path・件数が読めること
 

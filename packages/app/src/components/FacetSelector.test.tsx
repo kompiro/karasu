@@ -2,6 +2,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render as rtlRender, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { fireEvent } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import type { ReactElement } from "react";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
@@ -204,5 +210,70 @@ describe("Facet membership overview (#2177)", () => {
     // overview did not sneak in as a second entry point.
     renderToolbar({ facets: [], facetOverview: [] });
     expect(screen.queryByRole("button", { name: /facets/i })).toBeNull();
+  });
+});
+
+// The panel floats over the diagram, so two things decide whether it is usable:
+// it must be opaque, and it must be movable when it lands on something you
+// wanted to read. The first shipped broken — `background: var(--bg-panel)` named
+// a token that was never defined, and an invalid `var()` computes to transparent
+// rather than falling back, so the diagram and the toolbar showed through the
+// text (reported from a screenshot, not caught by any test).
+describe("Facet membership overview — placement (#2177)", () => {
+  it("is styled from a background token that actually exists", () => {
+    // Reads the stylesheet rather than the rendered node: jsdom does not apply
+    // the app's CSS, so a computed-style assertion would pass no matter what.
+    // The failure mode is a *typo'd token name*, which is visible in the source.
+    const css = readFileSync(resolve(__dirname, "../styles/components/panels.css"), "utf8");
+    const rule = css.slice(css.indexOf(".facet-overview-panel {"));
+    const background = rule.slice(0, rule.indexOf("}")).match(/background:\s*var\((--[\w-]+)\)/);
+    expect(background).not.toBeNull();
+
+    const themes = readFileSync(resolve(__dirname, "../styles/themes.css"), "utf8");
+    expect(themes).toContain(`${background![1]}:`);
+  });
+
+  it("positions itself below the toolbar however many rows it wraps to", () => {
+    // A constant offset was wrong in the common case — the toolbar wraps to two
+    // rows at ordinary widths (#2317), and the panel covered the second row.
+    const css = readFileSync(resolve(__dirname, "../styles/components/panels.css"), "utf8");
+    const rule = css.slice(css.indexOf(".facet-overview-panel {"));
+    expect(rule.slice(0, rule.indexOf("}"))).toContain("var(--preview-toolbar-h");
+  });
+
+  it("moves when the header is dragged, and stops when released", async () => {
+    await openOverview();
+    const panel = screen.getByRole("dialog", { name: /Facet membership/ }) as HTMLElement;
+    const header = panel.querySelector(".facet-overview-header") as HTMLElement;
+
+    // jsdom reports zero-size rects, so this asserts the wiring (inline
+    // coordinates replace the CSS corner, and `right` is cleared so `left`
+    // alone positions it) rather than the pixel arithmetic.
+    expect(panel.style.left).toBe("");
+
+    header.setPointerCapture = vi.fn<(pointerId: number) => void>();
+    header.hasPointerCapture = vi.fn<(pointerId: number) => boolean>(() => true);
+    header.releasePointerCapture = vi.fn<(pointerId: number) => void>();
+
+    fireEvent.pointerDown(header, { clientX: 100, clientY: 100, pointerId: 1 });
+    expect(panel.classList.contains("facet-overview-panel--dragging")).toBe(true);
+
+    fireEvent.pointerMove(header, { clientX: 160, clientY: 180, pointerId: 1 });
+    expect(panel.style.right).toBe("auto");
+    expect(panel.style.left).not.toBe("");
+
+    fireEvent.pointerUp(header, { pointerId: 1 });
+    expect(panel.classList.contains("facet-overview-panel--dragging")).toBe(false);
+  });
+
+  it("does not start a drag from the close button", async () => {
+    // The header is the drag handle and the close button lives inside it, so
+    // without the guard closing the panel would begin a gesture instead.
+    await openOverview();
+    const panel = screen.getByRole("dialog", { name: /Facet membership/ }) as HTMLElement;
+    const close = screen.getByRole("button", { name: /Close the facet overview/ });
+
+    fireEvent.pointerDown(close, { clientX: 10, clientY: 10, pointerId: 1 });
+    expect(panel.classList.contains("facet-overview-panel--dragging")).toBe(false);
   });
 });

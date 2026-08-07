@@ -1,6 +1,10 @@
+import { useCallback, useRef, useState } from "react";
 import type { FacetOverviewEntry } from "@karasu-tools/core";
 import { FACET_OVERLAY_COLORS, isSafeLinkUrl } from "@karasu-tools/core";
 import { useTranslation } from "../i18n/index.js";
+
+/** Keeps at least this much of the panel on screen, so it can always be grabbed back. */
+const DRAG_MARGIN = 40;
 
 /**
  * "Which elements belong to facet X" — the audit surface for `facet` (#2177).
@@ -29,17 +33,89 @@ export function FacetOverviewPanel({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  // `null` until the first drag: the panel sits where CSS puts it (top-right,
+  // below the toolbar). Dragging switches it to explicit coordinates, which is
+  // why the default cannot simply be a hardcoded pair here.
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const grab = useRef<{ dx: number; dy: number } | null>(null);
+
+  /**
+   * The element the panel's `left` / `top` are measured against.
+   *
+   * `offsetParent` is the honest answer in a browser, but jsdom always reports
+   * `null`, which would make the whole gesture untestable. The parent element is
+   * the same node in practice (the panel is a direct child of the positioned
+   * `.preview-column`), so it is a sound fallback rather than a test-only hack.
+   */
+  const containingBlock = (panel: HTMLElement): HTMLElement | null =>
+    (panel.offsetParent as HTMLElement | null) ?? panel.parentElement;
+
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Let the close button (and any future header control) keep its click.
+    if ((e.target as HTMLElement).closest("button")) return;
+    const panel = panelRef.current;
+    const parent = panel ? containingBlock(panel) : null;
+    if (!panel || !parent) return;
+    const panelRect = panel.getBoundingClientRect();
+    const parentRect = parent.getBoundingClientRect();
+    // Offset within the panel, so it does not jump to the cursor on grab.
+    grab.current = { dx: e.clientX - panelRect.left, dy: e.clientY - panelRect.top };
+    setPos({ left: panelRect.left - parentRect.left, top: panelRect.top - parentRect.top });
+    setDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const offset = grab.current;
+    const panel = panelRef.current;
+    const parent = panel ? containingBlock(panel) : null;
+    if (!offset || !panel || !parent) return;
+    const parentRect = parent.getBoundingClientRect();
+    const width = panel.offsetWidth;
+    // Clamp so a sliver always stays grabbable — a panel dragged fully out of
+    // the column could not be brought back without reopening it.
+    const left = Math.min(
+      Math.max(e.clientX - offset.dx - parentRect.left, DRAG_MARGIN - width),
+      parentRect.width - DRAG_MARGIN,
+    );
+    const top = Math.min(
+      Math.max(e.clientY - offset.dy - parentRect.top, 0),
+      parentRect.height - DRAG_MARGIN,
+    );
+    setPos({ left, top });
+  }, []);
+
+  const endDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!grab.current) return;
+    grab.current = null;
+    setDragging(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
 
   return (
     <div
-      className="facet-overview-panel"
+      ref={panelRef}
+      className={`facet-overview-panel${dragging ? " facet-overview-panel--dragging" : ""}`}
       role="dialog"
       aria-label={t("facetOverview.title")}
+      // Once dragged, explicit coordinates replace the CSS corner. `right` is
+      // cleared so the panel is positioned by `left` alone.
+      style={pos ? { left: pos.left, top: pos.top, right: "auto" } : undefined}
       // Opt out of the diagram's native wheel-zoom listener so this panel's own
       // overflow scrolls instead of zooming the diagram behind it (#1537).
       data-wheel-zoom-ignore
     >
-      <div className="facet-overview-header">
+      <div
+        className="facet-overview-header"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
         <span className="facet-overview-title">◎ {t("facetOverview.title")}</span>
         <button
           className="facet-overview-close"

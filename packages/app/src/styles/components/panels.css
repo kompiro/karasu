@@ -647,7 +647,11 @@
    independently: an audit list for a real model is long. */
 .facet-overview-panel {
   position: absolute;
-  top: 48px;
+  /* Clears the toolbar however many rows it wraps to. `PreviewColumn` measures
+     the toolbar and publishes its height; the fallback only applies before the
+     first measurement lands. A constant here was wrong in the common case, since
+     the toolbar wraps to two rows at ordinary widths (#2317). */
+  top: calc(var(--preview-toolbar-h, 48px) + 8px);
   right: 16px;
   z-index: 100;
   width: 360px;
@@ -655,11 +659,20 @@
   max-height: 60%;
   overflow-y: auto;
   padding: 12px 14px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-default);
+  /* Opaque on purpose. This floats over the diagram, and a translucent panel
+     puts two texts on the same pixels — the failure the first cut shipped, via
+     a `--bg-panel` token that was never defined (an invalid `var()` computes to
+     transparent rather than falling back). */
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-node-detail);
   font-size: 12px;
+}
+
+/* Dragged: position comes from inline left/top instead of the default corner. */
+.facet-overview-panel--dragging {
+  user-select: none;
 }
 
 .facet-overview-header {
@@ -667,6 +680,13 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
+  /* The drag handle. The close button stops the gesture from starting. */
+  cursor: grab;
+  touch-action: none;
+}
+
+.facet-overview-panel--dragging .facet-overview-header {
+  cursor: grabbing;
 }
 
 .facet-overview-title {

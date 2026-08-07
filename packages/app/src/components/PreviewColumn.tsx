@@ -1,5 +1,5 @@
 import { FACET_OVERLAY_COLORS } from "@karasu-tools/core";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
@@ -129,6 +129,27 @@ export function PreviewColumn() {
   const { t, locale } = useTranslation();
   const [exportError, setExportError] = useState<string | null>(null);
   const [facetOverviewOpen, setFacetOverviewOpen] = useState(false);
+  // The toolbar wraps to two rows at ordinary widths (#2317), so anything
+  // floating below it cannot use a constant offset. Publish the measured height
+  // and let CSS position against it.
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    const publish = () => {
+      toolbar.parentElement?.style.setProperty(
+        "--preview-toolbar-h",
+        `${Math.round(toolbar.getBoundingClientRect().height)}px`,
+      );
+    };
+    publish();
+    // jsdom has no ResizeObserver. The one-shot publish above is enough there;
+    // re-measuring on wrap is a browser-only concern.
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(publish);
+    observer.observe(toolbar);
+    return () => observer.disconnect();
+  }, []);
 
   const shareAvailable = !!hasKrsSource && !!getShareBundle;
   const { handleShare, shareDialogProps } = useShareDialog({
@@ -264,7 +285,7 @@ export function PreviewColumn() {
         selectedDeployBlockId={selectedDeployBlockId}
         onDeployBlockChange={onDeployBlockChange}
       />
-      <div className="preview-toolbar">
+      <div className="preview-toolbar" ref={toolbarRef}>
         <Button
           variant="actionable"
           aria-pressed={displayMode === "icon"}
