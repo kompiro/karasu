@@ -22,7 +22,7 @@ assumptions:
   - refines: [ADR-1724](./1724-system-view-infra-external-tier-split.md)（external の配置を最下段バンドからサイド列へ）
   - 関連: [ADR-968](./968-orthogonal-edge-routing-skip-layer.md), [ADR-974](./974-infra-row-by-deepest-consumer.md), [ADR-1755](./1755-edge-from-to-selectors.md)（color-by-source selector、本件の補助）
   - TPL: [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)（サイド配置の不変条件）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)
-  - AT: [AT-1728](../acceptance/1728-external-on-sides.md)
+  - AT: [AT-1728](../acceptance/1728-external-on-sides.md), [AT-2384](../acceptance/2384-lone-external-side-placement.md)（単独 external の振り分け）
   - コード: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）
 
 ## 背景
@@ -35,7 +35,7 @@ PoC で複数の手法を実測し、自動的に交差を「消す」ルーテ�
 
 system-view で `[external]` サービスを**最下段バンドではなく左右のサイド列**に配置し、`service → external` エッジを水平化して infra への下向きファンアウトと分離する（[ADR-1724] の「external は最下段 tier」を refine）。`placeExternalServicesOnSides` を `computeLayoutEdges` の前に走らせ、以下を行う:
 
-- **consuming-hub barycenter でサイド振り分け**: 各 external を「それを consume するハブの x 重心」で median 分割して左右に振り分ける。別ハブの束が左右に分かれ cross-hub 交差が激減する。同側内は hub-x → consuming-hub-y → 宣言順で安定ソート（決定的）。
+- **consuming-hub barycenter でサイド振り分け**: 各 external を「それを consume するハブの x 重心」で median 分割して左右に振り分ける。別ハブの束が左右に分かれ cross-hub 交差が激減する。同側内は hub-x → consuming-hub-y → 宣言順で安定ソート（決定的）。auto 割り当ての重心が全て同値（external 1 件、または同じハブ集合を共有）だと median 分割は退化して分けるものが無いので、その場合だけ content centre（in-boundary ノードの水平スパンの中心）と比較する（[#2384](https://github.com/kompiro/karasu/issues/2384) で追加。それまでは median が各要素自身と一致して tie ルールが全件を左へ寄せていた）。
 - **`column: left/right` で override**: 既存の `column` ヒントを再利用。作者が左右を固定できる（新規プロパティなし）。`column: center`／未指定は自動振り分けに委ねる。
 - **≥2 ハブ gate**: external エッジを持つハブが 2 以上のときだけサイド化する（cross-hub 交差が生じる条件）。単一ハブ図は従来の最下段バンドを維持（横に広げない）。明示 `column` は gate を迂回。
 - **内側アンカー**: サイド external へのエッジは external の内側の辺（左サイド→右辺、右サイド→左辺）に着地させ矢印を内向きにする。tier index ベースの上下アンカーを上書きする。
