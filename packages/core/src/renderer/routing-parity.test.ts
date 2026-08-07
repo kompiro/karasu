@@ -245,11 +245,17 @@ const UNGROUPED_MODELS = [
 /**
  * Models whose ungrouped view leaked penetrations before the shared chain.
  * These are the fixtures that prove the zero above is earned.
+ *
+ * `en/client-mcp/index.krs` used to belong here. #2384 fixed the placement bug
+ * that put its lone `[external]` on the far side of its consumers, and with
+ * `OrderMcp` beside the services that call it the model has nothing left to
+ * route — every edge is a short direct line. It stays in `UNGROUPED_MODELS`
+ * (penetration and overlap are still fenced there); it just no longer proves
+ * the router fired, so asserting that it did would fence nothing.
  */
 const PREVIOUSLY_PIERCED = [
   "en/hr-tool/system.krs",
   "en/hato/index.krs",
-  "en/client-mcp/index.krs",
   "en/ec-platform/04-annotations.krs",
 ] as const;
 
@@ -257,8 +263,10 @@ const PREVIOUSLY_PIERCED = [
  * Subset where even a straight centre-to-centre line pierces, so the stronger
  * "the placement alone cannot be clean" claim holds. The rest are cases where
  * only the *anchored* straight line pierced, which the centre probe cannot see.
+ * `client-mcp` left this list for the same reason as above — after #2384 its
+ * placement *is* clean, which was the point of that fix.
  */
-const PIERCED_CENTRE_TO_CENTRE = ["en/hr-tool/system.krs", "en/client-mcp/index.krs"] as const;
+const PIERCED_CENTRE_TO_CENTRE = ["en/hr-tool/system.krs"] as const;
 
 describe("shared routing chain — ungrouped fences (#2362, TPL-1927)", () => {
   it.each(UNGROUPED_MODELS)("%s: no edge pierces a node card", (file) => {
@@ -372,10 +380,11 @@ describe("interior corridors shorten detours (#2365)", () => {
   // Not every diagram has one: rows are centred and vary in width, so on models
   // like hr-tool the cards overlap in x across every row an edge would traverse
   // and the routes correctly fall through to the outer gutters.
-  const HAS_INTERIOR_LANE = [
-    "en/client-mcp/index.krs",
-    "en/ec-platform/04-annotations.krs",
-  ] as const;
+  //
+  // `client-mcp` was here until #2384. Its interior corridor existed only to
+  // reach an external stranded on the wrong side; with the placement fixed the
+  // edges are direct and claim no corridor at all.
+  const HAS_INTERIOR_LANE = ["en/ec-platform/04-annotations.krs"] as const;
 
   it.each(HAS_INTERIOR_LANE)("%s: routes take a lane inside the content", (file) => {
     const res = layoutOf(file);

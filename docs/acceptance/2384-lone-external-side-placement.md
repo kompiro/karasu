@@ -53,6 +53,9 @@ median 分割は退化して median がその値そのものになり、`hubX <=
 - [x] `column: left` / `column: right` が自動振り分けより優先される（`honors column:left/right to override the auto side assignment (#1728)`）
 - [x] 単一ハブ図は従来どおり最下段バンドに残る（`keeps a single-hub external in the bottom band, not a side column (gate, #1728)`）
 - [x] `pnpm gen:guide-diagrams` が差分を生まない（コミット済み guide 図に退行が無い）
+- [x] `client-mcp` は `routing-parity.test.ts` の `UNGROUPED_MODELS` に残り、penetration 0 /
+      collinear overlap 0 / hop mark の fence が引き続き掛かる（本修正で外れるのは
+      「router が実際に迂回を引いたこと」を要求する 3 つの list のみ。下記参照）
 
 ### AC-5: client-mcp の実モデルで迂回が消える
 
@@ -66,6 +69,20 @@ median 分割は退化して median がその値そのものになり、`hubX <=
       `OrderMcp` に入る 2 本が外側 gutter へ右に出て下って左へ戻る U 字の迂回を描かない。
 - [ ] **手動**: `#OrderMcp { column: right; }` を書かなくてもこの配置になる
       （作者側 styling で補う必要が無い。[ADR-1728] が却下した方向）。
+
+## 副作用: routing fixture としての client-mcp の卒業
+
+`packages/core/src/renderer/routing-parity.test.ts`（#2362 / #2365）は
+`en/client-mcp/index.krs` を「router が実際に迂回を引いた」ことの証拠として 3 つの
+list に入れていた。本修正で `OrderMcp` が consumer の隣に来た結果、この model は
+**引くべき迂回そのものが無くなった**（waypoint を持つエッジ 0 本、straight
+centre-to-centre penetration 0、interior corridor 0）。
+
+そこで `PREVIOUSLY_PIERCED` / `PIERCED_CENTRE_TO_CENTRE` / `HAS_INTERIOR_LANE` から
+`client-mcp` を外した。assertion は一切緩めていない。外した後も各 list は空にならず
+（`hr-tool` / `hato` / `ec-platform/04-annotations` が残る）、`client-mcp` 自身は
+`UNGROUPED_MODELS` に残って penetration・collinear overlap・hop mark の fence を
+受け続ける。
 
 ## 検証方法
 
