@@ -1043,6 +1043,100 @@ system S {
     expect(extB.x).toBeGreaterThanOrEqual(api.x + api.width - 0.5); // forced right
   });
 
+  it("puts a lone external on the side its consumers are on (#2384)", () => {
+    // Only one external is auto-assigned, so the median of the auto barycenters
+    // *is* its own barycenter and `<= median` always held — the tie rule sent it
+    // left no matter where its consumers sat. Cee and Dee are the two rightmost
+    // services, so the external belongs on the right.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Cee {}
+  service Dee {}
+  service Ext [external] {}
+  Cee -> Ext
+  Dee -> Ext
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Cee", "Dee"].map((id) => result.nodes.get(id)!);
+    const ext = result.nodes.get("Ext")!;
+    expectOnSide(ext, ...inner);
+    expect(ext.x).toBeGreaterThanOrEqual(Math.max(...inner.map((n) => n.x + n.width)) - 0.5);
+  });
+
+  it("keeps a lone external left when its consumers are on the left (#2384)", () => {
+    // Mirror of the case above: the same degenerate single-external input must
+    // still land left when that is where the consuming hubs are.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Cee {}
+  service Dee {}
+  service Ext [external] {}
+  Aaa -> Ext
+  Bbb -> Ext
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Cee", "Dee"].map((id) => result.nodes.get(id)!);
+    const ext = result.nodes.get("Ext")!;
+    expectOnSide(ext, ...inner);
+    expect(ext.x + ext.width).toBeLessThanOrEqual(Math.min(...inner.map((n) => n.x)) + 0.5);
+  });
+
+  it("puts externals that share one right-side hub set on the right (#2384)", () => {
+    // Two auto-assigned externals with identical consuming hubs collapse the
+    // median the same way a single one does: every barycenter equals the median,
+    // so the whole set fell left. Both belong on the right with their hubs.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Cee {}
+  service Dee {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Cee -> ExtA
+  Cee -> ExtB
+  Dee -> ExtA
+  Dee -> ExtB
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Cee", "Dee"].map((id) => result.nodes.get(id)!);
+    const innerRight = Math.max(...inner.map((n) => n.x + n.width));
+    for (const id of ["ExtA", "ExtB"]) {
+      const ext = result.nodes.get(id)!;
+      expectOnSide(ext, ...inner);
+      expect(ext.x).toBeGreaterThanOrEqual(innerRight - 0.5);
+    }
+  });
+
+  it("breaks a centred lone external toward the left (#2384)", () => {
+    // Bbb and Cee are symmetric about the content centre, so the consuming-hub
+    // barycenter lands exactly on the threshold. The documented tie rule
+    // (ties → left) still decides it.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Cee {}
+  service Dee {}
+  service Ext [external] {}
+  Bbb -> Ext
+  Cee -> Ext
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Cee", "Dee"].map((id) => result.nodes.get(id)!);
+    const ext = result.nodes.get("Ext")!;
+    expectOnSide(ext, ...inner);
+    expect(ext.x + ext.width).toBeLessThanOrEqual(Math.min(...inner.map((n) => n.x)) + 0.5);
+  });
+
   it("anchors side-external edges on the external's inner side, arrowhead inward (#1728)", () => {
     // ExtA (← Alpha) lands on the left, ExtB (← Beta) on the right. The
     // service→external edge must terminate on the external's inner edge so the

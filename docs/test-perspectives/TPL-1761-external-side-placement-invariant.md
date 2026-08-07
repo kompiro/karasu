@@ -11,6 +11,7 @@ date: 2026-06-24
 discovered_from:
   - root_cause_adr: "ADR-1724"
   - root_cause_file: "packages/core/src/renderer/layout.ts"
+  - issue: "#2384"
 related_to: [TPL-1736, TPL-1001]
 topic: renderer
 scope:
@@ -30,6 +31,7 @@ system view では `[external]` サービスを左右のサイド列に配置す
 5. **内側アンカー**: サイド external へのエッジは external の内側の辺（左サイド→右辺 / 右サイド→左辺）に着地し、矢印頂点が内向きになる。tier index ベースの上下アンカーに引っ張られて上辺/下辺に着地しないこと。
 6. **gate**: サイド化は適用すると益のある条件（cross-hub 交差が生じる ＝ external エッジを持つ hub が ≥2）でのみ行う。単純な図（単一ハブ）は従来配置を維持し、横に無駄に広げない。明示ヒントは gate を迂回する。
 7. **回帰なし**: external 配置の変更が、infra/service の tier 配置（#1724 / #823）や #974 の infra pull-up を壊さない。
+8. **閾値が分類対象の外から来る**: 自動振り分けの比較対象（median 等の統計量）を、振り分けたい集合そのものから導出している場合、集合が退化した入力（要素 1 件、または全要素が同値）で閾値が各要素自身と一致し、tie-break が全件を決めてしまう。退化時は集合の外にある基準（content centre など、配置の文脈から決まる座標）へフォールバックし、入力（consuming-hub の位置）が結果に効くことを保つ（#2384）。
 
 ## 想定される失敗モード
 
@@ -38,6 +40,7 @@ system view では `[external]` サービスを左右のサイド列に配置す
 - `column` override が無視され、作者が左右を制御できない。
 - infra kind が誤ってサイドへ移動し、`database [external]` が infra 行から消える（境界ルール違反）。
 - external 配置変更が #1724 の tier テストや #974 pull-up を退行させる（回帰）。
+- 自動振り分けの閾値を振り分け対象の集合そのものから取っており、要素 1 件（または全要素同値）で閾値が各要素と一致し、tie-break が全件を一方の側へ寄せる。ヒューリスティックの入力（consuming-hub の位置）が結果に効かなくなり、作者が `column` で補うしかなくなる（#2384）。
 - displayMode（shape / icon）でサイド配置が成立しない（[TPL-1001]）。
 
 ## チェックリスト
@@ -46,6 +49,7 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
 
 - [ ] 動かした kind 以外（actor/client/service/infra）の行・x スパンが不変であることを確認した
 - [ ] 自動配置が決定的（宣言順安定・tie-break 明示）であることを確認した
+- [ ] 自動振り分けの閾値が分類対象の集合そのものから導出されていないことを確認した。導出している場合は、要素 1 件・全要素同値の入力でも入力（barycenter 等）が結果に効くことをテストで示した
 - [ ] style ヒント（`column` 等）による override が効くことを確認した
 - [ ] 関連 kind の境界ルール（infra は常に内側 = [ADR-1724]）が保たれることを確認した
 - [ ] サイド external へのエッジが内側の辺に着地し矢印が内向きであることを確認した（tier index ベースの上下アンカーに上書きが効いている）
@@ -65,6 +69,7 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
   - `keeps infra in a row below services and moves external to a side column (#1728)`
   - `assigns each external to the side of its consuming hub (#1728)`
   - `honors column:left/right to override the auto side assignment (#1728)`
+  - `puts a lone external on the side its consumers are on (#2384)` / `keeps a lone external left when its consumers are on the left (#2384)` / `puts externals that share one right-side hub set on the right (#2384)` / `breaks a centred lone external toward the left (#2384)`（退化した median のガード）
   - `moves external to a side column even without user/client (#1728)`
   - `keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)`（境界ルール回帰ガード）
   - `propagates infra pull-up through a dep-on-dep chain … (Issue #974)`（pull-up 回帰ガード）

@@ -972,8 +972,13 @@ const EXTERNAL_SIDE_GAP = 100;
  *
  * Side assignment: the consuming-hub barycenter x (median split, ties → left)
  * keeps each hub's external fan on one side, which minimizes cross-hub
- * crossings. An author can override per node with the `column: left|right`
- * style hint. Overflow keeps stacking vertically on the side (no cap).
+ * crossings. When every auto-assigned external shares one barycenter the
+ * median split degenerates — the median *is* that value, so every external
+ * compares equal and the tie rule sends them all left regardless of where
+ * their consumers sit (#2384). There is nothing to split in that case, so the
+ * barycenter is compared against the content centre instead. An author can
+ * override per node with the `column: left|right` style hint. Overflow keeps
+ * stacking vertically on the side (no cap).
  *
  * Works for both single-system and multi-system root views: callers pass
  * the raw node list for the system being laid out and the ids of the
@@ -1026,6 +1031,11 @@ function placeExternalServicesOnSides(
     hubX.set(e.id, xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : e.x + e.width / 2);
   }
 
+  const minX = Math.min(...others.map((n) => n.x));
+  const maxX = Math.max(...others.map((n) => n.x + n.width));
+  const topY = Math.min(...others.map((n) => n.y));
+  const botY = Math.max(...others.map((n) => n.y + n.height));
+
   // Median of the auto-assigned (non-hinted) externals' hub barycenters.
   const autoVals = ext
     .filter((n) => {
@@ -1034,17 +1044,21 @@ function placeExternalServicesOnSides(
     })
     .map((n) => hubX.get(n.id) ?? 0)
     .sort((a, b) => a - b);
-  const median = autoVals.length ? autoVals[Math.floor((autoVals.length - 1) / 2)] : 0;
+  // A median only splits a set that has spread. When every auto-assigned
+  // barycenter coincides (one external, or several sharing the same hubs) the
+  // median equals each value, so `<= median` holds for all of them and the
+  // tie-break decides the whole set — the consuming hubs never get a say
+  // (#2384). Fall back to the centre of the content span the side columns hug,
+  // which keeps the rule coordinate-derived and deterministic (ADR-1728).
+  const threshold =
+    !autoVals.length || autoVals[0] === autoVals[autoVals.length - 1]
+      ? (minX + maxX) / 2
+      : autoVals[Math.floor((autoVals.length - 1) / 2)];
   const sideOf = (n: LayoutNode): "left" | "right" => {
     const col = layoutHints?.get(n.id)?.column;
     if (col === "left" || col === "right") return col;
-    return (hubX.get(n.id) ?? 0) <= median ? "left" : "right";
+    return (hubX.get(n.id) ?? 0) <= threshold ? "left" : "right";
   };
-
-  const minX = Math.min(...others.map((n) => n.x));
-  const maxX = Math.max(...others.map((n) => n.x + n.width));
-  const topY = Math.min(...others.map((n) => n.y));
-  const botY = Math.max(...others.map((n) => n.y + n.height));
 
   const place = (group: LayoutNode[], x: number): void => {
     // Stable order within a side: hub-x, then consuming-hub y, then existing y.
