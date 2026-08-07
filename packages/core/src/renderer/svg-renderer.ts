@@ -26,6 +26,8 @@ import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "
 import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
+  NODE_PADDING_X,
+  META_FONT_RATIO,
   estimateTextWidth,
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
@@ -1747,7 +1749,7 @@ function renderDefaultText(
   if (displayDesc) {
     // Truncate description to fit within the node width
     const descFontSize = Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
-    const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
+    const availableWidth = node.width - NODE_PADDING_X * 2;
     const descCharWidth = CHAR_WIDTH * RENDERED_DESC_FONT_RATIO;
     const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
     const descChars = [...displayDesc];
@@ -1798,7 +1800,7 @@ function renderDefaultText(
   // count. The full list is surfaced in NodeDetailPanel (Issue #914).
   if (node.properties.resources && node.properties.resources.length > 0) {
     const resCount = node.properties.resources.length;
-    const resFontSize = Math.round(fontSize * 0.7);
+    const resFontSize = Math.round(fontSize * META_FONT_RATIO);
     const tooltip = node.properties.resources.map((r) => `${r.storageKind} "${r.name}"`).join(", ");
     children.push(
       el(
@@ -1826,7 +1828,7 @@ function renderDefaultText(
   // description) is surfaced in NodeDetailPanel.
   if (node.properties.capabilities && node.properties.capabilities.length > 0) {
     const capCount = node.properties.capabilities.length;
-    const capFontSize = Math.round(fontSize * 0.7);
+    const capFontSize = Math.round(fontSize * META_FONT_RATIO);
     const tooltip = node.properties.capabilities.map((c) => c.name).join(", ");
     children.push(
       el(
@@ -1871,7 +1873,7 @@ function renderMetaRow(
   nextY: number,
 ): string[] {
   const children: string[] = [];
-  const metaFontSize = `${Math.round(style.fontSize * 0.7)}px`;
+  const metaFontSize = `${Math.round(style.fontSize * META_FONT_RATIO)}px`;
   const metaAttrs = {
     "text-anchor": "middle" as const,
     "dominant-baseline": "central" as const,
@@ -1884,8 +1886,8 @@ function renderMetaRow(
     // Both link count and team: render link on the left, team on the right
     const linkText = `🔗${node.linkCount}`;
     const teamText = `👥${teamChipText(node.properties.teamLabel ?? node.properties.team)}`;
-    const contentLeft = node.x + 40;
-    const contentRight = node.x + node.width - 40;
+    const contentLeft = node.x + NODE_PADDING_X;
+    const contentRight = node.x + node.width - NODE_PADDING_X;
     children.push(
       el(
         "g",

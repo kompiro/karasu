@@ -9,6 +9,12 @@ export const CHAR_WIDTH = 9; // approximate px per character at base font size
 export const NODE_PADDING_X = 40; // horizontal padding inside nodes
 export const NODE_PADDING_Y = 24; // vertical padding inside nodes
 
+// Text-stack layout constants shared by layout.ts / deploy-layout.ts
+// measurement and (eventually) the renderer's drawn line advance (#2366 B).
+export const LINE_HEIGHT = 18; // px reserved per text line in node measurement
+export const DESCRIPTION_FONT_RATIO = 0.85; // description char-width ratio (measurement)
+export const META_FONT_RATIO = 0.7; // meta row char-width ratio
+
 // Icon-mode text layout constants
 export const ICON_LABEL_CHAR_WIDTH = 7.5; // approximate for 13px font
 export const ICON_DESC_CHAR_WIDTH = 6.5; // approximate for 11px font
