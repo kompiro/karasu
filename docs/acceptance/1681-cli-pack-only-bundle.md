@@ -16,13 +16,8 @@
 - [x] `bin.karasu` が `./dist/index.js` を指し、その対象が `files` に含まれる
   > ✅ Automated — `packages/cli/src/packaging.test.ts` › `points the bin at the bundle that files ships`
 
-- [ ] `cd packages/cli && pnpm build && npm pack --dry-run` の一覧が `dist/index.js` / `THIRD_PARTY_NOTICES.md` / `LICENSE` / `README.md` / `package.json` のみで、`*.test.*` / `*.d.ts` / `*.map` を一切含まない
-  > 🧑 Manual — クリーンな `dist/` で `npm pack --dry-run` を実行し Tarball Contents を目視確認する。
-
-- [ ] `dist/` に stale な tsc 出力（`*.test.js` / `*.d.ts` / `*.map`）が残っていても tarball には混入しない（決定論性）
-  > 🧑 Manual — `dist/foo.test.js` `dist/foo.d.ts` `dist/index.js.map` を作ってから `npm pack --dry-run` し、いずれも Tarball Contents に現れないことを確認する。
-
 ## 補足
 
 - `karasu` の build は esbuild の単一バンドル（`dist/index.js`）。型定義・sourcemap・テスト JS は CLI の実行に不要で、配布物に含めない。
+- `npm pack --dry-run` の目視確認は置かない。tarball の中身を決めているのは `files` の allowlist そのもので、`packaging.test.ts` がそれを完全一致で固定している。stale な `dist/*.test.js` / `*.d.ts` / `*.map` が混ざらないのも同じ allowlist の帰結であり、手で pack しても CI が既に主張している以上のことは観測できない。
 - 実際の npm publish は `NPM_TOKEN` / OSS launch（#1315）にゲートされておりここでは検証しない。本 PR の `karasu: patch` changeset により、次回 release で pending minor 群とともに `0.1.0` に上がり、build を含む正しい tarball で（name reservation 用に publish された）`0.0.1` を上書きする。

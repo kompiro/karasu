@@ -63,9 +63,6 @@ type: product
 - [x] AT-J2: app の `DiagramTabBar` に Matrix タブが出て、選択すると `CrudMatrixPanel` が描画される（preview-toolbar は隠れる）
   > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `matrix tab`
 
-- [ ] AT-K（manual）: `karasu matrix examples/ja/getting-started/index.krs --format=md` を実行し、`OrderTable` 列を眺めたとき、書き込む usecase（`PlaceOrder` / `RegisterProduct`）と read だけの usecase（`ShowOrderHistory` / `SearchProducts`）が verb 文字列で識別でき、行末・列末の Σ 集計セルが描画されていることを目視確認する
-  > 🧑 Manual — terminal で出力を確認
-
 - [ ] AT-L（manual）: `karasu matrix examples/en/feature-samples/crud-matrix.krs --format=svg -o /tmp/m.svg` を生成しブラウザで開き、grid layout が読めること、`R?`（`SearchOrders`）と単独 `?`（`ReplayOrderEvents`）が正しく描かれていること、unknown verb 脚注が表示されることを確認する
   > 🧑 Manual — SVG をブラウザで目視確認
 
@@ -80,3 +77,5 @@ type: product
 verb 装飾構文（`<verb>:<crud>` の 1:N マッピング、例 `replace:create,delete`）は本 PR のスコープ外。装飾無しの unrecognized verb は cell に `?` suffix として現れる。装飾構文が landed 後は `?` suffix が自然に減る — design doc の「未起票の follow-up」セクション参照。
 
 App panel は `DiagramTabBar` の 4 つ目のタブとして組み込まれており、System / Deploy / Org と並んで Matrix を選択できる。Matrix モード時は preview-toolbar（Icon Mode / All Layers 等）は描画されない（適用対象でないため）。state 永続化（タブ復帰時に最後の Matrix フィルタを覚える）は別 Issue で扱う。
+
+旧 AT-K（`--format=md` の出力を terminal で目視する項目）は削除した（[#2387](https://github.com/kompiro/karasu/issues/2387)）。verb 文字列と Σ 集計セルの描画は `packages/core/src/view/crud-matrix-format.test.ts` › `renders a header, rows, totals, and unknown-verbs footnote` と `packages/cli/src/matrix.test.ts` › `writes markdown to stdout by default` が判定しており、目で読み直しても新しい情報は出ない。欠番の letter は既存の参照を保つためそのままにしている。

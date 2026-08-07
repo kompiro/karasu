@@ -40,9 +40,6 @@
 - [x] escape が無効化されたとき上記テストが実際に落ちる（ガードが空振りしていない）
   > ✅ Automated（負のテストで確認済み） — `escapeStringValue` を素通しにすると 28 件、生補間を 1 箇所戻すと構造ガードが落ちることを実測
 
-- [ ] 実ファイルに対する `karasu fmt --write` で、`"` を含む label を持つ `.krs` が壊れずに残る
-  > 🧑 Manual — `service A { label "say \"hi\"" }` を含む `.krs` を作成して `karasu fmt --write` を実行し、`karasu render` が成功することを確認する。
-
 ## 範囲外（follow-up）
 
 - **`translate --from db` が引用符付き SQL 識別子を落とす**: `CREATE TABLE "we""ird" (...)` は SQL パーサ側（`parseTables` の `headerPattern` が `\w+` のみ）でテーブルごと認識されず、出力が空になる。emit 前段の別バグであり本 Issue の escape とは独立。別 Issue で扱う。
