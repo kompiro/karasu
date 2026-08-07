@@ -5,10 +5,10 @@ import {
   CHAR_WIDTH,
   NODE_PADDING_X,
   NODE_PADDING_Y,
+  LINE_HEIGHT,
   estimateTextWidth,
 } from "./rendering-constants.js";
 import { sortByBarycenter, gridColumnCount } from "./layer-layout-logics.js";
-const LINE_HEIGHT = 18;
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
 const CONTAINER_PADDING_X = 20;

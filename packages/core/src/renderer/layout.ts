@@ -27,6 +27,9 @@ import {
   NODE_PADDING_Y,
   estimateTextWidth,
   teamChipText,
+  LINE_HEIGHT,
+  DESCRIPTION_FONT_RATIO,
+  META_FONT_RATIO,
 } from "./rendering-constants.js";
 import {
   sortByBarycenter,
@@ -58,8 +61,6 @@ import type {
 
 export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
 
-const LINE_HEIGHT = 18;
-const DESCRIPTION_FONT_RATIO = 0.85;
 const CONTAINER_PADDING = 40;
 const CONTAINER_LABEL_HEIGHT = 30;
 const GHOST_MARGIN = 30;
@@ -2957,7 +2958,6 @@ function assignLayers(
   return layers;
 }
 
-const META_FONT_RATIO = 0.7;
 const INFO_BUTTON_WIDTH = 24;
 
 function extractLayoutProperties(node: KrsNode, owner?: CardOwner): LayoutNodeProperties {

@@ -33,8 +33,8 @@ export const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> 
  */
 const LIGHT_BADGE_COLORS: Record<string, string> = {
   deprecated: "#DC2626",
-  new: "#059669",
-  experimental: "#D97706",
+  new: "#047857",
+  experimental: "#B45309",
   draft: "#7C3AED",
   migration_target: "#2563EB",
 };
@@ -468,7 +468,7 @@ oci {
   color: #1E3A8A;
   border-color: #3B82F6;
   badge-label: "oci";
-  badge-color: #3B82F6;
+  badge-color: #1D4ED8;
 }
 
 lambda {
@@ -476,7 +476,7 @@ lambda {
   color: #4C1D95;
   border-color: #A855F7;
   badge-label: "lambda";
-  badge-color: #A855F7;
+  badge-color: #7E22CE;
 }
 
 jar {
@@ -484,7 +484,7 @@ jar {
   color: #14532D;
   border-color: #22C55E;
   badge-label: "jar";
-  badge-color: #22C55E;
+  badge-color: #15803D;
 }
 
 war {
@@ -492,7 +492,7 @@ war {
   color: #7C2D12;
   border-color: #F97316;
   badge-label: "war";
-  badge-color: #F97316;
+  badge-color: #C2410C;
 }
 
 function {
@@ -500,7 +500,7 @@ function {
   color: #713F12;
   border-color: #EAB308;
   badge-label: "function";
-  badge-color: #EAB308;
+  badge-color: #A16207;
 }
 
 assets {
@@ -508,7 +508,7 @@ assets {
   color: #155E75;
   border-color: #06B6D4;
   badge-label: "assets";
-  badge-color: #06B6D4;
+  badge-color: #0E7490;
 }
 
 job {
@@ -516,7 +516,7 @@ job {
   color: #7F1D1D;
   border-color: #EF4444;
   badge-label: "job";
-  badge-color: #EF4444;
+  badge-color: #B91C1C;
 }
 
 artifact {
@@ -524,7 +524,7 @@ artifact {
   color: #1F2937;
   border-color: #9CA3AF;
   badge-label: "artifact";
-  badge-color: #9CA3AF;
+  badge-color: #4B5563;
 }
 
 store {
@@ -532,7 +532,7 @@ store {
   color: #115E59;
   border-color: #0D9488;
   badge-label: "store";
-  badge-color: #0D9488;
+  badge-color: #0F766E;
 }
 
 /* ── タグ ── */

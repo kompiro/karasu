@@ -26,6 +26,7 @@ import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "
 import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
+  NODE_PADDING_X,
   estimateTextWidth,
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
@@ -1747,7 +1748,7 @@ function renderDefaultText(
   if (displayDesc) {
     // Truncate description to fit within the node width
     const descFontSize = Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
-    const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
+    const availableWidth = node.width - NODE_PADDING_X * 2;
     const descCharWidth = CHAR_WIDTH * RENDERED_DESC_FONT_RATIO;
     const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
     const descChars = [...displayDesc];
@@ -1884,8 +1885,8 @@ function renderMetaRow(
     // Both link count and team: render link on the left, team on the right
     const linkText = `🔗${node.linkCount}`;
     const teamText = `👥${teamChipText(node.properties.teamLabel ?? node.properties.team)}`;
-    const contentLeft = node.x + 40;
-    const contentRight = node.x + node.width - 40;
+    const contentLeft = node.x + NODE_PADDING_X;
+    const contentRight = node.x + node.width - NODE_PADDING_X;
     children.push(
       el(
         "g",
