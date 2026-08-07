@@ -570,7 +570,7 @@ edge[cyclic] {
 }
 
 edge[implicit] {
-  color: #D97706;
+  color: #B45309;
 }
 
 edge[inferred] {

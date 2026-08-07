@@ -27,6 +27,7 @@ import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   NODE_PADDING_X,
+  META_FONT_RATIO,
   estimateTextWidth,
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
@@ -1799,7 +1800,7 @@ function renderDefaultText(
   // count. The full list is surfaced in NodeDetailPanel (Issue #914).
   if (node.properties.resources && node.properties.resources.length > 0) {
     const resCount = node.properties.resources.length;
-    const resFontSize = Math.round(fontSize * 0.7);
+    const resFontSize = Math.round(fontSize * META_FONT_RATIO);
     const tooltip = node.properties.resources.map((r) => `${r.storageKind} "${r.name}"`).join(", ");
     children.push(
       el(
@@ -1827,7 +1828,7 @@ function renderDefaultText(
   // description) is surfaced in NodeDetailPanel.
   if (node.properties.capabilities && node.properties.capabilities.length > 0) {
     const capCount = node.properties.capabilities.length;
-    const capFontSize = Math.round(fontSize * 0.7);
+    const capFontSize = Math.round(fontSize * META_FONT_RATIO);
     const tooltip = node.properties.capabilities.map((c) => c.name).join(", ");
     children.push(
       el(
@@ -1872,7 +1873,7 @@ function renderMetaRow(
   nextY: number,
 ): string[] {
   const children: string[] = [];
-  const metaFontSize = `${Math.round(style.fontSize * 0.7)}px`;
+  const metaFontSize = `${Math.round(style.fontSize * META_FONT_RATIO)}px`;
   const metaAttrs = {
     "text-anchor": "middle" as const,
     "dominant-baseline": "central" as const,

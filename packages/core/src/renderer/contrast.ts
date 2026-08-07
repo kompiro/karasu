@@ -2,17 +2,15 @@
  * WCAG 2.x relative-luminance contrast, used to keep the builtin themes'
  * text-bearing colors machine-checkably legible (#2366 proposal A).
  *
- * Only 6-digit `#RRGGBB` (and shorthand `#RGB`) hex colors are supported —
- * that is the only color form the builtin sheets and `DiagramPalette` use.
+ * Only 6-digit `#RRGGBB` hex colors are supported: that is the only color
+ * form the builtin sheets and `DiagramPalette` use.
  */
 
-/** Parse `#RGB` / `#RRGGBB` into [r, g, b] 0-255, or undefined if not hex. */
+/** Parse `#RRGGBB` into [r, g, b] 0-255, or undefined otherwise. */
 function parseHex(color: string): [number, number, number] | undefined {
-  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+  const m = /^#([0-9a-f]{6})$/i.exec(color.trim());
   if (!m) return undefined;
-  let hex = m[1];
-  if (hex.length === 3) hex = [...hex].map((c) => c + c).join("");
-  const n = parseInt(hex, 16);
+  const n = parseInt(m[1], 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 

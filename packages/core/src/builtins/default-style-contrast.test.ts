@@ -23,9 +23,18 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
   const badgeRules = sheet.rules.filter((r) => r.properties["badge-color"]);
 
   it("finds the deploy kind and annotation badge rules", () => {
-    // 9 deploy kinds + database[index] + 5 annotations = 15 as of #2366;
-    // a lower bound keeps the guard alive if rules are reorganized.
-    expect(badgeRules.length).toBeGreaterThanOrEqual(13);
+    // 9 deploy kinds + database[index] + 5 annotations = 15 as of #2366.
+    // Exact so a badge rule dropped from BOTH themes cannot silently
+    // shrink this guard's coverage; update the arithmetic when adding one.
+    expect(badgeRules.length).toBe(15);
+  });
+
+  it("keeps the badge fallback color AA-legible on the canvas", () => {
+    // badge.ts falls back to palette.badgeFallback when a user rule sets
+    // badge-label without badge-color; that text draws on the same canvas.
+    const ratio = contrastRatio(resolvePalette(theme).badgeFallback, canvasBg);
+    expect(ratio).toBeDefined();
+    expect(ratio!).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
   });
 
   it.each(badgeRules.map((r) => [ruleLabel(r), r.properties["badge-color"]] as const))(

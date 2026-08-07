@@ -56,5 +56,5 @@ builtin テーマや palette の文字系色を追加・変更するとき:
 
 ## 関連テスト
 
-- `packages/core/src/builtins/default-style-contrast.test.ts` — 両テーマの builtin
+- `packages/core/src/builtins/default-style-contrast.test.ts`。両テーマの builtin
   sheet を走査し、全 badge-color が canvasBg に対して 4.5:1 以上であることを検証。
