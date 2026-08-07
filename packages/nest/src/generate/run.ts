@@ -183,6 +183,9 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
   const unreadableFiles = 0;
 
   let failureDiagnostics: { code: string; blockKind?: string; at?: string }[] | undefined;
+  /** The pass most recently started. Only interesting when it never finished. */
+  let attemptedPass: string | undefined;
+  let failedPass: string | undefined;
 
   const meter = async (outcome: "done" | "failed", model: string): Promise<void> => {
     if (metrics === undefined) return;
@@ -201,6 +204,7 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
         redactions,
         unreadableFiles,
         ...(failureDiagnostics === undefined ? {} : { diagnostics: failureDiagnostics }),
+        ...(failedPass === undefined ? {} : { failedPass }),
       });
     } catch (cause) {
       // A run that produced a model and could not write its token count has
@@ -247,6 +251,9 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       {
         // Spend is captured as it happens, so a run that throws on the third
         // pass still reports what the first two cost.
+        onPass: (pass) => {
+          attemptedPass = pass;
+        },
         onUsage: (usage, pass, model) => {
           observedModel ??= model;
           // `usage` is cumulative, so a pass costs the difference. Attributing
@@ -339,6 +346,12 @@ export async function generate(input: GenerateInput, deps: GenerateDeps): Promis
       // Every pass that ran, not just the last one. Collapsing them lost the
       // one fact a failed run can still establish: how far it got.
       recordedPasses = observedPasses;
+      // And where it stopped. A pass that was started and never reported usage
+      // is the one that broke; a pass that reported means the run died after
+      // the model calls (publishing, delivery) and naming it would mislead.
+      if (attemptedPass !== undefined && !observedPasses.some((p) => p.name === attemptedPass)) {
+        failedPass = attemptedPass;
+      }
       // And why it stopped, when the parser can say so structurally.
       if (cause instanceof ReverseFailed) {
         failureDiagnostics = cause.diagnostics;

@@ -341,6 +341,45 @@ describe("generate", () => {
       expect(recorded?.passes.every((pass) => pass.outputTokens === 20)).toBe(true);
     });
 
+    it("names the pass a run died on, rather than leaving it to be subtracted", async () => {
+      // A provider error names no pass, and `passes` lists only what came
+      // back, so without this the reader of a 400-day-old record has to sum
+      // columns against a source tree that has moved on.
+      const llm: LlmClient = {
+        complete(prompt: string): Promise<LlmResponse> {
+          const reply = prompt.includes("survey") || prompts.length === 0 ? SURVEY : DECOMPOSE;
+          prompts.push(prompt);
+          if (prompts.length === 3) {
+            return Promise.reject(new Error("the model provider returned 400"));
+          }
+          return Promise.resolve({
+            text: reply,
+            model: "claude-opus-5",
+            usage: { inputTokens: 10, outputTokens: 20 },
+          });
+        },
+      };
+      const prompts: string[] = [];
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      await expect(generate(input, d)).rejects.toThrowError(/400/);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded?.passes.map((pass) => pass.name)).toEqual(["survey", "decompose"]);
+      expect(recorded?.failedPass).toBe("synthesise");
+    });
+
+    it("leaves the failed pass unnamed when a run breaks after the model calls", async () => {
+      // Every pass reported, so naming one would blame a call that worked.
+      const llm = scriptedLlm([SURVEY, DECOMPOSE, KRS]);
+      const d = deps(stubGithub([{ path: "src/pay.ts", content: "x" }]), llm);
+      d.store.publish = (): Promise<void> => Promise.reject(new Error("kv is down"));
+      await expect(generate(input, d)).rejects.toThrowError(/kv is down/);
+
+      const recorded = await new MetricsStore(d.kv).latestFor(input, SHA);
+      expect(recorded?.outcome).toBe("failed");
+      expect(recorded?.failedPass).toBeUndefined();
+    });
+
     it("records why a parse failure failed, without the generated text", async () => {
       // Otherwise diagnosing a failed run means paying to reproduce it with a
       // `wrangler tail` open -- and the failure record is the one thing that

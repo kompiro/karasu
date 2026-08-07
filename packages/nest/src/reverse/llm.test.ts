@@ -112,6 +112,56 @@ describe("AnthropicClient", () => {
     expect((thrown as LlmError).message).toBe("the model provider returned 429");
   });
 
+  it("carries the provider's error type, which is a fixed vocabulary", async () => {
+    // Without it every refusal looks identical at the only place we can see
+    // it, and the cost of learning which one it was is another whole run.
+    const fetchImpl = (() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            type: "error",
+            error: { type: "invalid_request_error", message: "prompt echo: secret" },
+          }),
+          { status: 400 },
+        ),
+      )) as typeof fetch;
+    const thrown = await client(fetchImpl)
+      .complete("hi")
+      .catch((cause: unknown) => cause as LlmError);
+    expect((thrown as LlmError).message).toBe(
+      "the model provider returned 400 (invalid_request_error)",
+    );
+    expect((thrown as LlmError).message).not.toContain("prompt echo");
+  });
+
+  it("drops an error type that is not shaped like one", async () => {
+    // A provider that puts prose in that field has told us nothing we are
+    // allowed to repeat, so the fallback is the status alone.
+    const fetchImpl = (() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: { type: "prompt echo: secret business logic" } }), {
+          status: 400,
+        }),
+      )) as typeof fetch;
+    const thrown = await client(fetchImpl)
+      .complete("hi")
+      .catch((cause: unknown) => cause as LlmError);
+    expect((thrown as LlmError).message).toBe("the model provider returned 400");
+  });
+
+  it("leaves no unread body behind on an error", async () => {
+    // An unconsumed response stream holds the invocation open and the runtime
+    // cancels the Worker for hanging.
+    const response = new Response(JSON.stringify({ error: { type: "overloaded_error" } }), {
+      status: 529,
+    });
+    const fetchImpl = (() => Promise.resolve(response)) as typeof fetch;
+    await client(fetchImpl)
+      .complete("hi")
+      .catch(() => undefined);
+    expect(response.bodyUsed).toBe(true);
+  });
+
   it("keeps an in-stream error's message out of the error it raises", async () => {
     // An error event arrives after 200 OK, so the status check above cannot
     // catch it, and its message is as much the provider's as a body is.

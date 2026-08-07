@@ -512,4 +512,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) | 1 つのエンティティの見た目を複数の面が描くなら決定を 1 つの関数に閉じる — 既定値しか無いうちは一致して隠れ、上書き手段を足した瞬間に片面だけ変わる | renderer | #2234, #2179 |
 | [TPL-2374](TPL-2374-long-call-bounded-by-silence-not-duration.md) | 分単位になりうる外部呼び出しは、総所要時間ではなく無通信で打ち切る — 非ストリーミングでは「生成中」と「ハング」が同じ姿になり、こちらが設定していない中間層が先に切る | project | #2374, ADR-1990 |
 | [TPL-2175](TPL-2175-deprecation-announced-only-with-a-migration-target.md) | 非推奨は移行先が出荷される release で告知する — 移行先の無い deprecation は「唯一動く手段をやめろ」と言っているだけで、警告を無視する習慣を教える。1 つの誤りが複数箇所に書かれるなら全箇所で警告する | core-concepts | #2175, #2159 |
+| [TPL-2379](TPL-2379-expensive-failure-records-its-cause.md) | 再現に実費がかかる処理の失敗記録は、再実行なしで原因が分かるだけの情報を持つ — 外部エラーの全捨ては安全ではなく高価で、線は固定語彙と自由文の間に引く | project | #2379, ADR-1990 |
 | [TPL-2366](TPL-2366-badge-color-canvas-contrast.md) | canvas 上に直接描かれる文字色（badge-color 等）はテーマごとに 4.5:1 を機械検証する — dark で選んだ値の light 流用は 7.8:1 を 2.3:1 に変える | styling | #2366 |

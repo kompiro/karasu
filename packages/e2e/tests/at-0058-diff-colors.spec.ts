@@ -313,9 +313,12 @@ test.describe("AT-0058 diff colour contract", () => {
       .locator(".preview-container svg")
       .first()
       .evaluate((root) =>
-        Array.from(root.querySelectorAll("rect, path, circle, polygon, line, ellipse")).map(
-          (el) => getComputedStyle(el).stroke,
-        ),
+        // `polyline` is in the list because a routed edge is drawn as one; a
+        // negative assertion that omits a shape passes for the wrong reason
+        // (TPL-1954 — a new route shape must not fall outside what consumes it).
+        Array.from(
+          root.querySelectorAll("rect, path, circle, polygon, line, polyline, ellipse"),
+        ).map((el) => getComputedStyle(el).stroke),
       );
     expect(strokes.length).toBeGreaterThan(0);
     for (const value of [tokens.added, tokens.removed, tokens.changed]) {
