@@ -82,6 +82,36 @@ update PR は上記とは別の理由で構造的に CI を通せない:
 
 詳細経緯は `ADR-2115` 参照（実例: PR #2114 の `dompurify`）。
 
+## Security alert 時は advisory の脆弱範囲を override / 宣言レンジと突き合わせる
+
+**到達状態**: security alert を 1 件でも処理したとき、その advisory の
+`vulnerable_version_range` と、root `pnpm.overrides` および各
+`packages/<name>/package.json` の**宣言レンジ**を突き合わせた結果が
+トラッキング Issue か PR に書かれている。
+
+`pnpm-lock.yaml` の解決バージョンだけを見ると、**既に override が載っている
+パッケージは「pin 済み = 対処済み」に見える**。これは誤りで、override の floor
+自体が advisory の脆弱範囲に入っていることがある。security alert 対応で floor を
+「その時点の patched 版」に固定すると、その版が後日新たな advisory に含まれた
+とき、**override は脆弱版への固定装置として働く**。
+
+実例（2 日連続で発生）:
+
+| 日付 | package | 当時の override | advisory の脆弱範囲 | ADR |
+| --- | --- | --- | --- | --- |
+| 2026-08-07 | `js-yaml` | `js-yaml@4: ^4.3.0` | `>= 4.0.0, < 4.3.1` | `ADR-2390` |
+| 2026-08-08 | `dompurify` | `dompurify: ^3.4.12` | `<= 3.4.12` | `ADR-2404` |
+
+手順（alert 1 件ごと）:
+
+1. advisory の脆弱範囲を取る:
+   `gh api repos/{owner}/{repo}/dependabot/alerts/<n> --jq '.security_vulnerability.vulnerable_version_range'`
+2. 宣言側を全部出す（override と全 workspace の直接依存）:
+   `grep -rn '"<pkg>"' package.json packages/*/package.json`
+3. **1 の範囲が 2 のいずれかのレンジと交差していたら、そのレンジも patched 版へ
+   引き上げる。** override だけ直して直接依存の宣言を据え置かない — 実解決は同じ
+   でも、override を外した瞬間に脆弱範囲へ戻る宣言が残る（`ADR-2404`「却下した案」）。
+
 ## 依存更新バッチの ADR 化
 
 月曜バッチで複数 PR が出て、特殊な判断（major / cooldown 違反観測 / bot

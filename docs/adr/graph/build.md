@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-70 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+71 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -74,6 +74,7 @@ flowchart TD
     ADR_2351["ADR-2351<br/>docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issu..."]
     ADR_2356["ADR-2356<br/>開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層"]
     ADR_2390["ADR-2390<br/>Security alert 2026-08-07 — js-yaml は既存 overrid..."]
+    ADR_2404["ADR-2404<br/>Security alert 2026-08-08 — dompurify は overrid..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -170,6 +171,7 @@ flowchart TD
   class ADR_2351 accepted
   class ADR_2356 accepted
   class ADR_2390 accepted
+  class ADR_2404 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
