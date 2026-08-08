@@ -55,13 +55,16 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "22" # resolves to the latest 22.x (>= 22.14.0, required for OIDC)
+          node-version: "24" # resolves to the latest 24.x, which bundles npm >= 11.5.1 (OIDC)
           cache: "pnpm"
 
-      # npm Trusted Publishing requires npm >= 11.5.1; Node 22 ships npm 10.x.
-      # `changeset publish` shells out to this `npm` for the actual publish.
-      - name: Upgrade npm to an OIDC-capable version
-        run: npm install -g npm@latest
+      # No `npm install -g npm@latest` step here on purpose. `changeset publish`
+      # shells out to `npm` for the actual publish and Trusted Publishing needs
+      # npm >= 11.5.1, which Node 22 did not bundle (it ships npm 10.x) — hence
+      # the upgrade step this job used to carry. Node 24 bundles npm 11.17+, so
+      # the requirement is met by the runtime itself, and fetching an unpinned
+      # `npm@latest` at publish time would only re-add a supply-chain surface to
+      # the one job that holds publish rights. Issue #2397.
 
       # All dependencies (incl. `@kompiro/*`) install from the public npm
       # registry — no token needed. Publishing uses OIDC (see header).

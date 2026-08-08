@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
+FROM mcr.microsoft.com/devcontainers/typescript-node:1-24-bookworm
 
 # karasu の隣に sibling repo (kompiro/adr-tools, kompiro/hane 等) を clone できるよう
 # /workspaces を node ユーザー所有にしておく。bind mount 時にも親 dir の所有権は維持される。
