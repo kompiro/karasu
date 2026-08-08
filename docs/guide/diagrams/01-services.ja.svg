@@ -25,9 +25,11 @@
 <text x="483.3333333333333" y="552" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>
 <g class="crossing-marks"><path d="M 482.6 558.45 A 4 4 -31.83 0 1 489.4 554.24" fill="none" stroke="#B45309" stroke-width="1.5"/>
 <path d="M 479.33 558 A 4 4 0 0 1 487.33 558" fill="none" stroke="#B45309" stroke-width="1.5"/></g>
-<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="360" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
-<path d="M324 82.16 L396 82.16 L416 93.12 L416 122 Q416 126 412 126 L308 126 Q304 126 304 122 L304 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
-<text x="360" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
+<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><rect x="280" y="73" width="160" height="53" rx="8" ry="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<circle cx="360" cy="73" r="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<circle cx="360" cy="69.5" r="3.4" fill="#1E3A8A"/>
+<path d="M354 81.5 a6 6.5 0 0 1 12 0 Z" fill="#1E3A8A"/>
+<text x="360" y="99.5" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
 <g data-node-id="ShoppingService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="170" y="246" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="250" y="279" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">買い物体験</text></g>
 <g data-node-id="OrderService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="390" y="246" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>

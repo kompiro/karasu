@@ -18,6 +18,7 @@ import type {
   Rect,
 } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
+import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
@@ -274,8 +275,19 @@ export function render(
   for (const [key, edgeStyle] of styles.edges) {
     if (edgeStyle.direction !== "auto") edgeDirections.set(key, edgeStyle.direction);
   }
+  // Resolved-shape lookup for measureNode's inset-aware sizing (#2366 F).
+  // Mirrors renderFromLayout's per-node style fallback chain.
+  const shapeForNode = (id: string, annotations: readonly string[]): string | undefined => {
+    const nodeStyle =
+      styles.nodes.get(nodeStyleKey(id, [...annotations])) ??
+      styles.nodes.get(id) ??
+      styles.defaultNodeStyle;
+    const shape = nodeStyle.shape;
+    return typeof shape === "string" ? shape : shape.url;
+  };
   const layoutResult = layout(viewSlice, {
     ownerIndex,
+    shapeForNode,
     teamLabels: options?.teamLabels,
     boundaryMembership: options?.boundaryMembership,
     scopedBoundaryMembership: options?.scopedBoundaryMembership,
@@ -1708,6 +1720,14 @@ function renderSlottedText(
   return children;
 }
 
+const ZERO_INSETS: ShapeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/** Content insets for a node's resolved shape, or zeros (box, external icons). */
+function shapeInsetsOf(style: ResolvedNodeStyle, width: number, height: number): ShapeInsets {
+  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
+  return getShapeContentInset(shapeName)?.(width, height) ?? ZERO_INSETS;
+}
+
 /**
  * Default centered text stack for shapes/icons with no declared label slot:
  * label, then (as present) description, role, resource badge, capability
@@ -1725,10 +1745,18 @@ function renderDefaultText(
   hasMetaRow: boolean,
 ): string[] {
   const children: string[] = [];
-  const textX = node.x + node.width / 2;
+  // Shape-aware content box (#2366 proposal F): text clearance per side is
+  // max(padding, shape inset) so it never touches the drawn outline, and the
+  // stack centres on the inset box — the shape's visual body — so e.g. a
+  // cylinder's text sits below the top ellipse and a user card's text sits
+  // on the card, not the bounding box.
+  const insets = shapeInsetsOf(style, node.width, node.height);
+  const clearLeft = Math.max(NODE_PADDING_X, insets.left);
+  const clearRight = Math.max(NODE_PADDING_X, insets.right);
+  const textX = node.x + clearLeft + (node.width - clearLeft - clearRight) / 2;
   // Wrap the description exactly like layout.ts measureNode did when it
   // reserved the node height, so drawn lines always fit the card (#2366 C).
-  const availableWidth = node.width - NODE_PADDING_X * 2;
+  const availableWidth = node.width - clearLeft - clearRight;
   const descLines = displayDesc
     ? wrapToWidth(
         displayDesc,
@@ -1738,7 +1766,7 @@ function renderDefaultText(
       )
     : [];
   const textLines = 1 + descLines.length + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
-  let textY = node.y + node.height / 2;
+  let textY = node.y + insets.top + (node.height - insets.top - insets.bottom) / 2;
   if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
   children.push(
@@ -1853,7 +1881,7 @@ function renderDefaultText(
 
   // Meta row: link count + team
   if (hasMetaRow) {
-    children.push(...renderMetaRow(node, style, nodeId, textX, nextY));
+    children.push(...renderMetaRow(node, style, nodeId, textX, nextY, clearLeft, clearRight));
   }
 
   return children;
@@ -1932,6 +1960,8 @@ function renderMetaRow(
   nodeId: string,
   textX: number,
   nextY: number,
+  clearLeft: number = NODE_PADDING_X,
+  clearRight: number = NODE_PADDING_X,
 ): string[] {
   const children: string[] = [];
   const metaFontSize = Math.round(style.fontSize * META_FONT_RATIO);
@@ -1972,8 +2002,8 @@ function renderMetaRow(
 
   if (node.linkCount > 0 && team) {
     // Both link count and team: link on the left, team on the right
-    children.push(linkChip(node.x + NODE_PADDING_X, "start"));
-    children.push(teamChip(team, node.x + node.width - NODE_PADDING_X, "end"));
+    children.push(linkChip(node.x + clearLeft, "start"));
+    children.push(teamChip(team, node.x + node.width - clearRight, "end"));
   } else if (node.linkCount > 0) {
     children.push(linkChip(textX, "middle"));
   } else if (team) {

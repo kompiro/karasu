@@ -8,6 +8,7 @@ import {
 } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import { wrapToWidth } from "./svg-builder.js";
+import { getShapeContentInset } from "../shapes/shape-registry.js";
 import { foldFacetMembership } from "./facet-overlay.js";
 import {
   assignGroupedLayers,
@@ -1128,6 +1129,15 @@ function placeExternalServicesOnSides(
 interface LayoutOptions {
   ownerIndex?: Map<string, string>;
   /**
+   * Resolved shape name for a node (from the style cascade). measureNode
+   * uses it to grow cards whose shape insets exceed the base padding
+   * (#2366 proposal F — practically the hexagon's 20% notches and wide
+   * clouds). Callers without resolved styles (drawio export, bare-layout
+   * tests) omit it; measurement then assumes padding-only clearance,
+   * matching the pre-F behavior.
+   */
+  shapeForNode?: (id: string, annotations: readonly string[]) => string | undefined;
+  /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from
    * `groupLabels`, which only exists when grouping by team). Omitted → the chip
@@ -1482,7 +1492,24 @@ function makeOwnerResolver(
   };
 }
 
+/**
+ * Shape lookup for the currently running layout() call. Module state instead
+ * of a parameter because measureNode is reached through five call chains that
+ * would each need the hook threaded through; layout() is synchronous and
+ * never re-enters itself, so a set/reset around the body is safe.
+ */
+let currentShapeForNode: LayoutOptions["shapeForNode"];
+
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
+  currentShapeForNode = options.shapeForNode;
+  try {
+    return layoutInner(viewSlice, options);
+  } finally {
+    currentShapeForNode = undefined;
+  }
+}
+
+function layoutInner(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
   const {
     ownerIndex,
     teamLabels,
@@ -3129,7 +3156,7 @@ function measureNode(
   const hasCapabilityBadge = capabilities.length > 0;
   const capabilityBadgeWidth = hasCapabilityBadge ? metaChipWidth(`×${capabilities.length}`) : 0;
 
-  const width =
+  let width =
     Math.max(
       labelWidth,
       descWidth,
@@ -3157,6 +3184,32 @@ function measureNode(
   if (hasResourceBadge) height += LINE_HEIGHT;
   if (hasCapabilityBadge) height += LINE_HEIGHT;
   if (hasMetaRow) height += LINE_HEIGHT;
+
+  // Shape-inset surplus (#2366 proposal F): grow the card where the shape's
+  // own insets exceed the base padding, so the renderer's inset-aware content
+  // box keeps the usable width the content was measured for. Fixed-point
+  // because proportional insets depend on the final size; 4 rounds converge
+  // within ~2px for the hexagon's 20% case. Without a shapeForNode hook the
+  // card keeps padding-only clearance (pre-F behavior).
+  // Own annotations only: the inherited-annotation closure lives inside
+  // layoutInner, and annotation-driven *shape* overrides are rare enough
+  // that the plain-id style entry (the hook's fallback) covers them.
+  const shapeName = currentShapeForNode?.(node.id, node.annotations);
+  const insetFn = shapeName ? getShapeContentInset(shapeName) : undefined;
+  if (insetFn) {
+    const contentW = width - NODE_PADDING_X * 2;
+    const contentH = height - NODE_PADDING_Y * 2;
+    for (let i = 0; i < 4; i++) {
+      const ins = insetFn(width, height);
+      const wantW =
+        contentW + Math.max(NODE_PADDING_X, ins.left) + Math.max(NODE_PADDING_X, ins.right);
+      const wantH =
+        contentH + Math.max(NODE_PADDING_Y, ins.top) + Math.max(NODE_PADDING_Y, ins.bottom);
+      if (wantW <= width + 0.5 && wantH <= height + 0.5) break;
+      width = Math.max(width, wantW);
+      height = Math.max(height, wantH);
+    }
+  }
 
   return { width, height };
 }

@@ -5,6 +5,7 @@ import {
   getShape,
   type ShapeContext,
   type ShapeRenderFn,
+  type ShapeContentInsetFn,
 } from "../shapes/shape-registry.js";
 
 // ---------------------------------------------------------------------------
@@ -25,51 +26,65 @@ const box: ShapeRenderFn = (ctx) =>
     "stroke-dasharray": ctx.strokeDasharray || undefined,
   });
 
+/** Fixed medallion radius of the user card's person pictogram (never scales). */
+const USER_MEDALLION_R = 13;
+
+/**
+ * #2366 proposal G: a rounded card with a fixed-size person medallion
+ * straddling the top edge. The old silhouette scaled the whole body to the
+ * node's W×H, so any node wide enough for a real label degraded into a
+ * "tent with a dot" — the pictogram now keeps its aspect at every width.
+ * The medallion stays inside the bounding box (its top touches y) so edge
+ * attachment points are unaffected; the declared content inset makes the
+ * text stack centre on the card area below the medallion equator.
+ */
 const user: ShapeRenderFn = (ctx) => {
   const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const cx = x + w / 2;
-  const headR = Math.min(w, h) * 0.13;
-  const headCy = y + headR + 2;
-  const gap = 3;
-  const shoulderTop = headCy + headR + gap;
-  const bodyBottom = y + h;
-  const shoulderW = w * 0.45;
-  const torsoW = w * 0.7;
-  const shoulderH = (bodyBottom - shoulderTop) * 0.25;
-  const torsoTop = shoulderTop + shoulderH;
-  const cornerR = 4;
+  const medR = USER_MEDALLION_R;
+  const medCy = y + medR;
+  const cardTop = y + medR; // card straddles the medallion's equator
 
-  const bodyPath = [
-    `M${cx - shoulderW / 2} ${shoulderTop}`,
-    `L${cx + shoulderW / 2} ${shoulderTop}`,
-    `L${cx + torsoW / 2} ${torsoTop}`,
-    `L${cx + torsoW / 2} ${bodyBottom - cornerR}`,
-    `Q${cx + torsoW / 2} ${bodyBottom} ${cx + torsoW / 2 - cornerR} ${bodyBottom}`,
-    `L${cx - torsoW / 2 + cornerR} ${bodyBottom}`,
-    `Q${cx - torsoW / 2} ${bodyBottom} ${cx - torsoW / 2} ${bodyBottom - cornerR}`,
-    `L${cx - torsoW / 2} ${torsoTop}`,
-    `Z`,
-  ].join(" ");
+  const card = el("rect", {
+    x,
+    y: cardTop,
+    width: w,
+    height: h - medR,
+    rx: 8,
+    ry: 8,
+    fill,
+    stroke,
+    "stroke-width": sw,
+    "stroke-dasharray": dash || undefined,
+  });
 
-  return [
-    el("circle", {
-      cx,
-      cy: headCy,
-      r: headR,
-      fill,
-      stroke,
-      "stroke-width": sw,
-      "stroke-dasharray": dash || undefined,
-    }),
-    el("path", {
-      d: bodyPath,
-      fill,
-      stroke,
-      "stroke-width": sw,
-      "stroke-dasharray": dash || undefined,
-    }),
-  ].join("\n");
+  const medallion = el("circle", {
+    cx,
+    cy: medCy,
+    r: medR,
+    fill,
+    stroke,
+    "stroke-width": sw,
+    "stroke-dasharray": dash || undefined,
+  });
+
+  // Person pictogram drawn in the node's text color: head + shoulders,
+  // contained inside the medallion by construction (no clipPath).
+  const head = el("circle", { cx, cy: medCy - 3.5, r: 3.4, fill: ctx.color });
+  const shoulders = el("path", {
+    d: `M${cx - 6} ${medCy + 8.5} a6 6.5 0 0 1 12 0 Z`,
+    fill: ctx.color,
+  });
+
+  return [card, medallion, head, shoulders].join("\n");
 };
+
+const userInset: ShapeContentInsetFn = () => ({
+  top: USER_MEDALLION_R,
+  right: 0,
+  bottom: 0,
+  left: 0,
+});
 
 const cylinder: ShapeRenderFn = (ctx) => {
   const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
@@ -173,13 +188,46 @@ const cloud: ShapeRenderFn = (ctx) => {
 // Registration
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Content insets (#2366 proposal F) — each mirrors its render function's
+// geometry so text never touches the drawn outline. Zero-inset shapes (box)
+// simply do not register one.
+// ---------------------------------------------------------------------------
+
+const cylinderInset: ShapeContentInsetFn = (_w, h) => {
+  const ry = Math.min(h * 0.12, 15);
+  // Top ellipse spans 2*ry from the box top; the bottom arc dips ry deep.
+  return { top: ry * 2, right: 0, bottom: ry, left: 0 };
+};
+
+const queueInset: ShapeContentInsetFn = (w) => {
+  const rx = Math.min(w * 0.1, 15);
+  // Right end-cap ellipse spans 2*rx; the left arc curves rx inward.
+  return { top: 0, right: rx * 2, bottom: 0, left: rx };
+};
+
+const hexagonInset: ShapeContentInsetFn = (w) => ({
+  top: 0,
+  right: w * 0.2,
+  bottom: 0,
+  left: w * 0.2,
+});
+
+const cloudInset: ShapeContentInsetFn = (w, h) => ({
+  // The blob outline wanders inside the box; keep a proportional margin.
+  top: h * 0.15,
+  right: w * 0.12,
+  bottom: h * 0.15,
+  left: w * 0.12,
+});
+
 export function registerBuiltinShapes(): void {
   registerShape("box", box);
-  registerShape("user", user);
-  registerShape("cylinder", cylinder);
-  registerShape("queue", queue);
-  registerShape("hexagon", hexagon);
-  registerShape("cloud", cloud);
+  registerShape("user", user, userInset);
+  registerShape("cylinder", cylinder, cylinderInset);
+  registerShape("queue", queue, queueInset);
+  registerShape("hexagon", hexagon, hexagonInset);
+  registerShape("cloud", cloud, cloudInset);
 }
 
 // Auto-register on import

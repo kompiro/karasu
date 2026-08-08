@@ -10,9 +10,11 @@
 <g data-edge-from="OrderService" data-edge-to="Legacy" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;Legacy" data-edge-label="在庫を問い合わせる（詳細不明）" class="krs-edge krs-edge--interactive"><polyline points="68,288 40,288 40,669 80.21750000000003,669" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <polyline points="68,288 40,288 40,669 80.21750000000003,669" fill="none" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
 <text x="40" y="472.5" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">在庫を問い合わせる（詳細不明）</text></g></g>
-<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="214.71750000000003" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
-<path d="M178.71750000000003 82.16 L250.71750000000003 82.16 L270.71750000000003 93.12 L270.71750000000003 122 Q270.71750000000003 126 266.71750000000003 126 L162.71750000000003 126 Q158.71750000000003 126 158.71750000000003 122 L158.71750000000003 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
-<text x="214.71750000000003" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
+<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><rect x="134.71750000000003" y="73" width="160" height="53" rx="8" ry="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<circle cx="214.71750000000003" cy="73" r="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<circle cx="214.71750000000003" cy="69.5" r="3.4" fill="#1E3A8A"/>
+<path d="M208.71750000000003 81.5 a6 6.5 0 0 1 12 0 Z" fill="#1E3A8A"/>
+<text x="214.71750000000003" y="99.5" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
 <g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="68" y="246" width="293.43500000000006" height="84" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="214.71750000000003" y="279.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">受注サービス</text>
 <text x="214.71750000000003" y="296.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">注文処理。Slack #team-order が詳しい</text>
