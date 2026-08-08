@@ -7,11 +7,19 @@ packages:
 allowBuilds:
   # Denied explicitly rather than left undeclared: pnpm 11 defaults
   # `strictDepBuilds` to true, so an undeclared package with a postinstall is an
-  # install error. Both were already being skipped under pnpm 10 (they arrive
-  # via `@vscode/vsce` and only matter for signing / OS keychain access, which
-  # we do not use), so `false` preserves the existing behaviour.
+  # install error rather than pnpm 10's warning. Every entry below was already
+  # being skipped, so `false` preserves the behaviour that was actually working.
+  #
+  # `@vscode/vsce-sign` / `keytar` arrive via `@vscode/vsce` and only matter for
+  # signing and OS keychain access, neither of which we use.
+  #
+  # `workerd` is not in our lockfile at all — `cloudflare/wrangler-action` runs
+  # its own `pnpm add wrangler@4` at deploy time, and that install reads this
+  # file. So this block has to cover packages that only ever appear in a CI-time
+  # install; a local `pnpm install` will never surface them.
   "@vscode/vsce-sign": false
   keytar: false
+  workerd: false
   esbuild: true
   lefthook: true
 
