@@ -8,7 +8,7 @@ scope:
   concerns: [dependencies, security]
 related_to: [ADR-2341, ADR-1675, ADR-1038]
 assumptions:
-  - "grep: package.json :: \"js-yaml@4\""
+  - "grep: pnpm-workspace.yaml :: js-yaml@4:"
 ---
 
 # ADR-2390: Security alert 2026-08-07 — js-yaml は既存 override の floor 引き上げで解決する
