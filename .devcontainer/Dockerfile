@@ -1,4 +1,10 @@
-FROM mcr.microsoft.com/devcontainers/typescript-node:1-24-bookworm
+# Tag shape is `<image-major>-<node-major>-<distro>`. The image major moves with
+# the node major here (was `1-22-bookworm`): Microsoft stopped adding Node
+# versions to the `1-*` family at Node 22, so `1-24-bookworm` does not exist and
+# a rebuild would fail with `manifest not found`. Check the published tag list
+# before the next bump — the majors are not independent.
+# https://mcr.microsoft.com/v2/devcontainers/typescript-node/tags/list
+FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-bookworm
 
 # karasu の隣に sibling repo (kompiro/adr-tools, kompiro/hane 等) を clone できるよう
 # /workspaces を node ユーザー所有にしておく。bind mount 時にも親 dir の所有権は維持される。

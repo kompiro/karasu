@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Fences the Node.js baseline decided in ADR-2397. The version is pinned in
-// three unrelated shapes — `node-version:` in every workflow, the devcontainer
+// four unrelated shapes — `node-version:` in every workflow, the devcontainer
 // base image tag, and `engines.node` / esbuild `--target=nodeNN` in the
 // published packages — so a bump is a sweep, and a sweep closed by a
 // hand-written file list leaves survivors (TPL-2253: the enumeration in Issue
@@ -28,24 +28,40 @@ const NODE_MAJOR = "24";
 const ENGINES_FLOOR_MAJOR = "22";
 
 /**
- * Directories whose `.yml` files carry a toolchain pin. `examples/github-actions`
- * is in scope because those templates are copied into users' repos verbatim
- * (`docs/github-actions.md`), so they are advice about which runtime to run
- * karasu on — not decoration.
+ * Directory trees whose YAML carries a toolchain pin. Walked recursively and
+ * matched on both `.yml` and `.yaml`, because a pin the guard cannot see is
+ * worse than no guard: it reads as covered.
+ *
+ * `examples/github-actions` is in scope because those templates are copied into
+ * users' repos verbatim (`docs/github-actions.md`), so they are advice about
+ * which runtime to run karasu on — not decoration. `.github/actions` holds no
+ * `setup-node` today; it is listed so a composite action that adds one starts
+ * out covered.
  */
-const PINNED_WORKFLOW_DIRS = [".github/workflows", "examples/github-actions"];
+const PINNED_YAML_DIRS = [".github/workflows", ".github/actions", "examples/github-actions"];
 
 const DEVCONTAINER_DOCKERFILE = ".devcontainer/Dockerfile";
+
+/**
+ * The full base image tag, not just its Node component. `<image-major>` and
+ * `<node-major>` are not independent — Microsoft stopped adding Node versions
+ * to the `1-*` family at Node 22, so the mechanical `1-24-bookworm` is not a
+ * published tag and a rebuild fails with `manifest not found`. Asserting the
+ * whole string forces the next bump to look the tag up rather than substitute
+ * a number into a shape that may not exist.
+ */
+const DEVCONTAINER_IMAGE_TAG = `5-${NODE_MAJOR}-bookworm`;
 
 type Pin = { readonly where: string; readonly value: string };
 
 const read = (path: string): string => readFileSync(join(REPO_ROOT, path), "utf8");
 
-const ymlFilesIn = (dirs: readonly string[]): string[] =>
+const yamlFilesIn = (dirs: readonly string[]): string[] =>
   dirs
+    .filter((dir) => existsSync(join(REPO_ROOT, dir)))
     .flatMap((dir) =>
-      readdirSync(join(REPO_ROOT, dir))
-        .filter((name) => name.endsWith(".yml"))
+      readdirSync(join(REPO_ROOT, dir), { recursive: true, encoding: "utf8" })
+        .filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))
         .map((name) => `${dir}/${name}`),
     )
     .sort();
@@ -59,13 +75,18 @@ const packageManifests = (): string[] =>
     .filter((file) => existsSync(join(REPO_ROOT, file)))
     .sort();
 
-/** Every `node-version: "<v>"` line, tagged with `<file>:<line>`. */
+/**
+ * Every `node-version:` line, tagged with `<file>:<line>`. Quoting is optional
+ * in YAML — an unquoted `node-version: 22` is the same pin and must not slip
+ * past by being written differently.
+ */
 function readNodeVersionPins(file: string): Pin[] {
   return read(file)
     .split("\n")
     .flatMap((line, index) => {
-      const match = /^\s*node-version:\s*"([^"]+)"/.exec(line);
-      return match ? [{ where: `${file}:${index + 1}`, value: match[1] }] : [];
+      const match = /^\s*node-version:\s*(?:"([^"]+)"|'([^']+)'|([^\s#]+))/.exec(line);
+      const value = match?.[1] ?? match?.[2] ?? match?.[3];
+      return value === undefined ? [] : [{ where: `${file}:${index + 1}`, value }];
     });
 }
 
@@ -85,7 +106,7 @@ function readEsbuildTargets(): Pin[] {
   );
 }
 
-const workflowFiles = ymlFilesIn(PINNED_WORKFLOW_DIRS);
+const workflowFiles = yamlFilesIn(PINNED_YAML_DIRS);
 const pins = workflowFiles.flatMap(readNodeVersionPins);
 
 describe("Node.js version policy (ADR-2397)", () => {
@@ -111,8 +132,9 @@ describe("Node.js version policy (ADR-2397)", () => {
       image,
       `no typescript-node base image found in ${DEVCONTAINER_DOCKERFILE}`,
     ).not.toBeNull();
-    // Tag shape is `<feature-version>-<node-major>-<distro>`, e.g. `1-24-bookworm`.
-    expect(image?.[1].split("-")[1]).toBe(NODE_MAJOR);
+    expect(image?.[1]).toBe(DEVCONTAINER_IMAGE_TAG);
+    // Cheap cross-check that the constant above was not edited past the policy.
+    expect(DEVCONTAINER_IMAGE_TAG.split("-")[1]).toBe(NODE_MAJOR);
   });
 
   it("declares one engines floor across the workspace, at or below the CI major", () => {

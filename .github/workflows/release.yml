@@ -18,7 +18,8 @@ name: Release
 # for a short-lived publish credential, provided a Trusted Publisher is
 # configured for each package on npmjs.com (org `kompiro`, repo `karasu`,
 # workflow file `release.yml`). Requires npm >= 11.5.1 and Node >= 22.14.0,
-# so we upgrade npm explicitly below. Provenance is generated automatically
+# which the pinned Node 24 satisfies on its own (see the publish step).
+# Provenance is generated automatically
 # under trusted publishing — no `--provenance` flag / `NPM_CONFIG_PROVENANCE`
 # needed. See ADR-9020 (OIDC migration; follows up the token-based
 # auth of ADR-1315) and docs/process.md "リリース運用".
@@ -58,13 +59,19 @@ jobs:
           node-version: "24" # resolves to the latest 24.x, which bundles npm >= 11.5.1 (OIDC)
           cache: "pnpm"
 
-      # No `npm install -g npm@latest` step here on purpose. `changeset publish`
-      # shells out to `npm` for the actual publish and Trusted Publishing needs
-      # npm >= 11.5.1, which Node 22 did not bundle (it ships npm 10.x) — hence
-      # the upgrade step this job used to carry. Node 24 bundles npm 11.17+, so
-      # the requirement is met by the runtime itself, and fetching an unpinned
-      # `npm@latest` at publish time would only re-add a supply-chain surface to
-      # the one job that holds publish rights. Issue #2397.
+      # This job deliberately carries no step that globally upgrades the npm CLI
+      # before publishing (it used to). The publish chain is
+      # `changeset publish` → `pnpm publish` (changesets picks the package
+      # manager it detects) → the `npm` CLI on PATH, because pnpm 10 still
+      # delegates publish to npm. Trusted Publishing needs npm >= 11.5.1, and
+      # Node 22 bundles npm 10.x — hence the old step. Node 24 bundles npm
+      # 11.17+, so the runtime satisfies the floor by itself, and pulling an
+      # unpinned npm from the registry at publish time would only re-add a
+      # supply-chain surface to the one job that holds publish rights.
+      #
+      # pnpm 11 makes `pnpm publish` native (no npm delegation), at which point
+      # pnpm's own version governs this floor instead — see Issue #2401.
+      # Issue #2397 / ADR-2397.
 
       # All dependencies (incl. `@kompiro/*`) install from the public npm
       # registry — no token needed. Publishing uses OIDC (see header).

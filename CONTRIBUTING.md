@@ -116,8 +116,8 @@ apart on anything other than those mounts.
 
 ### On your own machine, without a container
 
-Prerequisites: **Node.js 22+** and **pnpm 10+** (matching the
-`packageManager` field in `package.json`).
+Prerequisites: **Node.js 24+** and **pnpm 10+** (matching the devcontainer and
+the `packageManager` field in `package.json`).
 
 ```sh
 git clone https://github.com/kompiro/karasu.git
