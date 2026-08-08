@@ -52,6 +52,20 @@ surface 間の診断差分が「意図された制約」なのか「バグ」な
 は「未解決 import が残る file では判定しない」を検査側（`validateOwnsReferences`）に
 置いた（#2082。LSP の filter に足す形だと、同じ穴が app の single-file 経路に残る）。
 
+現状の台帳（import 結合）:
+
+| 診断 | 単一ドキュメントでの側 | 置き場所 |
+| --- | --- | --- |
+| `unresolved-edge-endpoint` | 抑制（偽陽性しか出ない） | LSP の filter |
+| `owns-target-not-found` | 判定しない | 検査側（`validateOwnsReferences`, #2082） |
+| `edge-endpoint-not-at-scope` | 出す（過少報告のみ） | — |
+| `shared-infra-fan-in` | 出す（過少報告のみ） | — |
+| `contains-target-not-found` | **未決定 — 偽陽性が出ている** | [#2410](https://github.com/kompiro/karasu/issues/2410) |
+| `invalid-owns` | **未決定 — 偽陽性が出ている** | [#2410](https://github.com/kompiro/karasu/issues/2410) |
+
+未決定の 2 件は上の原則からは抑制側に落ちるべきだが、まだ実装が追いついていない。
+**この表に行が無い import 結合の診断を足してはならない** — 側を決めるまでが実装である。
+
 ## 想定される失敗モード
 
 - style 抑制型の hint を追加した開発者が app でのみ動作確認し、editor では

@@ -47,10 +47,20 @@ const OWNABLE_KINDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Blocks whose direct children `buildNodePathIndex` addressed alongside the block
+ * itself: an infra leaf (`table` / `queue-item` / `bucket`) and a client
+ * `capability`. Kept in the set at every depth so the answer to "does this id
+ * exist" does not change with where the block was declared — that index only
+ * addressed the top-level ones, which is why `owns users` used to be silent for
+ * a top-level `database` and warn for the identical block inside a `system`.
+ */
+const LEAF_BEARING_KINDS: ReadonlySet<string> = new Set(["client", "database", "queue", "storage"]);
+
+/**
  * Every id a `team … owns` may name, derived from the (merged) tree: any
  * {@link OWNABLE_KINDS} node at any depth — nested infra included, which
- * `buildNodePathIndex` never indexed — plus the direct children of top-level
- * infra and client blocks, which that index did address.
+ * `buildNodePathIndex` never indexed — plus the direct children of
+ * {@link LEAF_BEARING_KINDS} blocks.
  *
  * Deriving this from the tree rather than reading `nodePathIndex` is what makes
  * the check symmetric with `contains`. That index is built per file by the
@@ -62,8 +72,7 @@ const OWNABLE_KINDS: ReadonlySet<string> = new Set([
  * (TPL-2032).
  *
  * Narrowing this set is `invalid-owns`' job, not existence's: an id in here is
- * only claimed to *exist*, which is why the incidental members
- * (`table` / `capability` children of a top-level block) stay in rather than
+ * only claimed to *exist*, which is why the leaf members stay in rather than
  * earn a second warning on the same line.
  */
 function collectOwnableIds(file: KrsFile): Set<string> {
@@ -72,6 +81,9 @@ function collectOwnableIds(file: KrsFile): Set<string> {
     for (const node of nodes) {
       if (OWNABLE_KINDS.has(node.kind)) {
         ids.add(node.id);
+        if (LEAF_BEARING_KINDS.has(node.kind)) {
+          for (const child of node.children) ids.add(child.id);
+        }
       }
       walk(node.children);
     }
@@ -82,10 +94,9 @@ function collectOwnableIds(file: KrsFile): Set<string> {
   walk(file.services);
   walk(file.domains);
   walk(file.clients);
-  for (const block of [...file.databases, ...file.queues, ...file.storages, ...file.clients]) {
-    ids.add(block.id);
-    for (const child of block.children) ids.add(child.id);
-  }
+  walk(file.databases);
+  walk(file.queues);
+  walk(file.storages);
   return ids;
 }
 
@@ -102,6 +113,11 @@ function collectOwnableIds(file: KrsFile): Set<string> {
  * side as `unresolved-edge-endpoint`). Project mode is unaffected: the merged
  * `KrsFile` the ImportResolver validates carries no `nodeImports`, so it is
  * always decided there, against the merged tree.
+ *
+ * `validateContainsReferences` below and `detectInvalidOwns` in the resolver are
+ * import-coupled the same way and have not been converted — a cross-file `owns`
+ * still draws a squiggle in the editor, from `invalid-owns` rather than from
+ * here (#2410 tracks both; TPL-1522 carries the ledger).
  */
 export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
   if (file.organizations.length === 0 || file.nodeImports.length > 0) return [];

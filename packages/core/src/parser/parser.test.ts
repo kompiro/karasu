@@ -3395,6 +3395,44 @@ organization Corp {
       expect(warnings).toHaveLength(0);
     });
 
+    // Depth symmetry for the leaf ids `buildNodePathIndex` addressed: it indexed
+    // the children of a *top-level* infra block only, so the same `table` was
+    // "found" at top level and "not found" inside a system. Existence accepts
+    // both; whether a leaf may be owned at all is `invalid-owns`' call (#2408).
+    it("treats infra leaf ids the same at top level and inside a system", () => {
+      const nested = Parser.parse(`
+system Shop {
+  service Orders {}
+  database UserDB {
+    table users
+  }
+}
+
+organization Corp {
+  team backend {
+    owns users
+  }
+}
+      `);
+      const topLevel = Parser.parse(`
+database UserDB {
+  table users
+}
+
+organization Corp {
+  team backend {
+    owns users
+  }
+}
+      `);
+      const ownsWarnings = (result: ReturnType<typeof Parser.parse>) =>
+        result.diagnostics.filter(
+          (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+        );
+      expect(ownsWarnings(nested)).toHaveLength(0);
+      expect(ownsWarnings(topLevel)).toHaveLength(0);
+    });
+
     // Import-coupled: a document that still has imports to resolve cannot see
     // the merged id-space, so it must not decide this diagnostic at all — the
     // LSP surfaces parse diagnostics verbatim (TPL-1522). The ImportResolver
