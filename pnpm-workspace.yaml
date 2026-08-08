@@ -1,6 +1,85 @@
 packages:
   - "packages/*"
 
-onlyBuiltDependencies:
-  - esbuild
-  - lefthook
+# Build scripts are denied by default; these two are the exceptions.
+# `allowBuilds` replaces pnpm 10's `onlyBuiltDependencies` (removed in v11
+# along with `neverBuiltDependencies` / `ignoredBuiltDependencies`).
+allowBuilds:
+  # Denied explicitly rather than left undeclared: pnpm 11 defaults
+  # `strictDepBuilds` to true, so an undeclared package with a postinstall is an
+  # install error rather than pnpm 10's warning. Every entry below was already
+  # being skipped, so `false` preserves the behaviour that was actually working.
+  #
+  # `@vscode/vsce-sign` / `keytar` arrive via `@vscode/vsce` and only matter for
+  # signing and OS keychain access, neither of which we use.
+  #
+  # `workerd` is not in our lockfile at all — `cloudflare/wrangler-action` runs
+  # its own `pnpm add wrangler@4` at deploy time, and that install reads this
+  # file. So this block has to cover packages that only ever appear in a CI-time
+  # install; a local `pnpm install` will never surface them.
+  "@vscode/vsce-sign": false
+  keytar: false
+  workerd: false
+  esbuild: true
+  lefthook: true
+
+# Security floors for transitive dependencies, moved here from the root
+# `package.json`'s `pnpm.overrides` — pnpm 11 no longer reads settings from the
+# `pnpm` field (pnpm/pnpm#10086). This block is the single source of truth for
+# advisory remediation: most entries exist because a GHSA had no other way to
+# reach a transitive dep. See ADR-1474 for the operating rule and ADR-2401 for
+# the relocation. Keep alphabetical; raise a floor rather than adding a
+# duplicate key.
+overrides:
+  brace-expansion@1: ^1.1.18
+  brace-expansion@2: ^2.1.4
+  brace-expansion@5: ^5.0.8
+  diff: ^8.0.3
+  dompurify: ^3.4.12
+  esbuild: ^0.28.1
+  fast-uri: ^3.1.5
+  form-data: ^4.0.6
+  js-yaml@4: ^4.3.1
+  linkify-it: ^5.0.2
+  markdown-it: ^14.2.0
+  postcss: ^8.5.18
+  qs: ^6.15.2
+  read-yaml-file@1: ^2.1.0
+  serialize-javascript: ^7.0.5
+  sharp: ^0.35.0
+  svgo: ^4.0.2
+  tmp: ^0.2.6
+  undici: ^7.28.0
+  uuid: ^14.0.0
+  vite@8: ^8.0.16
+  ws: ^8.21.0
+
+# Left at pnpm 11's default of 1 day, deliberately — not raised to match the
+# 7-day Dependabot cooldown in `.github/dependabot.yml`, which is a different
+# policy that happens to share a unit.
+#
+# The cooldown delays the PRs Dependabot raises for *declared* dependencies.
+# This setting verifies *every* lockfile entry on *every* install, transitive
+# ones included. At 7 days the current lockfile is already non-compliant —
+# `rolldown@1.2.2` and its 13 platform bindings plus `nanoid@3.3.17` arrive
+# transitively under vite and were published five days ago — so every install,
+# CI included, would fail until the window passed. That turns a supply-chain
+# preference into a time-dependent build gate.
+#
+# One day still covers the attack this defends against (a compromised version
+# published and yanked within hours) without that cost. See ADR-2401.
+minimumReleaseAge: 1440
+
+# First-party packages, exempt from the age check. The protection
+# `minimumReleaseAge` buys is the window in which *someone else* notices a
+# compromised release and gets it yanked. These are published from our own
+# repos via OIDC trusted publishing and have essentially no other consumers, so
+# there is no community to do that noticing — the delay costs the
+# "publish a fix, adopt it here immediately" loop (#2407 did exactly that) and
+# buys nothing back.
+#
+# This exemption is only sound while these stay first-party. Do not add a
+# third-party package here; raise the floor or wait it out instead.
+minimumReleaseAgeExclude:
+  - "@kompiro/adr-tools"
+  - "@kompiro/tpl-tools"
