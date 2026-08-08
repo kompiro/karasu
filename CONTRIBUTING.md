@@ -116,7 +116,7 @@ apart on anything other than those mounts.
 
 ### On your own machine, without a container
 
-Prerequisites: **Node.js 24+** and **pnpm 10+** (matching the devcontainer and
+Prerequisites: **Node.js 24+** and **pnpm 11+** (matching the devcontainer and
 the `packageManager` field in `package.json`).
 
 ```sh
