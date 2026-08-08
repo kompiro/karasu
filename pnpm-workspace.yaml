@@ -69,3 +69,17 @@ overrides:
 # One day still covers the attack this defends against (a compromised version
 # published and yanked within hours) without that cost. See ADR-2401.
 minimumReleaseAge: 1440
+
+# First-party packages, exempt from the age check. The protection
+# `minimumReleaseAge` buys is the window in which *someone else* notices a
+# compromised release and gets it yanked. These are published from our own
+# repos via OIDC trusted publishing and have essentially no other consumers, so
+# there is no community to do that noticing — the delay costs the
+# "publish a fix, adopt it here immediately" loop (#2407 did exactly that) and
+# buys nothing back.
+#
+# This exemption is only sound while these stay first-party. Do not add a
+# third-party package here; raise the floor or wait it out instead.
+minimumReleaseAgeExclude:
+  - "@kompiro/adr-tools"
+  - "@kompiro/tpl-tools"
