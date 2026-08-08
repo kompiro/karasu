@@ -47,7 +47,8 @@ describe("owner chip covers every ownable kind (#2157)", () => {
     expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
     // Button identity is the team id; the chip text is the declared label.
     expect(result.svg).toContain('data-team-button="T"');
-    expect(result.svg).toContain("👥Team T");
+    expect(result.svg).toContain('data-meta-glyph="team"');
+    expect(result.svg).toContain(">Team T</text>");
     expect(result.nodeMetadata.get("X")?.team).toBe("T");
     expect(result.nodeMetadata.get("X")?.teamLabel).toBe("Team T");
   });
@@ -110,7 +111,7 @@ describe("owner chip text (#2157)", () => {
       `${system(`  client X [web] { label "X" }`)}\norganization O { team PlatformTeam { owns X } }`,
     );
     expect(result.svg).toContain('data-team-button="PlatformTeam"');
-    expect(result.svg).toContain("👥PlatformTeam");
+    expect(result.svg).toContain(">PlatformTeam</text>");
     expect(result.nodeMetadata.get("X")?.teamLabel).toBeUndefined();
   });
 
@@ -120,7 +121,7 @@ describe("owner chip text (#2157)", () => {
     );
     expect(result.svg).toContain('data-team-button="T"');
     // 15 graphemes, then the ellipsis — the same budget `measureNode` reserves.
-    expect(result.svg).toContain("👥Customer Experi…");
+    expect(result.svg).toContain(">Customer Experi…</text>");
   });
 });
 
@@ -149,7 +150,7 @@ describe("owner chip label in the diff view (#2157)", () => {
       `${CLIENT}\norganization O { team T { owns X } }`,
     );
     expect(svg).not.toContain("Old Name");
-    expect(svg).toContain("👥T");
+    expect(svg).toContain(">T</text>");
   });
 
   it("keeps the before label for a team the after model no longer declares", async () => {
@@ -159,7 +160,7 @@ describe("owner chip label in the diff view (#2157)", () => {
       `${CLIENT}\norganization O { team T { label "Old Name" owns X } }`,
       system(`  service Other { label "Other" }`),
     );
-    expect(svg).toContain("👥Old Name");
+    expect(svg).toContain(">Old Name</text>");
   });
 });
 

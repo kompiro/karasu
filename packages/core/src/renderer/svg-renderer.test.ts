@@ -72,7 +72,8 @@ system Test {
   }
 }
     `);
-    expect(svg).toContain("📦 ×2");
+    expect(svg).toContain('data-meta-glyph="package"');
+    expect(svg).toContain(">×2</text>");
     expect(svg).toContain('data-client-resource-count="2"');
     // Per-resource text rows are no longer emitted; the full list moved to
     // the NodeDetailPanel. A <title> tooltip preserves quick discoverability.
@@ -87,7 +88,7 @@ system Test {
   client Bare [web] { label "Bare" }
 }
     `);
-    expect(svg).not.toContain("📦");
+    expect(svg).not.toContain('data-meta-glyph="package"');
     expect(svg).not.toContain("data-client-resource-count");
   });
 
@@ -101,7 +102,8 @@ system Test {
   }
 }
     `);
-    expect(svg).toContain("🔐 ×2");
+    expect(svg).toContain('data-meta-glyph="capability"');
+    expect(svg).toContain(">×2</text>");
     expect(svg).toContain('data-client-capability-count="2"');
     expect(svg).toContain("camera, geolocation");
   });
@@ -112,7 +114,7 @@ system Test {
   client Bare [web] { label "Bare" }
 }
     `);
-    expect(svg).not.toContain("🔐");
+    expect(svg).not.toContain('data-meta-glyph="capability"');
     expect(svg).not.toContain("data-client-capability-count");
   });
 
@@ -370,7 +372,7 @@ organization Corp {
 }
     `);
     expect(svg).toContain('data-team-button="ecTeam"');
-    expect(svg).toContain("👥");
+    expect(svg).toContain('data-meta-glyph="team"');
   });
 
   it("renders info button on leaf service node with description", () => {
@@ -457,7 +459,7 @@ system Test {
 }
     `);
     expect(svg).toContain("data-link-button");
-    expect(svg).toContain("🔗");
+    expect(svg).toContain('data-meta-glyph="link"');
     expect(svg).not.toContain("data-team-button");
   });
 
@@ -477,8 +479,8 @@ organization Corp {
     `);
     expect(svg).toContain("data-link-button");
     expect(svg).toContain("data-team-button");
-    expect(svg).toContain("🔗");
-    expect(svg).toContain("👥");
+    expect(svg).toContain('data-meta-glyph="link"');
+    expect(svg).toContain('data-meta-glyph="team"');
   });
 });
 

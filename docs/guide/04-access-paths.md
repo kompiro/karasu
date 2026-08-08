@@ -182,7 +182,7 @@ client MobileApp [mobile] {
 }
 ```
 
-`resource` is storage the client reads/writes; `capability` is a function the OS / browser grants — separate concepts. The SVG card shows count badges `📦 ×N` / `🔐 ×N` respectively, with the full list in the detail panel.
+`resource` is storage the client reads/writes; `capability` is a function the OS / browser grants — separate concepts. The SVG card shows count badges package / lock glyph `×N` respectively, with the full list in the detail panel.
 
 > Cookie / session / raw-credential storage, and threat modeling itself, are deliberately out of scope (karasu models the underlying facts but does not pin a security discipline's shape into its vocabulary — [ADR-834](../adr/834-security-modeling-stance.md)).
 

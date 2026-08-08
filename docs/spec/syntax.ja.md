@@ -315,7 +315,7 @@ client WebApp [web] {
 }
 ```
 
-**描画**: SVG カードは resource 1 行ずつではなく `📦 ×N` のカウントバッジを 1 つだけ表示する（リスト増加でカードの高さが膨れないように）。kind と name の宣言順での完全リストは `NodeDetailPanel` の「Storage resources」セクションに出る。[AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md) 参照。
+**描画**: SVG カードは resource 1 行ずつではなく `×N` カウントチップ（package ベクターグリフ、`data-meta-glyph="package"`） のカウントバッジを 1 つだけ表示する（リスト増加でカードの高さが膨れないように）。kind と name の宣言順での完全リストは `NodeDetailPanel` の「Storage resources」セクションに出る。[AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md) 参照。
 
 #### `client` の `capability`
 
@@ -342,7 +342,7 @@ client OrderClient [mobile] {
 
 capability 識別子セットは **オープン**: 任意の kebab-case 識別子を受け付ける。推奨セット外の名前でも警告は出ず、ドメイン固有 capability（業界デバイス、社内専用機能）も自由に表現できる。同一 client 上で同じ capability 名を複数回宣言すると、バリデータは `client-capability-duplicate` を出す。
 
-**描画**: SVG カードは `resource` バッジと同じ形で `🔐 ×N` のカウントバッジを 1 つだけ表示する。label / description 付きの完全リストは `NodeDetailPanel` に出る。[AT-1002](../acceptance/1002-client-capability.md) 参照。
+**描画**: SVG カードは `resource` バッジと同じ形で `×N` カウントチップ（lock ベクターグリフ、`data-meta-glyph="capability"`） のカウントバッジを 1 つだけ表示する。label / description 付きの完全リストは `NodeDetailPanel` に出る。[AT-1002](../acceptance/1002-client-capability.md) 参照。
 
 ---
 
@@ -982,7 +982,7 @@ organization TechCorp {
 - team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
 - team ID は同一 organization 内で一意。重複するとエラーになる。
 - パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。
-- 所有関係はシステムビューの**所有されるノードのカード上**に `👥` チップとして描画される。対象は team が `owns` できる全 kind（`service` / `domain` / `client`）。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
+- 所有関係はシステムビューの**所有されるノードのカード上**に team チップ（人型グループのベクターグリフ、`data-meta-glyph="team"`）として描画される。対象は team が `owns` できる全 kind（`service` / `domain` / `client`）。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
 
 > Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。
 
