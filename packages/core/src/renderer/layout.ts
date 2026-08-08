@@ -1499,17 +1499,28 @@ function makeOwnerResolver(
  * never re-enters itself, so a set/reset around the body is safe.
  */
 let currentShapeForNode: LayoutOptions["shapeForNode"];
+/**
+ * Effective-annotation resolver of the running layout, set by layoutInner
+ * once inheritance is built. measureNode's shape lookup must use the same
+ * annotation set renderFromLayout resolves styles with, or a node whose
+ * shape comes from an annotation selector measures as a box and renders as
+ * a hexagon (found in the #2412 review's migration-coexistence trace).
+ */
+let currentEffectiveAnnotations: ((n: KrsNode) => string[]) | undefined;
 
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
   currentShapeForNode = options.shapeForNode;
   try {
-    return layoutInner(viewSlice, options);
+    const result = layoutInner(viewSlice, options);
+    result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
+    return result;
   } finally {
     currentShapeForNode = undefined;
+    currentEffectiveAnnotations = undefined;
   }
 }
 
-function layoutInner(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
+function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult {
   const {
     ownerIndex,
     teamLabels,
@@ -1552,6 +1563,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutR
   );
   const effectiveAnnotations = (n: KrsNode): string[] =>
     n.annotations.length > 0 ? n.annotations : (inheritedAnnotations.get(n.id) ?? n.annotations);
+  currentEffectiveAnnotations = effectiveAnnotations;
 
   // Multi-system root view: lay out all systems side by side. The same path
   // also handles the single-system case when that system is the synthesized
@@ -3188,24 +3200,29 @@ function measureNode(
   // Shape-inset surplus (#2366 proposal F): grow the card where the shape's
   // own insets exceed the base padding, so the renderer's inset-aware content
   // box keeps the usable width the content was measured for. Fixed-point
-  // because proportional insets depend on the final size; 4 rounds converge
-  // within ~2px for the hexagon's 20% case. Without a shapeForNode hook the
-  // card keeps padding-only clearance (pre-F behavior).
-  // Own annotations only: the inherited-annotation closure lives inside
-  // layoutInner, and annotation-driven *shape* overrides are rare enough
-  // that the plain-id style entry (the hook's fallback) covers them.
-  const shapeName = currentShapeForNode?.(node.id, node.annotations);
+  // because proportional insets depend on the final size; run to sub-pixel
+  // convergence — a coarse cutoff left the drawn wrap width ~2px under the
+  // measured one, enough to flip a description's line count (#2412 review).
+  // Without a shapeForNode hook the card keeps padding-only clearance
+  // (pre-F behavior), and renderFromLayout is told not to apply insets.
+  const annotations = currentEffectiveAnnotations?.(node) ?? node.annotations;
+  const shapeName = currentShapeForNode?.(node.id, annotations);
   const insetFn = shapeName ? getShapeContentInset(shapeName) : undefined;
   if (insetFn) {
     const contentW = width - NODE_PADDING_X * 2;
     const contentH = height - NODE_PADDING_Y * 2;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 25; i++) {
       const ins = insetFn(width, height);
       const wantW =
         contentW + Math.max(NODE_PADDING_X, ins.left) + Math.max(NODE_PADDING_X, ins.right);
-      const wantH =
-        contentH + Math.max(NODE_PADDING_Y, ins.top) + Math.max(NODE_PADDING_Y, ins.bottom);
-      if (wantW <= width + 0.5 && wantH <= height + 0.5) break;
+      // Vertical: the stack centres on the inset box (the shape's visual
+      // body), so the paddings must fit INSIDE that box — reservation is
+      // pad + inset per side, not max(pad, inset), or a user card's meta row
+      // sits 6.5px closer to the bottom edge than every other shape's
+      // (#2412 review). Horizontal keeps max(): the stack's vertical centre
+      // is where side-notched shapes (hexagon) are at their widest.
+      const wantH = contentH + NODE_PADDING_Y * 2 + ins.top + ins.bottom;
+      if (wantW <= width + 0.25 && wantH <= height + 0.25) break;
       width = Math.max(width, wantW);
       height = Math.max(height, wantH);
     }

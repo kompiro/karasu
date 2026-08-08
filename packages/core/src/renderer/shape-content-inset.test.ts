@@ -33,12 +33,13 @@ describe("shape content insets", () => {
       bottom: 12,
       left: 0,
     });
-    // queue: rx = min(200 * 0.1, 15) = 15 → end cap spans 30
+    // queue: rx = min(200 * 0.1, 15) = 15 → both cap depths span 2*rx = 30
+    // (the concave left arc reaches x + 2*rx at mid-height)
     expect(getShapeContentInset("queue")!(200, 100)).toEqual({
       top: 0,
       right: 30,
       bottom: 0,
-      left: 15,
+      left: 30,
     });
     // hexagon: 20% side notches
     expect(getShapeContentInset("hexagon")!(200, 100)).toEqual({
@@ -80,7 +81,16 @@ describe("measureNode inset surplus (via layout shapeForNode hook)", () => {
     expect(widthOf(undefined)).toBe(widthOf("box"));
   });
 
-  it("user cards keep their size (medallion inset stays within padding)", () => {
+  it("user cards keep their width; height grows by the medallion inset", () => {
     expect(widthOf("user")).toBe(widthOf("box"));
+  });
+
+  it("cylinder cards reserve padding inside the visual body (taller card)", () => {
+    const krsFile = Parser.parse(src).value;
+    const slice = extractView(krsFile.systems, []);
+    const box = layout(slice, { shapeForNode: () => "box" }).nodes.get("Wide")!.height;
+    const cyl = layout(slice, { shapeForNode: () => "cylinder" }).nodes.get("Wide")!.height;
+    // top 2*ry + bottom ry beyond the box card's paddings
+    expect(cyl).toBeGreaterThan(box);
   });
 });

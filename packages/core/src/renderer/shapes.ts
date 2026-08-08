@@ -202,8 +202,10 @@ const cylinderInset: ShapeContentInsetFn = (_w, h) => {
 
 const queueInset: ShapeContentInsetFn = (w) => {
   const rx = Math.min(w * 0.1, 15);
-  // Right end-cap ellipse spans 2*rx; the left arc curves rx inward.
-  return { top: 0, right: rx * 2, bottom: 0, left: rx };
+  // Right end-cap ellipse spans 2*rx; the concave left arc also reaches
+  // 2*rx into the box at mid-height (its ellipse centre sits at x+rx and
+  // bulges rightward), so both sides inset by the full cap depth.
+  return { top: 0, right: rx * 2, bottom: 0, left: rx * 2 };
 };
 
 const hexagonInset: ShapeContentInsetFn = (w) => ({
@@ -214,11 +216,13 @@ const hexagonInset: ShapeContentInsetFn = (w) => ({
 });
 
 const cloudInset: ShapeContentInsetFn = (w, h) => ({
-  // The blob outline wanders inside the box; keep a proportional margin.
+  // The blob outline wanders inside the box. The deepest excursion is the
+  // lower-left anchor at x + 0.15w (the path's start point), so the left
+  // margin is 0.15w; the other sides' anchors stay within these bounds.
   top: h * 0.15,
   right: w * 0.12,
   bottom: h * 0.15,
-  left: w * 0.12,
+  left: w * 0.15,
 });
 
 export function registerBuiltinShapes(): void {

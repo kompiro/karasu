@@ -275,16 +275,10 @@ export function render(
   for (const [key, edgeStyle] of styles.edges) {
     if (edgeStyle.direction !== "auto") edgeDirections.set(key, edgeStyle.direction);
   }
-  // Resolved-shape lookup for measureNode's inset-aware sizing (#2366 F).
-  // Mirrors renderFromLayout's per-node style fallback chain.
-  const shapeForNode = (id: string, annotations: readonly string[]): string | undefined => {
-    const nodeStyle =
-      styles.nodes.get(nodeStyleKey(id, [...annotations])) ??
-      styles.nodes.get(id) ??
-      styles.defaultNodeStyle;
-    const shape = nodeStyle.shape;
-    return typeof shape === "string" ? shape : shape.url;
-  };
+  // Resolved-shape lookup for measureNode's inset-aware sizing (#2366 F) —
+  // the same resolveNodeStyle chain renderFromLayout draws with.
+  const shapeForNode = (id: string, annotations: readonly string[]): string | undefined =>
+    shapeNameOf(resolveNodeStyle(styles, id, annotations).shape);
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     shapeForNode,
@@ -586,12 +580,7 @@ export function renderFromLayout(
   // without which they hit `defaultNodeStyle` and never render an icon. For
   // system-view nodes `layoutNode.id === nodeId`, so the fallback is a no-op.
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
-    const styleKey = nodeStyleKey(nodeId, layoutNode.annotations);
-    const nodeStyle =
-      styles.nodes.get(styleKey) ??
-      styles.nodes.get(nodeId) ??
-      styles.nodes.get(layoutNode.id) ??
-      styles.defaultNodeStyle;
+    const nodeStyle = resolveNodeStyle(styles, nodeId, layoutNode.annotations, layoutNode.id);
     const diffMeta =
       options?.nodeDiffMeta?.get(layoutNode.id) ?? options?.nodeDiffMeta?.get(nodeId);
     const diffState =
@@ -620,6 +609,7 @@ export function renderFromLayout(
           overlay !== undefined,
           overlay?.colorOf,
           styles.boundaryFrames,
+          layoutResult.shapeInsetsApplied ?? false,
         );
     const isDimmedGhost =
       layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
@@ -1397,6 +1387,12 @@ function renderNode(
   facetColorOf?: ReadonlyMap<string, string>,
   /** Boundary frame styles, for the `◇` tabs this card may carry (#2234). */
   boundaryFrames?: ResolvedBoundaryFrames,
+  /**
+   * True when the layout compensated for shape content insets
+   * (LayoutResult.shapeInsetsApplied). Text layout only applies insets
+   * then — a padding-only-measured card must keep padding-only drawing.
+   */
+  applyShapeInsets = false,
 ): string {
   const children: string[] = [];
 
@@ -1423,7 +1419,16 @@ function renderNode(
     );
   } else {
     children.push(
-      ...renderDefaultText(node, style, nodeId, textColor, fontSize, displayDesc, hasMetaRow),
+      ...renderDefaultText(
+        node,
+        style,
+        nodeId,
+        textColor,
+        fontSize,
+        displayDesc,
+        hasMetaRow,
+        applyShapeInsets,
+      ),
     );
   }
 
@@ -1722,10 +1727,34 @@ function renderSlottedText(
 
 const ZERO_INSETS: ShapeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 
+/** Registry name of a resolved shape (a builtin keyword or an icon URL). */
+function shapeNameOf(shape: ResolvedNodeStyle["shape"]): string {
+  return typeof shape === "string" ? shape : shape.url;
+}
+
+/**
+ * The per-node style fallback chain, shared by renderFromLayout and the
+ * measurement-time shapeForNode hook so the two can never resolve different
+ * styles (#2412 review). `layoutId` is the deploy `containerId::unitId`
+ * carrier — resolved styles are keyed by the bare unit id (#735 / #1666).
+ */
+function resolveNodeStyle(
+  styles: ResolvedStyles,
+  id: string,
+  annotations: readonly string[] | undefined,
+  layoutId?: string,
+): ResolvedNodeStyle {
+  return (
+    styles.nodes.get(nodeStyleKey(id, annotations)) ??
+    styles.nodes.get(id) ??
+    (layoutId !== undefined ? styles.nodes.get(layoutId) : undefined) ??
+    styles.defaultNodeStyle
+  );
+}
+
 /** Content insets for a node's resolved shape, or zeros (box, external icons). */
 function shapeInsetsOf(style: ResolvedNodeStyle, width: number, height: number): ShapeInsets {
-  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
-  return getShapeContentInset(shapeName)?.(width, height) ?? ZERO_INSETS;
+  return getShapeContentInset(shapeNameOf(style.shape))?.(width, height) ?? ZERO_INSETS;
 }
 
 /**
@@ -1743,6 +1772,7 @@ function renderDefaultText(
   fontSize: number,
   displayDesc: string | undefined,
   hasMetaRow: boolean,
+  applyShapeInsets: boolean,
 ): string[] {
   const children: string[] = [];
   // Shape-aware content box (#2366 proposal F): text clearance per side is
@@ -1750,7 +1780,7 @@ function renderDefaultText(
   // stack centres on the inset box — the shape's visual body — so e.g. a
   // cylinder's text sits below the top ellipse and a user card's text sits
   // on the card, not the bounding box.
-  const insets = shapeInsetsOf(style, node.width, node.height);
+  const insets = applyShapeInsets ? shapeInsetsOf(style, node.width, node.height) : ZERO_INSETS;
   const clearLeft = Math.max(NODE_PADDING_X, insets.left);
   const clearRight = Math.max(NODE_PADDING_X, insets.right);
   const textX = node.x + clearLeft + (node.width - clearLeft - clearRight) / 2;
@@ -1960,8 +1990,8 @@ function renderMetaRow(
   nodeId: string,
   textX: number,
   nextY: number,
-  clearLeft: number = NODE_PADDING_X,
-  clearRight: number = NODE_PADDING_X,
+  clearLeft: number,
+  clearRight: number,
 ): string[] {
   const children: string[] = [];
   const metaFontSize = Math.round(style.fontSize * META_FONT_RATIO);
