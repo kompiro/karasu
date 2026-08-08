@@ -3345,6 +3345,54 @@ organization Corp {
       );
       expect(warnings).toHaveLength(0);
     });
+
+    // #2082: the valid-target set is derived from the tree, so a system-less
+    // `service` is an ownable service like any other. `nodePathIndex` — which
+    // this check used to read — never indexed the top-level services bucket, so
+    // this warned only once *some other* node put an entry in the index. The
+    // system below is what made the old code reach the check at all.
+    it("does not emit owns-target-not-found when owns references a top-level service", () => {
+      const result = Parser.parse(`
+service Payments {}
+
+system Shop {
+  service Orders {}
+}
+
+organization Corp {
+  team backend {
+    owns Payments
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    it("emits owns-target-not-found for a ghost target alongside a top-level service", () => {
+      const result = Parser.parse(`
+service Payments {}
+
+system Shop {
+  service Orders {}
+}
+
+organization Corp {
+  team backend {
+    owns Payments
+    owns Ghost
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(1);
+      if (warnings[0].code !== "owns-target-not-found") throw new Error("code mismatch");
+      expect(warnings[0].params.ownedId).toBe("Ghost");
+    });
   });
 });
 

@@ -13,6 +13,12 @@
 //     resolves it (Issue #2032). Reference existence is only knowable after the
 //     cross-file merge, mirroring the "resolution happens at the merged level"
 //     stance of ADR-1381.
+//
+// Both take the whole `KrsFile` and derive their valid-target set from its
+// **tree**. Reading a pre-built index instead leaves the check depending on which
+// merge path carried that index: `owns` consulted `nodePathIndex`, which only
+// travels across a wildcard import, so a named import warned where `import "…"`
+// resolved (#2082).
 // ---------------------------------------------------------------------------
 
 import type {
@@ -21,20 +27,72 @@ import type {
   FacetBlock,
   KrsFile,
   KrsNode,
-  OrganizationBlock,
   TeamNode,
 } from "../types/ast.js";
 import { boundaryScopeKey } from "../types/ast.js";
 
-export function validateOwnsReferences(
-  organizations: OrganizationBlock[],
-  nodePathIndex: Map<string, string[]>,
-): Diagnostic[] {
+/**
+ * Every id a `team … owns` may name, derived from the (merged) tree: `service` /
+ * `domain` / `client` at any depth, plus top-level infra and client blocks with
+ * their direct children — the ids `buildNodePathIndex` addresses, plus top-level
+ * services, which are services like any other.
+ *
+ * Deriving this from the tree rather than reading `nodePathIndex` is what makes
+ * the check symmetric with `contains`. That index is built per file by the
+ * Parser and only travels across a **wildcard** import: `mergeNamedImport`
+ * merges the node itself but never its index entry, so `owns` on a
+ * named-imported service warned while the identical declaration reached through
+ * `import "…"` resolved (#2082). Re-deriving after the merge is not enough on
+ * its own — the space re-derived against has to be the merged tree too
+ * (TPL-2032).
+ *
+ * Narrowing this set is `invalid-owns`' job, not existence's: an id in here is
+ * only claimed to *exist*, which is why the incidental members
+ * (`table` / `capability` children of a top-level block) stay in rather than
+ * earn a second warning on the same line.
+ */
+function collectOwnableIds(file: KrsFile): Set<string> {
+  const ids = new Set<string>();
+  const walk = (nodes: readonly KrsNode[]): void => {
+    for (const node of nodes) {
+      if (node.kind === "service" || node.kind === "domain" || node.kind === "client") {
+        ids.add(node.id);
+      }
+      walk(node.children);
+    }
+  };
+  for (const system of file.systems) {
+    walk(system.children);
+  }
+  walk(file.services);
+  walk(file.domains);
+  walk(file.clients);
+  for (const block of [...file.databases, ...file.queues, ...file.storages, ...file.clients]) {
+    ids.add(block.id);
+    for (const child of block.children) ids.add(child.id);
+  }
+  return ids;
+}
+
+/**
+ * `owns` existence check. Takes the whole file (like
+ * {@link validateContainsReferences}) so the Parser and the ImportResolver
+ * cannot end up consulting two different id-spaces — the two call sites
+ * disagreeing on the space is exactly how #2082 happened.
+ */
+export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
+  const ownableIds = collectOwnableIds(file);
+  // A model with no ownable node at all says nothing about whether its `owns`
+  // lines are wrong: that is the org-only file (a `teams.krs` parsed on its own,
+  // or opened directly as the project entry), where every id is declared
+  // elsewhere. Kept from the pre-#2032 behaviour deliberately.
+  if (ownableIds.size === 0 || file.organizations.length === 0) return [];
+
   const diagnostics: Diagnostic[] = [];
   const check = (teams: TeamNode[]): void => {
     for (const team of teams) {
       for (const ownedId of team.properties.owns) {
-        if (!nodePathIndex.has(ownedId)) {
+        if (!ownableIds.has(ownedId)) {
           diagnostics.push({
             severity: "warning",
             code: "owns-target-not-found",
@@ -46,7 +104,7 @@ export function validateOwnsReferences(
       check(team.children.filter((c): c is TeamNode => c.kind === "team"));
     }
   };
-  for (const org of organizations) {
+  for (const org of file.organizations) {
     check(org.teams);
   }
   return diagnostics;

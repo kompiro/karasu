@@ -370,9 +370,7 @@ export class Parser {
       ...file.storages,
       ...file.clients,
     ]);
-    if (file.nodePathIndex.size > 0 && file.organizations.length > 0) {
-      this.diagnostics.push(...validateOwnsReferences(file.organizations, file.nodePathIndex));
-    }
+    this.diagnostics.push(...validateOwnsReferences(file));
     if (file.boundaries.length > 0) {
       this.diagnostics.push(...validateContainsReferences(file));
     }
