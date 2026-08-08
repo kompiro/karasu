@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-313 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -794,18 +794,18 @@ flowchart TD
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 11 ADRs
-- [`app-ui`](graph/app-ui.md) — 42 ADRs
-- [`build`](graph/build.md) — 71 ADRs
-- [`chat-ai`](graph/chat-ai.md) — 11 ADRs
-- [`cli`](graph/cli.md) — 12 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 22 ADRs
-- [`edges`](graph/edges.md) — 15 ADRs
-- [`navigation`](graph/navigation.md) — 14 ADRs
-- [`parser`](graph/parser.md) — 23 ADRs
-- [`project`](graph/project.md) — 13 ADRs
-- [`renderer`](graph/renderer.md) — 41 ADRs
-- [`resolver`](graph/resolver.md) — 9 ADRs
-- [`styling`](graph/styling.md) — 9 ADRs
-- [`testing`](graph/testing.md) — 13 ADRs
-- [`vscode`](graph/vscode.md) — 7 ADRs
+- [`adr-tooling`](graph/adr-tooling.md)
+- [`app-ui`](graph/app-ui.md)
+- [`build`](graph/build.md)
+- [`chat-ai`](graph/chat-ai.md)
+- [`cli`](graph/cli.md)
+- [`core-concepts`](graph/core-concepts.md)
+- [`edges`](graph/edges.md)
+- [`navigation`](graph/navigation.md)
+- [`parser`](graph/parser.md)
+- [`project`](graph/project.md)
+- [`renderer`](graph/renderer.md)
+- [`resolver`](graph/resolver.md)
+- [`styling`](graph/styling.md)
+- [`testing`](graph/testing.md)
+- [`vscode`](graph/vscode.md)
