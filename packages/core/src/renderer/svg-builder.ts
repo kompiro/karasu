@@ -113,10 +113,15 @@ export function wrapToWidth(
         return lines;
       }
       // Break at the most recent space when there is one; the space itself
-      // is consumed by the break.
+      // is consumed by the break. An overflowing space IS a word boundary:
+      // break right here and consume it, otherwise the next line would start
+      // with the carried space, `lastSpace > lineStart` would reject it, and
+      // the following word would split per-char (review of #2399).
       let breakEnd = i;
       let nextStart = i;
-      if (lastSpace > lineStart) {
+      if (ch === " ") {
+        nextStart = i + 1;
+      } else if (lastSpace > lineStart) {
         breakEnd = lastSpace;
         nextStart = lastSpace + 1;
       }
@@ -124,12 +129,10 @@ export function wrapToWidth(
       lineStart = nextStart;
       lineWidth = 0;
       lastSpace = -1;
-      for (let j = nextStart; j < i; j++) {
+      for (let j = nextStart; j <= i; j++) {
         if (chars[j] === " ") lastSpace = j;
         lineWidth += charDisplayWidth(chars[j], charWidth);
       }
-      lineWidth += cw;
-      if (ch === " ") lastSpace = i;
     } else {
       if (ch === " ") lastSpace = i;
       lineWidth += cw;

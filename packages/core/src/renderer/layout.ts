@@ -3085,7 +3085,12 @@ function measureNode(
   }
 
   const labelWidth = estimateTextWidth(node.label ?? node.id, CHAR_WIDTH);
-  const description = node.properties.description;
+  // Measure the summary the renderer draws (descriptionSummary), not the raw
+  // markdown: a long or markdown-heavy description otherwise widens the card
+  // and reserves wrap lines for text that is never rendered (review of #2399).
+  const description = node.properties.description
+    ? summarizeDescription(node.properties.description)
+    : undefined;
   const role = node.kind === "user" ? node.properties.role : undefined;
   const resources = node.kind === "client" ? node.properties.resources : [];
   const capabilities = node.kind === "client" ? node.properties.capabilities : [];

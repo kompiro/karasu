@@ -340,12 +340,14 @@ describe("renderOrgView", () => {
     });
 
     it("truncates wide CJK team label that exceeds card width", () => {
-      // "プラットフォームチーム" = 11 katakana × 11.25px = ~124px > 116px label max
-      // effective text budget = 116 - 7.5 (ellipsis) = 108.5px → fits 9 chars (101.25px)
+      // ICON_LABEL_CHAR_WIDTH 9.4 (pre-compensated for the 0.8x Latin factor,
+      // #2366 C review) puts CJK at 9.4 × 1.5 = 14.1px — one char more
+      // conservative than the old 11.25px estimate, so 7 chars fit the
+      // 116 - 9.4 (ellipsis) = 106.6px budget (7 × 14.1 = 98.7px).
       const team = makeTeam("platform", { label: "プラットフォームチーム" });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
       const svg = renderOrgView(slice, makeStyles(), "icon");
-      expect(svg).toContain("プラットフォームチ…");
+      expect(svg).toContain("プラットフォー…");
       expect(svg).not.toContain("プラットフォームチーム");
     });
 

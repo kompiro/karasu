@@ -16,8 +16,12 @@ export const DESCRIPTION_FONT_RATIO = 0.85; // description char-width ratio (mea
 export const META_FONT_RATIO = 0.7; // meta row char-width ratio
 
 // Icon-mode text layout constants
-export const ICON_LABEL_CHAR_WIDTH = 7.5; // approximate for 13px font
-export const ICON_DESC_CHAR_WIDTH = 6.5; // approximate for 11px font
+// Pre-compensated for charDisplayWidth's 0.8x Latin factor so the effective
+// estimates stay at the calibrated ~7.5px (13px font) / ~6.5px (11px font);
+// without this the 0.8x rescale (#2366 C) would under-estimate icon-card text
+// against the fixed slot budgets and let long titles escape truncation.
+export const ICON_LABEL_CHAR_WIDTH = 9.4;
+export const ICON_DESC_CHAR_WIDTH = 8.1;
 export const ICON_DESC_MAX_WIDTH = 144; // px available for description text
 
 /**
@@ -54,6 +58,10 @@ export const META_GLYPH_GAP = 3;
  * size. The glyph box is `metaFontSize + 4` px; at the 13px base font the meta
  * font rounds to 9px, giving a 13px glyph box. Shared by `measureNode` and the
  * renderer so reserved width matches drawn width (#2366 proposal D).
+ *
+ * Like every `CHAR_WIDTH`-based estimate, this assumes the 13px base font:
+ * a `.krs.style` font-size override changes drawn sizes without changing
+ * measurement (pre-existing limitation, applies to labels too).
  */
 export function metaChipWidth(text: string): number {
   const metaFontSize = Math.round(13 * META_FONT_RATIO);

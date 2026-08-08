@@ -31,6 +31,14 @@ describe("truncateToWidth", () => {
 });
 
 describe("wrapToWidth", () => {
+  it("treats an overflowing space as the word boundary (no leading-space lines)", () => {
+    // Latin 0.8x: each char 8px at charWidth 10. "hello" fills 40; the space
+    // itself overflows and must be consumed by the break, not carried over
+    // (review of #2399 — carrying it split the next word per-char).
+    const lines = wrapToWidth("hello world foo", 40, 10, 4);
+    expect(lines).toEqual(["hello", "world", "foo"]);
+  });
+
   it("returns single line when text fits", () => {
     const lines = wrapToWidth("Hello", 100, 7.5, 3);
     expect(lines).toEqual(["Hello"]);
