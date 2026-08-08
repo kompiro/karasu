@@ -16,21 +16,61 @@ export const DESCRIPTION_FONT_RATIO = 0.85; // description char-width ratio (mea
 export const META_FONT_RATIO = 0.7; // meta row char-width ratio
 
 // Icon-mode text layout constants
-export const ICON_LABEL_CHAR_WIDTH = 7.5; // approximate for 13px font
-export const ICON_DESC_CHAR_WIDTH = 6.5; // approximate for 11px font
+// Pre-compensated for charDisplayWidth's 0.8x Latin factor so the effective
+// Latin estimates stay at the calibrated ~7.5px (13px font) / ~6.5px (11px
+// font); without this the 0.8x rescale (#2366 C) would under-estimate
+// icon-card text against the fixed slot budgets and let long titles escape
+// truncation. CJK keeps its own calibrated widths (below) — deriving CJK as
+// 1.5x the compensated base would overshoot to 14.1px and over-truncate
+// (review of #2399).
+export const ICON_LABEL_CHAR_WIDTH = 9.4;
+export const ICON_DESC_CHAR_WIDTH = 8.1;
+export const ICON_LABEL_CJK_WIDTH = 11.25; // = 7.5 * 1.5, the pre-#2366 effective value
+export const ICON_DESC_CJK_WIDTH = 9.75; // = 6.5 * 1.5
 export const ICON_DESC_MAX_WIDTH = 144; // px available for description text
 
 /**
  * Estimated display width of a single character. CJK characters (code point
- * above U+2E80) count as 1.5× `charWidth`, everything else as 1× `charWidth`.
+ * above U+2E80) count as 1.5× `charWidth`; everything else counts as 0.8×.
+ *
+ * The Latin factor is calibrated against real sans-serif metrics: at 13px the
+ * average mixed-case Latin glyph is ≈7.2px, i.e. 0.8 × CHAR_WIDTH(9). The old
+ * 1.0× factor overestimated Latin text by ~25%, which made description
+ * truncation fire long before the card was actually full (#2366 proposal C).
  *
  * This is the shared heuristic used by node measurement (layout / deploy-layout)
  * and text fitting (svg-builder's truncate/wrap). `renderer/matrix-svg.ts`
  * intentionally uses a different, wider-coverage heuristic tuned for table
  * column sizing — see the comment there before unifying the two.
  */
-export function charDisplayWidth(ch: string, charWidth: number): number {
-  return ch.charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+export function charDisplayWidth(ch: string, charWidth: number, cjkWidth?: number): number {
+  return ch.charCodeAt(0) > 0x2e80 ? (cjkWidth ?? charWidth * 1.5) : charWidth * 0.8;
+}
+
+/**
+ * Cap on how much a description may widen its card (#2366 proposal C). Below
+ * the cap the card grows so the text fits on one line; past it the text wraps
+ * into up to {@link DESC_MAX_LINES} lines before the ellipsis kicks in.
+ */
+export const DESC_MAX_CONTENT_WIDTH = 260;
+export const DESC_MAX_LINES = 2;
+
+/** Gap between a meta glyph box and its text, px. */
+export const META_GLYPH_GAP = 3;
+
+/**
+ * Measured width of a meta chip (vector glyph + gap + text) at the base font
+ * size. The glyph box is `metaFontSize + 4` px; at the 13px base font the meta
+ * font rounds to 9px, giving a 13px glyph box. Shared by `measureNode` and the
+ * renderer so reserved width matches drawn width (#2366 proposal D).
+ *
+ * Like every `CHAR_WIDTH`-based estimate, this assumes the 13px base font:
+ * a `.krs.style` font-size override changes drawn sizes without changing
+ * measurement (pre-existing limitation, applies to labels too).
+ */
+export function metaChipWidth(text: string): number {
+  const metaFontSize = Math.round(13 * META_FONT_RATIO);
+  return metaFontSize + 4 + META_GLYPH_GAP + estimateTextWidth(text, CHAR_WIDTH * META_FONT_RATIO);
 }
 
 /**

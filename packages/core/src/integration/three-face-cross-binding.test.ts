@@ -129,9 +129,9 @@ describe("three-face cross-binding integration (TPL-1225 item 4 / GC22-1)", () =
     // The button carries the team *id* (navigation identity); the chip text
     // shows the team's declared *label* (#2157).
     expect(systemResult.svg).toContain('data-team-button="EcTeam"');
-    expect(systemResult.svg).toContain("👥EC Team");
+    expect(systemResult.svg).toContain(">EC Team</text>");
     expect(systemResult.svg).toContain('data-team-button="InfraTeam"');
-    expect(systemResult.svg).toContain("👥Infra Team");
+    expect(systemResult.svg).toContain(">Infra Team</text>");
 
     // ── Deploy view: realizes-grouped containers ─────────────────────────
     // The deploy renderer groups units into `data-container-id="<service>"`

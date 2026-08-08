@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { getBuiltinStyleSheet } from "./default-style.js";
 import { resolvePalette, type DiagramTheme } from "../renderer/palette.js";
-import { contrastRatio, WCAG_AA_NORMAL_TEXT } from "../renderer/contrast.js";
+import {
+  compositeOver,
+  contrastRatio,
+  WCAG_AA_LARGE_TEXT,
+  WCAG_AA_NORMAL_TEXT,
+} from "../renderer/contrast.js";
+import { BOUNDARY_TINT_ALPHA } from "../renderer/svg-renderer.js";
 import type { StyleRule } from "../types/style.js";
 
 /**
@@ -45,6 +51,51 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
       expect(
         ratio!,
         `badge-color ${color} on canvas ${canvasBg} is below ${WCAG_AA_NORMAL_TEXT}:1`,
+      ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+    },
+  );
+
+  // Boundary frames tint the canvas under member nodes at BOUNDARY_TINT_ALPHA,
+  // and badge labels can render inside a frame. Enforcing 4.5:1 over every
+  // tint would recolor long-standing dark-theme values, so this PR picks a
+  // two-tier guard: 4.5:1 on the bare canvas (above) plus an AA-large 3:1
+  // backstop over the worst-case single-frame tint. The #2366 follow-up's
+  // stronger alternatives (headroom colors, or full AA asserted over the
+  // composite) stay open with the experimental boundary work.
+  it.each(badgeRules.map((r) => [ruleLabel(r), r.properties["badge-color"]] as const))(
+    "badge-color of %s stays above the AA-large backstop under boundary tints",
+    (_label, color) => {
+      for (const hue of resolvePalette(theme).boundaryHues) {
+        const tinted = compositeOver(hue, canvasBg, BOUNDARY_TINT_ALPHA);
+        expect(tinted, `boundary hue ${hue} must be a hex color`).toBeDefined();
+        const ratio = contrastRatio(color, tinted!);
+        expect(
+          ratio!,
+          `badge-color ${color} over tint ${tinted} is below ${WCAG_AA_LARGE_TEXT}:1`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
+      }
+    },
+  );
+
+  // Edge labels (11px) draw in the edge rule's `color` directly on the
+  // canvas, so those colors need the same AA bar as badge labels.
+  const edgeRules = sheet.rules.filter(
+    (r) => JSON.stringify(r.selector).includes('"edge"') && r.properties["color"],
+  );
+
+  it("finds the edge label color rules", () => {
+    // base edge + cyclic / implicit / inferred / delivers = 5 as of #2366.
+    expect(edgeRules.length).toBe(5);
+  });
+
+  it.each(edgeRules.map((r) => [ruleLabel(r), r.properties["color"]] as const))(
+    "edge color of %s is AA-legible on the canvas",
+    (_label, color) => {
+      const ratio = contrastRatio(color, canvasBg);
+      expect(ratio, `edge color ${color} must be a hex color`).toBeDefined();
+      expect(
+        ratio!,
+        `edge color ${color} on canvas ${canvasBg} is below ${WCAG_AA_NORMAL_TEXT}:1`,
       ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
     },
   );

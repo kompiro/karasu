@@ -20,16 +20,13 @@ import { describe, expect, it } from "vitest";
  */
 
 // Non-ASCII glyphs the core SVG renderer emits as node markers / annotation
-// badges. Sources: packages/core/src/renderer/svg-renderer.ts & layout.ts
-// (👥 owner, 📦 resources, 🔗 link, 🔐 external), the annotation badge icons
+// badges. The meta chips (owner team / resources / link / capability) became
+// vector paths in #2366 proposal D (renderer/meta-glyphs.ts), so their emoji
+// codepoints left this list. Remaining sources: the annotation badge icons
 // from packages/core/src/builtins/reference-data.ts → default-style.ts:60
 // (⚠ deprecated, ✦ new, ⚗ experimental), and the diff ghost badge for a node
-// whose annotations were all removed (svg-renderer.ts:805 emits − U+2212).
+// whose annotations were all removed (svg-renderer.ts emits − U+2212).
 const MARKER_CODEPOINTS: ReadonlyArray<{ cp: number; label: string }> = [
-  { cp: 0x1f465, label: "👥 owner team" },
-  { cp: 0x1f4e6, label: "📦 resources" },
-  { cp: 0x1f517, label: "🔗 link" },
-  { cp: 0x1f510, label: "🔐 external" },
   { cp: 0x26a0, label: "⚠ deprecated badge" },
   { cp: 0x2726, label: "✦ new badge" },
   { cp: 0x2697, label: "⚗ experimental badge" },
