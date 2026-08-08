@@ -321,7 +321,7 @@ client WebApp [web] {
 }
 ```
 
-**Rendering**: the SVG card shows a single `📦 ×N` count badge instead of one row per resource (so card height stays bounded as the list grows). The full list — kind and name in declaration order — is surfaced in the `NodeDetailPanel` "Storage resources" section. See [AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md).
+**Rendering**: the SVG card shows a single `×N` count chip (package vector glyph, `data-meta-glyph="package"`) count badge instead of one row per resource (so card height stays bounded as the list grows). The full list — kind and name in declaration order — is surfaced in the `NodeDetailPanel` "Storage resources" section. See [AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md).
 
 #### `client` `capability`
 
@@ -348,7 +348,7 @@ client OrderClient [mobile] {
 
 Capability identifier set is **open**: any kebab-case identifier is accepted. Names outside the recommended set parse without warning so that domain-specific capabilities (industry devices, internal-only features) can be expressed. The validator emits `client-capability-duplicate` when the same capability name is declared more than once on the same client.
 
-**Rendering**: the SVG card shows a single `🔐 ×N` count badge mirroring the `resource` badge so the card height stays bounded. The full list (with label / description) surfaces in the `NodeDetailPanel`. See [AT-1002](../acceptance/1002-client-capability.md).
+**Rendering**: the SVG card shows a single `×N` count chip (lock vector glyph, `data-meta-glyph="capability"`) count badge mirroring the `resource` badge so the card height stays bounded. The full list (with label / description) surfaces in the `NodeDetailPanel`. See [AT-1002](../acceptance/1002-client-capability.md).
 
 ---
 

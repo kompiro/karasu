@@ -32,6 +32,8 @@ import {
   estimateTextWidth,
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
+  ICON_LABEL_CJK_WIDTH,
+  ICON_DESC_CJK_WIDTH,
   ICON_DESC_MAX_WIDTH,
   teamChipText,
   DESC_MAX_LINES,
@@ -1621,7 +1623,7 @@ function renderSlottedText(
   // Icon-mode label truncation
   const iconMode = displayMode === "icon";
   const truncatedLabel = iconMode
-    ? truncateToWidth(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH)
+    ? truncateToWidth(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH, ICON_LABEL_CJK_WIDTH)
     : node.label;
   const labelFontSize = iconMode ? 13 : fontSize;
 
@@ -1655,6 +1657,7 @@ function renderSlottedText(
         ICON_DESC_MAX_WIDTH,
         ICON_DESC_CHAR_WIDTH,
         ICON_DESC_MAX_LINES,
+        ICON_DESC_CJK_WIDTH,
       );
       const tspans = lines.map((line, i) =>
         el(

@@ -57,10 +57,11 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
 
   // Boundary frames tint the canvas under member nodes at BOUNDARY_TINT_ALPHA,
   // and badge labels can render inside a frame. Enforcing 4.5:1 over every
-  // tint would recolor long-standing dark-theme values, so the policy is a
+  // tint would recolor long-standing dark-theme values, so this PR picks a
   // two-tier guard: 4.5:1 on the bare canvas (above) plus an AA-large 3:1
-  // backstop over the worst-case single-frame tint (#2366 proposal E; the
-  // full-AA-under-tint question stays with the experimental boundary work).
+  // backstop over the worst-case single-frame tint. The #2366 follow-up's
+  // stronger alternatives (headroom colors, or full AA asserted over the
+  // composite) stay open with the experimental boundary work.
   it.each(badgeRules.map((r) => [ruleLabel(r), r.properties["badge-color"]] as const))(
     "badge-color of %s stays above the AA-large backstop under boundary tints",
     (_label, color) => {

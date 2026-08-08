@@ -546,7 +546,7 @@ store {
 
 /* ── エッジ ── */
 edge {
-  color: #475569;
+  color: #64748B;
   stroke-width: 1.5;
   font-size: 11;
   direction: auto;
@@ -574,7 +574,7 @@ edge[implicit] {
 }
 
 edge[inferred] {
-  color: #475569;
+  color: #64748B;
 }
 
 edge[delivers] {

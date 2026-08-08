@@ -59,13 +59,18 @@ export function diffStateAttr(state: string | undefined): Record<string, string>
  * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
  * The "…" glyph is reserved from maxWidth so the full output always fits.
  */
-export function truncateToWidth(text: string, maxWidth: number, charWidth: number): string {
+export function truncateToWidth(
+  text: string,
+  maxWidth: number,
+  charWidth: number,
+  cjkWidth?: number,
+): string {
   // Reserve room for "…" so the truncated result always fits within maxWidth.
   const textBudget = maxWidth - charWidth;
   const chars = [...text];
   let width = 0;
   for (let i = 0; i < chars.length; i++) {
-    const cw = charDisplayWidth(chars[i], charWidth);
+    const cw = charDisplayWidth(chars[i], charWidth, cjkWidth);
     if (width + cw > textBudget) {
       return chars.slice(0, i).join("") + "…";
     }
@@ -88,6 +93,7 @@ export function wrapToWidth(
   maxWidth: number,
   charWidth: number,
   maxLines: number,
+  cjkWidth?: number,
 ): string[] {
   const chars = [...text];
   const lines: string[] = [];
@@ -97,7 +103,7 @@ export function wrapToWidth(
 
   for (let i = 0; i < chars.length; i++) {
     const ch = chars[i];
-    const cw = charDisplayWidth(ch, charWidth);
+    const cw = charDisplayWidth(ch, charWidth, cjkWidth);
     if (lineWidth + cw > maxWidth) {
       if (lines.length === maxLines - 1) {
         // Last allowed line: reserve room for "…" so the output fits within maxWidth.
@@ -106,7 +112,7 @@ export function wrapToWidth(
         let lastLineWidth = lineWidth;
         while (j > lineStart && lastLineWidth > lastLineBudget) {
           j--;
-          const prevCw = charDisplayWidth(chars[j], charWidth);
+          const prevCw = charDisplayWidth(chars[j], charWidth, cjkWidth);
           lastLineWidth -= prevCw;
         }
         lines.push(chars.slice(lineStart, j).join("") + "…");
@@ -131,7 +137,7 @@ export function wrapToWidth(
       lastSpace = -1;
       for (let j = nextStart; j <= i; j++) {
         if (chars[j] === " ") lastSpace = j;
-        lineWidth += charDisplayWidth(chars[j], charWidth);
+        lineWidth += charDisplayWidth(chars[j], charWidth, cjkWidth);
       }
     } else {
       if (ch === " ") lastSpace = i;

@@ -17,11 +17,16 @@ export const META_FONT_RATIO = 0.7; // meta row char-width ratio
 
 // Icon-mode text layout constants
 // Pre-compensated for charDisplayWidth's 0.8x Latin factor so the effective
-// estimates stay at the calibrated ~7.5px (13px font) / ~6.5px (11px font);
-// without this the 0.8x rescale (#2366 C) would under-estimate icon-card text
-// against the fixed slot budgets and let long titles escape truncation.
+// Latin estimates stay at the calibrated ~7.5px (13px font) / ~6.5px (11px
+// font); without this the 0.8x rescale (#2366 C) would under-estimate
+// icon-card text against the fixed slot budgets and let long titles escape
+// truncation. CJK keeps its own calibrated widths (below) — deriving CJK as
+// 1.5x the compensated base would overshoot to 14.1px and over-truncate
+// (review of #2399).
 export const ICON_LABEL_CHAR_WIDTH = 9.4;
 export const ICON_DESC_CHAR_WIDTH = 8.1;
+export const ICON_LABEL_CJK_WIDTH = 11.25; // = 7.5 * 1.5, the pre-#2366 effective value
+export const ICON_DESC_CJK_WIDTH = 9.75; // = 6.5 * 1.5
 export const ICON_DESC_MAX_WIDTH = 144; // px available for description text
 
 /**
@@ -38,8 +43,8 @@ export const ICON_DESC_MAX_WIDTH = 144; // px available for description text
  * intentionally uses a different, wider-coverage heuristic tuned for table
  * column sizing — see the comment there before unifying the two.
  */
-export function charDisplayWidth(ch: string, charWidth: number): number {
-  return ch.charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth * 0.8;
+export function charDisplayWidth(ch: string, charWidth: number, cjkWidth?: number): number {
+  return ch.charCodeAt(0) > 0x2e80 ? (cjkWidth ?? charWidth * 1.5) : charWidth * 0.8;
 }
 
 /**

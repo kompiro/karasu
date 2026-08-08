@@ -315,7 +315,7 @@ client WebApp [web] {
 }
 ```
 
-**描画**: SVG カードは resource 1 行ずつではなく `📦 ×N` のカウントバッジを 1 つだけ表示する（リスト増加でカードの高さが膨れないように）。kind と name の宣言順での完全リストは `NodeDetailPanel` の「Storage resources」セクションに出る。[AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md) 参照。
+**描画**: SVG カードは resource 1 行ずつではなく `×N` カウントチップ（package ベクターグリフ、`data-meta-glyph="package"`） のカウントバッジを 1 つだけ表示する（リスト増加でカードの高さが膨れないように）。kind と name の宣言順での完全リストは `NodeDetailPanel` の「Storage resources」セクションに出る。[AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md) 参照。
 
 #### `client` の `capability`
 
@@ -342,7 +342,7 @@ client OrderClient [mobile] {
 
 capability 識別子セットは **オープン**: 任意の kebab-case 識別子を受け付ける。推奨セット外の名前でも警告は出ず、ドメイン固有 capability（業界デバイス、社内専用機能）も自由に表現できる。同一 client 上で同じ capability 名を複数回宣言すると、バリデータは `client-capability-duplicate` を出す。
 
-**描画**: SVG カードは `resource` バッジと同じ形で `🔐 ×N` のカウントバッジを 1 つだけ表示する。label / description 付きの完全リストは `NodeDetailPanel` に出る。[AT-1002](../acceptance/1002-client-capability.md) 参照。
+**描画**: SVG カードは `resource` バッジと同じ形で `×N` カウントチップ（lock ベクターグリフ、`data-meta-glyph="capability"`） のカウントバッジを 1 つだけ表示する。label / description 付きの完全リストは `NodeDetailPanel` に出る。[AT-1002](../acceptance/1002-client-capability.md) 参照。
 
 ---
 

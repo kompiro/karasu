@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 321 226" width="321" height="226"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 321 226" width="321" height="226"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
 <rect width="321" height="226" fill="#FFFFFF" rx="0"/>
 <text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Shop</text>
 <g class="edges"/>

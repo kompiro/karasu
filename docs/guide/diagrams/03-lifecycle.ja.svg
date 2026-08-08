@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 761.5 448" width="761.5" height="448"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker></defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 761.5 448" width="761.5" height="448"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
 <rect width="761.5" height="448" fill="#FFFFFF" rx="0"/>
 <text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">ECPlatform</text>
 <g class="edges"><g data-edge-from="ECommerce" data-edge-to="LegacyPayment" data-edge-kind="sync" data-edge-canonical-id="ECommerce-&gt;LegacyPayment" data-edge-label="決済（移行中）" class="krs-edge krs-edge--interactive"><line x1="203.33333333333331" y1="126" x2="230" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="203.33333333333331" y1="126" x2="230" y2="246" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow-default)"/>
-<text x="216.66666666666666" y="180" text-anchor="middle" fill="#475569" font-size="11px" font-family="sans-serif">決済（移行中）</text></g>
+<line x1="203.33333333333331" y1="126" x2="230" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="216.66666666666666" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">決済（移行中）</text></g>
 <g data-edge-from="ECommerce" data-edge-to="NewPayment" data-edge-kind="sync" data-edge-canonical-id="ECommerce-&gt;NewPayment" data-edge-label="決済（新）" class="krs-edge krs-edge--interactive"><line x1="256.66666666666663" y1="126" x2="560.75" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="256.66666666666663" y1="126" x2="560.75" y2="246" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow-default)"/>
-<text x="408.7083333333333" y="180" text-anchor="middle" fill="#475569" font-size="11px" font-family="sans-serif">決済（新）</text></g></g>
+<line x1="256.66666666666663" y1="126" x2="560.75" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="408.7083333333333" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">決済（新）</text></g></g>
 <g class="nodes"><g data-node-id="ECommerce" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="150" y="60" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="230" y="93" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">ECサイト</text></g>
 <g data-node-id="RecommendationEngine" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="370" y="60" width="201.5" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
