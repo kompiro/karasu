@@ -58,3 +58,5 @@ builtin テーマや palette の文字系色を追加・変更するとき:
 
 - `packages/core/src/builtins/default-style-contrast.test.ts`。両テーマの builtin
   sheet を走査し、全 badge-color が canvasBg に対して 4.5:1 以上であることを検証。
+  #2399 で拡張: エッジ label 色（5 ルール/テーマ）も同じ 4.5:1 で検証し、
+  badge-color は boundary tint 合成の worst-case に対する 3:1 バックストップも持つ。

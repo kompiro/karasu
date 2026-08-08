@@ -59,15 +59,27 @@ Dependabot security update は GHSA 検知時に即時起票され、
 
 詳細経緯は `ADR-1038` 参照。再発時は ADR を増やさず本ルールで処理。
 
+## override はどこにあるか
+
+security floor の正本は **`pnpm-workspace.yaml` の `overrides:`**。pnpm 11 は
+`package.json` の `pnpm` フィールドを読まないので、そこに書いても黙って無視される
+（[ADR-2401](../../docs/adr/2401-pnpm-11-migration.md)）。ADR-1474 以降の各
+security ADR は「root `package.json` の `pnpm.overrides`」と書いているが、これは
+歴史的記述で、機構は同じ・置き場だけが移った。**過去 ADR の手順をそのまま実行せず、
+本節の置き場を使う。**
+
+`package.json` に `pnpm` フィールドが復活していないことは
+`scripts/ci/pnpm-config-location.test.ts` が検査する。
+
 ## override 付き直接依存の security update PR（別の失敗モード）
 
-**root `pnpm.overrides` に載っているパッケージが、同時に
+**`overrides:` に載っているパッケージが、同時に
 `packages/<name>/package.json` の直接依存でもある**場合、その security
 update PR は上記とは別の理由で構造的に CI を通せない:
 
 - Dependabot は宣言と `pnpm-lock.yaml`（`overrides:` スナップショットを含む）
   を修正版に更新する
-- 一方で **root `package.json` の `pnpm.overrides` は書き換えない**
+- 一方で **`pnpm-workspace.yaml` の `overrides:` は書き換えない**
   （Dependabot は override 機構を認識しない）
 - 結果、manifest の override だけが古いまま残り、
   `pnpm install --frozen-lockfile` が **`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`**

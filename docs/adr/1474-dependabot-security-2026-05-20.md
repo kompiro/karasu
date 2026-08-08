@@ -11,6 +11,7 @@ scope:
     - security
 related_to:
   - ADR-128
+  - ADR-2401
   - ADR-1038
 ---
 
@@ -78,6 +79,14 @@ transitive 依存の Dependabot security alert は、root `package.json` の `pn
 - `pnpm build` と `pnpm test`（全パッケージ）が通過。公開対象の `karasu` CLI バンドルへの影響は無く（`THIRD_PARTY_NOTICES.md` 不変）、changeset は不要。
 
 ## 運用ルール
+
+> **置き場だけが移った。** 手順 2 の「root `package.json` の `pnpm.overrides`」は
+> [ADR-2401](./2401-pnpm-11-migration.md) 以降 **`pnpm-workspace.yaml` の `overrides:`** を指す。
+> pnpm 11 は `package.json` の `pnpm` フィールドを読まず、しかも**エラーにせず警告だけ出して
+> 続行する**ので、旧手順どおりに編集すると floor を上げたつもりで何も起きず、build は緑のまま
+> 未修正の依存が残る。本 ADR と、本 ADR を引用する各 security ADR の記述は歴史的記録として
+> 残す（機構と判断は不変で、ファイルだけが変わった）。実行時は
+> `.claude/rules/dependabot.md`「override はどこにあるか」に従う。
 
 以後、transitive 依存に対する Dependabot security alert（対応する security update PR が起票されないもの）は次の手順で処理する。
 
