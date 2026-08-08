@@ -130,6 +130,7 @@ flowchart TD
     ADR_2356["ADR-2356<br/>開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層"]
     ADR_2390["ADR-2390<br/>Security alert 2026-08-07 — js-yaml は既存 overrid..."]
     ADR_2397["ADR-2397<br/>ツールチェーンの Node.js を 24（Active LTS）に上げ、公開パッケージの下限..."]
+    ADR_2401["ADR-2401<br/>pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -770,6 +771,7 @@ flowchart TD
   class ADR_2356 accepted
   class ADR_2390 accepted
   class ADR_2397 accepted
+  class ADR_2401 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
