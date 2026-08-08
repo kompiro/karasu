@@ -3371,6 +3371,52 @@ organization Corp {
       expect(warnings).toHaveLength(0);
     });
 
+    // #2408 keeps `invalid-owns` (the resolver-side kind check) out of sync on
+    // infra; existence, at least, now accepts every kind `owns` allows —
+    // `buildNodePathIndex` only indexed infra declared at the top level.
+    it("does not emit owns-target-not-found when owns references infra inside a system", () => {
+      const result = Parser.parse(`
+system Shop {
+  service Orders {}
+  database UserDB {
+    table users
+  }
+}
+
+organization Corp {
+  team backend {
+    owns UserDB
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    // Import-coupled: a document that still has imports to resolve cannot see
+    // the merged id-space, so it must not decide this diagnostic at all — the
+    // LSP surfaces parse diagnostics verbatim (TPL-1522). The ImportResolver
+    // decides it on the merged tree instead (see import-resolver.test.ts).
+    it("does not decide owns existence in a file that still has imports", () => {
+      const result = Parser.parse(`
+import { Payments } from "./billing.krs"
+service Ops {}
+
+organization Corp {
+  team backend {
+    owns Payments
+    owns Ghost
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
     it("emits owns-target-not-found for a ghost target alongside a top-level service", () => {
       const result = Parser.parse(`
 service Payments {}

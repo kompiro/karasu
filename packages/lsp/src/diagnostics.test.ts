@@ -110,6 +110,38 @@ system Blog {
     expect(computeDiagnostics(src, false)).toHaveLength(0);
   });
 
+  // `owns-target-not-found` is import-coupled for the same reason (#2082,
+  // TPL-1522): the owned id may be declared in a file this document imports, and
+  // a single-document read cannot see it. It is decided in the App / CLI, which
+  // validate the import-merged file. Recording the side here.
+  //
+  // Matched on the message rather than a code because `computeDiagnostics`
+  // returns LSP diagnostics. `invalid-owns` — the resolver-side *kind* check,
+  // whose own single-document side is #2408's business, not this one's — is a
+  // different sentence, so this filter does not catch it.
+  const ownsNotFound = (src: string) =>
+    computeDiagnostics(src, false).filter((d) => d.message.includes('referenced in "owns"'));
+
+  it("stays silent on owns when the document still has imports to resolve", () => {
+    const src = `import { Payments } from "./billing.krs"
+service Ops {}
+organization Acme {
+  team Platform { owns Payments }
+}`;
+    expect(ownsNotFound(src)).toHaveLength(0);
+  });
+
+  it("decides owns within a document that imports nothing", () => {
+    const src = `service Ops {}
+organization Acme {
+  team Platform { owns Ghost }
+}`;
+    const owns = ownsNotFound(src);
+    expect(owns).toHaveLength(1);
+    expect(owns[0].message).toContain("Ghost");
+    expect(owns[0].severity).toBe(DiagnosticSeverity.Warning);
+  });
+
   it("tags every karasu diagnostic with source 'karasu'", () => {
     const src = `system EC {
   service A { domain Dup {} }

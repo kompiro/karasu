@@ -32,10 +32,25 @@ import type {
 import { boundaryScopeKey } from "../types/ast.js";
 
 /**
- * Every id a `team … owns` may name, derived from the (merged) tree: `service` /
- * `domain` / `client` at any depth, plus top-level infra and client blocks with
- * their direct children — the ids `buildNodePathIndex` addresses, plus top-level
- * services, which are services like any other.
+ * The kinds `owns` accepts as a target: the logical nodes plus infra
+ * (`docs/spec/syntax.md` § team node, ADR-1720 for `client`, ADR-1632 for
+ * infra). Enumerated in one place because the sets that implement this rule
+ * have drifted apart before (TPL-1720).
+ */
+const OWNABLE_KINDS: ReadonlySet<string> = new Set([
+  "service",
+  "domain",
+  "client",
+  "database",
+  "queue",
+  "storage",
+]);
+
+/**
+ * Every id a `team … owns` may name, derived from the (merged) tree: any
+ * {@link OWNABLE_KINDS} node at any depth — nested infra included, which
+ * `buildNodePathIndex` never indexed — plus the direct children of top-level
+ * infra and client blocks, which that index did address.
  *
  * Deriving this from the tree rather than reading `nodePathIndex` is what makes
  * the check symmetric with `contains`. That index is built per file by the
@@ -55,7 +70,7 @@ function collectOwnableIds(file: KrsFile): Set<string> {
   const ids = new Set<string>();
   const walk = (nodes: readonly KrsNode[]): void => {
     for (const node of nodes) {
-      if (node.kind === "service" || node.kind === "domain" || node.kind === "client") {
+      if (OWNABLE_KINDS.has(node.kind)) {
         ids.add(node.id);
       }
       walk(node.children);
@@ -79,14 +94,23 @@ function collectOwnableIds(file: KrsFile): Set<string> {
  * {@link validateContainsReferences}) so the Parser and the ImportResolver
  * cannot end up consulting two different id-spaces — the two call sites
  * disagreeing on the space is exactly how #2082 happened.
+ *
+ * Returns nothing for a file that still has imports to resolve. This diagnostic
+ * is import-coupled: the id may be declared in a file this one pulls in, so a
+ * document read on its own cannot decide it, and the answer it would give is a
+ * false positive (the LSP surfaces parse diagnostics verbatim — TPL-1522, same
+ * side as `unresolved-edge-endpoint`). Project mode is unaffected: the merged
+ * `KrsFile` the ImportResolver validates carries no `nodeImports`, so it is
+ * always decided there, against the merged tree.
  */
 export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
+  if (file.organizations.length === 0 || file.nodeImports.length > 0) return [];
   const ownableIds = collectOwnableIds(file);
   // A model with no ownable node at all says nothing about whether its `owns`
   // lines are wrong: that is the org-only file (a `teams.krs` parsed on its own,
   // or opened directly as the project entry), where every id is declared
   // elsewhere. Kept from the pre-#2032 behaviour deliberately.
-  if (ownableIds.size === 0 || file.organizations.length === 0) return [];
+  if (ownableIds.size === 0) return [];
 
   const diagnostics: Diagnostic[] = [];
   const check = (teams: TeamNode[]): void => {

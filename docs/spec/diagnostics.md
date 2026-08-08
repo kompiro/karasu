@@ -101,7 +101,7 @@ error) — see syntax spec §S6.
 
 | Code | Severity | Fires when |
 | --- | --- | --- |
-| `owns-target-not-found` | warning | A team `owns` an id absent from the merged model. The valid-target set is the one `owns` accepts (`service` / `domain` / `client` / infra) and is derived from the merged tree, so existence is decided after the cross-file merge and does not depend on the import form. |
+| `owns-target-not-found` | warning | A team `owns` an id absent from the merged model. The valid-target set is the one `owns` accepts (`service` / `domain` / `client` / infra, at any depth) and is derived from the merged tree, so the verdict does not depend on the import form. Import-coupled: a document that still has imports to resolve does not decide it at all (the LSP's single-document context stays silent; the App / CLI decide it on the merged model). |
 | `invalid-owns` | warning | An `owns` target resolves to a kind that cannot be owned. |
 | `contains-target-not-found` | warning | A `boundary` `contains` a node that does not exist — for a top-level block, anywhere in the merged system hierarchy (existence is checked after cross-file merge, not per file); for a scoped block, among the declaring node's direct children. |
 | `facet-not-declared` | warning | A `facets` reference names no declared `facet` block (existence is checked on the merged model, so a declaration in an imported file counts). Unlike the near-miss annotation hint, the declared set makes this check complete: a typo between two author-defined names is caught too. |
