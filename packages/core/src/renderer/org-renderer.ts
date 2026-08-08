@@ -16,6 +16,8 @@ import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import {
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
+  ICON_LABEL_CJK_WIDTH,
+  ICON_DESC_CJK_WIDTH,
   ICON_DESC_MAX_WIDTH,
 } from "./rendering-constants.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
@@ -169,7 +171,12 @@ function renderOrgIconCardCommon(
     rectStrokeWidth: style.borderWidth,
     rectRx: 8,
     pictogram: renderPictogramGroup(opts.iconName, style.color) || undefined,
-    titleText: truncateToWidth(node.label ?? node.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
+    titleText: truncateToWidth(
+      node.label ?? node.id,
+      ICON_LABEL_MAX_WIDTH,
+      ICON_LABEL_CHAR_WIDTH,
+      ICON_LABEL_CJK_WIDTH,
+    ),
     titleX: 30,
     titleY: 19,
     titleAttrs: {
@@ -180,7 +187,12 @@ function renderOrgIconCardCommon(
       "text-anchor": "start",
     },
     descText: opts.descText
-      ? truncateToWidth(opts.descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)
+      ? truncateToWidth(
+          opts.descText,
+          ICON_DESC_MAX_WIDTH,
+          ICON_DESC_CHAR_WIDTH,
+          ICON_DESC_CJK_WIDTH,
+        )
       : undefined,
     descX: 8,
     descY: ICON_TITLE_HEIGHT + 22,
@@ -431,7 +443,12 @@ function renderMemberIconCard(
   const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
   const descText =
     details ||
-    truncateToWidth(member.properties.description ?? "", ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH);
+    truncateToWidth(
+      member.properties.description ?? "",
+      ICON_DESC_MAX_WIDTH,
+      ICON_DESC_CHAR_WIDTH,
+      ICON_DESC_CJK_WIDTH,
+    );
 
   const memberDiff = options?.nodeDiffState?.get(member.id);
   return renderOrgIconCardCommon(member, x, y, style, {
