@@ -54,7 +54,7 @@ karasu での実例（[#2172](https://github.com/kompiro/karasu/issues/2172)）:
 - **二重表現**: 構造（`delivers` / `realizes` / 物理層 `store`）で既に言えている事実にタグを足し、両者が食い違うモデルが書けてしまう。どちらが正しいかを decide する規則がどこにも無い。
 - **語彙の単調増加**: 個別要望を個別の妥当性で通し続け、`[graph]` `[timeseries]` `[replica]` … と連鎖する。[ADR-1718](../adr/1718-vector-store-vs-database.md) が新 kind に対して警戒した境界クリープが、タグ側で再現する。
 - **inert な追加**: 名前だけ builtin 集合に入れて既定描画の効果を付けず、[TPL-1503](TPL-1503-accepted-vocabulary-must-have-effect.md) の「受理・無効果」状態を作る。警告も効果も無いので、ユーザーは書いたことが効いているか判別できない。
-- **`appliesTo` の部分的な inert**: 複数 kind を `appliesTo` に挙げながら、既定スタイルのセレクタを一部の kind にしか書かない。宣言上は受理されるのにその kind では何も起きず、上記の inert 状態が **kind の次元**で生まれる。**`appliesTo` 外の使用は [#2225](https://github.com/kompiro/karasu/issues/2225) の `tag-not-applicable` が検出するようになった**（それ以前は `appliesTo` をどの consumer も強制しておらず、[#2172](https://github.com/kompiro/karasu/issues/2172) で `service Api [index]` が exit 0・警告ゼロで通ることを実測していた）。ただし診断が縛るのは**適用範囲の外側**だけで、`appliesTo` に挙げた kind の**内側**で既定スタイルが効くかは依然として縛られていない — 宣言と効果の一致を担保するのはこのテストである。
+- **`appliesTo` の部分的な inert**: 複数 kind を `appliesTo` に挙げながら、既定スタイルのセレクタを一部の kind にしか書かない。宣言上は受理されるのにその kind では何も起きず、上記の inert 状態が **kind の次元**で生まれる。**`appliesTo` 外の使用は [#2225](https://github.com/kompiro/karasu/issues/2225) の `tag-not-applicable` が検出するようになった**（それ以前は `appliesTo` をどの consumer も強制しておらず、[#2172](https://github.com/kompiro/karasu/issues/2172) で `service Api [index]` が exit 0・警告ゼロで通ることを実測していた）。ただし診断が縛るのは**適用範囲の外側**だけで、内側は診断では縛れない。内側は `default-style.test.ts` の「every appliesTo kind carries the tag's effect」が light / dark 両シートで機械的に見る（効果を持たないと宣言したタグだけが明示の allowlist に載る）。
 - **却下の消失**: 却下理由が Issue のコメントにしか残らず、半年後に同じ候補が「新しい提案」として再登場する。
 - **`appliesTo` の後付け縮小**: 最初に広く受理してから狭めようとする。拡大は後方互換だが**縮小は破壊的**で、v2.0 まで直せない。
 
@@ -71,4 +71,6 @@ builtin の tag / annotation を追加する PR で:
 ## 派生元 spec
 
 - `docs/spec/tags-annotations.md` §*Non-builtin tag names are deprecated (v1.x)* / §*Non-builtin annotation names are deprecated (v1.x)* — builtin 追加要望という移行先経路を規定している節。本 TPL はその経路を裁く側の観点。
+- [`docs/spec/tags-annotations.md` §*Store role tags — one axis, four states*](../spec/tags-annotations.md#store-role-tags--one-axis-four-states) — 3 問目（停止規則）が実際に置かれた場所。「役割タグは同一 kind 内で正本かどうかの違いだけを表す」という規定と、そこから落ちる `[kv]` / `[graph]` / `[timeseries]` / `[replica]` の却下。
+- [`docs/spec/tags-annotations.md` §*`@planned` — designed, not yet built*](../spec/tags-annotations.md#planned--designed-not-yet-built) — annotation 側で 3 問を通した実例（lifecycle register / 「まだ無い」を言う既存表現の不在 / 状態の数え上げに広げない）。
 - [ADR-1718](../adr/1718-vector-store-vs-database.md) — 「役割は修飾で、技術は物理層で」という判断基準の出典。

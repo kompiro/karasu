@@ -22,7 +22,7 @@ karasu lets you draw this transition as-is, with its **warn, don't error** polic
 
 ## 1. Lifecycle annotations
 
-Attach `@<annotation>` to a node to declare its lifecycle state. Four are provided.
+Attach `@<annotation>` to a node to declare its lifecycle state. Five of them describe a migration.
 
 | Annotation | Meaning | Typical use |
 |------------|---------|-------------|
@@ -30,6 +30,9 @@ Attach `@<annotation>` to a node to declare its lifecycle state. Four are provid
 | `@new` | Recently introduced | the new replacement service |
 | `@experimental` | Under development, unstable API | a trial service behind a feature flag |
 | `@migration_target` | The node receiving a migration | the new service taking over responsibilities |
+| `@planned` | Placed by design, does not exist yet | the service the review agreed on, before any code |
+
+`@planned` is the one that says the element is **not there yet** — the other four all presuppose that it exists. Drawing the target state and marking what is still a plan is normally how a design decision gets recorded. (A sixth annotation, `@draft`, is about confidence rather than migration: it marks a statement nobody has confirmed. See the [tags and annotations reference](../spec/tags-annotations.md#draft--asserted-not-confirmed).)
 
 <!-- render: system id=03-lifecycle -->
 ```krs

@@ -41,7 +41,7 @@ system Web {
     label "API Gateway"
   }
 
-  database SessionStore {          // leaf-less: no `table` inside
+  database SessionStore [cache] { // leaf-less: no `table` inside
     label "Session store"
   }
 
@@ -72,8 +72,13 @@ deploy "production" {
 - **No new vocabulary.** Annotations (`@…`) are *lifecycle* markers (deprecated,
   experimental), not kinds — `@kv` is rejected on purpose. A leaf-less `database`
   already expresses "a store with no interesting sub-structure".
+- **`[cache]` says it is not the system of record.** Losing the session store logs
+  everyone out; it does not lose business data, which is exactly the test the tag
+  encodes. Tag the *role*, never the technology — `[kv]` is rejected for the same
+  reason `@kv` is (see
+  [store role tags](../spec/tags-annotations.md#store-role-tags--one-axis-four-states)).
 
-## 2. Derived search index — the `[index]` tag
+## 2. A store that is not the system of record — `[index]` / `[cache]` / `[analytics]`
 
 **When** — you have a search / vector index (ElasticSearch, OpenSearch, pgvector)
 that is **derived** from a system of record, not the source of truth itself.
@@ -100,6 +105,13 @@ is both SoR and index also stays plain. This is the same "role via tag, technolo
 the physical layer" discipline as idiom #1 — it avoids minting a `vector-store` /
 `search` kind for every engine. See
 [ADR-1718](https://github.com/kompiro/karasu/blob/main/docs/adr/1718-vector-store-vs-database.md).
+
+`[index]` has two siblings on the same axis, both usable on `storage` as well as
+`database`: **`[cache]`** for a store you could rebuild (a session store, a CDN
+origin cache — if losing it loses business data, it is the system of record and
+takes no tag) and **`[analytics]`** for a warehouse / data lake ingested for
+analysis. No tag means the store *is* the system of record. See
+[store role tags](../spec/tags-annotations.md#store-role-tags--one-axis-four-states).
 
 ## 3. Something outside the boundary — the `[external]` tag
 
@@ -234,7 +246,7 @@ system Hato {
   storage EXPORTS { }              // R2
   queue TASKS { }                  // Queues
   database SEARCH [index] { }      // Vectorize — a derived vector index (idiom #2)
-  database CACHE { }               // KV
+  database CACHE [cache] { }       // KV — a store you can rebuild (idiom #2)
   service AI [external] { }        // Workers AI — an external model service (idiom #3)
   service SessionActor [external] { }  // Durable Object — opaque stateful actor
 
@@ -253,10 +265,9 @@ deploy "hato" {
 **Why** — the binding→karasu mapping reuses existing idioms rather than minting
 new syntax: **Vectorize → `database [index]`** (idiom #2, a derived index), **Workers
 AI and Durable Objects → `service [external]`** (idiom #3, opaque to this adapter),
-and a **service binding → a `->` communication edge**. KV maps to a plain `database`
-(a dedicated `[cache]` role is a
-[notation-watch item](https://github.com/kompiro/karasu/issues/1816), not yet
-notation). Unknown binding kinds are skipped with a warning — never guessed. Run
+and a **service binding → a `->` communication edge**, and **KV → `database [cache]`**
+(idiom #2's sibling role — a store the Worker can rebuild).
+Unknown binding kinds are skipped with a warning — never guessed. Run
 `karasu translate --from wrangler wrangler.toml > index.krs`.
 
 ## 8. Cross-cutting concerns (PCI, PII, auth) — pick the right register
@@ -300,8 +311,8 @@ tags: a database is a database whether or not it is in PCI scope, and a
 nine-out-of-ten `[pci]` diagram reads as a false audit guarantee. The rule
 *content* (roles, plans, conditions) stays prose + `link` permanently
 ([ADR-832](../adr/832-no-runtime-authz-modeling.md)); only the *scope* becomes
-first-class when `facet` lands. If what you actually need is a missing archetype
-(`[cache]`, `[bff]`), request a builtin tag addition instead — see
+first-class when `facet` lands. If what you actually need is a missing archetype,
+request a builtin tag addition instead — see
 [`tags-annotations.md`](../spec/tags-annotations.md).
 
 ## See also
