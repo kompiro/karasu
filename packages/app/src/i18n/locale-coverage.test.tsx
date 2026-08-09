@@ -27,6 +27,7 @@ describe("i18n locale coverage — empty-state pipeline", () => {
     expect(ja["badge.new"]).toBeDefined();
     expect(ja["badge.experimental"]).toBeDefined();
     expect(ja["badge.draft"]).toBeDefined();
+    expect(ja["badge.planned"]).toBeDefined();
     expect(ja["badge.migrationTarget"]).toBeDefined();
   });
 });
@@ -71,6 +72,7 @@ describe("i18n locale coverage — badge.* matches core reference-data defaults"
     "  service Fresh @new {}",
     "  service Lab @experimental {}",
     "  service Guessed @draft {}",
+    "  service Future @planned {}",
     "  service Next @migration_target {}",
     "}",
     "",
@@ -84,6 +86,7 @@ describe("i18n locale coverage — badge.* matches core reference-data defaults"
     ["new", "badge.new"],
     ["experimental", "badge.experimental"],
     ["draft", "badge.draft"],
+    ["planned", "badge.planned"],
     ["migration_target", "badge.migrationTarget"],
   ] as const;
 

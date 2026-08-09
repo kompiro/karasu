@@ -591,7 +591,7 @@ service = "auth-worker"
     expect(out).toContain("realizes DB");
   });
 
-  it("AT-1943-02: maps Vectorize to database [index] and KV to plain database", async () => {
+  it("AT-1943-02: maps Vectorize to database [index] and KV to database [cache]", async () => {
     const inputPath = join(tmpDir, "wrangler.toml");
     writeFileSync(inputPath, FULL);
 
@@ -602,8 +602,7 @@ service = "auth-worker"
     const out = capture.stdout();
     expect(out).toContain("database SEARCH [index] {");
     expect(out).toContain('type "Cloudflare Vectorize"');
-    expect(out).toContain("database CACHE {");
-    expect(out).not.toContain("[cache]");
+    expect(out).toContain("database CACHE [cache] {");
   });
 
   it("AT-1943-03: maps Workers AI, Durable Objects, and service bindings to external service edges", async () => {

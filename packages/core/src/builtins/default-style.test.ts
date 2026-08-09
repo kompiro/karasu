@@ -306,3 +306,72 @@ describe("getBuiltinStyleSheet — annotation badge labels (#1508)", () => {
     }
   });
 });
+
+// TPL-2172 (the `appliesTo` half-inert failure mode): a builtin tag that lists
+// several kinds in `appliesTo` must carry its default-rendering effect on
+// *every* one of them. Listing a kind and then writing the selector for only
+// some produces exactly the state TPL-1503 forbids — the tag is accepted (no
+// `tag-not-applicable`, since the kind is in range) and does nothing, which
+// the author cannot tell apart from a typo. `tag-not-applicable` (#2225)
+// fences the outside of `appliesTo`; this fences the inside.
+describe("getBuiltinStyleSheet — every appliesTo kind carries the tag's effect (#2172)", () => {
+  // Tags whose `defaultEffect` is documented as no default-sheet effect: the
+  // two `user` actor tags, the seven `client` form-factor tags (read by Icon
+  // Mode directly, not through the sheet), and `[sync]`, which *is* the
+  // default edge rendering. Adding a name here is a deliberate statement that
+  // the tag has no sheet effect on any kind.
+  const NO_SHEET_EFFECT = new Set([
+    "human",
+    "ai",
+    "sync",
+    "mobile",
+    "web",
+    "desktop",
+    "cli",
+    "device",
+    "extension",
+    "embed",
+  ]);
+
+  it.each(["dark", "light"] as const)("%s theme", (theme) => {
+    const sheet = getBuiltinStyleSheet(theme);
+    const missing: string[] = [];
+    for (const tag of REFERENCE_DATA.tags) {
+      if (NO_SHEET_EFFECT.has(tag.name)) continue;
+      for (const kind of tag.appliesTo) {
+        // A kind-less selector (`[external] { … }`) covers every kind.
+        const covered = sheet.rules.some(
+          (r) =>
+            r.selector.tags.includes(tag.name) &&
+            (!r.selector.nodeType || r.selector.nodeType === kind),
+        );
+        if (!covered) missing.push(`${kind}[${tag.name}]`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+});
+
+// The store-role axis (#2172): no tag = system of record, and each role tag
+// names a way of not being one. The badges must be distinguishable from each
+// other, so a reader can tell an index from a cache at a glance.
+describe("getBuiltinStyleSheet — store role badges (#2172)", () => {
+  it.each(["dark", "light"] as const)("%s theme gives each role a distinct badge", (theme) => {
+    const sheet = getBuiltinStyleSheet(theme);
+    const badgeOf = (nodeType: string, tag: string) =>
+      sheet.rules.find((r) => r.selector.nodeType === nodeType && r.selector.tags.includes(tag))
+        ?.properties;
+
+    // Style string values keep their quotes through the parser.
+    expect(badgeOf("database", "index")?.["badge-label"]).toBe('"index"');
+    for (const kind of ["database", "storage"]) {
+      expect(badgeOf(kind, "cache")?.["badge-label"]).toBe('"cache"');
+      expect(badgeOf(kind, "analytics")?.["badge-label"]).toBe('"analytics"');
+    }
+
+    const colors = ["index", "cache", "analytics"].map(
+      (tag) => badgeOf("database", tag)?.["badge-color"],
+    );
+    expect(new Set(colors).size).toBe(3);
+  });
+});

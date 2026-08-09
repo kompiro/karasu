@@ -324,6 +324,30 @@ export const REFERENCE_DATA = {
       },
     },
     {
+      name: "cache",
+      appliesTo: ["database", "storage"],
+      description: {
+        en: "Not the system of record — a store whose loss is recoverable by rebuilding it (recompute, refetch, re-login); a TTL is typical",
+        ja: "正本ではなく、失っても再構築（再計算・再取得・再ログイン）で回復できるストア。TTL を持つのが典型",
+      },
+      defaultEffect: {
+        en: "Adds a `cache` badge to the database / storage node",
+        ja: "database / storage ノードに `cache` バッジを付与",
+      },
+    },
+    {
+      name: "analytics",
+      appliesTo: ["database", "storage"],
+      description: {
+        en: "A derived store ingested from the system of record for analysis and aggregation (DWH / data lake)",
+        ja: "分析・集計のために正本から取り込んだ派生ストア（DWH / データレイク）",
+      },
+      defaultEffect: {
+        en: "Adds an `analytics` badge to the database / storage node",
+        ja: "database / storage ノードに `analytics` バッジを付与",
+      },
+    },
+    {
       name: "async",
       appliesTo: ["edge"],
       description: { en: "Asynchronous communication (for edges)", ja: "非同期通信（エッジ用）" },
@@ -518,6 +542,15 @@ export const REFERENCE_DATA = {
         icon: "→",
         label: { en: "Migration target", ja: "移行先" },
       },
+    },
+    {
+      name: "planned",
+      description: {
+        en: "Placed by design, but does not exist yet",
+        ja: "設計上そこに置くが、まだ実在しない",
+      },
+      defaultRendering: { en: "◇ badge", ja: "◇バッジ" },
+      defaultBadge: { color: "#94A3B8", icon: "◇", label: { en: "Planned", ja: "予定" } },
     },
     // Last on purpose. A node can carry several annotations but renders one
     // badge, and the built-in sheet's rules tie on specificity, so the later

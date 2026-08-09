@@ -635,18 +635,27 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
 type InfraInScope = Map<string, { kind: "database" | "queue" | "storage"; loc: KrsNode["loc"] }>;
 
 /**
+ * The store-role tags: each one declares that the store is *not* the system of
+ * record (`[index]` = derived for search, `[cache]` = recoverable by rebuilding,
+ * `[analytics]` = ingested for analysis). The shared-store smells are about a
+ * shared system of record, so a role-tagged store is out of scope for all of
+ * them — several services reading one search index, one asset/session cache or
+ * one warehouse is a normal shape, not Database-per-Service (Issues #1733,
+ * #2172).
+ */
+const NON_SOR_ROLE_TAGS = ["index", "cache", "analytics"];
+
+/**
  * Collect the infra blocks (`database` / `queue` / `storage`) reachable in a
- * scope, excluding `[external]` and `[index]` stores. Shared by the shared-store
+ * scope, excluding `[external]` stores and every store carrying a
+ * {@link NON_SOR_ROLE_TAGS} role tag. Shared by the shared-store
  * diagnostics (`detectSharedInfraFanIn`, `detectCrossDomainStoreAccess`) so the
  * exclusion rule and the kind narrowing live in exactly one place
  * (TPL-1720 — keep the resource→store target set synchronized across
  * every consumer).
  *
  * `[external]`: the smell is about owning a shared store, not depending on a
- * managed third-party one. `[index]`: a derived search / secondary index (a read
- * model built from the system of record) is a legitimate shared read surface,
- * not the Database-per-Service smell a shared system-of-record store would be
- * (Issue #1733).
+ * managed third-party one.
  */
 function collectInfraInScope(nodes: KrsNode[]): InfraInScope {
   const infra: InfraInScope = new Map();
@@ -654,7 +663,7 @@ function collectInfraInScope(nodes: KrsNode[]): InfraInScope {
     if (
       INFRA_KIND_SET.has(node.kind) &&
       !node.tags.includes("external") &&
-      !node.tags.includes("index")
+      !NON_SOR_ROLE_TAGS.some((tag) => node.tags.includes(tag))
     ) {
       infra.set(node.id, { kind: node.kind as "database" | "queue" | "storage", loc: node.loc });
     }
