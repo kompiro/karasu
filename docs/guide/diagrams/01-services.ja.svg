@@ -22,7 +22,7 @@
 <text x="486" y="414" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">注文確定を通知する</text></g>
 <g data-edge-from="PaymentService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="PaymentService--&gt;NotificationService" data-edge-label="決済結果を通知する" class="krs-edge krs-edge--interactive"><line x1="580" y1="498" x2="386.66666666666663" y2="618" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <path d="M 580 498 L 489.4 554.24 M 482.6 558.45 L 386.67 618" fill="none" stroke="#B45309" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
-<text x="483.3333333333333" y="552" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>
+<text x="478.49917376703365" y="572.6550454196439" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>
 <g class="crossing-marks"><path d="M 482.6 558.45 A 4 4 -31.83 0 1 489.4 554.24" fill="none" stroke="#B45309" stroke-width="1.5"/>
 <path d="M 479.33 558 A 4 4 0 0 1 487.33 558" fill="none" stroke="#B45309" stroke-width="1.5"/></g>
 <g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="360" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>

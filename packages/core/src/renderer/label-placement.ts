@@ -10,22 +10,31 @@
  *
  * The pass is a **bounded, deterministic** post-pass: it nudges only labels that
  * collide, perpendicular to the edge, choosing the first offset (out of a small
- * capped candidate set) that clears every node rect and every already-placed
- * label. A label that already sits clear at its default anchor is left untouched
- * — so non-colliding diagrams stay byte-identical (ADR-1184's compatibility
- * promise, now conditional on "no collision"). Author-positioned labels are not
- * eligible to move; author intent wins (ADR-1184 precedence). They still act as
- * obstacles so auto labels route around them.
+ * capped candidate set) that clears every node rect, every already-placed label
+ * and every *foreign* edge polyline. A label that already sits clear at its
+ * default anchor is left untouched — so non-colliding diagrams stay
+ * byte-identical (ADR-1184's compatibility promise, now conditional on "no
+ * collision"). Author-positioned labels are not eligible to move; author intent
+ * wins (ADR-1184 precedence). They still act as obstacles so auto labels route
+ * around them.
+ *
+ * Edge polylines joined the obstacle set in #2360: the original pass knew only
+ * about node cards and sibling labels, so it could lift a label off a card and
+ * drop it squarely onto another edge's line — and a label that never touched a
+ * card was never examined at all. An edge's *own* polyline is exempt: a label is
+ * supposed to sit on the line it names.
  *
  * Overlap is *measured*, not eyeballed: `countLabelPenetrations` /
- * `countLabelOverlaps` give the numeric guards the tests assert on
- * (TPL-1927, the label analogue of the edge-routing penetration guards).
+ * `countLabelOverlaps` / `countLabelLinePenetrations` give the numeric guards
+ * the tests assert on (TPL-1927, the label analogue of the edge-routing
+ * penetration guards).
  */
 import type { Point, Rect } from "./edge-geometry.js";
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import { estimateTextWidth } from "./rendering-constants.js";
 import { labelAnchorWithSegment, resolveLabelPosition } from "./edge-routing.js";
+import { segmentCrossesAnyRect } from "./edge-geometry.js";
 
 /**
  * One edge label offered to the placement pass. `anchor` is the label's default
@@ -45,6 +54,24 @@ export interface LabelInput {
   fontSize: number;
   /** Whether this label may move. `false` for author-positioned labels (obstacle only). */
   eligible: boolean;
+}
+
+/**
+ * One edge polyline offered to the placement pass as an obstacle (#2360). A
+ * label never treats the line of its *own* edge as an obstacle, so `index` is
+ * carried through to be matched against `LabelInput.index`.
+ */
+export interface EdgeLine {
+  /** Edge index — the same key space as `LabelInput.index` and `layoutResult.edges`. */
+  index: number;
+  /** from → waypoints → to, exactly the polyline `renderEdge` strokes. */
+  points: Point[];
+  /**
+   * Axis-aligned bounds of `points`. The candidate loop runs every label box
+   * against every foreign line, so a cheap bounds reject keeps the segment math
+   * off the (large) majority of pairs that cannot possibly touch.
+   */
+  bounds: Rect;
 }
 
 interface LabelPlacementOptions {
@@ -72,14 +99,19 @@ function edgeLabelWidth(label: string, fontSize: number): number {
 /**
  * Build the placement pass inputs from a laid-out view: one `LabelInput` per
  * labelled edge (default anchor + chord + estimated box, eligible unless the
- * author positioned it) plus the node-card obstacle rects. Shared by the
- * renderer and its tests so both measure the exact same geometry.
+ * author positioned it), the node-card obstacle rects, and one `EdgeLine` per
+ * drawn edge. Shared by the renderer and its tests so both measure the exact
+ * same geometry.
+ *
+ * `edgeLines` covers **every** non-ghost/cyclic edge, labelled or not: an
+ * unlabelled edge's stroke obscures label text just as thoroughly as a labelled
+ * one's (#2360).
  */
 export function buildLabelInputs(
   edges: LayoutEdge[],
   nodes: Map<string, LayoutNode>,
   styleFor: (edge: LayoutEdge, index: number) => ResolvedEdgeStyle,
-): { inputs: LabelInput[]; nodeRects: Rect[] } {
+): { inputs: LabelInput[]; nodeRects: Rect[]; edgeLines: EdgeLine[] } {
   const nodeRects: Rect[] = [...nodes.values()].map((n) => ({
     x: n.x,
     y: n.y,
@@ -87,16 +119,19 @@ export function buildLabelInputs(
     height: n.height,
   }));
   const inputs: LabelInput[] = [];
+  const edgeLines: EdgeLine[] = [];
   edges.forEach((edge, index) => {
-    if (!edge.label) return;
     // Ghost/cyclic edges are peripheral (dimmed / back-arc styled) and sit
     // outside the "real" geometry every other renderer pass reasons about —
     // crossing-marks, port fan-out, channel/group routing and bundle nudging
     // all skip them (ADR-968). Excluding them here keeps a barely-visible ghost
-    // label from being moved or from pushing a real label off its default spot.
+    // label from being moved or from pushing a real label off its default spot,
+    // and keeps a dimmed ghost line from displacing a real label.
     if (edge.ghost || edge.cyclic) return;
-    const style = styleFor(edge, index);
     const points: Point[] = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+    edgeLines.push(edgeLine(index, points));
+    if (!edge.label) return;
+    const style = styleFor(edge, index);
     const { anchor, segDir } = labelAnchorWithSegment(
       points,
       resolveLabelPosition(edge, style),
@@ -117,7 +152,31 @@ export function buildLabelInputs(
       eligible: style.labelPosition === 0.5 && style.labelOffsetX === 0 && style.labelOffsetY === 0,
     });
   });
-  return { inputs, nodeRects };
+  return { inputs, nodeRects, edgeLines };
+}
+
+/**
+ * Package a polyline as a placement obstacle, precomputing its bounds. The one
+ * construction site for `EdgeLine`, so the renderer and the tests cannot end up
+ * measuring against differently-built bounds.
+ */
+export function edgeLine(index: number, points: Point[]): EdgeLine {
+  return { index, points, bounds: polylineBounds(points) };
+}
+
+/** Axis-aligned bounds of a polyline. Degenerate (zero width or height) for an axis-parallel run. */
+function polylineBounds(points: Point[]): Rect {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
 /**
@@ -158,6 +217,49 @@ export function countLabelPenetrations(boxes: Rect[], obstacles: Rect[]): number
   return n;
 }
 
+/**
+ * Inclusive AABB intersection, used only as a cheap reject before the exact
+ * segment test. Inclusive (not strict-interior like `rectsOverlap`) because an
+ * axis-parallel polyline's bounds are degenerate — a horizontal line has zero
+ * height, and a strict test would reject every one of them.
+ */
+function boundsIntersect(a: Rect, b: Rect): boolean {
+  return (
+    a.x <= b.x + b.width && a.x + a.width >= b.x && a.y <= b.y + b.height && a.y + a.height >= b.y
+  );
+}
+
+/**
+ * True if any segment of `line` crosses the interior of `box` — a label drawn
+ * there would have the stroke running through its text. Uses the same
+ * strict-interior `segmentCrossesRect` the routers decide routes with, so the
+ * pass and the tests that assert zero can never disagree (TPL-1927).
+ */
+function boxCrossedByLine(box: Rect, line: EdgeLine): boolean {
+  if (!boundsIntersect(box, line.bounds)) return false;
+  for (let i = 0; i < line.points.length - 1; i++) {
+    if (segmentCrossesAnyRect(line.points[i], line.points[i + 1], [box])) return true;
+  }
+  return false;
+}
+
+/**
+ * Count of labels whose box is crossed by at least one **foreign** edge
+ * polyline (label↔line penetrations, #2360). A label sitting on its own edge's
+ * line is not counted — that is where it belongs. Counted per label, matching
+ * how `countLabelPenetrations` counts.
+ */
+export function countLabelLinePenetrations(
+  boxes: { index: number; box: Rect }[],
+  lines: EdgeLine[],
+): number {
+  let n = 0;
+  for (const { index, box } of boxes) {
+    if (lines.some((line) => line.index !== index && boxCrossedByLine(box, line))) n++;
+  }
+  return n;
+}
+
 /** Count of unordered label-pair overlaps (label↔label collisions). */
 export function countLabelOverlaps(boxes: Rect[]): number {
   let n = 0;
@@ -186,6 +288,7 @@ function perpendicular(dir: Point): Point {
 export function resolveLabelPlacements(
   labels: LabelInput[],
   nodeRects: Rect[],
+  edgeLines: EdgeLine[] = [],
   options: LabelPlacementOptions = {},
 ): Map<number, Point> {
   const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
@@ -215,6 +318,9 @@ export function resolveLabelPlacements(
     const perp = perpendicular(label.dir);
     const tang = normalize(label.dir);
     const candidates = candidateOffsets(maxSteps);
+    // Every drawn line except this label's own: a label is meant to sit on the
+    // line it names, so its own polyline must not push it away (#2360).
+    const foreignLines = edgeLines.filter((line) => line.index !== label.index);
 
     let bestAnchor = label.anchor;
     let bestBox = labelBox(label.anchor, label.width, label.fontSize);
@@ -231,6 +337,9 @@ export function resolveLabelPlacements(
       let cost = 0;
       for (const o of nodeRects) if (rectsOverlap(box, o)) cost++;
       for (const p of placed) if (rectsOverlap(box, p)) cost++;
+      // A stroke through the text is as unreadable as a card behind it, so a
+      // crossed foreign line weighs the same as a node penetration (#2360).
+      for (const line of foreignLines) if (boxCrossedByLine(box, line)) cost++;
       if (cost === 0) {
         // Candidates are ordered by increasing displacement, so the first clear
         // one is the smallest move (and (0,0) is first → a clear default stays put).
