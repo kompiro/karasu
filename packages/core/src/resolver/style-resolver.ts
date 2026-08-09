@@ -664,7 +664,7 @@ function stripQuotes(s: string): string {
  *   nodeStyleKey("Contract", ["deprecated"])         → "Contract@deprecated"
  *   nodeStyleKey("Contract", ["migration_target"])   → "Contract@migration_target"
  */
-export function nodeStyleKey(id: string, annotations: string[] | undefined): string {
+export function nodeStyleKey(id: string, annotations: readonly string[] | undefined): string {
   if (!annotations || annotations.length === 0) return id;
   return `${id}@${[...annotations].sort().join(",")}`;
 }

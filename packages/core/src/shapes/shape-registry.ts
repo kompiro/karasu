@@ -23,6 +23,22 @@ export interface ShapeContext {
 export type ShapeRenderFn = (ctx: ShapeContext) => string;
 
 /**
+ * Per-side distance from the bounding box to the shape's usable interior
+ * (#2366 proposal F). Text layout clamps its clearance to
+ * `max(NODE_PADDING, inset)` per side and centres the stack on the inset
+ * box, so a cylinder's top ellipse or a hexagon's side notches never touch
+ * the text. Values may depend on the node's final width/height.
+ */
+export interface ShapeInsets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export type ShapeContentInsetFn = (width: number, height: number) => ShapeInsets;
+
+/**
  * Text slot position extracted from an SVG icon's krs-label / krs-description elements.
  * Coordinates are in the icon's viewBox coordinate space.
  */
@@ -65,9 +81,21 @@ export interface SvgIconDef {
 
 const shapeRegistry = new Map<string, ShapeRenderFn>();
 const iconDefRegistry = new Map<string, SvgIconDef>();
+const contentInsetRegistry = new Map<string, ShapeContentInsetFn>();
 
-export function registerShape(name: string, render: ShapeRenderFn): void {
+export function registerShape(
+  name: string,
+  render: ShapeRenderFn,
+  contentInset?: ShapeContentInsetFn,
+): void {
   shapeRegistry.set(name, render);
+  if (contentInset) contentInsetRegistry.set(name, contentInset);
+  else contentInsetRegistry.delete(name);
+}
+
+/** Content-inset function for a registered shape, if it declares one. */
+export function getShapeContentInset(name: string): ShapeContentInsetFn | undefined {
+  return contentInsetRegistry.get(name);
 }
 
 export function getShape(name: string): ShapeRenderFn | undefined {
@@ -143,4 +171,5 @@ export function registerIcon(def: SvgIconDef): void {
 export function clearRegistry(): void {
   shapeRegistry.clear();
   iconDefRegistry.clear();
+  contentInsetRegistry.clear();
 }

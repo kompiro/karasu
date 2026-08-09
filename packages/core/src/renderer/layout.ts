@@ -8,6 +8,7 @@ import {
 } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import { wrapToWidth } from "./svg-builder.js";
+import { getShapeContentInset } from "../shapes/shape-registry.js";
 import { foldFacetMembership } from "./facet-overlay.js";
 import {
   assignGroupedLayers,
@@ -1128,6 +1129,15 @@ function placeExternalServicesOnSides(
 interface LayoutOptions {
   ownerIndex?: Map<string, string>;
   /**
+   * Resolved shape name for a node (from the style cascade). measureNode
+   * uses it to grow cards whose shape insets exceed the base padding
+   * (#2366 proposal F — practically the hexagon's 20% notches and wide
+   * clouds). Callers without resolved styles (drawio export, bare-layout
+   * tests) omit it; measurement then assumes padding-only clearance,
+   * matching the pre-F behavior.
+   */
+  shapeForNode?: (id: string, annotations: readonly string[]) => string | undefined;
+  /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from
    * `groupLabels`, which only exists when grouping by team). Omitted → the chip
@@ -1482,7 +1492,35 @@ function makeOwnerResolver(
   };
 }
 
+/**
+ * Shape lookup for the currently running layout() call. Module state instead
+ * of a parameter because measureNode is reached through five call chains that
+ * would each need the hook threaded through; layout() is synchronous and
+ * never re-enters itself, so a set/reset around the body is safe.
+ */
+let currentShapeForNode: LayoutOptions["shapeForNode"];
+/**
+ * Effective-annotation resolver of the running layout, set by layoutInner
+ * once inheritance is built. measureNode's shape lookup must use the same
+ * annotation set renderFromLayout resolves styles with, or a node whose
+ * shape comes from an annotation selector measures as a box and renders as
+ * a hexagon (found in the #2412 review's migration-coexistence trace).
+ */
+let currentEffectiveAnnotations: ((n: KrsNode) => string[]) | undefined;
+
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
+  currentShapeForNode = options.shapeForNode;
+  try {
+    const result = layoutInner(viewSlice, options);
+    result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
+    return result;
+  } finally {
+    currentShapeForNode = undefined;
+    currentEffectiveAnnotations = undefined;
+  }
+}
+
+function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult {
   const {
     ownerIndex,
     teamLabels,
@@ -1525,6 +1563,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   );
   const effectiveAnnotations = (n: KrsNode): string[] =>
     n.annotations.length > 0 ? n.annotations : (inheritedAnnotations.get(n.id) ?? n.annotations);
+  currentEffectiveAnnotations = effectiveAnnotations;
 
   // Multi-system root view: lay out all systems side by side. The same path
   // also handles the single-system case when that system is the synthesized
@@ -3129,7 +3168,7 @@ function measureNode(
   const hasCapabilityBadge = capabilities.length > 0;
   const capabilityBadgeWidth = hasCapabilityBadge ? metaChipWidth(`×${capabilities.length}`) : 0;
 
-  const width =
+  let width =
     Math.max(
       labelWidth,
       descWidth,
@@ -3157,6 +3196,35 @@ function measureNode(
   if (hasResourceBadge) height += LINE_HEIGHT;
   if (hasCapabilityBadge) height += LINE_HEIGHT;
   if (hasMetaRow) height += LINE_HEIGHT;
+
+  // Shape-inset surplus (#2366 proposal F): grow the card where the shape's
+  // own insets exceed the base padding, so the renderer's inset-aware content
+  // box keeps the usable width the content was measured for. Fixed-point
+  // because proportional insets depend on the final size; run to sub-pixel
+  // convergence — a coarse cutoff left the drawn wrap width ~2px under the
+  // measured one, enough to flip a description's line count (#2412 review).
+  // Without a shapeForNode hook the card keeps padding-only clearance
+  // (pre-F behavior), and renderFromLayout is told not to apply insets.
+  const annotations = currentEffectiveAnnotations?.(node) ?? node.annotations;
+  const shapeName = currentShapeForNode?.(node.id, annotations);
+  const insetFn = shapeName ? getShapeContentInset(shapeName) : undefined;
+  if (insetFn) {
+    const contentW = width - NODE_PADDING_X * 2;
+    const contentH = height - NODE_PADDING_Y * 2;
+    for (let i = 0; i < 25; i++) {
+      const ins = insetFn(width, height);
+      const wantW =
+        contentW + Math.max(NODE_PADDING_X, ins.left) + Math.max(NODE_PADDING_X, ins.right);
+      // Insets are content-safe boundaries (breathing room baked in by the
+      // shape), so both axes clamp per side to max(padding, inset) and the
+      // renderer centres the stack on the same clearance box.
+      const wantH =
+        contentH + Math.max(NODE_PADDING_Y, ins.top) + Math.max(NODE_PADDING_Y, ins.bottom);
+      if (wantW <= width + 0.25 && wantH <= height + 0.25) break;
+      width = Math.max(width, wantW);
+      height = Math.max(height, wantH);
+    }
+  }
 
   return { width, height };
 }
