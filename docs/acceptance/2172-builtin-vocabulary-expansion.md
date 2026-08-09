@@ -99,7 +99,7 @@ system Payments {
     label "Ledger"
     domain Posting {
       usecase Post {
-        resource Orders.rows { operations write }
+        resource Orders.rows { operations create }
       }
     }
   }

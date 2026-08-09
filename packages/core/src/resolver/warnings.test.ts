@@ -405,6 +405,21 @@ system Shop {
     expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
   });
 
+  it("ignores a role tag on a kind it does not apply to — inert there means inert", () => {
+    // `queue Events [cache]` already reports `tag-not-applicable`: the tag does
+    // nothing on a queue. If it also suppressed this smell it would be doing
+    // something after all, invisibly and only where we said it was inert.
+    const krs = `
+system Shop {
+  service A { domain Da { usecase Ua { resource Events.e { operations read } } } }
+  service B { domain Db { usecase Ub { resource Events.e { operations read } } } }
+  queue Events [cache] { queue-item e }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(1);
+  });
+
   it("still fires on an untagged store — the exclusion is the role tag, not the sharing", () => {
     const krs = `
 system Shop {

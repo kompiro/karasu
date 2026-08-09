@@ -646,6 +646,22 @@ type InfraInScope = Map<string, { kind: "database" | "queue" | "storage"; loc: K
 const NON_SOR_ROLE_TAGS = ["index", "cache", "analytics"];
 
 /**
+ * True when the node carries a role tag *on a kind that tag applies to*. The
+ * `appliesTo` check matters: `[cache]` on a `queue` already reports
+ * `tag-not-applicable` ("this tag does nothing here"), and if the tag also
+ * suppressed the shared-store smells it would do something after all —
+ * silently, and only on the kinds where we told the author it was inert.
+ */
+function hasNonSorRole(node: KrsNode): boolean {
+  return REFERENCE_DATA.tags.some(
+    (tag) =>
+      NON_SOR_ROLE_TAGS.includes(tag.name) &&
+      tag.appliesTo.includes(node.kind) &&
+      node.tags.includes(tag.name),
+  );
+}
+
+/**
  * Collect the infra blocks (`database` / `queue` / `storage`) reachable in a
  * scope, excluding `[external]` stores and every store carrying a
  * {@link NON_SOR_ROLE_TAGS} role tag. Shared by the shared-store
@@ -660,11 +676,7 @@ const NON_SOR_ROLE_TAGS = ["index", "cache", "analytics"];
 function collectInfraInScope(nodes: KrsNode[]): InfraInScope {
   const infra: InfraInScope = new Map();
   function walk(node: KrsNode): void {
-    if (
-      INFRA_KIND_SET.has(node.kind) &&
-      !node.tags.includes("external") &&
-      !NON_SOR_ROLE_TAGS.some((tag) => node.tags.includes(tag))
-    ) {
+    if (INFRA_KIND_SET.has(node.kind) && !node.tags.includes("external") && !hasNonSorRole(node)) {
       infra.set(node.id, { kind: node.kind as "database" | "queue" | "storage", loc: node.loc });
     }
     for (const child of node.children) walk(child);
@@ -692,8 +704,8 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
   // Each system is an organizational boundary; cross-system sharing of a store
   // is intentional and not surfaced. Top-level services form their own scope.
   function detectInScope(nodes: KrsNode[]): void {
-    // Infra ids in this scope, `[external]` / `[index]` excluded (see
-    // collectInfraInScope for the rationale).
+    // Infra ids in this scope, `[external]` and role-tagged stores excluded
+    // (see collectInfraInScope for the rationale).
     const infraInScope = collectInfraInScope(nodes);
     const infraToServices = new Map<string, Set<string>>();
 
@@ -769,8 +781,8 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
  * Ownership is a **set** of domains: `owners(leaf) = { D : entity∈D maps leaf }`.
  * The warning fires when `accessingDomain ∉ owners(leaf)` — a single-owner
  * reach-in and a third domain touching a co-owned leaf both fire, while a
- * co-owned leaf's own owners are exempt. `[external]` / `[index]` stores are
- * excluded (symmetric with `shared-infra-fan-in`). Detection runs on the merged
+ * co-owned leaf's own owners are exempt. `[external]` and role-tagged stores
+ * are excluded (symmetric with `shared-infra-fan-in`). Detection runs on the merged
  * `KrsFile` (view-independent) and is scoped per system.
  *
  * Both ownership and access key on the domain **id**, consistent with how the
@@ -797,8 +809,8 @@ function detectCrossDomainStoreAccess(file: KrsFile): Warning[] {
   function detectInScope(nodes: KrsNode[]): void {
     const resolver = buildEntityResolver(nodes);
 
-    // Infra blocks in scope, `[external]` / `[index]` excluded (shared with
-    // fan-in via collectInfraInScope). Excluded stores also contribute no
+    // Infra blocks in scope, `[external]` and role-tagged stores excluded
+    // (shared with fan-in via collectInfraInScope). Excluded stores also contribute no
     // ownership, so an entity mapping such a leaf yields no owner and never fires.
     const infraInScope = collectInfraInScope(nodes);
 
