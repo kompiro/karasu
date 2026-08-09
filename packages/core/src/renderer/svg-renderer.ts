@@ -29,6 +29,7 @@ import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   NODE_PADDING_X,
+  NODE_PADDING_Y,
   META_FONT_RATIO,
   estimateTextWidth,
   ICON_LABEL_CHAR_WIDTH,
@@ -1775,11 +1776,11 @@ function renderDefaultText(
   applyShapeInsets: boolean,
 ): string[] {
   const children: string[] = [];
-  // Shape-aware content box (#2366 proposal F): text clearance per side is
-  // max(padding, shape inset) so it never touches the drawn outline, and the
-  // stack centres on the inset box — the shape's visual body — so e.g. a
-  // cylinder's text sits below the top ellipse and a user card's text sits
-  // on the card, not the bounding box.
+  // Shape-aware content box (#2366 proposal F): insets are content-safe
+  // boundaries, clearance per side is max(padding, inset), and the stack
+  // centres on the clearance box — exactly the box measureNode reserved —
+  // so a cylinder's text sits below the top ellipse and a user card's text
+  // centres on the card, not the bounding box.
   const insets = applyShapeInsets ? shapeInsetsOf(style, node.width, node.height) : ZERO_INSETS;
   const clearLeft = Math.max(NODE_PADDING_X, insets.left);
   const clearRight = Math.max(NODE_PADDING_X, insets.right);
@@ -1796,7 +1797,9 @@ function renderDefaultText(
       )
     : [];
   const textLines = 1 + descLines.length + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
-  let textY = node.y + insets.top + (node.height - insets.top - insets.bottom) / 2;
+  const clearTop = Math.max(NODE_PADDING_Y, insets.top);
+  const clearBottom = Math.max(NODE_PADDING_Y, insets.bottom);
+  let textY = node.y + clearTop + (node.height - clearTop - clearBottom) / 2;
   if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
   children.push(

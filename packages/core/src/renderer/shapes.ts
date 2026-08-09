@@ -1,5 +1,6 @@
 import type { ResolvedNodeStyle } from "../types/style.js";
 import { el } from "./svg-builder.js";
+import { NODE_PADDING_Y } from "./rendering-constants.js";
 import {
   registerShape,
   getShape,
@@ -26,8 +27,13 @@ const box: ShapeRenderFn = (ctx) =>
     "stroke-dasharray": ctx.strokeDasharray || undefined,
   });
 
-/** Fixed medallion radius of the user card's person pictogram (never scales). */
+/** Medallion radius of the user card's person pictogram at full size. */
 const USER_MEDALLION_R = 13;
+
+/** Medallion radius for a given card height — full size from ~72px up. */
+function userMedallionRadius(h: number): number {
+  return Math.min(USER_MEDALLION_R, h * 0.18);
+}
 
 /**
  * #2366 proposal G: a rounded card with a fixed-size person medallion
@@ -41,7 +47,11 @@ const USER_MEDALLION_R = 13;
 const user: ShapeRenderFn = (ctx) => {
   const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const cx = x + w / 2;
-  const medR = USER_MEDALLION_R;
+  // Scale the medallion down on short cards (the 56px icon-mode card): a
+  // fixed 13px radius put the shoulders glyph exactly on the box-centred
+  // label baseline there (#2412 review). s scales the pictogram with it.
+  const medR = userMedallionRadius(h);
+  const s = medR / USER_MEDALLION_R;
   const medCy = y + medR;
   const cardTop = y + medR; // card straddles the medallion's equator
 
@@ -70,17 +80,22 @@ const user: ShapeRenderFn = (ctx) => {
 
   // Person pictogram drawn in the node's text color: head + shoulders,
   // contained inside the medallion by construction (no clipPath).
-  const head = el("circle", { cx, cy: medCy - 3.5, r: 3.4, fill: ctx.color });
+  const head = el("circle", { cx, cy: medCy - 3.5 * s, r: 3.4 * s, fill: ctx.color });
   const shoulders = el("path", {
-    d: `M${cx - 6} ${medCy + 8.5} a6 6.5 0 0 1 12 0 Z`,
+    d: `M${cx - 6 * s} ${medCy + 8.5 * s} a${6 * s} ${6.5 * s} 0 0 1 ${12 * s} 0 Z`,
     fill: ctx.color,
   });
 
   return [card, medallion, head, shoulders].join("\n");
 };
 
-const userInset: ShapeContentInsetFn = () => ({
-  top: USER_MEDALLION_R,
+// Insets are CONTENT-SAFE boundaries: text may sit flush against them, so a
+// shape bakes any breathing room it wants into the value. The user card adds
+// a full padding below the medallion so its interior top gap matches the
+// bottom one; measurement and rendering both clamp per side to
+// max(NODE_PADDING, inset).
+const userInset: ShapeContentInsetFn = (_w, h) => ({
+  top: userMedallionRadius(h) + NODE_PADDING_Y,
   right: 0,
   bottom: 0,
   left: 0,
@@ -197,7 +212,8 @@ const cloud: ShapeRenderFn = (ctx) => {
 const cylinderInset: ShapeContentInsetFn = (_w, h) => {
   const ry = Math.min(h * 0.12, 15);
   // Top ellipse spans 2*ry from the box top; the bottom arc dips ry deep.
-  return { top: ry * 2, right: 0, bottom: ry, left: 0 };
+  // A little breathing room is baked in so text never kisses the rim.
+  return { top: ry * 2 + 8, right: 0, bottom: ry + 4, left: 0 };
 };
 
 const queueInset: ShapeContentInsetFn = (w) => {
@@ -216,13 +232,16 @@ const hexagonInset: ShapeContentInsetFn = (w) => ({
 });
 
 const cloudInset: ShapeContentInsetFn = (w, h) => ({
-  // The blob outline wanders inside the box. The deepest excursion is the
-  // lower-left anchor at x + 0.15w (the path's start point), so the left
-  // margin is 0.15w; the other sides' anchors stay within these bounds.
-  top: h * 0.15,
-  right: w * 0.12,
-  bottom: h * 0.15,
-  left: w * 0.15,
+  // The blob outline is wavy and non-convex, so per-axis extremes do not
+  // compose into a safe box — these margins are the numerically verified
+  // rectangle: every corner and edge sample lies inside the flattened
+  // bezier path (see the point-in-polygon check in
+  // shape-content-inset.test.ts, added after the #2412 review found the
+  // previous values left 3 of 4 corners outside the fill).
+  top: h * 0.26,
+  right: w * 0.16,
+  bottom: h * 0.2,
+  left: w * 0.2,
 });
 
 export function registerBuiltinShapes(): void {

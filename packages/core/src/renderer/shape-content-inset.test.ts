@@ -19,18 +19,21 @@ describe("shape content insets", () => {
     }
   });
 
-  it("mirrors each shape's drawn geometry", () => {
+  it("mirrors each shape's drawn geometry (content-safe boundaries)", () => {
+    // user: full 13px medallion + a padding of breathing room below it
     expect(getShapeContentInset("user")!(200, 100)).toEqual({
-      top: 13,
+      top: 13 + 24,
       right: 0,
       bottom: 0,
       left: 0,
     });
-    // cylinder: ry = min(100 * 0.12, 15) = 12 → top ellipse spans 24
+    // icon-mode height 56: the medallion scales down (56 * 0.18 = 10.08)
+    expect(getShapeContentInset("user")!(160, 56).top).toBeCloseTo(10.08 + 24, 5);
+    // cylinder: ry = min(100 * 0.12, 15) = 12 → ellipse band 24 + breathing
     expect(getShapeContentInset("cylinder")!(200, 100)).toEqual({
-      top: 24,
+      top: 32,
       right: 0,
-      bottom: 12,
+      bottom: 16,
       left: 0,
     });
     // queue: rx = min(200 * 0.1, 15) = 15 → both cap depths span 2*rx = 30
@@ -48,6 +51,82 @@ describe("shape content insets", () => {
       bottom: 0,
       left: 40,
     });
+  });
+});
+
+describe("cloud inset safety (point-in-polygon over the drawn path)", () => {
+  // The cloud outline is wavy and non-convex; these margins were found
+  // numerically after the #2412 review showed the previous per-axis values
+  // left 3 of 4 safe-rectangle corners outside the fill.
+  function cloudPolygon(w: number, h: number): [number, number][] {
+    const cx = w / 2;
+    const cy = h / 2;
+    const rx = w / 2;
+    const ry = h / 2;
+    const segs: [number, number][][] = [
+      [
+        [rx * 0.3, cy + ry * 0.3],
+        [-rx * 0.1, cy + ry * 0.8],
+        [rx * 0.1, cy + ry],
+        [cx, cy + ry * 0.7],
+      ],
+      [
+        [cx, cy + ry * 0.7],
+        [cx + rx * 0.3, cy + ry],
+        [w + rx * 0.1, cy + ry * 0.6],
+        [w - rx * 0.2, cy],
+      ],
+      [
+        [w - rx * 0.2, cy],
+        [w + rx * 0.1, cy - ry * 0.5],
+        [cx + rx * 0.5, cy - ry],
+        [cx, cy - ry * 0.7],
+      ],
+      [
+        [cx, cy - ry * 0.7],
+        [cx - rx * 0.3, cy - ry * 0.9],
+        [-rx * 0.1, cy - ry * 0.3],
+        [rx * 0.3, cy + ry * 0.3],
+      ],
+    ];
+    const pts: [number, number][] = [];
+    for (const [p0, p1, p2, p3] of segs) {
+      for (let i = 0; i < 60; i++) {
+        const t = i / 60;
+        const u = 1 - t;
+        pts.push([
+          u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+          u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+        ]);
+      }
+    }
+    return pts;
+  }
+
+  function inside(pts: [number, number][], px: number, py: number): boolean {
+    let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i];
+      const [xj, yj] = pts[j];
+      if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  }
+
+  it("keeps the declared safe rectangle inside the drawn outline", () => {
+    for (const [w, h] of [
+      [100, 100],
+      [300, 80],
+      [160, 66],
+    ] as const) {
+      const pts = cloudPolygon(w, h);
+      const ins = getShapeContentInset("cloud")!(w, h);
+      for (let i = 0; i <= 10; i++) {
+        const px = ins.left + ((w - ins.right - ins.left) * i) / 10;
+        expect(inside(pts, px, ins.top), `top edge x=${px} (${w}x${h})`).toBe(true);
+        expect(inside(pts, px, h - ins.bottom), `bottom edge x=${px} (${w}x${h})`).toBe(true);
+      }
+    }
   });
 });
 
@@ -85,12 +164,27 @@ describe("measureNode inset surplus (via layout shapeForNode hook)", () => {
     expect(widthOf("user")).toBe(widthOf("box"));
   });
 
-  it("cylinder cards reserve padding inside the visual body (taller card)", () => {
+  it("label-only cylinders stay box-sized (insets fit inside the paddings)", () => {
     const krsFile = Parser.parse(src).value;
     const slice = extractView(krsFile.systems, []);
     const box = layout(slice, { shapeForNode: () => "box" }).nodes.get("Wide")!.height;
     const cyl = layout(slice, { shapeForNode: () => "cylinder" }).nodes.get("Wide")!.height;
-    // top 2*ry + bottom ry beyond the box card's paddings
+    // At h=66 the ellipse band (2*ry + 8 = 23.8) sits inside the 24px padding.
+    expect(cyl).toBe(box);
+  });
+
+  it("description-bearing cylinders grow so the ellipse clears the text", () => {
+    const withDesc = `system S {
+  service Tall {
+    label "Ledger"
+    description "Records sales, fees, and settlements for the platform"
+  }
+}`;
+    const krsFile = Parser.parse(withDesc).value;
+    const slice = extractView(krsFile.systems, []);
+    const box = layout(slice, { shapeForNode: () => "box" }).nodes.get("Tall")!.height;
+    const cyl = layout(slice, { shapeForNode: () => "cylinder" }).nodes.get("Tall")!.height;
+    // Taller cards push 2*ry + 8 past the 24px padding, so the card grows.
     expect(cyl).toBeGreaterThan(box);
   });
 });

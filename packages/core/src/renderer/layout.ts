@@ -3215,13 +3215,11 @@ function measureNode(
       const ins = insetFn(width, height);
       const wantW =
         contentW + Math.max(NODE_PADDING_X, ins.left) + Math.max(NODE_PADDING_X, ins.right);
-      // Vertical: the stack centres on the inset box (the shape's visual
-      // body), so the paddings must fit INSIDE that box — reservation is
-      // pad + inset per side, not max(pad, inset), or a user card's meta row
-      // sits 6.5px closer to the bottom edge than every other shape's
-      // (#2412 review). Horizontal keeps max(): the stack's vertical centre
-      // is where side-notched shapes (hexagon) are at their widest.
-      const wantH = contentH + NODE_PADDING_Y * 2 + ins.top + ins.bottom;
+      // Insets are content-safe boundaries (breathing room baked in by the
+      // shape), so both axes clamp per side to max(padding, inset) and the
+      // renderer centres the stack on the same clearance box.
+      const wantH =
+        contentH + Math.max(NODE_PADDING_Y, ins.top) + Math.max(NODE_PADDING_Y, ins.bottom);
       if (wantW <= width + 0.25 && wantH <= height + 0.25) break;
       width = Math.max(width, wantW);
       height = Math.max(height, wantH);
