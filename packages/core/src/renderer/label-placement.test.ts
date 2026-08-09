@@ -26,6 +26,9 @@ import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/** Stroke width for synthetic lines: thin enough that the box inflation is not what a case turns on. */
+const HAIRLINE = 0;
+
 /** A default-positioned (eligible) label input at `anchor` with a horizontal chord. */
 function label(index: number, anchor: { x: number; y: number }, width: number): LabelInput {
   return { index, anchor, dir: { x: 100, y: 0 }, width, fontSize: 11, eligible: true };
@@ -71,31 +74,43 @@ describe("label-placement geometry helpers", () => {
   it("countLabelLinePenetrations counts labels crossed by a foreign line, and exempts the own line", () => {
     // A horizontal line running through y = 44, which is inside the box of a
     // label anchored at y = 50 (baseline 44, top 33).
-    const through: EdgeLine = edgeLine(1, [
-      { x: 0, y: 44 },
-      { x: 400, y: 44 },
-    ]);
+    const through: EdgeLine = edgeLine(
+      1,
+      [
+        { x: 0, y: 44 },
+        { x: 400, y: 44 },
+      ],
+      HAIRLINE,
+    );
     const box = labelBox({ x: 100, y: 50 }, 60, 11);
     // Label of edge 0 sitting on edge 1's line — counted.
     expect(countLabelLinePenetrations([{ index: 0, box }], [through])).toBe(1);
     // The very same geometry, but the line *is* this label's own edge — exempt.
     expect(countLabelLinePenetrations([{ index: 1, box }], [through])).toBe(0);
     // A line nowhere near the box — not counted.
-    const away: EdgeLine = edgeLine(1, [
-      { x: 0, y: 400 },
-      { x: 400, y: 400 },
-    ]);
+    const away: EdgeLine = edgeLine(
+      1,
+      [
+        { x: 0, y: 400 },
+        { x: 400, y: 400 },
+      ],
+      HAIRLINE,
+    );
     expect(countLabelLinePenetrations([{ index: 0, box }], [away])).toBe(0);
   });
 
   it("countLabelLinePenetrations follows a bent polyline's segments, not just its bounds", () => {
     // L-shaped route whose bounds cover the label box, but whose actual
     // segments run well clear of it — the bounds prefilter must not over-count.
-    const bent: EdgeLine = edgeLine(1, [
-      { x: 0, y: 44 },
-      { x: 0, y: 400 },
-      { x: 400, y: 400 },
-    ]);
+    const bent: EdgeLine = edgeLine(
+      1,
+      [
+        { x: 0, y: 44 },
+        { x: 0, y: 400 },
+        { x: 400, y: 400 },
+      ],
+      HAIRLINE,
+    );
     const box = labelBox({ x: 200, y: 50 }, 60, 11);
     expect(countLabelLinePenetrations([{ index: 0, box }], [bent])).toBe(0);
     // Shift the label onto the vertical leg and it is counted.
@@ -139,10 +154,14 @@ describe("resolveLabelPlacements", () => {
   it("lifts a label off a foreign edge's line (label↔line penetrations → 0) — #2360", () => {
     // Edge 0's label defaults onto edge 1's long horizontal run, which is
     // exactly the shape #2360 reports (hr-tool's "Check punch status").
-    const foreign: EdgeLine = edgeLine(1, [
-      { x: 0, y: 44 },
-      { x: 400, y: 44 },
-    ]);
+    const foreign: EdgeLine = edgeLine(
+      1,
+      [
+        { x: 0, y: 44 },
+        { x: 400, y: 44 },
+      ],
+      HAIRLINE,
+    );
     const inputs = [label(0, { x: 200, y: 50 }, 80)];
     expect(countLabelLinePenetrations(ownedBoxesAfter(inputs, new Map()), [foreign])).toBe(1);
     const overrides = resolveLabelPlacements(inputs, [], [foreign]);
@@ -153,13 +172,85 @@ describe("resolveLabelPlacements", () => {
   it("never moves a label off its own edge's line (byte-stable) — #2360", () => {
     // The label's box straddles its own polyline, as every centred edge label
     // does. That is where it belongs, so the pass must leave it alone.
-    const own: EdgeLine = edgeLine(0, [
-      { x: 0, y: 44 },
-      { x: 400, y: 44 },
-    ]);
+    const own: EdgeLine = edgeLine(
+      0,
+      [
+        { x: 0, y: 44 },
+        { x: 400, y: 44 },
+      ],
+      HAIRLINE,
+    );
     const inputs = [label(0, { x: 200, y: 50 }, 80)];
     const overrides = resolveLabelPlacements(inputs, [], [own]);
     expect(overrides.size).toBe(0);
+  });
+
+  it("keeps a moved label nearest its own edge rather than a neighbouring one — #2360", () => {
+    // Two parallel horizontal edges 30px apart. Edge 0's label must leave its
+    // default spot (a node card sits on it), and the nearest clear space is
+    // across edge 1 — where the label would read as edge 1's. It must instead
+    // take a spot that keeps edge 0 as its nearest line.
+    const own = edgeLine(
+      0,
+      [
+        { x: 0, y: 44 },
+        { x: 400, y: 44 },
+      ],
+      HAIRLINE,
+    );
+    const neighbour = edgeLine(
+      1,
+      [
+        { x: 0, y: 74 },
+        { x: 400, y: 74 },
+      ],
+      HAIRLINE,
+    );
+    // A card covering the label's default anchor, forcing a move.
+    const card: Rect = { x: 150, y: 28, width: 100, height: 22 };
+    const inputs = [label(0, { x: 200, y: 50 }, 80)];
+    const overrides = resolveLabelPlacements(inputs, [card], [own, neighbour]);
+
+    const moved = overrides.get(0);
+    expect(moved).toBeDefined();
+    // The chosen anchor is nearer edge 0's line (y = 44) than edge 1's (y = 74).
+    const toOwn = Math.abs(moved!.y - 44);
+    const toNeighbour = Math.abs(moved!.y - 74);
+    expect(toOwn).toBeLessThan(toNeighbour);
+    // …and it still clears every hard obstacle.
+    expect(countLabelPenetrations(boxesAfter(inputs, overrides), [card])).toBe(0);
+    expect(countLabelLinePenetrations(ownedBoxesAfter(inputs, overrides), [own, neighbour])).toBe(
+      0,
+    );
+  });
+
+  it("still prefers a clear-but-ambiguous spot over a colliding one (weights, not a veto)", () => {
+    // Everything on the own side of the line is walled off by a card, so the
+    // only clear space is beyond the neighbouring edge. Ambiguity costs less
+    // than a collision, so the label goes there rather than staying buried.
+    const own = edgeLine(
+      0,
+      [
+        { x: 0, y: 44 },
+        { x: 400, y: 44 },
+      ],
+      HAIRLINE,
+    );
+    const neighbour = edgeLine(
+      1,
+      [
+        { x: 0, y: 60 },
+        { x: 400, y: 60 },
+      ],
+      HAIRLINE,
+    );
+    const wall: Rect = { x: -500, y: -500, width: 1000, height: 545 };
+    const inputs = [label(0, { x: 200, y: 50 }, 80)];
+    const overrides = resolveLabelPlacements(inputs, [wall], [own, neighbour]);
+    const after = ownedBoxesAfter(inputs, overrides);
+    // It escaped the card rather than accepting a collision to stay near its line.
+    expect(countLabelPenetrations(boxesAfter(inputs, overrides), [wall])).toBe(0);
+    expect(countLabelLinePenetrations(after, [own, neighbour])).toBe(0);
   });
 
   it("does not let a ghost/cyclic-free empty line set change existing placements", () => {
@@ -218,10 +309,14 @@ describe("resolveLabelPlacements", () => {
     const blanket: EdgeLine[] = [];
     for (let y = -200; y <= 200; y += 4) {
       blanket.push(
-        edgeLine(blanket.length + 1, [
-          { x: -500, y },
-          { x: 500, y },
-        ]),
+        edgeLine(
+          blanket.length + 1,
+          [
+            { x: -500, y },
+            { x: 500, y },
+          ],
+          HAIRLINE,
+        ),
       );
     }
     const inputs = [label(0, { x: 0, y: 0 }, 40)];
@@ -295,7 +390,33 @@ describe("buildLabelInputs", () => {
       { x: 100, y: 0 },
       { x: 100, y: 100 },
     ]);
-    expect(edgeLines[0].bounds).toEqual({ x: 0, y: 0, width: 100, height: 100 });
+    // Bounds are grown by the half-stroke, so the prefilter never rejects a line
+    // whose painted width reaches the box even though its centreline does not.
+    const half = edgeLines[0].halfStroke;
+    expect(half).toBeGreaterThan(0);
+    expect(edgeLines[0].bounds).toEqual({
+      x: -half,
+      y: -half,
+      width: 100 + half * 2,
+      height: 100 + half * 2,
+    });
+  });
+
+  it("carries the edge's stroke width, so a thick stroke counts before its centreline does", () => {
+    const thin: LayoutEdge = {
+      from: "A",
+      to: "B",
+      fromPoint: { x: 0, y: 0 },
+      toPoint: { x: 400, y: 0 },
+    };
+    const { edgeLines } = buildLabelInputs([thin], new Map(), styleFor);
+    const half = edgeLines[0].halfStroke;
+    // A box that stops just short of the centreline but inside the painted stroke.
+    const grazed: Rect = { x: 100, y: -20, width: 60, height: 20 - half / 2 };
+    expect(countLabelLinePenetrations([{ index: 9, box: grazed }], edgeLines)).toBe(1);
+    // …and one that clears the stroke entirely is still counted as clear.
+    const clear: Rect = { x: 100, y: -20, width: 60, height: 20 - half * 2 };
+    expect(countLabelLinePenetrations([{ index: 9, box: clear }], edgeLines)).toBe(0);
   });
 
   it("nudges perpendicular to the local segment, not the from→to chord, for bent routes", () => {

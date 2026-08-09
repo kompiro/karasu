@@ -26,6 +26,15 @@
 - [x] ラベルの無いエッジの線も障害物になり、ghost / cyclic エッジの線は障害物にならない
   > ✅ Automated — `offers every drawn edge as a line obstacle, including unlabelled ones (#2360)` / `excludes ghost and cyclic edges (peripheral geometry — ADR-968), keeps real ones`
 
+- [x] 逃がした先で、ラベルが自分のエッジより隣のエッジに近くならない（誤帰属しない）
+  > ✅ Automated — `keeps a moved label nearest its own edge rather than a neighbouring one — #2360`。`examples/en` 全体の実測でも anchor 基準の誤帰属は 0
+
+- [x] ただし逃げ場が隣のエッジの向こうしか無い場合は、衝突したまま留まらずそちらへ逃げる（曖昧さは重みであって拒否権ではない）
+  > ✅ Automated — `still prefers a clear-but-ambiguous spot over a colliding one (weights, not a veto)`
+
+- [x] 線との判定が `strokeWidth` を織り込む（centreline が箱を外れていても、塗られたストロークが文字を覆っていれば衝突として数える）
+  > ✅ Automated — `carries the edge's stroke width, so a thick stroke counts before its centreline does`
+
 - [x] 実サンプル（`examples/en/hr-tool/system.krs` の system top view）で、線を障害物に含めない配置では貫通が発生し、pass 後は label↔line・label↔node・label↔label の 3 軸すべてが 0 になる
   > ✅ Automated — `real sample fence — hr-tool system top view (#2360)`。precondition で vacuous でないことを確認している（TPL-1954）
 
@@ -46,4 +55,6 @@
 - **deploy view のラベル**: `deploy-renderer.ts` は独自のエッジ描画で `renderEdge` を通らないため、ADR-2048 と同じく本 pass の対象外。
 - **境界フレーム（container）の枠線**: ラベルが正当に内側に住む領域なので障害物に含めない（ADR-2048 の判断を踏襲）。枠線だけを線障害物として別扱いする案は扱わない。
 - **best-effort の限界**: 周辺の空きより幅広いラベルは探索上限（2 軸 × 各 ±6 ステップ、≈ 90px）の範囲内で完全に clear できないことがある。その場合は最小コスト位置に置く（貫通を増やさないことは保証するが 0 は保証しない）。author は `label-position` / `label-offset`（ADR-1184）で明示的に逃がせる。
-- **ラベル変位の上限**: 探索上限とは別の変位キャップは設けていない。`examples/en` 全体の実測で中央値 21px・p90 42px・最大 75px。
+- **ラベル変位の上限**: 探索上限とは別の変位キャップは設けていない。`examples/en` 全体の実測で中央値 30px・p90 45px・最大 75px。ラベルとエッジの対応は変位ではなく曖昧さコストで守っている。
+- **曖昧さの測り方**: 自分の線が最寄りかどうかは anchor（文字の中心）から測る。箱の角から測る別基準では残差が 2 件ある（`hato` の "Verifies the token"、`migration` の "Process payments"。いずれも合流点付近で差 0.6px 未満）。
+- **ハブ状の密なグラフ**: 全エッジが 1 ノードを共有する形状では到達範囲 prune が効かず、400 エッジで約 153ms かかる（空間的に散らばった 800 エッジなら 16ms）。実モデルで問題になったら線分単位の空間インデックスを別途検討する。
