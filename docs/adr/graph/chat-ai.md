@@ -1,6 +1,6 @@
 # ADR Topic: chat-ai
 
-11 ADRs in this topic. Solid nodes belong to `chat-ai`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+Solid nodes belong to `chat-ai`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
