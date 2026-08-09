@@ -186,14 +186,31 @@ proactive TPL を最低 1 件起こす（spec-audit ルール）。候補は「k
 > 各スライスの到達点は、実装開始時に起票する sub-issue（親: #2366）の
 > `## Slice status` を参照。
 
-## 未解決の問い
+## PoC の結果（2026-08-10）
 
-- チップのピル背景色: badge-color をそのまま塗りにすると明色で文字が読めない。
-  「badge-color を pill 地に、文字は白/近白」+ ガード拡張（白⇔badge-color ≥4.5:1）
-  か、「pill 地 = badge-color の低明度、文字 = badge-color」か。実装時に両案を
-  レンダリングして決める（ガードテストの拡張はどちらでも必須）。
-- `usecase` 塗りなし案は boundary 帯 tint と重なったときの見え方が未検証。
-  tint 上での枠線コントラストを guard に足すか、実装時に目視で判断する。
-- CLI render に `--interactive` フラグを公開するか（app 内部オプションに留めるか）。
-  公開すると CLI の公開 API 変更になるため、まずは内部既定（CLI=false）のみで
-  出し、要望があれば公開する。
+`spike/node-chrome-poc` で 3 領域とも案A を実装し、before/after を確認した
+（比較レポートは repo 外の生成物として共有。preview は spike の Cloudflare
+デプロイで触れる）。確認できたこと:
+
+- **H-1**: バッジのインセットチップ化で枠外衝突が消え、静的 CLI 出力から
+  i / D ボタンが消えた。**新オプションは不要**: 既存の `interactive`
+  （カテゴリ ⊖ 用。app だけが true を渡す）にボタン描画を相乗りさせるだけで
+  成立する。deploy kind バッジも同じチップに乗る。
+- **H-2**: usecase 塗りなし・resource slate・deploy 同色相塗りの全てが dark /
+  light で成立。deploy の light テンプレートは既にパステルが色相一致のため
+  変更不要（dark のみ差し替え）。
+- **P10**: per-side の port depth（user 上辺 = メダリオン半径、cloud = 輪郭
+  マージン）だけで報告事象が解消することを確認（cloud への終端が bbox 上端
+  y=721 から輪郭上 y=727.6 へ移動）。cylinder の上楕円・hexagon の斜辺は
+  取り付け深さが x に依存するため、本実装では portFrame（線分 + 深さ）が必要
+  という設計判断を裏付けた。
+
+## 未解決の問い（PoC 後の更新）
+
+- ~~チップのピル背景色~~ **解決**: solid（badge-color 地 + 白文字）を採用する。
+  ガード拡張は「白 ⇔ badge-color ≥4.5:1」の 1 軸で済む（tinted は文字色が
+  カード地との合成地に乗り、コントラスト保証が複合的になる）。
+- ~~CLI `--interactive` フラグ~~ **解決**: 新設不要。既存 `interactive` に相乗り。
+- `usecase` 塗りなし × boundary 帯 tint の見え方は PoC でも未検証のまま。
+  実装スライス B で boundary 例を目視し、必要なら枠線コントラストを guard に
+  足す。
