@@ -7,9 +7,9 @@ topic: build
 scope:
   packages: [app]
   concerns: [dependencies, security]
-related_to: [ADR-2390, ADR-2341, ADR-1038]
+related_to: [ADR-2390, ADR-2341, ADR-1038, ADR-2401]
 assumptions:
-  - "grep: package.json :: \"dompurify\""
+  - "grep: pnpm-workspace.yaml :: dompurify"
   - "grep: packages/app/package.json :: \"dompurify\""
 ---
 
@@ -23,7 +23,8 @@ assumptions:
   - 前日の同型事例（override の floor が脆弱版だった）: [ADR-2390](2390-dependabot-security-2026-08-07.md)
   - override floor 引き上げの前例: [ADR-2341](2341-dependabot-security-2026-08-04.md)
   - security update の即時起票方針: [ADR-1038](1038-dependabot-security-2026-04-29.md)
-  - コード: `package.json`（root `pnpm.overrides`）, `packages/app/package.json`, `pnpm-lock.yaml`
+  - override の置き場が移った経緯: [ADR-2401](2401-pnpm-11-migration.md)
+  - コード: `pnpm-workspace.yaml`（`overrides:`）, `packages/app/package.json`, `pnpm-lock.yaml`
 
 ## 背景
 
@@ -45,9 +46,16 @@ advisory の脆弱範囲に入っていた**。
 
 | 宣言箇所 | 宣言 | 解決 |
 | --- | --- | --- |
-| root `pnpm.overrides` | `^3.4.12` | 3.4.12 |
+| `pnpm-workspace.yaml` の `overrides:` | `^3.4.12` | 3.4.12 |
 | `packages/app/package.json`（直接依存） | `^3.4.0` | 3.4.12 |
 | `monaco-editor@0.56.0`（transitive） | — | 3.4.12 |
+
+> **置き場について**: 本対応の着手時点では override は root `package.json` の
+> `pnpm.overrides` にあり、修正もそこに入れた。その後 main で
+> [ADR-2401](2401-pnpm-11-migration.md)（pnpm 11 移行）が正本を `pnpm-workspace.yaml` の
+> `overrides:` へ移したため、main 取り込み時に修正を新しい置き場へ移し直している。
+> pnpm 11 は `package.json` の `pnpm` フィールドを読まないので、旧位置に残していれば
+> **黙って無視され、修正が無効化されていた**。本 ADR の記述は移行後の置き場に揃えてある。
 
 ### 影響範囲の評価
 

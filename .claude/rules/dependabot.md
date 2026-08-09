@@ -59,15 +59,27 @@ Dependabot security update は GHSA 検知時に即時起票され、
 
 詳細経緯は `ADR-1038` 参照。再発時は ADR を増やさず本ルールで処理。
 
+## override はどこにあるか
+
+security floor の正本は **`pnpm-workspace.yaml` の `overrides:`**。pnpm 11 は
+`package.json` の `pnpm` フィールドを読まないので、そこに書いても黙って無視される
+（[ADR-2401](../../docs/adr/2401-pnpm-11-migration.md)）。ADR-1474 以降の各
+security ADR は「root `package.json` の `pnpm.overrides`」と書いているが、これは
+歴史的記述で、機構は同じ・置き場だけが移った。**過去 ADR の手順をそのまま実行せず、
+本節の置き場を使う。**
+
+`package.json` に `pnpm` フィールドが復活していないことは
+`scripts/ci/pnpm-config-location.test.ts` が検査する。
+
 ## override 付き直接依存の security update PR（別の失敗モード）
 
-**root `pnpm.overrides` に載っているパッケージが、同時に
+**`overrides:` に載っているパッケージが、同時に
 `packages/<name>/package.json` の直接依存でもある**場合、その security
 update PR は上記とは別の理由で構造的に CI を通せない:
 
 - Dependabot は宣言と `pnpm-lock.yaml`（`overrides:` スナップショットを含む）
   を修正版に更新する
-- 一方で **root `package.json` の `pnpm.overrides` は書き換えない**
+- 一方で **`pnpm-workspace.yaml` の `overrides:` は書き換えない**
   （Dependabot は override 機構を認識しない）
 - 結果、manifest の override だけが古いまま残り、
   `pnpm install --frozen-lockfile` が **`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`**
@@ -85,9 +97,9 @@ update PR は上記とは別の理由で構造的に CI を通せない:
 ## Security alert 時は advisory の脆弱範囲を override / 宣言レンジと突き合わせる
 
 **到達状態**: security alert を 1 件でも処理したとき、その advisory の
-`vulnerable_version_range` と、root `pnpm.overrides` および各
+`vulnerable_version_range` と、`pnpm-workspace.yaml` の `overrides:` および各
 `packages/<name>/package.json` の**宣言レンジ**を突き合わせた結果が
-トラッキング Issue か PR に書かれている。
+トラッキング Issue か PR に書かれている（置き場は上記「override はどこにあるか」）。
 
 `pnpm-lock.yaml` の解決バージョンだけを見ると、**既に override が載っている
 パッケージは「pin 済み = 対処済み」に見える**。これは誤りで、override の floor
@@ -107,10 +119,12 @@ update PR は上記とは別の理由で構造的に CI を通せない:
 1. advisory の脆弱範囲を取る:
    `gh api repos/{owner}/{repo}/dependabot/alerts/<n> --jq '.security_vulnerability.vulnerable_version_range'`
 2. 宣言側を全部出す（override と全 workspace の直接依存）:
-   `grep -rn '"<pkg>"' package.json packages/*/package.json`
+   `grep -n '<pkg>' pnpm-workspace.yaml; grep -rn '"<pkg>"' packages/*/package.json`
 3. **1 の範囲が 2 のいずれかのレンジと交差していたら、そのレンジも patched 版へ
    引き上げる。** override だけ直して直接依存の宣言を据え置かない — 実解決は同じ
    でも、override を外した瞬間に脆弱範囲へ戻る宣言が残る（`ADR-2404`「却下した案」）。
+4. lock から脆弱版が消えたことを確認する: `grep -c "<pkg>@<脆弱版>" pnpm-lock.yaml` が 0。
+   宣言箇所を複数直したとき、1 箇所でも取りこぼすと古い解決が残る。
 
 ## 依存更新バッチの ADR 化
 

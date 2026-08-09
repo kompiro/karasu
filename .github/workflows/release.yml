@@ -18,7 +18,8 @@ name: Release
 # for a short-lived publish credential, provided a Trusted Publisher is
 # configured for each package on npmjs.com (org `kompiro`, repo `karasu`,
 # workflow file `release.yml`). Requires npm >= 11.5.1 and Node >= 22.14.0,
-# so we upgrade npm explicitly below. Provenance is generated automatically
+# which the pinned Node 24 satisfies on its own (see the publish step).
+# Provenance is generated automatically
 # under trusted publishing — no `--provenance` flag / `NPM_CONFIG_PROVENANCE`
 # needed. See ADR-9020 (OIDC migration; follows up the token-based
 # auth of ADR-1315) and docs/process.md "リリース運用".
@@ -51,17 +52,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "22" # resolves to the latest 22.x (>= 22.14.0, required for OIDC)
+          node-version: "24" # resolves to the latest 24.x, which bundles npm >= 11.5.1 (OIDC)
           cache: "pnpm"
 
-      # npm Trusted Publishing requires npm >= 11.5.1; Node 22 ships npm 10.x.
-      # `changeset publish` shells out to this `npm` for the actual publish.
-      - name: Upgrade npm to an OIDC-capable version
-        run: npm install -g npm@latest
+      # This job deliberately carries no step that globally upgrades the npm CLI
+      # before publishing (it used to). The publish chain is
+      # `changeset publish` → `pnpm publish` (changesets picks the package
+      # manager it detects) → the `npm` CLI on PATH, because pnpm 10 still
+      # delegates publish to npm. Trusted Publishing needs npm >= 11.5.1, and
+      # Node 22 bundles npm 10.x — hence the old step. Node 24 bundles npm
+      # 11.17+, so the runtime satisfies the floor by itself, and pulling an
+      # unpinned npm from the registry at publish time would only re-add a
+      # supply-chain surface to the one job that holds publish rights.
+      #
+      # pnpm 11 makes `pnpm publish` native (no npm delegation), at which point
+      # pnpm's own version governs this floor instead — see Issue #2401.
+      # Issue #2397 / ADR-2397.
 
       # All dependencies (incl. `@kompiro/*`) install from the public npm
       # registry — no token needed. Publishing uses OIDC (see header).

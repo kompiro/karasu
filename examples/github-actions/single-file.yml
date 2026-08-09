@@ -27,7 +27,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
 
       # Render the .krs file to SVG.
       # Change `docs/architecture.krs` and `docs/architecture.svg` to match your paths.

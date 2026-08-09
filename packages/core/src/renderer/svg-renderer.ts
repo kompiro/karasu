@@ -22,6 +22,7 @@ import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
 import { badgeChildren } from "./badge.js";
+import { metaGlyph, type MetaGlyphName } from "./meta-glyphs.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
@@ -31,8 +32,12 @@ import {
   estimateTextWidth,
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
+  ICON_LABEL_CJK_WIDTH,
+  ICON_DESC_CJK_WIDTH,
   ICON_DESC_MAX_WIDTH,
   teamChipText,
+  DESC_MAX_LINES,
+  META_GLYPH_GAP,
 } from "./rendering-constants.js";
 import { edgeStyleKey, nodeStyleKey } from "../resolver/style-resolver.js";
 import type { NodeDiffMeta } from "../diff/view-diff.js";
@@ -47,11 +52,17 @@ import { FACET_DIM_OPACITY, type FacetOverlay } from "./facet-overlay.js";
 const GHOST_OPACITY = 0.3;
 
 // Ratio of the description font size (and its estimated char width) to the
-// node's base font size in the *rendered* SVG. NOTE: this is intentionally
-// 0.8, not layout.ts's DESCRIPTION_FONT_RATIO (0.85) — layout width
-// estimation and rendered font size have historically used different ratios,
-// and unifying them would change output geometry (see Issue #2014, point 3).
-const RENDERED_DESC_FONT_RATIO = 0.8;
+// node's base font size in the *rendered* SVG. Unified with layout.ts's
+// DESCRIPTION_FONT_RATIO (0.85) in #2366 proposal C so the wrap the renderer
+// performs matches the line count layout reserved height for (closes the
+// historical 0.8-vs-0.85 divergence noted in Issue #2014, point 3).
+const RENDERED_DESC_FONT_RATIO = 0.85;
+// Opacity for secondary text (description) and meta chips layered on the
+// card color (#2366 proposal E). 0.9 keeps white-on-service at >= 4.5:1
+// where the old 0.7 fell to 3.7:1; the meta row previously used
+// palette.textSubtle, which fell to 2.3:1 on the service card.
+const SECONDARY_TEXT_OPACITY = 0.9;
+const META_TEXT_OPACITY = 0.85;
 
 // Icon-mode text layout constants (from design doc)
 const ICON_LABEL_MAX_WIDTH = 122; // px available for title text
@@ -1116,7 +1127,9 @@ export function rectUnionPath(rects: readonly Rect[]): string | null {
 }
 
 /** Frame tint opacity — low enough that two overlapping fills stay distinguishable. */
-const BOUNDARY_FILL_OPACITY = "0.1";
+/** Boundary-frame tint alpha — exported for the contrast guard (#2366 E). */
+export const BOUNDARY_TINT_ALPHA = 0.1;
+const BOUNDARY_FILL_OPACITY = String(BOUNDARY_TINT_ALPHA);
 
 /**
  * The cycled default for a boundary, before any `.krs.style` rule is consulted.
@@ -1398,16 +1411,7 @@ function renderNode(
     );
   } else {
     children.push(
-      ...renderDefaultText(
-        node,
-        style,
-        palette,
-        nodeId,
-        textColor,
-        fontSize,
-        displayDesc,
-        hasMetaRow,
-      ),
+      ...renderDefaultText(node, style, nodeId, textColor, fontSize, displayDesc, hasMetaRow),
     );
   }
 
@@ -1619,7 +1623,7 @@ function renderSlottedText(
   // Icon-mode label truncation
   const iconMode = displayMode === "icon";
   const truncatedLabel = iconMode
-    ? truncateToWidth(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH)
+    ? truncateToWidth(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH, ICON_LABEL_CJK_WIDTH)
     : node.label;
   const labelFontSize = iconMode ? 13 : fontSize;
 
@@ -1653,6 +1657,7 @@ function renderSlottedText(
         ICON_DESC_MAX_WIDTH,
         ICON_DESC_CHAR_WIDTH,
         ICON_DESC_MAX_LINES,
+        ICON_DESC_CJK_WIDTH,
       );
       const tspans = lines.map((line, i) =>
         el(
@@ -1713,7 +1718,6 @@ function renderSlottedText(
 function renderDefaultText(
   node: LayoutNode,
   style: ResolvedNodeStyle,
-  palette: DiagramPalette,
   nodeId: string,
   textColor: string,
   fontSize: number,
@@ -1722,8 +1726,18 @@ function renderDefaultText(
 ): string[] {
   const children: string[] = [];
   const textX = node.x + node.width / 2;
-  const textLines =
-    1 + (displayDesc ? 1 : 0) + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
+  // Wrap the description exactly like layout.ts measureNode did when it
+  // reserved the node height, so drawn lines always fit the card (#2366 C).
+  const availableWidth = node.width - NODE_PADDING_X * 2;
+  const descLines = displayDesc
+    ? wrapToWidth(
+        displayDesc,
+        availableWidth,
+        CHAR_WIDTH * RENDERED_DESC_FONT_RATIO,
+        DESC_MAX_LINES,
+      )
+    : [];
+  const textLines = 1 + descLines.length + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
   let textY = node.y + node.height / 2;
   if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
@@ -1746,32 +1760,27 @@ function renderDefaultText(
 
   let nextY = textY + fontSize + 4;
 
-  if (displayDesc) {
-    // Truncate description to fit within the node width
+  if (descLines.length > 0) {
     const descFontSize = Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
-    const availableWidth = node.width - NODE_PADDING_X * 2;
-    const descCharWidth = CHAR_WIDTH * RENDERED_DESC_FONT_RATIO;
-    const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
-    const descChars = [...displayDesc];
-    const truncatedDesc =
-      descChars.length > maxChars ? descChars.slice(0, maxChars).join("") + "…" : displayDesc;
-    children.push(
-      el(
-        "text",
-        {
-          x: textX,
-          y: nextY,
-          "text-anchor": "middle",
-          "dominant-baseline": "central",
-          fill: textColor,
-          "font-size": `${descFontSize}px`,
-          "font-family": style.fontFamily,
-          opacity: 0.7,
-        },
-        escapeXml(truncatedDesc),
-      ),
-    );
-    nextY += fontSize + 4;
+    for (const line of descLines) {
+      children.push(
+        el(
+          "text",
+          {
+            x: textX,
+            y: nextY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: textColor,
+            "font-size": `${descFontSize}px`,
+            "font-family": style.fontFamily,
+            opacity: SECONDARY_TEXT_OPACITY,
+          },
+          escapeXml(line),
+        ),
+      );
+      nextY += fontSize + 4;
+    }
   }
 
   if (node.properties.role) {
@@ -1787,7 +1796,7 @@ function renderDefaultText(
           "font-size": `${Math.round(fontSize * 0.75)}px`,
           "font-family": style.fontFamily,
           "font-style": "italic",
-          opacity: 0.6,
+          opacity: 0.8,
         },
         escapeXml(node.properties.role),
       ),
@@ -1803,20 +1812,16 @@ function renderDefaultText(
     const resFontSize = Math.round(fontSize * META_FONT_RATIO);
     const tooltip = node.properties.resources.map((r) => `${r.storageKind} "${r.name}"`).join(", ");
     children.push(
-      el(
-        "text",
-        {
-          x: textX,
-          y: nextY,
-          "text-anchor": "middle",
-          "dominant-baseline": "central",
-          fill: textColor,
-          "font-size": `${resFontSize}px`,
-          "font-family": style.fontFamily,
-          opacity: 0.8,
-          "data-client-resource-count": String(resCount),
-        },
-        el("title", {}, escapeXml(tooltip)) + escapeXml(`📦 ×${resCount}`),
+      renderCountChip(
+        "package",
+        resCount,
+        tooltip,
+        { "data-client-resource-count": String(resCount) },
+        textX,
+        nextY,
+        resFontSize,
+        textColor,
+        style.fontFamily,
       ),
     );
     nextY += fontSize + 4;
@@ -1831,20 +1836,16 @@ function renderDefaultText(
     const capFontSize = Math.round(fontSize * META_FONT_RATIO);
     const tooltip = node.properties.capabilities.map((c) => c.name).join(", ");
     children.push(
-      el(
-        "text",
-        {
-          x: textX,
-          y: nextY,
-          "text-anchor": "middle",
-          "dominant-baseline": "central",
-          fill: textColor,
-          "font-size": `${capFontSize}px`,
-          "font-family": style.fontFamily,
-          opacity: 0.8,
-          "data-client-capability-count": String(capCount),
-        },
-        el("title", {}, escapeXml(tooltip)) + escapeXml(`🔐 ×${capCount}`),
+      renderCountChip(
+        "capability",
+        capCount,
+        tooltip,
+        { "data-client-capability-count": String(capCount) },
+        textX,
+        nextY,
+        capFontSize,
+        textColor,
+        style.fontFamily,
       ),
     );
     nextY += fontSize + 4;
@@ -1852,10 +1853,67 @@ function renderDefaultText(
 
   // Meta row: link count + team
   if (hasMetaRow) {
-    children.push(...renderMetaRow(node, style, palette, nodeId, textX, nextY));
+    children.push(...renderMetaRow(node, style, nodeId, textX, nextY));
   }
 
   return children;
+}
+
+/**
+ * A glyph + text pair anchored like SVG text: "start" draws the glyph at x,
+ * "end" right-aligns glyph + text at x, "middle" centres the pair on x.
+ * Replaces the emoji-prefixed meta strings (#2366 proposal D) — the same
+ * geometry `metaChipWidth` reserves during measurement.
+ */
+function metaChip(
+  glyph: MetaGlyphName,
+  text: string,
+  x: number,
+  anchor: "start" | "end" | "middle",
+  y: number,
+  fontSize: number,
+  color: string,
+  fontFamily: string,
+): string[] {
+  const glyphSize = fontSize + 4;
+  const textWidth = estimateTextWidth(text, CHAR_WIDTH * META_FONT_RATIO);
+  const total = glyphSize + META_GLYPH_GAP + textWidth;
+  const left = anchor === "start" ? x : anchor === "end" ? x - total : x - total / 2;
+  return [
+    metaGlyph(glyph, left, y - glyphSize / 2, glyphSize, color),
+    el(
+      "text",
+      {
+        x: left + glyphSize + META_GLYPH_GAP,
+        y,
+        "dominant-baseline": "central",
+        fill: color,
+        "font-size": `${fontSize}px`,
+        "font-family": fontFamily,
+      },
+      escapeXml(text),
+    ),
+  ];
+}
+
+/** Centred "glyph ×N" chip with a tooltip (client resource / capability rows). */
+function renderCountChip(
+  glyph: MetaGlyphName,
+  count: number,
+  tooltip: string,
+  dataAttrs: Record<string, string>,
+  cx: number,
+  y: number,
+  fontSize: number,
+  color: string,
+  fontFamily: string,
+): string {
+  return el(
+    "g",
+    { ...dataAttrs, opacity: META_TEXT_OPACITY },
+    el("title", {}, escapeXml(tooltip)),
+    ...metaChip(glyph, `×${count}`, cx, "middle", y, fontSize, color, fontFamily),
+  );
 }
 
 /**
@@ -1863,78 +1921,63 @@ function renderDefaultText(
  * badges (Issue #914 / team grouping). `hasMetaRow` (checked by the caller)
  * guarantees at least one of link count / team is present; both, only one,
  * or the layout (left/right split when both) branch on that here.
+ *
+ * #2366 proposals D + E: the emoji (🔗 / 👥) became vector glyphs, and the
+ * row inherits the node's own text color at META_TEXT_OPACITY instead of
+ * palette.textSubtle (2.3:1 on the service card background).
  */
 function renderMetaRow(
   node: LayoutNode,
   style: ResolvedNodeStyle,
-  palette: DiagramPalette,
   nodeId: string,
   textX: number,
   nextY: number,
 ): string[] {
   const children: string[] = [];
-  const metaFontSize = `${Math.round(style.fontSize * META_FONT_RATIO)}px`;
-  const metaAttrs = {
-    "text-anchor": "middle" as const,
-    "dominant-baseline": "central" as const,
-    fill: palette.textSubtle,
-    "font-size": metaFontSize,
-    "font-family": style.fontFamily,
-  };
+  const metaFontSize = Math.round(style.fontSize * META_FONT_RATIO);
+  const color = style.color;
+  const buttonAttrs = { style: "cursor: pointer", "pointer-events": "all" };
+  const team = node.properties.team;
 
-  if (node.linkCount > 0 && node.properties.team) {
-    // Both link count and team: render link on the left, team on the right
-    const linkText = `🔗${node.linkCount}`;
-    const teamText = `👥${teamChipText(node.properties.teamLabel ?? node.properties.team)}`;
-    const contentLeft = node.x + NODE_PADDING_X;
-    const contentRight = node.x + node.width - NODE_PADDING_X;
-    children.push(
-      el(
-        "g",
-        { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-        el(
-          "text",
-          { ...metaAttrs, "text-anchor": "start", x: contentLeft, y: nextY },
-          escapeXml(linkText),
-        ),
+  const linkChip = (x: number, anchor: "start" | "middle"): string =>
+    el(
+      "g",
+      { "data-link-button": nodeId, ...buttonAttrs, opacity: META_TEXT_OPACITY },
+      ...metaChip(
+        "link",
+        String(node.linkCount),
+        x,
+        anchor,
+        nextY,
+        metaFontSize,
+        color,
+        style.fontFamily,
       ),
     );
-    children.push(
-      el(
-        "g",
-        {
-          "data-team-button": node.properties.team,
-          style: "cursor: pointer",
-          "pointer-events": "all",
-        },
-        el(
-          "text",
-          { ...metaAttrs, "text-anchor": "end", x: contentRight, y: nextY },
-          escapeXml(teamText),
-        ),
+  const teamChip = (teamId: string, x: number, anchor: "end" | "middle"): string =>
+    el(
+      "g",
+      { "data-team-button": teamId, ...buttonAttrs, opacity: META_TEXT_OPACITY },
+      ...metaChip(
+        "team",
+        teamChipText(node.properties.teamLabel ?? teamId),
+        x,
+        anchor,
+        nextY,
+        metaFontSize,
+        color,
+        style.fontFamily,
       ),
     );
+
+  if (node.linkCount > 0 && team) {
+    // Both link count and team: link on the left, team on the right
+    children.push(linkChip(node.x + NODE_PADDING_X, "start"));
+    children.push(teamChip(team, node.x + node.width - NODE_PADDING_X, "end"));
   } else if (node.linkCount > 0) {
-    children.push(
-      el(
-        "g",
-        { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-        el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`🔗${node.linkCount}`)),
-      ),
-    );
-  } else if (node.properties.team) {
-    const teamDisplay = teamChipText(node.properties.teamLabel ?? node.properties.team);
-    children.push(
-      el(
-        "g",
-        {
-          "data-team-button": node.properties.team,
-          style: "cursor: pointer",
-          "pointer-events": "all",
-        },
-        el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
-      ),
-    );
+    children.push(linkChip(textX, "middle"));
+  } else if (team) {
+    children.push(teamChip(team, textX, "middle"));
   }
 
   return children;
