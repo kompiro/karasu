@@ -39,6 +39,14 @@ export interface ShapeInsets {
 export type ShapeContentInsetFn = (width: number, height: number) => ShapeInsets;
 
 /**
+ * PoC (#2366 P10): per-side attachment depth — how far inside the bounding
+ * box an edge endpoint must move so the arrowhead lands on the drawn
+ * outline (user card top strip, cloud margins). The full design's portFrame
+ * (segments + keep-outs) reduces to this depth map for the PoC.
+ */
+type ShapePortDepthFn = (width: number, height: number) => ShapeInsets;
+
+/**
  * Text slot position extracted from an SVG icon's krs-label / krs-description elements.
  * Coordinates are in the icon's viewBox coordinate space.
  */
@@ -82,6 +90,15 @@ export interface SvgIconDef {
 const shapeRegistry = new Map<string, ShapeRenderFn>();
 const iconDefRegistry = new Map<string, SvgIconDef>();
 const contentInsetRegistry = new Map<string, ShapeContentInsetFn>();
+const portDepthRegistry = new Map<string, ShapePortDepthFn>();
+
+export function registerPortDepth(name: string, fn: ShapePortDepthFn): void {
+  portDepthRegistry.set(name, fn);
+}
+
+export function getShapePortDepth(name: string): ShapePortDepthFn | undefined {
+  return portDepthRegistry.get(name);
+}
 
 export function registerShape(
   name: string,
@@ -172,4 +189,5 @@ export function clearRegistry(): void {
   shapeRegistry.clear();
   iconDefRegistry.clear();
   contentInsetRegistry.clear();
+  portDepthRegistry.clear();
 }

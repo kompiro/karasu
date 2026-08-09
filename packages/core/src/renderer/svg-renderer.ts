@@ -18,11 +18,14 @@ import type {
   Rect,
 } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
-import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry.js";
+import {
+  getShapeContentInset,
+  getShapePortDepth,
+  type ShapeInsets,
+} from "../shapes/shape-registry.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
-import { badgeChildren } from "./badge.js";
 import { metaGlyph, type MetaGlyphName } from "./meta-glyphs.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
@@ -304,6 +307,11 @@ export function render(
     facetMembership: options?.facetOverlay?.membership,
     facetOrder: options?.facetOverlay?.entries.map((e) => e.id),
   });
+  // PoC (#2366 P10): pull edge endpoints anchored on a bounding-box side to
+  // the shape's drawn outline (user card top strip, cloud margins), so the
+  // arrowhead never floats in the empty corner beside the medallion.
+  applyPortDepths(layoutResult, styles, shapeForNode);
+
   const sink = options?.diagnosticSink;
   if (sink) {
     for (const { nodeId, boundaryId } of layoutResult.degradedMemberships ?? []) {
@@ -611,6 +619,7 @@ export function renderFromLayout(
           overlay?.colorOf,
           styles.boundaryFrames,
           layoutResult.shapeInsetsApplied ?? false,
+          options?.interactive ?? false,
         );
     const isDimmedGhost =
       layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
@@ -1394,6 +1403,7 @@ function renderNode(
    * then — a padding-only-measured card must keep padding-only drawing.
    */
   applyShapeInsets = false,
+  interactive = false,
 ): string {
   const children: string[] = [];
 
@@ -1454,12 +1464,15 @@ function renderNode(
   // Top-right icon buttons: deploy button and info button
   // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
   const showDeployButton =
-    DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) && (serviceIdsWithDeploy?.has(nodeId) ?? false);
+    interactive &&
+    DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) &&
+    (serviceIdsWithDeploy?.has(nodeId) ?? false);
   // Show info button when the node has any metadata worth displaying in the detail panel.
   // Container nodes (hasChildren) need the button because clicking the body drills down.
   // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
   const showInfoButton =
-    node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
+    interactive &&
+    (node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role);
   const btnY = node.y + 14;
   let btnSlot = 0; // 0 = rightmost, increments leftward
 
@@ -1724,6 +1737,37 @@ function renderSlottedText(
   }
 
   return children;
+}
+
+/** PoC (#2366 P10): move bbox-side edge endpoints onto the drawn outline. */
+function applyPortDepths(
+  layoutResult: LayoutResult,
+  styles: ResolvedStyles,
+  shapeForNode: (id: string, annotations: readonly string[]) => string | undefined,
+): void {
+  const EPS = 0.75;
+  const depthOf = (nodeId: string): ShapeInsets | undefined => {
+    const node = layoutResult.nodes.get(nodeId);
+    if (!node) return undefined;
+    const shapeName = shapeForNode(node.id, node.annotations ?? []);
+    const fn = shapeName ? getShapePortDepth(shapeName) : undefined;
+    return fn?.(node.width, node.height);
+  };
+  const adjust = (nodeId: string, pt: { x: number; y: number }): void => {
+    const node = layoutResult.nodes.get(nodeId);
+    const d = depthOf(nodeId);
+    if (!node || !d) return;
+    if (Math.abs(pt.y - node.y) < EPS && d.top > 0) pt.y = node.y + d.top;
+    else if (Math.abs(pt.y - (node.y + node.height)) < EPS && d.bottom > 0)
+      pt.y = node.y + node.height - d.bottom;
+    else if (Math.abs(pt.x - node.x) < EPS && d.left > 0) pt.x = node.x + d.left;
+    else if (Math.abs(pt.x - (node.x + node.width)) < EPS && d.right > 0)
+      pt.x = node.x + node.width - d.right;
+  };
+  for (const edge of layoutResult.edges) {
+    adjust(edge.from, edge.fromPoint);
+    adjust(edge.to, edge.toPoint);
+  }
 }
 
 const ZERO_INSETS: ShapeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -2054,6 +2098,17 @@ function renderMetaRow(
  * ghost "removed" placeholder is still emitted so the viewer can see what
  * disappeared.
  */
+/**
+ * PoC (#2366 H-1): pill style for the inset annotation chip.
+ * "solid"  — pill bg = badge-color, white text (option 1 in the design doc)
+ * "tinted" — pill bg = badge-color at low alpha over the card, text in
+ *            badge-color (option 2)
+ */
+const CHIP_STYLE: "solid" | "tinted" = "solid";
+const CHIP_HEIGHT = 16;
+const CHIP_MARGIN = 8; // from the card's top-right corner
+const CHIP_FONT_SIZE = 9;
+
 function renderNodeBadge(
   node: LayoutNode,
   style: ResolvedNodeStyle,
@@ -2069,36 +2124,36 @@ function renderNodeBadge(
   const annotationsAdded = diffMeta?.changes?.annotations?.added ?? [];
   const annotationsRemoved = diffMeta?.changes?.annotations?.removed ?? [];
   const hasAnnotationDiff = annotationsAdded.length > 0 || annotationsRemoved.length > 0;
-
-  const badgeX = node.x + node.width - 10;
-  const badgeY = node.y - 6;
   const hasCurrentBadge = !!(style.badgeIcon || style.badgeLabel);
 
   if (hasCurrentBadge) {
-    const badgeParts = badgeChildren(style, badgeX, badgeY, palette.badgeFallback);
-    // Classify badge diff state. With a single merged badge, direction is:
-    //   added.length > 0 → "added" (new annotation produced the current badge)
-    //   removed.length > 0 (and none added) → "changed" (swap/rewrite)
-    //   no diff or diff doesn't touch annotations → undefined (no attr)
     let badgeDiffState: string | undefined;
     if (annotationsAdded.length > 0) badgeDiffState = "added";
     else if (annotationsRemoved.length > 0) badgeDiffState = "changed";
     children.push(
-      el("g", { "data-node-badge": nodeId, "data-diff-state": badgeDiffState }, ...badgeParts),
+      el(
+        "g",
+        { "data-node-badge": nodeId, "data-diff-state": badgeDiffState },
+        ...insetChip(node, style, palette),
+      ),
     );
   } else if (annotationsRemoved.length > 0) {
-    // Ghost "removed" badge — all annotations were removed, so there is no
-    // current style badge. Render a neutral placeholder with a strike so the
-    // user still sees *something was removed*.
+    // Ghost "removed" chip — all annotations were removed. A dashed empty
+    // pill in muted color marks the spot.
     const ghostColor = palette.textSubtle;
+    const w = 26;
+    const cx = node.x + node.width - CHIP_MARGIN - w;
+    const cy = node.y + CHIP_MARGIN;
     children.push(
       el(
         "g",
         { "data-node-badge": nodeId, "data-diff-state": "removed" },
-        el("circle", {
-          cx: badgeX,
-          cy: badgeY,
-          r: 10,
+        el("rect", {
+          x: cx,
+          y: cy,
+          width: w,
+          height: CHIP_HEIGHT,
+          rx: CHIP_HEIGHT / 2,
           fill: "transparent",
           stroke: ghostColor,
           "stroke-width": 1.5,
@@ -2107,8 +2162,8 @@ function renderNodeBadge(
         el(
           "text",
           {
-            x: badgeX,
-            y: badgeY,
+            x: cx + w / 2,
+            y: cy + CHIP_HEIGHT / 2,
             "text-anchor": "middle",
             "dominant-baseline": "central",
             fill: ghostColor,
@@ -2119,14 +2174,87 @@ function renderNodeBadge(
       ),
     );
   }
-  // Record annotation delta as data-attrs on the node group below so CSS / UI
-  // can query the full before/after sets (badge diff is only a hint).
   const annotationAddedAttr =
     hasAnnotationDiff && annotationsAdded.length > 0 ? annotationsAdded.join(",") : undefined;
   const annotationRemovedAttr =
     hasAnnotationDiff && annotationsRemoved.length > 0 ? annotationsRemoved.join(",") : undefined;
 
   return { children, annotationAddedAttr, annotationRemovedAttr };
+}
+
+/**
+ * The inset pill chip itself: icon glyph + label inside the card's top-right
+ * corner (replaces the floating circle that sat outside the border and
+ * collided with incoming edges / neighbors — #2366 P5). Label elides at 40%
+ * of the card width; when even the icon-only pill would not fit, the icon
+ * alone is drawn.
+ */
+function insetChip(node: LayoutNode, style: ResolvedNodeStyle, palette: DiagramPalette): string[] {
+  const badgeColor = style.badgeColor ?? palette.badgeFallback;
+  const icon = style.badgeIcon ?? "";
+  const maxLabelWidth = node.width * 0.4;
+  let label = style.badgeLabel ?? "";
+  if (label && estimateTextWidth(label, CHAR_WIDTH * 0.75) > maxLabelWidth) {
+    label = truncateToWidth(label, maxLabelWidth, CHAR_WIDTH * 0.75);
+  }
+  const iconW = icon ? 12 : 0;
+  const labelW = label ? estimateTextWidth(label, CHAR_WIDTH * 0.75) + 4 : 0;
+  const pillW = 8 + iconW + labelW;
+  const px = node.x + node.width - CHIP_MARGIN - pillW;
+  const py = node.y + CHIP_MARGIN;
+  const cyMid = py + CHIP_HEIGHT / 2;
+
+  const solid = CHIP_STYLE === "solid";
+  const parts: string[] = [
+    el("rect", {
+      x: px,
+      y: py,
+      width: pillW,
+      height: CHIP_HEIGHT,
+      rx: CHIP_HEIGHT / 2,
+      fill: badgeColor,
+      "fill-opacity": solid ? undefined : "0.18",
+      stroke: solid ? undefined : badgeColor,
+      "stroke-width": solid ? undefined : 1,
+    }),
+  ];
+  const contentColor = solid ? "#FFFFFF" : badgeColor;
+  let cx = px + 6;
+  if (icon) {
+    parts.push(
+      el(
+        "text",
+        {
+          x: cx + iconW / 2 - 2,
+          y: cyMid,
+          "text-anchor": "middle",
+          "dominant-baseline": "central",
+          fill: contentColor,
+          "font-size": "9px",
+        },
+        escapeXml(icon),
+      ),
+    );
+    cx += iconW;
+  }
+  if (label) {
+    parts.push(
+      el(
+        "text",
+        {
+          x: cx,
+          y: cyMid,
+          "dominant-baseline": "central",
+          fill: contentColor,
+          "font-size": `${CHIP_FONT_SIZE}px`,
+          "font-weight": "bold",
+          "font-family": "sans-serif",
+        },
+        escapeXml(label),
+      ),
+    );
+  }
+  return parts;
 }
 
 /**

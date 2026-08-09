@@ -118,9 +118,9 @@ domain {
 }
 
 usecase {
-  background-color: #1E3A5F;
-  color: #E0F2FE;
-  border-color: #0C4A6E;
+  background-color: transparent;
+  color: #BAE0F7;
+  border-color: #38709C;
   border-width: 1;
   shape: box;
   font-size: 12;
@@ -136,9 +136,9 @@ entity {
 }
 
 resource {
-  background-color: #1E3A5F;
-  color: #E0F2FE;
-  border-color: #0C4A6E;
+  background-color: #26303F;
+  color: #D7DEE8;
+  border-color: #64748B;
   border-width: 2;
   font-size: 12;
 }
@@ -210,63 +210,72 @@ resource[storage] { shape: cloud; }
 
 /* ── デプロイノード種別 ── */
 oci {
-  background-color: #1E3A5F;
+  background-color: #16294D;
+  color: #93C5FD;
   border-color: #3B82F6;
   badge-label: "oci";
   badge-color: #3B82F6;
 }
 
 lambda {
-  background-color: #3B1F5F;
+  background-color: #2A1B47;
+  color: #D8B4FE;
   border-color: #A855F7;
   badge-label: "lambda";
   badge-color: #A855F7;
 }
 
 jar {
-  background-color: #1F3B2A;
+  background-color: #12301D;
+  color: #86EFAC;
   border-color: #22C55E;
   badge-label: "jar";
   badge-color: #22C55E;
 }
 
 war {
-  background-color: #3B2A1F;
+  background-color: #3B2210;
+  color: #FDBA74;
   border-color: #F97316;
   badge-label: "war";
   badge-color: #F97316;
 }
 
 function {
-  background-color: #2D3B1F;
+  background-color: #322905;
+  color: #FDE047;
   border-color: #EAB308;
   badge-label: "function";
   badge-color: #EAB308;
 }
 
 assets {
-  background-color: #1F3B3B;
+  background-color: #0B2B33;
+  color: #67E8F9;
   border-color: #06B6D4;
   badge-label: "assets";
   badge-color: #06B6D4;
 }
 
 job {
-  background-color: #3B2222;
+  background-color: #3A1414;
+  color: #FCA5A5;
   border-color: #EF4444;
   badge-label: "job";
   badge-color: #EF4444;
 }
 
 artifact {
-  background-color: #2D2D2D;
+  background-color: #25282D;
+  color: #D1D5DB;
   border-color: #9CA3AF;
   badge-label: "artifact";
   badge-color: #9CA3AF;
 }
 
 store {
-  background-color: #14302B;
+  background-color: #0D2E29;
+  color: #5EEAD4;
   border-color: #14B8A6;
   badge-label: "store";
   badge-color: #14B8A6;
@@ -375,9 +384,9 @@ domain {
 }
 
 usecase {
-  background-color: #F0F9FF;
-  color: #0C4A6E;
-  border-color: #BAE6FD;
+  background-color: transparent;
+  color: #155E86;
+  border-color: #7CB8DA;
   border-width: 1;
   shape: box;
   font-size: 12;
@@ -393,9 +402,9 @@ entity {
 }
 
 resource {
-  background-color: #F0F9FF;
-  color: #0C4A6E;
-  border-color: #BAE6FD;
+  background-color: #EEF1F5;
+  color: #334155;
+  border-color: #94A3B8;
   border-width: 2;
   font-size: 12;
 }

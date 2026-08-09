@@ -3,6 +3,7 @@ import { el } from "./svg-builder.js";
 import { NODE_PADDING_Y } from "./rendering-constants.js";
 import {
   registerShape,
+  registerPortDepth,
   getShape,
   type ShapeContext,
   type ShapeRenderFn,
@@ -244,7 +245,23 @@ const cloudInset: ShapeContentInsetFn = (w, h) => ({
   left: w * 0.2,
 });
 
+// PoC (#2366 P10): attachment depths so arrowheads land on the drawn outline.
+const userPortDepth = (_w: number, h: number) => ({
+  top: userMedallionRadius(h),
+  right: 0,
+  bottom: 0,
+  left: 0,
+});
+const cloudPortDepth = (w: number, h: number) => ({
+  top: h * 0.1,
+  right: w * 0.06,
+  bottom: h * 0.08,
+  left: w * 0.06,
+});
+
 export function registerBuiltinShapes(): void {
+  registerPortDepth("user", userPortDepth);
+  registerPortDepth("cloud", cloudPortDepth);
   registerShape("box", box);
   registerShape("user", user, userInset);
   registerShape("cylinder", cylinder, cylinderInset);
