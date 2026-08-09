@@ -37,7 +37,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
 
       - name: Render diagram (${{ matrix.diagram.input }})
         run: npx --yes karasu@latest render "${{ matrix.diagram.input }}" --output "${{ matrix.diagram.output }}"

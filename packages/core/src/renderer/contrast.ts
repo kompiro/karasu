@@ -41,3 +41,20 @@ export function contrastRatio(a: string, b: string): number | undefined {
 
 /** WCAG AA threshold for normal-size text. */
 export const WCAG_AA_NORMAL_TEXT = 4.5;
+
+/** WCAG AA threshold for large text — used as a compositing backstop. */
+export const WCAG_AA_LARGE_TEXT = 3.0;
+
+/**
+ * Alpha-composite `fg` over `bg` and return the resulting hex color.
+ * Models translucent overlays such as boundary-frame tints so contrast can
+ * be checked against the surface a viewer actually sees. Returns undefined
+ * when either color is not a parseable hex value.
+ */
+export function compositeOver(fg: string, bg: string, alpha: number): string | undefined {
+  const f = parseHex(fg);
+  const b = parseHex(bg);
+  if (!f || !b) return undefined;
+  const mix = f.map((c, i) => Math.round(alpha * c + (1 - alpha) * b[i]));
+  return "#" + mix.map((c) => c.toString(16).padStart(2, "0").toUpperCase()).join("");
+}

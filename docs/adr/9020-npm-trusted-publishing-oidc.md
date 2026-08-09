@@ -5,6 +5,7 @@ status: accepted
 date: 2026-06-19
 topic: build
 related_to:
+  - ADR-2397
   - ADR-1315
   - ADR-1370
 scope:
@@ -14,7 +15,6 @@ scope:
     - security
 assumptions:
   - "file: .github/workflows/release.yml"
-  - "grep: .github/workflows/release.yml :: npm install -g npm@latest"
   - "grep: package.json :: \"release\": \"pnpm build && changeset publish\""
 ---
 
@@ -39,6 +39,8 @@ assumptions:
 
 1. **npm publish を Trusted Publishing（GitHub OIDC）に切り替え、`NPM_TOKEN` を廃止する。** `release.yml` の publish は `id-token: write` を npm（>= 11.5.1）が短命クレデンシャルに交換して行う。token 行（`//registry.npmjs.org/:_authToken=...`）と `NPM_TOKEN` gate を削除する。
 2. **npm を OIDC 対応版へ更新する。** Node 22 同梱の npm は 10.x のため、`npm install -g npm@latest` を publish 前に実行する（`changeset publish` はこの `npm` を呼ぶ）。Node は `>= 22.14.0`（setup-node `"22"` は最新 22.x に解決され要件を満たす）。
+
+   > **決定 2 は [ADR-2397](./2397-node-24-baseline.md) で無効になった。** Node 24 が npm 11.17+ を同梱して要件を満たすため、`release.yml` からこのステップを削除した（本 ADR の frontmatter からも、その存在を主張していた `assumptions:` 行を落とした）。決定 1・3・4・5 はそのまま有効。なお「`changeset publish` はこの `npm` を呼ぶ」は経路としては不正確で、実際は `changeset publish` → `pnpm publish` → npm CLI（pnpm 10 が publish を npm へ委譲するため）。結論は変わらないが、pnpm 11 で `pnpm publish` が native 化すると委譲が消える（[#2401](https://github.com/kompiro/karasu/issues/2401)）。
 3. **provenance は trusted publishing が自動付与する。** `--provenance` / `NPM_CONFIG_PROVENANCE` は不要なので削除する。`packages/*/package.json` の `publishConfig.provenance: true` は残す（local の手動 publish ではこれを一時的に無効化する運用 — 下記）。
 4. **公開対象パッケージごとに npmjs.com で Trusted Publisher を登録する**（org `kompiro` / repo `karasu` / workflow `release.yml`）。未登録パッケージの OIDC publish は失敗する。
 5. **新規パッケージの初回公開はローカルから手動 publish する。** Trusted Publisher は「既存パッケージの settings」でしか登録できず、新規 scoped パッケージは OIDC 初回 publish で `E404` になりやすい（npm/cli #8976）。`pnpm publish`（`workspace:*` を実バージョンに書換）+ provenance off + 対話 OTP で一度公開し、その後 Trusted Publisher を登録して以後は CI に委ねる。`karasu@0.1.0` / `@karasu-tools/core@0.1.0` はこの方法で公開済み。

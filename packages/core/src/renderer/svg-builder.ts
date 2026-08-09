@@ -59,13 +59,18 @@ export function diffStateAttr(state: string | undefined): Record<string, string>
  * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
  * The "…" glyph is reserved from maxWidth so the full output always fits.
  */
-export function truncateToWidth(text: string, maxWidth: number, charWidth: number): string {
+export function truncateToWidth(
+  text: string,
+  maxWidth: number,
+  charWidth: number,
+  cjkWidth?: number,
+): string {
   // Reserve room for "…" so the truncated result always fits within maxWidth.
   const textBudget = maxWidth - charWidth;
   const chars = [...text];
   let width = 0;
   for (let i = 0; i < chars.length; i++) {
-    const cw = charDisplayWidth(chars[i], charWidth);
+    const cw = charDisplayWidth(chars[i], charWidth, cjkWidth);
     if (width + cw > textBudget) {
       return chars.slice(0, i).join("") + "…";
     }
@@ -79,21 +84,26 @@ export function truncateToWidth(text: string, maxWidth: number, charWidth: numbe
  * Returns up to `maxLines` lines; the last line is truncated with "…" if text remains.
  * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
  * On the last line, "…" is reserved from maxWidth so the output always fits.
+ *
+ * Line breaks prefer the last space in the line (#2366 PoC), so Latin words
+ * stay whole; text with no spaces (CJK, identifiers) still breaks per char.
  */
 export function wrapToWidth(
   text: string,
   maxWidth: number,
   charWidth: number,
   maxLines: number,
+  cjkWidth?: number,
 ): string[] {
   const chars = [...text];
   const lines: string[] = [];
   let lineStart = 0;
   let lineWidth = 0;
-  let lastFitIdx = 0;
+  let lastSpace = -1;
 
   for (let i = 0; i < chars.length; i++) {
-    const cw = charDisplayWidth(chars[i], charWidth);
+    const ch = chars[i];
+    const cw = charDisplayWidth(ch, charWidth, cjkWidth);
     if (lineWidth + cw > maxWidth) {
       if (lines.length === maxLines - 1) {
         // Last allowed line: reserve room for "…" so the output fits within maxWidth.
@@ -102,22 +112,41 @@ export function wrapToWidth(
         let lastLineWidth = lineWidth;
         while (j > lineStart && lastLineWidth > lastLineBudget) {
           j--;
-          const prevCw = charDisplayWidth(chars[j], charWidth);
+          const prevCw = charDisplayWidth(chars[j], charWidth, cjkWidth);
           lastLineWidth -= prevCw;
         }
         lines.push(chars.slice(lineStart, j).join("") + "…");
         return lines;
       }
-      lines.push(chars.slice(lineStart, i).join(""));
-      lineStart = i;
-      lineWidth = cw;
+      // Break at the most recent space when there is one; the space itself
+      // is consumed by the break. An overflowing space IS a word boundary:
+      // break right here and consume it, otherwise the next line would start
+      // with the carried space, `lastSpace > lineStart` would reject it, and
+      // the following word would split per-char (review of #2399).
+      let breakEnd = i;
+      let nextStart = i;
+      if (ch === " ") {
+        nextStart = i + 1;
+      } else if (lastSpace > lineStart) {
+        breakEnd = lastSpace;
+        nextStart = lastSpace + 1;
+      }
+      lines.push(chars.slice(lineStart, breakEnd).join(""));
+      lineStart = nextStart;
+      lineWidth = 0;
+      lastSpace = -1;
+      for (let j = nextStart; j <= i; j++) {
+        if (chars[j] === " ") lastSpace = j;
+        lineWidth += charDisplayWidth(chars[j], charWidth, cjkWidth);
+      }
     } else {
+      if (ch === " ") lastSpace = i;
       lineWidth += cw;
     }
-    lastFitIdx = i;
   }
 
-  if (lineStart <= lastFitIdx) {
+  // Push the remainder; empty input still yields [""] (historical contract).
+  if (lineStart < chars.length || lines.length === 0) {
     lines.push(chars.slice(lineStart).join(""));
   }
 

@@ -23,9 +23,9 @@
   },
   "scripts": {
     "prebuild": "tsx ../../scripts/ci/generate-third-party-notices.ts .",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml",
     "prepack": "pnpm run build",
-    "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml --watch",
+    "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -46,6 +46,6 @@
     "vitest": "^4.1.4"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

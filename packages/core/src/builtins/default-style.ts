@@ -315,7 +315,7 @@ edge[inferred] {
 }
 
 edge[delivers] {
-  color: #8B5CF6;
+  color: #A78BFA;
   border-style: dashed;
 }
 `;

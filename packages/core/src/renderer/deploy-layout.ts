@@ -6,8 +6,12 @@ import {
   NODE_PADDING_X,
   NODE_PADDING_Y,
   LINE_HEIGHT,
+  DESCRIPTION_FONT_RATIO,
+  DESC_MAX_CONTENT_WIDTH,
+  DESC_MAX_LINES,
   estimateTextWidth,
 } from "./rendering-constants.js";
+import { wrapToWidth } from "./svg-builder.js";
 import { sortByBarycenter, gridColumnCount } from "./layer-layout-logics.js";
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
@@ -38,9 +42,24 @@ function deployUnitDescription(unit: DeployNode): string | undefined {
 
 function measureDeployUnit(unit: DeployNode): { width: number; height: number } {
   const labelWidth = estimateTextWidth(unit.label ?? unit.id, CHAR_WIDTH);
-  const width = Math.max(labelWidth, 80) + NODE_PADDING_X * 2;
+  const desc = deployUnitDescription(unit);
+  // Same width/wrap rules as measureNode (#2366 C): the shared renderer
+  // wraps the description into up to DESC_MAX_LINES lines, so the card must
+  // reserve the same line count or the padding silently absorbs the overflow.
+  const descWidth = desc
+    ? Math.min(estimateTextWidth(desc, CHAR_WIDTH * DESCRIPTION_FONT_RATIO), DESC_MAX_CONTENT_WIDTH)
+    : 0;
+  const width = Math.max(labelWidth, descWidth, 80) + NODE_PADDING_X * 2;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
-  if (deployUnitDescription(unit)) height += LINE_HEIGHT;
+  if (desc) {
+    const descLines = wrapToWidth(
+      desc,
+      width - NODE_PADDING_X * 2,
+      CHAR_WIDTH * DESCRIPTION_FONT_RATIO,
+      DESC_MAX_LINES,
+    ).length;
+    height += LINE_HEIGHT * descLines;
+  }
   return { width, height };
 }
 

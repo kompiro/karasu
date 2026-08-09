@@ -180,7 +180,7 @@ client MobileApp [mobile] {
 }
 ```
 
-`resource` は client が読み書きするストレージ、`capability` は OS / browser が許可を与える機能、という別概念です。SVG カードはそれぞれ `📦 ×N` / `🔐 ×N` のカウントバッジで表示し、完全リストは詳細パネルに出ます。
+`resource` は client が読み書きするストレージ、`capability` は OS / browser が許可を与える機能、という別概念です。SVG カードはそれぞれ package / lock グリフの `×N` のカウントバッジで表示し、完全リストは詳細パネルに出ます。
 
 > cookie / session / 生クレデンシャルのストレージ、および脅威モデリングそのものは意図的に対象外です（karasu は基礎事実をモデル化するが、セキュリティ規律の shape は語彙に固定しない — [ADR-834](../adr/834-security-modeling-stance.md)）。
 

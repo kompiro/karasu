@@ -7,9 +7,10 @@ describe("truncateToWidth", () => {
   });
 
   it("truncates ASCII text that exceeds maxWidth, reserving room for ellipsis", () => {
-    // textBudget = 50 - 7.5 = 42.5px; 5 chars = 37.5px fit, 6th (F) → 45 > 42.5 → "ABCDE…"
+    // Latin counts 0.8×charWidth (#2366 C): textBudget = 50 - 7.5 = 42.5px;
+    // 7 chars = 42px fit, 8th (H) → 48 > 42.5 → "ABCDEFG…"
     const result = truncateToWidth("ABCDEFGHIJ", 50, 7.5);
-    expect(result).toBe("ABCDE…");
+    expect(result).toBe("ABCDEFG…");
   });
 
   it("truncates CJK text reserving ellipsis width", () => {
@@ -30,6 +31,14 @@ describe("truncateToWidth", () => {
 });
 
 describe("wrapToWidth", () => {
+  it("treats an overflowing space as the word boundary (no leading-space lines)", () => {
+    // Latin 0.8x: each char 8px at charWidth 10. "hello" fills 40; the space
+    // itself overflows and must be consumed by the break, not carried over
+    // (review of #2399 — carrying it split the next word per-char).
+    const lines = wrapToWidth("hello world foo", 40, 10, 4);
+    expect(lines).toEqual(["hello", "world", "foo"]);
+  });
+
   it("returns single line when text fits", () => {
     const lines = wrapToWidth("Hello", 100, 7.5, 3);
     expect(lines).toEqual(["Hello"]);
