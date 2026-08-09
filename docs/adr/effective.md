@@ -133,6 +133,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2390](2390-dependabot-security-2026-08-07.md) — Security alert 2026-08-07 — js-yaml は既存 override の floor 引き上げで解決する
 - [ADR-2397](2397-node-24-baseline.md) — ツールチェーンの Node.js を 24（Active LTS）に上げ、公開パッケージの下限を 22 にする
 - [ADR-2401](2401-pnpm-11-migration.md) — pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一本化する
+- [ADR-2404](2404-dependabot-security-2026-08-08.md) — Security alert 2026-08-08 — dompurify は override と app の宣言を両方 patched 版へ引き上げる
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
