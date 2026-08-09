@@ -1450,11 +1450,22 @@ function renderNode(
   // (Issue #738 / design doc D-2). If the node's badge disappeared because
   // the last annotation was removed, we still emit a ghost badge so the
   // viewer can see *what* was removed.
+  // Corner lane (#2366 H-1): the annotation chip and the i / D buttons share
+  // one right-packed row, so the chip's right edge starts left of however
+  // many buttons this render will draw — they can never overlap.
+  const willShowDeploy =
+    interactive &&
+    DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) &&
+    (serviceIdsWithDeploy?.has(nodeId) ?? false);
+  const willShowInfo =
+    interactive &&
+    (node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role);
+  const laneButtons = (willShowDeploy ? 1 : 0) + (willShowInfo ? 1 : 0);
   const {
     children: badgeParts,
     annotationAddedAttr,
     annotationRemovedAttr,
-  } = renderNodeBadge(node, style, palette, nodeId, diffMeta);
+  } = renderNodeBadge(node, style, palette, nodeId, diffMeta, laneButtons * 20);
   children.push(...badgeParts);
 
   // Sub-label: shown below the node for ghost domains to indicate the parent service
@@ -1463,16 +1474,11 @@ function renderNode(
 
   // Top-right icon buttons: deploy button and info button
   // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
-  const showDeployButton =
-    interactive &&
-    DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) &&
-    (serviceIdsWithDeploy?.has(nodeId) ?? false);
+  const showDeployButton = willShowDeploy;
   // Show info button when the node has any metadata worth displaying in the detail panel.
   // Container nodes (hasChildren) need the button because clicking the body drills down.
   // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
-  const showInfoButton =
-    interactive &&
-    (node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role);
+  const showInfoButton = willShowInfo;
   const btnY = node.y + 14;
   let btnSlot = 0; // 0 = rightmost, increments leftward
 
@@ -2115,6 +2121,7 @@ function renderNodeBadge(
   palette: DiagramPalette,
   nodeId: string,
   diffMeta: NodeDiffMeta | undefined,
+  laneOffset = 0,
 ): {
   children: string[];
   annotationAddedAttr: string | undefined;
@@ -2134,7 +2141,7 @@ function renderNodeBadge(
       el(
         "g",
         { "data-node-badge": nodeId, "data-diff-state": badgeDiffState },
-        ...insetChip(node, style, palette),
+        ...insetChip(node, style, palette, laneOffset),
       ),
     );
   } else if (annotationsRemoved.length > 0) {
@@ -2142,7 +2149,7 @@ function renderNodeBadge(
     // pill in muted color marks the spot.
     const ghostColor = palette.textSubtle;
     const w = 26;
-    const cx = node.x + node.width - CHIP_MARGIN - w;
+    const cx = node.x + node.width - CHIP_MARGIN - laneOffset - w;
     const cy = node.y + CHIP_MARGIN;
     children.push(
       el(
@@ -2189,7 +2196,12 @@ function renderNodeBadge(
  * of the card width; when even the icon-only pill would not fit, the icon
  * alone is drawn.
  */
-function insetChip(node: LayoutNode, style: ResolvedNodeStyle, palette: DiagramPalette): string[] {
+function insetChip(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  palette: DiagramPalette,
+  laneOffset = 0,
+): string[] {
   const badgeColor = style.badgeColor ?? palette.badgeFallback;
   const icon = style.badgeIcon ?? "";
   const maxLabelWidth = node.width * 0.4;
@@ -2198,9 +2210,9 @@ function insetChip(node: LayoutNode, style: ResolvedNodeStyle, palette: DiagramP
     label = truncateToWidth(label, maxLabelWidth, CHAR_WIDTH * 0.75);
   }
   const iconW = icon ? 12 : 0;
-  const labelW = label ? estimateTextWidth(label, CHAR_WIDTH * 0.75) + 4 : 0;
-  const pillW = 8 + iconW + labelW;
-  const px = node.x + node.width - CHIP_MARGIN - pillW;
+  const labelW = label ? estimateTextWidth(label, CHAR_WIDTH * 0.75) + 6 : 0;
+  const pillW = 10 + iconW + labelW;
+  const px = node.x + node.width - CHIP_MARGIN - laneOffset - pillW;
   const py = node.y + CHIP_MARGIN;
   const cyMid = py + CHIP_HEIGHT / 2;
 
