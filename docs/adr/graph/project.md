@@ -1,6 +1,6 @@
 # ADR Topic: project
 
-13 ADRs in this topic. Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
