@@ -12,15 +12,13 @@ function makeTeam(
   opts: { members?: { id: string }[]; teams?: TeamNode[]; owns?: string[] } = {},
 ): TeamNode {
   const children: OrgNode[] = [
-    ...(opts.members ?? []).map(
-      (m): OrgNode => ({
-        kind: "member",
-        id: m.id,
-        properties: { links: [] },
-        children: [],
-        loc: mockLoc,
-      }),
-    ),
+    ...(opts.members ?? []).map((m): OrgNode => ({
+      kind: "member",
+      id: m.id,
+      properties: { links: [] },
+      children: [],
+      loc: mockLoc,
+    })),
     ...(opts.teams ?? []),
   ];
   return {

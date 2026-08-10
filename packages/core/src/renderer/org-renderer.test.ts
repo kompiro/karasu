@@ -63,21 +63,19 @@ function makeTeam(
   } = {},
 ): TeamNode {
   const children: OrgNode[] = [
-    ...(opts.members ?? []).map(
-      (m): MemberNode => ({
-        kind: "member",
-        id: m.id,
-        label: m.label,
-        properties: {
-          links: [],
-          slack: m.slack,
-          github: m.github,
-          description: m.description,
-        },
-        children: [],
-        loc: mockLoc,
-      }),
-    ),
+    ...(opts.members ?? []).map((m): MemberNode => ({
+      kind: "member",
+      id: m.id,
+      label: m.label,
+      properties: {
+        links: [],
+        slack: m.slack,
+        github: m.github,
+        description: m.description,
+      },
+      children: [],
+      loc: mockLoc,
+    })),
     ...(opts.teams ?? []),
   ];
   return {
