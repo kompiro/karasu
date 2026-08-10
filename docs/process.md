@@ -142,6 +142,28 @@ gh run view <run-id>                                             # Summary に P
 > `spike-preview.yml` が main に入るより前に切ったブランチでは発火しない（エラーも
 > 出ずに無反応になる）。上のコマンドのように `origin/main` から切る。
 
+### PoC のレポートは `reports/` に生成する
+
+**到達状態**: PoC が生成した before/after 比較や計測結果が `reports/<topic>/` に
+あり、`git status` は clean のまま（`reports/*` は gitignore、追跡されるのは
+`reports/README.md` だけ）。規約と API の詳細は
+[`reports/README.md`](../reports/README.md)。
+
+```
+pnpm report:demo   # reports/demo/index.html — 新規レポートはこれをコピーして始める
+```
+
+判断基準は 1 つ、**その成果物が結論そのものか、結論を支える証拠か**。結論は
+design doc / ADR / Issue に書く（ブランチより長生きする）。証拠は `reports/` に
+置き、`docs/` からは参照しない — spike preview URL と同じ扱いで、作業中に共有する
+のはよいが、ドキュメントの到達先にはしない。
+
+- **共通のスキャフォールディングは `scripts/report/`。** HTML シェル・before/after
+  ペア・`.krs` → SVG・Chromium スクリーンショットは実装済みなので、PoC ごとに
+  書き直さない（`reports/` 配下はライブラリを置けない — gitignore されるため）。
+- **`spike/` ブランチでは `git add -f reports/<topic>` してよい。** spike はマージ
+  されないので main には届かず、レポートが spike ブランチと一緒に生き死にする。
+
 ### Claude Code plugin のセットアップ
 
 karasu のワークフローを Claude Code 上で再現するには、portable な skill 群を提供する `kompiro/hane` plugin をインストールする。
