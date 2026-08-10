@@ -298,6 +298,7 @@ flowchart TD
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
     ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
+    ADR_2360["ADR-2360<br/>label placement の障害物にエッジ polyline を加える — 自分の線だけ..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -772,6 +773,7 @@ flowchart TD
   class ADR_2348 accepted
   class ADR_2351 accepted
   class ADR_2356 accepted
+  class ADR_2360 accepted
   class ADR_2390 accepted
   class ADR_2397 accepted
   class ADR_2401 accepted
