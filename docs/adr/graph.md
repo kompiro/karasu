@@ -321,6 +321,7 @@ flowchart TD
     ADR_999["ADR-999<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_1508["ADR-1508<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
+    ADR_2172["ADR-2172<br/>builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@p..."]
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
@@ -752,6 +753,7 @@ flowchart TD
   class ADR_2152 accepted
   class ADR_2161 accepted
   class ADR_2165 accepted
+  class ADR_2172 accepted
   class ADR_2173 accepted
   class ADR_2174 accepted
   class ADR_2184 accepted

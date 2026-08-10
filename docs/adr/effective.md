@@ -330,6 +330,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-999](999-legend-in-use-fallback.md) — 凡例 ref のフォールバック swatch（in-use なら描画する）
 - [ADR-1508](1508-annotation-badge-label-i18n.md) — 組み込みアノテーションバッジラベルは reference-data から生成し locale 注入可能にする
 - [ADR-1755](1755-edge-from-to-selectors.md) — `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
+- [ADR-2172](2172-builtin-vocabulary-expansion.md) — builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@planned` を採用し、却下 7 件と停止規則を記録する
 - [ADR-2234](2234-boundary-style-selector.md) — boundary フレーム色の style セレクタ — `boundary` / `boundary#<id>`
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 
