@@ -4,7 +4,8 @@ name: Reference docs check
 # reference-docs drift guard (`gen-docs.ts --check`) plus the en/ja spec
 # structure guard (`spec-structure-sync.ts`, Issue #1501) plus the guide
 # diagram drift guard (`gen-guide-diagrams.ts --check`, Issue #1574) plus the
-# roadmap ledger guard (`roadmap-issue-state.ts`, Issue #2245) on PRs
+# roadmap ledger guard (`roadmap-issue-state.ts`, Issue #2245) plus the
+# embedded-snippet parse guard (`krs-fences.ts`, Issue #2415) on PRs
 # that touch the reference single-source / guide / roadmap paths. The skip workflow emits a no-op
 # `Reference docs` job for all other PRs so a Required status named
 # `Reference docs` stays green repository-wide.
@@ -90,6 +91,12 @@ jobs:
 
       - name: Guide diagrams in sync
         run: pnpm exec tsx scripts/guide/gen-guide-diagrams.ts --check
+
+      # Every `.krs` snippet embedded in the docs is parsed. `ci.yml` runs the
+      # vitest mirror, but its `paths-ignore: docs/**` skips exactly the
+      # spec-only PR that can teach a form the parser rejects (Issue #2415).
+      - name: Embedded krs snippets parse
+        run: pnpm run lint:krs-fences
 
       # The roadmap's watch ledgers track work that has no Issue yet, and
       # nothing re-reads a row once its promotion trigger fires (Issue #2245).

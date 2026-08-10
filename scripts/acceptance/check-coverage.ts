@@ -2,7 +2,6 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { analyzeRepo, summarize, type Finding, type RepoReport } from "./coverage.ts";
-import { analyzeKrsFences, describeKrsFenceFinding, type KrsFenceFinding } from "./krs-fences.ts";
 import {
   analyzeDesignRefs,
   describeDesignRefFinding,
@@ -19,10 +18,12 @@ interface CliOptions {
 const HELP_TEXT = `Usage: pnpm at:check-coverage [options]
 
 Surveys docs/acceptance/*.md for deviations from the canonical automation
-marker convention (see .claude/skills/acceptance-test/SKILL.md), and parses
-every \`\`\`krs block in those docs so a manual step cannot quietly drift out
-of the grammar (see scripts/acceptance/krs-fences.ts). Also rejects references
-to docs/design/, which ADR promotion deletes (see scripts/acceptance/design-refs.ts).
+marker convention (see .claude/skills/acceptance-test/SKILL.md). Also rejects
+references to docs/design/, which ADR promotion deletes (see
+scripts/acceptance/design-refs.ts).
+
+The \`\`\`krs blocks embedded in these docs are parsed by \`pnpm lint:krs-fences\`,
+which covers the spec / guide / concepts docs too (see scripts/lint/krs-fences.ts).
 
 Options:
   --strict       Exit with code 1 if any findings are reported (default: 0).
@@ -63,11 +64,7 @@ function describeFinding(f: Finding): string {
   }
 }
 
-function reportText(
-  report: RepoReport,
-  fenceFindings: KrsFenceFinding[],
-  designRefFindings: DesignRefFinding[],
-): string {
+function reportText(report: RepoReport, designRefFindings: DesignRefFinding[]): string {
   const lines: string[] = [];
   const summary = summarize(report);
 
@@ -78,7 +75,6 @@ function reportText(
   lines.push(
     `  ✓ e2e linkage: ${summary.orphanSpecs} orphan spec(s), ${summary.staleSpecRefs} stale spec reference(s).`,
   );
-  lines.push(`  ✓ krs fences: ${fenceFindings.length} finding(s).`);
   lines.push(`  ✓ design-doc references: ${designRefFindings.length} finding(s).`);
 
   const nonConforming = report.reports.flatMap((r) => r.findings);
@@ -112,14 +108,6 @@ function reportText(
     }
   }
 
-  if (fenceFindings.length > 0) {
-    lines.push("");
-    lines.push(
-      "krs fences in AT docs (mark an excerpt `\x60\x60\x60krs fragment`, a bad-input demo `\x60\x60\x60krs invalid`):",
-    );
-    for (const f of fenceFindings) lines.push(`  ✗ ${describeKrsFenceFinding(f)}`);
-  }
-
   if (designRefFindings.length > 0) {
     lines.push("");
     lines.push(
@@ -128,7 +116,7 @@ function reportText(
     for (const f of designRefFindings) lines.push(`  ✗ ${describeDesignRefFinding(f)}`);
   }
 
-  if (summary.totalFindings === 0 && fenceFindings.length === 0 && designRefFindings.length === 0) {
+  if (summary.totalFindings === 0 && designRefFindings.length === 0) {
     lines.push("");
     lines.push("All AT files conform to the canonical marker convention.");
   }
@@ -144,7 +132,6 @@ function main(argv: string[]): number {
   }
   const report = analyzeRepo({ repoRoot: opts.repoRoot });
   const summary = summarize(report);
-  const fenceFindings = analyzeKrsFences(opts.repoRoot);
   const designRefFindings = analyzeDesignRefs(opts.repoRoot);
 
   if (opts.json) {
@@ -153,14 +140,12 @@ function main(argv: string[]): number {
         {
           summary: {
             ...summary,
-            krsFences: fenceFindings.length,
             designRefs: designRefFindings.length,
           },
           nonConforming: report.reports.flatMap((r) => r.findings),
           missingMarkerWithSpec: report.crossRefFindings,
           orphanSpecs: report.linkage.orphanSpecs,
           staleSpecRefs: report.linkage.staleSpecRefs,
-          krsFences: fenceFindings,
           designRefs: designRefFindings,
         },
         null,
@@ -168,10 +153,10 @@ function main(argv: string[]): number {
       ),
     );
   } else {
-    console.log(reportText(report, fenceFindings, designRefFindings));
+    console.log(reportText(report, designRefFindings));
   }
 
-  if (opts.strict && summary.totalFindings + fenceFindings.length + designRefFindings.length > 0) {
+  if (opts.strict && summary.totalFindings + designRefFindings.length > 0) {
     if (!opts.json) {
       console.error(
         "\nStrict mode: exiting non-zero. Rerun `pnpm at:check-coverage` (without --strict) for the full report above.",

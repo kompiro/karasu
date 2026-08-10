@@ -36,6 +36,7 @@
     "lint:skill-cli-refs": "tsx scripts/lint/skill-cli-refs.ts",
     "lint:config-topics-sync": "tsx scripts/lint/config-topics-sync.ts",
     "lint:vitest-projects-sync": "tsx scripts/lint/vitest-projects-sync.ts",
+    "lint:krs-fences": "tsx scripts/lint/krs-fences.ts",
     "lint:devcontainer-variants-sync": "tsx scripts/lint/devcontainer-variants-sync.ts",
     "lint:docs-site-ci-paths-sync": "tsx scripts/lint/docs-site-ci-paths-sync.ts",
     "lint:roadmap-issue-state": "tsx scripts/lint/roadmap-issue-state.ts",
