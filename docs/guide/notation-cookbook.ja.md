@@ -39,7 +39,7 @@ system Web {
     label "API Gateway"
   }
 
-  database SessionStore {          // leaf-less: 中に `table` を書かない
+  database SessionStore [cache] { // leaf-less: 中に `table` を書かない
     label "Session store"
   }
 
@@ -68,8 +68,12 @@ deploy "production" {
 - **語彙を増やさない。** アノテーション（`@…`）は*ライフサイクル*標識（deprecated,
   experimental）であって kind ではない — `@kv` は意図的に却下。leaf-less な `database`
   が既に「興味深い下部構造を持たないストア」を表現している。
+- **`[cache]` は「正本ではない」と言うタグ。** セッションストアが消えると全員が
+  ログアウトするが、業務データは失われない — それがこのタグの判定そのものである。
+  付けるのは*役割*であって技術ではない。`[kv]` が却下なのは `@kv` と同じ理由
+  （[ストアの役割タグ](../spec/tags-annotations.ja.md#ストアの役割タグ--1-つの軸4-つの状態)）。
 
-## 2. 派生検索インデックス — `[index]` タグ
+## 2. 正本ではないストア — `[index]` / `[cache]` / `[analytics]`
 
 **When** — system of record から**派生した**検索/ベクトルインデックス
 （ElasticSearch, OpenSearch, pgvector）で、それ自体が正本ではないもの。
@@ -94,6 +98,12 @@ store "search" {
 場合も付けない。idiom #1 と同じ「役割はタグ・技術は物理層」の規律で、エンジンごとに
 `vector-store` / `search` kind を増やすのを避ける。
 [ADR-1718](https://github.com/kompiro/karasu/blob/main/docs/adr/1718-vector-store-vs-database.md) を参照。
+
+`[index]` には同じ軸の兄弟が 2 つあり、いずれも `database` だけでなく `storage` にも
+付けられる。**`[cache]`** は再構築できるストア（セッションストア、CDN のオリジン
+キャッシュ。消えて業務データが失われるならそれは正本なのでタグを付けない）、
+**`[analytics]`** は分析のために取り込んだ DWH / データレイク。タグ無しは正本その
+ものを指す。[ストアの役割タグ](../spec/tags-annotations.ja.md#ストアの役割タグ--1-つの軸4-つの状態)を参照。
 
 ## 3. 境界の外側にあるもの — `[external]` タグ
 
@@ -228,7 +238,7 @@ system Hato {
   storage EXPORTS { }              // R2
   queue TASKS { }                  // Queues
   database SEARCH [index] { }      // Vectorize — 派生ベクトルインデックス（イディオム #2）
-  database CACHE { }               // KV
+  database CACHE [cache] { }       // KV — 再構築できるストア（イディオム #2）
   service AI [external] { }        // Workers AI — 外部モデルサービス（イディオム #3）
   service SessionActor [external] { }  // Durable Object — 不透明な stateful actor
 
@@ -247,9 +257,8 @@ deploy "hato" {
 **なぜ** — binding→karasu のマッピングは新構文を作らず既存イディオムを再利用する:
 **Vectorize → `database [index]`**（イディオム #2 の派生インデックス）、**Workers AI /
 Durable Object → `service [external]`**（イディオム #3、この adapter からは不透明）、
-**service binding → `->` の communication edge**。KV は素の `database` にマップする
-（専用の `[cache]` role は
-[notation-watch 項目](https://github.com/kompiro/karasu/issues/1816)であり、まだ notation ではない）。
+**service binding → `->` の communication edge**、**KV → `database [cache]`**
+（イディオム #2 の兄弟の役割 — Worker が再構築できるストア）。
 未知の binding 種別は warning を出して skip する — 決して推測しない。実行は
 `karasu translate --from wrangler wrangler.toml > index.krs`。
 
@@ -293,8 +302,8 @@ PCI スコープに入っていようがいまいが database であり、対象
 `[pci]` が付いていない図は偽の監査保証として読まれる。ルールの**内容**（role・
 プラン・条件）は恒久的に prose + `link` のまま
 （[ADR-832](../adr/832-no-runtime-authz-modeling.md)）で、`facet` 導入後に第一級に
-なるのは**適用範囲**だけである。本当に必要なのが足りないアーキタイプ（`[cache]`、
-`[bff]`）なら、代わりに組み込みタグの追加要望を出す —
+なるのは**適用範囲**だけである。本当に必要なのが足りないアーキタイプなら、代わりに
+組み込みタグの追加要望を出す —
 [`tags-annotations.ja.md`](../spec/tags-annotations.ja.md) を参照。
 
 ## 関連

@@ -27,7 +27,7 @@ Cloudflare Workers アプリの物理層を `wrangler.toml` から決定的に�
 > ✅ Automated by `packages/core/src/translate/wrangler.test.ts` (suite-wide)
 
 - [x] Vectorize → `database [index]`（既存 `[index]` role を再利用）
-- [x] KV → 素の `database`（`[cache]` は付けない — notation-watch #1816）
+- [x] KV → `database [cache]`（[#2172](https://github.com/kompiro/karasu/issues/2172) で `[cache]` が builtin 語彙に入り、ADR-1935 が記録していた degrade が閉じた。それ以前は素の `database` に落としていた）
 - [x] Workers AI → `service [external]` + `->` edge
 - [x] Durable Object → `service [external]` + `->` edge（不透明な stateful actor）
 - [x] service binding → `->` の Worker→Worker communication edge

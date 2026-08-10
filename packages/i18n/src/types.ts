@@ -160,6 +160,7 @@ export type Translations = {
   "badge.new": string;
   "badge.experimental": string;
   "badge.draft": string;
+  "badge.planned": string;
   "badge.migrationTarget": string;
 
   // ReferencePanel (Phase C5)

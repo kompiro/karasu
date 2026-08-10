@@ -159,6 +159,7 @@ export const en: Translations = {
   "badge.new": "NEW",
   "badge.experimental": "Experimental",
   "badge.draft": "Draft",
+  "badge.planned": "Planned",
   "badge.migrationTarget": "Migration target",
 
   // ReferencePanel

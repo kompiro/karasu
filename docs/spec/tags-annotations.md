@@ -12,6 +12,8 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 |-----|---------|-----------------------------|
 | `[external]` | Outside the system boundary | Dashed border, gray-toned color |
 | `[index]` | A derived index for fast search over the system of record — a role, not the SoR itself (omit on a vector DB / ElasticSearch that is itself the SoR) | Adds an `index` badge to the database node |
+| `[cache]` | Not the system of record — a store whose loss is recoverable by rebuilding it (recompute, refetch, re-login); a TTL is typical | Adds a `cache` badge to the database / storage node |
+| `[analytics]` | A derived store ingested from the system of record for analysis and aggregation (DWH / data lake) | Adds an `analytics` badge to the database / storage node |
 | `[async]` | Asynchronous communication (for edges) | Dashed arrow |
 | `[sync]` | Synchronous communication (for edges, default) | Solid arrow (default) |
 | `[human]` | A human user | Used only on user nodes. No effect on default style |
@@ -39,12 +41,33 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 >
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `[index]` is an accepted tag that must carry an effect (the `index` badge), not merely a label.
 
+### Store role tags — one axis, four states
+
+`[index]`, `[cache]` and `[analytics]` form a single axis: **which way this store is not the system of record.** No tag means it *is* the system of record, so four states say everything about a store's role.
+
+| Tag | What kind of non-SoR store | Applies to |
+|-----|----------------------------|------------|
+| *(no tag)* | The system of record | any store |
+| `[index]` | Derived for search | `database` |
+| `[cache]` | Recoverable by rebuilding — recompute, refetch, re-login | `database` / `storage` |
+| `[analytics]` | Ingested from the SoR for analysis | `database` / `storage` |
+
+**The test for `[cache]` is one question: if this store vanished, is business data lost?** If it is, the store is a system of record — do not tag it. A session store, a Redis cache and a Cloudflare KV namespace all pass; so does a CDN origin cache, a bucket of generated thumbnails or rendered artifacts, or a scratch area for exports (which is why `[cache]` applies to `storage` too). Note that the test is **volatility, not derivation**: a session store is the record of that session rather than a copy of something else, and a rule limited to derived copies would miss the most common case. `[index]` — derived *and* for search — sits inside that definition without contradiction.
+
+`[analytics]` marks the warehouse / data-lake side: a store ingested from the system of record for analysis and aggregation. It applies to `storage` because a data lake is typically object storage (Parquet on S3 / GCS). Where a warehouse also holds data ingested from *other* systems, it is still not this system's SoR, so the tag still applies. The tag is named for the role, not for the product category — `[warehouse]` would name the thing (Snowflake, BigQuery), where `[analytics]` names what the derivation is *for*, matching `[index]`.
+
+**All three stay out of the shared-store diagnostics.** `shared-infra-fan-in` and `cross-domain-store-access` describe a shared *system of record*; several services reading one search index, one cache or one warehouse is a normal shape, not the Database-per-Service smell.
+
+**Where this axis stops.** Role tags express **the SoR difference within one kind, and nothing else.** A difference of technology (graph, time-series, column-oriented) belongs to the physical layer's `store { type "…" }`; a difference of operational placement (read replica, shard) belongs to the physical layer or is not modeled at all. That is why `[kv]`, `[graph]`, `[timeseries]` and `[replica]` are **not** builtin tags and warn as `tag-not-builtin`: judging a new role tag reduces to the same single question as `[cache]` does — is this about being the system of record?
+
+> Related TPLs: [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — the stopping rule above is the third of the three questions a builtin-addition request must pass, and the rejections it produced are recorded rather than re-argued. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — every kind listed in a tag's `appliesTo` carries the badge, so a tag is never accepted-and-inert on one of its own kinds.
+
 ### Non-builtin tag names are deprecated (v1.x)
 
 Bare `[<identifier>]` still accepts any name in v1.x — the v1.0 freeze ([ADR-1314](../adr/1314-krs-spec-v1-freeze.md)) keeps parse behaviour unchanged — but a tag outside the **tool vocabulary** (the builtin table above plus the [system-assigned tags](#system-assigned-tags) below) is **deprecated**: karasu emits a `tag-not-builtin` **warning** on every use. There is deliberately **no suppression condition** — a `.krs.style` selector or a `legend` ref proves the name is intentional, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only (still enforced as a warning, never a parse error — existing files keep parsing). Migration targets:
 
 - **Membership or model-specific labeling** (PCI scope, PII, "requires auth") → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental): declare the set once at the top level and write `facets <id>` on the elements.
-- **A missing archetype** (`[cache]`, `[bff]`, …) → request a builtin tag addition (the roadmap `[cache]` watch is the exemplar route). A deprecated tag keeps working meanwhile — warned, without default-rendering effect.
+- **A missing archetype** → request a builtin tag addition. A deprecated tag keeps working meanwhile — warned, without default-rendering effect. [#2172](https://github.com/kompiro/karasu/issues/2172) is the worked example of this route: `[cache]` and `[analytics]` were adopted, `[kv]` (a technology, not a role) and `[bff]` (already expressed structurally by `delivers <ClientId>`) were rejected with their reasons recorded.
 
 A `.krs.style` rule that **targets** such a name (`[pci] { … }`) is deprecated on the same terms (`style-tag-selector-not-builtin`) and rewrites to a [facet selector](./style.md#facet-selectors-facetsid--experimental). Both halves warn: the tag on the node and the selector in the sheet are two edits, and reporting only one leaves the other unfound.
 
@@ -74,6 +97,7 @@ Annotations are metadata expressing **lifecycle and state**. They are a separate
 | `@new` | Newly added | ✦ badge |
 | `@experimental` | Experimental | ⚗ badge |
 | `@migration_target` | Migration target | → badge |
+| `@planned` | Placed by design, but does not exist yet | ◇ badge |
 | `@draft` | Asserted but not confirmed by a human | ✎ badge |
 <!-- /gen:reference:annotations -->
 
@@ -111,10 +135,10 @@ system OrderSystem {
 
 ### Non-builtin annotation names are deprecated (v1.x)
 
-`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the four builtins is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style`, and **that use is now deprecated too** (`style-annotation-selector-not-builtin`) — the styling hook has moved to [facet selectors](./style.md#facet-selectors-facetsid--experimental), which is where the before/after rewrite is written out. Migration targets:
+`@<identifier>` still accepts any identifier in v1.x — the open annotation set itself is frozen by [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — but a name outside the builtin table above is **deprecated**: karasu emits an `annotation-not-builtin` **warning** on every use, with **no suppression condition** (a stylesheet selector proves intent, but intent does not change the outcome: syntax v2.0 accepts tool vocabulary only, still enforced as a warning, never a parse error). Non-builtin annotations have no default rendering; in v1.x they remain syntactically valid targets for annotation selectors in `.krs.style`, and **that use is now deprecated too** (`style-annotation-selector-not-builtin`) — the styling hook has moved to [facet selectors](./style.md#facet-selectors-facetsid--experimental), which is where the before/after rewrite is written out. Migration targets:
 
 - **Membership or model-specific labeling** (team ownership marks, audience labels) → the [`facet` construct](./syntax.md#cross-cutting-membership-facet--experimental).
-- **A missing lifecycle state** (`@canary`, `@sunset`, …) → request a builtin annotation addition.
+- **A missing lifecycle state** → request a builtin annotation addition. [#2172](https://github.com/kompiro/karasu/issues/2172) is the worked example: `@planned` was adopted, while `@canary` (a runtime rollout state that lives for hours, not the slowly-changing structure karasu models — and overlapping `@experimental`) and `@sunset` (`@deprecated` already says it) were rejected. A long-lived canary is `@new @experimental`; a coexisting old and new is `@migration_target`.
 
 The near-miss **typo hint** (`annotation-possible-typo`, info) also still fires: a typo in a builtin name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". The hint stays suppressed for names that appear in a stylesheet annotation selector. Both diagnostics coexist during v1.x — a near-miss can carry both — and are consolidated in v2.0.
 
@@ -175,6 +199,31 @@ system Payments {
 `@draft` is a lifecycle annotation, not a tag or a facet: it describes the state of a statement in a review process, the same register as `@new` and `@experimental`, and it is tool-owned rather than a user-declared set.
 
 > Related TPLs: [TPL-1995](../test-perspectives/TPL-1995-generated-content-is-marked-at-its-seams.md) — generated content states its own uncertainty where the uncertainty is, and the mark is removable by the human who resolves it. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `@draft` has a default badge in the same PR that accepts the name. [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — the three-question gate for adding a builtin annotation.
+
+### `@planned` — designed, not yet built
+
+`@planned` marks an element that the design places but that **does not exist yet**. The other lifecycle states all presuppose existence: `@new` is a real addition, `@experimental` is real but unstable, `@deprecated` is real and on the way out. Nothing said "not there".
+
+```krs
+system Payments {
+  service Ledger {
+    label "Ledger"
+    domain Posting
+  }
+  service Reconciliation @planned {
+    // Agreed in the design review; no code yet.
+    label "Reconciliation"
+    domain Settlement
+  }
+}
+```
+
+- **The moment a diagram is drawn is usually the moment of a decision**, and what a decision draws is the target state. An architecture note that cannot say "this part is the plan" either omits the plan — losing the reason the diagram was drawn — or draws it as if it shipped.
+- **`@planned` is about existence; `@draft` is about confidence.** `@planned` says the element is not built yet (the author is certain about what it is); `@draft` says nobody has confirmed the statement (the author is uncertain that it is right). They compose: a `@planned @draft` service is a proposal an LLM inferred and nobody has reviewed.
+- **No gate.** As with every other lifecycle annotation, karasu records the mark and never refuses to render, downranks it, or exempts it from a diagnostic. A `@planned` service no deploy unit realizes still reports `unassigned-service` — that is a true statement about the model as written, and silencing it would make the annotation a way to hide gaps.
+- **Removing the mark is shipping it.** Like `@draft`, the annotation is one token to delete.
+
+> Related TPLs: [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — `@planned` passed the three-question gate (lifecycle register / no existing way to say "not yet" / no state-enumeration creep) and ships with a badge in the same PR. [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — the `◇ Planned` badge is that effect.
 
 ---
 
