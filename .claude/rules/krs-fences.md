@@ -33,13 +33,18 @@ pnpm run lint:krs-fences
 
 ## `.krs` の例を裸の ``` fence に入れない
 
-具体的な id を持つ宣言行（`service ECommerce {`、`deploy "production" {`）を含む裸の
-fence は `krs-fence-untagged` として報告される。#2415 の 2 ブロックはどちらも裸 fence
-だったため、タグ付き fence だけを見ていた当時のガードを素通りした。
+具体的な id を持つ宣言行（`service ECommerce {`、`deploy "production" {`）か、エッジ
+行（`ECommerce -> Payment "..."`）を含む裸の fence は `krs-fence-untagged` として
+報告される。#2415 の 2 ブロックはどちらも裸 fence だったため、タグ付き fence だけを
+見ていた当時のガードを素通りした。
 
 裸のままでよいのは **擬似文法**（`user <id> [<human|ai>] {`）・ディレクトリツリー・
 シェルセッションなど、そもそも `.krs` ではないもの。placeholder は id ではないので
 自動的に判定から外れる。
+
+番号付き手順の中に置く**インデントされた fence も対象**（CommonMark どおり 3 スペース
+まで）。body は fence 自身のインデント分だけ落として parse されるので、手順の
+レイアウトはそのままでよい。
 
 ## 抜粋にするか、包んで完全にするか
 

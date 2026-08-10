@@ -127,7 +127,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 
 **Steps:**
 1. Replace `index.krs` content with:
-   ```krs
+   ```krs invalid
    organization Corp {
      team alpha {}
      team alpha {}
@@ -145,7 +145,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 **Steps:**
 1. Click the **⬡ System** tab in the diagram tab bar to switch to logical view
 2. Replace `index.krs` content with:
-   ```krs
+   ```krs invalid
    system Test {
      service ECommerce {
        team "EC開発チーム"

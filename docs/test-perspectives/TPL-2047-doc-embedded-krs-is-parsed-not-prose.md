@@ -111,9 +111,19 @@ pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.
   （`at-check-coverage.yml` と `reference-docs-check.yml`）。lefthook の glob も
   同じ集合に揃える。
 - **裸の fence を finding にする**: 具体的な id を持つ宣言行（`service ECommerce {`、
-  `deploy "production" {`）を含む裸 fence は `krs-fence-untagged` として報告する。
-  擬似文法（`user <id> [<human|ai>] {`）は placeholder であって id ではないので、
-  この判定から自然に外れる — 除外リストを人手で維持しなくてよい。
+  `deploy "production" {`）かエッジ行を含む裸 fence は `krs-fence-untagged` として
+  報告する。擬似文法（`user <id> [<human|ai>] {`）は placeholder であって id では
+  ないので、この判定から自然に外れる — 除外リストを人手で維持しなくてよい。
+- **ガードの取りこぼしは「緑」と区別が付かない**: 本 PR のレビューで、fence 抽出が
+  カラム 0 に固定されていたため**番号付き手順の中のインデントされた fence 23 件**が
+  丸ごと不可視で、うち 2 件は実際に parse に失敗していた。ガードは "ok" と言っていた。
+  対策は 2 つで、CommonMark どおり 3 スペースまでのインデントを扱うことと、
+  **走査件数を出力してテストで下限を張る**こと（`measureKrsFenceCoverage`）。
+  root が移動して 0 件読んだだけの "ok" は、ガードが無いより悪い。
+- **認識用のキーワード表を手写ししない**: 裸 fence の判定は parser の
+  `LOGICAL_KEYWORDS` / `DEPLOY_KEYWORDS` から組み立て、drift テストを置く
+  （[TPL-1720](TPL-1720-validation-target-set-enumerates-all-kinds.md)）。手写しの
+  部分集合だと、最後に足された kind だけが静かに認識されなくなる。
 - **corpus 全体で一度に棚卸しする**: 導入時に全 fence を parse し、drift（直す）と
   抜粋 / 意図的に不正（宣言する）に仕分ける。既存分を放置して新規だけ守ると、
   「一部は検証されている」という最も誤解を招く状態になる。

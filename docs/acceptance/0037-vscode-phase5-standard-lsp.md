@@ -44,7 +44,7 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 **Steps:**
 
 1. Open a `.krs` file containing:
-   ```
+   ```krs
    system ECPlatform {
      service Payment {}
    }
@@ -65,13 +65,14 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 **Steps:**
 
 1. Open a `.krs` file containing:
-   ```
+   ```krs
    system MySystem {
      service Auth {}
+     service Web {}
+     Web -> Auth "calls"
    }
-   MySystem -> Auth "calls"
    ```
-2. Place the cursor on `Auth` in the edge declaration (`MySystem -> Auth`)
+2. Place the cursor on `Auth` in the edge declaration (`Web -> Auth`)
 3. Press F12 (Go to Definition)
 
 **Expected:**
@@ -88,14 +89,14 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 **Steps:**
 
 1. Create `base.krs`:
-   ```
+   ```krs
    service SharedAuth {
      label "Shared Auth"
    }
    ```
 2. Create `main.krs`:
-   ```
-   @import { SharedAuth } from "./base.krs"
+   ```krs
+   import { SharedAuth } from "./base.krs"
    system Platform {
      SharedAuth -> Platform "authenticates"
    }
@@ -116,7 +117,7 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 **Steps:**
 
 1. Open a `.krs` file containing:
-   ```
+   ```krs
    system ECPlatform {
      description "EC platform for online shopping"
      service Payment {}
@@ -152,7 +153,7 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 **Steps:**
 
 1. Open a `.krs` file containing:
-   ```
+   ```krs
    system ECPlatform {
      service ECommerce {
        domain Order {}

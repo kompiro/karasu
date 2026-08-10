@@ -1,7 +1,11 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { Parser } from "../../packages/core/src/parser/parser.ts";
+import {
+  Parser,
+  LOGICAL_KEYWORDS,
+  DEPLOY_KEYWORDS,
+} from "../../packages/core/src/parser/parser.ts";
 
 /**
  * Parse guard for the `.krs` snippets embedded in the documentation corpus.
@@ -86,30 +90,24 @@ export const DEFAULT_DOC_ROOTS = [
 ];
 
 /**
- * Node kinds that open a declaration in `.krs`. Used only to recognize a bare
- * fence as krs — the parser, not this list, decides whether it is valid.
+ * Node kinds that open a declaration in `.krs`, taken from the parser's own
+ * sets rather than hand-copied: a private list here would silently stop
+ * recognizing whichever kind was added last (TPL-1720). The remaining names
+ * are the block keywords that live outside those two sets.
  */
-const DECLARATION_KEYWORDS = [
-  "system",
-  "service",
-  "client",
-  "user",
-  "database",
-  "queue",
-  "storage",
-  "domain",
-  "usecase",
-  "entity",
+export const DECLARATION_KEYWORDS = [
+  ...LOGICAL_KEYWORDS,
+  ...DEPLOY_KEYWORDS,
   "deploy",
   "organization",
   "team",
   "member",
   "facet",
   "boundary",
-  "oci",
-  "store",
-  "job",
 ];
+
+/** An id: a bare identifier, a quoted string, or a dotted path. */
+const ID = String.raw`([A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*|"[^"]*")`;
 
 /**
  * A declaration line naming a *concrete* id (`service ECommerce {`) or a
@@ -119,30 +117,52 @@ const DECLARATION_KEYWORDS = [
  * continue with `{`, `[`, `"`, `@` or end of line.
  */
 const KRS_DECLARATION_RE = new RegExp(
-  String.raw`^(${DECLARATION_KEYWORDS.join("|")})\s+([A-Za-z_][A-Za-z0-9_]*|"[^"]*")(\s*[{["@]|\s*$)`,
+  String.raw`^(${DECLARATION_KEYWORDS.join("|")})\s+${ID}(\s*[{["@]|\s*$)`,
 );
 
-/** Every fenced block in the markdown, with its info string and 1-based open line. */
+/**
+ * An edge line (`ECommerce -> Payment "Process payment" #criticalWrite`). A
+ * fence can be pure `.krs` without declaring anything — `docs/spec/syntax.md`
+ * demonstrates the edge-id suffix that way — so declarations alone are not
+ * enough to recognize one.
+ */
+const KRS_EDGE_RE = new RegExp(String.raw`^${ID}\s+(->|-->)\s+${ID}(\s|$)`);
+
+/**
+ * Every fenced block in the markdown, with its info string and 1-based open
+ * line. CommonMark lets a fence be indented up to 3 spaces, which is how a
+ * snippet inside a numbered step is written; the body is dedented by the
+ * opening fence's indent so the parser sees the snippet, not the list layout.
+ */
 function extractFences(markdown: string): Fence[] {
   const lines = markdown.split("\n");
   const fences: Fence[] = [];
-  let open: { info: string; line: number; body: string[] } | null = null;
+  let open: { info: string; line: number; indent: number; body: string[] } | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (open) {
-      if (/^```\s*$/.test(line)) {
+      if (/^ {0,3}```\s*$/.test(line)) {
         fences.push({ info: open.info, line: open.line, body: open.body.join("\n") });
         open = null;
       } else {
-        open.body.push(line);
+        open.body.push(dedent(line, open.indent));
       }
       continue;
     }
-    const opening = /^```(.*)$/.exec(line);
-    if (opening) open = { info: opening[1].trim(), line: i + 1, body: [] };
+    const opening = /^( {0,3})```(.*)$/.exec(line);
+    if (opening) {
+      open = { info: opening[2].trim(), line: i + 1, indent: opening[1].length, body: [] };
+    }
   }
   return fences;
+}
+
+/** Drop up to `width` leading spaces, leaving any deeper indentation intact. */
+function dedent(line: string, width: number): string {
+  let i = 0;
+  while (i < width && line[i] === " ") i++;
+  return line.slice(i);
 }
 
 /** Error-severity diagnostic codes, deduplicated in first-seen order. */
@@ -152,9 +172,11 @@ function parseErrorCodes(krs: string): string[] {
   return [...new Set(codes)];
 }
 
-/** True when a bare fence's body declares a node with a concrete id. */
+/** True when a bare fence's body declares a node with a concrete id, or draws an edge. */
 function looksLikeKrs(body: string): boolean {
-  return body.split("\n").some((line) => KRS_DECLARATION_RE.test(line));
+  return body
+    .split("\n")
+    .some((line) => KRS_DECLARATION_RE.test(line.trim()) || KRS_EDGE_RE.test(line.trim()));
 }
 
 /** Check one document. Exported for the unit tests. */
@@ -231,6 +253,38 @@ function markdownFilesUnder(repoRoot: string, root: string): string[] {
   return files;
 }
 
+/**
+ * How much the guard actually looked at. A guard that reports "ok" because a
+ * root moved and it read nothing is worse than no guard: reported alongside
+ * every run, and floored by the unit test.
+ */
+export interface KrsFenceCoverage {
+  files: number;
+  /** ```krs blocks parsed (excludes `fragment`, which declares itself unparsed). */
+  parsed: number;
+  /** ```krs fragment blocks skipped by their own declaration. */
+  skipped: number;
+}
+
+export function measureKrsFenceCoverage(
+  repoRoot: string,
+  roots = DEFAULT_DOC_ROOTS,
+): KrsFenceCoverage {
+  const coverage: KrsFenceCoverage = { files: 0, parsed: 0, skipped: 0 };
+  for (const root of roots) {
+    for (const file of markdownFilesUnder(repoRoot, root)) {
+      coverage.files++;
+      for (const fence of extractFences(readFileSync(join(repoRoot, file), "utf8"))) {
+        const [lang, ...rest] = fence.info.split(/\s+/);
+        if (lang !== "krs") continue;
+        if (rest.join(" ") === "fragment") coverage.skipped++;
+        else coverage.parsed++;
+      }
+    }
+  }
+  return coverage;
+}
+
 /** Check every markdown document under `roots`. */
 export function analyzeKrsFences(repoRoot: string, roots = DEFAULT_DOC_ROOTS): KrsFenceFinding[] {
   const findings: KrsFenceFinding[] = [];
@@ -255,9 +309,13 @@ export function describeKrsFenceFinding(f: KrsFenceFinding): string {
 
 function main(): void {
   const findings = analyzeKrsFences(process.cwd());
+  const { files, parsed, skipped } = measureKrsFenceCoverage(process.cwd());
 
   if (findings.length === 0) {
-    console.log(`krs-fences: ok (${DEFAULT_DOC_ROOTS.join(", ")})`);
+    console.log(
+      `krs-fences: ok — parsed ${parsed} snippet(s) across ${files} file(s) ` +
+        `(${skipped} declared \`fragment\`) in ${DEFAULT_DOC_ROOTS.join(", ")}`,
+    );
     return;
   }
 

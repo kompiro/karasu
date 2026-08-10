@@ -82,6 +82,8 @@ system Shop {
   service Payment [external] {
     label "決済サービス"
   }
+  service ECommerce {}
+  service Inventory {}
   user Customer [human] {
     label "顧客"
   }

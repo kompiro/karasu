@@ -843,7 +843,7 @@ An endpoint that resolves nowhere is a different case, reported as
 A trailing `#<id>` gives an edge a stable, author-defined identifier that
 the `.krs.style` resolver can target with the `edge#<id>` selector.
 
-```
+```krs fragment
 ECommerce -> Payment "Process payment" #criticalWrite
 WebApp --> Bff #liveStream
 A -> B [important] #namedEdge

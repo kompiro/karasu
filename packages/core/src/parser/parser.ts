@@ -139,7 +139,15 @@ function migrationPriority(annotations: readonly string[]): number {
   return annotations.includes("migration_target") ? 2 : annotations.includes("deprecated") ? 0 : 1;
 }
 
-const DEPLOY_KEYWORDS = new Set<string>([
+/**
+ * The block keywords the parser accepts as deploy-unit declarations.
+ *
+ * Exported for the same reason as `LOGICAL_KEYWORDS`: the docs fence guard
+ * (`scripts/lint/krs-fences.ts`) recognizes a bare ``` fence as `.krs` by its
+ * declaration lines, and a hand-copied subset there would silently stop
+ * recognizing whichever kind was added last (TPL-1720).
+ */
+export const DEPLOY_KEYWORDS = new Set<string>([
   "war",
   "jar",
   "oci",

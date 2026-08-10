@@ -786,7 +786,7 @@ bare id の cross-domain entity 参照は intra-domain 専用のため drop さ�
 
 末尾に `#<id>` を付けると、エッジに著者定義の安定した識別子を与えられる。`.krs.style` のリゾルバが `edge#<id>` セレクタで指せるようになる。
 
-```
+```krs fragment
 ECommerce -> Payment "決済を処理する" #criticalWrite
 WebApp --> Bff #liveStream
 A -> B [important] #namedEdge
