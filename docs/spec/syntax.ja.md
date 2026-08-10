@@ -6,7 +6,7 @@
 
 ## ファイル構造
 
-```
+```krs
 @import "default.krs.style"
 @import "theme/dark.krs.style"   // 複数可。後に書いたものが優先
 
@@ -69,18 +69,20 @@ karasu のタグシステムは意図的にオープンで、任意のタグを�
 `client` と `service` はどちらも `handles` プロパティで **呼び出し側に公開するドメイン id** を宣言できる。これは *バリデート済みクロスリファレンス*で、ドメイン id は 1 ホップの expose ルールで到達可能でなければならず、そうでない場合は `unresolved-handles` 警告が出る。
 
 ```krs
-service Backend {
-  domain Order {}      // 自身が所有 — handles エントリ不要
-}
-service Bff {
-  handles Order        // 再公開: Order は Backend が所有し、下のエッジ経由で到達
-}
-client WebApp [web] {
-  handles Order        // BFF 経由でエンドユーザーに Order を公開
-}
+system Shop {
+  service Backend {
+    domain Order {}      // 自身が所有 — handles エントリ不要
+  }
+  service Bff {
+    handles Order        // 再公開: Order は Backend が所有し、下のエッジ経由で到達
+  }
+  client WebApp [web] {
+    handles Order        // BFF 経由でエンドユーザーに Order を公開
+  }
 
-WebApp -> Bff
-Bff -> Backend
+  WebApp -> Bff
+  Bff -> Backend
+}
 ```
 
 受け付ける記法:
@@ -307,7 +309,7 @@ client <id> [<form-factor-tag>] {
 
 > Cookie / session / クレデンシャルのストレージは意図的に対象外で、security parent issue（#834）で追跡。デバイス capability（camera、geolocation 等）は #837 で追跡。
 
-```
+```krs
 client WebApp [web] {
   label "Customer SPA"
   resource localStorage "preferences"
@@ -323,7 +325,7 @@ client WebApp [web] {
 
 2 つの形が使える:
 
-```
+```krs
 client OrderClient [mobile] {
   // ショートフォーム — アノテーションが不要な capability は 1 行で書ける
   capability notification
@@ -350,7 +352,7 @@ capability 識別子セットは **オープン**: 任意の kebab-case 識別�
 
 ### system ブロック
 
-```
+```krs
 system ECPlatform {
   label "ECプラットフォーム"
 
@@ -442,7 +444,7 @@ error ではなく warning なのは言語 v1.0 が freeze 済み
 service の内部を domain に分解して記述する。
 1つのドメインが複数の service にまたがる場合はツールが警告を出す（設計上の問題シグナル）。
 
-```
+```krs
 service ECommerce {
   label "ECサイト"
   domain Order {
@@ -479,7 +481,7 @@ service ECommerce {
 
 `service` はどの `client` ノードを配布するかを `delivers` で宣言できる。BFF / SSR パターン（Next.js, Rails+React, Laravel+Vue 等）のモデリング用。サーバーサイドのバンドルとブラウザサイドのバンドルは OAuth2 client タイプが異なる別ノードとして扱い、両者を `delivers` で結ぶ:
 
-```
+```krs
 service NextServer {
   label "Next.js BFF"
   delivers WebApp           // 単一の client
@@ -499,7 +501,7 @@ client AdminUI [desktop] {}
 
 `usecase` 内の `resource` には `operations` プロパティを指定でき、その usecase が当該 resource に対して行う CRUD 動作を明示できる。usecase × resource マトリクス上で「書き込み／読み取り専用」を判別できるようにし、結合度シグナルや translate アダプタとの情報往復に役立てる。
 
-```
+```krs fragment
 usecase PlaceOrder {
   resource OrderTable {
     label "注文テーブル"
@@ -562,7 +564,7 @@ operations create, list:read                // 装飾なし + 装飾ありを混
 
 そのため認可記述を散文に逃がすことになるが、何も決めないとチームごとに語彙がブレる（「Admin only」「`billing.write` スコープ必要」「pro プラン以上」など）。次の取り決めで散文の見た目を揃え、読者と AI が「この usecase には認可制約がある」と一目で認識できるようにする:
 
-```
+```krs fragment
 usecase RefundOrder {
   label "返金処理"
   description "アクセス: 管理者と請求オペレーターのみ。詳細は policy リンクを参照。"
@@ -584,7 +586,7 @@ usecase RefundOrder {
 どのサービスにも属さないドメインは「未割り当て」として扱われ、システムビューに表示される。
 コンパイラは未割り当てドメインに対して警告を出す。
 
-```
+```krs
 // まだどのサービスに属するか決まっていないドメイン
 domain Payment { label "決済" }
 domain Inventory { label "在庫" }
@@ -794,7 +796,7 @@ A -> B [important] #namedEdge
 
 同じサフィックスは `usecase` ブロックの `resource` 行にも付けられ、合成された usecase→resource エッジに id を与えられる:
 
-```
+```krs fragment
 usecase PlaceOrder {
   resource OrderDB.OrderTable #placeOrderWrite { operations create, read }
 }
@@ -807,7 +809,7 @@ usecase PlaceOrder {
 `domain` ブロック内にエッジを宣言することで、ドメイン間の依存関係を表現できる。
 `from_id` には宣言元ドメインの ID、`to_id` には依存先ドメインの ID を記述する。
 
-```
+```krs
 service ECommerce {
   domain Contract { label "契約" }
 }
@@ -839,7 +841,7 @@ service BillingService {
 
 ## 物理図の記述
 
-```
+```krs
 // deploy.krs
 deploy "本番環境" {
 
@@ -887,11 +889,13 @@ deploy "本番環境" {
 複数の `realizes` を並べることで、1つのデプロイ単位が複数のサービスを実現することを表せる。
 その場合、デプロイダイアグラム上では各サービスのコンテナに同じノードが描画される。
 
-```
-oci "monolith" {
-  image    "monolith:1.0.0"
-  realizes OrderService
-  realizes InventoryService
+```krs
+deploy "production" {
+  oci "monolith" {
+    image    "monolith:1.0.0"
+    realizes OrderService
+    realizes InventoryService
+  }
 }
 ```
 
@@ -902,7 +906,7 @@ oci "monolith" {
 記録するもので、`oci` ユニットが service を realize するのと対称。マネージドデータストアには専用の
 **`store`** kind を使い、具体技術は自由記述の `type` で書く。
 
-```
+```krs
 deploy "production" {
   store "order-db" {
     type     "Aurora PostgreSQL 15"
@@ -935,7 +939,7 @@ store の両方が realize されているとき、deploy 図は service のコ�
 `organization` ブロックで組織・チーム・メンバーの階層を宣言する。
 論理図・物理図とは独立した「組織ビュー」としてレンダリングされる。
 
-```
+```krs
 organization TechCorp {
   label "TechCorp Engineering"
 
@@ -1415,7 +1419,7 @@ legend domain "データアクセス" {
 
 インラインネストで記述し、育ってきたら外部ファイルに extract できる。
 
-```
+```krs
 // インラインネスト（基本形）
 system ECPlatform {
   label "ECプラットフォーム"
@@ -1454,7 +1458,7 @@ import 側に取り込まれるのは要求したチェーンだけ: 上の例�
 
 パス構文は同じ id が複数の system に現れるときに真価を発揮する — system 移行が典型例:
 
-```
+```krs
 // services.krs
 system OrderSystemV1 {
   service OrderService { domain Legacy {} }

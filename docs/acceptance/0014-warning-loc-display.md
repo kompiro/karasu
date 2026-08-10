@@ -14,7 +14,7 @@
 
 1. エディタに以下を入力する:
 
-```
+```krs
 system "Example" {
   service "payments" { domain "billing" }
   service "orders" { domain "billing" }
@@ -28,9 +28,9 @@ system "Example" {
 
 1. エディタに以下を入力する:
 
-```
+```krs
 deploy "prod" {
-  node "api" {}
+  oci "api" {}
 }
 ```
 

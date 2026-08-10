@@ -6,7 +6,7 @@
 
 ## File structure
 
-```
+```krs
 @import "default.krs.style"
 @import "theme/dark.krs.style"   // multiple allowed; later ones take precedence
 
@@ -69,18 +69,20 @@ Recommended: pick at most one form-factor tag per client. Multiple tags go in **
 Both `client` and `service` may declare a `handles` property listing **domain ids exposed to callers**. It is a *validated cross-reference*: the domain id must be reachable through a one-hop expose rule, otherwise an `unresolved-handles` warning is emitted.
 
 ```krs
-service Backend {
-  domain Order {}      // self-owned — handles entry not required
-}
-service Bff {
-  handles Order        // re-export: Order is owned by Backend, reached via the edge below
-}
-client WebApp [web] {
-  handles Order        // surfaces Order to the end user via the BFF
-}
+system Shop {
+  service Backend {
+    domain Order {}      // self-owned — handles entry not required
+  }
+  service Bff {
+    handles Order        // re-export: Order is owned by Backend, reached via the edge below
+  }
+  client WebApp [web] {
+    handles Order        // surfaces Order to the end user via the BFF
+  }
 
-WebApp -> Bff
-Bff -> Backend
+  WebApp -> Bff
+  Bff -> Backend
+}
 ```
 
 Forms accepted:
@@ -313,7 +315,7 @@ The `<storageKind>` must be one of the six reserved values below. Any other kind
 
 > Cookie / session / credential storage is intentionally out of scope here and is tracked under the security parent issue (#834). Device capabilities (camera, geolocation, etc.) are tracked under #837.
 
-```
+```krs
 client WebApp [web] {
   label "Customer SPA"
   resource localStorage "preferences"
@@ -329,7 +331,7 @@ client WebApp [web] {
 
 Two forms are supported:
 
-```
+```krs
 client OrderClient [mobile] {
   // Short form — flat 1 line for capabilities that need no annotation
   capability notification
@@ -356,7 +358,7 @@ Capability identifier set is **open**: any kebab-case identifier is accepted. Na
 
 ### system block
 
-```
+```krs
 system ECPlatform {
   label "EC Platform"
 
@@ -452,7 +454,7 @@ concerns, so only the first is symmetric across the two placements.
 The internals of a service are decomposed into domains.
 If the same domain spans multiple services, the tool emits a warning (a design-problem signal).
 
-```
+```krs
 service ECommerce {
   label "EC Site"
   domain Order {
@@ -492,7 +494,7 @@ pattern (Next.js, Rails+React, Laravel+Vue, etc.). The server-side and the
 browser-side bundle are different OAuth2 client types and are modeled as
 separate nodes joined by `delivers`:
 
-```
+```krs
 service NextServer {
   label "Next.js BFF"
   delivers WebApp           // single client
@@ -516,7 +518,7 @@ regular API calls between client and service are still written with `->`.
 
 Inside a `usecase`, a `resource` may declare `operations` to record which CRUD-style verbs the usecase performs on that resource. This makes the usecase × resource matrix explicit (write vs. read-only) for domain analysis, coupling detection, and translate-adapter round-tripping.
 
-```
+```krs fragment
 usecase PlaceOrder {
   resource OrderTable {
     label "Order table"
@@ -579,7 +581,7 @@ Disambiguation rule for 1:N + multiple verbs on one line: once the parser sees `
 
 To keep that prose from drifting into ad-hoc vocabulary across teams, write authz notes on a `usecase` using this pattern:
 
-```
+```krs fragment
 usecase RefundOrder {
   label "Refund an order"
   description "Access: admins and billing operators only. See policy link for the exact rule."
@@ -601,7 +603,7 @@ A `domain` can be declared at the top level of a file, not only inside a `servic
 Domains that do not belong to any service are treated as "unassigned" and displayed on the system view.
 The compiler emits a warning for unassigned domains.
 
-```
+```krs
 // Domains whose service assignment has not been decided yet
 domain Payment { label "Payment" }
 domain Inventory { label "Inventory" }
@@ -858,7 +860,7 @@ selectors do not match either of them.
 The same suffix is accepted on a `usecase` block's `resource` row to
 identify the synthesized usecase→resource edge:
 
-```
+```krs fragment
 usecase PlaceOrder {
   resource OrderDB.OrderTable #placeOrderWrite { operations create, read }
 }
@@ -873,7 +875,7 @@ itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edg
 Declaring an edge inside a `domain` block expresses a dependency between domains.
 `from_id` is the id of the declaring domain; `to_id` is the id of the dependency target.
 
-```
+```krs
 service ECommerce {
   domain Contract { label "Contract" }
 }
@@ -905,7 +907,7 @@ See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of 
 
 ## Writing physical diagrams
 
-```
+```krs
 // deploy.krs
 deploy "production" {
 
@@ -954,11 +956,13 @@ below for `database` / `queue` / `storage` targets).
 Multiple `realizes` entries can be listed to express that a single deployment unit realizes more than one service.
 In that case, the same node is drawn inside each service's container on the deploy diagram.
 
-```
-oci "monolith" {
-  image    "monolith:1.0.0"
-  realizes OrderService
-  realizes InventoryService
+```krs
+deploy "production" {
+  oci "monolith" {
+    image    "monolith:1.0.0"
+    realizes OrderService
+    realizes InventoryService
+  }
 }
 ```
 
@@ -969,7 +973,7 @@ oci "monolith" {
 or engine actually backs it — symmetrically to how an `oci` unit realizes a service. Use the dedicated
 **`store`** kind for managed data stores; its free-text `type` names the concrete technology.
 
-```
+```krs
 deploy "production" {
   store "order-db" {
     type     "Aurora PostgreSQL 15"
@@ -1002,7 +1006,7 @@ service's container to the realized store's container ([ADR-1658](../adr/1658-de
 An `organization` block declares the hierarchy of organizations, teams, and members.
 It is rendered as a separate "Org view," independent of the logical and physical diagrams.
 
-```
+```krs
 organization TechCorp {
   label "TechCorp Engineering"
 
@@ -1497,7 +1501,7 @@ The following are deferred (see [`docs/adr/833-diagram-legend-syntax.md`](../adr
 
 Write with inline nesting first, then extract into separate files as things grow.
 
-```
+```krs
 // Inline nesting (basic form)
 system ECPlatform {
   label "EC Platform"
@@ -1536,7 +1540,7 @@ The importer only materializes the chain it asked for: in the example above, the
 
 Path syntax shines when the same id appears in multiple systems — system migration is the canonical case:
 
-```
+```krs
 // services.krs
 system OrderSystemV1 {
   service OrderService { domain Legacy {} }

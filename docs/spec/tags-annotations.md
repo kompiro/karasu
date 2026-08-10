@@ -77,11 +77,20 @@ See [*Vocabulary registers*](#vocabulary-registers--boundary--annotation--tag--f
 
 ### Example
 
-```
-service Payment "Payment Service" [external]
-ECommerce --> Inventory "Sync inventory" [async]
-user Customer "Customer" [human]
-user AIAgent "Order Automation Agent" [ai]
+```krs
+system Shop {
+  service Payment [external] {
+    label "Payment Service"
+  }
+  user Customer [human] {
+    label "Customer"
+  }
+  user AIAgent [ai] {
+    label "Order Automation Agent"
+  }
+
+  ECommerce --> Inventory "Sync inventory" [async]
+}
 ```
 
 ---
@@ -105,9 +114,13 @@ Annotations are metadata expressing **lifecycle and state**. They are a separate
 
 Multiple annotations can be applied. Tags and annotations can be combined.
 
-```
-service Legacy "Legacy System" [external] @deprecated @migration_target
-service NewAPI "New API"                  @new @experimental
+```krs
+service Legacy [external] @deprecated @migration_target {
+  label "Legacy System"
+}
+service NewAPI @new @experimental {
+  label "New API"
+}
 ```
 
 #### Domain coexistence during migration
@@ -143,7 +156,7 @@ system OrderSystem {
 The near-miss **typo hint** (`annotation-possible-typo`, info) also still fires: a typo in a builtin name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". The hint stays suppressed for names that appear in a stylesheet annotation selector. Both diagnostics coexist during v1.x — a near-miss can carry both — and are consolidated in v2.0.
 
 ```krs
-service Billing @team-alpha   // deprecated: annotation-not-builtin warning
+service Billing @team_alpha   // deprecated: annotation-not-builtin warning
 service Legacy  @depracated   // warned twice: typo hint (info) + not-builtin (warning)
 ```
 
@@ -179,10 +192,12 @@ Recognized keys (built-ins only):
 
 ```krs
 system Payments {
-  service Ledger "Ledger" {
+  service Ledger {
+    label "Ledger"
     domain Posting
   }
-  service Reconciliation "Reconciliation" @draft(confidence: "low") {
+  service Reconciliation @draft(confidence: "low") {
+    label "Reconciliation"
     // The seam between posting and reconciliation was a judgement call.
     domain Settlement @draft
   }

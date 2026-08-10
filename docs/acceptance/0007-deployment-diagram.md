@@ -13,7 +13,7 @@ system 図と行き来できることを確認する。
 
 以下の内容を `index.krs` に記述する:
 
-```
+```krs
 system ECPlatform {
   label "ECプラットフォーム"
 
@@ -110,7 +110,7 @@ deploy "本番環境" {
 **手順**
 1. 以下の `deploy` ブロックを含まない `index.krs` を開く:
 
-```
+```krs
 system ECPlatform {
   label "ECプラットフォーム"
 

@@ -19,7 +19,7 @@ accept string literals as IDs, allowing hyphenated or otherwise non-identifier n
 > ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `logical nodes with hyphenated string literal IDs parse and render labels (AT-0016-1)`
 
 **Input `.krs`:**
-```
+```krs
 system "e-commerce" {
   label "ECサイト"
   service "order-service" {
@@ -45,7 +45,7 @@ system "e-commerce" {
 > ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `organization/team/member with string literal IDs parse cleanly (AT-0016-2)`
 
 **Input `.krs`:**
-```
+```krs
 organization "dev-team" {
   label "開発チーム"
   team "backend-team" {
@@ -70,7 +70,7 @@ organization "dev-team" {
 > ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `deploy realizes with string literal cross-reference parses cleanly (AT-0016-3)`
 
 **Input `.krs`:**
-```
+```krs
 system "e-commerce" {
   service "order-service" {
     label "受注サービス"
@@ -95,7 +95,7 @@ deploy Production {
 ### AT-0016-4: Identifier syntax continues to work unchanged
 
 **Input `.krs`:**
-```
+```krs
 system ECommerce {
   label "ECサイト"
   service OrderService {

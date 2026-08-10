@@ -92,9 +92,11 @@ database SearchIndex [index] {
 }
 
 // physical layer
-store "search" {
-  type     "ElasticSearch 8"
-  realizes SearchIndex
+deploy "production" {
+  store "search" {
+    type     "ElasticSearch 8"
+    realizes SearchIndex
+  }
 }
 ```
 
@@ -183,15 +185,17 @@ For another **system**, use `System.Node` dot-notation (the referenced system
 renders as a ghost).
 
 ```krs
-service BillingService {
-  domain Billing {
-    label "Billing"
-    Billing -> Contract "Created from a contract"   // Contract lives in another service
+system Shop {
+  service BillingService {
+    domain Billing {
+      label "Billing"
+      Billing -> Contract "Created from a contract"   // Contract lives in another service
+    }
   }
-}
 
-// cross-system: PaymentGateway is a separate `system` (imported elsewhere)
-OrderService -> PaymentGateway.PaymentService "Request payment"
+  // cross-system: PaymentGateway is a separate `system` (imported elsewhere)
+  OrderService -> PaymentGateway.PaymentService "Request payment"
+}
 ```
 
 **Why** — cross-service domain edges are auto-derived into implicit service-level
