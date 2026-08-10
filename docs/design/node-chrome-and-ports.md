@@ -228,6 +228,15 @@ proactive TPL を最低 1 件起こす（spec-audit ルール）。候補は「k
   ガード拡張は「白 ⇔ badge-color ≥4.5:1」の 1 軸で済む（tinted は文字色が
   カード地との合成地に乗り、コントラスト保証が複合的になる）。
 - ~~CLI `--interactive` フラグ~~ **解決**: 新設不要。既存 `interactive` に相乗り。
-- `usecase` 塗りなし × boundary 帯 tint の見え方は PoC でも未検証のまま。
-  実装スライス B で boundary 例を目視し、必要なら枠線コントラストを guard に
-  足す。
+- ~~`usecase` 塗りなし × boundary 帯 tint~~ **解決**（PoC 追加検証、
+  boundary-clusters.krs の Payment ドメインビュー + Group by: Boundary で
+  両テーマ確認）:
+  - 成立する。塗りなしカードの内部には tint が透けるため、カードが境界の
+    一員であることが色で読める（塗りありでは tint がカードに隠れていた）。
+    意図しなかった副次効果だが、境界表現との相性はむしろ良い。
+  - 文字は tint 合成地でも worst 10.8:1（dark）/ 6.1:1（light）で問題なし。
+  - **枠線が実質の輪郭になるため 3:1（非テキスト UI 基準）が必須**。当初の
+    枠色は未達（dark #38709C = worst 2.85、light #7CB8DA = 1.88）で、
+    dark #4E8FBF（worst 4.31）/ light #3E7495（worst 4.41）へ較正した。
+  - スライス B のガード拡張に「塗りなし kind の枠線色は worst-case tint 合成
+    に対して 3:1 以上」を追加する。
