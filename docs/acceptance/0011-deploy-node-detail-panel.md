@@ -13,7 +13,7 @@ deploy unit の kind・runtime・realizes が正しく表示されることを�
 
 以下の内容を `index.krs` に記述する:
 
-```
+```krs
 system ECPlatform {
   label "ECプラットフォーム"
 

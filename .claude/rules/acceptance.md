@@ -5,8 +5,8 @@ paths:
 
 # AT レコードを書くときのルール
 
-**到達状態**: `pnpm at:check-coverage` が finding ゼロで通る（marker / krs fence /
-design-doc references のすべて）。
+**到達状態**: `pnpm at:check-coverage` が finding ゼロで通る（marker と design-doc
+references の両方）。埋めた `.krs` は `pnpm run lint:krs-fences` が別途 parse する。
 
 `docs/acceptance/**` の書き方の正本はこのファイル。`docs/process.md` は
 `docs/acceptance/` がどういう置き場かだけを持ち、書き方はここに集約している。
@@ -72,17 +72,8 @@ Preview URL 欄の役割であって、AT に残す情報ではない。
 
 ## 埋める `.krs` スニペットは fence で主張を宣言する
 
-手順に書いた `.krs` は誰も実行しないため、放っておくと文法から静かにズレる。
-`at:check-coverage` が ` ```krs ` ブロックを実際に parse するので、情報文字列で
-そのスニペットが何を主張しているかを宣言する。
-
-| fence | 主張 | ガード |
-|-------|------|--------|
-| ` ```krs ` | 現行文法で通る完全なモデル | parse エラーゼロを検証 |
-| ` ```krs fragment ` | 抜粋（ファイル全体ではない） | parse しない |
-| ` ```krs invalid ` | 意図的に不正な入力（診断のデモ） | いまも parse エラーが出ることを検証 |
-
-`invalid` を逆向きにも検証するのは、文法が緩んで例が例でなくなる変化も拾うため。
+正本は `.claude/rules/krs-fences.md`（AT・spec・guide・concepts に共通、
+`pnpm run lint:krs-fences` が検証する）。手順に書いた `.krs` も例外ではない。
 
 ## 観点
 

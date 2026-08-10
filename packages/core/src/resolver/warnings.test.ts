@@ -1349,7 +1349,7 @@ system S {
     expect(
       typoHints(`
 system S {
-  service Billing @internal @team-alpha {}
+  service Billing @internal @team_alpha {}
 }
     `),
     ).toHaveLength(0);

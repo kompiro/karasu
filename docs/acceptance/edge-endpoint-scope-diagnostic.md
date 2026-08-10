@@ -52,7 +52,7 @@ type: product
 
 - [x] AT-F: 既存の examples / spec の `.krs` が新たに警告しない（examples は実際の `ImportResolver` でマージしてから判定する）
 
-  > ✅ Automated — `packages/core/src/examples.test.ts` › examples: every shipped .krs is free of edge-endpoint-not-at-scope（78 entry files, 0 hits）／ `spec-syntax.test.ts`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › examples: every shipped .krs is free of edge-endpoint-not-at-scope（78 entry files, 0 hits）／ `scripts/lint/krs-fences.test.ts`
 
 ### AC-3: 診断が全レイヤーに配線されている
 

@@ -45,9 +45,11 @@ deploy → war / oci / job / ...
 
 `realizes` makes the correspondence between physical and logical explicit.
 
-```
-oci "order-service" {
-  realizes ECommerce   // physical (concrete) → logical (abstract)
+```krs
+deploy "production" {
+  oci "order-service" {
+    realizes ECommerce   // physical (concrete) → logical (abstract)
+  }
 }
 ```
 
@@ -71,7 +73,7 @@ See the three-dimensional goal in the "Goals" section below for details.
 
 Which team owns which service or domain is made explicit inside a `team` using `owns`.
 
-```
+```krs
 organization "ec-org" {
   team "ec-team" {
     owns ECommerce
@@ -340,16 +342,16 @@ Detection is performed **within a `system` block**. Because `system` represents 
 ```krs
 // No diagnostic — different systems are independent organizational boundaries
 system LegacyPlatform {
-  service OldBilling { domain Payment { ... } }
+  service OldBilling { domain Payment {} }
 }
 system NewPlatform {
-  service PaymentService { domain Payment { ... } }
+  service PaymentService { domain Payment {} }
 }
 
 // info diagnostic — the same system has duplicate domain ids
 system ECPlatform {
-  service ECommerce { domain Order { ... } }
-  service Legacy    { domain Order { ... } }  // ← info
+  service ECommerce { domain Order {} }
+  service Legacy    { domain Order {} }  // ← info
 }
 ```
 

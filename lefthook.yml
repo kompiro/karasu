@@ -67,6 +67,15 @@ pre-push:
       # or renamed without updating its AT doc — not just on docs/ edits.
       glob: "{docs/acceptance/**,scripts/acceptance/**,packages/e2e/tests/**}"
       run: pnpm exec tsx scripts/acceptance/check-coverage.ts --strict
+    krs-fences:
+      # Every `.krs` snippet embedded in the docs is parsed, so a snippet
+      # cannot drift out of the grammar the way AT-0006 AC-1.2 did (#2047) or
+      # the way docs/spec/tags-annotations.md taught an inline-label form the
+      # parser has never accepted (#2415). Globbed on the parser too: a grammar
+      # change is exactly what turns a green snippet red. The vitest mirror in
+      # scripts/lint runs it in CI.
+      glob: "{docs/acceptance/**,docs/spec/**,docs/guide/**,docs/concepts*.md,packages/core/src/parser/**,scripts/lint/krs-fences.ts}"
+      run: pnpm run lint:krs-fences
     app-shortcut-docs-sync:
       # Every `keybinding` chord registered in packages/app must be documented
       # in docs/tools/app.md and its .ja twin (Issue #1715). Catches a shortcut

@@ -42,3 +42,10 @@ jobs:
 
       - name: Check AT automation marker convention
         run: pnpm at:check-coverage --strict
+
+      # Embedded `.krs` snippets are parsed repo-wide (acceptance / spec /
+      # guide / concepts). Runs here as well as in `reference-docs-check.yml`
+      # so an AT-only PR — which that workflow's `paths:` skips — still has
+      # its snippets checked. Issue #2415.
+      - name: Check embedded krs fences
+        run: pnpm run lint:krs-fences

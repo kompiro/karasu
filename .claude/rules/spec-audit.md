@@ -11,6 +11,12 @@ paths:
 足すとき**、後半は仕様適合性監査で「仕様にある機能 X が未実装」という指摘を出す・
 Issue 化するとき。
 
+埋めた `.krs` の書式は `.claude/rules/krs-fences.md` が正本
+（`pnpm run lint:krs-fences` が全 fence を parse する）。**仕様が受理される形を
+散文で主張したら、同じ主張を fence にも書く** — #2415 の
+`service Payment "Payment Service"` は、parser が一度も受け付けたことのない形を
+spec が読者に教えていた例である。
+
 ## 新規セクションには proactive TPL を同梱する
 
 `docs/spec/` または `docs/concepts*.md` に**新規セクションを追加する PR** は、その

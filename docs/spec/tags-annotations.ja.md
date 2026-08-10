@@ -77,11 +77,22 @@ bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する�
 
 ### 記述例
 
-```
-service Payment "決済サービス" [external]
-ECommerce --> Inventory "在庫を同期する" [async]
-user Customer "顧客" [human]
-user AIAgent "注文自動化エージェント" [ai]
+```krs
+system Shop {
+  service Payment [external] {
+    label "決済サービス"
+  }
+  service ECommerce {}
+  service Inventory {}
+  user Customer [human] {
+    label "顧客"
+  }
+  user AIAgent [ai] {
+    label "注文自動化エージェント"
+  }
+
+  ECommerce --> Inventory "在庫を同期する" [async]
+}
 ```
 
 ---
@@ -105,9 +116,13 @@ user AIAgent "注文自動化エージェント" [ai]
 
 複数付与可。タグとの併用も可。
 
-```
-service Legacy "旧システム" [external] @deprecated @migration_target
-service NewAPI "新API"                 @new @experimental
+```krs
+service Legacy [external] @deprecated @migration_target {
+  label "旧システム"
+}
+service NewAPI @new @experimental {
+  label "新API"
+}
 ```
 
 #### domain の移行期共存
@@ -144,7 +159,7 @@ system OrderSystem {
 near-miss の**タイポヒント**（`annotation-possible-typo`、info）も引き続き発火する: 組み込み名のタイポ（例: `@depracated`）は放置すると「バッジが出ない」という形でしか表面化しないためである。ヒントはスタイルシートのアノテーションセレクタに現れる名前について従来どおり抑制される。両診断は v1.x の間共存し（near-miss には両方が付きうる）、v2.0 で整理される。
 
 ```krs
-service Billing @team-alpha   // 非推奨: annotation-not-builtin warning
+service Billing @team_alpha   // 非推奨: annotation-not-builtin warning
 service Legacy  @depracated   // 二重に警告: タイポヒント (info) + not-builtin (warning)
 ```
 
@@ -180,10 +195,12 @@ service NewSvc @migration_target(from: LegacyMonolith)
 
 ```krs
 system Payments {
-  service Ledger "Ledger" {
+  service Ledger {
+    label "Ledger"
     domain Posting
   }
-  service Reconciliation "Reconciliation" @draft(confidence: "low") {
+  service Reconciliation @draft(confidence: "low") {
+    label "Reconciliation"
     // posting と reconciliation の継ぎ目は判断が割れた
     domain Settlement @draft
   }

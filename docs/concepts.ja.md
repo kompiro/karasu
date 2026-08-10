@@ -46,9 +46,11 @@ deploy → war / oci / job / ...
 
 物理と論理の対応は `realizes` で明示する。
 
-```
-oci "order-service" {
-  realizes ECommerce   // 物理（具象）→ 論理（抽象）
+```krs
+deploy "production" {
+  oci "order-service" {
+    realizes ECommerce   // 物理（具象）→ 論理（抽象）
+  }
 }
 ```
 
@@ -73,7 +75,7 @@ organization → team → member
 
 どのチームがどのサービスやドメインを所有するかは、`team` の中で `owns` により明示する。
 
-```
+```krs
 organization "ec-org" {
   team "ec-team" {
     owns ECommerce
@@ -357,16 +359,16 @@ position を取り続け、議論し直し続ける」立場に追い込まれ�
 ```krs
 // 通知なし — 異なる system は独立した組織境界
 system LegacyPlatform {
-  service OldBilling { domain Payment { ... } }
+  service OldBilling { domain Payment {} }
 }
 system NewPlatform {
-  service PaymentService { domain Payment { ... } }
+  service PaymentService { domain Payment {} }
 }
 
 // info 通知あり — 同じ system 内で domain id が重複
 system ECPlatform {
-  service ECommerce { domain Order { ... } }
-  service Legacy    { domain Order { ... } }  // ← 警告
+  service ECommerce { domain Order {} }
+  service Legacy    { domain Order {} }  // ← 警告
 }
 ```
 

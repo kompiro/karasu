@@ -86,9 +86,11 @@ database SearchIndex [index] {
 }
 
 // 物理層
-store "search" {
-  type     "ElasticSearch 8"
-  realizes SearchIndex
+deploy "production" {
+  store "search" {
+    type     "ElasticSearch 8"
+    realizes SearchIndex
+  }
 }
 ```
 
@@ -176,15 +178,17 @@ dot-path を使う。leaf-less なストアがノード粒度エッジを使う 
 **システム**へは `System.Node` dot-notation を使う（参照先システムは ghost として描画）。
 
 ```krs
-service BillingService {
-  domain Billing {
-    label "Billing"
-    Billing -> Contract "Created from a contract"   // Contract は別サービスにある
+system Shop {
+  service BillingService {
+    domain Billing {
+      label "Billing"
+      Billing -> Contract "Created from a contract"   // Contract は別サービスにある
+    }
   }
-}
 
-// システム越え: PaymentGateway は別の `system`（別所で import 済み）
-OrderService -> PaymentGateway.PaymentService "Request payment"
+  // システム越え: PaymentGateway は別の `system`（別所で import 済み）
+  OrderService -> PaymentGateway.PaymentService "Request payment"
+}
 ```
 
 **Why** — サービス越えのドメインエッジは system ビュー上で暗黙のサービスレベル

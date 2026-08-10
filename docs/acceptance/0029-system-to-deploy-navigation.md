@@ -13,7 +13,7 @@ org 図の team ノードから system 図へのクロスナビゲーション�
 
 以下の内容を `index.krs` に記述する:
 
-```
+```krs
 system ECPlatform {
   label "ECプラットフォーム"
 
@@ -191,11 +191,10 @@ organization Corp {
 
 以下の内容を `index.krs` に追記または差し替えて使用する:
 
-```
+```krs
 system ECPlatform {
   domain ECommerceDomain {
     label "ECドメイン"
-    team checkoutTeam
   }
 }
 
@@ -204,6 +203,7 @@ organization Corp {
     label "EC本部"
     team checkoutTeam {
       label "チェックアウトチーム"
+      owns ECommerceDomain
     }
   }
 }
