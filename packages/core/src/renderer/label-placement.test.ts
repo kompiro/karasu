@@ -42,6 +42,26 @@ function boxesAfter(
   return inputs.map((i) => labelBox(placements.get(i.index) ?? i.anchor, i.width, i.fontSize));
 }
 
+/**
+ * Distance from a point to a polyline's painted stroke. Independent of the
+ * module's own distance code so an ambiguity assertion cannot pass by agreeing
+ * with a bug in the thing it is checking.
+ */
+function distanceToLine(p: { x: number; y: number }, line: EdgeLine): number {
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < line.points.length - 1; i++) {
+    const a = line.points[i];
+    const b = line.points[i + 1];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    const t =
+      lenSq < 1e-12 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+    best = Math.min(best, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+  }
+  return Math.max(0, best - line.halfStroke);
+}
+
 /** Same, but tagged with each label's edge index — what the line measure needs to skip own lines. */
 function ownedBoxesAfter(
   inputs: LabelInput[],
@@ -251,6 +271,61 @@ describe("resolveLabelPlacements", () => {
     // It escaped the card rather than accepting a collision to stay near its line.
     expect(countLabelPenetrations(boxesAfter(inputs, overrides), [wall])).toBe(0);
     expect(countLabelLinePenetrations(after, [own, neighbour])).toBe(0);
+  });
+
+  it("does not report a second ambiguous candidate as clear when the cost cap is tight — #2413", () => {
+    // Regression for the cost-cap bug: `candidateCost` skipped the ambiguity term
+    // whenever `bestCost` was exactly one above a candidate's collision cost, so
+    // the *second* clear-but-ambiguous candidate returned 0 and the caller's
+    // `cost === 0` fast path accepted it and stopped searching.
+    //
+    // Geometry: the default anchor (200,200) is blocked by a card, so the search
+    // runs. The first two candidates it reaches (lift up to y=185, lift down to
+    // y=215) are both clear but ambiguous — each has a short foreign segment 5px
+    // away while its own line is 15px away. A genuinely clear and unambiguous
+    // spot exists further along the edge, past both foreign segments.
+    const own = edgeLine(
+      0,
+      [
+        { x: -1000, y: 200 },
+        { x: 1000, y: 200 },
+      ],
+      HAIRLINE,
+    );
+    // Short segments: near the default anchor, but escapable by sliding along the edge.
+    const near = edgeLine(
+      1,
+      [
+        { x: 180, y: 190 },
+        { x: 250, y: 190 },
+      ],
+      HAIRLINE,
+    );
+    const below = edgeLine(
+      2,
+      [
+        { x: 180, y: 220 },
+        { x: 250, y: 220 },
+      ],
+      HAIRLINE,
+    );
+    const card: Rect = { x: 195, y: 186, width: 12, height: 9 };
+    const inputs = [label(0, { x: 200, y: 200 }, 80)];
+
+    const overrides = resolveLabelPlacements(inputs, [card], [own, near, below]);
+    const moved = overrides.get(0);
+    expect(moved).toBeDefined();
+
+    // The resolved anchor must be nearest its own line. Before the fix this
+    // landed at (200, 215): 5px from `below`, 15px from its own line.
+    const toOwn = distanceToLine(moved!, own);
+    expect(toOwn).toBeLessThanOrEqual(distanceToLine(moved!, near));
+    expect(toOwn).toBeLessThanOrEqual(distanceToLine(moved!, below));
+    // …and it is a genuinely clear placement, not merely a less-bad one.
+    expect(countLabelPenetrations(boxesAfter(inputs, overrides), [card])).toBe(0);
+    expect(countLabelLinePenetrations(ownedBoxesAfter(inputs, overrides), [own, near, below])).toBe(
+      0,
+    );
   });
 
   it("does not let a ghost/cyclic-free empty line set change existing placements", () => {

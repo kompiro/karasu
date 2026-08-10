@@ -32,6 +32,9 @@
 - [x] ただし逃げ場が隣のエッジの向こうしか無い場合は、衝突したまま留まらずそちらへ逃げる（曖昧さは重みであって拒否権ではない）
   > ✅ Automated — `still prefers a clear-but-ambiguous spot over a colliding one (weights, not a veto)`
 
+- [x] clear かつ曖昧な候補が最適解より先に複数現れても、コスト打ち切りが 2 つめを「衝突なし」と誤報して探索を止めない
+  > ✅ Automated — `does not report a second ambiguous candidate as clear when the cost cap is tight — #2413`。柵は退行時に実際に落ちることを確認済み（打ち切りを戻すと own 15px / foreign 5px で失敗する）
+
 - [x] 線との判定が `strokeWidth` を織り込む（centreline が箱を外れていても、塗られたストロークが文字を覆っていれば衝突として数える）
   > ✅ Automated — `carries the edge's stroke width, so a thick stroke counts before its centreline does`
 

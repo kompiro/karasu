@@ -350,10 +350,20 @@ function reachableLines(edgeLines: EdgeLine[], label: LabelInput, maxShift: numb
  * search happily parks a label on the far side of a neighbouring edge, which is
  * how #2360's fix could have traded an unreadable label for a mislabelled one.
  *
- * Counting stops as soon as `cap` (the best cost so far) is reached: the caller
- * only ever compares `cost < bestCost`, so the exact value of a losing candidate
- * is never used. On dense diagrams this is the difference between rescanning
- * every line for every one of the ~169 candidates and bailing after two hits.
+ * Collision counting stops as soon as `cap` (the best cost so far) is reached —
+ * on dense diagrams that is the difference between rescanning every line for
+ * every one of the ~169 candidates and bailing after two hits. The caller makes
+ * *two* comparisons, and the early return is safe for both only because a capped
+ * return is always `>= cap > 0`: it can neither beat `bestCost` nor be mistaken
+ * for the `cost === 0` fast path that accepts a candidate outright. A returned
+ * `0` therefore always means genuinely clear and unambiguous.
+ *
+ * The ambiguity term is deliberately **not** capped. Reaching it already implies
+ * `cost < cap` (every collision early-return fires at `cost >= cap`), and it
+ * cannot be skipped on the grounds that it might only tie: a candidate sitting
+ * at `cap - 1` still wins if it turns out to be unambiguous, so its true value
+ * has to be known. Capping it here is what made an ambiguous candidate report
+ * `0` and short-circuit the search onto a mislabelled placement (#2413 review).
  */
 function candidateCost(
   box: Rect,
@@ -388,11 +398,7 @@ function candidateCost(
       if (cost >= cap) return cost;
     }
   }
-  if (
-    ownLine !== undefined &&
-    cost + AMBIGUITY_COST < cap &&
-    nearestLineIsForeign(anchor, label.index, edgeLines, ownLine)
-  ) {
+  if (ownLine !== undefined && nearestLineIsForeign(anchor, label.index, edgeLines, ownLine)) {
     cost += AMBIGUITY_COST;
   }
   return cost;
