@@ -188,6 +188,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1995](1995-draft-confidence-annotation.md) — 生成物の不確かさは @draft アノテーションで表す — ノード単位・水準は任意・罰を与えない
 - [ADR-2065](2065-tags-and-facets.md) — 語彙 register の確定 — tag / annotation をツール語彙に閉じ、facet を唯一のユーザー拡張点にする
 - [ADR-2161](2161-boundary-membership-1n.md) — boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974 決定 2 の refine
+- [ADR-2408](2408-owns-infra-target-and-chip-gate.md) — team は infra ブロックを owns できる（カードのチップは論理 kind のみ）
 - [ADR-9002](9002-karasu-naming.md) — ツール名「karasu」の採用
 - [ADR-9003](9003-logical-physical-separation.md) — 論理構造と物理構造の分離
 
