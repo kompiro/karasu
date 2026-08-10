@@ -7,7 +7,7 @@ import type {
   TeamNode,
   LegendRefTarget,
 } from "../types/ast.js";
-import { INFRA_KIND_SET } from "../types/ast.js";
+import { INFRA_KIND_SET, OWNS_TARGET_KIND_SET } from "../types/ast.js";
 import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
@@ -1467,13 +1467,17 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
 function detectInvalidOwns(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
 
-  // Build the set of all valid owns-target IDs: services / domains / clients.
-  // A team can own a client (a deployable SPA / mobile app) just as it owns a
-  // service or domain; see ADR-1720.
+  // Every id whose *kind* may be owned, from the one enumeration both owns
+  // checks read (OWNS_TARGET_KIND_SET): the logical kinds plus infra blocks at
+  // any depth. This set used to be spelled out inline as service / domain /
+  // client, so `owns <database>` resolved for the existence check yet was
+  // rejected here as an unownable kind — the two-list drift TPL-1720 names
+  // (#2408). Leaf sub-resources and `capability` stay out, which is what makes
+  // this the check that rejects them.
   const validIds = new Set<string>();
   function collectIds(nodes: KrsNode[]): void {
     for (const node of nodes) {
-      if (node.kind === "service" || node.kind === "domain" || node.kind === "client") {
+      if (OWNS_TARGET_KIND_SET.has(node.kind)) {
         validIds.add(node.id);
       }
       collectIds(node.children);
@@ -1482,18 +1486,15 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
   for (const system of file.systems) {
     collectIds(system.children);
   }
-  for (const service of file.services) {
-    validIds.add(service.id);
-    collectIds(service.children);
-  }
-  for (const domain of file.domains) {
-    validIds.add(domain.id);
-    collectIds(domain.children);
-  }
-  for (const client of file.clients) {
-    validIds.add(client.id);
-    collectIds(client.children);
-  }
+  // Top-level buckets: the node itself is not reached by the walks above, and
+  // its own kind is already known to be ownable for services / domains /
+  // clients / infra alike, so each bucket goes through the same predicate.
+  collectIds(file.services);
+  collectIds(file.domains);
+  collectIds(file.clients);
+  collectIds(file.databases);
+  collectIds(file.queues);
+  collectIds(file.storages);
 
   // Check each owns reference
   function checkTeams(teams: TeamNode[]): void {

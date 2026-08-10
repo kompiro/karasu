@@ -29,22 +29,7 @@ import type {
   KrsNode,
   TeamNode,
 } from "../types/ast.js";
-import { boundaryScopeKey } from "../types/ast.js";
-
-/**
- * The kinds `owns` accepts as a target: the logical nodes plus infra
- * (`docs/spec/syntax.md` § team node, ADR-1720 for `client`, ADR-1632 for
- * infra). Enumerated in one place because the sets that implement this rule
- * have drifted apart before (TPL-1720).
- */
-const OWNABLE_KINDS: ReadonlySet<string> = new Set([
-  "service",
-  "domain",
-  "client",
-  "database",
-  "queue",
-  "storage",
-]);
+import { boundaryScopeKey, OWNS_TARGET_KIND_SET } from "../types/ast.js";
 
 /**
  * Blocks whose direct children `buildNodePathIndex` addressed alongside the block
@@ -58,7 +43,7 @@ const LEAF_BEARING_KINDS: ReadonlySet<string> = new Set(["client", "database", "
 
 /**
  * Every id a `team … owns` may name, derived from the (merged) tree: any
- * {@link OWNABLE_KINDS} node at any depth — nested infra included, which
+ * {@link OWNS_TARGET_KIND_SET} node at any depth — nested infra included, which
  * `buildNodePathIndex` never indexed — plus the direct children of
  * {@link LEAF_BEARING_KINDS} blocks.
  *
@@ -79,7 +64,7 @@ function collectOwnableIds(file: KrsFile): Set<string> {
   const ids = new Set<string>();
   const walk = (nodes: readonly KrsNode[]): void => {
     for (const node of nodes) {
-      if (OWNABLE_KINDS.has(node.kind)) {
+      if (OWNS_TARGET_KIND_SET.has(node.kind)) {
         ids.add(node.id);
         if (LEAF_BEARING_KINDS.has(node.kind)) {
           for (const child of node.children) ids.add(child.id);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { compile, compileSystemDiff, InMemoryFileSystemProvider } from "../index.js";
 import type { SystemCompileResult } from "../index.js";
-import { OWNABLE_LOGICAL_KINDS } from "../types/ast.js";
+import { OWNABLE_LOGICAL_KINDS, OWNS_TARGET_KINDS, OWNS_TARGET_KIND_SET } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { extractView } from "../view/view-extract.js";
 import { layout } from "./layout.js";
@@ -61,6 +61,109 @@ describe("owner chip covers every ownable kind (#2157)", () => {
     const userCard = result.svg.slice(result.svg.indexOf('data-node-id="U"'));
     expect(userCard.slice(0, userCard.indexOf("</g>"))).not.toContain("data-team-button");
     expect(result.nodeMetadata.get("U")?.team).toBeUndefined();
+  });
+});
+
+/**
+ * Issue #2408: resolution accepts a wider set of kinds than presentation draws.
+ * The `ast.ts` comment used to claim the two listed the same kinds, and nothing
+ * checked it — so `owns <database>` resolved for the existence check while
+ * `invalid-owns` still rejected the kind. These tests pin the two sets and the
+ * relationship between them, so the next kind added to either fails here.
+ */
+describe("owns resolution accepts every OWNS_TARGET_KINDS kind (#2408)", () => {
+  /** One model per resolution kind, each declaring an ownable node with id `X`. */
+  const OWNS_TARGET_BY_KIND: Record<string, string> = {
+    service: system(`  service X { label "X" }`),
+    domain: system(`  domain X { label "X" }`),
+    client: system(`  client X [web] { label "X" }`),
+    database: system(`  database X { table t }`),
+    queue: system(`  queue X { queue-item m }`),
+    storage: system(`  storage X { bucket b }`),
+  };
+
+  it("has a model for exactly the kinds in OWNS_TARGET_KINDS", () => {
+    expect(Object.keys(OWNS_TARGET_BY_KIND).sort()).toEqual([...OWNS_TARGET_KINDS].sort());
+  });
+
+  it("declares presentation as a subset of resolution", () => {
+    // The chip can only ever be drawn for something `owns` resolves. The reverse
+    // does not hold: infra resolves but draws no chip (asserted below).
+    for (const kind of OWNABLE_LOGICAL_KINDS) {
+      expect(OWNS_TARGET_KIND_SET.has(kind)).toBe(true);
+    }
+  });
+
+  it.each([...OWNS_TARGET_KINDS])("resolves owns against a %s with no warning", (kind) => {
+    const result = compileSystem(
+      `${OWNS_TARGET_BY_KIND[kind]}\norganization O { team T { label "Team T" owns X } }`,
+    );
+
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.code === "owns-target-not-found")).toHaveLength(0);
+  });
+
+  it("still rejects an infra leaf as an owns target", () => {
+    // A `table` exists, so the existence check accepts its id; rejecting it as
+    // an owns target is `invalid-owns`' job, and that split is the reason the
+    // leaf kinds are absent from OWNS_TARGET_KINDS.
+    const result = compileSystem(
+      `${system(`  database Db { table users }`)}\norganization O { team T { owns users } }`,
+    );
+
+    const invalid = result.warnings.filter((w) => w.kind === "invalid-owns");
+    expect(invalid).toHaveLength(1);
+    expect(invalid[0].params).toMatchObject({ ownedId: "users" });
+    expect(result.diagnostics.filter((d) => d.code === "owns-target-not-found")).toHaveLength(0);
+  });
+
+  it("draws no team chip on an owned infra block", () => {
+    // Deliberate exclusion with the same rationale as the deploy button above:
+    // the chip geometry does not fit a cylinder / cloud. What the exclusion does
+    // NOT do is hide the ownership — see the Group-by-team case below, where the
+    // same node sits inside its team's frame.
+    const result = compileSystem(
+      `${system(`  service Api { label "Api" }\n  database Db { label "Db" }`)}
+organization O { team T { owns Db owns Api } }`,
+    );
+
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
+    // The chip is keyed by team id, so scope the assertion to each card.
+    const card = (id: string): string => {
+      const start = result.svg.indexOf(`data-node-id="${id}"`);
+      return result.svg.slice(start, result.svg.indexOf("</g></g>", start));
+    };
+    expect(card("Api")).toContain('data-team-button="T"');
+    expect(card("Db")).not.toContain("data-team-button");
+    expect(result.nodeMetadata.get("Api")?.team).toBe("T");
+    expect(result.nodeMetadata.get("Db")?.team).toBeUndefined();
+  });
+
+  it("still frames an owned infra block under Group by: team", () => {
+    // The card gate is not a system-view gate: frame membership comes from the
+    // ungated `ownerIndex` (grouping is id-based — ADR-1858), so the ownership
+    // does read here even though the cylinder carries no chip. Pinning it stops
+    // the chip exclusion from being mistaken for "infra ownership shows nowhere",
+    // and would catch a future kind filter added to the grouping axis.
+    const src = `${system(`  service Api { label "Api" }\n  database Db { label "Db" }`)}
+organization O { team T { label "Team T" owns Db owns Api } }`;
+    const parsed = Parser.parse(src).value;
+    const laid = layout(extractView(parsed.systems, ["S"]), {
+      ownerIndex: parsed.ownerIndex,
+      teamLabels: buildTeamLabelIndex(parsed),
+      groupBy: "team",
+    });
+
+    const frame = [...laid.containers.values()].find((c) => c.groupId === "T" && c.group);
+    expect(frame).toBeDefined();
+    for (const id of ["Api", "Db"]) {
+      const node = laid.nodes.get(id);
+      expect(node).toBeDefined();
+      expect(node!.x).toBeGreaterThanOrEqual(frame!.x);
+      expect(node!.y).toBeGreaterThanOrEqual(frame!.y);
+      expect(node!.x + node!.width).toBeLessThanOrEqual(frame!.x + frame!.width);
+      expect(node!.y + node!.height).toBeLessThanOrEqual(frame!.y + frame!.height);
+    }
   });
 });
 
