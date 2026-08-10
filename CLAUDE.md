@@ -35,6 +35,7 @@ karasu/
 ├── CLAUDE.md
 ├── docs/
 ├── examples/          ← サンプル .krs ファイル（Getting Started・テーマ別シナリオ）
+├── reports/           ← PoC の生成物（gitignore。README のみ追跡 — reports/README.md）
 ├── packages/
 │   ├── core/          ← パーサー・スタイル解決・SVGレンダラー・translate（Pure TS）
 │   ├── app/           ← Vite + React のプレビューUI
