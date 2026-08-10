@@ -47,13 +47,15 @@
     "at:test": "vitest run --config scripts/vitest.config.ts scripts/acceptance",
     "qa:checklist": "tsx scripts/acceptance/generate-qa-checklist.ts",
     "gen:reference": "tsx scripts/reference/gen-docs.ts",
-    "gen:guide-diagrams": "tsx scripts/guide/gen-guide-diagrams.ts"
+    "gen:guide-diagrams": "tsx scripts/guide/gen-guide-diagrams.ts",
+    "report:demo": "tsx scripts/report/demo.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@karasu-tools/core": "workspace:*",
     "@kompiro/adr-tools": "^0.0.12",
     "@kompiro/tpl-tools": "^0.0.7",
+    "@playwright/test": "^1.49.0",
     "@types/node": "^25.6.0",
     "knip": "^6.6.0",
     "lefthook": "^2.1.10",
