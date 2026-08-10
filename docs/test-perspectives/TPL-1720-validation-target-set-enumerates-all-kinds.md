@@ -9,6 +9,7 @@ applicable_to:
   - "同じ参照関係について parser と resolver が別々に valid-id 集合を持つとき（INDEXED_KINDS と detector が二重管理）"
 discovered_from:
   - issue: "#1720"
+  - issue: "#2408"
   - root_cause_file: "packages/core/src/resolver/warnings.ts"
 related_to:
   - TPL-907
@@ -33,11 +34,19 @@ scope:
 
 - `detectUnresolvedRealizes`（resolver）の `validIds`
 - `detectInvalidOwns`（resolver）の `validIds`
-- parser `buildNodePathIndex` の `INDEXED_KINDS`（`owns-target-not-found` 用）
+- parser `buildNodePathIndex` の `INDEXED_KINDS`（`owns-target-not-found` 用 — #2082 以降はこの用途から外れた）
 
 これらは互いに独立した列挙であり、共有の source-of-truth が無い。新しい論理 kind を first-class node に
 追加したとき、**一部の集合だけ更新して残りを忘れる**と、resolver は通すのに parser が warn する（あるいはその逆）
 という非対称が生じる。#1720 では `client` が 3 集合すべてから抜けており、図は描けるのに 3 種類の warning が出ていた。
+
+**この観点は「全 kind を足したか」だけでは閉じない — 列挙そのものを 1 つに畳むまで再発する。**
+#2408 が実例: #1720 は 3 集合すべてに `client` を足したが、集合は 3 つのまま残った。その後 infra が
+`owns` 対象になったとき `detectInvalidOwns` だけ取り残され、`owns <database>` は存在検査を通るのに
+「所有できない kind」と警告される状態が残った。`owns` 側は `OWNS_TARGET_KINDS`（`types/ast.ts`）に
+畳んで解決した。**畳めない場合（意図的に集合が違う場合）は、違う理由をコメントに書き、両集合の関係を
+テストで固定する** — `owns` では「resolution ⊇ presentation」を `owner-affordance-kinds.test.ts` が
+assert している（presentation が狭いのは infra の図形にチップが載らないという別の理由）。
 
 ## 想定される失敗モード
 
@@ -52,7 +61,8 @@ scope:
 valid-target set を構築・変更するとき、以下を確認する:
 
 - [ ] valid-target set が **spec（`docs/spec/syntax.md`）が realize / owns 可能と定める全 kind** を列挙しているか（service / domain / client / infra …）。subset で済ませていないか
-- [ ] 同じ参照関係について **複数箇所に valid-id 集合がある**なら、すべてに同じ kind を加えたか（resolver の各 detector + parser の `INDEXED_KINDS`）。理想は共通ヘルパ化して列挙を 1 箇所にする
+- [ ] 同じ参照関係について **複数箇所に valid-id 集合がある**なら、**列挙を 1 つの定数に畳んだか**（`types/ast.ts` の `OWNS_TARGET_KINDS` が `owns` の実装例）。「すべてに同じ kind を足す」で済ませると、次に kind が増えたとき同じ取り残しが起きる（#2408）
+- [ ] 畳まずに集合を分ける場合、**分ける理由をコメントに書き、集合間の関係をテストで固定したか**（例: resolution ⊇ presentation を `owner-affordance-kinds.test.ts` が assert）
 - [ ] **system 内に nest した kind** と **top-level 宣言（`file.clients` 等）** の両方を集合に入れたか
 - [ ] 反対方向のテスト（**正当な参照に warning が出ない**）を、追加した kind について parser・resolver の両レイヤーで入れたか
 - [ ] レンダラが既に id ベースで描いている場合、検証を実態（描画される＝有効）に合わせたか。逆にレンダラを検証に合わせて描画を削る後退をしていないか

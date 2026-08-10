@@ -96,6 +96,62 @@ organization Corp {
     const result = compile(krs);
     expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
   });
+
+  // #2408: infra blocks are owns targets per the spec, and the existence check
+  // already accepted them — this check listed only service / domain / client, so
+  // `owns <database>` drew a warning saying the kind cannot be owned while
+  // nothing else objected. Both checks now read OWNS_TARGET_KIND_SET.
+  it("does not warn when owns references an infra block, nested or top-level", () => {
+    const krs = `
+system Shop {
+  service Api {}
+  database NestedDb { table rows }
+  queue NestedQueue { queue-item msg }
+  storage NestedBucket { bucket files }
+}
+database TopDb { table rows }
+queue TopQueue { queue-item msg }
+storage TopBucket { bucket files }
+organization Corp {
+  team backend {
+    owns NestedDb
+    owns NestedQueue
+    owns NestedBucket
+    owns TopDb
+    owns TopQueue
+    owns TopBucket
+  }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
+  });
+
+  it("still warns when owns references an infra leaf or a capability", () => {
+    // The leaf kinds stay out of the ownable set deliberately (same line
+    // `realizes` draws): a `table` is not an ownership unit. Existence accepts
+    // the id, so this check is the only one that reports it — which is why it
+    // must keep reporting it.
+    const krs = `
+system Shop {
+  database Db { table users }
+  client Web [web] { capability Search }
+}
+organization Corp {
+  team backend {
+    owns users
+    owns Search
+  }
+}
+`;
+    const result = compile(krs);
+    const ownsWarnings = result.warnings.filter((w) => w.kind === "invalid-owns");
+    expect(ownsWarnings).toHaveLength(2);
+    expect(ownsWarnings.map((w) => (w.params as { ownedId: string }).ownedId).sort()).toEqual([
+      "Search",
+      "users",
+    ]);
+  });
 });
 
 describe("icon mode style-conflict suppression", () => {

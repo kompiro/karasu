@@ -2398,10 +2398,18 @@ export class Parser {
   ): Map<string, string[]> {
     const index = new Map<string, string[]>();
     // INDEXED_KINDS governs the recursive walk() pass: service, domain, and
-    // client are tracked here because they appear in `owns` declarations,
-    // require migration-annotation priority logic, and need cross-system
-    // duplicate detection. resource / usecase / user are intentionally
-    // excluded so shared resources across usecases don't generate warnings.
+    // client are tracked here because they require migration-annotation priority
+    // logic and cross-system duplicate detection, and because their paths are
+    // what `viewPath` / permalinks address. resource / usecase / user are
+    // intentionally excluded so a resource shared across usecases does not
+    // register two locations for one id.
+    //
+    // `owns` is NOT among the consumers, though it was until #2082: editing this
+    // set no longer changes which `owns` targets resolve. That question is
+    // answered by `collectOwnableIds` in parser/reference-validation.ts, against
+    // the merged tree and the shared OWNS_TARGET_KIND_SET — an index built per
+    // file could only answer it for whichever ids a given merge path carried.
+    //
     // Top-level infra nodes (database/queue/storage) and top-level clients are
     // indexed separately via the topLevelInfra loop below, which does not apply
     // these filters.
