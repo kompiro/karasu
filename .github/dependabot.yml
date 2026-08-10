@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # 既定の 5 だと月曜バッチで枠が埋まり、peer で結ばれた依存
+    # （vitest と @vitest/coverage-v8 など）の片方がオファーされないまま
+    # 残る。枠が空くのを待つ間に片方だけマージすると peer 不整合を
+    # lockfile に固定してしまうため 8 に引き上げる（ADR-2431）。
+    open-pull-requests-limit: 8
     cooldown:
       default-days: 7
       semver-major-days: 7

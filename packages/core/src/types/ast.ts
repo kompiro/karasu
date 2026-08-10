@@ -33,18 +33,49 @@ export type InfraKind = (typeof INFRA_BLOCK_KINDS)[number];
 export const INFRA_KIND_SET: ReadonlySet<string> = new Set(INFRA_BLOCK_KINDS);
 
 /**
- * The logical node kinds a team can `owns` (ADR-1720). Single source of truth
- * for the **presentation** side of ownership — the `👥` owner chip on the
- * system-view card, the card's measured height, and `NodeMetadata.team` — so a
- * future ownable kind lights up every surface at once instead of one gate at a
- * time. Resolution has its own enumerations (parser `INDEXED_KINDS`, the
- * `owns` reference validator); they must list the same kinds, which
- * `owner-affordance-kinds.test.ts` checks behaviorally (Issue #2157).
+ * The logical node kinds whose **card** shows its owner — the chip on the
+ * system-view card, the card's measured height, and `NodeMetadata.team`. One
+ * constant so a future kind lights up each of those at once instead of one gate
+ * at a time (Issue #2157), checked behaviorally by
+ * `owner-affordance-kinds.test.ts`.
+ *
+ * Narrower than {@link OWNS_TARGET_KINDS} below on purpose, and for the same
+ * reason {@link DEPLOY_AFFORDANCE_KIND_SET} is: an owned infra block renders as
+ * a cylinder / cloud whose corners the rectangular chip geometry does not fit,
+ * so widening this needs shape-aware chip placement first, not another kind.
+ *
+ * **This gates the card, not the whole system view.** *Group by: team* resolves
+ * frame membership from the ungated `ownerIndex` (grouping is id-based, by
+ * ADR-1858's member-scope decision), so an owned infra block does sit inside its
+ * team's frame — it just carries no chip. That asymmetry is asserted in
+ * `owner-affordance-kinds.test.ts` rather than left to be rediscovered.
  */
 export const OWNABLE_LOGICAL_KINDS = ["service", "domain", "client"] as const;
 
 /** Membership set over {@link OWNABLE_LOGICAL_KINDS}; typed as `string` so any node kind can be tested. */
 export const OWNABLE_KIND_SET: ReadonlySet<string> = new Set(OWNABLE_LOGICAL_KINDS);
+
+/**
+ * Every kind `owns` accepts as a target — the **resolution** side of ownership:
+ * the logical kinds above plus infra blocks. The authority is the spec, whose
+ * team-node section names the owns valid-target set as service / domain / client
+ * / infra (`docs/spec/syntax.md`, and the TPL-1720 note at the end of that
+ * section); no ADR rules on owning infra specifically — ADR-1720 decided
+ * `client` for both `realizes` and `owns`, and ADR-1632 decided infra for
+ * `realizes` only. Single source of
+ * truth for both checks that decide whether an `owns` line resolves —
+ * `owns-target-not-found` (existence, `parser/reference-validation.ts`) and
+ * `invalid-owns` (kind, `resolver/warnings.ts`) — which had drifted apart on
+ * infra until Issue #2408, the drift TPL-1720 exists to prevent.
+ *
+ * Leaf sub-resources (`table` / `queue-item` / `bucket`) and `capability` are
+ * deliberately absent, matching `realizes`: they do exist, so the existence
+ * check accepts their ids, and `invalid-owns` is what rejects them as targets.
+ */
+export const OWNS_TARGET_KINDS = [...OWNABLE_LOGICAL_KINDS, ...INFRA_BLOCK_KINDS] as const;
+
+/** Membership set over {@link OWNS_TARGET_KINDS}; typed as `string` so any node kind can be tested. */
+export const OWNS_TARGET_KIND_SET: ReadonlySet<string> = new Set(OWNS_TARGET_KINDS);
 
 /**
  * The logical node kinds whose system-view card carries the deploy-view jump
