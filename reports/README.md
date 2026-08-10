@@ -4,7 +4,8 @@ This directory is where a PoC or spike writes the artifacts it produces: rendere
 before/after diagrams, measurement summaries, screenshots, and the small script that
 generated them. It exists so that evidence stops living at ad-hoc paths outside the
 repository, where it has no anchor to the branch it describes and does not survive a
-devcontainer rebuild (Issue #2419).
+devcontainer rebuild (Issue #2419). The decision and the alternatives rejected on the way
+are recorded in [ADR-2419](../docs/adr/2419-poc-report-directory.md).
 
 ## The rule
 

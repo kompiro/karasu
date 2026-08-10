@@ -147,7 +147,8 @@ gh run view <run-id>                                             # Summary に P
 **到達状態**: PoC が生成した before/after 比較や計測結果が `reports/<topic>/` に
 あり、`git status` は clean のまま（`reports/*` は gitignore、追跡されるのは
 `reports/README.md` だけ）。規約と API の詳細は
-[`reports/README.md`](../reports/README.md)。
+[`reports/README.md`](../reports/README.md)、決定の経緯は
+[ADR-2419](adr/2419-poc-report-directory.md)。
 
 ```
 pnpm report:demo   # reports/demo/index.html — 新規レポートはこれをコピーして始める
