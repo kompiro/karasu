@@ -120,7 +120,7 @@ domain {
 usecase {
   background-color: transparent;
   color: #BAE0F7;
-  border-color: #38709C;
+  border-color: #4E8FBF;
   border-width: 1;
   shape: box;
   font-size: 12;
@@ -386,7 +386,7 @@ domain {
 usecase {
   background-color: transparent;
   color: #155E86;
-  border-color: #7CB8DA;
+  border-color: #3E7495;
   border-width: 1;
   shape: box;
   font-size: 12;
