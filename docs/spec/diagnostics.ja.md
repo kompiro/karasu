@@ -94,7 +94,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
-| `owns-target-not-found` | warning | team が存在しない service / domain を `owns` する。 |
+| `owns-target-not-found` | warning | team が、マージ後のモデルに存在しない id を `owns` する。対象集合は `owns` が許す kind（`service` / `domain` / `client` / infra。深さは問わない）に infra / `client` ブロックの leaf 子を加えたもので、マージ後のツリーから導出するため、判定は import の書き方にも宣言位置にも依存しない。所有できる kind かどうかの判定は `invalid-owns` の担当。import 結合の診断であり、未解決の import が残るドキュメントでは判定しない（LSP の単一ドキュメント文脈では沈黙し、App / CLI がマージ後モデルで判定する）。 |
 | `invalid-owns` | warning | `owns` 先が所有できない種別に解決される。 |
 | `contains-target-not-found` | warning | `boundary` の `contains` 先が存在しない — top-level ブロックはマージ後の system 階層のどこにも無い場合（存在検証は per-file でなく cross-file マージ後）、スコープブロックは宣言ノードの直下の子に無い場合。 |
 | `facet-not-declared` | warning | `facets` の参照先の `facet` ブロックが宣言されていない（存在検証はマージ後のモデルで行うので、import 先の宣言も有効）。near-miss の annotation ヒントと違い、宣言集合が「正」を与えるためこの検査は完全で、著者定義の名前どうしの取り違えも検出する。 |

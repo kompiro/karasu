@@ -107,13 +107,18 @@ export class ImportResolver {
     // Reference-existence re-validation against the merged id-space. The
     // per-file pass suppressed these codes (see loadFileRecursive) because a
     // `contains` / `owns` target may be declared in a different file; only the
-    // merged model can decide whether it truly exists (Issue #2032). Mirrors
-    // the parser's own guards so single-file projects behave identically.
-    if (krsFile.nodePathIndex.size > 0 && krsFile.organizations.length > 0) {
-      this.diagnostics.push(
-        ...validateOwnsReferences(krsFile.organizations, krsFile.nodePathIndex),
-      );
-    }
+    // merged model can decide whether it truly exists (Issue #2032). Each
+    // validator derives its valid-target set from the merged file it is handed
+    // and carries its own guards, so single-file projects behave identically.
+    //
+    // That derivation is the point: `owns` used to read `krsFile.nodePathIndex`,
+    // a per-file build that only travels across a wildcard import —
+    // `mergeNamedImport` carries the node but not its index entry. So a
+    // named-imported target was missing from the very space the check consulted
+    // and warned, while the same declaration reached through `import "…"`
+    // resolved. Re-deriving here was already right; the space it re-derived
+    // against was not (#2082, TPL-2032).
+    this.diagnostics.push(...validateOwnsReferences(krsFile));
     if (krsFile.boundaries.length > 0) {
       this.diagnostics.push(...validateContainsReferences(krsFile));
     }

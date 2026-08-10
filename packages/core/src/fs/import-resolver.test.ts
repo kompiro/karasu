@@ -1549,6 +1549,110 @@ system Shop {
       expect(warnings).toHaveLength(1);
       expect(warnings[0]).toMatchObject({ params: { ownedId: "Ghost" } });
     });
+
+    // #2082: the merged *tree* is the id-space, not the union of the per-file
+    // `nodePathIndex`. A named import merges the node but not its index entry,
+    // so consulting the index warned on a target the merged model resolves —
+    // while the identical declaration reached through `import "…"` (the case
+    // above) did not. Each shape below merges the target into the tree; the
+    // control after them keeps the fix from degenerating into blanket silence.
+    it("does not warn when a team owns a service brought in by a named import", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Payments } from "./billing.krs"
+system Shop {
+  service Orders {}
+}
+organization Acme {
+  team Platform { owns Payments }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/billing.krs",
+        `system Shop {
+  service Payments {}
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      // The target really is in the merged tree — otherwise the absence of a
+      // warning would prove nothing.
+      expect(result.krsFile.systems[0].children.map((c) => c.id)).toEqual(["Orders", "Payments"]);
+      expect(ownsWarnings(result.diagnostics)).toHaveLength(0);
+    });
+
+    it("does not warn when a team owns a target of a path-form named import", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Billing.Payments } from "./billing.krs"
+system Shop {
+  service Orders {}
+}
+organization Acme {
+  team Platform { owns Payments }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/billing.krs",
+        `system Billing {
+  service Payments {}
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const billing = result.krsFile.systems.find((s) => s.id === "Billing");
+      expect(billing!.children.map((c) => c.id)).toEqual(["Payments"]);
+      expect(ownsWarnings(result.diagnostics)).toHaveLength(0);
+    });
+
+    it("does not warn when a team owns a top-level service brought in by a named import", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Payments } from "./billing.krs"
+system Shop {
+  service Orders {}
+}
+organization Acme {
+  team Platform { owns Payments }
+}
+`,
+      );
+      await fs.writeFile("/p/billing.krs", `service Payments {}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.services.map((s) => s.id)).toEqual(["Payments"]);
+      expect(ownsWarnings(result.diagnostics)).toHaveLength(0);
+    });
+
+    it("still warns for a nonexistent target in a project that uses named imports", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Payments } from "./billing.krs"
+system Shop {
+  service Orders {}
+}
+organization Acme {
+  team Platform { owns Ghost }
+}
+`,
+      );
+      await fs.writeFile(
+        "/p/billing.krs",
+        `system Shop {
+  service Payments {}
+}
+`,
+      );
+
+      const result = await resolver.resolve("/p/index.krs");
+      const warnings = ownsWarnings(result.diagnostics);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toMatchObject({ params: { ownedId: "Ghost" } });
+    });
   });
   // ─── #2173: facet declarations and membership across files ────────────────
   //
