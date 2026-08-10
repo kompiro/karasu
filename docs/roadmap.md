@@ -220,7 +220,7 @@ gate で評価する。
 
 ### 語彙の閉鎖（tag / annotation）
 
-- **v2.0 で tag / annotation はツール語彙のみを受理する**（決定事項 5）。register の確定: **tag = アーキテクチャの意味（アーキタイプ）** / **annotation = lifecycle**。ユーザー拡張点は facet に一本化し、新しいアーキタイプ / lifecycle 状態はツールの builtin 語彙への追加要望として扱う（この機構の最初の行使が [#2172](https://github.com/kompiro/karasu/issues/2172) — `[cache]` / `[analytics]` / `@planned` を採用し、`[kv]` / `[bff]` / `@canary` / `@sunset` を理由付きで却下した）。
+- **v2.0 で tag / annotation はツール語彙のみを受理する**（決定事項 5）。register の確定: **tag = アーキテクチャの意味（アーキタイプ）** / **annotation = lifecycle**。ユーザー拡張点は facet に一本化し、新しいアーキタイプ / lifecycle 状態はツールの builtin 語彙への追加要望として扱う（この機構の最初の行使が [ADR-2172](adr/2172-builtin-vocabulary-expansion.md) — `[cache]` / `[analytics]` / `@planned` を採用し、`[kv]` / `[bff]` / `@canary` / `@sunset` を理由付きで却下した）。
 - **enforcement は warning に留める**（parse は通り、効果を持たず、警告される — [TPL-1503](test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) の状態 (2)。既存ファイルを parse error で壊さない）。
 - **v1.x の移行診断**: builtin 集合外の tag / annotation に `tag-not-builtin` / `annotation-not-builtin`（warning、additive — freeze 非抵触）を出す = [#2159](https://github.com/kompiro/karasu/issues/2159)。
 - **style セレクタの移行**: 任意名の tag / annotation セレクタ（今日 `.krs.style` で generic に照合される styling フック）は **v1.x で deprecation 告知 → v2.0 で無効化**し、フックは **facet セレクタ**（[#2160](https://github.com/kompiro/karasu/issues/2160)）が引き継ぐ。移行経路 = facet 宣言 + `facets` 付与 + セレクタ書き換え。

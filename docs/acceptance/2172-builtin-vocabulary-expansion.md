@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-09
 - **関連 Issue**: [#2172](https://github.com/kompiro/karasu/issues/2172)（builtin vocabulary review）、[#2159](https://github.com/kompiro/karasu/issues/2159)（`tag-not-builtin` / `annotation-not-builtin`）、[#2225](https://github.com/kompiro/karasu/issues/2225)（`tag-not-applicable`）
+- **設計 (ADR)**: [ADR-2172](../adr/2172-builtin-vocabulary-expansion.md)（元 Design Doc `builtin-vocabulary-expansion.md` を昇格・集約）
 - **関連 ADR**: [ADR-1718](../adr/1718-vector-store-vs-database.md)（役割はタグ・技術は物理層）、[ADR-1935](../adr/1935-wrangler-translate-adapter.md)（KV の degrade — 本 PR で閉じる）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（追加は後方互換）、[ADR-1508](../adr/1508-annotation-badge-label-i18n.md)（badge label の i18n）
 - **Related TPLs**: [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md)（3 問 gate と却下の記録）、[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理する語彙は効果を持つ）、[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) / [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)（`reference-data.ts` と spec 表の同期）
 - **対象**: `packages/core/src/builtins/reference-data.ts` / `default-style.ts`、`packages/core/src/resolver/warnings.ts`、`packages/core/src/translate/wrangler.ts`、`packages/i18n`、`packages/app/src/i18n`
