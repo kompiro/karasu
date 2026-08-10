@@ -38,6 +38,38 @@ describe("pane", () => {
   });
 });
 
+// Two compiled diagrams reuse the same generated ids, so inlining both in one
+// document would make the second pane's url(#…) resolve to the first pane's
+// definition — the "after" pane drawing "before" arrowheads is exactly the
+// silent failure a comparison report cannot afford.
+describe("inline SVG id isolation", () => {
+  const WITH_IDS =
+    '<svg><defs><marker id="arrow-0"/></defs>' +
+    '<path marker-end="url(#arrow-0)"/><use href="#arrow-0"/></svg>';
+
+  function idsOf(html: string): string[] {
+    return [...html.matchAll(/\bid="([^"]*)"/g)].map((m) => m[1]);
+  }
+
+  it("gives each pane its own id namespace", () => {
+    const html = pair({ label: "before", svg: WITH_IDS }, { label: "after", svg: WITH_IDS });
+    const [beforeCell, afterCell] = html.split('<figure class="pane">').slice(1);
+    const [beforeId] = idsOf(beforeCell);
+    const [afterId] = idsOf(afterCell);
+    expect(beforeId).not.toBe(afterId);
+    expect(html).not.toContain('id="arrow-0"');
+  });
+
+  it("rewrites url() and href references to match their own pane", () => {
+    const html = pair({ label: "before", svg: WITH_IDS }, { label: "after", svg: WITH_IDS });
+    for (const cell of html.split('<figure class="pane">').slice(1)) {
+      const [id] = idsOf(cell);
+      expect(cell).toContain(`url(#${id})`);
+      expect(cell).toContain(`href="#${id}"`);
+    }
+  });
+});
+
 describe("pair", () => {
   it("puts both panes in one grid and escapes the caption", () => {
     const html = pair({ label: "before", svg: SVG }, { label: "after", svg: SVG }, "5 & 6 nodes");
@@ -86,6 +118,18 @@ describe("reportPage", () => {
 
   it("falls back to a positional anchor when the heading has no ascii", () => {
     expect(page).toContain('<h2 id="section-3">日本語の見出し</h2>');
+  });
+
+  it("does not repeat an anchor when two sections share a heading", () => {
+    const repeated = reportPage({
+      title: "t",
+      sections: [
+        { title: "Results", body: "<p>a</p>" },
+        { title: "Results", body: "<p>b</p>" },
+      ],
+    });
+    expect(repeated).toContain('<h2 id="results">Results</h2>');
+    expect(repeated).toContain('<h2 id="section-2">Results</h2>');
   });
 
   // A report is opened from file://, copied to a preview, or attached to an

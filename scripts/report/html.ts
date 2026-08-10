@@ -124,11 +124,35 @@ export function pair(before: Pane, after: Pane, caption?: string): string {
   return caption ? `${cells}\n<figcaption>${escapeHtml(caption)}</figcaption>` : cells;
 }
 
+/**
+ * Rewrites every id and same-document reference in an inlined SVG to carry
+ * `prefix`.
+ *
+ * Two compiled diagrams share their generated ids (`arrow-0`, clip paths, …),
+ * and once both are inlined in one document the second one's `url(#arrow-0)`
+ * resolves to the *first* pane's definition — the "after" pane silently draws
+ * the "before" pane's arrowheads, which reads as "nothing changed" in exactly
+ * the comparison a report exists to make.
+ */
+function namespaceSvgIds(svg: string, prefix: string): string {
+  return svg
+    .replaceAll(/\bid="([^"]*)"/g, `id="${prefix}$1"`)
+    .replaceAll(/url\(#([^)]*)\)/g, `url(#${prefix}$1)`)
+    .replaceAll(/\b(xlink:href|href)="#([^"]*)"/g, `$1="#${prefix}$2"`);
+}
+
+/** Feeds `namespaceSvgIds`. Deterministic per generator run, which is enough. */
+let paneSequence = 0;
+
 function paneBody({ label, svg, image, background = "dark", note }: Pane): string {
   if ((svg === undefined) === (image === undefined)) {
     throw new Error(`pane "${label}": pass exactly one of \`svg\` or \`image\``);
   }
-  const art = svg ?? `<img alt="${escapeHtml(label)}" src="${escapeHtml(image ?? "")}">`;
+  paneSequence += 1;
+  const art =
+    svg === undefined
+      ? `<img alt="${escapeHtml(label)}" src="${escapeHtml(image ?? "")}">`
+      : namespaceSvgIds(svg, `p${paneSequence}-`);
   const lines = [
     `<div class="label">${escapeHtml(label)}</div>`,
     `<div class="art ${background}">${art}</div>`,
@@ -159,10 +183,16 @@ export function reportPage({
   sections,
 }: ReportPageOptions): string {
   const pills = meta.map((m) => `<span>${escapeHtml(m)}</span>`).join("\n");
+  // Two sections can share a heading ("Results" twice); a duplicated anchor
+  // would send every deep link to the first one, so repeats fall back to the
+  // positional id.
+  const taken = new Set<string>();
   const body = sections
     .map((section, index) => {
       if (!section.title) return section.body;
-      const id = section.id ?? slug(section.title, index);
+      const preferred = section.id ?? slug(section.title, index);
+      const id = taken.has(preferred) ? `section-${index + 1}` : preferred;
+      taken.add(id);
       return `<h2 id="${escapeHtml(id)}">${escapeHtml(section.title)}</h2>\n${section.body}`;
     })
     .join("\n\n");
