@@ -33,8 +33,12 @@ interface WranglerToml {
 interface InfraNode {
   kind: "database" | "storage" | "queue";
   id: string;
-  /** `[index]` role tag (Vectorize). */
-  index?: boolean;
+  /**
+   * Store-role tag: `[index]` for Vectorize, `[cache]` for KV. Both name a
+   * store that is not the system of record; the concrete technology stays in
+   * the physical `store { type ... }` (ADR-1935, #2172).
+   */
+  role?: "index" | "cache";
   /** Physical `store { type ... }` technology string. */
   storeType: string;
 }
@@ -153,11 +157,12 @@ export class WranglerTranslator implements Translator {
         storeType: "Cloudflare R2",
       });
     }
-    // KV → database (+ [cache] role is a notation-watch item, not emitted)
+    // KV → database [cache]
     for (const e of asArray(doc.kv_namespaces)) {
       infra.push({
         kind: "database",
         id: bindingId(e, "id", "Kv", used, onWarning),
+        role: "cache",
         storeType: "Cloudflare KV",
       });
     }
@@ -166,7 +171,7 @@ export class WranglerTranslator implements Translator {
       infra.push({
         kind: "database",
         id: bindingId(e, "index_name", "Vectorize", used, onWarning),
-        index: true,
+        role: "index",
         storeType: "Cloudflare Vectorize",
       });
     }
@@ -235,7 +240,7 @@ export class WranglerTranslator implements Translator {
     body.push(`}`);
 
     for (const node of m.infra) {
-      const tag = node.index ? " [index]" : "";
+      const tag = node.role ? ` [${node.role}]` : "";
       body.push(``);
       body.push(`${node.kind} ${node.id}${tag} {`);
       body.push(`}`);

@@ -29,10 +29,12 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
   const badgeRules = sheet.rules.filter((r) => r.properties["badge-color"]);
 
   it("finds the deploy kind and annotation badge rules", () => {
-    // 9 deploy kinds + database[index] + 5 annotations = 15 as of #2366.
+    // 9 deploy kinds + database[index] + 4 store-role rules (`[cache]` and
+    // `[analytics]`, each written as a `database, storage` comma list that
+    // expands into one rule per selector) + 6 annotations = 20 as of #2172.
     // Exact so a badge rule dropped from BOTH themes cannot silently
     // shrink this guard's coverage; update the arithmetic when adding one.
-    expect(badgeRules.length).toBe(15);
+    expect(badgeRules.length).toBe(20);
   });
 
   it("keeps the badge fallback color AA-legible on the canvas", () => {

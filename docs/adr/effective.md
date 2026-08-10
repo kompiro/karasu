@@ -133,6 +133,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2390](2390-dependabot-security-2026-08-07.md) — Security alert 2026-08-07 — js-yaml は既存 override の floor 引き上げで解決する
 - [ADR-2397](2397-node-24-baseline.md) — ツールチェーンの Node.js を 24（Active LTS）に上げ、公開パッケージの下限を 22 にする
 - [ADR-2401](2401-pnpm-11-migration.md) — pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一本化する
+- [ADR-2404](2404-dependabot-security-2026-08-08.md) — Security alert 2026-08-08 — dompurify は override と app の宣言を両方 patched 版へ引き上げる
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -330,6 +331,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-999](999-legend-in-use-fallback.md) — 凡例 ref のフォールバック swatch（in-use なら描画する）
 - [ADR-1508](1508-annotation-badge-label-i18n.md) — 組み込みアノテーションバッジラベルは reference-data から生成し locale 注入可能にする
 - [ADR-1755](1755-edge-from-to-selectors.md) — `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
+- [ADR-2172](2172-builtin-vocabulary-expansion.md) — builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@planned` を採用し、却下 7 件と停止規則を記録する
 - [ADR-2234](2234-boundary-style-selector.md) — boundary フレーム色の style セレクタ — `boundary` / `boundary#<id>`
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 

@@ -389,6 +389,49 @@ system Shop {
     expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
   });
 
+  // The smell is about a shared *system of record*. Every store-role tag says
+  // the store is not one, so all three are out of scope on the same grounds —
+  // one asset/session cache or one warehouse read by several services is a
+  // normal shape (#2172).
+  it.each([["cache"], ["analytics"]])("excludes [%s] stores on the same grounds (#2172)", (tag) => {
+    const krs = `
+system Shop {
+  service A { domain Da { usecase Ua { resource Derived.rows { operations read } } } }
+  service B { domain Db { usecase Ub { resource Derived.rows { operations read } } } }
+  database Derived [${tag}] { table rows }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
+  });
+
+  it("ignores a role tag on a kind it does not apply to — inert there means inert", () => {
+    // `queue Events [cache]` already reports `tag-not-applicable`: the tag does
+    // nothing on a queue. If it also suppressed this smell it would be doing
+    // something after all, invisibly and only where we said it was inert.
+    const krs = `
+system Shop {
+  service A { domain Da { usecase Ua { resource Events.e { operations read } } } }
+  service B { domain Db { usecase Ub { resource Events.e { operations read } } } }
+  queue Events [cache] { queue-item e }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(1);
+  });
+
+  it("still fires on an untagged store — the exclusion is the role tag, not the sharing", () => {
+    const krs = `
+system Shop {
+  service A { domain Da { usecase Ua { resource Sor.rows { operations read } } } }
+  service B { domain Db { usecase Ub { resource Sor.rows { operations read } } } }
+  database Sor { table rows }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(1);
+  });
+
   it("detects shared queue and storage, not just database", () => {
     const krs = `
 system Shop {
@@ -1292,15 +1335,19 @@ describe("tag-not-builtin deprecation warning (#2159)", () => {
     return analyze(file, sheets).filter((w) => w.kind === "tag-not-builtin");
   }
 
+  // `[kv]` rather than `[cache]`: #2172 promoted `[cache]` into the builtin
+  // vocabulary and rejected `[kv]` on the register question (KV is a
+  // technology, not an architectural role), so `[kv]` is the durable example
+  // of a name this route keeps warning on.
   it("warns on a non-builtin tag on any node kind", () => {
     const warnings = tagWarnings(`
 system S {
-  database SessionStore [cache] {}
+  database SessionStore [kv] {}
 }
     `);
     expect(warnings).toHaveLength(1);
     if (warnings[0].kind !== "tag-not-builtin") throw new Error("kind mismatch");
-    expect(warnings[0].params).toEqual({ nodeId: "SessionStore", tag: "cache" });
+    expect(warnings[0].params).toEqual({ nodeId: "SessionStore", tag: "kv" });
   });
 
   it("warns on a non-builtin tag on an edge", () => {
@@ -1543,6 +1590,76 @@ system S {
       (t) => t.appliesTo.length === 0 || t.appliesTo.some((k) => !kinds.has(k)),
     );
     expect(broken.map((t) => t.name)).toEqual([]);
+  });
+});
+
+// #2172 exercised the builtin-addition route the v1.x deprecation points at.
+// Both halves of that decision are behaviour: what was accepted parses clean
+// on the kinds it declares, and what was rejected keeps warning. Without the
+// second half a rejection lives only in prose and quietly erodes.
+describe("store role tags and @planned — the #2172 vocabulary decision", () => {
+  function vocabularyWarnings(krs: string) {
+    const file = Parser.parse(krs).value;
+    return analyze(file, [getBuiltinStyleSheet()]).filter(
+      (w) =>
+        w.kind === "tag-not-builtin" ||
+        w.kind === "tag-not-applicable" ||
+        w.kind === "annotation-not-builtin",
+    );
+  }
+
+  it("accepts [cache] / [analytics] on both database and storage", () => {
+    expect(
+      vocabularyWarnings(`
+system S {
+  database Sessions [cache] {}
+  database Warehouse [analytics] {}
+  storage Thumbnails [cache] {}
+  storage Lake [analytics] {}
+}
+      `),
+    ).toEqual([]);
+  });
+
+  it("accepts @planned anywhere a lifecycle annotation goes", () => {
+    expect(
+      vocabularyWarnings(`
+system S {
+  service Ledger @planned {
+    domain Posting @planned
+  }
+  database Sessions [cache] @planned {}
+}
+      `),
+    ).toEqual([]);
+  });
+
+  it("warns on a role tag outside the store kinds — the role axis is about stores", () => {
+    const warnings = vocabularyWarnings(`
+system S {
+  service Api [cache] {}
+  queue Events [analytics] {}
+}
+    `);
+    expect(
+      warnings.map((w) =>
+        w.kind === "tag-not-applicable" ? `${w.params.nodeId}[${w.params.tag}]` : w.kind,
+      ),
+    ).toEqual(["Api[cache]", "Events[analytics]"]);
+  });
+
+  // The rejections recorded with the adoption: `[kv]` failed the register
+  // question (a technology, not a role) and `@canary` failed it too (a runtime
+  // rollout state, not a slowly-changing lifecycle one, and overlapping
+  // `@experimental`). Both stay on the deprecated-name route.
+  it("keeps warning on the rejected candidates [kv] and @canary", () => {
+    const warnings = vocabularyWarnings(`
+system S {
+  database Sessions [kv] {}
+  service Rollout @canary {}
+}
+    `);
+    expect(warnings.map((w) => w.kind)).toEqual(["tag-not-builtin", "annotation-not-builtin"]);
   });
 });
 

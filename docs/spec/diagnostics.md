@@ -101,7 +101,7 @@ error) — see syntax spec §S6.
 
 | Code | Severity | Fires when |
 | --- | --- | --- |
-| `owns-target-not-found` | warning | A team `owns` a service / domain absent from the merged model (existence is checked after cross-file merge, not per file). |
+| `owns-target-not-found` | warning | A team `owns` an id absent from the merged model. The valid-target set is the one `owns` accepts (`service` / `domain` / `client` / infra, at any depth, plus the leaf children of an infra or `client` block) and is derived from the merged tree, so the verdict depends neither on the import form nor on where the block was declared. Whether a kind may be owned at all is `invalid-owns`' call, not this one's. Import-coupled: a document that still has imports to resolve does not decide it at all (the LSP's single-document context stays silent; the App / CLI decide it on the merged model). |
 | `invalid-owns` | warning | An `owns` target resolves to a kind that cannot be owned. |
 | `contains-target-not-found` | warning | A `boundary` `contains` a node that does not exist — for a top-level block, anywhere in the merged system hierarchy (existence is checked after cross-file merge, not per file); for a scoped block, among the declaring node's direct children. |
 | `facet-not-declared` | warning | A `facets` reference names no declared `facet` block (existence is checked on the merged model, so a declaration in an imported file counts). Unlike the near-miss annotation hint, the declared set makes this check complete: a typo between two author-defined names is caught too. |
@@ -125,7 +125,7 @@ worth surfacing.
 | `infra-redeclared-across-files` | info | The same `database` / `queue` / `storage` id is declared in more than one merged file. |
 | `infra-leaf-redeclared-silently` | info | A `table` / `queue-item` / `bucket` leaf is redeclared within its parent infra. |
 | `shared-infra-fan-in` | info | Two or more services depend on the same store within one system (a fact, not a defect). |
-| `cross-domain-store-access` | info | A usecase reads/writes an infra leaf owned by another domain, in one system (a boundary-crossing fact, not a defect). Ownership is derived from `entity` mappings; keyed at leaf granularity; `[external]` / `[index]` stores excluded. Orthogonal to `shared-infra-fan-in`. |
+| `cross-domain-store-access` | info | A usecase reads/writes an infra leaf owned by another domain, in one system (a boundary-crossing fact, not a defect). Ownership is derived from `entity` mappings; keyed at leaf granularity; `[external]` and role-tagged (`[index]` / `[cache]` / `[analytics]`) stores excluded. Orthogonal to `shared-infra-fan-in`. |
 
 ### CRUD decoration grammar
 

@@ -12,6 +12,8 @@
 |------|------|------------------------|
 | `[external]` | システム境界の外側 | 枠線を破線、色をグレー系に |
 | `[index]` | 正本を高速に検索するために導出された二次インデックス（役割。正本そのものには付けない — vector DB / ElasticSearch でも正本なら不要） | database ノードに `index` バッジを付与 |
+| `[cache]` | 正本ではなく、失っても再構築（再計算・再取得・再ログイン）で回復できるストア。TTL を持つのが典型 | database / storage ノードに `cache` バッジを付与 |
+| `[analytics]` | 分析・集計のために正本から取り込んだ派生ストア（DWH / データレイク） | database / storage ノードに `analytics` バッジを付与 |
 | `[async]` | 非同期通信（エッジ用） | 破線矢印 |
 | `[sync]` | 同期通信（エッジ用、デフォルト） | 実線矢印（デフォルト） |
 | `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
@@ -39,12 +41,33 @@
 >
 > Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `[index]` はラベルだけでなく効果（`index` バッジ）を伴う必要がある、受理されるタグである。
 
+### ストアの役割タグ — 1 つの軸、4 つの状態
+
+`[index]` / `[cache]` / `[analytics]` は 1 つの軸を成す。**そのストアがどういう意味で正本（system of record）ではないか**である。タグ無しは正本そのものを指すので、4 状態でストアの役割は言い切れる。
+
+| タグ | どういう非正本か | 適用先 |
+|-----|----------------|-------|
+| *(タグ無し)* | 正本（system of record） | すべてのストア |
+| `[index]` | 検索のための導出 | `database` |
+| `[cache]` | 失っても再構築（再計算・再取得・再ログイン）で回復できる | `database` / `storage` |
+| `[analytics]` | 分析のために正本から取り込んだ | `database` / `storage` |
+
+**`[cache]` の判定は 1 問に畳まれる — このストアが消えたら業務データが失われるか。** 失われるならそれは正本なのでタグを付けない。セッションストア、Redis キャッシュ、Cloudflare KV はいずれも該当する。CDN のオリジンキャッシュ、生成済みサムネイルやレンダリング済み成果物、エクスポートの一時置き場も同じく該当する（`[cache]` が `storage` にも適用できるのはこのためである）。判定軸が**導出ではなく揮発性**である点に注意する: セッションストアは何かの写しではなく**そのセッションの正本**であり、導出コピーに限定するとこの最も典型的な用途が漏れる。`[index]`（導出 ∧ 検索用）はこの定義の内側に矛盾なく収まる。
+
+`[analytics]` は DWH / データレイク側を指す。正本から分析・集計のために取り込んだストアである。データレイクはオブジェクトストレージ（S3 / GCS 上の Parquet 等）で実現されるのが典型なので `storage` にも適用できる。他システムから取り込んだ、この system 内に正本を持たないデータを含む場合も「この system の正本ではない」ことに変わりはなく、付与してよい。名前が製品カテゴリではなく役割なのは意図的である — `[warehouse]` は物（Snowflake / BigQuery）の言い換えに寄り、`[analytics]` は何のための導出かを名指す。`[index]` と同じ語形である。
+
+**3 つとも共有ストア系の診断の対象外になる。** `shared-infra-fan-in` と `cross-domain-store-access` が述べているのは共有された**正本**についてであり、1 つの検索インデックス・1 つのキャッシュ・1 つの DWH を複数サービスが読むのは通常の形であって Database-per-Service の smell ではない。
+
+**この軸はどこで止まるか。** 役割タグが表すのは**同一 kind 内での、正本かどうかの違いだけ**である。技術の違い（graph / time-series / column-oriented）は物理層の `store { type "…" }` に、運用配置の違い（read replica / シャード）は物理層に置くかモデル化しない。`[kv]` / `[graph]` / `[timeseries]` / `[replica]` が組み込みタグでなく `tag-not-builtin` の警告対象であるのはこのためである。新しい役割タグの可否も `[cache]` と同じ 1 問に畳まれる — それは正本かどうかの話か。
+
+> Related TPLs: [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — 上記の停止規則は builtin 追加要望が通る 3 問の 3 番目であり、そこで生じた却下は議論をやり直さずに済むよう記録される。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — タグの `appliesTo` に挙げた kind はすべてバッジを持つので、自分の kind の内側で受理・無効果になることがない。
+
 ### 非 builtin のタグ名は非推奨（v1.x）
 
 bare `[<identifier>]` は v1.x では引き続き任意の名前を受理する（v1.0 freeze — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) — が parse 挙動を凍結している）。ただし**ツール語彙**（上記の組み込み表 + 下記の[システム自動付与タグ](#システム自動付与タグsystem-assigned-tags)）の外のタグは**非推奨**であり、karasu は使用のたびに `tag-not-builtin` **warning** を出す。抑制条件は意図的に**設けない** — `.krs.style` のセレクタや `legend` の ref は名前が意図的である証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する（enforcement は warning のままで、parse error にはしない — 既存ファイルはパースされ続ける）。移行先:
 
 - **所属やモデル固有のラベリング**（PCI スコープ、PII、「認証必須」）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental): 集合を top-level で 1 度宣言し、要素に `facets <id>` を書く。
-- **足りないアーキタイプ**（`[cache]`、`[bff]` など）→ 組み込みタグの追加要望（roadmap の `[cache]` watch がその経路の実例）。非推奨タグは告知の間も動き続ける — 警告されるだけで、既定描画への効果は持たない。
+- **足りないアーキタイプ** → 組み込みタグの追加要望。非推奨タグはその間も動き続ける — 警告されるだけで、既定描画への効果は持たない。この経路の実例が [#2172](https://github.com/kompiro/karasu/issues/2172) で、`[cache]` / `[analytics]` は採用、`[kv]`（役割ではなく技術）と `[bff]`（`delivers <ClientId>` が構造として表現済み）は理由を記録して却下した。
 
 `.krs.style` 側でそうした名前を**狙っているルール**（`[pci] { … }`）も同じ条件で非推奨になり（`style-tag-selector-not-builtin`）、[facet セレクタ](./style.ja.md#ファセットセレクタfacetsid-experimental)へ書き換える。両方が警告されるのは、ノード側のタグとシート側のセレクタが別々の編集だからで、片方しか報告しないと残った方が見つからない。
 
@@ -74,6 +97,7 @@ user AIAgent "注文自動化エージェント" [ai]
 | `@new` | 新規追加 | ✦バッジ |
 | `@experimental` | 実験的 | ⚗バッジ |
 | `@migration_target` | 移行先 | →バッジ |
+| `@planned` | 設計上そこに置くが、まだ実在しない | ◇バッジ |
 | `@draft` | 主張されているが人手で確認されていない | ✎バッジ |
 <!-- /gen:reference:annotations -->
 
@@ -112,10 +136,10 @@ system OrderSystem {
 
 ### 非 builtin のアノテーション名は非推奨（v1.x）
 
-`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし 4 つの組み込みの外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能するが、**その用法も非推奨になった**（`style-annotation-selector-not-builtin`）— styling フックは [facet セレクタ](./style.ja.md#ファセットセレクタfacetsid-experimental)へ移った（移行前後の書き換え例もそこにある）。移行先:
+`@<identifier>` は v1.x では引き続き任意の識別子を受け付ける（open set であること自体を [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) が凍結している）。ただし上記の組み込み表の外の名前は**非推奨**であり、karasu は使用のたびに `annotation-not-builtin` **warning** を出す。抑制条件は**設けない**（スタイルシートのセレクタは意図の証跡になるが、意図があっても結果は変わらない: 構文 v2.0 はツール語彙のみを受理する。enforcement は warning のままで parse error にはしない）。非 builtin アノテーションにデフォルト描画はなく、v1.x では `.krs.style` のアノテーションセレクタのターゲットとして引き続き機能するが、**その用法も非推奨になった**（`style-annotation-selector-not-builtin`）— styling フックは [facet セレクタ](./style.ja.md#ファセットセレクタfacetsid-experimental)へ移った（移行前後の書き換え例もそこにある）。移行先:
 
 - **所属やモデル固有のラベリング**（チーム所有マーク、audience ラベルなど）→ [`facet` 構文](./syntax.ja.md#横断的な所属facet-experimental)。
-- **足りない lifecycle 状態**（`@canary`、`@sunset` など）→ 組み込みアノテーションの追加要望。
+- **足りない lifecycle 状態** → 組み込みアノテーションの追加要望。実例は [#2172](https://github.com/kompiro/karasu/issues/2172) で、`@planned` は採用、`@canary`（数時間で終わる runtime のロールアウト状態であり karasu が扱う slowly-changing な構造の外側。`@experimental` とも重なる）と `@sunset`（`@deprecated` が既に言っている）は却下した。長期併存する canary は `@new @experimental`、新旧併存は `@migration_target` で書ける。
 
 near-miss の**タイポヒント**（`annotation-possible-typo`、info）も引き続き発火する: 組み込み名のタイポ（例: `@depracated`）は放置すると「バッジが出ない」という形でしか表面化しないためである。ヒントはスタイルシートのアノテーションセレクタに現れる名前について従来どおり抑制される。両診断は v1.x の間共存し（near-miss には両方が付きうる）、v2.0 で整理される。
 
@@ -176,6 +200,31 @@ system Payments {
 `@draft` は tag でも facet でもなく lifecycle アノテーションである。レビュー過程における記述の状態を表しており、`@new` / `@experimental` と同じ register に属し、ユーザー宣言の集合ではなくツール所有の語彙である。
 
 > Related TPLs: [TPL-1995](../test-perspectives/TPL-1995-generated-content-is-marked-at-its-seams.md) — 生成物は不確かな場所で不確かさを述べ、解決した人が印を消せる形にする。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — `@draft` は名前を受理するのと同じ PR で既定バッジを持つ。[TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — builtin アノテーション追加の 3 問 gate。
+
+### `@planned` — 設計済み、まだ存在しない
+
+`@planned` は、設計上そこに置くが**まだ実在しない**要素に付ける印である。他の lifecycle 状態はいずれも実在を前提にしている: `@new` は実在する新規追加、`@experimental` は実在するが不安定、`@deprecated` は実在していて廃止に向かう。「まだ無い」を言う語彙がどれにも無かった。
+
+```krs
+system Payments {
+  service Ledger {
+    label "Ledger"
+    domain Posting
+  }
+  service Reconciliation @planned {
+    // 設計レビューで合意済み。コードはまだ無い
+    label "Reconciliation"
+    domain Settlement
+  }
+}
+```
+
+- **図を描く瞬間はたいてい判断の瞬間であり**、判断が描くのは to-be の姿である。「ここは計画である」と言えないアーキテクチャ記録は、計画を落とす（＝その図を描いた理由ごと失う）か、出荷済みのように描くかのどちらかになる。
+- **`@planned` は実在の話、`@draft` は確度の話。** `@planned` はまだ作られていないと言う（何であるかについて書き手は確信している）。`@draft` は誰も確認していないと言う（それが正しいかについて書き手が確信していない）。両立する — `@planned @draft` なサービスは、LLM が推測してまだ誰もレビューしていない提案である。
+- **ゲートにしない。** 他の lifecycle アノテーションと同じく、karasu は印を記録するだけで、描画を拒んだり降格したり診断から除外したりしない。どの deploy unit も realize していない `@planned` なサービスは `unassigned-service` を出す。それはモデルの記述についての真であり、黙らせればこのアノテーションは穴を隠す手段になってしまう。
+- **印を消すことが出荷。** `@draft` と同じく、削除は 1 トークンで済む。
+
+> Related TPLs: [TPL-2172](../test-perspectives/TPL-2172-builtin-vocabulary-addition-gate.md) — `@planned` は 3 問 gate（lifecycle register / 「まだ無い」を言う既存表現の不在 / 状態の数え上げに広げない停止規則）を通り、同じ PR でバッジを持つ。[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — その効果が `◇ 予定` バッジである。
 
 ---
 

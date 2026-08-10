@@ -131,6 +131,7 @@ flowchart TD
     ADR_2390["ADR-2390<br/>Security alert 2026-08-07 — js-yaml は既存 overrid..."]
     ADR_2397["ADR-2397<br/>ツールチェーンの Node.js を 24（Active LTS）に上げ、公開パッケージの下限..."]
     ADR_2401["ADR-2401<br/>pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一..."]
+    ADR_2404["ADR-2404<br/>Security alert 2026-08-08 — dompurify は overrid..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -321,6 +322,7 @@ flowchart TD
     ADR_999["ADR-999<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_1508["ADR-1508<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
+    ADR_2172["ADR-2172<br/>builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@p..."]
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
@@ -752,6 +754,7 @@ flowchart TD
   class ADR_2152 accepted
   class ADR_2161 accepted
   class ADR_2165 accepted
+  class ADR_2172 accepted
   class ADR_2173 accepted
   class ADR_2174 accepted
   class ADR_2184 accepted
@@ -774,6 +777,7 @@ flowchart TD
   class ADR_2390 accepted
   class ADR_2397 accepted
   class ADR_2401 accepted
+  class ADR_2404 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

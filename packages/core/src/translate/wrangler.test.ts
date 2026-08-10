@@ -85,10 +85,13 @@ describe("WranglerTranslator", () => {
     expect(krs).toContain('type "Cloudflare Vectorize"');
   });
 
-  it("maps KV to database (no [cache] tag yet — notation-watch)", async () => {
+  // Was "no [cache] tag yet — notation-watch" until #2172 promoted `[cache]`
+  // into the builtin vocabulary. Emitting the role closes the degrade ADR-1935
+  // recorded: KV used to translate into a bare `database`, which reads as a
+  // system of record.
+  it("maps KV to database [cache]", async () => {
     const krs = await translator.translate(FULL, ctx);
-    expect(krs).toContain("database CACHE {");
-    expect(krs).not.toContain("[cache]");
+    expect(krs).toContain("database CACHE [cache] {");
     expect(krs).toContain('type "Cloudflare KV"');
   });
 
@@ -153,7 +156,7 @@ binding = "AI"
       inputName: "wrangler",
       onWarning: (m) => warnings.push(m),
     });
-    expect(krs).toContain("database AI {");
+    expect(krs).toContain("database AI [cache] {");
     expect(krs).toContain("service AI2 [external] {");
     expect(warnings.some((w) => w.includes("renamed to"))).toBe(true);
     assertRoundTrips(krs);

@@ -19,6 +19,7 @@ export function useAnnotationBadgeLabels(): AnnotationBadgeLabels {
       new: translate(locale, "badge.new"),
       experimental: translate(locale, "badge.experimental"),
       draft: translate(locale, "badge.draft"),
+      planned: translate(locale, "badge.planned"),
       migrationTarget: translate(locale, "badge.migrationTarget"),
     }),
     [locale],

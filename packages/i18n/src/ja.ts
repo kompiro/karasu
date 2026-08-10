@@ -158,6 +158,7 @@ export const ja: Partial<Translations> = {
   "badge.new": "NEW",
   "badge.experimental": "実験的",
   "badge.draft": "下書き",
+  "badge.planned": "予定",
   "badge.migrationTarget": "移行先",
 
   // ReferencePanel

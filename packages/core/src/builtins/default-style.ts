@@ -14,6 +14,7 @@ export interface AnnotationBadgeLabels {
   new?: string;
   experimental?: string;
   draft?: string;
+  planned?: string;
   migrationTarget?: string;
 }
 
@@ -23,6 +24,7 @@ export const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> 
   new: "new",
   experimental: "experimental",
   draft: "draft",
+  planned: "planned",
   migration_target: "migrationTarget",
 };
 
@@ -36,6 +38,7 @@ const LIGHT_BADGE_COLORS: Record<string, string> = {
   new: "#047857",
   experimental: "#B45309",
   draft: "#7C3AED",
+  planned: "#64748B",
   migration_target: "#2563EB",
 };
 
@@ -46,7 +49,7 @@ function escapeStyleString(s: string): string {
 
 /**
  * Generate the `@deprecated` / `@new` / `@experimental` / `@draft` /
- * `@migration_target` rule blocks from `reference-data.ts` (colors /
+ * `@planned` / `@migration_target` rule blocks from `reference-data.ts` (colors /
  * icons / en label defaults) plus optional injected labels.
  */
 function buildAnnotationRules(theme: DiagramTheme, badgeLabels?: AnnotationBadgeLabels): string {
@@ -200,6 +203,21 @@ storage {
 database[index] {
   badge-label: "index";
   badge-color: #F59E0B;
+}
+
+/* The role axis of a store: no tag = system of record, and the three tags
+   below each name a way of *not* being it. [cache] and [analytics] apply to
+   storage as well as database (a CDN origin cache, a Parquet data lake), so
+   both kinds carry the badge — a kind listed in appliesTo without a selector
+   here would be accepted and do nothing. See Issue #2172. */
+database[cache], storage[cache] {
+  badge-label: "cache";
+  badge-color: #22D3EE;
+}
+
+database[analytics], storage[analytics] {
+  badge-label: "analytics";
+  badge-color: #E879F9;
 }
 
 /* ── リソースタグ → シェイプ ── */
@@ -454,6 +472,18 @@ storage {
 database[index] {
   badge-label: "index";
   badge-color: #B45309;
+}
+
+/* The store role axis — [cache] / [analytics] name two ways of not being the
+   system of record, on both database and storage. See Issue #2172. */
+database[cache], storage[cache] {
+  badge-label: "cache";
+  badge-color: #0E7490;
+}
+
+database[analytics], storage[analytics] {
+  badge-label: "analytics";
+  badge-color: #A21CAF;
 }
 
 /* ── リソースタグ → シェイプ ── */

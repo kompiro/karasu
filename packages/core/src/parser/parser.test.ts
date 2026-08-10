@@ -3345,6 +3345,138 @@ organization Corp {
       );
       expect(warnings).toHaveLength(0);
     });
+
+    // #2082: the valid-target set is derived from the tree, so a system-less
+    // `service` is an ownable service like any other. `nodePathIndex` — which
+    // this check used to read — never indexed the top-level services bucket, so
+    // this warned only once *some other* node put an entry in the index. The
+    // system below is what made the old code reach the check at all.
+    it("does not emit owns-target-not-found when owns references a top-level service", () => {
+      const result = Parser.parse(`
+service Payments {}
+
+system Shop {
+  service Orders {}
+}
+
+organization Corp {
+  team backend {
+    owns Payments
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    // #2408 keeps `invalid-owns` (the resolver-side kind check) out of sync on
+    // infra; existence, at least, now accepts every kind `owns` allows —
+    // `buildNodePathIndex` only indexed infra declared at the top level.
+    it("does not emit owns-target-not-found when owns references infra inside a system", () => {
+      const result = Parser.parse(`
+system Shop {
+  service Orders {}
+  database UserDB {
+    table users
+  }
+}
+
+organization Corp {
+  team backend {
+    owns UserDB
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    // Depth symmetry for the leaf ids `buildNodePathIndex` addressed: it indexed
+    // the children of a *top-level* infra block only, so the same `table` was
+    // "found" at top level and "not found" inside a system. Existence accepts
+    // both; whether a leaf may be owned at all is `invalid-owns`' call (#2408).
+    it("treats infra leaf ids the same at top level and inside a system", () => {
+      const nested = Parser.parse(`
+system Shop {
+  service Orders {}
+  database UserDB {
+    table users
+  }
+}
+
+organization Corp {
+  team backend {
+    owns users
+  }
+}
+      `);
+      const topLevel = Parser.parse(`
+database UserDB {
+  table users
+}
+
+organization Corp {
+  team backend {
+    owns users
+  }
+}
+      `);
+      const ownsWarnings = (result: ReturnType<typeof Parser.parse>) =>
+        result.diagnostics.filter(
+          (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+        );
+      expect(ownsWarnings(nested)).toHaveLength(0);
+      expect(ownsWarnings(topLevel)).toHaveLength(0);
+    });
+
+    // Import-coupled: a document that still has imports to resolve cannot see
+    // the merged id-space, so it must not decide this diagnostic at all — the
+    // LSP surfaces parse diagnostics verbatim (TPL-1522). The ImportResolver
+    // decides it on the merged tree instead (see import-resolver.test.ts).
+    it("does not decide owns existence in a file that still has imports", () => {
+      const result = Parser.parse(`
+import { Payments } from "./billing.krs"
+service Ops {}
+
+organization Corp {
+  team backend {
+    owns Payments
+    owns Ghost
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    it("emits owns-target-not-found for a ghost target alongside a top-level service", () => {
+      const result = Parser.parse(`
+service Payments {}
+
+system Shop {
+  service Orders {}
+}
+
+organization Corp {
+  team backend {
+    owns Payments
+    owns Ghost
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(1);
+      if (warnings[0].code !== "owns-target-not-found") throw new Error("code mismatch");
+      expect(warnings[0].params.ownedId).toBe("Ghost");
+    });
   });
 });
 

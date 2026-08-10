@@ -197,6 +197,15 @@ export interface LayoutResult {
   width: number;
   height: number;
   /**
+   * True when measurement compensated for shape content insets (#2366 F):
+   * a shapeForNode hook was supplied and the display mode is not the
+   * fixed-card icon mode. renderFromLayout applies inset-aware text layout
+   * only when set — a hook-less layout (deploy view, drawio, bare tests)
+   * measured padding-only, and drawing with insets anyway would re-wrap
+   * text into space the card never reserved.
+   */
+  shapeInsetsApplied?: boolean;
+  /**
    * Diff state re-keyed onto collapsed-group stub edges, keyed by the render
    * lookup form `${from}->${to}` (#1886). Present only when a team collapses in
    * compare/diff mode; `renderFromLayout` merges it over `options.edgeDiffState`
