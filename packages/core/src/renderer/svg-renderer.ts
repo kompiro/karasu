@@ -508,15 +508,17 @@ export function renderFromLayout(
   };
 
   // Auto label collision-avoidance (#2048): nudge labels that collide with node
-  // cards or with each other off their default midpoint. Author-positioned
-  // labels (non-default label-position/label-offset) are excluded from moving
-  // but still act as obstacles, so author intent wins (ADR-1184 precedence).
-  const { inputs: labelInputs, nodeRects } = buildLabelInputs(
-    layoutResult.edges,
-    layoutResult.nodes,
-    edgeStyleFor,
-  );
-  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects);
+  // cards, with each other, or with another edge's polyline (#2360) off their
+  // default midpoint. A label's own edge line is exempt — that is where it
+  // belongs. Author-positioned labels (non-default label-position/label-offset)
+  // are excluded from moving but still act as obstacles, so author intent wins
+  // (ADR-1184 precedence).
+  const {
+    inputs: labelInputs,
+    nodeRects,
+    edgeLines,
+  } = buildLabelInputs(layoutResult.edges, layoutResult.nodes, edgeStyleFor);
+  const labelPlacements = resolveLabelPlacements(labelInputs, nodeRects, edgeLines);
 
   const edgeStroke: { color: string; strokeWidth: number }[] = [];
   let edgeIndex = 0;
