@@ -43,7 +43,7 @@ TPL-1296 がキーワード一覧の spec↔実装同期を縛るのに対し、
    （こちらは実コードで裏取り済み）
 
 どちらも「挙動は概ね仕様どおりなので機能テストでは気づけない」のが厄介な点。
-spec の散文約束は `krs` fence の実行チェック（`spec-syntax.test.ts`）でも
+spec の散文約束は `krs` fence の実行チェック（`scripts/lint/krs-fences.ts`）でも
 キーワード subset チェック（`reference-spec-sync.test.ts`）でも捕捉できない。
 
 ### 監査側の教訓（#1493 の false positive）
@@ -88,7 +88,7 @@ spec に診断の約束を書く / 約束済み領域の実装を変更すると
 
 ## 関連テスト
 
-- `packages/core/src/spec-syntax.test.ts` — `docs/spec/syntax.md` の `krs` fence ↔ parser
+- `scripts/lint/krs-fences.ts` — ドキュメントに埋まった `krs` fence ↔ parser
   （構文例は縛れるが診断の約束は縛れない — 本 TPL はその補完）
 - `packages/core/src/builtins/reference-spec-sync.test.ts` — キーワード集合の同期
   （TPL-1296 の担保。挙動の約束は対象外）

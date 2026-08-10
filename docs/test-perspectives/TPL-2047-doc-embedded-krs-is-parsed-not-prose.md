@@ -8,6 +8,7 @@ applicable_to:
   - "spec / guide / AT のいずれかに `.krs` スニペットを新しく埋めるとき"
   - "手動チェック項目を自動化しようとして「そもそも手順が動かない」と気づいたとき"
   - "意図的に不正な `.krs`（診断のデモ）をドキュメントに載せるとき"
+  - "`.krs` の例を裸の ``` fence で書こうとしたとき（情報文字列を付けない選択をしたとき）"
 known_consumers:
   - acceptance-docs
   - parser
@@ -19,6 +20,8 @@ related_to:
 discovered_from:
   - issue: "#2047"
   - root_cause_file: "docs/acceptance/0006-builtin-style-and-reference.md"
+  - issue: "#2415"
+  - root_cause_file: "docs/spec/tags-annotations.md"
 topic: testing
 scope:
   packages:
@@ -39,15 +42,22 @@ scope:
 （角括弧の繰り返しは parse error）** も同種の drift として出てきた。後者は
 `docs/spec/syntax.md` の散文が「parseable」と嘘をついていたのが元だった。
 
+#2415 は同じ drift が spec 側で起きていたことを示した。`docs/spec/tags-annotations.md`
+は `service Payment "Payment Service" [external]` — parser が一度も受け付けたことのない
+インラインラベル形（label はブロック内のプロパティ、[ADR-19](../adr/19-required-id-label-as-property.md)）
+— を読者に教えていた。**そしてそれは裸の ``` fence に入っていた**。#2047 のガードが
+` ```krs ` タグの付いた fence しか見ていなかったので、`docs/spec/**` へ範囲を広げるだけ
+では届かなかった。情報文字列を付けないことが、そのまま検証からの離脱になっていた。
+
 到達状態: ドキュメントに埋まった `.krs` は **例外なく parser を通っている**。
 通らないものは「抜粋」か「意図的に不正」かを fence 自身が宣言し、後者は
-*いまも不正であること* が検証される。
+*いまも不正であること* が検証される。**宣言しないという選択肢はない** — 具体的な id を
+持つ宣言行を含む裸の fence は、それ自体が finding になる。
 
 検証:
 
 ```
-pnpm at:check-coverage --strict     # docs/acceptance/*.md の ```krs を全件 parse
-pnpm --filter @karasu-tools/core test -- spec-syntax   # docs/spec/syntax.md の ```krs
+pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.md を全件 parse
 ```
 
 **主張を fence に書く。** 抜粋なら ` ```krs fragment `、診断のデモなら
@@ -64,8 +74,12 @@ pnpm --filter @karasu-tools/core test -- spec-syntax   # docs/spec/syntax.md の
 - 意図的に不正な例（`top-level-declaration` のデモ等）が、文法の緩和で **正しく
   なってしまい**、例として成立しなくなる。片方向のガードだと検出できない。
 - spec の散文が受理される形を誤って説明し、それを写した AT が丸ごと嘘になる
-  （#2047 の `[mobile] [desktop]`）。fenced な例は `spec-syntax.test.ts` が守るが、
-  **散文中のインラインコードは誰も守らない** — 文法の主張は fence に書く。
+  （#2047 の `[mobile] [desktop]`）。**散文中のインラインコードは誰も守らない** —
+  文法の主張は fence に書く。
+- ガードを「タグの付いた fence」だけに掛け、裸の fence を素通りさせる。#2415 の
+  2 ブロックはどちらも裸 fence だったので、`docs/spec/**` を対象に追加するだけでは
+  1 件も増えなかった。**検証対象の入口をユーザーの申告に委ねると、申告しないものが
+  そのまま穴になる**。
 - 手順を「壊れているから」といって手動項目のまま放置する。未チェックの `- [ ]` は
   永久に QA チェックリストに載り続け、実行されない項目がノイズとして蓄積する。
 
@@ -75,7 +89,9 @@ pnpm --filter @karasu-tools/core test -- spec-syntax   # docs/spec/syntax.md の
 
 - [ ] スニペットは完全なモデルか。完全なら無印 ` ```krs `、抜粋なら
       ` ```krs fragment `、不正入力のデモなら ` ```krs invalid ` を宣言したか。
-- [ ] `pnpm at:check-coverage --strict` が緑か（新しい fence が parse できるか）。
+- [ ] `pnpm run lint:krs-fences` が緑か（新しい fence が parse できるか）。
+- [ ] `.krs` の例を裸の ``` fence に入れていないか。擬似文法（`user <id> [<tags>]`）
+      だけが裸のままでよい。
 - [ ] 文法上の主張（「これは書ける」「これは書けない」）を**散文のインラインコード
       だけ**で書いていないか。書けるなら fence にして機械検証に載せたか。
 - [ ] 手順が描画結果を見に行くものなら、その要素に **到達する経路が実際にあるか**
@@ -86,21 +102,26 @@ pnpm --filter @karasu-tools/core test -- spec-syntax   # docs/spec/syntax.md の
 
 ## 既知の対処パターン
 
-- **fence の情報文字列を主張として使う**: `scripts/acceptance/krs-fences.ts`。
+- **fence の情報文字列を主張として使う**: `scripts/lint/krs-fences.ts`。
   無印 = parse エラーゼロ、`fragment` = 検証しない、`invalid` = **いまも** parse
   エラーが出ること。`invalid` を逆向きに検証するのが要点で、文法が緩んで例が例で
   なくなる変化も拾える。
-- **既存ゲートに相乗りする**: 新しい hook / workflow を足さず
-  `at:check-coverage --strict` に finding を 1 種類足すだけにする。lefthook の
-  glob（`docs/acceptance/**`）と CI（`at-check-coverage.yml`）が既に手順書の編集で
-  発火するため、発火条件を作り直す必要がない。
+- **既存ゲートに相乗りする**: 新しい required check を足さず、既にその
+  ドキュメントの編集で発火するワークフローにステップを 1 つ足す
+  （`at-check-coverage.yml` と `reference-docs-check.yml`）。lefthook の glob も
+  同じ集合に揃える。
+- **裸の fence を finding にする**: 具体的な id を持つ宣言行（`service ECommerce {`、
+  `deploy "production" {`）を含む裸 fence は `krs-fence-untagged` として報告する。
+  擬似文法（`user <id> [<human|ai>] {`）は placeholder であって id ではないので、
+  この判定から自然に外れる — 除外リストを人手で維持しなくてよい。
 - **corpus 全体で一度に棚卸しする**: 導入時に全 fence を parse し、drift（直す）と
   抜粋 / 意図的に不正（宣言する）に仕分ける。既存分を放置して新規だけ守ると、
   「一部は検証されている」という最も誤解を招く状態になる。
-- **同じ観点の先行例**: `packages/core/src/spec-syntax.test.ts`（`docs/spec/syntax.md`）
-  と `scripts/guide/gen-guide-diagrams.ts --check`（`docs/guide/**` の hero スニペット
-  は実際にレンダリングされる）。ドキュメント中の `.krs` を実行可能な資産として
-  扱う系譜。
+- **同じ観点の先行例**: `scripts/guide/gen-guide-diagrams.ts --check`（`docs/guide/**`
+  の hero スニペットは実際にレンダリングされる）。ドキュメント中の `.krs` を実行可能な
+  資産として扱う系譜。`packages/core/src/spec-syntax.test.ts` は `docs/spec/syntax.md`
+  だけを見る先行実装だったが、#2415 で `lint:krs-fences` に統合して削除した — 同じ
+  ファイルに規約が 2 つあると、緩い方（暗黙の `system` ラップ）が主張を曖昧にする。
 
 ## 派生元
 

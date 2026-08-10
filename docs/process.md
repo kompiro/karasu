@@ -200,7 +200,8 @@ karasu 側のセッション内で編集・コミット・PR 作成ができる�
 
 | 何を書くとき | 正本 | 発火条件 |
 | --- | --- | --- |
-| 受け入れテスト（アノテーション書式・到達先・`.krs` fence） | `.claude/rules/acceptance.md` | `docs/acceptance/**` の編集 |
+| 受け入れテスト（アノテーション書式・到達先） | `.claude/rules/acceptance.md` | `docs/acceptance/**` の編集 |
+| ドキュメントに埋める `.krs`（fence の主張宣言） | `.claude/rules/krs-fences.md` | `docs/{acceptance,spec,guide}/**` `docs/concepts*.md` の編集 |
 | ADR / Design Doc（昇格・supersede・permalink・auto-merge） | `.claude/rules/adr.md` | `docs/adr/**` `docs/design/**` の編集 |
 | spec / concepts（proactive TPL 同梱・適合性監査） | `.claude/rules/spec-audit.md` | `docs/spec/**` `docs/concepts*.md` の編集 |
 | 複数スライスに分けた仕事の追跡 | `.claude/rules/program-slices.md` | Design Doc に `### スライス` を書いたとき |
