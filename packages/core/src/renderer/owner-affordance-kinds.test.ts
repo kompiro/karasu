@@ -119,9 +119,9 @@ describe("owns resolution accepts every OWNS_TARGET_KINDS kind (#2408)", () => {
 
   it("draws no team chip on an owned infra block", () => {
     // Deliberate exclusion with the same rationale as the deploy button above:
-    // the chip geometry does not fit a cylinder / cloud. The warning is gone, so
-    // this is the one surface where that ownership is not shown — the org view
-    // lists it under the team instead.
+    // the chip geometry does not fit a cylinder / cloud. What the exclusion does
+    // NOT do is hide the ownership — see the Group-by-team case below, where the
+    // same node sits inside its team's frame.
     const result = compileSystem(
       `${system(`  service Api { label "Api" }\n  database Db { label "Db" }`)}
 organization O { team T { owns Db owns Api } }`,
@@ -137,6 +137,33 @@ organization O { team T { owns Db owns Api } }`,
     expect(card("Db")).not.toContain("data-team-button");
     expect(result.nodeMetadata.get("Api")?.team).toBe("T");
     expect(result.nodeMetadata.get("Db")?.team).toBeUndefined();
+  });
+
+  it("still frames an owned infra block under Group by: team", () => {
+    // The card gate is not a system-view gate: frame membership comes from the
+    // ungated `ownerIndex` (grouping is id-based — ADR-1858), so the ownership
+    // does read here even though the cylinder carries no chip. Pinning it stops
+    // the chip exclusion from being mistaken for "infra ownership shows nowhere",
+    // and would catch a future kind filter added to the grouping axis.
+    const src = `${system(`  service Api { label "Api" }\n  database Db { label "Db" }`)}
+organization O { team T { label "Team T" owns Db owns Api } }`;
+    const parsed = Parser.parse(src).value;
+    const laid = layout(extractView(parsed.systems, ["S"]), {
+      ownerIndex: parsed.ownerIndex,
+      teamLabels: buildTeamLabelIndex(parsed),
+      groupBy: "team",
+    });
+
+    const frame = [...laid.containers.values()].find((c) => c.groupId === "T" && c.group);
+    expect(frame).toBeDefined();
+    for (const id of ["Api", "Db"]) {
+      const node = laid.nodes.get(id);
+      expect(node).toBeDefined();
+      expect(node!.x).toBeGreaterThanOrEqual(frame!.x);
+      expect(node!.y).toBeGreaterThanOrEqual(frame!.y);
+      expect(node!.x + node!.width).toBeLessThanOrEqual(frame!.x + frame!.width);
+      expect(node!.y + node!.height).toBeLessThanOrEqual(frame!.y + frame!.height);
+    }
   });
 });
 
