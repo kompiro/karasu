@@ -8,7 +8,7 @@
   - cooldown 7 日: [ADR-784](../adr/784-update-dependencies-20260421.md)
   - react group 化: [ADR-2318](../adr/2318-dependabot-triage-2026-08-03.md)
   - 運用ルール: `.claude/rules/dependabot.md`, `docs/release.md`
-  - コード: `.oxfmtrc.json`, `package.json`, `packages/*/package.json`, `pnpm-lock.yaml`
+  - コード: `.github/dependabot.yml`, `.oxfmtrc.json`, `package.json`, `packages/*/package.json`, `pnpm-lock.yaml`
 
 ## 背景・課題
 
@@ -51,6 +51,11 @@ cooldown があるため 3 件は registry の最新版より 1〜3 版古い。
 **既定値 5** が効く。npm の open PR がちょうど 5 件なので、いま Dependabot は
 新規 PR を起票できない。後述する `vitest` 本体の更新が今回オファーされなかった
 理由もこれで説明がつく。**今回のバッチを捌くこと自体が枠の解放になる。**
+
+これは単なる「オファーが遅れる」問題では済まない。`vitest` と
+`@vitest/coverage-v8` のように **peer で結ばれた依存の片方だけが枠に入る**と、
+枠が空くのを待つ間に片方をマージした時点で peer 不整合が lockfile に固定される。
+枠上限は後述の方針で引き上げる。
 
 ## サプライチェーン分析 — 全 5 件クリーン
 
@@ -183,6 +188,8 @@ repo が `lucide-react` から import しているアイコンは 2 つだけ:
 
 いずれも却下ではないので `@dependabot ignore` は設定しない。
 
+**あわせて `open-pull-requests-limit` を既定 5 から 8 に引き上げる**（npm のみ）。
+
 ### なぜ #2425 を bot PR のままマージしないか
 
 `@vitest/coverage-v8` の peer は `vitest` 完全一致ピンで、bot PR 単体では
@@ -195,6 +202,23 @@ Dependabot は open PR 上限のため `vitest` を別 PR で出せないので�
 （browser の fs アクセス確認、vm の外部モジュール解決、mocker の hoist、
 worker crash 時の hang 防止など）で、breaking な記述はない。
 テスト全体が回る変更なので、CI green が実質的な受け入れ確認になる。
+
+### なぜ open PR 枠を 8 にするか
+
+今回の #2425 は「枠が足りずに peer 相手がオファーされない」ことが直接の原因なので、
+枠を広げれば同じ取りこぼしは構造的に起きにくくなる。
+
+引き上げ幅は 8 とする。npm の直接依存は 9 workspace に分散しているものの、
+月曜バッチの実績は直近 3 回とも 5 件（＝上限に張り付いていた）で、
+真の需要は 5 を超えている一方、無制限に近い値にするとレビュー量が読めなくなる。
+8 なら peer で結ばれた組（`vitest` 系 3 パッケージが最大）が同じバッチに収まり、
+かつ 1 回のトリアージで捌ける分量に収まる。
+
+github-actions 側は既定 5 のままにする。週あたりのオファーが 1〜2 件で
+枠に張り付いた実績がなく、変更する理由がない。
+
+cooldown（[ADR-784](../adr/784-update-dependencies-20260421.md)）は据え置く。
+枠の広さは supply-chain 上の待機時間とは独立した軸で、7 日の待機は変わらない。
 
 ### スライス（作業順序）
 
@@ -209,18 +233,20 @@ worker crash 時の hang 防止など）で、breaking な記述はない。
 
 3 と 4 は互いに独立だが、どちらも `pnpm-lock.yaml` を触るので直列に出す。
 
+`open-pull-requests-limit: 8` は他とコンフリクトしないので、本 Design Doc の
+PR に同梱する（`.github/dependabot.yml` のみの変更）。
+
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: なし（`lucide-react` のみ runtime 依存だが、使用中の 2 アイコンに変更なし）。
-- ドキュメント更新: 本 Design Doc → ADR 昇格のみ。
+- ドキュメント更新: 本 Design Doc → ADR 昇格のみ。`docs/release.md` の
+  「Dependabot 運用ルール」と `.claude/rules/dependabot.md` は cooldown と
+  schedule だけを規定しており PR 枠に触れていないので、更新不要。
 - テスト・examples への影響: `oxfmt` の整形で core の test ファイル 3 本が再整形される（挙動不変）。
+- 次回以降のバッチ: 枠が 8 になるため、月曜のレビュー対象が最大 5 件から 8 件に増えうる。
 
 ## 未解決の問い / 決めないこと
 
-- **`open-pull-requests-limit` を既定 5 から引き上げるか** — 今回は「関連する 2 つの
-  依存が同時にオファーされない」という形で実害が出た。ただし上限を上げると
-  月曜バッチのレビュー量も増える。今回は既定のままとし、同種の取りこぼしが
-  再発したら設定変更を ADR 付きで検討する。
 - **`@astrojs/starlight` PR の transitive 再解決による lockfile 重複** — 今回は
   受け入れる。`@types/node` / `shiki` / `vite` の版が増え続けるようなら、
   別途 dedupe を検討する。
