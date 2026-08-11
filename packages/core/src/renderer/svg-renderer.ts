@@ -30,6 +30,7 @@ import {
   renderChip,
   renderGhostChip,
   type CornerLane,
+  type LaneInset,
 } from "./corner-lane.js";
 import { metaGlyph, type MetaGlyphName } from "./meta-glyphs.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
@@ -1480,7 +1481,13 @@ function renderNode(
   const showInfoButton = nodeControls && canShowInfoButton;
   const showDeployButton = nodeControls && canShowDeployButton;
   const buttonCount = (showInfoButton ? 1 : 0) + (showDeployButton ? 1 : 0);
-  const lane = packCornerLane(node, style, buttonCount, palette.badgeFallback);
+  const lane = packCornerLane(
+    node,
+    style,
+    buttonCount,
+    palette.badgeFallback,
+    laneInsetOf(style, node),
+  );
 
   // Badge (single merged badge driven by the node's current annotations).
   // When diff metadata reports an annotation-only change, the badge is
@@ -1493,7 +1500,7 @@ function renderNode(
     children: badgeParts,
     annotationAddedAttr,
     annotationRemovedAttr,
-  } = renderNodeBadge(node, palette, nodeId, diffMeta, lane, buttonCount);
+  } = renderNodeBadge(node, palette, nodeId, diffMeta, lane, buttonCount, laneInsetOf(style, node));
   children.push(...badgeParts);
 
   // Sub-label: shown below the node for ghost domains to indicate the parent service
@@ -1790,6 +1797,18 @@ function resolveNodeStyle(
     (layoutId !== undefined ? styles.nodes.get(layoutId) : undefined) ??
     styles.defaultNodeStyle
   );
+}
+
+/**
+ * The two insets the corner lane needs (#2420). Content insets are what the
+ * shape registry exposes today, and they are the conservative choice: the lane
+ * lands inside the shape's drawn body on every registered shape, where the
+ * bounding box would hang the ⓘ over a `user` card's medallion strip or a
+ * hexagon's cut corner. Slice C's `portFrame` may offer a tighter outline.
+ */
+function laneInsetOf(style: ResolvedNodeStyle, node: LayoutNode): LaneInset {
+  const insets = shapeInsetsOf(style, node.width, node.height);
+  return { top: insets.top, right: insets.right };
 }
 
 /** Content insets for a node's resolved shape, or zeros (box, external icons). */
@@ -2111,7 +2130,13 @@ function assignChipZones(
       (DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) && (serviceIdsWithDeploy?.has(nodeId) ?? false)
         ? 1
         : 0);
-    node.chipZone = packCornerLane(node, style, buttonCount, palette.badgeFallback).zone;
+    node.chipZone = packCornerLane(
+      node,
+      style,
+      buttonCount,
+      palette.badgeFallback,
+      laneInsetOf(style, node),
+    ).zone;
   }
 }
 
@@ -2130,6 +2155,7 @@ function renderNodeBadge(
   diffMeta: NodeDiffMeta | undefined,
   lane: CornerLane,
   buttonCount: number,
+  ghostInset: LaneInset,
 ): {
   children: string[];
   annotationAddedAttr: string | undefined;
@@ -2165,7 +2191,7 @@ function renderNodeBadge(
         "g",
         { "data-node-badge": nodeId, "data-diff-state": "removed" },
         ...renderGhostChip(
-          laneBox(node, buttonCount, GHOST_CHIP_WIDTH, CHIP_HEIGHT),
+          laneBox(node, buttonCount, GHOST_CHIP_WIDTH, CHIP_HEIGHT, ghostInset),
           palette.textSubtle,
         ),
       ),

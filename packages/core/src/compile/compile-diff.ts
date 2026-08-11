@@ -413,6 +413,8 @@ export interface CompileDeployDiffOptions {
   theme?: DiagramTheme;
   /** Translated labels for the built-in annotation badges. */
   annotationBadgeLabels?: AnnotationBadgeLabels;
+  /** Draw the per-node info / deploy buttons in the diff preview (Issue #2420). */
+  nodeControls?: boolean;
 }
 
 /**
@@ -434,6 +436,7 @@ export async function compileDeployDiff(
     displayMode,
     emptyStateLabels,
     theme,
+    nodeControls,
   } = options;
 
   const { beforeResolved, afterResolved, diagnostics } = await resolveBeforeAfter(
@@ -485,6 +488,7 @@ export async function compileDeployDiff(
     containerDiffState: containerDiffStateMap,
     emptyLabels: emptyStateLabels,
     theme,
+    nodeControls,
   });
 
   return {

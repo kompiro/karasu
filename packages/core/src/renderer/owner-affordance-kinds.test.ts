@@ -190,6 +190,21 @@ describe("deploy affordance covers every deploy-affordance kind (#2157)", () => 
     },
   );
 
+  it("draws the info button on the deploy view too, not just the system view", () => {
+    // The deploy view renders through `renderDeploy`, a separate call site from
+    // the system view's — one that forgot to forward `nodeControls` at first,
+    // which took the ⓘ off every deploy card in the app and the VS Code panel.
+    const krs = `${system(`  service Api { label "Api" }`)}
+deploy "prod" {
+  oci ApiBox { label "Api box" image "api:1" realizes Api }
+}`;
+    // Deploy layout keys a unit as `<container>::<unit>` (#1666), so match the
+    // attribute rather than the bare id.
+    const result = compile(krs, { diagramType: "deploy", nodeControls: true });
+    expect(result.svg).toMatch(/data-info-button="[^"]*ApiBox"/);
+    expect(compile(krs, { diagramType: "deploy" }).svg).not.toContain("data-info-button");
+  });
+
   it("leaves an infra block without a deploy button even when a unit realizes it", () => {
     // Deliberate exclusion, not an oversight: infra blocks are valid `realizes`
     // targets (ADR-1632) but render as cylinders / clouds, whose corners the

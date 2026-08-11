@@ -65,10 +65,12 @@ export interface ChipBox extends Rect {
   label: string;
   /** Glyph drawn before the label; empty when the style has none. */
   glyph: string;
-  /** Pill fill. */
+  /** Badge color: the pill's fill when `solid`, its outline when not. */
   color: string;
-  /** Label / glyph color, chosen against `color` by {@link chipInk}. */
+  /** Label / glyph color, chosen against the pill by {@link chipInk}. */
   ink: string;
+  /** False for a color the ink cannot be reasoned about — see `canFillPill`. */
+  solid: boolean;
 }
 
 export interface CornerLane {
@@ -84,6 +86,40 @@ export interface CornerLane {
 type CardBox = Pick<LayoutNode, "x" | "y" | "width">;
 
 /**
+ * How far the shape's drawn body sits inside the bounding box, on the two
+ * sides the lane touches. A `user` card's border starts a medallion radius
+ * below the box top, and a hexagon's top edge starts a fifth of the width in —
+ * anchoring the lane to the box would hang the buttons over the outline
+ * (reported on the user card: the ⓘ straddled the top border).
+ */
+export interface LaneInset {
+  top: number;
+  right: number;
+}
+
+const NO_INSET: LaneInset = { top: 0, right: 0 };
+
+/** Height of the lane — its tallest possible resident. */
+const LANE_HEIGHT = Math.max(BUTTON_SIZE, CHIP_HEIGHT);
+
+/**
+ * Top-right corner of the lane.
+ *
+ * The lane sits directly *above* the content area, its bottom edge on the
+ * content's top: that clears the shape's outline without eating into the first
+ * line of text. On a plain box the two coincide, since the inset is the
+ * padding the text already starts after. Anchoring to the content top itself
+ * would put the buttons alongside the label on a `user` card, whose inset
+ * carries the medallion strip as well as the padding.
+ */
+function laneCorner(card: CardBox, inset: LaneInset): { right: number; top: number } {
+  return {
+    right: card.x + card.width - Math.max(LANE_MARGIN, inset.right),
+    top: card.y + Math.max(LANE_MARGIN, inset.top - LANE_HEIGHT),
+  };
+}
+
+/**
  * Ink for a chip label: whichever of the two fixed inks contrasts better with
  * the pill it sits on.
  *
@@ -97,6 +133,21 @@ export function chipInk(pillColor: string): string {
   const light = contrastRatio(CHIP_INK_LIGHT, pillColor) ?? 0;
   const dark = contrastRatio(CHIP_INK_DARK, pillColor) ?? 0;
   return dark > light ? CHIP_INK_DARK : CHIP_INK_LIGHT;
+}
+
+/**
+ * Whether the pill can be filled with `color` at all.
+ *
+ * `badge-color` accepts any CSS color, but the luminance math behind
+ * {@link chipInk} reads 6-digit hex only. Filling a pill with a color we
+ * cannot reason about would mean guessing an ink — `badge-color: yellow` would
+ * take white and land at 1.07:1. Such a chip is drawn outlined instead, with
+ * the label in the badge color on the card, which is what the badge did before
+ * the pill existed and keeps the contrast question where the sheet author
+ * already answered it.
+ */
+function canFillPill(color: string): boolean {
+  return contrastRatio(CHIP_INK_LIGHT, color) !== undefined;
 }
 
 /** Width a pill needs for the given content. Never less than what it draws. */
@@ -117,10 +168,17 @@ function buttonsWidthOf(buttonCount: number): number {
  * one place the "each resident is offset by what stands to its right" rule is
  * expressed.
  */
-export function laneBox(card: CardBox, buttonCount: number, width: number, height: number): Rect {
+export function laneBox(
+  card: CardBox,
+  buttonCount: number,
+  width: number,
+  height: number,
+  inset: LaneInset = NO_INSET,
+): Rect {
+  const corner = laneCorner(card, inset);
   return {
-    x: card.x + card.width - LANE_MARGIN - buttonsWidthOf(buttonCount) - width,
-    y: card.y + LANE_MARGIN,
+    x: corner.right - buttonsWidthOf(buttonCount) - width,
+    y: corner.top,
     width,
     height,
   };
@@ -141,9 +199,9 @@ export function packCornerLane(
   style: ChipStyle,
   buttonCount: number,
   fallbackColor: string,
+  inset: LaneInset = NO_INSET,
 ): CornerLane {
-  const right = card.x + card.width - LANE_MARGIN;
-  const top = card.y + LANE_MARGIN;
+  const { right, top } = laneCorner(card, inset);
   const cy = top + BUTTON_SIZE / 2;
 
   const buttons: { cx: number; cy: number }[] = [];
@@ -166,7 +224,9 @@ export function packCornerLane(
     // left once its own padding, the glyph and the buttons are accounted for.
     const labelBudget = Math.min(
       card.width * CHIP_LABEL_MAX_RATIO,
-      card.width - LANE_MARGIN * 2 - buttonsWidth - pillWidth(glyph, ""),
+      // What is left of the shape's own top edge once the buttons and the
+      // pill's padding are taken out.
+      right - card.x - Math.max(LANE_MARGIN, inset.right) - buttonsWidth - pillWidth(glyph, ""),
     );
     if (estimateTextWidth(label, CHIP_CHAR_WIDTH) > labelBudget) {
       label =
@@ -180,8 +240,9 @@ export function packCornerLane(
   if (!label && !glyph) label = style.badgeLabel ?? "";
 
   const color = style.badgeColor ?? fallbackColor;
-  const box = laneBox(card, buttonCount, pillWidth(glyph, label), CHIP_HEIGHT);
-  const chip: ChipBox = { ...box, label, glyph, color, ink: chipInk(color) };
+  const solid = canFillPill(color);
+  const box = laneBox(card, buttonCount, pillWidth(glyph, label), CHIP_HEIGHT, inset);
+  const chip: ChipBox = { ...box, label, glyph, color, ink: solid ? chipInk(color) : color, solid };
 
   return {
     buttons,
@@ -204,7 +265,9 @@ export function renderChip(chip: ChipBox): string[] {
       width: chip.width,
       height: chip.height,
       rx: chip.height / 2,
-      fill: chip.color,
+      fill: chip.solid ? chip.color : "none",
+      stroke: chip.solid ? undefined : chip.color,
+      "stroke-width": chip.solid ? undefined : 1,
     }),
   ];
   const midY = chip.y + chip.height / 2;

@@ -485,6 +485,31 @@ system Test {
       expect(svg).toContain('class="krs-node-controls"');
     });
 
+    it("keeps the buttons inside a user card's drawn body, not over its border", () => {
+      // The user shape's card starts a medallion radius below the bounding box,
+      // so a lane anchored to the box straddles the top border (reported on
+      // #2444). The card rect is the second <rect> — the first is the canvas.
+      const svg = renderFromSource(
+        `
+system Test {
+  user Customer [human] {
+    label "顧客"
+    description "商品を購入する一般ユーザー"
+  }
+}
+    `,
+        undefined,
+        undefined,
+        undefined,
+        true,
+      );
+      const card =
+        /data-node-id="Customer"[^>]*><rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)"/.exec(svg)!;
+      const cardTop = Number(card[2]);
+      const button = /data-info-button[\s\S]{0,200}?cy="([\d.]+)" r="8"/.exec(svg)!;
+      expect(Number(button[1]) - 8).toBeGreaterThanOrEqual(cardTop);
+    });
+
     it("keeps the chip clear of the buttons and inside the card", () => {
       const svg = renderFromSource(
         withEverything,

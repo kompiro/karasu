@@ -455,6 +455,9 @@ function _compileFromPreparedInput(
       legendUsage: collectLegendUsage(krsFile),
       viewScope: "deploy",
       theme,
+      // Deploy cards carry the same ⓘ as system cards, so the deploy tab of a
+      // live viewer needs the option too (#2420).
+      nodeControls,
     });
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return {

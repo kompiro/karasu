@@ -109,6 +109,39 @@ describe("packCornerLane", () => {
     expect(lane.chip!.label).not.toBe("");
   });
 
+  // A `user` card's border starts a medallion radius below the bounding box,
+  // so a lane anchored to the box hangs the ⓘ over the outline — as reported.
+  describe("shape inset", () => {
+    const style = { badgeIcon: "✦", badgeLabel: "NEW" };
+    // Stands in for the user card: medallion radius + the card's own padding.
+    const inset = { top: 13 + 24, right: 0 };
+
+    it("drops the lane below a shape's top inset", () => {
+      const lane = packCornerLane(CARD, style, 1, FALLBACK, inset);
+      expect(lane.chip!.y).toBeGreaterThan(CARD.y + LANE_MARGIN);
+      expect(lane.buttons[0].cy - BUTTON_SIZE / 2).toBe(lane.chip!.y);
+    });
+
+    it("keeps the lane above the content, not beside the first line of text", () => {
+      // Bottom edge on the content top: clear of the outline, clear of the text.
+      const lane = packCornerLane(CARD, style, 1, FALLBACK, inset);
+      expect(lane.chip!.y + CHIP_HEIGHT).toBe(CARD.y + inset.top);
+    });
+
+    it("pulls the lane in from a shape's right inset", () => {
+      const withInset = packCornerLane(CARD, style, 1, FALLBACK, { top: 0, right: 40 });
+      const flush = packCornerLane(CARD, style, 1, FALLBACK);
+      expect(withInset.buttons[0].cx).toBe(flush.buttons[0].cx - (40 - LANE_MARGIN));
+    });
+
+    it("ignores an inset smaller than the plain margin", () => {
+      const small = packCornerLane(CARD, style, 1, FALLBACK, { top: 2, right: 3 });
+      const none = packCornerLane(CARD, style, 1, FALLBACK);
+      expect(small.chip).toEqual(none.chip);
+      expect(small.buttons).toEqual(none.buttons);
+    });
+  });
+
   it("emits no chip when the style carries neither glyph nor label", () => {
     const lane = packCornerLane(CARD, {}, 1, FALLBACK);
     expect(lane.chip).toBeUndefined();
@@ -154,5 +187,26 @@ describe("chipInk", () => {
     for (const pill of ["#F59E0B", "#22D3EE", "#A855F7", "#1E3A5F", "#94A3B8"]) {
       expect(contrastRatio(chipInk(pill), pill)!).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
     }
+  });
+});
+
+describe("a badge color the ink math cannot read", () => {
+  // `badge-color` takes any CSS color, but the luminance math reads 6-digit
+  // hex. Filling the pill anyway would pick white by default: white on
+  // `yellow` is 1.07:1.
+  it("draws the chip outlined, with the label in the badge color", () => {
+    const lane = packCornerLane(CARD, { badgeLabel: "NEW", badgeColor: "yellow" }, 0, FALLBACK);
+    expect(lane.chip!.solid).toBe(false);
+    expect(lane.chip!.ink).toBe("yellow");
+    const svg = renderChip(lane.chip!).join("");
+    expect(svg).toContain('fill="none"');
+    expect(svg).toContain('stroke="yellow"');
+    expect(svg).not.toContain(CHIP_INK_LIGHT);
+  });
+
+  it("still fills the pill for a hex color", () => {
+    const lane = packCornerLane(CARD, { badgeLabel: "NEW", badgeColor: "#1E3A5F" }, 0, FALLBACK);
+    expect(lane.chip!.solid).toBe(true);
+    expect(renderChip(lane.chip!).join("")).toContain('fill="#1E3A5F"');
   });
 });
