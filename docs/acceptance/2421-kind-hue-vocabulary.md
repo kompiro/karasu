@@ -23,9 +23,17 @@ deploy kind は accent と同色相の低明度塗り + 高明度文字にして
 
 ### AC-2: 塗りなし kind の枠線が唯一の輪郭として 3:1 を満たす
 
-- [x] `usecase` の枠線が、素の canvas と**全 boundary tint 合成**に対して 3:1 以上（両テーマ）。文字は同じ面すべてに対して 4.5:1 以上
+- [x] `usecase` の枠線が、素の canvas と**最大 3 枚重ねた boundary tint 合成**に対して 3:1 以上（両テーマ）。文字は同じ面すべてに対して 4.5:1 以上
 
 > ✅ Automated — `packages/core/src/builtins/default-style-contrast.test.ts` › `builtin kind colors (dark theme) > usecase stays legible on the canvas and under every boundary tint` / `builtin kind colors (light theme) > usecase stays legible on the canvas and under every boundary tint`
+
+- [x] `@deprecated` が fade させた後も、同じ全面に対して枠線が 3:1 以上（塗りなしカードは fade 後に輪郭しか残らない）
+
+> ✅ Automated — `packages/core/src/builtins/default-style-contrast.test.ts` › `builtin kind colors (dark theme) > usecase keeps its outline when @deprecated fades the card` / `builtin kind colors (light theme) > usecase keeps its outline when @deprecated fades the card`
+
+- [x] ガードが測る fade の α が builtin の `@deprecated` の値と結ばれている（opacity を変えたのにガードが古い α で測り続ける状態を作らない）
+
+> ✅ Automated — `packages/core/src/builtins/default-style-contrast.test.ts` › `builtin kind colors (dark theme) > the builtin @deprecated opacity is the value the fill-less border is calibrated against`
 
 ### AC-3: fill ⇔ text の対が全 kind で揃い、読める（TPL-1697）
 
@@ -80,3 +88,5 @@ deploy kind は accent と同色相の低明度塗り + 高明度文字にして
 - [ ] **塗りなし usecase が境界の中で読める**: <https://karasu.kompiro.dev/> で boundary を持つモデルを開き、*Group by: Boundary* にする。dark / light 双方で、usecase カードの内側に frame の tint が透け、カードが境界の一員として読めること。枠線がぼやけて消えていないこと。
 - [ ] **deploy カードの accent が浮いていない**: deploy ビューを dark で開き、`war` / `function` のカードで枠線・バッジ・ラベルが同じ色系統に見え、地色が茶・オリーブの濁りに見えないこと。
 - [ ] **論理層の 4 kind が一目で区別できる**: domain ビューで `domain` / `usecase` / `resource` / `member` が並ぶ図を開き、色と形だけで 4 種を見分けられること。
+- [ ] **枠線の強さが「振る舞いは構造より軽い」を壊していない**: 同じビューで `usecase` と `domain` を並べて見る。usecase の枠線は `@deprecated` の fade 後も 3:1 を満たすため、意図的に canvas から遠い明度に置いてある（dark は淡い水色、light は濃紺）。それでも usecase が domain より*重く*見えていないこと。重く見えるなら、枠線を弱めるのではなく「fade 時の可読性をどう担保するか」として Issue に差し戻す。
+- [ ] **`@deprecated` な `usecase` の輪郭が残る**: usecase に `@deprecated` を付けて両テーマで表示し、カードが薄くなってもどこにあるかが分かること。

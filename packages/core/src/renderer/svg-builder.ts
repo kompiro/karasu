@@ -411,6 +411,10 @@ export function buildLegendFooter(
       const swatchY = cursor + (LEGEND_ENTRY_HEIGHT - LEGEND_SWATCH_SIZE) / 2;
       parts.push(
         el("rect", {
+          // Classed so the swatch is addressable on its own: `fill` values like
+          // `transparent` also appear on container frames and fill-less nodes,
+          // so a document-wide search cannot tell you what the legend painted.
+          class: "legend-swatch",
           x: LEGEND_LEFT_PAD,
           y: swatchY,
           width: LEGEND_SWATCH_SIZE,

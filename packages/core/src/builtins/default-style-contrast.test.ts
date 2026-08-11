@@ -132,11 +132,20 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin kind colors (%s them
     .rules.filter(isBareKindSelector)
     .filter((r) => r.properties["background-color"]);
 
-  /** The canvas as seen under each boundary frame tint, plus the bare canvas. */
-  const canvasSurfaces: string[] = [
-    canvasBg,
-    ...palette.boundaryHues.map((hue) => compositeOver(hue, canvasBg, BOUNDARY_TINT_ALPHA)!),
-  ];
+  // Boundary membership is 1:N (#2161), so frames overlap and their tints stack.
+  // Checking one tint would leave the second and third frame unmeasured, which is
+  // exactly where a fill-less border runs out of contrast first.
+  const OVERLAPPING_FRAMES = 3;
+
+  /** The canvas as seen under 0..N stacked boundary frame tints. */
+  const canvasSurfaces: string[] = [canvasBg];
+  for (const hue of palette.boundaryHues) {
+    let surface = canvasBg;
+    for (let depth = 0; depth < OVERLAPPING_FRAMES; depth++) {
+      surface = compositeOver(hue, surface, BOUNDARY_TINT_ALPHA)!;
+      canvasSurfaces.push(surface);
+    }
+  }
 
   it("finds the kind rules that paint a card", () => {
     // 7 logical (user / service / client / domain / usecase / entity / resource)
@@ -199,6 +208,40 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin kind colors (%s them
         expect(
           contrastRatio(border!, surface)!,
           `${_kind} border ${border} on ${surface} is below ${WCAG_AA_LARGE_TEXT}:1`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
+      }
+    },
+  );
+
+  // `@deprecated` fades the whole node group to DEPRECATED_OPACITY, border
+  // included. A filled card survives that because its body still marks the
+  // card; a fill-less one is left with a faded outline and nothing else, so the
+  // fade has to be part of what the border is calibrated against.
+  //
+  // Only this fade is checkable. The facet-dim (0.28) and diff-ghost (0.3)
+  // states are so light that no color clears 3:1 — a pure white border over the
+  // dark canvas reaches ~2.2:1 at 0.28 — so they are exempt by construction,
+  // which is the same carve-out WCAG 1.4.11 makes for inactive components.
+  const DEPRECATED_OPACITY = 0.6;
+
+  it("the builtin @deprecated opacity is the value the fill-less border is calibrated against", () => {
+    // Pins the coupling: raising the fade in the annotation rules without
+    // re-checking the borders would leave this guard measuring the wrong alpha.
+    const deprecated = getBuiltinStyleSheet(theme).rules.find((r) =>
+      r.selector.annotations.includes("deprecated"),
+    );
+    expect(deprecated?.properties["opacity"]).toBe(String(DEPRECATED_OPACITY));
+  });
+
+  it.each(fillLess.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s keeps its outline when @deprecated fades the card",
+    (_kind, rule) => {
+      const border = rule.properties["border-color"]!;
+      for (const surface of canvasSurfaces) {
+        const faded = compositeOver(border, surface, DEPRECATED_OPACITY)!;
+        expect(
+          contrastRatio(faded, surface)!,
+          `${_kind} border ${border} faded to ${faded} on ${surface} is below ${WCAG_AA_LARGE_TEXT}:1`,
         ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
       }
     },

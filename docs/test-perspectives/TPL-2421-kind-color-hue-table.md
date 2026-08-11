@@ -46,9 +46,18 @@ kind 語彙が色として空洞化していた。deploy 側では `war` の茶�
 - deploy kind の地色を、accent とは無関係な彩度を落とした色で決める。枠線だけが
   浮き、カードが「色を持っている」ように見えない（#2421 の `war` / `function`）。
 - 塗りなし kind を足すとき、枠線を「見た目の好み」で選ぶ。塗りがない以上**枠線が
-  唯一の輪郭**なので、canvas に対して 3:1 が必要になる。さらに boundary frame の
-  tint が canvas 側に乗るため、**素の canvas だけで測ると足りる値でも tint 合成で
-  割る**（#2421 PoC: dark `#38709C` は素で 3.57、worst tint で 2.85）。
+  唯一の輪郭**なので、canvas に対して 3:1 が必要になる。判定面は素の canvas だけ
+  ではなく、次の 3 つが重なって効く。**測る面を 1 つ落とすたびに、実際には割って
+  いる値が緑になる**:
+  1. 素の canvas
+  2. boundary frame の tint を重ねた canvas。frame は 1:N なので**重なる** —
+     #2421 では 1 枚重ねで通る `#4E8FBF` が 3 枚重ねで 2.92 に落ちた
+  3. `@deprecated` が fade させた不透明度でのカード。塗りありなら本体が残るが、
+     塗りなしでは**輪郭しか残らない**。#2421 では単一 tint ですら 2.46 まで落ちた
+- 逆に、**どんな色でも届かない fade 状態**を判定面に入れてしまう。facet dim
+  (0.28) / diff ghost (0.3) では純白の枠線でも dark canvas に対して約 2.2:1 で、
+  色の選び直しでは解けない。ここは WCAG 1.4.11 の inactive component 除外に倣って
+  対象外と**書く**（黙って外すと、次の人が「測り忘れ」と区別できない）。
 - 塗りなし kind を足したあと、**カードの塗りを色として読んでいる別の描画面**を
   更新し忘れる。#2421 では凡例スウォッチが `background-color` をそのまま塗って
   いたため、`ref usecase` が `fill="transparent"` の**不可視の四角**になり、
@@ -61,14 +70,19 @@ kind 語彙が色として空洞化していた。deploy 側では `war` の茶�
 `default-style.ts` の kind ルールを追加・変更するとき:
 
 - [ ] `docs/spec/style.md` / `style.ja.md` の色相表に、その kind の行があるか
-- [ ] 3 色をその色相から導いたか（accent = 彩度そのまま / fill = 低明度 /
-      text = 高明度）。地だけ別系統の色になっていないか
+- [ ] 3 色をその色相から導いたか（accent = 彩度そのまま / fill = 明度の両端のうち
+      **canvas に近い側** / text = その反対端）。地だけ別系統の色になっていないか。
+      「低明度が fill」と絶対値で覚えると light テーマで反転して破綻する
 - [ ] `background-color` を設定したなら対の `color` もあるか（[[TPL-1697]]）、
       その対が両テーマで 4.5:1 以上か
 - [ ] 塗りなしにするなら、`none` ではなく `transparent` を使ったか
       （`transparent` は painted なのでクリック・ホバーの当たり判定が残る）
-- [ ] 塗りなしにするなら、枠線が**素の canvas と全 boundary tint 合成の両方**に
-      対して 3:1 以上か。dark / light を別々に較正したか
+- [ ] 塗りなしにするなら、枠線が**素の canvas / 重ねた boundary tint /
+      `@deprecated` の fade 後**の 3 面すべてに対して 3:1 以上か。dark / light を
+      別々に較正したか（規則は同じでも向きが逆になる）
+- [ ] 判定から外した fade 状態があるなら、「どんな色でも届かないから外した」と
+      理由を書いたか。ガードのしきい値と builtin の opacity 値が**結ばれて**いるか
+      （opacity を上げたのにガードが古い α で測り続ける状態を作らない）
 - [ ] 塗りなしにするなら、`background-color` を色として読んでいる描画面を
       grep したか（`merged["background-color"]` / `style.backgroundColor`）
 - [ ] 既存の意味色（diff = amber / `edge[cyclic]` = 赤 / boundary の 6 hues /
@@ -79,8 +93,9 @@ kind 語彙が色として空洞化していた。deploy 側では `war` の茶�
 - **表が固定するのは色相と規則、hex ではない。** 具体値はガードを通る範囲で
   自由にする。hex を spec に焼くと、コントラスト調整のたびに spec が古くなる。
 - **塗りなしの検証面は canvas ではなく「canvas が着ている面」の集合。**
-  `compositeOver(hue, canvasBg, BOUNDARY_TINT_ALPHA)` を全 `boundaryHues` に
-  ついて作り、素の canvas と合わせた集合の全要素に対して判定する
+  `compositeOver` を全 `boundaryHues` について**繰り返し適用**して 1〜3 枚重ねの
+  面を作り、素の canvas と合わせた集合の全要素に対して判定する。さらにその各面に
+  対して、枠線を `@deprecated` の opacity で合成した色でも判定する
   （`default-style-contrast.test.ts`）。
 - **塗りなし kind の代表色は border-color。** カードの塗りを色として読む面
   （凡例スウォッチ）では、`transparent` を額面どおり塗らず border-color へ

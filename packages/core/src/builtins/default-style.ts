@@ -122,12 +122,15 @@ domain {
 
 /* usecase is fill-less: behaviour reads lighter than the structure that holds
    it, and the card's border becomes its only outline — so that border carries
-   the 3:1 non-text bar, over the bare canvas and over every boundary tint the
-   canvas can be wearing (docs/spec/style.md § Kind color vocabulary). */
+   the 3:1 non-text bar over three surfaces at once: the bare canvas, up to
+   three stacked boundary tints, and the card at the opacity @deprecated fades
+   it to. That last one is what pushes this border so far from the canvas; a
+   purely visual pick would sit much closer (docs/spec/style.md § Kind color
+   vocabulary). */
 usecase {
   background-color: transparent;
   color: #BAE0F7;
-  border-color: #4E8FBF;
+  border-color: #A8C8E0;
   border-width: 1;
   shape: box;
   font-size: 12;
@@ -235,8 +238,10 @@ resource[storage] { shape: cloud; }
 
 /* ── デプロイノード種別 ──
    Every deploy kind is one hue, taken three ways: the accent (border-color /
-   badge-color) at full chroma, the fill at low lightness, the text at high
-   lightness. war and function used to be desaturated brown and olive that
+   badge-color) at full chroma, the fill at the lightness end nearest the canvas
+   — here the dark end — and the text at the opposite end. The light template
+   applies the same rule against a white canvas, so its two ends are swapped.
+   war and function used to be desaturated brown and olive that
    belonged to no hue at all, which is what left the accent border floating on
    a muddy card. Hue table: docs/spec/style.md § Kind color vocabulary. */
 oci {
@@ -413,12 +418,13 @@ domain {
   font-size: 12;
 }
 
-/* Fill-less, as in the dark template — same rule, its own calibration: a light
-   canvas needs a *darker* border to clear 3:1 over the boundary tints. */
+/* Fill-less, as in the dark template — same rule, its own calibration: the
+   lightness end that is "far from the canvas" is the dark one here, so this
+   border runs the opposite direction from its dark-theme twin. */
 usecase {
   background-color: transparent;
   color: #155E86;
-  border-color: #3E7495;
+  border-color: #1D3646;
   border-width: 1;
   shape: box;
   font-size: 12;

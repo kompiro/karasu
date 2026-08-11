@@ -351,10 +351,19 @@ with four unrelated hues. What separates them is how the card is filled:
 A fill-less kind has two consequences worth knowing about:
 
 - **Its border is its outline.** With no fill, the border is the only thing
-  drawing the card, so it carries the WCAG non-text bar of 3:1 — measured over
-  the bare canvas *and* over every boundary-frame tint the canvas can be wearing
-  beneath it. That is why the two themes' `usecase` borders are not the same
-  lightness: a light canvas needs a darker border to clear the same bar.
+  drawing the card, so it carries the WCAG non-text bar of 3:1. That bar is
+  measured over three things at once: the bare canvas, the canvas under stacked
+  boundary-frame tints (membership is 1:N, so frames overlap — up to three deep
+  is checked), and the card at the opacity `@deprecated` fades it to, where a
+  filled card would still have a body but a fill-less one has only the outline.
+  Clearing all three is why the two themes' `usecase` borders sit near opposite
+  ends of the blue ramp, and why both are further from the canvas than a purely
+  visual choice would put them.
+
+  Opacity states lighter than that fade — the facet-overlay dim and the diff
+  ghost — are exempt, and not by preference: at those alphas no color reaches
+  3:1 at all (a pure white border over the dark canvas lands near 2.2:1). This
+  is the carve-out WCAG 1.4.11 makes for inactive components.
 - **Boundary membership becomes visible through it.** Under *Group by:
   boundary*, the frame's tint reaches the card interior instead of being hidden
   behind an opaque fill, so a fill-less card reads as part of its boundary in
@@ -369,8 +378,15 @@ Each deploy kind owns a hue. The three colors of its card are that same hue at
 three lightnesses, so the accent belongs to the card instead of floating on it:
 
 - `border-color` / `badge-color` — the accent, full chroma
-- `background-color` — the fill, low lightness
-- `color` — the label, high lightness
+- `background-color` — the fill, at the lightness end **nearest the canvas**, so
+  the card sits on the canvas rather than punching a hole in it
+- `color` — the label, at the **opposite** end, as far from the fill as the hue
+  goes
+
+The two lightness ends swap with the theme, which is why the same rule produces
+a near-black `oci` fill on the dark canvas and a pale one on the light canvas.
+Anchoring the rule to the canvas rather than to an absolute lightness is what
+lets one sentence describe both themes.
 
 | Kind | Hue |
 |------|-----|
