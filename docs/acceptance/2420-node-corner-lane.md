@@ -1,0 +1,74 @@
+# AT-2420: ノードの右上コーナーレーン（インセットチップ + interactive 限定ボタン）
+
+- **日付**: 2026-08-11
+- **Issue**: [#2420](https://github.com/kompiro/karasu/issues/2420)（親: [#2366](https://github.com/kompiro/karasu/issues/2366) スライス A）
+- **設計**: [#2417](https://github.com/kompiro/karasu/pull/2417) の node chrome design（H-1 案A。ADR 昇格は 3 スライス完了後）
+- **関連 ADR**: [ADR-1821](../adr/1821-layer-toggles.md)（対話クロームは `interactive` のときだけ描く）、[ADR-650](../adr/650-graphical-diff-viewer.md)（`data-node-badge` / `data-diff-state` の diff 契約）
+- **Related TPLs**: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（surface 間の一貫性。export SVG も静的レンダと一致させる）、[TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)（バッジ色のコントラスト機械検証）、[TPL-2044](../test-perspectives/TPL-2044-svg-interactive-control-paints-last.md)
+- **対象**: `packages/core/src/renderer/corner-lane.ts`、`packages/core/src/renderer/svg-renderer.ts`、`packages/app/src/utils/download-svg.ts`
+
+## 概要
+
+右上角を欲しがる 3 要素（info ボタン / deploy ボタン / アノテーションチップ）を
+**1 本の右詰めレーンの住人**にした。各要素は自分より右の住人の占有幅ぶんオフセット
+して置かれるため、重なりは描画順や z-order ではなく幾何として起こらない。
+
+アノテーションバッジはカード外に浮く円から、カード内側のピル（インセットチップ）に
+なった。i / D ボタンは押せる面（app のライブプレビュー）でのみ描く。
+
+チップのラベル色は白と濃インクのうちピル色に対してコントラストが高い方を選ぶ。
+badge-color は「テーマの canvas 上で読める色」として選ばれており、その**上に**白を
+載せると dark テーマの 20 色すべてが 4.5:1 を割るため。
+
+## 受け入れ条件
+
+### AC-1: レーンの住人は重ならない
+
+> ✅ Automated by `packages/core/src/renderer/corner-lane.test.ts` (suite-wide)
+
+- [x] ボタン 0 / 1 / 2 個 × ラベル長（空・1 文字・短・長・日本語長文）の全組合せで、住人の矩形が重ならない
+- [x] 住人はすべてカード矩形の内側に収まる（カード幅 120 / 160 / 200 / 320）
+- [x] 右詰め順は `[i] [D] [chip]`、ギャップ 4px、上マージン 8px
+
+### AC-2: チップは elide するが clip しない
+
+> ✅ Automated by `packages/core/src/renderer/corner-lane.test.ts` (suite-wide)
+
+- [x] ピル幅は描画するテキストの実測幅 + パディング以上（ラベルがピル縁で切れない）
+- [x] ラベルはカード幅の 40% を超えると省略記号付きで elide される
+- [x] 省略後に 2 文字も残らない狭さではラベルを落としてグリフだけにする（グリフの無いスタイルではラベルを残す）
+
+### AC-3: i / D ボタンは interactive 限定
+
+> ✅ Automated by `packages/core/src/renderer/svg-renderer.test.ts` (suite-wide)
+
+- [x] 静的レンダ（`interactive` 未指定）に `data-info-button` / `data-deploy-button` / `krs-node-controls` が出ない
+- [x] `interactive: true` では両ボタンが出て、`class="krs-node-controls"` を持つ
+- [x] 静的レンダでもアノテーションチップ（`data-node-badge`）は残る — チップは content であってクロームではない
+
+### AC-4: Export SVG がライブのボタンを持ち出さない
+
+> ✅ Automated by `packages/app/src/utils/download-svg.test.ts` (suite-wide)
+
+- [x] `stripInteractiveChrome` が `krs-node-controls` を除去する
+- [x] 同じ SVG のアノテーションチップとカード本体は残る
+
+### AC-5: diff 意味論の維持
+
+> ✅ Automated by `packages/core/src/renderer/svg-renderer.test.ts` (suite-wide)
+
+- [x] アノテーション追加で `<g data-node-badge data-diff-state="added">`、入れ替えで `changed`
+- [x] 最後のアノテーションが消えたノードの ghost チップは `data-diff-state="removed"` を保ち、旧来の浮いた位置ではなくレーン内（カード内側）に描かれる
+
+### AC-6: チップのラベルが AA を満たす
+
+> ✅ Automated by `packages/core/src/builtins/default-style-contrast.test.ts` (suite-wide)
+
+- [x] builtin の badge-color 全件 + palette fallback について、選ばれたインクとピル色のコントラストが 4.5:1 以上（dark / light 両テーマ）
+
+### AC-7: 手動確認（実機）
+
+- [ ] app でアノテーションと i / D ボタンを併せ持つカードを表示し、チップとボタンが重ならず、チップのラベルがピル内で欠けていない
+- [ ] `karasu render` で書き出した SVG に i / D ボタンが無い
+- [ ] app の「Export SVG」で保存したファイルにも i / D ボタンが無く、チップは残っている
+- [ ] dark / light 両テーマでチップのラベルが読める（薄すぎ・潰れが無い）
