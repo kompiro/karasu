@@ -51,7 +51,7 @@ badge-color は「テーマの canvas 上で読める色」として選ばれて
 > ✅ Automated by `scripts/lint/node-controls-opt-in.test.ts` (suite-wide)
 
 - [x] app（`useSystemView.ts`）と VS Code webview（`preview-panel.ts`）の双方が `nodeControls: true` を渡す
-- [x] 両者ともクリックハンドラ側で `data-info-button` / `data-deploy-button` を扱っている
+- [x] 各 surface が実際に処理する属性を個別に検査する（app は `data-info-button` / `data-deploy-button` の両方、VS Code webview は `data-info-button`。D のクリックは webview ではノード既定のハンドラに落ち、詳細パネルの「Open Deploy View」に繋がる — ゲート導入前からの挙動）
 
 > `nodeControls` を `interactive` と分けているのは、VS Code webview が
 > `data-info-button` は扱うがカテゴリ collapse は実装していないため。1 つの
@@ -98,9 +98,11 @@ badge-color は「テーマの canvas 上で読める色」として選ばれて
 
 ### AC-7: 手動確認（実機）
 
-- [ ] app でアノテーションと i / D ボタンを併せ持つカードを表示し、チップとボタンが重ならず、チップのラベルがピル内で欠けていない
-- [ ] `karasu render` で書き出した SVG に i / D ボタンが無い
+判定に実機が要るものだけを残す。重なり・clip・ボタンの有無・コントラスト比は
+AC-1〜AC-6 の自動テストが判定済みなので、ここには書かない。実フォントの字幅
+（自動テストは `estimateTextWidth` の推定値で判定する）と、拡張ホスト上の挙動が
+残る。
+
+- [ ] https://karasu.kompiro.dev/ でアノテーション付きカードを表示し、実フォントでもチップのラベルがピルからはみ出していない（推定字幅と実測字幅のずれ）
+- [ ] app の「Export SVG」で保存したファイルを開き、i / D ボタンが無くチップが残っている
 - [ ] VS Code 拡張のプレビューでカードの ⓘ を押すと従来どおり詳細パネルが開く
-- [ ] app の「Export SVG」で保存したファイルにも i / D ボタンが無く、チップは残っている
-- [ ] dark / light 両テーマでチップのラベルが読める（薄すぎ・潰れが無い）
-- [ ] `user` / cylinder / cloud / hexagon の各カードで ⓘ とチップが輪郭の内側に収まっている

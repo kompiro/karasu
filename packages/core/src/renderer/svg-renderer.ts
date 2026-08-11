@@ -1481,13 +1481,8 @@ function renderNode(
   const showInfoButton = nodeControls && canShowInfoButton;
   const showDeployButton = nodeControls && canShowDeployButton;
   const buttonCount = (showInfoButton ? 1 : 0) + (showDeployButton ? 1 : 0);
-  const lane = packCornerLane(
-    node,
-    style,
-    buttonCount,
-    palette.badgeFallback,
-    laneInsetOf(style, node),
-  );
+  const laneInset = laneInsetOf(style, node, applyShapeInsets);
+  const lane = packCornerLane(node, style, buttonCount, palette.badgeFallback, laneInset);
 
   // Badge (single merged badge driven by the node's current annotations).
   // When diff metadata reports an annotation-only change, the badge is
@@ -1500,7 +1495,7 @@ function renderNode(
     children: badgeParts,
     annotationAddedAttr,
     annotationRemovedAttr,
-  } = renderNodeBadge(node, palette, nodeId, diffMeta, lane, buttonCount, laneInsetOf(style, node));
+  } = renderNodeBadge(node, palette, nodeId, diffMeta, lane, buttonCount, laneInset);
   children.push(...badgeParts);
 
   // Sub-label: shown below the node for ghost domains to indicate the parent service
@@ -1806,8 +1801,16 @@ function resolveNodeStyle(
  * bounding box would hang the ⓘ over a `user` card's medallion strip or a
  * hexagon's cut corner. Slice C's `portFrame` may offer a tighter outline.
  */
-function laneInsetOf(style: ResolvedNodeStyle, node: LayoutNode): LaneInset {
-  const insets = shapeInsetsOf(style, node.width, node.height);
+function laneInsetOf(
+  style: ResolvedNodeStyle,
+  node: LayoutNode,
+  applyShapeInsets: boolean,
+): LaneInset {
+  // Gated on `applyShapeInsets` for the same reason the text is: when the
+  // layout measured a card with flat padding, the drawing has to use flat
+  // padding too, or the lane drops to a content top the text does not observe
+  // and lands on the first line.
+  const insets = applyShapeInsets ? shapeInsetsOf(style, node.width, node.height) : ZERO_INSETS;
   return { top: insets.top, right: insets.right };
 }
 
@@ -2135,7 +2138,9 @@ function assignChipZones(
       style,
       buttonCount,
       palette.badgeFallback,
-      laneInsetOf(style, node),
+      // `assignChipZones` runs before the per-node draw, where the layout's own
+      // flag is the only signal available.
+      laneInsetOf(style, node, layoutResult.shapeInsetsApplied ?? false),
     ).zone;
   }
 }

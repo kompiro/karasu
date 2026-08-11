@@ -205,9 +205,12 @@ export class PreviewPanel {
         diagramType: this._viewType,
         displayMode: this._displayMode,
         theme: this._theme,
-        // The webview wires up `data-info-button` / `data-deploy-button`
-        // (see webview-content.ts), so it asks for them (#2420). It has no
+        // The webview routes `data-info-button` to the detail panel (see
+        // webview-content.ts), so it asks for the buttons (#2420). It has no
         // category-collapse handling, which is why `interactive` stays off.
+        // A click on the D is not routed either: it falls through to the node
+        // handler, which opens the panel carrying "Open Deploy View" — the
+        // behaviour this preview already had before the buttons were gated.
         nodeControls: true,
         ...viewPathOpts,
       });

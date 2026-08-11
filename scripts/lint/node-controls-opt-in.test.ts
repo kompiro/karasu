@@ -24,17 +24,23 @@ const SURFACES = [
     name: "VS Code preview panel",
     handler: "packages/vscode/src/webview-content.ts",
     caller: "packages/vscode/src/preview-panel.ts",
+    // The webview routes only the ⓘ; a click on the D falls through to the
+    // node handler, which opens the panel carrying "Open Deploy View".
+    handles: ["data-info-button"],
   },
   {
     name: "app system view",
     handler: "packages/app/src/components/PreviewPane.tsx",
     caller: "packages/app/src/hooks/useSystemView.ts",
+    handles: ["data-info-button", "data-deploy-button"],
   },
 ];
 
-describe.each(SURFACES)("$name", ({ handler, caller }) => {
-  it("handles a node-button click", () => {
-    expect(readFileSync(join(root, handler), "utf8")).toMatch(/data-(?:info|deploy)-button/);
+describe.each(SURFACES)("$name", ({ handler, caller, handles }) => {
+  it.each(handles)("handles a click on %s", (attr) => {
+    // Named one by one rather than as an alternation: an "either" would let a
+    // surface that dropped one of them keep passing.
+    expect(readFileSync(join(root, handler), "utf8")).toContain(attr);
   });
 
   it("asks the renderer to draw the buttons it handles", () => {
