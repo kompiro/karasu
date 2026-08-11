@@ -3433,6 +3433,51 @@ organization Corp {
       expect(ownsWarnings(topLevel)).toHaveLength(0);
     });
 
+    // #2410: `contains` is import-coupled for the same reason as `owns` — the
+    // member may be declared in an imported file (top-level form), and a
+    // cross-file `system` reopen can add the very child a scoped `contains` names.
+    // A document read on its own therefore declines both, while a document with
+    // no imports still decides them.
+    it("does not decide contains existence in a file that still has imports", () => {
+      const result = Parser.parse(`
+import "./billing.krs"
+system Shop {
+  service Orders {
+    boundary core { contains Elsewhere }
+  }
+}
+boundary cluster {
+  label "Cluster"
+  contains FarAway
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "contains-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    it("still decides contains existence in a file with no imports", () => {
+      const result = Parser.parse(`
+system Shop {
+  service Orders {
+    boundary core { contains Elsewhere }
+  }
+}
+boundary cluster {
+  label "Cluster"
+  contains FarAway
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "contains-target-not-found",
+      );
+      expect(warnings.map((w) => (w.params as { memberId: string }).memberId).sort()).toEqual([
+        "Elsewhere",
+        "FarAway",
+      ]);
+    });
+
     // Import-coupled: a document that still has imports to resolve cannot see
     // the merged id-space, so it must not decide this diagnostic at all — the
     // LSP surfaces parse diagnostics verbatim (TPL-1522). The ImportResolver

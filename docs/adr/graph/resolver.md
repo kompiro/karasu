@@ -15,6 +15,7 @@ flowchart TD
     ADR_1819["ADR-1819<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
     ADR_2075["ADR-2075<br/>宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
+    ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
   end
   ADR_351["ADR-351<br/>[renderer] resource shape 自動推論とインフラノード Icon Mode 対応"]
   ADR_496["ADR-496<br/>[parser] ブロック内エッジの暗黙 source 簡略記法"]
@@ -55,6 +56,7 @@ flowchart TD
   class ADR_1819 accepted
   class ADR_2075 accepted
   class ADR_2184 accepted
+  class ADR_2410 accepted
   class ADR_351 ghost
   class ADR_496 ghost
   class ADR_517 ghost

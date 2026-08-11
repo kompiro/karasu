@@ -80,8 +80,10 @@ describe("owns resolution accepts every OWNS_TARGET_KINDS kind (#2408)", () => {
     domain: system(`  domain X { label "X" }`),
     client: system(`  client X [web] { label "X" }`),
     database: system(`  database X { table t }`),
-    queue: system(`  queue X { queue-item m }`),
-    storage: system(`  storage X { bucket b }`),
+    // A queue leaf is declared with the `queue` keyword nested in a `queue`
+    // block, and a storage leaf with `bucket`; both take a body.
+    queue: system(`  queue X { queue Msg { label "Msg" } }`),
+    storage: system(`  storage X { bucket B { label "B" } }`),
   };
 
   it("has a model for exactly the kinds in OWNS_TARGET_KINDS", () => {

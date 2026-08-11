@@ -65,5 +65,5 @@ identity に関わる処理を実装・修正するとき、以下を確認す�
 
 - `packages/core/src/resolver/warnings.test.ts` — domain dispersion / unresolved-* 系
 - `packages/core/src/view/view-extract.test.ts` — グルーピング系
-- `packages/core/src/resolver/identity-by-id-meta.test.ts` — curated meta-test enumerating identity-comparison sites (domain-dispersal, invalid-owns, unresolved-handles, unresolved-realizes). Each entry pairs an id-based fixture with a label-collision fixture and asserts the detector uses `id`, never `label`. **Adding a new identity-comparison site to the codebase requires registering it in `IDENTITY_CHECKS`** so a future `.label`-based comparison fails CI on the meta-test (Issue #1275)
+- `packages/core/src/resolver/identity-by-id-meta.test.ts` — curated meta-test enumerating identity-comparison sites (domain-dispersal, owns, unresolved-handles, unresolved-realizes). Each site pairs an id-based fixture with a label-collision fixture and asserts the detector uses `id`, never `label`. **新しい identity 比較箇所を足したらこの表に登録する** ことで、将来の `.label` 比較が meta-test で CI を落とす（Issue #1275）。`owns` の label-collision 側だけは `DIAGNOSTIC_CHECKS`（3 本目の表）に置いてある — #2410 以降その入力は `invalid-owns` ではなく `owns-target-not-found` が報告するため、warning ではなく diagnostic を見る必要がある。規則は変わっておらず、述べるコードが変わっただけ
 - `docs/concepts.ja.md` 「ドメイン分散の検出 → 検出キー」

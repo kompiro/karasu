@@ -24,7 +24,12 @@ const MINIMAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1
 </svg>`;
 
 describe("invalid-owns warning", () => {
-  it("warns when owns references a non-existent ID (no system block)", () => {
+  // #2410: this diagnostic reports a *kind*, so it says nothing about an id that
+  // resolves to no node — that is `owns-target-not-found`'s verdict. In an
+  // org-only file nothing resolves, and nothing is reported: the targets of such
+  // a file are declared elsewhere, which is the same reason the existence check
+  // stays quiet there (#2082).
+  it("says nothing about an id that resolves to no node", () => {
     const krs = `
 organization Corp {
   team backend {
@@ -33,9 +38,30 @@ organization Corp {
 }
 `;
     const result = compile(krs);
-    const w = result.warnings.find((warning) => warning.kind === "invalid-owns");
-    expect(w).toBeDefined();
-    expect(w?.params).toEqual({ teamId: "backend", ownedId: "NonExistentService" });
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.code === "owns-target-not-found")).toHaveLength(0);
+  });
+
+  it("reports a resolved target once, not twice alongside owns-target-not-found", () => {
+    // Before #2410 a ghost id drew both codes for one typo. Existence owns the
+    // absent case; this check owns the wrong-kind case.
+    const krs = `
+system S {
+  service Api {}
+  database Db { table users }
+}
+organization O {
+  team T {
+    owns Ghost
+    owns users
+  }
+}
+`;
+    const result = compile(krs);
+    const invalid = result.warnings.filter((w) => w.kind === "invalid-owns");
+    const notFound = result.diagnostics.filter((d) => d.code === "owns-target-not-found");
+    expect(invalid.map((w) => (w.params as { ownedId: string }).ownedId)).toEqual(["users"]);
+    expect(notFound.map((d) => (d.params as { ownedId: string }).ownedId)).toEqual(["Ghost"]);
   });
 
   it("does not warn when owns references a valid service ID", () => {
@@ -53,18 +79,27 @@ organization Corp {
     expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
   });
 
-  it("warns for each invalid owns reference", () => {
+  it("warns once per resolved wrong-kind reference", () => {
+    // Two declared nodes whose kinds cannot be owned — the per-reference shape
+    // this test has always pinned, now expressed with ids that resolve.
     const krs = `
+system S {
+  database Db { table users }
+  queue Q { queue Msg { label "Msg" } }
+}
 organization Corp {
   team backend {
-    owns ServiceA
-    owns ServiceB
+    owns users
+    owns Msg
   }
 }
 `;
     const result = compile(krs);
     const ownsWarnings = result.warnings.filter((w) => w.kind === "invalid-owns");
-    expect(ownsWarnings).toHaveLength(2);
+    expect(ownsWarnings.map((w) => (w.params as { ownedId: string }).ownedId).sort()).toEqual([
+      "Msg",
+      "users",
+    ]);
   });
 
   it("does not warn when owns references a client ID (ADR-1720)", () => {
@@ -145,12 +180,14 @@ organization Corp {
 }
 `;
     const result = compile(krs);
+    // A `table` is a node of an unownable kind, so the kind check reports it. A
+    // `capability` is not a node at all (it is a property of the client), so it
+    // resolves to nothing and belongs to the existence check instead — one code
+    // per case, never both (#2410).
     const ownsWarnings = result.warnings.filter((w) => w.kind === "invalid-owns");
-    expect(ownsWarnings).toHaveLength(2);
-    expect(ownsWarnings.map((w) => (w.params as { ownedId: string }).ownedId).sort()).toEqual([
-      "Search",
-      "users",
-    ]);
+    expect(ownsWarnings.map((w) => (w.params as { ownedId: string }).ownedId)).toEqual(["users"]);
+    const notFound = result.diagnostics.filter((d) => d.code === "owns-target-not-found");
+    expect(notFound.map((d) => (d.params as { ownedId: string }).ownedId)).toEqual(["Search"]);
   });
 });
 

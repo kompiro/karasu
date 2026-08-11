@@ -29,6 +29,13 @@ import type { StyleSheet } from "../types/style.js";
  * Reference-existence diagnostics that are only decidable after the cross-file
  * merge. Their per-file verdict is dropped during Pass 1 and re-derived against
  * the merged id-space in `resolve()` (Issue #2032).
+ *
+ * Still load-bearing after #2410, though for a narrower set of files: a file that
+ * *has* imports now produces no verdict to drop, because the validators decline
+ * to decide there. What this strip catches is the **import-less leaf** — a file
+ * with no imports of its own whose `contains` / `owns` target is only satisfied
+ * once the importing file's wildcard or `system` reopen adds the node. Its
+ * per-file verdict is real and wrong, and only this strip removes it.
  */
 const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   "contains-target-not-found",
@@ -126,17 +133,7 @@ export class ImportResolver {
     // their per-file verdict was suppressed above too. Re-derive here or they
     // vanish entirely: cross-file `system` reopen can add the very child a
     // scoped `contains` names, so only the merged tree can decide.
-    this.diagnostics.push(
-      ...validateScopedContainsReferences([
-        ...krsFile.systems,
-        ...krsFile.services,
-        ...krsFile.clients,
-        ...krsFile.domains,
-        ...krsFile.databases,
-        ...krsFile.queues,
-        ...krsFile.storages,
-      ]),
-    );
+    this.diagnostics.push(...validateScopedContainsReferences(krsFile));
     // Facet membership is rebuilt from the merged tree rather than merged
     // per file, so it cannot drift between merge paths (#2065 Part B).
     krsFile.facetIndex = buildFacetIndex([
