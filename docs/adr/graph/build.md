@@ -78,6 +78,7 @@ flowchart TD
     ADR_2401["ADR-2401<br/>pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一..."]
     ADR_2404["ADR-2404<br/>Security alert 2026-08-08 — dompurify は overrid..."]
     ADR_2419["ADR-2419<br/>PoC の生成物は gitignore された `reports/` に出力し、spike ブ..."]
+    ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -178,6 +179,7 @@ flowchart TD
   class ADR_2401 accepted
   class ADR_2404 accepted
   class ADR_2419 accepted
+  class ADR_2440 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

@@ -11,6 +11,11 @@ export const LICENSE_ALLOWLIST: readonly string[] = [
   "0BSD",
   "Unlicense",
   "CC0-1.0",
+  // Permissive, OSI-approved (2024-01-19), no copyleft. Its Notices section is
+  // satisfied by the THIRD_PARTY_NOTICES generator, which already embeds the
+  // upstream LICENSE text. Added because the npm tooling cluster (minimatch,
+  // glob, lru-cache, path-scurry, ...) relicensed ISC -> BlueOak (ADR-2440).
+  "BlueOak-1.0.0",
 ];
 
 const ALLOWED = new Set(LICENSE_ALLOWLIST);
