@@ -40,7 +40,7 @@ const SAMPLES: Record<WarningKind, Warning> = {
   },
   "invalid-owns": {
     kind: "invalid-owns",
-    params: { teamId: "Platform", ownedId: "MissingSvc" },
+    params: { teamId: "Platform", ownedId: "Actor", ownedKind: "user" },
   },
   "unassigned-domain": {
     kind: "unassigned-domain",
@@ -190,7 +190,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "missing-runtime": ["ApiUnit"],
   "missing-realizes": ["ApiUnit"],
   "unresolved-realizes": ["ApiUnit", "MissingSvc"],
-  "invalid-owns": ["Platform", "MissingSvc"],
+  "invalid-owns": ["Platform", "Actor", "user"],
   "unassigned-domain": ["Orders Domain"],
   "unassigned-service": ["OrderService"],
   "unassigned-client": ["WebApp"],

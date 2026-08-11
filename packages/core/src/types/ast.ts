@@ -63,14 +63,18 @@ export const OWNABLE_KIND_SET: ReadonlySet<string> = new Set(OWNABLE_LOGICAL_KIN
  * section); no ADR rules on owning infra specifically — ADR-1720 decided
  * `client` for both `realizes` and `owns`, and ADR-1632 decided infra for
  * `realizes` only. Single source of
- * truth for both checks that decide whether an `owns` line resolves —
- * `owns-target-not-found` (existence, `parser/reference-validation.ts`) and
- * `invalid-owns` (kind, `resolver/warnings.ts`) — which had drifted apart on
- * infra until Issue #2408, the drift TPL-1720 exists to prevent.
+ * truth for the kind question, which one check asks: `invalid-owns`
+ * (`resolver/warnings.ts`). Its sibling `owns-target-not-found` used to read this
+ * set too, and drifted from it on infra until Issue #2408 — but since #2442 that
+ * check no longer asks about kinds at all: existence means "a node with this id
+ * exists", so it accepts any declared node and leaves every kind refusal here.
+ * One consumer is the end state TPL-1720 is after; two lists that must agree were
+ * the hazard.
  *
  * Leaf sub-resources (`table` / `queue-item` / `bucket`) and `capability` are
- * deliberately absent, matching `realizes`: they do exist, so the existence
- * check accepts their ids, and `invalid-owns` is what rejects them as targets.
+ * deliberately absent, matching `realizes`. A leaf exists, so the existence check
+ * accepts its id and this check refuses it by kind; a `capability` is a property
+ * rather than a node, so it resolves to nothing and existence reports it.
  */
 export const OWNS_TARGET_KINDS = [...OWNABLE_LOGICAL_KINDS, ...INFRA_BLOCK_KINDS] as const;
 

@@ -140,6 +140,7 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         message: t("warning.invalidOwns.message", {
           teamId: w.params.teamId,
           ownedId: w.params.ownedId,
+          ownedKind: w.params.ownedKind,
         }),
         details: [],
       };

@@ -1,4 +1,5 @@
 import type {
+  LogicalNodeKind,
   KrsNode,
   KrsEdge,
   KrsFile,
@@ -1496,43 +1497,45 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
   collectIds(file.queues);
   collectIds(file.storages);
 
-  // Every declared id, any kind, any depth. `invalid-owns` reports a *kind*, so
-  // it may only speak about an id that resolves to a node — "declared nowhere" is
+  // Every declared node id mapped to its kind — the map, not a set, because this
+  // diagnostic names the kind it refused. `invalid-owns` reports a *kind*, so it
+  // may only speak about an id that resolves to a node: "declared nowhere" is
   // `owns-target-not-found`'s verdict, and reporting both for a plain typo
-  // contradicted this diagnostic's own definition ("an `owns` target **resolves
-  // to** a kind that cannot be owned"). It also made the check import-coupled by
-  // accident: in the LSP's single-document context a cross-file target is simply
-  // absent, and absence was being read as "wrong kind" (#2410).
+  // contradicted this diagnostic's own definition (#2410). Systems are in here so
+  // `owns <systemId>` reads as the kind refusal it is (#2442).
   //
-  // This set is wider than the existence check's, which tracks only ownable kinds
-  // plus infra/client leaves — so a declared `entity` / `usecase` / `resource` /
-  // `user` is in here but absent there, and both codes still fire for it. Closing
-  // that last overlap means changing what existence collects, which is #2442.
-  const declaredIds = new Set<string>();
-  function collectDeclaredIds(nodes: readonly KrsNode[]): void {
+  // First occurrence wins: node ids are unique only among siblings (ADR-927), so
+  // the same id can name two kinds in two scopes. Either kind makes the same
+  // point — this id cannot be owned — and picking one keeps the message concrete.
+  const declaredKinds = new Map<string, LogicalNodeKind>();
+  function collectDeclaredKinds(nodes: readonly KrsNode[]): void {
     for (const node of nodes) {
-      declaredIds.add(node.id);
-      collectDeclaredIds(node.children);
+      if (!declaredKinds.has(node.id)) {
+        declaredKinds.set(node.id, node.kind as LogicalNodeKind);
+      }
+      collectDeclaredKinds(node.children);
     }
   }
   for (const system of file.systems) {
-    collectDeclaredIds(system.children);
+    if (!declaredKinds.has(system.id)) declaredKinds.set(system.id, "system");
+    collectDeclaredKinds(system.children);
   }
-  collectDeclaredIds(file.services);
-  collectDeclaredIds(file.domains);
-  collectDeclaredIds(file.clients);
-  collectDeclaredIds(file.databases);
-  collectDeclaredIds(file.queues);
-  collectDeclaredIds(file.storages);
+  collectDeclaredKinds(file.services);
+  collectDeclaredKinds(file.domains);
+  collectDeclaredKinds(file.clients);
+  collectDeclaredKinds(file.databases);
+  collectDeclaredKinds(file.queues);
+  collectDeclaredKinds(file.storages);
 
   // Check each owns reference
   function checkTeams(teams: TeamNode[]): void {
     for (const team of teams) {
       for (const ownedId of team.properties.owns) {
-        if (declaredIds.has(ownedId) && !validIds.has(ownedId)) {
+        const ownedKind = declaredKinds.get(ownedId);
+        if (ownedKind !== undefined && !validIds.has(ownedId)) {
           warnings.push({
             kind: "invalid-owns",
-            params: { teamId: team.id, ownedId },
+            params: { teamId: team.id, ownedId, ownedKind },
             loc: team.loc,
           });
         }
