@@ -58,6 +58,22 @@ badge-color は「テーマの canvas 上で読める色」として選ばれて
 > フラグに畳むと、webview から ⓘ を奪うか、押しても何も起きない ⊖ を与えるかの
 > どちらかになる。
 
+### AC-3c: レーンはシェイプの描画輪郭の内側に座る
+
+> ✅ Automated by `packages/core/src/renderer/corner-lane.test.ts` (suite-wide)
+
+- [x] シェイプの top inset が与えられたとき、レーンはその content 上端に**下端**を合わせて置かれる（輪郭からはみ出さず、かつ 1 行目のテキスト帯にも入らない）
+- [x] right inset のぶんだけレーンが左に寄る
+- [x] inset が既定マージン未満なら無視される（box カードの見え方は不変）
+- [x] `user` カード（メダリオン帯のぶん描画上端が bbox より下）で ⓘ がカード上辺の外に出ない — `packages/core/src/renderer/svg-renderer.test.ts`
+
+### AC-3d: deploy ビューにもボタンが出る
+
+> ✅ Automated by `packages/core/src/renderer/owner-affordance-kinds.test.ts` (suite-wide)
+
+- [x] `diagramType: "deploy"` + `nodeControls: true` で deploy unit カードに ⓘ が出る（deploy は別の render 呼び出しなので取りこぼしやすい）
+- [x] `nodeControls` なしの deploy レンダにはボタンが出ない
+
 ### AC-4: Export SVG がライブのボタンを持ち出さない
 
 > ✅ Automated by `packages/app/src/utils/download-svg.test.ts` (suite-wide)
@@ -71,12 +87,14 @@ badge-color は「テーマの canvas 上で読める色」として選ばれて
 
 - [x] アノテーション追加で `<g data-node-badge data-diff-state="added">`、入れ替えで `changed`
 - [x] 最後のアノテーションが消えたノードの ghost チップは `data-diff-state="removed"` を保ち、旧来の浮いた位置ではなくレーン内（カード内側）に描かれる
+- [x] diff の ring を描く CSS は app 側（`diff.css`）と単体 SVG 側（`diff-style.ts`）の双方でピル（`rect`）を対象にしている
 
 ### AC-6: チップのラベルが AA を満たす
 
 > ✅ Automated by `packages/core/src/builtins/default-style-contrast.test.ts` (suite-wide)
 
 - [x] builtin の badge-color 全件 + palette fallback について、選ばれたインクとピル色のコントラストが 4.5:1 以上（dark / light 両テーマ）
+- [x] インク選択が成り立たない色（`badge-color: yellow` など 6 桁 hex 以外）ではピルを塗らず、輪郭 + badge-color の文字にフォールバックする — `packages/core/src/renderer/corner-lane.test.ts`
 
 ### AC-7: 手動確認（実機）
 
@@ -85,3 +103,4 @@ badge-color は「テーマの canvas 上で読める色」として選ばれて
 - [ ] VS Code 拡張のプレビューでカードの ⓘ を押すと従来どおり詳細パネルが開く
 - [ ] app の「Export SVG」で保存したファイルにも i / D ボタンが無く、チップは残っている
 - [ ] dark / light 両テーマでチップのラベルが読める（薄すぎ・潰れが無い）
+- [ ] `user` / cylinder / cloud / hexagon の各カードで ⓘ とチップが輪郭の内側に収まっている
