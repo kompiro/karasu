@@ -102,3 +102,105 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
     },
   );
 });
+
+/**
+ * The kind color vocabulary (#2421, docs/spec/style.md § Kind color vocabulary)
+ * turned "what color is a kind" into two derivation rules. These assertions are
+ * what makes a rule a rule rather than a comment: a new kind whose fill and text
+ * are not same-hue partners fails here, not in a reviewer's eye.
+ *
+ * Scoped to *bare kind* rules on purpose. A tag rule legitimately paints half a
+ * pair — builtin `[external]` sets only `background-color` / `border-style` and
+ * inherits its text color from whichever kind rule it lands on — so demanding a
+ * text color from every painting rule would fail on a correct sheet.
+ */
+function isBareKindSelector(rule: StyleRule): boolean {
+  const s = rule.selector;
+  return (
+    s.nodeType !== undefined &&
+    s.tags.length === 0 &&
+    s.annotations.length === 0 &&
+    s.facets.length === 0 &&
+    s.id === undefined
+  );
+}
+
+describe.each(["dark", "light"] as DiagramTheme[])("builtin kind colors (%s theme)", (theme) => {
+  const palette = resolvePalette(theme);
+  const canvasBg = palette.canvasBg;
+  const kindRules = getBuiltinStyleSheet(theme)
+    .rules.filter(isBareKindSelector)
+    .filter((r) => r.properties["background-color"]);
+
+  /** The canvas as seen under each boundary frame tint, plus the bare canvas. */
+  const canvasSurfaces: string[] = [
+    canvasBg,
+    ...palette.boundaryHues.map((hue) => compositeOver(hue, canvasBg, BOUNDARY_TINT_ALPHA)!),
+  ];
+
+  it("finds the kind rules that paint a card", () => {
+    // 7 logical (user / service / client / domain / usecase / entity / resource)
+    // + team + member + 3 infra (database / queue / storage) + 9 deploy = 21.
+    // Exact so a kind dropping out of one theme cannot silently shrink coverage.
+    expect(kindRules.length).toBe(21);
+  });
+
+  it.each(kindRules.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s pairs its fill with a text color (TPL-1697)",
+    (_kind, rule) => {
+      expect(
+        rule.properties["color"],
+        `${_kind} sets background-color but no color, so its label falls back to white`,
+      ).toBeDefined();
+    },
+  );
+
+  const opaque = kindRules.filter((r) => r.properties["background-color"] !== "transparent");
+
+  it.each(opaque.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s keeps its label AA-legible on its own fill",
+    (_kind, rule) => {
+      const fill = rule.properties["background-color"];
+      const text = rule.properties["color"]!;
+      const ratio = contrastRatio(text, fill);
+      expect(
+        ratio,
+        `${_kind}: color ${text} / background ${fill} must be hex colors`,
+      ).toBeDefined();
+      expect(
+        ratio!,
+        `${_kind} label ${text} on its fill ${fill} is below ${WCAG_AA_NORMAL_TEXT}:1`,
+      ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+    },
+  );
+
+  // A fill-less kind has no card of its own to read against: its label and its
+  // border both sit on the canvas, which inside a boundary frame is wearing a
+  // tint. The border is the card's only outline, so it carries the 3:1
+  // non-text bar (WCAG 1.4.11) rather than a text threshold.
+  const fillLess = kindRules.filter((r) => r.properties["background-color"] === "transparent");
+
+  it("finds the fill-less kinds", () => {
+    expect(fillLess.map((r) => r.selector.nodeType)).toEqual(["usecase"]);
+  });
+
+  it.each(fillLess.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s stays legible on the canvas and under every boundary tint",
+    (_kind, rule) => {
+      const text = rule.properties["color"]!;
+      const border = rule.properties["border-color"];
+      expect(border, `${_kind} is fill-less, so it must set a border-color`).toBeDefined();
+      for (const surface of canvasSurfaces) {
+        expect(
+          contrastRatio(text, surface)!,
+          `${_kind} label ${text} on ${surface} is below ${WCAG_AA_NORMAL_TEXT}:1`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+        // The border is this card's only outline, so it carries the non-text bar.
+        expect(
+          contrastRatio(border!, surface)!,
+          `${_kind} border ${border} on ${surface} is below ${WCAG_AA_LARGE_TEXT}:1`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
+      }
+    },
+  );
+});
