@@ -35,7 +35,28 @@ describe("stripInteractiveChrome", () => {
     expect(out).not.toContain("krs-cat-collapse");
   });
 
-  it("returns the svg untouched when there is no controls group", () => {
+  it("removes the per-node i / D buttons but keeps the card and its chip (#2420)", () => {
+    // The live SVG draws these; a fresh static render never does, so an export
+    // that kept them would not match `karasu render` output (TPL-1001).
+    const svg = [
+      '<svg xmlns="http://www.w3.org/2000/svg">',
+      '<g class="nodes"><g data-node-id="Web">',
+      '<g data-node-badge="Web"><rect></rect><text>NEW</text></g>',
+      '<g data-info-button="Web" class="krs-node-controls"><text>i</text></g>',
+      '<g data-deploy-button="Web" class="krs-node-controls"><text>D</text></g>',
+      "</g></g>",
+      "</svg>",
+    ].join("");
+    const out = stripInteractiveChrome(svg);
+    expect(out).not.toContain("data-info-button");
+    expect(out).not.toContain("data-deploy-button");
+    // The annotation chip is content, not chrome — it survives.
+    expect(out).toContain('data-node-badge="Web"');
+    expect(out).toContain("NEW");
+    expect(out).toContain('data-node-id="Web"');
+  });
+
+  it("returns the svg untouched when there is no interactive chrome", () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"><g class="nodes"></g></svg>';
     expect(stripInteractiveChrome(svg)).toBe(svg);
   });
