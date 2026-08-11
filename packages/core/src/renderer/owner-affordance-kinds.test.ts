@@ -26,10 +26,10 @@ const OWNED_NODE_BY_KIND: Record<string, string> = {
   client: system(`  client X [web] { label "X" }`),
 };
 
-function compileSystem(krs: string, interactive = false): SystemCompileResult {
-  // The deploy button is interactive-only chrome (#2420), so the cases that
-  // assert on it compile the way the app does.
-  const result = compile(krs, { interactive });
+function compileSystem(krs: string, nodeControls = false): SystemCompileResult {
+  // The deploy button is live-viewer chrome (#2420), so the cases that assert
+  // on it compile the way the app and the VS Code webview do.
+  const result = compile(krs, { nodeControls });
   if (result.diagramType !== "system") throw new Error("expected a system compile result");
   return result;
 }

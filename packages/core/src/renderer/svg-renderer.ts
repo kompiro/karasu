@@ -177,6 +177,17 @@ export interface RenderOptions {
    */
   interactive?: boolean;
   /**
+   * When true, draw the per-node info / deploy buttons in the card's corner
+   * lane (Issue #2420). Defaults to false, so static outputs carry no button
+   * for a viewer that cannot click it.
+   *
+   * Deliberately not folded into `interactive`: the two name different viewer
+   * capabilities. The VS Code webview handles `data-info-button` but has no
+   * category-collapse handling, so one shared flag would either take away its
+   * ⓘ or give it a dead ⊖.
+   */
+  nodeControls?: boolean;
+  /**
    * System-view grouping axis. `"team"` (#1858, P2a) bands each node's owning
    * team; `"boundary"` (#1822, P2b) bands by declared `boundary`. Omit for the
    * default un-grouped kind-tier layout.
@@ -623,7 +634,7 @@ export function renderFromLayout(
           overlay?.colorOf,
           styles.boundaryFrames,
           layoutResult.shapeInsetsApplied ?? false,
-          options?.interactive ?? false,
+          options?.nodeControls ?? false,
         );
     const isDimmedGhost =
       layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
@@ -1408,10 +1419,10 @@ function renderNode(
    */
   applyShapeInsets = false,
   /**
-   * True for the live preview. Gates the per-node i / D buttons, which are
-   * affordances a static SVG cannot honour (#2420).
+   * True when the viewer wires up the per-node buttons (`RenderOptions.nodeControls`).
+   * A static SVG carries no button it cannot honour (#2420).
    */
-  interactive = false,
+  nodeControls = false,
 ): string {
   const children: string[] = [];
 
@@ -1456,7 +1467,7 @@ function renderNode(
   // drawn beside it and the two can never collide.
   //
   // Which buttons a node *could* carry is decided by its own data; whether
-  // they are actually drawn is decided by `interactive` — a static SVG has
+  // they are actually drawn is decided by `nodeControls` — a static SVG has
   // nothing to click, so the i / D affordances would be noise there
   // (ADR-1821 draws the same line for the category controls).
   const canShowDeployButton =
@@ -1466,8 +1477,8 @@ function renderNode(
   // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
   const canShowInfoButton =
     node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
-  const showInfoButton = interactive && canShowInfoButton;
-  const showDeployButton = interactive && canShowDeployButton;
+  const showInfoButton = nodeControls && canShowInfoButton;
+  const showDeployButton = nodeControls && canShowDeployButton;
   const buttonCount = (showInfoButton ? 1 : 0) + (showDeployButton ? 1 : 0);
   const lane = packCornerLane(node, style, buttonCount, palette.badgeFallback);
 

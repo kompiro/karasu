@@ -1,11 +1,11 @@
-# AT-2420: ノードの右上コーナーレーン（インセットチップ + interactive 限定ボタン）
+# AT-2420: ノードの右上コーナーレーン（インセットチップ + ライブビューア限定ボタン）
 
 - **日付**: 2026-08-11
 - **Issue**: [#2420](https://github.com/kompiro/karasu/issues/2420)（親: [#2366](https://github.com/kompiro/karasu/issues/2366) スライス A）
 - **設計**: [#2417](https://github.com/kompiro/karasu/pull/2417) の node chrome design（H-1 案A。ADR 昇格は 3 スライス完了後）
 - **関連 ADR**: [ADR-1821](../adr/1821-layer-toggles.md)（対話クロームは `interactive` のときだけ描く）、[ADR-650](../adr/650-graphical-diff-viewer.md)（`data-node-badge` / `data-diff-state` の diff 契約）
 - **Related TPLs**: [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)（surface 間の一貫性。export SVG も静的レンダと一致させる）、[TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)（バッジ色のコントラスト機械検証）、[TPL-2044](../test-perspectives/TPL-2044-svg-interactive-control-paints-last.md)
-- **対象**: `packages/core/src/renderer/corner-lane.ts`、`packages/core/src/renderer/svg-renderer.ts`、`packages/app/src/utils/download-svg.ts`
+- **対象**: `packages/core/src/renderer/corner-lane.ts`、`packages/core/src/renderer/svg-renderer.ts`、`packages/app/src/utils/download-svg.ts`、`packages/vscode/src/preview-panel.ts`
 
 ## 概要
 
@@ -14,7 +14,7 @@
 して置かれるため、重なりは描画順や z-order ではなく幾何として起こらない。
 
 アノテーションバッジはカード外に浮く円から、カード内側のピル（インセットチップ）に
-なった。i / D ボタンは押せる面（app のライブプレビュー）でのみ描く。
+なった。i / D ボタンは押せる面（app のライブプレビューと VS Code webview）でのみ描く。
 
 チップのラベル色は白と濃インクのうちピル色に対してコントラストが高い方を選ぶ。
 badge-color は「テーマの canvas 上で読める色」として選ばれており、その**上に**白を
@@ -38,13 +38,25 @@ badge-color は「テーマの canvas 上で読める色」として選ばれて
 - [x] ラベルはカード幅の 40% を超えると省略記号付きで elide される
 - [x] 省略後に 2 文字も残らない狭さではラベルを落としてグリフだけにする（グリフの無いスタイルではラベルを残す）
 
-### AC-3: i / D ボタンは interactive 限定
+### AC-3: i / D ボタンはライブビューア限定
 
 > ✅ Automated by `packages/core/src/renderer/svg-renderer.test.ts` (suite-wide)
 
-- [x] 静的レンダ（`interactive` 未指定）に `data-info-button` / `data-deploy-button` / `krs-node-controls` が出ない
-- [x] `interactive: true` では両ボタンが出て、`class="krs-node-controls"` を持つ
+- [x] 静的レンダ（`nodeControls` 未指定）に `data-info-button` / `data-deploy-button` / `krs-node-controls` が出ない
+- [x] `nodeControls: true` では両ボタンが出て、`class="krs-node-controls"` を持つ
 - [x] 静的レンダでもアノテーションチップ（`data-node-badge`）は残る — チップは content であってクロームではない
+
+### AC-3b: ボタンを扱う surface はすべて opt-in している
+
+> ✅ Automated by `scripts/lint/node-controls-opt-in.test.ts` (suite-wide)
+
+- [x] app（`useSystemView.ts`）と VS Code webview（`preview-panel.ts`）の双方が `nodeControls: true` を渡す
+- [x] 両者ともクリックハンドラ側で `data-info-button` / `data-deploy-button` を扱っている
+
+> `nodeControls` を `interactive` と分けているのは、VS Code webview が
+> `data-info-button` は扱うがカテゴリ collapse は実装していないため。1 つの
+> フラグに畳むと、webview から ⓘ を奪うか、押しても何も起きない ⊖ を与えるかの
+> どちらかになる。
 
 ### AC-4: Export SVG がライブのボタンを持ち出さない
 
@@ -70,5 +82,6 @@ badge-color は「テーマの canvas 上で読める色」として選ばれて
 
 - [ ] app でアノテーションと i / D ボタンを併せ持つカードを表示し、チップとボタンが重ならず、チップのラベルがピル内で欠けていない
 - [ ] `karasu render` で書き出した SVG に i / D ボタンが無い
+- [ ] VS Code 拡張のプレビューでカードの ⓘ を押すと従来どおり詳細パネルが開く
 - [ ] app の「Export SVG」で保存したファイルにも i / D ボタンが無く、チップは残っている
 - [ ] dark / light 両テーマでチップのラベルが読める（薄すぎ・潰れが無い）

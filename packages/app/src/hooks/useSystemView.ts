@@ -311,6 +311,7 @@ export function useSystemView(
       // element and never touches band geometry, so both are usable at once.
       selectedFacets,
       interactive: true,
+      nodeControls: true,
     });
 
     const { base, svg, diagnostics, diff } = await resolveBaseAndDiff(
@@ -331,6 +332,7 @@ export function useSystemView(
             expandedContainers: groupBy !== "none" ? undefined : expandedContainers,
             selectedFacets,
             interactive: true,
+            nodeControls: true,
           })
         : null,
     );

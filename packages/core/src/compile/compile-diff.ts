@@ -153,6 +153,8 @@ export interface CompileSystemDiffOptions {
   collapsedCategories?: ReadonlySet<CategoryId>;
   /** Draw the interactive Group-by / collapse controls in the diff preview (Issue #1858). */
   interactive?: boolean;
+  /** Draw the per-node info / deploy buttons in the diff preview (Issue #2420). */
+  nodeControls?: boolean;
   /**
    * System-view service ids expanded in place in the diff (Issue #1921). Mirrors
    * the non-compare option so the ⊕/⊖ expansion controls work in compare mode.
@@ -184,6 +186,7 @@ export async function compileSystemDiff(
     collapsedGroups,
     collapsedCategories,
     interactive,
+    nodeControls,
     expandedContainers,
   } = options;
 
@@ -374,6 +377,7 @@ export async function compileSystemDiff(
     collapsedGroups,
     collapsedCategories,
     interactive,
+    nodeControls,
     // Compare mode draws the 縮退 tab like any other surface, so it reports the
     // membership too (#2179) — a tab with no diagnostic is the TPL-1983 split.
     diagnosticSink: diagnostics,

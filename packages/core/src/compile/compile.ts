@@ -180,6 +180,14 @@ export interface CompileOptions {
    */
   interactive?: boolean;
   /**
+   * Draw the per-node info / deploy buttons (#2420). Separate from
+   * `interactive` because the two describe different capabilities of the
+   * viewer: the VS Code webview wires up `data-info-button` but implements no
+   * category collapsing, so riding one flag would give it a dead ⊖ control.
+   * Static outputs (CLI render, `/render`, exports) leave both off.
+   */
+  nodeControls?: boolean;
+  /**
    * System-view grouping axis (Issue #1858, P2a). `"team"` stacks each node's
    * owning team (resolved via the `organization`/`owns` block) as a
    * dependency-ordered band with a boundary frame. Omit for the default
@@ -318,6 +326,7 @@ function _compileFromPreparedInput(
     theme,
     collapsedCategories,
     interactive,
+    nodeControls,
     groupBy,
     selectedFacets,
     collapsedGroups,
@@ -491,6 +500,7 @@ function _compileFromPreparedInput(
     theme,
     collapsedCategories,
     interactive,
+    nodeControls,
     groupBy,
     boundaryMembership: krsFile.boundaryMembership,
     scopedBoundaryMembership: krsFile.scopedBoundaryMembership,

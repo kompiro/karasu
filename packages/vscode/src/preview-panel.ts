@@ -205,6 +205,10 @@ export class PreviewPanel {
         diagramType: this._viewType,
         displayMode: this._displayMode,
         theme: this._theme,
+        // The webview wires up `data-info-button` / `data-deploy-button`
+        // (see webview-content.ts), so it asks for them (#2420). It has no
+        // category-collapse handling, which is why `interactive` stays off.
+        nodeControls: true,
         ...viewPathOpts,
       });
       svg = result.svg;

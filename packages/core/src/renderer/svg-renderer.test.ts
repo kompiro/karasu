@@ -18,8 +18,8 @@ function renderFromSource(
   style?: string,
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
-  /** The i / D buttons are interactive-only chrome (#2420). */
-  interactive?: boolean,
+  /** The i / D buttons are live-viewer chrome (#2420). */
+  nodeControls?: boolean,
 ): string {
   const parseResult = Parser.parse(krs);
   const sheets = style
@@ -34,7 +34,7 @@ function renderFromSource(
     parseResult.value.ownerIndex,
     displayMode,
     undefined,
-    interactive ? { interactive: true } : undefined,
+    nodeControls ? { nodeControls: true } : undefined,
   );
 }
 
@@ -472,7 +472,7 @@ system Test {
       expect(svg).toContain('data-node-badge="ECommerce"');
     });
 
-    it("draws both buttons, classed as strippable chrome, when interactive", () => {
+    it("draws both buttons, classed as strippable chrome, when the viewer asks", () => {
       const svg = renderFromSource(
         withEverything,
         undefined,
