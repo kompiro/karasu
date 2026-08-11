@@ -313,6 +313,84 @@ service[external] {
 
 ---
 
+## kind の色語彙
+
+この節は**ビルトイン**スタイルシートが kind に色を割り当てる規則を説明します。
+あなたのスタイルシートを縛るものではありません — ユーザールールはこれらすべてに
+優先します。それでも規則として書き残すのは、デフォルトの配色が全体として読める
+状態を保つためと、あとから kind を追加するときに毎回勘で決めずに済ませるためです。
+
+規則は 2 つ、それに色相表が付きます。
+
+### 規則 1 — 論理層は色相ではなく塗りで区別する
+
+`domain` / `usecase` / `resource` / `member` は同じシステムを同じ視点から語る
+語彙なので、4 つの無関係な色相で注意を奪い合うのではなく青系を共有します。区別
+するのはカードの塗り方です:
+
+| kind | 表現 | 読み方 |
+|------|------|--------|
+| `domain` | navy 塗り | この層が所有する構造 |
+| `usecase` | **塗りなし** — canvas が透け、枠線だけ | 振る舞い。それを収める構造より軽く描く |
+| `resource` | 中立な slate 塗り | 物理層が所有するものへの*参照* |
+| `member` | navy 塗り + `shape: user` | すでに形状で分離済み |
+
+塗りなしの kind には、知っておくべき帰結が 2 つあります。
+
+- **枠線が輪郭そのものになる。** 塗りがない以上、カードを描いているのは枠線だけ
+  なので、枠線が WCAG の非テキスト基準 3:1 を負います。判定は素の canvas に対して
+  だけでなく、**その下に敷かれうる boundary フレームの tint 合成に対しても**行い
+  ます。両テーマの `usecase` 枠線の明度が揃っていないのはこのためで、明るい canvas
+  では同じ基準を満たすのにより暗い枠線が要ります。
+- **境界のメンバーシップが色で読めるようになる。** *Group by: boundary* のとき、
+  不透明な塗りに隠されていた frame の tint がカード内部まで届くので、塗りなしの
+  カードは位置だけでなく色でも境界の一員として読めます。
+
+塗りなしにするときは `none` ではなく `transparent` を使います。`transparent` は
+描画される（painted）ので、カードはクリック・ホバーの当たり判定を保ちます。
+
+### 規則 2 — deploy kind は 1 つの色相を 3 通りに使う
+
+deploy kind はそれぞれ色相を 1 つ持ちます。カードの 3 色はすべてその同じ色相を
+明度違いで取ったもので、accent がカードから浮かずにカードのものになります:
+
+- `border-color` / `badge-color` — accent、彩度そのまま
+- `background-color` — 塗り、低明度
+- `color` — ラベル、高明度
+
+| kind | 色相 |
+|------|------|
+| `oci` | blue |
+| `lambda` | purple |
+| `jar` | green |
+| `war` | orange |
+| `function` | yellow |
+| `assets` | cyan |
+| `job` | red |
+| `artifact` | gray |
+| `store` | teal |
+
+この表が固定するのは**色相と規則**であって hex 値ではありません。具体的な hex は、
+2 つの規則と両テーマのコントラストガードを満たす値なら何でも構いません — すなわち
+`background-color` を設定する kind は対の `color` も設定し、その対が 4.5:1 を満たす
+こと。したがって kind を追加するとは、この表に行を足し、その行から 3 色を導出する
+ことです。結果はガードが検証します
+（`packages/core/src/builtins/default-style-contrast.test.ts`）。
+
+> `job` は `edge[cyclic]` と赤を共有しています。この衝突は本節より前から存在する
+> もので、既存の kind 色を組み替えるより維持を選びました。新しい kind でこれ以上
+> 衝突を増やさないでください。
+
+> Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
+> — kind の追加は色相表への行追加であり、fill / text はその行から導出する。hex は
+> コントラストガードが検証する。
+> [TPL-1697](../test-perspectives/TPL-1697-kind-style-sets-text-color-per-theme.md)
+> — `background-color` を設定する kind はテーマごとに対の text `color` も設定する。
+> [TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)
+> — canvas 上に直接文字として描かれる色はテーマごとにコントラストを検証する。
+
+---
+
 ## レイアウトヒント（escape hatch）
 
 > **最後の手段として使う。** karasu の auto-layout（kind と到達性で決まる

@@ -16,9 +16,14 @@ name: Reference docs check
 # the drift guard never runs in CI for that PR. lefthook catches it locally,
 # but a contributor who bypasses lefthook would slip through. Issue #1342.
 #
+# `packages/core/src/builtins/default-style.ts` is in the list for the guide
+# diagram guard alone: the committed SVGs bake the builtin colors in, so a
+# recolor drifts every diagram without touching a single docs/guide path
+# (Issue #2421).
+#
 # Keep the `paths:` list below in sync with `reference-docs-check-skip.yml`'s
 # `paths-ignore:` and with lefthook's `reference-docs-check` /
-# `roadmap-issue-state` globs.
+# `guide-diagrams-check` / `roadmap-issue-state` globs.
 
 on:
   pull_request:
@@ -29,6 +34,7 @@ on:
       - "docs/concepts.ja.md"
       - "docs/guide/**"
       - "packages/core/src/builtins/reference-data.ts"
+      - "packages/core/src/builtins/default-style.ts"
       - "scripts/reference/**"
       - "scripts/guide/**"
       - "scripts/lint/spec-structure-sync.ts"
@@ -47,6 +53,7 @@ on:
       - "docs/concepts.ja.md"
       - "docs/guide/**"
       - "packages/core/src/builtins/reference-data.ts"
+      - "packages/core/src/builtins/default-style.ts"
       - "scripts/reference/**"
       - "scripts/guide/**"
       - "scripts/lint/spec-structure-sync.ts"

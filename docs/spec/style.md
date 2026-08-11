@@ -326,6 +326,85 @@ service[external] {
 
 ---
 
+## Kind color vocabulary
+
+This section describes how the **builtin** sheet assigns colors to kinds. It is
+not a constraint on your own stylesheets — a user rule overrides any of it. It
+is written down so the defaults stay readable as a system, and so a kind added
+later inherits a rule instead of a fresh guess.
+
+Two rules, plus a hue table.
+
+### Rule 1 — the logical layer separates by fill, not by hue
+
+`domain`, `usecase`, `resource` and `member` all describe one system from one
+point of view, so they share a blue family rather than competing for attention
+with four unrelated hues. What separates them is how the card is filled:
+
+| Kind | Treatment | Reading |
+|------|-----------|---------|
+| `domain` | Navy fill | Structure this layer owns |
+| `usecase` | **Fill-less** — canvas shows through, border only | Behaviour, lighter than the structure holding it |
+| `resource` | Neutral slate fill | A *reference* to something the physical layer owns |
+| `member` | Navy fill, `shape: user` | Already separated by shape |
+
+A fill-less kind has two consequences worth knowing about:
+
+- **Its border is its outline.** With no fill, the border is the only thing
+  drawing the card, so it carries the WCAG non-text bar of 3:1 — measured over
+  the bare canvas *and* over every boundary-frame tint the canvas can be wearing
+  beneath it. That is why the two themes' `usecase` borders are not the same
+  lightness: a light canvas needs a darker border to clear the same bar.
+- **Boundary membership becomes visible through it.** Under *Group by:
+  boundary*, the frame's tint reaches the card interior instead of being hidden
+  behind an opaque fill, so a fill-less card reads as part of its boundary in
+  color, not only in position.
+
+Use `transparent` — not `none` — to make a card fill-less. `transparent` still
+paints, so the card keeps its hit area for clicks and hovers.
+
+### Rule 2 — a deploy kind is one hue taken three ways
+
+Each deploy kind owns a hue. The three colors of its card are that same hue at
+three lightnesses, so the accent belongs to the card instead of floating on it:
+
+- `border-color` / `badge-color` — the accent, full chroma
+- `background-color` — the fill, low lightness
+- `color` — the label, high lightness
+
+| Kind | Hue |
+|------|-----|
+| `oci` | blue |
+| `lambda` | purple |
+| `jar` | green |
+| `war` | orange |
+| `function` | yellow |
+| `assets` | cyan |
+| `job` | red |
+| `artifact` | gray |
+| `store` | teal |
+
+The table fixes the **hue and the rule**, not the hex values. Concrete hexes are
+whatever satisfies both rules and the contrast guard in both themes: every
+kind that sets `background-color` also sets a paired `color`, and that pair
+clears 4.5:1. Adding a kind therefore means adding a row here and deriving its
+three colors from that row — the guard verifies the result
+(`packages/core/src/builtins/default-style-contrast.test.ts`).
+
+> Note that `job` shares red with `edge[cyclic]`. That collision predates this
+> section and is kept rather than reshuffling established kind colors; new kinds
+> should not add another one.
+
+> Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
+> — adding a kind means adding a hue-table row and deriving fill / text from it,
+> with the contrast guard verifying the hex;
+> [TPL-1697](../test-perspectives/TPL-1697-kind-style-sets-text-color-per-theme.md)
+> — a kind that sets `background-color` sets the paired text `color`, per theme;
+> [TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)
+> — colors drawn as text directly on the canvas are contrast-checked per theme.
+
+---
+
 ## Layout hints (escape hatch)
 
 > **Use as a last resort.** karasu's auto-layout (rows by kind + reachability,
