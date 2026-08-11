@@ -202,7 +202,7 @@ two things are automated in CI and the build.
 Every production dependency's SPDX license must be in this allowlist:
 
 `MIT`, `ISC`, `BSD-2-Clause`, `BSD-3-Clause`, `Apache-2.0`, `MPL-2.0`,
-`0BSD`, `Unlicense`, `CC0-1.0`
+`0BSD`, `Unlicense`, `CC0-1.0`, `BlueOak-1.0.0`
 
 The CI job **`License allowlist`** runs `pnpm run check:licenses`
 (`scripts/ci/check-license-allowlist.ts`, over `pnpm licenses list --prod`)
@@ -250,5 +250,5 @@ the edge of the allowlist, and any newly-added `NOTICE` files. A future
 addition under consideration is GitHub's `dependency-review-action` as a
 PR-diff-level safety net.
 
-See [`docs/design/license-compliance-automation.md`](docs/design/license-compliance-automation.md)
-for the rationale.
+See [ADR-1320](docs/adr/1320-license-compliance-automation.md) for the rationale
+(the design doc it links from was promoted into that ADR and removed).

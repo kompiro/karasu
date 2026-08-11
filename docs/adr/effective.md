@@ -135,6 +135,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2401](2401-pnpm-11-migration.md) — pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一本化する
 - [ADR-2404](2404-dependabot-security-2026-08-08.md) — Security alert 2026-08-08 — dompurify は override と app の宣言を両方 patched 版へ引き上げる
 - [ADR-2419](2419-poc-report-directory.md) — PoC の生成物は gitignore された `reports/` に出力し、spike ブランチでのみコミットする
+- [ADR-2440](2440-blueoak-license-allowlist.md) — production 依存の license allowlist に BlueOak-1.0.0 を加える
+- [ADR-2447](2447-dependabot-triage-2026-08-10.md) — Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は人手 PR で対に戻す
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
