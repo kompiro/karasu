@@ -270,7 +270,7 @@ test.describe("AT-0058 diff colour contract", () => {
     // colour while the node body stays unchanged (and therefore dimmed) —
     // annotation churn must not repaint the whole node.
     await expect
-      .poll(styleOf(page, '[data-node-badge="Orders"][data-diff-state="added"] circle', "stroke"))
+      .poll(styleOf(page, '[data-node-badge="Orders"][data-diff-state="added"] rect', "stroke"))
       .toBe(tokens.added);
     const bodyStroke = await styleOf(
       page,
@@ -289,7 +289,7 @@ test.describe("AT-0058 diff colour contract", () => {
 
     // Reversed: the ghost removed badge is red and dashed.
     await page.getByRole("button", { name: "Swap diff direction" }).click();
-    const ghost = '[data-node-badge="Orders"][data-diff-state="removed"] circle';
+    const ghost = '[data-node-badge="Orders"][data-diff-state="removed"] rect';
     await expect.poll(styleOf(page, ghost, "stroke")).toBe(tokens.removed);
     await expect.poll(styleOf(page, ghost, "strokeDasharray")).toMatch(/\d/);
   });

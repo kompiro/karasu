@@ -14,11 +14,11 @@
 <text x="270.8" y="106" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
 <g data-node-id="LegacyMonolith" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer" opacity="0.6"><rect x="60" y="259" width="188.00000000000003" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="154" y="292" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Legacy monolith</text>
-<g data-node-badge="LegacyMonolith"><circle cx="238.00000000000003" cy="253" r="10" fill="#DC2626"/>
-<text x="238.00000000000003" y="253" text-anchor="middle" dominant-baseline="central" fill="white" font-size="10px">⚠</text>
-<text x="252.00000000000003" y="253" dominant-baseline="central" fill="#DC2626" font-size="9px" font-weight="bold" font-family="sans-serif">Deprecated</text></g></g>
+<g data-node-badge="LegacyMonolith"><rect x="163.00000000000003" y="267" width="77" height="16" rx="8" fill="#DC2626"/>
+<text x="173.50000000000003" y="275" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">⚠</text>
+<text x="181.00000000000003" y="275" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Deprecated</text></g></g>
 <g data-node-id="OrderService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="308" y="259" width="173.60000000000002" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="394.8" y="292" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text>
-<g data-node-badge="OrderService"><circle cx="471.6" cy="253" r="10" fill="#2563EB"/>
-<text x="471.6" y="253" text-anchor="middle" dominant-baseline="central" fill="white" font-size="10px">→</text>
-<text x="485.6" y="253" dominant-baseline="central" fill="#2563EB" font-size="9px" font-weight="bold" font-family="sans-serif">Migration target</text></g></g></g></svg>
+<g data-node-badge="OrderService"><rect x="385.8" y="267" width="87.8" height="16" rx="8" fill="#2563EB"/>
+<text x="396.3" y="275" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">→</text>
+<text x="403.8" y="275" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Migration t…</text></g></g></g></svg>

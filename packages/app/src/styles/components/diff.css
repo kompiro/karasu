@@ -137,23 +137,25 @@
    A node whose only change is its annotation set keeps data-diff-state="unchanged"
    on the main group so the body stays readable; the merged badge itself carries
    data-diff-state="added|removed|changed" and gets a per-state ring. The rules
-   below override the ancestor-unchanged opacity so the badge still pops. */
+   below override the ancestor-unchanged opacity so the badge still pops.
+   The ring is drawn on the chip's pill — a `rect` since #2420 moved the badge
+   from a circle floating outside the card to an inset pill. */
 .preview-pane svg [data-node-badge] {
   opacity: 1;
 }
 
-.preview-pane svg [data-node-badge][data-diff-state="added"] circle {
+.preview-pane svg [data-node-badge][data-diff-state="added"] rect {
   stroke: var(--diff-color-added) !important;
   stroke-width: 2 !important;
 }
 
-.preview-pane svg [data-node-badge][data-diff-state="removed"] circle {
+.preview-pane svg [data-node-badge][data-diff-state="removed"] rect {
   stroke: var(--diff-color-removed) !important;
   stroke-width: 2 !important;
   stroke-dasharray: 3 2;
 }
 
-.preview-pane svg [data-node-badge][data-diff-state="changed"] circle {
+.preview-pane svg [data-node-badge][data-diff-state="changed"] rect {
   stroke: var(--diff-color-changed) !important;
   stroke-width: 2 !important;
 }

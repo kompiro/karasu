@@ -8,6 +8,7 @@ import {
   WCAG_AA_NORMAL_TEXT,
 } from "../renderer/contrast.js";
 import { BOUNDARY_TINT_ALPHA } from "../renderer/svg-renderer.js";
+import { chipInk } from "../renderer/corner-lane.js";
 import type { StyleRule } from "../types/style.js";
 
 /**
@@ -78,6 +79,25 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
       }
     },
   );
+
+  // Since #2420 the annotation badge is also drawn as a solid pill filled with
+  // badge-color, with the label *on top of* it — a second, independent
+  // contrast pair the canvas guard above says nothing about. The ink is picked
+  // per pill by `chipInk`, so what has to hold is that the better of the two
+  // inks clears AA; white alone would fail every dark-theme color here
+  // (`#F59E0B` reaches 2.15:1).
+  it.each([
+    ...badgeRules.map((r) => [ruleLabel(r), r.properties["badge-color"]] as const),
+    ["palette badgeFallback", resolvePalette(theme).badgeFallback] as const,
+  ])("chip label on the %s pill is AA-legible", (_label, color) => {
+    const ink = chipInk(color);
+    const ratio = contrastRatio(ink, color);
+    expect(ratio, `badge-color ${color} must be a hex color`).toBeDefined();
+    expect(
+      ratio!,
+      `chip ink ${ink} on pill ${color} is below ${WCAG_AA_NORMAL_TEXT}:1`,
+    ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+  });
 
   // Edge labels (11px) draw in the edge rule's `color` directly on the
   // canvas, so those colors need the same AA bar as badge labels.

@@ -17,9 +17,7 @@
 <text x="214.71750000000003" y="106" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
 <g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="68" y="259" width="293.43500000000006" height="84" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="214.71750000000003" y="292.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">受注サービス</text>
-<text x="214.71750000000003" y="309.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">注文処理。Slack #team-order が詳しい</text>
-<g data-info-button="OrderService" style="cursor: pointer" pointer-events="all"><circle cx="345.43500000000006" cy="273" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
-<text x="345.43500000000006" y="273" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<text x="214.71750000000003" y="309.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">注文処理。Slack #team-order が詳しい</text></g>
 <g data-node-id="CatalogService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="120.71750000000003" y="463" width="188" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="214.71750000000003" y="496" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">カタログサービス</text></g>
 <g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="80.21750000000003" y="649" width="269" height="66" rx="8" ry="8" fill="#F3F4F6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>
