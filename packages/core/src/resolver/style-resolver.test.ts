@@ -1328,15 +1328,13 @@ describe("resolveStyles with organizations", () => {
       annotations,
       properties: { links: [], owns: [] },
       children: [
-        ...members.map(
-          (mid): MemberNode => ({
-            kind: "member",
-            id: mid,
-            properties: { links: [] },
-            children: [],
-            loc: dummyLoc,
-          }),
-        ),
+        ...members.map((mid): MemberNode => ({
+          kind: "member",
+          id: mid,
+          properties: { links: [] },
+          children: [],
+          loc: dummyLoc,
+        })),
         ...subTeams,
       ],
       loc: dummyLoc,
