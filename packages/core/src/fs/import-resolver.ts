@@ -126,17 +126,7 @@ export class ImportResolver {
     // their per-file verdict was suppressed above too. Re-derive here or they
     // vanish entirely: cross-file `system` reopen can add the very child a
     // scoped `contains` names, so only the merged tree can decide.
-    this.diagnostics.push(
-      ...validateScopedContainsReferences([
-        ...krsFile.systems,
-        ...krsFile.services,
-        ...krsFile.clients,
-        ...krsFile.domains,
-        ...krsFile.databases,
-        ...krsFile.queues,
-        ...krsFile.storages,
-      ]),
-    );
+    this.diagnostics.push(...validateScopedContainsReferences(krsFile));
     // Facet membership is rebuilt from the merged tree rather than merged
     // per file, so it cannot drift between merge paths (#2065 Part B).
     krsFile.facetIndex = buildFacetIndex([

@@ -90,24 +90,6 @@ system ECPlatform {
     paramValue: "Payment",
   },
   {
-    // service id is "Backend", label is "MyService". `team owns MyService`
-    // must NOT resolve via label match — the invalid-owns warning fires.
-    name: "invalid-owns: label-collision (owns target equals an unrelated service's label)",
-    krs: `
-system MySystem {
-  service Backend { label "MyService" }
-}
-organization Corp {
-  team eng {
-    owns MyService
-  }
-}
-`,
-    kind: "invalid-owns",
-    paramKey: "ownedId",
-    paramValue: "MyService",
-  },
-  {
     // domain id "OrderEntry" with label "Order"; client handles Order
     // must NOT resolve via the label match.
     name: "unresolved-handles: label-collision (handles target equals an unrelated domain's label)",
@@ -210,6 +192,32 @@ deploy Production {
   },
 ];
 
+/**
+ * The same observation on the parser-diagnostic side. `owns` used to answer a
+ * label-collision with `invalid-owns`; since #2410 that warning only speaks about
+ * targets which resolve to a node, so a label that matches no id is reported by
+ * the existence check instead. The identity rule under test is unchanged — a
+ * label must never resolve an `owns` — only which code states it.
+ */
+const DIAGNOSTIC_CHECKS = [
+  {
+    name: "owns-target-not-found: label-collision (owns target equals an unrelated service's label)",
+    krs: `
+system MySystem {
+  service Backend { label "MyService" }
+}
+organization Corp {
+  team eng {
+    owns MyService
+  }
+}
+`,
+    code: "owns-target-not-found",
+    paramKey: "ownedId",
+    paramValue: "MyService",
+  },
+];
+
 describe("meta: identity-comparison sites compare by id, never label (TPL-2167)", () => {
   it.each(WARNING_CHECKS)("$name → warning surfaces with id-anchored params", (row) => {
     const result = compile(row.krs);
@@ -226,5 +234,16 @@ describe("meta: identity-comparison sites compare by id, never label (TPL-2167)"
     const result = compile(row.krs);
     const matching = result.warnings.filter((w) => w.kind === row.kind);
     expect(matching).toHaveLength(0);
+  });
+
+  it.each(DIAGNOSTIC_CHECKS)("$name → diagnostic surfaces with id-anchored params", (row) => {
+    const result = compile(row.krs);
+    const d = result.diagnostics.find((diag) => diag.code === row.code);
+    expect(d).toBeDefined();
+    const params = (d?.params ?? {}) as Record<string, unknown>;
+    expect(params[row.paramKey]).toBe(row.paramValue);
+    // The label collision must not be answered by the kind check, which can only
+    // speak about a target that resolves to a node.
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
   });
 });

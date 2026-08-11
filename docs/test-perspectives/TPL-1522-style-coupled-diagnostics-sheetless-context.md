@@ -11,6 +11,7 @@ applicable_to:
 discovered_from:
   - issue: "#1522"
   - issue: "#2082"
+  - issue: "#2410"
   - root_cause_file: "packages/lsp/src/diagnostics.ts:82"
 related_to:
   - TPL-1386
@@ -60,10 +61,16 @@ surface 間の診断差分が「意図された制約」なのか「バグ」な
 | `owns-target-not-found` | 判定しない | 検査側（`validateOwnsReferences`, #2082） |
 | `edge-endpoint-not-at-scope` | 出す（過少報告のみ） | — |
 | `shared-infra-fan-in` | 出す（過少報告のみ） | — |
-| `contains-target-not-found` | **未決定 — 偽陽性が出ている** | [#2410](https://github.com/kompiro/karasu/issues/2410) |
-| `invalid-owns` | **未決定 — 偽陽性が出ている** | [#2410](https://github.com/kompiro/karasu/issues/2410) |
+| `contains-target-not-found` | 判定しない | 検査側（`validateContainsReferences` / `validateScopedContainsReferences`, #2410） |
+| `invalid-owns` | 判定しない（構造的に） | 検査側 — 「解決したときだけ kind を見る」に変えた結果、不在は報告しなくなった（#2410） |
 
-未決定の 2 件は上の原則からは抑制側に落ちるべきだが、まだ実装が追いついていない。
+`invalid-owns` の行だけ「置き場所」の性質が違う。import ガードを足したのではなく、
+**診断の定義を「解決した参照の kind を述べる」に絞った**結果、単一ドキュメントで解決しない
+id について何も言わなくなった。ガードを増やすより、そもそも 2 つのことを 1 つのコードで
+報告していた（不在 + kind）のを解いた方が、`owns-target-not-found` との二重報告も同時に
+消える。**診断が答えている問いが 1 つか**を先に確認すると、抑制が要るのか定義が広すぎるのかが
+分かれる。
+
 **この表に行が無い import 結合の診断を足してはならない** — 側を決めるまでが実装である。
 
 ## 想定される失敗モード

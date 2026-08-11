@@ -142,6 +142,59 @@ organization Acme {
     expect(owns[0].severity).toBe(DiagnosticSeverity.Warning);
   });
 
+  // #2410: the two siblings TPL-1522's ledger listed as 未決定 now have a side.
+  // Asserting on `computeDiagnostics` and not only on the parser is the point —
+  // the parser-only tests are what let these survive #2082.
+  it("stays silent on contains when the document still has imports to resolve", () => {
+    const src = `import "./billing.krs"
+system Shop {
+  service Orders {
+    boundary core { contains Elsewhere }
+  }
+}
+boundary cluster {
+  label "Cluster"
+  contains FarAway
+}`;
+    const contains = computeDiagnostics(src, false).filter((d) => d.message.includes("contains"));
+    expect(contains).toHaveLength(0);
+  });
+
+  it("stays silent on invalid-owns for a target that lives in an imported file", () => {
+    // The kind check can only speak about an id that resolves; in a single
+    // document a cross-file target resolves to nothing, and absence is the
+    // existence check's business (which declines here too).
+    const src = `import { Payments } from "./billing.krs"
+service Ops {}
+organization Acme { team Platform { owns Payments } }`;
+    expect(
+      computeDiagnostics(src, false).filter((d) => d.message.includes("Payments")),
+    ).toHaveLength(0);
+  });
+
+  it("still reports a wrong-kind owns target within one document", () => {
+    const src = `system S {
+  database Db { table users }
+}
+organization O { team T { owns users } }`;
+    const owns = computeDiagnostics(src, false).filter((d) => d.message.includes("users"));
+    expect(owns).toHaveLength(1);
+    expect(owns[0].severity).toBe(DiagnosticSeverity.Warning);
+  });
+
+  it("still reports a contains member missing from a document with no imports", () => {
+    const src = `system Shop {
+  service Orders {}
+}
+boundary cluster {
+  label "Cluster"
+  contains FarAway
+}`;
+    const contains = computeDiagnostics(src, false).filter((d) => d.message.includes("FarAway"));
+    expect(contains).toHaveLength(1);
+    expect(contains[0].severity).toBe(DiagnosticSeverity.Warning);
+  });
+
   it("tags every karasu diagnostic with source 'karasu'", () => {
     const src = `system EC {
   service A { domain Dup {} }
