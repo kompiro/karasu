@@ -18,6 +18,8 @@ function renderFromSource(
   style?: string,
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
+  /** The i / D buttons are interactive-only chrome (#2420). */
+  interactive?: boolean,
 ): string {
   const parseResult = Parser.parse(krs);
   const sheets = style
@@ -25,7 +27,15 @@ function renderFromSource(
     : [getBuiltinStyleSheet()];
   const styles = resolveStyles(parseResult.value.systems, sheets);
   const viewSlice = extractView(parseResult.value.systems, []);
-  return render(viewSlice, styles, serviceIdsWithDeploy, parseResult.value.ownerIndex, displayMode);
+  return render(
+    viewSlice,
+    styles,
+    serviceIdsWithDeploy,
+    parseResult.value.ownerIndex,
+    displayMode,
+    undefined,
+    interactive ? { interactive: true } : undefined,
+  );
 }
 
 describe("SVG Renderer", () => {
@@ -234,15 +244,18 @@ system OrderSystem {
     const sheets = [getBuiltinStyleSheet()];
     const legacyStyles = resolveStyles(parseResult.value.systems, sheets);
     const legacySlice = extractView(parseResult.value.systems, ["OrderSystem", "LegacyService"]);
+    // The corner chip elides its label at 40% of the card width (#2420), so
+    // assert on prefixes: they survive elision, and stay exact enough that the
+    // negative assertions still fail if the wrong badge is drawn.
     const legacySvg = render(legacySlice, legacyStyles);
     expect(legacySvg).toContain("Deprecated");
-    expect(legacySvg).not.toContain("Migration target");
+    expect(legacySvg).not.toContain("Migration");
 
     // Render NewService view: should show @migration_target badge
     const newStyles = resolveStyles(parseResult.value.systems, sheets);
     const newSlice = extractView(parseResult.value.systems, ["OrderSystem", "NewService"]);
     const newSvg = render(newSlice, newStyles);
-    expect(newSvg).toContain("Migration target");
+    expect(newSvg).toContain("Migration");
     expect(newSvg).not.toContain("Deprecated");
   });
 
@@ -346,6 +359,8 @@ system Test {
       `,
       undefined,
       new Set(["ECommerce"]),
+      undefined,
+      true,
     );
     expect(svg).toContain('data-deploy-button="ECommerce"');
     expect(svg).not.toContain('data-deploy-button="Payment"');
@@ -376,14 +391,20 @@ organization Corp {
   });
 
   it("renders info button on leaf service node with description", () => {
-    const svg = renderFromSource(`
+    const svg = renderFromSource(
+      `
 system Test {
   service ECommerce {
     label "ECサイト"
     description "商品管理と注文処理"
   }
 }
-    `);
+    `,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
     expect(svg).toContain('data-info-button="ECommerce"');
     // Lock the info glyph's exact serialization: "i" in muted color, 10px,
     // italic, no font-weight — the italic branch of the shared
@@ -407,19 +428,90 @@ organization Corp {
   }
 }
       `,
+      undefined,
+      undefined,
+      undefined,
+      true,
     );
     expect(svg).toContain('data-info-button="ECommerce"');
   });
 
   it("does not render info button on node with no metadata", () => {
-    const svg = renderFromSource(`
+    const svg = renderFromSource(
+      `
 system Test {
   service ECommerce {
     label "ECサイト"
   }
 }
-    `);
+    `,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    );
     expect(svg).not.toContain('data-info-button="ECommerce"');
+  });
+
+  describe("corner lane (#2420)", () => {
+    const withEverything = `
+system Test {
+  service ECommerce @deprecated {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+}
+    `;
+
+    it("draws no i / D buttons in static output — there is nothing to click", () => {
+      const svg = renderFromSource(withEverything, undefined, new Set(["ECommerce"]));
+      expect(svg).not.toContain("data-info-button");
+      expect(svg).not.toContain("data-deploy-button");
+      expect(svg).not.toContain("krs-node-controls");
+      // The annotation chip is content, so it stays.
+      expect(svg).toContain('data-node-badge="ECommerce"');
+    });
+
+    it("draws both buttons, classed as strippable chrome, when interactive", () => {
+      const svg = renderFromSource(
+        withEverything,
+        undefined,
+        new Set(["ECommerce"]),
+        undefined,
+        true,
+      );
+      expect(svg).toContain('data-info-button="ECommerce"');
+      expect(svg).toContain('data-deploy-button="ECommerce"');
+      expect(svg).toContain('class="krs-node-controls"');
+    });
+
+    it("keeps the chip clear of the buttons and inside the card", () => {
+      const svg = renderFromSource(
+        withEverything,
+        undefined,
+        new Set(["ECommerce"]),
+        undefined,
+        true,
+      );
+      const node = /<rect x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/.exec(svg)!;
+      const cardX = Number(node[1]);
+      const cardWidth = Number(node[2]);
+
+      const chip =
+        /data-node-badge="ECommerce"[^>]*><rect x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/.exec(
+          svg,
+        )!;
+      const chipRight = Number(chip[1]) + Number(chip[2]);
+      const buttonLeft = Math.min(
+        ...[
+          ...svg.matchAll(/data-(?:info|deploy)-button="ECommerce"[\s\S]{0,200}?cx="([\d.]+)"/g),
+        ].map((m) => Number(m[1]) - 8),
+      );
+
+      expect(Number(chip[1])).toBeGreaterThanOrEqual(cardX);
+      expect(chipRight).toBeLessThanOrEqual(buttonLeft);
+      expect(buttonLeft).toBeLessThan(cardX + cardWidth);
+    });
   });
 
   it("does not render deploy button when serviceIdsWithDeploy is not provided", () => {
@@ -1007,6 +1099,14 @@ system S {
       );
       expect(svg).toMatch(/data-node-badge="A"[^>]*data-diff-state="removed"/);
       expect(svg).toContain('data-annotation-removed="deprecated"');
+      // The ghost pill rides the same corner lane as a live chip, so it lands
+      // inside the card rather than in the old floating position above it
+      // (#2420). `y` above the card top would mean it escaped the lane.
+      const card = /<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)"/.exec(svg)!;
+      const ghost = /data-diff-state="removed"><rect x="([\d.]+)" y="([\d.]+)"/.exec(svg)!;
+      expect(Number(ghost[2])).toBeGreaterThan(Number(card[2]));
+      expect(Number(ghost[1])).toBeGreaterThan(Number(card[1]));
+      expect(Number(ghost[1])).toBeLessThan(Number(card[1]) + Number(card[3]));
     });
 
     it("keeps annotation-only nodes at state=unchanged on the main group", () => {

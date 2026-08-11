@@ -18,9 +18,7 @@
 <g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="78.39999999999989" y="259" width="340" height="102" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="248.3999999999999" y="293" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text>
 <text x="248.3999999999999" y="310" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">Order processing. Slack #team-order knows</text>
-<text x="248.3999999999999" y="327" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">this bes…</text>
-<g data-info-button="OrderService" style="cursor: pointer" pointer-events="all"><circle cx="402.39999999999986" cy="273" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
-<text x="402.39999999999986" y="273" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<text x="248.3999999999999" y="327" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">this bes…</text></g>
 <g data-node-id="CatalogService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="154.39999999999986" y="481" width="188.00000000000003" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="248.39999999999986" y="514" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Catalog service</text></g>
 <g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="68" y="667" width="360.7999999999998" height="66" rx="8" ry="8" fill="#F3F4F6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>

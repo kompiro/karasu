@@ -26,8 +26,10 @@ const OWNED_NODE_BY_KIND: Record<string, string> = {
   client: system(`  client X [web] { label "X" }`),
 };
 
-function compileSystem(krs: string): SystemCompileResult {
-  const result = compile(krs);
+function compileSystem(krs: string, interactive = false): SystemCompileResult {
+  // The deploy button is interactive-only chrome (#2420), so the cases that
+  // assert on it compile the way the app does.
+  const result = compile(krs, { interactive });
   if (result.diagramType !== "system") throw new Error("expected a system compile result");
   return result;
 }
@@ -179,6 +181,7 @@ describe("deploy affordance covers every deploy-affordance kind (#2157)", () => 
     (kind) => {
       const result = compileSystem(
         `${DEPLOYED_NODE_BY_KIND[kind]}\ndeploy "prod" {\n  assets Bundle { realizes X }\n}`,
+        true,
       );
 
       expect(result.warnings.filter((w) => w.kind === "unresolved-realizes")).toHaveLength(0);
@@ -199,6 +202,7 @@ deploy "prod" {
   store DbUnit { realizes SharedDb }
   oci ApiBox { realizes Api }
 }`,
+      true,
     );
 
     expect(result.warnings.filter((w) => w.kind === "unresolved-realizes")).toHaveLength(0);

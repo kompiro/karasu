@@ -62,6 +62,17 @@ export interface LayoutNode {
    * refused whenever the corridor to the card holds a non-member (縮退規則 4).
    */
   degradedBoundaries?: readonly { id: string; label: string; hueIndex: number }[];
+  /**
+   * The card's top-right corner lane — the annotation chip plus the i / D
+   * buttons (#2420). Stamped by the renderer, which is where resolved styles
+   * (and so the chip's measured width) are known; consumers read it to keep
+   * clear of the corner, notably the edge-port keep-outs of #2422.
+   *
+   * The reservation assumes the buttons this node's data allows, whether or
+   * not a given render draws them, so it does not move between the app and a
+   * static export.
+   */
+  chipZone?: Rect;
 }
 
 export interface LayoutEdge {
