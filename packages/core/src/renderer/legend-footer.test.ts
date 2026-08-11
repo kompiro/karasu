@@ -279,6 +279,24 @@ legend "凡例" {
     expect(result.svg).toContain('fill="#0369A1"');
   });
 
+  it("swatches a fill-less kind with its border color (Issue #2421)", () => {
+    // `usecase` renders fill-less (`background-color: transparent`), so its
+    // border is what identifies it on the canvas — and what the swatch has to
+    // show. Painting the fill at face value would emit an invisible square,
+    // indistinguishable from a dropped entry.
+    const krs = `${SYSTEM_KRS}
+legend "凡例" {
+  ref usecase "ユースケース"
+}
+`;
+    for (const theme of ["dark", "light"] as const) {
+      const result = compile(krs, { diagramType: "system", theme });
+      expect(result.svg).toContain("ユースケース");
+      expect(result.svg).not.toContain('fill="transparent"');
+      expect(result.svg).toContain(theme === "dark" ? 'fill="#4E8FBF"' : 'fill="#3E7495"');
+    }
+  });
+
   it("preserves builtin annotation badge-color in icon mode (Issue #1001)", () => {
     // @deprecated paints via badge-color (#EF4444), not background-color.
     // The cascade merge must still pick this up when icon-theme is layered
