@@ -219,9 +219,10 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin kind colors (%s them
   // fade has to be part of what the border is calibrated against.
   //
   // Only this fade is checkable. The facet-dim (0.28) and diff-ghost (0.3)
-  // states are so light that no color clears 3:1 — a pure white border over the
-  // dark canvas reaches ~2.2:1 at 0.28 — so they are exempt by construction,
-  // which is the same carve-out WCAG 1.4.11 makes for inactive components.
+  // states are so light that no color clears 3:1 — white is the best a border
+  // can do, and over the dark canvas it reaches 2.50:1 at 0.28 and 2.70:1 at
+  // 0.3 — so they are exempt by construction, which is the same carve-out
+  // WCAG 1.4.11 makes for inactive components.
   const DEPRECATED_OPACITY = 0.6;
 
   it("the builtin @deprecated opacity is the value the fill-less border is calibrated against", () => {

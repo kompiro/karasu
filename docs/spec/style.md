@@ -362,8 +362,9 @@ A fill-less kind has two consequences worth knowing about:
 
   Opacity states lighter than that fade — the facet-overlay dim and the diff
   ghost — are exempt, and not by preference: at those alphas no color reaches
-  3:1 at all (a pure white border over the dark canvas lands near 2.2:1). This
-  is the carve-out WCAG 1.4.11 makes for inactive components.
+  3:1 at all. White is the best a border can do, and over the dark canvas it
+  reaches 2.50:1 at the dim's alpha and 2.70:1 at the ghost's. This is the
+  carve-out WCAG 1.4.11 makes for inactive components.
 - **Boundary membership becomes visible through it.** Under *Group by:
   boundary*, the frame's tint reaches the card interior instead of being hidden
   behind an opaque fill, so a fill-less card reads as part of its boundary in
