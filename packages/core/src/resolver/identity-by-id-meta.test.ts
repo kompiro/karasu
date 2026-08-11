@@ -193,7 +193,8 @@ deploy Production {
 ];
 
 /**
- * The same observation on the parser-diagnostic side. `owns` used to answer a
+ * The third table, and the one exception to the WARNING_CHECKS / NO_WARNING_CHECKS
+ * pairing described above: the same observation on the parser-diagnostic side. `owns` used to answer a
  * label-collision with `invalid-owns`; since #2410 that warning only speaks about
  * targets which resolve to a node, so a label that matches no id is reported by
  * the existence check instead. The identity rule under test is unchanged — a

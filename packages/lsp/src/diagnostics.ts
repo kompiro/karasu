@@ -110,6 +110,20 @@ export function computeDiagnostics(
       // *under-report* — it fires only when both the store and ≥2 referencing
       // services are present in this one document, so it never false-positives.
       // Same property as `domain-dispersal`, which is likewise left to fire.
+      //
+      // `invalid-owns` is import-coupled and *not* filtered here, because it
+      // cannot false-positive on a cross-file target any more: since #2410 it
+      // reports a kind only for an id that resolves to a node in the model it was
+      // handed, and in this single-document context a target declared in another
+      // file resolves to nothing. Nothing to suppress — the diagnostic stopped
+      // answering the existence question that made it wrong. Recorded here
+      // because this comment is the ledger for that split (TPL-1522), even when
+      // the resolution lives in the check rather than in a filter above.
+      //
+      // Its existence counterpart `owns-target-not-found`, and both `contains`
+      // forms, are parser diagnostics that never reach this loop; they decline to
+      // decide inside their own validators when the file still has imports
+      // (`packages/core/src/parser/reference-validation.ts`, #2082 / #2410).
       diagnostics.push({
         severity: toSeverity(warningSeverity(w.kind)),
         range: locToRange(w.loc),

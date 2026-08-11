@@ -1498,12 +1498,16 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
 
   // Every declared id, any kind, any depth. `invalid-owns` reports a *kind*, so
   // it may only speak about an id that resolves to a node — "declared nowhere" is
-  // `owns-target-not-found`'s verdict, and reporting both for one typo said the
-  // same thing twice while contradicting this diagnostic's own definition ("an
-  // `owns` target **resolves to** a kind that cannot be owned"). It also made the
-  // check import-coupled by accident: in the LSP's single-document context a
-  // cross-file target is simply absent, and absence was being read as "wrong
-  // kind" (#2410).
+  // `owns-target-not-found`'s verdict, and reporting both for a plain typo
+  // contradicted this diagnostic's own definition ("an `owns` target **resolves
+  // to** a kind that cannot be owned"). It also made the check import-coupled by
+  // accident: in the LSP's single-document context a cross-file target is simply
+  // absent, and absence was being read as "wrong kind" (#2410).
+  //
+  // This set is wider than the existence check's, which tracks only ownable kinds
+  // plus infra/client leaves — so a declared `entity` / `usecase` / `resource` /
+  // `user` is in here but absent there, and both codes still fire for it. Closing
+  // that last overlap means changing what existence collects, which is #2442.
   const declaredIds = new Set<string>();
   function collectDeclaredIds(nodes: readonly KrsNode[]): void {
     for (const node of nodes) {

@@ -145,6 +145,13 @@ organization Acme {
   // #2410: the two siblings TPL-1522's ledger listed as 未決定 now have a side.
   // Asserting on `computeDiagnostics` and not only on the parser is the point —
   // the parser-only tests are what let these survive #2082.
+  //
+  // Each filter matches the precise rendered fragment so the assertion names one
+  // diagnostic (TPL-1608). Severity is deliberately not part of an *absence*
+  // filter — narrowing by it would let the same message through at another
+  // severity — so the paired presence tests pin the severity instead.
+  const containsNotFound = (src: string) =>
+    computeDiagnostics(src, false).filter((d) => d.message.includes('referenced in "contains"'));
   it("stays silent on contains when the document still has imports to resolve", () => {
     const src = `import "./billing.krs"
 system Shop {
@@ -156,8 +163,7 @@ boundary cluster {
   label "Cluster"
   contains FarAway
 }`;
-    const contains = computeDiagnostics(src, false).filter((d) => d.message.includes("contains"));
-    expect(contains).toHaveLength(0);
+    expect(containsNotFound(src)).toHaveLength(0);
   });
 
   it("stays silent on invalid-owns for a target that lives in an imported file", () => {
@@ -167,8 +173,11 @@ boundary cluster {
     const src = `import { Payments } from "./billing.krs"
 service Ops {}
 organization Acme { team Platform { owns Payments } }`;
+    // Both codes that could speak about this target must stay quiet: the kind
+    // check (`owns "Payments" but no service or domain…`) and the existence check.
+    expect(ownsNotFound(src)).toHaveLength(0);
     expect(
-      computeDiagnostics(src, false).filter((d) => d.message.includes("Payments")),
+      computeDiagnostics(src, false).filter((d) => d.message.includes('owns "Payments"')),
     ).toHaveLength(0);
   });
 
@@ -190,8 +199,9 @@ boundary cluster {
   label "Cluster"
   contains FarAway
 }`;
-    const contains = computeDiagnostics(src, false).filter((d) => d.message.includes("FarAway"));
+    const contains = containsNotFound(src);
     expect(contains).toHaveLength(1);
+    expect(contains[0].message).toContain("FarAway");
     expect(contains[0].severity).toBe(DiagnosticSeverity.Warning);
   });
 

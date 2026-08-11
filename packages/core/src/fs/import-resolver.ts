@@ -29,6 +29,13 @@ import type { StyleSheet } from "../types/style.js";
  * Reference-existence diagnostics that are only decidable after the cross-file
  * merge. Their per-file verdict is dropped during Pass 1 and re-derived against
  * the merged id-space in `resolve()` (Issue #2032).
+ *
+ * Still load-bearing after #2410, though for a narrower set of files: a file that
+ * *has* imports now produces no verdict to drop, because the validators decline
+ * to decide there. What this strip catches is the **import-less leaf** — a file
+ * with no imports of its own whose `contains` / `owns` target is only satisfied
+ * once the importing file's wildcard or `system` reopen adds the node. Its
+ * per-file verdict is real and wrong, and only this strip removes it.
  */
 const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   "contains-target-not-found",
