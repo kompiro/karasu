@@ -14,7 +14,6 @@ assumptions:
   - "symbol: packages/core/src/types/ast.ts :: OWNS_TARGET_KINDS"
   - "symbol: packages/core/src/types/ast.ts :: OWNABLE_LOGICAL_KINDS"
   - "symbol: packages/core/src/resolver/warnings.ts :: detectInvalidOwns"
-  - "symbol: packages/core/src/parser/reference-validation.ts :: collectOwnableIds"
   - "grep: packages/core/src/renderer/layout.ts :: groupBy === \"team\" \\? ownerIndex"
   - "file: docs/spec/syntax.md"
 ---
