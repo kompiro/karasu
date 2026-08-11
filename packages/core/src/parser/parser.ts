@@ -384,17 +384,7 @@ export class Parser {
     }
     // Scoped boundaries resolve against direct children, so they are checked
     // per scope rather than against the whole model (#2036).
-    this.diagnostics.push(
-      ...validateScopedContainsReferences([
-        ...file.systems,
-        ...file.services,
-        ...file.clients,
-        ...file.domains,
-        ...file.databases,
-        ...file.queues,
-        ...file.storages,
-      ]),
-    );
+    this.diagnostics.push(...validateScopedContainsReferences(file));
     // Declaration uniqueness is a property of the *merged* facet namespace: two
     // files may each declare `facet pii` with different metadata, and only the
     // merge sees that. The ImportResolver suppresses this code per file and

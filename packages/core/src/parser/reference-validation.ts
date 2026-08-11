@@ -144,6 +144,12 @@ export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
 // system nodes themselves are excluded — a boundary groups nodes *within* a
 // system, not systems.
 export function validateContainsReferences(file: KrsFile): Diagnostic[] {
+  // Import-coupled, exactly like `owns` next door (#2410): the member may be
+  // declared in a file this one imports, so a document read on its own cannot
+  // decide it and would only produce false positives. Project mode is
+  // unaffected — the merged `KrsFile` carries no `nodeImports`.
+  if (file.nodeImports.length > 0) return [];
+
   const diagnostics: Diagnostic[] = [];
   const declaredIds = collectContainableIds(file);
   for (const boundary of file.boundaries) {
@@ -169,9 +175,27 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
  * direct children and nothing else. Reporting is what keeps the form honest —
  * without it a member naming a grandchild (or a typo) would simply not be
  * indexed and would vanish without a word (TPL-1503).
+ *
+ * Takes the file rather than a roots array so the import guard below lives in one
+ * place: both callers built the identical seven-bucket array, and a guard at each
+ * call site is how the two ends of a check drift apart (#2082). Import-coupled
+ * for a subtler reason than the top-level form — a cross-file `system` reopen can
+ * add the very child a scoped `contains` names, so the declaring node's child set
+ * is not final until the merge (#2410).
  */
-export function validateScopedContainsReferences(roots: readonly KrsNode[]): Diagnostic[] {
+export function validateScopedContainsReferences(file: KrsFile): Diagnostic[] {
+  if (file.nodeImports.length > 0) return [];
+
   const diagnostics: Diagnostic[] = [];
+  const roots: readonly KrsNode[] = [
+    ...file.systems,
+    ...file.services,
+    ...file.clients,
+    ...file.domains,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ];
 
   const walk = (node: KrsNode): void => {
     if (node.boundaries !== undefined && node.boundaries.length > 0) {
