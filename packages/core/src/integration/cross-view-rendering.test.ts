@@ -89,8 +89,12 @@ organization Org {
   });
 
   describe("Part B: inherited service annotations propagate through to descendant rendering", () => {
+    // Prefixes of the builtin badge labels, not the whole string: the corner
+    // chip elides its label at 40% of the card width (#2420), so "Experimental"
+    // reaches a domain card as "Experiment…". A prefix survives that and still
+    // separates the two annotations, which is what these cases assert.
     const deprecatedBadgeLabel = "Deprecated"; // builtin style for @deprecated
-    const experimentalBadgeLabel = "Experimental"; // builtin style for @experimental
+    const experimentalBadgeLabel = "Experiment"; // builtin style for @experimental
 
     const inheritedDeprecated = `
 system S {

@@ -119,9 +119,9 @@ Open `index.krs` so it is the current file.
 
 > ✅ Automated — `packages/app/src/components/NodeDetailPanel.test.tsx` › `renders +/- rows when annotationDiff is provided`
 
-- [x] Reversing the comparison renders a **ghost removed badge** (dashed red circle with `−`) and the panel shows `- @deprecated`
+- [x] Reversing the comparison renders a **ghost removed badge** (dashed red pill with `✕`; a circle with `−` before the corner lane of #2420) and the panel shows `- @deprecated`
 
-> 🟡 Partially automated — `packages/e2e/tests/at-0058-diff-colors.spec.ts` › `an annotation-only change rings the badge and leaves the body undecorated (TC-4)` covers the ghost badge (removed token + dashed ring) after **⇄ Swap**; `packages/app/src/components/NodeDetailPanel.test.tsx` › `renders +/- rows when annotationDiff is provided` covers the `- @deprecated` panel row. The `−` glyph inside the ghost circle is not asserted.
+> 🟡 Partially automated — `packages/e2e/tests/at-0058-diff-colors.spec.ts` › `an annotation-only change rings the badge and leaves the body undecorated (TC-4)` covers the ghost badge (removed token + dashed ring) after **⇄ Swap**; `packages/app/src/components/NodeDetailPanel.test.tsx` › `renders +/- rows when annotationDiff is provided` covers the `- @deprecated` panel row. The `✕` glyph inside the ghost pill is not asserted.
 
 ### TC-5: Unchanged elements are dimmed
 

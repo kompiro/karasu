@@ -66,14 +66,19 @@ describe("i18n locale coverage — annotation badge pipeline", () => {
 // injection) renders the reference-data en labels — asserting those renders
 // match `translate("en", "badge.*")` fails if either side's wording forks.
 describe("i18n locale coverage — badge.* matches core reference-data defaults", () => {
+  // The long labels are load-bearing: the corner chip elides its badge label at
+  // 40% of the card width (#2420), and on an id-width card "Migration target"
+  // would arrive as "Migration…". These cases are about the label *text*
+  // matching the i18n table, so the cards are made wide enough to show it whole.
+  const wide = "Wide enough for the whole badge label";
   const krs = [
     "system S {",
-    "  service Legacy @deprecated {}",
-    "  service Fresh @new {}",
-    "  service Lab @experimental {}",
-    "  service Guessed @draft {}",
-    "  service Future @planned {}",
-    "  service Next @migration_target {}",
+    `  service Legacy @deprecated { label "${wide}" }`,
+    `  service Fresh @new { label "${wide}" }`,
+    `  service Lab @experimental { label "${wide}" }`,
+    `  service Guessed @draft { label "${wide}" }`,
+    `  service Future @planned { label "${wide}" }`,
+    `  service Next @migration_target { label "${wide}" }`,
     "}",
     "",
   ].join("\n");

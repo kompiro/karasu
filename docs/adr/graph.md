@@ -317,6 +317,7 @@ flowchart TD
     ADR_1819["ADR-1819<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
     ADR_2075["ADR-2075<br/>宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
+    ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
   end
   subgraph styling["styling"]
     ADR_8["ADR-8<br/>ビルトインスタイルの一元化と構造化リファレンス"]
@@ -783,6 +784,7 @@ flowchart TD
   class ADR_2401 accepted
   class ADR_2404 accepted
   class ADR_2408 accepted
+  class ADR_2410 accepted
   class ADR_2419 accepted
   class ADR_2440 accepted
   class ADR_2447 accepted

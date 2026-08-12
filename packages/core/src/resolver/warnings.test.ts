@@ -162,6 +162,42 @@ organization Corp {
     expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
   });
 
+  // #2442: a declared node of an unownable kind used to draw both codes — the
+  // existence check filtered its set by ownable kind, so a `user` was "not found"
+  // there while the kind check called it unownable. Existence now asks only
+  // whether a node with the id exists, so each line draws exactly one code, and
+  // the kind check names the kind it refused.
+  it.each([
+    ["user", `system S {\n  user U {}\n  service Api {}\n}`, "U"],
+    ["usecase", `system S {\n  service Api { domain D { usecase Register {} } }\n}`, "Register"],
+    ["entity", `system S {\n  service Api { domain D { entity Order {} } }\n}`, "Order"],
+    ["system", `system MySystem {\n  service Api {}\n}`, "MySystem"],
+  ])("reports a declared %s as a kind refusal and nothing else", (kind, model, ownedId) => {
+    const result = compile(`${model}\norganization O { team T { owns ${ownedId} } }`);
+
+    const invalid = result.warnings.filter((w) => w.kind === "invalid-owns");
+    expect(invalid).toHaveLength(1);
+    expect(invalid[0].params).toMatchObject({ teamId: "T", ownedId, ownedKind: kind });
+    expect(
+      result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("leaves an id that names no node to the existence check alone", () => {
+    const result = compile(
+      `system S {\n  service Api {}\n}\norganization O { team T { owns Ghost } }`,
+    );
+
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
+    const notFound = result.diagnostics.filter(
+      (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+    );
+    expect(notFound).toHaveLength(1);
+    expect(notFound[0].params).toMatchObject({ ownedId: "Ghost" });
+  });
+
   it("still warns when owns references an infra leaf or a capability", () => {
     // The leaf kinds stay out of the ownable set deliberately (same line
     // `realizes` draws): a `table` is not an ownership unit. Existence accepts

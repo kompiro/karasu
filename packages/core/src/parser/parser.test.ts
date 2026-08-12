@@ -3395,6 +3395,57 @@ organization Corp {
       expect(warnings).toHaveLength(0);
     });
 
+    // #2442: the existence check asks only whether a node with the id exists, so
+    // a declared node of an unownable kind is "found" here and left to
+    // `invalid-owns` to refuse by kind. Only an id that names no node at all —
+    // including a `capability`, which is a property rather than a node — is
+    // reported from here.
+    it("finds any declared node, whatever its kind", () => {
+      const result = Parser.parse(`
+system S {
+  user U {}
+  service Api { domain D { usecase Register {} entity Order {} } }
+  client Web [web] { capability Search }
+}
+
+organization O {
+  team T {
+    owns U
+    owns Register
+    owns Order
+    owns S
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    it("reports an id that names no node, including a capability", () => {
+      const result = Parser.parse(`
+system S {
+  service Api {}
+  client Web [web] { capability Search }
+}
+
+organization O {
+  team T {
+    owns Search
+    owns Ghost
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings.map((w) => (w.params as { ownedId: string }).ownedId).sort()).toEqual([
+        "Ghost",
+        "Search",
+      ]);
+    });
+
     // Depth symmetry for the leaf ids `buildNodePathIndex` addressed: it indexed
     // the children of a *top-level* infra block only, so the same `table` was
     // "found" at top level and "not found" inside a system. Existence accepts

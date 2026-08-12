@@ -26,8 +26,10 @@ const OWNED_NODE_BY_KIND: Record<string, string> = {
   client: system(`  client X [web] { label "X" }`),
 };
 
-function compileSystem(krs: string): SystemCompileResult {
-  const result = compile(krs);
+function compileSystem(krs: string, nodeControls = false): SystemCompileResult {
+  // The deploy button is live-viewer chrome (#2420), so the cases that assert
+  // on it compile the way the app and the VS Code webview do.
+  const result = compile(krs, { nodeControls });
   if (result.diagramType !== "system") throw new Error("expected a system compile result");
   return result;
 }
@@ -181,6 +183,7 @@ describe("deploy affordance covers every deploy-affordance kind (#2157)", () => 
     (kind) => {
       const result = compileSystem(
         `${DEPLOYED_NODE_BY_KIND[kind]}\ndeploy "prod" {\n  assets Bundle { realizes X }\n}`,
+        true,
       );
 
       expect(result.warnings.filter((w) => w.kind === "unresolved-realizes")).toHaveLength(0);
@@ -188,6 +191,21 @@ describe("deploy affordance covers every deploy-affordance kind (#2157)", () => 
       expect(result.nodeMetadata.get("X")?.hasDeployContainer).toBe(true);
     },
   );
+
+  it("draws the info button on the deploy view too, not just the system view", () => {
+    // The deploy view renders through `renderDeploy`, a separate call site from
+    // the system view's — one that forgot to forward `nodeControls` at first,
+    // which took the ⓘ off every deploy card in the app and the VS Code panel.
+    const krs = `${system(`  service Api { label "Api" }`)}
+deploy "prod" {
+  oci ApiBox { label "Api box" image "api:1" realizes Api }
+}`;
+    // Deploy layout keys a unit as `<container>::<unit>` (#1666), so match the
+    // attribute rather than the bare id.
+    const result = compile(krs, { diagramType: "deploy", nodeControls: true });
+    expect(result.svg).toMatch(/data-info-button="[^"]*ApiBox"/);
+    expect(compile(krs, { diagramType: "deploy" }).svg).not.toContain("data-info-button");
+  });
 
   it("leaves an infra block without a deploy button even when a unit realizes it", () => {
     // Deliberate exclusion, not an oversight: infra blocks are valid `realizes`
@@ -201,6 +219,7 @@ deploy "prod" {
   store DbUnit { realizes SharedDb }
   oci ApiBox { realizes Api }
 }`,
+      true,
     );
 
     expect(result.warnings.filter((w) => w.kind === "unresolved-realizes")).toHaveLength(0);

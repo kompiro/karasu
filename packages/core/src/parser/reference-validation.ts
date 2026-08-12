@@ -29,60 +29,60 @@ import type {
   KrsNode,
   TeamNode,
 } from "../types/ast.js";
-import { boundaryScopeKey, OWNS_TARGET_KIND_SET } from "../types/ast.js";
+import { boundaryScopeKey } from "../types/ast.js";
 
 /**
- * Blocks whose direct children `buildNodePathIndex` addressed alongside the block
- * itself: an infra leaf (`table` / `queue-item` / `bucket`) and a client
- * `capability`. Kept in the set at every depth so the answer to "does this id
- * exist" does not change with where the block was declared — that index only
- * addressed the top-level ones, which is why `owns users` used to be silent for
- * a top-level `database` and warn for the identical block inside a `system`.
+ * Every id that names a declared node, at any depth, from every top-level bucket.
+ * `includeSystemIds` is the one axis the two consumers differ on, and it is the
+ * whole reason this is one walk rather than two: node ids are unique only among
+ * siblings (ADR-927), so a set built by walking and then deleting system ids
+ * would also delete a same-named service somewhere else.
  */
-const LEAF_BEARING_KINDS: ReadonlySet<string> = new Set(["client", "database", "queue", "storage"]);
-
-/**
- * Every id a `team … owns` may name, derived from the (merged) tree: any
- * {@link OWNS_TARGET_KIND_SET} node at any depth — nested infra included, which
- * `buildNodePathIndex` never indexed — plus the direct children of
- * {@link LEAF_BEARING_KINDS} blocks.
- *
- * Deriving this from the tree rather than reading `nodePathIndex` is what makes
- * the check symmetric with `contains`. That index is built per file by the
- * Parser and only travels across a **wildcard** import: `mergeNamedImport`
- * merges the node itself but never its index entry, so `owns` on a
- * named-imported service warned while the identical declaration reached through
- * `import "…"` resolved (#2082). Re-deriving after the merge is not enough on
- * its own — the space re-derived against has to be the merged tree too
- * (TPL-2032).
- *
- * Narrowing this set is `invalid-owns`' job, not existence's: an id in here is
- * only claimed to *exist*, which is why the leaf members stay in rather than
- * earn a second warning on the same line.
- */
-function collectOwnableIds(file: KrsFile): Set<string> {
+function collectDeclaredIds(file: KrsFile, includeSystemIds: boolean): Set<string> {
   const ids = new Set<string>();
   const walk = (nodes: readonly KrsNode[]): void => {
     for (const node of nodes) {
-      if (OWNS_TARGET_KIND_SET.has(node.kind)) {
-        ids.add(node.id);
-        if (LEAF_BEARING_KINDS.has(node.kind)) {
-          for (const child of node.children) ids.add(child.id);
-        }
-      }
+      ids.add(node.id);
       walk(node.children);
     }
   };
   for (const system of file.systems) {
+    if (includeSystemIds) ids.add(system.id);
     walk(system.children);
   }
   walk(file.services);
-  walk(file.domains);
   walk(file.clients);
+  walk(file.domains);
   walk(file.databases);
   walk(file.queues);
   walk(file.storages);
   return ids;
+}
+
+/**
+ * Every id a `team … owns` may name — **any declared node**, systems included.
+ *
+ * Not filtered by ownable kind, which is what it used to be and what made it
+ * answer "no such *ownable* node" with an existence code: a declared `user` or
+ * `entity` was absent from the set, so `owns U` drew "not found" from here *and*
+ * "cannot be owned" from `invalid-owns`, two codes for one line (#2442). The
+ * existence question is only "is there a node with this id"; whether its kind may
+ * be owned is `invalid-owns`' sentence, and it is the one that names the kind.
+ *
+ * Systems are in the set even though a team cannot own one, so that
+ * `owns <systemId>` reads as the kind refusal it is rather than as a claim that
+ * the system does not exist. `contains` excludes them for its own reason — a
+ * `boundary` groups nodes *within* a system.
+ *
+ * Derived from the (merged) tree rather than from `nodePathIndex`, which is built
+ * per file and only travels across a wildcard import: `mergeNamedImport` merges
+ * the node but never its index entry, so `owns` on a named-imported service
+ * warned while the identical declaration reached through `import "…"` resolved
+ * (#2082). Re-deriving after the merge is not enough on its own — the space
+ * re-derived against has to be the merged tree too (TPL-2032).
+ */
+function collectOwnsResolvableIds(file: KrsFile): Set<string> {
+  return collectDeclaredIds(file, true);
 }
 
 /**
@@ -99,25 +99,24 @@ function collectOwnableIds(file: KrsFile): Set<string> {
  * `KrsFile` the ImportResolver validates carries no `nodeImports`, so it is
  * always decided there, against the merged tree.
  *
- * `validateContainsReferences` below and `detectInvalidOwns` in the resolver are
- * import-coupled the same way and have not been converted — a cross-file `owns`
- * still draws a squiggle in the editor, from `invalid-owns` rather than from
- * here (#2410 tracks both; TPL-1522 carries the ledger).
+ * `validateContainsReferences` below takes the same guard, and `detectInvalidOwns`
+ * in the resolver reaches the same place by reporting only targets that resolve
+ * (#2410). TPL-1522 carries the ledger of which diagnostic took which route.
  */
 export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
   if (file.organizations.length === 0 || file.nodeImports.length > 0) return [];
-  const ownableIds = collectOwnableIds(file);
-  // A model with no ownable node at all says nothing about whether its `owns`
-  // lines are wrong: that is the org-only file (a `teams.krs` parsed on its own,
-  // or opened directly as the project entry), where every id is declared
-  // elsewhere. Kept from the pre-#2032 behaviour deliberately.
-  if (ownableIds.size === 0) return [];
+  const declaredIds = collectOwnsResolvableIds(file);
+  // A model with no node at all says nothing about whether its `owns` lines are
+  // wrong: that is the org-only file (a `teams.krs` parsed on its own, or opened
+  // directly as the project entry), where every id is declared elsewhere. Kept
+  // from the pre-#2032 behaviour deliberately.
+  if (declaredIds.size === 0) return [];
 
   const diagnostics: Diagnostic[] = [];
   const check = (teams: TeamNode[]): void => {
     for (const team of teams) {
       for (const ownedId of team.properties.owns) {
-        if (!ownableIds.has(ownedId)) {
+        if (!declaredIds.has(ownedId)) {
           diagnostics.push({
             severity: "warning",
             code: "owns-target-not-found",
@@ -285,23 +284,7 @@ export function buildFacetIndex(roots: readonly KrsNode[]): Map<string, Set<stri
 // domains / infra and their descendants. System container ids are excluded
 // (a boundary groups nodes *inside* a system).
 function collectContainableIds(file: KrsFile): Set<string> {
-  const ids = new Set<string>();
-  const walk = (nodes: readonly KrsNode[]): void => {
-    for (const node of nodes) {
-      ids.add(node.id);
-      walk(node.children);
-    }
-  };
-  for (const system of file.systems) {
-    walk(system.children);
-  }
-  walk(file.services);
-  walk(file.clients);
-  walk(file.domains);
-  walk(file.databases);
-  walk(file.queues);
-  walk(file.storages);
-  return ids;
+  return collectDeclaredIds(file, false);
 }
 
 // ---------------------------------------------------------------------------

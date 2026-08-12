@@ -8,6 +8,6 @@
 <text x="140" y="93" text-anchor="middle" dominant-baseline="central" fill="#1e40af" font-size="13px" font-weight="bold" font-family="sans-serif">受注</text></g>
 <g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false" opacity="0.6"><rect x="60" y="246" width="160" height="66" rx="8" ry="8" fill="#f3f4f6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>
 <text x="140" y="279" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">旧基幹</text>
-<g data-node-badge="Legacy"><circle cx="210" cy="240" r="10" fill="#DC2626"/>
-<text x="210" y="240" text-anchor="middle" dominant-baseline="central" fill="white" font-size="10px">⚠</text>
-<text x="224" y="240" dominant-baseline="central" fill="#DC2626" font-size="9px" font-weight="bold" font-family="sans-serif">非推奨</text></g></g></g></svg>
+<g data-node-badge="Legacy"><rect x="158.625" y="254" width="53.375" height="16" rx="8" fill="#DC2626"/>
+<text x="169.125" y="262" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">⚠</text>
+<text x="176.625" y="262" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">非推奨</text></g></g></g></svg>

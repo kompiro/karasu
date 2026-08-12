@@ -37,10 +37,11 @@ const DIFF_INLINE_STYLE = `
 [data-diff-state="changed"] polygon { stroke: #f59e0b; stroke-width: 2.5; }
 [data-diff-state="changed"] line { stroke: #f59e0b; }
 
+/* The badge ring is drawn on the chip's pill — a rect since #2420. */
 [data-node-badge] { opacity: 1; }
-[data-node-badge][data-diff-state="added"] circle { stroke: #22c55e; stroke-width: 2; }
-[data-node-badge][data-diff-state="removed"] circle { stroke: #ef4444; stroke-width: 2; stroke-dasharray: 3 2; }
-[data-node-badge][data-diff-state="changed"] circle { stroke: #f59e0b; stroke-width: 2; }
+[data-node-badge][data-diff-state="added"] rect { stroke: #22c55e; stroke-width: 2; }
+[data-node-badge][data-diff-state="removed"] rect { stroke: #ef4444; stroke-width: 2; stroke-dasharray: 3 2; }
+[data-node-badge][data-diff-state="changed"] rect { stroke: #f59e0b; stroke-width: 2; }
 `.trim();
 
 /**

@@ -293,7 +293,11 @@ export type Translations = {
     deployNodeId: string;
     target: string;
   }) => string;
-  "warning.invalidOwns.message": (params: { teamId: string; ownedId: string }) => string;
+  "warning.invalidOwns.message": (params: {
+    teamId: string;
+    ownedId: string;
+    ownedKind: string;
+  }) => string;
   "warning.crossSystemRefUnresolved.message": (params: { ref: string }) => string;
   "warning.unresolvedEdgeEndpoint.message": (params: {
     from: string;

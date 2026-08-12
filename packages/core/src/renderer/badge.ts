@@ -13,9 +13,15 @@ interface BadgeStyle {
  *
  * Returns an empty array when the style carries neither an icon nor a label, so
  * callers can render a badge unconditionally. The caller wraps the returned
- * children in its own `<g>` — the system renderer adds diff-state metadata, the
- * org renderer wraps them plainly. Keeping the shape here is the single source
- * of truth for badge geometry across both renderers (#1583).
+ * children in its own `<g>` — the org renderers wrap them plainly.
+ *
+ * This circle is the **org card's** badge. The system and deploy cards moved to
+ * the inset pill of `corner-lane.ts` (#2420), because there the badge shared
+ * its corner with the i / D buttons and floated outside the card into incoming
+ * edges. An org card has neither problem: no buttons, and the badge already
+ * sits inside the card (the callers pass card-relative coordinates). Sharing
+ * one geometry across both (#1583) would mean giving org cards a lane they
+ * have no residents for.
  *
  * `iconOnly` renders just the colored glyph (no trailing label) so the badge
  * stays inside a compact, grid-packed card — the label would otherwise extend

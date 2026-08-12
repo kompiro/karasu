@@ -107,7 +107,9 @@ per-file で消してよいのは **他ファイルの宣言で解決が変わ�
 
 - `packages/core/src/parser/reference-validation.ts` に存在検証を純粋関数として置き、
   Parser と ImportResolver が同じ関数を各自の空間で呼ぶ。**引数は `KrsFile` そのもの**にし、
-  valid-target 集合の導出（`collectContainableIds` / `collectOwnableIds`）を関数の内側に置く。
+  valid-target 集合の導出（`collectContainableIds` / `collectOwnsResolvableIds`）を関数の内側に置く。
+  両者は #2442 で 1 つの walk（`collectDeclaredIds`）に畳まれ、違いは system id を含めるか
+  だけになった — 存在検査が「どの kind か」を見なくなれば、集合は 1 つの問いに収束する。
 - ImportResolver は per-file の `parseResult.diagnostics` から存在検証系コードを
   `filter` で落とし（`MERGED_SPACE_REFERENCE_CODES`）、Pass 2 のマージ後に
   マージ済み `KrsFile` へ再適用する。

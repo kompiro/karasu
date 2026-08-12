@@ -22,7 +22,16 @@ import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
-import { badgeChildren } from "./badge.js";
+import {
+  CHIP_HEIGHT,
+  GHOST_CHIP_WIDTH,
+  laneBox,
+  packCornerLane,
+  renderChip,
+  renderGhostChip,
+  type CornerLane,
+  type LaneInset,
+} from "./corner-lane.js";
 import { metaGlyph, type MetaGlyphName } from "./meta-glyphs.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
@@ -168,6 +177,17 @@ export interface RenderOptions {
    * content, not chrome).
    */
   interactive?: boolean;
+  /**
+   * When true, draw the per-node info / deploy buttons in the card's corner
+   * lane (Issue #2420). Defaults to false, so static outputs carry no button
+   * for a viewer that cannot click it.
+   *
+   * Deliberately not folded into `interactive`: the two name different viewer
+   * capabilities. The VS Code webview handles `data-info-button` but has no
+   * category-collapse handling, so one shared flag would either take away its
+   * ⓘ or give it a dead ⊖.
+   */
+  nodeControls?: boolean;
   /**
    * System-view grouping axis. `"team"` (#1858, P2a) bands each node's owning
    * team; `"boundary"` (#1822, P2b) bands by declared `boundary`. Omit for the
@@ -374,6 +394,8 @@ export function renderFromLayout(
       ),
     );
   }
+
+  assignChipZones(layoutResult, styles, palette, serviceIdsWithDeploy);
 
   const padding = 40;
   const width = layoutResult.width + padding;
@@ -613,6 +635,7 @@ export function renderFromLayout(
           overlay?.colorOf,
           styles.boundaryFrames,
           layoutResult.shapeInsetsApplied ?? false,
+          options?.nodeControls ?? false,
         );
     const isDimmedGhost =
       layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
@@ -1396,6 +1419,11 @@ function renderNode(
    * then — a padding-only-measured card must keep padding-only drawing.
    */
   applyShapeInsets = false,
+  /**
+   * True when the viewer wires up the per-node buttons (`RenderOptions.nodeControls`).
+   * A static SVG carries no button it cannot honour (#2420).
+   */
+  nodeControls = false,
 ): string {
   const children: string[] = [];
 
@@ -1435,6 +1463,27 @@ function renderNode(
     );
   }
 
+  // Corner lane (#2420): the annotation chip and the icon buttons share one
+  // right-packed row, so the chip is measured against the buttons that will be
+  // drawn beside it and the two can never collide.
+  //
+  // Which buttons a node *could* carry is decided by its own data; whether
+  // they are actually drawn is decided by `nodeControls` — a static SVG has
+  // nothing to click, so the i / D affordances would be noise there
+  // (ADR-1821 draws the same line for the category controls).
+  const canShowDeployButton =
+    DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) && (serviceIdsWithDeploy?.has(nodeId) ?? false);
+  // Show info button when the node has any metadata worth displaying in the detail panel.
+  // Container nodes (hasChildren) need the button because clicking the body drills down.
+  // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
+  const canShowInfoButton =
+    node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
+  const showInfoButton = nodeControls && canShowInfoButton;
+  const showDeployButton = nodeControls && canShowDeployButton;
+  const buttonCount = (showInfoButton ? 1 : 0) + (showDeployButton ? 1 : 0);
+  const laneInset = laneInsetOf(style, node, applyShapeInsets);
+  const lane = packCornerLane(node, style, buttonCount, palette.badgeFallback, laneInset);
+
   // Badge (single merged badge driven by the node's current annotations).
   // When diff metadata reports an annotation-only change, the badge is
   // wrapped in `<g data-node-badge data-diff-state="added|removed|unchanged">`
@@ -1446,28 +1495,18 @@ function renderNode(
     children: badgeParts,
     annotationAddedAttr,
     annotationRemovedAttr,
-  } = renderNodeBadge(node, style, palette, nodeId, diffMeta);
+  } = renderNodeBadge(node, palette, nodeId, diffMeta, lane, buttonCount, laneInset);
   children.push(...badgeParts);
 
   // Sub-label: shown below the node for ghost domains to indicate the parent service
   const subLabel = renderSubLabel(node, style, textColor, fontSize);
   if (subLabel) children.push(subLabel);
 
-  // Top-right icon buttons: deploy button and info button
-  // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
-  const showDeployButton =
-    DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) && (serviceIdsWithDeploy?.has(nodeId) ?? false);
-  // Show info button when the node has any metadata worth displaying in the detail panel.
-  // Container nodes (hasChildren) need the button because clicking the body drills down.
-  // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
-  const showInfoButton =
-    node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
-  const btnY = node.y + 14;
-  let btnSlot = 0; // 0 = rightmost, increments leftward
+  // Top-right icon buttons, in lane order: [i] rightmost, then [D].
+  let btnSlot = 0;
 
   if (showInfoButton) {
-    const btnX = node.x + node.width - 16 - btnSlot * 20;
-    btnSlot++;
+    const btn = lane.buttons[btnSlot++];
     children.push(
       renderIconButton(
         "data-info-button",
@@ -1475,14 +1514,14 @@ function renderNode(
         palette.textMuted,
         "i",
         { fontSize: "10px", italic: true },
-        btnX,
-        btnY,
+        btn.cx,
+        btn.cy,
       ),
     );
   }
 
   if (showDeployButton) {
-    const btnX = node.x + node.width - 16 - btnSlot * 20;
+    const btn = lane.buttons[btnSlot];
     children.push(
       renderIconButton(
         "data-deploy-button",
@@ -1490,8 +1529,8 @@ function renderNode(
         palette.accent,
         "D",
         { fontSize: "9px", bold: true },
-        btnX,
-        btnY,
+        btn.cx,
+        btn.cy,
       ),
     );
   }
@@ -1753,6 +1792,26 @@ function resolveNodeStyle(
     (layoutId !== undefined ? styles.nodes.get(layoutId) : undefined) ??
     styles.defaultNodeStyle
   );
+}
+
+/**
+ * The two insets the corner lane needs (#2420). Content insets are what the
+ * shape registry exposes today, and they are the conservative choice: the lane
+ * lands inside the shape's drawn body on every registered shape, where the
+ * bounding box would hang the ⓘ over a `user` card's medallion strip or a
+ * hexagon's cut corner. Slice C's `portFrame` may offer a tighter outline.
+ */
+function laneInsetOf(
+  style: ResolvedNodeStyle,
+  node: LayoutNode,
+  applyShapeInsets: boolean,
+): LaneInset {
+  // Gated on `applyShapeInsets` for the same reason the text is: when the
+  // layout measured a card with flat padding, the drawing has to use flat
+  // padding too, or the lane drops to a content top the text does not observe
+  // and lands on the first line.
+  const insets = applyShapeInsets ? shapeInsetsOf(style, node.width, node.height) : ZERO_INSETS;
+  return { top: insets.top, right: insets.right };
 }
 
 /** Content insets for a node's resolved shape, or zeros (box, external icons). */
@@ -2049,6 +2108,44 @@ function renderMetaRow(
 }
 
 /**
+ * Records each card's corner lane on its layout node, for consumers that must
+ * keep clear of it — the edge-port keep-outs of #2422 above all.
+ *
+ * The reservation counts the buttons the node's own data allows, **not** the
+ * ones this render draws: a zone that shrank in static output would route the
+ * same diagram's edges differently in the app and on the CLI. Since the chip
+ * packs left of the buttons, the interactive packing is always the widest, so
+ * reserving it covers both.
+ */
+function assignChipZones(
+  layoutResult: LayoutResult,
+  styles: ResolvedStyles,
+  palette: DiagramPalette,
+  serviceIdsWithDeploy?: Set<string>,
+): void {
+  for (const [nodeId, node] of layoutResult.nodes) {
+    if (node.tags?.includes(CATEGORY_STUB_TAG)) continue;
+    const style = resolveNodeStyle(styles, nodeId, node.annotations, node.id);
+    const buttonCount =
+      (node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role
+        ? 1
+        : 0) +
+      (DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) && (serviceIdsWithDeploy?.has(nodeId) ?? false)
+        ? 1
+        : 0);
+    node.chipZone = packCornerLane(
+      node,
+      style,
+      buttonCount,
+      palette.badgeFallback,
+      // `assignChipZones` runs before the per-node draw, where the layout's own
+      // flag is the only signal available.
+      laneInsetOf(style, node, layoutResult.shapeInsetsApplied ?? false),
+    ).zone;
+  }
+}
+
+/**
  * Annotation-driven badge (a single merged badge per node) plus the delta
  * `data-annotation-added` / `data-annotation-removed` attrs the caller
  * stamps onto the node's `<g>` (Issue #738 / design doc D-2). When the
@@ -2058,10 +2155,12 @@ function renderMetaRow(
  */
 function renderNodeBadge(
   node: LayoutNode,
-  style: ResolvedNodeStyle,
   palette: DiagramPalette,
   nodeId: string,
   diffMeta: NodeDiffMeta | undefined,
+  lane: CornerLane,
+  buttonCount: number,
+  ghostInset: LaneInset,
 ): {
   children: string[];
   annotationAddedAttr: string | undefined;
@@ -2072,12 +2171,7 @@ function renderNodeBadge(
   const annotationsRemoved = diffMeta?.changes?.annotations?.removed ?? [];
   const hasAnnotationDiff = annotationsAdded.length > 0 || annotationsRemoved.length > 0;
 
-  const badgeX = node.x + node.width - 10;
-  const badgeY = node.y - 6;
-  const hasCurrentBadge = !!(style.badgeIcon || style.badgeLabel);
-
-  if (hasCurrentBadge) {
-    const badgeParts = badgeChildren(style, badgeX, badgeY, palette.badgeFallback);
+  if (lane.chip) {
     // Classify badge diff state. With a single merged badge, direction is:
     //   added.length > 0 → "added" (new annotation produced the current badge)
     //   removed.length > 0 (and none added) → "changed" (swap/rewrite)
@@ -2086,37 +2180,24 @@ function renderNodeBadge(
     if (annotationsAdded.length > 0) badgeDiffState = "added";
     else if (annotationsRemoved.length > 0) badgeDiffState = "changed";
     children.push(
-      el("g", { "data-node-badge": nodeId, "data-diff-state": badgeDiffState }, ...badgeParts),
+      el(
+        "g",
+        { "data-node-badge": nodeId, "data-diff-state": badgeDiffState },
+        ...renderChip(lane.chip),
+      ),
     );
   } else if (annotationsRemoved.length > 0) {
     // Ghost "removed" badge — all annotations were removed, so there is no
     // current style badge. Render a neutral placeholder with a strike so the
-    // user still sees *something was removed*.
-    const ghostColor = palette.textSubtle;
+    // user still sees *something was removed*. It rides the same lane, so it
+    // cannot land under the buttons either.
     children.push(
       el(
         "g",
         { "data-node-badge": nodeId, "data-diff-state": "removed" },
-        el("circle", {
-          cx: badgeX,
-          cy: badgeY,
-          r: 10,
-          fill: "transparent",
-          stroke: ghostColor,
-          "stroke-width": 1.5,
-          "stroke-dasharray": "3 2",
-        }),
-        el(
-          "text",
-          {
-            x: badgeX,
-            y: badgeY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: ghostColor,
-            "font-size": "10px",
-          },
-          "−",
+        ...renderGhostChip(
+          laneBox(node, buttonCount, GHOST_CHIP_WIDTH, CHIP_HEIGHT, ghostInset),
+          palette.textSubtle,
         ),
       ),
     );
@@ -2184,7 +2265,15 @@ function renderIconButton(
 ): string {
   return el(
     "g",
-    { [dataAttr]: nodeId, style: "cursor: pointer", "pointer-events": "all" },
+    {
+      [dataAttr]: nodeId,
+      // Interactive-only chrome: `stripInteractiveChrome` removes this class
+      // when the live SVG is exported as a file, so a downloaded diagram
+      // matches one rendered statically (#2420).
+      class: "krs-node-controls",
+      style: "cursor: pointer",
+      "pointer-events": "all",
+    },
     el("circle", {
       cx: btnX,
       cy: btnY,
