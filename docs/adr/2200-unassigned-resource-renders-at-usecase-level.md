@@ -40,9 +40,10 @@ ADR-316 はボトムアップ設計への配慮として「`database` 未宣言�
 
 | view path | 描画されるノード |
 |---|---|
-| `[]` / `[Demo]` / `[Demo, Api]` | infra ブロックと service のみ |
-| `[Demo, Api, Core]`（domain） | `Handle`, `MainDB.Orders` |
-| `[Demo, Api, Core, Handle]`（usecase） | `MainDB.Orders`, `PaymentApi`, `LooseTable` |
+| `[]` / `[Demo]`（system） | `MainDB`(database), `Api`(service) |
+| `[Demo, Api]`（service） | `Core`(domain) |
+| `[Demo, Api, Core]`（domain） | `Handle`(usecase), `MainDB.Orders`(resource) |
+| `[Demo, Api, Core, Handle]`（usecase） | `MainDB.Orders`, `PaymentApi`, `LooseTable`（いずれも resource） |
 
 未割当 `resource` は **描画されている**。ただし 1 階層深い、自身が属する usecase のドリルダウンビューでである。domain ビューで落ちるのは `deriveUsecaseResourceNodes` の昇格ゲート（解決済みのものだけを usecase の兄弟に昇格させる）であり、usecase ビューでは resource は container 自身の子なのでゲートを通らない。CRUD マトリクスにも列を持つ。
 
