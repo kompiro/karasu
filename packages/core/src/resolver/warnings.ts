@@ -1505,8 +1505,12 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
   // `owns <systemId>` reads as the kind refusal it is (#2442).
   //
   // First occurrence wins: node ids are unique only among siblings (ADR-927), so
-  // the same id can name two kinds in two scopes. Either kind makes the same
-  // point — this id cannot be owned — and picking one keeps the message concrete.
+  // the same id can name two kinds in two scopes. Which one is recorded decides
+  // only the label, because the fire condition consults `validIds` — and when one
+  // of the colliding nodes IS ownable, that set holds the id and nothing fires at
+  // all. The silence is the intent: some node with this id can be owned, so there
+  // is no refusal to report. Only a collision between two unownable kinds reaches
+  // the message, and there either label makes the same point.
   const declaredKinds = new Map<string, LogicalNodeKind>();
   function collectDeclaredKinds(nodes: readonly KrsNode[]): void {
     for (const node of nodes) {

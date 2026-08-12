@@ -312,7 +312,7 @@ export const ja: Partial<Translations> = {
   "warning.unresolvedRealizes.message": ({ deployNodeId, target }) =>
     `デプロイノード "${deployNodeId}" の realizes "${target}" を解決できる service / domain が見つかりません`,
   "warning.invalidOwns.message": ({ teamId, ownedId, ownedKind }) =>
-    `team "${teamId}" が "${ownedId}" を owns していますが、${ownedKind} は所有の対象になりません — team が owns できるのは service / domain / client と infra ブロックです`,
+    `team "${teamId}" が "${ownedId}" を owns していますが、kind "${ownedKind}" は所有の対象になりません。team が owns できるのは service / domain / client と infra ブロックです`,
   "warning.crossSystemRefUnresolved.message": ({ ref }) =>
     `"${ref}" を解決できませんでした — 未解決の外部ノードとして描画されます`,
   "warning.unresolvedEdgeEndpoint.message": ({ from, to, unresolvedId }) =>

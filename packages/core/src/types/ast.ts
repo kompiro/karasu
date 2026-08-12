@@ -68,8 +68,11 @@ export const OWNABLE_KIND_SET: ReadonlySet<string> = new Set(OWNABLE_LOGICAL_KIN
  * set too, and drifted from it on infra until Issue #2408 — but since #2442 that
  * check no longer asks about kinds at all: existence means "a node with this id
  * exists", so it accepts any declared node and leaves every kind refusal here.
- * One consumer is the end state TPL-1720 is after; two lists that must agree were
- * the hazard.
+ * What TPL-1720 asks for is one *enumeration*, not one reader: several readers
+ * sharing this constant would be fine, and {@link OWNABLE_LOGICAL_KINDS} above is
+ * a deliberately narrower second set for a different question, documented and
+ * pinned by `owner-affordance-kinds.test.ts` exactly as that TPL allows. The
+ * hazard was two lists of the *same* set that had to agree.
  *
  * Leaf sub-resources (`table` / `queue-item` / `bucket`) and `capability` are
  * deliberately absent, matching `realizes`. A leaf exists, so the existence check

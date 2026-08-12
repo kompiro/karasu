@@ -314,7 +314,7 @@ export const en: Translations = {
   "warning.unresolvedRealizes.message": ({ deployNodeId, target }) =>
     `Deploy node "${deployNodeId}" realizes "${target}" but no service or domain with that id exists`,
   "warning.invalidOwns.message": ({ teamId, ownedId, ownedKind }) =>
-    `Team "${teamId}" owns "${ownedId}", but a ${ownedKind} cannot be owned — a team owns a service, a domain, a client or an infra block`,
+    `Team "${teamId}" owns "${ownedId}", but kind "${ownedKind}" cannot be owned. A team owns a service, a domain, a client or an infra block`,
   "warning.crossSystemRefUnresolved.message": ({ ref }) =>
     `"${ref}" could not be resolved — rendered as an unresolved external node`,
   "warning.unresolvedEdgeEndpoint.message": ({ from, to, unresolvedId }) =>

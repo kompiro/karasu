@@ -229,6 +229,28 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
 
 const PLACEHOLDER = /\{\{[^}]+\}\}/;
 
+// #2450: the kind is interpolated into a user-facing sentence, so every kind the
+// warning can carry has to read correctly. Naming it as `kind "<x>"` is what keeps
+// that true without an article-agreement table. "a entity" was the first draft.
+describe("invalid-owns names any refused kind without breaking the sentence", () => {
+  const KINDS = ["user", "usecase", "entity", "resource", "system", "table"] as const;
+
+  it.each(KINDS)("renders %s in en and ja", (ownedKind) => {
+    const params = { teamId: "Platform", ownedId: "X", ownedKind };
+    // Rendered through `bindTranslate` rather than the raw dictionaries: `ja` is a
+    // `Partial<Translations>`, so the fallback to en is part of the contract.
+    const enMessage = bindTranslate("en")("warning.invalidOwns.message", params);
+    const jaMessage = bindTranslate("ja")("warning.invalidOwns.message", params);
+
+    for (const message of [enMessage, jaMessage]) {
+      expect(message).toContain(`"${ownedKind}"`);
+      expect(message).not.toMatch(/\ba (?=[aeiou])/);
+      expect(message).not.toContain("—");
+    }
+    expect(enMessage).not.toBe(jaMessage);
+  });
+});
+
 describe("renderWarning — i18n coverage for every WarningKind", () => {
   const kinds = Object.keys(SAMPLES) as WarningKind[];
 
