@@ -411,6 +411,10 @@ export function buildLegendFooter(
       const swatchY = cursor + (LEGEND_ENTRY_HEIGHT - LEGEND_SWATCH_SIZE) / 2;
       parts.push(
         el("rect", {
+          // Classed so the swatch is addressable on its own: `fill` values like
+          // `transparent` also appear on container frames and fill-less nodes,
+          // so a document-wide search cannot tell you what the legend painted.
+          class: "legend-swatch",
           x: LEGEND_LEFT_PAD,
           y: swatchY,
           width: LEGEND_SWATCH_SIZE,
@@ -486,7 +490,16 @@ function resolveLegendRefColor(
 
   // Prefer background-color for the main swatch; fall back to badge-color
   // (annotation rules in the builtin sheet often paint via badge-color).
-  const painted = merged["background-color"] ?? merged["badge-color"];
+  //
+  // A fill-less kind (`background-color: transparent`, e.g. builtin `usecase`
+  // since #2421) is identified on the canvas by its border, so that is what its
+  // swatch has to show — taking the transparent fill at face value would paint
+  // an invisible square and read as a dropped entry.
+  const fill = merged["background-color"];
+  const painted =
+    fill === "transparent"
+      ? (merged["border-color"] ?? merged["badge-color"])
+      : (fill ?? merged["badge-color"]);
   if (painted) return painted;
   // No painting rule (or matching rule that doesn't paint). If the target
   // is in use on at least one node, the ref is still semantically valid —

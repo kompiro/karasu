@@ -279,6 +279,30 @@ legend "凡例" {
     expect(result.svg).toContain('fill="#0369A1"');
   });
 
+  it("swatches a fill-less kind with its border color (Issue #2421)", () => {
+    // `usecase` renders fill-less (`background-color: transparent`), so its
+    // border is what identifies it on the canvas — and what the swatch has to
+    // show. Painting the fill at face value would emit an invisible square,
+    // indistinguishable from a dropped entry.
+    const krs = `${SYSTEM_KRS}
+legend "凡例" {
+  ref usecase "ユースケース"
+}
+`;
+    for (const theme of ["dark", "light"] as const) {
+      const result = compile(krs, { diagramType: "system", theme });
+      expect(result.svg).toContain("ユースケース");
+      // Assert on the swatch <rect> itself, not on the whole SVG: container
+      // frames and fill-less nodes emit `fill="transparent"` legitimately, so a
+      // document-wide check would fail for reasons that have nothing to do with
+      // the legend the moment the shared fixture grows.
+      const swatch = /<rect[^>]*class="legend-swatch"[^>]*>/.exec(result.svg);
+      expect(swatch, "the legend swatch rect must be present").not.toBeNull();
+      expect(swatch![0]).toContain(theme === "dark" ? 'fill="#A8C8E0"' : 'fill="#1D3646"');
+      expect(swatch![0]).not.toContain('fill="transparent"');
+    }
+  });
+
   it("preserves builtin annotation badge-color in icon mode (Issue #1001)", () => {
     // @deprecated paints via badge-color (#EF4444), not background-color.
     // The cascade merge must still pick this up when icon-theme is layered
