@@ -16,23 +16,42 @@
  * Out of scope (per ADR): ghost edges and cyclic edges are skipped — they
  * have specialised anchor logic that we don't disturb.
  *
+ * Since #2422 this pass also decides what a position on a side *means*: the
+ * shape says which parts of the side its outline covers and how deep it sits
+ * (`portFrame`), and the card's own chrome claims keep-outs. That lookup is
+ * injected as `resolvePorts` rather than imported, so the distribution rule
+ * stays independent of the style resolution the frames need. A single anchor
+ * goes through the same mapping — a lone edge into the middle of a `user`
+ * card's top is exactly the endpoint that used to stop beside the medallion —
+ * which is why the group loop no longer skips N === 1.
+ *
  * Run before `routeOrthogonalEdges` so the channel routing uses the
  * distributed ports.
  */
-import type { LayoutEdge, LayoutNode } from "./layout-types.js";
-
-type Side = "top" | "bottom" | "left" | "right";
+import type { LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
+import type { ShapePortFrame } from "../shapes/shape-registry.js";
+import { BBOX_PORT_FRAME, portPoint, type Side } from "./port-frame.js";
 
 interface Anchor {
   edge: LayoutEdge;
   isFrom: boolean;
 }
 
+/** What a node's outline offers an edge. */
+export interface NodePorts {
+  frame: ShapePortFrame;
+  keepOuts: readonly Rect[];
+}
+
+/** Resolves a node's port frame; nodes without one keep the bounding box. */
+export type PortResolver = (node: LayoutNode) => NodePorts | undefined;
+
 const SIDE_EPS = 0.5;
 
 export function distributePorts(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
+  resolvePorts?: PortResolver,
 ): void {
   // Group every edge endpoint by (nodeId, side). Endpoints not anchored
   // on any side (e.g. ghost edges with custom positions) are skipped.
@@ -54,19 +73,30 @@ export function distributePorts(
   }
 
   for (const [key, anchors] of groups) {
-    if (anchors.length < 2) continue;
     const hashIdx = key.lastIndexOf("#");
     const nodeId = key.slice(0, hashIdx);
     const side = key.slice(hashIdx + 1) as Side;
     const node = layoutNodes.get(nodeId);
     if (!node) continue;
 
+    const ports = resolvePorts?.(node);
+    // A lone edge on a plain rectangle already sits where it belongs: leaving
+    // it alone keeps every existing box-only diagram byte-identical.
+    if (anchors.length < 2 && !ports) continue;
+
     sortByOppositeDirection(anchors, side);
 
+    const frame = ports?.frame ?? BBOX_PORT_FRAME;
+    // Chrome keep-outs only apply to a fan. Moving a *lone* port sideways buys
+    // a few pixels of clearance from a chip and pays for it with a slanted
+    // edge in a diagram whose language is right angles — the edges in a fan are
+    // already diagonal, so there the same move costs nothing. The shape's own
+    // spans are not optional either way: they are where the outline is.
+    const keepOuts = anchors.length > 1 ? (ports?.keepOuts ?? []) : [];
     const N = anchors.length;
     for (let i = 0; i < N; i++) {
       const t = (i + 1) / (N + 1);
-      const port = portFor(node, side, t);
+      const port = portPoint(node, side, t, frame, keepOuts);
       if (anchors[i].isFrom) {
         anchors[i].edge.fromPoint = port;
       } else {
@@ -135,17 +165,4 @@ function sortByOppositeDirection(anchors: Anchor[], side: Side): void {
     if (aOpp.y !== bOpp.y) return aOpp.y - bOpp.y;
     return aOpp.x - bOpp.x;
   });
-}
-
-function portFor(node: LayoutNode, side: Side, t: number): { x: number; y: number } {
-  switch (side) {
-    case "top":
-      return { x: node.x + node.width * t, y: node.y };
-    case "bottom":
-      return { x: node.x + node.width * t, y: node.y + node.height };
-    case "left":
-      return { x: node.x, y: node.y + node.height * t };
-    case "right":
-      return { x: node.x + node.width, y: node.y + node.height * t };
-  }
 }
