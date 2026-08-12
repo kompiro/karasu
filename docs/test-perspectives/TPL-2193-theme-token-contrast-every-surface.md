@@ -45,12 +45,20 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
 - **既定テーマの見落とし**: 報告が片方のテーマで上がると、そのテーマだけ直して
   もう一方を測らない。#2193 では報告された light（3.51:1）より既定の dark の
   `--text-muted` が悪く（`--bg-overlay` 上 **1.78:1**）、そちらは未報告だった。
-- **「dim であること」を контраст より優先してしまう**: muted は暗くするほど
+- **「dim であること」をコントラストより優先してしまう**: muted は暗くするほど
   意図に合うように見えるが、テキストを担う以上 4.5:1 が下限。結果としてランプは
   圧縮される（この圧縮自体は正常）。
-- **data-URI に焼き込まれた色**: `background-image` の inline SVG は `%23RRGGBB`
-  と percent-encode されるため、生色リテラル検査（`styles-no-raw-color.test.ts`）
-  の `#` 正規表現をすり抜け、片方のテーマの値のまま固定される。
+- **半透明のクローム越しに載る**: `--warning-bg` や `--diff-banner-bg` のような
+  tint の上の文字は、実効背景が「tint を下地に合成した色」になり比が下がる。
+  不透明 surface だけを見る検証では素通りする（#2193 では security notice の
+  リンクが `--accent` で 4.30:1）。
+- **焼き込まれた色（data-URI / TSX リテラル）**: `background-image` の inline
+  SVG は `%23RRGGBB` と percent-encode されるため、生色リテラル検査
+  （`styles-no-raw-color.test.ts`）の `#` 正規表現をすり抜け、片方のテーマの値の
+  まま固定される。TSX 側の `text-white` のようなリテラルも同様に検査の外に出る。
+- **リストからの脱落**: 検証対象トークンを手書きのリストで持つと、後から足した
+  トークンが「書き忘れ」によって静かに検証外になる。リスト自体に drift ガードを
+  持たせない限り、抜けは事後に気づけない。
 
 ## チェックリスト
 
@@ -60,7 +68,10 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
       を grep で確認したか。文字なら 4.5:1、非文字なら 3:1（WCAG 1.4.11）
 - [ ] **両方のテーマセット**で、載りうる全 `--bg-*` に対して 4.5:1 以上か
       （`theme-contrast.test.ts` が自動判定。新トークンは `TEXT_TOKENS` /
-      `SURFACES` に追加する — 追加しなければ検証されない）
+      `SURFACES` に追加する。追加も除外もしなければ drift ガードが落ちるので、
+      「書き忘れ」ではなく「除外した理由」を必ず残すことになる）
+- [ ] その文字が半透明の背景（tint / バナー）の上に載るなら、下地との合成後の
+      色で測ったか（`compositeOver()` を使う。不透明 surface だけの検証は通る）
 - [ ] ランプの順序（primary → secondary → tertiary → muted）が保たれているか
 - [ ] 未達なら同色相のまま明度だけ倒したか（`contrastRatio()` で再測定する。
       目視・手計算で決めない）
@@ -85,7 +96,9 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   分解し、文字系トークン × 全 opaque surface を 4.5:1 で検証する。加えて
   自前の背景を持つバナー（`--export-error-text` / `--opfs-banner-text`、
   グラデーションは全 stop）と、非文字グリフ（選択行の `--text-muted` アイコン）
-  の 3:1 バックストップ、ランプ順序を検証する。
+  の 3:1 バックストップ、ランプ順序、data-URI に焼いた色と元トークンの一致、
+  および `--text-*` / `--bg-*` を検証対象リストが取りこぼしていないかの drift
+  ガードを検証する。半透明 tint 越しの合成は #2461 で追加予定。
 - `packages/app/src/styles/styles-no-raw-color.test.ts`。`%23` 形式の
   encode 済み hex も検出対象（#2193 で追加）。
 - `packages/e2e/tests/at-1470-app-theme.spec.ts`。実ブラウザで light / dark

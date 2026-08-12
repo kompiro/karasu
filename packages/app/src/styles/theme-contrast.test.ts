@@ -22,18 +22,27 @@ import { describe, expect, it } from "vitest";
 const THEMES_CSS = fileURLToPath(new URL("themes.css", import.meta.url));
 
 /**
- * Opaque surfaces text is painted on. `--bg-selected` is deliberately absent:
- * every rule that sets it also sets `--text-primary`, and the only other
- * thing inheriting there is an icon glyph — checked separately at the 3:1
- * non-text minimum.
+ * Opaque surfaces text is painted on. Translucent chrome (`--warning-bg`,
+ * `--accent-dim`, `--diff-banner-bg`) is *not* here: its effective background
+ * is the tint composited over whichever of these it spans, which lowers the
+ * ratio — `--accent` measured 4.30:1 on the security notice that way. Those
+ * pairs are tracked in #2461.
+ *
+ * `--bg-selected` is absent for a different reason: every rule that sets it
+ * also sets `--text-primary`, and the only other thing inheriting there is an
+ * icon glyph — checked below at the 3:1 non-text minimum.
  */
 const SURFACES = ["bg-void", "bg-base", "bg-surface", "bg-raised", "bg-overlay", "bg-elevated"];
 
+/** Backgrounds deliberately outside `SURFACES` — see above. */
+const NON_SURFACE_BG = ["bg-selected"];
+
 /**
  * Tokens whose role is text. `--accent` / `--accent-hover` / `--feather` /
- * `--success` are absent by role, not by exemption: they paint fills,
- * borders and glows, and their few `color:` uses sit on `--bg-raised` /
- * `--bg-base` (measured), where they clear AA anyway.
+ * `--success` are absent by role, not by exemption: they paint fills, borders
+ * and glows, which answer to the 3:1 non-text minimum. After #2193 the only
+ * `color:` use left on `--accent` is `.toolbar-btn--apply-patch`, on an opaque
+ * `--bg-raised` (5.17:1 light / 5.17:1 dark).
  */
 const TEXT_TOKENS = [
   "text-primary",
@@ -47,6 +56,14 @@ const TEXT_TOKENS = [
   "warning",
   "info",
 ];
+
+/**
+ * `--text-*` tokens that are not chrome text. `--text-on-accent` is painted on
+ * an accent-colored background rather than a surface, and that pairing misses
+ * AA in dark today (#2461) — it is named here so the drift guard below stays
+ * a complete accounting rather than a silent omission.
+ */
+const NON_CHROME_TEXT = ["text-on-accent"];
 
 /** Text that carries its own background rather than sitting on the chrome. */
 const SELF_BACKED_PAIRS: [string, string][] = [
@@ -85,9 +102,19 @@ function readThemeSets(): { dark: TokenSet; light: TokenSet } {
   return { dark, light };
 }
 
-/** Every `#RRGGBB` in a token value — a gradient contributes each of its stops. */
+/**
+ * Every `#RRGGBB` in a token value — a gradient contributes each of its stops.
+ * A stop written any other way (`rgb()`, `#abc`, a named color) would be
+ * skipped rather than measured, so callers assert `hasOnlyHexColors` too and
+ * the pair fails loudly instead of going half-checked.
+ */
 function hexStops(value: string): string[] {
   return value.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
+}
+
+/** True when every color in `value` is a plain `#RRGGBB`. */
+function hasOnlyHexColors(value: string): boolean {
+  return !/\b(?:rgba?|hsla?|color-mix)\(/i.test(value) && !/#[0-9a-fA-F]{3,4}\b/.test(value);
 }
 
 function ratio(fg: string, bg: string): number {
@@ -122,9 +149,14 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
       for (const [fgToken, bgToken] of SELF_BACKED_PAIRS) {
         it(`--${fgToken} clears AA on --${bgToken}`, () => {
           const fg = tokens.get(fgToken);
-          const stops = hexStops(tokens.get(bgToken) ?? "");
+          const bgValue = tokens.get(bgToken) ?? "";
+          const stops = hexStops(bgValue);
           expect(fg, `--${fgToken} is defined`).toBeDefined();
           expect(stops.length, `--${bgToken} has at least one hex stop`).toBeGreaterThan(0);
+          expect(
+            hasOnlyHexColors(bgValue),
+            `--${bgToken} is all #RRGGBB, so no stop goes unmeasured`,
+          ).toBe(true);
           for (const stop of stops) {
             expect(
               ratio(fg as string, stop),
@@ -146,6 +178,34 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
           ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
         });
       }
+
+      it("bakes the current --text-muted into the select chevron", () => {
+        // A data-URI cannot read a var(), so the chevron carries a copy of the
+        // muted color. A copy drifts: this is the same failure #2193 fixed,
+        // one level up, so pin the copy to its source.
+        const chevron = tokens.get("select-chevron") ?? "";
+        const baked = /%23([0-9a-fA-F]{6})\b/.exec(chevron);
+        expect(baked, "--select-chevron bakes a %23RRGGBB stroke").not.toBeNull();
+        expect((baked as RegExpExecArray)[1].toLowerCase()).toBe(
+          (tokens.get("text-muted") as string).replace("#", "").toLowerCase(),
+        );
+      });
+
+      it("checks every --text-* and --bg-* token this set defines", () => {
+        // The lists above are hand-maintained, so a token added later would
+        // otherwise be exempt by omission — silently, which is how the palette
+        // got here. Every name must be either checked or named as excluded.
+        const accountedText = new Set([...TEXT_TOKENS, ...NON_CHROME_TEXT]);
+        const accountedBg = new Set([...SURFACES, ...NON_SURFACE_BG]);
+        const unaccounted = [...tokens.keys()].filter(
+          (name) =>
+            (name.startsWith("text-") && !accountedText.has(name)) ||
+            (name.startsWith("bg-") && !accountedBg.has(name)),
+        );
+        // Add it to TEXT_TOKENS / SURFACES to check it, or to NON_CHROME_TEXT /
+        // NON_SURFACE_BG with a comment saying why it is not chrome text.
+        expect(unaccounted).toEqual([]);
+      });
 
       it("keeps the text hierarchy ordered from primary to muted", () => {
         // Compression is the price of AA on a mid-tone surface, but the ramp

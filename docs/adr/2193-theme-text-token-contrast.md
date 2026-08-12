@@ -63,11 +63,19 @@ ADR-1470 で light パレットを導入したとき、色は白背景（`--bg-r
   chrome（CSS トークン）と図（builtin sheet）が同じ実装で合否を出す。
 
 検証対象は「役割が文字であるトークン」に限る。`--accent` / `--feather` /
-`--success` は fill・border・glow を塗るトークンであり、数少ない `color:`
-用途も `--bg-raised` / `--bg-base` 上にあることを実測で確認したうえで対象外に
-した（非文字は 3:1 の 1.4.11 基準）。`--bg-selected` も背景集合から外している:
-それを設定するルールは必ず `--text-primary` も設定しており、そこに残るのは
-アイコングリフだけなので、3:1 のバックストップとして別に検証する。
+`--success` は fill・border・glow を塗るトークンなので対象外（非文字は 3:1 の
+1.4.11 基準）。ただし `--accent` を文字として使っていた箇所は残さない:
+`.settings-security-notice__link` は半透明の `--warning-bg` 越しに載るため
+light で 4.30:1 だった（この合成後の値は不透明 surface だけを見る本 fence では
+検出できない）。リンクなので `--text-link` に付け替え、`--accent` の `color:`
+用途は不透明な `--bg-raised` 上の 1 箇所（5.17:1）だけになった。
+
+背景集合には不透明な surface のみを取る。半透明のクローム（`--warning-bg` /
+`--accent-dim` / `--diff-banner-bg`）は下地との合成後が実効背景になり比が下がる
+ため、合成を含む検証は別に必要で、[#2461](https://github.com/kompiro/karasu/issues/2461)
+で扱う。`--bg-selected` も外している: それを設定するルールは必ず
+`--text-primary` も設定しており、そこに残るのはアイコングリフだけなので、
+3:1 のバックストップとして別に検証する。
 
 ## 理由
 
@@ -112,6 +120,9 @@ ADR-1470 で light パレットを導入したとき、色は白背景（`--bg-r
 - CommandPalette の選択行が `--accent` の上に `text-white` を直書きしており、
   dark で 3.14:1。
 - diff バナーのラベル（`--diff-color-added` / `--diff-color-removed`）は
-  半透明のバナー tint 越しに載るため、合成後の背景で測る必要がある。
+  半透明のバナー tint 越しに載るため、合成後の背景で測る必要がある。同じ理由で
+  `--warning`（security notice の見出し）も、下地が `--bg-void` になる配置が
+  生じれば合成後 4.24:1 まで落ちる。現在の下地は `body` の `--bg-base` で
+  4.59:1。
 
-いずれも別 Issue で追跡する。
+いずれも #2461 で追跡する。合成の計算は `compositeOver()` が既に持っている。
