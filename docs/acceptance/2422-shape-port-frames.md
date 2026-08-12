@@ -49,7 +49,7 @@ cylinder では上楕円の上。
 
 > ✅ Automated by `packages/core/src/renderer/port-seating.test.ts` (suite-wide)
 
-- [x] cloud への矢印が bbox 上端ではなく blob の内側で終わる
+- [x] cloud への矢印が bbox 上端ではなく blob の輪郭で終わる
 - [x] cylinder への矢印がリム楕円の上（または内側）で終わる
 - [x] user カードのメダリオン帯にポートが入らない
 - [x] 長方形だけの図はポート座標が 1px も動かない（`shapeForNode` 有無で同一）
