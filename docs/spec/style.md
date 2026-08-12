@@ -326,6 +326,102 @@ service[external] {
 
 ---
 
+## Kind color vocabulary
+
+This section describes how the **builtin** sheet assigns colors to kinds. It is
+not a constraint on your own stylesheets — a user rule overrides any of it. It
+is written down so the defaults stay readable as a system, and so a kind added
+later inherits a rule instead of a fresh guess.
+
+Two rules, plus a hue table.
+
+### Rule 1 — the logical layer separates by fill, not by hue
+
+`domain`, `usecase`, `resource` and `member` all describe one system from one
+point of view, so they share a blue family rather than competing for attention
+with four unrelated hues. What separates them is how the card is filled:
+
+| Kind | Treatment | Reading |
+|------|-----------|---------|
+| `domain` | Navy fill | Structure this layer owns |
+| `usecase` | **Fill-less** — canvas shows through, border only | Behaviour, lighter than the structure holding it |
+| `resource` | Neutral slate fill | A *reference* to something the physical layer owns |
+| `member` | Navy fill, `shape: user` | Already separated by shape |
+
+A fill-less kind has two consequences worth knowing about:
+
+- **Its border is its outline.** With no fill, the border is the only thing
+  drawing the card, so it carries the WCAG non-text bar of 3:1. That bar is
+  measured over three things at once: the bare canvas, the canvas under stacked
+  boundary-frame tints (membership is 1:N, so frames overlap — up to three deep
+  is checked), and the card at the opacity `@deprecated` fades it to, where a
+  filled card would still have a body but a fill-less one has only the outline.
+  Clearing all three is why the two themes' `usecase` borders sit near opposite
+  ends of the blue ramp, and why both are further from the canvas than a purely
+  visual choice would put them.
+
+  Opacity states lighter than that fade — the facet-overlay dim and the diff
+  ghost — are exempt, and not by preference: at those alphas no color reaches
+  3:1 at all. White is the best a border can do, and over the dark canvas it
+  reaches 2.50:1 at the dim's alpha and 2.70:1 at the ghost's. This is the
+  carve-out WCAG 1.4.11 makes for inactive components.
+- **Boundary membership becomes visible through it.** Under *Group by:
+  boundary*, the frame's tint reaches the card interior instead of being hidden
+  behind an opaque fill, so a fill-less card reads as part of its boundary in
+  color, not only in position.
+
+Use `transparent` — not `none` — to make a card fill-less. `transparent` still
+paints, so the card keeps its hit area for clicks and hovers.
+
+### Rule 2 — a deploy kind is one hue taken three ways
+
+Each deploy kind owns a hue. The three colors of its card are that same hue at
+three lightnesses, so the accent belongs to the card instead of floating on it:
+
+- `border-color` / `badge-color` — the accent, full chroma
+- `background-color` — the fill, at the lightness end **nearest the canvas**, so
+  the card sits on the canvas rather than punching a hole in it
+- `color` — the label, at the **opposite** end, as far from the fill as the hue
+  goes
+
+The two lightness ends swap with the theme, which is why the same rule produces
+a near-black `oci` fill on the dark canvas and a pale one on the light canvas.
+Anchoring the rule to the canvas rather than to an absolute lightness is what
+lets one sentence describe both themes.
+
+| Kind | Hue |
+|------|-----|
+| `oci` | blue |
+| `lambda` | purple |
+| `jar` | green |
+| `war` | orange |
+| `function` | yellow |
+| `assets` | cyan |
+| `job` | red |
+| `artifact` | gray |
+| `store` | teal |
+
+The table fixes the **hue and the rule**, not the hex values. Concrete hexes are
+whatever satisfies both rules and the contrast guard in both themes: every
+kind that sets `background-color` also sets a paired `color`, and that pair
+clears 4.5:1. Adding a kind therefore means adding a row here and deriving its
+three colors from that row — the guard verifies the result
+(`packages/core/src/builtins/default-style-contrast.test.ts`).
+
+> Note that `job` shares red with `edge[cyclic]`. That collision predates this
+> section and is kept rather than reshuffling established kind colors; new kinds
+> should not add another one.
+
+> Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
+> — adding a kind means adding a hue-table row and deriving fill / text from it,
+> with the contrast guard verifying the hex;
+> [TPL-1697](../test-perspectives/TPL-1697-kind-style-sets-text-color-per-theme.md)
+> — a kind that sets `background-color` sets the paired text `color`, per theme;
+> [TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)
+> — colors drawn as text directly on the canvas are contrast-checked per theme.
+
+---
+
 ## Layout hints (escape hatch)
 
 > **Use as a last resort.** karasu's auto-layout (rows by kind + reachability,

@@ -158,3 +158,18 @@ gh pr merge <pr-number> --auto --squash --delete-branch
 - リポジトリ設定で `allow_auto_merge=true` 済み
 - ブランチ保護で required check が落ちた場合は通常通り失敗する
   （auto-merge は強制ではなく「揃ったら入れる」セマンティクス）
+
+### マージ後の後始末
+
+**到達状態**: auto-merge した PR の worktree とローカルブランチが残っていない。
+`git fetch --prune && git branch -vv | grep '\[gone\]'` が何も出さない。
+
+`--auto` はマージを待たずに手を離すので、この PR は `/hane:start-dev` の
+ステップ 9（クリーンアップ）を通らない。`--delete-branch` で remote branch は
+消えるためローカルは `[gone]` になるが、**worktree は残り続ける**。溜まると次の
+Issue の作業中に無関係な worktree として現れる（実例: #2435 と #2448 の worktree が
+2 件残り、#2451 の片付け中に気づいた）。
+
+掃除は `/commit-commands:clean_gone` — `[gone]` ブランチとその worktree をまとめて
+削除する。auto-merge を有効化した直後にこの後始末を予約するか、上の grep が空に
+なることを次のセッション開始時に確認する。

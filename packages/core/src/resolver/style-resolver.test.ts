@@ -1277,7 +1277,8 @@ describe("resolveStyles with deployNodes", () => {
     const unit = makeDeployUnit("oci", "order-api");
     const result = resolveStyles([], [builtin], [unit]);
     const style = result.nodes.get("order-api")!;
-    expect(style.backgroundColor).toBe("#1E3A5F");
+    expect(style.backgroundColor).toBe("#16294D");
+    expect(style.color).toBe("#93C5FD");
     expect(style.borderColor).toBe("#3B82F6");
     expect(style.badgeLabel).toBe("oci");
   });
@@ -1287,7 +1288,8 @@ describe("resolveStyles with deployNodes", () => {
     const unit = makeDeployUnit("lambda", "payment-fn");
     const result = resolveStyles([], [builtin], [unit]);
     const style = result.nodes.get("payment-fn")!;
-    expect(style.backgroundColor).toBe("#3B1F5F");
+    expect(style.backgroundColor).toBe("#2A1B47");
+    expect(style.color).toBe("#D8B4FE");
     expect(style.borderColor).toBe("#A855F7");
     expect(style.badgeLabel).toBe("lambda");
   });

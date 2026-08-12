@@ -313,6 +313,97 @@ service[external] {
 
 ---
 
+## kind の色語彙
+
+この節は**ビルトイン**スタイルシートが kind に色を割り当てる規則を説明します。
+あなたのスタイルシートを縛るものではありません — ユーザールールはこれらすべてに
+優先します。それでも規則として書き残すのは、デフォルトの配色が全体として読める
+状態を保つためと、あとから kind を追加するときに毎回勘で決めずに済ませるためです。
+
+規則は 2 つ、それに色相表が付きます。
+
+### 規則 1 — 論理層は色相ではなく塗りで区別する
+
+`domain` / `usecase` / `resource` / `member` は同じシステムを同じ視点から語る
+語彙なので、4 つの無関係な色相で注意を奪い合うのではなく青系を共有します。区別
+するのはカードの塗り方です:
+
+| kind | 表現 | 読み方 |
+|------|------|--------|
+| `domain` | navy 塗り | この層が所有する構造 |
+| `usecase` | **塗りなし** — canvas が透け、枠線だけ | 振る舞い。それを収める構造より軽く描く |
+| `resource` | 中立な slate 塗り | 物理層が所有するものへの*参照* |
+| `member` | navy 塗り + `shape: user` | すでに形状で分離済み |
+
+塗りなしの kind には、知っておくべき帰結が 2 つあります。
+
+- **枠線が輪郭そのものになる。** 塗りがない以上、カードを描いているのは枠線だけ
+  なので、枠線が WCAG の非テキスト基準 3:1 を負います。判定面は 3 つあります:
+  素の canvas、boundary フレームの tint を重ねた canvas（メンバーシップは 1:N な
+  ので frame は重なる — 3 枚重ねまで検証）、そして `@deprecated` が fade させた
+  不透明度でのカード（塗りありなら本体が残るが、塗りなしでは輪郭しか残らない）。
+  両テーマの `usecase` 枠線が青のランプのほぼ両端に位置し、どちらも純粋に見た目で
+  選ぶ場合より canvas から遠い明度になっているのは、この 3 つを同時に満たすためです。
+
+  この fade より薄い不透明度の状態（facet オーバーレイの dim、diff の ghost）は
+  対象外です。好みの問題ではなく、その α ではどんな色でも 3:1 に届かないためです。
+  枠線に置ける最良の色は純白ですが、dark canvas に対して dim の α で 2.50:1、
+  ghost の α で 2.70:1 にしかなりません。WCAG 1.4.11 が inactive component に
+  設けている除外と同じ扱いになります。
+- **境界のメンバーシップが色で読めるようになる。** *Group by: boundary* のとき、
+  不透明な塗りに隠されていた frame の tint がカード内部まで届くので、塗りなしの
+  カードは位置だけでなく色でも境界の一員として読めます。
+
+塗りなしにするときは `none` ではなく `transparent` を使います。`transparent` は
+描画される（painted）ので、カードはクリック・ホバーの当たり判定を保ちます。
+
+### 規則 2 — deploy kind は 1 つの色相を 3 通りに使う
+
+deploy kind はそれぞれ色相を 1 つ持ちます。カードの 3 色はすべてその同じ色相を
+明度違いで取ったもので、accent がカードから浮かずにカードのものになります:
+
+- `border-color` / `badge-color` — accent、彩度そのまま
+- `background-color` — 塗り。明度の両端のうち **canvas に近い側**。カードが canvas
+  に穴を開けるのではなく、canvas の上に載っているように見せる
+- `color` — ラベル。**その反対側の端**、すなわち塗りから最も遠い明度
+
+明度のどちらが「canvas に近い側」かはテーマで入れ替わります。同じ規則から dark では
+`oci` の塗りがほぼ黒に、light では淡色になるのはこのためです。絶対的な明度ではなく
+canvas を基準に規則を書いているので、1 つの文で両テーマを記述できます。
+
+| kind | 色相 |
+|------|------|
+| `oci` | blue |
+| `lambda` | purple |
+| `jar` | green |
+| `war` | orange |
+| `function` | yellow |
+| `assets` | cyan |
+| `job` | red |
+| `artifact` | gray |
+| `store` | teal |
+
+この表が固定するのは**色相と規則**であって hex 値ではありません。具体的な hex は、
+2 つの規則と両テーマのコントラストガードを満たす値なら何でも構いません — すなわち
+`background-color` を設定する kind は対の `color` も設定し、その対が 4.5:1 を満たす
+こと。したがって kind を追加するとは、この表に行を足し、その行から 3 色を導出する
+ことです。結果はガードが検証します
+（`packages/core/src/builtins/default-style-contrast.test.ts`）。
+
+> `job` は `edge[cyclic]` と赤を共有しています。この衝突は本節より前から存在する
+> もので、既存の kind 色を組み替えるより維持を選びました。新しい kind でこれ以上
+> 衝突を増やさないでください。
+
+> Related TPLs: [TPL-2421](../test-perspectives/TPL-2421-kind-color-hue-table.md)
+> — kind の追加は色相表への行追加であり、fill / text はその行から導出する。hex は
+> コントラストガードが検証する。
+> [TPL-1697](../test-perspectives/TPL-1697-kind-style-sets-text-color-per-theme.md)
+> — `background-color` を設定する kind はテーマごとに対の text `color` も設定する。
+> [TPL-2366](../test-perspectives/TPL-2366-badge-color-canvas-contrast.md)
+> — canvas 上に直接文字として描かれる色はテーマごとにコントラストを検証する。
+
+---
+
 ## レイアウトヒント（escape hatch）
 
 > **最後の手段として使う。** karasu の auto-layout（kind と到達性で決まる

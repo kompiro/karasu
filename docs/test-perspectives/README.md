@@ -514,4 +514,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2175](TPL-2175-deprecation-announced-only-with-a-migration-target.md) | 非推奨は移行先が出荷される release で告知する — 移行先の無い deprecation は「唯一動く手段をやめろ」と言っているだけで、警告を無視する習慣を教える。1 つの誤りが複数箇所に書かれるなら全箇所で警告する | core-concepts | #2175, #2159 |
 | [TPL-2379](TPL-2379-expensive-failure-records-its-cause.md) | 再現に実費がかかる処理の失敗記録は、再実行なしで原因が分かるだけの情報を持つ — 外部エラーの全捨ては安全ではなく高価で、線は固定語彙と自由文の間に引く | project | #2379, ADR-1990 |
 | [TPL-2366](TPL-2366-badge-color-canvas-contrast.md) | canvas 上に直接描かれる文字色（badge-color 等）はテーマごとに 4.5:1 を機械検証する。dark で選んだ値の light 流用は 7.8:1 を 2.3:1 に変える | styling | #2366 |
+| [TPL-2421](TPL-2421-kind-color-hue-table.md) | kind の色は色相表から導出する — 追加時は表に行を足し 3 色を同色相ルールで導く。塗りなし kind の枠線は唯一の輪郭なので tint 合成込みで 3:1 を負い、塗りを色として読む面（凡例スウォッチ）は border へ倒す | styling | #2421 |
 | [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) | テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する — 最も明るい背景 1 枚で代表させると、白で調整した色が mid-tone の surface で落ちる | styling | #2193 |

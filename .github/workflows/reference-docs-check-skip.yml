@@ -19,6 +19,7 @@ on:
       - "docs/concepts.ja.md"
       - "docs/guide/**"
       - "packages/core/src/builtins/reference-data.ts"
+      - "packages/core/src/builtins/default-style.ts"
       - "scripts/reference/**"
       - "scripts/guide/**"
       - "scripts/lint/spec-structure-sync.ts"

@@ -114,7 +114,11 @@ pre-push:
       # a snippet changed without regenerating, or a committed SVG drifted
       # (Issue #1574). Mirrors the CI step in reference-docs-check.yml; the
       # vitest test (scripts/guide/gen-guide-diagrams.test.ts) mirrors it too.
-      glob: "{docs/guide/**,scripts/guide/**}"
+      #
+      # The builtin stylesheet is in scope because the SVGs bake its colors in:
+      # a recolor with no docs/guide edit drifts every committed diagram, and
+      # without this glob nothing would say so (#2421).
+      glob: "{docs/guide/**,scripts/guide/**,packages/core/src/builtins/default-style.ts}"
       run: pnpm exec tsx scripts/guide/gen-guide-diagrams.ts --check
     docs-site-ci-paths-sync:
       # The docs site's PR guards fire from `reference-docs-check.yml`, whose

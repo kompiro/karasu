@@ -111,7 +111,9 @@ describe("getBuiltinStyleSheet", () => {
   it("contains correct colors for oci deploy kind", () => {
     const sheet = getBuiltinStyleSheet();
     const rule = sheet.rules.find((r) => r.selector.nodeType === "oci");
-    expect(rule?.properties["background-color"]).toBe("#1E3A5F");
+    // Fill and text are the accent hue at low / high lightness (#2421).
+    expect(rule?.properties["background-color"]).toBe("#16294D");
+    expect(rule?.properties["color"]).toBe("#93C5FD");
     expect(rule?.properties["border-color"]).toBe("#3B82F6");
     expect(rule?.properties["badge-label"]).toBe('"oci"');
   });

@@ -122,3 +122,149 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
     },
   );
 });
+
+/**
+ * The kind color vocabulary (#2421, docs/spec/style.md § Kind color vocabulary)
+ * turned "what color is a kind" into two derivation rules. These assertions are
+ * what makes a rule a rule rather than a comment: a new kind whose fill and text
+ * are not same-hue partners fails here, not in a reviewer's eye.
+ *
+ * Scoped to *bare kind* rules on purpose. A tag rule legitimately paints half a
+ * pair — builtin `[external]` sets only `background-color` / `border-style` and
+ * inherits its text color from whichever kind rule it lands on — so demanding a
+ * text color from every painting rule would fail on a correct sheet.
+ */
+function isBareKindSelector(rule: StyleRule): boolean {
+  const s = rule.selector;
+  return (
+    s.nodeType !== undefined &&
+    s.tags.length === 0 &&
+    s.annotations.length === 0 &&
+    s.facets.length === 0 &&
+    s.id === undefined
+  );
+}
+
+describe.each(["dark", "light"] as DiagramTheme[])("builtin kind colors (%s theme)", (theme) => {
+  const palette = resolvePalette(theme);
+  const canvasBg = palette.canvasBg;
+  const kindRules = getBuiltinStyleSheet(theme)
+    .rules.filter(isBareKindSelector)
+    .filter((r) => r.properties["background-color"]);
+
+  // Boundary membership is 1:N (#2161), so frames overlap and their tints stack.
+  // Checking one tint would leave the second and third frame unmeasured, which is
+  // exactly where a fill-less border runs out of contrast first.
+  const OVERLAPPING_FRAMES = 3;
+
+  /** The canvas as seen under 0..N stacked boundary frame tints. */
+  const canvasSurfaces: string[] = [canvasBg];
+  for (const hue of palette.boundaryHues) {
+    let surface = canvasBg;
+    for (let depth = 0; depth < OVERLAPPING_FRAMES; depth++) {
+      surface = compositeOver(hue, surface, BOUNDARY_TINT_ALPHA)!;
+      canvasSurfaces.push(surface);
+    }
+  }
+
+  it("finds the kind rules that paint a card", () => {
+    // 7 logical (user / service / client / domain / usecase / entity / resource)
+    // + team + member + 3 infra (database / queue / storage) + 9 deploy = 21.
+    // Exact so a kind dropping out of one theme cannot silently shrink coverage.
+    expect(kindRules.length).toBe(21);
+  });
+
+  it.each(kindRules.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s pairs its fill with a text color (TPL-1697)",
+    (_kind, rule) => {
+      expect(
+        rule.properties["color"],
+        `${_kind} sets background-color but no color, so its label falls back to white`,
+      ).toBeDefined();
+    },
+  );
+
+  const opaque = kindRules.filter((r) => r.properties["background-color"] !== "transparent");
+
+  it.each(opaque.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s keeps its label AA-legible on its own fill",
+    (_kind, rule) => {
+      const fill = rule.properties["background-color"];
+      const text = rule.properties["color"]!;
+      const ratio = contrastRatio(text, fill);
+      expect(
+        ratio,
+        `${_kind}: color ${text} / background ${fill} must be hex colors`,
+      ).toBeDefined();
+      expect(
+        ratio!,
+        `${_kind} label ${text} on its fill ${fill} is below ${WCAG_AA_NORMAL_TEXT}:1`,
+      ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+    },
+  );
+
+  // A fill-less kind has no card of its own to read against: its label and its
+  // border both sit on the canvas, which inside a boundary frame is wearing a
+  // tint. The border is the card's only outline, so it carries the 3:1
+  // non-text bar (WCAG 1.4.11) rather than a text threshold.
+  const fillLess = kindRules.filter((r) => r.properties["background-color"] === "transparent");
+
+  it("finds the fill-less kinds", () => {
+    expect(fillLess.map((r) => r.selector.nodeType)).toEqual(["usecase"]);
+  });
+
+  it.each(fillLess.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s stays legible on the canvas and under every boundary tint",
+    (_kind, rule) => {
+      const text = rule.properties["color"]!;
+      const border = rule.properties["border-color"];
+      expect(border, `${_kind} is fill-less, so it must set a border-color`).toBeDefined();
+      for (const surface of canvasSurfaces) {
+        expect(
+          contrastRatio(text, surface)!,
+          `${_kind} label ${text} on ${surface} is below ${WCAG_AA_NORMAL_TEXT}:1`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+        // The border is this card's only outline, so it carries the non-text bar.
+        expect(
+          contrastRatio(border!, surface)!,
+          `${_kind} border ${border} on ${surface} is below ${WCAG_AA_LARGE_TEXT}:1`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
+      }
+    },
+  );
+
+  // `@deprecated` fades the whole node group to DEPRECATED_OPACITY, border
+  // included. A filled card survives that because its body still marks the
+  // card; a fill-less one is left with a faded outline and nothing else, so the
+  // fade has to be part of what the border is calibrated against.
+  //
+  // Only this fade is checkable. The facet-dim (0.28) and diff-ghost (0.3)
+  // states are so light that no color clears 3:1 — white is the best a border
+  // can do, and over the dark canvas it reaches 2.50:1 at 0.28 and 2.70:1 at
+  // 0.3 — so they are exempt by construction, which is the same carve-out
+  // WCAG 1.4.11 makes for inactive components.
+  const DEPRECATED_OPACITY = 0.6;
+
+  it("the builtin @deprecated opacity is the value the fill-less border is calibrated against", () => {
+    // Pins the coupling: raising the fade in the annotation rules without
+    // re-checking the borders would leave this guard measuring the wrong alpha.
+    const deprecated = getBuiltinStyleSheet(theme).rules.find((r) =>
+      r.selector.annotations.includes("deprecated"),
+    );
+    expect(deprecated?.properties["opacity"]).toBe(String(DEPRECATED_OPACITY));
+  });
+
+  it.each(fillLess.map((r) => [r.selector.nodeType!, r] as const))(
+    "%s keeps its outline when @deprecated fades the card",
+    (_kind, rule) => {
+      const border = rule.properties["border-color"]!;
+      for (const surface of canvasSurfaces) {
+        const faded = compositeOver(border, surface, DEPRECATED_OPACITY)!;
+        expect(
+          contrastRatio(faded, surface)!,
+          `${_kind} border ${border} faded to ${faded} on ${surface} is below ${WCAG_AA_LARGE_TEXT}:1`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
+      }
+    },
+  );
+});
