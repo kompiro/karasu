@@ -256,13 +256,13 @@ test.describe("AT-0006 built-in style rendering", () => {
     expect(await shapeOf(svg.locator('[data-node-id="Bus.Created"]'))).toBe("queue");
     expect(await shapeOf(svg.locator('[data-node-id="Media.Images"]'))).toBe("cloud");
 
-    // AC-1.2's fourth row (`[api]` -> hexagon) is deliberately absent. `[api]`
-    // maps to no infra kind, so it can only reach a diagram as a hand-written
-    // tag on an unassigned resource -- and an unassigned resource is not drawn
-    // at the domain level at all (it only raises "resource X is not assigned to
-    // any database or entity"). `docs/spec/syntax.md` says such a resource is
-    // "rendered as an orphan node", which does not match the app; filed as
-    // #2200. The hexagon shape rule itself is covered by the override test.
+    // AC-1.2's fourth row (`[api]` -> hexagon) is deliberately absent here.
+    // `[api]` maps to no infra kind, so it reaches this view only as a
+    // hand-written tag, and a hand-written tag beats the inferred one
+    // (ADR-351) on any *resolved* resource. That path is covered end to end in
+    // `packages/core/src/integration/resource-shape-tags.test.ts` (#2202), as
+    // is the unresolved case: it is not promoted to this domain view, but is
+    // drawn one level deeper inside its own usecase (#2200).
   });
 
   test("a user stylesheet overrides an inferred resource shape at equal specificity (AC-1.3)", async ({

@@ -308,6 +308,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1983](1983-boundary-drilldown-grouping.md) — boundary grouping の drill-down 拡張 — 描画レベルとの交差による正規化
 - [ADR-2048](2048-edge-label-collision-avoidance.md) — エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass
 - [ADR-2174](2174-facet-overlay.md) — facet overlay — renderer に焼き、多重所属は同心リング、色は既知 facet 順
+- [ADR-2200](2200-unassigned-resource-renders-at-usecase-level.md) — 未割当 `resource` の描画先は usecase ドリルダウンビューであり、domain ビューへの昇格は解決の対価とする
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
