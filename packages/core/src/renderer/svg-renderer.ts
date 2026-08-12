@@ -22,6 +22,7 @@ import { getShapeContentInset, type ShapeInsets } from "../shapes/shape-registry
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { resolveLabelPlacements, buildLabelInputs } from "./label-placement.js";
 import { HOP_RADIUS, JUNCTION_RADIUS } from "./crossing-marks.js";
+import { layoutDegradedTabs } from "./degraded-tabs.js";
 import {
   CHIP_HEIGHT,
   GHOST_CHIP_WIDTH,
@@ -300,9 +301,16 @@ export function render(
   // the same resolveNodeStyle chain renderFromLayout draws with.
   const shapeForNode = (id: string, annotations: readonly string[]): string | undefined =>
     shapeNameOf(resolveNodeStyle(styles, id, annotations).shape);
+  // The corner lane the ports must keep clear of (#2422). Resolved here
+  // because the lane's width comes from the badge style; layout only knows
+  // where the card ended up.
+  const palette = resolvePalette(options?.theme);
+  const chipZoneFor = (node: LayoutNode): Rect | undefined =>
+    chipZoneOf(node, node.id, styles, palette, serviceIdsWithDeploy);
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     shapeForNode,
+    chipZoneFor,
     teamLabels: options?.teamLabels,
     boundaryMembership: options?.boundaryMembership,
     scopedBoundaryMembership: options?.scopedBoundaryMembership,
@@ -1314,8 +1322,6 @@ function renderContainer(
 }
 
 /** Approximate px per character in a 縮退 tab's 10px label, and its horizontal padding. */
-const DEGRADED_TAB_CHAR_WIDTH = 6;
-const DEGRADED_TAB_PAD = 8;
 
 /**
  * `◇ <boundary>` tabs for memberships no frame could reach (#2179) — the 縮退
@@ -1333,28 +1339,10 @@ function renderDegradedTabs(
   palette: DiagramPalette,
   boundaryFrames?: ResolvedBoundaryFrames,
 ): string[] {
-  const tabs = node.degradedBoundaries;
-  if (!tabs || tabs.length === 0) return [];
   const out: string[] = [];
-  // Right-aligned and stacked leftwards, so a card in three boundaries shows all
-  // of them rather than silently keeping the first. Each pill is sized from the
-  // text it will actually hold and clipped to the room still left on the card:
-  // boundary labels are author-written and `charDisplayWidth` counts CJK at
-  // 1.5×, so an unmeasured pill overflows its own border and the stack walks off
-  // the card's left edge.
-  let right = node.x + node.width - 12;
-  const y = node.y + node.height - 9;
-  for (const tab of tabs) {
-    const room = right - (node.x + 4);
-    // Below one glyph plus the ellipsis there is nothing legible left to draw.
-    if (room < DEGRADED_TAB_PAD * 2 + DEGRADED_TAB_CHAR_WIDTH * 3) break;
-    const label = truncateToWidth(
-      `◇ ${tab.label}`,
-      room - DEGRADED_TAB_PAD * 2,
-      DEGRADED_TAB_CHAR_WIDTH,
-    );
-    const width = estimateTextWidth(label, DEGRADED_TAB_CHAR_WIDTH) + DEGRADED_TAB_PAD * 2;
-    const x = right - width;
+  // Placement comes from `degraded-tabs.ts`, which port distribution reads too
+  // so an edge cannot land under a pill (#2422).
+  for (const tab of layoutDegradedTabs(node)) {
     // Through `resolveBoundaryPaint`, not the palette directly: the tab and the
     // frame are two surfaces of one boundary and must never disagree about its
     // colour, including when a `.krs.style` rule repaints it (#2234).
@@ -1363,11 +1351,11 @@ function renderDegradedTabs(
       palette.mutedBorder;
     out.push(
       el("rect", {
-        x,
-        y,
-        width,
-        height: 18,
-        rx: 9,
+        x: tab.x,
+        y: tab.y,
+        width: tab.width,
+        height: tab.height,
+        rx: tab.height / 2,
         fill: palette.canvasBg,
         stroke: hue,
         "stroke-width": 1,
@@ -1376,18 +1364,17 @@ function renderDegradedTabs(
       el(
         "text",
         {
-          x: x + width / 2,
-          y: y + 9,
+          x: tab.x + tab.width / 2,
+          y: tab.y + tab.height / 2,
           "text-anchor": "middle",
           "dominant-baseline": "central",
           fill: hue,
           "font-size": "10px",
           "font-family": style.fontFamily,
         },
-        escapeXml(label),
+        escapeXml(tab.label),
       ),
     );
-    right = x - 4;
   }
   return out;
 }
@@ -2124,7 +2111,28 @@ function assignChipZones(
   serviceIdsWithDeploy?: Set<string>,
 ): void {
   for (const [nodeId, node] of layoutResult.nodes) {
-    if (node.tags?.includes(CATEGORY_STUB_TAG)) continue;
+    // Stamped here rather than in layout even though layout computes the same
+    // rectangle for its port keep-outs (#2422): layout's copy predates
+    // `normalizeCoordinates`, which shifts the whole canvas. Recomputing from
+    // the final geometry is cheaper than tracking that shift.
+    node.chipZone = chipZoneOf(node, nodeId, styles, palette, serviceIdsWithDeploy);
+  }
+}
+
+/**
+ * The corner lane a node's chrome occupies, or undefined for a card that has
+ * none. Shared with layout through `LayoutOptions.chipZoneFor` so the keep-out
+ * the ports respect is the rectangle the renderer actually fills.
+ */
+function chipZoneOf(
+  node: LayoutNode,
+  nodeId: string,
+  styles: ResolvedStyles,
+  palette: DiagramPalette,
+  serviceIdsWithDeploy?: Set<string>,
+): Rect | undefined {
+  {
+    if (node.tags?.includes(CATEGORY_STUB_TAG)) return undefined;
     const style = resolveNodeStyle(styles, nodeId, node.annotations, node.id);
     const buttonCount =
       (node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role
@@ -2133,14 +2141,14 @@ function assignChipZones(
       (DEPLOY_AFFORDANCE_KIND_SET.has(node.kind) && (serviceIdsWithDeploy?.has(nodeId) ?? false)
         ? 1
         : 0);
-    node.chipZone = packCornerLane(
+    return packCornerLane(
       node,
       style,
       buttonCount,
       palette.badgeFallback,
-      // `assignChipZones` runs before the per-node draw, where the layout's own
-      // flag is the only signal available.
-      laneInsetOf(style, node, layoutResult.shapeInsetsApplied ?? false),
+      // The zone is read before the per-node draw, where the shape's own
+      // insets are the only signal available.
+      laneInsetOf(style, node, true),
     ).zone;
   }
 }
