@@ -159,8 +159,23 @@ export function mapToSpans(spans: readonly Span[], t: number): number {
   return spans[spans.length - 1].to;
 }
 
-/** Depth in px at a position along the side. */
+/** True when `along` lies in one of the spans. */
+function withinSpans(spans: readonly Span[], along: number): boolean {
+  return spans.some((s) => along >= s.from - 1e-9 && along <= s.to + 1e-9);
+}
+
+/**
+ * Depth in px at a position along the side, or zero outside the spans the
+ * shape declared.
+ *
+ * A depth function only answers for the part of the side its outline covers:
+ * asked about the rest, a curve-following one can report a crossing on the far
+ * side of the shape (a cloud reports 75px on a 100px box just outside its
+ * spans) and drive the endpoint deep inside. Where the shape says it has no
+ * outline, the bounding box is the honest fallback.
+ */
 function depthAt(side: ShapePortSide, along: number): number {
+  if (!withinSpans(side.spans, along)) return 0;
   return typeof side.depth === "function" ? side.depth(along) : side.depth;
 }
 

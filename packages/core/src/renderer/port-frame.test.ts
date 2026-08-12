@@ -8,7 +8,9 @@ import {
   subtractSpans,
   type Span,
 } from "./port-frame.js";
+import { seatPortsOnOutline } from "./port-frame.js";
 import type { ShapePortFrame } from "../shapes/shape-registry.js";
+import type { LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
 
 const BOX = { x: 100, y: 50, width: 200, height: 100 };
 
@@ -174,5 +176,60 @@ describe("portPoint", () => {
     expect(portPoint(BOX, "top", 1, BBOX_PORT_FRAME, [bottomTab])).toEqual(
       portPoint(BOX, "top", 1, BBOX_PORT_FRAME),
     );
+  });
+});
+
+describe("seatPortsOnOutline", () => {
+  const node = {
+    kind: "service",
+    id: "N",
+    label: "N",
+    properties: { links: [] },
+    linkCount: 0,
+    hasChildren: false,
+    hasDescription: false,
+    x: 100,
+    y: 50,
+    width: 200,
+    height: 100,
+  } as unknown as LayoutNode;
+  const nodes = new Map([["N", node]]);
+
+  /** Deep away from the outline, shallow on it — the cloud's hazard, in miniature. */
+  const frame: ShapePortFrame = {
+    ...BBOX_PORT_FRAME,
+    top: { spans: [{ from: 0.4, to: 0.6 }], depth: (along) => (along < 0.4 ? 90 : 10) },
+  };
+  const resolve = (): { frame: ShapePortFrame; keepOuts: Rect[] } => ({ frame, keepOuts: [] });
+
+  it("seats an endpoint that can reach the span", () => {
+    const edge = {
+      from: "S",
+      to: "N",
+      fromPoint: { x: 110, y: 0 },
+      toPoint: { x: 110, y: 50 },
+    } as unknown as LayoutEdge;
+    seatPortsOnOutline(nodes, [edge], resolve, () => []);
+    // Moved into the span, and pushed in by the depth that applies there.
+    expect(edge.toPoint.x).toBeGreaterThanOrEqual(100 + 200 * 0.4);
+    expect(edge.toPoint.y).toBe(60);
+  });
+
+  // The depth belongs to the outline. Where the shape says it has no outline,
+  // a curve-following function can report a crossing on the far side of the
+  // body — 90 here — and bury the endpoint. The bounding box is the honest
+  // answer for a port that could not reach a span.
+  it("leaves an endpoint that cannot reach one on the bounding box", () => {
+    const edge = {
+      from: "S",
+      to: "N",
+      fromPoint: { x: 110, y: 0 },
+      toPoint: { x: 110, y: 50 },
+    } as unknown as LayoutEdge;
+    // An obstacle across the top blocks every sideways move.
+    const wall: Rect = { x: 105, y: 30, width: 190, height: 15 };
+    seatPortsOnOutline(nodes, [edge], resolve, () => [wall]);
+    expect(edge.toPoint.x).toBe(110);
+    expect(edge.toPoint.y).toBe(50);
   });
 });

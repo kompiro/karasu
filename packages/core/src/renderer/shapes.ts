@@ -325,13 +325,19 @@ function ellipseDepth(r: number, along: number): number {
   return r - r * Math.sqrt(Math.max(0, 1 - u * u));
 }
 
+/** Corner radius of the user card's `rect` — see the render function above. */
+const USER_CARD_RADIUS = 8;
+
 const userPortFrame: ShapePortFrameFn = (w, h) => {
   const medR = userMedallionRadius(h);
   // The card's top border runs a medallion radius below the box, and the
   // medallion straddles it at the centre: an edge aimed at the middle of the
   // top used to stop in the empty corner beside it (the #2366 P10 report).
   const half = w > 0 ? medR / w : 0;
-  const cardTop = h > 0 ? medR / h : 0;
+  // The straight part of each side: below the top border and inside both
+  // rounded corners, so a port never sits in the gap a corner arc leaves.
+  const corner = h > 0 ? USER_CARD_RADIUS / h : 0;
+  const sideSpan = { from: (h > 0 ? medR / h : 0) + corner, to: 1 - corner };
   return {
     top: {
       spans: [
@@ -340,9 +346,9 @@ const userPortFrame: ShapePortFrameFn = (w, h) => {
       ],
       depth: medR,
     },
-    right: { spans: [{ from: cardTop, to: 1 }], depth: 0 },
+    right: { spans: [sideSpan], depth: 0 },
     bottom: { spans: [{ from: 0, to: 1 }], depth: 0 },
-    left: { spans: [{ from: cardTop, to: 1 }], depth: 0 },
+    left: { spans: [sideSpan], depth: 0 },
   };
 };
 
