@@ -303,6 +303,78 @@ legend "凡例" {
     }
   });
 
+  it("lets a user rule outrank the builtin at equal specificity (Issue #2445)", () => {
+    // `usecase { background-color }` in the user sheet ties the builtin
+    // `usecase` rule on specificity, so declaration order decides — and the
+    // user sheet is declared after the builtin one. The swatch used to read
+    // the raw per-sheet `sourceIndex`, where the user rule is 0 and the
+    // builtin rule is much higher, which inverted the tie for the legend only.
+    const krs = `
+system Demo {
+  service Api {
+    usecase Checkout { label "Checkout" }
+  }
+}
+legend service "凡例" {
+  ref usecase "ユースケース"
+}
+`;
+    // Rendered at the service drill level so the card and its swatch are on the
+    // same canvas: the card and the swatch are one appearance (TPL-2234), so
+    // the test asserts they *agree* rather than only that the swatch moved.
+    const result = compile(krs, {
+      diagramType: "system",
+      viewPath: ["Demo", "Api"],
+      styleSource: `usecase { background-color: #123456; }`,
+    });
+    const swatch = /<rect[^>]*class="legend-swatch"[^>]*>/.exec(result.svg);
+    expect(swatch, "the legend swatch rect must be present").not.toBeNull();
+    expect(swatch![0]).toContain('fill="#123456"');
+    const card = /<g data-node-id="Checkout"[^>]*><rect[^>]*>/.exec(result.svg);
+    expect(card, "the Checkout node rect must be present").not.toBeNull();
+    expect(card![0]).toContain('fill="#123456"');
+  });
+
+  it("lets a user rule outrank the builtin for a tag ref (Issue #2445)", () => {
+    // Same inversion, reached through the tag branch of `ruleMatchesTarget`:
+    // the builtin sheet paints `[external]`, and a user rule tying it must win.
+    const krs = `
+system Demo {
+  service Api [external] { label "API" }
+}
+legend "凡例" {
+  ref [external] "外部"
+}
+`;
+    const result = compile(krs, {
+      diagramType: "system",
+      styleSource: `[external] { background-color: #654321; }`,
+    });
+    const swatch = /<rect[^>]*class="legend-swatch"[^>]*>/.exec(result.svg);
+    expect(swatch, "the legend swatch rect must be present").not.toBeNull();
+    expect(swatch![0]).toContain('fill="#654321"');
+  });
+
+  it("lets a user rule outrank the builtin for an annotation ref (Issue #2445)", () => {
+    // The annotation branch paints via `badge-color` in the builtin sheet, so
+    // this also covers the badge-color fallback surviving the corrected order.
+    const krs = `
+system Demo {
+  service Old @deprecated { label "Old" }
+}
+legend "Status" {
+  ref @deprecated "Deprecated"
+}
+`;
+    const result = compile(krs, {
+      diagramType: "system",
+      styleSource: `@deprecated { badge-color: #ABCDEF; }`,
+    });
+    const swatch = /<rect[^>]*class="legend-swatch"[^>]*>/.exec(result.svg);
+    expect(swatch, "the legend swatch rect must be present").not.toBeNull();
+    expect(swatch![0]).toContain('fill="#ABCDEF"');
+  });
+
   it("preserves builtin annotation badge-color in icon mode (Issue #1001)", () => {
     // @deprecated paints via badge-color (#EF4444), not background-color.
     // The cascade merge must still pick this up when icon-theme is layered
