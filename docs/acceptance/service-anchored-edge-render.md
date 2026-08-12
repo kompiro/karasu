@@ -34,15 +34,19 @@ type: product
 
   > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › service-anchored edges (#2223) › renders between orphan services on the unassigned canvas
 
+- [x] AT-D2: ルートの 3 形態（単一 system / 複数 system / `__unassigned__` のみ）すべてで、**layout を通した後**に矢印が残る（複数 system と `__unassigned__` のルートは `ViewSlice.childEdges` ではなく各 system の edge から描画するため、抽出だけを見ると落ちているのに気付けない）
+
+  > ✅ Automated — `packages/core/src/view/anchored-edge-render-or-warn.test.ts` › the root canvas draws a service-anchored edge in every root shape
+
 ### AC-2: 描画側と診断側が同じ規則を共有する
 
 - [x] AT-E: 各配置について「どこかの view に描画される」か「`edge-endpoint-not-at-scope` で報告される」かのちょうど一方だけが成り立つ（silent drop も二重報告も無い）
 
   > ✅ Automated — `packages/core/src/view/anchored-edge-render-or-warn.test.ts` › an authored edge either renders or is reported (TPL-2075)（8 配置）
 
-- [x] AT-F: 新たに描画されるようになった配置では warning が消える（service の peer 宛て、orphan 同士）。peer でない配置（他 service の domain 宛て、`__unassigned__` に包まれない top-level client 宛て）は warning のまま描画されない
+- [x] AT-F: 新たに描画されるようになった配置では warning が消える（service の peer 宛て、orphan 同士）。peer でない配置（他 service の domain 宛て、`__unassigned__` に包まれない top-level client を端点に持つ両向き）は warning のまま描画されない
 
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › edge-endpoint-not-at-scope warning › does not warn for a service-anchored edge to a peer of the declaring service ／ does not warn for an anchored edge between two top-level orphan services ／ warns when an orphan service's anchored edge names a top-level client ／ `packages/core/src/view/view-extract.test.ts` › does not render an endpoint that is not a peer at the declaring scope
+  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › edge-endpoint-not-at-scope warning › does not warn for a service-anchored edge to a peer of the declaring service ／ does not warn for an anchored edge between two top-level orphan services ／ warns when an orphan service's anchored edge names a top-level client ／ warns when a top-level client anchors an edge to an orphan service ／ `packages/core/src/view/view-extract.test.ts` › does not render an endpoint that is not a peer at the declaring scope
 
 ### AC-3: 既存の描画を壊さない
 
@@ -53,6 +57,10 @@ type: product
 - [x] AT-H: entity 関連が usecase（domain ドリルダウン）ビューに漏れない — entity は entity ビュー専用のまま
 
   > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › service-anchored edges (#2223) › keeps entity relations out of the domain drill-down
+
+- [x] AT-I2: 同じペアに sync と async の両方を書いたら 2 本とも描画される（描画の同一性は arrow kind を含めて数える）
+
+  > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › service-anchored edges (#2223) › keeps a sync and an async edge between the same pair as two edges
 
 - [x] AT-I: 既存の domain→domain エッジ（intra-service / cross-service）とシステムスコープのエッジの描画が変わらない
 
