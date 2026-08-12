@@ -15,7 +15,6 @@
 
 import type { LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
 import { polylineClearOf } from "./edge-geometry.js";
-import type { PortResolver } from "./edge-routing-ports.js";
 import type { ShapePortFrame, ShapePortSide } from "../shapes/shape-registry.js";
 
 export type Side = "top" | "bottom" | "left" | "right";
@@ -25,6 +24,15 @@ export interface Span {
   from: number;
   to: number;
 }
+
+/** What a node's outline offers an edge. */
+export interface NodePorts {
+  frame: ShapePortFrame;
+  keepOuts: readonly Rect[];
+}
+
+/** Resolves a node's port frame; nodes without one keep the bounding box. */
+export type PortResolver = (node: LayoutNode) => NodePorts | undefined;
 
 /** The box a port is placed on. */
 interface PortBox {

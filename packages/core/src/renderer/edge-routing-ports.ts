@@ -28,23 +28,13 @@
  * Run before `routeOrthogonalEdges` so the channel routing uses the
  * distributed ports.
  */
-import type { LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
-import type { ShapePortFrame } from "../shapes/shape-registry.js";
-import { BBOX_PORT_FRAME, portPoint, type Side } from "./port-frame.js";
+import type { LayoutEdge, LayoutNode } from "./layout-types.js";
+import { BBOX_PORT_FRAME, portPoint, type PortResolver, type Side } from "./port-frame.js";
 
 interface Anchor {
   edge: LayoutEdge;
   isFrom: boolean;
 }
-
-/** What a node's outline offers an edge. */
-export interface NodePorts {
-  frame: ShapePortFrame;
-  keepOuts: readonly Rect[];
-}
-
-/** Resolves a node's port frame; nodes without one keep the bounding box. */
-export type PortResolver = (node: LayoutNode) => NodePorts | undefined;
 
 const SIDE_EPS = 0.5;
 

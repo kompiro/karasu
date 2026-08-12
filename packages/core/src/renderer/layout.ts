@@ -50,8 +50,8 @@ import {
   fanOutGutterPorts,
   frameObstaclesFor,
 } from "./edge-routing-groups.js";
-import { distributePorts, type PortResolver } from "./edge-routing-ports.js";
-import { BBOX_PORT_FRAME, seatPortsOnOutline } from "./port-frame.js";
+import { distributePorts } from "./edge-routing-ports.js";
+import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
 import { degradedTabsZone } from "./degraded-tabs.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
