@@ -25,6 +25,17 @@ updates:
           - "react-dom"
           - "@types/react"
           - "@types/react-dom"
+      # client と server の protocol 版が食い違うと editor ↔ preview の
+      # position がずれ、AT-0037-9 / AT-0038 / AT-0039 が落ちる。片側だけの
+      # PR は単独では採れないので同居させる（#2337）。
+      # protocol は client / server の両方が exact pin で持つため、
+      # この group が効くのは 10.x 以降（ADR-2333 の時点では pin が
+      # 先に効いて group だけでは解決しなかった）。
+      lsp:
+        patterns:
+          - "vscode-languageserver"
+          - "vscode-languageserver-protocol"
+          - "vscode-languageclient"
 
   - package-ecosystem: "github-actions"
     directory: "/"
