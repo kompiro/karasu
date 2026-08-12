@@ -31,10 +31,14 @@ updates:
       # protocol は client / server の両方が exact pin で持つため、
       # この group が効くのは 10.x 以降（ADR-2333 の時点では pin が
       # 先に効いて group だけでは解決しなかった）。
+      # textdocument も同居させる — vscode-languageclient@10 はこれを
+      # exact pin で持つので（9 には無かった依存）、単独で来ると版がずれる。
+      # patterns は前方一致ではなく完全一致なので 1 行ずつ挙げる。
       lsp:
         patterns:
           - "vscode-languageserver"
           - "vscode-languageserver-protocol"
+          - "vscode-languageserver-textdocument"
           - "vscode-languageclient"
 
   - package-ecosystem: "github-actions"
