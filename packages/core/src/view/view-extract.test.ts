@@ -1681,6 +1681,23 @@ system T {
       expect(edge?.kind).toBe("async");
     });
 
+    it("keeps a sync and an async edge between the same pair as two edges", () => {
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    S1 -> S2 "command"
+    S1 --> S2 "event"
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+`);
+      const pair = extractView(systems, []).childEdges.filter(
+        (e) => e.from === "S1" && e.to === "S2",
+      );
+      expect(pair.map((e) => e.kind).sort()).toEqual(["async", "sync"]);
+    });
+
     it("suppresses the implicit service edge derived for the same pair", () => {
       const systems = parseSystem(`
 system T {

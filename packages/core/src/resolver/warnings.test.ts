@@ -2650,7 +2650,7 @@ service S2 { domain B { usecase v {} } }
   });
 
   // A top-level `client` is not wrapped into the pseudo-system, so it never
-  // shares a canvas with an orphan service.
+  // shares a canvas with an orphan service — in either direction.
   it("warns when an orphan service's anchored edge names a top-level client", () => {
     const warnings = find(`
 service S1 {
@@ -2661,6 +2661,22 @@ client W [web]
 `);
     expect(warnings).toHaveLength(1);
     expect(warnings[0].params).toMatchObject({ endpointId: "W", endpointKind: "client" });
+  });
+
+  it("warns when a top-level client anchors an edge to an orphan service", () => {
+    const warnings = find(`
+client W [web] {
+  W -> S1
+}
+service S1 { domain A { usecase u {} } }
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "S1",
+      endpointKind: "service",
+      scopeId: "W",
+      scopeKind: "client",
+    });
   });
 
   it("does not warn for a cross-service domain edge (derived as an implicit service edge)", () => {

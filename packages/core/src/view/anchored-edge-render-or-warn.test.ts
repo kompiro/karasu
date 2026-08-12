@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { extractView } from "./view-extract.js";
 import { withUnassignedSystem } from "./unassigned-system.js";
+import { layout } from "../renderer/layout.js";
 import { Parser } from "../parser/parser.js";
 import { analyze } from "../resolver/warnings.js";
 import type { KrsFile, KrsNode } from "../types/ast.js";
@@ -28,19 +29,19 @@ function allViewPaths(systems: KrsNode[]): string[][] {
   return paths;
 }
 
-/** Does `from -> to` appear on any view, through any of the edge channels? */
+/**
+ * Does `from -> to` come out of **layout** on any view?
+ *
+ * Deliberately not asserted against `extractView`: the multi-system and
+ * `__unassigned__` roots lay each system out from its own edge list rather
+ * than from the extracted slice, so a slice-level assertion would pass on a
+ * canvas that draws nothing (#2223).
+ */
 function rendersAnywhere(file: KrsFile, from: string, to: string): boolean {
   const systems = withUnassignedSystem(file);
   return allViewPaths(systems).some((path) => {
-    const view = extractView(systems, path);
-    return [
-      ...view.childEdges,
-      ...view.ghostUserEdges,
-      ...view.ghostSystemEdges,
-      ...view.callerGhostSystemEdges,
-      ...view.ghostDomainEdges,
-      ...view.crossSystemEdges,
-    ].some((e) => e.from === from && e.to === to);
+    const result = layout(extractView(systems, path));
+    return result.edges.some((e) => e.from === from && e.to === to);
   });
 }
 
@@ -176,7 +177,93 @@ service S2 { domain B { usecase v {} } }
     endpoint: "S2",
     outcome: "renders",
   },
+  {
+    name: "service-anchored edge on a multi-system root",
+    krs: `
+system T {
+  service S1 { S1 -> S2
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+system U {
+  service S3 { domain C { usecase w {} } }
+}
+`,
+    edge: ["S1", "S2"],
+    endpoint: "S2",
+    outcome: "renders",
+  },
+  {
+    // A top-level `client` is not wrapped into the `__unassigned__` frame, so
+    // it shares a canvas with nothing — the edge has nowhere to draw.
+    name: "edge anchored in a top-level client",
+    krs: `
+client W [web] {
+  W -> S1
+}
+service S1 { domain A { usecase u {} } }
+`,
+    edge: ["W", "S1"],
+    endpoint: "S1",
+    outcome: "reported",
+  },
 ];
+
+/**
+ * The root canvas has three shapes, and only one of them lays out from
+ * `ViewSlice.childEdges`: a single real system. The multi-system root and the
+ * `__unassigned__`-only root go through `layoutMultipleSystems`, which reads
+ * each system's own edge list — so an anchored edge that survives extraction
+ * can still be dropped there. Asserting on the *rendered* root of all three is
+ * what keeps that gap closed (#2223).
+ */
+describe("the root canvas draws a service-anchored edge in every root shape", () => {
+  const rootEdges = (krs: string): string[] => {
+    const systems = withUnassignedSystem(Parser.parse(krs).value);
+    return layout(extractView(systems, [])).edges.map((e) => `${e.from}->${e.to}`);
+  };
+
+  it("single-system root", () => {
+    expect(
+      rootEdges(`
+system T {
+  service S1 { S1 -> S2
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+`),
+    ).toContain("S1->S2");
+  });
+
+  it("multi-system root", () => {
+    expect(
+      rootEdges(`
+system T {
+  service S1 { S1 -> S2
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+system U {
+  service S3 { domain C { usecase w {} } }
+}
+`),
+    ).toContain("S1->S2");
+  });
+
+  it("unassigned-only root", () => {
+    expect(
+      rootEdges(`
+service S1 { S1 -> S2
+  domain A { usecase u {} }
+}
+service S2 { domain B { usecase v {} } }
+`),
+    ).toContain("S1->S2");
+  });
+});
 
 describe("an authored edge either renders or is reported (TPL-2075)", () => {
   for (const placement of PLACEMENTS) {

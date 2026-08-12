@@ -1746,7 +1746,13 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
     const parent = parentOf.get(container);
     // The container's own id is the self-anchored source of every edge the
     // parser accepts inside a service / domain / entity block.
-    if (!parent) return new Set([container.id, ...orphanPeerIds]);
+    if (!parent) {
+      // A parentless block that the wrap itself skips (a top-level `client`)
+      // is drawn on no frame at all, so it has no peers to draw an edge to.
+      return orphanPeerIds.has(container.id)
+        ? new Set([container.id, ...orphanPeerIds])
+        : new Set([container.id]);
+    }
     return new Set([container.id, ...parent.children.map((c) => c.id)]);
   };
 
