@@ -65,7 +65,7 @@ function makeWarning(kind: Warning["kind"]): Warning {
         },
       };
     case "invalid-owns":
-      return { kind, params: { teamId: "test-team", ownedId: "test-owned" } };
+      return { kind, params: { teamId: "test-team", ownedId: "test-owned", ownedKind: "user" } };
     case "unassigned-domain":
       return { kind, params: { domainId: "test-domain" } };
     case "unassigned-service":

@@ -2404,9 +2404,11 @@ export class Parser {
     //
     // `owns` is NOT among the consumers, though it was until #2082: editing this
     // set no longer changes which `owns` targets resolve. That question is
-    // answered by `collectOwnableIds` in parser/reference-validation.ts, against
-    // the merged tree and the shared OWNS_TARGET_KIND_SET — an index built per
-    // file could only answer it for whichever ids a given merge path carried.
+    // answered by `collectOwnsResolvableIds` in parser/reference-validation.ts,
+    // against the merged tree, and since #2442 it does not consult kinds at all —
+    // any declared node resolves, and refusing a kind is `invalid-owns`' sentence.
+    // An index built per file could only answer it for whichever ids a given
+    // merge path carried.
     //
     // Top-level infra nodes (database/queue/storage) and top-level clients are
     // indexed separately via the topLevelInfra loop below, which does not apply

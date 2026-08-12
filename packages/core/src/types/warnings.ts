@@ -1,4 +1,5 @@
 import type { SourceRange } from "./tokens.js";
+import type { LogicalNodeKind } from "./ast.js";
 
 export type WarningKind =
   | "domain-dispersal"
@@ -114,7 +115,7 @@ export interface WarningParamsByKind {
     /** the target id that could not be resolved to any service / domain */
     target: string;
   };
-  "invalid-owns": { teamId: string; ownedId: string };
+  "invalid-owns": { teamId: string; ownedId: string; ownedKind: LogicalNodeKind };
   "unassigned-domain": { domainId: string; label?: string };
   "unassigned-service": { serviceId: string; label?: string };
   "unassigned-client": { clientId: string; label?: string };

@@ -311,8 +311,8 @@ export const ja: Partial<Translations> = {
     `デプロイノード "${nodeId}" に realizes が指定されていません`,
   "warning.unresolvedRealizes.message": ({ deployNodeId, target }) =>
     `デプロイノード "${deployNodeId}" の realizes "${target}" を解決できる service / domain が見つかりません`,
-  "warning.invalidOwns.message": ({ teamId, ownedId }) =>
-    `team "${teamId}" が "${ownedId}" を owns していますが、その id を持つ service または domain が存在しません`,
+  "warning.invalidOwns.message": ({ teamId, ownedId, ownedKind }) =>
+    `team "${teamId}" が "${ownedId}" を owns していますが、kind "${ownedKind}" は所有の対象になりません。team が owns できるのは service / domain / client と infra ブロックです`,
   "warning.crossSystemRefUnresolved.message": ({ ref }) =>
     `"${ref}" を解決できませんでした — 未解決の外部ノードとして描画されます`,
   "warning.unresolvedEdgeEndpoint.message": ({ from, to, unresolvedId }) =>
