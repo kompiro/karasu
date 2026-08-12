@@ -53,6 +53,7 @@ flowchart TD
     ADR_1646["ADR-1646<br/>gallery の example は id 指定・固定 origin fetch で app..."]
     ADR_1955["ADR-1955<br/>全 service をその場一括展開する — Collapse all / Expand al..."]
     ADR_2120["ADR-2120<br/>bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
+    ADR_2193["ADR-2193<br/>テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える"]
     ADR_2316["ADR-2316<br/>experimental notation は Reference に載せ、experimen..."]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
@@ -766,6 +767,7 @@ flowchart TD
   class ADR_2174 accepted
   class ADR_2184 accepted
   class ADR_2188 accepted
+  class ADR_2193 accepted
   class ADR_2218 accepted
   class ADR_2234 accepted
   class ADR_2249 accepted
