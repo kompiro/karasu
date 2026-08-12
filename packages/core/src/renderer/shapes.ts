@@ -7,6 +7,7 @@ import {
   type ShapeContext,
   type ShapeRenderFn,
   type ShapeContentInsetFn,
+  type ShapePortFrameFn,
 } from "../shapes/shape-registry.js";
 
 // ---------------------------------------------------------------------------
@@ -244,13 +245,97 @@ const cloudInset: ShapeContentInsetFn = (w, h) => ({
   left: w * 0.2,
 });
 
+// ---------------------------------------------------------------------------
+// Port frames (#2422) — where an edge may attach, and how far in the outline
+// sits there. Each mirrors its render function above, the way the content
+// insets do. `box` declares none: its outline *is* the bounding box.
+// ---------------------------------------------------------------------------
+
+/** Half of an ellipse's sagitta at `along` ∈ [0,1]: 0 at the middle, r at the ends. */
+function ellipseDepth(r: number, along: number): number {
+  const u = 2 * along - 1;
+  return r - r * Math.sqrt(Math.max(0, 1 - u * u));
+}
+
+const userPortFrame: ShapePortFrameFn = (w, h) => {
+  const medR = userMedallionRadius(h);
+  // The card's top border runs a medallion radius below the box, and the
+  // medallion straddles it at the centre: an edge aimed at the middle of the
+  // top used to stop in the empty corner beside it (the #2366 P10 report).
+  const half = w > 0 ? medR / w : 0;
+  const cardTop = h > 0 ? medR / h : 0;
+  return {
+    top: {
+      spans: [
+        { from: 0, to: Math.max(0, 0.5 - half) },
+        { from: Math.min(1, 0.5 + half), to: 1 },
+      ],
+      depth: medR,
+    },
+    right: { spans: [{ from: cardTop, to: 1 }], depth: 0 },
+    bottom: { spans: [{ from: 0, to: 1 }], depth: 0 },
+    left: { spans: [{ from: cardTop, to: 1 }], depth: 0 },
+  };
+};
+
+const cylinderPortFrame: ShapePortFrameFn = (_w, h) => {
+  const ry = Math.min(h * 0.12, 15);
+  const rim = h > 0 ? ry / h : 0;
+  return {
+    // Top and bottom are ellipse arcs: they touch the box at the centre and
+    // fall away to `ry` at the sides, so the depth follows the arc.
+    top: { spans: [{ from: 0, to: 1 }], depth: (along) => ellipseDepth(ry, along) },
+    bottom: { spans: [{ from: 0, to: 1 }], depth: (along) => ellipseDepth(ry, along) },
+    // The straight body runs between the two rims.
+    right: { spans: [{ from: rim, to: 1 - rim }], depth: 0 },
+    left: { spans: [{ from: rim, to: 1 - rim }], depth: 0 },
+  };
+};
+
+const queuePortFrame: ShapePortFrameFn = (w) => {
+  const rx = Math.min(w * 0.1, 15);
+  const cap = w > 0 ? rx / w : 0;
+  return {
+    // The flat top and bottom span the body between the two caps.
+    top: { spans: [{ from: cap, to: 1 - cap }], depth: 0 },
+    bottom: { spans: [{ from: cap, to: 1 - cap }], depth: 0 },
+    // Right is the convex end cap; left is the concave arc that bulges *into*
+    // the body, so its depth grows towards mid-height instead of shrinking.
+    right: { spans: [{ from: 0, to: 1 }], depth: (along) => ellipseDepth(rx, along) },
+    left: { spans: [{ from: 0, to: 1 }], depth: (along) => rx + (rx - ellipseDepth(rx, along)) },
+  };
+};
+
+const hexagonPortFrame: ShapePortFrameFn = () => ({
+  // Flat spans only: the slanted corners are cut away.
+  top: { spans: [{ from: 0.2, to: 0.8 }], depth: 0 },
+  bottom: { spans: [{ from: 0.2, to: 0.8 }], depth: 0 },
+  // Left and right are single vertices, so every edge on that side meets there.
+  right: { spans: [{ from: 0.5, to: 0.5 }], depth: 0 },
+  left: { spans: [{ from: 0.5, to: 0.5 }], depth: 0 },
+});
+
+const cloudPortFrame: ShapePortFrameFn = (w, h) => {
+  // The one shape whose port sits *inside* the outline rather than on it: the
+  // blob is wavy and non-convex, so a side has no single boundary to land on.
+  // The content-safe margins (verified against the flattened path in #2412)
+  // are the closest honest answer — inside the fill everywhere, never floating.
+  const inset = cloudInset(w, h);
+  return {
+    top: { spans: [{ from: 0.25, to: 0.75 }], depth: inset.top },
+    bottom: { spans: [{ from: 0.25, to: 0.75 }], depth: inset.bottom },
+    right: { spans: [{ from: 0.3, to: 0.7 }], depth: inset.right },
+    left: { spans: [{ from: 0.3, to: 0.7 }], depth: inset.left },
+  };
+};
+
 export function registerBuiltinShapes(): void {
   registerShape("box", box);
-  registerShape("user", user, userInset);
-  registerShape("cylinder", cylinder, cylinderInset);
-  registerShape("queue", queue, queueInset);
-  registerShape("hexagon", hexagon, hexagonInset);
-  registerShape("cloud", cloud, cloudInset);
+  registerShape("user", user, userInset, userPortFrame);
+  registerShape("cylinder", cylinder, cylinderInset, cylinderPortFrame);
+  registerShape("queue", queue, queueInset, queuePortFrame);
+  registerShape("hexagon", hexagon, hexagonInset, hexagonPortFrame);
+  registerShape("cloud", cloud, cloudInset, cloudPortFrame);
 }
 
 // Auto-register on import
