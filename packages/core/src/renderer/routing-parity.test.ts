@@ -34,6 +34,9 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { layout } from "./layout.js";
+import "./shapes.js";
+import { resolveStyles } from "../resolver/style-resolver.js";
+import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
@@ -213,14 +216,31 @@ function layoutOf(file: string, groupBy?: GroupBy): LayoutResult {
   const parsed = Parser.parse(src);
   const krsFile = parsed.value;
   const slice = extractView(krsFile.systems, []);
+  const styles = resolveStyles(krsFile.systems, [getBuiltinStyleSheet()]);
   return layout(slice, {
     ownerIndex: krsFile.ownerIndex,
     groupBy,
     boundaryMembership: krsFile.boundaryMembership,
     declaredGroupOrder: groupBy ? declaredGroupOrderOf(krsFile, groupBy) : undefined,
     groupLabels: groupBy ? buildGroupLabelIndex(krsFile, groupBy) : undefined,
+    // The renderer always passes these, and since #2422 they move endpoints:
+    // a fence that left them out would measure a diagram nobody sees.
+    shapeForNode: (id) => {
+      const style = styles.nodes.get(id) ?? styles.defaultNodeStyle;
+      return typeof style.shape === "string" ? style.shape : style.shape.url;
+    },
+    chipZoneFor: (node) => ({
+      x: node.x + node.width - CHIP_LANE_WIDTH,
+      y: node.y,
+      width: CHIP_LANE_WIDTH,
+      height: CHIP_LANE_HEIGHT,
+    }),
   });
 }
+
+/** A typical corner lane: two buttons and a short chip (#2420). */
+const CHIP_LANE_WIDTH = 72;
+const CHIP_LANE_HEIGHT = 24;
 
 /**
  * Real models whose ungrouped system view exercises the router. Each one had at

@@ -254,26 +254,35 @@ function seatEndpoint(
     along,
   );
   const outlineTarget = nearestInSpans(attachableSpans(node, side, ports.frame), along);
-  const settled =
-    slideAlongSide(edge, isFrom, side, along, keepOutTarget, length, obstacles, false) ??
-    slideAlongSide(edge, isFrom, side, along, outlineTarget, length, obstacles, true) ??
-    along;
+  const slide =
+    planSlide(edge, isFrom, side, along, keepOutTarget, length, obstacles, false) ??
+    planSlide(edge, isFrom, side, along, outlineTarget, length, obstacles, true);
+  slide?.apply();
 
+  const settled = slide ? slide.target : along;
   const depth = depthAt(ports.frame[side], settled);
-  if (depth === 0) return;
-  if (side === "top") point.y = node.y + depth;
-  else if (side === "bottom") point.y = node.y + node.height - depth;
-  else if (side === "left") point.x = node.x + depth;
-  else point.x = node.x + node.width - depth;
+  // Written as a fresh object, never mutated in place: `aggregateGroupTrunks`
+  // hands one `Point` to every sibling of a trunk, so a `+=` here would drag
+  // endpoints whose own waypoints stay put and leave diagonal, unchecked stubs.
+  const seated = { ...(isFrom ? edge.fromPoint : edge.toPoint) };
+  if (side === "top") seated.y = node.y + depth;
+  else if (side === "bottom") seated.y = node.y + node.height - depth;
+  else if (side === "left") seated.x = node.x + depth;
+  else seated.x = node.x + node.width - depth;
+  if (isFrom) edge.fromPoint = seated;
+  else edge.toPoint = seated;
 }
 
 /**
- * Slides an endpoint — and the waypoint its last segment shares a coordinate
- * with — to `target`. Returns the position reached, or null when the move is
- * refused: the segment cannot follow, the result would put the polyline
- * through something, or it would tilt a straight edge and `allowTilt` says no.
+ * Plans a slide of the endpoint — and of the waypoint its last segment shares
+ * a coordinate with — to `target`. Returns null when the move is refused: the
+ * segment cannot follow, the result would put the polyline through something,
+ * or it would tilt a straight edge and `allowTilt` says no.
+ *
+ * Nothing is written until `apply()`, and `apply()` replaces points rather
+ * than editing them, because a `Point` here may be shared with sibling edges.
  */
-function slideAlongSide(
+function planSlide(
   edge: LayoutEdge,
   isFrom: boolean,
   side: Side,
@@ -282,31 +291,38 @@ function slideAlongSide(
   length: number,
   obstacles: readonly Rect[],
   allowTilt: boolean,
-): number | null {
+): { target: number; apply: () => void } | null {
   const delta = (target - along) * length;
-  if (Math.abs(delta) < 1e-6) return along;
+  if (Math.abs(delta) < 1e-6) return { target: along, apply: () => {} };
 
   const point = isFrom ? edge.fromPoint : edge.toPoint;
   const waypoints = edge.waypoints;
   const horizontal = side === "top" || side === "bottom";
   const axis = horizontal ? "x" : "y";
-  const neighbour =
-    waypoints && waypoints.length > 0
-      ? isFrom
-        ? waypoints[0]
-        : waypoints[waypoints.length - 1]
-      : undefined;
+  const neighbourIndex =
+    waypoints && waypoints.length > 0 ? (isFrom ? 0 : waypoints.length - 1) : -1;
+  const neighbour = neighbourIndex >= 0 ? waypoints![neighbourIndex] : undefined;
+  const movedPoint = { ...point, [axis]: point[axis] + delta };
 
   if (!neighbour) {
     if (!allowTilt) return null;
-    point[axis] += delta;
-    return target;
+    // A straight edge has no waypoint to carry, so the line tilts. Cheap as
+    // that looks, it still has to clear what it crosses.
+    const other = isFrom ? edge.toPoint : edge.fromPoint;
+    const path = isFrom ? [movedPoint, other] : [other, movedPoint];
+    if (!polylineClearOf(path, obstacles as Rect[])) return null;
+    return {
+      target,
+      apply: () => {
+        if (isFrom) edge.fromPoint = movedPoint;
+        else edge.toPoint = movedPoint;
+      },
+    };
   }
   // The last segment has to be perpendicular to the side for the endpoint to
   // slide; otherwise moving it would leave a diagonal stub.
   if (Math.abs(neighbour[axis] - point[axis]) > 1e-6) return null;
 
-  const movedPoint = { ...point, [axis]: point[axis] + delta };
   const movedNeighbour = { ...neighbour, [axis]: neighbour[axis] + delta };
   const rest = waypoints ?? [];
   const path = isFrom
@@ -314,9 +330,16 @@ function slideAlongSide(
     : [edge.fromPoint, ...rest.slice(0, -1), movedNeighbour, movedPoint];
   if (!polylineClearOf(path, obstacles as Rect[])) return null;
 
-  point[axis] += delta;
-  neighbour[axis] += delta;
-  return target;
+  return {
+    target,
+    apply: () => {
+      if (isFrom) edge.fromPoint = movedPoint;
+      else edge.toPoint = movedPoint;
+      const next = [...rest];
+      next[neighbourIndex] = movedNeighbour;
+      edge.waypoints = next;
+    },
+  };
 }
 
 /** True when `along` already sits in a span; otherwise the closest edge of one. */

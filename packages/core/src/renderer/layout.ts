@@ -2796,11 +2796,12 @@ function portResolver(options: LayoutOptions): PortResolver | undefined {
     // the same value `measureNode` resolved the shape from.
     const shapeName = shapeForNode(node.id, node.annotations ?? []);
     const frameFn = shapeName ? getShapePortFrame(shapeName) : undefined;
-    const keepOuts: Rect[] = [];
-    const chipZone = chipZoneFor?.(node);
-    if (chipZone) keepOuts.push(chipZone);
-    const tabs = degradedTabsZone(node);
-    if (tabs) keepOuts.push(tabs);
+    // A zero-area zone — a card with no chip and no buttons still reports its
+    // empty lane — blocks nothing, and dropping it here is what lets the
+    // single-anchor shortcut in `distributePorts` stay reachable.
+    const keepOuts = [chipZoneFor?.(node), degradedTabsZone(node)].filter(
+      (r): r is Rect => !!r && r.width > 0 && r.height > 0,
+    );
     if (!frameFn && keepOuts.length === 0) return undefined;
     return { frame: frameFn?.(node.width, node.height) ?? BBOX_PORT_FRAME, keepOuts };
   };

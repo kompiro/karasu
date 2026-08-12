@@ -306,7 +306,9 @@ export function render(
   // where the card ended up.
   const palette = resolvePalette(options?.theme);
   const chipZoneFor = (node: LayoutNode): Rect | undefined =>
-    chipZoneOf(node, node.id, styles, palette, serviceIdsWithDeploy);
+    // The layout is about to apply the shape insets it was given the hook for,
+    // so the lane is measured the way `renderNode` will draw it.
+    chipZoneOf(node, node.id, styles, palette, displayMode !== "icon", serviceIdsWithDeploy);
   const layoutResult = layout(viewSlice, {
     ownerIndex,
     shapeForNode,
@@ -1321,8 +1323,6 @@ function renderContainer(
   );
 }
 
-/** Approximate px per character in a 縮退 tab's 10px label, and its horizontal padding. */
-
 /**
  * `◇ <boundary>` tabs for memberships no frame could reach (#2179) — the 縮退
  * fallback. Drawn as dashed pills on the card's bottom edge in the frame's own
@@ -2110,12 +2110,20 @@ function assignChipZones(
   palette: DiagramPalette,
   serviceIdsWithDeploy?: Set<string>,
 ): void {
+  const applyShapeInsets = layoutResult.shapeInsetsApplied ?? false;
   for (const [nodeId, node] of layoutResult.nodes) {
     // Stamped here rather than in layout even though layout computes the same
     // rectangle for its port keep-outs (#2422): layout's copy predates
     // `normalizeCoordinates`, which shifts the whole canvas. Recomputing from
     // the final geometry is cheaper than tracking that shift.
-    node.chipZone = chipZoneOf(node, nodeId, styles, palette, serviceIdsWithDeploy);
+    node.chipZone = chipZoneOf(
+      node,
+      nodeId,
+      styles,
+      palette,
+      applyShapeInsets,
+      serviceIdsWithDeploy,
+    );
   }
 }
 
@@ -2129,6 +2137,8 @@ function chipZoneOf(
   nodeId: string,
   styles: ResolvedStyles,
   palette: DiagramPalette,
+  /** Mirrors what `renderNode` will do: a padding-only layout draws a padding-only lane. */
+  applyShapeInsets: boolean,
   serviceIdsWithDeploy?: Set<string>,
 ): Rect | undefined {
   {
@@ -2146,9 +2156,7 @@ function chipZoneOf(
       style,
       buttonCount,
       palette.badgeFallback,
-      // The zone is read before the per-node draw, where the shape's own
-      // insets are the only signal available.
-      laneInsetOf(style, node, true),
+      laneInsetOf(style, node, applyShapeInsets),
     ).zone;
   }
 }
