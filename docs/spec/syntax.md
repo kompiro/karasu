@@ -792,8 +792,10 @@ allowed — the edge stays co-located with its source.
 
 #### Endpoint scope
 
-An edge is drawn on the view that renders the block it is declared in, so **both
-of its endpoints must be peers at that scope**:
+An edge is drawn on the view where its endpoints stand side by side — the view
+of the block it is declared in (`system`), or the view that draws that block as
+a node (`service` / `domain` / `entity`). Either way **both of its endpoints
+must be peers at that scope**:
 
 - inside a `system` block — that block's own children (plus top-level
   `domain`s, which the root view splices in beside them);
@@ -827,12 +829,14 @@ domain Ordering {
 }
 ```
 
-Two placements are deliberately *not* reported, because they do render: a
+Three placements are deliberately *not* reported, because they do render: a
 `domain` → `domain` edge at any distance (a cross-service one is derived up to
 an implicit service edge, see [Edges inside a domain block](#edges-inside-a-domain-block)),
-and a cross-domain `entity` relation written with a qualified
-`DomainId.EntityId` target. A bare cross-domain entity target is intra-domain
-only, so it is dropped and reported.
+a `service`-anchored edge naming a peer of that service (see
+[Edges inside a service block](#edges-inside-a-service-block)), and a
+cross-domain `entity` relation written with a qualified `DomainId.EntityId`
+target. A bare cross-domain entity target is intra-domain only, so it is
+dropped and reported.
 
 An endpoint that resolves nowhere is a different case, reported as
 `unresolved-edge-endpoint` (§S6). Both diagnostics are catalogued in the
@@ -869,6 +873,44 @@ usecase PlaceOrder {
 See [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
 itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
+
+#### Edges inside a service block
+
+Declaring an edge inside a `service` block expresses a dependency of that
+service. `from_id` is the declaring service (or omitted, which means the same
+thing); `to_id` is any peer of that service — another service, an `[external]`
+one, a `client`, or an infra block declared beside it.
+
+```krs
+system Shop {
+  service Storefront {
+    -> Checkout "place order"
+    domain Catalog { usecase Browse {} }
+  }
+  service Checkout {
+    Checkout --> Ledger "settlement requested"
+    domain Ordering { usecase Place {} }
+  }
+  service Ledger [external] {}
+}
+```
+
+The edge renders **on the view that draws the declaring service as a node** —
+the system view, and the drill-down into that system — which is the same place
+the `system`-scope spelling of the dependency lands. Prefer this anchored form:
+it keeps the edge next to the source it belongs to, and it is what the
+[edge origin scope](#edge-declaration) rule asks for.
+
+A qualified target (`OtherSystem.Svc`) takes the cross-system path instead: the
+target system is drawn as a ghost on the declaring service's view, and the
+declaring service as a caller ghost on the target's view.
+
+An explicit service edge — in either spelling — suppresses the implicit service
+edge that cross-service domain edges would otherwise derive for the same pair
+(see below).
+
+> Related TPLs:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — an edge the parser accepts renders on some view or is reported; the anchored spelling must not drop silently
 
 #### Edges inside a domain block
 

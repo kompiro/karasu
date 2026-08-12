@@ -738,8 +738,9 @@ service が共有するかで判定し、こちらは所有境界の越境で判
 
 #### 端点のスコープ（endpoint scope）
 
-エッジは、それを宣言したブロックを描画するビューに描かれる。したがって
-**両端がそのスコープの peer でなければならない**:
+エッジは、両端が並んで描かれるビュー — 宣言したブロック自身のビュー（`system`）、
+またはそのブロックをノードとして描くビュー（`service` / `domain` / `entity`）— に
+描かれる。いずれの場合も **両端がそのスコープの peer でなければならない**:
 
 - `system` ブロック内 — そのブロック自身の直下の子（およびルートビューが並べて
   差し込むトップレベルの `domain`）
@@ -772,9 +773,11 @@ domain Ordering {
 }
 ```
 
-次の 2 つは実際に描画されるため、意図的に報告しない: 距離を問わない
+次の 3 つは実際に描画されるため、意図的に報告しない: 距離を問わない
 `domain` → `domain` エッジ（サービスをまたぐ場合は暗黙のサービス間エッジに
 集約される。[domain ブロック内のエッジ](#domain-ブロック内のエッジ)を参照）と、
+そのサービスの peer を指す `service` 起点のエッジ
+（[service ブロック内のエッジ](#service-ブロック内のエッジ)を参照）と、
 限定子付き `DomainId.EntityId` で書いた cross-domain の `entity` 関連。
 bare id の cross-domain entity 参照は intra-domain 専用のため drop され、報告される。
 
@@ -803,6 +806,42 @@ usecase PlaceOrder {
 ```
 
 `#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
+
+#### service ブロック内のエッジ
+
+`service` ブロック内にエッジを宣言すると、そのサービス自身の依存関係を表現できる。
+`from_id` は宣言元のサービス（省略しても同じ意味）、`to_id` はそのサービスの peer
+— 別のサービス、`[external]` なサービス、`client`、隣に宣言された infra ブロック
+— のいずれかである。
+
+```krs
+system Shop {
+  service Storefront {
+    -> Checkout "注文する"
+    domain Catalog { usecase Browse {} }
+  }
+  service Checkout {
+    Checkout --> Ledger "精算を依頼する"
+    domain Ordering { usecase Place {} }
+  }
+  service Ledger [external] {}
+}
+```
+
+このエッジは **宣言元のサービスをノードとして描くビュー** — システムビューと、
+その system へのドリルダウン — に描画される。`system` スコープで書いた同じ依存が
+落ちる場所と同一である。こちらの anchored 形を優先して使う: 起点のすぐ隣に
+エッジが残り、[エッジの起点スコープ](#エッジ宣言)の規則が求める形でもある。
+
+限定子付きの target（`OtherSystem.Svc`）は cross-system の経路に乗る。宣言元
+サービスのビューに相手 system が ghost として描かれ、相手サービスのビューには
+宣言元が caller ghost として描かれる。
+
+明示的なサービス間エッジは、どちらの綴りで書いても、同じペアに対して
+cross-service のドメインエッジから派生する暗黙エッジを抑止する（下記参照）。
+
+> 関連 TPL:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理したエッジはいずれかの view で描画されるか診断される。anchored 形を黙って落とさない
 
 #### domain ブロック内のエッジ
 

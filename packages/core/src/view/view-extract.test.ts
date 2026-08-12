@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { extractView, extractEntityView } from "./view-extract.js";
+import { withUnassignedSystem } from "./unassigned-system.js";
 import { Parser } from "../parser/parser.js";
-import type { KrsNode } from "../types/ast.js";
+import type { KrsEdge, KrsNode } from "../types/ast.js";
 
 function parseSystem(krs: string): KrsNode[] {
   return Parser.parse(krs).value.systems;
@@ -1626,6 +1627,163 @@ system ECPlatform {
         const view = extractView(systems, ["ECPlatform", "BillingService"]);
         expect(view.ghostDomains[0].parentServiceLabel).toBe("EC Commerce");
       });
+    });
+  });
+
+  // An edge declared inside a `service` block originates from that service
+  // (spec § Edge origin scope), so it draws on the canvas where the service is
+  // a node — the root system view and the system drill-down — exactly like the
+  // system-scope spelling of the same dependency.
+  describe("service-anchored edges (#2223)", () => {
+    const spellings = (view: { childEdges: KrsEdge[] }) =>
+      view.childEdges.map((e) => `${e.from}->${e.to}`);
+
+    it("renders on the root system view and on the system drill-down", () => {
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    S1 -> S2 "calls"
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+`);
+      expect(spellings(extractView(systems, []))).toContain("S1->S2");
+      expect(spellings(extractView(systems, ["T"]))).toContain("S1->S2");
+      const rendered = extractView(systems, []).childEdges.find((e) => e.to === "S2");
+      expect(rendered?.label).toBe("calls");
+    });
+
+    it("renders the implicit-source spelling (`-> S2`) the same way", () => {
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    -> S2
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+`);
+      expect(spellings(extractView(systems, []))).toContain("S1->S2");
+    });
+
+    it("renders an async edge to an external sibling service", () => {
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    S1 --> Pay
+    domain A { usecase u {} }
+  }
+  service Pay [external] {}
+}
+`);
+      const edge = extractView(systems, []).childEdges.find((e) => e.to === "Pay");
+      expect(edge?.kind).toBe("async");
+    });
+
+    it("suppresses the implicit service edge derived for the same pair", () => {
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    S1 -> S2
+    domain A { A -> B }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+`);
+      const edges = extractView(systems, []).childEdges.filter(
+        (e) => e.from === "S1" && e.to === "S2",
+      );
+      expect(edges).toHaveLength(1);
+      expect(edges[0].tags).not.toContain("implicit");
+    });
+
+    it("does not render an endpoint that is not a peer at the declaring scope", () => {
+      // `B` is a domain of another service — reported by
+      // `edge-endpoint-not-at-scope`, not drawn here.
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    S1 -> B
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+}
+`);
+      expect(spellings(extractView(systems, []))).not.toContain("S1->B");
+      expect(spellings(extractView(systems, ["T"]))).not.toContain("S1->B");
+    });
+
+    it("feeds the ghost-system machinery for a qualified cross-system target", () => {
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    S1 -> U.S3
+    domain A { usecase u {} }
+  }
+}
+system U {
+  service S3 { domain C { usecase w {} } }
+}
+`);
+      // Root view: the cross-system edge is collected like a system-scope one.
+      expect(extractView(systems, []).crossSystemEdges.map((e) => `${e.from}->${e.to}`)).toContain(
+        "S1->U.S3",
+      );
+      // Source service view: the target system appears as a ghost.
+      const source = extractView(systems, ["T", "S1"]);
+      expect(source.ghostSystems.map((gs) => gs.systemNode.id)).toEqual(["U"]);
+      expect(source.ghostSystemEdges).toHaveLength(1);
+      // Target service view: the caller appears as a caller ghost.
+      const target = extractView(systems, ["U", "S3"]);
+      expect(target.callerGhostSystems.map((gs) => gs.systemNode.id)).toEqual(["T"]);
+      expect(target.callerGhostSystemEdges.map((e) => `${e.from}->${e.to}`)).toEqual(["T.S1->S3"]);
+    });
+
+    it("surfaces a ghost user for a service-anchored edge to a user", () => {
+      const systems = parseSystem(`
+system T {
+  user Ops {}
+  service S1 {
+    S1 -> Ops
+    domain A { usecase u {} }
+  }
+}
+`);
+      const view = extractView(systems, ["T", "S1"]);
+      expect(view.ghostUsers.map((u) => u.id)).toEqual(["Ops"]);
+    });
+
+    it("renders between orphan services on the unassigned canvas", () => {
+      const parsed = Parser.parse(`
+service S1 {
+  S1 -> S2
+  domain A { usecase u {} }
+}
+service S2 { domain B { usecase v {} } }
+`).value;
+      // The SVG path wraps orphans into the `__unassigned__` pseudo-system…
+      const wrapped = withUnassignedSystem(parsed);
+      expect(spellings(extractView(wrapped, []))).toContain("S1->S2");
+      // …and the drawio path passes them alongside an empty systems list.
+      expect(spellings(extractView([], [], parsed.services))).toContain("S1->S2");
+    });
+
+    it("keeps entity relations out of the domain drill-down", () => {
+      // Entity relations belong to the entity view; the anchored-edge pass
+      // must not lift them onto a canvas that draws no entity nodes.
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    domain D {
+      entity Order { -> Customer }
+      entity Customer {}
+      usecase u {}
+    }
+  }
+}
+`);
+      expect(extractView(systems, ["T", "S1", "D"]).childEdges).toHaveLength(0);
     });
   });
 });

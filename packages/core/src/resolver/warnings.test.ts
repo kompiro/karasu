@@ -2618,6 +2618,51 @@ system T {
     ).toHaveLength(0);
   });
 
+  // #2223: the service-anchored spelling draws on the canvas where the service
+  // is a node, so its peers are the declaring system's children.
+  it("does not warn for a service-anchored edge to a peer of the declaring service", () => {
+    expect(
+      find(`
+system T {
+  service S1 {
+    S1 -> S2
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+  client W [web]
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  // Orphans share the `__unassigned__` frame, so they are peers of one another
+  // there — the same set `extractView` draws the anchored edge in (#2223).
+  it("does not warn for an anchored edge between two top-level orphan services", () => {
+    expect(
+      find(`
+service S1 {
+  S1 -> S2
+  domain A { usecase u {} }
+}
+service S2 { domain B { usecase v {} } }
+`),
+    ).toHaveLength(0);
+  });
+
+  // A top-level `client` is not wrapped into the pseudo-system, so it never
+  // shares a canvas with an orphan service.
+  it("warns when an orphan service's anchored edge names a top-level client", () => {
+    const warnings = find(`
+service S1 {
+  S1 -> W
+  domain A { usecase u {} }
+}
+client W [web]
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({ endpointId: "W", endpointKind: "client" });
+  });
+
   it("does not warn for a cross-service domain edge (derived as an implicit service edge)", () => {
     expect(
       find(`
