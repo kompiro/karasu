@@ -58,6 +58,21 @@ describe("builtin port frames", () => {
     it("leaves the bottom edge alone — the card reaches it", () => {
       for (const p of portsOf("user", "bottom")) expect(p.y).toBeCloseTo(H, 6);
     });
+
+    // The card is rounded on all four corners, so a port flush to one sits in
+    // the notch the arc leaves — outside the fill, which is the failure this
+    // slice removes.
+    it("stays inside the rounded corners on every side", () => {
+      const r = 8;
+      const inCorner = SIDES.flatMap((side) =>
+        portsOf("user", side).filter((p) =>
+          side === "top" || side === "bottom"
+            ? p.x < r - EPS || p.x > W - r + EPS
+            : p.y > H - r + EPS,
+        ),
+      );
+      expect(inCorner).toEqual([]);
+    });
   });
 
   describe("cylinder", () => {

@@ -334,20 +334,24 @@ const userPortFrame: ShapePortFrameFn = (w, h) => {
   // medallion straddles it at the centre: an edge aimed at the middle of the
   // top used to stop in the empty corner beside it (the #2366 P10 report).
   const half = w > 0 ? medR / w : 0;
-  // The straight part of each side: below the top border and inside both
-  // rounded corners, so a port never sits in the gap a corner arc leaves.
-  const corner = h > 0 ? USER_CARD_RADIUS / h : 0;
-  const sideSpan = { from: (h > 0 ? medR / h : 0) + corner, to: 1 - corner };
+  // The straight part of each side: inside the rounded corners on both axes,
+  // and below the top border vertically. The card is rounded on all four
+  // corners, so every side gives the same allowance — a port declared flush to
+  // a corner sits in the notch the arc leaves, which is the failure this whole
+  // slice removes.
+  const cornerY = h > 0 ? USER_CARD_RADIUS / h : 0;
+  const cornerX = w > 0 ? USER_CARD_RADIUS / w : 0;
+  const sideSpan = { from: (h > 0 ? medR / h : 0) + cornerY, to: 1 - cornerY };
   return {
     top: {
       spans: [
-        { from: 0, to: Math.max(0, 0.5 - half) },
-        { from: Math.min(1, 0.5 + half), to: 1 },
+        { from: cornerX, to: Math.max(cornerX, 0.5 - half) },
+        { from: Math.min(1 - cornerX, 0.5 + half), to: 1 - cornerX },
       ],
       depth: medR,
     },
     right: { spans: [sideSpan], depth: 0 },
-    bottom: { spans: [{ from: 0, to: 1 }], depth: 0 },
+    bottom: { spans: [{ from: cornerX, to: 1 - cornerX }], depth: 0 },
     left: { spans: [sideSpan], depth: 0 },
   };
 };
