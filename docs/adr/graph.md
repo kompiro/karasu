@@ -318,6 +318,7 @@ flowchart TD
     ADR_2075["ADR-2075<br/>宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
+    ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
   end
   subgraph styling["styling"]
     ADR_8["ADR-8<br/>ビルトインスタイルの一元化と構造化リファレンス"]
@@ -467,6 +468,7 @@ flowchart TD
   ADR_2234 --> ADR_9004
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
+  ADR_2442 --> ADR_2410
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -787,6 +789,7 @@ flowchart TD
   class ADR_2410 accepted
   class ADR_2419 accepted
   class ADR_2440 accepted
+  class ADR_2442 accepted
   class ADR_2447 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
