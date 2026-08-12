@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getShapePortFrame } from "../shapes/shape-registry.js";
 import "./shapes.js"; // auto-registers builtin shapes
 import { portPoint, type Side } from "./port-frame.js";
+import { cloudOutline } from "./shapes.js";
 
 /**
  * #2422: a shape says where its outline actually is, so an edge stops on the
@@ -159,17 +160,40 @@ describe("builtin port frames", () => {
   });
 
   describe("cloud", () => {
-    // The one shape whose ports sit inside the outline rather than on it: the
-    // blob is wavy and non-convex, so a side has no single boundary to land on.
-    it("pulls every port into the content-safe box", () => {
+    // Reported on the preview: the arrowhead disappeared under the blob. The
+    // first frame parked the port on the content-safe rectangle, which is deep
+    // inside the fill — the same failure this slice exists to remove, pointing
+    // the other way. The outline of a wavy shape has no closed form, but it has
+    // one crossing per ray, and that is all a port needs.
+    const distanceToOutline = (p: { x: number; y: number }): number => {
+      const outline = cloudOutline(0, 0, W, H);
+      let best = Infinity;
+      for (let i = 0; i < outline.length - 1; i++) {
+        const a = outline[i];
+        const b = outline[i + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = dx * dx + dy * dy;
+        const t =
+          len === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len));
+        best = Math.min(best, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+      }
+      return best;
+    };
+
+    it("lands every port on the drawn curve, not inside it", () => {
       for (const side of SIDES) {
         for (const p of portsOf("cloud", side)) {
-          expect(p.x).toBeGreaterThanOrEqual(W * 0.2 - EPS);
-          expect(p.x).toBeLessThanOrEqual(W * (1 - 0.16) + EPS);
-          expect(p.y).toBeGreaterThanOrEqual(H * 0.26 - EPS);
-          expect(p.y).toBeLessThanOrEqual(H * (1 - 0.2) + EPS);
+          expect(distanceToOutline(p)).toBeLessThanOrEqual(1);
         }
       }
+    });
+
+    it("reaches further in where the blob dips away from the box", () => {
+      // A constant depth per side would be either outside the fill or buried:
+      // the depths have to differ along the side.
+      const depths = portsOf("cloud", "top").map((p) => p.y);
+      expect(Math.max(...depths) - Math.min(...depths)).toBeGreaterThan(1);
     });
   });
 });

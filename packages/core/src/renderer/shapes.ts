@@ -175,19 +175,59 @@ const hexagon: ShapeRenderFn = (ctx) => {
   });
 };
 
+/**
+ * The blob, as fractions of the bounding box: a start point and four cubic
+ * segments, each three control points. Kept as data so the port frame can
+ * flatten the very curve the renderer draws — the outline of a cloud has no
+ * closed form to restate, and a second description would drift (#2422).
+ */
+const CLOUD_CURVE: { start: [number, number]; segments: [number, number][][] } = {
+  start: [0.15, 0.65],
+  segments: [
+    [
+      [-0.05, 0.9],
+      [0.05, 1],
+      [0.5, 0.85],
+    ],
+    [
+      [0.65, 1],
+      [1.05, 0.8],
+      [0.9, 0.5],
+    ],
+    [
+      [1.05, 0.25],
+      [0.75, 0],
+      [0.5, 0.15],
+    ],
+    [
+      [0.35, 0.05],
+      [-0.05, 0.35],
+      [0.15, 0.65],
+    ],
+  ],
+};
+
+/** Absolute point from a normalized one. */
+function cloudPoint(
+  [u, v]: [number, number],
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): { x: number; y: number } {
+  return { x: x + u * w, y: y + v * h };
+}
+
 const cloud: ShapeRenderFn = (ctx) => {
   const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
-  const cx = x + w / 2;
-  const cy = y + h / 2;
-  const rx = w / 2;
-  const ry = h / 2;
+  const at = (p: [number, number]): string => {
+    const abs = cloudPoint(p, x, y, w, h);
+    return `${abs.x} ${abs.y}`;
+  };
 
   const path = [
-    `M${x + rx * 0.3} ${cy + ry * 0.3}`,
-    `C${x - rx * 0.1} ${cy + ry * 0.8}, ${x + rx * 0.1} ${cy + ry}, ${cx} ${cy + ry * 0.7}`,
-    `C${cx + rx * 0.3} ${cy + ry}, ${x + w + rx * 0.1} ${cy + ry * 0.6}, ${x + w - rx * 0.2} ${cy}`,
-    `C${x + w + rx * 0.1} ${cy - ry * 0.5}, ${cx + rx * 0.5} ${cy - ry}, ${cx} ${cy - ry * 0.7}`,
-    `C${cx - rx * 0.3} ${cy - ry * 0.9}, ${x - rx * 0.1} ${cy - ry * 0.3}, ${x + rx * 0.3} ${cy + ry * 0.3}`,
+    `M${at(CLOUD_CURVE.start)}`,
+    ...CLOUD_CURVE.segments.map((seg) => `C${seg.map(at).join(", ")}`),
     `Z`,
   ].join(" ");
 
@@ -199,6 +239,34 @@ const cloud: ShapeRenderFn = (ctx) => {
     "stroke-dasharray": dash || undefined,
   });
 };
+
+/** The blob as a polyline, fine enough to intersect a ray against. */
+export function cloudOutline(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): { x: number; y: number }[] {
+  const points: { x: number; y: number }[] = [];
+  let from = cloudPoint(CLOUD_CURVE.start, x, y, w, h);
+  points.push(from);
+  for (const [c1, c2, end] of CLOUD_CURVE.segments) {
+    const p1 = cloudPoint(c1, x, y, w, h);
+    const p2 = cloudPoint(c2, x, y, w, h);
+    const p3 = cloudPoint(end, x, y, w, h);
+    const STEPS = 24;
+    for (let i = 1; i <= STEPS; i++) {
+      const t = i / STEPS;
+      const m = 1 - t;
+      points.push({
+        x: m * m * m * from.x + 3 * m * m * t * p1.x + 3 * m * t * t * p2.x + t * t * t * p3.x,
+        y: m * m * m * from.y + 3 * m * m * t * p1.y + 3 * m * t * t * p2.y + t * t * t * p3.y,
+      });
+    }
+    from = p3;
+  }
+  return points;
+}
 
 // ---------------------------------------------------------------------------
 // Registration
@@ -315,19 +383,59 @@ const hexagonPortFrame: ShapePortFrameFn = () => ({
   left: { spans: [{ from: 0.5, to: 0.5 }], depth: 0 },
 });
 
-const cloudPortFrame: ShapePortFrameFn = (w, h) => {
-  // The one shape whose port sits *inside* the outline rather than on it: the
-  // blob is wavy and non-convex, so a side has no single boundary to land on.
-  // The content-safe margins (verified against the flattened path in #2412)
-  // are the closest honest answer — inside the fill everywhere, never floating.
-  const inset = cloudInset(w, h);
-  return {
-    top: { spans: [{ from: 0.25, to: 0.75 }], depth: inset.top },
-    bottom: { spans: [{ from: 0.25, to: 0.75 }], depth: inset.bottom },
-    right: { spans: [{ from: 0.3, to: 0.7 }], depth: inset.right },
-    left: { spans: [{ from: 0.3, to: 0.7 }], depth: inset.left },
-  };
-};
+/**
+ * Depth to the blob's own outline, found by walking in from the bounding box
+ * until the flattened curve is crossed.
+ *
+ * The first attempt parked the port on the content-safe rectangle instead,
+ * reasoning that a wavy non-convex outline has no single boundary per side.
+ * It has one per *ray*, which is all a port needs — and the rectangle is deep
+ * enough inside the fill that the arrowhead disappeared under the blob, which
+ * is the failure the whole slice exists to remove, in the other direction.
+ */
+function cloudDepth(
+  side: "top" | "bottom" | "left" | "right",
+  along: number,
+  w: number,
+  h: number,
+): number {
+  const outline = cloudOutline(0, 0, w, h);
+  const horizontal = side === "top" || side === "bottom";
+  const fixed = horizontal ? along * w : along * h;
+  const hits: number[] = [];
+  for (let i = 0; i < outline.length - 1; i++) {
+    const a = outline[i];
+    const b = outline[i + 1];
+    const [aFix, bFix] = horizontal ? [a.x, b.x] : [a.y, b.y];
+    if (aFix === bFix) continue;
+    const t = (fixed - aFix) / (bFix - aFix);
+    if (t < 0 || t > 1) continue;
+    hits.push(horizontal ? a.y + t * (b.y - a.y) : a.x + t * (b.x - a.x));
+  }
+  if (hits.length === 0) return 0;
+  switch (side) {
+    case "top":
+      return Math.max(0, Math.min(...hits));
+    case "bottom":
+      return Math.max(0, h - Math.max(...hits));
+    case "left":
+      return Math.max(0, Math.min(...hits));
+    default:
+      return Math.max(0, w - Math.max(...hits));
+  }
+}
+
+const cloudPortFrame: ShapePortFrameFn = (w, h) => ({
+  // Spans stay off the lobes' extremes, where the outline doubles back and a
+  // ray would meet it in three places; the middle of each side is single-valued.
+  top: { spans: [{ from: 0.25, to: 0.75 }], depth: (along) => cloudDepth("top", along, w, h) },
+  bottom: {
+    spans: [{ from: 0.25, to: 0.75 }],
+    depth: (along) => cloudDepth("bottom", along, w, h),
+  },
+  right: { spans: [{ from: 0.3, to: 0.7 }], depth: (along) => cloudDepth("right", along, w, h) },
+  left: { spans: [{ from: 0.3, to: 0.7 }], depth: (along) => cloudDepth("left", along, w, h) },
+});
 
 export function registerBuiltinShapes(): void {
   registerShape("box", box);
