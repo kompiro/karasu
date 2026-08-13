@@ -517,3 +517,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2366](TPL-2366-badge-color-canvas-contrast.md) | canvas 上に直接描かれる文字色（badge-color 等）はテーマごとに 4.5:1 を機械検証する。dark で選んだ値の light 流用は 7.8:1 を 2.3:1 に変える | styling | #2366 |
 | [TPL-2421](TPL-2421-kind-color-hue-table.md) | kind の色は色相表から導出する — 追加時は表に行を足し 3 色を同色相ルールで導く。塗りなし kind の枠線は唯一の輪郭なので tint 合成込みで 3:1 を負い、塗りを色として読む面（凡例スウォッチ）は border へ倒す | styling | #2421 |
 | [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) | テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する — 最も明るい背景 1 枚で代表させると、白で調整した色が mid-tone の surface で落ちる | styling | #2193 |
+| [TPL-2446](TPL-2446-gate-side-check-runs-over-the-whole-set.md) | マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠し、穴はフックを通らない bot PR でだけ露見する | build | #2446, #2432 |
