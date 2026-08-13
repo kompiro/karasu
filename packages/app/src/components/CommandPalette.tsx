@@ -128,11 +128,11 @@ export function CommandPalette() {
                   aria-selected={index === selectedIndex}
                   onMouseMove={() => setSelectedIndex(index)}
                   onClick={() => runCommand(command)}
-                  className="group flex w-full items-center justify-between gap-4 px-4 py-2 text-left text-sm text-[color:var(--text-primary)] aria-selected:bg-[color:var(--accent)] aria-selected:text-white"
+                  className="group flex w-full items-center justify-between gap-4 px-4 py-2 text-left text-sm text-[color:var(--text-primary)] aria-selected:bg-[color:var(--accent)] aria-selected:text-[color:var(--text-on-accent)]"
                 >
                   <span>{command.title}</span>
                   {command.keybinding && (
-                    <kbd className="text-xs text-[color:var(--text-secondary)] group-aria-selected:text-white">
+                    <kbd className="text-xs text-[color:var(--text-secondary)] group-aria-selected:text-[color:var(--text-on-accent)]">
                       {command.keybinding}
                     </kbd>
                   )}

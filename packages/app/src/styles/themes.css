@@ -42,7 +42,10 @@
   --text-muted: #7f95b6;
   --text-link: #5ba4f5;
   --text-link-hover: #82beff;
-  --text-on-accent: #ffffff;
+  /* Dark ink, not white: `--accent` is bright here (it also has to work as
+     text on dark surfaces), so white on it measures 3.14:1 while ink measures
+     6.11:1. Same reasoning as `--error-badge-text` below (#2461). */
+  --text-on-accent: #0f0f0f;
 
   /* Accent — electric blue */
   --accent: #4d8fff;
@@ -91,9 +94,11 @@
   --overlay-scrim: rgba(0, 0, 0, 0.4);
   --reference-scrim: rgba(7, 9, 15, 0.55);
 
-  /* Graphical diff viewer (Issue #650) */
+  /* Graphical diff viewer (Issue #650). These paint the banner's before/after
+     labels as well as SVG strokes, so they answer to 4.5:1 as text on the
+     banner tint *and* 3:1 as strokes on the canvas (#2461). */
   --diff-color-added: #22c55e;
-  --diff-color-removed: #ef4444;
+  --diff-color-removed: #f05454;
   --diff-color-changed: #f59e0b;
   --diff-bg-added: rgba(34, 197, 94, 0.12);
   --diff-bg-removed: rgba(239, 68, 68, 0.1);
@@ -111,6 +116,15 @@
   --nav-btn-text: #60a5fa;
   --nav-btn-hover-bg: #1e3a5f;
   --nav-btn-hover-border: #3b82f6;
+
+  /* Reference panel badge preview — intentionally the same ink in both
+     themes. Its background is the annotation's badge color supplied inline
+     from `reference-data.ts`, which is the *dark* palette value whichever
+     theme is active, so the foreground cannot follow the theme either. Those
+     colors are bright by construction (they must clear AA on the dark
+     canvas), so ink reads on all six where white measured 2.15–3.76:1
+     (#2461). */
+  --badge-preview-text: #0f0f0f;
 
   /* Export error banner — intentionally a light banner in both themes */
   --export-error-bg: #fdecea;
@@ -177,8 +191,11 @@
   /* Status colors that components use as `color:` are darkened just enough to
      clear AA on `--bg-void`, the palest-contrast light surface. Their dim /
      border tints keep the original hue values: those paint fills and rules,
-     which answer to the 3:1 non-text minimum. */
-  --error: #cc2121;
+     which answer to the 3:1 non-text minimum. `--error` goes a step further
+     than `--bg-void` alone demands because it is painted on its own
+     `--error-dim` tint (danger menu items, the project selector), and the
+     composite is darker than the surface underneath (#2461). */
+  --error: #bc1e1e;
   --error-dim: rgba(220, 38, 38, 0.09);
   --error-badge-text: #ffffff;
   --warning: #aa4e08;
@@ -204,8 +221,8 @@
   --overlay-scrim: rgba(15, 23, 42, 0.35);
   --reference-scrim: rgba(15, 23, 42, 0.3);
 
-  --diff-color-added: #15803d;
-  --diff-color-removed: #dc2626;
+  --diff-color-added: #137538;
+  --diff-color-removed: #c72020;
   --diff-color-changed: #b45309;
   --diff-bg-added: rgba(34, 197, 94, 0.16);
   --diff-bg-removed: rgba(239, 68, 68, 0.13);
