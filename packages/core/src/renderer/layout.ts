@@ -2155,7 +2155,10 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // co-located — ghost/cyclic, which `distributePorts` skips by kind, and
   // frame-anchored edges, whose endpoints it cannot look up (#2477).
   // See ADR-1185 and ADR-2477.
-  markParallelBundles(layoutEdges);
+  markParallelBundles(
+    layoutEdges,
+    (nodeId) => layoutNodes.get(nodeId) ?? expandedFrameRects?.get(nodeId),
+  );
 
   // Normalize coordinates and compute dimensions
   normalizeCoordinates(containers, layoutNodes, layoutEdges);
@@ -2712,7 +2715,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     });
   }
 
-  markParallelBundles(allEdges);
+  markParallelBundles(allEdges, (nodeId) => allLayoutNodes.get(nodeId));
 
   // The first system's left side column (#1728) can extend to negative x;
   // shift everything back into the positive quadrant so it isn't clipped.

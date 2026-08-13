@@ -32,11 +32,21 @@
  * so port and waypoint geometry are already finalized for the edges this pass
  * does not move.
  */
+import { type AnchorRect, detectSide } from "./edge-routing-ports.js";
 import type { LayoutEdge } from "./layout-types.js";
 
 const BUNDLE_GAP = 12;
 
-export function markParallelBundles(layoutEdges: LayoutEdge[]): void {
+export function markParallelBundles(
+  layoutEdges: LayoutEdge[],
+  /**
+   * What an endpoint is anchored to — a layout node or an expanded frame.
+   * Given one, the nudge slides along the side it found the endpoint on, so an
+   * edge whose chord runs diagonally keeps the outline seating of #2422. Without
+   * one the nudge falls back to the chord perpendicular.
+   */
+  anchorRectFor?: (nodeId: string) => AnchorRect | undefined,
+): void {
   const groups = new Map<string, LayoutEdge[]>();
   for (const edge of layoutEdges) {
     const key = `${edge.from}->${edge.to}`;
@@ -69,9 +79,16 @@ export function markParallelBundles(layoutEdges: LayoutEdge[]): void {
       const dy = edge.toPoint.y - edge.fromPoint.y;
       const len = Math.hypot(dx, dy);
       if (len === 0) continue;
-      // Perpendicular unit vector, rotated +90° from edge direction.
-      const px = (-dy / len) * offset;
-      const py = (dx / len) * offset;
+      // Perpendicular unit vector, rotated +90° from edge direction, snapped to
+      // the axis the endpoints' sides run along when we can see them. An
+      // axis-aligned edge is already snapped, so its geometry is unchanged.
+      const axis = anchorAxis(edge, anchorRectFor);
+      let px = -dy / len;
+      let py = dx / len;
+      if (axis === "x") [px, py] = [Math.sign(px) || 1, 0];
+      if (axis === "y") [px, py] = [0, Math.sign(py) || 1];
+      px *= offset;
+      py *= offset;
       // The whole polyline travels, so a routed edge keeps its shape (and its
       // corridors keep clear of what the router steered it around) instead of
       // gaining a kink at each end.
@@ -82,6 +99,31 @@ export function markParallelBundles(layoutEdges: LayoutEdge[]): void {
       }
     }
   }
+}
+
+/**
+ * The axis a nudge may travel on without lifting an endpoint off the shape it
+ * is anchored to: `"x"` for endpoints seated on a top/bottom side, `"y"` for a
+ * left/right one. Null when the sides disagree or nothing is known, which
+ * leaves the chord perpendicular in charge — the pre-#2477 behaviour, and what
+ * ghost endpoints (no rect of their own) keep getting.
+ */
+function anchorAxis(
+  edge: LayoutEdge,
+  anchorRectFor?: (nodeId: string) => AnchorRect | undefined,
+): "x" | "y" | null {
+  if (!anchorRectFor) return null;
+  const axisAt = (nodeId: string, point: { x: number; y: number }): "x" | "y" | null => {
+    const rect = anchorRectFor(nodeId);
+    const side = rect ? detectSide(point, rect) : null;
+    if (side === "top" || side === "bottom") return "x";
+    if (side === "left" || side === "right") return "y";
+    return null;
+  };
+  const from = axisAt(edge.from, edge.fromPoint);
+  const to = axisAt(edge.to, edge.toPoint);
+  if (from && to) return from === to ? from : null;
+  return from ?? to;
 }
 
 /** Sub-pixel apart is drawn on top of; a whole pixel reads as two lines. */

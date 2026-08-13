@@ -16,6 +16,9 @@
 - [x] 同じモデルを展開せずに描いた場合、port は従来どおり `distributePorts` が `i/(N+1)` に分散し、束ねパスは触らない（gate 一般化の回帰柵）
   > ✅ Automated — `packages/core/src/renderer/layout.expand.test.ts` › `leaves parallel edges between collapsed services to distributePorts`
 
+- [x] chord が斜めの束でも、端点は接している辺の上に残る（辺に沿ってスライドし、ADR-2422 の outline seating を壊さない）
+  > ✅ Automated — `packages/core/src/renderer/layout.expand.test.ts` › `slides a diagonal bundle along the borders it is anchored to (#2477)` / `packages/core/src/renderer/edge-routing-bundles.test.ts` › `slides along the anchored side instead of the chord perpendicular` / `keeps the chord perpendicular when the two anchors disagree on an axis`
+
 - [x] 束ねパス単体で、port が分散されていない通常エッジの束が perpendicular に分離される（`BUNDLE_GAP` = 12px、対称オフセット）
   > ✅ Automated — `packages/core/src/renderer/edge-routing-bundles.test.ts` › `nudges a regular bundle whose ports were never distributed (#2477)`
 

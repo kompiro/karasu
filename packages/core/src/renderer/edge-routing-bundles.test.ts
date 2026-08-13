@@ -132,6 +132,37 @@ describe("markParallelBundles", () => {
     ]);
   });
 
+  it("slides along the anchored side instead of the chord perpendicular", () => {
+    // A diagonal chord: the perpendicular would move both ends off the
+    // horizontal borders they sit on. Both anchors are on a top/bottom side,
+    // so the nudge travels on x only.
+    const rects = new Map([
+      ["A", { x: 60, y: 292, width: 160, height: 66 }],
+      ["B", { x: 154, y: 76, width: 192, height: 112 }],
+    ]);
+    const points = { fromPoint: { x: 140, y: 292 }, toPoint: { x: 250, y: 188 } };
+    const e1 = edge(structuredClone(points));
+    const e2 = edge(structuredClone(points));
+    markParallelBundles([e1, e2], (id) => rects.get(id));
+    expect(e1.fromPoint).toEqual({ x: 134, y: 292 });
+    expect(e1.toPoint).toEqual({ x: 244, y: 188 });
+    expect(e2.fromPoint).toEqual({ x: 146, y: 292 });
+    expect(e2.toPoint).toEqual({ x: 256, y: 188 });
+  });
+
+  it("keeps the chord perpendicular when the two anchors disagree on an axis", () => {
+    const rects = new Map([
+      ["A", { x: 0, y: 0, width: 100, height: 100 }], // leaves the right side
+      ["B", { x: 200, y: 200, width: 100, height: 100 }], // enters the top side
+    ]);
+    const points = { fromPoint: { x: 100, y: 50 }, toPoint: { x: 250, y: 200 } };
+    const e1 = edge(structuredClone(points));
+    const e2 = edge(structuredClone(points));
+    markParallelBundles([e1, e2], (id) => rects.get(id));
+    expect(e1.fromPoint.x).not.toBeCloseTo(e2.fromPoint.x);
+    expect(e1.fromPoint.y).not.toBeCloseTo(e2.fromPoint.y);
+  });
+
   it("nudges ghost edges perpendicular to the edge direction", () => {
     // Vertical edge from (100, 0) to (100, 100). Perpendicular is x-axis.
     // For N=2, offsets are -BUNDLE_GAP/2 and +BUNDLE_GAP/2 = ±6.

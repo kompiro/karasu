@@ -36,6 +36,9 @@ interface Anchor {
   isFrom: boolean;
 }
 
+/** What an anchor can sit on: a node card, or an expanded container's frame. */
+export type AnchorRect = { x: number; y: number; width: number; height: number };
+
 const SIDE_EPS = 0.5;
 
 export function distributePorts(
@@ -105,7 +108,12 @@ function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
   }
 }
 
-function detectSide(point: { x: number; y: number }, node: LayoutNode): Side | null {
+/**
+ * The side of `node` an anchor sits on, or null when it sits on none. Exported
+ * for the bundling pass, which slides a nudge along the side an endpoint is
+ * anchored to instead of off it (#2477).
+ */
+export function detectSide(point: { x: number; y: number }, node: AnchorRect): Side | null {
   const left = node.x;
   const right = node.x + node.width;
   const top = node.y;

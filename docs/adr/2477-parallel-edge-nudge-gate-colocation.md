@@ -52,6 +52,10 @@ ghost / cyclic は「port が分散されていない」という事実の**当�
 - `distributePorts` が実際に分散したエッジは触らない（ADR-1185 の責務分離は維持）
 - nudge は端点だけでなく **polyline 全体を平行移動**する。ルーティング済みのエッジが
   束に入っても形が保たれ、両端だけがずれて kink になることがない
+- 移動方向は chord の perpendicular を、**端点が接している辺の走る軸にスナップ**する
+  （上下辺なら x、左右辺なら y）。`markParallelBundles` は端点の矩形（layout node か
+  展開 frame）を引く resolver を受け取り、`detectSide` で辺を判定する。軸が判定できない
+  場合・両端の軸が食い違う場合は従来どおり chord perpendicular を使う
 
 ## 理由
 
@@ -59,7 +63,12 @@ ghost / cyclic は「port が分散されていない」という事実の**当�
   将来また別の理由で port 分散を外れる形が出ても同じように成立する。カテゴリ列挙は
   形が増えるたびに改訂が要る（[TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)）
 - **既存図が動かない**: 分散済みのエッジは判定を通らないので、並列エッジを含む既存の
-  図は byte-stable。ghost / cyclic は disjunct を残したので挙動不変
+  図は byte-stable。ghost / cyclic は disjunct を残し、軸スナップも軸平行な chord では
+  perpendicular と一致するため挙動不変
+- **outline seating を壊さない**: 斜めの chord に対して素朴な perpendicular を使うと、
+  端点が ADR-2422 で乗せた図形の輪郭から最大 `BUNDLE_GAP / 2` 浮く（矢尻が frame の
+  内側に入る／手前で止まる）。辺に沿ってスライドすれば、重なりを解消しつつ端点は辺上に
+  残る
 - **ADR-1185 の却下案 2 とは別物**: 却下されたのは `distributePorts` の**前段**で
   全エッジをずらす案で、後段の再割り当てに上書きされて無意味という理由だった。本 ADR は
   すべてのパスが終わった後に、まだ重なっているものだけを動かす
@@ -85,3 +94,7 @@ ghost / cyclic は「port が分散されていない」という事実の**当�
 - 両端が展開済み service の並列エッジが `BUNDLE_GAP`（12px）間隔で分離して描かれる
 - 分散済みエッジ・ghost / cyclic の描画は変わらない（`packages/core` 全テスト green）
 - 受け入れ条件は `docs/acceptance/2477-parallel-edges-between-expanded-frames.md`
+- **残る重なり**: 束の一部だけが分離されているケース — たとえば `fanOutGutterPorts` が
+  source 側の port だけを分けた gutter route — は polyline が一致しないため本 ADR の
+  判定を通らず、共有した回廊と着地点で重なったままになる。#2477 の再現（ルーティング
+  無し）とは別の形なので本 ADR では扱わず、フォローアップ [#2490](https://github.com/kompiro/karasu/issues/2490) に切り出した
