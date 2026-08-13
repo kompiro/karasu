@@ -508,6 +508,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) | 検出器の false positive 予算は正しさの一部 — 当ててはいけない near-miss 事例が実質の仕様で、positive テストだけなら規則が `/\S+/` でも通る | testing | #2287, ADR-1990 |
 | [TPL-2284](TPL-2284-purge-scope-identity-is-canonical.md) | 削除範囲を決める識別子は canonical 化する — 同じ主体の 2 通りの綴りが別 prefix になると purge は片方しか消さず、残りは戻り値にも例外にも現れない | project | #2284, ADR-1990 |
 | [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) | 要素に届かせるために広げた図形は実被覆で測る（bbox でも記録矩形でもなく）— 広げる述語は「回廊に非メンバーが無いこと」で書き、一括シフトは派生ジオメトリも動かす | renderer | #2179, #2240, docs/spec/syntax.md |
+| [TPL-2385](TPL-2385-attachment-follows-drawn-outline.md) | bounding box より内側に描かれる図形では、接続点もクロームも宣言された輪郭に付ける — 図形と接続点は同じ box から導かれるので両方が一緒にずれても緑になる。検証は emit された描画物から輪郭を読んで測る | renderer | #2385, #2366, ADR-2366 |
 | [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) | opt-in な視覚レイヤは無効時に自分のマーカーを 1 つも出さない — 等値テストは無条件出力を相殺して見逃すので、マーカーを名前で列挙して不在を assert する | renderer | #2174 |
 | [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) | 宣言できる構文は Reference から到達できる — 半分だけ載っている状態（要素側プロパティだけ / 宣言ブロックだけ）は何も載っていないより悪く、載せない判断は書かなければ漏れと区別できない | app-ui | #2316, ADR-2316 |
 | [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) | 1 つのエンティティの見た目を複数の面が描くなら決定を 1 つの関数に閉じる — 既定値しか無いうちは一致して隠れ、上書き手段を足した瞬間に片面だけ変わる | renderer | #2234, #2179 |
