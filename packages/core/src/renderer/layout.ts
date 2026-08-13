@@ -8,7 +8,7 @@ import {
 } from "../types/ast.js";
 import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import { wrapToWidth } from "./svg-builder.js";
-import { getShapeContentInset } from "../shapes/shape-registry.js";
+import { getShapeContentInset, getShapePortFrame } from "../shapes/shape-registry.js";
 import { foldFacetMembership } from "./facet-overlay.js";
 import {
   assignGroupedLayers,
@@ -51,6 +51,8 @@ import {
   frameObstaclesFor,
 } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
+import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
+import { degradedTabsZone } from "./degraded-tabs.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
@@ -1138,6 +1140,13 @@ interface LayoutOptions {
    */
   shapeForNode?: (id: string, annotations: readonly string[]) => string | undefined;
   /**
+   * The corner lane a node's chrome occupies (#2420), so ports can keep out of
+   * it (#2422). Injected rather than computed here because the lane's width
+   * comes from the resolved badge style, which layout does not resolve; the
+   * renderer supplies it, and callers without styles simply get no keep-out.
+   */
+  chipZoneFor?: (node: LayoutNode) => Rect | undefined;
+  /**
    * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
    * display string on every axis (the group-frame titles get theirs from
    * `groupLabels`, which only exists when grouping by team). Omitted → the chip
@@ -2069,10 +2078,11 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   );
 
   // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
-  // so labels separate horizontally / vertically instead of stacking. Must
-  // run before channel routing so the orthogonal pass uses the new ports.
-  // See ADR-968 and Issue #996.
-  distributePorts(layoutNodes, layoutEdges);
+  // so labels separate horizontally / vertically instead of stacking, and put
+  // every port on the shape's drawn outline rather than its bounding box
+  // (#2422). Must run before channel routing so the orthogonal pass uses the
+  // new ports. See ADR-968 and Issue #996.
+  distributePorts(layoutNodes, layoutEdges, portResolver(options));
 
   // Shared routing candidate chain (#2362, ADR-1859 AC-5 superseded). The
   // grouping axis (none / team / boundary) and routing capability are
@@ -2123,6 +2133,21 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // Phase 3: stagger horizontal segments that share an inter-row channel
   // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
   distributeChannelLanes(layoutEdges);
+
+  // Seat every endpoint on the shape's drawn outline, now that the chain has
+  // settled which route each edge takes (#2422). The candidate passes re-anchor
+  // what they reroute, so this is where the guarantee is finally made — moving
+  // inward always, and along the side only when the polyline stays clear.
+  const ports = portResolver(options);
+  if (ports) {
+    const frameObstacles = frameObstaclesFor(layoutNodes, groupFrames, expandedFrameRects);
+    seatPortsOnOutline(layoutNodes, layoutEdges, ports, (edge) => [
+      // The same obstacle set the chain checks against: every card but the two
+      // this edge terminates on, plus the frames it does not belong to.
+      ...[...layoutNodes.values()].filter((n) => n.id !== edge.from && n.id !== edge.to),
+      ...frameObstacles(edge),
+    ]);
+  }
 
   // Annotate parallel-edge bundles (edges sharing `(from, to)`) so the
   // renderer can slide labels along the edge instead of stacking them at
@@ -2751,6 +2776,35 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 
   containers.reverse();
   return containers;
+}
+
+/**
+ * Resolves what each node's outline offers an edge (#2422): the shape's port
+ * frame, plus the keep-outs its own chrome claims — the corner lane of #2420
+ * and the 縮退 tab row of #2179.
+ *
+ * Returns undefined without a `shapeForNode` hook, and in icon mode, for the
+ * same reason the content insets stand down there: the card being drawn is a
+ * plain frame, so the bounding box *is* the outline and every existing
+ * diagram keeps its geometry.
+ */
+function portResolver(options: LayoutOptions): PortResolver | undefined {
+  const { shapeForNode, chipZoneFor, displayMode } = options;
+  if (!shapeForNode || displayMode === "icon") return undefined;
+  return (node) => {
+    // `LayoutNode.annotations` already carries the effective (inherited) set —
+    // the same value `measureNode` resolved the shape from.
+    const shapeName = shapeForNode(node.id, node.annotations ?? []);
+    const frameFn = shapeName ? getShapePortFrame(shapeName) : undefined;
+    // A zero-area zone — a card with no chip and no buttons still reports its
+    // empty lane — blocks nothing, and dropping it here is what lets the
+    // single-anchor shortcut in `distributePorts` stay reachable.
+    const keepOuts = [chipZoneFor?.(node), degradedTabsZone(node)].filter(
+      (r): r is Rect => !!r && r.width > 0 && r.height > 0,
+    );
+    if (!frameFn && keepOuts.length === 0) return undefined;
+    return { frame: frameFn?.(node.width, node.height) ?? BBOX_PORT_FRAME, keepOuts };
+  };
 }
 
 function computeEdgePoints(

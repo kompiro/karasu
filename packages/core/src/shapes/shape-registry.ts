@@ -39,6 +39,38 @@ export interface ShapeInsets {
 export type ShapeContentInsetFn = (width: number, height: number) => ShapeInsets;
 
 /**
+ * Where an edge may attach on one side of a shape, and how far in the drawn
+ * outline sits there (#2422, the sibling of {@link ShapeContentInsetFn}).
+ *
+ * `spans` are fractions of the side's length, in ascending order — the parts
+ * of the side the outline actually covers. A `user` card's top edge excludes
+ * the interval under the medallion, where the bounding box has no outline at
+ * all and an arrowhead used to end in mid-air; a hexagon's left side collapses
+ * to the single point of its vertex.
+ *
+ * `depth` moves the attachment inward along the side's normal, in px, for the
+ * outlines that sit inside the box: a cylinder's rim, a cloud's margin.
+ */
+export interface ShapePortSide {
+  spans: readonly { from: number; to: number }[];
+  /**
+   * Constant, or a function of the position along the side (0..1) for the
+   * outlines that curve — a cylinder's rim is deepest at the sides and
+   * touches the box at its centre.
+   */
+  depth: number | ((along: number) => number);
+}
+
+export interface ShapePortFrame {
+  top: ShapePortSide;
+  right: ShapePortSide;
+  bottom: ShapePortSide;
+  left: ShapePortSide;
+}
+
+export type ShapePortFrameFn = (width: number, height: number) => ShapePortFrame;
+
+/**
  * Text slot position extracted from an SVG icon's krs-label / krs-description elements.
  * Coordinates are in the icon's viewBox coordinate space.
  */
@@ -82,20 +114,33 @@ export interface SvgIconDef {
 const shapeRegistry = new Map<string, ShapeRenderFn>();
 const iconDefRegistry = new Map<string, SvgIconDef>();
 const contentInsetRegistry = new Map<string, ShapeContentInsetFn>();
+const portFrameRegistry = new Map<string, ShapePortFrameFn>();
 
 export function registerShape(
   name: string,
   render: ShapeRenderFn,
   contentInset?: ShapeContentInsetFn,
+  portFrame?: ShapePortFrameFn,
 ): void {
   shapeRegistry.set(name, render);
   if (contentInset) contentInsetRegistry.set(name, contentInset);
   else contentInsetRegistry.delete(name);
+  if (portFrame) portFrameRegistry.set(name, portFrame);
+  else portFrameRegistry.delete(name);
 }
 
 /** Content-inset function for a registered shape, if it declares one. */
 export function getShapeContentInset(name: string): ShapeContentInsetFn | undefined {
   return contentInsetRegistry.get(name);
+}
+
+/**
+ * Port-frame function for a registered shape, if it declares one. A shape
+ * without one attaches edges on its bounding box, which is exactly right for
+ * a rectangle.
+ */
+export function getShapePortFrame(name: string): ShapePortFrameFn | undefined {
+  return portFrameRegistry.get(name);
 }
 
 export function getShape(name: string): ShapeRenderFn | undefined {
@@ -172,4 +217,5 @@ export function clearRegistry(): void {
   shapeRegistry.clear();
   iconDefRegistry.clear();
   contentInsetRegistry.clear();
+  portFrameRegistry.clear();
 }
