@@ -11,14 +11,14 @@
 <circle cx="264.5" cy="73" r="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <circle cx="264.5" cy="69.5" r="3.4" fill="#1E3A8A"/>
 <path d="M258.5 81.5 a6 6.5 0 0 1 12 0 Z" fill="#1E3A8A"/>
-<text x="264.5" y="106" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
+<text x="264.5" y="106" text-anchor="middle" dy="0.35em" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
 <g data-node-id="LegacyMonolith" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer" opacity="0.6"><rect x="60" y="259" width="188" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="154" y="292" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">レガシーモノリス</text>
+<text x="154" y="292" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">レガシーモノリス</text>
 <g data-node-badge="LegacyMonolith"><rect x="163" y="267" width="77" height="16" rx="8" fill="#DC2626"/>
-<text x="173.5" y="275" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">⚠</text>
-<text x="181" y="275" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Deprecated</text></g></g>
+<text x="173.5" y="275" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="9px">⚠</text>
+<text x="181" y="275" dy="0.35em" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Deprecated</text></g></g>
 <g data-node-id="OrderService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="308" y="259" width="161" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="388.5" y="292" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">注文サービス</text>
+<text x="388.5" y="292" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">注文サービス</text>
 <g data-node-badge="OrderService"><rect x="378.6" y="267" width="82.39999999999999" height="16" rx="8" fill="#2563EB"/>
-<text x="389.1" y="275" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">→</text>
-<text x="396.6" y="275" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Migration …</text></g></g></g></svg>
+<text x="389.1" y="275" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="9px">→</text>
+<text x="396.6" y="275" dy="0.35em" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Migration …</text></g></g></g></svg>
