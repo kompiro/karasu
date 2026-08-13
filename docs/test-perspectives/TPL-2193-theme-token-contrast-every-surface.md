@@ -51,7 +51,13 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
 - **半透明のクローム越しに載る**: `--warning-bg` や `--diff-banner-bg` のような
   tint の上の文字は、実効背景が「tint を下地に合成した色」になり比が下がる。
   不透明 surface だけを見る検証では素通りする（#2193 では security notice の
-  リンクが `--accent` で 4.30:1）。
+  リンクが `--accent` で 4.30:1、#2461 では diff バナーのラベルが 3.91:1）。
+  合成結果は下地に依存するので、**そのクロームが載りうる surface を列挙して
+  はじめて判定できる**。
+- **背景がテーマに追従しないのに前景だけ追従させる**: 背景がトークンではなく
+  外から渡る色（inline style・データ由来）のとき、前景をテーマで切り替えると
+  片方のテーマで必ず外す。#2461 の Reference パネルのバッジプレビューは背景が
+  常に dark パレット値で、白文字が両テーマとも 2.15〜3.76:1 だった。
 - **焼き込まれた色（data-URI / TSX リテラル）**: `background-image` の inline
   SVG は `%23RRGGBB` と percent-encode されるため、生色リテラル検査
   （`styles-no-raw-color.test.ts`）の `#` 正規表現をすり抜け、片方のテーマの値の
@@ -71,7 +77,12 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
       `SURFACES` に追加する。追加も除外もしなければ drift ガードが落ちるので、
       「書き忘れ」ではなく「除外した理由」を必ず残すことになる）
 - [ ] その文字が半透明の背景（tint / バナー）の上に載るなら、下地との合成後の
-      色で測ったか（`compositeOver()` を使う。不透明 surface だけの検証は通る）
+      色で測ったか（`compositeOver()` を使う。不透明 surface だけの検証は通る）。
+      `TINTED_PAIRS` に「載りうる surface」を列挙する — 列挙しなければ
+      drift ガードが落ちる
+- [ ] 不透明な**色**（`--accent` 等）の上に文字を置くなら、前景をテーマごとの
+      インクにしたか。背景色を暗くして解こうとすると、その色が別の場所で
+      「文字」として使われている場合に壊れる（#2461 の `--accent`）
 - [ ] ランプの順序（primary → secondary → tertiary → muted）が保たれているか
 - [ ] 未達なら同色相のまま明度だけ倒したか（`contrastRatio()` で再測定する。
       目視・手計算で決めない）
@@ -89,6 +100,9 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   倒さない。3:1 の非文字基準で足りるうえ、ブランド色を必要以上に動かす。
 - data-URI の画像は `--select-chevron` のようにトークン化し、セットごとに
   stroke 色を焼いた 2 本を定義する（CSS の `var()` は data-URI 内で解決されない）。
+- 色の上の文字は前景を per-theme のインクにする（#2461 の `--text-on-accent`:
+  light `#FFFFFF` / dark `#0F0F0F`。既存の `--error-badge-text` と同じ形）。
+  背景がテーマに追従しないなら前景も固定する（`--badge-preview-text`）。
 
 ## 関連テスト
 
@@ -96,7 +110,9 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   分解し、文字系トークン × 全 opaque surface を 4.5:1 で検証する。加えて
   自前の背景を持つバナー（`--export-error-text` / `--opfs-banner-text`、
   グラデーションは全 stop）と、非文字グリフ（選択行の `--text-muted` アイコン）
-  の 3:1 バックストップ、ランプ順序、data-URI に焼いた色と元トークンの一致、
+  の 3:1 バックストップ、色トークンの上の文字（`--text-on-accent` / バッジ
+  プレビュー）、半透明 tint の合成後の比、SVG stroke の 3:1、ランプ順序、
+  data-URI に焼いた色と元トークンの一致、
   および `--text-*` / `--bg-*` を検証対象リストが取りこぼしていないかの drift
   ガードを検証する。半透明 tint 越しの合成は #2461 で追加予定。
 - `packages/app/src/styles/styles-no-raw-color.test.ts`。`%23` 形式の
