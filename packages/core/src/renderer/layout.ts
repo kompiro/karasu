@@ -2151,9 +2151,10 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
 
   // Annotate parallel-edge bundles (edges sharing `(from, to)`) so the
   // renderer can slide labels along the edge instead of stacking them at
-  // the midpoint. Also nudges ghost/cyclic edges perpendicular when they
-  // land in a bundle, since `distributePorts` skipped those above.
-  // See docs/design/parallel-edge-bundling.md and Issue #1185.
+  // the midpoint. Also nudges perpendicular whatever the passes above left
+  // co-located — ghost/cyclic, which `distributePorts` skips by kind, and
+  // frame-anchored edges, whose endpoints it cannot look up (#2477).
+  // See ADR-1185 and ADR-2477.
   markParallelBundles(layoutEdges);
 
   // Normalize coordinates and compute dimensions

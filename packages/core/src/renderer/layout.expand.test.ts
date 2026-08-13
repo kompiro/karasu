@@ -204,4 +204,51 @@ system S {
     expect(edge.toPoint.x).toBeGreaterThan(frame.x);
     expect(edge.toPoint.x).toBeLessThan(frame.x + frame.width);
   });
+
+  it("keeps parallel edges between two expanded frames apart (#2477)", () => {
+    // `distributePorts` skips both edges (neither endpoint is a layout node once
+    // the services are frames), so separating them falls to `markParallelBundles`.
+    const KRS_PARALLEL = `
+system T {
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+  S1 -> S2
+  S1 --> S2
+}
+`;
+    const systems = Parser.parse(KRS_PARALLEL).value.systems;
+    const result = layout(extractView(systems, [], [], [], new Set(["S1", "S2"])));
+    const bundle = result.edges.filter((e) => e.from === "S1" && e.to === "S2");
+    expect(bundle).toHaveLength(2);
+    const [sync, async] = bundle;
+    expect(sync.fromPoint.x).not.toBeCloseTo(async.fromPoint.x);
+    expect(sync.toPoint.x).not.toBeCloseTo(async.toPoint.x);
+    // Still one bundle, and still anchored on the frame borders they left from.
+    expect(sync.bundleSize).toBe(2);
+    for (const edge of bundle) {
+      expect(edge.fromPoint.y).toBeCloseTo(async.fromPoint.y);
+      expect(edge.toPoint.y).toBeCloseTo(async.toPoint.y);
+    }
+  });
+
+  it("leaves parallel edges between collapsed services to distributePorts", () => {
+    // The same model without expansion is the regression fence for the gate:
+    // these edges are spread by ports, so the bundle pass must not move them.
+    const KRS_PARALLEL = `
+system T {
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+  S1 -> S2
+  S1 --> S2
+}
+`;
+    const systems = Parser.parse(KRS_PARALLEL).value.systems;
+    const result = layout(extractView(systems, [], [], []));
+    const bundle = result.edges.filter((e) => e.from === "S1" && e.to === "S2");
+    expect(bundle).toHaveLength(2);
+    const s1 = result.nodes.get("S1")!;
+    // i/(N+1) across S1's bottom side — the ports distributePorts assigns.
+    expect(bundle[0].fromPoint.x).toBeCloseTo(s1.x + s1.width / 3);
+    expect(bundle[1].fromPoint.x).toBeCloseTo(s1.x + (s1.width * 2) / 3);
+  });
 });
