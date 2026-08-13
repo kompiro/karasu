@@ -1,8 +1,6 @@
 import type { SourceRange } from "./tokens.js";
 import type { ResourceOperation } from "../spec/operations.js";
 
-export type { ResourceOperation } from "../spec/operations.js";
-
 export type LogicalNodeKind =
   | "system"
   | "service"
@@ -310,7 +308,7 @@ export interface UserNode extends BaseNodeFields {
  * Cookie / credential storage and device capabilities are intentionally
  * excluded — see Issues #834 / #837.
  */
-export const CLIENT_RESOURCE_KINDS = [
+const CLIENT_RESOURCE_KINDS = [
   "localStorage",
   "sessionStorage",
   "indexedDB",

@@ -45,7 +45,7 @@ class ReadOnlyNodeFs implements FileSystemProvider {
   }
 }
 
-export interface RenderedView {
+interface RenderedView {
   type: DiagramType;
   svg: string;
 }

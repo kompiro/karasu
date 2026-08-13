@@ -33,7 +33,7 @@ export function groupByAxis(groupBy: GroupByMode): Exclude<GroupByMode, "none"> 
   return groupBy === "none" ? undefined : groupBy;
 }
 
-export interface SystemViewData {
+interface SystemViewData {
   svg: string;
   diagnostics: Diagnostic[];
   viewPath: string[];
@@ -89,7 +89,7 @@ export interface SystemViewData {
   systems: SystemNode[];
 }
 
-export interface DeployViewData {
+interface DeployViewData {
   svg: string;
   diagnostics: Diagnostic[];
   warnings: Warning[];
@@ -98,7 +98,7 @@ export interface DeployViewData {
   onContainerClick?: (containerId: string) => void;
 }
 
-export interface OrgViewData {
+interface OrgViewData {
   svg: string;
   diagnostics: Diagnostic[];
   viewPath: string[];
