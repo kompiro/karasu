@@ -40,6 +40,10 @@ gate 側とはマージを止められる機械、すなわち CI の Required j
 - 全走査に切り替えても、走査単位が検証スクリプトを持たなければ**黙って飛ばされる**。`pnpm -r run typecheck` は該当 script の無いパッケージをエラーにせず、`Scope: N of M` の行も同じ姿のまま。#2446 時点の `packages/e2e` がこれで、TypeScript の spec 群がどこでも型検査されていなかった。
 - 検証範囲を広げた PR が「今まで検証されていなかった側」の既存エラーで落ち、**無関係な修正が混ざる**。これは失敗ではなく先送りの清算だが、範囲拡大とエラー修正を同じ PR に混ぜると差分が読めなくなる。
 - 依存更新 PR が緑でマージされ、破壊が次の無関係な PR や release で顕在化する（原因 PR の特定に二次コストがかかる — [TPL-1725] と同じ検出遅延）。
+- 穴を塞いだ瞬間、**塞いだ側が今度はローカルでだけ通る**。長く検証されていなかった対象は、ローカル環境の余剰物に依存していても誰も気付かないため。
+  - 実例 #2446: CI で走り始めた `tsc --noEmit -p scripts/tsconfig.json` が `@karasu-tools/core` を解決できずに落ちた。`scripts/tsconfig.json` だけ `customConditions: ["development"]` を欠いており、`dist/index.d.ts`（= build 後にしか無い）を見に行っていた。ローカルで緑だったのは **git worktree で作業していたから** — モジュール解決が worktree の根を越えて親 checkout（`/workspaces/karasu/node_modules`）まで遡り、そこにあった**ビルド済み `dist/` を拾っていた**。CI の clean checkout にその親は無い。
+
+    worktree はこの masking を両方向に起こす。#2446 の Issue 本文が報告した「fresh worktree では出るが primary checkout では出ない `@types/node` エラー」も同じ機構の逆向きで、どちらの場合も**同じコミット・同じ依存バージョンで結果が変わる**。
 
 ## チェックリスト
 
@@ -49,6 +53,7 @@ CI ステップを足す / 直す、または workspace にパッケージを足
 - [ ] ローカルフックと CI で **同じコマンド**を実行しているか。違うなら、どちらが広いかを言えるか（広い方がローカルなら、その差はいま穴になっている）
 - [ ] 全走査が**黙って飛ばす単位**が無いか。走査対象すべてが当該 script / 設定ファイルを持つことを機械チェックで縛る（`pnpm -r` は script 不在を成功として扱う）
 - [ ] 範囲を広げた結果落ちた既存エラーを、**同じ PR で直すか別 PR に分けるか**を決めて PR に書いたか
+- [ ] 新しく検証対象に入った単位が、**ローカル環境の余剰物に依存していない**か。worktree で作業しているなら、モジュール解決やパス解決が親 checkout を拾っていないことを確かめる（`tsc --traceResolution` の解決先パスが worktree 内で閉じているか、など）
 - [ ] 列挙をやめられない事情があるなら（deploy 前の単体検証など gate ではないジョブ）、**なぜ gate 側ではないか**をその場のコメントに書いたか
 
 ## 既知の対処パターン
@@ -56,6 +61,7 @@ CI ステップを足す / 直す、または workspace にパッケージを足
 - **gate 側は root script を呼ぶ（#2446 の対処）**: `.github/workflows/ci.yml` の `Typecheck` ステップは `pnpm run typecheck` を実行する。root script は `pnpm -r run typecheck && tsc --noEmit -p scripts/tsconfig.json` で、pre-push フックが実行するものと同一 — 「ローカルの方が広い」状態を構造的に作れなくする。
 - **全走査の穴を機械チェックで塞ぐ**: `scripts/ci/typecheck-coverage-policy.test.ts` が (1) 全 workspace パッケージが `typecheck` script を持つこと、(2) root script が `pnpm -r` であること、(3) `ci.yml` に `pnpm --filter … run typecheck` が 1 行も無いことを assert する。列挙への逆戻りと、script を持たない新パッケージの両方がテスト失敗として現れる。
 - **同型の先例**: `scripts/ci/node-version-policy.test.ts`（Node の pin が全 workflow / devcontainer / `engines` で一致）、`scripts/ci/workflow-runner-policy.test.ts`（全 job が既知 runner ラベルのどちらかに乗る）、`scripts/ci/pnpm-config-location.test.ts`（pnpm 設定が黙って無視される場所に書かれていない）。いずれも「列挙が腐る」を「列挙を機械が作る」に置き換えている。
+- **解決先を worktree 内で閉じる**: 検証が build 成果物を要求すると、親 checkout を拾える環境でだけ通る。`scripts/tsconfig.json` に `customConditions: ["development"]` を足して `src/` 解決に揃えた（#2446）。判定は `tsc --traceResolution` の `was successfully resolved to` が指すパスで、worktree の外を指していたらその緑は信用しない。
 - **path filter / Required 化との組み合わせ**: 対象を触る PR で必ず起動させる話は [TPL-1725]、2 つの成果物の両側で起動させる話は [TPL-1480]。本観点はそれらと直交で、**起動したチェックが何を見ているか**を扱う。
 
 ## 関連テスト
