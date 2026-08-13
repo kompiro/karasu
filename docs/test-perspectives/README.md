@@ -494,6 +494,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2188](TPL-2188-id-uniqueness-needs-cross-corpus-check.md) | 採番 id の一意性は corpus 横断の機械検証か大域 allocator で担保する — per-file 検査だけの validator は並行ブランチの採番衝突を検出できない | adr-tooling | #2188, ADR-2092 |
 | [TPL-2184](TPL-2184-equivalent-placements-share-one-diagnostic.md) | 同じモデリング状態を表す複数の配置は、綴りが違っても同じ診断を出す — 検出器の走査範囲は格納先ではなく `canContain` 上の親 kind で決める | resolver | ADR-2165, #2184 |
 | [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) | parse を通った構造は、どこかの view で描画されるか診断されるかのどちらかである — view 抽出の filter が作る silent drop を第 3 の状態として許さない | resolver | docs/spec/syntax.md (Edge declaration), #2075 |
+| [TPL-2200](TPL-2200-render-claim-names-its-view-level.md) | 「描画される」と書くときはどの view で描画されるかまで書き、昇格しない側と描かれる側を対でテストに固定する — level を省いた主張は実装と突き合わせても矛盾が検出できない | core-concepts | docs/spec/syntax.md (Infra layer), #2200 |
 | [TPL-2047](TPL-2047-doc-embedded-krs-is-parsed-not-prose.md) | ドキュメントに埋めた `.krs` は散文でなく入力として parse する — 抜粋は `krs fragment`、診断デモは `krs invalid` と fence で宣言し、`invalid` は「いまも不正か」を逆向きに検証する | testing | #2047 |
 | [TPL-2172](TPL-2172-builtin-vocabulary-addition-gate.md) | builtin 語彙の追加は register 判定・既存表現の有無・停止規則の 3 問を通す — 通ったものは同 PR で効果を持たせ、却下したものも理由を記録する | core-concepts | #2172, docs/spec/tags-annotations.md |
 | [TPL-2221](TPL-2221-merge-only-facts-decided-on-merged-model.md) | マージ後にしか成立しない事実（重複・多重所属・件数）を述べる診断は、マージ後のモデルで判定する — per-file 判定は偽陽性ではなく**沈黙**して落ちる | resolver | #2221 |
