@@ -1,6 +1,6 @@
 import type { KrsNode } from "../types/ast.js";
 import type { ViewPath } from "../view/view-extract.js";
-import { el, escapeXml } from "./svg-builder.js";
+import { DY_CENTER, el, escapeXml } from "./svg-builder.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 
 const BREADCRUMB_HEIGHT = 40;
@@ -94,7 +94,7 @@ function assembleBreadcrumbSvg(
           {
             x,
             y: BREADCRUMB_HEIGHT / 2,
-            "dominant-baseline": "central",
+            dy: DY_CENTER,
             fill: palette.textMuted,
             "font-size": `${FONT_SIZE}px`,
             "font-family": "sans-serif",
@@ -112,7 +112,7 @@ function assembleBreadcrumbSvg(
           {
             x,
             y: BREADCRUMB_HEIGHT / 2,
-            "dominant-baseline": "central",
+            dy: DY_CENTER,
             fill: palette.textPrimary,
             "font-size": `${FONT_SIZE}px`,
             "font-family": "sans-serif",
@@ -131,7 +131,7 @@ function assembleBreadcrumbSvg(
             {
               x,
               y: BREADCRUMB_HEIGHT / 2,
-              "dominant-baseline": "central",
+              dy: DY_CENTER,
               fill: palette.link,
               "font-size": `${FONT_SIZE}px`,
               "font-family": "sans-serif",
