@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-13
 - **ステータス**: 検討中
+- **PR**: [#2491](https://github.com/kompiro/karasu/pull/2491)
 - **関連**:
   - 引き金 Issue: [#2317](https://github.com/kompiro/karasu/issues/2317)（i18n 側の半分は [#2332](https://github.com/kompiro/karasu/issues/2332) で解決済み。残るレイアウト側が本 doc の対象）
   - 14 個目のコントロールを足した Issue: [#2174](https://github.com/kompiro/karasu/issues/2174)（Facets）
