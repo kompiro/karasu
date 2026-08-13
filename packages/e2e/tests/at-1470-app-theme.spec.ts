@@ -82,6 +82,19 @@ const secondaryTargets = (page: Page): [string, Locator][] => [
   ["ghost toolbar button", page.getByRole("button", { name: /\+ New/ })],
 ];
 
+/**
+ * Open the command palette and return its selected row. The row is where a
+ * hardcoded `text-white` sat on `--accent` until #2461, and it is reachable
+ * only through a real keypress — the shortcut is the palette's only trigger.
+ */
+async function selectedPaletteRow(page: Page): Promise<Locator> {
+  await page.keyboard.press("Control+Shift+P");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  const selected = page.locator('[role="option"][aria-selected="true"]');
+  await expect(selected).toBeVisible();
+  return selected;
+}
+
 /** A project with one rendered diagram, so the chrome around it is populated. */
 async function openDemoProject(page: Page, opfs: OpfsFixture) {
   await opfs.seed({
@@ -189,6 +202,15 @@ test.describe("AT-1470 app light theme", () => {
     }
   });
 
+  test("the command palette's selected row meets AA in light", async ({ page, opfs }) => {
+    await openDemoProject(page, opfs);
+    const row = await selectedPaletteRow(page);
+    expect(
+      await contrastOf(row),
+      "AA contrast for the selected palette row",
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
   test.describe("with an OS dark preference", () => {
     test.use({ colorScheme: "dark" });
 
@@ -215,6 +237,18 @@ test.describe("AT-1470 app light theme", () => {
       for (const [label, target] of [...primaryTargets(page), ...secondaryTargets(page)]) {
         expect(await contrastOf(target), `AA contrast for ${label}`).toBeGreaterThanOrEqual(4.5);
       }
+    });
+
+    test("the command palette's selected row meets AA in dark", async ({ page, opfs }) => {
+      // This is the pairing #2461 fixed: white on `--accent` measured 3.14:1
+      // here while passing at 5.17:1 in light, so a light-only assertion would
+      // have called the row legible. The ink is per-theme now.
+      await openDemoProject(page, opfs);
+      const row = await selectedPaletteRow(page);
+      expect(
+        await contrastOf(row),
+        "AA contrast for the selected palette row",
+      ).toBeGreaterThanOrEqual(4.5);
     });
   });
 });
