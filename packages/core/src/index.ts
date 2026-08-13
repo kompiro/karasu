@@ -222,6 +222,16 @@ export type { EntityViewResult } from "./renderer/drill-down-svg.js";
 export { render, renderFromLayout, sanitizeId, anchorId } from "./renderer/svg-renderer.js";
 export type { CategoryId } from "./renderer/category-collapse.js";
 
+/* Contrast is judged with one implementation everywhere text is themed —
+   builtin sheets here, and the app's CSS token layer (#2193) — so a palette
+   never passes in one place and fails in the other (TPL-2366). */
+export {
+  contrastRatio,
+  compositeOver,
+  WCAG_AA_NORMAL_TEXT,
+  WCAG_AA_LARGE_TEXT,
+} from "./renderer/contrast.js";
+
 export {
   exportDrawio,
   type DrawioExportInput,

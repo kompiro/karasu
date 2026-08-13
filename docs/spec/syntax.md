@@ -1468,10 +1468,13 @@ legend domain "Data access" {
 ### Color resolution
 
 - **`swatch`** uses the literal hex color verbatim (3, 4, 6, or 8 hex digits, with `#`).
-- **`ref`** resolves through the `.krs.style` cascade. The renderer picks the highest-specificity matching rule and uses its `background-color`, falling back to `badge-color`.
+- **`ref`** resolves through **the same `.krs.style` cascade the nodes use** — matching rules are merged per property, weakest first, ordered by specificity and then by declaration order across every sheet (the built-in sheet first, your sheets after it). The swatch takes the merged `background-color`, falling back to `badge-color`. A rule you write always outranks the built-in rule it ties on specificity, on the swatch exactly as on the card.
+- A **fill-less** kind (merged `background-color: transparent`, e.g. the built-in `usecase`) is swatched with its `border-color`, because the border is what identifies it on the canvas.
 - A `ref` whose target appears on at least one node in the file but has no painting style rule renders with a **neutral fallback swatch** so semantic-only annotations / tags (e.g. `[human]`, `[ai]`) still surface in the legend.
 - A `ref` that matches no rule **and** no node is **dropped from the rendered footer** and surfaced in the warning panel as `legend-ref-unresolved`. Authors can then either remove the entry or add a matching style rule.
 - `.class` selectors are accepted by the parser for forward compatibility but always resolve as unresolved today (`.krs.style` has no class concept — see [`style.md`](style.md)).
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — the swatch and the node it stands for are one appearance, so both read one cascade implementation rather than each deriving the order (Issue #2445).
 
 ### Labels are not localized
 
