@@ -3,8 +3,7 @@
   "workspaces": {
     ".": {
       "entry": ["scripts/report/index.ts"],
-      "project": ["scripts/**/*.ts"],
-      "ignoreDependencies": ["@resvg/resvg-wasm"]
+      "project": ["scripts/**/*.ts"]
     },
     "packages/core": {
       "project": ["src/**/*.ts", "!src/**/*.test.ts"]
@@ -46,7 +45,7 @@
         "tests/capture/**/*.capture.ts"
       ],
       "project": ["tests/**/*.ts"],
-      "ignoreDependencies": ["@vscode/test-electron"]
+      "ignoreDependencies": ["@vscode/test-electron", "vscode"]
     }
   }
 }

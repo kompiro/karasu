@@ -8,22 +8,22 @@
 <line x1="256.66666666666663" y1="126" x2="560.75" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
 <text x="408.7083333333333" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">決済（新）</text></g></g>
 <g class="nodes"><g data-node-id="ECommerce" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="150" y="60" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="230" y="93" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">ECサイト</text></g>
+<text x="230" y="93" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">ECサイト</text></g>
 <g data-node-id="RecommendationEngine" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="370" y="60" width="201.5" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="470.75" y="93" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">レコメンドエンジン</text>
+<text x="470.75" y="93" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">レコメンドエンジン</text>
 <g data-node-badge="RecommendationEngine"><rect x="475.7" y="68" width="87.8" height="16" rx="8" fill="#B45309"/>
-<text x="486.2" y="76" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">⚗</text>
-<text x="493.7" y="76" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Experimental</text></g></g>
+<text x="486.2" y="76" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="9px">⚗</text>
+<text x="493.7" y="76" dy="0.35em" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Experimental</text></g></g>
 <g data-node-id="LegacyPayment" data-node-kind="service" data-has-children="false" data-has-description="true" opacity="0.6"><rect x="60" y="246" width="340" height="102" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="230" y="280" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">決済サービス（旧）</text>
-<text x="230" y="297" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">旧決済。NewPayment</text>
-<text x="230" y="314" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">への移行中。2026年Q3廃止予定</text>
+<text x="230" y="280" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">決済サービス（旧）</text>
+<text x="230" y="297" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">旧決済。NewPayment</text>
+<text x="230" y="314" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">への移行中。2026年Q3廃止予定</text>
 <g data-node-badge="LegacyPayment"><rect x="315" y="254" width="77" height="16" rx="8" fill="#DC2626"/>
-<text x="325.5" y="262" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">⚠</text>
-<text x="333" y="262" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Deprecated</text></g></g>
+<text x="325.5" y="262" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="9px">⚠</text>
+<text x="333" y="262" dy="0.35em" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">Deprecated</text></g></g>
 <g data-node-id="NewPayment" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="460" y="246" width="201.5" height="84" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="560.75" y="279.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">決済サービス（新）</text>
-<text x="560.75" y="296.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">PCI DSS 準拠の新決済</text>
+<text x="560.75" y="279.5" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">決済サービス（新）</text>
+<text x="560.75" y="296.5" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">PCI DSS 準拠の新決済</text>
 <g data-node-badge="NewPayment"><rect x="614.3" y="254" width="39.2" height="16" rx="8" fill="#047857"/>
-<text x="624.8" y="262" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">✦</text>
-<text x="632.3" y="262" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">NEW</text></g></g></g></svg>
+<text x="624.8" y="262" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="9px">✦</text>
+<text x="632.3" y="262" dy="0.35em" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">NEW</text></g></g></g></svg>

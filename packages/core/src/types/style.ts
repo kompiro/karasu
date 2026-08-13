@@ -171,7 +171,7 @@ export type EdgeDirection = "auto" | "up" | "down" | "left" | "right";
  *
  * Default: `0.5` (matches the historical midpoint behaviour).
  */
-export type LabelPosition = number;
+type LabelPosition = number;
 
 export interface ResolvedEdgeStyle {
   color: string;
