@@ -309,24 +309,31 @@ legend "凡例" {
     // user sheet is declared after the builtin one. The swatch used to read
     // the raw per-sheet `sourceIndex`, where the user rule is 0 and the
     // builtin rule is much higher, which inverted the tie for the legend only.
+    // `usecase` sits under a `domain`, the canonical hierarchy
+    // (`service → domain → usecase → resource`). Nesting it directly in the
+    // service parses, but emits `node-not-in-context` — a fixture that has to
+    // be warned about is not one to fence behavior with.
     const krs = `
 system Demo {
   service Api {
-    usecase Checkout { label "Checkout" }
+    domain Ordering {
+      usecase Checkout { label "Checkout" }
+    }
   }
 }
-legend service "凡例" {
+legend domain "凡例" {
   ref usecase "ユースケース"
 }
 `;
-    // Rendered at the service drill level so the card and its swatch are on the
+    // Rendered at the domain drill level so the card and its swatch are on the
     // same canvas: the card and the swatch are one appearance (TPL-2234), so
     // the test asserts they *agree* rather than only that the swatch moved.
     const result = compile(krs, {
       diagramType: "system",
-      viewPath: ["Demo", "Api"],
+      viewPath: ["Demo", "Api", "Ordering"],
       styleSource: `usecase { background-color: #123456; }`,
     });
+    expect(result.warnings, "the fixture must model a legal hierarchy").toEqual([]);
     const swatch = /<rect[^>]*class="legend-swatch"[^>]*>/.exec(result.svg);
     expect(swatch, "the legend swatch rect must be present").not.toBeNull();
     expect(swatch![0]).toContain('fill="#123456"');
@@ -350,6 +357,7 @@ legend "凡例" {
       diagramType: "system",
       styleSource: `[external] { background-color: #654321; }`,
     });
+    expect(result.warnings, "the fixture must model a legal hierarchy").toEqual([]);
     const swatch = /<rect[^>]*class="legend-swatch"[^>]*>/.exec(result.svg);
     expect(swatch, "the legend swatch rect must be present").not.toBeNull();
     expect(swatch![0]).toContain('fill="#654321"');
@@ -370,6 +378,7 @@ legend "Status" {
       diagramType: "system",
       styleSource: `@deprecated { badge-color: #ABCDEF; }`,
     });
+    expect(result.warnings, "the fixture must model a legal hierarchy").toEqual([]);
     const swatch = /<rect[^>]*class="legend-swatch"[^>]*>/.exec(result.svg);
     expect(swatch, "the legend swatch rect must be present").not.toBeNull();
     expect(swatch![0]).toContain('fill="#ABCDEF"');

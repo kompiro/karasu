@@ -11,7 +11,7 @@
 
 ## 受け入れ条件
 
-- [x] builtin と同 specificity のユーザールール（`usecase { background-color: ... }`）が凡例 swatch でも勝ち、同じ図の中でカード本体と swatch が同色になる
+- [x] builtin と同 specificity のユーザールール（`usecase { background-color: ... }`）が凡例 swatch でも勝ち、同じ図の中でカード本体と swatch が同色になる。フィクスチャは `service → domain → usecase` の正準階層で組み、warning が 0 件であることも同時に固定する
   > ✅ Automated — `packages/core/src/renderer/legend-footer.test.ts` › `lets a user rule outrank the builtin at equal specificity (Issue #2445)`
 
 - [x] タグ ref（`ref [external]`）でも同じくユーザールールが builtin に勝つ
@@ -27,7 +27,30 @@
   > ✅ Automated — `packages/core/src/renderer/legend-footer.test.ts` 全 59 件および `packages/core` 全テストが green
 
 - [ ] app で `.krs.style` の kind 色を編集したとき、カードと凡例 swatch が同時に追従する
-  > 🧑 Manual — 本番 app（https://karasu.kompiro.dev/）で `legend service { ref usecase "..." }` を含む `.krs` を開き、`.krs.style` に `usecase { background-color: #123456 }` を書いて、カードと凡例の swatch が同じ色に変わることを確認する。
+  > 🧑 Manual — 下記「手動検証の入力」を参照。
+
+## 手動検証の入力
+
+本番 app（https://karasu.kompiro.dev/）で下記を `index.krs` として開き、domain（`Ordering`）までドリルダウンする。
+
+```krs
+system Demo {
+  service Api {
+    domain Ordering {
+      usecase Checkout { label "Checkout" }
+    }
+  }
+}
+legend domain "凡例" {
+  ref usecase "ユースケース"
+}
+```
+
+`.krs.style` に下記を書いて、`Checkout` カードと凡例の swatch が同じ色に変わることを確認する。warning パネルは空のままであること（`usecase` を `service` 直下に置くと `node-not-in-context` が出るので、この階層で確認する）。
+
+```
+usecase { background-color: #123456; }
+```
 
 ## 補足
 
