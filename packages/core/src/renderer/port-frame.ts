@@ -1,5 +1,5 @@
 // Where an edge is allowed to touch a node, and where that lands in px
-// (#2422, design doc docs/design/node-chrome-and-ports.md P10).
+// (#2422, ADR-2366 — the P10 half of the node chrome design).
 //
 // Ports used to be placed on the bounding box, which is only the drawn
 // outline for a rectangle. On everything else the arrowhead ended somewhere
