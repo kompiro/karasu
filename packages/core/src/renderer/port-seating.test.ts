@@ -150,8 +150,10 @@ describe("an actor's ports agree with the figure it draws", () => {
     return render(extractView(parsed.value.systems, []), styles);
   }
 
+  // `\b` would let `width` match inside `stroke-width`, which reads the right
+  // number today only because `width` happens to be emitted first.
   function num(tag: string, name: string): number {
-    const m = new RegExp(`\\b${name}="(-?[\\d.]+)"`).exec(tag);
+    const m = new RegExp(`(?:^|\\s)${name}="(-?[\\d.]+)"`).exec(tag);
     if (!m) throw new Error(`no ${name} in ${tag}`);
     return Number(m[1]);
   }
@@ -201,19 +203,12 @@ describe("an actor's ports agree with the figure it draws", () => {
     const svg = svgOf(ACTOR);
     const group = nodeGroup(svg, "Agent");
     const card = firstTag(group, "rect");
-    const medallion = firstTag(group, "circle");
     const rect = {
       x: num(card, "x"),
       y: num(card, "y"),
       width: num(card, "width"),
       height: num(card, "height"),
     };
-
-    // The bounding box, read off the medallion that straddles its top edge.
-    // Asserting against the card is only a stronger claim while the two differ,
-    // so the difference is part of the test rather than an assumption in it.
-    const boxTop = num(medallion, "cy") - num(medallion, "r");
-    expect(rect.y).toBeGreaterThan(boxTop);
 
     const eps = 0.5;
     const ends = drawnEndpointsOn(svg, "Agent");
@@ -231,6 +226,24 @@ describe("an actor's ports agree with the figure it draws", () => {
     // The reported case: a target to the side, entered from the card's border.
     expect(ends.filter((p) => Math.abs(p.x - rect.x) < eps)).toHaveLength(1);
     expect(ends.filter((p) => Math.abs(p.x - (rect.x + rect.width)) < eps)).toHaveLength(1);
+
+    // Landing on the card is a stronger claim than landing on the bounding box
+    // only while the two differ, so the difference is measured rather than
+    // assumed: the drawn card stays inside the box and is strictly smaller
+    // somewhere. A figure that grows to fill its box would leave the assertions
+    // above passing as the bbox test they exist to replace, and fails here.
+    const box = layoutOf(ACTOR).nodes.get("Agent")!;
+    expect(rect.x).toBeGreaterThanOrEqual(box.x - eps);
+    expect(rect.y).toBeGreaterThanOrEqual(box.y - eps);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(box.x + box.width + eps);
+    expect(rect.y + rect.height).toBeLessThanOrEqual(box.y + box.height + eps);
+    expect(
+      rect.x > box.x + eps ||
+        rect.y > box.y + eps ||
+        rect.width < box.width - eps ||
+        rect.height < box.height - eps,
+      `the card fills its bounding box (${box.x},${box.y} ${box.width}x${box.height}), so the ports above were only checked against the box`,
+    ).toBe(true);
   });
 });
 
