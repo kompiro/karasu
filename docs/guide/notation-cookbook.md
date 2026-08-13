@@ -61,7 +61,8 @@ deploy "production" {
 - **Reference at node granularity with an edge, not a `resource` dot-path.** A
   `resource <Db>.<Leaf>` reference needs a declared leaf; a KV store has no leaves
   to name, so writing `resource SessionStore` leaves it *unassigned* (a warning,
-  rendered as an orphan). The idiomatic connection is a direct
+  and a node drawn only inside its own usecase, never reaching the system view where
+  the store you meant actually lives). The idiomatic connection is a direct
   `Service --> SessionStore` edge — the same way the
   [`hato`](https://github.com/kompiro/karasu/tree/main/examples/en/hato) example
   wires its leaf-less `D1` / `R2` / `Tasks` stores.

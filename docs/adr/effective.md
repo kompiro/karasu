@@ -129,6 +129,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2152](2152-dependabot-triage-2026-07-27.md) — Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の publisher 変化は provenance で検証
 - [ADR-2318](2318-dependabot-triage-2026-08-03.md) — Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロックと monaco 0.56.0 の exports 破壊
 - [ADR-2333](2333-dependabot-triage-2026-08-04.md) — Dependabot トリアージ 2026-08-04 — LSP protocol の単独 bump を却下し、oxlint の新規則を設定で収める
+- [ADR-2337](2337-lsp-pair-upgrade-protocol-parity.md) — LSP は client と server を同時に上げ、protocol 版の一致を不変条件として維持する
 - [ADR-2341](2341-dependabot-security-2026-08-04.md) — Security alert 2026-08-04 — brace-expansion / fast-uri を override の floor 引き上げで解決する
 - [ADR-2351](2351-process-md-holds-instructions.md) — docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issue に置き、参照もしない
 - [ADR-2356](2356-doc-placement-by-read-timing.md) — 開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層
@@ -310,6 +311,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1983](1983-boundary-drilldown-grouping.md) — boundary grouping の drill-down 拡張 — 描画レベルとの交差による正規化
 - [ADR-2048](2048-edge-label-collision-avoidance.md) — エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass
 - [ADR-2174](2174-facet-overlay.md) — facet overlay — renderer に焼き、多重所属は同心リング、色は既知 facet 順
+- [ADR-2200](2200-unassigned-resource-renders-at-usecase-level.md) — 未割当 `resource` の描画先は usecase ドリルダウンビューであり、domain ビューへの昇格は解決の対価とする
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
 - [ADR-2366](2366-node-chrome-and-ports.md) — node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く

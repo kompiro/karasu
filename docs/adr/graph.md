@@ -127,6 +127,7 @@ flowchart TD
     ADR_2152["ADR-2152<br/>Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の pu..."]
     ADR_2318["ADR-2318<br/>Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロ..."]
     ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
+    ADR_2337["ADR-2337<br/>LSP は client と server を同時に上げ、protocol 版の一致を不変条件..."]
     ADR_2341["ADR-2341<br/>Security alert 2026-08-04 — brace-expansion / f..."]
     ADR_2351["ADR-2351<br/>docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issu..."]
     ADR_2356["ADR-2356<br/>開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層"]
@@ -303,6 +304,7 @@ flowchart TD
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
+    ADR_2200["ADR-2200<br/>未割当 `resource` の描画先は usecase ドリルダウンビューであり、domai..."]
     ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
     ADR_2360["ADR-2360<br/>label placement の障害物にエッジ polyline を加える — 自分の線だけ..."]
     ADR_2366["ADR-2366<br/>node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く"]
@@ -771,6 +773,7 @@ flowchart TD
   class ADR_2184 accepted
   class ADR_2188 accepted
   class ADR_2193 accepted
+  class ADR_2200 accepted
   class ADR_2218 accepted
   class ADR_2234 accepted
   class ADR_2249 accepted
@@ -781,6 +784,7 @@ flowchart TD
   class ADR_2330 accepted
   class ADR_2331 accepted
   class ADR_2333 accepted
+  class ADR_2337 accepted
   class ADR_2341 accepted
   class ADR_2348 accepted
   class ADR_2351 accepted

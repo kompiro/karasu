@@ -201,7 +201,7 @@ service OrderService {
 
 - **`domain`** is a "concern boundary," close to a DDD Bounded Context. Re-group the bare `usecase`s translate produced into `domain`s that match your understanding.
 - **`resource`** is what a usecase operates on (table, external API, file). As you read, discover "what does this usecase touch," and record read vs. write with `operations` (create/read/update/delete).
-- **Discover resources bottom-up.** Write `resource OrderTable` bare at first; once you learn it's a shared DB, group it as `database OrderDB { table OrdersTable }` and switch to the dotted reference `resource OrderDB.OrdersTable`. karasu draws a bare resource as an orphan node, with only a warning.
+- **Discover resources bottom-up.** Write `resource OrderTable` bare at first; once you learn it's a shared DB, group it as `database OrderDB { table OrdersTable }` and switch to the dotted reference `resource OrderDB.OrdersTable`. A bare resource costs you only a warning: karasu still draws it, inside its usecase's own drill-down view. What the dotted reference (or a matching `entity`) adds is promotion to a sibling node in the **domain** view, next to the usecase that touches it.
 
 ### 3.1 Discovering shared datastores
 
