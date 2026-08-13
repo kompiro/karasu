@@ -114,7 +114,8 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   プレビュー）、半透明 tint の合成後の比、SVG stroke の 3:1、ランプ順序、
   data-URI に焼いた色と元トークンの一致、
   および `--text-*` / `--bg-*` を検証対象リストが取りこぼしていないかの drift
-  ガードを検証する。半透明 tint 越しの合成は #2461 で追加予定。
+  ガードを検証する。半透明 tint は載りうる surface を宣言して合成後の色で測り
+  （#2461）、宣言漏れは tint 側の drift ガードが落とす。
 - `packages/app/src/styles/styles-no-raw-color.test.ts`。`%23` 形式の
   encode 済み hex も検出対象（#2193 で追加）。
 - `packages/e2e/tests/at-1470-app-theme.spec.ts`。実ブラウザで light / dark

@@ -98,9 +98,9 @@
      labels as well as SVG strokes, so they answer to 4.5:1 as text on the
      banner tint *and* 3:1 as strokes on the canvas (#2461). */
   --diff-color-added: #22c55e;
-  --diff-color-removed: #f05454;
+  --diff-color-removed: #f27070;
   --diff-color-changed: #f59e0b;
-  --diff-bg-added: rgba(34, 197, 94, 0.12);
+  --diff-bg-added: rgba(34, 197, 94, 0.08);
   --diff-bg-removed: rgba(239, 68, 68, 0.1);
   --diff-bg-changed: rgba(245, 158, 11, 0.1);
 

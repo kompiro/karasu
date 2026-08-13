@@ -103,7 +103,7 @@ const BADGE_PREVIEW_BACKGROUNDS = [
   "#F59E0B", // experimental
   "#94A3B8", // planned
   "#A78BFA", // draft
-  "#60A5FA", // migration target
+  "#3B82F6", // migration target
 ];
 
 /**
@@ -121,12 +121,12 @@ const BADGE_PREVIEW_BACKGROUNDS = [
  *                       (`--bg-base`)
  *   `--diff-banner-*`   the diff banner, a direct child of the app shell
  *                       (`--bg-base`)
- *   `--diff-bg-*`       edge-detail rows inside a panel (`--bg-raised` /
- *                       `--bg-overlay`)
+ *   `--diff-bg-*`       edge-detail rows inside `.node-detail-panel`
+ *                       (`--bg-raised`)
  * Moving one of those components to a different pane changes its span; update
  * the entry here in the same change.
  */
-const TINTED_PAIRS: { fg: string; tint: string; over: string[] }[] = [
+const TINTED_PAIRS: { fg: string; tint: string; over: string[]; under?: string[] }[] = [
   {
     fg: "accent-hover",
     tint: "accent-dim",
@@ -141,10 +141,27 @@ const TINTED_PAIRS: { fg: string; tint: string; over: string[] }[] = [
   { fg: "text-primary", tint: "diff-banner-bg", over: ["bg-base"] },
   { fg: "diff-color-removed", tint: "diff-banner-bg", over: ["bg-base"] },
   { fg: "diff-color-added", tint: "diff-banner-bg", over: ["bg-base"] },
-  { fg: "text-primary", tint: "diff-banner-hover-bg", over: ["bg-base"] },
-  { fg: "text-primary", tint: "diff-banner-active-bg", over: ["bg-base"] },
-  { fg: "text-secondary", tint: "diff-bg-added", over: ["bg-raised", "bg-overlay"] },
-  { fg: "text-secondary", tint: "diff-bg-removed", over: ["bg-raised", "bg-overlay"] },
+  // The banner's own buttons tint a surface that is already tinted.
+  {
+    fg: "text-primary",
+    tint: "diff-banner-hover-bg",
+    under: ["diff-banner-bg"],
+    over: ["bg-base"],
+  },
+  {
+    fg: "text-primary",
+    tint: "diff-banner-active-bg",
+    under: ["diff-banner-bg"],
+    over: ["bg-base"],
+  },
+  // Edge-detail rows: the route is primary, the label muted, the marker the
+  // matching diff color. `--text-secondary` is not painted here at all.
+  { fg: "text-primary", tint: "diff-bg-added", over: ["bg-raised"] },
+  { fg: "text-muted", tint: "diff-bg-added", over: ["bg-raised"] },
+  { fg: "diff-color-added", tint: "diff-bg-added", over: ["bg-raised"] },
+  { fg: "text-primary", tint: "diff-bg-removed", over: ["bg-raised"] },
+  { fg: "text-muted", tint: "diff-bg-removed", over: ["bg-raised"] },
+  { fg: "diff-color-removed", tint: "diff-bg-removed", over: ["bg-raised"] },
 ];
 
 /**
@@ -297,8 +314,9 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
         }
       });
 
-      for (const { fg: fgToken, tint: tintToken, over } of TINTED_PAIRS) {
-        it(`--${fgToken} clears AA on --${tintToken} over ${over.join(" / ")}`, () => {
+      for (const { fg: fgToken, tint: tintToken, over, under } of TINTED_PAIRS) {
+        const layers = [...(under ?? []), tintToken];
+        it(`--${fgToken} clears AA on --${layers.join(" over --")} over ${over.join(" / ")}`, () => {
           const fg = tokens.get(fgToken);
           const tint = tokens.get(tintToken);
           expect(fg, `--${fgToken} is defined`).toBeDefined();
@@ -306,7 +324,13 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
           for (const surface of over) {
             const bg = tokens.get(surface);
             expect(bg, `--${surface} is defined`).toBeDefined();
-            const effective = effectiveBackground(tint as string, bg as string);
+            // Fold the declared layers outward from the surface, so chrome
+            // painted on already-tinted chrome is measured as the viewer sees
+            // it rather than one layer short.
+            const effective = layers.reduce(
+              (acc, layer) => effectiveBackground(tokens.get(layer) as string, acc),
+              bg as string,
+            );
             expect(
               ratio(fg as string, effective),
               `--${fgToken} on --${tintToken} over --${surface} = ${effective} (${setName})`,
@@ -317,9 +341,9 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
 
       for (const strokeToken of STROKE_ON_CANVAS) {
         it(`--${strokeToken} stays visible as a stroke on the diagram`, () => {
-          // The diagram sits on --bg-raised; a stroke is non-text, so 3:1.
+          // `.preview-pane` is --bg-base; a stroke is non-text, so 3:1.
           const stroke = tokens.get(strokeToken);
-          const canvas = tokens.get("bg-raised");
+          const canvas = tokens.get("bg-base");
           expect(stroke, `--${strokeToken} is defined`).toBeDefined();
           expect(
             ratio(stroke as string, canvas as string),
