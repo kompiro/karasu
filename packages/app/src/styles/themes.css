@@ -94,11 +94,13 @@
   --overlay-scrim: rgba(0, 0, 0, 0.4);
   --reference-scrim: rgba(7, 9, 15, 0.55);
 
-  /* Graphical diff viewer (Issue #650). These paint the banner's before/after
-     labels as well as SVG strokes, so they answer to 4.5:1 as text on the
-     banner tint *and* 3:1 as strokes on the canvas (#2461). */
+  /* Graphical diff viewer (Issue #650). These carry three roles, and the
+     binding one is whichever is strictest: the banner's before/after labels
+     (4.5:1 on the banner tint), the node-detail diff list and edge-detail
+     markers (4.5:1 as body text on the panel), and SVG strokes (3:1 on the
+     canvas). Tuning for one alone sinks another (#2461). */
   --diff-color-added: #22c55e;
-  --diff-color-removed: #f05454;
+  --diff-color-removed: #f26e6e;
   --diff-color-changed: #f59e0b;
   --diff-bg-added: rgba(34, 197, 94, 0.12);
   --diff-bg-removed: rgba(239, 68, 68, 0.1);

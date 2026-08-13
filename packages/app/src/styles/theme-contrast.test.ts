@@ -128,8 +128,25 @@ const TINTED_PAIRS: { fg: string; tint: string; over: string[] }[] = [
   { fg: "diff-color-added", tint: "diff-banner-bg", over: ["bg-base"] },
   { fg: "text-primary", tint: "diff-banner-hover-bg", over: ["bg-base"] },
   { fg: "text-primary", tint: "diff-banner-active-bg", over: ["bg-base"] },
+  // Edge-detail diff rows: the route is primary, the label secondary (muted is
+  // too faint once the tint lifts the background), the marker its diff color.
+  { fg: "text-primary", tint: "diff-bg-added", over: ["bg-raised", "bg-overlay"] },
+  { fg: "text-primary", tint: "diff-bg-removed", over: ["bg-raised", "bg-overlay"] },
   { fg: "text-secondary", tint: "diff-bg-added", over: ["bg-raised", "bg-overlay"] },
   { fg: "text-secondary", tint: "diff-bg-removed", over: ["bg-raised", "bg-overlay"] },
+  { fg: "diff-color-added", tint: "diff-bg-added", over: ["bg-raised", "bg-overlay"] },
+  { fg: "diff-color-removed", tint: "diff-bg-removed", over: ["bg-raised", "bg-overlay"] },
+];
+
+/**
+ * Text painted straight onto a panel surface by a token outside `TEXT_TOKENS`.
+ * The diff colors reach here through the node-detail annotation diff list,
+ * a third role beyond the banner label and the SVG stroke — and the one that
+ * caught dark `--diff-color-removed` at 4.27:1 on `--bg-overlay` (#2461).
+ */
+const PANEL_TEXT_PAIRS: { fg: string; over: string[] }[] = [
+  { fg: "diff-color-added", over: ["bg-raised", "bg-overlay"] },
+  { fg: "diff-color-removed", over: ["bg-raised", "bg-overlay"] },
 ];
 
 /**
@@ -321,6 +338,21 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
             expect(
               ratio(fg as string, effective),
               `--${fgToken} on --${tintToken} over --${surface} = ${effective} (${setName})`,
+            ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+          }
+        });
+      }
+
+      for (const { fg: fgToken, over } of PANEL_TEXT_PAIRS) {
+        it(`--${fgToken} clears AA as panel text on ${over.join(" / ")}`, () => {
+          const fg = tokens.get(fgToken);
+          expect(fg, `--${fgToken} is defined`).toBeDefined();
+          for (const surface of over) {
+            const bg = tokens.get(surface);
+            expect(bg, `--${surface} is defined`).toBeDefined();
+            expect(
+              ratio(fg as string, bg as string),
+              `--${fgToken} as panel text on --${surface} (${setName})`,
             ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
           }
         });

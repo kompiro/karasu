@@ -69,3 +69,31 @@ describe("component CSS uses theme tokens, not raw colors", () => {
     expect(scopedFiles().length).toBeGreaterThanOrEqual(8);
   });
 });
+
+/**
+ * Rules allowed to dim text with `opacity`, each because what it dims is a
+ * decoration rather than something to read. Anything else belongs in a
+ * lighter *token*, whose contrast `theme-contrast.test.ts` can then measure.
+ */
+const DECORATIVE_DIMMED = [".breadcrumb-separator", ".project-selector::before"];
+
+describe("text is dimmed with a token, not with opacity", () => {
+  // TPL-2193. Opacity applies to the rendered result, so a dimmed label is
+  // what the reader actually sees — but it leaves the token untouched, so a
+  // contrast fence reading tokens reports the undimmed value and passes. The
+  // edge-detail removed row sat at 2.95:1 that way until #2461.
+  for (const file of scopedFiles()) {
+    it(`${file.name} dims no text with opacity`, () => {
+      const css = stripComments(readFileSync(file.path, "utf8"));
+      const offenders: string[] = [];
+      for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const opacity = /(?:^|\s)opacity:\s*([\d.]+)/.exec(body);
+        if (!opacity || Number(opacity[1]) >= 1) continue;
+        if (!/(?:^|\s)color:\s/.test(body)) continue;
+        const name = selector.trim().replace(/\s+/g, " ");
+        if (!DECORATIVE_DIMMED.some((allowed) => name.includes(allowed))) offenders.push(name);
+      }
+      expect(offenders).toEqual([]);
+    });
+  }
+});

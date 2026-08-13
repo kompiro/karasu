@@ -70,7 +70,16 @@ span はコンポーネントの mount 先を追って決めた（diff バナー
 - light `--error` `#CC2121` → `#BC1E1E`（自身の `--error-dim` 上で 4.11 → 4.79）
 - light `--diff-color-removed` `#DC2626` → `#C72020`、
   `--diff-color-added` `#15803D` → `#137538`
-- dark `--diff-color-removed` `#EF4444` → `#F05454`
+- dark `--diff-color-removed` `#EF4444` → `#F26E6E`
+
+**`opacity` による減光はテキストに使わない。** edge-detail の removed 行は
+`text-decoration: line-through` に加えて `opacity: 0.75` を掛けており、実効値は
+light 2.95:1 / dark 3.15:1 だった。opacity は描画結果に掛かるがトークンには
+現れないため、トークンを読む検証は素通りする。line-through が既に意味を
+担っているので opacity を外し、減光が要るときは明度の違うトークンを使う
+（`styles-no-raw-color.test.ts` に検出を追加。装飾グリフ 2 件のみ許可リスト）。
+tint が乗った行のラベルは `--text-muted` では足りない（dark で 3.91:1）ため
+`--text-secondary` にした。
 
 `.reference-badge-preview` には専用の `--badge-preview-text`（両テーマとも
 `#0F0F0F`）を与える。背景がテーマに追従しない以上、前景も追従させられない。
@@ -110,3 +119,8 @@ span はコンポーネントの mount 先を追って決めた（diff バナー
 - `packages/app/src/components/ui/dialog.tsx` の overlay が `bg-black/60` を
   直書きしており、`--overlay-scrim` トークンを迂回している。非文字なので
   コントラスト上の未達ではないが、テーマ追従の観点では drift（TPL-1001）。
+- `TINTED_PAIRS` / `PANEL_TEXT_PAIRS` の前景は**手で宣言している**。トークンの
+  値が変われば落ちるが、CSS 側で前景セレクタが別トークンに差し替わっても
+  気づけない（レビューで実際に 1 件見つかった: `--diff-bg-*` の前景を
+  `--text-secondary` と宣言していたが、当時の CSS は `--text-muted` だった）。
+  CSS のカスケードを解決して前景を機械的に導けるようにするのが次の一手。

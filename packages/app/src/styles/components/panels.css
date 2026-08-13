@@ -341,8 +341,18 @@
 
 .edge-detail-item--removed .edge-detail-route,
 .edge-detail-item--removed .edge-detail-label-text {
+  /* The line-through carries "removed" on its own. A 0.75 opacity used to
+     reinforce it, but opacity applies to the rendered result, and it put the
+     label at 2.95:1 (light) / 3.15:1 (dark) — below AA (#2461). */
   text-decoration: line-through;
-  opacity: 0.75;
+}
+
+/* A tinted row lifts the background toward the text, so the label needs more
+   weight than `--text-muted` carries there: muted measured 3.91:1 on the added
+   tint in dark. Untinted rows keep muted (#2461). */
+.edge-detail-item--added .edge-detail-label-text,
+.edge-detail-item--removed .edge-detail-label-text {
+  color: var(--text-secondary);
 }
 /* ── Reference Window ──────────────────────────────────────────────
    The reference opens in its own browser window (#1548) so it can stay open

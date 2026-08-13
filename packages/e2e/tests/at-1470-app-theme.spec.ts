@@ -88,7 +88,10 @@ const secondaryTargets = (page: Page): [string, Locator][] => [
  * only through a real keypress — the shortcut is the palette's only trigger.
  */
 async function selectedPaletteRow(page: Page): Promise<Locator> {
-  await page.keyboard.press("Control+Shift+P");
+  // `ControlOrMeta`, not `Control` — the app maps `mod` to Meta on Mac, so a
+  // hardcoded Control never opens the palette on a macOS host (see
+  // `fixtures/chat.ts` for the same chord handling).
+  await page.keyboard.press("ControlOrMeta+Shift+P");
   await expect(page.getByRole("dialog")).toBeVisible();
   const selected = page.locator('[role="option"][aria-selected="true"]');
   await expect(selected).toBeVisible();
