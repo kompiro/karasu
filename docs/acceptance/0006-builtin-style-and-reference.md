@@ -97,17 +97,18 @@ system Demo {
 > 無いという前提が誤っていたため。手書きタグは推論より優先される（[ADR-351](../adr/351-resource-shape-and-infra-icon-mode.md)）ので、
 > **解決済み** の resource — ここでは `entity PaymentGateway` に解決する bare id、
 > ドット記法の `resource MainDB.Orders [api]` でも同じ — に `[api]` を書けば hexagon
-> で描かれる。[#2200](https://github.com/kompiro/karasu/issues/2200)（未割当 resource が
-> spec の言うとおりに描かれない）は spec/impl 不一致として依然有効だが、この行の
-> 前提条件ではない。
+> で描かれる。[#2200](https://github.com/kompiro/karasu/issues/2200)（spec が未割当
+> resource を「孤立ノードとして描画」と書いていた件）は spec 側を実装に合わせて解決した。
 
 - [x] 4 ノードすべてが `Handle` の兄弟ノードとして usecase 図に昇格する
 
 > ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `promotes every resolved resource to a sibling node of its usecase in the domain view`
 
-- [x] 未解決の bare `resource ScratchTable [table]` はシェイプが決まっても描画されない
+- [x] 未解決の bare `resource ScratchTable [table]` はシェイプが決まっても domain ビューには昇格せず、自身の usecase のドリルダウンビューには描かれる
 
-> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `an unresolved bare resource keeps its shape but never reaches the canvas`（スタイル層は cylinder を返すのに view 層が落とす、という silent drop の形。[TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) / [#2200](https://github.com/kompiro/karasu/issues/2200) の対象）
+> ✅ Automated — `packages/core/src/integration/resource-shape-tags.test.ts` › `an unresolved bare resource is drawn in its usecase, not promoted to the domain` › `resolves a shape all the way through the style layer` / `is not promoted to a sibling of its usecase in the domain view` / `is drawn one level deeper, in its usecase's own drill-down view`
+>
+> 描画先が 1 つも無い silent drop ではない（[TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) は充足している）。落ちるのは domain ビューへの昇格だけで、それは参照が解決されて初めて得られる。両側を固定するのが [TPL-2200](../test-perspectives/TPL-2200-render-claim-names-its-view-level.md) の観点で、[#2200](https://github.com/kompiro/karasu/issues/2200) では否定側しか固定していなかったために spec が「描かれない」へ流れた。
 
 - [ ] ブラウザ上で 4 ノードが円柱・パイプ・雲・六角形として描き分けられている
 

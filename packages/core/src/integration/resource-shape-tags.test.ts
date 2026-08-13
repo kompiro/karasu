@@ -24,8 +24,11 @@ import type { ResolvedNodeStyle } from "../types/style.js";
  *                actually differs from a plain box.
  *
  * The trap the old AC fell into is pinned at the bottom: an *unresolved* bare
- * resource resolves a perfectly good shape at layer 2 yet never reaches layer
- * 1, so the tag is invisible no matter how correct the stylesheet is.
+ * resource resolves a perfectly good shape at layer 2 yet is never promoted by
+ * layer 1, so the tag is invisible in the domain view no matter how correct the
+ * stylesheet is. It is still drawn one level deeper, inside its own usecase —
+ * both halves are fenced there, because pinning only the negative half is what
+ * let the docs drift into "never drawn at all" (#2200).
  */
 
 // The model AT-0006 AC-1.2 tells the reader to paste into the editor. Kept
@@ -135,18 +138,33 @@ describe("AT-0006 AC-1.2: resource tag → shape, end to end", () => {
     });
   });
 
-  it("an unresolved bare resource keeps its shape but never reaches the canvas", () => {
-    // The shape AT-0006 AC-1.2 used to ask the reader to look for. It resolves
-    // to `cylinder` all the way through the style layer …
+  describe("an unresolved bare resource is drawn in its usecase, not promoted to the domain", () => {
+    // The shape AT-0006 AC-1.2 used to ask the reader to look for, on a
+    // resource that names neither an infra sub-resource nor an entity.
     const withScratch = MODEL.replace(
       "        resource PaymentGateway [api]",
       "        resource PaymentGateway [api]\n        resource ScratchTable [table]",
     );
-    expect(resolveModelStyles(withScratch).nodes.get("ScratchTable")?.shape).toBe("cylinder");
 
-    // … but it names neither an infra sub-resource nor an entity, so the view
-    // layer never promotes it and nothing is drawn (see AT-0049).
-    const view = extractView(parseModel(withScratch).systems, DOMAIN_VIEW);
-    expect(view.childNodes.map((n) => n.id)).not.toContain("ScratchTable");
+    it("resolves a shape all the way through the style layer", () => {
+      expect(resolveModelStyles(withScratch).nodes.get("ScratchTable")?.shape).toBe("cylinder");
+    });
+
+    it("is not promoted to a sibling of its usecase in the domain view", () => {
+      // Promotion is what *resolution* buys (see AT-0049): an unresolved bare
+      // resource stays inside its usecase instead of joining the domain view.
+      const view = extractView(parseModel(withScratch).systems, DOMAIN_VIEW);
+      expect(view.childNodes.map((n) => n.id)).not.toContain("ScratchTable");
+    });
+
+    it("is drawn one level deeper, in its usecase's own drill-down view", () => {
+      // The other half of the contract, and the half `docs/spec/syntax.md`
+      // means by "drawn inside its usecase" (#2200). Fencing only the negative
+      // half above is what let the docs drift into claiming the resource is
+      // never drawn at all — it is, just not at domain level. Resources are a
+      // usecase's own children here, so no resolution gate applies.
+      const view = extractView(parseModel(withScratch).systems, [...DOMAIN_VIEW, "Handle"]);
+      expect(view.childNodes.map((n) => n.id)).toContain("ScratchTable");
+    });
   });
 });
