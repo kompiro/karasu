@@ -73,14 +73,22 @@ jobs:
       # (`reference-docs-check.yml`), mirroring the ADR setup, so it also runs
       # on docs-only PRs that `ci.yml`'s `paths-ignore` filters out. Issue #1342.
 
-      - name: Typecheck (core)
-        run: pnpm --filter @karasu-tools/core run typecheck
-
-      - name: Typecheck (app)
-        run: pnpm --filter @karasu-tools/app run typecheck
-
-      - name: Typecheck (cli)
-        run: pnpm --filter ./packages/cli run typecheck
+      # Every package, not an enumeration. This step used to name core / app /
+      # cli one by one, which left `lsp`, `vscode`, `nest`, `i18n`, `docs-site`,
+      # `vscode-e2e` and `scripts/` unchecked on the machine that gates merges
+      # — the local `pnpm run typecheck` pre-push hook covered them all, so the
+      # gap only bit where the hook never runs: bot-authored PRs. Dependabot's
+      # #2432 was green on every check while breaking 12 assertions in
+      # `packages/lsp` (Issue #2446 / TPL-2446). Run the root script, whose
+      # `pnpm -r` reaches every package by construction; the companion guard
+      # `scripts/ci/typecheck-coverage-policy.test.ts` fails if this reverts to
+      # naming packages, or if a package stops defining `typecheck`.
+      #
+      # `pnpm -r run typecheck` needs no prior `Build (core)`: consumers set
+      # `customConditions: ["development"]`, so a workspace dependency resolves
+      # to its `src/` entry rather than the `dist/` that step produces.
+      - name: Typecheck
+        run: pnpm run typecheck
 
       - name: Build (core)
         run: pnpm --filter @karasu-tools/core run build
