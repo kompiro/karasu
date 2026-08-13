@@ -314,6 +314,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
 - [ADR-2366](2366-node-chrome-and-ports.md) — node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く
+- [ADR-2473](2473-dy-instead-of-dominant-baseline.md) — テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` で指定する
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
