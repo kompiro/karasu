@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2208](https://github.com/kompiro/karasu/issues/2208)
+  - 本 Design Doc の PR: [#2489](https://github.com/kompiro/karasu/pull/2489)
   - 関連 Issue: [#2133](https://github.com/kompiro/karasu/issues/2133)（boundary を removed 化・org/team/member を deprecated 化）、[#2209](https://github.com/kompiro/karasu/issues/2209)（エッジ inline label、本設計の対象外）
   - 関連 ADR: [ADR-19](../adr/19-required-id-label-as-property.md)（id 必須化・label のプロパティ化）、[ADR-1314](../adr/1314-krs-spec-v1-freeze.md)（v1.0 凍結）
   - 関連 TPL: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md)、[TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md)、[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)
