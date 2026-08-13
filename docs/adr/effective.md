@@ -127,6 +127,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2152](2152-dependabot-triage-2026-07-27.md) — Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の publisher 変化は provenance で検証
 - [ADR-2318](2318-dependabot-triage-2026-08-03.md) — Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロックと monaco 0.56.0 の exports 破壊
 - [ADR-2333](2333-dependabot-triage-2026-08-04.md) — Dependabot トリアージ 2026-08-04 — LSP protocol の単独 bump を却下し、oxlint の新規則を設定で収める
+- [ADR-2337](2337-lsp-pair-upgrade-protocol-parity.md) — LSP は client と server を同時に上げ、protocol 版の一致を不変条件として維持する
 - [ADR-2341](2341-dependabot-security-2026-08-04.md) — Security alert 2026-08-04 — brace-expansion / fast-uri を override の floor 引き上げで解決する
 - [ADR-2351](2351-process-md-holds-instructions.md) — docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issue に置き、参照もしない
 - [ADR-2356](2356-doc-placement-by-read-timing.md) — 開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層
