@@ -82,6 +82,22 @@
 
   > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<bg>` / `--text-muted clears the non-text minimum on --bg-selected` — グラデーション背景は全 stop に対して測る。
 
+- [x] 不透明な色トークンの上の文字（`--text-on-accent` on `--accent` 等）が 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<token>` — CommandPalette / ProjectPicker の選択行が `text-white` を直書きしていた組（dark 3.14:1）。#2461 で `--text-on-accent` をテーマごとのインクにした。
+
+- [x] 半透明クローム越しの文字が、下地との合成後で 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<tint> over <surfaces>` — `compositeOver()` で実効背景を作る。tint が載りうる surface は宣言制で、未宣言の rgba トークンは drift ガードが落とす。
+
+- [x] 文字と stroke を兼ねるトークンが、stroke として 3:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--diff-color-* stays visible as a stroke on --bg-raised` — バナーのラベル基準だけで倒すと図の stroke が沈むため、両方の基準で同時に検証する。
+
+- [x] Reference パネルの badge preview のインクが、全 badge 色に対して 4.5:1 以上
+
+  > ✅ Automated — `theme-contrast.test.ts` › `keeps --badge-preview-text legible on every badge color it can paint` — 背景は `getReference()` が返す dark パレット固定の badge 色なので、テストも同じソースを読む。白は `@experimental` 上で 2.15:1 だった（#2461）。
+
 - [x] 文字階層のランプが primary → secondary → tertiary → muted の順に暗くなる
 
   > ✅ Automated — `theme-contrast.test.ts` › `keeps the text hierarchy ordered from primary to muted` — AA を満たすとランプは圧縮されるため、順序の逆転（muted が secondary より明るい）を明示的に禁じる。

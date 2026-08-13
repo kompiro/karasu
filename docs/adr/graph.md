@@ -55,6 +55,7 @@ flowchart TD
     ADR_2120["ADR-2120<br/>bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
     ADR_2193["ADR-2193<br/>テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える"]
     ADR_2316["ADR-2316<br/>experimental notation は Reference に載せ、experimen..."]
+    ADR_2461["ADR-2461<br/>アクセント上の文字はテーマごとのインクにし、半透明クロームは合成後で検証する"]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -473,6 +474,7 @@ flowchart TD
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
   ADR_2442 --> ADR_2410
+  ADR_2461 --> ADR_2193
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -799,6 +801,7 @@ flowchart TD
   class ADR_2440 accepted
   class ADR_2442 accepted
   class ADR_2447 accepted
+  class ADR_2461 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
