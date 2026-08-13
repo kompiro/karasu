@@ -30,7 +30,7 @@ export type LayoutNodeProperties = CommonProperties & {
  * union so `kind` switches can handle org nodes explicitly instead of
  * receiving smuggled strings via casts.
  */
-export type OrgLayoutNodeKind = "member" | "team";
+type OrgLayoutNodeKind = "member" | "team";
 
 export interface LayoutNode {
   kind: LogicalNodeKind | DeployNodeKind | OrgLayoutNodeKind;
