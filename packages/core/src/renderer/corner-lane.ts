@@ -1,5 +1,5 @@
-// The node card's top-right corner lane (#2420, design doc
-// docs/design/node-chrome-and-ports.md H-1).
+// The node card's top-right corner lane (#2420, ADR-2366 — the H-1 half of the
+// node chrome design).
 //
 // Everything that wants the top-right corner — the info button, the deploy
 // button, and the annotation chip — is a resident of ONE right-packed lane:
