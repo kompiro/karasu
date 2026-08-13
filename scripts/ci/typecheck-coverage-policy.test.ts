@@ -79,9 +79,16 @@ describe("typecheck coverage policy (Issue #2446)", () => {
     expect(withoutTypecheck).toEqual([]);
   });
 
-  it("keeps the root typecheck script recursive", () => {
+  it("keeps the root typecheck script recursive, and keeps scripts/ in it", () => {
+    const rootTypecheck = readScripts("package.json").typecheck;
     // The property that makes a new package covered on the day it is created.
-    expect(readScripts("package.json").typecheck).toContain("pnpm -r run typecheck");
+    expect(rootTypecheck).toContain("pnpm -r run typecheck");
+    // `scripts/` is not a workspace package, so `pnpm -r` does not reach it and
+    // the assertions above stay green if this half is dropped — while every
+    // lint guard and this file itself fall out of CI typecheck. It was in
+    // exactly that state before #2446, and the first CI run that included it
+    // failed immediately.
+    expect(rootTypecheck).toContain("tsc --noEmit -p scripts/tsconfig.json");
   });
 
   it("runs the root typecheck script in CI", () => {
@@ -92,9 +99,13 @@ describe("typecheck coverage policy (Issue #2446)", () => {
     // The regression this guard is named for. Deploy workflows may filter to
     // their own package (`nest-deploy.yml` typechecks `nest` before shipping
     // it); the rule is about `ci.yml`, which gates merges for everything.
+    //
+    // Matched loosely on purpose: `--filter=<pkg>` and pnpm's `run`-less
+    // shorthand are the same regression spelled differently, and a guard that
+    // only knows one spelling reads as covering all three.
     const enumerated = ciWorkflow
       .split("\n")
-      .filter((line) => /pnpm --filter \S+ run typecheck/.test(line));
+      .filter((line) => /--filter[=\s]\S+.*\btypecheck\b/.test(line));
     expect(enumerated).toEqual([]);
   });
 });
