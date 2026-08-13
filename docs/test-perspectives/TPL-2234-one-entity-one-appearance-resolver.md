@@ -7,13 +7,16 @@ applicable_to:
   - "同じエンティティを 2 つ以上の描画面が表す機能（本体とバッジ、枠とタブ、カードと凡例、一覧と詳細）"
   - "既定値で決まっていた見た目に、ユーザー指定の上書き手段（style シート・設定・テーマ）を足すとき"
   - "パレットや定数テーブルから色・アイコン・線種を引く描画コードを追加するとき"
+  - "解決規則（カスケード・優先順位・フォールバック連鎖）を 2 箇所目に書き写すとき"
 known_consumers:
   - renderer
   - style-resolver
 discovered_from:
   - issue: "#2234"
   - issue: "#2179"
+  - issue: "#2445"
   - root_cause_file: "packages/core/src/renderer/svg-renderer.ts"
+  - root_cause_file: "packages/core/src/renderer/svg-builder.ts"
 related_to:
   - TPL-2179
   - TPL-219
@@ -53,6 +56,20 @@ karasu の boundary で実際にこうなった:
 ジオメトリから**見た目全般**へ広げたもの。[TPL-1032](TPL-1032-derived-state-staleness.md) が
 派生 state の二重持ちを扱うのに対し、こちらは派生**描画**の二重導出を扱う。
 
+### 値だけでなく「解決規則」も二重化する（#2445）
+
+同じことは色そのものではなく、**色の決め方**を写したときにも起きた。凡例 swatch は
+`.krs.style` のカスケード（specificity → 宣言順）を resolver から書き写しており、
+「resolver を変えたらここも直せ」というコメントが添えてあった。ところが `sourceIndex`
+はシートごとに 0 起点で、resolver はシート横断で振り直してからソートするのに凡例は
+生の値でソートしていた。結果、同 specificity のときユーザールールがカード上では勝ち、
+凡例では builtin に負ける — **既定値どうしなら一致するので、上書きが入るまで表面化しない**
+という本 TPL の失敗モードそのものになる。
+
+**コメントで同期を約束するのは畳んだことにならない。** 規則を共有関数
+（`packages/core/src/style/cascade.ts`）に出し、各面は「どのルールが一致するか」だけを
+決める形にする。
+
 ## 想定される失敗モード
 
 - 既定値から各面が独立に導いており、**既定値しか無いので一致している**。レビューでも
@@ -75,6 +92,10 @@ karasu の boundary で実際にこうなった:
       分け、そのうえで上書きを足す）。同じコミットで両方やらない。
 - [ ] 上書きが効いていることを、**最も目立たない面**で assert するテストがある。主要な面
       （枠・カード本体）だけ見るテストは、二次的な面の取りこぼしを検出しない。
+- [ ] **解決規則そのもの**（カスケード・優先順位・フォールバック連鎖）を各面が
+      書き写していない。書き写しを「変えたら両方直せ」というコメントで担保している
+      箇所があれば、それは畳めていないので共有関数に出す（karasu では
+      `style/cascade.ts` を通らないソートが無いことを `sourceIndex` の grep で確認する）。
 - [ ] 上書きが**部分指定**されたときの残りの導出を決めて書いた（karasu では
       `border-color` だけの指定で塗りとタイトルも追従する）。「指定されなかったものは
       既定値」で済ませると、1 エンティティ 2 色が仕様として固定される。
@@ -85,3 +106,5 @@ karasu の boundary で実際にこうなった:
   （`border-color` の 1 宣言が枠線・塗り・タイトルをまとめて塗り替える規定）
 - `docs/spec/syntax.md` § [Grouping the system view](../spec/syntax.md#grouping-the-system-view-boundary--experimental)
   （色が重なりの可読性の条件であること）
+- `docs/spec/syntax.md` § [Color resolution](../spec/syntax.md#color-resolution)
+  （凡例 `ref` がノードと同じカスケードで解決される規定 — #2445）

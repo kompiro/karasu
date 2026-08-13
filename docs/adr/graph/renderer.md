@@ -43,8 +43,10 @@ flowchart TD
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
+    ADR_2200["ADR-2200<br/>未割当 `resource` の描画先は usecase ドリルダウンビューであり、domai..."]
     ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
     ADR_2360["ADR-2360<br/>label placement の障害物にエッジ polyline を加える — 自分の線だけ..."]
+    ADR_2366["ADR-2366<br/>node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -143,8 +145,10 @@ flowchart TD
   class ADR_1983 accepted
   class ADR_2048 accepted
   class ADR_2174 accepted
+  class ADR_2200 accepted
   class ADR_2330 accepted
   class ADR_2360 accepted
+  class ADR_2366 accepted
   class ADR_9005 accepted
   class ADR_9007 accepted
   class ADR_9015 accepted
