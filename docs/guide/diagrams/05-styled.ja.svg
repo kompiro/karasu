@@ -5,9 +5,9 @@
 <line x1="140" y1="126" x2="140" y2="246" stroke="#64748B" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-default)"/>
 <text x="140" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">在庫照会</text></g></g>
 <g class="nodes"><g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="60" y="60" width="160" height="66" rx="8" ry="8" fill="#dbeafe" stroke="#7DD3FC" stroke-width="2"/>
-<text x="140" y="93" text-anchor="middle" dominant-baseline="central" fill="#1e40af" font-size="13px" font-weight="bold" font-family="sans-serif">受注</text></g>
+<text x="140" y="93" text-anchor="middle" dy="0.35em" fill="#1e40af" font-size="13px" font-weight="bold" font-family="sans-serif">受注</text></g>
 <g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false" opacity="0.6"><rect x="60" y="246" width="160" height="66" rx="8" ry="8" fill="#f3f4f6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>
-<text x="140" y="279" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">旧基幹</text>
+<text x="140" y="279" text-anchor="middle" dy="0.35em" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">旧基幹</text>
 <g data-node-badge="Legacy"><rect x="158.625" y="254" width="53.375" height="16" rx="8" fill="#DC2626"/>
-<text x="169.125" y="262" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="9px">⚠</text>
-<text x="176.625" y="262" dominant-baseline="central" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">非推奨</text></g></g></g></svg>
+<text x="169.125" y="262" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="9px">⚠</text>
+<text x="176.625" y="262" dy="0.35em" fill="#FFFFFF" font-size="9px" font-weight="bold" font-family="sans-serif">非推奨</text></g></g></g></svg>

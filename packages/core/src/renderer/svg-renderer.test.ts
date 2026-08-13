@@ -1197,8 +1197,10 @@ system S {
     // Default node style: fontSize 13 → subLabelFontSize = round(13 * 0.75) = 10.
     // x = node.x + width/2 = 60; y = node.y + height + subLabelFontSize + 4 = 84.
     // Parent service name is wrapped in parentheses.
+    // Vertical centring rides `dy`, not `dominant-baseline`, so the label keeps
+    // its position in rasterizers that drop the attribute (#2473).
     expect(svg).toContain(
-      '<text x="60" y="84" text-anchor="middle" dominant-baseline="central" ' +
+      '<text x="60" y="84" text-anchor="middle" dy="0.35em" ' +
         'fill="#F9FAFB" font-size="10px" font-family="sans-serif">(Payments)</text>',
     );
   });
