@@ -12,8 +12,6 @@ assumptions:
   - "grep: .github/dependabot.yml :: open-pull-requests-limit: 8"
   - "grep: package.json :: \"oxfmt\": \"\\^0.62.0\""
   - "grep: package.json :: \"vitest\": \"\\^4.1.10\""
-  - "grep: packages/app/package.json :: \"lucide-react\": \"\\^1.28.0\""
-  - "grep: packages/docs-site/package.json :: \"astro\": \"\\^7.1.6\""
 ---
 
 # ADR-2447: Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は人手 PR で対に戻す
