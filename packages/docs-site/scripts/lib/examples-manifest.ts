@@ -20,7 +20,7 @@ export type GroupKey = "getting-started" | "scenarios" | "feature-samples";
  */
 export type LocalizedEntry = string | LocalizedString;
 
-export interface GalleryDiagram {
+interface GalleryDiagram {
   entry: LocalizedEntry;
   /** Per-diagram heading (used on multi-diagram pages like feature-samples). */
   caption?: LocalizedString;

@@ -16,7 +16,7 @@
  *
  * See `docs/spec/syntax.md` §"Resource operations".
  */
-export const RECOGNIZED_RESOURCE_OPERATIONS = ["create", "read", "update", "delete"] as const;
+const RECOGNIZED_RESOURCE_OPERATIONS = ["create", "read", "update", "delete"] as const;
 export type CrudVerb = (typeof RECOGNIZED_RESOURCE_OPERATIONS)[number];
 
 export function isRecognizedResourceOperation(value: string): value is CrudVerb {

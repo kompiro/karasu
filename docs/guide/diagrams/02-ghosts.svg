@@ -3,4 +3,4 @@
 <text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Shop</text>
 <g class="edges"/>
 <g class="nodes"><g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="60" y="60" width="173.60000000000002" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="146.8" y="93" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text></g></g></svg>
+<text x="146.8" y="93" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text></g></g></svg>

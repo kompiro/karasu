@@ -26,13 +26,13 @@
 /** Every tar structure is a multiple of this. */
 const BLOCK = 512;
 
-export interface TarEntry {
+interface TarEntry {
   path: string;
   size: number;
 }
 
 /** What the caller decides about an entry before its bytes are read. */
-export type TarEntryDecision = "read" | "skip";
+type TarEntryDecision = "read" | "skip";
 
 export interface ReadArchiveOptions {
   /** Called before an entry's data is touched. `skip` costs no memory. */

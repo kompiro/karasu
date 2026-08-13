@@ -26,7 +26,7 @@ export interface Span {
 }
 
 /** What a node's outline offers an edge. */
-export interface NodePorts {
+interface NodePorts {
   frame: ShapePortFrame;
   keepOuts: readonly Rect[];
 }
