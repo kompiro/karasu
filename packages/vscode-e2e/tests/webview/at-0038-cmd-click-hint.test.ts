@@ -190,18 +190,29 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
 
     await ensureWebViewFrame(ctx);
 
+    // Same call-time interpolation trap as at-0039's cursor poll: `lastClass`
+    // has to be read into the message when the failure is thrown, not when
+    // `driver.wait` is called, or every failure reports the initializer.
     let lastClass = "";
-    await driver.wait(
-      async () => {
-        lastClass = (await driver.executeScript(
-          "const el = document.querySelector('[data-node-id=\"OrderService\"]');" +
-            'return el ? el.getAttribute("class") || "" : "";',
-        )) as string;
-        return lastClass.includes("karasu-highlighted");
-      },
-      ELEMENT_TIMEOUT_MS,
-      `[data-node-id="OrderService"] never picked up class "karasu-highlighted"; last class was "${lastClass}"`,
-    );
+    try {
+      await driver.wait(
+        async () => {
+          lastClass = (await driver.executeScript(
+            "const el = document.querySelector('[data-node-id=\"OrderService\"]');" +
+              'return el ? el.getAttribute("class") || "" : "";',
+          )) as string;
+          return lastClass.includes("karasu-highlighted");
+        },
+        ELEMENT_TIMEOUT_MS,
+        '[data-node-id="OrderService"] never picked up class "karasu-highlighted"',
+      );
+    } catch (err) {
+      throw new Error(
+        '[data-node-id="OrderService"] never picked up class "karasu-highlighted"; ' +
+          `last class was "${lastClass}". Original: ${(err as Error).message}`,
+        { cause: err },
+      );
+    }
 
     assert.ok(
       lastClass.includes("karasu-highlighted"),

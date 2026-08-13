@@ -1,5 +1,5 @@
 import * as assert from "node:assert";
-import { By, EditorView, type WebDriver, until } from "vscode-extension-tester";
+import { By, EditorView, type TextEditor, type WebDriver, until } from "vscode-extension-tester";
 import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
@@ -111,6 +111,11 @@ const FIXTURE_NAME = "at-0039.krs";
 const FIXTURE_LINE = {
   Customer: 17,
 } as const;
+
+// Where the cursor is parked before a Jump-to-editor, so landing on the
+// target line proves the jump happened. Line 1 is the fixture's `system`
+// header and is never a jump target here.
+const CURSOR_PARK_LINE = 1;
 
 describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram navigation", function () {
   this.timeout(SUITE_TIMEOUT_MS);
@@ -345,6 +350,19 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   // `beforeEach`'s `ensureWebViewFrame()` and call `switchToView` to
   // restore System view, since the TC-03 rebuild also resets state.
   it("TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open", async () => {
+    // Park the cursor off the Customer line first, so "cursor reached line 17"
+    // proves the jump happened rather than that something earlier left it
+    // there — the false-green that kept AT-0038 TC-03 passing through the
+    // whole LSP breakage (Issue #2456). This has to run before the panel is
+    // opened: focusing the .krs editor rebuilds `webview.html` and wipes
+    // panel state.
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
+    const krsEditor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
+    await krsEditor.moveCursor(CURSOR_PARK_LINE, 1);
+    const [parked] = await krsEditor.getCoordinates();
+    assert.strictEqual(parked, CURSOR_PARK_LINE, "failed to park the cursor before Jump-to-editor");
+    await ensureWebViewFrame(ctx);
+
     await closePanelIfOpen();
 
     await dispatchClick(driver, '[data-node-id="Customer"]');
