@@ -138,6 +138,7 @@ flowchart TD
     ADR_2419["ADR-2419<br/>PoC の生成物は gitignore された `reports/` に出力し、spike ブ..."]
     ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
+    ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -308,6 +309,7 @@ flowchart TD
     ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
     ADR_2360["ADR-2360<br/>label placement の障害物にエッジ polyline を加える — 自分の線だけ..."]
     ADR_2366["ADR-2366<br/>node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く"]
+    ADR_2473["ADR-2473<br/>テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` ..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -802,6 +804,8 @@ flowchart TD
   class ADR_2442 accepted
   class ADR_2447 accepted
   class ADR_2461 accepted
+  class ADR_2472 accepted
+  class ADR_2473 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

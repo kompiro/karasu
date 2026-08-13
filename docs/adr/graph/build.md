@@ -81,6 +81,7 @@ flowchart TD
     ADR_2419["ADR-2419<br/>PoC の生成物は gitignore された `reports/` に出力し、spike ブ..."]
     ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
+    ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -184,6 +185,7 @@ flowchart TD
   class ADR_2419 accepted
   class ADR_2440 accepted
   class ADR_2447 accepted
+  class ADR_2472 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

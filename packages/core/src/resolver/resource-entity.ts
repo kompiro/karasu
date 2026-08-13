@@ -13,7 +13,7 @@ import type { KrsNode, ResourceNode, EntityNode } from "../types/ast.js";
  *   (`usecase → entity → table → database`). See
  *   `docs/adr/1870-domain-entity-modeling.md`.
  */
-export interface ResolvedResourceRef {
+interface ResolvedResourceRef {
   /**
    * Infra block id the resource ultimately targets (physical dot-notation, or
    * an entity-mediated `tableRef.parent`). Undefined when the bare id does not

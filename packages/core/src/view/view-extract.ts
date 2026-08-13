@@ -326,13 +326,13 @@ export interface GhostSystem {
   visibleServices: KrsNode[];
 }
 
-export interface GhostDomain {
+interface GhostDomain {
   node: KrsNode;
   /** Label of the service that owns this domain — shown as sub-label on the ghost node. */
   parentServiceLabel: string;
 }
 
-export interface GhostEntity {
+interface GhostEntity {
   /** The foreign entity node (its `id` is the bare entity id). */
   node: KrsNode;
   /** Label of the domain that owns this entity — shown as sub-label on the ghost node. */
@@ -424,7 +424,7 @@ export interface ViewSlice {
  * are the domain child ids spliced into the sibling grid; `label` titles the
  * boundary frame the layout draws around that contiguous band.
  */
-export interface ExpandedFrame {
+interface ExpandedFrame {
   containerId: string;
   label: string;
   memberIds: string[];
