@@ -91,6 +91,11 @@ const FIXTURE_LINE = {
   OrderManagement: 3,
 } as const;
 
+// Where the cursor is parked before each Cmd/Ctrl+Click, so that landing on
+// the expected line proves the jump happened. Line 1 is the fixture's
+// `system ECommerce {` header, which is not the target of any jump here.
+const CURSOR_PARK_LINE = 1;
+
 describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview", function () {
   this.timeout(SUITE_TIMEOUT_MS);
 
@@ -99,6 +104,26 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
 
   async function readEditorLine(): Promise<number> {
     return readEditorCursorLine(ctx, FIXTURE_NAME);
+  }
+
+  // Move the cursor to `CURSOR_PARK_LINE` and confirm it got there, so the
+  // subsequent "cursor reached `expectedLine`" assertion cannot pass just
+  // because a previous test already left it there. TC-03 used to assert
+  // line 2 while AT-0037-9 had parked the cursor on line 2 itself, so it
+  // stayed green through the whole LSP 3.17/3.18 breakage in which
+  // `karasu/positionOfNode` never completed at all (Issue #2456). Leaves the
+  // driver outside the WebView frame; callers re-enter it.
+  async function parkCursorAwayFrom(expectedLine: number): Promise<void> {
+    assert.notStrictEqual(
+      expectedLine,
+      CURSOR_PARK_LINE,
+      `cannot park the cursor on line ${CURSOR_PARK_LINE} and then assert the jump lands there`,
+    );
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
+    const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
+    await editor.moveCursor(CURSOR_PARK_LINE, 1);
+    const [parked] = await editor.getCoordinates();
+    assert.strictEqual(parked, CURSOR_PARK_LINE, "failed to park the cursor before the click");
   }
 
   // Dispatch a Cmd/Ctrl+Click at `selector` and poll the .krs editor
@@ -112,7 +137,8 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     expectedLine: number,
     description: string,
   ): Promise<void> {
-    let lastLine = 0;
+    await parkCursorAwayFrom(expectedLine);
+    let lastLine = CURSOR_PARK_LINE;
     try {
       await driver.wait(
         async () => {

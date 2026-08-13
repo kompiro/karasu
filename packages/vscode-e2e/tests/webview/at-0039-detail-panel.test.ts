@@ -376,16 +376,31 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     // WebView frame on every iteration; bringing the .krs editor to focus
     // rebuilds the preview, which is why the visibility assertion above
     // runs first.
+    //
+    // Build the failure message in the catch, NOT as `driver.wait`'s third
+    // argument: that argument is a plain string evaluated at call time, so
+    // interpolating `lastLine` there always reported the initializer. During
+    // the LSP 3.17/3.18 investigation that printed "last seen line 0" on every
+    // failure, which read as "the cursor jumped somewhere impossible" when the
+    // truth was "the cursor never moved" (Issue #2456).
     let lastLine = 0;
-    await driver.wait(
-      async () => {
-        const line = await readEditorCursorLine(ctx, FIXTURE_NAME);
-        lastLine = line;
-        return line === FIXTURE_LINE.Customer;
-      },
-      ELEMENT_TIMEOUT_MS,
-      `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer}); last seen line ${lastLine}`,
-    );
+    try {
+      await driver.wait(
+        async () => {
+          const line = await readEditorCursorLine(ctx, FIXTURE_NAME);
+          lastLine = line;
+          return line === FIXTURE_LINE.Customer;
+        },
+        ELEMENT_TIMEOUT_MS,
+        `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer})`,
+      );
+    } catch (err) {
+      throw new Error(
+        `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer}); ` +
+          `last seen line ${lastLine}. Original: ${(err as Error).message}`,
+        { cause: err },
+      );
+    }
   });
 
   it("AT-0042-5: detail panel for a service without a deploy block does NOT show the deploy nav button", async () => {
