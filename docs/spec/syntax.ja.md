@@ -1376,8 +1376,14 @@ legend domain "データアクセス" {
 ### 色の解決
 
 - **`swatch`** は hex 値をそのまま使う（3 / 4 / 6 / 8 桁、`#` プレフィックス必須）。
-- **`ref`** は `.krs.style` のカスケードで解決する。一致したルールのうち
-  specificity が最も高いものから `background-color`（無ければ `badge-color`）を採用。
+- **`ref`** は**ノードと同じ `.krs.style` のカスケード**で解決する。一致した
+  ルールを specificity 順、同点ならシート横断の宣言順（builtin シートが先、
+  ユーザーのシートが後）に、弱いものから per-property でマージする。swatch は
+  マージ結果の `background-color`（無ければ `badge-color`）を採る。同 specificity
+  で builtin と並ぶユーザールールは、カードと同じく swatch でも必ず勝つ。
+- マージ結果が **fill-less**（`background-color: transparent`。builtin の
+  `usecase` 等）の種別は `border-color` で swatch を描く。図の上でその種別を
+  識別しているのが境界線だから。
 - ターゲットが少なくとも 1 つの実ノードに付いているが painting rule を持たない
   `ref` は、**中立的なフォールバック swatch** で描画される。これにより
   `[human]` / `[ai]` のような意味的アノテーション / タグも凡例に表示される。
@@ -1385,6 +1391,8 @@ legend domain "データアクセス" {
   warning panel に `legend-ref-unresolved` が表示される。
 - `.class` セレクタはパーサーが受け付けるが、`.krs.style` にクラス概念が
   ないため現状は常に未解決扱い（[`style.ja.md`](style.ja.md) 参照）。
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — swatch とそれが指すノードは 1 つの見た目なので、順序を各面で導かずカスケード実装 1 本を共有する（Issue #2445）。
 
 ### ラベルは i18n しない
 

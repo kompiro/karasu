@@ -44,9 +44,10 @@
     "@karasu-tools/i18n": "workspace:*",
     "@karasu-tools/lsp": "workspace:*",
     "marked": "^18.0.2",
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.1.0"
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "@types/vscode": "^1.111.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.0",

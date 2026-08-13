@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { DiagnosticSeverity } from "vscode-languageserver/node";
+import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver/node";
 import { computeDiagnostics } from "./diagnostics.js";
+
+// LSP 3.18 widened `Diagnostic.message` to `string | MarkupContent`. Our server
+// only ever emits strings, so read it through the upstream accessor rather
+// than narrowing by hand at every assertion.
+const messageOf = (d: Diagnostic): string => Diagnostic.getMessageString(d);
 
 describe("computeDiagnostics — resolver warnings (.krs)", () => {
   it("surfaces domain-dispersal at Information severity", () => {
@@ -14,7 +19,7 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
     // from docs/spec/i18n.md). `renderWarning` is the shared i18n
     // formatter — the same one the app and CLI use.
     const dispersal = diagnostics.find(
-      (d) => d.message.includes("Order") && /service/.test(d.message),
+      (d) => messageOf(d).includes("Order") && /service/.test(messageOf(d)),
     );
     expect(dispersal).toBeDefined();
     expect(dispersal!.severity).toBe(DiagnosticSeverity.Information);
@@ -35,7 +40,9 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
 }`;
     const diagnostics = computeDiagnostics(src, false);
 
-    const fanIn = diagnostics.find((d) => d.message.includes("DB") && /service/.test(d.message));
+    const fanIn = diagnostics.find(
+      (d) => messageOf(d).includes("DB") && /service/.test(messageOf(d)),
+    );
     expect(fanIn).toBeDefined();
     expect(fanIn!.severity).toBe(DiagnosticSeverity.Information);
     expect(diagnostics.some((d) => d.severity === DiagnosticSeverity.Error)).toBe(false);
@@ -75,9 +82,9 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
 }`;
     const diagnostics = computeDiagnostics(src, false);
 
-    const hint = diagnostics.find((d) => d.message.includes("@depracated"));
+    const hint = diagnostics.find((d) => messageOf(d).includes("@depracated"));
     expect(hint).toBeDefined();
-    expect(hint!.message).toContain("@deprecated");
+    expect(messageOf(hint!)).toContain("@deprecated");
     expect(hint!.severity).toBe(DiagnosticSeverity.Information);
   });
 
@@ -93,7 +100,7 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
 }`;
     const diagnostics = computeDiagnostics(src, false);
 
-    const scoped = diagnostics.filter((d) => d.message.includes("renders on no view"));
+    const scoped = diagnostics.filter((d) => messageOf(d).includes("renders on no view"));
     expect(scoped).toHaveLength(2);
     expect(scoped[0].severity).toBe(DiagnosticSeverity.Warning);
   });
@@ -120,7 +127,7 @@ system Blog {
   // whose own single-document side is #2408's business, not this one's — is a
   // different sentence, so this filter does not catch it.
   const ownsNotFound = (src: string) =>
-    computeDiagnostics(src, false).filter((d) => d.message.includes('referenced in "owns"'));
+    computeDiagnostics(src, false).filter((d) => messageOf(d).includes('referenced in "owns"'));
 
   it("stays silent on owns when the document still has imports to resolve", () => {
     const src = `import { Payments } from "./billing.krs"
@@ -138,7 +145,7 @@ organization Acme {
 }`;
     const owns = ownsNotFound(src);
     expect(owns).toHaveLength(1);
-    expect(owns[0].message).toContain("Ghost");
+    expect(messageOf(owns[0])).toContain("Ghost");
     expect(owns[0].severity).toBe(DiagnosticSeverity.Warning);
   });
 
@@ -151,7 +158,7 @@ organization Acme {
   // filter — narrowing by it would let the same message through at another
   // severity — so the paired presence tests pin the severity instead.
   const containsNotFound = (src: string) =>
-    computeDiagnostics(src, false).filter((d) => d.message.includes('referenced in "contains"'));
+    computeDiagnostics(src, false).filter((d) => messageOf(d).includes('referenced in "contains"'));
   it("stays silent on contains when the document still has imports to resolve", () => {
     const src = `import "./billing.krs"
 system Shop {
@@ -177,7 +184,7 @@ organization Acme { team Platform { owns Payments } }`;
     // check (`owns "Payments" but no service or domain…`) and the existence check.
     expect(ownsNotFound(src)).toHaveLength(0);
     expect(
-      computeDiagnostics(src, false).filter((d) => d.message.includes('owns "Payments"')),
+      computeDiagnostics(src, false).filter((d) => messageOf(d).includes('owns "Payments"')),
     ).toHaveLength(0);
   });
 
@@ -186,7 +193,7 @@ organization Acme { team Platform { owns Payments } }`;
   database Db { table users }
 }
 organization O { team T { owns users } }`;
-    const owns = computeDiagnostics(src, false).filter((d) => d.message.includes("users"));
+    const owns = computeDiagnostics(src, false).filter((d) => messageOf(d).includes("users"));
     expect(owns).toHaveLength(1);
     expect(owns[0].severity).toBe(DiagnosticSeverity.Warning);
   });
@@ -201,7 +208,7 @@ boundary cluster {
 }`;
     const contains = containsNotFound(src);
     expect(contains).toHaveLength(1);
-    expect(contains[0].message).toContain("FarAway");
+    expect(messageOf(contains[0])).toContain("FarAway");
     expect(contains[0].severity).toBe(DiagnosticSeverity.Warning);
   });
 
@@ -224,14 +231,14 @@ describe("computeDiagnostics — locale", () => {
 
   it("renders warning messages in English by default", () => {
     const diagnostics = computeDiagnostics(dispersalSrc, false);
-    const dispersal = diagnostics.find((d) => d.message.includes("Order"));
-    expect(dispersal!.message).toBe('Domain "Order" appears under multiple services');
+    const dispersal = diagnostics.find((d) => messageOf(d).includes("Order"));
+    expect(messageOf(dispersal!)).toBe('Domain "Order" appears under multiple services');
   });
 
   it("renders warning messages in Japanese when locale is 'ja'", () => {
     const diagnostics = computeDiagnostics(dispersalSrc, false, "ja");
-    const dispersal = diagnostics.find((d) => d.message.includes("Order"));
-    expect(dispersal!.message).toBe('domain "Order" は複数の service の配下に登場します');
+    const dispersal = diagnostics.find((d) => messageOf(d).includes("Order"));
+    expect(messageOf(dispersal!)).toBe('domain "Order" は複数の service の配下に登場します');
   });
 
   it("renders parse-error (diagnostic) messages in the requested locale", () => {

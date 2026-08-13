@@ -27,6 +27,13 @@ function stripComments(css: string): string {
 /** Raw color literals: hex, and rgb()/rgba()/hsl()/hsla() functional forms. */
 const HEX = /#[0-9a-fA-F]{3,8}\b/g;
 const FUNCTIONAL = /\b(?:rgba?|hsla?)\(/gi;
+/**
+ * A `#` inside an inline SVG data-URI is percent-encoded, so a baked-in color
+ * slips past HEX. That is not a loophole worth leaving open: the select
+ * chevron sat at `%233d5068` and stayed dark-set under the light theme until
+ * #2193. Such images belong in themes.css as a token per set.
+ */
+const ENCODED_HEX = /%23[0-9a-fA-F]{3,8}\b/g;
 
 function scopedFiles(): { name: string; path: string }[] {
   const files = [
@@ -46,7 +53,11 @@ describe("component CSS uses theme tokens, not raw colors", () => {
   for (const file of scopedFiles()) {
     it(`${file.name} has no raw color literals`, () => {
       const css = stripComments(readFileSync(file.path, "utf8"));
-      const offenders = [...(css.match(HEX) ?? []), ...(css.match(FUNCTIONAL) ?? [])];
+      const offenders = [
+        ...(css.match(HEX) ?? []),
+        ...(css.match(FUNCTIONAL) ?? []),
+        ...(css.match(ENCODED_HEX) ?? []),
+      ];
       // A non-empty list means a rule hard-coded a color — define a token
       // in themes.css and reference it with var(--…) instead.
       expect(offenders).toEqual([]);

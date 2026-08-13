@@ -56,6 +56,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1646](1646-open-gallery-example-in-app.md) — gallery の example は id 指定・固定 origin fetch で app に開く（任意 URL import は採らない）
 - [ADR-1955](1955-expand-all-services-in-place.md) — 全 service をその場一括展開する — Collapse all / Expand all トグルの overload
 - [ADR-2120](2120-group-by-bulk-collapse.md) — bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改修で耐える
+- [ADR-2193](2193-theme-text-token-contrast.md) — テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える
 - [ADR-2316](2316-experimental-notation-in-reference.md) — experimental notation は Reference に載せ、experimental と明示する
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
@@ -311,6 +312,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2200](2200-unassigned-resource-renders-at-usecase-level.md) — 未割当 `resource` の描画先は usecase ドリルダウンビューであり、domain ビューへの昇格は解決の対価とする
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
+- [ADR-2366](2366-node-chrome-and-ports.md) — node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
