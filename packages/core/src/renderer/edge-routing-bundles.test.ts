@@ -62,6 +62,42 @@ describe("markParallelBundles", () => {
     expect(e2.toPoint).toEqual({ x: 120, y: 200 });
   });
 
+  // An edge between two services expanded in place has an `ExpandedFrame` as
+  // its endpoint, not a layout node, so `distributePorts` drops it the same
+  // way it skips ghost/cyclic edges — and the bundle arrives here still
+  // stacked. The nudge keys on that geometry, not on the edge's category
+  // (#2477).
+  it("nudges a stacked bundle of regular edges", () => {
+    const sync = edge({ kind: "sync", fromPoint: { x: 100, y: 0 }, toPoint: { x: 100, y: 100 } });
+    const async = edge({ kind: "async", fromPoint: { x: 100, y: 0 }, toPoint: { x: 100, y: 100 } });
+    markParallelBundles([sync, async]);
+    expect(sync.fromPoint.x).not.toBe(async.fromPoint.x);
+    expect(Math.abs(sync.fromPoint.x - async.fromPoint.x)).toBe(12);
+    // Only the perpendicular axis moves.
+    expect(sync.fromPoint.y).toBe(0);
+    expect(async.toPoint.y).toBe(100);
+  });
+
+  it("leaves a stacked bundle alone when the edges carry their own route", () => {
+    const routed = { waypoints: [{ x: 40, y: 50 }] };
+    const e1 = edge({ ...routed, fromPoint: { x: 100, y: 0 }, toPoint: { x: 100, y: 100 } });
+    const e2 = edge({ ...routed, fromPoint: { x: 100, y: 0 }, toPoint: { x: 100, y: 100 } });
+    markParallelBundles([e1, e2]);
+    // Nudging endpoints under a waypointed edge would tear the line off its
+    // own polyline, so the bundle keeps its geometry and only labels slide.
+    expect(e1.fromPoint).toEqual({ x: 100, y: 0 });
+    expect(e2.fromPoint).toEqual({ x: 100, y: 0 });
+    expect(e1.bundleSize).toBe(2);
+  });
+
+  it("leaves a stacked bundle alone when the edges ride an aggregation trunk", () => {
+    const e1 = edge({ trunkId: "S2", fromPoint: { x: 100, y: 0 }, toPoint: { x: 100, y: 100 } });
+    const e2 = edge({ trunkId: "S2", fromPoint: { x: 100, y: 0 }, toPoint: { x: 100, y: 100 } });
+    markParallelBundles([e1, e2]);
+    expect(e1.fromPoint).toEqual({ x: 100, y: 0 });
+    expect(e2.fromPoint).toEqual({ x: 100, y: 0 });
+  });
+
   it("nudges ghost edges perpendicular to the edge direction", () => {
     // Vertical edge from (100, 0) to (100, 100). Perpendicular is x-axis.
     // For N=2, offsets are -BUNDLE_GAP/2 and +BUNDLE_GAP/2 = ±6.

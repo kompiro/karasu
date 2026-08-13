@@ -6,6 +6,7 @@ date: 2026-07-15
 applicable_to:
   - "既存ルーターに新しい route 形（waypoint 数・bend 構成の違う経路）を追加する機能"
   - "route を後続で加工するパス（レーン分離・port 分散・束ね・marks）が『特定の waypoint 形』を gate 条件にしている箇所"
+  - "エッジの**端点**が取りうる形を増やす機能（in-place 展開のフレーム等、レイアウトノードでない端点）"
 known_consumers:
   - system-view-group-routing
   - renderer
@@ -13,6 +14,7 @@ discovered_from:
   - root_cause_file: "packages/core/src/renderer/edge-routing-groups.ts"
   - issue: "#1954"
   - issue: "#2362"
+  - issue: "#2477"
 related_to:
   - TPL-1927
 topic: renderer
@@ -40,6 +42,7 @@ scope:
 - 新 route 形を追加した PR が、**その形を後段パスに参加させ忘れる**。gate（`waypoints.length === N` 等）に一致しないので後段パスが黙ってスキップし、後段パスが守っていた不変条件（overlap ゼロ・レーン非衝突・fan-out・marks 付与）が新 route にだけ効かない。
 - 既存テストは**古い route 形の fixture しか無い**ため全部 green のまま。新形の退行は新 fixture を足すまで顕在化しない（#1954 は synthetic fixture が貫通・overlap ゼロを通す一方、実サンプルで漏れていた）。
 - gate が**構造ではなく偶然の形**（waypoint 数・特定 index の座標）に依存している。route 形が一つ増えるたびに gate の分岐が漏れる。
+- **端点の形が増えたときも同じことが起きる。** #2477 で service の in-place 展開（ADR-1815 / ADR-1955）が入ると、エッジの端点が `layoutNodes` に無い `ExpandedFrame` になった。`distributePorts` は端点を `layoutNodes` から引けないエッジを黙ってスキップし、束ね（`markParallelBundles`）はずらす対象を `ghost || cyclic` という**カテゴリの列挙**で書いていたため、展開サービス間の平行エッジだけが完全に重なって描かれた（後勝ちで 1 本しか見えない）。gate をカテゴリではなく「まだ重なっているか」という**観測可能な幾何**にすると、この 3 つ目のケースも将来の 4 つ目も自動的に入る。
 - **消費側がテストのセレクタでも同じことが起きる。** #2362 で ungrouped のエッジが直交ルーティングされるようになると、それまで `<line>` だったエッジが `<polyline>` になった。E2E が `querySelectorAll("line, path")` と**要素型を数え上げて**いたため polyline を拾えず、`stroke-dasharray` が空文字として読まれて「async エッジが破線でない」と誤検出した（プロダクトは正しく `stroke-dasharray="8 4"` を出していた）。否定的アサーション（「どの図形にも diff 色が出ない」）で同じ数え上げをしていた箇所は、**落ちずに偽の pass** になる分さらに危ない。
 
 ## チェックリスト
@@ -63,6 +66,7 @@ scope:
 
 - `packages/core/src/renderer/edge-routing-groups.test.ts`（`SYS`/`TRUNKS` = 旧 2-waypoint 形の回帰柵、`examples/en/getting-started` = mixed route を生む実サンプルで貫通・overlap ゼロを assert）
 - `packages/core/src/renderer/routing-parity.test.ts`（#2362 — 共有候補列が生む全 route 形について、実サンプルで貫通ゼロ・共線オーバーラップゼロを assert）
+- `packages/core/src/renderer/edge-routing-bundles.test.ts` / `layout.expand.test.ts`（#2477 — ポートが分散されていない束ねはカテゴリを問わずずらす。自前の経路を持つエッジは除外）
 - `packages/e2e/tests/at-0006-builtin-style.spec.ts` / `at-0058-diff-colors.spec.ts`（#2362 — エッジを引くセレクタが `line, polyline, path` を揃える）
 
 ## 派生元 spec / 設計

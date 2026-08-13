@@ -204,4 +204,25 @@ system S {
     expect(edge.toPoint.x).toBeGreaterThan(frame.x);
     expect(edge.toPoint.x).toBeLessThan(frame.x + frame.width);
   });
+
+  // `distributePorts` spreads parallel edges by looking their endpoints up in
+  // `layoutNodes`, and an expanded service is a frame rather than a node — so
+  // the bundle reaches the renderer stacked unless bundling separates it
+  // (#2477).
+  it("separates parallel edges between two expanded services", () => {
+    const KRS_PARALLEL = `
+system T {
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+  S1 -> S2 "command"
+  S1 --> S2 "event"
+}
+`;
+    const systems = Parser.parse(KRS_PARALLEL).value.systems;
+    const result = layout(extractView(systems, [], [], [], new Set(["S1", "S2"])));
+    const pair = result.edges.filter((e) => e.from === "S1" && e.to === "S2");
+    expect(pair).toHaveLength(2);
+    expect(pair[0].fromPoint.x).not.toBeCloseTo(pair[1].fromPoint.x, 1);
+    expect(pair[0].toPoint.x).not.toBeCloseTo(pair[1].toPoint.x, 1);
+  });
 });
