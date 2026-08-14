@@ -82,6 +82,20 @@ const secondaryTargets = (page: Page): [string, Locator][] => [
   ["ghost toolbar button", page.getByRole("button", { name: /\+ New/ })],
 ];
 
+/**
+ * The command palette's selected row, which paints `--text-on-accent` on a
+ * solid `--accent`. It is the surface that hardcoded `text-white` and sat at
+ * 3.14:1 in dark until #2461, and it is only reachable through a keystroke —
+ * `theme-contrast.test.ts` can prove the token pair, but only a browser proves
+ * the row resolves to that pair.
+ */
+async function selectedPaletteRow(page: Page): Promise<Locator> {
+  await page.keyboard.press("ControlOrMeta+Shift+P");
+  const row = page.locator('[role="option"][aria-selected="true"]');
+  await expect(row).toBeVisible();
+  return row;
+}
+
 /** A project with one rendered diagram, so the chrome around it is populated. */
 async function openDemoProject(page: Page, opfs: OpfsFixture) {
   await opfs.seed({
@@ -187,6 +201,11 @@ test.describe("AT-1470 app light theme", () => {
     for (const [label, target] of [...primaryTargets(page), ...secondaryTargets(page)]) {
       expect(await contrastOf(target), `AA contrast for ${label}`).toBeGreaterThanOrEqual(4.5);
     }
+
+    expect(
+      await contrastOf(await selectedPaletteRow(page)),
+      "AA contrast for the selected command palette row",
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   test.describe("with an OS dark preference", () => {
@@ -215,6 +234,13 @@ test.describe("AT-1470 app light theme", () => {
       for (const [label, target] of [...primaryTargets(page), ...secondaryTargets(page)]) {
         expect(await contrastOf(target), `AA contrast for ${label}`).toBeGreaterThanOrEqual(4.5);
       }
+
+      // Dark is where white-on-accent failed, so this is the direction that
+      // matters most (#2461).
+      expect(
+        await contrastOf(await selectedPaletteRow(page)),
+        "AA contrast for the selected command palette row",
+      ).toBeGreaterThanOrEqual(4.5);
     });
   });
 });

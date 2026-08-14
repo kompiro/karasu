@@ -82,6 +82,18 @@
 
   > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<bg>` / `--text-muted clears the non-text minimum on --bg-selected` — グラデーション背景は全 stop に対して測る。
 
+- [x] 色トークンの上に載る文字（`--text-on-accent` / バッジプレビュー）が 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--text-on-accent clears AA on --accent` / `--badge-preview-text clears AA on every annotation badge color` — dark の `--accent` の上の白文字は 3.14:1 だった（#2461）。背景が明るい色なので前景をテーマごとのインクにして解く。
+
+- [x] 半透明クロームの上の文字が、下地と合成した色に対して 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<tint> over <surfaces>` — 判定は `compositeOver()`。下地は「そのクロームが載りうる surface」を宣言し、宣言漏れは同ファイルの drift ガード（`accounts for every translucent token this set defines`）が落とす。
+
+- [x] `--diff-color-*` が SVG stroke として canvas 上で 3:1 以上（非文字基準）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--<token> stays visible as a stroke on the diagram` — バナーのラベル都合で動かした色が図で薄くならないことを担保する。
+
 - [x] 文字階層のランプが primary → secondary → tertiary → muted の順に暗くなる
 
   > ✅ Automated — `theme-contrast.test.ts` › `keeps the text hierarchy ordered from primary to muted` — AA を満たすとランプは圧縮されるため、順序の逆転（muted が secondary より明るい）を明示的に禁じる。
@@ -122,6 +134,10 @@ OS のカラースキームは Playwright の `colorScheme` で emulate する�
 - [x] dark テーマのテキストも同じ面で WCAG AA を満たす
 
   > ✅ Automated — `at-1470-app-theme.spec.ts` › `dark-theme text meets WCAG AA on the same surfaces`。既定テーマである dark の `--text-muted` は `--bg-overlay` 上で 1.78:1 と light より悪かった（#2193）。light だけを assert していると、同じ欠陥のより重い半分が通過する。
+
+- [x] コマンドパレットの選択行が light / dark とも WCAG AA を満たす
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › 上記 2 テストの末尾（`Ctrl/Cmd+Shift+P` で開いて `[role="option"][aria-selected="true"]` を測る）。トークンの組は `theme-contrast.test.ts` が担保するが、「その行が実際にその組に解決されるか」はキーストローク経由でしか到達できないため実ブラウザで見る（#2461）。
 
 ## 受け入れ条件（手動 / 目視）
 
