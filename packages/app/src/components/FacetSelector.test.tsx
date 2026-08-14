@@ -233,12 +233,16 @@ describe("Facet membership overview — placement (#2177)", () => {
     expect(themes).toContain(`${background![1]}:`);
   });
 
-  it("positions itself below the toolbar however many rows it wraps to", () => {
-    // A constant offset was wrong in the common case — the toolbar wraps to two
-    // rows at ordinary widths (#2317), and the panel covered the second row.
+  it("anchors on the toolbar's published bottom edge, not on its height", () => {
+    // Two earlier cuts were wrong here. A constant offset missed that the
+    // toolbar wraps (#2317); `--preview-toolbar-h` is a *height*, and using it
+    // as an offset from the column's top left out the tab bar above the
+    // toolbar, so the panel started 28px inside it (#2492).
     const css = readFileSync(resolve(__dirname, "../styles/components/panels.css"), "utf8");
     const rule = css.slice(css.indexOf(".facet-overview-panel {"));
-    expect(rule.slice(0, rule.indexOf("}"))).toContain("var(--preview-toolbar-h");
+    const top = rule.slice(0, rule.indexOf("}"));
+    expect(top).toContain("var(--preview-toolbar-bottom");
+    expect(top).not.toContain("var(--preview-toolbar-h,");
   });
 
   it("moves when the header is dragged, and stops when released", async () => {
