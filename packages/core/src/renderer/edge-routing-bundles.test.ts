@@ -46,7 +46,7 @@ describe("markParallelBundles", () => {
     expect(ba.bundleSize).toBeUndefined();
   });
 
-  it("does not move regular edge ports — leaves geometry to distributePorts", () => {
+  it("does not move ports that distributePorts already spread", () => {
     const e1 = edge({
       fromPoint: { x: 60, y: 100 },
       toPoint: { x: 60, y: 200 },
@@ -60,6 +60,107 @@ describe("markParallelBundles", () => {
     expect(e1.toPoint).toEqual({ x: 60, y: 200 });
     expect(e2.fromPoint).toEqual({ x: 120, y: 100 });
     expect(e2.toPoint).toEqual({ x: 120, y: 200 });
+  });
+
+  it("nudges a regular bundle whose ports were never distributed (#2477)", () => {
+    // Both endpoints are services expanded in place, so `distributePorts` —
+    // which looks endpoints up in `layoutNodes` — never saw these edges and
+    // they are still drawn on the same line.
+    const sync = edge({ kind: "sync", fromPoint: { x: 140, y: 188 }, toPoint: { x: 140, y: 308 } });
+    const async = edge({
+      kind: "async",
+      fromPoint: { x: 140, y: 188 },
+      toPoint: { x: 140, y: 308 },
+    });
+    markParallelBundles([sync, async]);
+    expect(sync.fromPoint.x).toBeCloseTo(146);
+    expect(sync.toPoint.x).toBeCloseTo(146);
+    expect(async.fromPoint.x).toBeCloseTo(134);
+    expect(async.toPoint.x).toBeCloseTo(134);
+    // Only the perpendicular axis moves.
+    expect(sync.fromPoint.y).toBeCloseTo(188);
+    expect(async.toPoint.y).toBeCloseTo(308);
+  });
+
+  it("moves a co-located routed edge's waypoints with its ports", () => {
+    const wp = () => [
+      { x: 40, y: 100 },
+      { x: 40, y: 200 },
+    ];
+    const e1 = edge({ fromPoint: { x: 0, y: 100 }, toPoint: { x: 0, y: 200 }, waypoints: wp() });
+    const e2 = edge({ fromPoint: { x: 0, y: 100 }, toPoint: { x: 0, y: 200 }, waypoints: wp() });
+    markParallelBundles([e1, e2]);
+    // Downward edge → perpendicular is the x axis; the polyline keeps its shape.
+    expect(e1.waypoints).toEqual([
+      { x: 46, y: 100 },
+      { x: 46, y: 200 },
+    ]);
+    expect(e2.waypoints).toEqual([
+      { x: 34, y: 100 },
+      { x: 34, y: 200 },
+    ]);
+    expect(e1.fromPoint.x).toBeCloseTo(6);
+    expect(e2.fromPoint.x).toBeCloseTo(-6);
+  });
+
+  it("leaves an edge alone when only its siblings are stacked", () => {
+    const stackedA = edge({ fromPoint: { x: 0, y: 0 }, toPoint: { x: 0, y: 100 } });
+    const stackedB = edge({ fromPoint: { x: 0, y: 0 }, toPoint: { x: 0, y: 100 } });
+    const spread = edge({ fromPoint: { x: 80, y: 0 }, toPoint: { x: 80, y: 100 } });
+    markParallelBundles([stackedA, stackedB, spread]);
+    expect(spread.fromPoint).toEqual({ x: 80, y: 0 });
+    expect(spread.toPoint).toEqual({ x: 80, y: 100 });
+    // The two that were on one line no longer are.
+    expect(stackedA.fromPoint.x).not.toBeCloseTo(stackedB.fromPoint.x);
+  });
+
+  it("treats edges with the same ports but different routes as separated", () => {
+    const straight = edge({ fromPoint: { x: 0, y: 0 }, toPoint: { x: 0, y: 100 } });
+    const routed = edge({
+      fromPoint: { x: 0, y: 0 },
+      toPoint: { x: 0, y: 100 },
+      waypoints: [
+        { x: 60, y: 20 },
+        { x: 60, y: 80 },
+      ],
+    });
+    markParallelBundles([straight, routed]);
+    expect(straight.fromPoint).toEqual({ x: 0, y: 0 });
+    expect(routed.waypoints).toEqual([
+      { x: 60, y: 20 },
+      { x: 60, y: 80 },
+    ]);
+  });
+
+  it("slides along the anchored side instead of the chord perpendicular", () => {
+    // A diagonal chord: the perpendicular would move both ends off the
+    // horizontal borders they sit on. Both anchors are on a top/bottom side,
+    // so the nudge travels on x only.
+    const rects = new Map([
+      ["A", { x: 60, y: 292, width: 160, height: 66 }],
+      ["B", { x: 154, y: 76, width: 192, height: 112 }],
+    ]);
+    const points = { fromPoint: { x: 140, y: 292 }, toPoint: { x: 250, y: 188 } };
+    const e1 = edge(structuredClone(points));
+    const e2 = edge(structuredClone(points));
+    markParallelBundles([e1, e2], (id) => rects.get(id));
+    expect(e1.fromPoint).toEqual({ x: 134, y: 292 });
+    expect(e1.toPoint).toEqual({ x: 244, y: 188 });
+    expect(e2.fromPoint).toEqual({ x: 146, y: 292 });
+    expect(e2.toPoint).toEqual({ x: 256, y: 188 });
+  });
+
+  it("keeps the chord perpendicular when the two anchors disagree on an axis", () => {
+    const rects = new Map([
+      ["A", { x: 0, y: 0, width: 100, height: 100 }], // leaves the right side
+      ["B", { x: 200, y: 200, width: 100, height: 100 }], // enters the top side
+    ]);
+    const points = { fromPoint: { x: 100, y: 50 }, toPoint: { x: 250, y: 200 } };
+    const e1 = edge(structuredClone(points));
+    const e2 = edge(structuredClone(points));
+    markParallelBundles([e1, e2], (id) => rects.get(id));
+    expect(e1.fromPoint.x).not.toBeCloseTo(e2.fromPoint.x);
+    expect(e1.fromPoint.y).not.toBeCloseTo(e2.fromPoint.y);
   });
 
   it("nudges ghost edges perpendicular to the edge direction", () => {

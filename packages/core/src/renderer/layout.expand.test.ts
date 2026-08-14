@@ -204,4 +204,87 @@ system S {
     expect(edge.toPoint.x).toBeGreaterThan(frame.x);
     expect(edge.toPoint.x).toBeLessThan(frame.x + frame.width);
   });
+
+  it("keeps parallel edges between two expanded frames apart (#2477)", () => {
+    // `distributePorts` skips both edges (neither endpoint is a layout node once
+    // the services are frames), so separating them falls to `markParallelBundles`.
+    const KRS_PARALLEL = `
+system T {
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+  S1 -> S2
+  S1 --> S2
+}
+`;
+    const systems = Parser.parse(KRS_PARALLEL).value.systems;
+    const result = layout(extractView(systems, [], [], [], new Set(["S1", "S2"])));
+    const bundle = result.edges.filter((e) => e.from === "S1" && e.to === "S2");
+    expect(bundle).toHaveLength(2);
+    const [sync, async] = bundle;
+    expect(sync.fromPoint.x).not.toBeCloseTo(async.fromPoint.x);
+    expect(sync.toPoint.x).not.toBeCloseTo(async.toPoint.x);
+    expect(sync.bundleSize).toBe(2);
+    // Both still leave S1's frame at its bottom border and land on S2's top.
+    const source = result.containers.find((c) => c.nodeId === "S1")!;
+    const target = result.containers.find((c) => c.nodeId === "S2")!;
+    for (const edge of bundle) {
+      expect(edge.fromPoint.y).toBeCloseTo(source.y + source.height);
+      expect(edge.fromPoint.x).toBeGreaterThan(source.x);
+      expect(edge.fromPoint.x).toBeLessThan(source.x + source.width);
+      expect(edge.toPoint.y).toBeCloseTo(target.y);
+      expect(edge.toPoint.x).toBeGreaterThan(target.x);
+      expect(edge.toPoint.x).toBeLessThan(target.x + target.width);
+    }
+  });
+
+  it("slides a diagonal bundle along the borders it is anchored to (#2477)", () => {
+    // The nudge is perpendicular to the chord, which for a diagonal edge would
+    // lift both ends off the outline #2422 seated them on. A third service
+    // pushes the expanded frame sideways so the chord runs diagonally.
+    const KRS_DIAGONAL = `
+system T {
+  service S1 { domain A { usecase u } }
+  service S1b { domain C { usecase w } }
+  service S2 { domain B { usecase v } }
+  S1 -> S2
+  S1 --> S2
+  S1b -> S2
+}
+`;
+    const systems = Parser.parse(KRS_DIAGONAL).value.systems;
+    const result = layout(extractView(systems, [], [], [], new Set(["S2"])));
+    const bundle = result.edges.filter((e) => e.from === "S1" && e.to === "S2");
+    expect(bundle).toHaveLength(2);
+    const s1 = result.nodes.get("S1")!;
+    const frame = result.containers.find((c) => c.nodeId === "S2")!;
+    // Diagonal: the two ends differ on both axes.
+    expect(bundle[0].fromPoint.x).not.toBeCloseTo(bundle[0].toPoint.x);
+    expect(bundle[0].fromPoint.y).not.toBeCloseTo(bundle[0].toPoint.y);
+    for (const edge of bundle) {
+      expect(edge.fromPoint.y).toBeCloseTo(s1.y);
+      expect(edge.toPoint.y).toBeCloseTo(frame.y + frame.height);
+    }
+    expect(bundle[0].fromPoint.x).not.toBeCloseTo(bundle[1].fromPoint.x);
+  });
+
+  it("leaves parallel edges between collapsed services to distributePorts", () => {
+    // The same model without expansion is the regression fence for the gate:
+    // these edges are spread by ports, so the bundle pass must not move them.
+    const KRS_PARALLEL = `
+system T {
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+  S1 -> S2
+  S1 --> S2
+}
+`;
+    const systems = Parser.parse(KRS_PARALLEL).value.systems;
+    const result = layout(extractView(systems, [], [], []));
+    const bundle = result.edges.filter((e) => e.from === "S1" && e.to === "S2");
+    expect(bundle).toHaveLength(2);
+    const s1 = result.nodes.get("S1")!;
+    // i/(N+1) across S1's bottom side — the ports distributePorts assigns.
+    expect(bundle[0].fromPoint.x).toBeCloseTo(s1.x + s1.width / 3);
+    expect(bundle[1].fromPoint.x).toBeCloseTo(s1.x + (s1.width * 2) / 3);
+  });
 });
