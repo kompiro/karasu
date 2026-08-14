@@ -3,14 +3,30 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render as rtlRender, screen, cleanup, act, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
+import { getBuiltinStyleSheet, getReference } from "@karasu-tools/core";
 import { ReferenceContent } from "./ReferenceContent.js";
 import { ReferenceWindow } from "./ReferenceWindow.js";
 import { LocaleProvider } from "../i18n/index.js";
+import { ThemeProvider, type ThemePreference } from "../theme/index.js";
 
 afterEach(cleanup);
 
-function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
-  return rtlRender(<LocaleProvider initialLocale={initialLocale}>{ui}</LocaleProvider>);
+function render(
+  ui: ReactElement,
+  initialLocale: "en" | "ja" = "en",
+  initialTheme: ThemePreference = "dark",
+) {
+  return rtlRender(
+    <LocaleProvider initialLocale={initialLocale}>
+      <ThemeProvider initialTheme={initialTheme}>{ui}</ThemeProvider>
+    </LocaleProvider>,
+  );
+}
+
+/** jsdom serializes an inline hex background as `rgb(r, g, b)`. */
+function hexToRgb(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // The reference content renders inline now (it lives in a dedicated window, not
@@ -105,6 +121,38 @@ describe("ReferenceContent", () => {
     const body = bodyText();
     expect(body).toContain("external");
     expect(body).toContain("deprecated");
+  });
+
+  // #2482: the swatch is the documentation surface for the vocabulary, so it
+  // has to show the color the diagram will actually draw under the active
+  // theme — it painted the dark palette in both before.
+  it.each([
+    ["dark", "#EF4444"],
+    ["light", "#DC2626"],
+  ] as const)("Tags tab paints the %s badge swatch with that theme's color", async (theme, hex) => {
+    const { container } = render(<ReferenceContent />, "en", theme);
+    await clickTab("Tags & Annotations");
+    const swatch = container.querySelector<HTMLElement>(".reference-badge-preview");
+    expect(swatch?.textContent).toContain("Deprecated");
+    expect(swatch?.style.backgroundColor).toBe(hexToRgb(hex));
+  });
+
+  it("Tags tab swatches agree with the builtin sheet's badge-color per theme", async () => {
+    for (const theme of ["dark", "light"] as const) {
+      const sheet = getBuiltinStyleSheet(theme);
+      const { container } = render(<ReferenceContent />, "en", theme);
+      await clickTab("Tags & Annotations");
+      const swatches = container.querySelectorAll<HTMLElement>(".reference-badge-preview");
+      const annotations = getReference("en").annotations;
+      expect(swatches.length).toBe(annotations.length);
+      annotations.forEach((a, i) => {
+        const rule = sheet.rules.find((r) => r.selector.annotations.includes(a.name));
+        expect(swatches[i].style.backgroundColor, `@${a.name} (${theme})`).toBe(
+          hexToRgb(rule?.properties["badge-color"] as string),
+        );
+      });
+      cleanup();
+    }
   });
 
   it("Tags tab shows unsupported message for non-system views", async () => {

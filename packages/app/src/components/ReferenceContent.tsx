@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import type { ActiveView } from "../state/app-reducer.js";
 import { useTranslation } from "../i18n/index.js";
+import { useTheme } from "../theme/index.js";
 
 type Tab = "syntax" | "styles" | "tags" | "builtin" | "samples";
 
@@ -273,6 +274,10 @@ function StylesTab({ activeView }: { activeView: ActiveView }) {
 function TagsTab({ activeView }: { activeView: ActiveView }) {
   const { t, locale } = useTranslation();
   const ref = getReference(locale);
+  // The swatch has to resolve the same palette the diagram draws in — the
+  // panel is where a reader picks an annotation, so a dark-palette swatch
+  // under the light theme advertises a color the diagram never uses (#2482).
+  const { effectiveTheme } = useTheme();
 
   if (activeView !== "system") {
     return (
@@ -325,7 +330,7 @@ function TagsTab({ activeView }: { activeView: ActiveView }) {
               <td>
                 <span
                   className="reference-badge-preview"
-                  style={{ backgroundColor: a.defaultBadge.color }}
+                  style={{ backgroundColor: a.defaultBadge.color[effectiveTheme] }}
                 >
                   {a.defaultBadge.icon} {a.defaultBadge.label}
                 </span>

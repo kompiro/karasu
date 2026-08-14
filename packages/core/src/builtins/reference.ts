@@ -7,6 +7,7 @@ import {
 } from "./reference-data.js";
 import type {
   RefView,
+  ThemedBadgeColor,
   SyntaxSection,
   SyntaxByView,
   StyleSelectorExamplesByView,
@@ -38,7 +39,13 @@ export interface TagInfo {
 export interface AnnotationInfo {
   name: string;
   description: string;
-  defaultBadge: { color: string; icon: string; label: string };
+  /**
+   * `color` is per theme on purpose: a consumer that shows the badge has to
+   * pick the palette its surface is drawn in, and there is no theme-free value
+   * to reach for by mistake. The Reference panel painted the dark value under
+   * the light theme while this was a single string (#2482).
+   */
+  defaultBadge: { color: ThemedBadgeColor; icon: string; label: string };
 }
 
 export interface StylePropertyInfo {
@@ -91,6 +98,7 @@ export interface GroupingConstructInfo {
 // so consumers import the whole reference surface from one place.
 export type {
   RefView,
+  ThemedBadgeColor,
   SyntaxSection,
   SyntaxByView,
   StyleSelectorExamplesByView,

@@ -233,10 +233,26 @@ describe("getBuiltinStyleSheet — annotation badge labels (#1508)", () => {
     }
   });
 
-  it("dark badge colors come from reference-data defaultBadge.color", () => {
-    const sheet = getBuiltinStyleSheet("dark");
+  // Both palettes live in reference-data now, so the sheet and the Reference
+  // panel's swatch resolve the same value for a theme (#2482). A light rule
+  // that fell back to the dark value would show up here.
+  it.each(["dark", "light"] as const)(
+    "%s badge colors come from reference-data defaultBadge.color",
+    (theme) => {
+      const sheet = getBuiltinStyleSheet(theme);
+      for (const a of REFERENCE_DATA.annotations) {
+        expect(annotationRule(sheet, a.name)?.properties["badge-color"]).toBe(
+          a.defaultBadge.color[theme],
+        );
+      }
+    },
+  );
+
+  it("gives light its own badge color for every annotation", () => {
     for (const a of REFERENCE_DATA.annotations) {
-      expect(annotationRule(sheet, a.name)?.properties["badge-color"]).toBe(a.defaultBadge.color);
+      expect(a.defaultBadge.color.light, `@${a.name} light badge color`).not.toBe(
+        a.defaultBadge.color.dark,
+      );
     }
   });
 
