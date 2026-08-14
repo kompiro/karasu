@@ -58,6 +58,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2120](2120-group-by-bulk-collapse.md) — bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改修で耐える
 - [ADR-2193](2193-theme-text-token-contrast.md) — テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える
 - [ADR-2316](2316-experimental-notation-in-reference.md) — experimental notation は Reference に載せ、experimental と明示する
+- [ADR-2317](2317-preview-toolbar-density.md) — プレビューの操作を 2 面に分ける — 図を変える操作はドリルパスの行、持ち出す操作はツールバー
 - [ADR-2461](2461-accent-ink-and-composited-contrast.md) — 色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
