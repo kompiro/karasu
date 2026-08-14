@@ -32,14 +32,20 @@
   --border-strong: rgba(255, 255, 255, 0.15);
   --border-active: #3d5a8a;
 
-  /* Text hierarchy */
+  /* Text hierarchy — every step clears WCAG AA (4.5:1) on every opaque
+     surface above, including the palest one (`--bg-overlay`). The ramp is
+     therefore compressed: contrast, not dimness, sets the floor. Fenced by
+     theme-contrast.test.ts (#2193). */
   --text-primary: #dce8ff;
-  --text-secondary: #7b92b4;
-  --text-tertiary: #7b92b4;
-  --text-muted: #3d5068;
+  --text-secondary: #9eafc8;
+  --text-tertiary: #8da1bf;
+  --text-muted: #7f95b6;
   --text-link: #5ba4f5;
   --text-link-hover: #82beff;
-  --text-on-accent: #ffffff;
+  /* Dark ink, not white: `--accent` is bright here (it also has to work as
+     text on dark surfaces), so white on it measures 3.14:1 while ink measures
+     6.11:1. Same reasoning as `--error-badge-text` below (#2461). */
+  --text-on-accent: #0f0f0f;
 
   /* Accent — electric blue */
   --accent: #4d8fff;
@@ -88,11 +94,13 @@
   --overlay-scrim: rgba(0, 0, 0, 0.4);
   --reference-scrim: rgba(7, 9, 15, 0.55);
 
-  /* Graphical diff viewer (Issue #650) */
+  /* Graphical diff viewer (Issue #650). These paint the banner's before/after
+     labels as well as SVG strokes, so they answer to 4.5:1 as text on the
+     banner tint *and* 3:1 as strokes on the canvas (#2461). */
   --diff-color-added: #22c55e;
-  --diff-color-removed: #ef4444;
+  --diff-color-removed: #f27070;
   --diff-color-changed: #f59e0b;
-  --diff-bg-added: rgba(34, 197, 94, 0.12);
+  --diff-bg-added: rgba(34, 197, 94, 0.08);
   --diff-bg-removed: rgba(239, 68, 68, 0.1);
   --diff-bg-changed: rgba(245, 158, 11, 0.1);
 
@@ -109,6 +117,15 @@
   --nav-btn-hover-bg: #1e3a5f;
   --nav-btn-hover-border: #3b82f6;
 
+  /* Reference panel badge preview — deliberately the same ink in both themes,
+     so the light block does not override it. Its background is the
+     annotation's badge color supplied inline from `reference-data.ts`, which
+     is the *dark* palette value whichever theme is active, so a themed
+     foreground would be answering to the wrong background. Those colors are
+     bright by construction (they clear AA on the dark canvas), so ink reads on
+     all six where white measured 2.15-3.76:1 (#2461). */
+  --badge-preview-text: #0f0f0f;
+
   /* Export error banner — intentionally a light banner in both themes */
   --export-error-bg: #fdecea;
   --export-error-border: #f5c2c0;
@@ -119,14 +136,22 @@
   --opfs-banner-bg: linear-gradient(90deg, #2d1700, #1e1000);
   --opfs-banner-border: rgba(251, 191, 36, 0.4);
   --opfs-banner-text: #fde68a;
+
+  /* Native <select> chevron. A data-URI cannot read a var(), so the stroke
+     color is baked in per theme and the image itself becomes the token —
+     otherwise the chevron is the one glyph that silently stays dark-set
+     (#2193). Stroke matches `--text-muted`. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237F95B6' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 /* ── Light — overrides ──────────────────────────────────────────────
    Same token vocabulary, light values. Depth inverts: in light, the
    recessed surfaces are pale grey and the forward surfaces are white;
    borders and shadows switch from white-alpha to slate-alpha. Brand
-   blue/purple are preserved but darkened where needed for AA contrast
-   on white. See docs/design (promoted to ADR) for the rationale. */
+   blue/purple are preserved but darkened where needed for AA contrast.
+   The binding surface is `--bg-void`, not white: it is the palest-contrast
+   background text lands on, so a color tuned against `#ffffff` can still
+   fail there (#2193). See ADR-1470 / ADR-2193 for the rationale. */
 :root[data-theme="light"] {
   color-scheme: light;
 
@@ -146,9 +171,9 @@
 
   --text-primary: #1b2536;
   --text-secondary: #4d5e78;
-  --text-tertiary: #5f7088;
-  --text-muted: #6f7e95;
-  --text-link: #2563eb;
+  --text-tertiary: #526480;
+  --text-muted: #576a87;
+  --text-link: #1c5dea;
   --text-link-hover: #1d4ed8;
   --text-on-accent: #ffffff;
 
@@ -163,15 +188,22 @@
   --feather-dim: rgba(124, 92, 240, 0.08);
   --feather-glow: rgba(124, 92, 240, 0.2);
 
-  --error: #dc2626;
+  /* Status colors that components use as `color:` are darkened just enough to
+     clear AA on `--bg-void`, the palest-contrast light surface. Their dim /
+     border tints keep the original hue values: those paint fills and rules,
+     which answer to the 3:1 non-text minimum. `--error` goes a step further
+     than `--bg-void` alone demands because it is painted on its own
+     `--error-dim` tint (danger menu items, the project selector), and the
+     composite is darker than the surface underneath (#2461). */
+  --error: #bc1e1e;
   --error-dim: rgba(220, 38, 38, 0.09);
   --error-badge-text: #ffffff;
-  --warning: #b45309;
+  --warning: #aa4e08;
   --warning-dim: rgba(180, 83, 9, 0.1);
   --warning-bg: rgba(180, 83, 9, 0.08);
   --warning-border: rgba(180, 83, 9, 0.3);
   --success: #15803d;
-  --info: #1d6fd4;
+  --info: #1b67c5;
 
   --highlight-edge: transparent;
 
@@ -189,8 +221,8 @@
   --overlay-scrim: rgba(15, 23, 42, 0.35);
   --reference-scrim: rgba(15, 23, 42, 0.3);
 
-  --diff-color-added: #15803d;
-  --diff-color-removed: #dc2626;
+  --diff-color-added: #137538;
+  --diff-color-removed: #c72020;
   --diff-color-changed: #b45309;
   --diff-bg-added: rgba(34, 197, 94, 0.16);
   --diff-bg-removed: rgba(239, 68, 68, 0.13);
@@ -203,7 +235,7 @@
   --diff-banner-active-border: rgba(180, 83, 9, 0.55);
 
   --nav-btn-border: #c5d0e0;
-  --nav-btn-text: #2563eb;
+  --nav-btn-text: #1c5dea;
   --nav-btn-hover-bg: #e8f0ff;
   --nav-btn-hover-border: #2563eb;
 
@@ -215,4 +247,6 @@
   --opfs-banner-bg: linear-gradient(90deg, #fff4d6, #ffe9b3);
   --opfs-banner-border: rgba(180, 83, 9, 0.4);
   --opfs-banner-text: #7a4f00;
+
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23576A87' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
 }

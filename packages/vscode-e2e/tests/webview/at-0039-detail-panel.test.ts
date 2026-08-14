@@ -1,5 +1,5 @@
 import * as assert from "node:assert";
-import { By, EditorView, type WebDriver, until } from "vscode-extension-tester";
+import { By, EditorView, type TextEditor, type WebDriver, until } from "vscode-extension-tester";
 import {
   ELEMENT_TIMEOUT_MS,
   type FrameContext,
@@ -111,6 +111,11 @@ const FIXTURE_NAME = "at-0039.krs";
 const FIXTURE_LINE = {
   Customer: 17,
 } as const;
+
+// Where the cursor is parked before a Jump-to-editor, so landing on the
+// target line proves the jump happened. Line 1 is the fixture's `system`
+// header and is never a jump target here.
+const CURSOR_PARK_LINE = 1;
 
 describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram navigation", function () {
   this.timeout(SUITE_TIMEOUT_MS);
@@ -345,6 +350,19 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   // `beforeEach`'s `ensureWebViewFrame()` and call `switchToView` to
   // restore System view, since the TC-03 rebuild also resets state.
   it("TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open", async () => {
+    // Park the cursor off the Customer line first, so "cursor reached line 17"
+    // proves the jump happened rather than that something earlier left it
+    // there — the false-green that kept AT-0038 TC-03 passing through the
+    // whole LSP breakage (Issue #2456). This has to run before the panel is
+    // opened: focusing the .krs editor rebuilds `webview.html` and wipes
+    // panel state.
+    await leaveWebViewFrame(ctx, { swallowErrors: false });
+    const krsEditor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
+    await krsEditor.moveCursor(CURSOR_PARK_LINE, 1);
+    const [parked] = await krsEditor.getCoordinates();
+    assert.strictEqual(parked, CURSOR_PARK_LINE, "failed to park the cursor before Jump-to-editor");
+    await ensureWebViewFrame(ctx);
+
     await closePanelIfOpen();
 
     await dispatchClick(driver, '[data-node-id="Customer"]');
@@ -376,16 +394,31 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     // WebView frame on every iteration; bringing the .krs editor to focus
     // rebuilds the preview, which is why the visibility assertion above
     // runs first.
+    //
+    // Build the failure message in the catch, NOT as `driver.wait`'s third
+    // argument: that argument is a plain string evaluated at call time, so
+    // interpolating `lastLine` there always reported the initializer. During
+    // the LSP 3.17/3.18 investigation that printed "last seen line 0" on every
+    // failure, which read as "the cursor jumped somewhere impossible" when the
+    // truth was "the cursor never moved" (Issue #2456).
     let lastLine = 0;
-    await driver.wait(
-      async () => {
-        const line = await readEditorCursorLine(ctx, FIXTURE_NAME);
-        lastLine = line;
-        return line === FIXTURE_LINE.Customer;
-      },
-      ELEMENT_TIMEOUT_MS,
-      `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer}); last seen line ${lastLine}`,
-    );
+    try {
+      await driver.wait(
+        async () => {
+          const line = await readEditorCursorLine(ctx, FIXTURE_NAME);
+          lastLine = line;
+          return line === FIXTURE_LINE.Customer;
+        },
+        ELEMENT_TIMEOUT_MS,
+        `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer})`,
+      );
+    } catch (err) {
+      throw new Error(
+        `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer}); ` +
+          `last seen line ${lastLine}. Original: ${(err as Error).message}`,
+        { cause: err },
+      );
+    }
   });
 
   it("AT-0042-5: detail panel for a service without a deploy block does NOT show the deploy nav button", async () => {

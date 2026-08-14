@@ -16,7 +16,7 @@ scope:
 assumptions:
   - "grep: .devcontainer/Dockerfile :: typescript-node:5-24-bookworm"
   - "file: scripts/ci/node-version-policy.test.ts"
-  - "grep: packages/core/package.json :: \"node\": \">=22\""
+  - "grep: packages/core/package.json :: \"node\": \">=22.12\""
 ---
 
 # ADR-2397: ツールチェーンの Node.js を 24（Active LTS）に上げ、公開パッケージの下限を 22 にする

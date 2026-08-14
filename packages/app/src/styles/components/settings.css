@@ -41,8 +41,11 @@
   margin-bottom: 8px;
 }
 
+/* `--text-link`, not `--accent`: this is a link, and the notice paints it on
+   a translucent `--warning-bg` over the body, where accent measured 4.30:1
+   in light (#2193). */
 .settings-security-notice__link {
-  color: var(--accent);
+  color: var(--text-link);
   font-size: 12px;
   text-decoration: none;
   display: block;

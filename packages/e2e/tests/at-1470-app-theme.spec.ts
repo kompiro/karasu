@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import type { OpfsFixture } from "../fixtures/opfs.js";
 import { expect, test } from "../fixtures/opfs.js";
 
 /**
@@ -66,6 +67,45 @@ async function contrastOf(target: Locator): Promise<number> {
     return { fg: cs.color, bg };
   });
   return contrastRatio(pair.fg, pair.bg);
+}
+
+/** Chrome text at the top of the hierarchy — `--text-primary` surfaces. */
+const primaryTargets = (page: Page): [string, Locator][] => [
+  ["active view tab", page.locator('[role="tab"][aria-selected="true"]')],
+  ["file tree entry", page.locator(".file-tree-item")],
+  ["breadcrumb", page.locator(".breadcrumb")],
+];
+
+/** De-emphasized chrome text — the `--text-muted` surfaces #2193 was about. */
+const secondaryTargets = (page: Page): [string, Locator][] => [
+  ["inactive view tab", page.locator('[role="tab"][aria-selected="false"]')],
+  ["ghost toolbar button", page.getByRole("button", { name: /\+ New/ })],
+];
+
+/**
+ * The command palette's selected row, which paints `--text-on-accent` on a
+ * solid `--accent`. It is the surface that hardcoded `text-white` and sat at
+ * 3.14:1 in dark until #2461, and it is only reachable through a keystroke —
+ * `theme-contrast.test.ts` can prove the token pair, but only a browser proves
+ * the row resolves to that pair.
+ */
+async function selectedPaletteRow(page: Page): Promise<Locator> {
+  await page.keyboard.press("ControlOrMeta+Shift+P");
+  const row = page.locator('[role="option"][aria-selected="true"]');
+  await expect(row).toBeVisible();
+  return row;
+}
+
+/** A project with one rendered diagram, so the chrome around it is populated. */
+async function openDemoProject(page: Page, opfs: OpfsFixture) {
+  await opfs.seed({
+    projects: [
+      { id: "theme", name: "Theme", files: { "index.krs": "system Demo {\n  service Api\n}\n" } },
+    ],
+    lastProjectId: "theme",
+  });
+  await opfs.gotoApp();
+  await expect(page.locator('.preview-container svg [data-node-id="Api"]')).toBeVisible();
 }
 
 test.describe("AT-1470 app light theme", () => {
@@ -151,42 +191,21 @@ test.describe("AT-1470 app light theme", () => {
     await expect.poll(() => dataTheme(page)).toBe("light");
   });
 
-  test("light-theme text stays legible: primary text meets WCAG AA, secondary keeps its floor", async ({
-    page,
-    opfs,
-  }) => {
-    await opfs.seed({
-      projects: [
-        { id: "theme", name: "Theme", files: { "index.krs": "system Demo {\n  service Api\n}\n" } },
-      ],
-      lastProjectId: "theme",
-    });
-    await opfs.gotoApp();
-    await expect(page.locator('.preview-container svg [data-node-id="Api"]')).toBeVisible();
+  test("light-theme text meets WCAG AA, primary and secondary alike", async ({ page, opfs }) => {
+    await openDemoProject(page, opfs);
+    expect(await dataTheme(page)).toBe("light");
 
-    // Primary text — the AT's "panel text is legible" claim, at AA (4.5:1).
-    const primary: [string, Locator][] = [
-      ["active view tab", page.locator('[role="tab"][aria-selected="true"]')],
-      ["file tree entry", page.locator(".file-tree-item")],
-      ["breadcrumb", page.locator(".breadcrumb")],
-    ];
-    for (const [label, target] of primary) {
+    // `theme-contrast.test.ts` fences the token *values*; what only a browser
+    // can add is which token each surface actually resolves to, and what it
+    // ends up painted on once transparent ancestors are walked.
+    for (const [label, target] of [...primaryTargets(page), ...secondaryTargets(page)]) {
       expect(await contrastOf(target), `AA contrast for ${label}`).toBeGreaterThanOrEqual(4.5);
     }
 
-    // Secondary text — inactive tabs and ghost buttons currently measure
-    // ~4.0:1 and ~3.5:1 at 11.5–12px, i.e. **below** AA for normal text. That
-    // is a real gap, not a fixture artifact, so this asserts the measured
-    // floor (3:1) rather than pretending AA holds: the fence stops the light
-    // palette getting *worse* while the gap is tracked in #2193. When that is
-    // fixed, raise this threshold to 4.5 and delete this comment.
-    const secondary: [string, Locator][] = [
-      ["inactive view tab", page.locator('[role="tab"][aria-selected="false"]')],
-      ["ghost toolbar button", page.getByRole("button", { name: /\+ New/ })],
-    ];
-    for (const [label, target] of secondary) {
-      expect(await contrastOf(target), `floor contrast for ${label}`).toBeGreaterThanOrEqual(3);
-    }
+    expect(
+      await contrastOf(await selectedPaletteRow(page)),
+      "AA contrast for the selected command palette row",
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   test.describe("with an OS dark preference", () => {
@@ -202,6 +221,26 @@ test.describe("AT-1470 app light theme", () => {
       expect(await dataTheme(page)).toBe("dark");
       const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       expect(luminance(bodyBg)).toBeLessThan(0.2);
+    });
+
+    test("dark-theme text meets WCAG AA on the same surfaces", async ({ page, opfs }) => {
+      // The dark set is the default theme, so its `--text-muted` (1.78:1 on
+      // `--bg-overlay` before #2193) failed harder than the light gap that
+      // was reported. Same surfaces, same threshold — a light-only assertion
+      // would have let the worse half through.
+      await openDemoProject(page, opfs);
+      expect(await dataTheme(page)).toBe("dark");
+
+      for (const [label, target] of [...primaryTargets(page), ...secondaryTargets(page)]) {
+        expect(await contrastOf(target), `AA contrast for ${label}`).toBeGreaterThanOrEqual(4.5);
+      }
+
+      // Dark is where white-on-accent failed, so this is the direction that
+      // matters most (#2461).
+      expect(
+        await contrastOf(await selectedPaletteRow(page)),
+        "AA contrast for the selected command palette row",
+      ).toBeGreaterThanOrEqual(4.5);
     });
   });
 });

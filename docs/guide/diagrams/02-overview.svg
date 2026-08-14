@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 528.7999999999997 833" width="528.7999999999997" height="833"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
 <rect width="528.7999999999997" height="833" fill="#FFFFFF" rx="0"/>
 <text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Online shop (under analysis)</text>
-<g class="edges"><g data-edge-from="Customer" data-edge-to="OrderService" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;OrderService" data-edge-label="place an order" class="krs-edge krs-edge--interactive"><line x1="248.3999999999999" y1="139" x2="248.3999999999999" y2="259" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="248.3999999999999" y1="139" x2="248.3999999999999" y2="259" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
-<text x="248.3999999999999" y="193" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">place an order</text></g>
+<g class="edges"><g data-edge-from="Customer" data-edge-to="OrderService" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;OrderService" data-edge-label="place an order" class="krs-edge krs-edge--interactive"><line x1="248.39999999999986" y1="139" x2="248.3999999999999" y2="259" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="248.39999999999986" y1="139" x2="248.3999999999999" y2="259" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="248.39999999999986" y="193" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">place an order</text></g>
 <g data-edge-from="OrderService" data-edge-to="CatalogService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;CatalogService" data-edge-label="look up products" class="krs-edge krs-edge--interactive"><line x1="191.73333333333323" y1="361" x2="248.39999999999986" y2="481" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="191.73333333333323" y1="361" x2="248.39999999999986" y2="481" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
 <text x="220.06666666666655" y="415" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">look up products</text></g>
@@ -14,12 +14,12 @@
 <circle cx="248.3999999999999" cy="73" r="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <circle cx="248.3999999999999" cy="69.5" r="3.4" fill="#1E3A8A"/>
 <path d="M242.3999999999999 81.5 a6 6.5 0 0 1 12 0 Z" fill="#1E3A8A"/>
-<text x="248.3999999999999" y="106" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
+<text x="248.3999999999999" y="106" text-anchor="middle" dy="0.35em" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
 <g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="78.39999999999989" y="259" width="340" height="102" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="248.3999999999999" y="293" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text>
-<text x="248.3999999999999" y="310" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">Order processing. Slack #team-order knows</text>
-<text x="248.3999999999999" y="327" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">this bes…</text></g>
+<text x="248.3999999999999" y="293" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text>
+<text x="248.3999999999999" y="310" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">Order processing. Slack #team-order knows</text>
+<text x="248.3999999999999" y="327" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="11px" font-family="sans-serif" opacity="0.9">this bes…</text></g>
 <g data-node-id="CatalogService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="154.39999999999986" y="481" width="188.00000000000003" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="248.39999999999986" y="514" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Catalog service</text></g>
+<text x="248.39999999999986" y="514" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Catalog service</text></g>
 <g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="68" y="667" width="360.7999999999998" height="66" rx="8" ry="8" fill="#F3F4F6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>
-<text x="248.3999999999999" y="700" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Old core (nobody knows the whole thing)</text></g></g></svg>
+<text x="248.3999999999999" y="700" text-anchor="middle" dy="0.35em" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Old core (nobody knows the whole thing)</text></g></g></svg>

@@ -56,7 +56,9 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1646](1646-open-gallery-example-in-app.md) — gallery の example は id 指定・固定 origin fetch で app に開く（任意 URL import は採らない）
 - [ADR-1955](1955-expand-all-services-in-place.md) — 全 service をその場一括展開する — Collapse all / Expand all トグルの overload
 - [ADR-2120](2120-group-by-bulk-collapse.md) — bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改修で耐える
+- [ADR-2193](2193-theme-text-token-contrast.md) — テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える
 - [ADR-2316](2316-experimental-notation-in-reference.md) — experimental notation は Reference に載せ、experimental と明示する
+- [ADR-2461](2461-accent-ink-and-composited-contrast.md) — 色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 - [ADR-9011](9011-editor-diagnostics-display.md) — Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
@@ -127,6 +129,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2152](2152-dependabot-triage-2026-07-27.md) — Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の publisher 変化は provenance で検証
 - [ADR-2318](2318-dependabot-triage-2026-08-03.md) — Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロックと monaco 0.56.0 の exports 破壊
 - [ADR-2333](2333-dependabot-triage-2026-08-04.md) — Dependabot トリアージ 2026-08-04 — LSP protocol の単独 bump を却下し、oxlint の新規則を設定で収める
+- [ADR-2337](2337-lsp-pair-upgrade-protocol-parity.md) — LSP は client と server を同時に上げ、protocol 版の一致を不変条件として維持する
 - [ADR-2341](2341-dependabot-security-2026-08-04.md) — Security alert 2026-08-04 — brace-expansion / fast-uri を override の floor 引き上げで解決する
 - [ADR-2351](2351-process-md-holds-instructions.md) — docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issue に置き、参照もしない
 - [ADR-2356](2356-doc-placement-by-read-timing.md) — 開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層
@@ -137,6 +140,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2419](2419-poc-report-directory.md) — PoC の生成物は gitignore された `reports/` に出力し、spike ブランチでのみコミットする
 - [ADR-2440](2440-blueoak-license-allowlist.md) — production 依存の license allowlist に BlueOak-1.0.0 を加える
 - [ADR-2447](2447-dependabot-triage-2026-08-10.md) — Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は人手 PR で対に戻す
+- [ADR-2472](2472-dependabot-triage-2026-08-13.md) — Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upstream の欠陥か自分側の gate か」に置く
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -211,6 +215,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1492](1492-stroke-style-canonical-edge-property.md) — stroke-style をエッジ線スタイルの正準プロパティとして採用する
 - [ADR-1554](1554-edge-label-in-context-menu.md) — エッジコンテキストメニューへの authored ラベル表示と data-edge-label の authored 専用化
 - [ADR-1911](1911-cross-domain-ghost-entities.md) — エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する
+- [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 
 ## navigation
@@ -308,8 +313,11 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1983](1983-boundary-drilldown-grouping.md) — boundary grouping の drill-down 拡張 — 描画レベルとの交差による正規化
 - [ADR-2048](2048-edge-label-collision-avoidance.md) — エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass
 - [ADR-2174](2174-facet-overlay.md) — facet overlay — renderer に焼き、多重所属は同心リング、色は既知 facet 順
+- [ADR-2200](2200-unassigned-resource-renders-at-usecase-level.md) — 未割当 `resource` の描画先は usecase ドリルダウンビューであり、domain ビューへの昇格は解決の対価とする
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
+- [ADR-2366](2366-node-chrome-and-ports.md) — node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く
+- [ADR-2473](2473-dy-instead-of-dominant-baseline.md) — テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` で指定する
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
@@ -363,4 +371,5 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-863](863-vscode-extension-host-harness.md) — VS Code 拡張ホスト向け smoke test harness
 - [ADR-1316](1316-vscode-marketplace-publish.md) — VS Code 拡張を Entra ID + GitHub OIDC（managed identity）で Marketplace に publish する
 - [ADR-1417](1417-lsp-cli-i18n.md) — LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n の切り出し
+- [ADR-2456](2456-lsp-custom-request-duplicate-jsonrpc.md) — LSP の position drift は position encoding ではなく vscode-jsonrpc の二重コピーだった
 - [ADR-9014](9014-vscode-extension-lsp-first.md) — VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画

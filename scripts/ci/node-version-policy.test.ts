@@ -19,13 +19,24 @@ const REPO_ROOT = resolve(import.meta.dirname, "../..");
 const NODE_MAJOR = "24";
 
 /**
- * The Node major the published packages claim to support. Trails `NODE_MAJOR`
+ * The Node version the published packages claim to support. Trails `NODE_MAJOR`
  * on purpose: `karasu` and `@karasu-tools/core` are consumed by other people,
  * so the floor drops one LTS line at a time and only off an EOL line. Keeping
  * it below the CI major is fine; above it would mean CI never exercises the
  * oldest runtime we advertise.
+ *
+ * Carries minor precision, not just a major: commander 15 declares
+ * `>=22.12.0`, so `karasu` cannot honestly advertise every 22.x (ADR-2472).
+ * That is a move *within* the 22 line, not a dropped line — 22 stays in
+ * maintenance until 2027-04 — so ADR-2397's "only drop an EOL line" rule
+ * still holds. Compare on the whole string: `>=22` and `>=22.12` are
+ * different promises, and a guard that only checked the major would call
+ * a half-swept workspace clean.
  */
-const ENGINES_FLOOR_MAJOR = "22";
+const ENGINES_FLOOR = "22.12";
+
+/** The major alone, for comparing against the CI toolchain major. */
+const ENGINES_FLOOR_MAJOR = ENGINES_FLOOR.split(".")[0];
 
 /**
  * Directory trees whose YAML carries a toolchain pin. Walked recursively and
@@ -102,7 +113,7 @@ function readEnginesFloors(): Pin[] {
 /** Every esbuild `--target=nodeNN`, tagged with the manifest it appears in. */
 function readEsbuildTargets(): Pin[] {
   return packageManifests().flatMap((file) =>
-    [...read(file).matchAll(/--target=node(\d+)/g)].map((m) => ({ where: file, value: m[1] })),
+    [...read(file).matchAll(/--target=node([\d.]+)/g)].map((m) => ({ where: file, value: m[1] })),
   );
 }
 
@@ -140,7 +151,7 @@ describe("Node.js version policy (ADR-2397)", () => {
   it("declares one engines floor across the workspace, at or below the CI major", () => {
     const floors = readEnginesFloors();
     const offenders = floors
-      .filter((floor) => floor.value !== `>=${ENGINES_FLOOR_MAJOR}`)
+      .filter((floor) => floor.value !== `>=${ENGINES_FLOOR}`)
       .map((floor) => `${floor.where} → ${floor.value}`);
     expect(offenders).toEqual([]);
     expect(Number(ENGINES_FLOOR_MAJOR)).toBeLessThanOrEqual(Number(NODE_MAJOR));
@@ -152,7 +163,7 @@ describe("Node.js version policy (ADR-2397)", () => {
     // longer claim to support — green everywhere, and invisible until someone
     // reads the build script.
     const offenders = readEsbuildTargets()
-      .filter((target) => target.value !== ENGINES_FLOOR_MAJOR)
+      .filter((target) => target.value !== ENGINES_FLOOR)
       .map((target) => `${target.where} → --target=node${target.value}`);
     expect(offenders).toEqual([]);
   });

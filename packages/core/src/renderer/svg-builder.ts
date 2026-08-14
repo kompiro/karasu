@@ -10,6 +10,7 @@
 import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from "../types/ast.js";
 import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
 import { type LegendUsage, legendRefHasUsage } from "../legend/usage.js";
+import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "../style/cascade.js";
 import type { DiagramPalette } from "./palette.js";
 import { charDisplayWidth } from "./rendering-constants.js";
 
@@ -31,6 +32,25 @@ function escapeXml(s: string): string {
 /**
  * Build an SVG element string, similar to `createElement` / `h()`.
  */
+/**
+ * Vertical text placement, as a `dy` offset instead of `dominant-baseline`.
+ *
+ * `dominant-baseline` is in the SVG text module, and rasterizers outside the
+ * browser drop it silently — the text then sits on its baseline, which for a
+ * label centred in a card is 3 to 4.5px too high at the sizes karasu emits
+ * (measured in Chromium at 9 / 11 / 13px). `dy` in em units is core SVG 1.1 and
+ * survives everywhere.
+ *
+ * The em factors are what reproduce the attributes they replace, measured
+ * against Chromium from 9 to 20px: the centred one lands within 0.35px of
+ * `central`, the hanging one within 0.6px of `hanging`. They cannot be exact —
+ * `central` centres on the font's own ascent/descent midpoint, which an em
+ * constant only approximates — and that residue is the price of portability.
+ * See ADR-2473.
+ */
+export const DY_CENTER = "0.35em";
+export const DY_HANGING = "0.73em";
+
 export function el(tag: string, attrs: Attrs, ...children: string[]): string {
   const attrStr = Object.entries(attrs)
     .filter(([, v]) => v !== undefined && v !== null && v !== false)
@@ -304,12 +324,13 @@ export function legendScopeMatches(
  * should skip the footer entirely in that case.
  *
  * Selector resolution mirrors the resolver's `legend-ref-unresolved`
- * detection (`resolver/warnings.ts`): the highest-specificity matching
- * style rule supplies the swatch color. Refs with no node usage *and* no
- * matching rule are skipped so a stale reference does not silently emit a
- * colorless square. Refs that *are* in use but have no painting rule fall
- * back to a neutral swatch so the legend stays informative for semantic-
- * only annotations like `[human]` (Issue #999).
+ * detection (`resolver/warnings.ts`): the matching style rules are merged
+ * through the shared cascade (`style/cascade.ts`) and supply the swatch
+ * color. Refs with no node usage *and* no matching rule are skipped so a
+ * stale reference does not silently emit a colorless square. Refs that *are*
+ * in use but have no painting rule fall back to a neutral swatch so the
+ * legend stays informative for semantic-only annotations like `[human]`
+ * (Issue #999).
  */
 export function buildLegendFooter(
   legends: LegendBlock[],
@@ -334,13 +355,18 @@ export function buildLegendFooter(
   const extra = extraBlock && extraBlock.rows.length > 0 ? extraBlock : undefined;
   if (applicable.length === 0 && !extra) return null;
 
+  // Flattened once for the whole footer: the global `sourceIndex` is what makes
+  // a user rule outrank a builtin one at equal specificity, and it only exists
+  // after the sheets are joined (#2445).
+  const rules = flattenSheetsInCascadeOrder(sheets);
+
   const blocks: { title?: string; rows: { color: string; label: string }[] }[] = [];
   let totalRows = 0;
   let totalTitles = 0;
   for (const legend of applicable) {
     const rows: { color: string; label: string }[] = [];
     for (const entry of legend.entries) {
-      const color = resolveLegendEntryColor(entry, sheets, usage, palette);
+      const color = resolveLegendEntryColor(entry, rules, usage, palette);
       if (color === null) continue;
       rows.push({ color, label: entry.label });
     }
@@ -451,42 +477,30 @@ export function buildLegendFooter(
 
 function resolveLegendEntryColor(
   entry: LegendEntry,
-  sheets: StyleSheet[],
+  rules: StyleRule[],
   usage: LegendUsage | undefined,
   palette: DiagramPalette,
 ): string | null {
   if (entry.kind === "swatch") return entry.color;
-  return resolveLegendRefColor(entry.target, sheets, usage, palette);
+  return resolveLegendRefColor(entry.target, rules, usage, palette);
 }
 
 function resolveLegendRefColor(
   target: LegendRefTarget,
-  sheets: StyleSheet[],
+  rules: StyleRule[],
   usage: LegendUsage | undefined,
   palette: DiagramPalette,
 ): string | null {
-  // Per-property cascade merge across every matching rule, mirroring
-  // `mergeMatchingProperties` in resolver/style-resolver.ts. Picking a
-  // single "best" rule and reading its background-color/badge-color used
-  // to lose the swatch in icon mode (Issue #1001): the icon-theme rule
-  // (e.g. `service { shape: url(...) }`) tied on specificity with the
-  // builtin `service { background-color: ... }` rule and won as best
-  // because it was declared later — but it only set `shape`, so no
-  // color was found.
-  const matching: { rule: StyleRule; specificity: number; sourceIndex: number }[] = [];
-  for (const sheet of sheets) {
-    for (const rule of sheet.rules) {
-      if (!ruleMatchesTarget(rule.selector, target)) continue;
-      matching.push({
-        rule,
-        specificity: rule.specificity,
-        sourceIndex: rule.sourceIndex,
-      });
-    }
-  }
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-  const merged: Record<string, string> = {};
-  for (const { rule } of matching) Object.assign(merged, rule.properties);
+  // The swatch and the node it stands for are one appearance, so they read the
+  // same cascade (`style/cascade.ts`) — only *which* rules match differs, since
+  // a legend ref names a selector rather than a node. `mergeInCascadeOrder` is
+  // per-property for a reason: picking a single "best" rule and reading its
+  // background-color/badge-color used to lose the swatch in icon mode
+  // (Issue #1001), because the icon-theme rule (`service { shape: url(...) }`)
+  // tied on specificity, won as best by being declared later, and set no color.
+  const merged = mergeInCascadeOrder(
+    rules.filter((rule) => ruleMatchesTarget(rule.selector, target)),
+  );
 
   // Prefer background-color for the main swatch; fall back to badge-color
   // (annotation rules in the builtin sheet often paint via badge-color).

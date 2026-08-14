@@ -9,6 +9,7 @@ import type {
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { hasShape } from "../shapes/shape-registry.js";
 import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
+import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "../style/cascade.js";
 import type {
   StyleSheet,
   StyleRule,
@@ -95,15 +96,7 @@ export function resolveStyles(
   extraNodes?: KrsNode[],
   extraEdges?: KrsEdge[],
 ): ResolvedStyles {
-  // Clone rules with globally renumbered sourceIndex to preserve cascade order across sheets.
-  // This avoids mutating cached sheets (e.g. the builtin singleton).
-  let globalIndex = 0;
-  const allRules: StyleRule[] = [];
-  for (const sheet of sheets) {
-    for (const rule of sheet.rules) {
-      allRules.push({ ...rule, sourceIndex: globalIndex++ });
-    }
-  }
+  const allRules = flattenSheetsInCascadeOrder(sheets);
   const nodeStyles = new Map<string, ResolvedNodeStyle>();
   const edgeStyles = new Map<string, ResolvedEdgeStyle>();
   const layoutHints = new Map<string, ResolvedLayoutHints>();
@@ -282,38 +275,28 @@ function finalizeLayoutHints(
   return hints.column === undefined && hints.gridColumns === undefined ? null : hints;
 }
 
-// NOTE: the legend resolver in renderer/svg-builder.ts uses an identical
-// per-property cascade merge (see `resolveLegendRefColor`). When tweaking
-// the cascade semantics here, mirror the change there to keep node colors
-// and legend swatches consistent (Issue #1001).
+// The cascade itself lives in style/cascade.ts, which the legend swatch
+// resolver (`resolveLegendRefColor` in renderer/svg-builder.ts) calls too.
+// These functions only decide *which* rules match; the order they are merged
+// in is not theirs to redefine (Issue #1001, #2445).
 function mergeMatchingProperties(node: KrsNode, rules: StyleRule[]): Record<string, string> {
-  const matching = rules.filter((rule) => nodeSelectorMatches(node, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-  const merged: Record<string, string> = {};
-  for (const rule of matching) Object.assign(merged, rule.properties);
-  return merged;
+  return mergeInCascadeOrder(rules.filter((rule) => nodeSelectorMatches(node, rule.selector)));
 }
 
 function mergeMatchingPropertiesForDeploy(
   unit: DeployNode,
   rules: StyleRule[],
 ): Record<string, string> {
-  const matching = rules.filter((rule) => deployNodeSelectorMatches(unit, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-  const merged: Record<string, string> = {};
-  for (const rule of matching) Object.assign(merged, rule.properties);
-  return merged;
+  return mergeInCascadeOrder(
+    rules.filter((rule) => deployNodeSelectorMatches(unit, rule.selector)),
+  );
 }
 
 function mergeMatchingPropertiesForOrg(
   node: OrgNodeDescriptor,
   rules: StyleRule[],
 ): Record<string, string> {
-  const matching = rules.filter((rule) => orgNodeSelectorMatches(node, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-  const merged: Record<string, string> = {};
-  for (const rule of matching) Object.assign(merged, rule.properties);
-  return merged;
+  return mergeInCascadeOrder(rules.filter((rule) => orgNodeSelectorMatches(node, rule.selector)));
 }
 
 function orgNodeSelectorMatches(node: OrgNodeDescriptor, sel: StyleSelector): boolean {
@@ -338,12 +321,7 @@ function resolveDefaultEdgeStyle(rules: StyleRule[]): ResolvedEdgeStyle {
   const matching = rules.filter(
     (rule) => rule.selector.nodeType === "edge" && rule.selector.tags.length === 0,
   );
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-  const merged: Record<string, string> = {};
-  for (const rule of matching) {
-    Object.assign(merged, rule.properties);
-  }
-  return toResolvedEdgeStyle(merged);
+  return toResolvedEdgeStyle(mergeInCascadeOrder(matching));
 }
 
 /**
@@ -359,14 +337,8 @@ function resolveDefaultEdgeStyle(rules: StyleRule[]): ResolvedEdgeStyle {
  */
 function resolveBoundaryFrames(rules: StyleRule[]): ResolvedBoundaryFrames {
   const boundaryRules = rules.filter((rule) => rule.selector.nodeType === "boundary");
-  const merge = (matching: StyleRule[]): ResolvedBoundaryFrameStyle => {
-    const sorted = [...matching].sort(
-      (a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex,
-    );
-    const props: Record<string, string> = {};
-    for (const rule of sorted) Object.assign(props, rule.properties);
-    return toResolvedBoundaryFrameStyle(props);
-  };
+  const merge = (matching: StyleRule[]): ResolvedBoundaryFrameStyle =>
+    toResolvedBoundaryFrameStyle(mergeInCascadeOrder(matching));
 
   const base = merge(boundaryRules.filter((rule) => rule.selector.boundaryId === undefined));
   const byId = new Map<string, ResolvedBoundaryFrameStyle>();
@@ -442,14 +414,7 @@ function applyClientSubtypeFirstMatch(node: KrsNode, merged: Record<string, stri
 
 function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle {
   const matching = rules.filter((rule) => edgeSelectorMatches(edge, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-
-  const merged: Record<string, string> = {};
-  for (const rule of matching) {
-    Object.assign(merged, rule.properties);
-  }
-
-  return toResolvedEdgeStyle(merged);
+  return toResolvedEdgeStyle(mergeInCascadeOrder(matching));
 }
 
 function deployNodeSelectorMatches(unit: DeployNode, sel: StyleSelector): boolean {

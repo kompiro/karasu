@@ -513,7 +513,9 @@
   border-radius: var(--radius-xs);
   font-size: 10px;
   font-family: var(--font-mono);
-  color: var(--text-on-accent);
+  /* Not `--text-on-accent`: the background here is the badge color from
+     reference-data, not `--accent`, and it does not follow the theme (#2461). */
+  color: var(--badge-preview-text);
   white-space: nowrap;
 }
 

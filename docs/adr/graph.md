@@ -53,7 +53,9 @@ flowchart TD
     ADR_1646["ADR-1646<br/>gallery の example は id 指定・固定 origin fetch で app..."]
     ADR_1955["ADR-1955<br/>全 service をその場一括展開する — Collapse all / Expand al..."]
     ADR_2120["ADR-2120<br/>bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
+    ADR_2193["ADR-2193<br/>テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える"]
     ADR_2316["ADR-2316<br/>experimental notation は Reference に載せ、experimen..."]
+    ADR_2461["ADR-2461<br/>色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する"]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -125,6 +127,7 @@ flowchart TD
     ADR_2152["ADR-2152<br/>Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の pu..."]
     ADR_2318["ADR-2318<br/>Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロ..."]
     ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
+    ADR_2337["ADR-2337<br/>LSP は client と server を同時に上げ、protocol 版の一致を不変条件..."]
     ADR_2341["ADR-2341<br/>Security alert 2026-08-04 — brace-expansion / f..."]
     ADR_2351["ADR-2351<br/>docs/process.md は「今どうするか」だけを持つ — 経緯は ADR / Issu..."]
     ADR_2356["ADR-2356<br/>開発規約は「いつ読まれるか」で置き場を決める — 常時 / 発火時 / 編集時の 3 層"]
@@ -135,6 +138,7 @@ flowchart TD
     ADR_2419["ADR-2419<br/>PoC の生成物は gitignore された `reports/` に出力し、spike ブ..."]
     ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
+    ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -205,6 +209,7 @@ flowchart TD
     ADR_1492["ADR-1492<br/>stroke-style をエッジ線スタイルの正準プロパティとして採用する"]
     ADR_1554["ADR-1554<br/>エッジコンテキストメニューへの authored ラベル表示と data-edge-label..."]
     ADR_1911["ADR-1911<br/>エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する"]
+    ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
   subgraph navigation["navigation"]
@@ -301,8 +306,11 @@ flowchart TD
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
+    ADR_2200["ADR-2200<br/>未割当 `resource` の描画先は usecase ドリルダウンビューであり、domai..."]
     ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
     ADR_2360["ADR-2360<br/>label placement の障害物にエッジ polyline を加える — 自分の線だけ..."]
+    ADR_2366["ADR-2366<br/>node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く"]
+    ADR_2473["ADR-2473<br/>テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` ..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -354,6 +362,7 @@ flowchart TD
     ADR_863["ADR-863<br/>VS Code 拡張ホスト向け smoke test harness"]
     ADR_1316["ADR-1316<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
+    ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_14 --> ADR_9003
@@ -469,6 +478,7 @@ flowchart TD
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
   ADR_2442 --> ADR_2410
+  ADR_2461 --> ADR_2193
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -766,6 +776,8 @@ flowchart TD
   class ADR_2174 accepted
   class ADR_2184 accepted
   class ADR_2188 accepted
+  class ADR_2193 accepted
+  class ADR_2200 accepted
   class ADR_2218 accepted
   class ADR_2234 accepted
   class ADR_2249 accepted
@@ -776,11 +788,13 @@ flowchart TD
   class ADR_2330 accepted
   class ADR_2331 accepted
   class ADR_2333 accepted
+  class ADR_2337 accepted
   class ADR_2341 accepted
   class ADR_2348 accepted
   class ADR_2351 accepted
   class ADR_2356 accepted
   class ADR_2360 accepted
+  class ADR_2366 accepted
   class ADR_2390 accepted
   class ADR_2397 accepted
   class ADR_2401 accepted
@@ -791,6 +805,11 @@ flowchart TD
   class ADR_2440 accepted
   class ADR_2442 accepted
   class ADR_2447 accepted
+  class ADR_2456 accepted
+  class ADR_2461 accepted
+  class ADR_2472 accepted
+  class ADR_2473 accepted
+  class ADR_2477 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

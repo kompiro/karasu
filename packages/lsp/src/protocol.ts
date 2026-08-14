@@ -15,13 +15,19 @@
  * the CJS graph without tree-shaking, so importing from `/node` would drag the
  * entire server framework (~106KB the client never runs) into the .vsix.
  * `vscode-languageserver` and `vscode-languageclient` both re-export this same
- * `RequestType` from `vscode-languageserver-protocol@3.17.5`, which pnpm has
- * already deduped into the extension's dependency tree.
+ * `RequestType` from `vscode-languageserver-protocol`, which pnpm dedupes into
+ * a single copy in the extension's dependency tree.
  *
- * Runtime request dispatch matches on the method-NAME string
- * (`"karasu/nodeAtPosition"` / `"karasu/positionOfNode"`), not on class
- * identity, so the two sides interoperate regardless of which package's
- * `RequestType` export constructed each end's value.
+ * That single copy is load-bearing, and is guarded by
+ * `packages/vscode/src/protocol-request-identity.test.ts`. Request DISPATCH
+ * matches on the method-NAME string, so the receiving end does not care who
+ * built the type — but SENDING does: `RequestType.parameterStructures` holds a
+ * singleton defined at `vscode-jsonrpc` module scope, and `sendRequest` picks
+ * the parameter encoding with a `switch` on reference equality against it. If
+ * this module and `vscode-languageclient` ever load two different copies, every
+ * `karasu/*` request throws `Unknown parameter structure auto` before reaching
+ * the wire, while standard LSP requests keep working. That is the whole of the
+ * "LSP 3.17/3.18 position drift" — see ADR-2456 and Issue #2456.
  */
 import { RequestType } from "vscode-languageserver-protocol";
 import type { LspPosition, LspRange } from "./lsp-position.js";

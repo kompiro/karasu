@@ -125,7 +125,7 @@ Some data stores are shared by several services rather than owned by a single `u
 - A `usecase` ties one of its `resource`s to a shared sub-resource with dot-notation — `resource <InfraId>.<SubResourceId>` (e.g. `resource OrderDB.OrderTable`). The resolver aggregates these references to derive the `service → database` (and `service → queue` / `service → storage`) edges shown on the system view, and may synthesize `[read]` / `[write]` tags on the usecase→resource edges — see [docs/spec/tags-annotations.md](./tags-annotations.md#system-assigned-tags).
 - `[external]` may be applied to `database` / `queue` / `storage` for a store that lives outside the system boundary (a managed third-party DB, an external event bus, …).
 - `[index]` may be applied to a `database` to mark it as a **derived search / secondary index** — a store derived as an index to search the system of record quickly — and adds an `index` badge. It denotes a **role, not a technology**: a vector DB / ElasticSearch that is itself the system of record stays a plain `database` (no `[index]`). The concrete engine stays in the physical layer (`store { type "ElasticSearch 8"; realizes SearchIndex }`). See [tags-annotations.md](./tags-annotations.md).
-- Writing `resource OrderTable` *without* a matching `database` block is allowed (warning only, rendered as an orphan node) so you can discover resources bottom-up while sketching a `usecase`, then group them into a `database` block and switch to the dot-notation reference.
+- Writing `resource OrderTable` *without* a matching `database` block is allowed, so you can discover resources bottom-up while sketching a `usecase`, then group them into a `database` block and switch to the dot-notation reference. For as long as the id resolves to **nothing at all** (no dot-notation ref, and no unique `entity` of the same name), it warns `unassigned-resource` and **is drawn, but only inside its own usecase's drill-down view**: it is *not* promoted to a sibling node in the domain view, because promotion is what resolving the reference buys. Declaring a matching `entity` promotes it and clears the warning with no edit to the usecase, `database` block or not (see [`entity` declaration](#entity-declaration--conceptual-domain-entities)). Sketching bottom-up does give visual feedback, then, just one level deeper until the id resolves.
 - The infra-block **keyword** `table` (a `database` leaf, declaring the shared node) and the shape **tag** `[table]` (a usecase `resource`'s draw-shape) are related, not the same. A usecase references an infra leaf with a `resource` via the dot-notation above, and karasu **infers the shape tag from the referenced infra sub-resource kind** — `table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]` — so the reference is drawn in the same shape as the store it points to. The keyword declares the node's *kind*; the `[...]` tag is a suffix that sets only a `resource`'s *shape* (and may also be written by hand). The same word in two positions never collides. See [tags-annotations.md](./tags-annotations.md) for the full guidance.
 
 ```krs
@@ -150,7 +150,7 @@ system ECPlatform {
 }
 ```
 
-> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync.
+> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync. [TPL-2200](../test-perspectives/TPL-2200-render-claim-names-its-view-level.md) — a claim that something "is rendered" names the view level it is rendered at, and both sides (the level it is promoted to, the level it stays in) are fenced; the unassigned-`resource` bullet above said only "rendered as an orphan node" and drifted for months (#2200).
 
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
@@ -1510,10 +1510,13 @@ legend domain "Data access" {
 ### Color resolution
 
 - **`swatch`** uses the literal hex color verbatim (3, 4, 6, or 8 hex digits, with `#`).
-- **`ref`** resolves through the `.krs.style` cascade. The renderer picks the highest-specificity matching rule and uses its `background-color`, falling back to `badge-color`.
+- **`ref`** resolves through **the same `.krs.style` cascade the nodes use** — matching rules are merged per property, weakest first, ordered by specificity and then by declaration order across every sheet (the built-in sheet first, your sheets after it). The swatch takes the merged `background-color`, falling back to `badge-color`. A rule you write always outranks the built-in rule it ties on specificity, on the swatch exactly as on the card.
+- A **fill-less** kind (merged `background-color: transparent`, e.g. the built-in `usecase`) is swatched with its `border-color`, because the border is what identifies it on the canvas.
 - A `ref` whose target appears on at least one node in the file but has no painting style rule renders with a **neutral fallback swatch** so semantic-only annotations / tags (e.g. `[human]`, `[ai]`) still surface in the legend.
 - A `ref` that matches no rule **and** no node is **dropped from the rendered footer** and surfaced in the warning panel as `legend-ref-unresolved`. Authors can then either remove the entry or add a matching style rule.
 - `.class` selectors are accepted by the parser for forward compatibility but always resolve as unresolved today (`.krs.style` has no class concept — see [`style.md`](style.md)).
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — the swatch and the node it stands for are one appearance, so both read one cascade implementation rather than each deriving the order (Issue #2445).
 
 ### Labels are not localized
 

@@ -21,7 +21,7 @@ export const LICENSE_ALLOWLIST: readonly string[] = [
 const ALLOWED = new Set(LICENSE_ALLOWLIST);
 
 /** One entry of `pnpm licenses list --json` (the value arrays are keyed by the license string). */
-export interface PnpmLicensePackage {
+interface PnpmLicensePackage {
   name: string;
   versions: string[];
   paths: string[];

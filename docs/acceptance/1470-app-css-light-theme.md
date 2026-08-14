@@ -70,7 +70,33 @@
 
 - [x] `layout.css` / `base.css` / `components/*.css` に生の色リテラルが無い（TPL-1001）
 
-  > ✅ Automated — `styles-no-raw-color.test.ts` › `<file> has no raw color literals`
+  > ✅ Automated — `styles-no-raw-color.test.ts` › `<file> has no raw color literals` — data-URI に percent-encode された色（`%23RRGGBB`）も検出する。#2193 で `<select>` シェブロンがこの形で dark の値を焼き込んでいた。
+
+### トークンのコントラスト — `packages/app/src/styles/theme-contrast.test.ts`
+
+- [x] 文字系トークンが dark / light 両セットで全 opaque surface に対し 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `<set> set` › `--<token> clears AA on every opaque surface` — 判定は `packages/core` の `contrastRatio()`（canvas 側の `default-style-contrast.test.ts` と同一実装）。
+
+- [x] 自前の背景を持つバナー（export error / OPFS）の文字が 4.5:1 以上、選択行のアイコンが 3:1 以上
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<bg>` / `--text-muted clears the non-text minimum on --bg-selected` — グラデーション背景は全 stop に対して測る。
+
+- [x] 色トークンの上に載る文字（`--text-on-accent` / バッジプレビュー）が 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--text-on-accent clears AA on --accent` / `--badge-preview-text clears AA on every annotation badge color` — dark の `--accent` の上の白文字は 3.14:1 だった（#2461）。背景が明るい色なので前景をテーマごとのインクにして解く。
+
+- [x] 半透明クロームの上の文字が、下地と合成した色に対して 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<tint> over <surfaces>` — 判定は `compositeOver()`。下地は「そのクロームが載りうる surface」を宣言し、宣言漏れは同ファイルの drift ガード（`accounts for every translucent token this set defines`）が落とす。
+
+- [x] `--diff-color-*` が SVG stroke として canvas 上で 3:1 以上（非文字基準）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--<token> stays visible as a stroke on the diagram` — バナーのラベル都合で動かした色が図で薄くならないことを担保する。
+
+- [x] 文字階層のランプが primary → secondary → tertiary → muted の順に暗くなる
+
+  > ✅ Automated — `theme-contrast.test.ts` › `keeps the text hierarchy ordered from primary to muted` — AA を満たすとランプは圧縮されるため、順序の逆転（muted が secondary より明るい）を明示的に禁じる。
 
 ### ブラウザ実機での挙動 — `packages/e2e/tests/at-1470-app-theme.spec.ts`
 
@@ -101,9 +127,17 @@ OS のカラースキームは Playwright の `colorScheme` で emulate する�
 
   > ✅ Automated — `at-1470-app-theme.spec.ts` › `preference 'system' follows a live OS scheme change without a reload`
 
-- [x] light テーマの主要テキストが判読できる（primary は WCAG AA 4.5:1、secondary は実測 floor）
+- [x] light テーマのテキストが primary / secondary とも WCAG AA（4.5:1）を満たす
 
-  > 🟡 Partially automated — `at-1470-app-theme.spec.ts` › `light-theme text stays legible: primary text meets WCAG AA, secondary keeps its floor`。primary（アクティブタブ / ファイルツリー / breadcrumb）は 12〜15:1 で AA を満たすため 4.5:1 を assert する。**secondary は AA を満たしていない** — 非アクティブタブ 4.02:1、ghost ボタン 3.51:1（11.5〜12px）で、これは fixture の都合ではなく light パレットの実際のギャップ。テストは AA を装わず実測 floor（3:1）を固定し、light パレットがこれ以上悪化することを防ぐ。ギャップ自体の是正は [#2193](https://github.com/kompiro/karasu/issues/2193) で追跡する（修正時に secondary の閾値も 4.5 へ上げる）。
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `light-theme text meets WCAG AA, primary and secondary alike`。primary（アクティブタブ / ファイルツリー / breadcrumb）に加え、secondary（非アクティブタブ 4.02:1、ghost ボタン 3.51:1 だった 11.5〜12px の面）も 4.5:1 で assert する。[#2193](https://github.com/kompiro/karasu/issues/2193) で light の `--text-muted` を暗くして解消済み。トークン値そのものは `theme-contrast.test.ts` が検証し、こちらは「どのトークンに解決され、透明祖先を辿った先が何色か」という実描画側を見る。
+
+- [x] dark テーマのテキストも同じ面で WCAG AA を満たす
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › `dark-theme text meets WCAG AA on the same surfaces`。既定テーマである dark の `--text-muted` は `--bg-overlay` 上で 1.78:1 と light より悪かった（#2193）。light だけを assert していると、同じ欠陥のより重い半分が通過する。
+
+- [x] コマンドパレットの選択行が light / dark とも WCAG AA を満たす
+
+  > ✅ Automated — `at-1470-app-theme.spec.ts` › 上記 2 テストの末尾（`Ctrl/Cmd+Shift+P` で開いて `[role="option"][aria-selected="true"]` を測る）。トークンの組は `theme-contrast.test.ts` が担保するが、「その行が実際にその組に解決されるか」はキーストローク経由でしか到達できないため実ブラウザで見る（#2461）。
 
 ## 受け入れ条件（手動 / 目視）
 
@@ -114,3 +148,7 @@ OS のカラースキームは Playwright の `colorScheme` で emulate する�
       Reference パネル（e2e が到達していない surface）の文字が判読できる
 - [ ] Monaco の構文ハイライトの色が light 背景で判読できる（背景の輝度は
       自動化済みだが、トークン色の見やすさは目視）
+- [ ] dark テーマが #2193 のランプ持ち上げ後も "Onyx Cartographer" の
+      見え方を保っている（`--text-muted` を 1.78:1 から 4.81:1 へ上げたため、
+      dim だった文字・アイコンが全体に明るくなる。比は自動化済みで、
+      階層の印象が崩れていないかだけが目視）

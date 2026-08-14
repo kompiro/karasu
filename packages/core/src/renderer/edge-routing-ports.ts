@@ -16,23 +16,35 @@
  * Out of scope (per ADR): ghost edges and cyclic edges are skipped — they
  * have specialised anchor logic that we don't disturb.
  *
+ * Since #2422 this pass also decides what a position on a side *means*: the
+ * shape says which parts of the side its outline covers and how deep it sits
+ * (`portFrame`), and the card's own chrome claims keep-outs. That lookup is
+ * injected as `resolvePorts` rather than imported, so the distribution rule
+ * stays independent of the style resolution the frames need. A single anchor
+ * goes through the same mapping — a lone edge into the middle of a `user`
+ * card's top is exactly the endpoint that used to stop beside the medallion —
+ * which is why the group loop no longer skips N === 1.
+ *
  * Run before `routeOrthogonalEdges` so the channel routing uses the
  * distributed ports.
  */
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
-
-type Side = "top" | "bottom" | "left" | "right";
+import { BBOX_PORT_FRAME, portPoint, type PortResolver, type Side } from "./port-frame.js";
 
 interface Anchor {
   edge: LayoutEdge;
   isFrom: boolean;
 }
 
+/** What an anchor can sit on: a node card, or an expanded container's frame. */
+export type AnchorRect = { x: number; y: number; width: number; height: number };
+
 const SIDE_EPS = 0.5;
 
 export function distributePorts(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
+  resolvePorts?: PortResolver,
 ): void {
   // Group every edge endpoint by (nodeId, side). Endpoints not anchored
   // on any side (e.g. ghost edges with custom positions) are skipped.
@@ -54,19 +66,30 @@ export function distributePorts(
   }
 
   for (const [key, anchors] of groups) {
-    if (anchors.length < 2) continue;
     const hashIdx = key.lastIndexOf("#");
     const nodeId = key.slice(0, hashIdx);
     const side = key.slice(hashIdx + 1) as Side;
     const node = layoutNodes.get(nodeId);
     if (!node) continue;
 
+    const ports = resolvePorts?.(node);
+    // A lone edge on a plain rectangle already sits where it belongs: leaving
+    // it alone keeps every existing box-only diagram byte-identical.
+    if (anchors.length < 2 && !ports) continue;
+
     sortByOppositeDirection(anchors, side);
 
+    const frame = ports?.frame ?? BBOX_PORT_FRAME;
+    // Chrome keep-outs only apply to a fan. Moving a *lone* port sideways buys
+    // a few pixels of clearance from a chip and pays for it with a slanted
+    // edge in a diagram whose language is right angles — the edges in a fan are
+    // already diagonal, so there the same move costs nothing. The shape's own
+    // spans are not optional either way: they are where the outline is.
+    const keepOuts = anchors.length > 1 ? (ports?.keepOuts ?? []) : [];
     const N = anchors.length;
     for (let i = 0; i < N; i++) {
       const t = (i + 1) / (N + 1);
-      const port = portFor(node, side, t);
+      const port = portPoint(node, side, t, frame, keepOuts);
       if (anchors[i].isFrom) {
         anchors[i].edge.fromPoint = port;
       } else {
@@ -85,7 +108,12 @@ function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
   }
 }
 
-function detectSide(point: { x: number; y: number }, node: LayoutNode): Side | null {
+/**
+ * The side of `node` an anchor sits on, or null when it sits on none. Exported
+ * for the bundling pass, which slides a nudge along the side an endpoint is
+ * anchored to instead of off it (#2477).
+ */
+export function detectSide(point: { x: number; y: number }, node: AnchorRect): Side | null {
   const left = node.x;
   const right = node.x + node.width;
   const top = node.y;
@@ -135,17 +163,4 @@ function sortByOppositeDirection(anchors: Anchor[], side: Side): void {
     if (aOpp.y !== bOpp.y) return aOpp.y - bOpp.y;
     return aOpp.x - bOpp.x;
   });
-}
-
-function portFor(node: LayoutNode, side: Side, t: number): { x: number; y: number } {
-  switch (side) {
-    case "top":
-      return { x: node.x + node.width * t, y: node.y };
-    case "bottom":
-      return { x: node.x + node.width * t, y: node.y + node.height };
-    case "left":
-      return { x: node.x, y: node.y + node.height * t };
-    case "right":
-      return { x: node.x + node.width, y: node.y + node.height * t };
-  }
 }

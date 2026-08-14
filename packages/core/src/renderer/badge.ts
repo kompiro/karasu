@@ -1,4 +1,4 @@
-import { el, escapeXml } from "./svg-builder.js";
+import { DY_CENTER, el, escapeXml } from "./svg-builder.js";
 
 /** The subset of a resolved node style that drives the annotation badge. */
 interface BadgeStyle {
@@ -47,7 +47,7 @@ export function badgeChildren(
           x: badgeX,
           y: badgeY,
           "text-anchor": "middle",
-          "dominant-baseline": "central",
+          dy: DY_CENTER,
           fill: "white",
           "font-size": "10px",
         },
@@ -62,7 +62,7 @@ export function badgeChildren(
         {
           x: badgeX + 14,
           y: badgeY,
-          "dominant-baseline": "central",
+          dy: DY_CENTER,
           fill: badgeColor,
           "font-size": "9px",
           "font-weight": "bold",

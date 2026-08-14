@@ -3,6 +3,15 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    // Matches every package's tsconfig: a workspace dependency resolves to its
+    // `src/` entry through the `development` export condition. Without this,
+    // the guards that import from `packages/**` (e.g.
+    // `lint/reverse-directive-adr-sync.test.ts` → `packages/nest`, which imports
+    // `@karasu-tools/core`) resolve to `dist/index.d.ts` and only typecheck
+    // after a build. In a git worktree that failure hides: resolution walks up
+    // past the worktree root and finds the primary checkout's built `dist/`,
+    // so it passes locally and fails on a clean CI checkout (Issue #2446).
+    "customConditions": ["development"],
     "strict": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,

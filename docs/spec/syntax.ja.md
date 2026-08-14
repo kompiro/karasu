@@ -124,7 +124,7 @@ client C [web] {
 - `table` / `queue-item` / `bucket` は leaf ノード — プロパティとエッジは持てるが、ネストした宣言は持てない。
 - `usecase` は自身の `resource` を共有サブリソースにドット記法で紐づける — `resource <InfraId>.<SubResourceId>`（例: `resource OrderDB.OrderTable`）。resolver はこれらの参照を集約して system 図上の `service → database`（および `service → queue` / `service → storage`）エッジを導出し、usecase→resource エッジに `[read]` / `[write]` タグを合成することがある（[docs/spec/tags-annotations.ja.md](./tags-annotations.ja.md) の「システム自動付与タグ」節を参照）。
 - `[external]` はシステム境界の外にあるストア（マネージドなサードパーティ DB、外部イベントバス等）を表すために `database` / `queue` / `storage` に付けられる。
-- `database` ブロックがないまま `resource OrderTable` と書くことも許容される（警告のみ、孤立ノードとして描画）。`usecase` を書きながらボトムアップに resource を発見し、後で `database` ブロックにグループ化してドット記法の参照に切り替えればよい。
+- `database` ブロックがないまま `resource OrderTable` と書くことも許容される。`usecase` を書きながらボトムアップに resource を発見し、後で `database` ブロックにグループ化してドット記法の参照に切り替えればよい。その id が**どこにも解決しない**あいだ（ドット記法参照でもなく、同名の一意な `entity` にも解決しないあいだ）は `unassigned-resource` 警告が出て、この resource は**描画されるが、自身が属する usecase のドリルダウンビューの中だけ**である。domain ビューの兄弟ノードには昇格しない。兄弟への昇格は参照が解決されて初めて得られるものだからである。同名の `entity` を宣言すれば、`database` ブロックの有無にかかわらず usecase 側は無編集のまま昇格し、警告も消える（[`entity` 宣言](#entity-宣言--概念レベルのドメインエンティティ)を参照）。つまりボトムアップなスケッチにも視覚的フィードバックはあり、id が解決するまでのあいだ 1 階層深いところに出る。
 - infra ブロックの **キーワード** `table`（`database` の leaf、共有ノードの宣言）と、shape **タグ** `[table]`（usecase の `resource` の描画 shape）は別物ではなく対応関係にある。usecase は上記 dot 記法の `resource` で infra leaf を参照し、karasu は **参照先 infra sub-resource の kind から shape タグを推論**する — `table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]` — ので、参照は指し示すストアと同じ形で描画される。キーワードはノードの *kind* を宣言し、`[...]` タグは `resource` の *shape* だけを決める接尾辞（手書きも可）。同じ語が 2 つの位置に現れても衝突しない。詳しい使い分けは [tags-annotations.ja.md](./tags-annotations.ja.md) を参照。
 
 ```krs
@@ -145,7 +145,7 @@ system ECPlatform {
 }
 ```
 
-> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
+> Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。[TPL-2200](../test-perspectives/TPL-2200-render-claim-names-its-view-level.md) — 「描画される」と述べるときはどの view level で描画されるかまで書き、昇格する側と留まる側の両方をテストで固定する。上の未割当 `resource` の項は「孤立ノードとして描画」としか書いておらず、数ヶ月ドリフトしていた（#2200）。
 
 ### 組織構造（誰が所有するか）— 別図で表現
 
@@ -1415,8 +1415,14 @@ legend domain "データアクセス" {
 ### 色の解決
 
 - **`swatch`** は hex 値をそのまま使う（3 / 4 / 6 / 8 桁、`#` プレフィックス必須）。
-- **`ref`** は `.krs.style` のカスケードで解決する。一致したルールのうち
-  specificity が最も高いものから `background-color`（無ければ `badge-color`）を採用。
+- **`ref`** は**ノードと同じ `.krs.style` のカスケード**で解決する。一致した
+  ルールを specificity 順、同点ならシート横断の宣言順（builtin シートが先、
+  ユーザーのシートが後）に、弱いものから per-property でマージする。swatch は
+  マージ結果の `background-color`（無ければ `badge-color`）を採る。同 specificity
+  で builtin と並ぶユーザールールは、カードと同じく swatch でも必ず勝つ。
+- マージ結果が **fill-less**（`background-color: transparent`。builtin の
+  `usecase` 等）の種別は `border-color` で swatch を描く。図の上でその種別を
+  識別しているのが境界線だから。
 - ターゲットが少なくとも 1 つの実ノードに付いているが painting rule を持たない
   `ref` は、**中立的なフォールバック swatch** で描画される。これにより
   `[human]` / `[ai]` のような意味的アノテーション / タグも凡例に表示される。
@@ -1424,6 +1430,8 @@ legend domain "データアクセス" {
   warning panel に `legend-ref-unresolved` が表示される。
 - `.class` セレクタはパーサーが受け付けるが、`.krs.style` にクラス概念が
   ないため現状は常に未解決扱い（[`style.ja.md`](style.ja.md) 参照）。
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — swatch とそれが指すノードは 1 つの見た目なので、順序を各面で導かずカスケード実装 1 本を共有する（Issue #2445）。
 
 ### ラベルは i18n しない
 

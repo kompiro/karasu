@@ -1,5 +1,5 @@
-// The node card's top-right corner lane (#2420, design doc
-// docs/design/node-chrome-and-ports.md H-1).
+// The node card's top-right corner lane (#2420, ADR-2366 — the H-1 half of the
+// node chrome design).
 //
 // Everything that wants the top-right corner — the info button, the deploy
 // button, and the annotation chip — is a resident of ONE right-packed lane:
@@ -18,7 +18,7 @@
 import type { LayoutNode, Rect } from "./layout-types.js";
 import { CHAR_WIDTH, estimateTextWidth } from "./rendering-constants.js";
 import { contrastRatio } from "./contrast.js";
-import { el, escapeXml, truncateToWidth } from "./svg-builder.js";
+import { DY_CENTER, el, escapeXml, truncateToWidth } from "./svg-builder.js";
 
 /** Distance from the card's top and right edges to the lane. */
 export const LANE_MARGIN = 8;
@@ -280,7 +280,7 @@ export function renderChip(chip: ChipBox): string[] {
           x: cursor + CHIP_GLYPH_WIDTH / 2,
           y: midY,
           "text-anchor": "middle",
-          "dominant-baseline": "central",
+          dy: DY_CENTER,
           fill: chip.ink,
           "font-size": `${CHIP_FONT_SIZE}px`,
         },
@@ -296,7 +296,7 @@ export function renderChip(chip: ChipBox): string[] {
         {
           x: cursor,
           y: midY,
-          "dominant-baseline": "central",
+          dy: DY_CENTER,
           fill: chip.ink,
           "font-size": `${CHIP_FONT_SIZE}px`,
           "font-weight": "bold",
@@ -332,7 +332,7 @@ export function renderGhostChip(box: Rect, color: string): string[] {
         x: box.x + box.width / 2,
         y: box.y + box.height / 2,
         "text-anchor": "middle",
-        "dominant-baseline": "central",
+        dy: DY_CENTER,
         fill: color,
         "font-size": `${CHIP_FONT_SIZE}px`,
       },
