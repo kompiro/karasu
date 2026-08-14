@@ -13,8 +13,8 @@ import { useTranslation } from "../i18n/index.js";
 import { availableGroupByAxes, isGroupByMode } from "./preview-group-by.js";
 
 /**
- * The controls that change the drawn diagram, floating over the diagram they
- * change (#2317).
+ * The controls that change the drawn diagram, sharing the drill path's row
+ * directly above the diagram (#2317).
  *
  * The split with `PreviewToolbar` follows one rule: **a control that changes
  * the diagram lives here, a control that takes the diagram elsewhere lives in
@@ -23,11 +23,12 @@ import { availableGroupByAxes, isGroupByMode } from "./preview-group-by.js";
  * locale. Show All Layers is on this side despite reading like an export: it
  * swaps the diagram being drawn.
  *
- * Every control here is conditional on the model or the active view, so a bare
- * model shows a short bar and a rich one a full bar; the bar wraps to a second
- * row rather than spilling out of the column (see `.preview-canvas-controls`).
+ * These sit in the breadcrumb's row rather than floating over the diagram:
+ * a floating bar covered the top-left of the drawing and intercepted clicks
+ * meant for the node under it (TPL-948). The row already existed and its right
+ * half was empty, so this placement costs no extra height.
  */
-export function PreviewCanvasControls({
+export function PreviewViewControls({
   onOpenFacetOverview,
 }: {
   /** Opens the facet audit panel — its state belongs to `PreviewColumn`. */
@@ -51,7 +52,7 @@ export function PreviewCanvasControls({
   const allLayersAvailable = activeView !== "deploy" && !!view.allLayersSvg;
 
   return (
-    <div className="preview-canvas-controls">
+    <div className="preview-view-controls">
       <Button
         variant="actionable"
         aria-pressed={displayMode === "icon"}

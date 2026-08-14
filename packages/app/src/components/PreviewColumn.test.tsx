@@ -1003,7 +1003,7 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
 
   /**
    * The controls live on two surfaces since #2317 — the toolbar strip and the
-   * canvas control bar — so the scan covers both. Anything that renders on
+   * drill path's row — so the scan covers both. Anything that renders on
    * either one is in scope; a control that moves between them must not slip
    * out of this guard on the way.
    */
@@ -1015,7 +1015,7 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
       "ja",
     );
     const surfaces = Array.from(
-      container.querySelectorAll(".preview-toolbar, .preview-canvas-controls"),
+      container.querySelectorAll(".preview-toolbar, .preview-view-controls"),
     );
     expect(surfaces.length).toBe(2);
     return {

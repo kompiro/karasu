@@ -23,7 +23,6 @@
    * Local intra-component stacking contexts (e.g. a sticky table header)
    * keep a literal `z-index: 1` — they are not part of this scale. */
   --z-handle: 50; /* split / sidebar drag handles */
-  --z-canvas-controls: 60; /* the preview's control bar, floating over the diagram */
   --z-dropdown: 100; /* inline toolbar dropdown menu (export mode) */
   --z-panel: 200; /* slide-in side panels (Reference panel) */
   --z-context-menu: 1000; /* canvas right-click context menus */

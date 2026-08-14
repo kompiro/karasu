@@ -15,7 +15,7 @@ import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
 import { FacetOverviewPanel } from "./FacetOverviewPanel.js";
 import { PreviewToolbar } from "./PreviewToolbar.js";
-import { PreviewCanvasControls } from "./PreviewCanvasControls.js";
+import { PreviewViewControls } from "./PreviewViewControls.js";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
@@ -59,20 +59,16 @@ export function PreviewColumn() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [facetOverviewOpen, setFacetOverviewOpen] = useState(false);
   // Surfaces that float over the diagram cannot use a constant offset: the
-  // toolbar's height depends on locale and width. Publish both its height and
-  // its bottom edge — the bottom edge is what a surface positioned *below* the
-  // toolbar needs, since the diagram tab bar sits between the column's top and
-  // the toolbar and the height alone leaves that out.
+  // toolbar's height depends on locale and width. Publish the measured height
+  // and let CSS position against it.
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const toolbar = toolbarRef.current;
     if (!toolbar) return;
     const publish = () => {
-      const height = Math.round(toolbar.getBoundingClientRect().height);
-      toolbar.parentElement?.style.setProperty("--preview-toolbar-h", `${height}px`);
       toolbar.parentElement?.style.setProperty(
-        "--preview-toolbar-bottom",
-        `${Math.round(toolbar.offsetTop + height)}px`,
+        "--preview-toolbar-h",
+        `${Math.round(toolbar.getBoundingClientRect().height)}px`,
       );
     };
     publish();
@@ -232,7 +228,6 @@ export function PreviewColumn() {
           onShare={handleShare}
         />
       </div>
-      <PreviewCanvasControls onOpenFacetOverview={() => setFacetOverviewOpen(true)} />
       {facetOverviewOpen && (view.facetOverview?.length ?? 0) > 0 && (
         <FacetOverviewPanel
           facets={view.facetOverview ?? []}
@@ -253,15 +248,26 @@ export function PreviewColumn() {
           </Button>
         </div>
       )}
-      {activeView === "system" && !showAllLayersIframe && (
-        <BreadcrumbBar
-          items={systemView.breadcrumbItems}
-          onNavigate={systemView.onBreadcrumbNavigate}
-        />
-      )}
-      {activeView === "org" && !showOrgTreeView && (
-        <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
-      )}
+      {/* The drill path and the controls that change the diagram share one
+          row. Floating the controls over the diagram was the first cut; they
+          then covered the top-left of the drawing and swallowed clicks meant
+          for the node beneath them (TPL-948). This row already existed, and
+          its right half was empty. */}
+      <div className="preview-context-row">
+        {activeView === "system" && !showAllLayersIframe && (
+          <BreadcrumbBar
+            items={systemView.breadcrumbItems}
+            onNavigate={systemView.onBreadcrumbNavigate}
+          />
+        )}
+        {activeView === "org" && !showOrgTreeView && (
+          <BreadcrumbBar
+            items={orgView.breadcrumbItems}
+            onNavigate={orgView.onBreadcrumbNavigate}
+          />
+        )}
+        <PreviewViewControls onOpenFacetOverview={() => setFacetOverviewOpen(true)} />
+      </div>
       {showEntityView ? (
         <div
           className="preview-pane preview-pane--entity"

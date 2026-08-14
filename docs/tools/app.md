@@ -114,12 +114,12 @@ so a typo never blanks your screen.
 ### The preview's two control surfaces
 
 The preview's controls sit on two surfaces, split by what they do: a control
-that **changes the drawn diagram** lives on the **canvas control bar**, floating
-over the diagram itself; a control that **takes the diagram elsewhere** lives in
-the **toolbar** along the top. Keeping both families in the toolbar made it wrap
-to a second row at ordinary window widths.
+that **changes the drawn diagram** sits in the **drill-path row** directly above
+the diagram; a control that **takes the diagram elsewhere** lives in the
+**toolbar** along the top. Keeping both families in the toolbar made it wrap to
+a second row at ordinary window widths.
 
-#### Canvas control bar — what changes the diagram
+#### Drill-path row — what changes the diagram
 
 - **Icon mode** — toggle between service icons and plain shapes.
 - **Group by** (System view, when the model has an `organization` block) —
@@ -156,8 +156,7 @@ to a second row at ordinary window widths.
 - **Tree View** (Org view) — swap the org grid for its tree rendering.
 - **Show All Layers** — render every drill-down level stacked together.
 
-On a narrow window the bar wraps to a second row rather than overflowing the
-preview column.
+On a narrow window these wrap below the drill path rather than squeezing it.
 
 #### Toolbar — what takes the diagram elsewhere
 

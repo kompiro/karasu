@@ -12,12 +12,13 @@ import { LocaleProvider } from "../i18n/index.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // The preview's controls live on two surfaces since #2317: the toolbar strip
-// keeps what takes the diagram elsewhere, and this bar — floating over the
-// canvas — keeps what changes the diagram. The split is what stops the toolbar
-// wrapping to a second row, so what is fenced here is the split itself: which
-// control is on which surface, that moving them kept their a11y contract
-// (TPL-1399) and both toggle states (TPL-1402), and that the bar cannot spill
-// out of a narrow column or float at an arbitrary stacking order (TPL-1468).
+// keeps what takes the diagram elsewhere, and the drill path's row keeps what
+// changes the diagram. The split is what stops the toolbar wrapping to a second
+// row, so what is fenced here is the split itself: which control is on which
+// surface, that moving them kept their a11y contract (TPL-1399) and both toggle
+// states (TPL-1402), and that the controls share the breadcrumb's row rather
+// than floating over the diagram, where they intercepted clicks meant for the
+// node beneath them (TPL-948).
 
 afterEach(cleanup);
 
@@ -92,8 +93,9 @@ function renderPreview(
     </PreviewProvider>,
   );
   return {
-    bar: container.querySelector(".preview-canvas-controls") as HTMLElement,
+    bar: container.querySelector(".preview-view-controls") as HTMLElement,
     toolbar: container.querySelector(".preview-toolbar") as HTMLElement,
+    row: container.querySelector(".preview-context-row") as HTMLElement,
   };
 }
 
@@ -103,7 +105,7 @@ function styleRule(file: string, selector: string): string {
   return rule.slice(0, rule.indexOf("}"));
 }
 
-describe("PreviewCanvasControls — which surface a control lives on", () => {
+describe("PreviewViewControls — which surface a control lives on", () => {
   it("keeps the controls that change the diagram on the canvas bar", () => {
     const { bar } = renderPreview({ hasEntityView: true } as Partial<PreviewContextValue>, {
       anyCollapsible: true,
@@ -141,7 +143,7 @@ describe("PreviewCanvasControls — which surface a control lives on", () => {
   });
 });
 
-describe("PreviewCanvasControls — contracts the move must not drop", () => {
+describe("PreviewViewControls — contracts the move must not drop", () => {
   it("keeps aria-pressed on the toggles it carries, in both states (TPL-1399, TPL-1402)", () => {
     const off = renderPreview();
     const iconMode = off.bar.querySelector('[aria-label="Toggle icon mode"]');
@@ -175,36 +177,30 @@ describe("PreviewCanvasControls — contracts the move must not drop", () => {
   });
 });
 
-describe("PreviewCanvasControls — how it floats", () => {
-  it("anchors below the toolbar's bottom edge, not its height", () => {
-    // The height alone leaves out the diagram tab bar above the toolbar, which
-    // is how the facet overview panel came to overlap the toolbar (#2492).
-    const rule = styleRule("components/preview.css", ".preview-canvas-controls");
-    expect(rule).toContain("var(--preview-toolbar-bottom");
+describe("PreviewViewControls — where the row puts them", () => {
+  it("shares the drill path's row instead of floating over the diagram", () => {
+    // A floating bar covered the diagram's top-left corner and intercepted
+    // clicks meant for the node under it — caught by AT-1513's e2e run, which
+    // could no longer click the `ECommerce` node (TPL-948).
+    const { row, bar } = renderPreview();
+    expect(row).not.toBeNull();
+    expect(row.contains(bar)).toBe(true);
+    expect(row.querySelector(".breadcrumb")).not.toBeNull();
+    const rule = styleRule("components/preview.css", ".preview-context-row");
+    expect(rule).not.toContain("position: absolute");
   });
 
-  it("takes its stacking order from the documented scale (TPL-1468)", () => {
-    const rule = styleRule("components/preview.css", ".preview-canvas-controls");
-    const zIndex = rule.match(/z-index:\s*var\((--[\w-]+)\)/);
-    expect(zIndex).not.toBeNull();
-    const tokens = readFileSync(resolve(__dirname, "../styles/tokens.css"), "utf8");
-    expect(tokens).toContain(`${zIndex![1]}:`);
-  });
-
-  it("wraps inside the column instead of spilling out of it on a narrow window", () => {
-    // Measured on the spike: without these the absolutely positioned bar keeps
-    // its natural width (549px for the system view in ja), overflows a 512px
-    // column and stacks the Group-by label one character per line.
-    const rule = styleRule("components/preview.css", ".preview-canvas-controls");
+  it("wraps within the row rather than squeezing the drill path", () => {
+    const rule = styleRule("components/preview.css", ".preview-context-row");
     expect(rule).toContain("flex-wrap: wrap");
-    expect(rule).toContain("max-width: calc(100% - 24px)");
   });
 
-  it("is opaque, so the diagram cannot show through its labels", () => {
-    const rule = styleRule("components/preview.css", ".preview-canvas-controls");
-    const background = rule.match(/background:\s*var\((--[\w-]+)\)/);
-    expect(background).not.toBeNull();
-    const themes = readFileSync(resolve(__dirname, "../styles/themes.css"), "utf8");
-    expect(themes).toContain(`${background![1]}:`);
+  it("keeps the controls at the right edge with or without a breadcrumb", () => {
+    // The deploy view has no breadcrumb; the controls must not slide left.
+    const rule = styleRule("components/preview.css", ".preview-view-controls");
+    expect(rule).toContain("margin-left: auto");
+    const { bar, row } = renderPreview({ activeView: "deploy" } as Partial<PreviewContextValue>);
+    expect(row.contains(bar)).toBe(true);
+    expect(row.querySelector(".breadcrumb")).toBeNull();
   });
 });
