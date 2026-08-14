@@ -513,8 +513,10 @@
   border-radius: var(--radius-xs);
   font-size: 10px;
   font-family: var(--font-mono);
-  /* Not `--text-on-accent`: the background here is the badge color from
-     reference-data, not `--accent`, and it does not follow the theme (#2461). */
+  /* Not `--text-on-accent`: the background here is the badge color for the
+     active theme, supplied inline from reference-data, not `--accent`
+     (#2461, #2482). Both are themed, so both tokens flip — the dark ink
+     measures 3.97:1 on the light `@deprecated` badge. */
   color: var(--badge-preview-text);
   white-space: nowrap;
 }
