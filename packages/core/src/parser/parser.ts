@@ -1928,7 +1928,7 @@ export class Parser {
   private parseOrganizationBlock(): OrganizationBlock {
     const start = this.advance(); // organization
     const idToken = this.parseIdOrString("organization");
-    let label = this.parseDeprecatedPositionalLabel("organization");
+    let label = this.parseRetiredPositionalLabel("organization");
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties = { links: [] };
@@ -1979,21 +1979,20 @@ export class Parser {
   }
 
   /**
-   * Accept-and-warn path for the positional `<kw> <id> "<label>"` form on
-   * organization / team / member (#2133). ADR-19 made `label` a property; these
-   * constructs kept the positional read as undocumented leniency, so shipped
-   * files may rely on it — the value still lands in the AST (and `karasu fmt`
-   * canonicalizes it to the property form), but a deprecation warning marks the
-   * form for removal.
+   * The positional `<kw> <id> "<label>"` form on organization / team / member.
+   * ADR-19 made `label` a property; these constructs kept the positional read as
+   * undocumented leniency, deprecated in #2133 and removed in #2208.
+   *
+   * Unlike boundary / facet below, the value is **kept**: erroring and degrading
+   * the drawing are separate decisions, and `karasu fmt` can no longer rewrite
+   * the form once it errors (`format()` refuses a source with error
+   * diagnostics), so dropping it would blank the org chart — and `karasu
+   * subtree`, which serializes the parsed AST with no diagnostic gate — until
+   * the author edits by hand.
    */
-  private parseDeprecatedPositionalLabel(construct: string): string | undefined {
+  private parseRetiredPositionalLabel(construct: string): string | undefined {
     if (this.peek().type !== TokenType.StringLiteral) return undefined;
-    this.diagnostics.push({
-      severity: "warning",
-      code: "positional-label-deprecated",
-      params: { construct },
-      loc: this.range(this.peek().loc),
-    });
+    this.error("positional-label-removed", { construct });
     return this.advance().value;
   }
 
@@ -2196,7 +2195,7 @@ export class Parser {
   private parseTeamBlock(): TeamNode {
     const start = this.advance(); // team
     const idToken = this.parseIdOrString("team");
-    let label = this.parseDeprecatedPositionalLabel("team");
+    let label = this.parseRetiredPositionalLabel("team");
     const { names: annotations, params: annotationParams } = this.parseAnnotations();
     this.expect(TokenType.LeftBrace);
 
@@ -2261,7 +2260,7 @@ export class Parser {
   private parseMemberBlock(): MemberNode {
     const start = this.advance(); // member
     const idToken = this.parseIdOrString("member");
-    let label = this.parseDeprecatedPositionalLabel("member");
+    let label = this.parseRetiredPositionalLabel("member");
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties & { slack?: string; github?: string } = { links: [] };

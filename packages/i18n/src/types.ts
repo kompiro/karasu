@@ -524,7 +524,6 @@ export type Translations = {
   "diagnostic.duplicateBoundaryId.message": (params: { boundaryId: string }) => string;
   "diagnostic.duplicateFacetId.message": (params: { facetId: string }) => string;
   "diagnostic.positionalLabelRemoved.message": (params: { construct: string }) => string;
-  "diagnostic.positionalLabelDeprecated.message": (params: { construct: string }) => string;
   "diagnostic.duplicateTeamId.message": (params: { teamId: string }) => string;
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
   "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;

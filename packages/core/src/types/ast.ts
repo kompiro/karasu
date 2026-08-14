@@ -851,12 +851,13 @@ export interface DiagnosticParamsByCode {
   // say which declaration's metadata it means (#2065 Part B). Evaluated on the
   // merged model, so a duplicate split across two files is caught too.
   "duplicate-facet-id": { facetId: string };
-  // ADR-19 conformance (#2133): the positional `<kw> <id> "<label>"` form.
-  // Removed outright on `boundary` (experimental, no compat promise) …
+  // ADR-19 conformance: the positional `<kw> <id> "<label>"` form, removed on
+  // every construct that once accepted it — `boundary` / `facet` outright
+  // (experimental, no compat promise; #2133) and organization / team / member
+  // after a deprecation window that no release ever shipped (#2208). The two
+  // differ in recovery only: boundary / facet discard the string, the org
+  // constructs keep it as the label.
   "positional-label-removed": { construct: string };
-  // … and deprecated-but-accepted on organization / team / member (v1.0
-  // constructs; the form was never in the spec, but shipped builds parsed it).
-  "positional-label-deprecated": { construct: string };
   "contains-target-not-found": { memberId: string };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };

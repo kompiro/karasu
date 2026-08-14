@@ -1386,9 +1386,9 @@ organization Corp {
     expect(member?.label).toBe("Alice Smith");
   });
 
-  // ─── Positional label form retirement (#2133, ADR-19) ─────────────────────
+  // ─── Positional label form retirement (#2133, #2208, ADR-19) ──────────────
 
-  it("positional label on organization / team / member still parses but warns", () => {
+  it("positional label on organization / team / member is a parse error", () => {
     const result = Parser.parse(`
 organization Corp "Corp Label" {
   team backend "Backend Team" {
@@ -1396,21 +1396,33 @@ organization Corp "Corp Label" {
   }
 }
     `);
-    const warnings = result.diagnostics.filter((d) => d.code === "positional-label-deprecated");
-    expect(warnings.map((w) => (w.params as { construct: string }).construct)).toEqual([
+    const errors = result.diagnostics.filter((d) => d.code === "positional-label-removed");
+    expect(errors.map((e) => (e.params as { construct: string }).construct)).toEqual([
       "organization",
       "team",
       "member",
     ]);
-    expect(warnings.every((w) => w.severity === "warning")).toBe(true);
-    // Compatibility: the value still lands in the AST.
+    expect(errors.every((e) => e.severity === "error")).toBe(true);
+  });
+
+  it("keeps the retired positional label as the label so the drawing survives", () => {
+    // Unlike boundary / facet, which discard the string: `karasu fmt` refuses a
+    // source with error diagnostics, so dropping the value here would blank the
+    // org chart until the author edits by hand (#2208).
+    const result = Parser.parse(`
+organization Corp "Corp Label" {
+  team backend "Backend Team" {
+    member alice "Alice Smith" {}
+  }
+}
+    `);
     const org = result.value.organizations[0];
     expect(org.label).toBe("Corp Label");
     expect(org.teams[0].label).toBe("Backend Team");
     expect(org.teams[0].children.find((c) => c.kind === "member")?.label).toBe("Alice Smith");
   });
 
-  it("label property overrides a deprecated positional label", () => {
+  it("label property overrides a retired positional label", () => {
     const result = Parser.parse(`
 organization Corp {
   team backend "Positional" {
@@ -1418,7 +1430,7 @@ organization Corp {
   }
 }
     `);
-    expect(result.diagnostics.map((d) => d.code)).toEqual(["positional-label-deprecated"]);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["positional-label-removed"]);
     expect(result.value.organizations[0].teams[0].label).toBe("Property");
   });
 

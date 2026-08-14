@@ -27,7 +27,7 @@ import {
  *
  * | Fence            | Claim                                    | Guard              |
  * |------------------|------------------------------------------|--------------------|
- * | ```krs           | a complete, currently-valid model        | must parse clean   |
+ * | ```krs           | a complete, currently-valid model        | must parse clean — no error, and no deprecation-class warning |
  * | ```krs fragment  | an excerpt — not a whole file            | not parsed         |
  * | ```krs invalid   | deliberately bad input (demos a diagnostic) | must still error |
  *
@@ -51,6 +51,8 @@ import {
 export type KrsFenceFindingKind =
   /** ```krs that no longer parses — the drift this guard exists for. */
   | "krs-fence-parse-error"
+  /** ```krs that parses, but only by way of a form on its way out. */
+  | "krs-fence-deprecated-form"
   /** ```krs invalid that now parses clean — the example stopped illustrating. */
   | "krs-fence-unexpectedly-valid"
   /** ```krs <something-else> — unknown marker, so the claim is unreadable. */
@@ -172,6 +174,31 @@ function parseErrorCodes(krs: string): string[] {
   return [...new Set(codes)];
 }
 
+/**
+ * Codes of the deprecation class: a form the grammar still accepts and is on
+ * its way to rejecting. Checking errors alone let a document keep teaching such
+ * a form until the removal release turned it into a parse error all at once —
+ * `docs/acceptance/0007-organization-diagram.md` taught the positional label
+ * for the whole window between #2133 and #2208.
+ *
+ * The class is read off the code's shape rather than a hand-kept list, so the
+ * next deprecation is covered the day it is emitted (TPL-1720: a private list
+ * silently stops recognizing whatever was added last). Exported so the unit
+ * test can exercise it with synthesized diagnostics — the corpus emits none of
+ * these today, which is exactly why the guard could be turned on for free.
+ */
+export function deprecationCodesIn(diagnostics: readonly { severity: string; code: string }[]) {
+  const codes = diagnostics
+    .filter((d) => d.severity === "warning" && d.code.endsWith("-deprecated"))
+    .map((d) => d.code);
+  return [...new Set(codes)];
+}
+
+/** Deprecation-class codes a snippet triggers, deduplicated in first-seen order. */
+function parseDeprecationCodes(krs: string): string[] {
+  return deprecationCodesIn(Parser.parse(krs).diagnostics);
+}
+
 /** True when a bare fence's body declares a node with a concrete id, or draws an edge. */
 function looksLikeKrs(body: string): boolean {
   return body
@@ -229,6 +256,16 @@ export function analyzeKrsFencesIn(file: string, content: string): KrsFenceFindi
         file,
         line: fence.line,
         detail: codes.join(", "),
+      });
+      continue;
+    }
+    const deprecated = parseDeprecationCodes(fence.body);
+    if (deprecated.length > 0) {
+      findings.push({
+        kind: "krs-fence-deprecated-form",
+        file,
+        line: fence.line,
+        detail: deprecated.join(", "),
       });
     }
   }
@@ -300,6 +337,8 @@ export function describeKrsFenceFinding(f: KrsFenceFinding): string {
   switch (f.kind) {
     case "krs-fence-parse-error":
       return `${f.file}:${f.line} — \`\`\`krs block does not parse: ${f.detail}`;
+    case "krs-fence-deprecated-form":
+      return `${f.file}:${f.line} — \`\`\`krs block teaches a deprecated form: ${f.detail}`;
     case "krs-fence-unexpectedly-valid":
     case "krs-fence-unknown-marker":
     case "krs-fence-untagged":

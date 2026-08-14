@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import {
   analyzeKrsFences,
   analyzeKrsFencesIn,
+  deprecationCodesIn,
   measureKrsFenceCoverage,
   DECLARATION_KEYWORDS,
   DEFAULT_DOC_ROOTS,
@@ -243,6 +244,40 @@ describe("analyzeKrsFences over the real corpus", () => {
 
   it("returns nothing when a configured root does not exist", () => {
     expect(analyzeKrsFences(REPO_ROOT, ["docs/no-such-dir"])).toEqual([]);
+  });
+});
+
+// The corpus emits no deprecation-class diagnostic today (#2208 retired the
+// last one), so the classifier is exercised with synthesized diagnostics rather
+// than through a snippet — otherwise this guard would go untested until the
+// next deprecation ships, which is when it has to already work.
+describe("deprecationCodesIn", () => {
+  it("picks deprecation-class warnings and drops duplicates", () => {
+    expect(
+      deprecationCodesIn([
+        { severity: "warning", code: "some-form-deprecated" },
+        { severity: "warning", code: "some-form-deprecated" },
+        { severity: "warning", code: "owns-target-not-found" },
+      ]),
+    ).toEqual(["some-form-deprecated"]);
+  });
+
+  it("ignores errors and infos, which the error path and the reader already cover", () => {
+    expect(
+      deprecationCodesIn([
+        { severity: "error", code: "positional-label-removed" },
+        { severity: "info", code: "some-form-deprecated" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("reports nothing for the current corpus", () => {
+    // Turning the check on was free precisely because this is empty; if a new
+    // deprecation lands, the fences teaching it fail here rather than at its
+    // removal release.
+    expect(
+      analyzeKrsFences(REPO_ROOT).filter((f) => f.kind === "krs-fence-deprecated-form"),
+    ).toEqual([]);
   });
 });
 

@@ -58,5 +58,19 @@ describe("diagnostics catalog completeness (TPL-1623)", () => {
       const missing = [...new Set([...codes, ...kinds])].filter((c) => !documented.has(c)).sort();
       expect(missing).toEqual([]);
     });
+
+    // The other direction of TPL-1623's "双方向完全性", which the check above
+    // does not give: retiring a code left its catalog row behind, still telling
+    // readers about a diagnostic nothing emits (#2208 removed
+    // `positional-label-deprecated`). Rows are read from the first column of a
+    // table rather than from every backtick, so prose naming a keyword or a
+    // property is not mistaken for a code.
+    it(`names no retired code in ${catalog}`, () => {
+      const rows = [...read(catalog).matchAll(/^\|\s*`([a-z][a-z0-9-]+)`\s*\|/gm)].map((m) => m[1]);
+      expect(rows.length).toBeGreaterThan(40);
+      const emitted = new Set([...codes, ...kinds]);
+      const retired = [...new Set(rows)].filter((c) => !emitted.has(c)).sort();
+      expect(retired).toEqual([]);
+    });
   }
 });
