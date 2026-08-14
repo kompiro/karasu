@@ -12,6 +12,7 @@ known_consumers:
   - resolver-warnings
 discovered_from:
   - issue: "#2075"
+  - issue: "#2223"
   - root_cause_file: "packages/core/src/view/view-extract.ts:972"
 related_to:
   - TPL-1503
@@ -78,14 +79,24 @@ silent drop はとくに view 抽出側の filter で生まれる。
 - 「endpoint が存在しない」（`unresolved-edge-endpoint`）と「存在するがこのスコープでは
   描けない」（`edge-endpoint-not-at-scope`）を別コードに分け、前者を skip 条件に
   入れて二重報告を避ける
-- peer 集合は**ノード実体ではなく id で union** して求める（同 id ブロックの再オープンが
-  ある言語では、実体単位の比較が false positive を生む）
+- peer 集合は**ノードインスタンス単位**で数える（id で union すると、同一ファイル内の
+  同 id ブロックや 2 service に分散した同 id domain のように、renderer が実際には
+  描画しない配置を「描ける」と見なして false negative になる — 決定と実測は
+  [ADR-2075](../adr/2075-edge-endpoint-scope-diagnostic.md)）
+- 宣言スコープに描画先が無いと判明したら、**診断を足す前に「そのスコープが正準形か」を
+  問う**。正準形（spec がその置き場所を推奨している綴り）なら描画側を直す方が筋がよい
+  — #2223 の service-anchored edge は、起点スコープ規則が求める形そのものだった
 
 ## 派生元 spec
 
 - `docs/spec/syntax.md` § Edge declaration — Endpoint scope
+- `docs/spec/syntax.md` § Edge declaration — Edges inside a service block
 - `docs/spec/diagnostics.md` § Declaration, edge placement & structure
 
 ## 関連テスト
 
-未確立（本 Design Doc の実装 PR で `packages/core/src/resolver/warnings.test.ts` に追加予定）。
+- `packages/core/src/view/anchored-edge-render-or-warn.test.ts` — 配置ごとに
+  「どこかの view に描画される」か「報告される」かのちょうど一方が成り立つことを表で縛る
+  （view 側の filter と診断側の判定式を同時に見る唯一のテスト）
+- `packages/core/src/resolver/warnings.test.ts` › `edge-endpoint-not-at-scope warning`
+- `packages/core/src/view/view-extract.test.ts` › `service-anchored edges (#2223)`

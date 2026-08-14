@@ -19,6 +19,7 @@ import {
 } from "./group-layout.js";
 import { collapseGroups } from "./group-collapse.js";
 import { groupLabelsFor, type GroupLabelIndex } from "./group-labels.js";
+import { withChildAnchoredEdges } from "../view/view-extract.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -2332,7 +2333,12 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // fold collapsed teams to `<Team> (N)` stubs, then band nodes by team via
     // `assignGroupedLayers`. Gated on group-by so ungrouped output is unchanged.
     let workNodes = rawNodes;
-    let workEdges: KrsEdge[] = sys.edges;
+    // This path lays each system out from its own edges rather than from
+    // `viewSlice.childEdges`, so it lifts the child-anchored ones itself —
+    // otherwise `service S1 { S1 -> S2 }` survives extraction and is dropped
+    // here, on the multi-system and `__unassigned__` roots (#2223).
+    const sysEdges = withChildAnchoredEdges(sys);
+    let workEdges: KrsEdge[] = sysEdges;
     let groupedLayers: Map<string, number> | null = null;
     let groupBandsS: Map<string, GroupBand> | null = null;
     let groupOrderS: string[] = [];
@@ -2355,7 +2361,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
       const collapsed = collapseAndAssignGroupLayers(
         rawNodes,
-        sys.edges,
+        sysEdges,
         systemGroupIndex,
         collapsedGroups,
         edgeDiffState,
@@ -2621,7 +2627,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
           new Set([sys.id]),
           allLayoutNodes,
           allContainers,
-          sys.edges,
+          sysEdges,
           layoutHints,
         );
 

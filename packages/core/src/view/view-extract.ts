@@ -435,6 +435,72 @@ function nodeId(node: KrsNode): string {
 }
 
 /**
+ * Identity of a drawn edge: the endpoint pair **and** the arrow kind, so a
+ * sync and an async edge between the same pair stay two edges. Suppression of
+ * *derived* edges keys on the bare pair instead — see `explicitKeys`.
+ */
+function drawnEdgeKey(edge: KrsEdge): string {
+  return `${edge.from}-${edge.kind}->${edge.to}`;
+}
+
+/**
+ * Child-anchored edges (#2223). An edge declared inside a `service` / `domain`
+ * block originates from that block (spec § Edge origin scope), so the canvas
+ * that can draw it is the **parent's** — the one where the declaring block
+ * itself is a node. Collecting them here is what gives `service S1 { S1 -> S2 }`
+ * a rendering path at all; without it the edge sits on `S1.edges`, is only ever
+ * consulted while drawing S1's own canvas, and can never satisfy that canvas's
+ * "both endpoints are children of S1" filter.
+ *
+ * The peer set is the drawn siblings' ids, which is exactly the `peersOf` set
+ * `detectEdgeEndpointsNotAtScope` uses (`resolver/warnings.ts`) — the two are
+ * the front and back of one rule, so an edge is drawn here or reported there
+ * and never both/neither (TPL-2075).
+ *
+ * `entity` children are excluded: their relations render in the (separate)
+ * entity view via {@link extractEntityView}, and the entities themselves are
+ * filtered out of this canvas's nodes.
+ *
+ * `drawnKeys` is read **and extended**, so callers can chain this after the
+ * container's own edges and let those win on a duplicate spelling.
+ */
+function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): KrsEdge[] {
+  const renderable = children.filter((c) => c.kind !== "entity");
+  const peerIds = new Set(renderable.map(nodeId));
+  const anchored: KrsEdge[] = [];
+  for (const child of renderable) {
+    for (const edge of child.edges) {
+      if (!peerIds.has(edge.from) || !peerIds.has(edge.to)) continue;
+      const key = drawnEdgeKey(edge);
+      if (drawnKeys.has(key)) continue;
+      anchored.push(edge);
+      drawnKeys.add(key);
+    }
+  }
+  return anchored;
+}
+
+/**
+ * A system's edges plus every edge anchored inside one of its child blocks
+ * (#2223) — `service S { S -> Other.Svc }` is the service-scope spelling of
+ * `system T { S -> Other.Svc }`, so it must feed the same system-scope
+ * machinery: ghost systems, caller ghost systems, cross-system edges and
+ * ghost users. Anchored edges are self-sourced by the origin-scope rule, so
+ * only those are lifted.
+ *
+ * Exported for `renderer/layout.ts`: the multi-system / `__unassigned__` root
+ * lays each system out from `sys.edges` rather than from `ViewSlice.childEdges`,
+ * so it has to lift the anchored ones itself or the edge is dropped again
+ * between extraction and layout.
+ */
+export function withChildAnchoredEdges(system: KrsNode): KrsEdge[] {
+  const anchored = system.children.flatMap((child) =>
+    child.edges.filter((e) => e.from === nodeId(child)),
+  );
+  return anchored.length > 0 ? [...system.edges, ...anchored] : system.edges;
+}
+
+/**
  * Build an empty {@link ViewSlice}. Callers that already resolved the
  * model-level resource maps pass them in; the rest default to empty maps.
  * Single-sources the empty-slice shape shared by {@link extractView} and
@@ -565,7 +631,8 @@ function buildCallerGhostSystems(
 
   for (const sys of allSystems) {
     if (sys.id === containerSystemId) continue;
-    for (const edge of sys.edges) {
+    // Service-anchored edges count as callers too (#2223).
+    for (const edge of withChildAnchoredEdges(sys)) {
       if (edge.to !== qualifiedTarget) continue;
       const callerService = sys.children.find((c) => c.id === edge.from);
       if (!callerService) continue;
@@ -768,8 +835,11 @@ function synthesizeGhosts(
   systems: KrsNode[],
 ): GhostSynthesis {
   const containerId = nodeId(containerNode);
+  // Service-anchored edges behave as system-scope edges (#2223), so every
+  // system-scope lookup below reads them too.
+  const systemScopeEdges = withChildAnchoredEdges(system);
   const users = system.children.filter((c) => c.kind === "user");
-  const connectedEdges = system.edges.filter(
+  const connectedEdges = systemScopeEdges.filter(
     (e) =>
       (users.some((p) => nodeId(p) === e.from) && e.to === containerId) ||
       (users.some((p) => nodeId(p) === e.to) && e.from === containerId),
@@ -786,7 +856,9 @@ function synthesizeGhosts(
   const ghostUserEdges = connectedEdges;
 
   // Ghost systems: edges from this service to qualified targets in other known systems
-  const candidateEdges = system.edges.filter((e) => e.from === containerId && e.to.includes("."));
+  const candidateEdges = systemScopeEdges.filter(
+    (e) => e.from === containerId && e.to.includes("."),
+  );
   const ghostSystems = buildGhostSystems(candidateEdges, systems);
   // Only include edges that resolved to a known ghost system
   const resolvedSysIds = new Set(ghostSystems.map((gs) => gs.systemNode.id));
@@ -885,17 +957,22 @@ function extractOrphanView(orphans: KrsNode[], path: ViewPath, ctx: ViewExtractC
   if (orphans.length === 0) return empty;
 
   if (path.length === 0) {
+    // Orphans are drawn as siblings on one canvas, so an edge anchored inside
+    // one of them draws here (#2223) — the same treatment the `__unassigned__`
+    // pseudo-system gives them on the SVG path. Collected first so an anchored
+    // service edge suppresses the implicit one derived for the same pair.
+    const anchoredEdges = collectAnchoredPeerEdges(orphans, new Set());
     const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
       deriveImplicitServiceEdges(
         orphans.filter((c) => c.kind === "service"),
-        new Set(),
+        new Set(anchoredEdges.map((e) => `${e.from}->${e.to}`)),
       );
     const derivedEdges = deriveInfraEdges(orphans, entityResolver);
     const deliversEdges = deriveDeliversEdges(orphans);
     return {
       ...empty,
       childNodes: orphans,
-      childEdges: [...derivedEdges, ...implicitServiceEdges, ...deliversEdges],
+      childEdges: [...anchoredEdges, ...derivedEdges, ...implicitServiceEdges, ...deliversEdges],
       implicitEdgeDetails,
     };
   }
@@ -913,26 +990,11 @@ function extractOrphanView(orphans: KrsNode[], path: ViewPath, ctx: ViewExtractC
   }
   const container = chain.pop()!;
   const containerChildIds = new Set(container.children.map(nodeId));
-  let edges = container.edges.filter(
+  const ownEdges = container.edges.filter(
     (e) => containerChildIds.has(e.from) && containerChildIds.has(e.to),
   );
-  if (container.kind === "service") {
-    const domainIds = new Set(
-      container.children.filter((c) => c.kind === "domain").map((c) => c.id),
-    );
-    const existing = new Set(edges.map((e) => `${e.from}->${e.to}`));
-    for (const domain of container.children) {
-      if (domain.kind !== "domain") continue;
-      for (const edge of domain.edges) {
-        if (!domainIds.has(edge.from) || !domainIds.has(edge.to)) continue;
-        const key = `${edge.from}->${edge.to}`;
-        if (!existing.has(key)) {
-          edges = [...edges, edge];
-          existing.add(key);
-        }
-      }
-    }
-  }
+  const drawnKeys = new Set(ownEdges.map(drawnEdgeKey));
+  const edges = [...ownEdges, ...collectAnchoredPeerEdges(container.children, drawnKeys)];
   // Entities render only in the (separate) entity view — exclude them from the
   // domain / usecase drill-down so they neither appear as stray unstyled boxes
   // nor collide with an entity-resolved bare `resource` promoted below (which
@@ -969,9 +1031,19 @@ function extractRootSystemView(
   const system = systems[0];
   const allChildren = [...system.children, ...unassignedServices, ...unassignedDomains];
   const childIds = new Set(allChildren.map(nodeId));
-  const explicitEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+  const systemScopeEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
   const derivedEdges = deriveInfraEdges(allChildren, entityResolver);
-  // Merge derived edges, skipping any already covered by explicit edges
+  // Service-anchored edges (#2223) are explicit edges of this canvas too: the
+  // peer set is the system's own children, so a spliced-in orphan is not a
+  // peer of a service the way a declared sibling is.
+  const anchoredEdges = collectAnchoredPeerEdges(
+    system.children,
+    new Set(systemScopeEdges.map(drawnEdgeKey)),
+  );
+  const explicitEdges = [...systemScopeEdges, ...anchoredEdges];
+  // Merge derived edges, skipping any already covered by an explicit one. Keyed
+  // on the bare pair (not the arrow kind) because suppression asks "is this
+  // dependency already authored", which an anchored edge answers too.
   const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
 
   // In-place expansion (#1921): a service named in `expandedContainers` that
@@ -1011,7 +1083,7 @@ function extractRootSystemView(
 
   // Cross-system edges: collect from all systems where target is qualified
   const crossSystemEdges = systems.flatMap((sys) =>
-    sys.edges.filter((e) => {
+    withChildAnchoredEdges(sys).filter((e) => {
       if (!e.to.includes(".")) return false;
       const sysId = e.to.slice(0, e.to.indexOf("."));
       return systems.some((s) => s.id === sysId);
@@ -1072,30 +1144,14 @@ function extractSystemDrillDownView(
   // The last node in ancestorChain is the container; ancestors are everything before it
   const containerNode = ancestorChain.pop()!;
   const childIds = new Set(containerNode.children.map(nodeId));
-  let childEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+  const ownEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
 
-  // Service view: collect intra-service domain-to-domain edges from domain children.
-  // Domain edges where both endpoints are direct domain children of this service are
-  // surfaced here so they appear in the service drill-down diagram.
-  if (containerNode.kind === "service") {
-    const domainIds = new Set(
-      containerNode.children.filter((c) => c.kind === "domain").map((c) => c.id),
-    );
-    const intraDomainEdges: KrsEdge[] = [];
-    const existingEdgeKeys = new Set(childEdges.map((e) => `${e.from}->${e.to}`));
-    for (const domain of containerNode.children) {
-      if (domain.kind !== "domain") continue;
-      for (const edge of domain.edges) {
-        if (!domainIds.has(edge.from) || !domainIds.has(edge.to)) continue;
-        const key = `${edge.from}->${edge.to}`;
-        if (!existingEdgeKeys.has(key)) {
-          intraDomainEdges.push(edge);
-          existingEdgeKeys.add(key);
-        }
-      }
-    }
-    childEdges = [...childEdges, ...intraDomainEdges];
-  }
+  // Edges anchored inside a child block draw on this canvas, where the
+  // declaring block is a node: intra-service domain-to-domain edges on the
+  // service view, and service-anchored edges when this container is the
+  // system (#2223).
+  const drawnKeys = new Set(ownEdges.map(drawnEdgeKey));
+  const childEdges = [...ownEdges, ...collectAnchoredPeerEdges(containerNode.children, drawnKeys)];
 
   // Ghost users/systems/domains: only for service view.
   // With system ID in path: path.length - startIndex === 1 (e.g. ["ECPlatform", "ECommerce"]).

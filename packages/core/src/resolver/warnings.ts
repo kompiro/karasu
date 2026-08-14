@@ -13,6 +13,7 @@ import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
+import { synthesizeUnassignedSystem } from "../view/unassigned-system.js";
 import { buildEntityResolver } from "./resource-entity.js";
 import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { formatSelector } from "../style/serialize.js";
@@ -1729,6 +1730,15 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
   // reported like any other out-of-scope endpoint.
   const orphanDomainIds = new Set(file.domains.map((n) => n.id));
 
+  // A top-level block has no declaring parent, but it is not drawn alone: the
+  // renderer wraps every orphan into the `__unassigned__` pseudo-system, whose
+  // children are peers of one another on that frame — and `extractView` draws
+  // edges anchored between them (#2223). Reading the wrap set from its own
+  // builder keeps the two definitions of "orphan peer" from drifting apart.
+  const orphanPeerIds = new Set(
+    (synthesizeUnassignedSystem(file)?.children ?? []).map((c) => c.id),
+  );
+
   const peersOf = (container: KrsNode): Set<string> => {
     if (container.kind === "system") {
       return new Set([...container.children.map((c) => c.id), ...orphanDomainIds]);
@@ -1736,7 +1746,14 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
     const parent = parentOf.get(container);
     // The container's own id is the self-anchored source of every edge the
     // parser accepts inside a service / domain / entity block.
-    return new Set([container.id, ...(parent?.children ?? []).map((c) => c.id)]);
+    if (!parent) {
+      // A parentless block that the wrap itself skips (a top-level `client`)
+      // is drawn on no frame at all, so it has no peers to draw an edge to.
+      return orphanPeerIds.has(container.id)
+        ? new Set([container.id, ...orphanPeerIds])
+        : new Set([container.id]);
+    }
+    return new Set([container.id, ...parent.children.map((c) => c.id)]);
   };
 
   const check = (container: KrsNode): void => {
