@@ -199,7 +199,7 @@ service OrderService {
 
 - **`domain`** は DDD の Bounded Context に近い「関心事の境界」です。translate が生んだ素の `usecase` を、理解に沿って `domain` でグルーピングし直します。
 - **`resource`** は usecase が操作する対象（テーブル・外部 API・ファイル）。読みながら「この usecase は何を触るか」を発見し、`operations`（create/read/update/delete）で読み書きの別を残します。
-- **resource はボトムアップに発見してよい** — 最初は `resource OrderTable` と素で書いておき、後で共有 DB だと分かったら `database OrderDB { table OrdersTable }` にまとめ、`resource OrderDB.OrdersTable` のドット参照に切り替えます。karasu は素の resource を孤立ノードとして描き、警告にとどめます。
+- **resource はボトムアップに発見してよい** — 最初は `resource OrderTable` と素で書いておき、後で共有 DB だと分かったら `database OrderDB { table OrdersTable }` にまとめ、`resource OrderDB.OrdersTable` のドット参照に切り替えます。素の resource でも代償は警告だけで、karasu はそれを自身の usecase のドリルダウンビューの中に描きます。ドット参照（または対応する `entity`）を与えて初めて得られるのは、**domain** ビューでその usecase の兄弟ノードに昇格することです。
 
 ### 3.1 共有データストアの発見
 

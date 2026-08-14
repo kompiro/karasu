@@ -58,7 +58,8 @@ deploy "production" {
 
 - **`resource` の dot-path ではなくエッジでノード粒度参照する。** `resource <Db>.<Leaf>`
   参照には宣言済みの leaf が要る。KV ストアには名前を付ける leaf が無いので、
-  `resource SessionStore` と書くと*未割り当て*になる（warning、orphan として描画）。
+  `resource SessionStore` と書くと*未割り当て*になる（warning が出て、ノードは自身の
+  usecase の中にしか描かれず、本来ストアが居るべき system ビューには出てこない）。
   慣用的な接続は直接の `Service --> SessionStore` エッジで、
   [`hato`](https://github.com/kompiro/karasu/tree/main/examples/en/hato) 例が
   leaf-less な `D1` / `R2` / `Tasks` を配線しているのと同じ方式。

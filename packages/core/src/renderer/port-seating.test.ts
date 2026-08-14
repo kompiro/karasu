@@ -4,6 +4,7 @@ import { extractView } from "../view/view-extract.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { layout } from "./layout.js";
+import { render } from "./svg-renderer.js";
 import "./shapes.js";
 import type { LayoutNode, LayoutResult, Rect } from "./layout-types.js";
 
@@ -119,6 +120,130 @@ describe("ports land on the drawn outline", () => {
     expect(framed.edges.map((e) => [e.fromPoint, e.toPoint])).toEqual(
       bare.edges.map((e) => [e.fromPoint, e.toPoint]),
     );
+  });
+});
+
+/**
+ * #2385: an actor's edges left the bounding box while its figure was drawn 30%
+ * narrower, so a side-anchored edge began 67px clear of the actor, floating in
+ * blank canvas. Both ends of that gap have since moved — the figure became a
+ * full-width card (#2412) and the ports moved onto the declared outline
+ * (#2422) — which is exactly why the guard has to read the SVG. Measuring the
+ * endpoints against the bounding box would pass whether or not the drawing
+ * agrees with it; these read the `rect` the renderer emitted.
+ */
+describe("an actor's ports agree with the figure it draws", () => {
+  /** An actor with a target on each side (the client-mcp shape) and one below. */
+  const ACTOR = `system S {
+  user Agent [ai] { label "Agent" }
+  service Core { label "Core" }
+  service Left [external] { label "Left" }
+  service Right [external] { label "Right" }
+  Agent -> Left "tool-use"
+  Agent -> Right "tool-use"
+  Agent -> Core "use"
+}`;
+
+  function svgOf(source: string): string {
+    const parsed = Parser.parse(source);
+    const styles = resolveStyles(parsed.value.systems, [getBuiltinStyleSheet()]);
+    return render(extractView(parsed.value.systems, []), styles);
+  }
+
+  // `\b` would let `width` match inside `stroke-width`, which reads the right
+  // number today only because `width` happens to be emitted first.
+  function num(tag: string, name: string): number {
+    const m = new RegExp(`(?:^|\\s)${name}="(-?[\\d.]+)"`).exec(tag);
+    if (!m) throw new Error(`no ${name} in ${tag}`);
+    return Number(m[1]);
+  }
+
+  /** The markup of one node's group, up to wherever the next node starts. */
+  function nodeGroup(svg: string, id: string): string {
+    const start = svg.indexOf(`data-node-id="${id}"`);
+    expect(start, `no node group for ${id}`).toBeGreaterThan(-1);
+    const next = svg.indexOf("data-node-id=", start + 1);
+    return svg.slice(start, next === -1 ? undefined : next);
+  }
+
+  function firstTag(group: string, name: string): string {
+    const m = new RegExp(`<${name} [^>]*>`).exec(group);
+    if (!m) throw new Error(`no <${name}> drawn`);
+    return m[0];
+  }
+
+  /** Endpoints of the drawn connectors that terminate on `id`. */
+  function drawnEndpointsOn(svg: string, id: string): { x: number; y: number }[] {
+    const out: { x: number; y: number }[] = [];
+    const re =
+      /data-edge-from="([^"]+)" data-edge-to="([^"]+)"[^>]*>(<line [^>]*>|<polyline [^>]*>)/g;
+    for (const [, from, to, shape] of svg.matchAll(re)) {
+      const ends = shape.startsWith("<line")
+        ? [
+            { x: num(shape, "x1"), y: num(shape, "y1") },
+            { x: num(shape, "x2"), y: num(shape, "y2") },
+          ]
+        : (() => {
+            const pts = /points="([^"]+)"/
+              .exec(shape)![1]
+              .split(" ")
+              .map((p) => {
+                const [x, y] = p.split(",").map(Number);
+                return { x, y };
+              });
+            return [pts[0], pts[pts.length - 1]];
+          })();
+      if (from === id) out.push(ends[0]);
+      if (to === id) out.push(ends[1]);
+    }
+    return out;
+  }
+
+  it("starts every edge on the drawn card, never in the empty strip around it", () => {
+    const svg = svgOf(ACTOR);
+    const group = nodeGroup(svg, "Agent");
+    const card = firstTag(group, "rect");
+    const rect = {
+      x: num(card, "x"),
+      y: num(card, "y"),
+      width: num(card, "width"),
+      height: num(card, "height"),
+    };
+
+    const eps = 0.5;
+    const ends = drawnEndpointsOn(svg, "Agent");
+    expect(ends).toHaveLength(3);
+    for (const p of ends) {
+      const onSide = Math.abs(p.x - rect.x) < eps || Math.abs(p.x - (rect.x + rect.width)) < eps;
+      const onCap = Math.abs(p.y - rect.y) < eps || Math.abs(p.y - (rect.y + rect.height)) < eps;
+      const withinX = p.x >= rect.x - eps && p.x <= rect.x + rect.width + eps;
+      const withinY = p.y >= rect.y - eps && p.y <= rect.y + rect.height + eps;
+      expect(
+        (onSide && withinY) || (onCap && withinX),
+        `port at ${p.x},${p.y} is off the card drawn at ${rect.x},${rect.y} ${rect.width}x${rect.height}`,
+      ).toBe(true);
+    }
+    // The reported case: a target to the side, entered from the card's border.
+    expect(ends.filter((p) => Math.abs(p.x - rect.x) < eps)).toHaveLength(1);
+    expect(ends.filter((p) => Math.abs(p.x - (rect.x + rect.width)) < eps)).toHaveLength(1);
+
+    // Landing on the card is a stronger claim than landing on the bounding box
+    // only while the two differ, so the difference is measured rather than
+    // assumed: the drawn card stays inside the box and is strictly smaller
+    // somewhere. A figure that grows to fill its box would leave the assertions
+    // above passing as the bbox test they exist to replace, and fails here.
+    const box = layoutOf(ACTOR).nodes.get("Agent")!;
+    expect(rect.x).toBeGreaterThanOrEqual(box.x - eps);
+    expect(rect.y).toBeGreaterThanOrEqual(box.y - eps);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(box.x + box.width + eps);
+    expect(rect.y + rect.height).toBeLessThanOrEqual(box.y + box.height + eps);
+    expect(
+      rect.x > box.x + eps ||
+        rect.y > box.y + eps ||
+        rect.width < box.width - eps ||
+        rect.height < box.height - eps,
+      `the card fills its bounding box (${box.x},${box.y} ${box.width}x${box.height}), so the ports above were only checked against the box`,
+    ).toBe(true);
   });
 });
 

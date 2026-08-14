@@ -43,7 +43,7 @@ export const FACET_OVERLAY_COLORS: readonly string[] = [
 /** Opacity applied to elements outside every selected facet. */
 export const FACET_DIM_OPACITY = 0.28;
 
-export interface FacetOverlayEntry {
+interface FacetOverlayEntry {
   id: string;
   /** Declared `label`, or the id when the facet has no declaration. */
   label: string;

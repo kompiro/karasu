@@ -32,6 +32,25 @@ function escapeXml(s: string): string {
 /**
  * Build an SVG element string, similar to `createElement` / `h()`.
  */
+/**
+ * Vertical text placement, as a `dy` offset instead of `dominant-baseline`.
+ *
+ * `dominant-baseline` is in the SVG text module, and rasterizers outside the
+ * browser drop it silently — the text then sits on its baseline, which for a
+ * label centred in a card is 3 to 4.5px too high at the sizes karasu emits
+ * (measured in Chromium at 9 / 11 / 13px). `dy` in em units is core SVG 1.1 and
+ * survives everywhere.
+ *
+ * The em factors are what reproduce the attributes they replace, measured
+ * against Chromium from 9 to 20px: the centred one lands within 0.35px of
+ * `central`, the hanging one within 0.6px of `hanging`. They cannot be exact —
+ * `central` centres on the font's own ascent/descent midpoint, which an em
+ * constant only approximates — and that residue is the price of portability.
+ * See ADR-2473.
+ */
+export const DY_CENTER = "0.35em";
+export const DY_HANGING = "0.73em";
+
 export function el(tag: string, attrs: Attrs, ...children: string[]): string {
   const attrStr = Object.entries(attrs)
     .filter(([, v]) => v !== undefined && v !== null && v !== false)

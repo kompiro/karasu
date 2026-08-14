@@ -21,6 +21,6 @@
     "@vscode/vsce": "^3.9.2",
     "mocha": "^11.7.4",
     "typescript": "^7.0.2",
-    "vscode-extension-tester": "^8.23.0"
+    "vscode-extension-tester": "^8.24.0"
   }
 }

@@ -494,6 +494,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2188](TPL-2188-id-uniqueness-needs-cross-corpus-check.md) | 採番 id の一意性は corpus 横断の機械検証か大域 allocator で担保する — per-file 検査だけの validator は並行ブランチの採番衝突を検出できない | adr-tooling | #2188, ADR-2092 |
 | [TPL-2184](TPL-2184-equivalent-placements-share-one-diagnostic.md) | 同じモデリング状態を表す複数の配置は、綴りが違っても同じ診断を出す — 検出器の走査範囲は格納先ではなく `canContain` 上の親 kind で決める | resolver | ADR-2165, #2184 |
 | [TPL-2075](TPL-2075-parsed-construct-renders-or-warns.md) | parse を通った構造は、どこかの view で描画されるか診断されるかのどちらかである — view 抽出の filter が作る silent drop を第 3 の状態として許さない | resolver | docs/spec/syntax.md (Edge declaration), #2075 |
+| [TPL-2200](TPL-2200-render-claim-names-its-view-level.md) | 「描画される」と書くときはどの view で描画されるかまで書き、昇格しない側と描かれる側を対でテストに固定する — level を省いた主張は実装と突き合わせても矛盾が検出できない | core-concepts | docs/spec/syntax.md (Infra layer), #2200 |
 | [TPL-2047](TPL-2047-doc-embedded-krs-is-parsed-not-prose.md) | ドキュメントに埋めた `.krs` は散文でなく入力として parse する — 抜粋は `krs fragment`、診断デモは `krs invalid` と fence で宣言し、`invalid` は「いまも不正か」を逆向きに検証する | testing | #2047 |
 | [TPL-2172](TPL-2172-builtin-vocabulary-addition-gate.md) | builtin 語彙の追加は register 判定・既存表現の有無・停止規則の 3 問を通す — 通ったものは同 PR で効果を持たせ、却下したものも理由を記録する | core-concepts | #2172, docs/spec/tags-annotations.md |
 | [TPL-2221](TPL-2221-merge-only-facts-decided-on-merged-model.md) | マージ後にしか成立しない事実（重複・多重所属・件数）を述べる診断は、マージ後のモデルで判定する — per-file 判定は偽陽性ではなく**沈黙**して落ちる | resolver | #2221 |
@@ -507,6 +508,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) | 検出器の false positive 予算は正しさの一部 — 当ててはいけない near-miss 事例が実質の仕様で、positive テストだけなら規則が `/\S+/` でも通る | testing | #2287, ADR-1990 |
 | [TPL-2284](TPL-2284-purge-scope-identity-is-canonical.md) | 削除範囲を決める識別子は canonical 化する — 同じ主体の 2 通りの綴りが別 prefix になると purge は片方しか消さず、残りは戻り値にも例外にも現れない | project | #2284, ADR-1990 |
 | [TPL-2179](TPL-2179-derived-outline-measured-on-coverage-not-bbox.md) | 要素に届かせるために広げた図形は実被覆で測る（bbox でも記録矩形でもなく）— 広げる述語は「回廊に非メンバーが無いこと」で書き、一括シフトは派生ジオメトリも動かす | renderer | #2179, #2240, docs/spec/syntax.md |
+| [TPL-2385](TPL-2385-attachment-follows-drawn-outline.md) | bounding box より内側に描かれる図形では、接続点もクロームも宣言された輪郭に付ける — 図形と接続点は同じ box から導かれるので両方が一緒にずれても緑になる。検証は emit された描画物から輪郭を読んで測る | renderer | #2385, #2366, ADR-2366 |
 | [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) | opt-in な視覚レイヤは無効時に自分のマーカーを 1 つも出さない — 等値テストは無条件出力を相殺して見逃すので、マーカーを名前で列挙して不在を assert する | renderer | #2174 |
 | [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) | 宣言できる構文は Reference から到達できる — 半分だけ載っている状態（要素側プロパティだけ / 宣言ブロックだけ）は何も載っていないより悪く、載せない判断は書かなければ漏れと区別できない | app-ui | #2316, ADR-2316 |
 | [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) | 1 つのエンティティの見た目を複数の面が描くなら決定を 1 つの関数に閉じる — 既定値しか無いうちは一致して隠れ、上書き手段を足した瞬間に片面だけ変わる | renderer | #2234, #2179 |
@@ -516,4 +518,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2366](TPL-2366-badge-color-canvas-contrast.md) | canvas 上に直接描かれる文字色（badge-color 等）はテーマごとに 4.5:1 を機械検証する。dark で選んだ値の light 流用は 7.8:1 を 2.3:1 に変える | styling | #2366 |
 | [TPL-2421](TPL-2421-kind-color-hue-table.md) | kind の色は色相表から導出する — 追加時は表に行を足し 3 色を同色相ルールで導く。塗りなし kind の枠線は唯一の輪郭なので tint 合成込みで 3:1 を負い、塗りを色として読む面（凡例スウォッチ）は border へ倒す | styling | #2421 |
 | [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) | テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する — 最も明るい背景 1 枚で代表させると、白で調整した色が mid-tone の surface で落ちる | styling | #2193 |
+| [TPL-2446](TPL-2446-gate-side-check-runs-over-the-whole-set.md) | マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠し、穴はフックを通らない bot PR でだけ露見する | build | #2446, #2432 |
 | [TPL-2456](TPL-2456-module-instance-scoped-identity.md) | 参照同一性で判定される共有オブジェクトは module のコピーが 2 つになった瞬間に壊れる — 判定はバージョン一致ではなく解決先が 1 つかで行い、壊れるのは自作の値を渡す経路だけなので大半のテストは green のまま残る | testing | #2456, ADR-2456 |

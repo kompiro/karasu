@@ -55,6 +55,7 @@ flowchart TD
     ADR_2120["ADR-2120<br/>bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
     ADR_2193["ADR-2193<br/>テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える"]
     ADR_2316["ADR-2316<br/>experimental notation は Reference に載せ、experimen..."]
+    ADR_2461["ADR-2461<br/>色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する"]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -137,6 +138,7 @@ flowchart TD
     ADR_2419["ADR-2419<br/>PoC の生成物は gitignore された `reports/` に出力し、spike ブ..."]
     ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
+    ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -303,9 +305,11 @@ flowchart TD
     ADR_1983["ADR-1983<br/>boundary grouping の drill-down 拡張 — 描画レベルとの交差によ..."]
     ADR_2048["ADR-2048<br/>エッジラベルの自動衝突回避 — レンダー後段の label placement post-pass"]
     ADR_2174["ADR-2174<br/>facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
+    ADR_2200["ADR-2200<br/>未割当 `resource` の描画先は usecase ドリルダウンビューであり、domai..."]
     ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
     ADR_2360["ADR-2360<br/>label placement の障害物にエッジ polyline を加える — 自分の線だけ..."]
     ADR_2366["ADR-2366<br/>node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く"]
+    ADR_2473["ADR-2473<br/>テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` ..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -473,6 +477,7 @@ flowchart TD
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
   ADR_2442 --> ADR_2410
+  ADR_2461 --> ADR_2193
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -771,6 +776,7 @@ flowchart TD
   class ADR_2184 accepted
   class ADR_2188 accepted
   class ADR_2193 accepted
+  class ADR_2200 accepted
   class ADR_2218 accepted
   class ADR_2234 accepted
   class ADR_2249 accepted
@@ -799,6 +805,9 @@ flowchart TD
   class ADR_2442 accepted
   class ADR_2447 accepted
   class ADR_2456 accepted
+  class ADR_2461 accepted
+  class ADR_2472 accepted
+  class ADR_2473 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
