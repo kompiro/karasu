@@ -35,8 +35,8 @@ export interface PreviewToolbarProps {
  * The controls that take the diagram somewhere else — files, links, docs — plus
  * the focus toggle (#2317).
  *
- * The controls that *change* the diagram live on `PreviewCanvasControls`, over
- * the canvas. Splitting them is what keeps this strip to a single row: with
+ * The controls that *change* the diagram live on `PreviewViewControls`, in the
+ * drill-path row. Splitting them is what keeps this strip to a single row: with
  * both families here it wrapped to two rows at every width measured between
  * 960px and 1680px, in both locales.
  *
@@ -81,6 +81,7 @@ export function PreviewToolbar({
               variant="actionable"
               className="rounded-l-none px-1.5"
               aria-label={t("preview.export.options.ariaLabel")}
+              disabled={!exportAvailable}
             >
               ▾
             </Button>

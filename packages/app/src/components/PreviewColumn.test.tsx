@@ -980,7 +980,9 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
 // property that was actually violated: under `ja`, no toolbar control renders
 // its English label. A future control added with a literal string fails here.
 describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja", () => {
-  // Every visible label and aria-label the toolbar can render, in `en`.
+  // Every visible label and aria-label the preview's controls can render, in
+  // `en` — including the ones that live inside a dropdown, which the scan below
+  // opens rather than trusting a closed menu to be empty of English.
   const EN_TOOLBAR_STRINGS = [
     "Icon Mode",
     "Toggle icon mode",
@@ -1018,7 +1020,7 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
       container.querySelectorAll(".preview-toolbar, .preview-view-controls"),
     );
     expect(surfaces.length).toBe(2);
-    return {
+    const read = () => ({
       textContent: surfaces.map((el) => el.textContent ?? "").join(" | "),
       ariaLabels: surfaces.flatMap((el) =>
         Array.from(el.querySelectorAll("[aria-label]")).map(
@@ -1027,11 +1029,39 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
       ),
       querySelector: (selector: string) =>
         surfaces.map((el) => el.querySelector(selector)).find((found) => found !== null) ?? null,
-    };
+    });
+    return { surfaces, read };
+  }
+
+  /**
+   * Text and aria-labels of every open menu, read from `document` — Radix
+   * portals menu content outside the render container. Half the controls now
+   * live behind a dropdown (Open All Views, the export variants, the Docs
+   * links), so a scan that only reads the two strips would pass on an English
+   * literal inside any of them.
+   */
+  function openMenusAndRead(): string {
+    const parts: string[] = [];
+    for (const trigger of Array.from(
+      document.querySelectorAll<HTMLElement>('[aria-haspopup="menu"]'),
+    )) {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+      fireEvent.click(trigger);
+      for (const menu of Array.from(document.querySelectorAll('[role="menu"]'))) {
+        parts.push(menu.textContent ?? "");
+        parts.push(
+          ...Array.from(menu.querySelectorAll("[aria-label]")).map(
+            (node) => node.getAttribute("aria-label") ?? "",
+          ),
+        );
+      }
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    }
+    return parts.join(" | ");
   }
 
   it("system view with every conditional control present renders no English", () => {
-    const surfaces = renderJaToolbar({
+    const { read } = renderJaToolbar({
       hasEntityView: true,
       allLayersSvg: emptySvg,
       systemView: {
@@ -1045,13 +1075,18 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
       },
     });
 
+    const surfaces = read();
     // Guard the guard: assert the conditional controls actually rendered, so
     // this test cannot pass by simply not showing them.
     expect(surfaces.textContent).toContain("ファセット");
     expect(surfaces.textContent).toContain("すべて畳む");
     expect(surfaces.textContent).toContain("エンティティ");
 
-    const rendered = [surfaces.textContent, ...surfaces.ariaLabels].join(" | ");
+    const menus = openMenusAndRead();
+    // Guard the guard, again: the menus really were opened and read.
+    expect(menus).toContain("ドリルダウン");
+
+    const rendered = [surfaces.textContent, ...surfaces.ariaLabels, menus].join(" | ");
 
     for (const english of EN_TOOLBAR_STRINGS) {
       expect(rendered).not.toContain(english);
@@ -1059,7 +1094,7 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
   });
 
   it("org view Tree View toggle renders no English", () => {
-    const surfaces = renderJaToolbar({ activeView: "org" });
+    const surfaces = renderJaToolbar({ activeView: "org" }).read();
     expect(surfaces.textContent).toContain("ツリー表示");
     expect(surfaces.textContent).not.toContain("Tree View");
     expect(surfaces.querySelector('[aria-label="Toggle org tree view"]')).toBeNull();

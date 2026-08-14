@@ -1,4 +1,4 @@
-# AT: プレビューの操作面を 2 つに分ける — 図を変える操作はキャンバスへ、持ち出す操作はツールバーへ
+# AT: プレビューの操作面を 2 つに分ける — 図を変える操作はパンくずの行へ、持ち出す操作はツールバーへ
 
 - **日付**: 2026-08-14
 - **関連 Issue**: [#2317](https://github.com/kompiro/karasu/issues/2317)
@@ -11,7 +11,7 @@
   - `packages/app/src/components/PreviewToolbar.tsx`（出口系 + フォーカス）
   - `packages/app/src/components/PreviewViewControls.tsx`（図を変える操作）
   - `packages/app/src/components/preview-group-by.ts`（グループ化の軸テーブル）
-  - `packages/app/src/styles/components/preview.css` / `packages/app/src/styles/tokens.css`
+  - `packages/app/src/styles/components/preview.css`（`.preview-context-row` / `.preview-view-controls`）
 
 ## 概要
 
@@ -33,7 +33,7 @@
 ### AC-1: どのコントロールがどちらの面に出るか
 
 - [x] 図を変えるコントロールがビュー操作行に出る（アイコンモード / エンティティ / 全レイヤー表示）
-  > ✅ Automated — `packages/app/src/components/PreviewViewControls.test.tsx` › `keeps the controls that change the diagram on the canvas bar`
+  > ✅ Automated — `packages/app/src/components/PreviewViewControls.test.tsx` › `keeps the controls that change the diagram in the drill-path row`
 
 - [x] 持ち出すコントロールはツールバーに残り、ビュー操作行には漏れない（エクスポート / Share / Docs / フォーカス）
   > ✅ Automated — `packages/app/src/components/PreviewViewControls.test.tsx` › `keeps the controls that take the diagram elsewhere in the toolbar`

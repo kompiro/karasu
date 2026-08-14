@@ -106,7 +106,7 @@ function styleRule(file: string, selector: string): string {
 }
 
 describe("PreviewViewControls — which surface a control lives on", () => {
-  it("keeps the controls that change the diagram on the canvas bar", () => {
+  it("keeps the controls that change the diagram in the drill-path row", () => {
     const { bar } = renderPreview({ hasEntityView: true } as Partial<PreviewContextValue>, {
       anyCollapsible: true,
     });
@@ -128,7 +128,7 @@ describe("PreviewViewControls — which surface a control lives on", () => {
     expect(toolbar.textContent).toContain("Share");
     expect(toolbar.textContent).toContain("Docs");
     expect(toolbar.textContent).toContain("Focus");
-    // …and none of them leaked onto the canvas bar.
+    // …and none of them leaked into the view controls.
     expect(bar.textContent).not.toContain("Export SVG");
     expect(bar.textContent).not.toContain("Share");
   });

@@ -1,7 +1,8 @@
 // Moved out of PreviewColumn.tsx when the toolbar split in two (#2317): the
-// Group-by selector now lives on the canvas control bar, and this table is what
-// tells it which axes the model can offer. The comments below are the
-// originals — the guarantees they describe are unaffected by the move.
+// Group-by selector now lives in the drill-path row with the other controls
+// that change the diagram, and this table is what tells it which axes the model
+// can offer. The comments below are the originals — the guarantees they
+// describe are unaffected by the move.
 
 import type { GroupByMode } from "../state/preview-context.js";
 import type { ActiveViewData } from "../state/active-view-data.js";
