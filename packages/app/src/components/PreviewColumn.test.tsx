@@ -841,52 +841,58 @@ describe("PreviewColumn", () => {
     });
   });
 
-  describe("Open All Views button", () => {
-    it("shows Open All Views button", () => {
-      const props = makeProps();
-      const { getByRole } = renderPreview(props);
-      expect(getByRole("button", { name: /Open all views in new window/ })).toBeTruthy();
+  // Open All Views moved into the export menu when the toolbar split in two
+  // (#2317): it produces the same artifact as "Export All Diagrams", just
+  // opened instead of downloaded. It is a `role="menuitem"` now, so disabled
+  // state reads from `aria-disabled` rather than the `disabled` property.
+  describe("Open All Views (export menu item)", () => {
+    const openExportMenu = () =>
+      userEvent.click(screen.getByRole("button", { name: /Export options/ }));
+    const openAllViewsItem = () =>
+      screen.getByRole("menuitem", { name: /Open all views in new window/ });
+
+    it("shows Open All Views in the export menu", async () => {
+      renderPreview(makeProps());
+      await openExportMenu();
+      expect(openAllViewsItem()).toBeTruthy();
     });
 
-    it("is disabled when allViewsSvg is undefined", () => {
-      const props = makeProps({ allViewsSvg: undefined });
-      const { getByRole } = renderPreview(props);
-      expect(getByRole("button", { name: /Open all views in new window/ })).toHaveProperty(
-        "disabled",
-        true,
-      );
+    it("is disabled when allViewsSvg is undefined", async () => {
+      renderPreview(makeProps({ allViewsSvg: undefined }));
+      await openExportMenu();
+      expect(openAllViewsItem().getAttribute("aria-disabled")).toBe("true");
     });
 
-    it("is enabled when allViewsSvg is set", () => {
-      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
-      const { getByRole } = renderPreview(props);
-      expect(getByRole("button", { name: /Open all views in new window/ })).toHaveProperty(
-        "disabled",
-        false,
-      );
+    it("is enabled when allViewsSvg is set", async () => {
+      renderPreview(makeProps({ allViewsSvg: "<svg>all-views</svg>" }));
+      await openExportMenu();
+      expect(openAllViewsItem().getAttribute("aria-disabled")).not.toBe("true");
     });
 
-    it("calls window.open with a blob URL and noopener when clicked (#1529)", () => {
+    it("calls window.open with a blob URL and noopener when clicked (#1529)", async () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
       vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
-      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
-      const { getByRole } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Open all views in new window/ }));
+      renderPreview(makeProps({ allViewsSvg: "<svg>all-views</svg>" }));
+      await openExportMenu();
+      await userEvent.click(openAllViewsItem());
       expect(URL.createObjectURL).toHaveBeenCalled();
       // noopener severs the opened tab's window.opener back-reference.
       expect(openSpy).toHaveBeenCalledWith("blob:mock-url", "_blank", "noopener");
       openSpy.mockRestore();
     });
 
-    it("revokes the blob URL after the grace period so it is not pinned (#1529)", () => {
-      vi.useFakeTimers();
+    it("revokes the blob URL after the grace period so it is not pinned (#1529)", async () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
       const createSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
       const revokeSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
       try {
-        const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
-        const { getByRole } = renderPreview(props);
-        fireEvent.click(getByRole("button", { name: /Open all views in new window/ }));
+        renderPreview(makeProps({ allViewsSvg: "<svg>all-views</svg>" }));
+        // Open the menu on real timers — Radix's pointer sequence needs them —
+        // then switch before the click that schedules the revoke, so the fake
+        // clock owns that timer.
+        await openExportMenu();
+        vi.useFakeTimers();
+        fireEvent.click(openAllViewsItem());
         // Not revoked synchronously — the new tab still needs the blob to load.
         expect(revokeSpy).not.toHaveBeenCalled();
         vi.advanceTimersByTime(10_000);
@@ -899,12 +905,14 @@ describe("PreviewColumn", () => {
       }
     });
 
-    it("does not call window.open when allViewsSvg is undefined", () => {
+    it("does not call window.open when allViewsSvg is undefined", async () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
-      const props = makeProps({ allViewsSvg: undefined });
-      const { getByRole } = renderPreview(props);
-      // button is disabled, but verify open is not called even if handler fires
-      getByRole("button", { name: /Open all views in new window/ });
+      renderPreview(makeProps({ allViewsSvg: undefined }));
+      await openExportMenu();
+      // The item is disabled; activating it anyway must stay a no-op, so this
+      // fires the event directly rather than going through the pointer path
+      // Radix blocks.
+      fireEvent.click(openAllViewsItem());
       expect(openSpy).not.toHaveBeenCalled();
       openSpy.mockRestore();
     });
@@ -972,7 +980,9 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
 // property that was actually violated: under `ja`, no toolbar control renders
 // its English label. A future control added with a literal string fails here.
 describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja", () => {
-  // Every visible label and aria-label the toolbar can render, in `en`.
+  // Every visible label and aria-label the preview's controls can render, in
+  // `en` — including the ones that live inside a dropdown, which the scan below
+  // opens rather than trusting a closed menu to be empty of English.
   const EN_TOOLBAR_STRINGS = [
     "Icon Mode",
     "Toggle icon mode",
@@ -993,6 +1003,12 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
     "Facets",
   ];
 
+  /**
+   * The controls live on two surfaces since #2317 — the toolbar strip and the
+   * drill path's row — so the scan covers both. Anything that renders on
+   * either one is in scope; a control that moves between them must not slip
+   * out of this guard on the way.
+   */
   function renderJaToolbar(overrides: Partial<PreviewContextValue> = {}) {
     const { container } = render(
       <PreviewProvider value={makeProps(overrides)}>
@@ -1000,11 +1016,52 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
       </PreviewProvider>,
       "ja",
     );
-    return container.querySelector(".preview-toolbar") as HTMLElement;
+    const surfaces = Array.from(
+      container.querySelectorAll(".preview-toolbar, .preview-view-controls"),
+    );
+    expect(surfaces.length).toBe(2);
+    const read = () => ({
+      textContent: surfaces.map((el) => el.textContent ?? "").join(" | "),
+      ariaLabels: surfaces.flatMap((el) =>
+        Array.from(el.querySelectorAll("[aria-label]")).map(
+          (node) => node.getAttribute("aria-label") ?? "",
+        ),
+      ),
+      querySelector: (selector: string) =>
+        surfaces.map((el) => el.querySelector(selector)).find((found) => found !== null) ?? null,
+    });
+    return { surfaces, read };
+  }
+
+  /**
+   * Text and aria-labels of every open menu, read from `document` — Radix
+   * portals menu content outside the render container. Half the controls now
+   * live behind a dropdown (Open All Views, the export variants, the Docs
+   * links), so a scan that only reads the two strips would pass on an English
+   * literal inside any of them.
+   */
+  function openMenusAndRead(): string {
+    const parts: string[] = [];
+    for (const trigger of Array.from(
+      document.querySelectorAll<HTMLElement>('[aria-haspopup="menu"]'),
+    )) {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+      fireEvent.click(trigger);
+      for (const menu of Array.from(document.querySelectorAll('[role="menu"]'))) {
+        parts.push(menu.textContent ?? "");
+        parts.push(
+          ...Array.from(menu.querySelectorAll("[aria-label]")).map(
+            (node) => node.getAttribute("aria-label") ?? "",
+          ),
+        );
+      }
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    }
+    return parts.join(" | ");
   }
 
   it("system view with every conditional control present renders no English", () => {
-    const toolbar = renderJaToolbar({
+    const { read } = renderJaToolbar({
       hasEntityView: true,
       allLayersSvg: emptySvg,
       systemView: {
@@ -1018,18 +1075,18 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
       },
     });
 
+    const surfaces = read();
     // Guard the guard: assert the conditional controls actually rendered, so
     // this test cannot pass by simply not showing them.
-    expect(toolbar.textContent).toContain("ファセット");
-    expect(toolbar.textContent).toContain("すべて畳む");
-    expect(toolbar.textContent).toContain("エンティティ");
+    expect(surfaces.textContent).toContain("ファセット");
+    expect(surfaces.textContent).toContain("すべて畳む");
+    expect(surfaces.textContent).toContain("エンティティ");
 
-    const rendered = [
-      toolbar.textContent ?? "",
-      ...Array.from(toolbar.querySelectorAll("[aria-label]")).map(
-        (el) => el.getAttribute("aria-label") ?? "",
-      ),
-    ].join(" | ");
+    const menus = openMenusAndRead();
+    // Guard the guard, again: the menus really were opened and read.
+    expect(menus).toContain("ドリルダウン");
+
+    const rendered = [surfaces.textContent, ...surfaces.ariaLabels, menus].join(" | ");
 
     for (const english of EN_TOOLBAR_STRINGS) {
       expect(rendered).not.toContain(english);
@@ -1037,9 +1094,9 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
   });
 
   it("org view Tree View toggle renders no English", () => {
-    const toolbar = renderJaToolbar({ activeView: "org" });
-    expect(toolbar.textContent).toContain("ツリー表示");
-    expect(toolbar.textContent).not.toContain("Tree View");
-    expect(toolbar.querySelector('[aria-label="Toggle org tree view"]')).toBeNull();
+    const surfaces = renderJaToolbar({ activeView: "org" }).read();
+    expect(surfaces.textContent).toContain("ツリー表示");
+    expect(surfaces.textContent).not.toContain("Tree View");
+    expect(surfaces.querySelector('[aria-label="Toggle org tree view"]')).toBeNull();
   });
 });
