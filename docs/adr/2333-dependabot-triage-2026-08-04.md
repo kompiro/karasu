@@ -157,11 +157,11 @@ identity 説が否定済みであることを明記した。
 Dependabot が #2321 マージ後に rebase しており CI が走った SHA は既に monaco 0.56 を含んでいた。
 加えてローカルでも app の build が成功し worker チャンクが出力されることを実測した。
 
-### #2325 / #2326 を人手 PR に畳んだ理由
+### #2325 / #2326 を差し替え PR に畳んだ理由
 
 どちらも修正が bump と同一コミットに載る必要があり、bot ブランチに人手コミットを足しても
 `@dependabot recreate` で失われる。[ADR-2318](2318-dependabot-triage-2026-08-03.md) の monaco と
-同じ構造であり、`.claude/rules/dependabot.md`「bot PR を close → 人手 PR で再提出」の型に載せた。
+同じ構造であり、`.claude/rules/dependabot.md`「bot PR を close → 差し替え PR で再提出」の型に載せた。
 
 ## 却下した案
 

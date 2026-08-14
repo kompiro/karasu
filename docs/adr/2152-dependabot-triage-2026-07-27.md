@@ -138,10 +138,10 @@ override に載るが**どのパッケージの直接依存でもなく**、か�
 - **`lucide-react`（#2150）の minor 11 個ぶん一括を分割・保留する** — 却下。
   Dependabot は cooldown を満たす最新版へ一括で寄せる仕様であり、分割は
   手作業の中間 bump を要する。使用アイコンが 2 つに限られ影響が閉じているため不要。
-- **残り 4 件を人手の 1 本の PR に畳んで CI を 1 回で済ませる** — 却下。
+- **残り 4 件を 1 本の差し替え PR に畳んで CI を 1 回で済ませる** — 却下。
   `ERR_PNPM_OUTDATED_LOCKFILE` / `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` のような
   **構造的に CI を通せない失敗モードではなく、単に rebase が必要なだけ**だったため、
-  bot PR を close して人手 PR に置き換える根拠がない（この畳み込みは
+  bot PR を close して差し替え PR に置き換える根拠がない（この畳み込みは
   `.claude/rules/dependabot.md` が構造的失敗時に限って認めている手段）。
   直列マージのコストは CI 待ち時間だけで、履歴の追跡性は bot PR のまま保つ方が高い。
 

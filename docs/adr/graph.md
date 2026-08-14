@@ -139,6 +139,7 @@ flowchart TD
     ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
+    ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -806,6 +807,7 @@ flowchart TD
   class ADR_2461 accepted
   class ADR_2472 accepted
   class ADR_2473 accepted
+  class ADR_2474 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
