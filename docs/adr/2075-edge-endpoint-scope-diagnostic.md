@@ -12,6 +12,7 @@ related_to:
   - ADR-2184
   - ADR-1870
   - ADR-681
+  - ADR-2223
 scope:
   packages:
     - core
@@ -119,10 +120,12 @@ bare id の cross-domain entity 関連）。一方で実際に描画される配
 
 ## 未解決（別 Issue）
 
-- `service S { S -> X }` という **service-anchored edge は対象を問わずどのビューにも
-  描画されない**（[#2223](https://github.com/kompiro/karasu/issues/2223)）。spec は
-  `service` ブロック内の edge を正規の記法として文書化しているため、「描画できるように
-  する」か「診断して spec を狭める」かは v1.0 freeze の判断を伴う。本 ADR の検出器は
-  兄弟宛てを at-scope のまま扱い（過小報告側）、判断は #2223 に委ねる。
+- ~~`service S { S -> X }` という **service-anchored edge は対象を問わずどのビューにも
+  描画されない**（[#2223](https://github.com/kompiro/karasu/issues/2223)）~~ →
+  **[ADR-2223](2223-service-anchored-edge-renders-on-parent-canvas.md) で解決**。
+  「描画できるようにする」を採り、子ブロックに anchored なエッジは*その子をノードとして
+  描く親の canvas*に描画するようにした。本 ADR の検出器が兄弟宛てを at-scope のまま
+  扱っていた（過小報告側の）判断は、そのまま正しい挙動になった — 描画側の peer 集合が
+  `peersOf` と同一の式を共有する。
 - entity 関連の dotted 未解決参照（`-> D9.Nope` で D9 が無い）は無診断のまま。
   `cross-system-ref-unresolved` は system edge の dotted しか見ていない。
