@@ -99,7 +99,7 @@ ADR-2111 の `brace-expansion` と異なり、5 パッケージとも**依存ツ
 
 これは ADR-1038 が扱った「`packages/<name>/package.json` のみ更新する重複 PR が `ERR_PNPM_OUTDATED_LOCKFILE` で落ちる」ケースとは**別の失敗モード**である。ADR-1038 は lockfile が更新されないことが原因だったが、本件は lockfile は更新されるのに manifest 側の override が取り残されることが原因で、**root override を持つパッケージが直接依存でもある場合に限って**発生する。
 
-したがって #2114 は `@dependabot recreate` でも直らない。close して、当該 bump を人手の PR #2116 に畳み込んだ。運用ショートカットは `.claude/rules/dependabot.md` に追記した。
+したがって #2114 は `@dependabot recreate` でも直らない。close して、当該 bump を差し替え PR #2116 に畳み込んだ。運用ショートカットは `.claude/rules/dependabot.md` に追記した。
 
 ### なぜ ADR-1338 の assumptions を緩めたのか
 
@@ -128,7 +128,7 @@ ADR 本文の決定は書き換えていないため、ADR-1338 を supersede �
 
 ### `dompurify` だけ Dependabot PR #2114 をマージする
 
-上記のとおり CI を構造的に通せない。root override を人手で合わせるコミットを #2114 に足すことも考えられるが、bot ブランチへの人手コミットは次回の `@dependabot recreate` で失われるため、人手の PR に畳み込むほうが確実。
+上記のとおり CI を構造的に通せない。root override を人手で合わせるコミットを #2114 に足すことも考えられるが、bot ブランチへの人手コミットは次回の `@dependabot recreate` で失われるため、差し替え PR に畳み込むほうが確実。
 
 ### `packages/app/package.json` の `dompurify` 宣言も `^3.4.12` へ上げる
 

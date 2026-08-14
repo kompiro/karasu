@@ -7,7 +7,7 @@ topic: build
 scope:
   packages: [app, cli, core, docs-site, nest, vscode]
   concerns: [dependencies, ci, security]
-related_to: [ADR-2447, ADR-2397, ADR-2333, ADR-2318, ADR-784]
+related_to: [ADR-2474, ADR-2447, ADR-2397, ADR-2333, ADR-2318, ADR-784]
 assumptions:
   - "grep: packages/app/package.json :: \"tailwindcss\": \"\\^4.3.3\""
   - "grep: packages/app/package.json :: \"@tailwindcss/vite\": \"\\^4.3.3\""
@@ -27,7 +27,7 @@ assumptions:
   - Node ベースライン: [ADR-2397](2397-node-24-baseline.md)（本 ADR が下限を 22.12 に refine）
   - cooldown 迂回の先例: [ADR-2318](2318-dependabot-triage-2026-08-03.md)
   - cooldown 7 日: [ADR-784](784-update-dependencies-20260421.md)
-  - 派生 Issue: [#2474](https://github.com/kompiro/karasu/issues/2474)（「人手 PR」という語の見直し）
+  - 派生 Issue: [#2474](https://github.com/kompiro/karasu/issues/2474) → [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md)（反映手段の呼称を「差し替え PR」に統一）
   - 運用ルール: `.claude/rules/dependabot.md`, `docs/release.md`
 
 ## 背景
@@ -267,10 +267,10 @@ ADR-2397 の原則に抵触しない（ラインを落とさない）ことも�
 
 ## 未解決
 
-- **「人手 PR」という語**は「却下」と紛らわしく、書いた人を指していて中身を
-  指していない。[#2474](https://github.com/kompiro/karasu/issues/2474) で
-  `.claude/rules/dependabot.md` を含めた語彙の見直しを行う。本 ADR は
-  ADR-2447 との対応を保つため現行語彙のままにした。
+- ~~本 ADR の執筆時点でこの反映手段は「人手 PR」と呼んでいたが、「却下」と
+  紛らわしく、書いた人を指していて中身を指していなかった。~~
+  [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md) で
+  **差し替え PR** に改名し、本 ADR の記述もそれに合わせた（解決済み）。
 - ADR-2447 に残した `vitest ^4.1.10` / `oxfmt ^0.62.0` の assumption も、
   値としては版を含むため次の bump で落ちうる。「決定を検査している」と
   判断して今回は残したが、落ちた時点で同じ整理（決定の検査に書き換えるか
