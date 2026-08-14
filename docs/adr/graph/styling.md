@@ -15,6 +15,7 @@ flowchart TD
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
     ADR_2172["ADR-2172<br/>builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@p..."]
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
+    ADR_2482["ADR-2482<br/>バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする"]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   ADR_477["ADR-477<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
@@ -45,6 +46,7 @@ flowchart TD
   class ADR_1755 accepted
   class ADR_2172 accepted
   class ADR_2234 accepted
+  class ADR_2482 accepted
   class ADR_9004 accepted
   class ADR_477 ghost
   class ADR_1296 ghost

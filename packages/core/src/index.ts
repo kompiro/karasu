@@ -199,6 +199,7 @@ export {
   type NodeKindInfo,
   type TagInfo,
   type AnnotationInfo,
+  type ThemedBadgeColor,
   type StylePropertyInfo,
   type ShapeInfo,
   type DeployUnitKindInfo,

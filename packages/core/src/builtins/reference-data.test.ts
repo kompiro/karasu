@@ -35,6 +35,16 @@ describe("REFERENCE_DATA", () => {
     });
   }
 
+  it("annotations: every default badge carries a hex color for both themes", () => {
+    for (const a of REFERENCE_DATA.annotations) {
+      for (const theme of ["dark", "light"] as const) {
+        expect(a.defaultBadge.color[theme], `@${a.name} ${theme} badge color`).toMatch(
+          /^#[0-9A-Fa-f]{6}$/,
+        );
+      }
+    }
+  });
+
   it("annotations: every default badge label has a non-empty en + ja string", () => {
     for (const a of REFERENCE_DATA.annotations) {
       for (const locale of LOCALES) {
