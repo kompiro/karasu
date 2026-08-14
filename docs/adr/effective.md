@@ -216,6 +216,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1492](1492-stroke-style-canonical-edge-property.md) — stroke-style をエッジ線スタイルの正準プロパティとして採用する
 - [ADR-1554](1554-edge-label-in-context-menu.md) — エッジコンテキストメニューへの authored ラベル表示と data-edge-label の authored 専用化
 - [ADR-1911](1911-cross-domain-ghost-entities.md) — エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する
+- [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 
 ## navigation
@@ -371,4 +372,5 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-863](863-vscode-extension-host-harness.md) — VS Code 拡張ホスト向け smoke test harness
 - [ADR-1316](1316-vscode-marketplace-publish.md) — VS Code 拡張を Entra ID + GitHub OIDC（managed identity）で Marketplace に publish する
 - [ADR-1417](1417-lsp-cli-i18n.md) — LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n の切り出し
+- [ADR-2456](2456-lsp-custom-request-duplicate-jsonrpc.md) — LSP の position drift は position encoding ではなく vscode-jsonrpc の二重コピーだった
 - [ADR-9014](9014-vscode-extension-lsp-first.md) — VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画

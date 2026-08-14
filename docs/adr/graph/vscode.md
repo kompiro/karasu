@@ -12,6 +12,7 @@ flowchart TD
     ADR_863["ADR-863<br/>VS Code 拡張ホスト向け smoke test harness"]
     ADR_1316["ADR-1316<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
+    ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_30["ADR-30<br/>[renderer] アイコンモード — SVG アイコンによるノード表示切り替え"]
@@ -39,6 +40,7 @@ flowchart TD
   class ADR_863 accepted
   class ADR_1316 accepted
   class ADR_1417 accepted
+  class ADR_2456 accepted
   class ADR_9014 accepted
   class ADR_30 ghost
   class ADR_34 ghost

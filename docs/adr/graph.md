@@ -210,6 +210,7 @@ flowchart TD
     ADR_1492["ADR-1492<br/>stroke-style をエッジ線スタイルの正準プロパティとして採用する"]
     ADR_1554["ADR-1554<br/>エッジコンテキストメニューへの authored ラベル表示と data-edge-label..."]
     ADR_1911["ADR-1911<br/>エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する"]
+    ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
   subgraph navigation["navigation"]
@@ -362,6 +363,7 @@ flowchart TD
     ADR_863["ADR-863<br/>VS Code 拡張ホスト向け smoke test harness"]
     ADR_1316["ADR-1316<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
     ADR_1417["ADR-1417<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
+    ADR_2456["ADR-2456<br/>LSP の position drift は position encoding ではなく v..."]
     ADR_9014["ADR-9014<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
   end
   ADR_14 --> ADR_9003
@@ -804,10 +806,12 @@ flowchart TD
   class ADR_2440 accepted
   class ADR_2442 accepted
   class ADR_2447 accepted
+  class ADR_2456 accepted
   class ADR_2461 accepted
   class ADR_2472 accepted
   class ADR_2473 accepted
   class ADR_2474 accepted
+  class ADR_2477 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
