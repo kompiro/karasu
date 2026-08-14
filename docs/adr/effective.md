@@ -217,6 +217,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1492](1492-stroke-style-canonical-edge-property.md) — stroke-style をエッジ線スタイルの正準プロパティとして採用する
 - [ADR-1554](1554-edge-label-in-context-menu.md) — エッジコンテキストメニューへの authored ラベル表示と data-edge-label の authored 専用化
 - [ADR-1911](1911-cross-domain-ghost-entities.md) — エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する
+- [ADR-2223](2223-service-anchored-edge-renders-on-parent-canvas.md) — service ブロックに書いたエッジは、その service をノードとして描くビューに描画する
 - [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 
@@ -349,6 +350,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1755](1755-edge-from-to-selectors.md) — `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
 - [ADR-2172](2172-builtin-vocabulary-expansion.md) — builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@planned` を採用し、却下 7 件と停止規則を記録する
 - [ADR-2234](2234-boundary-style-selector.md) — boundary フレーム色の style セレクタ — `boundary` / `boundary#<id>`
+- [ADR-2482](2482-themed-badge-color-single-source.md) — バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 
 ## testing

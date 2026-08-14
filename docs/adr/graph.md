@@ -211,6 +211,7 @@ flowchart TD
     ADR_1492["ADR-1492<br/>stroke-style をエッジ線スタイルの正準プロパティとして採用する"]
     ADR_1554["ADR-1554<br/>エッジコンテキストメニューへの authored ラベル表示と data-edge-label..."]
     ADR_1911["ADR-1911<br/>エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する"]
+    ADR_2223["ADR-2223<br/>service ブロックに書いたエッジは、その service をノードとして描くビューに描画する"]
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
@@ -340,6 +341,7 @@ flowchart TD
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
     ADR_2172["ADR-2172<br/>builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@p..."]
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
+    ADR_2482["ADR-2482<br/>バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする"]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   subgraph testing["testing"]
@@ -781,6 +783,7 @@ flowchart TD
   class ADR_2193 accepted
   class ADR_2200 accepted
   class ADR_2218 accepted
+  class ADR_2223 accepted
   class ADR_2234 accepted
   class ADR_2249 accepted
   class ADR_2259 accepted
@@ -814,6 +817,7 @@ flowchart TD
   class ADR_2473 accepted
   class ADR_2474 accepted
   class ADR_2477 accepted
+  class ADR_2482 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

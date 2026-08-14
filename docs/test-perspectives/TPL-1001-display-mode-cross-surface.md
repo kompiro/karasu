@@ -21,12 +21,14 @@ known_consumers:
   - useOrgView
   - useViewSvg
   - node-detail-panel-webview
+  - reference-panel
 discovered_from:
   - issue: "#1001"
   - issue: "#279"
   - issue: "#132"
   - issue: "#183"
   - issue: "#1479"
+  - issue: "#2482"
   - root_cause_file: "packages/core/src/renderer/svg-builder.ts:257"
   - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
@@ -51,7 +53,7 @@ scope:
 1. **各描画面（surface）が個別にモードを認識しているか** — レイアウト本体だけでなく、legend / icon card frame / detail panel の icon / 各種 footer / マージンなど、SVG / DOM を生成するすべての関数が「このモードのとき何を描くか」を明示的に決めているか。**主描画と並列の代替描画パス**（Full View、export SVG、印刷用、画像書き出しなど）も同様に対象。これらは別 hook / 別関数で構築されるため、主描画の修正だけでは追従しない（#183: `useFullViewSvg` が `displayMode` を `buildExportSvg` に渡し忘れていた）
 2. **スタイルカスケードでモード由来のプロパティが上書きされない設計になっているか** — モード固有のテーマ（icon-theme など）が「ユーザーが上書きできるレイヤー」より前に挿入されていると、ユーザー stylesheet（あるいは built-in stylesheet）が無自覚にモードを破壊する
 3. **診断・警告系がモードを理解しているか** — モード由来の意図的な override を「style 衝突」と誤検知して false-positive な warning を出さないか
-4. **同じデータの cross-surface 表示が一貫しているか** — 例: icon card に出る pictogram と NodeDetailPanel に出る kind icon が同じソースから来ているか（→ TPL-999 とも関連）
+4. **同じデータの cross-surface 表示が一貫しているか** — 例: icon card に出る pictogram と NodeDetailPanel に出る kind icon が同じソースから来ているか（→ TPL-999 とも関連）。**図を描かない面（Reference パネル・凡例・detail panel）も対象**で、そこがモード / テーマを解決せずに「素の値」を表示すると、語彙のドキュメント面が図と食い違う（#2482: バッジ色の canonical 値が dark 用の単一文字列で、パネルは light テーマでもそれを塗っていた）。解決済みの値を単一ソースから **テーマ別の対** で配り、テーマを選ばずに取れる値を残さない
 5. **トグルを消費する consumer 側の呼び出し口がすべて option を forward しているか** — core レンダラがトグルを受け取れるようにしても、それを呼ぶ consumer（app / CLI / VS Code 拡張）は **view ごとに別々の呼び出し口** を持つ。app は system / deploy / org / multi-level がそれぞれ別フック（`useSystemView` / `useDeployView` / `useOrgView` / `useViewSvg`）から core を呼ぶ。core 側のメタテスト（`displaymode-meta.test.ts` / `theme-meta.test.ts`）が「core がトグルを通す」ことを保証しても、それは **各 consumer 呼び出し口がトグルを渡している保証にはならない**。点検は core エントリポイントの列挙だけで止めず、各 consumer の per-view 呼び出し口まで列挙する（#1479: `theme` を `useViewSvg` だけに配線し `useSystemView` / `useDeployView` / `useOrgView` に渡し忘れ、既定のプレビュー面だけ旧テーマのまま残った）
 
 ## 想定される失敗モード

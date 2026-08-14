@@ -28,20 +28,6 @@ export const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> 
   migration_target: "migrationTarget",
 };
 
-/**
- * Light-theme badge colors. The dark colors are the canonical
- * `reference-data.ts` `defaultBadge.color` values; light uses slightly
- * darker variants that stay legible on light cards (ADR-1479).
- */
-const LIGHT_BADGE_COLORS: Record<string, string> = {
-  deprecated: "#DC2626",
-  new: "#047857",
-  experimental: "#B45309",
-  draft: "#7C3AED",
-  planned: "#64748B",
-  migration_target: "#2563EB",
-};
-
 /** Escape a label for embedding in a double-quoted style string literal. */
 function escapeStyleString(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -56,10 +42,10 @@ function buildAnnotationRules(theme: DiagramTheme, badgeLabels?: AnnotationBadge
   return REFERENCE_DATA.annotations
     .map((a) => {
       const label = badgeLabels?.[ANNOTATION_LABEL_KEYS[a.name]] ?? a.defaultBadge.label.en;
-      const color =
-        theme === "light"
-          ? (LIGHT_BADGE_COLORS[a.name] ?? a.defaultBadge.color)
-          : a.defaultBadge.color;
+      // Both palettes come from `reference-data.ts`, so the Reference panel's
+      // swatch and this sheet cannot disagree about what the theme paints
+      // (#2482; same single-source reasoning as the labels above, TPL-1415).
+      const color = a.defaultBadge.color[theme];
       const extra = a.name === "deprecated" ? "\n  opacity: 0.6;" : "";
       return `@${a.name} {
   badge-color: ${color};
