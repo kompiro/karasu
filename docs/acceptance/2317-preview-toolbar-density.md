@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-14
 - **関連 Issue**: [#2317](https://github.com/kompiro/karasu/issues/2317)
+- **設計 (ADR)**: [ADR-2317](../adr/2317-preview-toolbar-density.md)
 - **Related TPLs**:
   [TPL-1399](../test-perspectives/TPL-1399-control-a11y-contract-survives-migration.md)、
   [TPL-1402](../test-perspectives/TPL-1402-involutive-toggle-renders-both-states.md)、
