@@ -935,6 +935,68 @@ describe("PreviewColumn", () => {
   });
 });
 
+describe("PreviewColumn — the toolbar measurement it publishes", () => {
+  // #2492: the panel that floats below the toolbar read `--preview-toolbar-h`
+  // — a height — as though it were an offset from the top of `.preview-column`.
+  // The diagram tab bar sits in between, so the panel started inside the
+  // toolbar. What is published now is the offset itself, and this test pins
+  // that meaning: with a tab bar above it, the value must exceed the toolbar's
+  // own height.
+  const TAB_BAR_H = 36;
+  const TOOLBAR_H = 61;
+
+  function renderWithMeasuredToolbar() {
+    const rect = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        const height = this.classList.contains("preview-toolbar") ? TOOLBAR_H : 0;
+        return {
+          height,
+          width: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: height,
+          x: 0,
+          y: 0,
+        } as DOMRect;
+      });
+    const offsetTop = vi
+      .spyOn(HTMLElement.prototype, "offsetTop", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains("preview-toolbar") ? TAB_BAR_H : 0;
+      });
+    const { container } = renderPreview(makeProps());
+    return {
+      column: container.querySelector(".preview-column") as HTMLElement,
+      restore: () => {
+        rect.mockRestore();
+        offsetTop.mockRestore();
+      },
+    };
+  }
+
+  it("publishes the toolbar's bottom edge, which clears the tab bar above it", () => {
+    const { column, restore } = renderWithMeasuredToolbar();
+    try {
+      expect(column.style.getPropertyValue("--preview-toolbar-bottom")).toBe(
+        `${TAB_BAR_H + TOOLBAR_H}px`,
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("publishes no bare height, so no consumer can read one as an offset", () => {
+    const { column, restore } = renderWithMeasuredToolbar();
+    try {
+      expect(column.style.getPropertyValue("--preview-toolbar-h")).toBe("");
+    } finally {
+      restore();
+    }
+  });
+});
+
 describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
   const SAMPLE = 'system Shop {\n  service Api { label "API" }\n}';
 

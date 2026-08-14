@@ -59,16 +59,25 @@ export function PreviewColumn() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [facetOverviewOpen, setFacetOverviewOpen] = useState(false);
   // Surfaces that float over the diagram cannot use a constant offset: the
-  // toolbar's height depends on locale and width. Publish the measured height
-  // and let CSS position against it.
+  // toolbar's height depends on locale and width, so it is measured and
+  // published as `--preview-toolbar-bottom` — the toolbar's bottom edge,
+  // measured from the top of `.preview-column`, which is the containing block
+  // those surfaces position against.
+  //
+  // What is published is the *offset*, not the height, because the offset is
+  // what every consumer needs. Publishing the height instead is what caused
+  // #2492: read as an offset it left out the diagram tab bar above the toolbar,
+  // and the facet overview panel started 28px inside the toolbar. One number
+  // with one meaning leaves no such choice to make.
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const toolbar = toolbarRef.current;
     if (!toolbar) return;
     const publish = () => {
+      const bottom = toolbar.offsetTop + toolbar.getBoundingClientRect().height;
       toolbar.parentElement?.style.setProperty(
-        "--preview-toolbar-h",
-        `${Math.round(toolbar.getBoundingClientRect().height)}px`,
+        "--preview-toolbar-bottom",
+        `${Math.round(bottom)}px`,
       );
     };
     publish();

@@ -439,6 +439,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-1415](TPL-1415-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
 | [TPL-1417](TPL-1417-single-renderer-for-structured-messages.md) | 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する | core-concepts | ADR-34 |
 | [TPL-1468](TPL-1468-overlay-z-index-scale.md) | overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ | app-ui | #1468 |
+| [TPL-2492](TPL-2492-published-measurement-carries-its-origin.md) | publish した実測値は原点込みで契約する — 高さを offset として読める形で配らない | app-ui | #2492 |
 | [TPL-1480](TPL-1480-consistency-check-triggers-on-both-sides.md) | 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる | build | #1480 |
 | [TPL-1503](TPL-1503-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
 | [TPL-2171](TPL-2171-spec-promised-diagnostics-implemented.md) | spec が約束する診断は専用の診断コードとして実装されていることを検証する | parser | docs/spec/style.md, docs/spec/syntax.md |
