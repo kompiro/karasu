@@ -28,7 +28,7 @@ type: product
 
 - [x] AT-C: target が sibling service / `[external]` service / sibling client / 限定子付き cross-system（ghost system・caller ghost）/ user のいずれでも描画経路に乗る
 
-  > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › service-anchored edges (#2223) › feeds the ghost-system machinery for a qualified cross-system target ／ surfaces a ghost user for a service-anchored edge to a user ／ `packages/core/src/view/anchored-edge-render-or-warn.test.ts`
+  > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › service-anchored edges (#2223) › feeds the ghost-system machinery for a qualified cross-system target ／ surfaces a ghost user for a service-anchored edge to a user ／ `packages/core/src/view/anchored-edge-render-or-warn.test.ts` › an authored edge either renders or is reported (TPL-2075)
 
 - [x] AT-D: system ブロックを持たないファイルでも、`__unassigned__` フレームに包まれた orphan service 間で描画される（drawio 経路の orphan 引き渡しでも同じ）
 
@@ -42,7 +42,7 @@ type: product
 
 - [x] AT-E: 各配置について「どこかの view に描画される」か「`edge-endpoint-not-at-scope` で報告される」かのちょうど一方だけが成り立つ（silent drop も二重報告も無い）
 
-  > ✅ Automated — `packages/core/src/view/anchored-edge-render-or-warn.test.ts` › an authored edge either renders or is reported (TPL-2075)（8 配置）
+  > ✅ Automated — `packages/core/src/view/anchored-edge-render-or-warn.test.ts` › an authored edge either renders or is reported (TPL-2075)（10 配置）
 
 - [x] AT-F: 新たに描画されるようになった配置では warning が消える（service の peer 宛て、orphan 同士）。peer でない配置（他 service の domain 宛て、`__unassigned__` に包まれない top-level client を端点に持つ両向き）は warning のまま描画されない
 

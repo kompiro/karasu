@@ -1671,12 +1671,13 @@ function detectUnresolvedEdgeEndpoints(file: KrsFile): Warning[] {
 }
 
 /**
- * An authored edge renders only on the view that draws the block it is declared
- * in: view extraction reads `container.edges` and keeps the edges whose two
- * endpoints are peers there (`view-extract.ts` — root view, drill-down view,
- * entity view all share that shape). An endpoint that resolves to a node
- * *outside* that peer set therefore drops the edge from every view. Before
- * #2075 the drop was silent; this surfaces it.
+ * An authored edge renders only where its endpoints stand side by side: the
+ * view of the block it is declared in, or — for an edge anchored inside a
+ * child block — the view that draws that child as a node (`view-extract.ts`,
+ * `collectAnchoredPeerEdges`; ADR-2223). Either way extraction keeps the edges
+ * whose two endpoints are peers at that scope, so an endpoint resolving to a
+ * node *outside* the peer set drops the edge from every view. Before #2075 the
+ * drop was silent; this surfaces it.
  *
  * The peer set is per **node instance**, mirroring what the renderer does:
  * `layout.ts`'s multi-system path draws a system's edge only when both

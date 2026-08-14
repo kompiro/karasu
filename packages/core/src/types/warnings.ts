@@ -159,8 +159,12 @@ export interface WarningParamsByKind {
    *
    * - container is a `system` → that block's own children, plus the top-level
    *   orphan `domain`s the drawio exporter splices into the root frame;
-   * - otherwise → the container's own id (the self-anchored source) plus the
-   *   children of its declaring parent.
+   * - container has a declaring parent → the container's own id (the
+   *   self-anchored source) plus that parent's children;
+   * - container is top-level → its own id plus the other orphans the
+   *   `__unassigned__` pseudo-system wraps it with, which is the frame they
+   *   are drawn on together (ADR-2223). A top-level block the wrap skips
+   *   (a `client`) shares a canvas with nothing, so it has no peers.
    *
    * Two endpoints are skipped rather than reported: a dotted ref (`Sys.Svc` /
    * `Domain.Entity`, owned by `cross-system-ref-*` and the entity view) and an
