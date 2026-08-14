@@ -54,7 +54,9 @@ deploy Prod {
 
 async function openPopup(page: Page) {
   const popupPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Open all views in new window" }).click();
+  // Open All Views moved into the export dropdown in #2317.
+  await page.getByRole("button", { name: "Export options" }).click();
+  await page.getByRole("menuitem", { name: "Open all views in new window" }).click();
   const popup = await popupPromise;
   await popup.waitForLoadState();
   return popup;

@@ -225,6 +225,38 @@
   flex-shrink: 0;
 }
 
+/* ── Preview canvas controls ────────────────────────────────────────
+   The controls that change the drawn diagram, floating over it rather than
+   joining the toolbar (#2317). Anchored to the toolbar's measured *bottom*
+   edge — the height alone would put the bar on top of the toolbar, since the
+   diagram tab bar sits above it — plus the breadcrumb row. */
+.preview-canvas-controls {
+  position: absolute;
+  top: calc(var(--preview-toolbar-bottom, 82px) + 34px);
+  left: 12px;
+  z-index: var(--z-canvas-controls);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  /* Wrap to a second row on a narrow column instead of spilling out of it.
+     Without the max-width the absolutely positioned bar keeps its natural
+     width (549px for the system view in ja), overflows a 512px column and
+     breaks the Group-by label one character per line. */
+  flex-wrap: wrap;
+  max-width: calc(100% - 24px);
+  padding: 4px 6px;
+  /* Opaque on purpose — the same reason the facet overview panel is: a
+     translucent surface over the diagram puts two texts on the same pixels. */
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-node-detail);
+}
+
+.preview-canvas-controls .group-by-selector-label {
+  white-space: nowrap;
+}
+
 .toolbar-btn {
   background: transparent;
   color: var(--text-muted);

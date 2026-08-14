@@ -239,8 +239,9 @@ view state 系を左寄せ・出口系を右寄せの 2 ゾーンにする。
    - 背景は不透明（facet overview panel と同じ理由 — 図の上に半透明を重ねると 2 つの文字が
      同じピクセルに乗る）。
    - `z-index` は `tokens.css` に `--z-canvas-controls: 60` を追加して参照する（TPL-1468）。
-   - 既存の facet overview panel の `top` を `--preview-toolbar-h` から `--preview-toolbar-bottom`
-     に付け替える（「詰めた問い」4 の既存 bug）。同 PR で TPL を 1 件起こす。
+   - `--preview-toolbar-bottom` は `PreviewColumn` が publish する。facet overview panel の
+     アンカーずれ（「詰めた問い」4）はこの変数を使って
+     [#2492](https://github.com/kompiro/karasu/issues/2492) で直す — 本 doc の範囲外。
 3. ツールバー側は split button を保ったまま、▾ メニューに ⊟ 全ビューを開く を追加する
    （ファイルを書き出す操作の集まり、という 1 つの説明で閉じる）。`🔗 Share` と `📘 Docs ▾` は
    現状のまま単独で残す。新しい i18n key が要る場合は 4 段以内に収める（TPL-2019）。
@@ -330,8 +331,10 @@ domain までドリルすると `◇ エンティティ` が出るが、その�
 で位置を決めているが、この原点は `.preview-column` の上端であり、あいだにタブバー（36px）がある。
 その結果**現状のツールバー（`?toolbar=current`、未改修）でもパネルがツールバーに 28px 食い込んで
 いる**（1280px / ja で計測。パネル上端 69px に対しツールバー下端 97px）。#2177 の時点から入っていた
-ずれで、本 doc の変更とは独立。実装 PR で `--preview-toolbar-bottom` に付け替えて直し、
-3-Yes ルールに照らして「publish した実測値は原点込みで契約する」観点の TPL を同 PR で起こす。
+ずれで、本 doc の変更とは独立。[#2492](https://github.com/kompiro/karasu/issues/2492) として
+切り出し、そちらで `--preview-toolbar-bottom` に付け替えて直す（3-Yes 判定と TPL の起票も
+同 Issue で扱う）。本 doc の実装が publish する `--preview-toolbar-bottom` を、その修正が
+そのまま使える。
 
 ## 決めないこと
 
