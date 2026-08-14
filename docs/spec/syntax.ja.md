@@ -1008,8 +1008,10 @@ team の直下に `member` を宣言して個人を記述する。
 
 `organization` / `team` / `member` の label は、他のノード kind と同じく `label` プロパティで指定する
 （`team backend { label "バックエンドチーム" }`、[ADR-19](../adr/19-required-id-label-as-property.md)）。
-旧来の位置引数（`team backend "バックエンドチーム"`）は**非推奨**（#2133）: 現状は受理され
-`positional-label-deprecated` warning が出る。`karasu fmt` がプロパティ形式へ書き換える。
+旧来の位置引数（`team backend "バックエンドチーム"`）は**拒否**され `positional-label-removed`
+error になる（#2133 で非推奨化、#2208 で削除）。修正までの間も組織図が読めるよう文字列は
+label として読み取るが、プロパティ形式にするまでファイルは clean にコンパイルされない。
+`karasu fmt` が書き換えられるのは error なく parse できる間だけなので、移行はアップグレード前に行う。
 両方が同時に指定された場合はプロパティ形式が優先される。
 
 > Related TPLs: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は必ず本 spec に文書化する。未文書の受理形は drift（本節の positional 形は約 4 ヶ月間 undocumented のまま受理されていた、#2133）。

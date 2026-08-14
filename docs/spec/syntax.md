@@ -1074,7 +1074,7 @@ All properties are optional. `member` cannot be nested.
 ### How to specify a label
 
 `organization`, `team`, and `member` take their label as the `label` property (`team backend { label "Backend Team" }`), like every node kind ([ADR-19](../adr/19-required-id-label-as-property.md)).
-The legacy positional argument (`team backend "Backend Team"`) is **deprecated** (#2133): it still parses, emits the `positional-label-deprecated` warning, and `karasu fmt` rewrites it to the property form. When both are specified, the property form takes precedence.
+The legacy positional argument (`team backend "Backend Team"`) is **rejected** with the `positional-label-removed` error (#2133 deprecated it, #2208 removed it). The string is still read as the label so the org chart keeps its names while the file is fixed, but the file does not compile clean until the property form is used. `karasu fmt` rewrites the form only while it parses without an error, so migrate before upgrading. When both are specified, the property form takes precedence.
 
 > Related TPLs: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every form the parser accepts must be documented here; undocumented leniency is drift (this section's positional form went unspecified-but-accepted for four months, #2133).
 

@@ -192,11 +192,6 @@ const SAMPLES: SamplesByCode = {
     code: "positional-label-removed",
     params: { construct: "boundary" },
   },
-  "positional-label-deprecated": {
-    severity: "warning",
-    code: "positional-label-deprecated",
-    params: { construct: "team" },
-  },
   "contains-target-not-found": {
     severity: "warning",
     code: "contains-target-not-found",
@@ -433,7 +428,6 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-boundary-id": ["OrderIntake"],
   "duplicate-facet-id": ["pii"],
   "positional-label-removed": ["boundary", "label"],
-  "positional-label-deprecated": ["team", "label"],
   "contains-target-not-found": ["MissingSvc"],
   "duplicate-team-id": ["Platform"],
   "node-id-multiple-locations": ["OrderService"],

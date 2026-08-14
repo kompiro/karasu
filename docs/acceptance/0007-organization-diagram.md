@@ -26,19 +26,24 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 2. Replace the `index.krs` content in the editor with:
    ```krs
    organization ExampleCorp {
-     team backend "バックエンドチーム" {
+     team backend {
+       label "バックエンドチーム"
        owns ECommerce
-       member alice "Alice" {
+       member alice {
+         label "Alice"
          slack "@alice"
          github "alice-dev"
        }
-       member bob "Bob" {
+       member bob {
+         label "Bob"
          description "SRE担当"
        }
      }
-     team frontend "フロントエンドチーム" {
+     team frontend {
+       label "フロントエンドチーム"
        owns WebApp
-       member carol "Carol" {
+       member carol {
+         label "Carol"
          github "carol-fe"
        }
      }
@@ -86,11 +91,13 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 1. Replace `index.krs` content with:
    ```krs
    organization Corp {
-     team platform "プラットフォーム" {
-       team infra "インフラ" {
-         member dave "Dave" {}
+     team platform {
+       label "プラットフォーム"
+       team infra {
+         label "インフラ"
+         member dave { label "Dave" }
        }
-       team security "セキュリティ" {}
+       team security { label "セキュリティ" }
      }
    }
    ```
@@ -191,11 +198,32 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 
 ---
 
+### TC-10: Positional Label Error
+
+**Steps:**
+1. Click the **👥 Org** tab in the diagram tab bar
+2. Replace `index.krs` content with:
+   ```krs invalid
+   organization Corp {
+     team backend "バックエンドチーム" {
+       member alice "Alice" {}
+     }
+   }
+   ```
+
+**Expected:**
+- Diagnostic error on each of the three lines: `"team" does not accept a label after its id; write label "..." inside the block` (and the same for `organization` / `member`)
+- The org diagram still renders, and the cards read **バックエンドチーム** / **Alice** — the retired form's string is still taken as the label so the drawing does not degrade while the file is fixed (#2208)
+- Rewriting the block to the property form (`team backend { label "バックエンドチーム" }`) clears the errors and leaves the same card labels
+
+---
+
 ## Automated Coverage
 
 | Area | Test File |
 |------|-----------|
 | Parser (org/team/member/owns) | `packages/core/src/parser/parser.test.ts` |
+| Positional label error + label retention | `parser.test.ts` |
 | OrgViewExtract drill-down | `packages/core/src/view/org-view-extract.test.ts` |
 | Duplicate ID error | `parser.test.ts` |
 | Duplicate owns error | `parser.test.ts` |

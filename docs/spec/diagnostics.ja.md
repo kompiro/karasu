@@ -83,8 +83,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `boundary-membership-not-drawn` | info | Group by: boundary で、非メンバーを覆わずに boundary の枠をメンバーまで広げられなかったため、その所属をカード上の `◇` タブで示した。model の事実を述べる `duplicate-boundary-assignment` と違い、**この描画**が何をしたかを述べる。したがって位置情報を持たず、この軸でのみ出る。 |
 | `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
 | `duplicate-facet-id` | error | 2 つの `facet` ブロックが同じ id を宣言しており、`facets` の参照がどちらのメタデータを指すか決まらない。マージ後のモデルで判定するのでファイルをまたぐ重複も検出する。参照が解決するのは最初の宣言。 |
-| `positional-label-removed` | error | `boundary` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、experimental な `boundary` では未文書の位置ラベル記法を deprecation を挟まず削除した（#2133）。 |
-| `positional-label-deprecated` | warning | `organization` / `team` / `member` の id 直後にラベル文字列が置かれている。この記法は spec に存在しない（ADR-19）。現状は受理され、`karasu fmt` が `label` プロパティへ書き換える（#2133）。 |
+| `positional-label-removed` | error | `boundary` / `facet` / `organization` / `team` / `member` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、位置ラベル記法は spec に存在しない。experimental な `boundary` / `facet` は deprecation を挟まず削除し（#2133）、残りは deprecation を経て削除した（#2208）。復帰動作は異なり、`boundary` / `facet` は文字列を捨てるが、`organization` / `team` / `member` は label として保持し、修正されるまで組織図が読める状態を保つ。 |
 | `node-id-multiple-locations` | warning | 同じ node id が複数の場所に現れる。 |
 
 ### cross-reference 解決（warn-don't-error, §S6）

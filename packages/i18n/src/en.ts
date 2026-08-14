@@ -473,8 +473,6 @@ export const en: Translations = {
     `Facet "${facetId}" is already declared; the first declaration is the one references resolve to`,
   "diagnostic.positionalLabelRemoved.message": ({ construct }) =>
     `"${construct}" does not accept a label after its id; write label "..." inside the block`,
-  "diagnostic.positionalLabelDeprecated.message": ({ construct }) =>
-    `Positional label after the "${construct}" id is deprecated; write label "..." inside the block ("karasu fmt" rewrites it)`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,
