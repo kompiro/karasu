@@ -371,4 +371,5 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-863](863-vscode-extension-host-harness.md) — VS Code 拡張ホスト向け smoke test harness
 - [ADR-1316](1316-vscode-marketplace-publish.md) — VS Code 拡張を Entra ID + GitHub OIDC（managed identity）で Marketplace に publish する
 - [ADR-1417](1417-lsp-cli-i18n.md) — LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n の切り出し
+- [ADR-2456](2456-lsp-custom-request-duplicate-jsonrpc.md) — LSP の position drift は position encoding ではなく vscode-jsonrpc の二重コピーだった
 - [ADR-9014](9014-vscode-extension-lsp-first.md) — VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画
