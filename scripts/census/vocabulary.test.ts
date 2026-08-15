@@ -199,6 +199,56 @@ describe("source selection", () => {
     expect(files).toContain("examples/en/feature-samples/tag-facet-registers.krs");
     expect(files).toContain("examples/en/feature-samples/tag-facet-registers.krs.style");
   });
+
+  it("returns nothing for a root that does not exist, so the CLI can refuse it", () => {
+    expect(sourceFilesUnder(repoRoot, "exmaples")).toEqual([]);
+    expect(sourceFilesUnder(repoRoot, "/etc")).toEqual([]);
+  });
+
+  // `.claude/worktrees/**` holds full copies of this repo; a `.` root that
+  // descended into them would count every example once per in-flight branch.
+  it("does not descend into dot-directories", () => {
+    expect(sourceFilesUnder(repoRoot, ".").some((f) => f.startsWith("./."))).toBe(false);
+  });
+
+  it("counts a file once when roots overlap", () => {
+    const both = censusOver(repoRoot, ["examples", "examples/en"]);
+    const one = censusOver(repoRoot, ["examples"]);
+    expect(both.scanned.krsFiles).toBe(one.scanned.krsFiles);
+    expect(both.tags.occurrences).toBe(one.tags.occurrences);
+  });
+});
+
+describe("documentation corpus", () => {
+  // The PR's headline conclusion — "every non-builtin occurrence is in a doc
+  // fence, none in examples/" — comes entirely from this path, so it needs its
+  // own floor rather than riding on the `.krs` one.
+  const census = censusOver(repoRoot, ["examples"], ["docs/spec", "docs/guide", "docs/acceptance"]);
+
+  it("parses a non-trivial number of fences", () => {
+    expect(census.scanned.docFences).toBeGreaterThan(100);
+  });
+
+  it("keeps the walk and the diagnostics in agreement across the whole corpus", () => {
+    expect(census.scanned.divergences).toEqual([]);
+  });
+
+  it("sees the deprecation demos the spec teaches on purpose", () => {
+    // `docs/spec/style.md` writes `[pci]` as the "Before" of the migration,
+    // and `docs/spec/tags-annotations.md` writes `@team_alpha` next to a
+    // comment saying it warns. Both are the census working, not drift.
+    expect(census.tags.nonBuiltin.pci).toBeGreaterThan(0);
+    expect(census.annotations.nonBuiltin.team_alpha).toBeGreaterThan(0);
+  });
+
+  it("skips fences that declare themselves fragment or invalid", () => {
+    const withMarkers = emptyCensus();
+    // A bare marker check would have to know the marker names; this asserts
+    // the behaviour instead, so it survives a marker being added upstream.
+    addKrsSource(withMarkers, "fence", `system S { service A [zzzskipme] { label "A" } }`);
+    expect(withMarkers.tags.nonBuiltin).toEqual({ zzzskipme: 1 });
+    expect(census.tags.nonBuiltin.zzzskipme).toBeUndefined();
+  });
 });
 
 describe("census over the shipped examples", () => {

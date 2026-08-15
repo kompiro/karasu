@@ -6,7 +6,12 @@ import { StyleParser } from "../../packages/core/src/parser/style-parser.ts";
 import { analyze } from "../../packages/core/src/resolver/warnings.ts";
 import { createEmptyKrsFile } from "../../packages/core/src/types/ast.ts";
 import type { KrsFile, KrsNode } from "../../packages/core/src/types/ast.ts";
-import { DEFAULT_DOC_ROOTS, extractFences, markdownFilesUnder } from "../lint/krs-fences.ts";
+import {
+  DEFAULT_DOC_ROOTS,
+  extractFences,
+  KNOWN_MARKERS,
+  markdownFilesUnder,
+} from "../lint/krs-fences.ts";
 
 /**
  * Vocabulary census over a set of `.krs` / `.krs.style` sources.
@@ -88,6 +93,13 @@ export interface VocabularyCensus {
     docFences: number;
     /** Sources the parser rejected outright; they contribute no counts. */
     unparseable: string[];
+    /**
+     * Names a diagnostic flagged that the walk never saw — i.e. the two halves
+     * of the census disagree about where vocabulary can live. Non-empty means
+     * the numbers below are wrong, not merely surprising, so callers surface
+     * this rather than reporting a clean census.
+     */
+    divergences: string[];
   };
   tags: RegisterCensus;
   annotations: RegisterCensus;
@@ -120,7 +132,7 @@ function emptyRegister(): RegisterCensus {
 
 export function emptyCensus(): VocabularyCensus {
   return {
-    scanned: { krsFiles: 0, styleFiles: 0, docFences: 0, unparseable: [] },
+    scanned: { krsFiles: 0, styleFiles: 0, docFences: 0, unparseable: [], divergences: [] },
     tags: emptyRegister(),
     annotations: emptyRegister(),
     facets: { declared: {}, memberships: {}, nodesWithFacets: 0 },
@@ -224,8 +236,15 @@ export function addKrsSource(census: VocabularyCensus, label: string, source: st
     }
   }
 
-  foldRegister(census.tags, tagTotals, nonBuiltinTags, label);
-  foldRegister(census.annotations, annotationTotals, nonBuiltinAnnotations, label);
+  foldRegister(census, census.tags, tagTotals, nonBuiltinTags, label, "tag");
+  foldRegister(
+    census,
+    census.annotations,
+    annotationTotals,
+    nonBuiltinAnnotations,
+    label,
+    "annotation",
+  );
 }
 
 /**
@@ -236,11 +255,24 @@ export function addKrsSource(census: VocabularyCensus, label: string, source: st
  * rather than a second lookup.
  */
 function foldRegister(
+  census: VocabularyCensus,
   register: RegisterCensus,
   totals: NameTally,
   nonBuiltin: NameTally,
   label: string,
+  register_: string,
 ): void {
+  // The walk and the diagnostic are supposed to cover the same ground. If the
+  // diagnostic flags a name the walk never reached, the walk is missing a node
+  // collection and every number here is understated — so say so instead of
+  // quietly reporting a smaller census. The reverse direction (walk sees a
+  // name the diagnostic ignores) is what the builtin tally legitimately is.
+  for (const name of Object.keys(nonBuiltin)) {
+    if (totals[name] === undefined) {
+      census.scanned.divergences.push(`${label}: ${register_} \`${name}\` flagged but not walked`);
+    }
+  }
+
   for (const [name, count] of Object.entries(totals)) {
     register.occurrences += count;
     const flagged = nonBuiltin[name] ?? 0;
@@ -316,7 +348,11 @@ export function sourceFilesUnder(repoRoot: string, root: string): string[] {
   for (const entry of readdirSync(abs, { withFileTypes: true }).sort((a, b) =>
     a.name.localeCompare(b.name),
   )) {
-    if (entry.name === "node_modules") continue;
+    // `.claude/worktrees/**` holds whole copies of this repo, so a `.` root
+    // would count every example once per in-flight branch. Dot-directories and
+    // `node_modules` are skipped for the same reason `krs-fences` names its
+    // roots explicitly: a census over accidental copies is not a census.
+    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
     const rel = `${root}/${entry.name}`;
     if (entry.isDirectory()) files.push(...sourceFilesUnder(repoRoot, rel));
     else if (entry.name.endsWith(".krs") || entry.name.endsWith(".krs.style")) files.push(rel);
@@ -340,8 +376,14 @@ export function censusOver(
 ): VocabularyCensus {
   const census = emptyCensus();
 
+  // Overlapping roots (`examples examples/en`) would otherwise count the
+  // intersection twice and quietly inflate every tally.
+  const seen = new Set<string>();
+
   for (const root of roots) {
     for (const file of sourceFilesUnder(repoRoot, root)) {
+      if (seen.has(file)) continue;
+      seen.add(file);
       const source = readFileSync(join(repoRoot, file), "utf8");
       if (file.endsWith(".krs.style")) {
         census.scanned.styleFiles += 1;
@@ -358,10 +400,11 @@ export function censusOver(
       for (const fence of extractFences(readFileSync(join(repoRoot, file), "utf8"))) {
         const [lang, ...rest] = fence.info.split(/\s+/);
         const marker = rest.join(" ");
-        // `fragment` declares itself an excerpt and is never parsed;
-        // `invalid` is a deliberate bad-input demo, so its vocabulary is not
-        // a usage signal. Both would otherwise pollute the tally.
-        if (lang !== "krs" || marker === "fragment" || marker === "invalid") continue;
+        // Any declared marker means the block is not a plain model: `fragment`
+        // is an excerpt that does not parse, `invalid` is a deliberate
+        // bad-input demo whose vocabulary is not a usage signal. Read from the
+        // fences guard so a marker added there is skipped here the same day.
+        if (lang !== "krs" || KNOWN_MARKERS.has(marker)) continue;
         census.scanned.docFences += 1;
         addKrsSource(census, `${file}:${fence.line}`, fence.body);
       }
@@ -413,7 +456,8 @@ export function formatCensus(census: VocabularyCensus): string {
     `  non-builtin: ${rank(annotations.nonBuiltin)}`,
     ...sitesOf(annotations),
     "",
-    `facets: ${Object.keys(facets.declared).length} declaration(s), ` +
+    `facets: ${total(facets.declared)} declaration block(s) of ` +
+      `${Object.keys(facets.declared).length} id(s), ` +
       `${total(facets.memberships)} membership(s) on ${facets.nodesWithFacets} node(s)`,
     `  declared: ${rank(facets.declared)}`,
     `  members:  ${rank(facets.memberships)}`,
@@ -440,11 +484,28 @@ function main(): void {
   const withDocs = argv.includes("--docs");
   const roots = argv.filter((arg) => !arg.startsWith("--"));
 
-  const census = censusOver(
-    process.cwd(),
-    roots.length > 0 ? roots : DEFAULT_SOURCE_ROOTS,
-    withDocs ? DEFAULT_DOC_ROOTS : [],
-  );
+  const chosen = roots.length > 0 ? roots : DEFAULT_SOURCE_ROOTS;
+  // A root that resolves to nothing — a typo, or an absolute path, which
+  // `sourceFilesUnder` joins onto the repo root and finds nowhere — otherwise
+  // prints a clean "0 scanned, non-builtin: none" census and exits 0. That is
+  // the silent-zero this instrument would be worst at: it reads as evidence
+  // that the corpus is clean.
+  const empty = chosen.filter((root) => sourceFilesUnder(process.cwd(), root).length === 0);
+  if (empty.length > 0) {
+    console.error(
+      `census: no .krs or .krs.style below ${empty.join(", ")} — ` +
+        "roots are repo-relative paths (e.g. `examples`, `packages/vscode-e2e/fixtures`)",
+    );
+    process.exit(1);
+  }
+
+  const census = censusOver(process.cwd(), chosen, withDocs ? DEFAULT_DOC_ROOTS : []);
+
+  if (census.scanned.divergences.length > 0) {
+    console.error("census: the walk and the diagnostics disagree — these counts are understated:");
+    for (const divergence of census.scanned.divergences) console.error(`  ${divergence}`);
+    process.exit(1);
+  }
 
   if (json) {
     console.log(JSON.stringify(census, null, 2));

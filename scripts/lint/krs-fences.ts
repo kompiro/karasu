@@ -76,7 +76,15 @@ export interface Fence {
   body: string;
 }
 
-const KNOWN_MARKERS = new Set(["fragment", "invalid"]);
+/**
+ * Markers that say a ```krs block is not a plain current-valid model.
+ *
+ * Exported because `scripts/census/vocabulary.ts` has to skip the same set: a
+ * `fragment` is not parseable and an `invalid` block's vocabulary is a
+ * deliberate bad-input demo, so counting either would corrupt the tally. A
+ * private copy there would keep counting whichever marker was added here last.
+ */
+export const KNOWN_MARKERS = new Set(["fragment", "invalid"]);
 
 /**
  * Documentation roots scanned by default. Every `.md` below them is read
