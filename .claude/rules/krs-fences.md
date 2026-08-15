@@ -25,11 +25,19 @@ pnpm run lint:krs-fences
 
 | fence | 主張 | ガード |
 |-------|------|--------|
-| ` ```krs ` | 現行文法で通る完全なモデル | parse エラーゼロを検証 |
+| ` ```krs ` | 現行文法で通る完全なモデル | parse エラーゼロ **かつ deprecation クラスの warning ゼロ**を検証 |
 | ` ```krs fragment ` | 抜粋（ファイル全体ではない） | parse しない |
 | ` ```krs invalid ` | 意図的に不正な入力（診断のデモ） | いまも parse エラーが出ることを検証 |
 
 `invalid` を逆向きにも検証するのは、文法が緩んで例が例でなくなる変化も拾うため。
+
+deprecation クラスは **code が `-deprecated` で終わる warning**（`krs-fence-deprecated-form`
+として報告）。撤去予定の形を教えるドキュメントは、撤去の日まで error にならないので
+黙って残る — AT-0007 は organization / team / member の positional label を #2133 から
+#2208 までそうやって教え続けた（[ADR-2208](../../docs/adr/2208-positional-label-error-promotion.md)）。
+新しい deprecation を出す側は、この判定に自動で乗ることを前提にしてよい（コードの形で
+判定するので一覧の更新は要らない）。教えたい形が deprecated になったら、
+`fragment` に逃がさず**プロパティ形式など現行の推奨形に書き換える**。
 
 ## `.krs` の例を裸の ``` fence に入れない
 
