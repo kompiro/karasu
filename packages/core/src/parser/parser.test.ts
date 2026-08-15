@@ -1405,10 +1405,11 @@ organization Corp "Corp Label" {
     expect(errors.every((e) => e.severity === "error")).toBe(true);
   });
 
-  it("keeps the retired positional label as the label so the drawing survives", () => {
-    // Unlike boundary / facet, which discard the string: `karasu fmt` refuses a
-    // source with error diagnostics, so dropping the value here would blank the
-    // org chart until the author edits by hand (#2208).
+  it("keeps the retired positional label as the label in the AST", () => {
+    // Unlike boundary / facet, which discard the string: recovery reads what the
+    // author wrote, so a caller inspecting the AST past the diagnostic still
+    // sees the name. Nothing draws it — every render path stops on an error
+    // (#2208).
     const result = Parser.parse(`
 organization Corp "Corp Label" {
   team backend "Backend Team" {
