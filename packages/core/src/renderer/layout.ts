@@ -1310,21 +1310,6 @@ interface GroupedLayerBands {
 }
 
 /**
- * Shared group-collapse + grouped-layer-assignment machinery for the
- * single-system (`layout()`) and multi-system (`layoutMultipleSystems()`)
- * "Group by" paths (#1858 P2a, #1884). Folds any collapsed group's members to
- * a `<Group> (N)` stub and re-targets its edges (`collapseGroups`), then
- * buckets the (possibly collapsed) nodes into group bands via
- * `assignGroupedLayers`.
- *
- * A pure computation only — it does not decide whether the collapse is
- * *committed* when band assignment fails to produce groups. The two callers
- * differ there (`layout()` always keeps the collapsed nodes/edges once this
- * runs; `layoutMultipleSystems()` only adopts them when `grouped` comes back
- * non-null), so that decision is left to each call site to preserve today's
- * behavior exactly.
- */
-/**
  * The boundary membership that applies to the canvas being drawn (#2036).
  *
  * `boundaryMembership` is model-wide, so it applies everywhere; a scoped block is
@@ -1408,20 +1393,44 @@ function placementMembership(
  * keeps taking a plain `Map<nodeId, groupId>`.
  */
 
-function collapseAndAssignGroupLayers(
-  nodes: readonly KrsNode[],
-  edges: readonly KrsEdge[],
-  groupIndex: Map<string, string>,
-  collapsedGroups: ReadonlySet<string> | undefined,
-  edgeDiffState: ReadonlyMap<string, string> | undefined,
+/**
+ * Shared group-collapse + grouped-layer-assignment machinery for the
+ * single-system (`layout()`) and multi-system (`layoutMultipleSystems()`)
+ * "Group by" paths (#1858 P2a, #1884). Folds any collapsed group's members to
+ * a `<Group> (N)` stub and re-targets its edges (`collapseGroups`), then
+ * buckets the (possibly collapsed) nodes into group bands via
+ * `assignGroupedLayers`.
+ *
+ * A pure computation only — it does not decide whether the collapse is
+ * *committed* when band assignment fails to produce groups. The two callers
+ * differ there (`layout()` always keeps the collapsed nodes/edges once this
+ * runs; `layoutMultipleSystems()` only adopts them when `grouped` comes back
+ * non-null), so that decision is left to each call site to preserve today's
+ * behavior exactly.
+ */
+function collapseAndAssignGroupLayers({
+  nodes,
+  edges,
+  groupIndex,
+  collapsedGroups,
+  edgeDiffState,
+  stubScope,
+  bandOrder,
+  membership,
+}: {
+  nodes: readonly KrsNode[];
+  edges: readonly KrsEdge[];
+  groupIndex: Map<string, string>;
+  collapsedGroups: ReadonlySet<string> | undefined;
+  edgeDiffState: ReadonlyMap<string, string> | undefined;
   /** Namespaces collapse-stub ids (the enclosing system id); omitted in the single-system view. */
-  stubScope: string | undefined,
+  stubScope?: string;
   /**
    * Band order for `assignGroupedLayers`. The boundary axis resolves it
    * alongside the placement axis (`resolvePlacementAxis`, #2176); the team axis
    * passes the declared ids and lets {@link groupOrderFor} merge them.
    */
-  bandOrder: readonly string[] | undefined,
+  bandOrder: readonly string[] | undefined;
   /**
    * Full declared membership on the boundary axis (#2178). Three consumers: the
    * band order pulls boundaries that share members together and the seam bias
@@ -1430,8 +1439,8 @@ function collapseAndAssignGroupLayers(
    * collapsed (#2180). Omitted on the team axis, which stays 1:1 — all three
    * then reduce to no-ops.
    */
-  membership?: ReadonlyMap<string, readonly string[]>,
-): {
+  membership?: ReadonlyMap<string, readonly string[]>;
+}): {
   nodes: KrsNode[];
   edges: KrsEdge[];
   stubGroup: Map<string, string>;
@@ -1713,16 +1722,15 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   let groupBands: Map<string, GroupBand> | null = null;
   let groupOrder: string[] = [];
   if (groupBy && groupIndex) {
-    const collapsed = collapseAndAssignGroupLayers(
-      allNodes,
-      allEdges,
+    const collapsed = collapseAndAssignGroupLayers({
+      nodes: allNodes,
+      edges: allEdges,
       groupIndex,
       collapsedGroups,
       edgeDiffState,
-      undefined,
-      placement?.groupOrder ?? declaredGroupOrder,
-      canvasMembership,
-    );
+      bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+      membership: canvasMembership,
+    });
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
     stubGroup = collapsed.stubGroup;
@@ -2407,16 +2415,16 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
-      const collapsed = collapseAndAssignGroupLayers(
-        rawNodes,
-        sysEdges,
-        systemGroupIndex,
+      const collapsed = collapseAndAssignGroupLayers({
+        nodes: rawNodes,
+        edges: sysEdges,
+        groupIndex: systemGroupIndex,
         collapsedGroups,
         edgeDiffState,
-        sys.id,
-        systemPlacement?.groupOrder ?? declaredGroupOrder,
-        systemMembership,
-      );
+        stubScope: sys.id,
+        bandOrder: systemPlacement?.groupOrder ?? declaredGroupOrder,
+        membership: systemMembership,
+      });
       if (collapsed.grouped) {
         workNodes = collapsed.nodes;
         workEdges = collapsed.edges;
