@@ -1053,7 +1053,8 @@ function placeExternalServicesOnSides(
   const topY = Math.min(...others.map((n) => n.y));
   const botY = Math.max(...others.map((n) => n.y + n.height));
 
-  // Median of the auto-assigned (non-hinted) externals' hub barycenters.
+  // Consuming-hub barycenters of the auto-assigned (non-hinted) externals,
+  // sorted — the set the threshold below splits.
   const autoVals = ext
     .filter((n) => {
       const col = layoutHints?.get(n.id)?.column;
@@ -1061,22 +1062,41 @@ function placeExternalServicesOnSides(
     })
     .map((n) => hubX.get(n.id) ?? 0)
     .sort((a, b) => a - b);
-  // A median only splits a set that has spread. When every auto-assigned
-  // barycenter coincides (one external, or several sharing the same hubs) the
-  // median equals each value, so `<= median` holds for all of them and the
-  // tie-break decides the whole set — the consuming hubs never get a say
-  // (#2384). Fall back to the centre of the content span the side columns hug,
-  // which keeps the rule coordinate-derived and deterministic (ADR-1728).
+  // Which side an external lands on is decided against one of two thresholds,
+  // and the choice between them is what #2394 settled.
   //
-  // "Coincide" is sub-pixel rather than bit-exact: these are means of node
-  // centres, so mathematically equal barycenters can differ in the last bits
-  // when the summation order differs between two externals. A spread thinner
-  // than a pixel cannot support a meaningful split either way.
+  // The median splits by *rank*, so it always lands inside the set: `<= median`
+  // keeps between 1 and n-1 externals on the left whatever the hubs are doing.
+  // That is what ADR-1728 wants when two hubs' fans need pulling apart — the
+  // cross-hub crossings it removes were 28 of the 33 measured on `hato`. It is
+  // the wrong answer when every hub sits on one side of the diagram: the split
+  // still happens, stranding the lowest external in the far column with its one
+  // edge dragged across the whole figure (#2394 — measured at 640px of external
+  // edge against 421px once it sits by its hub).
+  //
+  // So: use the median only when the hub barycenters actually **straddle** the
+  // content centre. Otherwise compare against that centre, which puts each
+  // external on the side its own hub is on. The centre is coordinate-derived
+  // (ADR-1728) and, unlike the median, comes from outside the set being split —
+  // which is what lets the answer be "all of them on one side".
+  //
+  // `noSpread` keeps its own say: barycenters that coincide to sub-pixel width
+  // cannot support a median split either way (#2384 — the tie-break decided the
+  // whole set), and a knife-edge case where the centre falls between two values
+  // a fraction of a pixel apart would otherwise satisfy the straddle test.
+  // "Coincide" is sub-pixel rather than bit-exact because these are means of
+  // node centres, so mathematically equal barycenters can differ in the last
+  // bits when the summation order differs between two externals.
   const noSpread = autoVals[autoVals.length - 1] - autoVals[0] < SIDE_SPLIT_EPSILON;
+  const contentCentre = (minX + maxX) / 2;
+  const straddlesCentre =
+    autoVals.length > 0 &&
+    autoVals[0] < contentCentre &&
+    autoVals[autoVals.length - 1] > contentCentre;
   const threshold =
-    !autoVals.length || noSpread
-      ? (minX + maxX) / 2
-      : autoVals[Math.floor((autoVals.length - 1) / 2)];
+    autoVals.length && !noSpread && straddlesCentre
+      ? autoVals[Math.floor((autoVals.length - 1) / 2)]
+      : contentCentre;
   const sideOf = (n: LayoutNode): "left" | "right" => {
     const col = layoutHints?.get(n.id)?.column;
     if (col === "left" || col === "right") return col;
