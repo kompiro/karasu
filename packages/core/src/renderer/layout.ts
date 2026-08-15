@@ -5,7 +5,7 @@ import {
   displayGroupId,
   scopedBoundaryGroupId,
 } from "../types/ast.js";
-import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
+import { collapseNodeList, collapseCategories } from "./category-collapse.js";
 import { wrapToWidth } from "./svg-builder.js";
 import { getShapeContentInset, getShapePortFrame } from "../shapes/shape-registry.js";
 import { foldFacetMembership } from "./facet-overlay.js";
@@ -17,10 +17,10 @@ import {
   type GroupBand,
 } from "./group-layout.js";
 import { collapseGroups } from "./group-collapse.js";
-import { groupLabelsFor, type GroupLabelIndex } from "./group-labels.js";
+import { groupLabelsFor } from "./group-labels.js";
 import { withChildAnchoredEdges } from "../view/view-extract.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
-import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
+import type { ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
 import {
@@ -69,6 +69,7 @@ import type {
   LayoutEdge,
   ContainerRect,
   LayoutResult,
+  LayoutOptions,
   DisplayMode,
   Rect,
 } from "./layout-types.js";
@@ -1042,112 +1043,6 @@ function placeExternalServicesOnSides(
     c.width = nr - nx;
   }
   return sides;
-}
-
-/**
- * Optional render toggles for {@link layout}. Every field is optional; a bare
- * `layout(viewSlice)` lays out with defaults. Grouped as an object (rather than
- * trailing positionals) so new toggles append a named field instead of another
- * comma-counted slot — and so the two adjacent `ReadonlySet` params
- * (`collapsedCategories` / `collapsedGroups`) can't be slot-swapped. See #1875.
- */
-interface LayoutOptions {
-  ownerIndex?: Map<string, string>;
-  /**
-   * Resolved shape name for a node (from the style cascade). measureNode
-   * uses it to grow cards whose shape insets exceed the base padding
-   * (#2366 proposal F — practically the hexagon's 20% notches and wide
-   * clouds). Callers without resolved styles (drawio export, bare-layout
-   * tests) omit it; measurement then assumes padding-only clearance,
-   * matching the pre-F behavior.
-   */
-  shapeForNode?: (id: string, annotations: readonly string[]) => string | undefined;
-  /**
-   * The corner lane a node's chrome occupies (#2420), so ports can keep out of
-   * it (#2422). Injected rather than computed here because the lane's width
-   * comes from the resolved badge style, which layout does not resolve; the
-   * renderer supplies it, and callers without styles simply get no keep-out.
-   */
-  chipZoneFor?: (node: LayoutNode) => Rect | undefined;
-  /**
-   * Team id → declared `label`, from `buildTeamLabelIndex`. Supplies the chip's
-   * display string on every axis (the group-frame titles get theirs from
-   * `groupLabels`, which only exists when grouping by team). Omitted → the chip
-   * falls back to the team id (Issue #2157).
-   */
-  teamLabels?: ReadonlyMap<string, string>;
-  /**
-   * Declared-boundary axis (P2b): node id → every boundary it is declared in
-   * (#2178). Selected as the grouping axis when `groupBy === "boundary"`;
-   * `ownerIndex` remains the team badge source regardless of axis. The banded
-   * layout places each node in its primary boundary (`primaryBoundaryOf`),
-   * except where a boundary with no band of its own claims one of its shared
-   * members (`resolvePlacementAxis`, #2176); the rest of the membership is
-   * carried for the views that draw it (#2179).
-   * See ADR-2161 (docs/adr/2161-boundary-membership-1n.md).
-   */
-  boundaryMembership?: Map<string, string[]>;
-  /**
-   * Membership from `boundary` blocks declared inside a node block (#2036),
-   * keyed by declaring scope (see `boundaryScopeKey`). Only the entry for the
-   * canvas being drawn applies, so a scoped boundary frames its own level and
-   * nowhere else — unlike `boundaryMembership`, which is model-wide.
-   */
-  scopedBoundaryMembership?: Map<string, Map<string, string[]>>;
-  /**
-   * Selected-facet membership per node id, already resolved against the
-   * selection (`resolveFacetOverlay`). Layout needs it only to re-derive the
-   * decoration onto collapse stubs — placement and geometry never read it, which
-   * is what keeps the overlay orthogonal to the Group-by axis.
-   */
-  facetMembership?: ReadonlyMap<string, readonly string[]>;
-  /** Known-facet order, so a stub's folded membership stacks like every other element's. */
-  facetOrder?: readonly string[];
-
-  /**
-   * Every group id the model *declares* on the active axis, in declaration
-   * order (`declaredGroupOrderOf` in group-labels.ts). Groups the axis map cannot
-   * name — a boundary whose members are all claimed by an earlier one, or one
-   * with no `contains` at all — would otherwise not exist for the band
-   * machinery at all, because their order was derived from the axis map's
-   * values (TPL-2161, #2178). Appended after the axis order, so the order of
-   * groups that do have members is exactly what it was before.
-   *
-   * On the boundary axis this also drives the claim in `resolvePlacementAxis`
-   * (#2176): a group named here but absent from the axis is one that may take a
-   * shared member, so what changes is no longer only the order — which groups
-   * end up with members can change too.
-   */
-  declaredGroupOrder?: readonly string[];
-  /**
-   * Node id → diff state in compare/diff mode, from `nodeDiffState` upstream.
-   * Only the boundary axis reads it, and only to cut a `removed` node back to
-   * its primary membership before placement (`placementMembership`, #2176): the
-   * rest of its membership was backfilled purely so it could return to its
-   * former frame (ADR-1886), and a node the model no longer has must not decide
-   * where the live ones go.
-   */
-  nodeDiffState?: ReadonlyMap<string, string>;
-  /**
-   * Declared group labels for the active axis (#2133), from
-   * `buildGroupLabelIndex`. Resolved per canvas via `groupLabelsFor`; scoped
-   * entries are keyed by their scope-qualified group id (#2036), so the model
-   * and scoped maps never contend. Titles the group frames; omitted → frames
-   * fall back to the (display) group id.
-   */
-  groupLabels?: GroupLabelIndex;
-  displayMode?: DisplayMode;
-  layoutHints?: Map<string, ResolvedLayoutHints>;
-  edgeDirections?: Map<string, EdgeDirection>;
-  collapsedCategories?: ReadonlySet<CategoryId>;
-  groupBy?: "team" | "boundary";
-  collapsedGroups?: ReadonlySet<string>;
-  /**
-   * Per-edge diff state keyed `${from}->${to}` (compare/diff mode). Passed
-   * through to `collapseGroups` so a collapsed team's re-targeted stub edges
-   * keep their diff decoration, re-keyed onto the stub id (#1886).
-   */
-  edgeDiffState?: ReadonlyMap<string, string>;
 }
 
 /** Grouped-layer computation shared by {@link collapseAndAssignGroupLayers}. */
