@@ -12,7 +12,7 @@ assumptions:
   - "file: packages/core/src/renderer/routing-parity.test.ts"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: frameObstaclesFor"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: tryCorridorRoute"
-  - "grep: packages/core/src/renderer/layout.ts :: routeGroupedEdges"
+  - "grep: packages/core/src/renderer/layout-edges.ts :: routeGroupedEdges"
 ---
 
 # ADR-2330: グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける

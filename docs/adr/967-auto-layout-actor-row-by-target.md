@@ -13,7 +13,7 @@ scope:
     - core
 assumptions:
   - "file: packages/core/src/renderer/layout.ts"
-  - "symbol: packages/core/src/renderer/layout.ts :: assignForcedSystemLayers"
+  - "symbol: packages/core/src/renderer/layer-assignment.ts :: assignForcedSystemLayers"
   - "file: packages/core/src/renderer/layout.test.ts"
 ---
 

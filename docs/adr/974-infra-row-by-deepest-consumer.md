@@ -7,8 +7,8 @@ topic: renderer
 related_to: [ADR-968]
 assumptions:
   - "file: packages/core/src/renderer/layout.ts"
-  - "symbol: packages/core/src/renderer/layout.ts :: assignForcedSystemLayers"
-  - "grep: packages/core/src/renderer/layout.ts :: byTier\\[3\\]"
+  - "symbol: packages/core/src/renderer/layer-assignment.ts :: assignForcedSystemLayers"
+  - "grep: packages/core/src/renderer/layer-assignment.ts :: byTier\\[3\\]"
 ---
 
 # ADR-974: Infra/external ノードを最深 consumer の直下行に引き上げる

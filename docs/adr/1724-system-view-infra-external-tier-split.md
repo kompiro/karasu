@@ -7,9 +7,9 @@ topic: renderer
 refines: [ADR-974]
 related_to: [ADR-968, ADR-967]
 assumptions:
-  - "symbol: packages/core/src/renderer/layout.ts :: systemTier"
-  - "symbol: packages/core/src/renderer/layout.ts :: assignForcedSystemLayers"
-  - "symbol: packages/core/src/renderer/layout.ts :: SYSTEM_TIER_COUNT"
+  - "symbol: packages/core/src/renderer/layer-assignment.ts :: systemTier"
+  - "symbol: packages/core/src/renderer/layer-assignment.ts :: assignForcedSystemLayers"
+  - "symbol: packages/core/src/renderer/layer-assignment.ts :: SYSTEM_TIER_COUNT"
 ---
 
 # ADR-1724: system-view の dep ティアを infra 行と external 行に分割する
