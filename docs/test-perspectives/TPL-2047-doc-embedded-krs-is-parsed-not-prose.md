@@ -103,9 +103,11 @@ pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.
 ## 既知の対処パターン
 
 - **fence の情報文字列を主張として使う**: `scripts/lint/krs-fences.ts`。
-  無印 = parse エラーゼロ、`fragment` = 検証しない、`invalid` = **いまも** parse
-  エラーが出ること。`invalid` を逆向きに検証するのが要点で、文法が緩んで例が例で
-  なくなる変化も拾える。
+  無印 = parse エラーゼロかつ deprecation クラス（code が `-deprecated` で終わる
+  warning）ゼロ、`fragment` = 検証しない、`invalid` = **いまも** parse エラーが
+  出ること。`invalid` を逆向きに検証するのが要点で、文法が緩んで例が例でなくなる
+  変化も拾える。deprecation クラスを含めるのは、撤去予定の形を教える doc が撤去の
+  日まで error にならず黙って残るため（#2208、[ADR-2208](../adr/2208-positional-label-error-promotion.md)）。
 - **既存ゲートに相乗りする**: 新しい required check を足さず、既にその
   ドキュメントの編集で発火するワークフローにステップを 1 つ足す
   （`at-check-coverage.yml` と `reference-docs-check.yml`）。lefthook の glob も

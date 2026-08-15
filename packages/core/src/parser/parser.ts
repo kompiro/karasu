@@ -1983,12 +1983,14 @@ export class Parser {
    * ADR-19 made `label` a property; these constructs kept the positional read as
    * undocumented leniency, deprecated in #2133 and removed in #2208.
    *
-   * Unlike boundary / facet below, the value is **kept**: erroring and degrading
-   * the drawing are separate decisions, and `karasu fmt` can no longer rewrite
-   * the form once it errors (`format()` refuses a source with error
-   * diagnostics), so dropping it would blank the org chart — and `karasu
-   * subtree`, which serializes the parsed AST with no diagnostic gate — until
-   * the author edits by hand.
+   * Unlike boundary / facet below, the value is **kept**. That is a fidelity
+   * choice, not a rescue: recovery reads the string the author wrote rather
+   * than discarding it, so `Parser.parse` callers that inspect the AST past the
+   * diagnostic still see the name. It does not keep any drawing alive — every
+   * render path refuses to draw while an error stands (the app republishes the
+   * last valid SVG, `karasu render` and `karasu subtree` exit 1), and
+   * `format()` refuses the source too, so `karasu fmt` can no longer rewrite
+   * the form once it errors.
    */
   private parseRetiredPositionalLabel(construct: string): string | undefined {
     if (this.peek().type !== TokenType.StringLiteral) return undefined;

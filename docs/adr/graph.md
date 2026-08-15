@@ -254,6 +254,7 @@ flowchart TD
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
     ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
     ADR_2173["ADR-2173<br/>facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
+    ADR_2208["ADR-2208<br/>organization / team / member の positional label..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -478,6 +479,7 @@ flowchart TD
   ADR_2174 --> ADR_2173
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
+  ADR_2208 --> ADR_19
   ADR_2234 --> ADR_9004
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
@@ -782,6 +784,7 @@ flowchart TD
   class ADR_2188 accepted
   class ADR_2193 accepted
   class ADR_2200 accepted
+  class ADR_2208 accepted
   class ADR_2218 accepted
   class ADR_2223 accepted
   class ADR_2234 accepted
