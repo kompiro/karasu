@@ -56,6 +56,12 @@ import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-f
 import { degradedTabsZone } from "./degraded-tabs.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
+import {
+  CONTAINER_PADDING,
+  CONTAINER_LABEL_HEIGHT,
+  GHOST_MARGIN,
+  getLayoutConstants,
+} from "./layout-constants.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
 import type {
   LayoutNode,
@@ -68,10 +74,6 @@ import type {
 } from "./layout-types.js";
 
 export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
-
-const CONTAINER_PADDING = 40;
-const CONTAINER_LABEL_HEIGHT = 30;
-const GHOST_MARGIN = 30;
 
 // System-view "Group by" boundary frames (#1858, P2a). Horizontal / bottom
 // padding around a group's members, and the space reserved above a group's
@@ -268,20 +270,6 @@ function markDegradedMemberships(
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
 const ICON_CARD_HEIGHT_NO_DESC = 56;
-
-// Per-mode gap constants. Shape values are the historical defaults tuned
-// for variable-width cards (~250px). Icon values are tuned for uniform
-// 160-wide cards — see docs/design/icon-mode-layout-tuning.md.
-function getLayoutConstants(displayMode?: DisplayMode): {
-  LAYER_GAP: number;
-  NODE_GAP: number;
-  MAX_LAYER_WIDTH: number;
-} {
-  if (displayMode === "icon") {
-    return { LAYER_GAP: 80, NODE_GAP: 36, MAX_LAYER_WIDTH: 1040 };
-  }
-  return { LAYER_GAP: 120, NODE_GAP: 60, MAX_LAYER_WIDTH: 1200 };
-}
 
 // ---------------------------------------------------------------------------
 // Extracted helpers for layout decomposition
