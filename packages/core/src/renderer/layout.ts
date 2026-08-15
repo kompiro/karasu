@@ -6,7 +6,7 @@ import { foldFacetMembership } from "./facet-overlay.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import { groupLabelsFor } from "./group-labels.js";
 import { withChildAnchoredEdges } from "../view/view-extract.js";
-import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
+import type { ViewSlice } from "../view/view-extract.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import {
@@ -37,6 +37,13 @@ import {
 } from "./layout-constants.js";
 import { computeLayers, systemTier } from "./layer-assignment.js";
 import {
+  placeGhostUsers,
+  placeGhostDomains,
+  placeGhostEntities,
+  placeCallerGhostSystems,
+  placeOutgoingGhostSystems,
+} from "./ghost-layout.js";
+import {
   canvasMembershipFor,
   collapseAndAssignGroupLayers,
   groupStartLayersOf,
@@ -54,7 +61,6 @@ import {
   makeOwnerResolver,
   measureNode,
   type MeasureContext,
-  type OwnerResolver,
 } from "./layout-measure.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
 import type {
@@ -68,236 +74,6 @@ import type {
 } from "./layout-types.js";
 
 export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
-
-function placeGhostUsers(
-  viewSlice: ViewSlice,
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ctx: MeasureContext,
-): void {
-  if (viewSlice.ghostUsers.length === 0) return;
-  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
-
-  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-  const userX = (mainContainer?.x ?? 0) - 20;
-  let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
-  const ghostUserNodes: LayoutNode[] = [];
-
-  for (const userNode of viewSlice.ghostUsers) {
-    const dims = measureNode(userNode, undefined, ctx);
-    const uid = userNode.id;
-    const gNode = makeLayoutNode(userNode, uid, {
-      label: userNode.label ?? userNode.id,
-      annotations: ctx.effectiveAnnotations?.(userNode) ?? userNode.annotations,
-      owner: undefined,
-      x: userX - dims.width,
-      y: userY,
-      width: dims.width,
-      height: dims.height,
-      ghost: true,
-    });
-    layoutNodes.set(uid, gNode);
-    ghostUserNodes.push(gNode);
-    userY += dims.height + NODE_GAP / 2;
-  }
-
-  // Expand outermost container to include ghost users
-  if (ghostUserNodes.length > 0 && containers.length > 0) {
-    const minX = Math.min(...ghostUserNodes.map((n) => n.x)) - GHOST_MARGIN;
-    const maxY = Math.max(...ghostUserNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const outermost = containers[0];
-    if (minX < outermost.x) {
-      const dx = outermost.x - minX;
-      outermost.width += dx;
-      outermost.x = minX;
-    }
-    if (maxY > outermost.y + outermost.height) {
-      outermost.height = maxY - outermost.y;
-    }
-  }
-}
-
-/**
- * Place a row of muted ghost nodes below the main container, then grow the
- * outermost container to include them. Shared by {@link placeGhostDomains} and
- * {@link placeGhostEntities}: each item carries the layout `key` to store under
- * (bare id for domains, qualified `DomainId.EntityId` for entities) and the
- * `subLabel` (owning service / domain) to show muted. `ghost: true` drives the
- * muting in svg-renderer; no renderer change is needed.
- */
-function placeGhostRow(
-  items: { node: KrsNode; key: string; subLabel: string }[],
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ctx: MeasureContext,
-  gap: number,
-): void {
-  if (items.length === 0 || containers.length === 0) return;
-  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
-
-  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-  const ghostY = mainContainer.y + mainContainer.height + gap;
-  let ghostX = mainContainer.x + CONTAINER_PADDING;
-
-  for (const { node, key, subLabel } of items) {
-    const dims = measureNode(node, undefined, ctx);
-    layoutNodes.set(
-      key,
-      makeLayoutNode(node, key, {
-        label: node.label ?? node.id,
-        annotations: ctx.effectiveAnnotations?.(node) ?? node.annotations,
-        subLabel,
-        owner: undefined,
-        x: ghostX,
-        y: ghostY,
-        width: dims.width,
-        height: dims.height,
-        ghost: true,
-      }),
-    );
-    ghostX += dims.width + NODE_GAP;
-  }
-
-  // Expand outermost container to include the ghost row (both height and width)
-  const placed = items
-    .map(({ key }) => layoutNodes.get(key))
-    .filter((n): n is LayoutNode => n !== undefined);
-  if (placed.length > 0) {
-    const maxGhostY = Math.max(...placed.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const maxGhostX = Math.max(...placed.map((n) => n.x + n.width)) + GHOST_MARGIN;
-    const outermost = containers[0];
-    if (maxGhostY > outermost.y + outermost.height) {
-      outermost.height = maxGhostY - outermost.y;
-    }
-    if (maxGhostX > outermost.x + outermost.width) {
-      outermost.width = maxGhostX - outermost.x;
-    }
-  }
-}
-
-const GHOST_ROW_GAP = 60;
-
-/** Horizontal gap between a ghost system frame and its neighbor / the main container. */
-const GHOST_SYSTEM_GAP = 80;
-
-function placeGhostDomains(
-  viewSlice: ViewSlice,
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ctx: MeasureContext,
-): void {
-  placeGhostRow(
-    viewSlice.ghostDomains.map((gd) => ({
-      node: gd.node,
-      key: gd.node.id,
-      subLabel: gd.parentServiceLabel,
-    })),
-    layoutNodes,
-    containers,
-    ctx,
-    GHOST_ROW_GAP,
-  );
-}
-
-/**
- * Place cross-domain ghost entities below the entity view's main container.
- * Keyed by the qualified `DomainId.EntityId` (not the bare id) because entity
- * ids are only warning-level unique — the matching `ghostEntityEdges` endpoints
- * use the same qualified key for foreign endpoints.
- */
-function placeGhostEntities(
-  viewSlice: ViewSlice,
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ctx: MeasureContext,
-): void {
-  placeGhostRow(
-    viewSlice.ghostEntities.map((ge) => ({
-      node: ge.node,
-      key: ge.key,
-      subLabel: ge.parentDomainLabel,
-    })),
-    layoutNodes,
-    containers,
-    ctx,
-    GHOST_ROW_GAP,
-  );
-}
-
-function placeCallerGhostSystems(
-  viewSlice: ViewSlice,
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ownerOf: OwnerResolver,
-  ctx: MeasureContext,
-): void {
-  if (viewSlice.callerGhostSystems.length === 0 || containers.length === 0) return;
-
-  const outermost = containers[0];
-  const ghostStartY = outermost.y;
-
-  const callerContainers: ContainerRect[] = [];
-  let tempX = 0;
-  for (const gs of viewSlice.callerGhostSystems) {
-    const { nodes: gsNodes, containerRect } = layoutGhostSystem(
-      gs,
-      tempX,
-      ghostStartY,
-      ownerOf,
-      ctx,
-    );
-    callerContainers.push(containerRect);
-    for (const [id, node] of gsNodes) {
-      layoutNodes.set(id, node);
-    }
-    tempX += containerRect.width + GHOST_SYSTEM_GAP;
-  }
-
-  const totalCallerWidth = tempX - GHOST_SYSTEM_GAP;
-  const callerStartX = outermost.x - GHOST_SYSTEM_GAP - totalCallerWidth;
-  const shiftX = callerStartX;
-
-  for (const gs of viewSlice.callerGhostSystems) {
-    for (const svc of gs.visibleServices) {
-      const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
-      const node = layoutNodes.get(qualifiedId);
-      if (node) node.x += shiftX;
-    }
-  }
-  for (const c of callerContainers) {
-    c.x += shiftX;
-    containers.push(c);
-  }
-}
-
-function placeOutgoingGhostSystems(
-  viewSlice: ViewSlice,
-  layoutNodes: Map<string, LayoutNode>,
-  containers: ContainerRect[],
-  ownerOf: OwnerResolver,
-  ctx: MeasureContext,
-): void {
-  if (viewSlice.ghostSystems.length === 0 || containers.length === 0) return;
-
-  const outermost = containers[0];
-  let ghostX = outermost.x + outermost.width + GHOST_SYSTEM_GAP;
-  const ghostStartY = outermost.y;
-
-  for (const gs of viewSlice.ghostSystems) {
-    const { nodes: gsNodes, containerRect } = layoutGhostSystem(
-      gs,
-      ghostX,
-      ghostStartY,
-      ownerOf,
-      ctx,
-    );
-    containers.push(containerRect);
-    for (const [id, node] of gsNodes) {
-      layoutNodes.set(id, node);
-    }
-    ghostX += containerRect.width + GHOST_SYSTEM_GAP;
-  }
-}
 
 function computeLayoutEdges(
   viewSlice: ViewSlice,
@@ -1348,62 +1124,6 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     crossingMarks,
     degradedMemberships,
   };
-}
-
-/**
- * Lay out the visible services inside a ghost system and produce a container rect.
- * Nodes are keyed by the qualified ID "SystemId.ServiceId" to avoid collisions.
- */
-function layoutGhostSystem(
-  gs: GhostSystem,
-  originX: number,
-  originY: number,
-  ownerOf: OwnerResolver,
-  ctx: MeasureContext,
-): { nodes: Map<string, LayoutNode>; containerRect: ContainerRect } {
-  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
-  const nodes = new Map<string, LayoutNode>();
-  let maxW = 0;
-  let maxH = 0;
-  let y = originY + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
-
-  for (const svc of gs.visibleServices) {
-    const owner = ownerOf(svc.kind, svc.id);
-    const dims = measureNode(svc, owner, ctx);
-    const x = originX + CONTAINER_PADDING;
-    const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
-    nodes.set(
-      qualifiedId,
-      makeLayoutNode(svc, qualifiedId, {
-        label: svc.label ?? svc.id,
-        annotations: svc.annotations,
-        owner,
-        x,
-        y,
-        width: dims.width,
-        height: dims.height,
-        ghost: true,
-      }),
-    );
-    maxW = Math.max(maxW, dims.width);
-    maxH = y + dims.height + CONTAINER_PADDING - originY;
-    y += dims.height + NODE_GAP / 2;
-  }
-
-  const containerW = Math.max(maxW + CONTAINER_PADDING * 2, 200);
-  const containerH = Math.max(maxH, 100);
-
-  const containerRect: ContainerRect = {
-    id: gs.systemNode.id,
-    label: gs.systemNode.label ?? gs.systemNode.id,
-    x: originX,
-    y: originY,
-    width: containerW,
-    height: containerH,
-    ghost: true,
-  };
-
-  return { nodes, containerRect };
 }
 
 /**
