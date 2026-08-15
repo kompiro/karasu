@@ -2197,11 +2197,16 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // and detour around the *other* frames, while an edge to an interior domain
   // still enters its own frame. The style-fed port resolver (#2422) turns on
   // outline seating.
-  runRoutingChain(layoutNodes, layoutEdges, containers.filter((c) => c.group), {
-    expandedFrames: expandedFrameRects,
-    grouped: groupBands !== null,
-    ports: portResolver(options),
-  });
+  runRoutingChain(
+    layoutNodes,
+    layoutEdges,
+    containers.filter((c) => c.group),
+    {
+      expandedFrames: expandedFrameRects,
+      grouped: groupBands !== null,
+      ports: portResolver(options),
+    },
+  );
 
   // Annotate parallel-edge bundles (edges sharing `(from, to)`) so the
   // renderer can slide labels along the edge instead of stacking them at
