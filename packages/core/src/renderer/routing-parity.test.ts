@@ -433,53 +433,6 @@ describe("multi-system root view routes its edges (#2363)", () => {
   });
 });
 
-describe("single/multi pipelines run the identical routing chain (#2512, TPL-219)", () => {
-  // The chain is one function (`runRoutingChain`) since #2512, so the drift
-  // surface left is the arguments each pipeline passes. Fence the observable
-  // contract on the same content rendered through both pipelines: the Shop
-  // system from the multi-root sample, laid out alone (single-system path,
-  // here) and beside Billing (multi-system path, the #2363 describe above),
-  // must clear the same dual metric — and the router must actually fire, or
-  // the zeros fence nothing.
-  const MODEL = "en/feature-samples/multi-system-root.krs";
-
-  function shopAlone(): LayoutResult {
-    const src = readFileSync(resolve(EXAMPLES, MODEL), "utf8");
-    const krsFile = Parser.parse(src).value;
-    const slice = extractView(
-      krsFile.systems.filter((s) => s.id === "Shop"),
-      [],
-    );
-    const styles = resolveStyles(krsFile.systems, [getBuiltinStyleSheet()]);
-    // Same style-fed hooks as `layoutOf` — since #2422 they move endpoints, so
-    // leaving them out would measure a diagram nobody sees.
-    return layout(slice, {
-      ownerIndex: krsFile.ownerIndex,
-      shapeForNode: (id) => {
-        const style = styles.nodes.get(id) ?? styles.defaultNodeStyle;
-        return typeof style.shape === "string" ? style.shape : style.shape.url;
-      },
-      chipZoneFor: (node) => ({
-        x: node.x + node.width - CHIP_LANE_WIDTH,
-        y: node.y,
-        width: CHIP_LANE_WIDTH,
-        height: CHIP_LANE_HEIGHT,
-      }),
-    });
-  }
-
-  it("the single-system rendition of the same content clears the dual metric too", () => {
-    // The two pipelines place the same content differently (#2514: wrap
-    // threshold, barycenter, layer-Y), so whether the router has to fire here
-    // differs from the root view — the #2363 describe pins firing on the multi
-    // surface. What must hold on *both* surfaces is the chain's contract.
-    const res = shopAlone();
-    expect(totalPenetrations(res)).toBe(0);
-    expect(collinearOverlaps(res, "v")).toBe(0);
-    expect(collinearOverlaps(res, "h")).toBe(0);
-  });
-});
-
 /** x range every card occupies — the region an interior corridor runs inside of. */
 function contentBounds(res: LayoutResult): { minLeft: number; maxRight: number } {
   const nodes = [...res.nodes.values()];

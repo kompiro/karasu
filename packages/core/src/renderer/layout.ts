@@ -1453,17 +1453,21 @@ function canvasMembershipFor(
 /**
  * The placement axis and grouping index for one canvas (#2176, TPL-2161):
  * resolve the placement axis from the canvas membership (boundary axis), or
- * fall back to the owner index when grouping by team. Callers keep their own
- * "is grouping actually on?" gates — they differ deliberately (the
- * single-system path gates on a truthy index; the multi-system path also
- * requires `size > 0`) and that difference is live behavior.
+ * fall back to the owner index when grouping by team. An empty axis is
+ * normalized to `undefined` so both pipelines gate identically on
+ * `groupBy && groupIndex`: entering the collapse machinery with an empty
+ * index was always a no-op (`collapseGroups` folds nothing and the band
+ * assignment's own `size > 0` guard blocks), so the multi path's historical
+ * extra `size > 0` gate encoded no live behavior — normalizing here closes
+ * that drift seam (TPL-219). `bandOrder` carries the `declaredGroupOrder`
+ * fallback so the two call sites cannot drift on it either.
  */
 function resolveCanvasAxis(
   membership: Map<string, string[]> | undefined,
   presentIds: ReadonlySet<string>,
   options: LayoutOptions,
 ): {
-  placement: ReturnType<typeof resolvePlacementAxis> | undefined;
+  bandOrder: readonly string[] | undefined;
   groupIndex: Map<string, string> | undefined;
 } {
   const { declaredGroupOrder, groupBy, ownerIndex } = options;
@@ -1471,8 +1475,11 @@ function resolveCanvasAxis(
     membership !== undefined
       ? resolvePlacementAxis(membership, declaredGroupOrder, presentIds)
       : undefined;
-  const groupIndex = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
-  return { placement, groupIndex };
+  const axis = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
+  return {
+    bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+    groupIndex: axis !== undefined && axis.size > 0 ? axis : undefined,
+  };
 }
 
 /**
@@ -1709,15 +1716,6 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     collapsedGroups,
     edgeDiffState,
   } = options;
-  // The canvas being drawn is the container plus its ancestors — for the root
-  // system view that is the system itself (`containerNode` is set, with an empty
-  // ancestor chain), which is the scope a top-level-looking `system X { boundary
-  // … }` declares into.
-  const scopePath =
-    viewSlice.containerNode !== null
-      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
-      : [];
-  const canvasMembership = canvasMembershipFor(scopePath, options);
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -1742,6 +1740,17 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     return layoutMultipleSystems(viewSlice, options);
   }
 
+  // The canvas being drawn is the container plus its ancestors — for the root
+  // system view that is the system itself (`containerNode` is set, with an empty
+  // ancestor chain), which is the scope a top-level-looking `system X { boundary
+  // … }` declares into. Resolved after the multi-system dispatch: the root view
+  // resolves membership per system frame, not from this scope.
+  const scopePath =
+    viewSlice.containerNode !== null
+      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
+      : [];
+  const canvasMembership = canvasMembershipFor(scopePath, options);
+
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
   // **re-target** their boundary-crossing edges onto the stub (so "who depends
   // on the external/infra layer" survives as aggregation trunks, not dropped).
@@ -1758,7 +1767,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // *grouping* logic below switches to `groupIndex`. Resolved after the category
   // collapse because a boundary with no band of its own claims one of its shared
   // members (#2176), and only the nodes still on the canvas can be claimed.
-  const { placement, groupIndex } = resolveCanvasAxis(
+  const { bandOrder, groupIndex } = resolveCanvasAxis(
     canvasMembership,
     new Set(allNodes.map((n) => n.id)),
     options,
@@ -1798,7 +1807,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
       groupIndex,
       collapsedGroups,
       edgeDiffState,
-      bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+      bandOrder,
       membership: canvasMembership,
     });
     allNodes = collapsed.nodes;
@@ -2203,7 +2212,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     containers.filter((c) => c.group),
     {
       expandedFrames: expandedFrameRects,
-      grouped: groupBands !== null,
+      groupBands,
       ports: portResolver(options),
     },
   );
@@ -2332,11 +2341,6 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // boundaryMembership); `ownerIndex` stays the per-card team badge source
   // regardless of axis (mirrors layout()).
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
-  // Each system frame is its own canvas, so a scoped boundary declared in
-  // `system X { … }` applies inside X's frame and nowhere else (#2036). Resolved
-  // per system in the loop below; the team axis stays model-wide.
-  const membershipForSystem = (systemId: string): Map<string, string[]> | undefined =>
-    canvasMembershipFor([systemId], options);
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
@@ -2386,15 +2390,18 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     let groupBandsS: Map<string, GroupBand> | null = null;
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
-    const systemMembership = membershipForSystem(sys.id);
+    // Each system frame is its own canvas, so a scoped boundary declared in
+    // `system X { … }` applies inside X's frame and nowhere else (#2036); the
+    // team axis stays model-wide.
+    const systemMembership = canvasMembershipFor([sys.id], options);
     // Same per-canvas resolution as `layout()`: a boundary with no band of its
     // own claims one of the shared members present in *this* system (#2176).
-    const { placement: systemPlacement, groupIndex: systemGroupIndex } = resolveCanvasAxis(
+    const { bandOrder: systemBandOrder, groupIndex: systemGroupIndex } = resolveCanvasAxis(
       systemMembership,
       new Set(rawNodes.map((n) => n.id)),
       options,
     );
-    if (groupBy && systemGroupIndex && systemGroupIndex.size > 0) {
+    if (groupBy && systemGroupIndex) {
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
@@ -2405,7 +2412,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
         collapsedGroups,
         edgeDiffState,
         stubScope: sys.id,
-        bandOrder: systemPlacement?.groupOrder ?? declaredGroupOrder,
+        bandOrder: systemBandOrder,
         membership: systemMembership,
       });
       if (collapsed.grouped) {
@@ -2658,11 +2665,13 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // other system. Each system block is its own routing surface, the same way
     // `placeExternalServicesOnSides` is already applied per system.
     const systemFrames = allContainers.slice(frameStart).filter((c) => c.group);
-    // No expansion frames or port resolver on this path today: in-place
-    // expansion is single-system only (#1921), and the missing ports — so no
-    // outline seating on the root view — are tracked by #2515.
     runRoutingChain(localNodes, systemEdges, systemFrames, {
-      grouped: groupBandsS !== null,
+      // In-place expansion is single-system only (#1921).
+      expandedFrames: undefined,
+      groupBands: groupBandsS,
+      // No port resolver on this path — no outline seating on the root view;
+      // tracked by #2515.
+      ports: undefined,
     });
 
     // A gutter route runs outside the system's cards, so it can reach past the
@@ -2793,16 +2802,6 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 }
 
 /**
- * Resolves what each node's outline offers an edge (#2422): the shape's port
- * frame, plus the keep-outs its own chrome claims — the corner lane of #2420
- * and the 縮退 tab row of #2179.
- *
- * Returns undefined without a `shapeForNode` hook, and in icon mode, for the
- * same reason the content insets stand down there: the card being drawn is a
- * plain frame, so the bounding box *is* the outline and every existing
- * diagram keeps its geometry.
- */
-/**
  * The shared routing candidate chain (#2362, ADR-1859 AC-5 superseded), run by
  * the single-system pipeline and, per system frame, by the multi-system root
  * (#2363). One function so the two paths cannot drift on pass order or
@@ -2825,26 +2824,33 @@ function runRoutingChain(
   nodes: Map<string, LayoutNode>,
   edges: LayoutEdge[],
   groupFrames: ContainerRect[],
+  // Every capability is a *required* field: a pipeline that lacks one states
+  // `undefined` at its call site (self-documenting, greppable), and adding a
+  // capability produces a compile error at every caller until each pipeline
+  // states its answer — the drift class this chain exists to close (TPL-219).
   opts: {
     /**
      * Boundary-frame rects of containers expanded in place (#1921/#1923),
      * keyed by expanded service id. Single-system path only today.
      */
-    expandedFrames?: Map<string, ContainerRect>;
+    expandedFrames: Map<string, ContainerRect> | undefined;
     /**
-     * Whether a Group-by band stack exists — gates trunk aggregation
-     * (#1859 P2c-B) and `groupBackward` dashing.
+     * The Group-by band stack, or null when ungrouped — gates trunk
+     * aggregation (#1859 P2c-B, rejected for ungrouped canvases in #2364) and
+     * `groupBackward` dashing. Taken as the stack rather than a boolean so
+     * the meaning of "grouped" lives here, not at each call site.
      */
-    grouped: boolean;
+    groupBands: Map<string, GroupBand> | null;
     /**
      * Shape port frames + chrome keep-outs (#2420/#2422). When absent,
      * `distributePorts` runs port-less and no outline seating happens — the
      * multi-system path passes none today (#2515).
      */
-    ports?: PortResolver;
+    ports: PortResolver | undefined;
   },
 ): void {
-  const { expandedFrames, grouped, ports } = opts;
+  const { expandedFrames, ports } = opts;
+  const grouped = opts.groupBands !== null;
   // Distribute ports across each node side that hosts ≥ 2 edges, so labels
   // separate horizontally / vertically instead of stacking, and put every
   // port on the shape's drawn outline rather than its bounding box (#2422).
@@ -2894,6 +2900,16 @@ function runRoutingChain(
   }
 }
 
+/**
+ * Resolves what each node's outline offers an edge (#2422): the shape's port
+ * frame, plus the keep-outs its own chrome claims — the corner lane of #2420
+ * and the 縮退 tab row of #2179.
+ *
+ * Returns undefined without a `shapeForNode` hook, and in icon mode, for the
+ * same reason the content insets stand down there: the card being drawn is a
+ * plain frame, so the bounding box *is* the outline and every existing
+ * diagram keeps its geometry.
+ */
 function portResolver(options: LayoutOptions): PortResolver | undefined {
   const { shapeForNode, chipZoneFor, displayMode } = options;
   if (!shapeForNode || displayMode === "icon") return undefined;
