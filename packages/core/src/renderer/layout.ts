@@ -402,12 +402,12 @@ function computeLayers(
   groupedLayers: Map<string, number> | null,
   edgeDirections: Map<string, EdgeDirection> | undefined,
 ): { layers: Map<string, number>; forcedLayers: Map<string, number> | null } {
-  const nodeIds = nodes.map((n) => n.id);
   const forcedLayers = groupedLayers ?? assignForcedSystemLayers(nodes, edges);
   let layers: Map<string, number>;
   if (forcedLayers) {
     layers = forcedLayers;
   } else {
+    const nodeIds = nodes.map((n) => n.id);
     const { adj, inDegree } = buildGraph(nodeIds, edges, edgeDirections);
     layers = assignLayers(nodeIds, adj, inDegree);
   }
@@ -473,8 +473,10 @@ function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>)
  * card the layout mints; what varies per call site — the display label,
  * annotation resolution, owner chip, ghost muting, ghost-row sub-label, and
  * the layout key (qualified ids for ghost-system services) — comes in through
- * `key` and `opts`. The `subLabel` / `ghost` keys are only present when
- * passed, preserving each call site's original object shape.
+ * `key` and `opts`. Every card gets the same shape: `ghost` is always present
+ * (false unless the site marks the card ghost) and `subLabel` is simply
+ * undefined outside the ghost rows. Consumers read both by truthiness, so the
+ * old literals' key-presence differences carried no meaning.
  */
 function makeLayoutNode(
   node: KrsNode,
@@ -482,7 +484,7 @@ function makeLayoutNode(
   opts: {
     label: string;
     annotations: string[];
-    owner: CardOwner | undefined;
+    owner?: CardOwner;
     x: number;
     y: number;
     width: number;
@@ -497,7 +499,7 @@ function makeLayoutNode(
     id: key,
     label: opts.label,
     annotations: opts.annotations,
-    ...(opts.subLabel !== undefined ? { subLabel: opts.subLabel } : {}),
+    subLabel: opts.subLabel,
     properties: extractLayoutProperties(node, opts.owner),
     descriptionSummary: node.properties.description
       ? summarizeDescription(node.properties.description)
@@ -509,7 +511,7 @@ function makeLayoutNode(
     y: opts.y,
     width: opts.width,
     height: opts.height,
-    ...(opts.ghost !== undefined ? { ghost: opts.ghost } : {}),
+    ghost: opts.ghost ?? false,
   };
 }
 
@@ -534,7 +536,6 @@ function placeGhostUsers(
     const gNode = makeLayoutNode(userNode, uid, {
       label: userNode.label ?? userNode.id,
       annotations: effectiveAnnotations(userNode),
-      owner: undefined,
       x: userX - dims.width,
       y: userY,
       width: dims.width,
@@ -593,7 +594,6 @@ function placeGhostRow(
         label: node.label ?? node.id,
         annotations: effectiveAnnotations(node),
         subLabel,
-        owner: undefined,
         x: ghostX,
         y: ghostY,
         width: dims.width,
@@ -2575,7 +2575,6 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
             y: subRowY,
             width: dims.width,
             height: dims.height,
-            ghost: false,
           }),
         );
 
