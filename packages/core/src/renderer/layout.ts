@@ -623,6 +623,9 @@ function placeGhostRow(
 
 const GHOST_ROW_GAP = 60;
 
+/** Horizontal gap between a ghost system frame and its neighbor / the main container. */
+const GHOST_SYSTEM_GAP = 80;
+
 function placeGhostDomains(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
@@ -678,7 +681,6 @@ function placeCallerGhostSystems(
   ownerOf: OwnerResolver,
   displayMode?: DisplayMode,
 ): void {
-  const GHOST_SYSTEM_GAP = 80;
   if (viewSlice.callerGhostSystems.length === 0 || containers.length === 0) return;
 
   const outermost = containers[0];
@@ -725,7 +727,6 @@ function placeOutgoingGhostSystems(
   ownerOf: OwnerResolver,
   displayMode?: DisplayMode,
 ): void {
-  const GHOST_SYSTEM_GAP = 80;
   if (viewSlice.ghostSystems.length === 0 || containers.length === 0) return;
 
   const outermost = containers[0];
@@ -1010,6 +1011,41 @@ function normalizeCoordinates(
       if (node.x < 0) {
         throw new Error(`[layout] node "${id}" has negative x=${node.x} after normalization`);
       }
+    }
+  }
+}
+
+/**
+ * Center each sub-row of placed nodes against the widest row. Rows are grouped
+ * by their y (each wrapped grid row has a distinct baseline); within a row the
+ * nodes keep their left-to-right order. Shared by the single- and multi-system
+ * placement phases — the two originally sorted and summed in opposite orders,
+ * which is equivalent: the row width is a sum (order-independent), and the
+ * re-placement walks the ids sorted by x either way.
+ */
+function centerRowsHorizontally(
+  nodes: Map<string, LayoutNode>,
+  childMaxWidth: number,
+  nodeGap: number,
+): void {
+  const rowGroups = new Map<number, string[]>();
+  for (const [id, node] of nodes) {
+    if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
+    rowGroups.get(node.y)!.push(id);
+  }
+  for (const ids of rowGroups.values()) {
+    ids.sort((a, b) => nodes.get(a)!.x - nodes.get(b)!.x);
+    const rowWidth = ids.reduce((sum, id) => {
+      const n = nodes.get(id)!;
+      return sum + n.width + nodeGap;
+    }, -nodeGap);
+    const offset = Math.max(0, (childMaxWidth - rowWidth) / 2);
+
+    let xOffset = offset;
+    for (const id of ids) {
+      const n = nodes.get(id)!;
+      n.x = xOffset;
+      xOffset += n.width + nodeGap;
     }
   }
 }
@@ -1932,29 +1968,9 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     layerBaselineY = layerBottom + LAYER_GAP;
   }
 
-  // Center each sub-row within the container. Rows are grouped by their Y
-  // (each wrapped grid row has a distinct baseline), then centered against
-  // the widest row so the grid reads as centered columns.
-  const rowGroups = new Map<number, string[]>();
-  for (const [id, node] of layoutNodes) {
-    if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
-    rowGroups.get(node.y)!.push(id);
-  }
-  for (const ids of rowGroups.values()) {
-    ids.sort((a, b) => layoutNodes.get(a)!.x - layoutNodes.get(b)!.x);
-    const rowWidth = ids.reduce((sum, id) => {
-      const n = layoutNodes.get(id)!;
-      return sum + n.width + NODE_GAP;
-    }, -NODE_GAP);
-    const offset = Math.max(0, (childMaxWidth - rowWidth) / 2);
-
-    let xOffset = offset;
-    for (const id of ids) {
-      const n = layoutNodes.get(id)!;
-      n.x = xOffset;
-      xOffset += n.width + NODE_GAP;
-    }
-  }
+  // Center each sub-row within the container so the grid reads as centered
+  // columns.
+  centerRowsHorizontally(layoutNodes, childMaxWidth, NODE_GAP);
 
   // Build containers (innermost first: focused container, then ancestors)
   const hasContainer =
@@ -2371,7 +2387,6 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
 
   for (let si = 0; si < viewSlice.systems.length; si++) {
     const sys = viewSlice.systems[si];
-    const isGhost = false;
 
     // Layout this system's children independently.
     // For the primary system (si === 0), use viewSlice.childNodes which includes
@@ -2560,7 +2575,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
             y: subRowY,
             width: dims.width,
             height: dims.height,
-            ghost: isGhost,
+            ghost: false,
           }),
         );
 
@@ -2573,28 +2588,9 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       }
     }
 
-    // Center each sub-row within the system
-    // Group nodes by their Y coordinate (sub-row), then center each row
-    const rowGroups = new Map<number, string[]>();
-    for (const [id, node] of localNodes) {
-      if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
-      rowGroups.get(node.y)!.push(id);
-    }
-    for (const ids of rowGroups.values()) {
-      const rowWidth = ids.reduce((sum, id) => {
-        const n = localNodes.get(id)!;
-        return sum + n.width + NODE_GAP;
-      }, -NODE_GAP);
-      const off = Math.max(0, (childMaxWidth - rowWidth) / 2);
-      let xOff = off;
-      // Sort by current x to maintain order when centering
-      ids.sort((a, b) => localNodes.get(a)!.x - localNodes.get(b)!.x);
-      for (const id of ids) {
-        const n = localNodes.get(id)!;
-        n.x = xOff;
-        xOff += n.width + NODE_GAP;
-      }
-    }
+    // Center each sub-row within the system so the grid reads as centered
+    // columns.
+    centerRowsHorizontally(localNodes, childMaxWidth, NODE_GAP);
 
     const containerW = Math.max(childMaxWidth + CONTAINER_PADDING, 200);
     const containerH = Math.max(childMaxHeight + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING, 100);
@@ -2606,7 +2602,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       y: offsetY,
       width: containerW,
       height: containerH,
-      ghost: isGhost,
+      ghost: false,
     };
     allContainers.push(containerRect);
 
@@ -2679,7 +2675,6 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
-          if (isGhost) le.ghost = true;
           systemEdges.push(le);
           allEdges.push(le);
         }
@@ -2770,7 +2765,10 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // No-op when nothing went negative (the common case without side columns).
   normalizeCoordinates(allContainers, allLayoutNodes, allEdges);
 
-  // Calculate total dimensions
+  // Calculate total dimensions from container rects only. The single-system
+  // path uses computeTotalDimensions, which also folds node and edge-waypoint
+  // extents into the maximum — a divergence deliberately preserved by the
+  // #2512 refactor; converging it (and the clipping it can cause) is #2513.
   let totalWidth = 0;
   let totalHeight = 0;
   for (const c of allContainers) {
