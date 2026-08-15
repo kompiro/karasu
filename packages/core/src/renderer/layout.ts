@@ -517,11 +517,10 @@ function placeGhostUsers(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
-  effectiveAnnotations: (n: KrsNode) => string[],
-  displayMode?: DisplayMode,
+  ctx: MeasureContext,
 ): void {
   if (viewSlice.ghostUsers.length === 0) return;
-  const { NODE_GAP } = getLayoutConstants(displayMode);
+  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
 
   const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
   const userX = (mainContainer?.x ?? 0) - 20;
@@ -529,11 +528,11 @@ function placeGhostUsers(
   const ghostUserNodes: LayoutNode[] = [];
 
   for (const userNode of viewSlice.ghostUsers) {
-    const dims = measureNode(userNode, undefined, displayMode);
+    const dims = measureNode(userNode, undefined, ctx);
     const uid = userNode.id;
     const gNode = makeLayoutNode(userNode, uid, {
       label: userNode.label ?? userNode.id,
-      annotations: effectiveAnnotations(userNode),
+      annotations: ctx.effectiveAnnotations?.(userNode) ?? userNode.annotations,
       owner: undefined,
       x: userX - dims.width,
       y: userY,
@@ -574,24 +573,23 @@ function placeGhostRow(
   items: { node: KrsNode; key: string; subLabel: string }[],
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
-  effectiveAnnotations: (n: KrsNode) => string[],
-  displayMode: DisplayMode | undefined,
+  ctx: MeasureContext,
   gap: number,
 ): void {
   if (items.length === 0 || containers.length === 0) return;
-  const { NODE_GAP } = getLayoutConstants(displayMode);
+  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
 
   const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
   const ghostY = mainContainer.y + mainContainer.height + gap;
   let ghostX = mainContainer.x + CONTAINER_PADDING;
 
   for (const { node, key, subLabel } of items) {
-    const dims = measureNode(node, undefined, displayMode);
+    const dims = measureNode(node, undefined, ctx);
     layoutNodes.set(
       key,
       makeLayoutNode(node, key, {
         label: node.label ?? node.id,
-        annotations: effectiveAnnotations(node),
+        annotations: ctx.effectiveAnnotations?.(node) ?? node.annotations,
         subLabel,
         owner: undefined,
         x: ghostX,
@@ -630,8 +628,7 @@ function placeGhostDomains(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
-  effectiveAnnotations: (n: KrsNode) => string[],
-  displayMode?: DisplayMode,
+  ctx: MeasureContext,
 ): void {
   placeGhostRow(
     viewSlice.ghostDomains.map((gd) => ({
@@ -641,8 +638,7 @@ function placeGhostDomains(
     })),
     layoutNodes,
     containers,
-    effectiveAnnotations,
-    displayMode,
+    ctx,
     GHOST_ROW_GAP,
   );
 }
@@ -657,8 +653,7 @@ function placeGhostEntities(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
-  effectiveAnnotations: (n: KrsNode) => string[],
-  displayMode?: DisplayMode,
+  ctx: MeasureContext,
 ): void {
   placeGhostRow(
     viewSlice.ghostEntities.map((ge) => ({
@@ -668,8 +663,7 @@ function placeGhostEntities(
     })),
     layoutNodes,
     containers,
-    effectiveAnnotations,
-    displayMode,
+    ctx,
     GHOST_ROW_GAP,
   );
 }
@@ -679,7 +673,7 @@ function placeCallerGhostSystems(
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   ownerOf: OwnerResolver,
-  displayMode?: DisplayMode,
+  ctx: MeasureContext,
 ): void {
   if (viewSlice.callerGhostSystems.length === 0 || containers.length === 0) return;
 
@@ -694,7 +688,7 @@ function placeCallerGhostSystems(
       tempX,
       ghostStartY,
       ownerOf,
-      displayMode,
+      ctx,
     );
     callerContainers.push(containerRect);
     for (const [id, node] of gsNodes) {
@@ -725,7 +719,7 @@ function placeOutgoingGhostSystems(
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   ownerOf: OwnerResolver,
-  displayMode?: DisplayMode,
+  ctx: MeasureContext,
 ): void {
   if (viewSlice.ghostSystems.length === 0 || containers.length === 0) return;
 
@@ -739,7 +733,7 @@ function placeOutgoingGhostSystems(
       ghostX,
       ghostStartY,
       ownerOf,
-      displayMode,
+      ctx,
     );
     containers.push(containerRect);
     for (const [id, node] of gsNodes) {
@@ -1668,31 +1662,30 @@ function makeOwnerResolver(
 }
 
 /**
- * Shape lookup for the currently running layout() call. Module state instead
- * of a parameter because measureNode is reached through five call chains that
- * would each need the hook threaded through; layout() is synchronous and
- * never re-enters itself, so a set/reset around the body is safe.
+ * What measureNode needs beyond the node itself: the display mode, the
+ * style-fed shape lookup, and the effective-annotation resolver. An explicit
+ * parameter (this used to be module-level set/reset state), so `layout()` is
+ * reentrant and a forgotten reset cannot recur.
+ *
+ * measureNode's shape lookup must use the same annotation set renderFromLayout
+ * resolves styles with, or a node whose shape comes from an annotation
+ * selector measures as a box and renders as a hexagon (found in the #2412
+ * review's migration-coexistence trace). That is why layoutInner builds this
+ * once — after inheritance is built — and hands the *same* object to
+ * layoutMultipleSystems: the multi path measures with the inheritance-based
+ * resolver even though its `LayoutNode.annotations` stay raw (#2515 tracks
+ * that divergence).
  */
-let currentShapeForNode: LayoutOptions["shapeForNode"];
-/**
- * Effective-annotation resolver of the running layout, set by layoutInner
- * once inheritance is built. measureNode's shape lookup must use the same
- * annotation set renderFromLayout resolves styles with, or a node whose
- * shape comes from an annotation selector measures as a box and renders as
- * a hexagon (found in the #2412 review's migration-coexistence trace).
- */
-let currentEffectiveAnnotations: ((n: KrsNode) => string[]) | undefined;
+interface MeasureContext {
+  displayMode?: DisplayMode;
+  shapeForNode?: LayoutOptions["shapeForNode"];
+  effectiveAnnotations?: (n: KrsNode) => string[];
+}
 
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
-  currentShapeForNode = options.shapeForNode;
-  try {
-    const result = layoutInner(viewSlice, options);
-    result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
-    return result;
-  } finally {
-    currentShapeForNode = undefined;
-    currentEffectiveAnnotations = undefined;
-  }
+  const result = layoutInner(viewSlice, options);
+  result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
+  return result;
 }
 
 function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult {
@@ -1730,7 +1723,11 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   );
   const effectiveAnnotations = (n: KrsNode): string[] =>
     n.annotations.length > 0 ? n.annotations : (inheritedAnnotations.get(n.id) ?? n.annotations);
-  currentEffectiveAnnotations = effectiveAnnotations;
+  const measureCtx: MeasureContext = {
+    displayMode,
+    shapeForNode: options.shapeForNode,
+    effectiveAnnotations,
+  };
 
   // Multi-system root view: lay out all systems side by side. The same path
   // also handles the single-system case when that system is the synthesized
@@ -1739,7 +1736,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(viewSlice, options);
+    return layoutMultipleSystems(viewSlice, options, measureCtx);
   }
 
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
@@ -1958,7 +1955,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     const dimsById = new Map<string, { width: number; height: number }>();
     for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
-      dimsById.set(nid, measureNode(krsNode, ownerOf(krsNode.kind, nid), displayMode));
+      dimsById.set(nid, measureNode(krsNode, ownerOf(krsNode.kind, nid), measureCtx));
     }
     const columnCount = gridColumnCount(nodesInLayer.length, containerGridHint);
     const rows = wrapLayerIntoRows(
@@ -2136,11 +2133,11 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   }
 
   // Place ghost nodes
-  placeGhostUsers(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
-  placeGhostDomains(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
-  placeGhostEntities(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
-  placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerOf, displayMode);
-  placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerOf, displayMode);
+  placeGhostUsers(viewSlice, layoutNodes, containers, measureCtx);
+  placeGhostDomains(viewSlice, layoutNodes, containers, measureCtx);
+  placeGhostEntities(viewSlice, layoutNodes, containers, measureCtx);
+  placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
+  placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerOf, measureCtx);
 
   // Move [external] services to side columns before edges are computed, so
   // anchors re-pick sides from the new positions (#1728). Skipped in group-by
@@ -2262,9 +2259,9 @@ function layoutGhostSystem(
   originX: number,
   originY: number,
   ownerOf: OwnerResolver,
-  displayMode?: DisplayMode,
+  ctx: MeasureContext,
 ): { nodes: Map<string, LayoutNode>; containerRect: ContainerRect } {
-  const { NODE_GAP } = getLayoutConstants(displayMode);
+  const { NODE_GAP } = getLayoutConstants(ctx.displayMode);
   const nodes = new Map<string, LayoutNode>();
   let maxW = 0;
   let maxH = 0;
@@ -2272,7 +2269,7 @@ function layoutGhostSystem(
 
   for (const svc of gs.visibleServices) {
     const owner = ownerOf(svc.kind, svc.id);
-    const dims = measureNode(svc, owner, displayMode);
+    const dims = measureNode(svc, owner, ctx);
     const x = originX + CONTAINER_PADDING;
     const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
     nodes.set(
@@ -2313,7 +2310,15 @@ function layoutGhostSystem(
  * Lay out multiple systems side by side for root view.
  * All systems are rendered as full (non-ghost) nodes.
  */
-function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult {
+function layoutMultipleSystems(
+  viewSlice: ViewSlice,
+  options: LayoutOptions,
+  /**
+   * layoutInner's measurement context, carrying its inheritance-based
+   * annotation resolver — not this path's raw one (see {@link MeasureContext}).
+   */
+  measureCtx: MeasureContext,
+): LayoutResult {
   const {
     ownerIndex,
     teamLabels,
@@ -2519,7 +2524,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
         const nid = item.id;
         const krsNode = nodeMap.get(nid)!;
         const owner = ownerOf(krsNode.kind, nid);
-        const dims = measureNode(krsNode, owner, displayMode);
+        const dims = measureNode(krsNode, owner, measureCtx);
 
         // Wrap to a new sub-row at the column cap or when the node would
         // exceed MAX_LAYER_WIDTH.
@@ -3274,10 +3279,10 @@ function extractLayoutProperties(node: KrsNode, owner?: CardOwner): LayoutNodePr
 
 function measureNode(
   node: KrsNode,
-  owner?: CardOwner,
-  displayMode?: DisplayMode,
+  owner: CardOwner | undefined,
+  ctx: MeasureContext,
 ): { width: number; height: number } {
-  if (displayMode === "icon") {
+  if (ctx.displayMode === "icon") {
     return {
       width: ICON_CARD_WIDTH,
       height: node.properties.description ? ICON_CARD_HEIGHT_WITH_DESC : ICON_CARD_HEIGHT_NO_DESC,
@@ -3366,8 +3371,8 @@ function measureNode(
   // measured one, enough to flip a description's line count (#2412 review).
   // Without a shapeForNode hook the card keeps padding-only clearance
   // (pre-F behavior), and renderFromLayout is told not to apply insets.
-  const annotations = currentEffectiveAnnotations?.(node) ?? node.annotations;
-  const shapeName = currentShapeForNode?.(node.id, annotations);
+  const annotations = ctx.effectiveAnnotations?.(node) ?? node.annotations;
+  const shapeName = ctx.shapeForNode?.(node.id, annotations);
   const insetFn = shapeName ? getShapeContentInset(shapeName) : undefined;
   if (insetFn) {
     const contentW = width - NODE_PADDING_X * 2;
