@@ -163,6 +163,19 @@ const TINTED_PAIRS: { fg: string; tint: string; over: string[]; under?: string[]
 ];
 
 /**
+ * Text painted straight onto a panel surface by a token outside `TEXT_TOKENS`.
+ * `--diff-color-*` reaches here through the node-detail annotation diff list
+ * (`.node-detail-annotation-diff-list li[data-diff-state]`), a third role
+ * beyond the banner label and the SVG stroke. The values clear it today; what
+ * this adds is that a retune for either of the other two roles cannot quietly
+ * sink this one.
+ */
+const PANEL_TEXT_PAIRS: { fg: string; over: string[] }[] = [
+  { fg: "diff-color-added", over: ["bg-raised"] },
+  { fg: "diff-color-removed", over: ["bg-raised"] },
+];
+
+/**
  * Translucent tokens that never host text, so they answer to the 3:1 non-text
  * minimum their borders and glows already meet rather than to AA.
  */
@@ -334,6 +347,21 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
             expect(
               ratio(fg as string, effective),
               `--${fgToken} on --${tintToken} over --${surface} = ${effective} (${setName})`,
+            ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+          }
+        });
+      }
+
+      for (const { fg: fgToken, over } of PANEL_TEXT_PAIRS) {
+        it(`--${fgToken} clears AA as panel text on ${over.join(" / ")}`, () => {
+          const fg = tokens.get(fgToken);
+          expect(fg, `--${fgToken} is defined`).toBeDefined();
+          for (const surface of over) {
+            const bg = tokens.get(surface);
+            expect(bg, `--${surface} is defined`).toBeDefined();
+            expect(
+              ratio(fg as string, bg as string),
+              `--${fgToken} as panel text on --${surface} (${setName})`,
             ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
           }
         });

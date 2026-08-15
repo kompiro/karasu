@@ -90,6 +90,14 @@
 
   > ✅ Automated — `theme-contrast.test.ts` › `--<token> clears AA on --<tint> over <surfaces>` — 判定は `compositeOver()`。下地は「そのクロームが載りうる surface」を宣言し、宣言漏れは同ファイルの drift ガード（`accounts for every translucent token this set defines`）が落とす。
 
+- [x] `--diff-color-*` がパネル本文の文字として 4.5:1 以上（TPL-2193）
+
+  > ✅ Automated — `theme-contrast.test.ts` › `--diff-color-* clears AA as panel text on bg-raised` — バナーのラベル・SVG stroke に続く 3 つ目の役割（node detail の annotation diff list）。他 2 つの都合で色を動かしたときにここが沈まないよう固定する。
+
+- [x] テキストを `opacity` で減光していない（減光は明度の違うトークンで表現する）
+
+  > ✅ Automated — `styles-no-raw-color.test.ts` › `<file> dims nothing readable with opacity` — opacity は描画結果を暗くするがトークン値には現れないため、トークンを測る fence は減光前の比で合格を出す。edge-detail の removed 行が実際にそれで 2.95:1 のまま通っていた。装飾（SVG diff state・アイコン・disabled）は許可リストに理由付きで列挙し、消えた selector が残らないことも検証する。
+
 - [x] `--diff-color-*` が SVG stroke として canvas 上で 3:1 以上（非文字基準）
 
   > ✅ Automated — `theme-contrast.test.ts` › `--<token> stays visible as a stroke on the diagram` — バナーのラベル都合で動かした色が図で薄くならないことを担保する。

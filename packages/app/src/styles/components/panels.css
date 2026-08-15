@@ -341,8 +341,11 @@
 
 .edge-detail-item--removed .edge-detail-route,
 .edge-detail-item--removed .edge-detail-label-text {
+  /* The line-through carries "removed" on its own. A 0.75 opacity used to
+     reinforce it, but opacity dims the rendered result while leaving the
+     token untouched — the label read at 2.95:1 (light) / 3.38:1 (dark) while
+     the composited fence, which measures tokens, passed it (#2495). */
   text-decoration: line-through;
-  opacity: 0.75;
 }
 /* ── Reference Window ──────────────────────────────────────────────
    The reference opens in its own browser window (#1548) so it can stay open
