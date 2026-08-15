@@ -388,6 +388,49 @@ function applyDirectionHintsToForcedLayers(
   return adjusted;
 }
 
+/**
+ * Shared layering phase for the single- and multi-system pipelines: grouped
+ * bands (when the Group-by axis produced them) win, then the kind-tier forced
+ * layers, falling back to a topological sort; per-edge direction hints apply
+ * last. Extracted so the two paths cannot drift on how a canvas turns nodes
+ * into layers (TPL-219). `forcedLayers` is returned because both callers gate
+ * their barycenter / column-hint passes on it.
+ */
+function computeLayers(
+  nodes: KrsNode[],
+  edges: KrsEdge[],
+  groupedLayers: Map<string, number> | null,
+  edgeDirections: Map<string, EdgeDirection> | undefined,
+): { layers: Map<string, number>; forcedLayers: Map<string, number> | null } {
+  const nodeIds = nodes.map((n) => n.id);
+  const forcedLayers = groupedLayers ?? assignForcedSystemLayers(nodes, edges);
+  let layers: Map<string, number>;
+  if (forcedLayers) {
+    layers = forcedLayers;
+  } else {
+    const { adj, inDegree } = buildGraph(nodeIds, edges, edgeDirections);
+    layers = assignLayers(nodeIds, adj, inDegree);
+  }
+  if (edgeDirections) {
+    layers = applyDirectionHintsToForcedLayers(layers, edges, edgeDirections);
+  }
+  return { layers, forcedLayers };
+}
+
+/**
+ * Group band id keyed by the band's first (top) layer, so the placement loop
+ * can reserve vertical room for the band's frame title above that layer.
+ * Empty when ungrouped. Shared by the single- and multi-system placement
+ * phases.
+ */
+function groupStartLayersOf(groupBands: Map<string, GroupBand> | null): Map<number, string> {
+  const groupStartLayer = new Map<number, string>();
+  if (groupBands) {
+    for (const [gid, band] of groupBands) groupStartLayer.set(band.min, gid);
+  }
+  return groupStartLayer;
+}
+
 function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>): boolean {
   const adj = new Map<string, string[]>();
   for (const id of nodeIds) adj.set(id, []);
@@ -1739,18 +1782,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // declaration order falls out of the Map iteration. If barycenter is added
   // here in the future, gate it on `forcedLayers === null` (Q11 of the design
   // doc requires declaration order within forced layers).
-  const nodeIds = allNodes.map((n) => n.id);
-  const forcedLayers = groupedLayers ?? assignForcedSystemLayers(allNodes, allEdges);
-  let layers: Map<string, number>;
-  if (forcedLayers) {
-    layers = forcedLayers;
-  } else {
-    const { adj, inDegree } = buildGraph(nodeIds, allEdges, edgeDirections);
-    layers = assignLayers(nodeIds, adj, inDegree);
-  }
-  if (edgeDirections) {
-    layers = applyDirectionHintsToForcedLayers(layers, allEdges, edgeDirections);
-  }
+  const { layers, forcedLayers } = computeLayers(allNodes, allEdges, groupedLayers, edgeDirections);
 
   // Position nodes inside the container area
   const layoutNodes = new Map<string, LayoutNode>();
@@ -1808,10 +1840,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // unreadable row that forces a zoom-out (scoped glance, resolution axis).
   // Group-by mode: reserve a vertical gap above each group's first row for its
   // boundary-frame title (keyed by the group's top layer). No-op when ungrouped.
-  const groupStartLayer = new Map<number, string>();
-  if (groupBands) {
-    for (const [gid, band] of groupBands) groupStartLayer.set(band.min, gid);
-  }
+  const groupStartLayer = groupStartLayersOf(groupBands);
 
   let layerBaselineY = NODE_GAP;
   for (const layerIdx of sortedLayers) {
@@ -2394,22 +2423,14 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // Only include intra-system edges for layout ordering. In group-by mode the
     // team bands come from `assignGroupedLayers` (non-null `groupedLayers`) and
     // win over the kind-tier layering.
-    const forcedLayers = groupedLayers ?? assignForcedSystemLayers(workNodes, workEdges);
-    let layers: Map<string, number>;
-    if (forcedLayers) {
-      layers = forcedLayers;
-    } else {
-      const { adj, inDegree } = buildGraph(nodeIds, workEdges, edgeDirections);
-      layers = assignLayers(nodeIds, adj, inDegree);
-    }
-    if (edgeDirections) {
-      layers = applyDirectionHintsToForcedLayers(layers, workEdges, edgeDirections);
-    }
+    const { layers, forcedLayers } = computeLayers(
+      workNodes,
+      workEdges,
+      groupedLayers,
+      edgeDirections,
+    );
     // Group bands start a new titled frame; reserve vertical room for the title.
-    const groupStartLayer = new Map<number, string>();
-    if (groupBandsS) {
-      for (const [gid, band] of groupBandsS) groupStartLayer.set(band.min, gid);
-    }
+    const groupStartLayer = groupStartLayersOf(groupBandsS);
 
     const nodesByLayer = new Map<number, string[]>();
     for (const [id, layer] of layers) {
