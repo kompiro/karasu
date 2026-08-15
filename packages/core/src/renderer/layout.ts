@@ -467,6 +467,52 @@ function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>)
   return false;
 }
 
+/**
+ * Build a {@link LayoutNode} from a KrsNode plus its placement. The derived
+ * fields (tags, description summary, link count, …) are uniform across every
+ * card the layout mints; what varies per call site — the display label,
+ * annotation resolution, owner chip, ghost muting, ghost-row sub-label, and
+ * the layout key (qualified ids for ghost-system services) — comes in through
+ * `key` and `opts`. The `subLabel` / `ghost` keys are only present when
+ * passed, preserving each call site's original object shape.
+ */
+function makeLayoutNode(
+  node: KrsNode,
+  key: string,
+  opts: {
+    label: string;
+    annotations: string[];
+    owner: CardOwner | undefined;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    subLabel?: string;
+    ghost?: boolean;
+  },
+): LayoutNode {
+  return {
+    kind: node.kind,
+    tags: node.tags,
+    id: key,
+    label: opts.label,
+    annotations: opts.annotations,
+    ...(opts.subLabel !== undefined ? { subLabel: opts.subLabel } : {}),
+    properties: extractLayoutProperties(node, opts.owner),
+    descriptionSummary: node.properties.description
+      ? summarizeDescription(node.properties.description)
+      : undefined,
+    linkCount: node.properties.links.length,
+    hasChildren: node.children.length > 0,
+    hasDescription: !!node.properties.description,
+    x: opts.x,
+    y: opts.y,
+    width: opts.width,
+    height: opts.height,
+    ...(opts.ghost !== undefined ? { ghost: opts.ghost } : {}),
+  };
+}
+
 function placeGhostUsers(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
@@ -485,25 +531,16 @@ function placeGhostUsers(
   for (const userNode of viewSlice.ghostUsers) {
     const dims = measureNode(userNode, undefined, displayMode);
     const uid = userNode.id;
-    const gNode: LayoutNode = {
-      kind: userNode.kind,
-      tags: userNode.tags,
-      id: uid,
+    const gNode = makeLayoutNode(userNode, uid, {
       label: userNode.label ?? userNode.id,
       annotations: effectiveAnnotations(userNode),
-      properties: extractLayoutProperties(userNode, undefined),
-      descriptionSummary: userNode.properties.description
-        ? summarizeDescription(userNode.properties.description)
-        : undefined,
-      linkCount: userNode.properties.links.length,
-      hasChildren: userNode.children.length > 0,
-      hasDescription: !!userNode.properties.description,
+      owner: undefined,
       x: userX - dims.width,
       y: userY,
       width: dims.width,
       height: dims.height,
       ghost: true,
-    };
+    });
     layoutNodes.set(uid, gNode);
     ghostUserNodes.push(gNode);
     userY += dims.height + NODE_GAP / 2;
@@ -550,26 +587,20 @@ function placeGhostRow(
 
   for (const { node, key, subLabel } of items) {
     const dims = measureNode(node, undefined, displayMode);
-    layoutNodes.set(key, {
-      kind: node.kind,
-      tags: node.tags,
-      id: key,
-      label: node.label ?? node.id,
-      annotations: effectiveAnnotations(node),
-      subLabel,
-      properties: extractLayoutProperties(node, undefined),
-      descriptionSummary: node.properties.description
-        ? summarizeDescription(node.properties.description)
-        : undefined,
-      linkCount: node.properties.links.length,
-      hasChildren: node.children.length > 0,
-      hasDescription: !!node.properties.description,
-      x: ghostX,
-      y: ghostY,
-      width: dims.width,
-      height: dims.height,
-      ghost: true,
-    });
+    layoutNodes.set(
+      key,
+      makeLayoutNode(node, key, {
+        label: node.label ?? node.id,
+        annotations: effectiveAnnotations(node),
+        subLabel,
+        owner: undefined,
+        x: ghostX,
+        y: ghostY,
+        width: dims.width,
+        height: dims.height,
+        ghost: true,
+      }),
+    );
     ghostX += dims.width + NODE_GAP;
   }
 
@@ -1869,24 +1900,18 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
         const krsNode = nodeMap.get(nid)!;
         const dims = dimsById.get(nid)!;
 
-        layoutNodes.set(nid, {
-          kind: krsNode.kind,
-          tags: krsNode.tags,
-          id: nid,
-          label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-          annotations: effectiveAnnotations(krsNode),
-          properties: extractLayoutProperties(krsNode, ownerOf(krsNode.kind, nid)),
-          descriptionSummary: krsNode.properties.description
-            ? summarizeDescription(krsNode.properties.description)
-            : undefined,
-          linkCount: krsNode.properties.links.length,
-          hasChildren: krsNode.children.length > 0,
-          hasDescription: !!krsNode.properties.description,
-          x: xOffset,
-          y: rowY,
-          width: dims.width,
-          height: dims.height,
-        });
+        layoutNodes.set(
+          nid,
+          makeLayoutNode(krsNode, nid, {
+            label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+            annotations: effectiveAnnotations(krsNode),
+            owner: ownerOf(krsNode.kind, nid),
+            x: xOffset,
+            y: rowY,
+            width: dims.width,
+            height: dims.height,
+          }),
+        );
 
         xOffset += dims.width + NODE_GAP;
         childMaxWidth = Math.max(childMaxWidth, xOffset);
@@ -2246,25 +2271,19 @@ function layoutGhostSystem(
     const dims = measureNode(svc, owner, displayMode);
     const x = originX + CONTAINER_PADDING;
     const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
-    nodes.set(qualifiedId, {
-      kind: svc.kind,
-      tags: svc.tags,
-      id: qualifiedId,
-      label: svc.label ?? svc.id,
-      annotations: svc.annotations,
-      properties: extractLayoutProperties(svc, owner),
-      descriptionSummary: svc.properties.description
-        ? summarizeDescription(svc.properties.description)
-        : undefined,
-      linkCount: svc.properties.links.length,
-      hasChildren: svc.children.length > 0,
-      hasDescription: !!svc.properties.description,
-      x,
-      y,
-      width: dims.width,
-      height: dims.height,
-      ghost: true,
-    });
+    nodes.set(
+      qualifiedId,
+      makeLayoutNode(svc, qualifiedId, {
+        label: svc.label ?? svc.id,
+        annotations: svc.annotations,
+        owner,
+        x,
+        y,
+        width: dims.width,
+        height: dims.height,
+        ghost: true,
+      }),
+    );
     maxW = Math.max(maxW, dims.width);
     maxH = y + dims.height + CONTAINER_PADDING - originY;
     y += dims.height + NODE_GAP / 2;
@@ -2523,25 +2542,19 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
           colInRow = 0;
         }
 
-        localNodes.set(nid, {
-          kind: krsNode.kind,
-          tags: krsNode.tags,
-          id: nid,
-          label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-          annotations: effectiveAnnotations(krsNode),
-          properties: extractLayoutProperties(krsNode, owner),
-          descriptionSummary: krsNode.properties.description
-            ? summarizeDescription(krsNode.properties.description)
-            : undefined,
-          linkCount: krsNode.properties.links.length,
-          hasChildren: krsNode.children.length > 0,
-          hasDescription: !!krsNode.properties.description,
-          x: currentX,
-          y: subRowY,
-          width: dims.width,
-          height: dims.height,
-          ghost: isGhost,
-        });
+        localNodes.set(
+          nid,
+          makeLayoutNode(krsNode, nid, {
+            label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+            annotations: effectiveAnnotations(krsNode),
+            owner,
+            x: currentX,
+            y: subRowY,
+            width: dims.width,
+            height: dims.height,
+            ghost: isGhost,
+          }),
+        );
 
         nodeCenterX.set(nid, currentX + dims.width / 2);
         subRowMaxHeight = Math.max(subRowMaxHeight, dims.height);
