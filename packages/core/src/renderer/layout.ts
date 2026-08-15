@@ -2156,77 +2156,18 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     expandedFrameRects,
   );
 
-  // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
-  // so labels separate horizontally / vertically instead of stacking, and put
-  // every port on the shape's drawn outline rather than its bounding box
-  // (#2422). Must run before channel routing so the orthogonal pass uses the
-  // new ports. See ADR-968 and Issue #996.
-  distributePorts(layoutNodes, layoutEdges, portResolver(options));
-
-  // Shared routing candidate chain (#2362, ADR-1859 AC-5 superseded). The
-  // grouping axis (none / team / boundary) and routing capability are
-  // independent axes, so instead of forking on `groupBands` both routers run,
-  // in priority order, in every mode:
-  //
-  //   straight (left alone when already clear)
-  //     → interior channel-L  (edge-routing-channels.ts, ADR-968)
-  //     → side gutter / mixed (edge-routing-groups.ts, #1859 P2c-A + #1954)
-  //
-  // Each pass skips an edge that a previous one routed (`waypoints` set) or that
-  // needs no routing, so the chain is "cheapest clear candidate wins". The
-  // grouped passes degrade to node-cards-only when `groupFrames` is empty, which
-  // is what lets an ungrouped canvas gain gutter routing without a second
-  // implementation. The ungrouped result is held by the TPL-1927 dual metric
-  // (`routing-parity.test.ts`) instead of by the old byte-identity gate.
-  const groupFrames = containers.filter((c) => c.group);
-  // Candidate 1: interior channel-L. Frames become obstacles (per-endpoint
-  // exemption) so the near route cannot be bent through a frame it is not in.
-  routeOrthogonalEdges(
-    layoutNodes,
-    layoutEdges,
-    frameObstaclesFor(layoutNodes, groupFrames, expandedFrameRects),
-  );
-  // Candidate 2: side gutter, then mixed channel, for whatever is still blocked.
-  // In-place expansion (#1921/#1923) shares this router: passing the expanded
-  // frame rects lets a service-level edge anchor on the frame border and detour
-  // around the *other* frames, while an edge to an interior domain still enters
-  // its own frame. `groupBackward` dashing stays band-gated — "against the flow"
-  // is only defined where there is a band stack.
-  routeGroupedEdges(layoutNodes, layoutEdges, groupFrames, expandedFrameRects, groupBands !== null);
-  // Merge edges sharing an infra/external target onto one trunk lane per target
-  // so distinct targets' spines no longer overlap (#1859 P2c-B). Grouped only:
-  // trunk lanes live in the right gutter, so on an ungrouped canvas they pull
-  // fan-in edges back out to the canvas edge and undo the interior corridors
-  // (#2365) those edges would otherwise take. Measured and rejected in #2364.
-  if (groupBands) {
-    aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
-  }
-  // Give the remaining non-trunked gutter corridors distinct lanes so two
-  // single-incoming edges no longer share a collinear vertical segment (#1927),
-  // and fan out the anchors of edges leaving *or entering* one node/frame on the
-  // same side. Both are waypoint-driven, so every route shape the chain can
-  // produce takes part in the overlap passes (TPL-1954) in both modes.
-  distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
-  fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
-
-  // Phase 3: stagger horizontal segments that share an inter-row channel
-  // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
-  distributeChannelLanes(layoutEdges);
-
-  // Seat every endpoint on the shape's drawn outline, now that the chain has
-  // settled which route each edge takes (#2422). The candidate passes re-anchor
-  // what they reroute, so this is where the guarantee is finally made — moving
-  // inward always, and along the side only when the polyline stays clear.
-  const ports = portResolver(options);
-  if (ports) {
-    const frameObstacles = frameObstaclesFor(layoutNodes, groupFrames, expandedFrameRects);
-    seatPortsOnOutline(layoutNodes, layoutEdges, ports, (edge) => [
-      // The same obstacle set the chain checks against: every card but the two
-      // this edge terminates on, plus the frames it does not belong to.
-      ...[...layoutNodes.values()].filter((n) => n.id !== edge.from && n.id !== edge.to),
-      ...frameObstacles(edge),
-    ]);
-  }
+  // Shared routing candidate chain (#2362): ports → straight/channel-L →
+  // gutter/mixed → trunks → lane separation → outline seating; see
+  // runRoutingChain. In-place expansion (#1921/#1923) shares the chain: the
+  // expanded frame rects let a service-level edge anchor on the frame border
+  // and detour around the *other* frames, while an edge to an interior domain
+  // still enters its own frame. The style-fed port resolver (#2422) turns on
+  // outline seating.
+  runRoutingChain(layoutNodes, layoutEdges, containers.filter((c) => c.group), {
+    expandedFrames: expandedFrameRects,
+    grouped: groupBands !== null,
+    ports: portResolver(options),
+  });
 
   // Annotate parallel-edge bundles (edges sharing `(from, to)`) so the
   // renderer can slide labels along the edge instead of stacking them at
@@ -2691,15 +2632,12 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // other system. Each system block is its own routing surface, the same way
     // `placeExternalServicesOnSides` is already applied per system.
     const systemFrames = allContainers.slice(frameStart).filter((c) => c.group);
-    distributePorts(localNodes, systemEdges);
-    routeOrthogonalEdges(localNodes, systemEdges, frameObstaclesFor(localNodes, systemFrames));
-    routeGroupedEdges(localNodes, systemEdges, systemFrames, undefined, groupBandsS !== null);
-    if (groupBandsS) {
-      aggregateGroupTrunks(localNodes, systemEdges, systemFrames);
-    }
-    distributeGutterLanes(localNodes, systemEdges, systemFrames);
-    fanOutGutterPorts(localNodes, systemEdges, systemFrames);
-    distributeChannelLanes(systemEdges);
+    // No expansion frames or port resolver on this path today: in-place
+    // expansion is single-system only (#1921), and the missing ports — so no
+    // outline seating on the root view — are tracked by #2515.
+    runRoutingChain(localNodes, systemEdges, systemFrames, {
+      grouped: groupBandsS !== null,
+    });
 
     // A gutter route runs outside the system's cards, so it can reach past the
     // container rect. Advance by the routed extent, not just the rect, or the
@@ -2838,6 +2776,98 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
  * plain frame, so the bounding box *is* the outline and every existing
  * diagram keeps its geometry.
  */
+/**
+ * The shared routing candidate chain (#2362, ADR-1859 AC-5 superseded), run by
+ * the single-system pipeline and, per system frame, by the multi-system root
+ * (#2363). One function so the two paths cannot drift on pass order or
+ * arguments (TPL-219). The grouping axis (none / team / boundary) and routing
+ * capability are independent axes, so instead of forking on the band stack
+ * both routers run, in priority order, in every mode:
+ *
+ *   straight (left alone when already clear)
+ *     → interior channel-L  (edge-routing-channels.ts, ADR-968)
+ *     → side gutter / mixed (edge-routing-groups.ts, #1859 P2c-A + #1954)
+ *
+ * Each pass skips an edge that a previous one routed (`waypoints` set) or that
+ * needs no routing, so the chain is "cheapest clear candidate wins". The
+ * grouped passes degrade to node-cards-only when `groupFrames` is empty, which
+ * is what lets an ungrouped canvas gain gutter routing without a second
+ * implementation. The ungrouped result is held by the TPL-1927 dual metric
+ * (`routing-parity.test.ts`) instead of by the old byte-identity gate.
+ */
+function runRoutingChain(
+  nodes: Map<string, LayoutNode>,
+  edges: LayoutEdge[],
+  groupFrames: ContainerRect[],
+  opts: {
+    /**
+     * Boundary-frame rects of containers expanded in place (#1921/#1923),
+     * keyed by expanded service id. Single-system path only today.
+     */
+    expandedFrames?: Map<string, ContainerRect>;
+    /**
+     * Whether a Group-by band stack exists — gates trunk aggregation
+     * (#1859 P2c-B) and `groupBackward` dashing.
+     */
+    grouped: boolean;
+    /**
+     * Shape port frames + chrome keep-outs (#2420/#2422). When absent,
+     * `distributePorts` runs port-less and no outline seating happens — the
+     * multi-system path passes none today (#2515).
+     */
+    ports?: PortResolver;
+  },
+): void {
+  const { expandedFrames, grouped, ports } = opts;
+  // Distribute ports across each node side that hosts ≥ 2 edges, so labels
+  // separate horizontally / vertically instead of stacking, and put every
+  // port on the shape's drawn outline rather than its bounding box (#2422).
+  // Must run before channel routing so the orthogonal pass uses the new
+  // ports. See ADR-968 and Issue #996.
+  distributePorts(nodes, edges, ports);
+  // Candidate 1: interior channel-L. Frames become obstacles (per-endpoint
+  // exemption) so the near route cannot be bent through a frame it is not in.
+  routeOrthogonalEdges(nodes, edges, frameObstaclesFor(nodes, groupFrames, expandedFrames));
+  // Candidate 2: side gutter, then mixed channel, for whatever is still
+  // blocked. `groupBackward` dashing stays band-gated — "against the flow" is
+  // only defined where there is a band stack.
+  routeGroupedEdges(nodes, edges, groupFrames, expandedFrames, grouped);
+  // Merge edges sharing an infra/external target onto one trunk lane per
+  // target so distinct targets' spines no longer overlap (#1859 P2c-B).
+  // Grouped only: trunk lanes live in the right gutter, so on an ungrouped
+  // canvas they pull fan-in edges back out to the canvas edge and undo the
+  // interior corridors (#2365) those edges would otherwise take. Measured and
+  // rejected in #2364.
+  if (grouped) {
+    aggregateGroupTrunks(nodes, edges, groupFrames, expandedFrames);
+  }
+  // Give the remaining non-trunked gutter corridors distinct lanes so two
+  // single-incoming edges no longer share a collinear vertical segment
+  // (#1927), and fan out the anchors of edges leaving *or entering* one
+  // node/frame on the same side. Both are waypoint-driven, so every route
+  // shape the chain can produce takes part in the overlap passes (TPL-1954)
+  // in both modes.
+  distributeGutterLanes(nodes, edges, groupFrames);
+  fanOutGutterPorts(nodes, edges, groupFrames, expandedFrames);
+  // Stagger horizontal segments that share an inter-row channel across
+  // distinct lanes. No-op when each channel hosts ≤ 1 edge.
+  distributeChannelLanes(edges);
+  // Seat every endpoint on the shape's drawn outline, now that the chain has
+  // settled which route each edge takes (#2422). The candidate passes
+  // re-anchor what they reroute, so this is where the guarantee is finally
+  // made — moving inward always, and along the side only when the polyline
+  // stays clear.
+  if (ports) {
+    const frameObstacles = frameObstaclesFor(nodes, groupFrames, expandedFrames);
+    seatPortsOnOutline(nodes, edges, ports, (edge) => [
+      // The same obstacle set the chain checks against: every card but the
+      // two this edge terminates on, plus the frames it does not belong to.
+      ...[...nodes.values()].filter((n) => n.id !== edge.from && n.id !== edge.to),
+      ...frameObstacles(edge),
+    ]);
+  }
+}
+
 function portResolver(options: LayoutOptions): PortResolver | undefined {
   const { shapeForNode, chipZoneFor, displayMode } = options;
   if (!shapeForNode || displayMode === "icon") return undefined;
