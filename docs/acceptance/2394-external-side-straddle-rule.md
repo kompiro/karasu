@@ -15,9 +15,12 @@ system view の `[external]` は、それを呼ぶハブの x 重心でサイド
 右半分にいるモデルでも最も左寄りの external が左列へ飛ばされ、その 1 本のエッジが図を横断
 していた（計測: external 系エッジ長 640px、ハブの隣に置けば 421px）。
 
-修正は閾値の選び方を 1 つ足すこと。重心が content centre を**跨いでいれば従来どおり median**
-（cross-hub 交差を分離する ADR-1728 の意図）、**全員が片側なら content centre と比較**して
-各 external を自分のハブ側へ置く。#2384 が塞いだ「spread ゼロ」はこの規則の極限にあたる。
+修正は場合分けを 1 つ足すこと。重心が content centre を**跨いでいれば従来どおり median 分割**
+（cross-hub 交差を分離する ADR-1728 の意図）、**跨いでいなければ自動割り当て分をまとめて
+ハブのある側へ置く**。後者を「centre を閾値にした比較」で書くと同じ穴が 1 段下に開く —
+ハブがちょうど centre に載った external だけが `<=` で左に落ち、兄弟から切り離される。
+分けるものが無い場合はグループ単位で決める。#2384 が塞いだ「spread ゼロ」は、
+epsilon 付きの跨ぎ判定の極限として含まれる。
 
 ## 受け入れ条件
 
@@ -28,6 +31,9 @@ system view の `[external]` は、それを呼ぶハブの x 重心でサイド
 
 - [x] 消費ハブが全員 content centre より左なら、両方の external が左列に置かれる
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `keeps both externals left when every consuming hub is left of centre (#2394)`
+
+- [x] 最寄りのハブが content centre とちょうど一致していても、そのグループは分割されない
+  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `keeps a hub sitting exactly on the centre with its one-sided group (#2394)`
 
 ### AC-2: ADR-1728 の分離が残っていること
 

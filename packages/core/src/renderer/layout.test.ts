@@ -1139,6 +1139,38 @@ system S {
     }
   });
 
+  it("keeps a hub sitting exactly on the centre with its one-sided group (#2394)", () => {
+    // The nearest hub can land exactly on the content centre, which is not a
+    // straddle — the group is still one-sided. Deciding that case with a
+    // threshold re-opened the hole one layer down: `<= centre` is true for the
+    // tied barycenter, so that external alone went left while its siblings went
+    // right. Ccc sits at the centre of a right-leaning set; all three externals
+    // belong together on the right.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Ccc {}
+  service Ddd {}
+  service Eee {}
+  service ExtC [external] {}
+  service ExtD [external] {}
+  service ExtE [external] {}
+  Ccc -> ExtC
+  Ddd -> ExtD
+  Eee -> ExtE
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Ccc", "Ddd", "Eee"].map((id) => result.nodes.get(id)!);
+    const right = Math.max(...inner.map((n) => n.x + n.width));
+    for (const id of ["ExtC", "ExtD", "ExtE"]) {
+      const ext = result.nodes.get(id)!;
+      expectOnSide(ext, ...inner);
+      expect(ext.x).toBeGreaterThanOrEqual(right - 0.5);
+    }
+  });
+
   it("still splits the sides when the consuming hubs straddle the centre (#2394)", () => {
     // The other half of the same rule, and the reason ADR-1728 chose the median:
     // hubs on both halves keep their fans on opposite sides, which is what
