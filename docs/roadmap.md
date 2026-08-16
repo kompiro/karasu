@@ -234,7 +234,7 @@ gate で評価する。
 
 ### 閉鎖の前提条件（v2.0 実施前に満たす）
 
-1. **corpus 実測** — in-the-wild の user-defined annotation の実態を測る（(B7)。custom lifecycle 状態の受け皿は builtin 追加要望のみ — lifecycle 系 facet は不許可。実用されている custom 状態は閉鎖と同時に builtin 候補として評価）。
+1. **警告カウントの実測** — 閉鎖がどれだけ警告するかを `pnpm census:vocabulary`（[#2508](https://github.com/kompiro/karasu/issues/2508)）で実測し、閉鎖判断時に再実行する（`docs/release.md` の promotion gate 接点に相乗り）。2026-08 の実測: shipped examples の非 builtin 名は 0 件、docs fence 由来の drift は [#2509](https://github.com/kompiro/karasu/issues/2509) / [#2510](https://github.com/kompiro/karasu/issues/2510) で解消。当初この項目が求めた「どの custom 名が使われているか」（names）は**収集不能と実測**された（[#2511](https://github.com/kompiro/karasu/issues/2511) — in-the-wild corpus は実在せず、nest の共有 corpus は data-trust 設計により名前を集計できない）ため、ゲートから外し [ADR-2172](adr/2172-builtin-vocabulary-expansion.md) の builtin 追加経路に委ねる。閉鎖は warning であり parse error ではないので、事前に収集できなかった名前が書けなくなることはなく、警告を受けた author の builtin 追加要望が受け皿になる（(B7) の「custom lifecycle 状態の受け皿は builtin 追加要望のみ — lifecycle 系 facet は不許可」は維持）。
 2. **concepts.md の同時改訂** — 「タグシステム自体は open のまま」の原則記述は、閉鎖 ADR と**同時に supersede** する（keystone 文書を黙って単独更新しない）。
 3. **リスク台帳の緩和の履行** — tags-and-facets 設計「閉鎖の弊害と緩和」の表（styling 退行の facet セレクタでの引き継ぎ、版スキュー warning の許容、生成パイプラインの builtin + facet 化など）を v2.0 作業の checklist として使う。
 
