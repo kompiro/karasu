@@ -987,15 +987,14 @@ const SIDE_SPLIT_EPSILON = 0.5;
  * ADR-1724). Runs *before* edge computation so `computeEdgePoints`
  * re-picks side anchors from the new relative positions.
  *
- * Side assignment: the consuming-hub barycenter x (median split, ties → left)
- * keeps each hub's external fan on one side, which minimizes cross-hub
- * crossings. When every auto-assigned external shares one barycenter the
- * median split degenerates — the median *is* that value, so every external
- * compares equal and the tie rule sends them all left regardless of where
- * their consumers sit (#2384). There is nothing to split in that case, so the
- * barycenter is compared against the content centre instead. An author can
- * override per node with the `column: left|right` style hint. Overflow keeps
- * stacking vertically on the side (no cap).
+ * Side assignment reads the consuming-hub barycenter x, in two regimes. When
+ * those barycenters straddle the content centre, a median split keeps each
+ * hub's external fan on one side, which minimizes cross-hub crossings (#1728).
+ * When they do not — every hub on one side, of which "every external shares one
+ * barycenter" (#2384) is the limiting case — there is nothing to separate, so
+ * the whole auto-assigned group goes to the side its hubs are on (#2394). An
+ * author can override per node with the `column: left|right` style hint.
+ * Overflow keeps stacking vertically on the side (no cap).
  *
  * Works for both single-system and multi-system root views: callers pass
  * the raw node list for the system being laid out and the ids of the

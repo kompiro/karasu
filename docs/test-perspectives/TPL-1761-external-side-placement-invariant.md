@@ -34,9 +34,11 @@ system view では `[external]` サービスを左右のサイド列に配置す
 7. **回帰なし**: external 配置の変更が、infra/service の tier 配置（#1724 / #823）や #974 の infra pull-up を壊さない。
 8. **順位ベースの閾値は必ず分割する — 分割してよい入力かを別に判定する**: 自動振り分けの比較対象を、振り分けたい集合そのものから導出した統計量（median 等）に取ると、閾値は必ず集合の内側に落ちる。`<= median` は要素の実際の位置に関わらず 1〜n-1 件を片側に残す、つまり**分割が常に起きる**。分けるべき入力かどうかは、集合の**外**にある基準（content centre など配置の文脈から決まる座標）で別途判定する。
 
-   karasu の external サイド振り分けはこの形を採る（#2394）: 消費ハブの重心が content centre を**跨ぐ**ときだけ median 分割（別ハブのファンを左右に分けて cross-hub 交差を減らす [ADR-1728] の意図）、全員が片側なら content centre と比較して各 external を自分のハブ側へ置く。重心が同値に潰れる退化入力（external 1 件、または同一ハブ集合の共有）は「跨がない」の極限で、同じフォールバックに乗る（#2384）。
+   karasu の external サイド振り分けはこの形を採る（#2394）: 消費ハブの重心が content centre を**跨ぐ**ときだけ median 分割（別ハブのファンを左右に分けて cross-hub 交差を減らす [ADR-1728] の意図）、跨がないなら自動割り当て分を**まとめて**ハブのある側へ置く。重心が同値に潰れる退化入力（external 1 件、または同一ハブ集合の共有）は「跨がない」の極限で、同じ分岐に乗る（#2384）。
 
-   検証は 3 通りを揃えて行う: 跨ぐ入力で左右に分かれること、片側入力で全件がハブ側に寄ること、退化入力でハブ側に寄ること。片側入力のケースだけが欠けると、順位ベース閾値への差し戻しがテストを素通りする。
+   **分割しない側を「別の閾値との比較」で書かないこと。** 片側判定を content centre との比較に置き換えると、ちょうど centre に載った要素が `<=` で反対側に落ち、同じ stranding が 1 段下で再発する（#2507 のレビューで検出）。分けないと決めたらグループ単位で割り当てる。
+
+   検証は 4 通りを揃えて行う: 跨ぐ入力で左右に分かれること、片側入力で全件がハブ側に寄ること、**最寄りの重心が境界とちょうど一致する片側入力でも分割されないこと**、退化入力でハブ側に寄ること。片側入力のケースだけが欠けると、順位ベース閾値への差し戻しがテストを素通りする。
 
 ## 想定される失敗モード
 
@@ -75,6 +77,9 @@ kind 別の帯へノードを動かす配置 post-pass を追加・変更する�
   - `assigns each external to the side of its consuming hub (#1728)`
   - `honors column:left/right to override the auto side assignment (#1728)`
   - `puts a lone external on the side its consumers are on (#2384)` / `keeps a lone external left when its consumers are on the left (#2384)` / `puts externals that share one right-side hub set on the right (#2384)` / `breaks a centred lone external toward the left (#2384)`（退化した median のガード）
+  - `keeps both externals right when every consuming hub is right of centre (#2394)` / `keeps both externals left when every consuming hub is left of centre (#2394)`（片側入力）
+  - `keeps a hub sitting exactly on the centre with its one-sided group (#2394)`（境界一致でも分割しない）
+  - `still splits the sides when the consuming hubs straddle the centre (#2394)`（跨ぐ入力で分割が残ること）
   - `moves external to a side column even without user/client (#1728)`
   - `keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)`（境界ルール回帰ガード）
   - `propagates infra pull-up through a dep-on-dep chain … (Issue #974)`（pull-up 回帰ガード）
