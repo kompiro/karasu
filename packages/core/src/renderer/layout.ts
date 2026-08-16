@@ -1074,16 +1074,17 @@ function layoutMultipleSystems(
   // No-op when nothing went negative (the common case without side columns).
   normalizeCoordinates(allContainers, allLayoutNodes, allEdges);
 
-  // Calculate total dimensions from container rects only. The single-system
-  // path uses computeTotalDimensions, which also folds node and edge-waypoint
-  // extents into the maximum — a divergence deliberately preserved by the
-  // #2512 refactor; converging it (and the clipping it can cause) is #2513.
-  let totalWidth = 0;
-  let totalHeight = 0;
-  for (const c of allContainers) {
-    totalWidth = Math.max(totalWidth, c.x + c.width + CONTAINER_PADDING);
-    totalHeight = Math.max(totalHeight, c.y + c.height + CONTAINER_PADDING);
-  }
+  // Canvas dimensions from the same helper the single-system path uses, so the
+  // root view also folds node and edge-waypoint extents into the maximum
+  // (#2513). Since #2363 gave this path the real routing chain, a gutter route
+  // on the rightmost system reaches past its container rect; measuring
+  // containers alone left it outside the viewBox and clipped it.
+  const { width: totalWidth, height: totalHeight } = computeTotalDimensions(
+    allContainers,
+    allLayoutNodes,
+    allEdges,
+    displayMode,
+  );
 
   // Hop marks for the root view too (#2363). Derived from final coordinates like
   // the single-system path, and computed over *all* edges so a cross-system line
