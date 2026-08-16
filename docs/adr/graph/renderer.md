@@ -49,6 +49,7 @@ flowchart TD
     ADR_2366["ADR-2366<br/>node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く"]
     ADR_2394["ADR-2394<br/>external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける"]
     ADR_2473["ADR-2473<br/>テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` ..."]
+    ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -153,6 +154,7 @@ flowchart TD
   class ADR_2366 accepted
   class ADR_2394 accepted
   class ADR_2473 accepted
+  class ADR_2521 accepted
   class ADR_9005 accepted
   class ADR_9007 accepted
   class ADR_9015 accepted
