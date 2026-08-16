@@ -249,8 +249,7 @@ gate で評価する。
 
 | Issue | 内容 | 時期 |
 | --- | --- | --- |
-| [#2511](https://github.com/kompiro/karasu/issues/2511) | 閉鎖の前提条件 1「corpus 実測」の組み替え — 語彙の**名前**は [ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md) 決定 6 と data-handling policy の下では収集できないと実測された | 閉鎖前 |
-| [#2165](https://github.com/kompiro/karasu/issues/2165) | 論理ノードの containment 規則 — v1.x は `node-not-in-context` warning（着地済み）、**error 化は v2.0** | 言語 v2.0 |
+| （未起票） | 論理ノードの containment 規則の **error 化**（v1.x の `node-not-in-context` warning は着地済み） | 言語 v2.0 |
 | （未起票） | 閉鎖の実施（tag / annotation の warning enforcement・任意名セレクタ無効化・concepts 改訂 + ADR-1314 関係の新 ADR） | v2.0 |
 
 ---
