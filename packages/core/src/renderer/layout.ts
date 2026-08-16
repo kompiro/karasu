@@ -534,7 +534,7 @@ function placeGhostUsers(
     const uid = userNode.id;
     const gNode = makeLayoutNode(userNode, uid, {
       label: userNode.label ?? userNode.id,
-      annotations: ctx.effectiveAnnotations?.(userNode) ?? userNode.annotations,
+      annotations: ctx.effectiveAnnotations(userNode),
       x: userX - dims.width,
       y: userY,
       width: dims.width,
@@ -590,7 +590,7 @@ function placeGhostRow(
       key,
       makeLayoutNode(node, key, {
         label: node.label ?? node.id,
-        annotations: ctx.effectiveAnnotations?.(node) ?? node.annotations,
+        annotations: ctx.effectiveAnnotations(node),
         subLabel,
         x: ghostX,
         y: ghostY,
@@ -1684,9 +1684,17 @@ function makeOwnerResolver(
  * that divergence).
  */
 interface MeasureContext {
-  displayMode?: DisplayMode;
-  shapeForNode?: LayoutOptions["shapeForNode"];
-  effectiveAnnotations?: (n: KrsNode) => string[];
+  /** `undefined` is the meaningful "shape mode" default — name it explicitly. */
+  displayMode: DisplayMode | undefined;
+  /** `undefined` when the caller has no resolved styles (drawio export, bare-layout tests). */
+  shapeForNode: LayoutOptions["shapeForNode"];
+  /**
+   * Required, not optional: a context missing the resolver would silently
+   * measure with raw annotations while renderFromLayout resolves styles with
+   * inherited ones — the #2412 class this type exists to make
+   * unrepresentable.
+   */
+  effectiveAnnotations: (n: KrsNode) => string[];
 }
 
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
@@ -2348,6 +2356,10 @@ function layoutMultipleSystems(
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
+  // This raw resolver feeds LayoutNode.annotations only — never assemble a
+  // second MeasureContext from it: measurement stays on layoutInner's
+  // measureCtx (inheritance-based), and that split is the #2515-tracked
+  // divergence, not a free choice.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
   const allLayoutNodes = new Map<string, LayoutNode>();
   const allContainers: ContainerRect[] = [];
@@ -3386,7 +3398,7 @@ function measureNode(
   // measured one, enough to flip a description's line count (#2412 review).
   // Without a shapeForNode hook the card keeps padding-only clearance
   // (pre-F behavior), and renderFromLayout is told not to apply insets.
-  const annotations = ctx.effectiveAnnotations?.(node) ?? node.annotations;
+  const annotations = ctx.effectiveAnnotations(node);
   const shapeName = ctx.shapeForNode?.(node.id, annotations);
   const insetFn = shapeName ? getShapeContentInset(shapeName) : undefined;
   if (insetFn) {
