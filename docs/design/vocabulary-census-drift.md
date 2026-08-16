@@ -2,7 +2,7 @@
 
 - **日付**: 2026-08-16
 - **ステータス**: 検討中
-- **PR**: (作成後に記入)
+- **PR**: [#2524](https://github.com/kompiro/karasu/pull/2524)
 - **関連**:
   - 親 Issue: [#2522](https://github.com/kompiro/karasu/issues/2522)（census drift closure）
   - 引き金 Issue: [#2509](https://github.com/kompiro/karasu/issues/2509)（hyphenated tag の分裂）, [#2510](https://github.com/kompiro/karasu/issues/2510)（open-set 規則の逆転記述）, [#2511](https://github.com/kompiro/karasu/issues/2511)（閉鎖前提条件の re-scope）
