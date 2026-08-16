@@ -9,7 +9,7 @@ applicable_to:
   - "文字を載せる新しい surface（パネル・バナー・オーバーレイ）を追加するとき"
 discovered_from:
   - issue: "#2193"
-  - issue: "#2495"
+  - issue: "#2461"
   - root_cause_file: "packages/app/src/styles/themes.css"
 related_to:
   - TPL-2366
@@ -64,7 +64,7 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   （`styles-no-raw-color.test.ts`）の `#` 正規表現をすり抜け、片方のテーマの値の
   まま固定される。TSX 側の `text-white` のようなリテラルも同様に検査の外に出る。
 - **`opacity` による減光**: 減光は描画結果に掛かるがトークン値には現れないため、
-  トークンを読む検証は減光前の値で合格を出す。#2495 の edge-detail removed 行は
+  トークンを読む検証は減光前の値で合格を出す。#2461 の edge-detail removed 行は
   `opacity: 0.75` で実効 2.95:1（light）/ 3.38:1（dark）だったが、その組は
   `TINTED_PAIRS` で「検証済み」と宣言されていた。減光は明度の違うトークンで
   表現し、opacity は装飾に限る。
