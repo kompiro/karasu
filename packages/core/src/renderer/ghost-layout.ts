@@ -38,8 +38,7 @@ export function placeGhostUsers(
     const uid = userNode.id;
     const gNode = makeLayoutNode(userNode, uid, {
       label: userNode.label ?? userNode.id,
-      annotations: ctx.effectiveAnnotations?.(userNode) ?? userNode.annotations,
-      owner: undefined,
+      annotations: ctx.effectiveAnnotations(userNode),
       x: userX - dims.width,
       y: userY,
       width: dims.width,
@@ -95,9 +94,8 @@ function placeGhostRow(
       key,
       makeLayoutNode(node, key, {
         label: node.label ?? node.id,
-        annotations: ctx.effectiveAnnotations?.(node) ?? node.annotations,
+        annotations: ctx.effectiveAnnotations(node),
         subLabel,
-        owner: undefined,
         x: ghostX,
         y: ghostY,
         width: dims.width,

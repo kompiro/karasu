@@ -83,9 +83,17 @@ export function makeOwnerResolver(
  * that divergence).
  */
 export interface MeasureContext {
-  displayMode?: DisplayMode;
-  shapeForNode?: LayoutOptions["shapeForNode"];
-  effectiveAnnotations?: (n: KrsNode) => string[];
+  /** `undefined` is the meaningful "shape mode" default — name it explicitly. */
+  displayMode: DisplayMode | undefined;
+  /** `undefined` when the caller has no resolved styles (drawio export, bare-layout tests). */
+  shapeForNode: LayoutOptions["shapeForNode"];
+  /**
+   * Required, not optional: a context missing the resolver would silently
+   * measure with raw annotations while renderFromLayout resolves styles with
+   * inherited ones — the #2412 class this type exists to make
+   * unrepresentable.
+   */
+  effectiveAnnotations: (n: KrsNode) => string[];
 }
 
 /**
@@ -94,8 +102,10 @@ export interface MeasureContext {
  * card the layout mints; what varies per call site — the display label,
  * annotation resolution, owner chip, ghost muting, ghost-row sub-label, and
  * the layout key (qualified ids for ghost-system services) — comes in through
- * `key` and `opts`. The `subLabel` / `ghost` keys are only present when
- * passed, preserving each call site's original object shape.
+ * `key` and `opts`. Every card gets the same shape: `ghost` is always present
+ * (false unless the site marks the card ghost) and `subLabel` is simply
+ * undefined outside the ghost rows. Consumers read both by truthiness, so the
+ * old literals' key-presence differences carried no meaning.
  */
 export function makeLayoutNode(
   node: KrsNode,
@@ -103,7 +113,7 @@ export function makeLayoutNode(
   opts: {
     label: string;
     annotations: string[];
-    owner: CardOwner | undefined;
+    owner?: CardOwner;
     x: number;
     y: number;
     width: number;
@@ -118,7 +128,7 @@ export function makeLayoutNode(
     id: key,
     label: opts.label,
     annotations: opts.annotations,
-    ...(opts.subLabel !== undefined ? { subLabel: opts.subLabel } : {}),
+    subLabel: opts.subLabel,
     properties: extractLayoutProperties(node, opts.owner),
     descriptionSummary: node.properties.description
       ? summarizeDescription(node.properties.description)
@@ -130,7 +140,7 @@ export function makeLayoutNode(
     y: opts.y,
     width: opts.width,
     height: opts.height,
-    ...(opts.ghost !== undefined ? { ghost: opts.ghost } : {}),
+    ghost: opts.ghost ?? false,
   };
 }
 
@@ -249,7 +259,7 @@ export function measureNode(
   // measured one, enough to flip a description's line count (#2412 review).
   // Without a shapeForNode hook the card keeps padding-only clearance
   // (pre-F behavior), and renderFromLayout is told not to apply insets.
-  const annotations = ctx.effectiveAnnotations?.(node) ?? node.annotations;
+  const annotations = ctx.effectiveAnnotations(node);
   const shapeName = ctx.shapeForNode?.(node.id, annotations);
   const insetFn = shapeName ? getShapeContentInset(shapeName) : undefined;
   if (insetFn) {

@@ -123,12 +123,12 @@ export function computeLayers(
   groupedLayers: Map<string, number> | null,
   edgeDirections: Map<string, EdgeDirection> | undefined,
 ): { layers: Map<string, number>; forcedLayers: Map<string, number> | null } {
-  const nodeIds = nodes.map((n) => n.id);
   const forcedLayers = groupedLayers ?? assignForcedSystemLayers(nodes, edges);
   let layers: Map<string, number>;
   if (forcedLayers) {
     layers = forcedLayers;
   } else {
+    const nodeIds = nodes.map((n) => n.id);
     const { adj, inDegree } = buildGraph(nodeIds, edges, edgeDirections);
     layers = assignLayers(nodeIds, adj, inDegree);
   }

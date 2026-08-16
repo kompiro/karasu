@@ -244,15 +244,6 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     collapsedGroups,
     edgeDiffState,
   } = options;
-  // The canvas being drawn is the container plus its ancestors — for the root
-  // system view that is the system itself (`containerNode` is set, with an empty
-  // ancestor chain), which is the scope a top-level-looking `system X { boundary
-  // … }` declares into.
-  const scopePath =
-    viewSlice.containerNode !== null
-      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
-      : [];
-  const canvasMembership = canvasMembershipFor(scopePath, options);
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -281,6 +272,17 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     return layoutMultipleSystems(viewSlice, options, measureCtx);
   }
 
+  // The canvas being drawn is the container plus its ancestors — for the root
+  // system view that is the system itself (`containerNode` is set, with an empty
+  // ancestor chain), which is the scope a top-level-looking `system X { boundary
+  // … }` declares into. Resolved after the multi-system dispatch: the root view
+  // resolves membership per system frame, not from this scope.
+  const scopePath =
+    viewSlice.containerNode !== null
+      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
+      : [];
+  const canvasMembership = canvasMembershipFor(scopePath, options);
+
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
   // **re-target** their boundary-crossing edges onto the stub (so "who depends
   // on the external/infra layer" survives as aggregation trunks, not dropped).
@@ -297,7 +299,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // *grouping* logic below switches to `groupIndex`. Resolved after the category
   // collapse because a boundary with no band of its own claims one of its shared
   // members (#2176), and only the nodes still on the canvas can be claimed.
-  const { placement, groupIndex } = resolveCanvasAxis(
+  const { bandOrder, groupIndex } = resolveCanvasAxis(
     canvasMembership,
     new Set(allNodes.map((n) => n.id)),
     options,
@@ -337,7 +339,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
       groupIndex,
       collapsedGroups,
       edgeDiffState,
-      bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+      bandOrder,
       membership: canvasMembership,
     });
     allNodes = collapsed.nodes;
@@ -742,7 +744,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     containers.filter((c) => c.group),
     {
       expandedFrames: expandedFrameRects,
-      grouped: groupBands !== null,
+      groupBands,
       ports: portResolver(options),
     },
   );
@@ -823,13 +825,12 @@ function layoutMultipleSystems(
   // boundaryMembership); `ownerIndex` stays the per-card team badge source
   // regardless of axis (mirrors layout()).
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
-  // Each system frame is its own canvas, so a scoped boundary declared in
-  // `system X { … }` applies inside X's frame and nowhere else (#2036). Resolved
-  // per system in the loop below; the team axis stays model-wide.
-  const membershipForSystem = (systemId: string): Map<string, string[]> | undefined =>
-    canvasMembershipFor([systemId], options);
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
+  // This raw resolver feeds LayoutNode.annotations only — never assemble a
+  // second MeasureContext from it: measurement stays on layoutInner's
+  // measureCtx (inheritance-based), and that split is the #2515-tracked
+  // divergence, not a free choice.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
   const allLayoutNodes = new Map<string, LayoutNode>();
   const allContainers: ContainerRect[] = [];
@@ -877,15 +878,18 @@ function layoutMultipleSystems(
     let groupBandsS: Map<string, GroupBand> | null = null;
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
-    const systemMembership = membershipForSystem(sys.id);
+    // Each system frame is its own canvas, so a scoped boundary declared in
+    // `system X { … }` applies inside X's frame and nowhere else (#2036); the
+    // team axis stays model-wide.
+    const systemMembership = canvasMembershipFor([sys.id], options);
     // Same per-canvas resolution as `layout()`: a boundary with no band of its
     // own claims one of the shared members present in *this* system (#2176).
-    const { placement: systemPlacement, groupIndex: systemGroupIndex } = resolveCanvasAxis(
+    const { bandOrder: systemBandOrder, groupIndex: systemGroupIndex } = resolveCanvasAxis(
       systemMembership,
       new Set(rawNodes.map((n) => n.id)),
       options,
     );
-    if (groupBy && systemGroupIndex && systemGroupIndex.size > 0) {
+    if (groupBy && systemGroupIndex) {
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
@@ -896,7 +900,7 @@ function layoutMultipleSystems(
         collapsedGroups,
         edgeDiffState,
         stubScope: sys.id,
-        bandOrder: systemPlacement?.groupOrder ?? declaredGroupOrder,
+        bandOrder: systemBandOrder,
         membership: systemMembership,
       });
       if (collapsed.grouped) {
@@ -1034,7 +1038,6 @@ function layoutMultipleSystems(
             y: subRowY,
             width: dims.width,
             height: dims.height,
-            ghost: false,
           }),
         );
 
@@ -1150,11 +1153,13 @@ function layoutMultipleSystems(
     // other system. Each system block is its own routing surface, the same way
     // `placeExternalServicesOnSides` is already applied per system.
     const systemFrames = allContainers.slice(frameStart).filter((c) => c.group);
-    // No expansion frames or port resolver on this path today: in-place
-    // expansion is single-system only (#1921), and the missing ports — so no
-    // outline seating on the root view — are tracked by #2515.
     runRoutingChain(localNodes, systemEdges, systemFrames, {
-      grouped: groupBandsS !== null,
+      // In-place expansion is single-system only (#1921).
+      expandedFrames: undefined,
+      groupBands: groupBandsS,
+      // No port resolver on this path — no outline seating on the root view;
+      // tracked by #2515.
+      ports: undefined,
     });
 
     // A gutter route runs outside the system's cards, so it can reach past the

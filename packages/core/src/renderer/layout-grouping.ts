@@ -132,17 +132,21 @@ export function canvasMembershipFor(
 /**
  * The placement axis and grouping index for one canvas (#2176, TPL-2161):
  * resolve the placement axis from the canvas membership (boundary axis), or
- * fall back to the owner index when grouping by team. Callers keep their own
- * "is grouping actually on?" gates — they differ deliberately (the
- * single-system path gates on a truthy index; the multi-system path also
- * requires `size > 0`) and that difference is live behavior.
+ * fall back to the owner index when grouping by team. An empty axis is
+ * normalized to `undefined` so both pipelines gate identically on
+ * `groupBy && groupIndex`: entering the collapse machinery with an empty
+ * index was always a no-op (`collapseGroups` folds nothing and the band
+ * assignment's own `size > 0` guard blocks), so the multi path's historical
+ * extra `size > 0` gate encoded no live behavior — normalizing here closes
+ * that drift seam (TPL-219). `bandOrder` carries the `declaredGroupOrder`
+ * fallback so the two call sites cannot drift on it either.
  */
 export function resolveCanvasAxis(
   membership: Map<string, string[]> | undefined,
   presentIds: ReadonlySet<string>,
   options: LayoutOptions,
 ): {
-  placement: ReturnType<typeof resolvePlacementAxis> | undefined;
+  bandOrder: readonly string[] | undefined;
   groupIndex: Map<string, string> | undefined;
 } {
   const { declaredGroupOrder, groupBy, ownerIndex } = options;
@@ -150,8 +154,11 @@ export function resolveCanvasAxis(
     membership !== undefined
       ? resolvePlacementAxis(membership, declaredGroupOrder, presentIds)
       : undefined;
-  const groupIndex = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
-  return { placement, groupIndex };
+  const axis = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
+  return {
+    bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+    groupIndex: axis !== undefined && axis.size > 0 ? axis : undefined,
+  };
 }
 
 /**

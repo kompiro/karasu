@@ -19,6 +19,7 @@ import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
 import { degradedTabsZone } from "./degraded-tabs.js";
 import { getShapePortFrame } from "../shapes/shape-registry.js";
+import type { GroupBand } from "./group-layout.js";
 import type { LayoutNode, LayoutEdge, ContainerRect, LayoutOptions, Rect } from "./layout-types.js";
 
 export function computeLayoutEdges(
@@ -349,26 +350,33 @@ export function runRoutingChain(
   nodes: Map<string, LayoutNode>,
   edges: LayoutEdge[],
   groupFrames: ContainerRect[],
+  // Every capability is a *required* field: a pipeline that lacks one states
+  // `undefined` at its call site (self-documenting, greppable), and adding a
+  // capability produces a compile error at every caller until each pipeline
+  // states its answer — the drift class this chain exists to close (TPL-219).
   opts: {
     /**
      * Boundary-frame rects of containers expanded in place (#1921/#1923),
      * keyed by expanded service id. Single-system path only today.
      */
-    expandedFrames?: Map<string, ContainerRect>;
+    expandedFrames: Map<string, ContainerRect> | undefined;
     /**
-     * Whether a Group-by band stack exists — gates trunk aggregation
-     * (#1859 P2c-B) and `groupBackward` dashing.
+     * The Group-by band stack, or null when ungrouped — gates trunk
+     * aggregation (#1859 P2c-B, rejected for ungrouped canvases in #2364) and
+     * `groupBackward` dashing. Taken as the stack rather than a boolean so
+     * the meaning of "grouped" lives here, not at each call site.
      */
-    grouped: boolean;
+    groupBands: Map<string, GroupBand> | null;
     /**
      * Shape port frames + chrome keep-outs (#2420/#2422). When absent,
      * `distributePorts` runs port-less and no outline seating happens — the
      * multi-system path passes none today (#2515).
      */
-    ports?: PortResolver;
+    ports: PortResolver | undefined;
   },
 ): void {
-  const { expandedFrames, grouped, ports } = opts;
+  const { expandedFrames, ports } = opts;
+  const grouped = opts.groupBands !== null;
   // Distribute ports across each node side that hosts ≥ 2 edges, so labels
   // separate horizontally / vertically instead of stacking, and put every
   // port on the shape's drawn outline rather than its bounding box (#2422).
