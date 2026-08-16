@@ -3840,3 +3840,118 @@ legend "x" {
     expect(result.value.legends[0].entries.some((e) => e.label === "ok")).toBe(true);
   });
 });
+
+describe("kebab-case vocabulary names stitch into one name (#2509)", () => {
+  it("parses a hyphenated tag as a single tag", () => {
+    const result = Parser.parse(`
+system Test {
+  client Y [my-team-internal-tag]
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0];
+    expect(client.tags).toEqual(["my-team-internal-tag"]);
+  });
+
+  it("stitches fragments spelled like keywords", () => {
+    // `system` / `table` are lexer keywords; in a tag position they are
+    // ordinary words, stand-alone or as kebab fragments.
+    const result = Parser.parse(`
+system Test {
+  service S [legacy-system, audit-table]
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const service = result.value.systems[0].children[0];
+    expect(service.tags).toEqual(["legacy-system", "audit-table"]);
+  });
+
+  it("keeps comma-separated lists and non-kebab neighbours intact", () => {
+    const result = Parser.parse(`
+system Test {
+  service S [my-team, external]
+}
+    `);
+    const service = result.value.systems[0].children[0];
+    expect(service.tags).toEqual(["my-team", "external"]);
+  });
+
+  it("parses a hyphenated tag on an edge", () => {
+    const result = Parser.parse(`
+system Test {
+  service A {}
+  service B {}
+  A -> B "call" [my-flow-tag]
+}
+    `);
+    expect(result.value.systems[0].edges[0].tags).toEqual(["my-flow-tag"]);
+  });
+
+  it("parses a hyphenated annotation name as a single name", () => {
+    const result = Parser.parse(`
+system Test {
+  service S @my-team-mark
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const service = result.value.systems[0].children[0];
+    expect(service.annotations).toEqual(["my-team-mark"]);
+  });
+
+  it("reports the full hyphenated name on an unsupported annotation param", () => {
+    const result = Parser.parse(`
+system Test {
+  service S @my-team-mark(until: "2026-Q3")
+}
+    `);
+    const warning = result.diagnostics.find((d) => d.code === "annotation-param-unsupported");
+    expect(warning?.params).toMatchObject({ annotation: "my-team-mark" });
+  });
+
+  it("parses hyphenated legend refs for tags and annotations", () => {
+    const result = Parser.parse(`
+legend "custom vocabulary" {
+  ref [my-team] "Our tag"
+  ref @my-mark  "Our mark"
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const targets = result.value.legends[0].entries.map((e) => {
+      if (e.kind !== "ref") throw new Error("expected ref");
+      return e.target;
+    });
+    expect(targets).toEqual([
+      { kind: "tag", name: "my-team" },
+      { kind: "annotation", name: "my-mark" },
+    ]);
+  });
+
+  it("keeps stitching capability names through the shared helper", () => {
+    const result = Parser.parse(`
+system S {
+  client App [mobile] {
+    capability screen-wake-lock
+    capability face-id
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.capabilities.map((c) => c.name)).toEqual([
+      "screen-wake-lock",
+      "face-id",
+    ]);
+  });
+
+  it("leaves a trailing hyphen unstitched (boundary documented, not hidden)", () => {
+    // `[my-]` has no word after the dash: the dash stays its own fragment and
+    // keeps drawing tag-not-builtin, same as before #2509.
+    const result = Parser.parse(`
+system Test {
+  service S [my-]
+}
+    `);
+    const service = result.value.systems[0].children[0];
+    expect(service.tags).toEqual(["my", "-"]);
+  });
+});
