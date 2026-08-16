@@ -7,7 +7,7 @@ topic: renderer
 refines: [ADR-1724]
 related_to: [ADR-968, ADR-974, ADR-1755, ADR-2394]
 assumptions:
-  - "symbol: packages/core/src/renderer/layout.ts :: placeExternalServicesOnSides"
+  - "symbol: packages/core/src/renderer/external-columns.ts :: placeExternalServicesOnSides"
   - "symbol: packages/core/src/renderer/layer-assignment.ts :: systemTier"
   - "grep: packages/core/src/renderer/layout.ts :: sideExternals"
 ---
@@ -23,7 +23,7 @@ assumptions:
   - 関連: [ADR-968](./968-orthogonal-edge-routing-skip-layer.md), [ADR-974](./974-infra-row-by-deepest-consumer.md), [ADR-1755](./1755-edge-from-to-selectors.md)（color-by-source selector、本件の補助）
   - TPL: [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)（サイド配置の不変条件）, [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)
   - AT: [AT-1728](../acceptance/1728-external-on-sides.md), [AT-2384](../acceptance/2384-lone-external-side-placement.md)（単独 external の振り分け）
-  - コード: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）
+  - コード: `packages/core/src/renderer/external-columns.ts`（`placeExternalServicesOnSides`）
 
 ## 背景
 

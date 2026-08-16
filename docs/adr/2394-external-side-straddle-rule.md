@@ -10,9 +10,9 @@ scope:
   packages:
     - core
 assumptions:
-  - "symbol: packages/core/src/renderer/layout.ts :: placeExternalServicesOnSides"
-  - "grep: packages/core/src/renderer/layout.ts :: straddlesCentre"
-  - "grep: packages/core/src/renderer/layout.ts :: groupSide"
+  - "symbol: packages/core/src/renderer/external-columns.ts :: placeExternalServicesOnSides"
+  - "grep: packages/core/src/renderer/external-columns.ts :: straddlesCentre"
+  - "grep: packages/core/src/renderer/external-columns.ts :: groupSide"
 ---
 
 # ADR-2394: external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける
@@ -25,7 +25,7 @@ assumptions:
   - 前段の修正: [#2384](https://github.com/kompiro/karasu/issues/2384)（退化した median のフォールバック）
   - TPL: [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)（観点 8 を本 ADR で改訂）
   - AT: [AT-2394](../acceptance/2394-external-side-straddle-rule.md)
-  - コード: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）
+  - コード: `packages/core/src/renderer/external-columns.ts`（`placeExternalServicesOnSides`）
 
 ## 背景
 
