@@ -40,14 +40,18 @@ kebab-case 名を受ける各ポジションの現状:
 | `capability` 名 | `parseClientCapability`（parser.ts:845-862） | **stitching 実装済み** — `<ident>-<ident>` の連なりを 1 名に縫合 |
 | tag（`[...]`） | `parseTags`（parser.ts:1681-1698） | 7 断片に分裂、診断なし（各断片が `tag-not-builtin` を個別に出す） |
 | annotation 名（`@...`） | `parseAnnotations`（parser.ts:1706-1710） | `@foo-bar` は `foo` で切れ、残り `-bar` は後続トークンとして漏れる |
-| style tag selector（`[...]`） | style-parser.ts:286 | tag と同様に分裂 |
-| style annotation selector（`@...`） | style-parser.ts:294 | annotation と同様に切れる |
+| style tag selector（`[...]`） | style-parser.ts:286 | **分裂しない** — style-lexer はハイフンを識別子に含める（`font-family` のため。実装時の実測で本表を訂正: `.krs` 側だけが分裂する） |
+| style annotation selector（`@...`） | style-parser.ts:294 | 同上、分裂しない |
+| legend `ref` 対象（`[tag]` / `@anno`） | `parseLegendRefTarget` | `expect(RightBracket)` が `-` で失敗し parse error（loud だが kebab 名を参照できない — 実装時に判明、縫合対象に追加） |
 | `facet` 宣言 / `facets` 参照 | `parseFacetBlock` / `parseFacetsList` | 名前直後に `{` / 行末を期待するため **parse error になり silent ではない** |
 
 つまり「kebab-case を受け付ける」という約束に対し、capability だけが実装され、
-tag / annotation / style selector の 4 箇所が silent fragmentation のまま残っている。
-capability に stitching を入れたとき他のポジションへ横展開しなかった、という
-**同一字句規則の適用漏れ**が構造的な原因。
+`.krs` 側の tag / annotation / legend ref が適用漏れのまま残っている
+（`.krs.style` 側は lexer がハイフンを識別子に含めるため最初から正しい —
+このため `.krs` のタグと同綴りのセレクタが**永遠にマッチしない**という
+TPL-1415 型の drift が字句レイヤーで起きている）。capability に stitching を
+入れたとき他のポジションへ横展開しなかった、という**同一字句規則の適用漏れ**が
+構造的な原因。
 
 ## 制約・前提
 

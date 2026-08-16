@@ -60,6 +60,14 @@ const KEYWORDS: Record<string, TokenType> = {
  */
 export const KRS_KEYWORD_NAMES = Object.keys(KEYWORDS);
 
+/**
+ * The token types the lexer reserves for keywords. Vocabulary positions that
+ * accept keyword spellings as ordinary names (tags, kebab-name fragments —
+ * see parser/kebab-name.ts) test membership here instead of hand-copying the
+ * keyword list.
+ */
+export const KRS_KEYWORD_TOKEN_TYPES: ReadonlySet<TokenType> = new Set(Object.values(KEYWORDS));
+
 export class Lexer {
   private source: string;
   private pos = 0;
