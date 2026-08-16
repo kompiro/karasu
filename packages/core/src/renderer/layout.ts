@@ -673,13 +673,14 @@ function layoutMultipleSystems(
   // boundaryMembership); `ownerIndex` stays the per-card team badge source
   // regardless of axis (mirrors layout()).
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
-  // Multi-system view places only services (one nesting level), and a system's
-  // annotations do not propagate to its services, so no inheritance is needed.
-  // This raw resolver feeds LayoutNode.annotations only — never assemble a
-  // second MeasureContext from it: measurement stays on layoutInner's
-  // measureCtx (inheritance-based), and that split is the #2515-tracked
-  // divergence, not a free choice.
-  const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
+  // One annotation resolver for both the cards and their measurement (#2515).
+  // This path used to keep a raw `n.annotations` resolver of its own next to
+  // the inheritance-based one measureNode reads, which is two sources of truth
+  // for the same question. They agree on every node placed here — inheritance
+  // starts at `service` and flows to its descendants, and the root view places
+  // the services themselves — so adopting the shared one changes nothing today
+  // and stays correct if this path ever places a service's children.
+  const { effectiveAnnotations } = measureCtx;
   const allLayoutNodes = new Map<string, LayoutNode>();
   const allContainers: ContainerRect[] = [];
   const allEdges: LayoutEdge[] = [];
@@ -1005,9 +1006,10 @@ function layoutMultipleSystems(
       // In-place expansion is single-system only (#1921).
       expandedFrames: undefined,
       groupBands: groupBandsS,
-      // No port resolver on this path — no outline seating on the root view;
-      // tracked by #2515.
-      ports: undefined,
+      // Shape ports seat on the root view too (#2515): the resolver is
+      // per-node and keyed by id, so the same one serves every system frame.
+      // Without it #2452's outline anchoring stopped at the drill-down views.
+      ports: portResolver(options),
     });
 
     // A gutter route runs outside the system's cards, so it can reach past the
