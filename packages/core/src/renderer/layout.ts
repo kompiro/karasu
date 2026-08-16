@@ -987,15 +987,14 @@ const SIDE_SPLIT_EPSILON = 0.5;
  * ADR-1724). Runs *before* edge computation so `computeEdgePoints`
  * re-picks side anchors from the new relative positions.
  *
- * Side assignment: the consuming-hub barycenter x (median split, ties → left)
- * keeps each hub's external fan on one side, which minimizes cross-hub
- * crossings. When every auto-assigned external shares one barycenter the
- * median split degenerates — the median *is* that value, so every external
- * compares equal and the tie rule sends them all left regardless of where
- * their consumers sit (#2384). There is nothing to split in that case, so the
- * barycenter is compared against the content centre instead. An author can
- * override per node with the `column: left|right` style hint. Overflow keeps
- * stacking vertically on the side (no cap).
+ * Side assignment reads the consuming-hub barycenter x, in two regimes. When
+ * those barycenters straddle the content centre, a median split keeps each
+ * hub's external fan on one side, which minimizes cross-hub crossings (#1728).
+ * When they do not — every hub on one side, of which "every external shares one
+ * barycenter" (#2384) is the limiting case — there is nothing to separate, so
+ * the whole auto-assigned group goes to the side its hubs are on (#2394). An
+ * author can override per node with the `column: left|right` style hint.
+ * Overflow keeps stacking vertically on the side (no cap).
  *
  * Works for both single-system and multi-system root views: callers pass
  * the raw node list for the system being laid out and the ids of the
@@ -1053,7 +1052,8 @@ function placeExternalServicesOnSides(
   const topY = Math.min(...others.map((n) => n.y));
   const botY = Math.max(...others.map((n) => n.y + n.height));
 
-  // Median of the auto-assigned (non-hinted) externals' hub barycenters.
+  // Consuming-hub barycenters of the auto-assigned (non-hinted) externals,
+  // sorted — the set the threshold below splits.
   const autoVals = ext
     .filter((n) => {
       const col = layoutHints?.get(n.id)?.column;
@@ -1061,26 +1061,53 @@ function placeExternalServicesOnSides(
     })
     .map((n) => hubX.get(n.id) ?? 0)
     .sort((a, b) => a - b);
-  // A median only splits a set that has spread. When every auto-assigned
-  // barycenter coincides (one external, or several sharing the same hubs) the
-  // median equals each value, so `<= median` holds for all of them and the
-  // tie-break decides the whole set — the consuming hubs never get a say
-  // (#2384). Fall back to the centre of the content span the side columns hug,
-  // which keeps the rule coordinate-derived and deterministic (ADR-1728).
+  // Which side an external lands on has two regimes, and telling them apart is
+  // what #2394 settled.
   //
-  // "Coincide" is sub-pixel rather than bit-exact: these are means of node
-  // centres, so mathematically equal barycenters can differ in the last bits
-  // when the summation order differs between two externals. A spread thinner
-  // than a pixel cannot support a meaningful split either way.
-  const noSpread = autoVals[autoVals.length - 1] - autoVals[0] < SIDE_SPLIT_EPSILON;
-  const threshold =
-    !autoVals.length || noSpread
-      ? (minX + maxX) / 2
-      : autoVals[Math.floor((autoVals.length - 1) / 2)];
+  // A median splits by *rank*, so it always lands inside the set: `<= median`
+  // keeps between 1 and n-1 externals on the left whatever the hubs are doing.
+  // That is what ADR-1728 wants when two hubs' fans need pulling apart — the
+  // cross-hub crossings it removes were 28 of the 33 measured on `hato`. It is
+  // the wrong answer when every hub sits on one side of the diagram: the split
+  // still happens, stranding the lowest external in the far column with its one
+  // edge dragged across the whole figure (#2394 — 640px of external edge
+  // against 421px once it sits by its hub).
+  //
+  // So the regimes are decided by whether the hub barycenters **straddle** the
+  // centre of the content span the side columns hug. That centre is
+  // coordinate-derived (ADR-1728) and comes from outside the set being split,
+  // which is what lets the answer be "none of them need separating".
+  //
+  //   straddling → split by the median, as before
+  //   otherwise  → the whole auto-assigned group goes to the side its hubs are
+  //                on, as one decision
+  //
+  // The second regime assigns a *group*, not a threshold. Comparing each
+  // external against the centre instead re-opens the same hole one layer down:
+  // a hub sitting exactly on the centre ties, and `<=` sends that one external
+  // to the left while its siblings go right — the stranding this rule exists to
+  // prevent (caught in review of #2507; `Ccc` at the centre of a right-leaning
+  // set landed alone in the left column).
+  //
+  // The comparisons carry `SIDE_SPLIT_EPSILON` for the same reason `noSpread`
+  // did in #2384: these barycenters are means of node centres, so mathematically
+  // equal values can differ in their last bits when the summation order differs.
+  // A set with no spread therefore cannot straddle, which is why that separate
+  // degenerate check is gone — it is this predicate's limiting case.
+  const contentCentre = (minX + maxX) / 2;
+  const anyLeftOfCentre = autoVals.length > 0 && autoVals[0] < contentCentre - SIDE_SPLIT_EPSILON;
+  const anyRightOfCentre =
+    autoVals.length > 0 && autoVals[autoVals.length - 1] > contentCentre + SIDE_SPLIT_EPSILON;
+  const straddlesCentre = anyLeftOfCentre && anyRightOfCentre;
+  // Every barycenter on the centre (one hub, dead centre — `hato`) leaves both
+  // flags false and lands left, which is where that arrangement already sat.
+  const groupSide: "left" | "right" = anyRightOfCentre ? "right" : "left";
+  const median = autoVals[Math.floor((autoVals.length - 1) / 2)];
   const sideOf = (n: LayoutNode): "left" | "right" => {
     const col = layoutHints?.get(n.id)?.column;
     if (col === "left" || col === "right") return col;
-    return (hubX.get(n.id) ?? 0) <= threshold ? "left" : "right";
+    if (!straddlesCentre) return groupSide;
+    return (hubX.get(n.id) ?? 0) <= median ? "left" : "right";
   };
 
   const place = (group: LayoutNode[], x: number): void => {

@@ -1087,6 +1087,117 @@ system S {
     expect(ext.x + ext.width).toBeLessThanOrEqual(Math.min(...inner.map((n) => n.x)) + 0.5);
   });
 
+  it("keeps both externals right when every consuming hub is right of centre (#2394)", () => {
+    // The median splits by rank, so it always lands inside the set: with two
+    // spread barycenters `<= median` sent the lower one to the far column even
+    // though both hubs sit right of the content centre, and its single edge
+    // then crossed the whole diagram. Cee and Dee are the two rightmost
+    // services, so both externals belong on the right.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Cee {}
+  service Dee {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Cee -> ExtA
+  Dee -> ExtB
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Cee", "Dee"].map((id) => result.nodes.get(id)!);
+    const right = Math.max(...inner.map((n) => n.x + n.width));
+    for (const id of ["ExtA", "ExtB"]) {
+      const ext = result.nodes.get(id)!;
+      expectOnSide(ext, ...inner);
+      expect(ext.x).toBeGreaterThanOrEqual(right - 0.5);
+    }
+  });
+
+  it("keeps both externals left when every consuming hub is left of centre (#2394)", () => {
+    // Mirror of the case above — the fallback must follow the hubs, not a side.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Cee {}
+  service Dee {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Aaa -> ExtA
+  Bbb -> ExtB
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Cee", "Dee"].map((id) => result.nodes.get(id)!);
+    const left = Math.min(...inner.map((n) => n.x));
+    for (const id of ["ExtA", "ExtB"]) {
+      const ext = result.nodes.get(id)!;
+      expectOnSide(ext, ...inner);
+      expect(ext.x + ext.width).toBeLessThanOrEqual(left + 0.5);
+    }
+  });
+
+  it("keeps a hub sitting exactly on the centre with its one-sided group (#2394)", () => {
+    // The nearest hub can land exactly on the content centre, which is not a
+    // straddle — the group is still one-sided. Deciding that case with a
+    // threshold re-opened the hole one layer down: `<= centre` is true for the
+    // tied barycenter, so that external alone went left while its siblings went
+    // right. Ccc sits at the centre of a right-leaning set; all three externals
+    // belong together on the right.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Ccc {}
+  service Ddd {}
+  service Eee {}
+  service ExtC [external] {}
+  service ExtD [external] {}
+  service ExtE [external] {}
+  Ccc -> ExtC
+  Ddd -> ExtD
+  Eee -> ExtE
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Ccc", "Ddd", "Eee"].map((id) => result.nodes.get(id)!);
+    const right = Math.max(...inner.map((n) => n.x + n.width));
+    for (const id of ["ExtC", "ExtD", "ExtE"]) {
+      const ext = result.nodes.get(id)!;
+      expectOnSide(ext, ...inner);
+      expect(ext.x).toBeGreaterThanOrEqual(right - 0.5);
+    }
+  });
+
+  it("still splits the sides when the consuming hubs straddle the centre (#2394)", () => {
+    // The other half of the same rule, and the reason ADR-1728 chose the median:
+    // hubs on both halves keep their fans on opposite sides, which is what
+    // removes cross-hub crossings. Changing the stranded-external case must not
+    // cost this one.
+    const slice = parseAndExtract(`
+system S {
+  service Aaa {}
+  service Bbb {}
+  service Cee {}
+  service Dee {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Aaa -> ExtA
+  Dee -> ExtB
+}
+`);
+    const result = layout(slice);
+    const inner = ["Aaa", "Bbb", "Cee", "Dee"].map((id) => result.nodes.get(id)!);
+    const extA = result.nodes.get("ExtA")!;
+    const extB = result.nodes.get("ExtB")!;
+    expectOnSide(extA, ...inner);
+    expectOnSide(extB, ...inner);
+    expect(extA.x + extA.width).toBeLessThanOrEqual(Math.min(...inner.map((n) => n.x)) + 0.5);
+    expect(extB.x).toBeGreaterThanOrEqual(Math.max(...inner.map((n) => n.x + n.width)) - 0.5);
+  });
+
   it("puts externals that share one right-side hub set on the right (#2384)", () => {
     // Two auto-assigned externals with identical consuming hubs collapse the
     // median the same way a single one does: every barycenter equals the median,
