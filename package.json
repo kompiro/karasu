@@ -41,6 +41,7 @@
     "lint:docs-site-ci-paths-sync": "tsx scripts/lint/docs-site-ci-paths-sync.ts",
     "lint:roadmap-issue-state": "tsx scripts/lint/roadmap-issue-state.ts",
     "program:slices": "tsx scripts/program-slices.ts",
+    "census:vocabulary": "tsx scripts/census/vocabulary.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages",
     "tpl:related": "tpl related --config tpl.config.json",
     "tpl:review:body": "tpl review-body --repo kompiro/karasu",

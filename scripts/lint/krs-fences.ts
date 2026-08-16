@@ -68,7 +68,7 @@ export interface KrsFenceFinding {
   detail: string;
 }
 
-interface Fence {
+export interface Fence {
   /** Info string after the opening backticks, e.g. `krs`, `krs fragment`, `` for bare. */
   info: string;
   /** 1-based line of the opening fence. */
@@ -76,7 +76,15 @@ interface Fence {
   body: string;
 }
 
-const KNOWN_MARKERS = new Set(["fragment", "invalid"]);
+/**
+ * Markers that say a ```krs block is not a plain current-valid model.
+ *
+ * Exported because `scripts/census/vocabulary.ts` has to skip the same set: a
+ * `fragment` is not parseable and an `invalid` block's vocabulary is a
+ * deliberate bad-input demo, so counting either would corrupt the tally. A
+ * private copy there would keep counting whichever marker was added here last.
+ */
+export const KNOWN_MARKERS = new Set(["fragment", "invalid"]);
 
 /**
  * Documentation roots scanned by default. Every `.md` below them is read
@@ -136,7 +144,7 @@ const KRS_EDGE_RE = new RegExp(String.raw`^${ID}\s+(->|-->)\s+${ID}(\s|$)`);
  * snippet inside a numbered step is written; the body is dedented by the
  * opening fence's indent so the parser sees the snippet, not the list layout.
  */
-function extractFences(markdown: string): Fence[] {
+export function extractFences(markdown: string): Fence[] {
   const lines = markdown.split("\n");
   const fences: Fence[] = [];
   let open: { info: string; line: number; indent: number; body: string[] } | null = null;
@@ -273,8 +281,14 @@ export function analyzeKrsFencesIn(file: string, content: string): KrsFenceFindi
   return findings;
 }
 
-/** Repo-relative paths of every `.md` under `root` (a directory or a file). */
-function markdownFilesUnder(repoRoot: string, root: string): string[] {
+/**
+ * Repo-relative paths of every `.md` under `root` (a directory or a file).
+ *
+ * Exported alongside {@link extractFences} so `scripts/census/vocabulary.ts`
+ * reads the documentation corpus through this guard's definition of it rather
+ * than a second walker that would drift from `DEFAULT_DOC_ROOTS`.
+ */
+export function markdownFilesUnder(repoRoot: string, root: string): string[] {
   const abs = join(repoRoot, root);
   if (!existsSync(abs)) return [];
   if (!statSync(abs).isDirectory()) return root.endsWith(".md") ? [root] : [];
