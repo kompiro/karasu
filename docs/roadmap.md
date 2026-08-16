@@ -107,7 +107,7 @@ funnel→retained の背骨。notation / cookbook はこの retained record を�
 | 柱 | Epic parent / label | 中身 | 着手 intent |
 | --- | --- | --- | --- |
 | **karasu-nest pivot** | [#1990](https://github.com/kompiro/karasu/issues/1990) ・`epic: karasu-nest` | GitHub App でリポジトリを読み、サーバ側 AI reverse で `.krs` を返す/描くホスト型サービス（[ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md)）。permalink との境界は [ADR-2249](adr/2249-permalink-generation-seam.md) で確定 | [ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md) が宣言した実装スライスは scaffold から PR 還元・data-trust まで全消化（受付と完了通知の決定 = [ADR-2262](adr/2262-nest-intake-and-completion.md)）。現在地は動かして出てきた運用の問い — quota を誰に効かせるか [#2382](https://github.com/kompiro/karasu/issues/2382)、PR 還元ラチェットの検証 [#2228](https://github.com/kompiro/karasu/issues/2228) |
-| **facets**（語彙の閉鎖） | [#2065](https://github.com/kompiro/karasu/issues/2065) ・`epic: facets` | ユーザー拡張点を `facet` に一本化し、tag / annotation はツール語彙へ閉じる（[§Syntax 2.0](#syntax-20-プログラム) の柱） | Part A / Part B とも v1.x 分は着地し、[ADR-2065](adr/2065-tags-and-facets.md) / [ADR-2173](adr/2173-facet-grammar-and-model.md) / [ADR-2174](adr/2174-facet-overlay.md) へ昇格済み（[§watch 登録](#watch-対象の-experimental-notation登録)）。残るのは v2.0 の閉鎖そのものと builtin 昇格レビュー [#2172](https://github.com/kompiro/karasu/issues/2172) |
+| **facets**（語彙の閉鎖） | [#2065](https://github.com/kompiro/karasu/issues/2065) ・`epic: facets` | ユーザー拡張点を `facet` に一本化し、tag / annotation はツール語彙へ閉じる（[§Syntax 2.0](#syntax-20-プログラム) の柱） | Part A / Part B とも v1.x 分は着地し、[ADR-2065](adr/2065-tags-and-facets.md) / [ADR-2173](adr/2173-facet-grammar-and-model.md) / [ADR-2174](adr/2174-facet-overlay.md) へ昇格済み（[§watch 登録](#watch-対象の-experimental-notation登録)）。残るのは v2.0 の閉鎖そのもので、その前提条件のうち corpus 実測は**充足不能と実測された** — gate の組み替えが [#2511](https://github.com/kompiro/karasu/issues/2511) |
 
 `epic: comprehension` と `epic: boundary` は宣言していた子がすべて着地したため柱から
 降ろした（Epic close は本節を prune した PR — [ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
@@ -164,11 +164,6 @@ trigger を満たしたらその時点で Issue を起こして着手する（�
 | edge の first-class protocol / cardinality | 当面 tag + `description`/`link` の散文に逃がす（first-class 化は実装詳細を edge に持ち込む圧力 — 境界が灰色）。需要が corpus で再発したら評価 | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) / [#1567](https://github.com/kompiro/karasu/issues/1567) finding D |
 | stateful compute（Durable Object = compute かつ store で clean な infra kind が無い） | 据え置き。adapter は `service [external]` + RPC edge へ degrade（`[external]` は所有境界を過大表現）。honest な modeling 需要が corpus で溜まれば再評価 | [ADR-1935](adr/1935-wrangler-translate-adapter.md) |
 
-`database [cache]` role tag は **trigger 発火済み**（cache パターンが複数 source で再発）で
-builtin 昇格レビュー [#2172](https://github.com/kompiro/karasu/issues/2172)（`epic: facets`）へ
-移したため、本表から外した。本表のルールどおり **Issue が生えた gap は台帳に残さない** —
-残すと台帳と tracker の二重管理になり、どちらが現状か分からなくなる。
-
 stable 側の earn-its-keep 観察: **CRUD verb-decoration 1:N** は v1.0 で維持
 （判断 = [ADR-1314](adr/1314-krs-spec-v1-freeze.md)、経緯 =
 [ADR-2218 付録](adr/2218-roadmap-pruning-policy.md)）。誤用・混乱 Issue が再発したら
@@ -197,7 +192,7 @@ gate で評価する。
 ### sequencing
 
 1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。宣言していた実装スライスは全消化し、主線は**運用の問い**へ移った — quota の適用範囲（[#2382](https://github.com/kompiro/karasu/issues/2382)）とラチェットの検証（[#2228](https://github.com/kompiro/karasu/issues/2228)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
-2. **syntax 2.0 の二本柱**（facets [#2065](https://github.com/kompiro/karasu/issues/2065) / boundary）は**どちらも v1.x 分が着地**し、`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載った。残るのは builtin 昇格レビュー [#2172](https://github.com/kompiro/karasu/issues/2172) と、閉鎖・core 昇格そのもの（[§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
+2. **syntax 2.0 の二本柱**（facets [#2065](https://github.com/kompiro/karasu/issues/2065) / boundary）は**どちらも v1.x 分が着地**し、`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載った。残るのは閉鎖・core 昇格そのもの（[§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
 3. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は評価可能。
 4. **非ゴール圧力 log** は随時追記（安価）。
 
@@ -248,14 +243,14 @@ gate で評価する。
 [§実行中の柱](#実行中の柱テーマ--epic-issue--epic-ラベル) と同じ）:
 **facet 側 = [#2065](https://github.com/kompiro/karasu/issues/2065) ・`epic: facets`** /
 **boundary 側 = `epic: boundary`**（Epic・スライスとも close 済みで、v1.x 分は残っていない）。
-下表はその内訳と、柱に属さない v2.0 項目。
+下表は**未決の項目のみ**を持つ。着地した v1.x スライスは closed Issue と
+[ADR-2065](adr/2065-tags-and-facets.md) / [ADR-2172](adr/2172-builtin-vocabulary-expansion.md)
+が担うので本表からは外す（[ADR-2218](adr/2218-roadmap-pruning-policy.md)）。
 
 | Issue | 内容 | 時期 |
 | --- | --- | --- |
-| [#2159](https://github.com/kompiro/karasu/issues/2159) | v1.x deprecation 診断（`tag-not-builtin` / `annotation-not-builtin`）+ spec の deprecated 化 + 四分法ガイド（Part A） | v1.x |
-| [#2160](https://github.com/kompiro/karasu/issues/2160) | `facet` construct — 宣言 + `facets` プロパティ + overlay + facet セレクタ（Part B、experimental） | v1.x |
-| [#2172](https://github.com/kompiro/karasu/issues/2172) / [#2225](https://github.com/kompiro/karasu/issues/2225) | builtin 語彙の運用 — 昇格要望の受理（`[cache]` / `@canary`）と `appliesTo` の enforcement。閉鎖後にユーザー拡張の受け皿となる機構 | v1.x |
-| [#2165](https://github.com/kompiro/karasu/issues/2165) | 論理ノードの containment 規則 — v1.x は `node-not-in-context` warning（着地済み）、**error 化は v2.0** | v1.x 済 → 言語 v2.0 |
+| [#2511](https://github.com/kompiro/karasu/issues/2511) | 閉鎖の前提条件 1「corpus 実測」の組み替え — 語彙の**名前**は [ADR-1990](adr/1990-karasu-nest-pivot-server-reverse.md) 決定 6 と data-handling policy の下では収集できないと実測された | 閉鎖前 |
+| [#2165](https://github.com/kompiro/karasu/issues/2165) | 論理ノードの containment 規則 — v1.x は `node-not-in-context` warning（着地済み）、**error 化は v2.0** | 言語 v2.0 |
 | （未起票） | 閉鎖の実施（tag / annotation の warning enforcement・任意名セレクタ無効化・concepts 改訂 + ADR-1314 関係の新 ADR） | v2.0 |
 
 ---
