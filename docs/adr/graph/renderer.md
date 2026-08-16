@@ -47,6 +47,7 @@ flowchart TD
     ADR_2330["ADR-2330<br/>グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける"]
     ADR_2360["ADR-2360<br/>label placement の障害物にエッジ polyline を加える — 自分の線だけ..."]
     ADR_2366["ADR-2366<br/>node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く"]
+    ADR_2394["ADR-2394<br/>external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける"]
     ADR_2473["ADR-2473<br/>テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` ..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
@@ -150,6 +151,7 @@ flowchart TD
   class ADR_2330 accepted
   class ADR_2360 accepted
   class ADR_2366 accepted
+  class ADR_2394 accepted
   class ADR_2473 accepted
   class ADR_9005 accepted
   class ADR_9007 accepted

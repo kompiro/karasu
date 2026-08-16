@@ -5,7 +5,7 @@ status: accepted
 date: 2026-06-24
 topic: renderer
 refines: [ADR-1724]
-related_to: [ADR-968, ADR-974, ADR-1755]
+related_to: [ADR-968, ADR-974, ADR-1755, ADR-2394]
 assumptions:
   - "symbol: packages/core/src/renderer/layout.ts :: placeExternalServicesOnSides"
   - "symbol: packages/core/src/renderer/layout.ts :: systemTier"
@@ -35,7 +35,7 @@ PoC で複数の手法を実測し、自動的に交差を「消す」ルーテ�
 
 system-view で `[external]` サービスを**最下段バンドではなく左右のサイド列**に配置し、`service → external` エッジを水平化して infra への下向きファンアウトと分離する（[ADR-1724] の「external は最下段 tier」を refine）。`placeExternalServicesOnSides` を `computeLayoutEdges` の前に走らせ、以下を行う:
 
-- **consuming-hub barycenter でサイド振り分け**: 各 external を「それを consume するハブの x 重心」で median 分割して左右に振り分ける。別ハブの束が左右に分かれ cross-hub 交差が激減する。同側内は hub-x → consuming-hub-y → 宣言順で安定ソート（決定的）。auto 割り当ての重心が全て同値（external 1 件、または同じハブ集合を共有）だと median 分割は退化して分けるものが無いので、その場合だけ content centre（in-boundary ノードの水平スパンの中心）と比較する（[#2384](https://github.com/kompiro/karasu/issues/2384) で追加。それまでは median が各要素自身と一致して tie ルールが全件を左へ寄せていた）。
+- **consuming-hub barycenter でサイド振り分け**: 各 external を「それを consume するハブの x 重心」で median 分割して左右に振り分ける。別ハブの束が左右に分かれ cross-hub 交差が激減する。同側内は hub-x → consuming-hub-y → 宣言順で安定ソート（決定的）。auto 割り当ての重心が全て同値（external 1 件、または同じハブ集合を共有）だと median 分割は退化して分けるものが無いので、その場合だけ content centre（in-boundary ノードの水平スパンの中心）と比較する（[#2384](https://github.com/kompiro/karasu/issues/2384) で追加。それまでは median が各要素自身と一致して tie ルールが全件を左へ寄せていた）。**この退化ケースの扱いは [ADR-2394](./2394-external-side-straddle-rule.md) が一般化した** — median 分割は重心が content centre を跨ぐときにだけ行い、跨がない入力（全員が片側を含む）は 自動割り当て分をまとめてハブのある側へ置く。
 - **`column: left/right` で override**: 既存の `column` ヒントを再利用。作者が左右を固定できる（新規プロパティなし）。`column: center`／未指定は自動振り分けに委ねる。
 - **≥2 ハブ gate**: external エッジを持つハブが 2 以上のときだけサイド化する（cross-hub 交差が生じる条件）。単一ハブ図は従来の最下段バンドを維持（横に広げない）。明示 `column` は gate を迂回。
 - **内側アンカー**: サイド external へのエッジは external の内側の辺（左サイド→右辺、右サイド→左辺）に着地させ矢印を内向きにする。tier index ベースの上下アンカーを上書きする。

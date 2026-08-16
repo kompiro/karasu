@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-15
 - **関連 Issue**: [#2394](https://github.com/kompiro/karasu/issues/2394)
+- **設計 (ADR)**: [ADR-2394](../adr/2394-external-side-straddle-rule.md)
 - **Related TPLs**:
   [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)（観点 8 を本 Issue で改訂）
 - **対象ファイル**:
@@ -56,4 +57,4 @@ N/A — 自動テストですべて覆っている。配置は座標から決ま
   は交差 4 / external エッジ長 4339 で**変化なし**、他の examples も同値。変わるのは
   「ハブが片側に寄っている」モデルだけで、repro では 640 → 421px。
 - 常に content centre で比較する案（median を捨てる）も測った。跨ぐモデルの挙動を交差と長さの
-  トレードで書き換えるため採らなかった。数字は ADR に残す。
+  トレードで書き換えるため採らなかった。数字は [ADR-2394](../adr/2394-external-side-straddle-rule.md) にある。
