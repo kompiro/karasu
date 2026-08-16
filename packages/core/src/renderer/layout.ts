@@ -388,6 +388,49 @@ function applyDirectionHintsToForcedLayers(
   return adjusted;
 }
 
+/**
+ * Shared layering phase for the single- and multi-system pipelines: grouped
+ * bands (when the Group-by axis produced them) win, then the kind-tier forced
+ * layers, falling back to a topological sort; per-edge direction hints apply
+ * last. Extracted so the two paths cannot drift on how a canvas turns nodes
+ * into layers (TPL-219). `forcedLayers` is returned because both callers gate
+ * their barycenter / column-hint passes on it.
+ */
+function computeLayers(
+  nodes: KrsNode[],
+  edges: KrsEdge[],
+  groupedLayers: Map<string, number> | null,
+  edgeDirections: Map<string, EdgeDirection> | undefined,
+): { layers: Map<string, number>; forcedLayers: Map<string, number> | null } {
+  const forcedLayers = groupedLayers ?? assignForcedSystemLayers(nodes, edges);
+  let layers: Map<string, number>;
+  if (forcedLayers) {
+    layers = forcedLayers;
+  } else {
+    const nodeIds = nodes.map((n) => n.id);
+    const { adj, inDegree } = buildGraph(nodeIds, edges, edgeDirections);
+    layers = assignLayers(nodeIds, adj, inDegree);
+  }
+  if (edgeDirections) {
+    layers = applyDirectionHintsToForcedLayers(layers, edges, edgeDirections);
+  }
+  return { layers, forcedLayers };
+}
+
+/**
+ * Group band id keyed by the band's first (top) layer, so the placement loop
+ * can reserve vertical room for the band's frame title above that layer.
+ * Empty when ungrouped. Shared by the single- and multi-system placement
+ * phases.
+ */
+function groupStartLayersOf(groupBands: Map<string, GroupBand> | null): Map<number, string> {
+  const groupStartLayer = new Map<number, string>();
+  if (groupBands) {
+    for (const [gid, band] of groupBands) groupStartLayer.set(band.min, gid);
+  }
+  return groupStartLayer;
+}
+
 function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>): boolean {
   const adj = new Map<string, string[]>();
   for (const id of nodeIds) adj.set(id, []);
@@ -424,6 +467,54 @@ function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>)
   return false;
 }
 
+/**
+ * Build a {@link LayoutNode} from a KrsNode plus its placement. The derived
+ * fields (tags, description summary, link count, …) are uniform across every
+ * card the layout mints; what varies per call site — the display label,
+ * annotation resolution, owner chip, ghost muting, ghost-row sub-label, and
+ * the layout key (qualified ids for ghost-system services) — comes in through
+ * `key` and `opts`. Every card gets the same shape: `ghost` is always present
+ * (false unless the site marks the card ghost) and `subLabel` is simply
+ * undefined outside the ghost rows. Consumers read both by truthiness, so the
+ * old literals' key-presence differences carried no meaning.
+ */
+function makeLayoutNode(
+  node: KrsNode,
+  key: string,
+  opts: {
+    label: string;
+    annotations: string[];
+    owner?: CardOwner;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    subLabel?: string;
+    ghost?: boolean;
+  },
+): LayoutNode {
+  return {
+    kind: node.kind,
+    tags: node.tags,
+    id: key,
+    label: opts.label,
+    annotations: opts.annotations,
+    subLabel: opts.subLabel,
+    properties: extractLayoutProperties(node, opts.owner),
+    descriptionSummary: node.properties.description
+      ? summarizeDescription(node.properties.description)
+      : undefined,
+    linkCount: node.properties.links.length,
+    hasChildren: node.children.length > 0,
+    hasDescription: !!node.properties.description,
+    x: opts.x,
+    y: opts.y,
+    width: opts.width,
+    height: opts.height,
+    ghost: opts.ghost ?? false,
+  };
+}
+
 function placeGhostUsers(
   viewSlice: ViewSlice,
   layoutNodes: Map<string, LayoutNode>,
@@ -442,25 +533,15 @@ function placeGhostUsers(
   for (const userNode of viewSlice.ghostUsers) {
     const dims = measureNode(userNode, undefined, displayMode);
     const uid = userNode.id;
-    const gNode: LayoutNode = {
-      kind: userNode.kind,
-      tags: userNode.tags,
-      id: uid,
+    const gNode = makeLayoutNode(userNode, uid, {
       label: userNode.label ?? userNode.id,
       annotations: effectiveAnnotations(userNode),
-      properties: extractLayoutProperties(userNode, undefined),
-      descriptionSummary: userNode.properties.description
-        ? summarizeDescription(userNode.properties.description)
-        : undefined,
-      linkCount: userNode.properties.links.length,
-      hasChildren: userNode.children.length > 0,
-      hasDescription: !!userNode.properties.description,
       x: userX - dims.width,
       y: userY,
       width: dims.width,
       height: dims.height,
       ghost: true,
-    };
+    });
     layoutNodes.set(uid, gNode);
     ghostUserNodes.push(gNode);
     userY += dims.height + NODE_GAP / 2;
@@ -507,26 +588,19 @@ function placeGhostRow(
 
   for (const { node, key, subLabel } of items) {
     const dims = measureNode(node, undefined, displayMode);
-    layoutNodes.set(key, {
-      kind: node.kind,
-      tags: node.tags,
-      id: key,
-      label: node.label ?? node.id,
-      annotations: effectiveAnnotations(node),
-      subLabel,
-      properties: extractLayoutProperties(node, undefined),
-      descriptionSummary: node.properties.description
-        ? summarizeDescription(node.properties.description)
-        : undefined,
-      linkCount: node.properties.links.length,
-      hasChildren: node.children.length > 0,
-      hasDescription: !!node.properties.description,
-      x: ghostX,
-      y: ghostY,
-      width: dims.width,
-      height: dims.height,
-      ghost: true,
-    });
+    layoutNodes.set(
+      key,
+      makeLayoutNode(node, key, {
+        label: node.label ?? node.id,
+        annotations: effectiveAnnotations(node),
+        subLabel,
+        x: ghostX,
+        y: ghostY,
+        width: dims.width,
+        height: dims.height,
+        ghost: true,
+      }),
+    );
     ghostX += dims.width + NODE_GAP;
   }
 
@@ -548,6 +622,9 @@ function placeGhostRow(
 }
 
 const GHOST_ROW_GAP = 60;
+
+/** Horizontal gap between a ghost system frame and its neighbor / the main container. */
+const GHOST_SYSTEM_GAP = 80;
 
 function placeGhostDomains(
   viewSlice: ViewSlice,
@@ -604,7 +681,6 @@ function placeCallerGhostSystems(
   ownerOf: OwnerResolver,
   displayMode?: DisplayMode,
 ): void {
-  const GHOST_SYSTEM_GAP = 80;
   if (viewSlice.callerGhostSystems.length === 0 || containers.length === 0) return;
 
   const outermost = containers[0];
@@ -651,7 +727,6 @@ function placeOutgoingGhostSystems(
   ownerOf: OwnerResolver,
   displayMode?: DisplayMode,
 ): void {
-  const GHOST_SYSTEM_GAP = 80;
   if (viewSlice.ghostSystems.length === 0 || containers.length === 0) return;
 
   const outermost = containers[0];
@@ -936,6 +1011,41 @@ function normalizeCoordinates(
       if (node.x < 0) {
         throw new Error(`[layout] node "${id}" has negative x=${node.x} after normalization`);
       }
+    }
+  }
+}
+
+/**
+ * Center each sub-row of placed nodes against the widest row. Rows are grouped
+ * by their y (each wrapped grid row has a distinct baseline); within a row the
+ * nodes keep their left-to-right order. Shared by the single- and multi-system
+ * placement phases — the two originally sorted and summed in opposite orders,
+ * which is equivalent: the row width is a sum (order-independent), and the
+ * re-placement walks the ids sorted by x either way.
+ */
+function centerRowsHorizontally(
+  nodes: Map<string, LayoutNode>,
+  childMaxWidth: number,
+  nodeGap: number,
+): void {
+  const rowGroups = new Map<number, string[]>();
+  for (const [id, node] of nodes) {
+    if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
+    rowGroups.get(node.y)!.push(id);
+  }
+  for (const ids of rowGroups.values()) {
+    ids.sort((a, b) => nodes.get(a)!.x - nodes.get(b)!.x);
+    const rowWidth = ids.reduce((sum, id) => {
+      const n = nodes.get(id)!;
+      return sum + n.width + nodeGap;
+    }, -nodeGap);
+    const offset = Math.max(0, (childMaxWidth - rowWidth) / 2);
+
+    let xOffset = offset;
+    for (const id of ids) {
+      const n = nodes.get(id)!;
+      n.x = xOffset;
+      xOffset += n.width + nodeGap;
     }
   }
 }
@@ -1263,21 +1373,6 @@ interface GroupedLayerBands {
 }
 
 /**
- * Shared group-collapse + grouped-layer-assignment machinery for the
- * single-system (`layout()`) and multi-system (`layoutMultipleSystems()`)
- * "Group by" paths (#1858 P2a, #1884). Folds any collapsed group's members to
- * a `<Group> (N)` stub and re-targets its edges (`collapseGroups`), then
- * buckets the (possibly collapsed) nodes into group bands via
- * `assignGroupedLayers`.
- *
- * A pure computation only — it does not decide whether the collapse is
- * *committed* when band assignment fails to produce groups. The two callers
- * differ there (`layout()` always keeps the collapsed nodes/edges once this
- * runs; `layoutMultipleSystems()` only adopts them when `grouped` comes back
- * non-null), so that decision is left to each call site to preserve today's
- * behavior exactly.
- */
-/**
  * The boundary membership that applies to the canvas being drawn (#2036).
  *
  * `boundaryMembership` is model-wide, so it applies everywhere; a scoped block is
@@ -1361,20 +1456,44 @@ function placementMembership(
  * keeps taking a plain `Map<nodeId, groupId>`.
  */
 
-function collapseAndAssignGroupLayers(
-  nodes: readonly KrsNode[],
-  edges: readonly KrsEdge[],
-  groupIndex: Map<string, string>,
-  collapsedGroups: ReadonlySet<string> | undefined,
-  edgeDiffState: ReadonlyMap<string, string> | undefined,
+/**
+ * Shared group-collapse + grouped-layer-assignment machinery for the
+ * single-system (`layout()`) and multi-system (`layoutMultipleSystems()`)
+ * "Group by" paths (#1858 P2a, #1884). Folds any collapsed group's members to
+ * a `<Group> (N)` stub and re-targets its edges (`collapseGroups`), then
+ * buckets the (possibly collapsed) nodes into group bands via
+ * `assignGroupedLayers`.
+ *
+ * A pure computation only — it does not decide whether the collapse is
+ * *committed* when band assignment fails to produce groups. The two callers
+ * differ there (`layout()` always keeps the collapsed nodes/edges once this
+ * runs; `layoutMultipleSystems()` only adopts them when `grouped` comes back
+ * non-null), so that decision is left to each call site to preserve today's
+ * behavior exactly.
+ */
+function collapseAndAssignGroupLayers({
+  nodes,
+  edges,
+  groupIndex,
+  collapsedGroups,
+  edgeDiffState,
+  stubScope,
+  bandOrder,
+  membership,
+}: {
+  nodes: readonly KrsNode[];
+  edges: readonly KrsEdge[];
+  groupIndex: Map<string, string>;
+  collapsedGroups: ReadonlySet<string> | undefined;
+  edgeDiffState: ReadonlyMap<string, string> | undefined;
   /** Namespaces collapse-stub ids (the enclosing system id); omitted in the single-system view. */
-  stubScope: string | undefined,
+  stubScope?: string;
   /**
    * Band order for `assignGroupedLayers`. The boundary axis resolves it
    * alongside the placement axis (`resolvePlacementAxis`, #2176); the team axis
    * passes the declared ids and lets {@link groupOrderFor} merge them.
    */
-  bandOrder: readonly string[] | undefined,
+  bandOrder: readonly string[] | undefined;
   /**
    * Full declared membership on the boundary axis (#2178). Three consumers: the
    * band order pulls boundaries that share members together and the seam bias
@@ -1383,8 +1502,8 @@ function collapseAndAssignGroupLayers(
    * collapsed (#2180). Omitted on the team axis, which stays 1:1 — all three
    * then reduce to no-ops.
    */
-  membership?: ReadonlyMap<string, readonly string[]>,
-): {
+  membership?: ReadonlyMap<string, readonly string[]>;
+}): {
   nodes: KrsNode[];
   edges: KrsEdge[];
   stubGroup: Map<string, string>;
@@ -1666,16 +1785,15 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   let groupBands: Map<string, GroupBand> | null = null;
   let groupOrder: string[] = [];
   if (groupBy && groupIndex) {
-    const collapsed = collapseAndAssignGroupLayers(
-      allNodes,
-      allEdges,
+    const collapsed = collapseAndAssignGroupLayers({
+      nodes: allNodes,
+      edges: allEdges,
       groupIndex,
       collapsedGroups,
       edgeDiffState,
-      undefined,
-      placement?.groupOrder ?? declaredGroupOrder,
-      canvasMembership,
-    );
+      bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+      membership: canvasMembership,
+    });
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
     stubGroup = collapsed.stubGroup;
@@ -1766,18 +1884,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // declaration order falls out of the Map iteration. If barycenter is added
   // here in the future, gate it on `forcedLayers === null` (Q11 of the design
   // doc requires declaration order within forced layers).
-  const nodeIds = allNodes.map((n) => n.id);
-  const forcedLayers = groupedLayers ?? assignForcedSystemLayers(allNodes, allEdges);
-  let layers: Map<string, number>;
-  if (forcedLayers) {
-    layers = forcedLayers;
-  } else {
-    const { adj, inDegree } = buildGraph(nodeIds, allEdges, edgeDirections);
-    layers = assignLayers(nodeIds, adj, inDegree);
-  }
-  if (edgeDirections) {
-    layers = applyDirectionHintsToForcedLayers(layers, allEdges, edgeDirections);
-  }
+  const { layers, forcedLayers } = computeLayers(allNodes, allEdges, groupedLayers, edgeDirections);
 
   // Position nodes inside the container area
   const layoutNodes = new Map<string, LayoutNode>();
@@ -1835,10 +1942,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // unreadable row that forces a zoom-out (scoped glance, resolution axis).
   // Group-by mode: reserve a vertical gap above each group's first row for its
   // boundary-frame title (keyed by the group's top layer). No-op when ungrouped.
-  const groupStartLayer = new Map<number, string>();
-  if (groupBands) {
-    for (const [gid, band] of groupBands) groupStartLayer.set(band.min, gid);
-  }
+  const groupStartLayer = groupStartLayersOf(groupBands);
 
   let layerBaselineY = NODE_GAP;
   for (const layerIdx of sortedLayers) {
@@ -1867,24 +1971,18 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
         const krsNode = nodeMap.get(nid)!;
         const dims = dimsById.get(nid)!;
 
-        layoutNodes.set(nid, {
-          kind: krsNode.kind,
-          tags: krsNode.tags,
-          id: nid,
-          label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-          annotations: effectiveAnnotations(krsNode),
-          properties: extractLayoutProperties(krsNode, ownerOf(krsNode.kind, nid)),
-          descriptionSummary: krsNode.properties.description
-            ? summarizeDescription(krsNode.properties.description)
-            : undefined,
-          linkCount: krsNode.properties.links.length,
-          hasChildren: krsNode.children.length > 0,
-          hasDescription: !!krsNode.properties.description,
-          x: xOffset,
-          y: rowY,
-          width: dims.width,
-          height: dims.height,
-        });
+        layoutNodes.set(
+          nid,
+          makeLayoutNode(krsNode, nid, {
+            label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+            annotations: effectiveAnnotations(krsNode),
+            owner: ownerOf(krsNode.kind, nid),
+            x: xOffset,
+            y: rowY,
+            width: dims.width,
+            height: dims.height,
+          }),
+        );
 
         xOffset += dims.width + NODE_GAP;
         childMaxWidth = Math.max(childMaxWidth, xOffset);
@@ -1897,29 +1995,9 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     layerBaselineY = layerBottom + LAYER_GAP;
   }
 
-  // Center each sub-row within the container. Rows are grouped by their Y
-  // (each wrapped grid row has a distinct baseline), then centered against
-  // the widest row so the grid reads as centered columns.
-  const rowGroups = new Map<number, string[]>();
-  for (const [id, node] of layoutNodes) {
-    if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
-    rowGroups.get(node.y)!.push(id);
-  }
-  for (const ids of rowGroups.values()) {
-    ids.sort((a, b) => layoutNodes.get(a)!.x - layoutNodes.get(b)!.x);
-    const rowWidth = ids.reduce((sum, id) => {
-      const n = layoutNodes.get(id)!;
-      return sum + n.width + NODE_GAP;
-    }, -NODE_GAP);
-    const offset = Math.max(0, (childMaxWidth - rowWidth) / 2);
-
-    let xOffset = offset;
-    for (const id of ids) {
-      const n = layoutNodes.get(id)!;
-      n.x = xOffset;
-      xOffset += n.width + NODE_GAP;
-    }
-  }
+  // Center each sub-row within the container so the grid reads as centered
+  // columns.
+  centerRowsHorizontally(layoutNodes, childMaxWidth, NODE_GAP);
 
   // Build containers (innermost first: focused container, then ancestors)
   const hasContainer =
@@ -2244,25 +2322,19 @@ function layoutGhostSystem(
     const dims = measureNode(svc, owner, displayMode);
     const x = originX + CONTAINER_PADDING;
     const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
-    nodes.set(qualifiedId, {
-      kind: svc.kind,
-      tags: svc.tags,
-      id: qualifiedId,
-      label: svc.label ?? svc.id,
-      annotations: svc.annotations,
-      properties: extractLayoutProperties(svc, owner),
-      descriptionSummary: svc.properties.description
-        ? summarizeDescription(svc.properties.description)
-        : undefined,
-      linkCount: svc.properties.links.length,
-      hasChildren: svc.children.length > 0,
-      hasDescription: !!svc.properties.description,
-      x,
-      y,
-      width: dims.width,
-      height: dims.height,
-      ghost: true,
-    });
+    nodes.set(
+      qualifiedId,
+      makeLayoutNode(svc, qualifiedId, {
+        label: svc.label ?? svc.id,
+        annotations: svc.annotations,
+        owner,
+        x,
+        y,
+        width: dims.width,
+        height: dims.height,
+        ghost: true,
+      }),
+    );
     maxW = Math.max(maxW, dims.width);
     maxH = y + dims.height + CONTAINER_PADDING - originY;
     y += dims.height + NODE_GAP / 2;
@@ -2342,7 +2414,6 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
 
   for (let si = 0; si < viewSlice.systems.length; si++) {
     const sys = viewSlice.systems[si];
-    const isGhost = false;
 
     // Layout this system's children independently.
     // For the primary system (si === 0), use viewSlice.childNodes which includes
@@ -2386,16 +2457,16 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
-      const collapsed = collapseAndAssignGroupLayers(
-        rawNodes,
-        sysEdges,
-        systemGroupIndex,
+      const collapsed = collapseAndAssignGroupLayers({
+        nodes: rawNodes,
+        edges: sysEdges,
+        groupIndex: systemGroupIndex,
         collapsedGroups,
         edgeDiffState,
-        sys.id,
-        systemPlacement?.groupOrder ?? declaredGroupOrder,
-        systemMembership,
-      );
+        stubScope: sys.id,
+        bandOrder: systemPlacement?.groupOrder ?? declaredGroupOrder,
+        membership: systemMembership,
+      });
       if (collapsed.grouped) {
         workNodes = collapsed.nodes;
         workEdges = collapsed.edges;
@@ -2421,22 +2492,14 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // Only include intra-system edges for layout ordering. In group-by mode the
     // team bands come from `assignGroupedLayers` (non-null `groupedLayers`) and
     // win over the kind-tier layering.
-    const forcedLayers = groupedLayers ?? assignForcedSystemLayers(workNodes, workEdges);
-    let layers: Map<string, number>;
-    if (forcedLayers) {
-      layers = forcedLayers;
-    } else {
-      const { adj, inDegree } = buildGraph(nodeIds, workEdges, edgeDirections);
-      layers = assignLayers(nodeIds, adj, inDegree);
-    }
-    if (edgeDirections) {
-      layers = applyDirectionHintsToForcedLayers(layers, workEdges, edgeDirections);
-    }
+    const { layers, forcedLayers } = computeLayers(
+      workNodes,
+      workEdges,
+      groupedLayers,
+      edgeDirections,
+    );
     // Group bands start a new titled frame; reserve vertical room for the title.
-    const groupStartLayer = new Map<number, string>();
-    if (groupBandsS) {
-      for (const [gid, band] of groupBandsS) groupStartLayer.set(band.min, gid);
-    }
+    const groupStartLayer = groupStartLayersOf(groupBandsS);
 
     const nodesByLayer = new Map<number, string[]>();
     for (const [id, layer] of layers) {
@@ -2529,25 +2592,18 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
           colInRow = 0;
         }
 
-        localNodes.set(nid, {
-          kind: krsNode.kind,
-          tags: krsNode.tags,
-          id: nid,
-          label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-          annotations: effectiveAnnotations(krsNode),
-          properties: extractLayoutProperties(krsNode, owner),
-          descriptionSummary: krsNode.properties.description
-            ? summarizeDescription(krsNode.properties.description)
-            : undefined,
-          linkCount: krsNode.properties.links.length,
-          hasChildren: krsNode.children.length > 0,
-          hasDescription: !!krsNode.properties.description,
-          x: currentX,
-          y: subRowY,
-          width: dims.width,
-          height: dims.height,
-          ghost: isGhost,
-        });
+        localNodes.set(
+          nid,
+          makeLayoutNode(krsNode, nid, {
+            label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+            annotations: effectiveAnnotations(krsNode),
+            owner,
+            x: currentX,
+            y: subRowY,
+            width: dims.width,
+            height: dims.height,
+          }),
+        );
 
         nodeCenterX.set(nid, currentX + dims.width / 2);
         subRowMaxHeight = Math.max(subRowMaxHeight, dims.height);
@@ -2558,28 +2614,9 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       }
     }
 
-    // Center each sub-row within the system
-    // Group nodes by their Y coordinate (sub-row), then center each row
-    const rowGroups = new Map<number, string[]>();
-    for (const [id, node] of localNodes) {
-      if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
-      rowGroups.get(node.y)!.push(id);
-    }
-    for (const ids of rowGroups.values()) {
-      const rowWidth = ids.reduce((sum, id) => {
-        const n = localNodes.get(id)!;
-        return sum + n.width + NODE_GAP;
-      }, -NODE_GAP);
-      const off = Math.max(0, (childMaxWidth - rowWidth) / 2);
-      let xOff = off;
-      // Sort by current x to maintain order when centering
-      ids.sort((a, b) => localNodes.get(a)!.x - localNodes.get(b)!.x);
-      for (const id of ids) {
-        const n = localNodes.get(id)!;
-        n.x = xOff;
-        xOff += n.width + NODE_GAP;
-      }
-    }
+    // Center each sub-row within the system so the grid reads as centered
+    // columns.
+    centerRowsHorizontally(localNodes, childMaxWidth, NODE_GAP);
 
     const containerW = Math.max(childMaxWidth + CONTAINER_PADDING, 200);
     const containerH = Math.max(childMaxHeight + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING, 100);
@@ -2591,7 +2628,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       y: offsetY,
       width: containerW,
       height: containerH,
-      ghost: isGhost,
+      ghost: false,
     };
     allContainers.push(containerRect);
 
@@ -2664,7 +2701,6 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
-          if (isGhost) le.ghost = true;
           systemEdges.push(le);
           allEdges.push(le);
         }
@@ -2755,7 +2791,10 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   // No-op when nothing went negative (the common case without side columns).
   normalizeCoordinates(allContainers, allLayoutNodes, allEdges);
 
-  // Calculate total dimensions
+  // Calculate total dimensions from container rects only. The single-system
+  // path uses computeTotalDimensions, which also folds node and edge-waypoint
+  // extents into the maximum — a divergence deliberately preserved by the
+  // #2512 refactor; converging it (and the clipping it can cause) is #2513.
   let totalWidth = 0;
   let totalHeight = 0;
   for (const c of allContainers) {
