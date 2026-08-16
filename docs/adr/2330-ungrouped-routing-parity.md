@@ -35,8 +35,8 @@ assumptions:
     [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md),
     [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md),
     [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)
-  - コード: `packages/core/src/renderer/layout.ts` / `edge-routing-channels.ts` /
-    `edge-routing-groups.ts` / `routing-parity.test.ts`
+  - コード: `packages/core/src/renderer/layout-edges.ts`（`runRoutingChain`） /
+    `edge-routing-channels.ts` / `edge-routing-groups.ts` / `routing-parity.test.ts`
 
 ## 背景
 

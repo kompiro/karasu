@@ -8,7 +8,7 @@ refines: [ADR-1724]
 related_to: [ADR-968, ADR-974, ADR-1755]
 assumptions:
   - "symbol: packages/core/src/renderer/layout.ts :: placeExternalServicesOnSides"
-  - "symbol: packages/core/src/renderer/layout.ts :: systemTier"
+  - "symbol: packages/core/src/renderer/layer-assignment.ts :: systemTier"
   - "grep: packages/core/src/renderer/layout.ts :: sideExternals"
 ---
 

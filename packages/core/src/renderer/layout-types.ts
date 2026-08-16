@@ -290,7 +290,7 @@ export interface CrossingMarks {
 export type DisplayMode = "shape" | "icon";
 
 /**
- * Optional render toggles for {@link layout}. Every field is optional; a bare
+ * Optional render toggles for the `layout()` entry point (layout.ts). Every field is optional; a bare
  * `layout(viewSlice)` lays out with defaults. Grouped as an object (rather than
  * trailing positionals) so new toggles append a named field instead of another
  * comma-counted slot — and so the two adjacent `ReadonlySet` params

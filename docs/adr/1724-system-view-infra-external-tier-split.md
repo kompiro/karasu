@@ -23,7 +23,7 @@ assumptions:
   - 関連: [ADR-968](./968-orthogonal-edge-routing-skip-layer.md)（skip-layer 直交ルーティング）, [ADR-967](./967-auto-layout-actor-row-by-target.md)（actor pull-down）
   - TPL: [TPL-1736](../test-perspectives/TPL-1736-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
   - AT: [AT-1724](../acceptance/1724-system-view-infra-external-tier-split.md)
-  - コード: `packages/core/src/renderer/layout.ts`（`systemTier` / `assignForcedSystemLayers`）
+  - コード: `packages/core/src/renderer/layer-assignment.ts`（`systemTier` / `assignForcedSystemLayers`）
 
 ## 背景
 
