@@ -1457,6 +1457,59 @@ function placementMembership(
  */
 
 /**
+ * The membership axis for one canvas: the boundary membership that applies to
+ * this scope (#2036), cut back for removed diff nodes (#2176 / ADR-1886);
+ * `undefined` off the boundary axis. Shared by the single-system canvas
+ * (ancestors + focused container as the scope path) and the multi-system root
+ * (each system frame is its own canvas, scope path `[systemId]`), so the two
+ * paths cannot drift on how a scope resolves its membership (TPL-219).
+ */
+function canvasMembershipFor(
+  scopePath: readonly string[],
+  options: LayoutOptions,
+): Map<string, string[]> | undefined {
+  const { groupBy, boundaryMembership, scopedBoundaryMembership, nodeDiffState } = options;
+  return placementMembership(
+    groupBy === "boundary"
+      ? boundaryAxisFor(scopePath, boundaryMembership, scopedBoundaryMembership)
+      : undefined,
+    nodeDiffState,
+  );
+}
+
+/**
+ * The placement axis and grouping index for one canvas (#2176, TPL-2161):
+ * resolve the placement axis from the canvas membership (boundary axis), or
+ * fall back to the owner index when grouping by team. An empty axis is
+ * normalized to `undefined` so both pipelines gate identically on
+ * `groupBy && groupIndex`: entering the collapse machinery with an empty
+ * index was always a no-op (`collapseGroups` folds nothing and the band
+ * assignment's own `size > 0` guard blocks), so the multi path's historical
+ * extra `size > 0` gate encoded no live behavior — normalizing here closes
+ * that drift seam (TPL-219). `bandOrder` carries the `declaredGroupOrder`
+ * fallback so the two call sites cannot drift on it either.
+ */
+function resolveCanvasAxis(
+  membership: Map<string, string[]> | undefined,
+  presentIds: ReadonlySet<string>,
+  options: LayoutOptions,
+): {
+  bandOrder: readonly string[] | undefined;
+  groupIndex: Map<string, string> | undefined;
+} {
+  const { declaredGroupOrder, groupBy, ownerIndex } = options;
+  const placement =
+    membership !== undefined
+      ? resolvePlacementAxis(membership, declaredGroupOrder, presentIds)
+      : undefined;
+  const axis = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
+  return {
+    bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+    groupIndex: axis !== undefined && axis.size > 0 ? axis : undefined,
+  };
+}
+
+/**
  * Shared group-collapse + grouped-layer-assignment machinery for the
  * single-system (`layout()`) and multi-system (`layoutMultipleSystems()`)
  * "Group by" paths (#1858 P2a, #1884). Folds any collapsed group's members to
@@ -1680,8 +1733,6 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   const {
     ownerIndex,
     teamLabels,
-    boundaryMembership,
-    scopedBoundaryMembership,
     declaredGroupOrder,
     groupLabels,
     displayMode,
@@ -1691,22 +1742,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     groupBy,
     collapsedGroups,
     edgeDiffState,
-    nodeDiffState,
   } = options;
-  // The canvas being drawn is the container plus its ancestors — for the root
-  // system view that is the system itself (`containerNode` is set, with an empty
-  // ancestor chain), which is the scope a top-level-looking `system X { boundary
-  // … }` declares into.
-  const scopePath =
-    viewSlice.containerNode !== null
-      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
-      : [];
-  const canvasMembership = placementMembership(
-    groupBy === "boundary"
-      ? boundaryAxisFor(scopePath, boundaryMembership, scopedBoundaryMembership)
-      : undefined,
-    nodeDiffState,
-  );
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -1731,6 +1767,17 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     return layoutMultipleSystems(viewSlice, options);
   }
 
+  // The canvas being drawn is the container plus its ancestors — for the root
+  // system view that is the system itself (`containerNode` is set, with an empty
+  // ancestor chain), which is the scope a top-level-looking `system X { boundary
+  // … }` declares into. Resolved after the multi-system dispatch: the root view
+  // resolves membership per system frame, not from this scope.
+  const scopePath =
+    viewSlice.containerNode !== null
+      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
+      : [];
+  const canvasMembership = canvasMembershipFor(scopePath, options);
+
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
   // **re-target** their boundary-crossing edges onto the stub (so "who depends
   // on the external/infra layer" survives as aggregation trunks, not dropped).
@@ -1747,15 +1794,11 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // *grouping* logic below switches to `groupIndex`. Resolved after the category
   // collapse because a boundary with no band of its own claims one of its shared
   // members (#2176), and only the nodes still on the canvas can be claimed.
-  const placement =
-    canvasMembership !== undefined
-      ? resolvePlacementAxis(
-          canvasMembership,
-          declaredGroupOrder,
-          new Set(allNodes.map((n) => n.id)),
-        )
-      : undefined;
-  const groupIndex = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
+  const { bandOrder, groupIndex } = resolveCanvasAxis(
+    canvasMembership,
+    new Set(allNodes.map((n) => n.id)),
+    options,
+  );
 
   // Per-group collapse (#1858 slice B): when a team is collapsed, fold its
   // members to a `<Team> (N)` stub and re-target cross-group edges onto it, so
@@ -1791,7 +1834,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
       groupIndex,
       collapsedGroups,
       edgeDiffState,
-      bandOrder: placement?.groupOrder ?? declaredGroupOrder,
+      bandOrder,
       membership: canvasMembership,
     });
     allNodes = collapsed.nodes;
@@ -2183,77 +2226,23 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     expandedFrameRects,
   );
 
-  // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
-  // so labels separate horizontally / vertically instead of stacking, and put
-  // every port on the shape's drawn outline rather than its bounding box
-  // (#2422). Must run before channel routing so the orthogonal pass uses the
-  // new ports. See ADR-968 and Issue #996.
-  distributePorts(layoutNodes, layoutEdges, portResolver(options));
-
-  // Shared routing candidate chain (#2362, ADR-1859 AC-5 superseded). The
-  // grouping axis (none / team / boundary) and routing capability are
-  // independent axes, so instead of forking on `groupBands` both routers run,
-  // in priority order, in every mode:
-  //
-  //   straight (left alone when already clear)
-  //     → interior channel-L  (edge-routing-channels.ts, ADR-968)
-  //     → side gutter / mixed (edge-routing-groups.ts, #1859 P2c-A + #1954)
-  //
-  // Each pass skips an edge that a previous one routed (`waypoints` set) or that
-  // needs no routing, so the chain is "cheapest clear candidate wins". The
-  // grouped passes degrade to node-cards-only when `groupFrames` is empty, which
-  // is what lets an ungrouped canvas gain gutter routing without a second
-  // implementation. The ungrouped result is held by the TPL-1927 dual metric
-  // (`routing-parity.test.ts`) instead of by the old byte-identity gate.
-  const groupFrames = containers.filter((c) => c.group);
-  // Candidate 1: interior channel-L. Frames become obstacles (per-endpoint
-  // exemption) so the near route cannot be bent through a frame it is not in.
-  routeOrthogonalEdges(
+  // Shared routing candidate chain (#2362): ports → straight/channel-L →
+  // gutter/mixed → trunks → lane separation → outline seating; see
+  // runRoutingChain. In-place expansion (#1921/#1923) shares the chain: the
+  // expanded frame rects let a service-level edge anchor on the frame border
+  // and detour around the *other* frames, while an edge to an interior domain
+  // still enters its own frame. The style-fed port resolver (#2422) turns on
+  // outline seating.
+  runRoutingChain(
     layoutNodes,
     layoutEdges,
-    frameObstaclesFor(layoutNodes, groupFrames, expandedFrameRects),
+    containers.filter((c) => c.group),
+    {
+      expandedFrames: expandedFrameRects,
+      groupBands,
+      ports: portResolver(options),
+    },
   );
-  // Candidate 2: side gutter, then mixed channel, for whatever is still blocked.
-  // In-place expansion (#1921/#1923) shares this router: passing the expanded
-  // frame rects lets a service-level edge anchor on the frame border and detour
-  // around the *other* frames, while an edge to an interior domain still enters
-  // its own frame. `groupBackward` dashing stays band-gated — "against the flow"
-  // is only defined where there is a band stack.
-  routeGroupedEdges(layoutNodes, layoutEdges, groupFrames, expandedFrameRects, groupBands !== null);
-  // Merge edges sharing an infra/external target onto one trunk lane per target
-  // so distinct targets' spines no longer overlap (#1859 P2c-B). Grouped only:
-  // trunk lanes live in the right gutter, so on an ungrouped canvas they pull
-  // fan-in edges back out to the canvas edge and undo the interior corridors
-  // (#2365) those edges would otherwise take. Measured and rejected in #2364.
-  if (groupBands) {
-    aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
-  }
-  // Give the remaining non-trunked gutter corridors distinct lanes so two
-  // single-incoming edges no longer share a collinear vertical segment (#1927),
-  // and fan out the anchors of edges leaving *or entering* one node/frame on the
-  // same side. Both are waypoint-driven, so every route shape the chain can
-  // produce takes part in the overlap passes (TPL-1954) in both modes.
-  distributeGutterLanes(layoutNodes, layoutEdges, groupFrames);
-  fanOutGutterPorts(layoutNodes, layoutEdges, groupFrames, expandedFrameRects);
-
-  // Phase 3: stagger horizontal segments that share an inter-row channel
-  // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
-  distributeChannelLanes(layoutEdges);
-
-  // Seat every endpoint on the shape's drawn outline, now that the chain has
-  // settled which route each edge takes (#2422). The candidate passes re-anchor
-  // what they reroute, so this is where the guarantee is finally made — moving
-  // inward always, and along the side only when the polyline stays clear.
-  const ports = portResolver(options);
-  if (ports) {
-    const frameObstacles = frameObstaclesFor(layoutNodes, groupFrames, expandedFrameRects);
-    seatPortsOnOutline(layoutNodes, layoutEdges, ports, (edge) => [
-      // The same obstacle set the chain checks against: every card but the two
-      // this edge terminates on, plus the frames it does not belong to.
-      ...[...layoutNodes.values()].filter((n) => n.id !== edge.from && n.id !== edge.to),
-      ...frameObstacles(edge),
-    ]);
-  }
 
   // Annotate parallel-edge bundles (edges sharing `(from, to)`) so the
   // renderer can slide labels along the edge instead of stacking them at
@@ -2364,8 +2353,6 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
   const {
     ownerIndex,
     teamLabels,
-    boundaryMembership,
-    scopedBoundaryMembership,
     declaredGroupOrder,
     groupLabels,
     displayMode,
@@ -2375,23 +2362,12 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     groupBy,
     collapsedGroups,
     edgeDiffState,
-    nodeDiffState,
   } = options;
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Grouping axis (team = ownerIndex, boundary = the primary of
   // boundaryMembership); `ownerIndex` stays the per-card team badge source
   // regardless of axis (mirrors layout()).
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
-  // Each system frame is its own canvas, so a scoped boundary declared in
-  // `system X { … }` applies inside X's frame and nowhere else (#2036). Resolved
-  // per system in the loop below; the team axis stays model-wide.
-  const membershipForSystem = (systemId: string): Map<string, string[]> | undefined =>
-    placementMembership(
-      groupBy === "boundary"
-        ? boundaryAxisFor([systemId], boundaryMembership, scopedBoundaryMembership)
-        : undefined,
-      nodeDiffState,
-    );
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
@@ -2441,19 +2417,18 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     let groupBandsS: Map<string, GroupBand> | null = null;
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
-    const systemMembership = membershipForSystem(sys.id);
+    // Each system frame is its own canvas, so a scoped boundary declared in
+    // `system X { … }` applies inside X's frame and nowhere else (#2036); the
+    // team axis stays model-wide.
+    const systemMembership = canvasMembershipFor([sys.id], options);
     // Same per-canvas resolution as `layout()`: a boundary with no band of its
     // own claims one of the shared members present in *this* system (#2176).
-    const systemPlacement =
-      systemMembership !== undefined
-        ? resolvePlacementAxis(
-            systemMembership,
-            declaredGroupOrder,
-            new Set(rawNodes.map((n) => n.id)),
-          )
-        : undefined;
-    const systemGroupIndex = systemPlacement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
-    if (groupBy && systemGroupIndex && systemGroupIndex.size > 0) {
+    const { bandOrder: systemBandOrder, groupIndex: systemGroupIndex } = resolveCanvasAxis(
+      systemMembership,
+      new Set(rawNodes.map((n) => n.id)),
+      options,
+    );
+    if (groupBy && systemGroupIndex) {
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
       // a distinct `__group_collapsed_<sys>_<group>__` stub per system instead of
       // one colliding id that would overwrite in `allLayoutNodes` (#1884).
@@ -2464,7 +2439,7 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
         collapsedGroups,
         edgeDiffState,
         stubScope: sys.id,
-        bandOrder: systemPlacement?.groupOrder ?? declaredGroupOrder,
+        bandOrder: systemBandOrder,
         membership: systemMembership,
       });
       if (collapsed.grouped) {
@@ -2717,15 +2692,14 @@ function layoutMultipleSystems(viewSlice: ViewSlice, options: LayoutOptions): La
     // other system. Each system block is its own routing surface, the same way
     // `placeExternalServicesOnSides` is already applied per system.
     const systemFrames = allContainers.slice(frameStart).filter((c) => c.group);
-    distributePorts(localNodes, systemEdges);
-    routeOrthogonalEdges(localNodes, systemEdges, frameObstaclesFor(localNodes, systemFrames));
-    routeGroupedEdges(localNodes, systemEdges, systemFrames, undefined, groupBandsS !== null);
-    if (groupBandsS) {
-      aggregateGroupTrunks(localNodes, systemEdges, systemFrames);
-    }
-    distributeGutterLanes(localNodes, systemEdges, systemFrames);
-    fanOutGutterPorts(localNodes, systemEdges, systemFrames);
-    distributeChannelLanes(systemEdges);
+    runRoutingChain(localNodes, systemEdges, systemFrames, {
+      // In-place expansion is single-system only (#1921).
+      expandedFrames: undefined,
+      groupBands: groupBandsS,
+      // No port resolver on this path — no outline seating on the root view;
+      // tracked by #2515.
+      ports: undefined,
+    });
 
     // A gutter route runs outside the system's cards, so it can reach past the
     // container rect. Advance by the routed extent, not just the rect, or the
@@ -2852,6 +2826,105 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 
   containers.reverse();
   return containers;
+}
+
+/**
+ * The shared routing candidate chain (#2362, ADR-1859 AC-5 superseded), run by
+ * the single-system pipeline and, per system frame, by the multi-system root
+ * (#2363). One function so the two paths cannot drift on pass order or
+ * arguments (TPL-219). The grouping axis (none / team / boundary) and routing
+ * capability are independent axes, so instead of forking on the band stack
+ * both routers run, in priority order, in every mode:
+ *
+ *   straight (left alone when already clear)
+ *     → interior channel-L  (edge-routing-channels.ts, ADR-968)
+ *     → side gutter / mixed (edge-routing-groups.ts, #1859 P2c-A + #1954)
+ *
+ * Each pass skips an edge that a previous one routed (`waypoints` set) or that
+ * needs no routing, so the chain is "cheapest clear candidate wins". The
+ * grouped passes degrade to node-cards-only when `groupFrames` is empty, which
+ * is what lets an ungrouped canvas gain gutter routing without a second
+ * implementation. The ungrouped result is held by the TPL-1927 dual metric
+ * (`routing-parity.test.ts`) instead of by the old byte-identity gate.
+ */
+function runRoutingChain(
+  nodes: Map<string, LayoutNode>,
+  edges: LayoutEdge[],
+  groupFrames: ContainerRect[],
+  // Every capability is a *required* field: a pipeline that lacks one states
+  // `undefined` at its call site (self-documenting, greppable), and adding a
+  // capability produces a compile error at every caller until each pipeline
+  // states its answer — the drift class this chain exists to close (TPL-219).
+  opts: {
+    /**
+     * Boundary-frame rects of containers expanded in place (#1921/#1923),
+     * keyed by expanded service id. Single-system path only today.
+     */
+    expandedFrames: Map<string, ContainerRect> | undefined;
+    /**
+     * The Group-by band stack, or null when ungrouped — gates trunk
+     * aggregation (#1859 P2c-B, rejected for ungrouped canvases in #2364) and
+     * `groupBackward` dashing. Taken as the stack rather than a boolean so
+     * the meaning of "grouped" lives here, not at each call site.
+     */
+    groupBands: Map<string, GroupBand> | null;
+    /**
+     * Shape port frames + chrome keep-outs (#2420/#2422). When absent,
+     * `distributePorts` runs port-less and no outline seating happens — the
+     * multi-system path passes none today (#2515).
+     */
+    ports: PortResolver | undefined;
+  },
+): void {
+  const { expandedFrames, ports } = opts;
+  const grouped = opts.groupBands !== null;
+  // Distribute ports across each node side that hosts ≥ 2 edges, so labels
+  // separate horizontally / vertically instead of stacking, and put every
+  // port on the shape's drawn outline rather than its bounding box (#2422).
+  // Must run before channel routing so the orthogonal pass uses the new
+  // ports. See ADR-968 and Issue #996.
+  distributePorts(nodes, edges, ports);
+  // Candidate 1: interior channel-L. Frames become obstacles (per-endpoint
+  // exemption) so the near route cannot be bent through a frame it is not in.
+  routeOrthogonalEdges(nodes, edges, frameObstaclesFor(nodes, groupFrames, expandedFrames));
+  // Candidate 2: side gutter, then mixed channel, for whatever is still
+  // blocked. `groupBackward` dashing stays band-gated — "against the flow" is
+  // only defined where there is a band stack.
+  routeGroupedEdges(nodes, edges, groupFrames, expandedFrames, grouped);
+  // Merge edges sharing an infra/external target onto one trunk lane per
+  // target so distinct targets' spines no longer overlap (#1859 P2c-B).
+  // Grouped only: trunk lanes live in the right gutter, so on an ungrouped
+  // canvas they pull fan-in edges back out to the canvas edge and undo the
+  // interior corridors (#2365) those edges would otherwise take. Measured and
+  // rejected in #2364.
+  if (grouped) {
+    aggregateGroupTrunks(nodes, edges, groupFrames, expandedFrames);
+  }
+  // Give the remaining non-trunked gutter corridors distinct lanes so two
+  // single-incoming edges no longer share a collinear vertical segment
+  // (#1927), and fan out the anchors of edges leaving *or entering* one
+  // node/frame on the same side. Both are waypoint-driven, so every route
+  // shape the chain can produce takes part in the overlap passes (TPL-1954)
+  // in both modes.
+  distributeGutterLanes(nodes, edges, groupFrames);
+  fanOutGutterPorts(nodes, edges, groupFrames, expandedFrames);
+  // Stagger horizontal segments that share an inter-row channel across
+  // distinct lanes. No-op when each channel hosts ≤ 1 edge.
+  distributeChannelLanes(edges);
+  // Seat every endpoint on the shape's drawn outline, now that the chain has
+  // settled which route each edge takes (#2422). The candidate passes
+  // re-anchor what they reroute, so this is where the guarantee is finally
+  // made — moving inward always, and along the side only when the polyline
+  // stays clear.
+  if (ports) {
+    const frameObstacles = frameObstaclesFor(nodes, groupFrames, expandedFrames);
+    seatPortsOnOutline(nodes, edges, ports, (edge) => [
+      // The same obstacle set the chain checks against: every card but the
+      // two this edge terminates on, plus the frames it does not belong to.
+      ...[...nodes.values()].filter((n) => n.id !== edge.from && n.id !== edge.to),
+      ...frameObstacles(edge),
+    ]);
+  }
 }
 
 /**
