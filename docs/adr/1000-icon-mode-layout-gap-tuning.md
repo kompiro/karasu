@@ -7,7 +7,7 @@ topic: renderer
 related_to: [ADR-458, ADR-968, ADR-969]
 assumptions:
   - "file: packages/core/src/renderer/layout.ts"
-  - "symbol: packages/core/src/renderer/layout.ts :: getLayoutConstants"
+  - "symbol: packages/core/src/renderer/layout-constants.ts :: getLayoutConstants"
   - "symbol: packages/core/src/renderer/layout.ts :: DisplayMode"
 ---
 
@@ -52,7 +52,7 @@ Issue #1000 の "Render representative diagrams in Icon mode" 観察と、
 
 ## 決定
 
-`layout.ts` に **`getLayoutConstants(displayMode)`** を追加し、
+`getLayoutConstants(displayMode)`（現在は `layout-constants.ts`、当時は `layout.ts`）を追加し、
 `LAYER_GAP` / `NODE_GAP` / `MAX_LAYER_WIDTH` を mode 別 lookup に切り替える:
 
 | 定数             | shape | icon |

@@ -2,7 +2,7 @@
  * Group-aware layer assignment for the system view "Group by" mode (Issue
  * #1858, design `docs/design/system-view-grouping.md`). Phase P2a, slice A.
  *
- * The default system layout (`assignForcedSystemLayers` in `layout.ts`) buckets
+ * The default system layout (`assignForcedSystemLayers` in `layer-assignment.ts`) buckets
  * nodes into kind tiers. Group-by mode instead buckets nodes into their **group**
  * (P2a: the owning team, resolved via `ownerIndex`) and lays the groups out as a
  * vertical stack, so each group's members are contiguous and can be enclosed in a

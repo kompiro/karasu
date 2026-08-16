@@ -21,7 +21,7 @@ related_to:
   - [ADR-460](460-ghost-domain-edges.md) — ghost domain エッジ（両方向・bottom 配置・subLabel・layout-node フラグによる muting）。本 ADR はその機構を entity に拡張する
   - [ADR-328](328-ghost-system-rendering.md) — ghost 描画の基本
   - 関連 TPL: [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md)
-  - コード: `packages/core/src/view/view-extract.ts`（`extractEntityView` / `buildDomainEntityIndex`）、`packages/core/src/renderer/layout.ts`（`placeGhostRow` / `pushGhostEdges`）
+  - コード: `packages/core/src/view/view-extract.ts`（`extractEntityView` / `buildDomainEntityIndex`）、`packages/core/src/renderer/ghost-layout.ts`（`placeGhostRow`）、`packages/core/src/renderer/layout-edges.ts`（`pushGhostEdges`）
 
 ## 背景
 

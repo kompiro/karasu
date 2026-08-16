@@ -13,7 +13,7 @@ scope:
     - app
 assumptions:
   - "grep: packages/core/src/types/ast.ts :: \"client\""
-  - "symbol: packages/core/src/renderer/layout.ts :: assignForcedSystemLayers"
+  - "symbol: packages/core/src/renderer/layer-assignment.ts :: assignForcedSystemLayers"
   - "file: docs/spec/syntax.md"
   - "file: docs/spec/tags-annotations.md"
 ---
