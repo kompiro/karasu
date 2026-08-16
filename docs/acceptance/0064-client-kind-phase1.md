@@ -44,9 +44,9 @@ system T {
 }
 ```
 
-### 2b. 認識タグ以外のユーザー定義タグも書ける（karasu のタグ仕様）
+### 2b. 認識タグ以外のユーザー定義タグも書ける（deprecated、警告付き）
 
-タグは開いた語彙のため、認識タグ以外のタグも `client` に付けてよい。以下が parse error を出さないことを確認する。
+builtin 外のタグも `client` に付けられる（parse error にはならない — [ADR-1314](../adr/1314-krs-spec-v1-freeze.md) の warn-don't-error）。以下が parse error を出さないことを確認する。
 
 ```krs
 system T {
@@ -56,7 +56,9 @@ system T {
 }
 ```
 
-`[v2]` `[critical]` `[my-team-internal-tag]` のような未認識タグはユーザー定義タグとして扱われ、スタイルセレクタで装飾できる。karasu は何の警告も出さない。
+`[v2]` `[critical]` `[my-team-internal-tag]` のような builtin 外のタグはユーザー定義タグとして parse され、スタイルセレクタで装飾できる。ただし [#2159](https://github.com/kompiro/karasu/issues/2159)（[ADR-2065](../adr/2065-tags-and-facets.md) 決定 5）以降は **deprecated** であり、タグ 1 つにつき `tag-not-builtin` warning が 1 件出る（`[my-team-internal-tag]` は kebab-case 全体で 1 タグ = warning 1 件 — [#2509](https://github.com/kompiro/karasu/issues/2509)）。それを装飾するスタイルセレクタ側も `style-tag-selector-not-builtin` を出す。移行先は `facet`（membership）または builtin 追加要望（アーキタイプ — [ADR-2172](../adr/2172-builtin-vocabulary-expansion.md) の経路）。
+
+> この項の記述は #2159 の deprecation 決定と #2509 の kebab-case 字句修正を反映して改訂した（[#2510](https://github.com/kompiro/karasu/issues/2510)）。改訂前は「karasu は何の警告も出さない」という pre-#2159 の挙動を受け入れ条件として記載していた。
 
 ### 3. system 外の `client` で警告
 
