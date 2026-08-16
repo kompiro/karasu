@@ -53,7 +53,9 @@ client InternalTool [my-team-internal]
 ```
 
 → `[my-team-internal]` は 7 種のサブタイプに含まれないため、汎用 `client.svg`
-が選ばれる（warning は出ない）。
+が選ばれる。icon の fallback は変わらないが、builtin 外のタグなので
+`tag-not-builtin` warning が 1 件出る（[#2159](https://github.com/kompiro/karasu/issues/2159) 以降の deprecation。
+kebab-case 全体で 1 タグ = warning 1 件 — [#2509](https://github.com/kompiro/karasu/issues/2509) / [#2510](https://github.com/kompiro/karasu/issues/2510)）。
 
 ### 4. 複数サブタイプタグは「最初に書いたタグ」が勝つ（first-match-wins）
 
