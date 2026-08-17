@@ -951,9 +951,10 @@ deploy "production" {
 ```
 
 正準形は行の繰り返しで、`karasu fmt` は 1 行 1 対象で出力しカンマ列挙をその形に書き換える。
-カンマの後（`realizes A,`）や前（`realizes ,B`）に識別子が無い場合は
-[`expected-property-value`](./diagnostics.ja.md) を報告する。継続する対象はカンマと同じ行に
-無ければならないため、末尾のカンマが次のプロパティ行を飲み込むことはない。
+カンマの後（`realizes A,`）や前（`realizes ,B`）に識別子が無い場合は、そのカンマ自身を指して
+[`expected-property-value`](./diagnostics.ja.md) を報告する。リストは `realizes` が現れた行に
+閉じるため、どちらの向きにも行をまたいで継続しない — 末尾のカンマも、次の行を開始するカンマも、
+リストを伸ばさない。
 
 > Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — 同じプロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復が意味を保つこと・要素単位の診断が個々の識別子を指すことを同じ変更で固定する。
 

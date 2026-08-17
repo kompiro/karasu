@@ -612,31 +612,53 @@ deploy Production {
       ]);
     });
 
-    it("anchors each target's range at its own identifier", () => {
+    it("spans each target's range over its own identifier", () => {
+      const line = `    realizes A, "long-id"`;
       const result = Parser.parse(
-        ["deploy Production {", "  oci monolith {", "    realizes A, Bogus", "  }", "}"].join("\n"),
+        ["deploy Production {", "  oci monolith {", line, "  }", "}"].join("\n"),
       );
       const targets = result.value.deploys[0].nodes[0].properties.realizes;
       assert(targets);
-      // Both on the `realizes` line, each at its own column — a node-level
-      // range would give both targets the same start.
-      expect(targets[0].loc.start.line).toBe(3);
-      expect(targets[1].loc.start.line).toBe(3);
-      expect(targets[1].loc.start.column).toBeGreaterThan(targets[0].loc.start.column);
+      // Both sit on the `realizes` line, each covering its own text — a
+      // node-level range would give both targets the same start, and a
+      // zero-width range would underline nothing in an editor.
+      expect(targets[0].loc.start).toMatchObject({ line: 3, column: line.indexOf("A") + 1 });
+      expect(targets[0].loc.end.column).toBe(line.indexOf("A") + 2);
+      // The quoted form spans the quotes too, so the range covers what was written.
+      expect(targets[1].loc.start.column).toBe(line.indexOf(`"long-id"`) + 1);
+      expect(targets[1].loc.end.column).toBe(line.indexOf(`"long-id"`) + 1 + `"long-id"`.length);
     });
 
     it("reports one diagnostic for a trailing comma and keeps the targets read so far", () => {
-      const result = Parser.parse(`
-deploy Production {
-  oci monolith {
-    realizes OrderService,
-  }
-}
-      `);
+      const line = `    realizes OrderService,`;
+      const result = Parser.parse(
+        ["deploy Production {", "  oci monolith {", line, "  }", "}"].join("\n"),
+      );
       expect(result.diagnostics).toHaveLength(1);
       expect(result.diagnostics[0].code).toBe("expected-property-value");
       expect(result.diagnostics[0].params).toEqual({ propName: "realizes" });
+      // Anchored on the dangling comma. Reporting at the *next* token would put
+      // the squiggle on the following line, which is not the line at fault.
+      expect(result.diagnostics[0].loc?.start).toMatchObject({
+        line: 3,
+        column: line.indexOf(",") + 1,
+      });
       expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+    });
+
+    it("reports a value-less `realizes` on the keyword and leaves the property unset", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes
+  }
+}
+      `);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-property-value"]);
+      expect(result.diagnostics[0].loc?.start).toMatchObject({ line: 4, column: 5 });
+      // Not an empty array: a failed parse must not invent a property the
+      // source never gave a value for.
+      expect(result.value.deploys[0].nodes[0].properties.realizes).toBeUndefined();
     });
 
     it("reports one diagnostic for a leading comma and still records the target", () => {
@@ -653,8 +675,6 @@ deploy Production {
     });
 
     it("does not let a trailing comma swallow the next property line", () => {
-      // `runtime` is a plain identifier token, so an unguarded list would take
-      // it as the next target and drop the runtime entirely.
       const result = Parser.parse(`
 deploy Production {
   oci monolith {
@@ -667,6 +687,44 @@ deploy Production {
       expect(realizeIds(node)).toEqual(["OrderService"]);
       expect(node.properties.runtime).toBe("Node.js 20");
       expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-property-value"]);
+    });
+
+    // A list lives on its `realizes` line. Property names carry their own token
+    // types, so those were never at risk of being read as targets; what the
+    // rule actually holds back is a bare identifier on an adjacent line, in
+    // either direction.
+    it("does not continue a list onto the next line after a trailing comma", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService,
+    InventoryService
+  }
+}
+      `);
+      // `InventoryService` is reported where it sits, not absorbed as a target.
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+      expect(result.diagnostics.map((d) => d.code)).toEqual([
+        "expected-property-value",
+        "unexpected-token-in-block",
+      ]);
+    });
+
+    it("does not continue a list from a comma that starts the next line", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService
+    ,InventoryService
+  }
+}
+      `);
+      // The mirror image of the trailing comma, and it has to fail the same
+      // way: silently accepting it would extend the model with a target the
+      // spec does not say is writable there.
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+      expect(result.diagnostics.length).toBeGreaterThan(0);
+      expect(result.diagnostics.every((d) => d.code === "unexpected-token-in-block")).toBe(true);
     });
   });
 

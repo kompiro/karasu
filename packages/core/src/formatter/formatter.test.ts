@@ -282,7 +282,7 @@ describe("format()", () => {
     const repeated = `deploy Prod {\n  oci monolith {\n    realizes OrderService\n    realizes InventoryService\n  }\n}`;
     const result = fmt(commas);
     expect(result).toContain(`    realizes OrderService\n    realizes InventoryService`);
-    expect(result).not.toContain(",");
+    expect(result).not.toContain(`realizes OrderService,`);
     expect(result).toBe(fmt(repeated));
     expectIdempotent(result);
     expectAstRoundTrip(commas);

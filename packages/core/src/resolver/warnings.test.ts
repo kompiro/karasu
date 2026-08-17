@@ -2334,6 +2334,8 @@ deploy Production {
     expect(loc.start.line).toBe(7);
     // `Bogus` sits past `A` on that line; the node starts two lines earlier.
     expect(loc.start.column).toBe(krs.split("\n")[6].indexOf("Bogus") + 1);
+    // Spanning, not a point: a zero-width range underlines nothing in an editor.
+    expect(loc.end.column).toBe(loc.start.column + "Bogus".length);
   });
 
   it("gives each unresolved target in one list its own range", () => {
