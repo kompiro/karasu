@@ -522,3 +522,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) | テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する — 最も明るい背景 1 枚で代表させると、白で調整した色が mid-tone の surface で落ちる | styling | #2193 |
 | [TPL-2446](TPL-2446-gate-side-check-runs-over-the-whole-set.md) | マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠し、穴はフックを通らない bot PR でだけ露見する | build | #2446, #2432 |
 | [TPL-2456](TPL-2456-module-instance-scoped-identity.md) | 参照同一性で判定される共有オブジェクトは module のコピーが 2 つになった瞬間に壊れる — 判定はバージョン一致ではなく解決先が 1 つかで行い、壊れるのは自作の値を渡す経路だけなので大半のテストは green のまま残る | testing | #2456, ADR-2456 |
+| [TPL-2088](TPL-2088-id-reference-notation-uniform-across-sites.md) | ノード id を指す参照サイトは受理する記法と解決規則を全サイトで共有する — 拒否側は先頭セグメントだけを黙って記録して別の意味になる。修飾を受理するなら索引も区別可能なキーを持ち、受理と narrowing は同じ出荷単位に入れる | parser | ADR-927, parser.ts, #2088 |
