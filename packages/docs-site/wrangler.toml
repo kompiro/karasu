@@ -1,0 +1,20 @@
+# Cloudflare Pages config for the docs site's per-PR preview (`docs-preview.yml`,
+# Issue #2260). Production is GitHub Pages (`pages.yml`); this project exists so a
+# docs PR can be read as rendered output before it is merged.
+#
+# It lives here rather than at the repo root for two reasons, both about what
+# wrangler picks up from its working directory:
+#
+#   - The root `wrangler.toml` names the app's `karasu` project. A Pages deploy
+#     replaces the whole asset set, so the two projects cannot be shared.
+#   - The root `functions/` dir holds `[[path]].ts`, a catch-all that runs before
+#     static assets. Deploying the docs from the root would bundle it and it would
+#     intercept every request to this project. There is no `functions/` beside
+#     this file, so running wrangler here leaves the site purely static.
+#
+# `preview-dist` is staged by the workflow, not built here: it is `dist/` copied
+# into a `karasu/` subdirectory so the deployment serves the site at the same
+# `/karasu/` base path production uses. It is gitignored.
+name = "karasu-docs"
+pages_build_output_dir = "preview-dist"
+compatibility_date = "2025-01-01"
