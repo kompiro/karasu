@@ -635,6 +635,65 @@ system Test {
     expect(svg).toContain("scale(1, 1)");
   });
 
+  // #2533: the card is a fixed 160px in icon mode, so the text has to be
+  // fitted to it. Before this, the label was emitted at full length and long
+  // ones ran out of their card and printed over the neighbouring label.
+  describe("text is fitted to the fixed card (#2533)", () => {
+    const LONG = "Replace order snapshot (physical delete-insert)";
+
+    it("truncates a label that cannot fit the card", () => {
+      const svg = renderFromSource(
+        `system S { service Svc { label "${LONG}" } }`,
+        undefined,
+        undefined,
+        "icon",
+      );
+      expect(svg).not.toContain(LONG);
+      expect(svg).toMatch(/<text[^>]*>Replace order[^<]*…<\/text>/);
+    });
+
+    it("leaves a label that already fits alone", () => {
+      const svg = renderFromSource(
+        `system S { service Svc { label "Cancel an order" } }`,
+        undefined,
+        undefined,
+        "icon",
+      );
+      expect(svg).toContain(">Cancel an order</text>");
+      expect(svg).not.toContain("…");
+    });
+
+    it("keeps shape mode untouched, where the card is measured to fit", () => {
+      const svg = renderFromSource(`system S { service Svc { label "${LONG}" } }`);
+      expect(svg).toContain(LONG);
+    });
+
+    it("wraps the description against the card, not the shape-mode content box", () => {
+      // The shape-mode box is `width - NODE_PADDING_X * 2` = 80px on a 160px
+      // card, which fits ~13 characters and broke a description into stubs.
+      const svg = renderFromSource(
+        `system S {
+  service Svc {
+    label "Svc"
+    description "Handles order placement and tracking"
+  }
+}`,
+        undefined,
+        undefined,
+        "icon",
+      );
+      const lines = [...svg.matchAll(/<text[^>]*font-size="11px"[^>]*>([^<]+)<\/text>/g)].map(
+        (m) => m[1],
+      );
+      expect(lines.length).toBeGreaterThan(0);
+      const longest = Math.max(...lines.map((l) => l.length));
+      // Comfortably past what the old 80px box could hold, and still inside
+      // the card: the description now uses the icon card's own budget.
+      expect(longest).toBeGreaterThan(15);
+      expect(lines.length).toBeLessThanOrEqual(2);
+    });
+  });
+
   it("uses fixed 160×56 node size for icon mode without description", () => {
     const svg = renderFromSource(
       `
