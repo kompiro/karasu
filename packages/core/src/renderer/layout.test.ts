@@ -493,6 +493,75 @@ system PaymentGateway {
     // Unassigned domain should be laid out (not silently dropped)
     expect(result.nodes.has("Logistics")).toBe(true);
   });
+
+  it("sizes the canvas around routed edges, not just the container rects (#2513)", () => {
+    // Trunk lanes sit at `maxRight + GUTTER_GAP + (lane+1)·TRUNK_LANE_GAP`
+    // (28 + 24n) while the old multi-path width was the container right edge
+    // plus CONTAINER_PADDING, so a dense enough fan-in pushed a trunk past the
+    // reported canvas and the renderer clipped it. Six stores is the smallest
+    // count that crosses it here. Grouped, because that is where trunks
+    // aggregate; this path now uses the same `computeTotalDimensions` the
+    // single-system one does.
+    const src = `
+system A {
+  user Ua {}
+  service Sa {}
+  Ua -> Sa
+}
+system B {
+  user Ub {}
+  client Cb [web] {}
+  service S1 {}
+  service S2 {}
+  service S3 {}
+  database D1 {}
+  database D2 {}
+  database D3 {}
+  database D4 {}
+  database D5 {}
+  database D6 {}
+  Ub -> Cb
+  Cb -> S1
+  Cb -> S2
+  Cb -> S3
+  S2 -> D1
+  S3 -> D1
+  S1 -> D2
+  S3 -> D2
+  S1 -> D3
+  S2 -> D3
+  S2 -> D4
+  S3 -> D4
+  S1 -> D5
+  S3 -> D5
+  S1 -> D6
+  S2 -> D6
+}
+organization Org {
+  team "blue" { owns S1
+    owns S2 }
+  team "green" { owns S3 }
+}
+`;
+    const parsed = Parser.parse(src);
+    const result = layout(extractView(parsed.value.systems, []), {
+      ownerIndex: parsed.value.ownerIndex,
+      groupBy: "team",
+    });
+
+    // The premise: routing really does reach past every container rect, so the
+    // container-only measurement this replaced was provably short here.
+    const containerOnly = Math.max(...result.containers.map((c) => c.x + c.width));
+    const drawnRight = Math.max(
+      ...[...result.nodes.values()].map((n) => n.x + n.width),
+      ...result.edges.flatMap((e) =>
+        [e.fromPoint, e.toPoint, ...(e.waypoints ?? [])].map((p) => p.x),
+      ),
+    );
+    expect(drawnRight).toBeGreaterThan(containerOnly);
+    // …and nothing drawn falls outside the reported canvas.
+    expect(result.width).toBeGreaterThanOrEqual(drawnRight);
+  });
 });
 
 describe("layout > ghost system edges", () => {
