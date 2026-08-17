@@ -938,6 +938,23 @@ deploy "production" {
 }
 ```
 
+対象をカンマ区切りで 1 行に並べてもよい。これは sugar で、上のモデルとまったく同じ結果になる。
+1 つのノード内で両形を混在させることもでき、記述順に累積する。
+
+```krs
+deploy "production" {
+  oci "monolith" {
+    image    "monolith:1.0.0"
+    realizes OrderService, InventoryService
+  }
+}
+```
+
+正準形は行の繰り返しで、`karasu fmt` は 1 行 1 対象で出力しカンマ列挙をその形に書き換える。
+カンマの後（`realizes A,`）や前（`realizes ,B`）に識別子が無い場合は
+[`expected-property-value`](./diagnostics.ja.md) を報告する。継続する対象はカンマと同じ行に
+無ければならないため、末尾のカンマが次のプロパティ行を飲み込むことはない。
+
 ### 共有 infra を realize する（`store` kind）
 
 `realizes` は `service` / `domain` だけでなく、**共有 infra ノード**（`database` / `queue` / `storage`）も

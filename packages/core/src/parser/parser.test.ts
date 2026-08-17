@@ -3,12 +3,18 @@ import { Parser } from "./parser.js";
 import { getReference } from "../builtins/reference.js";
 import type {
   ClientNode,
+  DeployNode,
   DomainNode,
   KrsFile,
   KrsNode,
   ServiceNode,
   UserNode,
 } from "../types/ast.js";
+
+/** The ids a deploy unit realizes, dropping the per-target ranges. */
+function realizeIds(node: DeployNode): string[] | undefined {
+  return node.properties.realizes?.map((target) => target.id);
+}
 
 describe("Parser", () => {
   it("parses empty input", () => {
@@ -466,12 +472,12 @@ deploy "本番環境" {
     expect(oci.label).toBeUndefined();
     expect(oci.properties.image).toBe("order:2.1.0");
     expect(oci.properties.runtime).toBe("Node.js 20");
-    expect(oci.properties.realizes).toEqual(["ECommerce"]);
+    expect(realizeIds(oci)).toEqual(["ECommerce"]);
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
     expect(job.properties.schedule).toBe("0 0 1 * *");
-    expect(job.properties.realizes).toEqual(["Billing"]);
+    expect(realizeIds(job)).toEqual(["Billing"]);
   });
 
   it("parses deploy block with identifier id and label properties", () => {
@@ -500,14 +506,14 @@ deploy Production {
     expect(oci.id).toBe("ecommerceApp");
     expect(oci.label).toBe("EC Application");
     expect(oci.properties.runtime).toBe("Node.js 20");
-    expect(oci.properties.realizes).toEqual(["ECommerce"]);
+    expect(realizeIds(oci)).toEqual(["ECommerce"]);
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
     expect(job.id).toBe("billingJob");
     expect(job.label).toBeUndefined();
     expect(job.properties.schedule).toBe("0 0 1 * *");
-    expect(job.properties.realizes).toEqual(["Billing"]);
+    expect(realizeIds(job)).toEqual(["Billing"]);
   });
 
   it("parses a `store` deploy unit with type + realizes", () => {
@@ -526,7 +532,7 @@ deploy Production {
     expect(store.id).toBe("orderStore");
     expect(store.label).toBe("Order DB");
     expect(store.properties.type).toBe("Aurora PostgreSQL 15");
-    expect(store.properties.realizes).toEqual(["OrderDB"]);
+    expect(realizeIds(store)).toEqual(["OrderDB"]);
   });
 
   it("parses deploy node with multiple realizes lines into an array", () => {
@@ -539,7 +545,129 @@ deploy Production {
 }
     `);
     const node = result.value.deploys[0].nodes[0];
-    expect(node.properties.realizes).toEqual(["OrderService", "InventoryService"]);
+    expect(realizeIds(node)).toEqual(["OrderService", "InventoryService"]);
+  });
+
+  // #2167 — the comma list is sugar for repeated lines, so the two forms have
+  // to be indistinguishable once parsed.
+  describe("comma-separated realizes (#2167)", () => {
+    it("parses a comma-separated list into the same array as repeated lines", () => {
+      const commas = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService, InventoryService
+  }
+}
+      `);
+      const repeated = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService
+    realizes InventoryService
+  }
+}
+      `);
+      expect(commas.diagnostics).toHaveLength(0);
+      expect(realizeIds(commas.value.deploys[0].nodes[0])).toEqual([
+        "OrderService",
+        "InventoryService",
+      ]);
+      expect(realizeIds(commas.value.deploys[0].nodes[0])).toEqual(
+        realizeIds(repeated.value.deploys[0].nodes[0]),
+      );
+    });
+
+    it("accumulates comma lists and repeated lines in document order", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService, InventoryService
+    realizes Billing
+    realizes Search, Reporting
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual([
+        "OrderService",
+        "InventoryService",
+        "Billing",
+        "Search",
+        "Reporting",
+      ]);
+    });
+
+    it("accepts quoted ids in the list", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes "order-service", "inventory-service"
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual([
+        "order-service",
+        "inventory-service",
+      ]);
+    });
+
+    it("anchors each target's range at its own identifier", () => {
+      const result = Parser.parse(
+        ["deploy Production {", "  oci monolith {", "    realizes A, Bogus", "  }", "}"].join("\n"),
+      );
+      const targets = result.value.deploys[0].nodes[0].properties.realizes;
+      assert(targets);
+      // Both on the `realizes` line, each at its own column — a node-level
+      // range would give both targets the same start.
+      expect(targets[0].loc.start.line).toBe(3);
+      expect(targets[1].loc.start.line).toBe(3);
+      expect(targets[1].loc.start.column).toBeGreaterThan(targets[0].loc.start.column);
+    });
+
+    it("reports one diagnostic for a trailing comma and keeps the targets read so far", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService,
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].code).toBe("expected-property-value");
+      expect(result.diagnostics[0].params).toEqual({ propName: "realizes" });
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+    });
+
+    it("reports one diagnostic for a leading comma and still records the target", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes ,InventoryService
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].code).toBe("expected-property-value");
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["InventoryService"]);
+    });
+
+    it("does not let a trailing comma swallow the next property line", () => {
+      // `runtime` is a plain identifier token, so an unguarded list would take
+      // it as the next target and drop the runtime entirely.
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService,
+    runtime "Node.js 20"
+  }
+}
+      `);
+      const node = result.value.deploys[0].nodes[0];
+      expect(realizeIds(node)).toEqual(["OrderService"]);
+      expect(node.properties.runtime).toBe("Node.js 20");
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-property-value"]);
+    });
   });
 
   it("parses a complete file with imports, system, and deploy", () => {

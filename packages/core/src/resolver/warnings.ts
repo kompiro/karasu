@@ -1448,15 +1448,18 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
       const realizes = node.properties.realizes;
       if (!realizes || realizes.length === 0) continue;
       for (const target of realizes) {
-        if (!validIds.has(target)) {
+        if (!validIds.has(target.id)) {
           warnings.push({
             kind: "unresolved-realizes",
             params: {
               deployNodeId: node.id,
               deployBlockId: deploy.id,
-              target,
+              target: target.id,
             },
-            loc: node.loc,
+            // The identifier's own range, not the node's: a unit realizing
+            // several targets — whether written as repeated lines or one comma
+            // list (#2167) — must point at the target that failed to resolve.
+            loc: target.loc,
           });
         }
       }

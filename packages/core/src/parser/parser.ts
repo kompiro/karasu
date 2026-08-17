@@ -1885,18 +1885,14 @@ export class Parser {
       } else if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
-        // Value can be string literal or identifier
-        if (
+        if (propName === "realizes") {
+          this.parseRealizesList(properties);
+        } else if (
+          // Value can be string literal or identifier
           this.peek().type === TokenType.StringLiteral ||
           this.peek().type === TokenType.Identifier
         ) {
-          const value = this.advance().value;
-          if (propName === "realizes") {
-            if (!properties.realizes) properties.realizes = [];
-            properties.realizes.push(value);
-          } else {
-            (properties as Record<string, string>)[propName] = value;
-          }
+          (properties as Record<string, string>)[propName] = this.advance().value;
         } else {
           this.error("expected-property-value", { propName });
         }
@@ -1921,6 +1917,56 @@ export class Parser {
       properties,
       loc: this.range(start.loc, end.loc),
     };
+  }
+
+  /**
+   * Parses the value of one `realizes` line, appending to the node's target
+   * list. Targets may be written one per line (#409) or comma-separated on a
+   * single line (#2167) — the comma form is sugar, so both append to the same
+   * array and a node mixing the two accumulates in document order.
+   *
+   * A continuation target must sit on the same line as the comma that
+   * introduced it. Deploy property keywords (`runtime`, `image`, …) are plain
+   * identifiers, so without that guard a dangling `realizes A,` would consume
+   * the *next* property's name as a target and silently drop the property.
+   */
+  private parseRealizesList(properties: DeployNodeProperties): void {
+    const targets = (properties.realizes ??= []);
+    // The comma that opened the current position, if any — its line is what a
+    // continuation target has to match. Undefined for the first target, which
+    // the `realizes` keyword itself introduces.
+    let afterComma: Token | undefined;
+    const atTarget = (): boolean => {
+      const token = this.peek();
+      if (token.type !== TokenType.Identifier && token.type !== TokenType.StringLiteral) {
+        return false;
+      }
+      return afterComma === undefined || token.loc.line === afterComma.loc.line;
+    };
+
+    for (;;) {
+      if (atTarget()) {
+        const token = this.advance();
+        targets.push({ id: token.value, loc: this.range(token.loc) });
+        // Without a comma the list is done; with one, another target is due.
+        if (this.peek().type !== TokenType.Comma) return;
+        afterComma = this.advance();
+        continue;
+      }
+      // No target where one is required: bare `realizes`, a leading comma
+      // (`realizes ,B`), or the trailing comma of `realizes A,`. Report it once
+      // against `realizes` rather than letting the comma fall through to the
+      // block loop's generic `unexpected-token-in-block`.
+      this.error("expected-property-value", { propName: "realizes" });
+      // Swallow the stray separators so the same commas are not reported again,
+      // then resume if that leaves a target to read — `realizes ,B` still
+      // records `B`. Reaching here without a comma to consume means the line
+      // holds nothing more to say, so stop rather than report twice.
+      while (this.peek().type === TokenType.Comma) {
+        afterComma = this.advance();
+      }
+      if (!atTarget()) return;
+    }
   }
 
   // ─── Organization ──────────────────────────────────────────────────────────

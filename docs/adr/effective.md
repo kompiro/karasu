@@ -261,6 +261,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2076](2076-formatter-top-level-exhaustiveness.md) — formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 - [ADR-2087](2087-escape-emitted-string-values.md) — 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
 - [ADR-2165](2165-logical-containment-rules.md) — 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反は言語 v1.x で warning とする
+- [ADR-2167](2167-realizes-comma-list.md) — reference list はカンマ列挙を受け、membership は 1 行 1 件に留める — `realizes` の受理形と `owns` / `contains` の境界
 - [ADR-2173](2173-facet-grammar-and-model.md) — facet の文法と model 層 — 診断は resolver 側、カタログには載せる、merge は union
 - [ADR-2208](2208-positional-label-error-promotion.md) — organization / team / member の positional label を error にする
 - [ADR-9008](9008-ast-restructure-discriminated-union.md) — AST 再構成 — Discriminated Union とプロパティブロック

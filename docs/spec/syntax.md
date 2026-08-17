@@ -1008,6 +1008,23 @@ deploy "production" {
 }
 ```
 
+The targets may also be written as one comma-separated line. This is sugar: it produces exactly the
+model above, and the two forms may be mixed within a node — every entry accumulates in document order.
+
+```krs
+deploy "production" {
+  oci "monolith" {
+    image    "monolith:1.0.0"
+    realizes OrderService, InventoryService
+  }
+}
+```
+
+Repeated lines are the canonical form: `karasu fmt` emits one target per line and rewrites a comma
+list into it. A comma with no identifier after it (`realizes A,`) or before it (`realizes ,B`) is
+reported as [`expected-property-value`](./diagnostics.md); a continuation target has to sit on the
+same line as its comma, so a dangling comma never absorbs the property line that follows it.
+
 ### Realizing shared infra (the `store` kind)
 
 `realizes` can also point at a **shared infra node** (`database` / `queue` / `storage`), not just a

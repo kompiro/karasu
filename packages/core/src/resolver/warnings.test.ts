@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, assert } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -2311,6 +2311,46 @@ deploy Production {
     expect(w).toHaveLength(2);
     const targets = w.map((wn) => (wn.kind === "unresolved-realizes" ? wn.params.target : null));
     expect(targets).toEqual(["Bx", "Cx"]);
+  });
+
+  // #2167 — a comma list puts several targets on one line, so a node-level or
+  // line-level range can no longer say which one failed.
+  it("points at the offending identifier within a comma-separated list", () => {
+    const krs = [
+      "system S {",
+      "  service A {}",
+      "}",
+      "deploy Production {",
+      "  oci app {",
+      '    runtime "Kubernetes"',
+      "    realizes A, Bogus",
+      "  }",
+      "}",
+    ].join("\n");
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    const loc = w[0].loc;
+    assert(loc);
+    expect(loc.start.line).toBe(7);
+    // `Bogus` sits past `A` on that line; the node starts two lines earlier.
+    expect(loc.start.column).toBe(krs.split("\n")[6].indexOf("Bogus") + 1);
+  });
+
+  it("gives each unresolved target in one list its own range", () => {
+    const krs = [
+      "system S {",
+      "  service A {}",
+      "}",
+      "deploy Production {",
+      "  oci app {",
+      '    runtime "Kubernetes"',
+      "    realizes Bx, Cx",
+      "  }",
+      "}",
+    ].join("\n");
+    const w = unresolved(krs);
+    expect(w).toHaveLength(2);
+    expect(w[0].loc?.start.column).toBeLessThan(w[1].loc?.start.column ?? 0);
   });
 
   it("warns separately per deploy block when each has its own typo", () => {

@@ -494,9 +494,26 @@ export interface FacetBlock {
 
 // ─── 物理図（変更なし） ────────────────────────────
 
+/**
+ * One `realizes` target, with the range of the identifier that named it.
+ *
+ * A deploy unit may realize several logical nodes, written either as repeated
+ * `realizes` lines (#409) or as one comma-separated line (#2167). Both forms
+ * produce this same list, so the range is what tells the two apart afterwards:
+ * it anchors at the individual identifier rather than at the `realizes` line or
+ * the node, so `unresolved-realizes` points at the one target it could not
+ * resolve even when the line names several. Anchored, not spanning — a token
+ * carries only its start, which is the parser's convention for single-token
+ * ranges throughout.
+ */
+export interface RealizesTarget {
+  id: string;
+  loc: SourceRange;
+}
+
 export interface DeployNodeProperties {
   runtime?: string;
-  realizes?: string[];
+  realizes?: RealizesTarget[];
   schedule?: string;
   image?: string;
   type?: string;

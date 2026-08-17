@@ -275,6 +275,19 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
+  it("normalizes a comma-separated realizes list to one target per line", () => {
+    // #2167 — the comma form is input sugar; repeated lines stay canonical, so
+    // formatting rewrites it and the two forms converge on identical output.
+    const commas = `deploy Prod {\n  oci monolith {\n    realizes OrderService, InventoryService\n  }\n}`;
+    const repeated = `deploy Prod {\n  oci monolith {\n    realizes OrderService\n    realizes InventoryService\n  }\n}`;
+    const result = fmt(commas);
+    expect(result).toContain(`    realizes OrderService\n    realizes InventoryService`);
+    expect(result).not.toContain(",");
+    expect(result).toBe(fmt(repeated));
+    expectIdempotent(result);
+    expectAstRoundTrip(commas);
+  });
+
   it("formats deploy node with schedule property", () => {
     const src = `deploy Prod {\n  job Cron {\n    schedule "0 * * * *"\n  }\n}`;
     const result = fmt(src);

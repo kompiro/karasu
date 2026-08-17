@@ -69,7 +69,7 @@ export function extractDeployView(
   for (const unit of deployBlock.nodes) {
     const realizes = unit.properties.realizes;
     if (realizes && realizes.length > 0) {
-      for (const serviceId of realizes) {
+      for (const { id: serviceId } of realizes) {
         if (!groupedByRealizes.has(serviceId)) {
           groupedByRealizes.set(serviceId, []);
         }

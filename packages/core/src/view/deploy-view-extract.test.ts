@@ -71,9 +71,10 @@ function makeDeployBlock(
         realizes:
           n.realizes === undefined
             ? undefined
-            : Array.isArray(n.realizes)
-              ? n.realizes
-              : [n.realizes],
+            : (Array.isArray(n.realizes) ? n.realizes : [n.realizes]).map((id) => ({
+                id,
+                loc: LOC,
+              })),
         runtime: n.runtime,
       },
       loc: LOC,
