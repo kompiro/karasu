@@ -1025,6 +1025,8 @@ list into it. A comma with no identifier after it (`realizes A,`) or before it (
 reported as [`expected-property-value`](./diagnostics.md); a continuation target has to sit on the
 same line as its comma, so a dangling comma never absorbs the property line that follows it.
 
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
+
 ### Realizing shared infra (the `store` kind)
 
 `realizes` can also point at a **shared infra node** (`database` / `queue` / `storage`), not just a

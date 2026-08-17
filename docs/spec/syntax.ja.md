@@ -955,6 +955,8 @@ deploy "production" {
 [`expected-property-value`](./diagnostics.ja.md) を報告する。継続する対象はカンマと同じ行に
 無ければならないため、末尾のカンマが次のプロパティ行を飲み込むことはない。
 
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — 同じプロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復が意味を保つこと・要素単位の診断が個々の識別子を指すことを同じ変更で固定する。
+
 ### 共有 infra を realize する（`store` kind）
 
 `realizes` は `service` / `domain` だけでなく、**共有 infra ノード**（`database` / `queue` / `storage`）も

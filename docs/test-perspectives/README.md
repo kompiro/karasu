@@ -522,3 +522,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) | テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する — 最も明るい背景 1 枚で代表させると、白で調整した色が mid-tone の surface で落ちる | styling | #2193 |
 | [TPL-2446](TPL-2446-gate-side-check-runs-over-the-whole-set.md) | マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠し、穴はフックを通らない bot PR でだけ露見する | build | #2446, #2432 |
 | [TPL-2456](TPL-2456-module-instance-scoped-identity.md) | 参照同一性で判定される共有オブジェクトは module のコピーが 2 つになった瞬間に壊れる — 判定はバージョン一致ではなく解決先が 1 つかで行い、壊れるのは自作の値を渡す経路だけなので大半のテストは green のまま残る | testing | #2456, ADR-2456 |
+| [TPL-2542](TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) | 既存プロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復・要素単位の range を同じ PR で固定する | parser | #2167, ADR-2167 |

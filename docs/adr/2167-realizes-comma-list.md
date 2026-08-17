@@ -22,6 +22,7 @@ assumptions:
   - Issue: [#2167](https://github.com/kompiro/karasu/issues/2167)（本決定の起点）、[#409](https://github.com/kompiro/karasu/issues/409)（`realizes` の複数行受理）
   - ADR: [ADR-1974](1974-boundary-declaration-syntax.md)（`boundary` の `contains` でカンマ列挙を却下した決定 — 本 ADR はこれを覆さず、適用範囲を確定させる）、[ADR-1720](1720-client-realize-owns-target.md)、[ADR-1632](1632-infra-physical-realize.md)、[ADR-1046](1046-resource-crud-operations.md)（`operations` のカンマ列挙 + 複数行併用）
   - spec: [`docs/spec/syntax.md` §Writing physical diagrams](../spec/syntax.md)
+  - TPL: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)（sugar を足すときに同じ PR で固定する 3 点）
 
 ## 背景
 
