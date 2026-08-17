@@ -85,9 +85,18 @@ const SECONDARY_TEXT_OPACITY = 0.9;
 const META_TEXT_OPACITY = 0.85;
 
 // Icon-mode text layout constants (from design doc)
-const ICON_LABEL_MAX_WIDTH = 122; // px available for title text
+const ICON_LABEL_MAX_WIDTH = 122; // px available for title text beside an icon body
 const ICON_DESC_MAX_LINES = 3;
 const ICON_DESC_LINE_HEIGHT = 14; // px
+/**
+ * Side inset for text on a card with no icon body to work around, so the
+ * budget is the card width minus this on both sides. 8 is what
+ * `ICON_DESC_MAX_WIDTH` (144) already implies for the 160px card (#2533).
+ */
+const ICON_CARD_TEXT_INSET = 8;
+/** Type sizes the ICON_*_CHAR_WIDTH estimates are calibrated for. */
+const ICON_LABEL_FONT_SIZE = 13;
+const ICON_DESC_FONT_SIZE = 11;
 
 /**
  * Sanitizes a node ID for use in a CSS fragment identifier (e.g. href="#krs-view-X").
@@ -1454,6 +1463,7 @@ function renderNode(
         displayDesc,
         hasMetaRow,
         applyShapeInsets,
+        displayMode,
       ),
     );
   }
@@ -1830,8 +1840,24 @@ function renderDefaultText(
   displayDesc: string | undefined,
   hasMetaRow: boolean,
   applyShapeInsets: boolean,
+  displayMode: DisplayMode | undefined,
 ): string[] {
   const children: string[] = [];
+  // Icon mode gives every card the same fixed width (ICON_CARD_WIDTH), so the
+  // text has to be fitted to the card rather than the other way round — the
+  // shape-mode contract, where measureNode grew the card to fit, does not
+  // apply here (#2533).
+  const iconMode = displayMode === "icon";
+  // This stack spans the whole card (no icon body reserving a column, which is
+  // what makes `renderSlottedText`'s narrower ICON_LABEL_MAX_WIDTH right
+  // there), so the budget is the card minus the same 8px inset
+  // ICON_DESC_MAX_WIDTH already implies for a 160px card.
+  const iconTextWidth = node.width - ICON_CARD_TEXT_INSET * 2;
+  // The width constants are calibrated for the icon card's own type sizes, so
+  // scale them when the style asks for a different one — otherwise a 12px
+  // label is measured as if it were 13px and gets cut while it still fits.
+  const labelScale = fontSize / ICON_LABEL_FONT_SIZE;
+  const descScale = Math.round(fontSize * RENDERED_DESC_FONT_RATIO) / ICON_DESC_FONT_SIZE;
   // Shape-aware content box (#2366 proposal F): insets are content-safe
   // boundaries, clearance per side is max(padding, inset), and the stack
   // centres on the clearance box — exactly the box measureNode reserved —
@@ -1845,12 +1871,26 @@ function renderDefaultText(
   // reserved the node height, so drawn lines always fit the card (#2366 C).
   const availableWidth = node.width - clearLeft - clearRight;
   const descLines = displayDesc
-    ? wrapToWidth(
-        displayDesc,
-        availableWidth,
-        CHAR_WIDTH * RENDERED_DESC_FONT_RATIO,
-        DESC_MAX_LINES,
-      )
+    ? iconMode
+      ? // The shape-mode content box is `width - NODE_PADDING_X * 2`, which on a
+        // 160px icon card leaves 80px and breaks a description into stubs. Use
+        // the icon card's own budget instead. Line count stays at DESC_MAX_LINES
+        // (not the slotted path's 3): this stack is centred in a fixed-height
+        // card rather than seated in a declared slot, so the vertical rhythm is
+        // unchanged and only the horizontal fit is corrected.
+        wrapToWidth(
+          displayDesc,
+          iconTextWidth,
+          ICON_DESC_CHAR_WIDTH * descScale,
+          DESC_MAX_LINES,
+          ICON_DESC_CJK_WIDTH * descScale,
+        )
+      : wrapToWidth(
+          displayDesc,
+          availableWidth,
+          CHAR_WIDTH * RENDERED_DESC_FONT_RATIO,
+          DESC_MAX_LINES,
+        )
     : [];
   const textLines = 1 + descLines.length + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
   const clearTop = Math.max(NODE_PADDING_Y, insets.top);
@@ -1871,7 +1911,16 @@ function renderDefaultText(
         "font-weight": style.fontWeight,
         "font-family": style.fontFamily,
       },
-      escapeXml(node.label),
+      escapeXml(
+        iconMode
+          ? truncateToWidth(
+              node.label,
+              iconTextWidth,
+              ICON_LABEL_CHAR_WIDTH * labelScale,
+              ICON_LABEL_CJK_WIDTH * labelScale,
+            )
+          : node.label,
+      ),
     ),
   );
 
