@@ -19,7 +19,7 @@
  * app also renders without translating — parity there is already exact.
  */
 
-import { bindTranslate, type Locale } from "@karasu-tools/i18n";
+import { bindTranslate, resolveLocaleTag, type Locale } from "@karasu-tools/i18n";
 
 /**
  * Resolved, locale-specific label strings the detail-panel `<script>`
@@ -50,12 +50,12 @@ export interface PreviewPanelLabels {
 
 /**
  * Resolve VS Code's display language to a karasu `Locale`. `vscode.env.language`
- * is a BCP-47-ish tag ("en", "en-US", "ja", "ja-jp", …); anything that is not
- * Japanese falls back to English, matching `resolveLspLocale` and the
- * tooling-output default from `docs/spec/i18n.md`.
+ * is a BCP-47-ish tag ("en", "en-US", "ja", "ja-jp", …); normalizing it is
+ * `resolveLocaleTag`'s job, shared with the app / lsp / cli consumers, so the
+ * detail panel can never disagree with an LSP hover in the same editor.
  */
 export function resolveWebviewLocale(vscodeLanguage: string): Locale {
-  return vscodeLanguage.toLowerCase().startsWith("ja") ? "ja" : "en";
+  return resolveLocaleTag(vscodeLanguage);
 }
 
 /** Pre-compute every detail-panel label for `locale`. */
