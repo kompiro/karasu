@@ -8,6 +8,8 @@ paths:
 **到達状態**: `docs/roadmap.md` の編集を終えたとき、本文の行・節が参照する
 GitHub Issue / PR はすべて OPEN であるか、未決の watch / candidate の根拠として
 引かれている。CLOSED な Issue に紐づく「完了の記録」行・節は残っていない。
+「未決の項目のみ」を持つと宣言した表は `<!-- roadmap-issue-state: open-only -->`
+を直上に置いて機械検証に預けており、marker と表の間に散文は挟まっていない。
 決定は [ADR-2218](../../docs/adr/2218-roadmap-pruning-policy.md)。
 
 この運用は「完了に ✅ を付けて残す」という従来の既定動作に**優先する**。
@@ -38,8 +40,15 @@ ADR（決定）・closed Issue（実行）・git history（原文）が既に担
 # 見出しを変えた場合: 被リンクが壊れていないか
 grep -rn "roadmap.md#" --include="*.md" docs packages | grep -v "^docs/roadmap.md"
 
+# セル単位の自己矛盾 + 「未決のみ」を宣言した表の closed Issue を機械検出する
+GH_TOKEN="$(gh auth token)" pnpm lint:roadmap-issue-state
+
 # 参照している Issue に「完了の記録」として残っているものがないか
 grep -oE "issues/[0-9]+" docs/roadmap.md | sort -u
 # ↑ で列挙された番号のうち閉じたものが watch / candidate の根拠以外で
 #   残っていたら、その行・節を削除する（gh issue view <n> --json state）
 ```
+
+marker が見るのは表の**追跡列（先頭セル）**だけで、後続セルが closed な Issue を
+lineage として引くのは従来どおり許される。marker と表の間に置いてよいのは空行だけ
+（散文を挟むと表を見失う。この orphan 状態自体も lint が error にする）。
