@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { check, collectIssueRefs, type IssueState, scopesOf } from "./roadmap-issue-state.ts";
+import {
+  check,
+  collectIssueRefs,
+  collectOpenOnlyRefs,
+  type IssueState,
+  scopesOf,
+} from "./roadmap-issue-state.ts";
+
+const OPEN_ONLY = "<!-- roadmap-issue-state: open-only -->";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
@@ -38,6 +46,39 @@ describe("collectIssueRefs", () => {
   it("ignores pull-request links — a merged PR is not drift", () => {
     const content = `PRD（[#1825](https://github.com/kompiro/karasu/pull/1825)）は未着手\n`;
     expect(collectIssueRefs(content)).toEqual([]);
+  });
+});
+
+describe("collectOpenOnlyRefs", () => {
+  it("collects the marked table's links and stops at the first non-table line", () => {
+    const content = [
+      `${OPEN_ONLY}`,
+      "",
+      "| Issue | 内容 |",
+      "| --- | --- |",
+      `| ${link(2511)} | 前提条件の組み替え |`,
+      "",
+      `散文に書いた ${link(2065)} は対象外`,
+    ].join("\n");
+
+    expect(collectOpenOnlyRefs(content)).toEqual([
+      {
+        number: 2511,
+        lineNo: 5,
+        scope: `| ${link(2511)} | 前提条件の組み替え |`,
+      },
+    ]);
+  });
+
+  it("ignores an unmarked table", () => {
+    const content = `| Issue | 内容 |\n| --- | --- |\n| ${link(2511)} | 前提条件 |\n`;
+    expect(collectOpenOnlyRefs(content)).toEqual([]);
+  });
+
+  it("matches nothing when the marker has drifted away from its table", () => {
+    // Prose between marker and table means the marker no longer names one.
+    const content = `${OPEN_ONLY}\n\n下表は未決のみ。\n\n| Issue |\n| --- |\n| ${link(2511)} |\n`;
+    expect(collectOpenOnlyRefs(content)).toEqual([]);
   });
 });
 
@@ -79,6 +120,33 @@ describe("check", () => {
     const content = `未着手 ${link(9999)}\n`;
     expect(check(content, new Map())).toEqual([]);
   });
+
+  it("flags a closed issue left in a table declared to hold undecided items only", () => {
+    // The #2511 drift verbatim: the row outlived the landing it described.
+    const content = `${OPEN_ONLY}\n\n| ${link(2511)} | 前提条件の組み替え | 閉鎖前 |\n`;
+    const problems = check(content, states({ 2511: "closed" }));
+    expect(problems).toHaveLength(1);
+    expect(problems[0].kind).toBe("error");
+    expect(problems[0].message).toContain("#2511");
+    expect(problems[0].message).toContain("undecided items only");
+  });
+
+  it("leaves the same row alone while its issue is open", () => {
+    const content = `${OPEN_ONLY}\n\n| ${link(2511)} | 前提条件の組み替え | 閉鎖前 |\n`;
+    expect(check(content, states({ 2511: "open" }))).toEqual([]);
+  });
+
+  it("reports a row indicted by two rules once", () => {
+    const content = `${OPEN_ONLY}\n\n| ${link(1832)} | 未着手の戦略テーマ ${link(1832)} |\n`;
+    const problems = check(content, states({ 1832: "closed" }));
+    expect(problems).toHaveLength(1);
+    expect(problems[0].message).toContain("but it is closed");
+  });
+
+  it("does not extend the open-only rule to a closed issue cited as provenance elsewhere", () => {
+    const content = `${OPEN_ONLY}\n\n| ${link(2065)} | 閉鎖の実施 |\n\n出典 ${link(1567)}\n`;
+    expect(check(content, states({ 2065: "open", 1567: "closed" }))).toEqual([]);
+  });
 });
 
 describe("the committed roadmap", () => {
@@ -88,5 +156,19 @@ describe("the committed roadmap", () => {
     // the network run in CI covers the rest.
     const known = states({ 1832: "closed", 1814: "closed", 1567: "closed", 638: "open" });
     expect(check(content, known)).toEqual([]);
+  });
+
+  it("keeps every open-only marker attached to a table", () => {
+    // A marker separated from its table by prose matches nothing and disables
+    // rule 3 without failing anything — so assert the attachment itself.
+    const lines = readFileSync(join(REPO_ROOT, "docs/roadmap.md"), "utf8").split("\n");
+    const markers = lines.flatMap((line, i) => (line.includes(OPEN_ONLY) ? [i] : []));
+    expect(markers.length).toBeGreaterThan(0);
+
+    for (const marker of markers) {
+      let next = marker + 1;
+      while (next < lines.length && lines[next].trim().length === 0) next++;
+      expect(lines[next]?.trim().startsWith("|")).toBe(true);
+    }
   });
 });

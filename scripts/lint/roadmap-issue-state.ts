@@ -13,17 +13,27 @@ import { resolve } from "node:path";
 // #2172 raised, ledger untouched) and interop (described as an untouched
 // strategic theme while #1832 had been closed not_planned).
 //
-// Two high-precision rules, both about a *self-contradiction inside one cell*
-// rather than about roadmap content in general — this check has no opinion on
-// what the roadmap should say, only on statements its own links refute:
+// Three high-precision rules. The first two are about a *self-contradiction
+// inside one cell* rather than about roadmap content in general — this check
+// has no opinion on what the roadmap should say, only on statements its own
+// links refute:
 //
 //   1. a cell that calls work not-yet-started must not link a CLOSED issue
 //   2. a cell that calls work not-yet-issued must not link an issue at all
+//   3. a table that declares itself open-only must not link a CLOSED issue
 //
-// Granularity is the table cell (or the whole line outside a table), not the
-// line, because a roadmap row routinely says "着地済み" about one thing while
-// linking an open issue about another — cell scope is what keeps rule 1 from
-// firing on those.
+// Granularity for rules 1 and 2 is the table cell (or the whole line outside a
+// table), not the line, because a roadmap row routinely says "着地済み" about
+// one thing while linking an open issue about another — cell scope is what
+// keeps rule 1 from firing on those.
+//
+// Rule 3 is opt-in per table via an explicit `<!-- roadmap-issue-state:
+// open-only -->` marker, and its scope is the whole table. It catches the
+// drift the ledger convention produces at the other end: a tracking table
+// whose preamble promises 「未決の項目のみ」 keeps a row after that row's issue
+// closes (#2511 survived its own landing this way). The marker is what makes
+// this checkable without inferring which issue a row is about — the section
+// states the invariant in prose, and the marker restates it for the parser.
 //
 // Deliberately NOT checked: the inverse ("open issue described as shipped")
 // and the [cache] shape of drift (trigger fired, issue raised elsewhere, row
@@ -57,6 +67,9 @@ const NOT_ISSUED = /未起票|未 ?Issue ?化|子 Issue は起こさず/;
 
 const ISSUE_LINK = new RegExp(`github\\.com/${REPO.replace("/", "\\/")}/issues/(\\d+)`, "g");
 
+/** opts the next table into rule 3 — every issue it links must still be open */
+const OPEN_ONLY_MARKER = "<!-- roadmap-issue-state: open-only -->";
+
 /**
  * Split a line into the scopes the rules apply to: one per table cell for a
  * table row, otherwise the line itself.
@@ -82,6 +95,34 @@ export function collectIssueRefs(content: string): IssueRef[] {
   return refs;
 }
 
+/**
+ * Collect the issue refs sitting in a table marked `open-only`.
+ *
+ * The marker applies to the next markdown table — the contiguous run of lines
+ * starting with `|`, separated from the marker by blank lines only — so a
+ * marker that drifts away from its table stops matching rather than silently
+ * claiming a different one.
+ */
+export function collectOpenOnlyRefs(content: string): IssueRef[] {
+  const lines = content.split("\n");
+  const refs: IssueRef[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].includes(OPEN_ONLY_MARKER)) continue;
+
+    let row = i + 1;
+    while (row < lines.length && lines[row].trim().length === 0) row++;
+
+    for (; row < lines.length && lines[row].trim().startsWith("|"); row++) {
+      for (const match of lines[row].matchAll(ISSUE_LINK)) {
+        refs.push({ number: Number(match[1]), lineNo: row + 1, scope: lines[row].trim() });
+      }
+    }
+  }
+
+  return refs;
+}
+
 function excerpt(scope: string): string {
   const flat = scope.replace(/\s+/g, " ").trim();
   return flat.length > 90 ? `${flat.slice(0, 90)}…` : flat;
@@ -90,6 +131,7 @@ function excerpt(scope: string): string {
 export function check(content: string, states: ReadonlyMap<number, IssueState>): Problem[] {
   const problems: Problem[] = [];
   const seen = new Set<string>();
+  const flagged = new Set<string>();
 
   for (const ref of collectIssueRefs(content)) {
     const state = states.get(ref.number);
@@ -98,6 +140,7 @@ export function check(content: string, states: ReadonlyMap<number, IssueState>):
       const key = `not-issued:${ref.lineNo}:${ref.number}`;
       if (!seen.has(key)) {
         seen.add(key);
+        flagged.add(`${ref.lineNo}:${ref.number}`);
         problems.push({
           kind: "error",
           message: `${ROADMAP_PATH}:${ref.lineNo} — claims the work is not issued yet but links #${ref.number}. Drop the claim or drop the link: "${excerpt(ref.scope)}"`,
@@ -107,11 +150,24 @@ export function check(content: string, states: ReadonlyMap<number, IssueState>):
     }
 
     if (state === "closed" && NOT_STARTED.test(ref.scope)) {
+      flagged.add(`${ref.lineNo}:${ref.number}`);
       problems.push({
         kind: "error",
         message: `${ROADMAP_PATH}:${ref.lineNo} — describes #${ref.number} as not started, but it is closed. Record its disposition instead: "${excerpt(ref.scope)}"`,
       });
     }
+  }
+
+  for (const ref of collectOpenOnlyRefs(content)) {
+    // A row already indicted by rule 1 or 2 needs one message, not two.
+    if (flagged.has(`${ref.lineNo}:${ref.number}`)) continue;
+    if (states.get(ref.number) !== "closed") continue;
+
+    flagged.add(`${ref.lineNo}:${ref.number}`);
+    problems.push({
+      kind: "error",
+      message: `${ROADMAP_PATH}:${ref.lineNo} — the table holds undecided items only, but #${ref.number} is closed. Drop the row; its record is the closed issue and the ADR it landed in: "${excerpt(ref.scope)}"`,
+    });
   }
 
   return problems;

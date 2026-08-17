@@ -38,8 +38,16 @@ ADR（決定）・closed Issue（実行）・git history（原文）が既に担
 # 見出しを変えた場合: 被リンクが壊れていないか
 grep -rn "roadmap.md#" --include="*.md" docs packages | grep -v "^docs/roadmap.md"
 
+# セル単位の自己矛盾 + 「未決のみ」を宣言した表の closed Issue を機械検出する
+GH_TOKEN="$(gh auth token)" pnpm lint:roadmap-issue-state
+
 # 参照している Issue に「完了の記録」として残っているものがないか
 grep -oE "issues/[0-9]+" docs/roadmap.md | sort -u
 # ↑ で列挙された番号のうち閉じたものが watch / candidate の根拠以外で
 #   残っていたら、その行・節を削除する（gh issue view <n> --json state）
 ```
+
+表が「未決の項目のみ」を持つと宣言するなら、表の直前に
+`<!-- roadmap-issue-state: open-only -->` を置く。以後その表の Issue リンクが
+closed になると上記 lint が error にする。marker と表の間に散文を挟むと検証は
+黙って無効化されるので、間に置いてよいのは空行だけ。
