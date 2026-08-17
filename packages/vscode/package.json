@@ -43,7 +43,7 @@
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
     "@karasu-tools/lsp": "workspace:*",
-    "marked": "^18.0.2",
+    "marked": "^18.0.9",
     "vscode-languageclient": "^10.1.0"
   },
   "devDependencies": {
