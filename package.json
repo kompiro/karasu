@@ -40,6 +40,7 @@
     "lint:devcontainer-variants-sync": "tsx scripts/lint/devcontainer-variants-sync.ts",
     "lint:docs-site-ci-paths-sync": "tsx scripts/lint/docs-site-ci-paths-sync.ts",
     "lint:roadmap-issue-state": "tsx scripts/lint/roadmap-issue-state.ts",
+    "lint:locale-normalization": "tsx scripts/lint/locale-normalization-single-owner.ts",
     "program:slices": "tsx scripts/program-slices.ts",
     "census:vocabulary": "tsx scripts/census/vocabulary.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages",

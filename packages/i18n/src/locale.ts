@@ -22,13 +22,23 @@ export function isLocale(value: unknown): value is Locale {
  *
  * Accepts anything a host environment reports as its display language:
  * BCP-47 tags (`"ja"`, `"ja-JP"`, `"en-US"`), POSIX locale strings
- * (`"ja_JP.UTF-8"`, `"C"`), or nothing at all. A tag that starts with `ja`
+ * (`"ja_JP.UTF-8"`, `"C"`), or nothing at all (`""` / `null` / `undefined`,
+ * which several sources return when unset). A tag that starts with `ja`
  * (case-insensitively) resolves to Japanese; everything else falls back to
  * English, the tooling-output default from `docs/spec/i18n.md`.
  *
- * Every consumer delegates here so the Japanese-matching rule has a single
- * owner: a new BCP-47 form or a third locale is one edit, not four.
+ * Every consumer delegates here, so changing how Japanese is matched is one
+ * edit rather than one per surface. Note the scope of that guarantee: this
+ * function owns the *matching rule*, not the `Locale` union — adding a third
+ * locale also touches `isLocale`, the `MAPS` dispatch in `translate.ts`, and
+ * the other sites that enumerate `"en" | "ja"`.
+ *
+ * The prefix match is inherited from the four inline copies this replaced,
+ * and it over-matches: `"jav"` (Javanese) and `"jam"` (Jamaican Creole) also
+ * resolve to Japanese. It does catch Windows' `"Japanese_Japan.932"` form,
+ * which an exact primary-subtag match would miss. Issue #2535 decides the
+ * boundary; `locale.test.ts` pins today's answer either way.
  */
-export function resolveLocaleTag(raw: string | undefined): Locale {
+export function resolveLocaleTag(raw: string | null | undefined): Locale {
   return (raw ?? "").toLowerCase().startsWith("ja") ? "ja" : "en";
 }
