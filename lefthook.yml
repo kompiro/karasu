@@ -146,8 +146,11 @@ pre-push:
       # 起こさず本表で追跡し、trigger を満たしたら Issue を起こす"), and nothing
       # re-reads a row after its trigger fires — two rows were stale when this
       # guard was added (Issue #2245). Fails when a cell calls work not-started
-      # while linking a closed issue, or claims nothing is issued while linking
-      # one. Needs the network, so it degrades to a no-op when the API is
+      # while linking a closed issue, claims nothing is issued while linking
+      # one, or lets a table marked `<!-- roadmap-issue-state: open-only -->`
+      # track a closed issue in its first column (that marker must also sit
+      # directly above its table, or it guards nothing and is reported).
+      # Needs the network, so it degrades to a no-op when the API is
       # unreachable instead of blocking a local push. `reference-docs-check.yml`
       # runs it for real — not ci.yml, whose `paths-ignore: docs/**` would skip
       # exactly the roadmap-only PRs this guards.
