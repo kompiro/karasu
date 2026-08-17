@@ -1,5 +1,6 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
+import { stitchKebabTail, type TokenCursor } from "./kebab-name.js";
 import type {
   KrsFile,
   KrsNode,
@@ -171,6 +172,13 @@ export class Parser {
   private tokens: Token[];
   private pos = 0;
   private diagnostics: Diagnostic[] = [];
+
+  /** Cursor view over the token stream for shared helpers (kebab-name.ts). */
+  private readonly cursor: TokenCursor = {
+    peek: () => this.peek(),
+    peekAt: (offset) => this.peekAt(offset),
+    advance: () => this.advance(),
+  };
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
@@ -843,23 +851,11 @@ export class Parser {
     const start = this.expect(TokenType.Capability);
     const nameToken = this.expect(TokenType.Identifier);
     // Capability identifiers are kebab-case by convention (e.g. screen-wake-lock,
-    // face-id). The lexer does not include `-` in identifier characters, so it
-    // emits the dash as a separate `Identifier("-")` token. Stitch consecutive
-    // `<ident>-<ident>` runs back together so `screen-wake-lock` parses as one
-    // capability name.
-    let name = nameToken.value;
-    let end: Token = nameToken;
-    while (
-      this.peek().type === TokenType.Identifier &&
-      this.peek().value === "-" &&
-      this.peekAt(1).type === TokenType.Identifier &&
-      this.peekAt(1).value !== "-"
-    ) {
-      this.advance(); // -
-      const next = this.advance();
-      name += `-${next.value}`;
-      end = next;
-    }
+    // face-id). Stitch the `<word> - <word>` token run back into one name —
+    // shared with tags / annotations / legend refs (#2509, kebab-name.ts).
+    const stitched = stitchKebabTail(nameToken, this.cursor);
+    const name = stitched.name;
+    let end: Token = stitched.end;
     let label: string | undefined;
     let description: string | undefined;
 
@@ -1684,14 +1680,16 @@ export class Parser {
 
     this.advance(); // [
     while (this.peek().type !== TokenType.RightBracket && this.peek().type !== TokenType.EOF) {
-      if (this.peek().type === TokenType.Identifier) {
-        tags.push(this.advance().value);
-      } else if (this.peek().type === TokenType.Comma) {
+      if (this.peek().type === TokenType.Comma) {
         this.advance();
-      } else {
-        // Accept keyword tokens as tag values too
-        tags.push(this.advance().value);
+        continue;
       }
+      // A tag value: an identifier, or a keyword token doubling as a tag name
+      // (e.g. `[table]`). A kebab-case tag arrives as a `<word> - <word>` run
+      // (the lexer emits `-` as its own token) — stitch it back into one tag
+      // (#2509) so `[my-team-internal-tag]` is one tag, not seven.
+      const first = this.advance();
+      tags.push(stitchKebabTail(first, this.cursor).name);
     }
     this.expect(TokenType.RightBracket);
     return tags;
@@ -1706,7 +1704,9 @@ export class Parser {
     while (this.peek().type === TokenType.At) {
       this.advance(); // @
       if (this.peek().type !== TokenType.Identifier) continue;
-      const name = this.advance().value;
+      // Kebab-case annotation names (`@my-team-mark`) arrive as a
+      // `<word> - <word>` token run — stitch, same as tags (#2509).
+      const { name } = stitchKebabTail(this.advance(), this.cursor);
       names.push(name);
       // Optional parameters: `@name(key: "value"[, key: "value"]*)`.
       if (this.peek().type === TokenType.LeftParen) {
@@ -2663,14 +2663,19 @@ export class Parser {
     switch (tok.type) {
       case TokenType.At: {
         this.advance();
-        const name = this.expect(TokenType.Identifier);
-        return { kind: "annotation", name: name.value };
+        const first = this.expect(TokenType.Identifier);
+        // Legend refs name the same vocabulary the model writes — stitch
+        // kebab-case runs so `[my-team]` / `@my-mark` stay referenceable
+        // (#2509).
+        const { name } = stitchKebabTail(first, this.cursor);
+        return { kind: "annotation", name };
       }
       case TokenType.LeftBracket: {
         this.advance();
-        const name = this.expect(TokenType.Identifier);
+        const first = this.expect(TokenType.Identifier);
+        const { name } = stitchKebabTail(first, this.cursor);
         this.expect(TokenType.RightBracket);
-        return { kind: "tag", name: name.value };
+        return { kind: "tag", name };
       }
       case TokenType.Dot: {
         this.advance();

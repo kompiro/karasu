@@ -10,6 +10,7 @@ import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { Parser } from "../parser/parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { resolveStyles } from "./style-resolver.js";
 import { loadAndRegisterIcons } from "../renderer/svg-icon-loader.js";
 import { clearRegistry } from "../shapes/shape-registry.js";
 import { registerBuiltinShapes } from "../renderer/shapes.js";
@@ -3503,5 +3504,37 @@ system Shop {
     // One warning per authoring site — the union in `facetIndex` would have
     // collapsed these two mistakes into one.
     expect(warnings.map((w) => w.loc?.start.line)).toEqual([3, 6]);
+  });
+});
+
+describe("hyphenated tag names warn once with the full name (#2509)", () => {
+  it("emits one tag-not-builtin naming the tag the author wrote", () => {
+    const file = Parser.parse(`
+system S {
+  client Y [my-team-internal-tag] {}
+}
+    `).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "tag-not-builtin",
+    );
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-builtin") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "Y", tag: "my-team-internal-tag" });
+  });
+
+  it("matches a .krs.style selector spelled with the same hyphenated name (TPL-1415)", () => {
+    // The .krs.style lexer folds hyphens into identifiers natively; the .krs
+    // side stitches. Both spellings must land on the same name or a tag can
+    // never be styled.
+    const file = Parser.parse(`
+system S {
+  service Pay [my-team] {}
+}
+    `).value;
+    const sheet = StyleParser.parse(`
+[my-team] { border-style: dashed; }
+    `).value;
+    const result = resolveStyles(file.systems, [sheet]);
+    expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
   });
 });
