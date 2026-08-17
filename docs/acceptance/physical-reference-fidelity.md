@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-08-17
 - **関連 Issue**: [#2078](https://github.com/kompiro/karasu/issues/2078)
-- **Related TPLs**: [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md)（cross-reference には resolver 側の検証と unresolved warning を必ず付ける）, [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md)（集計層で暗黙に畳まない）, [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md)（検証対象集合は spec が許す全 kind を列挙し、重複する集合は同期させる）
+- **Related TPLs**: [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md)（cross-reference には resolver 側の検証と unresolved warning を必ず付ける）, [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md)（id を指す参照サイトは記法と解決規則を全サイトで共有する — 本 AT はその**検証**側の適用）, [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md)（集計層で暗黙に畳まない）, [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md)（検証対象集合は spec が許す全 kind を列挙し、重複する集合は同期させる）
 - **対象ファイル**:
   - `packages/core/src/spec/infra-index.ts`（`indexDeclaredInfra` — 宣言された物理の唯一の列挙）
   - `packages/core/src/parser/reference-validation.ts`（`validatePhysicalRefs`）
@@ -21,6 +21,11 @@ type: product
 > 35 テーブル中 9 本が消えた）。一方 `table` を持たない entity は正当な状態なので診断に
 > しない。「宣言されていないものを指した」は defect、「まだ対応付けていない」は計測値、
 > という register の切り分けが本 AT の主眼。
+>
+> [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) は
+> 参照サイト間で**受理する記法**を揃えることを求める。本件はその隣、**検証**を揃える側の
+> 適用である（`resource X.Y` が受理する形は変えていない — 既存の infra-block.leaf 意味論の
+> ままで、存在検査だけを bare 形式と同じ水準に引き上げた）。
 
 ## 受け入れ条件
 
