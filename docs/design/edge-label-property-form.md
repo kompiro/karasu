@@ -49,6 +49,12 @@ node 系の位置引数 label は #2133 と #2208（[ADR-2208](../adr/2208-posit
 | 合成 label | resolver が `"N domain edges"` と `R` / `W` を AST の `label` に書く（`view-extract.ts`、`syntheticLabel: true`）。表層構文を通らない |
 | facet 所属 | `facets` は `BaseNodeFields` のプロパティで、**エッジは持てない**。`docs/spec/syntax.md:1394`「Edges do not take `facets` in v1」、`docs/spec/style.md:84`「`edge[facets=...]` は何にもマッチしない」 |
 | facet 除外の根拠 | [ADR-2065](../adr/2065-tags-and-facets.md) / [ADR-2173](../adr/2173-facet-grammar-and-model.md) / [ADR-2174](../adr/2174-facet-overlay.md) は **edge に一度も言及していない**（grep 実測 0 件）。除外の理由は記録されていない |
+| overlay とエッジ | `facetMembership` を読むのは `svg-renderer.ts` だけで、鍵は node id / layout id。`layout-edges.ts` と `edge-routing.ts` に facet の参照は 0 件。**エッジは今日 overlay の外にいる** |
+| collapse stub の先例 | `layout-types.ts:230`「Selected-facet membership **re-derived onto collapse stubs**」。畳まれた要素は畳んだ中身から所属を導出する、が既定の振る舞い |
+| エッジのクリック | 右クリックは `[data-edge-canonical-id]` を拾って `EdgeContextMenu`（`PreviewPane.tsx:112`）。左クリックは `[data-domain-edges]` を拾って `EdgeDetailPanel`（同 238、集約 domain edge のみ）。pan-drag との切り分けは `CLICK_THRESHOLD` で既に効いている |
+| node の詳細パネル | ノード本体のクリックではなく専用の `[data-info-button]`（ⓘ）で開く（`PreviewPane.tsx:255` 付近） |
+| `link` の構文 | `link "<URL>" "<label>"`。URL が先、label は任意、同一ノードに複数可（`parseLink`、`syntax.md:211`） |
+| `resource` 行の `facets` | usecase 内の `resource` 行は既に block を取り、`facets` も受理する（`parser.ts:1281`）。ただし所属先は **resource ノード**であって合成エッジではない |
 
 3 点、Issue 起票時および spec の前提と食い違ったので置き換える。
 
@@ -119,13 +125,15 @@ A -> B "calls"                                  // shorthand（従来どおり�
 A -> B [async] #orderPlaced {                   // block: label 以外を書きたいときだけ
   label "places an order"
   description "At-least-once. Retries are idempotent on orderId."
-  link "Runbook" "https://..."
+  link "https://runbook.example.com/order-placed" "Runbook"
   facets pii, pci_scope
 }
 ```
 
 - block が受け付けるのは `label` / `description` / `link` / `facets` の 4 つ。tags と `#id` は
   node と同じく block の外側に置く（`service A [external] { label "..." }` と同形）。
+- 4 つとも **node の property 構文をそのまま使う**。とくに `link` は node と同じ
+  `link "<URL>" "<label>"`（URL が先、label は任意、複数可）で、エッジ用に別形を作らない。
 - 位置引数と block の両方に `label` を書いたら error（`duplicate-edge-label`）。片方を黙って勝たせない。
 - `karasu fmt` の canonical 化の判定条件は 1 つ、**block が `label` 以外を持つか**。持たなければ
   shorthand に畳み、持てば block にまとめる（`label` も block 側へ）。
@@ -254,6 +262,33 @@ TPL-1415（内部表現の二重化）の間に落ちる観点で、`boundary` �
 つまり ADR-19 を覆すのではなく、**node とエッジは別物であるとして ADR-19 をエッジについて refine する**。
 新 ADR は ADR-19 を `supersedes` せず `depends_on` で結ぶ。
 
+### 決めたこと（レビューで確定）
+
+**1. `link` はじめ 4 プロパティとも node の構文をそのまま使う。** `link "<URL>" "<label>"`、
+URL が先、label は任意、複数可。エッジ専用の別形は作らない。表示本数の上限も設けない
+（node の詳細パネルと同じ扱いにする）。
+
+**2. `description` / `link` は左クリックで `EdgeDetailPanel` に出す。** 新しい経路を作るのではなく、
+集約 domain edge で既に動いている「エッジを左クリック → パネル」を通常エッジへ広げる。
+拾う属性が `[data-domain-edges]` から `[data-edge-canonical-id]` に増えるだけで、handler・
+パネル・anchor 計算は同じものを使う。右クリックの `EdgeContextMenu`（方向指定）は従来どおり。
+
+- **ⓘ ボタンを置く案は採らない。** node と同形にはなるが、canvas 上の印が増え、
+  label 衝突回避（#2048）と node legibility（#2366）の作業に逆行する。
+- **`EdgeContextMenu` に出す案も採らない。** 実装は最小だが、操作メニューに読み物を混ぜることになる。
+
+**3. 合成エッジの facet は「書けない、ただし集約は導出する」。**
+
+- **usecase→resource エッジは facet を持たない。** `resource` 行は既に `facets` を受理するが、
+  その所属先は resource ノードである。同じ 1 行の `facets` が文脈で node の所属にも
+  エッジの所属にもなるのは、[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) が
+  指す二重表現そのものになる。エッジ側に所属を持たせたいなら別の綴りが要るが、需要が実測されていない。
+- **集約 domain edge（`"N domain edges"`）の所属は構成エッジの和集合とする。** 表層構文は無いので
+  著者は書けないが、畳んだ中身から導出する振る舞いは collapse stub が既に持っている
+  （`layout-types.ts:230`）。ここで導出しないと、同じ overlay で「畳まれた node は光るのに
+  畳まれたエッジは光らない」という不整合が残る。和集合なので所属は 1:N のまま保たれる
+  （[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)）。
+
 ### スライス（実装ステップ）
 
 > sub-issue の起票と親 Issue の `## Slice status` 表は、本 doc の方針が承認されてから行う
@@ -265,8 +300,8 @@ parser だけ先に出すと、中間状態が parse-and-vanish になる。
 
 | スライス | 前提 | 独立に出荷できる理由 |
 | --- | --- | --- |
-| **A** block 形 + `label` / `description` / `link`（parser・AST・`duplicate-edge-label`・fmt の canonical 化・`EdgeDetailPanel` の通常エッジ対応・SVG の data 属性・spec / Reference 更新） | — | shorthand の挙動が変わらないので、block を書かないファイルの図・診断・出力は 1 バイトも動かない。facet 側に一切触れないため、B を待たずに完結している |
-| **B** エッジの `facets`（parser 受理 + overlay 対象化 + `[facets=<id>]` セレクタ + `facet-not-declared` + `FacetOverviewPanel` + spec 2 文の改訂） | A | A が block という置き場所を作って初めて成立する。B 単体で facet 側の不変条件（未選択なら byte-identical、[TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md)）を保ったまま出せる |
+| **A** block 形 + `label` / `description` / `link`（parser・AST・`duplicate-edge-label`・fmt の canonical 化・左クリックで `EdgeDetailPanel`・SVG の data 属性・spec / Reference 更新） | — | shorthand の挙動が変わらないので、block を書かないファイルの図・診断・出力は 1 バイトも動かない。facet 側に一切触れないため、B を待たずに完結している |
+| **B** エッジの `facets`（parser 受理 + overlay 対象化 + 集約エッジの和集合導出 + `[facets=<id>]` セレクタ + `facet-not-declared` + `FacetOverviewPanel` + spec 2 文の改訂） | A | A が block という置き場所を作って初めて成立する。B 単体で facet 側の不変条件（未選択なら byte-identical、[TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md)）を保ったまま出せる |
 
 ### 実装の指針
 
@@ -280,33 +315,44 @@ parser だけ先に出すと、中間状態が parse-and-vanish になる。
 3. 位置引数と block の双方に `label` があれば `duplicate-edge-label`（error）。黙って片方を勝たせない。
 4. `renderEdge` を canonical 化する。判定条件は「block が `label` 以外を持つか」の 1 つだけ。
    round-trip テストは両形式から同一 AST が出ることと、fmt が冪等であることを固定する。
-5. `EdgeDetailPanel` を通常エッジへ広げ、`description` / `link` を出す。SVG 側は
-   `data-edge-label` に倣った data 属性を足す。
+5. `EdgeDetailPanel` を通常エッジへ広げる。`PreviewPane` の左クリック分岐に
+   `[data-edge-canonical-id]` を足し、既存の `[data-domain-edges]` 分岐と同じ anchor 計算・
+   同じパネルを使う（`kind: "edge"` の payload に `description` / `links` を持たせる）。
+   SVG 側は `data-edge-label` に倣って `data-edge-description` と link 用の data 属性を足す。
+   `EdgeDetailPanel` は現在 `domainEdges` 専用の props なので、集約表示と単体表示の 2 形態を
+   受ける形に広げる。
 6. `docs/spec/syntax.md` / `.ja.md` の「Edge declaration」に block 形を追記し、
    章末の `> Related TPLs:` に proactive TPL の back-ref を置く（`.claude/rules/spec-audit.md`）。
    in-app Reference の `REFERENCE_DATA` にも載せる。
 
 **スライス B**
 
-7. `facets` をエッジの block で受理し、`facet-not-declared` を merged model 上で検証する。
-8. overlay の所属 keying を決める。`facetMembership` は node id 引きだが、エッジの `canonicalId` は
-   base 衝突時に `undefined` になりうる（[ADR-1096](../adr/1096-edge-id-selector.md)）。id 引きの map に寄せず、
-   layout が持つエッジ実体から所属を解決する方針を第一候補にする。
-9. `docs/spec/syntax.md` の「Edges do not take `facets` in v1」と
-   `docs/spec/style.md` の「`edge[facets=...]` は何にもマッチしない」を改訂する。
-   どちらも「受理形が増える」方向なので追加的変更だが、spec 文の書き換えなので同 PR で行う。
+7. `facets` をエッジの block で受理し、`facet-not-declared` を merged model 上で検証する
+   （[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) / [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)）。
+8. エッジを overlay の対象にする。今日 `facetMembership` を読むのは `svg-renderer.ts` だけで
+   `layout-edges.ts` / `edge-routing.ts` に facet の参照は無いので、ここは新規追加になる。
+   所属の keying は id 引きの map に寄せない。エッジの `canonicalId` は base 衝突時に
+   `undefined` になりうる（[ADR-1096](../adr/1096-edge-id-selector.md)）ため、layout が持つエッジ実体から解決する。
+9. 集約 domain edge の所属を構成エッジの和集合として導出する。collapse stub の
+   re-derive（`layout-types.ts:230`）と同じ経路に載せ、両者が同じ規則で動くことをテストで固定する。
+10. `docs/spec/syntax.md` の「Edges do not take `facets` in v1」と
+    `docs/spec/style.md` の「`edge[facets=...]` は何にもマッチしない」を改訂する。
+    どちらも「受理形が増える」方向なので追加的変更だが、spec 文の書き換えなので同 PR で行う。
 
 **共通**
 
-10. AT: `docs/acceptance/` に新規ファイル。TC は次を含める。
+11. AT: `docs/acceptance/` に新規ファイル。TC は次を含める。
     - shorthand と block が同一の AST・同一の SVG を生む
     - `karasu fmt` が label のみの block を shorthand に畳み、`description` を持つ block はそのまま保つ
     - 位置引数 + block の二重 label が `duplicate-edge-label` になる
     - `#id` と tags が block と共存する（`A -> B [async] #id { ... }`）
     - block を含む `.krs` が round-trip する
+    - `description` を持つエッジを左クリックすると `EdgeDetailPanel` が開き、集約 domain edge の
+      左クリック挙動は従来のまま変わらない
     - エッジに `facets` を書いて overlay で選択すると、そのエッジが highlight される
+    - 構成エッジに facet を持つ集約 domain edge が、service ビューでも highlight される
     - facet を 1 つも選ばなければ、`facets` 付きエッジを含むファイルの SVG が従来と byte-identical
-11. ADR 昇格: 実装完了後に `docs/adr/2209-edge-label-property-form.md` として昇格し、
+12. ADR 昇格: 実装完了後に `docs/adr/2209-edge-label-property-form.md` として昇格し、
     本 Design Doc は同 PR で削除する。
 
 ### 影響範囲・マイグレーション
@@ -324,13 +370,11 @@ parser だけ先に出すと、中間状態が parse-and-vanish になる。
   `examples/en/feature-samples/tag-facet-registers.krs` に寄せる。
 - **changeset**: `@karasu-tools/core` の minor（言語 v1.x の追加的変更）。言語版の遷移は無い。
 
-## 未解決の問い
+## 意図的に決めないこと
 
-- **`link` の形（`link "ラベル" "URL"`）をエッジでもそのまま使うか。** node 側の `link` 構文に
-  合わせる前提で書いたが、エッジで複数 link を許すかは未検討。node は複数持てる（`properties.links`）ので
-  揃えるのが素直だが、エッジの詳細パネルに何本まで出すかは B の UX 次第。
-- **エッジ選択の UX。** `EdgeDetailPanel` を通常エッジへ広げるにあたり、クリック判定と
-  `EdgeContextMenu` との関係を詰める必要がある。スライス A の実装時に決める。
-- **合成エッジの facet 所属。** usecase→resource や集約 domain edge は表層構文を持たないので
-  `facets` を書けない。書けないままでよいか（端点の node の所属から導出しない）は
-  スライス B で決める。第一候補は「書けないまま」。導出は所属の場所を偽ることになる。
+- **エッジの protocol / cardinality を語彙として増やすこと。** roadmap gap D の据え置きは動かさない。
+  本 doc が作るのは置き場所だけで、そこに何を書くかは散文（`description`）に留める。
+- **usecase→resource エッジに facet を持たせる綴り。** 上記のとおり今回は持たせないと決めたが、
+  「エッジ自身が概念に属する」需要が resource アクセスでも実測されたら、その時点で別途検討する。
+- **`.krs.style` からエッジの facet を装飾すること。** `[facets=<id>]` セレクタがエッジにマッチする
+  ようになるのはスライス B の範囲だが、エッジ向けに新しい装飾プロパティを足すかは別問題として残す。
