@@ -528,6 +528,17 @@ export type Translations = {
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
   "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;
   "diagnostic.ownsTargetNotFound.message": (params: { ownedId: string }) => string;
+  "diagnostic.unresolvedResourceRef.message": (params: {
+    infraId: string;
+    subId: string;
+    missing: "block" | "leaf";
+  }) => string;
+  "diagnostic.unresolvedTableRef.message": (params: {
+    entityId: string;
+    infraId: string;
+    subId: string;
+    missing: "block" | "leaf";
+  }) => string;
   "diagnostic.duplicateEdgeId.message": (params: { authorId: string }) => string;
   "diagnostic.ambiguousEdgeBase.message": (params: {
     fromId: string;

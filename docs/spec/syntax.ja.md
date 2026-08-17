@@ -1602,6 +1602,10 @@ edge `A -> B` の片方の endpoint が解決できない（merged モデルに 
 
 `realizes` / `owns` / `handles` などの cross-reference にも同じ規則を適用する — source ノードは残り、relation のみ警告と共に消える。
 
+**物理**の dot 記法参照も同様である。usecase の `resource <Infra>.<Leaf>` と entity の `table <Infra>.<Leaf>` は、`database` / `queue` / `storage` ブロックと、そのブロックが宣言する leaf を指していなければならない。指していないときは usecase / entity 自体は残り、参照が報告される（`unresolved-resource-ref` / `unresolved-table-ref`。どちらが欠けているかをメッセージに含む）。例外は 2 つ — `[external]` タグ付きの resource / entity は意図的にモデル外を指すので対象外、そして `owns` / `contains` と同じく、import が未解決のドキュメントではそもそも判定しない（共有 `database` ブロックの正準の置き場は §S4.5 の import 先 infra ファイルであるため）。
+
+`table` 対応付けを **持たない** entity はこれとは別の話で、ここでは報告しない。物理層より先に（あるいは物理層なしで）論理側をモデル化するのは支持された状態である。物理層が宣言どおりに表現されているかは *計測* の問題であり、診断ではなく `karasu coverage` が答える。
+
 ### S4.5. 同名 infra (`database` / `queue` / `storage`) の再オープン
 
 S3 と同じ規則を `database` / `queue` / `storage` にも適用する（複数ファイルで同じ id を宣言した場合、または 1 つの import グラフ内で複数の `system` ブロックに同じ infra id が現れた場合）:
@@ -1661,6 +1665,7 @@ system Blog {
 > - [TPL-2168](../test-perspectives/TPL-2168-system-reopen-merge.md) — 再オープン `system` は children を union、property は root entry が勝つ（S3）
 > - [TPL-2169](../test-perspectives/TPL-2169-deploy-org-wildcard-propagation.md) — `deploy` / `organization` も whole-file import で伝搬する（S4）
 > - [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — 未解決 edge endpoint は残存ノードを drop しない（S6）
+> - [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — 物理の `resource` / `table` dot 記法を含め、すべての cross-reference 形式に resolver 側の検証と unresolved warning がある（S6）
 > - [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md) — 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断（S4.5）
 
 ---

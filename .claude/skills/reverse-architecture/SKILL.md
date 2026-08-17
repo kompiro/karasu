@@ -153,14 +153,33 @@ launching the fan-out rather than discovering the bill afterwards.
    happened to reference. Real run (spike #1991): the merged `index.krs` had no
    `database` block at all, and **9 of 35 real tables vanished** from the model
    purely for lack of a referent.
+   **Reached state**: `karasu render index.krs` prints no
+   `unresolved-resource-ref` / `unresolved-table-ref` warning. Those fire when a
+   `resource Db.T` or `table Db.T` names an infra block or leaf nothing
+   declares, and a dropped `database` block makes every reference to it dangle
+   at once — so an empty run of that grep is the check that step 5 happened.
+   The message says whether the *block* or only the *leaf* is missing; a wall of
+   "no database / queue / storage block declares" means you skipped this step.
 6. **Verify entity↔table mappings survived the fan-out.** For every table a
    domain touches via `resource <Db>.<Table>`, the owning entity must carry the
    matching `table <Db>.<Table>` line. Deep-dive agents routinely write the
    entity and omit the mapping — the pathological output is an empty
-   `entity Goal {}`. Flag empty entities and missing mappings, and repair them
-   before Phase 4. Both this and step 5 are mechanical and deterministic: they
-   belong on the structural side of the split (ADR-1895), not to agent
-   judgement.
+   `entity Goal {}`.
+
+   **Reached state**: `karasu coverage index.krs --format json` reports
+   `physical.infra[].unmappedButReferenced` empty for every block. Read the
+   three fields it gives you as three different repairs:
+
+   | Field | What it means | Repair |
+   | --- | --- | --- |
+   | `unmappedButReferenced` | a usecase touches the leaf, no entity maps it | the entity exists — add its `table` line. Mechanical |
+   | `unreferenced` | nothing maps *or* touches the leaf | that slice was never dug — re-dive the owning domain (Phase 4) |
+   | `tablelessEntities` | the entity carries no mapping at all | judgement: a read-model projection / KV-backed aggregate / computed view is legitimately tableless. Record which, do not invent a table |
+
+   Steps 5 and 6 are mechanical and deterministic, which is why they are
+   measured by the CLI rather than asserted by an agent (the structural side of
+   the split — ADR-1895). **A tableless entity is never a diagnostic**; only a
+   reference to something undeclared is.
 7. **Cross-domain entity relations — one roster pass.** A per-domain subagent
    only knows its own entity ids, so cross-domain foreign keys risk id mismatch.
    After merging, run **one** relations agent over the *full entity roster*
@@ -204,16 +223,24 @@ launching the fan-out rather than discovering the bill afterwards.
 ### Phase 4: Validate & repair loop
 
 1. Run `karasu coverage index.krs --format json` to **detect thin domains
-   quantitatively** (`thin: true`).
+   quantitatively** (`thin: true`) and read the `physical` section for what the
+   merge lost (Phase 3 step 6). The two halves answer different questions —
+   `domains[].thin` asks whether a *logical* slice was dug deeply enough,
+   `physical` asks whether the *declared* physical layer is represented. A model
+   can pass one and fail the other.
 2. Run `karasu render index.krs` to confirm the model **draws** (failure = a
-   structural break).
+   structural break) and to catch dangling physical references
+   (`unresolved-resource-ref` / `unresolved-table-ref`). Both are warnings, so
+   `render` still exits 0 — **grep the output, do not trust the exit code**.
 3. For each thin domain, re-dive it:
    - `karasu subtree <DomainId> index.krs` extracts the current slice to hand to
      a subagent for a deeper pass;
    - merge the additions and re-run `coverage`.
-4. **Stop condition**: every domain is `thin: false` (coverage target reached).
-   If a domain stays thin after a few rounds, note it as "the source is
-   genuinely thin here" rather than padding it.
+4. **Stop condition**: every domain is `thin: false`, and every infra block
+   reports an empty `unmappedButReferenced`. If a domain stays thin after a few
+   rounds, note it as "the source is genuinely thin here" rather than padding
+   it; the same goes for a leaf that stays in `unreferenced` because nothing in
+   the source actually uses that table.
 5. **Re-measure after any enrichment.** `coverage` scores are *relative* across
    domains, so enriching one dimension (e.g. adding entity relations) raises the
    normalization baseline and can newly flag a domain that has none of that
@@ -269,7 +296,11 @@ launching the fan-out rather than discovering the bill afterwards.
   keep `operations` verbs **comma-separated** — these are the two mechanical
   slips that real runs hit most.
 - The merge is where *physical* fidelity is lost: infra declaration blocks and
-  `table` mappings do not survive on their own (Phase 3 steps 5-6).
+  `table` mappings do not survive on their own (Phase 3 steps 5-6). Both losses
+  are now measurable rather than eyeballed — `render` warns on a reference to
+  something undeclared, `coverage` counts what the declared physical layer got
+  represented by. Neither is optional; a merged model that renders clean can
+  still be missing a third of its tables.
 - **This skill hardcodes CLI command names, and the CLI moves.** Two instances of
   skill-vs-CLI drift have already shipped (`lint-style` #2084, `--from wrangler`
   #2090) and neither was visible to CI. Before trusting any command written here,

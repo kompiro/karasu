@@ -102,4 +102,53 @@ describe("coverage CLI", () => {
     const content = await readFile(outPath, "utf-8");
     expect(content).toContain("| domain | service |");
   });
+
+  // Physical-layer recovery (#2078).
+  it("adds a physical table naming the unrecovered leaves", async () => {
+    await coverage(krsPath, {});
+    const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(out).toContain(
+      "| infra | kind | leaves | mapped | referenced | unmapped-but-referenced | unreferenced |",
+    );
+    const row = out.split("\n").find((l: string) => l.startsWith("| OrderDB "))!;
+    // OrderEntity carries no `table` line, so the referenced table is unmapped.
+    expect(row).toContain("| database | 1 | 0 | 1 | OrderTable | — |");
+    expect(out).toContain("1 entity(ies) with no table mapping: OrderEntity (Order)");
+  });
+
+  it("omits the physical section for a model with no infra declarations", async () => {
+    // An empty physical table would read as "measured, found nothing" when the
+    // truth is that there is no physical layer to measure.
+    const logical = join(tmpDir, "logical.krs");
+    await writeFile(logical, `system S { service Svc { domain D { usecase U } } }`, "utf-8");
+    await coverage(logical, {});
+    const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(out).toContain("| domain | service |");
+    expect(out).not.toContain("| infra | kind |");
+    expect(out).not.toContain("no table mapping");
+  });
+
+  it("carries the physical section through --format json", async () => {
+    await coverage(krsPath, { format: "json" });
+    const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    const parsed = JSON.parse(out);
+    expect(parsed.physical.infra).toEqual([
+      {
+        infraId: "OrderDB",
+        kind: "database",
+        leaves: 1,
+        mappedByEntity: 0,
+        referencedByResource: 1,
+        unmappedButReferenced: ["OrderTable"],
+        unreferenced: [],
+      },
+    ]);
+    expect(parsed.physical.tablelessEntities).toEqual([
+      { entityId: "OrderEntity", domainId: "Order" },
+    ]);
+    // The repair loop reads these two lists to decide what to re-dive, so the
+    // domain half of the report must keep its existing shape.
+    expect(parsed.domains).toHaveLength(2);
+    expect(parsed.threshold).toBeGreaterThan(0);
+  });
 });

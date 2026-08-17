@@ -48,6 +48,7 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
   buildBoundaryMembership,
@@ -393,6 +394,10 @@ export class Parser {
     // Scoped boundaries resolve against direct children, so they are checked
     // per scope rather than against the whole model (#2036).
     this.diagnostics.push(...validateScopedContainsReferences(file));
+    // A `resource` / `table` naming an infra block or leaf nothing declares
+    // (#2078). Suppressed and re-derived by the ImportResolver like the checks
+    // above, since the block is canonically declared in an imported infra file.
+    this.diagnostics.push(...validatePhysicalRefs(file));
     // Declaration uniqueness is a property of the *merged* facet namespace: two
     // files may each declare `facet pii` with different metadata, and only the
     // merge sees that. The ImportResolver suppresses this code per file and

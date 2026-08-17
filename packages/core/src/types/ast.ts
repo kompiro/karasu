@@ -859,6 +859,19 @@ export interface DiagnosticParamsByCode {
   // constructs keep it as the label.
   "positional-label-removed": { construct: string };
   "contains-target-not-found": { memberId: string };
+  // A dot-notation physical reference names an infra block / leaf that the
+  // merged model does not declare (#2078). `missing` distinguishes the two
+  // causes because they need opposite repairs: "block" means the whole
+  // `database` / `queue` / `storage` declaration is absent (drop the reference,
+  // or restore the block), "leaf" means the block is there but the
+  // `table` / `queue-item` / `bucket` is not.
+  "unresolved-resource-ref": { infraId: string; subId: string; missing: "block" | "leaf" };
+  "unresolved-table-ref": {
+    entityId: string;
+    infraId: string;
+    subId: string;
+    missing: "block" | "leaf";
+  };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };
   "duplicate-node-id-parent": { nodeId: string };

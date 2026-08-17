@@ -24,12 +24,15 @@
 import type {
   Diagnostic,
   BoundaryBlock,
+  EntityNode,
   FacetBlock,
   KrsFile,
   KrsNode,
+  ResourceNode,
   TeamNode,
 } from "../types/ast.js";
 import { boundaryScopeKey } from "../types/ast.js";
+import { indexDeclaredInfra } from "../spec/infra-index.js";
 
 /**
  * Every id that names a declared node, at any depth, from every top-level bucket.
@@ -216,6 +219,101 @@ export function validateScopedContainsReferences(file: KrsFile): Diagnostic[] {
   };
 
   for (const root of roots) walk(root);
+  return diagnostics;
+}
+
+/**
+ * Existence check for the two **physical** dot-notation references: a usecase's
+ * `resource <Infra>.<Leaf>` and an entity's `table <Infra>.<Leaf>` (#2078).
+ *
+ * These were the last cross-reference forms with no resolver-side validation
+ * (TPL-907). The asymmetry was the tell: a bare `resource Order` that resolves
+ * to nothing draws `unassigned-resource`, while the dotted form was taken as
+ * resolved on sight — `buildEntityResolver` returns `resource.ref` verbatim
+ * without asking whether anything declares it. So a model could reference 35
+ * tables of a `database` block that had been deleted outright and render clean,
+ * which is exactly how a reverse-engineering merge silently dropped its whole
+ * physical layer (#1991).
+ *
+ * Import-coupled like its neighbours: the block may be declared in a file this
+ * one imports — the canonical layout for shared infra is a dedicated file every
+ * slice imports (syntax spec §S4.5) — so a single document cannot decide it.
+ *
+ * **There is deliberately no "no infra declared at all, so say nothing" guard**,
+ * unlike `validateOwnsReferences` above. For `owns` an empty model means an
+ * org-only file whose targets live elsewhere; here it is the primary failure
+ * being detected — the merged model that lost its `database` block declares no
+ * infra at all, and a guard would suppress precisely the case this exists for.
+ */
+export function validatePhysicalRefs(file: KrsFile): Diagnostic[] {
+  if (file.nodeImports.length > 0) return [];
+
+  const infra = indexDeclaredInfra([
+    ...file.systems,
+    ...file.services,
+    ...file.clients,
+    ...file.domains,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ]);
+
+  const diagnostics: Diagnostic[] = [];
+
+  /** Which half is missing decides the repair, so it is reported, not implied. */
+  const missingPart = (infraId: string, subId: string): "block" | "leaf" | undefined => {
+    const block = infra.get(infraId);
+    if (block === undefined) return "block";
+    if (!block.leaves.has(subId)) return "leaf";
+    return undefined;
+  };
+
+  const walk = (node: KrsNode): void => {
+    if (node.kind === "resource") {
+      const res = node as ResourceNode;
+      // `[external]` marks a store deliberately left outside the model — the
+      // same escape hatch `unassigned-resource` honours.
+      if (res.ref && !res.tags.includes("external")) {
+        const missing = missingPart(res.ref.parent, res.ref.child);
+        if (missing) {
+          diagnostics.push({
+            severity: "warning",
+            code: "unresolved-resource-ref",
+            params: { infraId: res.ref.parent, subId: res.ref.child, missing },
+            loc: res.loc,
+          });
+        }
+      }
+    } else if (node.kind === "entity") {
+      const entity = node as EntityNode;
+      if (entity.tableRef && !entity.tags.includes("external")) {
+        const missing = missingPart(entity.tableRef.parent, entity.tableRef.child);
+        if (missing) {
+          diagnostics.push({
+            severity: "warning",
+            code: "unresolved-table-ref",
+            params: {
+              entityId: entity.id,
+              infraId: entity.tableRef.parent,
+              subId: entity.tableRef.child,
+              missing,
+            },
+            loc: entity.loc,
+          });
+        }
+      }
+    }
+    for (const child of node.children) walk(child);
+  };
+
+  for (const root of [
+    ...file.systems,
+    ...file.services,
+    ...file.clients,
+    ...file.domains,
+  ] as readonly KrsNode[]) {
+    walk(root);
+  }
   return diagnostics;
 }
 
