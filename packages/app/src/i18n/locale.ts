@@ -4,12 +4,13 @@
  * Resolution order (per ADR-34):
  *   localStorage['karasu-locale'] → navigator.language → 'en' fallback
  *
- * The `Locale` type and `isLocale` guard now live in `@karasu-tools/i18n`,
- * shared with the lsp / cli. This module keeps only the browser-specific
- * resolution (localStorage + navigator).
+ * The `Locale` type, the `isLocale` guard, and the language-tag normalization
+ * (`resolveLocaleTag`) live in `@karasu-tools/i18n`, shared with the lsp / cli /
+ * vscode. This module keeps only the browser-specific sources (localStorage +
+ * navigator).
  */
 
-import { isLocale, type Locale } from "@karasu-tools/i18n";
+import { isLocale, resolveLocaleTag, type Locale } from "@karasu-tools/i18n";
 
 export type { Locale };
 
@@ -27,8 +28,7 @@ function readStoredLocale(): Locale | null {
 
 function detectBrowserLocale(): Locale {
   if (typeof navigator === "undefined") return "en";
-  const lang = navigator.language ?? "";
-  return lang.toLowerCase().startsWith("ja") ? "ja" : "en";
+  return resolveLocaleTag(navigator.language);
 }
 
 export function resolveLocale(): Locale {

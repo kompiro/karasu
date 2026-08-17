@@ -7,13 +7,7 @@ import { groupLabelsFor } from "./group-labels.js";
 import { withChildAnchoredEdges } from "../view/view-extract.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
-import {
-  sortByBarycenter,
-  bucketByColumn,
-  applyEdgeDirectionWithinLayer,
-  gridColumnCount,
-  wrapLayerIntoRows,
-} from "./layer-layout-logics.js";
+import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   CONTAINER_PADDING,
@@ -276,10 +270,9 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   // Otherwise fall back to topological sort, which is what drill-down views
   // (services, domains) need to lay out their internal structure.
   //
-  // Note: this single-system path doesn't currently apply a barycenter sort —
-  // declaration order falls out of the Map iteration. If barycenter is added
-  // here in the future, gate it on `forcedLayers === null` (Q11 of the design
-  // doc requires declaration order within forced layers).
+  // `forcedLayers` also gates the within-layer ordering downstream: the
+  // barycenter pass runs only where it is null, because Q11 of the design doc
+  // requires declaration order within forced layers.
   const { layers, forcedLayers } = computeLayers(allNodes, allEdges, groupedLayers, edgeDirections);
 
   // Position nodes inside the container area
@@ -300,24 +293,6 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
 
   const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
-  // System view: bucket by column hint while preserving declaration order
-  // within each bucket. The single-system path does not run a barycenter
-  // pass (Q11 of the layout design doc), so the input order *is* the
-  // declaration order, and bucketing is the only x-axis intervention.
-  const orderedByLayer = new Map<number, string[]>();
-  for (const layerIdx of sortedLayers) {
-    const nodesInLayer = nodesByLayer.get(layerIdx)!;
-    const bucketed =
-      forcedLayers !== null && layoutHints && layoutHints.size > 0
-        ? bucketByColumn(
-            nodesInLayer.map((id) => ({ id })),
-            layoutHints,
-          ).map((item) => item.id)
-        : nodesInLayer;
-    const ordered = applyEdgeDirectionWithinLayer(bucketed, allEdges, edgeDirections, layers);
-    orderedByLayer.set(layerIdx, ordered);
-  }
-
   // `grid-columns` hint lives on the focused container and governs how its
   // direct children wrap. Absent a hint, the column count auto-balances
   // (see `gridColumnCount`).
@@ -325,70 +300,50 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     ? layoutHints?.get(viewSlice.containerNode.id)?.gridColumns
     : undefined;
 
-  // Compute initial positions (will be offset later for container nesting).
-  // y is fixed per sub-row (max bottom of previously-placed rows) so
-  // heterogeneous-height nodes share a top baseline. Without this,
-  // `y = layerIdx * (dims.height + LAYER_GAP)` would push the *tallest*
-  // node in a row down — a service with a team chip would dive below
-  // its rowmate cylinders / clouds. Mirrors the multi-system path.
-  //
-  // Within each layer, many siblings wrap into a balanced grid
-  // (`gridColumnCount` columns, or the author's `grid-columns`), bounded by
-  // `MAX_LAYER_WIDTH`, so a wide sibling set does not sprawl into one
-  // unreadable row that forces a zoom-out (scoped glance, resolution axis).
   // Group-by mode: reserve a vertical gap above each group's first row for its
   // boundary-frame title (keyed by the group's top layer). No-op when ungrouped.
   const groupStartLayer = groupStartLayersOf(groupBands);
 
-  let layerBaselineY = NODE_GAP;
-  for (const layerIdx of sortedLayers) {
-    if (groupStartLayer.has(layerIdx)) layerBaselineY += GROUP_FRAME_TITLE_GAP;
-    const nodesInLayer = orderedByLayer.get(layerIdx)!;
-    const dimsById = new Map<string, { width: number; height: number }>();
-    for (const nid of nodesInLayer) {
+  // Order, wrap and stack the layers. Shared with the multi-system path
+  // (#2514) so the two cannot drift on the wrap threshold or on whether
+  // crossings get minimised.
+  const placed = placeNodesInLayers({
+    sortedLayers,
+    nodesByLayer,
+    edges: allEdges,
+    edgeDirections,
+    layers,
+    forcedLayers,
+    layoutHints,
+    gridHint: containerGridHint,
+    groupStartLayer,
+    gaps: {
+      layerGap: LAYER_GAP,
+      nodeGap: NODE_GAP,
+      maxLayerWidth: MAX_LAYER_WIDTH,
+      groupTitleGap: GROUP_FRAME_TITLE_GAP,
+    },
+    measure: (nid) => {
       const krsNode = nodeMap.get(nid)!;
-      dimsById.set(nid, measureNode(krsNode, ownerOf(krsNode.kind, nid), measureCtx));
-    }
-    const columnCount = gridColumnCount(nodesInLayer.length, containerGridHint);
-    const rows = wrapLayerIntoRows(
-      nodesInLayer,
-      (nid) => dimsById.get(nid)!.width,
-      columnCount,
-      MAX_LAYER_WIDTH,
-      NODE_GAP,
+      return measureNode(krsNode, ownerOf(krsNode.kind, nid), measureCtx);
+    },
+  });
+  childMaxWidth = placed.childMaxWidth;
+  childMaxHeight = placed.childMaxHeight;
+  for (const [nid, box] of placed.placements) {
+    const krsNode = nodeMap.get(nid)!;
+    layoutNodes.set(
+      nid,
+      makeLayoutNode(krsNode, nid, {
+        label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+        annotations: effectiveAnnotations(krsNode),
+        owner: ownerOf(krsNode.kind, nid),
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+      }),
     );
-
-    let rowY = layerBaselineY;
-    let layerBottom = layerBaselineY;
-    for (const row of rows) {
-      let xOffset = NODE_GAP;
-      let rowMaxHeight = 0;
-      for (const nid of row) {
-        const krsNode = nodeMap.get(nid)!;
-        const dims = dimsById.get(nid)!;
-
-        layoutNodes.set(
-          nid,
-          makeLayoutNode(krsNode, nid, {
-            label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-            annotations: effectiveAnnotations(krsNode),
-            owner: ownerOf(krsNode.kind, nid),
-            x: xOffset,
-            y: rowY,
-            width: dims.width,
-            height: dims.height,
-          }),
-        );
-
-        xOffset += dims.width + NODE_GAP;
-        childMaxWidth = Math.max(childMaxWidth, xOffset);
-        rowMaxHeight = Math.max(rowMaxHeight, dims.height);
-      }
-      layerBottom = rowY + rowMaxHeight;
-      childMaxHeight = Math.max(childMaxHeight, layerBottom + NODE_GAP);
-      rowY = layerBottom + NODE_GAP; // sub-row gap within the layer
-    }
-    layerBaselineY = layerBottom + LAYER_GAP;
   }
 
   // Center each sub-row within the container so the grid reads as centered
@@ -673,13 +628,14 @@ function layoutMultipleSystems(
   // boundaryMembership); `ownerIndex` stays the per-card team badge source
   // regardless of axis (mirrors layout()).
   const ownerOf = makeOwnerResolver(ownerIndex, teamLabels);
-  // Multi-system view places only services (one nesting level), and a system's
-  // annotations do not propagate to its services, so no inheritance is needed.
-  // This raw resolver feeds LayoutNode.annotations only — never assemble a
-  // second MeasureContext from it: measurement stays on layoutInner's
-  // measureCtx (inheritance-based), and that split is the #2515-tracked
-  // divergence, not a free choice.
-  const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
+  // One annotation resolver for both the cards and their measurement (#2515).
+  // This path used to keep a raw `n.annotations` resolver of its own next to
+  // the inheritance-based one measureNode reads, which is two sources of truth
+  // for the same question. They agree on every node placed here — inheritance
+  // starts at `service` and flows to its descendants, and the root view places
+  // the services themselves — so adopting the shared one changes nothing today
+  // and stays correct if this path ever places a service's children.
+  const { effectiveAnnotations } = measureCtx;
   const allLayoutNodes = new Map<string, LayoutNode>();
   const allContainers: ContainerRect[] = [];
   const allEdges: LayoutEdge[] = [];
@@ -795,108 +751,49 @@ function layoutMultipleSystems(
 
     const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
-    // Build predecessors map for barycenter heuristic
-    const predecessorsMap = new Map<string, string[]>();
-    for (const id of nodeIds) predecessorsMap.set(id, []);
-    for (const edge of workEdges) {
-      if (idSet.has(edge.from) && idSet.has(edge.to)) {
-        predecessorsMap.get(edge.to)!.push(edge.from);
-      }
-    }
-
-    // Tracks the X-center of each placed node (used by barycenter sort for subsequent layers)
-    const nodeCenterX = new Map<string, number>();
+    // Order, wrap and stack this system's layers with the same helper the
+    // single-system path uses (#2514).
+    const placed = placeNodesInLayers({
+      sortedLayers,
+      nodesByLayer,
+      edges: workEdges,
+      edgeDirections,
+      layers,
+      forcedLayers,
+      layoutHints,
+      // `grid-columns` on this system governs how its direct children wrap.
+      gridHint: layoutHints?.get(sys.id)?.gridColumns,
+      groupStartLayer,
+      gaps: {
+        layerGap: LAYER_GAP,
+        nodeGap: NODE_GAP,
+        maxLayerWidth: MAX_LAYER_WIDTH,
+        groupTitleGap: GROUP_FRAME_TITLE_GAP,
+      },
+      measure: (nid) => {
+        const krsNode = nodeMap.get(nid)!;
+        return measureNode(krsNode, ownerOf(krsNode.kind, nid), measureCtx);
+      },
+    });
 
     const localNodes = new Map<string, LayoutNode>();
-    let childMaxWidth = 0;
-    let childMaxHeight = 0;
-
-    // `grid-columns` on this system governs how its direct children wrap.
-    const sysGridHint = layoutHints?.get(sys.id)?.gridColumns;
-
-    for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
-      const layerIdx = sortedLayers[layerOrder];
-      const rawLayer = nodesByLayer.get(layerIdx)!.map((id) => ({ id }));
-      // Sort by barycenter for all layers after the first to minimize edge
-      // crossings. Skip when the forced system layout is in effect — Q11 of
-      // the design doc requires preserving declaration order within each layer.
-      const innerSorted =
-        forcedLayers !== null || layerOrder === 0
-          ? rawLayer
-          : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
-      const bucketed =
-        forcedLayers !== null && layoutHints && layoutHints.size > 0
-          ? bucketByColumn(innerSorted, layoutHints)
-          : innerSorted;
-      const sortedLayer = applyEdgeDirectionWithinLayer(
-        bucketed.map((item) => item.id),
-        workEdges,
-        edgeDirections,
-        layers,
-      ).map((id) => ({ id }));
-
-      // Place nodes with sub-row wrapping. A new sub-row starts when either
-      // the balanced-grid column count is reached or the layer width would
-      // exceed MAX_LAYER_WIDTH (whichever comes first).
-      const columnCount = gridColumnCount(sortedLayer.length, sysGridHint);
-      let colInRow = 0;
-      let currentX = NODE_GAP;
-      let subRowY = layerOrder === 0 ? NODE_GAP : 0; // will be computed below
-      let subRowMaxHeight = 0;
-
-      // Compute the Y start for this layer based on the previous layer's bottom
-      if (layerOrder > 0) {
-        // Find the max Y + height among all nodes placed in earlier layers
-        let prevBottom = 0;
-        for (const [, n] of localNodes) {
-          prevBottom = Math.max(prevBottom, n.y + n.height + LAYER_GAP);
-        }
-        subRowY = prevBottom;
-      } else {
-        subRowY = NODE_GAP;
-      }
-      // Reserve room above a group band's first layer for its frame title.
-      if (groupStartLayer.has(layerIdx)) subRowY += GROUP_FRAME_TITLE_GAP;
-
-      for (const item of sortedLayer) {
-        const nid = item.id;
-        const krsNode = nodeMap.get(nid)!;
-        const owner = ownerOf(krsNode.kind, nid);
-        const dims = measureNode(krsNode, owner, measureCtx);
-
-        // Wrap to a new sub-row at the column cap or when the node would
-        // exceed MAX_LAYER_WIDTH.
-        if (
-          currentX > NODE_GAP &&
-          (colInRow >= columnCount || currentX + dims.width > MAX_LAYER_WIDTH)
-        ) {
-          subRowY += subRowMaxHeight + NODE_GAP;
-          currentX = NODE_GAP;
-          subRowMaxHeight = 0;
-          colInRow = 0;
-        }
-
-        localNodes.set(
-          nid,
-          makeLayoutNode(krsNode, nid, {
-            label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-            annotations: effectiveAnnotations(krsNode),
-            owner,
-            x: currentX,
-            y: subRowY,
-            width: dims.width,
-            height: dims.height,
-          }),
-        );
-
-        nodeCenterX.set(nid, currentX + dims.width / 2);
-        subRowMaxHeight = Math.max(subRowMaxHeight, dims.height);
-        currentX += dims.width + NODE_GAP;
-        colInRow += 1;
-        childMaxWidth = Math.max(childMaxWidth, currentX);
-        childMaxHeight = Math.max(childMaxHeight, subRowY + dims.height + NODE_GAP);
-      }
+    for (const [nid, box] of placed.placements) {
+      const krsNode = nodeMap.get(nid)!;
+      localNodes.set(
+        nid,
+        makeLayoutNode(krsNode, nid, {
+          label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+          annotations: effectiveAnnotations(krsNode),
+          owner: ownerOf(krsNode.kind, nid),
+          x: box.x,
+          y: box.y,
+          width: box.width,
+          height: box.height,
+        }),
+      );
     }
+    const childMaxWidth = placed.childMaxWidth;
+    const childMaxHeight = placed.childMaxHeight;
 
     // Center each sub-row within the system so the grid reads as centered
     // columns.
@@ -1005,9 +902,10 @@ function layoutMultipleSystems(
       // In-place expansion is single-system only (#1921).
       expandedFrames: undefined,
       groupBands: groupBandsS,
-      // No port resolver on this path — no outline seating on the root view;
-      // tracked by #2515.
-      ports: undefined,
+      // Shape ports seat on the root view too (#2515): the resolver is
+      // per-node and keyed by id, so the same one serves every system frame.
+      // Without it #2452's outline anchoring stopped at the drill-down views.
+      ports: portResolver(options),
     });
 
     // A gutter route runs outside the system's cards, so it can reach past the
@@ -1074,16 +972,17 @@ function layoutMultipleSystems(
   // No-op when nothing went negative (the common case without side columns).
   normalizeCoordinates(allContainers, allLayoutNodes, allEdges);
 
-  // Calculate total dimensions from container rects only. The single-system
-  // path uses computeTotalDimensions, which also folds node and edge-waypoint
-  // extents into the maximum — a divergence deliberately preserved by the
-  // #2512 refactor; converging it (and the clipping it can cause) is #2513.
-  let totalWidth = 0;
-  let totalHeight = 0;
-  for (const c of allContainers) {
-    totalWidth = Math.max(totalWidth, c.x + c.width + CONTAINER_PADDING);
-    totalHeight = Math.max(totalHeight, c.y + c.height + CONTAINER_PADDING);
-  }
+  // Canvas dimensions from the same helper the single-system path uses, so the
+  // root view also folds node and edge-waypoint extents into the maximum
+  // (#2513). Since #2363 gave this path the real routing chain, a gutter route
+  // on the rightmost system reaches past its container rect; measuring
+  // containers alone left it outside the viewBox and clipped it.
+  const { width: totalWidth, height: totalHeight } = computeTotalDimensions(
+    allContainers,
+    allLayoutNodes,
+    allEdges,
+    displayMode,
+  );
 
   // Hop marks for the root view too (#2363). Derived from final coordinates like
   // the single-system path, and computed over *all* edges so a cross-system line

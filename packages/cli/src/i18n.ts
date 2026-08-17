@@ -8,16 +8,21 @@
  */
 
 import type { Diagnostic, Warning, FormattedWarning } from "@karasu-tools/core";
-import { renderDiagnostic, renderWarning, bindTranslate, type Locale } from "@karasu-tools/i18n";
+import {
+  renderDiagnostic,
+  renderWarning,
+  bindTranslate,
+  resolveLocaleTag,
+  type Locale,
+} from "@karasu-tools/i18n";
 
 /**
  * Resolve the CLI's output locale from POSIX locale environment variables.
- * `LC_ALL` overrides `LANG`; anything that is not Japanese falls back to
- * English — the tooling-output default from `docs/spec/i18n.md`.
+ * `LC_ALL` overrides `LANG`; normalizing the resulting tag is
+ * `resolveLocaleTag`'s job, shared with the app / lsp / vscode consumers.
  */
 export function resolveCliLocale(env: NodeJS.ProcessEnv = process.env): Locale {
-  const raw = env.LC_ALL || env.LANG || "";
-  return raw.toLowerCase().startsWith("ja") ? "ja" : "en";
+  return resolveLocaleTag(env.LC_ALL || env.LANG);
 }
 
 // The CLI process locale is fixed for the lifetime of the run.

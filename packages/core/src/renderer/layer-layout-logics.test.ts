@@ -6,6 +6,7 @@ import {
   gridColumnCount,
   wrapLayerIntoRows,
   GRID_COLUMN_CAP,
+  placeNodesInLayers,
 } from "./layer-layout-logics.js";
 
 const loc: SourceRange = {
@@ -212,5 +213,69 @@ describe("wrapLayerIntoRows", () => {
 
   it("returns an empty array for no items", () => {
     expect(wrapLayerIntoRows([], w, 3, 1000, 10)).toEqual([]);
+  });
+});
+
+describe("placeNodesInLayers (#2514)", () => {
+  const GAPS = { layerGap: 120, nodeGap: 60, maxLayerWidth: 1200, groupTitleGap: 60 };
+
+  function place(
+    nodesByLayer: Map<number, string[]>,
+    opts: Partial<Parameters<typeof placeNodesInLayers>[0]> = {},
+  ) {
+    return placeNodesInLayers({
+      sortedLayers: [...nodesByLayer.keys()].sort((a, b) => a - b),
+      nodesByLayer,
+      edges: [],
+      edgeDirections: undefined,
+      layers: new Map(),
+      forcedLayers: new Map(),
+      layoutHints: undefined,
+      gridHint: undefined,
+      groupStartLayer: new Map(),
+      gaps: GAPS,
+      measure: () => ({ width: 200, height: 80 }),
+      ...opts,
+    });
+  }
+
+  it("wraps on the same threshold the shared row wrapper uses", () => {
+    // Five 200-wide cards with a 60 gap measure 200*5 + 60*4 = 1240 > 1200, so
+    // the fifth wraps; four fit at 1080. The multi-system path used to compare
+    // a running x that already carried the leading gap and so wrapped a card
+    // early — the divergence this helper closes.
+    const ids = ["a", "b", "c", "d", "e"];
+    const { placements } = place(new Map([[0, ids]]), { gridHint: 99 });
+    const rows = new Set(ids.map((id) => placements.get(id)!.y));
+    expect(rows.size).toBe(2);
+    expect(placements.get("d")!.y).toBe(placements.get("a")!.y);
+    expect(placements.get("e")!.y).toBeGreaterThan(placements.get("a")!.y);
+  });
+
+  it("minimises crossings by barycenter when the layering is not forced", () => {
+    // Second layer declared in the crossing order; the barycenter of each node
+    // is its predecessor's centre, so the pass swaps them back.
+    const nodesByLayer = new Map([
+      [0, ["p1", "p2"]],
+      [1, ["c2", "c1"]],
+    ]);
+    const edges = [
+      { from: "p1", to: "c1", kind: "sync" },
+      { from: "p2", to: "c2", kind: "sync" },
+    ] as unknown as Parameters<typeof placeNodesInLayers>[0]["edges"];
+    const forced = place(nodesByLayer, { edges });
+    const free = place(nodesByLayer, { edges, forcedLayers: null });
+
+    // Forced layering keeps declaration order (Q11).
+    expect(forced.placements.get("c2")!.x).toBeLessThan(forced.placements.get("c1")!.x);
+    // Unforced, the children line up under their parents.
+    expect(free.placements.get("c1")!.x).toBeLessThan(free.placements.get("c2")!.x);
+  });
+
+  it("reserves room above a band's first layer for its frame title", () => {
+    const nodesByLayer = new Map([[0, ["a"]]]);
+    const plain = place(nodesByLayer);
+    const banded = place(nodesByLayer, { groupStartLayer: new Map([[0, "g"]]) });
+    expect(banded.placements.get("a")!.y - plain.placements.get("a")!.y).toBe(GAPS.groupTitleGap);
   });
 });
