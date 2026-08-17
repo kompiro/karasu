@@ -5,6 +5,7 @@ import {
   check,
   collectIssueRefs,
   collectOpenOnlyRefs,
+  findOpenOnlyTables,
   type IssueState,
   scopesOf,
 } from "./roadmap-issue-state.ts";
@@ -50,7 +51,7 @@ describe("collectIssueRefs", () => {
 });
 
 describe("collectOpenOnlyRefs", () => {
-  it("collects the marked table's links and stops at the first non-table line", () => {
+  it("collects the tracker column and stops at the first non-table line", () => {
     const content = [
       `${OPEN_ONLY}`,
       "",
@@ -68,6 +69,11 @@ describe("collectOpenOnlyRefs", () => {
         scope: `| ${link(2511)} | 前提条件の組み替え |`,
       },
     ]);
+  });
+
+  it("ignores a link outside the tracker column — a later cell cites lineage", () => {
+    const content = `${OPEN_ONLY}\n\n| （未起票） | 前段は ${link(2172)} で着地 | v2.0 |\n`;
+    expect(collectOpenOnlyRefs(content)).toEqual([]);
   });
 
   it("ignores an unmarked table", () => {
@@ -143,9 +149,29 @@ describe("check", () => {
     expect(problems[0].message).toContain("but it is closed");
   });
 
+  it("reports a row naming several closed issues once", () => {
+    const content = `${OPEN_ONLY}\n\n| ${link(2160)} / ${link(2172)} | 閉鎖の実施 | v2.0 |\n`;
+    const problems = check(content, states({ 2160: "closed", 2172: "closed" }));
+    expect(problems).toHaveLength(1);
+  });
+
+  it("leaves a closed issue cited as lineage in a later cell alone", () => {
+    const content = `${OPEN_ONLY}\n\n| （未起票） | 前段は ${link(2172)} で着地 | v2.0 |\n`;
+    expect(check(content, states({ 2172: "closed" }))).toEqual([]);
+  });
+
   it("does not extend the open-only rule to a closed issue cited as provenance elsewhere", () => {
     const content = `${OPEN_ONLY}\n\n| ${link(2065)} | 閉鎖の実施 |\n\n出典 ${link(1567)}\n`;
     expect(check(content, states({ 2065: "open", 1567: "closed" }))).toEqual([]);
+  });
+
+  it("flags a marker that no longer sits above a table", () => {
+    // Left unchecked, the marker keeps the section's promise of machine
+    // verification while verifying nothing.
+    const content = `${OPEN_ONLY}\n\n下表は未決のみ。\n\n| ${link(2511)} | 前提条件 |\n`;
+    const problems = check(content, states({ 2511: "closed" }));
+    expect(problems).toHaveLength(1);
+    expect(problems[0].message).toContain("guards nothing");
   });
 });
 
@@ -158,17 +184,15 @@ describe("the committed roadmap", () => {
     expect(check(content, known)).toEqual([]);
   });
 
-  it("keeps every open-only marker attached to a table", () => {
-    // A marker separated from its table by prose matches nothing and disables
-    // rule 3 without failing anything — so assert the attachment itself.
-    const lines = readFileSync(join(REPO_ROOT, "docs/roadmap.md"), "utf8").split("\n");
-    const markers = lines.flatMap((line, i) => (line.includes(OPEN_ONLY) ? [i] : []));
-    expect(markers.length).toBeGreaterThan(0);
+  it("has every open-only marker sitting above a table", () => {
+    // Orphan detection lives in check() rather than here, so the committed
+    // file is fenced by the same code path CI runs — and by one that runs on
+    // roadmap-only PRs, which ci.yml's `paths-ignore: docs/**` skips.
+    const content = readFileSync(join(REPO_ROOT, "docs/roadmap.md"), "utf8");
+    expect(check(content, new Map())).toEqual([]);
 
-    for (const marker of markers) {
-      let next = marker + 1;
-      while (next < lines.length && lines[next].trim().length === 0) next++;
-      expect(lines[next]?.trim().startsWith("|")).toBe(true);
+    for (const table of findOpenOnlyTables(content)) {
+      expect(table.rows.length).toBeGreaterThan(0);
     }
   });
 });

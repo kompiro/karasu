@@ -20,20 +20,23 @@ import { resolve } from "node:path";
 //
 //   1. a cell that calls work not-yet-started must not link a CLOSED issue
 //   2. a cell that calls work not-yet-issued must not link an issue at all
-//   3. a table that declares itself open-only must not link a CLOSED issue
+//   3. a row in a table declared open-only must not *name* a CLOSED issue
 //
-// Granularity for rules 1 and 2 is the table cell (or the whole line outside a
-// table), not the line, because a roadmap row routinely says "着地済み" about
-// one thing while linking an open issue about another — cell scope is what
-// keeps rule 1 from firing on those.
+// Granularity is the table cell (or the whole line outside a table), not the
+// line, because a roadmap row routinely says "着地済み" about one thing while
+// linking an open issue about another — cell scope is what keeps rule 1 from
+// firing on those.
 //
 // Rule 3 is opt-in per table via an explicit `<!-- roadmap-issue-state:
-// open-only -->` marker, and its scope is the whole table. It catches the
-// drift the ledger convention produces at the other end: a tracking table
-// whose preamble promises 「未決の項目のみ」 keeps a row after that row's issue
-// closes (#2511 survived its own landing this way). The marker is what makes
-// this checkable without inferring which issue a row is about — the section
-// states the invariant in prose, and the marker restates it for the parser.
+// open-only -->` marker. It catches the drift the ledger convention produces
+// at the other end: a tracking table whose preamble promises 「未決の項目のみ」
+// keeps a row after that row's issue closes (#2511 survived its own landing
+// this way). The marker is what makes this checkable without inferring which
+// issue a row is about — the section states the invariant in prose, and the
+// marker restates it for the parser. Scope is the **tracker column** (the
+// first cell), so a later cell may still cite a closed issue as lineage, in
+// keeping with rules 1 and 2. A marker with no table under it is itself an
+// error, since a marker that silently stops guarding is worse than none.
 //
 // Deliberately NOT checked: the inverse ("open issue described as shipped")
 // and the [cache] shape of drift (trigger fired, issue raised elsewhere, row
@@ -95,17 +98,25 @@ export function collectIssueRefs(content: string): IssueRef[] {
   return refs;
 }
 
+export interface OpenOnlyTable {
+  /** 1-indexed line of the marker comment */
+  markerLine: number;
+  /** the table's lines (header and separator included), in file order */
+  rows: { lineNo: number; line: string }[];
+}
+
 /**
- * Collect the issue refs sitting in a table marked `open-only`.
+ * Locate every table opted into rule 3.
  *
  * The marker applies to the next markdown table — the contiguous run of lines
  * starting with `|`, separated from the marker by blank lines only — so a
- * marker that drifts away from its table stops matching rather than silently
- * claiming a different one.
+ * marker that drifts away from its table matches nothing rather than silently
+ * claiming a different one. `check` reports that empty case, because a marker
+ * that quietly stops guarding is worse than no marker at all.
  */
-export function collectOpenOnlyRefs(content: string): IssueRef[] {
+export function findOpenOnlyTables(content: string): OpenOnlyTable[] {
   const lines = content.split("\n");
-  const refs: IssueRef[] = [];
+  const tables: OpenOnlyTable[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     if (!lines[i].includes(OPEN_ONLY_MARKER)) continue;
@@ -113,9 +124,38 @@ export function collectOpenOnlyRefs(content: string): IssueRef[] {
     let row = i + 1;
     while (row < lines.length && lines[row].trim().length === 0) row++;
 
+    const rows: OpenOnlyTable["rows"] = [];
     for (; row < lines.length && lines[row].trim().startsWith("|"); row++) {
-      for (const match of lines[row].matchAll(ISSUE_LINK)) {
-        refs.push({ number: Number(match[1]), lineNo: row + 1, scope: lines[row].trim() });
+      rows.push({ lineNo: row + 1, line: lines[row] });
+    }
+    tables.push({ markerLine: i + 1, rows });
+  }
+
+  return tables;
+}
+
+/**
+ * Collect the issue refs a marked table names as its own tracked items.
+ *
+ * Scope is the **tracker column** (the first cell), not the whole row: a later
+ * cell routinely cites a closed issue as lineage — "前段は #2172 で着地" — and
+ * that citation is legitimate provenance, the same way rules 1 and 2 leave a
+ * closed link alone unless the cell around it claims the work has not started.
+ * What the marker asserts is narrower: the item this row *is about* is still
+ * undecided.
+ */
+export function collectOpenOnlyRefs(content: string): IssueRef[] {
+  const refs: IssueRef[] = [];
+
+  for (const table of findOpenOnlyTables(content)) {
+    for (const { lineNo, line } of table.rows) {
+      // Positional, so an empty tracker cell cannot promote the next column
+      // into the tracker slot the way scopesOf's emptiness filter would.
+      const tracker = line.trim().split("|").slice(1, -1)[0];
+      if (tracker === undefined) continue;
+
+      for (const match of tracker.matchAll(ISSUE_LINK)) {
+        refs.push({ number: Number(match[1]), lineNo, scope: line.trim() });
       }
     }
   }
@@ -158,15 +198,25 @@ export function check(content: string, states: ReadonlyMap<number, IssueState>):
     }
   }
 
-  for (const ref of collectOpenOnlyRefs(content)) {
-    // A row already indicted by rule 1 or 2 needs one message, not two.
-    if (flagged.has(`${ref.lineNo}:${ref.number}`)) continue;
-    if (states.get(ref.number) !== "closed") continue;
-
-    flagged.add(`${ref.lineNo}:${ref.number}`);
+  for (const table of findOpenOnlyTables(content)) {
+    if (table.rows.length > 0) continue;
     problems.push({
       kind: "error",
-      message: `${ROADMAP_PATH}:${ref.lineNo} — the table holds undecided items only, but #${ref.number} is closed. Drop the row; its record is the closed issue and the ADR it landed in: "${excerpt(ref.scope)}"`,
+      message: `${ROADMAP_PATH}:${table.markerLine} — an open-only marker with no table under it guards nothing. Put it directly above its table (blank lines only in between), or drop it.`,
+    });
+  }
+
+  const reported = new Set<number>();
+  for (const ref of collectOpenOnlyRefs(content)) {
+    // One message per row: a row already indicted by rule 1 or 2 does not need
+    // a second, and a row naming several closed issues does not need several.
+    if (flagged.has(`${ref.lineNo}:${ref.number}`) || reported.has(ref.lineNo)) continue;
+    if (states.get(ref.number) !== "closed") continue;
+
+    reported.add(ref.lineNo);
+    problems.push({
+      kind: "error",
+      message: `${ROADMAP_PATH}:${ref.lineNo} — the table tracks undecided items only, but it names #${ref.number}, which is closed. Drop the row; its record is the closed issue and the ADR it landed in: "${excerpt(ref.scope)}"`,
     });
   }
 
@@ -224,9 +274,13 @@ async function fetchStates(numbers: number[]): Promise<Map<number, IssueState>> 
 
 async function main(): Promise<void> {
   const content = readFileSync(resolve(process.cwd(), ROADMAP_PATH), "utf8");
-  const numbers = [...new Set(collectIssueRefs(content).map((r) => r.number))].sort(
-    (a, b) => a - b,
-  );
+  // Union of both collectors: they parse independently, so a number only one
+  // of them can see would otherwise get an undefined state and pass silently.
+  const numbers = [
+    ...new Set(
+      [...collectIssueRefs(content), ...collectOpenOnlyRefs(content)].map((r) => r.number),
+    ),
+  ].sort((a, b) => a - b);
 
   let states: Map<number, IssueState>;
   try {
