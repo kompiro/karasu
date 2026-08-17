@@ -117,7 +117,7 @@ export function wrapLayerIntoRows<T>(
  * hint, so call sites can safely route every layer through this helper
  * without measuring whether bucketing actually applies.
  */
-export function bucketByColumn<T extends { id: string }>(
+function bucketByColumn<T extends { id: string }>(
   items: T[],
   layoutHints: Map<string, ResolvedLayoutHints>,
 ): T[] {
@@ -194,4 +194,128 @@ export function applyEdgeDirectionWithinLayer(
     result.splice(insertAt, 0, hint.from);
   }
   return result;
+}
+
+/** A node's placement inside its container's local coordinate space. */
+export interface PlacedNode {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Place layered nodes into wrapped, stacked rows: the phase both layout
+ * pipelines share (#2514).
+ *
+ * Per layer, in order: barycenter sort (only where the kind-tier layout is not
+ * forcing declaration order, per Q11 of the layout design doc), the author's
+ * column buckets, per-edge direction hints, then a wrap into rows bounded by
+ * the balanced-grid column count and `MAX_LAYER_WIDTH`. Rows stack downward
+ * inside the layer; layers stack by `LAYER_GAP` below the previous layer's
+ * bottom, with `GROUP_FRAME_TITLE_GAP` reserved above a band's first layer.
+ *
+ * The two pipelines used to carry separate copies of this: the multi-system
+ * one wrapped one `NODE_GAP` earlier (it compared a running x that already
+ * included the leading gap) and computed each layer's y by rescanning every
+ * placed node, while only it ran the barycenter pass. The scan and the running
+ * baseline agree by construction (rows only ever move downward), so what
+ * converges here is the wrap threshold and the crossing-minimisation pass
+ * (TPL-219).
+ *
+ * Measurement stays with the caller: it owns the owner chips and the measure
+ * context that decide a card's size.
+ */
+export function placeNodesInLayers(input: {
+  /** Layer indices in ascending order. */
+  sortedLayers: readonly number[];
+  /** Node ids per layer, in declaration order. */
+  nodesByLayer: ReadonlyMap<number, string[]>;
+  /** Intra-canvas edges, for the direction hints and the barycenter predecessors. */
+  edges: readonly KrsEdge[];
+  edgeDirections: Map<string, EdgeDirection> | undefined;
+  /** Resolved layer index per node, for `applyEdgeDirectionWithinLayer`. */
+  layers: Map<string, number>;
+  /** Non-null when the kind tiers (or group bands) fixed the layering. */
+  forcedLayers: Map<string, number> | null;
+  layoutHints: Map<string, ResolvedLayoutHints> | undefined;
+  /** The container's own `grid-columns` hint, when it declared one. */
+  gridHint: number | undefined;
+  /** Layers that start a group band, which reserve room for the frame title. */
+  groupStartLayer: ReadonlyMap<number, string>;
+  gaps: { layerGap: number; nodeGap: number; maxLayerWidth: number; groupTitleGap: number };
+  measure: (nodeId: string) => { width: number; height: number };
+}): { placements: Map<string, PlacedNode>; childMaxWidth: number; childMaxHeight: number } {
+  const { sortedLayers, nodesByLayer, edges, edgeDirections, layers } = input;
+  const { forcedLayers, layoutHints, gridHint, groupStartLayer, gaps, measure } = input;
+  const { layerGap, nodeGap, maxLayerWidth, groupTitleGap } = gaps;
+
+  // Predecessors within this canvas, for the barycenter pass.
+  const idSet = new Set<string>();
+  for (const ids of nodesByLayer.values()) for (const id of ids) idSet.add(id);
+  const predecessorsMap = new Map<string, string[]>();
+  for (const id of idSet) predecessorsMap.set(id, []);
+  for (const edge of edges) {
+    if (idSet.has(edge.from) && idSet.has(edge.to)) predecessorsMap.get(edge.to)!.push(edge.from);
+  }
+
+  const placements = new Map<string, PlacedNode>();
+  const nodeCenterX = new Map<string, number>();
+  let childMaxWidth = 0;
+  let childMaxHeight = 0;
+  let layerBaselineY = nodeGap;
+
+  for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
+    const layerIdx = sortedLayers[layerOrder];
+    if (groupStartLayer.has(layerIdx)) layerBaselineY += groupTitleGap;
+
+    const rawLayer = nodesByLayer.get(layerIdx)!.map((id) => ({ id }));
+    // Barycenter minimises crossings, but only where declaration order is not
+    // load-bearing: the forced kind-tier layout owns its within-layer order.
+    const sorted =
+      forcedLayers !== null || layerOrder === 0
+        ? rawLayer
+        : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
+    const bucketed =
+      forcedLayers !== null && layoutHints && layoutHints.size > 0
+        ? bucketByColumn(sorted, layoutHints)
+        : sorted;
+    const nodesInLayer = applyEdgeDirectionWithinLayer(
+      bucketed.map((item) => item.id),
+      edges as KrsEdge[],
+      edgeDirections,
+      layers,
+    );
+
+    const dimsById = new Map<string, { width: number; height: number }>();
+    for (const nid of nodesInLayer) dimsById.set(nid, measure(nid));
+    const rows = wrapLayerIntoRows(
+      nodesInLayer,
+      (nid) => dimsById.get(nid)!.width,
+      gridColumnCount(nodesInLayer.length, gridHint),
+      maxLayerWidth,
+      nodeGap,
+    );
+
+    let rowY = layerBaselineY;
+    let layerBottom = layerBaselineY;
+    for (const row of rows) {
+      let xOffset = nodeGap;
+      let rowMaxHeight = 0;
+      for (const nid of row) {
+        const dims = dimsById.get(nid)!;
+        placements.set(nid, { x: xOffset, y: rowY, width: dims.width, height: dims.height });
+        nodeCenterX.set(nid, xOffset + dims.width / 2);
+        xOffset += dims.width + nodeGap;
+        childMaxWidth = Math.max(childMaxWidth, xOffset);
+        rowMaxHeight = Math.max(rowMaxHeight, dims.height);
+      }
+      layerBottom = rowY + rowMaxHeight;
+      childMaxHeight = Math.max(childMaxHeight, layerBottom + nodeGap);
+      rowY = layerBottom + nodeGap; // sub-row gap within the layer
+    }
+    layerBaselineY = layerBottom + layerGap;
+  }
+
+  return { placements, childMaxWidth, childMaxHeight };
 }

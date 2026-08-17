@@ -160,3 +160,12 @@ pre-push:
       # (scripts/lint/concept-adr-refs.test.ts) mirrors this guard in CI.
       glob: "{docs/concepts.md,docs/concepts.ja.md,docs/adr/README.md,adr.config.json,scripts/lint/concept-adr-refs.ts}"
       run: pnpm run lint:concept-adr-refs
+    locale-normalization:
+      # The raw-tag → Locale rule has one owner, `resolveLocaleTag` in
+      # @karasu-tools/i18n (Issue #2081) — fail if a consumer re-inlines the
+      # `startsWith("ja")` test instead of delegating, which is how the four
+      # pre-#2081 copies were free to drift apart. The vitest test
+      # (scripts/lint/locale-normalization-single-owner.test.ts) mirrors this
+      # guard in CI.
+      glob: "packages/**/*.{ts,tsx}"
+      run: pnpm run lint:locale-normalization
