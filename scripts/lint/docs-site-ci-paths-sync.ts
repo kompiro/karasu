@@ -1,28 +1,38 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // The docs site publishes the files listed in `PUBLISHED_EN_FILES`
-// (packages/docs-site/scripts/lib/site-map.ts). Its PR guards run from
-// `reference-docs-check.yml`, whose `paths:` is a second hand-written list.
-// Two hand-written lists describing one set drift, and the drift is silent:
-// a doc added to the published set but not to `paths:` simply stops triggering
-// the guards, and the PR that adds it is green (Issue #2257, TPL-2253 — a
-// removal or a trigger closed by a file list rather than by a search).
+// (packages/docs-site/scripts/lib/site-map.ts). Two workflows are triggered by
+// that same set through hand-written `paths:` lists: `reference-docs-check.yml`
+// runs the site's guards on a PR (Issue #2257), and `docs-preview.yml` deploys
+// the PR's preview (Issue #2260).
+// Hand-written lists describing one set drift, and the drift is silent: a doc
+// added to the published set but not to `paths:` simply stops triggering the
+// workflow, and the PR that adds it is green (TPL-2253 — a removal or a trigger
+// closed by a file list rather than by a search).
 //
 // So this asserts the containment that matters: every published doc is matched
-// by at least one glob in `paths:`, and the skip workflow's `paths-ignore:` is
-// its mirror image (ADR-953: the two must stay complementary or a required
-// check hangs pending).
+// by at least one glob in every triggered workflow's `paths:`, and the skip
+// workflow's `paths-ignore:` mirrors the guard workflow's `paths:` (ADR-953: the
+// two must stay complementary or a required check hangs pending). The preview
+// workflow has no required status and therefore no paired stub to mirror.
 
 export interface Problem {
   kind: "error" | "warning";
   message: string;
 }
 
+/** One workflow triggered by the published set, with the `paths:` it declares. */
+export interface TriggeredWorkflow {
+  readonly file: string;
+  readonly paths: readonly string[];
+}
+
 const SITE_MAP_PATH = "packages/docs-site/scripts/lib/site-map.ts";
-const CHECK_WORKFLOW = ".github/workflows/reference-docs-check.yml";
-const SKIP_WORKFLOW = ".github/workflows/reference-docs-check-skip.yml";
+export const CHECK_WORKFLOW = ".github/workflows/reference-docs-check.yml";
+export const SKIP_WORKFLOW = ".github/workflows/reference-docs-check-skip.yml";
+export const PREVIEW_WORKFLOW = ".github/workflows/docs-preview.yml";
 
 /**
  * Pull the string literals out of the `PUBLISHED_EN_FILES` array.
@@ -63,6 +73,29 @@ export function parseWorkflowPaths(source: string, key: "paths" | "paths-ignore"
   return [...new Set(entries)];
 }
 
+/**
+ * Add the `.ja.md` sibling of every published en file that exists on disk.
+ *
+ * `sync.ts` publishes each sibling as the `ja` locale page, so a ja-only edit
+ * changes the site exactly as much as an en one — but `PUBLISHED_EN_FILES` names
+ * only the en base, so a `paths:` list written from it alone leaves the ja file
+ * untriggered. `exists` is injected so this stays pure and testable.
+ */
+export function expandLocaleSiblings(
+  enFiles: readonly string[],
+  exists: (docsRelative: string) => boolean,
+): string[] {
+  const expanded = [...enFiles];
+  for (const file of enFiles) {
+    // A `.ja.md` entry is already the sibling; deriving from it would ask for a
+    // `.ja.ja.md` that can never exist.
+    if (!file.endsWith(".md") || file.endsWith(".ja.md")) continue;
+    const ja = `${file.slice(0, -".md".length)}.ja.md`;
+    if (exists(ja)) expanded.push(ja);
+  }
+  return expanded;
+}
+
 /** Does a GitHub Actions path filter glob match this repo-relative path? */
 export function globMatches(glob: string, path: string): boolean {
   const pattern = glob
@@ -74,7 +107,7 @@ export function globMatches(glob: string, path: string): boolean {
 
 export function check(
   publishedFiles: string[],
-  checkPaths: string[],
+  workflows: readonly TriggeredWorkflow[],
   skipPathsIgnore: string[],
 ): Problem[] {
   const problems: Problem[] = [];
@@ -87,16 +120,21 @@ export function check(
     return problems;
   }
 
-  for (const file of publishedFiles) {
-    const docPath = `docs/${file}`;
-    if (!checkPaths.some((glob) => globMatches(glob, docPath))) {
-      problems.push({
-        kind: "error",
-        message: `${docPath} is published by the docs site but no \`paths:\` entry in ${CHECK_WORKFLOW} matches it, so editing it triggers none of the site's guards.`,
-      });
+  for (const workflow of workflows) {
+    for (const file of publishedFiles) {
+      const docPath = `docs/${file}`;
+      if (!workflow.paths.some((glob) => globMatches(glob, docPath))) {
+        problems.push({
+          kind: "error",
+          message: `${docPath} is published by the docs site but no \`paths:\` entry in ${workflow.file} matches it, so editing it does not trigger that workflow.`,
+        });
+      }
     }
   }
 
+  // Only the guard workflow carries a Required status, so only its list has a
+  // paired stub to stay complementary with.
+  const checkPaths = workflows.find((w) => w.file === CHECK_WORKFLOW)?.paths ?? [];
   const missingFromSkip = checkPaths.filter((p) => !skipPathsIgnore.includes(p));
   const extraInSkip = skipPathsIgnore.filter((p) => !checkPaths.includes(p));
   for (const p of missingFromSkip) {
@@ -129,16 +167,23 @@ function main(): void {
   const root = resolve(process.cwd());
   const read = (p: string): string => readFileSync(resolve(root, p), "utf8");
 
-  const published = parsePublishedFiles(read(SITE_MAP_PATH));
-  const checkPaths = parseWorkflowPaths(read(CHECK_WORKFLOW), "paths");
+  const published = expandLocaleSiblings(parsePublishedFiles(read(SITE_MAP_PATH)), (docsRelative) =>
+    existsSync(resolve(root, "docs", docsRelative)),
+  );
+  const workflows: TriggeredWorkflow[] = [CHECK_WORKFLOW, PREVIEW_WORKFLOW].map((file) => ({
+    file,
+    paths: parseWorkflowPaths(read(file), "paths"),
+  }));
   const skipPaths = parseWorkflowPaths(read(SKIP_WORKFLOW), "paths-ignore");
 
-  const problems = check(published, checkPaths, skipPaths);
+  const problems = check(published, workflows, skipPaths);
   if (problems.length > 0) {
     console.error(formatProblems(problems));
     process.exit(1);
   }
-  console.log(`docs-site-ci-paths-sync: ok (${published.length} published doc(s) covered)`);
+  console.log(
+    `docs-site-ci-paths-sync: ok (${published.length} published doc(s) covered by ${workflows.length} workflow(s))`,
+  );
 }
 
 const invokedDirectly =
