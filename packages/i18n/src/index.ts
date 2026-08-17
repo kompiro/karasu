@@ -7,13 +7,14 @@
  * pure renderers that turn core `Warning` / `Diagnostic` objects into
  * user-facing text.
  *
- * Environment-specific locale resolution (browser storage, LSP init params,
- * `LANG`) lives next to each consumer, not here.
+ * Reading the environment's raw language tag (browser storage, LSP init
+ * params, `LANG`) lives next to each consumer; normalizing that tag to a
+ * `Locale` is shared here as `resolveLocaleTag`.
  */
 
 export type { Translations, TranslationParams } from "./types.js";
 export type { Locale } from "./locale.js";
-export { isLocale } from "./locale.js";
+export { isLocale, resolveLocaleTag } from "./locale.js";
 export { en } from "./en.js";
 export { ja } from "./ja.js";
 export { translate, bindTranslate, type TranslateFn } from "./translate.js";

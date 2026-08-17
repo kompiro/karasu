@@ -1,22 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { en, ja } from "@karasu-tools/i18n";
-import { buildPreviewPanelLabels, resolveWebviewLocale } from "./webview-i18n.js";
+import { buildPreviewPanelLabels } from "./webview-i18n.js";
 
-describe("resolveWebviewLocale", () => {
-  it("maps Japanese display languages to ja", () => {
-    expect(resolveWebviewLocale("ja")).toBe("ja");
-    expect(resolveWebviewLocale("ja-JP")).toBe("ja");
-    expect(resolveWebviewLocale("JA")).toBe("ja");
-  });
-
-  it("falls back to en for any non-Japanese language", () => {
-    expect(resolveWebviewLocale("en")).toBe("en");
-    expect(resolveWebviewLocale("en-US")).toBe("en");
-    expect(resolveWebviewLocale("fr")).toBe("en");
-    expect(resolveWebviewLocale("")).toBe("en");
-  });
-});
-
+// Locale resolution itself is not tested here: `PreviewPanel` calls the shared
+// `resolveLocaleTag` on `vscode.env.language` directly, and that rule is fenced
+// once in `packages/i18n/src/locale.test.ts` (#2081).
 describe("buildPreviewPanelLabels", () => {
   // The webview panel must show byte-identical labels to the app's React
   // NodeDetailPanel, which reads the same `nodeDetail.*` keys through
