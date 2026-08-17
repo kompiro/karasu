@@ -3,7 +3,7 @@
 - **日付**: 2026-08-17
 - **ステータス**: 検討中
 - **Issue**: [#2209](https://github.com/kompiro/karasu/issues/2209)
-- **PR**: （作成後に記入）
+- **PR**: [#2541](https://github.com/kompiro/karasu/pull/2541)
 - **関連**:
   - [ADR-19](../adr/19-required-id-label-as-property.md): id 必須化・label のプロパティ化（本 doc が閉じる残課題の出典）
   - [ADR-2208](../adr/2208-positional-label-error-promotion.md): organization / team / member の positional label を error 化（兄弟決定）
