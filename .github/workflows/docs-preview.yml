@@ -9,12 +9,13 @@ name: Docs Preview
 # different Cloudflare Pages project, on a different path filter, from a staged
 # copy of the build. Sharing a file would couple the app's preview to changes
 # made for the docs, which is the coupling `spike-preview.yml` was also split to
-# avoid. The three share `.github/actions/purge-preview-deployments`, nothing else.
+# avoid. All four preview workflows share
+# `.github/actions/purge-preview-deployments`, nothing else.
 #
-# Keep the `paths:` list below covering everything the site publishes
-# (`PUBLISHED_EN_FILES` in `packages/docs-site/scripts/lib/site-map.ts`) —
-# `scripts/lint/docs-site-ci-paths-sync.ts` fails when a published doc is not
-# matched by any entry here.
+# Keep the `paths:` list below covering everything the site publishes —
+# `PUBLISHED_EN_FILES` in `packages/docs-site/scripts/lib/site-map.ts`, checked by
+# `scripts/lint/docs-site-ci-paths-sync.ts`, plus `examples/**`, whose `.krs`
+# files `sync.ts` renders into the gallery pages (`GALLERY_PAGES`).
 
 on:
   pull_request:
@@ -28,6 +29,7 @@ on:
       - "docs/tools/**"
       - "docs/guide/**"
       - "docs/spec/**"
+      - "examples/**"
       - "packages/docs-site/**"
       - ".github/workflows/docs-preview.yml"
 
@@ -38,18 +40,22 @@ concurrency:
 jobs:
   deploy:
     name: Deploy Docs Preview to Cloudflare Pages
-    # Bot PRs cannot read the deployment secrets (ADR-903), so the job is skipped
-    # rather than failed for them.
+    # Neither a bot PR (ADR-903) nor a fork PR can read the deployment secrets,
+    # so both are skipped rather than failed. Without the fork term every docs
+    # contribution from outside the repo — the most likely kind here — would get
+    # a red check for a deployment it was never able to make.
     if: >-
       github.event.action != 'closed' &&
-      github.event.pull_request.user.type != 'Bot'
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     # Secret-bearing deploy jobs stay GitHub-hosted (ADR-1890), fenced by
     # `scripts/ci/workflow-runner-policy.test.ts`.
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # No `pull-requests: write`: the only reporting paths are the step summary
+      # and the GitHub deployment wrangler-action creates.
       deployments: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -120,20 +126,31 @@ jobs:
           ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
+          # The suffix is appended only when there is a URL to append it to: a
+          # missing output must read `(none)`, not the plausible-looking
+          # `(none)/karasu/` that a reviewer would try to open.
+          alias_cell="${ALIAS_URL:+${ALIAS_URL}/karasu/}"
+          deploy_cell="${DEPLOY_URL:+${DEPLOY_URL}/karasu/}"
           {
             echo "### Docs preview deployed"
             echo
             echo "| | |"
             echo "| --- | --- |"
-            echo "| Branch alias | ${ALIAS_URL:-(none)}/karasu/ |"
-            echo "| This deployment | ${DEPLOY_URL:-(none)}/karasu/ |"
+            echo "| Branch alias | ${alias_cell:-(none)} |"
+            echo "| This deployment | ${deploy_cell:-(none)} |"
             echo
             echo "The site is served under \`/karasu/\` — the same base path as production."
           } >> "$GITHUB_STEP_SUMMARY"
 
   cleanup:
     name: Delete Docs Preview Deployments
-    if: github.event.action == 'closed'
+    # Same secret-availability guards as the deploy job. A bot or fork PR never
+    # produced a deployment, and the purge action would call the Cloudflare API
+    # with an empty token and exit 1 — a red check that cleans up nothing.
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -35,6 +35,9 @@ docs サイトは `docs/` から生成される（`PUBLISHED_EN_FILES` の集合
 - [x] サイトが公開しないものだけを触る PR ではデプロイしない
   > ✅ Automated — `scripts/lint/docs-site-ci-paths-sync.test.ts` › `the docs preview deployment` › `does not fire for a change outside what the site publishes`
 
+- [x] gallery の元になる `examples/**` も trigger 対象に含まれる（`sync.ts` が `.krs` をページへレンダリングする）
+  > ✅ Automated — `scripts/lint/docs-site-ci-paths-sync.test.ts` › `the docs preview deployment` › `triggers on the examples the gallery pages are rendered from`
+
 ### AC-2: 本番と同じ routing を再現する
 
 - [x] ステージング先が wrangler の upload ディレクトリと一致し、`karasu/` 一段下に置かれる
@@ -53,6 +56,9 @@ docs サイトは `docs/` から生成される（`PUBLISHED_EN_FILES` の集合
 
 - [x] secret を持つデプロイジョブが GitHub-hosted runner に留まる（ADR-1890）
   > ✅ Automated — `scripts/ci/workflow-runner-policy.test.ts` › `GitHub Actions runner policy (ADR-1890)` › `runs exactly the compute-bound jobs on Ubicloud`
+
+- [x] secret を読めない PR（fork / bot）では deploy も cleanup も skip され、赤くならない
+  > ✅ Automated — `scripts/lint/docs-site-ci-paths-sync.test.ts` › `the docs preview deployment` › `skips rather than fails where the deployment secrets are unreachable`
 
 ## 手動確認
 

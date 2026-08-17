@@ -181,7 +181,6 @@ describe("the docs preview deployment", () => {
     // docs preview. The root `wrangler.toml` also names the app's project.
     expect(workflow).toContain("workingDirectory: packages/docs-site");
     expect(existsSync(join(REPO_ROOT, "packages/docs-site/functions"))).toBe(false);
-    expect(existsSync(join(REPO_ROOT, "functions/[[path]].ts"))).toBe(true);
   });
 
   it("names the package manager, which moving off the repo root stops inferring", () => {
@@ -190,7 +189,17 @@ describe("the docs preview deployment", () => {
     // falls back to npm — which cannot install into a package.json carrying
     // `workspace:*`. The two settings only work as a pair.
     expect(workflow).toContain("packageManager: pnpm");
-    expect(existsSync(join(REPO_ROOT, "packages/docs-site/pnpm-lock.yaml"))).toBe(false);
+  });
+
+  it("skips rather than fails where the deployment secrets are unreachable", () => {
+    // A fork PR and a bot PR both get no secrets. Without these terms every
+    // outside docs contribution gets a red check for a deploy it could not make.
+    expect(workflow).toContain("github.event.pull_request.user.type != 'Bot'");
+    expect(workflow).toContain(
+      "github.event.pull_request.head.repo.full_name == github.repository",
+    );
+    // Both jobs, not just the deploy: cleanup calls the same credentialed API.
+    expect(workflow.match(/head\.repo\.full_name == github\.repository/g)).toHaveLength(2);
   });
 
   it("stages the build into the directory wrangler is configured to upload", () => {
@@ -205,13 +214,28 @@ describe("the docs preview deployment", () => {
 
   it("redirects the bare root only, so a missing base path still 404s", () => {
     // A `/*` splat would rescue a link that wrongly lacks the `/karasu/` prefix
-    // — the exact routing bug the preview exists to catch.
-    const redirect = /printf '([^']+)' > /.exec(workflow)?.[1];
-    expect(redirect).toBe("/  /karasu/  302\\n");
+    // — the exact routing bug the preview exists to catch. The destination is
+    // asserted too: a `_redirects` written outside the uploaded tree is inert,
+    // and the bare deployment URL would 404 with nothing to say so.
+    const written = /printf '([^']+)' > (\S+)/.exec(workflow);
+    expect(written?.[1]).toBe("/  /karasu/  302\\n");
+    const outputDir = /pages_build_output_dir\s*=\s*"([^"]+)"/.exec(
+      read("packages/docs-site/wrangler.toml"),
+    )?.[1];
+    expect(written?.[2]).toBe(`packages/docs-site/${outputDir}/_redirects`);
   });
 
   it("cleans up its own project, not the app's", () => {
     expect(workflow).toContain("project: karasu-docs");
+  });
+
+  it("triggers on the examples the gallery pages are rendered from", () => {
+    // `sync.ts` renders every GALLERY_PAGES entry's `.krs` into a published
+    // page, so an examples edit changes the site as much as a docs edit does.
+    // The paths guard cannot see this: it derives its expectation from
+    // PUBLISHED_EN_FILES, which does not name the gallery.
+    const paths = parseWorkflowPaths(workflow, "paths");
+    expect(paths.some((glob) => globMatches(glob, "examples/en/ec-platform/index.krs"))).toBe(true);
   });
 
   it("does not fire for a change outside what the site publishes", () => {

@@ -128,7 +128,10 @@ pre-push:
       # TPL-2253). Also keeps the skip workflow's `paths-ignore:` complementary,
       # which ADR-953 requires or the required check hangs pending. The vitest
       # mirror in scripts/lint runs it in CI.
-      glob: "{packages/docs-site/scripts/lib/site-map.ts,.github/workflows/reference-docs-check*.yml,.github/workflows/docs-preview.yml,scripts/lint/docs-site-ci-paths-sync.ts}"
+      # `docs/**` is in scope because the expected set is a fact about the tree,
+      # not just about the lists: adding a `.ja.md` sibling publishes a page and
+      # so demands a matching `paths:` entry.
+      glob: "{docs/**,packages/docs-site/scripts/lib/site-map.ts,.github/workflows/reference-docs-check*.yml,.github/workflows/docs-preview.yml,scripts/lint/docs-site-ci-paths-sync.ts}"
       run: pnpm run lint:docs-site-ci-paths-sync
     devcontainer-variants-sync:
       # The local and cloud dev container configs describe the same project and

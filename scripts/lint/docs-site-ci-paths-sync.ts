@@ -80,6 +80,12 @@ export function parseWorkflowPaths(source: string, key: "paths" | "paths-ignore"
  * changes the site exactly as much as an en one — but `PUBLISHED_EN_FILES` names
  * only the en base, so a `paths:` list written from it alone leaves the ja file
  * untriggered. `exists` is injected so this stays pure and testable.
+ *
+ * The rule itself is owned by `listSources()` in
+ * `packages/docs-site/scripts/sources.ts`, which is what actually decides the
+ * published locale pages. This restates it rather than importing it because the
+ * guard reads the site map as text (it must keep working when the module does
+ * not typecheck). If a third locale is ever added, change it there and here.
  */
 export function expandLocaleSiblings(
   enFiles: readonly string[],
