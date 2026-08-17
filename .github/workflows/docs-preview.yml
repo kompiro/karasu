@@ -102,6 +102,12 @@ jobs:
           # app's `karasu` project. The upload directory comes from
           # `pages_build_output_dir`.
           workingDirectory: packages/docs-site
+          # Must be stated, not inferred. The action picks a package manager by
+          # looking for a lockfile *in the working directory*: the other wrangler
+          # deploys run from the repo root and find `pnpm-lock.yaml`, but there
+          # is none here, so it falls back to npm — and npm cannot install into a
+          # package.json carrying `workspace:*` (`EUNSUPPORTEDPROTOCOL`).
+          packageManager: pnpm
           command: pages deploy --project-name=karasu-docs --branch=${{ github.head_ref }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 

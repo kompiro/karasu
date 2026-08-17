@@ -184,6 +184,15 @@ describe("the docs preview deployment", () => {
     expect(existsSync(join(REPO_ROOT, "functions/[[path]].ts"))).toBe(true);
   });
 
+  it("names the package manager, which moving off the repo root stops inferring", () => {
+    // wrangler-action picks one by looking for a lockfile in the working
+    // directory. There is none beside `packages/docs-site/package.json`, so it
+    // falls back to npm — which cannot install into a package.json carrying
+    // `workspace:*`. The two settings only work as a pair.
+    expect(workflow).toContain("packageManager: pnpm");
+    expect(existsSync(join(REPO_ROOT, "packages/docs-site/pnpm-lock.yaml"))).toBe(false);
+  });
+
   it("stages the build into the directory wrangler is configured to upload", () => {
     const config = read("packages/docs-site/wrangler.toml");
     expect(config).toContain('name = "karasu-docs"');
