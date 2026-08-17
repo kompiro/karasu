@@ -231,18 +231,31 @@ Issue が挙げた選択肢 2 そのもの。
 曖昧性診断は案1 に含めて残す。ただし役割が変わる — 案3 では「rename せよ」という
 逃げ場の無い警告だったものが、案1 では「path で修飾せよ」という実行可能な助言になる。
 
+レビューで次の 3 点を確認済み（2026-08-17）:
+
+- **解決規則は接尾辞一致**。先頭からの絶対 path 必須にはしない
+- **9 サイト一括で揃える**。`owns` だけを直して分岐を 4 つ残す形は採らない
+- **AST の破壊的変更を許容する**。`owns` / `contains` / `realizes` / `handles` の
+  property 型が `string[]` → `string[][]` になる（[ADR-927](../adr/927-import-system-nested.md) が
+  `ImportDeclaration.ids` で行ったのと同じ変更）
+
 ### スライス（実装ステップ）
 
 | スライス | 前提 | 独立に出荷できる理由 |
 | --- | --- | --- |
-| **A** path 記法の共有 parse + 接尾辞 resolver（既存 4 サイトを新 resolver に載せ替え、挙動不変を固定） | — | 受理する形も解決結果も変えない。既存テストが回帰ガードになる |
-| **B** `owns` / `contains`（top-level・scoped）を受理側に追加 + `*-target-ambiguous` 診断 | A | bare id の解決は不変。増えるのは受理される形と warning だけ |
-| **C** `realizes` / `handles` を受理側に追加 | A | 同上。B と独立（別 property・別 validator） |
-| **D** `ownerIndex` / `boundaryMembership` の path キー化 | B | 修飾 path で narrowing が実際に効くようにする最後の一歩。B までは修飾しても broadcast のままなので、**D 無しで B を出荷すると [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) 違反になる** — B と D は同一 Issue に束ねる |
+| **A** path 記法の共有 parse ヘルパー + 接尾辞 resolver。既存の受理側 4 サイト（`import` / edge endpoint / entity 関連 / `resource`）を新 resolver に載せ替える | — | 受理する形も解決結果も変えない純粋な載せ替え。既存テストがそのまま回帰ガードになる |
+| **B** `owns` / `contains`（top-level・スコープ内）を受理側に追加。`ownerIndex` / `boundaryMembership` の path キー化と `*-target-ambiguous` 診断を含む | A | bare id の解決は不変で、増えるのは受理される形と warning のみ |
+| **C** `realizes` / `handles` を受理側に追加 + `*-target-ambiguous` 診断 | A | B と独立（別 property・別 validator・別 index）。B と並行して進められる |
 
-> スライス B と D は「受理したのに効果が無い」を作らないため 1 つの出荷単位として扱う。
-> 各スライスの到達点は親 Issue [#2088](https://github.com/kompiro/karasu/issues/2088) の
-> `## Slice status` に置く。
+**受理と narrowing を分割しない。** 記法だけ通して索引を id キーのまま残すと、
+`A.B.C` と書いても解決先が bare と同じ集合になり、
+[TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) の
+「受理されるのに効果が違う」を自分で作ることになる。そのため index の張り替えは
+B から切り出さず同一スライスに含める。
+
+> 各スライスの到達点（できること / その時点でできないこと）は親 Issue
+> [#2088](https://github.com/kompiro/karasu/issues/2088) の `## Slice status` に置く
+> （`.claude/rules/program-slices.md`）。
 
 ### 実装の指針
 
