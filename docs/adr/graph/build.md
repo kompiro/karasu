@@ -83,6 +83,7 @@ flowchart TD
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
+    ADR_2562["ADR-2562<br/>Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -188,6 +189,7 @@ flowchart TD
   class ADR_2447 accepted
   class ADR_2472 accepted
   class ADR_2474 accepted
+  class ADR_2562 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
