@@ -389,8 +389,8 @@ importers:
         specifier: ^0.0.15
         version: 0.0.15
       '@vscode/test-electron':
-        specifier: ^2.5.2
-        version: 2.5.2(supports-color@8.1.1)
+        specifier: ^3.1.0
+        version: 3.1.0(supports-color@8.1.1)
       '@vscode/vsce':
         specifier: ^3.9.2
         version: 3.9.2(supports-color@8.1.1)
@@ -3258,9 +3258,9 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
-  '@vscode/test-electron@2.5.2':
-    resolution: {integrity: sha512-8ukpxv4wYe0iWMRQU18jhzJOHkeGKbnw7xWRX3Zw1WJA4cEKbHcmmLPdPrPtL6rhDcrlCZN+xKRpv09n4gRHYg==}
-    engines: {node: '>=16'}
+  '@vscode/test-electron@3.1.0':
+    resolution: {integrity: sha512-CRqv5u+YYoseuNVJ6Tyo4k0sF0mx4qnKMihRB0PjsUF8Dc0WKtCXo6CNL6nWWm5esfFQsQA/pejMj4ZbpJVLTw==}
+    engines: {node: '>=22'}
 
   '@vscode/vsce-sign-alpine-arm64@2.0.6':
     resolution: {integrity: sha512-wKkJBsvKF+f0GfsUuGT0tSW0kZL87QggEiqNqK6/8hvqsXvpx8OsTEc3mnE1kejkh5r+qUyQ7PtF8jZYN0mo8Q==}
@@ -4273,10 +4273,6 @@ packages:
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
-
-  get-east-asian-width@1.5.0:
-    resolution: {integrity: sha512-CQ+bEO+Tva/qlmw24dCejulK5pMzVnUOFOijVogd3KQs07HnRIgp8TGipvCCRT06xeYEbpbgwaCxglFyiuIcmA==}
-    engines: {node: '>=18'}
 
   get-east-asian-width@1.6.0:
     resolution: {integrity: sha512-QRbvDIbx6YklUe6RxeTeleMR0yv3cYH6PsPZHcnVn7xv7zO1BHN8r0XETu8n6Ye3Q+ahtSarc3WgtNWmehIBfA==}
@@ -9752,13 +9748,13 @@ snapshots:
     transitivePeerDependencies:
       - monocart-coverage-reports
 
-  '@vscode/test-electron@2.5.2(supports-color@8.1.1)':
+  '@vscode/test-electron@3.1.0(supports-color@8.1.1)':
     dependencies:
       http-proxy-agent: 7.0.2(supports-color@8.1.1)
       https-proxy-agent: 7.0.6(supports-color@8.1.1)
       jszip: 3.10.1
       ora: 8.2.0
-      semver: 7.7.4
+      semver: 7.8.5
     transitivePeerDependencies:
       - supports-color
 
@@ -10992,8 +10988,6 @@ snapshots:
       node-source-walk: 7.0.2
 
   get-caller-file@2.0.5: {}
-
-  get-east-asian-width@1.5.0: {}
 
   get-east-asian-width@1.6.0: {}
 
@@ -13653,7 +13647,7 @@ snapshots:
   string-width@7.2.0:
     dependencies:
       emoji-regex: 10.6.0
-      get-east-asian-width: 1.5.0
+      get-east-asian-width: 1.6.0
       strip-ansi: 7.2.0
 
   string-width@8.2.2:
