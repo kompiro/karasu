@@ -113,6 +113,28 @@ Insiders の再ダウンロード修正など。依存ツリーの変化は `sem
 
 **「VS Code extension host」ジョブが green** なので、3.1.0 で実際にテストが走ることは実測済み。
 
+**さらに、3.0.0 は今回のバッチを止めている flake そのものの修正を含む。**
+[microsoft/vscode-test#340](https://github.com/microsoft/vscode-test/pull/340)
+（2026-05-29 merge、3.0.0 に収録）が報告している症状は #2556 / #2558 の失敗ログと一致する:
+
+```
+- Downloading (242.87 MB)
+✖ Error downloading, retrying (attempt 1 of 3): aborted
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+```
+
+原因は `unzipVSCode`（`lib/download.ts`）で checksum 検証の promise を先に作りながら
+成功パスでしか `await` していないこと。stream が中断すると `streamToBuffer` の reject は
+retry ループが拾うが、同じ stream に listener を張っている `validateStream` の reject が
+誰にも観測されず unhandled rejection でプロセスごと落ちる。**「attempt 1 of 3」を印字した
+直後に死ぬ**のはこのためで、retry は構造的に効かない。修正は `checksum.catch(() => {})` で
+観測だけしておくもの。
+
+`@vscode/test-cli` は `mustResolve(this.config.dir, '@vscode/test-electron')` で
+**workspace の宣言から** test-electron を解決する（`out/cli/platform/desktop.mjs`）ので、
+`packages/vscode-e2e` の devDependency を 3.1.0 に上げれば extension host ジョブに直接効く。
+
 ### #2556 `@types/node` 25.6.0 → 26.2.0（low / 採用（major、CI 再実行））
 
 root + 8 packages の 9 manifest を一括で bump する。型定義のみで runtime 成果物には入らない。
@@ -128,8 +150,11 @@ Check ジョブ（lint / knip / typecheck / test:coverage / build を全パッ�
 
 **CI red の原因は依存差分と無関係。** 「VS Code extension host」ジョブが VS Code 1.133.0 の
 バイナリ（331.71 MB）ダウンロード中に `Error: aborted` で落ちている。同じバッチの他 6 PR では
-同一ジョブが green なので、ネットワーク flake と判断した。再実行して green を確認してから
-マージする。
+同一ジョブが green なので、ネットワーク flake と判断した。
+
+再実行では #2558 は green になったが **#2556 は同じ箇所で 2 回目も落ちた**。これは
+`@vscode/test-electron` 2.5.2 の既知バグで、retry が unhandled rejection に負ける構造
+（#2555 の節を参照）。**#2555 を先にマージすれば直る**ので、順序で解く。
 
 ### #2557 `marked` 18.0.2 → 18.0.9（low / 採用）
 
@@ -234,8 +259,12 @@ override floor `serialize-javascript: ^7.0.5` は満たしたまま
   [#2563](https://github.com/kompiro/karasu/pull/2563) で `engines.vscode` とセットで入れる
 - **却下**: 0 件。`@dependabot ignore` は設定しない
 
-マージ順の制約は無い（peer で結ばれた組は本バッチに含まれていない）。
-#2556 は 9 manifest に触るのでコンフリクトしやすく、最後に回すのが無難。
+peer で結ばれた組は本バッチに含まれていないが、**マージ順に 1 つ意味がある**:
+
+1. **#2555 を先に**。`@vscode/test-electron` 3.0.0 が extension host ジョブの
+   ダウンロード flake そのものを直す（#2555 の節）。#2556 は再実行 2 回とも同じ箇所で
+   落ちており、再実行を繰り返すより先に原因を入れる方が早い
+2. 残りは任意順。#2556 は 9 manifest に触るのでコンフリクトしやすく、最後に回すのが無難
 
 ## 決定: VS Code 版の追随規則
 
