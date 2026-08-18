@@ -9,8 +9,9 @@
   - cooldown 7 日: [ADR-784](../adr/784-update-dependencies-20260421.md)
   - `@types/node` の先行を許す前例: [ADR-199](../adr/199-update-dependencies-20260331.md) / [ADR-2397](../adr/2397-node-24-baseline.md)
   - `engines.vscode` の未回収 action item: [ADR-769](../adr/769-update-dependencies-20260420.md)
-  - 関連 TPL: [TPL-2456](../test-perspectives/TPL-2456-module-instance-scoped-identity.md)（片側 bump と module コピー二重化の観点）
-  - コード: `packages/vscode/package.json`, `packages/vscode-e2e/extester-bootstrap.mjs`, `pnpm-workspace.yaml`
+  - 差し替え PR: [#2563](https://github.com/kompiro/karasu/pull/2563)（`engines.vscode` と `@types/vscode` を 1.125 へ、追随規則の機械チェック付き）
+  - 関連 TPL: [TPL-2456](../test-perspectives/TPL-2456-module-instance-scoped-identity.md)（片側 bump と module コピー二重化の観点） / [TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)（sweep は検索で閉じる）
+  - コード: `packages/vscode/package.json`, `packages/vscode-e2e/extester-bootstrap.mjs`, `packages/vscode-e2e/.vscode-test.mjs`, `pnpm-workspace.yaml`
 
 ## 背景・課題
 
@@ -34,7 +35,7 @@ red の理由が揃っていない。ここを区別しないと、flake を理�
 | [#2556](https://github.com/kompiro/karasu/pull/2556) | `@types/node` 25.6.0 → 26.2.0 | **major** | dev (9 manifest) | red（flake） | low | 採用（再実行して green を確認） |
 | [#2557](https://github.com/kompiro/karasu/pull/2557) | `marked` 18.0.2 → 18.0.9 | patch 列 | runtime (app, vscode) | green | low | 採用（そのままマージ） |
 | [#2558](https://github.com/kompiro/karasu/pull/2558) | `@vitejs/plugin-react` 6.0.1 → 6.0.5 | patch 列 | dev (app) | red（flake） | low | 採用（再実行して green を確認） |
-| [#2559](https://github.com/kompiro/karasu/pull/2559) | `@types/vscode` 1.116.0 → 1.125.0 | minor | dev (vscode, vscode-e2e) | **red（実因）** | medium | **保留**（判断が要る。下記） |
+| [#2559](https://github.com/kompiro/karasu/pull/2559) | `@types/vscode` 1.116.0 → 1.125.0 | minor | dev (vscode, vscode-e2e) | **red（実因）** | medium | 採用（差し替え PR [#2563](https://github.com/kompiro/karasu/pull/2563)） |
 | [#2560](https://github.com/kompiro/karasu/pull/2560) | `@radix-ui/react-tooltip` 1.2.8 → 1.2.16 | patch 列 | dev (app) | green | low | 採用（そのままマージ） |
 | [#2561](https://github.com/kompiro/karasu/pull/2561) | `mocha` 11.7.5 → 11.8.0 | minor | dev (vscode-e2e) | green | low | 採用（そのままマージ） |
 
@@ -161,7 +162,7 @@ lock の変化は `marked` 単体のみ。`monaco-editor@0.56.0` 由来の `mark
 
 CI red は #2556 と同一の VS Code バイナリ DL flake。
 
-### #2559 `@types/vscode` 1.116.0 → 1.125.0（medium / **保留**（判断が要る））
+### #2559 `@types/vscode` 1.116.0 → 1.125.0（medium / 採用（差し替え PR））
 
 **この PR の CI 失敗だけは実因で、rebase でも `@dependabot recreate` でも直らない。**
 
@@ -186,21 +187,19 @@ bot ブランチに人手で `engines.vscode` のコミットを足しても `@d
 供給側のリスクはゼロに近い。DefinitelyTyped の `types` account 発行、lifecycle script なし、
 依存ゼロ、`.d.ts` のみ。lock に増えたパッケージ名もない。
 
-**判断が要るのは供給側ではなく、拡張の最低 VS Code 版を 1.111 → 1.125 に上げてよいか**という点:
+判断が要るのは供給側ではなく、**拡張の最低 VS Code 版を 1.111 → 1.125 に上げてよいか**という点で、
+**上げる**と決めた（下の「決定: VS Code 版の追随規則」）。差し替え PR
+[#2563](https://github.com/kompiro/karasu/pull/2563) が `engines.vscode: ^1.125.0` と
+`@types/vscode: ^1.125.0` を 1 コミットで入れる。#2559 は close 済み。判定は採用なので
+`@dependabot ignore` は設定しない。
 
-- VS Code 1.125 は 2026-06 リリース。CI が extension host / WebView の検証に落としているのは
-  1.133.0 で、実際の検証環境は既に 1.125 より新しい
-- 上げた場合、1.111〜1.124 を使っている利用者は Marketplace から新版を取得できなくなる
-- 上げない場合、`@types/vscode` は `^1.111.0` に据え置くことになり、Dependabot は毎週同じ PR を
-  出し続ける（`@dependabot ignore this dependency` を設定しない限り）
-- [ADR-769](../adr/769-update-dependencies-20260420.md) が 1.110 → 1.116 のときに
-  「`engines.vscode` が 1.116 未満なら、その pin が意図した出荷対象と合っているか確認する」という
-  action item を残していたが未回収。今回それが hard failure として顕在化した
+1.111〜1.124 の利用者は Marketplace から新版を取得できなくなるが、VS Code は週次リリースで
+自動更新されるため実害は小さい。
 
-**推奨は保留**。ただし「上げてよい」と判断するなら、採用（差し替え PR）に切り替えて
-`engines.vscode: ^1.125.0` + `@types/vscode: ^1.125.0` を 1 コミットで入れる。
-どちらにせよ判定は 採用 / 保留 のいずれかで、`@dependabot ignore` は設定しない
-（却下ではないため）。
+[ADR-769](../adr/769-update-dependencies-20260420.md) が 1.110 → 1.116 のときに
+「`engines.vscode` が 1.116 未満なら、その pin が意図した出荷対象と合っているか確認する」という
+action item を残していたが未回収で、今回それが hard failure として顕在化した。
+規則にして機械チェックを置くことで、この action item は今回で閉じる。
 
 ### #2560 `@radix-ui/react-tooltip` 1.2.8 → 1.2.16（low / 採用）
 
@@ -227,14 +226,44 @@ override floor `serialize-javascript: ^7.0.5` は満たしたまま
 
 ## 現時点の方針
 
-- **採用（そのままマージ）**: 6 件。#2554 / #2555 / #2557 / #2560 / #2561 と、
-  CI 再実行後の #2556 / #2558（計 7 件）
-- **保留**: 1 件。#2559 は`engines.vscode` を上げるかの判断待ち。上げる判断なら
-  採用（差し替え PR）へ切り替える
+**8 件すべて採用。保留・却下はゼロ。**
+
+- **採用（そのままマージ）**: 7 件。#2554 / #2555 / #2557 / #2560 / #2561 と、
+  CI 再実行後の #2556 / #2558
+- **採用（差し替え PR）**: 1 件。#2559 は close し、
+  [#2563](https://github.com/kompiro/karasu/pull/2563) で `engines.vscode` とセットで入れる
 - **却下**: 0 件。`@dependabot ignore` は設定しない
 
 マージ順の制約は無い（peer で結ばれた組は本バッチに含まれていない）。
 #2556 は 9 manifest に触るのでコンフリクトしやすく、最後に回すのが無難。
+
+## 決定: VS Code 版の追随規則
+
+**`@types/vscode` と `engines.vscode` は常に同値とし、その版は CI が検証している
+VS Code 版に追随させる。**
+
+VS Code は週次リリースで自動更新されるので、最新 API 水準に追いつくコストが低い。
+`packages/vscode-e2e/.vscode-test.mjs` は既に `version: "stable"` を意図的に選んでおり
+（「Track upstream stable so each weekly VS Code release is exercised by this suite」）、
+これが「CI は常に floor 以上の host で検証している」を数字を比べずに成立させている。
+最新の VS Code は、公開済みのどの `@types/vscode` よりも必ず新しいためである。
+
+`scripts/ci/vscode-version-policy.test.ts`（#2563）が次を検査する:
+
+1. `@types/vscode` を宣言する全 workspace manifest が同じレンジであること。
+   宣言箇所は手書きの一覧ではなく manifest の走査で見つける
+   （[TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)）
+2. `engines.vscode` がそのレンジと**同値**であること。vsce は片方向しか拒否しないので、
+   floor が types より低い側も検出する
+3. `.vscode-test.mjs` が `stable` を追い続けていること。ここに版を pin すると
+   「CI ≥ floor」が無料で成立しなくなるので、その時点で落として比較を明示させる
+4. 宣言が実際に見つかったことの sanity 検査
+
+**バージョン定数はテストに置かない。** 置くと sweep 対象が 4 箇所目に増え、
+まさにこのテストが取り締まる bump のたびにテスト自身がずれる。
+[ADR-2397](../adr/2397-node-24-baseline.md) の `node-version-policy.test.ts` が
+`NODE_MAJOR` を定数で持つのとは逆の形にしている。Node は自分の意思で上げる toolchain の
+baseline だが、VS Code の floor は upstream の release に追随する従属変数だからである。
 
 ## バッチ外の発見: nanoid の open alert
 
@@ -252,8 +281,4 @@ lock には `postcss@8.5.25 -> nanoid 3.3.17`（脆弱）と `postcss@8.5.26 -> 
 
 ## 未解決の問い
 
-- `engines.vscode` の floor をどう運用するか。毎回の `@types/vscode` bump で同じ判断を
-  繰り返すのか、「@types/vscode は engines.vscode と常に同値にし、engines は CI が検証している
-  VS Code 版に追随させる」といった規則に畳むのか。後者なら
-  `scripts/ci/node-version-policy.test.ts`（[ADR-2397](../adr/2397-node-24-baseline.md)）と
-  同じ形の機械チェックが置ける
+- なし。`engines.vscode` の運用は上の「決定: VS Code 版の追随規則」で閉じた
