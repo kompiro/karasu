@@ -520,23 +520,25 @@ export interface DeployBlock {
 // ─── ファイル ──────────────────────────────────────
 
 /**
- * One named import entry, represented as an array of path segments.
+ * A node reference written as an array of dotted path segments (#2088).
  *
- * - Bare id `Foo` parses to `["Foo"]` (resolved by the existing
- *   single-id lookup against `system` ids, direct system children,
- *   top-level services, and deploy nodes).
- * - Path id `A.B.C` parses to `["A", "B", "C"]` and is walked by the
- *   resolver one segment at a time through each parent's `children`
- *   array (id-only matching, no kind whitelist). See ADR / Issue #927.
+ * - Bare id `Foo` parses to `["Foo"]` — the length-1 case.
+ * - Path id `A.B.C` parses to `["A", "B", "C"]`.
+ *
+ * First introduced for `import` entries (Issue #927), where the resolver
+ * walks the path one segment at a time through each parent's `children`
+ * array (id-only matching, no kind whitelist). Other reference sites share
+ * the same lexical shape via `parser/node-path.ts` but keep their own
+ * resolution rules.
  *
  * Note: path resolution and validation (file existence, segment lookup,
- * ambiguity, cycles) are deferred to `fs/import-resolver.ts` — the parser
- * only records the path structurally.
+ * ambiguity, cycles) stay with each site's resolver — the parser only
+ * records the path structurally.
  */
-export type ImportIdPath = string[];
+export type NodeIdPath = string[];
 
 export interface ImportDeclaration {
-  ids: ImportIdPath[];
+  ids: NodeIdPath[];
   path: string;
   loc: SourceRange;
 }
