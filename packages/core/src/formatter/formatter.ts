@@ -440,8 +440,10 @@ class Printer {
       lines.push(`    type ${quoteString(node.properties.type)}`);
     if (node.properties.schedule !== undefined)
       lines.push(`    schedule ${quoteString(node.properties.schedule)}`);
+    // One target per line, even when the source wrote them comma-separated
+    // (#2167): repeated lines are the canonical form the comma list sugars.
     for (const r of node.properties.realizes ?? []) {
-      lines.push(`    realizes ${quoteId(r)}`);
+      lines.push(`    realizes ${quoteId(r.id)}`);
     }
 
     lines.push("  }");

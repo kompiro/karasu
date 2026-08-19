@@ -1008,6 +1008,26 @@ deploy "production" {
 }
 ```
 
+The targets may also be written as one comma-separated line. This is sugar: it produces exactly the
+model above, and the two forms may be mixed within a node — every entry accumulates in document order.
+
+```krs
+deploy "production" {
+  oci "monolith" {
+    image    "monolith:1.0.0"
+    realizes OrderService, InventoryService
+  }
+}
+```
+
+Repeated lines are the canonical form: `karasu fmt` emits one target per line and rewrites a comma
+list into it. A comma with no identifier after it (`realizes A,`) or before it (`realizes ,B`) is
+reported as [`expected-property-value`](./diagnostics.md) on the comma itself. A list lives on the
+line its `realizes` keyword is on, so it never continues across a line break in either direction —
+neither a trailing comma nor a comma opening the following line extends the list.
+
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
+
 ### Realizing shared infra (the `store` kind)
 
 `realizes` can also point at a **shared infra node** (`database` / `queue` / `storage`), not just a

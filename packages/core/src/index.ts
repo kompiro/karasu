@@ -5,6 +5,7 @@ export type {
   LinkEntry,
   DeployBlock,
   DeployNode,
+  RealizesTarget,
   ImportDeclaration,
   Diagnostic,
   DiagnosticCode,
