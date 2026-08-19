@@ -342,6 +342,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1570](1570-shared-infra-fan-in-diagnostic.md) — 共有 infra fan-in を info 診断として通知する
 - [ADR-1819](1819-domain-store-ownership-diagnostic.md) — infra leaf のドメイン所有を entity から導出し cross-domain ストアアクセスを info 診断する
 - [ADR-2075](2075-edge-endpoint-scope-diagnostic.md) — 宣言スコープで描画できない edge endpoint を診断する — peer はノードインスタンス単位で数える
+- [ADR-2078](2078-reverse-synthesis-physical-fidelity.md) — 物理参照の存在検査は診断、物理層の回復度は coverage — 主張の種類で置き場を分ける
 - [ADR-2184](2184-unassigned-domain-placement-parity.md) — 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain にも `unassigned-domain` を発行する
 - [ADR-2410](2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md) — import 結合の存在検査は未解決 import が残る file では判定しない（invalid-owns は kind 専任にする）
 - [ADR-2442](2442-owns-existence-any-declared-node.md) — owns の存在検査は kind を問わない（system は kind 拒否として報告し、invalid-owns は拒否した kind を名指す）

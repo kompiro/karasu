@@ -334,6 +334,7 @@ flowchart TD
     ADR_1570["ADR-1570<br/>共有 infra fan-in を info 診断として通知する"]
     ADR_1819["ADR-1819<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
     ADR_2075["ADR-2075<br/>宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
+    ADR_2078["ADR-2078<br/>物理参照の存在検査は診断、物理層の回復度は coverage — 主張の種類で置き場を分ける"]
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
     ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
@@ -769,6 +770,7 @@ flowchart TD
   class ADR_2075 accepted
   class ADR_2076 accepted
   class ADR_2077 accepted
+  class ADR_2078 accepted
   class ADR_2087 accepted
   class ADR_2092 accepted
   class ADR_2106 accepted
