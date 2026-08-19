@@ -9,6 +9,8 @@ import type {
   LegendRefTarget,
 } from "../types/ast.js";
 import { INFRA_KIND_SET, OWNS_TARGET_KIND_SET } from "../types/ast.js";
+import { collectDeclaredNodePaths, resolveDeclaredRef } from "../parser/reference-validation.js";
+import { nodePathKey } from "../parser/node-path.js";
 import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
@@ -1469,81 +1471,39 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
 function detectInvalidOwns(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
 
-  // Every id whose *kind* may be owned, from the one enumeration both owns
-  // checks read (OWNS_TARGET_KIND_SET): the logical kinds plus infra blocks at
-  // any depth. This set used to be spelled out inline as service / domain /
-  // client, so `owns <database>` resolved for the existence check yet was
-  // rejected here as an unownable kind — the two-list drift TPL-1720 names
-  // (#2408). Leaf sub-resources and `capability` stay out, which is what makes
-  // this the check that rejects them.
-  const validIds = new Set<string>();
-  function collectIds(nodes: KrsNode[]): void {
-    for (const node of nodes) {
-      if (OWNS_TARGET_KIND_SET.has(node.kind)) {
-        validIds.add(node.id);
-      }
-      collectIds(node.children);
-    }
-  }
-  for (const system of file.systems) {
-    collectIds(system.children);
-  }
-  // Top-level buckets: the node itself is not reached by the walks above, and
-  // its own kind is already known to be ownable for services / domains /
-  // clients / infra alike, so each bucket goes through the same predicate.
-  collectIds(file.services);
-  collectIds(file.domains);
-  collectIds(file.clients);
-  collectIds(file.databases);
-  collectIds(file.queues);
-  collectIds(file.storages);
-
-  // Every declared node id mapped to its kind — the map, not a set, because this
-  // diagnostic names the kind it refused. `invalid-owns` reports a *kind*, so it
-  // may only speak about an id that resolves to a node: "declared nowhere" is
+  // Resolution goes through the shared declared-node multimap and suffix rule
+  // (#2088), so this check and the existence check cannot drift apart on what
+  // an `owns` ref names. `invalid-owns` reports a *kind*, so it may only speak
+  // about a ref that resolves to at least one node: "declared nowhere" is
   // `owns-target-not-found`'s verdict, and reporting both for a plain typo
-  // contradicted this diagnostic's own definition (#2410). Systems are in here so
-  // `owns <systemId>` reads as the kind refusal it is (#2442).
+  // contradicted this diagnostic's own definition (#2410). Systems are in the
+  // pool so `owns <systemId>` reads as the kind refusal it is (#2442).
   //
-  // First occurrence wins: node ids are unique only among siblings (ADR-927), so
-  // the same id can name two kinds in two scopes. Which one is recorded decides
-  // only the label, because the fire condition consults `validIds` — and when one
-  // of the colliding nodes IS ownable, that set holds the id and nothing fires at
-  // all. The silence is the intent: some node with this id can be owned, so there
-  // is no refusal to report. Only a collision between two unownable kinds reaches
-  // the message, and there either label makes the same point.
-  const declaredKinds = new Map<string, LogicalNodeKind>();
-  function collectDeclaredKinds(nodes: readonly KrsNode[]): void {
-    for (const node of nodes) {
-      if (!declaredKinds.has(node.id)) {
-        declaredKinds.set(node.id, node.kind as LogicalNodeKind);
-      }
-      collectDeclaredKinds(node.children);
-    }
-  }
-  for (const system of file.systems) {
-    if (!declaredKinds.has(system.id)) declaredKinds.set(system.id, "system");
-    collectDeclaredKinds(system.children);
-  }
-  collectDeclaredKinds(file.services);
-  collectDeclaredKinds(file.domains);
-  collectDeclaredKinds(file.clients);
-  collectDeclaredKinds(file.databases);
-  collectDeclaredKinds(file.queues);
-  collectDeclaredKinds(file.storages);
+  // The fire condition is "no resolved target is ownable" (OWNS_TARGET_KIND_SET,
+  // the one enumeration — TPL-1720): when one of the resolved nodes IS ownable,
+  // nothing fires at all. The silence is the intent: some node this ref names
+  // can be owned, so there is no refusal to report. Only a ref whose every
+  // target is unownable reaches the message, and the first target's kind
+  // labels it — with several unownable kinds either label makes the same point.
+  const declared = collectDeclaredNodePaths(file);
 
-  // Check each owns reference
   function checkTeams(teams: TeamNode[]): void {
     for (const team of teams) {
-      for (const ownedId of team.properties.owns) {
-        const ownedKind = declaredKinds.get(ownedId);
-        if (ownedKind !== undefined && !validIds.has(ownedId)) {
-          warnings.push({
-            kind: "invalid-owns",
-            params: { teamId: team.id, ownedId, ownedKind },
-            loc: team.loc,
-          });
+      for (const ref of team.properties.owns) {
+        const matches = resolveDeclaredRef(declared, ref);
+        if (matches.length === 0) continue;
+        if (matches.some((m) => m.kind !== "system" && OWNS_TARGET_KIND_SET.has(m.kind))) {
+          continue;
         }
+        warnings.push({
+          kind: "invalid-owns",
+          params: {
+            teamId: team.id,
+            ownedId: nodePathKey(ref),
+            ownedKind: matches[0].kind as LogicalNodeKind,
+          },
+          loc: team.loc,
+        });
       }
       checkTeams(team.children.filter((c): c is TeamNode => c.kind === "team"));
     }

@@ -138,8 +138,14 @@ function serializeEdges(edges: KrsEdge[]): SerializedEdge[] {
   }));
 }
 
-function serializeNode(node: KrsNode, ownerIndex: Map<string, string>): SerializedNode {
-  const owner = ownerIndex.get(node.id);
+function serializeNode(
+  node: KrsNode,
+  ownerIndex: Map<string, string>,
+  prefix: readonly string[],
+): SerializedNode {
+  // ownerIndex is keyed by full node path (#2548).
+  const path = [...prefix, node.id];
+  const owner = ownerIndex.get(path.join("."));
   const out: SerializedNode = {
     id: node.id,
     kind: node.kind,
@@ -149,7 +155,9 @@ function serializeNode(node: KrsNode, ownerIndex: Map<string, string>): Serializ
   const props = node.properties as { links: LinkEntry[] };
   const links = serializeLinks(props.links);
   if (links) out.links = links;
-  if (node.children.length) out.children = node.children.map((c) => serializeNode(c, ownerIndex));
+  if (node.children.length) {
+    out.children = node.children.map((c) => serializeNode(c, ownerIndex, path));
+  }
   if (node.edges.length) out.edges = serializeEdges(node.edges);
   return out;
 }
@@ -161,7 +169,8 @@ function serializeTeam(team: TeamNode): SerializedTeam {
   return {
     id: team.id,
     ...(team.label ? { label: team.label } : {}),
-    owns: team.properties.owns,
+    // Serialized as the author wrote it: a path ref joins to `A.B.C` (#2548).
+    owns: team.properties.owns.map((ref) => ref.join(".")),
     ...(team.annotations.length ? { annotations: team.annotations } : {}),
     ...(links ? { links } : {}),
     ...(members.length
@@ -201,7 +210,7 @@ function serializeModelGraph(
       kind: "system",
       ...(sys.label ? { label: sys.label } : {}),
       ...(links ? { links } : {}),
-      children: sys.children.map((c) => serializeNode(c, ownerIndex)),
+      children: sys.children.map((c) => serializeNode(c, ownerIndex, [sys.id])),
       edges: serializeEdges(sys.edges),
     };
   });

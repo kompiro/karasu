@@ -153,7 +153,11 @@ function containmentsIn(result: LayoutResult, membership: Map<string, string[]>)
     if (container.group !== true || container.groupId === undefined) continue;
     const groupId = container.groupId;
     const members = new Set(
-      [...membership].filter(([, groups]) => groups.includes(groupId)).map(([id]) => id),
+      [...membership]
+        .filter(([, groups]) => groups.includes(groupId))
+        // boundaryMembership is path-keyed (#2548); every fixture canvas
+        // here is the `Payments` system, so members are its direct children.
+        .map(([pathKey]) => pathKey.replace(/^Payments\./, "")),
     );
     // The band body plus every reach strip. A plain frame has no `coverage`, and
     // its recorded rect is the whole of it.
@@ -194,7 +198,7 @@ describe("a boundary frame never encloses a non-member (縮退規則 4, #2179)",
     expect(wallet).toBeDefined();
     const pci = result.containers.find((c) => c.group === true && c.groupId === "pci");
     expect(pci).toBeDefined();
-    expect(membership.get("Wallet")).not.toContain("pci");
+    expect(membership.get("Payments.Wallet")).not.toContain("pci");
     // The fallback path: this frame degraded, so it has no `coverage` and the
     // recorded rect is the whole of it.
     expect(pci!.coverage).toBeUndefined();

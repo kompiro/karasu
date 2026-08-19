@@ -265,10 +265,13 @@ function layoutGhostSystem(
   let y = originY + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
 
   for (const svc of gs.visibleServices) {
-    const owner = ownerOf(svc.kind, svc.id);
+    // The qualified id doubles as the node's full path key: a ghost is a
+    // system's direct child, so `Sys.Svc` is exactly what the path-keyed
+    // ownerIndex holds for it (#2548).
+    const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
+    const owner = ownerOf(svc.kind, qualifiedId);
     const dims = measureNode(svc, owner, ctx);
     const x = originX + CONTAINER_PADDING;
-    const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
     nodes.set(
       qualifiedId,
       makeLayoutNode(svc, qualifiedId, {

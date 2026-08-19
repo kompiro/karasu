@@ -295,6 +295,17 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
+  it("preserves owns and contains path references as written", () => {
+    // TPL-1101: fmt keeps the author's path length — no normalization to the
+    // full path and no shortening to the bare id (#2548).
+    const src = `system Shop {\n  service Payment {}\n  service Checkout {\n    domain Payment {}\n  }\n}\n\nboundary pci {\n  contains Shop.Checkout.Payment\n}\n\norganization Org {\n  team Platform {\n    owns Shop.Payment\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`    owns Shop.Payment`);
+    expect(result).toContain(`  contains Shop.Checkout.Payment`);
+    expectIdempotent(result);
+    expectAstRoundTrip(src);
+  });
+
   it("formats organization with description and link", () => {
     const src = `organization Org {\n  description "Our org"\n  link "https://example.com" "Site"\n  team Backend {\n    owns ECommerce\n  }\n}`;
     const result = fmt(src);

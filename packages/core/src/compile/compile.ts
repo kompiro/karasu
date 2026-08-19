@@ -73,6 +73,7 @@ import { extractDeployView } from "../view/deploy-view-extract.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
+import { nodePathKey } from "../parser/node-path.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import { summarizeDescription } from "../renderer/description-summary.js";
@@ -725,13 +726,22 @@ function buildNodeMetadata(
 ): Map<string, NodeMetadata> {
   const map = new Map<string, NodeMetadata>();
 
-  function addNode(node: KrsNode): void {
+  // ownerIndex is keyed by full path (#2548); each add-site below passes the
+  // node's path prefix (canvas scope, owning system, or ghost system).
+  const canvasScope =
+    viewSlice.containerNode !== null
+      ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
+      : [];
+
+  function addNode(node: KrsNode, pathPrefix: readonly string[]): void {
     const id = node.id;
     const description = node.properties.description;
     // Resolve owner team from the organization graph (org.team.owns). Every
     // kind a team can `owns` reports it — the panel row went missing on
     // `client` while the org view drew the same ownership (Issue #2157).
-    const team = OWNABLE_KIND_SET.has(node.kind) ? ownerIndex?.get(id) : undefined;
+    const team = OWNABLE_KIND_SET.has(node.kind)
+      ? ownerIndex?.get(nodePathKey([...pathPrefix, id]))
+      : undefined;
     map.set(id, {
       kind: node.kind,
       label: node.label ?? node.id,
@@ -762,27 +772,30 @@ function buildNodeMetadata(
   }
 
   for (const node of viewSlice.childNodes) {
-    addNode(node);
+    addNode(node, canvasScope);
   }
   for (const node of viewSlice.ghostUsers) {
-    addNode(node);
+    addNode(node, []);
   }
   // Root view (multi-system): add services from each system so drill-down has viewPath metadata
   for (const sys of viewSlice.systems) {
+    // The synthesized "Unassigned" pseudo-system wraps top-level orphans,
+    // whose full paths carry no system prefix.
+    const prefix = sys.id === "__unassigned__" ? [] : [sys.id];
     for (const child of sys.children) {
-      addNode(child);
+      addNode(child, prefix);
     }
   }
   // Service view: add visible services from ghost systems (outgoing)
   for (const gs of viewSlice.ghostSystems) {
     for (const svc of gs.visibleServices) {
-      addNode(svc);
+      addNode(svc, [gs.systemNode.id]);
     }
   }
   // Service view: add visible services from caller ghost systems (incoming)
   for (const gs of viewSlice.callerGhostSystems) {
     for (const svc of gs.visibleServices) {
-      addNode(svc);
+      addNode(svc, [gs.systemNode.id]);
     }
   }
 

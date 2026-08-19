@@ -103,6 +103,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.boundaryMembershipNotDrawn.message", d.params);
     case "contains-target-not-found":
       return t("diagnostic.containsTargetNotFound.message", d.params);
+    case "contains-target-ambiguous":
+      return t("diagnostic.containsTargetAmbiguous.message", d.params);
     case "boundary-not-in-context":
       return t("diagnostic.boundaryNotInContext.message", d.params);
     case "duplicate-boundary-id":
@@ -119,6 +121,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.duplicateNodeIdParent.message", d.params);
     case "owns-target-not-found":
       return t("diagnostic.ownsTargetNotFound.message", d.params);
+    case "owns-target-ambiguous":
+      return t("diagnostic.ownsTargetAmbiguous.message", d.params);
     case "duplicate-edge-id":
       return t("diagnostic.duplicateEdgeId.message", d.params);
     case "ambiguous-edge-base":

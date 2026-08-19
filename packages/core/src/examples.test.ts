@@ -222,7 +222,7 @@ describe("feature-samples: boundary-multi-membership.krs demonstrates 1:N member
   it("keeps both declared memberships, in declaration order", () => {
     const result = Parser.parse(src());
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-    expect(result.value.boundaryMembership.get("Ledger")).toEqual(["payments", "pci"]);
+    expect(result.value.boundaryMembership.get("Payments.Ledger")).toEqual(["payments", "pci"]);
   });
 
   it("reports the shared node as info, stating the fact and naming the primary", () => {

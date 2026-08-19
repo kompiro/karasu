@@ -174,8 +174,9 @@ organization TechCorp {
 
   it("annotates each owned service/domain with its resolved owner team", () => {
     const args = mergedOrgArgs();
-    expect(args.ownerIndex.get("ECommerce")).toBe("ec-team");
-    expect(args.ownerIndex.get("Payment")).toBe("ec-sub");
+    // ownerIndex is keyed by full node path (#2548).
+    expect(args.ownerIndex.get("ECPlatform.ECommerce")).toBe("ec-team");
+    expect(args.ownerIndex.get("ECPlatform.Payment")).toBe("ec-sub");
 
     const prompt = buildSystemPrompt({
       ...baseArgs,

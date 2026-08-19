@@ -97,28 +97,60 @@ export function nodePathMatchesSuffix(
   return true;
 }
 
-/** A node (or any payload) addressable by its full path. */
-export interface NodePathCandidate<T> {
-  path: NodeIdPath;
-  value: T;
-}
-
 /**
  * Resolve a reference against a candidate set by the suffix rule,
- * returning every match in candidate order.
- *
- * @public Consumed by #2088 slices B/C (`owns`/`contains`/`realizes`/
- * `handles` resolution); until those land the only callers are tests.
+ * returning every match in candidate order. Works over any candidate shape
+ * that carries a `path` (reference-validation's `DeclaredNodePath` &c.).
  */
-export function resolveNodePathBySuffix<T>(
+export function resolveNodePathBySuffix<T extends { path: NodeIdPath }>(
   ref: readonly string[],
-  candidates: Iterable<NodePathCandidate<T>>,
-): NodePathCandidate<T>[] {
-  const matches: NodePathCandidate<T>[] = [];
+  candidates: Iterable<T>,
+): T[] {
+  const matches: T[] = [];
   for (const candidate of candidates) {
     if (nodePathMatchesSuffix(ref, candidate.path)) {
       matches.push(candidate);
     }
   }
   return matches;
+}
+
+/**
+ * Canonical string key for a full node path, used by the path-keyed indices
+ * (`ownerIndex`, `boundaryMembership`).
+ *
+ * A dotted join is not injective for quoted ids that themselves contain a
+ * dot — the same caveat the renderer's qualified ids (`Sys.Svc`) and deep
+ * permalinks already carry. JSON keying (like `boundaryScopeKey`) would be
+ * injective but would break consumers that already hold a dotted qualified
+ * id as their node key, so the renderer's existing convention wins.
+ */
+export function nodePathKey(segments: readonly string[]): string {
+  return segments.join(".");
+}
+
+/** A resolved match that knows the kind of the node it points at. */
+export interface KindedPathCandidate {
+  kind: string;
+  path: NodeIdPath;
+}
+
+/**
+ * Decide whether a multi-match is ambiguous (#2088): report only when the
+ * matches are NOT uniform in `(kind, depth)`. Uniform multi-matches are the
+ * parallel-modelling patterns ADR-927 / ADR-1566 legitimize (migration
+ * coexistence, multi-tenant, a generic domain name across systems), where
+ * broadcast is the intent and renaming is not an available remedy.
+ *
+ * Returns the candidates when ambiguous, `undefined` otherwise. Order
+ * independent by construction: the verdict is a set-size test.
+ */
+export function ambiguousNodePathCandidates<T extends KindedPathCandidate>(
+  matches: readonly T[],
+): T[] | undefined {
+  if (matches.length < 2) {
+    return undefined;
+  }
+  const keys = new Set(matches.map((m) => `${m.kind}:${m.path.length}`));
+  return keys.size > 1 ? [...matches] : undefined;
 }
