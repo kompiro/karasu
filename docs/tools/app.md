@@ -111,9 +111,15 @@ diagram. While errors exist, the diagram keeps showing the last successfully
 parsed version with an **"⚠ Diagram is outdated — fix errors to update"** notice,
 so a typo never blanks your screen.
 
-### Toolbar
+### The preview's two control surfaces
 
-The preview toolbar offers:
+The preview's controls sit on two surfaces, split by what they do: a control
+that **changes the drawn diagram** sits in the **drill-path row** directly above
+the diagram; a control that **takes the diagram elsewhere** lives in the
+**toolbar** along the top. Keeping both families in the toolbar made it wrap to
+a second row at ordinary window widths.
+
+#### Drill-path row — what changes the diagram
 
 - **Icon mode** — toggle between service icons and plain shapes.
 - **Group by** (System view, when the model has an `organization` block) —
@@ -145,12 +151,22 @@ The preview toolbar offers:
   reach the fully-expanded state with Collapse all → Expand all; a model with no
   bands expands in one click. Opening many services deliberately trips the
   overload hint; Collapse all is the one-click way back to the overview.
+- **Entities** (System view, while drilled into a domain that has entities) —
+  swap the usecase view for the domain's entity view.
+- **Tree View** (Org view) — swap the org grid for its tree rendering.
 - **Show All Layers** — render every drill-down level stacked together.
-- **Export** — save the current view as **SVG**; the split-button menu also
-  exports the drill-down tree, a single SVG bundling **all** views, or
-  **draw.io** (mxGraph XML) for further manual editing.
-- **Reference** — open the built-in tag/annotation reference in a pop-out window
-  you can keep beside the diagram.
+
+On a narrow window these wrap below the drill path rather than squeezing it.
+
+#### Toolbar — what takes the diagram elsewhere
+
+- **Export** — save the current view as **SVG**. The split-button menu also
+  exports the drill-down tree, a single SVG bundling **all** views, **draw.io**
+  (mxGraph XML) for further manual editing, and **Open All Views**, which opens
+  that same all-views bundle in a new tab instead of downloading it.
+- **Share** — copy a link that carries the model in the URL.
+- **Docs** — the built-in tag/annotation **Reference**, in a pop-out window you
+  can keep beside the diagram, and the published documentation site.
 - **Focus** (`Ctrl/Cmd+Shift+F`) — expand the preview to full width.
 
 ## The editor (playground)

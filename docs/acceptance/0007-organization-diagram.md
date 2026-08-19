@@ -26,19 +26,24 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 2. Replace the `index.krs` content in the editor with:
    ```krs
    organization ExampleCorp {
-     team backend "バックエンドチーム" {
+     team backend {
+       label "バックエンドチーム"
        owns ECommerce
-       member alice "Alice" {
+       member alice {
+         label "Alice"
          slack "@alice"
          github "alice-dev"
        }
-       member bob "Bob" {
+       member bob {
+         label "Bob"
          description "SRE担当"
        }
      }
-     team frontend "フロントエンドチーム" {
+     team frontend {
+       label "フロントエンドチーム"
        owns WebApp
-       member carol "Carol" {
+       member carol {
+         label "Carol"
          github "carol-fe"
        }
      }
@@ -86,11 +91,13 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 1. Replace `index.krs` content with:
    ```krs
    organization Corp {
-     team platform "プラットフォーム" {
-       team infra "インフラ" {
-         member dave "Dave" {}
+     team platform {
+       label "プラットフォーム"
+       team infra {
+         label "インフラ"
+         member dave { label "Dave" }
        }
-       team security "セキュリティ" {}
+       team security { label "セキュリティ" }
      }
    }
    ```
@@ -191,11 +198,43 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 
 ---
 
+### TC-10: Positional Label Error
+
+**Steps:**
+1. Click the **👥 Org** tab in the diagram tab bar
+2. Replace `index.krs` content with a model whose org block renders, so there is a known-good diagram on screen:
+   ```krs
+   organization Corp {
+     team backend {
+       label "バックエンドチーム"
+       member alice { label "Alice" }
+     }
+   }
+   ```
+3. Replace `index.krs` content with the same model written in the retired positional form:
+   ```krs invalid
+   organization Corp "Corp Label" {
+     team backend "バックエンドチーム" {
+       member alice "Alice" {}
+     }
+   }
+   ```
+
+**Expected:**
+- One diagnostic error per positional label — three here, one on each of the `organization` / `team` / `member` lines: `"team" does not accept a label after its id; write label "..." inside the block` (and the same wording for the other two)
+- The preview does not draw the edited model: as with any error, it keeps showing the step 2 diagram (a project with no earlier valid render shows an empty diagram instead)
+- Rewriting the block to the property form clears the errors, and the cards then read **バックエンドチーム** / **Alice**
+
+> The parser keeps the positional string as the node's `label` rather than discarding it the way `boundary` / `facet` do (#2208). That is visible in the AST, not on screen — no render path draws while an error stands — so it is covered by `parser.test.ts` rather than by a step here.
+
+---
+
 ## Automated Coverage
 
 | Area | Test File |
 |------|-----------|
 | Parser (org/team/member/owns) | `packages/core/src/parser/parser.test.ts` |
+| Positional label error + AST label retention | `parser.test.ts` |
 | OrgViewExtract drill-down | `packages/core/src/view/org-view-extract.test.ts` |
 | Duplicate ID error | `parser.test.ts` |
 | Duplicate owns error | `parser.test.ts` |

@@ -58,6 +58,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2120](2120-group-by-bulk-collapse.md) — bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改修で耐える
 - [ADR-2193](2193-theme-text-token-contrast.md) — テーマの文字色トークンは載りうる全 surface で AA を満たす値に揃える
 - [ADR-2316](2316-experimental-notation-in-reference.md) — experimental notation は Reference に載せ、experimental と明示する
+- [ADR-2317](2317-preview-toolbar-density.md) — プレビューの操作を 2 面に分ける — 図を変える操作はドリルパスの行、持ち出す操作はツールバー
 - [ADR-2461](2461-accent-ink-and-composited-contrast.md) — 色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する
 - [ADR-9009](9009-toolbar-icon-label.md) — ツールバーボタンはアイコン+テキストラベル必須
 - [ADR-9010](9010-memory-project-mode-unification.md) — MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
@@ -139,8 +140,11 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2404](2404-dependabot-security-2026-08-08.md) — Security alert 2026-08-08 — dompurify は override と app の宣言を両方 patched 版へ引き上げる
 - [ADR-2419](2419-poc-report-directory.md) — PoC の生成物は gitignore された `reports/` に出力し、spike ブランチでのみコミットする
 - [ADR-2440](2440-blueoak-license-allowlist.md) — production 依存の license allowlist に BlueOak-1.0.0 を加える
-- [ADR-2447](2447-dependabot-triage-2026-08-10.md) — Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は人手 PR で対に戻す
+- [ADR-2447](2447-dependabot-triage-2026-08-10.md) — Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
 - [ADR-2472](2472-dependabot-triage-2026-08-13.md) — Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upstream の欠陥か自分側の gate か」に置く
+- [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md) — Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える
+- [ADR-2562](2562-dependabot-triage-2026-08-17.md) — Dependabot トリアージ 2026-08-17（@types/vscode と engines.vscode を同値に固定し VS Code stable に追随させる）
+- [ADR-2564](2564-dependabot-security-2026-08-18.md) — Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -196,6 +200,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2065](2065-tags-and-facets.md) — 語彙 register の確定 — tag / annotation をツール語彙に閉じ、facet を唯一のユーザー拡張点にする
 - [ADR-2161](2161-boundary-membership-1n.md) — boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974 決定 2 の refine
 - [ADR-2408](2408-owns-infra-target-and-chip-gate.md) — team は infra ブロックを owns できる（カードのチップは論理 kind のみ）
+- [ADR-2522](2522-vocabulary-census-drift.md) — 語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の register・閉鎖前提条件の再スコープ
 - [ADR-9002](9002-karasu-naming.md) — ツール名「karasu」の採用
 - [ADR-9003](9003-logical-physical-separation.md) — 論理構造と物理構造の分離
 
@@ -215,6 +220,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1492](1492-stroke-style-canonical-edge-property.md) — stroke-style をエッジ線スタイルの正準プロパティとして採用する
 - [ADR-1554](1554-edge-label-in-context-menu.md) — エッジコンテキストメニューへの authored ラベル表示と data-edge-label の authored 専用化
 - [ADR-1911](1911-cross-domain-ghost-entities.md) — エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する
+- [ADR-2223](2223-service-anchored-edge-renders-on-parent-canvas.md) — service ブロックに書いたエッジは、その service をノードとして描くビューに描画する
 - [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 
@@ -257,7 +263,9 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2076](2076-formatter-top-level-exhaustiveness.md) — formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 - [ADR-2087](2087-escape-emitted-string-values.md) — 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
 - [ADR-2165](2165-logical-containment-rules.md) — 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反は言語 v1.x で warning とする
+- [ADR-2167](2167-realizes-comma-list.md) — reference list はカンマ列挙を受け、membership は 1 行 1 件に留める — `realizes` の受理形と `owns` / `contains` の境界
 - [ADR-2173](2173-facet-grammar-and-model.md) — facet の文法と model 層 — 診断は resolver 側、カタログには載せる、merge は union
+- [ADR-2208](2208-positional-label-error-promotion.md) — organization / team / member の positional label を error にする
 - [ADR-9008](9008-ast-restructure-discriminated-union.md) — AST 再構成 — Discriminated Union とプロパティブロック
 
 ## project
@@ -317,7 +325,9 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2330](2330-ungrouped-routing-parity.md) — グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
 - [ADR-2360](2360-label-placement-line-obstacles.md) — label placement の障害物にエッジ polyline を加える — 自分の線だけ除外する
 - [ADR-2366](2366-node-chrome-and-ports.md) — node chrome は 1 本のコーナーレーンに畳み、色は色相表から導き、ポートは描画輪郭に置く
+- [ADR-2394](2394-external-side-straddle-rule.md) — external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける
 - [ADR-2473](2473-dy-instead-of-dominant-baseline.md) — テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` で指定する
+- [ADR-2521](2521-multi-system-pipeline-convergence.md) — multi-system ルートビューは single-system パイプラインの計算に合わせる
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
@@ -347,6 +357,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1755](1755-edge-from-to-selectors.md) — `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
 - [ADR-2172](2172-builtin-vocabulary-expansion.md) — builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@planned` を採用し、却下 7 件と停止規則を記録する
 - [ADR-2234](2234-boundary-style-selector.md) — boundary フレーム色の style セレクタ — `boundary` / `boundary#<id>`
+- [ADR-2482](2482-themed-badge-color-single-source.md) — バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 
 ## testing

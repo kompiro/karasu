@@ -44,6 +44,11 @@ organization "株式会社Example" {
 }
 ```
 
+> 上記は 2026-03 時点の記法。id 直後にラベルを置く位置引数形は
+> [ADR-19](19-required-id-label-as-property.md) で `label` プロパティに置き換えられ、
+> #2133（deprecation）を経て #2208 で `positional-label-removed` error になった。
+> 現行の書き方は [docs/spec/syntax.md](../spec/syntax.md) を参照。
+
 ### 2. AST 型
 
 ```typescript

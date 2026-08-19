@@ -341,8 +341,11 @@
 
 .edge-detail-item--removed .edge-detail-route,
 .edge-detail-item--removed .edge-detail-label-text {
+  /* The line-through carries "removed" on its own. A 0.75 opacity used to
+     reinforce it, but opacity dims the rendered result while leaving the
+     token untouched — the label read at 2.95:1 (light) / 3.38:1 (dark) while
+     the composited fence, which measures tokens, passed it (#2461). */
   text-decoration: line-through;
-  opacity: 0.75;
 }
 /* ── Reference Window ──────────────────────────────────────────────
    The reference opens in its own browser window (#1548) so it can stay open
@@ -650,10 +653,13 @@
 .facet-overview-panel {
   position: absolute;
   /* Clears the toolbar however many rows it wraps to. `PreviewColumn` measures
-     the toolbar and publishes its height; the fallback only applies before the
-     first measurement lands. A constant here was wrong in the common case, since
-     the toolbar wraps to two rows at ordinary widths (#2317). */
-  top: calc(var(--preview-toolbar-h, 48px) + 8px);
+     the toolbar and publishes its bottom edge; the fallback only applies before
+     the first measurement lands. Two earlier cuts were wrong: a constant (the
+     toolbar's height varies with locale and width), and `--preview-toolbar-h`,
+     which is a *height* — using it as an offset from the column's top left out
+     the diagram tab bar above the toolbar and started the panel 28px inside it
+     (#2492). */
+  top: calc(var(--preview-toolbar-bottom, 82px) + 8px);
   right: 16px;
   z-index: 100;
   width: 360px;

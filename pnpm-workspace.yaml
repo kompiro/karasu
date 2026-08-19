@@ -33,7 +33,7 @@ allowBuilds:
 overrides:
   brace-expansion@1: ^1.1.18
   brace-expansion@2: ^2.1.4
-  brace-expansion@5: ^5.0.8
+  brace-expansion@5: ^5.0.9
   diff: ^8.0.3
   dompurify: ^3.4.13
   esbuild: ^0.28.1
@@ -42,6 +42,7 @@ overrides:
   js-yaml@4: ^4.3.1
   linkify-it: ^5.0.2
   markdown-it: ^14.2.0
+  nanoid: ^3.3.18
   postcss: ^8.5.18
   qs: ^6.15.2
   read-yaml-file@1: ^2.1.0
@@ -60,11 +61,12 @@ overrides:
 #
 # The cooldown delays the PRs Dependabot raises for *declared* dependencies.
 # This setting verifies *every* lockfile entry on *every* install, transitive
-# ones included. At 7 days the current lockfile is already non-compliant —
-# `rolldown@1.2.2` and its 13 platform bindings plus `nanoid@3.3.17` arrive
-# transitively under vite and were published five days ago — so every install,
-# CI included, would fail until the window passed. That turns a supply-chain
-# preference into a time-dependent build gate.
+# ones included. When ADR-2401 measured it, 7 days would already have rejected
+# the then-current lockfile: `rolldown@1.2.2` with its 13 platform bindings, and
+# `nanoid@3.3.17`, arrived transitively under vite five days after publication.
+# Every install, CI included, would have failed until the window passed. That
+# turns a supply-chain preference into a time-dependent build gate. The exact
+# packages rotate with every lockfile change; the shape of the problem does not.
 #
 # One day still covers the attack this defends against (a compromised version
 # published and yanked within hours) without that cost. See ADR-2401.

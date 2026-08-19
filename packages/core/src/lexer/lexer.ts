@@ -60,6 +60,14 @@ const KEYWORDS: Record<string, TokenType> = {
  */
 export const KRS_KEYWORD_NAMES = Object.keys(KEYWORDS);
 
+/**
+ * The token types the lexer reserves for keywords. Vocabulary positions that
+ * accept keyword spellings as ordinary names (tags, kebab-name fragments —
+ * see parser/kebab-name.ts) test membership here instead of hand-copying the
+ * keyword list.
+ */
+export const KRS_KEYWORD_TOKEN_TYPES: ReadonlySet<TokenType> = new Set(Object.values(KEYWORDS));
+
 export class Lexer {
   private source: string;
   private pos = 0;
@@ -78,7 +86,9 @@ export class Lexer {
       if (this.pos >= this.source.length) break;
 
       const token = this.readToken();
-      if (token) tokens.push(token);
+      // The cursor now sits just past the token — whitespace is skipped at the
+      // top of the loop, not here — so this is the token's exact end.
+      if (token) tokens.push(this.stampEnd(token));
     }
     tokens.push(this.makeToken(TokenType.EOF, ""));
     return tokens;
@@ -97,12 +107,12 @@ export class Lexer {
 
       const comment = this.readComment();
       if (comment) {
-        tokens.push(comment);
+        tokens.push(this.stampEnd(comment));
         continue;
       }
 
       const token = this.readToken();
-      if (token) tokens.push(token);
+      if (token) tokens.push(this.stampEnd(token));
     }
     tokens.push(this.makeToken(TokenType.EOF, ""));
     return tokens;
@@ -114,6 +124,12 @@ export class Lexer {
 
   private makeToken(type: TokenType, value: string): Token {
     return { type, value, loc: this.loc() };
+  }
+
+  /** Records where the just-read token ends, from the cursor's position. */
+  private stampEnd(token: Token): Token {
+    token.end = this.loc();
+    return token;
   }
 
   private peek(): string {

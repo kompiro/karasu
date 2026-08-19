@@ -12,7 +12,7 @@ assumptions:
   - "file: packages/core/src/renderer/routing-parity.test.ts"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: frameObstaclesFor"
   - "symbol: packages/core/src/renderer/edge-routing-groups.ts :: tryCorridorRoute"
-  - "grep: packages/core/src/renderer/layout.ts :: routeGroupedEdges"
+  - "grep: packages/core/src/renderer/layout-edges.ts :: routeGroupedEdges"
 ---
 
 # ADR-2330: グループ軸とルーティング能力を分離し、両モードを 1 本の候補列で経路づける
@@ -35,8 +35,8 @@ assumptions:
     [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md),
     [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md),
     [TPL-1983](../test-perspectives/TPL-1983-view-state-gate-parity-across-surfaces.md)
-  - コード: `packages/core/src/renderer/layout.ts` / `edge-routing-channels.ts` /
-    `edge-routing-groups.ts` / `routing-parity.test.ts`
+  - コード: `packages/core/src/renderer/layout-edges.ts`（`runRoutingChain`） /
+    `edge-routing-channels.ts` / `edge-routing-groups.ts` / `routing-parity.test.ts`
 
 ## 背景
 

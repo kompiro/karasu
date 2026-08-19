@@ -738,8 +738,9 @@ service が共有するかで判定し、こちらは所有境界の越境で判
 
 #### 端点のスコープ（endpoint scope）
 
-エッジは、それを宣言したブロックを描画するビューに描かれる。したがって
-**両端がそのスコープの peer でなければならない**:
+エッジは、両端が並んで描かれるビュー — 宣言したブロック自身のビュー（`system`）、
+またはそのブロックをノードとして描くビュー（`service` / `domain` / `entity`）— に
+描かれる。いずれの場合も **両端がそのスコープの peer でなければならない**:
 
 - `system` ブロック内 — そのブロック自身の直下の子（およびルートビューが並べて
   差し込むトップレベルの `domain`）
@@ -772,9 +773,11 @@ domain Ordering {
 }
 ```
 
-次の 2 つは実際に描画されるため、意図的に報告しない: 距離を問わない
+次の 3 つは実際に描画されるため、意図的に報告しない: 距離を問わない
 `domain` → `domain` エッジ（サービスをまたぐ場合は暗黙のサービス間エッジに
 集約される。[domain ブロック内のエッジ](#domain-ブロック内のエッジ)を参照）と、
+そのサービスの peer を指す `service` 起点のエッジ
+（[service ブロック内のエッジ](#service-ブロック内のエッジ)を参照）と、
 限定子付き `DomainId.EntityId` で書いた cross-domain の `entity` 関連。
 bare id の cross-domain entity 参照は intra-domain 専用のため drop され、報告される。
 
@@ -803,6 +806,42 @@ usecase PlaceOrder {
 ```
 
 `#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
+
+#### service ブロック内のエッジ
+
+`service` ブロック内にエッジを宣言すると、そのサービス自身の依存関係を表現できる。
+`from_id` は宣言元のサービス（省略しても同じ意味）、`to_id` はそのサービスの peer
+— 別のサービス、`[external]` なサービス、`client`、隣に宣言された infra ブロック
+— のいずれかである。
+
+```krs
+system Shop {
+  service Storefront {
+    -> Checkout "注文する"
+    domain Catalog { usecase Browse {} }
+  }
+  service Checkout {
+    Checkout --> Ledger "精算を依頼する"
+    domain Ordering { usecase Place {} }
+  }
+  service Ledger [external] {}
+}
+```
+
+このエッジは **宣言元のサービスをノードとして描くビュー** — システムビューと、
+その system へのドリルダウン — に描画される。`system` スコープで書いた同じ依存が
+落ちる場所と同一である。こちらの anchored 形を優先して使う: 起点のすぐ隣に
+エッジが残り、[エッジの起点スコープ](#エッジ宣言)の規則が求める形でもある。
+
+限定子付きの target（`OtherSystem.Svc`）は cross-system の経路に乗る。宣言元
+サービスのビューに相手 system が ghost として描かれ、相手サービスのビューには
+宣言元が caller ghost として描かれる。
+
+明示的なサービス間エッジは、どちらの綴りで書いても、同じペアに対して
+cross-service のドメインエッジから派生する暗黙エッジを抑止する（下記参照）。
+
+> 関連 TPL:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理したエッジはいずれかの view で描画されるか診断される。anchored 形を黙って落とさない
 
 #### domain ブロック内のエッジ
 
@@ -898,6 +937,26 @@ deploy "production" {
   }
 }
 ```
+
+対象をカンマ区切りで 1 行に並べてもよい。これは sugar で、上のモデルとまったく同じ結果になる。
+1 つのノード内で両形を混在させることもでき、記述順に累積する。
+
+```krs
+deploy "production" {
+  oci "monolith" {
+    image    "monolith:1.0.0"
+    realizes OrderService, InventoryService
+  }
+}
+```
+
+正準形は行の繰り返しで、`karasu fmt` は 1 行 1 対象で出力しカンマ列挙をその形に書き換える。
+カンマの後（`realizes A,`）や前（`realizes ,B`）に識別子が無い場合は、そのカンマ自身を指して
+[`expected-property-value`](./diagnostics.ja.md) を報告する。リストは `realizes` が現れた行に
+閉じるため、どちらの向きにも行をまたいで継続しない — 末尾のカンマも、次の行を開始するカンマも、
+リストを伸ばさない。
+
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — 同じプロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復が意味を保つこと・要素単位の診断が個々の識別子を指すことを同じ変更で固定する。
 
 ### 共有 infra を realize する（`store` kind）
 
@@ -1008,8 +1067,10 @@ team の直下に `member` を宣言して個人を記述する。
 
 `organization` / `team` / `member` の label は、他のノード kind と同じく `label` プロパティで指定する
 （`team backend { label "バックエンドチーム" }`、[ADR-19](../adr/19-required-id-label-as-property.md)）。
-旧来の位置引数（`team backend "バックエンドチーム"`）は**非推奨**（#2133）: 現状は受理され
-`positional-label-deprecated` warning が出る。`karasu fmt` がプロパティ形式へ書き換える。
+旧来の位置引数（`team backend "バックエンドチーム"`）は**拒否**され `positional-label-removed`
+error になる（#2133 で非推奨化、#2208 で削除）。修正までの間も組織図が読めるよう文字列は
+label として読み取るが、プロパティ形式にするまでファイルは clean にコンパイルされない。
+`karasu fmt` が書き換えられるのは error なく parse できる間だけなので、移行はアップグレード前に行う。
 両方が同時に指定された場合はプロパティ形式が優先される。
 
 > Related TPLs: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が受理する形は必ず本 spec に文書化する。未文書の受理形は drift（本節の positional 形は約 4 ヶ月間 undocumented のまま受理されていた、#2133）。

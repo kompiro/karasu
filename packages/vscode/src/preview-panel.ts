@@ -5,6 +5,7 @@ import {
   type DiagramTheme,
   type NodeMetadata,
 } from "@karasu-tools/core";
+import { resolveLocaleTag } from "@karasu-tools/i18n";
 import { marked } from "marked";
 import {
   type DrilldownNodeMeta,
@@ -25,7 +26,7 @@ import {
 import { diagramThemeFromColorTheme } from "./theme-mapping.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 import { buildPreviewHtml, generateNonce } from "./webview-content.js";
-import { buildPreviewPanelLabels, resolveWebviewLocale } from "./webview-i18n.js";
+import { buildPreviewPanelLabels } from "./webview-i18n.js";
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -66,9 +67,7 @@ export class PreviewPanel {
   // Detail-panel labels resolved once from VS Code's display language: it is
   // constant for the panel's lifetime (a language change requires a reload),
   // so resolving per-render would re-run the i18n lookups on every keystroke.
-  private readonly _panelLabels = buildPreviewPanelLabels(
-    resolveWebviewLocale(vscode.env.language),
-  );
+  private readonly _panelLabels = buildPreviewPanelLabels(resolveLocaleTag(vscode.env.language));
   private _viewType: ViewType = "system";
   private _displayMode: "icon" | "shape" = "shape";
   private _theme: DiagramTheme = diagramThemeFromColorTheme(vscode.window.activeColorTheme.kind);

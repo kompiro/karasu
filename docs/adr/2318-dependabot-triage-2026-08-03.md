@@ -44,7 +44,7 @@ related_to: [ADR-2152, ADR-2106, ADR-784, ADR-128, ADR-2115]
 ## 決定
 
 **5 件すべての更新内容を採用した。ただし Dependabot の PR の切り方では CI を通せない
-3 件は close し、人手の PR 2 本に畳み込んだ。**
+3 件は close し、差し替え PR 2 本に畳み込んだ。**
 
 | PR | 判断 | 反映先 |
 | --- | --- | --- |
@@ -133,7 +133,7 @@ Error: Incompatible React versions: ... - react: 19.2.5 / react-dom: 19.2.8
 新旧 specifier は**排他**（新しい綴りは 0.55.1 では存在しないパスに解決される）なので、
 bump と 1 行修正は同一コミットに載せる必要がある。bot ブランチに人手でコミットを足しても
 `@dependabot recreate` で失われるため、`.claude/rules/dependabot.md`
-「bot PR を close → 人手の PR で再提出」の型に載せた。将来の読み手が specifier を
+「bot PR を close → 差し替え PR で再提出」の型に載せた。将来の読み手が specifier を
 壊れた形に「整理」し直さないよう、版との結合を該当行の上にコメントで明示した。
 
 ### 実装中に判明した 2 点（Design Doc からの修正）
@@ -142,7 +142,7 @@ bump と 1 行修正は同一コミットに載せる必要がある。bot ブ�
 素の `pnpm install` は `@types/react` を **19.2.18** に解決するが、この版は
 2026-07-30 公開で当時 5 日しか経っておらず、[ADR-784](784-update-dependencies-20260421.md)
 の cooldown 7 日に違反する。Dependabot が 19.2.17 を提案していたのはこのためであり、
-人手 PR でも bot と同じポリシーに従って 19.2.17 に固定した。
+差し替え PR でも bot と同じポリシーに従って 19.2.17 に固定した。
 **人手で bot PR を再提出するときは、素の `pnpm install` が cooldown を迂回しうる**
 という一般則がここで得られた。
 

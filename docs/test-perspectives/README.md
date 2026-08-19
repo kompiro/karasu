@@ -439,6 +439,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-1415](TPL-1415-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
 | [TPL-1417](TPL-1417-single-renderer-for-structured-messages.md) | 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する | core-concepts | ADR-34 |
 | [TPL-1468](TPL-1468-overlay-z-index-scale.md) | overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ | app-ui | #1468 |
+| [TPL-2492](TPL-2492-published-measurement-carries-its-origin.md) | publish した実測値は原点込みで契約する — 高さを offset として読める形で配らない | app-ui | #2492 |
 | [TPL-1480](TPL-1480-consistency-check-triggers-on-both-sides.md) | 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる | build | #1480 |
 | [TPL-1503](TPL-1503-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
 | [TPL-2171](TPL-2171-spec-promised-diagnostics-implemented.md) | spec が約束する診断は専用の診断コードとして実装されていることを検証する | parser | docs/spec/style.md, docs/spec/syntax.md |
@@ -488,6 +489,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2133](TPL-2133-parser-acceptance-documented-in-spec.md) | parser が受理する形は spec に文書化されている（受理 ⊆ 文書化）— undocumented leniency は実測（最小 `.krs` の parse）で棚卸しし、ADR で廃止した記法は全 construct を横断確認する | parser | #2133 |
 | [TPL-2158](TPL-2158-catalog-fenced-against-parser-not-generated-doc.md) | 手書き catalog（`REFERENCE_DATA` 等）は parser 実測で双方向に縛る。その catalog から生成した doc を正典に見立てた同期テストは循環しており恒真 | build | #2158 |
 | [TPL-2165](TPL-2165-containment-rule-has-single-definition.md) | containment 規則は `canContain` 1 箇所だけに定義し、parser がそれを読んで強制する。spec の表と実装に二重に書かない | parser | #2165 |
+| [TPL-2509](TPL-2509-kebab-name-positions-share-one-lexical-rule.md) | kebab-case 名を受けるポジションは 1 つの字句ヘルパーを共有する — 新しい名前ポジションはハイフン入り名を `.krs` / `.krs.style` 両面で検証し、keyword 断片も 1 ケース含める | parser | #2509, docs/spec/tags-annotations.md |
 | [TPL-2157](TPL-2157-resolved-relation-rendered-for-every-kind.md) | 解決済みの関係（`owns` / `realizes`）を提示する側の kind gate も spec が許す全 kind を列挙する — 描画・measure・metadata・各サーフェスを共有定数で通し、除外 kind は理由と assert を置く | renderer | ADR-1720, #2157 |
 | [TPL-2161](TPL-2161-declared-membership-not-discarded-in-derived-index.md) | 宣言された多重所属を派生 index で捨てない — 単一値しか扱えないビューの都合は view 側の解決（primary 選択）で吸収し、merge 経路も同じ多値の意味論に従わせる | core-concepts | ADR-1974, #2161 |
 | [TPL-2185](TPL-2185-drift-guard-distinguishes-declaration-from-mention.md) | drift guard は「宣言」と「言及」を区別する — 「正典の値以外が現れたら fail」は次期版への前方参照を stale と誤検出し、freeze 中の設計作業をブロックする | build | #2185 |
@@ -520,3 +522,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2193](TPL-2193-theme-token-contrast-every-surface.md) | テーマトークンの文字色は、載りうる全 surface に対してテーマごとに 4.5:1 を機械検証する — 最も明るい背景 1 枚で代表させると、白で調整した色が mid-tone の surface で落ちる | styling | #2193 |
 | [TPL-2446](TPL-2446-gate-side-check-runs-over-the-whole-set.md) | マージを gate する側の検証は対象を列挙せず全走査で回す — ローカルで広く走る同名チェックが CI 側の列挙漏れを隠し、穴はフックを通らない bot PR でだけ露見する | build | #2446, #2432 |
 | [TPL-2456](TPL-2456-module-instance-scoped-identity.md) | 参照同一性で判定される共有オブジェクトは module のコピーが 2 つになった瞬間に壊れる — 判定はバージョン一致ではなく解決先が 1 つかで行い、壊れるのは自作の値を渡す経路だけなので大半のテストは green のまま残る | testing | #2456, ADR-2456 |
+| [TPL-2088](TPL-2088-id-reference-notation-uniform-across-sites.md) | ノード id を指す参照サイトは受理する記法と解決規則を全サイトで共有する — 拒否側は先頭セグメントだけを黙って記録して別の意味になる。修飾を受理するなら索引も区別可能なキーを持ち、受理と narrowing は同じ出荷単位に入れる | parser | ADR-927, parser.ts, #2088 |
+| [TPL-2542](TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) | 既存プロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復・要素単位の range を同じ PR で固定する | parser | #2167, ADR-2167 |

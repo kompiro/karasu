@@ -3,12 +3,18 @@ import { Parser } from "./parser.js";
 import { getReference } from "../builtins/reference.js";
 import type {
   ClientNode,
+  DeployNode,
   DomainNode,
   KrsFile,
   KrsNode,
   ServiceNode,
   UserNode,
 } from "../types/ast.js";
+
+/** The ids a deploy unit realizes, dropping the per-target ranges. */
+function realizeIds(node: DeployNode): string[] | undefined {
+  return node.properties.realizes?.map((target) => target.id);
+}
 
 describe("Parser", () => {
   it("parses empty input", () => {
@@ -466,12 +472,12 @@ deploy "本番環境" {
     expect(oci.label).toBeUndefined();
     expect(oci.properties.image).toBe("order:2.1.0");
     expect(oci.properties.runtime).toBe("Node.js 20");
-    expect(oci.properties.realizes).toEqual(["ECommerce"]);
+    expect(realizeIds(oci)).toEqual(["ECommerce"]);
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
     expect(job.properties.schedule).toBe("0 0 1 * *");
-    expect(job.properties.realizes).toEqual(["Billing"]);
+    expect(realizeIds(job)).toEqual(["Billing"]);
   });
 
   it("parses deploy block with identifier id and label properties", () => {
@@ -500,14 +506,14 @@ deploy Production {
     expect(oci.id).toBe("ecommerceApp");
     expect(oci.label).toBe("EC Application");
     expect(oci.properties.runtime).toBe("Node.js 20");
-    expect(oci.properties.realizes).toEqual(["ECommerce"]);
+    expect(realizeIds(oci)).toEqual(["ECommerce"]);
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
     expect(job.id).toBe("billingJob");
     expect(job.label).toBeUndefined();
     expect(job.properties.schedule).toBe("0 0 1 * *");
-    expect(job.properties.realizes).toEqual(["Billing"]);
+    expect(realizeIds(job)).toEqual(["Billing"]);
   });
 
   it("parses a `store` deploy unit with type + realizes", () => {
@@ -526,7 +532,7 @@ deploy Production {
     expect(store.id).toBe("orderStore");
     expect(store.label).toBe("Order DB");
     expect(store.properties.type).toBe("Aurora PostgreSQL 15");
-    expect(store.properties.realizes).toEqual(["OrderDB"]);
+    expect(realizeIds(store)).toEqual(["OrderDB"]);
   });
 
   it("parses deploy node with multiple realizes lines into an array", () => {
@@ -539,7 +545,187 @@ deploy Production {
 }
     `);
     const node = result.value.deploys[0].nodes[0];
-    expect(node.properties.realizes).toEqual(["OrderService", "InventoryService"]);
+    expect(realizeIds(node)).toEqual(["OrderService", "InventoryService"]);
+  });
+
+  // #2167 — the comma list is sugar for repeated lines, so the two forms have
+  // to be indistinguishable once parsed.
+  describe("comma-separated realizes (#2167)", () => {
+    it("parses a comma-separated list into the same array as repeated lines", () => {
+      const commas = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService, InventoryService
+  }
+}
+      `);
+      const repeated = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService
+    realizes InventoryService
+  }
+}
+      `);
+      expect(commas.diagnostics).toHaveLength(0);
+      expect(realizeIds(commas.value.deploys[0].nodes[0])).toEqual([
+        "OrderService",
+        "InventoryService",
+      ]);
+      expect(realizeIds(commas.value.deploys[0].nodes[0])).toEqual(
+        realizeIds(repeated.value.deploys[0].nodes[0]),
+      );
+    });
+
+    it("accumulates comma lists and repeated lines in document order", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService, InventoryService
+    realizes Billing
+    realizes Search, Reporting
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual([
+        "OrderService",
+        "InventoryService",
+        "Billing",
+        "Search",
+        "Reporting",
+      ]);
+    });
+
+    it("accepts quoted ids in the list", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes "order-service", "inventory-service"
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual([
+        "order-service",
+        "inventory-service",
+      ]);
+    });
+
+    it("spans each target's range over its own identifier", () => {
+      const line = `    realizes A, "long-id"`;
+      const result = Parser.parse(
+        ["deploy Production {", "  oci monolith {", line, "  }", "}"].join("\n"),
+      );
+      const targets = result.value.deploys[0].nodes[0].properties.realizes;
+      assert(targets);
+      // Both sit on the `realizes` line, each covering its own text — a
+      // node-level range would give both targets the same start, and a
+      // zero-width range would underline nothing in an editor.
+      expect(targets[0].loc.start).toMatchObject({ line: 3, column: line.indexOf("A") + 1 });
+      expect(targets[0].loc.end.column).toBe(line.indexOf("A") + 2);
+      // The quoted form spans the quotes too, so the range covers what was written.
+      expect(targets[1].loc.start.column).toBe(line.indexOf(`"long-id"`) + 1);
+      expect(targets[1].loc.end.column).toBe(line.indexOf(`"long-id"`) + 1 + `"long-id"`.length);
+    });
+
+    it("reports one diagnostic for a trailing comma and keeps the targets read so far", () => {
+      const line = `    realizes OrderService,`;
+      const result = Parser.parse(
+        ["deploy Production {", "  oci monolith {", line, "  }", "}"].join("\n"),
+      );
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].code).toBe("expected-property-value");
+      expect(result.diagnostics[0].params).toEqual({ propName: "realizes" });
+      // Anchored on the dangling comma. Reporting at the *next* token would put
+      // the squiggle on the following line, which is not the line at fault.
+      expect(result.diagnostics[0].loc?.start).toMatchObject({
+        line: 3,
+        column: line.indexOf(",") + 1,
+      });
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+    });
+
+    it("reports a value-less `realizes` on the keyword and leaves the property unset", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes
+  }
+}
+      `);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-property-value"]);
+      expect(result.diagnostics[0].loc?.start).toMatchObject({ line: 4, column: 5 });
+      // Not an empty array: a failed parse must not invent a property the
+      // source never gave a value for.
+      expect(result.value.deploys[0].nodes[0].properties.realizes).toBeUndefined();
+    });
+
+    it("reports one diagnostic for a leading comma and still records the target", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes ,InventoryService
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].code).toBe("expected-property-value");
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["InventoryService"]);
+    });
+
+    it("does not let a trailing comma swallow the next property line", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService,
+    runtime "Node.js 20"
+  }
+}
+      `);
+      const node = result.value.deploys[0].nodes[0];
+      expect(realizeIds(node)).toEqual(["OrderService"]);
+      expect(node.properties.runtime).toBe("Node.js 20");
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-property-value"]);
+    });
+
+    // A list lives on its `realizes` line. Property names carry their own token
+    // types, so those were never at risk of being read as targets; what the
+    // rule actually holds back is a bare identifier on an adjacent line, in
+    // either direction.
+    it("does not continue a list onto the next line after a trailing comma", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService,
+    InventoryService
+  }
+}
+      `);
+      // `InventoryService` is reported where it sits, not absorbed as a target.
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+      expect(result.diagnostics.map((d) => d.code)).toEqual([
+        "expected-property-value",
+        "unexpected-token-in-block",
+      ]);
+    });
+
+    it("does not continue a list from a comma that starts the next line", () => {
+      const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService
+    ,InventoryService
+  }
+}
+      `);
+      // The mirror image of the trailing comma, and it has to fail the same
+      // way: silently accepting it would extend the model with a target the
+      // spec does not say is writable there.
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+      expect(result.diagnostics.length).toBeGreaterThan(0);
+      expect(result.diagnostics.every((d) => d.code === "unexpected-token-in-block")).toBe(true);
+    });
   });
 
   it("parses a complete file with imports, system, and deploy", () => {
@@ -1386,9 +1572,9 @@ organization Corp {
     expect(member?.label).toBe("Alice Smith");
   });
 
-  // ─── Positional label form retirement (#2133, ADR-19) ─────────────────────
+  // ─── Positional label form retirement (#2133, #2208, ADR-19) ──────────────
 
-  it("positional label on organization / team / member still parses but warns", () => {
+  it("positional label on organization / team / member is a parse error", () => {
     const result = Parser.parse(`
 organization Corp "Corp Label" {
   team backend "Backend Team" {
@@ -1396,21 +1582,34 @@ organization Corp "Corp Label" {
   }
 }
     `);
-    const warnings = result.diagnostics.filter((d) => d.code === "positional-label-deprecated");
-    expect(warnings.map((w) => (w.params as { construct: string }).construct)).toEqual([
+    const errors = result.diagnostics.filter((d) => d.code === "positional-label-removed");
+    expect(errors.map((e) => (e.params as { construct: string }).construct)).toEqual([
       "organization",
       "team",
       "member",
     ]);
-    expect(warnings.every((w) => w.severity === "warning")).toBe(true);
-    // Compatibility: the value still lands in the AST.
+    expect(errors.every((e) => e.severity === "error")).toBe(true);
+  });
+
+  it("keeps the retired positional label as the label in the AST", () => {
+    // Unlike boundary / facet, which discard the string: recovery reads what the
+    // author wrote, so a caller inspecting the AST past the diagnostic still
+    // sees the name. Nothing draws it — every render path stops on an error
+    // (#2208).
+    const result = Parser.parse(`
+organization Corp "Corp Label" {
+  team backend "Backend Team" {
+    member alice "Alice Smith" {}
+  }
+}
+    `);
     const org = result.value.organizations[0];
     expect(org.label).toBe("Corp Label");
     expect(org.teams[0].label).toBe("Backend Team");
     expect(org.teams[0].children.find((c) => c.kind === "member")?.label).toBe("Alice Smith");
   });
 
-  it("label property overrides a deprecated positional label", () => {
+  it("label property overrides a retired positional label", () => {
     const result = Parser.parse(`
 organization Corp {
   team backend "Positional" {
@@ -1418,7 +1617,7 @@ organization Corp {
   }
 }
     `);
-    expect(result.diagnostics.map((d) => d.code)).toEqual(["positional-label-deprecated"]);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["positional-label-removed"]);
     expect(result.value.organizations[0].teams[0].label).toBe("Property");
   });
 
@@ -3825,5 +4024,120 @@ legend "x" {
     expect(errors.some((d) => d.code === "unexpected-token-in-block")).toBe(true);
     // The valid entry is still captured.
     expect(result.value.legends[0].entries.some((e) => e.label === "ok")).toBe(true);
+  });
+});
+
+describe("kebab-case vocabulary names stitch into one name (#2509)", () => {
+  it("parses a hyphenated tag as a single tag", () => {
+    const result = Parser.parse(`
+system Test {
+  client Y [my-team-internal-tag]
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0];
+    expect(client.tags).toEqual(["my-team-internal-tag"]);
+  });
+
+  it("stitches fragments spelled like keywords", () => {
+    // `system` / `table` are lexer keywords; in a tag position they are
+    // ordinary words, stand-alone or as kebab fragments.
+    const result = Parser.parse(`
+system Test {
+  service S [legacy-system, audit-table]
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const service = result.value.systems[0].children[0];
+    expect(service.tags).toEqual(["legacy-system", "audit-table"]);
+  });
+
+  it("keeps comma-separated lists and non-kebab neighbours intact", () => {
+    const result = Parser.parse(`
+system Test {
+  service S [my-team, external]
+}
+    `);
+    const service = result.value.systems[0].children[0];
+    expect(service.tags).toEqual(["my-team", "external"]);
+  });
+
+  it("parses a hyphenated tag on an edge", () => {
+    const result = Parser.parse(`
+system Test {
+  service A {}
+  service B {}
+  A -> B "call" [my-flow-tag]
+}
+    `);
+    expect(result.value.systems[0].edges[0].tags).toEqual(["my-flow-tag"]);
+  });
+
+  it("parses a hyphenated annotation name as a single name", () => {
+    const result = Parser.parse(`
+system Test {
+  service S @my-team-mark
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const service = result.value.systems[0].children[0];
+    expect(service.annotations).toEqual(["my-team-mark"]);
+  });
+
+  it("reports the full hyphenated name on an unsupported annotation param", () => {
+    const result = Parser.parse(`
+system Test {
+  service S @my-team-mark(until: "2026-Q3")
+}
+    `);
+    const warning = result.diagnostics.find((d) => d.code === "annotation-param-unsupported");
+    expect(warning?.params).toMatchObject({ annotation: "my-team-mark" });
+  });
+
+  it("parses hyphenated legend refs for tags and annotations", () => {
+    const result = Parser.parse(`
+legend "custom vocabulary" {
+  ref [my-team] "Our tag"
+  ref @my-mark  "Our mark"
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const targets = result.value.legends[0].entries.map((e) => {
+      if (e.kind !== "ref") throw new Error("expected ref");
+      return e.target;
+    });
+    expect(targets).toEqual([
+      { kind: "tag", name: "my-team" },
+      { kind: "annotation", name: "my-mark" },
+    ]);
+  });
+
+  it("keeps stitching capability names through the shared helper", () => {
+    const result = Parser.parse(`
+system S {
+  client App [mobile] {
+    capability screen-wake-lock
+    capability face-id
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.capabilities.map((c) => c.name)).toEqual([
+      "screen-wake-lock",
+      "face-id",
+    ]);
+  });
+
+  it("leaves a trailing hyphen unstitched (boundary documented, not hidden)", () => {
+    // `[my-]` has no word after the dash: the dash stays its own fragment and
+    // keeps drawing tag-not-builtin, same as before #2509.
+    const result = Parser.parse(`
+system Test {
+  service S [my-]
+}
+    `);
+    const service = result.value.systems[0].children[0];
+    expect(service.tags).toEqual(["my", "-"]);
   });
 });

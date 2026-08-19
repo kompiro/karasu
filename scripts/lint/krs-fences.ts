@@ -27,7 +27,7 @@ import {
  *
  * | Fence            | Claim                                    | Guard              |
  * |------------------|------------------------------------------|--------------------|
- * | ```krs           | a complete, currently-valid model        | must parse clean   |
+ * | ```krs           | a complete, currently-valid model        | must parse clean — no error, and no deprecation-class warning |
  * | ```krs fragment  | an excerpt — not a whole file            | not parsed         |
  * | ```krs invalid   | deliberately bad input (demos a diagnostic) | must still error |
  *
@@ -51,6 +51,8 @@ import {
 export type KrsFenceFindingKind =
   /** ```krs that no longer parses — the drift this guard exists for. */
   | "krs-fence-parse-error"
+  /** ```krs that parses, but only by way of a form on its way out. */
+  | "krs-fence-deprecated-form"
   /** ```krs invalid that now parses clean — the example stopped illustrating. */
   | "krs-fence-unexpectedly-valid"
   /** ```krs <something-else> — unknown marker, so the claim is unreadable. */
@@ -66,7 +68,7 @@ export interface KrsFenceFinding {
   detail: string;
 }
 
-interface Fence {
+export interface Fence {
   /** Info string after the opening backticks, e.g. `krs`, `krs fragment`, `` for bare. */
   info: string;
   /** 1-based line of the opening fence. */
@@ -74,7 +76,15 @@ interface Fence {
   body: string;
 }
 
-const KNOWN_MARKERS = new Set(["fragment", "invalid"]);
+/**
+ * Markers that say a ```krs block is not a plain current-valid model.
+ *
+ * Exported because `scripts/census/vocabulary.ts` has to skip the same set: a
+ * `fragment` is not parseable and an `invalid` block's vocabulary is a
+ * deliberate bad-input demo, so counting either would corrupt the tally. A
+ * private copy there would keep counting whichever marker was added here last.
+ */
+export const KNOWN_MARKERS = new Set(["fragment", "invalid"]);
 
 /**
  * Documentation roots scanned by default. Every `.md` below them is read
@@ -134,7 +144,7 @@ const KRS_EDGE_RE = new RegExp(String.raw`^${ID}\s+(->|-->)\s+${ID}(\s|$)`);
  * snippet inside a numbered step is written; the body is dedented by the
  * opening fence's indent so the parser sees the snippet, not the list layout.
  */
-function extractFences(markdown: string): Fence[] {
+export function extractFences(markdown: string): Fence[] {
   const lines = markdown.split("\n");
   const fences: Fence[] = [];
   let open: { info: string; line: number; indent: number; body: string[] } | null = null;
@@ -170,6 +180,31 @@ function parseErrorCodes(krs: string): string[] {
   const result = Parser.parse(krs);
   const codes = result.diagnostics.filter((d) => d.severity === "error").map((d) => d.code);
   return [...new Set(codes)];
+}
+
+/**
+ * Codes of the deprecation class: a form the grammar still accepts and is on
+ * its way to rejecting. Checking errors alone let a document keep teaching such
+ * a form until the removal release turned it into a parse error all at once —
+ * `docs/acceptance/0007-organization-diagram.md` taught the positional label
+ * for the whole window between #2133 and #2208.
+ *
+ * The class is read off the code's shape rather than a hand-kept list, so the
+ * next deprecation is covered the day it is emitted (TPL-1720: a private list
+ * silently stops recognizing whatever was added last). Exported so the unit
+ * test can exercise it with synthesized diagnostics — the corpus emits none of
+ * these today, which is exactly why the guard could be turned on for free.
+ */
+export function deprecationCodesIn(diagnostics: readonly { severity: string; code: string }[]) {
+  const codes = diagnostics
+    .filter((d) => d.severity === "warning" && d.code.endsWith("-deprecated"))
+    .map((d) => d.code);
+  return [...new Set(codes)];
+}
+
+/** Deprecation-class codes a snippet triggers, deduplicated in first-seen order. */
+function parseDeprecationCodes(krs: string): string[] {
+  return deprecationCodesIn(Parser.parse(krs).diagnostics);
 }
 
 /** True when a bare fence's body declares a node with a concrete id, or draws an edge. */
@@ -230,14 +265,30 @@ export function analyzeKrsFencesIn(file: string, content: string): KrsFenceFindi
         line: fence.line,
         detail: codes.join(", "),
       });
+      continue;
+    }
+    const deprecated = parseDeprecationCodes(fence.body);
+    if (deprecated.length > 0) {
+      findings.push({
+        kind: "krs-fence-deprecated-form",
+        file,
+        line: fence.line,
+        detail: deprecated.join(", "),
+      });
     }
   }
 
   return findings;
 }
 
-/** Repo-relative paths of every `.md` under `root` (a directory or a file). */
-function markdownFilesUnder(repoRoot: string, root: string): string[] {
+/**
+ * Repo-relative paths of every `.md` under `root` (a directory or a file).
+ *
+ * Exported alongside {@link extractFences} so `scripts/census/vocabulary.ts`
+ * reads the documentation corpus through this guard's definition of it rather
+ * than a second walker that would drift from `DEFAULT_DOC_ROOTS`.
+ */
+export function markdownFilesUnder(repoRoot: string, root: string): string[] {
   const abs = join(repoRoot, root);
   if (!existsSync(abs)) return [];
   if (!statSync(abs).isDirectory()) return root.endsWith(".md") ? [root] : [];
@@ -300,6 +351,8 @@ export function describeKrsFenceFinding(f: KrsFenceFinding): string {
   switch (f.kind) {
     case "krs-fence-parse-error":
       return `${f.file}:${f.line} — \`\`\`krs block does not parse: ${f.detail}`;
+    case "krs-fence-deprecated-form":
+      return `${f.file}:${f.line} — \`\`\`krs block teaches a deprecated form: ${f.detail}`;
     case "krs-fence-unexpectedly-valid":
     case "krs-fence-unknown-marker":
     case "krs-fence-untagged":

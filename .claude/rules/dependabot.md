@@ -22,6 +22,32 @@ Dependabot 設定・依存更新 ADR を編集するとき、または Dependabo
 `ADR-1038`（security update 重複 PR の処理）。本ファイルは要点の
 ショートカットで、矛盾があれば release.md と ADR が優先する。
 
+## 判定語彙
+
+トリアージの判定は **採用 / 保留 / 却下** の 3 値。反映手段はそれと別の軸で、
+bot PR をそのままマージするか **差し替え PR** で入れるかを指す。
+
+| 語 | 意味 |
+| --- | --- |
+| **採用** | その bump を取り込む。反映手段は問わない |
+| **保留** | 今回は入れない。bot PR は open のまま、または Issue に畳む |
+| **却下** | その版を入れない。必要なら `@dependabot ignore` を設定する |
+| **差し替え PR** | bot PR を close し、同じ bump を含む別の PR で入れる |
+
+**差し替え PR は「採用」の一形態であって却下ではない。** 使うのは
+**bot が作れる diff の形では正しい変更にならないとき**に限る。典型は
+peer が exact pin の相方を同一コミットで動かす必要がある場合と、
+upstream の既定変更に伴う棚卸しを bump と同梱する必要がある場合。
+判定が「採用」である以上、`@dependabot ignore` は設定しない。
+
+「単に rebase が必要なだけ」は差し替えの理由にならない（`ADR-2152`）。
+構造的に CI を通せない失敗モードかどうかで判断する。
+
+> **`人手` は行為にだけ使う。** 「bot ブランチに人手でコミットを足す」
+> 「override を人手で合わせる」は手作業を指すので正しい。成果物としての PR は
+> 差し替え PR と呼ぶ。ADR-2474 より前の ADR は同じものを「人手 PR」と
+> 書いている（`ADR-2474` で全て改名済み）。
+
 ## スケジュールと cooldown
 
 - npm / github-actions ともに weekly / Monday、cooldown は全 semver レベル
@@ -87,7 +113,7 @@ update PR は上記とは別の理由で構造的に CI を通せない:
 
 `@dependabot recreate` でも直らない。bot ブランチに人手で override 合わせの
 コミットを足しても次の recreate で失われるため、**PR は close し、当該 bump は
-人手の PR に畳み込む**（override とセットで 1 コミットにする）。
+差し替え PR に畳み込む**（override とセットで 1 コミットにする）。
 
 判別のポイント: エラーが `LOCKFILE_CONFIG_MISMATCH` なら override 起因、
 `OUTDATED_LOCKFILE` なら lockfile 未更新起因。

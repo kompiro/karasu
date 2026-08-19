@@ -326,3 +326,50 @@ describe("ports keep out of the card's own chrome", () => {
     }
   });
 });
+
+describe("the multi-system root view seats ports too (#2515)", () => {
+  // #2452 gave every card outline-seated endpoints, but `layoutMultipleSystems`
+  // passed no port resolver, so the root view kept bbox anchors while the same
+  // system's drill-down view got the outline (TPL-219: a view state that
+  // behaves differently across surfaces). Two arrivals per store, because a
+  // lone endpoint lands at the horizontal centre where the rim touches the
+  // bbox edge anyway and so cannot tell the two apart.
+  const TWO_SYSTEMS = `
+system Shop {
+  service Orders { label "Orders" }
+  service Catalog { label "Catalog" }
+  database ShopDb { label "Shop DB" table t }
+  Orders -> ShopDb "persists"
+  Catalog -> ShopDb "reads"
+}
+system Billing {
+  service Invoicing { label "Invoicing" }
+  service Ledger { label "Ledger" }
+  database BillingDb { label "Billing DB" table t }
+  Invoicing -> BillingDb "persists"
+  Ledger -> BillingDb "posts"
+}`;
+
+  it("puts cylinder endpoints on the rim in the root view", () => {
+    const res = layoutOf(TWO_SYSTEMS);
+    // Two systems, so this is the multi-system path.
+    expect(res.containers.filter((c) => !c.ghost).length).toBe(2);
+
+    for (const dbId of ["ShopDb", "BillingDb"]) {
+      const db = res.nodes.get(dbId)!;
+      const arrivals = endpoints(res).filter((e) => e.node.id === dbId);
+      expect(arrivals.length, `${dbId} arrivals`).toBe(2);
+      const ry = Math.min(db.height * 0.12, 15);
+      const cx = db.x + db.width / 2;
+      for (const { point } of arrivals) {
+        // Off-centre arrivals sat on the flat bbox edge before the resolver
+        // reached this path; the rim dips below it away from the centre.
+        expect(point.y, `${dbId} port off the bbox edge`).toBeGreaterThan(db.y + 0.25);
+        // And it lands on the rim, not past it.
+        const u = (point.x - cx) / (db.width / 2);
+        const v = (point.y - (db.y + ry)) / ry;
+        expect(u * u + v * v, `${dbId} port on the rim`).toBeLessThanOrEqual(1 + 1e-6);
+      }
+    }
+  });
+});

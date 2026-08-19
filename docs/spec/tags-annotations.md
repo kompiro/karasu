@@ -7,6 +7,10 @@
 Tags declare **architectural meaning**. Styles change in response to tags.
 A tag is a semantic declaration, not a direct appearance override. Visual control is handled in `.krs.style`.
 
+**Names lex as kebab-case identifiers.** `[my-team-internal-tag]` is one tag named `my-team-internal-tag`, and the same rule holds at every position that accepts open vocabulary: annotation names (`@my-mark`), `capability` names, and legend `ref` targets. A fragment may be spelled like a keyword (`[legacy-system]` is one tag). `.krs.style` folds hyphens into identifiers natively, so the tag written in `.krs` and the selector written in `.krs.style` land on the same name. (#2509)
+
+> Related TPLs: [TPL-2509](../test-perspectives/TPL-2509-kebab-name-positions-share-one-lexical-rule.md) — every kebab-case name position shares one lexical helper; a new name position must be verified against hyphenated names on both the `.krs` and `.krs.style` sides.
+
 <!-- gen:reference:tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Tag | Meaning | Effect on default rendering |
 |-----|---------|-----------------------------|

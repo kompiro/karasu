@@ -1,5 +1,6 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
+import { stitchKebabTail, type TokenCursor } from "./kebab-name.js";
 import type {
   KrsFile,
   KrsNode,
@@ -171,6 +172,13 @@ export class Parser {
   private tokens: Token[];
   private pos = 0;
   private diagnostics: Diagnostic[] = [];
+
+  /** Cursor view over the token stream for shared helpers (kebab-name.ts). */
+  private readonly cursor: TokenCursor = {
+    peek: () => this.peek(),
+    peekAt: (offset) => this.peekAt(offset),
+    advance: () => this.advance(),
+  };
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
@@ -843,23 +851,11 @@ export class Parser {
     const start = this.expect(TokenType.Capability);
     const nameToken = this.expect(TokenType.Identifier);
     // Capability identifiers are kebab-case by convention (e.g. screen-wake-lock,
-    // face-id). The lexer does not include `-` in identifier characters, so it
-    // emits the dash as a separate `Identifier("-")` token. Stitch consecutive
-    // `<ident>-<ident>` runs back together so `screen-wake-lock` parses as one
-    // capability name.
-    let name = nameToken.value;
-    let end: Token = nameToken;
-    while (
-      this.peek().type === TokenType.Identifier &&
-      this.peek().value === "-" &&
-      this.peekAt(1).type === TokenType.Identifier &&
-      this.peekAt(1).value !== "-"
-    ) {
-      this.advance(); // -
-      const next = this.advance();
-      name += `-${next.value}`;
-      end = next;
-    }
+    // face-id). Stitch the `<word> - <word>` token run back into one name —
+    // shared with tags / annotations / legend refs (#2509, kebab-name.ts).
+    const stitched = stitchKebabTail(nameToken, this.cursor);
+    const name = stitched.name;
+    let end: Token = stitched.end;
     let label: string | undefined;
     let description: string | undefined;
 
@@ -1684,14 +1680,16 @@ export class Parser {
 
     this.advance(); // [
     while (this.peek().type !== TokenType.RightBracket && this.peek().type !== TokenType.EOF) {
-      if (this.peek().type === TokenType.Identifier) {
-        tags.push(this.advance().value);
-      } else if (this.peek().type === TokenType.Comma) {
+      if (this.peek().type === TokenType.Comma) {
         this.advance();
-      } else {
-        // Accept keyword tokens as tag values too
-        tags.push(this.advance().value);
+        continue;
       }
+      // A tag value: an identifier, or a keyword token doubling as a tag name
+      // (e.g. `[table]`). A kebab-case tag arrives as a `<word> - <word>` run
+      // (the lexer emits `-` as its own token) — stitch it back into one tag
+      // (#2509) so `[my-team-internal-tag]` is one tag, not seven.
+      const first = this.advance();
+      tags.push(stitchKebabTail(first, this.cursor).name);
     }
     this.expect(TokenType.RightBracket);
     return tags;
@@ -1706,7 +1704,9 @@ export class Parser {
     while (this.peek().type === TokenType.At) {
       this.advance(); // @
       if (this.peek().type !== TokenType.Identifier) continue;
-      const name = this.advance().value;
+      // Kebab-case annotation names (`@my-team-mark`) arrive as a
+      // `<word> - <word>` token run — stitch, same as tags (#2509).
+      const { name } = stitchKebabTail(this.advance(), this.cursor);
       names.push(name);
       // Optional parameters: `@name(key: "value"[, key: "value"]*)`.
       if (this.peek().type === TokenType.LeftParen) {
@@ -1885,18 +1885,14 @@ export class Parser {
       } else if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
-        // Value can be string literal or identifier
-        if (
+        if (propName === "realizes") {
+          this.parseRealizesList(propToken, properties);
+        } else if (
+          // Value can be string literal or identifier
           this.peek().type === TokenType.StringLiteral ||
           this.peek().type === TokenType.Identifier
         ) {
-          const value = this.advance().value;
-          if (propName === "realizes") {
-            if (!properties.realizes) properties.realizes = [];
-            properties.realizes.push(value);
-          } else {
-            (properties as Record<string, string>)[propName] = value;
-          }
+          (properties as Record<string, string>)[propName] = this.advance().value;
         } else {
           this.error("expected-property-value", { propName });
         }
@@ -1923,12 +1919,79 @@ export class Parser {
     };
   }
 
+  /**
+   * Parses the value of one `realizes` line, appending to the node's target
+   * list. Targets may be written one per line (#409) or comma-separated on a
+   * single line (#2167) — the comma form is sugar, so both append to the same
+   * array and a node mixing the two accumulates in document order.
+   *
+   * **A list lives on the line its `realizes` keyword is on.** Both the commas
+   * and the targets after them are held to that line, so the two malformed
+   * spellings behave alike: neither `realizes A,` nor a following `,B` line
+   * quietly extends the list across the line break. Property keywords carry
+   * their own token types, so they could never be read as targets; what the
+   * line rule actually stops is a bare identifier on the next line being
+   * absorbed as a continuation instead of being reported where it sits.
+   */
+  private parseRealizesList(keyword: Token, properties: DeployNodeProperties): void {
+    const { line } = keyword.loc;
+    const onListLine = (token: Token): boolean => token.loc.line === line;
+    const atTarget = (): boolean => {
+      const token = this.peek();
+      return (
+        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
+        onListLine(token)
+      );
+    };
+
+    // The separator the parser is standing after, for the diagnostic below.
+    // Undefined while reading the first target, which `realizes` introduces.
+    let afterComma: Token | undefined;
+
+    for (;;) {
+      if (atTarget()) {
+        const token = this.advance();
+        (properties.realizes ??= []).push({
+          id: token.value,
+          loc: this.range(token.loc, token.end),
+        });
+        // Without a comma the list is done; with one, another target is due.
+        if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;
+        afterComma = this.advance();
+        continue;
+      }
+      // No target where one is required: bare `realizes`, a leading comma
+      // (`realizes ,B`), or the trailing comma of `realizes A,`. Report it once
+      // rather than letting the comma fall through to the block loop's generic
+      // `unexpected-token-in-block`, and anchor it on the token that is
+      // actually wrong — the dangling comma, or `realizes` itself when the
+      // value is missing outright. `this.error` would anchor on whatever comes
+      // next, which for a trailing comma is the following (valid) line.
+      this.diagnostics.push({
+        severity: "error",
+        code: "expected-property-value",
+        params: { propName: "realizes" },
+        loc: this.range((afterComma ?? keyword).loc, (afterComma ?? keyword).end),
+      });
+      // Swallow the stray separators so the same commas are not reported again,
+      // then resume if that leaves a target to read — `realizes ,B` still
+      // records `B`. Reaching here without a comma to consume means the line
+      // holds nothing more to say, so stop rather than report twice.
+      let swallowed = false;
+      while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
+        afterComma = this.advance();
+        swallowed = true;
+      }
+      if (!swallowed || !atTarget()) return;
+    }
+  }
+
   // ─── Organization ──────────────────────────────────────────────────────────
 
   private parseOrganizationBlock(): OrganizationBlock {
     const start = this.advance(); // organization
     const idToken = this.parseIdOrString("organization");
-    let label = this.parseDeprecatedPositionalLabel("organization");
+    let label = this.parseRetiredPositionalLabel("organization");
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties = { links: [] };
@@ -1979,21 +2042,22 @@ export class Parser {
   }
 
   /**
-   * Accept-and-warn path for the positional `<kw> <id> "<label>"` form on
-   * organization / team / member (#2133). ADR-19 made `label` a property; these
-   * constructs kept the positional read as undocumented leniency, so shipped
-   * files may rely on it — the value still lands in the AST (and `karasu fmt`
-   * canonicalizes it to the property form), but a deprecation warning marks the
-   * form for removal.
+   * The positional `<kw> <id> "<label>"` form on organization / team / member.
+   * ADR-19 made `label` a property; these constructs kept the positional read as
+   * undocumented leniency, deprecated in #2133 and removed in #2208.
+   *
+   * Unlike boundary / facet below, the value is **kept**. That is a fidelity
+   * choice, not a rescue: recovery reads the string the author wrote rather
+   * than discarding it, so `Parser.parse` callers that inspect the AST past the
+   * diagnostic still see the name. It does not keep any drawing alive — every
+   * render path refuses to draw while an error stands (the app republishes the
+   * last valid SVG, `karasu render` and `karasu subtree` exit 1), and
+   * `format()` refuses the source too, so `karasu fmt` can no longer rewrite
+   * the form once it errors.
    */
-  private parseDeprecatedPositionalLabel(construct: string): string | undefined {
+  private parseRetiredPositionalLabel(construct: string): string | undefined {
     if (this.peek().type !== TokenType.StringLiteral) return undefined;
-    this.diagnostics.push({
-      severity: "warning",
-      code: "positional-label-deprecated",
-      params: { construct },
-      loc: this.range(this.peek().loc),
-    });
+    this.error("positional-label-removed", { construct });
     return this.advance().value;
   }
 
@@ -2196,7 +2260,7 @@ export class Parser {
   private parseTeamBlock(): TeamNode {
     const start = this.advance(); // team
     const idToken = this.parseIdOrString("team");
-    let label = this.parseDeprecatedPositionalLabel("team");
+    let label = this.parseRetiredPositionalLabel("team");
     const { names: annotations, params: annotationParams } = this.parseAnnotations();
     this.expect(TokenType.LeftBrace);
 
@@ -2261,7 +2325,7 @@ export class Parser {
   private parseMemberBlock(): MemberNode {
     const start = this.advance(); // member
     const idToken = this.parseIdOrString("member");
-    let label = this.parseDeprecatedPositionalLabel("member");
+    let label = this.parseRetiredPositionalLabel("member");
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties & { slack?: string; github?: string } = { links: [] };
@@ -2662,14 +2726,19 @@ export class Parser {
     switch (tok.type) {
       case TokenType.At: {
         this.advance();
-        const name = this.expect(TokenType.Identifier);
-        return { kind: "annotation", name: name.value };
+        const first = this.expect(TokenType.Identifier);
+        // Legend refs name the same vocabulary the model writes — stitch
+        // kebab-case runs so `[my-team]` / `@my-mark` stay referenceable
+        // (#2509).
+        const { name } = stitchKebabTail(first, this.cursor);
+        return { kind: "annotation", name };
       }
       case TokenType.LeftBracket: {
         this.advance();
-        const name = this.expect(TokenType.Identifier);
+        const first = this.expect(TokenType.Identifier);
+        const { name } = stitchKebabTail(first, this.cursor);
         this.expect(TokenType.RightBracket);
-        return { kind: "tag", name: name.value };
+        return { kind: "tag", name };
       }
       case TokenType.Dot: {
         this.advance();

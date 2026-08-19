@@ -13,6 +13,7 @@ import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
+import { synthesizeUnassignedSystem } from "../view/unassigned-system.js";
 import { buildEntityResolver } from "./resource-entity.js";
 import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { formatSelector } from "../style/serialize.js";
@@ -1447,15 +1448,18 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
       const realizes = node.properties.realizes;
       if (!realizes || realizes.length === 0) continue;
       for (const target of realizes) {
-        if (!validIds.has(target)) {
+        if (!validIds.has(target.id)) {
           warnings.push({
             kind: "unresolved-realizes",
             params: {
               deployNodeId: node.id,
               deployBlockId: deploy.id,
-              target,
+              target: target.id,
             },
-            loc: node.loc,
+            // The identifier's own range, not the node's: a unit realizing
+            // several targets — whether written as repeated lines or one comma
+            // list (#2167) — must point at the target that failed to resolve.
+            loc: target.loc,
           });
         }
       }
@@ -1670,12 +1674,13 @@ function detectUnresolvedEdgeEndpoints(file: KrsFile): Warning[] {
 }
 
 /**
- * An authored edge renders only on the view that draws the block it is declared
- * in: view extraction reads `container.edges` and keeps the edges whose two
- * endpoints are peers there (`view-extract.ts` — root view, drill-down view,
- * entity view all share that shape). An endpoint that resolves to a node
- * *outside* that peer set therefore drops the edge from every view. Before
- * #2075 the drop was silent; this surfaces it.
+ * An authored edge renders only where its endpoints stand side by side: the
+ * view of the block it is declared in, or — for an edge anchored inside a
+ * child block — the view that draws that child as a node (`view-extract.ts`,
+ * `collectAnchoredPeerEdges`; ADR-2223). Either way extraction keeps the edges
+ * whose two endpoints are peers at that scope, so an endpoint resolving to a
+ * node *outside* the peer set drops the edge from every view. Before #2075 the
+ * drop was silent; this surfaces it.
  *
  * The peer set is per **node instance**, mirroring what the renderer does:
  * `layout.ts`'s multi-system path draws a system's edge only when both
@@ -1729,6 +1734,15 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
   // reported like any other out-of-scope endpoint.
   const orphanDomainIds = new Set(file.domains.map((n) => n.id));
 
+  // A top-level block has no declaring parent, but it is not drawn alone: the
+  // renderer wraps every orphan into the `__unassigned__` pseudo-system, whose
+  // children are peers of one another on that frame — and `extractView` draws
+  // edges anchored between them (#2223). Reading the wrap set from its own
+  // builder keeps the two definitions of "orphan peer" from drifting apart.
+  const orphanPeerIds = new Set(
+    (synthesizeUnassignedSystem(file)?.children ?? []).map((c) => c.id),
+  );
+
   const peersOf = (container: KrsNode): Set<string> => {
     if (container.kind === "system") {
       return new Set([...container.children.map((c) => c.id), ...orphanDomainIds]);
@@ -1736,7 +1750,14 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
     const parent = parentOf.get(container);
     // The container's own id is the self-anchored source of every edge the
     // parser accepts inside a service / domain / entity block.
-    return new Set([container.id, ...(parent?.children ?? []).map((c) => c.id)]);
+    if (!parent) {
+      // A parentless block that the wrap itself skips (a top-level `client`)
+      // is drawn on no frame at all, so it has no peers to draw an edge to.
+      return orphanPeerIds.has(container.id)
+        ? new Set([container.id, ...orphanPeerIds])
+        : new Set([container.id]);
+    }
+    return new Set([container.id, ...parent.children.map((c) => c.id)]);
   };
 
   const check = (container: KrsNode): void => {

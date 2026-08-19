@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, assert } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -10,6 +10,7 @@ import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { Parser } from "../parser/parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { resolveStyles } from "./style-resolver.js";
 import { loadAndRegisterIcons } from "../renderer/svg-icon-loader.js";
 import { clearRegistry } from "../shapes/shape-registry.js";
 import { registerBuiltinShapes } from "../renderer/shapes.js";
@@ -2312,6 +2313,48 @@ deploy Production {
     expect(targets).toEqual(["Bx", "Cx"]);
   });
 
+  // #2167 — a comma list puts several targets on one line, so a node-level or
+  // line-level range can no longer say which one failed.
+  it("points at the offending identifier within a comma-separated list", () => {
+    const krs = [
+      "system S {",
+      "  service A {}",
+      "}",
+      "deploy Production {",
+      "  oci app {",
+      '    runtime "Kubernetes"',
+      "    realizes A, Bogus",
+      "  }",
+      "}",
+    ].join("\n");
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    const loc = w[0].loc;
+    assert(loc);
+    expect(loc.start.line).toBe(7);
+    // `Bogus` sits past `A` on that line; the node starts two lines earlier.
+    expect(loc.start.column).toBe(krs.split("\n")[6].indexOf("Bogus") + 1);
+    // Spanning, not a point: a zero-width range underlines nothing in an editor.
+    expect(loc.end.column).toBe(loc.start.column + "Bogus".length);
+  });
+
+  it("gives each unresolved target in one list its own range", () => {
+    const krs = [
+      "system S {",
+      "  service A {}",
+      "}",
+      "deploy Production {",
+      "  oci app {",
+      '    runtime "Kubernetes"',
+      "    realizes Bx, Cx",
+      "  }",
+      "}",
+    ].join("\n");
+    const w = unresolved(krs);
+    expect(w).toHaveLength(2);
+    expect(w[0].loc?.start.column).toBeLessThan(w[1].loc?.start.column ?? 0);
+  });
+
   it("warns separately per deploy block when each has its own typo", () => {
     const krs = `
 system S {
@@ -2616,6 +2659,67 @@ system T {
 }
 `),
     ).toHaveLength(0);
+  });
+
+  // #2223: the service-anchored spelling draws on the canvas where the service
+  // is a node, so its peers are the declaring system's children.
+  it("does not warn for a service-anchored edge to a peer of the declaring service", () => {
+    expect(
+      find(`
+system T {
+  service S1 {
+    S1 -> S2
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+  client W [web]
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  // Orphans share the `__unassigned__` frame, so they are peers of one another
+  // there — the same set `extractView` draws the anchored edge in (#2223).
+  it("does not warn for an anchored edge between two top-level orphan services", () => {
+    expect(
+      find(`
+service S1 {
+  S1 -> S2
+  domain A { usecase u {} }
+}
+service S2 { domain B { usecase v {} } }
+`),
+    ).toHaveLength(0);
+  });
+
+  // A top-level `client` is not wrapped into the pseudo-system, so it never
+  // shares a canvas with an orphan service — in either direction.
+  it("warns when an orphan service's anchored edge names a top-level client", () => {
+    const warnings = find(`
+service S1 {
+  S1 -> W
+  domain A { usecase u {} }
+}
+client W [web]
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({ endpointId: "W", endpointKind: "client" });
+  });
+
+  it("warns when a top-level client anchors an edge to an orphan service", () => {
+    const warnings = find(`
+client W [web] {
+  W -> S1
+}
+service S1 { domain A { usecase u {} } }
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      endpointId: "S1",
+      endpointKind: "service",
+      scopeId: "W",
+      scopeKind: "client",
+    });
   });
 
   it("does not warn for a cross-service domain edge (derived as an implicit service edge)", () => {
@@ -3442,5 +3546,37 @@ system Shop {
     // One warning per authoring site — the union in `facetIndex` would have
     // collapsed these two mistakes into one.
     expect(warnings.map((w) => w.loc?.start.line)).toEqual([3, 6]);
+  });
+});
+
+describe("hyphenated tag names warn once with the full name (#2509)", () => {
+  it("emits one tag-not-builtin naming the tag the author wrote", () => {
+    const file = Parser.parse(`
+system S {
+  client Y [my-team-internal-tag] {}
+}
+    `).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "tag-not-builtin",
+    );
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "tag-not-builtin") throw new Error("kind mismatch");
+    expect(warnings[0].params).toEqual({ nodeId: "Y", tag: "my-team-internal-tag" });
+  });
+
+  it("matches a .krs.style selector spelled with the same hyphenated name (TPL-1415)", () => {
+    // The .krs.style lexer folds hyphens into identifiers natively; the .krs
+    // side stitches. Both spellings must land on the same name or a tag can
+    // never be styled.
+    const file = Parser.parse(`
+system S {
+  service Pay [my-team] {}
+}
+    `).value;
+    const sheet = StyleParser.parse(`
+[my-team] { border-style: dashed; }
+    `).value;
+    const result = resolveStyles(file.systems, [sheet]);
+    expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
   });
 });

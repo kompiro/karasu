@@ -67,12 +67,28 @@ interface TagData {
   formFactor?: LocalizedString;
 }
 
+/**
+ * A badge color per theme. Both palettes live here so every surface that shows
+ * a badge — the built-in stylesheet the diagram draws from, and the Reference
+ * panel's swatch — resolves the same value for the active theme. A single
+ * theme-free `color` used to be the canonical dark value, which is exactly what
+ * the panel painted in both themes (#2482).
+ *
+ * `light` is a darker variant of the same hue: the dark value is chosen to
+ * clear AA on the dark canvas and would sit at 2-3:1 on the light one
+ * (ADR-1479, TPL-2366).
+ */
+export interface ThemedBadgeColor {
+  dark: string;
+  light: string;
+}
+
 interface AnnotationData {
   name: string;
   description: LocalizedString;
   /** How the annotation affects default rendering — the "Default rendering" column of the spec-doc table. */
   defaultRendering: LocalizedString;
-  defaultBadge: { color: string; icon: string; label: LocalizedString };
+  defaultBadge: { color: ThemedBadgeColor; icon: string; label: LocalizedString };
 }
 
 interface StylePropertyData {
@@ -519,26 +535,38 @@ export const REFERENCE_DATA = {
         en: "⚠ badge, node rendered semi-transparent",
         ja: "⚠バッジ、ノードを半透明に",
       },
-      defaultBadge: { color: "#EF4444", icon: "⚠", label: { en: "Deprecated", ja: "非推奨" } },
+      defaultBadge: {
+        color: { dark: "#EF4444", light: "#DC2626" },
+        icon: "⚠",
+        label: { en: "Deprecated", ja: "非推奨" },
+      },
     },
     {
       name: "new",
       description: { en: "Newly added", ja: "新規追加" },
       defaultRendering: { en: "✦ badge", ja: "✦バッジ" },
-      defaultBadge: { color: "#10B981", icon: "✦", label: { en: "NEW", ja: "NEW" } },
+      defaultBadge: {
+        color: { dark: "#10B981", light: "#047857" },
+        icon: "✦",
+        label: { en: "NEW", ja: "NEW" },
+      },
     },
     {
       name: "experimental",
       description: { en: "Experimental", ja: "実験的" },
       defaultRendering: { en: "⚗ badge", ja: "⚗バッジ" },
-      defaultBadge: { color: "#F59E0B", icon: "⚗", label: { en: "Experimental", ja: "実験的" } },
+      defaultBadge: {
+        color: { dark: "#F59E0B", light: "#B45309" },
+        icon: "⚗",
+        label: { en: "Experimental", ja: "実験的" },
+      },
     },
     {
       name: "migration_target",
       description: { en: "Migration target", ja: "移行先" },
       defaultRendering: { en: "→ badge", ja: "→バッジ" },
       defaultBadge: {
-        color: "#3B82F6",
+        color: { dark: "#3B82F6", light: "#2563EB" },
         icon: "→",
         label: { en: "Migration target", ja: "移行先" },
       },
@@ -550,7 +578,11 @@ export const REFERENCE_DATA = {
         ja: "設計上そこに置くが、まだ実在しない",
       },
       defaultRendering: { en: "◇ badge", ja: "◇バッジ" },
-      defaultBadge: { color: "#94A3B8", icon: "◇", label: { en: "Planned", ja: "予定" } },
+      defaultBadge: {
+        color: { dark: "#94A3B8", light: "#64748B" },
+        icon: "◇",
+        label: { en: "Planned", ja: "予定" },
+      },
     },
     // Last on purpose. A node can carry several annotations but renders one
     // badge, and the built-in sheet's rules tie on specificity, so the later
@@ -563,7 +595,11 @@ export const REFERENCE_DATA = {
         ja: "主張されているが人手で確認されていない",
       },
       defaultRendering: { en: "✎ badge", ja: "✎バッジ" },
-      defaultBadge: { color: "#A78BFA", icon: "✎", label: { en: "Draft", ja: "下書き" } },
+      defaultBadge: {
+        color: { dark: "#A78BFA", light: "#7C3AED" },
+        icon: "✎",
+        label: { en: "Draft", ja: "下書き" },
+      },
     },
   ],
   styleProperties: [

@@ -612,7 +612,7 @@ export function aggregateGroupTrunks(
  * `minLeft`), where no card or frame exists, so widening a corridor never crosses an
  * obstacle — the horizontal stub only extends into already-empty territory, and the
  * vertical stays outside all obstacles (AC-1 preserved, never worse). Left-side lanes
- * can push x negative; `normalizeCoordinates` (layout.ts) folds edge waypoints into
+ * can push x negative; `normalizeCoordinates` (layout-geometry.ts) folds edge waypoints into
  * its min and shifts every point non-negative, so they never clip on the left.
  */
 export function distributeGutterLanes(

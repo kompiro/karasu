@@ -9,6 +9,7 @@ applicable_to:
   - "文字を載せる新しい surface（パネル・バナー・オーバーレイ）を追加するとき"
 discovered_from:
   - issue: "#2193"
+  - issue: "#2461"
   - root_cause_file: "packages/app/src/styles/themes.css"
 related_to:
   - TPL-2366
@@ -62,6 +63,11 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
   SVG は `%23RRGGBB` と percent-encode されるため、生色リテラル検査
   （`styles-no-raw-color.test.ts`）の `#` 正規表現をすり抜け、片方のテーマの値の
   まま固定される。TSX 側の `text-white` のようなリテラルも同様に検査の外に出る。
+- **`opacity` による減光**: 減光は描画結果に掛かるがトークン値には現れないため、
+  トークンを読む検証は減光前の値で合格を出す。#2461 の edge-detail removed 行は
+  `opacity: 0.75` で実効 2.95:1（light）/ 3.38:1（dark）だったが、その組は
+  `TINTED_PAIRS` で「検証済み」と宣言されていた。減光は明度の違うトークンで
+  表現し、opacity は装飾に限る。
 - **リストからの脱落**: 検証対象トークンを手書きのリストで持つと、後から足した
   トークンが「書き忘れ」によって静かに検証外になる。リスト自体に drift ガードを
   持たせない限り、抜けは事後に気づけない。
@@ -83,6 +89,9 @@ TPL-2366 が canvas 上に描かれる文字（`packages/core` の builtin sheet
 - [ ] 不透明な**色**（`--accent` 等）の上に文字を置くなら、前景をテーマごとの
       インクにしたか。背景色を暗くして解こうとすると、その色が別の場所で
       「文字」として使われている場合に壊れる（#2461 の `--accent`）
+- [ ] テキストを `opacity` で減光していないか（減光するなら明度の違うトークンで）
+- [ ] そのトークンが複数の役割（本文 / バッジ / stroke）を持つなら、**最も厳しい
+      基準**で検証したか
 - [ ] ランプの順序（primary → secondary → tertiary → muted）が保たれているか
 - [ ] 未達なら同色相のまま明度だけ倒したか（`contrastRatio()` で再測定する。
       目視・手計算で決めない）

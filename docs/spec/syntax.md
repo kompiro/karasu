@@ -792,8 +792,10 @@ allowed — the edge stays co-located with its source.
 
 #### Endpoint scope
 
-An edge is drawn on the view that renders the block it is declared in, so **both
-of its endpoints must be peers at that scope**:
+An edge is drawn on the view where its endpoints stand side by side — the view
+of the block it is declared in (`system`), or the view that draws that block as
+a node (`service` / `domain` / `entity`). Either way **both of its endpoints
+must be peers at that scope**:
 
 - inside a `system` block — that block's own children (plus top-level
   `domain`s, which the root view splices in beside them);
@@ -827,12 +829,14 @@ domain Ordering {
 }
 ```
 
-Two placements are deliberately *not* reported, because they do render: a
+Three placements are deliberately *not* reported, because they do render: a
 `domain` → `domain` edge at any distance (a cross-service one is derived up to
 an implicit service edge, see [Edges inside a domain block](#edges-inside-a-domain-block)),
-and a cross-domain `entity` relation written with a qualified
-`DomainId.EntityId` target. A bare cross-domain entity target is intra-domain
-only, so it is dropped and reported.
+a `service`-anchored edge naming a peer of that service (see
+[Edges inside a service block](#edges-inside-a-service-block)), and a
+cross-domain `entity` relation written with a qualified `DomainId.EntityId`
+target. A bare cross-domain entity target is intra-domain only, so it is
+dropped and reported.
 
 An endpoint that resolves nowhere is a different case, reported as
 `unresolved-edge-endpoint` (§S6). Both diagnostics are catalogued in the
@@ -869,6 +873,44 @@ usecase PlaceOrder {
 See [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
 itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
+
+#### Edges inside a service block
+
+Declaring an edge inside a `service` block expresses a dependency of that
+service. `from_id` is the declaring service (or omitted, which means the same
+thing); `to_id` is any peer of that service — another service, an `[external]`
+one, a `client`, or an infra block declared beside it.
+
+```krs
+system Shop {
+  service Storefront {
+    -> Checkout "place order"
+    domain Catalog { usecase Browse {} }
+  }
+  service Checkout {
+    Checkout --> Ledger "settlement requested"
+    domain Ordering { usecase Place {} }
+  }
+  service Ledger [external] {}
+}
+```
+
+The edge renders **on the view that draws the declaring service as a node** —
+the system view, and the drill-down into that system — which is the same place
+the `system`-scope spelling of the dependency lands. Prefer this anchored form:
+it keeps the edge next to the source it belongs to, and it is what the
+[edge origin scope](#edge-declaration) rule asks for.
+
+A qualified target (`OtherSystem.Svc`) takes the cross-system path instead: the
+target system is drawn as a ghost on the declaring service's view, and the
+declaring service as a caller ghost on the target's view.
+
+An explicit service edge — in either spelling — suppresses the implicit service
+edge that cross-service domain edges would otherwise derive for the same pair
+(see below).
+
+> Related TPLs:
+> - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — an edge the parser accepts renders on some view or is reported; the anchored spelling must not drop silently
 
 #### Edges inside a domain block
 
@@ -965,6 +1007,26 @@ deploy "production" {
   }
 }
 ```
+
+The targets may also be written as one comma-separated line. This is sugar: it produces exactly the
+model above, and the two forms may be mixed within a node — every entry accumulates in document order.
+
+```krs
+deploy "production" {
+  oci "monolith" {
+    image    "monolith:1.0.0"
+    realizes OrderService, InventoryService
+  }
+}
+```
+
+Repeated lines are the canonical form: `karasu fmt` emits one target per line and rewrites a comma
+list into it. A comma with no identifier after it (`realizes A,`) or before it (`realizes ,B`) is
+reported as [`expected-property-value`](./diagnostics.md) on the comma itself. A list lives on the
+line its `realizes` keyword is on, so it never continues across a line break in either direction —
+neither a trailing comma nor a comma opening the following line extends the list.
+
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
 
 ### Realizing shared infra (the `store` kind)
 
@@ -1074,7 +1136,7 @@ All properties are optional. `member` cannot be nested.
 ### How to specify a label
 
 `organization`, `team`, and `member` take their label as the `label` property (`team backend { label "Backend Team" }`), like every node kind ([ADR-19](../adr/19-required-id-label-as-property.md)).
-The legacy positional argument (`team backend "Backend Team"`) is **deprecated** (#2133): it still parses, emits the `positional-label-deprecated` warning, and `karasu fmt` rewrites it to the property form. When both are specified, the property form takes precedence.
+The legacy positional argument (`team backend "Backend Team"`) is **rejected** with the `positional-label-removed` error (#2133 deprecated it, #2208 removed it). The string is still read as the label so the org chart keeps its names while the file is fixed, but the file does not compile clean until the property form is used. `karasu fmt` rewrites the form only while it parses without an error, so migrate before upgrading. When both are specified, the property form takes precedence.
 
 > Related TPLs: [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every form the parser accepts must be documented here; undocumented leniency is drift (this section's positional form went unspecified-but-accepted for four months, #2133).
 

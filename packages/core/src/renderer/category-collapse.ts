@@ -9,7 +9,7 @@ import { makeStubNode } from "./collapse-stub.js";
  * - `infra` — shared infra blocks (`database` / `queue` / `storage`)
  * - `external` — `[external]`-tagged service nodes
  *
- * Identification mirrors `systemTier()` in `layout.ts` so the two stay in sync
+ * Identification mirrors `systemTier()` in `layer-assignment.ts` so the two stay in sync
  * (TPL-1415: the infra-kind / `[external]`-tag vocabulary has one source
  * of truth).
  */

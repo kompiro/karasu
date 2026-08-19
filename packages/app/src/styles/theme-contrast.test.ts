@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import {
   compositeOver,
   contrastRatio,
+  getReference,
   WCAG_AA_LARGE_TEXT,
   WCAG_AA_NORMAL_TEXT,
 } from "@karasu-tools/core";
@@ -76,8 +77,8 @@ const SELF_BACKED_PAIRS: [string, string][] = [
   ["export-error-text", "export-error-bg"],
   ["opfs-banner-text", "opfs-banner-bg"],
   // The badge preview's background comes inline from reference-data, not from
-  // a token — a fixed dark-palette color in either theme, which is why its ink
-  // does not follow the theme either. `BADGE_PREVIEW_BACKGROUNDS` covers it.
+  // a token, so it has no pair to name here. `badgeBackgrounds()` reads it for
+  // the theme being measured.
 ];
 
 /**
@@ -93,18 +94,15 @@ const SOLID_PAIRS: [string, string][] = [
 
 /**
  * The annotation badge colors `reference-data.ts` hands the Reference panel as
- * an inline `background-color`. They are the dark-palette values whichever
- * theme is active, so `--badge-preview-text` is theme-independent too. White
- * measured 2.15:1 on `@experimental` here before #2461.
+ * an inline `background-color`, for the theme being measured. Read from core
+ * rather than transcribed: copies of this list were the dark palette in both
+ * themes, which is how the panel came to advertise a color the light diagram
+ * never draws (#2482). White measured 2.15:1 on dark `@experimental` before
+ * #2461, and the light palette is darker still, so the ink flips per theme.
  */
-const BADGE_PREVIEW_BACKGROUNDS = [
-  "#EF4444", // deprecated
-  "#10B981", // new
-  "#F59E0B", // experimental
-  "#94A3B8", // planned
-  "#A78BFA", // draft
-  "#3B82F6", // migration target
-];
+function badgeBackgrounds(theme: "dark" | "light"): string[] {
+  return getReference().annotations.map((a) => a.defaultBadge.color[theme]);
+}
 
 /**
  * Text painted on translucent chrome, with the opaque surfaces that chrome can
@@ -162,6 +160,19 @@ const TINTED_PAIRS: { fg: string; tint: string; over: string[]; under?: string[]
   { fg: "text-primary", tint: "diff-bg-removed", over: ["bg-raised"] },
   { fg: "text-muted", tint: "diff-bg-removed", over: ["bg-raised"] },
   { fg: "diff-color-removed", tint: "diff-bg-removed", over: ["bg-raised"] },
+];
+
+/**
+ * Text painted straight onto a panel surface by a token outside `TEXT_TOKENS`.
+ * `--diff-color-*` reaches here through the node-detail annotation diff list
+ * (`.node-detail-annotation-diff-list li[data-diff-state]`), a third role
+ * beyond the banner label and the SVG stroke. The values clear it today; what
+ * this adds is that a retune for either of the other two roles cannot quietly
+ * sink this one.
+ */
+const PANEL_TEXT_PAIRS: { fg: string; over: string[] }[] = [
+  { fg: "diff-color-added", over: ["bg-raised"] },
+  { fg: "diff-color-removed", over: ["bg-raised"] },
 ];
 
 /**
@@ -306,7 +317,9 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
       it("--badge-preview-text clears AA on every annotation badge color", () => {
         const ink = tokens.get("badge-preview-text");
         expect(ink, "--badge-preview-text is defined").toBeDefined();
-        for (const badge of BADGE_PREVIEW_BACKGROUNDS) {
+        const badges = badgeBackgrounds(setName);
+        expect(badges.length, "reference-data exposes the annotation badges").toBeGreaterThan(0);
+        for (const badge of badges) {
           expect(
             ratio(ink as string, badge),
             `--badge-preview-text on badge ${badge} (${setName})`,
@@ -334,6 +347,21 @@ describe("themed text tokens meet WCAG AA on every surface they land on", () => 
             expect(
               ratio(fg as string, effective),
               `--${fgToken} on --${tintToken} over --${surface} = ${effective} (${setName})`,
+            ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+          }
+        });
+      }
+
+      for (const { fg: fgToken, over } of PANEL_TEXT_PAIRS) {
+        it(`--${fgToken} clears AA as panel text on ${over.join(" / ")}`, () => {
+          const fg = tokens.get(fgToken);
+          expect(fg, `--${fgToken} is defined`).toBeDefined();
+          for (const surface of over) {
+            const bg = tokens.get(surface);
+            expect(bg, `--${surface} is defined`).toBeDefined();
+            expect(
+              ratio(fg as string, bg as string),
+              `--${fgToken} as panel text on --${surface} (${setName})`,
             ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
           }
         });

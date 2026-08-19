@@ -325,33 +325,48 @@ $ karasu matrix index.krs --format md
 - **`[external]` と ghost** — 未調査の境界を「外」として置き、深掘りを後回しにできます。
 - **warn, don't error** — `runtime` 未指定、`realizes` 未指定、resource の孤立など、未完成な点はすべて警告にとどまります。地図は壊れず描画され続けます。
 
-### 5.1 読解の確度を独自アノテーションで示す
+### 5.1 読解の確度を facet で示す
 
-「未確定」と「確認済み」の中間 — **推測だが描いておきたい** — を残したいことがあります。karasu のアノテーション名は **オープンセット**（任意の `@<識別子>` を受け付け、組み込み外でも警告は出ない）なので、`@unverified` / `@assumed` のような独自アノテーションを定義して、読解の確度を一級のマークとして残せます。
+「未確定」と「確認済み」の中間 — **推測だが描いておきたい** — を残したいことがあります。その集合を [`facet`](../spec/syntax.ja.md#横断的な所属facet-experimental) として一度宣言し、推測中の要素に `facets` を付ければ、読解の確度を一級のマークとして残せます。facet はこの register にぴったり合います: 要素の *読解* が確認済みかどうかはアーキテクチャの外から課される性質（地図の話であって現地の話ではない）で、それこそが facet の宣言するもの — システム自身の lifecycle を示す組み込みアノテーション（`@deprecated` / `@new` / …）とは軸が違います。
 
 ```krs
-// このドメインの存在は推測 — コード上の確証はまだ取れていない
-domain Promotion @unverified { label "プロモーション（推測）" }
+facet unverified {
+  label "未確認"
+  description "存在自体が推測 — コード上の確証はまだ取れていない"
+}
+facet assumed {
+  label "推測"
+  description "部分的な証拠から描いた。詳細の確認が必要"
+}
+
+// このドメインの存在は推測
+domain Promotion {
+  label "プロモーション（推測）"
+  facets unverified
+}
 
 system Shop {
-  service OrderService @assumed {
+  service OrderService {
     label "受注サービス"
     description "アクセス経路は推測。Slack #team-order で要確認"
+    facets assumed
   }
 }
 ```
 
-- 組み込みの 4 つ（`@deprecated` / `@new` / `@experimental` / `@migration_target`）と違い、独自アノテーションに **デフォルト描画は付きません**。ただし `.krs.style` のアノテーションセレクタの正当な対象になるので、色やバッジで「確度の低い領域」を一目化できます（[伝達ガイド §3](05-communicating-diagrams.ja.md#3-ライフサイクル状態を色バッジで示す) と同じ要領）。
+- membership に **デフォルト描画は付きません** が、opt-in の 2 面で可視化できます。プレビューの **Facets セレクタ** で overlay を点けると、メンバーに色付きリングが付き、それ以外が薄くなるので、「この地図のどこまでが推測か」はトグル 1 つで見えます。**Membership overview** は推測中の要素を一覧で答えます。常時表示したいなら `.krs.style` の [facet セレクタ](../spec/style.ja.md#ファセットセレクタfacetsid-experimental) で色やバッジを付けられます（[伝達ガイド §3](05-communicating-diagrams.ja.md#3-ライフサイクル状態を色バッジで示す) と同じ要領）:
 
   ```css
   /* theme.krs.style — 推測中の領域を点線＋バッジで目立たせる */
-  @unverified { border-style: dashed; opacity: 0.7; badge-label: "要確認"; badge-icon: "❓"; }
+  [facets=unverified] { border-style: dashed; opacity: 0.7; badge-label: "要確認"; badge-icon: "❓"; }
   ```
 
-- 組み込み名に近いタイポ（例: `@depracated`）には `annotation-possible-typo` の info ヒントが出ますが、`@unverified` のように離れた名前には出ません。
-- 理解が確定したらアノテーションを外すだけ。`@unverified` が残っているノードを grep すれば、**未確認の宿題一覧** になります。
+- typo 検出は **完全** です: 宣言が正解集合を定義するので、`facets unverifed` のような書き間違いは `facet-not-declared` として確実に検出されます（独自アノテーション名に出ていた近傍ヒントより信頼できます）。
+- 理解が確定したら `facets` 行を外すだけ。`facets unverified` を grep すれば（または Membership overview を開けば）、**未確認の宿題一覧** になります。
 
-この「未完成を許容する」姿勢が、オンボーディングと karasu の相性の核心です。完璧な理解を待たずにコミットし、理解が進むたびに警告と `@unverified` を 1 つずつ潰していけます。warning パネルと独自アノテーションが **残りの宿題リスト** になります。
+> 以前のモデルは読解の確度を独自アノテーション（`@unverified`）で示していました。組み込み外のアノテーション名は [#2159](https://github.com/kompiro/karasu/issues/2159) 以降 **deprecated** です — parse はされますが、使うたびに `annotation-not-builtin` が、スタイルで狙うと `style-annotation-selector-not-builtin` が出ます。上記の facet 形が移行先です。
+
+この「未完成を許容する」姿勢が、オンボーディングと karasu の相性の核心です。完璧な理解を待たずにコミットし、理解が進むたびに警告と `facets unverified` を 1 つずつ潰していけます。warning パネルと確度 facet が **残りの宿題リスト** になります。
 
 ---
 

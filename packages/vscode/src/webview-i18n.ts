@@ -6,8 +6,9 @@
  * later inside the webview's sandboxed browser context, so it cannot call
  * into `@karasu-tools/i18n` the way the app's React `NodeDetailPanel` does
  * (via `useTranslation`). Instead the host resolves the active locale from
- * `vscode.env.language` here, pre-computes every user-facing panel label,
- * and hands the resolved strings to `buildPreviewHtml` (which stays
+ * `vscode.env.language` (`resolveLocaleTag`, at the `PreviewPanel` call
+ * site), pre-computes every user-facing panel label here, and hands the
+ * resolved strings to `buildPreviewHtml` (which stays
  * i18n-agnostic — it only interpolates already-computed strings, mirroring
  * the `theme-mapping.ts` / `message-validation.ts` split).
  *
@@ -46,16 +47,6 @@ export interface PreviewPanelLabels {
   openDeployView: string;
   /** "↗ Jump to editor" button. */
   jumpToEditor: string;
-}
-
-/**
- * Resolve VS Code's display language to a karasu `Locale`. `vscode.env.language`
- * is a BCP-47-ish tag ("en", "en-US", "ja", "ja-jp", …); anything that is not
- * Japanese falls back to English, matching `resolveLspLocale` and the
- * tooling-output default from `docs/spec/i18n.md`.
- */
-export function resolveWebviewLocale(vscodeLanguage: string): Locale {
-  return vscodeLanguage.toLowerCase().startsWith("ja") ? "ja" : "en";
 }
 
 /** Pre-compute every detail-panel label for `locale`. */

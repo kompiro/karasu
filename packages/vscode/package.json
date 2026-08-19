@@ -43,12 +43,12 @@
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
     "@karasu-tools/lsp": "workspace:*",
-    "marked": "^18.0.2",
+    "marked": "^18.0.9",
     "vscode-languageclient": "^10.1.0"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "@types/vscode": "^1.111.0",
+    "@types/node": "^26.2.0",
+    "@types/vscode": "^1.125.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.0",
     "typescript": "^7.0.2",
@@ -125,6 +125,6 @@
     "theme": "dark"
   },
   "engines": {
-    "vscode": "^1.111.0"
+    "vscode": "^1.125.0"
   }
 }

@@ -1,6 +1,6 @@
 ---
 id: ADR-2447
-title: Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は人手 PR で対に戻す
+title: Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
 status: accepted
 date: 2026-08-11
 topic: build
@@ -14,7 +14,7 @@ assumptions:
   - "grep: package.json :: \"vitest\": \"\\^4.1.10\""
 ---
 
-# ADR-2447: Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は人手 PR で対に戻す
+# ADR-2447: Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
 
 - **日付**: 2026-08-11
 - **ステータス**: 決定済み
@@ -104,7 +104,7 @@ peer で結ばれた最大の組（vitest 系 3 パッケージ）が同じバ�
 `formatter/` タグの変更は `oxfmt_v0.61.0...oxfmt_v0.62.0` の compare でしか見えない）。
 
 整形コミットは bot ブランチに置けない（`@dependabot recreate` で失われる、
-`.claude/rules/dependabot.md`）。close して人手 PR に畳むのが定石で、
+`.claude/rules/dependabot.md`）。close して差し替え PR に畳むのが定石で、
 [ADR-2333](2333-dependabot-triage-2026-08-04.md) の #2326 と同じ処理をした。
 
 ### LSP の 2 件は、片側ずつマージすると実験条件が壊れる
@@ -147,7 +147,7 @@ position が計算されないのではなく**ずれて計算される**とい�
 
 #2425 は前述のとおり peer 不整合を固定する。#2427 は Format check が構造的に赤のままで、
 bot ブランチに整形コミットを足しても recreate で消える。どちらも「マージできない」のではなく
-「bot PR という容れ物では正しい形にできない」ため、close して人手 PR に置き換えた。
+「bot PR という容れ物では正しい形にできない」ため、close して差し替え PR に置き換えた。
 
 ### #2432 を単独でマージする
 

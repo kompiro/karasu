@@ -61,7 +61,8 @@ positional label（`<kw> <id> "<label>"`）を受理し続け、約 4 ヶ月間�
 ## 派生元 spec
 
 - `docs/spec/syntax.md` §「How to specify a label」（organization / team / member の
-  label 指定形 — positional は deprecated と明記、#2133）
+  label 指定形 — positional は #2133 で deprecated、#2208 で
+  `positional-label-removed` error として撤去したと明記）
 - `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」診断一覧
   （`positional-label-removed`）
 - `docs/spec/syntax.md` §「Cross-cutting membership (`facet`)」— `facets` を受理する

@@ -494,9 +494,26 @@ export interface FacetBlock {
 
 // ─── 物理図（変更なし） ────────────────────────────
 
+/**
+ * One `realizes` target, with the range of the identifier that named it.
+ *
+ * A deploy unit may realize several logical nodes, written either as repeated
+ * `realizes` lines (#409) or as one comma-separated line (#2167). Both forms
+ * produce this same list, so the range is what tells the two apart afterwards:
+ * it anchors at the individual identifier rather than at the `realizes` line or
+ * the node, so `unresolved-realizes` points at the one target it could not
+ * resolve even when the line names several. Anchored, not spanning — a token
+ * carries only its start, which is the parser's convention for single-token
+ * ranges throughout.
+ */
+export interface RealizesTarget {
+  id: string;
+  loc: SourceRange;
+}
+
 export interface DeployNodeProperties {
   runtime?: string;
-  realizes?: string[];
+  realizes?: RealizesTarget[];
   schedule?: string;
   image?: string;
   type?: string;
@@ -851,12 +868,13 @@ export interface DiagnosticParamsByCode {
   // say which declaration's metadata it means (#2065 Part B). Evaluated on the
   // merged model, so a duplicate split across two files is caught too.
   "duplicate-facet-id": { facetId: string };
-  // ADR-19 conformance (#2133): the positional `<kw> <id> "<label>"` form.
-  // Removed outright on `boundary` (experimental, no compat promise) …
+  // ADR-19 conformance: the positional `<kw> <id> "<label>"` form, removed on
+  // every construct that once accepted it — `boundary` / `facet` outright
+  // (experimental, no compat promise; #2133) and organization / team / member
+  // after a deprecation window that no release ever shipped (#2208). The two
+  // differ in recovery only: boundary / facet discard the string, the org
+  // constructs keep it as the label.
   "positional-label-removed": { construct: string };
-  // … and deprecated-but-accepted on organization / team / member (v1.0
-  // constructs; the form was never in the spec, but shipped builds parsed it).
-  "positional-label-deprecated": { construct: string };
   "contains-target-not-found": { memberId: string };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };

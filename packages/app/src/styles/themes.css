@@ -117,13 +117,12 @@
   --nav-btn-hover-bg: #1e3a5f;
   --nav-btn-hover-border: #3b82f6;
 
-  /* Reference panel badge preview — deliberately the same ink in both themes,
-     so the light block does not override it. Its background is the
-     annotation's badge color supplied inline from `reference-data.ts`, which
-     is the *dark* palette value whichever theme is active, so a themed
-     foreground would be answering to the wrong background. Those colors are
-     bright by construction (they clear AA on the dark canvas), so ink reads on
-     all six where white measured 2.15-3.76:1 (#2461). */
+  /* Reference panel badge preview. The background is the annotation's badge
+     color for the active theme, supplied inline from `reference-data.ts`
+     (#2482), so the ink follows the theme too — the swatch is a normal themed
+     pair. The dark palette is bright by construction (it clears AA on the dark
+     canvas), so ink reads on all six where white measured 2.15-3.76:1 (#2461);
+     the light palette is darker, and the light block below flips to white. */
   --badge-preview-text: #0f0f0f;
 
   /* Export error banner — intentionally a light banner in both themes */
@@ -198,6 +197,9 @@
   --error: #bc1e1e;
   --error-dim: rgba(220, 38, 38, 0.09);
   --error-badge-text: #ffffff;
+  /* The light badge palette is the darkened variant of each hue, so the swatch
+     ink flips with it (#2482). */
+  --badge-preview-text: #ffffff;
   --warning: #aa4e08;
   --warning-dim: rgba(180, 83, 9, 0.1);
   --warning-bg: rgba(180, 83, 9, 0.08);
