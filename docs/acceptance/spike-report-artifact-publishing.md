@@ -6,6 +6,7 @@ type: tooling
 
 - **日付**: 2026-08-19
 - **関連 Issue**: [#2436](https://github.com/kompiro/karasu/issues/2436)
+- **設計 (ADR)**: [ADR-2436](../adr/2436-spike-report-publishing.md)
 - **Related TPLs**: [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)（記録は、記録より長生きするアドレスを指す）
 - **対象ファイル**:
   - `scripts/report/html.ts`（`reportFragment` / `reportContent`）
