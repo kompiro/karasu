@@ -92,14 +92,66 @@ files, so `lint-style` has no role here.
      a context just because its directory is large — the unguided harness's
      known failure mode is over-splitting, and a size cap makes it worse.
 
-   When you cannot resolve a seam, **record it as low-confidence explicitly**
-   (never drop it silently). Over-splitting is recoverable by a human folding
-   domains up; a wrong merge is not, so when genuinely torn, prefer the split
-   and mark it.
+   When you cannot resolve a seam, **mark the node `@draft`** — the annotation
+   built for exactly this. A generated model that cannot say which parts it
+   guessed at invites the reader to trust all of it equally
+   (`docs/adr/1990-karasu-nest-pivot-server-reverse.md` decision 4).
+
+   ```krs
+   system Payments {
+     service Ledger {
+       domain Posting {}
+     }
+     service Reconciliation @draft {
+       label "Reconciliation"
+       domain Settlement @draft {}
+     }
+   }
+   ```
+
+   Write it on the `domain` / `service` whose seam was the judgement call, never
+   as a document-level note: the useful signal is *which* seam was uncertain,
+   and a document-level score averages that away. The bare mark is complete, and
+   what a human review deletes — that deletion is the ratchet, so keep it one
+   token to remove. `@draft(confidence: "low" | "medium" | "high")` refines it,
+   but **`karasu fmt` drops the parameter today** (#2571) and Phase 3 ends with
+   `fmt`, so anything that must survive goes in `description`, not in the
+   parameter.
+
+   Over-splitting is recoverable by a human folding domains up; a wrong merge is
+   not, so when genuinely torn, prefer the split and mark it. A finished model
+   carrying **no** `@draft` anywhere is making a strong claim about itself and is
+   worth doubting.
 4. Assign canonical ids (**English PascalCase**; `label` follows the user's
    language). Subagents reuse these ids instead of inventing their own.
-5. Output: `skeleton.krs` (system / service / domain scaffold + physical spine)
-   and a **domain work-list**.
+5. **Declare the cross-cutting vocabulary once, here.** A deep-dive meets facts
+   that are not structure at all — "this table holds personal data", "this
+   usecase sits behind the auth guard", "this store is in PCI scope". Those name
+   a set defined *outside* the architecture, which is what a `facet` declares:
+
+   ```krs
+   facet pii {
+     label "Personal data"
+     description "Holds or transits data identifying a natural person"
+     link "https://example.com/privacy" "Privacy policy"
+   }
+   ```
+
+   The ids belong in `skeleton.krs` for the same reason domain ids are assigned
+   here: the *declaration* is model-wide but *membership* is written
+   element-side (`facets pii` on the node), so five agents left to invent ids
+   produce `auth` / `requires_auth` / `authenticated` and one set silently
+   becomes three. Fan-out agents reference these ids and declare none (Phase 2).
+
+   Keep the vocabulary small and externally grounded — a regulation, a policy,
+   an audit scope. A `facet` says *which* elements a policy covers; what the
+   policy *says* stays prose in `description` + `link`, permanently
+   (`docs/adr/832-no-runtime-authz-modeling.md`). If a candidate describes what
+   the element *is* rather than which set it belongs to, it is an archetype and
+   the builtin tag vocabulary already covers it — the four-way register split is
+   in `docs/spec/tags-annotations.md` § Vocabulary registers.
+6. Output: `skeleton.krs` (system / service / domain scaffold + physical spine +
+   `facet` declarations) and a **domain work-list**.
 
 ### Phase 2: Deep-dive fan-out (one subagent per domain)
 
@@ -113,18 +165,45 @@ subagent:
     { operations create, read }`). **`operations` verbs are comma-separated** —
     `operations read, delete`, never `operations read delete` (space-separated
     fails to parse; normalize it in synthesis if an agent slips).
+  - **keep the source's own verb and decorate it with its CRUD intent** rather
+    than flattening to bare CRUD: `operations list:read, search:read` keeps a
+    collection query distinguishable from a get, `operations enqueue:create` is
+    how a publish onto a queue item is recorded, and `replace:create,delete`
+    is a genuine delete-insert. The right-hand side accepts only
+    `create` / `read` / `update` / `delete` (anything else is the error
+    `invalid-crud-decoration`), and a decorated verb never trips
+    `unknown-resource-operation`. Bare verbs must come before decorated ones on
+    one line — after a `verb:`, commas continue that verb's CRUD list until the
+    next `<id>:`.
   - an `entity` carries identity **and its relations** (no attributes). Do not
     stop at identity-only — derive relations from the schema's foreign keys and
     write each inside the reference-holding entity, starting at that entity:
-    `Message -> Chat "belongs to"` inside `entity Message { … }`. A relation may
-    cross domains (the target entity may live in another fragment).
+    `Message -> Chat "belongs to"` inside `entity Message { … }`.
+  - **a relation leaving the domain must name its target `DomainId.EntityId`.**
+    A bare id resolves intra-domain only: pointed at a foreign entity it does
+    not ghost, it is **dropped from the entity view** with no diagnostic, so the
+    relation you found disappears silently. Write
+    `Order -> Customers.Customer "placed by"`. The target may be a domain no
+    fragment has written yet (Phase 3 step 7 is what makes those ids agree).
   - resources **reference the physical declaration** (the logical side is a
     reference; the physical declaration is canonical);
+  - **records a cross-cutting fact as `facets <id>`** on the element that has it
+    — `facets pii` on the entity whose table holds personal data, on the store
+    itself, on the usecase behind the auth guard. Use **only the ids the
+    skeleton declares** (Phase 1 step 5); a set you found that none of them
+    covers goes in your return value as a proposal, not into a `facet` block of
+    your own — a `facet` written inside a node block is an error, and a
+    fragment-local vocabulary is the id drift step 5 exists to prevent.
+    `facets` is accepted on every node kind and membership is 1:N (`facets pii,
+    pci`), so nothing is structurally excluded and multi-membership is normal.
 - validates its own fragment with `karasu render <fragment> -o /dev/null` before
   returning (non-zero exit = the fragment is structurally broken; `-o /dev/null`
   discards the SVG so only diagnostics surface). A fragment that declares only
   `domain` / `usecase` blocks renders fine — unassigned-node *warnings* are
-  expected at this stage and do not fail the gate.
+  expected at this stage and do not fail the gate, and so is
+  `facet-not-declared`, because the declarations live in the skeleton this
+  fragment has not been merged into yet. After the merge it is a real finding
+  (Phase 3 step 5).
 
 Domains are independent, so launch the subagents in parallel.
 
@@ -146,20 +225,27 @@ launching the fan-out rather than discovering the bill afterwards.
 3. Match identity by `id`, never by `label`.
 4. Resolve resource-location conflicts structurally: the physical declaration
    lives in one place; every domain references it.
-5. **Carry the skeleton's infra declarations through the merge — verbatim.**
+5. **Carry the skeleton's declarations through the merge — verbatim.**
    The merge reads as "combine the fragments", but the fragments only *reference*
-   infra; the `database` / `storage` / `queue` **declaration blocks** live in the
-   skeleton alone. Dropping them silently deletes every table no fragment
-   happened to reference. Real run (spike #1991): the merged `index.krs` had no
-   `database` block at all, and **9 of 35 real tables vanished** from the model
-   purely for lack of a referent.
+   what the skeleton declares: the `database` / `storage` / `queue` **blocks**
+   and the `facet` blocks live in the skeleton alone. Dropping them silently
+   deletes every table no fragment happened to reference. Real run (spike
+   #1991): the merged `index.krs` had no `database` block at all, and **9 of 35
+   real tables vanished** from the model purely for lack of a referent.
    **Reached state**: `karasu render index.krs` prints no
-   `unresolved-resource-ref` / `unresolved-table-ref` warning. Those fire when a
-   `resource Db.T` or `table Db.T` names an infra block or leaf nothing
-   declares, and a dropped `database` block makes every reference to it dangle
-   at once — so an empty run of that grep is the check that step 5 happened.
-   The message says whether the *block* or only the *leaf* is missing; a wall of
-   "no database / queue / storage block declares" means you skipped this step.
+   `unresolved-resource-ref` / `unresolved-table-ref` / `facet-not-declared`
+   warning. The first two fire when a `resource Db.T` or `table Db.T` names an
+   infra block or leaf nothing declares; the third when a `facets` reference
+   names no `facet` block. A dropped declaration makes every reference to it
+   dangle at once — so an empty run of that grep is the check that step 5
+   happened. The infra message says whether the *block* or only the *leaf* is
+   missing; a wall of "no database / queue / storage block declares" means you
+   skipped this step.
+
+   Any facet the fan-out **proposed** (Phase 2) is decided here, in one place:
+   accept it by adding the declaration, or drop the memberships that reference
+   it. Two `facet` blocks with one id is the error `duplicate-facet-id`, so a
+   proposal that duplicates an existing set must be folded, not appended.
 6. **Verify entity↔table mappings survived the fan-out.** For every table a
    domain touches via `resource <Db>.<Table>`, the owning entity must carry the
    matching `table <Db>.<Table>` line. Deep-dive agents routinely write the
@@ -186,7 +272,11 @@ launching the fan-out rather than discovering the bill afterwards.
    (every entity id + its domain) plus the schema; it emits FK-derived relations
    (`{from, to, label}`, both ids in the roster) that you inject into each
    reference-holding entity block. Seeing all ids at once is what makes
-   cross-domain relations resolve consistently.
+   cross-domain relations resolve consistently. **Qualify every target that
+   leaves the domain as `DomainId.EntityId` while injecting** — the roster
+   carries each entity's domain precisely so this step can, and a bare
+   cross-domain id is dropped from the entity view without a diagnostic, which
+   is why the loss is invisible unless it is prevented here.
 8. **Organizational overlay — model ownership as its own axis, bind with
    `owns`.** If the repo carries ownership signals (`CODEOWNERS`, `OWNERS`),
    model them on karasu's **organizational axis**, which is independent of the
@@ -215,10 +305,48 @@ launching the fan-out rather than discovering the bill afterwards.
      cover it, declare both and let the `duplicate-owner-assignment` **info**
      diagnostic surface the overlap (the first team is kept as primary owner;
      render still exits 0) rather than forcing a domain merge.
-9. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
-   uneven indentation (a closing `}` can land under-indented and *look* like a
-   missing brace even though it parses). Always finish synthesis — and any
-   mechanical node injection — with `karasu fmt <file>`.
+9. **Observed grouping — put it on the `boundary` axis, never back into the
+   seams.** Phase 1 uses the directory / package / deployment structure as a
+   *hint* and then throws it away, because it is not a bounded-context seam.
+   It is still real information about the repo, and `boundary` is where it lives
+   without touching the decomposition: a named cluster of system-view nodes,
+   drawn as a second *Group by* axis beside team ownership.
+
+   ```krs
+   boundary legacy {
+     label "Legacy monolith"
+     contains Billing
+     contains Wallet
+   }
+
+   system Shop {
+     service Billing {}
+     service Wallet {}
+     service Checkout {}    // not contained — drawn outside the frame
+   }
+   ```
+
+   - **Declare one only for a grouping you can point at evidence for** — the
+     monorepo package a set of domains ships from, a deployment tier they share,
+     the old/new split of a migration in flight. A cluster with no source behind
+     it is noise on a third axis, and it reads to the human as a claim.
+   - **Scope it to one canvas when it is that layer's own concern.** A
+     `boundary` inside a node block groups that node's **direct children** by
+     bare id and frames only its canvas. `system` / `service` / `domain` /
+     `usecase` and the infra blocks each host one; `entity` / `resource` /
+     `user` / `client` and infra leaves draw no canvas, so a `boundary` there is
+     the error `boundary-not-in-context`. Two blocks with one id in the same
+     scope is the error `duplicate-boundary-id`; the same id in *another* scope
+     is a different boundary, deliberately.
+   - **Overlap is a fact, not a repair.** Membership is 1:N — a node in two
+     boundaries reports the info diagnostic `duplicate-boundary-assignment`, and
+     every membership is kept. Do not merge two clusters to silence it.
+   - `contains` names ids, so it inherits the Phase 1 canonical ids; a target
+     that does not exist stays inert and warns `contains-target-not-found`.
+10. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
+    uneven indentation (a closing `}` can land under-indented and *look* like a
+    missing brace even though it parses). Always finish synthesis — and any
+    mechanical node injection — with `karasu fmt <file>`.
 
 ### Phase 4: Validate & repair loop
 
@@ -229,15 +357,28 @@ launching the fan-out rather than discovering the bill afterwards.
    `physical` asks whether the *declared* physical layer is represented. A model
    can pass one and fail the other.
 2. Run `karasu render index.krs` to confirm the model **draws** (failure = a
-   structural break) and to catch dangling physical references
-   (`unresolved-resource-ref` / `unresolved-table-ref`). Both are warnings, so
-   `render` still exits 0 — **grep the output, do not trust the exit code**.
+   structural break) and to catch what the overlays lost. The exit code covers
+   only half of it, so **grep the output as well as reading the exit code**:
+
+   | Diagnostic | Severity | What it means here |
+   | --- | --- | --- |
+   | `unresolved-resource-ref` / `unresolved-table-ref` | warning, exit 0 | an infra block or leaf the merge dropped (Phase 3 step 5) |
+   | `facet-not-declared` | warning, exit 0 | a `facets` id no `facet` block declares — a fan-out proposal that never got decided (Phase 3 step 5) |
+   | `contains-target-not-found` | warning, exit 0 | a `boundary` member id that does not exist; the membership is inert (Phase 3 step 9) |
+   | `duplicate-facet-id`, `duplicate-boundary-id`, `boundary-not-in-context` | error, non-zero | the overlay is structurally wrong, not merely dangling |
+   | `duplicate-boundary-assignment`, `duplicate-owner-assignment` | info | overlapping membership — a fact, not a repair |
+
+   The warnings are the ones that need the grep: each names a reference to
+   something nothing declares, which is precisely what a merge drops silently.
 3. For each thin domain, re-dive it:
    - `karasu subtree <DomainId> index.krs` extracts the current slice to hand to
      a subagent for a deeper pass;
    - merge the additions and re-run `coverage`.
-4. **Stop condition**: every domain is `thin: false`, and every infra block
-   reports an empty `unmappedButReferenced`. If a domain stays thin after a few
+4. **Stop condition**: every domain is `thin: false`, every infra block reports
+   an empty `unmappedButReferenced`, and the warning greps of step 2 come back
+   empty. `coverage` scores the logical and physical layers only — no metric
+   measures the `facet` / `boundary` / `organization` overlays, so those are
+   held by the render greps alone. If a domain stays thin after a few
    rounds, note it as "the source is genuinely thin here" rather than padding
    it; the same goes for a leaf that stays in `unreferenced` because nothing in
    the source actually uses that table.
@@ -247,26 +388,44 @@ launching the fan-out rather than discovering the bill afterwards.
    dimension. A domain that turns thin only after enrichment (e.g. a
    singleton-store domain with no foreign keys) is usually genuinely thin — do
    not pad it; record why.
-6. Record any un-modelable idioms (notation gaps) for the cookbook (#1818) /
-   notation watch (#1816). These five recur across agents and repos, so expect
-   them rather than rediscovering them:
-   - **domain-event publication from a usecase** (outbox / publish) — no v1
-     vocabulary at all; the most widespread gap;
+6. Record any un-modelable idioms (notation gaps). Both original collectors are
+   closed: shipped idioms belong in the cookbook, `docs/guide/notation-cookbook.md`,
+   and a genuinely missing construct is judged by the promotion gate,
+   `docs/adr/1820-notation-promotion-gate.md`. That gate wants **real-usage
+   evidence**, which is what a run of this skill produces for the experimental
+   `boundary` and `facet` — so report how they were used, not only where they
+   fell short.
+
+   Four of these recur across agents and repos; expect them rather than
+   rediscovering them:
+   - **domain-event publication from a usecase** (outbox / publish) — recordable
+     as far as the data goes: declare the event as a `queue` leaf and reference
+     it from the usecase, `resource OrderEvents.OrderPlaced { operations
+     enqueue:create }` (`dequeue:delete` on the consuming side). What is still
+     missing is publish/subscribe as an **edge** semantic — the pairing is
+     inferred from the shared leaf, never stated;
    - **async background-job / scheduled pipelines** (Celery, `@Scheduled` outbox
-     drains, queue consumers) — map only loosely onto the single `queue` kind;
+     drains, queue consumers) — the *physical* side lands cleanly on `job` with
+     `schedule` (omit `schedule` and it is a one-shot job); the *logical* side
+     still maps only loosely onto the single `queue` kind;
    - **`entity` id colliding with its `domain` id** → `entity-anchor-collision`
      (deep-link `#krs-entity-X`), which forces a rename;
-   - **list-vs-single reads** — the CRUD verb set collapses a collection query
-     and a get into one `read`;
-   - **value objects / identity types / state machines / policies** — no
-     structural home (an `entity` carries no attributes), so they survive only
-     as prose.
+   - **value objects / identity types / state machines** — no structural home
+     (an `entity` carries no attributes), so they survive only as prose.
+
+   Two entries the earlier runs listed are **closed**, so do not re-report them:
+   list-vs-single reads are now the verb decoration `operations list:read,
+   search:read` (Phase 2), and a policy's *scope* is now a `facet` — only the
+   policy's *content* stays prose, and that one is closed by decision, not by a
+   gap (ADR-832).
 
 ## Deliverables
 
 - `index.krs` (plus e.g. `deploy.krs` if needed). The **`.krs` is the source of truth**.
 - A coverage report (a quantitative record of how deeply each domain was recovered).
-- Notes on any notation gaps encountered.
+- The list of seams left `@draft`, so the human review knows where to look first.
+- Notes on any notation gaps encountered, and on how the experimental `boundary`
+  / `facet` constructs were used (evidence for the promotion gate, ADR-1820).
 
 ## Notes
 
@@ -287,14 +446,35 @@ launching the fan-out rather than discovering the bill afterwards.
   ownership at all**: ownership is a first-class axis of its own — capture it as
   `organization` / `team` / `owns` (Phase 3 step 8) and bind it to the finished
   logical layer, never fold it into the seams.
+- **Three overlays, three axes, none of them a seam.** Everything the repo says
+  that is *not* the logical decomposition has its own construct, and each is
+  bound to the finished logical layer rather than allowed to shape it:
+  ownership → `organization` / `team` / `owns` (Phase 3 step 8), observed
+  grouping → `boundary` / `contains` (Phase 3 step 9), set membership →
+  `facet` / `facets` (Phase 1 step 5, Phase 2). The single test for all three:
+  **the domain seams must be unchanged by adding one.** If a candidate overlay
+  would move a seam, it is telling you something about Phase 1 — go re-argue the
+  seam there, on ubiquitous-language evidence, and leave the overlay out.
 - **Match identity by `id`**, not `label`. **Never silently drop thin domains**
-  (surface them via `coverage`). **Do not introduce new `.krs` syntax** (v1 is
-  frozen).
+  (surface them via `coverage`). **Invent no vocabulary of your own**: v1 is
+  frozen, and `boundary` / `facet` are shipped-but-experimental (backward
+  compatibility is not yet promised, ADR-1820) — use them as spec'd, and route
+  anything they do not cover to the gap notes rather than to a new keyword or a
+  non-builtin tag. `facet` is the *only* user extension point in the vocabulary;
+  tags and annotations are tool-owned.
 - Tell each subagent explicitly to read **only its domain's source slice** —
   letting it read the whole repo destroys the uniform depth.
 - **Always `karasu fmt` after any machine generation or injection**, and
   keep `operations` verbs **comma-separated** — these are the two mechanical
-  slips that real runs hit most.
+  slips that real runs hit most. Note one thing `fmt` does *not* preserve:
+  annotation parameters are dropped (`@draft(confidence: "low")` comes back as
+  `@draft`, #2571), so nothing load-bearing goes in a parameter. Drop this
+  caveat when #2571 lands.
+- **A cross-domain entity relation must be written `DomainId.EntityId`.** A bare
+  id is intra-domain only and is dropped from the entity view with no
+  diagnostic — the one loss in this pipeline that neither `render` nor
+  `coverage` will tell you about. Phase 3 step 7's roster pass exists to make
+  the qualification mechanical.
 - The merge is where *physical* fidelity is lost: infra declaration blocks and
   `table` mappings do not survive on their own (Phase 3 steps 5-6). Both losses
   are now measurable rather than eyeballed — `render` warns on a reference to
