@@ -973,6 +973,32 @@ store の両方が realize されているとき、deploy 図は service のコ�
 
 ---
 
+## ノード参照の path 記法
+
+ノードを id で指すすべてのプロパティは、1 つの字句形と 1 つの解決規則を共有する（#2088）:
+
+- **字句形**: `Segment(.Segment)*` — 例 `Shop.Checkout.Payment`。Segment は id
+  （サイトが許す箇所では文字列リテラルも可）。
+- **解決 — 接尾辞規則**: 参照は、full path（root からノードまでの id を `.` で
+  連結したもの）が参照で**終わる**すべてのノードに一致する。bare id は長さ 1 の
+  ケースであり、`owns Payment` は id が `Payment` のノード全部を主張する
+  （broadcast — 従来どおり）。`owns Shop.Payment` はその path が指す 1 ノードに絞る。
+- **曖昧性**: 参照が 2 つ以上のノードに一致し、かつそれらが (kind, 深さ) で
+  **揃っていない**とき、サイトは `*-target-ambiguous`（warning）で候補の full path を
+  列挙する。著者はより長い path で修飾して絞れる。揃っている多重一致は意図的な
+  broadcast（移行共存・マルチテナント命名）であり沈黙する。
+- **スコープ規則はサイトごとに保たれる。** 共有するのは記法であり、参照がどこを
+  指せるかは各サイトの規則のまま: `import` path は import 先ファイルのツリーを
+  歩き（ADR-927）、edge endpoint は自身のスコープ規則（ADR-2075）に従い、
+  スコープ内 `boundary … contains` は宣言ノードの直下の子に解決される。
+- **現在の受理サイト**: `import { … }`、cross-system edge endpoint、cross-domain
+  entity 関連、`resource OrderDB.Orders`、entity の `table` マッピング、`owns`、
+  `contains`（top-level・スコープ内）。`realizes` / `handles` は未対応（#2549）。
+
+> Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
+
+---
+
 ## 組織図の記述
 
 `organization` ブロックで組織・チーム・メンバーの階層を宣言する。
@@ -1020,11 +1046,11 @@ organization TechCorp {
 
 ### team ノード
 
-- `owns <id>` は team が所有する論理ノード（`service` / `domain` / `client` 等）を宣言する。同じ `id` を複数の team が `owns` することはできず、重複するとエラーになる。
+- `owns <ref>` は team が所有するノードを宣言する。`<ref>` はノード参照 path（「ノード参照の path 記法」節）: bare id は同名ノード全部を主張し（broadcast）、より長い接尾辞 path は指した 1 ノードに絞る。kind・深さの混在する多重一致は `owns-target-ambiguous` を引く。同じノードを複数の team が `owns` するのは tolerated fact（inverse-Conway 移行中の一時的共同所有）: 最初に宣言した team が primary owner に保たれ、重複は `duplicate-owner-assignment` **info** 診断として現れる — エラーではない（ADR-1566）。`@migration_target` の team は無印より優先し、`@deprecated` は最後になる。
 - *Group by: team* のグルーピングは**ビューごとに、いま描画しているレベルに描かれるノード集合との交差で**解決される。`owns` にレベル制限は無いため、service 配下にネストされた `domain` を owns した team はその service の drill-down ビューに team フレームを得る — `boundary` 軸と共通のビューごとセマンティクス（「システムビューのグルーピング（`boundary`）」節を参照）。
 - team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
 - team ID は同一 organization 内で一意。重複するとエラーになる。
-- パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。
+- パース時に `ownerIndex`（`node full path → team id`、#2548）が構築され、論理図のノードから所有チームを逆引きできる。各 `owns` 参照は構築時に接尾辞規則で展開される。
 - `owns` の対象になれるのは `service` / `domain` / `client` と infra ブロック（`database` / `queue` / `storage`。深さは問わない）。infra の **leaf**（`table` / `queue-item` / `bucket`）と `capability` は所有の単位ではなく、`invalid-owns` で報告される。
 - 所有関係はシステムビューの**所有されるノードのカード上**に team チップ（人型グループのベクターグリフ、`data-meta-glyph="team"`）として描画される。対象は論理 kind のみ（`service` / `domain` / `client`）— 所有された infra ブロックにチップは出ない（矩形のチップが円柱・雲の角に収まらないため。deploy ボタンと同じ制約）。その所有関係はシステムビューでは *Group by: team* のフレーム（id で解決する）に、また org view に現れる。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
 
@@ -1081,7 +1107,7 @@ boundary payments {
 - **2 つの配置**がある: 上記の **top-level 宣言**（`organization` と同じ）と、**ノードブロック内の
   スコープ宣言**（次のサブセクション）。top-level 形は containment ではなく**参照**（`contains <id>`）で
   束ねるので、import をまたいで宣言されたノードも集められる（`owns` と同じファイル横断性）。
-- **`contains <id>`** は 1 行 1 メンバー（`owns` と同型）。parser は宣言済みの id なら受理する（`owns` と違い kind 制限なし）。
+- **`contains <ref>`** は 1 行 1 メンバー（`owns` と同型）。`<ref>` はノード参照 path（「ノード参照の path 記法」節）: bare id は同名ノード全部を集め、より長い接尾辞 path は指した 1 ノードに絞る。kind・深さの混在する多重一致は `contains-target-ambiguous` を引く。parser は宣言済みのノードなら受理する（`owns` と違い kind 制限なし。system コンテナ自体は対象外）。
   グルーピングは**ビューごとに、いま描画しているレベルに描かれるノード集合との交差で**解決される:
   各ビューはそのレベルに居るメンバーだけをフレームで囲み、他レベルのメンバーはそのビューのフレームに
   参加しない。service 配下にネストされた `domain` はその service の drill-down ビューで、`usecase` は
