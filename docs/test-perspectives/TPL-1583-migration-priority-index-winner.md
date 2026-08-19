@@ -8,6 +8,7 @@ applicable_to:
   - "migration 共存（@migration_target / @deprecated）の最中に「主」を 1 つ選ぶ必要があるロジックを追加・変更するとき"
 discovered_from:
   - issue: "#1583"
+  - issue: "#2550"
   - root_cause_adr: "ADR-477"
 related_to:
   - TPL-1386
