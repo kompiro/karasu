@@ -22,6 +22,7 @@ function isIgnored(path: string): boolean {
 describe("reports/ gitignore rule", () => {
   it.each([
     "reports/demo/index.html",
+    "reports/demo/artifact.html",
     "reports/demo/build.ts",
     "reports/node-chrome-poc/shots/before.png",
     "reports/stray-note.md",

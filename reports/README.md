@@ -32,10 +32,28 @@ reports/
   node-chrome-poc/
     build.ts       # the generator — keep it next to its output
     index.html     # the report, self-contained (no external CSS/JS/images)
+    artifact.html  # the same report without the document skeleton, for publishing
   <topic>/
 ```
 
 Name the entry point `index.html` so the directory can be served as-is.
+
+## Reading a report
+
+Open `index.html` from the filesystem, or publish `artifact.html` as a **private Claude
+Artifact** and read it at the URL that comes back (Issue #2436). Publishing needs the
+skeleton-free form because the host wraps the content in its own
+`<!doctype html>…<body>`; that is the only difference between the two files.
+
+Two things follow from the report being private evidence rather than a page.
+
+- **Delete the Artifact when you fold up the spike.** Nothing expires it on its own, and a
+  report is meant to die with the branch it documents.
+- **An Artifact URL is not a documented destination either.** The rule above applies to it
+  unchanged: fine to keep while the work is live, never linked from `docs/`.
+
+Publishing does not require committing the report, so `git add -f` is now about making the
+evidence travel with the branch, not about making it readable.
 
 ## Shared scaffolding
 
@@ -46,14 +64,14 @@ generator is usually this short:
 
 ```ts
 import { mkdirSync, writeFileSync } from "node:fs";
-import { pair, reportPage } from "../../scripts/report/index.ts";
+import { pair, reportFragment, reportPage } from "../../scripts/report/index.ts";
 import { renderKrs } from "../../scripts/report/index.ts";
 
 const source = /* ... .krs source ... */ "";
 const before = renderKrs(source, { theme: "light" });
 const after = renderKrs(source, { theme: "dark" });
 
-const html = reportPage({
+const options = {
   title: "Node chrome PoC",
   meta: ["spike/node-chrome", "Issue #2366"],
   sections: [
@@ -66,17 +84,18 @@ const html = reportPage({
       ),
     },
   ],
-});
+};
 
 mkdirSync("reports/node-chrome-poc", { recursive: true });
-writeFileSync("reports/node-chrome-poc/index.html", html);
+writeFileSync("reports/node-chrome-poc/index.html", reportPage(options));
+writeFileSync("reports/node-chrome-poc/artifact.html", reportFragment(options));
 ```
 
 `scripts/report/demo.ts` is a runnable version of exactly that — the fastest way to start a
 new report is to copy it:
 
 ```
-pnpm report:demo               # writes reports/demo/index.html
+pnpm report:demo               # writes reports/demo/index.html + artifact.html
 pnpm report:demo --screenshot  # also exercises the Playwright rasterizer
 ```
 
@@ -87,6 +106,7 @@ The screenshot path needs a browser: `pnpm --filter @karasu-tools/e2e install-br
 | Export | Purpose |
 | --- | --- |
 | `reportPage(options)` | The whole page: styles, header, sections. Returns self-contained HTML. |
+| `reportFragment(options)` | The same report without `<!doctype>` / `<html>` / `<head>` / `<body>`, for a host that supplies them. Publish this one. |
 | `pair(before, after, caption?)` | Two panes side by side — the before/after comparison. |
 | `pane(options)` | A single full-width pane, for artwork that has no counterpart. |
 | `dataUri(bytes, mime)` | Embeds a PNG (or any binary) so the report stays one file. |
