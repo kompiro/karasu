@@ -13,8 +13,8 @@ related_to:
 scope:
   packages: [core, i18n]
 assumptions:
-  - "symbol: packages/core/src/parser/reference-validation.ts :: collectDeclaredIds"
-  - "symbol: packages/core/src/parser/reference-validation.ts :: collectOwnsResolvableIds"
+  - "symbol: packages/core/src/parser/reference-validation.ts :: collectDeclaredNodePaths"
+  - "symbol: packages/core/src/parser/reference-validation.ts :: resolveDeclaredRef"
   - "symbol: packages/core/src/resolver/warnings.ts :: detectInvalidOwns"
   - "grep: packages/core/src/types/warnings.ts :: ownedKind"
   - "grep: packages/i18n/src/en.ts :: cannot be owned"
@@ -60,8 +60,9 @@ assumptions:
 
 **1. `owns` の存在検査は kind を問わない。** 「その id を持つノードが在るか」だけを判定し、
 宣言済みのノードはすべて解決したものとして扱う。kind の拒否は `invalid-owns` が単独で
-担う。導出は `contains` と 1 つの walk（`collectDeclaredIds`）を共有し、違いは
-**system id を含めるかどうかの 1 軸**だけにする。
+担う。導出は `contains` と 1 つの walk（`collectDeclaredIds`。#2548 の path 記法導入で
+kind と full path を持つ `collectDeclaredNodePaths` に一般化された）を共有し、違いは
+**system id を含めるかどうかの 1 軸**だけにする（現在は解決時のフィルタ）。
 
 **2. `system` id は存在集合に含める。** team は system を所有できないが、それは
 `invalid-owns` の kind 拒否として述べる。system は実在するので「見つからない」は誤りである。

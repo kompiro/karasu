@@ -9,7 +9,7 @@ related_to:
 scope:
   packages: [core, i18n]
 assumptions:
-  - "grep: packages/core/src/parser/parser.ts :: duplicate-owner-assignment"
+  - "grep: packages/core/src/parser/reference-validation.ts :: duplicate-owner-assignment"
   - "grep: packages/i18n/src/en.ts :: primary owner"
 ---
 
