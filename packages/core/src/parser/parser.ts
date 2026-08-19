@@ -2390,90 +2390,100 @@ export class Parser {
     // indexed separately via the topLevelInfra loop below, which does not apply
     // these filters.
     const INDEXED_KINDS = new Set(["service", "domain", "client"]);
-    // seenDomainIds is reset per system so that the same domain ID in different
-    // systems does not trigger an error (cross-system parallel modelling is allowed).
-    // The map value is the index priority of the already-stored domain:
-    //   2 = @migration_target (active destination, highest priority)
-    //   1 = no migration annotation
-    //   0 = @deprecated (migration source, lowest priority)
-    // A duplicate is allowed when at least one side carries a migration annotation.
-    // The higher-priority domain wins the nodePathIndex entry.
-    //
-    // A domain with no annotations of its own inherits its parent service's
-    // annotations for the priority computation (consistent with the rendering
-    // inheritance — see docs/design/inherit-service-annotations.md). This
-    // makes `service Legacy @deprecated { domain Order {} }` and
+    // Collect-then-decide (#2550): the walk only RECORDS every indexable
+    // occurrence of an id — the index winner and the multiplicity warnings
+    // are decided after the walk completes, so the verdict cannot depend on
+    // declaration order (TPL-1583 / TPL-2221). The occurrence's priority MUST
+    // be computed in-walk: a domain with no annotations of its own inherits
+    // its parent service's annotations (consistent with the rendering
+    // inheritance — see docs/design/inherit-service-annotations.md), and that
+    // context is unrecoverable after the walk. This makes
+    // `service Legacy @deprecated { domain Order {} }` and
     // `service NewSvc @migration_target { domain Order {} }` a legal
     // migration-coexistence pair even without annotations on the domains.
-    const walk = (
-      node: KrsNode,
-      path: string[],
-      seenDomainIds: Map<string, number>,
-      parentServiceAnnotations: string[],
-    ): void => {
+    //
+    // Priority values (migrationPriority): 2 = @migration_target, 1 =
+    // unmarked, 0 = @deprecated. Candidate order is traversal order —
+    // systems (in declaration order), then top-level domains, then top-level
+    // infra — which is what makes the tie-break independent of where an
+    // infra block sits relative to the systems in the file.
+    interface PathCandidate {
+      path: string[];
+      kind: KrsNode["kind"];
+      loc: KrsNode["loc"];
+      priority: number;
+    }
+    const candidates = new Map<string, PathCandidate[]>();
+    const record = (node: KrsNode, path: string[], priority: number): void => {
+      const entry: PathCandidate = { path, kind: node.kind, loc: node.loc, priority };
+      const list = candidates.get(node.id);
+      if (list === undefined) {
+        candidates.set(node.id, [entry]);
+      } else {
+        list.push(entry);
+      }
+    };
+    const walk = (node: KrsNode, path: string[], parentServiceAnnotations: string[]): void => {
       const currentPath = [...path, node.id];
       if (INDEXED_KINDS.has(node.kind)) {
-        if (node.kind === "domain") {
-          const effective =
-            node.annotations.length > 0 ? node.annotations : parentServiceAnnotations;
-          const priority = migrationPriority(effective);
-          if (seenDomainIds.has(node.id)) {
-            const existingPriority = seenDomainIds.get(node.id)!;
-            // A domain id shared by multiple services within one system is a
-            // structural fact, not an error: karasu visualizes it, and the
-            // resolver surfaces it through the `domain-dispersal` info
-            // diagnostic (ADR-1386 — "smell is representable"). The
-            // nodePathIndex keeps a single winner — the higher-priority
-            // (migration-target) entry, or the first occurrence when
-            // priorities tie — exactly as the migration-coexistence path
-            // (ADR-477) already does.
-            if (priority > existingPriority) {
-              index.set(node.id, currentPath);
-              seenDomainIds.set(node.id, priority);
-            }
-          } else {
-            seenDomainIds.set(node.id, priority);
-            index.set(node.id, currentPath);
-          }
-        } else {
-          if (index.has(node.id)) {
-            this.diagnostics.push({
-              severity: "warning",
-              code: "node-id-multiple-locations",
-              params: { nodeId: node.id },
-              loc: node.loc,
-            });
-          } else {
-            index.set(node.id, currentPath);
-          }
-        }
+        const effective =
+          node.kind === "domain" && node.annotations.length === 0
+            ? parentServiceAnnotations
+            : node.annotations;
+        record(node, currentPath, migrationPriority(effective));
       }
       const nextServiceAnnotations =
         node.kind === "service" ? node.annotations : parentServiceAnnotations;
       for (const child of node.children) {
-        walk(child, currentPath, seenDomainIds, nextServiceAnnotations);
+        walk(child, currentPath, nextServiceAnnotations);
       }
     };
     for (const system of systems) {
       this.collectNodeIds(system.children, new Set<string>());
-      const seenDomainIds = new Map<string, number>();
       for (const child of system.children) {
-        walk(child, [system.id], seenDomainIds, []);
+        walk(child, [system.id], []);
       }
     }
-    // Index top-level domains (not nested in any system)
-    // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
+    // Record top-level domains (not nested in any system).
     for (const domain of domains) {
       // Duplicate-child check within the domain (e.g. a usecase and entity
       // sharing an id), symmetric with the per-service check inside systems.
       this.collectNodeIds(domain.children, new Set<string>());
-      walk(domain, [], new Map<string, number>(), []);
+      walk(domain, [], []);
     }
-    // Index top-level infra nodes (database/queue/storage) and their sub-resources.
+    // Record top-level infra nodes (database/queue/storage) and their
+    // sub-resources. Always after the system/domain walks, so a tie between a
+    // walked node and a same-id infra block resolves to the walked node no
+    // matter where the blocks sit in the file.
     for (const infra of topLevelInfra) {
-      index.set(infra.id, [infra.id]);
+      record(infra, [infra.id], migrationPriority(infra.annotations));
       for (const child of infra.children) {
-        index.set(child.id, [infra.id, child.id]);
+        record(child, [infra.id, child.id], migrationPriority(child.annotations));
+      }
+    }
+
+    // Verdict, per id: the winner is the highest-priority candidate (ties keep
+    // the first in traversal order — #1583's rule, shared with buildOwnerIndex)
+    // and every multiplicity that is NOT all-domain draws one warning per
+    // non-winner, at that candidate's loc. The all-domain silence is
+    // deliberate: a domain id shared by multiple services (or systems) is a
+    // structural fact `domain-dispersal` narrates (ADR-1386 — "smell is
+    // representable"), not this diagnostic's business.
+    for (const [id, list] of candidates) {
+      let winner = list[0];
+      for (const candidate of list) {
+        if (candidate.priority > winner.priority) winner = candidate;
+      }
+      index.set(id, winner.path);
+      if (list.length < 2 || list.every((c) => c.kind === "domain")) continue;
+      for (const candidate of list) {
+        if (candidate === winner) continue;
+        this.diagnostics.push({
+          severity: "warning",
+          code: "node-id-multiple-locations",
+          params: { nodeId: id },
+          loc: candidate.loc,
+        });
       }
     }
     return index;
