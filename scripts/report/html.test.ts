@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dataUri, escapeHtml, pair, pane, reportPage } from "./html.ts";
+import { dataUri, escapeHtml, pair, pane, reportFragment, reportPage } from "./html.ts";
 
 const SVG = '<svg viewBox="0 0 10 10"><rect width="10" height="10" /></svg>';
 
@@ -132,11 +132,59 @@ describe("reportPage", () => {
     expect(repeated).toContain('<h2 id="section-2">Results</h2>');
   });
 
-  // A report is opened from file://, copied to a preview, or attached to an
-  // issue. Anything fetched over the network is broken in at least one of those.
+  // A report is opened from file://, published as an Artifact, or attached to
+  // an issue. Anything fetched over the network is broken in at least one of
+  // those, and the Artifact sandbox refuses it outright.
   it("is self-contained — no external stylesheet, script, or image", () => {
     expect(page).not.toMatch(/<link\b/);
     expect(page).not.toMatch(/<script\b/);
     expect(page).not.toMatch(/(?:src|href)="(?:https?:)?\/\//);
+  });
+});
+
+// The publishable form (Issue #2436). The host wraps it in its own
+// `<!doctype html>…<body>`, so anything asserted here is what stands between a
+// generated report and a page that either nests two documents or renders
+// nothing.
+describe("reportFragment", () => {
+  const fragment = reportFragment({
+    title: "PoC <report>",
+    lang: "en",
+    subtitle: "why",
+    meta: ["spike/x", "Issue #2436"],
+    sections: [
+      { body: "<p>lead-in</p>" },
+      { title: "System view", body: pair({ label: "a", svg: SVG }, { label: "b", svg: SVG }) },
+      { title: "Shot", body: pane({ label: "shot", image: "data:image/png;base64,AA==" }) },
+    ],
+  });
+
+  it("carries no document skeleton for the host's to nest inside", () => {
+    expect(fragment).not.toMatch(/<!doctype/i);
+    expect(fragment).not.toMatch(/<html\b/i);
+    expect(fragment).not.toMatch(/<head\b/i);
+    expect(fragment).not.toMatch(/<body\b/i);
+    expect(fragment).not.toMatch(/<\/(?:html|head|body)>/i);
+  });
+
+  it("opens with the title, which the host reads from the head of the file", () => {
+    expect(fragment.startsWith("<title>PoC &lt;report&gt;</title>")).toBe(true);
+  });
+
+  it("is self-contained — inline styles, no external stylesheet, script, or image", () => {
+    expect(fragment).toContain("<style>");
+    expect(fragment).not.toMatch(/<link\b/);
+    expect(fragment).not.toMatch(/<script\b/);
+    expect(fragment).not.toMatch(/(?:src|href)="(?:https?:)?\/\//);
+    expect(fragment).not.toMatch(/url\((?:'|")?(?:https?:)?\/\//);
+    expect(fragment).toContain('src="data:image/png;base64,AA=="');
+  });
+
+  it("shows the same header and sections as the full document", () => {
+    expect(fragment).toContain("<h1>PoC &lt;report&gt;</h1>");
+    expect(fragment).toContain("<p>why</p>");
+    expect(fragment).toContain("<span>Issue #2436</span>");
+    expect(fragment).toContain("<p>lead-in</p>");
+    expect(fragment).toContain('<h2 id="system-view">System view</h2>');
   });
 });
