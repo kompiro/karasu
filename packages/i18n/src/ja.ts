@@ -478,6 +478,14 @@ export const ja: Partial<Translations> = {
     `同じ親の下でノード id "${nodeId}" が重複しています`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"owns" で参照されている "${ownedId}" が system 階層内に見つかりません`,
+  "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
+    missing === "block"
+      ? `"resource ${infraId}.${subId}" が参照する "${infraId}" を宣言する database / queue / storage ブロックがありません`
+      : `"resource ${infraId}.${subId}" が参照する "${subId}" は "${infraId}" に宣言されていません`,
+  "diagnostic.unresolvedTableRef.message": ({ entityId, infraId, subId, missing }) =>
+    missing === "block"
+      ? `entity "${entityId}" は "${infraId}.${subId}" に対応付けられていますが、"${infraId}" を宣言する database / queue / storage ブロックがありません`
+      : `entity "${entityId}" は "${infraId}.${subId}" に対応付けられていますが、"${infraId}" に "${subId}" は宣言されていません`,
   "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
     `エッジ id "#${authorId}" が重複しています。エッジ id は system 内で一意である必要があります`,
   "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>

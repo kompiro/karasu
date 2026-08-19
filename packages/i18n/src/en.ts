@@ -480,6 +480,14 @@ export const en: Translations = {
     `Duplicate node id "${nodeId}" under the same parent`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"${ownedId}" referenced in "owns" was not found in the system hierarchy`,
+  "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
+    missing === "block"
+      ? `"resource ${infraId}.${subId}" references "${infraId}", which no database / queue / storage block declares`
+      : `"resource ${infraId}.${subId}" references "${subId}", which "${infraId}" does not declare`,
+  "diagnostic.unresolvedTableRef.message": ({ entityId, infraId, subId, missing }) =>
+    missing === "block"
+      ? `Entity "${entityId}" maps to "${infraId}.${subId}", but no database / queue / storage block declares "${infraId}"`
+      : `Entity "${entityId}" maps to "${infraId}.${subId}", but "${infraId}" does not declare "${subId}"`,
   "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
     `Duplicate edge id "#${authorId}"; edge ids must be unique within a system`,
   "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>

@@ -1700,6 +1700,10 @@ When an edge `A -> B` cannot resolve one of its endpoints (because the target id
 
 The same rule applies to `realizes` / `owns` / `handles` cross-references: the source node stays, the unresolved relation is reported.
 
+The **physical** dot-notation references follow it too: a usecase's `resource <Infra>.<Leaf>` and an entity's `table <Infra>.<Leaf>` must name a `database` / `queue` / `storage` block, and a leaf that block declares. When they do not, the usecase or entity survives and the reference is reported (`unresolved-resource-ref` / `unresolved-table-ref`, both naming which half is missing). Two exemptions: a resource or entity tagged `[external]` deliberately points outside the model, and — like `owns` / `contains` — a document that still has imports to resolve does not decide the question at all, since the canonical place for a shared `database` block is the imported infra file of §S4.5.
+
+An entity that carries **no** `table` mapping is a different thing entirely and is not reported here: modelling the logical side before (or without) the physical one is a supported state. Whether the physical layer is as complete as its declarations imply is a *measurement*, answered by `karasu coverage`, not a diagnostic.
+
 ### S4.5. Same-id infra reopen (`database` / `queue` / `storage`)
 
 The same rules as S3 apply when the same `database`, `queue`, or `storage` id is declared in more than one file (or in more than one `system` block within one file's import graph):
@@ -1759,6 +1763,7 @@ The same project always produces the same merged AST.
 > - [TPL-2168](../test-perspectives/TPL-2168-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
 > - [TPL-2169](../test-perspectives/TPL-2169-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
 > - [TPL-2170](../test-perspectives/TPL-2170-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
+> - [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — every cross-reference form, including the physical `resource` / `table` dot-notation, carries resolver-side validation and an unresolved warning (S6)
 > - [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
 
 ---

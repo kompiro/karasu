@@ -89,6 +89,9 @@ export {
   type CoverageReport,
   type DomainCoverage,
   type CoverageOptions,
+  type PhysicalCoverage,
+  type InfraCoverage,
+  type TablelessEntity,
 } from "./view/coverage-extract.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";
 export { extractOrgView } from "./view/org-view-extract.js";
