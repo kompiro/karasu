@@ -29,6 +29,7 @@ flowchart TD
     ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
     ADR_2173["ADR-2173<br/>facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
     ADR_2208["ADR-2208<br/>organization / team / member の positional label..."]
+    ADR_2547["ADR-2547<br/>node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   ADR_285["ADR-285<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -110,6 +111,7 @@ flowchart TD
   class ADR_2165 accepted
   class ADR_2173 accepted
   class ADR_2208 accepted
+  class ADR_2547 accepted
   class ADR_9008 accepted
   class ADR_285 ghost
   class ADR_429 ghost
