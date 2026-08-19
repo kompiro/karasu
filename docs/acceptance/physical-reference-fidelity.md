@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-08-17
 - **関連 Issue**: [#2078](https://github.com/kompiro/karasu/issues/2078)
+- **設計 (ADR)**: [ADR-2078](../adr/2078-reverse-synthesis-physical-fidelity.md)
 - **Related TPLs**: [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md)（cross-reference には resolver 側の検証と unresolved warning を必ず付ける）, [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md)（id を指す参照サイトは記法と解決規則を全サイトで共有する — 本 AT はその**検証**側の適用）, [TPL-999](../test-perspectives/TPL-999-implicit-data-filtering.md)（集計層で暗黙に畳まない）, [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md)（検証対象集合は spec が許す全 kind を列挙し、重複する集合は同期させる）
 - **対象ファイル**:
   - `packages/core/src/spec/infra-index.ts`（`indexDeclaredInfra` — 宣言された物理の唯一の列挙）
