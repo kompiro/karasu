@@ -63,6 +63,12 @@ command parses its input as `.krs.style`, so a perfectly valid `.krs` yields a
 page of bogus "Expected LeftBrace" errors. This skill produces no `.krs.style`
 files, so `lint-style` has no role here.
 
+**The CLI does not catch everything.** Three losses in this pipeline are
+completely silent — no error, no warning, and `coverage` unaffected. They are
+listed under "Silent losses" below and each has a prescribed mechanical check.
+Budget for writing one small script; a run without it will ship a model that
+renders clean and is quietly missing relations.
+
 ## Procedure (4-phase pipeline)
 
 ### Phase 1: Scout (one pass)
@@ -87,7 +93,39 @@ files, so `lint-style` has no role here.
      as an infra block: a SQL store → `database`, a KV / cache / vector index →
      `database`, an object store (S3 / GCS) → `storage`, a message queue →
      `queue`.
-3. **Enumerate the logical domains (primary axis).** Use the physical output
+
+   **If an adapter's input cannot be produced, say so and record it.** A repo may
+   generate its OpenAPI spec or DDL from code rather than committing it. If the
+   toolchain to run that generator is missing (no `uv`, no `bundle`, no
+   `node_modules`), fall back to source extraction — but write the fallback into
+   the deliverable notes, because the OpenAPI adapter would have given the
+   *usecase* layer a deterministic spine and the fallback does not.
+
+3. **Extract the store contents, and distrust your first grep.** The tables /
+   queues / buckets you declare here are the vocabulary every fan-out agent is
+   allowed to reference, so a leaf you miss is a leaf no agent can record.
+
+   - **Look for an authoritative list before grepping.** A worker's own
+     consumption list beats scanning for producers: `DEFAULT_QUEUES` in a Docker
+     entrypoint, a `Procfile`, systemd units, k8s container `args`, a
+     `celery.conf` / queue-router config. One read of that file usually closes
+     the whole set. In a real run this was found only after three rounds of
+     grepping had already grown the queue list from 16 leaves to 24 — the
+     authoritative file would have given all of them on day one, and revealed
+     that the set *differs by deployment edition*.
+   - **A grep for a literal will under-count.** Expect three misses: queues
+     declared in directories you did not scan (scan the scheduler package, not
+     only the task package), queues named by a **symbolic constant**
+     (`queue=TRIGGER_QUEUE`), and queues chosen **at dispatch time** by tenant
+     tier or feature flag, which carry no literal at all.
+   - Storage buckets: grep for key-prefix literals (`"foo/"`, `f"foo/{id}"`),
+     not for the storage API calls.
+   - **Assume the set is still incomplete after Phase 1.** The fan-out will find
+     more, because an agent reading one domain's source deeply sees what a
+     repo-wide grep cannot. Treat every leaf an agent reports as a finding to
+     verify in source and add — that feedback loop is designed in, not a failure.
+
+4. **Enumerate the logical domains (primary axis).** Use the physical output
    (containers / services) and the directory / module tree as *seam hints* to
    infer bounded contexts.
 
@@ -138,9 +176,28 @@ files, so `lint-style` has no role here.
    not, so when genuinely torn, prefer the split and mark it. A finished model
    carrying **no** `@draft` anywhere is making a strong claim about itself and is
    worth doubting.
-4. Assign canonical ids (**English PascalCase**; `label` follows the user's
+
+   **A `@draft` mark is a question, and Phase 2 is where it gets answered.**
+   Do not leave it as a shrug. Every `@draft` domain's fan-out agent is given the
+   seam question explicitly and must return a verdict with evidence both ways
+   (Phase 2). In a real run this resolved 3 of 5 marked seams outright, each on
+   evidence a scout pass could not have reached — one of them decided by the
+   discovery that the product had *deliberately forked the vocabulary*, renaming
+   the older feature so the two would stop colliding. The marks that survive are
+   then genuinely the ones a human must arbitrate.
+
+5. Assign canonical ids (**English PascalCase**; `label` follows the user's
    language). Subagents reuse these ids instead of inventing their own.
-5. **Declare the cross-cutting vocabulary once, here.** A deep-dive meets facts
+
+   **Ids share more namespaces than you would expect, and two of the collisions
+   are silent.** Before finalizing, check that no id is used twice across:
+   `domain` vs `entity` (warns `entity-anchor-collision`), `domain` vs an infra
+   **leaf** (`table` / `queue-item` / `bucket` — **no diagnostic at all**; it
+   surfaces only when `karasu subtree <id>` refuses to resolve an ambiguous id),
+   and `service` vs `domain`. Rename the *infra leaf*, not the domain: the leaf's
+   real name survives in its `label`.
+
+6. **Declare the cross-cutting vocabulary once, here.** A deep-dive meets facts
    that are not structure at all — "this table holds personal data", "this
    usecase sits behind the auth guard", "this store is in PCI scope". Those name
    a set defined *outside* the architecture, which is what a `facet` declares:
@@ -166,7 +223,14 @@ files, so `lint-style` has no role here.
    the element *is* rather than which set it belongs to, it is an archetype and
    the builtin tag vocabulary already covers it — the four-way register split is
    in `reference/tags-annotations.md` § Vocabulary registers.
-6. Output: `skeleton.krs` (system / service / domain scaffold + physical spine +
+
+   **Draft the `description` precisely, because agents apply it literally.**
+   A facet described as "credentials **encrypted at rest**" will be withheld from
+   a store holding raw tokens in a 30-minute Redis draft — which is the most
+   secret-bearing element in that domain. If the set you mean is "must never be
+   logged or exported", say that instead.
+
+7. Output: `skeleton.krs` (system / service / domain scaffold + physical spine +
    `facet` declarations) and a **domain work-list**.
 
 ### Phase 2: Deep-dive fan-out (one subagent per domain)
@@ -209,10 +273,10 @@ subagent:
   - **records a cross-cutting fact as `facets <id>`** on the element that has it
     — `facets pii` on the entity whose table holds personal data, on the store
     itself, on the usecase behind the auth guard. Use **only the ids the
-    skeleton declares** (Phase 1 step 5); a set you found that none of them
+    skeleton declares** (Phase 1 step 6); a set you found that none of them
     covers goes in your return value as a proposal, not into a `facet` block of
     your own — a `facet` written inside a node block is an error, and a
-    fragment-local vocabulary is the id drift step 5 exists to prevent.
+    fragment-local vocabulary is the id drift step 6 exists to prevent.
     `facets` is accepted on every node kind and membership is 1:N (`facets pii,
     pci`), so nothing is structurally excluded and multi-membership is normal.
 - validates its own fragment with `karasu render <fragment> -o /dev/null` before
@@ -226,18 +290,81 @@ subagent:
 
 Domains are independent, so launch the subagents in parallel.
 
-**This phase is the cost centre — budget before you fan out.** A full run over
-the *smallest* repo measured in spike #1991 (85 files, 3 domains) cost ~318k
-output tokens and ~12 minutes; the same repo at aggregate granularity cost ~489k
-and ~13 min. Cost scales with *domains × slice size*, so a large repo (Dify:
-~7.8k files, 19 domains) runs several times that. Two consequences: getting
-Phase 1 granularity right is a **cost** decision as well as a quality one, and
-for a large repo you should confirm the domain count with the user before
-launching the fan-out rather than discovering the bill afterwards.
+#### The return value is a deliverable — persist it
+
+Each agent returns a structured report: cross-domain relations written, ones it
+could not resolve, external-service dependencies, facet proposals, tableless
+entities with justification, notation gaps, and — for a `@draft` domain — the
+seam verdict. **Half the value of this skill is in those reports, and they are
+the fragile half.**
+
+**Instruct every agent to write its report to a file beside its fragment**
+(`frag/<Domain>.report.md`) *and* return it. A return value exists only in the
+orchestrator's context; a file survives. In a real run a usage limit killed all
+19 agents mid-flight: every fragment that had been written survived on disk and
+the model was unaffected, while **every report was lost**, including the seam
+verdicts. Recovering three of them cost a second pass.
+
+**Order the agent's work so the durable artifact lands first**: read, write the
+fragment, write the report file, validate, return. Tell the agent explicitly to
+write before it runs low on room rather than reading exhaustively first.
+
+#### Budget and pacing — this phase is the cost centre
+
+A full run over the *smallest* repo measured in spike #1991 (85 files, 3 domains)
+cost ~318k output tokens and ~12 minutes; the same repo at aggregate granularity
+cost ~489k and ~13 min. Cost scales with *domains × slice size*, so a large repo
+(Dify: ~7.8k files, 19 domains) runs several times that — measure ~110-145k
+output tokens per domain agent.
+
+Two consequences: getting Phase 1 granularity right is a **cost** decision as
+well as a quality one, and for a large repo you should confirm the domain count
+with the user before launching the fan-out rather than discovering the bill
+afterwards.
+
+**Launch in batches of about five, not all at once.** A rate or usage limit that
+lands mid-flight kills every agent then running. Batching bounds the loss to one
+batch, and the batches that already finished keep their fragments *and* their
+reports. Nineteen concurrent agents is how you lose nineteen reports at once.
+
+#### Slice by content, not by path
+
+Give each agent an explicit file list, and remember that a directory name is not
+a domain boundary. In a real run a 533-line controller sitting under
+`console/datasets/rag_pipeline/` was entirely a *different* domain's content, so
+it fell outside both agents' slices and ~11 endpoints went unmodelled — caught
+only because a neighbouring agent mentioned it in passing.
+
+After the fan-out, **cross-check coverage against the controller surface**: list
+the route-defining files in each slice and confirm the agent's usecases account
+for them. A file whose path suggests domain A but whose imports are all domain B
+is the pattern to look for.
+
+#### Foreign tables — pick one rule and give it to every agent
+
+A domain routinely reads and writes tables another domain's entity owns
+(a retention job, an uninstall cascade, an audit aggregation). Decide once:
+
+> Write `resource <Db>.<ForeignTable>` when your usecase really touches it, and
+> **never** claim a `table` line for it — the owning entity lives elsewhere.
+
+This produces `cross-domain-store-access` **info** diagnostics in the merged
+model, which are boundary-crossing *facts*, not defects. Telling some agents to
+record foreign reads and others to omit them — which is what happens if the rule
+is left to each prompt — makes several domains understate their real data
+footprint and makes the `coverage` numbers incomparable across domains.
 
 ### Phase 3: Synthesis (one pass)
 
 1. Merge each fragment into the skeleton to form a single `.krs`.
+
+   Write the merge as a **script**, not by hand: it will be re-run many times as
+   Phase 4 repairs land. Do not assume a fragment's first line is its `domain`
+   block — agents add provenance comments above it. Locate the `domain` line and
+   its matching close, and keep the skeleton's header (it carries `@draft`) and
+   its `label` / `description` (they carry the seam rationale), taking everything
+   below from the fragment.
+
 2. **Cross-domain edges** may be observed from both sides — dedup by the
    `(src-id, dst-id, kind)` composite key. Direction follows the referencing
    side (the FK holder).
@@ -265,6 +392,19 @@ launching the fan-out rather than discovering the bill afterwards.
    accept it by adding the declaration, or drop the memberships that reference
    it. Two `facet` blocks with one id is the error `duplicate-facet-id`, so a
    proposal that duplicates an existing set must be folded, not appended.
+
+   **Do not declare a facet you cannot populate.** Proposals arrive *after* the
+   fan-out wrote its memberships, so accepting one means either re-tagging every
+   element by hand or shipping a declaration with partial membership — and an
+   under-inclusive facet misleads worse than an absent one. Default to recording
+   the proposal in the deliverable notes as promotion-gate evidence. Accept it
+   only when the proposing agents named the concrete elements, so the initial
+   membership is a fact rather than a guess. Note which proposals were
+   **convergent** — several domains independently proposing the same set, under
+   different names, is the strongest evidence a run produces (a real run had one
+   set proposed by four domains as `enterprise_only` / `edition_gated` /
+   `deployment_gated`).
+
 6. **Verify entity↔table mappings survived the fan-out.** For every table a
    domain touches via `resource <Db>.<Table>`, the owning entity must carry the
    matching `table <Db>.<Table>` line. Deep-dive agents routinely write the
@@ -272,8 +412,9 @@ launching the fan-out rather than discovering the bill afterwards.
    `entity Goal {}`.
 
    **Reached state**: `karasu coverage index.krs --format json` reports
-   `physical.infra[].unmappedButReferenced` empty for every block. Read the
-   three fields it gives you as three different repairs:
+   `physical.infra[].unmappedButReferenced` empty **for the `database` block that
+   holds the system of record**. Read the three fields it gives you as three
+   different repairs:
 
    | Field | What it means | Repair |
    | --- | --- | --- |
@@ -281,21 +422,41 @@ launching the fan-out rather than discovering the bill afterwards.
    | `unreferenced` | nothing maps *or* touches the leaf | that slice was never dug — re-dive the owning domain (Phase 4) |
    | `tablelessEntities` | the entity carries no mapping at all | judgement: a read-model projection / KV-backed aggregate / computed view is legitimately tableless. Record which, do not invent a table |
 
+   **An entity may declare only ONE physical mapping**, so this metric cannot be
+   driven to zero for every block, and chasing it will make you pad. Three cases
+   are structurally unreachable and should be recorded rather than repaired:
+
+   - An entity that is **both a DB row and an object in a store** (`UploadFile` ↔
+     `upload_files` **and** `FileStore.UploadFiles`) can declare only one; the
+     other leaf stays `unmappedButReferenced` forever.
+   - **Generic infra leaves** (a cache, a lock namespace, a broker) have no
+     owning entity by design.
+   - **Every queue leaf**: a queue's content is a message *type*, and the fan-out
+     will not have modelled message entities unless the source has such an
+     aggregate. Inventing them to clear the metric is padding.
+
+   Do make the mappings that *are* mechanical: an entity that is precisely the
+   stored object — a spool file, a key blob, a request snapshot — should carry
+   `table <Storage>.<Bucket>`. `table` accepts any infra sub-resource, not only a
+   `database` leaf.
+
    Steps 5 and 6 are mechanical and deterministic, which is why they are
    measured by the CLI rather than asserted by an agent (the structural side of
    the split — ADR-1895). **A tableless entity is never a diagnostic**; only a
    reference to something undeclared is.
-7. **Cross-domain entity relations — one roster pass.** A per-domain subagent
-   only knows its own entity ids, so cross-domain foreign keys risk id mismatch.
-   After merging, run **one** relations agent over the *full entity roster*
-   (every entity id + its domain) plus the schema; it emits FK-derived relations
-   (`{from, to, label}`, both ids in the roster) that you inject into each
-   reference-holding entity block. Seeing all ids at once is what makes
-   cross-domain relations resolve consistently. **Qualify every target that
-   leaves the domain as `DomainId.EntityId` while injecting** — the roster
-   carries each entity's domain precisely so this step can, and a bare
-   cross-domain id is dropped from the entity view without a diagnostic, which
-   is why the loss is invisible unless it is prevented here.
+
+7. **Cross-domain entity relations — one roster pass, then a mechanical check.**
+   A per-domain subagent only knows its own entity ids, so cross-domain foreign
+   keys risk id mismatch. After merging, run **one** relations agent over the
+   *full entity roster* (every entity id + its domain) plus the schema; it emits
+   FK-derived relations (`{from, to, label}`, both ids in the roster) that you
+   inject into each reference-holding entity block. Seeing all ids at once is
+   what makes cross-domain relations resolve consistently. **Qualify every target
+   that leaves the domain as `DomainId.EntityId` while injecting.**
+
+   Then run the relation checker (below). The roster pass reduces mismatches; it
+   does not prove there are none.
+
 8. **Organizational overlay — model ownership as its own axis, bind with
    `owns`.** If the repo carries ownership signals (`CODEOWNERS`, `OWNERS`),
    model them on karasu's **organizational axis**, which is independent of the
@@ -317,6 +478,14 @@ launching the fan-out rather than discovering the bill afterwards.
      `domain` / `service` whose source slice those paths fall in) and declare
      `owns <NodeId>` **inside the team** — `owns` binds organization → logical
      (or physical), symmetric to how `realizes` binds physical → logical;
+   - **an owner whose paths are all UI is not an owner of a backend domain.**
+     Bind front-end owners to the front-end `service` / `client` and list them as
+     `member`s. Mapping a UI-area owner onto the backend bounded context their
+     screens happen to call is Conway's team structure leaking into the logical
+     model — the exact failure ADR-2077 measured;
+   - **an owner whose paths are two files is a `member`, not a team with `owns`.**
+     Giving them a domain overstates what CODEOWNERS says. Put the specialization
+     in their `member` `description`;
    - build this **after** the logical decomposition, so the `owns` targets
      already exist. **Never let ownership decide where domains split** (Phase 1) —
      that is Conway's team structure, not the product's ubiquitous language (see
@@ -324,12 +493,13 @@ launching the fan-out rather than discovering the bill afterwards.
      cover it, declare both and let the `duplicate-owner-assignment` **info**
      diagnostic surface the overlap (the first team is kept as primary owner;
      render still exits 0) rather than forcing a domain merge.
+
 9. **Observed grouping — put it on the `boundary` axis, never back into the
    seams.** Phase 1 uses the directory / package / deployment structure as a
    *hint* and then throws it away, because it is not a bounded-context seam.
    It is still real information about the repo, and `boundary` is where it lives
-   without touching the decomposition: a named cluster of system-view nodes,
-   drawn as a second *Group by* axis beside team ownership.
+   without touching the decomposition: a named cluster of nodes, drawn as a
+   second *Group by* axis beside team ownership.
 
    ```krs
    boundary legacy {
@@ -345,23 +515,45 @@ launching the fan-out rather than discovering the bill afterwards.
    }
    ```
 
+   - **Use both placements.** The top-level form above groups nodes *by
+     reference* across the whole model. A **scoped** `boundary` inside a node
+     block groups that node's **direct children** by bare id and frames only that
+     node's canvas. `system` / `service` / `domain` / `usecase` **and the infra
+     blocks** each host one; `entity` / `resource` / `user` / `client` and infra
+     leaves draw no canvas, so a `boundary` there is the error
+     `boundary-not-in-context`.
+   - **A large infra block needs a scoped `boundary` — it has no other grouping
+     axis.** `owns` rejects an infra *leaf* (`invalid-owns`), and the domain
+     ownership derived from `entity … table` mappings does not frame the store's
+     own drill-down view. A `database` with 137 `table` leaves therefore renders
+     as one flat wall with no bands at all unless you scope a `boundary` into it.
+     Reach for this whenever a store, queue or bucket set is large enough that a
+     reader would scan rather than read. Good evidence to group by:
+     - the **module that declares** each table (`api/models/*.py`) — and it is
+       worth drawing precisely when it *cuts across* the domain decomposition,
+       because "this one module declares 31 tables spanning six domains" is
+       actionable;
+     - for queues, **which worker actually consumes each one** (from the
+       authoritative list in Phase 1 step 3), including the group that appears in
+       *no* default worker set and therefore needs an explicit override.
    - **Declare one only for a grouping you can point at evidence for** — the
      monorepo package a set of domains ships from, a deployment tier they share,
      the old/new split of a migration in flight. A cluster with no source behind
      it is noise on a third axis, and it reads to the human as a claim.
-   - **Scope it to one canvas when it is that layer's own concern.** A
-     `boundary` inside a node block groups that node's **direct children** by
-     bare id and frames only its canvas. `system` / `service` / `domain` /
-     `usecase` and the infra blocks each host one; `entity` / `resource` /
-     `user` / `client` and infra leaves draw no canvas, so a `boundary` there is
-     the error `boundary-not-in-context`. Two blocks with one id in the same
-     scope is the error `duplicate-boundary-id`; the same id in *another* scope
-     is a different boundary, deliberately.
+   - **The `description` is prose the tool cannot check.** In a real run a
+     boundary justified itself by "the only domains reaching the vector store",
+     and a later pass disproved it — the frame was right, the stated reason was
+     wrong, and nothing in the toolchain could tell. Prefer a description that
+     states what the cluster *is* over one that asserts an exclusivity you have
+     not verified.
    - **Overlap is a fact, not a repair.** Membership is 1:N — a node in two
      boundaries reports the info diagnostic `duplicate-boundary-assignment`, and
      every membership is kept. Do not merge two clusters to silence it.
    - `contains` names ids, so it inherits the Phase 1 canonical ids; a target
      that does not exist stays inert and warns `contains-target-not-found`.
+     If you generate the memberships, **assert that every leaf lands in exactly
+     one group** so the grouping cannot silently drift from the leaf list.
+
 10. **Normalize with `karasu fmt`.** Merged / injected `.krs` almost always has
     uneven indentation (a closing `}` can land under-indented and *look* like a
     missing brace even though it parses). Always finish synthesis — and any
@@ -384,30 +576,56 @@ launching the fan-out rather than discovering the bill afterwards.
    | `unresolved-resource-ref` / `unresolved-table-ref` | warning, exit 0 | an infra block or leaf the merge dropped (Phase 3 step 5) |
    | `facet-not-declared` | warning, exit 0 | a `facets` id no `facet` block declares — a fan-out proposal that never got decided (Phase 3 step 5) |
    | `contains-target-not-found` | warning, exit 0 | a `boundary` member id that does not exist; the membership is inert (Phase 3 step 9) |
+   | `edge-source-mismatch` | error, non-zero | a relation inside `entity X` that does not start at `X` — the usual cause is a rename that missed one of its three sites |
    | `duplicate-facet-id`, `duplicate-boundary-id`, `boundary-not-in-context` | error, non-zero | the overlay is structurally wrong, not merely dangling |
-   | `duplicate-boundary-assignment`, `duplicate-owner-assignment` | info | overlapping membership — a fact, not a repair |
+   | `entity-anchor-collision` | warning, exit 0 | an entity id equal to its domain id, or duplicated across domains |
+   | `duplicate-boundary-assignment`, `duplicate-owner-assignment`, `cross-domain-store-access` | info | overlapping membership / a boundary crossing — facts, not repairs |
+   | `Circular dependency detected` | warning, exit 0 | may be a real fact (two services that genuinely call each other). Verify in source before "fixing" it |
 
    The warnings are the ones that need the grep: each names a reference to
    something nothing declares, which is precisely what a merge drops silently.
-3. For each thin domain, re-dive it:
+
+3. **Run the relation checker — no CLI command covers this.** See "Silent
+   losses" below. Write it once and re-run it after every merge.
+4. For each thin domain, re-dive it:
    - `karasu subtree <DomainId> index.krs` extracts the current slice to hand to
      a subagent for a deeper pass;
    - merge the additions and re-run `coverage`.
-4. **Stop condition**: every domain is `thin: false`, every infra block reports
-   an empty `unmappedButReferenced`, and the warning greps of step 2 come back
-   empty. `coverage` scores the logical and physical layers only — no metric
-   measures the `facet` / `boundary` / `organization` overlays, so those are
-   held by the render greps alone. If a domain stays thin after a few
-   rounds, note it as "the source is genuinely thin here" rather than padding
-   it; the same goes for a leaf that stays in `unreferenced` because nothing in
-   the source actually uses that table.
-5. **Re-measure after any enrichment.** `coverage` scores are *relative* across
+5. **Stop condition**: every domain is `thin: false` **or recorded as genuinely
+   thin with the reason**, the system-of-record `database` reports an empty
+   `unmappedButReferenced`, the relation checker is clean, and the warning greps
+   of step 2 come back empty. `coverage` scores the logical and physical layers
+   only — no metric measures the `facet` / `boundary` / `organization` overlays,
+   so those are held by the render greps alone.
+6. **Distinguish structural thinness from under-modelling before re-diving.**
+   `coverage` counts *distinct* resource leaves, so a domain that owns exactly
+   one table scores near zero no matter how well it is modelled — fifteen
+   usecases all referencing the same leaf count as one. Check the fragment before
+   spending an agent: if every `resource` line points at the same leaf and the
+   slice touches no cache, queue, storage or index, the thinness is real. Record
+   *why*, and note whether the domain would score normally if a notation gap were
+   closed (state persisted inside another domain's JSON column, an outbound call
+   whose address is a row, a boot-time scan of the code image — all unwritable
+   today, all reasons a well-modelled domain measures as thin).
+7. **Re-measure after any enrichment.** `coverage` scores are *relative* across
    domains, so enriching one dimension (e.g. adding entity relations) raises the
    normalization baseline and can newly flag a domain that has none of that
-   dimension. A domain that turns thin only after enrichment (e.g. a
-   singleton-store domain with no foreign keys) is usually genuinely thin — do
-   not pad it; record why.
-6. Record any un-modelable idioms (notation gaps). Both original collectors are
+   dimension. A domain that turns thin only after enrichment is usually genuinely
+   thin — do not pad it; record why.
+8. **A cheap recovery pass beats a full re-dive.** When what is missing is the
+   *report* rather than the model — a lost return value, an unexamined `@draft` —
+   give the agent the existing fragment (or `karasu subtree` output) plus a
+   narrow source slice and ask only for the analysis. It costs roughly half a
+   full dive, and it is also the right shape for answering one specific question
+   (a seam verdict, a tableless-entity justification) about a domain that is
+   otherwise finished.
+
+   Give that agent the **list of findings already reported**, so it returns what
+   is new instead of re-deriving the catalogue. Verify the file exists before you
+   launch — a shell `&&` chain that dies before its heredoc will leave you with a
+   confident `echo` and no file.
+
+9. Record any un-modelable idioms (notation gaps). Both original collectors are
    closed: shipped idioms belong in the cookbook (`reference/notation-cookbook.md`,
    whose source is `docs/guide/notation-cookbook.md`),
    and a genuinely missing construct is judged by the promotion gate,
@@ -416,36 +634,111 @@ launching the fan-out rather than discovering the bill afterwards.
    `boundary` and `facet` — so report how they were used, not only where they
    fell short.
 
-   Four of these recur across agents and repos; expect them rather than
-   rediscovering them:
+   These recur across agents and repos; expect them rather than rediscovering
+   them, and report only what is new or a sharper instance:
+
+   - **Polymorphic foreign keys — the single most-reported gap** (9 of 19 domains
+     in one run). One column, several possible targets, discriminated by a
+     `type` / `kind` sibling column. Agents either write one edge and lose the
+     alternatives, or write several and overstate them. There is no notation for
+     a discriminated relation.
+   - **Redis (or any KV) as a system of record, flattened to one leaf.** Token
+     state machines, work queues built on lists, pub/sub channels, stream logs
+     and lock namespaces all collapse into one `database` leaf, so state that
+     *is* the record of truth reads as incidental caching.
+   - **String-keyed soft references.** A name or id string with no FK is
+     indistinguishable from a real reference once written as a relation.
+   - **"State lives in an external service"** has no counterpart to `table`. A
+     domain that is mostly a client of a daemon or SaaS has no way to say so
+     except prose, and `coverage` then cannot distinguish it from a thin domain.
    - **domain-event publication from a usecase** (outbox / publish) — recordable
      as far as the data goes: declare the event as a `queue` leaf and reference
      it from the usecase, `resource OrderEvents.OrderPlaced { operations
      enqueue:create }` (`dequeue:delete` on the consuming side). What is still
      missing is publish/subscribe as an **edge** semantic — the pairing is
-     inferred from the shared leaf, never stated;
+     inferred from the shared leaf, never stated, and "usecase A enqueues usecase
+     B" cannot be written, so a multi-hop async chain renders as a single hop.
    - **async background-job / scheduled pipelines** (Celery, `@Scheduled` outbox
      drains, queue consumers) — the *physical* side lands cleanly on `job` with
      `schedule` (omit `schedule` and it is a one-shot job); the *logical* side
-     still maps only loosely onto the single `queue` kind;
+     still maps only loosely onto the single `queue` kind, and nothing
+     distinguishes a usecase a human invokes from one a timer invokes — including
+     the case where the schedule is **tenant-authored data**, not configuration.
    - **`entity` id colliding with its `domain` id** → `entity-anchor-collision`
-     (deep-link `#krs-entity-X`), which forces a rename;
+     (deep-link `#krs-entity-X`), which forces a rename.
    - **value objects / identity types / state machines** — no structural home
-     (an `entity` carries no attributes), so they survive only as prose.
+     (an `entity` carries no attributes), so they survive only as prose. At scale
+     this changes what the model is *for*: a streaming API's ~30 event types are
+     its real public contract and are entirely absent.
+   - **Endpoint authentication class.** Unauthenticated, signed-URL,
+     session-authenticated, capability-URL and internal-token routes are
+     indistinguishable, even when one usecase is reachable through four of them
+     at once.
+   - **State persisted as a JSON sub-document inside another domain's column.**
+     `table` binds an entity to a table it *owns*, so genuinely-persisted
+     configuration reads as a code-only concept and `coverage` penalises the
+     domain for storage it demonstrably has.
+   - **An outbound call whose address is a row.** The convention of not writing
+     resources for external HTTP APIs is right for fixed services, but a
+     tenant-registered endpoint's address *is* data — and the usecase then
+     carries no resource line at all.
 
-   Two entries the earlier runs listed are **closed**, so do not re-report them:
+   Two entries earlier revisions listed are **closed**, so do not re-report them:
    list-vs-single reads are now the verb decoration `operations list:read,
    search:read` (Phase 2), and a policy's *scope* is now a `facet` — only the
    policy's *content* stays prose, and that one is closed by decision, not by a
    gap (ADR-832).
 
+## Silent losses — write the checker
+
+Three losses produce **no diagnostic of any kind**. `render` exits 0, `coverage`
+is unaffected, and the model looks finished. Two of them cost real relations in a
+measured run.
+
+1. **A bare cross-domain relation target.** `Order -> Customer` where `Customer`
+   lives in another domain resolves to nothing and is dropped from the entity
+   view. Documented (TPL-1936), still silent.
+2. **A qualified target naming an entity that does not exist.** `Order ->
+   Customers.Custmer`, or a correct-looking `-> Plugin.Plugin` where the deep-dive
+   actually named the entity `PluginDeclaration`. Also dropped, also silent.
+3. **An infra leaf id equal to a domain id.** No diagnostic; it surfaces only
+   when `karasu subtree <that id>` refuses to resolve an ambiguous id.
+
+Write a small script that parses the merged `.krs` for `domain` / `entity`
+declarations and every `A -> B` / `A --> B` inside an entity block, then reports:
+
+- a qualified target `D.E` where `D` is not a declared domain, or `E` is not one
+  of `D`'s entities (offer the near-matches — the usual cause is one agent
+  guessing another domain's entity id);
+- a bare target inside `entity X` that is not an entity of `X`'s own domain.
+
+Two authoring notes for that script, both learned the hard way:
+
+- **The arrow regex is `--?>`, not `-->?`.** The latter means "two dashes, then
+  an optional `>`" and silently matches nothing in a file full of `->`. This bug
+  will make your checker report a clean run on a broken model.
+- **A rename has three sites**: the `entity X {` declaration, every relation
+  **source** `X -> …` inside it, and every bare intra-domain **target** `… -> X`
+  elsewhere in the same domain, plus every qualified `Domain.X` model-wide.
+  Missing the target site is the one that stays silent — missing the source site
+  at least raises `edge-source-mismatch`. In one run a synthesis rename broke ten
+  relations this way and only the checker found them.
+
 ## Deliverables
 
 - `index.krs` (plus e.g. `deploy.krs` if needed). The **`.krs` is the source of truth**.
 - A coverage report (a quantitative record of how deeply each domain was recovered).
-- The list of seams left `@draft`, so the human review knows where to look first.
+- The list of seams left `@draft`, **and the seams that started `@draft` and were
+  resolved**, with the evidence — the resolutions are what a reviewer most needs
+  and they are invisible in the `.krs` once the mark is gone.
 - Notes on any notation gaps encountered, and on how the experimental `boundary`
-  / `facet` constructs were used (evidence for the promotion gate, ADR-1820).
+  / `facet` constructs were used (evidence for the promotion gate, ADR-1820):
+  which facets were declared and how many memberships each carries, which were
+  proposed and declined and why, which proposals were **convergent**, and which
+  `boundary` placements were used — a run that used only the top-level form has
+  produced no evidence at all about the scoped one.
+- A record of what the run could **not** establish: reports lost, slices never
+  cross-checked, relations an agent declined to write for lack of a target id.
 
 ## Notes
 
@@ -471,7 +764,7 @@ launching the fan-out rather than discovering the bill afterwards.
   bound to the finished logical layer rather than allowed to shape it:
   ownership → `organization` / `team` / `owns` (Phase 3 step 8), observed
   grouping → `boundary` / `contains` (Phase 3 step 9), set membership →
-  `facet` / `facets` (Phase 1 step 5, Phase 2). The single test for all three:
+  `facet` / `facets` (Phase 1 step 6, Phase 2). The single test for all three:
   **the domain seams must be unchanged by adding one.** If a candidate overlay
   would move a seam, it is telling you something about Phase 1 — go re-argue the
   seam there, on ubiquitous-language evidence, and leave the overlay out.
@@ -485,24 +778,36 @@ launching the fan-out rather than discovering the bill afterwards.
 - Tell each subagent explicitly to read **only its domain's source slice** —
   letting it read the whole repo destroys the uniform depth — and to read
   `reference/syntax.md` for the grammar, which is the one thing isolation must
-  not withhold.
+  not withhold. Telling it the entity ids other fragments already use is *not* a
+  violation either, and it saves the roster pass work.
 - **Always `karasu fmt` after any machine generation or injection**, and
   keep `operations` verbs **comma-separated** — these are the two mechanical
   slips that real runs hit most. Note one thing `fmt` does *not* preserve:
   annotation parameters are dropped (`@draft(confidence: "low")` comes back as
   `@draft`, #2571), so nothing load-bearing goes in a parameter. Drop this
   caveat when #2571 lands.
+- **Authoring gotchas that cost a build in a real run**: an unescaped `"` ends
+  the string — write `\"` (one of exactly three escapes, with `\\` and `\n`;
+  any other `\<char>` yields the bare character), and a `deploy` block accepts
+  `label` but **not** `description`. Reach for a triple-quoted `"""…"""` raw
+  string when a value carries Markdown; there is no need to restructure a
+  sentence around a quotation mark.
 - **A cross-domain entity relation must be written `DomainId.EntityId`.** A bare
   id is intra-domain only and is dropped from the entity view with no
-  diagnostic — the one loss in this pipeline that neither `render` nor
-  `coverage` will tell you about. Phase 3 step 7's roster pass exists to make
-  the qualification mechanical.
+  diagnostic — see "Silent losses", which also covers the qualified-but-wrong
+  case that the roster pass alone will not catch.
 - The merge is where *physical* fidelity is lost: infra declaration blocks and
   `table` mappings do not survive on their own (Phase 3 steps 5-6). Both losses
   are now measurable rather than eyeballed — `render` warns on a reference to
   something undeclared, `coverage` counts what the declared physical layer got
   represented by. Neither is optional; a merged model that renders clean can
   still be missing a third of its tables.
+- **The fan-out is not only a modelling device — it is a physical-layer audit.**
+  Expect it to find leaves the Phase 1 extraction missed, controllers that sit in
+  the wrong directory, and seams the scout could not resolve. Treat those
+  findings as first-class output: verify each in source, fold it back into the
+  skeleton, and re-run. A run in which no agent contradicted Phase 1 probably
+  means the agents were not reading deeply enough.
 - **This skill hardcodes CLI command names, and the CLI moves.** Two instances of
   skill-vs-CLI drift have already shipped (`lint-style` #2084, `--from wrangler`
   #2090) and neither was visible to CI. Before trusting any command written here,
