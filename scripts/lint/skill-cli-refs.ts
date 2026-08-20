@@ -42,8 +42,17 @@ export const CLI_INDEX = "packages/cli/src/index.ts";
 /** `.command("serve [dir]")` / `.command("render <file>")` → the command name. */
 const COMMAND_RE = /\.command\(\s*["'`]([a-z][a-z-]*)/g;
 
-/** A `karasu <cmd>` invocation; `cmd` is the first bare word after `karasu`. */
-const INVOCATION_RE = /\bkarasu\s+([a-z][a-z-]+)/g;
+/**
+ * A `karasu <cmd>` invocation; `cmd` is the first bare word after `karasu`.
+ *
+ * Horizontal whitespace only. `codeText` joins code contexts with a newline so
+ * two of them cannot read as one invocation, and `\s` defeated exactly that
+ * separator: a line ending in the span `karasu` followed by a line starting
+ * with the span `reference/` matched as `karasu reference`, reporting an
+ * unregistered command that nobody had written. A real invocation never spans
+ * lines.
+ */
+const INVOCATION_RE = /\bkarasu[ \t]+([a-z][a-z-]+)/g;
 
 /** Inline code span: `…` (single backtick, no embedded backtick). */
 const INLINE_CODE_RE = /`([^`\n]+)`/g;

@@ -24,6 +24,22 @@ Design rationale: ADR-1895 (`docs/adr/1895-reverse-architecture-harness.md`).
 ## Prerequisites
 
 - The target repository path, and the karasu CLI (`karasu`) available.
+- **The grammar travels with this skill.** `reference/` beside this file holds
+  byte-identical copies of the docs a reverse run reads, because the run happens
+  in someone else's repository where karasu's `docs/` tree does not exist:
+
+  | `reference/…` | What it answers |
+  | --- | --- |
+  | `syntax.md` | the `.krs` grammar — every construct instructed below |
+  | `notation-cookbook.md` | worked idioms, so an agent picks karasu-idiomatic shapes instead of inventing them |
+  | `tags-annotations.md` | the boundary / annotation / tag / facet register split, and `@draft` |
+  | `diagnostics.md` | what the codes in the Phase 4 table mean |
+
+  Read those, and hand them to fan-out subagents — a subagent inherits none of
+  this file's context, so a deep-dive told to write `facets` without the register
+  split reaches for a tag instead. **Any other `docs/…` path named below is a
+  citation, not an input**: it resolves in the karasu repository and records why
+  a rule exists, and nothing here needs it to run.
 - Converge output onto a single `.krs` project (`index.krs` recommended). The
   **`.krs` file is the single source of truth** — agents always re-read the
   `.krs`, never the chat history, for state.
@@ -149,7 +165,7 @@ files, so `lint-style` has no role here.
    (`docs/adr/832-no-runtime-authz-modeling.md`). If a candidate describes what
    the element *is* rather than which set it belongs to, it is an archetype and
    the builtin tag vocabulary already covers it — the four-way register split is
-   in `docs/spec/tags-annotations.md` § Vocabulary registers.
+   in `reference/tags-annotations.md` § Vocabulary registers.
 6. Output: `skeleton.krs` (system / service / domain scaffold + physical spine +
    `facet` declarations) and a **domain work-list**.
 
@@ -159,7 +175,10 @@ For each domain in the work-list, **launch one subagent (Task tool)**. Each
 subagent:
 
 - reads **only the source slice for its domain** (not other domains — isolation
-  is what buys uniform depth);
+  is what buys uniform depth), plus `reference/syntax.md` and
+  `reference/notation-cookbook.md` — pass those two paths in the subagent's
+  prompt. Isolation cuts it off from this file as well as from the other
+  domains, so an agent given no grammar writes what it remembers of one;
 - writes that domain's `usecase` / `entity` / `resource` into a `.krs` fragment:
   - a `usecase` holds the `resource`s it touches (`resource InfraId.SubId
     { operations create, read }`). **`operations` verbs are comma-separated** —
@@ -389,7 +408,8 @@ launching the fan-out rather than discovering the bill afterwards.
    singleton-store domain with no foreign keys) is usually genuinely thin — do
    not pad it; record why.
 6. Record any un-modelable idioms (notation gaps). Both original collectors are
-   closed: shipped idioms belong in the cookbook, `docs/guide/notation-cookbook.md`,
+   closed: shipped idioms belong in the cookbook (`reference/notation-cookbook.md`,
+   whose source is `docs/guide/notation-cookbook.md`),
    and a genuinely missing construct is judged by the promotion gate,
    `docs/adr/1820-notation-promotion-gate.md`. That gate wants **real-usage
    evidence**, which is what a run of this skill produces for the experimental
@@ -463,7 +483,9 @@ launching the fan-out rather than discovering the bill afterwards.
   non-builtin tag. `facet` is the *only* user extension point in the vocabulary;
   tags and annotations are tool-owned.
 - Tell each subagent explicitly to read **only its domain's source slice** —
-  letting it read the whole repo destroys the uniform depth.
+  letting it read the whole repo destroys the uniform depth — and to read
+  `reference/syntax.md` for the grammar, which is the one thing isolation must
+  not withhold.
 - **Always `karasu fmt` after any machine generation or injection**, and
   keep `operations` verbs **comma-separated** — these are the two mechanical
   slips that real runs hit most. Note one thing `fmt` does *not* preserve:
