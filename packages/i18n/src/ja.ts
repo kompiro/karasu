@@ -494,6 +494,10 @@ export const ja: Partial<Translations> = {
     `"handles" で参照されている "${path}" は深さの異なる複数の domain に一致します: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
+  "diagnostic.importTargetAmbiguous.message": ({ path, candidates }) =>
+    `import "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。すべて import されます。1 つに絞るにはより長い path で修飾してください`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" が参照する "${infraId}" を宣言する database / queue / storage ブロックがありません`
@@ -561,8 +565,8 @@ export const ja: Partial<Translations> = {
     lastResolvedId,
   }) =>
     lastResolvedId
-      ? `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: "${lastResolvedId}" の下にその id の子は存在しません`
-      : `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: ${importPath} に該当 id を持つ top-level system はありません`,
+      ? `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: "${lastResolvedId}" の上にその id の祖先は存在しません`
+      : `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: ${importPath} に該当 id を持つノードはありません`,
   "diagnostic.circularStyleImport.message": ({ filePath }) =>
     `循環スタイルインポートを検出しました: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) =>

@@ -27,6 +27,7 @@ import {
   buildScopedBoundaryMembership,
 } from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
+import { ambiguousNodePathCandidates, resolveNodePathBySuffix } from "../parser/node-path.js";
 import type { StyleSheet } from "../types/style.js";
 
 /**
@@ -921,19 +922,28 @@ export class ImportResolver {
   }
 
   /**
-   * Resolve a multi-segment path (`import { Sys.Svc.Dom }`) introduced by
-   * Issue #927.
+   * Resolve a multi-segment path (`import { Sys.Svc.Dom }`, Issue #927) by
+   * the shared suffix rule (#2088 slice D2): the ref matches every node in
+   * the imported file whose full path ends with it, so a root-anchored path
+   * keeps resolving to the node it always did, and a relative suffix
+   * (`import { Checkout.Payment }`) becomes legal. Roots are no longer
+   * limited to systems — a chain under a top-level service / client / domain
+   * / infra bucket materializes into that bucket the same way.
    *
-   * Walks the path id-only (no kind whitelist) starting from a top-level
-   * `system` in the imported file, descending into `children` for each
-   * subsequent segment. Emits `import-path-not-found` with `failedAt` /
-   * `lastResolvedId` when any segment cannot be matched.
+   * Every match is imported — the same broadcast semantics a bare-id import
+   * has always had — and a multi-match that is not uniform in (kind, depth)
+   * additionally draws `import-target-ambiguous` (warning; the import still
+   * happens, the warning narrates, exactly like the `owns` family).
    *
-   * On success the leaf is merged into the appropriate system in
-   * `mergedFile`, materializing minimal stubs of intermediate ancestors
-   * (id + label + properties only) when they don't already exist. The
-   * leaf itself is copied with its full subtree, mirroring how a
-   * targeted bare-id import behaves today.
+   * On zero matches, `import-path-not-found`'s `failedAt` is the leftmost
+   * segment that eliminated every candidate under right-to-left narrowing —
+   * the suffix analogue of the old walk's first unmatched segment — with
+   * `lastResolvedId` naming the segment that still had candidates.
+   *
+   * On success each leaf is merged with its full subtree, materializing
+   * minimal stubs of intermediate ancestors (id + label + properties only)
+   * when they don't already exist, mirroring how a targeted bare-id import
+   * behaves today.
    */
   private resolveMultiSegmentImport(
     mergedFile: KrsFile,
@@ -941,87 +951,135 @@ export class ImportResolver {
     path: string[],
     nodeImport: ImportDeclaration,
   ): void {
-    // segment 0 must resolve to a top-level `system` in the imported file.
-    // Top-level services / domains / deploy nodes are intentionally not
-    // valid path roots — they have no meaningful nested ancestry.
-    const rootSystem = importedFile.systems.find((s) => s.id === path[0]);
-    if (!rootSystem) {
+    // Every node chain in the imported file, [root, …, node], with its id path.
+    const candidates: Array<{ path: string[]; chain: KrsNode[] }> = [];
+    const walk = (node: KrsNode, prefix: readonly KrsNode[]): void => {
+      const chain = [...prefix, node];
+      candidates.push({ path: chain.map((n) => n.id), chain });
+      for (const child of node.children) walk(child, chain);
+    };
+    for (const system of importedFile.systems) walk(system, []);
+    for (const root of [
+      ...importedFile.services,
+      ...importedFile.clients,
+      ...importedFile.domains,
+      ...importedFile.databases,
+      ...importedFile.queues,
+      ...importedFile.storages,
+    ]) {
+      walk(root, []);
+    }
+
+    const matches = resolveNodePathBySuffix(path, candidates);
+
+    if (matches.length === 0) {
+      // Narrow right-to-left and report the segment that emptied the pool.
+      let pool = candidates.filter((c) => c.path[c.path.length - 1] === path[path.length - 1]);
+      let failedAt = path.length - 1;
+      let lastResolvedId: string | undefined;
+      if (pool.length > 0) {
+        for (let i = path.length - 2; i >= 0; i--) {
+          const narrowed = pool.filter((c) => {
+            const offset = c.path.length - (path.length - i);
+            return offset >= 0 && c.path[offset] === path[i];
+          });
+          if (narrowed.length === 0) {
+            failedAt = i;
+            lastResolvedId = path[i + 1];
+            break;
+          }
+          pool = narrowed;
+        }
+      }
       this.diagnostics.push({
         severity: "error",
         code: "import-path-not-found",
-        params: { path, failedAt: 0, importPath: nodeImport.path },
+        params: {
+          path,
+          failedAt,
+          importPath: nodeImport.path,
+          ...(lastResolvedId !== undefined ? { lastResolvedId } : {}),
+        },
         loc: nodeImport.loc,
       });
       return;
     }
 
-    // Walk path[1..] through `children`, recording ancestors so the merge
-    // step can reproduce the chain in `mergedFile`.
-    const ancestorsBetween: KrsNode[] = [];
-    let cursor: KrsNode = rootSystem;
-    for (let i = 1; i < path.length; i++) {
-      const segment = path[i];
-      const child: KrsNode | undefined = cursor.children.find((c) => c.id === segment);
-      if (!child) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "import-path-not-found",
-          params: {
-            path,
-            failedAt: i,
-            importPath: nodeImport.path,
-            lastResolvedId: cursor.id,
-          },
-          loc: nodeImport.loc,
-        });
-        return;
-      }
-      // The previous cursor becomes an ancestor between root and leaf.
-      // (When i === 1 this is the rootSystem itself, but we handle the
-      // root specially below to keep the merge target explicit.)
-      if (i > 1) {
-        ancestorsBetween.push(cursor);
-      }
-      cursor = child;
+    const ambiguous = ambiguousNodePathCandidates(
+      matches.map((m) => ({
+        kind: m.chain[m.chain.length - 1].kind,
+        path: m.path,
+        chain: m.chain,
+      })),
+    );
+    if (ambiguous !== undefined) {
+      this.diagnostics.push({
+        severity: "warning",
+        code: "import-target-ambiguous",
+        params: {
+          path: path.join("."),
+          candidates: ambiguous.map((m) => ({ kind: m.kind, path: m.path.join(".") })),
+        },
+        loc: nodeImport.loc,
+      });
     }
 
-    // Materialize the path in mergedFile.systems, preserving any nodes
-    // already imported by other statements.
-    let targetSystem = mergedFile.systems.find((s) => s.id === rootSystem.id);
-    if (!targetSystem) {
+    for (const match of matches) {
+      this.materializeChain(mergedFile, match.chain);
+    }
+  }
+
+  /**
+   * Materialize one resolved chain `[root, …, leaf]` in `mergedFile`,
+   * preserving nodes already imported by other statements: the root becomes
+   * (or reuses) a shallow stub in its home — `systems` for a system root,
+   * the matching top-level bucket otherwise — intermediate ancestors become
+   * minimal stubs, and the leaf is pushed with its full subtree (idempotent
+   * across multiple imports).
+   */
+  private materializeChain(mergedFile: KrsFile, chain: KrsNode[]): void {
+    const root = chain[0];
+    const leaf = chain[chain.length - 1];
+    const home: KrsNode[] | SystemNode[] =
+      root.kind === "system"
+        ? mergedFile.systems
+        : root.kind === "service"
+          ? mergedFile.services
+          : root.kind === "client"
+            ? mergedFile.clients
+            : root.kind === "domain"
+              ? mergedFile.domains
+              : root.kind === "database"
+                ? mergedFile.databases
+                : root.kind === "queue"
+                  ? mergedFile.queues
+                  : mergedFile.storages;
+
+    let target = (home as KrsNode[]).find((n) => n.id === root.id);
+    if (!target) {
       // Shallow stub: copy id / label / properties / loc but start with no
-      // children or edges so other imports targeting the same system can
+      // children or edges so other imports targeting the same root can
       // populate it.
-      targetSystem = {
-        ...rootSystem,
-        children: [],
-        edges: [],
-      };
-      mergedFile.systems.push(targetSystem);
+      target = { ...root, children: [], edges: [] } as KrsNode;
+      (home as KrsNode[]).push(target);
     }
 
-    let parentChildren: KrsNode[] = targetSystem.children;
-    for (const ancestor of ancestorsBetween) {
+    let parentChildren: KrsNode[] = target.children;
+    for (const ancestor of chain.slice(1, -1)) {
       let existing = parentChildren.find((c) => c.id === ancestor.id);
       if (!existing) {
         // Minimal ancestor stub — id, label, kind, and metadata, but no
         // children or edges so we don't accidentally over-import sibling
         // nodes the user did not request.
-        existing = {
-          ...ancestor,
-          children: [],
-          edges: [],
-        } as KrsNode;
+        existing = { ...ancestor, children: [], edges: [] } as KrsNode;
         parentChildren.push(existing);
       }
       parentChildren = existing.children;
     }
 
-    // Push the leaf as the final child if not already present (idempotent
-    // across multiple imports).
-    const alreadyPresent = parentChildren.some((c) => c.id === cursor.id && c.kind === cursor.kind);
+    const alreadyPresent = parentChildren.some((c) => c.id === leaf.id && c.kind === leaf.kind);
     if (!alreadyPresent) {
-      parentChildren.push(cursor);
+      parentChildren.push(leaf);
     }
   }
 

@@ -980,13 +980,24 @@ export interface DiagnosticParamsByCode {
   "import-path-not-found": {
     /** Path segments as written in the import block. */
     path: string[];
-    /** 0-based index of the segment that failed to resolve. */
+    /**
+     * 0-based index of the segment that failed to resolve — under suffix
+     * resolution (#2088), the leftmost segment that eliminated every
+     * candidate when narrowing right-to-left.
+     */
     failedAt: number;
     /** The imported file path (`from "..."`). */
     importPath: string;
-    /** Id of the last node that did resolve successfully (omitted when segment 0 fails). */
+    /**
+     * The neighboring segment that still had candidates (omitted when the
+     * last segment already matches nothing).
+     */
     lastResolvedId?: string;
   };
+  // #2088 slice D2: a suffix import matching nodes not uniform in
+  // (kind, depth). The import still broadcasts (bare-id parity); the
+  // warning narrates, listing candidate full paths.
+  "import-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
   "circular-style-import": { filePath: string };
   "style-file-not-found": { filePath: string };
 

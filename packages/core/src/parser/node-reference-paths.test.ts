@@ -320,6 +320,66 @@ system TenantA {
   });
 });
 
+describe("import entries resolve by the suffix rule (#2576)", () => {
+  const projectWith = async (entry: string, imported: string) => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/p/index.krs", entry);
+    await fs.writeFile("/p/nodes.krs", imported);
+    return new ImportResolver(fs).resolve("/p/index.krs");
+  };
+
+  it("a relative suffix imports the node and materializes its ancestors", async () => {
+    const resolved = await projectWith(
+      `import { Checkout.Payment } from "./nodes.krs"\n`,
+      `system Shop {\n  service Checkout {\n    domain Payment {}\n    domain Other {}\n  }\n  service Api {}\n}\n`,
+    );
+    expect(resolved.diagnostics).toEqual([]);
+    const shop = resolved.krsFile.systems.find((s) => s.id === "Shop");
+    const checkout = shop?.children.find((c) => c.id === "Checkout");
+    expect(checkout?.children.map((c) => c.id)).toEqual(["Payment"]);
+    // Ancestor stubs stay minimal — the sibling service was not imported.
+    expect(shop?.children.map((c) => c.id)).toEqual(["Checkout"]);
+  });
+
+  it("a chain under a top-level bucket root materializes into that bucket", async () => {
+    const resolved = await projectWith(
+      `import { Checkout.Payment } from "./nodes.krs"\n`,
+      `service Checkout {\n  domain Payment {}\n  domain Other {}\n}\n`,
+    );
+    expect(resolved.diagnostics).toEqual([]);
+    const checkout = resolved.krsFile.services.find((s) => s.id === "Checkout");
+    expect(checkout?.children.map((c) => c.id)).toEqual(["Payment"]);
+  });
+
+  it("a non-uniform multi-match imports every match and warns with the candidates", async () => {
+    const resolved = await projectWith(
+      `import { D.E } from "./nodes.krs"\n`,
+      `system A {\n  service X {\n    domain D {\n      entity E {}\n    }\n  }\n}\nsystem B {\n  domain D {\n    entity E {}\n  }\n}\n`,
+    );
+    const amb = resolved.diagnostics.filter((d) => d.code === "import-target-ambiguous");
+    expect(amb).toHaveLength(1);
+    expect(amb[0].params).toEqual({
+      path: "D.E",
+      candidates: [
+        { kind: "entity", path: "A.X.D.E" },
+        { kind: "entity", path: "B.D.E" },
+      ],
+    });
+    // Broadcast, like bare-id imports: both chains are materialized.
+    expect(resolved.krsFile.systems.map((s) => s.id).sort()).toEqual(["A", "B"]);
+  });
+
+  it("root-anchored full paths keep resolving to exactly the node they always did", async () => {
+    const resolved = await projectWith(
+      `import { Shop.Checkout.Payment } from "./nodes.krs"\n`,
+      `system Shop {\n  service Checkout {\n    domain Payment {}\n  }\n}\n`,
+    );
+    expect(resolved.diagnostics).toEqual([]);
+    const checkout = resolved.krsFile.systems[0]?.children.find((c) => c.id === "Checkout");
+    expect(checkout?.children.map((c) => c.id)).toEqual(["Payment"]);
+  });
+});
+
 describe("entity relations resolve by the suffix rule (#2575)", () => {
   it("resolves to the domain that actually has the entity when domain ids collide", () => {
     const r = Parser.parse(`

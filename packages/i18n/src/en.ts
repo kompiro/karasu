@@ -496,6 +496,10 @@ export const en: Translations = {
     `"${path}" referenced in "handles" matches multiple domains at different depths: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}. Qualify with a longer path to name one`,
+  "diagnostic.importTargetAmbiguous.message": ({ path, candidates }) =>
+    `Import "${path}" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. All of them are imported; qualify with a longer path to name one`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" references "${infraId}", which no database / queue / storage block declares`
@@ -560,8 +564,8 @@ export const en: Translations = {
     lastResolvedId,
   }) =>
     lastResolvedId
-      ? `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no child with that id under "${lastResolvedId}"`
-      : `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no top-level system with that id in ${importPath}`,
+      ? `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no ancestor with that id above "${lastResolvedId}"`
+      : `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no node with that id in ${importPath}`,
   "diagnostic.circularStyleImport.message": ({ filePath }) =>
     `Circular style import detected: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) => `Style file not found: ${filePath}`,

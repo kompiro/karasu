@@ -440,16 +440,18 @@ system OrderSystemV2 {
       expect(svc!.children.some((c) => c.id === "Legacy")).toBe(false);
     });
 
-    it("emits import-path-not-found when the root system id is missing", async () => {
+    it("emits import-path-not-found when nothing matches the path", async () => {
       await fs.writeFile("/project/main.krs", `import { Missing.Foo } from "./services.krs"`);
       await fs.writeFile("/project/services.krs", `system ECPlatform { service ECommerce {} }`);
 
       const result = await resolver.resolve("/project/main.krs");
+      // Suffix narrowing (#2088 D2) starts at the last segment: no node named
+      // `Foo` exists at all, so that segment is the one reported.
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "error",
           code: "import-path-not-found",
-          params: expect.objectContaining({ failedAt: 0 }),
+          params: expect.objectContaining({ failedAt: 1 }),
         }),
       );
     });
@@ -470,8 +472,11 @@ system OrderSystemV2 {
       const diag = result.diagnostics.find((d) => d.code === "import-path-not-found");
       expect(diag).toBeDefined();
       if (diag?.code !== "import-path-not-found") throw new Error("kind mismatch");
+      // Right-to-left narrowing (#2088 D2): `Order` matched, and the segment
+      // that emptied the pool is `NotThere` — reported as "no ancestor with
+      // that id above Order".
       expect(diag.params.failedAt).toBe(1);
-      expect(diag.params.lastResolvedId).toBe("ECPlatform");
+      expect(diag.params.lastResolvedId).toBe("Order");
     });
 
     it("does not affect wildcard imports — they continue to take the whole file", async () => {
