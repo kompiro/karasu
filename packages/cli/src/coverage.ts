@@ -24,6 +24,31 @@ function formatAsMarkdown(report: CoverageReport): string {
   lines.push(
     `_${report.domains.length} domain(s), ${thin} thin (score < ${report.threshold.toFixed(2)})._`,
   );
+
+  // Omitted entirely for a model with no infra declarations — an empty physical
+  // table would read as "measured, found nothing" when the truth is that there
+  // is no physical layer to measure.
+  if (report.physical.infra.length > 0) {
+    lines.push("");
+    lines.push(
+      "| infra | kind | leaves | mapped | referenced | unmapped-but-referenced | unreferenced |",
+    );
+    lines.push("| --- | --- | ---: | ---: | ---: | --- | --- |");
+    for (const i of report.physical.infra) {
+      lines.push(
+        `| ${i.infraId} | ${i.kind} | ${i.leaves} | ${i.mappedByEntity} | ${i.referencedByResource} | ${i.unmappedButReferenced.join(", ") || "—"} | ${i.unreferenced.join(", ") || "—"} |`,
+      );
+    }
+    lines.push("");
+    const tableless = report.physical.tablelessEntities;
+    lines.push(
+      `_${tableless.length} entity(ies) with no table mapping${
+        tableless.length > 0
+          ? `: ${tableless.map((e) => `${e.entityId}${e.domainId ? ` (${e.domainId})` : ""}`).join(", ")}`
+          : ""
+      }._`,
+    );
+  }
   return lines.join("\n") + "\n";
 }
 

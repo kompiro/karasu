@@ -2,7 +2,7 @@
 // A runnable example of the report scaffolding, and the file to copy when
 // starting a new PoC (Issue #2419):
 //
-//   pnpm report:demo               # reports/demo/index.html
+//   pnpm report:demo               # reports/demo/index.html + artifact.html
 //   pnpm report:demo --screenshot  # also rasterizes a pane through Chromium
 //
 // It stands in for a real before/after by rendering one model under both
@@ -11,7 +11,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { capture, dataUri, pair, pane, renderKrs, reportPage } from "./index.ts";
+import { capture, dataUri, pair, pane, renderKrs, reportFragment, reportPage } from "./index.ts";
 
 // Relative to the repo root, like the other scripts here: `pnpm report:demo`
 // always runs from there.
@@ -71,18 +71,24 @@ never reaches a mainline PR, and a <code>spike/**</code> branch may commit one w
 <code>git add -f</code>.</p>`,
   });
 
-  const html = reportPage({
+  const options = {
     title: "karasu report scaffolding — demo",
     lang: "en",
     subtitle: "What scripts/report/ produces, rendered from an examples/ model.",
     meta: ["scripts/report/demo.ts", "Issue #2419"],
     sections,
-  });
+  };
 
   mkdirSync(OUT_DIR, { recursive: true });
-  const outFile = join(OUT_DIR, "index.html");
-  writeFileSync(outFile, html);
-  console.log(`wrote ${outFile}`);
+  // Both forms, every run: index.html to open from the filesystem, artifact.html
+  // to publish as a private Claude Artifact (Issue #2436). Generating them from
+  // one options object is what keeps the two from describing different runs.
+  const page = join(OUT_DIR, "index.html");
+  const fragment = join(OUT_DIR, "artifact.html");
+  writeFileSync(page, reportPage(options));
+  writeFileSync(fragment, reportFragment(options));
+  console.log(`wrote ${page}`);
+  console.log(`wrote ${fragment} (publish this one as a Claude Artifact)`);
 }
 
 // Not top-level `await`: tsx transforms this file to CJS, where it is a syntax error.

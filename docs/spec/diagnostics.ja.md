@@ -108,6 +108,8 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `cross-system-ref-unresolved` | warning | cross-system edge（`Sys.Svc`）の対象が見つからない。 |
 | `cross-system-ref-implicit-external` | warning | cross-system edge が `[external]` 未付与の system に跨る。 |
 | `delivers-target-not-client` | warning | `delivers` の対象が `client` node でない。 |
+| `unresolved-resource-ref` | warning | dot 記法の `resource <Infra>.<Leaf>` が、merge 後のモデルに宣言されていない infra ブロック、または宣言されていない leaf を指している。どちらが欠けているかをメッセージに出す — 修復が異なるため（ブロックごと欠けていれば `database` / `queue` / `storage` 宣言そのものの喪失、leaf だけなら sub-resource の欠落）。`[external]` の resource は `unassigned-resource` と揃えて対象外。import-coupled — 共有 infra は各スライスが import する専用ファイルで宣言するのが正準形（§S4.5）なので、単一ドキュメントでは判定しない。 |
+| `unresolved-table-ref` | warning | `entity` の `table <Infra>.<Leaf>` が未宣言のブロック / leaf を指している。`missing` の区別・`[external]` 除外・import-coupling は `unresolved-resource-ref` と同じ。`table` を **持たない** entity は正当な状態（forward design、read-model projection、KV backed）なのでここでは一切報告しない — 数えるのは `karasu coverage` の役割。 |
 
 ### infra の単一宣言・fan-in
 

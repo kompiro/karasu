@@ -536,6 +536,17 @@ export type Translations = {
     path: string;
     candidates: Array<{ kind: string; path: string }>;
   }) => string;
+  "diagnostic.unresolvedResourceRef.message": (params: {
+    infraId: string;
+    subId: string;
+    missing: "block" | "leaf";
+  }) => string;
+  "diagnostic.unresolvedTableRef.message": (params: {
+    entityId: string;
+    infraId: string;
+    subId: string;
+    missing: "block" | "leaf";
+  }) => string;
   "diagnostic.duplicateEdgeId.message": (params: { authorId: string }) => string;
   "diagnostic.ambiguousEdgeBase.message": (params: {
     fromId: string;

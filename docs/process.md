@@ -164,6 +164,13 @@ design doc / ADR / Issue に書く（ブランチより長生きする）。証�
   書き直さない（`reports/` 配下はライブラリを置けない — gitignore されるため）。
 - **`spike/` ブランチでは `git add -f reports/<topic>` してよい。** spike はマージ
   されないので main には届かず、レポートが spike ブランチと一緒に生き死にする。
+- **読むときは `artifact.html` を private な Claude Artifact として publish する**
+  （[Issue #2436](https://github.com/kompiro/karasu/issues/2436)）。生成器は
+  `index.html`（file:// で開く用）と `artifact.html`（publish 用、document の骨格を
+  持たない形）を毎回そろって書く。spike のレポートの読み手は回した本人ひとりなので、
+  preview URL の配下に置いたり CI に運ばせたりはしない。**spike を畳むときは Artifact も
+  消す**（期限で自動的に消える仕掛けは無い）。Artifact URL も `reports/` と同じ扱いで、
+  `docs/` からは参照しない。
 
 ### Claude Code plugin のセットアップ
 

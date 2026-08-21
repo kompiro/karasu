@@ -27,6 +27,7 @@ flowchart TD
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
     ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
+    ADR_2167["ADR-2167<br/>reference list はカンマ列挙を受け、membership は 1 行 1 件に留..."]
     ADR_2173["ADR-2173<br/>facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
     ADR_2208["ADR-2208<br/>organization / team / member の positional label..."]
     ADR_2547["ADR-2547<br/>node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を..."]
@@ -109,6 +110,7 @@ flowchart TD
   class ADR_2076 accepted
   class ADR_2087 accepted
   class ADR_2165 accepted
+  class ADR_2167 accepted
   class ADR_2173 accepted
   class ADR_2208 accepted
   class ADR_2547 accepted

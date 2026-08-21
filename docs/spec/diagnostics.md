@@ -115,6 +115,8 @@ error) — see syntax spec §S6.
 | `cross-system-ref-unresolved` | warning | A cross-system edge (`Sys.Svc`) target is not found. |
 | `cross-system-ref-implicit-external` | warning | A cross-system edge crosses into a system not tagged `[external]`. |
 | `delivers-target-not-client` | warning | A `delivers` target is not a `client` node. |
+| `unresolved-resource-ref` | warning | A dot-notation `resource <Infra>.<Leaf>` names an infra block the merged model does not declare, or a leaf that block does not declare. The message says which half is missing, because the repairs differ: a missing *block* usually means the whole `database` / `queue` / `storage` declaration was lost, a missing *leaf* that only the sub-resource is absent. `[external]` resources are exempt, matching `unassigned-resource`. Import-coupled — shared infra is canonically declared in a file each slice imports (§S4.5), so a single document does not decide it. |
+| `unresolved-table-ref` | warning | An `entity`'s `table <Infra>.<Leaf>` mapping names an undeclared block or leaf; same `missing` split, same `[external]` exemption, same import-coupling as `unresolved-resource-ref`. An entity with *no* `table` mapping is a legitimate state (forward design, read-model projection, KV-backed aggregate) and is never reported here — `karasu coverage` counts it instead. |
 
 ### Infra single-declaration & fan-in
 

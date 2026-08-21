@@ -17,6 +17,12 @@ Issue 化するとき。
 `service Payment "Payment Service"` は、parser が一度も受け付けたことのない形を
 spec が読者に教えていた例である。
 
+`syntax.md` / `tags-annotations.md` / `diagnostics.md` は
+reverse-architecture スキルが**同じ内容を同梱している**（#2574。スキルは karasu
+以外のリポジトリで動くので `docs/` を参照できない）。編集したら同じコミットで
+`pnpm run lint:skill-reference-bundle-sync --write` を実行し、コピーも含める —
+検証は `pnpm run lint:skill-reference-bundle-sync`（引数なし）が drift ゼロで通ること。
+
 ## 新規セクションには proactive TPL を同梱する
 
 `docs/spec/` または `docs/concepts*.md` に**新規セクションを追加する PR** は、その

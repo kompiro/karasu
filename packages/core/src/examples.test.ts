@@ -356,6 +356,20 @@ describe("examples: every shipped .krs is free of node-not-in-context warnings",
     },
   );
 
+  // Physical-reference fence (#2078): `resource Db.T` / `table Db.T` now have to
+  // name something the model declares. Asserted per file, which is the strict
+  // reading — an example whose infra block sits in a sibling file suppresses the
+  // check via the import guard rather than passing it.
+  it.each(krsFiles.map((f) => [f.replace(`${examplesRoot}/`, ""), f] as const))(
+    "%s leaves no physical reference dangling",
+    (_name, path) => {
+      const dangling = Parser.parse(readFileSync(path, "utf8")).diagnostics.filter(
+        (d) => d.code === "unresolved-resource-ref" || d.code === "unresolved-table-ref",
+      );
+      expect(dangling).toEqual([]);
+    },
+  );
+
   // Placement fence (#2184): a `domain` written directly inside a `system` now
   // raises `unassigned-domain`, the same warning the top-level spelling raises.
   // Shipping an example in that placement would put a warning in front of a

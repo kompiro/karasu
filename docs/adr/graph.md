@@ -137,6 +137,7 @@ flowchart TD
     ADR_2401["ADR-2401<br/>pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一..."]
     ADR_2404["ADR-2404<br/>Security alert 2026-08-08 — dompurify は overrid..."]
     ADR_2419["ADR-2419<br/>PoC の生成物は gitignore された `reports/` に出力し、spike ブ..."]
+    ADR_2436["ADR-2436<br/>spike の PoC レポートは private な Claude Artifact として..."]
     ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
@@ -256,6 +257,7 @@ flowchart TD
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
     ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
+    ADR_2167["ADR-2167<br/>reference list はカンマ列挙を受け、membership は 1 行 1 件に留..."]
     ADR_2173["ADR-2173<br/>facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
     ADR_2208["ADR-2208<br/>organization / team / member の positional label..."]
     ADR_2547["ADR-2547<br/>node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を..."]
@@ -334,6 +336,7 @@ flowchart TD
     ADR_1570["ADR-1570<br/>共有 infra fan-in を info 診断として通知する"]
     ADR_1819["ADR-1819<br/>infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
     ADR_2075["ADR-2075<br/>宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
+    ADR_2078["ADR-2078<br/>物理参照の存在検査は診断、物理層の回復度は coverage — 主張の種類で置き場を分ける"]
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
     ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
@@ -489,6 +492,7 @@ flowchart TD
   ADR_2234 --> ADR_9004
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
+  ADR_2436 --> ADR_2419
   ADR_2442 --> ADR_2410
   ADR_2461 --> ADR_2193
   ADR_9007 --> ADR_9008
@@ -769,6 +773,7 @@ flowchart TD
   class ADR_2075 accepted
   class ADR_2076 accepted
   class ADR_2077 accepted
+  class ADR_2078 accepted
   class ADR_2087 accepted
   class ADR_2092 accepted
   class ADR_2106 accepted
@@ -783,6 +788,7 @@ flowchart TD
   class ADR_2152 accepted
   class ADR_2161 accepted
   class ADR_2165 accepted
+  class ADR_2167 accepted
   class ADR_2172 accepted
   class ADR_2173 accepted
   class ADR_2174 accepted
@@ -818,6 +824,7 @@ flowchart TD
   class ADR_2408 accepted
   class ADR_2410 accepted
   class ADR_2419 accepted
+  class ADR_2436 accepted
   class ADR_2440 accepted
   class ADR_2442 accepted
   class ADR_2447 accepted

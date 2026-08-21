@@ -817,7 +817,7 @@ function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, Node
       type: unit.properties.type,
       image: unit.properties.image,
       schedule: unit.properties.schedule,
-      realizes: unit.properties.realizes,
+      realizes: unit.properties.realizes?.map((target) => target.id),
     };
   }
 
