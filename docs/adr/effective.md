@@ -139,6 +139,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2401](2401-pnpm-11-migration.md) — pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一本化する
 - [ADR-2404](2404-dependabot-security-2026-08-08.md) — Security alert 2026-08-08 — dompurify は override と app の宣言を両方 patched 版へ引き上げる
 - [ADR-2419](2419-poc-report-directory.md) — PoC の生成物は gitignore された `reports/` に出力し、spike ブランチでのみコミットする
+- [ADR-2436](2436-spike-report-publishing.md) — spike の PoC レポートは private な Claude Artifact として publish する
 - [ADR-2440](2440-blueoak-license-allowlist.md) — production 依存の license allowlist に BlueOak-1.0.0 を加える
 - [ADR-2447](2447-dependabot-triage-2026-08-10.md) — Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
 - [ADR-2472](2472-dependabot-triage-2026-08-13.md) — Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upstream の欠陥か自分側の gate か」に置く
@@ -263,6 +264,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2076](2076-formatter-top-level-exhaustiveness.md) — formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 - [ADR-2087](2087-escape-emitted-string-values.md) — 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
 - [ADR-2165](2165-logical-containment-rules.md) — 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反は言語 v1.x で warning とする
+- [ADR-2167](2167-realizes-comma-list.md) — reference list はカンマ列挙を受け、membership は 1 行 1 件に留める — `realizes` の受理形と `owns` / `contains` の境界
 - [ADR-2173](2173-facet-grammar-and-model.md) — facet の文法と model 層 — 診断は resolver 側、カタログには載せる、merge は union
 - [ADR-2208](2208-positional-label-error-promotion.md) — organization / team / member の positional label を error にする
 - [ADR-2547](2547-shared-node-path-machinery.md) — node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を定義する
@@ -343,6 +345,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1570](1570-shared-infra-fan-in-diagnostic.md) — 共有 infra fan-in を info 診断として通知する
 - [ADR-1819](1819-domain-store-ownership-diagnostic.md) — infra leaf のドメイン所有を entity から導出し cross-domain ストアアクセスを info 診断する
 - [ADR-2075](2075-edge-endpoint-scope-diagnostic.md) — 宣言スコープで描画できない edge endpoint を診断する — peer はノードインスタンス単位で数える
+- [ADR-2078](2078-reverse-synthesis-physical-fidelity.md) — 物理参照の存在検査は診断、物理層の回復度は coverage — 主張の種類で置き場を分ける
 - [ADR-2184](2184-unassigned-domain-placement-parity.md) — 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain にも `unassigned-domain` を発行する
 - [ADR-2410](2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md) — import 結合の存在検査は未解決 import が残る file では判定しない（invalid-owns は kind 専任にする）
 - [ADR-2442](2442-owns-existence-any-declared-node.md) — owns の存在検査は kind を問わない（system は kind 拒否として報告し、invalid-owns は拒否した kind を名指す）

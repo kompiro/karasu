@@ -1,0 +1,260 @@
+> English（this file） · [日本語](diagnostics.ja.md)
+
+# Diagnostics & rules reference
+
+karasu reports problems with two layers of vocabulary:
+
+- A **rule** (規則) is a *concept* — what the language allows and forbids
+  ("an edge originates within its enclosing block"). Rules are how authors and
+  this spec talk about the constraint.
+- A **diagnostic** (診断) is a *mechanism* — a specific, named check that fires
+  when one concrete violation of a rule is detected (`edge-source-mismatch`).
+
+One rule is often enforced by several diagnostics, and a single diagnostic
+belongs to exactly one rule. This document is the catalog that maps the two.
+
+## How to read this catalog
+
+- **Diagnostic codes are stable API.** The `code` string (e.g.
+  `edge-source-mismatch`) is consumed by the LSP, the app, and downstream
+  tooling. Codes are *not* renamed to match a rule's wording; the rule name is
+  conceptual, the code is the contract. When a rule reads more naturally under a
+  different name than its diagnostic, that is expected — they sit at different
+  altitudes.
+- **Every diagnostic code lives under exactly one rule family below**, and every
+  code defined in core (`DiagnosticParamsByCode`, `WarningKind`) appears here.
+  This completeness is enforced by a meta-test (see *Catalog completeness*), so
+  a new code cannot ship without a catalog entry.
+- The `fires when` column states the concrete trigger. Severities are listed as
+  emitted by core.
+
+## Registers and severities
+
+A diagnostic has a **severity**: `error`, `warning`, or `info`.
+
+- `error` — the model is malformed; the offending construct is rejected.
+- `warning` — a real defect the author should fix (a dangling reference, a
+  conflicting style).
+- `info` — a **fact**, not a defect. karasu surfaces something true about the
+  model that an external school of thought may call a smell (a shared database,
+  a dispersed domain), without asserting it is wrong. This is the *fact vs.
+  style* register split — see [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md).
+
+karasu also follows **warn-don't-error** for unresolved references (spec §S6):
+an unresolved relation is dropped while the node it points from is preserved,
+and the drop is reported as a warning rather than failing the whole render.
+
+## Rule families
+
+### Declaration, edge placement & structure
+
+Where a construct may be declared, and what an edge's origin may be. An edge
+declared inside a `service` / `domain` block originates from that block's id;
+infra blocks and `legend` have fixed placement; sync edges must not form a
+cycle.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `edge-source-mismatch` | error | An explicit edge source inside a `service` / `domain` / `entity` block does not equal the enclosing block id (the **edge origin scope** rule; for an `entity` this enforces the relation direction — origin = the reference-holding entity). |
+| `edge-endpoint-not-at-scope` | warning | An edge endpoint resolves to a node that exists in the merged model but is not a peer at the scope where the edge is declared (the **edge endpoint scope** rule) — e.g. `A -> B` written at `system` scope where `A` and `B` are `domain`s inside a `service`. The edge renders on no view; author it inside its source block, or qualify a cross-domain entity target. Skipped for dotted refs and for ids absent from the model (`unresolved-edge-endpoint` owns those); a `domain` → `domain` edge is exempt because it is derived up to an implicit service edge. |
+| `ambiguous-edge-base` | warning | Multiple edges share the same `from → to` base with no distinguishing author id. |
+| `service-outside-system` | warning | A `service` is declared outside any `system`. |
+| `infra-not-in-context` | error | An infra block (`database` / `queue` / `storage`) is not a direct child of `system`. |
+| `boundary-not-in-context` | error | A `boundary` block is declared inside a node kind that draws no canvas of its own (`entity`, `resource`, `user`, `client`, or an infra leaf), so it would have no peers to frame. |
+| `entity-not-in-domain` | error | An `entity` is declared somewhere other than as a child of a `domain`. |
+| `node-not-in-context` | warning | A logical node is nested inside a kind whose **May contain** column does not list it (e.g. a `usecase` inside a `client`). The node is kept and still renders; it simply carries no defined meaning there. Scheduled to become an error in `.krs language v2.0` (see [roadmap §Syntax 2.0](../roadmap.md#syntax-20-プログラム)). |
+| `legend-not-top-level` | error | A `legend` block is declared somewhere other than the top level. |
+| `top-level-declaration` | error | A `user` or an edge is declared at the top level instead of inside a `system` block. |
+| `system-property-conflict` | warning | A `system` `label` / `description` conflicts between merged imports. |
+| `cyclic-dependency` | warning | Sync edges (`->`) form a dependency cycle. |
+
+### Identifier uniqueness
+
+Ids must be unique within their declaring scope; ownership assigns at most one
+primary owner.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `duplicate-edge-id` | error | An author-supplied edge id collides with another edge's id. |
+| `duplicate-node-id-parent` | error | A node id is duplicated within its immediate parent (covers a `usecase` and `entity` sharing an id under one `domain`). |
+| `entity-anchor-collision` | warning | An id is claimed by more than one target in the `entity` deep-link namespace ({all domain ids} ∪ {all entity ids}) — an entity id duplicated across domains, or an entity id equal to a domain id. Deep-links resolve ambiguously; the model still renders. |
+| `duplicate-node-in-system` | error | A node id is duplicated within a `system`. |
+| `duplicate-node-in-deploy` | error | A node id is duplicated within a `deploy` block. |
+| `duplicate-team-id` | error | A team id is duplicated. |
+| `duplicate-team-in-organization` | error | A team id is duplicated within an `organization`. |
+| `duplicate-resource-operation` | warning | A CRUD verb is listed more than once on one resource. |
+| `duplicate-crud-decoration-target` | warning | A CRUD decoration targets the same operation more than once. |
+| `duplicate-owner-assignment` | info | A node is assigned as owned by more than one team (a fact; see [ADR-1566](../adr/1566-ownership-during-migration.md)). |
+| `duplicate-boundary-assignment` | info | A node belongs to more than one `boundary` (a fact; membership is 1:N — see [syntax.md](syntax.md#grouping-the-system-view-boundary--experimental) for how a view resolves it). |
+| `boundary-membership-not-drawn` | info | Under *Group by: boundary*, a boundary's frame could not be widened to enclose one of its members without covering a non-member, so the membership is marked on the card as a `◇` tab instead. States what **this drawing** did, unlike `duplicate-boundary-assignment`, which states a fact about the model; it therefore carries no source location and appears only on that axis. |
+| `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
+| `duplicate-facet-id` | error | Two `facet` blocks declare the same id, so a `facets` reference cannot say whose metadata it means. Decided on the merged model, so a duplicate split across two files is caught; the first declaration is the one references resolve to. |
+| `positional-label-removed` | error | A `boundary`, `facet`, `organization`, `team` or `member` id is followed by a positional label string. ADR-19 made `label` a property, and the positional form was never in the spec: `boundary` / `facet` lost it outright as experimental constructs (#2133), the rest after a deprecation window (#2208). Recovery differs — `boundary` / `facet` discard the string, while `organization` / `team` / `member` keep it as the label so the org chart still reads while the file is fixed. |
+| `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
+
+### Cross-reference resolution (warn-don't-error, §S6)
+
+A referenced id must resolve to a declared node. When it does not, the source
+node is preserved and the unresolved relation is reported (it is not a fatal
+error) — see syntax spec §S6.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `owns-target-not-found` | warning | A team `owns` an id that names no node in the merged model — any kind, any depth, so a declared `user` or `entity` is *found* here and refused by kind in `invalid-owns` instead. A `capability` is a property rather than a node, so it resolves to nothing and lands here. Derived from the merged tree, so the verdict depends neither on the import form nor on where the block was declared. Import-coupled: a document that still has imports to resolve does not decide it at all (the LSP's single-document context stays silent; the App / CLI decide it on the merged model). |
+| `invalid-owns` | warning | An `owns` target **resolves to a node** whose kind cannot be owned; the message names that kind. An id that resolves to nothing is not this diagnostic's business — `owns-target-not-found` reports that instead, so one mistake draws exactly one of the two. Import-coupled as a consequence: in a single-document context a cross-file target resolves to nothing, so nothing is reported. The ownable kinds are `service` / `domain` / `client` / infra blocks at any depth (`OWNS_TARGET_KINDS`, which only this check reads — existence asks nothing about kinds); an infra leaf (`table` / `queue-item` / `bucket`) and a `capability` exist but are not ownership units, so this is the check that rejects them. Note the system-view **card** draws a team chip only for the logical kinds; an owned infra block still reads under *Group by: team* (frames resolve by id) and in the org view. |
+| `contains-target-not-found` | warning | Import-coupled: a document that still has imports to resolve does not decide it at all — the member may be declared in an imported file, and a cross-file `system` reopen can add the very child a scoped `contains` names. Otherwise: a `boundary` `contains` a node that does not exist — for a top-level block, anywhere in the merged system hierarchy (existence is checked after cross-file merge, not per file); for a scoped block, among the declaring node's direct children. |
+| `facet-not-declared` | warning | A `facets` reference names no declared `facet` block (existence is checked on the merged model, so a declaration in an imported file counts). Unlike the near-miss annotation hint, the declared set makes this check complete: a typo between two author-defined names is caught too. |
+| `import-id-not-found` | error | A named import id path fails to resolve. |
+| `import-path-not-found` | error | An import path fails to resolve at some segment. |
+| `unresolved-edge-endpoint` | warning | An edge endpoint id is not found anywhere in the merged model. |
+| `unresolved-handles` | warning | A `handles` domain is not reachable through the one-hop expose rule. |
+| `unresolved-realizes` | warning | A deploy node `realizes` a target absent from the logical layer. |
+| `legend-ref-unresolved` | warning | A `legend` `ref` matches no style rule and no node. |
+| `cross-system-ref-unresolved` | warning | A cross-system edge (`Sys.Svc`) target is not found. |
+| `cross-system-ref-implicit-external` | warning | A cross-system edge crosses into a system not tagged `[external]`. |
+| `delivers-target-not-client` | warning | A `delivers` target is not a `client` node. |
+| `unresolved-resource-ref` | warning | A dot-notation `resource <Infra>.<Leaf>` names an infra block the merged model does not declare, or a leaf that block does not declare. The message says which half is missing, because the repairs differ: a missing *block* usually means the whole `database` / `queue` / `storage` declaration was lost, a missing *leaf* that only the sub-resource is absent. `[external]` resources are exempt, matching `unassigned-resource`. Import-coupled — shared infra is canonically declared in a file each slice imports (§S4.5), so a single document does not decide it. |
+| `unresolved-table-ref` | warning | An `entity`'s `table <Infra>.<Leaf>` mapping names an undeclared block or leaf; same `missing` split, same `[external]` exemption, same import-coupling as `unresolved-resource-ref`. An entity with *no* `table` mapping is a legitimate state (forward design, read-model projection, KV-backed aggregate) and is never reported here — `karasu coverage` counts it instead. |
+
+### Infra single-declaration & fan-in
+
+Infra nodes are declared once; a store referenced by several services is a fact
+worth surfacing.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `infra-redeclared-across-files` | info | The same `database` / `queue` / `storage` id is declared in more than one merged file. |
+| `infra-leaf-redeclared-silently` | info | A `table` / `queue-item` / `bucket` leaf is redeclared within its parent infra. |
+| `shared-infra-fan-in` | info | Two or more services depend on the same store within one system (a fact, not a defect). |
+| `cross-domain-store-access` | info | A usecase reads/writes an infra leaf owned by another domain, in one system (a boundary-crossing fact, not a defect). Ownership is derived from `entity` mappings; keyed at leaf granularity; `[external]` and role-tagged (`[index]` / `[cache]` / `[analytics]`) stores excluded. Orthogonal to `shared-infra-fan-in`. |
+
+### CRUD decoration grammar
+
+The grammar of operation / CRUD decoration on resources.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `invalid-crud-decoration` | error | A CRUD decoration uses an unrecognised verb / letter. |
+| `empty-crud-decoration` | warning | A `verb:` decoration has an empty right-hand side. |
+| `unknown-resource-operation` | warning | A resource operation verb is not one of create / read / update / delete. |
+
+### Assignment & cohesion
+
+Whether structural nodes are assigned to an owner / parent, and cohesion facts
+about how domains and deploy targets are wired.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `unassigned-service` | warning | A service sits at top level with no team assignment. |
+| `unassigned-domain` | warning | A domain is not assigned to a service — it sits at top level, or directly inside a `system`. Both placements express the same modelling state, so both fire ([#2184](https://github.com/kompiro/karasu/issues/2184)); only the top-level form is additionally wrapped in the `(Unassigned)` pseudo-system. |
+| `unassigned-usecase` | warning | A usecase is a direct child of a service with no domain parent. |
+| `unassigned-client` | warning | A client sits at top level with no team assignment. |
+| `unassigned-database` | warning | A database sits at top level with no team assignment. |
+| `unassigned-queue` | warning | A queue sits at top level with no team assignment. |
+| `unassigned-storage` | warning | A storage sits at top level with no team assignment. |
+| `unassigned-resource` | warning | A bare `resource <id>` resolves to no store: not dot-notation, not `[external]`, and not a unique `entity`. Model-wide (resolver, not parser), so it is promoted away — with zero edits — once a matching `entity` is declared. An ambiguous bare id (>1 matching entity) stays unresolved; the collision is reported by `entity-anchor-collision`. |
+| `domain-dispersal` | info | One domain id appears under multiple services in scope (a fact). |
+| `missing-realizes` | info | A deploy node lacks a `realizes` property. |
+| `missing-runtime` | info | A deploy node lacks a `runtime` property. |
+
+### Annotation & lifecycle
+
+Annotation parameters, removed / deprecated properties, and the v1.x
+deprecation of non-builtin tag / annotation vocabulary (syntax v2.0 accepts
+tool vocabulary only — see [tags-annotations.md](./tags-annotations.md)).
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `annotation-param-unsupported` | warning | An annotation parameter key is not recognised for that annotation. |
+| `annotation-possible-typo` | info | An annotation name is a near-match to a builtin (typo hint). |
+| `tag-not-builtin` | warning | A tag name is outside the tool vocabulary (builtin + system-assigned tags). Deprecated in v1.x; no suppression condition. |
+| `tag-not-applicable` | warning | A builtin tag is written on a node kind outside its applicability (e.g. `service Api [index]` — `[index]` applies to `database`). The tag has no effect there. Never fires together with `tag-not-builtin`: a non-builtin name has no applicability to violate. |
+| `annotation-not-builtin` | warning | An annotation name is outside the builtin set. Deprecated in v1.x; no suppression condition. |
+| `style-tag-selector-not-builtin` | warning | A `.krs.style` selector targets a tag name outside the tool vocabulary (e.g. `[pci] { … }`). Deprecated in v1.x — the rule still matches; syntax v2.0 matches tool vocabulary only. Migrate to a facet selector (`[facets=<id>]`). Fires per selector, independently of the model-side `tag-not-builtin`: the two name two edits, and warning once would leave the other site unfound. Never fires for the builtin theme or injected system sheets. |
+| `style-annotation-selector-not-builtin` | warning | A `.krs.style` selector targets an annotation name outside the builtin set (e.g. `@canary { … }`). Same contract as `style-tag-selector-not-builtin`. |
+| `team-property-removed` | error | The removed `team` property is used (see [ADR-1564](../adr/1564-remove-team-property.md)). |
+
+### Imports & files
+
+Resolving `import` declarations and style imports against the filesystem.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `circular-import` | warning | A node `import` forms a cycle. |
+| `circular-style-import` | warning | A style import forms a cycle. |
+| `file-not-found` | error | An imported file does not exist. |
+| `directory-not-found` | error | An imported directory does not exist. |
+| `style-file-not-found` | warning | An imported style file does not exist. |
+
+### Style validation
+
+Validating `.krs.style` property names and values.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `style-unknown-property` | warning | A style property name is not recognised. |
+| `style-invalid-enum-value` | error | A style value is not in the allowed enum. |
+| `style-invalid-hex-color` | error | A style hex color is malformed. |
+| `style-invalid-length-unit` | error | A style length uses a disallowed unit. |
+| `style-missing-length-unit` | error | A style length is missing its required unit. |
+| `style-out-of-range` | error | A style numeric value is outside its min / max bounds. |
+| `style-token-type-mismatch` | error | A style token does not match the expected type. |
+| `expected-style-property-name` | error | The style parser expected a property name. |
+| `expected-semicolon-between-properties` | error | The style parser expected a `;` between properties. |
+| `unknown-edge-selector-attribute` | error | A selector uses a bracket attribute other than `from` / `to` / `facets` (e.g. `edge[source=X]`). The code name predates `facets`, which is accepted on node selectors too, not only on `edge`. |
+| `style-conflict` | warning | A selector is defined in more than one user style sheet. |
+| `style-column-invalid-value` | warning | A style `column` value is not `left` / `center` / `right`. |
+| `style-column-ignored-non-system-view` | warning | A `column` hint is applied to a deploy / org view (ignored). |
+| `style-grid-columns-invalid-value` | warning | A style `grid-columns` value is not a positive integer (the hint is dropped; layout auto-balances). |
+
+### Client & capability
+
+The `client` sub-language: storage kinds and capabilities.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `client-resource-invalid-kind` | error | A client `resource` storage kind is not one of the reserved values. |
+| `client-capability-duplicate` | warning | A client declares the same capability name twice. |
+
+### Syntactic & parse-level errors
+
+Low-level parser errors raised when tokens do not form a valid construct. These
+are mechanism-level by nature; the "rule" is the grammar itself.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `token-type-mismatch` | error | A token does not match the type the parser expected. |
+| `unexpected-token-root` | error | An unexpected token appears at the root level. |
+| `unexpected-token-in-block` | error | An unexpected token appears inside a block. |
+| `expected-brace-or-string` | error | The parser expected a `{` or a string literal. |
+| `expected-identifier` | error | The parser expected an identifier. |
+| `expected-string-after` | error | The parser expected a string after a property keyword. |
+| `expected-id-or-string` | error | The parser expected an id or a string. |
+| `expected-node-id` | error | The parser expected a node id. |
+| `expected-property-value` | error | The parser expected a property value. |
+| `expected-id-after` | error | The parser expected an id after a property keyword. |
+| `invalid-node-kind` | error | A node kind keyword is not recognised. |
+| `property-not-for-node-kind` | error | A property is not valid for the node kind it appears on. |
+| `link-url-scheme-not-allowed` | warning | A `link` URL scheme is not in the allowed set (http / https / mailto). |
+
+### Application-level fallbacks
+
+Synthetic codes the app uses when wrapping a thrown compile / parse error.
+
+| Code | Severity | Fires when |
+| --- | --- | --- |
+| `app-project-compile-error` | error | `compile()` threw and the app reports a generic compile failure. |
+| `app-org-parse-error` | error | Org parsing threw and the app reports a generic parse failure. |
+| `generic-text` | error | A pre-built fallback message string with no structured params. |
+
+## Catalog completeness
+
+Every member of `DiagnosticParamsByCode` and `WarningKind` (in
+`packages/core/src/types`) must appear as a `code` in this document. A meta-test
+(`packages/core/src/types/diagnostics-catalog.test.ts`) asserts this in both
+directions, so the catalog cannot silently drift from the emitted codes. The
+discipline behind it is recorded as
+[TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md).
+
+> Related TPLs: [TPL-1623](../test-perspectives/TPL-1623-diagnostics-catalog-completeness.md) (catalog ↔ code completeness), [TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) (fact vs style register), [TPL-2171](../test-perspectives/TPL-2171-spec-promised-diagnostics-implemented.md) (spec-promised diagnostics are implemented), [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) (spec ↔ source-of-truth sync).
+</content>

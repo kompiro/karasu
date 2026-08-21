@@ -10,6 +10,7 @@ export {
   escapeHtml,
   pair,
   pane,
+  reportFragment,
   reportPage,
   type Pane,
   type ReportPageOptions,

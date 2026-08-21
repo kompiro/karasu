@@ -49,6 +49,7 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
   buildOwnerIndex,
@@ -393,6 +394,10 @@ export class Parser {
     // Scoped boundaries resolve against direct children, so they are checked
     // per scope rather than against the whole model (#2036).
     this.diagnostics.push(...validateScopedContainsReferences(file));
+    // A `resource` / `table` naming an infra block or leaf nothing declares
+    // (#2078). Suppressed and re-derived by the ImportResolver like the checks
+    // above, since the block is canonically declared in an imported infra file.
+    this.diagnostics.push(...validatePhysicalRefs(file));
     // Declaration uniqueness is a property of the *merged* facet namespace: two
     // files may each declare `facet pii` with different metadata, and only the
     // merge sees that. The ImportResolver suppresses this code per file and
@@ -1893,18 +1898,14 @@ export class Parser {
       } else if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
-        // Value can be string literal or identifier
-        if (
+        if (propName === "realizes") {
+          this.parseRealizesList(propToken, properties);
+        } else if (
+          // Value can be string literal or identifier
           this.peek().type === TokenType.StringLiteral ||
           this.peek().type === TokenType.Identifier
         ) {
-          const value = this.advance().value;
-          if (propName === "realizes") {
-            if (!properties.realizes) properties.realizes = [];
-            properties.realizes.push(value);
-          } else {
-            (properties as Record<string, string>)[propName] = value;
-          }
+          (properties as Record<string, string>)[propName] = this.advance().value;
         } else {
           this.error("expected-property-value", { propName });
         }
@@ -1929,6 +1930,73 @@ export class Parser {
       properties,
       loc: this.range(start.loc, end.loc),
     };
+  }
+
+  /**
+   * Parses the value of one `realizes` line, appending to the node's target
+   * list. Targets may be written one per line (#409) or comma-separated on a
+   * single line (#2167) — the comma form is sugar, so both append to the same
+   * array and a node mixing the two accumulates in document order.
+   *
+   * **A list lives on the line its `realizes` keyword is on.** Both the commas
+   * and the targets after them are held to that line, so the two malformed
+   * spellings behave alike: neither `realizes A,` nor a following `,B` line
+   * quietly extends the list across the line break. Property keywords carry
+   * their own token types, so they could never be read as targets; what the
+   * line rule actually stops is a bare identifier on the next line being
+   * absorbed as a continuation instead of being reported where it sits.
+   */
+  private parseRealizesList(keyword: Token, properties: DeployNodeProperties): void {
+    const { line } = keyword.loc;
+    const onListLine = (token: Token): boolean => token.loc.line === line;
+    const atTarget = (): boolean => {
+      const token = this.peek();
+      return (
+        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
+        onListLine(token)
+      );
+    };
+
+    // The separator the parser is standing after, for the diagnostic below.
+    // Undefined while reading the first target, which `realizes` introduces.
+    let afterComma: Token | undefined;
+
+    for (;;) {
+      if (atTarget()) {
+        const token = this.advance();
+        (properties.realizes ??= []).push({
+          id: token.value,
+          loc: this.range(token.loc, token.end),
+        });
+        // Without a comma the list is done; with one, another target is due.
+        if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;
+        afterComma = this.advance();
+        continue;
+      }
+      // No target where one is required: bare `realizes`, a leading comma
+      // (`realizes ,B`), or the trailing comma of `realizes A,`. Report it once
+      // rather than letting the comma fall through to the block loop's generic
+      // `unexpected-token-in-block`, and anchor it on the token that is
+      // actually wrong — the dangling comma, or `realizes` itself when the
+      // value is missing outright. `this.error` would anchor on whatever comes
+      // next, which for a trailing comma is the following (valid) line.
+      this.diagnostics.push({
+        severity: "error",
+        code: "expected-property-value",
+        params: { propName: "realizes" },
+        loc: this.range((afterComma ?? keyword).loc, (afterComma ?? keyword).end),
+      });
+      // Swallow the stray separators so the same commas are not reported again,
+      // then resume if that leaves a target to read — `realizes ,B` still
+      // records `B`. Reaching here without a comma to consume means the line
+      // holds nothing more to say, so stop rather than report twice.
+      let swallowed = false;
+      while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
+        afterComma = this.advance();
+        swallowed = true;
+      }
+      if (!swallowed || !atTarget()) return;
+    }
   }
 
   // ─── Organization ──────────────────────────────────────────────────────────

@@ -1,10 +1,11 @@
 import type { KrsNode, SystemNode, ResourceNode } from "../types/ast.js";
-import { INFRA_KIND_SET, type InfraKind } from "../types/ast.js";
+import { type InfraKind } from "../types/ast.js";
 import {
   isWriteOperation,
   isRecognizedResourceOperation,
   type ResourceOperation,
 } from "../spec/operations.js";
+import { indexDeclaredInfra, infraLeafKey } from "../spec/infra-index.js";
 
 export type { InfraKind };
 
@@ -101,19 +102,24 @@ interface InfraColumnSeed {
   infraKind: InfraKind;
 }
 
+/**
+ * One matrix column per declared infra leaf, flattened to `<infra>.<leaf>` keys.
+ *
+ * Derived from the shared `indexDeclaredInfra` walk rather than a local one:
+ * the reference check and the coverage report answer questions about the same
+ * "what physical things exist" set, and three hand-written copies of that walk
+ * is how they end up disagreeing (TPL-1720).
+ */
 function buildInfraIndex(systems: readonly SystemNode[]): Map<string, InfraColumnSeed> {
   const map = new Map<string, InfraColumnSeed>();
-  for (const sys of systems) {
-    for (const node of sys.children) {
-      if (!INFRA_KIND_SET.has(node.kind)) continue;
-      for (const sub of node.children) {
-        const id = `${node.id}.${sub.id}`;
-        map.set(id, {
-          resourceId: id,
-          label: sub.label ?? sub.id,
-          infraKind: node.kind as InfraKind,
-        });
-      }
+  for (const block of indexDeclaredInfra(systems).values()) {
+    for (const leafId of block.leafIds) {
+      const id = infraLeafKey(block.infraId, leafId);
+      map.set(id, {
+        resourceId: id,
+        label: block.leafLabels.get(leafId) ?? leafId,
+        infraKind: block.kind,
+      });
     }
   }
   return map;

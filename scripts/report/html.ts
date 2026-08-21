@@ -4,8 +4,9 @@
 //
 // The output is deliberately one self-contained file — inline styles, inline
 // SVG, images as data URIs, no external subresource. A report gets opened from
-// a file:// path, copied to a spike preview, or attached to an issue; anything
-// fetched over the network would be broken in at least one of those.
+// a file:// path, published as a private Claude Artifact, or attached to an
+// issue; anything fetched over the network would be broken in at least one of
+// those, and the Artifact sandbox blocks it outright.
 //
 // See reports/README.md for the surrounding convention.
 
@@ -174,14 +175,12 @@ function slug(title: string, index: number): string {
   return ascii || `section-${index + 1}`;
 }
 
-/** Renders the complete, self-contained report document. */
-export function reportPage({
-  title,
-  lang = "ja",
-  subtitle,
-  meta = [],
-  sections,
-}: ReportPageOptions): string {
+/**
+ * The header and the sections: everything that is the report itself, with no
+ * document skeleton around it. Shared by the two output forms so they can
+ * never drift apart in what they actually show.
+ */
+function reportContent({ title, subtitle, meta = [], sections }: ReportPageOptions): string {
   const pills = meta.map((m) => `<span>${escapeHtml(m)}</span>`).join("\n");
   // Two sections can share a heading ("Results" twice); a duplicated anchor
   // would send every deep link to the first one, so repeats fall back to the
@@ -197,6 +196,22 @@ export function reportPage({
     })
     .join("\n\n");
 
+  return `<header>
+  <div class="wrap">
+    <h1>${escapeHtml(title)}</h1>
+${subtitle ? `    <p>${escapeHtml(subtitle)}</p>\n` : ""}${
+    pills ? `    <div class="meta">\n${pills}\n    </div>\n` : ""
+  }  </div>
+</header>
+<main>
+${body}
+</main>`;
+}
+
+/** Renders the complete, self-contained report document. */
+export function reportPage(options: ReportPageOptions): string {
+  const { title, lang = "ja" } = options;
+
   return `<!doctype html>
 <html lang="${escapeHtml(lang)}">
 <head>
@@ -208,17 +223,27 @@ ${STYLES}
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <h1>${escapeHtml(title)}</h1>
-${subtitle ? `    <p>${escapeHtml(subtitle)}</p>\n` : ""}${
-    pills ? `    <div class="meta">\n${pills}\n    </div>\n` : ""
-  }  </div>
-</header>
-<main>
-${body}
-</main>
+${reportContent(options)}
 </body>
 </html>
+`;
+}
+
+/**
+ * The same report for a host that supplies the document skeleton itself, which
+ * is how a report is published as a private Claude Artifact (Issue #2436): the
+ * content is wrapped in `<!doctype html>…<body>` at publish time, so handing it
+ * a complete document would nest one document inside another.
+ *
+ * `<title>` comes first because the host reads it out of the head of the file,
+ * and the styles stay inline because the publish sandbox refuses every external
+ * host. `lang` is ignored here: the `<html>` element belongs to the host.
+ */
+export function reportFragment(options: ReportPageOptions): string {
+  return `<title>${escapeHtml(options.title)}</title>
+<style>
+${STYLES}
+</style>
+${reportContent(options)}
 `;
 }
