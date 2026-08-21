@@ -11,7 +11,7 @@ scope:
 assumptions:
   - "symbol: packages/core/src/parser/parser.ts :: parseRealizesList"
   - "symbol: packages/core/src/types/ast.ts :: RealizesTarget"
-  - "grep: packages/core/src/formatter/formatter.ts :: realizes \\$\\{quoteId\\(r\\.id\\)\\}"
+  - "grep: packages/core/src/formatter/formatter.ts :: realizes \\$\\{r\\.path\\.map\\(quoteId\\)"
 ---
 
 # ADR-2167: reference list はカンマ列挙を受け、membership は 1 行 1 件に留める — `realizes` の受理形と `owns` / `contains` の境界

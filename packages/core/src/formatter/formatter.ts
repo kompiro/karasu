@@ -443,8 +443,8 @@ class Printer {
     // One target per line, even when the source wrote them comma-separated
     // (#2167): repeated lines are the canonical form the comma list sugars.
     for (const r of node.properties.realizes ?? []) {
-      // Path refs print as written, each segment re-quoted only if it needs
-      // it (TPL-1101, #2088).
+      // Path refs print as written; each segment is re-quoted only when
+      // needed (TPL-1101, #2088).
       lines.push(`    realizes ${r.path.map(quoteId).join(".")}`);
     }
 
