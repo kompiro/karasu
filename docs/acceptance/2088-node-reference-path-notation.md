@@ -61,6 +61,14 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
 - [x] ambiguity は slice B と同じ (kind, 深さ) 判別を同じヘルパーで使う
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › realizes ambiguity follows the shared (kind, depth) rule
 
+### slice D1（#2575）— entity 関連 / resource の解決
+
+- [x] domain id が衝突し最初の domain に entity が無いモデルでも、entity を実際に持つ domain へ関連が解決される（従来は黙って落ちていた）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › resolves to the domain that actually has the entity when domain ids collide
+- [x] 従来解決していた qualified 形と bare 形の解決結果は不変（既存 suite 無変更 green）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › keeps resolving the plain qualified form and drops unresolved refs
+- resource 参照は変更なし: #2546 が `indexDeclaredInfra`（単一 walk の共有 index）に統一済みで、S4.5 の同 id reopen-union 同一性により anchored 照合が正しい意味論（接尾辞化は reopen された block の複数宣言 path を誤モデル化する）
+
 ## 手動確認
 
 `🧑 Manual` の到達先: <https://karasu.kompiro.dev/>（main への push で更新）。
