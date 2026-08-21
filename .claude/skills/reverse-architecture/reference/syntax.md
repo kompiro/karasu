@@ -1063,6 +1063,37 @@ service's container to the realized store's container ([ADR-1658](../adr/1658-de
 
 ---
 
+## Node reference path notation
+
+Everywhere a property names a node by id, the reference shares one lexical
+shape and one resolution rule (#2088):
+
+- **Shape**: `Segment(.Segment)*` — e.g. `Shop.Checkout.Payment`. Segments
+  are ids (string-literal segments allowed where the site accepts them).
+- **Resolution — the suffix rule**: a reference matches every node whose
+  full path (root to node, ids joined by `.`) **ends with** the reference.
+  A bare id is the length-1 case, so `owns Payment` claims every node with
+  the id `Payment` (broadcast — unchanged behavior), while
+  `owns Shop.Payment` narrows to the node that path names.
+- **Ambiguity**: when a reference matches two or more nodes that are **not**
+  uniform in (kind, depth), the site reports `*-target-ambiguous` (warning)
+  listing the candidate full paths, and the author can qualify with a longer
+  path. A uniform multi-match is intentional broadcast (migration
+  coexistence, multi-tenant naming) and stays silent.
+- **Sites keep their own scope rules.** The notation is shared; where a
+  reference may point is still each site's business: an `import` path walks
+  the imported file's tree (ADR-927), an edge endpoint follows its scope
+  rule (ADR-2075), a scoped `boundary … contains` resolves against the
+  declaring node's direct children.
+- **Accepting sites today**: `import { … }`, cross-system edge endpoints,
+  cross-domain entity relations, `resource OrderDB.Orders`, the entity
+  `table` mapping, `owns`, and `contains` (top-level and scoped). `realizes`
+  and `handles` do not accept paths yet (#2549).
+
+> Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
+
+---
+
 ## Writing organization diagrams
 
 An `organization` block declares the hierarchy of organizations, teams, and members.
@@ -1110,11 +1141,11 @@ organization TechCorp {
 
 ### team node
 
-- `owns <id>` declares a logical node (`service` / `domain` / `client`, etc.) that the team owns. When the same `id` is `owns`-ed by more than one team, it is a tolerated fact (transient co-ownership during an inverse-Conway migration): the first-declared team is kept as the node's primary owner and the overlap surfaces as the `duplicate-owner-assignment` **info** diagnostic — not an error (ADR-1566). A `@migration_target` team takes primary over unmarked, and `@deprecated` last.
+- `owns <ref>` declares a node the team owns, where `<ref>` is a node reference path (see [§ Node reference path notation](#node-reference-path-notation)): a bare id claims every node with that id (broadcast), a longer suffix path narrows to the node it names, and a mixed-kind/depth multi-match draws `owns-target-ambiguous`. When the same node is `owns`-ed by more than one team, it is a tolerated fact (transient co-ownership during an inverse-Conway migration): the first-declared team is kept as the node's primary owner and the overlap surfaces as the `duplicate-owner-assignment` **info** diagnostic — not an error (ADR-1566). A `@migration_target` team takes primary over unmarked, and `@deprecated` last.
 - Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary--experimental)).
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
-- During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
+- During parsing, an `ownerIndex` (`node full path → team id`, #2548) is built so that a logical-diagram node can look up its owner team; each `owns` reference is expanded through the suffix rule at build time.
 - `owns` accepts `service` / `domain` / `client` and the infra blocks (`database` / `queue` / `storage`) at any depth; an infra **leaf** (`table` / `queue-item` / `bucket`) and a `capability` are not ownership units and are reported by `invalid-owns`.
 - Ownership is **rendered on the owned node's card** in the system view as a team chip (a person-group vector glyph, `data-meta-glyph="team"`), on the logical kinds only (`service` / `domain` / `client`) — an owned infra block draws no chip, because the rectangular chip does not fit a cylinder / cloud corner (the same constraint the deploy button carries). Its ownership still reads on the system view under *Group by: team*, whose frames resolve by id, and in the org view. The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
 
@@ -1174,8 +1205,13 @@ boundary payments {
   subsection). The top-level form groups nodes *by reference* (`contains <id>`),
   not by containment, so it can gather nodes declared anywhere — including
   across imported files (the same file-crossing property as `owns`).
-- **`contains <id>`** lists one member per line (mirroring `owns`). The parser
-  accepts any declared id (no kind restriction, unlike `owns`). Grouping resolves
+- **`contains <ref>`** lists one member per line (mirroring `owns`), where
+  `<ref>` is a node reference path (see [§ Node reference path
+  notation](#node-reference-path-notation)): a bare id gathers every node
+  with that id, a longer suffix path narrows to the node it names, and a
+  mixed-kind/depth multi-match draws `contains-target-ambiguous`. The parser
+  accepts any declared node (no kind restriction, unlike `owns`; system
+  containers themselves are excluded). Grouping resolves
   **per view, against the nodes rendered at the level being drawn**: each view
   frames the members present at that level; members living at other levels simply
   do not participate in that view's frames. A `domain` nested under a `service`
