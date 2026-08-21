@@ -1,6 +1,7 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { stitchKebabTail, type TokenCursor } from "./kebab-name.js";
+import { readNodeIdPathTail } from "./node-path.js";
 import type {
   KrsFile,
   KrsNode,
@@ -10,7 +11,7 @@ import type {
   DeployNode,
   DeployNodeProperties,
   ImportDeclaration,
-  ImportIdPath,
+  NodeIdPath,
   Diagnostic,
   DiagnosticCode,
   DiagnosticParamsByCode,
@@ -433,27 +434,21 @@ export class Parser {
     }
     this.advance(); // {
 
-    const ids: ImportIdPath[] = [];
+    const ids: NodeIdPath[] = [];
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       if (this.peek().type === TokenType.Identifier) {
         // Read one path: Identifier (Dot Identifier)*
-        const path: string[] = [this.advance().value];
-        while (this.peek().type === TokenType.Dot) {
-          this.advance(); // consume "."
-          if (this.peek().type === TokenType.Identifier) {
-            path.push(this.advance().value);
-          } else {
-            // dot without trailing identifier — record error and stop reading
-            // segments for this entry; skip the bad token to make progress.
-            this.error("expected-identifier", {
-              got: String(this.peek().type),
-              value: this.peek().value,
-            });
-            this.advance();
-            break;
-          }
+        const tail = readNodeIdPathTail(this.advance(), this.cursor);
+        if (tail.dangling) {
+          // dot without trailing identifier — record error and stop reading
+          // segments for this entry; skip the bad token to make progress.
+          this.error("expected-identifier", {
+            got: String(tail.dangling.type),
+            value: tail.dangling.value,
+          });
+          this.advance();
         }
-        ids.push(path);
+        ids.push(tail.segments);
         this.match(TokenType.Comma);
       } else {
         // 予期しないトークン: エラーを記録してスキップ
@@ -604,17 +599,15 @@ export class Parser {
           const isId = (t: TokenType) =>
             t === TokenType.Identifier || t === TokenType.StringLiteral;
           if (isId(this.peek().type)) {
-            const parentTok = this.advance();
-            if (this.peek().type === TokenType.Dot) {
-              this.advance(); // consume '.'
-              if (isId(this.peek().type)) {
-                const childTok = this.advance();
-                properties.tableRef = { parent: parentTok.value, child: childTok.value };
-              } else {
-                // Missing sub-id — do NOT consume the following token (`}`, etc.).
-                this.error("expected-id-after", { property: "table" });
-              }
+            const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+              maxSegments: 2,
+              acceptStringSegments: true,
+            });
+            if (tail.segments.length === 2) {
+              properties.tableRef = { parent: tail.segments[0], child: tail.segments[1] };
             } else {
+              // Missing dot, or missing sub-id after the dot — do NOT consume
+              // the following token (`}`, etc.).
               this.error("expected-id-after", { property: "table" });
             }
           } else {
@@ -1269,8 +1262,16 @@ export class Parser {
     // Check for dot-notation: resource OrderDB.C
     let ref: { parent: string; child: string } | undefined;
     if (this.peek().type === TokenType.Dot) {
-      this.advance(); // consume '.'
-      const childToken = this.parseIdOrString("resource child id");
+      const tail = readNodeIdPathTail(idToken, this.cursor, {
+        maxSegments: 2,
+        acceptStringSegments: true,
+      });
+      // On a dangling dot, keep this site's historical recovery: report, leave
+      // the bad token unconsumed, and still join its value into the id.
+      const childToken = tail.dangling ?? tail.end;
+      if (tail.dangling) {
+        this.error("expected-id-or-string", { context: "resource child id" });
+      }
       ref = { parent: id, child: childToken.value };
       id = `${id}.${childToken.value}`;
       idToken = childToken;
@@ -1776,8 +1777,16 @@ export class Parser {
     let toValue = toToken.value;
     let toEnd = toToken.loc;
     if (this.peek().type === TokenType.Dot) {
-      this.advance(); // consume '.'
-      const serviceToken = this.parseIdOrString("qualified edge target");
+      const tail = readNodeIdPathTail(toToken, this.cursor, {
+        maxSegments: 2,
+        acceptStringSegments: true,
+      });
+      // On a dangling dot, keep this site's historical recovery: report, leave
+      // the bad token unconsumed, and still join its value into the target.
+      const serviceToken = tail.dangling ?? tail.end;
+      if (tail.dangling) {
+        this.error("expected-id-or-string", { context: "qualified edge target" });
+      }
       toValue = `${toToken.value}.${serviceToken.value}`;
       toEnd = serviceToken.loc;
     }

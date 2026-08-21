@@ -260,6 +260,7 @@ flowchart TD
     ADR_2167["ADR-2167<br/>reference list はカンマ列挙を受け、membership は 1 行 1 件に留..."]
     ADR_2173["ADR-2173<br/>facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
     ADR_2208["ADR-2208<br/>organization / team / member の positional label..."]
+    ADR_2547["ADR-2547<br/>node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を..."]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -836,6 +837,7 @@ flowchart TD
   class ADR_2482 accepted
   class ADR_2521 accepted
   class ADR_2522 accepted
+  class ADR_2547 accepted
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_9001 accepted

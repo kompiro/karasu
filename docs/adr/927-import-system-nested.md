@@ -8,13 +8,14 @@ related_to:
   - ADR-281
   - ADR-292
   - ADR-412
+  - ADR-2547
 scope:
   packages: [core]
 assumptions:
   - "file: packages/core/src/fs/import-resolver.ts"
-  - "symbol: packages/core/src/types/ast.ts :: ImportIdPath"
+  - "symbol: packages/core/src/types/ast.ts :: NodeIdPath"
   - "grep: packages/core/src/types/ast.ts :: \"import-path-not-found\""
-  - "grep: packages/core/src/parser/parser.ts :: ImportIdPath"
+  - "grep: packages/core/src/parser/parser.ts :: NodeIdPath"
 ---
 
 # ADR-927: system にネストした service / domain の Named Import は明示的な path 構文で取り込む
@@ -39,7 +40,7 @@ karasu のモデリングでは **同名 id の意図的な共存**が珍しく�
 
 **`import { A.B.C } from "..."` の明示 path 構文を最初から実装する。** 暗黙の再帰検索（bare id が descendants を勝手に探索）は採用しない。
 
-- Parser: id list で `Identifier (Dot Identifier)*` を受理する。bare id `Foo` は `["Foo"]`、`A.B.C` は `["A", "B", "C"]` として `ImportIdPath = string[]` に保持し、`ImportDeclaration.ids: ImportIdPath[]` に格納する。
+- Parser: id list で `Identifier (Dot Identifier)*` を受理する。bare id `Foo` は `["Foo"]`、`A.B.C` は `["A", "B", "C"]` として `ImportIdPath = string[]` に保持し、`ImportDeclaration.ids: ImportIdPath[]` に格納する（`ImportIdPath` は ADR-2547 で `NodeIdPath` に一般化された）。
 - Resolver: 長さ 1 は既存 bare id 解決（top-level / direct child / system / `deploy.nodes`）。長さ 2 以上は path 走査で、各セグメントを直前で解決したノードの `children` から id 一致で線形検索する（kind は問わない）。
 - 新規診断 `import-path-not-found`: いずれかのセグメントで外れたら `{ path, failedAt, importPath, lastResolvedId? }` を返す。bare id の `import-id-not-found` はそのまま残す。
 - 解放範囲: `import { ECPlatform }` / `import { ECPlatform.ECommerce }` / `import { ECPlatform.ECommerce.Order }` / `import { ECPlatform.ECommerce.Order.PlaceOrder }`（usecase まで連結可能）。

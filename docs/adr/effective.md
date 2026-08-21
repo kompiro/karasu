@@ -267,6 +267,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2167](2167-realizes-comma-list.md) — reference list はカンマ列挙を受け、membership は 1 行 1 件に留める — `realizes` の受理形と `owns` / `contains` の境界
 - [ADR-2173](2173-facet-grammar-and-model.md) — facet の文法と model 層 — 診断は resolver 側、カタログには載せる、merge は union
 - [ADR-2208](2208-positional-label-error-promotion.md) — organization / team / member の positional label を error にする
+- [ADR-2547](2547-shared-node-path-machinery.md) — node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を定義する
 - [ADR-9008](9008-ast-restructure-discriminated-union.md) — AST 再構成 — Discriminated Union とプロパティブロック
 
 ## project
