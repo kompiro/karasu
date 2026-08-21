@@ -3,6 +3,7 @@ import type {
   KrsNode,
   KrsEdge,
   KrsFile,
+  NodeIdPath,
   ResourceNode,
   EntityNode,
   TeamNode,
@@ -10,7 +11,7 @@ import type {
 } from "../types/ast.js";
 import { INFRA_KIND_SET, OWNS_TARGET_KIND_SET } from "../types/ast.js";
 import { collectDeclaredNodePaths, resolveDeclaredRef } from "../parser/reference-validation.js";
-import { nodePathKey } from "../parser/node-path.js";
+import { nodePathKey, nodePathMatchesSuffix } from "../parser/node-path.js";
 import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
@@ -1097,83 +1098,105 @@ function detectUnresolvedHandles(file: KrsFile): Warning[] {
       list.push(edge.to);
     }
 
-    // Memoization: nodeId -> domainId -> boolean
-    const memo = new Map<string, Map<string, boolean>>();
-    const inProgress = new Set<string>(); // cycle guard (key: nodeId|domainId)
+    // A `handles` ref is a node reference path (#2088), and the expose rule is
+    // evaluated against the nodes it RESOLVES to, not the path text: a direct
+    // child domain matches when the ref suffixes its full path
+    // `[system, host, domain]`, and two refs name the same target when their
+    // resolved sets overlap. Candidate paths of every domain directly under a
+    // system-level child, computed once per system.
+    const domainPaths: NodeIdPath[] = [];
+    for (const host of system.children) {
+      for (const child of host.children) {
+        if (child.kind === "domain") domainPaths.push([system.id, host.id, child.id]);
+      }
+    }
+    const resolveRef = (ref: NodeIdPath): NodeIdPath[] =>
+      domainPaths.filter((path) => nodePathMatchesSuffix(ref, path));
+    const sameTarget = (a: NodeIdPath, b: NodeIdPath): boolean => {
+      const bKeys = new Set(resolveRef(b).map(nodePathKey));
+      return resolveRef(a).some((path) => bKeys.has(nodePathKey(path)));
+    };
 
-    function ownsDomain(node: KrsNode, domainId: string): boolean {
-      return node.children.some((c) => c.kind === "domain" && c.id === domainId);
+    // Memoization: nodeId -> ref key -> boolean
+    const memo = new Map<string, Map<string, boolean>>();
+    const inProgress = new Set<string>(); // cycle guard (key: nodeId|refKey)
+
+    function ownsDomain(node: KrsNode, ref: NodeIdPath): boolean {
+      return node.children.some(
+        (c) => c.kind === "domain" && nodePathMatchesSuffix(ref, [system.id, node.id, c.id]),
+      );
     }
 
-    function declaredHandles(node: KrsNode): string[] | undefined {
+    function declaredHandles(node: KrsNode): NodeIdPath[] | undefined {
       if (node.kind === "client" || node.kind === "service") {
         return node.properties.handles;
       }
       return undefined;
     }
 
-    function exposes(nodeId: string, domainId: string): boolean {
-      let domainMap = memo.get(nodeId);
-      if (domainMap?.has(domainId)) return domainMap.get(domainId)!;
+    function exposes(nodeId: string, ref: NodeIdPath): boolean {
+      const refKey = nodePathKey(ref);
+      let refMap = memo.get(nodeId);
+      if (refMap?.has(refKey)) return refMap.get(refKey)!;
 
       const node = nodeById.get(nodeId);
       if (!node) {
-        if (!domainMap) {
-          domainMap = new Map();
-          memo.set(nodeId, domainMap);
+        if (!refMap) {
+          refMap = new Map();
+          memo.set(nodeId, refMap);
         }
-        domainMap.set(domainId, false);
+        refMap.set(refKey, false);
         return false;
       }
 
       // Cycle guard — treat in-progress lookups as not-yet-exposed; this
       // prevents infinite recursion on pathological graphs (e.g. A.handles X
       // pointing to B.handles X pointing back to A).
-      const key = `${nodeId}|${domainId}`;
+      const key = `${nodeId}|${refKey}`;
       if (inProgress.has(key)) {
-        if (!domainMap) {
-          domainMap = new Map();
-          memo.set(nodeId, domainMap);
+        if (!refMap) {
+          refMap = new Map();
+          memo.set(nodeId, refMap);
         }
-        domainMap.set(domainId, false);
+        refMap.set(refKey, false);
         return false;
       }
       inProgress.add(key);
 
-      // Rule 1: own
-      if (ownsDomain(node, domainId)) {
-        if (!domainMap) {
-          domainMap = new Map();
-          memo.set(nodeId, domainMap);
+      // Rule 1: own — a direct child domain the ref resolves to.
+      if (ownsDomain(node, ref)) {
+        if (!refMap) {
+          refMap = new Map();
+          memo.set(nodeId, refMap);
         }
-        domainMap.set(domainId, true);
+        refMap.set(refKey, true);
         inProgress.delete(key);
         return true;
       }
 
-      // Rule 2: re-export — the node declared `handles D` AND an outgoing
-      // edge target also exposes D.
+      // Rule 2: re-export — the node declared a `handles` ref naming the same
+      // target AND an outgoing edge target also exposes it.
       const handles = declaredHandles(node);
-      if (handles?.includes(domainId)) {
+      if (handles?.some((own) => sameTarget(own, ref))) {
         const targets = outgoingByFrom.get(nodeId) ?? [];
         for (const target of targets) {
-          if (exposes(target, domainId)) {
-            if (!domainMap) {
-              domainMap = new Map();
-              memo.set(nodeId, domainMap);
+          if (exposes(target, ref)) {
+            if (!refMap) {
+              refMap = new Map();
+              memo.set(nodeId, refMap);
             }
-            domainMap.set(domainId, true);
+            refMap.set(refKey, true);
             inProgress.delete(key);
             return true;
           }
         }
       }
 
-      if (!domainMap) {
-        domainMap = new Map();
-        memo.set(nodeId, domainMap);
+      if (!refMap) {
+        refMap = new Map();
+        memo.set(nodeId, refMap);
       }
-      domainMap.set(domainId, false);
+      refMap.set(refKey, false);
       inProgress.delete(key);
       return false;
     }
@@ -1184,18 +1207,18 @@ function detectUnresolvedHandles(file: KrsFile): Warning[] {
       const handles = node.properties.handles;
       if (!handles || handles.length === 0) continue;
 
-      for (const domainId of handles) {
+      for (const ref of handles) {
         // For the declaring node itself, "exposes" recurses into rule 2 and
         // walks the outgoing edges. Self-owned domains (rule 1) take
         // precedence and are also tested there.
-        if (exposes(node.id, domainId)) continue;
+        if (exposes(node.id, ref)) continue;
 
         warnings.push({
           kind: "unresolved-handles",
           params: {
             nodeId: node.id,
             nodeKind: node.kind,
-            domainId,
+            domainId: nodePathKey(ref),
           },
           loc: node.loc,
         });
@@ -1403,60 +1426,38 @@ function detectMissingProperties(file: KrsFile): Warning[] {
 function detectUnresolvedRealizes(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
 
-  // Build the set of all valid realize-target IDs: services / domains / clients
-  // and the system-level infra nodes (database / queue / storage). A deploy unit
-  // may realize a shared store to record its physical form (e.g. a `store` unit
-  // realizing a `database`); see ADR-1632. A client is also a deployable
-  // logical node (a `war` / `assets` bundle realizes a `client` SPA), so it is a
-  // valid target too; see ADR-1720. Leaf sub-resources
-  // (table / queue-item / bucket) are NOT valid targets.
-  const validIds = new Set<string>();
-  function collectIds(nodes: KrsNode[]): void {
-    for (const node of nodes) {
-      if (
-        node.kind === "service" ||
-        node.kind === "domain" ||
-        node.kind === "client" ||
-        INFRA_KIND_SET.has(node.kind)
-      ) {
-        validIds.add(node.id);
-      }
-      collectIds(node.children);
-    }
-  }
-  for (const system of file.systems) {
-    collectIds(system.children);
-  }
-  for (const service of file.services) {
-    validIds.add(service.id);
-    collectIds(service.children);
-  }
-  for (const domain of file.domains) {
-    validIds.add(domain.id);
-    collectIds(domain.children);
-  }
-  for (const client of file.clients) {
-    validIds.add(client.id);
-    collectIds(client.children);
-  }
-  // Top-level infra blocks live in their own KrsFile buckets, not in
-  // system.children, so add their ids explicitly.
-  for (const infra of [...file.databases, ...file.queues, ...file.storages]) {
-    validIds.add(infra.id);
-  }
+  // A target is a node reference path (#2088), resolved by the suffix rule
+  // over every declared node of a realizable kind: services / domains /
+  // clients and infra blocks (database / queue / storage) at any depth. A
+  // deploy unit may realize a shared store to record its physical form (e.g.
+  // a `store` unit realizing a `database`); see ADR-1632. A client is also a
+  // deployable logical node (a `war` / `assets` bundle realizes a `client`
+  // SPA), so it is a valid target too; see ADR-1720. Leaf sub-resources
+  // (table / queue-item / bucket) are NOT valid targets, and a ref whose
+  // every match is such a kind keeps drawing this warning, exactly as the
+  // old flat id set did.
+  const declared = collectDeclaredNodePaths(file);
+  const realizable = (ref: NodeIdPath): boolean =>
+    resolveDeclaredRef(declared, ref).some(
+      (m) =>
+        m.kind === "service" ||
+        m.kind === "domain" ||
+        m.kind === "client" ||
+        INFRA_KIND_SET.has(m.kind),
+    );
 
   for (const deploy of file.deploys) {
     for (const node of deploy.nodes) {
       const realizes = node.properties.realizes;
       if (!realizes || realizes.length === 0) continue;
       for (const target of realizes) {
-        if (!validIds.has(target.id)) {
+        if (!realizable(target.path)) {
           warnings.push({
             kind: "unresolved-realizes",
             params: {
               deployNodeId: node.id,
               deployBlockId: deploy.id,
-              target: target.id,
+              target: nodePathKey(target.path),
             },
             // The identifier's own range, not the node's: a unit realizing
             // several targets — whether written as repeated lines or one comma

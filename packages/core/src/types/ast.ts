@@ -190,7 +190,7 @@ export interface ServiceNode extends BaseNodeFields {
      * one-hop expose rule: at least one outgoing communication edge target
      * must itself expose the named domain.
      */
-    handles?: string[];
+    handles?: NodeIdPath[];
     /**
      * Client ids this service ships (BFF / SSR pattern). The renderer synthesizes
      * a tagged `delivers` edge for each entry; the property itself is the source of
@@ -349,7 +349,7 @@ export interface ClientNode extends BaseNodeFields {
      * (a `service` it talks to) must expose the named domain (own it as a
      * child, or re-export it via its own `handles`).
      */
-    handles?: string[];
+    handles?: NodeIdPath[];
   };
 }
 
@@ -517,7 +517,12 @@ export interface FacetBlock {
  * ranges throughout.
  */
 export interface RealizesTarget {
-  id: string;
+  /**
+   * The target as a node reference path (#2088): bare id = length-1 case,
+   * a longer suffix path narrows to the node it names. Author notation is
+   * preserved (no normalization — TPL-1101).
+   */
+  path: NodeIdPath;
   loc: SourceRange;
 }
 
@@ -911,6 +916,8 @@ export interface DiagnosticParamsByCode {
   // a full path the author can qualify with.
   "owns-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
   "contains-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  "realizes-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  "handles-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
   "duplicate-edge-id": { authorId: string };
   "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->" };
 

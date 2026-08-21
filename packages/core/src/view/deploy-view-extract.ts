@@ -69,7 +69,12 @@ export function extractDeployView(
   for (const unit of deployBlock.nodes) {
     const realizes = unit.properties.realizes;
     if (realizes && realizes.length > 0) {
-      for (const { id: serviceId } of realizes) {
+      for (const target of realizes) {
+        // Containers group by the target node's id — the ref's last segment —
+        // so bare and qualified spellings of the same node land in one
+        // container (#2088). Narrowing takes effect in validation/ambiguity,
+        // not in this view-level identity.
+        const serviceId = target.path[target.path.length - 1];
         if (!groupedByRealizes.has(serviceId)) {
           groupedByRealizes.set(serviceId, []);
         }

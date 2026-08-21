@@ -248,6 +248,80 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
 }
 
 /**
+ * Ambiguity check for `realizes` refs (#2088 slice C): a ref that resolves to
+ * two or more realizable nodes (service / domain / client / infra blocks —
+ * ADR-1720 / ADR-1632) NOT uniform in (kind, depth) is reported with the
+ * candidate full paths. Existence stays with `unresolved-realizes` in
+ * resolver/warnings.ts; this check shares its resolution pool so the two
+ * cannot drift on what a ref names (TPL-1720).
+ *
+ * Import-coupled like the `owns` / `contains` checks above (#2410): the
+ * target may live in an imported file, so a document with unresolved imports
+ * does not decide it; the ImportResolver re-runs this on the merged model.
+ */
+export function validateRealizesReferences(file: KrsFile): Diagnostic[] {
+  if (file.deploys.length === 0 || file.nodeImports.length > 0) return [];
+  const declared = collectDeclaredNodePaths(file);
+  const diagnostics: Diagnostic[] = [];
+  const realizableKinds = new Set(["service", "domain", "client", "database", "queue", "storage"]);
+  for (const deploy of file.deploys) {
+    for (const node of deploy.nodes) {
+      for (const target of node.properties.realizes ?? []) {
+        const matches = resolveDeclaredRef(declared, target.path).filter((m) =>
+          realizableKinds.has(m.kind),
+        );
+        const ambiguous = ambiguousNodePathCandidates(matches);
+        if (ambiguous !== undefined) {
+          diagnostics.push({
+            severity: "warning",
+            code: "realizes-target-ambiguous",
+            params: ambiguityParams(target.path, ambiguous),
+            loc: target.loc,
+          });
+        }
+      }
+    }
+  }
+  return diagnostics;
+}
+
+/**
+ * Ambiguity check for `handles` refs (#2088 slice C). The pool is every
+ * declared `domain`, so with the kind fixed the discriminator reduces to
+ * depth: same-depth duplicates are the multi-tenant broadcast pattern and
+ * stay silent, a cross-depth match is reported with candidate paths.
+ * Existence and the one-hop expose rule stay with `unresolved-handles` in
+ * resolver/warnings.ts. Import-coupled like every check in this file.
+ */
+export function validateHandlesReferences(file: KrsFile): Diagnostic[] {
+  if (file.nodeImports.length > 0) return [];
+  const declared = collectDeclaredNodePaths(file);
+  const diagnostics: Diagnostic[] = [];
+  const check = (node: KrsNode): void => {
+    if (node.kind === "client" || node.kind === "service") {
+      for (const ref of node.properties.handles ?? []) {
+        const matches = resolveDeclaredRef(declared, ref).filter((m) => m.kind === "domain");
+        const ambiguous = ambiguousNodePathCandidates(matches);
+        if (ambiguous !== undefined) {
+          diagnostics.push({
+            severity: "warning",
+            code: "handles-target-ambiguous",
+            params: ambiguityParams(ref, ambiguous),
+            loc: node.loc,
+          });
+        }
+      }
+    }
+    for (const child of node.children) check(child);
+  };
+  for (const system of file.systems) {
+    for (const child of system.children) check(child);
+  }
+  for (const root of [...file.services, ...file.clients]) check(root);
+  return diagnostics;
+}
+
+/**
  * Validate `contains` inside *scoped* `boundary` blocks (#2036).
  *
  * The valid target set is narrower than for top-level blocks: a scoped boundary

@@ -17,6 +17,8 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validateRealizesReferences,
+  validateHandlesReferences,
   validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
@@ -46,6 +48,8 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // so it is import-coupled for the same reason (#2088 / ADR-2410).
   "owns-target-ambiguous",
   "contains-target-ambiguous",
+  "realizes-target-ambiguous",
+  "handles-target-ambiguous",
   // Co-ownership became a merged-model verdict when ownerIndex moved to the
   // rebuild pattern (#2548): two files each owning the same node is a fact no
   // single file can see, and the entry file's per-file infos would otherwise
@@ -152,6 +156,10 @@ export class ImportResolver {
     // vanish entirely: cross-file `system` reopen can add the very child a
     // scoped `contains` names, so only the merged tree can decide.
     this.diagnostics.push(...validateScopedContainsReferences(krsFile));
+    // Ambiguity for realizes / handles path refs (#2088 slice C), decided on
+    // the merged model like every reference check above.
+    this.diagnostics.push(...validateRealizesReferences(krsFile));
+    this.diagnostics.push(...validateHandlesReferences(krsFile));
     // Physical dot-notation refs decide only here, for the same reason: the
     // `database` block a slice references usually lives in the infra file it
     // imports (#2078).

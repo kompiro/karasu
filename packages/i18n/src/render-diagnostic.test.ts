@@ -239,6 +239,28 @@ const SAMPLES: SamplesByCode = {
       ],
     },
   },
+  "realizes-target-ambiguous": {
+    severity: "warning",
+    code: "realizes-target-ambiguous",
+    params: {
+      path: "Api",
+      candidates: [
+        { kind: "service", path: "Shop.Api" },
+        { kind: "client", path: "Api" },
+      ],
+    },
+  },
+  "handles-target-ambiguous": {
+    severity: "warning",
+    code: "handles-target-ambiguous",
+    params: {
+      path: "Order",
+      candidates: [
+        { kind: "domain", path: "Shop.Backend.Order" },
+        { kind: "domain", path: "Order" },
+      ],
+    },
+  },
   "unresolved-resource-ref": {
     severity: "warning",
     code: "unresolved-resource-ref",
@@ -467,6 +489,8 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-node-id-parent": ["OrderService"],
   "owns-target-not-found": ["MissingSvc"],
   "owns-target-ambiguous": ["Payment", "Shop.Payment", "Shop.Checkout.Payment"],
+  "realizes-target-ambiguous": ["Api", "Shop.Api"],
+  "handles-target-ambiguous": ["Order", "Shop.Backend.Order"],
   "unresolved-resource-ref": ["OrderDB", "orders"],
   "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],

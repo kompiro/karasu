@@ -71,8 +71,9 @@ function makeDeployBlock(
         realizes:
           n.realizes === undefined
             ? undefined
-            : (Array.isArray(n.realizes) ? n.realizes : [n.realizes]).map((id) => ({
-                id,
+            : (Array.isArray(n.realizes) ? n.realizes : [n.realizes]).map((ref) => ({
+                // Fixture takes joined refs; split into path segments (#2088).
+                path: ref.split("."),
                 loc: LOC,
               })),
         runtime: n.runtime,

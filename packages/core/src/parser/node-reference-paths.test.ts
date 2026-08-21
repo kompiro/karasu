@@ -5,6 +5,7 @@ import { extractView } from "../view/view-extract.js";
 import { layout } from "../renderer/layout.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
+import { analyze } from "../resolver/warnings.js";
 
 /**
  * Slice B of #2088 (#2548): `owns` / `contains` accept suffix paths, the
@@ -157,6 +158,165 @@ system Shop {
     );
     expect(errs).toHaveLength(1);
     expect(r.value.boundaries[0].contains).toEqual([]);
+  });
+});
+
+describe("realizes / handles accept suffix paths (#2549)", () => {
+  it("realizes Shop.Api parses as a path and resolves", () => {
+    const r = Parser.parse(`
+system Shop {
+  service Api {}
+}
+deploy prod {
+  oci "api-unit" {
+    realizes Shop.Api
+  }
+}
+`);
+    expect(r.diagnostics).toHaveLength(0);
+    expect(r.value.deploys[0].nodes[0].properties.realizes?.map((t) => t.path)).toEqual([
+      ["Shop", "Api"],
+    ]);
+    const kinds = analyze(r.value, []).map((w) => w.kind);
+    expect(kinds).not.toContain("unresolved-realizes");
+  });
+
+  it("a rejected realizes form records nothing rather than its first segment", () => {
+    const r = Parser.parse(`
+deploy prod {
+  oci "api-unit" {
+    realizes Shop.
+  }
+}
+`);
+    const errs = r.diagnostics.filter((d) => d.code === "expected-property-value");
+    expect(errs).toHaveLength(1);
+    expect(r.value.deploys[0].nodes[0].properties.realizes ?? []).toEqual([]);
+  });
+
+  it("handles Backend.Order parses as a path and the expose rule evaluates the resolved node", () => {
+    const r = Parser.parse(`
+system Shop {
+  client Web {
+    handles Backend.Order
+  }
+  service Backend {
+    domain Order {}
+  }
+  Web -> Backend "calls"
+}
+`);
+    expect(r.diagnostics).toHaveLength(0);
+    const web = r.value.systems[0].children[0];
+    expect(web.kind === "client" && web.properties.handles).toEqual([["Backend", "Order"]]);
+    const kinds = analyze(r.value, []).map((w) => w.kind);
+    expect(kinds).not.toContain("unresolved-handles");
+  });
+
+  it("a rejected handles form records nothing rather than its first segment", () => {
+    const r = Parser.parse(`
+system Shop {
+  client Web {
+    handles Backend.
+  }
+}
+`);
+    const errs = r.diagnostics.filter(
+      (d) => d.severity === "error" && d.code === "expected-id-after",
+    );
+    expect(errs).toHaveLength(1);
+    const web = r.value.systems[0].children[0];
+    expect(web.kind === "client" && web.properties.handles).toBeFalsy();
+  });
+
+  it("a qualified realizes that names nothing draws unresolved-realizes with the joined ref", () => {
+    const r = Parser.parse(`
+system Shop {
+  service Api {}
+}
+deploy prod {
+  oci "api-unit" {
+    realizes Shop.Nope
+  }
+}
+`);
+    const unresolved = analyze(r.value, []).filter((w) => w.kind === "unresolved-realizes");
+    expect(unresolved).toHaveLength(1);
+    expect(unresolved[0].params).toMatchObject({ target: "Shop.Nope" });
+  });
+
+  it("realizes ambiguity follows the shared (kind, depth) rule", () => {
+    const mixed = Parser.parse(`
+system Shop {
+  service Api {}
+}
+database Api {}
+deploy prod {
+  oci "api-unit" {
+    realizes Api
+  }
+}
+`);
+    const amb = mixed.diagnostics.filter((d) => d.code === "realizes-target-ambiguous");
+    expect(amb).toHaveLength(1);
+    expect(amb[0].params).toEqual({
+      path: "Api",
+      candidates: [
+        { kind: "service", path: "Shop.Api" },
+        { kind: "database", path: "Api" },
+      ],
+    });
+
+    const uniform = Parser.parse(`
+system TenantA {
+  service Api {}
+}
+system TenantB {
+  service Api {}
+}
+deploy prod {
+  oci "api-unit" {
+    realizes Api
+  }
+}
+`);
+    expect(uniform.diagnostics.filter((d) => d.code === "realizes-target-ambiguous")).toHaveLength(
+      0,
+    );
+  });
+
+  it("handles ambiguity fires only across depths (the kind is fixed)", () => {
+    const crossDepth = Parser.parse(`
+system Shop {
+  client Web {
+    handles Order
+  }
+  service Backend {
+    domain Order {}
+  }
+}
+domain Order {}
+`);
+    const amb = crossDepth.diagnostics.filter((d) => d.code === "handles-target-ambiguous");
+    expect(amb).toHaveLength(1);
+    expect(amb[0].params).toMatchObject({ path: "Order" });
+
+    const sameDepth = Parser.parse(`
+system TenantA {
+  client Web {
+    handles Order
+  }
+  service S1 {
+    domain Order {}
+  }
+  service S2 {
+    domain Order {}
+  }
+}
+`);
+    expect(sameDepth.diagnostics.filter((d) => d.code === "handles-target-ambiguous")).toHaveLength(
+      0,
+    );
   });
 });
 

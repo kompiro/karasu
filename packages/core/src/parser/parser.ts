@@ -49,6 +49,8 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validateRealizesReferences,
+  validateHandlesReferences,
   validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
@@ -394,6 +396,11 @@ export class Parser {
     // Scoped boundaries resolve against direct children, so they are checked
     // per scope rather than against the whole model (#2036).
     this.diagnostics.push(...validateScopedContainsReferences(file));
+    // Ambiguity for realizes / handles path refs (#2088 slice C). Existence
+    // stays with resolver/warnings.ts; only the ambiguity verdict lives here,
+    // on the same import-coupled surface as owns / contains.
+    this.diagnostics.push(...validateRealizesReferences(file));
+    this.diagnostics.push(...validateHandlesReferences(file));
     // A `resource` / `table` naming an infra block or leaf nothing declares
     // (#2078). Suppressed and re-derived by the ImportResolver like the checks
     // above, since the block is canonically declared in an imported infra file.
@@ -483,7 +490,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       capabilities?: import("../types/ast.js").ClientCapability[];
-      handles?: string[];
+      handles?: NodeIdPath[];
       delivers?: string[];
       operations?: ParsedOperation[];
       tableRef?: { parent: string; child: string };
@@ -1006,25 +1013,32 @@ export class Parser {
     return t === TokenType.Identifier || t === TokenType.StringLiteral;
   }
 
-  private parseHandlesList(): string[] {
-    const ids: string[] = [];
-    if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
-      this.error("expected-id-after", { property: "handles" });
-      return ids;
-    }
-    ids.push(this.advance().value);
+  private parseHandlesList(): NodeIdPath[] {
+    const refs: NodeIdPath[] = [];
+    const readOne = (): boolean => {
+      if (!this.peekIsIdOrString()) {
+        this.error("expected-id-after", { property: "handles" });
+        return false;
+      }
+      const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+        acceptStringSegments: true,
+      });
+      if (tail.dangling) {
+        // Dangling dot: report once and record nothing (#2088) — recording
+        // the read segments would put `handles Backend` in the model next to
+        // an error about `handles Backend.`.
+        this.error("expected-id-after", { property: "handles" });
+        return false;
+      }
+      refs.push(tail.segments);
+      return true;
+    };
+    if (!readOne()) return refs;
     while (this.peek().type === TokenType.Comma) {
       this.advance();
-      if (
-        this.peek().type !== TokenType.Identifier &&
-        this.peek().type !== TokenType.StringLiteral
-      ) {
-        this.error("expected-id-after", { property: "handles" });
-        break;
-      }
-      ids.push(this.advance().value);
+      if (!readOne()) break;
     }
-    return ids;
+    return refs;
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -1106,7 +1120,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       capabilities?: import("../types/ast.js").ClientCapability[];
-      handles?: string[];
+      handles?: NodeIdPath[];
       delivers?: string[];
       tableRef?: { parent: string; child: string };
       facets?: string[];
@@ -1963,10 +1977,36 @@ export class Parser {
 
     for (;;) {
       if (atTarget()) {
-        const token = this.advance();
+        const first = this.advance();
+        // A target is a node reference path (#2088). Dots continue the one
+        // ref even across a line break — the #2167 line rule bounds the
+        // comma list (separators and the next target), not the segments of
+        // a single path.
+        const tail = readNodeIdPathTail(first, this.cursor, {
+          acceptStringSegments: true,
+        });
+        if (tail.dangling) {
+          // Dangling dot: report once and record nothing (#2088) — recording
+          // the read segments would put `realizes Shop` in the model next to
+          // an error about `realizes Shop.`. Recovery mirrors the no-target
+          // branch below: swallow stray separators, resume on a target.
+          this.diagnostics.push({
+            severity: "error",
+            code: "expected-property-value",
+            params: { propName: "realizes" },
+            loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
+          });
+          let recovered = false;
+          while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
+            afterComma = this.advance();
+            recovered = true;
+          }
+          if (!recovered || !atTarget()) return;
+          continue;
+        }
         (properties.realizes ??= []).push({
-          id: token.value,
-          loc: this.range(token.loc, token.end),
+          path: tail.segments,
+          loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
         });
         // Without a comma the list is done; with one, another target is due.
         if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;

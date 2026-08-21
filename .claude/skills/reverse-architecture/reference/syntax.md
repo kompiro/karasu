@@ -66,7 +66,7 @@ Recommended: pick at most one form-factor tag per client. Multiple tags go in **
 
 #### `handles` property — what a client/service exposes to its callers
 
-Both `client` and `service` may declare a `handles` property listing **domain ids exposed to callers**. It is a *validated cross-reference*: the domain id must be reachable through a one-hop expose rule, otherwise an `unresolved-handles` warning is emitted.
+Both `client` and `service` may declare a `handles` property listing **domains exposed to callers**, each named by a node reference path (see [§ Node reference path notation](#node-reference-path-notation)) — a bare id or a qualifying suffix like `handles Backend.Order`. It is a *validated cross-reference*: the reference must be reachable through a one-hop expose rule, otherwise an `unresolved-handles` warning is emitted. A cross-depth multi-match draws `handles-target-ambiguous`.
 
 ```krs
 system Shop {
@@ -98,9 +98,11 @@ client C [web] {
 
 **Expose rule** (used by the validator):
 
-> A node `N` *exposes* domain `D` iff:
-> 1. `N` has a child `domain D` (self-owned), **or**
-> 2. `N` declares `handles D` and at least one outgoing communication edge target also exposes `D`.
+> A node `N` *exposes* the domain a reference `D` resolves to iff:
+> 1. `N` has a child `domain` whose full path the reference suffixes (self-owned), **or**
+> 2. `N` declares a `handles` reference naming the same domain, and at least one outgoing communication edge target also exposes it.
+>
+> The rule is evaluated against the **resolved node**, not the reference text (#2088): `handles Backend.Order` and a re-exporter's bare `handles Order` chain through the same domain.
 
 `delivers` and other declarative properties do not count as edges. The rule expands one hop at a time, so each link in a `client → BFF → backend` chain must be declared explicitly — there is no implicit auto-passthrough.
 
@@ -993,7 +995,9 @@ deploy "production" {
 A `realizes` target may be a `service`, a `domain`, or a **`client`** — a client (SPA / mobile app)
 is a deployable logical node, so a `war` / `assets` bundle that realizes it records the client's
 physical form, symmetrically to how an `oci` unit realizes a service (see also _Realizing shared infra_
-below for `database` / `queue` / `storage` targets).
+below for `database` / `queue` / `storage` targets). The target is written as a node reference path
+(see [§ Node reference path notation](#node-reference-path-notation)): a bare id or a qualifying
+suffix like `realizes Shop.Api`; a mixed-kind/depth multi-match draws `realizes-target-ambiguous`.
 
 Multiple `realizes` entries can be listed to express that a single deployment unit realizes more than one service.
 In that case, the same node is drawn inside each service's container on the deploy diagram.
@@ -1087,8 +1091,9 @@ shape and one resolution rule (#2088):
   declaring node's direct children.
 - **Accepting sites today**: `import { … }`, cross-system edge endpoints,
   cross-domain entity relations, `resource OrderDB.Orders`, the entity
-  `table` mapping, `owns`, and `contains` (top-level and scoped). `realizes`
-  and `handles` do not accept paths yet (#2549).
+  `table` mapping, `owns`, `contains` (top-level and scoped), `realizes`,
+  and `handles` — all nine sites (#2088). A rejected form (a dangling dot)
+  reports once and records nothing, never its first segment.
 
 > Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
 

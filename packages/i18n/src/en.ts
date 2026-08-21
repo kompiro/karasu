@@ -488,6 +488,14 @@ export const en: Translations = {
     `"${path}" referenced in "owns" matches multiple nodes of different kind or depth: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}. Qualify with a longer path to name one`,
+  "diagnostic.realizesTargetAmbiguous.message": ({ path, candidates }) =>
+    `"${path}" referenced in "realizes" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
+  "diagnostic.handlesTargetAmbiguous.message": ({ path, candidates }) =>
+    `"${path}" referenced in "handles" matches multiple domains at different depths: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" references "${infraId}", which no database / queue / storage block declares`
