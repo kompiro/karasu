@@ -121,5 +121,7 @@ id でノードを指す構文を新設・変更するとき:
   接尾辞規則（`nodePathMatchesSuffix`）の table-driven テスト + 既存 4 サイトの
   回復挙動の pin（slice A, #2547）
 - `packages/core/src/parser/node-reference-paths.test.ts` — `owns` / `contains` の
-  受理・絞り込み・broadcast 不変・`*-target-ambiguous`・宣言順非依存（slice B, #2548）
-- slice C（#2549）が `realizes` / `handles` の分を足し、9 サイトの列挙を完成させる
+  受理・絞り込み・broadcast 不変・`*-target-ambiguous`・宣言順非依存（slice B, #2548）、
+  および `realizes` / `handles` の受理・record-nothing・resolved-node 基準の expose
+  規則・ambiguity（slice C, #2549）。9 サイトの受理はこれで揃った
+- 解決側の統一（D1 #2575 / D2 #2576 / E #2577）が同ファイルにテストを足していく

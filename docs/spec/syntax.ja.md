@@ -66,7 +66,7 @@ karasu のタグシステムは意図的にオープンで、任意のタグを�
 
 #### `handles` プロパティ — client / service が呼び出し側に公開するもの
 
-`client` と `service` はどちらも `handles` プロパティで **呼び出し側に公開するドメイン id** を宣言できる。これは *バリデート済みクロスリファレンス*で、ドメイン id は 1 ホップの expose ルールで到達可能でなければならず、そうでない場合は `unresolved-handles` 警告が出る。
+`client` と `service` はどちらも `handles` プロパティで **呼び出し側に公開するドメイン** を宣言できる。各エントリはノード参照 path（「ノード参照の path 記法」節）で、bare id でも `handles Backend.Order` のような接尾辞修飾でもよい。これは *バリデート済みクロスリファレンス*で、参照は 1 ホップの expose ルールで到達可能でなければならず、そうでない場合は `unresolved-handles` 警告が出る。深さの異なる多重一致は `handles-target-ambiguous` を引く。
 
 ```krs
 system Shop {
@@ -98,9 +98,11 @@ client C [web] {
 
 **expose ルール**（バリデータが使用）:
 
-> ノード `N` がドメイン `D` を *expose する* のは次のいずれかが成り立つとき:
-> 1. `N` が子ノードとして `domain D` を持つ（自身が所有）、または
-> 2. `N` が `handles D` を宣言し、かつ少なくとも 1 つの outgoing 通信エッジの宛先も `D` を expose している。
+> ノード `N` が参照 `D` の解決先ドメインを *expose する* のは次のいずれかが成り立つとき:
+> 1. `N` の子 `domain` の full path を参照が接尾辞として一致させる（自身が所有）、または
+> 2. `N` が同じドメインを指す `handles` 参照を宣言し、かつ少なくとも 1 つの outgoing 通信エッジの宛先もそれを expose している。
+>
+> 規則は**解決先ノード**に対して評価される（参照テキストではない、#2088）: `handles Backend.Order` と再公開側の bare な `handles Order` は同じドメインで連鎖する。
 
 `delivers` などの宣言的プロパティはエッジとしてカウントされない。expose ルールは 1 ホップずつ展開されるため、`client → BFF → backend` 連鎖の各リンクは明示的に宣言する必要がある — 暗黙の auto-passthrough は存在しない。
 
@@ -924,6 +926,8 @@ deploy "本番環境" {
 `realizes` の対象は `service` / `domain` に加えて **`client`** も指定できる。client（SPA・モバイルアプリ）は
 デプロイ対象となる論理ノードなので、それを realize する `war` / `assets` 等は、`oci` がサービスを realize するのと
 同じく client の物理形態を記録する（`database` / `queue` / `storage` を対象とする場合は後述の _共有 infra の realize_ を参照）。
+対象はノード参照 path（「ノード参照の path 記法」節）で書く: bare id でも `realizes Shop.Api` のような
+接尾辞修飾でもよい。kind・深さの混在する多重一致は `realizes-target-ambiguous` を引く。
 
 複数の `realizes` を並べることで、1つのデプロイ単位が複数のサービスを実現することを表せる。
 その場合、デプロイダイアグラム上では各サービスのコンテナに同じノードが描画される。
@@ -1013,7 +1017,9 @@ store の両方が realize されているとき、deploy 図は service のコ�
   スコープ内 `boundary … contains` は宣言ノードの直下の子に解決される。
 - **現在の受理サイト**: `import { … }`、cross-system edge endpoint、cross-domain
   entity 関連、`resource OrderDB.Orders`、entity の `table` マッピング、`owns`、
-  `contains`（top-level・スコープ内）。`realizes` / `handles` は未対応（#2549）。
+  `contains`（top-level・スコープ内）、`realizes`、`handles` — 9 サイトすべて
+  （#2088）。拒否される形（dangling dot）は 1 回だけ報告し、先頭セグメントを
+  記録することはない。
 
 > Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
 

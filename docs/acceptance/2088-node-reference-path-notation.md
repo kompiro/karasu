@@ -22,7 +22,7 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
 - slice A（#2547）: 既存 4+1 受理サイトの字句を共有ヘルパーへ移行（挙動不変）
 - slice B（#2548）: `owns` / `contains` を受理側に追加し、`ownerIndex` /
   `boundaryMembership` を full path キーに張り替え
-- slice C（#2549）: `realizes` / `handles` を受理側に追加（未着手 — 着地時に本 AT へ追記）
+- slice C（#2549）: `realizes` / `handles` を受理側に追加。拒否形は先頭セグメントを記録しない
 
 ## 受け入れ条件
 
@@ -47,6 +47,19 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › the ambiguity verdict does not depend on declaration order
 - [x] `karasu fmt` が著者の書いた path を保つ（正規化しない）
   > ✅ Automated — packages/core/src/formatter/formatter.test.ts › preserves owns and contains path references as written
+
+### slice C（#2549）— `realizes` / `handles`
+
+- [x] `realizes Shop.Api` / `handles Backend.Order` が parse され、指したノードに解決される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › realizes / handles accept suffix paths (#2549)
+- [x] bare id の解決は両サイトで不変
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › handles Backend.Order parses as a path and the expose rule evaluates the resolved node
+- [x] 拒否される形は先頭セグメントを記録せず、診断はちょうど 1 件
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a rejected realizes form records nothing rather than its first segment
+- [x] `handles` の one-hop expose 規則は path テキストでなく解決先ノードに対して評価される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › handles Backend.Order parses as a path and the expose rule evaluates the resolved node
+- [x] ambiguity は slice B と同じ (kind, 深さ) 判別を同じヘルパーで使う
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › realizes ambiguity follows the shared (kind, depth) rule
 
 ## 手動確認
 

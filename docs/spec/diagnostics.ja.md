@@ -98,6 +98,8 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `contains-target-not-found` | warning | import 結合の診断であり、未解決の import が残るドキュメントでは判定しない（member が import 先で宣言されている場合があり、スコープ内 `contains` が名指す子は cross-file の `system` 再オープンで後から増えうる）。それ以外の場合: `boundary` の `contains` 先が存在しない — top-level ブロックはマージ後の system 階層のどこにも無い場合（存在検証は per-file でなく cross-file マージ後）、スコープブロックは宣言ノードの直下の子に無い場合（照合はノード参照 path 記法の接尾辞規則）。 |
 | `owns-target-ambiguous` | warning | `owns` の参照（接尾辞 path。bare id を含む）が **(kind, 深さ) の揃っていない** 2 つ以上のノードに解決される。揃っている多重一致は意図的な broadcast（移行共存・マルチテナント）であり沈黙する。メッセージは各候補の full path を列挙し、著者はより長い path で修飾して 1 つに絞れる。`owns-target-not-found` と同じく import 結合: マージ後モデルでのみ判定する。 |
 | `contains-target-ambiguous` | warning | `owns-target-ambiguous` の `contains` 版（top-level `boundary` 用）: kind または深さの混在する多重一致を候補 full path つきで報告する。揃っている多重一致は broadcast として沈黙。スコープ形では構造的に到達不能（member は sibling 一意な直下の子に解決される）。import 結合: マージ後モデルでのみ判定する。 |
+| `realizes-target-ambiguous` | warning | `realizes` の参照（接尾辞 path。bare id を含む）が realizable な kind（service / domain / client / infra ブロック）の 2 つ以上のノードに解決され、(kind, 深さ) が揃っていない。候補は full path で列挙する。揃っている多重一致は沈黙。存在検査は `unresolved-realizes` の担当。import 結合: マージ後モデルでのみ判定する。 |
+| `handles-target-ambiguous` | warning | `handles` の参照が深さの異なる複数の宣言済み `domain` に解決される（kind が固定なので判別軸は深さに畳まれる）。同深さの重複はマルチテナントの broadcast パターンとして沈黙。存在検査と one-hop expose 規則は `unresolved-handles` の担当。import 結合: マージ後モデルでのみ判定する。 |
 | `facet-not-declared` | warning | `facets` の参照先の `facet` ブロックが宣言されていない（存在検証はマージ後のモデルで行うので、import 先の宣言も有効）。near-miss の annotation ヒントと違い、宣言集合が「正」を与えるためこの検査は完全で、著者定義の名前どうしの取り違えも検出する。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |

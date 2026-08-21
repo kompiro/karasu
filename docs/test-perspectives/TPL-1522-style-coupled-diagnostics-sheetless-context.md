@@ -65,6 +65,8 @@ surface 間の診断差分が「意図された制約」なのか「バグ」な
 | `invalid-owns` | 判定しない（構造的に） | 検査側 — 「解決したときだけ kind を見る」に変えた結果、不在は報告しなくなった（#2410） |
 | `owns-target-ambiguous` | 判定しない | 検査側（`validateOwnsReferences`, #2548 — 存在と同じ宣言ノード空間で判定するため同じガードに乗る） |
 | `contains-target-ambiguous` | 判定しない | 検査側（`validateContainsReferences`, #2548） |
+| `realizes-target-ambiguous` | 判定しない | 検査側（`validateRealizesReferences`, #2549） |
+| `handles-target-ambiguous` | 判定しない | 検査側（`validateHandlesReferences`, #2549） |
 | `duplicate-owner-assignment` | 判定しない（merged rebuild が正） | 検査側ではなく resolver — ownerIndex が path キー化で merged rebuild になり（#2548）、per-file の verdict は `MERGED_SPACE_REFERENCE_CODES` で strip される |
 
 `invalid-owns` の行だけ「置き場所」の性質が違う。import ガードを足したのではなく、
