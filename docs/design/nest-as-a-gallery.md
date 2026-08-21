@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-09
 - **ステータス**: 検討中
+- **PR**: [#2584](https://github.com/kompiro/karasu/pull/2584)
 - **関連**:
   - 引き金 Issue: [#2578](https://github.com/kompiro/karasu/issues/2578)（親: [#1990](https://github.com/kompiro/karasu/issues/1990)）
   - 再評価する ADR: [ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md) 決定 1・3、[ADR-1783](../adr/1783-karasu-nest-hosted-preview.md)（statelessness）
