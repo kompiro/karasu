@@ -1546,13 +1546,13 @@ system ECPlatform {
 
 ### パス構文 — `system` ブロック内にネストしたノードへの到達
 
-別ファイルの `system` の直接の子よりも深い位置に定義された `service` / `domain` / `usecase` に到達するには、**ドット区切りパス**形式を使う:
+別ファイルの `system` の直接の子よりも深い位置に定義されたノードに到達するには、**ドット区切りパス**形式を使う:
 
 ```
 import { ECPlatform.ECommerce.Order } from "./services.krs"
 ```
 
-各セグメントは、直前に解決されたノードの `children` 配列に対して id で照合される（kind は強制されない）。パス解決は import 先ファイルのトップレベル `system` から始まる。
+パスはノード参照 path として接尾辞規則で解決される（「ノード参照の path 記法」節、#2088）: エントリは import 先ファイルの中で full path がそれで終わるすべてのノードに一致する。root からの full path は従来どおりのノードに解決され、**相対 suffix**（`import { ECommerce.Order }`）も同じ規則で解決できる。root は system に限らない — top-level の `service` / `client` / `domain` / infra バケット配下のチェーンはそのバケットに実体化される。一致はすべて import され（bare id の import は元々 broadcast）、(kind, 深さ) の揃わない多重一致には `import-target-ambiguous` warning が候補 full path を列挙する。
 
 import 側に取り込まれるのは要求したチェーンだけ: 上の例では、merge 後のファイルに `ECPlatform` のスタブとその下の `ECommerce` のスタブが生まれ、`ECommerce` の子は解決された `Order` のみになる（`Order` のサブツリーは完全に保持される）。`ECommerce` 配下の兄弟 domain は自動では import されない。必要なら同じ import に列挙するか、ファイル全体を wildcard import する。
 
@@ -1577,12 +1577,12 @@ import { OrderSystemV2.OrderService } from "./services.krs"
 
 #### 失敗時の挙動
 
-解決できないパスは `import-path-not-found` 診断を発行し、失敗したセグメントと最後に正常にたどれたノードを示す:
+何にも解決しないパスは `import-path-not-found` 診断を発行する。失敗セグメントは右から左への絞り込み（root から下る walk の接尾辞版）で決まる: 候補を空にしたセグメントが報告され、`lastResolvedId` はまだ候補が残っていた隣のセグメントを名指す:
 
 ```
 import { ECPlatform.NotThere.Order } from "./services.krs"
 // → Import path "ECPlatform.NotThere.Order" failed at segment "NotThere" (#1):
-//   no child with that id under "ECPlatform"
+//   no ancestor with that id above "Order"
 ```
 
 ---

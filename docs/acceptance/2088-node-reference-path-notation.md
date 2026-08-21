@@ -69,6 +69,17 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › keeps resolving the plain qualified form and drops unresolved refs
 - resource 参照は変更なし: #2546 が `indexDeclaredInfra`（単一 walk の共有 index）に統一済みで、S4.5 の同 id reopen-union 同一性により anchored 照合が正しい意味論（接尾辞化は reopen された block の複数宣言 path を誤モデル化する）
 
+### slice D2（#2576）— import の解決
+
+- [x] 従来解決していた import（bare / root-anchored path / wildcard）は同じノードに解決される（既存 suite 無変更 green + failedAt 表現の 2 件のみ意味論更新）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › root-anchored full paths keep resolving to exactly the node they always did
+- [x] ネストしたノードを相対 suffix で import でき、祖先は従来どおり stub 実体化される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a relative suffix imports the node and materializes its ancestors
+- [x] (kind, 深さ) の揃わない多重一致は `import-target-ambiguous` warning が候補 full path を列挙し、一致はすべて import される（bare id の broadcast と同じ意味論。Issue 起票時の error 案は broadcast 整合を優先して改訂）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a non-uniform multi-match imports every match and warns with the candidates
+- [x] `docs/spec/syntax.md` の path-notation 節・import 節が更新されている
+  > ✅ Automated — packages/core/src/types/diagnostics-catalog.test.ts › documents every diagnostic code and warning kind in docs/spec/diagnostics.md
+
 ## 手動確認
 
 `🧑 Manual` の到達先: <https://karasu.kompiro.dev/>（main への push で更新）。
