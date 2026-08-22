@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-17
 - **関連 Issue**: [#2260](https://github.com/kompiro/karasu/issues/2260)
+- **設計 (ADR)**: [ADR-2260](../adr/2260-docs-site-pr-preview.md)
 - **Related TPLs**:
   [TPL-2254](../test-perspectives/TPL-2254-durable-record-points-at-durable-address.md)（本 AT が preview URL を焼き付けない理由）、
   [TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)（trigger を 2 本目の手書きリストで閉じない）

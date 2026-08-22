@@ -128,6 +128,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2139](2139-dependabot-security-2026-07-24-second-batch.md) — Dependabot security 第 2 便 — postcss の後続 advisory（.map path traversal）で override floor を 8.5.18 へ引き上げる
 - [ADR-2142](2142-dependabot-security-2026-07-27.md) — Dependabot security 第 3 便 — brace-expansion OOM DoS は 5 系のみ floor 引き上げ、修正版の無い 1/2 系は据え置く
 - [ADR-2152](2152-dependabot-triage-2026-07-27.md) — Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の publisher 変化は provenance で検証
+- [ADR-2260](2260-docs-site-pr-preview.md) — docs サイトは本番と同じ base path のまま別 Pages プロジェクトへ PR preview する
 - [ADR-2318](2318-dependabot-triage-2026-08-03.md) — Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロックと monaco 0.56.0 の exports 破壊
 - [ADR-2333](2333-dependabot-triage-2026-08-04.md) — Dependabot トリアージ 2026-08-04 — LSP protocol の単独 bump を却下し、oxlint の新規則を設定で収める
 - [ADR-2337](2337-lsp-pair-upgrade-protocol-parity.md) — LSP は client と server を同時に上げ、protocol 版の一致を不変条件として維持する
