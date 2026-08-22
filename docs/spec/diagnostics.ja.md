@@ -84,7 +84,9 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
 | `duplicate-facet-id` | error | 2 つの `facet` ブロックが同じ id を宣言しており、`facets` の参照がどちらのメタデータを指すか決まらない。マージ後のモデルで判定するのでファイルをまたぐ重複も検出する。参照が解決するのは最初の宣言。 |
 | `positional-label-removed` | error | `boundary` / `facet` / `organization` / `team` / `member` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、位置ラベル記法は spec に存在しない。experimental な `boundary` / `facet` は deprecation を挟まず削除し（#2133）、残りは deprecation を経て削除した（#2208）。復帰動作は異なり、`boundary` / `facet` は文字列を捨てるが、`organization` / `team` / `member` は label として保持し、修正されるまで組織図が読める状態を保つ。 |
-| `node-id-multiple-locations` | warning | 同じ node id が index 対象の複数の場所に現れる。モデル全体を walk し終えてから判定するため、宣言順に依存しない。top-level の infra / client ブロックを含む cross-kind の衝突も対象（#2550）。domain 同士の多重は対象外（`domain-dispersal`（info）の領分）。`nodePathIndex` は id ごとに勝者 1 つを保持する: `@migration_target` 優先、同点は traversal 順（systems → top-level domains → top-level infra）で最初の宣言。非勝者ごとにその位置で warning が 1 つ出る。 |
+| `node-id-multiple-locations` | warning | 同じ id を持つ論理層ノード（`service` / `domain` / `client`）が異なるパスに複数宣言されている。判定はファイル内の宣言順に依存しない（#2550。ファイルをまたぐ衝突は import マージ時に先勝ちのままで、再構築は #2596 が追跡）。論理層と物理層（`database` / `queue` / `storage` とその子リソース）の間の同名、および物理層内の同名は許容して沈黙する（物理参照は `resource OrderDB.users` のように dot 修飾されるため）。domain 同士の多重は対象外（`domain-dispersal`（info）の領分）。完全に同じパスでの重複は `duplicate-node-id-parent`（error）に譲る。`nodePathIndex` は id ごとに勝者 1 つを保持する: `@migration_target` 優先（infra の子はブロックのアノテーションを継承）、同点は traversal 順（systems → top-level の domains / services / clients → top-level infra）で最初の宣言。負けた論理層の宣言ごとにその位置で warning が 1 つ出る。 |
+
+> Related TPLs: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 index の勝者規則は index 間で一貫させる。`node-id-multiple-locations` の勝者規則もその一つ）。
 
 ### cross-reference 解決（warn-don't-error, §S6）
 
