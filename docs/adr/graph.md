@@ -276,6 +276,7 @@ flowchart TD
     ADR_1996["ADR-1996<br/>karasu-nest のデータ信頼 — 技術側は実装で閉じ、契約と法務文書は未了として残す"]
     ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
     ADR_2262["ADR-2262<br/>karasu-nest の受付と完了通知 — installer 起動 + PR 還元、rea..."]
+    ADR_2578["ADR-2578<br/>karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -469,8 +470,8 @@ flowchart TD
   ADR_1911 --> ADR_460
   ADR_1974 --> ADR_1858
   ADR_1974 --> ADR_1820
-  ADR_1994 --> ADR_1990
-  ADR_1996 --> ADR_1990
+  ADR_1994 --> ADR_2578
+  ADR_1996 --> ADR_2578
   ADR_2036 --> ADR_1974
   ADR_2036 --> ADR_1983
   ADR_2065 --> ADR_1314
@@ -507,6 +508,8 @@ flowchart TD
   ADR_1014 -.supersedes.-> ADR_926
   ADR_1142 -.supersedes.-> ADR_1076
   ADR_1990 -.supersedes.-> ADR_1783
+  ADR_2578 -.supersedes.-> ADR_1990
+  ADR_2578 -.supersedes.-> ADR_1994
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -762,8 +765,8 @@ flowchart TD
   class ADR_1961 accepted
   class ADR_1974 accepted
   class ADR_1983 accepted
-  class ADR_1990 accepted
-  class ADR_1994 accepted
+  class ADR_1990 superseded
+  class ADR_1994 superseded
   class ADR_1995 accepted
   class ADR_1996 accepted
   class ADR_2036 accepted
@@ -840,6 +843,7 @@ flowchart TD
   class ADR_2547 accepted
   class ADR_2562 accepted
   class ADR_2564 accepted
+  class ADR_2578 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
