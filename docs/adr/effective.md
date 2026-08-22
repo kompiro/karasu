@@ -278,11 +278,10 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1302](1302-enable-private-vulnerability-reporting.md) — Private vulnerability reporting を有効化する
 - [ADR-1801](1801-karasu-nest-ogp-share-page.md) — karasu-nest — 共有リンクの OGP 画像（system 図 unfurl）
 - [ADR-1809](1809-app-custom-domain-karasu-kompiro-dev.md) — プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する
-- [ADR-1990](1990-karasu-nest-pivot-server-reverse.md) — karasu-nest ピボット — GitHub App による server-side reverse の hosted サービス化
-- [ADR-1994](1994-karasu-nest-free-tier-quota.md) — karasu-nest の free-tier quota — installation あたり月 3 回・全体同時実行 1
 - [ADR-1996](1996-karasu-nest-data-trust.md) — karasu-nest のデータ信頼 — 技術側は実装で閉じ、契約と法務文書は未了として残す
 - [ADR-2218](2218-roadmap-pruning-policy.md) — roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）
 - [ADR-2262](2262-nest-intake-and-completion.md) — karasu-nest の受付と完了通知 — installer 起動 + PR 還元、reader は無通知のリクエスト受付
+- [ADR-2578](2578-nest-retires-server-side-reverse.md) — karasu-nest は server-side reverse をやめ、投稿を預かるギャラリーになる
 - [ADR-9006](9006-project-and-filesystem.md) — プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 ## renderer

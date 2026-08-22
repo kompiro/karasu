@@ -1,11 +1,12 @@
 ---
 id: ADR-1994
 title: karasu-nest の free-tier quota — installation あたり月 3 回・全体同時実行 1
-status: accepted
+status: superseded
+superseded_by: ADR-2578
 date: 2026-08-02
 topic: project
 authors: [kompiro]
-depends_on: [ADR-1990]
+depends_on: [ADR-2578]
 related_to: [ADR-2262]
 scope:
   packages: [nest]
@@ -21,7 +22,7 @@ assumptions:
 # ADR-1994: karasu-nest の free-tier quota — installation あたり月 3 回・全体同時実行 1
 
 - **日付**: 2026-08-02
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-2578](2578-nest-retires-server-side-reverse.md)（サービスが推論費を負担しなくなり、枠を置く対象が消えた）
 - **Issue**: [#1994](https://github.com/kompiro/karasu/issues/1994)（quota + rate limit）／親 [#1990](https://github.com/kompiro/karasu/issues/1990)／gate [#2226](https://github.com/kompiro/karasu/issues/2226)（計測）
 
 ## 背景
