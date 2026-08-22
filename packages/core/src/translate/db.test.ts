@@ -405,10 +405,10 @@ CREATE TABLE orders (
       const result = await translator.translate(input, { ...ctx, database: "OrderDB" });
       const parsed = Parser.parse(result);
       // The provisional domain deliberately reuses the database's name (the
-      // scaffold's TODO tells the author to rename it), so the cross-kind
-      // multiplicity warning #2550 made order-independent is expected here —
-      // it is the nudge to do that rename.
-      expect(parsed.diagnostics.filter((d) => d.code !== "node-id-multiple-locations")).toEqual([]);
+      // scaffold's TODO tells the author to rename it). Logical/physical
+      // same-name is tolerated (#2550, PR #2570 review), so this parses
+      // clean.
+      expect(parsed.diagnostics).toEqual([]);
 
       const warnings = analyze(parsed.value, []);
       const kinds = warnings.map((w) => w.kind);
