@@ -52,8 +52,10 @@ import {
   validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
+  buildOwnerIndex,
   buildBoundaryMembership,
   buildScopedBoundaryMembership,
+  migrationPriority,
 } from "./reference-validation.js";
 
 /**
@@ -132,15 +134,10 @@ const ANNOTATION_PARAM_KEYS: Record<string, ReadonlySet<string>> = {
   draft: new Set(["confidence"]),
 };
 
-// Migration-coexistence priority for picking the single winner of a 1:1 index
-// when a node is reachable from more than one place during an inverse-Conway
-// handoff. The destination (@migration_target) wins, the source (@deprecated)
-// loses, and an unmarked entry sits in between. Shared by buildNodePathIndex
-// (domain → nodePathIndex) and indexTeams (team → ownerIndex) so both 1:1
-// indices resolve duplicates the same way. Ties keep the first occurrence.
-function migrationPriority(annotations: readonly string[]): number {
-  return annotations.includes("migration_target") ? 2 : annotations.includes("deprecated") ? 0 : 1;
-}
+// Migration-coexistence priority (`migrationPriority`) lives in
+// reference-validation.ts since #2548 moved buildOwnerIndex there; it is
+// imported below because buildNodePathIndex resolves duplicates by the same
+// rule.
 
 /**
  * The block keywords the parser accepts as deploy-unit declarations.
@@ -340,8 +337,10 @@ export class Parser {
       }
     }
 
-    file.ownerIndex = this.buildOwnerIndex(file.organizations);
-    const topLevelMembership = buildBoundaryMembership(file.boundaries);
+    const ownerResult = buildOwnerIndex(file);
+    file.ownerIndex = ownerResult.membership;
+    this.diagnostics.push(...ownerResult.diagnostics);
+    const topLevelMembership = buildBoundaryMembership(file);
     file.boundaryMembership = topLevelMembership.membership;
     this.diagnostics.push(...topLevelMembership.diagnostics);
     const scopedMembership = buildScopedBoundaryMembership([
@@ -2093,7 +2092,7 @@ export class Parser {
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties = { links: [] };
-    const contains: string[] = [];
+    const contains: NodeIdPath[] = [];
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
@@ -2116,7 +2115,16 @@ export class Parser {
           this.peek().type === TokenType.Identifier ||
           this.peek().type === TokenType.StringLiteral
         ) {
-          contains.push(this.advance().value);
+          const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+            acceptStringSegments: true,
+          });
+          if (tail.dangling) {
+            // Dangling dot: report once and record nothing (#2088), matching
+            // the `owns` reader in parseTeamBlock.
+            this.error("expected-id-after", { property: "contains" });
+          } else {
+            contains.push(tail.segments);
+          }
         } else {
           this.error("expected-id-after", { property: "contains" });
         }
@@ -2278,7 +2286,7 @@ export class Parser {
     const { names: annotations, params: annotationParams } = this.parseAnnotations();
     this.expect(TokenType.LeftBrace);
 
-    const properties: CommonProperties & { owns: string[] } = { links: [], owns: [] };
+    const properties: CommonProperties & { owns: NodeIdPath[] } = { links: [], owns: [] };
     const children: OrgNode[] = [];
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
@@ -2302,7 +2310,16 @@ export class Parser {
           this.peek().type === TokenType.Identifier ||
           this.peek().type === TokenType.StringLiteral
         ) {
-          properties.owns.push(this.advance().value);
+          const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+            acceptStringSegments: true,
+          });
+          if (tail.dangling) {
+            // Dangling dot: report once and record nothing — recording the
+            // read segments would put a wrong model next to the error (#2088).
+            this.error("expected-id-after", { property: "owns" });
+          } else {
+            properties.owns.push(tail.segments);
+          }
         } else {
           this.error("expected-id-after", { property: "owns" });
         }
@@ -2395,57 +2412,6 @@ export class Parser {
       children: [] as const,
       loc: this.range(start.loc, end.loc),
     };
-  }
-
-  private buildOwnerIndex(organizations: OrganizationBlock[]): Map<string, string> {
-    const index = new Map<string, string>();
-    // Priority of the team currently stored as the primary owner of each node,
-    // so a later @migration_target team can take over the 1:1 ownerIndex slot.
-    const priority = new Map<string, number>();
-    for (const org of organizations) {
-      this.indexTeams(org.teams, index, priority);
-    }
-    return index;
-  }
-
-  private indexTeams(
-    teams: TeamNode[],
-    index: Map<string, string>,
-    priority: Map<string, number>,
-  ): void {
-    for (const team of teams) {
-      const teamPriority = migrationPriority(team.annotations);
-      for (const ownedId of team.properties.owns) {
-        if (index.has(ownedId)) {
-          // Co-ownership is a structural fact, not an integrity error: an
-          // inverse-Conway handoff legitimately has two teams own a node
-          // mid-migration. Surface it in the fact-vs-style register (info),
-          // like domain-dispersal (ADR-1566). ownerIndex is 1:1, so a
-          // single primary owner must be chosen: the @migration_target team
-          // (the migration destination) wins, mirroring buildNodePathIndex's
-          // domain logic; ties keep the first declaration (#1583). The
-          // diagnostic names the *resolved* primary after any swap.
-          if (teamPriority > priority.get(ownedId)!) {
-            index.set(ownedId, team.id);
-            priority.set(ownedId, teamPriority);
-          }
-          this.diagnostics.push({
-            severity: "info",
-            code: "duplicate-owner-assignment",
-            params: { nodeId: ownedId, existingTeam: index.get(ownedId)! },
-            loc: team.loc,
-          });
-        } else {
-          index.set(ownedId, team.id);
-          priority.set(ownedId, teamPriority);
-        }
-      }
-      this.indexTeams(
-        team.children.filter((c): c is TeamNode => c.kind === "team"),
-        index,
-        priority,
-      );
-    }
   }
 
   private collectTeamIds(teams: TeamNode[], seen: Set<string>): void {

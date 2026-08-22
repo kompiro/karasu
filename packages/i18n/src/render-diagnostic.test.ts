@@ -197,6 +197,17 @@ const SAMPLES: SamplesByCode = {
     code: "contains-target-not-found",
     params: { memberId: "MissingSvc" },
   },
+  "contains-target-ambiguous": {
+    severity: "warning",
+    code: "contains-target-ambiguous",
+    params: {
+      path: "Payment",
+      candidates: [
+        { kind: "service", path: "Shop.Payment" },
+        { kind: "domain", path: "Shop.Checkout.Payment" },
+      ],
+    },
+  },
   "duplicate-team-id": {
     severity: "error",
     code: "duplicate-team-id",
@@ -216,6 +227,17 @@ const SAMPLES: SamplesByCode = {
     severity: "warning",
     code: "owns-target-not-found",
     params: { ownedId: "MissingSvc" },
+  },
+  "owns-target-ambiguous": {
+    severity: "warning",
+    code: "owns-target-ambiguous",
+    params: {
+      path: "Payment",
+      candidates: [
+        { kind: "service", path: "Shop.Payment" },
+        { kind: "domain", path: "Shop.Checkout.Payment" },
+      ],
+    },
   },
   "unresolved-resource-ref": {
     severity: "warning",
@@ -439,10 +461,12 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-facet-id": ["pii"],
   "positional-label-removed": ["boundary", "label"],
   "contains-target-not-found": ["MissingSvc"],
+  "contains-target-ambiguous": ["Payment", "Shop.Payment", "Shop.Checkout.Payment"],
   "duplicate-team-id": ["Platform"],
   "node-id-multiple-locations": ["OrderService"],
   "duplicate-node-id-parent": ["OrderService"],
   "owns-target-not-found": ["MissingSvc"],
+  "owns-target-ambiguous": ["Payment", "Shop.Payment", "Shop.Checkout.Payment"],
   "unresolved-resource-ref": ["OrderDB", "orders"],
   "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],

@@ -1393,7 +1393,7 @@ organization ExampleCorp {
     const backend = org.teams[0];
     expect(backend.id).toBe("backend");
     expect(backend.label).toBe("バックエンドチーム");
-    expect(backend.properties.owns).toEqual(["ECommerce", "Order"]);
+    expect(backend.properties.owns).toEqual([["ECommerce"], ["Order"]]);
     const members = backend.children.filter((c) => c.kind === "member");
     expect(members).toHaveLength(2);
 
@@ -1408,7 +1408,7 @@ organization ExampleCorp {
 
     const frontend = org.teams[1];
     expect(frontend.id).toBe("frontend");
-    expect(frontend.properties.owns).toEqual(["WebApp"]);
+    expect(frontend.properties.owns).toEqual([["WebApp"]]);
     expect(frontend.children.filter((c) => c.kind === "member")).toHaveLength(1);
   });
 
@@ -1450,8 +1450,9 @@ organization Corp {
 }
     `);
     expect(result.diagnostics).toHaveLength(0);
-    expect(result.value.ownerIndex.get("ECommerce")).toBe("backend");
-    expect(result.value.ownerIndex.get("Payment")).toBe("backend");
+    // ownerIndex is keyed by each owned node's full path (#2548).
+    expect(result.value.ownerIndex.get("Test.ECommerce")).toBe("backend");
+    expect(result.value.ownerIndex.get("Test.Payment")).toBe("backend");
   });
 
   it("reports duplicate owns across teams as info, keeping the first team as primary owner", () => {
@@ -1637,7 +1638,7 @@ boundary payments "Payments" {
     // Recovery: the block body still parses past the stray string.
     const boundary = result.value.boundaries[0];
     expect(boundary.label).toBeUndefined();
-    expect(boundary.contains).toEqual(["Billing"]);
+    expect(boundary.contains).toEqual([["Billing"]]);
   });
 
   // ─── String literal ids ────────────────────────────────────────────────────
@@ -1695,7 +1696,7 @@ organization "dev-team" {
     const team = org.teams[0];
     expect(team.id).toBe("backend-team");
     expect(team.label).toBe("バックエンド");
-    expect(team.properties.owns).toEqual(["order-service", "payment-gateway"]);
+    expect(team.properties.owns).toEqual([["order-service"], ["payment-gateway"]]);
     expect(team.children.find((c) => c.kind === "member")?.id).toBe("alice-smith");
   });
 
@@ -1782,7 +1783,7 @@ organization "Corp社" {
     expect(org.id).toBe("Corp社");
     const team = org.teams[0];
     expect(team.id).toBe("EC開発チーム");
-    expect(team.properties.owns).toEqual(["ECommerce"]);
+    expect(team.properties.owns).toEqual([["ECommerce"]]);
   });
 
   it("accepts Japanese string identifier for member", () => {
@@ -1816,8 +1817,8 @@ organization Corp {
     `);
     expect(result.diagnostics).toHaveLength(0);
     expect(result.value.organizations[0].teams[0].properties.owns).toEqual([
-      "ECommerce",
-      "PaymentService",
+      ["ECommerce"],
+      ["PaymentService"],
     ]);
   });
 
@@ -1832,8 +1833,8 @@ organization "corp" {
     `);
     expect(result.diagnostics).toHaveLength(0);
     expect(result.value.organizations[0].teams[0].properties.owns).toEqual([
-      "e-commerce",
-      "payment-service",
+      ["e-commerce"],
+      ["payment-service"],
     ]);
   });
 
@@ -1848,8 +1849,8 @@ organization Corp {
     `);
     expect(result.diagnostics).toHaveLength(0);
     expect(result.value.organizations[0].teams[0].properties.owns).toEqual([
-      "ECommerce",
-      "payment-service",
+      ["ECommerce"],
+      ["payment-service"],
     ]);
   });
 
@@ -1865,7 +1866,7 @@ organization Corp {
 }
     `);
     expect(result.diagnostics).toHaveLength(0);
-    expect(result.value.ownerIndex.get("e-commerce")).toBe("ecTeam");
+    expect(result.value.ownerIndex.get("S.e-commerce")).toBe("ecTeam");
   });
 
   it("edge supports mixed camelCase and string literal endpoint ids", () => {
@@ -2183,7 +2184,7 @@ organization Corp {
 }
       `);
       expect(result.diagnostics).toHaveLength(0);
-      expect(result.value.ownerIndex.get("Payment")).toBe("backend");
+      expect(result.value.ownerIndex.get("EC.Payment")).toBe("backend");
       expect(result.value.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
     });
   });
@@ -2266,7 +2267,7 @@ boundary payments {
     expect(b.id).toBe("payments");
     expect(b.label).toBe("Payments");
     expect(b.properties.description).toBe("money movement");
-    expect(b.contains).toEqual(["Billing", "Wallet"]);
+    expect(b.contains).toEqual([["Billing"], ["Wallet"]]);
   });
 
   it("builds boundaryMembership (node id → declared boundary ids) at parse time", () => {
@@ -2281,8 +2282,9 @@ boundary payments {
 }
     `);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
-    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments"]);
-    expect(result.value.boundaryMembership.get("Wallet")).toEqual(["payments"]);
+    // boundaryMembership is keyed by each member node's full path (#2548).
+    expect(result.value.boundaryMembership.get("Shop.Billing")).toEqual(["payments"]);
+    expect(result.value.boundaryMembership.get("Shop.Wallet")).toEqual(["payments"]);
   });
 
   it("keeps every declared membership and reports the multi-membership as info (#2178)", () => {
@@ -2304,7 +2306,7 @@ boundary audit {
     // duplicate-owner-assignment). Nothing is discarded — N declarations
     // produce N entries in declaration order (TPL-2161), and the banded view
     // picks the primary at placement time.
-    expect(result.value.boundaryMembership.get("Billing")).toEqual([
+    expect(result.value.boundaryMembership.get("Shop.Billing")).toEqual([
       "payments",
       "finance",
       "audit",
@@ -2332,7 +2334,7 @@ boundary payments {
     // One boundary, listed twice: the membership is unchanged and the info
     // diagnostic must NOT fire — "belongs to more than one boundary" would be
     // untrue here (TPL-1386: the register states the model fact).
-    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments"]);
+    expect(result.value.boundaryMembership.get("Shop.Billing")).toEqual(["payments"]);
     expect(
       result.diagnostics.filter((d) => d.code === "duplicate-boundary-assignment"),
     ).toHaveLength(0);
@@ -2353,7 +2355,7 @@ boundary payments {
     expect(notFound[0].severity).toBe("warning");
     expect(JSON.stringify(notFound[0].params)).toContain("Ghost");
     // The existing member is still indexed.
-    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments"]);
+    expect(result.value.boundaryMembership.get("Shop.Billing")).toEqual(["payments"]);
   });
 
   it("allows any node kind as a member (no kind restriction, unlike owns)", () => {
@@ -2372,8 +2374,8 @@ boundary checkout {
     expect(result.diagnostics.filter((d) => d.code === "contains-target-not-found")).toHaveLength(
       0,
     );
-    expect(result.value.boundaryMembership.get("Shopper")).toEqual(["checkout"]);
-    expect(result.value.boundaryMembership.get("Web")).toEqual(["checkout"]);
+    expect(result.value.boundaryMembership.get("Shop.Shopper")).toEqual(["checkout"]);
+    expect(result.value.boundaryMembership.get("Shop.Web")).toEqual(["checkout"]);
   });
 
   it("stays silent for members that render only on drill levels — no warning of any kind (#1983)", () => {
@@ -2408,9 +2410,16 @@ boundary cluster {
 }
     `);
     expect(result.diagnostics).toEqual([]);
-    // …and every member is indexed (accepted vocabulary keeps its effect).
-    for (const id of ["OrderDomain", "PlaceOrder", "OrderEntity", "OrderRes", "orders"]) {
-      expect(result.value.boundaryMembership.get(id)).toEqual(["cluster"]);
+    // …and every member is indexed under its full path (accepted vocabulary
+    // keeps its effect, #2548).
+    for (const key of [
+      "Shop.Orders.OrderDomain",
+      "Shop.Orders.OrderDomain.PlaceOrder",
+      "Shop.Orders.OrderDomain.OrderEntity",
+      "Shop.Orders.OrderDomain.PlaceOrder.OrderRes",
+      "Shop.ShopDB.orders",
+    ]) {
+      expect(result.value.boundaryMembership.get(key)).toEqual(["cluster"]);
     }
   });
 
@@ -2425,7 +2434,7 @@ boundary "payments-domain" {
     `);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     expect(result.value.boundaries[0].id).toBe("payments-domain");
-    expect(result.value.boundaryMembership.get("Billing")).toEqual(["payments-domain"]);
+    expect(result.value.boundaryMembership.get("Shop.Billing")).toEqual(["payments-domain"]);
   });
 
   it("degenerates cleanly with an empty boundary (no members)", () => {

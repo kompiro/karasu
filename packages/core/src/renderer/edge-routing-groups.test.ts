@@ -11,6 +11,14 @@ import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * ownerIndex is keyed by full node path (#2548). Every fixture system in this
+ * file is `Shop`, so the hand-built axes prefix accordingly.
+ */
+function shopOwner(entries: ReadonlyArray<readonly [string, string]>): Map<string, string> {
+  return new Map(entries.map(([id, team]) => [`Shop.${id}`, team]));
+}
+
 // A system with two teams (payments owns Billing/Wallet, catalog owns
 // Search/Catalog) plus an un-owned infra store and an [external] service. The
 // three Billing→{Catalog,ShopDB,Stripe} edges cross intermediate bands/frames.
@@ -34,7 +42,7 @@ organization Org {
 }
 `;
 
-const OWNER = new Map([
+const OWNER = shopOwner([
   ["Billing", "payments"],
   ["Wallet", "payments"],
   ["Search", "catalog"],
@@ -326,7 +334,7 @@ describe("routeGroupedEdges (#1859, P2c-A)", () => {
   });
 
   it("keeps penetration == 0 with a single team (degenerate)", () => {
-    const oneTeam = new Map([
+    const oneTeam = shopOwner([
       ["Billing", "payments"],
       ["Wallet", "payments"],
     ]);
@@ -356,7 +364,7 @@ organization Org {
   team "gamma" { label "Gamma" owns C }
 }`;
 
-const TRUNKS_OWNER = new Map([
+const TRUNKS_OWNER = shopOwner([
   ["A", "alpha"],
   ["B", "beta"],
   ["C", "gamma"],
@@ -519,7 +527,7 @@ organization Org {
   team "catalog" { label "Catalog" owns Search owns Inventory }
   team "platform" { label "Platform" owns Gateway owns Notifications }
 }`;
-    const owner = new Map([
+    const owner = shopOwner([
       ["Checkout", "payments"],
       ["Billing", "payments"],
       ["Search", "catalog"],
@@ -588,7 +596,7 @@ organization Org {
   team "catalog" { owns Search owns Inventory }
   team "Data Platform" { owns Gateway owns Notifications }
 }`;
-    const owner = new Map([
+    const owner = shopOwner([
       ["Checkout", "payments"],
       ["Billing", "payments"],
       ["Search", "catalog"],
@@ -892,7 +900,8 @@ describe("P2c routing after seam placement (#2176, TPL-1927)", () => {
     const res = boundaryLayout(SHARED);
     const frames = framesOf(res).filter((f) => f.id.startsWith("__group_"));
     for (const n of res.nodes.values()) {
-      const declared = parsed.boundaryMembership.get(n.id) ?? [];
+      // boundaryMembership is path-keyed (#2548); this canvas is `Shop`.
+      const declared = parsed.boundaryMembership.get(`Shop.${n.id}`) ?? [];
       // Reported as a pair list so a failure names the frame and the card it
       // swallowed, rather than just "expected true".
       const enclosing = [...framesOfNode(n, frames)].map((id) => id.replace(/^__group_|__$/g, ""));

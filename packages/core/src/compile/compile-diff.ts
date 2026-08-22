@@ -44,6 +44,7 @@ import { diffDeployViewSlices } from "../diff/deploy-view-diff.js";
 import { diffOrgViewSlices } from "../diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "../diff/view-diff.js";
 import { injectDiffStyle } from "../diff/diff-style.js";
+import { nodePathKey } from "../parser/node-path.js";
 
 /**
  * Resolve the before / after project entries with a shared `ImportResolver`
@@ -239,11 +240,25 @@ export async function compileSystemDiff(
   // before team — that is why this backfills off the removed diff state rather
   // than blindly unioning the two maps. See #1886 and
   // docs/design/system-view-grouping.md § "差分モードの grouping".
+  // ownerIndex / boundaryMembership are path-keyed (#2548): the backfill keys
+  // carry the removed node's full path. On a drilled canvas that is the
+  // canvas scope plus the id; on the root view the before-side nodePathIndex
+  // names the path for the kinds it indexes, and a bare id is the last resort
+  // (matching the parse-time fallback for unresolvable refs).
+  const diffScope =
+    diffed.slice.containerNode !== null
+      ? [...diffed.slice.ancestorChain.map((n) => n.id), diffed.slice.containerNode.id]
+      : [];
+  const diffKeyOf = (id: string): string =>
+    diffScope.length > 0
+      ? nodePathKey([...diffScope, id])
+      : nodePathKey(beforeResolved.krsFile.nodePathIndex.get(id) ?? [id]);
   const mergedOwnerIndex = new Map<string, string>(afterResolved.krsFile.ownerIndex);
   for (const [id, meta] of diffed.nodes) {
-    if (meta.state !== "removed" || mergedOwnerIndex.has(id)) continue;
-    const formerTeam = beforeResolved.krsFile.ownerIndex.get(id);
-    if (formerTeam !== undefined) mergedOwnerIndex.set(id, formerTeam);
+    const key = diffKeyOf(id);
+    if (meta.state !== "removed" || mergedOwnerIndex.has(key)) continue;
+    const formerTeam = beforeResolved.krsFile.ownerIndex.get(key);
+    if (formerTeam !== undefined) mergedOwnerIndex.set(key, formerTeam);
   }
   // Same backfill for the boundary axis (#1822 P2b): a removed node returns to
   // its former boundary frame instead of the trailing un-grouped band. Now that
@@ -278,10 +293,11 @@ export async function compileSystemDiff(
     mergedBoundaryMembership.set(id, [...boundaryIds]);
   }
   for (const [id, meta] of diffed.nodes) {
-    if (meta.state !== "removed" || mergedBoundaryMembership.has(id)) continue;
-    const formerBoundaries = beforeResolved.krsFile.boundaryMembership.get(id);
+    const key = diffKeyOf(id);
+    if (meta.state !== "removed" || mergedBoundaryMembership.has(key)) continue;
+    const formerBoundaries = beforeResolved.krsFile.boundaryMembership.get(key);
     if (formerBoundaries !== undefined) {
-      mergeMembership(mergedBoundaryMembership, id, formerBoundaries);
+      mergeMembership(mergedBoundaryMembership, key, formerBoundaries);
     }
   }
   // Same backfill for the scoped boundary axis (#2036). It is keyed by scope, so

@@ -465,6 +465,10 @@ export const en: Translations = {
     `The "${boundaryId}" frame does not reach "${nodeId}" in this view; the membership is marked on the card`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"${memberId}" referenced in "contains" was not found in the system hierarchy`,
+  "diagnostic.containsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"${path}" referenced in "contains" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>
     `"boundary" cannot be declared inside "${parentKind}", which draws no canvas of its own`,
   "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
@@ -480,6 +484,10 @@ export const en: Translations = {
     `Duplicate node id "${nodeId}" under the same parent`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"${ownedId}" referenced in "owns" was not found in the system hierarchy`,
+  "diagnostic.ownsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"${path}" referenced in "owns" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" references "${infraId}", which no database / queue / storage block declares`

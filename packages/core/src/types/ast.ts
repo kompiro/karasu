@@ -439,7 +439,13 @@ export interface TeamNode {
   annotations: string[];
   annotationParams?: Record<string, Record<string, string>>;
   properties: CommonProperties & {
-    owns: string[];
+    /**
+     * Node references listed via `owns`, each a suffix path (#2088): a bare
+     * id is the length-1 case and claims every node with that id
+     * (broadcast); a longer path narrows to the nodes whose full path ends
+     * with it. Author notation is preserved (no normalization — TPL-1101).
+     */
+    owns: NodeIdPath[];
   };
   children: OrgNode[];
   loc: SourceRange;
@@ -467,8 +473,12 @@ export interface BoundaryBlock {
   id: string;
   label?: string;
   properties: CommonProperties;
-  /** Member node ids listed via `contains` (one per line, mirroring `owns`). */
-  contains: string[];
+  /**
+   * Member node references listed via `contains` (one per line, mirroring
+   * `owns`), each a suffix path (#2088): bare id = length-1 broadcast, a
+   * longer path narrows to the nodes whose full path ends with it.
+   */
+  contains: NodeIdPath[];
   loc: SourceRange;
 }
 
@@ -895,6 +905,12 @@ export interface DiagnosticParamsByCode {
   "node-id-multiple-locations": { nodeId: string };
   "duplicate-node-id-parent": { nodeId: string };
   "owns-target-not-found": { ownedId: string };
+  // #2088: a path reference resolves to 2+ nodes that are NOT uniform in
+  // (kind, depth) — uniform multi-matches are intentional broadcast and stay
+  // silent. `path` is the reference as written (joined); each candidate names
+  // a full path the author can qualify with.
+  "owns-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  "contains-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
   "duplicate-edge-id": { authorId: string };
   "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->" };
 

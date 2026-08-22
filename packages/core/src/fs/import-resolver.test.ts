@@ -627,8 +627,9 @@ organization Corp {
 
       const result = await resolver.resolve("/project/index.krs");
       expect(result.krsFile.organizations).toHaveLength(1);
-      expect(result.krsFile.ownerIndex.get("ECommerce")).toBe("ecTeam");
-      expect(result.krsFile.ownerIndex.get("Payment")).toBe("ecTeam");
+      // ownerIndex is keyed by each owned node's full path (#2548).
+      expect(result.krsFile.ownerIndex.get("MySystem.ECommerce")).toBe("ecTeam");
+      expect(result.krsFile.ownerIndex.get("MySystem.Payment")).toBe("ecTeam");
     });
   });
 
@@ -1902,7 +1903,10 @@ system Blog {
       await fs.writeFile("/p/finance.krs", FINANCE);
 
       const result = await resolver.resolve("/p/index.krs");
-      expect(result.krsFile.boundaryMembership.get("Billing")).toEqual(["payments", "finance"]);
+      expect(result.krsFile.boundaryMembership.get("Shop.Billing")).toEqual([
+        "payments",
+        "finance",
+      ]);
       const found = multiMembership(result.diagnostics);
       expect(found).toHaveLength(1);
       expect(found[0].params).toEqual({ nodeId: "Billing", existingBoundary: "payments" });

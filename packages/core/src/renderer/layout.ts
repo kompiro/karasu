@@ -54,7 +54,9 @@ import {
   makeOwnerResolver,
   measureNode,
   type MeasureContext,
+  type OwnerResolver,
 } from "./layout-measure.js";
+import { nodePathKey } from "../parser/node-path.js";
 import { computeCrossingMarks } from "./crossing-marks.js";
 import type {
   LayoutNode,
@@ -124,6 +126,12 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
       ? [...viewSlice.ancestorChain.map((n) => n.id), viewSlice.containerNode.id]
       : [];
   const canvasMembership = canvasMembershipFor(scopePath, options);
+  // ownerIndex is keyed by full path (#2548): a real canvas node's path is
+  // the canvas scope plus its id. The ghost placers below keep the raw
+  // `ownerOf` — their qualified ids are already full paths. Synthetic ids
+  // (collapse / category stubs) simply miss the index, exactly as before.
+  const canvasOwnerOf: OwnerResolver = (kind, nid) =>
+    ownerOf(kind, nodePathKey([...scopePath, nid]));
 
   // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
   // **re-target** their boundary-crossing edges onto the stub (so "who depends
@@ -145,6 +153,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     canvasMembership,
     new Set(allNodes.map((n) => n.id)),
     options,
+    scopePath,
   );
 
   // Per-group collapse (#1858 slice B): when a team is collapsed, fold its
@@ -325,7 +334,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     },
     measure: (nid) => {
       const krsNode = nodeMap.get(nid)!;
-      return measureNode(krsNode, ownerOf(krsNode.kind, nid), measureCtx);
+      return measureNode(krsNode, canvasOwnerOf(krsNode.kind, nid), measureCtx);
     },
   });
   childMaxWidth = placed.childMaxWidth;
@@ -337,7 +346,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
       makeLayoutNode(krsNode, nid, {
         label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
         annotations: effectiveAnnotations(krsNode),
-        owner: ownerOf(krsNode.kind, nid),
+        owner: canvasOwnerOf(krsNode.kind, nid),
         x: box.x,
         y: box.y,
         width: box.width,
@@ -683,15 +692,22 @@ function layoutMultipleSystems(
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
     // Each system frame is its own canvas, so a scoped boundary declared in
-    // `system X { … }` applies inside X's frame and nowhere else (#2036); the
-    // team axis stays model-wide.
-    const systemMembership = canvasMembershipFor([sys.id], options);
+    // `system X { … }` applies inside X's frame and nowhere else (#2036).
+    // The synthesized "Unassigned" pseudo-system holds top-level orphans
+    // whose full paths carry no system prefix, so its frame scope is empty.
+    const frameScope = sys.id === "__unassigned__" ? [] : [sys.id];
+    // Path-keyed owner lookups for this frame's real nodes (#2548), same
+    // shape as `canvasOwnerOf` on the single-system path.
+    const frameOwnerOf: OwnerResolver = (kind, nid) =>
+      ownerOf(kind, nodePathKey([...frameScope, nid]));
+    const systemMembership = canvasMembershipFor(frameScope, options);
     // Same per-canvas resolution as `layout()`: a boundary with no band of its
     // own claims one of the shared members present in *this* system (#2176).
     const { bandOrder: systemBandOrder, groupIndex: systemGroupIndex } = resolveCanvasAxis(
       systemMembership,
       new Set(rawNodes.map((n) => n.id)),
       options,
+      frameScope,
     );
     if (groupBy && systemGroupIndex) {
       // Scope stub ids by system id so a group owning members in ≥2 systems gets
@@ -772,7 +788,7 @@ function layoutMultipleSystems(
       },
       measure: (nid) => {
         const krsNode = nodeMap.get(nid)!;
-        return measureNode(krsNode, ownerOf(krsNode.kind, nid), measureCtx);
+        return measureNode(krsNode, frameOwnerOf(krsNode.kind, nid), measureCtx);
       },
     });
 
@@ -784,7 +800,7 @@ function layoutMultipleSystems(
         makeLayoutNode(krsNode, nid, {
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           annotations: effectiveAnnotations(krsNode),
-          owner: ownerOf(krsNode.kind, nid),
+          owner: frameOwnerOf(krsNode.kind, nid),
           x: box.x,
           y: box.y,
           width: box.width,

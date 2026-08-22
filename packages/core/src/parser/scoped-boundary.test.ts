@@ -23,9 +23,11 @@ describe("scoped boundary — the ambiguity it removes", () => {
     const result = Parser.parse(`${COLLIDING_IDS}
 boundary b { label "B" contains Payment }
 `);
-    // Documents today's behaviour rather than endorsing it: the flat index maps
-    // the *id*, so both the service and the nested domain resolve to it.
-    expect(result.value.boundaryMembership.get("Payment")).toEqual(["b"]);
+    // A bare id is a length-1 suffix (#2548): both the service and the nested
+    // domain resolve, each indexed under its full path. The mixed-kind match
+    // additionally draws `contains-target-ambiguous` (warning, not error).
+    expect(result.value.boundaryMembership.get("Shop.Payment")).toEqual(["b"]);
+    expect(result.value.boundaryMembership.get("Shop.Checkout.Payment")).toEqual(["b"]);
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
   });
 
@@ -237,8 +239,8 @@ boundary pay { label "One" contains Billing }
 boundary pay { label "Two" contains Wallet }
 `);
     expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(0);
-    expect(result.value.boundaryMembership.get("Billing")).toEqual(["pay"]);
-    expect(result.value.boundaryMembership.get("Wallet")).toEqual(["pay"]);
+    expect(result.value.boundaryMembership.get("Shop.Billing")).toEqual(["pay"]);
+    expect(result.value.boundaryMembership.get("Shop.Wallet")).toEqual(["pay"]);
   });
 });
 

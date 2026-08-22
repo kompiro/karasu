@@ -491,7 +491,9 @@ class Printer {
       lines.push(this.renderLink(link, `${indent}  `));
     }
     for (const owns of team.properties.owns) {
-      lines.push(`${indent}  owns ${quoteId(owns)}`);
+      // Author notation is preserved segment-for-segment (TPL-1101): a path
+      // ref prints as written, each segment re-quoted only if it needs it.
+      lines.push(`${indent}  owns ${owns.map(quoteId).join(".")}`);
     }
 
     let prevEndLine = team.loc.start.line;
@@ -547,8 +549,9 @@ class Printer {
     for (const link of block.properties.links) {
       lines.push(this.renderLink(link, "  "));
     }
-    for (const id of block.contains) {
-      lines.push(`  contains ${quoteId(id)}`);
+    for (const ref of block.contains) {
+      // Same round-trip rule as `owns` (TPL-1101): print the path as written.
+      lines.push(`  contains ${ref.map(quoteId).join(".")}`);
     }
 
     lines.push("}");

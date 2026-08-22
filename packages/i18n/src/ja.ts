@@ -463,6 +463,10 @@ export const ja: Partial<Translations> = {
     `このビューでは boundary "${boundaryId}" の枠が "${nodeId}" に届きません。所属はカード上に表示しています`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"contains" で参照されている "${memberId}" が system 階層内に見つかりません`,
+  "diagnostic.containsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"contains" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>
     `"${parentKind}" は自身のキャンバスを持たないため、その中に "boundary" は宣言できません`,
   "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
@@ -478,6 +482,10 @@ export const ja: Partial<Translations> = {
     `同じ親の下でノード id "${nodeId}" が重複しています`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"owns" で参照されている "${ownedId}" が system 階層内に見つかりません`,
+  "diagnostic.ownsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"owns" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" が参照する "${infraId}" を宣言する database / queue / storage ブロックがありません`

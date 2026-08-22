@@ -520,6 +520,10 @@ export type Translations = {
     boundaryId: string;
   }) => string;
   "diagnostic.containsTargetNotFound.message": (params: { memberId: string }) => string;
+  "diagnostic.containsTargetAmbiguous.message": (params: {
+    path: string;
+    candidates: Array<{ kind: string; path: string }>;
+  }) => string;
   "diagnostic.boundaryNotInContext.message": (params: { parentKind: string }) => string;
   "diagnostic.duplicateBoundaryId.message": (params: { boundaryId: string }) => string;
   "diagnostic.duplicateFacetId.message": (params: { facetId: string }) => string;
@@ -528,6 +532,10 @@ export type Translations = {
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
   "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;
   "diagnostic.ownsTargetNotFound.message": (params: { ownedId: string }) => string;
+  "diagnostic.ownsTargetAmbiguous.message": (params: {
+    path: string;
+    candidates: Array<{ kind: string; path: string }>;
+  }) => string;
   "diagnostic.unresolvedResourceRef.message": (params: {
     infraId: string;
     subId: string;

@@ -366,7 +366,8 @@ system S {
   service A { label "Service A" }
 }
     `);
-    const ownerIndex = new Map([["A", "platform-team"]]);
+    // ownerIndex is keyed by full node path (#2548); the canvas is `S`.
+    const ownerIndex = new Map([["S.A", "platform-team"]]);
     const result = layout(slice, { ownerIndex: ownerIndex });
     const node = result.nodes.get("A")!;
     expect(node.properties.team).toBe("platform-team");
@@ -634,9 +635,10 @@ system PaymentGateway {
     return rootSlice;
   }
 
+  // Keyed by full node path (#2548); the canvas is `ECPlatform`.
   const ownerIndex = new Map([
-    ["Billing", "payments"],
-    ["Wallet", "payments"],
+    ["ECPlatform.Billing", "payments"],
+    ["ECPlatform.Wallet", "payments"],
   ]);
 
   it("anchors the member's ghost edge on the member while its team is expanded", () => {

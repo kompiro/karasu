@@ -20,6 +20,7 @@ import {
   validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
+  buildOwnerIndex,
   buildBoundaryMembership,
   buildScopedBoundaryMembership,
 } from "../parser/reference-validation.js";
@@ -41,6 +42,15 @@ import type { StyleSheet } from "../types/style.js";
 const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   "contains-target-not-found",
   "owns-target-not-found",
+  // Ambiguity is decided against the same declared-node space as existence,
+  // so it is import-coupled for the same reason (#2088 / ADR-2410).
+  "owns-target-ambiguous",
+  "contains-target-ambiguous",
+  // Co-ownership became a merged-model verdict when ownerIndex moved to the
+  // rebuild pattern (#2548): two files each owning the same node is a fact no
+  // single file can see, and the entry file's per-file infos would otherwise
+  // double the rebuild's (same shape as duplicate-boundary-assignment below).
+  "duplicate-owner-assignment",
   // The physical dot-notation refs (#2078). Shared infra is *canonically*
   // declared in a dedicated file every slice imports (§S4.5), so a per-file
   // verdict would warn on the recommended layout: every `resource ArticleDB.x`
@@ -157,12 +167,21 @@ export class ImportResolver {
       ...krsFile.queues,
       ...krsFile.storages,
     ]);
+    // Ownership is rebuilt from the merged declarations rather than unioned
+    // per file (#2548): the index is path-keyed, and a path declared in one
+    // file can only resolve against nodes another file contributes — a
+    // per-file union cannot see either. The rebuild also makes cross-file
+    // co-ownership visible (`duplicate-owner-assignment`), which the old
+    // silent last-wins union never reported (TPL-2221).
+    const mergedOwnership = buildOwnerIndex(krsFile);
+    krsFile.ownerIndex = mergedOwnership.membership;
+    this.diagnostics.push(...mergedOwnership.diagnostics);
     // Boundary membership is rebuilt from the merged declarations rather than
     // unioned per file, so the index and the diagnostic come from one derivation
     // (#2221). Both diagnostics the rebuild produces are merged-model verdicts:
     // multi-membership (#2221) and, since a reopened scope can now collect
     // blocks from two files, `duplicate-boundary-id` (#2246).
-    const mergedMembership = buildBoundaryMembership(krsFile.boundaries);
+    const mergedMembership = buildBoundaryMembership(krsFile);
     krsFile.boundaryMembership = mergedMembership.membership;
     const mergedScoped = buildScopedBoundaryMembership([
       ...krsFile.systems,
@@ -327,9 +346,10 @@ export class ImportResolver {
     mergedFile.boundaries.push(...(file.boundaries ?? []));
     mergedFile.facets.push(...(file.facets ?? []));
     mergedFile.legends.push(...(file.legends ?? []));
-    for (const [ownedId, teamId] of file.ownerIndex) {
-      mergedFile.ownerIndex.set(ownedId, teamId);
-    }
+    // ownerIndex is not merged here since #2548 (path-keyed): `resolve()`
+    // rebuilds it from the merged declarations, exactly like boundary
+    // membership below — a per-file union cannot resolve a path against nodes
+    // another file contributes. What travels is `organizations` above.
     // Boundary membership is not merged here: `resolve()` rebuilds it from the
     // merged declarations, so the index and its diagnostic have one derivation
     // and cannot disagree (#2221). What has to travel is the declarations
@@ -515,9 +535,8 @@ export class ImportResolver {
         mergedFile.boundaries.push(boundary);
       }
     }
-    for (const [ownedId, teamId] of resolved.ownerIndex) {
-      mergedFile.ownerIndex.set(ownedId, teamId);
-    }
+    // ownerIndex deliberately not unioned (#2548) — see the wildcard-merge
+    // comment above; `resolve()` rebuilds it from the merged model.
     for (const [nodeId, path] of resolved.nodePathIndex) {
       if (!mergedFile.nodePathIndex.has(nodeId)) {
         mergedFile.nodePathIndex.set(nodeId, path);

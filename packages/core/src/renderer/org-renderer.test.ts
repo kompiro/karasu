@@ -83,7 +83,8 @@ function makeTeam(
     id,
     label: opts.label,
     annotations: opts.annotations ?? [],
-    properties: { links: [], owns: opts.owns ?? [] },
+    // Fixture takes bare ids; each becomes a length-1 path (#2088).
+    properties: { links: [], owns: (opts.owns ?? []).map((ownedId) => [ownedId]) },
     children,
     loc: mockLoc,
   };
