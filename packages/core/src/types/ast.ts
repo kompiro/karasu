@@ -504,9 +504,26 @@ export interface FacetBlock {
 
 // ─── 物理図（変更なし） ────────────────────────────
 
+/**
+ * One `realizes` target, with the range of the identifier that named it.
+ *
+ * A deploy unit may realize several logical nodes, written either as repeated
+ * `realizes` lines (#409) or as one comma-separated line (#2167). Both forms
+ * produce this same list, so the range is what tells the two apart afterwards:
+ * it anchors at the individual identifier rather than at the `realizes` line or
+ * the node, so `unresolved-realizes` points at the one target it could not
+ * resolve even when the line names several. Anchored, not spanning — a token
+ * carries only its start, which is the parser's convention for single-token
+ * ranges throughout.
+ */
+export interface RealizesTarget {
+  id: string;
+  loc: SourceRange;
+}
+
 export interface DeployNodeProperties {
   runtime?: string;
-  realizes?: string[];
+  realizes?: RealizesTarget[];
   schedule?: string;
   image?: string;
   type?: string;
@@ -871,6 +888,19 @@ export interface DiagnosticParamsByCode {
   // constructs keep it as the label.
   "positional-label-removed": { construct: string };
   "contains-target-not-found": { memberId: string };
+  // A dot-notation physical reference names an infra block / leaf that the
+  // merged model does not declare (#2078). `missing` distinguishes the two
+  // causes because they need opposite repairs: "block" means the whole
+  // `database` / `queue` / `storage` declaration is absent (drop the reference,
+  // or restore the block), "leaf" means the block is there but the
+  // `table` / `queue-item` / `bucket` is not.
+  "unresolved-resource-ref": { infraId: string; subId: string; missing: "block" | "leaf" };
+  "unresolved-table-ref": {
+    entityId: string;
+    infraId: string;
+    subId: string;
+    missing: "block" | "leaf";
+  };
   "duplicate-team-id": { teamId: string };
   "node-id-multiple-locations": { nodeId: string };
   "duplicate-node-id-parent": { nodeId: string };

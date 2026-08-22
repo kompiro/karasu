@@ -34,6 +34,7 @@
     "lint:spec-structure-sync": "tsx scripts/lint/spec-structure-sync.ts",
     "lint:app-shortcut-docs-sync": "tsx scripts/lint/app-shortcut-docs-sync.ts",
     "lint:skill-cli-refs": "tsx scripts/lint/skill-cli-refs.ts",
+    "lint:skill-reference-bundle-sync": "tsx scripts/lint/skill-reference-bundle-sync.ts",
     "lint:config-topics-sync": "tsx scripts/lint/config-topics-sync.ts",
     "lint:vitest-projects-sync": "tsx scripts/lint/vitest-projects-sync.ts",
     "lint:krs-fences": "tsx scripts/lint/krs-fences.ts",

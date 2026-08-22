@@ -17,6 +17,7 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
   buildOwnerIndex,
@@ -50,6 +51,13 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // single file can see, and the entry file's per-file infos would otherwise
   // double the rebuild's (same shape as duplicate-boundary-assignment below).
   "duplicate-owner-assignment",
+  // The physical dot-notation refs (#2078). Shared infra is *canonically*
+  // declared in a dedicated file every slice imports (§S4.5), so a per-file
+  // verdict would warn on the recommended layout: every `resource ArticleDB.x`
+  // in `reader.krs` would look unresolved because the block lives in
+  // `infra.krs`. Suppressed per file, re-derived against the merged tree below.
+  "unresolved-resource-ref",
+  "unresolved-table-ref",
   // `facet` declarations merge across files, so uniqueness is a property of the
   // merged namespace. Suppressed per file and re-derived below — otherwise a
   // duplicate split across two files would go unreported, and a duplicate inside
@@ -144,6 +152,10 @@ export class ImportResolver {
     // vanish entirely: cross-file `system` reopen can add the very child a
     // scoped `contains` names, so only the merged tree can decide.
     this.diagnostics.push(...validateScopedContainsReferences(krsFile));
+    // Physical dot-notation refs decide only here, for the same reason: the
+    // `database` block a slice references usually lives in the infra file it
+    // imports (#2078).
+    this.diagnostics.push(...validatePhysicalRefs(krsFile));
     // Facet membership is rebuilt from the merged tree rather than merged
     // per file, so it cannot drift between merge paths (#2065 Part B).
     krsFile.facetIndex = buildFacetIndex([

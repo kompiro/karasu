@@ -44,6 +44,8 @@ on:
       - "docs/tools/**"
       - "packages/docs-site/**"
       - "scripts/lint/docs-site-ci-paths-sync.ts"
+      - ".claude/skills/reverse-architecture/**"
+      - "scripts/lint/skill-reference-bundle-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
@@ -63,6 +65,8 @@ on:
       - "docs/tools/**"
       - "packages/docs-site/**"
       - "scripts/lint/docs-site-ci-paths-sync.ts"
+      - ".claude/skills/reverse-architecture/**"
+      - "scripts/lint/skill-reference-bundle-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
@@ -104,6 +108,13 @@ jobs:
       # spec-only PR that can teach a form the parser rejects (Issue #2415).
       - name: Embedded krs snippets parse
         run: pnpm run lint:krs-fences
+
+      # The reverse-architecture skill bundles byte-identical copies of the
+      # specs it teaches (Issue #2574). This workflow is the one that still
+      # runs on a docs-only PR — ci.yml's `paths-ignore: docs/**` skips exactly
+      # the PR that edits a source and leaves its copy behind.
+      - name: Skill reference bundle in sync
+        run: pnpm run lint:skill-reference-bundle-sync
 
       # The roadmap's watch ledgers track work that has no Issue yet, and
       # nothing re-reads a row once its promotion trigger fires (Issue #2245).

@@ -123,6 +123,10 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.ownsTargetNotFound.message", d.params);
     case "owns-target-ambiguous":
       return t("diagnostic.ownsTargetAmbiguous.message", d.params);
+    case "unresolved-resource-ref":
+      return t("diagnostic.unresolvedResourceRef.message", d.params);
+    case "unresolved-table-ref":
+      return t("diagnostic.unresolvedTableRef.message", d.params);
     case "duplicate-edge-id":
       return t("diagnostic.duplicateEdgeId.message", d.params);
     case "ambiguous-edge-base":

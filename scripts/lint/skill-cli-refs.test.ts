@@ -56,6 +56,19 @@ describe("referencedCommands", () => {
     ].join("\n");
     expect([...referencedCommands(md)].sort()).toEqual(["coverage", "render", "subtree"]);
   });
+
+  it("does not read two adjacent code spans as one invocation", () => {
+    // `codeText` joins code contexts with a newline so they cannot run
+    // together; the invocation regex used `\s`, which matched that very
+    // separator, turning a line ending in the span `karasu` plus a line
+    // starting with the span `reference/` into `karasu reference`. This
+    // markdown contains no `karasu <cmd>` invocation at all.
+    const markdown = [
+      "- The target repository path, and the karasu CLI (`karasu`) available.",
+      "- `reference/` beside this file holds the grammar.",
+    ].join("\n");
+    expect([...referencedCommands(markdown)]).toEqual([]);
+  });
 });
 
 describe("the real skills are in sync with the CLI registry", () => {

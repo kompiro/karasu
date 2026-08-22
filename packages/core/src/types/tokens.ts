@@ -144,6 +144,14 @@ export interface Token {
   value: string;
   loc: SourceLocation;
   /**
+   * Position just past the token's last character. `loc` alone cannot be
+   * recovered from: `value` is the decoded text, so a string literal's quotes
+   * and escapes are already gone. Stamped by the lexer from its own cursor, so
+   * it is exact for every token kind. Optional for hand-built tokens in tests;
+   * a range built without it collapses to the start position.
+   */
+  end?: SourceLocation;
+  /**
    * Trivia (comments / blank lines) collected since the previous token.
    * Always present after the lexer runs (default `[]`). Marked optional
    * for backward compatibility with hand-built tokens in tests.

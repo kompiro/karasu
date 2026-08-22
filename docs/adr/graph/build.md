@@ -79,6 +79,7 @@ flowchart TD
     ADR_2401["ADR-2401<br/>pnpm 11 へ移行し、pnpm 設定の正本を pnpm-workspace.yaml に一..."]
     ADR_2404["ADR-2404<br/>Security alert 2026-08-08 — dompurify は overrid..."]
     ADR_2419["ADR-2419<br/>PoC の生成物は gitignore された `reports/` に出力し、spike ブ..."]
+    ADR_2436["ADR-2436<br/>spike の PoC レポートは private な Claude Artifact として..."]
     ADR_2440["ADR-2440<br/>production 依存の license allowlist に BlueOak-1.0...."]
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
@@ -98,6 +99,7 @@ flowchart TD
   ADR_1628 --> ADR_1575
   ADR_1820 --> ADR_1314
   ADR_2124 --> ADR_1314
+  ADR_2436 --> ADR_2419
   ADR_1974 --> ADR_1820
   ADR_2065 --> ADR_1314
   ADR_2065 --> ADR_1820
@@ -186,6 +188,7 @@ flowchart TD
   class ADR_2401 accepted
   class ADR_2404 accepted
   class ADR_2419 accepted
+  class ADR_2436 accepted
   class ADR_2440 accepted
   class ADR_2447 accepted
   class ADR_2472 accepted

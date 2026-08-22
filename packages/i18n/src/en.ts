@@ -488,6 +488,14 @@ export const en: Translations = {
     `"${path}" referenced in "owns" matches multiple nodes of different kind or depth: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}. Qualify with a longer path to name one`,
+  "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
+    missing === "block"
+      ? `"resource ${infraId}.${subId}" references "${infraId}", which no database / queue / storage block declares`
+      : `"resource ${infraId}.${subId}" references "${subId}", which "${infraId}" does not declare`,
+  "diagnostic.unresolvedTableRef.message": ({ entityId, infraId, subId, missing }) =>
+    missing === "block"
+      ? `Entity "${entityId}" maps to "${infraId}.${subId}", but no database / queue / storage block declares "${infraId}"`
+      : `Entity "${entityId}" maps to "${infraId}.${subId}", but "${infraId}" does not declare "${subId}"`,
   "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
     `Duplicate edge id "#${authorId}"; edge ids must be unique within a system`,
   "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>

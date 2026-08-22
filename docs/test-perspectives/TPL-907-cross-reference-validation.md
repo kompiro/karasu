@@ -12,6 +12,7 @@ known_consumers:
   - warnings
 discovered_from:
   - issue: "#907"
+  - issue: "#2078"
   - root_cause_file: "packages/core/src/resolver/warnings.ts:586"
 related_to:
   - TPL-1032
@@ -64,3 +65,13 @@ karasu には既に `unresolved-handles`（`warnings.ts:402`）と `unresolved-r
   （`facet-not-declared` warning）を伴う規定（#2173）。宣言集合が「正」を与えるため、
   この検証は builtin 近傍の near-miss ヒントと違い完全である。同節末尾に本 TPL への
   `> Related TPLs:` back-ref あり。
+- `docs/spec/syntax.md` §S6「Dangling edge endpoints preserve their nodes」— **物理**の
+  dot 記法参照（usecase の `resource <Infra>.<Leaf>`、entity の `table <Infra>.<Leaf>`）も
+  §S6 の対象であり、宣言されていないブロック / leaf を指したら
+  `unresolved-resource-ref` / `unresolved-table-ref` を出す規定（#2078）。
+  **この 2 つは本 TPL が起こされる前から検証なしで残っていた穴**で、bare `resource X` が
+  `unassigned-resource` を出すのに dotted 形式は宣言の有無を問われない、という記法間の
+  非対称として現れていた。実害は #1991 の逆生成で観測 —`database` ブロックを丸ごと失った
+  モデルが 35 テーブル分の dangling 参照を抱えたまま無診断でレンダリングされた。
+  記法違いは検証の免除理由にならない、というのが本 TPL のチェックリスト（とくに
+  「反対方向の test」と「二重発火しないか」）に加わる観点。同節末尾に back-ref あり。

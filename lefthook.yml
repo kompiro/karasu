@@ -93,6 +93,15 @@ pre-push:
       # scripts/lint runs it in CI.
       glob: "{.claude/skills/**,packages/cli/src/index.ts,packages/core/src/translate/**,scripts/lint/skill-cli-refs.ts}"
       run: pnpm run lint:skill-cli-refs
+    skill-reference-bundle-sync:
+      # The reverse-architecture skill ships byte-identical copies of the specs
+      # it teaches (Issue #2574) because it runs against repositories where
+      # docs/ does not exist. Globbed on BOTH sides: editing a source under
+      # docs/ is what puts the copy out of date, and editing the copy directly
+      # is the mistake the notice in the bundle's README warns against.
+      # Fix with `pnpm run lint:skill-reference-bundle-sync --write`.
+      glob: "{docs/spec/**,docs/guide/notation-cookbook.md,.claude/skills/reverse-architecture/**,scripts/lint/skill-reference-bundle-sync.ts}"
+      run: pnpm run lint:skill-reference-bundle-sync
     reference-docs-check:
       # The machine-derived tables in docs/spec/*.md (and the .ja.md
       # counterparts) are generated from reference-data.ts — fail if a hand

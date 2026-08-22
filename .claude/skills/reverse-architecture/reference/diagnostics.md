@@ -90,7 +90,7 @@ primary owner.
 | `duplicate-boundary-id` | error | Two `boundary` blocks in the same enclosing node declare the same id, so the second cannot be addressed. Top-level blocks are unaffected. |
 | `duplicate-facet-id` | error | Two `facet` blocks declare the same id, so a `facets` reference cannot say whose metadata it means. Decided on the merged model, so a duplicate split across two files is caught; the first declaration is the one references resolve to. |
 | `positional-label-removed` | error | A `boundary`, `facet`, `organization`, `team` or `member` id is followed by a positional label string. ADR-19 made `label` a property, and the positional form was never in the spec: `boundary` / `facet` lost it outright as experimental constructs (#2133), the rest after a deprecation window (#2208). Recovery differs — `boundary` / `facet` discard the string, while `organization` / `team` / `member` keep it as the label so the org chart still reads while the file is fixed. |
-| `node-id-multiple-locations` | warning | The same node id appears in more than one indexed location. Decided after the whole model is walked, so the verdict does not depend on declaration order, and it covers cross-kind collisions including top-level infra / client blocks (#2550). Domain-vs-domain multiplicity is excluded — that is `domain-dispersal`'s (info) business. `nodePathIndex` keeps a single winner per id: the `@migration_target`-priority candidate, ties keeping the first declaration in traversal order (systems, then top-level domains, then top-level infra); each non-winner carries one warning at its own location. |
+| `node-id-multiple-locations` | warning | The same node id appears in more than one location. |
 
 ### Cross-reference resolution (warn-don't-error, §S6)
 

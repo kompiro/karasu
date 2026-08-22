@@ -486,6 +486,14 @@ export const ja: Partial<Translations> = {
     `"owns" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
+  "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
+    missing === "block"
+      ? `"resource ${infraId}.${subId}" が参照する "${infraId}" を宣言する database / queue / storage ブロックがありません`
+      : `"resource ${infraId}.${subId}" が参照する "${subId}" は "${infraId}" に宣言されていません`,
+  "diagnostic.unresolvedTableRef.message": ({ entityId, infraId, subId, missing }) =>
+    missing === "block"
+      ? `entity "${entityId}" は "${infraId}.${subId}" に対応付けられていますが、"${infraId}" を宣言する database / queue / storage ブロックがありません`
+      : `entity "${entityId}" は "${infraId}.${subId}" に対応付けられていますが、"${infraId}" に "${subId}" は宣言されていません`,
   "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
     `エッジ id "#${authorId}" が重複しています。エッジ id は system 内で一意である必要があります`,
   "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>

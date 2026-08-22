@@ -239,6 +239,16 @@ const SAMPLES: SamplesByCode = {
       ],
     },
   },
+  "unresolved-resource-ref": {
+    severity: "warning",
+    code: "unresolved-resource-ref",
+    params: { infraId: "OrderDB", subId: "orders", missing: "block" },
+  },
+  "unresolved-table-ref": {
+    severity: "warning",
+    code: "unresolved-table-ref",
+    params: { entityId: "Order", infraId: "OrderDB", subId: "orders", missing: "leaf" },
+  },
   "duplicate-edge-id": {
     severity: "error",
     code: "duplicate-edge-id",
@@ -457,6 +467,8 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "duplicate-node-id-parent": ["OrderService"],
   "owns-target-not-found": ["MissingSvc"],
   "owns-target-ambiguous": ["Payment", "Shop.Payment", "Shop.Checkout.Payment"],
+  "unresolved-resource-ref": ["OrderDB", "orders"],
+  "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],
   "ambiguous-edge-base": ["OrderService->PaymentService"],
   "style-token-type-mismatch": ["Identifier", "Semicolon"],
