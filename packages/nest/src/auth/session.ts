@@ -28,7 +28,7 @@ export const OAUTH_STATE_COOKIE = "__Host-nest_oauth_state";
  * The OAuth round trip is measured in seconds. Ten minutes covers a slow
  * authorize screen without leaving a usable replay window lying around.
  */
-export const OAUTH_STATE_TTL_SECONDS = 600;
+const OAUTH_STATE_TTL_SECONDS = 600;
 
 export interface SessionCookieValue {
   accountId: string;

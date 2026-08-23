@@ -81,11 +81,3 @@ export function redirect(
   for (const cookie of options.cookies ?? []) headers.append("Set-Cookie", cookie);
   return new Response(null, { status: options.status ?? 303, headers });
 }
-
-/** An HTML response. `no-store` by default, like everything else here. */
-export function html(body: string, options: ResponseOptions = {}): Response {
-  return new Response(body, {
-    status: options.status ?? 200,
-    headers: baseHeaders("text/html; charset=utf-8", options),
-  });
-}

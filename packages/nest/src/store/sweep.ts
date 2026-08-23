@@ -1,5 +1,5 @@
 /**
- * Listing and deleting a whole key prefix, once, for every gallery store.
+ * Deleting a whole key prefix, once, for every gallery store.
  *
  * Account deletion has to sweep three prefixes (`acct/`, `sub/`, `sess/`), and
  * a purge that half-works is the failure mode this whole key layout exists to
@@ -16,19 +16,7 @@ const LIST_PAGE_SIZE = 1000;
  * enough that a delete which does not stick is reported rather than looped on
  * forever.
  */
-export const DEFAULT_MAX_PURGE_PAGES = 64;
-
-/** Every key under `prefix`, walked by cursor. */
-export async function listByPrefix(kv: KVNamespaceLike, prefix: string): Promise<string[]> {
-  const names: string[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await kv.list({ prefix, cursor, limit: LIST_PAGE_SIZE });
-    for (const key of page.keys) names.push(key.name);
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor !== undefined);
-  return names;
-}
+const DEFAULT_MAX_PURGE_PAGES = 64;
 
 /**
  * Delete every key under `prefix`, and report how many.
