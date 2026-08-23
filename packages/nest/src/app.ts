@@ -19,6 +19,17 @@ import { githubWebhook } from "./routes/webhook.js";
 import { signIn, signInCallback, signOut } from "./routes/auth.js";
 import { submitKrs } from "./routes/submit.js";
 import { submissionPage } from "./routes/gallery.js";
+import {
+  consoleConfirmAccountDelete,
+  consoleConfirmDelete,
+  consoleDelete,
+  consoleDeleteAccount,
+  consoleIndex,
+  consoleReplace,
+  consoleSetVisibility,
+  consoleSubmission,
+  consoleSubmit,
+} from "./routes/console.js";
 import { Router } from "./router.js";
 
 export function createRouter(): Router {
@@ -32,6 +43,15 @@ export function createRouter(): Router {
     .get("/auth/callback", signInCallback)
     .post("/auth/logout", signOut)
     .post("/api/submissions", submitKrs)
+    .get("/console", consoleIndex)
+    .post("/console/submit", consoleSubmit)
+    .get("/console/account/delete", consoleConfirmAccountDelete)
+    .post("/console/account/delete", consoleDeleteAccount)
+    .get("/console/s/:id", consoleSubmission)
+    .post("/console/s/:id/visibility", consoleSetVisibility)
+    .post("/console/s/:id/replace", consoleReplace)
+    .get("/console/s/:id/delete", consoleConfirmDelete)
+    .post("/console/s/:id/delete", consoleDelete)
     .get("/g/:id", submissionPage)
     .get("/admin/metrics", metricsReport)
     .get("/admin/failed/:owner/:repo", failedDocument)
