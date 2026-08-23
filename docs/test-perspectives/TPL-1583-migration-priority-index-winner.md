@@ -8,6 +8,7 @@ applicable_to:
   - "migration 共存（@migration_target / @deprecated）の最中に「主」を 1 つ選ぶ必要があるロジックを追加・変更するとき"
 discovered_from:
   - issue: "#1583"
+  - issue: "#2550"
   - root_cause_adr: "ADR-477"
 related_to:
   - TPL-1386
@@ -71,8 +72,8 @@ karasu は逆コンウェイ戦略の過渡期（移行元 → 移行先の引�
 
 ## 既知の対処パターン
 
-- priority は `packages/core/src/parser/parser.ts` の module-level `migrationPriority(annotations)`
-  に集約する。新 index は import せず同関数を呼ぶ
+- priority は `packages/core/src/parser/reference-validation.ts` の
+  `migrationPriority(annotations)` に集約する。新 index は再実装せず同関数を呼ぶ
 - index 構築時に「現在の主の priority」を併走 `Map` で持ち、より高い priority が来たら
   差し替える（`indexTeams` / `buildNodePathIndex` のインライン swap パターン）
 - info 診断の文言は「採用した主」を事実先行で述べる（swap 後の値を読む）
@@ -88,5 +89,7 @@ karasu は逆コンウェイ戦略の過渡期（移行元 → 移行先の引�
 
 - `docs/spec/tags-annotations.md` §「Team contact convention」（team アノテーションと
   primary-owner 優先ルール）/ §「Migration annotations」（domain 側の共存ルール）
+- `docs/spec/diagnostics.md` §「Identifier uniqueness」（`node-id-multiple-locations` の
+  勝者規則。#2550 で collect-then-decide 化）
 - ADR-477（deprecated-domain-migration-coexistence）、ADR-1566
   （duplicate-owner-assignment を info に下げる）
