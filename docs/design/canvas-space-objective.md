@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-23
 - **ステータス**: 検討中
+- **PR**: [#2599](https://github.com/kompiro/karasu/pull/2599)
 - **関連**:
   - 引き金 Issue: [#2593](https://github.com/kompiro/karasu/issues/2593)
   - 関連 ADR: [ADR-1737](../adr/1737-balanced-grid-sibling-layout.md)（兄弟軸の balanced grid）, [ADR-1000](../adr/1000-icon-mode-layout-gap-tuning.md)（icon mode の gap 調整。密グリッドパッキングを却下）, [ADR-2521](../adr/2521-multi-system-pipeline-convergence.md)（共有ヘルパーに寸法フラグを足さない）, [ADR-649](../adr/649-drawio-export.md)（draw.io export を escape hatch とする）
