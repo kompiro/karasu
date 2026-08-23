@@ -17,6 +17,7 @@ import { repoKrs } from "./routes/repo.js";
 import { generationStatus, requestGeneration } from "./routes/generate.js";
 import { githubWebhook } from "./routes/webhook.js";
 import { signIn, signInCallback, signOut } from "./routes/auth.js";
+import { submitKrs } from "./routes/submit.js";
 import { Router } from "./router.js";
 
 export function createRouter(): Router {
@@ -29,6 +30,7 @@ export function createRouter(): Router {
     .get("/auth/login", signIn)
     .get("/auth/callback", signInCallback)
     .post("/auth/logout", signOut)
+    .post("/api/submissions", submitKrs)
     .get("/admin/metrics", metricsReport)
     .get("/admin/failed/:owner/:repo", failedDocument)
     .post("/webhooks/github", githubWebhook)

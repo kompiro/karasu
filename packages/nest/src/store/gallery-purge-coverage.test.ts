@@ -26,6 +26,7 @@ import { describe, expect, it } from "vitest";
 import { AccountStore } from "./accounts.js";
 import { GalleryStore } from "./gallery-store.js";
 import { SessionStore } from "./sessions.js";
+import { SubmissionStore } from "./submissions.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 
 const ACCOUNT = 42;
@@ -43,6 +44,16 @@ const SEEDERS: { prefix: string; seed: (kv: MemoryKV, accountId: number) => Prom
     prefix: "sess/",
     seed: async (kv, accountId) => {
       await new SessionStore(kv).issue(accountId, "kompiro", at);
+    },
+  },
+  {
+    prefix: "sub/",
+    seed: async (kv, accountId) => {
+      await new SubmissionStore(kv).create(
+        accountId,
+        { title: "Shop", krs: "system Shop {}\n" },
+        at,
+      );
     },
   },
 ];
@@ -84,6 +95,7 @@ describe("account purge coverage", () => {
     expect(await new GalleryStore(kv).purgeAccount(ACCOUNT)).toEqual({
       accounts: 1,
       sessions: 1,
+      submissions: 1,
     });
   });
 
