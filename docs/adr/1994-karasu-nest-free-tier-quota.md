@@ -12,10 +12,7 @@ scope:
   packages: [nest]
   concerns: [deployment, security]
 assumptions:
-  - "file: packages/nest/src/quota/policy.ts"
-  - "file: packages/nest/src/quota/ledger.ts"
-  - "file: packages/nest/src/quota/gate.ts"
-  - "grep: packages/nest/src/reverse/pipeline.ts :: MAX_TOKENS"
+  - "quota/ 一式（policy.ts / ledger.ts / gate.ts）と reverse/pipeline.ts の MAX_TOKENS が実装だった。ADR-2578 が推論をやめ #2590 が削除したので、いずれも現存しない — 本 ADR は superseded であり、これは当時の実装への参照である"
   - "Anthropic の公開価格が claude-opus-5 で入力 $5/1M・出力 $25/1M（2026-06-24 時点）"
 ---
 

@@ -7,7 +7,7 @@
 - **対象ファイル**:
   - `docs/policy/nest-data-handling.md`（技術的事実の記述と同意文面の案）
   - `scripts/lint/nest-retention-policy-sync.test.ts`（文書とコードの drift ガード）
-  - `packages/nest/src/store/nest-purge-coverage.test.ts`（削除の網羅）
+  - `packages/nest/src/store/gallery-purge-coverage.test.ts`（削除の網羅。#2590 で削除単位が installation からアカウントに変わった）
 
 > ADR-1990 決定 6 は成立条件であって follow-up ではない。この AT が全部緑でも**下の H-1〜H-9（契約・法務文書）が残っている限り条件は満たされていない**。技術側の緑を「準備完了」と読まないための注記をここに置く。
 

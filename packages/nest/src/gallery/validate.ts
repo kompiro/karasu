@@ -41,13 +41,13 @@
  * Normalising here rather than in the console route means both doors store one
  * spelling of a document, which is the property worth having.
  *
- * `assertStructureOnly` is reused rather than rebuilt, but its meaning moves.
- * It was the second half of an egress door: everything reaching the model went
- * through `redactFiles`, and this was the check that the model had not
- * reproduced a secret anyway. There is no model now and no egress, so this is
- * the *only* scan, and it runs on ingress. Failing closed still matters for the
- * same reason it did — a hit means something credential-shaped was about to be
- * published, and scrubbing would ship the artifact and hide the fault.
+ * `assertStructureOnly` is reused rather than rebuilt, but its meaning moved.
+ * It was the second half of an egress door, checking that the model had not
+ * reproduced a secret the input redaction missed. There is no model and no
+ * egress now, so this is the *only* scan, and it runs on ingress. Failing
+ * closed still matters for the same reason it did — a hit means something
+ * credential-shaped was about to be published, and scrubbing would ship the
+ * artifact and hide the fault.
  */
 import { Parser } from "@karasu-tools/core";
 import { assertStructureOnly, StructureOnlyViolation } from "../redact/redact.js";

@@ -101,7 +101,7 @@ export async function signInCallback(context: RouteContext): Promise<Response> {
     throw cause;
   }
 
-  const store = new GalleryStore(requireBinding(env, "KRS_CACHE"));
+  const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
   const now = new Date();
   await store.accounts.signIn(user.id, user.login, now);
   const { sessionId } = await store.sessions.issue(user.id, user.login, now);
@@ -132,7 +132,7 @@ export async function signOut(context: RouteContext): Promise<Response> {
   }
   const cookie = parseSessionCookie(readCookie(request, SESSION_COOKIE));
   if (cookie !== undefined) {
-    const store = new GalleryStore(requireBinding(env, "KRS_CACHE"));
+    const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
     // A cookie whose halves cannot form a key was never a session; there is
     // nothing to revoke and the clear below is the whole answer.
     await store.sessions.revoke(cookie.accountId, cookie.sessionId).catch(() => undefined);

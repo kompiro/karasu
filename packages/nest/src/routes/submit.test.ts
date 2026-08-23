@@ -12,7 +12,7 @@ const KRS = "system Shop {\n  service api\n}\n";
 
 function env(kv: MemoryKV): NestEnv {
   return {
-    KRS_CACHE: kv,
+    NEST_STORE: kv,
     GITHUB_OAUTH_CLIENT_ID: "Iv1.client",
     GITHUB_OAUTH_CLIENT_SECRET: "shhh",
     NEST_PUBLIC_ORIGIN: ORIGIN,

@@ -23,7 +23,7 @@ export interface Viewer {
 export async function currentViewer(
   request: Request,
   env: NestEnv,
-  store = new GalleryStore(requireBinding(env, "KRS_CACHE")),
+  store = new GalleryStore(requireBinding(env, "NEST_STORE")),
 ): Promise<Viewer | undefined> {
   const cookie = parseSessionCookie(readCookie(request, SESSION_COOKIE));
   if (cookie === undefined) return undefined;

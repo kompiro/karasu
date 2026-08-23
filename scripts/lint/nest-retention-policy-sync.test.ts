@@ -2,18 +2,23 @@
  * The data-handling document is a claim about what the code does. This makes
  * it a checkable one.
  *
- * `docs/policy/nest-data-handling.md` states a retention period for every KV
- * prefix karasu-nest writes. Those periods are the material a privacy policy
- * is drafted from and the thing a repository owner is asked to accept at
- * install time — so a constant changed without the document is not a stale
- * doc, it is a service doing something other than what its users agreed to.
+ * `docs/policy/nest-data-handling.md` states how long karasu-nest keeps every
+ * KV prefix it writes. Those periods are the material a privacy policy is
+ * drafted from and the thing a submitter is asked to accept — so a constant
+ * changed without the document is not a stale doc, it is a service doing
+ * something other than what its users agreed to.
  *
- * Nothing else catches this. The constants live in five files, the document
- * lives in a sixth, and no type, test or lint rule connects them. The failure
- * is silent by construction: the code keeps working and only the promise
- * breaks. That is the same shape as TPL-2226 (a new prefix the purge does not
- * sweep) one level up — there the drift was between code and code, here it is
- * between code and what we told people.
+ * Nothing else catches this. The constants live in the store modules, the
+ * document lives in `docs/`, and no type, test or lint rule connects them. The
+ * failure is silent by construction: the code keeps working and only the
+ * promise breaks. That is the same shape as TPL-2226 (a new prefix the purge
+ * does not sweep) one level up — there the drift is between code and code,
+ * here it is between code and what we told people.
+ *
+ * Since #2590 the interesting half of the claim runs the other way. The
+ * gallery's retention is stated as a **condition** ("kept until the submitter
+ * deletes it") rather than a number, so what has to be checked is that no TTL
+ * exists — see `assertNoTtl` below and TPL-2587.
  *
  * This test is deliberately literal: it reads the constants out of the source
  * rather than importing them, because `packages/nest` compiles with
@@ -36,19 +41,20 @@ function constant(path: string, name: string): number {
   // would shadow the real declaration and certify a number the code does not
   // use. Every file this reads is heavily commented, several about durations.
   const source = read(path).replaceAll(/\/\*[\s\S]*?\*\//g, "");
-  // `export const` too: the gallery's stores export the constants this file
-  // reads, where the generation service kept them module-private.
-  const match = new RegExp(`^(?:export )?const ${name} = ([^;]+);`, "m").exec(source);
-  if (match?.[1] === undefined) {
+  const match = new RegExp(`^export const ${name} = ([^;]+);|^const ${name} = ([^;]+);`, "m").exec(
+    source,
+  );
+  const expression = match?.[1] ?? match?.[2];
+  if (expression === undefined) {
     throw new Error(`${name} is not declared in ${path} any more`);
   }
-  const expression = match[1].replaceAll("_", "");
-  if (!/^[\d\s*+]+$/.test(expression)) {
-    throw new Error(`${name} in ${path} is no longer a plain arithmetic literal: ${expression}`);
+  const cleaned = expression.replaceAll("_", "");
+  if (!/^[\d\s*+]+$/.test(cleaned)) {
+    throw new Error(`${name} in ${path} is no longer a plain arithmetic literal: ${cleaned}`);
   }
   // Only digits, whitespace and `*`/`+` reach here, checked directly above.
   return Number(
-    expression
+    cleaned
       .split("+")
       .map((term) => term.split("*").reduce((product, factor) => product * Number(factor), 1))
       .reduce((sum, term) => sum + term, 0),
@@ -58,177 +64,96 @@ function constant(path: string, name: string): number {
 const POLICY = "docs/policy/nest-data-handling.md";
 
 /**
- * Every retention the document states, and where the code decides it.
- *
- * Adding a KV prefix without adding a row here is the gap this file cannot
- * close by itself — which is why the list is short enough for a reviewer to
- * compare against `nest-purge-coverage.test.ts`'s seeder ledger by eye.
- */
-const RETENTIONS: { what: string; file: string; name: string; days: number; row: RegExp }[] = [
-  {
-    what: "the generated .krs",
-    file: "packages/nest/src/store/krs-cache.ts",
-    name: "DEFAULT_TTL_SECONDS",
-    days: 90,
-    row: /`krs\/v1\/<installation>\/<owner>\/<repo>\/<sha>` \| 90 日/,
-  },
-  {
-    what: "the run status record",
-    file: "packages/nest/src/store/run-status.ts",
-    name: "TTL_SECONDS",
-    days: 1,
-    // Trailing slash: `repoPrefix` ends in one, so that is the real key.
-    row: /`runs\/krs\/v1\/<installation>\/<owner>\/<repo>\/` \| 24 時間/,
-  },
-  {
-    what: "the cost record",
-    file: "packages/nest/src/meter/record.ts",
-    name: "TTL_SECONDS",
-    days: 400,
-    row: /`metrics\/krs\/v1\/[^`]+` \| 400 日/,
-  },
-  {
-    what: "the read counter",
-    file: "packages/nest/src/meter/reads.ts",
-    name: "TTL_SECONDS",
-    days: 400,
-    row: /`reads\/krs\/v1\/[^`]+` \| 400 日/,
-  },
-  {
-    what: "the monthly quota counter",
-    file: "packages/nest/src/quota/ledger.ts",
-    name: "QUOTA_TTL_SECONDS",
-    days: 400,
-    row: /`quota\/krs\/v1\/<installation>\/<YYYY-MM>` \| 400 日/,
-  },
-];
-
-/**
  * Assert that a store never passes an expiry.
  *
- * The gallery's account record is kept until its owner deletes it, and the
- * absence of a TTL cannot be proved by waiting — so it is checked at the
- * source: the store has one `put` call site and it must not carry
- * `expirationTtl`. The behavioural half lives in the package's own suite
- * (`accounts.test.ts` asserts on the fake's recorded `put` options); this half
- * is what a reader of the document can see.
+ * The absence of a TTL cannot be proved by waiting, so it is checked at the
+ * source: the store has exactly one `put` call site, and it must not carry
+ * `expirationTtl`. The behavioural half of this lives in the package's own
+ * suite (`submissions.test.ts`, `accounts.test.ts`), which asserts on the
+ * fake's recorded `put` options; this half is what a reviewer of the document
+ * can see.
  */
 function assertNoTtl(path: string): void {
   const source = read(path).replaceAll(/\/\*[\s\S]*?\*\//g, "");
   expect(source).not.toMatch(/expirationTtl/);
 }
 
-describe("the data-handling document matches the code (#1996)", () => {
+describe("the data-handling document matches the code (#1996, #2591)", () => {
   const policy = read(POLICY);
 
-  it("states that a submission is kept until its author deletes it", () => {
-    // The gallery's whole point is content its author manages; an expiry the
-    // document did not mention would delete it out from under them.
+  it("keeps a submission until its author deletes it, and says so", () => {
+    // The decision, not an omission: content its author manages must not
+    // vanish on its own, or the disappearance becomes the support request the
+    // console exists to remove (TPL-2587).
     assertNoTtl("packages/nest/src/store/submissions.ts");
-    expect(policy).toMatch(/`sub\/v1\/<account>\/<id>` \| \*\*投稿者が削除するまで（無期限）\*\*/);
+    expect(policy).toMatch(/`sub\/v1\/<account>\/<id>` \| \*\*投稿者が削除するまで\*\*/);
   });
 
-  it("states the submission size cap a submitter is held to", () => {
-    expect(constant("packages/nest/src/store/submissions.ts", "MAX_SUBMISSION_BYTES")).toBe(
-      256 * 1024,
-    );
-  });
-
-  it("states that the account record has no expiry, and it has none", () => {
-    // The service's first personal data, kept indefinitely. A document that
-    // omitted it would be exactly the "quietly false" case this file exists
-    // for -- and this is the row a privacy policy is drafted from.
+  it("keeps the account record on the same condition", () => {
     assertNoTtl("packages/nest/src/store/accounts.ts");
-    expect(policy).toMatch(/`acct\/v1\/<account>` \| \*\*アカウント削除まで（無期限）\*\*/);
+    expect(policy).toMatch(/`acct\/v1\/<account>` \| \*\*アカウント削除まで\*\*/);
   });
 
-  it("states the session's expiry, which is the one credential here", () => {
+  it("expires a session, which is the one credential here", () => {
     expect(constant("packages/nest/src/store/sessions.ts", "SESSION_TTL_SECONDS")).toBe(
       30 * 24 * 60 * 60,
     );
     expect(policy).toMatch(/`sess\/v1\/<account>\/<session>` \| 30 日/);
   });
 
-  it("says the identifier is the only personal data, and asks for no scopes", () => {
-    // The scope request is what a submitter reads on the consent screen, so a
-    // widened scope that the document did not follow would be the service
-    // asking for more than it says it does.
-    expect(read("packages/nest/src/auth/oauth.ts")).toContain('url.searchParams.set("scope", "")');
-    expect(policy).toContain("メールアドレスは持たない");
-  });
-
-  it.each(RETENTIONS)("states the retention of $what", ({ file, name, days, row }) => {
-    expect(constant(file, name)).toBe(days * 24 * 60 * 60);
-    expect(policy).toMatch(row);
-  });
-
-  it("states the concurrency slot's 90 minutes", () => {
-    expect(constant("packages/nest/src/quota/ledger.ts", "SLOT_TTL_SECONDS")).toBe(90 * 60);
-    expect(policy).toMatch(/`busy\/krs\/v1\/[^`]+` \| 90 分/);
-  });
-
-  it("states the file limits the model actually sees", () => {
-    // The document tells a repository owner how much of their code is read.
-    // These two numbers are that answer.
-    expect(constant("packages/nest/src/generate/run.ts", "MAX_FILES_FETCHED")).toBe(200);
-    expect(constant("packages/nest/src/generate/run.ts", "MAX_FILE_BYTES")).toBe(200_000);
-    expect(policy).toContain("最大 200 ファイル・1 ファイル 200KB まで");
-
-    expect(constant("packages/nest/src/reverse/pipeline.ts", "DEFAULT_MAX_FILES_READ")).toBe(60);
-    expect(constant("packages/nest/src/reverse/pipeline.ts", "DEFAULT_MAX_BYTES_READ")).toBe(
-      400_000,
+  it("states the size limits a submitter is actually held to", () => {
+    expect(constant("packages/nest/src/store/submissions.ts", "MAX_SUBMISSION_BYTES")).toBe(
+      256 * 1024,
     );
-    // Characters, not bytes: the accumulator counts UTF-16 code units, so a
-    // CJK source's real payload exceeds the number. The document says so.
-    expect(read("packages/nest/src/reverse/pipeline.ts")).toContain("bytes + file.content.length");
-    expect(policy).toContain(
-      "最大 60 ファイル分の、**redact 済み**ソース本文（1 パスあたり合計 40 万文字",
-    );
+    expect(constant("packages/nest/src/store/submissions.ts", "MAX_TITLE_LENGTH")).toBe(120);
+    expect(policy).toContain("1 投稿あたり 256KB");
   });
 
   it("names each prefix the purge is wired for (not that the list is complete)", () => {
     // Deliberately narrow, and named for what it does. Both lists below are
     // written here, so a *new* prefix with no doc row and no purge wiring
     // passes this untouched — the gap TPL-2226 exists for, closed by a human
-    // reading `nest-purge-coverage.test.ts`'s seeder ledger rather than by
+    // reading `gallery-purge-coverage.test.ts`'s seeder ledger rather than by
     // this file. Claiming otherwise in the test name would be worse than the
     // gap, because it would stop anyone looking.
-    const store = read("packages/nest/src/store/nest-store.ts");
-    const purged = ["cache", "directory", "runs", "metrics", "reads", "quota"];
-    for (const member of purged) {
-      expect(store).toMatch(new RegExp(`this\\.${member}\\.(purgeInstallation|unpublishOwnedBy)`));
+    const store = read("packages/nest/src/store/gallery-store.ts");
+    for (const member of ["sessions", "submissions", "accounts"]) {
+      expect(store).toMatch(new RegExp(`this\\.${member}\\.purgeAccount`));
     }
-    // Full key shapes, not bare prefixes: `krs/v1/` alone is satisfied by the
-    // `runs/krs/v1/…` row, which would let a missing row pass.
     for (const key of [
-      "`krs/v1/<installation>/<owner>/<repo>/<sha>`",
-      "`idx/v1/<owner>/<repo>`",
-      "`runs/krs/v1/<installation>/<owner>/<repo>/`",
-      "`metrics/krs/v1/",
-      "`reads/krs/v1/",
-      "`quota/krs/v1/<installation>/<YYYY-MM>`",
-      "`busy/krs/v1/",
+      "`acct/v1/<account>`",
+      "`sub/v1/<account>/<id>`",
+      "`sess/v1/<account>/<session>`",
     ]) {
       expect(policy).toContain(key);
     }
   });
 
-  it("says a private repository's model is not served", () => {
-    // The single most consequential fact about this service for a repository
-    // owner, and the one a privacy policy drafted from this document would
-    // otherwise be silent on.
-    expect(read("packages/nest/src/routes/repo.ts")).toContain("published.private !== false");
-    expect(policy).toContain("private repository のモデルは配信しない");
+  it("says the service does not read anyone's repository", () => {
+    // The single most consequential fact about the gallery, and the one a
+    // privacy policy drafted from this document turns on. It is checkable:
+    // the package no longer contains a GitHub repository client at all.
+    expect(() => read("packages/nest/src/github/client.ts")).toThrow(/ENOENT/);
+    expect(policy).toContain("ソースコードを読まない");
   });
 
-  it("does not claim PR-back is enabled while the switch defaults off", () => {
-    // The document is what the consent copy is drafted from. If delivery ever
-    // becomes default-on, this sentence has to be rewritten in the same
-    // change -- the install prompt would be describing a narrower service
-    // than the one running (ADR-1990 decision 6).
-    expect(read("packages/nest/src/deliver/pull-request.ts")).toContain(
-      'return env.PR_DELIVERY === "on";',
+  it("says an unlisted submission is withheld, and withholds it", () => {
+    expect(read("packages/nest/src/routes/gallery.ts")).toContain(
+      'submission.visibility !== "public" && !isOwner',
     );
-    expect(policy).toContain("既定で無効");
+    expect(policy).toContain("**非公開（unlisted）**: **配信しない。**");
+  });
+
+  it("does not claim a model provider is involved", () => {
+    // If inference ever comes back, this document is where the consent copy is
+    // drafted from and it would be describing a narrower service than the one
+    // running. Both halves are asserted so neither can drift alone.
+    //
+    // Checked against the subprocessor table rather than by grepping the
+    // provider's name out of the whole file: the document legitimately
+    // records that the zero-retention contract item is gone, and a bare name
+    // search would forbid saying so.
+    expect(() => read("packages/nest/src/reverse/llm.ts")).toThrow(/ENOENT/);
+    expect(policy).toContain("モデルプロバイダは**居ない**");
   });
 });

@@ -1,12 +1,11 @@
 /**
- * Cloudflare Workers entry point for karasu-nest.
+ * Cloudflare Workers entry point for karasu-nest, and the package's barrel.
  *
- * A separate Worker from the Pages app on purpose (ADR-1990 decision 5): this
- * one holds state, the GitHub App private key and the webhook endpoint, and
- * none of those may move into the static app deploy. The app's existing
- * surfaces (inline `#s=` share, `/render`, `/s`, the repo-backed permalink)
- * stay exactly where they are and are not routed through here — ADR-2249 keeps
- * the two faces unconnected at runtime, meeting only at the repo.
+ * A separate Worker from the Pages app on purpose (ADR-2578 decision 5, carried
+ * forward from ADR-1990): this one holds state and the session, and neither may
+ * move into the static app deploy. The app's own surfaces (inline `#s=` share,
+ * `/render`, `/s`, the repo-backed permalink) stay exactly where they are and
+ * are not routed through here.
  *
  * The entry is deliberately thin: everything testable lives in `app.ts` and
  * below, so the suite never needs a Workers runtime.
@@ -20,78 +19,33 @@ export default {
   },
 };
 
-// Re-exported for tests and callers. The copy that matters to wrangler is on
-// `worker.ts`, which is where a `[[workflows]]` class binding is resolved.
-export { GenerateWorkflow } from "./generate/workflow.js";
 export { handleRequest, createRouter } from "./app.js";
 export type { NestEnv, NestExecutionContext } from "./env.js";
-export { KrsCache, markGenerated } from "./store/krs-cache.js";
-export { NestStore } from "./store/nest-store.js";
-export type { PublishedKrs, PurgeResult } from "./store/nest-store.js";
-export { RepoDirectory } from "./store/repo-directory.js";
-export type { DirectoryEntry } from "./store/repo-directory.js";
-export type { GeneratedKrs, KrsCacheEntry } from "./store/krs-cache.js";
-export type { CachedRef, RepoRef } from "./store/keys.js";
-export { GitHubClient, GitHubApiError } from "./github/client.js";
-export type { GitHubClientOptions, RepoTree, TreeEntry } from "./github/client.js";
-export { createAppJwt } from "./github/app-jwt.js";
-export type { AppJwtOptions } from "./github/app-jwt.js";
-export { toPkcs8, InvalidPrivateKeyError } from "./github/pem.js";
+
+// The gallery's stores. Keyed account-first so account deletion is one sweep.
+export { GalleryStore } from "./store/gallery-store.js";
+export type { AccountPurgeResult } from "./store/gallery-store.js";
+export { AccountStore } from "./store/accounts.js";
+export type { Account } from "./store/accounts.js";
+export { SessionStore, SESSION_TTL_SECONDS } from "./store/sessions.js";
+export type { Session } from "./store/sessions.js";
+export { SubmissionStore, MAX_SUBMISSION_BYTES, MAX_TITLE_LENGTH } from "./store/submissions.js";
+export type { NewSubmission, Submission, Visibility } from "./store/submissions.js";
 export {
-  redact,
-  redactFiles,
-  assertStructureOnly,
-  StructureOnlyViolation,
-} from "./redact/redact.js";
+  formatSubmissionId,
+  parseSubmissionId,
+  InvalidGalleryRefError,
+} from "./store/gallery-keys.js";
+
+// Ingest and serving.
+export { validateSubmission } from "./gallery/validate.js";
+export type { SubmissionRejection, ValidationResult } from "./gallery/validate.js";
+export { renderSubmission } from "./gallery/render.js";
+export type { RenderResult } from "./gallery/render.js";
+
+// The structure-only scan. It was the second half of an egress door; with no
+// model to call it is the only scan, and it runs on ingress.
+export { redact, assertStructureOnly, StructureOnlyViolation } from "./redact/redact.js";
 export type { Finding, RedactionResult } from "./redact/redact.js";
 export { REDACTION_RULES } from "./redact/rules.js";
 export type { RedactionRule } from "./redact/rules.js";
-export { pruneUnparseableLines } from "./reverse/prune.js";
-export type { PruneResult } from "./reverse/prune.js";
-export { reverseRepository, ReverseFailed } from "./reverse/pipeline.js";
-export type { StructuralDiagnostic } from "./reverse/pipeline.js";
-export type {
-  RedactedRepo,
-  ReverseOptions,
-  ReverseResult,
-  DomainSketch,
-} from "./reverse/pipeline.js";
-export { AnthropicClient, LlmError } from "./reverse/llm.js";
-export type { LlmClient, LlmResponse, LlmUsage } from "./reverse/llm.js";
-export { BOUNDED_CONTEXT_DIRECTIVE, repairPrompt } from "./reverse/prompts.js";
-export type { RepairDiagnostic } from "./reverse/prompts.js";
-export { generate, GenerateFailed } from "./generate/run.js";
-export { generationInstanceId } from "./generate/dispatch.js";
-export type { GenerationDispatcher, GenerationParams } from "./generate/dispatch.js";
-export type { GenerateInput, GenerateDeps, GenerateOutcome } from "./generate/run.js";
-// The cost surface (#2226): the numbers that decide #1994's quota level.
-export { costUsd, isPricedModel, toCents, PRICING_AS_OF, UnknownModelError } from "./meter/cost.js";
-export type { TokenUsage } from "./meter/cost.js";
-export { FailedDocumentStore } from "./meter/failed-document.js";
-export { MetricsStore } from "./meter/record.js";
-export type { Aggregate, PassMetrics, RunMetrics } from "./meter/record.js";
-export { ReadCounter, utcDay } from "./meter/reads.js";
-// PR-back delivery (#2289). Off unless a deploy sets PR_DELIVERY=on.
-export {
-  deliverPullRequest,
-  deliveryBranch,
-  pullRequestBody,
-  DeliveryFailed,
-  KRS_PATH,
-} from "./deliver/pull-request.js";
-export type { DeliveryInput, DeliveryResult, DeliveryDeps } from "./deliver/pull-request.js";
-// The free-tier quota (#1994), levels derived in docs/design/2226-nest-cost-model.md.
-export { checkQuota } from "./quota/gate.js";
-export type { GateOptions } from "./quota/gate.js";
-export { QuotaLedger } from "./quota/ledger.js";
-export {
-  BUSY_RETRY_AFTER_SECONDS,
-  LOCAL_REVERSE_GUIDE,
-  MAX_CONCURRENT_RUNS,
-  MONTHLY_REVERSES,
-  nextPeriodStart,
-  quotaPeriod,
-} from "./quota/policy.js";
-export type { QuotaOutcome } from "./quota/policy.js";
-export { RunStatusStore } from "./store/run-status.js";
-export type { RunStatus, RunState } from "./store/run-status.js";

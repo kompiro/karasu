@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertStructureOnly, redact, redactFiles, StructureOnlyViolation } from "./redact.js";
+import { assertStructureOnly, redact, StructureOnlyViolation } from "./redact.js";
 
 /**
  * Composed at runtime rather than written as literals, so this file trips
@@ -189,26 +189,6 @@ describe("what the review found leaking", () => {
     const started = performance.now();
     redact(hostile);
     expect(performance.now() - started).toBeLessThan(1000);
-  });
-});
-
-describe("redactFiles", () => {
-  it("tags each finding with the file it came from", () => {
-    const result = redactFiles([
-      { path: "src/a.ts", content: `const k = "${fake.githubToken}";` },
-      { path: "src/b.ts", content: "export const answer = 42;" },
-      { path: "src/c.ts", content: `const k = "${fake.stripe}";` },
-    ]);
-    expect(result.findings.map((f) => [f.where, f.ruleId])).toEqual([
-      ["src/a.ts", "github-token"],
-      ["src/c.ts", "stripe-key"],
-    ]);
-    expect(result.files[1]?.content).toBe("export const answer = 42;");
-  });
-
-  it("returns every file, redacted or not", () => {
-    const result = redactFiles([{ path: "a", content: "x" }]);
-    expect(result.files).toEqual([{ path: "a", content: "x" }]);
   });
 });
 

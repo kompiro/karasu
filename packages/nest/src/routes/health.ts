@@ -13,14 +13,7 @@ import { json } from "../http.js";
 import type { RouteContext } from "../router.js";
 
 const REPORTED_BINDINGS = [
-  "KRS_CACHE",
-  "GITHUB_APP_ID",
-  "GITHUB_APP_PRIVATE_KEY",
-  "GITHUB_WEBHOOK_SECRET",
-  "LLM_API_KEY",
-  "GENERATE_WORKFLOW",
-  "METRICS_TOKEN",
-  "PR_DELIVERY",
+  "NEST_STORE",
   "GITHUB_OAUTH_CLIENT_ID",
   "GITHUB_OAUTH_CLIENT_SECRET",
   "NEST_PUBLIC_ORIGIN",

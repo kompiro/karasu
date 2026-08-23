@@ -22,14 +22,7 @@ describe("handleRequest", () => {
       status: "ok",
       environment: "preview",
       bindings: {
-        KRS_CACHE: false,
-        GITHUB_APP_ID: false,
-        GITHUB_APP_PRIVATE_KEY: false,
-        GITHUB_WEBHOOK_SECRET: false,
-        LLM_API_KEY: false,
-        GENERATE_WORKFLOW: false,
-        METRICS_TOKEN: false,
-        PR_DELIVERY: false,
+        NEST_STORE: false,
         GITHUB_OAUTH_CLIENT_ID: false,
         GITHUB_OAUTH_CLIENT_SECRET: false,
         NEST_PUBLIC_ORIGIN: false,
@@ -39,11 +32,11 @@ describe("handleRequest", () => {
 
   it("reports a binding as present without disclosing its value", async () => {
     const response = await get("/healthz", {
-      GITHUB_APP_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----",
+      GITHUB_OAUTH_CLIENT_SECRET: "a-real-looking-client-secret",
     });
     const body = await response.text();
-    expect(JSON.parse(body).bindings.GITHUB_APP_PRIVATE_KEY).toBe(true);
-    expect(body).not.toContain("BEGIN PRIVATE KEY");
+    expect(JSON.parse(body).bindings.GITHUB_OAUTH_CLIENT_SECRET).toBe(true);
+    expect(body).not.toContain("a-real-looking-client-secret");
   });
 
   it("reports an unset ENVIRONMENT as unknown rather than omitting it", async () => {
@@ -59,12 +52,12 @@ describe("handleRequest", () => {
   it("turns a missing binding into a 503 that names the binding", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const routes = new Router().get("/boom", () => {
-      throw new MissingBindingError("KRS_CACHE");
+      throw new MissingBindingError("NEST_STORE");
     });
     const response = await get("/boom", {}, routes);
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      error: { code: "not_configured", message: "This deploy is missing the KRS_CACHE binding." },
+      error: { code: "not_configured", message: "This deploy is missing the NEST_STORE binding." },
     });
   });
 
@@ -95,17 +88,17 @@ describe("handleRequest", () => {
     expect((await routes.handle(new Request("https://nest.example/healthz"), {}, ctx)).status).toBe(
       200,
     );
-    // `/<owner>/<repo>` (#2285) and `POST /webhooks/github` (#2286) are both
-    // served now. A bare root is still unclaimed, and the webhook path must
-    // answer 405 to a GET rather than falling through to the repository route,
-    // which would confidently report "nothing generated for webhooks/github".
-    const configured = { KRS_CACHE: new MemoryKV() };
+    // A bare root is still unclaimed. `/:owner/:repo` went with server-side
+    // generation (#2590), so nothing here is a two-segment catch-all any more
+    // and an unknown path is a plain 404.
+    const configured = { NEST_STORE: new MemoryKV() };
     const statusOf = async (path: string): Promise<number> =>
       (await routes.handle(new Request(`https://nest.example${path}`), configured, ctx)).status;
     expect(await statusOf("/")).toBe(404);
-    expect(await statusOf("/webhooks/github")).toBe(405);
-    // `/generate` is POST-only and `/status` needs the App bindings, so both
-    // answer without falling through to the `/:owner/:repo` catch-all.
-    expect(await statusOf("/kompiro/shop/generate")).toBe(405);
+    expect(await statusOf("/kompiro/karasu")).toBe(404);
+    // The console's literal paths win over `/console/s/:id`, and a POST-only
+    // path answers 405 rather than 404 so the method is the visible fault.
+    expect(await statusOf("/console/submit")).toBe(405);
+    expect(await statusOf("/api/submissions")).toBe(405);
   });
 });

@@ -12,23 +12,25 @@ function captureThrow(run: () => unknown): unknown {
 
 describe("requireBinding", () => {
   it("returns a configured value", () => {
-    expect(requireBinding({ GITHUB_APP_ID: "42" }, "GITHUB_APP_ID")).toBe("42");
+    expect(requireBinding({ GITHUB_OAUTH_CLIENT_ID: "Iv1.client" }, "GITHUB_OAUTH_CLIENT_ID")).toBe(
+      "Iv1.client",
+    );
   });
 
   it("throws a named error when a binding is absent", () => {
     // Captured rather than asserted inside a `catch`, so the assertion runs
     // unconditionally even if the call stops throwing.
-    const thrown = captureThrow(() => requireBinding({}, "GITHUB_APP_PRIVATE_KEY"));
+    const thrown = captureThrow(() => requireBinding({}, "GITHUB_OAUTH_CLIENT_SECRET"));
     expect(thrown).toBeInstanceOf(MissingBindingError);
-    expect((thrown as MissingBindingError).binding).toBe("GITHUB_APP_PRIVATE_KEY");
-    expect((thrown as Error).message).toContain("GITHUB_APP_PRIVATE_KEY");
+    expect((thrown as MissingBindingError).binding).toBe("GITHUB_OAUTH_CLIENT_SECRET");
+    expect((thrown as Error).message).toContain("GITHUB_OAUTH_CLIENT_SECRET");
   });
 
   it("treats an empty string as absent", () => {
     // Wrangler surfaces an unset secret as "" in some configurations, and an
-    // empty App key would otherwise reach the signing code as a valid value.
-    expect(() => requireBinding({ GITHUB_APP_ID: "" }, "GITHUB_APP_ID")).toThrowError(
-      MissingBindingError,
-    );
+    // empty client secret would otherwise be posted to GitHub as a real one.
+    expect(() =>
+      requireBinding({ GITHUB_OAUTH_CLIENT_ID: "" }, "GITHUB_OAUTH_CLIENT_ID"),
+    ).toThrowError(MissingBindingError);
   });
 });

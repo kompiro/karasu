@@ -44,8 +44,9 @@ const NOT_FOUND = "No submission with that id.";
  * An `unlisted` submission answers exactly as a nonexistent one does, unless
  * its owner is asking. Distinguishing them would make this route an oracle for
  * "did this person submit something and take it down", which is the state a
- * submitter chose in order not to be seen — the same reasoning
- * `routes/repo.ts` applies to a private repository's model.
+ * submitter chose in order not to be seen. It is the same reasoning the
+ * retired repository route applied to a private repository's model: the 404
+ * for "not visible" has to be indistinguishable from the 404 for "not there".
  */
 async function visibleSubmission(
   context: RouteContext,
@@ -68,7 +69,7 @@ async function visibleSubmission(
 }
 
 export async function submissionPage(context: RouteContext): Promise<Response> {
-  const store = new GalleryStore(requireBinding(context.env, "KRS_CACHE"));
+  const store = new GalleryStore(requireBinding(context.env, "NEST_STORE"));
   const found = await visibleSubmission(context, store);
   if (found === undefined) return error(404, "not_found", NOT_FOUND);
   const { submission, isOwner } = found;

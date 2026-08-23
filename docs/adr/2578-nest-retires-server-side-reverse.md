@@ -18,7 +18,7 @@ scope:
   concerns: [deployment, security]
 assumptions:
   - "grep: docs/design/nest-as-a-gallery.md :: 決めたこと"
-  - "file: packages/nest/src/reverse/pipeline.ts"
+  - "reverse/pipeline.ts（survey → decompose → synthesise → repair）が本 ADR の廃止対象だった。#2590 が削除したので現存しない — 不在が決定の実行を示す"
   - "file: packages/nest/wrangler.toml"
 ---
 

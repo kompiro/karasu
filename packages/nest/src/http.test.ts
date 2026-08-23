@@ -36,10 +36,10 @@ describe("http helpers", () => {
   });
 
   it("shapes errors as a machine-readable code plus a human message", async () => {
-    const response = error(503, "not_configured", "Missing KRS_CACHE.");
+    const response = error(503, "not_configured", "Missing NEST_STORE.");
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      error: { code: "not_configured", message: "Missing KRS_CACHE." },
+      error: { code: "not_configured", message: "Missing NEST_STORE." },
     });
   });
 

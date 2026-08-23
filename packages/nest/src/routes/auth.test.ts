@@ -9,9 +9,9 @@ import { OAUTH_STATE_COOKIE, SESSION_COOKIE } from "../auth/session.js";
 const ctx: NestExecutionContext = { waitUntil: () => {} };
 const ORIGIN = "https://nest.example";
 
-function env(kv = new MemoryKV()): NestEnv & { KRS_CACHE: MemoryKV } {
+function env(kv = new MemoryKV()): NestEnv & { NEST_STORE: MemoryKV } {
   return {
-    KRS_CACHE: kv,
+    NEST_STORE: kv,
     GITHUB_OAUTH_CLIENT_ID: "Iv1.client",
     GITHUB_OAUTH_CLIENT_SECRET: "shhh",
     NEST_PUBLIC_ORIGIN: ORIGIN,
@@ -50,7 +50,7 @@ describe("GET /auth/login", () => {
   it("refuses to start when the deploy has no OAuth credentials", async () => {
     const response = await handleRequest(
       new Request(`${ORIGIN}/auth/login`),
-      { KRS_CACHE: new MemoryKV(), NEST_PUBLIC_ORIGIN: ORIGIN },
+      { NEST_STORE: new MemoryKV(), NEST_PUBLIC_ORIGIN: ORIGIN },
       ctx,
     );
     // A service that quietly degrades here would send people to a broken

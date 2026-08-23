@@ -3,19 +3,16 @@
  * request through a single failure boundary.
  *
  * The boundary is the point of this module. A handler that throws must not
- * return a stack trace, a binding value, or anything derived from the
- * repository being processed — this service's inputs are other people's
- * private code (ADR-1990 decision 6). So the boundary answers with a fixed
- * code and logs the detail server-side instead.
+ * return a stack trace or a binding value. The reason has narrowed since
+ * ADR-1990 decision 6 wrote it — the service no longer reads anyone's private
+ * code, so there is nothing repository-derived to leak — but a session lives
+ * here now, and a stack trace naming a key is a worse thing to hand a stranger
+ * than a fixed code plus a server-side log.
  */
 import { MissingBindingError, type NestEnv, type NestExecutionContext } from "./env.js";
 import { error } from "./http.js";
 import { logError } from "./log.js";
 import { health } from "./routes/health.js";
-import { failedDocument, metricsReport } from "./routes/metrics.js";
-import { repoKrs } from "./routes/repo.js";
-import { generationStatus, requestGeneration } from "./routes/generate.js";
-import { githubWebhook } from "./routes/webhook.js";
 import { signIn, signInCallback, signOut } from "./routes/auth.js";
 import { submitKrs } from "./routes/submit.js";
 import { submissionPage } from "./routes/gallery.js";
@@ -33,10 +30,11 @@ import {
 import { Router } from "./router.js";
 
 export function createRouter(): Router {
-  // Registration order is match order, so the literal routes go first and the
-  // `/:owner/:repo` catch-all cannot shadow them. `/webhooks/github` has two
-  // segments and would otherwise be answered as a repository named
-  // `webhooks/github`.
+  // Registration order is match order within a group, and `Router.candidates`
+  // prefers the group with the fewest captures, so the literal `/console/...`
+  // routes are chosen over `/console/s/:id` for the paths they both match.
+  // Registering the literals first keeps that visible to a reader as well as
+  // true of the matcher.
   return new Router()
     .get("/healthz", health)
     .get("/auth/login", signIn)
@@ -52,13 +50,7 @@ export function createRouter(): Router {
     .post("/console/s/:id/replace", consoleReplace)
     .get("/console/s/:id/delete", consoleConfirmDelete)
     .post("/console/s/:id/delete", consoleDelete)
-    .get("/g/:id", submissionPage)
-    .get("/admin/metrics", metricsReport)
-    .get("/admin/failed/:owner/:repo", failedDocument)
-    .post("/webhooks/github", githubWebhook)
-    .post("/:owner/:repo/generate", requestGeneration)
-    .get("/:owner/:repo/status", generationStatus)
-    .get("/:owner/:repo", repoKrs);
+    .get("/g/:id", submissionPage);
 }
 
 const router = createRouter();

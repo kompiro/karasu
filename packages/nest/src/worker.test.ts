@@ -6,6 +6,9 @@
  * pointing `main` at a barrel — makes the runtime refuse to start, and no
  * other signal in this repository notices: types pass, the suite passes, and
  * the failure appears the first time someone runs `wrangler dev` or deploys.
+ *
+ * Since #2590 removed the `[[workflows]]` binding there is no class to export
+ * either, so the accepted set is exactly one default handler.
  */
 import { describe, expect, it } from "vitest";
 import * as entry from "./worker.js";
@@ -19,16 +22,9 @@ describe("the Workers entry", () => {
     expect(Object.entries(named).filter(([, value]) => typeof value !== "function")).toEqual([]);
   });
 
-  it("exports the Workflow class wrangler binds by name", () => {
-    // `[[workflows]] class_name = "GenerateWorkflow"` is resolved against the
-    // entry's exports, so a binding whose class is only in the barrel fails
-    // at deploy rather than at compile.
-    expect(typeof entry.GenerateWorkflow).toBe("function");
-  });
-
   it("does not re-export the barrel", () => {
     // The way this breaks is someone adding `export * from "./index.js"` here
     // for convenience, which puts every constant back on the entry.
-    expect(Object.keys(entry).sort()).toEqual(["GenerateWorkflow", "default"]);
+    expect(Object.keys(entry).sort()).toEqual(["default"]);
   });
 });

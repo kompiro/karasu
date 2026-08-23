@@ -97,20 +97,7 @@ export function redact(text: string, where = "input"): RedactionResult {
 }
 
 /** Redact a whole file set, tagging each finding with its path. */
-export function redactFiles(files: readonly { path: string; content: string }[]): {
-  files: { path: string; content: string }[];
-  findings: Finding[];
-} {
-  const findings: Finding[] = [];
-  const redacted = files.map((file) => {
-    const result = redact(file.content, file.path);
-    findings.push(...result.findings);
-    return { path: file.path, content: result.text };
-  });
-  return { files: redacted, findings };
-}
-
-/** Thrown when generated output carries something credential-shaped. */
+/** Thrown when a document carries something credential-shaped. */
 export class StructureOnlyViolation extends Error {
   constructor(readonly findings: Finding[]) {
     const kinds = [...new Set(findings.map((f) => f.ruleId))].join(", ");
@@ -120,13 +107,17 @@ export class StructureOnlyViolation extends Error {
 }
 
 /**
- * Refuse a generated document that carries anything credential-shaped.
+ * Refuse a document that carries anything credential-shaped.
  *
- * Fails closed, and does not scrub. A hit here is evidence that the input
- * redaction missed or that the model reproduced something it should not have,
- * and both need to be visible. Scrubbing would ship the artifact and hide the
- * fault, which is the same trade the ADR refused when it put a second scan
- * here at all.
+ * This was the second half of an egress door: everything reaching the model
+ * was redacted first, and this checked that the model had not reproduced a
+ * secret anyway. #2590 removed the model and the egress, so this is now the
+ * **only** scan and it runs on ingress, over a document its author submitted
+ * (`gallery/validate.ts`).
+ *
+ * Fails closed, and does not scrub — unchanged, and for the same reason it
+ * always held. A hit means something credential-shaped was about to be
+ * published; scrubbing would ship the artifact and hide the fault.
  *
  * The placeholders that `redact` itself writes are not matches, because they
  * do not look like credentials — so a `.krs` describing a `[REDACTED:jwt]`
