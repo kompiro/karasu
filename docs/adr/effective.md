@@ -289,6 +289,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2218](2218-roadmap-pruning-policy.md) — roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）
 - [ADR-2262](2262-nest-intake-and-completion.md) — karasu-nest の受付と完了通知 — installer 起動 + PR 還元、reader は無通知のリクエスト受付
 - [ADR-2578](2578-nest-retires-server-side-reverse.md) — karasu-nest は server-side reverse をやめ、投稿を預かるギャラリーになる
+- [ADR-2592](2592-nest-as-a-gallery.md) — ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する
 - [ADR-9006](9006-project-and-filesystem.md) — プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 ## renderer

@@ -284,6 +284,7 @@ flowchart TD
     ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
     ADR_2262["ADR-2262<br/>karasu-nest の受付と完了通知 — installer 起動 + PR 還元、rea..."]
     ADR_2578["ADR-2578<br/>karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
+    ADR_2592["ADR-2592<br/>ギャラリーの構築 — 投稿は repo に紐づかず、投稿者が自分で管理する"]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   subgraph renderer["renderer"]
@@ -506,6 +507,7 @@ flowchart TD
   ADR_2436 --> ADR_2419
   ADR_2442 --> ADR_2410
   ADR_2461 --> ADR_2193
+  ADR_2592 --> ADR_2578
   ADR_9007 --> ADR_9008
   ADR_9007 --> ADR_21
   ADR_9011 --> ADR_9007
@@ -858,6 +860,7 @@ flowchart TD
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2578 accepted
+  class ADR_2592 accepted
   class ADR_2593 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
