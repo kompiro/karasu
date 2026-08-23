@@ -41,6 +41,20 @@ enabled = true
 [vars]
 ENVIRONMENT = "production"
 
+# The origin this deploy answers on, e.g. "https://karasu-nest.<account>.workers.dev"
+# or a custom hostname. Submitter sign-in (#2586) needs it for two things:
+# GitHub's `redirect_uri`, and the `Origin` every state-changing request is
+# checked against.
+#
+# Deliberately NOT derived from the incoming request. Both uses stop meaning
+# anything if an attacker-supplied `Host` header can decide them.
+#
+# Left unset here because this repository does not record the hostname. Set it
+# on the deploy (uncomment with the real value, or set the var in the
+# dashboard). Until it is set, sign-in answers 503 naming the binding rather
+# than sending anyone to a broken consent screen.
+# NEST_PUBLIC_ORIGIN = "https://karasu-nest.example.workers.dev"
+
 # Deliver the generated model as a pull request (#2289).
 #
 # This asks the App for `contents:write` and `pull_requests:write`, wider than
@@ -83,6 +97,13 @@ class_name = "GenerateWorkflow"
 #   wrangler secret put GITHUB_WEBHOOK_SECRET   # 2286
 #   wrangler secret put LLM_API_KEY             # 2288
 #   wrangler secret put METRICS_TOKEN           # 2226 (GET /admin/metrics)
+#   wrangler secret put GITHUB_OAUTH_CLIENT_ID      # 2586 (submitter sign-in)
+#   wrangler secret put GITHUB_OAUTH_CLIENT_SECRET  # 2586
+#
+# The OAuth pair can come from a dedicated OAuth App or from this GitHub App's
+# own user-to-server credentials -- the flow is identical and the code cannot
+# tell them apart. #2590 removes the App itself, so a dedicated OAuth App is
+# the form that survives; either works today.
 #
 # PR-back delivery (#2289) is a plain var, set above. It is the one setting
 # here whose effect is outward: it writes to repositories. The condition that
