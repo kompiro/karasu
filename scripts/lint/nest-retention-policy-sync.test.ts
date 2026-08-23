@@ -64,6 +64,23 @@ function constant(path: string, name: string): number {
 const POLICY = "docs/policy/nest-data-handling.md";
 
 /**
+ * The two drafts a public submission surface needs (#2591).
+ *
+ * They are checked here for the same reason the technical document is, only
+ * more so: a privacy policy that states a retention the code does not honour
+ * is not a stale doc, it is a promise the service breaks. Three documents now
+ * state the same facts, and three copies of a fact drift
+ * (TPL-1032) — so every one of them is asserted against the code, not against
+ * each other.
+ *
+ * They are drafts and are deliberately NOT in the docs site's
+ * `PUBLISHED_EN_FILES`: publishing unreviewed legal text is the thing their
+ * own warning banner forbids. This guard is what keeps them true while they
+ * wait for review.
+ */
+const DRAFTS = ["docs/policy/nest-privacy.md", "docs/policy/nest-terms.md"];
+
+/**
  * Assert that a store never passes an expiry.
  *
  * The absence of a TTL cannot be proved by waiting, so it is checked at the
@@ -80,6 +97,33 @@ function assertNoTtl(path: string): void {
 
 describe("the data-handling document matches the code (#1996, #2591)", () => {
   const policy = read(POLICY);
+
+  it("says in every draft that a submission is kept until its author deletes it", () => {
+    // The privacy policy is what a submitter actually reads. If it says a
+    // number and the code keeps things forever -- or the reverse -- the
+    // document is the part that is wrong, and nothing else would catch it.
+    expect(read("docs/policy/nest-privacy.md")).toContain("**投稿者が削除するまで**");
+  });
+
+  it("keeps every draft out of the published set until a human has read it", () => {
+    // Their own banner says they must not be published. This is that banner
+    // as a check, because a banner is not a gate.
+    const siteMap = read("packages/docs-site/scripts/lib/site-map.ts");
+    for (const draft of DRAFTS) {
+      expect(read(draft)).toContain("法務レビュー未了");
+      expect(siteMap).not.toContain(draft.replace("docs/", ""));
+    }
+  });
+
+  it("names one contact point, and the same one, in every draft", () => {
+    // Third-party complaints arrive as GitHub Issues: no form, no new personal
+    // data, publicly auditable. A draft that quietly grew an email address
+    // would undo the reason no email is held.
+    for (const draft of DRAFTS) {
+      expect(read(draft)).toContain("https://github.com/kompiro/karasu/issues");
+      expect(read(draft)).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+    }
+  });
 
   it("keeps a submission until its author deletes it, and says so", () => {
     // The decision, not an omission: content its author manages must not
