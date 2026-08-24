@@ -272,8 +272,10 @@ B から切り出さず同一スライスに含める。
    ヘルパーは 1 つに閉じ、全サイトが同じ関数を引く
 4. **曖昧性診断** — 一致 2 件以上、かつ `${kind}:${path.length}` の集合サイズが 1 を
    超えるとき warning。コードは `owns-target-ambiguous` / `contains-target-ambiguous` /
-   `realizes-target-ambiguous` / `handles-target-ambiguous`（既存の `*-target-not-found`
-   命名族に揃える）。params は `{ path, candidates: Array<{ kind, path }> }`
+   `realizes-target-ambiguous`（既存の `*-target-not-found` 命名族に揃える）。
+   params は `{ path, candidates: Array<{ kind, path }> }`。
+   `handles` には置かない — 候補が one-hop expose 規則の対象集合（system 直下の子の
+   さらに直下の `domain`）に限られ、集合サイズがつねに 1 になるため（#2549 で確定）
 5. **import 結合** — `file.nodeImports.length > 0` なら判定しない
    （[ADR-2410](../adr/2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md)、
    [TPL-1522](../test-perspectives/TPL-1522-style-coupled-diagnostics-sheetless-context.md) の

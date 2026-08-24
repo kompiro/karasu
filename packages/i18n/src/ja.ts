@@ -490,10 +490,6 @@ export const ja: Partial<Translations> = {
     `"realizes" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
-  "diagnostic.handlesTargetAmbiguous.message": ({ path, candidates }) =>
-    `"handles" で参照されている "${path}" は深さの異なる複数の domain に一致します: ${candidates
-      .map((c) => `${c.path} (${c.kind})`)
-      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" が参照する "${infraId}" を宣言する database / queue / storage ブロックがありません`

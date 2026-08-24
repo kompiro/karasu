@@ -124,4 +124,9 @@ id でノードを指す構文を新設・変更するとき:
   受理・絞り込み・broadcast 不変・`*-target-ambiguous`・宣言順非依存（slice B, #2548）、
   および `realizes` / `handles` の受理・record-nothing・resolved-node 基準の expose
   規則・ambiguity（slice C, #2549）。9 サイトの受理はこれで揃った
+- 記法は共有でも **dangling dot からの回復はサイト固有**（`owns` / `contains` /
+  `realizes` / `handles` は何も記録せず、`import` / `resource` / edge endpoint は
+  読めたセグメントを残す）。同ファイルの
+  「record-nothing recovery belongs to the four new sites, not to import」が
+  この非対称を pin する — spec の記述が全サイト一律に読める形に戻るのを防ぐ
 - 解決側の統一（D1 #2575 / D2 #2576 / E #2577）が同ファイルにテストを足していく

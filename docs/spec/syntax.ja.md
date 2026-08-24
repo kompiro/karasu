@@ -66,7 +66,7 @@ karasu のタグシステムは意図的にオープンで、任意のタグを�
 
 #### `handles` プロパティ — client / service が呼び出し側に公開するもの
 
-`client` と `service` はどちらも `handles` プロパティで **呼び出し側に公開するドメイン** を宣言できる。各エントリはノード参照 path（「ノード参照の path 記法」節）で、bare id でも `handles Backend.Order` のような接尾辞修飾でもよい。これは *バリデート済みクロスリファレンス*で、参照は 1 ホップの expose ルールで到達可能でなければならず、そうでない場合は `unresolved-handles` 警告が出る。深さの異なる多重一致は `handles-target-ambiguous` を引く。
+`client` と `service` はどちらも `handles` プロパティで **呼び出し側に公開するドメイン** を宣言できる。各エントリはノード参照 path（「ノード参照の path 記法」節）で、bare id でも `handles Backend.Order` のような接尾辞修飾でもよい。これは *バリデート済みクロスリファレンス*で、参照は 1 ホップの expose ルールで到達可能でなければならず、そうでない場合は失敗した参照そのものに anchor した `unresolved-handles` 警告が出る。ここでの多重一致は ambiguity ではなく broadcast なので、`handles` に `*-target-ambiguous` コードは無い（記法の節を参照）。
 
 ```krs
 system Shop {
@@ -1007,10 +1007,15 @@ store の両方が realize されているとき、deploy 図は service のコ�
   連結したもの）が参照で**終わる**すべてのノードに一致する。bare id は長さ 1 の
   ケースであり、`owns Payment` は id が `Payment` のノード全部を主張する
   （broadcast — 従来どおり）。`owns Shop.Payment` はその path が指す 1 ノードに絞る。
-- **曖昧性**: 参照が 2 つ以上のノードに一致し、かつそれらが (kind, 深さ) で
-  **揃っていない**とき、サイトは `*-target-ambiguous`（warning）で候補の full path を
-  列挙する。著者はより長い path で修飾して絞れる。揃っている多重一致は意図的な
-  broadcast（移行共存・マルチテナント命名）であり沈黙する。
+- **曖昧性**: 共有リゾルバで解決するサイト（`owns` / `contains` / `realizes`）では、
+  参照が 2 つ以上のノードに一致し、かつそれらが (kind, 深さ) で**揃っていない**とき、
+  `*-target-ambiguous`（warning）で候補の full path を列挙する。著者はより長い path で
+  修飾して絞れる。揃っている多重一致は意図的な broadcast（移行共存・マルチテナント
+  命名）であり沈黙する。`handles` に対応コードが無いのは欠落ではなく判断である:
+  候補は system 直下の子のさらに直下にある `domain` に限られ、多重一致は構造上つねに
+  揃っているため、より長い path で修飾するという対処が成立しない（起こりうる誤りは
+  `unresolved-handles` が担当する）。残るサイトは今もサイト固有に解決しており、
+  #2088 の slice D1 / D2 / E がこの規則へ寄せる。
 - **スコープ規則はサイトごとに保たれる。** 共有するのは記法であり、参照がどこを
   指せるかは各サイトの規則のまま: `import` path は import 先ファイルのツリーを
   歩き（ADR-927）、edge endpoint は自身のスコープ規則（ADR-2075）に従い、
@@ -1018,8 +1023,12 @@ store の両方が realize されているとき、deploy 図は service のコ�
 - **現在の受理サイト**: `import { … }`、cross-system edge endpoint、cross-domain
   entity 関連、`resource OrderDB.Orders`、entity の `table` マッピング、`owns`、
   `contains`（top-level・スコープ内）、`realizes`、`handles` — 9 サイトすべて
-  （#2088）。拒否される形（dangling dot）は 1 回だけ報告し、先頭セグメントを
-  記録することはない。
+  （#2088）。
+- **dangling dot からの復帰はサイトごとに異なる**（意図的）: `owns` / `contains` /
+  `realizes` / `handles` は 1 回だけ報告して何も記録しない（先頭セグメントも残さない）。
+  `import { A. }` / `resource OrderDB.` / cross-system edge endpoint は #2088 以前の
+  復帰をそのまま保ち、報告したうえで読めたセグメントを記録する。9 サイトが共有するのは
+  記法と接尾辞規則であって、壊れた参照がモデルに何を残すかではない。
 
 > Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
 

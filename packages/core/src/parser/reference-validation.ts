@@ -31,7 +31,7 @@ import type {
   ResourceNode,
   TeamNode,
 } from "../types/ast.js";
-import { boundaryScopeKey } from "../types/ast.js";
+import { boundaryScopeKey, REALIZES_TARGET_KIND_SET } from "../types/ast.js";
 import {
   ambiguousNodePathCandidates,
   nodePathKey,
@@ -55,6 +55,25 @@ export function migrationPriority(annotations: readonly string[]): number {
 export interface DeclaredNodePath {
   kind: KrsNode["kind"] | "system";
   path: NodeIdPath;
+}
+
+/** A shared, lazily built {@link collectDeclaredNodePaths} result. */
+export type DeclaredNodePaths = () => Map<string, DeclaredNodePath[]>;
+
+/**
+ * One declared-path walk shared by the checks that run back to back on the
+ * same file.
+ *
+ * The walk is O(nodes), and every node-reference check wants the identical
+ * map, so the parse path — including the LSP's re-parse on each keystroke —
+ * used to rebuild it once per check. Lazy on purpose: each of those checks
+ * can bail on its own guard before it looks at a single node (no
+ * organization, no deploy block, unresolved imports), and an eager walk in
+ * the caller would trade one waste for another.
+ */
+export function declaredNodePathsOnce(file: KrsFile): DeclaredNodePaths {
+  let cached: Map<string, DeclaredNodePath[]> | undefined;
+  return () => (cached ??= collectDeclaredNodePaths(file));
 }
 
 /**
@@ -157,9 +176,12 @@ function ambiguityParams(
  * in the resolver reaches the same place by reporting only targets that resolve
  * (#2410). TPL-1522 carries the ledger of which diagnostic took which route.
  */
-export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
+export function validateOwnsReferences(
+  file: KrsFile,
+  declaredPaths: DeclaredNodePaths = declaredNodePathsOnce(file),
+): Diagnostic[] {
   if (file.organizations.length === 0 || file.nodeImports.length > 0) return [];
-  const declared = collectDeclaredNodePaths(file);
+  const declared = declaredPaths();
   // A model with no node at all says nothing about whether its `owns` lines are
   // wrong: that is the org-only file (a `teams.krs` parsed on its own, or opened
   // directly as the project entry), where every id is declared elsewhere. Kept
@@ -211,7 +233,10 @@ export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
 // valid-target set must enumerate every kind the construct accepts). Only
 // system nodes themselves are excluded — a boundary groups nodes *within* a
 // system, not systems.
-export function validateContainsReferences(file: KrsFile): Diagnostic[] {
+export function validateContainsReferences(
+  file: KrsFile,
+  declaredPaths: DeclaredNodePaths = declaredNodePathsOnce(file),
+): Diagnostic[] {
   // Import-coupled, exactly like `owns` next door (#2410): the member may be
   // declared in a file this one imports, so a document read on its own cannot
   // decide it and would only produce false positives. Project mode is
@@ -219,7 +244,7 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
   if (file.nodeImports.length > 0) return [];
 
   const diagnostics: Diagnostic[] = [];
-  const declared = collectDeclaredNodePaths(file);
+  const declared = declaredPaths();
   for (const boundary of file.boundaries) {
     for (const ref of boundary.contains) {
       const matches = resolveDeclaredRef(declared, ref, { excludeSystems: true });
@@ -259,16 +284,22 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
  * target may live in an imported file, so a document with unresolved imports
  * does not decide it; the ImportResolver re-runs this on the merged model.
  */
-export function validateRealizesReferences(file: KrsFile): Diagnostic[] {
+export function validateRealizesReferences(
+  file: KrsFile,
+  declaredPaths: DeclaredNodePaths = declaredNodePathsOnce(file),
+): Diagnostic[] {
   if (file.deploys.length === 0 || file.nodeImports.length > 0) return [];
-  const declared = collectDeclaredNodePaths(file);
+  const declared = declaredPaths();
   const diagnostics: Diagnostic[] = [];
-  const realizableKinds = new Set(["service", "domain", "client", "database", "queue", "storage"]);
   for (const deploy of file.deploys) {
     for (const node of deploy.nodes) {
       for (const target of node.properties.realizes ?? []) {
+        // The valid-target set is the shared enumeration rather than a second
+        // copy of that list (TPL-1720): `detectUnresolvedRealizes` in
+        // resolver/warnings.ts is the other reader, and a locally spelled-out
+        // list is how the two ends of one check drift.
         const matches = resolveDeclaredRef(declared, target.path).filter((m) =>
-          realizableKinds.has(m.kind),
+          REALIZES_TARGET_KIND_SET.has(m.kind),
         );
         const ambiguous = ambiguousNodePathCandidates(matches);
         if (ambiguous !== undefined) {
@@ -285,41 +316,17 @@ export function validateRealizesReferences(file: KrsFile): Diagnostic[] {
   return diagnostics;
 }
 
-/**
- * Ambiguity check for `handles` refs (#2088 slice C). The pool is every
- * declared `domain`, so with the kind fixed the discriminator reduces to
- * depth: same-depth duplicates are the multi-tenant broadcast pattern and
- * stay silent, a cross-depth match is reported with candidate paths.
- * Existence and the one-hop expose rule stay with `unresolved-handles` in
- * resolver/warnings.ts. Import-coupled like every check in this file.
- */
-export function validateHandlesReferences(file: KrsFile): Diagnostic[] {
-  if (file.nodeImports.length > 0) return [];
-  const declared = collectDeclaredNodePaths(file);
-  const diagnostics: Diagnostic[] = [];
-  const check = (node: KrsNode): void => {
-    if (node.kind === "client" || node.kind === "service") {
-      for (const ref of node.properties.handles ?? []) {
-        const matches = resolveDeclaredRef(declared, ref).filter((m) => m.kind === "domain");
-        const ambiguous = ambiguousNodePathCandidates(matches);
-        if (ambiguous !== undefined) {
-          diagnostics.push({
-            severity: "warning",
-            code: "handles-target-ambiguous",
-            params: ambiguityParams(ref, ambiguous),
-            loc: node.loc,
-          });
-        }
-      }
-    }
-    for (const child of node.children) check(child);
-  };
-  for (const system of file.systems) {
-    for (const child of system.children) check(child);
-  }
-  for (const root of [...file.services, ...file.clients]) check(root);
-  return diagnostics;
-}
+// `handles` has no ambiguity check, and that is a verdict rather than an
+// omission (#2549). The expose rule it feeds (`detectUnresolvedHandles`,
+// resolver/warnings.ts) resolves a ref against the domains that are direct
+// children of a system-level child, so every candidate is a `domain` at the
+// same depth: `ambiguousNodePathCandidates` is uniform by construction there
+// and a multi-match is the multi-tenant broadcast pattern, deliberately
+// silent. A checker that drew candidates from a wider pool than the resolver
+// uses would report an ambiguity the author cannot act on — qualifying the
+// ref changes nothing about which node the rule reaches — and that gap
+// between the two ends of one check is exactly what TPL-1720 asks to close.
+// A ref naming a domain outside the pool is reported by `unresolved-handles`.
 
 /**
  * Validate `contains` inside *scoped* `boundary` blocks (#2036).

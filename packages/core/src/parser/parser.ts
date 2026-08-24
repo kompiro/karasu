@@ -10,6 +10,7 @@ import type {
   DeployBlock,
   DeployNode,
   DeployNodeProperties,
+  HandlesTarget,
   ImportDeclaration,
   NodeIdPath,
   Diagnostic,
@@ -50,7 +51,7 @@ import {
   validateContainsReferences,
   validateScopedContainsReferences,
   validateRealizesReferences,
-  validateHandlesReferences,
+  declaredNodePathsOnce,
   validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
@@ -390,18 +391,23 @@ export class Parser {
       file.clients,
       [...file.databases, ...file.queues, ...file.storages],
     );
-    this.diagnostics.push(...validateOwnsReferences(file));
+    // One declared-path walk for all the node-reference checks below: each
+    // built the same O(nodes) map for itself, on the path the LSP re-runs at
+    // every keystroke. Lazy, so the checks that bail on their own guard still
+    // cost nothing (#2549).
+    const declaredPaths = declaredNodePathsOnce(file);
+    this.diagnostics.push(...validateOwnsReferences(file, declaredPaths));
     if (file.boundaries.length > 0) {
-      this.diagnostics.push(...validateContainsReferences(file));
+      this.diagnostics.push(...validateContainsReferences(file, declaredPaths));
     }
     // Scoped boundaries resolve against direct children, so they are checked
     // per scope rather than against the whole model (#2036).
     this.diagnostics.push(...validateScopedContainsReferences(file));
-    // Ambiguity for realizes / handles path refs (#2088 slice C). Existence
-    // stays with resolver/warnings.ts; only the ambiguity verdict lives here,
-    // on the same import-coupled surface as owns / contains.
-    this.diagnostics.push(...validateRealizesReferences(file));
-    this.diagnostics.push(...validateHandlesReferences(file));
+    // Ambiguity for realizes path refs (#2088 slice C). Existence stays with
+    // resolver/warnings.ts; only the ambiguity verdict lives here, on the same
+    // import-coupled surface as owns / contains. `handles` has no ambiguity
+    // twin, for the reason recorded in reference-validation.ts.
+    this.diagnostics.push(...validateRealizesReferences(file, declaredPaths));
     // A `resource` / `table` naming an infra block or leaf nothing declares
     // (#2078). Suppressed and re-derived by the ImportResolver like the checks
     // above, since the block is canonically declared in an imported infra file.
@@ -491,7 +497,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       capabilities?: import("../types/ast.js").ClientCapability[];
-      handles?: NodeIdPath[];
+      handles?: HandlesTarget[];
       delivers?: string[];
       operations?: ParsedOperation[];
       tableRef?: { parent: string; child: string };
@@ -1014,32 +1020,43 @@ export class Parser {
     return t === TokenType.Identifier || t === TokenType.StringLiteral;
   }
 
-  private parseHandlesList(): NodeIdPath[] {
-    const refs: NodeIdPath[] = [];
-    const readOne = (): boolean => {
+  private parseHandlesList(): HandlesTarget[] {
+    const refs: HandlesTarget[] = [];
+    for (;;) {
       if (!this.peekIsIdOrString()) {
         this.error("expected-id-after", { property: "handles" });
-        return false;
+        return refs;
       }
-      const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+      const first = this.advance();
+      const tail = readNodeIdPathTail(first, this.cursor, {
         acceptStringSegments: true,
       });
       if (tail.dangling) {
         // Dangling dot: report once and record nothing (#2088) — recording
         // the read segments would put `handles Backend` in the model next to
-        // an error about `handles Backend.`.
-        this.error("expected-id-after", { property: "handles" });
-        return false;
+        // an error about `handles Backend.`. The range runs to the dot itself,
+        // so the squiggle covers the character at fault instead of stopping at
+        // the identifier that was spelled correctly.
+        const stop = tail.danglingDot ?? tail.end;
+        this.diagnostics.push({
+          severity: "error",
+          code: "expected-id-after",
+          params: { property: "handles" },
+          loc: this.range(first.loc, stop.end ?? stop.loc),
+        });
+      } else {
+        refs.push({
+          path: tail.segments,
+          loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
+        });
       }
-      refs.push(tail.segments);
-      return true;
-    };
-    if (!readOne()) return refs;
-    while (this.peek().type === TokenType.Comma) {
+      // A malformed ref does not end the list: `realizes` resumes after the
+      // separator (parseRealizesList below) and `handles A., B` has to record
+      // `B` the same way. Returning here would drop every later target and
+      // leave the comma for the block loop to report a second time.
+      if (this.peek().type !== TokenType.Comma) return refs;
       this.advance();
-      if (!readOne()) break;
     }
-    return refs;
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -1121,7 +1138,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       capabilities?: import("../types/ast.js").ClientCapability[];
-      handles?: NodeIdPath[];
+      handles?: HandlesTarget[];
       delivers?: string[];
       tableRef?: { parent: string; child: string };
       facets?: string[];
@@ -1989,27 +2006,27 @@ export class Parser {
         if (tail.dangling) {
           // Dangling dot: report once and record nothing (#2088) — recording
           // the read segments would put `realizes Shop` in the model next to
-          // an error about `realizes Shop.`. Recovery mirrors the no-target
-          // branch below: swallow stray separators, resume on a target.
+          // an error about `realizes Shop.`. The range runs to the dot, the
+          // character actually at fault; `tail.end` stops at the identifier
+          // that was spelled correctly.
+          const stop = tail.danglingDot ?? tail.end;
           this.diagnostics.push({
             severity: "error",
             code: "expected-property-value",
             params: { propName: "realizes" },
+            loc: this.range(first.loc, stop.end ?? stop.loc),
+          });
+        } else {
+          (properties.realizes ??= []).push({
+            path: tail.segments,
             loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
           });
-          let recovered = false;
-          while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
-            afterComma = this.advance();
-            recovered = true;
-          }
-          if (!recovered || !atTarget()) return;
-          continue;
         }
-        (properties.realizes ??= []).push({
-          path: tail.segments,
-          loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
-        });
         // Without a comma the list is done; with one, another target is due.
+        // A malformed target takes the same exit as a good one, so the
+        // trailing comma of `realizes Shop.,` is reported where the trailing
+        // comma of `realizes A,` is — swallowing it here would make the same
+        // mistake silent in one spelling and reported in the other.
         if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;
         afterComma = this.advance();
         continue;

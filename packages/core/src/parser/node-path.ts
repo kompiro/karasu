@@ -35,6 +35,14 @@ export interface NodeIdPathTail {
    * of each site's observable behavior.
    */
   dangling?: Token;
+  /**
+   * The `.` that was consumed without a segment after it, set with
+   * {@link dangling}. It is what a diagnostic should underline: `end` stops at
+   * the last valid identifier, so a range built from it squiggles correct text
+   * and leaves the offending character unmarked, and `dangling` may sit on a
+   * later line (a `}` closing the block).
+   */
+  danglingDot?: Token;
 }
 
 export interface ReadNodeIdPathTailOptions {
@@ -62,13 +70,14 @@ export function readNodeIdPathTail(
   const segments: NodeIdPath = [first.value];
   let end = first;
   while (segments.length < maxSegments && cursor.peek().type === TokenType.Dot) {
+    const dot = cursor.peek();
     cursor.advance(); // consume "."
     const next = cursor.peek();
     const isSegment =
       next.type === TokenType.Identifier ||
       (acceptStringSegments && next.type === TokenType.StringLiteral);
     if (!isSegment) {
-      return { segments, end, dangling: next };
+      return { segments, end, dangling: next, danglingDot: dot };
     }
     cursor.advance();
     segments.push(next.value);
@@ -124,9 +133,26 @@ export function resolveNodePathBySuffix<T extends { path: NodeIdPath }>(
  * permalinks already carry. JSON keying (like `boundaryScopeKey`) would be
  * injective but would break consumers that already hold a dotted qualified
  * id as their node key, so the renderer's existing convention wins.
+ *
+ * Use it for TEXT — index keys a consumer reads back as a qualified id, and
+ * diagnostic params. For a key whose only job is identity, reach for
+ * {@link nodePathIdentityKey} instead.
  */
 export function nodePathKey(segments: readonly string[]): string {
   return segments.join(".");
+}
+
+/**
+ * Injective key for a node path used purely as a map / set key.
+ *
+ * `nodePathKey` collapses `["a.b"]` and `["a", "b"]` onto one string, which is
+ * harmless for text but not for identity: a memo or a dedup set keyed that way
+ * answers a question about one ref with the answer computed for another, and
+ * which of the two wins depends on declaration order (TPL-1352). Nothing reads
+ * this key back as an id, so the encoding is free to be JSON.
+ */
+export function nodePathIdentityKey(segments: readonly string[]): string {
+  return JSON.stringify(segments);
 }
 
 /** A resolved match that knows the kind of the node it points at. */
