@@ -479,7 +479,7 @@ export const en: Translations = {
     `"${construct}" does not accept a label after its id; write label "..." inside the block`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
-    `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,
+    `Node id "${nodeId}" appears in multiple locations; navigation resolves to the @migration_target declaration if any, else the first one`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
     `Duplicate node id "${nodeId}" under the same parent`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>

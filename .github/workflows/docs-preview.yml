@@ -1,0 +1,165 @@
+name: Docs Preview
+
+# Deploys the docs site for every PR that touches what the site publishes, so a
+# reviewer can read the rendered result before merge. `pages.yml` deploys only on
+# push to `main`, which made the first look at generated output a post-merge one
+# (Issue #2260).
+#
+# Separate from `preview.yml` rather than another job in it: this deploys a
+# different Cloudflare Pages project, on a different path filter, from a staged
+# copy of the build. Sharing a file would couple the app's preview to changes
+# made for the docs, which is the coupling `spike-preview.yml` was also split to
+# avoid. All four preview workflows share
+# `.github/actions/purge-preview-deployments`, nothing else.
+#
+# Keep the `paths:` list below covering everything the site publishes —
+# `PUBLISHED_EN_FILES` in `packages/docs-site/scripts/lib/site-map.ts`, checked by
+# `scripts/lint/docs-site-ci-paths-sync.ts`, plus `examples/**`, whose `.krs`
+# files `sync.ts` renders into the gallery pages (`GALLERY_PAGES`).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - "docs/concepts.md"
+      - "docs/concepts.ja.md"
+      - "docs/glossary.md"
+      - "docs/glossary.ja.md"
+      - "docs/tools/**"
+      - "docs/guide/**"
+      - "docs/spec/**"
+      - "examples/**"
+      - "packages/docs-site/**"
+      - ".github/workflows/docs-preview.yml"
+
+concurrency:
+  group: docs-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Docs Preview to Cloudflare Pages
+    # Neither a bot PR (ADR-903) nor a fork PR can read the deployment secrets,
+    # so both are skipped rather than failed. Without the fork term every docs
+    # contribution from outside the repo — the most likely kind here — would get
+    # a red check for a deployment it was never able to make.
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    # Secret-bearing deploy jobs stay GitHub-hosted (ADR-1890), fenced by
+    # `scripts/ci/workflow-runner-policy.test.ts`.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # No `pull-requests: write`: the only reporting paths are the step summary
+      # and the GitHub deployment wrangler-action creates.
+      deployments: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      # `build` is `sync && check-links && astro build`, so a broken in-site link
+      # fails here too. That overlaps the PR guards in `reference-docs-check.yml`
+      # and does not replace them: those must keep running on PRs where no
+      # preview is configured or reachable (Issue #2257).
+      - name: Build docs site
+        run: pnpm --filter @karasu-tools/docs-site run build
+
+      - name: Stage the build under the production base path
+        # `dist/` emits pages at the root (`dist/concepts/index.html`) while its
+        # assets and absolute links carry the `/karasu/` prefix that `base:` in
+        # astro.config.mjs bakes in, so serving `dist` at a host root 404s.
+        # Copying it one level down reproduces production routing from the same
+        # build with the same `base` — no second config, so there is no
+        # divergence to distrust on the surface whose bugs are routing bugs.
+        run: |
+          rm -rf packages/docs-site/preview-dist
+          mkdir -p packages/docs-site/preview-dist/karasu
+          cp -r packages/docs-site/dist/. packages/docs-site/preview-dist/karasu/
+
+          # The bare root only, so the deployment URL on the PR lands on the site
+          # instead of a 404. Deliberately not a `/*` splat: that would rescue a
+          # link that wrongly lacks the `/karasu/` prefix — the exact routing bug
+          # this preview exists to catch — so every other path is left to 404 the
+          # way production would.
+          printf '/  /karasu/  302\n' > packages/docs-site/preview-dist/_redirects
+
+      - name: Deploy Docs Preview to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Runs from `packages/docs-site`, not the repo root, so wrangler reads
+          # that package's `wrangler.toml` and finds no `functions/` beside it.
+          # From the root it would pick up `functions/[[path]].ts` — a catch-all
+          # that runs *before* static assets — and that would intercept every
+          # request to this deployment. The root `wrangler.toml` also names the
+          # app's `karasu` project. The upload directory comes from
+          # `pages_build_output_dir`.
+          workingDirectory: packages/docs-site
+          # Must be stated, not inferred. The action picks a package manager by
+          # looking for a lockfile *in the working directory*: the other wrangler
+          # deploys run from the repo root and find `pnpm-lock.yaml`, but there
+          # is none here, so it falls back to npm — and npm cannot install into a
+          # package.json carrying `workspace:*` (`EUNSUPPORTEDPROTOCOL`).
+          packageManager: pnpm
+          command: pages deploy --project-name=karasu-docs --branch=${{ github.head_ref }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Report preview URL
+        # The site legitimately lives under `/karasu/`, so the deep URL is what a
+        # reviewer needs. Cloudflare slugs and truncates the branch alias, so it
+        # cannot be reconstructed from the branch name — report what wrangler
+        # returned (same reason as `spike-preview.yml`).
+        env:
+          ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          # The suffix is appended only when there is a URL to append it to: a
+          # missing output must read `(none)`, not the plausible-looking
+          # `(none)/karasu/` that a reviewer would try to open.
+          alias_cell="${ALIAS_URL:+${ALIAS_URL}/karasu/}"
+          deploy_cell="${DEPLOY_URL:+${DEPLOY_URL}/karasu/}"
+          {
+            echo "### Docs preview deployed"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Branch alias | ${alias_cell:-(none)} |"
+            echo "| This deployment | ${deploy_cell:-(none)} |"
+            echo
+            echo "The site is served under \`/karasu/\` — the same base path as production."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup:
+    name: Delete Docs Preview Deployments
+    # Same secret-availability guards as the deploy job. A bot or fork PR never
+    # produced a deployment, and the purge action would call the Cloudflare API
+    # with an empty token and exit 1 — a red check that cleans up nothing.
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/purge-preview-deployments
+        with:
+          branch: ${{ github.head_ref }}
+          project: karasu-docs
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -44,9 +44,9 @@ import { indexDeclaredInfra } from "../spec/infra-index.js";
 // when a node is reachable from more than one place during an inverse-Conway
 // handoff. The destination (@migration_target) wins, the source (@deprecated)
 // loses, and an unmarked entry sits in between. Shared by buildNodePathIndex
-// (domain → nodePathIndex, parser.ts) and buildOwnerIndex below (team →
-// ownerIndex) so both 1:1 indices resolve duplicates the same way. Ties keep
-// the first occurrence.
+// (any indexed candidate → nodePathIndex, parser.ts, since #2550) and
+// buildOwnerIndex below (team → ownerIndex) so both 1:1 indices resolve
+// duplicates the same way. Ties keep the first occurrence.
 export function migrationPriority(annotations: readonly string[]): number {
   return annotations.includes("migration_target") ? 2 : annotations.includes("deprecated") ? 0 : 1;
 }
@@ -565,7 +565,7 @@ interface MembershipResult<T> {
  * mid-migration. Surface it in the fact-vs-style register (info), like
  * domain-dispersal (ADR-1566). ownerIndex is 1:1, so a single primary owner
  * must be chosen per node: the @migration_target team wins, mirroring
- * buildNodePathIndex's domain logic; ties keep the first declaration
+ * buildNodePathIndex's candidate rule; ties keep the first declaration
  * (#1583). The info fires once per conflicting *ref* (not per expanded
  * node) and names the resolved primary after any swap; a team re-claiming a
  * node it already owns (bare + qualified forms of the same node) is

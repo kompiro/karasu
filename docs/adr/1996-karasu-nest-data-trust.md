@@ -5,8 +5,8 @@ status: accepted
 date: 2026-08-03
 topic: project
 authors: [kompiro]
-depends_on: [ADR-1990]
-related_to: [ADR-1994, ADR-2262]
+depends_on: [ADR-2578]
+related_to: [ADR-1990, ADR-1994, ADR-2262]
 scope:
   packages: [nest]
   concerns: [security, deployment]
@@ -25,7 +25,7 @@ assumptions:
 
 ## 背景
 
-[ADR-1990](1990-karasu-nest-pivot-server-reverse.md) 決定 6 は、データ信頼アーキテクチャを karasu-nest の**成立条件**に置いた。nice-to-have ではなく、これが引けないならピボットしないという位置づけである。同 ADR は退避先も記録している: **public repo のみに縮小**する。
+[ADR-1990](1990-karasu-nest-pivot-server-reverse.md) 決定 6 は、データ信頼アーキテクチャを karasu-nest の**成立条件**に置いた。同 ADR は [ADR-2578](2578-nest-retires-server-side-reverse.md) が supersede したが、**決定 6 は引き継がれている** — 対象が「他人の private コード」から「投稿物と投稿者の識別子」に変わるだけで、成立条件であるという位置づけは変わらない。内訳の変化（未了 6 件のうち 2 件が不要になる）は [#2591](https://github.com/kompiro/karasu/issues/2591) で本文書に追記する。nice-to-have ではなく、これが引けないならピボットしないという位置づけである。同 ADR は退避先も記録している: **public repo のみに縮小**する。
 
 この決定 6 は 5 つの要素を挙げていた。install 時の同意、生ソース非保持、LLM の zero-retention、アンインストール＝purge、サブプロセッサ開示。**このうち技術で閉じられるのは 3 つ**で、残る 2 つ（zero-retention 契約、同意文面が指す先の法務文書）は文章と契約である。ADR-1990 自身が「技術ではなくここが solo 運用の重り」と書いていた部分がここに来た。
 

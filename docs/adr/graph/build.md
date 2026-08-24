@@ -68,6 +68,7 @@ flowchart TD
     ADR_2139["ADR-2139<br/>Dependabot security 第 2 便 — postcss の後続 advisor..."]
     ADR_2142["ADR-2142<br/>Dependabot security 第 3 便 — brace-expansion OOM..."]
     ADR_2152["ADR-2152<br/>Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の pu..."]
+    ADR_2260["ADR-2260<br/>docs サイトは本番と同じ base path のまま別 Pages プロジェクトへ PR ..."]
     ADR_2318["ADR-2318<br/>Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロ..."]
     ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
     ADR_2337["ADR-2337<br/>LSP は client と server を同時に上げ、protocol 版の一致を不変条件..."]
@@ -177,6 +178,7 @@ flowchart TD
   class ADR_2139 accepted
   class ADR_2142 accepted
   class ADR_2152 accepted
+  class ADR_2260 accepted
   class ADR_2318 accepted
   class ADR_2333 accepted
   class ADR_2337 accepted

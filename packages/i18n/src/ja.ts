@@ -477,7 +477,7 @@ export const ja: Partial<Translations> = {
     `"${construct}" は id の直後にラベルを置けません。ブロック内に label "..." を書いてください`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
-    `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,
+    `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションは @migration_target の宣言、なければ最初の宣言に解決されます`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
     `同じ親の下でノード id "${nodeId}" が重複しています`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>

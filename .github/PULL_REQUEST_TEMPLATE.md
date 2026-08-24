@@ -16,7 +16,14 @@
 ## Preview URL
 
 <!-- Cloudflare Pages preview URL (generated automatically by the Preview workflow) -->
-<!-- e.g. https://<branch-name>.karasu.pages.dev -->
+<!-- app:  https://<branch-alias>.karasu.pages.dev -->
+<!--
+docs site: https://<branch-alias>.karasu-docs.pages.dev/karasu/ — note the
+trailing /karasu/. The site is served under the same base path as production,
+so the bare host redirects there. Cloudflare slugs and truncates the branch
+alias, so read the URL from the Docs Preview run summary rather than building
+it from the branch name.
+-->
 
 ## Scope filter (new-feature PRs only)
 

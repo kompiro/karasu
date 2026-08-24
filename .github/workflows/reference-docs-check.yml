@@ -41,6 +41,7 @@ on:
       - "docs/roadmap.md"
       - "scripts/lint/roadmap-issue-state.ts"
       - "docs/glossary.md"
+      - "docs/glossary.ja.md"
       - "docs/tools/**"
       - "packages/docs-site/**"
       - "scripts/lint/docs-site-ci-paths-sync.ts"
@@ -62,6 +63,7 @@ on:
       - "docs/roadmap.md"
       - "scripts/lint/roadmap-issue-state.ts"
       - "docs/glossary.md"
+      - "docs/glossary.ja.md"
       - "docs/tools/**"
       - "packages/docs-site/**"
       - "scripts/lint/docs-site-ci-paths-sync.ts"
@@ -128,6 +130,13 @@ jobs:
       # docs/**` skips for exactly the PRs that feed the site (Issue #2257).
       # Running them here — no `astro build`, ~2.5s total, no core build
       # needed — moves link and route breakage from post-merge to the PR.
+      # The published set is a fact about `docs/`: adding a `.ja.md` sibling
+      # publishes a page. `ci.yml`'s vitest mirror cannot see that — its
+      # `paths-ignore: docs/**` skips exactly the docs-only PR that adds one — so
+      # the guard runs here, where the published paths are already the trigger.
+      - name: docs-site CI path filters cover the published set
+        run: pnpm run lint:docs-site-ci-paths-sync
+
       - name: docs-site content in sync
         run: pnpm --filter @karasu-tools/docs-site run sync
 
