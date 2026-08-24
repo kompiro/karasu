@@ -3,7 +3,6 @@ import { handleRequest } from "../app.js";
 import type { NestEnv, NestExecutionContext } from "../env.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import { formatSubmissionId } from "../store/gallery-keys.js";
-import type { Visibility } from "../store/submissions.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 import { SESSION_COOKIE } from "../auth/session.js";
 
@@ -24,7 +23,7 @@ async function account(kv: MemoryKV, accountId: number, login = "kompiro"): Prom
 async function submission(
   kv: MemoryKV,
   accountId: number,
-  visibility: Visibility = "public",
+  visibility: "public" | "unlisted" = "public",
   title = "Shop",
 ): Promise<string> {
   const created = await new GalleryStore(kv).submissions.create(
