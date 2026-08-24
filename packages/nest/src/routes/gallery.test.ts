@@ -3,7 +3,6 @@ import { handleRequest } from "../app.js";
 import type { NestEnv, NestExecutionContext } from "../env.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import { formatSubmissionId } from "../store/gallery-keys.js";
-import type { Visibility } from "../store/submissions.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 import { SESSION_COOKIE } from "../auth/session.js";
 
@@ -16,7 +15,7 @@ const env = (kv: MemoryKV): NestEnv => ({ KRS_CACHE: kv, NEST_PUBLIC_ORIGIN: ORI
 
 async function seed(
   kv: MemoryKV,
-  visibility: Visibility = "public",
+  visibility: "public" | "unlisted" = "public",
   accountId = 42,
 ): Promise<{ id: string; cookie: string }> {
   const store = new GalleryStore(kv);
