@@ -404,6 +404,10 @@ CREATE TABLE orders (
 `;
       const result = await translator.translate(input, { ...ctx, database: "OrderDB" });
       const parsed = Parser.parse(result);
+      // The provisional domain deliberately reuses the database's name (the
+      // scaffold's TODO tells the author to rename it). Logical/physical
+      // same-name is tolerated (#2550, PR #2570 review), so this parses
+      // clean.
       expect(parsed.diagnostics).toEqual([]);
 
       const warnings = analyze(parsed.value, []);

@@ -28,7 +28,9 @@ describe("owns accepts suffix paths (#2548)", () => {
     const r = Parser.parse(`${COLLIDING}
 organization Org { team Platform { owns Shop.Payment } }
 `);
-    expect(r.diagnostics).toHaveLength(0);
+    // The colliding model itself draws node-id-multiple-locations (#2550);
+    // the path-qualified owns adds no diagnostic of its own.
+    expect(r.diagnostics.filter((d) => d.code !== "node-id-multiple-locations")).toHaveLength(0);
     expect(r.value.ownerIndex.get("Shop.Payment")).toBe("Platform");
     expect(r.value.ownerIndex.has("Shop.Checkout.Payment")).toBe(false);
   });
@@ -109,7 +111,8 @@ describe("contains accepts suffix paths (#2548)", () => {
     const r = Parser.parse(`${COLLIDING}
 boundary pci { contains Shop.Checkout.Payment }
 `);
-    expect(r.diagnostics).toHaveLength(0);
+    // See the owns twin above: the collision itself warns since #2550.
+    expect(r.diagnostics.filter((d) => d.code !== "node-id-multiple-locations")).toHaveLength(0);
     expect(r.value.boundaryMembership.get("Shop.Checkout.Payment")).toEqual(["pci"]);
     expect(r.value.boundaryMembership.has("Shop.Payment")).toBe(false);
   });
