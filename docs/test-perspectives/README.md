@@ -524,3 +524,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2456](TPL-2456-module-instance-scoped-identity.md) | 参照同一性で判定される共有オブジェクトは module のコピーが 2 つになった瞬間に壊れる — 判定はバージョン一致ではなく解決先が 1 つかで行い、壊れるのは自作の値を渡す経路だけなので大半のテストは green のまま残る | testing | #2456, ADR-2456 |
 | [TPL-2088](TPL-2088-id-reference-notation-uniform-across-sites.md) | ノード id を指す参照サイトは受理する記法と解決規則を全サイトで共有する — 拒否側は先頭セグメントだけを黙って記録して別の意味になる。修飾を受理するなら索引も区別可能なキーを持ち、受理と narrowing は同じ出荷単位に入れる | parser | ADR-927, parser.ts, #2088 |
 | [TPL-2542](TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) | 既存プロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復・要素単位の range を同じ PR で固定する | parser | #2167, ADR-2167 |
+| [TPL-2598](TPL-2598-fence-corpus-must-reach-the-limit.md) | 計測柵は、その資源の限界に達する入力を corpus に持って初めて柵になる — 有限の資源を N 分割する実装は N が小さいうちどの指標も 0 のままで、飽和入力の無い柵は修正前後どちらも green を返す | testing | #2598 |
