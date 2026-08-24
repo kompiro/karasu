@@ -48,7 +48,7 @@ export const MAX_TITLE_LENGTH = 120;
  * requests mean "not visible right now", not "gone", and a reversible control
  * absorbs those without producing an "I deleted it by mistake" follow-up.
  */
-export type Visibility = "public" | "unlisted";
+type Visibility = "public" | "unlisted";
 
 export interface Submission {
   /** The random half of the id. The public id also carries the account. */
