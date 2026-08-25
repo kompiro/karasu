@@ -214,8 +214,8 @@ importers:
   packages/core:
     dependencies:
       smol-toml:
-        specifier: ^1.7.0
-        version: 1.7.1
+        specifier: ^1.8.0
+        version: 1.8.0
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
