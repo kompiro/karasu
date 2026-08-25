@@ -499,8 +499,14 @@ grid):
 #BillingDomain  { grid-columns: 2; }   /* its usecases wrap into 2 columns */
 ```
 
-A row still wraps early if it would exceed the maximum layer width, so an
-oversized `grid-columns` cannot overflow the frame. Unlike `column` (system view
+A row still wraps early if it would exceed the row-width budget, so an
+oversized `grid-columns` cannot overflow the frame. That budget is not a fixed
+constant: the layout tries a fixed list of candidate widths and keeps the one
+whose canvas holds the least empty space while staying inside a screen-shaped
+aspect band, so a view that would otherwise grow into a tall ribbon spreads
+sideways instead. The choice depends only on the model and on layout constants
+— never on the viewport — so the same input always renders the same SVG, and a
+view that already fits keeps the exact layout it had. Unlike `column` (system view
 only), this hint is honored on the system and drill-down views and the org
 member grid. The deploy view auto-balances its container grid as well, but it
 groups containers by `realizes` target rather than by a container node, so it

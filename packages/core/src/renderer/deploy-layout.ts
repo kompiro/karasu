@@ -12,7 +12,13 @@ import {
   estimateTextWidth,
 } from "./rendering-constants.js";
 import { wrapToWidth } from "./svg-builder.js";
-import { sortByBarycenter, gridColumnCount } from "./layer-layout-logics.js";
+import {
+  sortByBarycenter,
+  gridColumnCount,
+  wrapLayerIntoRows,
+  GRID_COLUMN_CAP,
+} from "./layer-layout-logics.js";
+import { relaxedColumnCap, searchWidthBudget } from "./aspect-search.js";
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
 const CONTAINER_PADDING_X = 20;
@@ -63,16 +69,56 @@ function measureDeployUnit(unit: DeployNode): { width: number; height: number } 
   return { width, height };
 }
 
-function measureContainerWidth(units: DeployNode[], label: string): number {
-  const labelWidth = estimateTextWidth(label, CHAR_WIDTH) + CONTAINER_PADDING_X * 2 + 24;
-  const maxUnitWidth = Math.max(...units.map((u) => measureDeployUnit(u).width), 80);
-  return Math.max(maxUnitWidth + CONTAINER_PADDING_X * 2, labelWidth);
+/** Units of one container, wrapped into rows, with the box that holds them. */
+interface UnitGrid {
+  rows: DeployNode[][];
+  width: number;
+  height: number;
 }
 
-function measureContainerHeight(units: DeployNode[]): number {
-  const totalUnitHeight = units.reduce((sum, u) => sum + measureDeployUnit(u).height, 0);
-  const gaps = Math.max(0, units.length - 1) * NODE_GAP;
-  return CONTAINER_PADDING_TOP + totalUnitHeight + gaps + CONTAINER_PADDING_BOTTOM;
+/**
+ * Wrap a container's units into a balanced grid instead of one column (#2593).
+ *
+ * ADR-1737 gridded the deploy *containers* but left the units inside each one
+ * stacked vertically, so a container that realizes a fan of interchangeable
+ * services — dify's `VectorStore` carries a dozen vector-database images —
+ * measures one card wide and a dozen cards tall. That single ribbon then sets
+ * the height of its whole row and pushes every later layer past it, which is
+ * where most of the deploy canvas's empty space comes from.
+ *
+ * Same rule as the sibling grid: `ceil(sqrt(n))` columns row-major in
+ * declaration order, wrapping early if a row would exceed the width budget.
+ */
+function layoutContainerUnits(units: DeployNode[], label: string, widthBudget: number): UnitGrid {
+  const labelWidth = estimateTextWidth(label, CHAR_WIDTH) + CONTAINER_PADDING_X * 2 + 24;
+  const columnCount = gridColumnCount(
+    units.length,
+    undefined,
+    relaxedColumnCap(GRID_COLUMN_CAP, widthBudget, MAX_LAYER_WIDTH),
+  );
+  const rows = wrapLayerIntoRows(
+    units,
+    (unit) => measureDeployUnit(unit).width,
+    columnCount,
+    Math.max(80, widthBudget - CONTAINER_PADDING_X * 2),
+    NODE_GAP,
+  );
+
+  let contentWidth = 80;
+  let contentHeight = 0;
+  for (const [index, row] of rows.entries()) {
+    const dims = row.map((unit) => measureDeployUnit(unit));
+    const rowWidth = dims.reduce((sum, d) => sum + d.width, 0) + (row.length - 1) * NODE_GAP;
+    contentWidth = Math.max(contentWidth, rowWidth);
+    contentHeight += Math.max(...dims.map((d) => d.height));
+    if (index > 0) contentHeight += NODE_GAP;
+  }
+
+  return {
+    rows,
+    width: Math.max(contentWidth + CONTAINER_PADDING_X * 2, labelWidth),
+    height: CONTAINER_PADDING_TOP + contentHeight + CONTAINER_PADDING_BOTTOM,
+  };
 }
 
 /**
@@ -179,12 +225,19 @@ function placeGroupBlock(
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   containerCenterX: Map<string, number>,
+  // Row-width budget for this block, chosen by the canvas-level aspect search
+  // (#2593). `MAX_LAYER_WIDTH` is its floor.
+  widthBudget: number = MAX_LAYER_WIDTH,
   // The unclassified row keys its nodes by the bare unit id (units there have no
   // `realizes`, so they appear once); classified/banded containers prefix with
   // the container id because a multi-`realizes` unit can appear in several.
   bareNodeKeys = false,
 ): { bottomY: number; maxRight: number } {
-  const columnCount = gridColumnCount(groups.length);
+  const columnCount = gridColumnCount(
+    groups.length,
+    undefined,
+    relaxedColumnCap(GRID_COLUMN_CAP, widthBudget, MAX_LAYER_WIDTH),
+  );
   let colInRow = 0;
   let currentX = startX;
   let subRowY = startY;
@@ -192,12 +245,13 @@ function placeGroupBlock(
   let maxRight = startX;
 
   for (const group of groups) {
-    const containerW = measureContainerWidth(group.units, group.label);
-    const containerH = measureContainerHeight(group.units);
+    const grid = layoutContainerUnits(group.units, group.label, widthBudget);
+    const containerW = grid.width;
+    const containerH = grid.height;
 
     if (
       currentX > startX &&
-      (colInRow >= columnCount || currentX + containerW > startX + MAX_LAYER_WIDTH)
+      (colInRow >= columnCount || currentX + containerW > startX + widthBudget)
     ) {
       subRowY += subRowMaxHeight + CONTAINER_GAP;
       currentX = startX;
@@ -217,29 +271,35 @@ function placeGroupBlock(
     });
 
     let unitY = subRowY + CONTAINER_PADDING_TOP;
-    for (const unit of group.units) {
-      const dims = measureDeployUnit(unit);
-      // Key is "${containerId}::${unit.id}" so the same unit can appear in multiple
-      // containers at different positions without overwriting its layout entry.
-      const nodeKey = bareNodeKeys ? unit.id : `${group.id}::${unit.id}`;
-      layoutNodes.set(nodeKey, {
-        kind: unit.kind,
-        id: unit.id,
-        label: unit.label ?? unit.id,
-        properties: {
-          description: deployUnitDescription(unit),
-          links: [],
-        },
-        descriptionSummary: undefined,
-        linkCount: 0,
-        hasChildren: false,
-        hasDescription: !!deployUnitDescription(unit),
-        x: currentX + CONTAINER_PADDING_X,
-        y: unitY,
-        width: dims.width,
-        height: dims.height,
-      });
-      unitY += dims.height + NODE_GAP;
+    for (const row of grid.rows) {
+      let unitX = currentX + CONTAINER_PADDING_X;
+      let rowHeight = 0;
+      for (const unit of row) {
+        const dims = measureDeployUnit(unit);
+        // Key is "${containerId}::${unit.id}" so the same unit can appear in multiple
+        // containers at different positions without overwriting its layout entry.
+        const nodeKey = bareNodeKeys ? unit.id : `${group.id}::${unit.id}`;
+        layoutNodes.set(nodeKey, {
+          kind: unit.kind,
+          id: unit.id,
+          label: unit.label ?? unit.id,
+          properties: {
+            description: deployUnitDescription(unit),
+            links: [],
+          },
+          descriptionSummary: undefined,
+          linkCount: 0,
+          hasChildren: false,
+          hasDescription: !!deployUnitDescription(unit),
+          x: unitX,
+          y: unitY,
+          width: dims.width,
+          height: dims.height,
+        });
+        unitX += dims.width + NODE_GAP;
+        rowHeight = Math.max(rowHeight, dims.height);
+      }
+      unitY += rowHeight + NODE_GAP;
     }
 
     containerCenterX.set(group.id, currentX + containerW / 2);
@@ -269,7 +329,16 @@ interface DeployBandLabels {
   unclassified?: string;
 }
 
-export function layoutDeploy(slice: DeployViewSlice, labels?: DeployBandLabels): LayoutResult {
+/**
+ * Lay the deploy canvas out for one candidate row-width budget. Pure — every
+ * map and array it touches is built inside — so the aspect search can call it
+ * once per candidate and keep only the squarest run (#2593).
+ */
+function layoutDeployForBudget(
+  slice: DeployViewSlice,
+  labels: DeployBandLabels | undefined,
+  widthBudget: number,
+): LayoutResult {
   const jobBandLabel = labels?.jobBand ?? JOB_BAND_LABEL;
   const unclassifiedLabel = labels?.unclassified ?? UNCLASSIFIED_LABEL;
   const layoutNodes = new Map<string, LayoutNode>();
@@ -343,6 +412,7 @@ export function layoutDeploy(slice: DeployViewSlice, labels?: DeployBandLabels):
       layoutNodes,
       containers,
       containerCenterX,
+      widthBudget,
     );
     totalWidth = Math.max(totalWidth, maxRight + OUTER_PADDING);
     currentY = bottomY + ROW_GAP;
@@ -367,6 +437,7 @@ export function layoutDeploy(slice: DeployViewSlice, labels?: DeployBandLabels):
       layoutNodes,
       containers,
       containerCenterX,
+      widthBudget,
     );
 
     const bandWidth = maxRight - OUTER_PADDING + CONTAINER_PADDING_X;
@@ -398,6 +469,7 @@ export function layoutDeploy(slice: DeployViewSlice, labels?: DeployBandLabels):
       layoutNodes,
       containers,
       containerCenterX,
+      widthBudget,
       true, // bareNodeKeys: unclassified units key by bare id
     );
     totalWidth = Math.max(totalWidth, maxRight + OUTER_PADDING);
@@ -434,4 +506,29 @@ export function layoutDeploy(slice: DeployViewSlice, labels?: DeployBandLabels):
     width: totalWidth,
     height: currentY,
   };
+}
+
+/**
+ * Lay out the deploy diagram, choosing the row-width budget that brings the
+ * canvas closest to square (Issue #2593).
+ *
+ * Deploy containers are wide, so the fixed `MAX_LAYER_WIDTH` fits only two per
+ * row on a real compose file; every further container grows the canvas
+ * downward and the diagram ends up a ribbon several screens tall. The search
+ * re-runs the whole layout over the candidate budgets and keeps the squarest
+ * result; the floor candidate is today's constant, so a deploy view that is
+ * already square or landscape is untouched.
+ */
+export function layoutDeploy(slice: DeployViewSlice, labels?: DeployBandLabels): LayoutResult {
+  const found = searchWidthBudget(
+    (budget) => layoutDeployForBudget(slice, labels, budget),
+    (result) => ({ width: result.width, height: result.height }),
+    { floor: MAX_LAYER_WIDTH },
+  );
+  // Report which candidate won rather than accepting one as input: ADR-2521
+  // rejected canvas-dimension flags on the shared helpers, and a caller that
+  // could pin the budget would be exactly that. Tests assert the floor keeps
+  // an already-landscape canvas by reading this back.
+  found.result.widthBudget = found.budget;
+  return found.result;
 }

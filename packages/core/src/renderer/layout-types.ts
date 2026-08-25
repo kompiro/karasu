@@ -211,6 +211,17 @@ export interface LayoutResult {
   width: number;
   height: number;
   /**
+   * Row-width budget the canvas search settled on (#2593), reported so a test
+   * or a debugging session can see *which* candidate produced this canvas.
+   *
+   * Deliberately an output and never an input: ADR-2521 rejected
+   * canvas-dimension flags on the shared helpers, and a `widthBudget` a caller
+   * could pass in would be one — two contracts hiding behind one function.
+   * Equal to the mode's `MAX_LAYER_WIDTH` whenever widening bought nothing,
+   * which is the observable form of "an already-landscape canvas is untouched".
+   */
+  widthBudget?: number;
+  /**
    * True when measurement compensated for shape content insets (#2366 F):
    * a shapeForNode hook was supplied and the display mode is not the
    * fixed-card icon mode. renderFromLayout applies inset-aware text layout

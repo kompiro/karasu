@@ -664,3 +664,65 @@ describe("layoutDeploy job band (#1738)", () => {
     expect(result.nodes.has("loose")).toBe(true);
   });
 });
+
+describe("layoutDeploy > container units wrap into a grid (#2593)", () => {
+  const unitIds = (n: number) => Array.from({ length: n }, (_unit, i) => `unit-${i}`);
+
+  it("does not stack many units in a single column", () => {
+    // ADR-1737 gridded the containers but left their units in one column, so a
+    // container realizing a fan of interchangeable services measured one card
+    // wide and a dozen tall — the main source of empty space on the deploy
+    // canvas (dify's VectorStore: 380 x 2094).
+    const result = layoutDeploy(
+      makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(12) }]),
+    );
+    const placed = [...result.nodes.values()];
+
+    expect(placed).toHaveLength(12);
+    expect(new Set(placed.map((n) => n.x)).size).toBeGreaterThan(1);
+    expect(new Set(placed.map((n) => n.y)).size).toBeLessThan(12);
+  });
+
+  it("keeps the container box in agreement with the grid it holds", () => {
+    // Measurement and placement read the same grid, so a unit can never sit
+    // outside the box drawn around it.
+    const result = layoutDeploy(
+      makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(12) }]),
+    );
+    const container = result.containers.find((c) => c.id === "S")!;
+
+    for (const unit of result.nodes.values()) {
+      expect(unit.x).toBeGreaterThanOrEqual(container.x);
+      expect(unit.y).toBeGreaterThanOrEqual(container.y);
+      expect(unit.x + unit.width).toBeLessThanOrEqual(container.x + container.width);
+      expect(unit.y + unit.height).toBeLessThanOrEqual(container.y + container.height);
+    }
+  });
+
+  it("keeps a small container on one row", () => {
+    const result = layoutDeploy(
+      makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(2) }]),
+    );
+    const ys = new Set([...result.nodes.values()].map((n) => n.y));
+
+    expect(ys.size).toBe(1);
+  });
+
+  it("reports the budget it settled on, and leaves a small canvas on the floor", () => {
+    const result = layoutDeploy(
+      makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(2) }]),
+    );
+
+    expect(result.widthBudget).toBe(1200);
+  });
+
+  it("is deterministic", () => {
+    const coords = () =>
+      [
+        ...layoutDeploy(
+          makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(12) }]),
+        ).nodes.values(),
+      ].map((n) => [n.x, n.y]);
+    expect(coords()).toEqual(coords());
+  });
+});

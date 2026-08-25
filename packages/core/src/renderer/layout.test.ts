@@ -2060,3 +2060,70 @@ describe("layout > balanced grid wrapping (#1737)", () => {
     expect(coords()).toBe(coords());
   });
 });
+
+describe("layout > canvas space objective (#2593)", () => {
+  // Cards wide enough that three of them crowd the fixed 1200px row budget —
+  // the shape dify's drill-downs have, and the reason they wrapped to two per
+  // row and grew into a ribbon.
+  const wideCardSystem = (n: number) => {
+    const services = Array.from(
+      { length: n },
+      (_service, i) =>
+        `  service S${i} {\n    label "Service number ${i}"\n    description "A deliberately long description so the card measures wide enough to crowd the fixed row budget"\n  }`,
+    ).join("\n");
+    return `system Sys {\n${services}\n}`;
+  };
+  const aspectOf = (result: ReturnType<typeof layout>) => result.width / result.height;
+  const FLOOR = 1200;
+
+  it("pulls a canvas that would render as a tall ribbon inside the aspect band", () => {
+    const result = layout(parseAndExtract(wideCardSystem(40)));
+
+    expect(result.widthBudget).toBeGreaterThan(FLOOR);
+    expect(aspectOf(result)).toBeGreaterThanOrEqual(9 / 16);
+    expect(aspectOf(result)).toBeLessThanOrEqual(16 / 9);
+  });
+
+  it("leaves an already-landscape canvas on the floor budget", () => {
+    // The observable form of "output is byte-identical when widening buys
+    // nothing": the floor candidate is what produced this canvas.
+    const result = layout(parseAndExtract(wideCardSystem(3)));
+
+    expect(aspectOf(result)).toBeGreaterThan(1);
+    expect(result.widthBudget).toBe(FLOOR);
+  });
+
+  it("scores the final canvas, not the layered content box", () => {
+    // Side external columns sit outside the content box, so scoring that box
+    // alone widens a canvas that was already fine (#2593: 1.16 -> 2.28).
+    const withExternal = `system Sys {
+  user U [human] { label "User" }
+  service Core { label "Core service" description "The service the user talks to" }
+  external Vendor { label "Vendor API" description "Third-party integration the core service calls" }
+  U -> Core
+  Core -> Vendor
+}`;
+    const result = layout(parseAndExtract(withExternal));
+    expect(aspectOf(result)).toBeLessThanOrEqual(16 / 9);
+  });
+
+  it("is deterministic: identical input produces identical coordinates", () => {
+    const coords = () =>
+      [...layout(parseAndExtract(wideCardSystem(40))).nodes.values()].map((n) => [n.x, n.y]);
+    expect(coords()).toEqual(coords());
+  });
+
+  it("cannot help a chain of single-node layers (out of scope, needs layer folding)", () => {
+    // Widening a row only helps where the row has something to absorb.
+    const chain = [
+      "system Chain {",
+      ...Array.from({ length: 10 }, (_node, i) => `  service L${i} { label "Layer ${i}" }`),
+      ...Array.from({ length: 9 }, (_edge, i) => `  L${i} -> L${i + 1}`),
+      "}",
+    ].join("\n");
+    const result = layout(parseAndExtract(chain));
+
+    expect(aspectOf(result)).toBeLessThan(0.5);
+    expect(result.widthBudget).toBe(FLOOR);
+  });
+});

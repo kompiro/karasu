@@ -9,6 +9,7 @@
 
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import type { KrsEdge } from "../types/ast.js";
+import { relaxedColumnCap } from "./aspect-search.js";
 
 /**
  * Sort items within a layer by the barycenter heuristic to minimize edge crossings.
@@ -205,13 +206,12 @@ export interface PlacedNode {
 }
 
 /**
- * Place layered nodes into wrapped, stacked rows: the phase both layout
- * pipelines share (#2514).
+ * Input for the layered placement both layout pipelines share (#2514).
  *
  * Per layer, in order: barycenter sort (only where the kind-tier layout is not
  * forcing declaration order, per Q11 of the layout design doc), the author's
  * column buckets, per-edge direction hints, then a wrap into rows bounded by
- * the balanced-grid column count and `MAX_LAYER_WIDTH`. Rows stack downward
+ * the balanced-grid column count and the row-width budget. Rows stack downward
  * inside the layer; layers stack by `LAYER_GAP` below the previous layer's
  * bottom, with `GROUP_FRAME_TITLE_GAP` reserved above a band's first layer.
  *
@@ -222,11 +222,8 @@ export interface PlacedNode {
  * baseline agree by construction (rows only ever move downward), so what
  * converges here is the wrap threshold and the crossing-minimisation pass
  * (TPL-219).
- *
- * Measurement stays with the caller: it owns the owner chips and the measure
- * context that decide a card's size.
  */
-export function placeNodesInLayers(input: {
+interface PlaceNodesInput {
   /** Layer indices in ascending order. */
   sortedLayers: readonly number[];
   /** Node ids per layer, in declaration order. */
@@ -244,8 +241,29 @@ export function placeNodesInLayers(input: {
   /** Layers that start a group band, which reserve room for the frame title. */
   groupStartLayer: ReadonlyMap<number, string>;
   gaps: { layerGap: number; nodeGap: number; maxLayerWidth: number; groupTitleGap: number };
+  /**
+   * Row-width budget picked by the canvas-level aspect search (#2593).
+   * Defaults to `gaps.maxLayerWidth`, which is also its floor: the ratio
+   * between the two is what relaxes the balanced-grid column cap.
+   */
+  widthBudget?: number;
   measure: (nodeId: string) => { width: number; height: number };
-}): { placements: Map<string, PlacedNode>; childMaxWidth: number; childMaxHeight: number } {
+}
+
+/**
+ * Place layered nodes into wrapped, stacked rows.
+ *
+ * Pure: the only state it touches is built inside, so the canvas-level aspect
+ * search in `layout()` can call it once per candidate row-width budget and
+ * throw away the runs that lose (#2593). Measurement stays with the caller: it
+ * owns the owner chips and the measure context that decide a card's size.
+ */
+export function placeNodesInLayers(input: PlaceNodesInput): {
+  placements: Map<string, PlacedNode>;
+  childMaxWidth: number;
+  childMaxHeight: number;
+} {
+  const widthBudget = input.widthBudget ?? input.gaps.maxLayerWidth;
   const { sortedLayers, nodesByLayer, edges, edgeDirections, layers } = input;
   const { forcedLayers, layoutHints, gridHint, groupStartLayer, gaps, measure } = input;
   const { layerGap, nodeGap, maxLayerWidth, groupTitleGap } = gaps;
@@ -292,8 +310,12 @@ export function placeNodesInLayers(input: {
     const rows = wrapLayerIntoRows(
       nodesInLayer,
       (nid) => dimsById.get(nid)!.width,
-      gridColumnCount(nodesInLayer.length, gridHint),
-      maxLayerWidth,
+      gridColumnCount(
+        nodesInLayer.length,
+        gridHint,
+        relaxedColumnCap(GRID_COLUMN_CAP, widthBudget, maxLayerWidth),
+      ),
+      widthBudget,
       nodeGap,
     );
 
