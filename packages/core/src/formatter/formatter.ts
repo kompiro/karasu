@@ -346,6 +346,20 @@ class Printer {
     if ("role" in node.properties && node.properties.role !== undefined) {
       lines.push(`${indent}role ${quoteString(node.properties.role)}`);
     }
+    // `handles` was missing here until #2549, so `karasu fmt` deleted every
+    // handles line it formatted — silently, since nothing else carries the
+    // one-hop expose model. Canonicalized to a single comma list like `facets`
+    // below, so `format(format(x)) === format(x)` holds for repeated lines.
+    // Path refs print as written, each segment re-quoted only when needed
+    // (TPL-1101, #2088).
+    if (
+      "handles" in node.properties &&
+      Array.isArray(node.properties.handles) &&
+      node.properties.handles.length > 0
+    ) {
+      const refs = node.properties.handles.map((h) => h.path.map(quoteId).join("."));
+      lines.push(`${indent}handles ${refs.join(", ")}`);
+    }
     if (
       "delivers" in node.properties &&
       Array.isArray(node.properties.delivers) &&

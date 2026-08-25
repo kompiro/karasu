@@ -478,3 +478,92 @@ deploy Prod {
     });
   });
 });
+
+describe("qualified realizes narrows the container (#2549, PR #2579 review)", () => {
+  const TWO_TENANTS = `
+system TenantA {
+  service Api { label "A's API" }
+}
+system TenantB {
+  service Api { label "B's API" }
+}
+deploy prod {
+  oci "a-unit" {
+    realizes TenantA.Api
+  }
+  oci "b-unit" {
+    realizes TenantB.Api
+  }
+}
+`;
+
+  it("keeps two same-named services in two containers, each with its own label", () => {
+    const file = Parser.parse(TWO_TENANTS).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    expect(slice.containers).toHaveLength(2);
+    // Only a collision qualifies the id; the label follows the node the ref
+    // resolved to, instead of whichever same-named node was walked last.
+    expect(slice.containers.map((c) => [c.serviceId, c.serviceLabel])).toEqual([
+      ["TenantA.Api", "A's API"],
+      ["TenantB.Api", "B's API"],
+    ]);
+    expect(slice.containers.map((c) => c.units.map((u) => u.id))).toEqual([["a-unit"], ["b-unit"]]);
+  });
+
+  it("leaves an unqualified model's container ids exactly as they were", () => {
+    const file = Parser.parse(`
+system EC {
+  service Api { label "API" }
+  service Worker {}
+  Api -> Worker "queues"
+}
+deploy prod {
+  oci "api-unit" {
+    realizes Api
+  }
+  job "worker-unit" {
+    realizes EC.Worker
+  }
+}
+`).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    expect(slice.containers.map((c) => c.serviceId)).toEqual(["Api", "Worker"]);
+    expect(slice.containers[0].serviceLabel).toBe("API");
+    // The ghost edge still connects the two containers: an endpoint is a bare
+    // id in its system's scope and is mapped to the container it realizes.
+    expect(slice.ghostEdges).toEqual([
+      { from: "Api", to: "Worker", label: "queues", kind: "sync" },
+    ]);
+  });
+
+  it("routes ghost edges to the qualified container when ids collide", () => {
+    const file = Parser.parse(`
+system TenantA {
+  service Api {}
+  service Worker {}
+  Api -> Worker "queues"
+}
+system TenantB {
+  service Api {}
+}
+deploy prod {
+  oci "a-unit" {
+    realizes TenantA.Api
+  }
+  oci "b-unit" {
+    realizes TenantB.Api
+  }
+  job "worker-unit" {
+    realizes Worker
+  }
+}
+`).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    expect(slice.ghostEdges).toEqual([
+      { from: "TenantA.Api", to: "Worker", label: "queues", kind: "sync" },
+    ]);
+  });
+});

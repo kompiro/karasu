@@ -56,12 +56,29 @@ jobs:
             echo "BRANCHES_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: ./.github/actions/purge-preview-deployments
+      - name: Purge orphans in the app project
+        uses: ./.github/actions/purge-preview-deployments
         with:
           mode: orphans
           keep-branches: ${{ steps.branches.outputs.list }}
           # Defaults to reporting only, so the sweep can always be inspected before it is
           # trusted.
+          dry-run: ${{ inputs.dry_run }}
+          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # The docs site previews into its own Pages project (Issue #2260), and the
+      # action's `project:` defaults to the app's. Without this step the safety
+      # net covers one of the two projects, so a docs preview whose per-PR
+      # cleanup never fired — the `closed` event is filtered by `paths:`, so a PR
+      # that drops its docs changes before closing skips cleanup entirely — would
+      # serve indefinitely with nothing to sweep it.
+      - name: Purge orphans in the docs project
+        uses: ./.github/actions/purge-preview-deployments
+        with:
+          mode: orphans
+          project: karasu-docs
+          keep-branches: ${{ steps.branches.outputs.list }}
           dry-run: ${{ inputs.dry_run }}
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

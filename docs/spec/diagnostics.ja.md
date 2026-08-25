@@ -84,7 +84,9 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
 | `duplicate-facet-id` | error | 2 つの `facet` ブロックが同じ id を宣言しており、`facets` の参照がどちらのメタデータを指すか決まらない。マージ後のモデルで判定するのでファイルをまたぐ重複も検出する。参照が解決するのは最初の宣言。 |
 | `positional-label-removed` | error | `boundary` / `facet` / `organization` / `team` / `member` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、位置ラベル記法は spec に存在しない。experimental な `boundary` / `facet` は deprecation を挟まず削除し（#2133）、残りは deprecation を経て削除した（#2208）。復帰動作は異なり、`boundary` / `facet` は文字列を捨てるが、`organization` / `team` / `member` は label として保持し、修正されるまで組織図が読める状態を保つ。 |
-| `node-id-multiple-locations` | warning | 同じ node id が index 対象の複数の場所に現れる。モデル全体を walk し終えてから判定するため、宣言順に依存しない。top-level の infra / client ブロックを含む cross-kind の衝突も対象（#2550）。domain 同士の多重は対象外（`domain-dispersal`（info）の領分）。`nodePathIndex` は id ごとに勝者 1 つを保持する: `@migration_target` 優先、同点は traversal 順（systems → top-level domains → top-level infra）で最初の宣言。非勝者ごとにその位置で warning が 1 つ出る。 |
+| `node-id-multiple-locations` | warning | 同じ id を持つ論理層ノード（`service` / `domain` / `client`）が異なるパスに複数宣言されている。判定はファイル内の宣言順に依存しない（#2550。ファイルをまたぐ衝突は import マージ時に先勝ちのままで、再構築は #2596 が追跡）。論理層と物理層（`database` / `queue` / `storage` とその子リソース）の間の同名、および物理層内の同名は許容して沈黙する（物理参照は `resource OrderDB.users` のように dot 修飾されるため）。domain 同士の多重は対象外（`domain-dispersal`（info）の領分）。完全に同じパスでの重複は `duplicate-node-id-parent`（error）に譲る。`nodePathIndex` は id ごとに勝者 1 つを保持する: `@migration_target` 優先（infra の子はブロックのアノテーションを継承）、同点は traversal 順（systems → top-level の domains / services / clients → top-level infra）で最初の宣言。負けた論理層の宣言ごとにその位置で warning が 1 つ出る。 |
+
+> Related TPLs: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 index の勝者規則は index 間で一貫させる。`node-id-multiple-locations` の勝者規則もその一つ）。
 
 ### cross-reference 解決（warn-don't-error, §S6）
 
@@ -99,12 +101,11 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `owns-target-ambiguous` | warning | `owns` の参照（接尾辞 path。bare id を含む）が **(kind, 深さ) の揃っていない** 2 つ以上のノードに解決される。揃っている多重一致は意図的な broadcast（移行共存・マルチテナント）であり沈黙する。メッセージは各候補の full path を列挙し、著者はより長い path で修飾して 1 つに絞れる。`owns-target-not-found` と同じく import 結合: マージ後モデルでのみ判定する。 |
 | `contains-target-ambiguous` | warning | `owns-target-ambiguous` の `contains` 版（top-level `boundary` 用）: kind または深さの混在する多重一致を候補 full path つきで報告する。揃っている多重一致は broadcast として沈黙。スコープ形では構造的に到達不能（member は sibling 一意な直下の子に解決される）。import 結合: マージ後モデルでのみ判定する。 |
 | `realizes-target-ambiguous` | warning | `realizes` の参照（接尾辞 path。bare id を含む）が realizable な kind（service / domain / client / infra ブロック）の 2 つ以上のノードに解決され、(kind, 深さ) が揃っていない。候補は full path で列挙する。揃っている多重一致は沈黙。存在検査は `unresolved-realizes` の担当。import 結合: マージ後モデルでのみ判定する。 |
-| `handles-target-ambiguous` | warning | `handles` の参照が深さの異なる複数の宣言済み `domain` に解決される（kind が固定なので判別軸は深さに畳まれる）。同深さの重複はマルチテナントの broadcast パターンとして沈黙。存在検査と one-hop expose 規則は `unresolved-handles` の担当。import 結合: マージ後モデルでのみ判定する。 |
 | `facet-not-declared` | warning | `facets` の参照先の `facet` ブロックが宣言されていない（存在検証はマージ後のモデルで行うので、import 先の宣言も有効）。near-miss の annotation ヒントと違い、宣言集合が「正」を与えるためこの検査は完全で、著者定義の名前どうしの取り違えも検出する。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |
 | `unresolved-edge-endpoint` | warning | edge の端点 id が merge 後のモデルのどこにも見つからない。 |
-| `unresolved-handles` | warning | `handles` 対象の domain が one-hop expose 規則で到達できない。 |
+| `unresolved-handles` | warning | `handles` 対象の domain が one-hop expose 規則で到達できない。参照はノード参照 path で、system 直下の子のさらに直下にある `domain` を対象に解決し、警告は参照そのものに anchor する（`handles A, B` の片方だけが失敗しうる）。`owns` / `contains` / `realizes` と違い `handles` に `*-target-ambiguous` は無い: この対象集合では候補がすべて同じ深さの `domain` なので多重一致は構造上つねに揃っており（マルチテナントの broadcast）、より長い path で修飾するという対処が成立しないため。対象集合の外にある domain を名指した参照は ambiguity ではなく本コードで報告する。 |
 | `unresolved-realizes` | warning | deploy node が論理層に無い対象を `realizes` する。 |
 | `legend-ref-unresolved` | warning | `legend` の `ref` がどのスタイル規則にも node にも一致しない。 |
 | `cross-system-ref-unresolved` | warning | cross-system edge（`Sys.Svc`）の対象が見つからない。 |
