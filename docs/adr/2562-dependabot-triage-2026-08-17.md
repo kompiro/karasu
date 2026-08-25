@@ -10,8 +10,11 @@ scope:
 related_to: [ADR-2447, ADR-769, ADR-2397, ADR-199, ADR-784]
 assumptions:
   - "file: scripts/ci/vscode-version-policy.test.ts"
-  - "grep: packages/vscode/package.json :: \"vscode\": \"\\^1\\.125\\.0\""
-  - "grep: packages/vscode/package.json :: \"@types/vscode\": \"\\^1\\.125\\.0\""
+  # 本 ADR が決めたのは engines.vscode と @types/vscode を同値に保ち stable に
+  # 追随させることで、1.125.0 というリテラルの版ではない（ADR-2628）。同値である
+  # ことは上の vscode-version-policy.test.ts が版定数を持たずに検証している。
+  - "grep: packages/vscode/package.json :: \"vscode\": \"\\^1\\."
+  - "grep: packages/vscode/package.json :: \"@types/vscode\": \"\\^1\\."
   - "grep: packages/vscode-e2e/.vscode-test.mjs :: version: \"stable\""
 ---
 

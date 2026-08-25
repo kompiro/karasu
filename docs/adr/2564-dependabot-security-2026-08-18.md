@@ -9,8 +9,11 @@ scope:
   concerns: [security, dependencies]
 related_to: [ADR-2562, ADR-2404, ADR-2390, ADR-2401, ADR-1474]
 assumptions:
-  - "grep: pnpm-workspace.yaml :: nanoid: \\^3\\.3\\.18"
-  - "grep: pnpm-workspace.yaml :: brace-expansion@5: \\^5\\.0\\.9"
+  # 本 ADR が決めたのは patched な系列へ caret で floor を置くことであって、
+  # そのときの patch 番号ではない（ADR-2628。ADR-2115 が ADR-1338 に対して
+  # 行ったのと同じ緩和）。
+  - "grep: pnpm-workspace.yaml :: nanoid: \\^3\\."
+  - "grep: pnpm-workspace.yaml :: brace-expansion@5: \\^5\\."
 ---
 
 # ADR-2564: Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
