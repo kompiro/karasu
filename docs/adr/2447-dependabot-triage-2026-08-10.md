@@ -10,8 +10,13 @@ scope:
 related_to: [ADR-2440, ADR-2333, ADR-2318, ADR-784, ADR-1320]
 assumptions:
   - "grep: .github/dependabot.yml :: open-pull-requests-limit: 8"
-  - "grep: package.json :: \"oxfmt\": \"\\^0.62.0\""
-  - "grep: package.json :: \"vitest\": \"\\^4.1.10\""
+  # 特定の minor / patch 番号ではなく「caret で pin されている」ことを表明する。
+  # 本 ADR が oxfmt / vitest について決めたのは採用と反映の形（整形の同梱、
+  # 9 manifest の版揃え）であって、0.62.0 / 4.1.10 というリテラルの版ではない
+  # （後続の bump のたびに assumption が壊れるのを避ける。ADR-2115 が
+  # ADR-1338 に対して行ったのと同じ緩和）。
+  - "grep: package.json :: \"oxfmt\": \"\\^0\\."
+  - "grep: package.json :: \"vitest\": \"\\^4\\."
 ---
 
 # ADR-2447: Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
