@@ -439,6 +439,11 @@ function _compileFromPreparedInput(
   // for a model whose only boundaries are scoped.
   const hasBoundaries = krsFile.boundaries.length > 0 || krsFile.scopedBoundaryMembership.size > 0;
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
+  // Container ids, which the system view matches against its own node ids —
+  // a bare id in the common case. When two systems' same-named services each
+  // have a container the ids are qualified (#2549), so neither bare-id node
+  // lights the deploy-jump button; the button's own id space cannot tell the
+  // two apart, and lighting both was the previous, wrong answer.
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = krsFile.ownerIndex;
   const teamLabels = buildTeamLabelIndex(krsFile);
@@ -817,7 +822,8 @@ function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, Node
       type: unit.properties.type,
       image: unit.properties.image,
       schedule: unit.properties.schedule,
-      realizes: unit.properties.realizes?.map((target) => target.id),
+      // Author notation, joined (#2088): a path ref reads back as written.
+      realizes: unit.properties.realizes?.map((target) => nodePathKey(target.path)),
     };
   }
 

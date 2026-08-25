@@ -11,9 +11,9 @@ import type {
   UserNode,
 } from "../types/ast.js";
 
-/** The ids a deploy unit realizes, dropping the per-target ranges. */
+/** The refs a deploy unit realizes (joined notation), dropping the per-target ranges. */
 function realizeIds(node: DeployNode): string[] | undefined {
-  return node.properties.realizes?.map((target) => target.id);
+  return node.properties.realizes?.map((target) => target.path.join("."));
 }
 
 describe("Parser", () => {
@@ -981,14 +981,14 @@ system S {
     const result = Parser.parse(`system S { client A [web] { handles Order } }`);
     expect(result.diagnostics).toHaveLength(0);
     const client = result.value.systems[0].children[0] as ClientNode;
-    expect(client.properties.handles).toEqual(["Order"]);
+    expect(client.properties.handles?.map((h) => h.path)).toEqual([["Order"]]);
   });
 
   it("parses client handles property — comma-separated list", () => {
     const result = Parser.parse(`system S { client A [web] { handles X, Y, Z } }`);
     expect(result.diagnostics).toHaveLength(0);
     const client = result.value.systems[0].children[0] as ClientNode;
-    expect(client.properties.handles).toEqual(["X", "Y", "Z"]);
+    expect(client.properties.handles?.map((h) => h.path)).toEqual([["X"], ["Y"], ["Z"]]);
   });
 
   it("merges multiple handles lines", () => {
@@ -1002,14 +1002,14 @@ system S {
     `);
     expect(result.diagnostics).toHaveLength(0);
     const client = result.value.systems[0].children[0] as ClientNode;
-    expect(client.properties.handles).toEqual(["X", "Y", "Z"]);
+    expect(client.properties.handles?.map((h) => h.path)).toEqual([["X"], ["Y"], ["Z"]]);
   });
 
   it("parses service handles property (re-export)", () => {
     const result = Parser.parse(`system S { service Bff { handles Order, Catalog } }`);
     expect(result.diagnostics).toHaveLength(0);
     const service = result.value.systems[0].children[0] as ServiceNode;
-    expect(service.properties.handles).toEqual(["Order", "Catalog"]);
+    expect(service.properties.handles?.map((h) => h.path)).toEqual([["Order"], ["Catalog"]]);
   });
 
   it("rejects handles on user node", () => {

@@ -5,7 +5,8 @@
 - **関連**:
   - 引き金 Issue: [#2598](https://github.com/kompiro/karasu/issues/2598)（スライス A [#2608](https://github.com/kompiro/karasu/issues/2608) / B [#2609](https://github.com/kompiro/karasu/issues/2609) / C [#2610](https://github.com/kompiro/karasu/issues/2610) / D [#2611](https://github.com/kompiro/karasu/issues/2611)）
   - 関連 ADR: [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)（チャネル L 字ルーティング）, [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（ガター / mixed route・トランク・マーク）, [ADR-2330](../adr/2330-ungrouped-routing-parity.md)（計測柵で ungrouped を保証）, [ADR-1737](../adr/1737-balanced-grid-sibling-layout.md)（決定的な既定レイアウト規則の線引き）
-  - 関連 TPL: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md), [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（本 PR で新設）
+  - 関連 TPL: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md), [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md)（配置に測定値を返す経路の規律）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（本 PR で新設）
+  - 姉妹 Design Doc: [canvas-space-objective.md](canvas-space-objective.md)（[#2593](https://github.com/kompiro/karasu/issues/2593) — 同じパイプラインの面積側。本設計が増やすキャンバス面積を相殺する）
   - コード: `packages/core/src/renderer/edge-routing-lanes.ts`, `layer-layout-logics.ts`, `layout-edges.ts`, `layout.ts`
 
 ## 背景・課題
@@ -115,6 +116,21 @@ ADR-1859 は貫通対策として **「配置レベルで解消（#966 / ADR-967
 
 同様に ADR-1737 の「決定的な既定レイアウト規則であって自動レイアウト最適化ではない」線からも外れない。予約量は測定した本数 × 定数で、探索も評価関数も持たない。
 
+### TPL-2593（配置へ測定値を返す経路の規律）との突き合わせ
+
+[#2593](https://github.com/kompiro/karasu/issues/2593) の設計で、配置にフィードバックを足すときの規律が [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) として明文化された。本設計は同じパイプラインに 2 本目のフィードバックを足すので、そのチェックリストに対する立場をここで固定する。
+
+| チェック項目 | 本設計の立場 |
+| --- | --- |
+| 候補列はモデルと定数だけから決まる | **形が違う。** 本設計は候補を探索せず、予約量を `測定した本数 × 定数ピッチ` で 1 つに決める。測定値は 1 回目のパスの結果から取るので、シグネチャ上は「前回結果」を読む形になる（`channelDemandByRow(result)`）。ただしその結果自体がモデルと定数だけの純関数なので、合成もモデルの純関数であり、viewport・時刻・乱数・セッション間の状態は入らない |
+| 同じ入力で 2 回走らせて座標が完全一致 | 満たす。テストを置く |
+| 現行定数が先頭で、厳密比較のみが勝つ | **等価な形で満たす。** 探索が無いので「先頭候補」は無いが、`extraChannelGap()` は需要が現行 gap に収まるとき 0 を返し、その場合 2 回目のパス自体を走らせない。定数で足りる入力は座標が完全一致する |
+| 採点は呼び出し元が使う寸法 | 該当なし（採点関数を持たない）。ただし予約対象の行序数は最終座標から導く |
+| 試行が純粋 | 満たす。1 回目の結果は破棄し、2 回目は `layoutInner` を新しい Map で走らせる |
+| 打ち切りは単調性で説明できる | **より強い形で満たす。** 単調性ではなく構成で上限が決まる — パスは常に 1 か 2 で、3 回目は存在しない。「2 回目の配置で経路選択が変わりうる」ことは事実であり、不動点は保証しない。上限の明示であることを ADR に残す |
+| 退化入力で結果が返る | 満たす。エッジ 0 / チャネル 0 は 1 パスで終わる |
+| 並列に存在する全レイアウト経路が同じ規則を通る（TPL-219） | **スライス A では満たさない。** 複数 system の root view は system ごとに独立した行スタックを横に並べるため、キャンバス全体で一意な行序数が定義できない。A では単一 system / 全 drill-down のみを対象とし、multi-system root は現状維持（既定 gap のまま）とする。この縮退は親 Issue の `## Slice status` に記載する |
+
 ### スライス（実装ステップ）
 
 | スライス | 前提 | 独立に出荷できる理由 |
@@ -132,3 +148,4 @@ ADR-1859 は貫通対策として **「配置レベルで解消（#966 / ADR-967
 - ピッチの値（spike では 14px）。エッジラベルの高さと `LAYER_GAP` の既定値との兼ね合いで決める。ラベル衝突は ADR-2048 の担当なので、本設計は線の分離のみを保証する。
 - 予約は「1 回目に実際に流れた本数」を使うが、2 回目の配置で座標が変われば経路選択も変わりうる。実測では dify 全 view で 2 回目の結果が悪化しなかったが、**3 回目を走らせない**という決定は上限の明示であって不動点の保証ではない。ADR にその旨を残す。
 - `usecase → resource` の drill-down に既存の縦方向 overlap 1 件を発見した（main / spike とも）。本スライスの対象外。柵の corpus に入れると落ちるため、別 Issue で扱う。
+- multi-system root view をいつ対象にするか。行序数が定義できないので、system ごとに独立した予約を行う（各 system 内で行を数える）か、A の縮退のまま据え置くかを B/D の設計時に再検討する。

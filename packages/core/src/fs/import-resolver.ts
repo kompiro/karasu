@@ -17,6 +17,8 @@ import {
   validateOwnsReferences,
   validateContainsReferences,
   validateScopedContainsReferences,
+  validateRealizesReferences,
+  declaredNodePathsOnce,
   validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
@@ -46,6 +48,7 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // so it is import-coupled for the same reason (#2088 / ADR-2410).
   "owns-target-ambiguous",
   "contains-target-ambiguous",
+  "realizes-target-ambiguous",
   // Co-ownership became a merged-model verdict when ownerIndex moved to the
   // rebuild pattern (#2548): two files each owning the same node is a fact no
   // single file can see, and the entry file's per-file infos would otherwise
@@ -143,15 +146,20 @@ export class ImportResolver {
     // and warned, while the same declaration reached through `import "…"`
     // resolved. Re-deriving here was already right; the space it re-derived
     // against was not (#2082, TPL-2032).
-    this.diagnostics.push(...validateOwnsReferences(krsFile));
+    // One declared-path walk shared by the checks below, as in the Parser.
+    const declaredPaths = declaredNodePathsOnce(krsFile);
+    this.diagnostics.push(...validateOwnsReferences(krsFile, declaredPaths));
     if (krsFile.boundaries.length > 0) {
-      this.diagnostics.push(...validateContainsReferences(krsFile));
+      this.diagnostics.push(...validateContainsReferences(krsFile, declaredPaths));
     }
     // Scoped boundaries (#2036) share the `contains-target-not-found` code, so
     // their per-file verdict was suppressed above too. Re-derive here or they
     // vanish entirely: cross-file `system` reopen can add the very child a
     // scoped `contains` names, so only the merged tree can decide.
     this.diagnostics.push(...validateScopedContainsReferences(krsFile));
+    // Ambiguity for realizes path refs (#2088 slice C), decided on the merged
+    // model like every reference check above.
+    this.diagnostics.push(...validateRealizesReferences(krsFile, declaredPaths));
     // Physical dot-notation refs decide only here, for the same reason: the
     // `database` block a slice references usually lives in the infra file it
     // imports (#2078).

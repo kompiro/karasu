@@ -22,7 +22,7 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
 - slice A（#2547）: 既存 4+1 受理サイトの字句を共有ヘルパーへ移行（挙動不変）
 - slice B（#2548）: `owns` / `contains` を受理側に追加し、`ownerIndex` /
   `boundaryMembership` を full path キーに張り替え
-- slice C（#2549）: `realizes` / `handles` を受理側に追加（未着手 — 着地時に本 AT へ追記）
+- slice C（#2549）: `realizes` / `handles` を受理側に追加。拒否形は先頭セグメントを記録しない
 
 ## 受け入れ条件
 
@@ -47,6 +47,33 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › the ambiguity verdict does not depend on declaration order
 - [x] `karasu fmt` が著者の書いた path を保つ（正規化しない）
   > ✅ Automated — packages/core/src/formatter/formatter.test.ts › preserves owns and contains path references as written
+
+### slice C（#2549）— `realizes` / `handles`
+
+- [x] `realizes Shop.Api` / `handles Backend.Order` が parse され、指したノードに解決される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › realizes / handles accept suffix paths (#2549)
+- [x] bare id の解決は両サイトで不変
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › handles Backend.Order parses as a path and the expose rule evaluates the resolved node
+- [x] 拒否される形は先頭セグメントを記録せず、診断はちょうど 1 件
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a rejected realizes form records nothing rather than its first segment
+- [x] `handles` の one-hop expose 規則は path テキストでなく解決先ノードに対して評価される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › handles Backend.Order parses as a path and the expose rule evaluates the resolved node
+- [x] `realizes` の ambiguity は slice B と同じ (kind, 深さ) 判別を同じヘルパーで使う
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › realizes ambiguity follows the shared (kind, depth) rule
+- [x] `handles` は ambiguity を出さず、対象集合の外を指した参照は `unresolved-handles` で報告される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › handles draws no ambiguity verdict: its pool is the expose rule's, not every declared domain (#2549)
+- [x] ドット付き quoted id（`handles "a.b"`）と 2 セグメント path（`handles a.b`）が別の参照として扱われ、判定が宣言順に依らない
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a quoted id containing a dot is a different ref from the two-segment path
+- [x] `unresolved-handles` は宣言ノードでなく失敗した参照そのものに anchor する
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › unresolved-handles anchors on the failing reference, not on the declaring node
+- [x] 壊れた参照の後もリストの続きを読む（`handles Backend., Order` が `Order` を記録し、診断は 1 件）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › handles keeps reading its list after a malformed ref, like realizes does
+- [x] dangling dot の診断範囲がドットを含み、その後の trailing comma も報告される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a dangling dot underlines the dot, and a trailing comma after it is still reported
+- [x] `karasu fmt` が `handles` を保つ（path も著者の書いたまま）
+  > ✅ Automated — packages/core/src/formatter/formatter.test.ts › keeps handles, path refs included (#2549)
+- [x] 修飾した `realizes` が deploy view の container を絞る（同名 service が 1 つに潰れない）
+  > ✅ Automated — packages/core/src/view/deploy-view-extract.test.ts › keeps two same-named services in two containers, each with its own label
 
 ## 手動確認
 

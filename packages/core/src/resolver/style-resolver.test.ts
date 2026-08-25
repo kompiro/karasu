@@ -1165,7 +1165,7 @@ describe("analyze", () => {
             {
               kind: "oci" as const,
               id: "my-service",
-              properties: { realizes: [{ id: "Svc", loc: dummyLoc }] },
+              properties: { realizes: [{ path: ["Svc"], loc: dummyLoc }] },
               loc: dummyLoc,
             },
           ],
