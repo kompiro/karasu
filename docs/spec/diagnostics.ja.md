@@ -100,11 +100,12 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `contains-target-not-found` | warning | import 結合の診断であり、未解決の import が残るドキュメントでは判定しない（member が import 先で宣言されている場合があり、スコープ内 `contains` が名指す子は cross-file の `system` 再オープンで後から増えうる）。それ以外の場合: `boundary` の `contains` 先が存在しない — top-level ブロックはマージ後の system 階層のどこにも無い場合（存在検証は per-file でなく cross-file マージ後）、スコープブロックは宣言ノードの直下の子に無い場合（照合はノード参照 path 記法の接尾辞規則）。 |
 | `owns-target-ambiguous` | warning | `owns` の参照（接尾辞 path。bare id を含む）が **(kind, 深さ) の揃っていない** 2 つ以上のノードに解決される。揃っている多重一致は意図的な broadcast（移行共存・マルチテナント）であり沈黙する。メッセージは各候補の full path を列挙し、著者はより長い path で修飾して 1 つに絞れる。`owns-target-not-found` と同じく import 結合: マージ後モデルでのみ判定する。 |
 | `contains-target-ambiguous` | warning | `owns-target-ambiguous` の `contains` 版（top-level `boundary` 用）: kind または深さの混在する多重一致を候補 full path つきで報告する。揃っている多重一致は broadcast として沈黙。スコープ形では構造的に到達不能（member は sibling 一意な直下の子に解決される）。import 結合: マージ後モデルでのみ判定する。 |
+| `realizes-target-ambiguous` | warning | `realizes` の参照（接尾辞 path。bare id を含む）が realizable な kind（service / domain / client / infra ブロック）の 2 つ以上のノードに解決され、(kind, 深さ) が揃っていない。候補は full path で列挙する。揃っている多重一致は沈黙。存在検査は `unresolved-realizes` の担当。import 結合: マージ後モデルでのみ判定する。 |
 | `facet-not-declared` | warning | `facets` の参照先の `facet` ブロックが宣言されていない（存在検証はマージ後のモデルで行うので、import 先の宣言も有効）。near-miss の annotation ヒントと違い、宣言集合が「正」を与えるためこの検査は完全で、著者定義の名前どうしの取り違えも検出する。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |
 | `unresolved-edge-endpoint` | warning | edge の端点 id が merge 後のモデルのどこにも見つからない。 |
-| `unresolved-handles` | warning | `handles` 対象の domain が one-hop expose 規則で到達できない。 |
+| `unresolved-handles` | warning | `handles` 対象の domain が one-hop expose 規則で到達できない。参照はノード参照 path で、system 直下の子のさらに直下にある `domain` を対象に解決し、警告は参照そのものに anchor する（`handles A, B` の片方だけが失敗しうる）。`owns` / `contains` / `realizes` と違い `handles` に `*-target-ambiguous` は無い: この対象集合では候補がすべて同じ深さの `domain` なので多重一致は構造上つねに揃っており（マルチテナントの broadcast）、より長い path で修飾するという対処が成立しないため。対象集合の外にある domain を名指した参照は ambiguity ではなく本コードで報告する。 |
 | `unresolved-realizes` | warning | deploy node が論理層に無い対象を `realizes` する。 |
 | `legend-ref-unresolved` | warning | `legend` の `ref` がどのスタイル規則にも node にも一致しない。 |
 | `cross-system-ref-unresolved` | warning | cross-system edge（`Sys.Svc`）の対象が見つからない。 |

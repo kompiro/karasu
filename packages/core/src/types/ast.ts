@@ -83,6 +83,22 @@ export const OWNS_TARGET_KINDS = [...OWNABLE_LOGICAL_KINDS, ...INFRA_BLOCK_KINDS
 export const OWNS_TARGET_KIND_SET: ReadonlySet<string> = new Set(OWNS_TARGET_KINDS);
 
 /**
+ * Every kind `realizes` accepts as a target — the same enumeration as
+ * {@link OWNS_TARGET_KINDS}, aliased rather than re-listed.
+ *
+ * The two questions are distinct (ADR-1632 decided infra for `realizes`,
+ * ADR-1720 decided `client` for both), but their answer is one list, and a
+ * second literal spelling of one list is the TPL-1720 hazard: `realizes` has
+ * two readers — the ambiguity check in `parser/reference-validation.ts` and
+ * the existence check in `resolver/warnings.ts` — and a fourth infra kind
+ * would have had to be remembered in each. Several readers sharing one
+ * constant is what that TPL asks for. Split the alias into its own array only
+ * when an ADR makes a kind ownable but not realizable, so the divergence is
+ * stated in one place instead of discovered between two checks.
+ */
+export const REALIZES_TARGET_KIND_SET: ReadonlySet<string> = new Set(OWNS_TARGET_KINDS);
+
+/**
  * The logical node kinds whose system-view card carries the deploy-view jump
  * affordance (the `D` button / `NodeMetadata.hasDeployContainer`) when a deploy
  * unit `realizes` them — service / domain / client (ADR-1720).
@@ -177,6 +193,24 @@ export interface SystemNode extends BaseNodeFields {
   properties: CommonProperties;
 }
 
+/**
+ * One `handles` target, with the range of the reference that named it.
+ *
+ * The logical-layer twin of {@link RealizesTarget}, and for the same reason: a
+ * `handles` line may name several domains (`handles Order, Payment`), so the
+ * range has to anchor at the individual reference or `unresolved-handles`
+ * cannot say which one failed the expose rule.
+ */
+export interface HandlesTarget {
+  /**
+   * The domain as a node reference path (#2088): bare id = length-1 case, a
+   * longer suffix path narrows to the domain it names. Author notation is
+   * preserved (no normalization — TPL-1101).
+   */
+  path: NodeIdPath;
+  loc: SourceRange;
+}
+
 export interface ServiceNode extends BaseNodeFields {
   kind: "service";
   properties: CommonProperties & {
@@ -190,7 +224,7 @@ export interface ServiceNode extends BaseNodeFields {
      * one-hop expose rule: at least one outgoing communication edge target
      * must itself expose the named domain.
      */
-    handles?: string[];
+    handles?: HandlesTarget[];
     /**
      * Client ids this service ships (BFF / SSR pattern). The renderer synthesizes
      * a tagged `delivers` edge for each entry; the property itself is the source of
@@ -349,7 +383,7 @@ export interface ClientNode extends BaseNodeFields {
      * (a `service` it talks to) must expose the named domain (own it as a
      * child, or re-export it via its own `handles`).
      */
-    handles?: string[];
+    handles?: HandlesTarget[];
   };
 }
 
@@ -517,7 +551,12 @@ export interface FacetBlock {
  * ranges throughout.
  */
 export interface RealizesTarget {
-  id: string;
+  /**
+   * The target as a node reference path (#2088): bare id = length-1 case,
+   * a longer suffix path narrows to the node it names. Author notation is
+   * preserved (no normalization — TPL-1101).
+   */
+  path: NodeIdPath;
   loc: SourceRange;
 }
 
@@ -911,6 +950,12 @@ export interface DiagnosticParamsByCode {
   // a full path the author can qualify with.
   "owns-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
   "contains-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  "realizes-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  // `handles` has no ambiguity twin: the expose rule resolves against domains
+  // that are direct children of a system-level child, so every candidate is a
+  // `domain` at the same depth and a multi-match is uniform by construction
+  // (multi-tenant broadcast). A code that can never fire is a code that lies
+  // about what the checker looks at, so there is none (#2549).
   "duplicate-edge-id": { authorId: string };
   "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->" };
 
