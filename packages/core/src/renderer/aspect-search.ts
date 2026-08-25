@@ -86,23 +86,13 @@ export function squareness(width: number, height: number): number {
   return Math.abs(Math.log(width / height));
 }
 
-/**
- * Relaxed sibling column cap for a widened budget.
- *
- * The 7±2 cap from ADR-1737 is expressed in the floor budget's terms; a row
- * twice as wide may hold twice as many siblings before it stops being
- * graspable. `gridColumnCount`'s `ceil(sqrt(n))` rule still applies on top, so
- * this only matters for layers with more than `cap²` siblings.
- */
-export function relaxedColumnCap(baseCap: number, budget: number, floor: number): number {
-  if (!(floor > 0) || budget <= floor) return baseCap;
-  return Math.max(baseCap, Math.round((baseCap * budget) / floor));
-}
-
 export interface BudgetSearchResult<T> {
   result: T;
+  /**
+   * The winning candidate. Callers surface it on their result so a test or a
+   * debugging session can see which candidate produced the canvas.
+   */
   budget: number;
-  aspect: number;
 }
 
 /**
@@ -125,7 +115,12 @@ export interface BudgetSearchResult<T> {
  */
 export function searchWidthBudget<T>(
   place: (budget: number) => T,
-  size: (result: T) => { width: number; height: number },
+  /**
+   * Measures a candidate. `exhausted` reports that widening cannot change this
+   * result at all, which ends the search immediately — a caller that cannot
+   * tell simply omits it.
+   */
+  size: (result: T) => { width: number; height: number; exhausted?: boolean },
   opts: {
     floor: number;
     maxMultiple?: number;
@@ -143,12 +138,8 @@ export function searchWidthBudget<T>(
 
   for (const budget of candidates) {
     const result = place(budget);
-    const { width, height } = size(result);
-    const found: BudgetSearchResult<T> = {
-      result,
-      budget,
-      aspect: height > 0 ? width / height : Infinity,
-    };
+    const { width, height, exhausted } = size(result);
+    const found: BudgetSearchResult<T> = { result, budget };
     const shape = squareness(width, height);
 
     if (withinAspectBand(width, height)) {
@@ -168,6 +159,9 @@ export function searchWidthBudget<T>(
       fallbackSquareness = shape;
     }
 
+    // Nothing left to try: the caller has told us this result is insensitive
+    // to the budget.
+    if (exhausted) break;
     // Widening only ever moves items up into rows that already exist, so width
     // never falls and height never rises: aspect is monotone in the budget.
     // Once a candidate has passed the top of the band, every later one is

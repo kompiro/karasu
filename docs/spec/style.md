@@ -500,14 +500,16 @@ grid):
 ```
 
 A row still wraps early if it would exceed the row-width budget, so an
-oversized `grid-columns` cannot overflow the frame. That budget is not a fixed
-constant: the layout tries a fixed list of candidate widths and keeps the one
-whose canvas holds the least empty space while staying inside a screen-shaped
-aspect band, so a view that would otherwise grow into a tall ribbon spreads
-sideways instead. The choice depends only on the model and on layout constants
-— never on the viewport — so the same input always renders the same SVG, and a
-view that already fits keeps the exact layout it had. Unlike `column` (system view
-only), this hint is honored on the system and drill-down views and the org
+oversized `grid-columns` cannot overflow the frame. On the system, drill-down
+and deploy views that budget is not a fixed constant: the layout tries a fixed
+list of candidate widths and keeps the one whose canvas holds the least empty
+space while staying inside a screen-shaped aspect band, so a view that would
+otherwise grow into a tall ribbon spreads sideways instead. The choice depends
+only on the model and on layout constants — never on the viewport — so the same
+input always renders the same SVG, and a view that already fits keeps the exact
+layout it had. The org member grid is not part of that: it wraps at a fixed
+number of cards per row, which `grid-columns` overrides. Unlike `column` (system
+view only), this hint is honored on the system and drill-down views and the org
 member grid. The deploy view auto-balances its container grid as well, but it
 groups containers by `realizes` target rather than by a container node, so it
 has no per-container `grid-columns` override in v1.
@@ -516,7 +518,7 @@ Invalid values (anything that is not a positive integer, e.g. `0` or `2.5`) emit
 a `style-grid-columns-invalid-value` warning and are dropped; the layout
 auto-balances instead.
 
-> Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — limit how much is shown at once; a single view keeps a graspable resolution (the balanced grid keeps visual density bounded).
+> Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — limit how much is shown at once; a single view keeps a graspable resolution (the balanced grid keeps visual density bounded). [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) — the per-view row-width budget is chosen by a search, which has to stay deterministic, floor-first and monotone or this section's "same input, same SVG" promise breaks.
 
 ### `direction` — `auto | up | down | left | right`
 

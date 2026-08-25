@@ -9,7 +9,6 @@
 
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import type { KrsEdge } from "../types/ast.js";
-import { relaxedColumnCap } from "./aspect-search.js";
 
 /**
  * Sort items within a layer by the barycenter heuristic to minimize edge crossings.
@@ -242,9 +241,10 @@ interface PlaceNodesInput {
   groupStartLayer: ReadonlyMap<number, string>;
   gaps: { layerGap: number; nodeGap: number; maxLayerWidth: number; groupTitleGap: number };
   /**
-   * Row-width budget picked by the canvas-level aspect search (#2593).
-   * Defaults to `gaps.maxLayerWidth`, which is also its floor: the ratio
-   * between the two is what relaxes the balanced-grid column cap.
+   * Row-width budget picked by the canvas-level search (#2593). Defaults to
+   * `gaps.maxLayerWidth`, which is the search's floor — and is the *only* way
+   * the budget reaches this function, which is what makes `widthBound` a sound
+   * "widening cannot change this" signal.
    */
   widthBudget?: number;
   measure: (nodeId: string) => { width: number; height: number };
@@ -262,11 +262,19 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
   placements: Map<string, PlacedNode>;
   childMaxWidth: number;
   childMaxHeight: number;
+  /**
+   * Whether any row break came from the width budget rather than from the
+   * column count (#2593). The budget reaches this function only through
+   * `wrapLayerIntoRows`'s width bound, so `false` means a wider budget
+   * produces the identical placement — which is what lets the canvas search
+   * stop after one run.
+   */
+  widthBound: boolean;
 } {
   const widthBudget = input.widthBudget ?? input.gaps.maxLayerWidth;
   const { sortedLayers, nodesByLayer, edges, edgeDirections, layers } = input;
   const { forcedLayers, layoutHints, gridHint, groupStartLayer, gaps, measure } = input;
-  const { layerGap, nodeGap, maxLayerWidth, groupTitleGap } = gaps;
+  const { layerGap, nodeGap, groupTitleGap } = gaps;
 
   // Predecessors within this canvas, for the barycenter pass.
   const idSet = new Set<string>();
@@ -281,6 +289,7 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
   const nodeCenterX = new Map<string, number>();
   let childMaxWidth = 0;
   let childMaxHeight = 0;
+  let widthBound = false;
   let layerBaselineY = nodeGap;
 
   for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
@@ -310,14 +319,17 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
     const rows = wrapLayerIntoRows(
       nodesInLayer,
       (nid) => dimsById.get(nid)!.width,
-      gridColumnCount(
-        nodesInLayer.length,
-        gridHint,
-        relaxedColumnCap(GRID_COLUMN_CAP, widthBudget, maxLayerWidth),
-      ),
+      gridColumnCount(nodesInLayer.length, gridHint),
       widthBudget,
       nodeGap,
     );
+
+    // `wrapLayerIntoRows` breaks on `reachedColumnCap || wouldOverflowWidth`, so
+    // a row that ends short of the column count was cut by the width budget.
+    const columnCount = gridColumnCount(nodesInLayer.length, gridHint);
+    for (let i = 0; i < rows.length - 1; i++) {
+      if (rows[i].length < columnCount) widthBound = true;
+    }
 
     let rowY = layerBaselineY;
     let layerBottom = layerBaselineY;
@@ -339,5 +351,5 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
     layerBaselineY = layerBottom + layerGap;
   }
 
-  return { placements, childMaxWidth, childMaxHeight };
+  return { placements, childMaxWidth, childMaxHeight, widthBound };
 }

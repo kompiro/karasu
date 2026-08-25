@@ -279,3 +279,64 @@ describe("placeNodesInLayers (#2514)", () => {
     expect(banded.placements.get("a")!.y - plain.placements.get("a")!.y).toBe(GAPS.groupTitleGap);
   });
 });
+
+describe("placeNodesInLayers > width budget (#2593)", () => {
+  const GAPS = { layerGap: 120, nodeGap: 60, maxLayerWidth: 1200, groupTitleGap: 60 };
+
+  function place(nodesByLayer: Map<number, string[]>, widthBudget: number, cardWidth = 340) {
+    return placeNodesInLayers({
+      sortedLayers: [...nodesByLayer.keys()].sort((a, b) => a - b),
+      nodesByLayer,
+      edges: [],
+      edgeDirections: undefined,
+      layers: new Map(),
+      forcedLayers: new Map(),
+      layoutHints: undefined,
+      gridHint: undefined,
+      groupStartLayer: new Map(),
+      gaps: GAPS,
+      widthBudget,
+      measure: () => ({ width: cardWidth, height: 80 }),
+    });
+  }
+
+  const layerOf = (n: number) => new Map([[0, Array.from({ length: n }, (_n, i) => `n${i}`)]]);
+  const BUDGETS = [1200, 1412, 1662, 1956, 2302, 2709, 3189, 3753, 4417, 5198, 6118, 7200];
+
+  it("is monotone in the budget — width never falls, height never rises", () => {
+    // The search stops as soon as a candidate passes the top of the aspect
+    // band, on the grounds that every later candidate is further outside it.
+    // That reasoning is only valid if the placement is monotone, so it is
+    // asserted rather than assumed (TPL-2593: 打ち切り条件が単調性で説明できる).
+    for (const n of [4, 7, 12, 18, 30]) {
+      const measured = BUDGETS.map((budget) => place(layerOf(n), budget));
+      for (let i = 1; i < measured.length; i++) {
+        expect(measured[i].childMaxWidth).toBeGreaterThanOrEqual(measured[i - 1].childMaxWidth);
+        expect(measured[i].childMaxHeight).toBeLessThanOrEqual(measured[i - 1].childMaxHeight);
+      }
+    }
+  });
+
+  it("keeps ADR-1737's column rule whatever the budget is", () => {
+    // A widened budget must not turn a small sibling set into one long row:
+    // `gridColumnCount` puts 7 siblings on 3 columns, and no budget may raise
+    // that to 7 — the 7±2 span-of-control bound is not the search's to spend.
+    for (const budget of BUDGETS) {
+      const rows = new Set([...place(layerOf(7), budget).placements.values()].map((p) => p.y));
+      expect(rows.size).toBe(3);
+    }
+  });
+
+  it("reports whether the width bound was the binding constraint", () => {
+    // Three 340-wide cards fit in 1200 (340*3 + 60*2 = 1140), so the only
+    // breaks come from the column count.
+    expect(place(layerOf(3), 1200).widthBound).toBe(false);
+    // Nine of them do not: `gridColumnCount(9)` allows 3 per row, and 3 fit, so
+    // still no width break...
+    expect(place(layerOf(9), 1200).widthBound).toBe(false);
+    // ...but at 4 columns (16 nodes) a row of 4 needs 1540 > 1200, so the width
+    // bound cuts the rows short and widening can still change the placement.
+    expect(place(layerOf(16), 1200).widthBound).toBe(true);
+    expect(place(layerOf(16), 2302).widthBound).toBe(false);
+  });
+});

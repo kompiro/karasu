@@ -222,6 +222,13 @@ export interface LayoutResult {
    */
   widthBudget?: number;
   /**
+   * Whether any row break came from the width budget rather than from the
+   * balanced-grid column count (#2593). False means a wider budget produces
+   * the identical placement, so the search stops instead of re-laying out
+   * every candidate — the common case, since most views never fill a row.
+   */
+  widthBound?: boolean;
+  /**
    * True when measurement compensated for shape content insets (#2366 F):
    * a shapeForNode hook was supplied and the display mode is not the
    * fixed-card icon mode. renderFromLayout applies inset-aware text layout

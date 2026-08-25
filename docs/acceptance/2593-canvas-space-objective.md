@@ -33,6 +33,10 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > canvas space objective (#2593)` › `leaves an already-landscape canvas on the floor budget`; `packages/core/src/renderer/aspect-search.test.ts` › `searchWidthBudget` › `keeps the floor when widening only trades one axis for the other`
 
+- [x] AT-C2: 帯の内側にいる下限候補が、面積のより大きい widened 候補に負けない（厳密比較そのものの固定。帯の外で早期打ち切りするケースでは、この比較は一度も実行されない）
+
+  > ✅ Automated — `packages/core/src/renderer/aspect-search.test.ts` › `searchWidthBudget` › `defends the floor against a wider candidate whose canvas is larger`
+
 - [x] AT-D: 既存のレンダリング系テスト（core 137 ファイル）がスナップショットの書き換えなしで通る
 
   > ✅ Automated — `pnpm --filter @karasu-tools/core test`（3,924 件 green。探索の下限が現行定数で、勝つには厳密に小さい面積が要るため既存フィクスチャは不変）
@@ -65,6 +69,24 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `layoutDeploy > container units wrap into a grid (#2593)` › `keeps a small container on one row`
 
+### AC-4b: 探索が前提にしている性質を固定する
+
+- [x] AT-H2: 配置は予算に対して単調である（幅は減らず、高さは増えない）。帯の上端で打ち切ってよい根拠がこれ
+
+  > ✅ Automated — `packages/core/src/renderer/layer-layout-logics.test.ts` › `placeNodesInLayers > width budget (#2593)` › `is monotone in the budget — width never falls, height never rises`
+
+- [x] AT-H3: 予算をいくら広げても ADR-1737 の列規則は変わらない（少数の兄弟が 1 行に伸ばされない）
+
+  > ✅ Automated — `packages/core/src/renderer/layer-layout-logics.test.ts` › `placeNodesInLayers > width budget (#2593)` › `keeps ADR-1737's column rule whatever the budget is`
+
+- [x] AT-H4: 行の折り返しが幅予算由来かどうかを報告し、由来しない場合は探索を 1 回で打ち切れる
+
+  > ✅ Automated — `packages/core/src/renderer/layer-layout-logics.test.ts` › `placeNodesInLayers > width budget (#2593)` › `reports whether the width bound was the binding constraint`
+
+- [x] AT-H5: icon mode でも探索が走り、そのモード自身の下限（1040）から候補を作る
+
+  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > canvas space objective (#2593)` › `searches in icon mode too, from that mode's own floor`
+
 ### AC-5: 著者指定と適用範囲
 
 - [x] AT-K: `grid-columns` の著者指定は探索より優先される
@@ -81,4 +103,4 @@ type: product
 
 - [ ] 🧑 Manual: 多数のドメインを持つサービスのドリルダウンを開き、縦に長いリボンではなく画面に収まる形で表示される
 - [ ] 🧑 Manual: deploy ビューで、多数の unit を持つコンテナが縦長の帯ではなく grid で表示される
-- [ ] 🧑 Manual: 同じモデルを icon mode と shape mode で切り替えても、配置の印象が大きく変わらない（[ADR-1000](../adr/1000-icon-mode-layout-gap-tuning.md) が案 2 を却下した理由への確認）
+- [ ] 🧑 Manual: 同じモデルを icon mode と shape mode で切り替えても、配置の印象が大きく変わらない（[ADR-1000](../adr/1000-icon-mode-layout-gap-tuning.md) が案 2 を却下した理由への確認。候補列がモードごとの下限から作られるため、両モードが別の列数に落ち着くこと自体はありうる）

@@ -2113,6 +2113,19 @@ describe("layout > canvas space objective (#2593)", () => {
     expect(coords()).toEqual(coords());
   });
 
+  it("searches in icon mode too, from that mode's own floor", () => {
+    // Icon mode has its own MAX_LAYER_WIDTH (1040), so its candidate ladder is
+    // a different one. ADR-1000 rejected a separate icon-mode layout strategy
+    // partly because mode switching should not re-arrange the diagram; running
+    // one rule from each mode's own constant is how that is honoured here.
+    const slice = parseAndExtract(wideCardSystem(40));
+    const icon = layout(slice, { displayMode: "icon" });
+
+    expect(icon.widthBudget).toBeGreaterThanOrEqual(1040);
+    expect(aspectOf(icon)).toBeGreaterThanOrEqual(9 / 16);
+    expect(aspectOf(icon)).toBeLessThanOrEqual(16 / 9);
+  });
+
   it("cannot help a chain of single-node layers (out of scope, needs layer folding)", () => {
     // Widening a row only helps where the row has something to absorb.
     const chain = [

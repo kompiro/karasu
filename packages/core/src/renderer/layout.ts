@@ -93,7 +93,15 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const { MAX_LAYER_WIDTH } = getLayoutConstants(options.displayMode);
   const found = searchWidthBudget(
     (budget) => layoutInner(viewSlice, options, budget),
-    (candidate) => ({ width: candidate.width, height: candidate.height }),
+    (candidate) => ({
+      width: candidate.width,
+      height: candidate.height,
+      // A budget reaches the placement only through the row-width bound, so a
+      // run whose rows were never cut by it cannot be improved by widening.
+      // Most views are in this shape, and skipping their remaining candidates
+      // is what keeps the search off the render hot path.
+      exhausted: candidate.widthBound === false,
+    }),
     { floor: MAX_LAYER_WIDTH },
   );
   const result = found.result;
@@ -628,6 +636,7 @@ function layoutInner(
     containers,
     width: totalWidth,
     height: totalHeight,
+    widthBound: placed.widthBound,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
     foldedFacetMembership: foldFacetMembership(
       viewSlice.childNodes,
@@ -682,6 +691,8 @@ function layoutMultipleSystems(
   // and stays correct if this path ever places a service's children.
   const { effectiveAnnotations } = measureCtx;
   const allLayoutNodes = new Map<string, LayoutNode>();
+  // True as soon as any system's rows were cut by the width budget (#2593).
+  let anyWidthBound = false;
   const allContainers: ContainerRect[] = [];
   const allEdges: LayoutEdge[] = [];
   // Group-by-team (#1884): diff-state re-keyed onto collapsed-group stub edges,
@@ -828,6 +839,7 @@ function layoutMultipleSystems(
         return measureNode(krsNode, frameOwnerOf(krsNode.kind, nid), measureCtx);
       },
     });
+    if (placed.widthBound) anyWidthBound = true;
 
     const localNodes = new Map<string, LayoutNode>();
     for (const [nid, box] of placed.placements) {
@@ -1048,6 +1060,7 @@ function layoutMultipleSystems(
     containers: allContainers,
     width: totalWidth,
     height: totalHeight,
+    widthBound: anyWidthBound,
     crossingMarks,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
     degradedMemberships: allDegradedMemberships.length > 0 ? allDegradedMemberships : undefined,

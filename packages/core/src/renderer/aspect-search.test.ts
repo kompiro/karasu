@@ -3,7 +3,6 @@ import {
   candidateWidthBudgets,
   MAX_CANVAS_ASPECT,
   MIN_CANVAS_ASPECT,
-  relaxedColumnCap,
   searchWidthBudget,
   squareness,
   withinAspectBand,
@@ -58,20 +57,6 @@ describe("withinAspectBand", () => {
   });
 });
 
-describe("relaxedColumnCap", () => {
-  it("keeps the base cap at the floor budget", () => {
-    expect(relaxedColumnCap(5, 1200, 1200)).toBe(5);
-  });
-
-  it("scales with how far the budget was widened", () => {
-    expect(relaxedColumnCap(5, 2400, 1200)).toBe(10);
-  });
-
-  it("never narrows below the base cap", () => {
-    expect(relaxedColumnCap(5, 600, 1200)).toBe(5);
-  });
-});
-
 describe("searchWidthBudget", () => {
   // A canvas of `area` that packs into rows of `budget`: width grows with the
   // budget, height falls with it — the monotone relationship the real
@@ -82,10 +67,28 @@ describe("searchWidthBudget", () => {
   });
 
   it("keeps the floor when widening only trades one axis for the other", () => {
-    // This model's area is exactly conserved, so no candidate beats the floor
-    // on area and the floor keeps the canvas.
-    const found = searchWidthBudget(canvas(600_000), (r) => r, { floor: 1200 });
+    // Area is exactly conserved here and every candidate is inside the band,
+    // so this is the case that exercises the strict-improvement comparison:
+    // a widened candidate ties on area and must not displace the floor.
+    const inBand = (budget: number) => ({ width: budget, height: 1_440_000 / budget });
+    expect(withinAspectBand(1200, 1_440_000 / 1200)).toBe(true);
+
+    const found = searchWidthBudget(inBand, (r) => r, { floor: 1200 });
+
     expect(found.budget).toBe(1200);
+  });
+
+  it("defends the floor against a wider candidate whose canvas is larger", () => {
+    // Ragged rows make a wider budget waste area even though it stays in the
+    // band — the floor has to win on area, not on being first.
+    const wasteful = (budget: number) => ({
+      width: budget,
+      height: budget === 1200 ? 1000 : 1000 + (budget - 1200),
+    });
+    const found = searchWidthBudget(wasteful, (r) => r, { floor: 1200 });
+
+    expect(found.budget).toBe(1200);
+    expect(found.result.width * found.result.height).toBe(1200 * 1000);
   });
 
   it("pulls a canvas outside the band back inside it", () => {
