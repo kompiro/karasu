@@ -19,6 +19,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2125](2125-retire-adr-id-migration-map.md) — id-migration-map と専用 lint を退役する — 移行完了後の map は「lint が map を守るためだけの map」だった
 - [ADR-2188](2188-tpl-issue-number-ids.md) — TPL の採番を issue-number（TPL-<n>）へ移行する
 - [ADR-2331](2331-adr-automerge-scope.md) — ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する
+- [ADR-2628](2628-adr-assumption-version-policy.md) — ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで落とす）
 
 ## app-ui
 

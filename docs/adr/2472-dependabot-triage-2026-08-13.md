@@ -9,8 +9,10 @@ scope:
   concerns: [dependencies, ci, security]
 related_to: [ADR-2474, ADR-2447, ADR-2397, ADR-2333, ADR-2318, ADR-784]
 assumptions:
-  - "grep: packages/app/package.json :: \"tailwindcss\": \"\\^4.3.3\""
-  - "grep: packages/app/package.json :: \"@tailwindcss/vite\": \"\\^4.3.3\""
+  # 本 ADR が決めたのは tailwindcss と @tailwindcss/vite を 4.x で対に保つことで
+  # あって、4.3.3 というリテラルの patch 版ではない（ADR-2628）。
+  - "grep: packages/app/package.json :: \"tailwindcss\": \"\\^4\\."
+  - "grep: packages/app/package.json :: \"@tailwindcss/vite\": \"\\^4\\."
   - "grep: scripts/ci/node-version-policy.test.ts :: ENGINES_FLOOR = \"22.12\""
   - "file: scripts/ci/node-version-policy.test.ts"
 ---
