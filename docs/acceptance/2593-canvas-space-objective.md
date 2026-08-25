@@ -39,7 +39,7 @@ type: product
 
 - [x] AT-D: 既存のレンダリング系テスト（core 137 ファイル）がスナップショットの書き換えなしで通る
 
-  > ✅ Automated — `pnpm --filter @karasu-tools/core test`（3,924 件 green。探索の下限が現行定数で、勝つには厳密に小さい面積が要るため既存フィクスチャは不変）
+  > ✅ Automated — `pnpm --filter @karasu-tools/core test`（3,933 件 green。探索の下限が現行定数で、勝つには厳密に小さい面積が要るため既存フィクスチャは不変）
 
 ### AC-3: 決定的である
 
