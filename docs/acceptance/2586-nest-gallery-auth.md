@@ -65,6 +65,14 @@
 
   > ✅ Automated — `packages/nest/src/routes/auth.test.ts` › `refuses to start when the deploy has no OAuth credentials`
 
+- [x] AT-M: `GET /healthz` が新しい binding 3 つの設定有無を報告する（secret 忘れが診断できる）
+
+  > ✅ Automated — `packages/nest/src/app.test.ts` › `serves /healthz`
+
+- [x] AT-N: purge が eventually consistent な再列挙で二重計上せず、消えない prefix では黙って成功せず落ちる
+
+  > ✅ Automated — `packages/nest/src/store/sweep.test.ts` › `counts a re-listed key once` / `fails loudly rather than looping when deletes do not stick`
+
 ## 手動確認
 
 - [ ] 🧑 実際の GitHub との往復でサインインできる。`https://<nest のホスト名>/auth/login` を開き、

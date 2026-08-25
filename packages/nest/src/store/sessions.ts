@@ -24,12 +24,18 @@ import { newSessionId, sessionKey, sessionPrefix, normaliseAccountId } from "./g
 import { purgeByPrefix } from "./sweep.js";
 
 /**
- * 30 days.
+ * 30 days from issue.
  *
  * Long enough that managing your own submissions does not mean signing in
  * every visit, short enough that a cookie copied off a shared machine stops
- * working without anyone having to notice. Renewed on use, so an active
- * session does not expire under someone mid-edit.
+ * working without anyone having to notice.
+ *
+ * **Not renewed on use.** Extending it on every read would mean a KV write on
+ * every authenticated request, which is a lot of writing to buy "a session
+ * that never ends while you keep using it" — and a credential that renews
+ * itself indefinitely is the one this ceiling exists to stop. The cost is that
+ * a submitter signs in again on the thirtieth day whatever they were doing;
+ * sign-in is one redirect, so that is the cheaper side of the trade.
  */
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
