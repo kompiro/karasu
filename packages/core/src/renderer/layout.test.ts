@@ -2140,3 +2140,83 @@ describe("layout > canvas space objective (#2593)", () => {
     expect(result.widthBudget).toBe(FLOOR);
   });
 });
+
+describe("layout > side columns keep vertical clearance (#2593 follow-up)", () => {
+  // Two hubs so the side placement engages (#1728), and enough externals on
+  // one side that the span cannot hold them at equal steps.
+  const crowdedSides = (externals: number) => {
+    const ext = Array.from(
+      { length: externals },
+      (_e, i) =>
+        `  service X${i} [external] {\n    label "External vendor ${i}"\n    description "A third-party service the API calls out to for something"\n  }`,
+    ).join("\n");
+    const calls = Array.from({ length: externals }, (_e, i) => `  Api -> X${i}`).join("\n");
+    return `system S {
+  user Customer [human]
+  client App [web]
+  service Web {}
+  service Api {}
+  database Postgres {}
+${ext}
+  Customer -> App
+  App -> Web
+  Web -> Api
+  Web -> Postgres
+${calls}
+}`;
+  };
+
+  const columns = (result: ReturnType<typeof layout>) => {
+    const byX = new Map<number, { y: number; height: number; id: string }[]>();
+    for (const node of result.nodes.values()) {
+      const key = Math.round(node.x);
+      if (!byX.has(key)) byX.set(key, []);
+      byX.get(key)!.push(node);
+    }
+    return [...byX.values()]
+      .filter((column) => column.length > 1)
+      .map((column) => column.sort((a, b) => a.y - b.y));
+  };
+
+  it("never overlaps two cards, however many the column holds", () => {
+    // The column used to divide the content span into `count + 1` equal steps,
+    // which stops fitting once the cards outgrow the span and then overlaps
+    // them: dify's root view stacked 14 externals 25px into each other.
+    for (const count of [6, 10, 14, 20]) {
+      const result = layout(parseAndExtract(crowdedSides(count)));
+      for (const column of columns(result)) {
+        for (let i = 1; i < column.length; i++) {
+          const gap = column[i].y - (column[i - 1].y + column[i - 1].height);
+          expect(gap).toBeGreaterThanOrEqual(0);
+        }
+      }
+    }
+  });
+
+  it("keeps every card inside the canvas it reports", () => {
+    // A column that outgrew the span reaches past the content band, so the
+    // reported canvas has to follow it or the SVG viewport clips the cards.
+    const result = layout(parseAndExtract(crowdedSides(14)));
+
+    for (const node of result.nodes.values()) {
+      expect(node.y).toBeGreaterThanOrEqual(0);
+      expect(node.y + node.height).toBeLessThanOrEqual(result.height);
+      expect(node.x + node.width).toBeLessThanOrEqual(result.width);
+    }
+  });
+
+  it("leaves a column that already had clearance exactly where it was", () => {
+    // Two externals in a tall span are nowhere near crowded, so the equal-step
+    // spread that has always placed them must still place them.
+    const coords = (result: ReturnType<typeof layout>) =>
+      [...result.nodes.values()].map((n) => [n.id, n.x, n.y]);
+    const twice = [1, 2].map(() => coords(layout(parseAndExtract(crowdedSides(2)))));
+
+    expect(twice[0]).toEqual(twice[1]);
+    for (const column of columns(layout(parseAndExtract(crowdedSides(2))))) {
+      for (let i = 1; i < column.length; i++) {
+        expect(column[i].y - (column[i - 1].y + column[i - 1].height)).toBeGreaterThan(24);
+      }
+    }
+  });
+});
