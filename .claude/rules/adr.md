@@ -80,6 +80,28 @@ permalink:
 背景と詳細はツール非依存の L1 guide `docs/guide/adr-permalinks.md` と
 [ADR-1829](../../docs/adr/1829-adr-permalink-convention.md) を参照。
 
+## assumptions に書くこと
+
+**`assumptions:` に書くのは ADR が決めたことだけで、日常の保守が動かす値は書かない。**
+終わった状態は「その ADR の決定が変わらないかぎり `pnpm adr:check-assumptions` が
+落ちない」こと。
+
+判断基準は 1 つ、**caret / tilde のレンジを assert するなら major で止める**。
+
+```
+- "grep: package.json :: \"oxfmt\": \"\\^0.62.0\""   # 0.63.0 で落ちる
++ "grep: package.json :: \"oxfmt\": \"\\^0\\."      # 0.x のあいだ成立する
+```
+
+caret は「後ろは動いてよい」という宣言なので、その後ろを assert すると同じ行で
+矛盾する。逆に exact pin（`"pkg": "1.2.3"`）はその版を固定したこと自体が決定なので、
+版を書いてよい。
+
+違反は `scripts/ci/adr-assumption-version-policy.test.ts` が全 ADR を走査して落とす
+（`pnpm test:scripts`）。緩めた形の実例は [ADR-1338](../../docs/adr/1338-fast-uri-override-pin.md)
+と [ADR-2447](../../docs/adr/2447-dependabot-triage-2026-08-10.md)、経緯は
+[ADR-2628](../../docs/adr/2628-adr-assumption-version-policy.md)。
+
 ## 編集後のチェック
 
 ```

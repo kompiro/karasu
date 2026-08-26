@@ -17,6 +17,7 @@ flowchart TD
     ADR_2125["ADR-2125<br/>id-migration-map と専用 lint を退役する — 移行完了後の map は「..."]
     ADR_2188["ADR-2188<br/>TPL の採番を issue-number（TPL-<n>）へ移行する"]
     ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
+    ADR_2628["ADR-2628<br/>ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで..."]
   end
   ADR_1077 --> ADR_788
 
@@ -37,4 +38,5 @@ flowchart TD
   class ADR_2125 accepted
   class ADR_2188 accepted
   class ADR_2331 accepted
+  class ADR_2628 accepted
 ```
