@@ -250,17 +250,6 @@ const SAMPLES: SamplesByCode = {
       ],
     },
   },
-  "handles-target-ambiguous": {
-    severity: "warning",
-    code: "handles-target-ambiguous",
-    params: {
-      path: "Order",
-      candidates: [
-        { kind: "domain", path: "Shop.Backend.Order" },
-        { kind: "domain", path: "Order" },
-      ],
-    },
-  },
   "import-target-ambiguous": {
     severity: "warning",
     code: "import-target-ambiguous",
@@ -502,7 +491,6 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "owns-target-ambiguous": ["Payment", "Shop.Payment", "Shop.Checkout.Payment"],
   "realizes-target-ambiguous": ["Api", "Shop.Api"],
   "import-target-ambiguous": ["Checkout.Payment", "Shop.Checkout.Payment"],
-  "handles-target-ambiguous": ["Order", "Shop.Backend.Order"],
   "unresolved-resource-ref": ["OrderDB", "orders"],
   "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],

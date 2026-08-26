@@ -1,7 +1,7 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { stitchKebabTail, type TokenCursor } from "./kebab-name.js";
-import { readNodeIdPathTail } from "./node-path.js";
+import { readNodeIdPathTail, nodePathKey } from "./node-path.js";
 import type {
   KrsFile,
   KrsNode,
@@ -10,6 +10,7 @@ import type {
   DeployBlock,
   DeployNode,
   DeployNodeProperties,
+  HandlesTarget,
   ImportDeclaration,
   NodeIdPath,
   Diagnostic,
@@ -50,7 +51,7 @@ import {
   validateContainsReferences,
   validateScopedContainsReferences,
   validateRealizesReferences,
-  validateHandlesReferences,
+  declaredNodePathsOnce,
   validatePhysicalRefs,
   validateFacetDeclarations,
   buildFacetIndex,
@@ -383,24 +384,30 @@ export class Parser {
     for (const infra of [...file.databases, ...file.queues, ...file.storages]) {
       this.collectNodeIds(infra.children, new Set<string>());
     }
-    file.nodePathIndex = this.buildNodePathIndex(file.systems, file.domains, [
-      ...file.databases,
-      ...file.queues,
-      ...file.storages,
-      ...file.clients,
-    ]);
-    this.diagnostics.push(...validateOwnsReferences(file));
+    file.nodePathIndex = this.buildNodePathIndex(
+      file.systems,
+      file.domains,
+      file.services,
+      file.clients,
+      [...file.databases, ...file.queues, ...file.storages],
+    );
+    // One declared-path walk for all the node-reference checks below: each
+    // built the same O(nodes) map for itself, on the path the LSP re-runs at
+    // every keystroke. Lazy, so the checks that bail on their own guard still
+    // cost nothing (#2549).
+    const declaredPaths = declaredNodePathsOnce(file);
+    this.diagnostics.push(...validateOwnsReferences(file, declaredPaths));
     if (file.boundaries.length > 0) {
-      this.diagnostics.push(...validateContainsReferences(file));
+      this.diagnostics.push(...validateContainsReferences(file, declaredPaths));
     }
     // Scoped boundaries resolve against direct children, so they are checked
     // per scope rather than against the whole model (#2036).
     this.diagnostics.push(...validateScopedContainsReferences(file));
-    // Ambiguity for realizes / handles path refs (#2088 slice C). Existence
-    // stays with resolver/warnings.ts; only the ambiguity verdict lives here,
-    // on the same import-coupled surface as owns / contains.
-    this.diagnostics.push(...validateRealizesReferences(file));
-    this.diagnostics.push(...validateHandlesReferences(file));
+    // Ambiguity for realizes path refs (#2088 slice C). Existence stays with
+    // resolver/warnings.ts; only the ambiguity verdict lives here, on the same
+    // import-coupled surface as owns / contains. `handles` has no ambiguity
+    // twin, for the reason recorded in reference-validation.ts.
+    this.diagnostics.push(...validateRealizesReferences(file, declaredPaths));
     // A `resource` / `table` naming an infra block or leaf nothing declares
     // (#2078). Suppressed and re-derived by the ImportResolver like the checks
     // above, since the block is canonically declared in an imported infra file.
@@ -490,7 +497,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       capabilities?: import("../types/ast.js").ClientCapability[];
-      handles?: NodeIdPath[];
+      handles?: HandlesTarget[];
       delivers?: string[];
       operations?: ParsedOperation[];
       tableRef?: { parent: string; child: string };
@@ -1013,32 +1020,43 @@ export class Parser {
     return t === TokenType.Identifier || t === TokenType.StringLiteral;
   }
 
-  private parseHandlesList(): NodeIdPath[] {
-    const refs: NodeIdPath[] = [];
-    const readOne = (): boolean => {
+  private parseHandlesList(): HandlesTarget[] {
+    const refs: HandlesTarget[] = [];
+    for (;;) {
       if (!this.peekIsIdOrString()) {
         this.error("expected-id-after", { property: "handles" });
-        return false;
+        return refs;
       }
-      const tail = readNodeIdPathTail(this.advance(), this.cursor, {
+      const first = this.advance();
+      const tail = readNodeIdPathTail(first, this.cursor, {
         acceptStringSegments: true,
       });
       if (tail.dangling) {
         // Dangling dot: report once and record nothing (#2088) — recording
         // the read segments would put `handles Backend` in the model next to
-        // an error about `handles Backend.`.
-        this.error("expected-id-after", { property: "handles" });
-        return false;
+        // an error about `handles Backend.`. The range runs to the dot itself,
+        // so the squiggle covers the character at fault instead of stopping at
+        // the identifier that was spelled correctly.
+        const stop = tail.danglingDot ?? tail.end;
+        this.diagnostics.push({
+          severity: "error",
+          code: "expected-id-after",
+          params: { property: "handles" },
+          loc: this.range(first.loc, stop.end ?? stop.loc),
+        });
+      } else {
+        refs.push({
+          path: tail.segments,
+          loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
+        });
       }
-      refs.push(tail.segments);
-      return true;
-    };
-    if (!readOne()) return refs;
-    while (this.peek().type === TokenType.Comma) {
+      // A malformed ref does not end the list: `realizes` resumes after the
+      // separator (parseRealizesList below) and `handles A., B` has to record
+      // `B` the same way. Returning here would drop every later target and
+      // leave the comma for the block loop to report a second time.
+      if (this.peek().type !== TokenType.Comma) return refs;
       this.advance();
-      if (!readOne()) break;
     }
-    return refs;
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -1120,7 +1138,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       capabilities?: import("../types/ast.js").ClientCapability[];
-      handles?: NodeIdPath[];
+      handles?: HandlesTarget[];
       delivers?: string[];
       tableRef?: { parent: string; child: string };
       facets?: string[];
@@ -1988,27 +2006,27 @@ export class Parser {
         if (tail.dangling) {
           // Dangling dot: report once and record nothing (#2088) — recording
           // the read segments would put `realizes Shop` in the model next to
-          // an error about `realizes Shop.`. Recovery mirrors the no-target
-          // branch below: swallow stray separators, resume on a target.
+          // an error about `realizes Shop.`. The range runs to the dot, the
+          // character actually at fault; `tail.end` stops at the identifier
+          // that was spelled correctly.
+          const stop = tail.danglingDot ?? tail.end;
           this.diagnostics.push({
             severity: "error",
             code: "expected-property-value",
             params: { propName: "realizes" },
+            loc: this.range(first.loc, stop.end ?? stop.loc),
+          });
+        } else {
+          (properties.realizes ??= []).push({
+            path: tail.segments,
             loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
           });
-          let recovered = false;
-          while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
-            afterComma = this.advance();
-            recovered = true;
-          }
-          if (!recovered || !atTarget()) return;
-          continue;
         }
-        (properties.realizes ??= []).push({
-          path: tail.segments,
-          loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
-        });
         // Without a comma the list is done; with one, another target is due.
+        // A malformed target takes the same exit as a good one, so the
+        // trailing comma of `realizes Shop.,` is reported where the trailing
+        // comma of `realizes A,` is — swallowing it here would make the same
+        // mistake silent in one spelling and reported in the other.
         if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;
         afterComma = this.advance();
         continue;
@@ -2476,54 +2494,65 @@ export class Parser {
   private buildNodePathIndex(
     systems: SystemNode[],
     domains: DomainNode[] = [],
+    services: ServiceNode[] = [],
+    clients: ClientNode[] = [],
     topLevelInfra: KrsNode[] = [],
   ): Map<string, string[]> {
     const index = new Map<string, string[]>();
-    // INDEXED_KINDS governs the recursive walk() pass: service, domain, and
-    // client are tracked here because they require migration-annotation priority
-    // logic and cross-system duplicate detection, and because their paths are
-    // what `viewPath` / permalinks address. resource / usecase / user are
-    // intentionally excluded so a resource shared across usecases does not
-    // register two locations for one id.
+    // INDEXED_KINDS governs the recursive walk() passes over the logical
+    // layer: service, domain, and client are what `viewPath` / permalinks
+    // address by bare id. resource / usecase / user are intentionally
+    // excluded so a resource shared across usecases does not register two
+    // locations for one id.
     //
     // `owns` is NOT among the consumers, though it was until #2082: editing this
     // set no longer changes which `owns` targets resolve. That question is
-    // answered by `collectOwnsResolvableIds` in parser/reference-validation.ts,
+    // answered by `collectDeclaredNodePaths` in parser/reference-validation.ts,
     // against the merged tree, and since #2442 it does not consult kinds at all —
     // any declared node resolves, and refusing a kind is `invalid-owns`' sentence.
     // An index built per file could only answer it for whichever ids a given
     // merge path carried.
-    //
-    // Top-level infra nodes (database/queue/storage) and top-level clients are
-    // indexed separately via the topLevelInfra loop below, which does not apply
-    // these filters.
     const INDEXED_KINDS = new Set(["service", "domain", "client"]);
-    // Collect-then-decide (#2550): the walk only RECORDS every indexable
-    // occurrence of an id — the index winner and the multiplicity warnings
-    // are decided after the walk completes, so the verdict cannot depend on
-    // declaration order (TPL-1583 / TPL-2221). The occurrence's priority MUST
-    // be computed in-walk: a domain with no annotations of its own inherits
-    // its parent service's annotations (consistent with the rendering
-    // inheritance — see docs/design/inherit-service-annotations.md), and that
-    // context is unrecoverable after the walk. This makes
+    // Collect-then-decide (#2550): the passes below only RECORD every
+    // indexable occurrence of an id — the index winner and the multiplicity
+    // warnings are decided after all passes complete, so the verdict cannot
+    // depend on declaration order (TPL-1583 / TPL-2221) within this file.
+    // (The ImportResolver still merges per-file indices first-wins; #2596
+    // tracks rebuilding the index on the merged model.)
+    //
+    // The occurrence's priority MUST be computed in-walk: a domain with no
+    // annotations of its own inherits its parent service's annotations
+    // (consistent with the rendering inheritance — see
+    // docs/design/inherit-service-annotations.md), and that context is
+    // unrecoverable after the walk. This makes
     // `service Legacy @deprecated { domain Order {} }` and
     // `service NewSvc @migration_target { domain Order {} }` a legal
     // migration-coexistence pair even without annotations on the domains.
+    // Infra leaves inherit their block's annotations the same way, so a
+    // `@deprecated` / `@migration_target` database pair sharing a table id
+    // resolves the entry to the migration target's table.
     //
     // Priority values (migrationPriority): 2 = @migration_target, 1 =
     // unmarked, 0 = @deprecated. Candidate order is traversal order —
-    // systems (in declaration order), then top-level domains, then top-level
-    // infra — which is what makes the tie-break independent of where an
-    // infra block sits relative to the systems in the file.
+    // systems (in declaration order), then top-level domains, services and
+    // clients, then top-level infra — which is what makes the tie-break
+    // independent of where a physical block sits relative to the systems in
+    // the file, and what lets a logical node win a cross-layer tie.
     interface PathCandidate {
       path: string[];
       kind: KrsNode["kind"];
       loc: KrsNode["loc"];
       priority: number;
+      layer: "logical" | "physical";
     }
     const candidates = new Map<string, PathCandidate[]>();
-    const record = (node: KrsNode, path: string[], priority: number): void => {
-      const entry: PathCandidate = { path, kind: node.kind, loc: node.loc, priority };
+    const record = (
+      node: KrsNode,
+      path: string[],
+      priority: number,
+      layer: PathCandidate["layer"],
+    ): void => {
+      const entry: PathCandidate = { path, kind: node.kind, loc: node.loc, priority, layer };
       const list = candidates.get(node.id);
       if (list === undefined) {
         candidates.set(node.id, [entry]);
@@ -2538,7 +2567,7 @@ export class Parser {
           node.kind === "domain" && node.annotations.length === 0
             ? parentServiceAnnotations
             : node.annotations;
-        record(node, currentPath, migrationPriority(effective));
+        record(node, currentPath, migrationPriority(effective), "logical");
       }
       const nextServiceAnnotations =
         node.kind === "service" ? node.annotations : parentServiceAnnotations;
@@ -2559,32 +2588,68 @@ export class Parser {
       this.collectNodeIds(domain.children, new Set<string>());
       walk(domain, [], []);
     }
-    // Record top-level infra nodes (database/queue/storage) and their
-    // sub-resources. Always after the system/domain walks, so a tie between a
-    // walked node and a same-id infra block resolves to the walked node no
-    // matter where the blocks sit in the file.
+    // Record top-level (system-less) services and clients: parked nodes are
+    // addressable too, and a parked id colliding with a walked one is exactly
+    // the logical multiplicity the verdict reports. Their duplicate-child
+    // check already ran in parseFile.
+    for (const service of services) {
+      walk(service, [], []);
+    }
+    for (const client of clients) {
+      walk(client, [], []);
+    }
+    // Record top-level infra blocks (database/queue/storage) and their
+    // sub-resources. Always after the logical passes, so a cross-layer tie
+    // resolves to the logical node no matter where the physical blocks sit
+    // in the file.
     for (const infra of topLevelInfra) {
-      record(infra, [infra.id], migrationPriority(infra.annotations));
+      record(infra, [infra.id], migrationPriority(infra.annotations), "physical");
       for (const child of infra.children) {
-        record(child, [infra.id, child.id], migrationPriority(child.annotations));
+        const effective = child.annotations.length === 0 ? infra.annotations : child.annotations;
+        record(child, [infra.id, child.id], migrationPriority(effective), "physical");
       }
     }
 
-    // Verdict, per id: the winner is the highest-priority candidate (ties keep
-    // the first in traversal order — #1583's rule, shared with buildOwnerIndex)
-    // and every multiplicity that is NOT all-domain draws one warning per
-    // non-winner, at that candidate's loc. The all-domain silence is
-    // deliberate: a domain id shared by multiple services (or systems) is a
-    // structural fact `domain-dispersal` narrates (ADR-1386 — "smell is
-    // representable"), not this diagnostic's business.
+    // Verdict, per id. Nested candidates at the SAME full path are folded to
+    // the first: an id duplicated under one parent is
+    // `duplicate-node-id-parent`'s (error) business, and a second register on
+    // the same declaration would only repeat it. Top-level same-path pairs
+    // (path length 1, e.g. a parked `service X` next to a `client X`) are
+    // kept apart — no parent-scope error exists there.
+    //
+    // The winner is the highest-priority candidate, ties keep the first in
+    // traversal order (TPL-1583's rule, shared with buildOwnerIndex).
+    //
+    // The WARNING is a logical-layer verdict (decided with the reviewer in
+    // PR #2570): it fires only when two or more LOGICAL candidates share the
+    // id and they are not all domains, and each logical non-winner draws one
+    // warning at its own loc. Same names across the logical/physical
+    // boundary and within the physical layer are tolerated silently — the
+    // layers are separate vocabularies (docs/concepts.md) and physical
+    // references are dot-qualified (`resource OrderDB.users`, #2078), so
+    // bare-id multiplicity there is not actionable. The all-domain silence
+    // is deliberate: a domain id shared by multiple services is a structural
+    // fact `domain-dispersal` (info) narrates for the in-system case
+    // (ADR-1386 — "smell is representable"); the warning and that info
+    // coexist because they answer different questions (where bare-id
+    // navigation lands vs how a domain is dispersed).
     for (const [id, list] of candidates) {
-      let winner = list[0];
+      const seenPaths = new Set<string>();
+      const distinct: PathCandidate[] = [];
       for (const candidate of list) {
+        const key = nodePathKey(candidate.path);
+        if (candidate.path.length > 1 && seenPaths.has(key)) continue;
+        seenPaths.add(key);
+        distinct.push(candidate);
+      }
+      let winner = distinct[0];
+      for (const candidate of distinct) {
         if (candidate.priority > winner.priority) winner = candidate;
       }
       index.set(id, winner.path);
-      if (list.length < 2 || list.every((c) => c.kind === "domain")) continue;
-      for (const candidate of list) {
+      const logical = distinct.filter((c) => c.layer === "logical");
+      if (logical.length < 2 || logical.every((c) => c.kind === "domain")) continue;
+      for (const candidate of logical) {
         if (candidate === winner) continue;
         this.diagnostics.push({
           severity: "warning",

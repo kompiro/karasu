@@ -477,7 +477,7 @@ export const ja: Partial<Translations> = {
     `"${construct}" は id の直後にラベルを置けません。ブロック内に label "..." を書いてください`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
-    `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,
+    `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションは @migration_target の宣言、なければ最初の宣言に解決されます`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
     `同じ親の下でノード id "${nodeId}" が重複しています`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
@@ -488,10 +488,6 @@ export const ja: Partial<Translations> = {
       .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
   "diagnostic.realizesTargetAmbiguous.message": ({ path, candidates }) =>
     `"realizes" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
-      .map((c) => `${c.path} (${c.kind})`)
-      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
-  "diagnostic.handlesTargetAmbiguous.message": ({ path, candidates }) =>
-    `"handles" で参照されている "${path}" は深さの異なる複数の domain に一致します: ${candidates
       .map((c) => `${c.path} (${c.kind})`)
       .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
   "diagnostic.importTargetAmbiguous.message": ({ path, candidates }) =>

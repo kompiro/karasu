@@ -319,6 +319,18 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
+  it("keeps handles, path refs included (#2549)", () => {
+    // fmt used to print no `handles` line at all, so formatting a file deleted
+    // the only source of the one-hop expose model. Repeated lines canonicalize
+    // to one comma list, and each path prints as the author wrote it
+    // (TPL-1101).
+    const src = `system Shop {\n  client Web [web] {\n    handles Backend.Order\n    handles Catalog\n  }\n  service Backend {\n    domain Order {}\n    domain Catalog {}\n  }\n  Web -> Backend "calls"\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`    handles Backend.Order, Catalog`);
+    expectIdempotent(result);
+    expectAstRoundTrip(src);
+  });
+
   it("formats organization with description and link", () => {
     const src = `organization Org {\n  description "Our org"\n  link "https://example.com" "Site"\n  team Backend {\n    owns ECommerce\n  }\n}`;
     const result = fmt(src);

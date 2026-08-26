@@ -1,7 +1,8 @@
 ---
 id: ADR-1990
 title: karasu-nest ピボット — GitHub App による server-side reverse の hosted サービス化
-status: accepted
+status: superseded
+superseded_by: ADR-2578
 date: 2026-07-30
 topic: project
 authors: [kompiro]
@@ -21,7 +22,7 @@ assumptions:
 # ADR-1990: karasu-nest ピボット — GitHub App による server-side reverse の hosted サービス化
 
 - **日付**: 2026-07-30
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-2578](2578-nest-retires-server-side-reverse.md)（決定 5 と 6 は引き継がれている）
 - **Issue**: [#1990](https://github.com/kompiro/karasu/issues/1990)（ピボット epic）／ [#1991](https://github.com/kompiro/karasu/issues/1991)（go/no-go gate の spike）／ [#1783](https://github.com/kompiro/karasu/issues/1783)（nest 壁打ち）
 - **関連**:
   - [ADR-1783](1783-karasu-nest-hosted-preview.md) — **本 ADR が supersede する** nest v1（stateless inline 共有・BYO reverse・サービスに AI を載せない）。ただし生きている決定は下記「ADR-1783 から引き継ぐ決定」で明示的に引き継ぐ

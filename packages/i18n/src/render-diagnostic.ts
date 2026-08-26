@@ -125,8 +125,6 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.ownsTargetAmbiguous.message", d.params);
     case "realizes-target-ambiguous":
       return t("diagnostic.realizesTargetAmbiguous.message", d.params);
-    case "handles-target-ambiguous":
-      return t("diagnostic.handlesTargetAmbiguous.message", d.params);
     case "import-target-ambiguous":
       return t("diagnostic.importTargetAmbiguous.message", d.params);
     case "unresolved-resource-ref":

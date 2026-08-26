@@ -55,7 +55,7 @@ scope:
 - **本番 URL を単一の到達先にする** — `.claude/rules/acceptance.md`「手動項目の到達先は本番 URL」に app / docs-site の正典 URL を表で置く。AT を編集すると自動で読み込まれる
 - **preview は PR の欄に置き、記録には残さない** — PR テンプレートの `## Preview URL` 欄が preview の正しい住所。AT に写すと寿命が合わない
 - **AT からは Issue を指す** — Issue は削除されず design PR と実装 PR の両方へ辿れる。ADR があれば併記する。強制は `pnpm at:check-coverage`（`scripts/acceptance/design-refs.ts`）で、`docs/acceptance/**` から `docs/design/` への参照を finding として落とす
-- **確認手段が本番にしかない構造を認める** — docs-site は PR preview を持たない（`pages.yml` は main への push でのみデプロイ）。この場合「マージ後に確認する」ことを隠さずに書く。preview がある前提で書くと、実行できない手順になる
+- **確認手段が本番にしかない構造を認める** — 到達できる先が本番だけなら「マージ後に確認する」ことを隠さずに書く。preview がある前提で書くと、実行できない手順になる。逆に preview が後から用意されても、この観点の結論は変わらない — docs-site は [#2260](https://github.com/kompiro/karasu/issues/2260) で PR preview を得たが、その URL はやはりブランチと一緒に消えるので、記録の到達先は公開ドキュメントサイトのままである（preview は PR 本文の欄に置く）
 
 ## 由来
 

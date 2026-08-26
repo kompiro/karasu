@@ -13,6 +13,19 @@ import type { LayoutNode, ContainerRect } from "./layout-types.js";
 const EXTERNAL_SIDE_GAP = 100;
 
 /**
+ * Minimum vertical clearance between two cards in a side column.
+ *
+ * The column used to place its members by dividing the content span into
+ * `count + 1` equal steps, which is a fixed band divided N ways: it degrades
+ * silently as N grows, and past the point where the cards no longer fit it
+ * *overlaps* them rather than running out of room visibly. dify's root view
+ * puts 14 externals beside a 1272px span and they overlapped by 25px each.
+ * A column that does not fit now stacks at this clearance and overflows the
+ * span instead, which the container growth below wraps.
+ */
+const EXTERNAL_STACK_GAP = 24;
+
+/**
  * Spread below which the auto-assigned externals' hub barycenters count as one
  * value, so the median split has nothing to divide (#2384). Sub-pixel, so it
  * absorbs float noise from averaging node centres without ever merging two
@@ -154,10 +167,35 @@ export function placeExternalServicesOnSides(
     // Stable order within a side: hub-x, then consuming-hub y, then existing y.
     group.sort((a, b) => (hubX.get(a.id) ?? 0) - (hubX.get(b.id) ?? 0) || a.y - b.y);
     const count = group.length;
-    group.forEach((node, i) => {
+    const span = botY - topY;
+
+    // Spread the column across the span the way it always has: equal steps,
+    // each card centred on its step. Kept as the first answer so every column
+    // that fits renders exactly as before.
+    const spread = group.map((node, i) => topY + ((i + 1) * span) / (count + 1) - node.height / 2);
+    const crowded = group.some(
+      (node, i) => i > 0 && spread[i] - (spread[i - 1] + group[i - 1].height) < EXTERNAL_STACK_GAP,
+    );
+
+    if (!crowded) {
+      group.forEach((node, i) => {
+        node.x = x;
+        node.y = spread[i];
+      });
+      return;
+    }
+
+    // Too many cards for the span: stack them at the clearance and centre the
+    // result on the span, so the column grows past the content symmetrically
+    // rather than folding onto itself.
+    const stacked =
+      group.reduce((sum, node) => sum + node.height, 0) + (count - 1) * EXTERNAL_STACK_GAP;
+    let y = topY + (span - stacked) / 2;
+    for (const node of group) {
       node.x = x;
-      node.y = topY + ((i + 1) * (botY - topY)) / (count + 1) - node.height / 2;
-    });
+      node.y = y;
+      y += node.height + EXTERNAL_STACK_GAP;
+    }
   };
   const left = ext.filter((n) => sideOf(n) === "left");
   const right = ext.filter((n) => sideOf(n) === "right");
@@ -177,6 +215,11 @@ export function placeExternalServicesOnSides(
   const rightEdge = right.length
     ? maxX + EXTERNAL_SIDE_GAP + rightColW + CONTAINER_PADDING
     : undefined;
+  // A crowded column reaches above and below the content it hugs, so the frame
+  // has to follow it vertically too — otherwise the cards it holds are drawn
+  // outside their own system frame.
+  const columnTop = Math.min(...ext.map((n) => n.y), topY);
+  const columnBottom = Math.max(...ext.map((n) => n.y + n.height), botY);
   for (const c of containers) {
     if (!systemContainerIds.has(c.id)) continue;
     let nx = c.x;
@@ -185,6 +228,13 @@ export function placeExternalServicesOnSides(
     if (rightEdge !== undefined) nr = Math.max(nr, rightEdge);
     c.x = nx;
     c.width = nr - nx;
+    // Only when the column actually reaches past the frame — padding it
+    // unconditionally would move every frame that has a side column at all.
+    const top = columnTop < c.y ? columnTop - CONTAINER_PADDING : c.y;
+    const bottom =
+      columnBottom > c.y + c.height ? columnBottom + CONTAINER_PADDING : c.y + c.height;
+    c.y = top;
+    c.height = bottom - top;
   }
   return sides;
 }

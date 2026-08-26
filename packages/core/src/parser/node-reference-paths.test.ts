@@ -208,7 +208,9 @@ system Shop {
 `);
     expect(r.diagnostics).toHaveLength(0);
     const web = r.value.systems[0].children[0];
-    expect(web.kind === "client" && web.properties.handles).toEqual([["Backend", "Order"]]);
+    expect(web.kind === "client" && web.properties.handles?.map((h) => h.path)).toEqual([
+      ["Backend", "Order"],
+    ]);
     const kinds = analyze(r.value, []).map((w) => w.kind);
     expect(kinds).not.toContain("unresolved-handles");
   });
@@ -285,8 +287,12 @@ deploy prod {
     );
   });
 
-  it("handles ambiguity fires only across depths (the kind is fixed)", () => {
-    const crossDepth = Parser.parse(`
+  it("handles draws no ambiguity verdict: its pool is the expose rule's, not every declared domain (#2549)", () => {
+    // `Ops.Order` is a domain directly under a system, a place the one-hop
+    // expose rule can never reach, so it is not a candidate the author could
+    // qualify against. The checker that reported it would be looking at a
+    // wider pool than the resolver acts on (TPL-1720).
+    const outOfPool = Parser.parse(`
 system Shop {
   client Web {
     handles Order
@@ -294,13 +300,37 @@ system Shop {
   service Backend {
     domain Order {}
   }
+  Web -> Backend "calls"
 }
-domain Order {}
+system Ops {
+  domain Order {}
+}
 `);
-    const amb = crossDepth.diagnostics.filter((d) => d.code === "handles-target-ambiguous");
-    expect(amb).toHaveLength(1);
-    expect(amb[0].params).toMatchObject({ path: "Order" });
+    expect(outOfPool.diagnostics.filter((d) => d.code.endsWith("-ambiguous"))).toHaveLength(0);
+    expect(
+      analyze(outOfPool.value, []).filter((w) => w.kind === "unresolved-handles"),
+    ).toHaveLength(0);
 
+    // Out-of-pool is not silence in general: with nothing in the pool to
+    // resolve to, the existence surface is `unresolved-handles`.
+    const onlyOutOfPool = Parser.parse(`
+system Shop {
+  client Web {
+    handles Order
+  }
+  service Backend {}
+  Web -> Backend "calls"
+}
+system Ops {
+  domain Order {}
+}
+`);
+    expect(
+      analyze(onlyOutOfPool.value, []).filter((w) => w.kind === "unresolved-handles"),
+    ).toHaveLength(1);
+
+    // Two tenants owning a same-named domain is broadcast, not ambiguity —
+    // every candidate in the pool is a `domain` at the same depth.
     const sameDepth = Parser.parse(`
 system TenantA {
   client Web {
@@ -312,11 +342,13 @@ system TenantA {
   service S2 {
     domain Order {}
   }
+  Web -> S1 "calls"
 }
 `);
-    expect(sameDepth.diagnostics.filter((d) => d.code === "handles-target-ambiguous")).toHaveLength(
-      0,
-    );
+    expect(sameDepth.diagnostics.filter((d) => d.code.endsWith("-ambiguous"))).toHaveLength(0);
+    expect(
+      analyze(sameDepth.value, []).filter((w) => w.kind === "unresolved-handles"),
+    ).toHaveLength(0);
   });
 });
 
@@ -460,5 +492,127 @@ organization Org { team Platform { owns Shop.Payment } }
     const drill = extractView(parsed.value.systems, ["Shop", "Checkout"]);
     const drillRes = layout(drill, { ownerIndex: parsed.value.ownerIndex, groupBy: "team" });
     expect(drillRes.containers.filter((c) => c.group === true)).toHaveLength(0);
+  });
+});
+
+describe("slice C review fixes (#2549, PR #2579 review)", () => {
+  // Both refs join to the string "a.b", so a memo keyed by that join answers
+  // one of them with the other's verdict — and which one wins depends on which
+  // line was written first, the order dependence #2550 took out of the parser
+  // (TPL-1352).
+  const dottedIdSrc = (first: string, second: string): string => `
+system Sys {
+  service Svc {
+    domain "a.b" {}
+  }
+  service a {
+    domain b {}
+  }
+  client Web {
+    handles ${first}
+    handles ${second}
+  }
+  Web -> a "calls"
+}
+`;
+
+  it("a quoted id containing a dot is a different ref from the two-segment path", () => {
+    // Only \`handles "a.b"\` is unreachable: Web's one edge goes to \`a\`, which
+    // owns \`b\` but not the domain named "a.b" over in Svc.
+    const quotedFirst = analyze(Parser.parse(dottedIdSrc('"a.b"', "a.b")).value, []).filter(
+      (w) => w.kind === "unresolved-handles",
+    );
+    const pathFirst = analyze(Parser.parse(dottedIdSrc("a.b", '"a.b"')).value, []).filter(
+      (w) => w.kind === "unresolved-handles",
+    );
+
+    expect(quotedFirst).toHaveLength(1);
+    expect(pathFirst).toHaveLength(1);
+    // Same verdict either way, and it lands on the quoted ref both times —
+    // line 10 when it is written first, line 11 when it is written second.
+    expect(quotedFirst[0]!.loc!.start.line).toBe(10);
+    expect(pathFirst[0]!.loc!.start.line).toBe(11);
+  });
+
+  it("unresolved-handles anchors on the failing reference, not on the declaring node", () => {
+    const src = `
+system Shop {
+  client Web {
+    handles Order, Missing
+  }
+  service Backend {
+    domain Order {}
+  }
+  Web -> Backend "calls"
+}
+`;
+    const unresolved = analyze(Parser.parse(src).value, []).filter(
+      (w) => w.kind === "unresolved-handles",
+    );
+    expect(unresolved).toHaveLength(1);
+    expect(unresolved[0]!.params).toMatchObject({ domainId: "Missing" });
+    const line = "    handles Order, Missing";
+    expect(unresolved[0]!.loc!.start.line).toBe(4);
+    expect(unresolved[0]!.loc!.start.column).toBe(line.indexOf("Missing") + 1);
+  });
+
+  it("handles keeps reading its list after a malformed ref, like realizes does", () => {
+    const r = Parser.parse(`
+system Shop {
+  client Web {
+    handles Backend., Order
+  }
+  service Backend {
+    domain Order {}
+  }
+  Web -> Backend "calls"
+}
+`);
+    // One report for the dangling dot, and nothing left over for the block
+    // loop to report a second time.
+    expect(r.diagnostics.filter((d) => d.severity === "error")).toHaveLength(1);
+    const web = r.value.systems[0].children[0];
+    expect(web.kind === "client" && web.properties.handles?.map((h) => h.path)).toEqual([
+      ["Order"],
+    ]);
+    expect(analyze(r.value, []).filter((w) => w.kind === "unresolved-handles")).toHaveLength(0);
+  });
+
+  it("a dangling dot underlines the dot, and a trailing comma after it is still reported", () => {
+    const line = "    realizes Shop.,";
+    const r = Parser.parse(`
+deploy prod {
+  oci "api-unit" {
+${line}
+  }
+}
+`);
+    const errs = r.diagnostics.filter((d) => d.code === "expected-property-value");
+    // The dangling dot, then the trailing comma — the same two mistakes
+    // `realizes A,` and `realizes Shop.` report on their own.
+    expect(errs).toHaveLength(2);
+    expect(errs[0]!.loc!.start.column).toBe(line.indexOf("Shop") + 1);
+    expect(errs[0]!.loc!.end.column).toBeGreaterThan(line.indexOf(".") + 1);
+    expect(errs[1]!.loc!.start.column).toBe(line.indexOf(",") + 1);
+    expect(r.value.deploys[0].nodes[0].properties.realizes ?? []).toEqual([]);
+  });
+
+  it("record-nothing recovery belongs to the four new sites, not to import", () => {
+    // The shared notation does not make recovery shared: `import` keeps the
+    // segments it read (its pre-#2088 behavior), `owns` records nothing.
+    const imported = Parser.parse('import { A. } from "other.krs"');
+    expect(imported.value.nodeImports[0]?.ids).toEqual([["A"]]);
+
+    const owned = Parser.parse(`
+system Shop {
+  service Api {}
+}
+organization Org {
+  team Platform {
+    owns Shop.
+  }
+}
+`);
+    expect(owned.value.organizations[0].teams[0].properties.owns).toEqual([]);
   });
 });

@@ -2,8 +2,9 @@ name: Purge preview deployments
 description: >-
   Delete Cloudflare Pages preview deployments — either every deployment recorded
   against one branch, or every deployment whose branch no longer exists. Shared by
-  preview.yml (PR close), spike-preview.yml (branch delete) and preview-janitor.yml
-  (backlog sweep) so the paging and delete logic cannot drift apart again — it has
+  preview.yml (PR close), docs-preview.yml (PR close, `karasu-docs` project),
+  spike-preview.yml (branch delete) and preview-janitor.yml (backlog sweep, both
+  projects) so the paging and delete logic cannot drift apart again — it has
   broken twice while duplicated (#2291, #2294). Sharing the script does not couple
   the workflows' triggers, which is why those stay separate files.
 

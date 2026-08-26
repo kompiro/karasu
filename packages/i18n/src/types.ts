@@ -540,10 +540,6 @@ export type Translations = {
     path: string;
     candidates: Array<{ kind: string; path: string }>;
   }) => string;
-  "diagnostic.handlesTargetAmbiguous.message": (params: {
-    path: string;
-    candidates: Array<{ kind: string; path: string }>;
-  }) => string;
   "diagnostic.importTargetAmbiguous.message": (params: {
     path: string;
     candidates: Array<{ kind: string; path: string }>;
