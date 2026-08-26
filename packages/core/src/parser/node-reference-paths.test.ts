@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
 import { boundaryScopeKey } from "../types/ast.js";
-import { extractView } from "../view/view-extract.js";
+import { extractView, extractEntityView } from "../view/view-extract.js";
 import { layout } from "../renderer/layout.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { InMemoryFileSystemProvider } from "../fs/in-memory-provider.js";
@@ -349,6 +349,60 @@ system TenantA {
     expect(
       analyze(sameDepth.value, []).filter((w) => w.kind === "unresolved-handles"),
     ).toHaveLength(0);
+  });
+});
+
+describe("entity relations resolve by the suffix rule (#2575)", () => {
+  it("resolves to the domain that actually has the entity when domain ids collide", () => {
+    const r = Parser.parse(`
+system Shop {
+  service A {
+    domain Shared {}
+  }
+  service B {
+    domain Shared {
+      entity Customer {}
+    }
+  }
+  service C {
+    domain Orders {
+      entity Order {
+        Order -> Shared.Customer
+      }
+    }
+  }
+}
+`);
+    const view = extractEntityView(r.value.systems, ["Shop", "C", "Orders"]);
+    // The old first-domain-wins index let A's empty `Shared` occupy the slot
+    // and silently dropped the written relation; the suffix resolver finds
+    // B's Customer.
+    expect(view.ghostEntities.map((g) => g.key)).toEqual(["Shared.Customer"]);
+    expect(view.ghostEntityEdges).toHaveLength(1);
+    expect(view.ghostEntityEdges[0]).toMatchObject({ from: "Order", to: "Shared.Customer" });
+  });
+
+  it("keeps resolving the plain qualified form and drops unresolved refs", () => {
+    const r = Parser.parse(`
+system Shop {
+  service B {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+  service C {
+    domain Orders {
+      entity Order {
+        Order -> Customers.Customer
+        Order -> Nope.Customer
+      }
+    }
+  }
+}
+`);
+    const view = extractEntityView(r.value.systems, ["Shop", "C", "Orders"]);
+    expect(view.ghostEntities.map((g) => g.key)).toEqual(["Customers.Customer"]);
+    expect(view.ghostEntityEdges).toHaveLength(1);
   });
 });
 
