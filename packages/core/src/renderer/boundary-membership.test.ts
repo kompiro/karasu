@@ -42,16 +42,17 @@ boundary finance {
 describe("boundary membership is 1:N at the model layer", () => {
   it("keeps every declared membership in declaration order", () => {
     const { value } = Parser.parse(MULTI_SRC);
-    expect(value.boundaryMembership.get("Billing")).toEqual(["payments", "finance"]);
-    expect(value.boundaryMembership.get("Wallet")).toEqual(["payments"]);
-    expect(value.boundaryMembership.get("Ledger")).toEqual(["finance"]);
+    // Keyed by each member node's full path since #2548.
+    expect(value.boundaryMembership.get("Shop.Billing")).toEqual(["payments", "finance"]);
+    expect(value.boundaryMembership.get("Shop.Wallet")).toEqual(["payments"]);
+    expect(value.boundaryMembership.get("Shop.Ledger")).toEqual(["finance"]);
   });
 
   it("resolves the single value a banded view needs through one pure function", () => {
     const { value } = Parser.parse(MULTI_SRC);
     // The one place 1:N meets the view's one-band-per-node rule. No parallel
     // 1:1 field exists to drift against it (TPL-1032).
-    expect(primaryBoundaryOf(value.boundaryMembership.get("Billing"))).toBe("payments");
+    expect(primaryBoundaryOf(value.boundaryMembership.get("Shop.Billing"))).toBe("payments");
     expect(primaryBoundaryOf(value.boundaryMembership.get("Nope"))).toBeUndefined();
     expect(primaryBoundaryOf([])).toBeUndefined();
   });
@@ -81,7 +82,10 @@ boundary payments {
 `,
     );
     const resolved = await new ImportResolver(fs).resolve("/p/index.krs");
-    expect(resolved.krsFile.boundaryMembership.get("Billing")).toEqual(["payments", "finance"]);
+    expect(resolved.krsFile.boundaryMembership.get("Shop.Billing")).toEqual([
+      "payments",
+      "finance",
+    ]);
   });
 
   it("carries a boundary declared in an imported file into the merged model", async () => {
@@ -108,7 +112,7 @@ system Shop {
     );
     const resolved = await new ImportResolver(fs).resolve("/p/index.krs");
     expect(resolved.krsFile.boundaries.map((b) => b.id)).toEqual(["payments"]);
-    expect(resolved.krsFile.boundaryMembership.get("Billing")).toEqual(["payments"]);
+    expect(resolved.krsFile.boundaryMembership.get("Shop.Billing")).toEqual(["payments"]);
     expect(resolved.diagnostics.filter((d) => d.code === "contains-target-not-found")).toEqual([]);
 
     const result = await compileProject("/p/index.krs", fs, { groupBy: "boundary" });
@@ -130,7 +134,7 @@ boundary payments {
     );
     await fs.writeFile("/p/again.krs", `boundary payments {\n  contains Billing\n}\n`);
     const resolved = await new ImportResolver(fs).resolve("/p/index.krs");
-    expect(resolved.krsFile.boundaryMembership.get("Billing")).toEqual(["payments"]);
+    expect(resolved.krsFile.boundaryMembership.get("Shop.Billing")).toEqual(["payments"]);
   });
 
   it("scoped membership unions per scope and stays keyed by (scope, id)", async () => {
@@ -186,10 +190,10 @@ boundary finance {
     );
     const before = await new ImportResolver(fs).resolve("/p/before.krs");
     const after = await new ImportResolver(fs).resolve("/p/after.krs");
-    expect(before.krsFile.boundaryMembership.get("Billing")).toEqual(["payments", "finance"]);
+    expect(before.krsFile.boundaryMembership.get("Shop.Billing")).toEqual(["payments", "finance"]);
     // Billing is removed in after, so the diff render must be able to put it
     // back in its former frame; Wallet is kept and keeps only its after state.
-    expect(after.krsFile.boundaryMembership.has("Billing")).toBe(false);
+    expect(after.krsFile.boundaryMembership.has("Shop.Billing")).toBe(false);
 
     const result = await compileSystemDiff({
       beforeEntryPath: "/p/before.krs",

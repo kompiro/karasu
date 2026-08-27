@@ -68,6 +68,7 @@ flowchart TD
     ADR_2139["ADR-2139<br/>Dependabot security 第 2 便 — postcss の後続 advisor..."]
     ADR_2142["ADR-2142<br/>Dependabot security 第 3 便 — brace-expansion OOM..."]
     ADR_2152["ADR-2152<br/>Dependabot トリアージ 2026-07-27 — 6 件全採用、radix の pu..."]
+    ADR_2260["ADR-2260<br/>docs サイトは本番と同じ base path のまま別 Pages プロジェクトへ PR ..."]
     ADR_2318["ADR-2318<br/>Dependabot トリアージ 2026-08-03 — react 分割 PR の相互ブロ..."]
     ADR_2333["ADR-2333<br/>Dependabot トリアージ 2026-08-04 — LSP protocol の単独 ..."]
     ADR_2337["ADR-2337<br/>LSP は client と server を同時に上げ、protocol 版の一致を不変条件..."]
@@ -86,6 +87,7 @@ flowchart TD
     ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
     ADR_2562["ADR-2562<br/>Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
     ADR_2564["ADR-2564<br/>Dependabot security alert 2026-08-18（auto-dismi..."]
+    ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -177,6 +179,7 @@ flowchart TD
   class ADR_2139 accepted
   class ADR_2142 accepted
   class ADR_2152 accepted
+  class ADR_2260 accepted
   class ADR_2318 accepted
   class ADR_2333 accepted
   class ADR_2337 accepted
@@ -195,6 +198,7 @@ flowchart TD
   class ADR_2474 accepted
   class ADR_2562 accepted
   class ADR_2564 accepted
+  class ADR_2623 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost

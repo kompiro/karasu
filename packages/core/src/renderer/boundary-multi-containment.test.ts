@@ -276,9 +276,10 @@ system Payments {
     const parsed = Parser.parse(src).value;
     const slice = extractView(parsed.systems, ["Payments"]);
     const result = layout(slice, {
+      // Keyed by full node path (#2548); the canvas is `Payments`.
       ownerIndex: new Map([
-        ["Checkout", "Platform"],
-        ["Ledger", "Money"],
+        ["Payments.Checkout", "Platform"],
+        ["Payments.Ledger", "Money"],
       ]),
       declaredGroupOrder: declaredGroupOrderOf(parsed, "team"),
       groupBy: "team",

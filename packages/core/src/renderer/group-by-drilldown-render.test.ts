@@ -234,7 +234,7 @@ boundary cluster {
 }
 `;
     const parsed = Parser.parse(ghostOnly).value;
-    expect(parsed.boundaryMembership.get("BillingDomain")).toEqual(["cluster"]);
+    expect(parsed.boundaryMembership.get("Shop.Billing.BillingDomain")).toEqual(["cluster"]);
     const slice = extractView(parsed.systems, ["Shop", "Orders"]);
     expect(slice.ghostDomains.some((g) => g.node.id === "BillingDomain")).toBe(true);
     expect(slice.childNodes.some((n) => n.id === "BillingDomain")).toBe(false);

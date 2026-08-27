@@ -83,6 +83,22 @@ export const OWNS_TARGET_KINDS = [...OWNABLE_LOGICAL_KINDS, ...INFRA_BLOCK_KINDS
 export const OWNS_TARGET_KIND_SET: ReadonlySet<string> = new Set(OWNS_TARGET_KINDS);
 
 /**
+ * Every kind `realizes` accepts as a target — the same enumeration as
+ * {@link OWNS_TARGET_KINDS}, aliased rather than re-listed.
+ *
+ * The two questions are distinct (ADR-1632 decided infra for `realizes`,
+ * ADR-1720 decided `client` for both), but their answer is one list, and a
+ * second literal spelling of one list is the TPL-1720 hazard: `realizes` has
+ * two readers — the ambiguity check in `parser/reference-validation.ts` and
+ * the existence check in `resolver/warnings.ts` — and a fourth infra kind
+ * would have had to be remembered in each. Several readers sharing one
+ * constant is what that TPL asks for. Split the alias into its own array only
+ * when an ADR makes a kind ownable but not realizable, so the divergence is
+ * stated in one place instead of discovered between two checks.
+ */
+export const REALIZES_TARGET_KIND_SET: ReadonlySet<string> = new Set(OWNS_TARGET_KINDS);
+
+/**
  * The logical node kinds whose system-view card carries the deploy-view jump
  * affordance (the `D` button / `NodeMetadata.hasDeployContainer`) when a deploy
  * unit `realizes` them — service / domain / client (ADR-1720).
@@ -177,6 +193,24 @@ export interface SystemNode extends BaseNodeFields {
   properties: CommonProperties;
 }
 
+/**
+ * One `handles` target, with the range of the reference that named it.
+ *
+ * The logical-layer twin of {@link RealizesTarget}, and for the same reason: a
+ * `handles` line may name several domains (`handles Order, Payment`), so the
+ * range has to anchor at the individual reference or `unresolved-handles`
+ * cannot say which one failed the expose rule.
+ */
+export interface HandlesTarget {
+  /**
+   * The domain as a node reference path (#2088): bare id = length-1 case, a
+   * longer suffix path narrows to the domain it names. Author notation is
+   * preserved (no normalization — TPL-1101).
+   */
+  path: NodeIdPath;
+  loc: SourceRange;
+}
+
 export interface ServiceNode extends BaseNodeFields {
   kind: "service";
   properties: CommonProperties & {
@@ -190,7 +224,7 @@ export interface ServiceNode extends BaseNodeFields {
      * one-hop expose rule: at least one outgoing communication edge target
      * must itself expose the named domain.
      */
-    handles?: string[];
+    handles?: HandlesTarget[];
     /**
      * Client ids this service ships (BFF / SSR pattern). The renderer synthesizes
      * a tagged `delivers` edge for each entry; the property itself is the source of
@@ -349,7 +383,7 @@ export interface ClientNode extends BaseNodeFields {
      * (a `service` it talks to) must expose the named domain (own it as a
      * child, or re-export it via its own `handles`).
      */
-    handles?: string[];
+    handles?: HandlesTarget[];
   };
 }
 
@@ -439,7 +473,13 @@ export interface TeamNode {
   annotations: string[];
   annotationParams?: Record<string, Record<string, string>>;
   properties: CommonProperties & {
-    owns: string[];
+    /**
+     * Node references listed via `owns`, each a suffix path (#2088): a bare
+     * id is the length-1 case and claims every node with that id
+     * (broadcast); a longer path narrows to the nodes whose full path ends
+     * with it. Author notation is preserved (no normalization — TPL-1101).
+     */
+    owns: NodeIdPath[];
   };
   children: OrgNode[];
   loc: SourceRange;
@@ -467,8 +507,12 @@ export interface BoundaryBlock {
   id: string;
   label?: string;
   properties: CommonProperties;
-  /** Member node ids listed via `contains` (one per line, mirroring `owns`). */
-  contains: string[];
+  /**
+   * Member node references listed via `contains` (one per line, mirroring
+   * `owns`), each a suffix path (#2088): bare id = length-1 broadcast, a
+   * longer path narrows to the nodes whose full path ends with it.
+   */
+  contains: NodeIdPath[];
   loc: SourceRange;
 }
 
@@ -507,7 +551,12 @@ export interface FacetBlock {
  * ranges throughout.
  */
 export interface RealizesTarget {
-  id: string;
+  /**
+   * The target as a node reference path (#2088): bare id = length-1 case,
+   * a longer suffix path narrows to the node it names. Author notation is
+   * preserved (no normalization — TPL-1101).
+   */
+  path: NodeIdPath;
   loc: SourceRange;
 }
 
@@ -537,23 +586,41 @@ export interface DeployBlock {
 // ─── ファイル ──────────────────────────────────────
 
 /**
- * One named import entry, represented as an array of path segments.
+ * A node reference written as an array of dotted path segments (#2088).
  *
- * - Bare id `Foo` parses to `["Foo"]` (resolved by the existing
- *   single-id lookup against `system` ids, direct system children,
- *   top-level services, and deploy nodes).
- * - Path id `A.B.C` parses to `["A", "B", "C"]` and is walked by the
- *   resolver one segment at a time through each parent's `children`
- *   array (id-only matching, no kind whitelist). See ADR / Issue #927.
+ * - Bare id `Foo` parses to `["Foo"]` — the length-1 case.
+ * - Path id `A.B.C` parses to `["A", "B", "C"]`.
+ *
+ * First introduced for `import` entries (Issue #927), which walked the path
+ * one segment at a time through each parent's `children`. Since #2088 the
+ * accepting sites share both the lexical shape and the resolution rule —
+ * `parser/node-path.ts`'s suffix rule — with `import` moving onto it in
+ * slice D2 (#2576). What stays each site's own is the *pool* a reference
+ * resolves against and the recovery a malformed reference gets.
  *
  * Note: path resolution and validation (file existence, segment lookup,
- * ambiguity, cycles) are deferred to `fs/import-resolver.ts` — the parser
- * only records the path structurally.
+ * ambiguity, cycles) stay with each site's resolver — the parser only
+ * records the path structurally.
  */
-export type ImportIdPath = string[];
+export type NodeIdPath = string[];
+
+/**
+ * One entry of a named import (`import { A, B.C } from "…"`), with the range
+ * of the entry itself.
+ *
+ * The range is per entry rather than per statement for the reason
+ * {@link HandlesTarget} and {@link RealizesTarget} carry one: a statement may
+ * name several nodes, and `import-path-not-found` / `import-target-ambiguous`
+ * have to point at the entry that failed instead of underlining the whole
+ * line (#2582 review).
+ */
+export interface ImportEntry {
+  path: NodeIdPath;
+  loc: SourceRange;
+}
 
 export interface ImportDeclaration {
-  ids: ImportIdPath[];
+  ids: ImportEntry[];
   path: string;
   loc: SourceRange;
 }
@@ -893,6 +960,18 @@ export interface DiagnosticParamsByCode {
   "node-id-multiple-locations": { nodeId: string };
   "duplicate-node-id-parent": { nodeId: string };
   "owns-target-not-found": { ownedId: string };
+  // #2088: a path reference resolves to 2+ nodes that are NOT uniform in
+  // (kind, depth) — uniform multi-matches are intentional broadcast and stay
+  // silent. `path` is the reference as written (joined); each candidate names
+  // a full path the author can qualify with.
+  "owns-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  "contains-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  "realizes-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
+  // `handles` has no ambiguity twin: the expose rule resolves against domains
+  // that are direct children of a system-level child, so every candidate is a
+  // `domain` at the same depth and a multi-match is uniform by construction
+  // (multi-tenant broadcast). A code that can never fire is a code that lies
+  // about what the checker looks at, so there is none (#2549).
   "duplicate-edge-id": { authorId: string };
   "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->" };
 
@@ -955,13 +1034,24 @@ export interface DiagnosticParamsByCode {
   "import-path-not-found": {
     /** Path segments as written in the import block. */
     path: string[];
-    /** 0-based index of the segment that failed to resolve. */
+    /**
+     * 0-based index of the segment that failed to resolve — under suffix
+     * resolution (#2088), the leftmost segment that eliminated every
+     * candidate when narrowing right-to-left.
+     */
     failedAt: number;
     /** The imported file path (`from "..."`). */
     importPath: string;
-    /** Id of the last node that did resolve successfully (omitted when segment 0 fails). */
+    /**
+     * The neighboring segment that still had candidates (omitted when the
+     * last segment already matches nothing).
+     */
     lastResolvedId?: string;
   };
+  // #2088 slice D2: a suffix import matching nodes not uniform in
+  // (kind, depth). The import still broadcasts (bare-id parity); the
+  // warning narrates, listing candidate full paths.
+  "import-target-ambiguous": { path: string; candidates: Array<{ kind: string; path: string }> };
   "circular-style-import": { filePath: string };
   "style-file-not-found": { filePath: string };
 

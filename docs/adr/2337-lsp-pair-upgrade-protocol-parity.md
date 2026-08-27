@@ -9,8 +9,10 @@ scope:
   concerns: [dependencies, ci]
 related_to: [ADR-2333, ADR-2447, ADR-2318]
 assumptions:
-  - "grep: packages/lsp/package.json :: \"vscode-languageserver\": \"\\^10.1.0\""
-  - "grep: packages/vscode/package.json :: \"vscode-languageclient\": \"\\^10.1.0\""
+  # 本 ADR が決めたのは client / server を 10.x へ対で上げることであって、
+  # 10.1.0 というリテラルの patch 版ではない（ADR-2628）。
+  - "grep: packages/lsp/package.json :: \"vscode-languageserver\": \"\\^10\\."
+  - "grep: packages/vscode/package.json :: \"vscode-languageclient\": \"\\^10\\."
   - "grep: .github/dependabot.yml :: vscode-languageserver-textdocument"
   - "symbol: packages/lsp/src/diagnostics.test.ts :: messageOf"
   - "grep: packages/lsp/tsconfig.json :: \"types\": \\[\"node\"\\]"

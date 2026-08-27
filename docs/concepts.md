@@ -84,7 +84,7 @@ organization "ec-org" {
 ```
 
 Symmetrically to how `realizes` binds physical to logical, `owns` binds organization to logical and physical.
-The same node id cannot be `owns`-ed by more than one team, and overlapping ownership is detected as a warning.
+The same node may be `owns`-ed by more than one team — a tolerated fact during a migration handoff — and the overlap surfaces as an **info** diagnostic (`duplicate-owner-assignment`, ADR-1566), with the first-declared team kept as the primary owner.
 As a result, while the three dimensions can be written independently, their correspondences are always visible in the diagram.
 
 ### How `.krs` text is produced

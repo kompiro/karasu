@@ -213,7 +213,7 @@ class Printer {
     if (imp.ids.length === 0) return `import ${quoteString(imp.path)}`;
     // Bare ids are stored as `["Foo"]`; multi-segment paths as `["A", "B", "C"]`.
     // Re-join each path with "." to round-trip through the formatter.
-    const formatted = imp.ids.map((segments) => segments.map(quoteId).join(".")).join(", ");
+    const formatted = imp.ids.map((entry) => entry.path.map(quoteId).join(".")).join(", ");
     return `import { ${formatted} } from ${quoteString(imp.path)}`;
   }
 
@@ -346,6 +346,20 @@ class Printer {
     if ("role" in node.properties && node.properties.role !== undefined) {
       lines.push(`${indent}role ${quoteString(node.properties.role)}`);
     }
+    // `handles` was missing here until #2549, so `karasu fmt` deleted every
+    // handles line it formatted — silently, since nothing else carries the
+    // one-hop expose model. Canonicalized to a single comma list like `facets`
+    // below, so `format(format(x)) === format(x)` holds for repeated lines.
+    // Path refs print as written, each segment re-quoted only when needed
+    // (TPL-1101, #2088).
+    if (
+      "handles" in node.properties &&
+      Array.isArray(node.properties.handles) &&
+      node.properties.handles.length > 0
+    ) {
+      const refs = node.properties.handles.map((h) => h.path.map(quoteId).join("."));
+      lines.push(`${indent}handles ${refs.join(", ")}`);
+    }
     if (
       "delivers" in node.properties &&
       Array.isArray(node.properties.delivers) &&
@@ -443,7 +457,9 @@ class Printer {
     // One target per line, even when the source wrote them comma-separated
     // (#2167): repeated lines are the canonical form the comma list sugars.
     for (const r of node.properties.realizes ?? []) {
-      lines.push(`    realizes ${quoteId(r.id)}`);
+      // Path refs print as written; each segment is re-quoted only when
+      // needed (TPL-1101, #2088).
+      lines.push(`    realizes ${r.path.map(quoteId).join(".")}`);
     }
 
     lines.push("  }");
@@ -491,7 +507,9 @@ class Printer {
       lines.push(this.renderLink(link, `${indent}  `));
     }
     for (const owns of team.properties.owns) {
-      lines.push(`${indent}  owns ${quoteId(owns)}`);
+      // Author notation is preserved segment-for-segment (TPL-1101): a path
+      // ref prints as written, each segment re-quoted only if it needs it.
+      lines.push(`${indent}  owns ${owns.map(quoteId).join(".")}`);
     }
 
     let prevEndLine = team.loc.start.line;
@@ -547,8 +565,9 @@ class Printer {
     for (const link of block.properties.links) {
       lines.push(this.renderLink(link, "  "));
     }
-    for (const id of block.contains) {
-      lines.push(`  contains ${quoteId(id)}`);
+    for (const ref of block.contains) {
+      // Same round-trip rule as `owns` (TPL-1101): print the path as written.
+      lines.push(`  contains ${ref.map(quoteId).join(".")}`);
     }
 
     lines.push("}");

@@ -117,7 +117,16 @@ id でノードを指す構文を新設・変更するとき:
 
 ## 関連テスト
 
-（未確立 — 本 TPL は proactive として起票した。Issue
-[#2088](https://github.com/kompiro/karasu/issues/2088) の実装 PR で、9 サイト全部について
-「`A.B.C` が受理される」「bare id の解決が不変」を 1 つの table-driven テストに置く。
-サイトを列挙する形にすることで、新サイト追加時に列挙漏れが test の失敗として出る）
+- `packages/core/src/parser/node-path.test.ts` — 字句（`readNodeIdPathTail`）と
+  接尾辞規則（`nodePathMatchesSuffix`）の table-driven テスト + 既存 4 サイトの
+  回復挙動の pin（slice A, #2547）
+- `packages/core/src/parser/node-reference-paths.test.ts` — `owns` / `contains` の
+  受理・絞り込み・broadcast 不変・`*-target-ambiguous`・宣言順非依存（slice B, #2548）、
+  および `realizes` / `handles` の受理・record-nothing・resolved-node 基準の expose
+  規則・ambiguity（slice C, #2549）。9 サイトの受理はこれで揃った
+- 記法は共有でも **dangling dot からの回復はサイト固有**（`owns` / `contains` /
+  `realizes` / `handles` は何も記録せず、`import` / `resource` / edge endpoint は
+  読めたセグメントを残す）。同ファイルの
+  「record-nothing recovery belongs to the four new sites, not to import」が
+  この非対称を pin する — spec の記述が全サイト一律に読める形に戻るのを防ぐ
+- 解決側の統一（D1 #2575 / D2 #2576 / E #2577）が同ファイルにテストを足していく

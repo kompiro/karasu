@@ -84,7 +84,9 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `duplicate-boundary-id` | error | 同じ親ノード内の 2 つの `boundary` ブロックが同じ id を宣言しており、2 つ目を指し示せない。top-level のブロックは対象外。 |
 | `duplicate-facet-id` | error | 2 つの `facet` ブロックが同じ id を宣言しており、`facets` の参照がどちらのメタデータを指すか決まらない。マージ後のモデルで判定するのでファイルをまたぐ重複も検出する。参照が解決するのは最初の宣言。 |
 | `positional-label-removed` | error | `boundary` / `facet` / `organization` / `team` / `member` の id 直後にラベル文字列が置かれている。ADR-19 で `label` はプロパティ化されており、位置ラベル記法は spec に存在しない。experimental な `boundary` / `facet` は deprecation を挟まず削除し（#2133）、残りは deprecation を経て削除した（#2208）。復帰動作は異なり、`boundary` / `facet` は文字列を捨てるが、`organization` / `team` / `member` は label として保持し、修正されるまで組織図が読める状態を保つ。 |
-| `node-id-multiple-locations` | warning | 同じ node id が複数の場所に現れる。 |
+| `node-id-multiple-locations` | warning | 同じ id を持つ論理層ノード（`service` / `domain` / `client`）が異なるパスに複数宣言されている。判定はファイル内の宣言順に依存しない（#2550。ファイルをまたぐ衝突は import マージ時に先勝ちのままで、再構築は #2596 が追跡）。論理層と物理層（`database` / `queue` / `storage` とその子リソース）の間の同名、および物理層内の同名は許容して沈黙する（物理参照は `resource OrderDB.users` のように dot 修飾されるため）。domain 同士の多重は対象外（`domain-dispersal`（info）の領分）。完全に同じパスでの重複は `duplicate-node-id-parent`（error）に譲る。`nodePathIndex` は id ごとに勝者 1 つを保持する: `@migration_target` 優先（infra の子はブロックのアノテーションを継承）、同点は traversal 順（systems → top-level の domains / services / clients → top-level infra）で最初の宣言。負けた論理層の宣言ごとにその位置で warning が 1 つ出る。 |
+
+> Related TPLs: [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md)（1:1 index の勝者規則は index 間で一貫させる。`node-id-multiple-locations` の勝者規則もその一つ）。
 
 ### cross-reference 解決（warn-don't-error, §S6）
 
@@ -95,12 +97,16 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | --- | --- | --- |
 | `owns-target-not-found` | warning | team が、マージ後のモデルでどのノードも指さない id を `owns` する。kind と深さは問わないため、宣言済みの `user` や `entity` はここでは「見つかる」扱いで、kind による拒否は `invalid-owns` が行う。`capability` はノードではなくプロパティなのでどのノードにも解決せず、ここで報告される。マージ後のツリーから導出するため、判定は import の書き方にも宣言位置にも依存しない。import 結合の診断であり、未解決の import が残るドキュメントでは判定しない（LSP の単一ドキュメント文脈では沈黙し、App / CLI がマージ後モデルで判定する）。 |
 | `invalid-owns` | warning | `owns` 先が**ノードに解決され**、その kind が所有できない。メッセージはその kind を名指す。どのノードにも解決しない id は本診断の担当ではなく `owns-target-not-found` が報告するため、1 つの誤りに対して出るのは 2 つのうち必ず一方だけ。その結果として import 結合になる: 単一ドキュメント文脈では cross-file の対象は何にも解決しないため何も報告しない。所有できる kind は `service` / `domain` / `client` と infra ブロック（深さは問わない。`OWNS_TARGET_KINDS`。これを読むのは本診断だけで、存在検査は kind を問わない）。infra leaf（`table` / `queue-item` / `bucket`）と `capability` は存在はするが所有の単位ではないため、それらを弾くのは本診断の担当。なお system view の**カード**に team チップが出るのは論理 kind だけだが、所有された infra も *Group by: team* のフレーム（id で解決）と org view には現れる。 |
-| `contains-target-not-found` | warning | import 結合の診断であり、未解決の import が残るドキュメントでは判定しない（member が import 先で宣言されている場合があり、スコープ内 `contains` が名指す子は cross-file の `system` 再オープンで後から増えうる）。それ以外の場合: `boundary` の `contains` 先が存在しない — top-level ブロックはマージ後の system 階層のどこにも無い場合（存在検証は per-file でなく cross-file マージ後）、スコープブロックは宣言ノードの直下の子に無い場合。 |
+| `contains-target-not-found` | warning | import 結合の診断であり、未解決の import が残るドキュメントでは判定しない（member が import 先で宣言されている場合があり、スコープ内 `contains` が名指す子は cross-file の `system` 再オープンで後から増えうる）。それ以外の場合: `boundary` の `contains` 先が存在しない — top-level ブロックはマージ後の system 階層のどこにも無い場合（存在検証は per-file でなく cross-file マージ後）、スコープブロックは宣言ノードの直下の子に無い場合（照合はノード参照 path 記法の接尾辞規則）。 |
+| `owns-target-ambiguous` | warning | `owns` の参照（接尾辞 path。bare id を含む）が **(kind, 深さ) の揃っていない** 2 つ以上のノードに解決される。揃っている多重一致は意図的な broadcast（移行共存・マルチテナント）であり沈黙する。メッセージは各候補の full path を列挙し、著者はより長い path で修飾して 1 つに絞れる。`owns-target-not-found` と同じく import 結合: マージ後モデルでのみ判定する。 |
+| `contains-target-ambiguous` | warning | `owns-target-ambiguous` の `contains` 版（top-level `boundary` 用）: kind または深さの混在する多重一致を候補 full path つきで報告する。揃っている多重一致は broadcast として沈黙。スコープ形では構造的に到達不能（member は sibling 一意な直下の子に解決される）。import 結合: マージ後モデルでのみ判定する。 |
+| `realizes-target-ambiguous` | warning | `realizes` の参照（接尾辞 path。bare id を含む）が realizable な kind（service / domain / client / infra ブロック）の 2 つ以上のノードに解決され、(kind, 深さ) が揃っていない。候補は full path で列挙する。揃っている多重一致は沈黙。存在検査は `unresolved-realizes` の担当。import 結合: マージ後モデルでのみ判定する。 |
+| `import-target-ambiguous` | warning | 複数セグメントの `import { … }` エントリが接尾辞規則で (kind, 深さ) の揃わない 2 つ以上のノードに一致した。一致はすべて import される（bare id の import は元々 broadcast）。warning が候補 full path を列挙し、著者は path 修飾で絞れる。 |
 | `facet-not-declared` | warning | `facets` の参照先の `facet` ブロックが宣言されていない（存在検証はマージ後のモデルで行うので、import 先の宣言も有効）。near-miss の annotation ヒントと違い、宣言集合が「正」を与えるためこの検査は完全で、著者定義の名前どうしの取り違えも検出する。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |
 | `unresolved-edge-endpoint` | warning | edge の端点 id が merge 後のモデルのどこにも見つからない。 |
-| `unresolved-handles` | warning | `handles` 対象の domain が one-hop expose 規則で到達できない。 |
+| `unresolved-handles` | warning | `handles` 対象の domain が one-hop expose 規則で到達できない。参照はノード参照 path で、system 直下の子のさらに直下にある `domain` を対象に解決し、警告は参照そのものに anchor する（`handles A, B` の片方だけが失敗しうる）。`owns` / `contains` / `realizes` と違い `handles` に `*-target-ambiguous` は無い: この対象集合では候補がすべて同じ深さの `domain` なので多重一致は構造上つねに揃っており（マルチテナントの broadcast）、より長い path で修飾するという対処が成立しないため。対象集合の外にある domain を名指した参照は ambiguity ではなく本コードで報告する。 |
 | `unresolved-realizes` | warning | deploy node が論理層に無い対象を `realizes` する。 |
 | `legend-ref-unresolved` | warning | `legend` の `ref` がどのスタイル規則にも node にも一致しない。 |
 | `cross-system-ref-unresolved` | warning | cross-system edge（`Sys.Svc`）の対象が見つからない。 |
@@ -116,7 +122,7 @@ infra node は 1 度だけ宣言される。複数 service から参照される
 
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
-| `infra-redeclared-across-files` | info | 同じ `database` / `queue` / `storage` id が複数の merge 対象ファイルで宣言される。 |
+| `infra-redeclared-across-files` | info | 同じ `database` / `queue` / `storage` id が複数の merge 対象ファイルで宣言される。2 つ目の宣言をどの import 形が持ち込んだかに依らず報告する（ファイル全体の import でも、path が当該ブロックを根とする named entry `import { UserDB.users }` でも同じ）。1 つの宣言を 2 つの entry で名指した場合は reopen ではなく 1 回の import として扱う。 |
 | `infra-leaf-redeclared-silently` | info | `table` / `queue-item` / `bucket` の leaf が親 infra 内で再宣言される。 |
 | `shared-infra-fan-in` | info | 2 つ以上の service が 1 つの system 内で同じ store に依存する（欠陥ではなく事実）。 |
 | `cross-domain-store-access` | info | ある domain の usecase が、別の domain が所有する infra leaf を読み書きする（1 system 内。欠陥ではなく境界越えの事実）。所有は `entity` マッピングから導出、leaf 粒度で判定、`[external]` と役割タグ付き（`[index]` / `[cache]` / `[analytics]`）の store は除外。`shared-infra-fan-in` とは直交。 |

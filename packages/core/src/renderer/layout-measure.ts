@@ -43,9 +43,11 @@ interface CardOwner {
 
 /**
  * Resolves a node's owner, or `undefined` when its kind carries no owner chip.
- * Takes the lookup id separately from the kind because some canvases key their
- * node map by a qualified id (`SystemId.ServiceId`) while `ownerIndex` is
- * always keyed by the declared id.
+ * Takes the lookup id separately from the kind because the lookup key is the
+ * node's **full path** (`nodePathKey`, #2548) — `ownerIndex` is path-keyed —
+ * while the kind gate reads the node itself. Callers bind the canvas scope
+ * (`canvasOwnerOf` / `frameOwnerOf` in layout.ts); ghost placers pass their
+ * qualified id, which for a system's direct child is already the full path.
  */
 export type OwnerResolver = (kind: string, id: string) => CardOwner | undefined;
 

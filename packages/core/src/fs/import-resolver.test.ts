@@ -440,16 +440,18 @@ system OrderSystemV2 {
       expect(svc!.children.some((c) => c.id === "Legacy")).toBe(false);
     });
 
-    it("emits import-path-not-found when the root system id is missing", async () => {
+    it("emits import-path-not-found when nothing matches the path", async () => {
       await fs.writeFile("/project/main.krs", `import { Missing.Foo } from "./services.krs"`);
       await fs.writeFile("/project/services.krs", `system ECPlatform { service ECommerce {} }`);
 
       const result = await resolver.resolve("/project/main.krs");
+      // Suffix narrowing (#2088 D2) starts at the last segment: no node named
+      // `Foo` exists at all, so that segment is the one reported.
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "error",
           code: "import-path-not-found",
-          params: expect.objectContaining({ failedAt: 0 }),
+          params: expect.objectContaining({ failedAt: 1 }),
         }),
       );
     });
@@ -470,8 +472,11 @@ system OrderSystemV2 {
       const diag = result.diagnostics.find((d) => d.code === "import-path-not-found");
       expect(diag).toBeDefined();
       if (diag?.code !== "import-path-not-found") throw new Error("kind mismatch");
+      // Right-to-left narrowing (#2088 D2): `Order` matched, and the segment
+      // that emptied the pool is `NotThere` — reported as "no ancestor with
+      // that id above Order".
       expect(diag.params.failedAt).toBe(1);
-      expect(diag.params.lastResolvedId).toBe("ECPlatform");
+      expect(diag.params.lastResolvedId).toBe("Order");
     });
 
     it("does not affect wildcard imports — they continue to take the whole file", async () => {
@@ -627,8 +632,9 @@ organization Corp {
 
       const result = await resolver.resolve("/project/index.krs");
       expect(result.krsFile.organizations).toHaveLength(1);
-      expect(result.krsFile.ownerIndex.get("ECommerce")).toBe("ecTeam");
-      expect(result.krsFile.ownerIndex.get("Payment")).toBe("ecTeam");
+      // ownerIndex is keyed by each owned node's full path (#2548).
+      expect(result.krsFile.ownerIndex.get("MySystem.ECommerce")).toBe("ecTeam");
+      expect(result.krsFile.ownerIndex.get("MySystem.Payment")).toBe("ecTeam");
     });
   });
 
@@ -1294,6 +1300,82 @@ system ECPlatform {
       expect(merged.children.map((c) => c.id).sort()).toEqual(["accounts", "users"]);
     });
 
+    it("S4.5 holds for named imports too: a chain rooted at an infra block reports the reopen (#2582 review)", async () => {
+      // Named imports reach infra roots since #2576. Merging two declarations
+      // of one block through that path has to say so, exactly as the
+      // whole-file path does — otherwise the reopen is silent only when the
+      // author happens to import by entry.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { UserDB.users } from "a.krs"
+         import { UserDB.orders } from "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users }`);
+      await fs.writeFile("/project/b.krs", `database UserDB { table orders }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+      const infos = result.diagnostics.filter((d) => d.code === "infra-redeclared-across-files");
+      expect(infos).toHaveLength(1);
+      expect(infos[0].params).toMatchObject({ blockId: "UserDB", blockKind: "database" });
+
+      // The union still happens; only the silence is fixed.
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.children.map((c) => c.id).sort()).toEqual(["orders", "users"]);
+    });
+
+    it("a same-id leaf arriving through a named import is not dropped silently (#2582 review)", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { UserDB.users } from "a.krs"
+         import { UserDB.users } from "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users { label "from a" } }`);
+      await fs.writeFile("/project/b.krs", `database UserDB { table users { label "from b" } }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      const leafInfos = result.diagnostics.filter(
+        (d) => d.code === "infra-leaf-redeclared-silently",
+      );
+      expect(leafInfos).toHaveLength(1);
+      expect(leafInfos[0].params).toMatchObject({
+        leafId: "users",
+        leafKind: "table",
+        infraId: "UserDB",
+        infraKind: "database",
+      });
+
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.children).toHaveLength(1);
+      expect(userDb.children[0].label).toBe("from a");
+    });
+
+    it("two entries naming one declaration are one import, not a reopen (#2582 review)", async () => {
+      // Same file, two entries: the block is declared once, so there is
+      // nothing to report — the reopen check keys on the declaration, not on
+      // how many entries reached it.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { UserDB.users, UserDB.orders } from "a.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users\n table orders }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(
+        result.diagnostics.filter(
+          (d) =>
+            d.code === "infra-redeclared-across-files" ||
+            d.code === "infra-leaf-redeclared-silently",
+        ),
+      ).toEqual([]);
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.children.map((c) => c.id).sort()).toEqual(["orders", "users"]);
+    });
+
     it("S4.5: same-id leaf inside an infra body keeps the first and emits infra-leaf-redeclared-silently info", async () => {
       // Both files declare `database UserDB { table users }` with different bodies.
       // Per S4.5: the database itself merges (1 info), and the duplicated `table users`
@@ -1902,7 +1984,10 @@ system Blog {
       await fs.writeFile("/p/finance.krs", FINANCE);
 
       const result = await resolver.resolve("/p/index.krs");
-      expect(result.krsFile.boundaryMembership.get("Billing")).toEqual(["payments", "finance"]);
+      expect(result.krsFile.boundaryMembership.get("Shop.Billing")).toEqual([
+        "payments",
+        "finance",
+      ]);
       const found = multiMembership(result.diagnostics);
       expect(found).toHaveLength(1);
       expect(found[0].params).toEqual({ nodeId: "Billing", existingBoundary: "payments" });

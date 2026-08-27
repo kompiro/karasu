@@ -465,6 +465,10 @@ export const en: Translations = {
     `The "${boundaryId}" frame does not reach "${nodeId}" in this view; the membership is marked on the card`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"${memberId}" referenced in "contains" was not found in the system hierarchy`,
+  "diagnostic.containsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"${path}" referenced in "contains" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>
     `"boundary" cannot be declared inside "${parentKind}", which draws no canvas of its own`,
   "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
@@ -475,11 +479,23 @@ export const en: Translations = {
     `"${construct}" does not accept a label after its id; write label "..." inside the block`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
-    `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,
+    `Node id "${nodeId}" appears in multiple locations; navigation resolves to the @migration_target declaration if any, else the first one`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
     `Duplicate node id "${nodeId}" under the same parent`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"${ownedId}" referenced in "owns" was not found in the system hierarchy`,
+  "diagnostic.ownsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"${path}" referenced in "owns" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
+  "diagnostic.realizesTargetAmbiguous.message": ({ path, candidates }) =>
+    `"${path}" referenced in "realizes" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
+  "diagnostic.importTargetAmbiguous.message": ({ path, candidates }) =>
+    `Import "${path}" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. All of them are imported; qualify with a longer path to name one`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" references "${infraId}", which no database / queue / storage block declares`
@@ -544,8 +560,8 @@ export const en: Translations = {
     lastResolvedId,
   }) =>
     lastResolvedId
-      ? `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no child with that id under "${lastResolvedId}"`
-      : `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no top-level system with that id in ${importPath}`,
+      ? `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no ancestor with that id above "${lastResolvedId}"`
+      : `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no node with that id in ${importPath}`,
   "diagnostic.circularStyleImport.message": ({ filePath }) =>
     `Circular style import detected: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) => `Style file not found: ${filePath}`,

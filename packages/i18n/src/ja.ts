@@ -463,6 +463,10 @@ export const ja: Partial<Translations> = {
     `このビューでは boundary "${boundaryId}" の枠が "${nodeId}" に届きません。所属はカード上に表示しています`,
   "diagnostic.containsTargetNotFound.message": ({ memberId }) =>
     `"contains" で参照されている "${memberId}" が system 階層内に見つかりません`,
+  "diagnostic.containsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"contains" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
   "diagnostic.boundaryNotInContext.message": ({ parentKind }) =>
     `"${parentKind}" は自身のキャンバスを持たないため、その中に "boundary" は宣言できません`,
   "diagnostic.duplicateBoundaryId.message": ({ boundaryId }) =>
@@ -473,11 +477,23 @@ export const ja: Partial<Translations> = {
     `"${construct}" は id の直後にラベルを置けません。ブロック内に label "..." を書いてください`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
-    `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,
+    `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションは @migration_target の宣言、なければ最初の宣言に解決されます`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
     `同じ親の下でノード id "${nodeId}" が重複しています`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"owns" で参照されている "${ownedId}" が system 階層内に見つかりません`,
+  "diagnostic.ownsTargetAmbiguous.message": ({ path, candidates }) =>
+    `"owns" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
+  "diagnostic.realizesTargetAmbiguous.message": ({ path, candidates }) =>
+    `"realizes" で参照されている "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
+  "diagnostic.importTargetAmbiguous.message": ({ path, candidates }) =>
+    `import "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。すべて import されます。1 つに絞るにはより長い path で修飾してください`,
   "diagnostic.unresolvedResourceRef.message": ({ infraId, subId, missing }) =>
     missing === "block"
       ? `"resource ${infraId}.${subId}" が参照する "${infraId}" を宣言する database / queue / storage ブロックがありません`
@@ -545,8 +561,8 @@ export const ja: Partial<Translations> = {
     lastResolvedId,
   }) =>
     lastResolvedId
-      ? `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: "${lastResolvedId}" の下にその id の子は存在しません`
-      : `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: ${importPath} に該当 id を持つ top-level system はありません`,
+      ? `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: "${lastResolvedId}" の上にその id の祖先は存在しません`
+      : `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: ${importPath} に該当 id を持つノードはありません`,
   "diagnostic.circularStyleImport.message": ({ filePath }) =>
     `循環スタイルインポートを検出しました: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) =>

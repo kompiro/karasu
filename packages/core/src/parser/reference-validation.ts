@@ -23,69 +23,139 @@
 
 import type {
   Diagnostic,
-  BoundaryBlock,
   EntityNode,
   FacetBlock,
   KrsFile,
   KrsNode,
+  NodeIdPath,
   ResourceNode,
   TeamNode,
 } from "../types/ast.js";
-import { boundaryScopeKey } from "../types/ast.js";
+import { boundaryScopeKey, REALIZES_TARGET_KIND_SET } from "../types/ast.js";
+import {
+  ambiguousNodePathCandidates,
+  nodePathKey,
+  nodePathMatchesSuffix,
+  resolveNodePathBySuffix,
+} from "./node-path.js";
 import { indexDeclaredInfra } from "../spec/infra-index.js";
 
+// Migration-coexistence priority for picking the single winner of a 1:1 index
+// when a node is reachable from more than one place during an inverse-Conway
+// handoff. The destination (@migration_target) wins, the source (@deprecated)
+// loses, and an unmarked entry sits in between. Shared by buildNodePathIndex
+// (any indexed candidate → nodePathIndex, parser.ts, since #2550) and
+// buildOwnerIndex below (team → ownerIndex) so both 1:1 indices resolve
+// duplicates the same way. Ties keep the first occurrence.
+export function migrationPriority(annotations: readonly string[]): number {
+  return annotations.includes("migration_target") ? 2 : annotations.includes("deprecated") ? 0 : 1;
+}
+
+/** One declared node, addressable by its full path (#2088). */
+export interface DeclaredNodePath {
+  kind: KrsNode["kind"] | "system";
+  path: NodeIdPath;
+}
+
+/** A shared, lazily built {@link collectDeclaredNodePaths} result. */
+export type DeclaredNodePaths = () => Map<string, DeclaredNodePath[]>;
+
 /**
- * Every id that names a declared node, at any depth, from every top-level bucket.
- * `includeSystemIds` is the one axis the two consumers differ on, and it is the
- * whole reason this is one walk rather than two: node ids are unique only among
- * siblings (ADR-927), so a set built by walking and then deleting system ids
- * would also delete a same-named service somewhere else.
+ * One declared-path walk shared by the checks that run back to back on the
+ * same file.
+ *
+ * The walk is O(nodes), and every node-reference check wants the identical
+ * map, so the parse path — including the LSP's re-parse on each keystroke —
+ * used to rebuild it once per check. Lazy on purpose: each of those checks
+ * can bail on its own guard before it looks at a single node (no
+ * organization, no deploy block, unresolved imports), and an eager walk in
+ * the caller would trade one waste for another.
  */
-function collectDeclaredIds(file: KrsFile, includeSystemIds: boolean): Set<string> {
-  const ids = new Set<string>();
-  const walk = (nodes: readonly KrsNode[]): void => {
-    for (const node of nodes) {
-      ids.add(node.id);
-      walk(node.children);
-    }
-  };
-  for (const system of file.systems) {
-    if (includeSystemIds) ids.add(system.id);
-    walk(system.children);
-  }
-  walk(file.services);
-  walk(file.clients);
-  walk(file.domains);
-  walk(file.databases);
-  walk(file.queues);
-  walk(file.storages);
-  return ids;
+export function declaredNodePathsOnce(file: KrsFile): DeclaredNodePaths {
+  let cached: Map<string, DeclaredNodePath[]> | undefined;
+  return () => (cached ??= collectDeclaredNodePaths(file));
 }
 
 /**
- * Every id a `team … owns` may name — **any declared node**, systems included.
+ * Every declared node, keyed by its id (the last path segment), each entry
+ * carrying the node's kind and full path. Insertion order is declaration
+ * order, which downstream winner selection relies on.
  *
- * Not filtered by ownable kind, which is what it used to be and what made it
- * answer "no such *ownable* node" with an existence code: a declared `user` or
- * `entity` was absent from the set, so `owns U` drew "not found" from here *and*
- * "cannot be owned" from `invalid-owns`, two codes for one line (#2442). The
- * existence question is only "is there a node with this id"; whether its kind may
- * be owned is `invalid-owns`' sentence, and it is the one that names the kind.
+ * One walk over every top-level bucket, systems always included and tagged
+ * `kind: "system"` — the two reference sites differ only in whether a system
+ * itself is a legal target, and they filter at resolution time. Splitting
+ * the walk per consumer is how the two ends of a check drift apart
+ * (ADR-2442; node ids are unique only among siblings, so a set built by
+ * walking and then deleting system ids would also delete a same-named
+ * service somewhere else).
  *
- * Systems are in the set even though a team cannot own one, so that
- * `owns <systemId>` reads as the kind refusal it is rather than as a claim that
- * the system does not exist. `contains` excludes them for its own reason — a
- * `boundary` groups nodes *within* a system.
+ * `owns` keeps systems in its resolution pool even though a team cannot own
+ * one, so that `owns <systemId>` reads as the kind refusal it is
+ * (`invalid-owns`) rather than as a claim that the system does not exist
+ * (#2442). `contains` excludes them for its own reason — a `boundary`
+ * groups nodes *within* a system.
  *
- * Derived from the (merged) tree rather than from `nodePathIndex`, which is built
- * per file and only travels across a wildcard import: `mergeNamedImport` merges
- * the node but never its index entry, so `owns` on a named-imported service
- * warned while the identical declaration reached through `import "…"` resolved
- * (#2082). Re-deriving after the merge is not enough on its own — the space
- * re-derived against has to be the merged tree too (TPL-2032).
+ * Derived from the (merged) tree rather than from `nodePathIndex`, which is
+ * built per file and only travels across a wildcard import (#2082 /
+ * TPL-2032).
  */
-function collectOwnsResolvableIds(file: KrsFile): Set<string> {
-  return collectDeclaredIds(file, true);
+export function collectDeclaredNodePaths(file: KrsFile): Map<string, DeclaredNodePath[]> {
+  const index = new Map<string, DeclaredNodePath[]>();
+  const add = (entry: DeclaredNodePath): void => {
+    const id = entry.path[entry.path.length - 1];
+    const entries = index.get(id);
+    if (entries === undefined) {
+      index.set(id, [entry]);
+    } else {
+      entries.push(entry);
+    }
+  };
+  const walk = (nodes: readonly KrsNode[], prefix: NodeIdPath): void => {
+    for (const node of nodes) {
+      const path = [...prefix, node.id];
+      add({ kind: node.kind, path });
+      walk(node.children, path);
+    }
+  };
+  for (const system of file.systems) {
+    add({ kind: "system", path: [system.id] });
+    walk(system.children, [system.id]);
+  }
+  walk(file.services, []);
+  walk(file.clients, []);
+  walk(file.domains, []);
+  walk(file.databases, []);
+  walk(file.queues, []);
+  walk(file.storages, []);
+  return index;
+}
+
+/**
+ * Resolve one reference against the declared-node multimap by the suffix
+ * rule (#2088): candidates are the nodes whose id equals the ref's last
+ * segment, narrowed to those whose full path ends with the ref. Bare id =
+ * length-1 suffix = every node with that id (broadcast preserved).
+ */
+export function resolveDeclaredRef(
+  declared: Map<string, DeclaredNodePath[]>,
+  ref: NodeIdPath,
+  opts?: { excludeSystems?: boolean },
+): DeclaredNodePath[] {
+  const candidates = declared.get(ref[ref.length - 1]) ?? [];
+  const pool =
+    opts?.excludeSystems === true ? candidates.filter((c) => c.kind !== "system") : candidates;
+  return resolveNodePathBySuffix(ref, pool);
+}
+
+/** Shared shape of the two `*-target-ambiguous` param payloads. */
+function ambiguityParams(
+  ref: NodeIdPath,
+  matches: readonly DeclaredNodePath[],
+): { path: string; candidates: Array<{ kind: string; path: string }> } {
+  return {
+    path: nodePathKey(ref),
+    candidates: matches.map((m) => ({ kind: m.kind, path: nodePathKey(m.path) })),
+  };
 }
 
 /**
@@ -106,24 +176,42 @@ function collectOwnsResolvableIds(file: KrsFile): Set<string> {
  * in the resolver reaches the same place by reporting only targets that resolve
  * (#2410). TPL-1522 carries the ledger of which diagnostic took which route.
  */
-export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
+export function validateOwnsReferences(
+  file: KrsFile,
+  declaredPaths: DeclaredNodePaths = declaredNodePathsOnce(file),
+): Diagnostic[] {
   if (file.organizations.length === 0 || file.nodeImports.length > 0) return [];
-  const declaredIds = collectOwnsResolvableIds(file);
+  const declared = declaredPaths();
   // A model with no node at all says nothing about whether its `owns` lines are
   // wrong: that is the org-only file (a `teams.krs` parsed on its own, or opened
   // directly as the project entry), where every id is declared elsewhere. Kept
   // from the pre-#2032 behaviour deliberately.
-  if (declaredIds.size === 0) return [];
+  if (declared.size === 0) return [];
 
   const diagnostics: Diagnostic[] = [];
   const check = (teams: TeamNode[]): void => {
     for (const team of teams) {
-      for (const ownedId of team.properties.owns) {
-        if (!declaredIds.has(ownedId)) {
+      for (const ref of team.properties.owns) {
+        const matches = resolveDeclaredRef(declared, ref);
+        if (matches.length === 0) {
           diagnostics.push({
             severity: "warning",
             code: "owns-target-not-found",
-            params: { ownedId },
+            params: { ownedId: nodePathKey(ref) },
+            loc: team.loc,
+          });
+          continue;
+        }
+        // Multi-match: silent when uniform in (kind, depth) — intentional
+        // broadcast (migration coexistence, multi-tenant) — and reported as
+        // ambiguity otherwise, listing the candidate full paths the author
+        // can qualify with (#2088).
+        const ambiguous = ambiguousNodePathCandidates(matches);
+        if (ambiguous !== undefined) {
+          diagnostics.push({
+            severity: "warning",
+            code: "owns-target-ambiguous",
+            params: ambiguityParams(ref, ambiguous),
             loc: team.loc,
           });
         }
@@ -145,7 +233,10 @@ export function validateOwnsReferences(file: KrsFile): Diagnostic[] {
 // valid-target set must enumerate every kind the construct accepts). Only
 // system nodes themselves are excluded — a boundary groups nodes *within* a
 // system, not systems.
-export function validateContainsReferences(file: KrsFile): Diagnostic[] {
+export function validateContainsReferences(
+  file: KrsFile,
+  declaredPaths: DeclaredNodePaths = declaredNodePathsOnce(file),
+): Diagnostic[] {
   // Import-coupled, exactly like `owns` next door (#2410): the member may be
   // declared in a file this one imports, so a document read on its own cannot
   // decide it and would only produce false positives. Project mode is
@@ -153,14 +244,26 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
   if (file.nodeImports.length > 0) return [];
 
   const diagnostics: Diagnostic[] = [];
-  const declaredIds = collectContainableIds(file);
+  const declared = declaredPaths();
   for (const boundary of file.boundaries) {
-    for (const memberId of boundary.contains) {
-      if (!declaredIds.has(memberId)) {
+    for (const ref of boundary.contains) {
+      const matches = resolveDeclaredRef(declared, ref, { excludeSystems: true });
+      if (matches.length === 0) {
         diagnostics.push({
           severity: "warning",
           code: "contains-target-not-found",
-          params: { memberId },
+          params: { memberId: nodePathKey(ref) },
+          loc: boundary.loc,
+        });
+        continue;
+      }
+      // Same ambiguity rule as `owns` above (#2088).
+      const ambiguous = ambiguousNodePathCandidates(matches);
+      if (ambiguous !== undefined) {
+        diagnostics.push({
+          severity: "warning",
+          code: "contains-target-ambiguous",
+          params: ambiguityParams(ref, ambiguous),
           loc: boundary.loc,
         });
       }
@@ -168,6 +271,62 @@ export function validateContainsReferences(file: KrsFile): Diagnostic[] {
   }
   return diagnostics;
 }
+
+/**
+ * Ambiguity check for `realizes` refs (#2088 slice C): a ref that resolves to
+ * two or more realizable nodes (service / domain / client / infra blocks —
+ * ADR-1720 / ADR-1632) NOT uniform in (kind, depth) is reported with the
+ * candidate full paths. Existence stays with `unresolved-realizes` in
+ * resolver/warnings.ts; this check shares its resolution pool so the two
+ * cannot drift on what a ref names (TPL-1720).
+ *
+ * Import-coupled like the `owns` / `contains` checks above (#2410): the
+ * target may live in an imported file, so a document with unresolved imports
+ * does not decide it; the ImportResolver re-runs this on the merged model.
+ */
+export function validateRealizesReferences(
+  file: KrsFile,
+  declaredPaths: DeclaredNodePaths = declaredNodePathsOnce(file),
+): Diagnostic[] {
+  if (file.deploys.length === 0 || file.nodeImports.length > 0) return [];
+  const declared = declaredPaths();
+  const diagnostics: Diagnostic[] = [];
+  for (const deploy of file.deploys) {
+    for (const node of deploy.nodes) {
+      for (const target of node.properties.realizes ?? []) {
+        // The valid-target set is the shared enumeration rather than a second
+        // copy of that list (TPL-1720): `detectUnresolvedRealizes` in
+        // resolver/warnings.ts is the other reader, and a locally spelled-out
+        // list is how the two ends of one check drift.
+        const matches = resolveDeclaredRef(declared, target.path).filter((m) =>
+          REALIZES_TARGET_KIND_SET.has(m.kind),
+        );
+        const ambiguous = ambiguousNodePathCandidates(matches);
+        if (ambiguous !== undefined) {
+          diagnostics.push({
+            severity: "warning",
+            code: "realizes-target-ambiguous",
+            params: ambiguityParams(target.path, ambiguous),
+            loc: target.loc,
+          });
+        }
+      }
+    }
+  }
+  return diagnostics;
+}
+
+// `handles` has no ambiguity check, and that is a verdict rather than an
+// omission (#2549). The expose rule it feeds (`detectUnresolvedHandles`,
+// resolver/warnings.ts) resolves a ref against the domains that are direct
+// children of a system-level child, so every candidate is a `domain` at the
+// same depth: `ambiguousNodePathCandidates` is uniform by construction there
+// and a multi-match is the multi-tenant broadcast pattern, deliberately
+// silent. A checker that drew candidates from a wider pool than the resolver
+// uses would report an ambiguity the author cannot act on — qualifying the
+// ref changes nothing about which node the rule reaches — and that gap
+// between the two ends of one check is exactly what TPL-1720 asks to close.
+// A ref naming a domain outside the pool is reported by `unresolved-handles`.
 
 /**
  * Validate `contains` inside *scoped* `boundary` blocks (#2036).
@@ -199,26 +358,31 @@ export function validateScopedContainsReferences(file: KrsFile): Diagnostic[] {
     ...file.storages,
   ];
 
-  const walk = (node: KrsNode): void => {
+  const walk = (node: KrsNode, ancestorIds: NodeIdPath): void => {
+    const scopePath = [...ancestorIds, node.id];
     if (node.boundaries !== undefined && node.boundaries.length > 0) {
-      const childIds = new Set(node.children.map((child) => child.id));
+      // A member ref matches a direct child by the same suffix rule as the
+      // top-level form (#2088): the child's full path is the scope path plus
+      // its id, so `contains Payment` and `contains Shop.Payment` name the
+      // same child of `Shop`. Sibling uniqueness keeps this unambiguous.
+      const childPaths = node.children.map((child) => [...scopePath, child.id]);
       for (const boundary of node.boundaries) {
-        for (const memberId of boundary.contains) {
-          if (!childIds.has(memberId)) {
+        for (const ref of boundary.contains) {
+          if (!childPaths.some((path) => nodePathMatchesSuffix(ref, path))) {
             diagnostics.push({
               severity: "warning",
               code: "contains-target-not-found",
-              params: { memberId },
+              params: { memberId: nodePathKey(ref) },
               loc: boundary.loc,
             });
           }
         }
       }
     }
-    for (const child of node.children) walk(child);
+    for (const child of node.children) walk(child, scopePath);
   };
 
-  for (const root of roots) walk(root);
+  for (const root of roots) walk(root, []);
   return diagnostics;
 }
 
@@ -377,16 +541,8 @@ export function buildFacetIndex(roots: readonly KrsNode[]): Map<string, Set<stri
   return index;
 }
 
-// Every declared node id that a `boundary` may legitimately contain: all node
-// kinds nested anywhere in a system, plus top-level services / clients /
-// domains / infra and their descendants. System container ids are excluded
-// (a boundary groups nodes *inside* a system).
-function collectContainableIds(file: KrsFile): Set<string> {
-  return collectDeclaredIds(file, false);
-}
-
 // ---------------------------------------------------------------------------
-// Boundary membership builders (#2178, #2221).
+// Ownership / boundary membership builders (#2178, #2221, #2548).
 //
 // Pure like the validators above, and for the same reason: the answer depends
 // on which model you ask. A node listed in `boundary p` in one file and
@@ -401,40 +557,128 @@ interface MembershipResult<T> {
   membership: T;
   diagnostics: Diagnostic[];
 }
-// Build the 1:N boundaryMembership (node id → every declared boundary id, in
-// declaration order), the P2b analogue of buildOwnerIndex (#2178).
+
+/**
+ * Build the 1:1 ownerIndex, keyed by each owned node's **full path**
+ * (`nodePathKey`) since #2548 — a path-accepting reference needs a
+ * path-keyed index (TPL-1352). Every `owns` ref is expanded through the
+ * suffix rule at build time: a bare id claims every node with that id
+ * (broadcast, structurally identical to the old bare-id keying), a longer
+ * path narrows to exactly the nodes it suffixes. Refs that resolve to
+ * nothing add no entry — `owns-target-not-found` is the surface for those.
+ *
+ * Co-ownership is a structural fact, not an integrity error: an
+ * inverse-Conway handoff legitimately has two teams own a node
+ * mid-migration. Surface it in the fact-vs-style register (info), like
+ * domain-dispersal (ADR-1566). ownerIndex is 1:1, so a single primary owner
+ * must be chosen per node: the @migration_target team wins, mirroring
+ * buildNodePathIndex's candidate rule; ties keep the first declaration
+ * (#1583). The info fires once per conflicting *ref* (not per expanded
+ * node) and names the resolved primary after any swap; a team re-claiming a
+ * node it already owns (bare + qualified forms of the same node) is
+ * idempotent and silent.
+ */
+export function buildOwnerIndex(file: KrsFile): MembershipResult<Map<string, string>> {
+  const diagnostics: Diagnostic[] = [];
+  const index = new Map<string, string>();
+  // Priority of the team currently stored as the primary owner of each node,
+  // so a later @migration_target team can take over the 1:1 ownerIndex slot.
+  const priority = new Map<string, number>();
+  const declared = collectDeclaredNodePaths(file);
+
+  const indexTeams = (teams: TeamNode[]): void => {
+    for (const team of teams) {
+      const teamPriority = migrationPriority(team.annotations);
+      for (const ref of team.properties.owns) {
+        const matches = resolveDeclaredRef(declared, ref);
+        // An unresolved ref still records its claim, keyed by the ref as
+        // written: an org-only file (or a pre-merge parse) has no tree to
+        // resolve against, and a declared fact must not vanish from the
+        // derived index (TPL-2161) — co-ownership and migration-priority
+        // resolution stay observable there. `owns-target-not-found` is the
+        // surface that reports it in files that can decide existence.
+        const keys =
+          matches.length > 0 ? matches.map((m) => nodePathKey(m.path)) : [nodePathKey(ref)];
+        let existingTeam: string | undefined;
+        for (const key of keys) {
+          const current = index.get(key);
+          if (current === undefined) {
+            index.set(key, team.id);
+            priority.set(key, teamPriority);
+            continue;
+          }
+          if (current === team.id) continue;
+          if (teamPriority > priority.get(key)!) {
+            index.set(key, team.id);
+            priority.set(key, teamPriority);
+          }
+          existingTeam ??= index.get(key)!;
+        }
+        if (existingTeam !== undefined) {
+          diagnostics.push({
+            severity: "info",
+            code: "duplicate-owner-assignment",
+            params: { nodeId: nodePathKey(ref), existingTeam },
+            loc: team.loc,
+          });
+        }
+      }
+      indexTeams(team.children.filter((c): c is TeamNode => c.kind === "team"));
+    }
+  };
+  for (const org of file.organizations) {
+    indexTeams(org.teams);
+  }
+  return { membership: index, diagnostics };
+}
+
+// Build the 1:N boundaryMembership — since #2548 keyed by each member
+// node's **full path** (`nodePathKey`), with every `contains` ref expanded
+// through the suffix rule exactly like buildOwnerIndex above (bare id =
+// broadcast; unresolved refs add no entry and are `contains-target-not-found`'s
+// surface).
 //
 // Nothing declared is dropped: a node listed in three boundaries gets three
 // entries, and the view that can only draw one band picks the primary at
 // placement time (`primaryBoundaryOf`) — TPL-2161. Re-listing the *same*
-// boundary is idempotent rather than an extra entry, so the merge paths can
-// union without growing duplicates.
+// boundary is idempotent rather than an extra entry.
 //
 // The info diagnostic states the model fact — this node belongs to more than
 // one boundary — and says nothing about how a view resolves it (TPL-1386);
 // the resolution rule lives in docs/spec/syntax.md. It fires once per
-// *additional distinct* boundary, so re-listing one boundary stays silent:
-// "belongs to more than one" would not be true there.
-export function buildBoundaryMembership(
-  boundaries: readonly BoundaryBlock[],
-): MembershipResult<Map<string, string[]>> {
+// *additional distinct* boundary per conflicting ref, so re-listing one
+// boundary stays silent: "belongs to more than one" would not be true there.
+export function buildBoundaryMembership(file: KrsFile): MembershipResult<Map<string, string[]>> {
   const diagnostics: Diagnostic[] = [];
   const membership = new Map<string, string[]>();
-  for (const boundary of boundaries) {
-    for (const memberId of boundary.contains) {
-      const declared = membership.get(memberId);
-      if (declared === undefined) {
-        membership.set(memberId, [boundary.id]);
-        continue;
+  const declared = collectDeclaredNodePaths(file);
+  for (const boundary of file.boundaries) {
+    for (const ref of boundary.contains) {
+      const matches = resolveDeclaredRef(declared, ref, { excludeSystems: true });
+      // Unresolved refs keep their claim under the ref as written, exactly
+      // like buildOwnerIndex above (TPL-2161): a member declared in a file
+      // this one cannot see must survive until the merged rebuild decides.
+      const keys =
+        matches.length > 0 ? matches.map((m) => nodePathKey(m.path)) : [nodePathKey(ref)];
+      let existingBoundary: string | undefined;
+      for (const key of keys) {
+        const declaredList = membership.get(key);
+        if (declaredList === undefined) {
+          membership.set(key, [boundary.id]);
+          continue;
+        }
+        if (declaredList.includes(boundary.id)) continue;
+        existingBoundary ??= declaredList[0];
+        declaredList.push(boundary.id);
       }
-      if (declared.includes(boundary.id)) continue;
-      diagnostics.push({
-        severity: "info",
-        code: "duplicate-boundary-assignment",
-        params: { nodeId: memberId, existingBoundary: declared[0] },
-        loc: boundary.loc,
-      });
-      declared.push(boundary.id);
+      if (existingBoundary !== undefined) {
+        diagnostics.push({
+          severity: "info",
+          code: "duplicate-boundary-assignment",
+          params: { nodeId: nodePathKey(ref), existingBoundary },
+          loc: boundary.loc,
+        });
+      }
     }
   }
   return { membership, diagnostics };
@@ -463,7 +707,15 @@ export function buildScopedBoundaryMembership(
   const walk = (node: KrsNode, ancestorIds: string[]): void => {
     const scopePath = [...ancestorIds, node.id];
     if (node.boundaries !== undefined && node.boundaries.length > 0) {
-      const childIds = new Set(node.children.map((child) => child.id));
+      // Member refs resolve against direct children by the suffix rule
+      // (#2088): a matched ref normalizes to the child's bare id, which
+      // stays the membership key — the scope key already carries the path
+      // dimension (TPL-1352), and sibling uniqueness makes a multi-match
+      // impossible.
+      const children = node.children.map((child) => ({
+        id: child.id,
+        path: [...scopePath, child.id],
+      }));
       const membership = new Map<string, string[]>();
       const declaredIds = new Set<string>();
 
@@ -483,8 +735,10 @@ export function buildScopedBoundaryMembership(
         }
         declaredIds.add(boundary.id);
 
-        for (const memberId of boundary.contains) {
-          if (!childIds.has(memberId)) continue;
+        for (const ref of boundary.contains) {
+          const match = children.find((child) => nodePathMatchesSuffix(ref, child.path));
+          if (match === undefined) continue;
+          const memberId = match.id;
           const declared = membership.get(memberId);
           if (declared === undefined) {
             membership.set(memberId, [boundary.id]);

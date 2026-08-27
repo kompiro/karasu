@@ -86,8 +86,9 @@ organization "ec-org" {
 ```
 
 `realizes` が物理と論理を結ぶのと対称に、`owns` は組織と論理/物理を結ぶ。
-同じノード id を複数の team が `owns` することはできず、
-オーナーシップが重複すると warning として検出される。
+同じノードを複数の team が `owns` するのは移行期の tolerated fact であり、
+重複は **info** 診断（`duplicate-owner-assignment`、ADR-1566）として現れる
+（primary owner は最初に宣言した team）。
 これにより、三つの面は独立に書けながらも、対応関係は常に図の中に現れる。
 
 ### `.krs` テキストの生成経路

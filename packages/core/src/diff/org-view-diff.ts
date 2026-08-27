@@ -1,4 +1,5 @@
-import type { MemberNode, TeamNode } from "../types/ast.js";
+import type { MemberNode, NodeIdPath, TeamNode } from "../types/ast.js";
+import { nodePathKey } from "../parser/node-path.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { DiffState, EdgeDiffMeta, NodeDiffMeta } from "./view-diff.js";
 
@@ -7,13 +8,18 @@ export interface DiffedOrgView {
   slice: OrgViewSlice;
   /** Diff state keyed by team or member id. */
   nodes: Map<string, NodeDiffMeta>;
-  /** Diff state keyed by `ownsEdgeKey(teamId, serviceId)`. */
+  /** Diff state keyed by `ownsEdgeKey(teamId, ref)`. */
   edges: Map<string, EdgeDiffMeta>;
 }
 
-/** Key used by the org-view diff to identify a team → owned-service edge. */
-export function ownsEdgeKey(teamId: string, serviceId: string): string {
-  return `${teamId}#owns#${serviceId}`;
+/**
+ * Key used by the org-view diff to identify a team → owned-node edge. `ref`
+ * is the author-written reference joined (`nodePathKey`) — the diff compares
+ * notation, not resolution, so `owns Payment` vs `owns Shop.Payment` is a
+ * remove + add (#2088).
+ */
+export function ownsEdgeKey(teamId: string, ref: string): string {
+  return `${teamId}#owns#${ref}`;
 }
 
 function setDescriptiveStateForTeam(
@@ -23,8 +29,8 @@ function setDescriptiveStateForTeam(
   edges: Map<string, EdgeDiffMeta>,
 ): void {
   nodes.set(team.id, { state });
-  for (const serviceId of team.properties.owns) {
-    edges.set(ownsEdgeKey(team.id, serviceId), { state });
+  for (const ref of team.properties.owns) {
+    edges.set(ownsEdgeKey(team.id, nodePathKey(ref)), { state });
   }
   for (const child of team.children) {
     if (child.kind === "team") {
@@ -53,26 +59,28 @@ function commonChanges(
 
 function diffOwns(
   teamId: string,
-  beforeOwns: readonly string[],
-  afterOwns: readonly string[],
+  beforeOwns: readonly NodeIdPath[],
+  afterOwns: readonly NodeIdPath[],
   edges: Map<string, EdgeDiffMeta>,
-): { merged: string[]; anyChanged: boolean } {
-  const beforeSet = new Set(beforeOwns);
-  const merged: string[] = [...afterOwns];
+): { merged: NodeIdPath[]; anyChanged: boolean } {
+  const beforeSet = new Set(beforeOwns.map(nodePathKey));
+  const merged: NodeIdPath[] = [...afterOwns];
   const seen = new Set<string>();
   let anyChanged = false;
 
-  for (const serviceId of afterOwns) {
-    const state: DiffState = beforeSet.has(serviceId) ? "unchanged" : "added";
+  for (const ref of afterOwns) {
+    const key = nodePathKey(ref);
+    const state: DiffState = beforeSet.has(key) ? "unchanged" : "added";
     if (state === "added") anyChanged = true;
-    edges.set(ownsEdgeKey(teamId, serviceId), { state });
-    seen.add(serviceId);
+    edges.set(ownsEdgeKey(teamId, key), { state });
+    seen.add(key);
   }
-  for (const serviceId of beforeOwns) {
-    if (seen.has(serviceId)) continue;
-    edges.set(ownsEdgeKey(teamId, serviceId), { state: "removed" });
+  for (const ref of beforeOwns) {
+    const key = nodePathKey(ref);
+    if (seen.has(key)) continue;
+    edges.set(ownsEdgeKey(teamId, key), { state: "removed" });
     anyChanged = true;
-    merged.push(serviceId);
+    merged.push(ref);
   }
   return { merged, anyChanged };
 }
@@ -109,13 +117,13 @@ function mergeChildren(
       // record the kind change for detail panels to surface.
       if (prev.kind === "team") {
         // Clear any owns edges the removed team carried; the merged node is a member.
-        for (const serviceId of prev.properties.owns) {
-          edges.set(ownsEdgeKey(prev.id, serviceId), { state: "removed" });
+        for (const ref of prev.properties.owns) {
+          edges.set(ownsEdgeKey(prev.id, nodePathKey(ref)), { state: "removed" });
         }
       }
       if (child.kind === "team") {
-        for (const serviceId of child.properties.owns) {
-          edges.set(ownsEdgeKey(child.id, serviceId), { state: "added" });
+        for (const ref of child.properties.owns) {
+          edges.set(ownsEdgeKey(child.id, nodePathKey(ref)), { state: "added" });
         }
       }
       nodes.set(child.id, { state: "changed" });

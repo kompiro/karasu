@@ -18,6 +18,7 @@ flowchart TD
     ADR_1996["ADR-1996<br/>karasu-nest のデータ信頼 — 技術側は実装で閉じ、契約と法務文書は未了として残す"]
     ADR_2218["ADR-2218<br/>roadmap は現在と次の一手のみを保持する（完了内容の pruning 運用）"]
     ADR_2262["ADR-2262<br/>karasu-nest の受付と完了通知 — installer 起動 + PR 還元、rea..."]
+    ADR_2578["ADR-2578<br/>karasu-nest は server-side reverse をやめ、投稿を預かるギャラ..."]
     ADR_9006["ADR-9006<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   end
   ADR_357["ADR-357<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
@@ -30,11 +31,13 @@ flowchart TD
   ADR_462 --> ADR_9018
   ADR_462 --> ADR_461
   ADR_740 --> ADR_650
-  ADR_1994 --> ADR_1990
-  ADR_1996 --> ADR_1990
+  ADR_1994 --> ADR_2578
+  ADR_1996 --> ADR_2578
   ADR_357 --> ADR_9006
   ADR_9013 --> ADR_9006
   ADR_1990 -.supersedes.-> ADR_1783
+  ADR_2578 -.supersedes.-> ADR_1990
+  ADR_2578 -.supersedes.-> ADR_1994
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -49,11 +52,12 @@ flowchart TD
   class ADR_1783 superseded
   class ADR_1801 accepted
   class ADR_1809 accepted
-  class ADR_1990 accepted
-  class ADR_1994 accepted
+  class ADR_1990 superseded
+  class ADR_1994 superseded
   class ADR_1996 accepted
   class ADR_2218 accepted
   class ADR_2262 accepted
+  class ADR_2578 accepted
   class ADR_9006 accepted
   class ADR_357 ghost
   class ADR_650 ghost

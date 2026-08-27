@@ -66,7 +66,7 @@ Recommended: pick at most one form-factor tag per client. Multiple tags go in **
 
 #### `handles` property — what a client/service exposes to its callers
 
-Both `client` and `service` may declare a `handles` property listing **domain ids exposed to callers**. It is a *validated cross-reference*: the domain id must be reachable through a one-hop expose rule, otherwise an `unresolved-handles` warning is emitted.
+Both `client` and `service` may declare a `handles` property listing **domains exposed to callers**, each named by a node reference path (see [§ Node reference path notation](#node-reference-path-notation)) — a bare id or a qualifying suffix like `handles Backend.Order`. It is a *validated cross-reference*: the reference must be reachable through a one-hop expose rule, otherwise an `unresolved-handles` warning is emitted, anchored on the reference that failed. A multi-match is broadcast rather than ambiguity here, so `handles` has no `*-target-ambiguous` code (see the notation section).
 
 ```krs
 system Shop {
@@ -98,9 +98,11 @@ client C [web] {
 
 **Expose rule** (used by the validator):
 
-> A node `N` *exposes* domain `D` iff:
-> 1. `N` has a child `domain D` (self-owned), **or**
-> 2. `N` declares `handles D` and at least one outgoing communication edge target also exposes `D`.
+> A node `N` *exposes* the domain a reference `D` resolves to iff:
+> 1. `N` has a child `domain` whose full path the reference suffixes (self-owned), **or**
+> 2. `N` declares a `handles` reference naming the same domain, and at least one outgoing communication edge target also exposes it.
+>
+> The rule is evaluated against the **resolved node**, not the reference text (#2088): `handles Backend.Order` and a re-exporter's bare `handles Order` chain through the same domain.
 
 `delivers` and other declarative properties do not count as edges. The rule expands one hop at a time, so each link in a `client → BFF → backend` chain must be declared explicitly — there is no implicit auto-passthrough.
 
@@ -993,7 +995,9 @@ deploy "production" {
 A `realizes` target may be a `service`, a `domain`, or a **`client`** — a client (SPA / mobile app)
 is a deployable logical node, so a `war` / `assets` bundle that realizes it records the client's
 physical form, symmetrically to how an `oci` unit realizes a service (see also _Realizing shared infra_
-below for `database` / `queue` / `storage` targets).
+below for `database` / `queue` / `storage` targets). The target is written as a node reference path
+(see [§ Node reference path notation](#node-reference-path-notation)): a bare id or a qualifying
+suffix like `realizes Shop.Api`; a mixed-kind/depth multi-match draws `realizes-target-ambiguous`.
 
 Multiple `realizes` entries can be listed to express that a single deployment unit realizes more than one service.
 In that case, the same node is drawn inside each service's container on the deploy diagram.
@@ -1063,6 +1067,50 @@ service's container to the realized store's container ([ADR-1658](../adr/1658-de
 
 ---
 
+## Node reference path notation
+
+Everywhere a property names a node by id, the reference shares one lexical
+shape and one resolution rule (#2088):
+
+- **Shape**: `Segment(.Segment)*` — e.g. `Shop.Checkout.Payment`. Segments
+  are ids (string-literal segments allowed where the site accepts them).
+- **Resolution — the suffix rule**: a reference matches every node whose
+  full path (root to node, ids joined by `.`) **ends with** the reference.
+  A bare id is the length-1 case, so `owns Payment` claims every node with
+  the id `Payment` (broadcast — unchanged behavior), while
+  `owns Shop.Payment` narrows to the node that path names.
+- **Ambiguity**: at the sites whose resolution runs through the shared
+  resolver (`owns`, `contains`, `realizes`), a reference matching two or more
+  nodes that are **not** uniform in (kind, depth) reports
+  `*-target-ambiguous` (warning) listing the candidate full paths, and the
+  author can qualify with a longer path. A uniform multi-match is intentional
+  broadcast (migration coexistence, multi-tenant naming) and stays silent.
+  `handles` has no such code, and that is a verdict rather than a gap: its
+  candidates are the domains directly under a system-level child, so every
+  multi-match there is uniform by construction and a longer path is not an
+  available remedy — `unresolved-handles` carries what can go wrong. The
+  remaining sites still resolve site-specifically; slices D1 / D2 / E of
+  #2088 move them onto this rule.
+- **Sites keep their own scope rules.** The notation is shared; where a
+  reference may point is still each site's business: an `import` path walks
+  the imported file's tree (ADR-927), an edge endpoint follows its scope
+  rule (ADR-2075), a scoped `boundary … contains` resolves against the
+  declaring node's direct children.
+- **Accepting sites today**: `import { … }`, cross-system edge endpoints,
+  cross-domain entity relations, `resource OrderDB.Orders`, the entity
+  `table` mapping, `owns`, `contains` (top-level and scoped), `realizes`,
+  and `handles` — all nine sites (#2088).
+- **Recovery after a dangling dot is each site's own**, deliberately: `owns`,
+  `contains`, `realizes` and `handles` report once and record nothing, never
+  the first segment; `import { A. }`, `resource OrderDB.` and a cross-system
+  edge endpoint keep their pre-#2088 recovery, reporting and still recording
+  the segments they read. What the nine sites share is the notation and the
+  suffix rule, not what a malformed reference leaves in the model.
+
+> Related TPLs: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md) — ノード id を指す記法はサイト間で 1 つの規則を共有し、受理側と解決側が同じヘルパーを引く。[TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md) — path を受理する参照は path をキーに持つ索引を要求する（`ownerIndex` / `boundaryMembership` は full path キー）。
+
+---
+
 ## Writing organization diagrams
 
 An `organization` block declares the hierarchy of organizations, teams, and members.
@@ -1110,11 +1158,11 @@ organization TechCorp {
 
 ### team node
 
-- `owns <id>` declares a logical node (`service` / `domain` / `client`, etc.) that the team owns. When the same `id` is `owns`-ed by more than one team, it is a tolerated fact (transient co-ownership during an inverse-Conway migration): the first-declared team is kept as the node's primary owner and the overlap surfaces as the `duplicate-owner-assignment` **info** diagnostic — not an error (ADR-1566). A `@migration_target` team takes primary over unmarked, and `@deprecated` last.
+- `owns <ref>` declares a node the team owns, where `<ref>` is a node reference path (see [§ Node reference path notation](#node-reference-path-notation)): a bare id claims every node with that id (broadcast), a longer suffix path narrows to the node it names, and a mixed-kind/depth multi-match draws `owns-target-ambiguous`. When the same node is `owns`-ed by more than one team, it is a tolerated fact (transient co-ownership during an inverse-Conway migration): the first-declared team is kept as the node's primary owner and the overlap surfaces as the `duplicate-owner-assignment` **info** diagnostic — not an error (ADR-1566). A `@migration_target` team takes primary over unmarked, and `@deprecated` last.
 - Under *Group by: team*, grouping resolves **per view, against the nodes rendered at the level being drawn**. `owns` has no level restriction, so a team owning a `domain` nested under a `service` gets a team frame in that service's drill-down view — the same per-view semantics as the `boundary` axis (see [§ Grouping the system view](#grouping-the-system-view-boundary--experimental)).
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
-- During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
+- During parsing, an `ownerIndex` (`node full path → team id`, #2548) is built so that a logical-diagram node can look up its owner team; each `owns` reference is expanded through the suffix rule at build time.
 - `owns` accepts `service` / `domain` / `client` and the infra blocks (`database` / `queue` / `storage`) at any depth; an infra **leaf** (`table` / `queue-item` / `bucket`) and a `capability` are not ownership units and are reported by `invalid-owns`.
 - Ownership is **rendered on the owned node's card** in the system view as a team chip (a person-group vector glyph, `data-meta-glyph="team"`), on the logical kinds only (`service` / `domain` / `client`) — an owned infra block draws no chip, because the rectangular chip does not fit a cylinder / cloud corner (the same constraint the deploy button carries). Its ownership still reads on the system view under *Group by: team*, whose frames resolve by id, and in the org view. The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
 
@@ -1174,8 +1222,13 @@ boundary payments {
   subsection). The top-level form groups nodes *by reference* (`contains <id>`),
   not by containment, so it can gather nodes declared anywhere — including
   across imported files (the same file-crossing property as `owns`).
-- **`contains <id>`** lists one member per line (mirroring `owns`). The parser
-  accepts any declared id (no kind restriction, unlike `owns`). Grouping resolves
+- **`contains <ref>`** lists one member per line (mirroring `owns`), where
+  `<ref>` is a node reference path (see [§ Node reference path
+  notation](#node-reference-path-notation)): a bare id gathers every node
+  with that id, a longer suffix path narrows to the node it names, and a
+  mixed-kind/depth multi-match draws `contains-target-ambiguous`. The parser
+  accepts any declared node (no kind restriction, unlike `owns`; system
+  containers themselves are excluded). Grouping resolves
   **per view, against the nodes rendered at the level being drawn**: each view
   frames the members present at that level; members living at other levels simply
   do not participate in that view's frames. A `domain` nested under a `service`
@@ -1592,13 +1645,13 @@ system ECPlatform {
 
 ### Path syntax — reaching nodes nested inside a `system` block
 
-Use **dotted path** form to reach a `service` / `domain` / `usecase` defined deeper than the direct child of a `system` in another file:
+Use **dotted path** form to reach a node defined deeper than the direct child of a `system` in another file:
 
 ```
 import { ECPlatform.ECommerce.Order } from "./services.krs"
 ```
 
-Each segment is matched against the previously-resolved node's `children` array by id (kind is not enforced). Path resolution starts from a top-level `system` in the imported file.
+The path is a node reference path resolved by the suffix rule (see [§ Node reference path notation](#node-reference-path-notation), #2088): the entry matches every node in the imported file whose full path ends with it. A root-anchored path resolves to exactly the node it always did; a **relative suffix** (`import { ECommerce.Order }`) is also legal and resolves through the same rule. Roots are not limited to systems — a chain under a top-level `service` / `client` / `domain` / infra bucket materializes into that bucket. Every match is imported (bare-id imports have always broadcast), and a multi-match not uniform in (kind, depth) additionally draws the `import-target-ambiguous` warning listing candidate full paths.
 
 The importer only materializes the chain it asked for: in the example above, the merged file gains a stub of `ECPlatform` with a stub of `ECommerce` whose only child is the resolved `Order` (with `Order`'s full subtree intact). Sibling domains under `ECommerce` are not auto-imported. Bring more by listing them in the same import or by wildcard-importing the whole file.
 
@@ -1623,12 +1676,12 @@ Bare ids (`import { ECommerce }`) keep working — they remain the simplest form
 
 #### Failure mode
 
-A path that cannot be resolved emits an `import-path-not-found` diagnostic naming the failing segment and the last node walked successfully:
+A path that resolves to nothing emits an `import-path-not-found` diagnostic. The failing segment is found by narrowing right-to-left (the suffix analogue of walking down from the root): the reported segment is the one that eliminated every candidate, and `lastResolvedId` names the neighboring segment that still had matches:
 
 ```
 import { ECPlatform.NotThere.Order } from "./services.krs"
 // → Import path "ECPlatform.NotThere.Order" failed at segment "NotThere" (#1):
-//   no child with that id under "ECPlatform"
+//   no ancestor with that id above "Order"
 ```
 
 ---

@@ -13,6 +13,7 @@ import {
 import { badgeChildren } from "./badge.js";
 import { getIconDef } from "../shapes/shape-registry.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
+import { nodePathKey } from "../parser/node-path.js";
 import {
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
@@ -257,7 +258,9 @@ function renderTeamCard(
     parts.push(el("g", { "data-node-badge": id }, ...badgeParts));
   }
 
-  visibleOwns.forEach((serviceId, i) => {
+  visibleOwns.forEach((ref, i) => {
+    // Render the reference as the author wrote it (joined path, #2088).
+    const serviceId = nodePathKey(ref);
     const ownsDiff = options?.edgeDiffState?.get(ownsEdgeKey(team.id, serviceId));
     parts.push(
       el(

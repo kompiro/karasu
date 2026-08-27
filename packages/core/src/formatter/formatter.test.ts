@@ -308,6 +308,29 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
+  it("preserves owns and contains path references as written", () => {
+    // TPL-1101: fmt keeps the author's path length — no normalization to the
+    // full path and no shortening to the bare id (#2548).
+    const src = `system Shop {\n  service Payment {}\n  service Checkout {\n    domain Payment {}\n  }\n}\n\nboundary pci {\n  contains Shop.Checkout.Payment\n}\n\norganization Org {\n  team Platform {\n    owns Shop.Payment\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`    owns Shop.Payment`);
+    expect(result).toContain(`  contains Shop.Checkout.Payment`);
+    expectIdempotent(result);
+    expectAstRoundTrip(src);
+  });
+
+  it("keeps handles, path refs included (#2549)", () => {
+    // fmt used to print no `handles` line at all, so formatting a file deleted
+    // the only source of the one-hop expose model. Repeated lines canonicalize
+    // to one comma list, and each path prints as the author wrote it
+    // (TPL-1101).
+    const src = `system Shop {\n  client Web [web] {\n    handles Backend.Order\n    handles Catalog\n  }\n  service Backend {\n    domain Order {}\n    domain Catalog {}\n  }\n  Web -> Backend "calls"\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`    handles Backend.Order, Catalog`);
+    expectIdempotent(result);
+    expectAstRoundTrip(src);
+  });
+
   it("formats organization with description and link", () => {
     const src = `organization Org {\n  description "Our org"\n  link "https://example.com" "Site"\n  team Backend {\n    owns ECommerce\n  }\n}`;
     const result = fmt(src);

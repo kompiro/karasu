@@ -6,6 +6,7 @@
  */
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { boundaryScopeKey, scopedBoundaryGroupId } from "../types/ast.js";
+import { nodePathKey } from "../parser/node-path.js";
 import { collapseGroups } from "./group-collapse.js";
 import {
   assignGroupedLayers,
@@ -25,13 +26,39 @@ interface GroupedLayerBands {
 }
 
 /**
+ * Project a path-keyed model index (#2548: `ownerIndex`,
+ * `boundaryMembership`) onto one canvas: the entry for full path
+ * `[...scopePath, nid]` becomes an entry for `nid`, and entries under other
+ * scopes or deeper levels drop out. This is where the path-keyed indices
+ * meet the canvas machinery, which keys everything by the node ids present
+ * on the canvas being drawn.
+ */
+function projectPathIndexOntoCanvas<V>(
+  index: ReadonlyMap<string, V>,
+  scopePath: readonly string[],
+): Map<string, V> {
+  const prefix = scopePath.length > 0 ? `${nodePathKey(scopePath)}.` : "";
+  const out = new Map<string, V>();
+  for (const [pathKey, value] of index) {
+    if (!pathKey.startsWith(prefix)) continue;
+    const nid = pathKey.slice(prefix.length);
+    if (nid.length === 0 || nid.includes(".")) continue;
+    out.set(nid, value);
+  }
+  return out;
+}
+
+/**
  * The boundary membership that applies to the canvas being drawn (#2036).
  *
- * `boundaryMembership` is model-wide, so it applies everywhere; a scoped block is
- * declared on one canvas and applies only there. Where both name the same node
- * the scoped entry wins — it is the more specific statement, written next to
- * the node it names — and the top-level form keeps its reach untouched
- * everywhere else.
+ * `boundaryMembership` names nodes by full path (#2548), so its reach is
+ * model-wide and each canvas projects out the entries that sit on it (a bare
+ * `contains X` expands to every `X` at build time, which is what used to make
+ * the bare-id map "apply everywhere"); a scoped block is declared on one
+ * canvas and applies only there. Where both name the same node the scoped
+ * entry wins — it is the more specific statement, written next to the node
+ * it names — and the top-level form keeps its reach untouched everywhere
+ * else.
  *
  * Scoped entries carry a scope-qualified group id (`scopedBoundaryGroupId`):
  * a scoped boundary's identity is (declaring scope, id), so a same-named
@@ -47,8 +74,12 @@ function boundaryAxisFor(
   boundaryMembership: Map<string, string[]> | undefined,
   scopedBoundaryMembership: Map<string, Map<string, string[]>> | undefined,
 ): Map<string, string[]> | undefined {
+  const canvasLevel =
+    boundaryMembership !== undefined
+      ? projectPathIndexOntoCanvas(boundaryMembership, scopePath)
+      : undefined;
   const scoped = scopedBoundaryMembership?.get(boundaryScopeKey(scopePath));
-  if (scoped === undefined || scoped.size === 0) return boundaryMembership;
+  if (scoped === undefined || scoped.size === 0) return canvasLevel;
   const qualified = new Map<string, string[]>();
   for (const [nodeId, boundaryIds] of scoped) {
     qualified.set(
@@ -56,12 +87,12 @@ function boundaryAxisFor(
       boundaryIds.map((boundaryId) => scopedBoundaryGroupId(scopePath, boundaryId)),
     );
   }
-  if (boundaryMembership === undefined) return qualified;
+  if (canvasLevel === undefined) return qualified;
   // Scoped *replaces* the node's membership on this canvas rather than adding
   // to it: it restates where the node sits here, and the top-level declaration
   // keeps its reach on every other canvas (ADR-2036). 1:N does not turn that
   // into a union — the two are different statements, not two halves of one.
-  return new Map([...boundaryMembership, ...qualified]);
+  return new Map([...canvasLevel, ...qualified]);
 }
 
 /**
@@ -145,6 +176,7 @@ export function resolveCanvasAxis(
   membership: Map<string, string[]> | undefined,
   presentIds: ReadonlySet<string>,
   options: LayoutOptions,
+  scopePath: readonly string[],
 ): {
   bandOrder: readonly string[] | undefined;
   groupIndex: Map<string, string> | undefined;
@@ -154,7 +186,13 @@ export function resolveCanvasAxis(
     membership !== undefined
       ? resolvePlacementAxis(membership, declaredGroupOrder, presentIds)
       : undefined;
-  const axis = placement?.axis ?? (groupBy === "team" ? ownerIndex : undefined);
+  // The team axis projects the path-keyed ownerIndex (#2548) onto this
+  // canvas, so a path-qualified `owns` frames only the node it names.
+  const axis =
+    placement?.axis ??
+    (groupBy === "team" && ownerIndex !== undefined
+      ? projectPathIndexOntoCanvas(ownerIndex, scopePath)
+      : undefined);
   return {
     bandOrder: placement?.groupOrder ?? declaredGroupOrder,
     groupIndex: axis !== undefined && axis.size > 0 ? axis : undefined,
