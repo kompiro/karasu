@@ -1,11 +1,16 @@
 /**
  * Deleting a whole key prefix, once, for every gallery store.
  *
- * Account deletion has to sweep three prefixes (`acct/`, `sub/`, `sess/`), and
- * a purge that half-works is the failure mode this whole key layout exists to
- * prevent. Three hand-rolled copies of the loop is three places for the
- * cursor handling to drift apart, so the loop lives here and the stores name
+ * A purge that half-works is the failure mode the whole key layout exists to
+ * prevent, so the loop that does it lives in one place and the stores name
  * their prefix.
+ *
+ * Two stores sweep: sessions here, and submissions from #2587. Accounts do
+ * not — `acct/v1/42` is a textual prefix of `acct/v1/420`, so that one record
+ * is deleted by exact key (`gallery-keys.ts` explains why). Two copies of a
+ * cursor loop is still two places for it to drift apart, and the branches that
+ * matter here fire only when KV misbehaves, so having one copy to test is the
+ * point rather than the count.
  */
 import type { KVNamespaceLike } from "../env.js";
 

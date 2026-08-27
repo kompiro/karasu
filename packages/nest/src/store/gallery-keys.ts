@@ -12,10 +12,19 @@
  *     sub/v1/<account>/<slug>              one submission
  *     sess/v1/<account>/<session>          one session
  *
- * All three put the account first, so `purgeAccount` lists three prefixes and
- * nothing else. A prefix that does not start with the account is beyond the
- * reach of that sweep — which is a data-trust failure, not a tidiness one
- * (TPL-2226).
+ * All three put the account first, so every key an account produces is
+ * reachable from the account id alone. A key that does not start with the
+ * account is beyond the reach of `purgeAccount` — which is a data-trust
+ * failure, not a tidiness one (TPL-2226).
+ *
+ * **Reachable is not the same as swept**, and the difference is where the one
+ * sharp edge lives. `sub/` and `sess/` end in a slash, so listing that prefix
+ * cannot reach a neighbour; they are swept. `acct/v1/42` has no trailing
+ * separator and is a textual prefix of `acct/v1/420`, so sweeping it would
+ * delete a stranger's account along with the one that asked to go — it is
+ * deleted by exact key instead (`accounts.ts` states the same thing at the
+ * call site, because that is where someone would be tempted to "tidy" it into
+ * a sweep).
  *
  * The **public submission id carries the account**: `<account>-<slug>`. A
  * reader hands us that id and the key follows from it directly, so there is no

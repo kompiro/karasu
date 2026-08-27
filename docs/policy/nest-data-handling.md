@@ -55,13 +55,36 @@ ADR-1990 決定 6 は、プロバイダとの **zero-retention（非保持・非
 | 読まれた回数（日別カウント） | `reads/krs/v1/<installation>/<owner>/<repo>/<日付>` | 400 日 |
 | 月間の生成回数 | `quota/krs/v1/<installation>/<YYYY-MM>` | 400 日 |
 | 実行中の枠 | `busy/krs/v1/<installation>/<インスタンス id>` | 90 分 |
+| **投稿者のアカウント記録**（GitHub の数値 user id・login 名） | `acct/v1/<account>` | **アカウント削除まで（無期限）** |
+| **投稿者のセッション** | `sess/v1/<account>/<session>` | 30 日 |
+
+### アカウント記録について（[#2586](https://github.com/kompiro/karasu/issues/2586) で追加）
+
+上 2 行は**ギャラリー（[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)）の側の鍵**で、
+生成サービスの鍵とは保持の考え方が違う。
+
+**これは karasu-nest が抱える最初の個人データである。** [ADR-2262](../adr/2262-nest-intake-and-completion.md)
+は完了通知にメールを採らなかった理由を「最初の個人データになる。privacy policy の厚み・保持期間・
+削除請求・subprocessor 開示がすべてそこから発生する」と書いた。投稿者のサインインを入れる決定は、
+**その線を意図的に越える**。越える理由は、匿名投稿を許すと取り下げ請求に応じる相手も、荒らしを
+止める手段も存在しないためである。
+
+**越えるのは識別子までで、メールアドレスは持たない。** 要求する OAuth scope は空で、`GET /user` が
+scope 無しで返す数値 id と login 名だけを保存する。
+
+アカウント記録に**期限を置かない**のは、期限切れでアカウントが消えると投稿の所有者だけが先に
+消え、**誰も取り下げられないコンテンツ**が残るためである。削除は期限ではなく本人の操作で行う
+（コンソールは [#2589](https://github.com/kompiro/karasu/issues/2589)）。セッションだけは期限を持つ —
+資格情報は自分で失効するのが正しい唯一の種類だからである。
 
 計測系（`metrics` / `reads` / `quota`）の**本文には repository の内容が一切入らない**。数値のほか、commit SHA・終了時刻・モデル名・パス名（`survey` / `decompose` / `synthesise`）といった固定の文字列は入る。**鍵には owner と repo の名前が入る**（`busy/` は値の metadata にも入る）ので、これらも削除の対象に含める。
 
 > **保持期間とファイル上限**は実装の定数と機械的に突き合わせている（`scripts/lint/nest-retention-policy-sync.test.ts`）。
-> 定数を変えてこの文書を直し忘れるとテストが落ちる。ただし機械検証が及ぶのはそこまでで、
-> **新しい鍵空間が増えたことは検出できない** — その穴は `nest-purge-coverage.test.ts` の
-> seeder 台帳を人が読んで塞ぐ（[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)）。
+> 定数を変えてこの文書を直し忘れるとテストが落ちる。`acct/` の「期限なし」も同じ検査の対象で、
+> こちらは**期限が付いていないこと**を assert する（期限の不在は待っても証明できないので、
+> 書き込み側で見る）。ただし機械検証が及ぶのはそこまでで、
+> **新しい鍵空間が増えたことは検出できない** — その穴は `nest-purge-coverage.test.ts` と
+> `gallery-purge-coverage.test.ts` の seeder 台帳を人が読んで塞ぐ（[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)）。
 
 ## 生成されたモデルを誰が読めるか
 

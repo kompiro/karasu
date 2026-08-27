@@ -13,8 +13,8 @@
  * path whose entire job is to turn a silent partial purge into a visible
  * failure would have shipped unverified, and an off-by-one in the loop bound
  * or a `throw` quietly downgraded to a `return` would not have failed a single
- * test. `sweep.ts` is that loop extracted so three stores share it, which
- * makes the same gap three times as wide.
+ * test. `sweep.ts` is that loop extracted for the stores that sweep, so the
+ * same gap would now be shared rather than repeated.
  */
 import { describe, expect, it } from "vitest";
 import { purgeByPrefix } from "./sweep.js";

@@ -5,6 +5,7 @@
 - **関連 ADR**: [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)（決定 5: state と secret は nest 側に置く）、[ADR-2262](../adr/2262-nest-intake-and-completion.md)（個人データの線）
 - **関連 TPL**: [TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)（新しい key prefix は purge から到達できる）、[TPL-168](../test-perspectives/TPL-168-trust-boundary-input-validation.md)
 - **対象ファイル**:
+  - `docs/policy/nest-data-handling.md` / `scripts/lint/nest-retention-policy-sync.test.ts`（保持の記述と drift ガード）
   - `packages/nest/src/auth/oauth.ts`（authorize URL・code 交換・`GET /user`）
   - `packages/nest/src/auth/session.ts`（cookie の属性と読み取り）
   - `packages/nest/src/routes/auth.ts`（`/auth/login` `/auth/callback` `/auth/logout`）
@@ -73,12 +74,21 @@
 
   > ✅ Automated — `packages/nest/src/store/sweep.test.ts` › `counts a re-listed key once` / `fails loudly rather than looping when deletes do not stick`
 
+- [x] AT-O: 新しく保持する 2 つ（アカウント記録・セッション）がデータ取扱文書に載り、実装と機械で突き合っている
+
+  > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `states that the account record has no expiry, and it has none` / `states the session's expiry, which is the one credential here` / `says the identifier is the only personal data, and asks for no scopes`
+
 ## 手動確認
 
-- [ ] 🧑 実際の GitHub との往復でサインインできる。`https://<nest のホスト名>/auth/login` を開き、
-      同意画面で承認したあと `/console` に着地し、ブラウザの開発者ツールで
-      `__Host-nest_session` cookie が付いていることを確認する
+- [ ] 🧑 実際の GitHub との往復でサインインが成立する。`https://<nest のホスト名>/auth/login` を開き、
+      同意画面で承認したあと、ブラウザの開発者ツールで **`__Host-nest_session` cookie が
+      付いていること**を確認する
 
-  > 自動テストは `fetch` を差し替えているので、GitHub 側の App 登録
-  > （callback URL・client id/secret）が実際に噛み合っているかは判定できない。
-  > 判定そのものに実機が要る唯一の項目。
+  > 自動テストは `fetch` を差し替えているので、GitHub 側の登録（callback URL・
+  > client id/secret）が実際に噛み合っているかは判定できない。判定そのものに実機が
+  > 要る唯一の項目である。
+  >
+  > **着地先のページは確認対象にしない。** サインインの成立を示すのは cookie であって、
+  > その後どこへ転送されるかではない。転送先（`/console`）は [#2589](https://github.com/kompiro/karasu/issues/2589)
+  > が作るので、この Issue の時点では 404 になる — 404 を見て「サインインが壊れている」と
+  > 読まないように、観測対象を cookie に限っている。
