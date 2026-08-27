@@ -5,10 +5,12 @@ status: active
 date: 2026-08-17
 applicable_to:
   - "既に受理している構文に、同じ意味の別表記（カンマ列挙・行の繰り返し・省略形）を追加するとき"
+  - "宣言 1 行の shorthand に対して、同じ事実を書けるプロパティブロック形を追加するとき"
   - "1 行が複数の要素を持つリスト値プロパティを新設・拡張するとき"
   - "リスト要素を対象とする診断（未解決参照など）の range を決めるとき"
 discovered_from:
   - issue: "#2167"
+  - issue: "#2543"
   - root_cause_file: "packages/core/src/parser/parser.ts"
 related_to:
   - TPL-1101
@@ -46,6 +48,11 @@ scope:
   想定しておらず、書き方によって図が変わる。sugar の定義に反するが、新形だけを見るテストは通る
 - **fmt が意味を落とす** — 新形を fmt に通すと要素が 1 つに潰れる・順序が変わる。fmt は
   「壊れていないこと」を確認せずに使われるので、利用者が気づくのは差分を見返したときになる
+- **fmt が既存形の付随情報を落としていたことに、新形を足すまで気づかない** — #2543 で
+  block 形と `#<id>` の共存を round-trip テストにした時点で、それ以前から `renderEdge` が
+  エッジの `#<id>` を無条件に削っていたことが判明した（`edge#<id>` セレクタの対象が
+  `karasu fmt` で消える）。新形の round-trip は既存形の round-trip も同時に主張するので、
+  この観点は既存形の穴を掘り出す側にも効く
 - **診断が行全体を指す** — `realizes A, Bogus` の警告がノード全体に付き、エディタ上でどちらの
   対象が未解決なのか読み取れない。要素が 1 行 1 つだった時代の range をそのまま流用すると起きる
 - **区切り記号の扱いが方向で非対称になる** — 末尾の区切り（`realizes A,`）は診断が出るのに、
@@ -66,6 +73,9 @@ scope:
 - [ ] 新形と既存形をそれぞれ parse し、**AST 同士を直接比較**したか（期待値リテラルとの比較だけで済ませていないか）
 - [ ] 両形を**混在**させた入力が記述順に累積することを固定したか
 - [ ] canonical な出力形を決め、非 canonical 側の **parse → format → parse で AST が保たれる**ことを固定したか
+- [ ] canonical 化の**判定条件を 1 つに畳み**、その条件の両側（畳む入力・畳まない入力）をそれぞれ固定したか
+- [ ] 同じ事実を**両方の形で同時に書いた**入力に専用の診断があり、片方が黙って勝つ実装になっていないか
+- [ ] 片方の形でしか書けない付随情報（`#<id>` 等）を、formatter が**もう片方の形でも落とさない**ことを確認したか
 - [ ] 1 行に複数要素が並ぶなら、AST が**要素ごとの range** を持ち、要素単位の診断がそれを指すことを assert したか。range が `start === end` の幅ゼロになっていないか（`end` も assert する）
 - [ ] 区切り記号の後に要素が無い（末尾・先頭の区切り）入力で、**診断が 1 件**であり、その **loc が壊れた区切り記号自身**を指し（次のトークンではなく）、**次の行を消費していない**ことを確認したか
 - [ ] 区切り記号を**両方向で対称に**扱ったか（末尾の区切りと次行頭の区切りが同じ結果になるか）
@@ -92,6 +102,10 @@ scope:
 
 - `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` — §Writing physical diagrams の `realizes`
   複数指定（行の繰り返しとカンマ列挙、canonical は行の繰り返し）
+- `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` — §Edge declaration の
+  [Property block](../spec/syntax.md#property-block--label--description--link-)（位置引数 shorthand と
+  プロパティブロック、canonical 化の判定条件は「ブロックが `label` 以外を持つか」の 1 つ、
+  二重 label は `duplicate-edge-label`）
 - 関連決定: [ADR-2167](../adr/2167-realizes-comma-list.md)（reference list はカンマ、membership は 1 行 1 件）
 
 ## 関連テスト
@@ -99,3 +113,5 @@ scope:
 - `packages/core/src/parser/parser.test.ts`（`describe("comma-separated realizes (#2167)")` — 同一 AST・混在累積・要素 range・末尾/先頭カンマの recovery）
 - `packages/core/src/formatter/formatter.test.ts`（"normalizes a comma-separated realizes list to one target per line"）
 - `packages/core/src/resolver/warnings.test.ts`（"points at the offending identifier within a comma-separated list"）
+- `packages/core/src/parser/edge-property-block.test.ts`（#2543 — shorthand と block が同一 AST・`duplicate-edge-label`・block 内の未知キーワード）
+- `packages/core/src/formatter/edge-property-block-round-trip.test.ts`（#2543 — canonical 化の両側・冪等性・`#<id>` の保存）

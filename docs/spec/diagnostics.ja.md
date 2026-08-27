@@ -52,6 +52,7 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 | `edge-source-mismatch` | error | `service` / `domain` / `entity` ブロック内の explicit な edge source が所属ブロック id と一致しない（**edge origin scope** 規則。`entity` では関連の向き — 起点 = 参照を保持する側 — を強制する）。 |
 | `edge-endpoint-not-at-scope` | warning | edge の endpoint がマージ後のモデルに存在するが、その edge を宣言したスコープの peer ではない（**edge endpoint scope** 規則）。例: `service` 配下の `domain` である `A`・`B` を `system` スコープで `A -> B` と書いた場合。この edge はどのビューにも描画されないため、source のブロック内に書くか、cross-domain の entity 参照は限定子付きにする。dotted ref とモデルに存在しない id は対象外（後者は `unresolved-edge-endpoint` が担当）。`domain` → `domain` は暗黙の service edge に集約されて描画されるため除外。 |
 | `ambiguous-edge-base` | warning | 同じ `from → to` の base を持つ edge が複数あり、識別する author id が無い。 |
+| `duplicate-edge-label` | error | エッジが label を 2 回書いている（位置引数 `A -> B "calls"` と property block 内の `label` プロパティの両方）。どちらかを黙って勝たせることはしないので、片方に寄せる。 |
 | `service-outside-system` | warning | `service` が `system` の外で宣言されている。 |
 | `infra-not-in-context` | error | infra ブロック（`database` / `queue` / `storage`）が `system` の直接の子でない。 |
 | `boundary-not-in-context` | error | 自身のキャンバスを持たない kind（`entity` / `resource` / `user` / `client` / infra leaf）の中に `boundary` ブロックが宣言されており、囲む対象が存在しない。 |

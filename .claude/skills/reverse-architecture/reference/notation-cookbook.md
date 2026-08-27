@@ -320,6 +320,46 @@ first-class when `facet` lands. If what you actually need is a missing archetype
 request a builtin tag addition instead — see
 [`tags-annotations.md`](../spec/tags-annotations.md).
 
+## 9. An edge that needs more than a verb — the property block
+
+**When** — the arrow itself carries something worth writing down: a delivery
+guarantee, a retry rule, a runbook. The label slot is one string and it is
+already spent on the verb, so the knowledge ends up in a comment nobody renders
+or in a wiki nobody finds.
+
+**Pattern** — keep writing `A -> B "verb"` everywhere it is enough, and open a
+property block only on the edges that need more. `description` and `link` are
+spelled exactly as they are on a node.
+
+**`.krs`**
+
+```krs
+system Shop {
+  service OrderSvc {}
+  service PaymentSvc {}
+
+  OrderSvc -> PaymentSvc "charges"
+
+  OrderSvc --> PaymentSvc [async] #orderPlaced {
+    label       "places an order"
+    description "At-least-once delivery. Retries are idempotent on orderId."
+    link        "https://runbook.example.com/order-placed" "Runbook"
+  }
+}
+```
+
+Left-clicking either of the two arrows that carry a block opens the edge detail
+panel with that prose and those links; the plain `"charges"` edge behaves as it
+always did.
+
+**Why** — the shorthand is the most-typed construct in the language and stays
+canonical: `karasu fmt` folds a block that holds nothing but a `label` straight
+back to `A -> B "label"`, so the two spellings cannot drift into two ways of
+saying one thing. Writing the label both positionally and inside the block is a
+`duplicate-edge-label` error rather than a precedence rule. Note what does *not*
+belong here: protocol, cardinality and retry counts stay prose inside
+`description`, because karasu models structure, not runtime configuration.
+
 ## See also
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — the precise `.krs` grammar (feed this first)

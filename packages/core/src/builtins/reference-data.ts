@@ -1014,7 +1014,16 @@ export const SYNTAX_SECTIONS: SyntaxByView = {
       code: `A ->  B "label"   // sync (solid arrow)
 A --> B "label"   // async (dashed arrow)
 A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via edge#<id> in .krs.style
-// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)`,
+// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)
+
+// property block: only when there is more than a label to write.
+// Tags and #<id> stay outside it; karasu fmt folds a label-only block
+// back to the shorthand.
+A --> B [async] #orderPlaced {
+  label       "places an order"
+  description "At-least-once. Retries are idempotent on orderId."
+  link        "https://runbook.example.com/order-placed" "Runbook"
+}`,
     },
     {
       heading: "Node Declaration",

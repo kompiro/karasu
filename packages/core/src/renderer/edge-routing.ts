@@ -120,7 +120,11 @@ export function renderEdge(
   // weight of the diagram. Only emitted when the edge carries a canonical id —
   // edges that aren't addressable by `edge#<id>` selectors (e.g. ones whose id
   // was cleared by a base collision) don't need an interactive hit area.
-  const interactive = edge.canonicalId !== undefined;
+  // An edge property block gives an edge something to open a panel with, so it
+  // needs the same hit area even when a base collision cleared its id (#2543).
+  const hasDetail =
+    edge.description !== undefined || (edge.links !== undefined && edge.links.length > 0);
+  const interactive = edge.canonicalId !== undefined || hasDetail;
   if (interactive) {
     if (points.length === 2) {
       parts.push(
@@ -236,6 +240,14 @@ export function renderEdge(
       "data-edge-kind": edge.kind,
       "data-edge-canonical-id": edge.canonicalId,
       "data-edge-label": edge.syntheticLabel ? undefined : edge.label || undefined,
+      // The property block's payload, read back by the app to open
+      // EdgeDetailPanel on a left click (#2543). Emitted only when authored, so
+      // a file that writes no block produces byte-identical SVG.
+      "data-edge-description": edge.description,
+      "data-edge-links":
+        edge.links !== undefined && edge.links.length > 0
+          ? JSON.stringify(edge.links.map((l) => ({ url: l.url, label: l.label })))
+          : undefined,
       "data-diff-state": diffState,
       class: interactive ? "krs-edge krs-edge--interactive" : "krs-edge",
     },

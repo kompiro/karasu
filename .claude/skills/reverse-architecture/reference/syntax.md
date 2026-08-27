@@ -876,6 +876,48 @@ See [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
 itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
 
+#### Property block (`{ label / description / link }`)
+
+A trailing `{ … }` block gives an edge a place to write what the positional
+form cannot express. It is **additive**: `A -> B "calls"` stays valid and stays
+the canonical spelling for an edge whose only property is its label.
+
+```krs fragment
+OrderSvc -> PaymentSvc [async] #orderPlaced {
+  label       "places an order"
+  description "At-least-once delivery. Retries are idempotent on orderId."
+  link        "https://runbook.example.com/order-placed" "Runbook"
+}
+```
+
+The block accepts `label`, `description` and `link`, each spelled exactly as it
+is on a node: `link` takes `"<URL>"` followed by an optional `"<label>"`, and
+may repeat. Any other keyword inside the block is an
+`unexpected-token-in-block` error. Tags and `#<id>` stay **outside** the block,
+matching `service A [external] { label "…" }`.
+
+Writing the label both positionally and in the block is a
+`duplicate-edge-label` error rather than a precedence rule. Neither spelling
+silently wins:
+
+```krs invalid
+system Shop {
+  service A {}
+  service B {}
+  A -> B "calls" { label "invokes" }
+}
+```
+
+**`karasu fmt` folds on one condition: does the block carry anything besides
+`label`.** A block holding only a label is rewritten to the shorthand; a block
+holding a `description` or a `link` is kept, with `label` moved inside it. Both
+spellings parse to the same AST, so which one you type never changes the
+diagram.
+
+`description` and `link` are read back on the canvas: left-clicking an edge
+that carries either opens the edge detail panel. Right-clicking still opens the
+direction menu, and an edge written in the shorthand behaves exactly as before.
+
 #### Edges inside a service block
 
 Declaring an edge inside a `service` block expresses a dependency of that
@@ -946,6 +988,7 @@ See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of 
 > Related TPLs:
 > - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (§ Endpoint scope)
 > - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target
+> - [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — the shorthand and the property block are two spellings of one edge, so both must land on one AST and `karasu fmt` must fold them to a single canonical form (§ Property block)
 
 ---
 

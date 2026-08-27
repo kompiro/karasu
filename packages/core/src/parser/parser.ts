@@ -1829,6 +1829,8 @@ export class Parser {
 
     const tags = this.parseTags();
     const authorId = this.parseAuthorIdSuffix();
+    const block = this.parseEdgeBlock(label);
+    if (block.label !== undefined) label = block.label;
 
     return {
       from: fromValue,
@@ -1838,6 +1840,78 @@ export class Parser {
       tags,
       loc: this.range(startLoc, toEnd),
       ...(authorId !== undefined ? { authorId } : {}),
+      ...(block.description !== undefined ? { description: block.description } : {}),
+      ...(block.links !== undefined ? { links: block.links } : {}),
+    };
+  }
+
+  /**
+   * The optional edge property block, `A -> B [async] #id { … }`. Additive by
+   * construction: no other construct starts with `{`, and no valid file has a
+   * bare `{` on the line after an edge, so a file that does not write one
+   * parses exactly as it did before (#2543).
+   *
+   * Accepts `label` / `description` / `link`, all spelled the same way as on a
+   * node. `positionalLabel` is passed in so writing the label twice is an
+   * error (`duplicate-edge-label`) instead of one form silently winning; the
+   * positional one is kept for recovery.
+   */
+  private parseEdgeBlock(positionalLabel: string | undefined): {
+    label?: string;
+    description?: string;
+    links?: LinkEntry[];
+  } {
+    if (this.peek().type !== TokenType.LeftBrace) return {};
+    this.advance(); // {
+
+    let label: string | undefined;
+    let description: string | undefined;
+    let links: LinkEntry[] | undefined;
+
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type !== TokenType.StringLiteral) {
+          this.error("expected-string-after", { property: "label" });
+          continue;
+        }
+        const value = this.peek().value;
+        if (positionalLabel !== undefined) {
+          this.error("duplicate-edge-label", { label: value });
+        }
+        this.advance();
+        if (positionalLabel === undefined) label = value;
+        continue;
+      }
+
+      if (token.type === TokenType.Description) {
+        this.advance();
+        description = this.parseDescriptionValue();
+        continue;
+      }
+
+      if (token.type === TokenType.Link) {
+        this.advance();
+        (links ??= []).push(this.parseLink());
+        continue;
+      }
+
+      this.error("unexpected-token-in-block", {
+        blockKind: "edge",
+        tokenType: String(token.type),
+        value: token.value,
+      });
+      this.advance();
+    }
+
+    this.expect(TokenType.RightBrace);
+
+    return {
+      ...(label !== undefined ? { label } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(links !== undefined ? { links } : {}),
     };
   }
 

@@ -265,6 +265,11 @@ const SAMPLES: SamplesByCode = {
     code: "duplicate-edge-id",
     params: { authorId: "checkout" },
   },
+  "duplicate-edge-label": {
+    severity: "error",
+    code: "duplicate-edge-label",
+    params: { label: "places an order" },
+  },
   "ambiguous-edge-base": {
     severity: "warning",
     code: "ambiguous-edge-base",
@@ -482,6 +487,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "unresolved-resource-ref": ["OrderDB", "orders"],
   "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],
+  "duplicate-edge-label": ["places an order"],
   "ambiguous-edge-base": ["OrderService->PaymentService"],
   "style-token-type-mismatch": ["Identifier", "Semicolon"],
   "expected-style-property-name": ["Colon"],

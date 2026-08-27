@@ -135,6 +135,9 @@ export type Translations = {
 
   // NodeDetailPanel (Phase C5)
   "nodeDetail.close": string;
+  "edgeDetail.close": string;
+  "edgeDetail.label.title": string;
+  "edgeDetail.links.title": string;
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;
@@ -552,6 +555,7 @@ export type Translations = {
     missing: "block" | "leaf";
   }) => string;
   "diagnostic.duplicateEdgeId.message": (params: { authorId: string }) => string;
+  "diagnostic.duplicateEdgeLabel.message": (params: { label: string }) => string;
   "diagnostic.ambiguousEdgeBase.message": (params: {
     fromId: string;
     toId: string;

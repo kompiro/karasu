@@ -324,6 +324,8 @@ export function computeEdgePoints(
     cyclic: edge.cyclic,
     ...(edge.canonicalId !== undefined ? { canonicalId: edge.canonicalId } : {}),
     ...(edge.syntheticLabel ? { syntheticLabel: true } : {}),
+    ...(edge.description !== undefined ? { description: edge.description } : {}),
+    ...(edge.links !== undefined && edge.links.length > 0 ? { links: edge.links } : {}),
   };
 }
 

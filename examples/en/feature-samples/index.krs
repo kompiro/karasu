@@ -5,7 +5,7 @@
 // open them from the file tree:
 //
 //   minimal.krs               smallest valid input (system + 2 services + edges)
-//   edges.krs                 sync (->) vs async (-->) edges, labelled / bare
+//   edges.krs                 sync (->) vs async (-->) edges, labelled / bare / block
 //   parallel-edges.krs        parallel edges between the same node pair
 //   users.krs                 [human] / [ai] user nodes with role + description
 //   external-nodes.krs        [external] tag on service / resource nodes

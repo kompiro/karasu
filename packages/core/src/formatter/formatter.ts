@@ -323,7 +323,11 @@ class Printer {
         lines.push(...this.renderBoundaryBlock(item.block).map((l) => `${indent}  ${l}`));
       } else {
         const edgeTrail = this.extractTrailing(item.edge.loc.start.line);
-        lines.push(`${indent}  ${this.renderEdge(item.edge, node.kind)}${edgeTrail}`);
+        // The trailing comment belongs to the declaration line, which for the
+        // block form is the line that opens the block.
+        const edgeLines = this.renderEdge(item.edge, node.kind);
+        edgeLines[0] += edgeTrail;
+        lines.push(...edgeLines.map((l) => `${indent}  ${l}`));
       }
 
       prevEndLine = item.endLine;
@@ -409,14 +413,38 @@ class Printer {
     return `${indent}link ${quoteString(link.url)}`;
   }
 
-  private renderEdge(edge: KrsEdge, parentKind?: string): string {
+  /**
+   * One edge, canonicalized. The condition is a single one (#2543): **does the
+   * edge carry anything the shorthand cannot express**: `description` or a
+   * `link`. If not, it folds to `A -> B "label"`; if so, it emits the block
+   * with `label` inside it. A label-only block is therefore not a stable form,
+   * which is what keeps the two spellings from becoming a dual representation
+   * of one fact (TPL-1415, TPL-2542).
+   */
+  private renderEdge(edge: KrsEdge, parentKind?: string): string[] {
     const arrow = edge.kind === "async" ? "-->" : "->";
-    const label = edge.label !== undefined ? ` ${quoteString(edge.label)}` : "";
     const tags = edge.tags.length > 0 ? ` [${edge.tags.join(", ")}]` : "";
+    // The author's `#<id>` is data, not decoration. Dropping it here silently
+    // deleted an `edge#<id>` style selector's target (#2543).
+    const id = edge.authorId !== undefined ? ` #${edge.authorId}` : "";
     // Use implicit-source shorthand for service/domain blocks (from is always parentId)
     const from =
       parentKind === "service" || parentKind === "domain" ? "" : `${quoteId(edge.from)} `;
-    return `${from}${arrow} ${quoteId(edge.to)}${label}${tags}`;
+    const head = `${from}${arrow} ${quoteId(edge.to)}`;
+
+    const hasBlockOnlyProperty =
+      edge.description !== undefined || (edge.links !== undefined && edge.links.length > 0);
+    if (!hasBlockOnlyProperty) {
+      const label = edge.label !== undefined ? ` ${quoteString(edge.label)}` : "";
+      return [`${head}${label}${tags}${id}`];
+    }
+
+    const lines = [`${head}${tags}${id} {`];
+    if (edge.label !== undefined) lines.push(`  label ${quoteString(edge.label)}`);
+    if (edge.description !== undefined) lines.push(this.renderDescription(edge.description, "  "));
+    for (const link of edge.links ?? []) lines.push(this.renderLink(link, "  "));
+    lines.push("}");
+    return lines;
   }
 
   // ── DeployBlock ───────────────────────────────────────────────────────────
