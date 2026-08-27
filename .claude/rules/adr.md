@@ -97,9 +97,10 @@ caret は「後ろは動いてよい」という宣言なので、その後ろ�
 矛盾する。逆に exact pin（`"pkg": "1.2.3"`）はその版を固定したこと自体が決定なので、
 版を書いてよい。
 
-違反は `scripts/ci/adr-assumption-version-policy.test.ts` が全 ADR を走査して落とす
-（`pnpm test:scripts`）。緩めた形の実例は [ADR-1338](../../docs/adr/1338-fast-uri-override-pin.md)
-と [ADR-2447](../../docs/adr/2447-dependabot-triage-2026-08-10.md)、経緯は
+違反は `pnpm adr:validate` が落とす（`adr.config.json` の
+`assumptions.rangePin: "error"`）。緩めた形の実例は
+[ADR-1338](../../docs/adr/1338-fast-uri-override-pin.md) と
+[ADR-2447](../../docs/adr/2447-dependabot-triage-2026-08-10.md)、経緯は
 [ADR-2628](../../docs/adr/2628-adr-assumption-version-policy.md)。
 
 ## 編集後のチェック
