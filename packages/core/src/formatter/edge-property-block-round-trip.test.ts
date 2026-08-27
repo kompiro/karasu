@@ -102,6 +102,36 @@ describe("karasu fmt — edge property block (#2543)", () => {
     expect(formatted).toContain("A -> B { // hand-off");
   });
 
+  // A block edge is the first KrsEdge that spans more than one line. The
+  // formatter decides which comments lead the *next* sibling from the last line
+  // the previous item occupied, so a range that stopped at the target handed the
+  // block's own comments to the edge after it.
+  it("does not hand a comment inside the block to the next sibling", () => {
+    const src =
+      `system Shop {\n` +
+      `  service A {}\n` +
+      `  service B {}\n` +
+      `  service C {}\n` +
+      `  service D {}\n` +
+      `  A -> B [async] #orderPlaced {\n` +
+      `    label       "places an order"\n` +
+      `    description "note" // why though\n` +
+      `  }\n` +
+      `  // leading comment for C -> D\n` +
+      `  C -> D\n` +
+      `}\n`;
+    const formatted = format(src);
+    const lines = formatted.split("\n");
+    const cIndex = lines.findIndex((l) => l.trim() === "C -> D");
+    expect(cIndex).toBeGreaterThan(-1);
+    // Only the comment the author put on the C -> D edge leads it. The block's
+    // own comment lands in the file footer, which is the documented v1
+    // behaviour for a comment inside any block body (see `format()`).
+    expect(lines[cIndex - 1]).toContain("leading comment for C -> D");
+    expect(lines[cIndex - 2].trim()).toBe("}");
+    expectIdempotent(src);
+  });
+
   it("preserves the implicit-source shorthand inside a service block", () => {
     const src = `system Shop {\n  service A {\n    -> B {\n      description "depends on B"\n    }\n  }\n  service B {}\n}\n`;
     const formatted = format(src);

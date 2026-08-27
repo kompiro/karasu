@@ -54,6 +54,10 @@ type: product
 
   > ✅ Automated — `packages/core/src/formatter/edge-property-block-round-trip.test.ts` › round-trips and is idempotent for the block form ／ round-trips the shorthand unchanged ／ preserves the implicit-source shorthand inside a service block
 
+- [x] AT-G2: ブロック内に書いたコメントが、次の兄弟エッジの leading comment に付け替えられない（エッジが複数行にまたがる最初のケース）
+
+  > ✅ Automated — `packages/core/src/formatter/edge-property-block-round-trip.test.ts` › does not hand a comment inside the block to the next sibling
+
 - [x] AT-H: author 指定の `#<id>` が両方の形で保存される（本 Issue 以前は `renderEdge` が無条件に削っていた）
 
   > ✅ Automated — `packages/core/src/formatter/edge-property-block-round-trip.test.ts` › preserves an author-supplied #<id> in both forms
@@ -64,7 +68,7 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › emits the edge property block's payload as data attributes (#2543)
 
-- [x] AT-J: base 衝突で canonical id が消えたエッジでも、ブロックを持つなら hit area が出る
+- [x] AT-J: base 衝突で canonical id が消えたエッジでも、ブロックを持つなら hit area が出る。ただし右クリックを予告する `krs-edge--interactive`（`cursor: context-menu`）は付かない — そのエッジに対して方向メニューは開けないため
 
   > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › gives an edge with a property block a hit area even without a canonical id (#2543)
 

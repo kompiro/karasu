@@ -1131,6 +1131,10 @@ system S {
       expect(svg).not.toContain("data-edge-canonical-id");
       expect(svg).toContain('data-edge-description="the one with prose"');
       expect(svg).toContain('class="krs-edge__hitline"');
+      // …but not the right-click advertisement: `krs-edge--interactive` gives
+      // `cursor: context-menu`, and no direction menu can open for an edge with
+      // no canonical id to write a selector against.
+      expect(svg).not.toContain("krs-edge--interactive");
     });
 
     it("keeps the property block's payload on a ghost rendering of the edge (#2543)", () => {

@@ -115,17 +115,24 @@ export function renderEdge(
     class: edge.cyclic ? "krs-edge--cyclic" : undefined,
   };
 
-  // Wide invisible hit-line behind the visible stroke. Keeps the right-click
-  // target practical even on default 1.5px edges, without changing the visual
-  // weight of the diagram. Only emitted when the edge carries a canonical id —
-  // edges that aren't addressable by `edge#<id>` selectors (e.g. ones whose id
-  // was cleared by a base collision) don't need an interactive hit area.
-  // An edge property block gives an edge something to open a panel with, so it
-  // needs the same hit area even when a base collision cleared its id (#2543).
+  // Two separate questions, deliberately not folded into one flag.
+  //
+  // `interactive` drives the `krs-edge--interactive` class, and that class is
+  // the *right-click* advertisement: `preview.css` gives it `cursor:
+  // context-menu`, and `handleContextMenu` opens the direction menu only for
+  // an edge addressable by an `edge#<id>` selector. Widening it to
+  // detail-carrying edges would promise a menu that cannot open (#2543).
+  //
+  // `needsHitArea` drives the wide invisible hit-line behind the visible
+  // stroke, which keeps the click target practical on default 1.5px edges
+  // without changing the diagram's visual weight. A property block gives an
+  // edge something to open a panel with on *left* click, so it needs the hit
+  // area even when a base collision cleared its id.
   const hasDetail =
     edge.description !== undefined || (edge.links !== undefined && edge.links.length > 0);
-  const interactive = edge.canonicalId !== undefined || hasDetail;
-  if (interactive) {
+  const interactive = edge.canonicalId !== undefined;
+  const needsHitArea = interactive || hasDetail;
+  if (needsHitArea) {
     if (points.length === 2) {
       parts.push(
         el("line", {

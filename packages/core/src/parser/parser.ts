@@ -1838,7 +1838,13 @@ export class Parser {
       label,
       kind: arrowToken.type === TokenType.DashedArrow ? "async" : "sync",
       tags,
-      loc: this.range(startLoc, toEnd),
+      // Ends at the target for the shorthand, exactly as before, so every
+      // existing diagnostic keeps its range. A block form is the first edge
+      // that spans more than one line, and the range has to cover it: the
+      // formatter tracks the last line an item occupied to decide which
+      // comments lead the *next* sibling, so a short range hands the block's
+      // own comments to the edge after it (#2543).
+      loc: this.range(startLoc, block.closeLoc ?? toEnd),
       ...(authorId !== undefined ? { authorId } : {}),
       ...(block.description !== undefined ? { description: block.description } : {}),
       ...(block.links !== undefined ? { links: block.links } : {}),
@@ -1860,6 +1866,8 @@ export class Parser {
     label?: string;
     description?: string;
     links?: LinkEntry[];
+    /** Location of the closing `}`, so `parseEdge` can span its range over the block. */
+    closeLoc?: SourceLocation;
   } {
     if (this.peek().type !== TokenType.LeftBrace) return {};
     this.advance(); // {
@@ -1906,9 +1914,10 @@ export class Parser {
       this.advance();
     }
 
-    this.expect(TokenType.RightBrace);
+    const close = this.expect(TokenType.RightBrace);
 
     return {
+      closeLoc: close.loc,
       ...(label !== undefined ? { label } : {}),
       ...(description !== undefined ? { description } : {}),
       ...(links !== undefined ? { links } : {}),
