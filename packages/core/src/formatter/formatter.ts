@@ -213,7 +213,7 @@ class Printer {
     if (imp.ids.length === 0) return `import ${quoteString(imp.path)}`;
     // Bare ids are stored as `["Foo"]`; multi-segment paths as `["A", "B", "C"]`.
     // Re-join each path with "." to round-trip through the formatter.
-    const formatted = imp.ids.map((segments) => segments.map(quoteId).join(".")).join(", ");
+    const formatted = imp.ids.map((entry) => entry.path.map(quoteId).join(".")).join(", ");
     return `import { ${formatted} } from ${quoteString(imp.path)}`;
   }
 
