@@ -1430,6 +1430,67 @@ system ECPlatform {
       expect(implicit[0].syntheticLabel).toBe(true);
     });
 
+    it("does not attribute a constituent's prose to the aggregate (#2543)", () => {
+      // An aggregate is not any one of the edges it folds. Its label is already
+      // machine-generated; carrying the first constituent's `description` would
+      // put that prose on a bundle it does not describe. The constituents stay
+      // readable through the detail map.
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract {}
+    domain Order {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract {
+        description "only true of Billing -> Contract"
+        link "https://runbook.example.com/contract" "Runbook"
+      }
+      Billing -> Order "from order"
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.filter(
+        (e) => e.from === "BillingService" && e.to === "ECommerce" && e.tags.includes("implicit"),
+      );
+      expect(implicit).toHaveLength(1);
+      expect(implicit[0].label).toBe("2 domain edges");
+      expect(implicit[0].description).toBeUndefined();
+      expect(implicit[0].links).toBeUndefined();
+    });
+
+    it("keeps the prose when a single cross-service domain edge passes through (#2543)", () => {
+      // A 1:1 passthrough keeps the authored label, so it keeps the authored
+      // prose with it — the implicit edge *is* that one edge, re-anchored.
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract {
+        label       "from contract"
+        description "at-least-once"
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.filter(
+        (e) => e.from === "BillingService" && e.to === "ECommerce" && e.tags.includes("implicit"),
+      );
+      expect(implicit).toHaveLength(1);
+      expect(implicit[0].label).toBe("from contract");
+      expect(implicit[0].description).toBe("at-least-once");
+    });
+
     it("keeps the authored label (no syntheticLabel) when a single domain edge passes through", () => {
       const krs = `
 system ECPlatform {

@@ -86,6 +86,10 @@ type: product
 
   > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › leaves an edge with no block alone: no panel opens
 
+- [x] AT-M0: 集約 domain edge（`"N domain edges"`）が構成エッジの `description` / `link` を継承しない。1:1 passthrough（構成エッジが 1 本）は authored label と同じ扱いで散文も保つ
+
+  > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `domain-to-domain edges` › `does not attribute a constituent's prose to the aggregate (#2543)` / `keeps the prose when a single cross-service domain edge passes through (#2543)`
+
 - [x] AT-M: 集約 domain edge（`"N domain edges"`）の左クリック挙動が従来のまま
 
   > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › opens EdgeDetailPanel when a [data-domain-edges] element is clicked ／ closes EdgeDetailPanel when the × button is clicked ／ closes EdgeDetailPanel when clicking outside any node

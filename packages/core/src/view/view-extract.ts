@@ -204,13 +204,23 @@ function deriveImplicitServiceEdges(
     }
   }
 
-  const edges = Array.from(grouped.entries()).map(([, { edge, count, label }]) => ({
-    ...edge,
-    label: count === 1 ? label : `${count} domain edges`,
-    // The count label is machine-generated; a single passthrough keeps the
-    // authored domain-edge label.
-    ...(count > 1 ? { syntheticLabel: true } : {}),
-  }));
+  const edges = Array.from(grouped.entries()).map(([, { edge, count, label }]) => {
+    // A single passthrough *is* the authored edge, re-anchored to the service
+    // endpoints, so it keeps that edge's label and its property block.
+    if (count === 1) return { ...edge, label };
+    // An aggregate is not any one of the edges it folds. Its label is already
+    // machine-generated, and carrying the first constituent's `description` /
+    // `link` would attribute that prose to a bundle it does not describe
+    // (#2543). The constituents stay readable through `implicitEdgeDetails`.
+    const aggregated: KrsEdge = {
+      ...edge,
+      label: `${count} domain edges`,
+      syntheticLabel: true,
+    };
+    delete aggregated.description;
+    delete aggregated.links;
+    return aggregated;
+  });
 
   // Only include detail map entries for aggregated (multi-edge) pairs
   const details = new Map<string, DomainEdgeDetail[]>();
