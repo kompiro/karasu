@@ -68,6 +68,10 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › gives an edge with a property block a hit area even without a canonical id (#2543)
 
+- [x] AT-J2: cross-service のエッジが ghost として描かれるビュー（そのビューでの唯一の描画）でも payload が残る
+
+  > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › keeps the property block's payload on a ghost rendering of the edge (#2543)
+
 - [x] AT-K: `description` を持つ通常エッジを左クリックすると `EdgeDetailPanel` が開き、label・散文・リンクが読める。許可されないスキームのリンクは href 化されない
 
   > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › opens EdgeDetailPanel for a regular edge carrying a description ／ lists an edge's links and drops a disallowed scheme
@@ -82,9 +86,17 @@ type: product
 
   > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › opens EdgeDetailPanel when a [data-domain-edges] element is clicked ／ closes EdgeDetailPanel when the × button is clicked ／ closes EdgeDetailPanel when clicking outside any node
 
-- [x] AT-N: 既存 examples / spec / guide の `.krs` がすべて従来どおり parse し、`examples.ts` と drift しない
+- [x] AT-N: 既存 examples の `.krs` がすべて従来どおり parse する（ブロック形を足した `edges.krs` を含む）
 
-  > ✅ Automated — `packages/core/src/examples.test.ts` ／ `pnpm run lint:krs-fences`
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: all files parse without errors` › `edges.krs`
+
+- [x] AT-O: ブロック形を足した `edges.krs` が `examples.ts` の bundled content と byte 一致する
+
+  > ✅ Automated — `packages/core/src/examples.test.ts` › `feature-samples: bundled examples.ts content matches examples/en/feature-samples/` › `registers index.krs plus every .krs / .krs.style file in the directory, and nothing else`
+
+- [x] AT-P: spec / guide に埋めた `.krs` fence が現行文法で通り、`krs invalid` と印を付けた二重 label の例が今も error を出す（parser が受理し始めたら落ちる）
+
+  > ✅ Automated — `scripts/lint/krs-fences.test.ts` › `analyzeKrsFencesIn` › `accepts a ```krs block the parser understands` / `accepts a fence marked invalid while it still fails to parse` / `reports a fence marked invalid that the parser started accepting`
 
 ## 手動確認
 
