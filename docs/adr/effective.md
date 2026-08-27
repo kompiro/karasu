@@ -333,6 +333,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2394](2394-external-side-straddle-rule.md) — external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける
 - [ADR-2473](2473-dy-instead-of-dominant-baseline.md) — テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` で指定する
 - [ADR-2521](2521-multi-system-pipeline-convergence.md) — multi-system ルートビューは single-system パイプラインの計算に合わせる
+- [ADR-2593](2593-canvas-space-objective.md) — キャンバスの空き空間を目的関数にして行幅予算を選ぶ
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）
