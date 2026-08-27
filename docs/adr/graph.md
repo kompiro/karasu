@@ -328,6 +328,7 @@ flowchart TD
     ADR_2394["ADR-2394<br/>external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける"]
     ADR_2473["ADR-2473<br/>テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` ..."]
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
+    ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -850,6 +851,7 @@ flowchart TD
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2578 accepted
+  class ADR_2593 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
   class ADR_9001 accepted
