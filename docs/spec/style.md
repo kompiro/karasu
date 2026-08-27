@@ -510,9 +510,10 @@ input always renders the same SVG, and a view that already fits keeps the exact
 layout it had. The org member grid is not part of that: it wraps at a fixed
 number of cards per row, which `grid-columns` overrides. Unlike `column` (system
 view only), this hint is honored on the system and drill-down views and the org
-member grid. The deploy view auto-balances its container grid as well, but it
-groups containers by `realizes` target rather than by a container node, so it
-has no per-container `grid-columns` override in v1.
+member grid. The deploy view auto-balances its container grid as well, and a container
+holding more than three units wraps them into a grid too rather than stacking
+them in one column. It groups containers by `realizes` target rather than by a
+container node, so it has no per-container `grid-columns` override in v1.
 
 Invalid values (anything that is not a positive integer, e.g. `0` or `2.5`) emit
 a `style-grid-columns-invalid-value` warning and are dropped; the layout

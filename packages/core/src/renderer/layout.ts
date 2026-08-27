@@ -86,8 +86,10 @@ export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout
  * alone overshoots into a wide canvas (the dify root view went 1.16 → 2.28
  * before this was corrected).
  *
- * The floor candidate is today's constant and only a strictly smaller area
- * displaces it, so a canvas that already fits keeps byte-identical output.
+ * The floor candidate is today's constant and only a strictly smaller canvas
+ * displaces it, so a canvas no wider budget can shrink keeps byte-identical
+ * output. That is a claim about area rather than shape — a landscape canvas
+ * can still be displaced if widening drops a row.
  */
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
   const { MAX_LAYER_WIDTH } = getLayoutConstants(options.displayMode);
@@ -312,6 +314,10 @@ function layoutInner(
       containers,
       width: outermost ? outermost.x + outermost.width + CONTAINER_PADDING : 0,
       height: outermost ? outermost.y + outermost.height + CONTAINER_PADDING : 0,
+      // Nothing was placed, so no budget can change this canvas. Saying so
+      // ends the search after one run instead of laying an empty view out
+      // once per candidate.
+      widthBound: false,
     };
   }
 

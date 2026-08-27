@@ -39,7 +39,7 @@ type: product
 
 - [x] AT-D: 既存のレンダリング系テスト（core 137 ファイル）がスナップショットの書き換えなしで通る
 
-  > ✅ Automated — `pnpm --filter @karasu-tools/core test`（3,933 件 green。探索の下限が現行定数で、勝つには厳密に小さい面積が要るため既存フィクスチャは不変）
+  > ✅ Automated — `pnpm --filter @karasu-tools/core test`（3,937 件 green。探索の下限が現行定数で、勝つには厳密に小さい面積が要るため既存フィクスチャは不変）
 
 ### AC-3: 決定的である
 
@@ -65,15 +65,23 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `layoutDeploy > container units wrap into a grid (#2593)` › `keeps the container box in agreement with the grid it holds`
 
-- [x] AT-J: unit が少ないコンテナは 1 行のまま
+- [x] AT-J: unit が 3 個以下のコンテナは従来どおり 1 列のまま（小さいコンテナまで grid 化すると、行とキャンバスが横に広がって既存の deploy 図が全部大きくなる）
 
-  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `layoutDeploy > container units wrap into a grid (#2593)` › `keeps a small container on one row`
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `layoutDeploy > container units wrap into a grid (#2593)` › `leaves a small container in the single column it always had` ／ `starts gridding at the fourth unit`
+
+- [x] AT-J2: 束ねられた deploy view 20 件が main と完全に一致する（この変更で大きくなる既存図が無い）
+
+  > ✅ Automated — `pnpm --filter @karasu-tools/core test`（deploy-layout のスナップショット系）。実測でも 20 view 中 0 件が変化
 
 ### AC-4b: 探索が前提にしている性質を固定する
 
-- [x] AT-H2: 配置は予算に対して単調である（幅は減らず、高さは増えない）。帯の上端で打ち切ってよい根拠がこれ
+- [x] AT-H2: 配置は予算に対して**単調ではない**（カード高が不揃いだと高さが増えうる）ことを反例で固定し、単調性を根拠にした打ち切りを再導入させない
 
-  > ✅ Automated — `packages/core/src/renderer/layer-layout-logics.test.ts` › `placeNodesInLayers > width budget (#2593)` › `is monotone in the budget — width never falls, height never rises`
+  > ✅ Automated — `packages/core/src/renderer/layer-layout-logics.test.ts` › `placeNodesInLayers > width budget (#2593)` › `is NOT monotone in the budget once card heights differ` ／ `is monotone in the budget when every card is the same height`（成り立つ範囲の明示）
+
+- [x] AT-H2b: 探索は帯を外れた候補で打ち切らず、全候補を評価した総当たりと同じ結果を返す
+
+  > ✅ Automated — `packages/core/src/renderer/aspect-search.test.ts` › `searchWidthBudget` › `keeps evaluating past a candidate that leaves the band` ／ `returns the smallest in-band canvas, matching an exhaustive scan`
 
 - [x] AT-H3: 予算をいくら広げても ADR-1737 の列規則は変わらない（少数の兄弟が 1 行に伸ばされない）
 
@@ -92,6 +100,10 @@ type: product
 - [x] AT-K: `grid-columns` の著者指定は探索より優先される
 
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > balanced grid wrapping (#1737)` › `honors a grid-columns hint on the container, overriding the auto count`
+
+- [x] AT-K2: multi-system root（system を横に並べる経路）でも探索が走り、結果が有限で下限以上になる
+
+  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > canvas space objective (#2593)` › `runs on the multi-system root, whose systems sit side by side`
 
 - [x] AT-L: 1 ノードだけの層が連なるモデルは変化しない（本 Issue のスコープ外であることの固定）
 

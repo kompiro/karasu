@@ -1,6 +1,6 @@
 # AT-0049: Deploy Diagram Sibling-Grid Wrapping
 
-**Feature**: When a single layer in the deploy diagram contains many containers, they wrap into a balanced grid (`gridColumnCount`: `ceil(sqrt(n))` columns, capped at 5) instead of extending horizontally, still bounded by `MAX_LAYER_WIDTH` (1200px). Updated for #1737 — wrapping is now count-driven (balanced grid) with the width as a secondary upper bound; the original width-only behavior was introduced in #396.
+**Feature**: When a single layer in the deploy diagram contains many containers, they wrap into a balanced grid (`gridColumnCount`: `ceil(sqrt(n))` columns, capped at 5) instead of extending horizontally, bounded by the view's row-width budget. Updated for #1737 — wrapping is now count-driven (balanced grid) with the width as a secondary upper bound; the original width-only behavior was introduced in #396. Updated again for #2593: that width bound is no longer the fixed 1200px `MAX_LAYER_WIDTH`, which is now only the *floor* of a per-view budget the canvas search may widen, so the diagram can be wider than 1200px when that produces a smaller canvas.
 
 **Related**: Issue #396, #1737, `packages/core/src/renderer/deploy-layout.ts`, `packages/core/src/renderer/layer-layout-logics.ts`
 
@@ -43,10 +43,10 @@ to `ceil(sqrt(8)) = 3` columns, so they wrap into three sub-rows of 3, 3, 2
 
 | # | Check | Expected |
 |---|-------|----------|
-| 1 | Open the deploy diagram in the preview UI | Diagram renders without horizontal scrollbar beyond 1200px |
+| 1 | Open the deploy diagram in the preview UI | Diagram renders without a horizontal scrollbar at the width the layout reports |
 | 2 | Containers per sub-row | Wrap into a balanced grid of 3 columns → rows of 3, 3, 2 |
 | 3 | Wrapped container X position | Each sub-row starts from the left margin (aligned with S1) |
-| 4 | Diagram total width | Does not exceed ~1300px |
+| 4 | Diagram total width | Matches the row-width budget the layout settled on (≥ 1200px; see #2593). Containers still wrap rather than extending in one row |
 | 5 | Diagram total height | Taller than a single-row diagram (multiple sub-rows) |
 
 ## Automated Coverage

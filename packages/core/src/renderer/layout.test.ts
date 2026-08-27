@@ -2126,6 +2126,23 @@ describe("layout > canvas space objective (#2593)", () => {
     expect(aspectOf(icon)).toBeLessThanOrEqual(16 / 9);
   });
 
+  it("runs on the multi-system root, whose systems sit side by side", () => {
+    // The multi-system pipeline is a parallel branch of the same placement and
+    // has a history of being wired without a fixture that reaches it (#1884,
+    // TPL-219). It gets the budget too, so a fixture has to reach it — and it
+    // records what the search can do there: systems are laid out side by side
+    // without wrapping, so the canvas is wide and the floor is usually already
+    // the smallest, which is the honest limit of the feature on this path.
+    const twoSystems = `${wideCardSystem(6).replace("system Sys", "system A")}\n${wideCardSystem(
+      6,
+    ).replace(/system Sys|S(\d)/g, (m) => (m === "system Sys" ? "system B" : `T${m.slice(1)}`))}`;
+    const result = layout(parseAndExtract(twoSystems));
+
+    expect(result.nodes.size).toBe(12);
+    expect(result.widthBudget).toBeGreaterThanOrEqual(FLOOR);
+    expect(Number.isFinite(aspectOf(result))).toBe(true);
+  });
+
   it("cannot help a chain of single-node layers (out of scope, needs layer folding)", () => {
     // Widening a row only helps where the row has something to absorb.
     const chain = [

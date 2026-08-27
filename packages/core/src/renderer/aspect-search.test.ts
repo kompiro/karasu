@@ -67,11 +67,14 @@ describe("searchWidthBudget", () => {
   });
 
   it("keeps the floor when widening only trades one axis for the other", () => {
-    // Area is exactly conserved here and every candidate is inside the band,
-    // so this is the case that exercises the strict-improvement comparison:
-    // a widened candidate ties on area and must not displace the floor.
-    const inBand = (budget: number) => ({ width: budget, height: 1_440_000 / budget });
-    expect(withinAspectBand(1200, 1_440_000 / 1200)).toBe(true);
+    // Area is exactly conserved, and the floor is inside the band but NOT
+    // square (1200x1440, aspect 0.83) — so a later candidate is squarer and
+    // ties on area. That is precisely the case the floor-first rule is about:
+    // rearranging the same canvas must not take the floor's placement away.
+    // With a square floor the assertion would hold for the wrong reason.
+    const inBand = (budget: number) => ({ width: budget, height: 1_728_000 / budget });
+    expect(withinAspectBand(1200, 1_728_000 / 1200)).toBe(true);
+    expect(squareness(1412, 1_728_000 / 1412)).toBeLessThan(squareness(1200, 1_728_000 / 1200));
 
     const found = searchWidthBudget(inBand, (r) => r, { floor: 1200 });
 
@@ -116,19 +119,47 @@ describe("searchWidthBudget", () => {
     expect(twice.budget).toBe(once.budget);
   });
 
-  it("stops once a candidate has passed the top of the band", () => {
+  it("keeps evaluating past a candidate that leaves the band", () => {
+    // An earlier revision stopped here, on the grounds that the canvas is
+    // monotone in the budget. It is not — a row's height is its tallest card,
+    // so re-wrapping can raise the total — and a search that stops early on a
+    // false invariant can miss the smallest canvas. Only `exhausted` ends it.
     const calls: number[] = [];
     searchWidthBudget(
       (budget) => {
         calls.push(budget);
-        return canvas(9_000_000)(budget);
+        // Out of band immediately, then back in band and much smaller: a
+        // stop-at-the-band search would never see the winner.
+        return budget === 1200
+          ? { width: 4000, height: 500 }
+          : budget === 1412
+            ? { width: 4200, height: 480 }
+            : { width: 900, height: 800 };
       },
       (r) => r,
       { floor: 1200 },
     );
-    const last = canvas(9_000_000)(calls[calls.length - 1]);
-    expect(last.width / last.height).toBeGreaterThan(MAX_CANVAS_ASPECT);
-    expect(calls.length).toBeLessThan(candidateWidthBudgets(1200).length);
+
+    expect(calls).toEqual(candidateWidthBudgets(1200));
+  });
+
+  it("returns the smallest in-band canvas, matching an exhaustive scan", () => {
+    // The search's contract, stated against a brute-force oracle rather than
+    // against the shortcuts it takes to get there.
+    const shapes = (budget: number) => {
+      const perRow = Math.max(1, Math.floor(budget / 370));
+      const rows = Math.ceil(23 / perRow);
+      return { width: perRow * 370, height: rows * 210 };
+    };
+    const budgets = candidateWidthBudgets(1200);
+    const oracle = budgets
+      .map(shapes)
+      .filter((c) => withinAspectBand(c.width, c.height))
+      .reduce((best, c) => (c.width * c.height < best.width * best.height ? c : best));
+
+    const found = searchWidthBudget(shapes, (r) => r, { floor: 1200 });
+
+    expect(found.result.width * found.result.height).toBe(oracle.width * oracle.height);
   });
 
   it("falls back to the least-bad canvas when none fits the band", () => {

@@ -699,13 +699,32 @@ describe("layoutDeploy > container units wrap into a grid (#2593)", () => {
     }
   });
 
-  it("keeps a small container on one row", () => {
-    const result = layoutDeploy(
-      makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(2) }]),
-    );
-    const ys = new Set([...result.nodes.values()].map((n) => n.y));
+  it("leaves a small container in the single column it always had", () => {
+    // Gridding every container widens the small ones, which widens their row
+    // and then the canvas — measured across the bundled deploy views, that
+    // grew all six that changed. Only a container big enough to read as a
+    // ribbon is worth reshaping.
+    for (const count of [1, 2, 3]) {
+      const result = layoutDeploy(
+        makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(count) }]),
+      );
+      const xs = new Set([...result.nodes.values()].map((n) => n.x));
+      const ys = new Set([...result.nodes.values()].map((n) => n.y));
 
-    expect(ys.size).toBe(1);
+      expect(xs.size).toBe(1);
+      expect(ys.size).toBe(count);
+    }
+  });
+
+  it("starts gridding at the fourth unit", () => {
+    // The threshold itself, so a future tweak has to face the sweep that
+    // picked it rather than moving it silently.
+    const result = layoutDeploy(
+      makeSlice([{ serviceId: "S", serviceLabel: "S", unitIds: unitIds(4) }]),
+    );
+    const xs = new Set([...result.nodes.values()].map((n) => n.x));
+
+    expect(xs.size).toBeGreaterThan(1);
   });
 
   it("reports the budget it settled on, and leaves a small canvas on the floor", () => {

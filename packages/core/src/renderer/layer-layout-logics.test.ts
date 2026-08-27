@@ -303,11 +303,41 @@ describe("placeNodesInLayers > width budget (#2593)", () => {
   const layerOf = (n: number) => new Map([[0, Array.from({ length: n }, (_n, i) => `n${i}`)]]);
   const BUDGETS = [1200, 1412, 1662, 1956, 2302, 2709, 3189, 3753, 4417, 5198, 6118, 7200];
 
-  it("is monotone in the budget — width never falls, height never rises", () => {
-    // The search stops as soon as a candidate passes the top of the aspect
-    // band, on the grounds that every later candidate is further outside it.
-    // That reasoning is only valid if the placement is monotone, so it is
-    // asserted rather than assumed (TPL-2593: 打ち切り条件が単調性で説明できる).
+  it("is NOT monotone in the budget once card heights differ", () => {
+    // Pinned as a counterexample, not as a property. A row is as tall as its
+    // tallest card, so widening the budget can pull a tall card up into a
+    // shorter row and make the canvas taller. An earlier revision of the
+    // search stopped scanning candidates on the strength of the opposite
+    // assumption; this fixture is what disproves it, and it fails loudly if
+    // anyone reinstates the shortcut.
+    const heights = [282, 361, 384, 169, 445, 281, 423];
+    const widths = [264, 439, 496, 492, 442, 403, 176];
+    const ids = heights.map((_h, i) => `n${i}`);
+    const placeUneven = (widthBudget: number) =>
+      placeNodesInLayers({
+        sortedLayers: [0],
+        nodesByLayer: new Map([[0, ids]]),
+        edges: [],
+        edgeDirections: undefined,
+        layers: new Map(),
+        forcedLayers: new Map(),
+        layoutHints: undefined,
+        gridHint: undefined,
+        groupStartLayer: new Map(),
+        gaps: GAPS,
+        widthBudget,
+        measure: (id: string) => {
+          const i = ids.indexOf(id);
+          return { width: widths[i], height: heights[i] };
+        },
+      });
+
+    expect(placeUneven(1412).childMaxHeight).toBeGreaterThan(placeUneven(1200).childMaxHeight);
+  });
+
+  it("is monotone in the budget when every card is the same height", () => {
+    // The intuition behind the discarded shortcut, kept to show exactly how
+    // far it does hold: uniform cards never make a row taller.
     for (const n of [4, 7, 12, 18, 30]) {
       const measured = BUDGETS.map((budget) => place(layerOf(n), budget));
       for (let i = 1; i < measured.length; i++) {

@@ -1,5 +1,5 @@
 /**
- * Square-canvas width-budget search (spike for Issue #2593).
+ * Canvas width-budget search (Issue #2593).
  *
  * The layout bounds the **sibling axis** twice — `GRID_COLUMN_CAP` and
  * `MAX_LAYER_WIDTH` — and never bounds the **layer axis**: every wrap and
@@ -21,11 +21,21 @@
  *   SVG. No randomness, no annealing, no iteration to a fixed point, and
  *   nothing about the viewport enters the computation (the CLI renders
  *   headless).
- * - **Only ever widens.** The first candidate is the current constant, and a
- *   strictly-better score is required to move off it. A canvas that is already
- *   square or landscape keeps byte-identical output.
+ * - **Floor first.** The first candidate is the current constant, and only a
+ *   strictly smaller canvas displaces it. A canvas no wider budget can shrink
+ *   therefore keeps byte-identical output. Note this is a claim about area,
+ *   not about shape: a landscape canvas is *not* automatically safe, because a
+ *   wider budget can still drop a row and come out smaller.
  * - **Self-limiting.** Once every row fits on one line, wider budgets change
- *   nothing, so the tie-break (smallest budget wins) settles there.
+ *   nothing, and the caller says so through `exhausted`, which ends the search.
+ *
+ * The canvas is deliberately **not** assumed monotone in the budget. A wider
+ * budget usually trades height for width, but a row's height is the tallest
+ * card in it, so re-wrapping cards of differing heights can raise the total —
+ * measured: seven non-uniform cards go from 1430 to 1492 tall between budgets
+ * 1200 and 1412. An earlier revision stopped the search at the first canvas
+ * past the top of the aspect band on the strength of that assumption; it now
+ * evaluates every candidate unless `exhausted` says the result cannot move.
  */
 
 /**
@@ -131,7 +141,6 @@ export function searchWidthBudget<T>(
 
   let best: BudgetSearchResult<T> | null = null;
   let bestArea = Infinity;
-  let bestSquareness = Infinity;
   // Fallback for a model no budget can bring inside the band.
   let fallback: BudgetSearchResult<T> | null = null;
   let fallbackSquareness = Infinity;
@@ -144,12 +153,13 @@ export function searchWidthBudget<T>(
 
     if (withinAspectBand(width, height)) {
       const area = width * height;
-      // Strictly better only, so the floor keeps the canvas when a wider
-      // budget merely rearranges it.
-      if (area < bestArea - 1e-9 || (Math.abs(area - bestArea) <= 1e-9 && shape < bestSquareness)) {
+      // Strictly smaller only. An equal-area candidate has merely rearranged
+      // the same canvas, and letting it win on any secondary score would take
+      // the floor's placement away for no gain — the floor-first rule this
+      // module rests on (TPL-2593).
+      if (area < bestArea - 1e-9) {
         best = found;
         bestArea = area;
-        bestSquareness = shape;
       }
     } else if (fallback === null || shape < fallbackSquareness) {
       // Also covers the degenerate canvas (an empty view measures 0 x 0):
@@ -160,13 +170,10 @@ export function searchWidthBudget<T>(
     }
 
     // Nothing left to try: the caller has told us this result is insensitive
-    // to the budget.
+    // to the budget, so no later candidate can differ. This is the only sound
+    // early exit — the caller derives it from the one channel the budget
+    // reaches the placement through.
     if (exhausted) break;
-    // Widening only ever moves items up into rows that already exist, so width
-    // never falls and height never rises: aspect is monotone in the budget.
-    // Once a candidate has passed the top of the band, every later one is
-    // further outside it.
-    if (height > 0 && width / height > MAX_CANVAS_ASPECT) break;
   }
 
   return best ?? fallback!;

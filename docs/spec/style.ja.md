@@ -485,7 +485,8 @@ viewport には依存しないので、同じ入力は常に同じ SVG になり
 レイアウトが変わりません。org の member grid はこの探索の対象外で、1 行あたりの枚数は
 固定です（`grid-columns` で上書きできます）。`column`（system ビュー限定）と異なり、本ヒントは system /
 drill-down ビューおよび org の member grid で有効です。deploy ビューもグリッドを自動
-バランスしますが、コンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
+バランスし、4 つ以上の unit を持つコンテナは unit も 1 列に積まずグリッドに畳みます。
+ただしコンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
 v1 では `grid-columns` による上書きはできません。
 
 正の整数でない値（`0` や `2.5` など）は `style-grid-columns-invalid-value` 警告とともに

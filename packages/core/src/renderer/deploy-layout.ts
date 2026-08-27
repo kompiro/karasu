@@ -12,7 +12,12 @@ import {
   estimateTextWidth,
 } from "./rendering-constants.js";
 import { wrapToWidth } from "./svg-builder.js";
-import { sortByBarycenter, gridColumnCount, wrapLayerIntoRows } from "./layer-layout-logics.js";
+import {
+  sortByBarycenter,
+  gridColumnCount,
+  wrapLayerIntoRows,
+  GRID_COLUMN_CAP,
+} from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
@@ -21,7 +26,13 @@ const CONTAINER_PADDING_TOP = 36; // room for container label
 const CONTAINER_PADDING_BOTTOM = 20;
 const OUTER_PADDING = 40;
 const ROW_GAP = 64; // vertical gap between layers (larger than CONTAINER_GAP to leave room for edges)
-const MAX_LAYER_WIDTH = 1200; // wrap containers to a new sub-row when a layer exceeds this width
+const MAX_LAYER_WIDTH = 1200;
+
+/**
+ * A container with this many units or fewer keeps its single column. See
+ * {@link layoutContainerUnits} for the sweep that picked it.
+ */
+const MAX_SINGLE_COLUMN_UNITS = 3; // wrap containers to a new sub-row when a layer exceeds this width
 // English fallbacks for the synthetic container captions. Callers pass localized
 // strings via `DeployBandLabels` (the app's EmptyStateLabels pass-through, per
 // docs/spec/i18n.md); these apply only when no label is supplied (CLI/tests).
@@ -97,12 +108,38 @@ interface UnitGrid {
  * the height of its whole row and pushes every later layer past it, which is
  * where most of the deploy canvas's empty space comes from.
  *
- * Same rule as the sibling grid: `ceil(sqrt(n))` columns row-major in
- * declaration order, wrapping early if a row would exceed the width budget.
+ * A container grids only once it would otherwise read as a ribbon: up to
+ * {@link MAX_SINGLE_COLUMN_UNITS} units keep the single column they have always
+ * had, and beyond that they wrap into `ceil(sqrt(n))` columns (capped at
+ * {@link GRID_COLUMN_CAP}) row-major in declaration order, wrapping early if a
+ * row would exceed the width budget.
+ *
+ * The threshold is the point of the change, not a detail. Gridding *every*
+ * container widens the small ones, which widens their row and then the canvas.
+ * Swept against the 20 bundled deploy views and the dify model:
+ *
+ * | grid from n > | bundled views that grew | dify deploy canvas |
+ * | --- | --- | --- |
+ * | 1 | 6 (one pushed outside the aspect band, +29%) | 2.83 Mpx |
+ * | 2 | 2 | 3.11 Mpx |
+ * | **3** | **0** | **3.11 Mpx** |
+ * | 4 | 0 | 3.39 Mpx |
+ *
+ * Three is where no existing diagram pays for the fix and the ribbon still
+ * gets caught — dify's `VectorStore` carries a dozen vector-database images
+ * and measured one card wide by a dozen tall, which set its row's height and
+ * pushed every later layer past it (4.69 Mpx on main).
+ *
+ * Deliberately not `gridColumnCount` either: its `n <= cap → n columns` branch
+ * would put a 5-unit container on one *row*, which is the opposite of what a
+ * container needs.
  */
 function layoutContainerUnits(units: DeployNode[], label: string, widthBudget: number): UnitGrid {
   const labelWidth = estimateTextWidth(label, CHAR_WIDTH) + CONTAINER_PADDING_X * 2 + 24;
-  const columnCount = gridColumnCount(units.length);
+  const columnCount =
+    units.length <= MAX_SINGLE_COLUMN_UNITS
+      ? 1
+      : Math.min(Math.ceil(Math.sqrt(units.length)), GRID_COLUMN_CAP);
   const rows = wrapLayerIntoRows(
     units,
     (unit) => measureDeployUnit(unit).width,

@@ -217,8 +217,9 @@ export interface LayoutResult {
    * Deliberately an output and never an input: ADR-2521 rejected
    * canvas-dimension flags on the shared helpers, and a `widthBudget` a caller
    * could pass in would be one — two contracts hiding behind one function.
-   * Equal to the mode's `MAX_LAYER_WIDTH` whenever widening bought nothing,
-   * which is the observable form of "an already-landscape canvas is untouched".
+   * Equal to the mode's `MAX_LAYER_WIDTH` whenever no wider budget produced a
+   * smaller canvas, which is the observable form of "this view kept the layout
+   * it already had".
    */
   widthBudget?: number;
   /**
