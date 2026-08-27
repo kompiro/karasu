@@ -591,11 +591,12 @@ export interface DeployBlock {
  * - Bare id `Foo` parses to `["Foo"]` — the length-1 case.
  * - Path id `A.B.C` parses to `["A", "B", "C"]`.
  *
- * First introduced for `import` entries (Issue #927), where the resolver
- * walks the path one segment at a time through each parent's `children`
- * array (id-only matching, no kind whitelist). Other reference sites share
- * the same lexical shape via `parser/node-path.ts` but keep their own
- * resolution rules.
+ * First introduced for `import` entries (Issue #927), which walked the path
+ * one segment at a time through each parent's `children`. Since #2088 the
+ * accepting sites share both the lexical shape and the resolution rule —
+ * `parser/node-path.ts`'s suffix rule — with `import` moving onto it in
+ * slice D2 (#2576). What stays each site's own is the *pool* a reference
+ * resolves against and the recovery a malformed reference gets.
  *
  * Note: path resolution and validation (file existence, segment lookup,
  * ambiguity, cycles) stay with each site's resolver — the parser only
@@ -603,8 +604,23 @@ export interface DeployBlock {
  */
 export type NodeIdPath = string[];
 
+/**
+ * One entry of a named import (`import { A, B.C } from "…"`), with the range
+ * of the entry itself.
+ *
+ * The range is per entry rather than per statement for the reason
+ * {@link HandlesTarget} and {@link RealizesTarget} carry one: a statement may
+ * name several nodes, and `import-path-not-found` / `import-target-ambiguous`
+ * have to point at the entry that failed instead of underlining the whole
+ * line (#2582 review).
+ */
+export interface ImportEntry {
+  path: NodeIdPath;
+  loc: SourceRange;
+}
+
 export interface ImportDeclaration {
-  ids: NodeIdPath[];
+  ids: ImportEntry[];
   path: string;
   loc: SourceRange;
 }

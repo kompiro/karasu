@@ -1300,6 +1300,82 @@ system ECPlatform {
       expect(merged.children.map((c) => c.id).sort()).toEqual(["accounts", "users"]);
     });
 
+    it("S4.5 holds for named imports too: a chain rooted at an infra block reports the reopen (#2582 review)", async () => {
+      // Named imports reach infra roots since #2576. Merging two declarations
+      // of one block through that path has to say so, exactly as the
+      // whole-file path does — otherwise the reopen is silent only when the
+      // author happens to import by entry.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { UserDB.users } from "a.krs"
+         import { UserDB.orders } from "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users }`);
+      await fs.writeFile("/project/b.krs", `database UserDB { table orders }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+      const infos = result.diagnostics.filter((d) => d.code === "infra-redeclared-across-files");
+      expect(infos).toHaveLength(1);
+      expect(infos[0].params).toMatchObject({ blockId: "UserDB", blockKind: "database" });
+
+      // The union still happens; only the silence is fixed.
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.children.map((c) => c.id).sort()).toEqual(["orders", "users"]);
+    });
+
+    it("a same-id leaf arriving through a named import is not dropped silently (#2582 review)", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { UserDB.users } from "a.krs"
+         import { UserDB.users } from "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users { label "from a" } }`);
+      await fs.writeFile("/project/b.krs", `database UserDB { table users { label "from b" } }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      const leafInfos = result.diagnostics.filter(
+        (d) => d.code === "infra-leaf-redeclared-silently",
+      );
+      expect(leafInfos).toHaveLength(1);
+      expect(leafInfos[0].params).toMatchObject({
+        leafId: "users",
+        leafKind: "table",
+        infraId: "UserDB",
+        infraKind: "database",
+      });
+
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.children).toHaveLength(1);
+      expect(userDb.children[0].label).toBe("from a");
+    });
+
+    it("two entries naming one declaration are one import, not a reopen (#2582 review)", async () => {
+      // Same file, two entries: the block is declared once, so there is
+      // nothing to report — the reopen check keys on the declaration, not on
+      // how many entries reached it.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { UserDB.users, UserDB.orders } from "a.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users\n table orders }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(
+        result.diagnostics.filter(
+          (d) =>
+            d.code === "infra-redeclared-across-files" ||
+            d.code === "infra-leaf-redeclared-silently",
+        ),
+      ).toEqual([]);
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.children.map((c) => c.id).sort()).toEqual(["orders", "users"]);
+    });
+
     it("S4.5: same-id leaf inside an infra body keeps the first and emits infra-leaf-redeclared-silently info", async () => {
       // Both files declare `database UserDB { table users }` with different bodies.
       // Per S4.5: the database itself merges (1 info), and the duplicated `table users`

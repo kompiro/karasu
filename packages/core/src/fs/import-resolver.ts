@@ -9,6 +9,7 @@ import type {
   DeployBlock,
   OrganizationBlock,
   ImportDeclaration,
+  ImportEntry,
 } from "../types/ast.js";
 import { createEmptyKrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
@@ -27,7 +28,17 @@ import {
   buildScopedBoundaryMembership,
 } from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
-import { ambiguousNodePathCandidates, resolveNodePathBySuffix } from "../parser/node-path.js";
+import {
+  ambiguousNodePathCandidates,
+  nodePathKey,
+  resolveNodePathBySuffix,
+} from "../parser/node-path.js";
+
+/** One candidate chain of an imported file: the nodes, and their id path. */
+interface ImportChain {
+  path: string[];
+  chain: KrsNode[];
+}
 import type { StyleSheet } from "../types/style.js";
 
 /**
@@ -105,6 +116,12 @@ export class ImportResolver {
   private loadedKrs = new Set<string>();
   private visitedStyles = new Set<string>();
   private diagnostics: Diagnostic[] = [];
+  /**
+   * Which declarations each named-import stub stands for, so a second arrival
+   * can tell "the same block, imported again" from "another file reopened
+   * this block" (see `noteChainReopen`).
+   */
+  private chainOrigins = new WeakMap<KrsNode, Set<KrsNode>>();
   /** ディレクトリ import の展開結果キャッシュ（Pass 1 で構築、Pass 2 で参照） */
   private dirExpansions = new Map<string, string[]>();
   /** Pass 2: ファイル単位の解決済み KrsFile cache（DAG 経由の同一ファイル到達で再利用） */
@@ -580,30 +597,11 @@ export class ImportResolver {
   private mergeInfraBody(target: KrsNode & { id: string; kind: string }, source: KrsNode): void {
     if (target === source) return;
     this.mergeScopedBoundaries(target, source);
-    const infraKind =
-      target.kind === "database" || target.kind === "queue" || target.kind === "storage"
-        ? (target.kind as "database" | "queue" | "storage")
-        : undefined;
     for (const child of source.children) {
       if (target.children.includes(child)) continue;
       const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
       if (dup) {
-        if (
-          infraKind &&
-          (child.kind === "table" || child.kind === "queue-item" || child.kind === "bucket")
-        ) {
-          this.diagnostics.push({
-            severity: "info",
-            code: "infra-leaf-redeclared-silently",
-            params: {
-              leafId: child.id,
-              leafKind: child.kind as "table" | "queue-item" | "bucket",
-              infraId: target.id,
-              infraKind,
-            },
-            loc: child.loc,
-          });
-        }
+        this.reportInfraLeafCollision(target, child);
         continue;
       }
       target.children.push(child);
@@ -817,11 +815,17 @@ export class ImportResolver {
     importedFile: KrsFile,
     nodeImport: ImportDeclaration,
   ): void {
-    for (const idPath of nodeImport.ids) {
-      if (idPath.length === 1) {
-        this.resolveBareIdImport(mergedFile, importedFile, idPath[0], nodeImport);
+    // The candidate chains are a property of the imported file, not of the
+    // entry, so one walk serves the whole statement: rebuilding it per entry
+    // made `import { A.B, C.D, … }` cost O(entries × nodes in the file), on a
+    // shape generated models produce routinely. Lazy, so a statement of bare
+    // ids never walks at all.
+    const chains = this.importChainsOnce(importedFile);
+    for (const entry of nodeImport.ids) {
+      if (entry.path.length === 1) {
+        this.resolveBareIdImport(mergedFile, importedFile, entry, nodeImport);
       } else {
-        this.resolveMultiSegmentImport(mergedFile, importedFile, idPath, nodeImport);
+        this.resolveMultiSegmentImport(mergedFile, chains, entry, nodeImport);
       }
     }
 
@@ -842,9 +846,10 @@ export class ImportResolver {
   private resolveBareIdImport(
     mergedFile: KrsFile,
     importedFile: KrsFile,
-    id: string,
+    entry: ImportEntry,
     nodeImport: ImportDeclaration,
   ): void {
+    const id = entry.path[0];
     let found = false;
 
     for (const system of importedFile.systems) {
@@ -916,9 +921,36 @@ export class ImportResolver {
         severity: "error",
         code: "import-id-not-found",
         params: { id, path: nodeImport.path },
-        loc: nodeImport.loc,
+        // The entry's range, not the statement's: `import { A, B }` where only
+        // `B` is missing must underline `B` (#2582 review).
+        loc: entry.loc,
       });
     }
+  }
+
+  /**
+   * Every node chain in an imported file, `[root, …, node]`, with its id
+   * path — the candidate pool a multi-segment entry resolves against.
+   *
+   * Built at most once per import statement: it is a property of the file,
+   * not of the entry, and the walk is O(nodes in the file).
+   */
+  private importChainsOnce(importedFile: KrsFile): () => ImportChain[] {
+    let cached: ImportChain[] | undefined;
+    return () => {
+      if (cached) return cached;
+      const candidates: ImportChain[] = [];
+      const walk = (node: KrsNode, prefix: readonly KrsNode[]): void => {
+        const chain = [...prefix, node];
+        candidates.push({ path: chain.map((n) => n.id), chain });
+        for (const child of node.children) walk(child, chain);
+      };
+      for (const roots of this.topLevelHomes(importedFile).values()) {
+        for (const root of roots) walk(root, []);
+      }
+      cached = candidates;
+      return cached;
+    };
   }
 
   /**
@@ -943,32 +975,17 @@ export class ImportResolver {
    * On success each leaf is merged with its full subtree, materializing
    * minimal stubs of intermediate ancestors (id + label + properties only)
    * when they don't already exist, mirroring how a targeted bare-id import
-   * behaves today.
+   * behaves today. A chain rooted at an infra block joins the S4.5 reopen
+   * protocol on the way in — see {@link noteChainReopen}.
    */
   private resolveMultiSegmentImport(
     mergedFile: KrsFile,
-    importedFile: KrsFile,
-    path: string[],
+    chains: () => ImportChain[],
+    entry: ImportEntry,
     nodeImport: ImportDeclaration,
   ): void {
-    // Every node chain in the imported file, [root, …, node], with its id path.
-    const candidates: Array<{ path: string[]; chain: KrsNode[] }> = [];
-    const walk = (node: KrsNode, prefix: readonly KrsNode[]): void => {
-      const chain = [...prefix, node];
-      candidates.push({ path: chain.map((n) => n.id), chain });
-      for (const child of node.children) walk(child, chain);
-    };
-    for (const system of importedFile.systems) walk(system, []);
-    for (const root of [
-      ...importedFile.services,
-      ...importedFile.clients,
-      ...importedFile.domains,
-      ...importedFile.databases,
-      ...importedFile.queues,
-      ...importedFile.storages,
-    ]) {
-      walk(root, []);
-    }
+    const path = entry.path;
+    const candidates = chains();
 
     const matches = resolveNodePathBySuffix(path, candidates);
 
@@ -1000,7 +1017,8 @@ export class ImportResolver {
           importPath: nodeImport.path,
           ...(lastResolvedId !== undefined ? { lastResolvedId } : {}),
         },
-        loc: nodeImport.loc,
+        // The entry's range, not the statement's (#2582 review).
+        loc: entry.loc,
       });
       return;
     }
@@ -1016,11 +1034,14 @@ export class ImportResolver {
       this.diagnostics.push({
         severity: "warning",
         code: "import-target-ambiguous",
+        // `nodePathKey`, not a local join: it is the canonical encoding for
+        // diagnostic params, and the `owns` family's `ambiguityParams` reads
+        // the same helper, so the two cannot drift.
         params: {
-          path: path.join("."),
-          candidates: ambiguous.map((m) => ({ kind: m.kind, path: m.path.join(".") })),
+          path: nodePathKey(path),
+          candidates: ambiguous.map((m) => ({ kind: m.kind, path: nodePathKey(m.path) })),
         },
-        loc: nodeImport.loc,
+        loc: entry.loc,
       });
     }
 
@@ -1040,47 +1061,129 @@ export class ImportResolver {
   private materializeChain(mergedFile: KrsFile, chain: KrsNode[]): void {
     const root = chain[0];
     const leaf = chain[chain.length - 1];
-    const home: KrsNode[] | SystemNode[] =
-      root.kind === "system"
-        ? mergedFile.systems
-        : root.kind === "service"
-          ? mergedFile.services
-          : root.kind === "client"
-            ? mergedFile.clients
-            : root.kind === "domain"
-              ? mergedFile.domains
-              : root.kind === "database"
-                ? mergedFile.databases
-                : root.kind === "queue"
-                  ? mergedFile.queues
-                  : mergedFile.storages;
+    const home = this.topLevelHomes(mergedFile).get(root.kind);
+    if (home === undefined) return;
 
-    let target = (home as KrsNode[]).find((n) => n.id === root.id);
+    let target = home.find((n) => n.id === root.id);
     if (!target) {
-      // Shallow stub: copy id / label / properties / loc but start with no
-      // children or edges so other imports targeting the same root can
-      // populate it.
-      target = { ...root, children: [], edges: [] } as KrsNode;
-      (home as KrsNode[]).push(target);
+      target = this.chainStub(root);
+      home.push(target);
+    } else {
+      this.noteChainReopen(target, root);
     }
 
+    let parent: KrsNode = target;
     let parentChildren: KrsNode[] = target.children;
     for (const ancestor of chain.slice(1, -1)) {
       let existing = parentChildren.find((c) => c.id === ancestor.id);
       if (!existing) {
-        // Minimal ancestor stub — id, label, kind, and metadata, but no
-        // children or edges so we don't accidentally over-import sibling
-        // nodes the user did not request.
-        existing = { ...ancestor, children: [], edges: [] } as KrsNode;
+        existing = this.chainStub(ancestor);
         parentChildren.push(existing);
+      } else {
+        this.noteChainReopen(existing, ancestor);
       }
+      parent = existing;
       parentChildren = existing.children;
     }
 
-    const alreadyPresent = parentChildren.some((c) => c.id === leaf.id && c.kind === leaf.kind);
-    if (!alreadyPresent) {
-      parentChildren.push(leaf);
+    // Identity first, then `(id, kind)`: the same declaration arriving twice
+    // (two entries of one statement, a DAG re-arrival) is a dedup, while two
+    // declarations sharing a name are a collision the infra rule reports
+    // rather than swallows — the same order `mergeInfraBody` reads them in.
+    if (parentChildren.includes(leaf)) return;
+    const dup = parentChildren.find((c) => c.id === leaf.id && c.kind === leaf.kind);
+    if (dup) {
+      this.reportInfraLeafCollision(parent, leaf);
+      return;
     }
+    parentChildren.push(leaf);
+  }
+
+  /**
+   * The top-level list each root kind lives in. One enumeration, read by the
+   * chain walk (which roots are candidates) and by materialization (where a
+   * root lands), so a future top-level kind cannot reach one and miss the
+   * other (TPL-1720).
+   */
+  private topLevelHomes(file: KrsFile): Map<string, KrsNode[]> {
+    return new Map<string, KrsNode[]>([
+      ["system", file.systems as KrsNode[]],
+      ["service", file.services as KrsNode[]],
+      ["client", file.clients as KrsNode[]],
+      ["domain", file.domains as KrsNode[]],
+      ["database", file.databases as KrsNode[]],
+      ["queue", file.queues as KrsNode[]],
+      ["storage", file.storages as KrsNode[]],
+    ]);
+  }
+
+  /**
+   * Shallow stub of a chain node: identity and metadata, but no children or
+   * edges, so a later import into the same root adds to it instead of
+   * dragging in siblings the author did not name. The declaration it stands
+   * for is recorded — see {@link noteChainReopen}.
+   */
+  private chainStub(source: KrsNode): KrsNode {
+    const stub = { ...source, children: [], edges: [] } as KrsNode;
+    this.chainOriginsOf(stub).add(source);
+    return stub;
+  }
+
+  private chainOriginsOf(node: KrsNode): Set<KrsNode> {
+    let origins = this.chainOrigins.get(node);
+    if (!origins) {
+      origins = new Set<KrsNode>();
+      this.chainOrigins.set(node, origins);
+    }
+    return origins;
+  }
+
+  /**
+   * A chain arriving at a node that is already in the merged file.
+   *
+   * Silent when it is the same declaration — a second entry of one import
+   * statement, or a DAG re-arrival. A *different* declaration of an infra
+   * block is the cross-file reopen `mergeTopLevelInfra` reports, and it has
+   * to report the same way here: named imports reach infra roots since #2576,
+   * and merging two declarations without a word is the silent loss #1391 was
+   * written to stop. `mergeTopLevelInfra` can compare instances directly
+   * because it pushes the source node itself; a chain root is a stub, so the
+   * declarations it stands for are tracked here.
+   */
+  private noteChainReopen(existing: KrsNode, source: KrsNode): void {
+    if (existing === source) return;
+    const origins = this.chainOriginsOf(existing);
+    if (origins.has(source)) return;
+    origins.add(source);
+    const kind = source.kind;
+    if (existing.kind !== kind || !this.isInfraKind(kind)) return;
+    this.diagnostics.push({
+      severity: "info",
+      code: "infra-redeclared-across-files",
+      params: { blockId: source.id, blockKind: kind },
+    });
+  }
+
+  /**
+   * A same-`(id, kind)` infra leaf arriving from a different declaration.
+   * Shared by {@link mergeInfraBody} and the chain materialization above so
+   * both merge paths surface the dropped declaration identically (#1391).
+   */
+  private reportInfraLeafCollision(parent: KrsNode, child: KrsNode): void {
+    const infraKind = parent.kind;
+    if (!this.isInfraKind(infraKind)) return;
+    if (child.kind !== "table" && child.kind !== "queue-item" && child.kind !== "bucket") return;
+    this.diagnostics.push({
+      severity: "info",
+      code: "infra-leaf-redeclared-silently",
+      params: {
+        leafId: child.id,
+        leafKind: child.kind,
+        infraId: parent.id,
+        infraKind,
+      },
+      loc: child.loc,
+    });
   }
 
   /**

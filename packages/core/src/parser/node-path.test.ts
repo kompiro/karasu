@@ -173,7 +173,7 @@ describe("dotted-path site recovery (pinned behavior)", () => {
       code: "expected-identifier",
       params: { got: "Comma", value: "," },
     });
-    expect(result.value.nodeImports.map((i) => i.ids)).toEqual([[["A"], ["B"]]]);
+    expect(result.value.nodeImports.map((i) => i.ids.map((e) => e.path))).toEqual([[["A"], ["B"]]]);
   });
 
   it("entity table mapping with a dangling dot reports expected-id-after and records nothing", () => {

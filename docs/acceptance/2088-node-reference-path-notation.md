@@ -93,6 +93,10 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a non-uniform multi-match imports every match and warns with the candidates
 - [x] `docs/spec/syntax.md` の path-notation 節・import 節が更新されている
   > ✅ Automated — packages/core/src/types/diagnostics-catalog.test.ts › documents every diagnostic code and warning kind in docs/spec/diagnostics.md
+- [x] infra ブロックを根とする named import も S4.5 の reopen 規約に乗る（別ファイルの同 id 宣言は `infra-redeclared-across-files`、同 id leaf は `infra-leaf-redeclared-silently`。同一宣言を 2 entry で名指した場合は沈黙）
+  > ✅ Automated — packages/core/src/fs/import-resolver.test.ts › S4.5 holds for named imports too: a chain rooted at an infra block reports the reopen (#2582 review)
+- [x] import の解決診断は文全体でなく失敗した entry に anchor する
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a resolution diagnostic anchors on the entry that failed, not on the whole statement
 
 ## 手動確認
 

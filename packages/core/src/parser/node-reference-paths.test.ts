@@ -401,6 +401,20 @@ describe("import entries resolve by the suffix rule (#2576)", () => {
     expect(resolved.krsFile.systems.map((s) => s.id).sort()).toEqual(["A", "B"]);
   });
 
+  it("a resolution diagnostic anchors on the entry that failed, not on the whole statement", async () => {
+    // `import { A, B.Missing }` underlines `B.Missing`. Anchoring on the
+    // statement was the anti-pattern slice C's review took out of `handles`
+    // (#2582 review); import entries now carry their own range.
+    const line = `import { Shop, Shop.Missing } from "./nodes.krs"`;
+    const resolved = await projectWith(`${line}\n`, `system Shop {\n  service Checkout {}\n}\n`);
+    const notFound = resolved.diagnostics.filter((d) => d.code === "import-path-not-found");
+    expect(notFound).toHaveLength(1);
+    expect(notFound[0]!.loc!.start.line).toBe(1);
+    expect(notFound[0]!.loc!.start.column).toBe(line.indexOf("Shop.Missing") + 1);
+    // The whole statement starts further left, so this is not the old anchor.
+    expect(notFound[0]!.loc!.start.column).toBeGreaterThan(line.indexOf("import") + 1);
+  });
+
   it("root-anchored full paths keep resolving to exactly the node they always did", async () => {
     const resolved = await projectWith(
       `import { Shop.Checkout.Payment } from "./nodes.krs"\n`,
@@ -601,7 +615,7 @@ ${line}
     // The shared notation does not make recovery shared: `import` keeps the
     // segments it read (its pre-#2088 behavior), `owns` records nothing.
     const imported = Parser.parse('import { A. } from "other.krs"');
-    expect(imported.value.nodeImports[0]?.ids).toEqual([["A"]]);
+    expect(imported.value.nodeImports[0]?.ids.map((e) => e.path)).toEqual([["A"]]);
 
     const owned = Parser.parse(`
 system Shop {

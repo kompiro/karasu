@@ -129,7 +129,7 @@ worth surfacing.
 
 | Code | Severity | Fires when |
 | --- | --- | --- |
-| `infra-redeclared-across-files` | info | The same `database` / `queue` / `storage` id is declared in more than one merged file. |
+| `infra-redeclared-across-files` | info | The same `database` / `queue` / `storage` id is declared in more than one merged file. Reported whichever import form brought the second declaration in: a whole-file import, or a named entry whose path roots at the block (`import { UserDB.users }`). Two entries naming one declaration are one import, not a reopen. |
 | `infra-leaf-redeclared-silently` | info | A `table` / `queue-item` / `bucket` leaf is redeclared within its parent infra. |
 | `shared-infra-fan-in` | info | Two or more services depend on the same store within one system (a fact, not a defect). |
 | `cross-domain-store-access` | info | A usecase reads/writes an infra leaf owned by another domain, in one system (a boundary-crossing fact, not a defect). Ownership is derived from `entity` mappings; keyed at leaf granularity; `[external]` and role-tagged (`[index]` / `[cache]` / `[analytics]`) stores excluded. Orthogonal to `shared-infra-fan-in`. |
