@@ -2061,6 +2061,103 @@ describe("layout > balanced grid wrapping (#1737)", () => {
   });
 });
 
+describe("layout > canvas space objective (#2593)", () => {
+  // Cards wide enough that three of them crowd the fixed 1200px row budget —
+  // the shape dify's drill-downs have, and the reason they wrapped to two per
+  // row and grew into a ribbon.
+  const wideCardSystem = (n: number) => {
+    const services = Array.from(
+      { length: n },
+      (_service, i) =>
+        `  service S${i} {\n    label "Service number ${i}"\n    description "A deliberately long description so the card measures wide enough to crowd the fixed row budget"\n  }`,
+    ).join("\n");
+    return `system Sys {\n${services}\n}`;
+  };
+  const aspectOf = (result: ReturnType<typeof layout>) => result.width / result.height;
+  const FLOOR = 1200;
+
+  it("pulls a canvas that would render as a tall ribbon inside the aspect band", () => {
+    const result = layout(parseAndExtract(wideCardSystem(40)));
+
+    expect(result.widthBudget).toBeGreaterThan(FLOOR);
+    expect(aspectOf(result)).toBeGreaterThanOrEqual(9 / 16);
+    expect(aspectOf(result)).toBeLessThanOrEqual(16 / 9);
+  });
+
+  it("leaves an already-landscape canvas on the floor budget", () => {
+    // The observable form of "output is byte-identical when widening buys
+    // nothing": the floor candidate is what produced this canvas.
+    const result = layout(parseAndExtract(wideCardSystem(3)));
+
+    expect(aspectOf(result)).toBeGreaterThan(1);
+    expect(result.widthBudget).toBe(FLOOR);
+  });
+
+  it("scores the final canvas, not the layered content box", () => {
+    // Side external columns sit outside the content box, so scoring that box
+    // alone widens a canvas that was already fine (#2593: 1.16 -> 2.28).
+    const withExternal = `system Sys {
+  user U [human] { label "User" }
+  service Core { label "Core service" description "The service the user talks to" }
+  external Vendor { label "Vendor API" description "Third-party integration the core service calls" }
+  U -> Core
+  Core -> Vendor
+}`;
+    const result = layout(parseAndExtract(withExternal));
+    expect(aspectOf(result)).toBeLessThanOrEqual(16 / 9);
+  });
+
+  it("is deterministic: identical input produces identical coordinates", () => {
+    const coords = () =>
+      [...layout(parseAndExtract(wideCardSystem(40))).nodes.values()].map((n) => [n.x, n.y]);
+    expect(coords()).toEqual(coords());
+  });
+
+  it("searches in icon mode too, from that mode's own floor", () => {
+    // Icon mode has its own MAX_LAYER_WIDTH (1040), so its candidate ladder is
+    // a different one. ADR-1000 rejected a separate icon-mode layout strategy
+    // partly because mode switching should not re-arrange the diagram; running
+    // one rule from each mode's own constant is how that is honoured here.
+    const slice = parseAndExtract(wideCardSystem(40));
+    const icon = layout(slice, { displayMode: "icon" });
+
+    expect(icon.widthBudget).toBeGreaterThanOrEqual(1040);
+    expect(aspectOf(icon)).toBeGreaterThanOrEqual(9 / 16);
+    expect(aspectOf(icon)).toBeLessThanOrEqual(16 / 9);
+  });
+
+  it("runs on the multi-system root, whose systems sit side by side", () => {
+    // The multi-system pipeline is a parallel branch of the same placement and
+    // has a history of being wired without a fixture that reaches it (#1884,
+    // TPL-219). It gets the budget too, so a fixture has to reach it — and it
+    // records what the search can do there: systems are laid out side by side
+    // without wrapping, so the canvas is wide and the floor is usually already
+    // the smallest, which is the honest limit of the feature on this path.
+    const twoSystems = `${wideCardSystem(6).replace("system Sys", "system A")}\n${wideCardSystem(
+      6,
+    ).replace(/system Sys|S(\d)/g, (m) => (m === "system Sys" ? "system B" : `T${m.slice(1)}`))}`;
+    const result = layout(parseAndExtract(twoSystems));
+
+    expect(result.nodes.size).toBe(12);
+    expect(result.widthBudget).toBeGreaterThanOrEqual(FLOOR);
+    expect(Number.isFinite(aspectOf(result))).toBe(true);
+  });
+
+  it("cannot help a chain of single-node layers (out of scope, needs layer folding)", () => {
+    // Widening a row only helps where the row has something to absorb.
+    const chain = [
+      "system Chain {",
+      ...Array.from({ length: 10 }, (_node, i) => `  service L${i} { label "Layer ${i}" }`),
+      ...Array.from({ length: 9 }, (_edge, i) => `  L${i} -> L${i + 1}`),
+      "}",
+    ].join("\n");
+    const result = layout(parseAndExtract(chain));
+
+    expect(aspectOf(result)).toBeLessThan(0.5);
+    expect(result.widthBudget).toBe(FLOOR);
+  });
+});
+
 describe("layout > side columns keep vertical clearance (#2593 follow-up)", () => {
   // Two hubs so the side placement engages (#1728), and enough externals on
   // one side that the span cannot hold them at equal steps.

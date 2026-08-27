@@ -279,3 +279,94 @@ describe("placeNodesInLayers (#2514)", () => {
     expect(banded.placements.get("a")!.y - plain.placements.get("a")!.y).toBe(GAPS.groupTitleGap);
   });
 });
+
+describe("placeNodesInLayers > width budget (#2593)", () => {
+  const GAPS = { layerGap: 120, nodeGap: 60, maxLayerWidth: 1200, groupTitleGap: 60 };
+
+  function place(nodesByLayer: Map<number, string[]>, widthBudget: number, cardWidth = 340) {
+    return placeNodesInLayers({
+      sortedLayers: [...nodesByLayer.keys()].sort((a, b) => a - b),
+      nodesByLayer,
+      edges: [],
+      edgeDirections: undefined,
+      layers: new Map(),
+      forcedLayers: new Map(),
+      layoutHints: undefined,
+      gridHint: undefined,
+      groupStartLayer: new Map(),
+      gaps: GAPS,
+      widthBudget,
+      measure: () => ({ width: cardWidth, height: 80 }),
+    });
+  }
+
+  const layerOf = (n: number) => new Map([[0, Array.from({ length: n }, (_n, i) => `n${i}`)]]);
+  const BUDGETS = [1200, 1412, 1662, 1956, 2302, 2709, 3189, 3753, 4417, 5198, 6118, 7200];
+
+  it("is NOT monotone in the budget once card heights differ", () => {
+    // Pinned as a counterexample, not as a property. A row is as tall as its
+    // tallest card, so widening the budget can pull a tall card up into a
+    // shorter row and make the canvas taller. An earlier revision of the
+    // search stopped scanning candidates on the strength of the opposite
+    // assumption; this fixture is what disproves it, and it fails loudly if
+    // anyone reinstates the shortcut.
+    const heights = [282, 361, 384, 169, 445, 281, 423];
+    const widths = [264, 439, 496, 492, 442, 403, 176];
+    const ids = heights.map((_h, i) => `n${i}`);
+    const placeUneven = (widthBudget: number) =>
+      placeNodesInLayers({
+        sortedLayers: [0],
+        nodesByLayer: new Map([[0, ids]]),
+        edges: [],
+        edgeDirections: undefined,
+        layers: new Map(),
+        forcedLayers: new Map(),
+        layoutHints: undefined,
+        gridHint: undefined,
+        groupStartLayer: new Map(),
+        gaps: GAPS,
+        widthBudget,
+        measure: (id: string) => {
+          const i = ids.indexOf(id);
+          return { width: widths[i], height: heights[i] };
+        },
+      });
+
+    expect(placeUneven(1412).childMaxHeight).toBeGreaterThan(placeUneven(1200).childMaxHeight);
+  });
+
+  it("is monotone in the budget when every card is the same height", () => {
+    // The intuition behind the discarded shortcut, kept to show exactly how
+    // far it does hold: uniform cards never make a row taller.
+    for (const n of [4, 7, 12, 18, 30]) {
+      const measured = BUDGETS.map((budget) => place(layerOf(n), budget));
+      for (let i = 1; i < measured.length; i++) {
+        expect(measured[i].childMaxWidth).toBeGreaterThanOrEqual(measured[i - 1].childMaxWidth);
+        expect(measured[i].childMaxHeight).toBeLessThanOrEqual(measured[i - 1].childMaxHeight);
+      }
+    }
+  });
+
+  it("keeps ADR-1737's column rule whatever the budget is", () => {
+    // A widened budget must not turn a small sibling set into one long row:
+    // `gridColumnCount` puts 7 siblings on 3 columns, and no budget may raise
+    // that to 7 — the 7±2 span-of-control bound is not the search's to spend.
+    for (const budget of BUDGETS) {
+      const rows = new Set([...place(layerOf(7), budget).placements.values()].map((p) => p.y));
+      expect(rows.size).toBe(3);
+    }
+  });
+
+  it("reports whether the width bound was the binding constraint", () => {
+    // Three 340-wide cards fit in 1200 (340*3 + 60*2 = 1140), so the only
+    // breaks come from the column count.
+    expect(place(layerOf(3), 1200).widthBound).toBe(false);
+    // Nine of them do not: `gridColumnCount(9)` allows 3 per row, and 3 fit, so
+    // still no width break...
+    expect(place(layerOf(9), 1200).widthBound).toBe(false);
+    // ...but at 4 columns (16 nodes) a row of 4 needs 1540 > 1200, so the width
+    // bound cuts the rows short and widening can still change the placement.
+    expect(place(layerOf(16), 1200).widthBound).toBe(true);
+    expect(place(layerOf(16), 2302).widthBound).toBe(false);
+  });
+});

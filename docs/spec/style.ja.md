@@ -476,16 +476,23 @@ external サービスの `column: center` / 未指定は、サイドを自動割
 #BillingDomain  { grid-columns: 2; }   /* usecases を 2 列で折り返す */
 ```
 
-1 行が最大レイヤー幅を超える場合は早めに折り返すため、過大な `grid-columns` でも
-フレームを溢れさせません。`column`（system ビュー限定）と異なり、本ヒントは system /
+1 行が行幅予算を超える場合は早めに折り返すため、過大な `grid-columns` でも
+フレームを溢れさせません。system / drill-down / deploy の各ビューでは、この予算は固定の
+定数ではありません: レイアウトは候補となる幅を決められた順に試し、**画面の形に収まる
+比率のまま、キャンバスの空き空間が最小になる**ものを採ります。そのため、放っておくと
+縦長のリボンになるビューは横へ広がります。選択はモデルとレイアウト定数だけで決まり
+viewport には依存しないので、同じ入力は常に同じ SVG になり、すでに収まっているビューは
+レイアウトが変わりません。org の member grid はこの探索の対象外で、1 行あたりの枚数は
+固定です（`grid-columns` で上書きできます）。`column`（system ビュー限定）と異なり、本ヒントは system /
 drill-down ビューおよび org の member grid で有効です。deploy ビューもグリッドを自動
-バランスしますが、コンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
+バランスし、4 つ以上の unit を持つコンテナは unit も 1 列に積まずグリッドに畳みます。
+ただしコンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
 v1 では `grid-columns` による上書きはできません。
 
 正の整数でない値（`0` や `2.5` など）は `style-grid-columns-invalid-value` 警告とともに
 破棄され、レイアウトは自動バランスにフォールバックします。
 
-> Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、単一ビューが一目で把握できる解像度を保つ（バランス grid は視覚密度を一定に保つ）。
+> Related TPLs: [TPL-1223](../test-perspectives/TPL-1223-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、単一ビューが一目で把握できる解像度を保つ（バランス grid は視覚密度を一定に保つ）。[TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) — view ごとの行幅予算は探索で決まるため、決定的・floor-first・単調でなければ本節が約束する「同じ入力 → 同じ SVG」が破れる。
 
 ### `direction` — `auto | up | down | left | right`
 
