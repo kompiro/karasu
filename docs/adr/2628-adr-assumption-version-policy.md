@@ -9,8 +9,9 @@ scope:
   concerns: [ci, dependencies]
 related_to: [ADR-2623, ADR-2115, ADR-1338, ADR-2447, ADR-2562, ADR-788, ADR-1642, ADR-1077, ADR-2337, ADR-2472, ADR-2564, ADR-2440, ADR-1829]
 assumptions:
-  - "file: scripts/ci/adr-assumption-version-policy.test.ts"
-  - "symbol: scripts/ci/adr-assumption-version-policy.test.ts :: pinsRangeToFullVersion"
+  # 機械チェックの実体は upstream に移った（下の「その後」節）。表明するのは
+  # 「gate が有効であること」で、置き場所ではない。
+  - "grep: adr.config.json :: \"rangePin\": \"error\""
   - "grep: .claude/rules/adr.md :: ## assumptions に書くこと"
 ---
 
@@ -135,3 +136,25 @@ Issue [#2628](https://github.com/kompiro/karasu/issues/2628) では 3 案を並�
   採用されたら本 repo の test は薄くできる。
 - **ADR 昇格チェックリストに項目を足すだけ** — 人間が覚えている前提に戻るので、
   2 度起きた事故に対しては弱い。
+
+## その後: 機械チェックは upstream へ移した
+
+**2026-08-27、本 ADR が「保留」に置いた upstream 提案が実現したため、karasu ローカルの
+policy test を削除した。** 決定は変わっていない（規則も判定基準も同じ）。変わったのは
+チェックの置き場所だけである。
+
+- [kompiro/adr-tools#32](https://github.com/kompiro/adr-tools/issues/32) →
+  [PR #33](https://github.com/kompiro/adr-tools/pull/33)（adr-tools ADR-32）で
+  `adr validate` に同じ規則が入り、v0.0.13 として公開された。
+- karasu は `@kompiro/adr-tools` を `^0.0.13` へ上げ、`adr.config.json` に
+  `"assumptions": { "rangePin": "error" }` を置いた。既定は `"warn"` なので、
+  gate にするにはこの opt-in が要る。
+- `scripts/ci/adr-assumption-version-policy.test.ts` を削除した。
+
+**gate の強さは落ちていない。** ローカル test は `adr-validate.yml` の `test:scripts` と
+`ci.yml` の `test:coverage` で走っていた。`adr:validate` は同じ 2 経路の前段で走るので、
+新しい ADR は `adr-validate.yml`（`docs/adr/**` で発火）で、設定変更は `ci.yml` で捕まる。
+
+判定ロジックは 1 行も変えずに移した。upstream 側の既定が `"warn"` なのは、他の adopter に
+とって非互換にならないようにするため（adr-tools ADR-23 の方針）で、karasu は `"error"` を
+選んでいる。

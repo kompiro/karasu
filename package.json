@@ -57,7 +57,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@karasu-tools/core": "workspace:*",
-    "@kompiro/adr-tools": "^0.0.12",
+    "@kompiro/adr-tools": "^0.0.13",
     "@kompiro/tpl-tools": "^0.0.7",
     "@playwright/test": "^1.49.0",
     "@types/node": "^26.2.0",
