@@ -1,5 +1,6 @@
-import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
+import type { KrsNode, KrsEdge, NodeIdPath, ResourceNode } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
+import { resolveNodePathBySuffix } from "../parser/node-path.js";
 import { isWriteOperation } from "../spec/operations.js";
 import { buildEntityResolver, type EntityResolver } from "../resolver/resource-entity.js";
 
@@ -1312,10 +1313,12 @@ function resolveContainerChain(
  */
 interface DomainEntityEntry {
   domain: KrsNode;
+  /** The domain's full path within its system (`[systemId, …, domainId]`), for suffix resolution (#2088). */
+  path: NodeIdPath;
   entities: Map<string, KrsNode>;
 }
 
-const domainEntityIndexCache = new WeakMap<KrsNode, Map<string, DomainEntityEntry>>();
+const domainEntityIndexCache = new WeakMap<KrsNode, DomainEntityEntry[]>();
 
 /**
  * Index every domain (at any depth) **within one system** by id, with its
@@ -1328,43 +1331,61 @@ const domainEntityIndexCache = new WeakMap<KrsNode, Map<string, DomainEntityEntr
  * v1 (this view is per-domain, cross-**domain**). Memoized per system node so the
  * static bundle (which extracts the entity view of every domain) builds it once.
  */
-function buildDomainEntityIndex(system: KrsNode): Map<string, DomainEntityEntry> {
+function buildDomainEntityIndex(system: KrsNode): DomainEntityEntry[] {
   const cached = domainEntityIndexCache.get(system);
   if (cached) return cached;
-  const index = new Map<string, DomainEntityEntry>();
-  const walk = (node: KrsNode): void => {
-    if (node.kind === "domain" && !index.has(node.id)) {
+  // Every domain in the system, each with its full path (#2088 slice D1) —
+  // duplicates included: which one a reference means is the resolver's
+  // question, not the index's. The old id-keyed `!index.has` build let the
+  // first domain with an id occupy the slot even when it lacked the
+  // referenced entity, silently dropping a written relation (#2575).
+  const index: DomainEntityEntry[] = [];
+  const walk = (node: KrsNode, prefix: readonly string[]): void => {
+    const path = [...prefix, node.id];
+    if (node.kind === "domain") {
       const entities = new Map<string, KrsNode>();
       for (const child of node.children) {
         if (child.kind === "entity") entities.set(child.id, child);
       }
-      index.set(node.id, { domain: node, entities });
+      index.push({ domain: node, path, entities });
     }
-    for (const child of node.children) walk(child);
+    for (const child of node.children) walk(child, path);
   };
-  for (const child of system.children) walk(child);
+  for (const child of system.children) walk(child, [system.id]);
   domainEntityIndexCache.set(system, index);
   return index;
 }
 
 /**
- * Resolve a qualified `DomainId.EntityId` relation target to its domain + entity.
- * Returns `null` for a bare id (no dot) or an unresolved reference. Splits on the
- * first `.`; nested-domain qualifiers (`Parent.Child.Entity`) are out of scope in
- * v1 and resolve to `null`.
+ * Resolve a qualified `DomainId.EntityId` relation target to its domain +
+ * entity by the suffix rule (#2088): the reference matches an entity whose
+ * full path it suffixes, so the domain segment must suffix the owning
+ * domain's path and the entity must actually exist in it. Returns `null` for
+ * a bare id (no dot) or an unresolved reference. The parser caps relation
+ * targets at two segments, so deeper qualifiers (`Parent.Child.Entity`)
+ * arrive with the edge-notation slice (#2577); a multi-match keeps the first
+ * in declaration order — relation-level ambiguity reporting rides the same
+ * slice, which owns edge diagnostics.
  */
 function resolveQualifiedEntity(
   target: string,
-  index: Map<string, DomainEntityEntry>,
+  index: readonly DomainEntityEntry[],
 ): { domain: KrsNode; entity: KrsNode; domainId: string; entityId: string } | null {
   const dot = target.indexOf(".");
   if (dot <= 0 || dot === target.length - 1) return null;
-  const domainId = target.slice(0, dot);
-  const entityId = target.slice(dot + 1);
-  const entry = index.get(domainId);
-  const entity = entry?.entities.get(entityId);
-  if (!entry || !entity) return null;
-  return { domain: entry.domain, entity, domainId, entityId };
+  const ref = [target.slice(0, dot), target.slice(dot + 1)];
+  const candidates = index.flatMap((entry) => {
+    const entity = entry.entities.get(ref[1]);
+    return entity ? [{ path: [...entry.path, entity.id], entry, entity }] : [];
+  });
+  const match = resolveNodePathBySuffix(ref, candidates)[0];
+  if (match === undefined) return null;
+  return {
+    domain: match.entry.domain,
+    entity: match.entity,
+    domainId: match.entry.domain.id,
+    entityId: match.entity.id,
+  };
 }
 
 /**
@@ -1439,14 +1460,14 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
   }
 
   // Incoming: other-domain entities → this domain's entities (qualified `D.local`).
-  for (const [domainId, entry] of index) {
+  for (const entry of index) {
     if (entry.domain === domain) continue; // node identity, robust to id collisions
     for (const foreignEntity of entry.entities.values()) {
       for (const edge of foreignEntity.edges) {
         const target = resolveQualifiedEntity(edge.to, index);
         if (!target || target.domain !== domain) continue;
         if (!localEntityIds.has(target.entityId)) continue;
-        const key = `${domainId}.${foreignEntity.id}`;
+        const key = `${entry.domain.id}.${foreignEntity.id}`;
         addGhost(entry.domain, foreignEntity, key);
         ghostEntityEdges.push({ ...edge, from: key, to: target.entityId });
       }

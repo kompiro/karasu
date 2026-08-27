@@ -15,6 +15,7 @@ flowchart TD
     ADR_2125["ADR-2125<br/>id-migration-map と専用 lint を退役する — 移行完了後の map は「..."]
     ADR_2188["ADR-2188<br/>TPL の採番を issue-number（TPL-<n>）へ移行する"]
     ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
+    ADR_2628["ADR-2628<br/>ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで..."]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -145,6 +146,7 @@ flowchart TD
     ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
     ADR_2562["ADR-2562<br/>Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
     ADR_2564["ADR-2564<br/>Dependabot security alert 2026-08-18（auto-dismi..."]
+    ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -848,6 +850,8 @@ flowchart TD
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2578 accepted
+  class ADR_2623 accepted
+  class ADR_2628 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

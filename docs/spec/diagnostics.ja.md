@@ -101,6 +101,7 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | `owns-target-ambiguous` | warning | `owns` の参照（接尾辞 path。bare id を含む）が **(kind, 深さ) の揃っていない** 2 つ以上のノードに解決される。揃っている多重一致は意図的な broadcast（移行共存・マルチテナント）であり沈黙する。メッセージは各候補の full path を列挙し、著者はより長い path で修飾して 1 つに絞れる。`owns-target-not-found` と同じく import 結合: マージ後モデルでのみ判定する。 |
 | `contains-target-ambiguous` | warning | `owns-target-ambiguous` の `contains` 版（top-level `boundary` 用）: kind または深さの混在する多重一致を候補 full path つきで報告する。揃っている多重一致は broadcast として沈黙。スコープ形では構造的に到達不能（member は sibling 一意な直下の子に解決される）。import 結合: マージ後モデルでのみ判定する。 |
 | `realizes-target-ambiguous` | warning | `realizes` の参照（接尾辞 path。bare id を含む）が realizable な kind（service / domain / client / infra ブロック）の 2 つ以上のノードに解決され、(kind, 深さ) が揃っていない。候補は full path で列挙する。揃っている多重一致は沈黙。存在検査は `unresolved-realizes` の担当。import 結合: マージ後モデルでのみ判定する。 |
+| `import-target-ambiguous` | warning | 複数セグメントの `import { … }` エントリが接尾辞規則で (kind, 深さ) の揃わない 2 つ以上のノードに一致した。一致はすべて import される（bare id の import は元々 broadcast）。warning が候補 full path を列挙し、著者は path 修飾で絞れる。 |
 | `facet-not-declared` | warning | `facets` の参照先の `facet` ブロックが宣言されていない（存在検証はマージ後のモデルで行うので、import 先の宣言も有効）。near-miss の annotation ヒントと違い、宣言集合が「正」を与えるためこの検査は完全で、著者定義の名前どうしの取り違えも検出する。 |
 | `import-id-not-found` | error | named import の id パスが解決できない。 |
 | `import-path-not-found` | error | import パスがいずれかのセグメントで解決できない。 |
@@ -121,7 +122,7 @@ infra node は 1 度だけ宣言される。複数 service から参照される
 
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
-| `infra-redeclared-across-files` | info | 同じ `database` / `queue` / `storage` id が複数の merge 対象ファイルで宣言される。 |
+| `infra-redeclared-across-files` | info | 同じ `database` / `queue` / `storage` id が複数の merge 対象ファイルで宣言される。2 つ目の宣言をどの import 形が持ち込んだかに依らず報告する（ファイル全体の import でも、path が当該ブロックを根とする named entry `import { UserDB.users }` でも同じ）。1 つの宣言を 2 つの entry で名指した場合は reopen ではなく 1 回の import として扱う。 |
 | `infra-leaf-redeclared-silently` | info | `table` / `queue-item` / `bucket` の leaf が親 infra 内で再宣言される。 |
 | `shared-infra-fan-in` | info | 2 つ以上の service が 1 つの system 内で同じ store に依存する（欠陥ではなく事実）。 |
 | `cross-domain-store-access` | info | ある domain の usecase が、別の domain が所有する infra leaf を読み書きする（1 system 内。欠陥ではなく境界越えの事実）。所有は `entity` マッピングから導出、leaf 粒度で判定、`[external]` と役割タグ付き（`[index]` / `[cache]` / `[analytics]`）の store は除外。`shared-infra-fan-in` とは直交。 |

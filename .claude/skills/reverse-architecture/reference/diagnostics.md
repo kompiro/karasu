@@ -108,6 +108,7 @@ error) — see syntax spec §S6.
 | `owns-target-ambiguous` | warning | An `owns` reference (suffix path, bare id included) resolves to two or more nodes that are **not uniform in (kind, depth)**. A uniform multi-match is intentional broadcast (migration coexistence, multi-tenant) and stays silent. The message lists each candidate's full path so the author can qualify with a longer path. Import-coupled like `owns-target-not-found`: decided only on the merged model. |
 | `contains-target-ambiguous` | warning | The `contains` counterpart of `owns-target-ambiguous`, for top-level `boundary` blocks: a reference matching nodes of mixed kind or depth is reported with the candidate full paths; a uniform multi-match broadcasts silently. Structurally unreachable in the scoped form — members resolve among sibling-unique direct children. Import-coupled: decided only on the merged model. |
 | `realizes-target-ambiguous` | warning | A `realizes` reference (suffix path, bare id included) resolves to two or more realizable nodes (service / domain / client / infra blocks) not uniform in (kind, depth); candidates are listed as full paths. Uniform multi-matches stay silent. Existence stays with `unresolved-realizes`. Import-coupled: decided only on the merged model. |
+| `import-target-ambiguous` | warning | A multi-segment `import { … }` entry, resolved by the suffix rule, matches two or more nodes not uniform in (kind, depth). Every match is still imported — bare-id imports have always broadcast — and the warning lists the candidate full paths so the author can qualify. |
 | `facet-not-declared` | warning | A `facets` reference names no declared `facet` block (existence is checked on the merged model, so a declaration in an imported file counts). Unlike the near-miss annotation hint, the declared set makes this check complete: a typo between two author-defined names is caught too. |
 | `import-id-not-found` | error | A named import id path fails to resolve. |
 | `import-path-not-found` | error | An import path fails to resolve at some segment. |
@@ -128,7 +129,7 @@ worth surfacing.
 
 | Code | Severity | Fires when |
 | --- | --- | --- |
-| `infra-redeclared-across-files` | info | The same `database` / `queue` / `storage` id is declared in more than one merged file. |
+| `infra-redeclared-across-files` | info | The same `database` / `queue` / `storage` id is declared in more than one merged file. Reported whichever import form brought the second declaration in: a whole-file import, or a named entry whose path roots at the block (`import { UserDB.users }`). Two entries naming one declaration are one import, not a reopen. |
 | `infra-leaf-redeclared-silently` | info | A `table` / `queue-item` / `bucket` leaf is redeclared within its parent infra. |
 | `shared-infra-fan-in` | info | Two or more services depend on the same store within one system (a fact, not a defect). |
 | `cross-domain-store-access` | info | A usecase reads/writes an infra leaf owned by another domain, in one system (a boundary-crossing fact, not a defect). Ownership is derived from `entity` mappings; keyed at leaf granularity; `[external]` and role-tagged (`[index]` / `[cache]` / `[analytics]`) stores excluded. Orthogonal to `shared-infra-fan-in`. |

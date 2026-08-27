@@ -19,6 +19,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2125](2125-retire-adr-id-migration-map.md) — id-migration-map と専用 lint を退役する — 移行完了後の map は「lint が map を守るためだけの map」だった
 - [ADR-2188](2188-tpl-issue-number-ids.md) — TPL の採番を issue-number（TPL-<n>）へ移行する
 - [ADR-2331](2331-adr-automerge-scope.md) — ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する
+- [ADR-2628](2628-adr-assumption-version-policy.md) — ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで落とす）
 
 ## app-ui
 
@@ -147,6 +148,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md) — Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える
 - [ADR-2562](2562-dependabot-triage-2026-08-17.md) — Dependabot トリアージ 2026-08-17（@types/vscode と engines.vscode を同値に固定し VS Code stable に追随させる）
 - [ADR-2564](2564-dependabot-security-2026-08-18.md) — Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
+- [ADR-2623](2623-dependabot-triage-2026-08-25.md) — Dependabot トリアージ 2026-08-25 — ADR の assumptions に書いたリテラル依存版を緩める
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 

@@ -35,6 +35,9 @@
       "graphByTopic": "graph/"
     }
   },
+  "assumptions": {
+    "rangePin": "error"
+  },
   "permalink": {
     "kind": "krs",
     "repoBackedHosts": [
