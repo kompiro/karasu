@@ -70,11 +70,15 @@ reviews:
     - path: ".github/workflows/**"
       instructions: |
         - A path-filtered required check needs a paired skip stub: a companion
-          `*-skip.yml` declaring the same job `name:`, with `paths:` the exact
-          complement of the main workflow's `paths-ignore:` (ADR-953). Flag a
-          changed filter whose companion was not updated in the same PR, and any
-          pair whose two sets no longer complement each other — without the stub
-          the required check hangs pending forever and the PR cannot merge.
+          `*-skip.yml` declaring the same job `name:`, whose filter is the exact
+          complement of the main workflow's (ADR-953). Which key carries the
+          filter differs by pair — `ci.yml` filters with `paths-ignore:` against
+          `ci-skip.yml`'s `paths:`, while `e2e.yml`, `adr-validate.yml` and
+          `reference-docs-check.yml` filter with `paths:` against their stub's
+          `paths-ignore:` — so compare the two path sets, never the key names.
+          Flag a changed filter whose companion was not updated in the same PR,
+          and any pair whose sets stopped being complements: without a firing
+          stub the required check hangs pending forever and the PR cannot merge.
         - Jobs that need repository secrets must skip on bot-authored PRs;
           secrets are not passed to them and the job fails unconditionally
           (ADR-903).
@@ -154,10 +158,17 @@ reviews:
 
     - path: "examples/**"
       instructions: |
-        `examples/ec-platform` and `examples/feature-samples` are mirrored in
-        `packages/core/src/builtins/examples.ts`; a drift guard fails when only
-        one side changes. Flag an example edit whose mirror is missing from the
-        same PR.
+        `packages/core/src/examples.test.ts` owns the mirror between the
+        registered directories under `examples/` and their constants in
+        `packages/core/src/builtins/examples.ts`: it reads the files from disk
+        and asserts byte equality, so a one-sided edit fails CI from either
+        side. Do not restate that. Report instead:
+        - a new directory under `examples/` that is registered in neither
+          `examples.ts` nor the table in `.claude/rules/examples-sync.md`.
+          Nothing compares an unregistered directory against anything.
+        - a hand edit to `examples/{ja,en}/ec-platform/` or
+          `examples/en/feature-samples/`, which are maintained through the
+          `/update-examples` skill rather than edited directly.
 
   pre_merge_checks:
     title:
