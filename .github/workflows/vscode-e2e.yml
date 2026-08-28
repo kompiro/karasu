@@ -10,7 +10,7 @@ name: VS Code E2E
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "packages/core/**"
       - "packages/i18n/**"
@@ -31,6 +31,8 @@ permissions:
 jobs:
   vscode-e2e:
     name: VS Code extension host
+    # Skipped on draft PRs: see the note in `ci.yml` (ADR-2643).
+    if: github.event.pull_request.draft != true
     # Ubicloud runner (ADR-1890). x86_64 like `ubuntu-latest` — ExTester /
     # chrome-for-testing ship no linux-arm64 chromedriver, so the `-arm`
     # Ubicloud labels are not an option for these jobs.
@@ -78,6 +80,8 @@ jobs:
 
   vscode-webview-e2e:
     name: VS Code WebView (ExTester)
+    # Skipped on draft PRs: see the note in `ci.yml` (ADR-2643).
+    if: github.event.pull_request.draft != true
     # Ubicloud runner (ADR-1890). The job installs its own Electron / Chromium
     # system deps below, so it does not lean on runner-image preinstalls.
     runs-on: ubicloud-standard-4-ubuntu-2404
