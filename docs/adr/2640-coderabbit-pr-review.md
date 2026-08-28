@@ -65,9 +65,13 @@ CodeRabbit による approve / block も有効にしない（`request_changes_wo
   drift する
 - **レビュー言語は英語（`language: en-US`）。** Issue / PR / コメントは英語という
   既存ポリシー（`docs/process.md`）に揃え、public repo の外部読者にも読める形にする
-- **bot 作者の PR は対象外。** 依存更新 PR は `/hane:dependabot` が
-  `docs/release.md` のサプライチェーン基準で個別にトリアージしており（ADR-128）、
-  lockfile bump への二重の所見はノイズにしかならない
+- **`dependabot[bot]` と `renovate[bot]` の PR は対象外。** 依存更新 PR は
+  `/hane:dependabot` が `docs/release.md` のサプライチェーン基準で個別にトリアージ
+  しており（ADR-128）、lockfile bump への二重の所見はノイズにしかならない。
+  `ignore_usernames` はワイルドカードを解さない完全一致なので、**bot 一般ではなく
+  この 2 アカウントだけ**が除外される。他の bot が PR を作るようになったら、その
+  login を明示的に足す（現状 PR を作る bot は Dependabot のみ。release PR は
+  Actions からの PR 作成が無効なため人間が開く — ADR-1370）
 
 ## 却下した案
 
@@ -92,8 +96,9 @@ CodeRabbit による approve / block も有効にしない（`request_changes_wo
 ## 運用ルール
 
 - **所見は「読んで判断する」対象であって、全部潰す対象ではない。** 採用しない指摘は
-  返信で理由を書いて解決する（その判断は CodeRabbit の learnings に蓄積され、
-  同じ指摘が繰り返されなくなる）
+  返信で理由を書いて解決する。返信が learnings に蓄積されるのは CodeRabbit が
+  `Learnings Added` を返したときだけで、それ以外の返信はその指摘を閉じるだけ。
+  同じ指摘を止めたいなら次項に従う
 - 繰り返し同じ規約違反を指摘されるなら、それは `.coderabbit.yaml` の
   `path_instructions` ではなく **drift ガード（lefthook + `scripts/lint/`）に
   落とすべき規約**である合図として扱う。機械で落とせるものは機械で落とす

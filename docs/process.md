@@ -119,8 +119,11 @@ ready → implementing → in-review → (close)
 
 - レビューは **advisory** — required check ではなく、CodeRabbit は approve も block も
   しない。マージ判断は人間が持つ（[ADR-2640](adr/2640-coderabbit-pr-review.md)）
-- 対象外は draft PR と bot 作者の PR（依存更新は `/hane:dependabot` が別途トリアージ）
-- 採用しない指摘は**返信で理由を書いて解決する** — 放置すると同じ指摘が次の PR でも出る
+- 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
+  `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
+  他の bot を除外するには login を `.coderabbit.yaml` に足す
+- 採用しない指摘は**返信で理由を書いて解決する**。返信が learnings になるのは
+  `Learnings Added` が返ったときだけで、再発防止は次項の drift ガードで担保する
 - 同じ規約違反を繰り返し指摘されるなら、`scripts/lint/` + lefthook の drift ガードに
   落とす合図として扱う
 - 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
