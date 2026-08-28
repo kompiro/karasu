@@ -128,7 +128,7 @@ ready → implementing → in-review → (close)
   落とす合図として扱う
 - 同じ**誤検知**を繰り返されるなら、`path_instructions` の glob が規約の適用範囲より
   広い合図として扱う。返信で毎回閉じるのではなく、その規約が実際に及ぶパッケージまで
-  glob を絞る（i18n の規約は `packages/nest` に及ばない — #2601 で 2 度出た）
+  glob を絞る
 - 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
 
 ### docs サイトの変更は PR 上でレンダリング結果を読む
