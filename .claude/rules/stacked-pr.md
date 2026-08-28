@@ -5,9 +5,16 @@ paths:
 
 # Stacked PR の運用ルール
 
-**到達状態**: レビュー中のスタックで、draft でない PR が最下層の 1 本だけ。
-`gh pr list --json number,isDraft,baseRefName` を見て、base が `main` の 1 本以外が
-すべて `isDraft: true` になっている。
+**到達状態**: レビュー中のスタックで、draft でない PR が最下層の 1 本だけ。判定は
+スタック内の PR に限って行う（`gh pr list` はスタック外の単独 PR も返すので使わない）。
+
+```
+gh stack view --json | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.number' \
+  | xargs -I{} gh pr view {} --json number,isDraft,baseRefName \
+      --jq '"\(.number) draft=\(.isDraft) base=\(.baseRefName)"'
+```
+
+`draft=false` が base `main` の 1 本だけになっている。
 
 このファイルには 2 つの入口がある:
 
@@ -41,7 +48,9 @@ CI を cancel する。sync を先に置けば CodeRabbit も main 取り込み�
 ## workflow を触るとき
 
 draft PR で skip する job を増減したら、`scripts/ci/workflow-draft-gate.test.ts` の
-`DRAFT_GATED_JOBS` と ADR-2643 を同じ PR で更新する。
+`DRAFT_GATED_JOBS`、ADR-2643、`docs/process.md`「draft PR では分単位のジョブが
+走らない」の job 一覧を同じ PR で更新する。テストは job 一覧の drift を落とすが、
+散文側が古くなったことは落とせない。
 
 **`if: github.event.pull_request.draft != true` を足す job には、同じ PR でその
 workflow の `types:` に `ready_for_review` を足す。** job-level の `if:` で skip された

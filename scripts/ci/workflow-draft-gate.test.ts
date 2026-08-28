@@ -27,24 +27,33 @@ const DRAFT_GATED_JOBS = [
   "vscode-e2e.yml#vscode-webview-e2e",
 ];
 
-type Job = { readonly key: string; readonly body: string };
+type Job = { readonly key: string; readonly condition: string };
 
 /**
- * Extracts `<file>#<job-id>` → job body. The workflows are uniformly formatted
- * (job ids at 2 spaces), so a line scan is enough and keeps this guard
- * dependency-free, matching `workflow-runner-policy.test.ts`.
+ * Extracts `<file>#<job-id>` → the job-level `if:` expression. The workflows are
+ * uniformly formatted (job ids at 2 spaces, job keys at 4), so a line scan is
+ * enough and keeps this guard dependency-free, matching
+ * `workflow-runner-policy.test.ts`.
+ *
+ * Only the `if:` value is read, never the surrounding comments: a comment
+ * quoting the gate expression next to a deleted `if:` would otherwise read as a
+ * gated job.
  */
 function readJobs(file: string): Job[] {
   const lines = readFileSync(join(WORKFLOW_DIR, file), "utf8").split("\n");
   const jobs: Job[] = [];
   let inJobs = false;
   let currentKey: string | null = null;
-  let currentLines: string[] = [];
+  let condition: string[] = [];
+  let inFoldedCondition = false;
 
   const flush = (): void => {
-    if (currentKey !== null) jobs.push({ key: currentKey, body: currentLines.join("\n") });
+    if (currentKey !== null) {
+      jobs.push({ key: currentKey, condition: condition.join(" ").replace(/\s+/g, " ").trim() });
+    }
     currentKey = null;
-    currentLines = [];
+    condition = [];
+    inFoldedCondition = false;
   };
 
   for (const line of lines) {
@@ -65,7 +74,23 @@ function readJobs(file: string): Job[] {
       currentKey = `${file}#${jobId[1]}`;
       continue;
     }
-    if (currentKey !== null) currentLines.push(line);
+    if (currentKey === null) continue;
+
+    // A folded `if: >-` runs until the next key of the job (4-space indent).
+    if (inFoldedCondition) {
+      if (/^ {6}\S/.test(line)) {
+        condition.push(line.trim());
+        continue;
+      }
+      inFoldedCondition = false;
+    }
+
+    const jobIf = /^ {4}if:\s*(.*)$/.exec(line);
+    if (jobIf) {
+      const inline = jobIf[1].trim();
+      if (inline === ">-" || inline === ">" || inline === "|") inFoldedCondition = true;
+      else condition.push(inline);
+    }
   }
   flush();
 
@@ -95,7 +120,7 @@ describe("draft gate on expensive workflows (ADR-2643)", () => {
 
   it("skips exactly the minute-scale jobs on draft PRs", () => {
     const gated = allJobs
-      .filter((job) => job.body.includes(DRAFT_GATE))
+      .filter((job) => job.condition.includes(DRAFT_GATE))
       .map((job) => job.key)
       .sort();
     // Adding or removing an entry here is a policy change: say so in ADR-2643
