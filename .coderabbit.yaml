@@ -41,6 +41,7 @@ reviews:
     - "!pnpm-lock.yaml"
 
   path_instructions:
+
     - path: "packages/**/*.{ts,tsx}"
       instructions: |
         - User-facing strings (diagnostics, warnings, UI labels) belong in
@@ -81,15 +82,18 @@ reviews:
     - path: "docs/adr/**/*.md"
       instructions: |
         ADRs are written in Japanese (frontmatter `title` and body); identifiers
-        and product names stay in English. The frontmatter `id` is the literal
-        form `ADR-<n>`: the prefix is required by the schema in
-        `docs/adr/TEMPLATE.md` and `pnpm adr:validate` rejects a bare number, so
-        never propose stripping it. `<n>` is the filename number and the
-        originating GitHub Issue number — or the PR number when no Issue started
-        it — never a date, a running sequence, or zero-padded. Do not suggest
-        renumbering existing ADRs. Superseding an ADR is
-        bidirectional: the old one gets `status: superseded` +
-        `superseded_by`, the new one lists it in `supersedes`.
+        and product names stay in English. `pnpm adr:validate` owns the
+        frontmatter schema, the literal `ADR-<n>` id form and the `supersedes` /
+        `superseded_by` pairing — do not restate those, and never propose
+        changing them (a bare numeric `id` was proposed once; it would fail the
+        Validate check, on this record and on all 353 others). Report instead:
+        - an `<n>` that is not the originating GitHub Issue number — or the PR
+          number when no Issue started it. A date or a running sequence is
+          wrong, and the validator cannot tell which number was chosen.
+        - a new ADR that overturns what an accepted ADR still states, without
+          declaring `supersedes` for it. The validator only checks the pairs
+          that are already declared.
+        - a renumbering of an existing ADR.
 
     - path: "docs/**/*.md"
       instructions: |
@@ -125,9 +129,13 @@ reviews:
     - path: "docs/test-perspectives/**/*.md"
       instructions: |
         TPL = Test Perspective Library: one file, one recurring failure mode,
-        written in Japanese. `pnpm tpl:validate` already checks the frontmatter
-        schema, the id/filename pairing and the topic vocabulary — do not
-        restate it. Report instead:
+        written in Japanese. `pnpm tpl:validate` owns the frontmatter schema,
+        the literal `TPL-<n>` id form and the topic vocabulary — do not restate
+        those, and never propose changing them. Report instead:
+        - an `<n>` that is not the issue named in the first `discovered_from`
+          entry. Numbering falls back to the PR number and then to local
+          numbering (ADR-2188), so a mismatch is not always wrong — but the
+          validator checks the shape, never which number was chosen.
         - a perspective pinned to the abstraction level of the single bug that
           produced it. `applicable_to` holds reusable abstract patterns;
           concrete features belong in `known_consumers`. A perspective that can
