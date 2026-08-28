@@ -107,10 +107,26 @@ ready → implementing → in-review → (close)
 9. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 10. Issue ラベルを status: in-review に更新する
 11. 手動検証チェックリストを実施する
-12. レビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
+12. レビュー（CodeRabbit の所見 + 人間）→ マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
+
+### PR は CodeRabbit の所見を読んでからマージする
+
+**到達状態**: PR に CodeRabbit の walkthrough とレビューコメントが付き、各所見の
+判断が済んでいる（直した、または採用しない理由を返信して解決した）。
+
+- レビューは **advisory** — required check ではなく、CodeRabbit は approve も block も
+  しない。マージ判断は人間が持つ（[ADR-2640](adr/2640-coderabbit-pr-review.md)）
+- 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
+  `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
+  他の bot を除外するには login を `.coderabbit.yaml` に足す
+- 採用しない指摘は**返信で理由を書いて解決する**。返信が learnings になるのは
+  `Learnings Added` が返ったときだけで、再発防止は次項の drift ガードで担保する
+- 同じ規約違反を繰り返し指摘されるなら、`scripts/lint/` + lefthook の drift ガードに
+  落とす合図として扱う
+- 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
 
 ### docs サイトの変更は PR 上でレンダリング結果を読む
 
