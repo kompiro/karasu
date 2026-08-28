@@ -78,6 +78,13 @@ CodeRabbit による approve / block も有効にしない（`request_changes_wo
   実質的なマージ許可として機能してしまい、人間がマージ判断を持つという前提が崩れる
 - **ダッシュボードだけで設定し `.coderabbit.yaml` を置かない**: 設定変更が PR に
   残らず、レビュー方針の変更が誰にも見えない
+- **日本語のドキュメント（`docs/design/**` など）をレビュー対象から外す**: `path_filters` の
+  除外は sparse-checkout にも効くため、除外したファイルはそもそもクローンされず、実装 PR を
+  レビューするときに設計ドキュメントを参照できなくなる。設計意図と実装の突き合わせは
+  このリポジトリで最も価値が出る部分なので外さず、`docs/design/**` 専用の
+  path_instruction で「文章の細部ではなく、既存 ADR / spec との矛盾と未記述の前提だけを
+  見る」と絞る。言語を除外基準にすると `docs/` のほぼ全体（adr / prd /
+  test-perspectives / process）が対象になり、規約違反の検出ごと失う
 - **設定なしの既定値で導入する**: 既定では draft PR と Dependabot PR にも所見が付き、
   markdownlint / LanguageTool が日本語中心の docs に英語向けの指摘を出す。
   最初のノイズで無視する習慣が付くと、以後どんな所見も読まれなくなる

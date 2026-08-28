@@ -101,6 +101,17 @@ reviews:
         - Review documents for factual drift instead: stale command names, dead
           relative links, and claims contradicted by the code in the same PR.
 
+    - path: "docs/design/**/*.md"
+      instructions: |
+        Design docs are Japanese drafts and transient by design: once the
+        decision lands, the content is promoted into `docs/adr/` and the file is
+        deleted. Do not comment on the wording, structure or completeness of the
+        document itself. Report only:
+        - a statement that contradicts an ADR still in force (`docs/adr/*.md`
+          with `status: accepted`) or `docs/spec/`
+        - an assumption the design depends on but never states
+        - an alternative dismissed without a reason
+
     - path: "docs/acceptance/**/*.md"
       instructions: |
         Unchecked manual items (`- [ ]`) are the normal steady state — they are
