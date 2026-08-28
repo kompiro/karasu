@@ -18,21 +18,26 @@
 import type { KVNamespaceLike } from "../env.js";
 import { AccountStore, type Account } from "./accounts.js";
 import { SessionStore, type Session } from "./sessions.js";
+import { SubmissionStore } from "./submissions.js";
 
 export interface AccountPurgeResult {
   /** Account records removed: 1, or 0 if there was nothing to remove. */
   accounts: number;
   /** Sessions revoked. */
   sessions: number;
+  /** Submissions deleted. */
+  submissions: number;
 }
 
 export class GalleryStore {
   readonly accounts: AccountStore;
   readonly sessions: SessionStore;
+  readonly submissions: SubmissionStore;
 
   constructor(kv: KVNamespaceLike) {
     this.accounts = new AccountStore(kv);
     this.sessions = new SessionStore(kv);
+    this.submissions = new SubmissionStore(kv);
   }
 
   /**
@@ -74,7 +79,8 @@ export class GalleryStore {
    */
   async purgeAccount(accountId: number | string): Promise<AccountPurgeResult> {
     const sessions = await this.sessions.purgeAccount(accountId);
+    const submissions = await this.submissions.purgeAccount(accountId);
     const accounts = await this.accounts.purgeAccount(accountId);
-    return { accounts, sessions };
+    return { accounts, sessions, submissions };
   }
 }

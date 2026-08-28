@@ -121,6 +121,19 @@ function assertNoTtl(path: string): void {
 describe("the data-handling document matches the code (#1996)", () => {
   const policy = read(POLICY);
 
+  it("states that a submission is kept until its author deletes it", () => {
+    // The gallery's whole point is content its author manages; an expiry the
+    // document did not mention would delete it out from under them.
+    assertNoTtl("packages/nest/src/store/submissions.ts");
+    expect(policy).toMatch(/`sub\/v1\/<account>\/<id>` \| \*\*投稿者が削除するまで（無期限）\*\*/);
+  });
+
+  it("states the submission size cap a submitter is held to", () => {
+    expect(constant("packages/nest/src/store/submissions.ts", "MAX_SUBMISSION_BYTES")).toBe(
+      256 * 1024,
+    );
+  });
+
   it("states that the account record has no expiry, and it has none", () => {
     // The service's first personal data, kept indefinitely. A document that
     // omitted it would be exactly the "quietly false" case this file exists

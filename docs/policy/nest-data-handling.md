@@ -57,25 +57,60 @@ ADR-1990 決定 6 は、プロバイダとの **zero-retention（非保持・非
 | 実行中の枠 | `busy/krs/v1/<installation>/<インスタンス id>` | 90 分 |
 | **投稿者のアカウント記録**（GitHub の数値 user id・login 名） | `acct/v1/<account>` | **アカウント削除まで（無期限）** |
 | **投稿者のセッション** | `sess/v1/<account>/<session>` | 30 日 |
+| **投稿された `.krs`**（タイトル・公開設定を含む） | `sub/v1/<account>/<id>` | **投稿者が削除するまで（無期限）** |
 
 ### アカウント記録について（[#2586](https://github.com/kompiro/karasu/issues/2586) で追加）
 
 上 2 行は**ギャラリー（[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)）の側の鍵**で、
 生成サービスの鍵とは保持の考え方が違う。
 
-**これは karasu-nest が抱える最初の個人データである。** [ADR-2262](../adr/2262-nest-intake-and-completion.md)
+**これは karasu-nest が自分から集める最初の個人データである。** [ADR-2262](../adr/2262-nest-intake-and-completion.md)
 は完了通知にメールを採らなかった理由を「最初の個人データになる。privacy policy の厚み・保持期間・
 削除請求・subprocessor 開示がすべてそこから発生する」と書いた。投稿者のサインインを入れる決定は、
 **その線を意図的に越える**。越える理由は、匿名投稿を許すと取り下げ請求に応じる相手も、荒らしを
 止める手段も存在しないためである。
 
-**越えるのは識別子までで、メールアドレスは持たない。** 要求する OAuth scope は空で、`GET /user` が
-scope 無しで返す数値 id と login 名だけを保存する。
+**サービスが自分から集めるのは識別子までで、メールアドレスは持たない。** 要求する OAuth scope は空で、
+`GET /user` が scope 無しで返す数値 id と login 名だけを保存する。これは**投稿者について集めるもの**の
+話であって、投稿の中身には及ばない — そちらは次節で分けて書く。
+
+**投稿物にも期限を置かない。** 現行のストアは生成物を 90 日で切っており、それは「保存しない」を
+担保するための設計だった。ギャラリーはそれを反転させる — **投稿者が管理するコンテンツが黙って
+消えるのは、自己管理の面を用意した目的と正面から衝突する**。90 日で消えれば「投稿したはずの図が
+無い」という問い合わせが立ち、減らそうとしたものを自分で作ることになる
+（[TPL-2587](../test-perspectives/TPL-2587-author-managed-content-has-no-ttl.md)）。
 
 アカウント記録に**期限を置かない**のは、期限切れでアカウントが消えると投稿の所有者だけが先に
 消え、**誰も取り下げられないコンテンツ**が残るためである。削除は期限ではなく本人の操作で行う
 （コンソールは [#2589](https://github.com/kompiro/karasu/issues/2589)）。セッションだけは期限を持つ —
 資格情報は自分で失効するのが正しい唯一の種類だからである。
+
+### 投稿の中身について（[#2587](https://github.com/kompiro/karasu/issues/2587) で追加）
+
+**投稿されたタイトルと `.krs` 本文は投稿者が書いたものなので、個人データを含みうる。** 受け取り口
+（`packages/nest/src/routes/submit.ts`・`packages/nest/src/gallery/validate.ts`）は、リクエストの形
+（JSON か・上限内か・title があるか・visibility が既知の値か）を見たうえで、**中身については 2 つしか
+見ない** — 構文として開けるか、資格情報の形をした文字列が無いか。氏名やメールアドレスを検出する規則は
+上の「個人データについて正直に書く」と同じ理由で**存在しない**。担当者名・連絡先・社内の組織名が
+ノードのラベルや `description` に入ったまま届くことはありうる。**それを取り除くとは書かない。**
+書けるのは「入れるかどうかは投稿者が決める」「入っていても期限では消えない」までである。
+
+アカウント記録と性質が違うので、分けて扱う:
+
+| | アカウント記録（`acct/`） | 投稿の中身（`sub/`） |
+| --- | --- | --- |
+| 出どころ | サービスが GitHub から取る | 投稿者が書いて送る |
+| 入りうるもの | 数値 id と login 名だけ | 投稿者が書いた任意の文字列 |
+| 保持 | アカウント削除まで | 投稿者が削除するまで |
+| 消え方 | アカウント削除（`GalleryStore.purgeAccount`） | 投稿単位の削除、またはアカウント削除 |
+
+**既定は公開である。** `POST /api/submissions` は `visibility` 省略時に `public` を採り、公開された
+投稿は URL を知る誰でも読める（上の「生成されたモデルを誰が読めるか」と同じ扱い）。`unlisted` を
+選べるが、それは**一覧から外す**だけで消去ではなく、KV には残る。取り下げに本当に応じるのは削除の
+ほうで、削除された投稿は `sub/v1/<account>/<id>` ごと無くなる。アカウント削除はその一括版で、
+`gallery-purge-coverage.test.ts` が `sub/` を台帳に持っている（[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)）。
+削除・公開設定変更を投稿者自身が行う面（コンソール）は [#2589](https://github.com/kompiro/karasu/issues/2589)
+で、それまでの取り下げは運用者への依頼になる。
 
 計測系（`metrics` / `reads` / `quota`）の**本文には repository の内容が一切入らない**。数値のほか、commit SHA・終了時刻・モデル名・パス名（`survey` / `decompose` / `synthesise`）といった固定の文字列は入る。**鍵には owner と repo の名前が入る**（`busy/` は値の metadata にも入る）ので、これらも削除の対象に含める。
 
@@ -100,6 +135,12 @@ private repository の受け取り方は pull request（[#2289](https://github.c
 ## 削除
 
 **App をアンインストールすると、そのインストールに紐づくものは上の表の全カテゴリについて消える。** suspend でも同じ扱いにする（取り消し可能な操作でも、消えるのは再生成できる派生物のほうなので）。インストール対象から repository を 1 つ外した場合は、その repository のぶんだけ消える（月間カウントは installation 単位なので残る）。
+
+**ギャラリー側の鍵（`acct/` / `sess/` / `sub/`）は installation に紐づかないので、この経路では消えない。**
+上の「全カテゴリ」は生成サービスの鍵についての記述である。投稿とアカウントを消すのは投稿者自身の操作で、
+投稿単位の削除とアカウント削除（`GalleryStore.purgeAccount`。アカウントのセッションと投稿をまとめて消す）
+の 2 つがある。どちらも面は [#2589](https://github.com/kompiro/karasu/issues/2589) で、それまでは運用者への
+依頼になる。
 
 削除は GitHub の webhook（`installation.deleted` / `installation.suspend` / `installation_repositories.removed`）で駆動する。削除に失敗した場合は 200 ではなく 500 を返し、GitHub に再送させる。
 
