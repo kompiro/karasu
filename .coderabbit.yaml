@@ -119,6 +119,28 @@ reviews:
         them off. Do flag acceptance criteria that no longer match the behavior
         the PR implements.
 
+    - path: "docs/test-perspectives/**/*.md"
+      instructions: |
+        TPL = Test Perspective Library: one file, one recurring failure mode,
+        written in Japanese. `pnpm tpl:validate` already checks the frontmatter
+        schema, the id/filename pairing and the topic vocabulary — do not
+        restate it. Report instead:
+        - a perspective pinned to the abstraction level of the single bug that
+          produced it. `applicable_to` holds reusable abstract patterns;
+          concrete features belong in `known_consumers`. A perspective that can
+          only ever match its originating feature will never fire again.
+        - a checklist outside 3-5 items, or an item phrased as an intention
+          ("X に気をつける") instead of an observable condition someone can
+          answer yes/no to.
+        - a perspective an existing TPL already covers — appending the new
+          Issue to that record's `discovered_from` is the intended move, not a
+          new file.
+        - "関連テスト" left empty, or naming a test path that does not exist.
+        - a proactive TPL derived from `docs/spec/**` or `docs/concepts*.md`
+          that has no "## 派生元 spec" section, or whose source section did not
+          gain a "> Related TPLs:" annotation in the same PR. The link is
+          bidirectional; one side alone is a defect.
+
     - path: "examples/**"
       instructions: |
         `examples/ec-platform` and `examples/feature-samples` are mirrored in
