@@ -152,6 +152,47 @@ describe("POST /api/submissions", () => {
     expect(response.status).toBe(413);
   });
 
+  it("refuses an oversized body even when Content-Length is absent", async () => {
+    // `Headers.get` returns null and `Number(null)` is 0, so a header check
+    // alone let a chunked or header-less request through to the parser.
+    const kv = new MemoryKV();
+    const cookie = await signedIn(kv);
+    const response = await handleRequest(
+      new Request(`${ORIGIN}/api/submissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie, Origin: ORIGIN },
+        body: JSON.stringify({ title: "Shop", krs: "x".repeat(MAX_SUBMISSION_BYTES * 3) }),
+      }),
+      env(kv),
+      ctx,
+    );
+    expect(response.status).toBe(413);
+    expect((await kv.list({ prefix: "sub/" })).keys).toEqual([]);
+  });
+
+  it("separates the transport refusal from the document refusal", async () => {
+    // One code must not mean two statuses: `http.ts` says the code is what
+    // callers branch on.
+    const kv = new MemoryKV();
+    const cookie = await signedIn(kv);
+    const transport = await post(
+      kv,
+      { title: "Shop", krs: "x".repeat(MAX_SUBMISSION_BYTES * 3) },
+      { cookie },
+    );
+    expect(transport.status).toBe(413);
+    expect(await transport.json()).toMatchObject({ error: { code: "payload_too_large" } });
+
+    // Inside the envelope cap but past the document cap.
+    const document = await post(
+      kv,
+      { title: "Shop", krs: "x".repeat(MAX_SUBMISSION_BYTES + 1024) },
+      { cookie },
+    );
+    expect(document.status).toBe(400);
+    expect(await document.json()).toMatchObject({ error: { code: "too_large" } });
+  });
+
   it("refuses a body that is not JSON", async () => {
     const kv = new MemoryKV();
     const response = await post(kv, "not json at all", { cookie: await signedIn(kv) });

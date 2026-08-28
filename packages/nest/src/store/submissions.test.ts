@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SUBMISSION_BYTES, SubmissionStore } from "./submissions.js";
+import { MAX_SUBMISSION_BYTES, SubmissionStore, SubmissionTooLargeError } from "./submissions.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 
 const at = new Date("2026-08-02T00:00:00Z");
@@ -112,6 +112,21 @@ describe("SubmissionStore", () => {
     expect(await store.purgeAccount(42)).toBe(2);
     expect(await store.list(42)).toEqual([]);
     expect((await store.list(420)).length).toBe(1);
+  });
+
+  it("refuses to write a document past the cap, whoever asked", async () => {
+    // The cap is the reason the document is held inline instead of in a blob,
+    // so the write is where it has to hold -- `update()` is reachable without
+    // passing through the validator.
+    const store = new SubmissionStore(new MemoryKV());
+    const created = await store.create(42, input, at);
+    const huge = "x".repeat(MAX_SUBMISSION_BYTES + 1);
+    await expect(store.update(42, created.slug, { krs: huge }, later)).rejects.toThrow(
+      SubmissionTooLargeError,
+    );
+    await expect(store.create(42, { title: "Big", krs: huge }, at)).rejects.toThrow(
+      SubmissionTooLargeError,
+    );
   });
 
   it("declares a cap far inside what KV holds", async () => {

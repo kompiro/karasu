@@ -2,9 +2,10 @@
 
 - **日付**: 2026-08-23
 - **関連 Issue**: [#2587](https://github.com/kompiro/karasu/issues/2587)（accept, validate and store）／親 [#2578](https://github.com/kompiro/karasu/issues/2578)
-- **関連 ADR**: [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)、[ADR-2077](../adr/2077-bounded-context-granularity.md)（分解の粒度 — 投稿には適用しない）
+- **関連 ADR**: [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)、[ADR-2077](../adr/2077-reverse-bc-granularity.md)（分解の粒度 — 投稿には適用しない）
 - **関連 TPL**: [TPL-2587](../test-perspectives/TPL-2587-author-managed-content-has-no-ttl.md)（作者が管理するコンテンツに期限を置かない）、[TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)、[TPL-2249](../test-perspectives/TPL-2249-resolution-stays-deterministic.md)
 - **対象ファイル**:
+  - `docs/policy/nest-data-handling.md` / `scripts/lint/nest-retention-policy-sync.test.ts`（保持の記述と drift ガード）
   - `packages/nest/src/gallery/validate.ts`（parse と structure-only の 2 つだけ）
   - `packages/nest/src/store/submissions.ts`（TTL なし）
   - `packages/nest/src/routes/submit.ts`（`POST /api/submissions`）
@@ -62,6 +63,30 @@
 - [x] AT-L: `sub/` prefix がアカウント削除から到達できる（新しい prefix が増えたら落ちる）
 
   > ✅ Automated — `packages/nest/src/store/gallery-purge-coverage.test.ts` › `leaves nothing behind when an account is deleted` / `counts what it deleted in every category`
+
+- [x] AT-M: 構文は正しいが意味的な指摘のある文書（同じ author id の edge 2 本など）を受理する
+
+  > ✅ Automated — `packages/nest/src/gallery/validate.test.ts` › `accepts a document whose only errors are semantic, not syntactic` / `still refuses a document with a real syntax error`
+
+- [x] AT-N: **title も**資格情報スキャンの対象になる（保存・公開される値なので）
+
+  > ✅ Automated — `packages/nest/src/gallery/validate.test.ts` › `scans the title, which is stored and published like the document`
+
+- [x] AT-O: 拒否メッセージがどのフィールドの何行目かを示し、一致した値そのものは載せない
+
+  > ✅ Automated — `packages/nest/src/gallery/validate.test.ts` › `says which field tripped, so the submitter knows where to look` / `gives a line number, because a rule id alone is not actionable` / `names a multi-line rule without inventing a line for it` / `never puts the matched value in the message, wherever it was found`
+
+- [x] AT-P: 転送レベルの拒否（413 `payload_too_large`）と文書の拒否（400 `too_large`）が別のコードになる
+
+  > ✅ Automated — `packages/nest/src/routes/submit.test.ts` › `separates the transport refusal from the document refusal` / `refuses an oversized body even when Content-Length is absent`
+
+- [x] AT-Q: サイズ上限が書き込み側でも成立する（検証を通らない経路からも守られる）
+
+  > ✅ Automated — `packages/nest/src/store/submissions.test.ts` › `refuses to write a document past the cap, whoever asked`
+
+- [x] AT-R: 投稿物の保持がデータ取扱文書に載り、実装と機械で突き合っている
+
+  > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `states that a submission is kept until its author deletes it` / `states the submission size cap a submitter is held to`
 
 ## 手動確認
 

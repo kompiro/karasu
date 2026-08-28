@@ -27,13 +27,29 @@ import { MAX_SUBMISSION_BYTES } from "../store/submissions.js";
 import { validateSubmission } from "../gallery/validate.js";
 
 /**
- * A generous ceiling on the request body, checked before it is read.
+ * A generous ceiling on the request body, twice the document cap so the JSON
+ * envelope has room.
  *
- * The document cap is enforced on the parsed value, but a `Content-Length`
- * check first means a caller sending megabytes is refused without the Worker
- * buffering them. Twice the document cap leaves room for the JSON envelope.
+ * Checked twice, because the cheap check is not reliable. `Content-Length` is
+ * absent on a chunked request and can simply be understated, and an absent
+ * header reads as `0` rather than as "unknown" — so a header check alone lets
+ * an arbitrarily large body through to `JSON.parse`. The declared length is
+ * still worth refusing on when it is present and honest (it costs nothing and
+ * stops the transfer earliest); the body's real size is then checked as text,
+ * before it is parsed.
  */
 const MAX_BODY_BYTES = MAX_SUBMISSION_BYTES * 2;
+
+/**
+ * The transport-level refusal, with a code of its own.
+ *
+ * `too_large` already means "the document exceeds its cap", returned as 400 by
+ * the validator. Reusing it here would make one code mean two statuses, which
+ * `http.ts` says callers branch on — `routes/webhook.ts` split the same way
+ * with `payload_too_large`.
+ */
+const oversized = (): Response =>
+  error(413, "payload_too_large", `A submission request must be at most ${MAX_BODY_BYTES} bytes.`);
 
 export async function submitKrs(context: RouteContext): Promise<Response> {
   const { request, env } = context;
@@ -49,14 +65,20 @@ export async function submitKrs(context: RouteContext): Promise<Response> {
     return error(401, "sign_in_required", "Sign in at /auth/login to submit a model.");
   }
 
-  const declared = Number(request.headers.get("Content-Length"));
-  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
-    return error(413, "too_large", `A submission must be at most ${MAX_SUBMISSION_BYTES} bytes.`);
+  const declaredHeader = request.headers.get("Content-Length");
+  const declared = declaredHeader === null ? undefined : Number(declaredHeader);
+  if (declared !== undefined && Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    return oversized();
   }
+
+  // Read as text first: this is the size check that actually holds, and it
+  // also keeps `JSON.parse` off a body that was never going to be accepted.
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) return oversized();
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(raw);
   } catch {
     return error(400, "invalid_body", "The request body must be JSON.");
   }

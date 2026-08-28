@@ -50,6 +50,14 @@ export const MAX_TITLE_LENGTH = 120;
  */
 type Visibility = "public" | "unlisted";
 
+/** Thrown when a write would store a document past `MAX_SUBMISSION_BYTES`. */
+export class SubmissionTooLargeError extends Error {
+  constructor(readonly slug: string) {
+    super(`a submission may hold at most ${MAX_SUBMISSION_BYTES} bytes`);
+    this.name = "SubmissionTooLargeError";
+  }
+}
+
 export interface Submission {
   /** The random half of the id. The public id also carries the account. */
   slug: string;
@@ -191,6 +199,16 @@ export class SubmissionStore {
    * rather than a comment.
    */
   private async write(submission: Submission): Promise<void> {
+    // Re-checked here rather than trusted from the route. The cap is the
+    // reason this record holds the document inline instead of pointing at a
+    // blob, so the write is where it has to hold -- `update()` is already
+    // reachable without passing through `validateSubmission`, and a store that
+    // holds its own invariant only when its caller remembers to is not holding
+    // it. `KrsCache.put` re-asserts its own brand at the same point, for the
+    // same reason.
+    if (new TextEncoder().encode(submission.krs).length > MAX_SUBMISSION_BYTES) {
+      throw new SubmissionTooLargeError(submission.slug);
+    }
     const { accountId, ...stored } = submission;
     await this.kv.put(submissionKey(accountId, submission.slug), JSON.stringify(stored));
   }
