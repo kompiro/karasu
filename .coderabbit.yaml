@@ -81,10 +81,13 @@ reviews:
     - path: "docs/adr/**/*.md"
       instructions: |
         ADRs are written in Japanese (frontmatter `title` and body); identifiers
-        and product names stay in English. The filename number and the
-        frontmatter `id` are the originating GitHub Issue number — or the PR
-        number when no Issue started it — never a date or a running sequence. Do
-        not suggest renumbering existing ADRs. Superseding an ADR is
+        and product names stay in English. The frontmatter `id` is the literal
+        form `ADR-<n>`: the prefix is required by the schema in
+        `docs/adr/TEMPLATE.md` and `pnpm adr:validate` rejects a bare number, so
+        never propose stripping it. `<n>` is the filename number and the
+        originating GitHub Issue number — or the PR number when no Issue started
+        it — never a date, a running sequence, or zero-padded. Do not suggest
+        renumbering existing ADRs. Superseding an ADR is
         bidirectional: the old one gets `status: superseded` +
         `superseded_by`, the new one lists it in `supersedes`.
 
