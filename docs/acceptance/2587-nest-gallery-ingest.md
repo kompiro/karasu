@@ -88,6 +88,10 @@
 
   > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `states that a submission is kept until its author deletes it` / `states the submission size cap a submitter is held to`
 
+- [x] AT-S: 上限は本文を読み切る前に成立する（長さを申告しない・終わらない body を途中で打ち切る）
+
+  > ✅ Automated — `packages/nest/src/routes/submit.test.ts` › `cancels an endless body at the cap instead of buffering it`
+
 ## 手動確認
 
 N/A — 自動テストですべて覆っている。

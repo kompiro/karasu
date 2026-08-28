@@ -170,6 +170,47 @@ describe("POST /api/submissions", () => {
     expect((await kv.list({ prefix: "sub/" })).keys).toEqual([]);
   });
 
+  it("cancels an endless body at the cap instead of buffering it", async () => {
+    // The Content-Length check is advisory and `request.text()` would have
+    // buffered everything before the size was known -- so the cap has to hold
+    // against a body that never declares a length and never ends. Without the
+    // bounded reader this test does not fail, it hangs.
+    const kv = new MemoryKV();
+    const cookie = await signedIn(kv);
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024));
+    let pulled = 0;
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        controller.enqueue(chunk);
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    // `duplex` is required to send a stream and is missing from the DOM
+    // `RequestInit`, which is what this package compiles against.
+    const init = {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie, Origin: ORIGIN },
+      body,
+      duplex: "half",
+    } as RequestInit;
+
+    const response = await handleRequest(
+      new Request(`${ORIGIN}/api/submissions`, init),
+      env(kv),
+      ctx,
+    );
+    expect(response.status).toBe(413);
+    expect(cancelled).toBe(true);
+    // Enough chunks to cross the cap, and then a small allowance for the
+    // runtime reading ahead -- not the unbounded number an endless body offers.
+    expect(pulled).toBeLessThanOrEqual((MAX_SUBMISSION_BYTES * 2) / chunk.byteLength + 4);
+    expect((await kv.list({ prefix: "sub/" })).keys).toEqual([]);
+  });
+
   it("separates the transport refusal from the document refusal", async () => {
     // One code must not mean two statuses: `http.ts` says the code is what
     // callers branch on.

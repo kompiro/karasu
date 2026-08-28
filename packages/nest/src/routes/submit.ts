@@ -33,12 +33,59 @@ import { validateSubmission } from "../gallery/validate.js";
  * Checked twice, because the cheap check is not reliable. `Content-Length` is
  * absent on a chunked request and can simply be understated, and an absent
  * header reads as `0` rather than as "unknown" — so a header check alone lets
- * an arbitrarily large body through to `JSON.parse`. The declared length is
- * still worth refusing on when it is present and honest (it costs nothing and
- * stops the transfer earliest); the body's real size is then checked as text,
- * before it is parsed.
+ * an arbitrarily large body through. The declared length is still worth
+ * refusing on when it is present and honest (it costs nothing and stops the
+ * transfer earliest); the body's real size is then counted as it arrives, by
+ * `readCapped`.
  */
 const MAX_BODY_BYTES = MAX_SUBMISSION_BYTES * 2;
+
+/**
+ * Read the body with the cap applied **while** it arrives, or `undefined` once
+ * it goes past.
+ *
+ * `request.text()` buffers the whole body first and asks about its size
+ * afterwards, which makes the check a statement about memory already spent: a
+ * Worker gets 128MB for everything it does, and a request that understates its
+ * length or declares none is exactly the request this cap exists to refuse.
+ * Counting as the chunks come in means the refusal happens at the byte that
+ * crosses the line, and cancelling the reader tells the runtime to stop pulling
+ * the rest instead of draining a body nobody will read.
+ *
+ * Decoding as it goes also removes a second full copy: the size used to be
+ * measured by re-encoding the finished string, so an accepted body existed
+ * twice at once, and an oversized one was materialised twice before the 413.
+ */
+async function readCapped(
+  body: ReadableStream<Uint8Array> | null,
+  limit: number,
+): Promise<string | undefined> {
+  // No body at all is not oversized; it fails as JSON a few lines later, which
+  // is the truthful thing to say about it.
+  if (body === null) return "";
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done || value === undefined) break;
+      total += value.byteLength;
+      if (total > limit) {
+        await reader.cancel();
+        return undefined;
+      }
+      // `stream: true`: a multi-byte character split across two chunks is
+      // ordinary here (`.krs` files carry Japanese labels), and decoding each
+      // chunk on its own would replace the halves with U+FFFD.
+      text += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return text + decoder.decode();
+}
 
 /**
  * The transport-level refusal, with a code of its own.
@@ -71,10 +118,10 @@ export async function submitKrs(context: RouteContext): Promise<Response> {
     return oversized();
   }
 
-  // Read as text first: this is the size check that actually holds, and it
-  // also keeps `JSON.parse` off a body that was never going to be accepted.
-  const raw = await request.text();
-  if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) return oversized();
+  // The size check that actually holds. It also keeps `JSON.parse` off a body
+  // that was never going to be accepted.
+  const raw = await readCapped(request.body, MAX_BODY_BYTES);
+  if (raw === undefined) return oversized();
 
   let body: unknown;
   try {

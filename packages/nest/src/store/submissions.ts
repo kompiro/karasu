@@ -164,6 +164,16 @@ export class SubmissionStore {
    * Returns `undefined` if it is not there — the caller has already checked
    * ownership by reading it, and a blind write would let a stale id recreate a
    * submission its author deleted.
+   *
+   * **The window that read does not close.** `get` and `write` are two KV
+   * operations, so a `delete` or a `purgeAccount` landing between them lets
+   * the write put back what was just removed. Workers KV has no
+   * compare-and-set, and closing it means giving an account's submissions a
+   * strongly consistent owner (a Durable Object) — a decision about the store,
+   * not about this method, and one this slice cannot make on its own evidence.
+   * It is written down rather than closed because nothing reaches `update`
+   * yet: the console (#2589) is where a submitter first has two mutations in
+   * flight at once, and so is where it has to be settled.
    */
   async update(
     accountId: number | string,
