@@ -148,6 +148,7 @@ flowchart TD
     ADR_2564["ADR-2564<br/>Dependabot security alert 2026-08-18（auto-dismi..."]
     ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
     ADR_2640["ADR-2640<br/>PR の一次レビューに CodeRabbit を入れる（advisory 固定）"]
+    ADR_2643["ADR-2643<br/>stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -856,6 +857,7 @@ flowchart TD
   class ADR_2623 accepted
   class ADR_2628 accepted
   class ADR_2640 accepted
+  class ADR_2643 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
