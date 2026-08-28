@@ -35,12 +35,11 @@ type Job = { readonly key: string; readonly condition: string };
  * enough and keeps this guard dependency-free, matching
  * `workflow-runner-policy.test.ts`.
  *
- * Only the `if:` value is read, never the surrounding comments: a comment
- * quoting the gate expression next to a deleted `if:` would otherwise read as a
- * gated job.
+ * Only the `if:` value is read, never the surrounding comments or a step's own
+ * `if:`: a comment quoting the gate expression next to a deleted job-level `if:`
+ * would otherwise read as a gated job.
  */
-function readJobs(file: string): Job[] {
-  const lines = readFileSync(join(WORKFLOW_DIR, file), "utf8").split("\n");
+function parseJobs(text: string, file: string): Job[] {
   const jobs: Job[] = [];
   let inJobs = false;
   let currentKey: string | null = null;
@@ -56,7 +55,7 @@ function readJobs(file: string): Job[] {
     inFoldedCondition = false;
   };
 
-  for (const line of lines) {
+  for (const line of text.split("\n")) {
     if (/^jobs:\s*$/.test(line)) {
       inJobs = true;
       continue;
@@ -77,8 +76,11 @@ function readJobs(file: string): Job[] {
     if (currentKey === null) continue;
 
     // A folded `if: >-` runs until the next key of the job (4-space indent).
+    // Blank lines and lines indented past the block's own indentation are part
+    // of the scalar in YAML 1.2, so neither ends the collection.
     if (inFoldedCondition) {
-      if (/^ {6}\S/.test(line)) {
+      if (line.trim() === "") continue;
+      if (/^ {6,}\S/.test(line)) {
         condition.push(line.trim());
         continue;
       }
@@ -107,7 +109,9 @@ function readPullRequestTypes(file: string): string[] {
 const workflowFiles = readdirSync(WORKFLOW_DIR)
   .filter((name) => name.endsWith(".yml"))
   .sort();
-const allJobs = workflowFiles.flatMap(readJobs);
+const allJobs = workflowFiles.flatMap((file) =>
+  parseJobs(readFileSync(join(WORKFLOW_DIR, file), "utf8"), file),
+);
 
 describe("draft gate on expensive workflows (ADR-2643)", () => {
   it("finds every gated job by name", () => {
@@ -137,5 +141,59 @@ describe("draft gate on expensive workflows (ADR-2643)", () => {
     // the commit: taking the PR out of draft would start nothing, and a
     // Required check would stay green over an unverified diff.
     expect(withoutTrigger).toEqual([]);
+  });
+});
+
+describe("parseJobs", () => {
+  // The workflows all write the gate the same way today, so these fixtures are
+  // the only place the other legal spellings are exercised. A parser that
+  // quietly stopped reading one of them would report a gated job as ungated.
+  //
+  // The gate term sits **after** the awkward line in each fixture. Put it first
+  // and the parser has already read it before the construct under test, so both
+  // cases pass with a parser that stops there.
+  const FIXTURE = `on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  folded-extra-indent:
+    name: Folded, continued past the block indent
+    if: >-
+      github.event.action != 'closed' &&
+        github.event.pull_request.draft != true
+    runs-on: ubuntu-latest
+
+  folded-blank-line:
+    name: Folded, split by a blank line
+    if: >-
+      github.event.action != 'closed' &&
+
+      github.event.pull_request.draft != true
+    runs-on: ubuntu-latest
+
+  gate-only-in-prose:
+    name: Comment and step condition only
+    # if: github.event.pull_request.draft != true
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
+        if: github.event.pull_request.draft != true
+`;
+
+  const gated = parseJobs(FIXTURE, "fixture.yml")
+    .filter((job) => job.condition.includes(DRAFT_GATE))
+    .map((job) => job.key);
+
+  it("reads a folded condition continued past the block indent", () => {
+    expect(gated).toContain("fixture.yml#folded-extra-indent");
+  });
+
+  it("reads a folded condition split by a blank line", () => {
+    expect(gated).toContain("fixture.yml#folded-blank-line");
+  });
+
+  it("ignores the expression in a comment or a step-level if", () => {
+    expect(gated).not.toContain("fixture.yml#gate-only-in-prose");
   });
 });
