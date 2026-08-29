@@ -1809,22 +1809,25 @@ export class Parser {
     const arrowToken = this.advance(); // -> or -->
     const toToken = this.parseIdOrString("edge target");
 
-    // Support fully qualified cross-system references: SystemId.ServiceId
+    // Support qualified references at any depth: `Sys.Svc`, `Sys.Svc.Domain`, …
+    // The two-segment cap lifted with slice E (#2577), together with the
+    // resolution that gives the deeper form an effect — accepting a spelling
+    // that resolves nowhere is what TPL-1503 forbids. Entity relations share
+    // this reader, so deep qualifiers on them lift here too (#2575).
     let toValue = toToken.value;
     let toEnd = toToken.loc;
     if (this.peek().type === TokenType.Dot) {
       const tail = readNodeIdPathTail(toToken, this.cursor, {
-        maxSegments: 2,
         acceptStringSegments: true,
       });
       // On a dangling dot, keep this site's historical recovery: report, leave
       // the bad token unconsumed, and still join its value into the target.
-      const serviceToken = tail.dangling ?? tail.end;
       if (tail.dangling) {
         this.error("expected-id-or-string", { context: "qualified edge target" });
       }
-      toValue = `${toToken.value}.${serviceToken.value}`;
-      toEnd = serviceToken.loc;
+      const segments = tail.dangling ? [...tail.segments, tail.dangling.value] : tail.segments;
+      toValue = segments.join(".");
+      toEnd = (tail.dangling ?? tail.end).loc;
     }
 
     let label: string | undefined;

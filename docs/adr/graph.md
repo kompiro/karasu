@@ -261,6 +261,7 @@ flowchart TD
     ADR_2036["ADR-2036<br/>boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
     ADR_2076["ADR-2076<br/>formatter の top-level 網羅は手で列挙せず `KrsFile` から導出し..."]
     ADR_2087["ADR-2087<br/>出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な..."]
+    ADR_2088["ADR-2088<br/>ノード参照は全サイトで同じ path 記法を受理し、接尾辞規則で解決する"]
     ADR_2165["ADR-2165<br/>論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
     ADR_2167["ADR-2167<br/>reference list はカンマ列挙を受け、membership は 1 行 1 件に留..."]
     ADR_2173["ADR-2173<br/>facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
@@ -486,6 +487,8 @@ flowchart TD
   ADR_2075 --> ADR_1567
   ADR_2075 --> ADR_1386
   ADR_2075 --> ADR_1314
+  ADR_2088 --> ADR_927
+  ADR_2088 --> ADR_2547
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
   ADR_2124 --> ADR_1314
@@ -515,6 +518,7 @@ flowchart TD
   ADR_1014 -.supersedes.-> ADR_926
   ADR_1142 -.supersedes.-> ADR_1076
   ADR_1990 -.supersedes.-> ADR_1783
+  ADR_2088 -.supersedes.-> ADR_2075
   ADR_2578 -.supersedes.-> ADR_1990
   ADR_2578 -.supersedes.-> ADR_1994
 
@@ -780,11 +784,12 @@ flowchart TD
   class ADR_2045 accepted
   class ADR_2048 accepted
   class ADR_2065 accepted
-  class ADR_2075 accepted
+  class ADR_2075 superseded
   class ADR_2076 accepted
   class ADR_2077 accepted
   class ADR_2078 accepted
   class ADR_2087 accepted
+  class ADR_2088 accepted
   class ADR_2092 accepted
   class ADR_2106 accepted
   class ADR_2111 accepted

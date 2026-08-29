@@ -268,6 +268,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2036](2036-scoped-boundary-declaration.md) — boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義
 - [ADR-2076](2076-formatter-top-level-exhaustiveness.md) — formatter の top-level 網羅は手で列挙せず `KrsFile` から導出して型と test で強制する
 - [ADR-2087](2087-escape-emitted-string-values.md) — 出力する文字列「値」を lexer のデコード規則と 1:1 で escape し、表現不能な値には fallback を置く
+- [ADR-2088](2088-node-reference-path-notation.md) — ノード参照は全サイトで同じ path 記法を受理し、接尾辞規則で解決する
 - [ADR-2165](2165-logical-containment-rules.md) — 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反は言語 v1.x で warning とする
 - [ADR-2167](2167-realizes-comma-list.md) — reference list はカンマ列挙を受け、membership は 1 行 1 件に留める — `realizes` の受理形と `owns` / `contains` の境界
 - [ADR-2173](2173-facet-grammar-and-model.md) — facet の文法と model 層 — 診断は resolver 側、カタログには載せる、merge は union
@@ -349,7 +350,6 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1381](1381-multi-file-import-semantics.md) — マルチファイル import の意味論 — whole-file import / system 再オープン / DAG 再到達
 - [ADR-1570](1570-shared-infra-fan-in-diagnostic.md) — 共有 infra fan-in を info 診断として通知する
 - [ADR-1819](1819-domain-store-ownership-diagnostic.md) — infra leaf のドメイン所有を entity から導出し cross-domain ストアアクセスを info 診断する
-- [ADR-2075](2075-edge-endpoint-scope-diagnostic.md) — 宣言スコープで描画できない edge endpoint を診断する — peer はノードインスタンス単位で数える
 - [ADR-2078](2078-reverse-synthesis-physical-fidelity.md) — 物理参照の存在検査は診断、物理層の回復度は coverage — 主張の種類で置き場を分ける
 - [ADR-2184](2184-unassigned-domain-placement-parity.md) — 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain にも `unassigned-domain` を発行する
 - [ADR-2410](2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md) — import 結合の存在検査は未解決 import が残る file では判定しない（invalid-owns は kind 専任にする）

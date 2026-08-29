@@ -1006,12 +1006,16 @@ function layoutMultipleSystems(
   const seenCrossStub = new Set<string>();
   for (const edge of viewSlice.crossSystemEdges) {
     const fromId = crossSystemRemap.get(edge.from) ?? edge.from;
-    const dot = edge.to.indexOf(".");
-    const toService = edge.to.slice(dot + 1);
+    // The root canvas draws a system's direct children only, so the target is
+    // anchored on `path[1]` of the path view extraction resolved (#2577). For
+    // the two-segment `Sys.Svc` that is the same id the first-dot split gave;
+    // for a deeper target it is the service the target lives inside.
+    const targetPath = viewSlice.crossSystemTargets.get(edge.to) ?? edge.to.split(".");
+    const toService = targetPath[1] ?? targetPath[0];
     const toServiceRemapped = crossSystemRemap.get(toService) ?? toService;
     const retargeted = fromId !== edge.from || toServiceRemapped !== toService;
     const toField =
-      toServiceRemapped !== toService ? edge.to.slice(0, dot + 1) + toServiceRemapped : edge.to;
+      toServiceRemapped !== toService ? `${targetPath[0]}.${toServiceRemapped}` : edge.to;
     const fromNode = allLayoutNodes.get(fromId);
     const toNode = allLayoutNodes.get(toServiceRemapped);
     if (!fromNode || !toNode) continue;

@@ -324,6 +324,20 @@ export type Translations = {
     ownerId: string;
     endpointId: string;
   }) => string;
+  /**
+   * The qualified variant (#2577): the path resolves, but it does not spell a
+   * whole path from a top-level `system`. The fix re-spells the path rather
+   * than moving the edge.
+   */
+  "warning.edgeEndpointNotAtScope.descendHint": (params: {
+    endpointId: string;
+    /** the full paths the reference does match, elsewhere in the model */
+    candidates: string[];
+  }) => string;
+  "warning.edgeTargetAmbiguous.message": (params: {
+    path: string;
+    candidates: Array<{ kind: string; path: string }>;
+  }) => string;
   "warning.crossSystemRefImplicitExternal.message": (params: {
     ref: string;
     sourceSystemId: string;

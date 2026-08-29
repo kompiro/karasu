@@ -1,6 +1,11 @@
 import type { KrsNode, KrsEdge, NodeIdPath, ResourceNode } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
-import { resolveNodePathBySuffix } from "../parser/node-path.js";
+import { nodePathKey, resolveNodePathBySuffix } from "../parser/node-path.js";
+import {
+  buildGhostEndpointResolver,
+  edgeEndpointRef,
+  type GhostEndpointMatch,
+} from "../resolver/edge-endpoint.js";
 import { isWriteOperation } from "../spec/operations.js";
 import { buildEntityResolver, type EntityResolver } from "../resolver/resource-entity.js";
 
@@ -332,9 +337,27 @@ export type ViewPath = string[];
  * An external system referenced via a cross-system edge, along with the specific
  * services inside it that are referenced.
  */
+/**
+ * One node drawn inside a ghost system frame. Before #2577 this was the
+ * `KrsNode` alone, because a ghost was always a system's *direct* child and
+ * `SystemId.ChildId` reconstructed its path. Deep qualifiers (`Shop.Checkout.Payment`)
+ * break that arithmetic, so the resolved path travels with the node.
+ */
+interface GhostService {
+  node: KrsNode;
+  /** Full path rooted at the frame's system id — the layout key (#2548). */
+  path: NodeIdPath;
+  /**
+   * Labels of the nodes between the frame and this one, joined with ` › `, shown
+   * muted under the card. Absent for a direct child, which is every ghost that
+   * existed before deep qualifiers — so existing frames are unchanged.
+   */
+  subLabel?: string;
+}
+
 export interface GhostSystem {
   systemNode: KrsNode;
-  visibleServices: KrsNode[];
+  visibleServices: GhostService[];
 }
 
 interface GhostDomain {
@@ -367,6 +390,16 @@ export interface ViewSlice {
   systems: KrsNode[];
   /** Root view only: edges with qualified targets (SystemId.ServiceId) between systems. */
   crossSystemEdges: KrsEdge[];
+  /**
+   * For each qualified `to` in {@link crossSystemEdges}, the full path it
+   * resolved to (#2577). The root canvas draws only a system's direct
+   * children, so the renderer anchors the edge on `path[1]` — for the
+   * two-segment `Sys.Svc` that is the same `Svc` the first-dot split used to
+   * produce, and for a deeper target it is the service that contains it.
+   * Resolving once here keeps the renderer from re-parsing the string with an
+   * arity assumption of its own.
+   */
+  crossSystemTargets: Map<string, NodeIdPath>;
   /** Service view only: external systems referenced via cross-system edges (outgoing). */
   ghostSystems: GhostSystem[];
   /** Service view only: the cross-system edges targeting ghost systems (outgoing). */
@@ -530,6 +563,7 @@ function emptySlice(
     ghostUserEdges: [],
     systems: [],
     crossSystemEdges: [],
+    crossSystemTargets: new Map(),
     ghostSystems: [],
     ghostSystemEdges: [],
     callerGhostSystems: [],
@@ -635,8 +669,9 @@ function buildCallerGhostSystems(
   containerId: string,
   containerSystemId: string,
   allSystems: KrsNode[],
+  resolveGhost: (ref: NodeIdPath) => GhostEndpointMatch | undefined,
 ): { callerGhostSystems: GhostSystem[]; callerGhostSystemEdges: KrsEdge[] } {
-  const qualifiedTarget = `${containerSystemId}.${containerId}`;
+  const targetKey = nodePathKey([containerSystemId, containerId]);
   const map = new Map<string, GhostSystem>();
   const edges: KrsEdge[] = [];
 
@@ -644,18 +679,25 @@ function buildCallerGhostSystems(
     if (sys.id === containerSystemId) continue;
     // Service-anchored edges count as callers too (#2223).
     for (const edge of withChildAnchoredEdges(sys)) {
-      if (edge.to !== qualifiedTarget) continue;
+      if (!edge.to.includes(".")) continue;
+      // Match on where the reference *resolves*, not on how it is spelled: a
+      // caller may now name this container by any suffix that reaches it
+      // (#2577). For `Sys.Child` the resolved path is that same string, so
+      // existing caller frames are unchanged.
+      const match = resolveGhost(edgeEndpointRef(edge.to));
+      if (!match || nodePathKey(match.path) !== targetKey) continue;
       const callerService = sys.children.find((c) => c.id === edge.from);
       if (!callerService) continue;
+      const callerPath = [sys.id, callerService.id];
       if (!map.has(sys.id)) {
         map.set(sys.id, { systemNode: sys, visibleServices: [] });
       }
       const gs = map.get(sys.id)!;
-      if (!gs.visibleServices.some((s) => s.id === callerService.id)) {
-        gs.visibleServices.push(callerService);
+      if (!gs.visibleServices.some((s) => s.node.id === callerService.id)) {
+        gs.visibleServices.push({ node: callerService, path: callerPath });
       }
       // Qualify the from-ID so layout can find it in layoutNodes by qualified key
-      edges.push({ ...edge, from: `${sys.id}.${edge.from}`, to: containerId });
+      edges.push({ ...edge, from: nodePathKey(callerPath), to: containerId });
     }
   }
   return {
@@ -664,23 +706,37 @@ function buildCallerGhostSystems(
   };
 }
 
-function buildGhostSystems(edges: KrsEdge[], allSystems: KrsNode[]): GhostSystem[] {
+/** The separator between ancestor labels on a deep ghost's sub-label. */
+const GHOST_PATH_SEPARATOR = " › ";
+
+/** Muted "where this actually lives" line for a ghost below the frame's top level. */
+function ghostSubLabel(match: GhostEndpointMatch): string | undefined {
+  if (match.ancestors.length === 0) return undefined;
+  return match.ancestors.map((a) => a.label ?? a.id).join(GHOST_PATH_SEPARATOR);
+}
+
+function buildGhostSystems(
+  edges: KrsEdge[],
+  resolveGhost: (ref: NodeIdPath) => GhostEndpointMatch | undefined,
+): GhostSystem[] {
   const map = new Map<string, GhostSystem>();
   for (const edge of edges) {
-    const dotIdx = edge.to.indexOf(".");
-    if (dotIdx === -1) continue;
-    const sysId = edge.to.slice(0, dotIdx);
-    const svcId = edge.to.slice(dotIdx + 1);
-    const systemNode = allSystems.find((s) => s.id === sysId);
-    if (!systemNode) continue;
-    const serviceNode = systemNode.children.find((c) => c.id === svcId);
-    if (!serviceNode) continue;
+    if (!edge.to.includes(".")) continue;
+    const match = resolveGhost(edgeEndpointRef(edge.to));
+    if (!match) continue;
+    const sysId = match.system.id;
     if (!map.has(sysId)) {
-      map.set(sysId, { systemNode, visibleServices: [] });
+      map.set(sysId, { systemNode: match.system, visibleServices: [] });
     }
     const gs = map.get(sysId)!;
-    if (!gs.visibleServices.some((s) => s.id === svcId)) {
-      gs.visibleServices.push(serviceNode);
+    const key = nodePathKey(match.path);
+    if (!gs.visibleServices.some((s) => nodePathKey(s.path) === key)) {
+      const subLabel = ghostSubLabel(match);
+      gs.visibleServices.push({
+        node: match.node,
+        path: match.path,
+        ...(subLabel !== undefined ? { subLabel } : {}),
+      });
     }
   }
   return Array.from(map.values());
@@ -770,6 +826,12 @@ interface ViewExtractContext {
   resourceInferredTagsMap: Map<string, string>;
   empty: ViewSlice;
   entityResolver: EntityResolver;
+  /**
+   * Resolves a qualified endpoint to the node and the top-level system that
+   * frames it (#2577). Built once per extraction, like `entityResolver`: the
+   * walk is over every system and each ghost lookup would otherwise repeat it.
+   */
+  ghostEndpoint: (ref: NodeIdPath) => GhostEndpointMatch | undefined;
 }
 
 interface PromotedChildren {
@@ -844,6 +906,7 @@ function synthesizeGhosts(
   containerNode: KrsNode,
   system: KrsNode,
   systems: KrsNode[],
+  resolveGhost: (ref: NodeIdPath) => GhostEndpointMatch | undefined,
 ): GhostSynthesis {
   const containerId = nodeId(containerNode);
   // Service-anchored edges behave as system-scope edges (#2223), so every
@@ -870,19 +933,20 @@ function synthesizeGhosts(
   const candidateEdges = systemScopeEdges.filter(
     (e) => e.from === containerId && e.to.includes("."),
   );
-  const ghostSystems = buildGhostSystems(candidateEdges, systems);
-  // Only include edges that resolved to a known ghost system
-  const resolvedSysIds = new Set(ghostSystems.map((gs) => gs.systemNode.id));
-  const ghostSystemEdges = candidateEdges.filter((e) => {
-    const sysId = e.to.slice(0, e.to.indexOf("."));
-    return resolvedSysIds.has(sysId);
-  });
+  const ghostSystems = buildGhostSystems(candidateEdges, resolveGhost);
+  // Only include edges that resolved to a known ghost system. Asking the
+  // resolver again (rather than re-splitting the string) keeps this filter and
+  // the frame it filters against on one definition of where a path lands.
+  const ghostSystemEdges = candidateEdges.filter(
+    (e) => resolveGhost(edgeEndpointRef(e.to)) !== undefined,
+  );
 
   // Caller ghost systems: other systems that have edges pointing into this service
   const { callerGhostSystems, callerGhostSystemEdges } = buildCallerGhostSystems(
     containerId,
     system.id,
     systems,
+    resolveGhost,
   );
 
   // Ghost domains: cross-service domain edges (both outgoing and incoming)
@@ -1092,12 +1156,18 @@ function extractRootSystemView(
     ...deliversEdges,
   ];
 
-  // Cross-system edges: collect from all systems where target is qualified
+  // Cross-system edges: collect from all systems where the target is qualified
+  // and lands somewhere in the model. The membership test used to be "the
+  // first segment names a known system", which is the same question the ghost
+  // resolver answers — asked once, at any depth (#2577).
+  const crossSystemTargets = new Map<string, NodeIdPath>();
   const crossSystemEdges = systems.flatMap((sys) =>
     withChildAnchoredEdges(sys).filter((e) => {
       if (!e.to.includes(".")) return false;
-      const sysId = e.to.slice(0, e.to.indexOf("."));
-      return systems.some((s) => s.id === sysId);
+      const match = ctx.ghostEndpoint(edgeEndpointRef(e.to));
+      if (!match) return false;
+      crossSystemTargets.set(e.to, match.path);
+      return true;
     }),
   );
 
@@ -1110,6 +1180,7 @@ function extractRootSystemView(
     ghostUserEdges: [],
     systems,
     crossSystemEdges,
+    crossSystemTargets,
     ghostSystems: [],
     ghostSystemEdges: [],
     callerGhostSystems: [],
@@ -1177,7 +1248,9 @@ function extractSystemDrillDownView(
     callerGhostSystemEdges,
     ghostDomains,
     ghostDomainEdges,
-  } = isServiceView ? synthesizeGhosts(containerNode, system, systems) : emptyGhostSynthesis();
+  } = isServiceView
+    ? synthesizeGhosts(containerNode, system, systems, ctx.ghostEndpoint)
+    : emptyGhostSynthesis();
 
   // At domain level: promote resource nodes with dot-notation refs to sibling level
   // so they appear as connected nodes in the UseCase diagram.
@@ -1200,6 +1273,7 @@ function extractSystemDrillDownView(
     ghostUserEdges,
     systems: [],
     crossSystemEdges: [],
+    crossSystemTargets: new Map(),
     ghostSystems,
     ghostSystemEdges,
     callerGhostSystems,
@@ -1246,6 +1320,7 @@ export function extractView(
     resourceInferredTagsMap,
     empty,
     entityResolver,
+    ghostEndpoint: buildGhostEndpointResolver(systems),
   };
 
   // No-system file: render orphan services/domains as peer nodes with no container.
@@ -1367,25 +1442,29 @@ function buildDomainEntityIndex(system: KrsNode): DomainEntityEntry[] {
 }
 
 /**
- * Resolve a qualified `DomainId.EntityId` relation target to its domain +
- * entity by the suffix rule (#2088): the reference matches an entity whose
- * full path it suffixes, so the domain segment must suffix the owning
- * domain's path and the entity must actually exist in it. Returns `null` for
- * a bare id (no dot) or an unresolved reference. The parser caps relation
- * targets at two segments, so deeper qualifiers (`Parent.Child.Entity`)
- * arrive with the edge-notation slice (#2577); a multi-match keeps the first
- * in declaration order — relation-level ambiguity reporting rides the same
- * slice, which owns edge diagnostics.
+ * Resolve a qualified relation target to its domain + entity by the suffix
+ * rule (#2088): the reference matches an entity whose full path it suffixes,
+ * so the leading segments must suffix the owning domain's path and the entity
+ * must actually exist in it. Returns `null` for a bare id (no dot) or an
+ * unresolved reference.
+ *
+ * Qualifiers run to any depth since slice E lifted `parseEdge`'s two-segment
+ * cap (#2577) — `Parent.Child.Entity` is read here the same way `DomainId.EntityId`
+ * always was, which is what closes #2575's out-of-scope note. A multi-match
+ * keeps the first in declaration order; ambiguity is reported by the edge
+ * detector, which sees the declaring scope this resolver does not.
  */
 function resolveQualifiedEntity(
   target: string,
   index: readonly DomainEntityEntry[],
 ): { domain: KrsNode; entity: KrsNode; domainId: string; entityId: string } | null {
-  const dot = target.indexOf(".");
-  if (dot <= 0 || dot === target.length - 1) return null;
-  const ref = [target.slice(0, dot), target.slice(dot + 1)];
+  if (!target.includes(".")) return null;
+  const ref = edgeEndpointRef(target);
+  // A leading or trailing dot leaves an empty segment, which names nothing.
+  if (ref.some((segment) => segment === "")) return null;
+  const entityId = ref[ref.length - 1];
   const candidates = index.flatMap((entry) => {
-    const entity = entry.entities.get(ref[1]);
+    const entity = entry.entities.get(entityId);
     return entity ? [{ path: [...entry.path, entity.id], entry, entity }] : [];
   });
   const match = resolveNodePathBySuffix(ref, candidates)[0];

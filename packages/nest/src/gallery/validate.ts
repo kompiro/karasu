@@ -31,6 +31,16 @@
  * are quality, and quality is the submitter's. (Verified: such a document
  * renders — `buildAllViewsSvg` returns an SVG and reports no error of its own.)
  *
+ * **Line endings are normalised, and that is a storage decision rather than a
+ * parsing one.** The parser reads CRLF perfectly well. But a browser
+ * serialising a `<textarea>` as `application/x-www-form-urlencoded` rewrites
+ * every line ending to CRLF, so a submitter who opens the console, edits only
+ * the title and saves would have every line of their document rewritten —
+ * `?format=krs` then hands back something that no longer matches the file on
+ * their disk, and each line costs a byte against `MAX_SUBMISSION_BYTES`.
+ * Normalising here rather than in the console route means both doors store one
+ * spelling of a document, which is the property worth having.
+ *
  * `assertStructureOnly` is reused rather than rebuilt, but its meaning moves.
  * It was the second half of an egress door: everything reaching the model went
  * through `redactFiles`, and this was the check that the model had not
@@ -65,7 +75,9 @@ const byteLength = (value: string): number => new TextEncoder().encode(value).le
 
 export function validateSubmission(rawTitle: unknown, rawKrs: unknown): ValidationResult {
   const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
-  const krs = typeof rawKrs === "string" ? rawKrs : "";
+  // Before the size check, not after: the cap has to count the bytes that get
+  // stored, and CRLF is one byte per line more than what is stored.
+  const krs = typeof rawKrs === "string" ? rawKrs.replaceAll("\r\n", "\n") : "";
 
   if (krs.trim().length === 0) {
     return reject("empty", "A submission needs a .krs document.");

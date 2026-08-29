@@ -6,6 +6,7 @@
 import type { KrsNode } from "../types/ast.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { LayoutNode, ContainerRect } from "./layout-types.js";
+import { nodePathKey } from "../parser/node-path.js";
 import {
   CONTAINER_PADDING,
   CONTAINER_LABEL_HEIGHT,
@@ -207,8 +208,7 @@ export function placeCallerGhostSystems(
 
   for (const gs of viewSlice.callerGhostSystems) {
     for (const svc of gs.visibleServices) {
-      const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
-      const node = layoutNodes.get(qualifiedId);
+      const node = layoutNodes.get(nodePathKey(svc.path));
       if (node) node.x += shiftX;
     }
   }
@@ -248,8 +248,10 @@ export function placeOutgoingGhostSystems(
 }
 
 /**
- * Lay out the visible services inside a ghost system and produce a container rect.
- * Nodes are keyed by the qualified ID "SystemId.ServiceId" to avoid collisions.
+ * Lay out the visible nodes inside a ghost system and produce a container rect.
+ * Nodes are keyed by their full path to avoid collisions — for a system's
+ * direct child that is the same `SystemId.ServiceId` string as before, and for
+ * a deeper endpoint (`Shop.Checkout.Payment`, #2577) it is the whole path.
  */
 function layoutGhostSystem(
   gs: GhostSystem,
@@ -264,11 +266,11 @@ function layoutGhostSystem(
   let maxH = 0;
   let y = originY + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
 
-  for (const svc of gs.visibleServices) {
-    // The qualified id doubles as the node's full path key: a ghost is a
-    // system's direct child, so `Sys.Svc` is exactly what the path-keyed
-    // ownerIndex holds for it (#2548).
-    const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
+  for (const { node: svc, path, subLabel } of gs.visibleServices) {
+    // The resolved full path is the layout key, which is exactly what the
+    // path-keyed ownerIndex holds for the node (#2548). A direct child's path
+    // joins to the same `Sys.Svc` the hand-built qualified id used to produce.
+    const qualifiedId = nodePathKey(path);
     const owner = ownerOf(svc.kind, qualifiedId);
     const dims = measureNode(svc, owner, ctx);
     const x = originX + CONTAINER_PADDING;
@@ -278,6 +280,10 @@ function layoutGhostSystem(
         label: svc.label ?? svc.id,
         annotations: svc.annotations,
         owner,
+        // Muted "Shop › Checkout" line naming the ancestors between the frame
+        // and this card; absent for a direct child, so existing ghosts keep
+        // their geometry.
+        ...(subLabel !== undefined ? { subLabel } : {}),
         x,
         y,
         width: dims.width,

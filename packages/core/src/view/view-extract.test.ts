@@ -481,7 +481,7 @@ system ECPlatform {
         expect(view.ghostSystems).toHaveLength(1);
         expect(view.ghostSystems[0].systemNode.id).toBe("PaymentGateway");
         expect(view.ghostSystems[0].visibleServices).toHaveLength(1);
-        expect(view.ghostSystems[0].visibleServices[0].id).toBe("PaymentService");
+        expect(view.ghostSystems[0].visibleServices[0].node.id).toBe("PaymentService");
       });
 
       it("populates ghostSystemEdges", () => {
@@ -527,7 +527,7 @@ system PaymentGateway {
         const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
 
         expect(view.ghostSystems).toHaveLength(1);
-        expect(view.ghostSystems[0].visibleServices.map((s) => s.id)).toEqual([
+        expect(view.ghostSystems[0].visibleServices.map((s) => s.node.id)).toEqual([
           "PaymentService",
           "FraudService",
         ]);
@@ -571,7 +571,7 @@ system ECPlatform {
         expect(view.callerGhostSystems).toHaveLength(1);
         expect(view.callerGhostSystems[0].systemNode.id).toBe("ECPlatform");
         expect(view.callerGhostSystems[0].visibleServices).toHaveLength(1);
-        expect(view.callerGhostSystems[0].visibleServices[0].id).toBe("OrderService");
+        expect(view.callerGhostSystems[0].visibleServices[0].node.id).toBe("OrderService");
       });
 
       it("populates callerGhostSystemEdges with qualified from-ID", () => {
