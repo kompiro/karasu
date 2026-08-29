@@ -16,6 +16,19 @@ describe("http helpers", () => {
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=60");
   });
 
+  it("varies a cacheable response by the session cookie", () => {
+    // A cacheable response is the only kind a shared cache keeps, and every
+    // surface this Worker serves is same-origin with the session cookie — so
+    // "who is asking" belongs in the cache key. A caller's own `Vary` cannot
+    // narrow it, for the same reason one cannot re-introduce caching.
+    const response = json({}, { cacheControl: "public, max-age=60", headers: { Vary: "Accept" } });
+    expect(response.headers.get("Vary")).toBe("Cookie");
+  });
+
+  it("sends no Vary on a no-store response, which is never kept", () => {
+    expect(json({}).headers.get("Vary")).toBeNull();
+  });
+
   it("serialises JSON with a charset-qualified content type", async () => {
     const response = json({ a: 1 });
     expect(response.headers.get("Content-Type")).toBe("application/json; charset=utf-8");

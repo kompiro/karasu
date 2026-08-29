@@ -16,15 +16,24 @@ interface ResponseOptions {
 }
 
 function baseHeaders(contentType: string, options: ResponseOptions): Record<string, string> {
-  // `Content-Type` and `Cache-Control` are written *after* the caller's extra
-  // headers, so neither can be shadowed by one. Spreading them the other way
-  // round would let an `options.headers` entry quietly re-introduce a
-  // cacheable response, which is the one thing this module exists to prevent
-  // — `cacheControl` is the only supported way to opt out of `no-store`.
+  // These are written *after* the caller's extra headers, so none can be
+  // shadowed by one. Spreading them the other way round would let an
+  // `options.headers` entry quietly re-introduce a cacheable response, which
+  // is the one thing this module exists to prevent — `cacheControl` is the
+  // only supported way to opt out of `no-store`.
   return {
     ...options.headers,
     "Content-Type": contentType,
     "Cache-Control": options.cacheControl ?? NO_STORE,
+    // `Vary` rides with `cacheControl` rather than being left to each caller,
+    // for the same reason `no-store` is the default here. Every surface this
+    // Worker serves is same-origin with the `__Host-` session cookie, so the
+    // moment a response may be *kept*, who asked for it is part of the answer.
+    // Without this a shared cache hands one viewer's variant to the next: the
+    // gallery page drops the owner's `Manage` link that way, and a caller that
+    // later marks something richer `public` would leak rather than merely
+    // hide. A `no-store` response is never kept, so it has nothing to vary.
+    ...(options.cacheControl === undefined ? {} : { Vary: "Cookie" }),
   };
 }
 
@@ -87,5 +96,13 @@ export function html(body: string, options: ResponseOptions = {}): Response {
   return new Response(body, {
     status: options.status ?? 200,
     headers: baseHeaders("text/html; charset=utf-8", options),
+  });
+}
+
+/** An SVG response. `no-store` by default, like everything else here. */
+export function svg(body: string, options: ResponseOptions = {}): Response {
+  return new Response(body, {
+    status: options.status ?? 200,
+    headers: baseHeaders("image/svg+xml; charset=utf-8", options),
   });
 }

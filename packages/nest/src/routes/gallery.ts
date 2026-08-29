@@ -15,7 +15,7 @@
  * shadows the other.
  */
 import { requireBinding } from "../env.js";
-import { error, html, text } from "../http.js";
+import { error, html, svg, text } from "../http.js";
 import type { RouteContext } from "../router.js";
 import { currentViewer } from "../auth/current.js";
 import { GalleryStore } from "../store/gallery-store.js";
@@ -89,13 +89,14 @@ export async function submissionPage(context: RouteContext): Promise<Response> {
 
   const rendered = renderSubmission(submission.krs, context.url.searchParams);
   if (format === "svg") {
-    return new Response(rendered.body, {
-      status: rendered.status,
-      headers: {
-        "Content-Type": rendered.contentType,
-        "Cache-Control": cacheControl ?? "no-store",
-      },
-    });
+    // Through `http.ts`, like every other response here, so that "what may a
+    // cache keep, and keyed by what" stays one decision in one place. A render
+    // error is not the submission and does not inherit its cacheability: a
+    // ten-minute `public` on `?view=nonsense` would pin a 400 no one asked to
+    // keep.
+    return rendered.status === 200
+      ? svg(rendered.body, { cacheControl })
+      : text(rendered.body, { status: rendered.status });
   }
   if (rendered.status !== 200) {
     return error(rendered.status, "cannot_render", rendered.body);

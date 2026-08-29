@@ -82,6 +82,29 @@ describe("GET /g/<id>", () => {
     expect((await get(kv, `/g/${id}`, cookie)).headers.get("Cache-Control")).toBe("no-store");
   });
 
+  it("keys the shared cache on the session, so an owner is not served the anonymous page", async () => {
+    // The page changes for its owner — the `Manage` link — while the
+    // anonymous one is `public, max-age=600`. Without `Vary`, a shared cache
+    // holds one entry for `/g/<id>` and answers the owner with the anonymous
+    // body for ten minutes, the link simply missing.
+    const kv = new MemoryKV();
+    const { id, cookie } = await seed(kv);
+    const anonymous = await get(kv, `/g/${id}`);
+    expect(anonymous.headers.get("Vary")).toBe("Cookie");
+    expect(await anonymous.text()).not.toContain("/console/s/");
+    expect(await (await get(kv, `/g/${id}`, cookie)).text()).toContain(`/console/s/${id}`);
+  });
+
+  it("does not let a render error inherit the submission's cacheability", async () => {
+    // A ten-minute `public` on `?view=nonsense` would pin a 400 nobody asked
+    // to keep. The error is not the submission.
+    const kv = new MemoryKV();
+    const { id } = await seed(kv);
+    const bad = await get(kv, `/g/${id}?format=svg&view=nonsense`);
+    expect(bad.status).toBe(400);
+    expect(bad.headers.get("Cache-Control")).toBe("no-store");
+  });
+
   it("answers 404 for an unlisted submission, exactly as for one that is not there", async () => {
     // Distinguishing them makes this route an oracle for "did this person
     // submit something and take it down".

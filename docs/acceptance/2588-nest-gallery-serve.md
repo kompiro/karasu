@@ -8,6 +8,7 @@
   - `packages/nest/src/gallery/render.ts`（`.krs` → SVG）
   - `packages/nest/src/gallery/html.ts`（エスケープとページ枠）
   - `packages/nest/src/routes/gallery.ts`（`GET /g/:id`）
+  - `packages/nest/src/http.ts`（`html` / `svg` と、キャッシュ可能な応答の `Vary`）
 
 > **ADR-2259 の 8000 文字上限はこの経路に効かない。** あの上限が縛るのは
 > `resolveRepoPermalink` が `.krs` を `/s?s=` に畳み直すことで、制限されているのは
@@ -59,6 +60,14 @@
 - [x] AT-K: 表示できない文書は 422 で答える（500 にしない）
 
   > ✅ Automated — `packages/nest/src/gallery/render.test.ts` › `answers 422 for a document that cannot be shown, not 500`
+
+- [x] AT-L: 共有キャッシュに載る応答はセッション Cookie で variant を分ける（所有者に匿名版が返らない）
+
+  > ✅ Automated — `packages/nest/src/routes/gallery.test.ts` › `keys the shared cache on the session, so an owner is not served the anonymous page`、`packages/nest/src/http.test.ts` › `varies a cacheable response by the session cookie` / `sends no Vary on a no-store response, which is never kept`
+
+- [x] AT-M: 描画エラーは投稿のキャッシュ可能性を引き継がない
+
+  > ✅ Automated — `packages/nest/src/routes/gallery.test.ts` › `does not let a render error inherit the submission's cacheability`
 
 ## 手動確認
 
