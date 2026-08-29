@@ -14,7 +14,7 @@ name: E2E
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "packages/app/**"
       - "packages/core/**"
@@ -33,6 +33,8 @@ permissions:
 jobs:
   e2e:
     name: Playwright
+    # Skipped on draft PRs: see the note in `ci.yml` (ADR-2643).
+    if: github.event.pull_request.draft != true
     # Ubicloud runner (ADR-1890). Playwright installs its own browsers + deps
     # below, so the runner image only needs a standard Ubuntu base.
     runs-on: ubicloud-standard-4-ubuntu-2404

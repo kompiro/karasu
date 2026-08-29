@@ -3,7 +3,7 @@ name: Preview
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened, closed, ready_for_review]
     paths:
       - "packages/app/**"
       - "packages/core/**"
@@ -18,7 +18,9 @@ concurrency:
 jobs:
   preview:
     name: Deploy Preview to Cloudflare Pages
+    # A draft PR is skipped too: see the note in `ci.yml` (ADR-2643).
     if: >-
+      github.event.pull_request.draft != true &&
       github.event.action != 'closed' &&
       github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest

@@ -44,10 +44,6 @@ reviews:
 
     - path: "packages/**/*.{ts,tsx}"
       instructions: |
-        - User-facing strings (diagnostics, warnings, UI labels) belong in
-          @karasu-tools/i18n, not inlined at the call site. See docs/spec/i18n.md.
-        - Locale normalization has one owner, `resolveLocaleTag` in
-          @karasu-tools/i18n. Flag any re-inlined `startsWith("ja")`-style test.
         - Tests are Vitest, co-located as `*.test.ts(x)`. Vitest globals are NOT
           enabled: a React Testing Library test file must register
           `afterEach(cleanup)` itself, or DOM from earlier tests leaks forward.
@@ -59,6 +55,21 @@ reviews:
           packages. `@karasu-tools/app`, `lsp`, `e2e` and `vscode-e2e` are not
           published and never need one.
 
+    # The i18n rules reach only the packages `docs/spec/i18n.md` governs — what
+    # an end user reads in the app, the SVG output, the CLI's stdout, the LSP
+    # and the VS Code extension — plus `core`, whose rule is that it must *not*
+    # import the table. Globbed at `packages/**` they also landed on `nest`,
+    # whose strings are JSON API error bodies, twice on #2601. Both findings
+    # were withdrawn on the argument below, which is the sign the glob was
+    # wider than the convention. A new package that puts strings in front of a
+    # user goes in this list.
+    - path: "packages/{app,cli,core,i18n,lsp,vscode,vscode-e2e}/**/*.{ts,tsx}"
+      instructions: |
+        - User-facing strings (diagnostics, warnings, UI labels) belong in
+          @karasu-tools/i18n, not inlined at the call site. See docs/spec/i18n.md.
+        - Locale normalization has one owner, `resolveLocaleTag` in
+          @karasu-tools/i18n. Flag any re-inlined `startsWith("ja")`-style test.
+
     - path: "packages/core/src/**/*.ts"
       instructions: |
         Production code under `packages/core/src` imports deep paths
@@ -66,6 +77,26 @@ reviews:
         barrel from the inside creates a runtime cycle. Only test files may
         import `../index.js`, as a public-API smoke test. Flag any new
         production import of an internal `index.js`.
+
+    - path: "packages/nest/**/*.ts"
+      instructions: |
+        - `packages/nest` is the Cloudflare Workers deployment that holds the
+          service secrets, and it carries no runtime dependency but
+          `@karasu-tools/core`. Flag a new entry under `dependencies`; never
+          propose one. Its user-visible surface is a JSON API whose `error.code`
+          is what callers branch on, so its messages are outside the
+          `docs/spec/i18n.md` scope — do not ask for them to move into
+          `@karasu-tools/i18n`.
+        - Every KV key prefix this package writes has to be sweepable and has to
+          be stated. A new prefix needs a seeder entry in the purge-coverage
+          ledgers (`nest-purge-coverage.test.ts`, `gallery-purge-coverage.test.ts`
+          — TPL-2226) and a retention row in `docs/policy/nest-data-handling.md`,
+          which `scripts/lint/nest-retention-policy-sync.test.ts` then holds
+          against the constants. Those guards cannot see a prefix nobody added
+          to them, which is the one part of this a reviewer has to carry. The
+          document is a claim about what the service does with other people's
+          code, so a prefix missing from it is a broken promise rather than a
+          stale doc.
 
     - path: ".github/workflows/**"
       instructions: |

@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     # Docs-only changes don't affect lint / typecheck / build / test, so this
     # workflow is filtered out on those PRs. The companion `ci-skip.yml`
     # provides a stub `Check` job for docs-only PRs so the Required status
@@ -26,6 +26,15 @@ permissions:
 jobs:
   check:
     name: Check
+    # Skipped on draft PRs (ADR-2643). A stack keeps every layer above the
+    # bottom one in draft, and nobody reads a layer until it reaches the
+    # bottom, so verifying it on every `gh stack sync` force-push buys
+    # nothing. `ready_for_review` is in `types:` above so the real run
+    # happens the moment the PR is opened for review: a job skipped by this
+    # `if` reports **success** to the Required check, so the skip and the
+    # trigger must always move together
+    # (`scripts/ci/workflow-draft-gate.test.ts`).
+    if: github.event.pull_request.draft != true
     # Ubicloud runner (ADR-1890): compute-bound verification jobs run on
     # Ubicloud, secret-bearing publish / deploy jobs stay GitHub-hosted.
     # `-ubuntu-2404` matches the image `ubuntu-latest` resolves to.

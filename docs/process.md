@@ -46,6 +46,7 @@
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `spike/` + kebab-case
 - `spike/` はマージを前提としない PoC 用。この prefix だけは CI 上の意味を持ち、push で preview がデプロイされる（「spike を PR なしで preview で動かす」節）
 - **PR を出す前に main を取り込む — `rebase` は使わない。** `git fetch origin main` してから `git merge --no-edit origin/main`。rebase は他 PR のマージ済み成果を巻き添えで revert しうる。
+- **例外: stack 内のブランチは `gh stack sync` の rebase で `main` を取り込む。** スタックは各 PR の base を積み替える構造で、merge では表現できない。この 1 行は直上の rebase 禁止に優先する（「Stacked PR の進め方」）
 
 ### Issue・PR 記述ルール
 
@@ -126,7 +127,60 @@ ready → implementing → in-review → (close)
   `Learnings Added` が返ったときだけで、再発防止は次項の drift ガードで担保する
 - 同じ規約違反を繰り返し指摘されるなら、`scripts/lint/` + lefthook の drift ガードに
   落とす合図として扱う
+- 同じ**誤検知**を繰り返されるなら、`path_instructions` の glob が規約の適用範囲より
+  広い合図として扱う。返信で毎回閉じるのではなく、その規約が実際に及ぶパッケージまで
+  glob を絞る
 - 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
+
+### Stacked PR の進め方
+
+1 つの仕事を依存順のブランチ列に割り、各層を 1 PR にする運用（`gh stack`）。
+コマンドの詳細は `/gh-stack` スキル、作業中に守るルールは
+[.claude/rules/stacked-pr.md](../.claude/rules/stacked-pr.md)、決定の経緯は
+[ADR-2643](adr/2643-stacked-pr-workflow.md) を参照。
+
+**レビュー対象はスタック最下層（base が `main`）の 1 本だけで、残りは draft のまま
+置く。** 検証もレビューも最下層でだけ起きる。
+
+| # | すること |
+| --- | --- |
+| 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
+| 1 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
+| 2 | 先に `/code-review <n>` を当てる |
+| 3 | code-review と CodeRabbit の指摘を、人と一緒に対応可否まで決める |
+| 4 | 対応すると決めた指摘を直す |
+| 5 | push すると CodeRabbit が再レビューする。3 に戻り、指摘が収束するまで繰り返す |
+| 6 | そのスライスで観測できることを人が確認し、マージ可否を決める |
+| 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層の draft を外して 1 に戻る |
+
+- **`gh stack submit --auto --open` は使わない。** `--open` は新規 PR だけでなく
+  既存 PR も ready にするので、スタック全体が一度にレビュー対象になりステップ 0 が
+  壊れる。draft を外すのは常に `gh pr ready <番号>` で 1 本ずつ
+- `gh stack sync` はマージ直後にだけ実行する。sync は上位ブランチを force-push し、
+  走っている required E2E を cancel する。レビュー対応の push と混ぜない
+- ステップ 7 の順序は sync が先、ready が後。逆にすると ready で走り出した CI を
+  直後の force-push が cancel する。sync を先に置けば CodeRabbit も main 取り込み後の
+  diff を読む
+- マージは `gh stack merge <PR番号>`。`gh pr merge` はスタックでは通らない。PR 番号を
+  渡すと、スタック全体ではなくその PR までがマージ対象になる
+- Issue の status ラベルは、draft のあいだ `status: implementing`、draft を外したら
+  `status: in-review`。親 Issue の `## Slice status` 表に draft / ready は書かない
+  （[.claude/rules/program-slices.md](../.claude/rules/program-slices.md) の二重管理禁止）
+- 受け入れテストは、そのスライスが観測可能にしたものだけを対象にする。内部だけの
+  スライスは AT なしでマージしてよい
+
+#### draft PR では分単位のジョブが走らない
+
+`Check` / `Playwright` / VS Code E2E / preview・docs preview のデプロイは、draft の
+あいだ skip される（[ADR-2643](adr/2643-stacked-pr-workflow.md)）。上位層は最下層に
+降りてきて draft を外した時点で、初めて本番の CI を通る。秒で終わる validator
+（ADR / TPL / reference docs / AT coverage）と gitleaks は draft でも走り続ける。
+
+skip は workflow ごと止めるのではなく job の `if:` で行う。**job-level の `if:` で
+skip されたジョブは Required check に success を報告する**ので、`types:` の
+`ready_for_review` と必ず対で置く。片方だけだと、draft を外した瞬間に「一度も
+走っていない green」でマージできてしまう。両者のズレは
+`scripts/ci/workflow-draft-gate.test.ts` が落とす。
 
 ### docs サイトの変更は PR 上でレンダリング結果を読む
 
@@ -269,6 +323,7 @@ karasu 側のセッション内で編集・コミット・PR 作成ができる�
 | spec / concepts（proactive TPL 同梱・適合性監査） | `.claude/rules/spec-audit.md` | `docs/spec/**` `docs/concepts*.md` の編集 |
 | 複数スライスに分けた仕事の追跡 | `.claude/rules/program-slices.md` | Design Doc に `### スライス` を書いたとき |
 | changeset の要否と名指し | `.claude/rules/changesets.md` | 公開対象パッケージの編集 |
+| stacked PR の進め方（draft の置き方・sync の順序） | `.claude/rules/stacked-pr.md` | workflow の編集、および `gh stack` を打つとき |
 | リリース・依存更新の手順 | `docs/release.md` | リリース時・Dependabot PR 処理時 |
 
 一覧と authoring 規約は `.claude/rules/README.md`。
