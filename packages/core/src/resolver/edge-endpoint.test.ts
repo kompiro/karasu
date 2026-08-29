@@ -113,6 +113,30 @@ system Shop {
     ).toBeUndefined();
   });
 
+  it("decides by the node, not by the root id — a colliding orphan stays out", () => {
+    const file = parse(`
+domain Shop {
+  entity Invoice {}
+}
+
+system Shop {
+  service Checkout {}
+}
+
+system Portal {
+  service Web {}
+}
+`);
+    const index = buildEdgeEndpointIndex(file);
+    const ref = edgeEndpointRef("Shop.Invoice");
+    const resolution = resolveEdgeEndpoint(index, find(file, ["Portal", "Web"]), ref);
+    // The suffix matches the orphan's entity, and a system named `Shop` does
+    // exist — so an id test would pass it. The node is still not inside one.
+    expect(resolution.matches.map((m) => m.path.join("."))).toEqual(["Shop.Invoice"]);
+    expect(resolution.inScope).toEqual([]);
+    expect(buildGhostEndpointResolver(file.systems)(ref)).toBeUndefined();
+  });
+
   it("a root anchor is reachable from any depth — what keeps Sys.Child working", () => {
     const file = parse(MODEL);
     // From a usecase three levels down, the other system is still nameable.

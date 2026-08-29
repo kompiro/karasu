@@ -60,16 +60,17 @@ export interface EdgeEndpointIndex {
   readonly declared: Map<string, DeclaredNodePath[]>;
   /** Node instance -> its full path. */
   pathOf(node: KrsNode): NodeIdPath;
-  /** Full path (identity key) -> the node declared there; first declaration wins. */
-  nodeAt(path: readonly string[]): KrsNode | undefined;
   /** ADR-2075's `peers(C)`, as full-path identity keys. */
   peers(container: KrsNode): ReadonlySet<string>;
   /**
-   * Whether `id` names a top-level `system` — the only kind of root a
-   * qualified endpoint may descend from, because a ghost frame is a system
-   * and nothing else can draw the target.
+   * Whether a node is declared at this exact path *inside* a top-level
+   * `system` — the ghost renderer's pool, expressed as the set it actually is.
+   *
+   * Not a test on the root segment's id: a top-level orphan may share its id
+   * with a system (`domain Shop` beside `system Shop` both parse), and then an
+   * id test admits the orphan's subtree, which the renderer still cannot draw.
    */
-  isSystemRoot(id: string): boolean;
+  isInsideSystem(path: readonly string[]): boolean;
 }
 
 /**
@@ -81,18 +82,20 @@ export function buildEdgeEndpointIndex(file: KrsFile): EdgeEndpointIndex {
   const declared = collectDeclaredNodePaths(file);
   const parentOf = new Map<KrsNode, KrsNode>();
   const pathOf = new Map<KrsNode, NodeIdPath>();
-  const nodeAt = new Map<string, KrsNode>();
+  /**
+   * Paths of the nodes a system frame can draw — the system's descendants,
+   * excluding the system itself. Collected on this walk rather than derived
+   * from the root id, so it stays the same set the ghost resolver builds.
+   */
+  const insideSystem = new Set<string>();
 
-  const walk = (node: KrsNode, prefix: NodeIdPath): void => {
+  const walk = (node: KrsNode, prefix: NodeIdPath, underSystem: boolean): void => {
     const path = [...prefix, node.id];
     pathOf.set(node, path);
-    const key = nodePathIdentityKey(path);
-    // First declaration wins, matching the `nodeById` convention the scope
-    // detector has always used for the same question.
-    if (!nodeAt.has(key)) nodeAt.set(key, node);
+    if (underSystem) insideSystem.add(nodePathIdentityKey(path));
     for (const child of node.children) {
       parentOf.set(child, node);
-      walk(child, path);
+      walk(child, path, underSystem);
     }
   };
 
@@ -104,8 +107,16 @@ export function buildEdgeEndpointIndex(file: KrsFile): EdgeEndpointIndex {
     ...file.queues,
     ...file.storages,
   ];
-  for (const system of file.systems) walk(system, []);
-  for (const node of topLevel) walk(node, []);
+  for (const system of file.systems) {
+    // The system is the frame, not something drawn inside one, so it seeds the
+    // walk without joining `insideSystem`.
+    pathOf.set(system, [system.id]);
+    for (const child of system.children) {
+      parentOf.set(child, system);
+      walk(child, [system.id], true);
+    }
+  }
+  for (const node of topLevel) walk(node, [], false);
 
   // Only top-level *domains* reach a real system's frame (the drawio exporter
   // splices `krsFile.domains` in beside the system's children), and every other
@@ -149,14 +160,11 @@ export function buildEdgeEndpointIndex(file: KrsFile): EdgeEndpointIndex {
     return result;
   };
 
-  const systemRootIds = new Set(file.systems.map((s) => s.id));
-
   return {
     declared,
     pathOf: (node) => pathOf.get(node) ?? [node.id],
-    nodeAt: (path) => nodeAt.get(nodePathIdentityKey(path)),
     peers,
-    isSystemRoot: (id) => systemRootIds.has(id),
+    isInsideSystem: (path) => insideSystem.has(nodePathIdentityKey(path)),
   };
 }
 
@@ -185,9 +193,9 @@ export interface EdgeEndpointResolution {
  * - **length 1 (bare)** — must be in `peers(C)`. ADR-2075's judgement,
  *   unchanged.
  * - **length 2+ (qualified)** — must spell the whole path from a top-level
- *   `system` down to the target: `ref.length === path.length`, and the root
- *   segment names a `system`. Naming a system and descending from it is the
- *   only way to reach inside it, at any depth.
+ *   `system` down to the target: `ref.length === path.length`, and the node it
+ *   names must actually sit inside a system. Naming a system and descending
+ *   from it is the only way to reach inside it, at any depth.
  *
  *   Both halves matter, and for the same reason — a ghost frame *is* a
  *   top-level system. A path rooted at a top-level orphan (`Billing.Invoice`,
@@ -210,7 +218,7 @@ export function resolveEdgeEndpoint(
   const inScope =
     ref.length === 1
       ? matches.filter((m) => index.peers(container).has(nodePathIdentityKey(m.path)))
-      : matches.filter((m) => m.path.length === ref.length && index.isSystemRoot(m.path[0]));
+      : matches.filter((m) => m.path.length === ref.length && index.isInsideSystem(m.path));
   const ambiguous = ref.length === 1 ? undefined : ambiguousNodePathCandidates(inScope);
   return { ref, matches, inScope, ...(ambiguous ? { ambiguous } : {}) };
 }

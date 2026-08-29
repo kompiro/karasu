@@ -755,8 +755,34 @@ system Shop {
 `);
     const kinds = analyze(r.value, []).map((w) => w.kind);
     expect(kinds).toContain("edge-endpoint-not-at-scope");
+    // The report moved to this code; the one it replaced must not double up.
+    expect(kinds).not.toContain("cross-system-ref-unresolved");
     const view = extractView(r.value.systems, ["Shop", "Checkout"]);
     expect(view.ghostSystems).toEqual([]);
+  });
+
+  it("a top-level orphan sharing a system's id does not smuggle its subtree in", () => {
+    // `domain Shop` and `system Shop` both parse. Deciding by the root
+    // segment's id would admit the orphan's entity, which no system frame can
+    // draw — the silent drop returns one level deeper.
+    const r = Parser.parse(`
+domain Shop {
+  entity Invoice {}
+}
+
+system Shop {
+  service Checkout {}
+}
+
+system Portal {
+  service Web {
+    -> Shop.Invoice
+  }
+}
+`);
+    const kinds = analyze(r.value, []).map((w) => w.kind);
+    expect(kinds).toContain("edge-endpoint-not-at-scope");
+    expect(extractView(r.value.systems, ["Portal", "Web"]).ghostSystems).toEqual([]);
   });
 
   it("a qualified relation inside an entity block stays the entity view's business", () => {
