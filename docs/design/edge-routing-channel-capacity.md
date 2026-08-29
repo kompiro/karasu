@@ -6,7 +6,7 @@
   - 引き金 Issue: [#2598](https://github.com/kompiro/karasu/issues/2598)（スライス A [#2608](https://github.com/kompiro/karasu/issues/2608) / B [#2609](https://github.com/kompiro/karasu/issues/2609) / C [#2610](https://github.com/kompiro/karasu/issues/2610) / D [#2611](https://github.com/kompiro/karasu/issues/2611)）
   - 関連 ADR: [ADR-968](../adr/968-orthogonal-edge-routing-skip-layer.md)（チャネル L 字ルーティング）, [ADR-1859](../adr/1859-system-view-p2c-grouped-edge-routing-and-marks.md)（ガター / mixed route・トランク・マーク）, [ADR-2330](../adr/2330-ungrouped-routing-parity.md)（計測柵で ungrouped を保証）, [ADR-1737](../adr/1737-balanced-grid-sibling-layout.md)（決定的な既定レイアウト規則の線引き）
   - 関連 TPL: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md), [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md), [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md), [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md)（配置に測定値を返す経路の規律）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（本 PR で新設）
-  - 姉妹 Design Doc: [canvas-space-objective.md](canvas-space-objective.md)（[#2593](https://github.com/kompiro/karasu/issues/2593) — 同じパイプラインの面積側。本設計が増やすキャンバス面積を相殺する）
+  - 姉妹の決定: [ADR-2593](../adr/2593-canvas-space-objective.md)（[#2593](https://github.com/kompiro/karasu/issues/2593) — 同じパイプラインの面積側。本設計が増やすキャンバス面積を相殺する）
   - コード: `packages/core/src/renderer/edge-routing-lanes.ts`, `layer-layout-logics.ts`, `layout-edges.ts`, `layout.ts`
 
 ## 背景・課題
@@ -118,24 +118,61 @@ ADR-1859 は貫通対策として **「配置レベルで解消（#966 / ADR-967
 
 ### TPL-2593（配置へ測定値を返す経路の規律）との突き合わせ
 
-[#2593](https://github.com/kompiro/karasu/issues/2593) の設計で、配置にフィードバックを足すときの規律が [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) として明文化された。本設計は同じパイプラインに 2 本目のフィードバックを足すので、そのチェックリストに対する立場をここで固定する。
+[ADR-2593](../adr/2593-canvas-space-objective.md)（[#2593](https://github.com/kompiro/karasu/issues/2593)）で、配置にフィードバックを足すときの規律が [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md) として明文化された。本設計は同じパイプラインに 2 本目のフィードバックを足すので、そのチェックリストに対する立場をここで固定する。
 
 | チェック項目 | 本設計の立場 |
 | --- | --- |
 | 候補列はモデルと定数だけから決まる | **形が違う。** 本設計は候補を探索せず、予約量を `測定した本数 × 定数ピッチ` で 1 つに決める。測定値は 1 回目のパスの結果から取るので、シグネチャ上は「前回結果」を読む形になる（`channelDemandByRow(result)`）。ただしその結果自体がモデルと定数だけの純関数なので、合成もモデルの純関数であり、viewport・時刻・乱数・セッション間の状態は入らない |
 | 同じ入力で 2 回走らせて座標が完全一致 | 満たす。テストを置く |
-| 現行定数が先頭で、厳密比較のみが勝つ | **等価な形で満たす。** 探索が無いので「先頭候補」は無いが、`extraChannelGap()` は需要が現行 gap に収まるとき 0 を返し、その場合 2 回目のパス自体を走らせない。定数で足りる入力は座標が完全一致する |
+| 現行定数が先頭で、厳密比較のみが勝つ | **等価な形で満たす。** 探索が無いので「先頭候補」は無いが、`extraChannelGap()` は需要が現行 gap に収まるとき 0 を返し、その場合 2 回目のパス自体を走らせない。定数で足りる入力は座標が完全一致する。閾値をこの形に置く根拠は後述（ADR-2593 の取り込み 2） |
 | 採点は呼び出し元が使う寸法 | 該当なし（採点関数を持たない）。ただし予約対象の行序数は最終座標から導く |
 | 試行が純粋 | 満たす。1 回目の結果は破棄し、2 回目は `layoutInner` を新しい Map で走らせる |
 | 打ち切りは単調性で説明できる | **より強い形で満たす。** 単調性ではなく構成で上限が決まる — パスは常に 1 か 2 で、3 回目は存在しない。「2 回目の配置で経路選択が変わりうる」ことは事実であり、不動点は保証しない。上限の明示であることを ADR に残す |
 | 退化入力で結果が返る | 満たす。エッジ 0 / チャネル 0 は 1 パスで終わる |
 | 並列に存在する全レイアウト経路が同じ規則を通る（TPL-219） | **スライス A では満たさない。** 複数 system の root view は system ごとに独立した行スタックを横に並べるため、キャンバス全体で一意な行序数が定義できない。A では単一 system / 全 drill-down のみを対象とし、multi-system root は現状維持（既定 gap のまま）とする。この縮退は親 Issue の `## Slice status` に記載する |
 
+### ADR-2593 が実装で覆した点の取り込み
+
+TPL-2593 の元になった設計 doc には無く、**実装とレビューで判明して方針が変わった**点が
+ADR-2593「実装で設計を覆した点」に 3 件残っている。うち 2 件は同じパイプラインに 2 本目の
+フィードバックを足す本設計に直接効くので、依存する前提として明記する。
+
+1. **配置は予算に対して単調ではない。** 行の高さはその行で最も高いカードで決まるため、
+   行幅予算を広げると再折り返しで総高が増えることがある（ADR-2593 実測: 不揃いカード 7 枚で
+   1430 → 1492）。単調性を根拠にした早期打ち切りは削除された。本設計はこれを 2 つの形で受ける。
+   - **打ち切りの根拠に単調性を使わない。** パス数の上限は構成で決まっており（常に 1 か 2）、
+     「広げれば必ず良くなる」という仮定は置かない。上の表の該当行と同じ立場。
+   - **2 回目の配置が行構造を変えないことに依存する。** 需要は行序数をキーに測る。ところが
+     `layout()` は `layoutInner` を候補予算で回す `searchWidthBudget` の外側にあり
+     （`packages/core/src/renderer/layout.ts`）、採点は**最終キャンバスの幅と高さ**である。
+     予約で高さが伸びれば勝つ候補が変わりうるし、単調でない以上その向きは予測できない。
+     勝つ候補が変われば折り返しが変わり、キーの指す行がずれる。よって A は
+     **1 回目で選ばれた `widthBudget` を固定して 2 回目へ渡し、探索を再実行しない**。
+     1 回目と 2 回目で `LayoutResult.widthBudget` と各行のメンバーが一致することをテストで押さえる。
+2. **予約には閾値が要る。** ADR-2593 は deploy の unit grid を「2 個以上」で畳んで既存 6 図を
+   すべて大きくし（最大 +29%、1 件は帯の外）、閾値を「4 個以上」に上げて既存 20 view を
+   完全に不変へ戻した。`extraChannelGap()` も同じ性質を持つ資源で、需要が現行 gap に収まる
+   チャネルにまで予約を足せば、直す必要の無かった図まで伸びる。閾値は
+   「**現行 gap に収まるなら 0**」に置き、既定 gap で足りる view の出力が 1 バイトも
+   変わらないことを柵にする（ADR-2593 の floor-first に対応する形）。
+
+3 件目（同面積のタイブレークを入れない）は候補を採点しない本設計には対応物が無い。
+
+**2 回目の配置を走らせたあとに成り立っていること**（スライス A の受け入れ条件）:
+
+| 条件 | 測り方 |
+| --- | --- |
+| 貫通 0 | `totalPenetrations(res) === 0`。案2 が 0 → 113 に壊した側なので、水平の重なりと必ず同じテストで測る（TPL-1927） |
+| 水平 collinear overlap 0 | `collinearOverlaps(res, "h") === 0`。混雑 fixture が修正前に落ちることを先に確認してから固定する（TPL-2598） |
+| 縦 collinear overlap は現状維持 | `collinearOverlaps(res, "v")` は既存 corpus で green のまま。A はこれを改善しないし、悪化もさせない |
+| 既定 gap で足りる入力は不変 | 2 回目を走らせず、座標が 1 回目と完全一致する |
+| 決定性 | 同じ入力を 2 回 layout して座標が完全一致する |
+
 ### スライス（実装ステップ）
 
 | スライス | 前提 | 独立に出荷できる理由 |
 | --- | --- | --- |
-| **A** チャネル容量 + レーン資源化（[#2608](https://github.com/kompiro/karasu/issues/2608)） | — | 横方向の重なりだけで閉じており、他 3 つはいずれも A の有無に関わらず現状維持で動く。A 単体でも柵（貫通 0・重なり 0）は満たす |
+| **A** チャネル容量 + レーン資源化（[#2608](https://github.com/kompiro/karasu/issues/2608)） | — | 横方向の重なりだけで閉じており、他 3 つはいずれも A の有無に関わらず現状維持で動く。A 単体で張る柵は**横方向チャネルに閉じる**（貫通 0 と水平 collinear overlap 0）。縦方向は `routing-parity.test.ts` の `collinearOverlaps(res, "v") === 0` が既存 corpus で既に green であり、A はそれを弱めないことだけを負う（未解決の問いに挙げた `usecase → resource` の既存縦 overlap は A の対象外） |
 | **B** deploy を共有チェーンへ（[#2609](https://github.com/kompiro/karasu/issues/2609)） | A | deploy は現在チェーンを通っていないので、A の資源キー化が入った後のチェーンに載せるほうが二度手間にならない。system view には影響しない |
 | **C** ガター左右を容量で選ぶ（[#2610](https://github.com/kompiro/karasu/issues/2610)） | A | 縦通路の選択のみを変える。A が横で確立した「容量で決める」形をそのまま縦へ適用する |
 | **D** 横方向の容量予約 / dummy node（[#2611](https://github.com/kompiro/karasu/issues/2611)） | A | 最も大きく、順序決定・座標決定・#2593 の面積目的と絡む。A・C が症状を抑えた後に、原因側を単独で扱える |
