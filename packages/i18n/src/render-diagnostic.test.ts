@@ -250,6 +250,17 @@ const SAMPLES: SamplesByCode = {
       ],
     },
   },
+  "import-target-ambiguous": {
+    severity: "warning",
+    code: "import-target-ambiguous",
+    params: {
+      path: "Checkout.Payment",
+      candidates: [
+        { kind: "domain", path: "Shop.Checkout.Payment" },
+        { kind: "service", path: "Checkout.Payment" },
+      ],
+    },
+  },
   "unresolved-resource-ref": {
     severity: "warning",
     code: "unresolved-resource-ref",
@@ -484,6 +495,7 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "owns-target-not-found": ["MissingSvc"],
   "owns-target-ambiguous": ["Payment", "Shop.Payment", "Shop.Checkout.Payment"],
   "realizes-target-ambiguous": ["Api", "Shop.Api"],
+  "import-target-ambiguous": ["Checkout.Payment", "Shop.Checkout.Payment"],
   "unresolved-resource-ref": ["OrderDB", "orders"],
   "unresolved-table-ref": ["Order", "OrderDB", "orders"],
   "duplicate-edge-id": ["#checkout"],

@@ -20,14 +20,42 @@ at the repo, when nest opens a pull request with what it generated
 
 ## Layout
 
-| Module          | Responsibility                                                             |
-| --------------- | -------------------------------------------------------------------------- |
-| `src/index.ts`  | Workers entry. Thin on purpose, so the suite never needs a Workers runtime |
-| `src/app.ts`    | Route table and the single failure boundary                                |
-| `src/router.ts` | Literal and `:param` path matching, 404 vs 405                             |
-| `src/http.ts`   | Response helpers. Everything defaults to `no-store`                        |
-| `src/env.ts`    | Bindings and secrets, plus the guard that refuses rather than degrades     |
-| `src/log.ts`    | The only `console` call site. Nothing repo-derived is logged               |
+| Module                   | Responsibility                                                             |
+| ------------------------ | -------------------------------------------------------------------------- |
+| `src/index.ts`           | Workers entry. Thin on purpose, so the suite never needs a Workers runtime |
+| `src/app.ts`             | Route table and the single failure boundary                                |
+| `src/router.ts`          | Literal and `:param` path matching, 404 vs 405                             |
+| `src/http.ts`            | Response helpers. Everything defaults to `no-store`                        |
+| `src/env.ts`             | Bindings and secrets, plus the guard that refuses rather than degrades     |
+| `src/log.ts`             | The only `console` call site. Nothing repo-derived is logged               |
+| `src/auth/`              | Submitter sign-in: the OAuth round trip, and the session cookie            |
+| `src/store/gallery-*.ts` | The gallery's keys, account-first so deletion is one sweep                 |
+
+## Submitter sign-in
+
+The gallery authenticates the **submitter**, not their authority over any
+repository ([#2586](https://github.com/kompiro/karasu/issues/2586)). A
+submission is not repository-bound, so there is nothing to prove control of;
+what a login buys is a handle that can be held responsible and suspended.
+Anonymous submission was rejected for the absence of exactly that.
+
+No scopes are requested. `GET /user` returns the numeric id and the login for a
+token with no scope at all, and those two fields are the whole account record.
+
+To wire it up on a deploy:
+
+1. Register the credentials. Either a **dedicated OAuth App** or this GitHub
+   App's own user-to-server credentials will do -- the flow is identical and
+   the code cannot tell them apart.
+   [#2590](https://github.com/kompiro/karasu/issues/2590) removes the App
+   itself, so a dedicated OAuth App is the form that survives.
+2. Set the callback to `<origin>/auth/callback`.
+3. `wrangler secret put GITHUB_OAUTH_CLIENT_ID` and
+   `wrangler secret put GITHUB_OAUTH_CLIENT_SECRET`.
+4. Set `NEST_PUBLIC_ORIGIN` to the origin this deploy answers on. It is not
+   derived from the request: it decides the `redirect_uri` and the `Origin`
+   every state-changing request is checked against, and both stop meaning
+   anything if a `Host` header can pick them.
 
 ## Conventions this package holds itself to
 

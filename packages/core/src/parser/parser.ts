@@ -12,6 +12,7 @@ import type {
   DeployNodeProperties,
   HandlesTarget,
   ImportDeclaration,
+  ImportEntry,
   NodeIdPath,
   Diagnostic,
   DiagnosticCode,
@@ -447,11 +448,12 @@ export class Parser {
     }
     this.advance(); // {
 
-    const ids: NodeIdPath[] = [];
+    const ids: ImportEntry[] = [];
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       if (this.peek().type === TokenType.Identifier) {
         // Read one path: Identifier (Dot Identifier)*
-        const tail = readNodeIdPathTail(this.advance(), this.cursor);
+        const first = this.advance();
+        const tail = readNodeIdPathTail(first, this.cursor);
         if (tail.dangling) {
           // dot without trailing identifier — record error and stop reading
           // segments for this entry; skip the bad token to make progress.
@@ -461,7 +463,10 @@ export class Parser {
           });
           this.advance();
         }
-        ids.push(tail.segments);
+        // The entry's own range, so a resolution diagnostic can point at the
+        // one entry of `import { A, B.C }` that failed (#2582 review).
+        const last = tail.dangling ?? tail.end;
+        ids.push({ path: tail.segments, loc: this.range(first.loc, last.end ?? last.loc) });
         this.match(TokenType.Comma);
       } else {
         // 予期しないトークン: エラーを記録してスキップ

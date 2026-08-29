@@ -149,6 +149,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2562](2562-dependabot-triage-2026-08-17.md) — Dependabot トリアージ 2026-08-17（@types/vscode と engines.vscode を同値に固定し VS Code stable に追随させる）
 - [ADR-2564](2564-dependabot-security-2026-08-18.md) — Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
 - [ADR-2623](2623-dependabot-triage-2026-08-25.md) — Dependabot トリアージ 2026-08-25 — ADR の assumptions に書いたリテラル依存版を緩める
+- [ADR-2640](2640-coderabbit-pr-review.md) — PR の一次レビューに CodeRabbit を入れる（advisory 固定）
+- [ADR-2643](2643-stacked-pr-workflow.md) — stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI を止める
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -333,6 +335,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2394](2394-external-side-straddle-rule.md) — external のサイド振り分けは「跨いでいるか」で 2 つの regime に分ける
 - [ADR-2473](2473-dy-instead-of-dominant-baseline.md) — テキストの縦位置は `dominant-baseline` ではなく em 単位の `dy` で指定する
 - [ADR-2521](2521-multi-system-pipeline-convergence.md) — multi-system ルートビューは single-system パイプラインの計算に合わせる
+- [ADR-2593](2593-canvas-space-objective.md) — キャンバスの空き空間を目的関数にして行幅予算を選ぶ
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）

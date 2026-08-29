@@ -506,6 +506,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2291](TPL-2291-mocked-transport-does-not-verify-the-remote-contract.md) | 通信相手をモックしたテストは、こちらのロジックしか検証しない — 相手が受理するかは別に確かめる。モックの網羅度を上げても「400 で弾かれる」には一歩も近づかない | testing | #2291, #2278 |
 | [TPL-1995](TPL-1995-generated-content-is-marked-at-its-seams.md) | 生成物の不確かさは、不確かな場所に印を付け、解決した人が消せる形にする — 文書単位のスコアは平均で情報を消し、印に罰を与えると次から印が付かなくなる | core-concepts | #1995, #1991, ADR-1990 |
 | [TPL-2226](TPL-2226-every-key-prefix-must-be-purgeable.md) | 削除を約束したストアに新しい鍵空間を足したら削除経路への配線を機械で確かめる — 新 prefix は既定で purge の対象外になり、消し残しは戻り値にも例外にも現れない | project | #2226, ADR-1990 |
+| [TPL-2587](TPL-2587-author-managed-content-has-no-ttl.md) | 作者が自分で管理するコンテンツに期限を置かない — TTL はストアの既定として新しい行に滑り込み、壊れるのは日数が経ったあと。資格情報は裏返しで、どちらの種類かを決めて機械で確かめる | project | #2587, ADR-2578 |
 | [TPL-2288](TPL-2288-background-work-platform-ceiling.md) | 非同期実行の器は実測所要時間に対して上限を先に確かめる — `waitUntil` 等に打ち切られた仕事は失敗を記録する行にも届かず、`running` のまま沈黙して残る | project | #2288, ADR-1990 |
 | [TPL-2287](TPL-2287-detector-near-misses-are-the-spec.md) | 検出器の false positive 予算は正しさの一部 — 当ててはいけない near-miss 事例が実質の仕様で、positive テストだけなら規則が `/\S+/` でも通る | testing | #2287, ADR-1990 |
 | [TPL-2284](TPL-2284-purge-scope-identity-is-canonical.md) | 削除範囲を決める識別子は canonical 化する — 同じ主体の 2 通りの綴りが別 prefix になると purge は片方しか消さず、残りは戻り値にも例外にも現れない | project | #2284, ADR-1990 |
@@ -525,3 +526,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2088](TPL-2088-id-reference-notation-uniform-across-sites.md) | ノード id を指す参照サイトは受理する記法と解決規則を全サイトで共有する — 拒否側は先頭セグメントだけを黙って記録して別の意味になる。修飾を受理するなら索引も区別可能なキーを持ち、受理と narrowing は同じ出荷単位に入れる | parser | ADR-927, parser.ts, #2088 |
 | [TPL-2542](TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) | 既存プロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復・要素単位の range を同じ PR で固定する | parser | #2167, ADR-2167 |
 | [TPL-2593](TPL-2593-layout-feedback-is-floor-first-and-monotone.md) | レイアウトに測定値を返す経路を足すなら、候補は入力だけで決まり、既定候補が先頭で厳密改善のみが勝ち、停止は単調性で説明できること — 前向き一方向だったパイプラインは決定性と差分の局所性を無料で得ていた | renderer | #2593, ADR-1737 |
+| [TPL-2643](TPL-2643-skip-reports-success-without-running.md) | 走らずに success を報告する gate は、skip 条件を解除する状態変化を必ず trigger 側にも持つ | build | #2643, ADR-2643 |

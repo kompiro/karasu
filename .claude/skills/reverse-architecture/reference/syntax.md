@@ -1688,13 +1688,13 @@ system ECPlatform {
 
 ### Path syntax — reaching nodes nested inside a `system` block
 
-Use **dotted path** form to reach a `service` / `domain` / `usecase` defined deeper than the direct child of a `system` in another file:
+Use **dotted path** form to reach a node defined deeper than the direct child of a `system` in another file:
 
 ```
 import { ECPlatform.ECommerce.Order } from "./services.krs"
 ```
 
-Each segment is matched against the previously-resolved node's `children` array by id (kind is not enforced). Path resolution starts from a top-level `system` in the imported file.
+The path is a node reference path resolved by the suffix rule (see [§ Node reference path notation](#node-reference-path-notation), #2088): the entry matches every node in the imported file whose full path ends with it. A root-anchored path resolves to exactly the node it always did; a **relative suffix** (`import { ECommerce.Order }`) is also legal and resolves through the same rule. Roots are not limited to systems — a chain under a top-level `service` / `client` / `domain` / infra bucket materializes into that bucket. Every match is imported (bare-id imports have always broadcast), and a multi-match not uniform in (kind, depth) additionally draws the `import-target-ambiguous` warning listing candidate full paths.
 
 The importer only materializes the chain it asked for: in the example above, the merged file gains a stub of `ECPlatform` with a stub of `ECommerce` whose only child is the resolved `Order` (with `Order`'s full subtree intact). Sibling domains under `ECommerce` are not auto-imported. Bring more by listing them in the same import or by wildcard-importing the whole file.
 
@@ -1719,12 +1719,12 @@ Bare ids (`import { ECommerce }`) keep working — they remain the simplest form
 
 #### Failure mode
 
-A path that cannot be resolved emits an `import-path-not-found` diagnostic naming the failing segment and the last node walked successfully:
+A path that resolves to nothing emits an `import-path-not-found` diagnostic. The failing segment is found by narrowing right-to-left (the suffix analogue of walking down from the root): the reported segment is the one that eliminated every candidate, and `lastResolvedId` names the neighboring segment that still had matches:
 
 ```
 import { ECPlatform.NotThere.Order } from "./services.krs"
 // → Import path "ECPlatform.NotThere.Order" failed at segment "NotThere" (#1):
-//   no child with that id under "ECPlatform"
+//   no ancestor with that id above "Order"
 ```
 
 ---

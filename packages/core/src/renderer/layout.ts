@@ -8,6 +8,7 @@ import { withChildAnchoredEdges } from "../view/view-extract.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { placeNodesInLayers } from "./layer-layout-logics.js";
+import { searchWidthBudget } from "./aspect-search.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   CONTAINER_PADDING,
@@ -68,13 +69,55 @@ import type {
 
 export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
 
+/**
+ * Lay out a view, choosing the row-width budget whose canvas holds the least
+ * empty space (Issue #2593, `docs/design/canvas-space-objective.md`).
+ *
+ * `MAX_LAYER_WIDTH` is a constant, so a view whose cards are a hair too wide
+ * for three-per-row wraps to two-per-row and then only grows downward —
+ * nothing in the pipeline has ever read back the bounding box it produced.
+ * The placement is pure, so it can simply be re-run over the candidate budgets
+ * from `aspect-search.ts`; the smallest canvas inside the screen-shaped aspect
+ * band wins. Content area is identical across candidates, so the smallest
+ * canvas is the one with the least empty space.
+ *
+ * Scoring uses the **final** width/height — side external columns and
+ * container chrome sit outside the layered content box, and scoring that box
+ * alone overshoots into a wide canvas (the dify root view went 1.16 → 2.28
+ * before this was corrected).
+ *
+ * The floor candidate is today's constant and only a strictly smaller canvas
+ * displaces it, so a canvas no wider budget can shrink keeps byte-identical
+ * output. That is a claim about area rather than shape — a landscape canvas
+ * can still be displaced if widening drops a row.
+ */
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
-  const result = layoutInner(viewSlice, options);
+  const { MAX_LAYER_WIDTH } = getLayoutConstants(options.displayMode);
+  const found = searchWidthBudget(
+    (budget) => layoutInner(viewSlice, options, budget),
+    (candidate) => ({
+      width: candidate.width,
+      height: candidate.height,
+      // A budget reaches the placement only through the row-width bound, so a
+      // run whose rows were never cut by it cannot be improved by widening.
+      // Most views are in this shape, and skipping their remaining candidates
+      // is what keeps the search off the render hot path.
+      exhausted: candidate.widthBound === false,
+    }),
+    { floor: MAX_LAYER_WIDTH },
+  );
+  const result = found.result;
+  result.widthBudget = found.budget;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
   return result;
 }
 
-function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult {
+function layoutInner(
+  viewSlice: ViewSlice,
+  options: LayoutOptions,
+  /** The candidate row-width budget this run is placing for (#2593). */
+  widthBudget: number,
+): LayoutResult {
   const {
     ownerIndex,
     teamLabels,
@@ -113,7 +156,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(viewSlice, options, measureCtx);
+    return layoutMultipleSystems(viewSlice, options, measureCtx, widthBudget);
   }
 
   // The canvas being drawn is the container plus its ancestors — for the root
@@ -271,6 +314,10 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
       containers,
       width: outermost ? outermost.x + outermost.width + CONTAINER_PADDING : 0,
       height: outermost ? outermost.y + outermost.height + CONTAINER_PADDING : 0,
+      // Nothing was placed, so no budget can change this canvas. Saying so
+      // ends the search after one run instead of laying an empty view out
+      // once per candidate.
+      widthBound: false,
     };
   }
 
@@ -326,6 +373,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     layoutHints,
     gridHint: containerGridHint,
     groupStartLayer,
+    widthBudget,
     gaps: {
       layerGap: LAYER_GAP,
       nodeGap: NODE_GAP,
@@ -594,6 +642,7 @@ function layoutInner(viewSlice: ViewSlice, options: LayoutOptions): LayoutResult
     containers,
     width: totalWidth,
     height: totalHeight,
+    widthBound: placed.widthBound,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
     foldedFacetMembership: foldFacetMembership(
       viewSlice.childNodes,
@@ -618,6 +667,8 @@ function layoutMultipleSystems(
    * annotation resolver — not this path's raw one (see {@link MeasureContext}).
    */
   measureCtx: MeasureContext,
+  /** The candidate row-width budget this run is placing for (#2593). */
+  widthBudget: number,
 ): LayoutResult {
   const {
     ownerIndex,
@@ -646,6 +697,8 @@ function layoutMultipleSystems(
   // and stays correct if this path ever places a service's children.
   const { effectiveAnnotations } = measureCtx;
   const allLayoutNodes = new Map<string, LayoutNode>();
+  // True as soon as any system's rows were cut by the width budget (#2593).
+  let anyWidthBound = false;
   const allContainers: ContainerRect[] = [];
   const allEdges: LayoutEdge[] = [];
   // Group-by-team (#1884): diff-state re-keyed onto collapsed-group stub edges,
@@ -780,6 +833,7 @@ function layoutMultipleSystems(
       // `grid-columns` on this system governs how its direct children wrap.
       gridHint: layoutHints?.get(sys.id)?.gridColumns,
       groupStartLayer,
+      widthBudget,
       gaps: {
         layerGap: LAYER_GAP,
         nodeGap: NODE_GAP,
@@ -791,6 +845,7 @@ function layoutMultipleSystems(
         return measureNode(krsNode, frameOwnerOf(krsNode.kind, nid), measureCtx);
       },
     });
+    if (placed.widthBound) anyWidthBound = true;
 
     const localNodes = new Map<string, LayoutNode>();
     for (const [nid, box] of placed.placements) {
@@ -1011,6 +1066,7 @@ function layoutMultipleSystems(
     containers: allContainers,
     width: totalWidth,
     height: totalHeight,
+    widthBound: anyWidthBound,
     crossingMarks,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
     degradedMemberships: allDegradedMemberships.length > 0 ? allDegradedMemberships : undefined,
