@@ -757,7 +757,14 @@ system Shop {
     expect(kinds).toContain("edge-endpoint-not-at-scope");
     // The report moved to this code; the one it replaced must not double up.
     expect(kinds).not.toContain("cross-system-ref-unresolved");
-    const view = extractView(r.value.systems, ["Shop", "Checkout"]);
+    // Hand the view the orphan buckets the parser produced: the assertion is
+    // that nothing frames `Billing`, so `Billing` has to be in the input.
+    const view = extractView(
+      r.value.systems,
+      ["Shop", "Checkout"],
+      r.value.domains,
+      r.value.services,
+    );
     expect(view.ghostSystems).toEqual([]);
   });
 
@@ -782,7 +789,10 @@ system Portal {
 `);
     const kinds = analyze(r.value, []).map((w) => w.kind);
     expect(kinds).toContain("edge-endpoint-not-at-scope");
-    expect(extractView(r.value.systems, ["Portal", "Web"]).ghostSystems).toEqual([]);
+    expect(
+      extractView(r.value.systems, ["Portal", "Web"], r.value.domains, r.value.services)
+        .ghostSystems,
+    ).toEqual([]);
   });
 
   it("a qualified relation inside an entity block stays the entity view's business", () => {
