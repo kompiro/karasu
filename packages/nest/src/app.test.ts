@@ -30,6 +30,9 @@ describe("handleRequest", () => {
         GENERATE_WORKFLOW: false,
         METRICS_TOKEN: false,
         PR_DELIVERY: false,
+        GITHUB_OAUTH_CLIENT_ID: false,
+        GITHUB_OAUTH_CLIENT_SECRET: false,
+        NEST_PUBLIC_ORIGIN: false,
       },
     });
   });

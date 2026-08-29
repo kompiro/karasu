@@ -36,7 +36,9 @@ function constant(path: string, name: string): number {
   // would shadow the real declaration and certify a number the code does not
   // use. Every file this reads is heavily commented, several about durations.
   const source = read(path).replaceAll(/\/\*[\s\S]*?\*\//g, "");
-  const match = new RegExp(`^const ${name} = ([^;]+);`, "m").exec(source);
+  // `export const` too: the gallery's stores export the constants this file
+  // reads, where the generation service kept them module-private.
+  const match = new RegExp(`^(?:export )?const ${name} = ([^;]+);`, "m").exec(source);
   if (match?.[1] === undefined) {
     throw new Error(`${name} is not declared in ${path} any more`);
   }
@@ -101,8 +103,59 @@ const RETENTIONS: { what: string; file: string; name: string; days: number; row:
   },
 ];
 
+/**
+ * Assert that a store never passes an expiry.
+ *
+ * The gallery's account record is kept until its owner deletes it, and the
+ * absence of a TTL cannot be proved by waiting — so it is checked at the
+ * source: the store has one `put` call site and it must not carry
+ * `expirationTtl`. The behavioural half lives in the package's own suite
+ * (`accounts.test.ts` asserts on the fake's recorded `put` options); this half
+ * is what a reader of the document can see.
+ */
+function assertNoTtl(path: string): void {
+  const source = read(path).replaceAll(/\/\*[\s\S]*?\*\//g, "");
+  expect(source).not.toMatch(/expirationTtl/);
+}
+
 describe("the data-handling document matches the code (#1996)", () => {
   const policy = read(POLICY);
+
+  it("states that a submission is kept until its author deletes it", () => {
+    // The gallery's whole point is content its author manages; an expiry the
+    // document did not mention would delete it out from under them.
+    assertNoTtl("packages/nest/src/store/submissions.ts");
+    expect(policy).toMatch(/`sub\/v1\/<account>\/<id>` \| \*\*投稿者が削除するまで（無期限）\*\*/);
+  });
+
+  it("states the submission size cap a submitter is held to", () => {
+    expect(constant("packages/nest/src/store/submissions.ts", "MAX_SUBMISSION_BYTES")).toBe(
+      256 * 1024,
+    );
+  });
+
+  it("states that the account record has no expiry, and it has none", () => {
+    // The service's first personal data, kept indefinitely. A document that
+    // omitted it would be exactly the "quietly false" case this file exists
+    // for -- and this is the row a privacy policy is drafted from.
+    assertNoTtl("packages/nest/src/store/accounts.ts");
+    expect(policy).toMatch(/`acct\/v1\/<account>` \| \*\*アカウント削除まで（無期限）\*\*/);
+  });
+
+  it("states the session's expiry, which is the one credential here", () => {
+    expect(constant("packages/nest/src/store/sessions.ts", "SESSION_TTL_SECONDS")).toBe(
+      30 * 24 * 60 * 60,
+    );
+    expect(policy).toMatch(/`sess\/v1\/<account>\/<session>` \| 30 日/);
+  });
+
+  it("says the identifier is the only personal data, and asks for no scopes", () => {
+    // The scope request is what a submitter reads on the consent screen, so a
+    // widened scope that the document did not follow would be the service
+    // asking for more than it says it does.
+    expect(read("packages/nest/src/auth/oauth.ts")).toContain('url.searchParams.set("scope", "")');
+    expect(policy).toContain("メールアドレスは持たない");
+  });
 
   it.each(RETENTIONS)("states the retention of $what", ({ file, name, days, row }) => {
     expect(constant(file, name)).toBe(days * 24 * 60 * 60);

@@ -73,6 +73,26 @@ export interface NestEnv {
    * repositories on a consent nobody gave — #1996 owns that copy.
    */
   PR_DELIVERY?: string;
+  /**
+   * GitHub OAuth client id for submitter sign-in (#2586).
+   *
+   * Either a dedicated OAuth App or the GitHub App's own user-to-server
+   * credentials will do — the flow is identical and this code cannot tell them
+   * apart. The choice is made at `wrangler secret put` time and recorded in
+   * the README, not here.
+   */
+  GITHUB_OAUTH_CLIENT_ID?: string;
+  /** GitHub OAuth client secret. Paired with the id above. */
+  GITHUB_OAUTH_CLIENT_SECRET?: string;
+  /**
+   * The public origin this deploy answers on, e.g. `https://nest.example`.
+   *
+   * Not derived from the incoming request. It is the OAuth `redirect_uri` and
+   * the value every state-changing request's `Origin` is checked against, and
+   * both of those stop meaning anything if an attacker-supplied `Host` header
+   * can decide them.
+   */
+  NEST_PUBLIC_ORIGIN?: string;
   /** Deploy environment name, surfaced by `/healthz` for smoke checks. */
   ENVIRONMENT?: string;
 }
