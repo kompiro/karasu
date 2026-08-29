@@ -162,7 +162,7 @@ trigger を満たしたらその時点で Issue を起こして着手する（�
 | gap | disposition / promotion trigger | 出典 |
 | --- | --- | --- |
 | `translate` の domain 推論（adapter 課題） | scaffold → readable の手作業が実利用の痛みとして再発したら評価。core 構文に gap なし | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) / [#1567](https://github.com/kompiro/karasu/issues/1567) finding C |
-| edge の first-class protocol / cardinality | 当面 tag + `description`/`link` の散文に逃がす（first-class 化は実装詳細を edge に持ち込む圧力 — 境界が灰色）。需要が corpus で再発したら評価。**逃がし先は [#2543](https://github.com/kompiro/karasu/issues/2543) のエッジプロパティブロックで実在する**（それまで edge に `description`/`link` の置き場所は無く、据え置きの根拠だけが先に書かれていた） | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) / [#1567](https://github.com/kompiro/karasu/issues/1567) finding D |
+| edge の first-class protocol / cardinality | 当面 tag + `description`/`link` の散文に逃がす（first-class 化は実装詳細を edge に持ち込む圧力 — 境界が灰色）。需要が corpus で再発したら評価。**逃がし先は [#2543](https://github.com/kompiro/karasu/issues/2543) のエッジプロパティブロックで実在する** | [ADR-1314](adr/1314-krs-spec-v1-freeze.md) / [#1567](https://github.com/kompiro/karasu/issues/1567) finding D |
 | stateful compute（Durable Object = compute かつ store で clean な infra kind が無い） | 据え置き。adapter は `service [external]` + RPC edge へ degrade（`[external]` は所有境界を過大表現）。honest な modeling 需要が corpus で溜まれば再評価 | [ADR-1935](adr/1935-wrangler-translate-adapter.md) |
 
 stable 側の earn-its-keep 観察: **CRUD verb-decoration 1:N** は v1.0 で維持

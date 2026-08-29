@@ -60,8 +60,19 @@ export function EdgeDetailPanel(props: EdgeDetailPanelProps) {
         <>
           <div className="node-detail-header">
             <span className="node-detail-icon">↔</span>
-            <span className="node-detail-label">{props.domainEdges.length} domain edges</span>
-            <button className="node-detail-close" onClick={onClose} aria-label="Close">
+            {/* The stub edge's own SVG label is authored in core
+                (`view-extract.ts`), which must not import the translation table,
+                so it stays English until a label is injected the way
+                `emptyStateLabels` is (docs/spec/i18n.md § core). The panel is on
+                the app side of that line and is translated. */}
+            <span className="node-detail-label">
+              {t("edgeDetail.domainEdges.count", { count: props.domainEdges.length })}
+            </span>
+            <button
+              className="node-detail-close"
+              onClick={onClose}
+              aria-label={t("edgeDetail.close")}
+            >
               ×
             </button>
           </div>

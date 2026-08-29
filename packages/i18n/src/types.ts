@@ -136,6 +136,7 @@ export type Translations = {
   // NodeDetailPanel (Phase C5)
   "nodeDetail.close": string;
   "edgeDetail.close": string;
+  "edgeDetail.domainEdges.count": (params: { count: number }) => string;
   "edgeDetail.label.title": string;
   "edgeDetail.links.title": string;
   "nodeDetail.links.title": string;

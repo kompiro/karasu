@@ -63,6 +63,8 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 | `system-property-conflict` | warning | merge された import 間で `system` の `label` / `description` が衝突する。 |
 | `cyclic-dependency` | warning | sync edge（`->`）が依存の循環を形成する。 |
 
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)（同じ意味を 2 通りで書けるようにしたら、両形が同一 AST に落ちること・二重記述に専用の診断があることを同じ PR で固定する。`duplicate-edge-label` はその診断側）。
+
 ### id の一意性
 
 id は宣言 scope 内で一意であること。ownership は primary owner を高々 1 つに割り

@@ -6,7 +6,6 @@ type: product
 
 - **日付**: 2026-08-27
 - **関連 Issue**: [#2543](https://github.com/kompiro/karasu/issues/2543)
-- **Related TPLs**: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)（2 つ目の受理形は同一 AST・formatter 往復を同じ PR で固定する）, [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（`parse(format(x)) ≡ parse(x)`）, [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)（受理した語彙は可視の効果を持つ）, [TPL-2316](../test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md)（宣言できる構造は in-app Reference から辿れる）
 - **対象ファイル**:
   - `packages/core/src/parser/parser.ts`（`parseEdge` / `parseEdgeBlock`）
   - `packages/core/src/formatter/formatter.ts`（`renderEdge`）

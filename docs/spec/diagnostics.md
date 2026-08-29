@@ -69,6 +69,8 @@ cycle.
 | `system-property-conflict` | warning | A `system` `label` / `description` conflicts between merged imports. |
 | `cyclic-dependency` | warning | Sync edges (`->`) form a dependency cycle. |
 
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) (once one meaning has two spellings, the same PR pins that both land on one AST and that writing it in both forms at once is diagnosed; `duplicate-edge-label` is that diagnostic).
+
 ### Identifier uniqueness
 
 Ids must be unique within their declaring scope; ownership assigns at most one

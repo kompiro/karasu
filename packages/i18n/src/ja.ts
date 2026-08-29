@@ -134,6 +134,7 @@ export const ja: Partial<Translations> = {
   // NodeDetailPanel
   "nodeDetail.close": "閉じる",
   "edgeDetail.close": "閉じる",
+  "edgeDetail.domainEdges.count": ({ count }) => `ドメインエッジ ${count} 本`,
   "edgeDetail.label.title": "🏷 ラベル",
   "edgeDetail.links.title": "🔗 リンク",
   "nodeDetail.links.title": "🔗 リンク",

@@ -135,6 +135,8 @@ export const en: Translations = {
   // NodeDetailPanel
   "nodeDetail.close": "Close",
   "edgeDetail.close": "Close",
+  "edgeDetail.domainEdges.count": ({ count }) =>
+    count === 1 ? "1 domain edge" : `${count} domain edges`,
   "edgeDetail.label.title": "🏷 Label",
   "edgeDetail.links.title": "🔗 Links",
   "nodeDetail.links.title": "🔗 Links",
