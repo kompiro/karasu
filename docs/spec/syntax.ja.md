@@ -816,7 +816,7 @@ usecase PlaceOrder {
 エッジの canonical な綴りであり続ける。
 
 ```krs fragment
-OrderSvc -> PaymentSvc [async] #orderPlaced {
+OrderSvc --> PaymentSvc [async] #orderPlaced {
   label       "注文を発行する"
   description "at-least-once 配送。リトライは orderId で冪等。"
   link        "https://runbook.example.com/order-placed" "Runbook"

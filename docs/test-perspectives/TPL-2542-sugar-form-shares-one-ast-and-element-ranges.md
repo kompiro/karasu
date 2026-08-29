@@ -95,6 +95,14 @@ scope:
   長さを後から復元できない。トークンに終端位置を持たせ（karasu では `Token.end`、lexer の
   カーソルから 1 箇所で刻印）、range を要素の綴りそのものに一致させる
 
+## 関連テスト
+
+- `packages/core/src/parser/parser.test.ts`（`describe("comma-separated realizes (#2167)")` — 同一 AST・混在累積・要素 range・末尾/先頭カンマの recovery）
+- `packages/core/src/formatter/formatter.test.ts`（"normalizes a comma-separated realizes list to one target per line"）
+- `packages/core/src/resolver/warnings.test.ts`（"points at the offending identifier within a comma-separated list"）
+- `packages/core/src/parser/edge-property-block.test.ts`（#2543 — shorthand と block が同一 AST・`duplicate-edge-label`・block 内の未知キーワード）
+- `packages/core/src/formatter/edge-property-block-round-trip.test.ts`（#2543 — canonical 化の両側・冪等性・`#<id>` の保存）
+
 ## 派生元 spec
 
 - `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` — §Writing physical diagrams の `realizes`
@@ -107,11 +115,3 @@ scope:
   `docs/spec/diagnostics.ja.md` — §規則ファミリー › 宣言・edge の配置・構造 の
   `duplicate-edge-label`（同じ事実を両方の形で同時に書いた入力を、優先規則ではなく診断で断る）
 - 関連決定: [ADR-2167](../adr/2167-realizes-comma-list.md)（reference list はカンマ、membership は 1 行 1 件）
-
-## 関連テスト
-
-- `packages/core/src/parser/parser.test.ts`（`describe("comma-separated realizes (#2167)")` — 同一 AST・混在累積・要素 range・末尾/先頭カンマの recovery）
-- `packages/core/src/formatter/formatter.test.ts`（"normalizes a comma-separated realizes list to one target per line"）
-- `packages/core/src/resolver/warnings.test.ts`（"points at the offending identifier within a comma-separated list"）
-- `packages/core/src/parser/edge-property-block.test.ts`（#2543 — shorthand と block が同一 AST・`duplicate-edge-label`・block 内の未知キーワード）
-- `packages/core/src/formatter/edge-property-block-round-trip.test.ts`（#2543 — canonical 化の両側・冪等性・`#<id>` の保存）

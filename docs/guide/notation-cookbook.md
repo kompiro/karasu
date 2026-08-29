@@ -348,8 +348,9 @@ system Shop {
 }
 ```
 
-Left-clicking the arrow that carries a block opens the edge detail panel with
-that prose and those links; the plain `"charges"` edge behaves as it always did.
+Left-clicking an edge that carries a `description` or a `link` opens the edge
+detail panel with that prose and those links. A label is not enough to open it,
+so the plain `"charges"` edge behaves as it always did.
 
 **Why** — the shorthand is the most-typed construct in the language and stays
 canonical: `karasu fmt` folds a block that holds nothing but a `label` straight
