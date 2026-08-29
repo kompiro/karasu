@@ -630,3 +630,193 @@ organization Org {
     expect(owned.value.organizations[0].teams[0].properties.owns).toEqual([]);
   });
 });
+
+/**
+ * Slice E of #2088 (#2577): edge endpoints accept and resolve qualified paths
+ * at any depth. The scope rule that keeps this from becoming an escape hatch
+ * is exercised directly in `resolver/edge-endpoint.test.ts`; these tests fence
+ * what an author observes — parse, resolve, render, diagnose.
+ */
+
+// A domain two levels below its system, so `Shop.Checkout.Payment` is the
+// shortest path that names it from outside — three segments, one more than the
+// parser accepted before this slice.
+const DEEP = `
+system Shop {
+  service Checkout {
+    domain Payment {}
+  }
+}
+system Portal {
+  service Web {
+    -> Shop.Checkout.Payment "settle"
+  }
+}
+`;
+
+describe("edge endpoints accept and resolve deep paths (#2577)", () => {
+  it("a three-segment endpoint parses, resolves silently, and renders as a ghost", () => {
+    const r = Parser.parse(DEEP);
+    expect(r.diagnostics).toHaveLength(0);
+    expect(r.value.systems[1].children[0].edges.map((e) => e.to)).toEqual([
+      "Shop.Checkout.Payment",
+    ]);
+    // In scope: `Shop` is a top-level root, so the path descends from
+    // something `Portal.Web` can see.
+    expect(analyze(r.value, [])).toEqual([]);
+
+    const view = extractView(r.value.systems, ["Portal", "Web"]);
+    expect(view.ghostSystems).toHaveLength(1);
+    const [ghost] = view.ghostSystems;
+    // The frame is the top-level system; the card is the resolved node, with
+    // the ancestors between them shown muted underneath.
+    expect(ghost.systemNode.id).toBe("Shop");
+    expect(ghost.visibleServices.map((s) => [s.node.id, s.path, s.subLabel])).toEqual([
+      ["Payment", ["Shop", "Checkout", "Payment"], "Checkout"],
+    ]);
+
+    const laid = layout(view);
+    // Keyed by the full path — the #2548 convention, not `SystemId.ChildId`.
+    expect(laid.nodes.get("Shop.Checkout.Payment")?.subLabel).toBe("Checkout");
+    expect(laid.edges.map((e) => [e.from, e.to])).toEqual([["Web", "Shop.Checkout.Payment"]]);
+  });
+
+  it("a two-segment cross-system endpoint keeps the ghost it has always drawn", () => {
+    const r = Parser.parse(`
+system Shop {
+  service Checkout {}
+}
+system Portal {
+  service Web {
+    -> Shop.Checkout "settle"
+  }
+}
+`);
+    expect(r.diagnostics).toHaveLength(0);
+    const view = extractView(r.value.systems, ["Portal", "Web"]);
+    expect(view.ghostSystems[0].systemNode.id).toBe("Shop");
+    // A direct child has no ancestors to name, so no sub-label appears and the
+    // card measures exactly as it did before deep paths existed.
+    expect(view.ghostSystems[0].visibleServices.map((s) => [s.node.id, s.subLabel])).toEqual([
+      ["Checkout", undefined],
+    ]);
+    expect(layout(view).nodes.has("Shop.Checkout")).toBe(true);
+  });
+
+  it("a path whose head the scope cannot see is reported, not silently resolved", () => {
+    // `Checkout` is a peer inside Shop, not a top-level root, so naming it from
+    // Portal reaches nothing — the suffix matches but the scope filter does not.
+    const r = Parser.parse(`
+system Shop {
+  service Checkout {
+    domain Payment {}
+  }
+}
+system Portal {
+  service Web {
+    -> Checkout.Payment "settle"
+  }
+}
+`);
+    const warnings = analyze(r.value, []).filter((w) => w.kind === "edge-endpoint-not-at-scope");
+    expect(warnings).toHaveLength(1);
+    const [warning] = warnings;
+    expect(warning.kind === "edge-endpoint-not-at-scope" && warning.params).toMatchObject({
+      endpointId: "Checkout.Payment",
+      // The variant that asks the author to re-qualify rather than to move the
+      // edge — one code, two message spellings (ADR-2075).
+      qualified: true,
+      candidates: ["Shop.Checkout.Payment"],
+      scopeId: "Web",
+    });
+  });
+
+  it("a non-uniform multi-match reports the candidates; a uniform one stays silent", () => {
+    // `Shop.Payment` suffixes a top-level system's service (depth 2) and a
+    // service named `Shop` nested in Portal (depth 3).
+    const mixed = Parser.parse(`
+system Shop {
+  service Payment {}
+}
+system Portal {
+  service Shop {
+    domain Payment {}
+  }
+  Shop -> Shop.Payment
+}
+`);
+    const ambiguous = analyze(mixed.value, []).filter((w) => w.kind === "edge-target-ambiguous");
+    expect(ambiguous).toHaveLength(1);
+    expect(ambiguous[0].kind === "edge-target-ambiguous" && ambiguous[0].params).toEqual({
+      path: "Shop.Payment",
+      candidates: [
+        { kind: "service", path: "Shop.Payment" },
+        { kind: "domain", path: "Portal.Shop.Payment" },
+      ],
+    });
+
+    // Two services at the same depth are the broadcast ADR-927 / ADR-1566
+    // legitimize — parallel modelling, not a question for the author.
+    const uniform = Parser.parse(`
+system ShopA {
+  service Payment {}
+}
+system ShopB {
+  service Payment {}
+}
+system Portal {
+  service Web {
+    -> Payment
+  }
+}
+`);
+    expect(analyze(uniform.value, []).filter((w) => w.kind === "edge-target-ambiguous")).toEqual(
+      [],
+    );
+  });
+
+  it("the ambiguity verdict does not depend on declaration order", () => {
+    const verdicts = [
+      `system Shop { service Payment {} }
+system Portal { service Shop { domain Payment {} } Shop -> Shop.Payment }`,
+      `system Portal { service Shop { domain Payment {} } Shop -> Shop.Payment }
+system Shop { service Payment {} }`,
+    ].map((src) =>
+      analyze(Parser.parse(src).value, [])
+        .filter((w) => w.kind === "edge-target-ambiguous")
+        .flatMap((w) => (w.kind === "edge-target-ambiguous" ? w.params.candidates : []))
+        .map((c) => c.path)
+        .sort(),
+    );
+    expect(verdicts[0]).toEqual(verdicts[1]);
+    expect(verdicts[0]).toHaveLength(2);
+  });
+
+  it("lifting the cap unlocks deep qualifiers on entity relations too (#2575)", () => {
+    // The relation target reaches an entity through two container segments,
+    // which `parseEdge`'s two-segment cap made unwritable until now.
+    const r = Parser.parse(`
+system Shop {
+  service Sales {
+    domain Orders {
+      entity Order {
+        -> Sales.Customers.Customer
+      }
+    }
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`);
+    expect(r.diagnostics).toHaveLength(0);
+    const view = extractEntityView(r.value.systems, ["Shop", "Sales", "Orders"]);
+    expect(view.ghostEntities.map((g) => g.node.id)).toEqual(["Customer"]);
+    // The ghost edge re-anchors on the entity view's own `DomainId.EntityId`
+    // ghost key, as it does for a two-segment qualifier — the deeper spelling
+    // changes what resolves, not how the resolved ghost is keyed.
+    expect(view.ghostEntityEdges.map((e) => [e.from, e.to])).toEqual([
+      ["Order", "Customers.Customer"],
+    ]);
+  });
+});

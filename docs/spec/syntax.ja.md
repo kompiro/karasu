@@ -742,11 +742,46 @@ service が共有するかで判定し、こちらは所有境界の越境で判
 
 エッジは、両端が並んで描かれるビュー — 宣言したブロック自身のビュー（`system`）、
 またはそのブロックをノードとして描くビュー（`service` / `domain` / `entity`）— に
-描かれる。いずれの場合も **両端がそのスコープの peer でなければならない**:
+描かれる。**端点がどこまで届くかは綴りではなく構造で決まる**: bare id はエッジの
+すぐ隣にあるものを指し、path は**そのスコープからすでに見えているものから降りる**。
+
+ブロック `C` の隣にあるノードの集合を `peers(C)` と書く:
 
 - `system` ブロック内 — そのブロック自身の直下の子（およびルートビューが並べて
   差し込むトップレベルの `domain`）
 - `service` / `domain` / `entity` ブロック内 — そのブロック自身とその兄弟
+
+`peers(C)` を祖先方向に畳み、トップレベル root（各 `system` と、その横に並ぶ
+トップレベルブロック）を加えたものを `visible(C)` と書く:
+
+```
+visible(C) = peers(C) ∪ peers(parent(C)) ∪ … ∪ { トップレベル root }
+```
+
+規則は綴りによらず 1 本である:
+
+- **bare** の端点は `peers(C)` に属していなければならない
+- **qualified** の端点は接尾辞規則（[§ ノード参照の path 記法](#ノード参照の-path-記法)）
+  で解決し、**先頭セグメント**が `visible(C)` のノードを指す候補だけに絞られる
+
+したがって path はどこまでも深く届くが、それはスコープから見えている anchor を
+起点に降りる場合に限られる。スコープからの脱出路ではない。トップレベルの `system`
+はどこからでもその anchor になるため、`OtherSystem.Service` はどのブロックからでも
+書けるし、2 セグメントの上限を外しても既存モデルの判定は 1 件も変わらない:
+
+```krs
+system Shop {
+  service Checkout {
+    domain Payment {}
+  }
+}
+
+system Portal {
+  service Web {
+    -> Shop.Checkout.Payment    // ✓ トップレベル root の Shop から降りている
+  }
+}
+```
 
 peer は import マージ後の**ブロック単位**で数える。別ファイルで `system` を再
 オープンすると子はひとつのブロックに union される（§S3）ため、別ファイルが宣言
@@ -783,9 +818,20 @@ domain Ordering {
 限定子付き `DomainId.EntityId` で書いた cross-domain の `entity` 関連。
 bare id の cross-domain entity 参照は intra-domain 専用のため drop され、報告される。
 
-端点がどこにも解決しない場合は別のケースで、`unresolved-edge-endpoint`
-（§S6）として報告される。どちらの診断も
+**qualified** の端点も、先頭セグメントがここから見えていなければ同じコードで
+報告される。別の system から書いた `Checkout.Payment` は何にも届かない —
+`Checkout` はトップレベル root ではなく `Shop` の中の peer だからである。この場合の
+メッセージは、エッジを移せとは言わず、見えている anchor を起点に path を書き直せと
+促し、参照先が宣言されている場所を示す。qualified の端点が kind または深さの異なる
+2 つ以上のノードに届いたときは `edge-target-ambiguous` が候補を列挙する。(kind, 深さ)
+の揃った多重一致は意図的な broadcast であり沈黙する。
+
+端点がどこにも解決しない場合は別のケースで、bare は `unresolved-edge-endpoint`
+（§S6）、qualified は `cross-system-ref-unresolved` として報告される。これらの診断は
 [診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
+
+> Related TPLs:
+> - [TPL-2577](../test-perspectives/TPL-2577-endpoint-reach-is-one-rule-for-bare-and-qualified.md) — endpoint の到達範囲は bare / qualified に共通の 1 規則で決まる。綴りが検査を免れる例外を作らない
 
 #### 任意のエッジ id（`#<id>`）
 
@@ -1002,7 +1048,9 @@ store の両方が realize されているとき、deploy 図は service のコ�
 ノードを id で指すすべてのプロパティは、1 つの字句形と 1 つの解決規則を共有する（#2088）:
 
 - **字句形**: `Segment(.Segment)*` — 例 `Shop.Checkout.Payment`。Segment は id
-  （サイトが許す箇所では文字列リテラルも可）。
+  （サイトが許す箇所では文字列リテラルも可）。深さの上限はどのサイトにも無い —
+  edge endpoint と entity 関連は 2 セグメントで打ち切られていたが、#2088 の slice E が
+  受理と解決を同時に着地させて上限を外した。
 - **解決 — 接尾辞規則**: 参照は、full path（root からノードまでの id を `.` で
   連結したもの）が参照で**終わる**すべてのノードに一致する。bare id は長さ 1 の
   ケースであり、`owns Payment` は id が `Payment` のノード全部を主張する
@@ -1014,11 +1062,13 @@ store の両方が realize されているとき、deploy 図は service のコ�
   命名）であり沈黙する。`handles` に対応コードが無いのは欠落ではなく判断である:
   候補は system 直下の子のさらに直下にある `domain` に限られ、多重一致は構造上つねに
   揃っているため、より長い path で修飾するという対処が成立しない（起こりうる誤りは
-  `unresolved-handles` が担当する）。残るサイトは今もサイト固有に解決しており、
-  #2088 の slice D1 / D2 / E がこの規則へ寄せる。
+  `unresolved-handles` が担当する）。edge endpoint が `edge-target-ambiguous` を
+  出すのは **qualified** の参照に対してだけである: bare は peer 束縛を維持しており、
+  そこでの多重一致は既存の broadcast であって新しい問いではない。
 - **スコープ規則はサイトごとに保たれる。** 共有するのは記法であり、参照がどこを
   指せるかは各サイトの規則のまま: `import` path は import 先ファイルのツリーを
-  歩き（ADR-927）、edge endpoint は自身のスコープ規則（ADR-2075）に従い、
+  歩き（ADR-927）、edge endpoint は宣言スコープから見えているものを起点に降りる
+  候補へ絞られ（[§ 端点のスコープ（endpoint scope）](#端点のスコープendpoint-scope)）、
   スコープ内 `boundary … contains` は宣言ノードの直下の子に解決される。
 - **現在の受理サイト**: `import { … }`、cross-system edge endpoint、cross-domain
   entity 関連、`resource OrderDB.Orders`、entity の `table` マッピング、`owns`、

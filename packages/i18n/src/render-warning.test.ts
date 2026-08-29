@@ -97,6 +97,16 @@ const SAMPLES: Record<WarningKind, Warning> = {
       scopeKind: "system",
     },
   },
+  "edge-target-ambiguous": {
+    kind: "edge-target-ambiguous",
+    params: {
+      path: "Checkout.Payment",
+      candidates: [
+        { kind: "service", path: "Shop.Payment" },
+        { kind: "domain", path: "Shop.Checkout.Payment" },
+      ],
+    },
+  },
   "cyclic-dependency": {
     kind: "cyclic-dependency",
     params: { cyclePath: ["A", "B", "A"] },
@@ -205,6 +215,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "cross-system-ref-unresolved": ["Missing.Svc"],
   "unresolved-edge-endpoint": ["OrderService", "Missing"],
   "edge-endpoint-not-at-scope": ["Ordering", "Billing", "OrderService", "ECPlatform"],
+  "edge-target-ambiguous": ["Checkout.Payment", "Shop.Payment", "Shop.Checkout.Payment"],
   "cyclic-dependency": ["A", "B"],
   "delivers-target-not-client": ["BFF", "OrderService"],
   "client-capability-duplicate": ["WebApp", "camera"],

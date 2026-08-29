@@ -1,7 +1,7 @@
 # AT-2088: ノード参照の path 記法（接尾辞規則）
 
 - **日付**: 2026-08-19
-- **Issue**: [#2088](https://github.com/kompiro/karasu/issues/2088)（親） / slice A [#2547](https://github.com/kompiro/karasu/issues/2547) / slice B [#2548](https://github.com/kompiro/karasu/issues/2548) / slice C [#2549](https://github.com/kompiro/karasu/issues/2549)
+- **Issue**: [#2088](https://github.com/kompiro/karasu/issues/2088)（親） / slice A [#2547](https://github.com/kompiro/karasu/issues/2547) / slice B [#2548](https://github.com/kompiro/karasu/issues/2548) / slice C [#2549](https://github.com/kompiro/karasu/issues/2549) / slice D1 [#2575](https://github.com/kompiro/karasu/issues/2575) / slice D2 [#2576](https://github.com/kompiro/karasu/issues/2576) / slice E [#2577](https://github.com/kompiro/karasu/issues/2577)
 - **関連 ADR**: [ADR-2547](../adr/2547-shared-node-path-machinery.md)（slice A: 共有 parse ヘルパーと接尾辞規則）
 - **Related TPLs**:
   - [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md)（記法はサイト間で 1 規則）
@@ -9,6 +9,8 @@
   - [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（path 受理は path キー索引を要求）
   - [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)（宣言された事実を派生 index で捨てない）
   - [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（`karasu fmt` は著者の書いた path を保つ）
+  - [TPL-2577](../test-perspectives/TPL-2577-endpoint-reach-is-one-rule-for-bare-and-qualified.md)（到達範囲は綴りでなく構造で決まる — slice E の proactive TPL）
+  - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md)（受理した構造は描画されるか診断される）
 - **対象**: `packages/core/src/parser/node-path.ts` / `parser.ts` / `reference-validation.ts`、`packages/core/src/fs/import-resolver.ts`、`packages/core/src/renderer/layout*.ts`、`packages/core/src/compile/compile*.ts`、`packages/i18n`
 
 ## 概要
@@ -23,6 +25,8 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
 - slice B（#2548）: `owns` / `contains` を受理側に追加し、`ownerIndex` /
   `boundaryMembership` を full path キーに張り替え
 - slice C（#2549）: `realizes` / `handles` を受理側に追加。拒否形は先頭セグメントを記録しない
+- slice D1 / D2（#2575 / #2576）: entity 関連・`resource`・`import` の解決を接尾辞規則へ寄せる
+- slice E（#2577）: edge endpoint の 2 セグメント上限を解除し、スコープ規則（`peers` / `visible`）と同時に着地させる
 
 ## 受け入れ条件
 
@@ -98,6 +102,33 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
 - [x] import の解決診断は文全体でなく失敗した entry に anchor する
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a resolution diagnostic anchors on the entry that failed, not on the whole statement
 
+### slice E（#2577）— edge endpoint の受理と解決
+
+- [x] 3 セグメントの endpoint（`A -> Shop.Checkout.Payment`）が parse・解決され、ghost として描画される（frame は最上位 system、カードは解決先ノード、中間 path は muted な sub-label）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a three-segment endpoint parses, resolves silently, and renders as a ghost
+- [x] 2 セグメントの cross-system 参照が従来と同じ ghost を描く（sub-label 無し = ジオメトリ不変）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a two-segment cross-system endpoint keeps the ghost it has always drawn
+- [x] ghost の layout キーが解決済み full path（`Shop.Checkout.Payment`）になり、2 セグメントでは従来の `Sys.Child` と同一文字列になる
+  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › lands a two-segment reference on the same node the first-dot split used to find
+- [x] bare の判定は `peers(C)` のまま（ADR-2075 の判定式を維持し、祖先方向に畳んだ集合を使わない）
+  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › a bare reference is bound to peers(C), not to the folded visible set
+- [x] qualified は先頭セグメントが `visible(C)` に当たる候補だけに絞られ、トップレベル root はどの深さからでも見える
+  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › top-level roots stay visible from any depth — the term that keeps Sys.Child working
+- [x] スコープから見えない先頭を持つ qualified 参照は `edge-endpoint-not-at-scope`（qualified variant + 候補 full path）で報告される
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a path whose head the scope cannot see is reported, not silently resolved
+- [x] (kind, 深さ) の揃わない多重一致が `edge-target-ambiguous` を出し、揃った多重一致は沈黙する。bare は ambiguity を出さない
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a non-uniform multi-match reports the candidates; a uniform one stays silent
+- [x] 宣言順を入れ替えても ambiguity の判定が変わらない
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › the ambiguity verdict does not depend on declaration order
+- [x] **既存 examples corpus（84 ファイル）で新診断が 0 件** — 設計の非破壊性条件を宣言でなく実測で示す
+  > ✅ Automated — packages/core/src/examples.test.ts › reports no out-of-scope or ambiguous endpoint in any example
+- [x] dangling dot の回復挙動が不変（`A -> B.` → `to: "B.}"`、診断 1 件）
+  > ✅ Automated — packages/core/src/parser/node-path.test.ts › edge target with a dangling dot reports once and joins the bad token's value
+- [x] cap 解除で entity 関連の深い qualifier も解決される（#2575 の out-of-scope 注記が閉じる）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › lifting the cap unlocks deep qualifiers on entity relations too (#2575)
+- [x] `karasu fmt` が深い path の全セグメントを保つ（TPL-1101。dotted target が quoted で出るのは `quoteId` の従来挙動で、深さでは変わらない）
+  > ✅ Automated — packages/core/src/formatter/formatter.test.ts › round-trips a deep edge endpoint path (#2577)
+
 ## 手動確認
 
 `🧑 Manual` の到達先: <https://karasu.kompiro.dev/>（main への push で更新）。
@@ -120,3 +151,24 @@ organization Org {
 - [ ] 🧑 Manual: system view で team チップ（`Platform`）が **service `Payment` のカードだけ**に
   付き、`Checkout` のドリルダウンで domain `Payment` にチップが付かない
 - [ ] 🧑 Manual: *Group by: team* で `Platform` の枠が service `Payment` だけを囲む
+
+slice E の深い endpoint は、次のモデルを貼って `Portal` → `Web` までドリルダウンする:
+
+```krs
+system Shop {
+  service Checkout {
+    domain Payment {}
+  }
+}
+
+system Portal {
+  service Web {
+    -> Shop.Checkout.Payment "settle"
+  }
+}
+```
+
+- [ ] 🧑 Manual: `Web` のビューに `Shop` とラベルされた ghost フレームが出て、その中の
+  `Payment` カードに muted な `Checkout` が添えられている（中間 path が読める）
+- [ ] 🧑 Manual: `Shop` へのドリルダウンと、`Shop.Checkout` を指す 2 セグメントの
+  cross-system エッジの見え方が従来と変わらない

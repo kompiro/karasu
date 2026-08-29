@@ -796,12 +796,48 @@ allowed — the edge stays co-located with its source.
 
 An edge is drawn on the view where its endpoints stand side by side — the view
 of the block it is declared in (`system`), or the view that draws that block as
-a node (`service` / `domain` / `entity`). Either way **both of its endpoints
-must be peers at that scope**:
+a node (`service` / `domain` / `entity`). **How far an endpoint may reach is
+decided by structure, not by spelling**: a bare id names something standing
+beside the edge, and a path descends from something that scope can already see.
+
+Write `peers(C)` for the nodes standing beside a block `C`:
 
 - inside a `system` block — that block's own children (plus top-level
   `domain`s, which the root view splices in beside them);
 - inside a `service` / `domain` / `entity` block — that block and its siblings.
+
+and `visible(C)` for `peers(C)` folded up the ancestor chain, together with
+every top-level root (each `system`, and the top-level blocks beside them):
+
+```
+visible(C) = peers(C) ∪ peers(parent(C)) ∪ … ∪ { top-level roots }
+```
+
+One rule covers both spellings:
+
+- a **bare** endpoint must be in `peers(C)`;
+- a **qualified** endpoint resolves by the suffix rule
+  ([§ Node reference path notation](#node-reference-path-notation)), narrowed
+  to the matches whose **first segment** names a node in `visible(C)`.
+
+A path therefore reaches any depth, but only by descending from an anchor the
+scope can see — it is not an escape from the scope. Every top-level system is
+such an anchor from everywhere, which is why `OtherSystem.Service` works from
+any block, and why lifting the two-segment cap changed no existing model:
+
+```krs
+system Shop {
+  service Checkout {
+    domain Payment {}
+  }
+}
+
+system Portal {
+  service Web {
+    -> Shop.Checkout.Payment    // ✓ descends from Shop, a top-level root
+  }
+}
+```
 
 Peers are counted per **block**, after imports are merged. Reopening a `system`
 in another file unions the children into one block (§S3), so an edge may name a
@@ -840,9 +876,23 @@ cross-domain `entity` relation written with a qualified `DomainId.EntityId`
 target. A bare cross-domain entity target is intra-domain only, so it is
 dropped and reported.
 
+A **qualified** endpoint is reported under the same code when its first segment
+is not visible here — `Checkout.Payment` written from another system reaches
+nothing, because `Checkout` is a peer inside `Shop` rather than a top-level
+root. The message then asks for a path re-spelled from a visible anchor instead
+of asking for the edge to be moved, and names where the target is declared.
+When a qualified endpoint reaches two or more nodes that differ in kind or
+depth, `edge-target-ambiguous` lists the candidates so the author can qualify
+further; a multi-match uniform in (kind, depth) is intentional broadcast and
+stays silent.
+
 An endpoint that resolves nowhere is a different case, reported as
-`unresolved-edge-endpoint` (§S6). Both diagnostics are catalogued in the
+`unresolved-edge-endpoint` (bare) or `cross-system-ref-unresolved` (qualified).
+All of these diagnostics are catalogued in the
 [diagnostics & rules reference](diagnostics.md).
+
+> Related TPLs:
+> - [TPL-2577](../test-perspectives/TPL-2577-endpoint-reach-is-one-rule-for-bare-and-qualified.md) — endpoint の到達範囲は bare / qualified に共通の 1 規則で決まる。綴りが検査を免れる例外を作らない
 
 #### Optional edge id (`#<id>`)
 
@@ -1073,7 +1123,10 @@ Everywhere a property names a node by id, the reference shares one lexical
 shape and one resolution rule (#2088):
 
 - **Shape**: `Segment(.Segment)*` — e.g. `Shop.Checkout.Payment`. Segments
-  are ids (string-literal segments allowed where the site accepts them).
+  are ids (string-literal segments allowed where the site accepts them), with
+  no depth limit at any site — edge endpoints and entity relations were capped
+  at two until slice E of #2088 lifted the cap together with the resolution
+  that gives the deeper form an effect.
 - **Resolution — the suffix rule**: a reference matches every node whose
   full path (root to node, ids joined by `.`) **ends with** the reference.
   A bare id is the length-1 case, so `owns Payment` claims every node with
@@ -1088,14 +1141,16 @@ shape and one resolution rule (#2088):
   `handles` has no such code, and that is a verdict rather than a gap: its
   candidates are the domains directly under a system-level child, so every
   multi-match there is uniform by construction and a longer path is not an
-  available remedy — `unresolved-handles` carries what can go wrong. The
-  remaining sites still resolve site-specifically; slices D1 / D2 / E of
-  #2088 move them onto this rule.
+  available remedy — `unresolved-handles` carries what can go wrong. Edge
+  endpoints report `edge-target-ambiguous` for a **qualified** reference only:
+  a bare endpoint keeps its peer binding, where a multi-match is the
+  pre-existing broadcast rather than a new question.
 - **Sites keep their own scope rules.** The notation is shared; where a
   reference may point is still each site's business: an `import` path walks
-  the imported file's tree (ADR-927), an edge endpoint follows its scope
-  rule (ADR-2075), a scoped `boundary … contains` resolves against the
-  declaring node's direct children.
+  the imported file's tree (ADR-927), an edge endpoint is narrowed to the
+  matches descending from something its declaring scope can see
+  ([§ Endpoint scope](#endpoint-scope)), a scoped `boundary … contains`
+  resolves against the declaring node's direct children.
 - **Accepting sites today**: `import { … }`, cross-system edge endpoints,
   cross-domain entity relations, `resource OrderDB.Orders`, the entity
   `table` mapping, `owns`, `contains` (top-level and scoped), `realizes`,

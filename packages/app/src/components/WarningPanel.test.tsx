@@ -117,6 +117,17 @@ function makeWarning(kind: Warning["kind"]): Warning {
           scopeKind: "system",
         },
       };
+    case "edge-target-ambiguous":
+      return {
+        kind,
+        params: {
+          path: "Checkout.Payment",
+          candidates: [
+            { kind: "service", path: "Shop.Payment" },
+            { kind: "domain", path: "Shop.Checkout.Payment" },
+          ],
+        },
+      };
     case "cyclic-dependency":
       return { kind, params: { cyclePath: ["A", "B", "A"] } };
     case "delivers-target-not-client":

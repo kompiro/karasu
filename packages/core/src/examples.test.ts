@@ -409,7 +409,13 @@ describe("examples: every shipped .krs is free of node-not-in-context warnings",
 // that `examples/*/multi-file-system` relies on, and a concatenation of the
 // files would wrongly report it (the two `system Blog` blocks only merge via
 // the import path). See TPL-2075.
-describe("examples: every shipped .krs is free of edge-endpoint-not-at-scope", () => {
+//
+// Slice E (#2577) widened what an endpoint may name — the two-segment cap is
+// gone and qualified references resolve by the suffix rule — on the promise
+// that no existing model changes verdict. `edge-target-ambiguous` joins the
+// scan because that promise is about the corpus drawing **no new diagnostic**,
+// not about one code staying quiet (TPL-2577).
+describe("examples: every shipped .krs is free of edge endpoint diagnostics", () => {
   const examplesRoot = resolve(__dirname, "../../../examples");
   const scanned: string[] = [];
   const walk = (d: string) => {
@@ -421,7 +427,7 @@ describe("examples: every shipped .krs is free of edge-endpoint-not-at-scope", (
   };
   walk(examplesRoot);
 
-  it("reports no out-of-scope endpoint in any example", async () => {
+  it("reports no out-of-scope or ambiguous endpoint in any example", async () => {
     const provider = new InMemoryFileSystemProvider();
     for (const f of scanned) {
       await provider.writeFile(`/${relative(examplesRoot, f)}`, readFileSync(f, "utf8"));
@@ -431,8 +437,11 @@ describe("examples: every shipped .krs is free of edge-endpoint-not-at-scope", (
       const entry = `/${relative(examplesRoot, f)}`;
       const result = await new ImportResolver(provider).resolve(entry);
       for (const w of analyze(result.krsFile, [])) {
-        if (w.kind !== "edge-endpoint-not-at-scope") continue;
-        hits.push(`${entry}: ${w.params.from}->${w.params.to} (${w.params.endpointId})`);
+        if (w.kind === "edge-endpoint-not-at-scope") {
+          hits.push(`${entry}: ${w.params.from}->${w.params.to} (${w.params.endpointId})`);
+        } else if (w.kind === "edge-target-ambiguous") {
+          hits.push(`${entry}: ambiguous ${w.params.path}`);
+        }
       }
     }
     expect(hits).toEqual([]);
