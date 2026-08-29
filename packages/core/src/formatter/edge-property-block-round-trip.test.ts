@@ -132,6 +132,21 @@ describe("karasu fmt — edge property block (#2543)", () => {
     expectIdempotent(src);
   });
 
+  it("round-trips a deep qualified target that carries a block (#2645)", () => {
+    const src =
+      `system Shop {\n  service Checkout {\n    domain Payment {}\n  }\n}\n` +
+      `system Portal {\n  service Web {\n    -> Shop.Checkout.Payment {\n` +
+      `      description "settles the basket"\n    }\n  }\n}\n`;
+    expectAstRoundTrip(src);
+    expectIdempotent(src);
+    // `quoteId` re-spells any dotted target as a string literal — behaviour
+    // older than both slices, and identical for the shorthand. What this case
+    // fences is that the block does not cost the target its depth.
+    const formatted = format(src);
+    expect(formatted).toContain("Shop.Checkout.Payment");
+    expect(formatted).toContain(`description "settles the basket"`);
+  });
+
   it("preserves the implicit-source shorthand inside a service block", () => {
     const src = `system Shop {\n  service A {\n    -> B {\n      description "depends on B"\n    }\n  }\n  service B {}\n}\n`;
     const formatted = format(src);

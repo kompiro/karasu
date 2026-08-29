@@ -115,6 +115,27 @@ describe("edge property block (#2543)", () => {
     expect(system.children.map((c) => c.id)).toEqual(["A", "B", "C"]);
   });
 
+  // Slice E (#2645) lifted the qualified target to any depth while this block
+  // was in flight. `parseEdge` runs the two readers back to back — the path
+  // tail, then the block — so neither may eat the other's tokens (TPL-2542).
+  it("keeps a deep qualified target and its block payload on one edge", () => {
+    const result = Parser.parse(
+      `system Shop {\n  service Checkout {\n    domain Payment {}\n  }\n}\n` +
+        `system Portal {\n  service Web {\n    --> Shop.Checkout.Payment [async] #settle {\n` +
+        `      description "settles the basket"\n      link "https://runbook.example.com/settle"\n` +
+        `    }\n  }\n}\n`,
+    );
+    expect(result.diagnostics).toEqual([]);
+    const portal = result.value.systems[1] as SystemNode;
+    const service = portal.children[0] as { edges: KrsEdge[] };
+    const [edge] = service.edges;
+    expect(edge.to).toBe("Shop.Checkout.Payment");
+    expect(edge.kind).toBe("async");
+    expect(edge.authorId).toBe("settle");
+    expect(edge.description).toBe("settles the basket");
+    expect(edge.links?.map((l) => l.url)).toEqual(["https://runbook.example.com/settle"]);
+  });
+
   it("accepts the block on an implicit-source edge inside a service", () => {
     const result = Parser.parse(
       `system Shop {\n  service A {\n    -> B {\n      description "depends on B"\n    }\n  }\n  service B {}\n}\n`,
