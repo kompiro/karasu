@@ -31,10 +31,12 @@ import { Router } from "./router.js";
 
 export function createRouter(): Router {
   // Registration order is match order within a group, and `Router.candidates`
-  // prefers the group with the fewest captures, so the literal `/console/...`
-  // routes are chosen over `/console/s/:id` for the paths they both match.
-  // Registering the literals first keeps that visible to a reader as well as
-  // true of the matcher.
+  // prefers the group with the fewest captures. Nothing in this table reaches
+  // that tie-break: the literals and the two capture routes (`/g/:id`,
+  // `/console/s/:id`) never match the same path, because no literal has `s` in
+  // the segment `/console/s/:id` captures. Registering the literals first is
+  // what keeps that easy to see; `router.test.ts` is what keeps the rule
+  // itself honest for the next capture route added here.
   return new Router()
     .get("/healthz", health)
     .get("/auth/login", signIn)

@@ -198,9 +198,9 @@ describe("assertStructureOnly", () => {
   });
 
   it("refuses rather than scrubs", () => {
-    // A hit means input redaction missed or the model reproduced something it
-    // should never have seen. Scrubbing would ship the artifact and hide the
-    // fault, which is the reason for having a second scan at all.
+    // A hit means a submitter was about to publish something credential-shaped.
+    // Scrubbing would store the document and hide the fault, which is the
+    // reason this refuses instead.
     const krs = `system S {\n  service Api "${fake.githubToken}"\n}\n`;
     expect(() => assertStructureOnly(krs)).toThrowError(StructureOnlyViolation);
   });
@@ -217,12 +217,12 @@ describe("assertStructureOnly", () => {
     })();
     expect(thrown?.message).toContain("stripe-key");
     expect(thrown?.message).not.toContain(fake.stripe);
-    expect(thrown?.findings[0]?.where).toBe("output");
+    expect(thrown?.findings[0]?.where).toBe("submission");
   });
 
   it("accepts a document that describes a redaction", () => {
-    // `[REDACTED:jwt]` is structure the model legitimately learned from the
-    // redacted input; it must not read as a credential on the way out.
+    // A submitter may legitimately describe a redaction in their model; the
+    // placeholder must not itself read as a credential.
     expect(() =>
       assertStructureOnly("system S {\n  service Api\n  // auth: [REDACTED:jwt]\n}\n"),
     ).not.toThrow();

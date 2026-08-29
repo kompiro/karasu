@@ -89,13 +89,13 @@ reviews:
           `@karasu-tools/i18n`.
         - Every KV key prefix this package writes has to be sweepable and has to
           be stated. A new prefix needs a seeder entry in the purge-coverage
-          ledgers (`nest-purge-coverage.test.ts`, `gallery-purge-coverage.test.ts`
-          — TPL-2226) and a retention row in `docs/policy/nest-data-handling.md`,
-          which `scripts/lint/nest-retention-policy-sync.test.ts` then holds
-          against the constants. Those guards cannot see a prefix nobody added
-          to them, which is the one part of this a reviewer has to carry. The
-          document is a claim about what the service does with other people's
-          code, so a prefix missing from it is a broken promise rather than a
+          ledger (`gallery-purge-coverage.test.ts` — TPL-2226) and a retention
+          row in `docs/policy/nest-data-handling.md`, which
+          `scripts/lint/nest-retention-policy-sync.test.ts` then holds against
+          the constants. Those guards cannot see a prefix nobody added to them,
+          which is the one part of this a reviewer has to carry. The document is
+          a claim about what the service does with what a submitter entrusted to
+          it, so a prefix missing from it is a broken promise rather than a
           stale doc.
 
     - path: ".github/workflows/**"
@@ -129,6 +129,23 @@ reviews:
           declaring `supersedes` for it. The validator only checks the pairs
           that are already declared.
         - a renumbering of an existing ADR.
+
+        The body and the `assumptions:` frontmatter have opposite rules, so
+        judge them separately.
+
+        The body records a decision at its date. It is not rewritten when the
+        code moves on: a later ADR supersedes it, and the old one stays as it
+        was (ADR-706 states this for a rename). Flag a changed sentence in the
+        body of an existing ADR.
+
+        `assumptions:` is a drift guard, not prose. `pnpm adr:check-assumptions`
+        resolves every `file:` / `symbol:` / `grep:` entry against the working
+        tree, so a PR that deletes or renames what an entry names has to update
+        that entry in the same PR or the check fails. Replacing an entry with a
+        sentence recording what the code used to be is the established way to
+        keep a superseded ADR honest (ADR-2578 and ADR-1994 both read that way).
+        Never ask for an `assumptions:` edit to be reverted, and never report
+        one as a rewrite of the decision.
 
     - path: "docs/**/*.md"
       instructions: |

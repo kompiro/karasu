@@ -9,6 +9,7 @@
   - `packages/nest/wrangler.toml`（`[[workflows]]`・`PR_DELIVERY` 削除、`cpu_ms` 再測定、binding 改名）
   - `scripts/lint/nest-retention-policy-sync.test.ts` / `docs/policy/nest-data-handling.md`（drift ガードと記述の対）
   - `scripts/lint/reverse-skill-adr-sync.test.ts`（ADR-2077 のガードを消費者の移動に追随させた）
+  - `docs/acceptance/` / `docs/design/` / `docs/test-perspectives/`（生成を前提に書かれた記録の整理。削除した機能の AT 8 件と design doc 2 件を消し、生き残る記録が指す先を現行ファイルに付け替えた）
 
 > 削除は「使われなくなったから消す」ではない。**生成があること自体が前提だった記述**
 > （保持期間・同意文面・サブプロセッサ・quota）がすべて偽になるので、コードと文書は
@@ -56,6 +57,14 @@
 - [x] AT-J: 削除で使われなくなった export が残っていない
 
   > ✅ Automated — `pnpm knip`（CI）
+
+- [x] AT-K: 生き残る記録が、削除したファイルを指していない。削除された機能そのものの AT・design doc は残っていない
+
+  > ✅ Automated — `pnpm at:check-coverage`（marker と design-doc 参照）、`pnpm adr:check-assumptions`（ADR の `assumptions:` が指すファイルの実在）
+  >
+  > **`packages/nest/**` へのパス参照が本文に残っていないことは、この 2 つでは検出できない**（`at:check-coverage` は
+  > unit テストのパスを実在確認しない）。今回は目視で 0 件にしたが、機械化は未了。ADR 本文は当時の記録として
+  > 意図的に据え置くため（ADR-706）、ガードを作るなら `docs/adr/**` を除外範囲に含める必要がある。
 
 ## 手動確認
 

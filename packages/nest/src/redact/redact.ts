@@ -1,14 +1,19 @@
 /**
- * The two directions of ADR-1990 decision 2.
+ * The one direction of ADR-1990 decision 2 that survives.
  *
- * `redact` runs on the way in: fetched source is scrubbed before a single byte
- * reaches the model. `assertStructureOnly` runs on the way out: the generated
- * `.krs` is scanned again, and a document that trips it is **refused**, not
- * cleaned. The asymmetry is the point. On the input side a false positive
- * costs a little fidelity, so redaction is the right response. On the output
- * side a hit means something went wrong upstream — the model reproduced
- * something it should never have seen, or a rule missed on the way in — and
- * quietly scrubbing it would hide the failure while shipping the artifact.
+ * It described two. `redact` scrubbed fetched source on the way in, before a
+ * byte reached the model, and `assertStructureOnly` scanned the generated
+ * `.krs` on the way out. #2590 removed the model, and with it the way in, so
+ * a single scan is left: it runs on ingress, over a document its own author
+ * submitted (`gallery/validate.ts`).
+ *
+ * `redact` is still the matcher underneath, but only its findings are used.
+ * `assertStructureOnly` throws the scrubbed text away, because refusing is the
+ * whole response here; no production path consumes the substitution.
+ *
+ * Refusing rather than scrubbing is what did not change, and neither did the
+ * reason. A hit means something credential-shaped was about to be published,
+ * and quietly cleaning it would ship the artifact while hiding the fault.
  */
 import {
   isOwnPlaceholder,
@@ -96,12 +101,11 @@ export function redact(text: string, where = "input"): RedactionResult {
   return { text: current, findings };
 }
 
-/** Redact a whole file set, tagging each finding with its path. */
 /** Thrown when a document carries something credential-shaped. */
 export class StructureOnlyViolation extends Error {
   constructor(readonly findings: Finding[]) {
     const kinds = [...new Set(findings.map((f) => f.ruleId))].join(", ");
-    super(`generated output matched credential patterns and was refused: ${kinds}`);
+    super(`a submitted document matched credential patterns and was refused: ${kinds}`);
     this.name = "StructureOnlyViolation";
   }
 }
@@ -124,6 +128,6 @@ export class StructureOnlyViolation extends Error {
  * passes, which is correct: that is structure, not a secret.
  */
 export function assertStructureOnly(krs: string): void {
-  const { findings } = redact(krs, "output");
+  const { findings } = redact(krs, "submission");
   if (findings.length > 0) throw new StructureOnlyViolation(findings);
 }
