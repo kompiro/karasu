@@ -1577,7 +1577,12 @@ function detectCrossSystemRefs(file: KrsFile, scopeIndex: () => EdgeEndpointInde
         continue;
       }
 
-      const referencedSystem = file.systems.find((s) => s.id === systemId);
+      // Read the target system off the *resolved* path rather than off the
+      // reference's first segment: an in-scope qualified endpoint is
+      // root-anchored, so the two agree, and reading the resolution keeps them
+      // agreeing if the anchoring rule is ever loosened.
+      const targetSystemId = resolution.inScope[0].path[0];
+      const referencedSystem = file.systems.find((s) => s.id === targetSystemId);
       if (referencedSystem !== undefined && referencedSystem !== system) {
         warnings.push({
           kind: "cross-system-ref-implicit-external",
@@ -1585,7 +1590,7 @@ function detectCrossSystemRefs(file: KrsFile, scopeIndex: () => EdgeEndpointInde
             ref: edge.to,
             sourceSystemId: system.id,
             sourceNodeId: edge.from,
-            targetSystemId: systemId,
+            targetSystemId,
           },
           loc: edge.loc,
         });
@@ -1750,9 +1755,16 @@ function detectEdgeEndpointsNotAtScope(
         // `cross-system-ref-unresolved` (qualified) owns that report.
         if (resolution.matches.length === 0) continue;
         if (ref.length > 1) {
-          // The path resolves, but its head is not visible from here. The fix
-          // is to re-qualify from a visible anchor, not to move the edge, so
-          // the message takes the `qualified` variant.
+          // A qualified relation inside an `entity` block belongs to the entity
+          // view, which resolves it against the domains of one system and draws
+          // the foreign entity as a ghost (ADR-1911). That pool is not this
+          // detector's, so a verdict here would report an edge the entity view
+          // does render — the silence ADR-2075 gave dotted refs, kept for the
+          // one site that still owns its own resolution.
+          if (container.kind === "entity") continue;
+          // The path resolves, but it is not anchored at a top-level root. The
+          // fix is to spell it from a root, not to move the edge, so the
+          // message takes the `qualified` variant.
           warnings.push({
             kind: "edge-endpoint-not-at-scope",
             params: {

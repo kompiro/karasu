@@ -703,18 +703,18 @@ system Portal {
     expect(layout(view).nodes.has("Shop.Checkout")).toBe(true);
   });
 
-  it("a path whose head the scope cannot see is reported, not silently resolved", () => {
-    // `Checkout` is a peer inside Shop, not a top-level root, so naming it from
-    // Portal reaches nothing — the suffix matches but the scope filter does not.
+  it("a path that is not root-anchored is reported, with the anchored spelling", () => {
+    // `Checkout` is a peer inside Shop, not a top-level root, so the reference
+    // is not anchored — left in scope it would name a node no ghost frame can
+    // hold and land on no view (TPL-2075). The candidate names the spelling
+    // that works.
     const r = Parser.parse(`
 system Shop {
+  service Cart {
+    -> Checkout.Payment
+  }
   service Checkout {
     domain Payment {}
-  }
-}
-system Portal {
-  service Web {
-    -> Checkout.Payment "settle"
   }
 }
 `);
@@ -723,26 +723,62 @@ system Portal {
     const [warning] = warnings;
     expect(warning.kind === "edge-endpoint-not-at-scope" && warning.params).toMatchObject({
       endpointId: "Checkout.Payment",
-      // The variant that asks the author to re-qualify rather than to move the
-      // edge — one code, two message spellings (ADR-2075).
+      // The variant that asks the author to re-spell the path rather than to
+      // move the edge — one code, two message spellings (ADR-2075).
       qualified: true,
       candidates: ["Shop.Checkout.Payment"],
-      scopeId: "Web",
+      scopeId: "Cart",
     });
+
+    // And nothing half-renders: no ghost frame for the declaring system, no
+    // node keyed by a path the edge cannot reach.
+    const view = extractView(r.value.systems, ["Shop", "Cart"]);
+    expect(view.ghostSystems).toEqual([]);
+    expect(layout(view).containers.map((c) => c.id)).toEqual(["Shop", "Cart"]);
+  });
+
+  it("a qualified relation inside an entity block stays the entity view's business", () => {
+    // The entity view resolves cross-domain relations against the domains of
+    // one system and draws the foreign entity as a ghost (ADR-1911). A verdict
+    // from the edge detector would report an edge that does render.
+    const r = Parser.parse(`
+system Shop {
+  service Sales {
+    domain Orders {
+      entity Order {
+        -> CustomerMgmt.Customer
+      }
+    }
+  }
+  service Crm {
+    domain CustomerMgmt {
+      entity Customer {}
+    }
+  }
+}
+`);
+    expect(analyze(r.value, []).filter((w) => w.kind === "edge-endpoint-not-at-scope")).toEqual([]);
+    const view = extractEntityView(r.value.systems, ["Shop", "Sales", "Orders"]);
+    expect(view.ghostEntityEdges.map((e) => [e.from, e.to])).toEqual([
+      ["Order", "CustomerMgmt.Customer"],
+    ]);
   });
 
   it("a non-uniform multi-match reports the candidates; a uniform one stays silent", () => {
-    // `Shop.Payment` suffixes a top-level system's service (depth 2) and a
-    // service named `Shop` nested in Portal (depth 3).
+    // Two `system` blocks sharing an id in ONE file are deliberately not
+    // merged (ADR-2075), so one anchored path names two nodes of different
+    // kind — the false negative ADR-2075 refused to hide behind an id union.
     const mixed = Parser.parse(`
 system Shop {
   service Payment {}
 }
+system Shop {
+  domain Payment {}
+}
 system Portal {
-  service Shop {
-    domain Payment {}
+  service Web {
+    -> Shop.Payment
   }
-  Shop -> Shop.Payment
 }
 `);
     const ambiguous = analyze(mixed.value, []).filter((w) => w.kind === "edge-target-ambiguous");
@@ -751,7 +787,7 @@ system Portal {
       path: "Shop.Payment",
       candidates: [
         { kind: "service", path: "Shop.Payment" },
-        { kind: "domain", path: "Portal.Shop.Payment" },
+        { kind: "domain", path: "Shop.Payment" },
       ],
     });
 
@@ -778,18 +814,20 @@ system Portal {
   it("the ambiguity verdict does not depend on declaration order", () => {
     const verdicts = [
       `system Shop { service Payment {} }
-system Portal { service Shop { domain Payment {} } Shop -> Shop.Payment }`,
-      `system Portal { service Shop { domain Payment {} } Shop -> Shop.Payment }
-system Shop { service Payment {} }`,
+system Shop { domain Payment {} }
+system Portal { service Web { -> Shop.Payment } }`,
+      `system Shop { domain Payment {} }
+system Shop { service Payment {} }
+system Portal { service Web { -> Shop.Payment } }`,
     ].map((src) =>
       analyze(Parser.parse(src).value, [])
         .filter((w) => w.kind === "edge-target-ambiguous")
         .flatMap((w) => (w.kind === "edge-target-ambiguous" ? w.params.candidates : []))
-        .map((c) => c.path)
+        .map((c) => c.kind)
         .sort(),
     );
     expect(verdicts[0]).toEqual(verdicts[1]);
-    expect(verdicts[0]).toHaveLength(2);
+    expect(verdicts[0]).toEqual(["domain", "service"]);
   });
 
   it("lifting the cap unlocks deep qualifiers on entity relations too (#2575)", () => {

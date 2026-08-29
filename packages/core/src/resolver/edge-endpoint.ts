@@ -7,17 +7,23 @@
 // in, while the suffix rule by itself would let a reference reach anywhere.
 //
 // The two are reconciled by filtering, not by exempting. A qualified endpoint
-// is not an escape hatch — its suffix candidates are narrowed to those whose
-// **head segment** lands on a node the declaring scope can already see:
+// is not an escape hatch: to point inside another system you **name that
+// system and descend from it**, so a qualified reference is the whole path
+// from a top-level root down to the target. That is ADR-104's two-segment
+// cross-system notation generalised along depth, and it leaves reach
+// determined by structure rather than by spelling.
 //
-//     visible(C) = peers(C) ∪ peers(parent(C)) ∪ … ∪ { top-level roots }
+// A bare endpoint keeps ADR-2075's verdict verbatim — its scope is `peers(C)`.
+// Together the two make the change non-destructive: every qualified endpoint
+// that parsed before the cap lift is `TopLevelSystem.Child`, which is
+// root-anchored by construction, so no existing model changes verdict.
 //
-// so a path means "descend from something visible", and reach stays determined
-// by structure rather than by spelling. A bare endpoint keeps ADR-2075's
-// verdict verbatim — its scope is `peers(C)`, not the folded set — which is
-// what makes this change non-destructive: every qualified endpoint that parses
-// today is `TopLevelSystem.Child`, and a top-level root is in `visible(C)` from
-// everywhere, so no existing model changes verdict.
+// Anchoring is what keeps every accepted form drawable. A reference that
+// descended from a *non-root* peer (`Checkout.Payment` written beside
+// `Checkout`) would resolve to a node the cross-system ghost machinery cannot
+// frame — it is not in another system — and would land on no view at all,
+// which is the silent drop TPL-2075 forbids. Such a reference is reported
+// instead, with a message naming the anchored spelling that does work.
 //
 // Callers: `resolver/warnings.ts` (the scope / ambiguity / cross-system
 // diagnostics) and `view/view-extract.ts` (ghost systems and cross-system
@@ -57,8 +63,6 @@ export interface EdgeEndpointIndex {
   nodeAt(path: readonly string[]): KrsNode | undefined;
   /** ADR-2075's `peers(C)`, as full-path identity keys. */
   peers(container: KrsNode): ReadonlySet<string>;
-  /** `peers(C)` folded up the ancestor chain, plus every top-level root. */
-  visible(container: KrsNode): ReadonlySet<string>;
 }
 
 /**
@@ -107,15 +111,6 @@ export function buildEdgeEndpointIndex(file: KrsFile): EdgeEndpointIndex {
   const orphanPeerIds = new Set(unassignedChildren.map((c) => c.id));
   const orphanPeerKeys = unassignedChildren.map((c) => nodePathIdentityKey([c.id]));
 
-  // The top-level roots — systems and the orphan buckets. Folding these into
-  // every `visible(C)` is the term that keeps today's `Sys.Child` resolving
-  // from any depth, so lifting the parse cap adds reach without moving any
-  // existing endpoint.
-  const topLevelRootKeys = [
-    ...file.systems.map((s) => nodePathIdentityKey([s.id])),
-    ...topLevel.map((n) => nodePathIdentityKey([n.id])),
-  ];
-
   const keyOf = (node: KrsNode): string => nodePathIdentityKey(pathOf.get(node) ?? [node.id]);
   const childKeys = (parent: KrsNode): string[] => {
     const base = pathOf.get(parent) ?? [parent.id];
@@ -147,24 +142,11 @@ export function buildEdgeEndpointIndex(file: KrsFile): EdgeEndpointIndex {
     return result;
   };
 
-  const visibleCache = new Map<KrsNode, Set<string>>();
-  const visible = (container: KrsNode): Set<string> => {
-    const cached = visibleCache.get(container);
-    if (cached) return cached;
-    const result = new Set<string>(topLevelRootKeys);
-    for (let c: KrsNode | undefined = container; c !== undefined; c = parentOf.get(c)) {
-      for (const key of peers(c)) result.add(key);
-    }
-    visibleCache.set(container, result);
-    return result;
-  };
-
   return {
     declared,
     pathOf: (node) => pathOf.get(node) ?? [node.id],
     nodeAt: (path) => nodeAt.get(nodePathIdentityKey(path)),
     peers,
-    visible,
   };
 }
 
@@ -187,14 +169,15 @@ export interface EdgeEndpointResolution {
 /**
  * Resolve one endpoint reference at the scope that declared its edge.
  *
- * The scope set differs by reference length, and that difference is the whole
+ * The two spellings answer to different sets, and that difference is the whole
  * reconciliation with ADR-2075:
  *
- * - **length 1 (bare)** — `peers(C)`. ADR-2075's judgement, unchanged.
- * - **length 2+ (qualified)** — `visible(C)`, tested against the node the
- *   reference's *head* segment names (the ancestor of the match at depth
- *   `path.length - ref.length`). Qualification descends from something the
- *   scope can see; it does not escape the scope.
+ * - **length 1 (bare)** — must be in `peers(C)`. ADR-2075's judgement,
+ *   unchanged.
+ * - **length 2+ (qualified)** — must be **anchored at a top-level root**: the
+ *   reference spells the whole path from a `system` (or a top-level block)
+ *   down to the target, which is `ref.length === path.length`. Naming a system
+ *   and descending from it is the only way to reach inside it, at any depth.
  *
  * Ambiguity is reported for qualified references only: a bare id keeps
  * ADR-2075's verdict, and peers are sibling-unique enough that a bare
@@ -207,10 +190,10 @@ export function resolveEdgeEndpoint(
 ): EdgeEndpointResolution {
   const candidates = index.declared.get(ref[ref.length - 1]) ?? [];
   const matches = resolveNodePathBySuffix(ref, candidates);
-  const scope = ref.length === 1 ? index.peers(container) : index.visible(container);
-  const inScope = matches.filter((m) =>
-    scope.has(nodePathIdentityKey(m.path.slice(0, m.path.length - ref.length + 1))),
-  );
+  const inScope =
+    ref.length === 1
+      ? matches.filter((m) => index.peers(container).has(nodePathIdentityKey(m.path)))
+      : matches.filter((m) => m.path.length === ref.length);
   const ambiguous = ref.length === 1 ? undefined : ambiguousNodePathCandidates(inScope);
   return { ref, matches, inScope, ...(ambiguous ? { ambiguous } : {}) };
 }
@@ -231,10 +214,14 @@ export interface GhostEndpointMatch {
  * Resolve a qualified endpoint to the node it names and the top-level system
  * that frames it, for ghost rendering.
  *
- * This is the top-level-root term of `visible(C)` on its own: a ghost frame is
- * always a top-level system, so "matches whose head is a top-level root"
- * already answers the question, and the view does not need the declaring
- * container. For a two-segment `Sys.Child` the walk lands on exactly the node
+ * Applies the same root-anchoring {@link resolveEdgeEndpoint} does, so the
+ * view and the diagnostics agree on which references are cross-system: a ghost
+ * frame is always a top-level system, and a reference that does not spell its
+ * path from one is not a ghost. Without that agreement a non-anchored
+ * reference resolves for the checker while framing a ghost of the system it
+ * was written in, leaving an edge whose endpoint key nothing matches.
+ *
+ * For a two-segment `Sys.Child` the walk lands on exactly the node
  * `allSystems.find(…).children.find(…)` used to find — the paths are equal by
  * construction — so existing ghosts are byte-identical; depth is the only
  * thing that changes.
@@ -256,5 +243,5 @@ export function buildGhostEndpointResolver(
     };
     for (const child of system.children) walk(child, [system.id], []);
   }
-  return (ref) => resolveNodePathBySuffix(ref, entries)[0];
+  return (ref) => resolveNodePathBySuffix(ref, entries).find((m) => m.path.length === ref.length);
 }

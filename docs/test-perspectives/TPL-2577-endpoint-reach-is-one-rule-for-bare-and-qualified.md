@@ -37,14 +37,17 @@ scope:
 「この参照はどこを指せるか」に綴りごとの答えを持たせてしまう。
 
 - **到達範囲は構造で決める**。qualified は「スコープ外を指す許可」ではなく
-  「**見えているものから降りる**」と定義する。edge endpoint では
-  `visible(C) = peers(C) ∪ peers(parent(C)) ∪ … ∪ { トップレベル root }` がその
-  「見えている」であり、bare の `peers(C)` を祖先方向に畳んだだけの集合で、
-  新しい可視性語彙を発明していない
+  「**root を名指してそこから降りる**」と定義する。edge endpoint では
+  「トップレベル root を起点に anchor されていること」がそれで、既存の 2 セグメント
+  cross-system 記法（ADR-104）を深さ方向へ一般化しただけであり、新しい可視性語彙を
+  発明していない
 - **綴り基準の skip を残さない**。`includes(".")` で検査を飛ばすガードは、
   受理形が広がった瞬間に「検査されない領域」に変わる
 - **記法を広げるなら解決も同時に広げる**（TPL-1503）。受理だけ先に出すと、
   parse は通るがどのビューにも出ない形が生まれる
+- **解決の範囲は描画の範囲を超えない**。「解決できる」と「描ける」がずれると、
+  in-scope と判定された参照がどのビューにも載らない（TPL-2075）。検査側と描画側は
+  同じ判定関数を引く
 
 「dotted は別の診断が持っているから」は理由になりうるが、**その別の診断が本当に
 同じ範囲を覆っているか**を確認してから言う。edge endpoint の skip-if-dotted は
@@ -61,6 +64,10 @@ scope:
 - **上限の消失** — 接尾辞規則を無条件に入れると、別 system の内部構造へ直接エッジを
   張れてしまう。今日の 2 セグメント上限は偶然ではなく、ADR-104 の cross-system 記法が
   引いた構造上の上限である
+- **解決と描画の乖離** — 検査側だけを広げると、描画側は旧い前提のまま残る。
+  #2577 のレビューでは、宣言元 system の内部に解決する参照が「宣言元 system 自身の
+  ghost フレーム」を作り、エッジの端点キーがどこにも一致しないまま黙って落ちた。
+  検査が通っているぶん、silent drop より発見が遅れる
 
 ## 検証の型
 
@@ -69,8 +76,9 @@ scope:
 1. 既存コーパス（`examples/**/*.krs`）で**新診断が 0 件**であること — 記法を広げた
    変更が既存モデルの判定を動かしていないことの実測。宣言ではなく計測で示す
 2. 到達できる形（`Portal.Web -> Shop.Checkout.Payment`）が解決し、**描画される**こと
-3. 到達できない形（別 system からの `Checkout.Payment`）が、無検査で通るのでも
-   「見つからない」でもなく、**書き直しを促す診断**になること
+3. 到達できない形（anchor されていない `Checkout.Payment`）が、無検査で通るのでも
+   「見つからない」でもなく、**書き直しを促す診断**になること。あわせて
+   **中途半端な描画が残らない**こと（ghost フレームもノードも作られない）
 4. 判定が宣言順に依存しないこと
 
 `packages/core/src/resolver/edge-endpoint.test.ts` は 2〜4 を、
@@ -79,6 +87,6 @@ scope:
 ## 派生元 spec
 
 - [`docs/spec/syntax.md` § Endpoint scope](../spec/syntax.md#endpoint-scope) —
-  `peers(C)` / `visible(C)` の定義と、bare / qualified を覆う 1 本の規則
+  `peers(C)` の定義と、bare（peer）/ qualified（root anchor）の到達条件
 - [`docs/spec/syntax.md` § Node reference path notation](../spec/syntax.md#node-reference-path-notation) —
   記法と接尾辞規則（サイト固有のスコープ規則はここでは決めない、という切り分け）

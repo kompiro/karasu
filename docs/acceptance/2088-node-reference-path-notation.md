@@ -110,12 +110,16 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a two-segment cross-system endpoint keeps the ghost it has always drawn
 - [x] ghost の layout キーが解決済み full path（`Shop.Checkout.Payment`）になり、2 セグメントでは従来の `Sys.Child` と同一文字列になる
   > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › lands a two-segment reference on the same node the first-dot split used to find
-- [x] bare の判定は `peers(C)` のまま（ADR-2075 の判定式を維持し、祖先方向に畳んだ集合を使わない）
-  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › a bare reference is bound to peers(C), not to the folded visible set
-- [x] qualified は先頭セグメントが `visible(C)` に当たる候補だけに絞られ、トップレベル root はどの深さからでも見える
-  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › top-level roots stay visible from any depth — the term that keeps Sys.Child working
-- [x] スコープから見えない先頭を持つ qualified 参照は `edge-endpoint-not-at-scope`（qualified variant + 候補 full path）で報告される
-  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a path whose head the scope cannot see is reported, not silently resolved
+- [x] bare の判定は `peers(C)` のまま（ADR-2075 の判定式を維持する）
+  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › a bare reference is bound to peers(C)
+- [x] qualified はトップレベル root を起点に anchor された候補だけに絞られ、その anchor はどの深さからでも名指せる
+  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › a root anchor is reachable from any depth — what keeps Sys.Child working
+- [x] anchor されていない qualified 参照は `edge-endpoint-not-at-scope`（qualified variant + anchor された綴りを候補に提示）で報告され、**中途半端な描画を残さない**（ghost フレームもノードも作られない）
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a path that is not root-anchored is reported, with the anchored spelling
+- [x] 検査側と描画側が「どれが cross-system か」で一致する（ghost リゾルバも同じ anchor 条件を課す）
+  > ✅ Automated — packages/core/src/resolver/edge-endpoint.test.ts › refuses a reference that is not root-anchored, so no self-ghost is framed
+- [x] `entity` ブロック内の qualified 関連は edge 検出器が判定せず、entity ビューが従来どおり ghost として描く
+  > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a qualified relation inside an entity block stays the entity view's business
 - [x] (kind, 深さ) の揃わない多重一致が `edge-target-ambiguous` を出し、揃った多重一致は沈黙する。bare は ambiguity を出さない
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › a non-uniform multi-match reports the candidates; a uniform one stays silent
 - [x] 宣言順を入れ替えても ambiguity の判定が変わらない

@@ -11,8 +11,8 @@ import {
 /**
  * Slice E of #2088 (#2577): the endpoint scope rule itself, exercised directly
  * rather than through a diagnostic. The reconciliation with ADR-2075 is a
- * statement about two *sets* — `peers(C)` for a bare reference, `visible(C)`
- * for a qualified one — so the tests name the sets.
+ * statement about two conditions — `peers(C)` for a bare reference,
+ * root-anchoring for a qualified one — so the tests name both.
  */
 
 const MODEL = `
@@ -53,39 +53,40 @@ function resolvedPaths(file: KrsFile, container: NodeIdPath, ref: string): strin
 }
 
 describe("edge endpoint scope rule (#2577)", () => {
-  it("a bare reference is bound to peers(C), not to the folded visible set", () => {
+  it("a bare reference is bound to peers(C)", () => {
     const file = parse(MODEL);
     // `Payment` is a domain two levels below the system; `Storefront` is a peer.
     expect(resolvedPaths(file, ["Shop"], "Storefront")).toEqual(["Shop.Storefront"]);
     expect(resolvedPaths(file, ["Shop"], "Payment")).toEqual([]);
   });
 
-  it("a qualified reference resolves at any depth when its head is visible", () => {
+  it("a qualified reference resolves at any depth when it is anchored at a root", () => {
     const file = parse(MODEL);
-    // Declared at Portal.Web: `Shop` is a top-level root, visible from anywhere.
+    // Naming the system and descending from it — ADR-104's two-segment form
+    // generalised along depth.
     expect(resolvedPaths(file, ["Portal", "Web"], "Shop.Checkout.Payment")).toEqual([
       "Shop.Checkout.Payment",
     ]);
-    // And from the system scope of the model it belongs to.
-    expect(resolvedPaths(file, ["Shop"], "Checkout.Payment")).toEqual(["Shop.Checkout.Payment"]);
   });
 
-  it("a qualified reference whose head is invisible resolves to nothing in scope", () => {
+  it("a qualified reference that is not root-anchored resolves to nothing in scope", () => {
     const file = parse(MODEL);
-    // `Checkout` is a peer inside Shop, not a top-level root, so it is not
-    // visible from another system — the suffix matches, the scope filter does
-    // not. This is the whole reconciliation: reach follows structure.
+    // The suffix matches, the anchoring does not. Left in scope, this would
+    // name a node the cross-system ghost machinery cannot frame — it is not in
+    // another system — so the edge would land on no view (TPL-2075).
     const index = buildEdgeEndpointIndex(file);
-    const resolution = resolveEdgeEndpoint(
-      index,
-      find(file, ["Portal", "Web"]),
-      edgeEndpointRef("Checkout.Payment"),
-    );
-    expect(resolution.matches.map((m) => m.path.join("."))).toEqual(["Shop.Checkout.Payment"]);
-    expect(resolution.inScope).toEqual([]);
+    for (const container of [["Portal", "Web"], ["Shop"]]) {
+      const resolution = resolveEdgeEndpoint(
+        index,
+        find(file, container),
+        edgeEndpointRef("Checkout.Payment"),
+      );
+      expect(resolution.matches.map((m) => m.path.join("."))).toEqual(["Shop.Checkout.Payment"]);
+      expect(resolution.inScope).toEqual([]);
+    }
   });
 
-  it("top-level roots stay visible from any depth — the term that keeps Sys.Child working", () => {
+  it("a root anchor is reachable from any depth — what keeps Sys.Child working", () => {
     const file = parse(MODEL);
     // From a usecase three levels down, the other system is still nameable.
     expect(resolvedPaths(file, ["Shop", "Checkout", "Payment", "Settle"], "Portal.Web")).toEqual([
@@ -93,57 +94,68 @@ describe("edge endpoint scope rule (#2577)", () => {
     ]);
   });
 
-  it("ambiguity is drawn for qualified references only", () => {
-    // `Shop.Payment` suffixes a top-level system's service (depth 2) and a
-    // service named `Shop` nested in another system (depth 3).
-    const file = parse(`
+  // Root-anchoring narrows what a qualified reference can match, so the
+  // ambiguity it can still hit is worth naming: two `system` blocks sharing an
+  // id in ONE file are deliberately not merged (ADR-2075), so one anchored
+  // path really does name two different nodes.
+  const COLLIDING_SYSTEMS = `
 system Shop {
   service Payment {}
 }
+system Shop {
+  domain Payment {}
+}
 system Portal {
-  service Shop {
-    domain Payment {}
-  }
   service Web {}
 }
-`);
+`;
+
+  it("ambiguity is drawn for qualified references only", () => {
+    const file = parse(COLLIDING_SYSTEMS);
     const index = buildEdgeEndpointIndex(file);
     const qualified = resolveEdgeEndpoint(
       index,
-      find(file, ["Portal"]),
+      find(file, ["Portal", "Web"]),
       edgeEndpointRef("Shop.Payment"),
     );
-    expect(qualified.inScope.map((m) => m.path.join("."))).toEqual([
-      "Shop.Payment",
-      "Portal.Shop.Payment",
+    expect(qualified.inScope.map((m) => `${m.kind}:${m.path.join(".")}`)).toEqual([
+      "service:Shop.Payment",
+      "domain:Shop.Payment",
     ]);
-    expect(qualified.ambiguous?.map((m) => m.path.join("."))).toEqual([
-      "Shop.Payment",
-      "Portal.Shop.Payment",
-    ]);
+    expect(qualified.ambiguous).toHaveLength(2);
 
     // The bare counterpart keeps ADR-2075's verdict and draws no ambiguity.
-    const bare = resolveEdgeEndpoint(index, find(file, ["Portal"]), edgeEndpointRef("Payment"));
+    const bare = resolveEdgeEndpoint(
+      index,
+      find(file, ["Portal", "Web"]),
+      edgeEndpointRef("Payment"),
+    );
     expect(bare.ambiguous).toBeUndefined();
   });
 
   it("the verdict does not depend on declaration order", () => {
-    const shopFirst = parse(`
-system Shop { service Payment {} }
-system Portal { service Shop { domain Payment {} } }
-`);
-    const portalFirst = parse(`
-system Portal { service Shop { domain Payment {} } }
-system Shop { service Payment {} }
+    const serviceFirst = parse(COLLIDING_SYSTEMS);
+    const domainFirst = parse(`
+system Shop {
+  domain Payment {}
+}
+system Shop {
+  service Payment {}
+}
+system Portal {
+  service Web {}
+}
 `);
     const verdict = (file: KrsFile): string[] | undefined =>
       resolveEdgeEndpoint(
         buildEdgeEndpointIndex(file),
-        find(file, ["Portal"]),
+        find(file, ["Portal", "Web"]),
         edgeEndpointRef("Shop.Payment"),
-      ).ambiguous?.map((m) => m.path.join("."));
-    expect(verdict(shopFirst)?.slice().sort()).toEqual(verdict(portalFirst)?.slice().sort());
-    expect(verdict(shopFirst)).toBeDefined();
+      )
+        .ambiguous?.map((m) => m.kind)
+        .sort();
+    expect(verdict(serviceFirst)).toEqual(verdict(domainFirst));
+    expect(verdict(serviceFirst)).toEqual(["domain", "service"]);
   });
 });
 
@@ -166,5 +178,15 @@ describe("ghost endpoint resolution (#2577)", () => {
     // No ancestors between the frame and a direct child, so no sub-label and
     // no geometry change for ghosts that already existed.
     expect(match?.ancestors).toEqual([]);
+  });
+
+  it("refuses a reference that is not root-anchored, so no self-ghost is framed", () => {
+    // The view and the checker must agree on which references are
+    // cross-system. When they did not, `Cart -> Checkout.Payment` framed the
+    // declaring system as its own ghost and left the edge unmatched.
+    const file = parse(MODEL);
+    expect(
+      buildGhostEndpointResolver(file.systems)(edgeEndpointRef("Checkout.Payment")),
+    ).toBeUndefined();
   });
 });

@@ -806,24 +806,16 @@ Write `peers(C)` for the nodes standing beside a block `C`:
   `domain`s, which the root view splices in beside them);
 - inside a `service` / `domain` / `entity` block — that block and its siblings.
 
-and `visible(C)` for `peers(C)` folded up the ancestor chain, together with
-every top-level root (each `system`, and the top-level blocks beside them):
-
-```
-visible(C) = peers(C) ∪ peers(parent(C)) ∪ … ∪ { top-level roots }
-```
-
-One rule covers both spellings:
+Then:
 
 - a **bare** endpoint must be in `peers(C)`;
-- a **qualified** endpoint resolves by the suffix rule
-  ([§ Node reference path notation](#node-reference-path-notation)), narrowed
-  to the matches whose **first segment** names a node in `visible(C)`.
+- a **qualified** endpoint must be **anchored at a top-level root** — it spells
+  the whole path from a `system` (or a top-level block) down to the target.
 
-A path therefore reaches any depth, but only by descending from an anchor the
-scope can see — it is not an escape from the scope. Every top-level system is
-such an anchor from everywhere, which is why `OtherSystem.Service` works from
-any block, and why lifting the two-segment cap changed no existing model:
+To point inside a system you name that system and descend from it, at any
+depth. That is the two-segment `OtherSystem.Service` form generalised along
+depth, which is why it works from any block and why lifting the two-segment cap
+changed no existing model:
 
 ```krs
 system Shop {
@@ -876,15 +868,23 @@ cross-domain `entity` relation written with a qualified `DomainId.EntityId`
 target. A bare cross-domain entity target is intra-domain only, so it is
 dropped and reported.
 
-A **qualified** endpoint is reported under the same code when its first segment
-is not visible here — `Checkout.Payment` written from another system reaches
-nothing, because `Checkout` is a peer inside `Shop` rather than a top-level
-root. The message then asks for a path re-spelled from a visible anchor instead
-of asking for the edge to be moved, and names where the target is declared.
+A **qualified** endpoint is reported under the same code when it is not
+anchored — `Checkout.Payment` names a node whose path starts at `Shop`, so the
+reference is a fragment rather than a path. The message then asks for the
+anchored spelling (`Shop.Checkout.Payment`) instead of asking for the edge to
+be moved, and names where the target is declared. Anchoring is what keeps every
+accepted form drawable: a fragment resolving inside the declaring system would
+name a node no ghost frame can hold, and the edge would land on no view.
+
+A relation inside an `entity` block is not judged here — the entity view
+resolves those against the domains of one system and draws the foreign entity
+as a ghost.
+
 When a qualified endpoint reaches two or more nodes that differ in kind or
 depth, `edge-target-ambiguous` lists the candidates so the author can qualify
 further; a multi-match uniform in (kind, depth) is intentional broadcast and
-stays silent.
+stays silent. Two `system` blocks sharing an id in one file are not merged, so
+one anchored path can genuinely name two nodes.
 
 An endpoint that resolves nowhere is a different case, reported as
 `unresolved-edge-endpoint` (bare) or `cross-system-ref-unresolved` (qualified).

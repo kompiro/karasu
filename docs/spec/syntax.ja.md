@@ -751,23 +751,16 @@ service が共有するかで判定し、こちらは所有境界の越境で判
   差し込むトップレベルの `domain`）
 - `service` / `domain` / `entity` ブロック内 — そのブロック自身とその兄弟
 
-`peers(C)` を祖先方向に畳み、トップレベル root（各 `system` と、その横に並ぶ
-トップレベルブロック）を加えたものを `visible(C)` と書く:
-
-```
-visible(C) = peers(C) ∪ peers(parent(C)) ∪ … ∪ { トップレベル root }
-```
-
-規則は綴りによらず 1 本である:
+そのうえで:
 
 - **bare** の端点は `peers(C)` に属していなければならない
-- **qualified** の端点は接尾辞規則（[§ ノード参照の path 記法](#ノード参照の-path-記法)）
-  で解決し、**先頭セグメント**が `visible(C)` のノードを指す候補だけに絞られる
+- **qualified** の端点は**トップレベル root を起点に anchor されて**いなければ
+  ならない — `system`（またはトップレベルブロック）から対象までの path を丸ごと綴る
 
-したがって path はどこまでも深く届くが、それはスコープから見えている anchor を
-起点に降りる場合に限られる。スコープからの脱出路ではない。トップレベルの `system`
-はどこからでもその anchor になるため、`OtherSystem.Service` はどのブロックからでも
-書けるし、2 セグメントの上限を外しても既存モデルの判定は 1 件も変わらない:
+system の内部を指すには、その system を名指してそこから降りる。深さに上限は無い。
+これは 2 セグメントの `OtherSystem.Service` を深さ方向へ一般化したもので、だからこそ
+どのブロックからでも書けるし、2 セグメントの上限を外しても既存モデルの判定は
+1 件も変わらない:
 
 ```krs
 system Shop {
@@ -818,13 +811,21 @@ domain Ordering {
 限定子付き `DomainId.EntityId` で書いた cross-domain の `entity` 関連。
 bare id の cross-domain entity 参照は intra-domain 専用のため drop され、報告される。
 
-**qualified** の端点も、先頭セグメントがここから見えていなければ同じコードで
-報告される。別の system から書いた `Checkout.Payment` は何にも届かない —
-`Checkout` はトップレベル root ではなく `Shop` の中の peer だからである。この場合の
-メッセージは、エッジを移せとは言わず、見えている anchor を起点に path を書き直せと
-促し、参照先が宣言されている場所を示す。qualified の端点が kind または深さの異なる
-2 つ以上のノードに届いたときは `edge-target-ambiguous` が候補を列挙する。(kind, 深さ)
-の揃った多重一致は意図的な broadcast であり沈黙する。
+**qualified** の端点も、anchor されていなければ同じコードで報告される。
+`Checkout.Payment` が指すノードの path は `Shop` から始まるので、この参照は path
+ではなく断片である。この場合のメッセージは、エッジを移せとは言わず anchor された
+綴り（`Shop.Checkout.Payment`）を示し、参照先が宣言されている場所を伝える。
+anchor を要求するのは、受理したすべての形を描画可能に保つためである — 宣言元の
+system の内部に解決する断片は、どの ghost フレームにも収まらないノードを指すことに
+なり、エッジはどのビューにも載らない。
+
+`entity` ブロック内の関連はここでは判定しない — entity ビューが 1 つの system の
+domain を対象に解決し、外部の entity を ghost として描く。
+
+qualified の端点が kind または深さの異なる 2 つ以上のノードに届いたときは
+`edge-target-ambiguous` が候補を列挙する。(kind, 深さ) の揃った多重一致は意図的な
+broadcast であり沈黙する。同一ファイル内の同 id `system` ブロック 2 つはマージされない
+ため、anchor された 1 本の path が本当に 2 ノードを名指すことがある。
 
 端点がどこにも解決しない場合は別のケースで、bare は `unresolved-edge-endpoint`
 （§S6）、qualified は `cross-system-ref-unresolved` として報告される。これらの診断は
