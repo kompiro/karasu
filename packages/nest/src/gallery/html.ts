@@ -72,6 +72,8 @@ const STYLE = `
     border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: inherit; }
   textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 14rem; }
   .empty { color: var(--muted); }
+  .problem { border: 1px solid var(--danger); border-radius: 6px; color: var(--danger);
+             padding: 0.6rem 0.85rem; margin: 1rem 0 0; }
 `;
 
 export interface PageOptions {

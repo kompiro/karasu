@@ -23,80 +23,13 @@ import { currentViewer } from "../auth/current.js";
 import { sameOrigin } from "../auth/session.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import { formatSubmissionId } from "../store/gallery-keys.js";
-import { MAX_SUBMISSION_BYTES } from "../store/submissions.js";
 import { validateSubmission } from "../gallery/validate.js";
-
-/**
- * A generous ceiling on the request body, twice the document cap so the JSON
- * envelope has room.
- *
- * Checked twice, because the cheap check is not reliable. `Content-Length` is
- * absent on a chunked request and can simply be understated, and an absent
- * header reads as `0` rather than as "unknown" — so a header check alone lets
- * an arbitrarily large body through. The declared length is still worth
- * refusing on when it is present and honest (it costs nothing and stops the
- * transfer earliest); the body's real size is then counted as it arrives, by
- * `readCapped`.
- */
-const MAX_BODY_BYTES = MAX_SUBMISSION_BYTES * 2;
-
-/**
- * Read the body with the cap applied **while** it arrives, or `undefined` once
- * it goes past.
- *
- * `request.text()` buffers the whole body first and asks about its size
- * afterwards, which makes the check a statement about memory already spent: a
- * Worker gets 128MB for everything it does, and a request that understates its
- * length or declares none is exactly the request this cap exists to refuse.
- * Counting as the chunks come in means the refusal happens at the byte that
- * crosses the line, and cancelling the reader tells the runtime to stop pulling
- * the rest instead of draining a body nobody will read.
- *
- * Decoding as it goes also removes a second full copy: the size used to be
- * measured by re-encoding the finished string, so an accepted body existed
- * twice at once, and an oversized one was materialised twice before the 413.
- */
-async function readCapped(
-  body: ReadableStream<Uint8Array> | null,
-  limit: number,
-): Promise<string | undefined> {
-  // No body at all is not oversized; it fails as JSON a few lines later, which
-  // is the truthful thing to say about it.
-  if (body === null) return "";
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let text = "";
-  let total = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done || value === undefined) break;
-      total += value.byteLength;
-      if (total > limit) {
-        await reader.cancel();
-        return undefined;
-      }
-      // `stream: true`: a multi-byte character split across two chunks is
-      // ordinary here (`.krs` files carry Japanese labels), and decoding each
-      // chunk on its own would replace the halves with U+FFFD.
-      text += decoder.decode(value, { stream: true });
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  return text + decoder.decode();
-}
-
-/**
- * The transport-level refusal, with a code of its own.
- *
- * `too_large` already means "the document exceeds its cap", returned as 400 by
- * the validator. Reusing it here would make one code mean two statuses, which
- * `http.ts` says callers branch on — `routes/webhook.ts` split the same way
- * with `payload_too_large`.
- */
-const oversized = (): Response =>
-  error(413, "payload_too_large", `A submission request must be at most ${MAX_BODY_BYTES} bytes.`);
+import {
+  declaredOverLimit,
+  MAX_JSON_BODY_BYTES,
+  payloadTooLarge,
+  readCapped,
+} from "../request-body.js";
 
 export async function submitKrs(context: RouteContext): Promise<Response> {
   const { request, env } = context;
@@ -112,16 +45,12 @@ export async function submitKrs(context: RouteContext): Promise<Response> {
     return error(401, "sign_in_required", "Sign in at /auth/login to submit a model.");
   }
 
-  const declaredHeader = request.headers.get("Content-Length");
-  const declared = declaredHeader === null ? undefined : Number(declaredHeader);
-  if (declared !== undefined && Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
-    return oversized();
-  }
-
-  // The size check that actually holds. It also keeps `JSON.parse` off a body
-  // that was never going to be accepted.
-  const raw = await readCapped(request.body, MAX_BODY_BYTES);
-  if (raw === undefined) return oversized();
+  // Checked twice, because the cheap check is not reliable on its own
+  // (`request-body.ts` says why). The second one also keeps `JSON.parse` off a
+  // body that was never going to be accepted.
+  if (declaredOverLimit(request, MAX_JSON_BODY_BYTES)) return payloadTooLarge(MAX_JSON_BODY_BYTES);
+  const raw = await readCapped(request.body, MAX_JSON_BODY_BYTES);
+  if (raw === undefined) return payloadTooLarge(MAX_JSON_BODY_BYTES);
 
   let body: unknown;
   try {
