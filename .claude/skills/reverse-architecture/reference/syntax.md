@@ -882,11 +882,16 @@ A trailing `{ … }` block gives an edge a place to write what the positional
 form cannot express. It is **additive**: `A -> B "calls"` stays valid and stays
 the canonical spelling for an edge whose only property is its label.
 
-```krs fragment
-OrderSvc --> PaymentSvc [async] #orderPlaced {
-  label       "places an order"
-  description "At-least-once delivery. Retries are idempotent on orderId."
-  link        "https://runbook.example.com/order-placed" "Runbook"
+```krs
+system Shop {
+  service OrderSvc {}
+  service PaymentSvc {}
+
+  OrderSvc --> PaymentSvc [async] #orderPlaced {
+    label       "places an order"
+    description "At-least-once delivery. Retries are idempotent on orderId."
+    link        "https://runbook.example.com/order-placed" "Runbook"
+  }
 }
 ```
 

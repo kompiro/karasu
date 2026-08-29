@@ -815,11 +815,16 @@ usecase PlaceOrder {
 これは**追加的**な形であり、`A -> B "calls"` は引き続き有効で、label だけを持つ
 エッジの canonical な綴りであり続ける。
 
-```krs fragment
-OrderSvc --> PaymentSvc [async] #orderPlaced {
-  label       "注文を発行する"
-  description "at-least-once 配送。リトライは orderId で冪等。"
-  link        "https://runbook.example.com/order-placed" "Runbook"
+```krs
+system Shop {
+  service OrderSvc {}
+  service PaymentSvc {}
+
+  OrderSvc --> PaymentSvc [async] #orderPlaced {
+    label       "注文を発行する"
+    description "at-least-once 配送。リトライは orderId で冪等。"
+    link        "https://runbook.example.com/order-placed" "Runbook"
+  }
 }
 ```
 
