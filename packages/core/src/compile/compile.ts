@@ -791,16 +791,19 @@ function buildNodeMetadata(
       addNode(child, prefix);
     }
   }
-  // Service view: add visible services from ghost systems (outgoing)
+  // Service view: add visible services from ghost systems (outgoing). The
+  // prefix is the resolved path's ancestors, so a deep ghost
+  // (`Shop.Checkout.Payment`, #2577) gets the viewPath that actually drills to
+  // it rather than one anchored at the system.
   for (const gs of viewSlice.ghostSystems) {
     for (const svc of gs.visibleServices) {
-      addNode(svc, [gs.systemNode.id]);
+      addNode(svc.node, svc.path.slice(0, -1));
     }
   }
   // Service view: add visible services from caller ghost systems (incoming)
   for (const gs of viewSlice.callerGhostSystems) {
     for (const svc of gs.visibleServices) {
-      addNode(svc, [gs.systemNode.id]);
+      addNode(svc.node, svc.path.slice(0, -1));
     }
   }
 

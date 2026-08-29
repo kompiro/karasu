@@ -336,6 +336,12 @@ export const en: Translations = {
     `Declare the edge inside its source block (\`${from} { -> ${to} }\`) so both ends are peers where it is drawn`,
   "warning.edgeEndpointNotAtScope.qualifyHint": ({ ownerId, endpointId }) =>
     `Reference the target qualified ("${ownerId}.${endpointId}") so the relation renders in the entity view`,
+  "warning.edgeEndpointNotAtScope.descendHint": ({ endpointId, candidates }) =>
+    `"${endpointId}" is not a whole path from a top-level system, so no view can draw its target. Spell it from one — the target is declared at ${candidates.join(", ")}`,
+  "warning.edgeTargetAmbiguous.message": ({ path, candidates }) =>
+    `Edge target "${path}" matches multiple nodes of different kind or depth: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}. Qualify with a longer path to name one`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
     `"${ref}" is referenced from ${sourceSystemId}.${sourceNodeId} but is not explicitly annotated as @external`,
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>

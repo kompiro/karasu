@@ -3402,6 +3402,10 @@ describe("warningSeverity — exhaustive register map", () => {
     // The author's edge is absent from every diagram — a defect, not a
     // style-school fact (#2075).
     "edge-endpoint-not-at-scope": "warning",
+    // A qualified endpoint that reaches nodes of mixed kind or depth draws an
+    // edge the author cannot have meant twice over — a defect, and the same
+    // register the four `*-target-ambiguous` diagnostics already carry (#2577).
+    "edge-target-ambiguous": "warning",
     "cyclic-dependency": "warning",
     "delivers-target-not-client": "warning",
     "client-capability-duplicate": "warning",

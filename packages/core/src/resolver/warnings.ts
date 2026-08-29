@@ -17,7 +17,12 @@ import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
-import { synthesizeUnassignedSystem } from "../view/unassigned-system.js";
+import {
+  buildEdgeEndpointIndex,
+  edgeEndpointRef,
+  resolveEdgeEndpoint,
+  type EdgeEndpointIndex,
+} from "./edge-endpoint.js";
 import { buildEntityResolver } from "./resource-entity.js";
 import { REFERENCE_DATA, LOGICAL_CONTAINMENT } from "../builtins/reference-data.js";
 import { formatSelector } from "../style/serialize.js";
@@ -28,6 +33,12 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   // detectUnresolvedLegendRefs both consume the same selector index, and
   // analyze() runs per keystroke (app) / per document change (LSP).
   const stylesIndex = indexStyleSelectors(sheets);
+  // One scope walk shared by the two endpoint detectors, lazy for the same
+  // reason `declaredNodePathsOnce` is: a file with no dotted target and no
+  // out-of-scope endpoint never needs it.
+  let edgeScopeIndex: EdgeEndpointIndex | undefined;
+  const edgeScopeIndexOnce = (): EdgeEndpointIndex =>
+    (edgeScopeIndex ??= buildEdgeEndpointIndex(file));
 
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectSharedInfraFanIn(file));
@@ -46,9 +57,9 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectUnresolvedRealizes(file));
   warnings.push(...detectInvalidOwns(file));
-  warnings.push(...detectCrossSystemRefs(file));
+  warnings.push(...detectCrossSystemRefs(file, edgeScopeIndexOnce));
   warnings.push(...detectUnresolvedEdgeEndpoints(file));
-  warnings.push(...detectEdgeEndpointsNotAtScope(file));
+  warnings.push(...detectEdgeEndpointsNotAtScope(file, edgeScopeIndexOnce));
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
   warnings.push(...detectDuplicateClientCapabilities(file));
@@ -1520,7 +1531,22 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
   return warnings;
 }
 
-function detectCrossSystemRefs(file: KrsFile): Warning[] {
+/**
+ * A qualified target on a `system`-scope edge, judged against the shared
+ * endpoint rule (#2577) rather than against `split(".")` into exactly two.
+ *
+ * The two verdicts split on where the reference lands, not on how long it is:
+ *
+ * - resolves **nowhere** → `cross-system-ref-unresolved`;
+ * - resolves **into another top-level system** → `cross-system-ref-implicit-external`.
+ *
+ * A path that resolves inside the declaring system (`Checkout.Payment`, a
+ * service and its domain) is neither — before slice E it could not resolve at
+ * all and fell here as an unresolved cross-system ref; now the suffix rule
+ * reaches it and it simply renders. A path that resolves only somewhere the
+ * scope cannot see is `edge-endpoint-not-at-scope`'s, not this detector's.
+ */
+function detectCrossSystemRefs(file: KrsFile, scopeIndex: () => EdgeEndpointIndex): Warning[] {
   const warnings: Warning[] = [];
 
   for (const system of file.systems) {
@@ -1533,26 +1559,38 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
     for (const edge of system.edges) {
       if (!edge.to.includes(".")) continue;
 
-      const [systemId, serviceId] = edge.to.split(".");
+      const ref = edgeEndpointRef(edge.to);
+      const systemId = ref[0];
 
       // Suppressed if the referenced system ID is explicitly declared as [external] in the source system
       if (explicitExternalIds.has(systemId)) continue;
 
-      const referencedSystem = file.systems.find((s) => s.id === systemId);
-      if (!referencedSystem || !referencedSystem.children.some((c) => c.id === serviceId)) {
-        warnings.push({
-          kind: "cross-system-ref-unresolved",
-          params: { ref: edge.to },
-          loc: edge.loc,
-        });
-      } else {
+      const resolution = resolveEdgeEndpoint(scopeIndex(), system, ref);
+      if (resolution.inScope.length === 0) {
+        if (resolution.matches.length === 0) {
+          warnings.push({
+            kind: "cross-system-ref-unresolved",
+            params: { ref: edge.to },
+            loc: edge.loc,
+          });
+        }
+        continue;
+      }
+
+      // Read the target system off the *resolved* path rather than off the
+      // reference's first segment: an in-scope qualified endpoint is
+      // root-anchored, so the two agree, and reading the resolution keeps them
+      // agreeing if the anchoring rule is ever loosened.
+      const targetSystemId = resolution.inScope[0].path[0];
+      const referencedSystem = file.systems.find((s) => s.id === targetSystemId);
+      if (referencedSystem !== undefined && referencedSystem !== system) {
         warnings.push({
           kind: "cross-system-ref-implicit-external",
           params: {
             ref: edge.to,
             sourceSystemId: system.id,
             sourceNodeId: edge.from,
-            targetSystemId: systemId,
+            targetSystemId,
           },
           loc: edge.loc,
         });
@@ -1655,7 +1693,10 @@ function detectUnresolvedEdgeEndpoints(file: KrsFile): Warning[] {
  * Skips (owned by other detectors) and the exemptions are documented on
  * `WarningParamsByKind["edge-endpoint-not-at-scope"]`.
  */
-function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
+function detectEdgeEndpointsNotAtScope(
+  file: KrsFile,
+  scopeIndex: () => EdgeEndpointIndex,
+): Warning[] {
   const warnings: Warning[] = [];
 
   const topLevel = [
@@ -1686,51 +1727,63 @@ function detectEdgeEndpointsNotAtScope(file: KrsFile): Warning[] {
   for (const system of file.systems) index(system);
   for (const node of topLevel) index(node);
 
-  // Only top-level *domains* reach a real system's frame: the drawio exporter
-  // passes `krsFile.domains` to `extractView` (`build-drawio-project.ts`), which
-  // splices them in beside the system's children. Orphan services and clients
-  // are passed by nobody — the SVG / CLI path wraps every orphan into the
-  // separate `__unassigned__` pseudo-system instead (`unassigned-system.ts`) —
-  // so an edge from a real system to one of those renders nowhere and is
-  // reported like any other out-of-scope endpoint.
-  const orphanDomainIds = new Set(file.domains.map((n) => n.id));
-
-  // A top-level block has no declaring parent, but it is not drawn alone: the
-  // renderer wraps every orphan into the `__unassigned__` pseudo-system, whose
-  // children are peers of one another on that frame — and `extractView` draws
-  // edges anchored between them (#2223). Reading the wrap set from its own
-  // builder keeps the two definitions of "orphan peer" from drifting apart.
-  const orphanPeerIds = new Set(
-    (synthesizeUnassignedSystem(file)?.children ?? []).map((c) => c.id),
-  );
-
-  const peersOf = (container: KrsNode): Set<string> => {
-    if (container.kind === "system") {
-      return new Set([...container.children.map((c) => c.id), ...orphanDomainIds]);
-    }
-    const parent = parentOf.get(container);
-    // The container's own id is the self-anchored source of every edge the
-    // parser accepts inside a service / domain / entity block.
-    if (!parent) {
-      // A parentless block that the wrap itself skips (a top-level `client`)
-      // is drawn on no frame at all, so it has no peers to draw an edge to.
-      return orphanPeerIds.has(container.id)
-        ? new Set([container.id, ...orphanPeerIds])
-        : new Set([container.id]);
-    }
-    return new Set([container.id, ...parent.children.map((c) => c.id)]);
-  };
-
+  // `peers(C)` — and the orphan-frame reasoning behind it — moved to
+  // `edge-endpoint.ts` with slice E (#2577), so this detector and the ghost
+  // resolution in `view-extract.ts` read one definition. The bare set is
+  // unchanged; what the qualified branch below adds is a second condition of
+  // its own, root-anchoring, which does not consult the container at all.
   const check = (container: KrsNode): void => {
-    const peers = peersOf(container);
     for (const edge of container.edges) {
       for (const endpointId of [edge.from, edge.to]) {
-        // Dotted refs address another system / domain explicitly and render
-        // through their own paths.
-        if (endpointId.includes(".")) continue;
-        if (peers.has(endpointId)) continue;
+        const ref = edgeEndpointRef(endpointId);
+        const resolution = resolveEdgeEndpoint(scopeIndex(), container, ref);
+        if (resolution.ambiguous) {
+          warnings.push({
+            kind: "edge-target-ambiguous",
+            params: {
+              path: nodePathKey(ref),
+              candidates: resolution.ambiguous.map((c) => ({
+                kind: c.kind,
+                path: nodePathKey(c.path),
+              })),
+            },
+            loc: edge.loc,
+          });
+        }
+        if (resolution.inScope.length > 0) continue;
+        // Absent from the model entirely — `unresolved-edge-endpoint` (bare) or
+        // `cross-system-ref-unresolved` (qualified) owns that report.
+        if (resolution.matches.length === 0) continue;
+        if (ref.length > 1) {
+          // A qualified relation inside an `entity` block belongs to the entity
+          // view, which resolves it against the domains of one system and draws
+          // the foreign entity as a ghost (ADR-1911). That pool is not this
+          // detector's, so a verdict here would report an edge the entity view
+          // does render — the silence ADR-2075 gave dotted refs, kept for the
+          // one site that still owns its own resolution.
+          if (container.kind === "entity") continue;
+          // The path resolves, but it is not anchored at a top-level root. The
+          // fix is to spell it from a root, not to move the edge, so the
+          // message takes the `qualified` variant.
+          warnings.push({
+            kind: "edge-endpoint-not-at-scope",
+            params: {
+              from: edge.from,
+              to: edge.to,
+              endpointId,
+              endpointKind: resolution.matches[0].kind,
+              scopeId: container.id,
+              scopeKind: container.kind,
+              qualified: true,
+              candidates: resolution.matches.map((m) => nodePathKey(m.path)),
+            },
+            loc: edge.loc,
+          });
+          continue;
+        }
+        // Bare: ADR-2075's judgement verbatim, down to reading the endpoint's
+        // kind off the model-wide first-declaration-wins index.
         const endpoint = nodeById.get(endpointId);
-        // Absent from the model entirely — `unresolved-edge-endpoint` reports it.
         if (!endpoint) continue;
         // A domain depending on any other domain is derived up to a service
         // edge (`deriveImplicitServiceEdges`), so it does render.

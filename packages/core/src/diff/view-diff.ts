@@ -235,6 +235,9 @@ export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): Diffe
     ghostUserEdges,
     systems,
     crossSystemEdges,
+    // A union: a cross-system edge kept from `before` (a removal) still needs
+    // its target path to anchor on, and `after` wins on a key both sides carry.
+    crossSystemTargets: new Map([...before.crossSystemTargets, ...after.crossSystemTargets]),
     ghostSystems: after.ghostSystems,
     ghostSystemEdges: after.ghostSystemEdges,
     callerGhostSystems: after.callerGhostSystems,

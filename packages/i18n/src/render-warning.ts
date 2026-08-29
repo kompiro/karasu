@@ -160,14 +160,21 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
       };
     case "edge-endpoint-not-at-scope": {
       const { ownerId, endpointId, scopeKind, from, to } = w.params;
-      // A relation authored inside an `entity` block is fixed by qualifying the
-      // target (`Domain.Entity`), not by re-anchoring it — the source is already
-      // the declaring entity. Every other scope is fixed by anchoring the edge
-      // at its source block.
+      // Three fixes, one code — the message variants ADR-2075 chose over
+      // splitting the code. A qualified path that does not run from a
+      // top-level system is re-spelled (#2577); a relation authored inside an
+      // `entity` block is fixed by qualifying the target (`Domain.Entity`),
+      // not by re-anchoring it, since the source is already the declaring
+      // entity; every other scope is fixed by anchoring the edge at its source.
       const hint =
-        scopeKind === "entity" && ownerId !== undefined
-          ? t("warning.edgeEndpointNotAtScope.qualifyHint", { ownerId, endpointId })
-          : t("warning.edgeEndpointNotAtScope.anchorHint", { from, to });
+        w.params.qualified === true
+          ? t("warning.edgeEndpointNotAtScope.descendHint", {
+              endpointId,
+              candidates: w.params.candidates ?? [],
+            })
+          : scopeKind === "entity" && ownerId !== undefined
+            ? t("warning.edgeEndpointNotAtScope.qualifyHint", { ownerId, endpointId })
+            : t("warning.edgeEndpointNotAtScope.anchorHint", { from, to });
       return {
         message: t("warning.edgeEndpointNotAtScope.message", {
           from,
@@ -182,6 +189,16 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         details: [hint],
       };
     }
+    case "edge-target-ambiguous":
+      return {
+        message: t("warning.edgeTargetAmbiguous.message", {
+          path: w.params.path,
+          candidates: w.params.candidates,
+        }),
+        // The candidate paths and the "qualify further" fix are in the message
+        // itself, matching the four `*-target-ambiguous` diagnostics.
+        details: [],
+      };
     case "cross-system-ref-implicit-external":
       return {
         message: t("warning.crossSystemRefImplicitExternal.message", {

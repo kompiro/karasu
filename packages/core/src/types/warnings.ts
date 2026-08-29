@@ -23,6 +23,7 @@ export type WarningKind =
   | "cross-system-ref-unresolved"
   | "unresolved-edge-endpoint"
   | "edge-endpoint-not-at-scope"
+  | "edge-target-ambiguous"
   | "cyclic-dependency"
   | "delivers-target-not-client"
   | "client-capability-duplicate"
@@ -166,11 +167,25 @@ export interface WarningParamsByKind {
    *   are drawn on together (ADR-2223). A top-level block the wrap skips
    *   (a `client`) shares a canvas with nothing, so it has no peers.
    *
-   * Two endpoints are skipped rather than reported: a dotted ref (`Sys.Svc` /
-   * `Domain.Entity`, owned by `cross-system-ref-*` and the entity view) and an
-   * id that resolves nowhere (owned by `unresolved-edge-endpoint`). One
-   * exemption: a `domain`-anchored edge to another `domain` renders as a
-   * derived implicit service edge, at any nesting distance.
+   * A **qualified** endpoint (`Sys.Svc`, `Sys.Svc.Domain`, …) is no longer
+   * skipped (#2577). It must spell the whole path from a top-level `system`
+   * down to the target — the same condition the ghost renderer can satisfy,
+   * since a ghost frame is a system. A reference that resolves somewhere but
+   * not that way is reported here with `qualified: true`, which selects the
+   * "spell it from a system" hint instead of the "anchor the edge at its
+   * source" one. One code, two message variants: the mechanism is identical
+   * and only the fix spelling differs, which is the split ADR-2075 already
+   * decided to absorb in the message.
+   *
+   * Note this branch does not consult the declaring container — a qualified
+   * reference reaches the same set from everywhere. The container-relative
+   * question is the bare one.
+   *
+   * Still skipped rather than reported: an id that resolves nowhere at all
+   * (owned by `unresolved-edge-endpoint` for bare refs and
+   * `cross-system-ref-unresolved` for qualified ones). One exemption: a
+   * `domain`-anchored edge to another bare `domain` renders as a derived
+   * implicit service edge, at any nesting distance.
    *
    * Warning register per ADR-1386: an edge the author wrote is silently absent
    * from every diagram, which is a defect rather than a style-school fact.
@@ -190,6 +205,33 @@ export interface WarningParamsByKind {
     scopeId: string;
     /** kind of that block */
     scopeKind: string;
+    /**
+     * Set when the endpoint is a dotted path that does not spell a whole path
+     * from a top-level `system`. Selects the "spell it from a system" hint.
+     */
+    qualified?: true;
+    /**
+     * Full paths the reference *does* match elsewhere in the model, so the
+     * hint can name a reachable spelling. Set with {@link qualified}.
+     */
+    candidates?: string[];
+  };
+  /**
+   * A qualified edge endpoint resolves, within the declaring scope's reach, to
+   * two or more nodes that are **not uniform in (kind, depth)** — the shared
+   * #2088 discriminator, so a uniform multi-match stays silent as the
+   * intentional broadcast ADR-927 / ADR-1566 legitimize.
+   *
+   * Bare endpoints draw no ambiguity verdict: they keep ADR-2075's peer
+   * binding, where a multi-match is the pre-existing broadcast rather than a
+   * new question. A code that fired there would be reporting behaviour this
+   * slice did not introduce.
+   */
+  "edge-target-ambiguous": {
+    /** the reference as written (joined) */
+    path: string;
+    /** each reachable match, by full path, so the author can qualify further */
+    candidates: Array<{ kind: string; path: string }>;
   };
   "cyclic-dependency": { cyclePath: string[] };
   "delivers-target-not-client": { serviceId: string; targetId: string };

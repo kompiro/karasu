@@ -334,6 +334,12 @@ export const ja: Partial<Translations> = {
     `エッジを source のブロック内（\`${from} { -> ${to} }\`）に書くと、両端が peer になるビューで描画されます`,
   "warning.edgeEndpointNotAtScope.qualifyHint": ({ ownerId, endpointId }) =>
     `参照先を限定子付き（"${ownerId}.${endpointId}"）で書くと、entity ビューに描画されます`,
+  "warning.edgeEndpointNotAtScope.descendHint": ({ endpointId, candidates }) =>
+    `"${endpointId}" はトップレベル system から綴った path になっていないため、参照先を描画できるビューがありません。system を起点に書き直してください。参照先は ${candidates.join(", ")} に宣言されています`,
+  "warning.edgeTargetAmbiguous.message": ({ path, candidates }) =>
+    `エッジの参照先 "${path}" は kind または深さの異なる複数のノードに一致します: ${candidates
+      .map((c) => `${c.path} (${c.kind})`)
+      .join(", ")}。より長い path で修飾して 1 つに絞ってください`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
     `"${ref}" は ${sourceSystemId}.${sourceNodeId} から参照されていますが、@external として明示されていません`,
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
