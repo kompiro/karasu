@@ -8,6 +8,9 @@ applicable_to:
   - "宣言 1 行の shorthand に対して、同じ事実を書けるプロパティブロック形を追加するとき"
   - "1 行が複数の要素を持つリスト値プロパティを新設・拡張するとき"
   - "リスト要素を対象とする診断（未解決参照など）の range を決めるとき"
+known_consumers:
+  - realizes-comma-list
+  - edge-property-block
 discovered_from:
   - issue: "#2167"
   - issue: "#2543"
