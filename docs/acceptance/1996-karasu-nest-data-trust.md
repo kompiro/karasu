@@ -15,9 +15,9 @@
 > 「投稿物と投稿者の識別子」であり、成立条件だという位置づけだけが引き継がれている。
 > したがって旧 AT-A〜AT-N はこの記録から消え、下は現在のギャラリーに対する条件である。
 
-> ADR-2578 決定 6 は成立条件であって follow-up ではない。この AT が全部緑でも、**下の
-> 「人間がやること」が残っているかぎり条件は満たされていない。** 技術側の緑を「準備完了」と
-> 読まないための注記をここに置く。
+> ADR-2578 決定 6 は成立条件であって follow-up ではない。この AT が全部緑でも、
+> **`docs/policy/nest-data-handling.md` の「未了」節が残っているかぎり条件は満たされて
+> いない。** 技術側の緑を「準備完了」と読まないための注記をここに置く。
 
 ## 受け入れ条件
 
@@ -61,18 +61,20 @@
 
   > ✅ Automated — `packages/nest/src/gallery/validate.test.ts` › `refuses a document carrying something credential-shaped` / `names the rule that fired, never the value it matched` / `never puts the matched value in the message, wherever it was found` / `scans the title, which is stored and published like the document`
 
-### 人間がやること（自動化できない・してはいけない）
+## 手動確認
 
-**この節が終わるまで ADR-2578 決定 6 は満たされていない。** 未了のまま、運用者以外に
-ギャラリーを開かない。正本は `docs/policy/nest-data-handling.md` の「未了」節で、
-[#2591](https://github.com/kompiro/karasu/issues/2591) が引き取る。ここはその写しである。
+N/A — 上の受け入れ条件はすべて自動テストで判定できる。
 
-#2590 で **2 件が消滅した**: Anthropic との zero-retention 契約（モデルを呼ばない）と、
-企業向け DPA の要否判断（他人のデータを処理しない）。あわせて、`PR_DELIVERY` と
-`POST /<owner>/<repo>/generate` を前提にしていた旧 H-7・H-9、および ADR-1990 の退避先
-（public repo のみへの縮小）を検討する旧 H-8 も、主語ごと消えた。
+### 未了（この AT の項目ではない）
 
-- [ ] H-1: privacy policy を起草し、**資格のある人間**のレビューを受ける（保持するのは GitHub 識別子と投稿物のみ。`docs/policy/nest-data-handling.md` は素材であって privacy policy ではない）
-- [ ] H-2: ToS を起草し、責任制限に加えて**投稿物の権利帰属**についてレビューを受ける
-- [ ] H-3: 公開先（docs-site 上の URL）を決め、サインイン画面からの導線を作る
-- [ ] H-4: 問い合わせ窓口を決める。削除請求に加えて、**第三者からの取り下げ請求**を受ける先が要る
+成立条件の残りは**起草と法務レビュー**であって、実機で判定するものではない。一覧の正本は
+`docs/policy/nest-data-handling.md` の「未了」節で、[#2591](https://github.com/kompiro/karasu/issues/2591)
+が引き取る。privacy policy・ToS・公開先・問い合わせ窓口の 4 件が残っている。
+
+**チェックボックスをここへ写さない。** 写すと正本と 2 箇所で管理することになり、しかも
+「再実行される実機確認」と「一度終われば終わる作業」が同じ見た目で並ぶ。この AT が判定
+するのは上の受け入れ条件だけで、未了があるかどうかは正本を見る。
+
+#2590 で消滅した分も同じ節が記録している: Anthropic との zero-retention 契約（モデルを
+呼ばない）と、企業向け DPA の要否判断。あわせて `PR_DELIVERY`・`POST /<owner>/<repo>/generate`・
+ADR-1990 の退避先（public repo のみへの縮小）を前提にしていた旧 H-7〜H-9 も、主語ごと消えた。

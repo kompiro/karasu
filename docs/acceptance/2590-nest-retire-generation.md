@@ -63,8 +63,9 @@
   > ✅ Automated — `pnpm at:check-coverage`（marker と design-doc 参照）、`pnpm adr:check-assumptions`（ADR の `assumptions:` が指すファイルの実在）
   >
   > **`packages/nest/**` へのパス参照が本文に残っていないことは、この 2 つでは検出できない**（`at:check-coverage` は
-  > unit テストのパスを実在確認しない）。今回は目視で 0 件にしたが、機械化は未了。ADR 本文は当時の記録として
-  > 意図的に据え置くため（ADR-706）、ガードを作るなら `docs/adr/**` を除外範囲に含める必要がある。
+  > unit テストのパスを実在確認しない）。今回は目視で 0 件にしたが、機械化は
+  > [#2648](https://github.com/kompiro/karasu/issues/2648) が引き取る（ADR 本文は当時の記録として意図的に据え置くため、
+  > ガードは `docs/adr/**` を除外範囲に含める。ADR-706）。
 
 ## 手動確認
 
