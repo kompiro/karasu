@@ -1,7 +1,8 @@
 ---
 id: ADR-2075
 title: 宣言スコープで描画できない edge endpoint を診断する — peer はノードインスタンス単位で数える
-status: accepted
+status: superseded
+superseded_by: ADR-2088
 date: 2026-07-31
 topic: resolver
 depends_on:
@@ -30,7 +31,7 @@ assumptions:
 # ADR-2075: 宣言スコープで描画できない edge endpoint を診断する — peer はノードインスタンス単位で数える
 
 - **日付**: 2026-07-31
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-2088](2088-node-reference-path-notation.md)
 - **関連**:
   - 引き金 Issue: [#2075](https://github.com/kompiro/karasu/issues/2075)
   - 実装 PR: [#2219](https://github.com/kompiro/karasu/pull/2219)（Design Doc は [#2212](https://github.com/kompiro/karasu/pull/2212)）
