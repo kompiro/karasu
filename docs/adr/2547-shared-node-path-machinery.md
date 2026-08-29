@@ -5,6 +5,7 @@ status: accepted
 date: 2026-08-19
 topic: parser
 related_to:
+  - ADR-2088
   - ADR-927
   - ADR-104
   - ADR-1911
@@ -26,7 +27,7 @@ assumptions:
 - **日付**: 2026-08-19
 - **ステータス**: 決定済み・実装完了
 - **関連**:
-  - Issue: [#2547](https://github.com/kompiro/karasu/issues/2547)（[#2088](https://github.com/kompiro/karasu/issues/2088) の slice A。プログラム全体の設計は [owns-cross-layer-addressing](../design/owns-cross-layer-addressing.md)、完了時に ADR-2088 へ昇格予定）
+  - Issue: [#2547](https://github.com/kompiro/karasu/issues/2547)（[#2088](https://github.com/kompiro/karasu/issues/2088) の slice A。プログラム全体の決定は [ADR-2088](2088-node-reference-path-notation.md)）
   - 関連 ADR: [ADR-927](927-import-system-nested.md)（import path）, [ADR-104](104-system-selector-not-adopted.md)（cross-system edge 参照）, [ADR-1911](1911-cross-domain-ghost-entities.md)（cross-domain entity relation）, [ADR-316](316-database-as-first-class-node.md)（`resource OrderDB.Orders`）, [ADR-2522](2522-vocabulary-census-drift.md)（最小 cursor interface による字句ヘルパー抽出の前例、kebab-name）
   - 関連 TPL: [TPL-2088](../test-perspectives/TPL-2088-id-reference-notation-uniform-across-sites.md)（参照記法はサイト間で 1 規則）, [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md), [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)
 

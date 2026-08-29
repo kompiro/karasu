@@ -27,6 +27,7 @@ flowchart TD
   ADR_1386["ADR-1386<br/>[core-concepts] karasu はスタイル流派を規定せず、流派が smell と呼ぶ構造は `info` 診断で..."]
   ADR_1567["ADR-1567<br/>[parser] 規則と診断を分離し、診断カタログで完全性を担保する"]
   ADR_1870["ADR-1870<br/>[core-concepts] ドメインエンティティと関連のモデリング（v1）— 非目標「DB スキーマ」の線引き直し"]
+  ADR_2088["ADR-2088<br/>[parser] ノード参照は全サイトで同じ path 記法を受理し、接尾辞規則で解決する"]
   ADR_2165["ADR-2165<br/>[parser] 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
   ADR_9003["ADR-9003<br/>[core-concepts] 論理構造と物理構造の分離"]
   ADR_237 --> ADR_9003
@@ -43,6 +44,7 @@ flowchart TD
   ADR_517 --> ADR_477
   ADR_702 --> ADR_316
   ADR_2165 --> ADR_1314
+  ADR_2088 -.supersedes.-> ADR_2075
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -57,7 +59,7 @@ flowchart TD
   class ADR_1381 accepted
   class ADR_1570 accepted
   class ADR_1819 accepted
-  class ADR_2075 accepted
+  class ADR_2075 superseded
   class ADR_2078 accepted
   class ADR_2184 accepted
   class ADR_2410 accepted
@@ -70,6 +72,7 @@ flowchart TD
   class ADR_1386 ghost
   class ADR_1567 ghost
   class ADR_1870 ghost
+  class ADR_2088 ghost
   class ADR_2165 ghost
   class ADR_9003 ghost
 ```
