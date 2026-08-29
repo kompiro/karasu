@@ -5,8 +5,10 @@
 - **関連 ADR**: [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)（決定 5: state は nest 側、コンソールは nest 自身が返す）
 - **関連 TPL**: [TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)（全 prefix が purge から到達できる）、[TPL-2587](../test-perspectives/TPL-2587-author-managed-content-has-no-ttl.md)
 - **対象ファイル**:
-  - `packages/nest/src/routes/console.ts`（一覧・非公開化・差し替え・削除・アカウント削除）
-  - `packages/nest/src/gallery/html.ts`（素の form。JS もビルドも無い）
+  - `packages/nest/src/routes/console.ts`（一覧・非公開化・差し替え・削除・アカウント削除。素の form はここが組み立てる。JS もビルドも無い）
+  - `packages/nest/src/gallery/html.ts`（ページ枠とエスケープ）
+  - `packages/nest/src/request-body.ts`（body を読みながら上限をかける。ingest と共有）
+  - `packages/nest/src/gallery/validate.ts`（ingest と同じ 2 つの検査、および改行の正規化）
 
 > コンソールが減らすのは**件数であって難易度ではない**。取り下げ請求は 2 系統あり、
 > アカウントを持っているのは片方だけである。投稿者本人の「消したい」はボタン 1 つで
@@ -64,9 +66,21 @@
 
   > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `leaves another account untouched`
 
-- [x] AT-M: 別オリジンからの状態変更要求をすべて拒否し、何も変えない
+- [x] AT-M: 別オリジンからの状態変更要求を書き込み系 5 ルートすべてで拒否し、何も変えない
 
-  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `refuses a cross-origin form and changes nothing` / `refuses a cross-origin request and deletes nothing`
+  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `refuses a cross-origin form and stores nothing`（submit）/ `refuses a cross-origin form and changes nothing`（visibility）/ `refuses a cross-origin form and keeps the document`（replace）/ `refuses a cross-origin request and deletes nothing`（個別削除・アカウント削除）
+
+- [x] AT-N: **拒否がフォームで返る**（JSON ではなく、理由と入力済みの本文を載せたページ）
+
+  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `hands the rejected document back on the form, not a page of JSON` / `keeps the unlisted choice on the form it hands back` / `hands the refused edit back, not the document it failed to replace`
+
+- [x] AT-O: 読み切れない大きさの body は、読む前に 413 で断る
+
+  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `refuses a body too large to read, rather than reading it first`
+
+- [x] AT-P: フォームの往復で文書が書き換わらない（CRLF 化しない・先頭の空行が消えない）
+
+  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `stores the line endings the submitter wrote, not the ones the form sent` / `keeps a leading blank line through the textarea`
 
 ## 手動確認
 

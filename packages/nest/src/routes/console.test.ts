@@ -5,10 +5,13 @@ import { GalleryStore } from "../store/gallery-store.js";
 import { formatSubmissionId } from "../store/gallery-keys.js";
 import { MemoryKV } from "../testing/memory-kv.js";
 import { SESSION_COOKIE } from "../auth/session.js";
+import { MAX_FORM_BODY_BYTES } from "../request-body.js";
 
 const ctx: NestExecutionContext = { waitUntil: () => {} };
 const ORIGIN = "https://nest.example";
 const KRS = "system Shop {\n  service api\n}\n";
+/** A document the parser reports on, used wherever a rejection is the point. */
+const BROKEN = "system Shop {\n  service\n";
 const at = new Date("2026-08-02T00:00:00Z");
 
 const env = (kv: MemoryKV): NestEnv => ({ KRS_CACHE: kv, NEST_PUBLIC_ORIGIN: ORIGIN });
@@ -110,6 +113,65 @@ describe("POST /console/submit", () => {
     expect(response.status).toBe(400);
     expect((await new GalleryStore(kv).submissions.list(42)).length).toBe(0);
   });
+
+  it("hands the rejected document back on the form, not a page of JSON", async () => {
+    // These are plain forms with no client script, so a JSON body is literally
+    // what the submitter reads — and a .krs with a syntax error is the routine
+    // failure, not an exotic one. Answering it with braces and no textarea
+    // manufactures the support request this console exists to remove.
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const response = await post(kv, "/console/submit", { title: "Shop", krs: BROKEN }, { cookie });
+    expect(response.status).toBe(400);
+    expect(response.headers.get("Content-Type")).toContain("text/html");
+    const body = await response.text();
+    expect(body).toContain("syntax error");
+    expect(body).toContain(BROKEN);
+    expect(body).toContain('value="Shop"');
+  });
+
+  it("keeps the unlisted choice on the form it hands back", async () => {
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const response = await post(
+      kv,
+      "/console/submit",
+      { title: "Shop", krs: BROKEN, unlisted: "on" },
+      { cookie },
+    );
+    expect(await response.text()).toContain('value="on" checked');
+  });
+
+  it("refuses a cross-origin form and stores nothing", async () => {
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const response = await post(
+      kv,
+      "/console/submit",
+      { title: "Shop", krs: KRS },
+      { cookie, origin: "https://evil.example" },
+    );
+    expect(response.status).toBe(403);
+    expect((await new GalleryStore(kv).submissions.list(42)).length).toBe(0);
+  });
+
+  it("refuses a body too large to read, rather than reading it first", async () => {
+    // `validateSubmission` would say `too_large` — but only once the whole body
+    // is in the isolate, which is the memory this cap exists to not spend. The
+    // ingest door has counted as the bytes arrive since it was written; this
+    // one now shares the counter.
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const response = await post(
+      kv,
+      "/console/submit",
+      { title: "Shop", krs: "a".repeat(MAX_FORM_BODY_BYTES + 1) },
+      { cookie },
+    );
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ error: { code: "payload_too_large" } });
+    expect((await new GalleryStore(kv).submissions.list(42)).length).toBe(0);
+  });
 });
 
 describe("GET /console/s/<id>", () => {
@@ -131,6 +193,22 @@ describe("GET /console/s/<id>", () => {
     await account(kv, 420, "stranger");
     const theirs = await submission(kv, 420);
     expect((await get(kv, `/console/s/${theirs}`, mine)).status).toBe(404);
+  });
+
+  it("keeps a leading blank line through the textarea", async () => {
+    // An HTML parser drops one newline immediately after `<textarea>`, so the
+    // page has to carry a spare or a .krs that starts with a blank line loses
+    // it every time its author opens the form.
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const created = await new GalleryStore(kv).submissions.create(
+      42,
+      { title: "Shop", krs: `\n${KRS}` },
+      at,
+    );
+    const id = formatSubmissionId(42, created.slug);
+    const body = await (await get(kv, `/console/s/${id}`, cookie)).text();
+    expect(body).toContain(`<textarea name="krs" required>\n\n${KRS}</textarea>`);
   });
 });
 
@@ -214,6 +292,57 @@ describe("POST /console/s/<id>/replace", () => {
     expect(response.status).toBe(400);
     expect((await new GalleryStore(kv).submissions.list(42))[0]?.krs).toBe(KRS);
   });
+
+  it("hands the refused edit back, not the document it failed to replace", async () => {
+    // Redrawing the textarea from storage would throw away the work being
+    // rejected, which is the one thing the submitter still needs.
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const id = await submission(kv, 42);
+    const response = await post(
+      kv,
+      `/console/s/${id}/replace`,
+      { title: "Shop v2", krs: BROKEN },
+      { cookie },
+    );
+    expect(response.headers.get("Content-Type")).toContain("text/html");
+    const body = await response.text();
+    expect(body).toContain(BROKEN);
+    expect(body).toContain('value="Shop v2"');
+    expect(body).not.toContain("service api");
+  });
+
+  it("stores the line endings the submitter wrote, not the ones the form sent", async () => {
+    // A browser serialising a <textarea> rewrites every line ending to CRLF,
+    // so editing only the title would otherwise rewrite the whole document —
+    // and `?format=krs` would hand back something that no longer matches the
+    // file on their disk.
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const id = await submission(kv, 42);
+    const edited = "system Shop {\n  service api\n  service worker\n}\n";
+    await post(
+      kv,
+      `/console/s/${id}/replace`,
+      { title: "Shop", krs: edited.replaceAll("\n", "\r\n") },
+      { cookie },
+    );
+    expect((await new GalleryStore(kv).submissions.list(42))[0]?.krs).toBe(edited);
+  });
+
+  it("refuses a cross-origin form and keeps the document", async () => {
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const id = await submission(kv, 42);
+    const response = await post(
+      kv,
+      `/console/s/${id}/replace`,
+      { title: "Shop v2", krs: "system Shop {\n  service worker\n}\n" },
+      { cookie, origin: "https://evil.example" },
+    );
+    expect(response.status).toBe(403);
+    expect((await new GalleryStore(kv).submissions.list(42))[0]?.krs).toBe(KRS);
+  });
 });
 
 describe("deleting one submission", () => {
@@ -234,6 +363,20 @@ describe("deleting one submission", () => {
     await post(kv, `/console/s/${doomed}/delete`, {}, { cookie });
     const left = await new GalleryStore(kv).submissions.list(42);
     expect(left.map((entry) => entry.title)).toEqual(["Kept"]);
+  });
+
+  it("refuses a cross-origin request and deletes nothing", async () => {
+    const kv = new MemoryKV();
+    const cookie = await account(kv, 42);
+    const id = await submission(kv, 42);
+    const response = await post(
+      kv,
+      `/console/s/${id}/delete`,
+      {},
+      { cookie, origin: "https://evil.example" },
+    );
+    expect(response.status).toBe(403);
+    expect((await new GalleryStore(kv).submissions.list(42)).length).toBe(1);
   });
 });
 

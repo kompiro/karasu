@@ -19,6 +19,15 @@
  * tedious request ("remove everything and close my account") stays
  * human-handled, which is exactly what this route exists to prevent.
  *
+ * **A refusal comes back as the page, not as JSON.** Every other surface this
+ * Worker serves is answered by a program, so `error()` returning JSON is right
+ * there and wrong here: these are plain forms with no client script, so a JSON
+ * body is literally what the submitter reads. A `.krs` with a syntax error is
+ * the routine failure rather than an exotic one, and answering it with a page
+ * of braces — the document they just typed nowhere on it — manufactures the
+ * support request this console exists to remove. The form comes back with the
+ * reason above it and the text still in it.
+ *
  * Served from nest's own hostname rather than from a separate static origin
  * calling an API (ADR-2578 decision 5). Same-origin means the session cookie
  * needs no CORS and no cross-origin cookie design — on the first surface that
@@ -38,6 +47,7 @@ import {
 import { MAX_TITLE_LENGTH, type Submission } from "../store/submissions.js";
 import { escapeHtml, page } from "../gallery/html.js";
 import { validateSubmission } from "../gallery/validate.js";
+import { readFormBody } from "../request-body.js";
 
 const SIGN_IN = "/auth/login";
 
@@ -52,7 +62,8 @@ interface Signed {
  * A `GET` redirects to sign-in, because the visitor is a person who can follow
  * it. A `POST` answers 401: redirecting a form submission to a login page
  * loses the body, so the submitter would come back signed in and find their
- * work gone.
+ * work gone. This one stays JSON where the rejections below do not — it is
+ * answered before there is a page of theirs to put a message on.
  */
 async function signedIn(context: RouteContext): Promise<Signed | Response> {
   const { request, env } = context;
@@ -102,12 +113,80 @@ const nav = (login: string): string =>
   `<span class="tag">${escapeHtml(login)}</span>` +
   '<form method="post" action="/auth/logout"><button>Sign out</button></form>';
 
-const notFound = (): Response => error(404, "not_found", "No submission with that id.");
+/** The reason a form was refused, above the form it was refused from. */
+const problem = (message: string): string =>
+  `<p class="problem" role="alert">${escapeHtml(message)}</p>`;
 
-/** `GET /console` — everything this account owns. */
-export async function consoleIndex(context: RouteContext): Promise<Response> {
-  const signed = await signedIn(context);
-  if (signed instanceof Response) return signed;
+/**
+ * A textarea whose content survives the round trip.
+ *
+ * The newline after the opening tag is deliberate: an HTML parser drops one
+ * newline in exactly that position, so without a spare of our own a `.krs`
+ * beginning with a blank line would lose it every time the submitter opened
+ * the page. (The other half of the round trip — a browser rewriting every line
+ * ending to CRLF on the way back — is normalised in `gallery/validate.ts`.)
+ */
+const krsField = (value: string): string =>
+  `<label>.krs <textarea name="krs" required>\n${escapeHtml(value)}</textarea></label>`;
+
+const titleField = (value: string): string =>
+  `<label>Title <input type="text" name="title" maxlength="${MAX_TITLE_LENGTH}" value="${escapeHtml(
+    value,
+  )}" required></label>`;
+
+/**
+ * "No submission with that id", as a page.
+ *
+ * Deliberately the same answer for a submission that never existed, one that
+ * was deleted, and one that belongs to someone else — saying which would make
+ * the console an oracle for what a stranger has posted.
+ */
+const notFound = (signed: Signed): Response =>
+  html(
+    page({
+      title: "Not found",
+      nav: nav(signed.viewer.account.login),
+      body: [
+        "<h1>No model with that id</h1>",
+        "<p>It may have been deleted, or it may belong to someone else. ",
+        '<a href="/console">Your models</a>.</p>',
+      ].join(""),
+    }),
+    { status: 404 },
+  );
+
+/** What the submit form holds: empty on arrival, the refused text on a retry. */
+interface SubmitDraft {
+  title: string;
+  krs: string;
+  unlisted: boolean;
+  message?: string;
+}
+
+const EMPTY_DRAFT: SubmitDraft = { title: "", krs: "", unlisted: false };
+
+/** The form that puts a `.krs` in, so a browser alone is enough to use this. */
+function submitForm(draft: SubmitDraft): string {
+  return [
+    '<form method="post" action="/console/submit">',
+    "<h2>Submit a model</h2>",
+    draft.message === undefined ? "" : problem(draft.message),
+    titleField(draft.title),
+    krsField(draft.krs),
+    `<label><input type="checkbox" name="unlisted" value="on"${
+      draft.unlisted ? " checked" : ""
+    }> Keep it unlisted</label>`,
+    '<p class="actions"><button type="submit">Submit</button></p>',
+    "</form>",
+  ].join("");
+}
+
+/** Everything this account owns, with the submit form under it. */
+async function indexPage(
+  signed: Signed,
+  draft: SubmitDraft = EMPTY_DRAFT,
+  status = 200,
+): Promise<Response> {
   const submissions = await signed.store.submissions.list(signed.viewer.account.accountId);
 
   const cards = submissions
@@ -132,24 +211,19 @@ export async function consoleIndex(context: RouteContext): Promise<Response> {
       body: [
         "<h1>Your models</h1>",
         submissions.length === 0 ? '<p class="empty">Nothing submitted yet.</p>' : cards,
-        submitForm(),
+        submitForm(draft),
         '<p class="actions"><a href="/console/account/delete">Delete my account</a></p>',
       ].join(""),
     }),
+    { status },
   );
 }
 
-/** The form that puts a `.krs` in, so a browser alone is enough to use this. */
-function submitForm(): string {
-  return [
-    '<form method="post" action="/console/submit">',
-    "<h2>Submit a model</h2>",
-    `<label>Title <input type="text" name="title" maxlength="${MAX_TITLE_LENGTH}" required></label>`,
-    '<label>.krs <textarea name="krs" required></textarea></label>',
-    '<label><input type="checkbox" name="unlisted" value="on"> Keep it unlisted</label>',
-    '<p class="actions"><button type="submit">Submit</button></p>',
-    "</form>",
-  ].join("");
+/** `GET /console` — everything this account owns. */
+export async function consoleIndex(context: RouteContext): Promise<Response> {
+  const signed = await signedIn(context);
+  if (signed instanceof Response) return signed;
+  return await indexPage(signed);
 }
 
 /** `POST /console/submit` — the form's target. */
@@ -159,31 +233,47 @@ export async function consoleSubmit(context: RouteContext): Promise<Response> {
   const signed = await signedIn(context);
   if (signed instanceof Response) return signed;
 
-  const form = await context.request.formData();
-  const validated = validateSubmission(form.get("title"), form.get("krs"));
+  const form = await readFormBody(context.request);
+  if (form instanceof Response) return form;
+  const draft: SubmitDraft = {
+    title: form.get("title") ?? "",
+    krs: form.get("krs") ?? "",
+    unlisted: form.get("unlisted") === "on",
+  };
+
+  const validated = validateSubmission(draft.title, draft.krs);
   if (!validated.ok) {
-    return error(400, validated.rejection.code, validated.rejection.message);
+    return await indexPage(signed, { ...draft, message: validated.rejection.message }, 400);
   }
   const submission = await signed.store.submissions.create(
     signed.viewer.account.accountId,
     {
       title: validated.title,
       krs: validated.krs,
-      visibility: form.get("unlisted") === "on" ? "unlisted" : "public",
+      visibility: draft.unlisted ? "unlisted" : "public",
     },
     new Date(),
   );
   return redirect(`/console/s/${formatSubmissionId(submission.accountId, submission.slug)}`);
 }
 
+/** What the replace form holds: the stored document, or the refused edit. */
+interface ReplaceDraft {
+  title: string;
+  krs: string;
+  message?: string;
+}
+
 /** `GET /console/s/<id>` — one submission, and the controls for it. */
-export async function consoleSubmission(context: RouteContext): Promise<Response> {
-  const signed = await signedIn(context);
-  if (signed instanceof Response) return signed;
-  const owned = await ownSubmission(signed, context.params.id ?? "");
-  if (owned === undefined) return notFound();
-  const { id, submission } = owned;
+function submissionPage(
+  signed: Signed,
+  id: string,
+  submission: Submission,
+  draft?: ReplaceDraft,
+  status = 200,
+): Response {
   const isPublic = submission.visibility === "public";
+  const replace = draft ?? { title: submission.title, krs: submission.krs };
 
   return html(
     page({
@@ -205,16 +295,24 @@ export async function consoleSubmission(context: RouteContext): Promise<Response
         "</form>",
         `<form method="post" action="/console/s/${escapeHtml(id)}/replace">`,
         "<h2>Replace</h2>",
-        `<label>Title <input type="text" name="title" maxlength="${MAX_TITLE_LENGTH}" value="${escapeHtml(
-          submission.title,
-        )}" required></label>`,
-        `<label>.krs <textarea name="krs" required>${escapeHtml(submission.krs)}</textarea></label>`,
+        replace.message === undefined ? "" : problem(replace.message),
+        titleField(replace.title),
+        krsField(replace.krs),
         '<p class="actions"><button type="submit">Replace</button></p>',
         "</form>",
         `<p class="actions"><a href="/console/s/${escapeHtml(id)}/delete">Delete this model</a></p>`,
       ].join(""),
     }),
+    { status },
   );
+}
+
+export async function consoleSubmission(context: RouteContext): Promise<Response> {
+  const signed = await signedIn(context);
+  if (signed instanceof Response) return signed;
+  const owned = await ownSubmission(signed, context.params.id ?? "");
+  if (owned === undefined) return notFound(signed);
+  return submissionPage(signed, owned.id, owned.submission);
 }
 
 /** `POST /console/s/<id>/visibility` — publish or unpublish. */
@@ -224,10 +322,14 @@ export async function consoleSetVisibility(context: RouteContext): Promise<Respo
   const signed = await signedIn(context);
   if (signed instanceof Response) return signed;
   const owned = await ownSubmission(signed, context.params.id ?? "");
-  if (owned === undefined) return notFound();
+  if (owned === undefined) return notFound(signed);
 
-  const wanted = (await context.request.formData()).get("visibility");
+  const form = await readFormBody(context.request);
+  if (form instanceof Response) return form;
+  const wanted = form.get("visibility");
   if (wanted !== "public" && wanted !== "unlisted") {
+    // JSON, unlike the rejections above: the value is a hidden field this
+    // module writes, so nothing a browser does with our own page reaches here.
     return error(400, "invalid_visibility", 'visibility must be "public" or "unlisted".');
   }
   await signed.store.submissions.update(
@@ -246,14 +348,25 @@ export async function consoleReplace(context: RouteContext): Promise<Response> {
   const signed = await signedIn(context);
   if (signed instanceof Response) return signed;
   const owned = await ownSubmission(signed, context.params.id ?? "");
-  if (owned === undefined) return notFound();
+  if (owned === undefined) return notFound(signed);
 
-  const form = await context.request.formData();
+  const form = await readFormBody(context.request);
+  if (form instanceof Response) return form;
+  const draft: ReplaceDraft = { title: form.get("title") ?? "", krs: form.get("krs") ?? "" };
+
   // The same two checks ingest runs. A replacement is a submission; letting it
   // in through a different door would make the door the thing being tested.
-  const validated = validateSubmission(form.get("title"), form.get("krs"));
+  const validated = validateSubmission(draft.title, draft.krs);
   if (!validated.ok) {
-    return error(400, validated.rejection.code, validated.rejection.message);
+    // The edit comes back, not the stored document: overwriting the textarea
+    // with what is already saved would throw away the work being rejected.
+    return submissionPage(
+      signed,
+      owned.id,
+      owned.submission,
+      { ...draft, message: validated.rejection.message },
+      400,
+    );
   }
   await signed.store.submissions.update(
     owned.submission.accountId,
@@ -269,7 +382,7 @@ export async function consoleConfirmDelete(context: RouteContext): Promise<Respo
   const signed = await signedIn(context);
   if (signed instanceof Response) return signed;
   const owned = await ownSubmission(signed, context.params.id ?? "");
-  if (owned === undefined) return notFound();
+  if (owned === undefined) return notFound(signed);
 
   return html(
     page({
@@ -295,7 +408,7 @@ export async function consoleDelete(context: RouteContext): Promise<Response> {
   const signed = await signedIn(context);
   if (signed instanceof Response) return signed;
   const owned = await ownSubmission(signed, context.params.id ?? "");
-  if (owned === undefined) return notFound();
+  if (owned === undefined) return notFound(signed);
 
   await signed.store.submissions.delete(owned.submission.accountId, owned.submission.slug);
   return redirect("/console");
