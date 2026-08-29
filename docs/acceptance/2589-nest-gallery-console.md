@@ -74,9 +74,9 @@
 
   > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `hands the rejected document back on the form, not a page of JSON` / `keeps the unlisted choice on the form it hands back` / `hands the refused edit back, not the document it failed to replace`
 
-- [x] AT-O: 読み切れない大きさの body は、読む前に 413 で断る
+- [x] AT-O: 上限を超える body は、全体を読まずに 413 で断る（越えたバイトで読み取りを打ち切る）
 
-  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `refuses a body too large to read, rather than reading it first`
+  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `stops at the byte that crosses the cap, rather than buffering the whole body`
 
 - [x] AT-P: フォームの往復で文書が書き換わらない（CRLF 化しない・先頭の空行が消えない）
 

@@ -155,11 +155,12 @@ describe("POST /console/submit", () => {
     expect((await new GalleryStore(kv).submissions.list(42)).length).toBe(0);
   });
 
-  it("refuses a body too large to read, rather than reading it first", async () => {
+  it("stops at the byte that crosses the cap, rather than buffering the whole body", async () => {
     // `validateSubmission` would say `too_large` — but only once the whole body
     // is in the isolate, which is the memory this cap exists to not spend. The
     // ingest door has counted as the bytes arrive since it was written; this
-    // one now shares the counter.
+    // one now shares the counter, so the read is cancelled at the crossing byte
+    // rather than run to the end.
     const kv = new MemoryKV();
     const cookie = await account(kv, 42);
     const response = await post(
