@@ -86,6 +86,33 @@ describe("edge endpoint scope rule (#2577)", () => {
     }
   });
 
+  it("refuses a path rooted at a top-level orphan — nothing could draw it", () => {
+    // The checker's declared-path pool covers the orphan buckets, so
+    // `Billing.Invoice` matches at full length; the ghost renderer walks
+    // systems only. Requiring a `system` root is what keeps the two pools
+    // answering the same question.
+    const file = parse(`
+domain Billing {
+  entity Invoice {}
+}
+
+system Shop {
+  service Checkout {}
+}
+`);
+    const index = buildEdgeEndpointIndex(file);
+    const resolution = resolveEdgeEndpoint(
+      index,
+      find(file, ["Shop", "Checkout"]),
+      edgeEndpointRef("Billing.Invoice"),
+    );
+    expect(resolution.matches.map((m) => m.path.join("."))).toEqual(["Billing.Invoice"]);
+    expect(resolution.inScope).toEqual([]);
+    expect(
+      buildGhostEndpointResolver(file.systems)(edgeEndpointRef("Billing.Invoice")),
+    ).toBeUndefined();
+  });
+
   it("a root anchor is reachable from any depth — what keeps Sys.Child working", () => {
     const file = parse(MODEL);
     // From a usecase three levels down, the other system is still nameable.

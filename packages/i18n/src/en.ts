@@ -337,7 +337,7 @@ export const en: Translations = {
   "warning.edgeEndpointNotAtScope.qualifyHint": ({ ownerId, endpointId }) =>
     `Reference the target qualified ("${ownerId}.${endpointId}") so the relation renders in the entity view`,
   "warning.edgeEndpointNotAtScope.descendHint": ({ endpointId, candidates }) =>
-    `"${endpointId}" starts from a node this scope cannot see. Re-spell the path from one it can — the target is declared at ${candidates.join(", ")}`,
+    `"${endpointId}" is not a whole path from a top-level system, so no view can draw its target. Spell it from one — the target is declared at ${candidates.join(", ")}`,
   "warning.edgeTargetAmbiguous.message": ({ path, candidates }) =>
     `Edge target "${path}" matches multiple nodes of different kind or depth: ${candidates
       .map((c) => `${c.path} (${c.kind})`)

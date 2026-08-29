@@ -798,7 +798,7 @@ An edge is drawn on the view where its endpoints stand side by side — the view
 of the block it is declared in (`system`), or the view that draws that block as
 a node (`service` / `domain` / `entity`). **How far an endpoint may reach is
 decided by structure, not by spelling**: a bare id names something standing
-beside the edge, and a path descends from something that scope can already see.
+beside the edge, and a path names a system and descends into it.
 
 Write `peers(C)` for the nodes standing beside a block `C`:
 
@@ -809,8 +809,12 @@ Write `peers(C)` for the nodes standing beside a block `C`:
 Then:
 
 - a **bare** endpoint must be in `peers(C)`;
-- a **qualified** endpoint must be **anchored at a top-level root** — it spells
-  the whole path from a `system` (or a top-level block) down to the target.
+- a **qualified** endpoint must spell the whole path from a top-level
+  `system` down to the target.
+
+A top-level block declared beside the systems (a bare `domain`, an orphan
+`service`) is drawn on no system's frame, so a path cannot be rooted at one —
+there would be nothing to draw the target inside.
 
 To point inside a system you name that system and descend from it, at any
 depth. That is the two-segment `OtherSystem.Service` form generalised along
@@ -1148,7 +1152,7 @@ shape and one resolution rule (#2088):
 - **Sites keep their own scope rules.** The notation is shared; where a
   reference may point is still each site's business: an `import` path walks
   the imported file's tree (ADR-927), an edge endpoint is narrowed to the
-  matches descending from something its declaring scope can see
+  matches that spell a whole path from a top-level `system`
   ([§ Endpoint scope](#endpoint-scope)), a scoped `boundary … contains`
   resolves against the declaring node's direct children.
 - **Accepting sites today**: `import { … }`, cross-system edge endpoints,

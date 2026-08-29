@@ -1729,9 +1729,9 @@ function detectEdgeEndpointsNotAtScope(
 
   // `peers(C)` — and the orphan-frame reasoning behind it — moved to
   // `edge-endpoint.ts` with slice E (#2577), so this detector and the ghost
-  // resolution in `view-extract.ts` read one definition of what a scope can
-  // see. The set is unchanged; `visible(C)` (the same set folded up the
-  // ancestor chain) is what the qualified branch below adds.
+  // resolution in `view-extract.ts` read one definition. The bare set is
+  // unchanged; what the qualified branch below adds is a second condition of
+  // its own, root-anchoring, which does not consult the container at all.
   const check = (container: KrsNode): void => {
     for (const edge of container.edges) {
       for (const endpointId of [edge.from, edge.to]) {

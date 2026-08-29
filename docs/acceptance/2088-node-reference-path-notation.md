@@ -26,7 +26,7 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
   `boundaryMembership` を full path キーに張り替え
 - slice C（#2549）: `realizes` / `handles` を受理側に追加。拒否形は先頭セグメントを記録しない
 - slice D1 / D2（#2575 / #2576）: entity 関連・`resource`・`import` の解決を接尾辞規則へ寄せる
-- slice E（#2577）: edge endpoint の 2 セグメント上限を解除し、スコープ規則（`peers` / `visible`）と同時に着地させる
+- slice E（#2577）: edge endpoint の 2 セグメント上限を解除し、スコープ規則（bare は `peers(C)`、qualified はトップレベル `system` からの full path）と同時に着地させる
 
 ## 受け入れ条件
 

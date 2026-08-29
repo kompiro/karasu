@@ -18,12 +18,13 @@
 // that parsed before the cap lift is `TopLevelSystem.Child`, which is
 // root-anchored by construction, so no existing model changes verdict.
 //
-// Anchoring is what keeps every accepted form drawable. A reference that
-// descended from a *non-root* peer (`Checkout.Payment` written beside
-// `Checkout`) would resolve to a node the cross-system ghost machinery cannot
-// frame — it is not in another system — and would land on no view at all,
-// which is the silent drop TPL-2075 forbids. Such a reference is reported
-// instead, with a message naming the anchored spelling that does work.
+// Anchoring is what keeps every accepted form drawable, so the condition is
+// exactly the one the ghost renderer can satisfy: a path rooted at a `system`.
+// A reference descending from a non-root peer (`Checkout.Payment` written
+// beside `Checkout`), or one rooted at a top-level orphan (`Billing.Invoice`,
+// where `Billing` is a bare `domain`), names a node no ghost frame can hold —
+// so admitting it would resolve a reference the view then drops in silence,
+// which is what TPL-2075 forbids. Both are reported instead.
 //
 // Callers: `resolver/warnings.ts` (the scope / ambiguity / cross-system
 // diagnostics) and `view/view-extract.ts` (ghost systems and cross-system
@@ -63,12 +64,18 @@ export interface EdgeEndpointIndex {
   nodeAt(path: readonly string[]): KrsNode | undefined;
   /** ADR-2075's `peers(C)`, as full-path identity keys. */
   peers(container: KrsNode): ReadonlySet<string>;
+  /**
+   * Whether `id` names a top-level `system` — the only kind of root a
+   * qualified endpoint may descend from, because a ghost frame is a system
+   * and nothing else can draw the target.
+   */
+  isSystemRoot(id: string): boolean;
 }
 
 /**
- * Build the scope index for a merged file. One walk; the peer and visible sets
- * are memoized per container because the detectors ask for the same container
- * once per endpoint.
+ * Build the scope index for a merged file. One walk; the peer sets are
+ * memoized per container because the detectors ask for the same container once
+ * per endpoint.
  */
 export function buildEdgeEndpointIndex(file: KrsFile): EdgeEndpointIndex {
   const declared = collectDeclaredNodePaths(file);
@@ -142,11 +149,14 @@ export function buildEdgeEndpointIndex(file: KrsFile): EdgeEndpointIndex {
     return result;
   };
 
+  const systemRootIds = new Set(file.systems.map((s) => s.id));
+
   return {
     declared,
     pathOf: (node) => pathOf.get(node) ?? [node.id],
     nodeAt: (path) => nodeAt.get(nodePathIdentityKey(path)),
     peers,
+    isSystemRoot: (id) => systemRootIds.has(id),
   };
 }
 
@@ -174,10 +184,17 @@ export interface EdgeEndpointResolution {
  *
  * - **length 1 (bare)** — must be in `peers(C)`. ADR-2075's judgement,
  *   unchanged.
- * - **length 2+ (qualified)** — must be **anchored at a top-level root**: the
- *   reference spells the whole path from a `system` (or a top-level block)
- *   down to the target, which is `ref.length === path.length`. Naming a system
- *   and descending from it is the only way to reach inside it, at any depth.
+ * - **length 2+ (qualified)** — must spell the whole path from a top-level
+ *   `system` down to the target: `ref.length === path.length`, and the root
+ *   segment names a `system`. Naming a system and descending from it is the
+ *   only way to reach inside it, at any depth.
+ *
+ *   Both halves matter, and for the same reason — a ghost frame *is* a
+ *   top-level system. A path rooted at a top-level orphan (`Billing.Invoice`,
+ *   where `Billing` is a bare `domain`) has no frame to be drawn in, so
+ *   admitting it would resolve a reference the renderer then drops in silence.
+ *   That makes this condition exactly the ghost resolver's, which is what lets
+ *   the checker and the view agree on every reference.
  *
  * Ambiguity is reported for qualified references only: a bare id keeps
  * ADR-2075's verdict, and peers are sibling-unique enough that a bare
@@ -193,7 +210,7 @@ export function resolveEdgeEndpoint(
   const inScope =
     ref.length === 1
       ? matches.filter((m) => index.peers(container).has(nodePathIdentityKey(m.path)))
-      : matches.filter((m) => m.path.length === ref.length);
+      : matches.filter((m) => m.path.length === ref.length && index.isSystemRoot(m.path[0]));
   const ambiguous = ref.length === 1 ? undefined : ambiguousNodePathCandidates(inScope);
   return { ref, matches, inScope, ...(ambiguous ? { ambiguous } : {}) };
 }
@@ -214,12 +231,12 @@ export interface GhostEndpointMatch {
  * Resolve a qualified endpoint to the node it names and the top-level system
  * that frames it, for ghost rendering.
  *
- * Applies the same root-anchoring {@link resolveEdgeEndpoint} does, so the
- * view and the diagnostics agree on which references are cross-system: a ghost
- * frame is always a top-level system, and a reference that does not spell its
- * path from one is not a ghost. Without that agreement a non-anchored
- * reference resolves for the checker while framing a ghost of the system it
- * was written in, leaving an edge whose endpoint key nothing matches.
+ * Walks systems only and takes the same full-path condition
+ * {@link resolveEdgeEndpoint} applies, so the two answer one question with one
+ * rule: a reference is cross-system exactly when it spells a path from a
+ * top-level `system`. Neither side can accept what the other rejects. Without
+ * that agreement the checker resolves references the view then drops — the
+ * failure this module was extracted to make impossible.
  *
  * For a two-segment `Sys.Child` the walk lands on exactly the node
  * `allSystems.find(…).children.find(…)` used to find — the paths are equal by

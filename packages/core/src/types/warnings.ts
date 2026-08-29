@@ -168,18 +168,18 @@ export interface WarningParamsByKind {
    *   (a `client`) shares a canvas with nothing, so it has no peers.
    *
    * A **qualified** endpoint (`Sys.Svc`, `Sys.Svc.Domain`, …) is no longer
-   * skipped (#2577). It resolves by the shared suffix rule, narrowed to the
-   * matches whose *head* segment lands on a node in
+   * skipped (#2577). It must spell the whole path from a top-level `system`
+   * down to the target — the same condition the ghost renderer can satisfy,
+   * since a ghost frame is a system. A reference that resolves somewhere but
+   * not that way is reported here with `qualified: true`, which selects the
+   * "spell it from a system" hint instead of the "anchor the edge at its
+   * source" one. One code, two message variants: the mechanism is identical
+   * and only the fix spelling differs, which is the split ADR-2075 already
+   * decided to absorb in the message.
    *
-   *     visible(C) = peers(C) ∪ peers(parent(C)) ∪ … ∪ { top-level roots }
-   *
-   * so a path descends from something the scope can already see rather than
-   * escaping the scope. A qualified reference that resolves somewhere but
-   * nowhere reachable is reported here with `qualified: true`, which selects
-   * the "re-qualify from a visible anchor" hint instead of the "anchor the
-   * edge at its source" one. One code, two message variants: the mechanism is
-   * identical and only the fix spelling differs, which is the split ADR-2075
-   * already decided to absorb in the message.
+   * Note this branch does not consult the declaring container — a qualified
+   * reference reaches the same set from everywhere. The container-relative
+   * question is the bare one.
    *
    * Still skipped rather than reported: an id that resolves nowhere at all
    * (owned by `unresolved-edge-endpoint` for bare refs and
@@ -206,8 +206,8 @@ export interface WarningParamsByKind {
     /** kind of that block */
     scopeKind: string;
     /**
-     * Set when the endpoint is a dotted path whose head is not visible at this
-     * scope. Selects the "re-qualify from a visible anchor" hint.
+     * Set when the endpoint is a dotted path that does not spell a whole path
+     * from a top-level `system`. Selects the "spell it from a system" hint.
      */
     qualified?: true;
     /**

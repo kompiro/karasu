@@ -161,8 +161,8 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
     case "edge-endpoint-not-at-scope": {
       const { ownerId, endpointId, scopeKind, from, to } = w.params;
       // Three fixes, one code — the message variants ADR-2075 chose over
-      // splitting the code. A qualified path that resolves out of reach is
-      // re-spelled from a visible anchor (#2577); a relation authored inside an
+      // splitting the code. A qualified path that does not run from a
+      // top-level system is re-spelled (#2577); a relation authored inside an
       // `entity` block is fixed by qualifying the target (`Domain.Entity`),
       // not by re-anchoring it, since the source is already the declaring
       // entity; every other scope is fixed by anchoring the edge at its source.

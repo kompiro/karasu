@@ -737,6 +737,28 @@ system Shop {
     expect(layout(view).containers.map((c) => c.id)).toEqual(["Shop", "Cart"]);
   });
 
+  it("a path rooted at a top-level orphan is reported, not silently accepted", () => {
+    // `Billing` is drawn on no system's frame, so a path rooted at it names a
+    // target no ghost can hold. Admitting it would resolve for the checker and
+    // drop in the view — and before #2577 this shape at system scope reported
+    // `cross-system-ref-unresolved`, so staying silent would have lost the
+    // author's only signal.
+    const r = Parser.parse(`
+domain Billing {
+  entity Invoice {}
+}
+
+system Shop {
+  service Checkout {}
+  Checkout -> Billing.Invoice
+}
+`);
+    const kinds = analyze(r.value, []).map((w) => w.kind);
+    expect(kinds).toContain("edge-endpoint-not-at-scope");
+    const view = extractView(r.value.systems, ["Shop", "Checkout"]);
+    expect(view.ghostSystems).toEqual([]);
+  });
+
   it("a qualified relation inside an entity block stays the entity view's business", () => {
     // The entity view resolves cross-domain relations against the domains of
     // one system and draws the foreign entity as a ghost (ADR-1911). A verdict

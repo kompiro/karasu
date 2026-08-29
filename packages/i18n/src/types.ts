@@ -321,9 +321,9 @@ export type Translations = {
     endpointId: string;
   }) => string;
   /**
-   * The qualified variant (#2577): the path resolves, but its head names
-   * nothing this scope can see. The fix re-spells the path from a visible
-   * anchor rather than moving the edge.
+   * The qualified variant (#2577): the path resolves, but it does not spell a
+   * whole path from a top-level `system`. The fix re-spells the path rather
+   * than moving the edge.
    */
   "warning.edgeEndpointNotAtScope.descendHint": (params: {
     endpointId: string;
