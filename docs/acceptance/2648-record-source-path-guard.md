@@ -42,7 +42,7 @@
 
   > ✅ Automated — `scripts/lint/record-source-paths.test.ts` › `has no finding in any scanned directory`
 
-- [x] 失敗時の出力が、作者が直すのに要るものを全部持っている（marker の syntax と、宣言が守らされる 3 つの条件）。`.claude/rules/` に同じことを書かない根拠
+- [x] 失敗時の出力が、作者が直すのに要るものを全部持っている（marker の syntax と、宣言に課される 3 つの条件）。`.claude/rules/` に同じことを書かない根拠
 
   > ✅ Automated — `scripts/lint/record-source-paths.test.ts` › `the failure message carries everything an author needs`
 
