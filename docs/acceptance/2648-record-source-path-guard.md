@@ -2,6 +2,7 @@
 
 - **日付**: 2026-08-30
 - **関連 Issue**: [#2648](https://github.com/kompiro/karasu/issues/2648)
+- **関連 ADR**: [ADR-706](../adr/706-rename-preview-column.md)（ADR 本文は当時の記録であり書き換えない — `docs/adr/**` を走査対象から外す根拠）
 - **対象ファイル**: `scripts/lint/record-source-paths.ts`,
   `docs/test-perspectives/TPL-2254-durable-record-points-at-durable-address.md`,
   `.claude/rules/record-source-paths.md`

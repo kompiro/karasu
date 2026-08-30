@@ -143,6 +143,41 @@ describe("checkMarkdown", () => {
     expect(findings(md)).toEqual([]);
   });
 
+  it("closes a fence only on the same character and at least the same run", () => {
+    // A ```` fence quoting a ``` example, and a ~~~ fence: toggling on any ```
+    // line read the quoted example as prose and swallowed the rest as fence.
+    const backticks = [
+      "````markdown",
+      "```krs",
+      "- `packages/core/src/gone.ts`",
+      "```",
+      "````",
+      "- `packages/core/src/index.ts`",
+    ].join("\n");
+    expect(findings(backticks)).toEqual([]);
+
+    const tildes = ["~~~bash", "rm packages/core/src/gone.ts", "~~~"].join("\n");
+    expect(findings(tildes)).toEqual([]);
+  });
+
+  it("reports a marker whose next line is another marker", () => {
+    // The first declaration stands for nothing; overwriting `pendingMarker`
+    // hid it.
+    const md = [
+      `<!-- ${ABSENT_PATH_MARKER}: first -->`,
+      `<!-- ${ABSENT_PATH_MARKER}: second -->`,
+      "- かつて `packages/core/src/gone.ts` があった",
+    ].join("\n");
+    expect(findings(md)).toEqual([
+      {
+        kind: "absent-path-marker-unused",
+        file: "docs/acceptance/demo.md",
+        line: 1,
+        path: "",
+      },
+    ]);
+  });
+
   it("accepts an absent path declared by the marker on the line above", () => {
     const md = [
       `<!-- ${ABSENT_PATH_MARKER}: retired test, named as history (#1585) -->`,

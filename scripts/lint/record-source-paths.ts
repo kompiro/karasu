@@ -89,6 +89,16 @@ const MARKER_RE = new RegExp(`^\\s*<!--\\s*${ABSENT_PATH_MARKER}\\s*:([^]*?)-->\
 const INLINE_CODE_RE = /`([^`\n]+)`/g;
 
 /**
+ * A fence opener or closer: three or more backticks or tildes, indented up to
+ * three spaces. Both the character and the run length matter — a ```` fence
+ * wrapping a ``` example (as the rules files do when they quote fence syntax)
+ * closes only on four or more backticks, and a ~~~ fence does not close a ```
+ * one. Toggling on any ``` line got that wrong in both directions: it could
+ * read a fenced example as prose, or swallow the rest of a document as fence.
+ */
+const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
+
+/**
  * A span that is a source path and nothing else. Requiring the *whole* span to
  * match is what keeps globs (`at-*.spec.ts`), placeholders (`<spec path>`) and
  * shell lines (`cp a b`) out without a deny-list: none of them is bare path
@@ -148,8 +158,19 @@ export function checkMarkdown(file: string, markdown: string, repoRoot: string):
   const findings: Finding[] = [];
   const lines = markdown.split("\n");
   let inFrontmatter = lines[0]?.trim() === "---";
-  let inFence = false;
+  let openFence: string | undefined;
   let pendingMarker: { line: number; reason: string } | undefined;
+
+  /** The pending declaration turned out to stand for nothing. */
+  const reportUnusedMarker = (): void => {
+    if (pendingMarker === undefined) return;
+    findings.push({
+      kind: "absent-path-marker-unused",
+      file,
+      line: pendingMarker.line,
+      path: "",
+    });
+  };
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
@@ -158,11 +179,17 @@ export function checkMarkdown(file: string, markdown: string, repoRoot: string):
       if (index > 0 && /^---\s*$/.test(line)) inFrontmatter = false;
       return;
     }
-    if (/^\s*```/.test(line)) {
-      inFence = !inFence;
+
+    const fence = FENCE_RE.exec(line)?.[1];
+    if (fence !== undefined) {
+      if (openFence === undefined) {
+        openFence = fence;
+      } else if (fence[0] === openFence[0] && fence.length >= openFence.length) {
+        openFence = undefined;
+      }
       return;
     }
-    if (inFence) return;
+    if (openFence !== undefined) return;
 
     const reason = absentPathReason(line);
     if (reason !== undefined) {
@@ -174,6 +201,9 @@ export function checkMarkdown(file: string, markdown: string, repoRoot: string):
           path: "",
         });
       }
+      // Two markers in a row: the first one's next line is another marker, so
+      // it names no path and stands for nothing.
+      reportUnusedMarker();
       pendingMarker = { line: lineNumber, reason };
       return;
     }
@@ -181,14 +211,7 @@ export function checkMarkdown(file: string, markdown: string, repoRoot: string):
     const missing = sourcePathsInLine(line).filter((path) => !existsSync(resolve(repoRoot, path)));
 
     if (pendingMarker !== undefined) {
-      if (missing.length === 0) {
-        findings.push({
-          kind: "absent-path-marker-unused",
-          file,
-          line: pendingMarker.line,
-          path: "",
-        });
-      }
+      if (missing.length === 0) reportUnusedMarker();
       pendingMarker = undefined;
       return;
     }
@@ -199,14 +222,7 @@ export function checkMarkdown(file: string, markdown: string, repoRoot: string):
   });
 
   // A marker on the last line of a file declares nothing.
-  if (pendingMarker !== undefined) {
-    findings.push({
-      kind: "absent-path-marker-unused",
-      file,
-      line: pendingMarker.line,
-      path: "",
-    });
-  }
+  reportUnusedMarker();
 
   return findings;
 }

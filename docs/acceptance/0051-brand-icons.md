@@ -31,8 +31,14 @@ Verify that the karasu brand assets (favicon, app logo, VS Code extension icon) 
 
 ### VS Code Extension Icon
 
-- [ ] `packages/vscode/icon.png` exists
-- [ ] `packages/vscode/package.json` has `"icon": "icon.png"`
+- [x] `packages/vscode/icon.png` exists
+
+  > ✅ Automated — `scripts/lint/record-source-paths.ts`（この行のコードスパンを working tree と照合する）
+
+- [x] `packages/vscode/package.json` has `"icon": "icon.png"`
+
+  > ✅ Automated — `packages/vscode/src/marketplace-manifest.test.ts` › `Marketplace manifest` › `sets a gallery banner and ships an icon`
+
 - [ ] The icon renders the `鴉` kanji in a professional square format consistent with VS Code Marketplace conventions
 - [ ] The design is cohesive with the favicon and logo
 
