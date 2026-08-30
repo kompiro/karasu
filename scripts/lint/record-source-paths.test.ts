@@ -213,6 +213,13 @@ describe("checkMarkdown", () => {
     expect(findings(md)).toEqual([]);
   });
 
+  it("does not open a backtick fence whose info string holds a backtick", () => {
+    // Not a valid CommonMark opener; opening a phantom fence on it would
+    // silence every path for the rest of the document.
+    const md = ["```lang`x", "- `packages/core/src/gone.ts`"].join("\n");
+    expect(findings(md).map((f) => f.path)).toEqual(["packages/core/src/gone.ts"]);
+  });
+
   it("rejects a marker sitting on a fence opener", () => {
     // A declaration reaches the next line only; letting it survive the block
     // silently suppressed the first dead path after the closing fence.

@@ -194,6 +194,10 @@ export function checkMarkdown(file: string, markdown: string, repoRoot: string):
       return;
     }
     if (fence !== null) {
+      // A backtick fence's info string may not contain a backtick (CommonMark),
+      // so ```lang`x opens nothing — it is a paragraph with an inline span.
+      // Opening a phantom fence on it would silence the rest of the document.
+      if (fence[1][0] === "`" && fence[2].includes("`")) return;
       // A declaration reaches the next line only. It cannot span a fence, so a
       // marker sitting on the opener stands for nothing.
       reportUnusedMarker();
