@@ -73,7 +73,7 @@ history hook をマウントさせ、既存のドリル / フォーカス解決�
 - `packages/app/src/hooks/useHistoryNavigation.test.ts` — `buildHash` ↔ `anchorId` parity
 - `packages/core/src/renderer/drill-down-svg.test.ts` — 静的 SVG の `<g id>` が `anchorId` 文法に一致
 - `packages/app/src/utils/inline-share.test.ts` — `decodeShare` の `target` round-trip と不正 view の degrade
-- `packages/app/src/App.test.tsx` — `#s=`(target 付き) 復元時の `#krs-…` 正規化
+- `packages/app/src/utils/deep-link-anchor.test.ts` — `resolveDeepLinkHash` が `?krs=` と `#s=` payload target のどちらからでも `#krs-…` を返す
 
 ## 派生元 spec
 

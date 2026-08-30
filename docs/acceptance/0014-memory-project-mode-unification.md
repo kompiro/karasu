@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-03-26
 - **関連ADR**: なし
-- **対象**: `packages/app/src/MemoryModeApp.tsx`, `packages/app/src/ProjectModeApp.tsx`, `packages/app/src/components/KarasuPreviewColumn.tsx`, `packages/app/src/components/DiagramTabBar.tsx`, `packages/app/src/state/app-reducer.ts`, `packages/app/src/components/ReferencePanel.tsx`, `packages/core/src/builtins/reference.ts`
+- **対象**: `packages/app/src/MemoryModeApp.tsx`, `packages/app/src/ProjectModeApp.tsx`, `packages/app/src/components/PreviewColumn.tsx`, `packages/app/src/components/DiagramTabBar.tsx`, `packages/app/src/state/app-reducer.ts`, `packages/app/src/components/ReferenceContent.tsx`, `packages/core/src/builtins/reference.ts`
 
 ## 概要
 

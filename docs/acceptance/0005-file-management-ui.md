@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-03-18
 - **関連ADR**: なし
-- **対象**: `packages/app/src/components/FileTree.tsx`、`packages/app/src/ProjectModeApp.tsx`、`packages/app/src/styles/app.css` — FileTree のファイル操作機能（作成・リネーム・削除）
+- **対象**: `packages/app/src/components/FileTree.tsx`、`packages/app/src/ProjectModeApp.tsx`、`packages/app/src/styles/components/navigation.css` — FileTree のファイル操作機能（作成・リネーム・削除）
 
 ## 概要
 
