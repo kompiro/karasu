@@ -27,9 +27,13 @@
 
   > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `names one contact point, and the same one, in every draft`
 
-- [x] AT-D: 申し立て窓口が GitHub Issue ただ 1 つで、全草案で同じである
+- [x] AT-D: **取り下げ**の申し立て窓口が GitHub Issue ただ 1 つで、全草案で同じである
 
   > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `names one contact point, and the same one, in every draft`
+  >
+  > 「ただ 1 つ」は取り下げ請求についての話である。**発信者情報開示はこの窓口では受けられない**
+  > （請求者と投稿者の双方の個人データが公開の場に出る）。その別経路は未決で、下の手動確認と
+  > `docs/policy/nest-data-handling.md` の「未了」節が持つ。
 
 - [x] AT-E: 草案が法務レビュー未了の表示を持ち、**docs-site の公開集合に入っていない**
 
@@ -63,3 +67,17 @@
   > 自動テストが判定できるのは「文書が実装と一致しているか」までで、**その文面で
   > 守れるかは法的な判断**であり、機械にも私にも判定できない。両文書の「未了」節が
   > 残作業の正である。
+
+### 未了（この AT の項目ではない）
+
+法務レビューと同じ性質の、**起草と判断であって実機判定ではない**残作業。一覧の正本は
+`docs/policy/nest-data-handling.md` の「未了」節で、チェックボックスをここへ写さない
+（再実行される実機確認と、一度終われば終わる作業が同じ見た目で並ぶため）。
+
+このスライスで **1 件増えた**。**発信者情報開示の手続き**である。ギャラリーは公開できる
+ものだけを扱うので、投稿は原則として第三者から見える。したがって「権利を侵害された」と
+主張する第三者が現れる経路は、取り下げ請求だけではなく**誰が投稿したかの開示請求**も
+ありうる。サービスは IP もアクセスログも持たないが GitHub の login は持っており、これは
+IP より直接に個人へ結びつく。開示の前に投稿者へ意見照会する手順まで含めて、privacy policy
+に何を書くかとして決める必要がある。上の AT-D が言うとおり、**この経路に GitHub Issue の
+窓口は使えない**。
