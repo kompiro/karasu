@@ -284,19 +284,32 @@ export function describeFinding(f: Finding): string {
   }
 }
 
-const HOW_TO_FIX = [
+/**
+ * Everything an author needs to act on a finding. This message is the only
+ * place that teaches the marker, deliberately: the check already runs in CI and
+ * on pre-push, so a `.claude/rules/` file restating it would add no enforcement
+ * and would load on every edit under docs/acceptance — a path set most PRs
+ * touch — to say what the failure says at the moment it matters.
+ */
+export const HOW_TO_FIX = [
   "",
   "A record under docs/{acceptance,test-perspectives,design} names a source path",
   "that is not in the working tree. Repoint it at the successor file, or drop the",
   "reference when the feature is gone.",
   "",
   "If the path is meant to be absent — history, an illustration, or a file a design",
-  `doc intends to create — declare it on the line above with a reason:`,
+  "doc intends to create — declare it on the line above with a reason:",
   "",
   `    <!-- ${ABSENT_PATH_MARKER}: retired test, named as history (#1585) -->`,
   "",
-  "The declaration is checked both ways: it fails once the path exists again, which",
-  "is how an implemented design doc reports that it is due for ADR promotion.",
+  "The declaration is a claim, not a switch, so it is held to it:",
+  "",
+  "  - it reaches the very next line only, and nothing else — not across a blank",
+  "    line, not across a fenced block",
+  "  - an empty reason is rejected AND suppresses nothing, so a dead path cannot",
+  "    hide behind a declaration that never said why",
+  "  - it fails once every path on that line resolves, which is how an implemented",
+  "    design doc reports that it is now due for ADR promotion",
 ].join("\n");
 
 function main(): void {

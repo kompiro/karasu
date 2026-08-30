@@ -7,6 +7,7 @@ import {
   absentPathReason,
   check,
   checkMarkdown,
+  HOW_TO_FIX,
   isGeneratedPath,
   SCANNED_DIRS,
   sourcePathsInLine,
@@ -270,6 +271,30 @@ describe("checkMarkdown", () => {
       "\n",
     );
     expect(findings(md).map((f) => f.kind)).toEqual(["absent-path-marker-unused"]);
+  });
+});
+
+describe("the failure message carries everything an author needs", () => {
+  // This message is the only place that teaches the marker — there is no
+  // `.claude/rules/` twin, because the check already runs in CI and on
+  // pre-push and a rule would only restate it. So the message itself is
+  // fenced: an author who has never seen the syntax must be able to act on a
+  // finding without leaving the terminal.
+  it("shows the marker syntax", () => {
+    expect(HOW_TO_FIX).toContain(`<!-- ${ABSENT_PATH_MARKER}: `);
+  });
+
+  it("gives both ways to resolve a genuinely dead reference", () => {
+    expect(HOW_TO_FIX).toMatch(/[Rr]epoint/);
+    expect(HOW_TO_FIX).toMatch(/drop the\n?reference/);
+  });
+
+  it("states each condition the declaration is held to", () => {
+    // One line per condition the implementation enforces, so a condition
+    // cannot be added without the message growing with it.
+    expect(HOW_TO_FIX).toMatch(/next line only/); // marker scope
+    expect(HOW_TO_FIX).toMatch(/empty reason/); // absent-path-marker-empty-reason
+    expect(HOW_TO_FIX).toMatch(/once every path on that line resolves/); // -unused
   });
 });
 

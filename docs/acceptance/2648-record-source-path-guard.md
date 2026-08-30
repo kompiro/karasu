@@ -4,8 +4,7 @@
 - **関連 Issue**: [#2648](https://github.com/kompiro/karasu/issues/2648)
 - **関連 ADR**: [ADR-706](../adr/706-rename-preview-column.md)（ADR 本文は当時の記録であり書き換えない — `docs/adr/**` を走査対象から外す根拠）
 - **対象ファイル**: `scripts/lint/record-source-paths.ts`,
-  `docs/test-perspectives/TPL-2254-durable-record-points-at-durable-address.md`,
-  `.claude/rules/record-source-paths.md`
+  `docs/test-perspectives/TPL-2254-durable-record-points-at-durable-address.md`
 
 ## 受け入れ条件
 
@@ -42,6 +41,10 @@
 - [x] 実リポジトリの記録が finding ゼロである
 
   > ✅ Automated — `scripts/lint/record-source-paths.test.ts` › `has no finding in any scanned directory`
+
+- [x] 失敗時の出力が、作者が直すのに要るものを全部持っている（marker の syntax と、宣言が守らされる 3 つの条件）。`.claude/rules/` に同じことを書かない根拠
+
+  > ✅ Automated — `scripts/lint/record-source-paths.test.ts` › `the failure message carries everything an author needs`
 
 ## 手動確認
 
