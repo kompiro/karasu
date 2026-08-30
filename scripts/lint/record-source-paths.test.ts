@@ -186,12 +186,47 @@ describe("checkMarkdown", () => {
     expect(findings(md)).toEqual([]);
   });
 
-  it("rejects a marker with no reason", () => {
+  it("rejects a marker with no reason, and still reports the path behind it", () => {
+    // An invalid declaration earns no suppression; otherwise a dead path could
+    // be hidden by a marker that never said why.
     const md = [
       `<!-- ${ABSENT_PATH_MARKER}: -->`,
       "- かつて `packages/core/src/gone.ts` があった",
     ].join("\n");
-    expect(findings(md).map((f) => f.kind)).toEqual(["absent-path-marker-empty-reason"]);
+    expect(findings(md).map((f) => f.kind)).toEqual([
+      "absent-path-marker-empty-reason",
+      "missing-source-path",
+    ]);
+  });
+
+  it("treats a fence opener with an info string as content while inside a fence", () => {
+    // CommonMark gives a closing fence no info string, so ```markdown inside a
+    // ``` block is code, not the close — reading it as the close exposed the
+    // rest of the block.
+    const md = [
+      "```",
+      "```markdown",
+      "- `packages/core/src/gone.ts`",
+      "```",
+      "- `packages/core/src/index.ts`",
+    ].join("\n");
+    expect(findings(md)).toEqual([]);
+  });
+
+  it("rejects a marker sitting on a fence opener", () => {
+    // A declaration reaches the next line only; letting it survive the block
+    // silently suppressed the first dead path after the closing fence.
+    const md = [
+      `<!-- ${ABSENT_PATH_MARKER}: planned -->`,
+      "```bash",
+      "echo hi",
+      "```",
+      "- `packages/core/src/gone.ts`",
+    ].join("\n");
+    expect(findings(md).map((f) => f.kind)).toEqual([
+      "absent-path-marker-unused",
+      "missing-source-path",
+    ]);
   });
 
   it("rejects a marker whose next line has no absent path", () => {

@@ -96,7 +96,7 @@ const INLINE_CODE_RE = /`([^`\n]+)`/g;
  * one. Toggling on any ``` line got that wrong in both directions: it could
  * read a fenced example as prose, or swallow the rest of a document as fence.
  */
-const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
+const FENCE_RE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 
 /**
  * A span that is a source path and nothing else. Requiring the *whole* span to
@@ -180,31 +180,46 @@ export function checkMarkdown(file: string, markdown: string, repoRoot: string):
       return;
     }
 
-    const fence = FENCE_RE.exec(line)?.[1];
-    if (fence !== undefined) {
-      if (openFence === undefined) {
-        openFence = fence;
-      } else if (fence[0] === openFence[0] && fence.length >= openFence.length) {
-        openFence = undefined;
-      }
+    const fence = FENCE_RE.exec(line);
+    if (openFence !== undefined) {
+      // Inside a fence, only a bare delimiter of the same character and at
+      // least the same run closes it. CommonMark gives a closing fence no info
+      // string, so ```typescript inside a ``` block is content, not the close.
+      const closes =
+        fence !== null &&
+        fence[1][0] === openFence[0] &&
+        fence[1].length >= openFence.length &&
+        fence[2].trim() === "";
+      if (closes) openFence = undefined;
       return;
     }
-    if (openFence !== undefined) return;
+    if (fence !== null) {
+      // A declaration reaches the next line only. It cannot span a fence, so a
+      // marker sitting on the opener stands for nothing.
+      reportUnusedMarker();
+      pendingMarker = undefined;
+      openFence = fence[1];
+      return;
+    }
 
     const reason = absentPathReason(line);
     if (reason !== undefined) {
+      // Two markers in a row: the first one's next line is another marker, so
+      // it names no path and stands for nothing.
+      reportUnusedMarker();
+      pendingMarker = undefined;
       if (reason === "") {
+        // An invalid declaration earns no suppression — the next line is
+        // checked normally, so a dead path behind it stays reported.
         findings.push({
           kind: "absent-path-marker-empty-reason",
           file,
           line: lineNumber,
           path: "",
         });
+      } else {
+        pendingMarker = { line: lineNumber, reason };
       }
-      // Two markers in a row: the first one's next line is another marker, so
-      // it names no path and stands for nothing.
-      reportUnusedMarker();
-      pendingMarker = { line: lineNumber, reason };
       return;
     }
 
