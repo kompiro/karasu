@@ -48,7 +48,7 @@ export const MAX_TITLE_LENGTH = 120;
  * requests mean "not visible right now", not "gone", and a reversible control
  * absorbs those without producing an "I deleted it by mistake" follow-up.
  */
-type Visibility = "public" | "unlisted";
+export type Visibility = "public" | "unlisted";
 
 /** Thrown when a write would store a document past `MAX_SUBMISSION_BYTES`. */
 export class SubmissionTooLargeError extends Error {
@@ -103,8 +103,7 @@ function parse(raw: string, accountId: string): Submission | undefined {
     // A record written before this field existed reads as `unlisted`. Being
     // wrong in that direction withholds something its author meant to publish
     // until they say so again; being wrong the other way publishes something
-    // nobody chose to. The same asymmetry `routes/repo.ts` applies to
-    // `private`.
+    // nobody chose to. Withholding is the recoverable mistake.
     visibility: record.visibility === "public" ? "public" : "unlisted",
   };
 }

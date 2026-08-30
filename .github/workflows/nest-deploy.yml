@@ -1,15 +1,16 @@
 name: Deploy karasu-nest
 
-# A deploy of its own, on purpose. ADR-1990 decision 5 separates this service
-# from the Pages app so state, the GitHub App private key and the webhook
-# endpoint stay out of the static deploy; sharing a workflow with `deploy.yml`
-# would put them back in the same blast radius and make the two impossible to
-# roll back independently.
+# A deploy of its own, on purpose. ADR-2578 decision 5 (carried forward from
+# ADR-1990) separates this service from the Pages app so state and the session
+# stay out of the static deploy; sharing a workflow with `deploy.yml` would put
+# them back in the same blast radius and make the two impossible to roll back
+# independently.
 #
-# `workflow_dispatch` only, for now. The service is not connected to a GitHub
-# App yet (#1992) and holds no consent copy (#1996), so ADR-1990 decision 6
-# forbids pointing it at anyone else's private repository. Automatic deploys on
-# `main` are the last wire to connect, not the first.
+# `workflow_dispatch` only, for now. The service no longer reads anyone's
+# repository (#2590), so the data-processor obligations that used to hold this
+# shut are gone -- but a public submission surface still needs a ToS and a
+# privacy policy before it is opened past its operator (#2591). Automatic
+# deploys on `main` are the last wire to connect, not the first.
 
 on:
   workflow_dispatch:

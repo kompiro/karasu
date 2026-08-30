@@ -1,15 +1,16 @@
 /**
  * A path router small enough to read in one sitting.
  *
- * karasu-nest needs `/<owner>/<repo>`-shaped routes next to fixed ones like
+ * karasu-nest needs `/console/s/:id`-shaped routes next to fixed ones like
  * `/healthz`, which rules out a flat switch, but it does not need a framework:
  * a dependency here would be a supply-chain surface on the one deploy that
- * holds the GitHub App private key. Patterns support literal segments and
- * `:name` captures; that is the whole grammar.
+ * holds the OAuth client secret and every live session. Patterns support
+ * literal segments and `:name` captures; that is the whole grammar.
  *
  * A path that matches but with the wrong method answers 405 with `Allow`,
- * rather than 404. The distinction matters for a public surface: 404 says "no
- * such repo", and saying that about a repo that does exist would leak.
+ * rather than 404. The distinction matters for a public surface: 404 says
+ * "there is no such submission", and saying that about one that does exist is
+ * the disclosure `routes/gallery.ts` takes care not to make.
  */
 import type { NestEnv, NestExecutionContext } from "./env.js";
 import { methodNotAllowed, notFound } from "./http.js";
@@ -82,12 +83,17 @@ export class Router {
    * The routes that own this path, most specific only.
    *
    * "Most specific" means fewest capture segments, and the group is exclusive:
-   * once a literal route claims a path, a `/:owner/:repo` pattern does not get
-   * to answer for it under a different method. Without that, a `GET
-   * /webhooks/github` falls through to the repository route and is answered
-   * with "no model has been generated for webhooks/github" — a confident,
-   * wrong answer where 405 is the true one. Registration order still decides
-   * within a group.
+   * once a literal route claims a path, a capture pattern does not get to
+   * answer for it under a different method. What that prevents is a confident
+   * wrong answer where 405 is the true one, which is what `GET
+   * /webhooks/github` got from the old `/:owner/:repo` route ("no model has
+   * been generated for webhooks/github") until #2590 removed both.
+   * Registration order still decides within a group.
+   *
+   * No path in the current table reaches the tie-break, so this is a guard
+   * rather than a rule doing daily work. `router.test.ts` exercises it
+   * directly for that reason: the next capture route registered beside
+   * `/g/:id` is what it is here for.
    */
   private candidates(actual: readonly string[]): Match[] {
     const matches: Match[] = [];

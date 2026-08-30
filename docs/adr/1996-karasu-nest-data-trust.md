@@ -13,8 +13,8 @@ scope:
 assumptions:
   - "file: docs/policy/nest-data-handling.md"
   - "file: scripts/lint/nest-retention-policy-sync.test.ts"
-  - "file: packages/nest/src/store/nest-purge-coverage.test.ts"
-  - "grep: packages/nest/src/deliver/pull-request.ts :: deliveryEnabled"
+  - "file: packages/nest/src/store/gallery-purge-coverage.test.ts"
+  - "grep: docs/policy/nest-data-handling.md :: 未了 — 人間がやる必要があるもの"
 ---
 
 # ADR-1996: karasu-nest のデータ信頼 — 技術側は実装で閉じ、契約と法務文書は未了として残す

@@ -67,7 +67,7 @@ interface Signed {
  */
 async function signedIn(context: RouteContext): Promise<Signed | Response> {
   const { request, env } = context;
-  const store = new GalleryStore(requireBinding(env, "KRS_CACHE"));
+  const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
   const viewer = await currentViewer(request, env, store);
   if (viewer === undefined) {
     return request.method === "GET"

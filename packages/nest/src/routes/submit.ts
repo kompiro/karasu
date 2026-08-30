@@ -37,7 +37,7 @@ export async function submitKrs(context: RouteContext): Promise<Response> {
     return error(403, "cross_origin", "This request did not come from the gallery.");
   }
 
-  const store = new GalleryStore(requireBinding(env, "KRS_CACHE"));
+  const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
   const viewer = await currentViewer(request, env, store);
   if (viewer === undefined) {
     // Anonymous submission was rejected because there would be nobody to

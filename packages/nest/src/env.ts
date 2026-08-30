@@ -1,16 +1,17 @@
 /**
  * The bindings and secrets the karasu-nest Worker expects, and the guard that
- * turns a missing one into a startup-shaped error instead of a `undefined is
+ * turns a missing one into a startup-shaped error instead of an `undefined is
  * not a function` deep inside a request.
  *
- * ADR-1990 decision 5 puts this service on its own deploy precisely so these
- * secrets never enter the static Pages app. Every field is optional in the
- * type because Workers hands us whatever the environment actually has —
- * `requireBinding` is where "configured" is asserted, once, at the edge of a
- * handler that needs it.
+ * ADR-2578 decision 5 puts this service on its own deploy precisely so state
+ * and secrets never enter the static Pages app. The gallery needs that more
+ * than generation did, not less: the console is the first surface that holds a
+ * session, and a session cannot live in a static deploy at all.
+ *
+ * Every field is optional in the type because Workers hands us whatever the
+ * environment actually has — `requireBinding` is where "configured" is
+ * asserted, once, at the edge of a handler that needs it.
  */
-
-import type { GenerationDispatcher } from "./generate/dispatch.js";
 
 /** A minimal structural stand-in for the Workers `ExecutionContext`. */
 export interface NestExecutionContext {
@@ -41,45 +42,17 @@ export interface KVNamespaceLike {
 
 export interface NestEnv {
   /**
-   * Durable-execution binding for the reverse. A generation runs for 12-19
-   * minutes, which no request-scoped mechanism can host. Wired in #2288.
+   * Accounts, sessions and submissions. One namespace, separated by key
+   * prefix (`acct/`, `sess/`, `sub/`) rather than by binding, because account
+   * deletion has to see all three.
    */
-  GENERATE_WORKFLOW?: GenerationDispatcher;
-  /** Cache of generated `.krs`, keyed per installation. Wired in #2284. */
-  KRS_CACHE?: KVNamespaceLike;
-  /** GitHub App id. Wired in #1992. */
-  GITHUB_APP_ID?: string;
-  /**
-   * GitHub App private key, as a PEM. Paste the file GitHub gives you — it is
-   * PKCS#1 (`RSA PRIVATE KEY`) and `github/pem.ts` converts it, so there is no
-   * openssl step. PKCS#8 is accepted too.
-   */
-  GITHUB_APP_PRIVATE_KEY?: string;
-  /** Shared secret for webhook signature verification. Wired in #2286. */
-  GITHUB_WEBHOOK_SECRET?: string;
-  /** LLM API key for the reverse pipeline. Wired in #2288. */
-  LLM_API_KEY?: string;
-  /** Bearer token for `GET /admin/metrics`. Absent means the route is off. */
-  METRICS_TOKEN?: string;
-  /**
-   * `"on"` to deliver a generated model as a pull request (#2289).
-   *
-   * Off unless a deploy sets it. PR-back needs `contents:write` and
-   * `pull_requests:write`, wider than the `contents:read` that ADR-1990
-   * decision 6 scoped the install consent to. What closes that gap is who
-   * installed the App, not what the code does: on repositories the operator
-   * owns, the party granting the permission and the party written to are the
-   * same. Turning this on for an install list that reaches further writes to
-   * repositories on a consent nobody gave — #1996 owns that copy.
-   */
-  PR_DELIVERY?: string;
+  NEST_STORE?: KVNamespaceLike;
   /**
    * GitHub OAuth client id for submitter sign-in (#2586).
    *
-   * Either a dedicated OAuth App or the GitHub App's own user-to-server
-   * credentials will do — the flow is identical and this code cannot tell them
-   * apart. The choice is made at `wrangler secret put` time and recorded in
-   * the README, not here.
+   * A dedicated OAuth App. The GitHub App's own user-to-server credentials
+   * would work identically, but #2590 retired the App, so there is nothing
+   * left for it to be attached to.
    */
   GITHUB_OAUTH_CLIENT_ID?: string;
   /** GitHub OAuth client secret. Paired with the id above. */
@@ -109,9 +82,8 @@ export class MissingBindingError extends Error {
  * Assert that a binding was configured, and narrow it.
  *
  * Deliberately throws rather than returning a nullable: a service that quietly
- * degrades when its GitHub App key is absent would answer requests it cannot
- * honestly serve, and ADR-1990 decision 6 makes "we could not verify" a reason
- * to refuse, not to guess.
+ * degraded when its OAuth credentials were absent would send people to a
+ * broken consent screen instead of saying which binding is missing.
  */
 export function requireBinding<K extends keyof NestEnv>(
   env: NestEnv,

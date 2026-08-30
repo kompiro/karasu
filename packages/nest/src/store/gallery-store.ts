@@ -74,8 +74,8 @@ export class GalleryStore {
    * Sessions go **first**. If the process dies partway, an account whose
    * sessions are gone can no longer act, whereas an account record deleted
    * first would leave live cookies pointing at nothing — the same
-   * "fail towards inert" ordering `NestStore.purgeInstallation` uses for its
-   * pointer.
+   * "fail towards inert" direction: a half-finished purge should leave
+   * something that cannot act, not something that can.
    */
   async purgeAccount(accountId: number | string): Promise<AccountPurgeResult> {
     const sessions = await this.sessions.purgeAccount(accountId);

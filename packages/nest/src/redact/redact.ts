@@ -1,14 +1,19 @@
 /**
- * The two directions of ADR-1990 decision 2.
+ * The one direction of ADR-1990 decision 2 that survives.
  *
- * `redact` runs on the way in: fetched source is scrubbed before a single byte
- * reaches the model. `assertStructureOnly` runs on the way out: the generated
- * `.krs` is scanned again, and a document that trips it is **refused**, not
- * cleaned. The asymmetry is the point. On the input side a false positive
- * costs a little fidelity, so redaction is the right response. On the output
- * side a hit means something went wrong upstream — the model reproduced
- * something it should never have seen, or a rule missed on the way in — and
- * quietly scrubbing it would hide the failure while shipping the artifact.
+ * It described two. `redact` scrubbed fetched source on the way in, before a
+ * byte reached the model, and `assertStructureOnly` scanned the generated
+ * `.krs` on the way out. #2590 removed the model, and with it the way in, so
+ * a single scan is left: it runs on ingress, over a document its own author
+ * submitted (`gallery/validate.ts`).
+ *
+ * `redact` is still the matcher underneath, but only its findings are used.
+ * `assertStructureOnly` throws the scrubbed text away, because refusing is the
+ * whole response here; no production path consumes the substitution.
+ *
+ * Refusing rather than scrubbing is what did not change, and neither did the
+ * reason. A hit means something credential-shaped was about to be published,
+ * and quietly cleaning it would ship the artifact while hiding the fault.
  */
 import {
   isOwnPlaceholder,
@@ -96,43 +101,33 @@ export function redact(text: string, where = "input"): RedactionResult {
   return { text: current, findings };
 }
 
-/** Redact a whole file set, tagging each finding with its path. */
-export function redactFiles(files: readonly { path: string; content: string }[]): {
-  files: { path: string; content: string }[];
-  findings: Finding[];
-} {
-  const findings: Finding[] = [];
-  const redacted = files.map((file) => {
-    const result = redact(file.content, file.path);
-    findings.push(...result.findings);
-    return { path: file.path, content: result.text };
-  });
-  return { files: redacted, findings };
-}
-
-/** Thrown when generated output carries something credential-shaped. */
+/** Thrown when a document carries something credential-shaped. */
 export class StructureOnlyViolation extends Error {
   constructor(readonly findings: Finding[]) {
     const kinds = [...new Set(findings.map((f) => f.ruleId))].join(", ");
-    super(`generated output matched credential patterns and was refused: ${kinds}`);
+    super(`a submitted document matched credential patterns and was refused: ${kinds}`);
     this.name = "StructureOnlyViolation";
   }
 }
 
 /**
- * Refuse a generated document that carries anything credential-shaped.
+ * Refuse a document that carries anything credential-shaped.
  *
- * Fails closed, and does not scrub. A hit here is evidence that the input
- * redaction missed or that the model reproduced something it should not have,
- * and both need to be visible. Scrubbing would ship the artifact and hide the
- * fault, which is the same trade the ADR refused when it put a second scan
- * here at all.
+ * This was the second half of an egress door: everything reaching the model
+ * was redacted first, and this checked that the model had not reproduced a
+ * secret anyway. #2590 removed the model and the egress, so this is now the
+ * **only** scan and it runs on ingress, over a document its author submitted
+ * (`gallery/validate.ts`).
+ *
+ * Fails closed, and does not scrub — unchanged, and for the same reason it
+ * always held. A hit means something credential-shaped was about to be
+ * published; scrubbing would ship the artifact and hide the fault.
  *
  * The placeholders that `redact` itself writes are not matches, because they
  * do not look like credentials — so a `.krs` describing a `[REDACTED:jwt]`
  * passes, which is correct: that is structure, not a secret.
  */
 export function assertStructureOnly(krs: string): void {
-  const { findings } = redact(krs, "output");
+  const { findings } = redact(krs, "submission");
   if (findings.length > 0) throw new StructureOnlyViolation(findings);
 }

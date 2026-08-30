@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertStructureOnly, redact, redactFiles, StructureOnlyViolation } from "./redact.js";
+import { assertStructureOnly, redact, StructureOnlyViolation } from "./redact.js";
 
 /**
  * Composed at runtime rather than written as literals, so this file trips
@@ -192,35 +192,15 @@ describe("what the review found leaking", () => {
   });
 });
 
-describe("redactFiles", () => {
-  it("tags each finding with the file it came from", () => {
-    const result = redactFiles([
-      { path: "src/a.ts", content: `const k = "${fake.githubToken}";` },
-      { path: "src/b.ts", content: "export const answer = 42;" },
-      { path: "src/c.ts", content: `const k = "${fake.stripe}";` },
-    ]);
-    expect(result.findings.map((f) => [f.where, f.ruleId])).toEqual([
-      ["src/a.ts", "github-token"],
-      ["src/c.ts", "stripe-key"],
-    ]);
-    expect(result.files[1]?.content).toBe("export const answer = 42;");
-  });
-
-  it("returns every file, redacted or not", () => {
-    const result = redactFiles([{ path: "a", content: "x" }]);
-    expect(result.files).toEqual([{ path: "a", content: "x" }]);
-  });
-});
-
 describe("assertStructureOnly", () => {
   it("accepts a .krs that carries no credential", () => {
     expect(() => assertStructureOnly("system Payments {\n  service Ledger\n}\n")).not.toThrow();
   });
 
   it("refuses rather than scrubs", () => {
-    // A hit means input redaction missed or the model reproduced something it
-    // should never have seen. Scrubbing would ship the artifact and hide the
-    // fault, which is the reason for having a second scan at all.
+    // A hit means a submitter was about to publish something credential-shaped.
+    // Scrubbing would store the document and hide the fault, which is the
+    // reason this refuses instead.
     const krs = `system S {\n  service Api "${fake.githubToken}"\n}\n`;
     expect(() => assertStructureOnly(krs)).toThrowError(StructureOnlyViolation);
   });
@@ -237,12 +217,12 @@ describe("assertStructureOnly", () => {
     })();
     expect(thrown?.message).toContain("stripe-key");
     expect(thrown?.message).not.toContain(fake.stripe);
-    expect(thrown?.findings[0]?.where).toBe("output");
+    expect(thrown?.findings[0]?.where).toBe("submission");
   });
 
   it("accepts a document that describes a redaction", () => {
-    // `[REDACTED:jwt]` is structure the model legitimately learned from the
-    // redacted input; it must not read as a credential on the way out.
+    // A submitter may legitimately describe a redaction in their model; the
+    // placeholder must not itself read as a credential.
     expect(() =>
       assertStructureOnly("system S {\n  service Api\n  // auth: [REDACTED:jwt]\n}\n"),
     ).not.toThrow();

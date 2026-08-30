@@ -1,10 +1,14 @@
 # karasu-nest: a Worker deployed independently of the Pages app.
 #
-# ADR-1990 decision 5. The root `wrangler.toml` describes the Pages project
-# (`pages_build_output_dir = "packages/app/dist"`) and must stay untouched by
-# this service: sharing a deploy would put this Worker's secrets and KV
-# namespace in the same blast radius as the static app, and would make the two
-# impossible to roll back separately.
+# ADR-2578 decision 5, carried forward from ADR-1990. The root `wrangler.toml`
+# describes the Pages project (`pages_build_output_dir = "packages/app/dist"`)
+# and must stay untouched by this service: sharing a deploy would put this
+# Worker's session state and KV namespace in the same blast radius as the
+# static app, and would make the two impossible to roll back separately.
+#
+# The gallery needs that separation more than generation did, not less. The
+# console is the first surface here that holds a session, and a session cannot
+# live in a static deploy at all.
 #
 # Deployed by `.github/workflows/nest-deploy.yml`, which runs wrangler from
 # this directory so the root config is not picked up.
@@ -16,25 +20,31 @@ compatibility_date = "2025-01-01"
 # This service needs a paid Workers plan, and the reason is CPU rather than
 # anything about scale.
 #
-# The free plan allows 10ms of CPU per invocation. Decompressing a repository
-# archive, walking its tar headers, running the redaction rules over ~400KB of
-# source and parsing three model replies are all well past that -- a real run
-# died in 3 seconds of wall time with `Worker exceeded CPU time limit`, which
-# is only possible if the ceiling is far below a second.
+# The free plan allows 10ms of CPU per invocation. #2590 removed the work the
+# previous justification was measured against (unpacking a tarball, redacting
+# ~400KB, parsing three model replies), so the number was re-measured against
+# what is left: compiling one submitted `.krs` and rendering it.
 #
-# Declared rather than left to be discovered: an unset limit means the default,
-# and the default is the thing that killed a run. 60 seconds is generous
-# against the few seconds of parsing this actually does, and still bounded, so
-# a runaway is stopped rather than billed. Model calls are I/O and cost no CPU.
+#   33KB document   ->  13ms CPU   (already past the free plan)
+#   89KB document   ->  41ms CPU
+#   220KB document  ->  78ms CPU   (just inside MAX_SUBMISSION_BYTES)
+#
+# Roughly linear in document size, so ~100ms is the worst case a submission at
+# the 256KB cap can ask for. Rendering therefore still needs the paid plan, and
+# a document does not have to be unusual to need it.
+#
+# 1 second rather than the 60 the generation service declared: that was sized
+# against minutes-long runs and is now 600x the measured worst case. This
+# leaves roughly 10x headroom over the measurement -- enough for slower
+# hardware than the machine it was taken on -- while still stopping a runaway
+# rather than billing for it. Raise it with a measurement, not a guess.
 [limits]
-cpu_ms = 60_000
+cpu_ms = 1_000
 
 # Keep the logs, rather than requiring someone to be watching.
 #
-# A generation runs for minutes and costs real inference money, and the only
-# record of *why* one failed is what it logged. Without this, that record
-# exists only while a `wrangler tail` happens to be open -- so diagnosing a
-# failure means paying to reproduce it, with someone watching.
+# This is what made a failure diagnosable at all. Without it the record of why
+# something failed exists only while a `wrangler tail` happens to be open.
 [observability]
 enabled = true
 
@@ -55,59 +65,26 @@ ENVIRONMENT = "production"
 # than sending anyone to a broken consent screen.
 # NEST_PUBLIC_ORIGIN = "https://karasu-nest.example.workers.dev"
 
-# Deliver the generated model as a pull request (#2289).
+# Accounts, sessions and submissions share one namespace, separated by key
+# prefix (`acct/`, `sess/`, `sub/`) rather than by binding, because deleting an
+# account has to see all three.
 #
-# This asks the App for `contents:write` and `pull_requests:write`, wider than
-# the `contents:read` ADR-1990 decision 6 scoped the install consent to. What
-# makes that admissible here is the installation, not the code: this App is
-# installed only on repositories its own operator owns, so the party granting
-# the wider permission and the party being written to are the same.
+# The same namespace previously held the generated-`.krs` cache under `krs/`,
+# `idx/`, `runs/`, `metrics/`, `reads/`, `quota/` and `busy/`. Those keys all
+# carried a TTL and age out on their own; a deploy that wants them gone sooner
+# can list and delete by prefix (`wrangler kv key list --prefix krs/`).
 #
-# That is also the boundary. The moment this App is installed anywhere the
-# operator does not own, the six unfinished items in
-# `docs/policy/nest-data-handling.md` (zero-retention contract, privacy policy,
-# ToS, DPA, publication, contact) are back in force -- and PR-back is the
-# reason two of them exist. Widening the install list without closing them is
-# the change this comment exists to stop, not the flag itself.
-PR_DELIVERY = "on"
-
-# The generated-`.krs` cache and the `owner/repo` directory share one
-# namespace; they are separated by key prefix (`krs/v1/` and `idx/v1/`) rather
-# than by binding, because a purge has to see both.
-#
-# `id` is filled in per account by `wrangler kv namespace create KRS_CACHE`.
+# `id` is filled in per account by `wrangler kv namespace create NEST_STORE`.
 # It is a namespace identifier, not a credential.
 [[kv_namespaces]]
-binding = "KRS_CACHE"
+binding = "NEST_STORE"
 id = "6c08ed60d4754649bf396e1063e331a3"
-
-# The durable host for a generation. A run takes 12-19 minutes, which no
-# request-scoped mechanism can hold — `ctx.waitUntil` buys about 30 seconds
-# past a response this route sends immediately.
-[[workflows]]
-name = "karasu-nest-generate"
-binding = "GENERATE_WORKFLOW"
-class_name = "GenerateWorkflow"
 
 # Secrets are NOT declared here. `wrangler secret put` sets them on the
 # deployed Worker, so they never enter the repository:
 #
-#   wrangler secret put GITHUB_APP_ID           # 1992
-#   wrangler secret put GITHUB_APP_PRIVATE_KEY  # 1992
-#   wrangler secret put GITHUB_WEBHOOK_SECRET   # 2286
-#   wrangler secret put LLM_API_KEY             # 2288
-#   wrangler secret put METRICS_TOKEN           # 2226 (GET /admin/metrics)
 #   wrangler secret put GITHUB_OAUTH_CLIENT_ID      # 2586 (submitter sign-in)
 #   wrangler secret put GITHUB_OAUTH_CLIENT_SECRET  # 2586
-#
-# The OAuth pair can come from a dedicated OAuth App or from this GitHub App's
-# own user-to-server credentials -- the flow is identical and the code cannot
-# tell them apart. #2590 removes the App itself, so a dedicated OAuth App is
-# the form that survives; either works today.
-#
-# PR-back delivery (#2289) is a plain var, set above. It is the one setting
-# here whose effect is outward: it writes to repositories. The condition that
-# makes it admissible is written beside it, not here.
 #
 # `GET /healthz` reports which of these the running deploy actually has, as
 # booleans, so a deploy missing one is diagnosable without reading them back.
