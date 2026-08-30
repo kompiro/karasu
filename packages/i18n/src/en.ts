@@ -134,6 +134,11 @@ export const en: Translations = {
 
   // NodeDetailPanel
   "nodeDetail.close": "Close",
+  "edgeDetail.close": "Close",
+  "edgeDetail.domainEdges.count": ({ count }) =>
+    count === 1 ? "1 domain edge" : `${count} domain edges`,
+  "edgeDetail.label.title": "🏷 Label",
+  "edgeDetail.links.title": "🔗 Links",
   "nodeDetail.links.title": "🔗 Links",
   "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
@@ -512,6 +517,8 @@ export const en: Translations = {
       : `Entity "${entityId}" maps to "${infraId}.${subId}", but "${infraId}" does not declare "${subId}"`,
   "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
     `Duplicate edge id "#${authorId}"; edge ids must be unique within a system`,
+  "diagnostic.duplicateEdgeLabel.message": ({ label }) =>
+    `This edge already has a positional label, so the block's label "${label}" is a second one; keep either the positional form or the block property, not both`,
   "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
     `Multiple edges share the base "${fromId}${arrow}${toId}" with no #<id> to disambiguate; per-edge style selectors will not match any of them`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>

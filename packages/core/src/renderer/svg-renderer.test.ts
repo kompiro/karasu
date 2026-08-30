@@ -1091,6 +1091,82 @@ system S {
       expect(svg.match(/data-edge-label=/g)).toHaveLength(1);
     });
 
+    it("emits the edge property block's payload as data attributes (#2543)", () => {
+      const krs = `
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B {
+    label       "Process payment"
+    description "At-least-once."
+    link        "https://runbook.example.com/pay" "Runbook"
+  }
+  A -> C "plain"
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map());
+      expect(svg).toContain('data-edge-description="At-least-once."');
+      expect(svg).toContain("Runbook");
+      // The shorthand edge carries neither attribute, so a file that writes no
+      // block produces the SVG it always did.
+      expect(svg.match(/data-edge-description=/g)).toHaveLength(1);
+      expect(svg.match(/data-edge-links=/g)).toHaveLength(1);
+    });
+
+    it("gives an edge with a property block a hit area even without a canonical id (#2543)", () => {
+      // Two edges share the base `A->B` with no #<id>, so the canonical-id pass
+      // clears both. The one carrying prose still needs to be clickable.
+      const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B {
+    description "the one with prose"
+  }
+  A -> B "the other one"
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map());
+      expect(svg).not.toContain("data-edge-canonical-id");
+      expect(svg).toContain('data-edge-description="the one with prose"');
+      expect(svg).toContain('class="krs-edge__hitline"');
+      // …but not the right-click advertisement: `krs-edge--interactive` gives
+      // `cursor: context-menu`, and no direction menu can open for an edge with
+      // no canonical id to write a selector against.
+      expect(svg).not.toContain("krs-edge--interactive");
+    });
+
+    it("keeps the property block's payload on a ghost rendering of the edge (#2543)", () => {
+      // On the BillingService service view, the cross-service `Billing -> Contract`
+      // edge is drawn as a ghost domain edge. That is the only place this edge
+      // appears on that view, so dropping its prose there would make the
+      // accepted vocabulary invisible on the view it was written for.
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract {
+        label       "creates from contract"
+        description "Only for contracts past their cooling-off window."
+      }
+    }
+  }
+}
+`;
+      const parseResult = Parser.parse(krs);
+      const styles = resolveStyles(parseResult.value.systems, [getBuiltinStyleSheet()]);
+      const viewSlice = extractView(parseResult.value.systems, ["ECPlatform", "BillingService"]);
+      expect(viewSlice.ghostDomainEdges).toHaveLength(1);
+      const svg = render(viewSlice, styles, undefined, parseResult.value.ownerIndex);
+      expect(svg).toContain(
+        'data-edge-description="Only for contracts past their cooling-off window."',
+      );
+    });
+
     it("marks edges with a canonical id as interactive and emits a wide transparent hitline", () => {
       const krs = `
 system S {

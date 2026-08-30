@@ -860,6 +860,51 @@ usecase PlaceOrder {
 
 `#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
 
+#### プロパティブロック（`{ label / description / link }`）
+
+末尾に `{ … }` ブロックを置くと、位置引数形では書けないものの置き場所になる。
+これは**追加的**な形であり、`A -> B "calls"` は引き続き有効で、label だけを持つ
+エッジの canonical な綴りであり続ける。
+
+```krs
+system Shop {
+  service OrderSvc {}
+  service PaymentSvc {}
+
+  OrderSvc --> PaymentSvc [async] #orderPlaced {
+    label       "注文を発行する"
+    description "at-least-once 配送。リトライは orderId で冪等。"
+    link        "https://runbook.example.com/order-placed" "Runbook"
+  }
+}
+```
+
+ブロックが受け付けるのは `label` / `description` / `link` の 3 つで、綴りはノードの
+プロパティとまったく同じ（`link` は `"<URL>"` の後に任意の `"<ラベル>"` を取り、
+複数回書ける）。それ以外のキーワードは `unexpected-token-in-block` エラーになる。
+タグと `#<id>` はブロックの**外側**に置く（`service A [external] { label "…" }`
+と同形）。
+
+位置引数とブロックの両方に label を書くと、どちらかを優先するのではなく
+`duplicate-edge-label` エラーになる。片方を黙って勝たせることはしない:
+
+```krs invalid
+system Shop {
+  service A {}
+  service B {}
+  A -> B "calls" { label "invokes" }
+}
+```
+
+**`karasu fmt` の畳み込み条件は 1 つ、ブロックが `label` 以外を持つかどうか。**
+label しか持たないブロックは shorthand に書き戻され、`description` や `link` を
+持つブロックはそのまま保たれる（`label` もブロック内に移る）。どちらの綴りも同じ
+AST に落ちるので、どちらで書いても図は変わらない。
+
+`description` と `link` はキャンバス側から読める。どちらかを持つエッジを左クリック
+するとエッジ詳細パネルが開く。右クリックは従来どおり方向メニューを開き、shorthand
+で書いたエッジの挙動は一切変わらない。
+
 #### service ブロック内のエッジ
 
 `service` ブロック内にエッジを宣言すると、そのサービス自身の依存関係を表現できる。
@@ -928,6 +973,7 @@ service BillingService {
 > 関連 TPL:
 > - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理した構造はいずれかの view で描画されるか診断される。エッジの endpoint が宣言スコープに無い場合に黙って落とさない（§端点のスコープ）
 > - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照する
+> - [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — shorthand とプロパティブロックは 1 つのエッジの 2 通りの綴りなので、両形が同一 AST に落ち、`karasu fmt` が 1 つの canonical 形に畳むことを固定する（§プロパティブロック）
 
 ---
 

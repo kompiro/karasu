@@ -1,5 +1,6 @@
 // edges.krs
-// Demonstrates: sync (->) and async (-->) edges, with and without labels.
+// Demonstrates: sync (->) and async (-->) edges, with and without labels,
+// and the property block for an edge that carries more than a label.
 
 system EdgeSample {
   label "Edge Variants"
@@ -16,4 +17,12 @@ system EdgeSample {
   // Async edges
   B --> D "labelled async call"
   C --> D
+
+  // Property block: only when there is more than a label to write.
+  // Left-click this edge in the preview to read it.
+  A --> D [async] #settlementFeed {
+    label       "streams settlements"
+    description "At-least-once delivery. Retries are idempotent on settlementId."
+    link        "https://runbook.example.com/settlement-feed" "Runbook"
+  }
 }

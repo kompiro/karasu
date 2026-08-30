@@ -164,6 +164,12 @@
    wide transparent hit-line behind the visible stroke; the cursor and
    hover-tinted stroke advertise the interactive surface.
 
+   The class tracks right-clickability only. The hit-line is emitted on a
+   wider condition (#2543): an edge carrying a property block is
+   left-clickable for its detail panel even when a base collision cleared
+   its id, and such an edge gets the hit-line without this class, since no
+   direction menu can open for it.
+
    Only the SVG-internal `g.krs-edge--interactive` is targeted so the
    styling is scoped to the rendered diagram. The hit-line itself
    stays transparent — only its stroke widens the click target. */

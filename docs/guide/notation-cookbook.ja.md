@@ -311,6 +311,44 @@ PCI スコープに入っていようがいまいが database であり、対象
 組み込みタグの追加要望を出す —
 [`tags-annotations.ja.md`](../spec/tags-annotations.ja.md) を参照。
 
+## 9. 動詞だけでは足りないエッジ — プロパティブロック
+
+**いつ** — 矢印そのものに書き残す価値のあることがある場合（配送保証・リトライ規則・
+runbook など）。label のスロットは 1 つしかなく、それは既に動詞で埋まっているため、
+知識は誰も描画しないコメントか、誰も見つけないウィキに流れていく。
+
+**パターン** — 十分な場所では `A -> B "動詞"` を書き続け、それ以上が必要なエッジ
+だけでプロパティブロックを開く。`description` と `link` の綴りはノードとまったく同じ。
+
+**`.krs`**
+
+```krs
+system Shop {
+  service OrderSvc {}
+  service PaymentSvc {}
+
+  OrderSvc -> PaymentSvc "課金する"
+
+  OrderSvc --> PaymentSvc [async] #orderPlaced {
+    label       "注文を発行する"
+    description "at-least-once 配送。リトライは orderId で冪等。"
+    link        "https://runbook.example.com/order-placed" "Runbook"
+  }
+}
+```
+
+`description` か `link` を持つエッジを左クリックすると、その散文とリンクを載せた
+エッジ詳細パネルが開く。label だけでは開かないので、`"課金する"` のエッジの挙動は
+従来どおり。
+
+**なぜ** — shorthand は言語で最も打鍵される構文であり、canonical であり続ける。
+`label` しか持たないブロックは `karasu fmt` が `A -> B "label"` に畳み戻すので、
+2 つの綴りが「同じことの 2 通りの言い方」に分かれていくことはない。位置引数と
+ブロックの両方に label を書くと、どちらかを優先するのではなく
+`duplicate-edge-label` エラーになる。ここに**置かない**ものにも注意する。
+プロトコル・多重度・リトライ回数は `description` の散文に留める。karasu が
+モデル化するのは構造であって、ランタイム設定ではない。
+
 ## 関連
 
 - [`docs/spec/syntax.md`](../spec/syntax.md) — 厳密な `.krs` 文法（まずこれを渡す）

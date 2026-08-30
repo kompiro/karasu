@@ -53,6 +53,7 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 | `edge-endpoint-not-at-scope` | warning | edge を宣言したスコープから届かない endpoint（**edge endpoint scope** 規則）。**bare** の endpoint は宣言ブロックの peer でなければならない — 例: `service` 配下の `domain` である `A`・`B` を `system` スコープで `A -> B` と書いた場合。source のブロック内に書くか、cross-domain の entity 参照は限定子付きにする。**qualified** の endpoint はトップレベル root を起点に anchor されていなければならず（`system` から対象までの path を丸ごと綴る）、メッセージは anchor された綴りを示し、参照先が宣言されている場所を伝える。`entity` ブロック内の関連は対象外 — entity ビューが自身の pool で解決し、外部 entity を ghost として描く。どこにも解決しない id は対象外（bare は `unresolved-edge-endpoint`、dotted は `cross-system-ref-unresolved` が担当）。bare の `domain` → `domain` は暗黙の service edge に集約されて描画されるため除外。 |
 | `edge-target-ambiguous` | warning | qualified な edge endpoint が、スコープの届く範囲の中で (kind, 深さ) の**揃わない**複数ノードに一致した（#2088 共通の判別子。揃った多重一致は意図された broadcast として沈黙する）。メッセージは候補の full path を列挙し、さらに修飾して絞り込めるよう促す。bare は ambiguity を出さない — peer 束縛を維持しており、そこでの多重一致は既存の broadcast であって新しい問いではない。 |
 | `ambiguous-edge-base` | warning | 同じ `from → to` の base を持つ edge が複数あり、識別する author id が無い。 |
+| `duplicate-edge-label` | error | エッジが label を 2 回書いている（位置引数 `A -> B "calls"` と property block 内の `label` プロパティの両方）。どちらかを黙って勝たせることはしないので、片方に寄せる。 |
 | `service-outside-system` | warning | `service` が `system` の外で宣言されている。 |
 | `infra-not-in-context` | error | infra ブロック（`database` / `queue` / `storage`）が `system` の直接の子でない。 |
 | `boundary-not-in-context` | error | 自身のキャンバスを持たない kind（`entity` / `resource` / `user` / `client` / infra leaf）の中に `boundary` ブロックが宣言されており、囲む対象が存在しない。 |
@@ -62,6 +63,8 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 | `top-level-declaration` | error | `user` またはエッジが `system` ブロック内ではなくトップレベルで宣言されている。 |
 | `system-property-conflict` | warning | merge された import 間で `system` の `label` / `description` が衝突する。 |
 | `cyclic-dependency` | warning | sync edge（`->`）が依存の循環を形成する。 |
+
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)（同じ意味を 2 通りで書けるようにしたら、両形が同一 AST に落ちること・二重記述に専用の診断があることを同じ PR で固定する。`duplicate-edge-label` はその診断側）。
 
 ### id の一意性
 

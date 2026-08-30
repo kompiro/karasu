@@ -2123,7 +2123,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 // open them from the file tree:
 //
 //   minimal.krs               smallest valid input (system + 2 services + edges)
-//   edges.krs                 sync (->) vs async (-->) edges, labelled / bare
+//   edges.krs                 sync (->) vs async (-->) edges, labelled / bare / block
 //   parallel-edges.krs        parallel edges between the same node pair
 //   users.krs                 [human] / [ai] user nodes with role + description
 //   external-nodes.krs        [external] tag on service / resource nodes
@@ -2486,7 +2486,8 @@ system ECommerce {
     {
       path: "edges.krs",
       content: `// edges.krs
-// Demonstrates: sync (->) and async (-->) edges, with and without labels.
+// Demonstrates: sync (->) and async (-->) edges, with and without labels,
+// and the property block for an edge that carries more than a label.
 
 system EdgeSample {
   label "Edge Variants"
@@ -2503,6 +2504,14 @@ system EdgeSample {
   // Async edges
   B --> D "labelled async call"
   C --> D
+
+  // Property block: only when there is more than a label to write.
+  // Left-click this edge in the preview to read it.
+  A --> D [async] #settlementFeed {
+    label       "streams settlements"
+    description "At-least-once delivery. Retries are idempotent on settlementId."
+    link        "https://runbook.example.com/settlement-feed" "Runbook"
+  }
 }
 `,
     },

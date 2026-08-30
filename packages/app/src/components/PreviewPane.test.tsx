@@ -279,6 +279,60 @@ describe("PreviewPane", () => {
       click(previewContainer as HTMLElement, () => previewContainer);
       expect(queryByText("2 domain edges")).toBeNull();
     });
+
+    // The edge property block (#2543): a regular edge that carries prose or a
+    // link opens the same panel in its single-edge form.
+    it("opens EdgeDetailPanel for a regular edge carrying a description", () => {
+      const svg =
+        `<g data-edge-canonical-id="orderPlaced" data-edge-from="OrderSvc" data-edge-to="PaymentSvc"` +
+        ` data-edge-kind="async" data-edge-label="places an order"` +
+        ` data-edge-description="At-least-once."></g>`;
+
+      const { container, getByText } = render(<PreviewPane {...baseProps()} svg={svg} />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-edge-description]")!,
+      );
+
+      expect(getByText("OrderSvc ⇢ PaymentSvc")).toBeTruthy();
+      expect(getByText("places an order")).toBeTruthy();
+      expect(container.querySelector(".node-detail-description")?.textContent).toContain(
+        "At-least-once.",
+      );
+    });
+
+    it("lists an edge's links and drops a disallowed scheme", () => {
+      const links = [
+        { url: "https://runbook.example.com/x", label: "Runbook" },
+        { url: "javascript:alert(1)", label: "Nope" },
+      ];
+      const svg =
+        `<g data-edge-canonical-id="e1" data-edge-from="A" data-edge-to="B" data-edge-kind="sync"` +
+        ` data-edge-links='${JSON.stringify(links)}'></g>`;
+
+      const { container, getByText, queryByText } = render(
+        <PreviewPane {...baseProps()} svg={svg} />,
+      );
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () => container.querySelector("[data-edge-links]")!);
+
+      expect(getByText(/Runbook/)).toBeTruthy();
+      expect(queryByText(/Nope/)).toBeNull();
+    });
+
+    it("leaves an edge with no block alone: no panel opens", () => {
+      const svg =
+        `<g data-edge-canonical-id="e1" data-edge-from="A" data-edge-to="B"` +
+        ` data-edge-kind="sync" data-edge-label="calls"></g>`;
+
+      const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () =>
+        container.querySelector("[data-edge-canonical-id]")!,
+      );
+
+      expect(container.querySelector(".node-detail-panel")).toBeNull();
+    });
   });
 
   describe("error state overlay", () => {

@@ -133,6 +133,10 @@ export const ja: Partial<Translations> = {
 
   // NodeDetailPanel
   "nodeDetail.close": "閉じる",
+  "edgeDetail.close": "閉じる",
+  "edgeDetail.domainEdges.count": ({ count }) => `ドメインエッジ ${count} 本`,
+  "edgeDetail.label.title": "🏷 ラベル",
+  "edgeDetail.links.title": "🔗 リンク",
   "nodeDetail.links.title": "🔗 リンク",
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
@@ -510,6 +514,8 @@ export const ja: Partial<Translations> = {
       : `entity "${entityId}" は "${infraId}.${subId}" に対応付けられていますが、"${infraId}" に "${subId}" は宣言されていません`,
   "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
     `エッジ id "#${authorId}" が重複しています。エッジ id は system 内で一意である必要があります`,
+  "diagnostic.duplicateEdgeLabel.message": ({ label }) =>
+    `このエッジには位置引数の label が既にあるため、block の label "${label}" は 2 つ目の label です。位置引数形か block プロパティのどちらか一方だけを書いてください`,
   "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
     `複数のエッジが base "${fromId}${arrow}${toId}" を共有しており、識別する #<id> がありません。これらのエッジは per-edge style selector では一致しません`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>

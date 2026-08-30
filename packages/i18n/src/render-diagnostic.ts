@@ -133,6 +133,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.unresolvedTableRef.message", d.params);
     case "duplicate-edge-id":
       return t("diagnostic.duplicateEdgeId.message", d.params);
+    case "duplicate-edge-label":
+      return t("diagnostic.duplicateEdgeLabel.message", d.params);
     case "ambiguous-edge-base":
       return t("diagnostic.ambiguousEdgeBase.message", d.params);
     case "style-token-type-mismatch":

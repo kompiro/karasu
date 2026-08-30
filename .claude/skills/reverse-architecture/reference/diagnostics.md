@@ -59,6 +59,7 @@ cycle.
 | `edge-endpoint-not-at-scope` | warning | An edge endpoint the declaring scope cannot reach (the **edge endpoint scope** rule). A **bare** endpoint must be a peer of the block the edge is declared in — e.g. `A -> B` written at `system` scope where `A` and `B` are `domain`s inside a `service`; author it inside its source block, or qualify a cross-domain entity target. A **qualified** endpoint must be anchored at a top-level root — the whole path from a `system` down to the target — so the message asks instead for the anchored spelling and names where the target is declared. A relation inside an `entity` block is exempt: the entity view resolves those against its own pool and draws the foreign entity as a ghost. Skipped for ids that resolve nowhere (`unresolved-edge-endpoint` for a bare id, `cross-system-ref-unresolved` for a dotted one); a bare `domain` → `domain` edge is exempt because it is derived up to an implicit service edge. |
 | `edge-target-ambiguous` | warning | A qualified edge endpoint resolves, within its scope's reach, to two or more nodes that are **not uniform in (kind, depth)** — the shared #2088 discriminator, so a uniform multi-match stays silent as intentional broadcast. The message lists each candidate's full path so the author can qualify further. Bare endpoints draw no ambiguity verdict: they keep the peer binding, where a multi-match is pre-existing broadcast rather than a new question. |
 | `ambiguous-edge-base` | warning | Multiple edges share the same `from → to` base with no distinguishing author id. |
+| `duplicate-edge-label` | error | An edge writes its label twice: positionally (`A -> B "calls"`) *and* as a `label` property inside its property block. Neither form silently wins; keep one. |
 | `service-outside-system` | warning | A `service` is declared outside any `system`. |
 | `infra-not-in-context` | error | An infra block (`database` / `queue` / `storage`) is not a direct child of `system`. |
 | `boundary-not-in-context` | error | A `boundary` block is declared inside a node kind that draws no canvas of its own (`entity`, `resource`, `user`, `client`, or an infra leaf), so it would have no peers to frame. |
@@ -68,6 +69,8 @@ cycle.
 | `top-level-declaration` | error | A `user` or an edge is declared at the top level instead of inside a `system` block. |
 | `system-property-conflict` | warning | A `system` `label` / `description` conflicts between merged imports. |
 | `cyclic-dependency` | warning | Sync edges (`->`) form a dependency cycle. |
+
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) (once one meaning has two spellings, the same PR pins that both land on one AST and that writing it in both forms at once is diagnosed; `duplicate-edge-label` is that diagnostic).
 
 ### Identifier uniqueness
 

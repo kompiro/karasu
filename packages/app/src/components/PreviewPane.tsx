@@ -8,7 +8,7 @@ import type {
   CategoryId,
 } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
-import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
+import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 
@@ -68,7 +68,8 @@ interface EdgeContextMenuState {
 
 type DetailPanelState =
   | { kind: "node"; nodeId: string; anchorX: number; anchorY: number }
-  | { kind: "edge"; domainEdges: DomainEdgeDetail[]; anchorX: number; anchorY: number };
+  | { kind: "edge"; domainEdges: DomainEdgeDetail[]; anchorX: number; anchorY: number }
+  | { kind: "single-edge"; edge: SingleEdgeDetail; anchorX: number; anchorY: number };
 
 const CLICK_THRESHOLD = 3;
 
@@ -249,6 +250,41 @@ export function PreviewPane({
           } catch {
             // malformed JSON — ignore
           }
+        }
+        return;
+      }
+
+      // A regular edge that carries an edge property block (#2543). Keyed on
+      // the payload attributes rather than `data-edge-canonical-id`, for two
+      // reasons: only an edge with something to show should open a panel (an
+      // empty one would fire on every edge in the diagram), and an edge whose
+      // canonical id was cleared by a base collision still has prose to show.
+      // Right-click still opens EdgeContextMenu (see handleContextMenu).
+      const detailEdge = target.closest("[data-edge-description], [data-edge-links]");
+      if (detailEdge) {
+        const anchor = calcAnchor(detailEdge);
+        if (anchor) {
+          const rawLinks = detailEdge.getAttribute("data-edge-links");
+          let links: SingleEdgeDetail["links"] = [];
+          if (rawLinks) {
+            try {
+              links = JSON.parse(rawLinks) as SingleEdgeDetail["links"];
+            } catch {
+              // malformed JSON: show the rest of the edge rather than nothing
+            }
+          }
+          setDetailPanel({
+            kind: "single-edge",
+            edge: {
+              from: detailEdge.getAttribute("data-edge-from") ?? "",
+              to: detailEdge.getAttribute("data-edge-to") ?? "",
+              kind: detailEdge.getAttribute("data-edge-kind") === "async" ? "async" : "sync",
+              label: detailEdge.getAttribute("data-edge-label") ?? undefined,
+              description: detailEdge.getAttribute("data-edge-description") ?? undefined,
+              links,
+            },
+            ...anchor,
+          });
         }
         return;
       }
@@ -470,6 +506,14 @@ export function PreviewPane({
         {detailPanel?.kind === "edge" && (
           <EdgeDetailPanel
             domainEdges={detailPanel.domainEdges}
+            anchorX={detailPanel.anchorX}
+            anchorY={detailPanel.anchorY}
+            onClose={() => setDetailPanel(null)}
+          />
+        )}
+        {detailPanel?.kind === "single-edge" && (
+          <EdgeDetailPanel
+            edge={detailPanel.edge}
             anchorX={detailPanel.anchorX}
             anchorY={detailPanel.anchorY}
             onClose={() => setDetailPanel(null)}

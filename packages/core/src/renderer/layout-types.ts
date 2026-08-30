@@ -4,6 +4,7 @@ import type {
   CommonProperties,
   ClientResource,
   ClientCapability,
+  LinkEntry,
 } from "../types/ast.js";
 import type { DomainEdgeDetail } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
@@ -97,6 +98,10 @@ export interface LayoutEdge {
   cyclic?: boolean;
   /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
   domainEdges?: DomainEdgeDetail[];
+  /** Mirrors `KrsEdge.description`: prose from the edge property block (#2543). */
+  description?: string;
+  /** Mirrors `KrsEdge.links`: `link` rows from the edge property block (#2543). */
+  links?: LinkEntry[];
   /** Mirrors `KrsEdge.syntheticLabel`: `label` is machine-generated (W/R markers, aggregation counts), not authored. */
   syntheticLabel?: boolean;
   /**

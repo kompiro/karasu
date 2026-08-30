@@ -416,6 +416,18 @@ export interface KrsEdge {
   cyclic?: boolean;
   loc: SourceRange;
   /**
+   * Free-form prose from the edge property block (`A -> B { description "…" }`).
+   * The shorthand `A -> B "label"` has no place to write it, which is why the
+   * block form exists at all (see `docs/spec/syntax.md` § Edge declaration).
+   */
+  description?: string;
+  /**
+   * `link` rows from the edge property block, in source order. Left `undefined`
+   * (not `[]`) when the edge declares none, so the shorthand and a block that
+   * omits `link` land on the same AST.
+   */
+  links?: LinkEntry[];
+  /**
    * Author-supplied identifier from `from -> to "label" #<id>` (or, for
    * synthesized usecase->resource edges, from `resource <ref> #<id>`).
    * See `docs/design/edge-id-selector.md`.
@@ -973,6 +985,7 @@ export interface DiagnosticParamsByCode {
   // (multi-tenant broadcast). A code that can never fire is a code that lies
   // about what the checker looks at, so there is none (#2549).
   "duplicate-edge-id": { authorId: string };
+  "duplicate-edge-label": { label: string };
   "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->" };
 
   // ── Style parser ────────────────────────────────────────────────────────
