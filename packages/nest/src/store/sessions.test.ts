@@ -209,25 +209,24 @@ describe("SessionStore", () => {
     expect(h.kv.keys()).toEqual([]);
   });
 
-  it("is not extended by being used", async () => {
-    // Reading a session must not rewrite it. A credential that renews on use
-    // never ends while it is being used, which is the thing the fixed window
-    // exists to stop, and `docs/policy/nest-privacy.md` states that window to
-    // submitters. The lint guard checks the documents; this checks the
-    // behaviour they describe, because a comment can go on saying "not
-    // renewed" after the code stopped meaning it.
-    const kv = new MemoryKV();
-    const store = new SessionStore(kv);
-    const { sessionId } = await store.issue(42, "kompiro", at);
-    const writes = kv.puts.length;
+  it("cannot be kept alive forever by being used", async () => {
+    // The behavioural twin of the lint guard, and it changed for the same
+    // reason (#2655). It used to assert that reading a session never rewrote
+    // it, because a credential that renews on use never ends while it is
+    // being used — the thing the fixed window existed to stop. Sliding is now
+    // deliberate, so what has to be checked is the thing that still stops it:
+    // the cap. Kept as behaviour rather than left to the lint guard, because a
+    // comment can go on claiming a ceiling after the code stopped enforcing one.
+    const h = harness();
+    const { sessionId } = await h.store.issue(42, "kompiro", h.at());
 
-    kv.advance(SESSION_TTL_SECONDS / 2);
-    expect(await store.get(42, sessionId)).toBeDefined();
-    expect(kv.puts.length).toBe(writes);
+    // Used continuously, right up to the cap — never idle, always refreshed.
+    await useUntil(h, sessionId, 80);
+    expect(await h.store.get(42, sessionId, h.at())).toBeDefined();
 
-    // Still measured from issue, not from that read.
-    kv.advance(SESSION_TTL_SECONDS / 2 + 1);
-    expect(await store.get(42, sessionId)).toBeUndefined();
+    // And it ends anyway. No amount of use moves this.
+    h.advance(10 * DAY);
+    expect(await h.store.get(42, sessionId, h.at())).toBeUndefined();
   });
 
   it("will not hand one account's session to another", async () => {
