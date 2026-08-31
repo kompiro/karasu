@@ -529,3 +529,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2593](TPL-2593-layout-feedback-is-floor-first-and-monotone.md) | レイアウトに測定値を返す経路を足すなら、候補は入力だけで決まり、既定候補が先頭で厳密改善のみが勝ち、停止は単調性で説明できること — 前向き一方向だったパイプラインは決定性と差分の局所性を無料で得ていた | renderer | #2593, ADR-1737 |
 | [TPL-2643](TPL-2643-skip-reports-success-without-running.md) | 走らずに success を報告する gate は、skip 条件を解除する状態変化を必ず trigger 側にも持つ | build | #2643, ADR-2643 |
 | [TPL-2598](TPL-2598-fence-corpus-must-reach-the-limit.md) | 計測柵は、その資源の限界に達する入力を corpus に持って初めて柵になる — 有限の資源を N 分割する実装は N が小さいうちどの指標も 0 のままで、飽和入力の無い柵は修正前後どちらも green を返す | testing | #2598 |
+| [TPL-2655](TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md) | 更新で延びる期限には、更新されない上限を併置する — ストアが強制できる期限は 1 つで、それは延びる側に使われるため、上限は読み取り時に確かめるしかない | project | #2655, sessions.ts |
