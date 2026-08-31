@@ -1914,20 +1914,17 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
   return warnings;
 }
 
-function serializeSelector(selector: {
-  nodeType?: string;
-  tags: string[];
-  annotations: string[];
-  facets?: string[];
-  id?: string;
-}): string {
-  const parts: string[] = [];
-  if (selector.id) parts.push(`#${selector.id}`);
-  if (selector.nodeType) parts.push(selector.nodeType);
-  for (const tag of selector.tags) parts.push(`[${tag}]`);
-  // Included so `[facets=pii]` and `[facets=gdpr]` are distinct keys for the
-  // style-conflict grouping; omitting them would merge two different rules.
-  for (const facet of selector.facets ?? []) parts.push(`[facets=${facet}]`);
-  for (const ann of selector.annotations) parts.push(`@${ann}`);
-  return parts.join("");
+/**
+ * The grouping key for {@link detectStyleConflicts}, and the string the warning
+ * shows the reader.
+ *
+ * Delegates to the Tidy formatter's {@link formatSelector} rather than spelling
+ * a second rendering out here. The two had already drifted: this one put the id
+ * before the kind (so `team#Platform` read as `#Platformteam`) and dropped
+ * `edge#<id>` / `boundary#<id>` entirely, which fused every `boundary#<id>` rule
+ * into one `boundary` key and reported a conflict between two sheets that named
+ * different boundaries. One selector has one spelling (TPL-2234).
+ */
+function serializeSelector(selector: StyleSelector): string {
+  return formatSelector(selector);
 }
