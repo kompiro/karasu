@@ -97,19 +97,22 @@ of the two renderings」。
 
 ## 手動確認
 
+どの色がどこに出るかは AC-1 / AC-4 が自動で判定している。ここに残すのは、SVG の属性値を
+読んでも判定できない**見え方**だけである。
+
 前提: app を <https://karasu.kompiro.dev/> で開き、builtin の **Getting Started**
 プロジェクト（`index.krs`）を開いて Group by: **Team** にしてある。`default.krs.style` に
 次を書く。
 
 ```css
-#commerce { border-color: #C0392B; }
+#commerce { border-color: #C0392B; background-color: #C0392B; }
 ```
 
-- [ ] 🧑 Manual: `commerce`（コマースチーム）のフレームの**輪郭**が赤系（`#C0392B`）になる。タイトルは既定のまま（タイトルを塗るのは `color`）で、`platform` / `notification` のフレームは控えめな破線グレーのまま変わらない
-- [ ] 🧑 Manual: 同じシートのまま Org ビューへ切り替えると、コマースチームの**カード**の
-      枠線も同じ赤系になっている（1 つの宣言が 2 つの描画に届いている）
-- [ ] 🧑 Manual: `#commerce { background-color: #C0392B; }` に書き換えると、system view の
-      フレーム内側が薄い赤に色付き、輪郭は既定のまま。Org ビューのカードは塗りつぶしで赤になる
-- [ ] 🧑 Manual: light / dark 両テーマで、指定した色がそのまま出る。指定を消すと両テーマとも元の見た目に戻る
-- [ ] 🧑 Manual: 色を指定したフレームでも、囲まれたカード・エッジ・タイトル位置が視覚的に
-      破綻しない。畳む / 展開しても輪郭が途切れない
+- [ ] 🧑 Manual: 指定した色が light / dark 両テーマで**読める**形で出ている。薄い塗りが
+      背景に沈んで消えていたり、逆に囲まれたカードの文字を読みにくくしていたりしない
+- [ ] 🧑 Manual: 色を指定したフレームで、囲まれたカード・エッジ・フレームのタイトル位置が
+      視覚的に破綻しない。チームを畳む / 展開しても輪郭が途切れない
+
+> 名指ししていない team フレームのタイトルが light テーマで読みにくいのは本 Issue の
+> 範囲外の既存不具合で、[#2662](https://github.com/kompiro/karasu/issues/2662) が扱う。
+> 上の 2 項目は**指定した色**についての確認であり、そちらの影響を受けない。
