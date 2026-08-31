@@ -3447,7 +3447,7 @@ system S {
     `);
     expect(warnings).toHaveLength(1);
     if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
-    expect(warnings[0].params).toEqual({ nodeId: "Checkout", facetId: "pcl" });
+    expect(warnings[0].params).toEqual({ subject: "Checkout", facetId: "pcl" });
     expect(warnings[0].loc).toBeDefined();
   });
 
@@ -3473,7 +3473,7 @@ system S {
   service B { facets ghost }
 }
     `);
-    expect(warnings.map((w) => (w.kind === "facet-not-declared" ? w.params.nodeId : ""))).toEqual([
+    expect(warnings.map((w) => (w.kind === "facet-not-declared" ? w.params.subject : ""))).toEqual([
       "A",
       "B",
     ]);
@@ -3499,7 +3499,7 @@ system S {
     `);
     expect(warnings).toHaveLength(1);
     if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
-    expect(warnings[0].params.nodeId).toBe("T");
+    expect(warnings[0].params.subject).toBe("T");
   });
 
   it("is a warning, never info — a broken reference is a fact with a fix", () => {
@@ -3520,8 +3520,10 @@ system S {
     `);
     expect(warnings).toHaveLength(1);
     if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
-    // An edge has no id of its own, so it names itself by its arrow form.
-    expect(warnings[0].params).toEqual({ nodeId: "A --> B", facetId: "pcl" });
+    // An edge has no id of its own, so it names itself by the canonical base
+    // form — the same string `edge#<id>` addresses it with, so what the warning
+    // prints can be pasted into a style selector.
+    expect(warnings[0].params).toEqual({ subject: "A-->B", facetId: "pcl" });
   });
 
   it("stays silent when an edge's facets all resolve", () => {

@@ -34,7 +34,7 @@ type: product
 
 ### AC-2: 未宣言参照が検出される（TPL-907 / TPL-2032）
 
-- [x] AT-C: どのファイルにも宣言が無い facet をエッジに書くと `facet-not-declared` が出る。エッジには id が無いので、warning は `From -> To` の矢印形で対象を名指し、loc は宣言ブロックではなくエッジ自身に着地する
+- [x] AT-C: どのファイルにも宣言が無い facet をエッジに書くと `facet-not-declared` が出る。エッジには id が無いので、warning は canonical base 形（`A-->B` — `edge#<id>` が同じエッジを指すのと同じ綴り）で対象を名指し、loc は宣言ブロックではなくエッジ自身に着地する
 
   > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › warns for an undeclared facet written on an edge ／ lands the edge warning on the edge, not on the block that declares it
 
@@ -56,6 +56,14 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/facet-overlay.test.ts` › draws one casing per selected facet the edge belongs to (TPL-2161) ／ orders an edge's casings by known-facet order, not by declaration order
 
+- [x] AT-G2: casing の色は diff モードでも facet の色のまま。diff の注入スタイルシートは `[data-diff-state] line / path` を塗り替えるので、presentation attribute で塗ると removed エッジの casing が赤い破線になり facet の同一性（「PII は teal」）が失われる
+
+  > ✅ Automated — `packages/core/src/renderer/facet-overlay.test.ts` › paints the casing through style=, so the diff stylesheet cannot repaint it
+
+- [x] AT-G3: compare モードで削除されたエッジも casing を保つ。所属は node 鍵の `facetIndex` ではなくエッジ実体に乗るので、removed node 用の backfill は通らないが、diff が描くのが before 側のエッジ実体そのものなので「何を運んでいたか」が読める
+
+  > ✅ Automated — `packages/core/src/compile/facet-overlay-surfaces.test.ts` › keeps a removed edge's casing, so a deleted flow still shows what it carried
+
 - [x] AT-H: エッジにしか書かれていない facet id も「モデルが知っている facet」に入る（色・セレクタ・概観パネルに現れないと選択自体ができない）
 
   > ✅ Automated — `packages/core/src/renderer/facet-overview.test.ts` › names a facet held only by an edge, with no node member anywhere
@@ -70,9 +78,13 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/group-collapse.test.ts` › unions the facets of the edges that fold onto one stub edge ／ leaves a stub edge's facets undefined when nothing it folds declares any、`packages/core/src/renderer/category-collapse.test.ts` › unions the facets of the re-targeted edges it de-dupes
 
+- [x] AT-J2: 逆に散文（`description` / `link`）は畳まない。1 本の散文は 1 本のエッジを説明するので、集約と同じく stub エッジからは落とす
+
+  > ✅ Automated — `packages/core/src/renderer/group-collapse.test.ts` › drops the prose of the edges it folds, the way an aggregate does
+
 ### AC-5: `[facets=<id>]` セレクタがエッジに届く
 
-- [x] AT-K: `.krs.style` の `edge[facets=pii]` が該当エッジに適用され、非該当エッジには適用されない。述語を繰り返すと AND になる。どのエッジも宣言していない facet を指す場合は、全エッジへ widening せず何にも一致しない
+- [x] AT-K: `.krs.style` の `edge[facets=pii]` が該当エッジに適用され、非該当エッジには適用されない。述語を繰り返すと AND になる。どのエッジも宣言していない facet を指す場合は、全エッジへ widening せず何にも一致しない。種別なしの `[facets=pii]` はノード限定のまま（種別に `edge` を持たないセレクタはエッジに一致しない、という既存規則）
 
   > ✅ Automated — `packages/core/src/resolver/facet-style-selector.test.ts` › styles the edges that declare the facet, and only those ／ ANDs repeated predicates on an edge selector too ／ does not widen to every edge when no edge declares the facet
 

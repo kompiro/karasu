@@ -283,7 +283,7 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
     case "facet-not-declared":
       return {
         message: t("warning.facetNotDeclared.message", {
-          nodeId: w.params.nodeId,
+          subject: w.params.subject,
           facetId: w.params.facetId,
         }),
         details: [t("warning.facetNotDeclared.declarationNote")],

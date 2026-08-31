@@ -533,8 +533,9 @@ export function renderFromLayout(
    */
   const facetOrder = overlay?.entries.map((e) => e.id) ?? [];
   const edgeFacetsFor = (edgeLayout: LayoutResult["edges"][number]): readonly string[] => {
-    if (!overlay || edgeLayout.facets === undefined) return [];
-    return facetOrder.filter((id) => edgeLayout.facets?.includes(id));
+    const own = edgeLayout.facets;
+    if (!overlay || own === undefined) return [];
+    return facetOrder.filter((id) => own.includes(id));
   };
 
   const effectiveEdgeDiffState = layoutResult.foldedEdgeDiffState

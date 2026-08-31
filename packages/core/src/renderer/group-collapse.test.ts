@@ -117,6 +117,27 @@ describe("collapseGroups", () => {
     expect(res.edges[0].facets).toEqual(["pii", "pci"]);
   });
 
+  it("drops the prose of the edges it folds, the way an aggregate does", () => {
+    // Membership unions because it is a set; prose does not, because a
+    // `description` describes one edge. Keeping the first constituent's would
+    // open EdgeDetailPanel on a bundle showing one member's runbook as if it
+    // covered all of them (`view-extract.ts` deletes them for the same reason).
+    const withProse = (from: string, to: string, description: string): KrsEdge => ({
+      ...edge(from, to),
+      description,
+      links: [{ url: `https://runbook.example.com/${from}`, loc: ZERO }],
+    });
+    const res = collapseGroups(
+      [svc("A"), svc("B"), svc("C")],
+      [withProse("A", "C", "legacy sync path"), withProse("B", "C", "batch replay")],
+      OWNER,
+      new Set(["payments"]),
+    );
+    expect(res.edges).toHaveLength(1);
+    expect(res.edges[0].description).toBeUndefined();
+    expect(res.edges[0].links).toBeUndefined();
+  });
+
   it("leaves a stub edge's facets undefined when nothing it folds declares any", () => {
     const res = collapseGroups(
       [svc("A"), svc("B"), svc("C")],

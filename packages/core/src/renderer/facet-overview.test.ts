@@ -162,8 +162,10 @@ describe("buildFacetOverview", () => {
         }
       `),
     );
+    // The id is the canonical base form, which is exactly what `edge#<id>`
+    // addresses the same edge with — so a row can be pasted into a selector.
     expect(overview[0].members).toEqual([
-      { id: "Api --> Billing", label: "charge", kind: "edge", path: ["Shop"] },
+      { id: "Api-->Billing", label: "charge", kind: "edge", path: ["Shop"] },
     ]);
   });
 

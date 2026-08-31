@@ -83,10 +83,13 @@ database[facets=pci_scope] {
 }
 ```
 
-- **Nodes and edges.** `facets` is written on both, so `edge[facets=pii]`
-  matches the edges that declare that membership — and only those. A repeated
-  predicate ANDs there too. What it never does is widen: an `edge[facets=...]`
-  whose facet no edge declares matches nothing rather than every edge.
+- **Nodes and edges — but reaching an edge takes the `edge` type.** `facets` is
+  written on both. The kind-less `[facets=pii]` above stays node-scoped, like
+  every other type-less selector: a selector with no `edge` type never matches
+  an edge. Write `edge[facets=pii]` to style the edges that declare the
+  membership, repeating the predicate to AND it as on a node. What it never does
+  is widen: an `edge[facets=...]` whose facet no edge declares matches nothing
+  rather than every edge.
 - **Membership is read from the element**, which is where `facets <id>` is
   written. Nothing about the selector reaches back into the `facet` declaration;
   the declaration carries the concern's metadata, not its members.

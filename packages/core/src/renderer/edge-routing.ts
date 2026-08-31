@@ -84,23 +84,38 @@ const STROKE_DASHARRAY: Record<ResolvedEdgeStyle["strokeStyle"], string | undefi
 };
 
 /**
- * Band width and gap of a facet casing, matching the node ring's `RING_WIDTH` /
- * `RING_GAP` so an edge's membership reads at the same weight as a card's.
+ * Visible thickness of one facet casing per side, matching the node ring's
+ * `RING_WIDTH` so an edge's membership reads at the same weight as a card's.
+ *
+ * The rings leave a 1px gap between bands; the casings cannot, and deliberately
+ * do not try. A ring is its own rect over the canvas, so the background shows
+ * through between two of them. Casings are stacked strokes on one line, and the
+ * only way to separate them would be to paint a canvas-coloured band in the
+ * middle — which is a lie over any non-default background. Abutting bands of
+ * equal width is the honest rendering of the same idea.
  */
 const CASING_WIDTH = 3;
-const CASING_GAP = 1;
 
 /**
- * One casing per selected facet, ordered so the caller can paint them widest
- * first and cover each with the next: band `i` then occupies the annulus
- * `[strokeWidth/2 + i*(W+G), … + W]` around the line, which is the radial band
- * ring `i` occupies around a card.
+ * One casing per selected facet, widest first, so each is covered by the next
+ * narrower one and band `i` is left showing as the annulus
+ * `[strokeWidth/2 + i*W, strokeWidth/2 + (i+1)*W]` around the line. Every band
+ * is the same width, and the innermost one — against the line — is the first
+ * facet in known-facet order, which is the radial position ring `i` takes
+ * around a card.
  *
  * Solid regardless of the edge's `stroke-style`, and with no `marker-end`: a
  * dashed casing would read as a second dashed edge, and a marker would stamp an
  * oversized arrowhead behind the real one. The node rings make the same choice
  * — they ignore `border-style` — because the highlight belongs to the reader's
  * selection, not to the element's styling.
+ *
+ * Painted through `style=` rather than presentation attributes. Diff mode
+ * injects a stylesheet that repaints every `line` / `path` under a
+ * `[data-diff-state]` group (`diff/diff-style.ts`), and a selector rule beats a
+ * presentation attribute — so on a removed edge the casings would come out red
+ * and dashed, losing the facet identity they exist to carry. An inline style
+ * outranks that rule, which is what keeps "PII is teal" true in diff mode too.
  */
 function renderFacetCasings(
   facets: readonly string[],
@@ -112,10 +127,10 @@ function renderFacetCasings(
   for (let i = facets.length - 1; i >= 0; i--) {
     const color = colorOf.get(facets[i]);
     if (!color) continue;
+    const width = strokeWidth + 2 * (i + 1) * CASING_WIDTH;
     casings.push(
       strokedShape({
-        stroke: color,
-        "stroke-width": strokeWidth + 2 * (i * (CASING_WIDTH + CASING_GAP) + CASING_WIDTH),
+        style: `stroke:${color};stroke-width:${width};stroke-dasharray:none`,
         "stroke-linecap": "butt",
         "data-facet-casing": facets[i],
       }),
@@ -212,25 +227,18 @@ export function renderEdge(
   /**
    * The edge's own geometry, stroked with `attrs`. One reader for the visible
    * stroke and the facet casings below it, so a casing can never trace a
-   * different path than the line it sits under.
+   * different path than the line it sits under. The geometry itself is resolved
+   * once here rather than per call — `gappedStrokePath` walks every hop, and an
+   * edge in N facets asks for the same shape N+1 times.
    */
-  const strokedShape = (attrs: Record<string, string | number | undefined>): string => {
-    if (gapped) return el("path", { d: gappedStrokePath(points, hops), fill: "none", ...attrs });
-    if (points.length === 2) {
-      return el("line", {
-        x1: fromPoint.x,
-        y1: fromPoint.y,
-        x2: toPoint.x,
-        y2: toPoint.y,
-        ...attrs,
-      });
-    }
-    return el("polyline", {
-      points: points.map((p) => `${p.x},${p.y}`).join(" "),
-      fill: "none",
-      ...attrs,
-    });
-  };
+  const geometry: Record<string, string | number | undefined> = gapped
+    ? { d: gappedStrokePath(points, hops), fill: "none" }
+    : points.length === 2
+      ? { x1: fromPoint.x, y1: fromPoint.y, x2: toPoint.x, y2: toPoint.y }
+      : { points: points.map((p) => `${p.x},${p.y}`).join(" "), fill: "none" };
+  const shapeTag = gapped ? "path" : points.length === 2 ? "line" : "polyline";
+  const strokedShape = (attrs: Record<string, string | number | undefined>): string =>
+    el(shapeTag, { ...geometry, ...attrs });
 
   // Facet casings (#2544): the edge counterpart of the node's concentric rings.
   // Drawn widest first and then covered by the narrower ones, so each facet is

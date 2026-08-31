@@ -1935,7 +1935,7 @@ system Shop {
       const warnings = edgeFacetWarnings(result.krsFile);
       expect(warnings).toHaveLength(1);
       expect(warnings[0]).toMatchObject({
-        params: { nodeId: "Orders --> Ledger", facetId: "pcl" },
+        params: { subject: "Orders-->Ledger", facetId: "pcl" },
       });
     });
   });

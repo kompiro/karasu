@@ -860,7 +860,7 @@ usecase PlaceOrder {
 
 `#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
 
-#### プロパティブロック（`{ facets / label / description / link }`）
+#### プロパティブロック（`{ label / description / link / facets }`）
 
 末尾に `{ … }` ブロックを置くと、位置引数形では書けないものの置き場所になる。
 これは**追加的**な形であり、`A -> B "calls"` は引き続き有効で、label だけを持つ
@@ -1458,7 +1458,7 @@ system Shop {
   `domain` / `usecase` / `entity` / `resource` / `user` / `client`、infra ブロック
   （`database` / `queue` / `storage`）とその leaf（`table`・queue item・`bucket`）。
   所属はアーキテクチャの外から課されるものなので、構造的に除外される kind は無い。
-- **エッジも `facets` を取る。** 書く場所は[エッジのプロパティブロック](#プロパティブロック-facets--label--description--link-)。
+- **エッジも `facets` を取る。** 書く場所は[エッジのプロパティブロック](#プロパティブロック-label--description--link--facets-)。
   PII を運ぶデータフローや PCI スコープ内の呼び出しは**そのエッジについての事実**で、
   端点に付けると端点について誤ったことを言いながらフローについては何も言えていない。
   綴りもマージ規則もノードと同じで、facet を選ぶとカードに ring が付くのと同様に

@@ -414,9 +414,10 @@ class Printer {
   }
 
   /**
-   * One edge, canonicalized. The condition is a single one (#2543): **does the
-   * edge carry anything the shorthand cannot express**: `description` or a
-   * `link`. If not, it folds to `A -> B "label"`; if so, it emits the block
+   * One edge, canonicalized. The condition is a single one (#2543, #2544):
+   * **does the edge carry anything the shorthand cannot express** — a
+   * `description`, a `link`, or `facets`. If not, it folds to
+   * `A -> B "label"`; if so, it emits the block
    * with `label` inside it. A label-only block is therefore not a stable form,
    * which is what keeps the two spellings from becoming a dual representation
    * of one fact (TPL-1415, TPL-2542).

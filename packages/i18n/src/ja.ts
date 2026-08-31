@@ -375,8 +375,8 @@ export const ja: Partial<Translations> = {
     `セレクタ "${selector}" が指す "@${annotation}" は組み込みアノテーションではありません — 非推奨です。v1.x ではこのルールは引き続き適用されますが、構文 v2.0 はツール語彙のみに一致します。`,
   "warning.styleSelectorNotBuiltin.migrationNote":
     '移行は 3 手順です: 関心事を宣言し（facet <id> { label "..." }）、対象要素に "facets <id>" を書き、セレクタを [facets=<id>] に書き換えます。specificity は同じなので、カスケードの他の部分は動きません。',
-  "warning.facetNotDeclared.message": ({ nodeId, facetId }) =>
-    `${nodeId} の "facets ${facetId}" は宣言済みの facet を指していません`,
+  "warning.facetNotDeclared.message": ({ subject, facetId }) =>
+    `${subject} の "facets ${facetId}" は宣言済みの facet を指していません`,
   "warning.facetNotDeclared.declarationNote":
     'top-level に facet <id> { label "..." } を宣言するか、既存の宣言に合わせて綴りを修正してください。',
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>

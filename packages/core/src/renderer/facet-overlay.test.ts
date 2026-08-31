@@ -312,6 +312,21 @@ system S {
     expect(casings(one)).toEqual(casings(other));
   });
 
+  it("paints the casing through style=, so the diff stylesheet cannot repaint it", () => {
+    // Diff mode injects `[data-diff-state="removed"] line { stroke:#ef4444;
+    // stroke-dasharray:6 4 }` (`diff/diff-style.ts`), and a selector rule beats
+    // a presentation attribute — a casing painted with `stroke=` would come out
+    // red and dashed on a removed edge, losing the facet identity ("PII is
+    // teal") the overlay exists to carry.
+    const svg = renderSystem(parse(SRC_EDGE_FACETS), ["pii"]);
+    const casing = /<(?:line|path|polyline)[^>]*data-facet-casing="pii"[^>]*>/.exec(svg)?.[0] ?? "";
+    expect(casing).not.toBe("");
+    expect(casing).toMatch(/style="[^"]*stroke:#[0-9A-Fa-f]{6}/);
+    expect(casing).toMatch(/style="[^"]*stroke-dasharray:none/);
+    // The colour must not also sit in a presentation attribute the sheet wins over.
+    expect(casing).not.toMatch(/\sstroke="/);
+  });
+
   it("highlights an aggregated domain edge when a constituent carries the facet", () => {
     // The service view folds several domain edges into `"N domain edges"`. The
     // aggregate's membership is the union of what it folds, so a reader looking

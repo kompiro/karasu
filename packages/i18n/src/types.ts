@@ -385,7 +385,7 @@ export type Translations = {
     selector: string;
   }) => string;
   "warning.styleSelectorNotBuiltin.migrationNote": string;
-  "warning.facetNotDeclared.message": (params: { nodeId: string; facetId: string }) => string;
+  "warning.facetNotDeclared.message": (params: { subject: string; facetId: string }) => string;
   "warning.facetNotDeclared.declarationNote": string;
   "warning.legendRefUnresolved.message": (params: {
     target: string;

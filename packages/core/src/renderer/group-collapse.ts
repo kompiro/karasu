@@ -197,9 +197,15 @@ export function collapseGroups(
       if (merged !== undefined && merged.length > 0) foldedInto.facets = merged;
       continue;
     }
-    // A re-targeted edge stands for one-or-more real edges, so its authored
-    // label no longer describes it — drop the label but keep the sync/async kind.
+    // A re-targeted edge stands for one-or-more real edges, so nothing that
+    // describes one of them survives: the label goes, and so do the property
+    // block's `description` / `link`, which would otherwise put the first
+    // constituent's prose on a bundle it does not describe. The aggregated
+    // "N domain edges" drops them for the same reason (`view-extract.ts`).
+    // The sync/async kind is a property of the bundle, so it stays.
     const stub: KrsEdge = { ...edge, from, to, label: undefined };
+    delete stub.description;
+    delete stub.links;
     stubEdges.set(key, stub);
     outEdges.push(stub);
   }

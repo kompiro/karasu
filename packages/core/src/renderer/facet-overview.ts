@@ -1,5 +1,6 @@
 import type { KrsFile, KrsNode, FacetBlock } from "../types/ast.js";
 import { facetWalkRoots, knownFacetIds } from "./facet-overlay.js";
+import { edgeBaseId } from "../resolver/canonical-id.js";
 
 /**
  * Facet overview: "which elements belong to facet X", derived from the model
@@ -21,7 +22,7 @@ import { facetWalkRoots, knownFacetIds } from "./facet-overlay.js";
 /** One element that declares membership in a facet. */
 export interface FacetMemberInfo {
   /**
-   * Bare node id, as written — or, for an edge, its `From -> To` arrow form
+   * Bare node id, as written — or, for an edge, its canonical base form (`A-->B`)
    * (#2544). An edge has no id of its own: `canonicalId` is derived after view
    * extraction and is `undefined` when the base form collided (ADR-1096), so it
    * cannot name a row here.
@@ -104,7 +105,10 @@ export function buildFacetOverview(file: KrsFile): FacetOverviewEntry[] {
     for (const edge of node.edges) {
       for (const facetId of edge.facets ?? []) {
         add(facetId, {
-          id: `${edge.from} ${edge.kind === "async" ? "-->" : "->"} ${edge.to}`,
+          // The same string `edge#<id>` addresses the edge with, so a row here
+          // can be pasted into a style selector and `facet-not-declared` names
+          // the edge identically.
+          id: edgeBaseId(edge),
           ...(edge.label && !edge.syntheticLabel ? { label: edge.label } : {}),
           kind: "edge",
           path: childPath,
