@@ -92,6 +92,38 @@ describe("team#<id> selector (#2269)", () => {
     const bare = systemSvg("#Billing { border-color: #c0392b; }");
     expect(bare).toContain("#c0392b");
   });
+
+  it("holds when a team and a service really do share an id", () => {
+    // `resolveStyles` keys one `nodes` map by bare id across the system, deploy
+    // and org passes, so a team and a service called the same thing write to the
+    // same entry and the last pass wins. What keeps that from mattering is that
+    // no caller resolves org nodes for a view that draws services: the system
+    // and deploy paths pass `organizations: undefined`, and the org path draws
+    // org nodes only. Pinned end to end here, so a caller that starts threading
+    // organizations into the system view has to come back to this.
+    const COLLIDING = `
+system Sys {
+  service Shared { label "Shared service" }
+  service Other { label "Other" }
+  Shared -> Other "x"
+}
+
+organization Org {
+  team Shared {
+    label "Shared team"
+    owns Other
+  }
+}
+`;
+    const svgOf = (styleSource: string): string => {
+      const result = compile(COLLIDING, { diagramType: "system", styleSource });
+      if (result.diagramType !== "system") throw new Error("expected system view");
+      return result.svg;
+    };
+    expect(svgOf("team#Shared { background-color: #FF0000; }")).not.toContain("#FF0000");
+    // The bare form still reaches the service, which is what `#<id>` has always meant.
+    expect(svgOf("#Shared { background-color: #FF0000; }")).toContain("#FF0000");
+  });
 });
 
 describe("team frame colour from a style sheet (#2269)", () => {

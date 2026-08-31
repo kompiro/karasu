@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-08-31
 - **関連 Issue**: [#2269](https://github.com/kompiro/karasu/issues/2269)（[#2234](https://github.com/kompiro/karasu/issues/2234) から分離）
+- **設計 (ADR)**: [ADR-2269](../adr/2269-team-frame-style-selector.md)
 - **Related TPLs**:
   - [TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md)（本 PR の proactive — 出荷側の既定値を 2 つ目の描画面に漏らさない）
   - [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md)（1 エンティティの見た目の決定は 1 関数に閉じる）
