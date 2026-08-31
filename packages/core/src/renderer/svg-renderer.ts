@@ -523,6 +523,19 @@ export function renderFromLayout(
     : undefined;
   const facetsFor = (nodeId: string, layoutId: string): readonly string[] =>
     facetMembership?.get(nodeId) ?? facetMembership?.get(layoutId) ?? [];
+  /**
+   * An edge's own selected facets (#2544), read off the layout edge rather than
+   * out of a membership map: an edge's `canonicalId` is `undefined` whenever its
+   * base form collided (ADR-1096), so there is no id to key it by. Filtered
+   * through the overlay's own order — never the edge's declaration order — so
+   * the innermost casing is the same facet on every edge, the rule the node
+   * rings follow.
+   */
+  const facetOrder = overlay?.entries.map((e) => e.id) ?? [];
+  const edgeFacetsFor = (edgeLayout: LayoutResult["edges"][number]): readonly string[] => {
+    if (!overlay || edgeLayout.facets === undefined) return [];
+    return facetOrder.filter((id) => edgeLayout.facets?.includes(id));
+  };
 
   const effectiveEdgeDiffState = layoutResult.foldedEdgeDiffState
     ? new Map<string, string>([
@@ -577,11 +590,15 @@ export function renderFromLayout(
     edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     const diffState = effectiveEdgeDiffState?.get(edgeKey);
-    // Dim only when *both* endpoints are outside the selection. Where the
-    // highlighted set touches the rest of the model is the main thing an overlay
-    // is read for, so an edge with one member endpoint stays at full strength.
+    // An edge belongs to the selection two ways, and either one is enough to
+    // keep it at full strength: it carries the facet itself (#2544), or it
+    // touches a member node. The second is why the rule is "dim when *both*
+    // endpoints are outside" — where the highlighted set meets the rest of the
+    // model is the main thing an overlay is read for.
+    const edgeFacets = edgeFacetsFor(edgeLayout);
     const edgeDimmed =
       overlay !== undefined &&
+      edgeFacets.length === 0 &&
       facetsFor(edgeLayout.from, edgeLayout.from).length === 0 &&
       facetsFor(edgeLayout.to, edgeLayout.to).length === 0;
     const rendered = renderEdge(
@@ -591,6 +608,8 @@ export function renderFromLayout(
       diffState,
       hopsByEdge.get(edgeIndex),
       labelPlacements.get(edgeIndex),
+      edgeFacets,
+      overlay?.colorOf,
     );
     edgeIndex++;
     const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;

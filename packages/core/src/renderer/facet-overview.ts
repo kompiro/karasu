@@ -1,5 +1,5 @@
 import type { KrsFile, KrsNode, FacetBlock } from "../types/ast.js";
-import { knownFacetIds } from "./facet-overlay.js";
+import { facetWalkRoots, knownFacetIds } from "./facet-overlay.js";
 
 /**
  * Facet overview: "which elements belong to facet X", derived from the model
@@ -20,11 +20,16 @@ import { knownFacetIds } from "./facet-overlay.js";
 
 /** One element that declares membership in a facet. */
 export interface FacetMemberInfo {
-  /** Bare node id, as written. */
+  /**
+   * Bare node id, as written — or, for an edge, its `From -> To` arrow form
+   * (#2544). An edge has no id of its own: `canonicalId` is derived after view
+   * extraction and is `undefined` when the base form collided (ADR-1096), so it
+   * cannot name a row here.
+   */
   id: string;
-  /** Declared `label`, when the node has one. */
+  /** Declared `label`, when the element has one. */
   label?: string;
-  /** Node kind (`service`, `entity`, `database`, …). */
+  /** Node kind (`service`, `entity`, `database`, …), or `edge` for an edge. */
   kind: string;
   /**
    * Ancestor ids from the outermost block down to the node's parent.
@@ -71,34 +76,47 @@ export function buildFacetOverview(file: KrsFile): FacetOverviewEntry[] {
   const declarations = new Map<string, FacetBlock>(file.facets.map((f) => [f.id, f]));
   const members = new Map<string, FacetMemberInfo[]>();
 
+  const add = (facetId: string, member: FacetMemberInfo): void => {
+    const list = members.get(facetId) ?? [];
+    // An element may repeat `facets pii` across several lines; the model merges
+    // them, so the overview shows one row.
+    if (!list.some((m) => m.id === member.id && samePath(m.path, member.path))) {
+      list.push(member);
+    }
+    members.set(facetId, list);
+  };
+
   const visit = (node: KrsNode, path: string[]): void => {
     for (const facetId of node.facets ?? []) {
-      const list = members.get(facetId) ?? [];
-      // A node may repeat `facets pii` across several lines; the model merges
-      // them, so the overview shows one row.
-      if (!list.some((m) => m.id === node.id && samePath(m.path, path))) {
-        list.push({
-          id: node.id,
-          ...(node.label ? { label: node.label } : {}),
-          kind: node.kind,
-          path,
-        });
-      }
-      members.set(facetId, list);
+      add(facetId, {
+        id: node.id,
+        ...(node.label ? { label: node.label } : {}),
+        kind: node.kind,
+        path,
+      });
     }
     const childPath = [...path, node.id];
+    // Edges take `facets` too (#2544), and an audit list that showed only the
+    // nodes would answer "what is in PCI scope?" with the endpoints while
+    // leaving out the flow between them — the very fact edge membership exists
+    // to record. An edge's path is the block that declares it, which is what
+    // tells two `A -> B` edges in different services apart (TPL-1352).
+    for (const edge of node.edges) {
+      for (const facetId of edge.facets ?? []) {
+        add(facetId, {
+          id: `${edge.from} ${edge.kind === "async" ? "-->" : "->"} ${edge.to}`,
+          ...(edge.label && !edge.syntheticLabel ? { label: edge.label } : {}),
+          kind: "edge",
+          path: childPath,
+        });
+      }
+    }
     for (const child of node.children) visit(child, childPath);
   };
 
   // Same root set as the other model walks (`detectFacetsNotDeclared`): top-level
   // orphan blocks are reachable without a `system` wrapper.
-  for (const system of file.systems) visit(system, []);
-  for (const client of file.clients) visit(client, []);
-  for (const service of file.services) visit(service, []);
-  for (const domain of file.domains) visit(domain, []);
-  for (const database of file.databases) visit(database, []);
-  for (const queue of file.queues) visit(queue, []);
-  for (const storage of file.storages) visit(storage, []);
+  for (const root of facetWalkRoots(file)) visit(root, []);
 
   return knownFacetIds(file).map((id) => {
     const declaration = declarations.get(id);

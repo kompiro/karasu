@@ -180,17 +180,19 @@ export function computeLayoutEdges(
  * Endpoints missing from `layoutNodes` are skipped.
  */
 /**
- * The edge property block's payload, spread onto a LayoutEdge (#2543). Ghost
- * renderings reduce an edge (they drop `canonicalId`, `kind`, `tags`), but the
- * prose is the *content* of the edge rather than its addressing, and on a
- * cross-service service view the ghost form is the only place that edge is
- * drawn — dropping it there would make the accepted vocabulary invisible on
- * exactly the view it was written for (TPL-1503).
+ * The edge property block's payload, spread onto a LayoutEdge (#2543, #2544).
+ * Ghost renderings reduce an edge (they drop `canonicalId`, `kind`, `tags`),
+ * but the prose and the facet membership are the *content* of the edge rather
+ * than its addressing, and on a cross-service service view the ghost form is
+ * the only place that edge is drawn — dropping either there would make the
+ * accepted vocabulary invisible on exactly the view it was written for
+ * (TPL-1503).
  */
-function edgeDetailOf(edge: KrsEdge): Pick<LayoutEdge, "description" | "links"> {
+function edgeDetailOf(edge: KrsEdge): Pick<LayoutEdge, "description" | "links" | "facets"> {
   return {
     ...(edge.description !== undefined ? { description: edge.description } : {}),
     ...(edge.links !== undefined && edge.links.length > 0 ? { links: edge.links } : {}),
+    ...(edge.facets !== undefined && edge.facets.length > 0 ? { facets: edge.facets } : {}),
   };
 }
 

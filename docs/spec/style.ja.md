@@ -22,6 +22,7 @@
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
 | エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
 | エッジ 終点 | `edge[to=ApiGateway]` | 指定ノードを終点とする全エッジ |
+| エッジ+ファセット | `edge[facets=pii]` | 指定 `facet` に所属する全エッジ |
 | エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
 | バウンダリ | `boundary` | 全 boundary フレーム（*Group by: boundary*） |
 | バウンダリ ID | `boundary#pci` | 特定 boundary のフレームのみ |
@@ -45,6 +46,7 @@
 | エッジ | `edge` | 1 |
 | エッジ + タグ | `edge[async]` | 11 |
 | エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
+| エッジ + ファセット | `edge[facets=pii]` | 11 |
 | エッジ ID | `edge#criticalWrite` | 101 |
 | バウンダリ | `boundary` | 1 |
 | バウンダリ ID | `boundary#pci` | 101 |
@@ -81,8 +83,10 @@ database[facets=pci_scope] {
 }
 ```
 
-- **ノード限定。** v1 では `facets` はノードのプロパティなので、`edge[facets=...]`
-  は全エッジに一致するのではなく何にも一致しない。
+- **ノードとエッジの両方。** `facets` はどちらにも書けるので、`edge[facets=pii]` は
+  その所属を宣言したエッジに一致する（それ以外には一致しない）。述語の繰り返しが
+  AND になるのもノード側と同じ。widening だけは起きない — どのエッジも宣言して
+  いない facet を指す `edge[facets=...]` は、全エッジではなく何にも一致しない。
 - **所属は要素側から読む** — `facets <id>` が書かれている場所そのもの。セレクタが
   `facet` 宣言側を参照することはない。宣言が持つのは関心事のメタデータであって
   メンバーリストではない。

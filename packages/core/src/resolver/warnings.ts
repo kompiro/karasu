@@ -536,6 +536,19 @@ function detectFacetsNotDeclared(file: KrsFile): Warning[] {
         loc: node.loc,
       });
     }
+    // Edges carry the property too since #2544, and for the same reason nodes
+    // are walked instead of an index: the reference has to be reported on the
+    // edge that wrote it. An edge has no id, so the subject is its arrow form.
+    for (const edge of node.edges) {
+      for (const facetId of edge.facets ?? []) {
+        if (declared.has(facetId)) continue;
+        warnings.push({
+          kind: "facet-not-declared",
+          params: { nodeId: edgeSubject(edge), facetId },
+          loc: edge.loc,
+        });
+      }
+    }
     for (const child of node.children) visit(child);
   };
   for (const system of file.systems) visit(system);
@@ -547,6 +560,16 @@ function detectFacetsNotDeclared(file: KrsFile): Warning[] {
   for (const storage of file.storages) visit(storage);
 
   return warnings;
+}
+
+/**
+ * How an edge names itself in a diagnostic: `From -> To`, arrow following the
+ * kind. Deliberately not `canonicalId` — that is undefined for an edge whose
+ * base form collided (ADR-1096), which is exactly when a reader needs the most
+ * help finding the line.
+ */
+function edgeSubject(edge: KrsEdge): string {
+  return `${edge.from} ${edge.kind === "async" ? "-->" : "->"} ${edge.to}`;
 }
 
 /**

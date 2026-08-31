@@ -3505,6 +3505,51 @@ system S {
   it("is a warning, never info — a broken reference is a fact with a fix", () => {
     expect(warningSeverity("facet-not-declared")).toBe("warning");
   });
+
+  // Slice B (#2544): edges carry `facets` too, so the same cross-reference check
+  // has to reach them — parser acceptance without resolver validation is what
+  // TPL-907 fences against.
+  it("warns for an undeclared facet written on an edge", () => {
+    const warnings = facetWarnings(`
+facet pii {}
+system S {
+  service A {}
+  service B {}
+  A --> B { facets pcl }
+}
+    `);
+    expect(warnings).toHaveLength(1);
+    if (warnings[0].kind !== "facet-not-declared") throw new Error("kind mismatch");
+    // An edge has no id of its own, so it names itself by its arrow form.
+    expect(warnings[0].params).toEqual({ nodeId: "A --> B", facetId: "pcl" });
+  });
+
+  it("stays silent when an edge's facets all resolve", () => {
+    expect(
+      facetWarnings(`
+facet pii {}
+system S {
+  service A {}
+  service B {}
+  A -> B "calls" { facets pii }
+}
+    `),
+    ).toEqual([]);
+  });
+
+  it("lands the edge warning on the edge, not on the block that declares it", () => {
+    const warnings = facetWarnings(`system Shop {
+  service A {}
+  service B {}
+  A -> B {
+    facets ghost
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    // `system Shop` opens on line 1; the edge opens on line 4.
+    expect(warnings[0].loc?.start.line).toBe(4);
+  });
 });
 
 describe("facet-not-declared location precision (#2199 review)", () => {

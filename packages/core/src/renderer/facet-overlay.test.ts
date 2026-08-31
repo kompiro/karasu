@@ -67,7 +67,30 @@ function renderSystem(file: KrsFile, selected?: string[]): string {
 }
 
 /** Every marker the overlay is allowed to emit. Nothing here may appear when it is off. */
-const OVERLAY_MARKERS = ["data-facet-member", "data-facet-ring", 'opacity="0.28"'];
+const OVERLAY_MARKERS = [
+  "data-facet-member",
+  "data-facet-ring",
+  "data-facet-casing",
+  'opacity="0.28"',
+];
+
+/** An edge carrying `facets` (#2544), and the same model with the property removed. */
+const SRC_EDGE_FACETS = `
+facet pii { label "Personal data" }
+
+system Shop {
+  service Api {}
+  service Billing {}
+  Api -> Billing "charge" { facets pii }
+}
+`;
+const SRC_EDGE_WITHOUT_FACETS = `
+system Shop {
+  service Api {}
+  service Billing {}
+  Api -> Billing "charge"
+}
+`;
 
 describe("facet overlay — off by default (proactive: opt-in layers are inert when off)", () => {
   it("emits none of its own markers when no facet is selected", () => {
@@ -103,6 +126,15 @@ describe("facet overlay — off by default (proactive: opt-in layers are inert w
     const on = renderSystem(file, ["pii"]);
     expect(on).not.toBe(renderSystem(file));
     expect(renderSystem(file, undefined)).toBe(renderSystem(parse(SRC_WITHOUT_FACETS)));
+  });
+
+  // #2544 puts `facets` on edges, which is a second place the layer could leak
+  // from. The guarantee is the same one and has to be restated for it: writing
+  // the property changes nothing until a reader selects the facet.
+  it("renders a file with facets on an edge identically while nothing is selected", () => {
+    expect(renderSystem(parse(SRC_EDGE_FACETS))).toBe(renderSystem(parse(SRC_EDGE_WITHOUT_FACETS)));
+    const svg = renderSystem(parse(SRC_EDGE_FACETS));
+    for (const marker of OVERLAY_MARKERS) expect(svg).not.toContain(marker);
   });
 });
 
@@ -215,6 +247,93 @@ system S {
 `);
     const svg = renderSystem(file, ["pii"]);
     expect(svg).toContain('<g opacity="0.28">');
+  });
+
+  // Slice B (#2544): the edge itself can be the member. Until this slice an
+  // edge only ever inherited its state from its endpoints, so a data flow that
+  // carries PII between two nodes that do not hold it had nowhere to say so.
+  it("highlights an edge that carries the selected facet, whatever its endpoints hold", () => {
+    const svg = renderSystem(parse(SRC_EDGE_FACETS), ["pii"]);
+    const edgeGroup = /<g[^>]*data-edge-from="Api"[^>]*>/.exec(svg)?.[0] ?? "";
+    expect(edgeGroup).toContain('data-facet-member="pii"');
+    expect(svg).toContain('data-facet-casing="pii"');
+    // Neither endpoint is a member, so without the edge's own membership this
+    // edge would be dimmed.
+    expect(svg).not.toContain('<g opacity="0.28">');
+  });
+
+  it("dims an edge with no membership of its own and no member endpoint", () => {
+    const file = parse(`
+facet pii {}
+system S {
+  service A {}
+  service B {}
+  service C {}
+  service D {}
+  A -> B { facets pii }
+  C -> D "unrelated"
+}
+`);
+    const svg = renderSystem(file, ["pii"]);
+    expect([...svg.matchAll(/<g opacity="0\.28">/g)]).toHaveLength(1);
+    expect([...svg.matchAll(/data-facet-casing="pii"/g)]).toHaveLength(1);
+  });
+
+  it("draws one casing per selected facet the edge belongs to (TPL-2161)", () => {
+    const file = parse(`
+facet pii {}
+facet pci {}
+system S {
+  service A {}
+  service B {}
+  A -> B { facets pii, pci }
+}
+`);
+    const svg = renderSystem(file, ["pii", "pci"]);
+    expect(svg).toContain('data-facet-member="pii pci"');
+    expect([...svg.matchAll(/data-facet-casing="(pii|pci)"/g)]).toHaveLength(2);
+  });
+
+  it("orders an edge's casings by known-facet order, not by declaration order", () => {
+    // The innermost band has to be the same facet on every edge, exactly as the
+    // innermost ring is on every card — otherwise one colour sits at a
+    // different distance from the line edge to edge.
+    const declared = `facet pii {}\nfacet pci {}\n`;
+    const one = parse(
+      `${declared}system S {\n  service A {}\n  service B {}\n  A -> B { facets pii, pci }\n}\n`,
+    );
+    const other = parse(
+      `${declared}system S {\n  service A {}\n  service B {}\n  A -> B { facets pci, pii }\n}\n`,
+    );
+    const casings = (file: KrsFile) =>
+      [...renderSystem(file, ["pii", "pci"]).matchAll(/data-facet-casing="([^"]+)"/g)].map(
+        (m) => m[1],
+      );
+    expect(casings(one)).toEqual(casings(other));
+  });
+
+  it("highlights an aggregated domain edge when a constituent carries the facet", () => {
+    // The service view folds several domain edges into `"N domain edges"`. The
+    // aggregate's membership is the union of what it folds, so a reader looking
+    // at services sees the same facet they would see one level down.
+    const file = parse(`
+facet pii {}
+system Shop {
+  service ECommerce {
+    domain Contract {}
+    domain Order {}
+  }
+  service Billing {
+    domain Ledger {
+      Ledger -> Contract { facets pii }
+      Ledger -> Order "from order"
+    }
+  }
+}
+`);
+    const svg = renderSystem(file, ["pii"]);
+    const aggregate = /<g[^>]*data-edge-from="Billing"[^>]*>/.exec(svg)?.[0] ?? "";
+    expect(aggregate).toContain('data-facet-member="pii"');
   });
 });
 

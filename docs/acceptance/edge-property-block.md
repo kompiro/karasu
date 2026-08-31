@@ -39,15 +39,15 @@ type: product
 
   > ✅ Automated — `packages/core/src/parser/edge-property-block.test.ts` › rejects any other keyword inside the block ／ parses on both sides of an edge block, so a bad block does not swallow the rest
 
-- [x] AT-E2: `facets` はブロック内でも受理されない。`syntax.md` の「Edges do not take `facets` in v1」と `style.md` の「`edge[facets=...]` は何にもマッチしない」は本スライス後も真のまま（[#2544](https://github.com/kompiro/karasu/issues/2544) の範囲）
+- [x] AT-E2: ブロックが `facets` を受理する。繰り返した行は累積し、重複 id は畳まれる（ノードのプロパティと同一の綴り・同一のマージ規則）。本スライス（#2543）時点では未受理だったが、[#2544](https://github.com/kompiro/karasu/issues/2544) が spec の 2 文と併せて受理側へ動かした。受け入れ条件の本体は [AT: エッジの facets](edge-facets.md) にある
 
-  > ✅ Automated — `packages/core/src/parser/edge-property-block.test.ts` › does not accept facets on an edge, which is slice B (#2544)
+  > ✅ Automated — `packages/core/src/parser/edge-property-block.test.ts` › accepts facets on an edge ／ accumulates repeated facets lines and collapses duplicate ids ／ leaves facets undefined — not empty — when no block is written
 
 ### AC-2: `karasu fmt` が 1 つの canonical 形に畳む
 
-- [x] AT-F: label しか持たないブロックは shorthand に畳まれ、`description` / `link` を持つブロックはブロックのまま保たれる（`label` もブロック内へ移る）
+- [x] AT-F: label しか持たないブロックは shorthand に畳まれ、`description` / `link` / `facets` を持つブロックはブロックのまま保たれる（`label` もブロック内へ移る）
 
-  > ✅ Automated — `packages/core/src/formatter/edge-property-block-round-trip.test.ts` › folds a label-only block back to the shorthand ／ keeps the block once it carries a description ／ moves a positional label into the block when the block earns one ／ keeps a link-only block as a block
+  > ✅ Automated — `packages/core/src/formatter/edge-property-block-round-trip.test.ts` › folds a label-only block back to the shorthand ／ keeps the block once it carries a description ／ moves a positional label into the block when the block earns one ／ keeps a link-only block as a block ／ keeps a facets-only block as a block
 
 - [x] AT-G: ブロックを含む `.krs` が round-trip し（`parse(format(x)) ≡ parse(x)`）、fmt が冪等である
 

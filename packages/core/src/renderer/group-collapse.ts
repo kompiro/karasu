@@ -1,5 +1,5 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
-import { displayGroupId } from "../types/ast.js";
+import { displayGroupId, unionEdgeFacets } from "../types/ast.js";
 import { makeStubNode } from "./collapse-stub.js";
 
 /**
@@ -158,7 +158,7 @@ export function collapseGroups(
     return g !== null ? groupStubId(g, stubScope) : id;
   };
   const outEdges: KrsEdge[] = [];
-  const seen = new Set<string>();
+  const stubEdges = new Map<string, KrsEdge>();
   // Accumulate the original diff states that fold onto each stub edge, keyed by
   // the render lookup form `${from}->${to}` (kind-less — the render diff lookup
   // in `svg-renderer.ts` and the `diffed.edges` key both drop `#kind`, so a
@@ -187,11 +187,21 @@ export function collapseGroups(
       else foldAccum.set(renderKey, [origState]);
     }
     const key = `${from} ${to} ${edge.kind}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const foldedInto = stubEdges.get(key);
+    if (foldedInto) {
+      // Facet membership folds onto the stub edge the way diff state does just
+      // above: it is a set, so the union is true of the bundle, and dropping it
+      // with the duplicate would make collapsing a group take the overlay away
+      // from edges the reader can no longer see individually (#2544).
+      const merged = unionEdgeFacets(foldedInto.facets, edge.facets);
+      if (merged !== undefined && merged.length > 0) foldedInto.facets = merged;
+      continue;
+    }
     // A re-targeted edge stands for one-or-more real edges, so its authored
     // label no longer describes it — drop the label but keep the sync/async kind.
-    outEdges.push({ ...edge, from, to, label: undefined });
+    const stub: KrsEdge = { ...edge, from, to, label: undefined };
+    stubEdges.set(key, stub);
+    outEdges.push(stub);
   }
 
   const foldedEdgeDiffState = new Map<string, string>();

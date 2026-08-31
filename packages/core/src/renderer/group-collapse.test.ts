@@ -97,6 +97,36 @@ describe("collapseGroups", () => {
     expect(res.edges[0].from).toBe(groupStubId("payments"));
   });
 
+  // #2544. De-duplication keeps one line per pair, and the authored label goes
+  // with the duplicates because a label describes one edge. Facet membership is
+  // a set, so it folds instead: without the union, collapsing a group takes the
+  // overlay away from edges the reader can no longer see individually — the
+  // inconsistency `foldFacetMembership` already prevents for the nodes.
+  it("unions the facets of the edges that fold onto one stub edge", () => {
+    const withFacets = (from: string, to: string, facets: string[]): KrsEdge => ({
+      ...edge(from, to),
+      facets,
+    });
+    const res = collapseGroups(
+      [svc("A"), svc("B"), svc("C")],
+      [withFacets("A", "C", ["pii"]), withFacets("B", "C", ["pci", "pii"])],
+      OWNER,
+      new Set(["payments"]),
+    );
+    expect(res.edges).toHaveLength(1);
+    expect(res.edges[0].facets).toEqual(["pii", "pci"]);
+  });
+
+  it("leaves a stub edge's facets undefined when nothing it folds declares any", () => {
+    const res = collapseGroups(
+      [svc("A"), svc("B"), svc("C")],
+      [edge("A", "C"), edge("B", "C")],
+      OWNER,
+      new Set(["payments"]),
+    );
+    expect(res.edges[0].facets).toBeUndefined();
+  });
+
   it("keeps authored parallel edges between two expanded nodes when an unrelated group collapses", () => {
     // X->Y twice (both sync, different labels) are legitimate parallel edges.
     // X and Y are un-owned (expanded); collapsing an unrelated team must not

@@ -433,7 +433,9 @@ class Printer {
     const head = `${from}${arrow} ${quoteId(edge.to)}`;
 
     const hasBlockOnlyProperty =
-      edge.description !== undefined || (edge.links !== undefined && edge.links.length > 0);
+      edge.description !== undefined ||
+      (edge.links !== undefined && edge.links.length > 0) ||
+      (edge.facets !== undefined && edge.facets.length > 0);
     if (!hasBlockOnlyProperty) {
       const label = edge.label !== undefined ? ` ${quoteString(edge.label)}` : "";
       return [`${head}${label}${tags}${id}`];
@@ -442,6 +444,11 @@ class Printer {
     const lines = [`${head}${tags}${id} {`];
     if (edge.label !== undefined) lines.push(`  label ${quoteString(edge.label)}`);
     if (edge.description !== undefined) lines.push(this.renderDescription(edge.description, "  "));
+    // Same slot and same canonicalization the node property gets in
+    // `renderProperties`: one comma list, before `link`.
+    if (edge.facets !== undefined && edge.facets.length > 0) {
+      lines.push(`  facets ${edge.facets.map(quoteId).join(", ")}`);
+    }
     for (const link of edge.links ?? []) lines.push(this.renderLink(link, "  "));
     lines.push("}");
     return lines;

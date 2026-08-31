@@ -1,5 +1,5 @@
 import type { KrsNode, KrsEdge, NodeIdPath, ResourceNode } from "../types/ast.js";
-import { INFRA_KIND_SET } from "../types/ast.js";
+import { INFRA_KIND_SET, unionEdgeFacets } from "../types/ast.js";
 import { nodePathKey, resolveNodePathBySuffix } from "../parser/node-path.js";
 import {
   buildGhostEndpointResolver,
@@ -158,7 +158,14 @@ function deriveImplicitServiceEdges(
   // Collect all cross-boundary domain edges grouped by (endpoint pair, kind)
   const grouped = new Map<
     string,
-    { edge: KrsEdge; count: number; label: string | undefined; details: DomainEdgeDetail[] }
+    {
+      edge: KrsEdge;
+      count: number;
+      label: string | undefined;
+      details: DomainEdgeDetail[];
+      /** Union over the constituents, for the aggregate's overlay membership (#2544). */
+      facets: string[] | undefined;
+    }
   >();
   // Real domain→domain edges internal to an expanded service (both ends inside
   // the same expanded service): shown as first-class edges, not aggregated.
@@ -197,19 +204,21 @@ function deriveImplicitServiceEdges(
           existing.count += 1;
           existing.label = undefined; // multiple: will use count label
           existing.details.push(detail);
+          existing.facets = unionEdgeFacets(existing.facets, edge.facets);
         } else {
           grouped.set(groupKey, {
             edge: { ...edge, from: fromEndpoint, to: toEndpoint, tags: ["implicit"] },
             count: 1,
             label: edge.label,
             details: [detail],
+            facets: unionEdgeFacets(undefined, edge.facets),
           });
         }
       }
     }
   }
 
-  const edges = Array.from(grouped.entries()).map(([, { edge, count, label }]) => {
+  const edges = Array.from(grouped.entries()).map(([, { edge, count, label, facets }]) => {
     // A single passthrough *is* the authored edge, re-anchored to the service
     // endpoints, so it keeps that edge's label and its property block.
     if (count === 1) return { ...edge, label };
@@ -217,6 +226,10 @@ function deriveImplicitServiceEdges(
     // machine-generated, and carrying the first constituent's `description` /
     // `link` would attribute that prose to a bundle it does not describe
     // (#2543). The constituents stay readable through `implicitEdgeDetails`.
+    //
+    // Membership goes the other way: it is a set, so the union *is* true of the
+    // bundle, and dropping it would leave a folded edge dim while a folded node
+    // in the same facet lights up (#2544).
     const aggregated: KrsEdge = {
       ...edge,
       label: `${count} domain edges`,
@@ -224,6 +237,8 @@ function deriveImplicitServiceEdges(
     };
     delete aggregated.description;
     delete aggregated.links;
+    if (facets !== undefined && facets.length > 0) aggregated.facets = facets;
+    else delete aggregated.facets;
     return aggregated;
   });
 

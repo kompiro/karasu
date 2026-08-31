@@ -22,6 +22,7 @@
 | Edge + tag | `edge[async]` | Edges with the given tag |
 | Edge source | `edge[from=ApiGateway]` | All edges originating at the node |
 | Edge target | `edge[to=ApiGateway]` | All edges terminating at the node |
+| Edge + facet | `edge[facets=pii]` | Edges belonging to the given `facet` |
 | Edge ID | `edge#criticalWrite`, `edge#A->B`, `edge#A-->B` | A specific edge only |
 | Boundary | `boundary` | All boundary frames (*Group by: boundary*) |
 | Boundary ID | `boundary#pci` | One boundary's frame only |
@@ -45,6 +46,7 @@
 | Edge | `edge` | 1 |
 | Edge + tag | `edge[async]` | 11 |
 | Edge source/target | `edge[from=ApiGateway]` | 11 |
+| Edge + facet | `edge[facets=pii]` | 11 |
 | Edge ID | `edge#criticalWrite` | 101 |
 | Boundary | `boundary` | 1 |
 | Boundary ID | `boundary#pci` | 101 |
@@ -81,8 +83,10 @@ database[facets=pci_scope] {
 }
 ```
 
-- **Nodes only.** `facets` is a node property in v1, so `edge[facets=...]`
-  matches nothing rather than matching every edge.
+- **Nodes and edges.** `facets` is written on both, so `edge[facets=pii]`
+  matches the edges that declare that membership — and only those. A repeated
+  predicate ANDs there too. What it never does is widen: an `edge[facets=...]`
+  whose facet no edge declares matches nothing rather than every edge.
 - **Membership is read from the element**, which is where `facets <id>` is
   written. Nothing about the selector reaches back into the `facet` declaration;
   the declaration carries the concern's metadata, not its members.

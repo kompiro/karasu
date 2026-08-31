@@ -66,6 +66,34 @@ describe("karasu fmt — edge property block (#2543)", () => {
     expect(formatted).toContain(`    link "https://runbook.example.com/x" "Runbook"`);
   });
 
+  // Slice B (#2544). `facets` is a block-only property like `description` and
+  // `link`, so it holds the block open on its own, and it canonicalizes to one
+  // comma list the way the node property does.
+  it("keeps a facets-only block as a block", () => {
+    const formatted = format(wrap(`A -> B {\n    facets pii\n  }`));
+    expect(formatted).toContain("A -> B {");
+    expect(formatted).toContain(`    facets pii`);
+  });
+
+  it("canonicalizes repeated facets lines to one comma list", () => {
+    const formatted = format(wrap(`A -> B {\n    facets pii\n    facets pci, pii\n  }`));
+    expect(formatted).toContain(`    facets pii, pci`);
+    expectIdempotent(wrap(`A -> B {\n    facets pii\n    facets pci, pii\n  }`));
+  });
+
+  it("round-trips and is idempotent for a block carrying every property", () => {
+    const src = wrap(
+      `A --> B [important] #orderPlaced {\n` +
+        `    label       "places an order"\n` +
+        `    description "At-least-once."\n` +
+        `    facets      pii, pci\n` +
+        `    link        "https://runbook.example.com/order-placed" "Runbook"\n` +
+        `  }`,
+    );
+    expectAstRoundTrip(src);
+    expectIdempotent(src);
+  });
+
   it("round-trips and is idempotent for the block form", () => {
     const src = wrap(
       `A --> B [important] #orderPlaced {\n` +

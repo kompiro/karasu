@@ -364,7 +364,11 @@ export interface WarningParamsByKind {
    * a fact with a fix — not a style-school judgement (TPL-1386).
    */
   "facet-not-declared": {
-    /** id of the node carrying the `facets` property */
+    /**
+     * The element carrying the `facets` property: a node's id, or — since
+     * edges took the property in #2544 — an edge's `From -> To` arrow form,
+     * an edge having no id of its own.
+     */
     nodeId: string;
     /** the referenced facet id as written */
     facetId: string;

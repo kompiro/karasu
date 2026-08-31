@@ -80,9 +80,10 @@ describe("[facets=<id>] selector — matching", () => {
     expect(styles.nodes.get("Payments")?.color).not.toBe("#444444");
   });
 
-  it("does not widen to every edge when written on an edge selector", () => {
-    // `facets` is a node property in v1, so `edge[facets=…]` matches nothing.
-    // Ignoring the predicate instead would silently style ALL edges.
+  it("does not widen to every edge when no edge declares the facet", () => {
+    // Ignoring the predicate rather than failing it would silently style ALL
+    // edges — the failure mode this assertion has fenced since #2175, and one
+    // that survives edges gaining the property in #2544.
     const file = parseModel(`
       system Shop {
         service A {}
@@ -95,6 +96,43 @@ describe("[facets=<id>] selector — matching", () => {
     for (const style of styles.edges.values()) {
       expect(style.strokeWidth).not.toBe(4);
     }
+  });
+
+  // Slice B (#2544). `edge[facets=…]` stopped matching nothing by design once
+  // the edge property block gave membership somewhere to live.
+  it("styles the edges that declare the facet, and only those", () => {
+    const file = parseModel(`
+facet pii {}
+system Shop {
+  service A {}
+  service B {}
+  service C {}
+  A -> B "carries pii" { facets pii }
+  A -> C "plain"
+}
+`);
+    const styles = resolveStyles(file.systems, [sheet(`edge[facets=pii] { stroke-width: 4px; }`)]);
+    expect(styles.edges.get("A->B#sync")?.strokeWidth).toBe(4);
+    expect(styles.edges.get("A->C#sync")?.strokeWidth).not.toBe(4);
+  });
+
+  it("ANDs repeated predicates on an edge selector too", () => {
+    const file = parseModel(`
+facet pii {}
+facet gdpr {}
+system Shop {
+  service A {}
+  service B {}
+  service C {}
+  A -> B "both" { facets pii, gdpr }
+  A -> C "one" { facets pii }
+}
+`);
+    const styles = resolveStyles(file.systems, [
+      sheet(`edge[facets=pii][facets=gdpr] { stroke-width: 4px; }`),
+    ]);
+    expect(styles.edges.get("A->B#sync")?.strokeWidth).toBe(4);
+    expect(styles.edges.get("A->C#sync")?.strokeWidth).not.toBe(4);
   });
 });
 

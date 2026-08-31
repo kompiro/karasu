@@ -1463,6 +1463,61 @@ system ECPlatform {
       expect(implicit[0].links).toBeUndefined();
     });
 
+    // Slice B (#2544). Prose and membership fold in opposite directions, and
+    // this pair is what states the difference: prose describes one edge, so an
+    // aggregate cannot claim it; membership is a set, so the union *is* true of
+    // the bundle. Dropping it would leave a folded edge dim while a folded node
+    // in the same facet lights up.
+    it("unions the facets of the edges it aggregates (#2544)", () => {
+      const krs = `
+facet pii {}
+facet pci {}
+system ECPlatform {
+  service ECommerce {
+    domain Contract {}
+    domain Order {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract { facets pii }
+      Billing -> Order { facets pci }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.filter(
+        (e) => e.from === "BillingService" && e.to === "ECommerce" && e.tags.includes("implicit"),
+      );
+      expect(implicit).toHaveLength(1);
+      expect(implicit[0].label).toBe("2 domain edges");
+      expect(implicit[0].facets).toEqual(["pii", "pci"]);
+    });
+
+    it("leaves an aggregate's facets undefined when no constituent declares any (#2544)", () => {
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract {}
+    domain Order {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "from contract"
+      Billing -> Order "from order"
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.filter(
+        (e) => e.from === "BillingService" && e.to === "ECommerce" && e.tags.includes("implicit"),
+      );
+      expect(implicit[0].facets).toBeUndefined();
+    });
+
     it("keeps the prose when a single cross-service domain edge passes through (#2543)", () => {
       // A 1:1 passthrough keeps the authored label, so it keeps the authored
       // prose with it — the implicit edge *is* that one edge, re-anchored.
