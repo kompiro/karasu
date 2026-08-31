@@ -85,6 +85,7 @@ flowchart TD
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
+    ADR_2493["ADR-2493<br/>knip に compiled extension をたどらせ、configuration h..."]
     ADR_2562["ADR-2562<br/>Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
     ADR_2564["ADR-2564<br/>Dependabot security alert 2026-08-18（auto-dismi..."]
     ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
@@ -198,6 +199,7 @@ flowchart TD
   class ADR_2447 accepted
   class ADR_2472 accepted
   class ADR_2474 accepted
+  class ADR_2493 accepted
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2623 accepted
