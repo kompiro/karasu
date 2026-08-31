@@ -42,6 +42,7 @@
 | ファセット | `[facets=pii]` | 10 |
 | 種別 + ファセット | `service[facets=pii]` | 11 |
 | ID | `#ECommerce` | 100 |
+| 種別 + ID | `team#Platform` | 101 |
 | エッジ | `edge` | 1 |
 | エッジ + タグ | `edge[async]` | 11 |
 | エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
@@ -812,8 +813,8 @@ id を名指すがスコープは名指さないので、**すべてのスコー
 > 無視される。帯の外へ伸びたフレームは矩形直交の輪郭として描かれるため、設定できる
 > 角丸が存在しない。
 
-team フレーム（*Group by: team*）はまだこの方法で指定できない。
-[#2269](https://github.com/kompiro/karasu/issues/2269) を参照。
+team フレーム（*Group by: team*）の指定方法は本節と異なる。team は**ノードであり**
+`#<id>` が既に届いているためで、下の [team フレーム](#team-フレームgroup-by-team) を参照。
 
 `boundary` は experimental notation なので、本セレクタもスタイルを当てる構文と同じく
 後方互換を約束しない（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary-experimental)）。
@@ -831,6 +832,7 @@ Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`
 | `team` | すべてのチームカード |
 | `member` | すべてのメンバーカード |
 | `#TeamId` | 特定のチームカード |
+| `team#TeamId` | 同上を team 種別に絞ったもの |
 | `#MemberId` | 特定のメンバーカード |
 | `edge` | チーム間のベジェコネクタ |
 
@@ -849,3 +851,44 @@ Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`
 
 > **注意**: `opacity` / `shape` / `badge-*` は Org Tree View では無視されます。
 > タグ・アノテーション複合セレクタ（`team[external]` 等）は現時点では未サポートです。
+
+### team フレーム（*Group by: team*）
+
+*Group by: team* のとき、system view は各チームのメンバーを囲むフレームを描く。
+このフレームと上のカードは**同じ 1 つの team** の 2 つの描画なので、上のセレクタが
+両方に届く。フレーム専用のキーワードは無い。
+
+```css
+team          { border-style: solid; }   /* すべての team カードと、すべての team フレーム */
+#Platform     { border-color: #C0392B; } /* Platform のカードと、Platform のフレーム */
+team#Platform { border-color: #C0392B; } /* 同上を team 種別に絞ったもの */
+```
+
+`team#<id>` は**複合セレクタ**であって新しい id 空間ではない。意味は「この id を持つ
+ノード、ただし team であるとき」。specificity は 101（id の 100 + 種別の 1）で、裸の
+`#<id>`（100）と裸の `team`（1）に勝つ。これは `boundary#<id>` とは逆である。あちらは
+裸の `#<id>` では到達できない id 空間をキーワードが名指す。boundary はノードではなく、
+team はノードだからである。
+
+**どのプロパティがどちらの描画に届くか。** 各プロパティは、カード側で塗る部分に対応する
+フレーム側の部分に届く:
+
+| プロパティ | カード（Org Tree View） | フレーム（*Group by: team*） |
+|---|---|---|
+| `border-color` | 枠線色 | 輪郭の色 |
+| `background-color` | カード背景色 | フレーム内側の薄い塗り |
+| `color` | ラベル色 | フレームのタイトル色 |
+| `border-width` | 枠線幅（px） | 輪郭の太さ（px） |
+| `border-style` | 適用されない | `solid` / `dashed` / `dotted`。既定は `dashed` |
+| `border-radius` / `font-size` / `font-weight` / `font-family` | 上表のとおり | 適用されない |
+
+> **注意**: boundary フレームと違い、team フレームの塗りは `border-color` に**追従しない**。
+> boundary フレームは重なるので、1 つの色が塗りまで届かないと重なりが入れ子に読める。
+> team フレームは重ならないため、各プロパティはカード側に倣う。1 つの宣言から読み手が
+> 予測できるのはこちらである。
+
+**既定値は描画ごとに別。** builtin シートの `team { … }` は**カードの**既定値であって
+フレームには届かない。フレームの既定値はビューが自前で描く控えめな破線の輪郭である。
+したがってどのシートも名指していない team は不変で、1 つの team を名指しても他は乱れない。
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — team はカードとフレームという別のコードで描かれ、1 つの宣言が片方だけを塗り替えてはならない。[TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — builtin シートはカードだけを styling する。フレームがそれを読むと既定で全フレームが塗り替わる。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `team#<id>` は `karasu fmt` を通っても、より広い `#<id>` に書き換わらない。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — ここで引いた specificity は `reference-data.ts` からの生成物。
