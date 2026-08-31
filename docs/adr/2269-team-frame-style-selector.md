@@ -25,6 +25,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **関連**:
   - Issue: [#2269](https://github.com/kompiro/karasu/issues/2269)（[#2234](https://github.com/kompiro/karasu/issues/2234) から分離）
+  - 実装 PR: [#2660](https://github.com/kompiro/karasu/pull/2660)
   - ADR: [ADR-2234](2234-boundary-style-selector.md)（boundary フレームの style セレクタ。本件を分離した相手）、[ADR-1858](1858-system-view-group-by-team.md)（*Group by: team* と team フレーム）、[ADR-9004](9004-css-inspired-styling.md)（CSS インスパイアの styling）、[ADR-1314](1314-krs-spec-v1-freeze.md) / [ADR-2124](2124-version-vocabulary.md)（言語版）
   - AT: [2269-team-frame-style-selector.md](../acceptance/2269-team-frame-style-selector.md)
   - TPL: [TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md)（本件の proactive — 出荷側の既定値を 2 つ目の描画面に漏らさない）、[TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md)、[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)、[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)
