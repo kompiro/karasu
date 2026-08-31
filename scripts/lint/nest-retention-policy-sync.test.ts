@@ -98,11 +98,25 @@ function assertNoTtl(path: string): void {
 describe("the data-handling document matches the code (#1996, #2591)", () => {
   const policy = read(POLICY);
 
-  it("says in every draft that a submission is kept until its author deletes it", () => {
+  it("says in the privacy policy that a submission is kept until its author deletes it", () => {
     // The privacy policy is what a submitter actually reads. If it says a
     // number and the code keeps things forever -- or the reverse -- the
     // document is the part that is wrong, and nothing else would catch it.
     expect(read("docs/policy/nest-privacy.md")).toContain("**投稿者が削除するまで**");
+  });
+
+  it("does not promise a session that renews itself", () => {
+    // `sessions.ts` fixes the window at issue on purpose, and says why. A draft
+    // that describes a session extended on use is describing a rolling
+    // credential the code does not implement -- which is what this PR shipped
+    // until review caught it.
+    //
+    // Anchored on the code comment so it fails in both directions: change the
+    // implementation to renew, and this fails until the documents follow.
+    // Two positive assertions rather than a banned-word list: the correct
+    // wording says "延長されない", so negating 延長 would fail on the right text.
+    expect(read("packages/nest/src/store/sessions.ts")).toContain("Not renewed on use");
+    expect(read("docs/policy/nest-privacy.md")).toContain("発行時から固定");
   });
 
   it("keeps every draft out of the published set until a human has read it", () => {
