@@ -45,6 +45,7 @@ dev tree の relative path（`asAbsolutePath(path.join("..", "lsp", "out", "serv
 配布物に含まれる拡張機能 / CLI / アプリを実装・修正するとき、以下を確認する:
 
 - [ ] dev tree 前提の relative path（`..` を含む `asAbsolutePath` / `path.resolve` / sibling package 参照）が無いか grep し、見つけたら **dev / packaged 両方の候補パス** を試す解決ロジックに置き換えているか
+<!-- absent-path-next-line: illustrative copy target, not a path this repo has -->
 - [ ] 別 package のビルド成果物（`packages/lsp/out/`）を参照している場合、packaging ステップで **拡張内 (`packages/vscode/lsp/` 等) にコピー** するスクリプトを持っているか
 - [ ] **dev mode と packaged mode の両方で同じテストが走る** 経路があるか（拡張なら ExTester で実 `.vsix` を install して動かすテスト）
 - [ ] パス解決が失敗したときに **明示的なエラーログ** を出しているか（silent fallback で「動いているように見える」状態を作らない）

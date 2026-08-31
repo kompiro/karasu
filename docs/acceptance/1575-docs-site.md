@@ -5,7 +5,9 @@
 - **関連 ADR**: [ADR-1575](../adr/1575-docs-site-ssg.md)（SSG = Astro Starlight 採用）
 - **Related TPLs**: [TPL-1621](../test-perspectives/TPL-1621-docs-pipeline-link-anchor-resolution.md)（link/anchor 未解決をビルドで fail）, [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md)（doc ↔ source 片方向同期）
 - **対象**:
-  - `packages/docs-site/`（`astro.config.mjs`, `src/content.config.ts`, `scripts/sync.ts`, `scripts/check-links.ts`, `scripts/lib/{site-map,rewrite,markdown}.ts`, `home/{en,ja}.md`）
+  - `packages/docs-site/astro.config.mjs`, `packages/docs-site/src/content.config.ts`,
+    `packages/docs-site/scripts/sync.ts`, `packages/docs-site/scripts/check-links.ts`,
+    `packages/docs-site/scripts/lib/{site-map,rewrite,markdown}.ts`, `packages/docs-site/home/{en,ja}.md`
   - `.github/workflows/pages.yml`
   - `docs/spec/tags-annotations.ja.md`（壊れていた ja アンカーの修正）
 

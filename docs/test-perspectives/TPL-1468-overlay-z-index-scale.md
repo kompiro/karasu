@@ -53,5 +53,6 @@ overlay や portal を持つ UI surface（modal dialog・slide-in panel・contex
 
 ## 関連テスト
 
+<!-- absent-path-next-line: retired spec, named as history (#1585) -->
 - _（retired）_ かつて `packages/e2e/tests/at-1468-command-palette-z-index.spec.ts` が、References パネルを開いた状態でコマンドパレットを開き両者が重なる座標でパレットが手前に来ることを `elementFromPoint` で検証していた。References が in-document の slide-in overlay から別ウィンドウ pop-out へ移行した（#1585）ことで、この特定の surface ペア（command-palette vs References パネル）は同一 stacking context に共存しなくなり、当該テストは削除された
 - この観点は依然 active — dialog / dropdown / tooltip / context-menu など同一 stacking context に共存し続ける overlay/portal surface に適用される。新たに重なり順の回帰を fence する場合は、現存する overlay ペアに対して同様に computed stacking（`document.elementFromPoint`）で検証する

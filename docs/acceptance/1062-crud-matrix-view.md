@@ -11,8 +11,8 @@ type: product
   - `packages/core/src/view/crud-matrix-extract.test.ts`
   - `packages/core/src/view/crud-matrix-format.ts`
   - `packages/core/src/view/crud-matrix-format.test.ts`
-  - `packages/core/src/render/matrix-svg.ts`
-  - `packages/core/src/render/matrix-svg.test.ts`
+  - `packages/core/src/renderer/matrix-svg.ts`
+  - `packages/core/src/renderer/matrix-svg.test.ts`
   - `packages/cli/src/matrix.ts`
   - `packages/cli/src/matrix.test.ts`
   - `packages/cli/src/render.ts` (`--include-matrix`)

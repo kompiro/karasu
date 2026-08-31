@@ -61,6 +61,17 @@ pre-push:
       # The vitest mirror in scripts/lint runs it in CI.
       glob: "{vitest.config.ts,vitest.workspace.*,packages/*/vitest.config.ts,scripts/vitest.config.ts,scripts/lint/vitest-projects-sync.ts}"
       run: pnpm run lint:vitest-projects-sync
+    record-source-paths:
+      # Every `packages/…` / `scripts/…` code span in docs/{acceptance,
+      # test-perspectives,design} must name a path that exists (Issue #2648).
+      # No `glob` on purpose, for the same reason as `adr-check-assumptions`
+      # above: what breaks these references is a code change — a rename or a
+      # deletion — that need not touch a single docs path, so gating this on
+      # `docs/**` would skip exactly the pushes most likely to rot a record.
+      # It only reads Markdown, so it is cheap enough to run every time.
+      # `docs/adr/**` is out of scope (ADR-706) — see the script's header.
+      # The vitest mirror in scripts/lint runs it in CI.
+      run: pnpm run lint:record-source-paths
     at-check-coverage:
       # Also globs packages/e2e/tests/** so the exact e2e linkage guards
       # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added

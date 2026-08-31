@@ -10,7 +10,7 @@ type: product
   - `packages/app/src/lib/append-style-rule.ts`、`packages/app/src/lib/append-style-rule.test.ts`
   - `packages/app/src/components/EdgeContextMenu.tsx`
   - `packages/app/src/components/PreviewPane.test.tsx`
-  - `packages/app/src/styles/app.css`
+  - `packages/app/src/styles/components/panels.css`
 - **関連 ADR**: [ADR-1076](../adr/1076-gui-driven-style-editing.md)（GUI 編集器の親ルール）
 
 ## 受け入れ条件

@@ -131,9 +131,11 @@ pnpm run lint:krs-fences   # docs/{acceptance,spec,guide}/** と docs/concepts*.
   「一部は検証されている」という最も誤解を招く状態になる。
 - **同じ観点の先行例**: `scripts/guide/gen-guide-diagrams.ts --check`（`docs/guide/**`
   の hero スニペットは実際にレンダリングされる）。ドキュメント中の `.krs` を実行可能な
-  資産として扱う系譜。`packages/core/src/spec-syntax.test.ts` は `docs/spec/syntax.md`
-  だけを見る先行実装だったが、#2415 で `lint:krs-fences` に統合して削除した — 同じ
-  ファイルに規約が 2 つあると、緩い方（暗黙の `system` ラップ）が主張を曖昧にする。
+  資産として扱う系譜。
+  <!-- absent-path-next-line: deleted in #2415 when it was folded into lint:krs-fences, named as history -->
+  - `packages/core/src/spec-syntax.test.ts` は `docs/spec/syntax.md` だけを見る先行実装
+    だったが、#2415 で `lint:krs-fences` に統合して削除した — 同じファイルに規約が 2 つ
+    あると、緩い方（暗黙の `system` ラップ）が主張を曖昧にする。
 
 ## 派生元
 

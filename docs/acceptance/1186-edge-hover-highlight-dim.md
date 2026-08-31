@@ -7,7 +7,7 @@ type: product
 - **日付**: 2026-05-09
 - **関連 Issue**: [#1186](https://github.com/kompiro/karasu/issues/1186)
 - **対象ファイル**:
-  - `packages/app/src/styles/app.css`
+  - `packages/app/src/styles/components/preview.css`
   - `packages/e2e/tests/at-1186-edge-hover-highlight-dim.spec.ts`
 - **依存**: ADR-1096（`edge#<canonicalId>` selector / `data-edge-canonical-id` 付与）, ADR-463（Implicit edge detail panel）
 
@@ -23,7 +23,10 @@ type: product
   > ✅ Automated — `packages/e2e/tests/at-1186-edge-hover-highlight-dim.spec.ts` › `the focused edge keeps full opacity while hovered`
 
 - [x] AT-D: hover dim は `:has()` を使った **CSS のみ** で実現される（React state も DOM mutation も伴わない）。SVG の re-inject や useSystemView の debounce と race しない
-  > ✅ Automated — 実装が CSS のみで完結することは PR の差分（`packages/app/src/styles/app.css` のみ変更）で担保される
+  > ✅ Automated — dim は `packages/app/src/styles/components/preview.css` の
+  > `.preview-container svg:has(.krs-edge--interactive:hover) .krs-edge:not(:hover)` 1 ルールで、
+  > AT-A / AT-B / AT-C の e2e が state 変更なしにこれを実行している。当時の PR 差分ではなく
+  > 現在のツリーで読み直せる形にした（#2648）
 
 - [ ] AT-E（manual）: 多数 edge の system view（例: `examples/ja/ec-platform/`）を Preview で開き、edge を順番に hover して **focused edge が視認しやすく**、関係ない edge が背景に沈むことを目視確認する
   > 🧑 Manual — UX 体験の主観的評価。CI では検証できない
