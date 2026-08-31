@@ -252,6 +252,7 @@ function makeStyles(
     nodes,
     edges: new Map(),
     boundaryFrames: { base: {}, byId: new Map() },
+    teamFrames: { base: {}, byId: new Map() },
     defaultNodeStyle: base,
     defaultEdgeStyle: baseEdge,
     layoutHints: new Map(),

@@ -526,6 +526,10 @@ function layoutInner(
       containers,
       frameMeta,
       reach,
+      // An expanding canvas frames containers, not teams or boundaries: its
+      // group ids come from `expandGroupIdOf`, so neither axis's id space
+      // applies and no style override should be looked up against them (#2269).
+      isExpanding ? undefined : groupBy,
     );
     markDegradedMemberships(
       degraded,
@@ -922,6 +926,7 @@ function layoutMultipleSystems(
           return label !== undefined ? { label } : undefined;
         },
         reach,
+        groupBy,
       );
       markDegradedMemberships(
         degraded,

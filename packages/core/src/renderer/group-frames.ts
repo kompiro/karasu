@@ -119,6 +119,12 @@ export function buildGroupFrames(
    */
   metaOf?: (groupId: string) => { label?: string; expanded?: boolean; nodeId?: string } | undefined,
   reach?: FrameReach,
+  /**
+   * Which axis these frames are grouped on (#2269), recorded on each frame so
+   * the renderer knows which id space `groupId` names when it looks up a style
+   * override. Omitted by callers that mint frames off neither axis.
+   */
+  groupAxis?: "team" | "boundary",
 ): { degraded: { nodeId: string; boundaryId: string }[] } {
   const degraded: { nodeId: string; boundaryId: string }[] = [];
   for (const groupId of groupOrder) {
@@ -158,6 +164,7 @@ export function buildGroupFrames(
       // recorded rect on the paths that never reach.
       ...(coverage.length > 1 ? { coverage } : {}),
       ...(reach ? { hueIndex: reach.hueIndexOf(groupId) } : {}),
+      ...(groupAxis ? { groupAxis } : {}),
       ...(meta?.expanded ? { expanded: true, nodeId: meta.nodeId ?? groupId } : {}),
     });
   }

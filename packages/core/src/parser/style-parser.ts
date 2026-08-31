@@ -233,6 +233,19 @@ export class StyleParser {
       lastToken = id;
     }
 
+    // team#<id> selector (#2269) — a *compound*, not a new id space. `team` is
+    // a node kind in the org tree view and `#<id>` already addresses a node
+    // there, so this narrows the existing match to the team kind rather than
+    // moving it onto another object. It therefore lands in `selector.id`, which
+    // is what makes the node matchers AND the two parts and what scores it 101
+    // (100 for the id + 1 for the kind) with no change to `computeSpecificity`.
+    if (selector.nodeType === "team" && this.peek().type === TokenType.Hash) {
+      this.advance(); // #
+      const id = this.expect(TokenType.Identifier);
+      selector.id = id.value;
+      lastToken = id;
+    }
+
     // edge#<id> selector — only meaningful after `edge`. Accepts either an
     // author identifier (`edge#criticalWrite`) or a base form
     // (`edge#A->B` / `edge#A-->B`).
