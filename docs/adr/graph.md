@@ -376,6 +376,7 @@ flowchart TD
     ADR_1192["ADR-1192<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
     ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
     ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
+    ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -863,6 +864,7 @@ flowchart TD
   class ADR_2628 accepted
   class ADR_2640 accepted
   class ADR_2643 accepted
+  class ADR_2648 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
