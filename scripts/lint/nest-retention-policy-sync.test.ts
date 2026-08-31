@@ -63,6 +63,9 @@ function constant(path: string, name: string): number {
 
 const POLICY = "docs/policy/nest-data-handling.md";
 
+/** The store whose two expiries every document below has to agree with. */
+const SESSIONS = "packages/nest/src/store/sessions.ts";
+
 /**
  * The two drafts a public submission surface needs (#2591).
  *
@@ -108,18 +111,22 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
     expect(read("docs/policy/nest-privacy.md")).toContain("**投稿者が削除するまで**");
   });
 
-  it("does not promise a session that renews itself", () => {
-    // `sessions.ts` fixes the window at issue on purpose, and says why. A draft
-    // that describes a session extended on use is describing a rolling
-    // credential the code does not implement -- which is what this PR shipped
-    // until review caught it.
+  it("does not promise a session that renews itself indefinitely", () => {
+    // The window used to be fixed at issue and this guard held the documents
+    // to that. #2655 made it slide, which is what the guard was built to
+    // catch: it is anchored on the code comment, so the implementation change
+    // failed it until the documents followed. That is the whole point of it,
+    // and the reason it was rewritten here rather than deleted.
     //
-    // Anchored on the code comment so it fails in both directions: change the
-    // implementation to renew, and this fails until the documents follow.
-    // Two positive assertions rather than a banned-word list: the correct
-    // wording says "延長されない", so negating 延長 would fail on the right text.
-    expect(read("packages/nest/src/store/sessions.ts")).toContain("Not renewed on use");
-    expect(read("docs/policy/nest-privacy.md")).toContain("発行時から固定");
+    // What it protects is unchanged. Sliding is safe only because a second,
+    // unmovable expiry sits outside it -- so the **cap** is now the fact every
+    // document has to state, where the fixed window used to be. A draft that
+    // describes a session extended on use without saying where that stops is
+    // describing a credential that renews itself forever.
+    expect(read(SESSIONS)).toContain("Renewed on use, up to an absolute cap");
+    for (const document of [POLICY, ...DRAFTS]) {
+      expect(read(document)).toContain("発行から 90 日");
+    }
   });
 
   it("keeps every draft out of the published set until a human has read it", () => {
@@ -167,10 +174,14 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
   });
 
   it("expires a session, which is the one credential here", () => {
-    expect(constant("packages/nest/src/store/sessions.ts", "SESSION_TTL_SECONDS")).toBe(
-      30 * 24 * 60 * 60,
+    // Two numbers now, because a sliding window is only half the statement.
+    // Both are asserted against the document: an idle window quoted without
+    // its cap reads as a session that never ends.
+    expect(constant(SESSIONS, "SESSION_IDLE_TTL_SECONDS")).toBe(30 * 24 * 60 * 60);
+    expect(constant(SESSIONS, "SESSION_ABSOLUTE_TTL_SECONDS")).toBe(90 * 24 * 60 * 60);
+    expect(policy).toMatch(
+      /`sess\/v1\/<account>\/<session>` \| 最終使用から 30 日。ただし発行から 90 日を超えない/,
     );
-    expect(policy).toMatch(/`sess\/v1\/<account>\/<session>` \| 30 日/);
   });
 
   it("states the size limits a submitter is actually held to", () => {
