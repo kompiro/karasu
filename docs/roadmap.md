@@ -193,7 +193,7 @@ gate で評価する。
 ### sequencing
 
 1. **karasu-nest pivot**（[#1990](https://github.com/kompiro/karasu/issues/1990)）が現在の主線。宣言していた実装スライスは全消化し、主線は**運用の問い**へ移った — quota の適用範囲（[#2382](https://github.com/kompiro/karasu/issues/2382)）とラチェットの検証（[#2228](https://github.com/kompiro/karasu/issues/2228)）。permalink layer（retained の背骨）は完成形に到達しており、律速ではない。
-2. **syntax 2.0 の二本柱**（facets [#2065](https://github.com/kompiro/karasu/issues/2065) / boundary）は**どちらも v1.x 分が着地**し、`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載った。残るのは閉鎖・core 昇格そのもの（[§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
+2. **syntax 2.0 の二本柱**（facets [#2065](https://github.com/kompiro/karasu/issues/2065) / boundary）は`boundary` / `facet` とも experimental として [§watch 登録](#watch-対象の-experimental-notation登録) に載った。v1.x に残るのは facets 側の edge への `facets` 拡張（[#2544](https://github.com/kompiro/karasu/issues/2544)）1 件で、`boundary` 側は出し切っている。あとは閉鎖・core 昇格そのもの（[§Syntax 2.0 プログラム](#syntax-20-プログラム) で時期未定）。
 3. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は評価可能。
 4. **非ゴール圧力 log** は随時追記（安価）。
 
