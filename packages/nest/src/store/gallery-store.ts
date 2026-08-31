@@ -21,19 +21,17 @@ import { AccountStore, type Account } from "./accounts.js";
 import { SessionStore, type Session } from "./sessions.js";
 import { SubmissionStore } from "./submissions.js";
 
-/** How `authenticate` is told the time, and where to put the refresh write. */
+/** How `authenticate` is told the time. */
 export interface AuthenticateOptions {
-  /** Overridable so tests can walk a session up to its cap. */
-  now?: Date;
   /**
-   * `ExecutionContext.waitUntil`, when the caller has one.
+   * The clock the session's two expiries are measured against.
    *
-   * Given it, the refresh leaves the response path: the viewer is already
-   * resolved, so making them wait on a write that only moves an expiry is
-   * paying latency for nothing. Without it the write is awaited, which is
-   * what a caller outside a request (a test, a script) wants.
+   * Injected rather than read from `Date.now()` inside the store, so a caller
+   * can walk a session up to its cap deterministically. Every path that
+   * consumes it fails closed on a `Date` that is not a real time, so passing
+   * a broken one refuses the session rather than disabling the cap.
    */
-  waitUntil?: (promise: Promise<unknown>) => void;
+  now?: Date;
 }
 
 export interface AccountPurgeResult {
@@ -91,19 +89,30 @@ export class GalleryStore {
     // Deliberately after the account check, so a purged account's cookie does
     // not get its window extended on the way to being refused.
     //
-    // The refresh cannot fail the request. The viewer is authenticated either
-    // way — the read that proved it has already happened — and the worst a
-    // dropped write costs is a sign-in sooner than it needed to be. Logged
-    // rather than swallowed silently, because a refresh that fails *every*
-    // time is a broken binding worth seeing in the logs.
-    const refresh = this.sessions.refreshIfStale(session.accountId, sessionId, session, now).then(
-      () => undefined,
-      (cause: unknown) => {
-        logError("karasu-nest could not refresh a session", cause);
-      },
-    );
-    if (options.waitUntil === undefined) await refresh;
-    else options.waitUntil(refresh);
+    // **Awaited, not deferred to `ctx.waitUntil`.** Handlers delete the very
+    // records this writes: `consoleDeleteAccount` resolves the viewer and then
+    // purges the account, and sign-out revokes the session the request came
+    // in with. A write parked on `waitUntil` may land after those, and `put`
+    // creates a key as readily as it updates one — so the refresh would
+    // resurrect a session that deletion had removed, with a fresh 30-day
+    // window on it. Account deletion is the strongest promise the gallery
+    // makes; it must not lose a race to an expiry bump.
+    //
+    // Deferring bought little in the first place. The throttle means all but
+    // roughly one request a day per submitter returns without writing, so the
+    // latency this adds is paid once a day and not on the requests that were
+    // supposed to be fast.
+    //
+    // The refresh still cannot fail the request. The viewer is authenticated
+    // either way — the read that proved it has already happened — and the
+    // worst a dropped write costs is a sign-in sooner than it needed to be.
+    // Logged rather than swallowed silently, because a refresh that fails
+    // *every* time is a broken binding worth seeing in the logs.
+    try {
+      await this.sessions.refreshIfStale(sessionId, session, now);
+    } catch (cause) {
+      logError("karasu-nest could not refresh a session", cause);
+    }
     return { session, account };
   }
 

@@ -25,6 +25,18 @@ export interface NestExecutionContext {
  * package stays dependency-free and the store can be faked in unit tests with
  * an object literal.
  */
+/**
+ * The shortest `expirationTtl` the real binding accepts; it rejects anything
+ * below this outright.
+ *
+ * Declared beside the binding it constrains, because two places need it and
+ * they must agree: `store/sessions.ts` refuses to write a TTL under it, and
+ * `testing/memory-kv.ts` rejects one so a misconfigured TTL cannot pass a unit
+ * test and fail only in production. A fake with its own copy of the number
+ * would keep certifying TTLs after the real floor moved.
+ */
+export const KV_MINIMUM_TTL_SECONDS = 60;
+
 export interface KVNamespaceLike {
   get(key: string): Promise<string | null>;
   put(

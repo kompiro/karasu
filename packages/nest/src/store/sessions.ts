@@ -19,7 +19,7 @@
  * its own — does not apply to a credential, where a bounded lifetime is the
  * point.
  */
-import type { KVNamespaceLike } from "../env.js";
+import { KV_MINIMUM_TTL_SECONDS, type KVNamespaceLike } from "../env.js";
 import { newSessionId, sessionKey, sessionPrefix, normaliseAccountId } from "./gallery-keys.js";
 import { purgeByPrefix } from "./sweep.js";
 
@@ -63,14 +63,17 @@ export const SESSION_ABSOLUTE_TTL_SECONDS = 90 * 24 * 60 * 60;
  *
  * This is the objection about write amplification, answered. Refreshing on
  * every read would put a KV write on every authenticated request; refreshing
- * only once the record is a day old costs an active daily user one write per
- * day instead. The idle window is 30 days, so spending up to a day of it
+ * only once the record is a day old costs an active daily user about one write
+ * per day instead. The idle window is 30 days, so spending up to a day of it
  * un-renewed changes nothing a submitter can observe.
+ *
+ * "About", because the throttle is decided from a KV read and KV reads are not
+ * read-after-write consistent. For up to a minute after a refresh lands, other
+ * requests can still see the record it replaced and write their own. The bound
+ * that matters holds either way — a burst of requests inside one minute a day,
+ * not a write per request forever — but this is a throttle, not a lock.
  */
 export const SESSION_REFRESH_AFTER_SECONDS = 24 * 60 * 60;
-
-/** KV refuses an `expirationTtl` below this, so a shorter one is not written. */
-const KV_MINIMUM_TTL_SECONDS = 60;
 
 export interface Session {
   accountId: string;
@@ -88,10 +91,19 @@ export interface Session {
   refreshedAt: string;
 }
 
-/** Milliseconds since an ISO timestamp, or `undefined` if it will not parse. */
+/**
+ * Milliseconds since an ISO timestamp, or `undefined` if it cannot be worked
+ * out.
+ *
+ * Both inputs are checked, not just the stored one. An `Invalid Date` reaching
+ * this would make the subtraction `NaN`, and every comparison against `NaN` is
+ * `false` — so a caller testing `age >= cap` would read "not past the cap" and
+ * the ceiling would quietly stop existing. Returning `undefined` makes callers
+ * handle it, and all of them fail closed.
+ */
 function elapsedSince(iso: string, now: Date): number | undefined {
-  const at = Date.parse(iso);
-  return Number.isNaN(at) ? undefined : now.getTime() - at;
+  const elapsed = now.getTime() - Date.parse(iso);
+  return Number.isNaN(elapsed) ? undefined : elapsed;
 }
 
 export class SessionStore {
@@ -168,9 +180,13 @@ export class SessionStore {
    *
    * Callers treat a `false` and a throw alike: the session is valid either
    * way, and the worst a dropped refresh costs is an earlier sign-in.
+   *
+   * The key is derived from `session.accountId` rather than taken as its own
+   * argument, so there is no way to pass a session and a key that disagree —
+   * which would write one session's record over another's and reset the
+   * overwritten one's cap to the wrong issue time.
    */
   async refreshIfStale(
-    accountId: number | string,
     sessionId: string,
     session: Session,
     now: Date = new Date(),
@@ -191,11 +207,19 @@ export class SessionStore {
     // its own floor. Refreshing is pointless here anyway: the session is about
     // to be refused on read.
     if (ttl < KV_MINIMUM_TTL_SECONDS) return false;
-    const canonical = normaliseAccountId(accountId);
+    const key = sessionKey(session.accountId, sessionId);
+    // Re-read before writing, because **a refresh must never bring a session
+    // back**. `put` creates a key as readily as it updates one, so a blind
+    // write here would undo a `revoke` or a `purgeAccount` that happened in
+    // between and hand back a credential sign-out had destroyed — with a fresh
+    // 30-day window on it.
+    //
+    // KV has no compare-and-set, so this narrows the window to the put itself
+    // rather than closing it. The other half of the answer is that callers do
+    // not defer this write past their own deletions: `GalleryStore` awaits it.
+    if ((await this.kv.get(key)) === null) return false;
     const refreshed: Session = { ...session, refreshedAt: now.toISOString() };
-    await this.kv.put(sessionKey(canonical, sessionId), JSON.stringify(refreshed), {
-      expirationTtl: ttl,
-    });
+    await this.kv.put(key, JSON.stringify(refreshed), { expirationTtl: ttl });
     return true;
   }
 

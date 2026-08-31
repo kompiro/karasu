@@ -66,6 +66,13 @@ const POLICY = "docs/policy/nest-data-handling.md";
 /** The store whose two expiries every document below has to agree with. */
 const SESSIONS = "packages/nest/src/store/sessions.ts";
 
+const SESSION_IDLE = "SESSION_IDLE_TTL_SECONDS";
+const SESSION_CAP = "SESSION_ABSOLUTE_TTL_SECONDS";
+const SESSION_REFRESH = "SESSION_REFRESH_AFTER_SECONDS";
+
+/** A session constant as the whole number of days the documents quote. */
+const days = (name: string): number => constant(SESSIONS, name) / (24 * 60 * 60);
+
 /**
  * The two drafts a public submission surface needs (#2591).
  *
@@ -124,8 +131,15 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
     // describes a session extended on use without saying where that stops is
     // describing a credential that renews itself forever.
     expect(read(SESSIONS)).toContain("Renewed on use, up to an absolute cap");
+    // Both numbers, in all three documents, built from the constants rather
+    // than written out here -- so moving either one fails until every document
+    // follows. Stating the sliding window without its cap is the specific way
+    // this goes wrong, which is why the cap is asserted per document and not
+    // only in the technical table.
     for (const document of [POLICY, ...DRAFTS]) {
-      expect(read(document)).toContain("発行から 90 日");
+      const text = read(document);
+      expect(text).toContain(`発行から ${days(SESSION_CAP)} 日`);
+      expect(text).toContain(`${days(SESSION_IDLE)} 日`);
     }
   });
 
@@ -182,6 +196,10 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
     expect(policy).toMatch(
       /`sess\/v1\/<account>\/<session>` \| 最終使用から 30 日。ただし発行から 90 日を超えない/,
     );
+    // The throttle is stated too, and so is checkable. It is the reason the
+    // document can claim a sliding window costs about one write a day, and
+    // that claim is wrong the moment the constant moves without the text.
+    expect(policy).toContain(`レコードが ${days(SESSION_REFRESH)} 日以上古いときだけ`);
   });
 
   it("states the size limits a submitter is actually held to", () => {

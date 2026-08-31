@@ -89,7 +89,12 @@ function serialize(name: string, value: string, maxAgeSeconds: number): string {
  * `Set-Cookie` on responses all the way up from `currentViewer`.
  *
  * So the cookie states the longest its value could possibly be useful, and
- * the store decides everything shorter. A cookie whose session went idle is
+ * the store decides everything shorter. Cookies issued before #2655 keep the
+ * `Max-Age` they were sent with, and nothing re-issues them: those sessions
+ * still end 30 days after sign-in, and slide only once their holder signs in
+ * again. The gallery is not open past its operator yet
+ * (`docs/policy/nest-data-handling.md`, "未了"), so that set is small and it
+ * drains on its own. A cookie whose session went idle is
  * left in the browser as an inert string — it names a record KV has already
  * dropped, which reads as "not signed in" like any other stale cookie.
  */

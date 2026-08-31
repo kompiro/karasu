@@ -62,7 +62,7 @@ async function visibleSubmission(
   const submission = await store.submissions.get(ref.accountId, ref.slug);
   if (submission === undefined) return undefined;
 
-  const viewer = await currentViewer(context, store);
+  const viewer = await currentViewer(context.request, context.env, store);
   const isOwner = viewer?.account.accountId === submission.accountId;
   if (submission.visibility !== "public" && !isOwner) return undefined;
   return { submission, isOwner };

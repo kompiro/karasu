@@ -6,8 +6,8 @@
 - **関連 TPL**: [TPL-2655](../test-perspectives/TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md)（延びる期限には延びない上限）、[TPL-2587](../test-perspectives/TPL-2587-author-managed-content-has-no-ttl.md)（資格情報は期限を持つ側）、[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)（同じ事実を述べる 3 文書は drift する）
 - **対象ファイル**:
   - `packages/nest/src/store/sessions.ts`（3 定数・読み取り時の上限判定・間引いた延長）
-  - `packages/nest/src/store/gallery-store.ts`（`authenticate` が書き込み経路になる）
-  - `packages/nest/src/auth/current.ts` / `session.ts`（`ctx` の配管、cookie の `Max-Age`）
+  - `packages/nest/src/store/gallery-store.ts`（`authenticate` が書き込み経路になる。延長は await し、`ctx.waitUntil` には預けない）
+  - `packages/nest/src/auth/session.ts`（cookie の `Max-Age` は idle 窓ではなく上限）
   - `docs/policy/nest-data-handling.md` / `nest-privacy.md` / `nest-terms.md`（3 文書とも上限を述べる）
 
 > **この変更が覆したのは、コードコメントに書かれていた決定である。** `sessions.ts` は
@@ -48,6 +48,9 @@
 - [x] AT-F: 延長の書き込みが失敗しても、認証は成功する
 
   > ✅ Automated — `packages/nest/src/store/gallery-store.test.ts` › `authenticates even when the refresh write fails`
+  >
+  > 判定できない時刻（`Invalid Date`）が渡された場合に上限が消えるのではなく
+  > セッションが拒否されることも `refuses the session rather than dropping the cap when now is not a time` が持つ。
 
 - [x] AT-G: cookie の期限が、延長後のセッションに届く長さになっている
 
@@ -66,10 +69,23 @@
 
 - [x] AT-I: 固定日付の fixture が上限に近づいて、あとから落ちるテストが無い
 
-  > ✅ Automated — `packages/nest/src/routes/console.test.ts` ／ `gallery.test.ts` ／ `submit.test.ts`（セッションの発行が `new Date()`）、`packages/nest/src/store/sessions.test.ts`（`harness` が KV の fake clock と `now` を揃えて進める）
+  > ✅ Automated — `packages/nest/src/routes/console.test.ts` ／ `gallery.test.ts` ／ `submit.test.ts` ／ `packages/nest/src/store/gallery-purge-coverage.test.ts`（セッションの発行が `new Date()`）、`packages/nest/src/store/sessions.test.ts`（`harness` が KV の fake clock と `now` を揃えて進める）
   >
   > 上限を実時刻で判定する以上、過去の固定日付で発行したセッションは**書いた日は通り、
-  > あとで落ちる**。この 3 suite は実際にその状態にあった（[TPL-2655](../test-perspectives/TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md)）。
+  > あとで落ちる**。この 4 suite は実際にその状態にあった（[TPL-2655](../test-perspectives/TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md)）。
+  > 4 本目（`gallery-purge-coverage.test.ts`）は最初の 3 本を直した後もレビューまで
+  > 残っていた — 「固定日付を探す」という作業自体が漏れる種類のものである証拠として
+  > ここに残す。
+
+- [x] AT-J: 延長がサインアウト・アカウント削除を巻き戻さない
+
+  > ✅ Automated — `packages/nest/src/store/sessions.test.ts` › `does not bring back a session that was revoked mid-flight` ／ `does not bring back a session the account purge swept` ／ `packages/nest/src/store/gallery-store.test.ts` › `finishes the refresh before returning, so a later deletion wins`
+  >
+  > **これがこの変更で最も危ない部分である。** `put` は鍵を更新するのと同じ手軽さで
+  > 鍵を作るので、削除の後に着地した延長は、削除されたはずのセッションを 30 日の窓付きで
+  > 復活させる。`consoleDeleteAccount` は viewer を解決してから purge するため、
+  > 延長を `ctx.waitUntil` に預けると同一リクエスト内で競合する。延長は `authenticate`
+  > 内で await し、書き込み前にレコードの存在を読み直す。
 
 ## 手動確認
 

@@ -7,7 +7,7 @@
  * small enough that tests actually cross a page boundary. A fake that returns
  * everything in one page would let a purge that ignores the cursor pass.
  */
-import type { KVNamespaceLike } from "../env.js";
+import { KV_MINIMUM_TTL_SECONDS, type KVNamespaceLike } from "../env.js";
 
 interface Stored {
   value: string;
@@ -49,13 +49,15 @@ export class MemoryKV implements KVNamespaceLike {
     value: string,
     options?: { expirationTtl?: number; metadata?: unknown },
   ): Promise<void> {
-    // Real KV rejects a TTL below 60 seconds. Without this the fake would
+    // Real KV rejects a TTL below its floor. Without this the fake would
     // happily accept a value the binding refuses, and a misconfigured TTL
     // would pass every unit test and fail only in production.
-    if (options?.expirationTtl !== undefined && options.expirationTtl < 60) {
+    if (options?.expirationTtl !== undefined && options.expirationTtl < KV_MINIMUM_TTL_SECONDS) {
       // Rejected, not thrown: the real binding surfaces this asynchronously,
       // and a synchronous throw would let a caller's `.catch` miss it.
-      return Promise.reject(new Error("KV rejects an expirationTtl below 60 seconds"));
+      return Promise.reject(
+        new Error(`KV rejects an expirationTtl below ${KV_MINIMUM_TTL_SECONDS} seconds`),
+      );
     }
     this.puts.push({ key, options });
     this.entries.set(key, {

@@ -42,6 +42,23 @@ function harness(): {
   };
 }
 
+/**
+ * Walk a session forward the way a returning submitter does: use it, refresh
+ * it, repeat. Nothing here can jump straight to day 80 — the record would have
+ * expired in KV on day 30, and `refreshIfStale` refuses to write a key that is
+ * no longer there rather than resurrecting it.
+ */
+async function useUntil(
+  h: ReturnType<typeof harness>,
+  sessionId: string,
+  totalDays: number,
+): Promise<void> {
+  for (let elapsed = 0; elapsed < totalDays; elapsed += 20) {
+    h.advance(20 * DAY);
+    await h.store.refreshIfStale(sessionId, await live(h, sessionId), h.at());
+  }
+}
+
 /** Read a session that the test needs to still be there, without a `!`. */
 async function live(h: ReturnType<typeof harness>, sessionId: string): Promise<Session> {
   const session = await h.store.get(42, sessionId, h.at());
@@ -74,9 +91,7 @@ describe("SessionStore", () => {
     const h = harness();
     const { sessionId } = await h.store.issue(42, "kompiro", h.at());
     h.advance(20 * DAY);
-    expect(await h.store.refreshIfStale(42, sessionId, await live(h, sessionId), h.at())).toBe(
-      true,
-    );
+    expect(await h.store.refreshIfStale(sessionId, await live(h, sessionId), h.at())).toBe(true);
     // Day 40. Past the window measured from issue, inside the one measured
     // from that use — this is exactly where the old behaviour signed a
     // submitter out mid-task.
@@ -94,15 +109,13 @@ describe("SessionStore", () => {
     for (let i = 0; i < 5; i += 1) {
       h.advance(SESSION_REFRESH_AFTER_SECONDS / 10);
       const session = await live(h, sessionId);
-      expect(await h.store.refreshIfStale(42, sessionId, session, h.at())).toBe(false);
+      expect(await h.store.refreshIfStale(sessionId, session, h.at())).toBe(false);
     }
     expect(h.kv.puts.length).toBe(writes);
     // And once past the threshold it does write — so the assertion above is
     // about the throttle, not about a refresh that never happens at all.
     h.advance(SESSION_REFRESH_AFTER_SECONDS);
-    expect(await h.store.refreshIfStale(42, sessionId, await live(h, sessionId), h.at())).toBe(
-      true,
-    );
+    expect(await h.store.refreshIfStale(sessionId, await live(h, sessionId), h.at())).toBe(true);
     expect(h.kv.puts.length).toBe(writes + 1);
   });
 
@@ -128,25 +141,28 @@ describe("SessionStore", () => {
 
   it("never refreshes into a window that outlives the cap", async () => {
     const h = harness();
-    const { session, sessionId } = await h.store.issue(42, "kompiro", h.at());
-    h.advance(SESSION_ABSOLUTE_TTL_SECONDS - 10 * DAY);
-    const writes = h.kv.puts.length;
-    expect(await h.store.refreshIfStale(42, sessionId, session, h.at())).toBe(true);
-    // Ten days of cap left, so ten days is what the record gets — not the
-    // thirty the idle window would otherwise have handed out.
+    const { sessionId } = await h.store.issue(42, "kompiro", h.at());
+    // Day 80 of a 90-day cap, reached by using the session all the way there.
+    await useUntil(h, sessionId, 80);
+    // Ten days of cap left, so ten days is what the last refresh granted —
+    // not the thirty the idle window would otherwise have handed out.
     expect(h.kv.puts.at(-1)?.options?.expirationTtl).toBe(10 * DAY);
-    expect(h.kv.puts.length).toBe(writes + 1);
   });
 
   it("stops refreshing once the cap leaves less room than KV accepts", async () => {
     const h = harness();
-    const { session, sessionId } = await h.store.issue(42, "kompiro", h.at());
+    const { sessionId } = await h.store.issue(42, "kompiro", h.at());
+    await useUntil(h, sessionId, 80);
+    const session = await live(h, sessionId);
     // Thirty seconds of cap left. KV rejects a TTL below a minute, and there
     // is nothing to buy anyway: the next read refuses this session.
-    h.advance(SESSION_ABSOLUTE_TTL_SECONDS - 30);
+    h.advance(10 * DAY - 30);
     const writes = h.kv.puts.length;
-    expect(await h.store.refreshIfStale(42, sessionId, session, h.at())).toBe(false);
+    expect(await h.store.refreshIfStale(sessionId, session, h.at())).toBe(false);
     expect(h.kv.puts.length).toBe(writes);
+    // And a moment later the cap does the refusing, on read.
+    h.advance(31);
+    expect(await h.store.get(42, sessionId, h.at())).toBeUndefined();
   });
 
   it("reads a record written before refreshedAt existed, treating issuedAt as it", async () => {
@@ -167,9 +183,30 @@ describe("SessionStore", () => {
     });
     // And it slides from there like any other, rather than being stuck.
     h.advance(2 * DAY);
-    expect(await h.store.refreshIfStale(42, sessionId, await live(h, sessionId), h.at())).toBe(
-      true,
-    );
+    expect(await h.store.refreshIfStale(sessionId, await live(h, sessionId), h.at())).toBe(true);
+  });
+
+  it("does not bring back a session that was revoked mid-flight", async () => {
+    // `put` creates a key as readily as it updates one, so a refresh computed
+    // before a sign-out and written after it would hand back the credential
+    // the sign-out destroyed — with a fresh window on it.
+    const h = harness();
+    const { session, sessionId } = await h.store.issue(42, "kompiro", h.at());
+    h.advance(2 * DAY);
+    await h.store.revoke(42, sessionId);
+    const writes = h.kv.puts.length;
+    expect(await h.store.refreshIfStale(sessionId, session, h.at())).toBe(false);
+    expect(h.kv.puts.length).toBe(writes);
+    expect(await h.store.get(42, sessionId, h.at())).toBeUndefined();
+  });
+
+  it("does not bring back a session the account purge swept", async () => {
+    const h = harness();
+    const { session, sessionId } = await h.store.issue(42, "kompiro", h.at());
+    h.advance(2 * DAY);
+    await h.store.purgeAccount(42);
+    expect(await h.store.refreshIfStale(sessionId, session, h.at())).toBe(false);
+    expect(h.kv.keys()).toEqual([]);
   });
 
   it("is not extended by being used", async () => {
