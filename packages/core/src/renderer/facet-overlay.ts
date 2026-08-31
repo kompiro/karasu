@@ -85,7 +85,7 @@ export function facetWalkRoots(file: KrsFile): KrsNode[] {
  * which edge holds which membership stays on the edge object, where the layout
  * and the renderer read it.
  */
-export function edgeFacetIds(file: KrsFile): string[] {
+function edgeFacetIds(file: KrsFile): string[] {
   const ids: string[] = [];
   const seen = new Set<string>();
   const visit = (node: KrsNode): void => {
