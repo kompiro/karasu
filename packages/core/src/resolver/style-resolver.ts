@@ -230,7 +230,7 @@ export function resolveStyles(
     nodes: nodeStyles,
     edges: edgeStyles,
     boundaryFrames: resolveBoundaryFrames(allRules),
-    teamFrames: resolveTeamFrames(sheets),
+    teamFrames: resolveTeamFrames(allRules),
     defaultNodeStyle: { ...DEFAULT_NODE_STYLE },
     defaultEdgeStyle: resolveDefaultEdgeStyle(allRules),
     layoutHints,
@@ -368,8 +368,8 @@ function resolveBoundaryFrames(rules: StyleRule[]): ResolvedBoundaryFrames {
 }
 
 /**
- * Sheets karasu ships rather than the author writing them. Their `sheetId` is a
- * sentinel (`StyleRule.sheetId`), never a `.krs.style` path.
+ * Sheets karasu ships rather than the author writing them. Their `StyleRule.sheetId`
+ * is a sentinel, never a `.krs.style` path.
  */
 const NON_AUTHOR_SHEET_IDS: ReadonlySet<string> = new Set(["<builtin>", "<icon-theme>"]);
 
@@ -391,7 +391,9 @@ const NON_AUTHOR_SHEET_IDS: ReadonlySet<string> = new Set(["<builtin>", "<icon-t
  * declared crosses between them.
  *
  * `boundary` needed no such filter (#2234) only because the built-in sheet has
- * no `boundary` rule to leak; the stance is the same on both axes.
+ * no `boundary` rule to leak; the stance is the same on both axes. The filter is
+ * per rule rather than per sheet because `StyleRule.sheetId` is where a rule's
+ * origin is canonical — the `StyleSheet` envelope's copy is optional.
  *
  * Otherwise the same shape as {@link resolveBoundaryFrames}: built from the
  * rules, so a rule naming a team that does not exist is simply never looked up,
@@ -400,10 +402,9 @@ const NON_AUTHOR_SHEET_IDS: ReadonlySet<string> = new Set(["<builtin>", "<icon-t
  * annotations or facets are left out: org nodes carry no tags or facets, and an
  * annotation rule is a badge rule, which a frame does not draw.
  */
-function resolveTeamFrames(sheets: StyleSheet[]): ResolvedTeamFrames {
-  const rules = flattenSheetsInCascadeOrder(
-    sheets.filter((sheet) => !NON_AUTHOR_SHEET_IDS.has(sheet.sheetId ?? "")),
-  ).filter((rule) => {
+function resolveTeamFrames(allRules: StyleRule[]): ResolvedTeamFrames {
+  const rules = allRules.filter((rule) => {
+    if (NON_AUTHOR_SHEET_IDS.has(rule.sheetId)) return false;
     const sel = rule.selector;
     if (sel.tags.length > 0 || sel.annotations.length > 0 || sel.facets.length > 0) return false;
     // `team` (bare or compound) and a plain `#<id>`. A bare id selector carries
