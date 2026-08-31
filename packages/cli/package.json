@@ -38,7 +38,7 @@
   "devDependencies": {
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.3.0",
     "@vitest/coverage-v8": "^4.1.10",
     "esbuild": "^0.28.2",
     "svgo": "^4.0.2",
