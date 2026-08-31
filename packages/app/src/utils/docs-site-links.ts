@@ -1,3 +1,5 @@
+import type { Locale } from "../i18n/locale.js";
+
 /**
  * Where the app links out to the published documentation site (GitHub Pages).
  * The single place that knows the site's base URL and the locale prefix, so the
@@ -29,7 +31,23 @@ export const DOCS_SITE_ROUTES = {
   examples: "examples/",
 } as const;
 
-/** Absolute URL for a base-relative docs-site route in the active locale. */
-export function docsSiteUrl(locale: string, route = ""): string {
-  return `${DOCS_SITE_BASE_URL}${locale === "ja" ? "ja/" : ""}${route}`;
+/**
+ * Base-relative route in the given locale — the half of a docs-site URL that
+ * `site-map.ts`'s `routeOf()` also produces. Split out from `docsSiteUrl` so the
+ * drift guard resolves the *same* prefix rule the app applies, rather than a
+ * transcription of it.
+ */
+export function localeRoute(locale: Locale, route: string): string {
+  return `${locale === "ja" ? "ja/" : ""}${route}`;
+}
+
+/**
+ * Absolute URL for a base-relative docs-site route in the active locale.
+ *
+ * Takes `Locale`, not `string`: a raw tag (`"ja-JP"`) would silently resolve to
+ * the English page. Normalizing a raw tag is `resolveLocaleTag`'s job and its
+ * alone (#2081), so an unnormalized value must not be able to reach here.
+ */
+export function docsSiteUrl(locale: Locale, route = ""): string {
+  return `${DOCS_SITE_BASE_URL}${localeRoute(locale, route)}`;
 }

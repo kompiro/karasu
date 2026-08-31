@@ -84,23 +84,39 @@ export function ReferenceContent({ activeView = "system" }: { activeView?: Activ
  */
 function Signpost() {
   const { t, locale } = useTranslation();
+  // The `↗` lives inside the translated label, and each link carries an
+  // aria-label saying it opens a new tab — the same shape the toolbar's Docs
+  // menu uses for the docs-site link (`preview.docs.site.*`).
   const links = [
-    { route: DOCS_SITE_ROUTES.guide, label: t("referencePanel.signpost.guide.label") },
-    { route: DOCS_SITE_ROUTES.cookbook, label: t("referencePanel.signpost.cookbook.label") },
-    { route: DOCS_SITE_ROUTES.examples, label: t("referencePanel.signpost.examples.label") },
+    {
+      route: DOCS_SITE_ROUTES.guide,
+      label: t("referencePanel.signpost.guide.label"),
+      ariaLabel: t("referencePanel.signpost.guide.ariaLabel"),
+    },
+    {
+      route: DOCS_SITE_ROUTES.cookbook,
+      label: t("referencePanel.signpost.cookbook.label"),
+      ariaLabel: t("referencePanel.signpost.cookbook.ariaLabel"),
+    },
+    {
+      route: DOCS_SITE_ROUTES.examples,
+      label: t("referencePanel.signpost.examples.label"),
+      ariaLabel: t("referencePanel.signpost.examples.ariaLabel"),
+    },
   ];
   return (
     <div className="reference-signpost">
       <p>{t("referencePanel.signpost.description")}</p>
       <nav>
-        {links.map(({ route, label }) => (
+        {links.map(({ route, label, ariaLabel }) => (
           <a
             key={route}
             href={docsSiteUrl(locale, route)}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label={ariaLabel}
           >
-            {label} ↗
+            {label}
           </a>
         ))}
       </nav>

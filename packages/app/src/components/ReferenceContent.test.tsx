@@ -248,6 +248,12 @@ describe("ReferenceContent", () => {
 // switches and, above all, be present in the pop-out — the mode the reference
 // was designed for is the one with no toolbar to fall back on.
 describe("ReferenceContent signpost", () => {
+  // The pop-out case below needs `?reference=1` in the URL. Restore it from a
+  // hook rather than inline, so a failing assertion cannot leak the query string
+  // into the tests that follow.
+  const originalSearch = window.location.search;
+  afterEach(() => window.history.replaceState({}, "", originalSearch || "/"));
+
   function signpostLinks(): HTMLAnchorElement[] {
     return [...document.querySelectorAll<HTMLAnchorElement>(".reference-signpost a")];
   }
@@ -260,6 +266,24 @@ describe("ReferenceContent signpost", () => {
       "Guides ↗",
       "Notation cookbook ↗",
       "Examples gallery ↗",
+    ]);
+  });
+
+  it("announces that each link opens a new tab", () => {
+    render(<ReferenceContent />);
+    expect(signpostLinks().map((a) => a.getAttribute("aria-label"))).toEqual([
+      "Open the guides in a new tab",
+      "Open the notation cookbook in a new tab",
+      "Open the examples gallery in a new tab",
+    ]);
+  });
+
+  it("keeps the ↗ inside the translated label, so a locale can move it", () => {
+    render(<ReferenceContent />, "ja");
+    expect(signpostLinks().map((a) => a.textContent?.trim())).toEqual([
+      "ガイド ↗",
+      "記法クックブック ↗",
+      "Examples ギャラリー ↗",
     ]);
   });
 
@@ -298,7 +322,6 @@ describe("ReferenceContent signpost", () => {
     window.history.replaceState({}, "", "/?reference=1&view=system");
     render(<ReferenceWindow />);
     expect(signpostLinks()).toHaveLength(3);
-    window.history.replaceState({}, "", "/");
   });
 });
 

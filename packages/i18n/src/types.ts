@@ -181,8 +181,11 @@ export type Translations = {
   "referencePanel.grouping.properties": string;
   "referencePanel.signpost.description": string;
   "referencePanel.signpost.guide.label": string;
+  "referencePanel.signpost.guide.ariaLabel": string;
   "referencePanel.signpost.cookbook.label": string;
+  "referencePanel.signpost.cookbook.ariaLabel": string;
   "referencePanel.signpost.examples.label": string;
+  "referencePanel.signpost.examples.ariaLabel": string;
 
   // Preview toolbar — export controls
   "preview.export.svg.label": string;

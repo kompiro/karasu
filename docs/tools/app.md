@@ -166,7 +166,10 @@ On a narrow window these wrap below the drill path rather than squeezing it.
   that same all-views bundle in a new tab instead of downloading it.
 - **Share** — copy a link that carries the model in the URL.
 - **Docs** — the built-in tag/annotation **Reference**, in a pop-out window you
-  can keep beside the diagram, and the published documentation site.
+  can keep beside the diagram, and the published documentation site. The
+  Reference answers *what you can write*; every tab links on to the guides
+  (*when* you would reach for a form) and the Examples gallery (*how it
+  renders*), including inside the pop-out.
 - **Focus** (`Ctrl/Cmd+Shift+F`) — expand the preview to full width.
 
 ## The editor (playground)

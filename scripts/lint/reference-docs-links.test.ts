@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { resolve } from "node:path";
 import { DOCS_SITE_ROUTES } from "../../packages/app/src/utils/docs-site-links.ts";
-import { check, publishedRoutes } from "./reference-docs-links.ts";
+import { check, publishedRoutes, unownedUrlLiterals, URL_OWNER } from "./reference-docs-links.ts";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../..");
 
 describe("publishedRoutes", () => {
   it("covers the guide pages and the generated gallery in both locales", () => {
-    const routes = publishedRoutes(REPO_ROOT);
+    const routes = publishedRoutes();
     expect(routes).toContain("guide/");
     expect(routes).toContain("ja/guide/");
     expect(routes).toContain("guide/notation-cookbook/");
@@ -20,7 +20,7 @@ describe("publishedRoutes", () => {
   });
 
   it("does not invent routes for pages the site does not publish", () => {
-    const routes = publishedRoutes(REPO_ROOT);
+    const routes = publishedRoutes();
     // A real doc, deliberately outside PUBLISHED_EN_FILES.
     expect(routes).not.toContain("guide/reverse-engineering-with-ai/");
     expect(routes).not.toContain("roadmap/");
@@ -35,9 +35,7 @@ describe("check", () => {
   it("rejects a route that is not a published page", () => {
     const problems = check(REPO_ROOT, { guide: "guide/does-not-exist/" });
     expect(problems).toHaveLength(1);
-    expect(problems[0].message).toContain("not a published docs-site page");
-    expect(problems[0].message).toContain("en");
-    expect(problems[0].message).toContain("ja");
+    expect(problems[0].message).toContain("not a published docs-site page in: en, ja");
   });
 
   it("rejects a route whose en page is published but whose ja page is not", () => {
@@ -55,6 +53,33 @@ describe("check", () => {
     });
     expect(problems).toHaveLength(1);
     expect(problems[0].message).toContain("#fragment");
+  });
+
+  it("sends a broken gallery route to GALLERY_PAGES, not to PUBLISHED_EN_FILES", () => {
+    // The gallery is generated from the manifest, so the remediation for a
+    // stale slug has to name the manifest — adding an `examples/` entry to
+    // PUBLISHED_EN_FILES would do nothing.
+    const [problem] = check(REPO_ROOT, { examples: "examples/renamed-away/" });
+    expect(problem.message).toContain("GALLERY_PAGES");
+    expect(problem.message).not.toContain("PUBLISHED_EN_FILES");
+  });
+
+  it("sends a broken docs route to PUBLISHED_EN_FILES", () => {
+    const [problem] = check(REPO_ROOT, { guide: "guide/gone/" });
+    expect(problem.message).toContain("PUBLISHED_EN_FILES");
+    expect(problem.message).not.toContain("GALLERY_PAGES");
+  });
+});
+
+describe("unownedUrlLiterals", () => {
+  it("finds no app module spelling the docs-site URL besides its owner", () => {
+    expect(unownedUrlLiterals(REPO_ROOT)).toEqual([]);
+  });
+
+  it("would report a module that pasted the URL in (negative control)", () => {
+    // Withdraw the owner's exemption: the one file that legitimately spells the
+    // host must then be reported, proving the scan reads app sources at all.
+    expect(unownedUrlLiterals(REPO_ROOT, "packages/app/src/not-the-owner.ts")).toEqual([URL_OWNER]);
   });
 });
 

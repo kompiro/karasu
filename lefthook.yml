@@ -204,5 +204,5 @@ pre-push:
       # `#fragment` is added (a heading slug differs per locale, so the anchor
       # rots silently). The vitest test
       # (scripts/lint/reference-docs-links.test.ts) mirrors this guard in CI.
-      glob: "{packages/app/src/utils/docs-site-links.ts,packages/docs-site/scripts/lib/{site-map,examples-manifest}.ts,docs/guide/**,scripts/lint/reference-docs-links.ts}"
+      glob: "{packages/app/src/**,packages/docs-site/scripts/**,docs/guide/**,scripts/lint/reference-docs-links.ts}"
       run: pnpm run lint:reference-docs-links

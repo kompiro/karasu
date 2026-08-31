@@ -4,7 +4,8 @@
 - **関連 Issue**: [#2350](https://github.com/kompiro/karasu/issues/2350)
 - **対象ファイル**: `packages/app/src/utils/docs-site-links.ts`,
   `packages/app/src/components/ReferenceContent.tsx`,
-  `scripts/lint/reference-docs-links.ts`
+  `scripts/lint/reference-docs-links.ts`,
+  `docs/tools/app.md`
 
 ## 受け入れ条件
 
@@ -18,6 +19,10 @@ Reference の発見可能性側の隣人は [TPL-2316](../test-perspectives/TPL-
 - [x] リンク先はページ単位で、`#fragment` を持たない。外部リンクとして `target="_blank"` / `rel="noopener noreferrer"` が付く
 
   > ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `ReferenceContent signpost` › `links to published docs-site pages, page-level and without an anchor`
+
+- [x] 各リンクが新しいタブで開くことを読み上げに伝える（`aria-label`）。`↗` は翻訳文字列の中にあり、ロケール側で動かせる
+
+  > ✅ Automated — `packages/app/src/components/ReferenceContent.test.tsx` › `ReferenceContent signpost` › `announces that each link opens a new tab` / `keeps the ↗ inside the translated label, so a locale can move it`
 
 - [x] ロケールに追従し、`ja` では `/ja/` 配下へ飛ぶ
 
@@ -42,6 +47,14 @@ Reference の発見可能性側の隣人は [TPL-2316](../test-perspectives/TPL-
 - [x] 公開ページ集合は docs サイト自身の情報源（`PUBLISHED_EN_FILES` + `routeOf`、`GALLERY_PAGES`）から組み立てられ、ガード側に転記されていない
 
   > ✅ Automated — `scripts/lint/reference-docs-links.test.ts` › `publishedRoutes` › `covers the guide pages and the generated gallery in both locales` / `does not invent routes for pages the site does not publish`
+
+- [x] 失敗時の案内が、そのページの実際の出どころを名指す（ギャラリーは `GALLERY_PAGES`、docs ページは `PUBLISHED_EN_FILES`）
+
+  > ✅ Automated — `scripts/lint/reference-docs-links.test.ts` › `check` › `sends a broken gallery route to GALLERY_PAGES, not to PUBLISHED_EN_FILES` / `sends a broken docs route to PUBLISHED_EN_FILES`
+
+- [x] docs サイトの URL を綴るのは所有モジュール 1 つだけで、別のコンポーネントが直接リテラルを書いたら落ちる（ルート検査を素通りするため）
+
+  > ✅ Automated — `scripts/lint/reference-docs-links.test.ts` › `unownedUrlLiterals` › `finds no app module spelling the docs-site URL besides its owner` / `would report a module that pasted the URL in (negative control)`
 
 - [x] 実リポジトリの signpost リンクが finding ゼロである
 
