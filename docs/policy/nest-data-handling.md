@@ -146,7 +146,8 @@ karasu-nest は、**投稿者が自分の環境で作ったアーキテクチャ
 | [`nest-terms.md`](nest-terms.md) | 権利帰属・責任の制限・申し立て窓口 | **草案 — 法務レビュー未了** |
 
 3 つとも同じ事実を述べるので、**3 つとも実装の定数に対して機械で突き合わせてある**
-（`scripts/lint/nest-retention-policy-sync.test.ts`）。互いに突き合わせるのではなく
+（`scripts/lint/nest-retention-policy-sync.test.ts`）。突き合わせるのは各文書が実際に
+述べている事実についてで、述べていないことは検査の対象にならない。互いに突き合わせるのではなく
 それぞれをコードに対して突き合わせるのは、片方を直してもう片方を忘れる形の drift を
 検出するためである（[TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md)）。
 

@@ -17,7 +17,7 @@
 
 - [x] AT-A: 保持を日数ではなく条件で述べ、実装に TTL が無いことと一致している
 
-  > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `keeps a submission until its author deletes it, and says so` / `says in every draft that a submission is kept until its author deletes it`
+  > ✅ Automated — `scripts/lint/nest-retention-policy-sync.test.ts` › `keeps a submission until its author deletes it, and says so` / `says in the privacy policy that a submission is kept until its author deletes it`
 
 - [x] AT-B: セッションだけは期限を持ち、その日数が実装と一致している
 

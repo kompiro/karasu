@@ -80,6 +80,9 @@ const POLICY = "docs/policy/nest-data-handling.md";
  */
 const DRAFTS = ["docs/policy/nest-privacy.md", "docs/policy/nest-terms.md"];
 
+/** The single window third-party complaints arrive through. */
+const CONTACT = "https://github.com/kompiro/karasu/issues";
+
 /**
  * Assert that a store never passes an expiry.
  *
@@ -133,9 +136,20 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
     // Third-party complaints arrive as GitHub Issues: no form, no new personal
     // data, publicly auditable. A draft that quietly grew an email address
     // would undo the reason no email is held.
+    // "One" has to mean no second window beside it, not merely that this one
+    // is present -- so every external URL in the draft is collected and the set
+    // has to be exactly this one. An email address is caught separately because
+    // it is the form a contact point grows in without looking like a link.
     for (const draft of DRAFTS) {
-      expect(read(draft)).toContain("https://github.com/kompiro/karasu/issues");
-      expect(read(draft)).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+      const text = read(draft);
+      // A link to one issue (`/issues/2591`) is a citation, not a window;
+      // the window is the list you file into. Dropping the numbered form keeps
+      // the check on contact points, and any other host still fails it.
+      const urls = [...new Set(text.match(/https?:\/\/[^\s)>）]+/g) ?? [])].filter(
+        (url) => !/\/issues\/\d+$/.test(url),
+      );
+      expect(urls).toEqual([CONTACT]);
+      expect(text).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     }
   });
 
