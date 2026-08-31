@@ -1373,7 +1373,12 @@ function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warni
 
   for (let i = 0; i < userSheets.length; i++) {
     for (const rule of userSheets[i].rules) {
-      const key = serializeSelector(rule.selector);
+      // The Tidy formatter's spelling, not a second one written here: the two
+      // had drifted, and this side put the id before the kind (`team#Platform`
+      // read as `#Platformteam`) and dropped `edge#<id>` / `boundary#<id>`
+      // entirely, fusing rules that named *different* boundaries into one
+      // `boundary` key and reporting a conflict that did not exist (TPL-2234).
+      const key = formatSelector(rule.selector);
       if (!selectorToSheets.has(key)) {
         selectorToSheets.set(key, new Set());
       }
@@ -1912,19 +1917,4 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
   }
 
   return warnings;
-}
-
-/**
- * The grouping key for {@link detectStyleConflicts}, and the string the warning
- * shows the reader.
- *
- * Delegates to the Tidy formatter's {@link formatSelector} rather than spelling
- * a second rendering out here. The two had already drifted: this one put the id
- * before the kind (so `team#Platform` read as `#Platformteam`) and dropped
- * `edge#<id>` / `boundary#<id>` entirely, which fused every `boundary#<id>` rule
- * into one `boundary` key and reported a conflict between two sheets that named
- * different boundaries. One selector has one spelling (TPL-2234).
- */
-function serializeSelector(selector: StyleSelector): string {
-  return formatSelector(selector);
 }

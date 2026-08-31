@@ -1186,6 +1186,17 @@ export function rectUnionPath(rects: readonly Rect[]): string | null {
 /** Frame tint opacity — low enough that two overlapping fills stay distinguishable. */
 /** Boundary-frame tint alpha — exported for the contrast guard (#2366 E). */
 export const BOUNDARY_TINT_ALPHA = 0.1;
+/**
+ * `border-style` as the renderer draws it. `dashed` is the frames' default, and
+ * `dotted` has to be visibly different from it or the keyword is accepted with
+ * no effect.
+ */
+const FRAME_DASH_ARRAY: Record<"solid" | "dashed" | "dotted", string | undefined> = {
+  solid: undefined,
+  dashed: "8 4",
+  dotted: "2 4",
+};
+
 /** Alpha every group-frame tint is drawn at, on both axes. */
 const FRAME_FILL_OPACITY = String(BOUNDARY_TINT_ALPHA);
 
@@ -1221,7 +1232,13 @@ interface FramePaint {
   /** Title opacity. `undefined` draws it at full strength. */
   titleOpacity?: number;
   strokeWidth: number;
-  dashed: boolean;
+  /**
+   * The outline's `stroke-dasharray`, or `undefined` for a solid line. Carries
+   * the pattern rather than a `dashed` boolean because `border-style` offers
+   * three values: collapsing `dotted` onto the dashed pattern would accept the
+   * keyword and render something else (TPL-1503).
+   */
+  dashArray?: string;
 }
 
 /**
@@ -1268,7 +1285,7 @@ function resolveBoundaryPaint(
     fillOpacity: FRAME_FILL_OPACITY,
     title: sheet?.color ?? stroke,
     strokeWidth: sheet?.borderWidth ?? 2,
-    dashed: (sheet?.borderStyle ?? "dashed") !== "solid",
+    dashArray: FRAME_DASH_ARRAY[sheet?.borderStyle ?? "dashed"],
   };
 }
 
@@ -1313,7 +1330,7 @@ function resolveTeamFramePaint(
     // who set nothing but `border-width` has not asked for a louder title.
     titleOpacity: sheet.color !== undefined ? undefined : MUTED_FRAME_TITLE_OPACITY,
     strokeWidth: sheet.borderWidth ?? style.borderWidth,
-    dashed: (sheet.borderStyle ?? "dashed") !== "solid",
+    dashArray: FRAME_DASH_ARRAY[sheet.borderStyle ?? "dashed"],
   };
 }
 
@@ -1363,13 +1380,15 @@ function renderContainer(
   // default on the team axis.
   const paint = resolveFramePaint(container, style, palette, boundaryFrames, teamFrames);
   const outline = container.coverage ? rectUnionPath(container.coverage) : null;
-  const dashed = paint ? paint.dashed : ghost || container.group === true;
+  // A frame with no style sheet behind it keeps the historical dashed pattern;
+  // a ghost container is dashed for the same reason it always was.
+  const dashArray = paint ? paint.dashArray : ghost || container.group === true ? "8 4" : undefined;
   const frameShape = {
     fill: expanded && accent ? accent : (paint?.fill ?? "transparent"),
     "fill-opacity": expanded && accent ? "0.06" : paint?.fillOpacity,
     stroke: expanded && accent ? accent : (paint?.stroke ?? style.borderColor),
     "stroke-width": expanded ? 2 : (paint?.strokeWidth ?? style.borderWidth),
-    "stroke-dasharray": !expanded && dashed ? "8 4" : undefined,
+    "stroke-dasharray": expanded ? undefined : dashArray,
   };
   children.push(
     outline

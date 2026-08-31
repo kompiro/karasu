@@ -202,9 +202,12 @@ export function iconNameForNode(kind: string, tags: readonly string[]): string |
 
 let _cachedSheet: StyleSheet | null = null;
 
+/** `StyleRule.sheetId` for the icon theme. See {@link BUILTIN_SHEET_ID}. */
+export const ICON_THEME_SHEET_ID = "<icon-theme>";
+
 export function getIconThemeStyleSheet(): StyleSheet {
   if (!_cachedSheet) {
-    const result = StyleParser.parse(ICON_THEME_STYLE_SOURCE, "<icon-theme>");
+    const result = StyleParser.parse(ICON_THEME_STYLE_SOURCE, ICON_THEME_SHEET_ID);
     /* c8 ignore next 4 */
     if (result.diagnostics.length > 0) {
       throw new Error(

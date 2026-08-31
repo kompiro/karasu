@@ -1876,9 +1876,17 @@ describe("id selectors narrow rather than short-circuit (#2269)", () => {
 
   it("keeps a bare `#<id>` reaching the system, deploy and org views", () => {
     const sheet = sheetOf({ id: "Shared", tags: [], annotations: [] });
-    const result = resolveStyles([SYSTEM], [getBuiltinStyleSheet(), sheet], [DEPLOY], [ORG]);
-    // One id, three views, one answer — the same behaviour as before the change.
-    expect(result.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
+    // One `resolveStyles` call per view. A single combined call writes all three
+    // passes into one `nodes` map keyed by bare id, so the last pass wins and the
+    // assertion would only ever prove that pass matched.
+    const system = resolveStyles([SYSTEM], [getBuiltinStyleSheet(), sheet]);
+    expect(system.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
+
+    const deploy = resolveStyles([], [getBuiltinStyleSheet(), sheet], [DEPLOY]);
+    expect(deploy.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
+
+    const org = resolveStyles([], [getBuiltinStyleSheet(), sheet], undefined, [ORG]);
+    expect(org.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
   });
 
   it("stops `team#<id>` at the team, leaving a service and a deploy unit of that id alone", () => {

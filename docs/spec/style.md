@@ -912,7 +912,7 @@ That frame and the card above are two renderings of **one** team, so the
 selectors above address both. There is no separate frame keyword.
 
 ```css
-team          { border-style: solid; }   /* every team card, and every team frame */
+team          { border-color: #64748B; } /* every team card, and every team frame */
 #Platform     { border-color: #C0392B; } /* the Platform card, and the Platform frame */
 team#Platform { border-color: #C0392B; } /* the same, narrowed to the team kind */
 ```
@@ -945,5 +945,12 @@ frame that answers to the part of the card it paints:
 is the *card's* default and does not reach the frame; the frame's default is the
 muted dashed outline the view draws on its own. So a team no sheet names is
 unchanged, and naming one team does not disturb the rest.
+
+> **Note**: only the three selectors above reach the frame. A rule that adds a
+> predicate — `team@deprecated`, `team[tag]`, `team[from=<id>]` — styles the card
+> where it applies and leaves the frame alone. The frame is resolved from the
+> sheet without the organization model in hand, so a predicate about the team
+> cannot be evaluated there; the rule is declined rather than applied with its
+> predicate dropped, which would widen it to every frame.
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — a team is drawn as a card and as a frame by different code, and one declaration must not repaint only half of it. [TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — the built-in sheet styles the card only; reading it for the frame would repaint every frame by default. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `team#<id>` survives `karasu fmt` instead of being re-emitted as the wider `#<id>`. [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the specificity scores quoted here are generated from `reference-data.ts`.

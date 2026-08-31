@@ -681,8 +681,15 @@ export function getBuiltinStyleSheet(
   return sheet;
 }
 
+/**
+ * `StyleRule.sheetId` for the built-in sheet. Exported because consumers have to
+ * tell karasu's own defaults apart from what an author wrote — `resolveTeamFrames`
+ * does, so the card's defaults do not follow a selector onto the frame (#2269).
+ */
+export const BUILTIN_SHEET_ID = "<builtin>";
+
 function parseBuiltinSheet(source: string): StyleSheet {
-  const result = StyleParser.parse(source, "<builtin>");
+  const result = StyleParser.parse(source, BUILTIN_SHEET_ID);
   /* c8 ignore next 4 */
   if (result.diagnostics.length > 0) {
     throw new Error(

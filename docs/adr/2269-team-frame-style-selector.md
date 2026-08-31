@@ -113,7 +113,23 @@ hue を持たないため team 軸と誤判定され、ノードを名指した 
 `groupAxis` を `buildGroupFrames` が書き込み、レンダラーはそれで分岐する。展開フレームは
 どちらの軸でもないので `groupAxis` を持たず、どちらのマップも引かない。
 
-## 副産物: `boundary#<id>` の formatter 取りこぼし
+## フレームに届くのは 3 つのセレクタだけ
+
+`team` / `#<id>` / `team#<id>` に述語を足した形（`team@deprecated`、`team[tag]`、
+`team[from=<id>]`）はフレームに届かず、効く場面でカードだけを styling する。
+
+フレームの解決は organization モデルを持たない。system view の `resolveStyles` 呼び出しは
+`organizations` に `undefined` を渡すので、`resolveTeamFrames` はルール集合しか見られず、
+team についての述語を評価できない。取れる道は 2 つで、**述語を落として適用する**か
+**ルールごと受け付けない**か。前者は `team[from=Billing]` を「全 team フレームを塗る」に
+静かに広げてしまい、著者が絞るために書いた述語が逆の意味になる。TPL-1503 が禁じる
+「受理して別のことをする」形なので、後者を採った。spec に明記してある。
+
+これはカードとフレームで 1 つの宣言の効き方が割れる形なので（TPL-2234 が扱う失敗モード）、
+将来 organization モデルをフレーム解決まで通せるなら解消したい。ただし通し方自体が
+system view の `resolveStyles` の引数を変える話で、本 Issue の範囲を超える。
+
+## 副産物 1: `boundary#<id>` の formatter 取りこぼし
 
 `team#<id>` の往復（TPL-1101）を確認する過程で、`formatSelector` が
 `StyleSelector.boundaryId` を出力していないことが分かった。ADR-2234 で入った
@@ -127,6 +143,22 @@ hue を持たないため team 軸と誤判定され、ノードを名指した 
 `edge#<id>` / `boundary#<id>` を落としていた。落とすと別々の boundary を名指した 2 枚の
 シートが同じ `boundary` キーに融合し、実在しない conflict を報告する。1 つのセレクタの
 綴りは 1 つにする（TPL-2234）。
+
+## 副産物 2: `border-style: dotted` と凡例 swatch
+
+spec に team フレームのプロパティ表を書いた時点で、既存の 2 件が spec の記述と食い違って
+いることが分かった。どちらも本 PR で直した。
+
+- **`border-style: dotted` が dashed と同じに描かれていた。** レンダラーは
+  `dashed: borderStyle !== "solid"` という真偽値を持ち、真なら一律 `8 4` を引いていた。
+  boundary の表（#2234）も team の表も `solid` / `dashed` / `dotted` の 3 値を約束して
+  いるので、キーワードを受理して別のものを描く形になっていた（TPL-1503）。真偽値を
+  dash パターンそのもの（`FRAME_DASH_ARRAY`）に変え、`dotted` は `2 4` を引く。
+- **凡例 swatch が `team#<id>` を裸の `#<id>` ref に一致させていた。** `ruleMatchesTarget`
+  は `selector.id` だけを見て `nodeType` を見ていなかった。`team#<id>` は kind と id を
+  同時に持つ最初のセレクタなので、`ref #Platform` が「カードが拒否したルール」から
+  swatch を塗りうる。凡例はエンティティの kind を見られないため、複合セレクタは
+  一致させない（swatch は fallback に落ちる）。偽陽性より偽陰性を選ぶ。
 
 ## 却下した案
 

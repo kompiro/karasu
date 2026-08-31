@@ -859,7 +859,7 @@ Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`
 両方に届く。フレーム専用のキーワードは無い。
 
 ```css
-team          { border-style: solid; }   /* すべての team カードと、すべての team フレーム */
+team          { border-color: #64748B; } /* すべての team カードと、すべての team フレーム */
 #Platform     { border-color: #C0392B; } /* Platform のカードと、Platform のフレーム */
 team#Platform { border-color: #C0392B; } /* 同上を team 種別に絞ったもの */
 ```
@@ -890,5 +890,11 @@ team はノードだからである。
 **既定値は描画ごとに別。** builtin シートの `team { … }` は**カードの**既定値であって
 フレームには届かない。フレームの既定値はビューが自前で描く控えめな破線の輪郭である。
 したがってどのシートも名指していない team は不変で、1 つの team を名指しても他は乱れない。
+
+> **注意**: フレームに届くのは上の 3 つのセレクタだけである。述語を足したルール
+> （`team@deprecated` / `team[tag]` / `team[from=<id>]`）は、効く場面ではカードを
+> styling するがフレームには届かない。フレームは organization モデルを持たない状態で
+> シートから解決するため、team についての述語をそこで評価できない。述語を落として
+> 適用すると全フレームに広がってしまうので、ルールごと受け付けない。
 
 > Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — team はカードとフレームという別のコードで描かれ、1 つの宣言が片方だけを塗り替えてはならない。[TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — builtin シートはカードだけを styling する。フレームがそれを読むと既定で全フレームが塗り替わる。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `team#<id>` は `karasu fmt` を通っても、より広い `#<id>` に書き換わらない。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — ここで引いた specificity は `reference-data.ts` からの生成物。

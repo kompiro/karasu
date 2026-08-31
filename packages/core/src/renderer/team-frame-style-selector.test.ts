@@ -284,3 +284,42 @@ organization Org {
     expect(frame).not.toContain("#C0392B");
   });
 });
+
+describe("selectors a team frame cannot answer (#2269)", () => {
+  // Each of these parses, so the filter has to reject it rather than let it
+  // through with the narrowing part discarded — that would silently *widen* the
+  // rule to every frame, which is worse than not matching (TPL-1503).
+  it("drops an endpoint predicate instead of widening it to every frame", () => {
+    const svg = systemSvg("team[from=Billing] { border-color: #C0392B; }");
+    for (const id of ["payments", "catalog"]) {
+      expect(frameOf(svg, id)).not.toContain("#C0392B");
+    }
+  });
+
+  it("drops a boundary id, which names another id space entirely", () => {
+    const svg = systemSvg("boundary#payments { border-color: #C0392B; }");
+    expect(frameOf(svg, "payments")).not.toContain("#C0392B");
+  });
+
+  it("refuses a non-numeric border-width rather than emitting NaN", () => {
+    const frame = frameOf(systemSvg("#payments { border-width: thick; }"), "payments");
+    expect(frame).not.toContain("NaN");
+    expect(frame).toContain('stroke-width="2"');
+  });
+});
+
+describe("border-style keywords are all distinguishable (#2269)", () => {
+  it("draws `dotted` differently from `dashed`", () => {
+    const dotted = frameOf(systemSvg("#payments { border-style: dotted; }"), "payments");
+    const dashed = frameOf(systemSvg("#payments { border-style: dashed; }"), "payments");
+    expect(dotted).toContain("stroke-dasharray");
+    expect(dashed).toContain("stroke-dasharray");
+    expect(dotted).not.toBe(dashed);
+  });
+
+  it("draws `solid` with no dash pattern at all", () => {
+    expect(frameOf(systemSvg("#payments { border-style: solid; }"), "payments")).not.toContain(
+      "stroke-dasharray",
+    );
+  });
+});
