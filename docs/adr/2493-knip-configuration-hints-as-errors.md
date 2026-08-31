@@ -62,7 +62,7 @@ packages/docs-site  "src/**/*.ts"        →  "src/**/*.{ts,astro,mdx}"
 
 ### 拡張子は独立した glob ではなく既存の brace パターンに畳む
 
-`docs/docs-site` に `.mdx` ファイルは 1 件もない。独立した `src/**/*.mdx` を
+`packages/docs-site` に `.mdx` ファイルは 1 件もない。独立した `src/**/*.mdx` を
 足すと今回の hint は消えるが、マッチゼロになって `project-empty`
 （`Refine project pattern (no matches)`）に置き換わるだけになる。brace
 パターンに畳めば拡張子は名指しされ、パターン全体としては `.ts` / `.astro` に
