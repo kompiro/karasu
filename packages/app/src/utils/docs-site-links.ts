@@ -6,7 +6,7 @@
  * Starlight serves the Japanese docs under the `/ja/` locale prefix, so every
  * link follows the active app locale.
  */
-export const DOCS_SITE_BASE_URL = "https://kompiro.github.io/karasu/";
+const DOCS_SITE_BASE_URL = "https://kompiro.github.io/karasu/";
 
 /**
  * The signpost targets: the two halves the Reference itself does not answer.
