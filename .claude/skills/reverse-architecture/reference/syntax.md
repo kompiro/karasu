@@ -1584,7 +1584,7 @@ system Shop {
   queue item, `bucket`). Membership is imposed from outside the architecture, so
   no kind is structurally excluded.
 - **Edges take `facets` too**, written in the [edge property
-  block](#property-block-facets--label--description--link). A data flow that
+  block](#property-block--label--description--link--facets-). A data flow that
   carries PII, or a call that sits inside PCI scope, is a fact about *the edge*:
   putting it on an endpoint would say the wrong thing about the endpoint and
   still not say the right thing about the flow. The spelling and the merge rules

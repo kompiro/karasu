@@ -1458,7 +1458,7 @@ system Shop {
   `domain` / `usecase` / `entity` / `resource` / `user` / `client`、infra ブロック
   （`database` / `queue` / `storage`）とその leaf（`table`・queue item・`bucket`）。
   所属はアーキテクチャの外から課されるものなので、構造的に除外される kind は無い。
-- **エッジも `facets` を取る。** 書く場所は[エッジのプロパティブロック](#プロパティブロックfacets--label--description--link)。
+- **エッジも `facets` を取る。** 書く場所は[エッジのプロパティブロック](#プロパティブロック-facets--label--description--link-)。
   PII を運ぶデータフローや PCI スコープ内の呼び出しは**そのエッジについての事実**で、
   端点に付けると端点について誤ったことを言いながらフローについては何も言えていない。
   綴りもマージ規則もノードと同じで、facet を選ぶとカードに ring が付くのと同様に
