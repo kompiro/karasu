@@ -181,6 +181,11 @@ export const en: Translations = {
   "referencePanel.grouping.description": "Description",
   "referencePanel.grouping.membership": "Membership",
   "referencePanel.grouping.properties": "Properties",
+  "referencePanel.signpost.description":
+    "These tables say what you can write. The guides say when to reach for each form, and the gallery shows how it renders.",
+  "referencePanel.signpost.guide.label": "Guides",
+  "referencePanel.signpost.cookbook.label": "Notation cookbook",
+  "referencePanel.signpost.examples.label": "Examples gallery",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ Export SVG",
