@@ -32,9 +32,9 @@
 
   > ✅ Automated — `scripts/ci/workflow-runner-policy.test.ts` › `GitHub Actions runner policy (ADR-1890)` › `uses only the sanctioned runner labels`
 
-- [ ] AT-E（manual）: `Dependabot weekly triage` を `workflow_dispatch` で実行すると、open な Dependabot PR それぞれに upstream 追跡の所見コメントが付き、バッチのサマリ Issue が 1 件起票され、どの PR もマージ・close されていない
+- [ ] AT-E（manual）: `Dependabot weekly triage` を `workflow_dispatch` で実行すると、open な Dependabot PR それぞれに upstream 追跡の所見コメントが付き、バッチのサマリ Issue が 1 件起票される
 
-  > 🧑 Manual — https://github.com/kompiro/karasu/actions で workflow を dispatch し、実行後に `gh pr list --author "app/dependabot" --state open` の各 PR を見る。判定には実際の Actions 実行とエージェントの出力が要る
+  > 🧑 Manual — https://github.com/kompiro/karasu/actions で workflow を dispatch し、実行後に `gh pr list --author "app/dependabot" --state open` の各 PR を見る。判定には実際の Actions 実行とエージェントの出力が要る。マージ・close が起きないことは AT-A の宣言検査が受け持つので、ここでは観測しない
 
 - [ ] AT-F（manual）: `Dependabot security alert sweep` を `workflow_dispatch` で実行すると alert 一覧を取得できる（`403` が返るなら `Dependabot alerts: read` を持つ GitHub App のトークンを `DEPENDABOT_ALERTS_TOKEN` に置いて再実行する）
 
