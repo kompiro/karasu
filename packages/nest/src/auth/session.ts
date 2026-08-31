@@ -19,7 +19,7 @@
  * first (`store/sessions.ts`), so both halves have to travel; carrying them in
  * the cookie means the store lookup is a single `get` rather than a search.
  */
-import { SESSION_TTL_SECONDS } from "../store/sessions.js";
+import { SESSION_ABSOLUTE_TTL_SECONDS } from "../store/sessions.js";
 
 export const SESSION_COOKIE = "__Host-nest_session";
 export const OAUTH_STATE_COOKIE = "__Host-nest_oauth_state";
@@ -78,8 +78,23 @@ function serialize(name: string, value: string, maxAgeSeconds: number): string {
   ].join("; ");
 }
 
+/**
+ * `Max-Age` is the **absolute** cap, not the idle window.
+ *
+ * The store's window slides (#2655), and a cookie set once at sign-in cannot
+ * slide with it — so a `Max-Age` of the idle window would have the browser
+ * throw the cookie away thirty days after sign-in however much it was being
+ * used, and sliding the record behind it would buy nothing. Re-issuing the
+ * cookie on every refresh is the other way to fix that, and it would put a
+ * `Set-Cookie` on responses all the way up from `currentViewer`.
+ *
+ * So the cookie states the longest its value could possibly be useful, and
+ * the store decides everything shorter. A cookie whose session went idle is
+ * left in the browser as an inert string — it names a record KV has already
+ * dropped, which reads as "not signed in" like any other stale cookie.
+ */
 export function sessionCookie(accountId: string, sessionId: string): string {
-  return serialize(SESSION_COOKIE, `${accountId}:${sessionId}`, SESSION_TTL_SECONDS);
+  return serialize(SESSION_COOKIE, `${accountId}:${sessionId}`, SESSION_ABSOLUTE_TTL_SECONDS);
 }
 
 export function oauthStateCookie(state: string): string {

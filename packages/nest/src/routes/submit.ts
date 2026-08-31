@@ -38,7 +38,7 @@ export async function submitKrs(context: RouteContext): Promise<Response> {
   }
 
   const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
-  const viewer = await currentViewer(request, env, store);
+  const viewer = await currentViewer(context, store);
   if (viewer === undefined) {
     // Anonymous submission was rejected because there would be nobody to
     // answer a withdrawal request and no way to stop abuse.

@@ -20,7 +20,10 @@ async function seed(
 ): Promise<{ id: string; cookie: string }> {
   const store = new GalleryStore(kv);
   await store.accounts.signIn(accountId, "kompiro", at);
-  const { sessionId } = await store.sessions.issue(accountId, "kompiro", at);
+  // `new Date()` rather than the fixture date: the absolute cap is measured
+  // against the real clock, so a session frozen at `at` would age past it as
+  // real time passed and fail this suite later for no reason (#2655).
+  const { sessionId } = await store.sessions.issue(accountId, "kompiro", new Date());
   const submission = await store.submissions.create(
     accountId,
     { title: "Shop <script>", krs: KRS, visibility },

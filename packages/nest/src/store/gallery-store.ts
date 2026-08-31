@@ -16,9 +16,25 @@
  * one does not (TPL-2226).
  */
 import type { KVNamespaceLike } from "../env.js";
+import { logError } from "../log.js";
 import { AccountStore, type Account } from "./accounts.js";
 import { SessionStore, type Session } from "./sessions.js";
 import { SubmissionStore } from "./submissions.js";
+
+/** How `authenticate` is told the time, and where to put the refresh write. */
+export interface AuthenticateOptions {
+  /** Overridable so tests can walk a session up to its cap. */
+  now?: Date;
+  /**
+   * `ExecutionContext.waitUntil`, when the caller has one.
+   *
+   * Given it, the refresh leaves the response path: the viewer is already
+   * resolved, so making them wait on a write that only moves an expiry is
+   * paying latency for nothing. Without it the write is awaited, which is
+   * what a caller outside a request (a test, a script) wants.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void;
+}
 
 export interface AccountPurgeResult {
   /** Account records removed: 1, or 0 if there was nothing to remove. */
@@ -47,14 +63,21 @@ export class GalleryStore {
    * caller cannot tell those apart and should not: all three mean "not signed
    * in", and distinguishing them in a response would say whether an account
    * exists.
+   *
+   * **This is a write path** (#2655). Resolving a cookie is also what tells
+   * the store the session is in use, so a stale record is refreshed here —
+   * throttled by `SESSION_REFRESH_AFTER_SECONDS`, so an active submitter
+   * costs one write a day rather than one per request.
    */
   async authenticate(
     accountId: string,
     sessionId: string,
+    options: AuthenticateOptions = {},
   ): Promise<{ session: Session; account: Account } | undefined> {
+    const now = options.now ?? new Date();
     let session: Session | undefined;
     try {
-      session = await this.sessions.get(accountId, sessionId);
+      session = await this.sessions.get(accountId, sessionId, now);
     } catch {
       // A cookie whose halves cannot form a key is a forged cookie, not an
       // error to surface — the store throws on a malformed id by design.
@@ -65,6 +88,22 @@ export class GalleryStore {
     // A session outliving its account record means the account was deleted
     // while this cookie was still in a browser. The deletion wins.
     if (account === undefined) return undefined;
+    // Deliberately after the account check, so a purged account's cookie does
+    // not get its window extended on the way to being refused.
+    //
+    // The refresh cannot fail the request. The viewer is authenticated either
+    // way — the read that proved it has already happened — and the worst a
+    // dropped write costs is a sign-in sooner than it needed to be. Logged
+    // rather than swallowed silently, because a refresh that fails *every*
+    // time is a broken binding worth seeing in the logs.
+    const refresh = this.sessions.refreshIfStale(session.accountId, sessionId, session, now).then(
+      () => undefined,
+      (cause: unknown) => {
+        logError("karasu-nest could not refresh a session", cause);
+      },
+    );
+    if (options.waitUntil === undefined) await refresh;
+    else options.waitUntil(refresh);
     return { session, account };
   }
 

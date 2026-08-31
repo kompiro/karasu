@@ -68,7 +68,7 @@ interface Signed {
 async function signedIn(context: RouteContext): Promise<Signed | Response> {
   const { request, env } = context;
   const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
-  const viewer = await currentViewer(request, env, store);
+  const viewer = await currentViewer(context, store);
   if (viewer === undefined) {
     return request.method === "GET"
       ? redirect(SIGN_IN, { status: 302 })

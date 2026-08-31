@@ -8,7 +8,7 @@
  * forged one in a response — which would tell a stranger whether an account
  * exists.
  */
-import { requireBinding, type NestEnv } from "../env.js";
+import { requireBinding, type NestEnv, type NestExecutionContext } from "../env.js";
 import { GalleryStore } from "../store/gallery-store.js";
 import type { Account } from "../store/accounts.js";
 import type { Session } from "../store/sessions.js";
@@ -19,13 +19,35 @@ export interface Viewer {
   session: Session;
 }
 
-/** The signed-in account, or `undefined`. Never throws for a bad cookie. */
+/**
+ * What resolving a viewer needs from the request.
+ *
+ * Structural rather than `RouteContext` from `../router.js`: every caller is
+ * a route handler and passes one, but naming the router type here would point
+ * `auth/` at the module that mounts the routes that use `auth/`. The shape is
+ * three fields, and `RouteContext` satisfies it.
+ */
+export interface ViewerContext {
+  request: Request;
+  env: NestEnv;
+  ctx: NestExecutionContext;
+}
+
+/**
+ * The signed-in account, or `undefined`. Never throws for a bad cookie.
+ *
+ * `ctx` is here because resolving a viewer is what slides the session's
+ * expiry (#2655), and that write belongs off the response path.
+ */
 export async function currentViewer(
-  request: Request,
-  env: NestEnv,
-  store = new GalleryStore(requireBinding(env, "NEST_STORE")),
+  context: ViewerContext,
+  store = new GalleryStore(requireBinding(context.env, "NEST_STORE")),
 ): Promise<Viewer | undefined> {
-  const cookie = parseSessionCookie(readCookie(request, SESSION_COOKIE));
+  const cookie = parseSessionCookie(readCookie(context.request, SESSION_COOKIE));
   if (cookie === undefined) return undefined;
-  return await store.authenticate(cookie.accountId, cookie.sessionId);
+  return await store.authenticate(cookie.accountId, cookie.sessionId, {
+    waitUntil: (promise) => {
+      context.ctx.waitUntil(promise);
+    },
+  });
 }

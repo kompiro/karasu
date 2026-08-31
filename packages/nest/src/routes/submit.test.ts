@@ -23,11 +23,10 @@ function env(kv: MemoryKV): NestEnv {
 async function signedIn(kv: MemoryKV, accountId = 42): Promise<string> {
   const store = new GalleryStore(kv);
   await store.accounts.signIn(accountId, "kompiro", new Date("2026-08-02T00:00:00Z"));
-  const { sessionId } = await store.sessions.issue(
-    accountId,
-    "kompiro",
-    new Date("2026-08-02T00:00:00Z"),
-  );
+  // `new Date()` rather than the fixture date: the absolute cap is measured
+  // against the real clock, so a session frozen in 2026-08 would age past it
+  // as real time passed and fail this suite later for no reason (#2655).
+  const { sessionId } = await store.sessions.issue(accountId, "kompiro", new Date());
   return `${SESSION_COOKIE}=${accountId}:${sessionId}`;
 }
 

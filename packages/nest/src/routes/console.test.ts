@@ -19,7 +19,11 @@ const env = (kv: MemoryKV): NestEnv => ({ NEST_STORE: kv, NEST_PUBLIC_ORIGIN: OR
 async function account(kv: MemoryKV, accountId: number, login = "kompiro"): Promise<string> {
   const store = new GalleryStore(kv);
   await store.accounts.signIn(accountId, login, at);
-  const { sessionId } = await store.sessions.issue(accountId, login, at);
+  // Issued *now*, not at the fixture date. Sessions are the one thing here
+  // with a lifetime, and `authenticate` measures the absolute cap against the
+  // real clock — a session frozen at `at` would drift past the cap as real
+  // time passed and fail this suite on a date nobody chose (#2655).
+  const { sessionId } = await store.sessions.issue(accountId, login, new Date());
   return `${SESSION_COOKIE}=${accountId}:${sessionId}`;
 }
 
