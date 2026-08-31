@@ -381,6 +381,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1192](1192-test-perspective-library.md) — テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始
 - [ADR-2045](2045-qa-checklist-triage-generator.md) — QA 手動チェックリスト生成のマーカー対応と 3-way triage
 - [ADR-2348](2348-at-records-point-at-issues.md) — AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定しているアドレスを記録に埋めない
+- [ADR-2648](2648-record-source-path-guard.md) — 記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 ## vscode
