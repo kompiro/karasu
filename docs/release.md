@@ -24,6 +24,17 @@ Dependabot security update は alert 検知時に即時起票され、`schedule`
 
 `packages/*` 単独 PR は workspace ルートの lockfile を更新できず `pnpm install --frozen-lockfile` で必ず落ちる。`@dependabot recreate` でも `dependabot.yml` でも回避できない。同様の事象が再発した場合は ADR を増やさず、本ルールに従って処理する。
 
+### エージェントによる下ごしらえ
+
+トリアージの下ごしらえは 2 本の agentic workflow（gh-aw）が回す。どちらも所見を書くだけで、マージ・close・push はしない。
+
+| workflow | 起動 | 出力 |
+| --- | --- | --- |
+| `.github/workflows/dependabot-triage.md` | 週次（月曜バッチの翌朝）+ dispatch | 各 PR への upstream 追跡コメントと、バッチのサマリ Issue |
+| `.github/workflows/security-alert-sweep.md` | dispatch のみ（cron はコメントアウト） | `[security-alert]` のトラッキング Issue |
+
+判定（採用 / 保留 / 却下）とマージは人が行う。frontmatter を編集したら `gh aw compile` で `.lock.yml` を再生成する（本文だけの編集なら再生成は要らない。実行時に読み込まれる）。
+
 ## リリース運用
 
 npm への公開は **changesets** で管理し、認証は **npm Trusted Publishing（GitHub OIDC）** で行う（token レス）。
