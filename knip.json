@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "treatConfigHintsAsErrors": true,
   "workspaces": {
     ".": {
       "entry": ["scripts/report/index.ts"],
@@ -12,7 +13,7 @@
       "project": ["src/**/*.ts", "!src/**/*.test.ts"]
     },
     "packages/app": {
-      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx,css}", "!src/**/*.test.{ts,tsx}"]
     },
     "packages/cli": {
       "project": ["src/**/*.ts"],
@@ -26,7 +27,7 @@
     },
     "packages/docs-site": {
       "entry": ["scripts/{sync,check-links}.ts"],
-      "project": ["scripts/**/*.ts", "src/**/*.ts"],
+      "project": ["scripts/**/*.ts", "src/**/*.{ts,astro,mdx}"],
       "ignoreDependencies": ["@karasu-tools/core"]
     },
     "packages/vscode": {

@@ -11,7 +11,6 @@ type: product
   - `packages/core/src/types/style.ts`、`packages/core/src/types/ast.ts`
   - `packages/core/src/builtins/default-style.ts`、`packages/core/src/builtins/icon-theme.ts`
   - `packages/core/src/fs/import-resolver.ts`
-  - `packages/core/src/parser/diagnostic-legacy-format.ts`
   - `packages/app/src/i18n/{en,ja,types,format-diagnostic}.ts`
   - `docs/spec/style.md`
 - **関連 ADR**: [ADR-1168](../adr/1168-style-ast-position-and-recovery.md) — Phase 1 のスコープ（Design Doc から昇格・削除済み）

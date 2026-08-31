@@ -144,6 +144,7 @@ flowchart TD
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
+    ADR_2493["ADR-2493<br/>knip に compiled extension をたどらせ、configuration h..."]
     ADR_2562["ADR-2562<br/>Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
     ADR_2564["ADR-2564<br/>Dependabot security alert 2026-08-18（auto-dismi..."]
     ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
@@ -376,6 +377,7 @@ flowchart TD
     ADR_1192["ADR-1192<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
     ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
     ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
+    ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -851,6 +853,7 @@ flowchart TD
   class ADR_2474 accepted
   class ADR_2477 accepted
   class ADR_2482 accepted
+  class ADR_2493 accepted
   class ADR_2521 accepted
   class ADR_2522 accepted
   class ADR_2547 accepted
@@ -863,6 +866,7 @@ flowchart TD
   class ADR_2628 accepted
   class ADR_2640 accepted
   class ADR_2643 accepted
+  class ADR_2648 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

@@ -9,9 +9,9 @@ type: feature
 - **対象ファイル**:
   - `packages/core/src/types/ast.ts`（`DiagnosticSeverity` に `"info"` 追加 + `infra-redeclared-across-files` 診断追加）
   - `packages/core/src/fs/import-resolver.ts`（`mergeInfraBody` / `mergeTopLevelInfra` 追加、system-nested children の error → info 格下げ）
-  - `packages/core/src/parser/diagnostic-legacy-format.ts` / `packages/app/src/i18n/{types,en,ja,format-diagnostic}.ts`（新診断の wiring）
+  - `packages/app/src/i18n/{types,en,ja,format-diagnostic}.ts`（新診断の wiring）
   - `packages/lsp/src/server.ts`（LSP `Information` への severity マッピング）
-  - `packages/app/src/components/PreviewPane.tsx` / `packages/app/src/styles/app.css`（info を表示、warning より控えめなスタイル）
+  - `packages/app/src/components/PreviewPane.tsx` / `packages/app/src/styles/components/preview.css`（info を表示、warning より控えめなスタイル）
   - `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` §「Multi-file import semantics」に **S4.5** 追加
 - **Spec**: `docs/spec/syntax.md` §「Multi-file import semantics」 S4.5
 - **TPL**: [TPL-1385](../test-perspectives/TPL-1385-infra-redeclared-across-files.md)

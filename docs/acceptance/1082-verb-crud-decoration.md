@@ -10,7 +10,6 @@ type: product
   - `packages/core/src/lexer/lexer.ts` (`:` を Colon トークンとして emit)
   - `packages/core/src/parser/parser.ts` (`parseOperationsList` / `parseOneOperation` / 装飾 RHS バリデーション)
   - `packages/core/src/parser/parser.test.ts`
-  - `packages/core/src/parser/diagnostic-legacy-format.ts`
   - `packages/core/src/spec/operations.ts` (`ResourceOperation` 型 + `isWriteOperation` 改訂)
   - `packages/core/src/spec/operations.test.ts`
   - `packages/core/src/types/ast.ts` (`ResourceNode.properties.operations` を `ResourceOperation[]` に変更 + 3 新規 diagnostic コード)

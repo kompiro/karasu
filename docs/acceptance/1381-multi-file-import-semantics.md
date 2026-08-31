@@ -9,7 +9,6 @@ type: feature
 - **対象ファイル**:
   - `packages/core/src/fs/import-resolver.ts`（Pass 1 / Pass 2 の visited / cache 設計、merge の identity dedup、`system-property-conflict` 警告）
   - `packages/core/src/types/ast.ts`（`system-property-conflict` 診断追加）
-  - `packages/core/src/parser/diagnostic-legacy-format.ts`（同上の整形）
   - `packages/app/src/i18n/{types,en,ja}.ts`（同上の翻訳）
   - `packages/core/src/fs/import-resolver.test.ts`（spec §"Multi-file import semantics" S2/S3/S4/S5 を assert する describe block）
   - `examples/ja/multi-file-system/{index,reader,editor,cms}.krs`（spec PR で追加済み、本 AT で end-to-end を検証）

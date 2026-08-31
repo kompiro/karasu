@@ -146,6 +146,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2447](2447-dependabot-triage-2026-08-10.md) — Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
 - [ADR-2472](2472-dependabot-triage-2026-08-13.md) — Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upstream の欠陥か自分側の gate か」に置く
 - [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md) — Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える
+- [ADR-2493](2493-knip-configuration-hints-as-errors.md) — knip に compiled extension をたどらせ、configuration hint を失敗として扱う
 - [ADR-2562](2562-dependabot-triage-2026-08-17.md) — Dependabot トリアージ 2026-08-17（@types/vscode と engines.vscode を同値に固定し VS Code stable に追随させる）
 - [ADR-2564](2564-dependabot-security-2026-08-18.md) — Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
 - [ADR-2623](2623-dependabot-triage-2026-08-25.md) — Dependabot トリアージ 2026-08-25 — ADR の assumptions に書いたリテラル依存版を緩める
@@ -381,6 +382,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1192](1192-test-perspective-library.md) — テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始
 - [ADR-2045](2045-qa-checklist-triage-generator.md) — QA 手動チェックリスト生成のマーカー対応と 3-way triage
 - [ADR-2348](2348-at-records-point-at-issues.md) — AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定しているアドレスを記録に埋めない
+- [ADR-2648](2648-record-source-path-guard.md) — 記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 ## vscode

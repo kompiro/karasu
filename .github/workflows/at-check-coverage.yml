@@ -6,12 +6,24 @@ on:
     paths:
       - "docs/acceptance/**"
       - "scripts/acceptance/**"
+      # The record source-path guard below covers the other two record
+      # directories too, so a PR touching only those still runs it: `ci.yml`,
+      # which runs the vitest mirror, is filtered out on a docs-only PR.
+      - "docs/test-perspectives/**"
+      - "docs/design/**"
+      - "scripts/lint/record-source-paths.ts"
       - ".github/workflows/at-check-coverage.yml"
   push:
     branches: [main]
     paths:
       - "docs/acceptance/**"
       - "scripts/acceptance/**"
+      # The record source-path guard below covers the other two record
+      # directories too, so a PR touching only those still runs it: `ci.yml`,
+      # which runs the vitest mirror, is filtered out on a docs-only PR.
+      - "docs/test-perspectives/**"
+      - "docs/design/**"
+      - "scripts/lint/record-source-paths.ts"
       - ".github/workflows/at-check-coverage.yml"
 
 concurrency:
@@ -49,3 +61,11 @@ jobs:
       # its snippets checked. Issue #2415.
       - name: Check embedded krs fences
         run: pnpm run lint:krs-fences
+
+      # A record under docs/{acceptance,test-perspectives,design} must not name
+      # a `packages/**` / `scripts/**` path that no longer exists (Issue #2648).
+      # Runs here as well as through the vitest mirror in `ci.yml`, because that
+      # workflow's `paths-ignore: docs/**` skips exactly the docs-only PR that
+      # can introduce a dead reference.
+      - name: Records name source paths that exist
+        run: pnpm run lint:record-source-paths

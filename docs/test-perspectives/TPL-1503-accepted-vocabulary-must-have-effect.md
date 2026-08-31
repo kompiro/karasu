@@ -77,7 +77,7 @@ scope:
 
 ## 関連テスト
 
-- `packages/core/src/style/property-schema.test.ts` — スキーマの受理 / 拒否挙動
+- `packages/core/src/style/value-validator.test.ts` — `PROPERTY_SCHEMAS` に対する受理 / 拒否挙動
   （ghost 検出の subset チェックは未整備 — 本 TPL 起点の追加候補）
 - `packages/core/src/resolver/warnings.test.ts`（`annotation-possible-typo hint`）—
   open set 明文化 + 組み込み名近傍の info ヒント（チェックリスト最終 2 項の実装、#1499）
