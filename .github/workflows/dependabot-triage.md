@@ -40,6 +40,9 @@ tools:
 safe-outputs:
   add-comment:
     target: "*"
+    # Dependabot labels every PR it opens `dependencies`, so the comments land on
+    # the batch this run is about rather than on any open item in the repository.
+    required-labels: [dependencies]
     max: 10
   create-issue:
     title-prefix: "[dep-triage] "

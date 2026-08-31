@@ -32,7 +32,7 @@
 
   > ✅ Automated — `scripts/ci/workflow-runner-policy.test.ts` › `GitHub Actions runner policy (ADR-1890)` › `uses only the sanctioned runner labels`
 
-- [ ] AT-E（manual）: `Dependabot weekly triage` を `workflow_dispatch` で実行すると、open な Dependabot PR それぞれに upstream 追跡の所見コメントが付き、どの PR もマージ・close されていない
+- [ ] AT-E（manual）: `Dependabot weekly triage` を `workflow_dispatch` で実行すると、open な Dependabot PR それぞれに upstream 追跡の所見コメントが付き、バッチのサマリ Issue が 1 件起票され、どの PR もマージ・close されていない
 
   > 🧑 Manual — https://github.com/kompiro/karasu/actions で workflow を dispatch し、実行後に `gh pr list --author "app/dependabot" --state open` の各 PR を見る。判定には実際の Actions 実行とエージェントの出力が要る
 

@@ -1,5 +1,6 @@
 ---
-# Daily sweep of the Dependabot security alerts.
+# Sweep of the Dependabot security alerts. Daily once the cron below is enabled;
+# manual until then.
 #
 # There is no `dependabot_alert` trigger in GitHub Actions (the event exists as
 # a webhook only), so the alerts have to be polled. With a 7-day cooldown on
@@ -48,6 +49,9 @@ safe-outputs:
     max: 1
   add-comment:
     target: "*"
+    # Only this workflow's own tracking issues. `create-issue.title-prefix` does
+    # not constrain where a comment may go, so the precondition is repeated here.
+    required-title-prefix: "[security-alert] "
     max: 3
 
 timeout-minutes: 20
