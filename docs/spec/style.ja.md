@@ -18,6 +18,7 @@
 | ファセット | `[facets=pii]` | 指定 `facet` に所属する全要素 |
 | 複合（種別+ファセット） | `service[facets=pii]` | 種別と facet 所属の両方に一致 |
 | ID | `#ECommerce` | 特定ノードのみ |
+| 複合（種別+ID） | `team#Platform` | 特定 team のみ（カードとフレーム） |
 | エッジ | `edge` | 全エッジ |
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
 | エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
