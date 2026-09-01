@@ -116,22 +116,39 @@ system Shop {
     expect(styles.edges.get("A->C#sync")?.strokeWidth).not.toBe(4);
   });
 
-  it("matches an edge whose facet has no top-level declaration", () => {
-    // Membership is the only test the selector applies, on edges as on nodes.
-    // An undeclared id is reported once by `facet-not-declared` at the site that
-    // wrote it; making the selector also refuse to match would ask the author to
-    // fix one mistake in two places, which is the trade §Facet selectors states.
+  // Membership is the only test the selector applies, whether or not the id has
+  // a top-level `facet` block — on nodes (since #2175) and now on edges. An
+  // undeclared id is reported once by `facet-not-declared` at the site that
+  // wrote it; making the selector refuse to match too would ask the author to
+  // fix one mistake in two places, which is the trade §Facet selectors states.
+  it("matches an element whose facet has no top-level declaration", () => {
     const file = parseModel(`
 system Shop {
-  service A {}
+  service A { facets ghost }
   service B {}
   A -> B "carries ghost" { facets ghost }
 }
 `);
     const styles = resolveStyles(file.systems, [
+      sheet(`[facets=ghost] { color: #555555; }`),
       sheet(`edge[facets=ghost] { stroke-width: 4px; }`),
     ]);
+    expect(styles.nodes.get("A")?.color).toBe("#555555");
     expect(styles.edges.get("A->B#sync")?.strokeWidth).toBe(4);
+  });
+
+  it("leaves the intended selector unmatched when the membership is misspelled", () => {
+    // The half a typo really does break: `facets pcl` puts the element in `pcl`,
+    // so the `pci` rule the author meant to write no longer reaches it. That
+    // miss is the symptom; `facet-not-declared` is the explanation.
+    const file = parseModel(`
+facet pci {}
+system Shop {
+  service A { facets pcl }
+}
+`);
+    const styles = resolveStyles(file.systems, [sheet(`[facets=pci] { color: #666666; }`)]);
+    expect(styles.nodes.get("A")?.color).not.toBe("#666666");
   });
 
   it("ANDs repeated predicates on an edge selector too", () => {

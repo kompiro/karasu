@@ -88,9 +88,9 @@ type: product
 
   > ✅ Automated — `packages/core/src/resolver/facet-style-selector.test.ts` › styles the edges that declare the facet, and only those ／ ANDs repeated predicates on an edge selector too ／ does not widen to every edge when no edge declares the facet
 
-- [x] AT-K2: 判定に使うのは所属だけで、top-level の `facet` 宣言の有無は見ない。`facets ghost`（未宣言）を書いたエッジは `edge[facets=ghost]` に一致する — 未宣言 id は `facet-not-declared` が書かれた場所で 1 度報告するので、セレクタ側でも弾くと 1 つの間違いを 2 箇所で直させることになる（§Facet selectors の既存のトレード）
+- [x] AT-K2: 判定に使うのは所属だけで、top-level の `facet` 宣言の有無は見ない。`facets ghost`（未宣言）を書いた要素は、ノード・エッジとも `[facets=ghost]` / `edge[facets=ghost]` に一致する — 未宣言 id は `facet-not-declared` が書かれた場所で 1 度報告するので、セレクタ側でも弾くと 1 つの間違いを 2 箇所で直させることになる（§Facet selectors の既存のトレード）。打ち間違いが壊すのは意図した方のルールで、`facets pcl` を書いた要素には `[facets=pci]` が届かない
 
-  > ✅ Automated — `packages/core/src/resolver/facet-style-selector.test.ts` › matches an edge whose facet has no top-level declaration
+  > ✅ Automated — `packages/core/src/resolver/facet-style-selector.test.ts` › matches an element whose facet has no top-level declaration ／ leaves the intended selector unmatched when the membership is misspelled
 
 ### AC-6: opt-in の不変条件を崩さない（TPL-2174）
 

@@ -96,9 +96,13 @@ database[facets=pci_scope] {
   written. Nothing about the selector reaches back into the `facet` declaration;
   the declaration carries the concern's metadata, not its members.
 - **Undeclared facet ids are not a style-side error.** A `facets pcl` typo is
-  reported once, where it is written, by `facet-not-declared` — a selector
-  naming the same misspelling simply matches nothing. Reporting it twice would
-  ask the author to fix one mistake in two places.
+  reported once, where it is written, by `facet-not-declared`, and the selector
+  says nothing about it — `[facets=pcl]` matches whatever wrote `facets pcl`,
+  exactly as it would a declared id, because membership is the only test.
+  Reporting it twice would ask the author to fix one mistake in two places. The
+  rule the typo does break is the *intended* one: `[facets=pci]` no longer
+  reaches the element, which is the symptom that sends the author to the
+  warning.
 - **Fact and style stay split.** Membership is a fact and lives in `.krs`;
   what a facet looks like is a choice and lives here. The overlay in the
   preview is a third, separate thing: a reader's temporary selection, written
