@@ -91,6 +91,25 @@ export function contentPathOf(docsRel: string): string {
 }
 
 /**
+ * The gallery is generated rather than synced from `docs/`, so its route shape
+ * lives here with the rest of the route mapping instead of inside the writer.
+ * `sync.ts` writes the pages through `galleryContentPathOf` and
+ * `scripts/lint/reference-docs-links.ts` resolves links through
+ * `galleryRouteOf`, so the two cannot disagree about where a gallery page is.
+ * Omit `slug` for the gallery index.
+ */
+export function galleryRouteOf(locale: Locale, slug?: string): string {
+  const core = slug === undefined ? "examples/" : `examples/${slug}/`;
+  return locale === "ja" ? `ja/${core}` : core;
+}
+
+/** Path under `src/content/docs` for a gallery page, e.g. "ja/examples/foo.md". */
+export function galleryContentPathOf(locale: Locale, slug?: string): string {
+  const core = slug === undefined ? "examples" : `examples/${slug}`;
+  return locale === "ja" ? `ja/${core}.md` : `${core}.md`;
+}
+
+/**
  * Relative URL from one site route to another, base-agnostic. Both inputs are
  * base-relative routes with trailing slashes; the result is what an `<a href>`
  * on the `from` page must use to reach `to`. Because the count of `../` is based

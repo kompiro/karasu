@@ -9,14 +9,10 @@ import {
 import { usePreview } from "../state/preview-context.js";
 import { useTranslation } from "../i18n/index.js";
 import { openReferenceWindow } from "../utils/open-reference-window.js";
-
-// The published documentation site (GitHub Pages). Reached from the Preview
-// toolbar's Docs dropdown, alongside the in-app Reference pop-out. Starlight
-// serves the Japanese docs under the `/ja/` locale prefix, so the link follows
-// the active app locale.
-const DOCS_SITE_BASE_URL = "https://kompiro.github.io/karasu/";
-const docsSiteUrl = (locale: string) =>
-  locale === "ja" ? `${DOCS_SITE_BASE_URL}ja/` : DOCS_SITE_BASE_URL;
+// The published documentation site (GitHub Pages). Reached from this dropdown
+// and from the Reference signpost, so the base URL and the `/ja/` locale prefix
+// live in one module.
+import { docsSiteUrl } from "../utils/docs-site-links.js";
 
 export interface PreviewToolbarProps {
   exportAvailable: boolean;

@@ -4,6 +4,7 @@ import type { GroupingConstructInfo, RefView } from "@karasu-tools/core";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
+import { DOCS_SITE_ROUTES, docsSiteUrl } from "../utils/docs-site-links.js";
 import type { ActiveView } from "../state/app-reducer.js";
 import { useTranslation } from "../i18n/index.js";
 import { useTheme } from "../theme/index.js";
@@ -47,6 +48,8 @@ export function ReferenceContent({ activeView = "system" }: { activeView?: Activ
         </TabsList>
       </Tabs>
 
+      <Signpost />
+
       <div className="reference-panel-content">
         {activeTab === "syntax" && <SyntaxTab activeView={activeView} />}
         {activeTab === "styles" && <StylesTab activeView={activeView} />}
@@ -64,6 +67,59 @@ export function ReferenceContent({ activeView = "system" }: { activeView?: Activ
           />
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The way out of the reference. Every tab here is a catalog of forms — what you
+ * *can* write — and nothing on any of them says when you would reach for one or
+ * what it looks like rendered. Both answers are already published; only the
+ * signpost was missing (#2350).
+ *
+ * It lives in `ReferenceContent`, not in the Preview toolbar's Docs menu, because
+ * the pop-out window has no toolbar: the mode the reference was designed for
+ * (kept open beside the editor, #1548) was the one mode with no way out at all.
+ * Rendered outside `.reference-panel-content`, so it stays put while a tab scrolls.
+ */
+function Signpost() {
+  const { t, locale } = useTranslation();
+  // The `↗` lives inside the translated label, and each link carries an
+  // aria-label saying it opens a new tab — the same shape the toolbar's Docs
+  // menu uses for the docs-site link (`preview.docs.site.*`).
+  const links = [
+    {
+      route: DOCS_SITE_ROUTES.guide,
+      label: t("referencePanel.signpost.guide.label"),
+      ariaLabel: t("referencePanel.signpost.guide.ariaLabel"),
+    },
+    {
+      route: DOCS_SITE_ROUTES.cookbook,
+      label: t("referencePanel.signpost.cookbook.label"),
+      ariaLabel: t("referencePanel.signpost.cookbook.ariaLabel"),
+    },
+    {
+      route: DOCS_SITE_ROUTES.examples,
+      label: t("referencePanel.signpost.examples.label"),
+      ariaLabel: t("referencePanel.signpost.examples.ariaLabel"),
+    },
+  ];
+  return (
+    <div className="reference-signpost">
+      <p>{t("referencePanel.signpost.description")}</p>
+      <nav>
+        {links.map(({ route, label, ariaLabel }) => (
+          <a
+            key={route}
+            href={docsSiteUrl(locale, route)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={ariaLabel}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }

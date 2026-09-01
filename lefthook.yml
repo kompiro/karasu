@@ -196,3 +196,13 @@ pre-push:
       # guard in CI.
       glob: "packages/**/*.{ts,tsx}"
       run: pnpm run lint:locale-normalization
+    reference-docs-links:
+      # The Reference signpost's outbound links (Issue #2350) are hardcoded
+      # absolute URLs into the docs site, which docs-site's own `check-links`
+      # does not reach — it stops at the site boundary on purpose (TPL-1621).
+      # Fail when a signpost route stops being a published page, or when a
+      # `#fragment` is added (a heading slug differs per locale, so the anchor
+      # rots silently). The vitest test
+      # (scripts/lint/reference-docs-links.test.ts) mirrors this guard in CI.
+      glob: "{packages/app/src/**,packages/docs-site/scripts/**,docs/guide/**,scripts/lint/reference-docs-links.ts}"
+      run: pnpm run lint:reference-docs-links

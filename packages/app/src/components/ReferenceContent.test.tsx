@@ -243,6 +243,88 @@ describe("ReferenceContent", () => {
   });
 });
 
+// The signpost is the reference's only route to the material that says *when*
+// you would write a form and what it renders as (#2350). It has to survive tab
+// switches and, above all, be present in the pop-out — the mode the reference
+// was designed for is the one with no toolbar to fall back on.
+describe("ReferenceContent signpost", () => {
+  // The pop-out case below needs `?reference=1` in the URL. Restore it from a
+  // hook rather than inline, so a failing assertion cannot leak the query string
+  // into the tests that follow.
+  const originalSearch = window.location.search;
+  afterEach(() => window.history.replaceState({}, "", originalSearch || "/"));
+
+  function signpostLinks(): HTMLAnchorElement[] {
+    return [...document.querySelectorAll<HTMLAnchorElement>(".reference-signpost a")];
+  }
+
+  it("frames the tables as 'what you can write' and points at the guides and the gallery", () => {
+    render(<ReferenceContent />);
+    const signpost = document.querySelector(".reference-signpost");
+    expect(signpost?.textContent).toContain("what you can write");
+    expect(signpostLinks().map((a) => a.textContent?.trim())).toEqual([
+      "Guides ↗",
+      "Notation cookbook ↗",
+      "Examples gallery ↗",
+    ]);
+  });
+
+  it("announces that each link opens a new tab", () => {
+    render(<ReferenceContent />);
+    expect(signpostLinks().map((a) => a.getAttribute("aria-label"))).toEqual([
+      "Open the guides in a new tab",
+      "Open the notation cookbook in a new tab",
+      "Open the examples gallery in a new tab",
+    ]);
+  });
+
+  it("keeps the ↗ inside the translated label, so a locale can move it", () => {
+    render(<ReferenceContent />, "ja");
+    expect(signpostLinks().map((a) => a.textContent?.trim())).toEqual([
+      "ガイド ↗",
+      "記法クックブック ↗",
+      "Examples ギャラリー ↗",
+    ]);
+  });
+
+  it("links to published docs-site pages, page-level and without an anchor", () => {
+    render(<ReferenceContent />);
+    expect(signpostLinks().map((a) => a.getAttribute("href"))).toEqual([
+      "https://kompiro.github.io/karasu/guide/",
+      "https://kompiro.github.io/karasu/guide/notation-cookbook/",
+      "https://kompiro.github.io/karasu/examples/",
+    ]);
+    for (const link of signpostLinks()) {
+      expect(link.getAttribute("href")).not.toContain("#");
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    }
+  });
+
+  it("follows the locale into the /ja/ prefix", () => {
+    render(<ReferenceContent />, "ja");
+    expect(signpostLinks().map((a) => a.getAttribute("href"))).toEqual([
+      "https://kompiro.github.io/karasu/ja/guide/",
+      "https://kompiro.github.io/karasu/ja/guide/notation-cookbook/",
+      "https://kompiro.github.io/karasu/ja/examples/",
+    ]);
+  });
+
+  it("stays visible on every tab", async () => {
+    render(<ReferenceContent />);
+    for (const tab of ["Styles", "Tags & Annotations", "Built-in Theme", "Samples", "Syntax"]) {
+      await clickTab(tab);
+      expect(signpostLinks()).toHaveLength(3);
+    }
+  });
+
+  it("is carried by the pop-out window, which has no toolbar to fall back on", () => {
+    window.history.replaceState({}, "", "/?reference=1&view=system");
+    render(<ReferenceWindow />);
+    expect(signpostLinks()).toHaveLength(3);
+  });
+});
+
 describe("ReferenceWindow", () => {
   const originalSearch = window.location.search;
   beforeEach(() => {
