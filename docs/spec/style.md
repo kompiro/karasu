@@ -23,6 +23,7 @@
 | Edge + tag | `edge[async]` | Edges with the given tag |
 | Edge source | `edge[from=ApiGateway]` | All edges originating at the node |
 | Edge target | `edge[to=ApiGateway]` | All edges terminating at the node |
+| Edge + facet | `edge[facets=pii]` | Edges belonging to the given `facet` |
 | Edge ID | `edge#criticalWrite`, `edge#A->B`, `edge#A-->B` | A specific edge only |
 | Boundary | `boundary` | All boundary frames (*Group by: boundary*) |
 | Boundary ID | `boundary#pci` | One boundary's frame only |
@@ -47,6 +48,7 @@
 | Edge | `edge` | 1 |
 | Edge + tag | `edge[async]` | 11 |
 | Edge source/target | `edge[from=ApiGateway]` | 11 |
+| Edge + facet | `edge[facets=pii]` | 11 |
 | Edge ID | `edge#criticalWrite` | 101 |
 | Boundary | `boundary` | 1 |
 | Boundary ID | `boundary#pci` | 101 |
@@ -83,15 +85,26 @@ database[facets=pci_scope] {
 }
 ```
 
-- **Nodes only.** `facets` is a node property in v1, so `edge[facets=...]`
-  matches nothing rather than matching every edge.
+- **Nodes and edges — but reaching an edge takes the `edge` type.** `facets` is
+  written on both. The kind-less `[facets=pii]` above stays node-scoped, like
+  every other type-less selector: a selector with no `edge` type never matches
+  an edge. Write `edge[facets=pii]` to style the edges that declare the
+  membership, repeating the predicate to AND it as on a node. What it never does
+  is widen: an `edge[facets=...]` that no edge is a **member** of matches
+  nothing rather than every edge. Membership is the only test — whether the
+  facet also has a top-level `facet` block is a separate question, answered by
+  the next bullet.
 - **Membership is read from the element**, which is where `facets <id>` is
   written. Nothing about the selector reaches back into the `facet` declaration;
   the declaration carries the concern's metadata, not its members.
 - **Undeclared facet ids are not a style-side error.** A `facets pcl` typo is
-  reported once, where it is written, by `facet-not-declared` — a selector
-  naming the same misspelling simply matches nothing. Reporting it twice would
-  ask the author to fix one mistake in two places.
+  reported once, where it is written, by `facet-not-declared`, and the selector
+  says nothing about it — `[facets=pcl]` matches whatever wrote `facets pcl`,
+  exactly as it would a declared id, because membership is the only test.
+  Reporting it twice would ask the author to fix one mistake in two places. The
+  rule the typo does break is the *intended* one: `[facets=pci]` no longer
+  reaches the element, which is the symptom that sends the author to the
+  warning.
 - **Fact and style stay split.** Membership is a fact and lives in `.krs`;
   what a facet looks like is a choice and lives here. The overlay in the
   preview is a third, separate thing: a reader's temporary selection, written

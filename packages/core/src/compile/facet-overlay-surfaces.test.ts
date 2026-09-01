@@ -185,4 +185,34 @@ describe("facet overlay in compare mode", () => {
     expect(removed).toContain('data-facet-member="pii"');
     expect(removed).not.toContain('opacity="0.28"');
   });
+
+  // #2544. An edge's membership rides on the edge object rather than on the
+  // node-keyed `facetIndex`, so the removed-node backfill above does not reach
+  // it — a deleted edge keeps its facets because the before-side edge is what
+  // the diff draws. This pins that "what used to carry this" holds for flows,
+  // not just for nodes.
+  it("keeps a removed edge's casing, so a deleted flow still shows what it carried", async () => {
+    const { InMemoryFileSystemProvider } = await import("../index.js");
+    const { compileSystemDiff } = await import("./compile-diff.js");
+    const fs = new InMemoryFileSystemProvider();
+    const decl = `facet pii { label "Personal data" }\n`;
+    await fs.writeFile(
+      "/before.krs",
+      `${decl}system Shop {\n  service Api {}\n  service Billing {}\n  Api --> Billing "charge" { facets pii }\n}`,
+    );
+    await fs.writeFile(
+      "/after.krs",
+      `${decl}system Shop {\n  service Api {}\n  service Billing {}\n}`,
+    );
+    const result = await compileSystemDiff({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+      viewPath: [],
+      selectedFacets: SELECTED,
+    });
+    const edge = /<g[^>]*data-edge-from="Api"[^>]*>/.exec(result.svg)?.[0] ?? "";
+    expect(edge).toContain('data-facet-member="pii"');
+    expect(result.svg).toContain('data-facet-casing="pii"');
+  });
 });

@@ -588,10 +588,14 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
   // Edge selectors require the explicit `edge` type; tag-only selectors
   // (nodeType === undefined) never match edges.
   if (selector.nodeType !== "edge") return false;
-  // `facets` is not accepted on edges in v1 (design `tags-and-facets.md` (B1)),
-  // so an `edge[facets=…]` selector matches nothing. Returning false here — not
-  // ignoring the predicate — keeps it from silently widening to every edge.
-  if (selector.facets.length > 0) return false;
+  // `[facets=<id>]` on an edge (#2544), read the same way as on a node: straight
+  // off the element that declares the membership, and ANDed when repeated —
+  // `edge[facets=pii][facets=gdpr]` wants both.
+  if (selector.facets.length > 0) {
+    const facets = edge.facets;
+    if (!facets) return false;
+    if (!selector.facets.every((f) => facets.includes(f))) return false;
+  }
   if (selector.edgeId !== undefined) {
     if (edge.canonicalId === undefined) return false;
     if (edge.canonicalId !== selector.edgeId) return false;

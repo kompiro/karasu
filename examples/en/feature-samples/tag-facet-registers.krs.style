@@ -26,6 +26,14 @@
   border-style: dashed;
 }
 
+/* The same selector reaches edges, because `facets` is written on edges too.
+ * A tag selector never could: there was no place on an edge to put the tag.
+ */
+edge[facets=pci] {
+  color: #f59e0b;
+  stroke-width: 2px;
+}
+
 /* tag — style by ARCHETYPE. A builtin name, so no deprecation. */
 service[external] {
   background-color: #f3f4f6;

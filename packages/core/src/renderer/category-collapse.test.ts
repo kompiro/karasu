@@ -174,6 +174,22 @@ describe("collapseCategories edge re-targeting (#1872)", () => {
     expect(pairs).toEqual([`Db->${stubId("external")}`, `Web->${stubId("external")}`]);
   });
 
+  // #2544. Same fold the group-collapse path makes, and for the same reason: a
+  // dropped duplicate must not take its facet membership with it, or collapsing
+  // a category makes the overlay go dark on edges the reader can no longer see
+  // individually.
+  it("unions the facets of the re-targeted edges it de-dupes", () => {
+    const withFacets = (from: string, to: string, facets: string[]): KrsEdge =>
+      ({ from, to, kind: "sync", facets }) as unknown as KrsEdge;
+    const r = collapseCategories(
+      nodes,
+      [withFacets("Web", "ExtA", ["pii"]), withFacets("Web", "ExtB", ["pci", "pii"])],
+      new Set(["external"]),
+    );
+    expect(r.edges).toHaveLength(1);
+    expect(r.edges[0].facets).toEqual(["pii", "pci"]);
+  });
+
   it("keeps a cross-category edge as a stub→stub trunk when both collapse", () => {
     const r = collapseCategories(nodes, [edge("ExtA", "Db")], new Set(["external", "infra"]));
     expect(r.edges).toHaveLength(1);

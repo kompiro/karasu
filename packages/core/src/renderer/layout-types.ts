@@ -102,6 +102,19 @@ export interface LayoutEdge {
   description?: string;
   /** Mirrors `KrsEdge.links`: `link` rows from the edge property block (#2543). */
   links?: LinkEntry[];
+  /**
+   * Mirrors `KrsEdge.facets`: the facets this edge belongs to (#2544).
+   *
+   * The overlay resolves an edge's membership from **this field**, never from a
+   * membership map keyed by id: an edge's `canonicalId` is `undefined` whenever
+   * its base form collided and no `#id` disambiguated it (ADR-1096), so an
+   * id-keyed lookup silently loses exactly those edges.
+   *
+   * On a derived edge — an aggregated `"N domain edges"`, a collapse stub —
+   * this holds the **union** over what it folds, so a fold never makes the
+   * overlay go dark on membership the reader can no longer see individually.
+   */
+  facets?: string[];
   /** Mirrors `KrsEdge.syntheticLabel`: `label` is machine-generated (W/R markers, aggregation counts), not authored. */
   syntheticLabel?: boolean;
   /**

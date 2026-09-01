@@ -930,13 +930,15 @@ See [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
 itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
 
-#### Property block (`{ label / description / link }`)
+#### Property block (`{ label / description / link / facets }`)
 
 A trailing `{ … }` block gives an edge a place to write what the positional
 form cannot express. It is **additive**: `A -> B "calls"` stays valid and stays
 the canonical spelling for an edge whose only property is its label.
 
 ```krs
+facet pii { label "Personal data" }
+
 system Shop {
   service OrderSvc {}
   service PaymentSvc {}
@@ -944,16 +946,19 @@ system Shop {
   OrderSvc --> PaymentSvc [async] #orderPlaced {
     label       "places an order"
     description "At-least-once delivery. Retries are idempotent on orderId."
+    facets      pii
     link        "https://runbook.example.com/order-placed" "Runbook"
   }
 }
 ```
 
-The block accepts `label`, `description` and `link`, each spelled exactly as it
-is on a node: `link` takes `"<URL>"` followed by an optional `"<label>"`, and
-may repeat. Any other keyword inside the block is an
-`unexpected-token-in-block` error. Tags and `#<id>` stay **outside** the block,
-matching `service A [external] { label "…" }`.
+The block accepts `label`, `description`, `facets` and `link`, each spelled
+exactly as it is on a node: `link` takes `"<URL>"` followed by an optional
+`"<label>"` and may repeat, and `facets` takes a comma-separated id list,
+accumulating across repeated lines with duplicate ids collapsing. Any other
+keyword inside the block is an `unexpected-token-in-block` error. Tags and
+`#<id>` stay **outside** the block, matching
+`service A [external] { label "…" }`.
 
 Writing the label both positionally and in the block is a
 `duplicate-edge-label` error rather than a precedence rule. Neither spelling
@@ -969,13 +974,15 @@ system Shop {
 
 **`karasu fmt` folds on one condition: does the block carry anything besides
 `label`.** A block holding only a label is rewritten to the shorthand; a block
-holding a `description` or a `link` is kept, with `label` moved inside it. Both
-spellings parse to the same AST, so which one you type never changes the
-diagram.
+holding a `description`, a `link` or `facets` is kept, with `label` moved inside
+it. Both spellings parse to the same AST, so which one you type never changes
+the diagram.
 
-`description` and `link` are read back on the canvas: left-clicking an edge
-that carries either opens the edge detail panel. Right-clicking still opens the
-direction menu, and an edge written in the shorthand behaves exactly as before.
+Every property in the block is read back on the canvas. `description` and `link`
+open the edge detail panel on a left click; `facets` puts the edge in the facet
+overlay, so selecting that facet highlights the edge and `edge[facets=<id>]`
+in a `.krs.style` sheet matches it. Right-clicking still opens the direction
+menu, and an edge written in the shorthand behaves exactly as before.
 
 #### Edges inside a service block
 
@@ -1048,6 +1055,10 @@ See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of 
 > - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — a construct the parser accepts is either rendered on some view or reported; an edge endpoint that is not at the edge's declaring scope must not drop silently (§ Endpoint scope)
 > - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — a cross-domain entity relation must use a qualified `DomainId.EntityId` target
 > - [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — the shorthand and the property block are two spellings of one edge, so both must land on one AST and `karasu fmt` must fold them to a single canonical form (§ Property block)
+> - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — every property the block accepts ships with its visible effect; `facets` on an edge must reach the overlay and the `edge[facets=…]` selector, not parse and vanish (§ Property block)
+> - [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — writing `facets` on an edge must leave the rendered SVG byte-identical while no facet is selected (§ Property block)
+> - [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) / [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — an edge's `facets` is a cross-reference like a node's, validated by `facet-not-declared` on the import-merged model (§ Property block)
+> - [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — an edge's membership stays 1:N, and a derived edge (aggregated `"N domain edges"`, collapse stub) takes the union of what it folds rather than one constituent's (§ Property block)
 
 ---
 
@@ -1571,7 +1582,22 @@ system Shop {
   `service`, `domain`, `usecase`, `entity`, `resource`, `user`, `client`, the
   infra blocks (`database` / `queue` / `storage`) and their leaves (`table`,
   queue item, `bucket`). Membership is imposed from outside the architecture, so
-  no kind is structurally excluded. Edges do not take `facets` in v1.
+  no kind is structurally excluded.
+- **Edges take `facets` too**, written in the [edge property
+  block](#property-block--label--description--link--facets-). A data flow that
+  carries PII, or a call that sits inside PCI scope, is a fact about *the edge*:
+  putting it on an endpoint would say the wrong thing about the endpoint and
+  still not say the right thing about the flow. The spelling and the merge rules
+  are the node's, and a selected facet highlights the edge the way it rings a
+  card. The one place the property is **not** accepted is the `resource` row
+  inside a `usecase`: that row already takes `facets`, and there it means the
+  *resource node's* membership, so one line cannot also mean the synthesized
+  edge's.
+- **A derived edge's membership is the union of what it folds.** The aggregated
+  `"N domain edges"` on a service view, and the stub edge a collapsed group
+  leaves behind, both belong to every facet their constituents belong to. There
+  is no authoring site for either, and without the union a folded edge would go
+  dark while a folded node in the same facet lit up.
 - **Repeated properties and repeated ids merge.** `facets a, b` and two separate
   `facets` lines are the same thing, and naming the same id twice is idempotent,
   not an error. `karasu fmt` canonicalizes them to one comma-separated line.
@@ -1605,7 +1631,7 @@ Diagnostics (see [diagnostics.md](diagnostics.md)):
 - `duplicate-facet-id` (error) — two `facet` blocks declare the same id, in one file or across merged files. The first declaration is the one references resolve to.
 - `positional-label-removed` (error) — a positional label after the facet id (`facet pii "Personal data"`). The `label` property is the only form ([ADR-19](../adr/19-required-id-label-as-property.md)).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; the overlay above is that effect. [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — the overlay is opt-in, so it must emit nothing at all when no facet is selected. [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere. [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword. [TPL-2316](../test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — a declarable construct must be reachable from the in-app Reference; `boundary` and `facet` were shipped and spec'd yet absent from `REFERENCE_DATA`, while `facet`'s element-side `facets` property was listed on all 14 node kinds (#2316).
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — accepted vocabulary must have an effect; the overlay above is that effect. [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — the overlay is opt-in, so it must emit nothing at all when no facet is selected. [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` is a cross-reference property, so it ships with a resolver-side validator and an unresolved warning, not parser-side acceptance alone. [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — the 1:N membership promised above is kept whole in the derived index and through every merge path; a view needing a single value resolves it on the view side. [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` and `duplicate-facet-id` are decided on the merged model, since declaration and reference may sit in different files. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — both the declaration block and the per-node `facets` property round-trip through `karasu fmt`; guards derived from `KrsFile`'s top-level arrays do not cover the per-node property. [TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — every kind that accepts `facets` is listed here, because the parser accepts it everywhere; edges accept it too and say so in § Property block (#2544). [TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — the pull from "membership" toward "rule language" is fenced by ADR-832, linked above, rather than by renaming the keyword. [TPL-2316](../test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — a declarable construct must be reachable from the in-app Reference; `boundary` and `facet` were shipped and spec'd yet absent from `REFERENCE_DATA`, while `facet`'s element-side `facets` property was listed on all 14 node kinds (#2316).
 
 ## Diagram legend
 

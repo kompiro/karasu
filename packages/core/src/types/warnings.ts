@@ -364,8 +364,17 @@ export interface WarningParamsByKind {
    * a fact with a fix — not a style-school judgement (TPL-1386).
    */
   "facet-not-declared": {
-    /** id of the node carrying the `facets` property */
-    nodeId: string;
+    /**
+     * The element carrying the `facets` property. A node's id, or — since edges
+     * took the property in #2544 — an edge's canonical base form (`A-->B`),
+     * an edge having no id of its own.
+     *
+     * Named `subject` rather than `nodeId` precisely because it is no longer
+     * always a node id: a consumer resolving it through `nodePathIndex` would
+     * miss on every edge-sourced warning, and a name that says "node" hides
+     * that from the compiler.
+     */
+    subject: string;
     /** the referenced facet id as written */
     facetId: string;
   };

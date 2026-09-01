@@ -1856,6 +1856,7 @@ export class Parser {
       ...(authorId !== undefined ? { authorId } : {}),
       ...(block.description !== undefined ? { description: block.description } : {}),
       ...(block.links !== undefined ? { links: block.links } : {}),
+      ...(block.facets !== undefined && block.facets.length > 0 ? { facets: block.facets } : {}),
     };
   }
 
@@ -1865,15 +1866,16 @@ export class Parser {
    * bare `{` on the line after an edge, so a file that does not write one
    * parses exactly as it did before (#2543).
    *
-   * Accepts `label` / `description` / `link`, all spelled the same way as on a
-   * node. `positionalLabel` is passed in so writing the label twice is an
-   * error (`duplicate-edge-label`) instead of one form silently winning; the
-   * positional one is kept for recovery.
+   * Accepts `label` / `description` / `link` / `facets`, all spelled the same
+   * way as on a node. `positionalLabel` is passed in so writing the label twice
+   * is an error (`duplicate-edge-label`) instead of one form silently winning;
+   * the positional one is kept for recovery.
    */
   private parseEdgeBlock(positionalLabel: string | undefined): {
     label?: string;
     description?: string;
     links?: LinkEntry[];
+    facets?: string[];
     /** Location of the closing `}`, so `parseEdge` can span its range over the block. */
     closeLoc?: SourceLocation;
   } {
@@ -1883,6 +1885,7 @@ export class Parser {
     let label: string | undefined;
     let description: string | undefined;
     let links: LinkEntry[] | undefined;
+    let facets: string[] | undefined;
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
@@ -1914,6 +1917,16 @@ export class Parser {
         continue;
       }
 
+      // Cross-cutting membership, on the same reader nodes use (#2544): repeated
+      // lines accumulate into one array and duplicate ids collapse, so `facets a`
+      // twice and `facets a, a` are the same edge.
+      if (token.type === TokenType.Facets) {
+        this.advance();
+        facets ??= [];
+        this.parseFacetsList(facets);
+        continue;
+      }
+
       this.error("unexpected-token-in-block", {
         blockKind: "edge",
         tokenType: String(token.type),
@@ -1929,6 +1942,7 @@ export class Parser {
       ...(label !== undefined ? { label } : {}),
       ...(description !== undefined ? { description } : {}),
       ...(links !== undefined ? { links } : {}),
+      ...(facets !== undefined ? { facets } : {}),
     };
   }
 

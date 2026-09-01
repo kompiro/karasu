@@ -386,8 +386,8 @@ export const en: Translations = {
     `The selector "${selector}" targets "@${annotation}", which is not a builtin annotation — deprecated. The rule still applies in v1.x; syntax v2.0 matches tool vocabulary only.`,
   "warning.styleSelectorNotBuiltin.migrationNote":
     'Migrate in three steps: declare the concern — facet <id> { label "..." } — add "facets <id>" to the elements, then rewrite the selector as [facets=<id>]. Specificity is unchanged, so nothing else in the cascade moves.',
-  "warning.facetNotDeclared.message": ({ nodeId, facetId }) =>
-    `"facets ${facetId}" on ${nodeId} names no declared facet`,
+  "warning.facetNotDeclared.message": ({ subject, facetId }) =>
+    `"facets ${facetId}" on ${subject} names no declared facet`,
   "warning.facetNotDeclared.declarationNote":
     'Declare it at the top level — facet <id> { label "..." } — or fix the spelling to match an existing declaration.',
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>

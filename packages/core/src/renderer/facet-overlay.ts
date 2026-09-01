@@ -1,4 +1,4 @@
-import type { KrsFile } from "../types/ast.js";
+import type { KrsFile, KrsNode } from "../types/ast.js";
 
 /**
  * Facet overlay: the viewer-side highlight layer for `facet` membership (#2174).
@@ -60,6 +60,49 @@ export interface FacetOverlay {
 }
 
 /**
+ * The roots every model-wide `facets` walk starts from — the same set the
+ * parser hands `buildFacetIndex`, so a top-level orphan block (a system-less
+ * `service` / `client` / `domain` / infra block) is reached too.
+ */
+export function facetWalkRoots(file: KrsFile): KrsNode[] {
+  return [
+    ...file.systems,
+    ...file.clients,
+    ...file.services,
+    ...file.domains,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ];
+}
+
+/**
+ * Facet ids referenced from an edge's `facets` property, in document order
+ * (#2544).
+ *
+ * Separate from `KrsFile.facetIndex` on purpose: that map is keyed by node id
+ * and an edge has none to key on. Only the *set of ids* is derivable here —
+ * which edge holds which membership stays on the edge object, where the layout
+ * and the renderer read it.
+ */
+function edgeFacetIds(file: KrsFile): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const visit = (node: KrsNode): void => {
+    for (const edge of node.edges) {
+      for (const id of edge.facets ?? []) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+    for (const child of node.children) visit(child);
+  };
+  for (const root of facetWalkRoots(file)) visit(root);
+  return ids;
+}
+
+/**
  * Every facet the model knows, in a **stable** order: declaration order first,
  * then ids that are only referenced from a `facets` property, sorted.
  *
@@ -67,19 +110,23 @@ export interface FacetOverlay {
  * deselecting one facet never re-colours the others. Assigning by selection
  * order would make the picture change under a reader who is only narrowing what
  * they look at.
+ *
+ * Edge references count as references (#2544). An id written only on an edge
+ * would otherwise be a facet nobody can select — no colour, no toolbar entry,
+ * no overview row — which is the same as accepting the vocabulary and giving it
+ * no effect (TPL-1503).
  */
 export function knownFacetIds(file: KrsFile): string[] {
   const declared = file.facets.map((f) => f.id);
   const seen = new Set(declared);
   const referenced: string[] = [];
-  for (const ids of file.facetIndex.values()) {
-    for (const id of ids) {
-      if (!seen.has(id)) {
-        seen.add(id);
-        referenced.push(id);
-      }
-    }
-  }
+  const note = (id: string): void => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    referenced.push(id);
+  };
+  for (const ids of file.facetIndex.values()) for (const id of ids) note(id);
+  for (const id of edgeFacetIds(file)) note(id);
   referenced.sort();
   return [...declared, ...referenced];
 }

@@ -17,6 +17,8 @@ import { isWriteOperation, isReadOperation } from "../spec/operations.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
+import { facetWalkRoots } from "../renderer/facet-overlay.js";
+import { edgeBaseId } from "./canonical-id.js";
 import {
   buildEdgeEndpointIndex,
   edgeEndpointRef,
@@ -532,19 +534,28 @@ function detectFacetsNotDeclared(file: KrsFile): Warning[] {
       if (declared.has(facetId)) continue;
       warnings.push({
         kind: "facet-not-declared",
-        params: { nodeId: node.id, facetId },
+        params: { subject: node.id, facetId },
         loc: node.loc,
       });
     }
+    // Edges carry the property too since #2544, and for the same reason nodes
+    // are walked instead of an index: the reference has to be reported on the
+    // edge that wrote it. An edge has no id of its own, so it names itself by
+    // its canonical base form — the same string `edge#<id>` addresses it with,
+    // so what the warning prints can be pasted into a style selector.
+    for (const edge of node.edges) {
+      for (const facetId of edge.facets ?? []) {
+        if (declared.has(facetId)) continue;
+        warnings.push({
+          kind: "facet-not-declared",
+          params: { subject: edgeBaseId(edge), facetId },
+          loc: edge.loc,
+        });
+      }
+    }
     for (const child of node.children) visit(child);
   };
-  for (const system of file.systems) visit(system);
-  for (const client of file.clients) visit(client);
-  for (const service of file.services) visit(service);
-  for (const domain of file.domains) visit(domain);
-  for (const database of file.databases) visit(database);
-  for (const queue of file.queues) visit(queue);
-  for (const storage of file.storages) visit(storage);
+  for (const root of facetWalkRoots(file)) visit(root);
 
   return warnings;
 }

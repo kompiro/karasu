@@ -3167,7 +3167,9 @@ system Billing {
 //
 //   1. Select \`pci\` in the "Facets" selector. The members ring; everything else
 //      dims. Notice what the tags did NOT do — \`[external]\` never grouped
-//      anything, because it was never a membership.
+//      anything, because it was never a membership. The Checkout → terminal
+//      edge lights up on its own account: it carries card data, which is a
+//      fact about the hop rather than about either end of it.
 //   2. Open "Membership overview" at the bottom of that menu. The list of
 //      what is in \`pci\` is DERIVED from the \`facets\` lines below; nothing in
 //      this file authors it, so it cannot be out of date.
@@ -3283,7 +3285,15 @@ system Shop {
   Catalogue -> ProductImages "read"
   Accounts -> ProfileStore "read/write"
   Checkout -> Ledger "record"
-  Checkout --> LegacyCardTerminal "settle"
+
+  // An edge can be in a facet too, and here it has to be. The card number
+  // leaves the building on this hop, so PCI covers the FLOW — the terminal
+  // outside is not in scope, and Checkout being in scope does not say that
+  // this particular hop carries card data. Membership belongs on the edge.
+  Checkout --> LegacyCardTerminal {
+    label  "settle"
+    facets pci
+  }
 }
 `,
     },
@@ -3315,6 +3325,14 @@ system Shop {
 /* Both at once — repeating the predicate ANDs it, like tags do. */
 [facets=pci][facets=pii] {
   border-style: dashed;
+}
+
+/* The same selector reaches edges, because \`facets\` is written on edges too.
+ * A tag selector never could: there was no place on an edge to put the tag.
+ */
+edge[facets=pci] {
+  color: #f59e0b;
+  stroke-width: 2px;
 }
 
 /* tag — style by ARCHETYPE. A builtin name, so no deprecation. */
