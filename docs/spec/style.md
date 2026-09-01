@@ -18,6 +18,7 @@
 | Facet | `[facets=pii]` | All elements belonging to the given `facet` |
 | Compound (kind + facet) | `service[facets=pii]` | Matches both kind and facet membership |
 | ID | `#ECommerce` | A specific node only |
+| Compound (kind + ID) | `team#Platform` | One team only (its card and its frame) |
 | Edge | `edge` | All edges |
 | Edge + tag | `edge[async]` | Edges with the given tag |
 | Edge source | `edge[from=ApiGateway]` | All edges originating at the node |
