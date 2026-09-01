@@ -221,6 +221,7 @@ flowchart TD
     ADR_1492["ADR-1492<br/>stroke-style をエッジ線スタイルの正準プロパティとして採用する"]
     ADR_1554["ADR-1554<br/>エッジコンテキストメニューへの authored ラベル表示と data-edge-label..."]
     ADR_1911["ADR-1911<br/>エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する"]
+    ADR_2209["ADR-2209<br/>エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
     ADR_2223["ADR-2223<br/>service ブロックに書いたエッジは、その service をノードとして描くビューに描画する"]
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
@@ -503,6 +504,9 @@ flowchart TD
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
   ADR_2208 --> ADR_19
+  ADR_2209 --> ADR_19
+  ADR_2209 --> ADR_1314
+  ADR_2209 --> ADR_438
   ADR_2234 --> ADR_9004
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
@@ -818,6 +822,7 @@ flowchart TD
   class ADR_2193 accepted
   class ADR_2200 accepted
   class ADR_2208 accepted
+  class ADR_2209 accepted
   class ADR_2218 accepted
   class ADR_2223 accepted
   class ADR_2234 accepted
