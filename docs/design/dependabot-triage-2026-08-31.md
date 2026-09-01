@@ -29,7 +29,8 @@
 1. **[#2667](https://github.com/kompiro/karasu/pull/2667) は exact peer の相方が同じバッチに居ない。**
    ADR-2447 が枠を 5 → 8 に引き上げてまで防ごうとした形が、その 8 の枠で再発した。
 2. **[#2668](https://github.com/kompiro/karasu/pull/2668) は 0.x の 29 マイナー跨ぎ**（`@anthropic-ai/sdk`
-   0.91.1 → 0.120.0）で、唯一の app runtime 依存。
+   0.91.1 → 0.120.0）で、唯一の app runtime 依存。API surface は動いていないが、
+   **bundle は +46 kB gzip（およそ倍）になる**（隔離ビルドで実測）。
 
 ## 現状（インベントリ）
 
@@ -37,7 +38,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | [#2670](https://github.com/kompiro/karasu/pull/2670) | `@types/node` | 26.2.0 → 26.3.0 | minor | direct (dev, 9 manifest) | green | low | 採用（そのまま） |
 | [#2669](https://github.com/kompiro/karasu/pull/2669) | `vite` | 8.1.5 → 8.2.2 | minor | direct (dev, app) | green | low | 採用（そのまま） |
-| [#2668](https://github.com/kompiro/karasu/pull/2668) | `@anthropic-ai/sdk` | 0.91.1 → 0.120.0 | minor ×29 (0.x) | direct (**prod**, app) | green | **medium** | 採用（そのまま） |
+| [#2668](https://github.com/kompiro/karasu/pull/2668) | `@anthropic-ai/sdk` | 0.91.1 → 0.120.0 | minor ×29 (0.x) | direct (**prod**, app) | green | **medium**（bundle +46 kB gzip） | 採用（そのまま） |
 | [#2667](https://github.com/kompiro/karasu/pull/2667) | `@vitest/coverage-v8` | 4.1.10 → 4.1.11 | patch | direct (dev, 6 manifest) | green | low（供給側）/ **要対処**（peer） | 採用（**差し替え PR**） |
 | [#2666](https://github.com/kompiro/karasu/pull/2666) | `lucide-react` | 1.31.0 → 1.34.0 | minor | direct (prod, app) | green | low | 採用（そのまま） |
 | [#2665](https://github.com/kompiro/karasu/pull/2665) | `@vitejs/plugin-react` | 6.0.5 → 6.1.0 | minor | direct (dev, app) | green | low | 採用（そのまま） |
@@ -48,18 +49,31 @@
 
 | パッケージ@版 | 公開日 | 経過 | publisher / provenance | lifecycle script |
 | --- | --- | --- | --- | --- |
-| `@types/node@26.3.0` | 2026-08-24 | 7d | `types`（Microsoft bot） / なし | なし |
-| `vite@8.2.2` | 2026-08-20 | 12d | `vitebot` ほか / **attested** | なし |
-| `@anthropic-ai/sdk@0.120.0` | 2026-08-19 | 12d | Anthropic 13 名 / **attested** | なし |
-| `@vitest/coverage-v8@4.1.11` | 2026-08-18 | 13d | GitHub Actions / **attested** | なし |
-| `lucide-react@1.34.0` | — | — | `ericfennis` / **attested** | なし |
-| `@vitejs/plugin-react@6.1.0` | — | — | `yyx990803` / `vitebot` / **attested** | なし |
-| `@testing-library/user-event@14.6.6` | — | — | testing-library 18 名 / **attested** | なし |
-| `@types/react-dom@19.2.5` | 2026-08-23 | 8d | `types`（Microsoft bot） / なし | なし |
+| `@types/node@26.3.0` | 2026-08-24T19:42:30Z | 7d | `types`（Microsoft bot） / なし | なし |
+| `vite@8.2.2` | 2026-08-20T04:14:39Z | 11d | `vitebot` ほか / **attested** | なし |
+| `@anthropic-ai/sdk@0.120.0` | 2026-08-19T22:05:37Z | 12d | Anthropic 13 名 / **attested** | なし |
+| `@vitest/coverage-v8@4.1.11` | 2026-08-18T14:22:18Z | 13d | GitHub Actions / **attested** | なし |
+| `lucide-react@1.34.0` | 2026-08-24T11:04:14Z | 7d | `ericfennis` / **attested** | なし |
+| `@vitejs/plugin-react@6.1.0` | 2026-08-20T02:49:46Z | 11d | `yyx990803` / `vitebot` / **attested** | なし |
+| `@testing-library/user-event@14.6.6` | 2026-08-22T02:06:46Z | 9d | testing-library 18 名 / **attested** | なし |
+| `@types/react-dom@19.2.5` | 2026-08-23T21:05:23Z | 8d | `types`（Microsoft bot） / なし | なし |
 
-- **install / postinstall / prepare の新規追加はゼロ。**
+> 公開日は npm registry packument の `time.<版>`、**確認時刻は 2026-08-31**（経過日数は
+> この時刻からの丸め）。8 件すべて記録済みで「要検証」はゼロ。
+
 - **cooldown 7 日は全件充足**（最短は `@types/node@26.3.0` の 7 日ちょうど）。
   pnpm 側の `minimumReleaseAge: 1440`（[ADR-2401](../adr/2401-pnpm-11-migration.md)）も全件充足。
+- **lifecycle script は 2 つの軸を分けて見る必要がある** — 「宣言の有無」と
+  「公開 tarball の install で走るか」は別物で、対象範囲も
+  「8 件の直接 bump 対象」と「依存グラフ全体」で異なる。
+
+  | 範囲 | 宣言の有無 | install 時に走るか |
+  | --- | --- | --- |
+  | 8 件の直接 bump 対象（上表） | **新規追加ゼロ**。既存宣言もゼロ | — |
+  | 依存グラフ全体（新規 transitive 4 件を含む） | `standardwebhooks@1.0.0` が `prepare: yarn run build` を**宣言している** | **走らない**。`prepare` は git 依存やソースからのビルド時のみで、公開 tarball の install では実行されない |
+
+  つまり「新規追加はゼロ」が言えるのは直接 bump 対象についてであり、
+  グラフ全体では宣言が 1 件入る。ただしそれは実行経路を持たない。
 - **配布主体の変化・リポジトリ移管はゼロ。** `@types/*` の provenance なしは
   DefinitelyTyped の常態で、publisher は Microsoft の `types` bot のまま。
 - **既知 advisory の該当なし**（open alert 0 件）。
@@ -144,7 +158,7 @@ pnpm-lock.yaml:9213  '@vitest/coverage-v8@4.1.11(vitest@4.1.10)':
 > `.github/dependabot.yml` の `groups:` に `vitest` 系をまとめることだが、
 > それは本トリアージの範囲外なので「次にやること」に切り出す。
 
-### #2668 — 0.x の 29 マイナー跨ぎだが、使用 surface は動いていない
+### #2668 — 使用 surface は動いていないが、bundle は倍近くなる
 
 唯一 medium と判定した PR。`@anthropic-ai/sdk` は `packages/app` の **production 依存**で、
 0.x では minor が破壊的変更の置き場になる。0.91.1（2026-04-24）から 0.120.0（2026-08-19）まで
@@ -168,8 +182,6 @@ repo 側の使用 surface は狭い — `new Anthropic({ apiKey, dangerouslyAllo
 `Check` job の `pnpm run typecheck` が green であることがその裏づけになる。
 
 **新規 transitive 3 件は webhook 検証ヘルパーの連れで、変更内容と一致している。**
-`standardwebhooks` は SDK 内で `resources/beta/webhooks.js` からのみ参照され、
-app は webhooks を import しないので bundle には入らない。
 
 | パッケージ | 素性 |
 | --- | --- |
@@ -177,9 +189,41 @@ app は webhooks を import しないので bundle には入らない。
 | `@stablelib/base64@1.0.1` | StableLib（`dchest` = Dmitry Chestnykh）。2021-05-21 公開（1929 日前） |
 | `fast-sha256@1.3.0` | 同じく `dchest`。2020-01-16 公開（2419 日前） |
 
-`standardwebhooks` は `prepare: yarn run build` を持つが、**`prepare` は git 依存や
-ソースからのビルド時にしか走らず、公開 tarball の install では実行されない**。
-3 件とも公開から数年経った版で、直近公開版を掴まされたわけではない。
+3 件とも公開から数年経った版で、直近公開版を掴まされたわけではない。`standardwebhooks` の
+`prepare: yarn run build` が実行経路を持たないことは前掲の表のとおり。
+
+#### この 3 件は tree-shake されず、production bundle に入る
+
+**当初この Doc は「app は webhooks を import しないので bundle には入らない」と書いていたが、
+これは誤りだった。** SDK の import 連鎖は静的で、しかも**コンストラクタ経由の live reference** になっている。
+
+```
+client.mjs:925   this.beta = new API.Beta(this);          ← Anthropic の constructor
+beta.mjs:47      this.webhooks = new WebhooksAPI.Webhooks(this._client);
+webhooks.mjs:3   import { Webhook } from 'standardwebhooks';
+```
+
+`new Anthropic(...)` した時点で `Webhooks` は到達可能なので、Rollup は落とせない。
+
+隔離した Vite production build（app と同じ import 形 — `import Anthropic, { APIError }`、
+`new Anthropic({ dangerouslyAllowBrowser: true })`、`client.messages.create`）で実測した:
+
+| build | raw | gzip | `whsec_` / `standardwebhooks` |
+| --- | --- | --- | --- |
+| SDK 0.91.1 | 205.80 kB | 43.17 kB | **なし** |
+| SDK 0.120.0 | 397.68 kB | 89.39 kB | **あり** |
+| SDK 0.120.0（`standardwebhooks` を stub に alias） | 375.95 kB | 83.40 kB | なし |
+
+- **SDK 全体の増分は +191.88 kB raw / +46.22 kB gzip**（およそ倍）。本体は 29 マイナー分の
+  API surface 増（Files / Skills / computer use / browser use / managed agents）である。
+- **`standardwebhooks` + `fast-sha256` + `@stablelib/base64` の寄与は +21.73 kB raw /
+  +5.99 kB gzip** で、増分全体の 1 割強にとどまる。
+
+つまり **bundle が増えるのは事実だが、その主因は webhook ヘルパーではなく SDK 本体の成長**である。
+SDK は client を通さず Beta を外せる import path を持たないので、この 6 kB を避ける手段は
+（版を止める以外に）現状ない。repo に bundle size の CI gate は無い
+（`packages/app/vite.config.ts` にも `ci.yml` にも該当設定なし）ので、
+**この増分は自動では検出されない**。
 
 ### #2669 — rolldown の platform binary が 1 つ増えただけ
 
@@ -220,12 +264,17 @@ rolldown 公式 org（`yyx990803` / `sapphi-red` ほか）・**attested**・life
 5. **#2667 を close** し、差し替え PR を出す:
    - `vitest` を `^4.1.11` へ（9 manifest: root, app, cli, core, docs-site, i18n, lsp, nest, vscode）
    - `@vitest/coverage-v8` を `^4.1.11` へ（6 manifest: app, cli, core, docs-site, i18n, nest）
-   - `pnpm install` 後、lock で `@vitest/*` が単一版に畳まれることを確認する
+   - `pnpm install` 後、**lock の peer エッジが
+     `'@vitest/coverage-v8@4.1.11(vitest@4.1.11)'` になっていること**を確認する
+     （`@vitest/*` が単一版に畳まれることだけでは、今回固定されかけた
+     `(vitest@4.1.10)` の形を弾けない）
    - 判定は「採用」なので `@dependabot ignore` は設定しない
 
 ### 影響範囲・マイグレーション
 
-- 既存ユーザーへの影響: なし（app の Chat 機能が使う SDK 版が上がるが、使用 API は不変）。
+- 既存ユーザーへの影響: **app の bundle が SDK 分だけ増える**（隔離実測で +46 kB gzip、
+  上記「tree-shake されず〜」節）。使用 API は不変なので挙動は変わらない。
+  他 7 件は dev 依存かアイコン追加で、実行時の影響なし。
 - ドキュメント更新: なし。
 - テスト・examples への影響: なし。`packages/app/src/hooks/useChatSession.cancel.test.tsx` は
   `@anthropic-ai/sdk` を `vi.mock` しているので SDK 版に依存しない。
@@ -244,6 +293,15 @@ rolldown 公式 org（`yyx990803` / `sapphi-red` ほか）・**attested**・life
 - **`open-pull-requests-limit` を更に引き上げる** — 5 → 8 で防げなかった以上、
   9 以上にしても同じ再発を先送りするだけ。枠は確率を下げるだけで、
   peer の同時性を保証しない。
+
+#2668 の bundle 増についても、採らなかった案が 1 つある。
+
+- **#2668 を保留し、bundle 増を避ける** — 増分の主因は SDK 本体の API surface 成長なので、
+  保留しても次のバッチに同じ増分が（更に大きくなって）戻ってくるだけである。
+  `standardwebhooks` 分の 6 kB を避ける import path も SDK 側に無い。
+  **保留は増分を消さず、跨ぐマイナー数を増やすだけ**なので採らない。
+  bundle size を継続的に見るなら、それは本トリアージではなく CI gate の話として
+  別に起こすべきである（現状 gate は無い）。
 
 ## 次にやること
 
