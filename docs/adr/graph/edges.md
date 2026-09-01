@@ -20,12 +20,16 @@ flowchart TD
     ADR_1492["ADR-1492<br/>stroke-style をエッジ線スタイルの正準プロパティとして採用する"]
     ADR_1554["ADR-1554<br/>エッジコンテキストメニューへの authored ラベル表示と data-edge-label..."]
     ADR_1911["ADR-1911<br/>エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する"]
+    ADR_2209["ADR-2209<br/>エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
     ADR_2223["ADR-2223<br/>service ブロックに書いたエッジは、その service をノードとして描くビューに描画する"]
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
+  ADR_19["ADR-19<br/>[parser] ID 必須化と `label` のプロパティ化"]
   ADR_281["ADR-281<br/>[parser] ワイルドカードインポートと2パス解決の採用"]
+  ADR_438["ADR-438<br/>[parser] `.krs` フォーマッター — トークン列ベースでコメント保持"]
   ADR_1142["ADR-1142<br/>[app-ui] GUI 駆動の `.krs.style` 編集 — 単一プロパティ rule は in-pla..."]
+  ADR_1314["ADR-1314<br/>[build] .krs / .krs.style を v1.0 として凍結する（ハイブリッド版管理）"]
   ADR_285 --> ADR_281
   ADR_460 --> ADR_445
   ADR_463 --> ADR_445
@@ -33,6 +37,9 @@ flowchart TD
   ADR_1096 --> ADR_1142
   ADR_1135 --> ADR_9019
   ADR_1911 --> ADR_460
+  ADR_2209 --> ADR_19
+  ADR_2209 --> ADR_1314
+  ADR_2209 --> ADR_438
   ADR_9019 --> ADR_1142
   ADR_9019 --> ADR_1096
 
@@ -56,9 +63,13 @@ flowchart TD
   class ADR_1492 accepted
   class ADR_1554 accepted
   class ADR_1911 accepted
+  class ADR_2209 accepted
   class ADR_2223 accepted
   class ADR_2477 accepted
   class ADR_9019 accepted
+  class ADR_19 ghost
   class ADR_281 ghost
+  class ADR_438 ghost
   class ADR_1142 ghost
+  class ADR_1314 ghost
 ```

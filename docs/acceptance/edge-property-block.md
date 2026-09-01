@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-08-27
 - **関連 Issue**: [#2543](https://github.com/kompiro/karasu/issues/2543)
+- **設計 (ADR)**: [ADR-2209](../adr/2209-edge-property-block.md)
 - **対象ファイル**:
   - `packages/core/src/parser/parser.ts`（`parseEdge` / `parseEdgeBlock`）
   - `packages/core/src/formatter/formatter.ts`（`renderEdge`）

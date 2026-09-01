@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-08-31
 - **関連 Issue**: [#2544](https://github.com/kompiro/karasu/issues/2544)（#2209 スライス B。スライス A は [#2543](https://github.com/kompiro/karasu/issues/2543)）
+- **設計 (ADR)**: [ADR-2209](../adr/2209-edge-property-block.md)
 - **関連 ADR**: [ADR-2065](../adr/2065-tags-and-facets.md) / [ADR-2173](../adr/2173-facet-grammar-and-model.md) / [ADR-2174](../adr/2174-facet-overlay.md)（facet の register・文法・overlay）、[ADR-1096](../adr/1096-edge-id-selector.md)（エッジの canonical id は base 衝突で消えうる）
 - **関連 spec**: [`docs/spec/syntax.md`](../spec/syntax.md) §Edge declaration › Property block・§Cross-cutting membership（+ja）/ [`docs/spec/style.md`](../spec/style.md) §Facet selectors（+ja）/ [`docs/spec/diagnostics.md`](../spec/diagnostics.md)（+ja）
 - **関連 TPL**: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md)、[TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md)、[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md)、[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md)、[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)、[TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md)
