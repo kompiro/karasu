@@ -197,6 +197,16 @@ export interface ContainerRect {
    */
   groupId?: string;
   /**
+   * Which "Group by" axis minted this frame (#2269). Set together with `group`.
+   *
+   * The renderer needs it to know which id space `groupId` names before it looks
+   * a style override up: a boundary id on the boundary axis, an org team id on
+   * the team axis. Inferring the axis from `hueIndex` being absent would be
+   * wrong — a boundary frame on an expanding canvas carries no hue either, and a
+   * `#<id>` rule naming a node would then leak onto it.
+   */
+  groupAxis?: "team" | "boundary";
+  /**
    * In-place expansion marker (#1921). Set together with `group` when this frame
    * is a container expanded in place (its domain children shown inside). Drives
    * the ⊖ collapse control's `data-expand-node` so the app can un-expand it.

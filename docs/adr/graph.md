@@ -361,6 +361,7 @@ flowchart TD
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
     ADR_2172["ADR-2172<br/>builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@p..."]
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
+    ADR_2269["ADR-2269<br/>team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
     ADR_2482["ADR-2482<br/>バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする"]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
@@ -505,6 +506,9 @@ flowchart TD
   ADR_2234 --> ADR_9004
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
+  ADR_2269 --> ADR_9004
+  ADR_2269 --> ADR_1858
+  ADR_2269 --> ADR_2234
   ADR_2436 --> ADR_2419
   ADR_2442 --> ADR_2410
   ADR_2461 --> ADR_2193
@@ -821,6 +825,7 @@ flowchart TD
   class ADR_2259 accepted
   class ADR_2260 accepted
   class ADR_2262 accepted
+  class ADR_2269 accepted
   class ADR_2316 accepted
   class ADR_2317 accepted
   class ADR_2318 accepted

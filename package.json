@@ -43,6 +43,7 @@
     "lint:roadmap-issue-state": "tsx scripts/lint/roadmap-issue-state.ts",
     "lint:locale-normalization": "tsx scripts/lint/locale-normalization-single-owner.ts",
     "lint:record-source-paths": "tsx scripts/lint/record-source-paths.ts",
+    "lint:reference-docs-links": "tsx scripts/lint/reference-docs-links.ts",
     "program:slices": "tsx scripts/program-slices.ts",
     "census:vocabulary": "tsx scripts/census/vocabulary.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages",

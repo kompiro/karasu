@@ -398,6 +398,41 @@
   background: var(--bg-surface);
 }
 
+/* The way out of the reference: the guides ("when") and the gallery ("how it
+   renders"), which none of the tabs answer (#2350). Sits between the tab bar and
+   the scroll area so it is visible on every tab, at any scroll position. */
+.reference-signpost {
+  flex-shrink: 0;
+  padding: 8px 16px 9px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.reference-signpost p {
+  margin: 0 0 5px;
+}
+
+.reference-signpost nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.reference-signpost a {
+  color: var(--text-link);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.reference-signpost a:hover,
+.reference-signpost a:focus-visible {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+}
+
 .reference-panel-content {
   flex: 1;
   /* Allow the scroll area to shrink below its content height so it scrolls

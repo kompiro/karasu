@@ -42,6 +42,7 @@
 | Facet | `[facets=pii]` | 10 |
 | Kind + facet | `service[facets=pii]` | 11 |
 | ID | `#ECommerce` | 100 |
+| Kind + ID | `team#Platform` | 101 |
 | Edge | `edge` | 1 |
 | Edge + tag | `edge[async]` | 11 |
 | Edge source/target | `edge[from=ApiGateway]` | 11 |
@@ -863,8 +864,9 @@ the unqualified one means.
 > ignored on a frame. A frame that reaches out of its band is drawn as a
 > rectilinear outline, which has no corner radius to set.
 
-Team frames (*Group by: team*) are not addressable this way yet; see
-[#2269](https://github.com/kompiro/karasu/issues/2269).
+Team frames (*Group by: team*) are addressed differently, because a team **is** a
+node and `#<id>` already reaches it — see
+[Team frames](#team-frames-group-by-team) below.
 
 `boundary` is experimental notation, so this selector carries the same
 no-compatibility-promise as the construct it styles
@@ -883,6 +885,7 @@ The Org Tree View supports `team` / `member` kind selectors and ID selectors (`#
 | `team` | All team cards |
 | `member` | All member cards |
 | `#TeamId` | A specific team card |
+| `team#TeamId` | The same, narrowed to the team kind |
 | `#MemberId` | A specific member card |
 | `edge` | Bézier connectors between teams |
 
@@ -901,3 +904,53 @@ The Org Tree View supports `team` / `member` kind selectors and ID selectors (`#
 
 > **Note**: `opacity` / `shape` / `badge-*` are ignored in the Org Tree View.
 > Tag/annotation compound selectors (`team[external]`, etc.) are not supported at this time.
+
+### Team frames (*Group by: team*)
+
+Under *Group by: team* the system view draws a frame around each team's members.
+That frame and the card above are two renderings of **one** team, so the
+selectors above address both. There is no separate frame keyword.
+
+```css
+team          { border-color: #64748B; } /* every team card, and every team frame */
+#Platform     { border-color: #C0392B; } /* the Platform card, and the Platform frame */
+team#Platform { border-color: #C0392B; } /* the same, narrowed to the team kind */
+```
+
+`team#<id>` is a **compound** selector, not a second id space: it means "the node
+with this id, if it is a team". It scores 101 (100 for the id + 1 for the kind),
+so it beats a bare `#<id>` at 100 and a bare `team` at 1. This is the opposite of
+`boundary#<id>`, where the keyword names an id space a bare `#<id>` cannot reach
+at all — a boundary is not a node, and a team is.
+
+**Which property reaches which rendering.** Each one lands on the part of the
+frame that answers to the part of the card it paints:
+
+| Property | Card (Org Tree View) | Frame (*Group by: team*) |
+|----------|----------------------|--------------------------|
+| `border-color` | Border colour | Outline colour |
+| `background-color` | Card fill | Low-alpha tint inside the frame |
+| `color` | Label colour | Frame title colour |
+| `border-width` | Border width (px) | Outline width (px) |
+| `border-style` | not applied | `solid` / `dashed` / `dotted`. Default `dashed` |
+| `border-radius` / `font-size` / `font-weight` / `font-family` | as documented above | not applied |
+
+> **Note**: unlike a boundary frame, a team frame's tint does **not** follow
+> `border-color`. Boundary frames overlap, and there one colour has to reach the
+> tint or the overlap reads as nesting. Team frames never overlap, so each
+> property follows the card instead, which is the reading a single declaration
+> predicts.
+
+**Each rendering keeps its own default.** The built-in sheet's `team { … }` rule
+is the *card's* default and does not reach the frame; the frame's default is the
+muted dashed outline the view draws on its own. So a team no sheet names is
+unchanged, and naming one team does not disturb the rest.
+
+> **Note**: only the three selectors above reach the frame. A rule that adds a
+> predicate — `team@deprecated`, `team[tag]`, `team[from=<id>]` — styles the card
+> where it applies and leaves the frame alone. The frame is resolved from the
+> sheet without the organization model in hand, so a predicate about the team
+> cannot be evaluated there; the rule is declined rather than applied with its
+> predicate dropped, which would widen it to every frame.
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — a team is drawn as a card and as a frame by different code, and one declaration must not repaint only half of it. [TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — the built-in sheet styles the card only; reading it for the frame would repaint every frame by default. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `team#<id>` survives `karasu fmt` instead of being re-emitted as the wider `#<id>`. [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the specificity scores quoted here are generated from `reference-data.ts`.

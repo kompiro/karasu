@@ -179,6 +179,14 @@ export const ja: Partial<Translations> = {
   "referencePanel.grouping.description": "説明",
   "referencePanel.grouping.membership": "所属の書き方",
   "referencePanel.grouping.properties": "プロパティ",
+  "referencePanel.signpost.description":
+    "ここにあるのは「何が書けるか」。「いつ使うか」はガイド、「どう描かれるか」は Examples ギャラリーにある。",
+  "referencePanel.signpost.guide.label": "ガイド ↗",
+  "referencePanel.signpost.guide.ariaLabel": "ガイドを新しいタブで開く",
+  "referencePanel.signpost.cookbook.label": "記法クックブック ↗",
+  "referencePanel.signpost.cookbook.ariaLabel": "記法クックブックを新しいタブで開く",
+  "referencePanel.signpost.examples.label": "Examples ギャラリー ↗",
+  "referencePanel.signpost.examples.ariaLabel": "Examples ギャラリーを新しいタブで開く",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ SVG をエクスポート",

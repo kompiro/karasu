@@ -137,6 +137,14 @@ jobs:
       - name: docs-site CI path filters cover the published set
         run: pnpm run lint:docs-site-ci-paths-sync
 
+      # The Reference signpost links into this site by absolute URL (Issue
+      # #2350), and `check-links` below stops at the site boundary by design.
+      # The vitest mirror runs under `ci.yml`, whose `paths-ignore: docs/**`
+      # skips exactly the docs-only PR that can delete a linked page — so the
+      # guard runs here, where `docs/guide/**` is already a trigger.
+      - name: Reference signpost links resolve
+        run: pnpm run lint:reference-docs-links
+
       - name: docs-site content in sync
         run: pnpm --filter @karasu-tools/docs-site run sync
 

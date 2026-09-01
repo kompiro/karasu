@@ -10,7 +10,7 @@ import { examplePageMarkdown, indexPageMarkdown } from "./lib/gallery-pages.ts";
 import { extractTitle, frontmatter } from "./lib/markdown.ts";
 import { renderDiagram, type RenderedDiagram } from "./lib/render-examples.ts";
 import { rewriteBody } from "./lib/rewrite.ts";
-import { contentPathOf, type Locale, slugOf } from "./lib/site-map.ts";
+import { contentPathOf, galleryContentPathOf, type Locale, slugOf } from "./lib/site-map.ts";
 import { CONTENT_DIR, listSources, PKG_ROOT, publishedSet } from "./sources.ts";
 
 // Hand-authored splash home pages (committed under home/), copied to the locale
@@ -49,8 +49,8 @@ function writeContent(relPath: string, content: string): void {
  * render once while localized pairs (e.g. getting started) render both variants.
  */
 async function generateGallery(): Promise<number> {
-  writeContent("examples.md", indexPageMarkdown("en"));
-  writeContent("ja/examples.md", indexPageMarkdown("ja"));
+  writeContent(galleryContentPathOf("en"), indexPageMarkdown("en"));
+  writeContent(galleryContentPathOf("ja"), indexPageMarkdown("ja"));
 
   // Render once per distinct entry path; locale-shared sources resolve to the
   // same path and are reused, while localized pairs (e.g. getting started) render
@@ -68,11 +68,11 @@ async function generateGallery(): Promise<number> {
 
   for (const page of GALLERY_PAGES) {
     writeContent(
-      `examples/${page.slug}.md`,
+      galleryContentPathOf("en", page.slug),
       examplePageMarkdown(page, await renderPage(page, "en"), "en"),
     );
     writeContent(
-      `ja/examples/${page.slug}.md`,
+      galleryContentPathOf("ja", page.slug),
       examplePageMarkdown(page, await renderPage(page, "ja"), "ja"),
     );
   }

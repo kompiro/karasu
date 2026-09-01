@@ -3,6 +3,7 @@ import { compile } from "../index.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { computeSpecificity } from "../parser/style-parser.js";
 import { darkPalette } from "./palette.js";
+import { formatSelector } from "../style/serialize.js";
 
 // #2234: a `.krs.style` sheet can repaint a boundary frame. The selector is
 // `boundary` / `boundary#<id>`, mirroring `edge` / `edge#<id>` — a boundary is
@@ -224,5 +225,15 @@ system Payments {
       throw new Error("expected system view");
     }
     expect(withRule.svg).toBe(without.svg);
+  });
+});
+
+describe("boundary#<id> survives the formatter", () => {
+  it("re-emits the id instead of widening to every frame", () => {
+    // `formatSelector` used to drop `boundaryId` and print a bare `boundary`,
+    // so `karasu fmt` turned a one-boundary rule into an all-frames rule
+    // (TPL-1101). Found while adding the team-axis form in #2269.
+    const sheet = StyleParser.parse("boundary#pci { border-color: #c0392b; }", "t").value;
+    expect(formatSelector(sheet.rules[0].selector)).toBe("boundary#pci");
   });
 });

@@ -82,11 +82,22 @@ export function serializeStyleSheet(sheet: StyleSheet): string {
 }
 
 export function formatSelector(selector: StyleSelector): string {
-  if (selector.id) return `#${selector.id}`;
   let out = "";
   if (selector.nodeType) out += selector.nodeType;
+  // The id parts, each read in the space the keyword ahead of it selects: the
+  // node id space for a bare `#<id>` and for `team#<id>` (#2269), the edge id
+  // space for `edge#<id>`, the boundary id space for `boundary#<id>` (#2234).
+  // At most one is ever set, and dropping it re-emits a selector *wider* than
+  // the sheet wrote — which is how `karasu fmt` would silently change what a
+  // rule matches (TPL-1101).
+  if (selector.id) {
+    out += `#${selector.id}`;
+  }
   if (selector.edgeId) {
     out += `#${selector.edgeId}`;
+  }
+  if (selector.boundaryId) {
+    out += `#${selector.boundaryId}`;
   }
   // Endpoint predicates (edge[from=<id>] / edge[to=<id>], #1755). Emitted
   // before tags so `edge[from=X][async]` round-trips in source order.
