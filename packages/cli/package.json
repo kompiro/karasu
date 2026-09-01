@@ -39,7 +39,7 @@
     "@karasu-tools/core": "workspace:*",
     "@karasu-tools/i18n": "workspace:*",
     "@types/node": "^26.3.0",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "esbuild": "^0.28.2",
     "svgo": "^4.0.2",
     "typescript": "^7.0.2",
