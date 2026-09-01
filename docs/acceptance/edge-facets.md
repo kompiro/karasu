@@ -88,6 +88,10 @@ type: product
 
   > ✅ Automated — `packages/core/src/resolver/facet-style-selector.test.ts` › styles the edges that declare the facet, and only those ／ ANDs repeated predicates on an edge selector too ／ does not widen to every edge when no edge declares the facet
 
+- [x] AT-K2: 判定に使うのは所属だけで、top-level の `facet` 宣言の有無は見ない。`facets ghost`（未宣言）を書いたエッジは `edge[facets=ghost]` に一致する — 未宣言 id は `facet-not-declared` が書かれた場所で 1 度報告するので、セレクタ側でも弾くと 1 つの間違いを 2 箇所で直させることになる（§Facet selectors の既存のトレード）
+
+  > ✅ Automated — `packages/core/src/resolver/facet-style-selector.test.ts` › matches an edge whose facet has no top-level declaration
+
 ### AC-6: opt-in の不変条件を崩さない（TPL-2174）
 
 - [x] AT-L: facet を 1 つも選ばなければ、`facets` 付きエッジを含むファイルの SVG は `facets` を書かない同じモデルと byte 一致し、overlay 由来の marker（`data-facet-member` / `data-facet-ring` / `data-facet-casing` / dim opacity）を 1 つも出さない

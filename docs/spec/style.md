@@ -88,8 +88,10 @@ database[facets=pci_scope] {
   every other type-less selector: a selector with no `edge` type never matches
   an edge. Write `edge[facets=pii]` to style the edges that declare the
   membership, repeating the predicate to AND it as on a node. What it never does
-  is widen: an `edge[facets=...]` whose facet no edge declares matches nothing
-  rather than every edge.
+  is widen: an `edge[facets=...]` that no edge is a **member** of matches
+  nothing rather than every edge. Membership is the only test — whether the
+  facet also has a top-level `facet` block is a separate question, answered by
+  the next bullet.
 - **Membership is read from the element**, which is where `facets <id>` is
   written. Nothing about the selector reaches back into the `facet` declaration;
   the declaration carries the concern's metadata, not its members.

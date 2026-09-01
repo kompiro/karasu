@@ -116,6 +116,24 @@ system Shop {
     expect(styles.edges.get("A->C#sync")?.strokeWidth).not.toBe(4);
   });
 
+  it("matches an edge whose facet has no top-level declaration", () => {
+    // Membership is the only test the selector applies, on edges as on nodes.
+    // An undeclared id is reported once by `facet-not-declared` at the site that
+    // wrote it; making the selector also refuse to match would ask the author to
+    // fix one mistake in two places, which is the trade §Facet selectors states.
+    const file = parseModel(`
+system Shop {
+  service A {}
+  service B {}
+  A -> B "carries ghost" { facets ghost }
+}
+`);
+    const styles = resolveStyles(file.systems, [
+      sheet(`edge[facets=ghost] { stroke-width: 4px; }`),
+    ]);
+    expect(styles.edges.get("A->B#sync")?.strokeWidth).toBe(4);
+  });
+
   it("ANDs repeated predicates on an edge selector too", () => {
     const file = parseModel(`
 facet pii {}
