@@ -1373,7 +1373,12 @@ function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warni
 
   for (let i = 0; i < userSheets.length; i++) {
     for (const rule of userSheets[i].rules) {
-      const key = serializeSelector(rule.selector);
+      // The Tidy formatter's spelling, not a second one written here: the two
+      // had drifted, and this side put the id before the kind (`team#Platform`
+      // read as `#Platformteam`) and dropped `edge#<id>` / `boundary#<id>`
+      // entirely, fusing rules that named *different* boundaries into one
+      // `boundary` key and reporting a conflict that did not exist (TPL-2234).
+      const key = formatSelector(rule.selector);
       if (!selectorToSheets.has(key)) {
         selectorToSheets.set(key, new Set());
       }
@@ -1912,22 +1917,4 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
   }
 
   return warnings;
-}
-
-function serializeSelector(selector: {
-  nodeType?: string;
-  tags: string[];
-  annotations: string[];
-  facets?: string[];
-  id?: string;
-}): string {
-  const parts: string[] = [];
-  if (selector.id) parts.push(`#${selector.id}`);
-  if (selector.nodeType) parts.push(selector.nodeType);
-  for (const tag of selector.tags) parts.push(`[${tag}]`);
-  // Included so `[facets=pii]` and `[facets=gdpr]` are distinct keys for the
-  // style-conflict grouping; omitting them would merge two different rules.
-  for (const facet of selector.facets ?? []) parts.push(`[facets=${facet}]`);
-  for (const ann of selector.annotations) parts.push(`@${ann}`);
-  return parts.join("");
 }

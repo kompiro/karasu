@@ -15,11 +15,13 @@ flowchart TD
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
     ADR_2172["ADR-2172<br/>builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@p..."]
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
+    ADR_2269["ADR-2269<br/>team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
     ADR_2482["ADR-2482<br/>バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする"]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
   ADR_477["ADR-477<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
   ADR_1296["ADR-1296<br/>[build] in-app Reference データを `reference-data.ts` に集約し、..."]
+  ADR_1858["ADR-1858<br/>[renderer] system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
   ADR_1974["ADR-1974<br/>[parser] system view の意味的クラスタを宣言する `boundary` 構文と `bound..."]
   ADR_2036["ADR-2036<br/>[parser] boundary をスコープ内に宣言する — 「層ごとの関心事」としての boundary 再定義"]
   ADR_108 --> ADR_9004
@@ -28,7 +30,11 @@ flowchart TD
   ADR_2234 --> ADR_9004
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
+  ADR_2269 --> ADR_9004
+  ADR_2269 --> ADR_1858
+  ADR_2269 --> ADR_2234
   ADR_1296 --> ADR_8
+  ADR_1974 --> ADR_1858
   ADR_2036 --> ADR_1974
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -46,10 +52,12 @@ flowchart TD
   class ADR_1755 accepted
   class ADR_2172 accepted
   class ADR_2234 accepted
+  class ADR_2269 accepted
   class ADR_2482 accepted
   class ADR_9004 accepted
   class ADR_477 ghost
   class ADR_1296 ghost
+  class ADR_1858 ghost
   class ADR_1974 ghost
   class ADR_2036 ghost
 ```

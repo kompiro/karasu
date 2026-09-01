@@ -257,6 +257,46 @@ legend "凡例" {
     expect(result.svg).toContain('fill="#9CA3AF"');
   });
 
+  it("does not resolve a bare id ref from a kind-qualified rule (#2269)", () => {
+    // `team#ApiNode` is a compound: it applies only when the entity is a team,
+    // and `ApiNode` here is a service, so the card refuses it. The legend cannot
+    // see the entity's kind, so it declines the compound rather than painting a
+    // swatch in a colour nothing on the canvas has (TPL-2234). The fallback
+    // `#9CA3AF` is what a ref with no matching rule already gets.
+    const krs = `
+system Demo {
+  service ApiNode { label "API" }
+}
+legend "凡例" {
+  ref #ApiNode "メイン API"
+}
+`;
+    const result = compile(krs, {
+      diagramType: "system",
+      styleSource: "team#ApiNode { background-color: #00FF00; }",
+    });
+    expect(result.svg).toContain("メイン API");
+    expect(result.svg).not.toContain("#00FF00");
+    expect(result.svg).toContain('fill="#9CA3AF"');
+  });
+
+  it("still resolves a bare id ref from a bare id rule (#2269)", () => {
+    const krs = `
+system Demo {
+  service ApiNode { label "API" }
+}
+legend "凡例" {
+  ref #ApiNode "メイン API"
+}
+`;
+    const result = compile(krs, {
+      diagramType: "system",
+      styleSource: "#ApiNode { background-color: #00FF00; }",
+    });
+    expect(result.svg).toContain("メイン API");
+    expect(result.svg).toContain("#00FF00");
+  });
+
   it("preserves builtin kind colors in icon mode (Issue #1001)", () => {
     // In icon mode, the icon-theme stylesheet is appended last and
     // contributes `service { shape: url(...) }` — same specificity as

@@ -532,7 +532,15 @@ function ruleMatchesTarget(selector: StyleSelector, target: LegendRefTarget): bo
       return selector.tags.includes(target.name);
     case "selector": {
       const sel = target.selector;
-      if (sel.startsWith("#")) return selector.id === sel.slice(1);
+      // A bare `#<id>` ref names an entity without naming its kind, and this
+      // function cannot see what kind that entity turned out to be. A compound
+      // like `team#<id>` (#2269) only applies when the kinds agree, so treating
+      // it as a match here would paint the swatch from a rule the card itself
+      // refused — one entity, two appearances (TPL-2234). Decline instead: the
+      // swatch falls back rather than showing a colour nothing on the canvas has.
+      if (sel.startsWith("#")) {
+        return selector.id === sel.slice(1) && selector.nodeType === undefined;
+      }
       if (sel.startsWith(".")) return false;
       return selector.nodeType === sel;
     }

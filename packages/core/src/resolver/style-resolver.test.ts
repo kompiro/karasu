@@ -1842,3 +1842,63 @@ describe("resolveStyles — grid-columns layout hint (#1737)", () => {
     expect(result.layoutHints.get("platform")).toEqual({ gridColumns: 4 });
   });
 });
+
+// #2269 made `team#<id>` the first selector to carry a kind *and* an id, which
+// meant the three node matchers could no longer short-circuit on the id alone.
+// These pin the two halves of that change: a bare `#<id>` keeps reaching every
+// view it reached before, and a compound stops at the kind it names.
+describe("id selectors narrow rather than short-circuit (#2269)", () => {
+  const ORG: OrganizationBlock = {
+    id: "Corp",
+    properties: { links: [] },
+    teams: [
+      {
+        kind: "team",
+        id: "Shared",
+        annotations: [],
+        properties: { links: [], owns: [] },
+        children: [],
+        loc: dummyLoc,
+      },
+    ],
+    loc: dummyLoc,
+  };
+  const SYSTEM = makeNode({
+    kind: "system",
+    id: "Sys",
+    children: [makeNode({ kind: "service", id: "Shared" })],
+  });
+  const DEPLOY: DeployNode = { kind: "oci", id: "Shared", properties: {}, loc: dummyLoc };
+
+  function sheetOf(selector: Omit<StyleRule["selector"], "loc" | "facets">): StyleSheet {
+    return { rules: [makeRule(selector, { "background-color": "#FF0000" }, 100)] };
+  }
+
+  it("keeps a bare `#<id>` reaching the system, deploy and org views", () => {
+    const sheet = sheetOf({ id: "Shared", tags: [], annotations: [] });
+    // One `resolveStyles` call per view. A single combined call writes all three
+    // passes into one `nodes` map keyed by bare id, so the last pass wins and the
+    // assertion would only ever prove that pass matched.
+    const system = resolveStyles([SYSTEM], [getBuiltinStyleSheet(), sheet]);
+    expect(system.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
+
+    const deploy = resolveStyles([], [getBuiltinStyleSheet(), sheet], [DEPLOY]);
+    expect(deploy.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
+
+    const org = resolveStyles([], [getBuiltinStyleSheet(), sheet], undefined, [ORG]);
+    expect(org.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
+  });
+
+  it("stops `team#<id>` at the team, leaving a service and a deploy unit of that id alone", () => {
+    const sheet = sheetOf({ nodeType: "team", id: "Shared", tags: [], annotations: [] });
+
+    const org = resolveStyles([], [getBuiltinStyleSheet(), sheet], undefined, [ORG]);
+    expect(org.nodes.get("Shared")!.backgroundColor).toBe("#FF0000");
+
+    const system = resolveStyles([SYSTEM], [getBuiltinStyleSheet(), sheet]);
+    expect(system.nodes.get("Shared")!.backgroundColor).not.toBe("#FF0000");
+
+    const deploy = resolveStyles([], [getBuiltinStyleSheet(), sheet], [DEPLOY]);
+    expect(deploy.nodes.get("Shared")!.backgroundColor).not.toBe("#FF0000");
+  });
+});

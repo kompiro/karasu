@@ -1238,6 +1238,7 @@ export const SELECTOR_SPECIFICITY: SelectorSpecificityData[] = [
     specificity: 11,
   },
   { label: { en: "ID", ja: "ID" }, example: "#ECommerce", specificity: 100 },
+  { label: { en: "Kind + ID", ja: "種別 + ID" }, example: "team#Platform", specificity: 101 },
   { label: { en: "Edge", ja: "エッジ" }, example: "edge", specificity: 1 },
   { label: { en: "Edge + tag", ja: "エッジ + タグ" }, example: "edge[async]", specificity: 11 },
   {
