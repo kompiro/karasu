@@ -1,15 +1,24 @@
 // @vitest-environment jsdom
+import type { ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../i18n/index.js";
 import { ThemeProvider } from "../theme/index.js";
 import { SettingsPane } from "./SettingsPane.js";
 
-function renderWithLocale(initialLocale: "en" | "ja" = "en") {
+function renderWithLocale(
+  initialLocale: "en" | "ja" = "en",
+  overrides: Partial<ComponentProps<typeof SettingsPane>> = {},
+) {
   return render(
     <LocaleProvider initialLocale={initialLocale}>
       <ThemeProvider initialTheme="dark">
-        <SettingsPane onApiKeyChange={() => undefined} />
+        <SettingsPane
+          onApiKeyChange={() => undefined}
+          displayMode="shape"
+          onDisplayModeChange={() => undefined}
+          {...overrides}
+        />
       </ThemeProvider>
     </LocaleProvider>,
   );
@@ -306,5 +315,47 @@ describe("SettingsPane — IME composition anti-regression (TPL-1053)", () => {
 
     fireEvent.compositionEnd(input);
     expect(input.value).toBe("テスト鍵");
+  });
+});
+
+// #2376: icon mode moved here from the drill-path row and is presented as a
+// legacy display mode. `PreviewColumn.test.tsx` keeps guarding the surface it
+// left; this block is the switch's own contract plus the locale guard that
+// travelled with it.
+describe("SettingsPane — Display section (#2376)", () => {
+  it("offers shape and icon as the two node display options", () => {
+    renderWithLocale("en");
+    const select = screen.getByLabelText(/Node display/i) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(["shape", "icon"]);
+  });
+
+  it("marks icon cards as the legacy option in both locales", () => {
+    renderWithLocale("en");
+    expect(screen.getByRole("option", { name: /legacy/i })).toHaveProperty("value", "icon");
+    cleanup();
+
+    renderWithLocale("ja");
+    expect(screen.getByRole("option", { name: /レガシー/ })).toHaveProperty("value", "icon");
+  });
+
+  it("reflects the active display mode in the select value", () => {
+    renderWithLocale("en", { displayMode: "icon" });
+    expect((screen.getByLabelText(/Node display/i) as HTMLSelectElement).value).toBe("icon");
+  });
+
+  it("calls onDisplayModeChange with the mode that was picked", () => {
+    const onDisplayModeChange = vi.fn<(mode: "shape" | "icon") => void>();
+    renderWithLocale("en", { onDisplayModeChange });
+    fireEvent.change(screen.getByLabelText(/Node display/i), { target: { value: "icon" } });
+    expect(onDisplayModeChange).toHaveBeenCalledWith("icon");
+  });
+
+  it("renders no English hardcode in the section under locale=ja", () => {
+    const { container } = renderWithLocale("ja");
+    const section = container.querySelector("#settings-display-mode")?.closest("section");
+    expect(section).not.toBeNull();
+    for (const en of ["Display", "Node display", "Shape cards", "Icon cards", "legacy"]) {
+      expect(section?.textContent).not.toContain(en);
+    }
   });
 });

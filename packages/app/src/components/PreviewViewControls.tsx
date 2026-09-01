@@ -23,6 +23,12 @@ import { availableGroupByAxes, isGroupByMode } from "./preview-group-by.js";
  * locale. Show All Layers is on this side despite reading like an export: it
  * swaps the diagram being drawn.
  *
+ * Icon mode is the one deliberate exception. It changes the diagram, so by the
+ * rule above it belongs here, but it was de-emphasized into a legacy display
+ * mode and moved to the Settings tab's Display section (#2376) — the node
+ * redesign (#2366) removed the reasons it was introduced for. De-emphasis, not
+ * the placement rule, is why it left; nothing else follows it.
+ *
  * These sit in the breadcrumb's row rather than floating over the diagram:
  * a floating bar covered the top-left of the drawing and intercepted clicks
  * meant for the node under it (TPL-948). The row already existed and its right
@@ -36,8 +42,6 @@ export function PreviewViewControls({
 }) {
   const {
     activeView,
-    displayMode,
-    onDisplayModeChange,
     isAllLayersOpen,
     onAllLayersToggle,
     isOrgTreeViewOpen,
@@ -53,14 +57,6 @@ export function PreviewViewControls({
 
   return (
     <div className="preview-view-controls">
-      <Button
-        variant="actionable"
-        aria-pressed={displayMode === "icon"}
-        onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
-        aria-label={t("preview.iconMode.ariaLabel")}
-      >
-        ◇ {t("preview.iconMode.label")}
-      </Button>
       {activeView === "system" && groupByAxes.length > 0 && (
         <span className="group-by-selector-label">
           <label htmlFor="group-by-select">{t("preview.groupBy.label")}</label>

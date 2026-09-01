@@ -6,7 +6,6 @@ import type {
   NodeMetadata,
   Warning,
   DeployBlockInfo,
-  DisplayMode,
   NodeDiffMeta,
   SystemNode,
   FacetOverviewEntry,
@@ -126,8 +125,6 @@ export interface PreviewContextValue {
   selectedDeployBlockId?: string | null;
   onDeployBlockChange?: (id: string) => void;
 
-  displayMode: DisplayMode;
-  onDisplayModeChange: (mode: DisplayMode) => void;
   onExportSvg: (svg: string, filename: string) => void;
   /**
    * Whether the active file has shareable source — drives the Share button's

@@ -113,7 +113,6 @@ describe("PreviewViewControls — which surface a control lives on", () => {
     const labels = Array.from(bar.querySelectorAll("[aria-label]")).map((el) =>
       el.getAttribute("aria-label"),
     );
-    expect(labels).toContain("Toggle icon mode");
     expect(labels).toContain("Toggle entity view");
     expect(labels).toContain("Toggle all layers");
     // Show All Layers reads like an export but swaps the drawn diagram, so it
@@ -145,22 +144,37 @@ describe("PreviewViewControls — which surface a control lives on", () => {
 
 describe("PreviewViewControls — contracts the move must not drop", () => {
   it("keeps aria-pressed on the toggles it carries, in both states (TPL-1399, TPL-1402)", () => {
-    const off = renderPreview();
-    const iconMode = off.bar.querySelector('[aria-label="Toggle icon mode"]');
-    expect(iconMode?.getAttribute("aria-pressed")).toBe("false");
+    const off = renderPreview({ activeView: "org" } as Partial<PreviewContextValue>);
+    const treeView = off.bar.querySelector('[aria-label="Toggle org tree view"]');
+    expect(treeView?.getAttribute("aria-pressed")).toBe("false");
     cleanup();
 
-    const on = renderPreview({ displayMode: "icon" } as Partial<PreviewContextValue>);
+    const on = renderPreview({
+      activeView: "org",
+      isOrgTreeViewOpen: true,
+    } as Partial<PreviewContextValue>);
     expect(
-      on.bar.querySelector('[aria-label="Toggle icon mode"]')?.getAttribute("aria-pressed"),
+      on.bar.querySelector('[aria-label="Toggle org tree view"]')?.getAttribute("aria-pressed"),
     ).toBe("true");
   });
 
   it("still calls the handler the toolbar used to call", () => {
-    const onDisplayModeChange = vi.fn<() => void>();
-    const { bar } = renderPreview({ onDisplayModeChange } as Partial<PreviewContextValue>);
-    fireEvent.click(bar.querySelector('[aria-label="Toggle icon mode"]') as HTMLElement);
-    expect(onDisplayModeChange).toHaveBeenCalledWith("icon");
+    const onOrgTreeViewToggle = vi.fn<() => void>();
+    const { bar } = renderPreview({
+      activeView: "org",
+      onOrgTreeViewToggle,
+    } as Partial<PreviewContextValue>);
+    fireEvent.click(bar.querySelector('[aria-label="Toggle org tree view"]') as HTMLElement);
+    expect(onOrgTreeViewToggle).toHaveBeenCalled();
+  });
+
+  // #2376: icon mode left this surface for the Settings pane. It is the one
+  // control that moved for de-emphasis rather than for the placement rule, so
+  // pin its absence here — a re-added button would silently undo that.
+  it("no longer carries the icon-mode toggle", () => {
+    const { bar } = renderPreview();
+    expect(bar.querySelector('[aria-label="Toggle icon mode"]')).toBeNull();
+    expect(bar.textContent).not.toContain("Icon Mode");
   });
 
   it("disables Show All Layers on the deploy view, as the toolbar did", () => {

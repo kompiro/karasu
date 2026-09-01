@@ -29,6 +29,13 @@ export type Translations = {
   "theme.light": string;
   "theme.dark": string;
 
+  // Settings pane — display (#2376)
+  "settings.display.title": string;
+  "settings.displayMode.label": string;
+  "settings.displayMode.shape": string;
+  "settings.displayMode.icon": string;
+  "settings.displayMode.hint": string;
+
   // Settings pane (Phase C2)
   "settings.ai.title": string;
   "settings.security.heading": string;
@@ -198,8 +205,6 @@ export type Translations = {
   "preview.export.drawio.failed": (params: { detail: string }) => string;
 
   // Preview toolbar — view-state toggles and window-opening controls
-  "preview.iconMode.label": string;
-  "preview.iconMode.ariaLabel": string;
   "preview.orgTree.label": string;
   "preview.orgTree.ariaLabel": string;
   "preview.entities.label": string;

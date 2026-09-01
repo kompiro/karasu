@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { DisplayMode } from "@karasu-tools/core";
 import {
   getStoredApiKey,
   setStoredApiKey,
@@ -14,9 +15,19 @@ import { Button } from "@/components/ui/button";
 
 interface SettingsPaneProps {
   onApiKeyChange: () => void;
+  /**
+   * How nodes are drawn. Lives in the app reducer, so it arrives as a prop
+   * rather than through a context — the pane stays renderable on its own.
+   */
+  displayMode: DisplayMode;
+  onDisplayModeChange: (mode: DisplayMode) => void;
 }
 
-export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
+export function SettingsPane({
+  onApiKeyChange,
+  displayMode,
+  onDisplayModeChange,
+}: SettingsPaneProps) {
   const { t, locale, setLocale } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [apiKey, setApiKey] = useState(() => getStoredApiKey() ?? "");
@@ -73,6 +84,31 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
             <option value="light">{t("theme.light")}</option>
             <option value="dark">{t("theme.dark")}</option>
           </select>
+        </div>
+      </section>
+
+      {/* Icon mode used to be a toggle button in the drill-path row. It was
+          de-emphasized to a legacy display mode here (#2376): the node
+          redesign (#2366) removed the reasons it was introduced for, so it is
+          kept working but out of the way while its deprecation is decided. */}
+      <section className="settings-section">
+        <h2 className="settings-section__title">{t("settings.display.title")}</h2>
+
+        <div className="settings-field">
+          <label className="settings-field__label" htmlFor="settings-display-mode">
+            {t("settings.displayMode.label")}
+          </label>
+          <select
+            id="settings-display-mode"
+            className="settings-field__input"
+            value={displayMode}
+            onChange={(e) => onDisplayModeChange(e.target.value as DisplayMode)}
+            aria-label={t("settings.displayMode.label")}
+          >
+            <option value="shape">{t("settings.displayMode.shape")}</option>
+            <option value="icon">{t("settings.displayMode.icon")}</option>
+          </select>
+          <p className="settings-field__hint">{t("settings.displayMode.hint")}</p>
         </div>
       </section>
 

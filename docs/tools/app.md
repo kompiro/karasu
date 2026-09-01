@@ -121,7 +121,6 @@ a second row at ordinary window widths.
 
 #### Drill-path row — what changes the diagram
 
-- **Icon mode** — toggle between service icons and plain shapes.
 - **Group by** (System view, when the model has an `organization` block) —
   choose **Team** to wrap each owning team's services in a collapsible boundary
   frame. Each frame has a ⊖/⊕ toggle.
@@ -189,6 +188,22 @@ assisted by:
 The edit pane also has **Chat** and **Settings** tabs. Chat is an optional AI
 assistant for drafting and editing `.krs`; it requires you to store an API key in
 Settings first.
+
+Settings holds the preferences that outlive a single diagram: **Language**,
+**Theme**, **Display**, and the Chat API key.
+
+**Display → Node display** picks how nodes are drawn:
+
+- **Shape cards (default)** — variable-width cards sized to their content.
+- **Icon cards (legacy)** — every node drawn at a fixed size with a service
+  icon. This is a **legacy display mode**. The node rendering redesign removed
+  the reasons it was introduced for, and external SVG icons (`shape: url()`)
+  work in shape mode too, so it is kept for compatibility and may be removed in
+  a future release. It is not needed for icons.
+
+Because Display lives in the edit pane, it is not available under
+`karasu serve`, which renders the preview on its own. Language and Theme are
+reached the same way and share that limitation.
 
 ## Keyboard shortcuts
 

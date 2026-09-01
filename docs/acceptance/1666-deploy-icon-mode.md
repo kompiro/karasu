@@ -45,7 +45,7 @@ renders team/member pictograms (more icon glyphs than `displayMode: "shape"`).
 
 **Steps:**
 1. Open a `.krs` with a `deploy { ... }` block (e.g. `oci`, `lambda`, `store`).
-2. Switch to the deploy view and toggle **Icon Mode**.
+2. Switch to the deploy view, then pick "Icon cards (legacy)" under Settings → Display (#2376).
 
 **Expected:** deploy nodes render as the kind's icon card (oci / lambda / … icon),
 matching how the system view responds to Icon Mode — not plain shape cards. The

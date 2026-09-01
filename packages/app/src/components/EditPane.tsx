@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import type { editor } from "monaco-editor";
-import type { SystemNode, OrganizationBlock } from "@karasu-tools/core";
+import type { SystemNode, OrganizationBlock, DisplayMode } from "@karasu-tools/core";
 import { EditorPane } from "./EditorPane.js";
 import { EditTabBar, type EditTab } from "./EditTabBar.js";
 import { EditTabShortcuts } from "./EditTabShortcuts.js";
@@ -30,6 +30,9 @@ interface EditPaneProps {
   onTidyStyle?: () => void;
   /** When true, the Format button is disabled (source has parse errors) */
   hasParseErrors?: boolean;
+  /** Node display mode, surfaced by the Settings tab's Display section (#2376). */
+  displayMode: DisplayMode;
+  onDisplayModeChange: (mode: DisplayMode) => void;
 }
 
 export function EditPane({
@@ -47,6 +50,8 @@ export function EditPane({
   onFormat,
   onTidyStyle,
   hasParseErrors,
+  displayMode,
+  onDisplayModeChange,
 }: EditPaneProps) {
   const [activeTab, setActiveTab] = useState<EditTab>("editor");
   const [apiKey, setApiKey] = useState<string | null>(() => getStoredApiKey());
@@ -93,7 +98,13 @@ export function EditPane({
           onNavigateToSettings={handleNavigateToSettings}
         />
       )}
-      {activeTab === "settings" && <SettingsPane onApiKeyChange={handleApiKeyChange} />}
+      {activeTab === "settings" && (
+        <SettingsPane
+          onApiKeyChange={handleApiKeyChange}
+          displayMode={displayMode}
+          onDisplayModeChange={onDisplayModeChange}
+        />
+      )}
     </div>
   );
 }
