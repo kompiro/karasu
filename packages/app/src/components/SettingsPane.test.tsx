@@ -355,7 +355,7 @@ describe("SettingsPane — Display section (#2376)", () => {
     const { container } = renderWithLocale("ja");
     const section = container.querySelector("#settings-display-mode")?.closest("section");
     expect(section).not.toBeNull();
-    for (const en of ["Display", "Node display", "Shape cards", "Icon cards"]) {
+    for (const en of ["Display", "Node display", "Shape cards", "Icon cards", "legacy"]) {
       expect(section?.textContent).not.toContain(en);
     }
   });
