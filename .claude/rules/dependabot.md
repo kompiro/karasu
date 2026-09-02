@@ -160,3 +160,14 @@ PR を close → 人間 PR で再提出 など）を行った場合は、その�
 
 通常通りマージするだけのバッチは ADR 不要。判断ログが必要なケースだけ
 書く（直近例: `ADR-909`）。
+
+## 下ごしらえは workflow が済ませていることがある
+
+`.github/workflows/dependabot-triage.md`（週次）と `security-alert-sweep.md`
+（dispatch）が、upstream 追跡と alert の突き合わせを先に走らせている。トリアージを
+始めたら、まず対象 PR のコメントと `[dep-triage]` / `[security-alert]` の Issue を
+読む。所見が既にあるなら追跡をやり直さず、**その所見を検証する側に時間を使う**。
+
+所見は判定ではない。workflow は宣言上マージも close もできない
+（`scripts/ci/agentic-workflow-safety.test.ts`）。採用 / 保留 / 却下は本ファイルの
+判定語彙に従って人が決める。
