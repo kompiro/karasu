@@ -1315,14 +1315,17 @@ system ECPlatform {
   });
 
   describe("domain-to-domain edges", () => {
+    // The edge sits in `Order`, the domain it starts from: the origin-scope
+    // rule binds a domain-block edge to its own block id, and the spelling that
+    // breaks it is an `edge-source-mismatch` error that draws nowhere (#2501).
     const INTRA_SERVICE_KRS = `
 system ECPlatform {
   service ECommerce {
     domain Order {
+      Order -> Billing "generate invoice"
       usecase PlaceOrder
     }
     domain Billing {
-      Order -> Billing "generate invoice"
     }
   }
 }
@@ -1845,6 +1848,55 @@ system T {
 `);
       expect(spellings(extractView(systems, []))).not.toContain("S1->B");
       expect(spellings(extractView(systems, ["T"]))).not.toContain("S1->B");
+    });
+
+    it("does not render an edge whose source is not the declaring service (#2501)", () => {
+      // `S1`'s block names `S2` as the source, which the origin-scope rule
+      // forbids: the parser keeps the edge for recovery but rejects it with an
+      // `edge-source-mismatch` error, so no canvas may draw it.
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    S2 -> S3 "leaked"
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+  service S3 { domain C { usecase w {} } }
+}
+`);
+      expect(spellings(extractView(systems, []))).not.toContain("S2->S3");
+      expect(spellings(extractView(systems, ["T"]))).not.toContain("S2->S3");
+    });
+
+    it("does not render an edge whose source is not the declaring domain (#2501)", () => {
+      // The same rule on the intra-service domain pass, which predates #2223.
+      const systems = parseSystem(`
+system T {
+  service S1 {
+    domain A { usecase u {} }
+    domain B { usecase v {} }
+    domain C { A -> B
+      usecase w {}
+    }
+  }
+}
+`);
+      expect(spellings(extractView(systems, ["T", "S1"]))).not.toContain("A->B");
+    });
+
+    it("still renders a foreign-sourced edge from a block with no origin-scope rule (#2501)", () => {
+      // `client` is not one of the kinds the parser binds to its block id, so
+      // this edge carries no diagnostic — dropping it would be a silent drop.
+      const systems = parseSystem(`
+system T {
+  client W [web] {
+    S1 -> S2
+  }
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+}
+`);
+      expect(spellings(extractView(systems, []))).toContain("S1->S2");
     });
 
     it("feeds the ghost-system machinery for a qualified cross-system target", () => {

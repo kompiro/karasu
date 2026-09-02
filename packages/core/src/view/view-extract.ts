@@ -503,6 +503,27 @@ function drawnEdgeKey(edge: KrsEdge): string {
 }
 
 /**
+ * Block kinds that own their edges' origin scope: the parser rejects an
+ * explicit edge whose source is not the block id (`edge-source-mismatch`,
+ * `parser.ts`), so a foreign source surviving on one of these is an **errored**
+ * declaration kept for recovery, not a spelling of the model. Every other kind
+ * carries no such rule — `client W { S1 -> S2 }` parses clean — so its edges
+ * are lifted as written; guarding them would drop them with no diagnostic
+ * anywhere, which is the silent drop TPL-2075 forbids.
+ */
+const ORIGIN_SCOPED_KINDS: ReadonlySet<string> = new Set(["service", "domain", "entity"]);
+
+/**
+ * Is this edge anchored at the block that declares it, so the parent canvas may
+ * draw it? Single definition of the lift condition, shared by
+ * {@link collectAnchoredPeerEdges} and {@link withChildAnchoredEdges} so the two
+ * cannot drift apart on the same rule (#2501).
+ */
+function isAnchoredAt(child: KrsNode, edge: KrsEdge): boolean {
+  return !ORIGIN_SCOPED_KINDS.has(child.kind) || edge.from === nodeId(child);
+}
+
+/**
  * Child-anchored edges (#2223). An edge declared inside a `service` / `domain`
  * block originates from that block (spec § Edge origin scope), so the canvas
  * that can draw it is the **parent's** — the one where the declaring block
@@ -520,6 +541,12 @@ function drawnEdgeKey(edge: KrsEdge): string {
  * entity view via {@link extractEntityView}, and the entities themselves are
  * filtered out of this canvas's nodes.
  *
+ * Both endpoints being peers is not sufficient — the edge must also be
+ * {@link isAnchoredAt} the block it was declared in (#2501). Lifting a
+ * source-mismatched declaration would draw an arrow the parser has already
+ * rejected with an error, and draw it identically to the same edge written at
+ * its canonical source: one relation, two spellings.
+ *
  * `drawnKeys` is read **and extended**, so callers can chain this after the
  * container's own edges and let those win on a duplicate spelling.
  */
@@ -529,6 +556,7 @@ function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): 
   const anchored: KrsEdge[] = [];
   for (const child of renderable) {
     for (const edge of child.edges) {
+      if (!isAnchoredAt(child, edge)) continue;
       if (!peerIds.has(edge.from) || !peerIds.has(edge.to)) continue;
       const key = drawnEdgeKey(edge);
       if (drawnKeys.has(key)) continue;
@@ -544,8 +572,9 @@ function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): 
  * (#2223) — `service S { S -> Other.Svc }` is the service-scope spelling of
  * `system T { S -> Other.Svc }`, so it must feed the same system-scope
  * machinery: ghost systems, caller ghost systems, cross-system edges and
- * ghost users. Anchored edges are self-sourced by the origin-scope rule, so
- * only those are lifted.
+ * ghost users. What may be lifted is {@link isAnchoredAt} — the same condition
+ * {@link collectAnchoredPeerEdges} applies, so the two helpers cannot answer
+ * the origin-scope question differently (#2501).
  *
  * Exported for `renderer/layout.ts`: the multi-system / `__unassigned__` root
  * lays each system out from `sys.edges` rather than from `ViewSlice.childEdges`,
@@ -554,7 +583,7 @@ function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): 
  */
 export function withChildAnchoredEdges(system: KrsNode): KrsEdge[] {
   const anchored = system.children.flatMap((child) =>
-    child.edges.filter((e) => e.from === nodeId(child)),
+    child.edges.filter((e) => isAnchoredAt(child, e)),
   );
   return anchored.length > 0 ? [...system.edges, ...anchored] : system.edges;
 }

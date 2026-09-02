@@ -4,7 +4,7 @@ import { withUnassignedSystem } from "./unassigned-system.js";
 import { layout } from "../renderer/layout.js";
 import { Parser } from "../parser/parser.js";
 import { analyze } from "../resolver/warnings.js";
-import type { KrsFile, KrsNode } from "../types/ast.js";
+import type { KrsFile, KrsNode, ParseResult } from "../types/ast.js";
 
 /**
  * TPL-2075 in executable form: an edge the parser accepts is either drawn on
@@ -45,10 +45,22 @@ function rendersAnywhere(file: KrsFile, from: string, to: string): boolean {
   });
 }
 
-function isReported(file: KrsFile, endpointId: string): boolean {
-  return analyze(file, []).some(
-    (w) => w.kind === "edge-endpoint-not-at-scope" && w.params.endpointId === endpointId,
+/**
+ * Is the edge reported anywhere? "Reported" spans **every register and every
+ * stage**, not just the resolver: a source-mismatched declaration is rejected
+ * by the parser (`edge-source-mismatch`, an error), and that is the whole
+ * signal the author gets once the view side stops drawing it (#2501). Counting
+ * only `analyze()` here is what let a rendered-*and*-errored edge sit in this
+ * table looking fine.
+ */
+function isReported(parsed: ParseResult<KrsFile>, placement: Placement): boolean {
+  const mismatched = parsed.diagnostics.some(
+    (d) => d.code === "edge-source-mismatch" && d.params.from === placement.edge[0],
   );
+  const notAtScope = analyze(parsed.value, []).some(
+    (w) => w.kind === "edge-endpoint-not-at-scope" && w.params.endpointId === placement.endpoint,
+  );
+  return mismatched || notAtScope;
 }
 
 interface Placement {
@@ -195,6 +207,61 @@ system U {
     outcome: "renders",
   },
   {
+    // The origin-scope rule forbids naming another service as the source, so
+    // the parser has already rejected this with an error. Drawing it anyway
+    // would give one relation a second spelling (#2501).
+    name: "service-anchored edge whose source is a sibling service",
+    krs: `
+system T {
+  service S1 { S2 -> S3 "leaked"
+    domain A { usecase u {} }
+  }
+  service S2 { domain B { usecase v {} } }
+  service S3 { domain C { usecase w {} } }
+}
+`,
+    edge: ["S2", "S3"],
+    endpoint: "S3",
+    outcome: "reported",
+  },
+  {
+    // The same rule one scope down. This half predates #2223: the intra-service
+    // domain pass never checked the source either (#2501).
+    name: "domain-anchored edge whose source is a sibling domain",
+    krs: `
+system T {
+  service S1 {
+    domain A { usecase u {} }
+    domain B { usecase v {} }
+    domain C { A -> B
+      usecase w {}
+    }
+  }
+}
+`,
+    edge: ["A", "B"],
+    endpoint: "B",
+    outcome: "reported",
+  },
+  {
+    // A `client` block carries **no** origin-scope rule — the parser accepts a
+    // foreign source there without a diagnostic — so the source guard must not
+    // reach it, or the edge would drop with no signal at all (#2501).
+    name: "edge anchored in a client block, sourced at a sibling service",
+    krs: `
+system T {
+  client W [web] {
+    S1 -> S2
+  }
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+}
+`,
+    edge: ["S1", "S2"],
+    endpoint: "S2",
+    outcome: "renders",
+  },
+  {
     // A top-level `client` is not wrapped into the `__unassigned__` frame, so
     // it shares a canvas with nothing — the edge has nowhere to draw.
     name: "edge anchored in a top-level client",
@@ -268,10 +335,10 @@ service S2 { domain B { usecase v {} } }
 describe("an authored edge either renders or is reported (TPL-2075)", () => {
   for (const placement of PLACEMENTS) {
     it(`${placement.name} — ${placement.outcome}`, () => {
-      const file = Parser.parse(placement.krs).value;
+      const parsed = Parser.parse(placement.krs);
       const [from, to] = placement.edge;
-      const renders = rendersAnywhere(file, from, to);
-      const reported = isReported(file, placement.endpoint);
+      const renders = rendersAnywhere(parsed.value, from, to);
+      const reported = isReported(parsed, placement);
 
       expect({ renders, reported }).toEqual({
         renders: placement.outcome === "renders",
