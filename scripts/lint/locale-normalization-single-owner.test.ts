@@ -88,12 +88,15 @@ describe("locale-normalization-single-owner scanner", () => {
           'if (id.startsWith("java-service")) {}',
           'if (path.startsWith("/jobs")) {}',
           'if (parts.split("/")[0] === "jamstack") {}',
+          "const stem = name.split(/[.]/)[0];",
+          "const major = version.split(/[.-]/)[0];",
         ].join("\n"),
       );
 
       // "java-service" and "jamstack" begin with the same two letters, so a
-      // pattern that stopped at the quote would fire on both. "/" is not a
-      // locale separator, so the split is not a primary-subtag extraction.
+      // pattern that stopped at the quote would fire on both. The two splits
+      // take a filename and a version apart: "/" is not a locale separator at
+      // all, and a dot-only class is how those are split, not a locale tag.
       expect(scanFile(file, tempDir)).toEqual([]);
     });
 

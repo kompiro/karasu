@@ -57,11 +57,16 @@ const PATTERN_SPLIT_EQUALS =
  *
  * The comparison that follows it may be anything (`=== "ja"`, a `Set` lookup,
  * a `switch`), so keying on the comparison alone would miss a consumer that
- * copied the owner wholesale. Requiring the separator class to be exactly the
- * locale separators keeps unrelated splits (on `/`, `,`, whitespace) out.
+ * copied the owner wholesale.
+ *
+ * The separator class has to be built only from `-` `_` `.` *and* contain the
+ * underscore. Splitting on a dot alone is how filenames and versions are taken
+ * apart (`name.split(/[.]/)[0]`), which has nothing to do with locales; the
+ * underscore is what makes it a locale split, because a consumer normalizing
+ * tags has to handle the POSIX `ja_JP` form to be doing the job at all.
  */
 const PATTERN_PRIMARY_SUBTAG_SPLIT =
-  /\.\s*split\s*\(\s*\/\[[-_.\\]+\]\/[a-z]*\s*(?:,[^)]*)?\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))/;
+  /\.\s*split\s*\(\s*\/\[[-_.\\]*_[-_.\\]*\]\/[a-z]*\s*(?:,[^)]*)?\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))/;
 
 /**
  * The rule's owner and its test, which must be free to spell the rule out.
