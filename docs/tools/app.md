@@ -202,7 +202,7 @@ Settings holds the preferences that outlive a single diagram: **Language**,
 
 Because Display lives in the edit pane, it is not available under
 `karasu serve`, which renders the preview on its own. Language and Theme are
-reached the same way and share that limitation.
+reached the same way, as is the Chat API key, and share that limitation.
 
 ## Keyboard shortcuts
 
