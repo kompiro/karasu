@@ -225,6 +225,7 @@ flowchart TD
     ADR_2209["ADR-2209<br/>エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
     ADR_2223["ADR-2223<br/>service ブロックに書いたエッジは、その service をノードとして描くビューに描画する"]
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
+    ADR_2501["ADR-2501<br/>起点スコープに反するエッジ宣言はどのビューにも描画しない"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   end
   subgraph navigation["navigation"]
@@ -865,6 +866,7 @@ flowchart TD
   class ADR_2477 accepted
   class ADR_2482 accepted
   class ADR_2493 accepted
+  class ADR_2501 accepted
   class ADR_2521 accepted
   class ADR_2522 accepted
   class ADR_2547 accepted

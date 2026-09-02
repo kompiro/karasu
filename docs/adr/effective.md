@@ -231,6 +231,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2209](2209-edge-property-block.md) — エッジのプロパティブロックを additive に足し、位置引数 label は正式な shorthand として残す
 - [ADR-2223](2223-service-anchored-edge-renders-on-parent-canvas.md) — service ブロックに書いたエッジは、その service をノードとして描くビューに描画する
 - [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
+- [ADR-2501](2501-errored-edge-declaration-renders-nowhere.md) — 起点スコープに反するエッジ宣言はどのビューにも描画しない
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 
 ## navigation
