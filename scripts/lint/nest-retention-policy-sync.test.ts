@@ -64,6 +64,26 @@ function constant(path: string, name: string): number {
 const POLICY = "docs/policy/nest-data-handling.md";
 
 /**
+ * The two drafts a public submission surface needs (#2591).
+ *
+ * They are checked here for the same reason the technical document is, only
+ * more so: a privacy policy that states a retention the code does not honour
+ * is not a stale doc, it is a promise the service breaks. Three documents now
+ * state the same facts, and three copies of a fact drift
+ * (TPL-1032) — so every one of them is asserted against the code, not against
+ * each other.
+ *
+ * They are drafts and are deliberately NOT in the docs site's
+ * `PUBLISHED_EN_FILES`: publishing unreviewed legal text is the thing their
+ * own warning banner forbids. This guard is what keeps them true while they
+ * wait for review.
+ */
+const DRAFTS = ["docs/policy/nest-privacy.md", "docs/policy/nest-terms.md"];
+
+/** The single window third-party complaints arrive through. */
+const CONTACT = "https://github.com/kompiro/karasu/issues";
+
+/**
  * Assert that a store never passes an expiry.
  *
  * The absence of a TTL cannot be proved by waiting, so it is checked at the
@@ -80,6 +100,58 @@ function assertNoTtl(path: string): void {
 
 describe("the data-handling document matches the code (#1996, #2591)", () => {
   const policy = read(POLICY);
+
+  it("says in the privacy policy that a submission is kept until its author deletes it", () => {
+    // The privacy policy is what a submitter actually reads. If it says a
+    // number and the code keeps things forever -- or the reverse -- the
+    // document is the part that is wrong, and nothing else would catch it.
+    expect(read("docs/policy/nest-privacy.md")).toContain("**投稿者が削除するまで**");
+  });
+
+  it("does not promise a session that renews itself", () => {
+    // `sessions.ts` fixes the window at issue on purpose, and says why. A draft
+    // that describes a session extended on use is describing a rolling
+    // credential the code does not implement -- which is what this PR shipped
+    // until review caught it.
+    //
+    // Anchored on the code comment so it fails in both directions: change the
+    // implementation to renew, and this fails until the documents follow.
+    // Two positive assertions rather than a banned-word list: the correct
+    // wording says "延長されない", so negating 延長 would fail on the right text.
+    expect(read("packages/nest/src/store/sessions.ts")).toContain("Not renewed on use");
+    expect(read("docs/policy/nest-privacy.md")).toContain("発行時から固定");
+  });
+
+  it("keeps every draft out of the published set until a human has read it", () => {
+    // Their own banner says they must not be published. This is that banner
+    // as a check, because a banner is not a gate.
+    const siteMap = read("packages/docs-site/scripts/lib/site-map.ts");
+    for (const draft of DRAFTS) {
+      expect(read(draft)).toContain("法務レビュー未了");
+      expect(siteMap).not.toContain(draft.replace("docs/", ""));
+    }
+  });
+
+  it("names one contact point, and the same one, in every draft", () => {
+    // Third-party complaints arrive as GitHub Issues: no form, no new personal
+    // data, publicly auditable. A draft that quietly grew an email address
+    // would undo the reason no email is held.
+    // "One" has to mean no second window beside it, not merely that this one
+    // is present -- so every external URL in the draft is collected and the set
+    // has to be exactly this one. An email address is caught separately because
+    // it is the form a contact point grows in without looking like a link.
+    for (const draft of DRAFTS) {
+      const text = read(draft);
+      // A link to one issue (`/issues/2591`) is a citation, not a window;
+      // the window is the list you file into. Dropping the numbered form keeps
+      // the check on contact points, and any other host still fails it.
+      const urls = [...new Set(text.match(/https?:\/\/[^\s)>）]+/g) ?? [])].filter(
+        (url) => !/\/issues\/\d+$/.test(url),
+      );
+      expect(urls).toEqual([CONTACT]);
+      expect(text).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+    }
+  });
 
   it("keeps a submission until its author deletes it, and says so", () => {
     // The decision, not an omission: content its author manages must not
