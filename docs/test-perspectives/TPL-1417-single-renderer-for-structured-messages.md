@@ -72,7 +72,7 @@ consumer ごとに表示が割れる。
 - **共有 renderer に集約**: `@karasu-tools/i18n` の `renderWarning(w, t)` /
   `renderDiagnostic(d, t)` が `Warning` / `Diagnostic` の唯一のユーザー向け
   文字列化経路。app は React フック、lsp は `initialize` の locale、cli は
-  `LANG` / `LC_ALL` でそれぞれ `t` を束ねて同じ renderer を呼ぶ。
+  `LC_ALL` / `LC_MESSAGES` / `LANG` でそれぞれ `t` を束ねて同じ renderer を呼ぶ。
 - **網羅性の強制**: 各 renderer の `switch` 末尾に `const _: never = x` を置き、
   `kind` / `code` 追加時にコンパイルエラーで更新漏れを検出する。
 - **i18n を呼べない場所では構造化フィールドを直接使う**: core 内部のエラー

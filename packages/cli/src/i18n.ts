@@ -18,11 +18,16 @@ import {
 
 /**
  * Resolve the CLI's output locale from POSIX locale environment variables.
- * `LC_ALL` overrides `LANG`; normalizing the resulting tag is
- * `resolveLocaleTag`'s job, shared with the app / lsp / vscode consumers.
+ *
+ * Follows the POSIX precedence for the *message catalog* locale:
+ * `LC_ALL` > `LC_MESSAGES` > `LANG`. `LC_ALL` is the blanket override, while
+ * `LC_MESSAGES` is what a user sets to keep English number / date formatting
+ * (`LANG=en_US.UTF-8`) alongside Japanese program messages, so it must win
+ * over `LANG`. Normalizing the resulting tag is `resolveLocaleTag`'s job,
+ * shared with the app / lsp / vscode consumers.
  */
 export function resolveCliLocale(env: NodeJS.ProcessEnv = process.env): Locale {
-  return resolveLocaleTag(env.LC_ALL || env.LANG);
+  return resolveLocaleTag(env.LC_ALL || env.LC_MESSAGES || env.LANG);
 }
 
 // The CLI process locale is fixed for the lifetime of the run.
