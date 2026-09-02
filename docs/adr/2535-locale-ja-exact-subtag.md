@@ -82,12 +82,14 @@ export function resolveLocaleTag(raw: string | null | undefined): Locale {
   落とす形で締めても、どちらも赤くなる。
 - **drift ガードが規則の形に追従する。** `scripts/lint/locale-normalization-single-owner.ts`
   は前方一致のイディオムだけを検出していた。5 つ目の consumer が再インライン化する
-  なら今読める形を写すので、`split(...)[0] === "ja"` と、主要サブタグの取り出し
-  （`.split(/[-_.]/, 1)[0]`）自体を検出対象に足す。後者を入れたのは、比較の側は
-  `Set` でも `switch` でも書けるため、比較だけを鍵にすると owner を丸写しした
-  consumer を取り逃すから。所有者免除が生きていること（owner がガードの検出対象を
-  実際に綴っていること）は `locale-normalization-single-owner.test.ts` が
-  allowlist の外から同じファイルを走査して確かめる。
+  なら今読める形を写すので、`split(...)[0] === "ja"` を検出対象に足す。
+  ガードが鍵にするのは**日本語タグとの比較**であって、タグの切り出しではない —
+  `[-_.]` で切って先頭を取る操作は、複合識別子やバージョン文字列を分解する書き方
+  でもあり（`version.split(/[._-]/)[0]`）、切り出しだけを鍵にすると通常のコードを
+  locale 正規化として報告してしまう。その結果 owner 自身は（`Set` で比較するため）
+  検出対象に入らず、`locale.ts` の allowlist 登録は予防的なものになる。免除が
+  パスの腐りで死なないことは、免除しているパスに今も `resolveLocaleTag` が居ることを
+  `locale-normalization-single-owner.test.ts` が確かめる。
 
 ## 却下した案
 

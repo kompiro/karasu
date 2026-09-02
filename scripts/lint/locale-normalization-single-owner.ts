@@ -20,6 +20,14 @@ import { join, relative, resolve } from "node:path";
  * rule used to have and the primary-subtag form it has now (ADR-2535): a
  * consumer re-inlining the rule copies whichever shape it reads in the owner,
  * so the guard has to know both.
+ *
+ * What every pattern keys on is the *comparison against the Japanese tag*,
+ * never the tag surgery alone. Pulling element 0 off a `[-_.]` split is also
+ * how a compound identifier or a version string is taken apart, so a pattern
+ * that stopped at the split would report ordinary code as locale
+ * normalization. That leaves the owner itself unflagged, since it compares
+ * with a `Set` lookup — its allowlist entry is precautionary, and the test
+ * asserts the path still names the rule's owner.
  */
 
 export interface Finding {
@@ -52,25 +60,9 @@ const PATTERN_SPLIT_EQUALS =
   /\.\s*split\s*\([^)]*\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))\s*===?\s*(["'`])ja(?:panese)?\1/i;
 
 /**
- * `.split(/[-_.]/, 1)[0]` — pulling the primary subtag off a raw tag, which is
- * the first half of the rule and the shape the owner spells out.
- *
- * The comparison that follows it may be anything (`=== "ja"`, a `Set` lookup,
- * a `switch`), so keying on the comparison alone would miss a consumer that
- * copied the owner wholesale.
- *
- * The separator class has to be built only from `-` `_` `.` *and* contain the
- * underscore. Splitting on a dot alone is how filenames and versions are taken
- * apart (`name.split(/[.]/)[0]`), which has nothing to do with locales; the
- * underscore is what makes it a locale split, because a consumer normalizing
- * tags has to handle the POSIX `ja_JP` form to be doing the job at all.
- */
-const PATTERN_PRIMARY_SUBTAG_SPLIT =
-  /\.\s*split\s*\(\s*\/\[[-_.\\]*_[-_.\\]*\]\/[a-z]*\s*(?:,[^)]*)?\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))/;
-
-/**
- * The rule's owner and its test, which must be free to spell the rule out.
- * Everything else under `packages/` delegates.
+ * The rule's owner and its test, which must be free to spell the rule out in
+ * any form, including one a pattern above would flag. Everything else under
+ * `packages/` delegates.
  */
 const ALLOWED = ["packages/i18n/src/locale.ts", "packages/i18n/src/locale.test.ts"];
 
@@ -121,8 +113,7 @@ export function scanFile(absPath: string, repoRoot: string): Finding[] {
     if (
       PATTERN_STARTS_WITH.test(line) ||
       PATTERN_SLICE_EQUALS.test(line) ||
-      PATTERN_SPLIT_EQUALS.test(line) ||
-      PATTERN_PRIMARY_SUBTAG_SPLIT.test(line)
+      PATTERN_SPLIT_EQUALS.test(line)
     ) {
       findings.push({ file, line: i + 1, text: line.trim() });
     }

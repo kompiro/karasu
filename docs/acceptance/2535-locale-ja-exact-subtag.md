@@ -2,6 +2,7 @@
 
 - **日付**: 2026-09-02
 - **関連 Issue**: [#2535](https://github.com/kompiro/karasu/issues/2535)
+- **設計 (ADR)**: [ADR-2535](../adr/2535-locale-ja-exact-subtag.md)
 - **対象ファイル**: `packages/i18n/src/locale.ts`,
   `packages/i18n/src/locale.test.ts`,
   `scripts/lint/locale-normalization-single-owner.ts`,
@@ -33,13 +34,13 @@
 
   > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `regression rehearsal` › `flags the primary-subtag comparison form the owner now uses`
 
-- [x] drift ガードの所有者免除が腐っていない — `locale.ts` が実際に主要サブタグの分割で書かれていることを検証する
+- [x] drift ガードの所有者免除がパスの腐りで死んでいない — 免除しているパスに今も `resolveLocaleTag` が居る
 
-  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `real repo: the owner itself is allowed to spell the rule out`
+  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `real repo: the allowlist still points at the rule's owner`
 
-- [x] 隣接する識別子（`java-service` / `jamstack`）はガードの検出対象にならない
+- [x] ロケールと無関係な分割（ファイル名・バージョン・複合識別子を `[.]` / `[._-]` / `[-_]` で切る）や、同じ 2 文字で始まる識別子（`java-service` / `jamstack`）はガードの検出対象にならない
 
-  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `regression rehearsal` › `does not flag startsWith on unrelated prefixes`
+  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `regression rehearsal` › `does not flag unrelated identifiers that begin the same way`
 
 - [x] 実リポジトリで再インライン化がゼロである
 

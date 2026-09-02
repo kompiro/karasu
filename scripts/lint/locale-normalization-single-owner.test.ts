@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -12,17 +12,14 @@ describe("locale-normalization-single-owner scanner", () => {
     expect(scan(REPO_ROOT)).toEqual([]);
   });
 
-  it("real repo: the owner itself is allowed to spell the rule out", () => {
-    // The allowlist only means something while the owner actually spells the
-    // rule in a form the scanner would otherwise flag. Asserting both halves
-    // keeps the exemption from going quietly dead when the rule is reshaped
-    // (ADR-2535 turned a `startsWith` into a primary-subtag split).
+  it("real repo: the allowlist still points at the rule's owner", () => {
+    // The exemption is by path, so it rots silently if `resolveLocaleTag`
+    // moves. It is precautionary since ADR-2535 — the owner compares with a
+    // `Set` lookup, which no pattern here recognizes — so what is worth
+    // asserting is that the exempted path is still where the rule lives.
     const owner = resolve(REPO_ROOT, "packages/i18n/src/locale.ts");
     expect(scanFile(owner, REPO_ROOT)).toEqual([]);
-
-    // Same file seen from a root that puts it outside the allowlist: the
-    // scanner has to have something to say about it.
-    expect(scanFile(owner, resolve(REPO_ROOT, "packages/i18n/src"))).not.toEqual([]);
+    expect(readFileSync(owner, "utf8")).toMatch(/export function resolveLocaleTag\b/);
   });
 
   describe("regression rehearsal", () => {
@@ -89,14 +86,16 @@ describe("locale-normalization-single-owner scanner", () => {
           'if (path.startsWith("/jobs")) {}',
           'if (parts.split("/")[0] === "jamstack") {}',
           "const stem = name.split(/[.]/)[0];",
-          "const major = version.split(/[.-]/)[0];",
+          "const major = version.split(/[._-]/)[0];",
+          "const head = id.split(/[-_]/)[0];",
         ].join("\n"),
       );
 
       // "java-service" and "jamstack" begin with the same two letters, so a
-      // pattern that stopped at the quote would fire on both. The two splits
-      // take a filename and a version apart: "/" is not a locale separator at
-      // all, and a dot-only class is how those are split, not a locale tag.
+      // pattern that stopped at the quote would fire on both. The three splits
+      // take a filename, a version and a compound identifier apart on the very
+      // separators a locale tag uses — which is why no pattern here keys on the
+      // split alone, only on a comparison against the Japanese tag.
       expect(scanFile(file, tempDir)).toEqual([]);
     });
 
