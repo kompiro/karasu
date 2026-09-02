@@ -22,8 +22,10 @@
 効くためアイコンモード固有の価値ではなくなった。
 
 そこで Phase 1 として **de-emphasize** する。パンくず行にあった `◇ アイコンモード`
-トグルを撤去し、Settings タブの「表示」セクションに**レガシーな表示モード**として
-移す。core の `displayMode` API は変更しない（deprecation の可否は Phase 2 で判断する）。
+トグルを撤去し、Settings タブの「表示」セクションへ移して主導線から外す。
+機能としては従来どおり完全にサポートし、**「レガシー」等の非推奨を含意する表示は
+しない**（deprecation の可否は Phase 2 で判断する。判断前に UI がそれを先取りしない）。
+core の `displayMode` API も変更しない。
 
 配置は [ADR-2317](../adr/2317-preview-toolbar-density.md) の基準（図を変える操作は
 パンくず行）への**意図的な例外**であり、de-emphasize が理由である。その代償として、
@@ -60,10 +62,10 @@
 - [x] アイコンモードでも infra 宣言由来のラベルが解決される
   > ✅ Automated — `packages/e2e/tests/at-0048-resource-shape-icon-mode.spec.ts` › `resource labels resolve from infra declarations in both display modes (TC-5)`
 
-### AC-3: レガシーであることが両ロケールで伝わる
+### AC-3: 両ロケールで正しく翻訳されている
 
-- [x] アイコン側の選択肢が en / ja の双方でレガシーと表示される
-  > ✅ Automated — `packages/app/src/components/SettingsPane.test.tsx` › `marks icon cards as the legacy option in both locales`
+- [x] 2 つの選択肢が en / ja それぞれのラベルで表示される
+  > ✅ Automated — `packages/app/src/components/SettingsPane.test.tsx` › `labels both options in the active locale`
 
 - [x] ja ロケールで「表示」セクションに英語のハードコードが出ない
   > ✅ Automated — `packages/app/src/components/SettingsPane.test.tsx` › `renders no English hardcode in the section under locale=ja`
@@ -73,7 +75,7 @@
 自動テストが原理的に届かない範囲だけを残す。到達先は本番 app
 （`https://karasu.kompiro.dev/`）。
 
-- [ ] Settings の「表示」セクションが言語・テーマと同じ体裁で並び、レガシーの注記が読める（ja / en）
+- [ ] Settings の「表示」セクションが言語・テーマと同じ体裁で並び、説明文が読める（ja / en）
 - [ ] アイコンカードに切り替えたとき、図が実寸で崩れずに描画される（ライト / ダーク両テーマ）
 - [ ] `karasu serve` で起動したとき Settings タブが無く、アイコンモードに到達できない（意図した代償）
 

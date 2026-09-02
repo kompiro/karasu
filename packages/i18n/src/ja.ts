@@ -20,14 +20,14 @@ export const ja: Partial<Translations> = {
   "theme.light": "ライト",
   "theme.dark": "ダーク",
 
-  // Settings pane — 表示。アイコンモードはレガシーな表示モードとして
+  // Settings pane — 表示。アイコンモードを主導線から外すため、
   // パンくず行からここへ移した（#2376）。
   "settings.display.title": "🖼 表示",
   "settings.displayMode.label": "ノードの表示",
   "settings.displayMode.shape": "シェイプカード（既定）",
-  "settings.displayMode.icon": "アイコンカード（レガシー）",
+  "settings.displayMode.icon": "アイコンカード",
   "settings.displayMode.hint":
-    "アイコンカードはすべてのノードを固定サイズで描画します。互換のために残しているレガシーな表示モードで、刷新されたシェイプカードが後継です。将来のリリースで削除される可能性があります。",
+    "シェイプカードは内容に合わせて大きさが変わります。アイコンカードはすべてのノードを固定サイズで描き、種別のアイコンを添えるため、文字量にかかわらずレイアウトが一定に保たれます。",
 
   // Settings pane
   "settings.ai.title": "⚙ AI 設定",

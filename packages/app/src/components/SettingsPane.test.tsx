@@ -318,10 +318,9 @@ describe("SettingsPane — IME composition anti-regression (TPL-1053)", () => {
   });
 });
 
-// #2376: icon mode moved here from the drill-path row and is presented as a
-// legacy display mode. `PreviewColumn.test.tsx` keeps guarding the surface it
-// left; this block is the switch's own contract plus the locale guard that
-// travelled with it.
+// #2376: icon mode moved here from the drill-path row, out of the main flow.
+// `PreviewColumn.test.tsx` keeps guarding the surface it left; this block is
+// the switch's own contract plus the locale guard that travelled with it.
 describe("SettingsPane — Display section (#2376)", () => {
   it("offers shape and icon as the two node display options", () => {
     renderWithLocale("en");
@@ -329,13 +328,15 @@ describe("SettingsPane — Display section (#2376)", () => {
     expect(Array.from(select.options).map((o) => o.value)).toEqual(["shape", "icon"]);
   });
 
-  it("marks icon cards as the legacy option in both locales", () => {
+  it("labels both options in the active locale", () => {
     renderWithLocale("en");
-    expect(screen.getByRole("option", { name: /legacy/i })).toHaveProperty("value", "icon");
+    expect(screen.getByRole("option", { name: /Shape cards/ })).toHaveProperty("value", "shape");
+    expect(screen.getByRole("option", { name: /Icon cards/ })).toHaveProperty("value", "icon");
     cleanup();
 
     renderWithLocale("ja");
-    expect(screen.getByRole("option", { name: /レガシー/ })).toHaveProperty("value", "icon");
+    expect(screen.getByRole("option", { name: /シェイプカード/ })).toHaveProperty("value", "shape");
+    expect(screen.getByRole("option", { name: /アイコンカード/ })).toHaveProperty("value", "icon");
   });
 
   it("reflects the active display mode in the select value", () => {
@@ -354,7 +355,7 @@ describe("SettingsPane — Display section (#2376)", () => {
     const { container } = renderWithLocale("ja");
     const section = container.querySelector("#settings-display-mode")?.closest("section");
     expect(section).not.toBeNull();
-    for (const en of ["Display", "Node display", "Shape cards", "Icon cards", "legacy"]) {
+    for (const en of ["Display", "Node display", "Shape cards", "Icon cards"]) {
       expect(section?.textContent).not.toContain(en);
     }
   });

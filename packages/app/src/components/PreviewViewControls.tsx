@@ -24,10 +24,11 @@ import { availableGroupByAxes, isGroupByMode } from "./preview-group-by.js";
  * swaps the diagram being drawn.
  *
  * Icon mode is the one deliberate exception. It changes the diagram, so by the
- * rule above it belongs here, but it was de-emphasized into a legacy display
- * mode and moved to the Settings tab's Display section (#2376) — the node
- * redesign (#2366) removed the reasons it was introduced for. De-emphasis, not
- * the placement rule, is why it left; nothing else follows it.
+ * rule above it belongs here, but it moved to the Settings tab's Display
+ * section (#2376) — the node redesign (#2366) removed the reasons it was
+ * introduced for, so it no longer earns a place in the main flow. Taking it
+ * out of the way, not the placement rule, is why it left; nothing else
+ * follows it.
  *
  * These sit in the breadcrumb's row rather than floating over the diagram:
  * a floating bar covered the top-left of the drawing and intercepted clicks

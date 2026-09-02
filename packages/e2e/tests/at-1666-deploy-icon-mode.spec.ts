@@ -50,7 +50,7 @@ test.describe("AT-1666 Deploy view Icon Mode", () => {
     const diagram = page.locator("svg").first();
     const baselineMarkup = await diagram.innerHTML();
 
-    // Icon mode is a legacy display mode reached from Settings since #2376.
+    // Icon mode is reached from Settings since #2376.
     await setDisplayMode(page, "icon");
 
     // Deploy nodes must still be present and the SVG markup must change as the

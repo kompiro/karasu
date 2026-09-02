@@ -87,10 +87,10 @@ export function SettingsPane({
         </div>
       </section>
 
-      {/* Icon mode used to be a toggle button in the drill-path row. It was
-          de-emphasized to a legacy display mode here (#2376): the node
-          redesign (#2366) removed the reasons it was introduced for, so it is
-          kept working but out of the way while its deprecation is decided. */}
+      {/* Icon mode used to be a toggle button in the drill-path row. The node
+          redesign (#2366) removed the reasons it was introduced for, so it
+          moved here (#2376) — still fully supported, just no longer in the
+          main flow. */}
       <section className="settings-section">
         <h2 className="settings-section__title">{t("settings.display.title")}</h2>
 

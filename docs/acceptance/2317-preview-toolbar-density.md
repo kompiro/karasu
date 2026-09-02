@@ -92,7 +92,7 @@
 
 ## 補足
 
-- アイコンモードは当初ビュー操作行にあったが、レガシーな表示モードとして Settings の
+- アイコンモードは当初ビュー操作行にあったが、主導線から外すため Settings の
   「表示」へ移した（[#2376](https://github.com/kompiro/karasu/issues/2376) /
   [AT-2376](2376-icon-mode-de-emphasis.md)）。判断基準そのものは変わっておらず、
   de-emphasize を理由にした 1 件だけの例外である。

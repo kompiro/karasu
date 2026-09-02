@@ -435,9 +435,9 @@ describe("PreviewColumn", () => {
     });
   });
 
-  // #2376: icon mode was de-emphasized into a legacy display mode and now
-  // lives in the Settings tab's Display section. The preview offers no control
-  // for it on any view — the tests that used to press it here are replaced by
+  // #2376: icon mode moved out of the main flow and now lives in the Settings
+  // tab's Display section. The preview offers no control for it on any view —
+  // the tests that used to press it here are replaced by
   // `SettingsPane.test.tsx`, which owns the switch now.
   describe("Icon Mode is no longer a preview control (#2376)", () => {
     it("offers no icon-mode control on any active view", () => {

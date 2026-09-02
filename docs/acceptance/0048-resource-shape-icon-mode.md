@@ -68,7 +68,7 @@ resource OrderDB.OrderTable [custom]
 
 > ✅ Automated — `packages/e2e/tests/at-0048-resource-shape-icon-mode.spec.ts` › `Icon Mode toggle changes active state and embeds icon-card markup for infra nodes (TC-3)`
 
-1. Switch display mode to "Icon cards (legacy)" in the Settings tab's Display section (#2376).
+1. Switch display mode to "Icon cards" in the Settings tab's Display section (#2376).
 2. In the system view, verify:
    - `OrderDB` renders as a `database` icon card.
    - `EventBus` renders as a `queue` icon card.
@@ -76,7 +76,7 @@ resource OrderDB.OrderTable [custom]
 
 ### TC-4: Resource tag variant icons in Icon Mode
 
-1. Switch display mode to "Icon cards (legacy)" in the Settings tab's Display section (#2376).
+1. Switch display mode to "Icon cards" in the Settings tab's Display section (#2376).
 2. Navigate to `OrderService → Order → PlaceOrder`.
 3. Verify that `OrderDB.OrderTable` renders as a `table` icon card.
 4. Verify that `EventBus.OrderCreated` renders as a `queue-card` (envelope) icon card.

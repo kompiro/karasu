@@ -65,7 +65,7 @@ test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
     const diagram = page.locator("svg").first();
     const baselineMarkup = await diagram.innerHTML();
 
-    // Icon mode is a legacy display mode reached from Settings since #2376.
+    // Icon mode is reached from Settings since #2376.
     await setDisplayMode(page, "icon");
 
     // The diagram must re-render in icon mode — the SVG markup will differ

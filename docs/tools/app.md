@@ -195,11 +195,10 @@ Settings holds the preferences that outlive a single diagram: **Language**,
 **Display → Node display** picks how nodes are drawn:
 
 - **Shape cards (default)** — variable-width cards sized to their content.
-- **Icon cards (legacy)** — every node drawn at a fixed size with a service
-  icon. This is a **legacy display mode**. The node rendering redesign removed
-  the reasons it was introduced for, and external SVG icons (`shape: url()`)
-  work in shape mode too, so it is kept for compatibility and may be removed in
-  a future release. It is not needed for icons.
+- **Icon cards** — every node drawn at a fixed size with its kind's icon, so
+  the layout stays dense and stable however long the labels are. You do not
+  need this mode to get icons: external SVG icons (`shape: url()`) work in
+  shape mode too.
 
 Because Display lives in the edit pane, it is not available under
 `karasu serve`, which renders the preview on its own. Language and Theme are

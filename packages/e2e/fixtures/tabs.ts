@@ -22,11 +22,10 @@ export async function openViewTab(page: Page, name: string): Promise<void> {
 /**
  * Switch the node display mode from the Settings tab's Display section.
  *
- * Icon mode used to be a toggle button in the drill-path row. It was
- * de-emphasized to a legacy display mode and moved into Settings (#2376), so
- * reaching it now means opening the edit pane's Settings tab. Selecting the
- * value is enough — the select is controlled by app state, and the preview
- * re-renders from the same state.
+ * Icon mode used to be a toggle button in the drill-path row. It moved into
+ * Settings (#2376), so reaching it now means opening the edit pane's Settings
+ * tab. Selecting the value is enough — the select is controlled by app state,
+ * and the preview re-renders from the same state.
  *
  * Only available where the edit pane renders. `karasu serve` passes
  * `hideEditor`, so there is no Settings tab (and no icon mode) there.

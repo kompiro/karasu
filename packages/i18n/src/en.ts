@@ -20,14 +20,14 @@ export const en: Translations = {
   "theme.light": "Light",
   "theme.dark": "Dark",
 
-  // Settings pane — display. Icon mode moved here from the drill-path row when
-  // it was de-emphasized into a legacy display mode (#2376).
+  // Settings pane — display. Icon mode moved here from the drill-path row to
+  // take it out of the main flow (#2376).
   "settings.display.title": "🖼 Display",
   "settings.displayMode.label": "Node display",
   "settings.displayMode.shape": "Shape cards (default)",
-  "settings.displayMode.icon": "Icon cards (legacy)",
+  "settings.displayMode.icon": "Icon cards",
   "settings.displayMode.hint":
-    "Icon cards draw every node at a fixed size. They are a legacy display mode kept for compatibility; the redesigned shape cards replace them, and icon cards may be removed in a future release.",
+    "Shape cards size themselves to their content. Icon cards draw every node at a fixed size with its kind's icon, so the layout stays dense and stable however long the text is.",
 
   // Settings pane
   "settings.ai.title": "⚙ AI settings",
