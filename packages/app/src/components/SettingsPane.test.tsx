@@ -359,4 +359,23 @@ describe("SettingsPane — Display section (#2376)", () => {
       expect(section?.textContent).not.toContain(en);
     }
   });
+
+  // #2376 first shipped the icon option marked "(legacy)" and withdrew it:
+  // whether to deprecate is Phase 2's decision, and the UI must not announce it
+  // before that decision exists. The scan above covers `ja` only, so a marking
+  // re-added to the English strings — where it came from — would pass it. This
+  // covers both locales, which is what the concern actually needs.
+  it("marks neither option as deprecated, in either locale", () => {
+    for (const locale of ["en", "ja"] as const) {
+      const { container } = renderWithLocale(locale);
+      const text = container
+        .querySelector("#settings-display-mode")
+        ?.closest("section")
+        ?.textContent?.toLowerCase();
+      for (const word of ["legacy", "レガシー", "deprecated", "非推奨"]) {
+        expect(text).not.toContain(word.toLowerCase());
+      }
+      cleanup();
+    }
+  });
 });
