@@ -98,6 +98,7 @@ scope:
 ## 関連テスト
 
 - `packages/core/src/parser/parser.test.ts`（`describe("comma-separated realizes (#2167)")` — 同一 AST・混在累積・要素 range・末尾/先頭カンマの recovery）
+- `packages/core/src/parser/comma-list-properties.test.ts`（#2551。`facets` / `delivers` / `handles` / `operations` / `realizes` の 5 プロパティを同じ malformed 入力に通し、列挙形と行の繰り返しが同一 AST・診断コード・アンカー位置・行またぎ拒否で揃うことを固定）
 - `packages/core/src/formatter/formatter.test.ts`（"normalizes a comma-separated realizes list to one target per line"）
 - `packages/core/src/resolver/warnings.test.ts`（"points at the offending identifier within a comma-separated list"）
 - `packages/core/src/parser/edge-property-block.test.ts`（#2543 — shorthand と block が同一 AST・`duplicate-edge-label`・block 内の未知キーワード）
@@ -114,4 +115,8 @@ scope:
 - [`docs/spec/diagnostics.md`](../spec/diagnostics.md#declaration-edge-placement--structure) /
   `docs/spec/diagnostics.ja.md` — §規則ファミリー › 宣言・edge の配置・構造 の
   `duplicate-edge-label`（同じ事実を両方の形で同時に書いた入力を、優先規則ではなく診断で断る）
+- `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` の §Comma-separated value lists /
+  §カンマ区切りの値リスト（5 プロパティが共有する列挙の文法。行に閉じること、
+  宙に浮いた区切りを `expected-id-after` として区切り自身の位置で報告すること、
+  誤りより前に読めた要素を保持すること）
 - 関連決定: [ADR-2167](../adr/2167-realizes-comma-list.md)（reference list はカンマ、membership は 1 行 1 件）

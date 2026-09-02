@@ -96,6 +96,8 @@ client C [web] {
 }
 ```
 
+See [§ Comma-separated value lists](#comma-separated-value-lists) for the list grammar every such property shares: one line per list, with a dangling comma reported on the comma.
+
 **Expose rule** (used by the validator):
 
 > A node `N` *exposes* the domain a reference `D` resolves to iff:
@@ -510,6 +512,8 @@ client WebApp [web] {}
 client AdminUI [desktop] {}
 ```
 
+See [§ Comma-separated value lists](#comma-separated-value-lists) for the list grammar every such property shares: one line per list, with a dangling comma reported on the comma.
+
 Each `delivers` entry synthesizes a dashed edge from the service to the
 referenced client on the system view. The target id must resolve to a peer
 `client` node; if it does not, the resolver emits a `delivers-target-not-client`
@@ -540,6 +544,8 @@ operations create, read           // comma-separated list
 operations create
 operations read, update           // multiple lines accumulate
 ```
+
+See [§ Comma-separated value lists](#comma-separated-value-lists) for the list grammar every such property shares: one line per list, with a dangling comma reported on the comma.
 
 The `operations` property is only valid for `resource` declarations inside a `usecase`. It is not meaningful on infra-side declarations (`table` / `queue-item` / `bucket` — see the "Infra layer (shared data stores)" section above).
 
@@ -1138,10 +1144,9 @@ deploy "production" {
 ```
 
 Repeated lines are the canonical form: `karasu fmt` emits one target per line and rewrites a comma
-list into it. A comma with no identifier after it (`realizes A,`) or before it (`realizes ,B`) is
-reported as [`expected-property-value`](./diagnostics.md) on the comma itself. A list lives on the
-line its `realizes` keyword is on, so it never continues across a line break in either direction —
-neither a trailing comma nor a comma opening the following line extends the list.
+list into it. The list itself reads on the shared grammar in
+[§ Comma-separated value lists](#comma-separated-value-lists): held to the `realizes` line, with a
+dangling comma reported as [`expected-id-after`](./diagnostics.md) on the comma itself.
 
 > Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
 
@@ -1177,6 +1182,48 @@ service's container to the realized store's container ([ADR-1658](../adr/1658-de
 > Scope: this stays within `deploy`'s **runtime-contract** layer (which concrete form backs the store).
 > Infrastructure topology — regions, AZs, clusters, nodes — remains out of scope (see [concepts.md](../concepts.md)).
 > Decided in [ADR-1632](../adr/1632-infra-physical-realize.md).
+
+---
+
+## Comma-separated value lists
+
+`facets`, `delivers`, `handles`, `operations` and `realizes` each take a list of
+values after the keyword, and they all read it on one grammar (#2551):
+
+- **Elements are separated by `,`.** The same list may instead be written as
+  repeated keyword lines, and the two forms accumulate into one array in
+  document order. `handles Order, Catalog` and `handles Order` above
+  `handles Catalog` produce the same model.
+- **A list lives on the line its keyword is on.** Neither a trailing comma nor a
+  comma opening the following line extends it across the break, so an id on the
+  next line is reported where it sits rather than absorbed as an element. A
+  [node reference path](#node-reference-path-notation)'s dots are not affected:
+  they continue one element, not the list.
+- **A separator with no element is an error.** A bare keyword, a leading comma
+  (`facets ,pii`) and a trailing comma (`facets pii,`) each raise one
+  [`expected-id-after`](./diagnostics.md), anchored on the offending comma, or
+  on the keyword when the value is missing outright. The elements read before
+  the mistake are kept, and so are the ones after a leading comma.
+
+```krs
+facet pii {}
+facet pci {}
+system Shop {
+  domain Order {}
+  domain Catalog {}
+  client WebApp [web] {}
+  service Api {
+    facets   pii, pci        // comma list
+    handles  Order, Catalog  // one relation, several targets
+    delivers WebApp
+  }
+}
+```
+
+Which form `karasu fmt` emits is a per-property decision, stated in each
+property's section; the grammar above is what the parser accepts on input.
+
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md). A list form and a repeated-line form must land on one AST, elements must carry element-level ranges, and a dangling separator must be reported on the separator itself, symmetrically in both directions.
 
 ---
 
