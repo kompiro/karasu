@@ -14,9 +14,12 @@ import { join, relative, resolve } from "node:path";
  * stop a fifth consumer from inlining the rule again, so this checker fails
  * the build when one does.
  *
- * Only the prefix-matching idiom is detected — `locale === "ja"` and friends
+ * Only the tag-matching idioms are detected — `locale === "ja"` and friends
  * are legitimate everywhere, since picking behavior off an already-resolved
- * `Locale` is not normalization.
+ * `Locale` is not normalization. The patterns cover both the prefix form the
+ * rule used to have and the primary-subtag form it has now (ADR-2535): a
+ * consumer re-inlining the rule copies whichever shape it reads in the owner,
+ * so the guard has to know both.
  */
 
 export interface Finding {
@@ -36,6 +39,29 @@ const PATTERN_STARTS_WITH = /\.\s*startsWith\s*\(\s*(["'`])ja[-_]?\1/i;
 
 /** `.slice(0, 2) === "ja"`, `.substring(0,2) == 'ja'`, `.substr(0,2) === "ja"`. */
 const PATTERN_SLICE_EQUALS = /\.\s*(?:slice|substr|substring)\s*\([^)]*\)\s*===?\s*["'`]ja["'`]/i;
+
+/**
+ * `.split(/[-_.]/)[0] === "ja"`, `.split("-").at(0) === "japanese"`.
+ *
+ * The primary-subtag form the owner adopted in ADR-2535. Without this the
+ * guard would only recognize the idiom the rule no longer uses, which is the
+ * inverse of the drift it exists to catch: a fifth consumer re-inlining today
+ * would copy the split, not the prefix test.
+ */
+const PATTERN_SPLIT_EQUALS =
+  /\.\s*split\s*\([^)]*\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))\s*===?\s*(["'`])ja(?:panese)?\1/i;
+
+/**
+ * `.split(/[-_.]/, 1)[0]` — pulling the primary subtag off a raw tag, which is
+ * the first half of the rule and the shape the owner spells out.
+ *
+ * The comparison that follows it may be anything (`=== "ja"`, a `Set` lookup,
+ * a `switch`), so keying on the comparison alone would miss a consumer that
+ * copied the owner wholesale. Requiring the separator class to be exactly the
+ * locale separators keeps unrelated splits (on `/`, `,`, whitespace) out.
+ */
+const PATTERN_PRIMARY_SUBTAG_SPLIT =
+  /\.\s*split\s*\(\s*\/\[[-_.\\]+\]\/[a-z]*\s*(?:,[^)]*)?\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))/;
 
 /**
  * The rule's owner and its test, which must be free to spell the rule out.
@@ -87,7 +113,12 @@ export function scanFile(absPath: string, repoRoot: string): Finding[] {
   const lines = readFileSync(absPath, "utf8").split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (PATTERN_STARTS_WITH.test(line) || PATTERN_SLICE_EQUALS.test(line)) {
+    if (
+      PATTERN_STARTS_WITH.test(line) ||
+      PATTERN_SLICE_EQUALS.test(line) ||
+      PATTERN_SPLIT_EQUALS.test(line) ||
+      PATTERN_PRIMARY_SUBTAG_SPLIT.test(line)
+    ) {
       findings.push({ file, line: i + 1, text: line.trim() });
     }
   }

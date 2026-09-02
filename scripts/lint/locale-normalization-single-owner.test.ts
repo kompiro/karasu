@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -13,11 +13,16 @@ describe("locale-normalization-single-owner scanner", () => {
   });
 
   it("real repo: the owner itself is allowed to spell the rule out", () => {
-    // Guards the allowlist against rotting if `resolveLocaleTag` moves: if the
-    // owner stopped matching this way, the exemption would be silently dead.
+    // The allowlist only means something while the owner actually spells the
+    // rule in a form the scanner would otherwise flag. Asserting both halves
+    // keeps the exemption from going quietly dead when the rule is reshaped
+    // (ADR-2535 turned a `startsWith` into a primary-subtag split).
     const owner = resolve(REPO_ROOT, "packages/i18n/src/locale.ts");
     expect(scanFile(owner, REPO_ROOT)).toEqual([]);
-    expect(readFileSync(owner, "utf8")).toMatch(/\.startsWith\(\s*"ja"\s*\)/);
+
+    // Same file seen from a root that puts it outside the allowlist: the
+    // scanner has to have something to say about it.
+    expect(scanFile(owner, resolve(REPO_ROOT, "packages/i18n/src"))).not.toEqual([]);
   });
 
   describe("regression rehearsal", () => {
@@ -54,6 +59,13 @@ describe("locale-normalization-single-owner scanner", () => {
       expect(scan(tempDir, ["."])).toHaveLength(2);
     });
 
+    it("flags the primary-subtag comparison form the owner now uses", () => {
+      writeFileSync(join(tempDir, "e.ts"), 'const l = tag.split(/[-_.]/)[0] === "ja";\n');
+      writeFileSync(join(tempDir, "f.ts"), "const n = tag.split('-').at(0) === 'japanese';\n");
+
+      expect(scan(tempDir, ["."])).toHaveLength(2);
+    });
+
     it("does not flag comparisons against an already-resolved Locale", () => {
       const file = join(tempDir, "fine.ts");
       writeFileSync(
@@ -68,15 +80,20 @@ describe("locale-normalization-single-owner scanner", () => {
       expect(scanFile(file, tempDir)).toEqual([]);
     });
 
-    it("does not flag startsWith on unrelated prefixes", () => {
+    it("does not flag unrelated identifiers that begin the same way", () => {
       const file = join(tempDir, "unrelated.ts");
       writeFileSync(
         file,
-        ['if (id.startsWith("java-service")) {}', 'if (path.startsWith("/jobs")) {}'].join("\n"),
+        [
+          'if (id.startsWith("java-service")) {}',
+          'if (path.startsWith("/jobs")) {}',
+          'if (parts.split("/")[0] === "jamstack") {}',
+        ].join("\n"),
       );
 
-      // "java-service" begins with the same two letters, so a pattern that
-      // stopped at the quote would fire here.
+      // "java-service" and "jamstack" begin with the same two letters, so a
+      // pattern that stopped at the quote would fire on both. "/" is not a
+      // locale separator, so the split is not a primary-subtag extraction.
       expect(scanFile(file, tempDir)).toEqual([]);
     });
 

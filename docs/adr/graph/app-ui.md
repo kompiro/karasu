@@ -46,6 +46,7 @@ flowchart TD
     ADR_2316["ADR-2316<br/>experimental notation は Reference に載せ、experimen..."]
     ADR_2317["ADR-2317<br/>プレビューの操作を 2 面に分ける — 図を変える操作はドリルパスの行、持ち出す操作はツールバー"]
     ADR_2461["ADR-2461<br/>色の上の文字は per-theme のインクで、半透明クロームの上の文字は合成後の色で判定する"]
+    ADR_2535["ADR-2535<br/>日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す"]
     ADR_9009["ADR-9009<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_9010["ADR-9010<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_9011["ADR-9011<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -60,6 +61,7 @@ flowchart TD
   ADR_462["ADR-462<br/>[project] Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
   ADR_740["ADR-740<br/>[project] OPFS 履歴スナップショットを diff 比較ソースにする"]
   ADR_1096["ADR-1096<br/>[edges] `.krs.style` の `edge#<id>` セレクタ — base ID + opt..."]
+  ADR_1417["ADR-1417<br/>[vscode] LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
   ADR_1821["ADR-1821<br/>[renderer] layer toggles — external/infra カテゴリの対話的 collaps..."]
   ADR_1858["ADR-1858<br/>[renderer] system view を team（owns）軸でグループ化し、折り畳み可能な境界フレームで..."]
   ADR_9006["ADR-9006<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -74,6 +76,7 @@ flowchart TD
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
   ADR_2461 --> ADR_2193
+  ADR_2535 --> ADR_1417
   ADR_9011 --> ADR_9007
   ADR_14 --> ADR_9009
   ADR_22 --> ADR_21
@@ -86,6 +89,7 @@ flowchart TD
   ADR_462 --> ADR_461
   ADR_740 --> ADR_650
   ADR_1096 --> ADR_1142
+  ADR_1417 --> ADR_34
   ADR_9007 --> ADR_21
   ADR_9019 --> ADR_1142
   ADR_9019 --> ADR_1096
@@ -137,6 +141,7 @@ flowchart TD
   class ADR_2316 accepted
   class ADR_2317 accepted
   class ADR_2461 accepted
+  class ADR_2535 accepted
   class ADR_9009 accepted
   class ADR_9010 accepted
   class ADR_9011 accepted
@@ -150,6 +155,7 @@ flowchart TD
   class ADR_462 ghost
   class ADR_740 ghost
   class ADR_1096 ghost
+  class ADR_1417 ghost
   class ADR_1821 ghost
   class ADR_1858 ghost
   class ADR_9006 ghost

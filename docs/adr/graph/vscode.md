@@ -18,6 +18,7 @@ flowchart TD
   ADR_30["ADR-30<br/>[renderer] アイコンモード — SVG アイコンによるノード表示切り替え"]
   ADR_34["ADR-34<br/>[chat-ai] i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
   ADR_177["ADR-177<br/>[navigation] ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ"]
+  ADR_2535["ADR-2535<br/>[app-ui] 日本語判定は主要サブタグの完全一致で行い、Windows の言語名だけを明示的に許す"]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_176 --> ADR_9014
   ADR_218 --> ADR_176
@@ -27,6 +28,7 @@ flowchart TD
   ADR_1417 --> ADR_34
   ADR_177 --> ADR_9007
   ADR_177 --> ADR_218
+  ADR_2535 --> ADR_1417
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -45,5 +47,6 @@ flowchart TD
   class ADR_30 ghost
   class ADR_34 ghost
   class ADR_177 ghost
+  class ADR_2535 ghost
   class ADR_9007 ghost
 ```
