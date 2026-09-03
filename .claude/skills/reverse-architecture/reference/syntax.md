@@ -1194,11 +1194,14 @@ values after the keyword, and they all read it on one grammar (#2551):
   repeated keyword lines, and the two forms accumulate into one array in
   document order. `handles Order, Catalog` and `handles Order` above
   `handles Catalog` produce the same model.
-- **A list lives on the line its keyword is on.** Neither a trailing comma nor a
-  comma opening the following line extends it across the break, so an id on the
-  next line is reported where it sits rather than absorbed as an element. A
-  [node reference path](#node-reference-path-notation)'s dots are not affected:
-  they continue one element, not the list.
+- **A list never jumps a line on its own.** Every separator, and every element
+  after one, sits on the line where the previous element ended, so neither a
+  trailing comma nor a comma opening the following line extends the list across
+  the break: an id on the next line is reported where it sits rather than
+  absorbed as an element. An element that spans lines itself carries the list
+  with it, because a [node reference path](#node-reference-path-notation)'s dots
+  continue one element rather than the list, so `handles Order` with
+  `.Line, Catalog` on the next line still reads both targets.
 - **A separator with no element is an error.** A bare keyword, a leading comma
   (`facets ,pii`) and a trailing comma (`facets pii,`) each raise one
   [`expected-id-after`](./diagnostics.md), anchored on the offending comma in

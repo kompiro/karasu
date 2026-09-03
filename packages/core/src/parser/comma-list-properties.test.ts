@@ -147,3 +147,52 @@ describe.each(Object.entries(PROPERTIES))(
     });
   },
 );
+
+/**
+ * The line rule bounds separators and element starts, not the characters of one
+ * element. Only the two reference-path properties can write an element that
+ * spans lines, so this case sits outside the table above.
+ */
+describe("an element that spans lines carries the list with it", () => {
+  it("keeps the target after a multiline dotted path on `handles`", () => {
+    const result = Parser.parse(
+      ["domain Catalog {}", "service Api {", "  handles Order", "    .Line, Catalog", "}"].join(
+        "\n",
+      ),
+    );
+    const handles = result.value.services[0]?.properties.handles ?? [];
+    // Reading only `Order.Line` would drop `Catalog` from the model and report
+    // it as a stray token, though nothing about it is stray.
+    expect(handles.map((h) => h.path.join("."))).toEqual(["Order.Line", "Catalog"]);
+    expect(errors(result.diagnostics)).toEqual([]);
+  });
+
+  it("keeps the target after a multiline dotted path on `realizes`", () => {
+    const result = Parser.parse(
+      [
+        "deploy Production {",
+        "  oci monolith {",
+        "    realizes Shop",
+        "      .Api, InventoryService",
+        "  }",
+        "}",
+      ].join("\n"),
+    );
+    const realizes = result.value.deploys[0]?.nodes[0]?.properties.realizes ?? [];
+    expect(realizes.map((r) => r.path.join("."))).toEqual(["Shop.Api", "InventoryService"]);
+    expect(errors(result.diagnostics)).toEqual([]);
+  });
+
+  it("still refuses to jump a line when no element spans one", () => {
+    const result = Parser.parse(
+      ["domain Catalog {}", "service Api {", "  handles Order,", "  Catalog", "}"].join("\n"),
+    );
+    const handles = result.value.services[0]?.properties.handles ?? [];
+    // The list ended at `Order`: nothing carried it onto the second line.
+    expect(handles.map((h) => h.path.join("."))).toEqual(["Order"]);
+    expect(errors(result.diagnostics).map((d) => d.code)).toEqual([
+      "expected-id-after",
+      "unexpected-token-in-block",
+    ]);
+  });
+});

@@ -46,6 +46,10 @@ type: product
 
   > ✅ Automated — `packages/core/src/parser/comma-list-properties.test.ts` › does not continue a list from a comma opening the next line
 
+- [x] AT-F2: 要素自身が複数行にまたがるとき（`handles Order` の次行に `.Line, Catalog`）はリストもそれに追従し、後続の対象を落とさない。行をまたぐ要素が無ければ従来どおりリストは 1 行で閉じる
+
+  > ✅ Automated — `packages/core/src/parser/comma-list-properties.test.ts` › `an element that spans lines carries the list with it`（handles / realizes の両方と、またがる要素が無い場合）
+
 ### AC-3: プロパティ固有の意味論は変わらない
 
 - [x] AT-G: `realizes` の要素 range・混在累積・dangling dot の recovery は #2167 のまま

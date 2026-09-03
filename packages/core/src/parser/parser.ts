@@ -937,11 +937,13 @@ export class Parser {
    * The four decisions the property readers used to hold their own copies of
    * live here instead (#2551):
    *
-   * - **A list lives on the line its keyword is on.** Neither a trailing comma
-   *   nor a comma opening the next line extends it, so the same intent is not
-   *   silently accepted in one direction and reported in the other (#2167).
-   *   Dotted segments of a single reference may still cross the break: the
-   *   rule bounds separators and element starts, not one element's characters.
+   * - **A list never jumps a line on its own.** Every separator, and every
+   *   element after one, sits on the line where the previous element ended, so
+   *   neither a trailing comma nor a comma opening the next line extends the
+   *   list across a break, and the same intent is not silently accepted in one
+   *   direction and reported in the other (#2167). An element that spans lines
+   *   itself carries the list with it: the rule bounds separators and element
+   *   starts, not the characters of one element.
    * - **A separator with no element is one `expected-id-after`**, anchored on
    *   the offending comma in either direction, or on the keyword when the value
    *   is missing outright. `this.error` anchors on whatever comes next, which
@@ -952,7 +954,10 @@ export class Parser {
    *   for the taking rather than re-derived per property.
    */
   private *commaSeparatedValues(keyword: Token, property: string): Generator<Token> {
-    const { line } = keyword.loc;
+    // The line the list is currently on. It starts at the keyword and moves with
+    // an element that spans lines of its own, so the list never jumps a line by
+    // itself and never truncates an element that legitimately crosses one.
+    let line = keyword.loc.line;
     const onListLine = (token: Token): boolean => token.loc.line === line;
     const atElement = (): boolean => this.isIdOrString(this.peek()) && onListLine(this.peek());
 
@@ -963,6 +968,12 @@ export class Parser {
     for (;;) {
       if (atElement()) {
         yield this.advance();
+        // The caller may have consumed more than the token yielded above, and a
+        // reference path's dots carry one element across a line break. The
+        // separator that follows therefore sits where the element ended, not
+        // where the keyword did, so `handles Order` with `.Line, Catalog` on the
+        // next line still reads `Catalog` instead of dropping it.
+        line = (this.tokens[this.pos - 1] ?? keyword).loc.line;
         // Without a comma the list is done; with one, another element is due.
         // A malformed element takes the same exit as a good one, so the trailing
         // comma of `handles A.,` is reported where the trailing comma of
