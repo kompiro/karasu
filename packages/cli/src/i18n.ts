@@ -25,6 +25,11 @@ import {
  * (`LANG=en_US.UTF-8`) alongside Japanese program messages, so it must win
  * over `LANG`. Normalizing the resulting tag is `resolveLocaleTag`'s job,
  * shared with the app / lsp / vscode consumers.
+ *
+ * GNU's `LANGUAGE` is deliberately not read: it sits outside POSIX, holds a
+ * colon-separated fallback *list* rather than one tag, and must be ignored
+ * when the resolved message locale is `C` / `POSIX` — none of which this
+ * single-tag chain expresses. Supporting it is its own change.
  */
 export function resolveCliLocale(env: NodeJS.ProcessEnv = process.env): Locale {
   return resolveLocaleTag(env.LC_ALL || env.LC_MESSAGES || env.LANG);

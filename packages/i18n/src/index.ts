@@ -8,8 +8,9 @@
  * user-facing text.
  *
  * Reading the environment's raw language tag (browser storage, LSP init
- * params, `LANG`) lives next to each consumer; normalizing that tag to a
- * `Locale` is shared here as `resolveLocaleTag`.
+ * params, the `LC_ALL` / `LC_MESSAGES` / `LANG` chain) lives next to each
+ * consumer; normalizing that tag to a `Locale` is shared here as
+ * `resolveLocaleTag`.
  */
 
 export type { Translations, TranslationParams } from "./types.js";

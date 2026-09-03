@@ -33,14 +33,16 @@ describe("resolveCliLocale", () => {
     ).toBe("en");
   });
 
-  it("falls through an unset or empty LC_MESSAGES to LANG", () => {
+  it("treats an empty variable as unset at every link of the chain", () => {
+    // `||` rather than `??`: `LC_ALL=` is how a shell unsets an inherited
+    // override, so an empty value must fall through rather than win.
+    expect(resolveCliLocale({ LC_ALL: "", LC_MESSAGES: "ja_JP.UTF-8" })).toBe("ja");
     expect(resolveCliLocale({ LC_MESSAGES: "", LANG: "ja_JP.UTF-8" })).toBe("ja");
-    expect(resolveCliLocale({ LANG: "ja_JP.UTF-8" })).toBe("ja");
+    expect(resolveCliLocale({ LC_ALL: "", LC_MESSAGES: "", LANG: "ja_JP.UTF-8" })).toBe("ja");
   });
 
-  it("resolves LC_MESSAGES alone", () => {
+  it("resolves LC_MESSAGES when it is the only variable set", () => {
     expect(resolveCliLocale({ LC_MESSAGES: "ja_JP.UTF-8" })).toBe("ja");
-    expect(resolveCliLocale({ LC_MESSAGES: "en_US.UTF-8" })).toBe("en");
   });
 
   it("defaults to 'en' when no locale env vars are set", () => {

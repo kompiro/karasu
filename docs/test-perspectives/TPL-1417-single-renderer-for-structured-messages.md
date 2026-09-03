@@ -9,6 +9,7 @@ applicable_to:
   - "i18n 対応や locale 追従を、一部の consumer にだけ入れるとき"
 related_to:
   - TPL-1207
+  - TPL-2536
 discovered_from:
   - issue: "#1417"
   - root_cause_adr: "ADR-34"
