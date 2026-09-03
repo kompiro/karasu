@@ -21,13 +21,16 @@ import { join, relative, resolve } from "node:path";
  * consumer re-inlining the rule copies whichever shape it reads in the owner,
  * so the guard has to know both.
  *
- * What every pattern keys on is the *comparison against the Japanese tag*,
- * never the tag surgery alone. Pulling element 0 off a `[-_.]` split is also
- * how a compound identifier or a version string is taken apart, so a pattern
- * that stopped at the split would report ordinary code as locale
- * normalization. That leaves the owner itself unflagged, since it compares
- * with a `Set` lookup — its allowlist entry is precautionary, and the test
- * asserts the path still names the rule's owner.
+ * What every pattern keys on is the *Japanese tag being spelled out*, never
+ * the tag surgery alone. Pulling element 0 off a `[-_.]` split is also how a
+ * compound identifier or a version string is taken apart, so a pattern that
+ * stopped at the split would report ordinary code as locale normalization.
+ *
+ * Known limits, since these are line-oriented regexes and not a parser: a
+ * re-inline that splits on one line and compares on another (`const [lang] =
+ * tag.split("-")` … `if (lang === "ja")`) is caught only if it also spells the
+ * Windows allowance, which a copy of the current rule does. Yoda comparisons
+ * and a separator regex containing a capturing group are not matched.
  */
 
 export interface Finding {
@@ -57,7 +60,21 @@ const PATTERN_SLICE_EQUALS = /\.\s*(?:slice|substr|substring)\s*\([^)]*\)\s*===?
  * would copy the split, not the prefix test.
  */
 const PATTERN_SPLIT_EQUALS =
-  /\.\s*split\s*\([^)]*\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))\s*===?\s*(["'`])ja(?:panese)?\1/i;
+  /\.\s*split\s*\([^)]*\)\s*(?:\[\s*0\s*\]|\.\s*at\s*\(\s*0\s*\))\s*[!=]==?\s*(["'`])ja(?:panese)?\1/i;
+
+/**
+ * The Windows language-name half of the rule: `=== "japanese"`, `case
+ * "japanese"`, or the `["ja", "japanese"]` pair an allowance list spells out.
+ *
+ * This is what makes the guard see the rule's *current* shape, whose halves
+ * sit on different lines (`split(...)[0]` into a variable, then a `Set`
+ * lookup). `"japanese"` is not a BCP-47 subtag, so a consumer only writes it
+ * when copying this allowance — which is exactly the drift worth catching.
+ * The comparison / adjacency context is required so that a translation value
+ * (`"languageSelector.japanese": "Japanese"`) is not a finding.
+ */
+const PATTERN_JAPANESE_NAME =
+  /(?:[!=]==?\s*|case\s+)(["'`])japanese\1|(["'`])ja\2\s*,\s*(["'`])japanese\3|(["'`])japanese\4\s*,\s*(["'`])ja\5/i;
 
 /**
  * The rule's owner and its test, which must be free to spell the rule out in
@@ -113,7 +130,8 @@ export function scanFile(absPath: string, repoRoot: string): Finding[] {
     if (
       PATTERN_STARTS_WITH.test(line) ||
       PATTERN_SLICE_EQUALS.test(line) ||
-      PATTERN_SPLIT_EQUALS.test(line)
+      PATTERN_SPLIT_EQUALS.test(line) ||
+      PATTERN_JAPANESE_NAME.test(line)
     ) {
       findings.push({ file, line: i + 1, text: line.trim() });
     }

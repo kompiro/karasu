@@ -54,7 +54,7 @@ ISO 639-2/T）と `jam` / `jam-JM`（Jamaican Creole）は独立した言語だ�
 
 ## 決定
 
-生タグを `-` / `_` / `.` で分割した**主要サブタグが `ja` または `japanese` に
+生タグを `-` / `_` / `.` / `@` で分割した**主要サブタグが `ja` または `japanese` に
 完全一致**するときだけ日本語とし、それ以外は英語にフォールバックする。
 `japanese` は Windows の言語名形式のための明示的な許可であり、集合として列挙する。
 
@@ -62,7 +62,7 @@ ISO 639-2/T）と `jam` / `jam-JM`（Jamaican Creole）は独立した言語だ�
 const JAPANESE_PRIMARY_SUBTAGS = new Set(["ja", "japanese"]);
 
 export function resolveLocaleTag(raw: string | null | undefined): Locale {
-  const primary = (raw ?? "").toLowerCase().split(/[-_.]/, 1)[0];
+  const primary = (raw ?? "").trim().toLowerCase().split(/[-_.@]/, 1)[0];
   return JAPANESE_PRIMARY_SUBTAGS.has(primary) ? "ja" : "en";
 }
 ```
@@ -75,6 +75,11 @@ export function resolveLocaleTag(raw: string | null | undefined): Locale {
 - **Windows の経路は決定として残る。** `japanese` を集合に置くことで、
   `Japanese_Japan.932` の日本語判定は前方一致の副作用ではなく明示された仕様になる。
   BCP-47 のサブタグではないので分割からは導出できず、列挙以外の手段がない。
+- **区切りは POSIX の modifier まで含める。** POSIX のロケール名は
+  `language[_territory][.codeset][@modifier]` で、modifier は territory を挟まず
+  言語の直後に来られる（`LANG=ja@cjknarrow`）。`@` を区切りに入れないと、前方一致
+  では日本語だったこの形が英語に落ちる — 締め直しで拾うべきでない副作用が出る。
+  同じ理由で前後の空白を `trim()` で落とす（環境変数由来の入力を想定）。
 - **集合が拡張点になる。** 別の言語名形式や表記が観測されたら、この 1 箇所に足せば
   4 サーフェス全部に届く（#2081 の単独所有者という性質をそのまま使う）。
 - **境界が両側から pin される。** `locale.test.ts` が `jav-ID` / `jam-JM` を en 側、
@@ -82,14 +87,17 @@ export function resolveLocaleTag(raw: string | null | undefined): Locale {
   落とす形で締めても、どちらも赤くなる。
 - **drift ガードが規則の形に追従する。** `scripts/lint/locale-normalization-single-owner.ts`
   は前方一致のイディオムだけを検出していた。5 つ目の consumer が再インライン化する
-  なら今読める形を写すので、`split(...)[0] === "ja"` を検出対象に足す。
-  ガードが鍵にするのは**日本語タグとの比較**であって、タグの切り出しではない —
-  `[-_.]` で切って先頭を取る操作は、複合識別子やバージョン文字列を分解する書き方
-  でもあり（`version.split(/[._-]/)[0]`）、切り出しだけを鍵にすると通常のコードを
-  locale 正規化として報告してしまう。その結果 owner 自身は（`Set` で比較するため）
-  検出対象に入らず、`locale.ts` の allowlist 登録は予防的なものになる。免除が
-  パスの腐りで死なないことは、免除しているパスに今も `resolveLocaleTag` が居ることを
-  `locale-normalization-single-owner.test.ts` が確かめる。
+  なら今読める形を写すので、`split(...)[0] === "ja"` と `"japanese"`（Windows 許可）
+  を検出対象に足す。ガードが鍵にするのは**日本語タグを綴っていること**であって、
+  タグの切り出しではない — `[-_.]` で切って先頭を取る操作は複合識別子やバージョン
+  文字列を分解する書き方でもあり（`version.split(/[._-]/)[0]`）、切り出しだけを
+  鍵にすると通常のコードを locale 正規化として報告してしまう。
+  `"japanese"` は BCP-47 のサブタグではないので、この許可を写したときにしか現れない。
+  これがあるおかげで、現行規則のように**分割と比較が別の行に分かれた再インライン化**
+  （`Set` / `switch`）も検出できる。owner 自身もこれで検出対象に入るため、
+  `locale.ts` の allowlist 登録は空振りでなく効いており、
+  `locale-normalization-single-owner.test.ts` が allowlist の外から同じファイルを
+  走査してそれを確かめる。
 
 ## 却下した案
 

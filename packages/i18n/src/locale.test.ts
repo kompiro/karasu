@@ -16,6 +16,15 @@ describe("resolveLocaleTag", () => {
   it("resolves Japanese POSIX locale strings to 'ja'", () => {
     expect(resolveLocaleTag("ja_JP.UTF-8")).toBe("ja");
     expect(resolveLocaleTag("ja_JP")).toBe("ja");
+    // POSIX puts the modifier last and lets it follow the language directly,
+    // so `@` ends the primary subtag just as `_` and `.` do.
+    expect(resolveLocaleTag("ja@cjknarrow")).toBe("ja");
+    expect(resolveLocaleTag("ja_JP.UTF-8@cjknarrow")).toBe("ja");
+  });
+
+  it("tolerates surrounding whitespace from an environment variable", () => {
+    expect(resolveLocaleTag(" ja ")).toBe("ja");
+    expect(resolveLocaleTag("\tja_JP\n")).toBe("ja");
   });
 
   it("matches the language subtag case-insensitively", () => {
@@ -39,11 +48,14 @@ describe("resolveLocaleTag", () => {
     expect(resolveLocaleTag(null)).toBe("en");
   });
 
-  // The cases below are what separate the exact primary-subtag match from the
-  // prefix match it replaced (ADR-2535). Every other assertion in this file
-  // passes under either rule, so without these the boundary is unpinned in
-  // both directions: loosening the matcher back to a prefix would look green,
-  // and so would tightening it in a way that drops Japanese Windows users.
+  // Two of the cases below are the ones that actually separate the exact
+  // primary-subtag match from the prefix match it replaced (ADR-2535), and
+  // they pin it from opposite sides: `jav` / `jam` fail under a prefix match,
+  // `Japanese_Japan.932` fails under a naive `=== "ja"`. Nothing else in this
+  // file discriminates, so without those two the rule could be loosened back
+  // to a prefix, or tightened in a way that drops Japanese Windows users, and
+  // still look green. The other two cases in the block hold under either rule
+  // — they fence the edges of the Windows allowance, not the boundary itself.
   describe("primary-subtag boundary (ADR-2535)", () => {
     it("leaves non-Japanese ja* languages to the English fallback", () => {
       expect(resolveLocaleTag("jav")).toBe("en"); // Javanese

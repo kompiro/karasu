@@ -27,7 +27,7 @@ describe("locale", () => {
       expect(resolveLocale()).toBe("en");
     });
 
-    it("detects ja when navigator.language starts with ja", () => {
+    it("detects ja from navigator.language's primary subtag", () => {
       vi.spyOn(navigator, "language", "get").mockReturnValue("ja-JP");
       expect(resolveLocale()).toBe("ja");
     });

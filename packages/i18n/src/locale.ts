@@ -31,12 +31,12 @@ const JAPANESE_PRIMARY_SUBTAGS = new Set(["ja", "japanese"]);
  * Normalize a raw language tag to a karasu `Locale`.
  *
  * Accepts anything a host environment reports as its display language:
- * BCP-47 tags (`"ja"`, `"ja-JP"`, `"en-US"`), POSIX locale strings
- * (`"ja_JP.UTF-8"`, `"C"`), Windows' language-name form
- * (`"Japanese_Japan.932"`), or nothing at all (`""` / `null` / `undefined`,
- * which several sources return when unset). A tag whose primary subtag is
- * Japanese resolves to `"ja"`; everything else falls back to English, the
- * tooling-output default from `docs/spec/i18n.md`.
+ * BCP-47 tags (`"ja"`, `"ja-JP"`, `"en-US"`), POSIX locale strings with their
+ * optional codeset and modifier (`"ja_JP.UTF-8"`, `"ja@cjknarrow"`, `"C"`),
+ * Windows' language-name form (`"Japanese_Japan.932"`), or nothing at all
+ * (`""` / `null` / `undefined`, which several sources return when unset). A
+ * tag whose primary subtag is Japanese resolves to `"ja"`; everything else
+ * falls back to English, the tooling-output default from `docs/spec/i18n.md`.
  *
  * Every consumer delegates here, so changing how Japanese is matched is one
  * edit rather than one per surface. Note the scope of that guarantee: this
@@ -50,8 +50,13 @@ const JAPANESE_PRIMARY_SUBTAGS = new Set(["ja", "japanese"]);
  * (ADR-2535); `locale.test.ts` pins the boundary from both sides.
  */
 export function resolveLocaleTag(raw: string | null | undefined): Locale {
-  // BCP-47 (`ja-JP`), POSIX (`ja_JP.UTF-8`) and Windows (`Japanese_Japan.932`)
-  // each separate the primary subtag with one of these three characters.
-  const primary = (raw ?? "").toLowerCase().split(/[-_.]/, 1)[0];
+  // BCP-47 (`ja-JP`), POSIX (`ja_JP.UTF-8`, `ja@cjknarrow`) and Windows
+  // (`Japanese_Japan.932`) each end the primary subtag with one of these. `@`
+  // is in the set because POSIX allows the modifier to follow the language
+  // directly, with no territory in between.
+  const primary = (raw ?? "")
+    .trim()
+    .toLowerCase()
+    .split(/[-_.@]/, 1)[0];
   return JAPANESE_PRIMARY_SUBTAGS.has(primary) ? "ja" : "en";
 }

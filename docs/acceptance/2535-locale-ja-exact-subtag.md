@@ -22,21 +22,29 @@
 
   > ✅ Automated — `packages/i18n/src/locale.test.ts` › `resolveLocaleTag` › `primary-subtag boundary (ADR-2535)` › `does not extend the Windows allowance to other language names`
 
-- [x] 既存の日本語タグは形式を問わず日本語のままである（BCP-47・POSIX・大文字小文字・サブタグが続く形）
+- [x] 既存の日本語タグは形式を問わず日本語のままである（BCP-47・POSIX の codeset / modifier・大文字小文字・サブタグが続く形・前後の空白）
 
-  > ✅ Automated — `packages/i18n/src/locale.test.ts` › `resolveLocaleTag` › `resolves Japanese BCP-47 tags to 'ja'` / `resolves Japanese POSIX locale strings to 'ja'` / `matches the language subtag case-insensitively` / `primary-subtag boundary (ADR-2535)` › `matches Japanese however many subtags follow it`
+  > ✅ Automated — `packages/i18n/src/locale.test.ts` › `resolveLocaleTag` › `resolves Japanese BCP-47 tags to 'ja'` / `resolves Japanese POSIX locale strings to 'ja'` / `matches the language subtag case-insensitively` / `tolerates surrounding whitespace from an environment variable` / `primary-subtag boundary (ADR-2535)` › `matches Japanese however many subtags follow it`
 
 - [x] 未設定（`""` / `null` / `undefined`）と非日本語タグは従来どおり英語に落ちる
 
   > ✅ Automated — `packages/i18n/src/locale.test.ts` › `resolveLocaleTag` › `falls back to 'en' for any non-Japanese tag` / `falls back to 'en' when the environment reports no tag`
 
-- [x] 判定規則の所有者は `resolveLocaleTag` 1 つのままで、consumer が新しいイディオム（主要サブタグの完全一致）を再インライン化したらビルドが落ちる
+- [x] 判定規則の所有者は `resolveLocaleTag` 1 つのままで、consumer が主要サブタグの完全一致を 1 行で再インライン化したらビルドが落ちる（`=== "ja"` / `!== "ja"` の両極性）
 
-  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `regression rehearsal` › `flags the primary-subtag comparison form the owner now uses`
+  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `regression rehearsal` › `flags the primary-subtag comparison form, in either polarity`
 
-- [x] drift ガードの所有者免除がパスの腐りで死んでいない — 免除しているパスに今も `resolveLocaleTag` が居る
+- [x] 分割と比較が別の行に分かれた再インライン化（現行規則をそのまま写した `Set` 版・`switch` 版）も検出される
 
-  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `real repo: the allowlist still points at the rule's owner`
+  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `regression rehearsal` › `flags a consumer that copies the rule across two lines` / `flags a switch on the primary subtag`
+
+- [x] 言語名の翻訳値（`"languageSelector.japanese": "Japanese"`）は検出対象にならない
+
+  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `regression rehearsal` › `does not flag Japanese as a translated label`
+
+- [x] drift ガードの所有者免除が空振りしていない — 免除しているパスに今も `resolveLocaleTag` が居て、かつ allowlist の外から走査すれば実際に検出される
+
+  > ✅ Automated — `scripts/lint/locale-normalization-single-owner.test.ts` › `locale-normalization-single-owner scanner` › `real repo: the owner itself is allowed to spell the rule out`
 
 - [x] ロケールと無関係な分割（ファイル名・バージョン・複合識別子を `[.]` / `[._-]` / `[-_]` で切る）や、同じ 2 文字で始まる識別子（`java-service` / `jamstack`）はガードの検出対象にならない
 
