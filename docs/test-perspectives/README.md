@@ -531,3 +531,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2643](TPL-2643-skip-reports-success-without-running.md) | 走らずに success を報告する gate は、skip 条件を解除する状態変化を必ず trigger 側にも持つ | build | #2643, ADR-2643 |
 | [TPL-2598](TPL-2598-fence-corpus-must-reach-the-limit.md) | 計測柵は、その資源の限界に達する入力を corpus に持って初めて柵になる — 有限の資源を N 分割する実装は N が小さいうちどの指標も 0 のままで、飽和入力の無い柵は修正前後どちらも green を返す | testing | #2598 |
 | [TPL-2658](TPL-2658-agent-write-scope-is-declared-not-prompted.md) | エージェントに任せる自動化の書き込み範囲は prompt の禁止文ではなく宣言（safe outputs・permission）で検証する。宣言だけが広がった状態は、prompt が「変更しません」と言い続けるためレビューでは安全に読める | build | #2658 |
+| [TPL-2536](TPL-2536-locale-source-chain-completeness.md) | 環境から生タグを取り出す consumer は、その環境が定める優先順位の鎖を全部辿る — 正規化が単一情報源でも、渡されなかった情報源については何も言えない。抜けるのは中間リンクなので、両端が読めているぶんテストは緑のまま通る | cli | #2536, ADR-1417 |
