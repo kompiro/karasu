@@ -88,11 +88,9 @@ locale（あるいは同種の「複数情報源 + 優先順位」設定）の�
 - [ ] 空文字を「未設定」として次のリンクへ落としているか。`LC_ALL=` は継承した
       override をシェルで打ち消す標準的な書き方なので、`??` ではなく `||` が要る。
       鎖の**すべての**リンクについて空文字のテストがあるか
-- [ ] テストは env オブジェクトを**注入**しているか。`process.env` を暗黙に読む
-      解決関数を直に呼んでいないか
-- [ ] その consumer の**出力**を assert する他の suite が、ambient な locale に
-      依存していないか。依存するなら設定で locale を pin したか
-      （`packages/cli/vitest.config.ts` の `env: { LC_ALL: "C" }`）
+- [ ] テストが開発者のシェル設定から独立しているか。解決関数には env オブジェクトを
+      **注入**して呼び、その consumer の**出力**を assert する suite は設定で locale を
+      pin する（`packages/cli/vitest.config.ts` の `env: { LC_ALL: "C" }`）
 - [ ] ドキュメント側の記述（`docs/spec/i18n.md`、各 consumer の doc comment）が
       新しい鎖と一致しているか。#2536 では同じ列挙が 4 箇所に複製されていた
 
@@ -115,8 +113,9 @@ locale（あるいは同種の「複数情報源 + 優先順位」設定）の�
 
 - `packages/cli/src/i18n.test.ts` — `LC_ALL` / `LC_MESSAGES` / `LANG` の勝敗と、
   鎖の各リンクでの空文字 fallthrough（#2536 の回帰柵）
-- `packages/i18n/src/locale.test.ts` — 正規化規則そのものの判定表。consumer 側と
-  責務が重ならないことを確認する対
+- `packages/i18n/src/locale.test.ts` — 正規化規則そのものの判定表。consumer 側の
+  テストを追加するときは、この判定表と assert が重複していないかをここで確かめる
+  （重複していたら、それは取り出しではなく正規化を検証している）
 - `packages/cli/vitest.config.ts` — `env: { LC_ALL: "C" }`。CLI の出力を assert する
   suite が開発者のシェル設定で割れないようにする pin
 
