@@ -33,7 +33,7 @@ assumptions:
   - [ADR-1994](1994-karasu-nest-free-tier-quota.md) — **本 ADR が supersede する**。推論費をサービスが負担しなくなり、枠を置く対象が消えた
   - [ADR-1996](1996-karasu-nest-data-trust.md)（未了 6 件のうち 2 件が不要になる。依存先を本 ADR に付け替えた）
   - [ADR-2249](2249-permalink-generation-seam.md)（2 つの面の合流点）、[ADR-2262](2262-nest-intake-and-completion.md)（起動権限と完了通知）
-  - [ADR-2592](2592-nest-as-a-gallery.md) — 構築判断（投稿の資格・URL 空間・検証・保持・コンソール）。本 ADR は方向を決め、構築の詳細はそちらが記録する
+  - 構築の詳細は `docs/design/nest-as-a-gallery.md` に残す（部分昇格。全体の昇格は [#2592](https://github.com/kompiro/karasu/issues/2592)）
 
 ## 背景
 
