@@ -137,7 +137,13 @@ describe.each(Object.entries(PROPERTIES))(
       // accepting it silently would extend the model with an element the spec
       // does not say is writable there.
       expect(read(result.value)).toEqual([first]);
-      expect(errors(result.diagnostics).length).toBeGreaterThan(0);
+      // Reported by the block loop rather than by the list, because the list
+      // ended at the line break: asserting only that something was reported
+      // would pass on a regression that reports it twice, or as a diagnostic
+      // belonging to the property.
+      const codes = errors(result.diagnostics).map((d) => d.code);
+      expect(codes.length).toBeGreaterThan(0);
+      expect(codes.every((code) => code === "unexpected-token-in-block")).toBe(true);
     });
   },
 );

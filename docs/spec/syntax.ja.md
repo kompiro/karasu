@@ -1131,14 +1131,18 @@ store の両方が realize されているとき、deploy 図は service のコ�
 facet pii {}
 facet pci {}
 system Shop {
-  domain Order {}
-  domain Catalog {}
   client WebApp [web] {}
+  service Backend {
+    domain Order {}
+    domain Catalog {}
+  }
   service Api {
     facets   pii, pci        // カンマ列挙
     handles  Order, Catalog  // 1 つの関係に複数の相手
     delivers WebApp
   }
+
+  Api -> Backend
 }
 ```
 
@@ -1503,6 +1507,8 @@ system Shop {
   `domain` / `usecase` / `entity` / `resource` / `user` / `client`、infra ブロック
   （`database` / `queue` / `storage`）とその leaf（`table`・queue item・`bucket`）。
   所属はアーキテクチャの外から課されるものなので、構造的に除外される kind は無い。
+  id 列の読み方は [§カンマ区切りの値リスト](#カンマ区切りの値リスト) の文法に従い、
+  `facets` 行を繰り返して書ける位置もそこで決まる。
 - **エッジも `facets` を取る。** 書く場所は[エッジのプロパティブロック](#プロパティブロック-label--description--link--facets-)。
   PII を運ぶデータフローや PCI スコープ内の呼び出しは**そのエッジについての事実**で、
   端点に付けると端点について誤ったことを言いながらフローについては何も言えていない。

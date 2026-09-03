@@ -32,9 +32,9 @@ type: product
 
   > ✅ Automated — `packages/core/src/parser/comma-list-properties.test.ts` › reports a trailing comma on the comma itself and keeps what it read
 
-- [x] AT-D: 先頭のカンマは 1 件だけ報告し、その後ろの要素は記録される
+- [x] AT-D: 先頭のカンマも、そのカンマ自身の位置で 1 件だけ報告し、その後ろの要素は記録される
 
-  > ✅ Automated — `packages/core/src/parser/comma-list-properties.test.ts` › reports a leading comma once and still records the element after it
+  > ✅ Automated — `packages/core/src/parser/comma-list-properties.test.ts` › reports a leading comma on the comma itself and still records what follows
 
 ### AC-2: リストはキーワードの行に閉じる
 

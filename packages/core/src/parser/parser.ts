@@ -1059,8 +1059,7 @@ export class Parser {
       return { verb, decoration: undefined, decorationLoc: undefined };
     }
     this.advance(); // consume `:`
-    const onVerbLine = (token: Token): boolean => token.loc.line === verbToken.loc.line;
-    if (!this.isIdOrString(this.peek()) || !onVerbLine(this.peek())) {
+    if (!this.isIdOrString(this.peek())) {
       // Empty RHS. `empty-crud-decoration` is raised later by the resource
       // builder, which has the resourceId the message needs.
       return { verb, decoration: [], decorationLoc: verbToken.loc };
@@ -1070,10 +1069,13 @@ export class Parser {
     // a decorated verb (ADR-1046's 1:N rule). Every other comma is left for the
     // enclosing list, so the trailing separator of `operations list:read,` is
     // reported by the one rule that owns separators.
+    //
+    // The list's line rule deliberately does not reach in here: a decoration is
+    // part of one element, and the rule bounds separators and element starts,
+    // not the characters of a single element.
     while (
       this.peek().type === TokenType.Comma &&
       this.isIdOrString(this.peekAt(1)) &&
-      onVerbLine(this.peekAt(1)) &&
       this.peekAt(2).type !== TokenType.Colon
     ) {
       this.advance(); // consume `,`

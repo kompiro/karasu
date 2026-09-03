@@ -1210,14 +1210,18 @@ values after the keyword, and they all read it on one grammar (#2551):
 facet pii {}
 facet pci {}
 system Shop {
-  domain Order {}
-  domain Catalog {}
   client WebApp [web] {}
+  service Backend {
+    domain Order {}
+    domain Catalog {}
+  }
   service Api {
     facets   pii, pci        // comma list
     handles  Order, Catalog  // one relation, several targets
     delivers WebApp
   }
+
+  Api -> Backend
 }
 ```
 
@@ -1630,7 +1634,9 @@ system Shop {
   `service`, `domain`, `usecase`, `entity`, `resource`, `user`, `client`, the
   infra blocks (`database` / `queue` / `storage`) and their leaves (`table`,
   queue item, `bucket`). Membership is imposed from outside the architecture, so
-  no kind is structurally excluded.
+  no kind is structurally excluded. The id list reads on the grammar in
+  [§ Comma-separated value lists](#comma-separated-value-lists), which also
+  governs where repeated `facets` lines may sit.
 - **Edges take `facets` too**, written in the [edge property
   block](#property-block--label--description--link--facets-). A data flow that
   carries PII, or a call that sits inside PCI scope, is a fact about *the edge*:
