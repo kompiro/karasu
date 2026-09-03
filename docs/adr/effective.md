@@ -154,6 +154,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2640](2640-coderabbit-pr-review.md) — PR の一次レビューに CodeRabbit を入れる（advisory 固定）
 - [ADR-2643](2643-stacked-pr-workflow.md) — stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI を止める
 - [ADR-2671](2671-dependabot-triage-2026-08-31.md) — Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく group で結ぶ
+- [ADR-2693](2693-dependabot-security-2026-09-03.md) — Dependabot security alert 2026-09-03（`fast-uri` / `qs` の override floor が脆弱範囲の内側だった。floor は「選ばれない」ではなく「届かない」を作る道具である）
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
