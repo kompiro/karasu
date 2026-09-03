@@ -18,10 +18,12 @@
 | Facet | `[facets=pii]` | All elements belonging to the given `facet` |
 | Compound (kind + facet) | `service[facets=pii]` | Matches both kind and facet membership |
 | ID | `#ECommerce` | A specific node only |
+| Compound (kind + ID) | `team#Platform` | One team only (its card and its frame) |
 | Edge | `edge` | All edges |
 | Edge + tag | `edge[async]` | Edges with the given tag |
 | Edge source | `edge[from=ApiGateway]` | All edges originating at the node |
 | Edge target | `edge[to=ApiGateway]` | All edges terminating at the node |
+| Edge + facet | `edge[facets=pii]` | Edges belonging to the given `facet` |
 | Edge ID | `edge#criticalWrite`, `edge#A->B`, `edge#A-->B` | A specific edge only |
 | Boundary | `boundary` | All boundary frames (*Group by: boundary*) |
 | Boundary ID | `boundary#pci` | One boundary's frame only |
@@ -42,9 +44,11 @@
 | Facet | `[facets=pii]` | 10 |
 | Kind + facet | `service[facets=pii]` | 11 |
 | ID | `#ECommerce` | 100 |
+| Kind + ID | `team#Platform` | 101 |
 | Edge | `edge` | 1 |
 | Edge + tag | `edge[async]` | 11 |
 | Edge source/target | `edge[from=ApiGateway]` | 11 |
+| Edge + facet | `edge[facets=pii]` | 11 |
 | Edge ID | `edge#criticalWrite` | 101 |
 | Boundary | `boundary` | 1 |
 | Boundary ID | `boundary#pci` | 101 |
@@ -81,15 +85,26 @@ database[facets=pci_scope] {
 }
 ```
 
-- **Nodes only.** `facets` is a node property in v1, so `edge[facets=...]`
-  matches nothing rather than matching every edge.
+- **Nodes and edges — but reaching an edge takes the `edge` type.** `facets` is
+  written on both. The kind-less `[facets=pii]` above stays node-scoped, like
+  every other type-less selector: a selector with no `edge` type never matches
+  an edge. Write `edge[facets=pii]` to style the edges that declare the
+  membership, repeating the predicate to AND it as on a node. What it never does
+  is widen: an `edge[facets=...]` that no edge is a **member** of matches
+  nothing rather than every edge. Membership is the only test — whether the
+  facet also has a top-level `facet` block is a separate question, answered by
+  the next bullet.
 - **Membership is read from the element**, which is where `facets <id>` is
   written. Nothing about the selector reaches back into the `facet` declaration;
   the declaration carries the concern's metadata, not its members.
 - **Undeclared facet ids are not a style-side error.** A `facets pcl` typo is
-  reported once, where it is written, by `facet-not-declared` — a selector
-  naming the same misspelling simply matches nothing. Reporting it twice would
-  ask the author to fix one mistake in two places.
+  reported once, where it is written, by `facet-not-declared`, and the selector
+  says nothing about it — `[facets=pcl]` matches whatever wrote `facets pcl`,
+  exactly as it would a declared id, because membership is the only test.
+  Reporting it twice would ask the author to fix one mistake in two places. The
+  rule the typo does break is the *intended* one: `[facets=pci]` no longer
+  reaches the element, which is the symptom that sends the author to the
+  warning.
 - **Fact and style stay split.** Membership is a fact and lives in `.krs`;
   what a facet looks like is a choice and lives here. The overlay in the
   preview is a third, separate thing: a reader's temporary selection, written
@@ -863,8 +878,9 @@ the unqualified one means.
 > ignored on a frame. A frame that reaches out of its band is drawn as a
 > rectilinear outline, which has no corner radius to set.
 
-Team frames (*Group by: team*) are not addressable this way yet; see
-[#2269](https://github.com/kompiro/karasu/issues/2269).
+Team frames (*Group by: team*) are addressed differently, because a team **is** a
+node and `#<id>` already reaches it — see
+[Team frames](#team-frames-group-by-team) below.
 
 `boundary` is experimental notation, so this selector carries the same
 no-compatibility-promise as the construct it styles
@@ -883,6 +899,7 @@ The Org Tree View supports `team` / `member` kind selectors and ID selectors (`#
 | `team` | All team cards |
 | `member` | All member cards |
 | `#TeamId` | A specific team card |
+| `team#TeamId` | The same, narrowed to the team kind |
 | `#MemberId` | A specific member card |
 | `edge` | Bézier connectors between teams |
 
@@ -901,3 +918,53 @@ The Org Tree View supports `team` / `member` kind selectors and ID selectors (`#
 
 > **Note**: `opacity` / `shape` / `badge-*` are ignored in the Org Tree View.
 > Tag/annotation compound selectors (`team[external]`, etc.) are not supported at this time.
+
+### Team frames (*Group by: team*)
+
+Under *Group by: team* the system view draws a frame around each team's members.
+That frame and the card above are two renderings of **one** team, so the
+selectors above address both. There is no separate frame keyword.
+
+```css
+team          { border-color: #64748B; } /* every team card, and every team frame */
+#Platform     { border-color: #C0392B; } /* the Platform card, and the Platform frame */
+team#Platform { border-color: #C0392B; } /* the same, narrowed to the team kind */
+```
+
+`team#<id>` is a **compound** selector, not a second id space: it means "the node
+with this id, if it is a team". It scores 101 (100 for the id + 1 for the kind),
+so it beats a bare `#<id>` at 100 and a bare `team` at 1. This is the opposite of
+`boundary#<id>`, where the keyword names an id space a bare `#<id>` cannot reach
+at all — a boundary is not a node, and a team is.
+
+**Which property reaches which rendering.** Each one lands on the part of the
+frame that answers to the part of the card it paints:
+
+| Property | Card (Org Tree View) | Frame (*Group by: team*) |
+|----------|----------------------|--------------------------|
+| `border-color` | Border colour | Outline colour |
+| `background-color` | Card fill | Low-alpha tint inside the frame |
+| `color` | Label colour | Frame title colour |
+| `border-width` | Border width (px) | Outline width (px) |
+| `border-style` | not applied | `solid` / `dashed` / `dotted`. Default `dashed` |
+| `border-radius` / `font-size` / `font-weight` / `font-family` | as documented above | not applied |
+
+> **Note**: unlike a boundary frame, a team frame's tint does **not** follow
+> `border-color`. Boundary frames overlap, and there one colour has to reach the
+> tint or the overlap reads as nesting. Team frames never overlap, so each
+> property follows the card instead, which is the reading a single declaration
+> predicts.
+
+**Each rendering keeps its own default.** The built-in sheet's `team { … }` rule
+is the *card's* default and does not reach the frame; the frame's default is the
+muted dashed outline the view draws on its own. So a team no sheet names is
+unchanged, and naming one team does not disturb the rest.
+
+> **Note**: only the three selectors above reach the frame. A rule that adds a
+> predicate — `team@deprecated`, `team[tag]`, `team[from=<id>]` — styles the card
+> where it applies and leaves the frame alone. The frame is resolved from the
+> sheet without the organization model in hand, so a predicate about the team
+> cannot be evaluated there; the rule is declined rather than applied with its
+> predicate dropped, which would widen it to every frame.
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — a team is drawn as a card and as a frame by different code, and one declaration must not repaint only half of it. [TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — the built-in sheet styles the card only; reading it for the frame would repaint every frame by default. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `team#<id>` survives `karasu fmt` instead of being re-emitted as the wider `#<id>`. [TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — the specificity scores quoted here are generated from `reference-data.ts`.

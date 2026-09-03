@@ -229,6 +229,27 @@ describe("SessionStore", () => {
     expect(await h.store.get(42, sessionId, h.at())).toBeUndefined();
   });
 
+  it("is not extended by being used", async () => {
+    // Reading a session must not rewrite it. A credential that renews on use
+    // never ends while it is being used, which is the thing the fixed window
+    // exists to stop, and `docs/policy/nest-privacy.md` states that window to
+    // submitters. The lint guard checks the documents; this checks the
+    // behaviour they describe, because a comment can go on saying "not
+    // renewed" after the code stopped meaning it.
+    const kv = new MemoryKV();
+    const store = new SessionStore(kv);
+    const { sessionId } = await store.issue(42, "kompiro", at);
+    const writes = kv.puts.length;
+
+    kv.advance(SESSION_TTL_SECONDS / 2);
+    expect(await store.get(42, sessionId)).toBeDefined();
+    expect(kv.puts.length).toBe(writes);
+
+    // Still measured from issue, not from that read.
+    kv.advance(SESSION_TTL_SECONDS / 2 + 1);
+    expect(await store.get(42, sessionId)).toBeUndefined();
+  });
+
   it("will not hand one account's session to another", async () => {
     const h = harness();
     const { sessionId } = await h.store.issue(42, "kompiro", h.at());

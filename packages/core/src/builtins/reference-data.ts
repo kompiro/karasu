@@ -1022,6 +1022,7 @@ A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via 
 A --> B [async] #orderPlaced {
   label       "places an order"
   description "At-least-once. Retries are idempotent on orderId."
+  facets      pii            // the flow itself is in the facet, not just its ends
   link        "https://runbook.example.com/order-placed" "Runbook"
 }`,
     },
@@ -1238,11 +1239,17 @@ export const SELECTOR_SPECIFICITY: SelectorSpecificityData[] = [
     specificity: 11,
   },
   { label: { en: "ID", ja: "ID" }, example: "#ECommerce", specificity: 100 },
+  { label: { en: "Kind + ID", ja: "種別 + ID" }, example: "team#Platform", specificity: 101 },
   { label: { en: "Edge", ja: "エッジ" }, example: "edge", specificity: 1 },
   { label: { en: "Edge + tag", ja: "エッジ + タグ" }, example: "edge[async]", specificity: 11 },
   {
     label: { en: "Edge source/target", ja: "エッジ 始点 / 終点" },
     example: "edge[from=ApiGateway]",
+    specificity: 11,
+  },
+  {
+    label: { en: "Edge + facet", ja: "エッジ + ファセット" },
+    example: "edge[facets=pii]",
     specificity: 11,
   },
   { label: { en: "Edge ID", ja: "エッジ ID" }, example: "edge#criticalWrite", specificity: 101 },

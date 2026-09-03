@@ -20,6 +20,15 @@ export const ja: Partial<Translations> = {
   "theme.light": "ライト",
   "theme.dark": "ダーク",
 
+  // Settings pane — 表示。アイコンモードを主導線から外すため、
+  // パンくず行からここへ移した（#2376）。
+  "settings.display.title": "🖼 表示",
+  "settings.displayMode.label": "ノードの表示",
+  "settings.displayMode.shape": "シェイプカード（既定）",
+  "settings.displayMode.icon": "アイコンカード",
+  "settings.displayMode.hint":
+    "シェイプカードは内容に合わせて大きさが変わります。アイコンカードはすべてのノードを固定サイズで描き、種別のアイコンを添えるため、文字量にかかわらずレイアウトが一定に保たれます。",
+
   // Settings pane
   "settings.ai.title": "⚙ AI 設定",
   "settings.security.heading": "⚠ セキュリティについて",
@@ -179,6 +188,14 @@ export const ja: Partial<Translations> = {
   "referencePanel.grouping.description": "説明",
   "referencePanel.grouping.membership": "所属の書き方",
   "referencePanel.grouping.properties": "プロパティ",
+  "referencePanel.signpost.description":
+    "ここにあるのは「何が書けるか」。「いつ使うか」はガイド、「どう描かれるか」は Examples ギャラリーにある。",
+  "referencePanel.signpost.guide.label": "ガイド ↗",
+  "referencePanel.signpost.guide.ariaLabel": "ガイドを新しいタブで開く",
+  "referencePanel.signpost.cookbook.label": "記法クックブック ↗",
+  "referencePanel.signpost.cookbook.ariaLabel": "記法クックブックを新しいタブで開く",
+  "referencePanel.signpost.examples.label": "Examples ギャラリー ↗",
+  "referencePanel.signpost.examples.ariaLabel": "Examples ギャラリーを新しいタブで開く",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ SVG をエクスポート",
@@ -192,8 +209,6 @@ export const ja: Partial<Translations> = {
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
   // 表示状態のトグルと別ウィンドウを開く操作
-  "preview.iconMode.label": "アイコンモード",
-  "preview.iconMode.ariaLabel": "アイコンモードを切り替える",
   "preview.orgTree.label": "ツリー表示",
   "preview.orgTree.ariaLabel": "組織のツリー表示を切り替える",
   "preview.entities.label": "エンティティ",
@@ -375,8 +390,8 @@ export const ja: Partial<Translations> = {
     `セレクタ "${selector}" が指す "@${annotation}" は組み込みアノテーションではありません — 非推奨です。v1.x ではこのルールは引き続き適用されますが、構文 v2.0 はツール語彙のみに一致します。`,
   "warning.styleSelectorNotBuiltin.migrationNote":
     '移行は 3 手順です: 関心事を宣言し（facet <id> { label "..." }）、対象要素に "facets <id>" を書き、セレクタを [facets=<id>] に書き換えます。specificity は同じなので、カスケードの他の部分は動きません。',
-  "warning.facetNotDeclared.message": ({ nodeId, facetId }) =>
-    `${nodeId} の "facets ${facetId}" は宣言済みの facet を指していません`,
+  "warning.facetNotDeclared.message": ({ subject, facetId }) =>
+    `${subject} の "facets ${facetId}" は宣言済みの facet を指していません`,
   "warning.facetNotDeclared.declarationNote":
     'top-level に facet <id> { label "..." } を宣言するか、既存の宣言に合わせて綴りを修正してください。',
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>

@@ -515,6 +515,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2174](TPL-2174-opt-in-visual-layer-is-inert-when-off.md) | opt-in な視覚レイヤは無効時に自分のマーカーを 1 つも出さない — 等値テストは無条件出力を相殺して見逃すので、マーカーを名前で列挙して不在を assert する | renderer | #2174 |
 | [TPL-2316](TPL-2316-declarable-construct-reachable-from-reference.md) | 宣言できる構文は Reference から到達できる — 半分だけ載っている状態（要素側プロパティだけ / 宣言ブロックだけ）は何も載っていないより悪く、載せない判断は書かなければ漏れと区別できない | app-ui | #2316, ADR-2316 |
 | [TPL-2234](TPL-2234-one-entity-one-appearance-resolver.md) | 1 つのエンティティの見た目を複数の面が描くなら決定を 1 つの関数に閉じる — 既定値しか無いうちは一致して隠れ、上書き手段を足した瞬間に片面だけ変わる | renderer | #2234, #2179 |
+| [TPL-2269](TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) | 既存エンティティに 2 つ目の描画面を足すとき、渡すのは著者の宣言だけ — 出荷側シートの既定値は先にあった面のものなので、解決済みの値を読むと誰も指定していないのに全部の見た目が変わる | styling | #2269, #2234 |
 | [TPL-2374](TPL-2374-long-call-bounded-by-silence-not-duration.md) | 分単位になりうる外部呼び出しは、総所要時間ではなく無通信で打ち切る — 非ストリーミングでは「生成中」と「ハング」が同じ姿になり、こちらが設定していない中間層が先に切る | project | #2374, ADR-1990 |
 | [TPL-2175](TPL-2175-deprecation-announced-only-with-a-migration-target.md) | 非推奨は移行先が出荷される release で告知する — 移行先の無い deprecation は「唯一動く手段をやめろ」と言っているだけで、警告を無視する習慣を教える。1 つの誤りが複数箇所に書かれるなら全箇所で警告する | core-concepts | #2175, #2159 |
 | [TPL-2379](TPL-2379-expensive-failure-records-its-cause.md) | 再現に実費がかかる処理の失敗記録は、再実行なしで原因が分かるだけの情報を持つ — 外部エラーの全捨ては安全ではなく高価で、線は固定語彙と自由文の間に引く | project | #2379, ADR-1990 |
@@ -529,4 +530,6 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2593](TPL-2593-layout-feedback-is-floor-first-and-monotone.md) | レイアウトに測定値を返す経路を足すなら、候補は入力だけで決まり、既定候補が先頭で厳密改善のみが勝ち、停止は単調性で説明できること — 前向き一方向だったパイプラインは決定性と差分の局所性を無料で得ていた | renderer | #2593, ADR-1737 |
 | [TPL-2643](TPL-2643-skip-reports-success-without-running.md) | 走らずに success を報告する gate は、skip 条件を解除する状態変化を必ず trigger 側にも持つ | build | #2643, ADR-2643 |
 | [TPL-2598](TPL-2598-fence-corpus-must-reach-the-limit.md) | 計測柵は、その資源の限界に達する入力を corpus に持って初めて柵になる — 有限の資源を N 分割する実装は N が小さいうちどの指標も 0 のままで、飽和入力の無い柵は修正前後どちらも green を返す | testing | #2598 |
+| [TPL-2658](TPL-2658-agent-write-scope-is-declared-not-prompted.md) | エージェントに任せる自動化の書き込み範囲は prompt の禁止文ではなく宣言（safe outputs・permission）で検証する。宣言だけが広がった状態は、prompt が「変更しません」と言い続けるためレビューでは安全に読める | build | #2658 |
+| [TPL-2536](TPL-2536-locale-source-chain-completeness.md) | 環境から生タグを取り出す consumer は、その環境が定める優先順位の鎖を全部辿る — 正規化が単一情報源でも、渡されなかった情報源については何も言えない。抜けるのは中間リンクなので、両端が読めているぶんテストは緑のまま通る | cli | #2536, ADR-1417 |
 | [TPL-2655](TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md) | 更新で延びる期限には、更新されない上限を併置する — ストアが強制できる期限は 1 つで、それは延びる側に使われるため、上限は読み取り時に確かめるしかない | project | #2655, sessions.ts |

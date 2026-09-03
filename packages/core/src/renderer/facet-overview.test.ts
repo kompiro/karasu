@@ -147,6 +147,66 @@ describe("buildFacetOverview", () => {
     expect(buildFacetOverview(parse(`system Shop { service A {} }`))).toEqual([]);
   });
 
+  // Slice B (#2544). The panel answers "what is in PCI scope?", and after edges
+  // took the property an answer that listed only nodes would name the endpoints
+  // while leaving out the flow between them — the fact edge membership exists
+  // to record.
+  it("lists an edge that declares the facet", () => {
+    const overview = buildFacetOverview(
+      parse(`
+        facet pii { label "PII" }
+        system Shop {
+          service Api {}
+          service Billing {}
+          Api --> Billing "charge" { facets pii }
+        }
+      `),
+    );
+    // The id is the canonical base form, which is exactly what `edge#<id>`
+    // addresses the same edge with — so a row can be pasted into a selector.
+    expect(overview[0].members).toEqual([
+      { id: "Api-->Billing", label: "charge", kind: "edge", path: ["Shop"] },
+    ]);
+  });
+
+  it("keeps two same-arrow edges in different scopes apart (TPL-1352)", () => {
+    // The same reason node rows carry a path: an edge is identified by the
+    // block that declares it, not by its arrow form alone.
+    const overview = buildFacetOverview(
+      parse(`
+        facet pii { label "PII" }
+        system Left {
+          service Api {}
+          service Billing {}
+          Api -> Billing { facets pii }
+        }
+        system Right {
+          service Api {}
+          service Billing {}
+          Api -> Billing { facets pii }
+        }
+      `),
+    );
+    expect(overview[0].members.map((m) => m.path.join("/"))).toEqual(["Left", "Right"]);
+  });
+
+  it("names a facet held only by an edge, with no node member anywhere", () => {
+    // `knownFacetIds` has to see edge references or this facet would have no
+    // row, no colour and no toolbar entry — accepted vocabulary with no effect.
+    const overview = buildFacetOverview(
+      parse(`
+        system Shop {
+          service Api {}
+          service Billing {}
+          Api -> Billing { facets edgeonly }
+        }
+      `),
+    );
+    expect(overview.map((f) => f.id)).toEqual(["edgeonly"]);
+    expect(overview[0].declared).toBe(false);
+    expect(overview[0].members.map((m) => m.kind)).toEqual(["edge"]);
+  });
+
   it("orders facets the same way the overlay assigns colours", () => {
     // Declared first, then reference-only — the `knownFacetIds` order. If the
     // panel ordered differently, its swatch and the diagram's ring would be

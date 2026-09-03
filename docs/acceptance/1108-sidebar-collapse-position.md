@@ -7,7 +7,7 @@ type: product
 - **日付**: 2026-05-05
 - **関連 Issue**: [#1108](https://github.com/kompiro/karasu/issues/1108)
 - **対象ファイル**:
-  - `packages/app/src/styles/app.css`
+  - `packages/app/src/styles/layout.css`、`packages/app/src/styles/components/navigation.css`
 
 ## 受け入れ条件
 

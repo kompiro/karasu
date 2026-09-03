@@ -121,7 +121,6 @@ a second row at ordinary window widths.
 
 #### Drill-path row — what changes the diagram
 
-- **Icon mode** — toggle between service icons and plain shapes.
 - **Group by** (System view, when the model has an `organization` block) —
   choose **Team** to wrap each owning team's services in a collapsible boundary
   frame. Each frame has a ⊖/⊕ toggle.
@@ -166,7 +165,10 @@ On a narrow window these wrap below the drill path rather than squeezing it.
   that same all-views bundle in a new tab instead of downloading it.
 - **Share** — copy a link that carries the model in the URL.
 - **Docs** — the built-in tag/annotation **Reference**, in a pop-out window you
-  can keep beside the diagram, and the published documentation site.
+  can keep beside the diagram, and the published documentation site. The
+  Reference answers *what you can write*; every tab links on to the guides and
+  the notation cookbook (*when* you would reach for a form) and the Examples
+  gallery (*how it renders*), including inside the pop-out.
 - **Focus** (`Ctrl/Cmd+Shift+F`) — expand the preview to full width.
 
 ## The editor (playground)
@@ -186,6 +188,21 @@ assisted by:
 The edit pane also has **Chat** and **Settings** tabs. Chat is an optional AI
 assistant for drafting and editing `.krs`; it requires you to store an API key in
 Settings first.
+
+Settings holds the preferences that outlive a single diagram: **Language**,
+**Theme**, **Display**, and the Chat API key.
+
+**Display → Node display** picks how nodes are drawn:
+
+- **Shape cards (default)** — variable-width cards sized to their content.
+- **Icon cards** — every node drawn at a fixed size with its kind's icon, so
+  the layout stays dense and stable however long the labels are. You do not
+  need this mode to get icons: external SVG icons (`shape: url()`) work in
+  shape mode too.
+
+Because Display lives in the edit pane, it is not available under
+`karasu serve`, which renders the preview on its own. Language and Theme are
+reached the same way, as is the Chat API key, and share that limitation.
 
 ## Keyboard shortcuts
 

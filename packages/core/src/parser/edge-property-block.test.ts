@@ -102,10 +102,23 @@ describe("edge property block (#2543)", () => {
     expect(edgeBlockErrors(wrap(`A -> B {\n    bogus\n  }`))).toHaveLength(1);
   });
 
-  it("does not accept facets on an edge, which is slice B (#2544)", () => {
-    // The spec sentences excluding edges from facets stay true after this
-    // slice, so `facets` must not slip in via the new block.
-    expect(edgeBlockErrors(wrap(`A -> B {\n    facets pii\n  }`)).length).toBeGreaterThan(0);
+  // Slice B (#2544). The block is what made `facets` on an edge expressible;
+  // these fence that it is spelled the same way it is on a node.
+  it("accepts facets on an edge", () => {
+    const src = wrap(`A -> B "calls" {\n    facets pii, pci\n  }`);
+    expect(errorCodes(src)).toEqual([]);
+    expect(edgesOf(src)[0].facets).toEqual(["pii", "pci"]);
+  });
+
+  it("accumulates repeated facets lines and collapses duplicate ids", () => {
+    const [edge] = edgesOf(
+      wrap(`A -> B {\n    facets pii, pci\n    facets pci\n    facets gdpr\n  }`),
+    );
+    expect(edge.facets).toEqual(["pii", "pci", "gdpr"]);
+  });
+
+  it("leaves facets undefined — not empty — when no block is written", () => {
+    expect(edgesOf(wrap(`A -> B "calls"`))[0].facets).toBeUndefined();
   });
 
   it("parses on both sides of an edge block, so a bad block does not swallow the rest", () => {

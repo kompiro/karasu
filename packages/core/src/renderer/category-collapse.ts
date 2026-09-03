@@ -1,4 +1,4 @@
-import { INFRA_KIND_SET, type KrsNode, type KrsEdge } from "../types/ast.js";
+import { INFRA_KIND_SET, unionEdgeFacets, type KrsNode, type KrsEdge } from "../types/ast.js";
 import { makeStubNode } from "./collapse-stub.js";
 
 /**
@@ -115,7 +115,7 @@ export function collapseCategories(
     return cat !== undefined ? stubId(cat) : id;
   };
   const outEdges: KrsEdge[] = [];
-  const seen = new Set<string>();
+  const stubEdges = new Map<string, KrsEdge>();
   for (const edge of edges) {
     const from = remap(edge.from);
     const to = remap(edge.to);
@@ -127,11 +127,28 @@ export function collapseCategories(
     }
     if (from === to) continue; // both endpoints folded into the same stub
     const key = `${from} ${to} ${edge.kind}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    // A re-targeted edge stands for one-or-more real edges, so its authored
-    // label no longer describes it — drop the label but keep the sync/async kind.
-    outEdges.push({ ...edge, from, to, label: undefined });
+    const foldedInto = stubEdges.get(key);
+    if (foldedInto) {
+      // De-duplication keeps one line per pair, but facet membership is a set,
+      // so the dropped duplicates fold into it instead of vanishing — otherwise
+      // collapsing a category takes the overlay away from edges the reader can
+      // no longer see individually (#2544, same fold `foldFacetMembership` does
+      // for the nodes).
+      const merged = unionEdgeFacets(foldedInto.facets, edge.facets);
+      if (merged !== undefined && merged.length > 0) foldedInto.facets = merged;
+      continue;
+    }
+    // A re-targeted edge stands for one-or-more real edges, so nothing that
+    // describes one of them survives: the label goes, and so do the property
+    // block's `description` / `link`, which would otherwise put the first
+    // constituent's prose on a bundle it does not describe. The aggregated
+    // "N domain edges" drops them for the same reason (`view-extract.ts`).
+    // The sync/async kind is a property of the bundle, so it stays.
+    const stub: KrsEdge = { ...edge, from, to, label: undefined };
+    delete stub.description;
+    delete stub.links;
+    stubEdges.set(key, stub);
+    outEdges.push(stub);
   }
 
   return { nodes: kept, edges: outEdges, remapEndpoint: remap };

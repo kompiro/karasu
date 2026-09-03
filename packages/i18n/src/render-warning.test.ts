@@ -145,7 +145,7 @@ const SAMPLES: Record<WarningKind, Warning> = {
   },
   "facet-not-declared": {
     kind: "facet-not-declared",
-    params: { nodeId: "Order", facetId: "pcl" },
+    params: { subject: "Order", facetId: "pcl" },
   },
   "legend-ref-unresolved": {
     kind: "legend-ref-unresolved",

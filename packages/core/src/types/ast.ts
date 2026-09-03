@@ -428,6 +428,25 @@ export interface KrsEdge {
    */
   links?: LinkEntry[];
   /**
+   * Facet ids this edge belongs to, from `A -> B { facets pii, pci }` (#2544).
+   *
+   * Membership is a fact about **the edge**: a data flow carrying PII, or a
+   * call inside PCI scope, is not a property of either endpoint. The exclusion
+   * that stood until #2544 was a syntactic accident — there was nowhere on an
+   * edge to write a property — and not the principle `docs/spec/syntax.md`
+   * states one sentence earlier ("no kind is structurally excluded").
+   *
+   * Left `undefined` (not `[]`) when the edge declares none, so the shorthand
+   * and a block that omits `facets` land on the same AST. Repeated `facets`
+   * lines accumulate and duplicate ids collapse, exactly as on a node.
+   *
+   * Deliberately **not** mirrored into `KrsFile.facetIndex`: that map is keyed
+   * by node id, and an edge has no id to key on (its `canonicalId` may be
+   * `undefined` after a base collision, ADR-1096). Consumers read membership
+   * off the edge object itself.
+   */
+  facets?: string[];
+  /**
    * Author-supplied identifier from `from -> to "label" #<id>` (or, for
    * synthesized usecase->resource edges, from `resource <ref> #<id>`).
    * See `docs/design/edge-id-selector.md`.
@@ -770,6 +789,34 @@ export interface KrsFile {
  */
 export function boundaryScopeKey(pathIds: readonly string[]): string {
   return JSON.stringify(pathIds);
+}
+
+/**
+ * Union the facet membership of an edge that folds several edges into one — an
+ * aggregated `"N domain edges"`, a collapse stub's re-targeted edge (#2544).
+ *
+ * A derived edge is not any one of the edges it stands for, which is why it
+ * drops their `label` and their prose. Membership is the opposite case: it is
+ * a *set*, so the fold has an answer that is true of the bundle, and dropping
+ * it would make the overlay go dark on exactly the memberships the reader can
+ * no longer see individually — the inconsistency `foldFacetMembership` already
+ * prevents for collapsed nodes. Staying a union keeps membership 1:N
+ * (TPL-2161).
+ *
+ * First-seen order is preserved; consumers that need a stable cross-element
+ * order filter through `knownFacetIds`. Returns `undefined` when nothing folds
+ * in, so an edge with no membership keeps an absent field rather than `[]`.
+ */
+export function unionEdgeFacets(
+  accumulated: readonly string[] | undefined,
+  incoming: readonly string[] | undefined,
+): string[] | undefined {
+  if (incoming === undefined || incoming.length === 0) {
+    return accumulated === undefined ? undefined : [...accumulated];
+  }
+  const merged = accumulated === undefined ? [] : [...accumulated];
+  for (const id of incoming) if (!merged.includes(id)) merged.push(id);
+  return merged;
 }
 
 /**

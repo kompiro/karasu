@@ -42,6 +42,8 @@
     "lint:docs-site-ci-paths-sync": "tsx scripts/lint/docs-site-ci-paths-sync.ts",
     "lint:roadmap-issue-state": "tsx scripts/lint/roadmap-issue-state.ts",
     "lint:locale-normalization": "tsx scripts/lint/locale-normalization-single-owner.ts",
+    "lint:record-source-paths": "tsx scripts/lint/record-source-paths.ts",
+    "lint:reference-docs-links": "tsx scripts/lint/reference-docs-links.ts",
     "program:slices": "tsx scripts/program-slices.ts",
     "census:vocabulary": "tsx scripts/census/vocabulary.ts",
     "tpl:validate": "tpl validate --config tpl.config.json --packages-root packages",
@@ -60,7 +62,7 @@
     "@kompiro/adr-tools": "^0.0.13",
     "@kompiro/tpl-tools": "^0.0.7",
     "@playwright/test": "^1.49.0",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.3.0",
     "knip": "^6.32.2",
     "lefthook": "^2.1.10",
     "madge": "^8.0.0",
@@ -68,7 +70,7 @@
     "oxlint": "1.76.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2"

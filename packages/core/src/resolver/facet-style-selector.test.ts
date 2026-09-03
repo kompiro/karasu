@@ -80,9 +80,10 @@ describe("[facets=<id>] selector — matching", () => {
     expect(styles.nodes.get("Payments")?.color).not.toBe("#444444");
   });
 
-  it("does not widen to every edge when written on an edge selector", () => {
-    // `facets` is a node property in v1, so `edge[facets=…]` matches nothing.
-    // Ignoring the predicate instead would silently style ALL edges.
+  it("does not widen to every edge when no edge declares the facet", () => {
+    // Ignoring the predicate rather than failing it would silently style ALL
+    // edges — the failure mode this assertion has fenced since #2175, and one
+    // that survives edges gaining the property in #2544.
     const file = parseModel(`
       system Shop {
         service A {}
@@ -95,6 +96,78 @@ describe("[facets=<id>] selector — matching", () => {
     for (const style of styles.edges.values()) {
       expect(style.strokeWidth).not.toBe(4);
     }
+  });
+
+  // Slice B (#2544). `edge[facets=…]` stopped matching nothing by design once
+  // the edge property block gave membership somewhere to live.
+  it("styles the edges that declare the facet, and only those", () => {
+    const file = parseModel(`
+facet pii {}
+system Shop {
+  service A {}
+  service B {}
+  service C {}
+  A -> B "carries pii" { facets pii }
+  A -> C "plain"
+}
+`);
+    const styles = resolveStyles(file.systems, [sheet(`edge[facets=pii] { stroke-width: 4px; }`)]);
+    expect(styles.edges.get("A->B#sync")?.strokeWidth).toBe(4);
+    expect(styles.edges.get("A->C#sync")?.strokeWidth).not.toBe(4);
+  });
+
+  // Membership is the only test the selector applies, whether or not the id has
+  // a top-level `facet` block — on nodes (since #2175) and now on edges. An
+  // undeclared id is reported once by `facet-not-declared` at the site that
+  // wrote it; making the selector refuse to match too would ask the author to
+  // fix one mistake in two places, which is the trade §Facet selectors states.
+  it("matches an element whose facet has no top-level declaration", () => {
+    const file = parseModel(`
+system Shop {
+  service A { facets ghost }
+  service B {}
+  A -> B "carries ghost" { facets ghost }
+}
+`);
+    const styles = resolveStyles(file.systems, [
+      sheet(`[facets=ghost] { color: #555555; }`),
+      sheet(`edge[facets=ghost] { stroke-width: 4px; }`),
+    ]);
+    expect(styles.nodes.get("A")?.color).toBe("#555555");
+    expect(styles.edges.get("A->B#sync")?.strokeWidth).toBe(4);
+  });
+
+  it("leaves the intended selector unmatched when the membership is misspelled", () => {
+    // The half a typo really does break: `facets pcl` puts the element in `pcl`,
+    // so the `pci` rule the author meant to write no longer reaches it. That
+    // miss is the symptom; `facet-not-declared` is the explanation.
+    const file = parseModel(`
+facet pci {}
+system Shop {
+  service A { facets pcl }
+}
+`);
+    const styles = resolveStyles(file.systems, [sheet(`[facets=pci] { color: #666666; }`)]);
+    expect(styles.nodes.get("A")?.color).not.toBe("#666666");
+  });
+
+  it("ANDs repeated predicates on an edge selector too", () => {
+    const file = parseModel(`
+facet pii {}
+facet gdpr {}
+system Shop {
+  service A {}
+  service B {}
+  service C {}
+  A -> B "both" { facets pii, gdpr }
+  A -> C "one" { facets pii }
+}
+`);
+    const styles = resolveStyles(file.systems, [
+      sheet(`edge[facets=pii][facets=gdpr] { stroke-width: 4px; }`),
+    ]);
+    expect(styles.edges.get("A->B#sync")?.strokeWidth).toBe(4);
+    expect(styles.edges.get("A->C#sync")?.strokeWidth).not.toBe(4);
   });
 });
 

@@ -85,11 +85,13 @@ flowchart TD
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
+    ADR_2493["ADR-2493<br/>knip に compiled extension をたどらせ、configuration h..."]
     ADR_2562["ADR-2562<br/>Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
     ADR_2564["ADR-2564<br/>Dependabot security alert 2026-08-18（auto-dismi..."]
     ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
     ADR_2640["ADR-2640<br/>PR の一次レビューに CodeRabbit を入れる（advisory 固定）"]
     ADR_2643["ADR-2643<br/>stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI ..."]
+    ADR_2671["ADR-2671<br/>Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -99,6 +101,7 @@ flowchart TD
   ADR_2075["ADR-2075<br/>[resolver] 宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
   ADR_2165["ADR-2165<br/>[parser] 論理ノードの containment 規則は `canContain` を唯一の定義とし、違反..."]
   ADR_2184["ADR-2184<br/>[resolver] 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
+  ADR_2209["ADR-2209<br/>[edges] エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
   ADR_1296 --> ADR_8
   ADR_1628 --> ADR_1575
   ADR_1820 --> ADR_1314
@@ -112,6 +115,7 @@ flowchart TD
   ADR_2165 --> ADR_1314
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
+  ADR_2209 --> ADR_1314
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -198,11 +202,13 @@ flowchart TD
   class ADR_2447 accepted
   class ADR_2472 accepted
   class ADR_2474 accepted
+  class ADR_2493 accepted
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2623 accepted
   class ADR_2640 accepted
   class ADR_2643 accepted
+  class ADR_2671 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
@@ -211,4 +217,5 @@ flowchart TD
   class ADR_2075 ghost
   class ADR_2165 ghost
   class ADR_2184 ghost
+  class ADR_2209 ghost
 ```

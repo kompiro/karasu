@@ -20,6 +20,15 @@ export const en: Translations = {
   "theme.light": "Light",
   "theme.dark": "Dark",
 
+  // Settings pane — display. Icon mode moved here from the drill-path row to
+  // take it out of the main flow (#2376).
+  "settings.display.title": "🖼 Display",
+  "settings.displayMode.label": "Node display",
+  "settings.displayMode.shape": "Shape cards (default)",
+  "settings.displayMode.icon": "Icon cards",
+  "settings.displayMode.hint":
+    "Shape cards size themselves to their content. Icon cards draw every node at a fixed size with its kind's icon, so the layout stays dense and stable however long the text is.",
+
   // Settings pane
   "settings.ai.title": "⚙ AI settings",
   "settings.security.heading": "⚠ About security",
@@ -181,6 +190,14 @@ export const en: Translations = {
   "referencePanel.grouping.description": "Description",
   "referencePanel.grouping.membership": "Membership",
   "referencePanel.grouping.properties": "Properties",
+  "referencePanel.signpost.description":
+    "These tables say what you can write. The guides say when to reach for each form, and the gallery shows how it renders.",
+  "referencePanel.signpost.guide.label": "Guides ↗",
+  "referencePanel.signpost.guide.ariaLabel": "Open the guides in a new tab",
+  "referencePanel.signpost.cookbook.label": "Notation cookbook ↗",
+  "referencePanel.signpost.cookbook.ariaLabel": "Open the notation cookbook in a new tab",
+  "referencePanel.signpost.examples.label": "Examples gallery ↗",
+  "referencePanel.signpost.examples.ariaLabel": "Open the examples gallery in a new tab",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ Export SVG",
@@ -194,8 +211,6 @@ export const en: Translations = {
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
 
   // View-state toggles and window-opening controls
-  "preview.iconMode.label": "Icon Mode",
-  "preview.iconMode.ariaLabel": "Toggle icon mode",
   "preview.orgTree.label": "Tree View",
   "preview.orgTree.ariaLabel": "Toggle org tree view",
   "preview.entities.label": "Entities",
@@ -378,8 +393,8 @@ export const en: Translations = {
     `The selector "${selector}" targets "@${annotation}", which is not a builtin annotation — deprecated. The rule still applies in v1.x; syntax v2.0 matches tool vocabulary only.`,
   "warning.styleSelectorNotBuiltin.migrationNote":
     'Migrate in three steps: declare the concern — facet <id> { label "..." } — add "facets <id>" to the elements, then rewrite the selector as [facets=<id>]. Specificity is unchanged, so nothing else in the cascade moves.',
-  "warning.facetNotDeclared.message": ({ nodeId, facetId }) =>
-    `"facets ${facetId}" on ${nodeId} names no declared facet`,
+  "warning.facetNotDeclared.message": ({ subject, facetId }) =>
+    `"facets ${facetId}" on ${subject} names no declared facet`,
   "warning.facetNotDeclared.declarationNote":
     'Declare it at the top level — facet <id> { label "..." } — or fix the spelling to match an existing declaration.',
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>

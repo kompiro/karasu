@@ -1900,6 +1900,44 @@ system Shop {
       expect(referenced.filter((id) => !declared.has(id))).toEqual([]);
       expect(notDeclared(result.diagnostics)).toHaveLength(0);
     });
+
+    // Slice B (#2544). An edge's membership is not in `facetIndex` (that map is
+    // keyed by node id and an edge has none), so the merged-space requirement
+    // has to be re-asserted for the edge path specifically: a declaration in an
+    // imported file must satisfy an edge's reference (TPL-2032). Asserted by
+    // running `analyze()` over the resolved model — `resolve()` itself only
+    // reports parse and import diagnostics, never warnings.
+    const edgeFacetWarnings = (file: Parameters<typeof analyze>[0]) =>
+      analyze(file, []).filter((w) => w.kind === "facet-not-declared");
+
+    const withEdgeFacet = async (facetId: string) => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./facets.krs"
+system Shop {
+  service Orders {}
+  service Ledger {}
+  Orders --> Ledger { facets ${facetId} }
+}
+`,
+      );
+      await fs.writeFile("/p/facets.krs", `facet pii {}\n`);
+      return resolver.resolve("/p/index.krs");
+    };
+
+    it("resolves an edge's facets against a declaration in an imported file", async () => {
+      const result = await withEdgeFacet("pii");
+      expect(edgeFacetWarnings(result.krsFile)).toHaveLength(0);
+    });
+
+    it("reports an edge's facets when no file in the merge declares them", async () => {
+      const result = await withEdgeFacet("pcl");
+      const warnings = edgeFacetWarnings(result.krsFile);
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toMatchObject({
+        params: { subject: "Orders-->Ledger", facetId: "pcl" },
+      });
+    });
   });
   // #2075. `edge-endpoint-not-at-scope` compares an edge's endpoints against
   // the peers of the *instance* that declares it. That is only safe if the

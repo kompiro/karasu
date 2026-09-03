@@ -11,7 +11,6 @@ type: product
   - `packages/core/src/types/tokens.ts`
   - `packages/core/src/types/ast.ts`
   - `packages/core/src/parser/parser.ts`
-  - `packages/core/src/parser/diagnostic-legacy-format.ts`
   - `packages/core/src/spec/operations.ts`
   - `packages/app/src/i18n/{types,en,ja,format-diagnostic}.ts`
   - `docs/spec/syntax.md`, `docs/spec/syntax.ja.md`

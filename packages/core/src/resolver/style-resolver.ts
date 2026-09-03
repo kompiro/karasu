@@ -8,7 +8,12 @@ import type {
 } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { hasShape } from "../shapes/shape-registry.js";
-import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
+import {
+  CLIENT_SUBTYPE_TAGS,
+  ICON_THEME_SHEET_ID,
+  type ClientSubtypeTag,
+} from "../builtins/icon-theme.js";
+import { BUILTIN_SHEET_ID } from "../builtins/default-style.js";
 import { flattenSheetsInCascadeOrder, mergeInCascadeOrder } from "../style/cascade.js";
 import type {
   StyleSheet,
@@ -16,8 +21,9 @@ import type {
   StyleSelector,
   ResolvedNodeStyle,
   ResolvedEdgeStyle,
-  ResolvedBoundaryFrameStyle,
+  ResolvedFrameStyle,
   ResolvedBoundaryFrames,
+  ResolvedTeamFrames,
   ResolvedStyles,
   ResolvedLayoutHints,
   ResolvedStyleWarning,
@@ -229,6 +235,7 @@ export function resolveStyles(
     nodes: nodeStyles,
     edges: edgeStyles,
     boundaryFrames: resolveBoundaryFrames(allRules),
+    teamFrames: resolveTeamFrames(allRules),
     defaultNodeStyle: { ...DEFAULT_NODE_STYLE },
     defaultEdgeStyle: resolveDefaultEdgeStyle(allRules),
     layoutHints,
@@ -300,7 +307,11 @@ function mergeMatchingPropertiesForOrg(
 }
 
 function orgNodeSelectorMatches(node: OrgNodeDescriptor, sel: StyleSelector): boolean {
-  if (sel.id) return sel.id === node.id;
+  // An id narrows the match, it does not short-circuit it. `#<id>` on its own
+  // still reaches whatever answers to that id, because nothing else in the
+  // selector constrains it; `team#<id>` (#2269) additionally has to agree on the
+  // kind. Returning early here would make the compound as wide as the bare form.
+  if (sel.id && sel.id !== node.id) return false;
   if (sel.nodeType === "edge") return false;
   if (sel.nodeType && sel.nodeType !== node.kind) return false;
   // Org nodes carry no tags, so tag selectors never match. Same for `facets`:
@@ -328,33 +339,45 @@ function resolveDefaultEdgeStyle(rules: StyleRule[]): ResolvedEdgeStyle {
  * Boundary frame styles from `boundary` / `boundary#<id>` rules (#2234).
  *
  * Built from the *rules* rather than from the model's boundary declarations, so
- * `resolveStyles` needs no new input: a rule naming a boundary that does not
- * exist simply never gets looked up, which is how `#NoSuchNode` already behaves.
- *
- * Cascade is the shared one (specificity, then declaration order), so a bare
- * `boundary` rule is overridden by `boundary#<id>` at 1 vs 101 without this
- * function knowing the scores.
+ * `resolveStyles` needs no new input. The base / by-id split and the cascade are
+ * {@link resolveFrames}, shared with the team axis.
  */
 function resolveBoundaryFrames(rules: StyleRule[]): ResolvedBoundaryFrames {
-  const boundaryRules = rules.filter((rule) => rule.selector.nodeType === "boundary");
-  const merge = (matching: StyleRule[]): ResolvedBoundaryFrameStyle =>
-    toResolvedBoundaryFrameStyle(mergeInCascadeOrder(matching));
-
-  const base = merge(boundaryRules.filter((rule) => rule.selector.boundaryId === undefined));
-  const byId = new Map<string, ResolvedBoundaryFrameStyle>();
-  const namedIds = new Set(
-    boundaryRules
-      .map((rule) => rule.selector.boundaryId)
-      .filter((boundaryId): boundaryId is string => boundaryId !== undefined),
+  return resolveFrames(
+    rules.filter((rule) => rule.selector.nodeType === "boundary"),
+    (selector) => selector.boundaryId,
   );
-  for (const boundaryId of namedIds) {
+}
+
+/**
+ * The base / by-id split both frame axes resolve into, given the rules that
+ * apply to an axis and how that axis reads an id off a selector.
+ *
+ * Shared because the two differ in exactly those two inputs. The cascade is the
+ * common one (specificity, then declaration order), so a bare rule loses to a
+ * named one without this function knowing the scores, and a rule naming
+ * something that does not exist is simply never looked up — the way
+ * `#NoSuchNode` already behaves.
+ */
+function resolveFrames(
+  rules: StyleRule[],
+  idOf: (selector: StyleSelector) => string | undefined,
+): { base: ResolvedFrameStyle; byId: Map<string, ResolvedFrameStyle> } {
+  const merge = (matching: StyleRule[]): ResolvedFrameStyle =>
+    toResolvedFrameStyle(mergeInCascadeOrder(matching));
+  const base = merge(rules.filter((rule) => idOf(rule.selector) === undefined));
+  const byId = new Map<string, ResolvedFrameStyle>();
+  const namedIds = new Set(
+    rules.map((rule) => idOf(rule.selector)).filter((id): id is string => id !== undefined),
+  );
+  for (const id of namedIds) {
     byId.set(
-      boundaryId,
+      id,
       merge(
-        boundaryRules.filter(
-          (rule) =>
-            rule.selector.boundaryId === undefined || rule.selector.boundaryId === boundaryId,
-        ),
+        rules.filter((rule) => {
+          const ruleId = idOf(rule.selector);
+          return ruleId === undefined || ruleId === id;
+        }),
       ),
     );
   }
@@ -362,16 +385,83 @@ function resolveBoundaryFrames(rules: StyleRule[]): ResolvedBoundaryFrames {
 }
 
 /**
+ * Sheets karasu ships rather than the author writing them. Their `StyleRule.sheetId`
+ * is a sentinel, never a `.krs.style` path.
+ *
+ * Imported from where each sheet is parsed rather than spelled out again here:
+ * a third copy of the strings would let a rename at the producer silently
+ * re-open the leak this set exists to close, with nothing failing to say so.
+ */
+const NON_AUTHOR_SHEET_IDS: ReadonlySet<string> = new Set([BUILTIN_SHEET_ID, ICON_THEME_SHEET_ID]);
+
+/**
+ * Team frame styles from `team` / `#<id>` / `team#<id>` rules (#2269).
+ *
+ * A team is one entity with two renderings — the card in the org tree view and
+ * the frame the system view draws under *Group by: team* — so one selector
+ * addresses both, and this is the frame's half of the answer.
+ *
+ * **Author sheets only, and that is the whole reason this function exists.** The
+ * built-in sheet already declares `team { background-color: #D1FAE5;
+ * border-color: #6EE7B7; … }`, which describes the *card*: it predates the frame
+ * and is the card's default, not the team's colour. Reading it here would repaint
+ * every team frame green the moment this feature shipped, against the monochrome
+ * team frames #2179 decided on and against "teams the sheet does not name are
+ * unchanged". The two renderings therefore keep separate defaults — the card's
+ * in the built-in sheet, the frame's in the renderer — and only what an author
+ * declared crosses between them.
+ *
+ * `boundary` needed no such filter (#2234) only because the built-in sheet has
+ * no `boundary` rule to leak; the stance is the same on both axes. The filter is
+ * per rule rather than per sheet because `StyleRule.sheetId` is where a rule's
+ * origin is canonical — the `StyleSheet` envelope's copy is optional.
+ *
+ * Otherwise the same shape as {@link resolveBoundaryFrames}: built from the
+ * rules, so a rule naming a team that does not exist is simply never looked up,
+ * and the shared cascade sorts `team` (1) under `#<id>` / `team#<id>` (100 /
+ * 101) without this function knowing the scores. Selectors carrying tags,
+ * annotations or facets are left out: org nodes carry no tags or facets, and an
+ * annotation rule is a badge rule, which a frame does not draw.
+ */
+function resolveTeamFrames(allRules: StyleRule[]): ResolvedTeamFrames {
+  return resolveFrames(
+    allRules.filter((rule) => {
+      if (NON_AUTHOR_SHEET_IDS.has(rule.sheetId)) return false;
+      const sel = rule.selector;
+      // Predicates a team frame cannot answer. Org nodes carry no tags or
+      // facets; an annotation rule is a badge rule, which a frame does not
+      // draw; and the edge / boundary parts name other id spaces entirely.
+      // Letting any of them through would drop the predicate rather than honour
+      // it, so `team[from=X]` would silently widen to *every* frame.
+      if (sel.tags.length > 0 || sel.annotations.length > 0 || sel.facets.length > 0) return false;
+      if (sel.edgeFrom !== undefined || sel.edgeTo !== undefined) return false;
+      if (sel.edgeId !== undefined || sel.boundaryId !== undefined) return false;
+      // `team` (bare or compound) and a plain `#<id>`. A bare id selector carries
+      // no kind, so it reaches whichever entity answers to that id — exactly what
+      // it already does for the card.
+      return sel.nodeType === "team" || (sel.nodeType === undefined && sel.id !== undefined);
+    }),
+    (selector) => selector.id,
+  );
+}
+
+/**
  * The frame-relevant subset of the property list. Anything outside it is
  * ignored rather than half-applied, matching how the Org Tree View documents
  * its own subset (`docs/spec/style.md`).
  */
-function toResolvedBoundaryFrameStyle(props: Record<string, string>): ResolvedBoundaryFrameStyle {
-  const style: ResolvedBoundaryFrameStyle = {};
+function toResolvedFrameStyle(props: Record<string, string>): ResolvedFrameStyle {
+  const style: ResolvedFrameStyle = {};
   if (props["border-color"]) style.borderColor = props["border-color"];
   if (props["background-color"]) style.backgroundColor = props["background-color"];
   if (props["color"]) style.color = props["color"];
-  if (props["border-width"]) style.borderWidth = parseFloat(props["border-width"]);
+  if (props["border-width"]) {
+    // A non-numeric value would otherwise reach the SVG as `stroke-width="NaN"`,
+    // which renderers and the drawio exporter disagree about. Drop it and let the
+    // frame keep its own width instead.
+    const width = parseFloat(props["border-width"]);
+    if (Number.isFinite(width)) style.borderWidth = width;
+  }
   if (props["border-style"]) {
     style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
   }
@@ -418,7 +508,8 @@ function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle 
 }
 
 function deployNodeSelectorMatches(unit: DeployNode, sel: StyleSelector): boolean {
-  if (sel.id) return sel.id === unit.id;
+  // Narrowing, not short-circuiting — see `orgNodeSelectorMatches`.
+  if (sel.id && sel.id !== unit.id) return false;
   if (sel.nodeType === "edge") return false;
   if (sel.nodeType && sel.nodeType !== unit.kind) return false;
   if (sel.tags.length > 0) return false;
@@ -459,7 +550,10 @@ function collectOrgNodes(organizations: OrganizationBlock[]): OrgNodeDescriptor[
 }
 
 function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
-  if (selector.id) return node.id === selector.id;
+  // Narrowing, not short-circuiting — see `orgNodeSelectorMatches`. A bare
+  // `#<id>` carries nothing else (the parser returns as soon as it reads one),
+  // so it falls through every remaining test unchanged.
+  if (selector.id && node.id !== selector.id) return false;
   if (selector.nodeType === "edge") return false;
   if (selector.nodeType && selector.nodeType !== node.kind) return false;
   if (selector.tags.length > 0) {
@@ -494,10 +588,14 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
   // Edge selectors require the explicit `edge` type; tag-only selectors
   // (nodeType === undefined) never match edges.
   if (selector.nodeType !== "edge") return false;
-  // `facets` is not accepted on edges in v1 (design `tags-and-facets.md` (B1)),
-  // so an `edge[facets=…]` selector matches nothing. Returning false here — not
-  // ignoring the predicate — keeps it from silently widening to every edge.
-  if (selector.facets.length > 0) return false;
+  // `[facets=<id>]` on an edge (#2544), read the same way as on a node: straight
+  // off the element that declares the membership, and ANDed when repeated —
+  // `edge[facets=pii][facets=gdpr]` wants both.
+  if (selector.facets.length > 0) {
+    const facets = edge.facets;
+    if (!facets) return false;
+    if (!selector.facets.every((f) => facets.includes(f))) return false;
+  }
   if (selector.edgeId !== undefined) {
     if (edge.canonicalId === undefined) return false;
     if (edge.canonicalId !== selector.edgeId) return false;

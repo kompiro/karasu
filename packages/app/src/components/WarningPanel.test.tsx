@@ -182,7 +182,7 @@ function makeWarning(kind: Warning["kind"]): Warning {
     case "style-annotation-selector-not-builtin":
       return { kind, params: { annotation: "canary", selector: "service@canary" } };
     case "facet-not-declared":
-      return { kind, params: { nodeId: "test-node", facetId: "pcl" } };
+      return { kind, params: { subject: "test-node", facetId: "pcl" } };
   }
 }
 

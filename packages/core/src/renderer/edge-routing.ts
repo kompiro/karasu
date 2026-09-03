@@ -83,6 +83,62 @@ const STROKE_DASHARRAY: Record<ResolvedEdgeStyle["strokeStyle"], string | undefi
   dotted: "2 2",
 };
 
+/**
+ * Visible thickness of one facet casing per side, matching the node ring's
+ * `RING_WIDTH` so an edge's membership reads at the same weight as a card's.
+ *
+ * The rings leave a 1px gap between bands; the casings cannot, and deliberately
+ * do not try. A ring is its own rect over the canvas, so the background shows
+ * through between two of them. Casings are stacked strokes on one line, and the
+ * only way to separate them would be to paint a canvas-coloured band in the
+ * middle — which is a lie over any non-default background. Abutting bands of
+ * equal width is the honest rendering of the same idea.
+ */
+const CASING_WIDTH = 3;
+
+/**
+ * One casing per selected facet, widest first, so each is covered by the next
+ * narrower one and band `i` is left showing as the annulus
+ * `[strokeWidth/2 + i*W, strokeWidth/2 + (i+1)*W]` around the line. Every band
+ * is the same width, and the innermost one — against the line — is the first
+ * facet in known-facet order, which is the radial position ring `i` takes
+ * around a card.
+ *
+ * Solid regardless of the edge's `stroke-style`, and with no `marker-end`: a
+ * dashed casing would read as a second dashed edge, and a marker would stamp an
+ * oversized arrowhead behind the real one. The node rings make the same choice
+ * — they ignore `border-style` — because the highlight belongs to the reader's
+ * selection, not to the element's styling.
+ *
+ * Painted through `style=` rather than presentation attributes. Diff mode
+ * injects a stylesheet that repaints every `line` / `path` under a
+ * `[data-diff-state]` group (`diff/diff-style.ts`), and a selector rule beats a
+ * presentation attribute — so on a removed edge the casings would come out red
+ * and dashed, losing the facet identity they exist to carry. An inline style
+ * outranks that rule, which is what keeps "PII is teal" true in diff mode too.
+ */
+function renderFacetCasings(
+  facets: readonly string[],
+  colorOf: ReadonlyMap<string, string>,
+  strokeWidth: number,
+  strokedShape: (attrs: Record<string, string | number | undefined>) => string,
+): string[] {
+  const casings: string[] = [];
+  for (let i = facets.length - 1; i >= 0; i--) {
+    const color = colorOf.get(facets[i]);
+    if (!color) continue;
+    const width = strokeWidth + 2 * (i + 1) * CASING_WIDTH;
+    casings.push(
+      strokedShape({
+        style: `stroke:${color};stroke-width:${width};stroke-dasharray:none`,
+        "stroke-linecap": "butt",
+        "data-facet-casing": facets[i],
+      }),
+    );
+  }
+  return casings;
+}
+
 export function renderEdge(
   edge: LayoutEdge,
   style: ResolvedEdgeStyle,
@@ -90,6 +146,14 @@ export function renderEdge(
   diffState?: string,
   hops?: HopMark[],
   labelAnchorOverride?: Point,
+  /**
+   * Selected facets this edge belongs to, in known-facet order (#2544). Empty
+   * whenever the overlay is off, which is what keeps a file that writes
+   * `facets` on an edge byte-identical while nothing is selected (TPL-2174).
+   */
+  facets: readonly string[] = [],
+  /** Colour per facet id; absent when the overlay is off. */
+  facetColorOf?: ReadonlyMap<string, string>,
 ): string {
   const { fromPoint, toPoint } = edge;
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
@@ -160,33 +224,33 @@ export function renderEdge(
     }
   }
 
-  if (gapped) {
-    parts.push(
-      el("path", {
-        d: gappedStrokePath(points, hops),
-        fill: "none",
-        ...strokeAttrs,
-      }),
-    );
-  } else if (points.length === 2) {
-    parts.push(
-      el("line", {
-        x1: fromPoint.x,
-        y1: fromPoint.y,
-        x2: toPoint.x,
-        y2: toPoint.y,
-        ...strokeAttrs,
-      }),
-    );
-  } else {
-    parts.push(
-      el("polyline", {
-        points: points.map((p) => `${p.x},${p.y}`).join(" "),
-        fill: "none",
-        ...strokeAttrs,
-      }),
-    );
+  /**
+   * The edge's own geometry, stroked with `attrs`. One reader for the visible
+   * stroke and the facet casings below it, so a casing can never trace a
+   * different path than the line it sits under. The geometry itself is resolved
+   * once here rather than per call — `gappedStrokePath` walks every hop, and an
+   * edge in N facets asks for the same shape N+1 times.
+   */
+  const geometry: Record<string, string | number | undefined> = gapped
+    ? { d: gappedStrokePath(points, hops), fill: "none" }
+    : points.length === 2
+      ? { x1: fromPoint.x, y1: fromPoint.y, x2: toPoint.x, y2: toPoint.y }
+      : { points: points.map((p) => `${p.x},${p.y}`).join(" "), fill: "none" };
+  const shapeTag = gapped ? "path" : points.length === 2 ? "line" : "polyline";
+  const strokedShape = (attrs: Record<string, string | number | undefined>): string =>
+    el(shapeTag, { ...geometry, ...attrs });
+
+  // Facet casings (#2544): the edge counterpart of the node's concentric rings.
+  // Drawn widest first and then covered by the narrower ones, so each facet is
+  // left showing as its own band and the innermost band — the one against the
+  // line — is the same facet on every edge, exactly as `renderFacetRings` makes
+  // the innermost ring the same facet on every card. Always solid and never
+  // carrying the arrow marker: this is the highlight, not a second edge.
+  if (facets.length > 0 && facetColorOf) {
+    parts.push(...renderFacetCasings(facets, facetColorOf, style.strokeWidth, strokedShape));
   }
+
+  parts.push(strokedShape(strokeAttrs));
 
   if (edge.label) {
     // Default anchor (parallel-bundle slide applied, ADR-1185). When the
@@ -255,6 +319,9 @@ export function renderEdge(
         edge.links !== undefined && edge.links.length > 0
           ? JSON.stringify(edge.links.map((l) => ({ url: l.url, label: l.label })))
           : undefined,
+      // Selected facets this edge belongs to, spelled the way a node card
+      // spells them (#2544). Absent while the overlay is off.
+      "data-facet-member": facets.length > 0 ? facets.join(" ") : undefined,
       "data-diff-state": diffState,
       class: interactive ? "krs-edge krs-edge--interactive" : "krs-edge",
     },

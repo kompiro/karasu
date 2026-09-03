@@ -290,19 +290,34 @@ set is *not* a tag and *not* an annotation:
 | what the element **is** (architecturally) | archetype | builtin tag — `[external]`, `[index]` |
 | what development **state** it is in | lifecycle | builtin annotation — `@deprecated`, `@new` |
 | how peers **group** in a view | view grouping | `boundary` |
-| which externally defined **set** it belongs to | membership | `facet` (#2065 Part B, upcoming) — until it lands, `description` + `link` |
+| which externally defined **set** it belongs to | membership | `facet` — a top-level declaration plus a `facets` property on the element |
 
-**`.krs`** — PCI / auth today (prose + link), with rule content never modelled:
+`facet` is [experimental](../spec/syntax.md#cross-cutting-membership-facet--experimental):
+backward compatibility is not promised yet, and membership shows up through an
+overlay the reader turns on, so a file renders identically until someone selects a
+facet.
+
+**`.krs`** — the scope goes in a `facet`; the rule content stays prose + `link`:
 
 ```krs
+facet pci_scope {
+  label "PCI DSS scope"
+  description "In scope for the yearly assessment"
+  link "https://wiki.example.com/pci/scope" "PCI scope doc"
+}
+
+facet requires_auth {
+  label "Authenticated"
+  description "Reachable only after login; who may call it is defined by the IAM policy"
+  link "https://wiki.example.com/policies/iam" "IAM policy"
+}
+
 system Shop {
   service Checkout {
-    description "In PCI DSS scope — see assessment"
-    link "https://wiki.example.com/pci/scope" "PCI scope doc"
+    facets pci_scope
     domain Ordering {
       usecase PlaceOrder {
-        description "Requires authentication; who may call it is defined by the IAM policy"
-        link "https://wiki.example.com/policies/iam" "IAM policy"
+        facets requires_auth
       }
     }
   }
@@ -315,8 +330,9 @@ syntax v2.0 accepts tool vocabulary only. Membership also *semantically* misfits
 tags: a database is a database whether or not it is in PCI scope, and a
 nine-out-of-ten `[pci]` diagram reads as a false audit guarantee. The rule
 *content* (roles, plans, conditions) stays prose + `link` permanently
-([ADR-832](../adr/832-no-runtime-authz-modeling.md)); only the *scope* becomes
-first-class when `facet` lands. If what you actually need is a missing archetype,
+([ADR-832](../adr/832-no-runtime-authz-modeling.md)) — above it sits in the facet's
+`description` and `link`. What `facet` makes first-class is the *scope*: which
+elements the rule reaches. If what you actually need is a missing archetype,
 request a builtin tag addition instead — see
 [`tags-annotations.md`](../spec/tags-annotations.md).
 

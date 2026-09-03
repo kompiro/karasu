@@ -61,6 +61,17 @@ pre-push:
       # The vitest mirror in scripts/lint runs it in CI.
       glob: "{vitest.config.ts,vitest.workspace.*,packages/*/vitest.config.ts,scripts/vitest.config.ts,scripts/lint/vitest-projects-sync.ts}"
       run: pnpm run lint:vitest-projects-sync
+    record-source-paths:
+      # Every `packages/…` / `scripts/…` code span in docs/{acceptance,
+      # test-perspectives,design} must name a path that exists (Issue #2648).
+      # No `glob` on purpose, for the same reason as `adr-check-assumptions`
+      # above: what breaks these references is a code change — a rename or a
+      # deletion — that need not touch a single docs path, so gating this on
+      # `docs/**` would skip exactly the pushes most likely to rot a record.
+      # It only reads Markdown, so it is cheap enough to run every time.
+      # `docs/adr/**` is out of scope (ADR-706) — see the script's header.
+      # The vitest mirror in scripts/lint runs it in CI.
+      run: pnpm run lint:record-source-paths
     at-check-coverage:
       # Also globs packages/e2e/tests/** so the exact e2e linkage guards
       # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added
@@ -185,3 +196,13 @@ pre-push:
       # guard in CI.
       glob: "packages/**/*.{ts,tsx}"
       run: pnpm run lint:locale-normalization
+    reference-docs-links:
+      # The Reference signpost's outbound links (Issue #2350) are hardcoded
+      # absolute URLs into the docs site, which docs-site's own `check-links`
+      # does not reach — it stops at the site boundary on purpose (TPL-1621).
+      # Fail when a signpost route stops being a published page, or when a
+      # `#fragment` is added (a heading slug differs per locale, so the anchor
+      # rots silently). The vitest test
+      # (scripts/lint/reference-docs-links.test.ts) mirrors this guard in CI.
+      glob: "{packages/app/src/**,packages/docs-site/scripts/**,docs/guide/**,scripts/lint/reference-docs-links.ts}"
+      run: pnpm run lint:reference-docs-links

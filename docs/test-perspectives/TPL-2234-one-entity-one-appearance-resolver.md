@@ -104,6 +104,8 @@ karasu の boundary で実際にこうなった:
 
 - `docs/spec/style.md` § [Boundary frame selectors](../spec/style.md#boundary-frame-selectors-boundary--boundaryid)
   （`border-color` の 1 宣言が枠線・塗り・タイトルをまとめて塗り替える規定）
+- `docs/spec/style.md` § [Team frames (*Group by: team*)](../spec/style.md#team-frames-group-by-team)
+  （team はカードとフレームの 2 つの描画を持ち、1 つのセレクタが両方に届くという規定 — #2269）
 - `docs/spec/syntax.md` § [Grouping the system view](../spec/syntax.md#grouping-the-system-view-boundary--experimental)
   （色が重なりの可読性の条件であること）
 - `docs/spec/syntax.md` § [Color resolution](../spec/syntax.md#color-resolution)

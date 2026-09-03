@@ -144,11 +144,13 @@ flowchart TD
     ADR_2447["ADR-2447<br/>Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer ..."]
     ADR_2472["ADR-2472<br/>Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upst..."]
     ADR_2474["ADR-2474<br/>Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える"]
+    ADR_2493["ADR-2493<br/>knip に compiled extension をたどらせ、configuration h..."]
     ADR_2562["ADR-2562<br/>Dependabot トリアージ 2026-08-17（@types/vscode と eng..."]
     ADR_2564["ADR-2564<br/>Dependabot security alert 2026-08-18（auto-dismi..."]
     ADR_2623["ADR-2623<br/>Dependabot トリアージ 2026-08-25 — ADR の assumptions..."]
     ADR_2640["ADR-2640<br/>PR の一次レビューに CodeRabbit を入れる（advisory 固定）"]
     ADR_2643["ADR-2643<br/>stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI ..."]
+    ADR_2671["ADR-2671<br/>Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -220,6 +222,7 @@ flowchart TD
     ADR_1492["ADR-1492<br/>stroke-style をエッジ線スタイルの正準プロパティとして採用する"]
     ADR_1554["ADR-1554<br/>エッジコンテキストメニューへの authored ラベル表示と data-edge-label..."]
     ADR_1911["ADR-1911<br/>エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する"]
+    ADR_2209["ADR-2209<br/>エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
     ADR_2223["ADR-2223<br/>service ブロックに書いたエッジは、その service をノードとして描くビューに描画する"]
     ADR_2477["ADR-2477<br/>並列エッジの perpendicular nudge は「重なっているか」で判定する"]
     ADR_9019["ADR-9019<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
@@ -361,6 +364,7 @@ flowchart TD
     ADR_1755["ADR-1755<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
     ADR_2172["ADR-2172<br/>builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@p..."]
     ADR_2234["ADR-2234<br/>boundary フレーム色の style セレクタ — `boundary` / `boun..."]
+    ADR_2269["ADR-2269<br/>team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
     ADR_2482["ADR-2482<br/>バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする"]
     ADR_9004["ADR-9004<br/>CSSインスパイアのスタイリングシステム"]
   end
@@ -377,6 +381,7 @@ flowchart TD
     ADR_1192["ADR-1192<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
     ADR_2045["ADR-2045<br/>QA 手動チェックリスト生成のマーカー対応と 3-way triage"]
     ADR_2348["ADR-2348<br/>AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定して..."]
+    ADR_2648["ADR-2648<br/>記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる"]
     ADR_9012["ADR-9012<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
   end
   subgraph vscode["vscode"]
@@ -501,9 +506,15 @@ flowchart TD
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
   ADR_2208 --> ADR_19
+  ADR_2209 --> ADR_19
+  ADR_2209 --> ADR_1314
+  ADR_2209 --> ADR_438
   ADR_2234 --> ADR_9004
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
+  ADR_2269 --> ADR_9004
+  ADR_2269 --> ADR_1858
+  ADR_2269 --> ADR_2234
   ADR_2436 --> ADR_2419
   ADR_2442 --> ADR_2410
   ADR_2461 --> ADR_2193
@@ -814,6 +825,7 @@ flowchart TD
   class ADR_2193 accepted
   class ADR_2200 accepted
   class ADR_2208 accepted
+  class ADR_2209 accepted
   class ADR_2218 accepted
   class ADR_2223 accepted
   class ADR_2234 accepted
@@ -821,6 +833,7 @@ flowchart TD
   class ADR_2259 accepted
   class ADR_2260 accepted
   class ADR_2262 accepted
+  class ADR_2269 accepted
   class ADR_2316 accepted
   class ADR_2317 accepted
   class ADR_2318 accepted
@@ -853,6 +866,7 @@ flowchart TD
   class ADR_2474 accepted
   class ADR_2477 accepted
   class ADR_2482 accepted
+  class ADR_2493 accepted
   class ADR_2521 accepted
   class ADR_2522 accepted
   class ADR_2547 accepted
@@ -866,6 +880,8 @@ flowchart TD
   class ADR_2628 accepted
   class ADR_2640 accepted
   class ADR_2643 accepted
+  class ADR_2648 accepted
+  class ADR_2671 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

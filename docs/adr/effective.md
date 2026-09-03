@@ -146,11 +146,13 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2447](2447-dependabot-triage-2026-08-10.md) — Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
 - [ADR-2472](2472-dependabot-triage-2026-08-13.md) — Dependabot トリアージ 2026-08-13 — 判定軸を CI の色から「upstream の欠陥か自分側の gate か」に置く
 - [ADR-2474](2474-dependabot-replacement-pr-vocabulary.md) — Dependabot 反映手段の呼称を「差し替え PR」に統一し、過去 ADR も遡って揃える
+- [ADR-2493](2493-knip-configuration-hints-as-errors.md) — knip に compiled extension をたどらせ、configuration hint を失敗として扱う
 - [ADR-2562](2562-dependabot-triage-2026-08-17.md) — Dependabot トリアージ 2026-08-17（@types/vscode と engines.vscode を同値に固定し VS Code stable に追随させる）
 - [ADR-2564](2564-dependabot-security-2026-08-18.md) — Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
 - [ADR-2623](2623-dependabot-triage-2026-08-25.md) — Dependabot トリアージ 2026-08-25 — ADR の assumptions に書いたリテラル依存版を緩める
 - [ADR-2640](2640-coderabbit-pr-review.md) — PR の一次レビューに CodeRabbit を入れる（advisory 固定）
 - [ADR-2643](2643-stacked-pr-workflow.md) — stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI を止める
+- [ADR-2671](2671-dependabot-triage-2026-08-31.md) — Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく group で結ぶ
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -226,6 +228,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1492](1492-stroke-style-canonical-edge-property.md) — stroke-style をエッジ線スタイルの正準プロパティとして採用する
 - [ADR-1554](1554-edge-label-in-context-menu.md) — エッジコンテキストメニューへの authored ラベル表示と data-edge-label の authored 専用化
 - [ADR-1911](1911-cross-domain-ghost-entities.md) — エンティティビューの cross-domain 関連は限定子付き参照 + ghost で表示する
+- [ADR-2209](2209-edge-property-block.md) — エッジのプロパティブロックを additive に足し、位置引数 label は正式な shorthand として残す
 - [ADR-2223](2223-service-anchored-edge-renders-on-parent-canvas.md) — service ブロックに書いたエッジは、その service をノードとして描くビューに描画する
 - [ADR-2477](2477-parallel-edge-nudge-gate-colocation.md) — 並列エッジの perpendicular nudge は「重なっているか」で判定する
 - [ADR-9019](9019-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
@@ -367,6 +370,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1755](1755-edge-from-to-selectors.md) — `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
 - [ADR-2172](2172-builtin-vocabulary-expansion.md) — builtin 語彙の拡張 — `[cache]` / `[analytics]` / `@planned` を採用し、却下 7 件と停止規則を記録する
 - [ADR-2234](2234-boundary-style-selector.md) — boundary フレーム色の style セレクタ — `boundary` / `boundary#<id>`
+- [ADR-2269](2269-team-frame-style-selector.md) — team フレームの色は team カードと同じセレクタで指定する — `team` / `#<id>` / `team#<id>`
 - [ADR-2482](2482-themed-badge-color-single-source.md) — バッジ色はテーマ別の対で持ち、テーマ非依存の値を掴めなくする
 - [ADR-9004](9004-css-inspired-styling.md) — CSSインスパイアのスタイリングシステム
 
@@ -382,6 +386,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-1192](1192-test-perspective-library.md) — テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始
 - [ADR-2045](2045-qa-checklist-triage-generator.md) — QA 手動チェックリスト生成のマーカー対応と 3-way triage
 - [ADR-2348](2348-at-records-point-at-issues.md) — AT レコードは Design Doc ではなく Issue を指す — 削除が規約で確定しているアドレスを記録に埋めない
+- [ADR-2648](2648-record-source-path-guard.md) — 記録が名指すソースパスを機械で照合し、不在が正しい場合は宣言させる
 - [ADR-9012](9012-app-testing-strategy.md) — `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 ## vscode

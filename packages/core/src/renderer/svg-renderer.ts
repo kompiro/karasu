@@ -1,6 +1,7 @@
 import type {
   EdgeDirection,
   ResolvedBoundaryFrames,
+  ResolvedTeamFrames,
   ResolvedNodeStyle,
   ResolvedStyles,
 } from "../types/style.js";
@@ -493,6 +494,7 @@ export function renderFromLayout(
           diffState,
           palette,
           styles.boundaryFrames,
+          styles.teamFrames,
         ),
       );
     }
@@ -523,6 +525,20 @@ export function renderFromLayout(
     : undefined;
   const facetsFor = (nodeId: string, layoutId: string): readonly string[] =>
     facetMembership?.get(nodeId) ?? facetMembership?.get(layoutId) ?? [];
+  /**
+   * An edge's own selected facets (#2544), read off the layout edge rather than
+   * out of a membership map: an edge's `canonicalId` is `undefined` whenever its
+   * base form collided (ADR-1096), so there is no id to key it by. Filtered
+   * through the overlay's own order — never the edge's declaration order — so
+   * the innermost casing is the same facet on every edge, the rule the node
+   * rings follow.
+   */
+  const facetOrder = overlay?.entries.map((e) => e.id) ?? [];
+  const edgeFacetsFor = (edgeLayout: LayoutResult["edges"][number]): readonly string[] => {
+    const own = edgeLayout.facets;
+    if (!overlay || own === undefined) return [];
+    return facetOrder.filter((id) => own.includes(id));
+  };
 
   const effectiveEdgeDiffState = layoutResult.foldedEdgeDiffState
     ? new Map<string, string>([
@@ -577,11 +593,15 @@ export function renderFromLayout(
     edgeStroke.push({ color: edgeStyle.color, strokeWidth: edgeStyle.strokeWidth });
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     const diffState = effectiveEdgeDiffState?.get(edgeKey);
-    // Dim only when *both* endpoints are outside the selection. Where the
-    // highlighted set touches the rest of the model is the main thing an overlay
-    // is read for, so an edge with one member endpoint stays at full strength.
+    // An edge belongs to the selection two ways, and either one is enough to
+    // keep it at full strength: it carries the facet itself (#2544), or it
+    // touches a member node. The second is why the rule is "dim when *both*
+    // endpoints are outside" — where the highlighted set meets the rest of the
+    // model is the main thing an overlay is read for.
+    const edgeFacets = edgeFacetsFor(edgeLayout);
     const edgeDimmed =
       overlay !== undefined &&
+      edgeFacets.length === 0 &&
       facetsFor(edgeLayout.from, edgeLayout.from).length === 0 &&
       facetsFor(edgeLayout.to, edgeLayout.to).length === 0;
     const rendered = renderEdge(
@@ -591,6 +611,8 @@ export function renderFromLayout(
       diffState,
       hopsByEdge.get(edgeIndex),
       labelPlacements.get(edgeIndex),
+      edgeFacets,
+      overlay?.colorOf,
     );
     edgeIndex++;
     const withDim = edgeDimmed ? el("g", { opacity: FACET_DIM_OPACITY }, rendered) : rendered;
@@ -1184,7 +1206,26 @@ export function rectUnionPath(rects: readonly Rect[]): string | null {
 /** Frame tint opacity — low enough that two overlapping fills stay distinguishable. */
 /** Boundary-frame tint alpha — exported for the contrast guard (#2366 E). */
 export const BOUNDARY_TINT_ALPHA = 0.1;
-const BOUNDARY_FILL_OPACITY = String(BOUNDARY_TINT_ALPHA);
+/**
+ * `border-style` as the renderer draws it. `dashed` is the frames' default, and
+ * `dotted` has to be visibly different from it or the keyword is accepted with
+ * no effect.
+ */
+const FRAME_DASH_ARRAY: Record<"solid" | "dashed" | "dotted", string | undefined> = {
+  solid: undefined,
+  dashed: "8 4",
+  dotted: "2 4",
+};
+
+/** Alpha every group-frame tint is drawn at, on both axes. */
+const FRAME_FILL_OPACITY = String(BOUNDARY_TINT_ALPHA);
+
+/**
+ * The muted strength a group frame's title is drawn at while no style sheet has
+ * named a colour for it. The frame is a structural hint at that point, and a
+ * full-strength title competes with the cards inside it (ADR-1858).
+ */
+const MUTED_FRAME_TITLE_OPACITY = 0.7;
 
 /**
  * The cycled default for a boundary, before any `.krs.style` rule is consulted.
@@ -1199,15 +1240,25 @@ function boundaryHueAt(hueIndex: number | undefined, palette?: DiagramPalette): 
   return hues.length > 0 ? hues[hueIndex % hues.length] : undefined;
 }
 
-/** How one boundary is painted, on every surface that paints it. */
-interface BoundaryPaint {
+/** How one group frame is painted, on every surface that paints it. */
+interface FramePaint {
   stroke: string;
-  /** The low-alpha frame fill. Follows `stroke` unless `background-color` says otherwise. */
-  fill: string;
-  /** The frame title. Follows `stroke` unless `color` says otherwise. */
+  /** The low-alpha frame fill. `undefined` leaves the frame unfilled. */
+  fill?: string;
+  /** Alpha for {@link fill}; read only when `fill` is set. */
+  fillOpacity?: string;
+  /** The frame title. */
   title: string;
+  /** Title opacity. `undefined` draws it at full strength. */
+  titleOpacity?: number;
   strokeWidth: number;
-  dashed: boolean;
+  /**
+   * The outline's `stroke-dasharray`, or `undefined` for a solid line. Carries
+   * the pattern rather than a `dashed` boolean because `border-style` offers
+   * three values: collapsing `dotted` onto the dashed pattern would accept the
+   * keyword and render something else (TPL-1503).
+   */
+  dashArray?: string;
 }
 
 /**
@@ -1233,7 +1284,7 @@ function resolveBoundaryPaint(
   hueIndex: number | undefined,
   frames: ResolvedBoundaryFrames | undefined,
   palette: DiagramPalette | undefined,
-): BoundaryPaint | undefined {
+): FramePaint | undefined {
   const cycled = boundaryHueAt(hueIndex, palette);
   if (cycled === undefined) return undefined;
   // By the author-facing id, not the group id. A scoped `boundary` (#2036) has
@@ -1251,10 +1302,77 @@ function resolveBoundaryPaint(
   return {
     stroke,
     fill: sheet?.backgroundColor ?? stroke,
+    fillOpacity: FRAME_FILL_OPACITY,
     title: sheet?.color ?? stroke,
     strokeWidth: sheet?.borderWidth ?? 2,
-    dashed: (sheet?.borderStyle ?? "dashed") !== "solid",
+    dashArray: FRAME_DASH_ARRAY[sheet?.borderStyle ?? "dashed"],
   };
+}
+
+/**
+ * A team frame's paint (#2269), or `undefined` when no author sheet has said
+ * anything about this team and the frame keeps the muted dashed look ADR-1858
+ * gave it.
+ *
+ * A team is one entity with two renderings, so the selector that paints its card
+ * in the org tree view paints this frame too. Each property lands on the part of
+ * the frame that answers to the part of the card it paints there:
+ *
+ * - `border-color` -> the outline, as it draws the card's border
+ * - `background-color` -> the low-alpha tint, as it fills the card
+ * - `color` -> the title, as it colours the card's label
+ *
+ * This is where the team axis parts company with {@link resolveBoundaryPaint},
+ * and the asymmetry is deliberate. There, one `border-color` drives all three,
+ * because boundary frames overlap and a boundary split across two colours stops
+ * reading as an overlap at all (#2179). Team frames never overlap, the axis
+ * being 1:1, so nothing forces the three together and following the card is the
+ * reading an author can predict from the one declaration they wrote.
+ *
+ * `frames` holds only what an author declared (`resolveTeamFrames` keeps the
+ * built-in sheet out), so an empty answer here really does mean "unstyled"
+ * rather than "styled with the card's defaults".
+ */
+function resolveTeamFramePaint(
+  teamId: string | undefined,
+  style: ResolvedNodeStyle,
+  frames: ResolvedTeamFrames | undefined,
+): FramePaint | undefined {
+  const named = teamId !== undefined ? frames?.byId.get(teamId) : undefined;
+  const sheet = named ?? frames?.base;
+  if (sheet === undefined || Object.keys(sheet).length === 0) return undefined;
+  return {
+    stroke: sheet.borderColor ?? style.borderColor,
+    fill: sheet.backgroundColor,
+    fillOpacity: sheet.backgroundColor !== undefined ? FRAME_FILL_OPACITY : undefined,
+    title: sheet.color ?? style.color,
+    // Only a named colour lifts the title out of its muted default: an author
+    // who set nothing but `border-width` has not asked for a louder title.
+    titleOpacity: sheet.color !== undefined ? undefined : MUTED_FRAME_TITLE_OPACITY,
+    strokeWidth: sheet.borderWidth ?? style.borderWidth,
+    dashArray: FRAME_DASH_ARRAY[sheet.borderStyle ?? "dashed"],
+  };
+}
+
+/**
+ * The paint for whichever kind of group frame `container` is (#2269).
+ *
+ * Dispatches on the recorded axis rather than guessing: `groupId` is a boundary
+ * id on one axis and an org team id on the other, and an expansion frame sits on
+ * neither, so reading the wrong map would let a rule paint a frame it never
+ * named.
+ */
+function resolveFramePaint(
+  container: ContainerRect,
+  style: ResolvedNodeStyle,
+  palette: DiagramPalette | undefined,
+  boundaryFrames: ResolvedBoundaryFrames | undefined,
+  teamFrames: ResolvedTeamFrames | undefined,
+): FramePaint | undefined {
+  if (container.groupAxis === "team") {
+    return resolveTeamFramePaint(container.groupId, style, teamFrames);
+  }
+  return resolveBoundaryPaint(container.groupId, container.hueIndex, boundaryFrames, palette);
 }
 
 function renderContainer(
@@ -1264,6 +1382,7 @@ function renderContainer(
   diffState?: string,
   palette?: DiagramPalette,
   boundaryFrames?: ResolvedBoundaryFrames,
+  teamFrames?: ResolvedTeamFrames,
 ): string {
   const children: string[] = [];
   // An in-place-expanded container is an active user action (#1921): render it
@@ -1276,22 +1395,20 @@ function renderContainer(
   // The fill is what makes an overlap read as an overlap: two dashed outlines of
   // the same colour read as nesting, while two tints composite to a third tone
   // in the shared cell. No code draws the intersection — alpha does.
-  // A `.krs.style` rule may repaint this frame (#2234); absent one, the cycled
-  // hue stands.
-  const paint = resolveBoundaryPaint(
-    container.groupId,
-    container.hueIndex,
-    boundaryFrames,
-    palette,
-  );
+  // A `.krs.style` rule may repaint this frame (#2234) or a team frame (#2269);
+  // absent one, the cycled hue stands on the boundary axis and the muted dashed
+  // default on the team axis.
+  const paint = resolveFramePaint(container, style, palette, boundaryFrames, teamFrames);
   const outline = container.coverage ? rectUnionPath(container.coverage) : null;
-  const dashed = paint ? paint.dashed : ghost || container.group === true;
+  // A frame with no style sheet behind it keeps the historical dashed pattern;
+  // a ghost container is dashed for the same reason it always was.
+  const dashArray = paint ? paint.dashArray : ghost || container.group === true ? "8 4" : undefined;
   const frameShape = {
     fill: expanded && accent ? accent : (paint?.fill ?? "transparent"),
-    "fill-opacity": expanded && accent ? "0.06" : paint ? BOUNDARY_FILL_OPACITY : undefined,
+    "fill-opacity": expanded && accent ? "0.06" : paint?.fillOpacity,
     stroke: expanded && accent ? accent : (paint?.stroke ?? style.borderColor),
     "stroke-width": expanded ? 2 : (paint?.strokeWidth ?? style.borderWidth),
-    "stroke-dasharray": !expanded && dashed ? "8 4" : undefined,
+    "stroke-dasharray": expanded ? undefined : dashArray,
   };
   children.push(
     outline
@@ -1320,7 +1437,7 @@ function renderContainer(
         "font-size": "12px",
         "font-family": style.fontFamily,
         "font-weight": "bold",
-        opacity: expanded || paint ? undefined : 0.7,
+        opacity: expanded ? undefined : paint ? paint.titleOpacity : MUTED_FRAME_TITLE_OPACITY,
       },
       escapeXml(container.label),
     ),

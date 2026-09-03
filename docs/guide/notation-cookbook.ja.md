@@ -281,19 +281,33 @@ PCI 対象」「この entity は PII」「この usecase はログイン必須�
 | その要素がアーキテクチャ上**何であるか** | アーキタイプ | 組み込みタグ — `[external]`、`[index]` |
 | どの開発**状態**にあるか | lifecycle | 組み込みアノテーション — `@deprecated`、`@new` |
 | view で peer を**どうまとめるか** | view 内グルーピング | `boundary` |
-| 外部定義の**どの集合に属するか** | 所属 | `facet`（#2065 Part B、導入予定）— それまでは `description` + `link` |
+| 外部定義の**どの集合に属するか** | 所属 | `facet`（top-level 宣言 + 要素側の `facets` プロパティ） |
 
-**`.krs`** — 今日の PCI / 認証の書き方（prose + link）。ルールの内容はモデル化しない:
+`facet` は [experimental](../spec/syntax.ja.md#横断的な所属facet-experimental) で、
+後方互換はまだ約束されない。所属は読み手が on にする overlay で見えるので、誰かが
+facet を選ぶまでファイルの描画は変わらない。
+
+**`.krs`** — スコープは `facet` に、ルールの内容は prose + `link` のまま:
 
 ```krs
+facet pci_scope {
+  label "PCI DSS 対象"
+  description "年次評価のスコープ内"
+  link "https://wiki.example.com/pci/scope" "PCI スコープ資料"
+}
+
+facet requires_auth {
+  label "認証必須"
+  description "ログイン後にのみ到達可能。誰が呼べるかは IAM ポリシーが定める"
+  link "https://wiki.example.com/policies/iam" "IAM ポリシー"
+}
+
 system Shop {
   service Checkout {
-    description "PCI DSS 対象 — 評価資料を参照"
-    link "https://wiki.example.com/pci/scope" "PCI スコープ資料"
+    facets pci_scope
     domain Ordering {
       usecase PlaceOrder {
-        description "認証必須。誰が呼べるかは IAM ポリシーが定める"
-        link "https://wiki.example.com/policies/iam" "IAM ポリシー"
+        facets requires_auth
       }
     }
   }
@@ -306,9 +320,10 @@ v2.0 はツール語彙のみを受理する。所属は**意味論的にも**�
 PCI スコープに入っていようがいまいが database であり、対象 10 要素中 9 要素にしか
 `[pci]` が付いていない図は偽の監査保証として読まれる。ルールの**内容**（role・
 プラン・条件）は恒久的に prose + `link` のまま
-（[ADR-832](../adr/832-no-runtime-authz-modeling.md)）で、`facet` 導入後に第一級に
-なるのは**適用範囲**だけである。本当に必要なのが足りないアーキタイプなら、代わりに
-組み込みタグの追加要望を出す —
+（[ADR-832](../adr/832-no-runtime-authz-modeling.md)）で、上の例では facet の
+`description` と `link` がそれを担う。`facet` が第一級にするのは**適用範囲**
+（どの要素にそのルールが及ぶか）だけである。本当に必要なのが足りないアーキタイプ
+なら、代わりに組み込みタグの追加要望を出す —
 [`tags-annotations.ja.md`](../spec/tags-annotations.ja.md) を参照。
 
 ## 9. 動詞だけでは足りないエッジ — プロパティブロック

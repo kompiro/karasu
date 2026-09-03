@@ -860,13 +860,15 @@ usecase PlaceOrder {
 
 `#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/1096-edge-id-selector.md`](../adr/1096-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
 
-#### プロパティブロック（`{ label / description / link }`）
+#### プロパティブロック（`{ label / description / link / facets }`）
 
 末尾に `{ … }` ブロックを置くと、位置引数形では書けないものの置き場所になる。
 これは**追加的**な形であり、`A -> B "calls"` は引き続き有効で、label だけを持つ
 エッジの canonical な綴りであり続ける。
 
 ```krs
+facet pii { label "個人データ" }
+
 system Shop {
   service OrderSvc {}
   service PaymentSvc {}
@@ -874,16 +876,18 @@ system Shop {
   OrderSvc --> PaymentSvc [async] #orderPlaced {
     label       "注文を発行する"
     description "at-least-once 配送。リトライは orderId で冪等。"
+    facets      pii
     link        "https://runbook.example.com/order-placed" "Runbook"
   }
 }
 ```
 
-ブロックが受け付けるのは `label` / `description` / `link` の 3 つで、綴りはノードの
-プロパティとまったく同じ（`link` は `"<URL>"` の後に任意の `"<ラベル>"` を取り、
-複数回書ける）。それ以外のキーワードは `unexpected-token-in-block` エラーになる。
-タグと `#<id>` はブロックの**外側**に置く（`service A [external] { label "…" }`
-と同形）。
+ブロックが受け付けるのは `label` / `description` / `facets` / `link` の 4 つで、
+綴りはノードのプロパティとまったく同じ（`link` は `"<URL>"` の後に任意の
+`"<ラベル>"` を取り複数回書ける。`facets` はカンマ区切りの id 列を取り、行を
+繰り返すと累積し、重複 id は畳まれる）。それ以外のキーワードは
+`unexpected-token-in-block` エラーになる。タグと `#<id>` はブロックの**外側**に
+置く（`service A [external] { label "…" }` と同形）。
 
 位置引数とブロックの両方に label を書くと、どちらかを優先するのではなく
 `duplicate-edge-label` エラーになる。片方を黙って勝たせることはしない:
@@ -897,13 +901,15 @@ system Shop {
 ```
 
 **`karasu fmt` の畳み込み条件は 1 つ、ブロックが `label` 以外を持つかどうか。**
-label しか持たないブロックは shorthand に書き戻され、`description` や `link` を
-持つブロックはそのまま保たれる（`label` もブロック内に移る）。どちらの綴りも同じ
-AST に落ちるので、どちらで書いても図は変わらない。
+label しか持たないブロックは shorthand に書き戻され、`description` / `link` /
+`facets` を持つブロックはそのまま保たれる（`label` もブロック内に移る）。どちらの
+綴りも同じ AST に落ちるので、どちらで書いても図は変わらない。
 
-`description` と `link` はキャンバス側から読める。どちらかを持つエッジを左クリック
-するとエッジ詳細パネルが開く。右クリックは従来どおり方向メニューを開き、shorthand
-で書いたエッジの挙動は一切変わらない。
+ブロックが受理するプロパティはすべてキャンバス側から読める。`description` と `link`
+はどちらかを持つエッジを左クリックするとエッジ詳細パネルを開く。`facets` はエッジを
+facet overlay の対象にするので、その facet を選ぶとエッジが highlight され、
+`.krs.style` の `edge[facets=<id>]` も一致する。右クリックは従来どおり方向メニューを
+開き、shorthand で書いたエッジの挙動は一切変わらない。
 
 #### service ブロック内のエッジ
 
@@ -974,6 +980,10 @@ service BillingService {
 > - [TPL-2075](../test-perspectives/TPL-2075-parsed-construct-renders-or-warns.md) — parser が受理した構造はいずれかの view で描画されるか診断される。エッジの endpoint が宣言スコープに無い場合に黙って落とさない（§端点のスコープ）
 > - [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — cross-domain entity 関連は限定子付き `DomainId.EntityId` で参照する
 > - [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — shorthand とプロパティブロックは 1 つのエッジの 2 通りの綴りなので、両形が同一 AST に落ち、`karasu fmt` が 1 つの canonical 形に畳むことを固定する（§プロパティブロック）
+> - [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — ブロックが受理するプロパティは同じスライスで可視の効果を持つ。エッジの `facets` は overlay と `edge[facets=…]` セレクタに届き、parse-and-vanish にしない（§プロパティブロック）
+> - [TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — エッジに `facets` を書いても、facet を 1 つも選択していない間の SVG は byte 一致のまま（§プロパティブロック）
+> - [TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) / [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — エッジの `facets` もノードと同じ cross-reference で、`facet-not-declared` をマージ後モデルで判定する（§プロパティブロック）
+> - [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — エッジの所属も 1:N。派生エッジ（集約 `"N domain edges"`・collapse stub）は構成エッジ 1 本ではなく和集合を取る（§プロパティブロック）
 
 ---
 
@@ -1448,7 +1458,17 @@ system Shop {
   `domain` / `usecase` / `entity` / `resource` / `user` / `client`、infra ブロック
   （`database` / `queue` / `storage`）とその leaf（`table`・queue item・`bucket`）。
   所属はアーキテクチャの外から課されるものなので、構造的に除外される kind は無い。
-  edge は v1 では `facets` を取らない。
+- **エッジも `facets` を取る。** 書く場所は[エッジのプロパティブロック](#プロパティブロック-label--description--link--facets-)。
+  PII を運ぶデータフローや PCI スコープ内の呼び出しは**そのエッジについての事実**で、
+  端点に付けると端点について誤ったことを言いながらフローについては何も言えていない。
+  綴りもマージ規則もノードと同じで、facet を選ぶとカードに ring が付くのと同様に
+  エッジが highlight される。唯一受理しないのは `usecase` 内の `resource` 行で、
+  そこの `facets` は既に **resource ノードの**所属を意味するため、同じ 1 行が合成
+  エッジの所属も兼ねることはできない。
+- **派生エッジの所属は畳んだ中身の和集合。** service ビューの集約
+  `"N domain edges"` と、グループを畳んだときの stub エッジは、構成エッジが所属する
+  すべての facet に所属する。どちらも著述する場所が無く、和集合を取らないと
+  「畳まれた node は光るのに畳まれたエッジは暗いまま」になる。
 - **プロパティの繰り返しと id の重複はマージされる。** `facets a, b` と 2 行に分けた
   `facets` は同じ意味で、同じ id を二度書いても冪等でありエラーではない。
   `karasu fmt` は 1 行のカンマ区切りに正規化する。
@@ -1479,7 +1499,7 @@ system Shop {
 - `duplicate-facet-id`（error）— 同じ id の `facet` ブロックが 2 つある（同一ファイル内でも、マージされた複数ファイルにまたがっていても）。参照が解決するのは最初の宣言。
 - `positional-label-removed`（error）— facet id 直後の位置ラベル（`facet pii "個人情報"`）。label は `label` プロパティのみ（[ADR-19](../adr/19-required-id-label-as-property.md)）。
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ。上記の overlay がその効果である。[TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — overlay は opt-in なので、facet を 1 つも選択していないときは何も出してはならない。[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` は cross-reference プロパティなので、parser の受理だけでなく resolver 側の検証と unresolved warning を伴う。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 上記の 1:N は派生 index でも全マージ経路でも保持する。単一値が要るビューはビュー側で解決する。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` と `duplicate-facet-id` はマージ後のモデルで判定する（宣言と参照が別ファイルにありうるため）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — 宣言ブロックと per-node の `facets` プロパティは双方 `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードは per-node プロパティを守らない。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が全 kind で受理するので、受理する kind を本節に列挙する。[TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 「所属」から「ルール言語」への引力は、キーワードの選び直しではなく上記リンクの ADR-832 を外部 fence として縛る。 [TPL-2316](../test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — 宣言できる構文は in-app Reference から到達できること。`boundary` / `facet` は出荷・spec 済みでありながら `REFERENCE_DATA` に無く、一方で `facet` の要素側 `facets` は 14 の全 node kind に載っていた（#2316）。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 受理された語彙は効果を持つ。上記の overlay がその効果である。[TPL-2174](../test-perspectives/TPL-2174-opt-in-visual-layer-is-inert-when-off.md) — overlay は opt-in なので、facet を 1 つも選択していないときは何も出してはならない。[TPL-907](../test-perspectives/TPL-907-cross-reference-validation.md) — `facets` は cross-reference プロパティなので、parser の受理だけでなく resolver 側の検証と unresolved warning を伴う。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 上記の 1:N は派生 index でも全マージ経路でも保持する。単一値が要るビューはビュー側で解決する。[TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md) — `facet-not-declared` と `duplicate-facet-id` はマージ後のモデルで判定する（宣言と参照が別ファイルにありうるため）。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — 宣言ブロックと per-node の `facets` プロパティは双方 `karasu fmt` の round-trip 対象。`KrsFile` の top-level 配列由来のガードは per-node プロパティを守らない。[TPL-2133](../test-perspectives/TPL-2133-parser-acceptance-documented-in-spec.md) — parser が全 kind で受理するので、受理する kind を本節に列挙する。エッジも受理するので §プロパティブロック に載せる（#2544）。[TPL-1281](../test-perspectives/TPL-1281-keyword-lexical-ambiguity-fence-vs-deprecate.md) — 「所属」から「ルール言語」への引力は、キーワードの選び直しではなく上記リンクの ADR-832 を外部 fence として縛る。 [TPL-2316](../test-perspectives/TPL-2316-declarable-construct-reachable-from-reference.md) — 宣言できる構文は in-app Reference から到達できること。`boundary` / `facet` は出荷・spec 済みでありながら `REFERENCE_DATA` に無く、一方で `facet` の要素側 `facets` は 14 の全 node kind に載っていた（#2316）。
 
 ## 図の凡例（legend ブロック）
 

@@ -53,13 +53,11 @@ export interface StyleSelector {
   /**
    * Facet ids targeted by `[facets=<id>]` selectors (#2175). Repeatable and
    * ANDed, like {@link tags}: `[facets=pii][facets=gdpr]` matches an element
-   * in both. Matched against the element-side `BaseNodeFields.facets`, which
-   * is why no facet index has to be threaded here — membership is written on
-   * the element (the locality property the by-reference form was rejected for).
-   *
-   * Nodes only. `facets` is not accepted on edges in v1 (design
-   * `tags-and-facets.md` (B1)), so an `edge[facets=…]` selector matches
-   * nothing rather than matching every edge.
+   * in both. Matched against the element-side `facets` property — on nodes
+   * (`BaseNodeFields.facets`) and, since #2544, on edges (`KrsEdge.facets`) —
+   * which is why no facet index has to be threaded here: membership is written
+   * on the element (the locality property the by-reference form was rejected
+   * for).
    */
   facets: string[];
   loc: SourceRange;
@@ -233,16 +231,26 @@ export interface ResolvedLayoutHints {
 }
 
 /**
- * What a `.krs.style` sheet said about a boundary frame (#2234). Every field is
- * optional: absent means "the renderer's own answer stands", which for colour is
- * the cycled hue #2179 assigns by declaration order.
+ * What a `.krs.style` sheet said about a group frame — a `boundary` frame
+ * (#2234) or a team frame (#2269). Every field is optional: absent means "the
+ * renderer's own answer stands", which is the cycled hue #2179 assigns by
+ * declaration order on the boundary axis, and the muted dashed frame ADR-1858
+ * gave the team axis.
  *
- * Deliberately not a `ResolvedNodeStyle`. A frame is not a card, and most node
- * properties (`shape`, `opacity`, the `badge-*` family) have no meaning on one;
- * carrying them would promise an effect the renderer does not deliver
- * (TPL-1503). `docs/spec/style.md` lists exactly this set.
+ * That "absent" is load-bearing on the team axis in a way it is not on the
+ * boundary axis. A team is also a *card* in the org tree view, and the built-in
+ * sheet styles that card (`team { background-color: #D1FAE5; … }`). Resolving a
+ * frame from a fully-merged `ResolvedNodeStyle` would take those defaults too
+ * and repaint every team frame green, so only what a rule actually declared is
+ * recorded here — see `resolveTeamFrames`.
+ *
+ * Deliberately not a `ResolvedNodeStyle` for a second reason as well. A frame is
+ * not a card, and most node properties (`shape`, `opacity`, the `badge-*`
+ * family) have no meaning on one; carrying them would promise an effect the
+ * renderer does not deliver (TPL-1503). `docs/spec/style.md` lists exactly this
+ * set.
  */
-export interface ResolvedBoundaryFrameStyle {
+export interface ResolvedFrameStyle {
   /**
    * The frame's identifying colour. Drives the stroke, the low-alpha fill and
    * the title together, because #2179 established one colour per boundary as a
@@ -260,9 +268,27 @@ export interface ResolvedBoundaryFrameStyle {
 /** Boundary frame styles, in the two tiers `boundary` / `boundary#<id>` produce. */
 export interface ResolvedBoundaryFrames {
   /** From bare `boundary { }` rules. Applies to every frame. */
-  base: ResolvedBoundaryFrameStyle;
+  base: ResolvedFrameStyle;
   /** From `boundary#<id>` rules, already merged over {@link base}. */
-  byId: Map<string, ResolvedBoundaryFrameStyle>;
+  byId: Map<string, ResolvedFrameStyle>;
+}
+
+/**
+ * Team frame styles (#2269), in the two tiers `team` / `#<id>` produce. Same
+ * shape as {@link ResolvedBoundaryFrames}, kept as its own map rather than
+ * folded into a shared "group frame" one: the two axes key by different things
+ * (a boundary id vs. an org node id) and only the boundary axis has a cycled
+ * default to fall back to.
+ */
+export interface ResolvedTeamFrames {
+  /** From bare `team { }` rules in an author sheet. Applies to every team frame. */
+  base: ResolvedFrameStyle;
+  /**
+   * From `#<id>` / `team#<id>` rules in an author sheet, already merged over
+   * {@link base}. Keyed by the team's org node id, which is what the team axis
+   * puts on `ContainerRect.groupId`.
+   */
+  byId: Map<string, ResolvedFrameStyle>;
 }
 
 export interface ResolvedStyles {
@@ -274,6 +300,18 @@ export interface ResolvedStyles {
    * never collide.
    */
   boundaryFrames: ResolvedBoundaryFrames;
+  /**
+   * Team frame styles (#2269) for the system view under *Group by: team*. Keyed
+   * by the team's org node id — the same id space as `nodes`, because a team
+   * *is* a node: the card in the org tree view and the frame here are two
+   * renderings of one entity, so one selector addresses both.
+   *
+   * Separate from `nodes` all the same, because the two renderings do not share
+   * a default. `nodes` carries the card's built-in defaults merged in; this
+   * carries only what an author sheet declared, so a team no sheet names keeps
+   * the muted dashed frame instead of taking the card's fill.
+   */
+  teamFrames: ResolvedTeamFrames;
   defaultNodeStyle: ResolvedNodeStyle;
   defaultEdgeStyle: ResolvedEdgeStyle;
   /**

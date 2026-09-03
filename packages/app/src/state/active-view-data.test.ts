@@ -58,8 +58,6 @@ function makeCtx(activeView: ActiveView): PreviewContextValue {
       onOwnedServiceClick: noop,
     },
     nodeMetadata: new Map(),
-    displayMode: "shape",
-    onDisplayModeChange: noop,
     onExportSvg: noop,
     isAllLayersOpen: false,
     onAllLayersToggle: noop,

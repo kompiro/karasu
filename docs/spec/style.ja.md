@@ -18,10 +18,12 @@
 | ファセット | `[facets=pii]` | 指定 `facet` に所属する全要素 |
 | 複合（種別+ファセット） | `service[facets=pii]` | 種別と facet 所属の両方に一致 |
 | ID | `#ECommerce` | 特定ノードのみ |
+| 複合（種別+ID） | `team#Platform` | 特定 team のみ（カードとフレーム） |
 | エッジ | `edge` | 全エッジ |
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
 | エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
 | エッジ 終点 | `edge[to=ApiGateway]` | 指定ノードを終点とする全エッジ |
+| エッジ+ファセット | `edge[facets=pii]` | 指定 `facet` に所属する全エッジ |
 | エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
 | バウンダリ | `boundary` | 全 boundary フレーム（*Group by: boundary*） |
 | バウンダリ ID | `boundary#pci` | 特定 boundary のフレームのみ |
@@ -42,9 +44,11 @@
 | ファセット | `[facets=pii]` | 10 |
 | 種別 + ファセット | `service[facets=pii]` | 11 |
 | ID | `#ECommerce` | 100 |
+| 種別 + ID | `team#Platform` | 101 |
 | エッジ | `edge` | 1 |
 | エッジ + タグ | `edge[async]` | 11 |
 | エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
+| エッジ + ファセット | `edge[facets=pii]` | 11 |
 | エッジ ID | `edge#criticalWrite` | 101 |
 | バウンダリ | `boundary` | 1 |
 | バウンダリ ID | `boundary#pci` | 101 |
@@ -81,15 +85,23 @@ database[facets=pci_scope] {
 }
 ```
 
-- **ノード限定。** v1 では `facets` はノードのプロパティなので、`edge[facets=...]`
-  は全エッジに一致するのではなく何にも一致しない。
+- **ノードとエッジの両方。ただしエッジに届かせるには `edge` 種別が要る。**
+  `facets` はどちらにも書ける。上の種別なし `[facets=pii]` はノード限定のままで、
+  これは種別を書かないセレクタ一般の規則（種別に `edge` を持たないセレクタは
+  エッジに一致しない）。エッジを狙うときは `edge[facets=pii]` と書く。述語の
+  繰り返しが AND になるのはノード側と同じ。widening だけは起きない — **所属する
+  エッジが 1 本も無い** facet を指す `edge[facets=...]` は、全エッジではなく何にも
+  一致しない。判定に使うのは所属だけで、その facet に top-level の `facet` 宣言が
+  あるかどうかは別の話（次の項）。
 - **所属は要素側から読む** — `facets <id>` が書かれている場所そのもの。セレクタが
   `facet` 宣言側を参照することはない。宣言が持つのは関心事のメタデータであって
   メンバーリストではない。
 - **未宣言の facet id はスタイル側のエラーにしない。** `facets pcl` の打ち間違いは
-  それが書かれた場所で `facet-not-declared` が 1 度だけ報告する。同じ綴りを指す
-  セレクタは単に何にも一致しない。2 度報告すると、1 つの間違いを 2 箇所で直せと
-  言うことになる。
+  それが書かれた場所で `facet-not-declared` が 1 度だけ報告し、セレクタは何も
+  言わない — 判定に使うのは所属だけなので、`[facets=pcl]` は `facets pcl` を
+  書いた要素に、宣言済み id と同じように一致する。2 度報告すると、1 つの間違いを
+  2 箇所で直せと言うことになる。打ち間違いが壊すのは**意図した方**のルールで、
+  `[facets=pci]` が要素に届かなくなる。著者を warning へ導くのはその症状である。
 - **fact と style の分離は不変。** 所属は事実なので `.krs`、見た目は選択なのでここ。
   プレビューの overlay はさらに別のもので、読み手の一時的な選択であり、どこにも
   書き込まれない。
@@ -812,8 +824,8 @@ id を名指すがスコープは名指さないので、**すべてのスコー
 > 無視される。帯の外へ伸びたフレームは矩形直交の輪郭として描かれるため、設定できる
 > 角丸が存在しない。
 
-team フレーム（*Group by: team*）はまだこの方法で指定できない。
-[#2269](https://github.com/kompiro/karasu/issues/2269) を参照。
+team フレーム（*Group by: team*）の指定方法は本節と異なる。team は**ノードであり**
+`#<id>` が既に届いているためで、下の [team フレーム](#team-フレームgroup-by-team) を参照。
 
 `boundary` は experimental notation なので、本セレクタもスタイルを当てる構文と同じく
 後方互換を約束しない（[syntax.ja.md](syntax.ja.md#システムビューのグルーピングboundary-experimental)）。
@@ -831,6 +843,7 @@ Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`
 | `team` | すべてのチームカード |
 | `member` | すべてのメンバーカード |
 | `#TeamId` | 特定のチームカード |
+| `team#TeamId` | 同上を team 種別に絞ったもの |
 | `#MemberId` | 特定のメンバーカード |
 | `edge` | チーム間のベジェコネクタ |
 
@@ -849,3 +862,50 @@ Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`
 
 > **注意**: `opacity` / `shape` / `badge-*` は Org Tree View では無視されます。
 > タグ・アノテーション複合セレクタ（`team[external]` 等）は現時点では未サポートです。
+
+### team フレーム（*Group by: team*）
+
+*Group by: team* のとき、system view は各チームのメンバーを囲むフレームを描く。
+このフレームと上のカードは**同じ 1 つの team** の 2 つの描画なので、上のセレクタが
+両方に届く。フレーム専用のキーワードは無い。
+
+```css
+team          { border-color: #64748B; } /* すべての team カードと、すべての team フレーム */
+#Platform     { border-color: #C0392B; } /* Platform のカードと、Platform のフレーム */
+team#Platform { border-color: #C0392B; } /* 同上を team 種別に絞ったもの */
+```
+
+`team#<id>` は**複合セレクタ**であって新しい id 空間ではない。意味は「この id を持つ
+ノード、ただし team であるとき」。specificity は 101（id の 100 + 種別の 1）で、裸の
+`#<id>`（100）と裸の `team`（1）に勝つ。これは `boundary#<id>` とは逆である。あちらは
+裸の `#<id>` では到達できない id 空間をキーワードが名指す。boundary はノードではなく、
+team はノードだからである。
+
+**どのプロパティがどちらの描画に届くか。** 各プロパティは、カード側で塗る部分に対応する
+フレーム側の部分に届く:
+
+| プロパティ | カード（Org Tree View） | フレーム（*Group by: team*） |
+|---|---|---|
+| `border-color` | 枠線色 | 輪郭の色 |
+| `background-color` | カード背景色 | フレーム内側の薄い塗り |
+| `color` | ラベル色 | フレームのタイトル色 |
+| `border-width` | 枠線幅（px） | 輪郭の太さ（px） |
+| `border-style` | 適用されない | `solid` / `dashed` / `dotted`。既定は `dashed` |
+| `border-radius` / `font-size` / `font-weight` / `font-family` | 上表のとおり | 適用されない |
+
+> **注意**: boundary フレームと違い、team フレームの塗りは `border-color` に**追従しない**。
+> boundary フレームは重なるので、1 つの色が塗りまで届かないと重なりが入れ子に読める。
+> team フレームは重ならないため、各プロパティはカード側に倣う。1 つの宣言から読み手が
+> 予測できるのはこちらである。
+
+**既定値は描画ごとに別。** builtin シートの `team { … }` は**カードの**既定値であって
+フレームには届かない。フレームの既定値はビューが自前で描く控えめな破線の輪郭である。
+したがってどのシートも名指していない team は不変で、1 つの team を名指しても他は乱れない。
+
+> **注意**: フレームに届くのは上の 3 つのセレクタだけである。述語を足したルール
+> （`team@deprecated` / `team[tag]` / `team[from=<id>]`）は、効く場面ではカードを
+> styling するがフレームには届かない。フレームは organization モデルを持たない状態で
+> シートから解決するため、team についての述語をそこで評価できない。述語を落として
+> 適用すると全フレームに広がってしまうので、ルールごと受け付けない。
+
+> Related TPLs: [TPL-2234](../test-perspectives/TPL-2234-one-entity-one-appearance-resolver.md) — team はカードとフレームという別のコードで描かれ、1 つの宣言が片方だけを塗り替えてはならない。[TPL-2269](../test-perspectives/TPL-2269-shipped-defaults-must-not-leak-into-a-second-rendering.md) — builtin シートはカードだけを styling する。フレームがそれを読むと既定で全フレームが塗り替わる。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `team#<id>` は `karasu fmt` を通っても、より広い `#<id>` に書き換わらない。[TPL-1296](../test-perspectives/TPL-1296-spec-doc-reference-data-sync.md) — ここで引いた specificity は `reference-data.ts` からの生成物。

@@ -69,6 +69,7 @@ flowchart TD
   ADR_2065["ADR-2065<br/>[core-concepts] 語彙 register の確定 — tag / annotation をツール語彙に閉じ、fa..."]
   ADR_2120["ADR-2120<br/>[app-ui] bulk collapse は描画済みフレームの集合で駆動し、Group-by 軸の増加に無改..."]
   ADR_2173["ADR-2173<br/>[parser] facet の文法と model 層 — 診断は resolver 側、カタログには載せる、m..."]
+  ADR_2269["ADR-2269<br/>[styling] team フレームの色は team カードと同じセレクタで指定する — `team` / `#..."]
   ADR_9008["ADR-9008<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
   ADR_9009["ADR-9009<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_9011["ADR-9011<br/>[app-ui] Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
@@ -104,6 +105,7 @@ flowchart TD
   ADR_2120 --> ADR_1858
   ADR_2120 --> ADR_1821
   ADR_2173 --> ADR_2065
+  ADR_2269 --> ADR_1858
   ADR_9011 --> ADR_9007
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -174,6 +176,7 @@ flowchart TD
   class ADR_2065 ghost
   class ADR_2120 ghost
   class ADR_2173 ghost
+  class ADR_2269 ghost
   class ADR_9008 ghost
   class ADR_9009 ghost
   class ADR_9011 ghost

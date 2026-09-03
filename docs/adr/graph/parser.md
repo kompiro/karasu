@@ -49,6 +49,7 @@ flowchart TD
   ADR_2075["ADR-2075<br/>[resolver] 宣言スコープで描画できない edge endpoint を診断する — peer はノードイン..."]
   ADR_2174["ADR-2174<br/>[renderer] facet overlay — renderer に焼き、多重所属は同心リング、色は既知 fa..."]
   ADR_2184["ADR-2184<br/>[resolver] 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
+  ADR_2209["ADR-2209<br/>[edges] エッジのプロパティブロックを additive に足し、位置引数 label は正式な sho..."]
   ADR_2234["ADR-2234<br/>[styling] boundary フレーム色の style セレクタ — `boundary` / `boun..."]
   ADR_9007["ADR-9007<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_19 --> ADR_9008
@@ -83,6 +84,9 @@ flowchart TD
   ADR_2174 --> ADR_2173
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
+  ADR_2209 --> ADR_19
+  ADR_2209 --> ADR_1314
+  ADR_2209 --> ADR_438
   ADR_2234 --> ADR_1974
   ADR_2234 --> ADR_2036
   ADR_9007 --> ADR_9008
@@ -136,6 +140,7 @@ flowchart TD
   class ADR_2075 ghost
   class ADR_2174 ghost
   class ADR_2184 ghost
+  class ADR_2209 ghost
   class ADR_2234 ghost
   class ADR_9007 ghost
 ```

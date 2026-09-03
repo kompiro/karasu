@@ -39,6 +39,7 @@ function makeStyles(nodeMap: Map<string, ResolvedNodeStyle> = new Map()): Resolv
     nodes: nodeMap,
     edges: new Map(),
     boundaryFrames: { base: {}, byId: new Map() },
+    teamFrames: { base: {}, byId: new Map() },
     defaultNodeStyle: DEFAULT_STYLE,
     defaultEdgeStyle: DEFAULT_EDGE_STYLE,
     layoutHints: new Map(),
