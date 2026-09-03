@@ -943,9 +943,9 @@ export class Parser {
    *   Dotted segments of a single reference may still cross the break: the
    *   rule bounds separators and element starts, not one element's characters.
    * - **A separator with no element is one `expected-id-after`**, anchored on
-   *   the offending comma, or on the keyword when the value is missing outright.
-   *   `this.error` anchors on whatever comes next, which for a trailing comma is
-   *   the following (correct) line.
+   *   the offending comma in either direction, or on the keyword when the value
+   *   is missing outright. `this.error` anchors on whatever comes next, which
+   *   for a trailing comma is the following (correct) line.
    * - **Stray separators are swallowed and the list resumes**, so `facets ,pii`
    *   still records `pii` and the block loop never reports the same comma twice.
    * - **Elements are yielded as tokens**, so element-precise ranges are there
@@ -975,8 +975,14 @@ export class Parser {
       // No element where one is required: a bare keyword, a leading comma
       // (`facets ,b`), or the trailing comma of `facets a,`. Report it once
       // rather than letting the comma fall through to the block loop's generic
-      // `unexpected-token-in-block`.
-      const anchor = afterComma ?? keyword;
+      // `unexpected-token-in-block`, and anchor it on the character at fault:
+      // the separator when one is written, the keyword only when the value is
+      // missing outright. A leading comma is still ahead of the cursor while a
+      // trailing one has been consumed, so the anchor is read from whichever
+      // side holds it; both land on the comma the author actually typed.
+      const leading = this.peek();
+      const anchor =
+        afterComma ?? (leading.type === TokenType.Comma && onListLine(leading) ? leading : keyword);
       this.diagnostics.push({
         severity: "error",
         code: "expected-id-after",

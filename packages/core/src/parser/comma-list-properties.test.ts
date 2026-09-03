@@ -109,9 +109,15 @@ describe.each(Object.entries(PROPERTIES))(
       expect(read(result.value)).toEqual([first]);
     });
 
-    it("reports a leading comma once and still records the element after it", () => {
-      const result = Parser.parse(source(line(`,${second}`)));
-      expect(errors(result.diagnostics).map((d) => d.code)).toEqual(["expected-id-after"]);
+    it("reports a leading comma on the comma itself and still records what follows", () => {
+      const listLine = line(`,${second}`);
+      const result = Parser.parse(source(listLine));
+      const errs = errors(result.diagnostics);
+      expect(errs.map((d) => d.code)).toEqual(["expected-id-after"]);
+      // The comma is the character at fault, so it is what the squiggle covers.
+      // Anchoring on the keyword instead would report a leading comma and a
+      // missing value at the same place, though only one of them is written.
+      expect(errs[0]!.loc!.start.column).toBe(listLine.indexOf(",") + 1);
       expect(read(result.value)).toEqual([second]);
     });
 

@@ -1201,9 +1201,10 @@ values after the keyword, and they all read it on one grammar (#2551):
   they continue one element, not the list.
 - **A separator with no element is an error.** A bare keyword, a leading comma
   (`facets ,pii`) and a trailing comma (`facets pii,`) each raise one
-  [`expected-id-after`](./diagnostics.md), anchored on the offending comma, or
-  on the keyword when the value is missing outright. The elements read before
-  the mistake are kept, and so are the ones after a leading comma.
+  [`expected-id-after`](./diagnostics.md), anchored on the offending comma in
+  either direction, and on the keyword only when the value is missing outright.
+  The elements read before the mistake are kept, and so are the ones after a
+  leading comma.
 
 ```krs
 facet pii {}
