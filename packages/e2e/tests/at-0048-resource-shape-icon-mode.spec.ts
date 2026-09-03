@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
-import { openViewTab } from "../fixtures/tabs.js";
+import { openViewTab, setDisplayMode } from "../fixtures/tabs.js";
 
 /**
  * AT-0048: Resource shape auto-inference & Icon Mode for infra nodes.
@@ -61,26 +61,22 @@ test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
     await expect(page.locator('[data-node-id="EventBus"]')).toHaveCount(1);
     await expect(page.locator('[data-node-id="MediaStorage"]')).toHaveCount(1);
 
-    const iconButton = page.getByRole("button", { name: "Toggle icon mode" });
-    await expect(iconButton).toBeVisible();
-    // Default display mode is `shape`, so the button should not be pressed.
-    // (shadcn Button migration: toggle state is `aria-pressed`, not a class.)
-    await expect(iconButton).toHaveAttribute("aria-pressed", "false");
-
-    // Capture the SVG markup before toggling so we can assert it changes.
+    // Capture the SVG markup before switching so we can assert it changes.
     const diagram = page.locator("svg").first();
     const baselineMarkup = await diagram.innerHTML();
 
-    await iconButton.click();
-    await expect(iconButton).toHaveAttribute("aria-pressed", "true");
+    // Icon mode is reached from Settings since #2376.
+    await setDisplayMode(page, "icon");
 
     // The diagram must re-render in icon mode — the SVG markup will differ
     // because infra nodes pick up icon-card frames and shape paths.
     await expect.poll(() => diagram.innerHTML()).not.toBe(baselineMarkup);
+    const iconMarkup = await diagram.innerHTML();
 
-    // Toggle back returns to shape mode and removes the pressed state.
-    await iconButton.click();
-    await expect(iconButton).toHaveAttribute("aria-pressed", "false");
+    // Switching back returns to shape mode, so the mode is still involutive
+    // after the move off the toolbar (TPL-1402).
+    await setDisplayMode(page, "shape");
+    await expect.poll(() => diagram.innerHTML()).not.toBe(iconMarkup);
   });
 
   test("resource labels resolve from infra declarations in both display modes (TC-5)", async ({
@@ -103,7 +99,7 @@ test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
     await expect(svgText.getByText("注文作成イベント", { exact: true })).toBeVisible();
 
     // Switch to Icon Mode and verify labels still resolve.
-    await page.getByRole("button", { name: "Toggle icon mode" }).click();
+    await setDisplayMode(page, "icon");
     await expect(svgText.getByText("注文テーブル", { exact: true })).toBeVisible();
     await expect(svgText.getByText("注文作成イベント", { exact: true })).toBeVisible();
   });

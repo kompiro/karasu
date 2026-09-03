@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { DisplayMode, EdgeDirection, NodeMetadata } from "@karasu-tools/core";
+import type { EdgeDirection, NodeMetadata } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import type { PreviewContextValue } from "../state/preview-context.js";
 import type { SharePayload } from "../utils/inline-share.js";
@@ -12,7 +12,6 @@ interface UsePreviewContextValueArgs {
   activeView: ActiveView;
   viewPath: string[];
   selectedDeployBlockId: string | null;
-  displayMode: DisplayMode;
   highlightedNodeId: string | null;
   nodeMetadata: Map<string, NodeMetadata>;
 
@@ -98,7 +97,6 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     activeView,
     viewPath,
     selectedDeployBlockId,
-    displayMode,
     highlightedNodeId,
     nodeMetadata,
     system,
@@ -190,8 +188,6 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       deployBlocks: deploy.deployBlocks,
       selectedDeployBlockId,
       onDeployBlockChange: nav.handleDeployBlockChange,
-      displayMode,
-      onDisplayModeChange: nav.handleDisplayModeChange,
       onExportSvg,
       onExportDrawio,
       isAllLayersOpen,
@@ -259,7 +255,6 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       highlightedNodeId,
       nodeMetadata,
       selectedDeployBlockId,
-      displayMode,
       nav,
       isAllLayersOpen,
       toggleAllLayers,

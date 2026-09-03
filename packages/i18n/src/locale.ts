@@ -7,7 +7,7 @@
  * each consumer, because only the source differs:
  *   - app: `localStorage` + `navigator.language` (`packages/app/src/i18n/locale.ts`)
  *   - lsp: the `initialize` request's `locale` param
- *   - cli: the `LANG` / `LC_ALL` environment variables
+ *   - cli: the `LC_ALL` / `LC_MESSAGES` / `LANG` environment variables
  *   - vscode: `vscode.env.language` (`packages/vscode/src/webview-i18n.ts`)
  */
 

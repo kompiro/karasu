@@ -20,6 +20,15 @@ export const en: Translations = {
   "theme.light": "Light",
   "theme.dark": "Dark",
 
+  // Settings pane — display. Icon mode moved here from the drill-path row to
+  // take it out of the main flow (#2376).
+  "settings.display.title": "🖼 Display",
+  "settings.displayMode.label": "Node display",
+  "settings.displayMode.shape": "Shape cards (default)",
+  "settings.displayMode.icon": "Icon cards",
+  "settings.displayMode.hint":
+    "Shape cards size themselves to their content. Icon cards draw every node at a fixed size with its kind's icon, so the layout stays dense and stable however long the text is.",
+
   // Settings pane
   "settings.ai.title": "⚙ AI settings",
   "settings.security.heading": "⚠ About security",
@@ -202,8 +211,6 @@ export const en: Translations = {
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
 
   // View-state toggles and window-opening controls
-  "preview.iconMode.label": "Icon Mode",
-  "preview.iconMode.ariaLabel": "Toggle icon mode",
   "preview.orgTree.label": "Tree View",
   "preview.orgTree.ariaLabel": "Toggle org tree view",
   "preview.entities.label": "Entities",

@@ -299,7 +299,6 @@ export function AppShell({
     activeView,
     viewPath,
     selectedDeployBlockId,
-    displayMode,
     highlightedNodeId,
     nodeMetadata,
     // Passed straight through (#2015 point 8) — `usePreviewContextValue`'s arg
@@ -381,6 +380,8 @@ export function AppShell({
               onFormat={isStyleFile ? undefined : handleFormat}
               onTidyStyle={isStyleFile ? handleTidyStyle : undefined}
               hasParseErrors={hasParseErrors}
+              displayMode={displayMode}
+              onDisplayModeChange={nav.handleDisplayModeChange}
             />
           }
         />

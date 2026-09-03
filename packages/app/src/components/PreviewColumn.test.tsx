@@ -90,8 +90,6 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       onBreadcrumbNavigate: noop,
     },
     nodeMetadata: new Map(),
-    displayMode: "shape" as const,
-    onDisplayModeChange: vi.fn<() => void>(),
     onExportSvg: vi.fn<() => void>(),
     isAllLayersOpen: false,
     onAllLayersToggle: vi.fn<() => void>(),
@@ -437,27 +435,17 @@ describe("PreviewColumn", () => {
     });
   });
 
-  describe("Icon Mode button", () => {
-    it("shows Icon Mode button for all active views", () => {
+  // #2376: icon mode moved out of the main flow and now lives in the Settings
+  // tab's Display section. The preview offers no control for it on any view —
+  // the tests that used to press it here are replaced by
+  // `SettingsPane.test.tsx`, which owns the switch now.
+  describe("Icon Mode is no longer a preview control (#2376)", () => {
+    it("offers no icon-mode control on any active view", () => {
       for (const activeView of ["system", "deploy", "org"] as const) {
-        const { getByRole, unmount } = renderPreview(makeProps({ activeView }));
-        expect(getByRole("button", { name: /Toggle icon mode/ })).toBeTruthy();
+        const { queryByRole, unmount } = renderPreview(makeProps({ activeView }));
+        expect(queryByRole("button", { name: /icon mode/i })).toBeNull();
         unmount();
       }
-    });
-
-    it("calls onDisplayModeChange when icon mode button is clicked in deploy view", () => {
-      const props = makeProps({ activeView: "deploy" });
-      const { getByRole } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Toggle icon mode/ }));
-      expect(props.onDisplayModeChange).toHaveBeenCalledWith("icon");
-    });
-
-    it("calls onDisplayModeChange when icon mode button is clicked in org view", () => {
-      const props = makeProps({ activeView: "org" });
-      const { getByRole } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Toggle icon mode/ }));
-      expect(props.onDisplayModeChange).toHaveBeenCalledWith("icon");
     });
   });
 
@@ -1045,9 +1033,9 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
   // Every visible label and aria-label the preview's controls can render, in
   // `en` — including the ones that live inside a dropdown, which the scan below
   // opens rather than trusting a closed menu to be empty of English.
+  // Icon Mode is absent since #2376 moved it to the Settings pane; the same
+  // guard for its new home lives in `SettingsPane.test.tsx`.
   const EN_TOOLBAR_STRINGS = [
-    "Icon Mode",
-    "Toggle icon mode",
     "Tree View",
     "Toggle org tree view",
     "Entities",

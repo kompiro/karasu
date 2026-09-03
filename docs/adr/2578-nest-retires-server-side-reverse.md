@@ -7,6 +7,7 @@ topic: project
 authors: [kompiro]
 supersedes: [ADR-1990, ADR-1994]
 related_to:
+  - ADR-2592
   - ADR-1783
   - ADR-1996
   - ADR-2249
@@ -17,7 +18,6 @@ scope:
   packages: [nest]
   concerns: [deployment, security]
 assumptions:
-  - "grep: docs/design/nest-as-a-gallery.md :: 決めたこと"
   - "reverse/pipeline.ts（survey → decompose → synthesise → repair）が本 ADR の廃止対象だった。#2590 が削除したので現存しない — 不在が決定の実行を示す"
   - "file: packages/nest/wrangler.toml"
 ---
