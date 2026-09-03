@@ -1,7 +1,7 @@
 # karasu-nest がデータをどう扱うか
 
 - **日付**: 2026-08-23（初版 2026-08-03。[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md) の転換で全面改訂）
-- **関連 Issue**: [#1996](https://github.com/kompiro/karasu/issues/1996)（data-trust）／[#2591](https://github.com/kompiro/karasu/issues/2591)（ギャラリーに必要な文書）／親 [#2578](https://github.com/kompiro/karasu/issues/2578)
+- **関連 Issue**: [#1996](https://github.com/kompiro/karasu/issues/1996)（data-trust）／[#2591](https://github.com/kompiro/karasu/issues/2591)（草案。完了）／[#2691](https://github.com/kompiro/karasu/issues/2691)（残る法務レビュー）／親 [#2578](https://github.com/kompiro/karasu/issues/2578)
 - **関連 ADR**: [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)（生成の廃止）、[ADR-1996](../adr/1996-karasu-nest-data-trust.md)、[ADR-2262](../adr/2262-nest-intake-and-completion.md)（個人データの線）
 - **status**: draft — **法務レビュー未了**
 
@@ -154,6 +154,7 @@ karasu-nest は、**投稿者が自分の環境で作ったアーキテクチャ
 ## 未了 — 人間がやる必要があるもの
 
 **この節が空になるまで、ギャラリーを運用者以外に開いてはならない。**
+引き取り先は [#2691](https://github.com/kompiro/karasu/issues/2691)（草案を出した [#2591](https://github.com/kompiro/karasu/issues/2591) は完了して閉じた）。
 
 ADR-1996 が挙げた 6 件のうち **2 件は消滅した**（モデルを呼ばず、他人のデータを処理しない
 ため）。残る 4 件のうち 2 件は草案という形で片付き、判断が要る部分だけが残っている。
