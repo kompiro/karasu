@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
-import { openViewTab } from "../fixtures/tabs.js";
+import { openViewTab, setDisplayMode } from "../fixtures/tabs.js";
 
 /**
  * AT-1666: Icon Mode renders icons on the deploy view.
@@ -45,26 +45,23 @@ test.describe("AT-1666 Deploy view Icon Mode", () => {
     await expect(page.locator('g[data-node-kind="oci"]')).toHaveCount(1);
     await expect(page.locator('g[data-node-kind="lambda"]')).toHaveCount(1);
 
-    const iconButton = page.getByRole("button", { name: "Toggle icon mode" });
-    await expect(iconButton).toBeVisible();
-    await expect(iconButton).toHaveAttribute("aria-pressed", "false");
-
-    // Capture markup before toggling so we can assert the deploy view actually
+    // Capture markup before switching so we can assert the deploy view actually
     // re-renders (the #1669 regression was a silent no-op).
     const diagram = page.locator("svg").first();
     const baselineMarkup = await diagram.innerHTML();
 
-    await iconButton.click();
-    await expect(iconButton).toHaveAttribute("aria-pressed", "true");
+    // Icon mode is reached from Settings since #2376.
+    await setDisplayMode(page, "icon");
 
     // Deploy nodes must still be present and the SVG markup must change as the
     // units pick up icon-card frames / shape paths.
     await expect(page.locator('g[data-node-kind="oci"]')).toHaveCount(1);
     await expect(page.locator('g[data-node-kind="lambda"]')).toHaveCount(1);
     await expect.poll(() => diagram.innerHTML()).not.toBe(baselineMarkup);
+    const iconMarkup = await diagram.innerHTML();
 
-    // Toggle back returns to shape mode.
-    await iconButton.click();
-    await expect(iconButton).toHaveAttribute("aria-pressed", "false");
+    // Switching back returns to shape mode.
+    await setDisplayMode(page, "shape");
+    await expect.poll(() => diagram.innerHTML()).not.toBe(iconMarkup);
   });
 });

@@ -18,3 +18,22 @@ export async function openViewTab(page: Page, name: string): Promise<void> {
   await page.getByRole("tab", { name }).click();
   await expect(page.getByRole("tab", { name, selected: true })).toBeVisible();
 }
+
+/**
+ * Switch the node display mode from the Settings tab's Display section.
+ *
+ * Icon mode used to be a toggle button in the drill-path row. It moved into
+ * Settings (#2376), so reaching it now means opening the edit pane's Settings
+ * tab. Selecting the value is enough — the select is controlled by app state,
+ * and the preview re-renders from the same state.
+ *
+ * Only available where the edit pane renders. `karasu serve` passes
+ * `hideEditor`, so there is no Settings tab (and no icon mode) there.
+ */
+export async function setDisplayMode(page: Page, mode: "shape" | "icon"): Promise<void> {
+  await page.getByRole("tab", { name: /Settings/ }).click();
+  const select = page.getByLabel("Node display");
+  await expect(select).toBeVisible();
+  await select.selectOption(mode);
+  await expect(select).toHaveValue(mode);
+}

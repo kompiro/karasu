@@ -20,6 +20,15 @@ export const ja: Partial<Translations> = {
   "theme.light": "ライト",
   "theme.dark": "ダーク",
 
+  // Settings pane — 表示。アイコンモードを主導線から外すため、
+  // パンくず行からここへ移した（#2376）。
+  "settings.display.title": "🖼 表示",
+  "settings.displayMode.label": "ノードの表示",
+  "settings.displayMode.shape": "シェイプカード（既定）",
+  "settings.displayMode.icon": "アイコンカード",
+  "settings.displayMode.hint":
+    "シェイプカードは内容に合わせて大きさが変わります。アイコンカードはすべてのノードを固定サイズで描き、種別のアイコンを添えるため、文字量にかかわらずレイアウトが一定に保たれます。",
+
   // Settings pane
   "settings.ai.title": "⚙ AI 設定",
   "settings.security.heading": "⚠ セキュリティについて",
@@ -200,8 +209,6 @@ export const ja: Partial<Translations> = {
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
   // 表示状態のトグルと別ウィンドウを開く操作
-  "preview.iconMode.label": "アイコンモード",
-  "preview.iconMode.ariaLabel": "アイコンモードを切り替える",
   "preview.orgTree.label": "ツリー表示",
   "preview.orgTree.ariaLabel": "組織のツリー表示を切り替える",
   "preview.entities.label": "エンティティ",
