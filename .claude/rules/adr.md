@@ -166,18 +166,25 @@ gh pr merge <pr-number> --auto --squash --delete-branch
 
 1. PR タイトルが `docs(adr): ` で始まる
 2. **差分が「決定の記録」と「その記録に伴うリンクの整合」だけで構成されている**。
-   具体的には次の 3 種以外の差分が 1 行もない:
-   - `docs/adr/**` の変更（新 ADR、`effective.md` / `graph.md` / `graph/*.md`
-     などの生成物を含む）
+   具体的には次の 4 種以外の差分が 1 行もない:
+   - **新しい ADR の追加**と、`effective.md` / `graph.md` / `graph/*.md` などの
+     生成物（`pnpm adr:regenerate` の出力）
+   - **既存 ADR の frontmatter**、および supersede の body ステータス行
+     （「既存 ADR を覆すとき」が許す範囲ちょうど。**本文の散文は入らない**）
    - 昇格対象 `docs/design/<name>.md` の **削除** または **更新**:
      - 削除 — Design Doc 全体を ADR に昇格させて元ファイルを消すケース
      - 更新 — 部分昇格（複数フェーズの一部だけ ADR 化し、残りを Design Doc
        に保持するケース。例: ADR-1168）
    - **その Design Doc を指していた参照を、新 ADR に張り替える差分**
-     （**`docs/adr/**` の本文を除く**任意のディレクトリ — `docs/acceptance/` /
+     （`docs/adr/**` を除く任意のディレクトリ — `docs/acceptance/` /
      `docs/spec/` / `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md`
      のいずれでもよい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部で
      あって、別の判断ではない）
+
+   **Design Doc からの新規昇格はこの 4 種で閉じるので、auto-merge してよい** —
+   新 ADR を足し、生成物を再生成し、元の Design Doc を消し、他の記録の参照を
+   張り替える、で全部である。外れるのは**既存 ADR の本文を触ったとき**だけで、
+   それは「既存 ADR を覆すとき」が禁じているので、そもそも書かれない差分である。
 3. `gh pr view <N> --json files,title` と `gh pr diff <N>` で 1〜2 を確認した
    直後にコマンドを実行する
 
