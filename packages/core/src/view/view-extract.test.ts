@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { extractView, extractEntityView } from "./view-extract.js";
+import { layout } from "../renderer/layout.js";
 import { withUnassignedSystem } from "./unassigned-system.js";
 import { Parser } from "../parser/parser.js";
 import type { KrsEdge, KrsNode } from "../types/ast.js";
@@ -888,6 +889,41 @@ system EC {
 `);
       const slice = extractEntityView(systems, ["EC", "S", "D"]);
       expect(slice.childNodes).toHaveLength(0);
+    });
+
+    it("does not draw a relation whose source is not the declaring entity (#2501)", () => {
+      // On an `entity` the origin-scope rule is the direction rule — origin is
+      // the reference holder — so `entity A { B -> A }` does not merely sit in
+      // the wrong block, it points the reference the wrong way.
+      const systems = parseSystem(`
+system EC {
+  service S {
+    domain D {
+      entity A { B -> A }
+      entity B {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "S", "D"]);
+      expect(slice.childEdges.map((e) => `${e.from}->${e.to}`)).toEqual([]);
+    });
+
+    it("does not fabricate a source for a mismatched cross-domain relation (#2501)", () => {
+      // The ghost branch restates an outgoing relation as `entity.id -> key`,
+      // so an unguarded mismatch would draw a relation from `A` that the model
+      // never contained.
+      const systems = parseSystem(`
+system EC {
+  service S {
+    domain D { entity A { Z -> D2.C } }
+    domain D2 { entity C {} }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "S", "D"]);
+      expect(slice.ghostEntityEdges.map((e) => `${e.from}->${e.to}`)).toEqual([]);
+      expect(slice.ghostEntities).toHaveLength(0);
     });
   });
 
@@ -1897,6 +1933,34 @@ system T {
 }
 `);
       expect(spellings(extractView(systems, []))).toContain("S1->S2");
+    });
+
+    it("does not lift a foreign-sourced block edge into the system-scope machinery (#2501)", () => {
+      // `withChildAnchoredEdges` feeds cross-system edges, ghosts and the
+      // multi-system layout, and carries no dedup of its own. Lifting an edge
+      // that is not anchored at its block draws a second parallel arrow beside
+      // the system-scope edge it duplicates, and attributes a cross-system call
+      // to a service that never declared one.
+      const systems = parseSystem(`
+system T {
+  S1 -> S2
+  client W [web] {
+    S1 -> S2
+    S1 -> U.S3
+  }
+  service S1 { domain A { usecase u {} } }
+  service S2 { domain B { usecase v {} } }
+}
+system U {
+  service S3 { domain C { usecase w {} } }
+}
+`);
+      const root = extractView(systems, []);
+      expect(layout(root).edges.filter((e) => e.from === "S1" && e.to === "S2")).toHaveLength(1);
+      expect(root.crossSystemEdges.map((e) => `${e.from}->${e.to}`)).not.toContain("S1->U.S3");
+      expect(
+        extractView(systems, ["U", "S3"]).callerGhostSystems.map((g) => g.systemNode.id),
+      ).toEqual([]);
     });
 
     it("feeds the ghost-system machinery for a qualified cross-system target", () => {
