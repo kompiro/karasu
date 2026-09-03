@@ -16,6 +16,7 @@ flowchart TD
     ADR_2188["ADR-2188<br/>TPL の採番を issue-number（TPL-<n>）へ移行する"]
     ADR_2331["ADR-2331<br/>ADR PR の auto-merge 例外は、変更の場所ではなく差分の性質で判定する"]
     ADR_2628["ADR-2628<br/>ADR の assumptions に caret レンジの完全な版を書かない（機械チェックで..."]
+    ADR_2687["ADR-2687<br/>ADR 本文は不変 — リンクの張り替えも本文編集として禁じる"]
   end
   subgraph app-ui["app-ui"]
     ADR_104["ADR-104<br/>system セレクタUIを採用しない"]
@@ -879,6 +880,7 @@ flowchart TD
   class ADR_2643 accepted
   class ADR_2648 accepted
   class ADR_2671 accepted
+  class ADR_2687 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
