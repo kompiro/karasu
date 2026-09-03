@@ -776,6 +776,12 @@ error (for both `->` and `-->`). Edges inside a `system` block may use any
 declared node as their source. This rule and its diagnostic are catalogued in
 the [diagnostics & rules reference](diagnostics.md).
 
+A rejected declaration is kept in the AST so the rest of the block still parses,
+but it **draws on no view** — the error is the whole signal, and moving the edge
+to the block it starts from is what makes it appear. Drawing it would give one
+relation a second spelling: `service S1 { S2 -> S3 }` would render exactly like
+the `S2 -> S3` the rule actually asks for, written inside `S2`.
+
 **Cross-boundary dependencies.** The rule binds the *source*, not the *target*,
 so a block can still depend on things it does not own:
 

@@ -503,6 +503,40 @@ function drawnEdgeKey(edge: KrsEdge): string {
 }
 
 /**
+ * Does this edge start at the block that declares it? The **edge origin scope**
+ * rule (spec § Edge declaration), stated once for every consumer: the parser
+ * rejects a mismatch with `edge-source-mismatch` but keeps the declaration for
+ * recovery, so the render side has to ask the same question again (#2501).
+ *
+ * Kept as one definition because the answer feeds three separate paths — the
+ * peer canvas, the system-scope machinery, and the entity view — and a rule
+ * spelled three times is a rule that drifts.
+ */
+function isAnchoredAt(child: KrsNode, edge: KrsEdge): boolean {
+  return edge.from === nodeId(child);
+}
+
+/**
+ * The block kinds the parser binds to their own id, mirroring the `parentId`
+ * it passes in `parser.ts` (`kind === "service" || "domain" || "entity"`). Only
+ * these raise `edge-source-mismatch`, so only these have a diagnostic to carry
+ * the signal when the render side drops an edge.
+ */
+const ORIGIN_SCOPED_KINDS: ReadonlySet<KrsNode["kind"]> = new Set(["service", "domain", "entity"]);
+
+/**
+ * May the parent canvas lift this edge off `child`? Anchored edges always may.
+ * An edge in a block with **no** origin-scope rule may too, exactly as written:
+ * `client W { S1 -> S2 }` parses clean and is reported by nothing, so guarding
+ * it would drop it with no signal anywhere — the silent drop TPL-2075 forbids.
+ * That placement is outside the spec either way; this keeps it as it was rather
+ * than making it newly renderable or newly invisible.
+ */
+function isLiftableToPeerCanvas(child: KrsNode, edge: KrsEdge): boolean {
+  return !ORIGIN_SCOPED_KINDS.has(child.kind) || isAnchoredAt(child, edge);
+}
+
+/**
  * Child-anchored edges (#2223). An edge declared inside a `service` / `domain`
  * block originates from that block (spec § Edge origin scope), so the canvas
  * that can draw it is the **parent's** — the one where the declaring block
@@ -512,9 +546,12 @@ function drawnEdgeKey(edge: KrsEdge): string {
  * "both endpoints are children of S1" filter.
  *
  * The peer set is the drawn siblings' ids, which is exactly the `peersOf` set
- * `detectEdgeEndpointsNotAtScope` uses (`resolver/warnings.ts`) — the two are
- * the front and back of one rule, so an edge is drawn here or reported there
- * and never both/neither (TPL-2075).
+ * `detectEdgeEndpointsNotAtScope` uses (`resolver/warnings.ts`). Peer-ness is
+ * not the whole keep condition, though: the edge must also be
+ * {@link isLiftableToPeerCanvas}, which sends a source-mismatched declaration
+ * to the **parser's** `edge-source-mismatch` instead (#2501). So an edge is
+ * still drawn here or reported somewhere and never both, but "reported" now
+ * spans both stages rather than this detector alone (TPL-2075).
  *
  * `entity` children are excluded: their relations render in the (separate)
  * entity view via {@link extractEntityView}, and the entities themselves are
@@ -529,6 +566,7 @@ function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): 
   const anchored: KrsEdge[] = [];
   for (const child of renderable) {
     for (const edge of child.edges) {
+      if (!isLiftableToPeerCanvas(child, edge)) continue;
       if (!peerIds.has(edge.from) || !peerIds.has(edge.to)) continue;
       const key = drawnEdgeKey(edge);
       if (drawnKeys.has(key)) continue;
@@ -544,8 +582,14 @@ function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): 
  * (#2223) — `service S { S -> Other.Svc }` is the service-scope spelling of
  * `system T { S -> Other.Svc }`, so it must feed the same system-scope
  * machinery: ghost systems, caller ghost systems, cross-system edges and
- * ghost users. Anchored edges are self-sourced by the origin-scope rule, so
- * only those are lifted.
+ * ghost users. Only {@link isAnchoredAt} edges are lifted, and the premise is
+ * why: an edge is the child-scope spelling of a system-scope one *because* it
+ * starts at the child. An edge that does not — `client W { S1 -> S2 }` — is no
+ * such spelling, and feeding it here would attribute cross-system calls and
+ * caller ghosts to a service that never declared them, and (this list carrying
+ * no dedup of its own) draw a second parallel arrow beside the system-scope
+ * edge it duplicates. Unlike {@link collectAnchoredPeerEdges}, this is not a
+ * canvas keep-filter, so the extra allowance made there does not apply here.
  *
  * Exported for `renderer/layout.ts`: the multi-system / `__unassigned__` root
  * lays each system out from `sys.edges` rather than from `ViewSlice.childEdges`,
@@ -554,7 +598,7 @@ function collectAnchoredPeerEdges(children: KrsNode[], drawnKeys: Set<string>): 
  */
 export function withChildAnchoredEdges(system: KrsNode): KrsEdge[] {
   const anchored = system.children.flatMap((child) =>
-    child.edges.filter((e) => e.from === nodeId(child)),
+    child.edges.filter((e) => isAnchoredAt(child, e)),
   );
   return anchored.length > 0 ? [...system.edges, ...anchored] : system.edges;
 }
@@ -1544,6 +1588,13 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
   // intra-domain (or dropped); qualified `Other.Foreign` targets become ghosts.
   for (const entity of entities) {
     for (const edge of entity.edges) {
+      // The origin-scope rule is what enforces the relation direction here
+      // (origin = the reference holder), so a mismatched source is not merely
+      // misplaced — it names the wrong end. Drawing it would show a reference
+      // the model does not contain, and the ghost branch below would restate
+      // it as `entity.id -> …`, fabricating a source the author never wrote
+      // (#2501).
+      if (!isAnchoredAt(entity, edge)) continue;
       if (localEntityIds.has(edge.to)) {
         childEdges.push(edge); // intra-domain (bare local id)
         continue;
@@ -1568,6 +1619,7 @@ export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice
     if (entry.domain === domain) continue; // node identity, robust to id collisions
     for (const foreignEntity of entry.entities.values()) {
       for (const edge of foreignEntity.edges) {
+        if (!isAnchoredAt(foreignEntity, edge)) continue; // #2501, as above
         const target = resolveQualifiedEntity(edge.to, index);
         if (!target || target.domain !== domain) continue;
         if (!localEntityIds.has(target.entityId)) continue;

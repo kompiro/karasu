@@ -1697,6 +1697,13 @@ function detectUnresolvedEdgeEndpoints(file: KrsFile): Warning[] {
  * node *outside* the peer set drops the edge from every view. Before #2075 the
  * drop was silent; this surfaces it.
  *
+ * Peer-ness is the only condition this detector owns. Extraction applies a
+ * second one — the edge must start at the block that declares it — but that
+ * one already has its diagnostic upstream (`edge-source-mismatch`, raised by
+ * the parser), so a mismatched edge is dropped from every view without ever
+ * reaching here (ADR-2501). The two conditions are one rule between them; this
+ * is the half whose signal would otherwise be missing.
+ *
  * The peer set is per **node instance**, mirroring what the renderer does:
  * `layout.ts`'s multi-system path draws a system's edge only when both
  * endpoints are in that system's own `idSet`. Unioning peers by id would hide

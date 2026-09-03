@@ -13,6 +13,7 @@ known_consumers:
 discovered_from:
   - issue: "#2075"
   - issue: "#2223"
+  - issue: "#2501"
   - root_cause_file: "packages/core/src/view/view-extract.ts:972"
 related_to:
   - TPL-1503
@@ -59,6 +60,10 @@ silent drop はとくに view 抽出側の filter で生まれる。
   validate/repair ループが silent drop を検出できず、fidelity が静かに劣化する
 - 同じ間違いが、1 段深いスコープでは error（`edge-source-mismatch`）、上位スコープでは
   沈黙、というように**配置によって診断の有無が変わる**
+- 描画を足す変更が、**parser が既に error で弾いた宣言まで一緒に描く**（#2501）。
+  error recovery で AST に残った宣言を「両端が peer なら描く」だけの条件で拾うと、
+  診断されているのに描画もされる（本観点の「どちらか一方」の反対側）。正準形で書いた
+  同じエッジと絵が一致するため、error を直しても見た目が変わらない
 - bare id の cross-domain entity relation のように、drop することが spec に
   書かれていても検出器が無く、書き手には気付けない（TPL-1936）
 
@@ -71,11 +76,20 @@ silent drop はとくに view 抽出側の filter で生まれる。
 - [ ] 同じ意味の間違いが別のスコープでも書けるか。書けるなら、そのすべてで同じ register の診断が出るか（error / 沈黙に割れていないか）
 - [ ] 正準形（描画される綴り）で**誤って発火しない**ことを、cross-boundary・多ファイル merge（同 id 再オープン）の両方で assert したか
 - [ ] view 側の filter 条件を変更したとき、診断側の判定式も追随したか（両者は同じ規則の表と裏）
+- [ ] 「診断されているか」を数えるとき、**parser の diagnostics も含めたか**。resolver の
+      warning だけを見ると、parse 時 error で弾かれた宣言が「描画も診断もされている」状態を
+      素通りする（#2501）
+- [ ] 描画側に足したガードが、**そのガードに対応する診断を持たない配置まで巻き込んでいないか**。
+      規則を持たないブロック（`client` / `database` 等、parser が `parentId` を渡さない kind）に
+      同じ条件を当てると、診断なしの silent drop を新たに作る
 
 ## 既知の対処パターン
 
 - 描画条件（view 抽出の filter）と診断の判定式を**同じ規則の表と裏**として実装し、
   片方だけ変えられないようにテストで縛る
+- 同じ規則を 2 か所の filter が実装しているなら、**述語を 1 つ抽出して両方から呼ぶ**。
+  条件を並べて書くと、片方だけ直された時点で「どちらが規則か」が repo から失われる
+  （#2501 の `isAnchoredAt` — 描画側の 2 helper が同じ起点スコープ規則で割れていた）
 - 「endpoint が存在しない」（`unresolved-edge-endpoint`）と「存在するがこのスコープでは
   描けない」（`edge-endpoint-not-at-scope`）を別コードに分け、前者を skip 条件に
   入れて二重報告を避ける
