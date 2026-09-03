@@ -42,6 +42,24 @@ ADR の必須要素は `docs/adr/TEMPLATE.md` を参照。frontmatter スキー�
 
 旧 ADR を書き換えず、新 ADR で `supersedes` する。旧 ADR は歴史的記録として残す。
 
+**到達状態**: 既存 ADR に対する差分が frontmatter と supersede のステータス行だけで、
+本文の散文が 1 行も変わっていない。
+
+判定条件は 1 つ、**その行が frontmatter より下かどうか**。下なら触らない。**リンクの
+張り替えも本文編集である** — 指し先のファイルが消えても、本文はそのまま残す。
+
+例外は 1 つだけで、supersede されたときの body ステータス行（下記）。これは
+`pnpm adr:validate` が frontmatter 側と対で検査する。
+
+**現在の参照は frontmatter が持つ。** 後継 ADR へ導きたいなら `related_to` /
+`superseded_by` に足す。`pnpm adr:regenerate` が `graph.md` と `effective.md` に
+反映するので、本文を書き換えなくても読者は辿り着ける。
+
+本文に残った dead path を CI は追いかけない。`scripts/lint/record-source-paths.ts` が
+`docs/adr/**` を走査対象から外しており、その理由（本文は当時の記録、現在の指し先は
+frontmatter が持つ）をファイル冒頭に書いている。**ルールとガードはここで同じ線を引く。**
+経緯は [ADR-2687](../../docs/adr/2687-adr-body-is-immutable.md)。
+
 - 新 ADR の**背景に「何が変わったためこの再評価に至ったか」を書く**
 - 旧 ADR の body ステータス行を `決定済み` から `Superseded by ADR-<n>` に更新する
 - frontmatter は旧 ADR に `status: superseded` + `superseded_by: ADR-<n>`、新 ADR に
@@ -148,18 +166,25 @@ gh pr merge <pr-number> --auto --squash --delete-branch
 
 1. PR タイトルが `docs(adr): ` で始まる
 2. **差分が「決定の記録」と「その記録に伴うリンクの整合」だけで構成されている**。
-   具体的には次の 3 種以外の差分が 1 行もない:
-   - `docs/adr/**` の変更（新 ADR、`effective.md` / `graph.md` / `graph/*.md`
-     などの生成物を含む）
+   具体的には次の 4 種以外の差分が 1 行もない:
+   - **新しい ADR の追加**と、`effective.md` / `graph.md` / `graph/*.md` などの
+     生成物（`pnpm adr:regenerate` の出力）
+   - **既存 ADR の frontmatter**、および supersede の body ステータス行
+     （「既存 ADR を覆すとき」が許す範囲ちょうど。**本文の散文は入らない**）
    - 昇格対象 `docs/design/<name>.md` の **削除** または **更新**:
      - 削除 — Design Doc 全体を ADR に昇格させて元ファイルを消すケース
      - 更新 — 部分昇格（複数フェーズの一部だけ ADR 化し、残りを Design Doc
        に保持するケース。例: ADR-1168）
    - **その Design Doc を指していた参照を、新 ADR に張り替える差分**
-     （ディレクトリは問わない — `docs/acceptance/` / `docs/spec/` /
-     `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md` のいずれでも
-     よい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部であって、
-     別の判断ではない）
+     （`docs/adr/**` を除く任意のディレクトリ — `docs/acceptance/` /
+     `docs/spec/` / `docs/test-perspectives/` / `docs/prd/` / `docs/roadmap.md`
+     のいずれでもよい。削除でリンク切れになるものを繋ぎ直すのは昇格の一部で
+     あって、別の判断ではない）
+
+   **Design Doc からの新規昇格はこの 4 種で閉じるので、auto-merge してよい** —
+   新 ADR を足し、生成物を再生成し、元の Design Doc を消し、他の記録の参照を
+   張り替える、で全部である。外れるのは**既存 ADR の本文を触ったとき**だけで、
+   それは「既存 ADR を覆すとき」が禁じているので、そもそも書かれない差分である。
 3. `gh pr view <N> --json files,title` と `gh pr diff <N>` で 1〜2 を確認した
    直後にコマンドを実行する
 
@@ -170,6 +195,11 @@ gh pr merge <pr-number> --auto --squash --delete-branch
   の昇格 PR が acceptance 1 行で止まった）。許可ディレクトリを数え上げる形だと、
   次に spec や TPL が参照元になったとき同じ理由でまた止まる
   （`.claude/rules/README.md` チェックリスト 5「単一の判定条件に畳む」）
+- **ADR 本文だけが張り替えの対象外**なのは、そこだけ「staleness を受け入れる」と
+  決めた面だからである。他の記録は真であり続けることを期待され、
+  `record-source-paths.ts` がそれを機械で見る。ADR 本文は当時の記録なので同じ
+  ガードから外してある。同じ線を 2 箇所で引き直さないために、張り替えの可否も
+  この線に揃える（[#2687](https://github.com/kompiro/karasu/issues/2687)）
 - **張り替え以外の変更が同じファイルに混ざったら例外は成立しない。** とくに
   `docs/acceptance/` の受け入れ条件そのもの（TC の増減、手動項目のチェック
   状態）を変える差分が含まれるなら、**通常通りユーザー確認を経る** — AT は
