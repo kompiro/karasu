@@ -1,7 +1,7 @@
 # AT: karasu-nest のデータ信頼
 
 - **日付**: 2026-08-03（[#2590](https://github.com/kompiro/karasu/issues/2590) の生成廃止に合わせて 2026-08-29 に改訂）
-- **関連 Issue**: [#1996](https://github.com/kompiro/karasu/issues/1996)（data-trust）／[#2591](https://github.com/kompiro/karasu/issues/2591)（ギャラリーに必要な文書）／親 [#2578](https://github.com/kompiro/karasu/issues/2578)
+- **関連 Issue**: [#1996](https://github.com/kompiro/karasu/issues/1996)（data-trust）／[#2591](https://github.com/kompiro/karasu/issues/2591)（草案。完了）／[#2691](https://github.com/kompiro/karasu/issues/2691)（残る法務レビュー）／親 [#2578](https://github.com/kompiro/karasu/issues/2578)
 - **関連 ADR**: [ADR-1996](../adr/1996-karasu-nest-data-trust.md)、[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md) 決定 6（成立条件を引き継ぐ）
 - **関連 TPL**: [TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)、[TPL-2287](../test-perspectives/TPL-2287-detector-near-misses-are-the-spec.md)、[TPL-2587](../test-perspectives/TPL-2587-author-managed-content-has-no-ttl.md)
 - **対象ファイル**:
@@ -68,9 +68,10 @@ N/A — 上の受け入れ条件はすべて自動テストで判定できる。
 ### 未了（この AT の項目ではない）
 
 成立条件の残りは**起草と法務レビュー**であって、実機で判定するものではない。一覧の正本は
-`docs/policy/nest-data-handling.md` の「未了」節で、[#2591](https://github.com/kompiro/karasu/issues/2591)
-が引き取る。privacy policy・ToS・公開先・問い合わせ窓口・発信者情報開示の手続きの 5 件が
-残っている。最後の 1 件は、投稿を第三者に見せる面を持ったことで増えた分である。
+`docs/policy/nest-data-handling.md` の「未了」節で、[#2691](https://github.com/kompiro/karasu/issues/2691)
+が引き取る（草案を出した #2591 は完了して閉じた）。privacy policy・ToS の法務レビュー、発信者情報開示の
+手続き、準拠法・裁判管轄・運営者情報の決定、英語版の作成と公開の 5 件が残っている。発信者情報開示の
+手続きは、投稿を第三者に見せる面を持ったことで増えた分である。
 
 **チェックボックスをここへ写さない。** 写すと正本と 2 箇所で管理することになり、しかも
 「再実行される実機確認」と「一度終われば終わる作業」が同じ見た目で並ぶ。この AT が判定
