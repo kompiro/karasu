@@ -139,7 +139,7 @@ describe("the data-handling document matches the code (#1996, #2591)", () => {
     for (const document of [POLICY, ...DRAFTS]) {
       const text = read(document);
       expect(text).toContain(`発行から ${days(SESSION_CAP)} 日`);
-      expect(text).toContain(`${days(SESSION_IDLE)} 日`);
+      expect(text).toContain(`最終使用から ${days(SESSION_IDLE)} 日`);
     }
   });
 

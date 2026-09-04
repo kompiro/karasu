@@ -104,8 +104,6 @@ structure-only 検査は既存の `assertStructureOnly` を再利用するが、
 
 期限の**不在**は待っても証明できないので、書き込み口を 1 か所に閉じて `expirationTtl` が付かないことを検査する（[TPL-2587](../test-perspectives/TPL-2587-author-managed-content-has-no-ttl.md)）。
 
-セッションが持つその 1 つの期限は、[#2655](https://github.com/kompiro/karasu/issues/2655) 以降**使うたびに延びる**（最終使用から 30 日）。延びる期限だけでは資格情報が自分を無期限に更新できてしまうので、発行から 90 日の**延びない上限**を外側に置く。KV が強制できる期限は鍵ごとに 1 つで、それは延びる側に使っているため、上限は読み取り時に確かめる（[TPL-2655](../test-perspectives/TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md)）。
-
 ### 6. コンソールは nest 自身が返す — 非公開を削除の手前に置く
 
 投稿者が自分の投稿を管理する面（一覧・非公開化・差し替え・削除・アカウント削除）を、**nest のホスト名で nest 自身が返す**。

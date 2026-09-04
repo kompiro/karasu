@@ -160,6 +160,7 @@ URL hash・ブラウザ履歴・マルチファイル間のナビゲーション
 - [ADR-462](462-import-project-zip.md) — Import Project from ZIP — `fflate` 再利用 + トップレベル除去
 - [ADR-1990](1990-karasu-nest-pivot-server-reverse.md) — karasu-nest ピボット — GitHub App による server-side reverse の hosted サービス化（ADR-1783 を supersede）
 - [ADR-2262](2262-nest-intake-and-completion.md) — karasu-nest の受付と完了通知 — installer 起動 + PR 還元、reader は無通知のリクエスト受付（ADR-1990 を refine）
+- [ADR-2655](2655-nest-sliding-session.md) — nest のセッション期限を idle 窓と絶対上限に分ける
 
 ### Chat / AI
 

@@ -11,6 +11,24 @@ import { MemoryKV } from "../testing/memory-kv.js";
 const DAY = 24 * 60 * 60;
 const start = new Date("2026-08-01T00:00:00Z");
 
+/** Put a sign-out exactly between a refresh's last read and write. */
+class RefreshRaceKV extends MemoryKV {
+  beforeSessionPut?: () => Promise<void>;
+
+  override async put(
+    key: string,
+    value: string,
+    options?: { expirationTtl?: number; metadata?: unknown },
+  ): Promise<void> {
+    const hook = this.beforeSessionPut;
+    if (hook !== undefined && !key.endsWith("/revoked")) {
+      this.beforeSessionPut = undefined;
+      await hook();
+    }
+    await super.put(key, value, options);
+  }
+}
+
 /**
  * A store whose two clocks move together.
  *
@@ -200,12 +218,42 @@ describe("SessionStore", () => {
     expect(await h.store.get(42, sessionId, h.at())).toBeUndefined();
   });
 
+  it("keeps a revoked session inert if a stale refresh writes it back", async () => {
+    const kv = new RefreshRaceKV();
+    const store = new SessionStore(kv);
+    const { session, sessionId } = await store.issue(42, "kompiro", start);
+    const now = new Date(start.getTime() + 2 * DAY * 1000);
+    kv.advance(2 * DAY);
+
+    // The refresh has already re-read the live record. Sign-out now persists
+    // revocation and deletes it; only then does the stale put land.
+    kv.beforeSessionPut = () => store.revoke(42, sessionId);
+    expect(await store.refreshIfStale(sessionId, session, now)).toBe(false);
+    expect(kv.keys()).toEqual([`sess/v1/42/${sessionId}/revoked`]);
+    expect(await store.get(42, sessionId, now)).toBeUndefined();
+  });
+
   it("does not bring back a session the account purge swept", async () => {
     const h = harness();
     const { session, sessionId } = await h.store.issue(42, "kompiro", h.at());
     h.advance(2 * DAY);
     await h.store.purgeAccount(42);
     expect(await h.store.refreshIfStale(sessionId, session, h.at())).toBe(false);
+    expect(h.kv.keys()).toEqual([]);
+  });
+
+  it("purges revocation markers with the account's sessions", async () => {
+    const h = harness();
+    const { sessionId } = await h.store.issue(42, "kompiro", h.at());
+    await h.store.revoke(42, sessionId);
+    expect(h.kv.keys()).toEqual([`sess/v1/42/${sessionId}/revoked`]);
+    expect(await h.store.purgeAccount(42)).toBe(1);
+    expect(h.kv.keys()).toEqual([]);
+  });
+
+  it("does not allocate revocation state for a session that never existed", async () => {
+    const h = harness();
+    await h.store.revoke(42, "a".repeat(32));
     expect(h.kv.keys()).toEqual([]);
   });
 

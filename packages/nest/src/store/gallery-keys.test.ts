@@ -9,6 +9,7 @@ import {
   parseSubmissionId,
   sessionKey,
   sessionPrefix,
+  sessionRevocationKey,
   submissionKey,
   submissionPrefix,
 } from "./gallery-keys.js";
@@ -37,6 +38,11 @@ describe("key layout", () => {
     expect(accountKey(42)).toBe("acct/v1/42");
     expect(submissionPrefix(42)).toBe("sub/v1/42/");
     expect(sessionPrefix(42)).toBe("sess/v1/42/");
+  });
+
+  it("keeps revocation state under the session prefix", () => {
+    const sessionId = newSessionId();
+    expect(sessionRevocationKey(42, sessionId)).toBe(`${sessionKey(42, sessionId)}/revoked`);
   });
 
   it("ends the sweepable prefixes with a slash, so 42 cannot reach 420", () => {

@@ -2,6 +2,7 @@
  * Sessions, stored under the account so signing out everywhere is a sweep.
  *
  *     sess/v1/<account>/<session> -> { accountId, login, issuedAt, refreshedAt }
+ *     sess/v1/<account>/<session>/revoked -> "revoked"
  *
  * The account comes first for the same reason it does everywhere else in the
  * gallery: account deletion must reach every key the account produced, and a
@@ -20,7 +21,13 @@
  * point.
  */
 import { KV_MINIMUM_TTL_SECONDS, type KVNamespaceLike } from "../env.js";
-import { newSessionId, sessionKey, sessionPrefix, normaliseAccountId } from "./gallery-keys.js";
+import {
+  newSessionId,
+  sessionKey,
+  sessionPrefix,
+  sessionRevocationKey,
+  normaliseAccountId,
+} from "./gallery-keys.js";
 import { purgeByPrefix } from "./sweep.js";
 
 /**
@@ -137,7 +144,8 @@ export class SessionStore {
     sessionId: string,
     now: Date = new Date(),
   ): Promise<Session | undefined> {
-    const raw = await this.kv.get(sessionKey(accountId, sessionId));
+    const key = sessionKey(accountId, sessionId);
+    const raw = await this.kv.get(key);
     if (raw === null) return undefined;
     let parsed: unknown;
     try {
@@ -166,6 +174,10 @@ export class SessionStore {
     // credential whose ceiling cannot be checked is refused rather than
     // trusted — the same direction as the account mismatch above.
     if (age === undefined || age >= SESSION_ABSOLUTE_TTL_SECONDS * 1000) return undefined;
+    // Revocation is a separate, longer-lived fact. A refresh racing sign-out
+    // may physically write this session key after deletion, but it cannot make
+    // the credential valid again while this marker remains.
+    if ((await this.kv.get(sessionRevocationKey(accountId, sessionId))) !== null) return undefined;
     return {
       accountId: record.accountId,
       login: record.login,
@@ -208,23 +220,33 @@ export class SessionStore {
     // to be refused on read.
     if (ttl < KV_MINIMUM_TTL_SECONDS) return false;
     const key = sessionKey(session.accountId, sessionId);
-    // Re-read before writing, because **a refresh must never bring a session
-    // back**. `put` creates a key as readily as it updates one, so a blind
-    // write here would undo a `revoke` or a `purgeAccount` that happened in
-    // between and hand back a credential sign-out had destroyed — with a fresh
-    // 30-day window on it.
-    //
-    // KV has no compare-and-set, so this narrows the window to the put itself
-    // rather than closing it. The other half of the answer is that callers do
-    // not defer this write past their own deletions: `GalleryStore` awaits it.
+    const revocationKey = sessionRevocationKey(session.accountId, sessionId);
+    // The marker, unlike the session record, cannot be overwritten by this
+    // refresh. Check it on both sides of the write: the second check closes
+    // the old re-read/put race by removing a write that landed after sign-out.
+    if ((await this.kv.get(revocationKey)) !== null) return false;
     if ((await this.kv.get(key)) === null) return false;
     const refreshed: Session = { ...session, refreshedAt: now.toISOString() };
     await this.kv.put(key, JSON.stringify(refreshed), { expirationTtl: ttl });
+    if ((await this.kv.get(revocationKey)) !== null) {
+      await this.kv.delete(key);
+      return false;
+    }
     return true;
   }
 
   async revoke(accountId: number | string, sessionId: string): Promise<void> {
-    await this.kv.delete(sessionKey(accountId, sessionId));
+    // Persist revocation before deleting. The marker outlives every session
+    // issued before it, so a stale refresh can neither revive authentication
+    // nor leave a usable record after sign-out.
+    const key = sessionKey(accountId, sessionId);
+    // Sign-out accepts an unauthenticated cookie, so do not let an arbitrary
+    // valid-looking id allocate a tombstone when no session exists.
+    if ((await this.kv.get(key)) === null) return;
+    await this.kv.put(sessionRevocationKey(accountId, sessionId), "revoked", {
+      expirationTtl: SESSION_ABSOLUTE_TTL_SECONDS,
+    });
+    await this.kv.delete(key);
   }
 
   /** Every session this account holds. Sign-out-everywhere, and part of purge. */

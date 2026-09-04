@@ -11,6 +11,7 @@
  *     acct/v1/<account>                    the account record
  *     sub/v1/<account>/<slug>              one submission
  *     sess/v1/<account>/<session>          one session
+ *     sess/v1/<account>/<session>/revoked  its revocation marker
  *
  * All three put the account first, so every key an account produces is
  * reachable from the account id alone. A key that does not start with the
@@ -133,6 +134,11 @@ export function sessionPrefix(accountId: number | string): string {
 
 export function sessionKey(accountId: number | string, sessionId: string): string {
   return `${sessionPrefix(accountId)}${requireToken(sessionId, "session id", SESSION_LENGTH)}`;
+}
+
+/** Kept through the session's absolute lifetime so a late refresh stays inert. */
+export function sessionRevocationKey(accountId: number | string, sessionId: string): string {
+  return `${sessionKey(accountId, sessionId)}/revoked`;
 }
 
 /** The public id for a submission: the account, then the slug. */

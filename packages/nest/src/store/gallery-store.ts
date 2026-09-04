@@ -90,13 +90,10 @@ export class GalleryStore {
     // not get its window extended on the way to being refused.
     //
     // **Awaited, not deferred to `ctx.waitUntil`.** Handlers delete the very
-    // records this writes: `consoleDeleteAccount` resolves the viewer and then
-    // purges the account, and sign-out revokes the session the request came
-    // in with. A write parked on `waitUntil` may land after those, and `put`
-    // creates a key as readily as it updates one — so the refresh would
-    // resurrect a session that deletion had removed, with a fresh 30-day
-    // window on it. Account deletion is the strongest promise the gallery
-    // makes; it must not lose a race to an expiry bump.
+    // records this writes. `SessionStore` persists revocation separately and
+    // checks it on both sides of a refresh, so sign-out still wins when it
+    // lands between the refresh's last read and its write. Awaiting also keeps
+    // account deletion ordered after this request's expiry bump.
     //
     // Deferring bought little in the first place. The throttle means all but
     // roughly one request a day per submitter returns without writing, so the
