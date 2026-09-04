@@ -247,6 +247,15 @@ interface PlaceNodesInput {
    * "widening cannot change this" signal.
    */
   widthBudget?: number;
+  /**
+   * Extra vertical room to open above a row, by row ordinal (#2608): the
+   * capacity the inter-row channel there was measured to need beyond the
+   * default gap. Ordinals count every row this function lays down, sub-rows
+   * included, in placement order — the same count `rows` reports back — so
+   * a caller can key a reservation on what it measured. Absent, or 0 for a
+   * row, leaves the default gaps, and the placement is byte-identical.
+   */
+  extraGapBeforeRow?: ReadonlyMap<number, number>;
   measure: (nodeId: string) => { width: number; height: number };
 }
 
@@ -270,10 +279,17 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
    * stop after one run.
    */
   widthBound: boolean;
+  /**
+   * Node ids per row in placement order, sub-rows included — the ordinal
+   * `extraGapBeforeRow` is keyed on (#2608). Reported rather than re-derived
+   * from y so the reservation and the placement count rows the same way.
+   */
+  rows: string[][];
 } {
   const widthBudget = input.widthBudget ?? input.gaps.maxLayerWidth;
   const { sortedLayers, nodesByLayer, edges, edgeDirections, layers } = input;
   const { forcedLayers, layoutHints, gridHint, groupStartLayer, gaps, measure } = input;
+  const { extraGapBeforeRow } = input;
   const { layerGap, nodeGap, groupTitleGap } = gaps;
 
   // Predecessors within this canvas, for the barycenter pass.
@@ -291,6 +307,7 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
   let childMaxHeight = 0;
   let widthBound = false;
   let layerBaselineY = nodeGap;
+  const placedRows: string[][] = [];
 
   for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
     const layerIdx = sortedLayers[layerOrder];
@@ -334,6 +351,10 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
     let rowY = layerBaselineY;
     let layerBottom = layerBaselineY;
     for (const row of rows) {
+      // A reserved channel opens above this row: the row and everything
+      // below it move down, and nothing else about the placement changes.
+      rowY += extraGapBeforeRow?.get(placedRows.length) ?? 0;
+      placedRows.push([...row]);
       let xOffset = nodeGap;
       let rowMaxHeight = 0;
       for (const nid of row) {
@@ -351,5 +372,5 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
     layerBaselineY = layerBottom + layerGap;
   }
 
-  return { placements, childMaxWidth, childMaxHeight, widthBound };
+  return { placements, childMaxWidth, childMaxHeight, widthBound, rows: placedRows };
 }

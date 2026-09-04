@@ -258,6 +258,16 @@ export interface LayoutResult {
    */
   widthBound?: boolean;
   /**
+   * How many times the placement ran (#2608): 1, or 2 when the first pass
+   * through the routing chain found an inter-row channel carrying more runs
+   * than its default gap holds at `LANE_PITCH`, so the rows were re-placed
+   * with that room reserved. Never 3 — the second pass is an upper bound
+   * stated by construction, not a convergence loop. An output, like
+   * `widthBudget`, so a test can pin "the default gaps sufficed" without a
+   * flag that could steer the layout (ADR-2521).
+   */
+  placementPasses?: 1 | 2;
+  /**
    * True when measurement compensated for shape content insets (#2366 F):
    * a shapeForNode hook was supplied and the display mode is not the
    * fixed-card icon mode. renderFromLayout applies inset-aware text layout

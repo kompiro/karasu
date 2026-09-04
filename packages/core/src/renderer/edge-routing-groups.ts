@@ -41,6 +41,7 @@
  */
 import type { LayoutEdge, LayoutNode, ContainerRect } from "./layout-types.js";
 import { type Point, type Rect, segmentCrossesAnyRect, polylineClearOf } from "./edge-geometry.js";
+import { attachableSpans, BBOX_PORT_FRAME, mapToSpans, type PortResolver } from "./port-frame.js";
 
 /**
  * A routable endpoint box — a laid-out node card or an in-place-expanded
@@ -734,12 +735,23 @@ interface GutterAttach {
  * Penetration-safe: each restubbed route is verified against the obstacle set and a
  * move is applied only if every edge in the attachment stays clear, else the anchor
  * is left at mid-edge (never worse — AC-1 preserved).
+ *
+ * The fan is spread over the side's **attachable spans** (#2608) — what the
+ * shape's outline covers, minus the chrome keep-outs — through the same
+ * mapping `distributePorts` uses, rather than over the bounding box. Spread
+ * over the box, every position that landed under a corner chip or off a
+ * cylinder's rim was later clamped by `seatPortsOnOutline` onto the span's
+ * edge, and several fanned edges came back out of that clamp sharing one
+ * port: the collinear stubs this pass exists to prevent, re-created two passes
+ * later. Without a resolver the spans are the whole side and the fan is what
+ * it always was.
  */
 export function fanOutGutterPorts(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
   expandedFrames?: Map<string, ContainerRect>,
+  ports?: PortResolver,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
@@ -821,10 +833,19 @@ export function fanOutGutterPorts(
       // Nest the fan by corridor far-end y (deterministic tie-break on edge id).
       attaches.sort((a, b) => a.sortKey - b.sortKey || cmpEdgeId(a.edges[0], b.edges[0]));
       const n = attaches.length;
+      // An expanded frame is not a node and has no port frame; the resolver
+      // only answers for the card it was given.
+      const asNode = layoutNodes.get(node.id);
+      const resolved = asNode === node ? ports?.(asNode) : undefined;
+      const spans = attachableSpans(
+        node,
+        side,
+        resolved?.frame ?? BBOX_PORT_FRAME,
+        resolved?.keepOuts ?? [],
+      );
       attaches.forEach((a, i) => {
-        const t = varyY
-          ? node.y + (node.height * (i + 1)) / (n + 1)
-          : node.x + (node.width * (i + 1)) / (n + 1);
+        const along = mapToSpans(spans, (i + 1) / (n + 1));
+        const t = varyY ? node.y + node.height * along : node.x + node.width * along;
         const anchor: Point = varyY ? { x: fixed, y: t } : { x: t, y: fixed };
         // Restub every edge in the attachment, verify all clear, then apply
         // atomically (a trunk moves all its siblings' shared entry together). The

@@ -212,7 +212,10 @@ function totalCrossings(res: LayoutResult): number {
 }
 
 function layoutOf(file: string, groupBy?: GroupBy): LayoutResult {
-  const src = readFileSync(resolve(EXAMPLES, file), "utf8");
+  return layoutOfSource(readFileSync(resolve(EXAMPLES, file), "utf8"), groupBy);
+}
+
+function layoutOfSource(src: string, groupBy?: GroupBy): LayoutResult {
   const parsed = Parser.parse(src);
   const krsFile = parsed.value;
   const slice = extractView(krsFile.systems, []);
@@ -500,4 +503,44 @@ describe("interior corridors shorten detours (#2365)", () => {
       }
     },
   );
+});
+
+describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () => {
+  // Ten services fanning into three shared targets. Every one of the thirty
+  // edges is a skip-layer edge that has to traverse the *same* inter-row
+  // channel above the target row, so the channel carries thirty horizontal
+  // runs at once. The bundled examples never crowd a channel like this, which
+  // is why their overlap fence stayed green while a real 10k-line model showed
+  // hundreds of collinear pairs (TPL-2598: a fence on a finite resource needs
+  // an input that saturates it).
+  //
+  // The targets are plain services rather than `database` nodes so that the
+  // channel is the only finite resource in play: a cylinder's inset outline
+  // clamps fanned-out ports onto one point, which is the port-sharing class
+  // #2631 owns, not the channel-capacity one this fence is for.
+  const services = Array.from(
+    { length: 10 },
+    (_s, i) => `  service S${i} { label "Service ${i}" }`,
+  );
+  const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+  const edges = services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`));
+  const CROWDED = `system Crowded {\n${[...services, ...targets, ...edges].join("\n")}\n}`;
+
+  it("the fixture actually crowds a channel", () => {
+    const res = layoutOfSource(CROWDED);
+    const routed = res.edges.filter((e) => (e.waypoints?.length ?? 0) > 0);
+    expect(routed.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("no two horizontal runs share a collinear channel lane", () => {
+    expect(collinearOverlaps(layoutOfSource(CROWDED), "h")).toBe(0);
+  });
+
+  it("no two vertical runs share a collinear corridor", () => {
+    expect(collinearOverlaps(layoutOfSource(CROWDED), "v")).toBe(0);
+  });
+
+  it("no lane spills into a card (TPL-1927 measures both axes together)", () => {
+    expect(totalPenetrations(layoutOfSource(CROWDED))).toBe(0);
+  });
 });

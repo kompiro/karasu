@@ -57,4 +57,4 @@ scope:
 
 ## 関連テスト
 
-- `packages/core/src/renderer/routing-parity.test.ts` — 貫通 0 / collinear overlap 0 の計測柵。#2598 スライス A で飽和フィクスチャを追加する
+- `packages/core/src/renderer/routing-parity.test.ts` — 貫通 0 / collinear overlap 0 の計測柵。`crowded inter-row channel — capacity fence (#2608, TPL-2598)` がチャネルを飽和させる合成フィクスチャ（service 10 → target 3、30 エッジ）。修正前のツリーで水平 110 ペアを検出することを確認してから固定した（#2608）
