@@ -19,7 +19,14 @@ export interface Viewer {
   session: Session;
 }
 
-/** The signed-in account, or `undefined`. Never throws for a bad cookie. */
+/**
+ * The signed-in account, or `undefined`. Never throws for a bad cookie.
+ *
+ * Resolving a viewer also slides the session's expiry (#2655). That write is
+ * awaited inside `authenticate` rather than parked on `ctx.waitUntil`, so this
+ * signature does not need the execution context: see the comment there for why
+ * a deferred refresh and a handler that deletes sessions cannot coexist.
+ */
 export async function currentViewer(
   request: Request,
   env: NestEnv,

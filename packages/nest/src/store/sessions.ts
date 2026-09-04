@@ -1,7 +1,8 @@
 /**
  * Sessions, stored under the account so signing out everywhere is a sweep.
  *
- *     sess/v1/<account>/<session> -> { accountId, login, issuedAt }
+ *     sess/v1/<account>/<session> -> { accountId, login, issuedAt, refreshedAt }
+ *     sess/v1/<account>/<session>/revoked -> "revoked"
  *
  * The account comes first for the same reason it does everywhere else in the
  * gallery: account deletion must reach every key the account produced, and a
@@ -19,30 +20,97 @@
  * its own — does not apply to a credential, where a bounded lifetime is the
  * point.
  */
-import type { KVNamespaceLike } from "../env.js";
-import { newSessionId, sessionKey, sessionPrefix, normaliseAccountId } from "./gallery-keys.js";
+import { KV_MINIMUM_TTL_SECONDS, type KVNamespaceLike } from "../env.js";
+import {
+  newSessionId,
+  sessionKey,
+  sessionPrefix,
+  sessionRevocationKey,
+  normaliseAccountId,
+} from "./gallery-keys.js";
 import { purgeByPrefix } from "./sweep.js";
 
 /**
- * 30 days from issue.
+ * 30 days, measured from the last use rather than from issue.
  *
  * Long enough that managing your own submissions does not mean signing in
  * every visit, short enough that a cookie copied off a shared machine stops
  * working without anyone having to notice.
  *
- * **Not renewed on use.** Extending it on every read would mean a KV write on
- * every authenticated request, which is a lot of writing to buy "a session
- * that never ends while you keep using it" — and a credential that renews
- * itself indefinitely is the one this ceiling exists to stop. The cost is that
- * a submitter signs in again on the thirtieth day whatever they were doing;
- * sign-in is one redirect, so that is the cheaper side of the trade.
+ * **Renewed on use, up to an absolute cap.** This window used to be fixed at
+ * issue, and the comment here recorded two objections to sliding it: a KV
+ * write on every authenticated request is a lot of writing, and a credential
+ * that renews itself indefinitely is the one a ceiling exists to stop. Both
+ * objections were real. Neither ruled out sliding expiry — they ruled out the
+ * naive form of it, which is what that comment was written against, and the
+ * two constants below are the answer to them (#2655).
  */
-export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
+export const SESSION_IDLE_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * 90 days from `issuedAt`, and nothing moves it.
+ *
+ * This is the objection about indefinite renewal, kept. Sliding buys "do not
+ * sign me out while I am working"; the cap keeps "a credential that renews
+ * itself forever" out. A submitter who never stops using the gallery still
+ * signs in once a quarter.
+ *
+ * **KV cannot enforce this.** A key carries one expiry, and that one is spent
+ * on the idle window above — so the cap is checked on read, in `get`, against
+ * `issuedAt`. A session past it reads as absent.
+ *
+ * It is also the cookie's `Max-Age` (`auth/session.ts`): the cookie should
+ * state the longest its value could possibly be useful, and the store decides
+ * everything shorter.
+ */
+export const SESSION_ABSOLUTE_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+/**
+ * How stale a record must be before a refresh is worth a write.
+ *
+ * This is the objection about write amplification, answered. Refreshing on
+ * every read would put a KV write on every authenticated request; refreshing
+ * only once the record is a day old costs an active daily user about one write
+ * per day instead. The idle window is 30 days, so spending up to a day of it
+ * un-renewed changes nothing a submitter can observe.
+ *
+ * "About", because the throttle is decided from a KV read and KV reads are not
+ * read-after-write consistent. For up to a minute after a refresh lands, other
+ * requests can still see the record it replaced and write their own. The bound
+ * that matters holds either way — a burst of requests inside one minute a day,
+ * not a write per request forever — but this is a throttle, not a lock.
+ */
+export const SESSION_REFRESH_AFTER_SECONDS = 24 * 60 * 60;
 
 export interface Session {
   accountId: string;
   login: string;
   issuedAt: string;
+  /**
+   * When the sliding window last restarted.
+   *
+   * Records written before #2655 have no such field. They are read with
+   * `issuedAt` as the initial value, which keeps every one of them valid: at
+   * worst a session that had been idle is treated as slightly fresher than it
+   * was, and the cap — measured from `issuedAt`, which those records do have —
+   * is unaffected either way.
+   */
+  refreshedAt: string;
+}
+
+/**
+ * Milliseconds since an ISO timestamp, or `undefined` if it cannot be worked
+ * out.
+ *
+ * Both inputs are checked, not just the stored one. An `Invalid Date` reaching
+ * this would make the subtraction `NaN`, and every comparison against `NaN` is
+ * `false` — so a caller testing `age >= cap` would read "not past the cap" and
+ * the ceiling would quietly stop existing. Returning `undefined` makes callers
+ * handle it, and all of them fail closed.
+ */
+function elapsedSince(iso: string, now: Date): number | undefined {
+  const elapsed = now.getTime() - Date.parse(iso);
+  return Number.isNaN(elapsed) ? undefined : elapsed;
 }
 
 export class SessionStore {
@@ -56,15 +124,28 @@ export class SessionStore {
   ): Promise<{ sessionId: string; session: Session }> {
     const canonical = normaliseAccountId(accountId);
     const sessionId = newSessionId();
-    const session: Session = { accountId: canonical, login, issuedAt: at.toISOString() };
+    const issuedAt = at.toISOString();
+    const session: Session = { accountId: canonical, login, issuedAt, refreshedAt: issuedAt };
     await this.kv.put(sessionKey(canonical, sessionId), JSON.stringify(session), {
-      expirationTtl: SESSION_TTL_SECONDS,
+      expirationTtl: SESSION_IDLE_TTL_SECONDS,
     });
     return { sessionId, session };
   }
 
-  async get(accountId: number | string, sessionId: string): Promise<Session | undefined> {
-    const raw = await this.kv.get(sessionKey(accountId, sessionId));
+  /**
+   * Read a session, refusing one that is past the absolute cap.
+   *
+   * KV has already refused anything past the idle window — its expiry does
+   * that. The cap is the second expiry, and it is enforced here because a key
+   * only carries one.
+   */
+  async get(
+    accountId: number | string,
+    sessionId: string,
+    now: Date = new Date(),
+  ): Promise<Session | undefined> {
+    const key = sessionKey(accountId, sessionId);
+    const raw = await this.kv.get(key);
     if (raw === null) return undefined;
     let parsed: unknown;
     try {
@@ -85,11 +166,87 @@ export class SessionStore {
     // different one is corruption rather than someone else's session. Refuse
     // it instead of trusting the value over the key.
     if (record.accountId !== normaliseAccountId(accountId)) return undefined;
-    return { accountId: record.accountId, login: record.login, issuedAt: record.issuedAt };
+    // Written before #2655, or written since. Either way the window starts
+    // from a timestamp the record has.
+    const refreshedAt = typeof record.refreshedAt === "string" ? record.refreshedAt : undefined;
+    const age = elapsedSince(record.issuedAt, now);
+    // An `issuedAt` that will not parse leaves the cap unmeasurable, and a
+    // credential whose ceiling cannot be checked is refused rather than
+    // trusted — the same direction as the account mismatch above.
+    if (age === undefined || age >= SESSION_ABSOLUTE_TTL_SECONDS * 1000) return undefined;
+    // Revocation is a separate, longer-lived fact. A refresh racing sign-out
+    // may physically write this session key after deletion, but it cannot make
+    // the credential valid again while this marker remains.
+    if ((await this.kv.get(sessionRevocationKey(accountId, sessionId))) !== null) return undefined;
+    return {
+      accountId: record.accountId,
+      login: record.login,
+      issuedAt: record.issuedAt,
+      refreshedAt: refreshedAt ?? record.issuedAt,
+    };
+  }
+
+  /**
+   * Restart the idle window, but only if the record is stale enough to be
+   * worth a write. Returns whether one happened.
+   *
+   * Callers treat a `false` and a throw alike: the session is valid either
+   * way, and the worst a dropped refresh costs is an earlier sign-in.
+   *
+   * The key is derived from `session.accountId` rather than taken as its own
+   * argument, so there is no way to pass a session and a key that disagree —
+   * which would write one session's record over another's and reset the
+   * overwritten one's cap to the wrong issue time.
+   */
+  async refreshIfStale(
+    sessionId: string,
+    session: Session,
+    now: Date = new Date(),
+  ): Promise<boolean> {
+    const sinceRefresh = elapsedSince(session.refreshedAt, now);
+    if (sinceRefresh === undefined || sinceRefresh < SESSION_REFRESH_AFTER_SECONDS * 1000) {
+      return false;
+    }
+    const age = elapsedSince(session.issuedAt, now);
+    if (age === undefined) return false;
+    // Never past the cap: the new window is whatever is left of the absolute
+    // lifetime when that is the shorter of the two. This is belt-and-braces —
+    // `get` is what actually enforces the cap — but it means KV drops the
+    // record on its own rather than leaving one that only reads as absent.
+    const remaining = SESSION_ABSOLUTE_TTL_SECONDS - age / 1000;
+    const ttl = Math.floor(Math.min(SESSION_IDLE_TTL_SECONDS, remaining));
+    // Close enough to the cap that the write KV would accept is shorter than
+    // its own floor. Refreshing is pointless here anyway: the session is about
+    // to be refused on read.
+    if (ttl < KV_MINIMUM_TTL_SECONDS) return false;
+    const key = sessionKey(session.accountId, sessionId);
+    const revocationKey = sessionRevocationKey(session.accountId, sessionId);
+    // The marker, unlike the session record, cannot be overwritten by this
+    // refresh. Check it on both sides of the write: the second check closes
+    // the old re-read/put race by removing a write that landed after sign-out.
+    if ((await this.kv.get(revocationKey)) !== null) return false;
+    if ((await this.kv.get(key)) === null) return false;
+    const refreshed: Session = { ...session, refreshedAt: now.toISOString() };
+    await this.kv.put(key, JSON.stringify(refreshed), { expirationTtl: ttl });
+    if ((await this.kv.get(revocationKey)) !== null) {
+      await this.kv.delete(key);
+      return false;
+    }
+    return true;
   }
 
   async revoke(accountId: number | string, sessionId: string): Promise<void> {
-    await this.kv.delete(sessionKey(accountId, sessionId));
+    // Persist revocation before deleting. The marker outlives every session
+    // issued before it, so a stale refresh can neither revive authentication
+    // nor leave a usable record after sign-out.
+    const key = sessionKey(accountId, sessionId);
+    // Sign-out accepts an unauthenticated cookie, so do not let an arbitrary
+    // valid-looking id allocate a tombstone when no session exists.
+    if ((await this.kv.get(key)) === null) return;
+    await this.kv.put(sessionRevocationKey(accountId, sessionId), "revoked", {
+      expirationTtl: SESSION_ABSOLUTE_TTL_SECONDS,
+    });
+    await this.kv.delete(key);
   }
 
   /** Every session this account holds. Sign-out-everywhere, and part of purge. */

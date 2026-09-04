@@ -27,7 +27,12 @@ export { GalleryStore } from "./store/gallery-store.js";
 export type { AccountPurgeResult } from "./store/gallery-store.js";
 export { AccountStore } from "./store/accounts.js";
 export type { Account } from "./store/accounts.js";
-export { SessionStore, SESSION_TTL_SECONDS } from "./store/sessions.js";
+export {
+  SessionStore,
+  SESSION_IDLE_TTL_SECONDS,
+  SESSION_ABSOLUTE_TTL_SECONDS,
+  SESSION_REFRESH_AFTER_SECONDS,
+} from "./store/sessions.js";
 export type { Session } from "./store/sessions.js";
 export { SubmissionStore, MAX_SUBMISSION_BYTES, MAX_TITLE_LENGTH } from "./store/submissions.js";
 export type { NewSubmission, Submission, Visibility } from "./store/submissions.js";

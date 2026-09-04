@@ -118,7 +118,7 @@ describe("GalleryStore.authenticate", () => {
     const kv = new MemoryKV();
     const store = new GalleryStore(kv);
     await store.accounts.signIn(ACCOUNT, "kompiro", at);
-    const { sessionId } = await store.sessions.issue(ACCOUNT, "kompiro", at);
+    const { sessionId } = await store.sessions.issue(ACCOUNT, "kompiro", new Date());
     expect((await store.authenticate("42", sessionId))?.account.login).toBe("kompiro");
   });
 
@@ -128,7 +128,7 @@ describe("GalleryStore.authenticate", () => {
     const kv = new MemoryKV();
     const store = new GalleryStore(kv);
     await store.accounts.signIn(ACCOUNT, "kompiro", at);
-    const { sessionId } = await store.sessions.issue(ACCOUNT, "kompiro", at);
+    const { sessionId } = await store.sessions.issue(ACCOUNT, "kompiro", new Date());
     await store.accounts.purgeAccount(ACCOUNT);
     expect(await store.authenticate("42", sessionId)).toBeUndefined();
   });

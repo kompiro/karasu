@@ -16,9 +16,23 @@
  * one does not (TPL-2226).
  */
 import type { KVNamespaceLike } from "../env.js";
+import { logError } from "../log.js";
 import { AccountStore, type Account } from "./accounts.js";
 import { SessionStore, type Session } from "./sessions.js";
 import { SubmissionStore } from "./submissions.js";
+
+/** How `authenticate` is told the time. */
+export interface AuthenticateOptions {
+  /**
+   * The clock the session's two expiries are measured against.
+   *
+   * Injected rather than read from `Date.now()` inside the store, so a caller
+   * can walk a session up to its cap deterministically. Every path that
+   * consumes it fails closed on a `Date` that is not a real time, so passing
+   * a broken one refuses the session rather than disabling the cap.
+   */
+  now?: Date;
+}
 
 export interface AccountPurgeResult {
   /** Account records removed: 1, or 0 if there was nothing to remove. */
@@ -47,14 +61,21 @@ export class GalleryStore {
    * caller cannot tell those apart and should not: all three mean "not signed
    * in", and distinguishing them in a response would say whether an account
    * exists.
+   *
+   * **This is a write path** (#2655). Resolving a cookie is also what tells
+   * the store the session is in use, so a stale record is refreshed here —
+   * throttled by `SESSION_REFRESH_AFTER_SECONDS`, so an active submitter
+   * costs one write a day rather than one per request.
    */
   async authenticate(
     accountId: string,
     sessionId: string,
+    options: AuthenticateOptions = {},
   ): Promise<{ session: Session; account: Account } | undefined> {
+    const now = options.now ?? new Date();
     let session: Session | undefined;
     try {
-      session = await this.sessions.get(accountId, sessionId);
+      session = await this.sessions.get(accountId, sessionId, now);
     } catch {
       // A cookie whose halves cannot form a key is a forged cookie, not an
       // error to surface — the store throws on a malformed id by design.
@@ -65,6 +86,30 @@ export class GalleryStore {
     // A session outliving its account record means the account was deleted
     // while this cookie was still in a browser. The deletion wins.
     if (account === undefined) return undefined;
+    // Deliberately after the account check, so a purged account's cookie does
+    // not get its window extended on the way to being refused.
+    //
+    // **Awaited, not deferred to `ctx.waitUntil`.** Handlers delete the very
+    // records this writes. `SessionStore` persists revocation separately and
+    // checks it on both sides of a refresh, so sign-out still wins when it
+    // lands between the refresh's last read and its write. Awaiting also keeps
+    // account deletion ordered after this request's expiry bump.
+    //
+    // Deferring bought little in the first place. The throttle means all but
+    // roughly one request a day per submitter returns without writing, so the
+    // latency this adds is paid once a day and not on the requests that were
+    // supposed to be fast.
+    //
+    // The refresh still cannot fail the request. The viewer is authenticated
+    // either way — the read that proved it has already happened — and the
+    // worst a dropped write costs is a sign-in sooner than it needed to be.
+    // Logged rather than swallowed silently, because a refresh that fails
+    // *every* time is a broken binding worth seeing in the logs.
+    try {
+      await this.sessions.refreshIfStale(sessionId, session, now);
+    } catch (cause) {
+      logError("karasu-nest could not refresh a session", cause);
+    }
     return { session, account };
   }
 

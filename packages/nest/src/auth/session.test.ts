@@ -9,9 +9,12 @@ import {
   OAUTH_STATE_COOKIE,
   SESSION_COOKIE,
 } from "./session.js";
+import { SESSION_ABSOLUTE_TTL_SECONDS, SESSION_IDLE_TTL_SECONDS } from "../store/sessions.js";
 
 const withCookies = (header: string): Request =>
   new Request("https://nest.example/console", { headers: { Cookie: header } });
+
+const maxAge = (cookie: string): number => Number(/Max-Age=(\d+)/.exec(cookie)?.[1] ?? Number.NaN);
 
 describe("cookie names", () => {
   it("carries the __Host- prefix, which browsers enforce", () => {
@@ -47,9 +50,16 @@ describe("cookie attributes", () => {
   });
 
   it("expires the OAuth state in minutes, not the session's month", () => {
-    const maxAge = (cookie: string): number =>
-      Number(/Max-Age=(\d+)/.exec(cookie)?.[1] ?? Number.NaN);
     expect(maxAge(oauthStateCookie("s"))).toBeLessThan(maxAge(sessionCookie("42", "a".repeat(32))));
+  });
+
+  it("carries the absolute cap, not the idle window, so the session can slide", () => {
+    // The store's window slides (#2655) but a cookie set once at sign-in
+    // cannot slide with it. `Max-Age` of the idle window would have the
+    // browser drop the cookie thirty days after sign-in however much it was
+    // being used, and sliding the record behind it would buy nothing.
+    expect(maxAge(sessionCookie("42", "a".repeat(32)))).toBe(SESSION_ABSOLUTE_TTL_SECONDS);
+    expect(SESSION_ABSOLUTE_TTL_SECONDS).toBeGreaterThan(SESSION_IDLE_TTL_SECONDS);
   });
 
   it("clears by repeating the attributes, not just the name", () => {
