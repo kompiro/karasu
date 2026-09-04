@@ -153,6 +153,14 @@ a second row at ordinary window widths.
 - **Entities** (System view, while drilled into a domain that has entities) —
   swap the usecase view for the domain's entity view.
 - **Tree View** (Org view) — swap the org grid for its tree rendering.
+- **Dependencies** (Org view, when the model declares an `organization`) — swap
+  the org grid for the **derived** team-dependency graph: which teams depend on
+  which, joined from `owns` and the logical edges. Nothing in `.krs` declares
+  these; `karasu team-dependencies` prints the same derivation as a table. A
+  solid arrow is a `sync` dependency and a dashed one `async`; a muted arrow is
+  a pair where one team sits inside the other in the org tree. The footer says
+  how many endpoints resolved to no team, so a sparse graph reads as an
+  incomplete `owns` rather than as a loosely-coupled org.
 - **Show All Layers** — render every drill-down level stacked together.
 
 On a narrow window these wrap below the drill path rather than squeezing it.

@@ -97,6 +97,10 @@ export {
   formatTeamDependenciesAsCsv,
 } from "./view/team-dependency-format.js";
 export {
+  renderTeamDependencyGraph,
+  type TeamDependencyGraphOptions,
+} from "./renderer/team-dependency-graph.js";
+export {
   extractCoverage,
   type CoverageReport,
   type DomainCoverage,

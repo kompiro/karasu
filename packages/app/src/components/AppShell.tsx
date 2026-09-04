@@ -32,6 +32,7 @@ import { useEditorDocument } from "../hooks/useEditorDocument.js";
 import { useEdgeDirectionWriter } from "../hooks/useEdgeDirectionWriter.js";
 import { useOutline } from "../hooks/useOutline.js";
 import { usePreviewContextValue } from "../hooks/usePreviewContextValue.js";
+import { useOrgDisplayMode } from "../hooks/useOrgDisplayMode.js";
 import { DiffModeBanner } from "./DiffModeBanner.js";
 import { DiagramViewShortcuts } from "./DiagramViewShortcuts.js";
 import { PreviewFocusShortcut } from "./PreviewFocusShortcut.js";
@@ -106,7 +107,17 @@ export function AppShell({
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
   const [previewFocused, setPreviewFocused] = useState(false);
-  const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
+  // The org tab's modes — grid / Tree View / the derived team-dependency graph
+  // (#2636) — are one value, so "two modes at once" is not a state this can
+  // reach. The hook projects the booleans the permalink and share paths already
+  // address Tree View by.
+  const {
+    isOrgTreeViewOpen,
+    setOrgTreeView: setIsOrgTreeViewOpen,
+    toggleOrgTreeView,
+    isTeamDependenciesOpen,
+    toggleTeamDependencies,
+  } = useOrgDisplayMode();
   // Entity sub-mode: while drilled into a domain in the system view, swap the
   // usecase view for the domain's entity view. Mirrors `isOrgTreeViewOpen`.
   // Intentionally sticky across drills (like Org Tree View): the flag is a
@@ -258,7 +269,6 @@ export function AppShell({
 
   const toggleAllLayers = useCallback(() => setIsAllLayersOpen((v) => !v), []);
   const togglePreviewFocus = useCallback(() => setPreviewFocused((v) => !v), []);
-  const toggleOrgTreeView = useCallback(() => setIsOrgTreeViewOpen((v) => !v), []);
   const toggleEntityView = useCallback(() => setIsEntityViewOpen((v) => !v), []);
 
   // Stable identity so it doesn't bust the preview-context memo every render
@@ -325,6 +335,8 @@ export function AppShell({
     onJumpToEditor: !hideEditor ? handleJumpToEditor : undefined,
     isOrgTreeViewOpen,
     toggleOrgTreeView,
+    isTeamDependenciesOpen,
+    toggleTeamDependencies,
     isEntityViewOpen,
     toggleEntityView,
     entityViewSvg,

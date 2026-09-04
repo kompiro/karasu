@@ -142,6 +142,9 @@ export interface OrgViewBundle {
   toggleTeamExpand: (teamId: string) => void;
   orgTreeSvg: string;
   orgTreeExportSvg: string;
+  teamDependencySvg: string;
+  /** Whether the model declares any team at all — gates the org tab's third mode. */
+  hasTeamDependencyView: boolean;
 }
 
 interface UseAppViewsResult {
@@ -282,6 +285,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,
+    teamDependencies,
+    teamDependencySvg,
   } = useOrgView(
     effEntryPath,
     effFs,
@@ -410,6 +415,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       toggleTeamExpand,
       orgTreeSvg,
       orgTreeExportSvg,
+      teamDependencySvg,
+      hasTeamDependencyView: teamDependencies.teams.length > 0,
     },
     teamPathIndex,
     orgPathIndex,

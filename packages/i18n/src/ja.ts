@@ -165,6 +165,8 @@ export const ja: Partial<Translations> = {
   "emptyState.system.noNodes": "表示するノードがありません",
   "emptyState.org.placeholder": "org 図がありません",
   "emptyState.system.noDiagram": "図がありません",
+  "emptyState.teamDependency.none": "チーム依存は導出されませんでした",
+  "emptyState.teamDependency.unowned": "所有チームに解決しなかった端点が {count} 件あります",
 
   // Built-in annotation badge labels (must match reference-data ja labels)
   "badge.deprecated": "非推奨",
@@ -211,6 +213,8 @@ export const ja: Partial<Translations> = {
   // 表示状態のトグルと別ウィンドウを開く操作
   "preview.orgTree.label": "ツリー表示",
   "preview.orgTree.ariaLabel": "組織のツリー表示を切り替える",
+  "preview.teamDependencies.label": "チーム依存",
+  "preview.teamDependencies.ariaLabel": "導出したチーム依存の表示を切り替える",
   "preview.entities.label": "エンティティ",
   "preview.entities.ariaLabel": "エンティティ表示を切り替える",
   "preview.allLayers.label": "全レイヤー表示",
