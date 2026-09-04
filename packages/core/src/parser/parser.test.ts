@@ -640,8 +640,8 @@ deploy Production {
         ["deploy Production {", "  oci monolith {", line, "  }", "}"].join("\n"),
       );
       expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0].code).toBe("expected-property-value");
-      expect(result.diagnostics[0].params).toEqual({ propName: "realizes" });
+      expect(result.diagnostics[0].code).toBe("expected-id-after");
+      expect(result.diagnostics[0].params).toEqual({ property: "realizes" });
       // Anchored on the dangling comma. Reporting at the *next* token would put
       // the squiggle on the following line, which is not the line at fault.
       expect(result.diagnostics[0].loc?.start).toMatchObject({
@@ -659,7 +659,7 @@ deploy Production {
   }
 }
       `);
-      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-property-value"]);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-id-after"]);
       expect(result.diagnostics[0].loc?.start).toMatchObject({ line: 4, column: 5 });
       // Not an empty array: a failed parse must not invent a property the
       // source never gave a value for.
@@ -675,7 +675,7 @@ deploy Production {
 }
       `);
       expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0].code).toBe("expected-property-value");
+      expect(result.diagnostics[0].code).toBe("expected-id-after");
       expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["InventoryService"]);
     });
 
@@ -691,7 +691,7 @@ deploy Production {
       const node = result.value.deploys[0].nodes[0];
       expect(realizeIds(node)).toEqual(["OrderService"]);
       expect(node.properties.runtime).toBe("Node.js 20");
-      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-property-value"]);
+      expect(result.diagnostics.map((d) => d.code)).toEqual(["expected-id-after"]);
     });
 
     // A list lives on its `realizes` line. Property names carry their own token
@@ -710,7 +710,7 @@ deploy Production {
       // `InventoryService` is reported where it sits, not absorbed as a target.
       expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
       expect(result.diagnostics.map((d) => d.code)).toEqual([
-        "expected-property-value",
+        "expected-id-after",
         "unexpected-token-in-block",
       ]);
     });

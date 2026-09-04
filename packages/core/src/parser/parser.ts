@@ -545,9 +545,9 @@ export class Parser {
       // the architecture, so no kind is structurally excluded (no
       // `property-not-for-node-kind` branch here, unlike role / handles).
       if (token.type === TokenType.Facets) {
-        this.advance();
+        const keyword = this.advance();
         properties.facets ??= [];
-        this.parseFacetsList(properties.facets);
+        this.parseFacetsList(keyword, properties.facets);
         continue;
       }
 
@@ -570,8 +570,7 @@ export class Parser {
       // Property: handles (client and service) — domain ids exposed to callers
       if (token.type === TokenType.Handles) {
         if (kind === "client" || kind === "service") {
-          this.advance();
-          const ids = this.parseHandlesList();
+          const ids = this.parseHandlesList(this.advance());
           if (ids.length > 0) {
             if (!properties.handles) properties.handles = [];
             properties.handles.push(...ids);
@@ -589,8 +588,7 @@ export class Parser {
       // a non-CRUD verb to its CRUD intent (`list:read`, `replace:create,delete`).
       if (token.type === TokenType.Operations) {
         if (kind === "resource") {
-          this.advance();
-          const ops = this.parseOperationsList();
+          const ops = this.parseOperationsList(this.advance());
           if (ops.length > 0) {
             if (!properties.operations) properties.operations = [];
             properties.operations.push(...ops);
@@ -668,24 +666,9 @@ export class Parser {
       // Property: delivers (service only). Comma-separated list of client ids.
       if (token.type === TokenType.Delivers) {
         if (kind === "service") {
-          this.advance();
-          if (!properties.delivers) properties.delivers = [];
-          // Parse one or more identifiers separated by commas.
-          while (true) {
-            if (
-              this.peek().type === TokenType.Identifier ||
-              this.peek().type === TokenType.StringLiteral
-            ) {
-              properties.delivers.push(this.advance().value);
-            } else {
-              this.error("expected-id-after", { property: "delivers" });
-              break;
-            }
-            if (this.peek().type === TokenType.Comma) {
-              this.advance();
-              continue;
-            }
-            break;
+          const keyword = this.advance();
+          for (const client of this.commaSeparatedValues(keyword, "delivers")) {
+            (properties.delivers ??= []).push(client.value);
           }
         } else {
           this.error("property-not-for-node-kind", { property: "delivers", nodeKind: kind });
@@ -944,12 +927,123 @@ export class Parser {
   }
 
   /**
-   * Parse a comma-separated list of identifiers/strings following `handles`.
-   * Accepts both `handles A` and `handles A, B, C` forms.
-   * Stops at the first non-identifier / non-string token (e.g. newline-introduced
-   * keyword on the next line — the lexer is whitespace-insensitive so the
-   * comma is the delimiter).
+   * Walk the comma-separated value list a property keyword introduces, yielding
+   * the token that opens each element. The caller consumes whatever else its
+   * element spans (a reference path's dotted tail, an `operations` decoration)
+   * before the generator resumes, so one grammar serves elements of any shape.
+   * Callers must drain the generator: breaking out of the loop early leaves the
+   * rest of the list for the enclosing block to misread.
+   *
+   * The four decisions the property readers used to hold their own copies of
+   * live here instead (#2551):
+   *
+   * - **A list never jumps a line on its own.** Every separator, and every
+   *   element after one, sits on the line where the previous element ended, so
+   *   neither a trailing comma nor a comma opening the next line extends the
+   *   list across a break, and the same intent is not silently accepted in one
+   *   direction and reported in the other (#2167). An element that spans lines
+   *   itself carries the list with it: the rule bounds separators and element
+   *   starts, not the characters of one element.
+   * - **A separator with no element is one `expected-id-after`**, anchored on
+   *   the offending comma in either direction, or on the keyword when the value
+   *   is missing outright. `this.error` anchors on whatever comes next, which
+   *   for a trailing comma is the following (correct) line.
+   * - **Stray separators are swallowed and the list resumes**, so `facets ,pii`
+   *   still records `pii` and the block loop never reports the same comma twice.
+   * - **Elements are yielded as tokens**, so element-precise ranges are there
+   *   for the taking rather than re-derived per property.
    */
+  private *commaSeparatedValues(keyword: Token, property: string): Generator<Token> {
+    // The line the list is currently on. It starts at the keyword and moves with
+    // an element that spans lines of its own, so the list never jumps a line by
+    // itself and never truncates an element that legitimately crosses one.
+    let line = keyword.loc.line;
+    const onListLine = (token: Token): boolean => token.loc.line === line;
+    const atElement = (): boolean => this.isIdOrString(this.peek()) && onListLine(this.peek());
+
+    // The separator the parser is standing after, for the diagnostic below.
+    // Undefined while reading the first element, which the keyword introduces.
+    let afterComma: Token | undefined;
+
+    for (;;) {
+      if (atElement()) {
+        yield this.advance();
+        // The caller may have consumed more than the token yielded above, and a
+        // reference path's dots carry one element across a line break. The
+        // separator that follows therefore sits where the element ended, not
+        // where the keyword did, so `handles Order` with `.Line, Catalog` on the
+        // next line still reads `Catalog` instead of dropping it.
+        line = (this.tokens[this.pos - 1] ?? keyword).loc.line;
+        // Without a comma the list is done; with one, another element is due.
+        // A malformed element takes the same exit as a good one, so the trailing
+        // comma of `handles A.,` is reported where the trailing comma of
+        // `handles A,` is. Swallowing it here would make the same mistake
+        // silent in one spelling and reported in the other.
+        if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;
+        afterComma = this.advance();
+        continue;
+      }
+      // No element where one is required: a bare keyword, a leading comma
+      // (`facets ,b`), or the trailing comma of `facets a,`. Report it once
+      // rather than letting the comma fall through to the block loop's generic
+      // `unexpected-token-in-block`, and anchor it on the character at fault:
+      // the separator when one is written, the keyword only when the value is
+      // missing outright. A leading comma is still ahead of the cursor while a
+      // trailing one has been consumed, so the anchor is read from whichever
+      // side holds it; both land on the comma the author actually typed.
+      const leading = this.peek();
+      const anchor =
+        afterComma ?? (leading.type === TokenType.Comma && onListLine(leading) ? leading : keyword);
+      this.diagnostics.push({
+        severity: "error",
+        code: "expected-id-after",
+        params: { property },
+        loc: this.range(anchor.loc, anchor.end),
+      });
+      // Swallow the stray separators so the same commas are not reported again,
+      // then resume if that leaves an element to read. Reaching here without a
+      // comma to consume means the line holds nothing more to say, so stop
+      // rather than report twice.
+      let swallowed = false;
+      while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
+        afterComma = this.advance();
+        swallowed = true;
+      }
+      if (!swallowed || !atElement()) return;
+    }
+  }
+
+  /**
+   * Read the dotted tail of a reference-path element (#2088) whose opening token
+   * has already been consumed, or `undefined` when the path is malformed.
+   *
+   * A dangling dot is reported once and records nothing: recording the segments
+   * read so far would put `handles Backend` in the model next to an error about
+   * `handles Backend.`. The range runs to the dot itself, so the squiggle covers
+   * the character at fault instead of stopping at the identifier that was
+   * spelled correctly.
+   */
+  private readReferencePathElement(
+    first: Token,
+    property: string,
+  ): { path: NodeIdPath; loc: SourceRange } | undefined {
+    const tail = readNodeIdPathTail(first, this.cursor, { acceptStringSegments: true });
+    if (tail.dangling) {
+      const stop = tail.danglingDot ?? tail.end;
+      this.diagnostics.push({
+        severity: "error",
+        code: "expected-id-after",
+        params: { property },
+        loc: this.range(first.loc, stop.end ?? stop.loc),
+      });
+      return undefined;
+    }
+    return {
+      path: tail.segments,
+      loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
+    };
+  }
+
   /**
    * Parse the right-hand side of an `operations` property. Each entry is
    * either a bare verb (`create`, `list`) or a decorated verb (`list:read`,
@@ -962,54 +1056,40 @@ export class Parser {
    * Diagnostics are *deferred* to the resource builder so the resourceId is
    * available; we return raw entries plus malformed-flag info here.
    */
-  private parseOperationsList(): ParsedOperation[] {
+  private parseOperationsList(keyword: Token): ParsedOperation[] {
     const out: ParsedOperation[] = [];
-    if (!this.peekIsIdOrString()) {
-      this.error("expected-id-after", { property: "operations" });
-      return out;
-    }
-    out.push(this.parseOneOperation());
-    while (this.peek().type === TokenType.Comma) {
-      this.advance();
-      if (!this.peekIsIdOrString()) {
-        this.error("expected-id-after", { property: "operations" });
-        break;
-      }
-      out.push(this.parseOneOperation());
+    for (const verbToken of this.commaSeparatedValues(keyword, "operations")) {
+      out.push(this.parseOneOperation(verbToken));
     }
     return out;
   }
 
-  private parseOneOperation(): ParsedOperation {
-    const verbToken = this.advance();
+  private parseOneOperation(verbToken: Token): ParsedOperation {
     const verb = verbToken.value;
     if (this.peek().type !== TokenType.Colon) {
       return { verb, decoration: undefined, decorationLoc: undefined };
     }
     this.advance(); // consume `:`
-    const decoration: { value: string; recognized: boolean }[] = [];
-    if (!this.peekIsIdOrString()) {
-      // Empty RHS — emit empty-crud-decoration later in the resource builder.
+    if (!this.isIdOrString(this.peek())) {
+      // Empty RHS. `empty-crud-decoration` is raised later by the resource
+      // builder, which has the resourceId the message needs.
       return { verb, decoration: [], decorationLoc: verbToken.loc };
     }
-    decoration.push(this.consumeDecorationItem());
-    while (this.peek().type === TokenType.Comma) {
-      // Lookahead: comma + id + colon → this is a new verb, not RHS continuation.
-      const next = this.tokens[this.pos + 1];
-      const after = this.tokens[this.pos + 2];
-      if (
-        next &&
-        (next.type === TokenType.Identifier || next.type === TokenType.StringLiteral) &&
-        after &&
-        after.type === TokenType.Colon
-      ) {
-        break;
-      }
+    const decoration = [this.consumeDecorationItem()];
+    // A comma continues the RHS only while the identifier after it is not itself
+    // a decorated verb (ADR-1046's 1:N rule). Every other comma is left for the
+    // enclosing list, so the trailing separator of `operations list:read,` is
+    // reported by the one rule that owns separators.
+    //
+    // The list's line rule deliberately does not reach in here: a decoration is
+    // part of one element, and the rule bounds separators and element starts,
+    // not the characters of a single element.
+    while (
+      this.peek().type === TokenType.Comma &&
+      this.isIdOrString(this.peekAt(1)) &&
+      this.peekAt(2).type !== TokenType.Colon
+    ) {
       this.advance(); // consume `,`
-      if (!this.peekIsIdOrString()) {
-        this.error("expected-id-after", { property: "operations" });
-        break;
-      }
       decoration.push(this.consumeDecorationItem());
     }
     return { verb, decoration, decorationLoc: verbToken.loc };
@@ -1020,48 +1100,21 @@ export class Parser {
     return { value: tok.value, recognized: isRecognizedResourceOperation(tok.value) };
   }
 
-  private peekIsIdOrString(): boolean {
-    const t = this.peek().type;
-    return t === TokenType.Identifier || t === TokenType.StringLiteral;
+  /** Accepts an identifier or a string literal wherever an id may be written. */
+  private isIdOrString(token: Token): boolean {
+    return token.type === TokenType.Identifier || token.type === TokenType.StringLiteral;
   }
 
-  private parseHandlesList(): HandlesTarget[] {
+  private parseHandlesList(keyword: Token): HandlesTarget[] {
     const refs: HandlesTarget[] = [];
-    for (;;) {
-      if (!this.peekIsIdOrString()) {
-        this.error("expected-id-after", { property: "handles" });
-        return refs;
-      }
-      const first = this.advance();
-      const tail = readNodeIdPathTail(first, this.cursor, {
-        acceptStringSegments: true,
-      });
-      if (tail.dangling) {
-        // Dangling dot: report once and record nothing (#2088) — recording
-        // the read segments would put `handles Backend` in the model next to
-        // an error about `handles Backend.`. The range runs to the dot itself,
-        // so the squiggle covers the character at fault instead of stopping at
-        // the identifier that was spelled correctly.
-        const stop = tail.danglingDot ?? tail.end;
-        this.diagnostics.push({
-          severity: "error",
-          code: "expected-id-after",
-          params: { property: "handles" },
-          loc: this.range(first.loc, stop.end ?? stop.loc),
-        });
-      } else {
-        refs.push({
-          path: tail.segments,
-          loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
-        });
-      }
-      // A malformed ref does not end the list: `realizes` resumes after the
-      // separator (parseRealizesList below) and `handles A., B` has to record
-      // `B` the same way. Returning here would drop every later target and
-      // leave the comma for the block loop to report a second time.
-      if (this.peek().type !== TokenType.Comma) return refs;
-      this.advance();
+    for (const first of this.commaSeparatedValues(keyword, "handles")) {
+      // A malformed ref does not end the list: `handles A., B` has to record
+      // `B` the same way `realizes` does. Dropping out here would lose every
+      // later target and leave the comma for the block loop to report again.
+      const target = this.readReferencePathElement(first, "handles");
+      if (target) refs.push(target);
     }
+    return refs;
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -1548,9 +1601,9 @@ export class Parser {
       }
 
       if (token.type === TokenType.Facets) {
-        this.advance();
+        const keyword = this.advance();
         properties.facets ??= [];
-        this.parseFacetsList(properties.facets);
+        this.parseFacetsList(keyword, properties.facets);
         continue;
       }
 
@@ -1615,9 +1668,9 @@ export class Parser {
       // canonical carrier of a regulatory facet (CHD, PII), so `facets` is
       // accepted here exactly as on every other kind.
       if (token.type === TokenType.Facets) {
-        this.advance();
+        const keyword = this.advance();
         properties.facets ??= [];
-        this.parseFacetsList(properties.facets);
+        this.parseFacetsList(keyword, properties.facets);
         continue;
       }
 
@@ -1921,9 +1974,9 @@ export class Parser {
       // lines accumulate into one array and duplicate ids collapse, so `facets a`
       // twice and `facets a, a` are the same edge.
       if (token.type === TokenType.Facets) {
-        this.advance();
+        const keyword = this.advance();
         facets ??= [];
-        this.parseFacetsList(facets);
+        this.parseFacetsList(keyword, facets);
         continue;
       }
 
@@ -2075,90 +2128,14 @@ export class Parser {
    * single line (#2167) — the comma form is sugar, so both append to the same
    * array and a node mixing the two accumulates in document order.
    *
-   * **A list lives on the line its `realizes` keyword is on.** Both the commas
-   * and the targets after them are held to that line, so the two malformed
-   * spellings behave alike: neither `realizes A,` nor a following `,B` line
-   * quietly extends the list across the line break. Property keywords carry
-   * their own token types, so they could never be read as targets; what the
-   * line rule actually stops is a bare identifier on the next line being
-   * absorbed as a continuation instead of being reported where it sits.
+   * The list grammar itself lives in `commaSeparatedValues`, which every
+   * reference list shares (#2551); a target is a node reference path, whose
+   * dots continue the one ref even across a line break.
    */
   private parseRealizesList(keyword: Token, properties: DeployNodeProperties): void {
-    const { line } = keyword.loc;
-    const onListLine = (token: Token): boolean => token.loc.line === line;
-    const atTarget = (): boolean => {
-      const token = this.peek();
-      return (
-        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
-        onListLine(token)
-      );
-    };
-
-    // The separator the parser is standing after, for the diagnostic below.
-    // Undefined while reading the first target, which `realizes` introduces.
-    let afterComma: Token | undefined;
-
-    for (;;) {
-      if (atTarget()) {
-        const first = this.advance();
-        // A target is a node reference path (#2088). Dots continue the one
-        // ref even across a line break — the #2167 line rule bounds the
-        // comma list (separators and the next target), not the segments of
-        // a single path.
-        const tail = readNodeIdPathTail(first, this.cursor, {
-          acceptStringSegments: true,
-        });
-        if (tail.dangling) {
-          // Dangling dot: report once and record nothing (#2088) — recording
-          // the read segments would put `realizes Shop` in the model next to
-          // an error about `realizes Shop.`. The range runs to the dot, the
-          // character actually at fault; `tail.end` stops at the identifier
-          // that was spelled correctly.
-          const stop = tail.danglingDot ?? tail.end;
-          this.diagnostics.push({
-            severity: "error",
-            code: "expected-property-value",
-            params: { propName: "realizes" },
-            loc: this.range(first.loc, stop.end ?? stop.loc),
-          });
-        } else {
-          (properties.realizes ??= []).push({
-            path: tail.segments,
-            loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
-          });
-        }
-        // Without a comma the list is done; with one, another target is due.
-        // A malformed target takes the same exit as a good one, so the
-        // trailing comma of `realizes Shop.,` is reported where the trailing
-        // comma of `realizes A,` is — swallowing it here would make the same
-        // mistake silent in one spelling and reported in the other.
-        if (this.peek().type !== TokenType.Comma || !onListLine(this.peek())) return;
-        afterComma = this.advance();
-        continue;
-      }
-      // No target where one is required: bare `realizes`, a leading comma
-      // (`realizes ,B`), or the trailing comma of `realizes A,`. Report it once
-      // rather than letting the comma fall through to the block loop's generic
-      // `unexpected-token-in-block`, and anchor it on the token that is
-      // actually wrong — the dangling comma, or `realizes` itself when the
-      // value is missing outright. `this.error` would anchor on whatever comes
-      // next, which for a trailing comma is the following (valid) line.
-      this.diagnostics.push({
-        severity: "error",
-        code: "expected-property-value",
-        params: { propName: "realizes" },
-        loc: this.range((afterComma ?? keyword).loc, (afterComma ?? keyword).end),
-      });
-      // Swallow the stray separators so the same commas are not reported again,
-      // then resume if that leaves a target to read — `realizes ,B` still
-      // records `B`. Reaching here without a comma to consume means the line
-      // holds nothing more to say, so stop rather than report twice.
-      let swallowed = false;
-      while (this.peek().type === TokenType.Comma && onListLine(this.peek())) {
-        afterComma = this.advance();
-        swallowed = true;
-      }
-      if (!swallowed || !atTarget()) return;
+    for (const first of this.commaSeparatedValues(keyword, "realizes")) {
+      const target = this.readReferencePathElement(first, "realizes");
+      if (target) (properties.realizes ??= []).push(target);
     }
   }
 
@@ -2393,28 +2370,15 @@ export class Parser {
   /**
    * Parse the value of a `facets` property: `<id>[, <id>]*`.
    *
-   * Mirrors `parseHandlesList`. Ids are appended to `existing` rather than
-   * returned fresh so repeated `facets` lines accumulate, and a duplicate id
-   * (within one line or across lines) collapses — membership is a set, and
-   * saying it twice is not a mistake worth a diagnostic.
+   * Reads on the list grammar every reference list shares (#2551). Ids are
+   * appended to `existing` rather than returned fresh so repeated `facets`
+   * lines accumulate, and a duplicate id (within one line or across lines)
+   * collapses — membership is a set, and saying it twice is not a mistake
+   * worth a diagnostic.
    */
-  private parseFacetsList(existing: string[]): void {
-    const isId = (t: TokenType) => t === TokenType.Identifier || t === TokenType.StringLiteral;
-    if (!isId(this.peek().type)) {
-      this.error("expected-id-after", { property: "facets" });
-      return;
-    }
-    const push = (id: string): void => {
-      if (!existing.includes(id)) existing.push(id);
-    };
-    push(this.advance().value);
-    while (this.peek().type === TokenType.Comma) {
-      this.advance();
-      if (!isId(this.peek().type)) {
-        this.error("expected-id-after", { property: "facets" });
-        return;
-      }
-      push(this.advance().value);
+  private parseFacetsList(keyword: Token, existing: string[]): void {
+    for (const facet of this.commaSeparatedValues(keyword, "facets")) {
+      if (!existing.includes(facet.value)) existing.push(facet.value);
     }
   }
 

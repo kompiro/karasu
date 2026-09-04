@@ -189,7 +189,7 @@ deploy prod {
   }
 }
 `);
-    const errs = r.diagnostics.filter((d) => d.code === "expected-property-value");
+    const errs = r.diagnostics.filter((d) => d.code === "expected-id-after");
     expect(errs).toHaveLength(1);
     expect(r.value.deploys[0].nodes[0].properties.realizes ?? []).toEqual([]);
   });
@@ -601,7 +601,7 @@ ${line}
   }
 }
 `);
-    const errs = r.diagnostics.filter((d) => d.code === "expected-property-value");
+    const errs = r.diagnostics.filter((d) => d.code === "expected-id-after");
     // The dangling dot, then the trailing comma — the same two mistakes
     // `realizes A,` and `realizes Shop.` report on their own.
     expect(errs).toHaveLength(2);
