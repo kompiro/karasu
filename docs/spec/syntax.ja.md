@@ -96,6 +96,8 @@ client C [web] {
 }
 ```
 
+リストの文法はこの種のプロパティで共通。[§カンマ区切りの値リスト](#カンマ区切りの値リスト) を参照（リストは 1 行に閉じ、宙に浮いたカンマはそのカンマ自身を指して報告される）。
+
 **expose ルール**（バリデータが使用）:
 
 > ノード `N` が参照 `D` の解決先ドメインを *expose する* のは次のいずれかが成り立つとき:
@@ -497,6 +499,8 @@ client WebApp [web] {}
 client AdminUI [desktop] {}
 ```
 
+リストの文法はこの種のプロパティで共通。[§カンマ区切りの値リスト](#カンマ区切りの値リスト) を参照（リストは 1 行に閉じ、宙に浮いたカンマはそのカンマ自身を指して報告される）。
+
 `delivers` の各エントリは、system view 上で service から参照先 client への破線エッジに合成される。参照先 id は対になる `client` ノードに解決できなければならず、できない場合はリゾルバが `delivers-target-not-client` 警告を出す。`delivers` は宣言的プロパティであり、新しいエッジ種別ではない。client と service の間の通常の API 呼び出しは引き続き `->` で書く。
 
 #### `operations` プロパティ — usecase が resource に対して行う CRUD 動作
@@ -523,6 +527,8 @@ operations create, read           // カンマ区切り
 operations create
 operations read, update           // 複数行は累積される
 ```
+
+リストの文法はこの種のプロパティで共通。[§カンマ区切りの値リスト](#カンマ区切りの値リスト) を参照（リストは 1 行に閉じ、宙に浮いたカンマはそのカンマ自身を指して報告される）。
 
 `operations` は `usecase` 内の `resource` 宣言でのみ有効。インフラ側の `table` / `queue-item` / `bucket` には書けない（上の「インフラ層（共有データストア）」節を参照）。
 
@@ -1068,10 +1074,9 @@ deploy "production" {
 ```
 
 正準形は行の繰り返しで、`karasu fmt` は 1 行 1 対象で出力しカンマ列挙をその形に書き換える。
-カンマの後（`realizes A,`）や前（`realizes ,B`）に識別子が無い場合は、そのカンマ自身を指して
-[`expected-property-value`](./diagnostics.ja.md) を報告する。リストは `realizes` が現れた行に
-閉じるため、どちらの向きにも行をまたいで継続しない — 末尾のカンマも、次の行を開始するカンマも、
-リストを伸ばさない。
+リスト自体は [§カンマ区切りの値リスト](#カンマ区切りの値リスト) の共有文法で読まれる。
+`realizes` の行に閉じ、宙に浮いたカンマはそのカンマ自身を指して
+[`expected-id-after`](./diagnostics.ja.md) を報告する。
 
 同じ対象を二度書いても冪等であり、エラーではない。宣言される関係は 1 つなので、繰り返しは
 書かれた場所によらず（同じカンマ列挙の後半でも、独立した行でも）落とされ、残るのは最初の綴りで、
@@ -1115,6 +1120,53 @@ store の両方が realize されているとき、deploy 図は service のコ�
 > スコープ: これは `deploy` の **ランタイム契約層**（どの concrete な形態がストアを裏付けるか）に収まる。
 > インフラのトポロジ（リージョン・AZ・クラスタ・ノード）は依然として対象外（[concepts.ja.md](../concepts.ja.md) 参照）。
 > 決定は [ADR-1632](../adr/1632-infra-physical-realize.md)。
+
+---
+
+## カンマ区切りの値リスト
+
+`facets` / `delivers` / `handles` / `operations` / `realizes` はいずれもキーワードの
+後ろに値のリストを取り、その読み方は 1 つの文法に統一されている（#2551）:
+
+- **要素は `,` で区切る。** 同じリストはキーワード行の繰り返しでも書け、両形は
+  記述順に 1 つの配列へ累積する。`handles Order, Catalog` と、`handles Order` の
+  下に `handles Catalog` を並べた形は同じモデルになる。
+- **リストは自分から行をまたがない。** 区切りとその後ろの要素は、直前の要素が
+  終わった行に置かれる。末尾のカンマも、次の行を開始するカンマもリストを伸ばさない
+  ため、次の行の id は要素として吸収されずその位置で報告される。一方、要素自身が
+  複数行にまたがるときはリストもそれに追従する。
+  [ノード参照の path](#ノード参照の-path-記法) のドットが継続するのは 1 要素であって
+  リストではないので、`handles Order` の次行に `.Line, Catalog` と書いた場合も
+  2 つの対象が読まれる。
+- **要素を伴わない区切りはエラー。** キーワード単体・先頭のカンマ（`facets ,pii`）・
+  末尾のカンマ（`facets pii,`）はいずれも [`expected-id-after`](./diagnostics.ja.md) を
+  1 件だけ報告する。位置は前後どちらの向きでもそのカンマ自身で、キーワードを指すのは
+  値がまるごと無いときに限る。誤りより前に読めた要素は保持され、先頭カンマの後ろの
+  要素も記録される。
+
+```krs
+facet pii {}
+facet pci {}
+system Shop {
+  client WebApp [web] {}
+  service Backend {
+    domain Order {}
+    domain Catalog {}
+  }
+  service Api {
+    facets   pii, pci        // カンマ列挙
+    handles  Order, Catalog  // 1 つの関係に複数の相手
+    delivers WebApp
+  }
+
+  Api -> Backend
+}
+```
+
+`karasu fmt` がどちらの形で出力するかはプロパティごとの決定で、各プロパティの節に
+書いてある。上の文法は parser が入力として受理する形である。
+
+> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md)。列挙形と行の繰り返しが同一 AST に落ちること・要素が要素単位の range を持つこと・宙に浮いた区切りをその区切り自身の位置で、両方向対称に報告することを固定する。
 
 ---
 
@@ -1472,6 +1524,8 @@ system Shop {
   `domain` / `usecase` / `entity` / `resource` / `user` / `client`、infra ブロック
   （`database` / `queue` / `storage`）とその leaf（`table`・queue item・`bucket`）。
   所属はアーキテクチャの外から課されるものなので、構造的に除外される kind は無い。
+  id 列の読み方は [§カンマ区切りの値リスト](#カンマ区切りの値リスト) の文法に従い、
+  `facets` 行を繰り返して書ける位置もそこで決まる。
 - **エッジも `facets` を取る。** 書く場所は[エッジのプロパティブロック](#プロパティブロック-label--description--link--facets-)。
   PII を運ぶデータフローや PCI スコープ内の呼び出しは**そのエッジについての事実**で、
   端点に付けると端点について誤ったことを言いながらフローについては何も言えていない。
