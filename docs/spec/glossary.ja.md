@@ -124,6 +124,8 @@ karasu のコアな語彙のクイックリファレンスです。karasu は
   `karasu team-dependencies`。上の **communication** とは別語 — communication は
   ノード間エッジに束縛されている。
 
+> Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
+
 ## タグとアノテーション
 
 - **タグ** — アーキテクチャ上の位置や役割を表す `[name]` 宣言（例: `[external]`）。

@@ -1302,7 +1302,7 @@ organization Shop {
 継承が支配するのは所有の**派生的な**読み取りであって、宣言された index ではない。`ownerIndex` は依然として `owns` が名指したノードだけを記録し、team チップもそのカードにしか出ない。遡る読み手はチーム依存の導出（`karasu team-dependencies`）で、所有と論理エッジを join する。遡っても team に届かない端点は捨てずに unowned として報告されるので、導出はモデルのどこまでを覆ったかを自ら述べる。`user` 端点はその数え上げから除かれる — アクターは所有の対象ではない。
 
 
-> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言し、その選択を固定するテストを持つ。
+> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。[TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言し、その選択を固定するテストを持つ。
 
 ### member ノード
 

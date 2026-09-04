@@ -136,6 +136,8 @@ the source wins — follow the link.
   with `karasu team-dependencies`. **Not** a synonym for *communication*, which
   is bound to node-to-node edges above.
 
+> Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
+
 ## Tags & annotations
 
 - **Tag** — a `[name]` declaration expressing architectural position or role
