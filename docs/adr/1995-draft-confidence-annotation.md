@@ -17,7 +17,7 @@ scope:
 assumptions:
   - "symbol: packages/core/src/annotations/draft-confidence.ts :: getDraftState"
   - "grep: packages/core/src/builtins/reference-data.ts :: name: \"draft\""
-  - "grep: packages/core/src/parser/parser.ts :: draft: new Set"
+  - "grep: packages/core/src/parser/parser.ts :: draft: { confidence:"
 ---
 
 # ADR-1995: 生成物の不確かさは `@draft` アノテーションで表す — ノード単位・水準は任意・罰を与えない
