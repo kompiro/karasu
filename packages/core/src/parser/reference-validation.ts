@@ -31,7 +31,7 @@ import type {
   ResourceNode,
   TeamNode,
 } from "../types/ast.js";
-import { boundaryScopeKey, REALIZES_TARGET_KIND_SET } from "../types/ast.js";
+import { boundaryScopeKey, OWNS_TARGET_KIND_SET, REALIZES_TARGET_KIND_SET } from "../types/ast.js";
 import {
   ambiguousNodePathCandidates,
   nodePathKey,
@@ -853,13 +853,26 @@ export function buildTeamOwnership(file: KrsFile): Map<string, string[]> {
   const indexTeams = (teams: readonly TeamNode[]): void => {
     for (const team of teams) {
       for (const ref of team.properties.owns) {
-        const matches = resolveDeclaredRef(declared, ref);
+        // Ownership units only. `resolveDeclaredRef` keeps systems in the pool
+        // so `owns <systemId>` can be reported as the kind refusal it is
+        // (ADR-2442 / `invalid-owns`), and the same refusal covers infra leaves
+        // and `capability`. A refused claim must not become an entry here: this
+        // relation is walked upward by consumers, so one stray key at a system
+        // path would hand that team every node in the system.
+        const matches = resolveDeclaredRef(declared, ref).filter((m) =>
+          OWNS_TARGET_KIND_SET.has(m.kind),
+        );
         // An unresolved ref keeps its claim under the ref as written, for the
         // reason buildOwnerIndex spells out: an org-only file has no tree to
         // resolve against, and a declared fact must survive until the merged
-        // rebuild can decide (TPL-2161).
+        // rebuild can decide (TPL-2161). A ref that resolved only to
+        // non-ownable nodes is a different case — it was decided, and refused.
         const keys =
-          matches.length > 0 ? matches.map((m) => nodePathKey(m.path)) : [nodePathKey(ref)];
+          matches.length > 0
+            ? matches.map((m) => nodePathKey(m.path))
+            : resolveDeclaredRef(declared, ref).length === 0
+              ? [nodePathKey(ref)]
+              : [];
         for (const key of keys) {
           const owners = ownership.get(key);
           if (owners === undefined) {

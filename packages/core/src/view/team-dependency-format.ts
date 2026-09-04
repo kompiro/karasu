@@ -23,16 +23,16 @@ import type {
   TeamDependencyReport,
   UnownedEndpoint,
 } from "./team-dependency-extract.js";
+import { edgeArrow } from "../types/ast.js";
 
 /**
- * The arrow each edge kind is written with in `.krs`, reused as the matrix
- * mark so the cell needs no legend beyond the syntax the reader already knows.
+ * A nested pair is drawn parenthesized — present, but not a cross-team path.
+ *
+ * The mark is the `.krs` arrow itself (`edgeArrow`, shared with the formatter),
+ * so the cell needs no legend beyond the syntax the reader already knows.
  */
-const KIND_MARK: Record<string, string> = { sync: "->", async: "-->" };
-
-/** A nested pair is drawn parenthesized — present, but not a cross-team path. */
 function mark(dep: TeamDependency): string {
-  const arrow = KIND_MARK[dep.kind] ?? dep.kind;
+  const arrow = edgeArrow(dep.kind);
   return dep.relation === "nested" ? `(${arrow})` : arrow;
 }
 
@@ -42,46 +42,56 @@ function endpointLabel(path: string, inherited: boolean): string {
 }
 
 function viaLabel(edge: TeamDependencyEdge): string {
-  const arrow = KIND_MARK[edge.kind] ?? edge.kind;
+  const arrow = edgeArrow(edge.kind);
   const base = `${endpointLabel(edge.fromPath, edge.fromInherited)} ${arrow} ${endpointLabel(edge.toPath, edge.toInherited)}`;
   return edge.label === undefined ? base : `${base} "${edge.label}"`;
 }
 
 function unownedViaLabel(via: UnownedEndpoint["via"][number]): string {
-  return `${via.from} ${KIND_MARK[via.kind] ?? via.kind} ${via.to}`;
+  return `${via.from} ${edgeArrow(via.kind)} ${via.to}`;
 }
 
-function teamLabel(report: TeamDependencyReport, id: string): string {
-  const team = report.teams.find((t) => t.id === id);
-  return team?.label ?? id;
+/**
+ * Team id -> display name, built once. The Dependencies table asks twice per
+ * row, so a linear `find` over the axis made rendering O(rows x teams) for a
+ * list the header already walks.
+ */
+function teamLabels(report: TeamDependencyReport): Map<string, string> {
+  return new Map(report.teams.map((t) => [t.id, t.label ?? t.id]));
 }
 
 export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): string {
-  if (report.teams.length === 0) {
-    return "_(no organization declared)_\n";
-  }
-
   const lines: string[] = [];
-  const ids = report.teams.map((t) => t.id);
-  const cells = new Map<string, string[]>();
-  for (const dep of report.dependencies) {
-    const key = `${dep.fromTeam} ${dep.toTeam}`;
-    const list = cells.get(key);
-    if (list === undefined) cells.set(key, [mark(dep)]);
-    else list.push(mark(dep));
-  }
+  const labels = teamLabels(report);
+  const nameOf = (id: string): string => labels.get(id) ?? id;
 
-  const header = ["from \\ to", ...report.teams.map((t) => t.label ?? t.id)];
-  lines.push(`| ${header.join(" | ")} |`);
-  lines.push(`| ${header.map(() => "---").join(" | ")} |`);
-  for (const from of report.teams) {
-    const row = [from.label ?? from.id];
-    for (const to of ids) {
-      // The diagonal is not "no dependency", it is a question the derivation
-      // does not ask — an edge inside one team's holdings is internal work.
-      row.push(from.id === to ? "—" : (cells.get(`${from.id} ${to}`)?.join(" ") ?? ""));
+  if (report.teams.length === 0) {
+    // No matrix to draw, but the sections below still run. Returning here would
+    // make the default surface silent about a join that covered nothing — the
+    // failure this module's header names — while the csv projection reported
+    // it, so the two would disagree about the same model.
+    lines.push("_(no organization declared)_");
+  } else {
+    const cells = new Map<string, string[]>();
+    for (const dep of report.dependencies) {
+      const key = pairKey(dep.fromTeam, dep.toTeam);
+      const list = cells.get(key);
+      if (list === undefined) cells.set(key, [mark(dep)]);
+      else list.push(mark(dep));
     }
-    lines.push(`| ${row.join(" | ")} |`);
+
+    const header = ["from \\ to", ...report.teams.map((t) => nameOf(t.id))];
+    lines.push(`| ${header.map(mdCell).join(" | ")} |`);
+    lines.push(`| ${header.map(() => "---").join(" | ")} |`);
+    for (const from of report.teams) {
+      const row = [nameOf(from.id)];
+      for (const to of report.teams) {
+        // The diagonal is not "no dependency", it is a question the derivation
+        // does not ask — an edge inside one team's holdings is internal work.
+        row.push(from.id === to.id ? "—" : (cells.get(pairKey(from.id, to.id))?.join(" ") ?? ""));
+      }
+      lines.push(`| ${row.map(mdCell).join(" | ")} |`);
+    }
   }
 
   lines.push("");
@@ -93,9 +103,15 @@ export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): 
     lines.push("| from | to | kind | relation | edges | via |");
     lines.push("| --- | --- | --- | --- | --- | --- |");
     for (const dep of report.dependencies) {
-      lines.push(
-        `| ${teamLabel(report, dep.fromTeam)} | ${teamLabel(report, dep.toTeam)} | ${dep.kind} | ${dep.relation} | ${dep.via.length} | ${dep.via.map(viaLabel).join("<br>")} |`,
-      );
+      const cells = [
+        nameOf(dep.fromTeam),
+        nameOf(dep.toTeam),
+        dep.kind,
+        dep.relation,
+        String(dep.via.length),
+        dep.via.map(viaLabel).join("<br>"),
+      ];
+      lines.push(`| ${cells.map(mdCell).join(" | ")} |`);
     }
   }
 
@@ -112,9 +128,8 @@ export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): 
     lines.push("| node | kind | edges |");
     lines.push("| --- | --- | --- |");
     for (const entry of report.unowned) {
-      lines.push(
-        `| ${entry.path} | ${entry.kind} | ${entry.via.map(unownedViaLabel).join("<br>")} |`,
-      );
+      const cells = [entry.path, entry.kind, entry.via.map(unownedViaLabel).join("<br>")];
+      lines.push(`| ${cells.map(mdCell).join(" | ")} |`);
     }
   }
 
@@ -176,6 +191,26 @@ export function formatTeamDependenciesAsCsv(report: TeamDependencyReport): strin
     );
   }
   return lines.join("\n") + "\n";
+}
+
+/**
+ * `|` is the markdown table's own column separator, so a team label or an edge
+ * label containing one splits its row into more cells than the header declares
+ * and misaligns every row after it. Escaping is the cell writer's job — there
+ * is no value a projection may pass through unescaped.
+ */
+/**
+ * Matrix cell key. Joined the way `dependencyKey` joins its triple, and for the
+ * same reason: a team id may contain spaces, so no printable separator tells
+ * `("Team", "A B")` from `("Team A", "B")`, and a collision here puts a mark in
+ * the wrong cell.
+ */
+function pairKey(fromTeam: string, toTeam: string): string {
+  return JSON.stringify([fromTeam, toTeam]);
+}
+
+function mdCell(value: string): string {
+  return value.replace(/\|/g, "\\|");
 }
 
 function csvEscape(value: string): string {

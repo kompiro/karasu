@@ -81,9 +81,14 @@ describe("formatTeamDependenciesAsMarkdown", () => {
     );
   });
 
-  it("says a model with no organization has nothing to project", () => {
+  it("says a model with no organization has no matrix, without going silent", () => {
     const none = extractTeamDependencies(Parser.parse(`system S { service A {} }`).value);
-    expect(formatTeamDependenciesAsMarkdown(none)).toBe("_(no organization declared)_\n");
+    const noOrgMd = formatTeamDependenciesAsMarkdown(none);
+    expect(noOrgMd).toContain("_(no organization declared)_");
+    // No matrix to draw, but the sections that report what the join covered
+    // still run — see `still reports the unowned remainder…` below.
+    expect(noOrgMd).not.toContain("| from \\ to |");
+    expect(noOrgMd).toContain("## Unowned endpoints");
   });
 });
 
@@ -119,5 +124,38 @@ organization O { team ta { owns A } team tb { owns B } }
     expect(formatTeamDependenciesAsCsv(withComma)).toContain(
       '"S.A.Da~ -> S.B.Db~ ""read, then write"""',
     );
+  });
+});
+
+describe("markdown / csv robustness", () => {
+  it("escapes a `|` in a label so the table keeps its column count", () => {
+    const piped = extractTeamDependencies(
+      Parser.parse(`
+system S {
+  service A { domain Da { Da -> Db "a | b" } }
+  service B { domain Db {} }
+}
+organization O { team ta { label "Alpha | Beta" owns A } team tb { owns B } }
+`).value,
+    );
+    const md = formatTeamDependenciesAsMarkdown(piped);
+    const rows = md.split("\n").filter((l) => l.startsWith("|"));
+    // Drop escaped pipes, then count the real column separators.
+    const columns = rows.map((r) => r.split("\\|").join("").split("|").length);
+    // Header, separator and body row of the matrix all declare 3 columns.
+    expect(columns.slice(0, 3)).toEqual([columns[0], columns[0], columns[0]]);
+    expect(md).toContain("Alpha \\| Beta");
+  });
+
+  it("still reports the unowned remainder when the model declares no organization", () => {
+    // The default surface must not be silent about a join that covered
+    // nothing while the csv projection reports it.
+    const noOrg = extractTeamDependencies(
+      Parser.parse(`system S { service A {} service B {} A -> B }`).value,
+    );
+    const md = formatTeamDependenciesAsMarkdown(noOrg);
+    expect(md).toContain("_(no organization declared)_");
+    expect(md).toContain("## Unowned endpoints");
+    expect(md).toContain("| S.A | service |");
   });
 });

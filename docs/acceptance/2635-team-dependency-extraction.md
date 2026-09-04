@@ -55,6 +55,30 @@ type: product
 - [x] AT-K: 新規 derivation が `DERIVATION_CONTRACTS` に登録され、preserves（`kind` / provenance ラベル）と transforms（`fromTeam` / `toTeam` / `relation`）が固定される
   > ✅ Automated — `packages/core/src/view/derivation-contracts.test.ts` › `extractTeamDependencies: cross-service domain edge (async) aggregated to a team pair`
 
+- [x] AT-L: 依存の導出が別 system の同名ノードに広がらず、1 本のエッジの provenance が 1 件のままである
+  > ✅ Automated — `team-dependency-extract.test.ts` › `does not pair a bare endpoint with a same-named node in another system`
+
+- [x] AT-M: 所有の単位でない対象（`system`）への `owns` が所有関係に入らず、継承で system 配下を丸ごと配らない
+  > ✅ Automated — `team-dependency-extract.test.ts` › `ignores an \`owns\` naming a system, which the spec refuses as an ownership unit`
+
+- [x] AT-N: 所有しえない kind（`user` / `system`）が未所有の数え上げに入らない
+  > ✅ Automated — `team-dependency-extract.test.ts` › `does not count a \`user\` endpoint as unowned — an actor is not ownable` / `does not report a \`system\` endpoint as an ownership gap`
+
+- [x] AT-O: 片端が解決しないエッジでも、解決した側の所有ギャップは残る
+  > ✅ Automated — `team-dependency-extract.test.ts` › `still reports the resolvable end when the other endpoint names nothing`
+
+- [x] AT-P: 空白を含む team id でもチーム対が衝突しない
+  > ✅ Automated — `team-dependency-extract.test.ts` › `keeps two team pairs apart when a team id contains a space`
+
+- [x] AT-Q: ラベル中の `|` が md テーブルの列構造を壊さない
+  > ✅ Automated — `packages/core/src/view/team-dependency-format.test.ts` › `escapes a \`|\` in a label so the table keeps its column count`
+
+- [x] AT-R: `organization` を持たないモデルでも md が未所有の残余を報告する（csv と食い違わない）
+  > ✅ Automated — `team-dependency-format.test.ts` › `still reports the unowned remainder when the model declares no organization`
+
+- [x] AT-S: モデルに error 診断があるとき、導出前に停止して stderr に報告する
+  > ✅ Automated — `packages/cli/src/team-dependencies.test.ts` › `prints the model's errors and exits 1 without deriving anything`
+
 ## 手動確認
 
 N/A — 自動テストですべて覆っている。本スライスは CLI とコアの導出のみで、app の描画面は

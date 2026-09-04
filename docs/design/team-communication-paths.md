@@ -242,12 +242,12 @@ async は意図的な疎結合であり、調整の必要度が sync と異な�
    `buildTeamOwnership(file): Map<string, string[]>` を追加（`buildOwnerIndex` の
    隣。既存 1:1 は変更しない）。co-owned ノードで全チームを保持することを
    単体テストで固定する。
-   2. `packages/core/src/view/team-dependency-extract.ts` に
+2. `packages/core/src/view/team-dependency-extract.ts` に
    `extractTeamDependencies` を新設。所有継承（決定 2）、nested 判定、
    sync/async 分離、未解決端点の収集（`user` 端点は除外）を含む。
 3. `view/derivation-contracts.test.ts` の `DERIVATION_CONTRACTS` に行を追加。
    `preserves` に edge の `kind`、`transforms` に集約結果を宣言する。
-   4. `packages/core/src/view/team-dependency-format.ts` に md / csv フォーマッタ。
+4. `packages/core/src/view/team-dependency-format.ts` に md / csv フォーマッタ。
 5. CLI サブコマンド追加（`packages/cli/src/`）。受け入れテストは
    `packages/cli` の vitest に書く（`packages/e2e` には置かない）。
 6. スライス B: renderer にグラフ描画、org タブのモードトグル追加。

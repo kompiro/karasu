@@ -71,16 +71,31 @@ export async function compileSystemViewOrExit(
     return undefined;
   }
 
-  const errors = result.diagnostics.filter((d) => d.severity === "error");
+  if (!reportErrorsOrExit(result.diagnostics, filePath)) return undefined;
+
+  return result;
+}
+
+/**
+ * Print every error-severity diagnostic and exit(1), or report that there were
+ * none. Returns `false` in the exit case so callers can `return undefined`
+ * immediately — see {@link resolveKrsFileOrExit} for why they must.
+ *
+ * Shared because the CLI's error line is a contract with whoever reads its
+ * stderr: two spellings of the same block drift the moment one of them gains a
+ * prefix or a count, and the two commands then disagree about what an error
+ * looks like.
+ */
+function reportErrorsOrExit(diagnostics: readonly Diagnostic[], filePath: string): boolean {
+  const errors = diagnostics.filter((d) => d.severity === "error");
   for (const d of errors) {
     process.stderr.write(`Error: ${formatDiagLoc(filePath, d)}: ${formatDiagnostic(d)}\n`);
   }
   if (errors.length > 0) {
     process.exit(1);
-    return undefined;
+    return false;
   }
-
-  return result;
+  return true;
 }
 
 /**
@@ -106,13 +121,6 @@ export async function resolveProjectOrExit(
   filePath: string,
 ): Promise<KrsFile | undefined> {
   const resolved = await new ImportResolver(fs).resolve(absolutePath);
-  const errors = resolved.diagnostics.filter((d) => d.severity === "error");
-  for (const d of errors) {
-    process.stderr.write(`Error: ${formatDiagLoc(filePath, d)}: ${formatDiagnostic(d)}\n`);
-  }
-  if (errors.length > 0) {
-    process.exit(1);
-    return undefined;
-  }
+  if (!reportErrorsOrExit(resolved.diagnostics, filePath)) return undefined;
   return resolved.krsFile;
 }

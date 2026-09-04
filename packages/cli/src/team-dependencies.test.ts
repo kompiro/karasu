@@ -115,6 +115,17 @@ describe("team-dependencies CLI", () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
+  it("prints the model's errors and exits 1 without deriving anything", async () => {
+    // The new resolve-or-exit path: an error-severity diagnostic must stop the
+    // command before the derivation runs, on the same stderr line the sibling
+    // commands print.
+    await writeFile(krsPath, `system Shop {\n  service A {}\n  service A {}\n}\n`, "utf-8");
+    await teamDependencies(krsPath, {});
+    expect(stderr()).toContain(`Error: ${krsPath}:`);
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(stdout()).toBe("");
+  });
+
   it("exits 1 when the file does not exist", async () => {
     await teamDependencies(join(tmpDir, "missing.krs"), {});
     expect(stderr()).toContain("File not found");

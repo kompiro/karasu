@@ -238,3 +238,93 @@ organization O {
     expect(dependencies).toEqual([]);
   });
 });
+
+describe("extractTeamDependencies — reach and ownership units", () => {
+  it("does not pair a bare endpoint with a same-named node in another system", () => {
+    // The scope rule exempts `domain -> domain`, so this edge resolves through
+    // the whole-model fallback. Unbounded, that fallback reaches `Db` in S2 and
+    // names a coordination partner no view draws (TPL-2032 / TPL-2577).
+    const { dependencies } = report(`
+system S1 {
+  service A { domain Da { Da -> Db "call" } }
+  service B { domain Db {} }
+}
+system S2 {
+  service C { domain Db {} }
+}
+organization O {
+  team ta { owns A }
+  team tb { owns B }
+  team tc { owns C }
+}
+`);
+    expect(find(dependencies, "ta", "tb", "sync")).toBeDefined();
+    expect(find(dependencies, "ta", "tc")).toBeUndefined();
+    // One authored edge, so the provenance count must read 1.
+    expect(find(dependencies, "ta", "tb", "sync")!.via).toHaveLength(1);
+  });
+
+  it("ignores an `owns` naming a system, which the spec refuses as an ownership unit", () => {
+    // `invalid-owns` reports it; letting it into the ownership relation would
+    // hand that team every node in the system through the inheritance walk, and
+    // the report would then claim full coverage on a refused claim.
+    const { dependencies, unowned } = report(`
+system Shop {
+  service A { domain Da { Da -> Db "call" } }
+  service B { domain Db {} }
+}
+organization O {
+  team t1 { owns Shop }
+  team t2 { owns B }
+}
+`);
+    expect(dependencies).toEqual([]);
+    expect(unowned.map((u) => u.path)).toContain("Shop.A.Da");
+  });
+
+  it("does not report a `system` endpoint as an ownership gap", () => {
+    // A system can never be owned and has no ancestor to inherit from, so the
+    // entry could never be closed — the same reason `user` is excluded.
+    const { unowned } = report(`
+system Shop {
+  service Checkout {}
+  Checkout -> Portal
+}
+system Portal { service Web {} }
+organization O { team t { owns Checkout } }
+`);
+    expect(unowned.map((u) => u.path)).not.toContain("Portal");
+    expect(unowned.every((u) => u.kind !== "system")).toBe(true);
+  });
+
+  it("still reports the resolvable end when the other endpoint names nothing", () => {
+    const { unowned } = report(`
+system Shop {
+  service Platform {}
+  Platform -> Typo
+}
+organization O { team t { owns Nothing } }
+`);
+    expect(unowned.map((u) => u.path)).toContain("Shop.Platform");
+  });
+
+  it("keeps two team pairs apart when a team id contains a space", () => {
+    // `dependencyKey("Team", "A B", …)` and `dependencyKey("Team A", "B", …)`
+    // collide under any printable separator.
+    const { dependencies } = report(`
+system S {
+  service Sa { domain Da { Da -> Db "one"
+    Da -> Dc "two" } }
+  service Sb { domain Db {} }
+  service Sc { domain Dc {} }
+}
+organization O {
+  team "Team" { owns Sa }
+  team "A B" { owns Sb }
+  team "Team A" { owns Sc }
+}
+`);
+    expect(find(dependencies, "Team", "A B", "sync")!.via).toHaveLength(1);
+    expect(find(dependencies, "Team", "Team A", "sync")!.via).toHaveLength(1);
+  });
+});

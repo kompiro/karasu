@@ -116,6 +116,19 @@ export const DEPLOY_AFFORDANCE_KIND_SET: ReadonlySet<string> = new Set([
 
 export type EdgeKind = "sync" | "async";
 
+/**
+ * The arrow each edge kind is written with in `.krs`.
+ *
+ * One spelling for every producer of `.krs`-shaped text — the formatter, the
+ * canonical-id builder, the derived projections. A `kind === "async" ? "-->" :
+ * "->"` written per call site is the shape a third kind would have to be
+ * remembered in several places at once (TPL-1720's reasoning, applied to
+ * output rather than to a validation set).
+ */
+export function edgeArrow(kind: EdgeKind): "->" | "-->" {
+  return kind === "async" ? "-->" : "->";
+}
+
 export type DeployNodeKind =
   | "war"
   | "jar"

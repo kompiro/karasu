@@ -31,6 +31,7 @@
 import type { EdgeKind, KrsEdge, KrsFile, KrsNode, NodeIdPath, TeamNode } from "../types/ast.js";
 import { buildTeamOwnership, type DeclaredNodePath } from "../parser/reference-validation.js";
 import { nodePathKey } from "../parser/node-path.js";
+import { OWNS_TARGET_KIND_SET } from "../types/ast.js";
 import {
   buildEdgeEndpointIndex,
   edgeEndpointRef,
@@ -105,8 +106,29 @@ export interface TeamDependencyReport {
   unowned: UnownedEndpoint[];
 }
 
-/** Node kinds that can never carry an owner, so their absence is not a gap. */
-const NOT_OWNABLE_BY_SPEC: ReadonlySet<string> = new Set(["user"]);
+/**
+ * Whether a node could carry an owner at all — itself, or through the ancestor
+ * walk `resolveOwners` performs.
+ *
+ * An endpoint that fails this is not an ownership gap, it is a kind the spec
+ * places outside ownership: `owns` accepts service / domain / client and the
+ * infra blocks (`OWNS_TARGET_KINDS`), so an actor and a `system` can never be
+ * owned and neither has an ownable ancestor to inherit from. Reporting them as
+ * unowned would ask the reader to write an `owns` line that `invalid-owns`
+ * then refuses — an entry that can never be closed. An infra *leaf* fails on
+ * its own kind but passes on its enclosing block, which is exactly right: the
+ * block is the ownership unit.
+ */
+function couldBeOwned(path: NodeIdPath, index: EdgeEndpointIndex): boolean {
+  const declared = index.declared;
+  for (let length = path.length; length > 0; length--) {
+    const id = path[length - 1];
+    const prefix = path.slice(0, length);
+    const node = (declared.get(id) ?? []).find((d) => nodePathKey(d.path) === nodePathKey(prefix));
+    if (node !== undefined && OWNS_TARGET_KIND_SET.has(node.kind)) return true;
+  }
+  return false;
+}
 
 interface TeamTree {
   order: { id: string; label?: string }[];
@@ -204,10 +226,19 @@ function collectEdgeContainers(file: KrsFile): KrsNode[] {
  * declaring service's children), so reading `inScope` alone would derive almost
  * nothing on a real model.
  *
- * So: the scope-narrowed set when it accepts the reference, the whole-model
- * suffix match otherwise. The fallback is the same rule `owns` resolves by,
- * which is the point — both sides of this join then answer to one notion of
- * "which node does this name reach", and a bare id broadcasts on both.
+ * So: the scope-narrowed set when it accepts the reference, otherwise the
+ * suffix match **confined to the top-level root the edge was declared under**.
+ *
+ * That confinement keeps the fallback from becoming a second, laxer reach
+ * rule. A bare id broadcasts to every node with that id, so an unbounded
+ * fallback pairs `Da -> Db` in one system with a same-named `Db` in another
+ * and derives a coordination partner no view draws — the checker/view drift
+ * TPL-2032 / TPL-2577 name — while inflating the provenance count of a single
+ * authored edge on the way. Every placement the scope rule exempts (a
+ * `domain` -> `domain` edge, a service-anchored one) lives under one root by
+ * construction, so nothing that legitimately renders is lost, and reaching
+ * into another system still takes the anchored spelling the branch above
+ * already accepts.
  *
  * Whether an out-of-scope edge *draws* is a separate question, owned by
  * `edge-endpoint-not-at-scope`. A dependency the author declared is a fact
@@ -219,10 +250,20 @@ function endpointNodes(
   endpoint: string,
 ): readonly DeclaredNodePath[] {
   const resolution = resolveEdgeEndpoint(index, container, edgeEndpointRef(endpoint));
-  return resolution.inScope.length > 0 ? resolution.inScope : resolution.matches;
+  if (resolution.inScope.length > 0) return resolution.inScope;
+  const root = index.pathOf(container)[0];
+  return resolution.matches.filter((m) => m.path[0] === root);
 }
+/**
+ * A team id may contain spaces, dots and most punctuation (`team "Team A"`
+ * parses), so no printable separator is safe to join on: `"Team" + sep + "A B"`
+ * and `"Team A" + sep + "B"` would collide, and the second pair's edges would
+ * be appended to the first pair's row while the pair itself vanished. JSON is
+ * a total encoding, which is what a composite key needs — the same reason
+ * `nodePathKey` exists for paths.
+ */
 function dependencyKey(fromTeam: string, toTeam: string, kind: EdgeKind): string {
-  return `${fromTeam} ${toTeam} ${kind}`;
+  return JSON.stringify([fromTeam, toTeam, kind]);
 }
 
 /**
@@ -249,7 +290,7 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
     (tree.ancestors.get(a)?.includes(b) ?? false) || (tree.ancestors.get(b)?.includes(a) ?? false);
 
   const noteUnowned = (match: DeclaredNodePath, edge: KrsEdge): void => {
-    if (NOT_OWNABLE_BY_SPEC.has(match.kind)) return;
+    if (!couldBeOwned(match.path, endpointIndex)) return;
     const key = nodePathKey(match.path);
     const entry = unowned.get(key);
     const via = { from: edge.from, to: edge.to, kind: edge.kind };
@@ -272,18 +313,17 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
     for (const edge of container.edges) {
       const fromMatches = endpointNodes(endpointIndex, container, edge.from);
       const toMatches = endpointNodes(endpointIndex, container, edge.to);
-      // An endpoint naming no declared node is an unresolved *reference*, which
-      // `unresolved-edge-endpoint` already reports. It is not an ownership gap,
-      // so it must not land in `unowned`.
-      if (fromMatches.length === 0 || toMatches.length === 0) continue;
-
       const resolve = (matches: readonly DeclaredNodePath[]) =>
         matches.map((match) => ({ match, owners: resolveOwners(match.path, ownership) }));
       const fromResolved = resolve(fromMatches);
       const toResolved = resolve(toMatches);
 
       // Gaps are recorded per (endpoint, edge), not per pairing, so a co-owned
-      // counterpart on the other end cannot multiply one gap into several.
+      // counterpart on the other end cannot multiply one gap into several. This
+      // runs *before* the pairing bails below: an endpoint that named no
+      // declared node is `unresolved-edge-endpoint`'s business, but that says
+      // nothing about the endpoint on the other end, whose ownership gap is
+      // real either way.
       const noted = new Set<string>();
       for (const { match, owners } of [...fromResolved, ...toResolved]) {
         if (owners !== undefined) continue;
@@ -292,6 +332,11 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
         noted.add(key);
         noteUnowned(match, edge);
       }
+
+      // No pair can be derived when one side names nothing declared. An
+      // unresolved *reference* is not an ownership gap, so it adds no entry
+      // above either — `unresolved-edge-endpoint` is its surface.
+      if (fromMatches.length === 0 || toMatches.length === 0) continue;
 
       for (const { match: fromMatch, owners: fromOwners } of fromResolved) {
         if (fromOwners === undefined) continue;
