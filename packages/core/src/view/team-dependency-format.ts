@@ -11,13 +11,16 @@
 //     provenance that makes a cell checkable.
 //   - **CSV** is the grep / spreadsheet surface, so it is tidy data: one row
 //     per fact, discriminated by a `relation` column, with no sections a
-//     parser would have to know about.
+//     parser would have to know about. On a `structural-overlap` row the two
+//     team columns hold the inner and the enclosing owner — still "the pair
+//     that has to coordinate", which is what those columns mean everywhere.
 //
 // Both print the unowned remainder. A projection that showed only what
 // resolved would present a partial join as a complete one.
 // ---------------------------------------------------------------------------
 
 import type {
+  StructuralOverlap,
   TeamDependency,
   TeamDependencyEdge,
   TeamDependencyReport,
@@ -58,6 +61,14 @@ function unownedViaLabel(via: UnownedEndpoint["via"][number]): string {
  */
 function teamLabels(report: TeamDependencyReport): Map<string, string> {
   return new Map(report.teams.map((t) => [t.id, t.label ?? t.id]));
+}
+
+function teamNames(labels: ReadonlyMap<string, string>, ids: readonly string[]): string {
+  return ids.map((id) => labels.get(id) ?? id).join(", ");
+}
+
+function overlapVia(overlap: StructuralOverlap): string {
+  return `${overlap.path} inside ${overlap.insidePath}`;
 }
 
 export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): string {
@@ -134,6 +145,29 @@ export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): 
   }
 
   lines.push("");
+  lines.push("## Structural overlap");
+  lines.push("");
+  if (report.overlaps.length === 0) {
+    lines.push("_(no ownership crosses containment)_");
+  } else {
+    lines.push(
+      "> A node owned by one team living inside a node owned by another. No edge crosses here, so the dependencies above cannot see it — but the two teams still have to agree on the enclosing structure.",
+    );
+    lines.push("");
+    lines.push("| node | owned by | inside | owned by |");
+    lines.push("| --- | --- | --- | --- |");
+    for (const overlap of report.overlaps) {
+      const cells = [
+        overlap.path,
+        teamNames(labels, overlap.teams),
+        overlap.insidePath,
+        teamNames(labels, overlap.insideTeams),
+      ];
+      lines.push(`| ${cells.map(mdCell).join(" | ")} |`);
+    }
+  }
+
+  lines.push("");
   lines.push("> `~` marks an endpoint whose team was inherited from its nearest owned ancestor.");
   lines.push(
     "> A parenthesized mark is a nested pair: one team is the other's ancestor in the org tree.",
@@ -185,6 +219,24 @@ export function formatTeamDependenciesAsCsv(report: TeamDependencyReport): strin
         entry.kind,
         String(entry.via.length),
         entry.via.map(unownedViaLabel).join("|"),
+      ]
+        .map(csvEscape)
+        .join(","),
+    );
+  }
+  // Overlaps join the same table under their own `relation`, for the reason the
+  // unowned rows do: one pass, one file.
+  for (const overlap of report.overlaps) {
+    lines.push(
+      [
+        "structural-overlap",
+        overlap.teams.join("|"),
+        overlap.insideTeams.join("|"),
+        "",
+        overlap.path,
+        overlap.kind,
+        "",
+        overlapVia(overlap),
       ]
         .map(csvEscape)
         .join(","),
