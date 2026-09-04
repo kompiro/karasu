@@ -44,10 +44,11 @@ import { indexDeclaredInfra } from "../spec/infra-index.js";
 // when a node is reachable from more than one place during an inverse-Conway
 // handoff. The destination (@migration_target) wins, the source (@deprecated)
 // loses, and an unmarked entry sits in between. Shared by buildNodePathIndex
-// (any indexed candidate → nodePathIndex, parser.ts, since #2550) and
-// buildOwnerIndex below (team → ownerIndex) so both 1:1 indices resolve
-// duplicates the same way. Ties keep the first occurrence.
-export function migrationPriority(annotations: readonly string[]): number {
+// (any indexed candidate → nodePathIndex, since #2550) and buildOwnerIndex
+// (team → ownerIndex) so both 1:1 indices resolve duplicates the same way;
+// module-local since #2596 brought the last of those callers into this file.
+// Ties keep the first occurrence.
+function migrationPriority(annotations: readonly string[]): number {
   return annotations.includes("migration_target") ? 2 : annotations.includes("deprecated") ? 0 : 1;
 }
 

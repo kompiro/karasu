@@ -2158,10 +2158,7 @@ system Shop {
     });
 
     it("reports a plain cross-file duplicate that used to be silent", async () => {
-      await fs.writeFile(
-        "/p/index.krs",
-        `import "./b.krs"\nsystem A {\n  service Search {}\n}\n`,
-      );
+      await fs.writeFile("/p/index.krs", `import "./b.krs"\nsystem A {\n  service Search {}\n}\n`);
       await fs.writeFile("/p/b.krs", `system B {\n  service Search {}\n}\n`);
 
       const result = await resolver.resolve("/p/index.krs");
