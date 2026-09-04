@@ -1149,7 +1149,16 @@ reported as [`expected-property-value`](./diagnostics.md) on the comma itself. A
 line its `realizes` keyword is on, so it never continues across a line break in either direction —
 neither a trailing comma nor a comma opening the following line extends the list.
 
-> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
+Naming the same target twice is idempotent, not an error. One relation is declared, so the repeat is
+dropped wherever it sits — later in the same comma list or on a line of its own — the first spelling
+is the one kept, and `karasu fmt` emits the single line. The unit is placed in that target's
+container once; a second membership would reserve a second cell in the container's grid for a unit
+that is drawn only once. Two refs that *resolve* to one node (`realizes Api` alongside
+`realizes Shop.Api`) stay two entries in the model, because each carries its own range for
+`unresolved-realizes` / `realizes-target-ambiguous`, and the deploy view still places the unit in
+that one container once.
+
+> Related TPLs: [TPL-2552](../test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) — a reference list that can name one target twice reaches both a consumer that counts entries and a consumer that keys by identity; the two have to agree. [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — adding a second accepted form for one property fixes, in the same change, that both forms land on one AST, that the formatter round-trips the non-canonical form, and that element-level diagnostics carry element-level ranges.
 
 ### Realizing shared infra (the `store` kind)
 

@@ -1073,7 +1073,15 @@ deploy "production" {
 閉じるため、どちらの向きにも行をまたいで継続しない — 末尾のカンマも、次の行を開始するカンマも、
 リストを伸ばさない。
 
-> Related TPLs: [TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — 同じプロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復が意味を保つこと・要素単位の診断が個々の識別子を指すことを同じ変更で固定する。
+同じ対象を二度書いても冪等であり、エラーではない。宣言される関係は 1 つなので、繰り返しは
+書かれた場所によらず（同じカンマ列挙の後半でも、独立した行でも）落とされ、残るのは最初の綴りで、
+`karasu fmt` は 1 行だけを出力する。デプロイ単位がその対象のコンテナに置かれるのも 1 度だけで、
+2 つ目の所属はコンテナのグリッドに「1 度しか描かれない単位のための 2 つ目のセル」を確保して
+しまう。解決先が同じノードになる 2 つの参照（`realizes Api` と `realizes Shop.Api`）は
+モデル上 2 件のまま残る — それぞれが `unresolved-realizes` / `realizes-target-ambiguous` 用の
+range を持つため — が、deploy ビューはやはりその 1 つのコンテナに 1 度だけ置く。
+
+> Related TPLs: [TPL-2552](../test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) — 同じ対象を二度書ける参照リストは、件数を数える消費側と id で畳む消費側の両方に届くので、両者を一致させる。[TPL-2542](../test-perspectives/TPL-2542-sugar-form-shares-one-ast-and-element-ranges.md) — 同じプロパティに 2 つ目の受理形（sugar）を足したら、両形が同一 AST に落ちること・formatter の往復が意味を保つこと・要素単位の診断が個々の識別子を指すことを同じ変更で固定する。
 
 ### 共有 infra を realize する（`store` kind）
 
