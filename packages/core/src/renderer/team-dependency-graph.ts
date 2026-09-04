@@ -363,6 +363,15 @@ export function renderTeamDependencyGraph(
       labels.teamDependencyUnowned ?? DEFAULT_EMPTY_STATE_LABELS.teamDependencyUnowned;
     footer.push(template.replace("{count}", String(report.unowned.length)));
   }
+  // Structural overlap is a containment fact, so there is no line on this
+  // canvas that could carry it. Counting it in the footer is the honest
+  // minimum: the graph says what it is not showing instead of leaving the
+  // stronger inverse-Conway signal invisible here (#2637).
+  if (report.overlaps.length > 0) {
+    const template =
+      labels.teamDependencyOverlap ?? DEFAULT_EMPTY_STATE_LABELS.teamDependencyOverlap;
+    footer.push(template.replace("{count}", String(report.overlaps.length)));
+  }
 
   let minX = 0;
   let minY = 0;

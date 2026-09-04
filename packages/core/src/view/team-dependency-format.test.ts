@@ -159,3 +159,46 @@ organization O { team ta { label "Alpha | Beta" owns A } team tb { owns B } }
     expect(md).toContain("| S.A | service |");
   });
 });
+
+describe("structural overlap projections (#2637)", () => {
+  const OVERLAP = extractTeamDependencies(
+    Parser.parse(`
+system Shop {
+  service Checkout { domain Pricing {} }
+  service Payments {}
+}
+organization Shop {
+  team checkout { label "Checkout Team" owns Checkout }
+  team payments { label "Payments Team" owns Payments owns Pricing }
+}
+`).value,
+  );
+
+  it("gets its own markdown section, not a row among the dependencies", () => {
+    const md = formatTeamDependenciesAsMarkdown(OVERLAP);
+    expect(md).toContain("## Structural overlap");
+    expect(md).toContain(
+      "| Shop.Checkout.Pricing | Payments Team | Shop.Checkout | Checkout Team |",
+    );
+    // A containment fact must not be counted as an edge-induced dependency.
+    expect(md).toContain("_(no team dependencies derived)_");
+  });
+
+  it("says so in markdown when no ownership crosses containment", () => {
+    const flat = extractTeamDependencies(
+      Parser.parse(`system S { service A {} }\norganization O { team t { owns A } }`).value,
+    );
+    expect(formatTeamDependenciesAsMarkdown(flat)).toContain(
+      "_(no ownership crosses containment)_",
+    );
+  });
+
+  it("is a csv row discriminated by its own relation value", () => {
+    const rows = formatTeamDependenciesAsCsv(OVERLAP).trim().split("\n");
+    expect(
+      rows.some((r) =>
+        r.startsWith("structural-overlap,payments,checkout,,Shop.Checkout.Pricing,domain,,"),
+      ),
+    ).toBe(true);
+  });
+});

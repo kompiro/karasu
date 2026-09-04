@@ -132,3 +132,30 @@ describe("team-dependencies CLI", () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });
+
+describe("team-dependencies CLI — structural overlap (#2637)", () => {
+  it("reports ownership crossing containment beside the dependencies", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "karasu-team-deps-overlap-"));
+    try {
+      await writeFile(
+        join(dir, "index.krs"),
+        `system Shop {
+  service Checkout { domain Pricing {} }
+  service Payments {}
+}
+organization Shop {
+  team checkout { owns Checkout }
+  team payments { owns Payments owns Pricing }
+}
+`,
+        "utf-8",
+      );
+      await teamDependencies(join(dir, "index.krs"), {});
+      const out = stdout();
+      expect(out).toContain("## Structural overlap");
+      expect(out).toContain("| Shop.Checkout.Pricing | payments | Shop.Checkout | checkout |");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

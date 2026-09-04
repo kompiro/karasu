@@ -135,6 +135,11 @@ the source wins — follow the link.
   `async` and marked `nested` when one team is the other's ancestor. Read it
   with `karasu team-dependencies`. **Not** a synonym for *communication*, which
   is bound to node-to-node edges above.
+- **Structural overlap** — a *derived* fact about containment rather than about
+  calls: a node one team owns living inside a node another team owns. No edge
+  crosses that boundary, so a team dependency cannot express it, yet the two
+  teams still have to agree on the enclosing structure. Reported alongside team
+  dependencies, in its own channel.
 
 > Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
 

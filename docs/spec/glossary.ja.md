@@ -123,6 +123,11 @@ karasu のコアな語彙のクイックリファレンスです。karasu は
   `async` は畳まず、一方が他方の祖先なら `nested` と印を付ける。読み出しは
   `karasu team-dependencies`。上の **communication** とは別語 — communication は
   ノード間エッジに束縛されている。
+- **structural overlap（構造的重なり）** — 呼び出しではなく**囲み**についての
+  導出された事実。ある team が所有するノードが、別の team が所有するノードの
+  **内側**にある状態を指す。この境界をエッジは跨がないので team dependency では
+  表現できないが、両 team は囲みの構造について合意が要る。チーム依存と並べて、
+  別のチャネルとして報告される。
 
 > Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
 

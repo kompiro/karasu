@@ -215,8 +215,36 @@ organization O { team ta { owns A } team tb { owns B } }
         .find((l) => l.includes("端点")) ?? "";
     expect(footer).toContain("端点");
     // 11px CJK runs ~9.5px per glyph; the line must fit inside the canvas.
-    expect(width).toBeGreaterThan(footer.length * 9);
+    expect(width).toBeGreaterThan(footer.length * 9);  });
+});
+
+describe("renderTeamDependencyGraph — structural overlap (#2637)", () => {
+  it("counts ownership crossing containment in the footer", () => {
+    // No edge crosses a containment boundary, so there is no line on this
+    // canvas that could carry it; a silent graph would hide the stronger of
+    // the two signals.
+    const svg = graphOf(`
+system Shop {
+  service Checkout { domain Pricing {} }
+  service Payments {}
+}
+organization Shop {
+  team checkout { owns Checkout }
+  team payments { owns Payments owns Pricing }
+}
+`);
+    expect(svg).toContain("1 node(s) owned across a containment boundary");
   });
+
+  it("says nothing about overlap when none crosses", () => {
+    const flat = graphOf(`
+system S {
+  service A { domain Da { Da -> Db "call" } }
+  service B { domain Db {} }
+}
+organization O { team ta { owns A } team tb { owns B } }
+`);
+    expect(flat).not.toContain("owned across a containment boundary");  });
 });
 
 describe("renderTeamDependencyGraph — every curve stays on the canvas and off the cards", () => {

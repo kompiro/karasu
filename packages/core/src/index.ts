@@ -90,6 +90,7 @@ export {
   type TeamDependencyEdge,
   type TeamDependencyRelation,
   type TeamDependencyReport,
+  type StructuralOverlap,
   type UnownedEndpoint,
 } from "./view/team-dependency-extract.js";
 export {
