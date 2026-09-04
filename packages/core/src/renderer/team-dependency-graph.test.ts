@@ -215,7 +215,8 @@ organization O { team ta { owns A } team tb { owns B } }
         .find((l) => l.includes("端点")) ?? "";
     expect(footer).toContain("端点");
     // 11px CJK runs ~9.5px per glyph; the line must fit inside the canvas.
-    expect(width).toBeGreaterThan(footer.length * 9);  });
+    expect(width).toBeGreaterThan(footer.length * 9);
+  });
 });
 
 describe("renderTeamDependencyGraph — structural overlap (#2637)", () => {
@@ -244,7 +245,8 @@ system S {
 }
 organization O { team ta { owns A } team tb { owns B } }
 `);
-    expect(flat).not.toContain("owned across a containment boundary");  });
+    expect(flat).not.toContain("owned across a containment boundary");
+  });
 });
 
 describe("renderTeamDependencyGraph — every curve stays on the canvas and off the cards", () => {
