@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#2596](https://github.com/kompiro/karasu/issues/2596)
+  - 本 Design Doc の PR: [#2697](https://github.com/kompiro/karasu/pull/2697)
   - 関連 ADR: [ADR-2550](../adr/2550-order-independent-node-path-index.md)（ファイル内の順序非依存化。本件はその「スコープ」節が名指しした follow-up）, [ADR-110](../adr/110-permanent-link.md)（`nodePathIndex` の由来）, [ADR-2410](../adr/2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md)（import 結合診断の判定空間）, [ADR-2161](../adr/2161-boundary-membership-1n.md)（membership を merged で再構築した先例）
   - 関連 TPL: [TPL-2221](../test-perspectives/TPL-2221-merge-only-facts-decided-on-merged-model.md), [TPL-1583](../test-perspectives/TPL-1583-migration-priority-index-winner.md), [TPL-2032](../test-perspectives/TPL-2032-reference-existence-validated-on-merged-space.md), [TPL-1032](../test-perspectives/TPL-1032-derived-state-staleness.md), [TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md)
   - コード: `packages/core/src/parser/parser.ts`（`buildNodePathIndex`）, `packages/core/src/fs/import-resolver.ts`, `packages/core/src/parser/reference-validation.ts`
