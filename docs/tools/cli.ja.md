@@ -118,6 +118,7 @@ CI ステップの成否判定に使えます。すぐ使える GitHub Actions �
 | `serve [dir]` | ディレクトリの `.krs` をライブプレビュー付きで配信 |
 | `render <file>` | `.krs` を SVG または draw.io にレンダリング |
 | `matrix <file>` | ユースケース × リソースの CRUD マトリクスを出力（`md` / `csv` / `svg`） |
+| `team-dependencies <file>` | `owns` × 論理エッジからチーム間の依存を導出して出力（`md` / `csv`） |
 | `fmt [files...]` | `.krs` を in-place でフォーマット（CI 用 `--check`、パイプ用 `--stdin`） |
 | `tidy-style [files...]` | `.krs.style` を整える: 重複ルールをまとめ、プロパティを軸ごとにグループ化 |
 | `lint-style [files...]` | `.krs.style` のプロパティ値をスキーマに照らして lint |
