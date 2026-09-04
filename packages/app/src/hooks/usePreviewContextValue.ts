@@ -45,7 +45,14 @@ interface UsePreviewContextValueArgs {
   deploy: Pick<DeployViewBundle, "svg" | "diagnostics" | "warnings" | "deployBlocks">;
   org: Pick<
     OrgViewBundle,
-    "svg" | "diagnostics" | "warnings" | "orgTreeSvg" | "orgTreeExportSvg" | "toggleTeamExpand"
+    | "svg"
+    | "diagnostics"
+    | "warnings"
+    | "orgTreeSvg"
+    | "orgTreeExportSvg"
+    | "toggleTeamExpand"
+    | "teamDependencySvg"
+    | "hasTeamDependencyView"
   >;
 
   breadcrumbItems: BreadcrumbItems;
@@ -69,6 +76,9 @@ interface UsePreviewContextValueArgs {
 
   isOrgTreeViewOpen: boolean;
   toggleOrgTreeView: () => void;
+
+  isTeamDependenciesOpen: boolean;
+  toggleTeamDependencies: () => void;
 
   isEntityViewOpen: boolean;
   toggleEntityView: () => void;
@@ -119,6 +129,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     onJumpToEditor,
     isOrgTreeViewOpen,
     toggleOrgTreeView,
+    isTeamDependenciesOpen,
+    toggleTeamDependencies,
     isEntityViewOpen,
     toggleEntityView,
     entityViewSvg,
@@ -205,6 +217,10 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       orgTreeSvg: org.orgTreeSvg,
       onTeamToggle: org.toggleTeamExpand,
       orgTreeExportSvg: org.orgTreeExportSvg,
+      isTeamDependenciesOpen,
+      onTeamDependenciesToggle: toggleTeamDependencies,
+      teamDependencySvg: org.teamDependencySvg,
+      hasTeamDependencyView: org.hasTeamDependencyView,
       isEntityViewOpen,
       onEntityViewToggle: toggleEntityView,
       entityViewSvg,
@@ -249,6 +265,10 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.expansionOverload,
       system.onCollapseAllToggle,
       org.orgTreeExportSvg,
+      org.teamDependencySvg,
+      org.hasTeamDependencyView,
+      isTeamDependenciesOpen,
+      toggleTeamDependencies,
       viewPath,
       breadcrumbItems,
       orgBreadcrumbItems,

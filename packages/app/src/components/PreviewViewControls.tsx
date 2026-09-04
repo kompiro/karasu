@@ -47,6 +47,9 @@ export function PreviewViewControls({
     onAllLayersToggle,
     isOrgTreeViewOpen,
     onOrgTreeViewToggle,
+    isTeamDependenciesOpen,
+    onTeamDependenciesToggle,
+    hasTeamDependencyView,
     isEntityViewOpen,
     onEntityViewToggle,
     hasEntityView,
@@ -150,6 +153,21 @@ export function PreviewViewControls({
           aria-label={t("preview.orgTree.ariaLabel")}
         >
           ⬡ {t("preview.orgTree.label")}
+        </Button>
+      )}
+      {/* The org tab's third mode (ADR-309 put modes here rather than on a new
+          tab). Offered only when the model declares an organization — with no
+          team there is nothing to derive, and an enabled control that draws an
+          empty canvas reads as a broken feature (ADR-766's stance on empty
+          views). */}
+      {activeView === "org" && hasTeamDependencyView && (
+        <Button
+          variant="actionable"
+          aria-pressed={isTeamDependenciesOpen}
+          onClick={onTeamDependenciesToggle}
+          aria-label={t("preview.teamDependencies.ariaLabel")}
+        >
+          ⇄ {t("preview.teamDependencies.label")}
         </Button>
       )}
       {activeView === "system" && hasEntityView && (

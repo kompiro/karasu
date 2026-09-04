@@ -173,6 +173,14 @@ export interface PreviewContextValue {
   /** Fully-expanded org tree SVG for export */
   orgTreeExportSvg?: string;
 
+  /** Org tab third mode (#2636): the derived team-dependency graph. */
+  isTeamDependenciesOpen: boolean;
+  onTeamDependenciesToggle: () => void;
+  /** Rendered SVG for the derived team dependencies. */
+  teamDependencySvg?: string;
+  /** Whether the model declares an organization at all (gates the toggle). */
+  hasTeamDependencyView: boolean;
+
   /** Entity sub-mode: show the drilled domain's entity view (mirrors Org Tree View). */
   isEntityViewOpen: boolean;
   onEntityViewToggle: () => void;

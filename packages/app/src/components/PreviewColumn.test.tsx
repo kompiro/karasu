@@ -100,6 +100,9 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
     previewFocused: false,
     onPreviewFocusToggle: vi.fn<() => void>(),
     isOrgTreeViewOpen: false,
+    isTeamDependenciesOpen: false,
+    onTeamDependenciesToggle: noop,
+    hasTeamDependencyView: false,
     onOrgTreeViewToggle: vi.fn<() => void>(),
     isEntityViewOpen: false,
     onEntityViewToggle: vi.fn<() => void>(),
@@ -1024,6 +1027,67 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
   });
 });
 
+describe("PreviewColumn — org tab team-dependency mode (#2636)", () => {
+  const TEAM_DEP_SVG = '<svg data-view="team-dependencies"><g data-team-node="ec"/></svg>';
+
+  function orgProps(overrides: Partial<PreviewContextValue> = {}): PreviewContextValue {
+    return makeProps({
+      activeView: "org",
+      orgTreeSvg: '<svg data-view="org-tree"></svg>',
+      teamDependencySvg: TEAM_DEP_SVG,
+      hasTeamDependencyView: true,
+      ...overrides,
+    });
+  }
+
+  it("offers the mode as a toolbar toggle beside Tree View", () => {
+    renderPreview(orgProps());
+    expect(screen.getByRole("button", { name: "Toggle derived team dependencies" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Toggle org tree view" })).toBeTruthy();
+  });
+
+  it("does not offer the mode when the model declares no organization", () => {
+    // ADR-766's stance on empty views: a control that can only draw a blank
+    // canvas reads as a broken feature rather than as an empty model.
+    renderPreview(orgProps({ hasTeamDependencyView: false }));
+    expect(screen.queryByRole("button", { name: "Toggle derived team dependencies" })).toBeNull();
+  });
+
+  it("draws the derived graph when the mode is on", () => {
+    const { container } = renderPreview(orgProps({ isTeamDependenciesOpen: true }));
+    expect(container.querySelector(".preview-pane--team-dependencies")).toBeTruthy();
+    expect(container.querySelector('[data-team-node="ec"]')).toBeTruthy();
+  });
+
+  it("leaves the grid mode drawn when the toggle is off", () => {
+    const { container } = renderPreview(orgProps());
+    expect(container.querySelector(".preview-pane--team-dependencies")).toBeNull();
+    expect(container.querySelector(".preview-pane--org-tree")).toBeNull();
+  });
+
+  it("keeps Tree View winning when both flags are somehow set", () => {
+    // The two are mutually exclusive at their owner (AppShell); this pins the
+    // consumer's behaviour so a future writer that breaks the invariant gets a
+    // defined view rather than two panes.
+    const { container } = renderPreview(
+      orgProps({ isOrgTreeViewOpen: true, isTeamDependenciesOpen: true }),
+    );
+    expect(container.querySelector(".preview-pane--org-tree")).toBeTruthy();
+    expect(container.querySelector(".preview-pane--team-dependencies")).toBeNull();
+  });
+
+  it("exports the derived graph while the mode is on", async () => {
+    const onExportSvg = vi.fn<(svg: string, filename: string) => void>();
+    const user = userEvent.setup();
+    renderPreview(orgProps({ isTeamDependenciesOpen: true, onExportSvg }));
+    await user.click(screen.getByRole("button", { name: "Export SVG" }));
+    expect(onExportSvg).toHaveBeenCalledWith(
+      TEAM_DEP_SVG,
+      expect.stringContaining("-team-dependencies.svg"),
+    );
+  });
+});
+
 // Fence for #2317: the toolbar mixed t()-driven and hardcoded-English labels,
 // so the `ja` locale rendered a half-translated row. Rather than asserting each
 // Japanese string (which would break on any wording change), assert the
@@ -1038,6 +1102,8 @@ describe("PreviewColumn — toolbar carries no English hardcodes under locale=ja
   const EN_TOOLBAR_STRINGS = [
     "Tree View",
     "Toggle org tree view",
+    "Dependencies",
+    "Toggle derived team dependencies",
     "Entities",
     "Toggle entity view",
     "Show All Layers",
