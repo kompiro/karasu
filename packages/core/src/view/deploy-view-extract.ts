@@ -111,7 +111,14 @@ export function extractDeployView(
           };
           groupedByRealizes.set(key, group);
         }
-        group.units.push(unit);
+        // One unit joins one container once (#2552). The parser already drops
+        // a target spelled identically twice, but the key here is the node a
+        // ref RESOLVES to, so two refs it cannot collapse — `realizes Api` and
+        // `realizes Shop.Api`, each carrying its own range for
+        // `unresolved-realizes` / `realizes-target-ambiguous` — still arrive
+        // at one container. Membership is idempotent, the way
+        // `deriveDeliversEdges` keeps one `service -> client` edge per pair.
+        if (!group.units.includes(unit)) group.units.push(unit);
       }
     } else {
       unclassifiedUnits.push(unit);

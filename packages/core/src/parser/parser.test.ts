@@ -733,6 +733,64 @@ deploy Production {
     });
   });
 
+  // #2552 — naming one target twice declares one relation. The two spellings
+  // have to stay indistinguishable here too, so every case runs both.
+  describe("repeated realizes target (#2552)", () => {
+    const parseUnit = (lines: string) =>
+      Parser.parse(`
+deploy Production {
+  oci monolith {
+${lines}
+  }
+}
+      `);
+
+    it("records a target repeated on separate lines once", () => {
+      const result = parseUnit("    realizes OrderService\n    realizes OrderService");
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+    });
+
+    it("records a target repeated within one comma list once", () => {
+      const result = parseUnit("    realizes OrderService, OrderService");
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual(["OrderService"]);
+    });
+
+    it("keeps the range of the first spelling", () => {
+      const result = parseUnit("    realizes OrderService\n    realizes OrderService");
+      const targets = result.value.deploys[0].nodes[0].properties.realizes;
+      expect(targets).toHaveLength(1);
+      // Line 4 of the source above: the first of the two `realizes` lines.
+      expect(targets![0].loc.start.line).toBe(4);
+    });
+
+    it("drops only the repeat, keeping distinct targets in document order", () => {
+      const result = parseUnit(
+        "    realizes OrderService, InventoryService\n    realizes OrderService\n    realizes Billing",
+      );
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual([
+        "OrderService",
+        "InventoryService",
+        "Billing",
+      ]);
+    });
+
+    it("holds a qualified ref distinct from the bare one it may resolve to", () => {
+      // Identity is the path as written: these are two refs the parser cannot
+      // collapse, each needing its own range for `unresolved-realizes` /
+      // `realizes-target-ambiguous`. Collapsing them to one container is the
+      // deploy view's job (deploy-view-extract.ts).
+      const result = parseUnit("    realizes OrderService\n    realizes EC.OrderService");
+      expect(result.diagnostics).toHaveLength(0);
+      expect(realizeIds(result.value.deploys[0].nodes[0])).toEqual([
+        "OrderService",
+        "EC.OrderService",
+      ]);
+    });
+  });
+
   it("parses a complete file with imports, system, and deploy", () => {
     const result = Parser.parse(`
 @import "default.krs.style"

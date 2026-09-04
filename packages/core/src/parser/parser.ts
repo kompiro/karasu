@@ -1,7 +1,7 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { stitchKebabTail, type TokenCursor } from "./kebab-name.js";
-import { readNodeIdPathTail, nodePathKey } from "./node-path.js";
+import { readNodeIdPathTail, nodePathKey, nodePathIdentityKey } from "./node-path.js";
 import type {
   KrsFile,
   KrsNode,
@@ -2122,10 +2122,24 @@ export class Parser {
             loc: this.range(first.loc, stop.end ?? stop.loc),
           });
         } else {
-          (properties.realizes ??= []).push({
-            path: tail.segments,
-            loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
-          });
+          // Naming the same target twice declares one relation, not two
+          // (#2552). The repeat is dropped wherever it sits — later on this
+          // line or on a line of its own — the way `facets` has always
+          // treated a repeated id, and the entry that survives is the first,
+          // so the recorded range points at the spelling the author wrote
+          // first. Recording both instead makes consumers that count entries
+          // disagree with consumers that key by identity: the deploy layout
+          // reserved a grid cell per entry while `layoutNodes` coalesced the
+          // two placements, leaving a container sized for a unit that is
+          // never drawn.
+          const targets = (properties.realizes ??= []);
+          const identity = nodePathIdentityKey(tail.segments);
+          if (!targets.some((t) => nodePathIdentityKey(t.path) === identity)) {
+            targets.push({
+              path: tail.segments,
+              loc: this.range(first.loc, tail.end.end ?? tail.end.loc),
+            });
+          }
         }
         // Without a comma the list is done; with one, another target is due.
         // A malformed target takes the same exit as a good one, so the
