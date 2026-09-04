@@ -1,4 +1,5 @@
-import { Parser } from "../parser/parser.js";
+import { Parser, ANNOTATION_PARAM_KEYS } from "../parser/parser.js";
+import type { AnnotationParamKind } from "../parser/parser.js";
 import { Lexer } from "../lexer/lexer.js";
 import { TokenType } from "../types/tokens.js";
 import type { Token } from "../types/tokens.js";
@@ -250,7 +251,7 @@ class Printer {
         : quoteId(node.id);
     const decl: string[] = [keyword, idText];
     if (node.tags.length > 0) decl.push(`[${node.tags.join(", ")}]`);
-    for (const ann of node.annotations) decl.push(`@${ann}`);
+    decl.push(...renderAnnotations(node.annotations, node.annotationParams));
 
     const propLines = this.renderProperties(node, indent + "  ");
     const hasProps = propLines.length > 0;
@@ -533,7 +534,12 @@ class Printer {
   private renderTeam(team: TeamNode, depth: number): string[] {
     const indent = "  ".repeat(depth);
     const trail = this.extractTrailing(team.loc.start.line);
-    const lines: string[] = [`${indent}team ${quoteId(team.id)} {${trail}`];
+    const decl = [
+      "team",
+      quoteId(team.id),
+      ...renderAnnotations(team.annotations, team.annotationParams),
+    ];
+    const lines: string[] = [`${indent}${decl.join(" ")} {${trail}`];
 
     if (team.label !== undefined) lines.push(`${indent}  label ${quoteString(team.label)}`);
     if (team.properties.description !== undefined) {
@@ -652,6 +658,42 @@ class Printer {
     }
     return `ref ${renderLegendRefTarget(entry.target)} ${quoteString(entry.label)}`;
   }
+}
+
+/**
+ * Emit an annotation list, parameters included.
+ *
+ * Shared by `renderNode` and `renderTeam` because both hosts carry
+ * `annotationParams` and both lost them before #2571: the node axis dropped
+ * the parameters, the team axis dropped the annotation whole. That is the
+ * "parsed, then silently discarded" break TPL-1101 / ADR-2076 name.
+ *
+ * A parameter value reaches the AST as a bare string, so the author's choice
+ * of quoting is not recoverable and one canonical spelling has to be picked
+ * per value kind (see `AnnotationParamKind`). Key order follows the parse
+ * order `annotationParams` holds, so the order the author wrote survives.
+ */
+function renderAnnotations(
+  annotations: string[],
+  annotationParams: Record<string, Record<string, string>> | undefined,
+): string[] {
+  return annotations.map((name) => {
+    const entries = Object.entries(annotationParams?.[name] ?? {});
+    if (entries.length === 0) return `@${name}`;
+    const params = entries.map(
+      ([key, value]) => `${key}: ${renderAnnotationParam(name, key, value)}`,
+    );
+    return `@${name}(${params.join(", ")})`;
+  });
+}
+
+/** Quote one annotation parameter value by the kind the parser recorded for it. */
+function renderAnnotationParam(annotation: string, key: string, value: string): string {
+  const kinds: Record<string, Record<string, AnnotationParamKind>> = ANNOTATION_PARAM_KEYS;
+  // Only recognized keys reach the AST (the parser warns on and drops the
+  // rest), so the lookup hits. The `string` fallback keeps a value that
+  // somehow arrived unrecognized parseable rather than emitting it bare.
+  return kinds[annotation]?.[key] === "ref" ? quoteId(value) : quoteString(value);
 }
 
 function renderLegendRefTarget(target: LegendRefTarget): string {

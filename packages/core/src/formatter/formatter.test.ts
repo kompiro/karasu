@@ -232,6 +232,25 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
+  // The parameters these carry used to be dropped here, and on `team` the
+  // annotation was dropped whole (#2571). Coverage across every recognized
+  // parameter key and both hosts lives in
+  // `annotation-params-round-trip.test.ts`; these two keep the basic contract
+  // visible in the section that states it.
+  it("formats an annotation with a parameter", () => {
+    const src = `service A @deprecated(until: "2026-Q3") {}`;
+    expect(fmt(src)).toBe(`service A @deprecated(until: "2026-Q3") {}`);
+    expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
+  });
+
+  it("formats an annotation on a team", () => {
+    const src = `organization Org {\n  team Backend @migration_target(from: Legacy) {\n    owns ECommerce\n  }\n}`;
+    expect(fmt(src)).toContain(`  team Backend @migration_target(from: Legacy) {`);
+    expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
+  });
+
   // ── Edges ────────────────────────────────────────────────────────────────
 
   it("formats sync edge", () => {

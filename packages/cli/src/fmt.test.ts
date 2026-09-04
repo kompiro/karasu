@@ -142,6 +142,35 @@ describe("fmt() with explicit files", () => {
     expect(result).toContain("database DB {");
     expect(result).toContain("queue Q {");
   });
+
+  // #2571: the same silent-deletion class one level down. The annotation
+  // survived, everything inside its parentheses did not. It matters on this
+  // path in particular because the reverse pipeline ends with `karasu fmt`,
+  // so a run that recorded `@draft(confidence: …)` at a seam lost it on its
+  // own last step. Per-key coverage lives in
+  // packages/core/src/formatter/annotation-params-round-trip.test.ts.
+  it("preserves annotation parameters when writing back (#2571)", async () => {
+    const src = [
+      `system S {`,
+      `  service A @draft(confidence: "low") { label "A" }`,
+      `  service B @deprecated(until: "2026-12-31") { label "B" }`,
+      `}`,
+      ``,
+      `organization Acme {`,
+      `  team Platform @migration_target(from: Legacy) { owns A }`,
+      `}`,
+      ``,
+    ].join("\n");
+    const file = await writeKrs("params.krs", src);
+    captureStdout();
+
+    await fmt([file], {});
+
+    const result = readFileSync(file, "utf8");
+    expect(result).toContain(`@draft(confidence: "low")`);
+    expect(result).toContain(`@deprecated(until: "2026-12-31")`);
+    expect(result).toContain(`team Platform @migration_target(from: Legacy) {`);
+  });
 });
 
 // ── fmt() — no files, default discovery ──────────────────────────────────────

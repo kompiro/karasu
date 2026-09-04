@@ -128,15 +128,34 @@ export const LOGICAL_KEYWORDS = new Set<string>([
 
 // Infra block kinds that can appear as system-level children
 
-// Recognized parameter keys per builtin lifecycle annotation (#1568). A param
-// on any other annotation, or with another key, is dropped with an
-// `annotation-param-unsupported` warning. Custom annotations stay param-less.
-const ANNOTATION_PARAM_KEYS: Record<string, ReadonlySet<string>> = {
-  deprecated: new Set(["until"]),
-  experimental: new Set(["until"]),
-  migration_target: new Set(["from"]),
-  draft: new Set(["confidence"]),
-};
+/**
+ * How a recognized parameter value is spelled, which decides how the formatter
+ * quotes it on the way back out (#2571).
+ *
+ * - `"string"`: an opaque, display-only value (`until` / `confidence`). Kept
+ *   verbatim per ADR-1568 / ADR-1995, so it emits quoted like any string value.
+ * - `"ref"`: a node reference (`from`). It emits through `quoteId`, the rule
+ *   every other reference in the language follows.
+ */
+export type AnnotationParamKind = "string" | "ref";
+
+/**
+ * Recognized parameter keys per builtin lifecycle annotation (#1568). A param
+ * on any other annotation, or with another key, is dropped with an
+ * `annotation-param-unsupported` warning. Custom annotations stay param-less.
+ *
+ * Exported for the same reason as `DEPLOY_KEYWORDS`: the formatter has to emit
+ * these params back (#2571) and needs each value's kind to quote it. A
+ * hand-copied table there would silently stop matching whichever key was added
+ * last (TPL-1720), and the formatter dropping a param is exactly the
+ * round-trip break TPL-1101 forbids.
+ */
+export const ANNOTATION_PARAM_KEYS = {
+  deprecated: { until: "string" },
+  experimental: { until: "string" },
+  migration_target: { from: "ref" },
+  draft: { confidence: "string" },
+} as const satisfies Record<string, Record<string, AnnotationParamKind>>;
 
 // Migration-coexistence priority (`migrationPriority`) lives in
 // reference-validation.ts since #2548 moved buildOwnerIndex there; it is
@@ -1772,8 +1791,10 @@ export class Parser {
             valueType === TokenType.StringLiteral || valueType === TokenType.Identifier
               ? this.advance().value
               : "";
-          const allowed = ANNOTATION_PARAM_KEYS[name];
-          if (allowed?.has(key)) {
+          const allowed: Record<string, AnnotationParamKind> | undefined = (
+            ANNOTATION_PARAM_KEYS as Record<string, Record<string, AnnotationParamKind>>
+          )[name];
+          if (allowed !== undefined && Object.hasOwn(allowed, key)) {
             (params[name] ??= {})[key] = value;
           } else {
             // Accepted-vocabulary rule (TPL-1503): a param with no
