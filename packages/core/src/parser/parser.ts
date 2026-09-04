@@ -157,6 +157,27 @@ export const ANNOTATION_PARAM_KEYS = {
   draft: { confidence: "string" },
 } as const satisfies Record<string, Record<string, AnnotationParamKind>>;
 
+/**
+ * The kind recorded for one annotation parameter, or `undefined` when the
+ * parser does not recognize the pair.
+ *
+ * The single reader of `ANNOTATION_PARAM_KEYS`. The parser asks it whether a
+ * key has an effect and the formatter asks it how to quote the value; letting
+ * each index the table itself would put the lookup rule in two places, which
+ * is the drift the table is exported to avoid. `Object.hasOwn` keeps a
+ * prototype-named annotation (`__proto__`, `constructor`) from resolving
+ * through `Object.prototype` and reporting inherited members as recognized.
+ */
+export function annotationParamKind(
+  annotation: string,
+  key: string,
+): AnnotationParamKind | undefined {
+  const table: Record<string, Record<string, AnnotationParamKind>> = ANNOTATION_PARAM_KEYS;
+  if (!Object.hasOwn(table, annotation)) return undefined;
+  const keys = table[annotation];
+  return Object.hasOwn(keys, key) ? keys[key] : undefined;
+}
+
 // Migration-coexistence priority (`migrationPriority`) lives in
 // reference-validation.ts since #2548 moved buildOwnerIndex there; it is
 // imported below because buildNodePathIndex resolves duplicates by the same
@@ -1787,15 +1808,17 @@ export class Parser {
           // Value may be a quoted string (`until: "2026-Q3"`) or a bare
           // identifier referencing a node (`from: LegacyMonolith`).
           const valueType = this.peek().type;
-          const value =
-            valueType === TokenType.StringLiteral || valueType === TokenType.Identifier
-              ? this.advance().value
-              : "";
-          const allowed: Record<string, AnnotationParamKind> | undefined = (
-            ANNOTATION_PARAM_KEYS as Record<string, Record<string, AnnotationParamKind>>
-          )[name];
-          if (allowed !== undefined && Object.hasOwn(allowed, key)) {
-            (params[name] ??= {})[key] = value;
+          // A value the lexer produced as anything else (`until: 2026`, where
+          // `2026` is a Number) is unreadable here. Record nothing for it: the
+          // formatter emits what this map holds, so storing the `""` fallback
+          // would make `fmt` write a value the author never typed into their
+          // own file (#2571 review). Leaving the key out reproduces the bare
+          // `@deprecated` that a reader already gets today.
+          const readable =
+            valueType === TokenType.StringLiteral || valueType === TokenType.Identifier;
+          const value = readable ? this.advance().value : "";
+          if (annotationParamKind(name, key) !== undefined) {
+            if (readable) (params[name] ??= {})[key] = value;
           } else {
             // Accepted-vocabulary rule (TPL-1503): a param with no
             // effect is warned, not silently kept. Only builtin keys have an

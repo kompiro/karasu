@@ -1,5 +1,4 @@
-import { Parser, ANNOTATION_PARAM_KEYS } from "../parser/parser.js";
-import type { AnnotationParamKind } from "../parser/parser.js";
+import { Parser, annotationParamKind } from "../parser/parser.js";
 import { Lexer } from "../lexer/lexer.js";
 import { TokenType } from "../types/tokens.js";
 import type { Token } from "../types/tokens.js";
@@ -677,6 +676,12 @@ function renderAnnotations(
   annotations: string[],
   annotationParams: Record<string, Record<string, string>> | undefined,
 ): string[] {
+  // `annotationParams` is keyed by annotation name, so a name written twice
+  // shares one entry and the AST cannot say which occurrence held it. Both
+  // occurrences therefore print it. That widens `@deprecated
+  // @deprecated(until: "x")` to two parameterized copies, which is the only
+  // reading that keeps the AST intact: emitting the second one bare would
+  // delete the parameter, the very break this function exists to fix.
   return annotations.map((name) => {
     const entries = Object.entries(annotationParams?.[name] ?? {});
     if (entries.length === 0) return `@${name}`;
@@ -689,11 +694,10 @@ function renderAnnotations(
 
 /** Quote one annotation parameter value by the kind the parser recorded for it. */
 function renderAnnotationParam(annotation: string, key: string, value: string): string {
-  const kinds: Record<string, Record<string, AnnotationParamKind>> = ANNOTATION_PARAM_KEYS;
   // Only recognized keys reach the AST (the parser warns on and drops the
   // rest), so the lookup hits. The `string` fallback keeps a value that
   // somehow arrived unrecognized parseable rather than emitting it bare.
-  return kinds[annotation]?.[key] === "ref" ? quoteId(value) : quoteString(value);
+  return annotationParamKind(annotation, key) === "ref" ? quoteId(value) : quoteString(value);
 }
 
 function renderLegendRefTarget(target: LegendRefTarget): string {

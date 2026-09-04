@@ -16,7 +16,8 @@
 //   1. every (annotation, key) pair in `ANNOTATION_PARAM_KEYS` has a fixture
 //   2. every AST interface declaring `annotationParams` has a host
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { format } from "./formatter.js";
@@ -24,6 +25,13 @@ import { Parser, ANNOTATION_PARAM_KEYS } from "../parser/parser.js";
 
 function stripLocations<T>(node: T): T {
   if (Array.isArray(node)) return node.map((item) => stripLocations(item)) as unknown as T;
+  // Map / Set survive as themselves. Falling through to the object branch
+  // would turn both into `{}`, so two different maps would compare equal and
+  // the round-trip assertion would pass on a value it never looked at.
+  if (node instanceof Set) return new Set([...node].map((v) => stripLocations(v))) as unknown as T;
+  if (node instanceof Map) {
+    return new Map([...node.entries()].map(([k, v]) => [k, stripLocations(v)])) as unknown as T;
+  }
   if (node !== null && typeof node === "object") {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
@@ -139,16 +147,55 @@ describe("annotation parameters survive fmt (#2571)", () => {
   });
 
   it("covers every AST type that carries annotationParams", () => {
-    const source = readFileSync(fileURLToPath(new URL("../types/ast.ts", import.meta.url)), "utf8");
+    const typesDir = fileURLToPath(new URL("../types/", import.meta.url));
     const declaring = new Set<string>();
-    let current: string | undefined;
-    for (const line of source.split("\n")) {
-      const declaration = /^export interface (\w+)/.exec(line);
-      if (declaration) current = declaration[1];
-      if (/^\s*annotationParams\?:/.test(line) && current !== undefined) declaring.add(current);
+
+    // Every module under `types/`, not just `ast.ts`: a new AST module would
+    // otherwise be invisible to this guard. `type X = {` counts alongside
+    // `interface X`, and a declaration closes at its own `}` so the next one
+    // is never credited with a field it does not have.
+    for (const file of readdirSync(typesDir).filter((f) => f.endsWith(".ts"))) {
+      let current: string | undefined;
+      for (const line of readFileSync(join(typesDir, file), "utf8").split("\n")) {
+        const declaration = /^(?:export )?(?:interface|type) (\w+)/.exec(line);
+        if (declaration) current = declaration[1];
+        else if (/^\}/.test(line)) current = undefined;
+        if (/^\s*annotationParams\??:/.test(line) && current !== undefined) declaring.add(current);
+      }
     }
 
     expect([...declaring].sort()).toEqual([...new Set(Object.values(HOST_AST_TYPES))].sort());
+  });
+
+  // The type-level guard above cannot see a *renderer*. #2571 was two
+  // renderers drawing one property, and a third one spelling `@${ann}` by
+  // hand would leave every type-derived set unchanged while shipping the same
+  // regression. So assert the absence of the pattern, the way #2087 fenced
+  // raw string interpolation: annotations reach the output only through
+  // `renderAnnotations`.
+  it("emits annotations from exactly one place", () => {
+    const lines = readFileSync(
+      fileURLToPath(new URL("./formatter.ts", import.meta.url)),
+      "utf8",
+    ).split("\n");
+
+    // `renderAnnotations` draws a node's annotation list.
+    // `renderLegendRefTarget` draws a legend `ref @name` target, which is a
+    // different construct and carries no parameters. An `@` emit anywhere
+    // else is a renderer spelling annotations by hand, the shape #2571 was.
+    const spans = ["renderAnnotations(", "renderLegendRefTarget("].map((fn) => {
+      const start = lines.findIndex((l) => l.startsWith(`function ${fn}`));
+      expect(start, `${fn} not found`).toBeGreaterThan(-1);
+      const length = lines.slice(start).findIndex((l, i) => i > 0 && l.startsWith("}"));
+      return { start, end: start + length };
+    });
+
+    const outside = lines
+      .map((line, index) => ({ line: line.trim(), index }))
+      .filter(({ line }) => /`@\$\{/.test(line) && !line.startsWith("//") && !line.startsWith("*"))
+      .filter(({ index }) => !spans.some(({ start, end }) => index >= start && index <= end));
+
+    expect(outside).toEqual([]);
   });
 
   for (const [pair, fixture] of Object.entries(FIXTURES) as [ParamPairKey, ParamFixture][]) {
@@ -210,6 +257,29 @@ describe("annotation parameter values keep their meaning", () => {
     const parsed = Parser.parse(src);
     expect(collectParams(parsed.value)[0].draft.confidence).toBe('he said "maybe", then left\\');
     expectRoundTrip(src);
+  });
+
+  it("writes no value for a parameter the parser could not read", () => {
+    // `2026` lexes as a Number and `system` as a keyword; neither is a value
+    // the parameter reader takes. Such a key must not reach the AST holding
+    // the empty-string fallback, because the formatter prints what the AST
+    // holds and `fmt --write` would bake `until: ""` into a file that never
+    // said it. Nothing recorded means the annotation prints bare, which is
+    // what a reader of this file already gets.
+    for (const src of [`@deprecated(until: 2026)`, `@migration_target(from: system)`]) {
+      const name = src.slice(1, src.indexOf("("));
+      expect(fmtNode(src)).toContain(`service A @${name} {`);
+      expectRoundTrip(HOSTS.node(src));
+    }
+  });
+
+  it("keeps a repeated annotation's parameter on every occurrence", () => {
+    // Degenerate input: `annotationParams` has one slot per name, so the AST
+    // cannot say which occurrence held the parameter. Printing it on both is
+    // what keeps the AST intact; printing it on neither would delete it.
+    const src = `@deprecated @deprecated(until: "x")`;
+    expect(fmtNode(src)).toContain(`service A @deprecated(until: "x") @deprecated(until: "x") {`);
+    expectRoundTrip(HOSTS.node(src));
   });
 
   it("emits no empty parentheses for a bare annotation", () => {

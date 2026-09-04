@@ -190,8 +190,9 @@ service NewSvc @migration_target(from: LegacyMonolith)
 - **実行時評価はしない**: `until` は記録された **intent** であって期限ではない — karasu は現在日付と比較しない（「期限超過」診断は出さない）。`job.schedule`（保持するが simulate しない）や warn-don't-error の立場と整合。
 - **未対応パラメータは黙殺せず warn**: それ以外のアノテーションへのパラメータ、または未認識キーは `annotation-param-unsupported` 警告とともに破棄する（TPL-1503 — 受理する語彙は効果を持つか警告される）。独自アノテーションは当面パラメータ非対応。
 - パラメータはアノテーションの**名前リストを変えない**ため、`.krs.style` のアノテーションセレクタ（`@deprecated`）や継承には影響しない。
+- **値の種類ごとに正準形が 1 つ**: 引用符の有無は記録されないので、`karasu fmt` は値の種類に応じた形を選ぶ。`until` / `confidence` は opaque な表示値なので引用符つきで出力し、`from` はノード参照なので他の参照と同じく id が許すかぎり裸で出力する（`from: "legacy"` は `from: legacy` に整形される。`service "A"` と同じ正規化）。
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 未認識キー/アノテーションへの `@name(key: …)` は warn され、黙って受理されない。
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — 未認識キー/アノテーションへの `@name(key: …)` は warn され、黙って受理されない。[TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `fmt` はパラメータを落とさず round-trip させ（#2571 は全件落としていた）、著者が書いていない値を出力してはならない。
 
 ### `@draft` — 主張されているが未確認
 
@@ -384,7 +385,7 @@ organization Corp {
   team legacy @deprecated {
     owns Payment
   }
-  team payments @migration_target(from: "legacy") {
+  team payments @migration_target(from: legacy) {
     owns Payment
   }
 }

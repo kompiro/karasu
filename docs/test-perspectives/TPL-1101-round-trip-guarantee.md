@@ -131,6 +131,11 @@ fixture を renderer ごとに回すのが対処になる（下記「既知の�
 
 ## 派生元 spec
 
+- [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md) §「Annotation parameters」—
+  パラメータの正準形（`until` / `confidence` は引用符つき、`from` は参照として裸）と
+  「`fmt` は落とさず、著者が書いていない値も書かない」規定。同節末尾に本 TPL への
+  `> Related TPLs:` back-ref あり。規定が破られると #2571（パラメータが全件消える）が
+  再発する。
 - [`docs/spec/syntax.md`](../spec/syntax.md) §「Grouping the system view (`boundary`)」/
   「Scoped declaration」— スコープ内 `boundary` はノード内に持つ構文であり round-trip 対象
   （#2036 slice A で `fmt` が黙って落とした実例）。同節末尾に本 TPL への `> Related TPLs:` back-ref あり。

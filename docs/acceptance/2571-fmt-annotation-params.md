@@ -9,7 +9,8 @@ type: product
 - **Related TPLs**: [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md)（round-trip 保証。「AST 比較のヘルパがあっても fixture が通らない枝は守られない」節を本件で追加）
 - **対象ファイル**:
   - `packages/core/src/formatter/formatter.ts`（`renderAnnotations` と 2 つの呼び出し元）
-  - `packages/core/src/parser/parser.ts`（`ANNOTATION_PARAM_KEYS` を値種つきで export）
+  - `packages/core/src/parser/parser.ts`（`ANNOTATION_PARAM_KEYS` を値種つきで export、`annotationParamKind` が唯一の読み手）
+  - `docs/spec/tags-annotations.md` / `.ja.md`（正準形の規定と `team` 例の更新）
 
 > `karasu fmt` の契約は「整形するが何も変えない」だが、アノテーションのパラメータを無言で捨てていた。`@draft(confidence: "low")` は `@draft` になり、組織軸ではアノテーションが丸ごと消えていた（`renderTeam` がアノテーションを 1 つも出力していなかった）。parser は受理し compiler は消費するのに formatter だけが読まない、ADR-2076 と同じ「parse できるのに `fmt` が黙って消す」クラス。
 
@@ -51,6 +52,14 @@ type: product
 
   > ✅ Automated — 同上 › `keeps several annotations, parameterized or not, in the order written`
 
+- [x] AT-L: parser が読めなかった値（`until: 2026` / `from: system`）は AST に入らず、`fmt` が書いていない値を書き込まない
+
+  > ✅ Automated — 同上 › `writes no value for a parameter the parser could not read`
+
+- [x] AT-M: 同名アノテーションが 2 回書かれたとき、AST が保たれる（パラメータの取りこぼしが起きない）
+
+  > ✅ Automated — 同上 › `keeps a repeated annotation's parameter on every occurrence`
+
 ### AC-3: 網羅性ガードが空振りしない
 
 - [x] AT-I: 新しいパラメータキーを表に足すと、fixture が無いことで落ちる
@@ -60,6 +69,10 @@ type: product
 - [x] AT-J: `annotationParams` を宣言する AST 型が増えると、host が無いことで落ちる
 
   > ✅ Automated — 同上 › `covers every AST type that carries annotationParams`。負のテスト実施済み（`MemberNode` に付与して 1 件 fail、復帰を確認）
+
+- [x] AT-N: `renderAnnotations` の外でアノテーションを組み立てる renderer が増えると落ちる
+
+  > ✅ Automated — 同上 › `emits annotations from exactly one place`。負のテスト実施済み（3 つ目の renderer を足して 1 件 fail、復帰を確認）
 
 - [x] AT-K: 修正を部分 revert するとガードが落ちる
 

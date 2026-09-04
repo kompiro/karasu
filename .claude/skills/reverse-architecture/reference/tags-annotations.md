@@ -189,8 +189,9 @@ Recognized keys (built-ins only):
 - **No runtime evaluation**: `until` is recorded **intent**, not a deadline — karasu never compares it to the current date (no "overdue" diagnostic). Consistent with `job.schedule` (stored, not simulated) and the warn-don't-error stance.
 - **Unsupported parameters warn, not silently ignored**: a parameter on any other annotation, or with an unrecognized key, is dropped with an `annotation-param-unsupported` warning (TPL-1503 — accepted vocabulary must have an effect or be warned). Custom annotations are param-less for now.
 - The annotation **name list** is unchanged by parameters, so `.krs.style` annotation selectors (`@deprecated`) and annotation inheritance are unaffected.
+- **One canonical spelling per value kind**: quoting is not recorded, so `karasu fmt` picks the form the value kind calls for. `until` / `confidence` are opaque display values and print quoted; `from` is a node reference and prints like any other reference, bare when the id allows it (`from: "legacy"` reformats to `from: legacy`, the same normalization `service "A"` gets).
 
-> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted.
+> Related TPLs: [TPL-1503](../test-perspectives/TPL-1503-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted. [TPL-1101](../test-perspectives/TPL-1101-round-trip-guarantee.md) — `fmt` must round-trip a parameter rather than drop it (#2571 dropped every one) and must not print a value the author never wrote.
 
 ### `@draft` — asserted, not confirmed
 
@@ -387,7 +388,7 @@ organization Corp {
   team legacy @deprecated {
     owns Payment
   }
-  team payments @migration_target(from: "legacy") {
+  team payments @migration_target(from: legacy) {
     owns Payment
   }
 }
