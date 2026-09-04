@@ -5,6 +5,7 @@ paths:
   - "packages/cli/**/*.ts"
   - "packages/vscode/**/*.ts"
   - "packages/vscode/**/*.tsx"
+  - "packages/i18n/**/*.ts"
 ---
 
 # Changeset Rules
@@ -35,6 +36,11 @@ bump されず公開されない（実例: #1754 で 7 PR 分を遡って backfi
 - 内部リファクタ・テストのみ・コメント／docs のみ
 - 版管理対象外パッケージのみの変更（`@karasu-tools/app` / `lsp` / `e2e` /
   `vscode-e2e` — `.changeset/config.json` の `ignore`）
+
+> `@karasu-tools/i18n` も `ignore` だが、**judgement は「利用者から見えるか」で行う**。
+> ignore されたパッケージは bump もカスケードもしないので、そこでの挙動変更は
+> `karasu` / `karasu-vscode` を**手で名指し**しないと永久に公開されない。i18n の
+> 変更で changeset が要るのはこのため（#2535 で取りこぼしかけた）。
 - ADR / Design Doc のみ（`docs/**`）
 
 ## 書き方 — どのパッケージを名指すか
