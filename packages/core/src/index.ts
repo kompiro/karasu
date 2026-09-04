@@ -85,6 +85,18 @@ export {
 } from "./view/crud-matrix-format.js";
 export { renderMatrixAsSvg, type MatrixSvgOptions } from "./renderer/matrix-svg.js";
 export {
+  extractTeamDependencies,
+  type TeamDependency,
+  type TeamDependencyEdge,
+  type TeamDependencyRelation,
+  type TeamDependencyReport,
+  type UnownedEndpoint,
+} from "./view/team-dependency-extract.js";
+export {
+  formatTeamDependenciesAsMarkdown,
+  formatTeamDependenciesAsCsv,
+} from "./view/team-dependency-format.js";
+export {
   extractCoverage,
   type CoverageReport,
   type DomainCoverage,

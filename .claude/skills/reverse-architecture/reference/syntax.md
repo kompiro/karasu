@@ -1354,7 +1354,43 @@ organization TechCorp {
 - `owns` accepts `service` / `domain` / `client` and the infra blocks (`database` / `queue` / `storage`) at any depth; an infra **leaf** (`table` / `queue-item` / `bucket`) and a `capability` are not ownership units and are reported by `invalid-owns`.
 - Ownership is **rendered on the owned node's card** in the system view as a team chip (a person-group vector glyph, `data-meta-glyph="team"`), on the logical kinds only (`service` / `domain` / `client`) — an owned infra block draws no chip, because the rectangular chip does not fit a cylinder / cloud corner (the same constraint the deploy button carries). Its ownership still reads on the system view under *Group by: team*, whose frames resolve by id, and in the org view. The chip shows the team's declared `label` (falling back to its id) so a card and a *Group by: team* frame name the same team the same way; clicking it navigates to the org view by team **id**.
 
-> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。
+#### Ownership inheritance — the nearest owned ancestor
+
+A node with no `owns` of its own belongs to the team that owns its **nearest owned ancestor**. The walk stops at the first ancestor any team owns; a node with no owned ancestor belongs to no team at all.
+
+Inheritance is what makes ownership answerable at the granularity dependencies are actually recorded at. `owns` is normally written on services, while the edges that say who depends on whom are usually written between domains — so without the walk, almost every such edge would resolve to no team on either end.
+
+```krs
+system Shop {
+  service Checkout {
+    domain Cart {}          // no owns of its own -> checkout-team, inherited
+  }
+  service Payments {
+    domain Settlement {}    // owned directly below -> pci
+  }
+  service Platform {}       // no owned ancestor -> no team
+}
+
+organization Shop {
+  team "checkout-team" {
+    owns Checkout
+  }
+  team "payments-team" {
+    owns Payments
+
+    team pci {
+      owns Settlement
+    }
+  }
+}
+```
+
+The nearest declaration wins outright rather than being unioned with what encloses it — `owns` on a descendant is a more specific statement about that subtree. `Settlement` above therefore belongs to `pci` alone, not to `pci` and `payments-team` together. Co-ownership is the one case that yields several teams for one node, and it does so because several teams named that same node (see the `duplicate-owner-assignment` bullet above), not because of the walk.
+
+Inheritance governs **derived** readings of ownership, not the declared index. `ownerIndex` still records only the nodes `owns` names, and the team chip still marks only those cards. The reader that walks is the team-dependency derivation (`karasu team-dependencies`), which joins ownership against the logical edges; an endpoint that reaches no team through the walk is reported as unowned rather than dropped, so the derivation states how much of the model it covered. `user` endpoints are excluded from that count — an actor is not an ownership target.
+
+
+> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。[TPL-1386](../test-perspectives/TPL-1386-diagnostic-register-fact-vs-style.md) — 重複 `owns` は tolerated fact として **info** 診断（`duplicate-owner-assignment`）で surface し error にしない（ADR-1566）。[TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言し、その選択を固定するテストを持つ。
 
 ### member node
 

@@ -188,9 +188,11 @@ spike の `examples/en/multi-file-system` では 8 エッジ中 7 つが片端�
 
 ### 決定 4: 抽出は core、projection は md / csv / svg
 
-<!-- absent-path-next-line: planned by this design, not yet implemented -->
 `packages/core/src/view/team-dependency-extract.ts` に
-`extractTeamDependencies(systems, organizations, options)` を置く。
+`extractTeamDependencies(file)` を置く（**実装時に signature を変更した**: 引数は
+コンパイル済みの `systems` ではなくマージ済み `KrsFile`。compile 結果の `systems` は
+合成 `__unassigned__` を被せた描画用の形で、`owns` / `collectDeclaredNodePaths` が使う
+path key と 1 セグメントずれるため）。
 出力は `crud-matrix-format.ts` に倣った純関数で md / csv に、
 グラフ SVG は renderer 側に。`derivation-contracts.test.ts` の
 `DERIVATION_CONTRACTS` に行を追加する（新規 derivation の登録義務）。
@@ -240,14 +242,12 @@ async は意図的な疎結合であり、調整の必要度が sync と異な�
    `buildTeamOwnership(file): Map<string, string[]>` を追加（`buildOwnerIndex` の
    隣。既存 1:1 は変更しない）。co-owned ノードで全チームを保持することを
    単体テストで固定する。
-   <!-- absent-path-next-line: planned by this design, not yet implemented -->
-2. `packages/core/src/view/team-dependency-extract.ts` に
+   2. `packages/core/src/view/team-dependency-extract.ts` に
    `extractTeamDependencies` を新設。所有継承（決定 2）、nested 判定、
    sync/async 分離、未解決端点の収集（`user` 端点は除外）を含む。
 3. `view/derivation-contracts.test.ts` の `DERIVATION_CONTRACTS` に行を追加。
    `preserves` に edge の `kind`、`transforms` に集約結果を宣言する。
-   <!-- absent-path-next-line: planned by this design, not yet implemented -->
-4. `packages/core/src/view/team-dependency-format.ts` に md / csv フォーマッタ。
+   4. `packages/core/src/view/team-dependency-format.ts` に md / csv フォーマッタ。
 5. CLI サブコマンド追加（`packages/cli/src/`）。受け入れテストは
    `packages/cli` の vitest に書く（`packages/e2e` には置かない）。
 6. スライス B: renderer にグラフ描画、org タブのモードトグル追加。

@@ -1266,7 +1266,43 @@ organization TechCorp {
 - `owns` の対象になれるのは `service` / `domain` / `client` と infra ブロック（`database` / `queue` / `storage`。深さは問わない）。infra の **leaf**（`table` / `queue-item` / `bucket`）と `capability` は所有の単位ではなく、`invalid-owns` で報告される。
 - 所有関係はシステムビューの**所有されるノードのカード上**に team チップ（人型グループのベクターグリフ、`data-meta-glyph="team"`）として描画される。対象は論理 kind のみ（`service` / `domain` / `client`）— 所有された infra ブロックにチップは出ない（矩形のチップが円柱・雲の角に収まらないため。deploy ボタンと同じ制約）。その所有関係はシステムビューでは *Group by: team* のフレーム（id で解決する）に、また org view に現れる。チップの表示は team の `label`（無ければ id）で、*Group by: team* のフレームと同じ名乗りになる。クリック時の遷移先は team の **id** で解決する。
 
-> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。
+#### 所有の継承 — 直近の owned 祖先
+
+自身に `owns` を持たないノードは、**直近の owned 祖先**を所有する team に属する。遡りは最初に見つかった owned 祖先で止まり、owned 祖先がひとつも無いノードはどの team にも属さない。
+
+継承があって初めて、所有は依存が実際に記録される粒度で答えられるようになる。`owns` は通常 service に書かれる一方、誰が誰に依存するかを述べるエッジは domain 間に書かれることが多い。遡りが無ければ、そうしたエッジはほぼすべて両端とも team に解決しない。
+
+```krs
+system Shop {
+  service Checkout {
+    domain Cart {}          // 自身に owns なし -> checkout-team を継承
+  }
+  service Payments {
+    domain Settlement {}    // 直下で所有されている -> pci
+  }
+  service Platform {}       // owned 祖先なし -> team なし
+}
+
+organization Shop {
+  team "checkout-team" {
+    owns Checkout
+  }
+  team "payments-team" {
+    owns Payments
+
+    team pci {
+      owns Settlement
+    }
+  }
+}
+```
+
+直近の宣言は、囲む側と和集合を取るのではなく単独で勝つ — 子孫側の `owns` はその部分木についてのより具体的な言明だからである。したがって上の `Settlement` は `pci` だけに属し、`pci` と `payments-team` の両方には属さない。1 ノードが複数 team を返すのは共同所有の場合だけで、それは複数の team が同じノードを名指したからであり（上の `duplicate-owner-assignment` の項を参照）、遡りの結果ではない。
+
+継承が支配するのは所有の**派生的な**読み取りであって、宣言された index ではない。`ownerIndex` は依然として `owns` が名指したノードだけを記録し、team チップもそのカードにしか出ない。遡る読み手はチーム依存の導出（`karasu team-dependencies`）で、所有と論理エッジを join する。遡っても team に届かない端点は捨てずに unowned として報告されるので、導出はモデルのどこまでを覆ったかを自ら述べる。`user` 端点はその数え上げから除かれる — アクターは所有の対象ではない。
+
+
+> Related TPLs: [TPL-2157](../test-perspectives/TPL-2157-resolved-relation-rendered-for-every-kind.md) — 解決済みの `owns` を提示する側（カードのチップ・`NodeMetadata`・detail panel）の kind gate も、`owns` が許す全 kind を列挙する。[TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言し、その選択を固定するテストを持つ。
 
 ### member ノード
 
