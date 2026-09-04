@@ -141,8 +141,8 @@ primary と fallback の関係ではない。どちらがビューを担うか�
 
 - ソース A: `translate --from db` が `database` ブロック内に `table -> table` を吐く。
 - ソース B: renderer が `entity` 関連を `table` 対応越しに投影する。`.krs` は変わらない。
-- 印: **無タグ = 宣言 FK 由来**、`[inferred]` = soft FK 由来（既存意味の table 層への拡張）、
-  投影由来 = render 時付与の system-assigned tag。
+- 印: **無タグ = 確認済み**（宣言 FK 由来、または人が書いた）、`[inferred]` = soft FK 由来
+  （既存意味の table 層への拡張）、投影由来 = render 時付与の system-assigned tag。
 
 **メリット**
 
@@ -214,13 +214,25 @@ primary と fallback の関係ではない。どちらがビューを担うか�
 ADR-1870 決定 2 の entity 関連の方向規約と**同じ規則**である。よって union は
 **順序付きペア** `(from, to)` をキーにできる。
 
-**2. 印は 3 状態。**
+**2. 印は 3 状態。軸は「誰も確認していないか」であって「機械が書いたか」ではない。**
 
 | 状態 | 印 | 出どころ |
 | --- | --- | --- |
-| 宣言 FK 由来 | 無タグ | `translate --from db` が `.krs` に記録 |
-| soft FK 由来（列名規約） | `[inferred]` | 同上。既存 TPL-1944 の意味をそのまま table 層へ拡張 |
+| 確認済み | 無タグ | `translate --from db` が宣言 FK から `.krs` に記録した、**または人が書いた** |
+| soft FK 由来（列名規約） | `[inferred]` | `translate --from db`。既存 TPL-1944 の意味をそのまま table 層へ拡張 |
 | entity 関連からの投影 | `[projected]` | renderer が付与。`.krs` には現れない |
+
+**無タグを「宣言 FK 由来」の証拠にはしない。** `table` leaf のエッジは人が書けるので
+（「現状」節）、無タグの table エッジが `translate` の出力とは限らない。ここは既存の
+`[inferred]` とまったく同じ設計で、entity 関連でも無タグは「確定」を意味し、人が
+`[inferred]` を 1 個消すことが確定への昇格そのものだった（TPL-1944 / ADR-1870 決定 7）。
+著述由来と translate 由来を分ける marker は**足さない**。読み手が区別すべきなのは
+「誰かが確認したか」であって「どのツールが書いたか」ではなく、後者を印にすると
+`[inferred]` を手で消すキュレーションの意味が壊れる。
+
+Issue の受け入れ条件「FK-backed なエッジが entity 断定のみのエッジと視覚的に区別できる」は
+この 3 状態で満たされる。区別されるのは `.krs` に書かれた確認済みのエッジと render 時投影で、
+宣言 FK はその確認済み側への機械的な経路である。
 
 `[projected]` は `[implicit]` と同じ register（render 時付与の system-assigned tag）。
 `[implicit]` が domain → service の畳み**上げ**なのに対し、`[projected]` は entity → table の
@@ -230,10 +242,15 @@ TPL-1503（受理した語彙は効果を持つ）に従い既定スタイルを
 **3. 既定スタイルは色のみ。** 線種は `[sync]` / `[async]` が所有する（TPL-510）。
 `[projected]` は `[inferred]` と同系の muted 色を取り、`[sync]` / `[async]` の線種を保存する。
 
-**4. union 規則。**
+**4. union 規則。生き残ったエッジは「自分が持っていない属性だけを受け取る」。**
 
-- 同じ順序付きペアを両ソースが出したら **1 本**。FK 側を採り（`[projected]` を付けない）、
-  **ラベルは entity 関連から取る**（FK 側にラベルが無いときのみ。`.krs` に書かれたラベルが勝つ）。
+- 同じ順序付きペアを両ソースが出したら **1 本**。`.krs` 側を採り（`[projected]` を付けない）、
+  **ラベルは entity 関連から取る**（`.krs` 側にラベルが無いときのみ。書かれたラベルが勝つ）。
+- **`edge.kind`（`[sync]` / `[async]`）は移さない。** ラベルが移るのは `.krs` 側が持って
+  いないからで、kind は `->` / `-->` のどちらで書かれても必ず決まっている。よって
+  `.krs` 側の kind がそのまま残り、entity 関連が `-->` でも生き残ったエッジは実線のままになる。
+  これは情報の欠落ではなく、投影される側が別の事実（DB が強制する参照）だからである。
+  kind が食い違うペアはスライス C の差分レポートが報告する。
 - **逆向きで衝突**したら（FK が `A -> B`、entity が `B -> A`）FK 側だけを描く。
   スキーマの側に寄せる。ラベルは**移さない**（`"belongs to"` は方向依存なので、逆向きに
   貼ると嘘になる）。この不一致はスライス C の差分レポートが報告する。
@@ -259,9 +276,14 @@ table 対応を持つ関連だけが投影される。ストアを跨ぐ entity 
 
 **スライス A（投影）**
 
-1. `packages/core/src/view/view-extract.ts` に投影関数を足す。`extractEntityView` が使う
-   `buildDomainEntityIndex` を再利用して entity → `table <DbId>.<leafId>` 対応の索引を作り、
-   両端が同じ `database` に着地する関連を `(leafId, leafId)` エッジに写す。
+1. `packages/core/src/view/view-extract.ts` に投影関数を足す。entity → `table <DbId>.<leafId>`
+   対応の索引を作り、両端が同じ `database` に着地する関連を `(leafId, leafId)` エッジに写す。
+   **端点の解決は `resolveQualifiedEntity` を再利用する。** `buildDomainEntityIndex` は候補を
+   集めるだけで、解決規則（qualified `DomainId.EntityId` は所有 system 内で解決、bare id は
+   ローカル entity のみ、foreign bare と未解決参照は捨てる）はそちらが持っている。ここで
+   自前の解決を書くと、エンティティビューと投影で同じ関連の扱いが割れる（TPL-1936）。
+   関連の起点判定（`isAnchoredAt`）も同じく再利用する。方向規約を強制しているのはこれで、
+   外すと著者が書いていない参照を描くことになる。
 2. 投影エッジに `[projected]` を付与する。`edge.kind`（sync / async）は保存する（TPL-510）。
 3. `packages/core/src/builtins/default-style.ts` に `[projected]` の既定スタイル（色のみ）を足す。
 4. `database` のドリルダウン extract が投影エッジを childEdges に足すよう配線する。
@@ -289,7 +311,9 @@ table 対応を持つ関連だけが投影される。ストアを跨ぐ entity 
      機械的に修復可能な指摘。
    - `entityRelationWithoutFk`: アプリ層整合性。事実として報告し、欠陥としない
      （`tablelessEntities` の既存コメントと同じ立場）。
-   - 逆向き不一致も 3 つ目として報告する。
+   - union で食い違った組も報告する。逆向き（FK が `A -> B`、entity が `B -> A`）と、
+     同方向で `edge.kind` が割れた組の 2 種。どちらも描画では `.krs` 側に寄せるので、
+     レポートだけが食い違いの存在を残す。
 2. CLI から読めるようにする（`coverage` の既存出力に乗せる）。
 
 **受け入れテスト**
@@ -298,8 +322,13 @@ table 対応を持つ関連だけが投影される。ストアを跨ぐ entity 
 
 - FK 宣言のみ・`entity` 層ゼロの `.krs` で、`database` キャンバスに ER が出る
 - `entity` 関連のみ・FK ゼロの `.krs` で、`database` キャンバスに ER が出る
-- 両ソースが同じ順序付きペアを出したとき 1 本になり、FK-backed の見え方でラベルが entity 由来
+- 両ソースが同じ順序付きペアを出したとき 1 本になり、確認済みの見え方でラベルが entity 由来
+- 同じペアで kind が食い違う（`.krs` が `->`、entity 関連が `-->`）とき、生き残った
+  エッジが実線のままで、差分レポートが食い違いを報告する
 - 逆向き衝突で FK 側だけが描かれ、ラベルが移らない
+- 人が手で書いた無タグの table エッジが、`translate` 出力と同じ確認済みとして描かれる
+- 投影の端点解決がエンティティビューと一致する: 同名 domain への qualified 参照
+  （`DomainId.EntityId`）が解決され、cross-domain の bare id は投影されない（TPL-1936）
 - 投影エッジと FK エッジが**線種ではなく色**で区別され、`[async]` の破線が保存される
 - tableless entity 間の関連がキャンバスに出ない（lossy であることの明示的な確認）
 - 集約畳み込み時に子の FK が root に畳み上がり、自己エッジが出ない
