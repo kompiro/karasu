@@ -14,6 +14,7 @@ discovered_from:
   - issue: "#1058"
   - issue: "#2076"
   - issue: "#2087"
+  - issue: "#2571"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:203"
   - root_cause_file: "packages/core/src/formatter/quote-id.ts:14"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:124"
@@ -42,6 +43,28 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
 #2076 では formatter の top-level 出力リスト（`printFile` が `KrsFile` の配列プロパティを手で列挙している箇所）が 11 個中 5 個しか列挙しておらず、parser が受理する `boundary` / `legend` / `client` / `database` / `queue` / `storage` の 6 構文が `karasu fmt` で無言のうちに削除されていた。top-level infra だけで構成されたファイル（`karasu translate --from db` が生成する形 — ADR-702）は **ファイル全体が空になった**。
 
 この種の欠落は「既存の構文を 1 つ選んでテストする」書き方では絶対に捕まらない。テストが列挙する構文の集合と、実装が列挙する構文の集合が、同じ人間の同じ思い込みから生まれるからである。**期待集合を型・スキーマ側から機械的に導出する**こと（下記「既知の対処パターン」）。
+
+### AST 比較のヘルパがあっても、fixture が通らない枝は守られない（#2571）
+
+#2076 で入れた網羅性ガードは `KrsFile` の top-level 配列から導出するので、
+**ノードの中に持つプロパティ**を見ない。#2036 のスコープ内 `boundary` に続いて、
+#2571 では `annotationParams`（`@draft(confidence: "low")` の括弧の中身）が
+同じ死角に落ちた。
+
+厄介なのは、`formatter.test.ts` の `expectAstRoundTrip` が**すでに AST の
+構造比較まで行っていた**ことである。ヘルパは正しく、配線も済んでいた。
+それでも 3 世代（#1568 / #1583 / #1995）にわたって気づかれなかったのは、
+**パラメータを持つ fixture が 1 つも無かった**からで、「アノテーションを
+formatter がテストしている」という事実が「パラメータもテストされている」と
+読み違えられ続けた。ヘルパの存在は網羅の証拠にならない。
+
+同じ穴で被害の大きさが 2 段階あったことも記録しておく。論理軸
+（`renderNode`）はパラメータだけを落としたが、組織軸（`renderTeam`）は
+**アノテーションを丸ごと出力していなかった**。spec が
+`team payments @migration_target(from: "legacy")` を規定しているのに、である。
+1 つの AST プロパティを複数の renderer が別々に描くとき、**片方だけ直すと
+もう片方が残る**。`renderAnnotations` のように emit を 1 箇所に畳み、
+fixture を renderer ごとに回すのが対処になる（下記「既知の対処パターン」）。
 
 ### ID だけでなく「値」も escape する（#2087）
 
@@ -72,7 +95,8 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
 - [ ] `--check` / dry-run モードで idempotent か（同じ入力に 2 回かけて差分が出ないか）
 - [ ] 元のコードで使われていた構文の variations すべてに対して動作するか（quoted ID / bare ID / dot-notation / 特殊文字を含む ID / 予約語と衝突する ID）
 - [ ] **parser が受理する構文を漏れなく出力するか**。変換層が AST のプロパティを手で列挙している箇所（`printFile` の top-level リストなど）は、期待集合を型・スキーマから導出したテストで網羅性を固定したか（#2076）
-- [ ] **ネストされた構文も round-trip 対象か**。`KrsFile` の top-level 配列から導出したガードは**ノード内の構文を守らない** — スコープ内 `boundary`（#2036 slice A で `fmt` が黙って削除した実例）のように per-node に持つ構文は、ネスト位置ごとの round-trip テストを別途用意する
+- [ ] **ネストされた構文も round-trip 対象か**。`KrsFile` の top-level 配列から導出したガードは**ノード内の構文を守らない**。スコープ内 `boundary`（#2036 slice A で `fmt` が黙って削除した実例）や `annotationParams`（#2571）のように per-node に持つ構文は、ネスト位置ごとの round-trip テストを別途用意する
+- [ ] **同じ AST プロパティを描く renderer をすべて回したか**。1 プロパティに複数の emit 経路があるとき（`renderNode` / `renderTeam` など）、fixture を経路ごとに回す。#2571 では片方がパラメータのみ、もう片方がアノテーション丸ごとを落としていた
 - [ ] 新しい top-level 構文 / AST プロパティを足したとき、変換層に配線し忘れると **テストか typecheck が落ちる**か
 - [ ] その網羅性ガード自体が**空振りしていない**ことを負のテストで確認したか（わざと構文を 1 つ落として落ちるか / 型にダミーキーを足して `tsc` が落ちるか）
 - [ ] ID だけでなく **値**（label / description / URL / title 等）も escape して出力しているか。生のテンプレート補間 `` `x "${value}"` `` が残っていないか（#2087）
@@ -90,6 +114,7 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
   - 型: fixture 表に `satisfies Record<ArrayKeys<KrsFile>, string>` を付け、キー欠落を `tsc` で落とす
 
   の二重にした。どちらも「新しい構文を足した人が formatter を触り忘れる」瞬間に落ちる（ADR-2076）
+- **emit を 1 箇所に畳み、host（emit 経路）の集合も型・ソースから導出する**。#2571 の対処では `renderAnnotations` を `renderNode` / `renderTeam` の共通ヘルパにしたうえで、fixture 表を (1) `ANNOTATION_PARAM_KEYS` から導いた `annotation.key` ペア集合と (2) `types/ast.ts` を走査して得た「`annotationParams` を宣言する interface」集合の両方に突き合わせた。新しいパラメータキーも、`annotationParams` を持つ 3 つ目の AST 型も、追加した瞬間に落ちる
 - **「生の補間が 1 つも残っていない」ことをソースレベルでアサートする**。emit site を列挙するテストは #2076 と同じ理由でドリフトするので、#2087 では formatter のソースに `` `"${` `` パターンが 0 件であることを検査した（値はすべて `quoteString()` / `quoteId()` 経由になる）。次に追加される emit site を自動で捕まえられる
 - **エスケープ規則は lexer のデコード規則と 1:1 で書き、両方向をテストする**。`escape(value)` の出力を lexer に食わせて元の値に戻るかを、hostile value 一覧（`"` / `\` / 末尾 `\` / 改行 / `"""` / CR / 空文字）で確認する
 - **ガードが空振りしていないことを負のテストで確かめる**。#2076 の型ガードは初版が `const FIXTURES: Record<string, string>` という注釈で、index signature のせいで**恒真**（何も検査していない）だった。ダミーのキーを型に足して `tsc` が落ちることを確認して初めてガードとして成立する。実行時ガードも同様に、修正を部分 revert して落ちることを確認する
@@ -101,6 +126,7 @@ round-trip が破れるのは値の変換ミスだけではない。**構文が�
 - `packages/core/src/formatter/quote-id.test.ts`
 - `packages/core/src/formatter/quote-string.test.ts`（値のエスケープ規則 + 生補間の構造ガード）
 - `packages/core/src/formatter/escape-round-trip.test.ts`（各構文の hostile value round-trip）
+- `packages/core/src/formatter/annotation-params-round-trip.test.ts`（アノテーションのパラメータ。パラメータキー集合と emit 経路集合の二重の網羅性ガード）
 - `packages/core/src/translate/escape-hostile-input.test.ts`（translate の外部入力 round-trip）
 - `packages/cli/src/fmt.test.ts`（`--write` がファイルを破壊しないこと）
 
