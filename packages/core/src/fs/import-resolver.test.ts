@@ -2129,6 +2129,106 @@ system Shop {
       expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(1);
     });
   });
+
+  // #2596: `nodePathIndex` was the last derived index still merged by a
+  // first-wins union, so #2550's order-independence stopped at the file
+  // boundary. Moving a block to another file flipped both the verdict and the
+  // deep-permalink target, and the failure was the silent kind (TPL-2221):
+  // cross-file collisions reported nothing at all. The index and its warning
+  // are now one derivation over the merged tree.
+  describe("node id multiplicity is decided on the merged model (#2596)", () => {
+    const multiLocation = (ds: { code: string; severity: string; params?: unknown }[]) =>
+      ds.filter((d) => d.code === "node-id-multiple-locations" && d.severity === "warning");
+
+    const LEGACY = `system Legacy {\n  service Search @deprecated {}\n}\n`;
+    const NEXT = `system Next {\n  service Search @migration_target {}\n}\n`;
+
+    it("resolves a cross-file migration pair to the @migration_target node", async () => {
+      // The dangerous direction: the entry file merged first, so the
+      // @deprecated node being migrated AWAY from kept the index entry, and
+      // bare-id navigation landed on it (TPL-1583's rule, cross-file).
+      await fs.writeFile("/p/index.krs", `import "./next.krs"\n${LEGACY}`);
+      await fs.writeFile("/p/next.krs", NEXT);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.nodePathIndex.get("Search")).toEqual(["Next", "Search"]);
+      const found = multiLocation(result.diagnostics);
+      expect(found).toHaveLength(1);
+      expect(found[0].params).toEqual({ nodeId: "Search" });
+    });
+
+    it("reports a plain cross-file duplicate that used to be silent", async () => {
+      await fs.writeFile(
+        "/p/index.krs",
+        `import "./b.krs"\nsystem A {\n  service Search {}\n}\n`,
+      );
+      await fs.writeFile("/p/b.krs", `system B {\n  service Search {}\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(multiLocation(result.diagnostics)).toHaveLength(1);
+      expect(result.krsFile.nodePathIndex.get("Search")).toEqual(["A", "Search"]);
+    });
+
+    it("gives the same answer however the model is split across files", async () => {
+      await fs.writeFile("/p/one.krs", `${LEGACY}${NEXT}`);
+      await fs.writeFile("/p/split.krs", `import "./more.krs"\n${LEGACY}`);
+      await fs.writeFile("/p/more.krs", NEXT);
+
+      const together = await new ImportResolver(fs).resolve("/p/one.krs");
+      const apart = await new ImportResolver(fs).resolve("/p/split.krs");
+      // Pinned to the value, not just to each other: an index that answered
+      // `undefined` on both paths would satisfy equality alone.
+      expect(together.krsFile.nodePathIndex.get("Search")).toEqual(["Next", "Search"]);
+      expect(apart.krsFile.nodePathIndex.get("Search")).toEqual(
+        together.krsFile.nodePathIndex.get("Search"),
+      );
+      expect(multiLocation(together.diagnostics)).toHaveLength(1);
+      expect(multiLocation(apart.diagnostics).length).toBe(
+        multiLocation(together.diagnostics).length,
+      );
+    });
+
+    it("reports once — not twice — when both declarations are in one file", async () => {
+      // The per-file verdict is suppressed and re-derived, so the count must not
+      // double up on the path where the parser already had the answer.
+      await fs.writeFile("/p/index.krs", `${LEGACY}${NEXT}`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(multiLocation(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("still reports it on the single-file compile path", async () => {
+      // The suppression lives in the resolver, so `compile()` — which the LSP
+      // shares by parsing directly — must keep the parser's verdict.
+      const result = compile(`${LEGACY}${NEXT}`, { diagramType: "system" });
+      expect(multiLocation(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("indexes a node that only a named import brought into the tree", async () => {
+      // `mergeNamedImport` never carried an index entry, so a node it merged was
+      // in the model and absent from the index: a bare-id permalink to `Ledger`
+      // resolved to nothing even though the node is drawn. The rebuild walks the
+      // merged tree, so reachability follows from being in it.
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Payments } from "./billing.krs"
+system Shop {
+  service Payments
+  service Orders {}
+}
+`,
+      );
+      await fs.writeFile("/p/billing.krs", `service Payments {\n  domain Ledger {}\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      // The node really is in the merged tree — otherwise the index entry below
+      // would prove nothing.
+      const payments = result.krsFile.systems[0].children.find((c) => c.id === "Payments");
+      expect(payments!.children.map((c) => c.id)).toEqual(["Ledger"]);
+      expect(result.krsFile.nodePathIndex.get("Ledger")).toEqual(["Shop", "Payments", "Ledger"]);
+      expect(multiLocation(result.diagnostics)).toHaveLength(0);
+    });
+  });
   // A reopened `system` (or infra block) is merged into one node, and only the
   // merged node is drawn — so a scoped `boundary` declared on the incoming copy
   // used to be dropped on the floor: parsed, labelled, framing nothing (#2246,

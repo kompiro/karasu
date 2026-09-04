@@ -559,6 +559,182 @@ interface MembershipResult<T> {
 }
 
 /**
+ * Build `nodePathIndex`: the 1:1 map from a bare node id to the full path
+ * `viewPath` and deep permalinks resolve it to (ADR-110).
+ *
+ * Decided on whichever model it is handed, which is the whole point of it
+ * living here rather than on the Parser (#2596). The verdict is a
+ * merge-only fact: two files each declaring `service Search` is a collision
+ * neither file can see, so a per-file build reports nothing and the union
+ * that used to follow it silently kept whichever file arrived first
+ * (TPL-2221). The Parser calls this with the file it just parsed, the
+ * ImportResolver with the merged model.
+ */
+export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, string[]>> {
+  const diagnostics: Diagnostic[] = [];
+  const index = new Map<string, string[]>();
+  // INDEXED_KINDS governs the recursive walk() passes over the logical
+  // layer: service, domain, and client are what `viewPath` / permalinks
+  // address by bare id. resource / usecase / user are intentionally
+  // excluded so a resource shared across usecases does not register two
+  // locations for one id.
+  //
+  // `owns` is NOT among the consumers, though it was until #2082: editing this
+  // set no longer changes which `owns` targets resolve. That question is
+  // answered by `collectDeclaredNodePaths` above, against the merged tree,
+  // and since #2442 it does not consult kinds at all —
+  // any declared node resolves, and refusing a kind is `invalid-owns`' sentence.
+  // An index built per file could only answer it for whichever ids a given
+  // merge path carried.
+  const INDEXED_KINDS = new Set(["service", "domain", "client"]);
+  // Collect-then-decide (#2550): the passes below only RECORD every
+  // indexable occurrence of an id — the index winner and the multiplicity
+  // warnings are decided after all passes complete, so the verdict cannot
+  // depend on declaration order (TPL-1583 / TPL-2221) within the model it is
+  // given. Since #2596 that model is the merged one on the project path: the
+  // ImportResolver rebuilds this index instead of unioning per-file ones, so
+  // the independence holds across files too — moving a block to another file
+  // changes neither the winner nor the warnings.
+  //
+  // The occurrence's priority MUST be computed in-walk: a domain with no
+  // annotations of its own inherits its parent service's annotations
+  // (consistent with the rendering inheritance — see
+  // docs/design/inherit-service-annotations.md), and that context is
+  // unrecoverable after the walk. This makes
+  // `service Legacy @deprecated { domain Order {} }` and
+  // `service NewSvc @migration_target { domain Order {} }` a legal
+  // migration-coexistence pair even without annotations on the domains.
+  // Infra leaves inherit their block's annotations the same way, so a
+  // `@deprecated` / `@migration_target` database pair sharing a table id
+  // resolves the entry to the migration target's table.
+  //
+  // Priority values (migrationPriority): 2 = @migration_target, 1 =
+  // unmarked, 0 = @deprecated. Candidate order is traversal order —
+  // systems (in declaration order), then top-level domains, services and
+  // clients, then top-level infra — which is what makes the tie-break
+  // independent of where a physical block sits relative to the systems in
+  // the file, and what lets a logical node win a cross-layer tie.
+  interface PathCandidate {
+    path: string[];
+    kind: KrsNode["kind"];
+    loc: KrsNode["loc"];
+    priority: number;
+    layer: "logical" | "physical";
+  }
+  const candidates = new Map<string, PathCandidate[]>();
+  const record = (
+    node: KrsNode,
+    path: string[],
+    priority: number,
+    layer: PathCandidate["layer"],
+  ): void => {
+    const entry: PathCandidate = { path, kind: node.kind, loc: node.loc, priority, layer };
+    const list = candidates.get(node.id);
+    if (list === undefined) {
+      candidates.set(node.id, [entry]);
+    } else {
+      list.push(entry);
+    }
+  };
+  const walk = (node: KrsNode, path: string[], parentServiceAnnotations: string[]): void => {
+    const currentPath = [...path, node.id];
+    if (INDEXED_KINDS.has(node.kind)) {
+      const effective =
+        node.kind === "domain" && node.annotations.length === 0
+          ? parentServiceAnnotations
+          : node.annotations;
+      record(node, currentPath, migrationPriority(effective), "logical");
+    }
+    const nextServiceAnnotations =
+      node.kind === "service" ? node.annotations : parentServiceAnnotations;
+    for (const child of node.children) {
+      walk(child, currentPath, nextServiceAnnotations);
+    }
+  };
+  for (const system of file.systems) {
+    for (const child of system.children) {
+      walk(child, [system.id], []);
+    }
+  }
+  // Record top-level domains (not nested in any system).
+  for (const domain of file.domains) {
+    walk(domain, [], []);
+  }
+  // Record top-level (system-less) services and clients: parked nodes are
+  // addressable too, and a parked id colliding with a walked one is exactly
+  // the logical multiplicity the verdict reports. Their duplicate-child
+  // check already ran in parseFile.
+  for (const service of file.services) {
+    walk(service, [], []);
+  }
+  for (const client of file.clients) {
+    walk(client, [], []);
+  }
+  // Record top-level infra blocks (database/queue/storage) and their
+  // sub-resources. Always after the logical passes, so a cross-layer tie
+  // resolves to the logical node no matter where the physical blocks sit
+  // in the file.
+  for (const infra of [...file.databases, ...file.queues, ...file.storages]) {
+    record(infra, [infra.id], migrationPriority(infra.annotations), "physical");
+    for (const child of infra.children) {
+      const effective = child.annotations.length === 0 ? infra.annotations : child.annotations;
+      record(child, [infra.id, child.id], migrationPriority(effective), "physical");
+    }
+  }
+
+  // Verdict, per id. Nested candidates at the SAME full path are folded to
+  // the first: an id duplicated under one parent is
+  // `duplicate-node-id-parent`'s (error) business, and a second register on
+  // the same declaration would only repeat it. Top-level same-path pairs
+  // (path length 1, e.g. a parked `service X` next to a `client X`) are
+  // kept apart — no parent-scope error exists there.
+  //
+  // The winner is the highest-priority candidate, ties keep the first in
+  // traversal order (TPL-1583's rule, shared with buildOwnerIndex).
+  //
+  // The WARNING is a logical-layer verdict (decided with the reviewer in
+  // PR #2570): it fires only when two or more LOGICAL candidates share the
+  // id and they are not all domains, and each logical non-winner draws one
+  // warning at its own loc. Same names across the logical/physical
+  // boundary and within the physical layer are tolerated silently — the
+  // layers are separate vocabularies (docs/concepts.md) and physical
+  // references are dot-qualified (`resource OrderDB.users`, #2078), so
+  // bare-id multiplicity there is not actionable. The all-domain silence
+  // is deliberate: a domain id shared by multiple services is a structural
+  // fact `domain-dispersal` (info) narrates for the in-system case
+  // (ADR-1386 — "smell is representable"); the warning and that info
+  // coexist because they answer different questions (where bare-id
+  // navigation lands vs how a domain is dispersed).
+  for (const [id, list] of candidates) {
+    const seenPaths = new Set<string>();
+    const distinct: PathCandidate[] = [];
+    for (const candidate of list) {
+      const key = nodePathKey(candidate.path);
+      if (candidate.path.length > 1 && seenPaths.has(key)) continue;
+      seenPaths.add(key);
+      distinct.push(candidate);
+    }
+    let winner = distinct[0];
+    for (const candidate of distinct) {
+      if (candidate.priority > winner.priority) winner = candidate;
+    }
+    index.set(id, winner.path);
+    const logical = distinct.filter((c) => c.layer === "logical");
+    if (logical.length < 2 || logical.every((c) => c.kind === "domain")) continue;
+    for (const candidate of logical) {
+      if (candidate === winner) continue;
+      diagnostics.push({
+        severity: "warning",
+        code: "node-id-multiple-locations",
+        params: { nodeId: id },
+        loc: candidate.loc,
+      });
+    }
+  }
+  return { membership: index, diagnostics };
+}
+
+/**
  * Build the 1:1 ownerIndex, keyed by each owned node's **full path**
  * (`nodePathKey`) since #2548 — a path-accepting reference needs a
  * path-keyed index (TPL-1352). Every `owns` ref is expanded through the
