@@ -297,3 +297,63 @@ system T {
     expect(bundle[1].fromPoint.x).toBeCloseTo(s1.x + (s1.width * 2) / 3);
   });
 });
+
+describe("layout — in-place expansion keeps parallel edges apart (#2490, via #2598)", () => {
+  // #2490's repro, carried into #2598 when the issue was consolidated: three
+  // services expanded in place, with a sync and an async edge S1 -> S3. The
+  // reported state had both edges sharing a corridor waypoint and a target
+  // anchor after `fanOutGutterPorts` split only their source ports.
+  const REPRO = `
+system T {
+  service S1 { domain A { usecase u } }
+  service S2 { domain B { usecase v } }
+  service S3 { domain C { usecase w } }
+  S1 -> S3
+  S1 --> S3
+  S1 -> S2
+  S2 -> S3
+}
+`;
+  const result = () => {
+    const systems = Parser.parse(REPRO).value.systems;
+    return layout(extractView(systems, [], [], [], new Set(["S1", "S2", "S3"])));
+  };
+  const key = (p: { x: number; y: number }) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+
+  it("gives the two S1 -> S3 edges distinct target anchors", () => {
+    const pair = result().edges.filter((e) => e.from === "S1" && e.to === "S3");
+    expect(pair).toHaveLength(2);
+    expect(key(pair[0].toPoint)).not.toBe(key(pair[1].toPoint));
+    expect(key(pair[0].fromPoint)).not.toBe(key(pair[1].fromPoint));
+  });
+
+  it("lays no collinear segment of one on a segment of the other", () => {
+    const pair = result().edges.filter((e) => e.from === "S1" && e.to === "S3");
+    const segs = (e: (typeof pair)[number]) => {
+      const pts = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+      return pts.slice(1).map((b, i) => [pts[i], b] as const);
+    };
+    for (const [a0, a1] of segs(pair[0])) {
+      for (const [b0, b1] of segs(pair[1])) {
+        const vertical = a0.x === a1.x && b0.x === b1.x && a0.x === b0.x;
+        const horizontal = a0.y === a1.y && b0.y === b1.y && a0.y === b0.y;
+        if (!vertical && !horizontal) continue;
+        const lo: "x" | "y" = vertical ? "y" : "x";
+        const shared =
+          Math.min(Math.max(a0[lo], a1[lo]), Math.max(b0[lo], b1[lo])) -
+          Math.max(Math.min(a0[lo], a1[lo]), Math.min(b0[lo], b1[lo]));
+        expect(shared).toBeLessThanOrEqual(0);
+      }
+    }
+  });
+
+  it("keeps every edge clear of the frames it does not belong to", () => {
+    const res = result();
+    const frames = res.containers.filter((c) => c.expanded);
+    for (const e of res.edges) {
+      const others = frames.filter((f) => f.nodeId !== e.from && f.nodeId !== e.to);
+      const pts = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+      expect(countPolylinePenetrations(pts, others)).toBe(0);
+    }
+  });
+});

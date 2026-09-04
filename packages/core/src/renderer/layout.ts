@@ -682,7 +682,15 @@ function layoutInner(
     containers.filter((c) => c.group),
     {
       expandedFrames: expandedFrameRects,
-      groupBands,
+      // Only a Group-by axis makes the canvas *grouped* for routing. In-place
+      // expansion borrows the band stack to place its frames, but it is a
+      // drill-down affordance on the ungrouped canvas: handing its bands to
+      // the chain switched on trunk aggregation (#1859 P2c-B), which #2364
+      // rejected for ungrouped canvases, and merged every fan-in pair onto
+      // one spine and one target entry — #2490's shared corridor and anchor.
+      // The frames still shape the routes: they are obstacles and endpoints
+      // through the two arguments above.
+      groupBands: groupBy ? groupBands : null,
       ports: portResolver(options),
     },
   );
