@@ -95,8 +95,7 @@ fixture を renderer ごとに回すのが対処になる（下記「既知の�
 - [ ] `--check` / dry-run モードで idempotent か（同じ入力に 2 回かけて差分が出ないか）
 - [ ] 元のコードで使われていた構文の variations すべてに対して動作するか（quoted ID / bare ID / dot-notation / 特殊文字を含む ID / 予約語と衝突する ID）
 - [ ] **parser が受理する構文を漏れなく出力するか**。変換層が AST のプロパティを手で列挙している箇所（`printFile` の top-level リストなど）は、期待集合を型・スキーマから導出したテストで網羅性を固定したか（#2076）
-- [ ] **ネストされた構文も round-trip 対象か**。`KrsFile` の top-level 配列から導出したガードは**ノード内の構文を守らない**。スコープ内 `boundary`（#2036 slice A で `fmt` が黙って削除した実例）や `annotationParams`（#2571）のように per-node に持つ構文は、ネスト位置ごとの round-trip テストを別途用意する
-- [ ] **同じ AST プロパティを描く renderer をすべて回したか**。1 プロパティに複数の emit 経路があるとき（`renderNode` / `renderTeam` など）、fixture を経路ごとに回す。#2571 では片方がパラメータのみ、もう片方がアノテーション丸ごとを落としていた
+- [ ] **ネストされた構文も、それを描く emit 経路すべてで round-trip するか**。`KrsFile` の top-level 配列から導出したガードは**ノード内の構文を守らない**。スコープ内 `boundary`（#2036 slice A で `fmt` が黙って削除した実例）や `annotationParams`（#2571）のように per-node に持つ構文は、ネスト位置ごとに round-trip テストを用意し、1 プロパティに複数の emit 経路があるとき（`renderNode` / `renderTeam` など）は fixture を経路ごとに回す。#2571 は片方がパラメータのみ、もう片方がアノテーション丸ごとを落としていた
 - [ ] 新しい top-level 構文 / AST プロパティを足したとき、変換層に配線し忘れると **テストか typecheck が落ちる**か
 - [ ] その網羅性ガード自体が**空振りしていない**ことを負のテストで確認したか（わざと構文を 1 つ落として落ちるか / 型にダミーキーを足して `tsc` が落ちるか）
 - [ ] ID だけでなく **値**（label / description / URL / title 等）も escape して出力しているか。生のテンプレート補間 `` `x "${value}"` `` が残っていないか（#2087）
