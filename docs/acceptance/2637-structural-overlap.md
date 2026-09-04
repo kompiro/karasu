@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-04
 - **関連 Issue**: [#2637](https://github.com/kompiro/karasu/issues/2637)（slice C of [#2597](https://github.com/kompiro/karasu/issues/2597)）
+- **設計 (ADR)**: [ADR-2597](../adr/2597-team-dependencies.md)
 - **対象ファイル**:
   - `packages/core/src/view/team-dependency-extract.ts` (`findStructuralOverlaps`)
   - `packages/core/src/view/team-dependency-extract.test.ts`
