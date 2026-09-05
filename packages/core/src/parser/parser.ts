@@ -1,7 +1,7 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import { stitchKebabTail, type TokenCursor } from "./kebab-name.js";
-import { readNodeIdPathTail, nodePathKey, nodePathIdentityKey } from "./node-path.js";
+import { readNodeIdPathTail, nodePathKey } from "./node-path.js";
 import type {
   KrsFile,
   KrsNode,
@@ -2146,8 +2146,11 @@ export class Parser {
       // `layoutNodes` coalesced the two placements, leaving a container sized
       // for a unit that is never drawn.
       const targets = (properties.realizes ??= []);
-      const identity = nodePathIdentityKey(target.path);
-      if (!targets.some((t) => nodePathIdentityKey(t.path) === identity)) targets.push(target);
+      const already = targets.some(
+        (t) =>
+          t.path.length === target.path.length && t.path.every((seg, i) => seg === target.path[i]),
+      );
+      if (!already) targets.push(target);
     }
   }
 

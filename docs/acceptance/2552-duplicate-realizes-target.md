@@ -56,9 +56,23 @@ type: product
 
   > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › a target realized twice reserves no empty cell (#2552) › is laid out exactly like a single target when repeated on separate lines ／ … within one comma list ／ … reached by a bare and a qualified ref
 
-### AC-5: 正準形は 1 行
+### AC-5: 誤りは 1 回だけ報告され、詳細パネルにも 1 回だけ出る
 
-- [x] AT-I: `karasu fmt` が重複を 1 行に畳み、2 つの綴りが単一対象のモデルと同じ出力に収束する（冪等・AST round-trip 込み）
+- [x] AT-J: 未解決の対象を二度書いても `unresolved-realizes` は 1 件。1 つの綴り間違いは 1 つの誤り
+
+  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › unresolved-realizes warning › warns once for a target that is unresolved and named twice
+
+- [x] AT-K: 詳細パネルが読む compiled metadata（`NodeDetailPanel` の `metadata.realizes.join(", ")`）も 1 件
+
+  > ✅ Automated — `packages/core/src/compile/deploy-node-metadata.test.ts` › deploy node metadata › lists a target named twice once ／ … within one comma list once
+
+- [x] AT-L: 解決先が同じでも綴りが違う 2 参照は、パネルには 2 件のまま出る。コンテナを 1 つに畳むのはビューの解決であって、モデルが綴りを捨てる根拠ではない
+
+  > ✅ Automated — `packages/core/src/compile/deploy-node-metadata.test.ts` › deploy node metadata › keeps both spellings when two refs merely resolve to one node
+
+### AC-6: 正準形は 1 行
+
+- [x] AT-M: `karasu fmt` が重複を 1 行に畳み、2 つの綴りが単一対象のモデルと同じ出力に収束する（冪等・AST round-trip 込み）
 
   > ✅ Automated — `packages/core/src/formatter/formatter.test.ts` › collapses a target named twice to a single realizes line
 

@@ -94,6 +94,8 @@ TPL-2161 とは向きが逆に見えるが矛盾しない。TPL-2161 が捨て�
 - `packages/core/src/view/deploy-view-extract.test.ts`（`describe("a unit joins one container once (#2552)")` — bare / qualified の 2 参照でも membership は 1 件）
 - `packages/core/src/renderer/deploy-layout.test.ts`（`describe("a target realized twice reserves no empty cell (#2552)")` — 単一対象のモデルと寸法が一致する）
 - `packages/core/src/formatter/formatter.test.ts`（"collapses a target named twice to a single realizes line"）
+- `packages/core/src/resolver/warnings.test.ts`（"warns once for a target that is unresolved and named twice" — 誤りの報告回数も「数える側」の 1 つ）
+- `packages/core/src/compile/deploy-node-metadata.test.ts`（詳細パネルが読む metadata が 1 件、ただし解決先が同じ 2 参照は 2 件のまま）
 
 ## 派生元 spec
 
