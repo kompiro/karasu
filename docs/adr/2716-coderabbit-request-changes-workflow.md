@@ -111,12 +111,13 @@ supersede するのは advisory 固定の一点だけで、次は変えない。
 - **approve だけ有効にし changes-requested を出さない**: CodeRabbit の設定は
   この 2 つを 1 つのフラグで扱うので、選べる形になっていない
 
-## 未確認事項
+## 有効化の確認
 
 CodeRabbit のドキュメントはこの workflow を Essentials 以上の機能として挙げて
-いる。public repository の無料プランが同等かは公開ドキュメントに記載がなく、
-フラグが無視される可能性がある。その場合の挙動は「advisory のまま」であり、
-現状より悪くはならないので、有効化後の最初の数 PR を確認の場とする。
+おり、karasu のプランで有効かは公開情報から判断できなかった。本 ADR を入れた
+PR [#2717](https://github.com/kompiro/karasu/pull/2717) 自体が確認の場となり、
+**CodeRabbit は plan を Team と報告したうえで changes-requested を返した。**
+機能は有効である。
 
 ## 運用ルール
 

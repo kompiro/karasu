@@ -148,6 +148,15 @@ reviews:
         was (ADR-706 states this for a rename). Flag a changed sentence in the
         body of an existing ADR.
 
+        One line is exempt, and changing it is required rather than tolerated:
+        when an ADR becomes superseded, its body status line moves from
+        `- **ステータス**: 決定済み` to `Superseded by ADR-<n>`, optionally with
+        a parenthetical naming which decisions carried forward (ADR-1990 and
+        ADR-2640 both read that way). `.claude/rules/adr.md` names this as the
+        single exception to the immutable body, so never ask for that line to
+        be reverted and never report it as a rewrite of the decision.
+        Everything below it is still frozen.
+
         `assumptions:` is a drift guard, not prose. `pnpm adr:check-assumptions`
         resolves every `file:` / `symbol:` / `grep:` entry against the working
         tree, so a PR that deletes or renames what an entry names has to update
