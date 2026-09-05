@@ -2228,6 +2228,37 @@ system Shop {
       expect(multiLocation(fromB.diagnostics)).toHaveLength(1);
     });
 
+    it("reports the wildcard stub collision, and leaves the named form silent", async () => {
+      // The one layout where the rebuild adds a warning to an existing model.
+      // A whole-file import does not fill a stub — only `resolveBareIdImport`
+      // does — so the merged tree really holds two logical `Payment` nodes: the
+      // childless stub drawn inside `EC`, and the parked definition carrying
+      // `domain Billing`. Bare-id navigation lands on the stub, which is the
+      // question the warning answers, and ADR-2550 already decided a parked
+      // service colliding with a walked one is logical multiplicity — this only
+      // extends that across files. The same import already draws
+      // `service-outside-system`, so the layout was never silent to begin with.
+      const DEFINITION = `service Payment {\n  domain Billing {}\n}\n`;
+      const STUB = `system EC {\n  service Payment\n}\n`;
+      await fs.writeFile("/p/wildcard.krs", `import "./payment.krs"\n${STUB}`);
+      await fs.writeFile("/p/named.krs", `import { Payment } from "./payment.krs"\n${STUB}`);
+      await fs.writeFile("/p/payment.krs", DEFINITION);
+
+      const wildcard = await new ImportResolver(fs).resolve("/p/wildcard.krs");
+      expect(multiLocation(wildcard.diagnostics)).toHaveLength(1);
+      expect(wildcard.krsFile.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
+      // Both nodes are really there — otherwise the warning would be a phantom.
+      expect(wildcard.krsFile.systems[0].children.map((c) => c.id)).toEqual(["Payment"]);
+      expect(wildcard.krsFile.services.map((s) => s.id)).toEqual(["Payment"]);
+
+      // The named form merges the definition INTO the stub, so there is one
+      // node and nothing to report. Unchanged by this PR.
+      const named = await new ImportResolver(fs).resolve("/p/named.krs");
+      expect(multiLocation(named.diagnostics)).toHaveLength(0);
+      expect(named.krsFile.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
+      expect(named.krsFile.services).toHaveLength(0);
+    });
+
     it("indexes a node that only a named import brought into the tree", async () => {
       // `mergeNamedImport` never carried an index entry, so a node it merged was
       // in the model and absent from the index: a bare-id permalink to `Ledger`
