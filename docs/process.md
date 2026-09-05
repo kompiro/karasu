@@ -115,16 +115,25 @@ ready → implementing → in-review → (close)
 
 ### PR は CodeRabbit の所見を読んでからマージする
 
-**到達状態**: PR に CodeRabbit の walkthrough とレビューコメントが付き、各所見の
-判断が済んでいる（直した、または採用しない理由を返信して解決した）。
+**到達状態**: CodeRabbit が PR を approve している。すなわち walkthrough と
+レビューコメントが付き、各所見の判断が済んでいる（直した、または採用しない理由を
+返信して解決した）。
 
-- レビューは **advisory** — required check ではなく、CodeRabbit は approve も block も
-  しない。マージ判断は人間が持つ（[ADR-2640](adr/2640-coderabbit-pr-review.md)）
+- CodeRabbit は actionable な指摘があるあいだ changes-requested を出し、
+  未対応がなくなると approve する（`request_changes_workflow` —
+  [ADR-2716](adr/2716-coderabbit-request-changes-workflow.md)）。
+  **この approve は「自動レビューが収束した」印であって、マージ許可ではない。**
+  required check ではなく、default branch の ruleset は approving review を
+  要求しないので、changes-requested はマージを止めず approve はマージを許可しない。
+  マージ判断は人間が持つ
+- 人間のレビューは approve が付いてから始めると、収束済みの差分を読める
 - 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
   `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
   他の bot を除外するには login を `.coderabbit.yaml` に足す
-- 採用しない指摘は**返信で理由を書いて解決する**。返信が learnings になるのは
-  `Learnings Added` が返ったときだけで、再発防止は次項の drift ガードで担保する
+- 採用しない指摘は**返信で理由を書いたうえで `@coderabbitai resolve` で閉じる**。
+  approve は指摘に従わなくても到達できる。**approve を取ることを目的に指摘へ従わない**。
+  返信が learnings になるのは `Learnings Added` が返ったときだけで、再発防止は
+  次項の drift ガードで担保する
 - 同じ規約違反を繰り返し指摘されるなら、`scripts/lint/` + lefthook の drift ガードに
   落とす合図として扱う
 - 同じ**誤検知**を繰り返されるなら、`path_instructions` の glob が規約の適用範囲より
@@ -149,7 +158,7 @@ ready → implementing → in-review → (close)
 | 2 | 先に `/code-review <n>` を当てる |
 | 3 | code-review と CodeRabbit の指摘を、人と一緒に対応可否まで決める |
 | 4 | 対応すると決めた指摘を直す |
-| 5 | push すると CodeRabbit が再レビューする。3 に戻り、指摘が収束するまで繰り返す |
+| 5 | push すると CodeRabbit が再レビューする。3 に戻り、CodeRabbit が approve するまで繰り返す |
 | 6 | そのスライスで観測できることを人が確認し、マージ可否を決める |
 | 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層の draft を外して 1 に戻る |
 

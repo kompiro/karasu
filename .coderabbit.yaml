@@ -2,8 +2,11 @@
 #
 # CodeRabbit — automated first-pass review on every PR.
 #
-# Why it exists and what stays out of its reach: docs/adr/2640-coderabbit-pr-review.md.
-# It is advisory only: it never approves, never blocks, and is not a required check.
+# Why it exists and what stays out of its reach:
+# docs/adr/2716-coderabbit-request-changes-workflow.md (supersedes ADR-2640).
+# It is not a required check, and the branch ruleset gives its review state no
+# power over the merge button, so its approval means "the automated pass
+# converged", never "this may be merged".
 # The mechanical layer (lint / format / typecheck / knip / check:cycles / the drift
 # guards in lefthook.yml and ci.yml) is already covered by CI, so the instructions
 # below aim at what a linter cannot see.
@@ -13,9 +16,16 @@ language: en-US
 reviews:
   profile: chill
 
-  # The maintainer keeps the merge decision. Do not turn this on without
-  # revisiting ADR-2640.
-  request_changes_workflow: false
+  # Requests changes while actionable comments are open, resolves what it
+  # considers addressed on the next review, and approves once nothing is
+  # outstanding, so a PR carries the state of its own automated pass instead of
+  # the maintainer reconstructing it from the thread list (ADR-2716). Not a
+  # merge gate: the default branch ruleset requires 0 approving reviews and no
+  # thread resolution. A finding we decline is closed by replying with the
+  # reason and `@coderabbitai resolve`. Approval stays reachable without
+  # complying, which is what keeps findings a thing to judge rather than a
+  # checklist to clear.
+  request_changes_workflow: true
 
   high_level_summary: true
   poem: false
