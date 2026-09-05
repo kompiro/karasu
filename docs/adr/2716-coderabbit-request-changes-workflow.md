@@ -121,6 +121,11 @@ PR [#2717](https://github.com/kompiro/karasu/pull/2717) 自体が確認の場と
 
 ## 運用ルール
 
+- **人間のレビューは approve が付いてから始める。** CodeRabbit のラウンドと並走
+  させない。approve までのラウンドは PR を出した側が回しきる（`docs/process.md`）
+- **記録済みの決定（Issue のスコープ・accepted な ADR・`docs/spec/`・
+  `.claude/rules/`）を変える指摘は、自分で判断せず人間に確認する。** それ以外は
+  自分で対応可否を決めて閉じる。判断基準はこの 1 つ
 - **採用しない指摘は、理由を返信したうえで `@coderabbitai resolve` で閉じる。**
   approve を取るために指摘へ従わない
 - CodeRabbit の approve をマージ許可として扱わない。マージ可否は人間が決める

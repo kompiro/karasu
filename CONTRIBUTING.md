@@ -179,10 +179,16 @@ is required to contribute: a plain `git` / `pnpm` / `gh` workflow works.
    actionable findings are open, and approves once they are all resolved.
    That approval is not a merge gate: it says the automated pass converged,
    and the maintainer still decides. You are welcome to disagree with a
-   finding. Reply with your reasoning and close it with
-   `@coderabbitai resolve`, which reaches approval without complying. What
-   we ask you not to do is resolve a comment silently.
-6. The maintainer reviews and merges. The squash subject is taken from
+   finding. Reply with your reasoning on the thread, then post
+   `@coderabbitai resolve` as a **top-level PR comment** (it is ignored
+   inside a thread reply). That reaches approval without complying. What we
+   ask you not to do is resolve a comment silently.
+6. Bring that round to a close before asking for human review: the
+   maintainer reviews once CodeRabbit approves, so their time goes to a
+   converged diff. If a finding would change something already decided (the
+   Issue's scope, an accepted ADR, `docs/spec/`), do not just apply it.
+   Ask in the PR instead.
+7. The maintainer reviews and merges. The squash subject is taken from
    the PR title — please make it a good Conventional Commit subject.
 
 If your PR touches code, expect questions about:
