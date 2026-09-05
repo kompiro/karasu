@@ -87,13 +87,16 @@ karasu の論理/物理分離では、レベルをまたぐ写像の多くが**�
 ## 関連テスト
 
 - `packages/core/src/view/coverage-extract.test.ts`（`tablelessEntities` / `unmappedButReferenced` の分離）
-- `docs/acceptance/store-scoped-er-view.md`（#2585 スライス A で新規作成。tableless entity 間の
-  関連がストアキャンバスに出ないことを明示的に確認する TC を含む）
 
-## 派生元
+まだ書かれていない検証は、そのスライスと一緒に着地する（[#2585](https://github.com/kompiro/karasu/issues/2585)
+スライス A の受け入れテストが、tableless entity 間の関連がストアキャンバスに出ないことを
+確認する TC を持つ）。**未作成のファイルは本節に列挙しない** — 存在しない address を
+指す記録は、読み直したときに壊れている記録と区別できない（TPL-2254）。
 
-- `docs/concepts.md` 「No physical database schema modeling (conceptual entities *are* in scope)」節
-  （論理/物理の線と、写像が任意であること）
+## 派生元 spec
+
+- `docs/concepts.md` 「[No physical database schema modeling (conceptual entities *are* in scope)](../concepts.md#no-physical-database-schema-modeling-conceptual-entities-are-in-scope)」節
+  （論理/物理の線と、写像が任意であること）。同節末尾に本 TPL への `> Related TPLs:` 注釈がある
 - [ADR-1870](../adr/1870-domain-entity-modeling.md) 決定 3（`table` 対応は optional。対応の無い
   entity は論理的には解決するがストアエッジを導出しない）
 - Design Doc `docs/design/store-scoped-er-view.md`（本 TPL を起こした設計。ADR 昇格時に削除される）

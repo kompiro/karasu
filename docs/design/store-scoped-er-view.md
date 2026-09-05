@@ -267,7 +267,7 @@ table 対応を持つ関連だけが投影される。ストアを跨ぐ entity 
 | --- | --- | --- |
 | **A** entity 関連の table 面への投影 + `[projected]` + 描き分け | — | `.krs` を一切変えないので、既存モデル（Dify 逆生成の 201 関連・135/137 対応済みテーブル）に即座に効く。全エッジが `[projected]` になるだけで、FK-backed を騙る主張はどこにも出ない |
 | **B** `translate --from db` が FK を table エッジとして吐く + union 規則 | A | A で描き分けの器（3 状態のうち 2 つ）ができているので、B は無タグ / `[inferred]` を足して union を効かせるだけ。B 単独でも A 無しで動くが、union は A の投影集合が要る |
-| **C** 宣言 FK と投影 entity 関連の差分レポート | A, B | 両集合が揃って初めて差が取れる。レポートは `coverage` の既存の形（`InfraCoverage`）に乗るので、ビューを触らない |
+| **C** 記録済み table 関連と投影 entity 関連の差分レポート | A, B | 両集合が揃って初めて差が取れる。レポートは `coverage` の既存の形（`InfraCoverage`）に乗るので、ビューを触らない |
 
 > 各スライスで何ができるようになるか / その時点でまだできないことは
 > 親 Issue [#2585](https://github.com/kompiro/karasu/issues/2585) の `## Slice status` を参照。
@@ -306,15 +306,27 @@ table 対応を持つ関連だけが投影される。ストアを跨ぐ entity 
 
 **スライス C（差分レポート）**
 
-1. `packages/core/src/view/coverage-extract.ts` の `InfraCoverage` に 2 フィールドを足す:
-   - `fkWithoutEntityRelation`: スキーマが明示している関連を論理モデルが持っていない。
-     機械的に修復可能な指摘。
-   - `entityRelationWithoutFk`: アプリ層整合性。事実として報告し、欠陥としない
-     （`tablelessEntities` の既存コメントと同じ立場）。
-   - union で食い違った組も報告する。逆向き（FK が `A -> B`、entity が `B -> A`）と、
-     同方向で `edge.kind` が割れた組の 2 種。どちらも描画では `.krs` 側に寄せるので、
-     レポートだけが食い違いの存在を残す。
-2. CLI から読めるようにする（`coverage` の既存出力に乗せる）。
+**レポートの軸は「記録済み vs 投影」であって「FK vs アプリ層」ではない。** 決めること 2 で
+無タグを機械 provenance にしないと決めた以上、parse 後の `.krs` に FK 由来と手書きを分ける
+情報は残っていない。ここで隠し属性として origin を持ち回ると、決めること 2 で足さないと
+決めた marker を、読者から見えない場所に置き直すだけになる（しかも誰も再検査しない）。
+よってレポートは `.krs` に記録された table 関連と投影された entity 関連を突き合わせる。
+Issue が求めた価値（「スキーマが明示している関連を論理モデルが持っていない」）は
+`translate --from db` を通したモデルではそのまま成立し、手書きのエッジでも
+「誰かが表明した table 関連を論理モデルが持っていない」という同じ強さの指摘になる。
+
+1. `packages/core/src/view/coverage-extract.ts` の `InfraCoverage` に **4 フィールド**を足す。
+   関連の同一性はすべて順序付きペア `{ from: leafId, to: leafId }` で表す:
+
+   | フィールド | 何を報告するか | 立場 |
+   | --- | --- | --- |
+   | `recordedWithoutProjection` | `.krs` に記録された table 関連に対応する entity 関連が無い | 機械的に修復可能な指摘。論理モデルの欠落 |
+   | `projectionWithoutRecorded` | 投影された関連に対応する記録が無い（アプリ層整合性） | 事実として報告し、欠陥としない（`tablelessEntities` の既存コメントと同じ立場） |
+   | `directionMismatch` | 記録が `A -> B`、投影が `B -> A` | 事実。描画は記録側に寄せるので、レポートだけが不一致を残す |
+   | `kindMismatch` | 同方向で `edge.kind`（`[sync]` / `[async]`）が割れた | 同上 |
+
+2. CLI から読めるようにする（`coverage` の既存出力に乗せる）。4 フィールドとも
+   ペアの配列なので、`unmappedButReferenced` と同じ出力形に揃える。
 
 **受け入れテスト**
 

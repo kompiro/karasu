@@ -576,6 +576,7 @@ it creates pressure to pull implementation details into the model, and stays out
 For column and index design, dedicated ER modeling tools exist, and those are what you should use.
 
 > Related TPLs: [TPL-1882](test-perspectives/TPL-1882-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, holding this line.
+> [TPL-2585](test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — the physical mapping this section makes optional is what a derived view has to travel through, so any view built on it must count what did not project and must not claim to be a complete ER diagram.
 
 #### C4 compatibility is not a goal
 
