@@ -620,6 +620,7 @@ export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, 
   // the file, and what lets a logical node win a cross-layer tie.
   interface PathCandidate {
     path: string[];
+    node: KrsNode;
     kind: KrsNode["kind"];
     loc: KrsNode["loc"];
     priority: number;
@@ -632,13 +633,23 @@ export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, 
     priority: number,
     layer: PathCandidate["layer"],
   ): void => {
-    const entry: PathCandidate = { path, kind: node.kind, loc: node.loc, priority, layer };
+    const entry: PathCandidate = { path, node, kind: node.kind, loc: node.loc, priority, layer };
     const list = candidates.get(node.id);
     if (list === undefined) {
       candidates.set(node.id, [entry]);
-    } else {
-      list.push(entry);
+      return;
     }
+    // A candidate is a DECLARATION, not an occurrence: the merge can put one
+    // declared node into the tree more than once, and neither copy is a second
+    // declaration the author could rename. Two ways that happens, both only on
+    // the merged model (#2596): importing one file wholesale *and* by name
+    // pushes the same node into `services` twice, and a named-imported service
+    // referenced by two systems' edges is mounted into both. Identity is the
+    // test because two distinct declarations are always distinct objects,
+    // whereas `loc` alone would confuse same-line declarations in two files
+    // (a Diagnostic's loc carries no file).
+    if (list.some((c) => c.node === node)) return;
+    list.push(entry);
   };
   const walk = (node: KrsNode, path: string[], parentServiceAnnotations: string[]): void => {
     const currentPath = [...path, node.id];
