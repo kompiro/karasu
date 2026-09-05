@@ -12,7 +12,7 @@ scope:
   packages: [core]
 assumptions:
   - "symbol: packages/core/src/parser/parser.ts :: parseRealizesList"
-  - "grep: packages/core/src/view/deploy-view-extract.ts :: group.units.includes"
+  - "grep: packages/core/src/view/deploy-view-extract.ts :: seenMembership"
   - "grep: packages/core/src/renderer/deploy-layout.ts :: placeGroupBlock"
   - "file: docs/test-perspectives/TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md"
   - "file: docs/acceptance/2552-duplicate-realizes-target.md"
