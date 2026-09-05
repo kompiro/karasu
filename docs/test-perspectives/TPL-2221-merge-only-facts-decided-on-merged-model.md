@@ -75,8 +75,10 @@ scope:
   merged model (#2596)」— `nodePathIndex` を merged model で再構築した回
   （#2596）。cross-file の `@migration_target` / `@deprecated` ペアが移行先に解決すること、
   cross-file の素の重複が **1 件**出ること、単一ファイルで **1 件**（二重報告なし）、
-  ファイルの分け方を変えても index の値と件数が同じであること、`compile()` 経路では
-  per-file の判定が残ること、named import で入ったノードが index に載ること。
+  priority が決めるケースではファイルの分け方を変えても index の値と件数が同じであること、
+  priority 同点のときだけ勝者が import グラフに従うこと（保証の境界を明示して pin）、
+  `compile()` 経路では per-file の判定が残ること、named import で入ったノードが index に
+  載ること。
 - 先例: `duplicate-facet-id` の cross-file 重複（#2173 / #2199）
 
 ## 派生元 spec

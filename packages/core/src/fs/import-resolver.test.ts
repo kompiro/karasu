@@ -2167,6 +2167,9 @@ system Shop {
     });
 
     it("gives the same answer however the model is split across files", async () => {
+      // The migration pair, where priority — not position — decides: that answer
+      // holds whatever the file layout is. The equal-priority tie below is the
+      // part that does follow the layout.
       await fs.writeFile("/p/one.krs", `${LEGACY}${NEXT}`);
       await fs.writeFile("/p/split.krs", `import "./more.krs"\n${LEGACY}`);
       await fs.writeFile("/p/more.krs", NEXT);
@@ -2199,6 +2202,30 @@ system Shop {
       // shares by parsing directly — must keep the parser's verdict.
       const result = compile(`${LEGACY}${NEXT}`, { diagramType: "system" });
       expect(multiLocation(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("breaks an equal-priority tie by the merged traversal order", async () => {
+      // What the merged model does NOT make layout-independent, pinned so the
+      // spec's claim stays honest. Priority decides first (the case above), and
+      // only when it ties does traversal order settle it — which across files is
+      // the entry file's own declarations before the imported ones. So the same
+      // two unannotated declarations swap winners when they swap files, while
+      // the warning is emitted either way. Narrowing this would need a
+      // layout-free tie-break rule, which ADR-2550 deliberately did not adopt
+      // (it rejected loc-order for the in-file case).
+      const A = `system A {\n  service Search {}\n}\n`;
+      const B = `system B {\n  service Search {}\n}\n`;
+      await fs.writeFile("/p/a-entry.krs", `import "./b.krs"\n${A}`);
+      await fs.writeFile("/p/b.krs", B);
+      await fs.writeFile("/p/b-entry.krs", `import "./a.krs"\n${B}`);
+      await fs.writeFile("/p/a.krs", A);
+
+      const fromA = await new ImportResolver(fs).resolve("/p/a-entry.krs");
+      const fromB = await new ImportResolver(fs).resolve("/p/b-entry.krs");
+      expect(fromA.krsFile.nodePathIndex.get("Search")).toEqual(["A", "Search"]);
+      expect(fromB.krsFile.nodePathIndex.get("Search")).toEqual(["B", "Search"]);
+      expect(multiLocation(fromA.diagnostics)).toHaveLength(1);
+      expect(multiLocation(fromB.diagnostics)).toHaveLength(1);
     });
 
     it("indexes a node that only a named import brought into the tree", async () => {
