@@ -13,6 +13,7 @@ import {
   distributeGutterLanes,
   fanOutGutterPorts,
   frameObstaclesFor,
+  framePieces,
 } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
@@ -435,10 +436,7 @@ export function runRoutingChain(
   // the lanes need is reserved by `layout()`'s second placement pass. Frames
   // bound a channel the same way cards do, so a lane never lands in the
   // padding of a frame the edge is not in.
-  const laneObstacles = [...new Set([...groupFrames, ...(expandedFrames?.values() ?? [])])].flatMap(
-    (f) => f.coverage ?? [f],
-  );
-  distributeChannelLanes(nodes, edges, laneObstacles);
+  distributeChannelLanes(nodes, edges, groupFrames.flatMap(framePieces));
   // Seat every endpoint on the shape's drawn outline, now that the chain has
   // settled which route each edge takes (#2422). The candidate passes
   // re-anchor what they reroute, so this is where the guarantee is finally

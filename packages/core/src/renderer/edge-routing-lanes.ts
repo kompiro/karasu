@@ -45,10 +45,11 @@ export interface ChannelRun {
   edge: LayoutEdge;
   /** The run is `edge.waypoints[i]` → `edge.waypoints[i + 1]`. */
   i: number;
+  /** The run's y when it was collected — the router's, before any lane moved it. */
   y: number;
   leftX: number;
   rightX: number;
-  /** Lane index inside the channel, assigned by `collectChannels`. */
+  /** Lane index inside the channel. */
   lane: number;
 }
 
@@ -75,11 +76,11 @@ const LANE_SHARE_GAP = LANE_PITCH;
  * waypoints whose neighbours on both sides are vertical. Straight edges and
  * pure vertical corridors (a 2-waypoint gutter route) yield none.
  */
-export function channelRunsOf(edge: LayoutEdge): ChannelRun[] {
+export function channelRunsOf(edge: LayoutEdge): Omit<ChannelRun, "lane">[] {
   const wps = edge.waypoints;
   if (!wps || wps.length < 2) return [];
   const pts = [edge.fromPoint, ...wps, edge.toPoint];
-  const runs: ChannelRun[] = [];
+  const runs: Omit<ChannelRun, "lane">[] = [];
   // Polyline index k ↔ waypoint index k − 1. Both ends of the run must be
   // interior (1 ≤ k and k + 1 ≤ pts.length − 2), which also guarantees the
   // neighbours pts[k − 1] and pts[k + 2] exist.
@@ -94,7 +95,6 @@ export function channelRunsOf(edge: LayoutEdge): ChannelRun[] {
       y: a.y,
       leftX: Math.min(a.x, b.x),
       rightX: Math.max(a.x, b.x),
-      lane: 0,
     });
   }
   return runs;
@@ -117,25 +117,27 @@ export function channelRunsOf(edge: LayoutEdge): ChannelRun[] {
 export function collectChannels(
   nodes: Map<string, LayoutNode>,
   edges: readonly LayoutEdge[],
-  frames: readonly Rect[] = [],
+  frames: readonly Rect[],
 ): Channel[] {
   const obstacles: readonly Rect[] = [...nodes.values(), ...frames];
-  const channels = new Map<string, Channel>();
+  type Band = { upper: number; lower: number; runs: Omit<ChannelRun, "lane">[] };
+  const bands = new Map<string, Band>();
   for (const edge of edges) {
     if (edge.ghost || edge.cyclic) continue;
     for (const run of channelRunsOf(edge)) {
       const band = bandAround(run.y, obstacles);
       const key = `${band.upper}|${band.lower}`;
-      let channel = channels.get(key);
-      if (!channel) channels.set(key, (channel = { ...band, runs: [], lanes: 0 }));
-      channel.runs.push(run);
+      let bucket = bands.get(key);
+      if (!bucket) bands.set(key, (bucket = { ...band, runs: [] }));
+      bucket.runs.push(run);
     }
   }
-  for (const channel of channels.values()) {
+  const channels: Channel[] = [];
+  for (const { upper, lower, runs } of bands.values()) {
     // Stable sort keeps edge order for ties, so no explicit tiebreak is needed.
-    channel.runs.sort((a, b) => a.leftX - b.leftX || a.rightX - b.rightX);
+    runs.sort((a, b) => a.leftX - b.leftX || a.rightX - b.rightX);
     const laneEnds: number[] = [];
-    for (const run of channel.runs) {
+    const laned = runs.map((run) => {
       let lane = laneEnds.findIndex((end) => end + LANE_SHARE_GAP <= run.leftX);
       if (lane === -1) {
         lane = laneEnds.length;
@@ -143,11 +145,11 @@ export function collectChannels(
       } else {
         laneEnds[lane] = run.rightX;
       }
-      run.lane = lane;
-    }
-    channel.lanes = laneEnds.length;
+      return { ...run, lane };
+    });
+    channels.push({ upper, lower, runs: laned, lanes: laneEnds.length });
   }
-  return [...channels.values()];
+  return channels;
 }
 
 function bandAround(y: number, obstacles: readonly Rect[]): { upper: number; lower: number } {
@@ -169,7 +171,7 @@ function bandAround(y: number, obstacles: readonly Rect[]): { upper: number; low
 export function distributeChannelLanes(
   nodes: Map<string, LayoutNode>,
   edges: LayoutEdge[],
-  frames: readonly Rect[] = [],
+  frames: readonly Rect[],
 ): void {
   for (const channel of collectChannels(nodes, edges, frames)) {
     const { runs, lanes, upper, lower } = channel;

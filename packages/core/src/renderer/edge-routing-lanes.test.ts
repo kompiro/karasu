@@ -8,6 +8,7 @@ import {
 import type { LayoutEdge, LayoutNode } from "./layout.js";
 
 const NO_NODES = new Map<string, LayoutNode>();
+const NO_FRAMES: never[] = [];
 
 /** The interior L `routeOrthogonalEdges` produces: drop, run along `channelY`, drop. */
 function lEdge(
@@ -88,13 +89,13 @@ describe("channelRunsOf", () => {
 describe("distributeChannelLanes", () => {
   it("leaves a single edge in its channel untouched", () => {
     const edges = [lEdge("a", "b", 200, 50, 250)];
-    distributeChannelLanes(NO_NODES, edges);
+    distributeChannelLanes(NO_NODES, edges, NO_FRAMES);
     expect(runYs(edges[0])).toEqual([200, 200]);
   });
 
   it("staggers two edges sharing the same channel into lanes one pitch apart", () => {
     const edges = [lEdge("a", "b", 200, 0, 100), lEdge("c", "d", 200, 50, 200)];
-    distributeChannelLanes(NO_NODES, edges);
+    distributeChannelLanes(NO_NODES, edges, NO_FRAMES);
     const yA = edges[0].waypoints![0].y;
     const yB = edges[1].waypoints![0].y;
     expect(yB - yA).toBe(LANE_PITCH);
@@ -114,8 +115,8 @@ describe("distributeChannelLanes", () => {
       lEdge("a", "b", 100, 0, 50),
       lEdge("e", "f", 100, 100, 300),
     ];
-    expect(collectChannels(NO_NODES, edges)[0].lanes).toBe(2);
-    distributeChannelLanes(NO_NODES, edges);
+    expect(collectChannels(NO_NODES, edges, NO_FRAMES)[0].lanes).toBe(2);
+    distributeChannelLanes(NO_NODES, edges, NO_FRAMES);
     const yA = edges.find((e) => e.from === "a")!.waypoints![0].y;
     const yE = edges.find((e) => e.from === "e")!.waypoints![0].y;
     const yC = edges.find((e) => e.from === "c")!.waypoints![0].y;
@@ -127,7 +128,7 @@ describe("distributeChannelLanes", () => {
     // 0..200 and 205..400 are disjoint but their verticals would sit 5px
     // apart, reading as one bent edge. They take separate lanes.
     const edges = [lEdge("a", "b", 100, 0, 200), lEdge("c", "d", 100, 205, 400)];
-    expect(collectChannels(NO_NODES, edges)[0].lanes).toBe(2);
+    expect(collectChannels(NO_NODES, edges, NO_FRAMES)[0].lanes).toBe(2);
   });
 
   it("keeps the pitch independent of how many edges share the channel (#2608)", () => {
@@ -137,7 +138,7 @@ describe("distributeChannelLanes", () => {
       const edges = Array.from({ length: n }, (_e, i) =>
         lEdge(`s${i}`, `t${i}`, 300, i * 10, 2000),
       );
-      distributeChannelLanes(NO_NODES, edges);
+      distributeChannelLanes(NO_NODES, edges, NO_FRAMES);
       const ys = edges.map((e) => e.waypoints![0].y).sort((a, b) => a - b);
       for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1]).toBeCloseTo(LANE_PITCH, 9);
     }
@@ -159,7 +160,7 @@ describe("distributeChannelLanes", () => {
     const plain = lEdge("a", "b", 130, 300, 700);
     // Rows at 40..100 / 160..220 / 440..500: the runs at 130 and 500 sit in
     // different channels.
-    distributeChannelLanes(rowsAt(40, 160, 440), [mixed, plain]);
+    distributeChannelLanes(rowsAt(40, 160, 440), [mixed, plain], NO_FRAMES);
     expect(mixed.waypoints![0].y).not.toBe(plain.waypoints![0].y);
     expect(Math.abs(mixed.waypoints![0].y - plain.waypoints![0].y)).toBe(LANE_PITCH);
     // The mixed route's other run (y=500) had the channel to itself.
@@ -185,7 +186,7 @@ describe("distributeChannelLanes", () => {
       { x: 400, y: 600 },
     ]);
     const plain = lEdge("a", "b", 130, 300, 800);
-    distributeChannelLanes(rowsAt(40, 160, 300, 430, 560), [zigzag, plain]);
+    distributeChannelLanes(rowsAt(40, 160, 300, 430, 560), [zigzag, plain], NO_FRAMES);
     expect(Math.abs(zigzag.waypoints![0].y - plain.waypoints![0].y)).toBe(LANE_PITCH);
     expect(zigzag.waypoints![1].y).toBe(zigzag.waypoints![0].y);
     expect(runYs(zigzag).slice(2)).toEqual([260, 260, 390, 390, 520, 520]);
@@ -199,8 +200,8 @@ describe("distributeChannelLanes", () => {
       ["r2", card("r2", 0, 200, 1000, 100)],
     ]);
     const edges = [lEdge("a", "b", 148, 100, 400), lEdge("c", "d", 152, 300, 700)];
-    expect(collectChannels(rows, edges)).toHaveLength(1);
-    distributeChannelLanes(rows, edges);
+    expect(collectChannels(rows, edges, NO_FRAMES)).toHaveLength(1);
+    distributeChannelLanes(rows, edges, NO_FRAMES);
     expect(runYs(edges[0])).toEqual([150 - LANE_PITCH / 2, 150 - LANE_PITCH / 2]);
     expect(runYs(edges[1])).toEqual([150 + LANE_PITCH / 2, 150 + LANE_PITCH / 2]);
   });
@@ -229,7 +230,7 @@ describe("distributeChannelLanes", () => {
       ["r2", card("r2", 0, 140, 1000, 100)],
     ]);
     const edges = Array.from({ length: 5 }, (_e, i) => lEdge(`s${i}`, `t${i}`, 120, i * 10, 900));
-    distributeChannelLanes(rows, edges);
+    distributeChannelLanes(rows, edges, NO_FRAMES);
     const ys = edges.map((e) => e.waypoints![0].y).sort((a, b) => a - b);
     expect(ys[0]).toBeGreaterThan(100);
     expect(ys[ys.length - 1]).toBeLessThan(140);
@@ -244,8 +245,8 @@ describe("distributeChannelLanes", () => {
     ];
     const first = make();
     const second = make();
-    distributeChannelLanes(NO_NODES, first);
-    distributeChannelLanes(NO_NODES, second);
+    distributeChannelLanes(NO_NODES, first, NO_FRAMES);
+    distributeChannelLanes(NO_NODES, second, NO_FRAMES);
     expect(first.map(runYs)).toEqual(second.map(runYs));
   });
 });

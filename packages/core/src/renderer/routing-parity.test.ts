@@ -41,6 +41,7 @@ import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
+import { collectChannels } from "./edge-routing-lanes.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -527,9 +528,18 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
   const CROWDED = `system Crowded {\n${[...services, ...targets, ...edges].join("\n")}\n}`;
 
   it("the fixture actually crowds a channel", () => {
+    // All thirty edges survive, most are routed, and one inter-row channel
+    // carries more runs than the sub-row gap holds at one lane per
+    // `LANE_PITCH` (60 / 14 → four) — the saturation the fence is for.
     const res = layoutOfSource(CROWDED);
+    expect(res.edges).toHaveLength(30);
     const routed = res.edges.filter((e) => (e.waypoints?.length ?? 0) > 0);
     expect(routed.length).toBeGreaterThanOrEqual(20);
+    const frames = res.containers.filter((c) => c.group).flatMap((c) => c.coverage ?? [c]);
+    const busiest = Math.max(
+      ...collectChannels(res.nodes, res.edges, frames).map((c) => c.runs.length),
+    );
+    expect(busiest).toBeGreaterThanOrEqual(5);
   });
 
   it("no two horizontal runs share a collinear channel lane", () => {

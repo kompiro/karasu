@@ -10,6 +10,7 @@ import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js"
 import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
 import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
+import { framePieces } from "./edge-routing-groups.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   CONTAINER_PADDING,
@@ -115,16 +116,14 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // winner, and with it the rows the reservation is keyed on (ADR-2593 found
   // the placement is not monotone in the budget). Views whose channels fit
   // never take this branch, so their output is unchanged byte for byte.
-  let run = found.result;
-  let placementPasses: 1 | 2 = 1;
-  const reservations = channelReservations(run.result, run.rows);
-  if (reservations.size > 0) {
-    run = layoutInner(viewSlice, options, found.budget, reservations);
-    placementPasses = 2;
-  }
+  const reservations = channelReservations(found.result.result, found.result.rows);
+  const run =
+    reservations.size > 0
+      ? layoutInner(viewSlice, options, found.budget, reservations)
+      : found.result;
   const result = run.result;
   result.widthBudget = found.budget;
-  result.placementPasses = placementPasses;
+  result.placementPasses = reservations.size > 0 ? 2 : 1;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
   return result;
 }
@@ -157,7 +156,7 @@ function channelReservations(
   const rowTop = rows.map((row) =>
     row.reduce((top, id) => Math.min(top, result.nodes.get(id)?.y ?? Infinity), Infinity),
   );
-  const frames = result.containers.filter((c) => c.group).flatMap((c) => c.coverage ?? [c]);
+  const frames = result.containers.filter((c) => c.group).flatMap(framePieces);
   for (const channel of collectChannels(result.nodes, result.edges, frames)) {
     // A channel bounded on one side only (above the first row, below the
     // last) has no row gap to grow; the lane pass clamps there instead.

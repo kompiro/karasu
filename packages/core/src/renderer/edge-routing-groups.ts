@@ -982,6 +982,6 @@ function buildFramesOfNode(
  * spans rows it does not enclose, and treating that box as an obstacle would
  * push edges around empty space.
  */
-function framePieces(frame: ContainerRect): readonly Rect[] {
+export function framePieces(frame: ContainerRect): readonly Rect[] {
   return frame.coverage ?? [frame];
 }

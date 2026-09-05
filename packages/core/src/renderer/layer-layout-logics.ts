@@ -353,8 +353,9 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
     for (const row of rows) {
       // A reserved channel opens above this row: the row and everything
       // below it move down, and nothing else about the placement changes.
-      rowY += extraGapBeforeRow?.get(placedRows.length) ?? 0;
-      placedRows.push([...row]);
+      const ordinal = placedRows.length;
+      rowY += extraGapBeforeRow?.get(ordinal) ?? 0;
+      placedRows.push(row);
       let xOffset = nodeGap;
       let rowMaxHeight = 0;
       for (const nid of row) {
