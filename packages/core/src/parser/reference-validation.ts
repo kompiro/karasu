@@ -594,8 +594,11 @@ export function buildNodePathIndex(file: KrsFile): MembershipResult<Map<string, 
   // depend on declaration order (TPL-1583 / TPL-2221) within the model it is
   // given. Since #2596 that model is the merged one on the project path: the
   // ImportResolver rebuilds this index instead of unioning per-file ones, so
-  // the independence holds across files too — moving a block to another file
-  // changes neither the winner nor the warnings.
+  // the warnings hold across files too. The winner does when the candidates
+  // differ in priority, which is the migration-coexistence case the rule is
+  // for; an equal-priority tie still falls through to traversal order, and
+  // across files that is the entry file's declarations before the imported
+  // ones, so such a tie follows the import graph.
   //
   // The occurrence's priority MUST be computed in-walk: a domain with no
   // annotations of its own inherits its parent service's annotations
