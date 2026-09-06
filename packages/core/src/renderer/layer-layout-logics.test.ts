@@ -280,6 +280,67 @@ describe("placeNodesInLayers (#2514)", () => {
   });
 });
 
+describe("placeNodesInLayers > channel reservation (#2608)", () => {
+  const GAPS = { layerGap: 120, nodeGap: 60, maxLayerWidth: 1200, groupTitleGap: 60 };
+
+  function place(extraGapBeforeRow?: ReadonlyMap<number, number>) {
+    // Layer 0 balances six cards into two sub-rows of three (ADR-1737), so
+    // the row ordinals run 0, 1 (layer 0) and 2 (layer 1).
+    const nodesByLayer = new Map([
+      [0, ["a", "b", "c", "d", "e", "f"]],
+      [1, ["g", "h"]],
+    ]);
+    return placeNodesInLayers({
+      sortedLayers: [0, 1],
+      nodesByLayer,
+      edges: [],
+      edgeDirections: undefined,
+      layers: new Map(),
+      forcedLayers: new Map(),
+      layoutHints: undefined,
+      gridHint: undefined,
+      groupStartLayer: new Map(),
+      gaps: GAPS,
+      extraGapBeforeRow,
+      measure: () => ({ width: 100, height: 80 }),
+    });
+  }
+
+  it("reports rows in placement order, sub-rows included", () => {
+    expect(place().rows).toEqual([
+      ["a", "b", "c"],
+      ["d", "e", "f"],
+      ["g", "h"],
+    ]);
+  });
+
+  it("opens the reserved gap above the given row and changes nothing else", () => {
+    const plain = place();
+    const reserved = place(new Map([[1, 50]]));
+    expect(reserved.rows).toEqual(plain.rows);
+    expect(reserved.widthBound).toBe(plain.widthBound);
+    expect(reserved.childMaxWidth).toBe(plain.childMaxWidth);
+    for (const [id, box] of plain.placements) {
+      const moved = reserved.placements.get(id)!;
+      expect(moved.x).toBe(box.x);
+      expect(moved.width).toBe(box.width);
+      expect(moved.height).toBe(box.height);
+      // Row 0 stays; row 1 and everything below it move down by the
+      // reservation, so the sub-row gap above row 1 grows from 60 to 110.
+      const rowOf = plain.rows.findIndex((r) => r.includes(id));
+      expect(moved.y - box.y).toBe(rowOf >= 1 ? 50 : 0);
+    }
+    expect(reserved.childMaxHeight - plain.childMaxHeight).toBe(50);
+  });
+
+  it("reserves on a layer's first row too (the layer gap grows)", () => {
+    const plain = place();
+    const reserved = place(new Map([[2, 30]]));
+    expect(reserved.placements.get("g")!.y - plain.placements.get("g")!.y).toBe(30);
+    expect(reserved.placements.get("d")!.y).toBe(plain.placements.get("d")!.y);
+  });
+});
+
 describe("placeNodesInLayers > width budget (#2593)", () => {
   const GAPS = { layerGap: 120, nodeGap: 60, maxLayerWidth: 1200, groupTitleGap: 60 };
 

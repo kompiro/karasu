@@ -39,7 +39,7 @@ scope:
 - **修正後、柵が「効いた」と誤認する。** 元から検出していなかった柵は、修正前後でどちらも 0 を返す。修正前に落ちることを確認していない柵は、その修正について何も証明していない。
 - **劣化がスケールに比例して静かに進む。** N の増加に対して分け前が `band / N` のように縮む実装では、破綻が「ある日突然」ではなく連続的に進むため、閾値をまたいだ瞬間を誰も観測しない。
 
-実例（#2598）: `routing-parity.test.ts` は 12 の実モデルで水平方向の collinear overlap 0 を assert し、main で green だった。しかし同じ関数を 10,000 行規模の外部モデルに当てると 989 件を検出した。メトリクスは正しく、corpus のどのモデルも 1 つのチャネルを混雑させていなかっただけだった。合成フィクスチャ（service 10 → database 3、30 エッジ）を足すと main で 109 件を検出する。
+実例（#2598）: `routing-parity.test.ts` は 12 の実モデルで水平方向の collinear overlap 0 を assert し、main で green だった。しかし同じ関数を 10,000 行規模の外部モデルに当てると 989 件を検出した。メトリクスは正しく、corpus のどのモデルも 1 つのチャネルを混雑させていなかっただけだった。合成フィクスチャ（service 10 → target service 3、30 エッジ。`routing-parity.test.ts` の柵と同じもの）を足すと main で 110 件を検出する（design 時点の spike が database 3 で測った値は 109 件）。
 
 ## チェックリスト
 
@@ -57,4 +57,4 @@ scope:
 
 ## 関連テスト
 
-- `packages/core/src/renderer/routing-parity.test.ts` — 貫通 0 / collinear overlap 0 の計測柵。#2598 スライス A で飽和フィクスチャを追加する
+- `packages/core/src/renderer/routing-parity.test.ts` — 貫通 0 / collinear overlap 0 の計測柵。`crowded inter-row channel — capacity fence (#2608, TPL-2598)` がチャネルを飽和させる合成フィクスチャ（service 10 → target 3、30 エッジ）。修正前のツリーで水平 110 ペアを検出することを確認してから固定した（#2608）

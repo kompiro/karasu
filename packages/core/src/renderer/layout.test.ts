@@ -2237,3 +2237,61 @@ ${calls}
     }
   });
 });
+
+describe("layout > channel capacity (#2608)", () => {
+  // Ten services fanning into three targets: thirty skip-layer edges share
+  // the inter-row channels, far more than the default gaps hold at one lane
+  // per `LANE_PITCH`. The same fixture fences overlap in routing-parity.
+  const crowded = () => {
+    const services = Array.from(
+      { length: 10 },
+      (_s, i) => `  service S${i} { label "Service ${i}" }`,
+    );
+    const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+    const edges = services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`));
+    return `system Crowded {\n${[...services, ...targets, ...edges].join("\n")}\n}`;
+  };
+  const rowsOf = (result: ReturnType<typeof layout>) => {
+    const byY = new Map<number, string[]>();
+    for (const n of result.nodes.values()) {
+      if (!byY.has(n.y)) byY.set(n.y, []);
+      byY.get(n.y)!.push(n.id);
+    }
+    return [...byY.entries()].sort((a, b) => a[0] - b[0]).map(([, ids]) => ids.sort());
+  };
+
+  it("places a crowded canvas twice, keeping the budget the search picked", () => {
+    const result = layout(parseAndExtract(crowded()));
+    expect(result.placementPasses).toBe(2);
+    expect(result.widthBudget).toBe(1200);
+  });
+
+  it("keeps the rows of the first pass: only the gaps between them grow", () => {
+    // The rows are a function of the model and the budget alone; the second
+    // pass reuses the budget, so its rows are the ones the demand was
+    // measured on. Wrapped 10 services (4 + 4 + 2) and the target row.
+    const result = layout(parseAndExtract(crowded()));
+    expect(rowsOf(result)).toEqual([
+      ["S0", "S1", "S2", "S3"],
+      ["S4", "S5", "S6", "S7"],
+      ["S8", "S9"],
+      ["T0", "T1", "T2"],
+    ]);
+  });
+
+  it("runs the placement once when every channel fits the default gaps", () => {
+    const result = layout(parseAndExtract("system S {\n  service A\n  service B\n  A -> B\n}"));
+    expect(result.placementPasses).toBe(1);
+  });
+
+  it("is deterministic across the second pass", () => {
+    const a = layout(parseAndExtract(crowded()));
+    const b = layout(parseAndExtract(crowded()));
+    expect([...a.nodes.values()].map((n) => [n.id, n.x, n.y])).toEqual(
+      [...b.nodes.values()].map((n) => [n.id, n.x, n.y]),
+    );
+    expect(a.edges.map((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint])).toEqual(
+      b.edges.map((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]),
+    );
+  });
+});

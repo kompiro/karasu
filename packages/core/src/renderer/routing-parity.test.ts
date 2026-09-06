@@ -41,6 +41,7 @@ import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
+import { collectChannels } from "./edge-routing-lanes.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -212,7 +213,10 @@ function totalCrossings(res: LayoutResult): number {
 }
 
 function layoutOf(file: string, groupBy?: GroupBy): LayoutResult {
-  const src = readFileSync(resolve(EXAMPLES, file), "utf8");
+  return layoutOfSource(readFileSync(resolve(EXAMPLES, file), "utf8"), groupBy);
+}
+
+function layoutOfSource(src: string, groupBy?: GroupBy): LayoutResult {
   const parsed = Parser.parse(src);
   const krsFile = parsed.value;
   const slice = extractView(krsFile.systems, []);
@@ -500,4 +504,89 @@ describe("interior corridors shorten detours (#2365)", () => {
       }
     },
   );
+});
+
+describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () => {
+  // Ten services fanning into three shared targets. Every one of the thirty
+  // edges is a skip-layer edge that has to traverse the *same* inter-row
+  // channel above the target row, so the channel carries thirty horizontal
+  // runs at once. The bundled examples never crowd a channel like this, which
+  // is why their overlap fence stayed green while a real 10k-line model showed
+  // hundreds of collinear pairs (TPL-2598: a fence on a finite resource needs
+  // an input that saturates it).
+  //
+  // The targets are plain services rather than `database` nodes so that the
+  // channel is the only finite resource in play: a cylinder's inset outline
+  // clamps fanned-out ports onto one point, which is the port-sharing class
+  // #2631 owns, not the channel-capacity one this fence is for.
+  const services = Array.from(
+    { length: 10 },
+    (_s, i) => `  service S${i} { label "Service ${i}" }`,
+  );
+  const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+  const edges = services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`));
+  const CROWDED = `system Crowded {\n${[...services, ...targets, ...edges].join("\n")}\n}`;
+
+  it("the fixture actually crowds a channel", () => {
+    // All thirty edges survive, most are routed, and one inter-row channel
+    // carries more runs than the sub-row gap holds at one lane per
+    // `LANE_PITCH` (60 / 14 → four) — the saturation the fence is for.
+    const res = layoutOfSource(CROWDED);
+    expect(res.edges).toHaveLength(30);
+    const routed = res.edges.filter((e) => (e.waypoints?.length ?? 0) > 0);
+    expect(routed.length).toBeGreaterThanOrEqual(20);
+    const frames = res.containers.filter((c) => c.group).flatMap((c) => c.coverage ?? [c]);
+    const busiest = Math.max(
+      ...collectChannels(res.nodes, res.edges, frames).map((c) => c.runs.length),
+    );
+    expect(busiest).toBeGreaterThanOrEqual(5);
+  });
+
+  it("no two horizontal runs share a collinear channel lane", () => {
+    expect(collinearOverlaps(layoutOfSource(CROWDED), "h")).toBe(0);
+  });
+
+  it("no two vertical runs share a collinear corridor", () => {
+    expect(collinearOverlaps(layoutOfSource(CROWDED), "v")).toBe(0);
+  });
+
+  it("no lane spills into a card (TPL-1927 measures both axes together)", () => {
+    expect(totalPenetrations(layoutOfSource(CROWDED))).toBe(0);
+  });
+
+  it("reserves the right row when a whole row moved to the side columns", () => {
+    // Two hubs consuming externals put the externals in side columns (ADR-1728),
+    // which empties their row: the reservation must key on the rows that are
+    // still there, not on the empty one, and the crowded channel still opens.
+    const many = Array.from({ length: 12 }, (_s, i) => `  service S${i} { label "Service ${i}" }`);
+    const four = Array.from({ length: 4 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+    const fan = many.flatMap((_s, i) => four.map((_t, j) => `  S${i} -> T${j}`));
+    const externals = [
+      `  service E1 [external] { label "External 1" }`,
+      `  service E2 [external] { label "External 2" }`,
+      `  S0 -> E1`,
+      `  S3 -> E2`,
+    ];
+    const src = `system Crowded {\n${[...many, ...four, ...externals, ...fan].join("\n")}\n}`;
+    const res = layoutOfSource(src);
+    const inner = [...res.nodes.values()].filter(
+      (n) => n.id.startsWith("S") || n.id.startsWith("T"),
+    );
+    const left = Math.min(...inner.map((n) => n.x));
+    const right = Math.max(...inner.map((n) => n.x + n.width));
+    for (const id of ["E1", "E2"]) {
+      const e = res.nodes.get(id)!;
+      expect(e.x + e.width <= left || e.x >= right).toBe(true);
+    }
+    expect(res.placementPasses).toBe(2);
+    // The room opened above the target row, not above the empty externals
+    // row: the gap between the last service row and the targets is wider
+    // than the default layer gap.
+    const targetRow = inner.filter((n) => n.id.startsWith("T"));
+    const targetTop = Math.min(...targetRow.map((n) => n.y));
+    const above = inner.filter((n) => n.y + n.height <= targetTop);
+    const aboveBottom = Math.max(...above.map((n) => n.y + n.height));
+    expect(targetTop - aboveBottom).toBeGreaterThan(120);
+    expect(totalPenetrations(res)).toBe(0);
+  });
 });

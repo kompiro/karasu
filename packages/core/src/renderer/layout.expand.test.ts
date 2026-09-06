@@ -27,6 +27,15 @@ function sliceWith(expanded?: string[]) {
 }
 
 describe("layout — in-place expansion band + frame (#1921)", () => {
+  it("marks every expanded frame as a group frame (#2608 bounds channels with those)", () => {
+    // The lane pass takes the group frames as channel obstacles; an expanded
+    // container's frame is one of them, so a lane never lands in its padding.
+    const result = layout(sliceWith(["BillingService"]));
+    const expanded = result.containers.filter((c) => c.expanded);
+    expect(expanded.length).toBeGreaterThan(0);
+    expect(expanded.every((c) => c.group)).toBe(true);
+  });
+
   it("draws no expanded frame in the baseline", () => {
     const result = layout(sliceWith());
     expect(result.containers.some((c) => c.expanded)).toBe(false);

@@ -9,6 +9,8 @@ import type { ViewSlice } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
+import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
+import { framePieces } from "./edge-routing-groups.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   CONTAINER_PADDING,
@@ -96,20 +98,80 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const found = searchWidthBudget(
     (budget) => layoutInner(viewSlice, options, budget),
     (candidate) => ({
-      width: candidate.width,
-      height: candidate.height,
+      width: candidate.result.width,
+      height: candidate.result.height,
       // A budget reaches the placement only through the row-width bound, so a
       // run whose rows were never cut by it cannot be improved by widening.
       // Most views are in this shape, and skipping their remaining candidates
       // is what keeps the search off the render hot path.
-      exhausted: candidate.widthBound === false,
+      exhausted: candidate.result.widthBound === false,
     }),
     { floor: MAX_LAYER_WIDTH },
   );
-  const result = found.result;
+  // Channel capacity (#2608): the routing chain has now shown how many runs
+  // each inter-row channel carries. Where a channel needs more room than its
+  // default gap holds at `LANE_PITCH`, place once more with that room
+  // reserved above the row — and only once. The width budget stays the one
+  // the search picked: re-searching on the taller canvas could change the
+  // winner, and with it the rows the reservation is keyed on (ADR-2593 found
+  // the placement is not monotone in the budget). Views whose channels fit
+  // never take this branch, so their output is unchanged byte for byte.
+  const reservations = channelReservations(found.result.result, found.result.rows);
+  const run =
+    reservations.size > 0
+      ? layoutInner(viewSlice, options, found.budget, reservations)
+      : found.result;
+  const result = run.result;
   result.widthBudget = found.budget;
+  result.placementPasses = reservations.size > 0 ? 2 : 1;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
   return result;
+}
+
+/**
+ * One placement run and the row structure it produced. `rows` is what the
+ * channel reservation keys on; it is empty on paths that have no canvas-wide
+ * row ordinal (the multi-system root, an empty container), which is exactly
+ * where no reservation is made.
+ */
+interface LayoutRun {
+  result: LayoutResult;
+  rows: readonly (readonly string[])[];
+}
+
+/**
+ * Extra gap each placement row needs above it so the channel there holds its
+ * measured traffic at `LANE_PITCH` (#2608), keyed by row ordinal — the unit
+ * `placeNodesInLayers` counts, sub-rows included, because collisions happen
+ * between sub-rows too. Empty when every channel fits its default gap: the
+ * threshold sits at "fits the current constant", the floor-first shape
+ * ADR-2593 settled on, so a view that never needed the room is not grown.
+ */
+function channelReservations(
+  result: LayoutResult,
+  rows: readonly (readonly string[])[],
+): Map<number, number> {
+  const out = new Map<number, number>();
+  if (rows.length < 2) return out;
+  const rowTop = rows.map((row) =>
+    row.reduce((top, id) => Math.min(top, result.nodes.get(id)?.y ?? Infinity), Infinity),
+  );
+  const frames = result.containers.filter((c) => c.group).flatMap(framePieces);
+  for (const channel of collectChannels(result.nodes, result.edges, frames)) {
+    // A channel bounded on one side only (above the first row, below the
+    // last) has no row gap to grow; the lane pass clamps there instead.
+    if (!Number.isFinite(channel.upper) || !Number.isFinite(channel.lower)) continue;
+    const extra = channel.lanes * LANE_PITCH - (channel.lower - channel.upper);
+    if (extra <= 0) continue;
+    // The row the channel runs above: the first whose top is at or below the
+    // band's floor (a frame's top may sit between the two). A row every member
+    // of which left for a side column has no top (`Infinity`) and is not a
+    // row the channel can run above.
+    const rowBelow = rowTop.findIndex((top) => Number.isFinite(top) && top >= channel.lower - 0.5);
+    if (rowBelow <= 0) continue;
+    out.set(rowBelow, Math.max(out.get(rowBelow) ?? 0, extra));
+  }
+  return out;
 }
 
 function layoutInner(
@@ -117,7 +179,9 @@ function layoutInner(
   options: LayoutOptions,
   /** The candidate row-width budget this run is placing for (#2593). */
   widthBudget: number,
-): LayoutResult {
+  /** Channel capacity to reserve above each row ordinal on a second pass (#2608). */
+  extraGapBeforeRow?: ReadonlyMap<number, number>,
+): LayoutRun {
   const {
     ownerIndex,
     teamLabels,
@@ -156,7 +220,10 @@ function layoutInner(
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(viewSlice, options, measureCtx, widthBudget);
+    // Each system stacks its own rows side by side, so there is no canvas-wide
+    // row ordinal to reserve channel capacity on: the root view keeps its
+    // default gaps (#2608 slice A's stated limit; see the parent's Slice status).
+    return { result: layoutMultipleSystems(viewSlice, options, measureCtx, widthBudget), rows: [] };
   }
 
   // The canvas being drawn is the container plus its ancestors — for the root
@@ -309,15 +376,18 @@ function layoutInner(
     const containers = buildContainersForEmpty(viewSlice);
     const outermost = containers.length > 0 ? containers[0] : null;
     return {
-      nodes: new Map(),
-      edges: [],
-      containers,
-      width: outermost ? outermost.x + outermost.width + CONTAINER_PADDING : 0,
-      height: outermost ? outermost.y + outermost.height + CONTAINER_PADDING : 0,
-      // Nothing was placed, so no budget can change this canvas. Saying so
-      // ends the search after one run instead of laying an empty view out
-      // once per candidate.
-      widthBound: false,
+      result: {
+        nodes: new Map(),
+        edges: [],
+        containers,
+        width: outermost ? outermost.x + outermost.width + CONTAINER_PADDING : 0,
+        height: outermost ? outermost.y + outermost.height + CONTAINER_PADDING : 0,
+        // Nothing was placed, so no budget can change this canvas. Saying so
+        // ends the search after one run instead of laying an empty view out
+        // once per candidate.
+        widthBound: false,
+      },
+      rows: [],
     };
   }
 
@@ -374,6 +444,7 @@ function layoutInner(
     gridHint: containerGridHint,
     groupStartLayer,
     widthBudget,
+    extraGapBeforeRow,
     gaps: {
       layerGap: LAYER_GAP,
       nodeGap: NODE_GAP,
@@ -644,21 +715,26 @@ function layoutInner(
   const crossingMarks = computeCrossingMarks(layoutEdges);
 
   return {
-    nodes: layoutNodes,
-    edges: layoutEdges,
-    containers,
-    width: totalWidth,
-    height: totalHeight,
-    widthBound: placed.widthBound,
-    foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
-    foldedFacetMembership: foldFacetMembership(
-      viewSlice.childNodes,
-      remapGhostEndpoint,
-      options.facetMembership,
-      options.facetOrder ?? [],
-    ),
-    crossingMarks,
-    degradedMemberships,
+    result: {
+      nodes: layoutNodes,
+      edges: layoutEdges,
+      containers,
+      width: totalWidth,
+      height: totalHeight,
+      widthBound: placed.widthBound,
+      foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
+      foldedFacetMembership: foldFacetMembership(
+        viewSlice.childNodes,
+        remapGhostEndpoint,
+        options.facetMembership,
+        options.facetOrder ?? [],
+      ),
+      crossingMarks,
+      degradedMemberships,
+    },
+    // A side-placed external (#1728) left its row for a side column, so its y
+    // no longer says where the row is; the remaining members do.
+    rows: placed.rows.map((row) => row.filter((id) => !sideExternals.has(id))),
   };
 }
 

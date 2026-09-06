@@ -13,6 +13,7 @@ import {
   distributeGutterLanes,
   fanOutGutterPorts,
   frameObstaclesFor,
+  framePieces,
 } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
@@ -428,10 +429,14 @@ export function runRoutingChain(
   // shape the chain can produce takes part in the overlap passes (TPL-1954)
   // in both modes.
   distributeGutterLanes(nodes, edges, groupFrames);
-  fanOutGutterPorts(nodes, edges, groupFrames, expandedFrames);
-  // Stagger horizontal segments that share an inter-row channel across
-  // distinct lanes. No-op when each channel hosts ≤ 1 edge.
-  distributeChannelLanes(edges);
+  fanOutGutterPorts(nodes, edges, groupFrames, expandedFrames, ports);
+  // Stagger the horizontal runs that share an inter-row channel across
+  // distinct lanes at a fixed pitch (#2608). Keyed on the channel rather than
+  // on the route shape, so every route's runs take part (TPL-1954); the room
+  // the lanes need is reserved by `layout()`'s second placement pass. Frames
+  // bound a channel the same way cards do, so a lane never lands in the
+  // padding of a frame the edge is not in.
+  distributeChannelLanes(nodes, edges, groupFrames.flatMap(framePieces));
   // Seat every endpoint on the shape's drawn outline, now that the chain has
   // settled which route each edge takes (#2422). The candidate passes
   // re-anchor what they reroute, so this is where the guarantee is finally
