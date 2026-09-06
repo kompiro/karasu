@@ -344,6 +344,10 @@ edge[inferred] {
   color: #94A3B8;
 }
 
+edge[projected] {
+  color: #38BDF8;
+}
+
 edge[delivers] {
   color: #A78BFA;
   border-style: dashed;
@@ -620,6 +624,10 @@ edge[implicit] {
 
 edge[inferred] {
   color: #64748B;
+}
+
+edge[projected] {
+  color: #0369A1;
 }
 
 edge[delivers] {

@@ -1251,3 +1251,60 @@ describe("buildAllViewsSvg with groupBy: team (#1879)", () => {
     expect(svg).not.toContain("__group_collapsed_");
   });
 });
+
+describe("store-scoped ER projection on the database drill-down page (#2721)", () => {
+  const KRS = `
+system EC {
+  service S {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+        Order -> LineItem "has"
+        Order --> Shipment "ships as"
+      }
+      entity LineItem { table OrderDB.line_items }
+      entity Shipment { table OrderDB.shipments }
+    }
+  }
+  database OrderDB {
+    table orders {}
+    table line_items {}
+    table shipments {}
+  }
+}
+`;
+  function databasePage(svg: string): string {
+    const start = svg.indexOf('id="krs-system-OrderDB"');
+    expect(start).toBeGreaterThan(-1);
+    return svg.slice(start);
+  }
+
+  it("draws the projected relations on the database page, coloured by [projected] rather than dashed (TC-A8)", () => {
+    const { svg } = buildDrillDownSvg(Parser.parse(KRS).value);
+    const page = databasePage(svg);
+    expect(page).toContain('data-edge-from="orders" data-edge-to="line_items"');
+    expect(page).toContain('data-edge-from="orders" data-edge-to="shipments"');
+    // Builtin `[projected]` colour (dark theme). Colour is the only axis the tag
+    // owns: the sync relation stays solid, the async one stays dashed (TPL-510).
+    expect(page).toContain('stroke="#38BDF8"');
+    const strokeOf = (to: string): string | undefined =>
+      new RegExp(`<g data-edge-from="orders" data-edge-to="${to}"[^>]*><(?:line|path)[^>]*>`).exec(
+        page,
+      )?.[0];
+    const syncStroke = strokeOf("line_items");
+    const asyncStroke = strokeOf("shipments");
+    expect(syncStroke).toBeDefined();
+    expect(asyncStroke).toBeDefined();
+    expect(syncStroke).toContain('stroke="#38BDF8"');
+    expect(syncStroke).not.toContain("stroke-dasharray");
+    expect(asyncStroke).toContain('stroke="#38BDF8"');
+    expect(asyncStroke).toContain("stroke-dasharray");
+  });
+
+  it("keeps the leaves' page free of relations when no entity maps into the store (TC-A9)", () => {
+    const { svg } = buildDrillDownSvg(
+      Parser.parse(`database OrderDB { table orders {} table customers {} }`).value,
+    );
+    expect(databasePage(svg)).not.toContain("data-edge-from=");
+  });
+});

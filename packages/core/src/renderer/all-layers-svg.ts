@@ -10,7 +10,7 @@ import { render, legendScopeForLogicalSlice, type RenderOptions } from "./svg-re
 import { buildGroupLabelIndex, buildTeamLabelIndex, declaredGroupOrderOf } from "./group-labels.js";
 import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
-import { resolveStyles } from "../resolver/style-resolver.js";
+import { resolveStyles, styleDerivedEdges } from "../resolver/style-resolver.js";
 import { collectLegendUsage } from "../legend/usage.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
@@ -247,7 +247,7 @@ export function buildAllLayersSvg(
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
     {
-      getSlice: (path) => extractView(effectiveSystems, path),
+      getSlice: (path) => styleDerivedEdges(extractView(effectiveSystems, path), styles, sheets),
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
       getChildren: (slice) =>
         slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,

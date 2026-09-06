@@ -555,7 +555,11 @@ Adding sequence diagrams as a drill-down target was considered in Issue #23 and 
 #### No physical database schema modeling (conceptual entities *are* in scope)
 
 **Physical schema** — columns, types, indexes, foreign-key constraint
-definitions — is out of scope. **Conceptual entities and their relations**
+definitions — is out of scope. *Which table references which* is not schema
+in that sense: it is a structural fact that passes the same filter, so a
+`database` canvas draws table-to-table relations (projected from the entity
+layer) while the constraint's columns, cascade rules and name never enter the
+model. **Conceptual entities and their relations**
 (what exists, how it relates, who owns it) are in scope. The line between them
 is the shared non-goal filter itself: physical schema is an implementation
 detail (fast-changing), while aggregates / core entities and their relations

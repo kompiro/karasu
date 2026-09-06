@@ -180,18 +180,7 @@ export function resolveStyles(
     processNodes(extraNodes, []);
   }
 
-  if (extraEdges) {
-    for (const edge of extraEdges) {
-      const qualifiedKey = edgeStyleKey(edge.from, edge.to, edge.kind);
-      if (!edgeStyles.has(qualifiedKey)) {
-        const style = resolveEdgeStyle(edge, allRules);
-        edgeStyles.set(qualifiedKey, style);
-        if (!edgeStyles.has(`${edge.from}->${edge.to}`)) {
-          edgeStyles.set(`${edge.from}->${edge.to}`, style);
-        }
-      }
-    }
-  }
+  if (extraEdges) addMissingEdgeStyles(edgeStyles, allRules, extraEdges);
 
   if (deployNodes) {
     for (const unit of deployNodes) {
@@ -730,6 +719,55 @@ function stripQuotes(s: string): string {
 export function nodeStyleKey(id: string, annotations: readonly string[] | undefined): string {
   if (!annotations || annotations.length === 0) return id;
   return `${id}@${[...annotations].sort().join(",")}`;
+}
+
+/**
+ * Style edges that are not in the model — the ones a view derives at
+ * extraction time (implicit service edges, entity relations projected onto a
+ * store canvas) — without disturbing an authored edge's entry: only a key the
+ * map lacks is added, so a `.krs` edge on the same pair keeps its own style.
+ */
+function addMissingEdgeStyles(
+  edgeStyles: Map<string, ResolvedEdgeStyle>,
+  rules: StyleRule[],
+  edges: readonly KrsEdge[],
+): void {
+  for (const edge of edges) {
+    const qualifiedKey = edgeStyleKey(edge.from, edge.to, edge.kind);
+    if (edgeStyles.has(qualifiedKey)) continue;
+    const style = resolveEdgeStyle(edge, rules);
+    edgeStyles.set(qualifiedKey, style);
+    if (!edgeStyles.has(`${edge.from}->${edge.to}`)) {
+      edgeStyles.set(`${edge.from}->${edge.to}`, style);
+    }
+  }
+}
+
+const flattenedRulesCache = new WeakMap<StyleSheet[], StyleRule[]>();
+
+/**
+ * Give a view slice's derived edges a style entry after `resolveStyles` ran.
+ *
+ * The compile path hands the slice's edges to `resolveStyles` as `extraEdges`
+ * up front. The static bundles cannot: they resolve styles once and then
+ * extract one slice per drill-down page, so an edge that exists only on a page
+ * — `[implicit]` service edges, `[projected]` store relations (#2721) — fell
+ * back to `defaultEdgeStyle` there, losing its colour and even its `[async]`
+ * dash. Calling this on each page's slice closes that gap (TPL-219: the static
+ * bundle shows what the app shows). Returns the slice for use inline.
+ */
+export function styleDerivedEdges<T extends { childEdges: KrsEdge[] }>(
+  slice: T,
+  styles: ResolvedStyles,
+  sheets: StyleSheet[],
+): T {
+  let rules = flattenedRulesCache.get(sheets);
+  if (!rules) {
+    rules = flattenSheetsInCascadeOrder(sheets);
+    flattenedRulesCache.set(sheets, rules);
+  }
+  addMissingEdgeStyles(styles.edges, rules, slice.childEdges);
+  return slice;
 }
 
 /**

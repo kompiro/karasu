@@ -2160,3 +2160,139 @@ system EC {
     expect(edge?.label).toBe("W");
   });
 });
+
+describe("store-scoped ER projection onto a database canvas (#2721)", () => {
+  // Two domains, both mapping into OrderDB; Billing maps into a second store;
+  // Audit is tableless by design.
+  const KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+        Order -> LineItem "has"
+        Order -> Customers.Customer "placed by"
+        Order --> Shipping.Shipment "ships as"
+        Order -> Customer "bare cross-domain"
+        Order -> Billing.Invoice "billed by"
+        Order -> AuditEntry "audited by"
+      }
+      entity LineItem { table OrderDB.line_items }
+      entity AuditEntry {}
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer { table OrderDB.customers }
+    }
+    domain Shipping {
+      entity Shipment { table OrderDB.shipments }
+    }
+    domain Billing {
+      entity Invoice { table BillingDB.invoices }
+    }
+  }
+  database OrderDB {
+    table orders {}
+    table line_items {}
+    table customers {}
+    table shipments {}
+  }
+  database BillingDB {
+    table invoices {}
+  }
+}
+`;
+  const storeEdges = (krs: string, path: string[]) =>
+    extractView(parseSystem(krs), path).childEdges.map(
+      (e) => `${e.from}-${e.kind}->${e.to}${e.tags.includes("projected") ? " [projected]" : ""}`,
+    );
+
+  it("projects a relation whose endpoints both map into the store, tagged [projected] (TC-A1)", () => {
+    const edges = storeEdges(KRS, ["EC", "OrderDB"]);
+    expect(edges).toContain("orders-sync->line_items [projected]");
+  });
+
+  it("keeps the relation's label and kind: an async relation stays async (TC-A2, TPL-510)", () => {
+    const slice = extractView(parseSystem(KRS), ["EC", "OrderDB"]);
+    const ships = slice.childEdges.find((e) => e.from === "orders" && e.to === "shipments");
+    expect(ships?.kind).toBe("async");
+    expect(ships?.label).toBe("ships as");
+    const has = slice.childEdges.find((e) => e.from === "orders" && e.to === "line_items");
+    expect(has?.kind).toBe("sync");
+    expect(has?.label).toBe("has");
+  });
+
+  it("resolves a qualified cross-domain target and drops a bare one (TC-A3, TPL-1936)", () => {
+    const edges = storeEdges(KRS, ["EC", "OrderDB"]);
+    // `Order -> Customers.Customer` resolves; `Order -> Customer` (bare, foreign) does not,
+    // so exactly one orders → customers edge exists.
+    expect(edges.filter((e) => e.startsWith("orders-sync->customers"))).toEqual([
+      "orders-sync->customers [projected]",
+    ]);
+  });
+
+  it("does not project a relation to a tableless entity (TC-A4, TPL-2585)", () => {
+    const slice = extractView(parseSystem(KRS), ["EC", "OrderDB"]);
+    expect(slice.childEdges.some((e) => e.to === "AuditEntry" || e.from === "AuditEntry")).toBe(
+      false,
+    );
+  });
+
+  it("puts a relation mapping into two different stores on neither canvas (TC-A5)", () => {
+    expect(storeEdges(KRS, ["EC", "OrderDB"]).some((e) => e.includes("invoices"))).toBe(false);
+    expect(storeEdges(KRS, ["EC", "BillingDB"])).toEqual([]);
+  });
+
+  it("does not duplicate an authored table edge for the same ordered pair (TC-A6)", () => {
+    const krs = KRS.replace("table orders {}", 'table orders { orders -> line_items "fk" }');
+    const edges = storeEdges(krs, ["EC", "OrderDB"]);
+    expect(edges.filter((e) => e.includes("line_items"))).toEqual(["orders-sync->line_items"]);
+  });
+
+  it("does not project a relation whose source is not the declaring entity (#2501)", () => {
+    const krs = `
+system EC {
+  service S {
+    domain D {
+      entity A { table DB.a }
+      entity B {
+        table DB.b
+        A -> B "backwards"
+      }
+    }
+  }
+  database DB { table a {} table b {} }
+}
+`;
+    expect(storeEdges(krs, ["EC", "DB"])).toEqual([]);
+  });
+
+  it("projects onto a top-level database from an orphan domain, as `translate --from db` emits (TC-A7)", () => {
+    const krs = `
+database OrderDB {
+  table OrdersTable { label "orders" }
+  table CustomersTable { label "customers" }
+}
+domain OrderDB {
+  entity Orders {
+    table OrderDB.OrdersTable
+    Orders -> Customers [inferred]
+  }
+  entity Customers { table OrderDB.CustomersTable }
+}
+`;
+    // A no-system file reaches the store canvas through the `__unassigned__`
+    // pseudo-system, which is what the renderer hands to extractView.
+    const slice = extractView(withUnassignedSystem(Parser.parse(krs).value), ["OrderDB"]);
+    expect(slice.childEdges.map((e) => `${e.from}->${e.to}`)).toEqual([
+      "OrdersTable->CustomersTable",
+    ]);
+    expect(slice.childEdges[0].tags).toEqual(["inferred", "projected"]);
+  });
+
+  it("leaves a non-database container untouched", () => {
+    const slice = extractView(parseSystem(KRS), ["EC", "OrderService"]);
+    expect(slice.childEdges.some((e) => e.tags.includes("projected"))).toBe(false);
+  });
+});
