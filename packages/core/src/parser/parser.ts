@@ -2140,7 +2140,22 @@ export class Parser {
   private parseRealizesList(keyword: Token, properties: DeployNodeProperties): void {
     for (const first of this.commaSeparatedValues(keyword, "realizes")) {
       const target = this.readReferencePathElement(first, "realizes");
-      if (target) (properties.realizes ??= []).push(target);
+      if (!target) continue;
+      // Naming the same target twice declares one relation, not two (#2552).
+      // The repeat is dropped wherever it sits — later in this list or on a
+      // line of its own — the way `facets` has always treated a repeated id,
+      // and the entry that survives is the first, so the recorded range points
+      // at the spelling the author wrote first. Recording both instead makes
+      // consumers that count entries disagree with consumers that key by
+      // identity: the deploy layout reserved a grid cell per entry while
+      // `layoutNodes` coalesced the two placements, leaving a container sized
+      // for a unit that is never drawn.
+      const targets = (properties.realizes ??= []);
+      const already = targets.some(
+        (t) =>
+          t.path.length === target.path.length && t.path.every((seg, i) => seg === target.path[i]),
+      );
+      if (!already) targets.push(target);
     }
   }
 

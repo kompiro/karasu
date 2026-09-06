@@ -282,6 +282,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2208](2208-positional-label-error-promotion.md) — organization / team / member の positional label を error にする
 - [ADR-2547](2547-shared-node-path-machinery.md) — node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を定義する
 - [ADR-2550](2550-order-independent-node-path-index.md) — nodePathIndex の多重判定を collect-then-decide にして宣言順非依存にする
+- [ADR-2552](2552-duplicate-realizes-target.md) — 同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）
 - [ADR-9008](9008-ast-restructure-discriminated-union.md) — AST 再構成 — Discriminated Union とプロパティブロック
 
 ## project

@@ -567,3 +567,63 @@ deploy prod {
     ]);
   });
 });
+
+describe("a unit joins one container once (#2552)", () => {
+  const model = (realizes: string) =>
+    Parser.parse(`
+system EC {
+  service OrderService {}
+}
+deploy prod {
+  oci app {
+    runtime "Kubernetes"
+${realizes}
+  }
+}
+`).value;
+
+  const unitsOf = (realizes: string) => {
+    const file = model(realizes);
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+    return slice.containers.map((c) => [c.serviceId, c.units.map((u) => u.id)]);
+  };
+
+  it("places the unit once when the target is repeated on separate lines", () => {
+    expect(unitsOf("    realizes OrderService\n    realizes OrderService")).toEqual([
+      ["OrderService", ["app"]],
+    ]);
+  });
+
+  it("places the unit once when the target is repeated within one comma list", () => {
+    expect(unitsOf("    realizes OrderService, OrderService")).toEqual([["OrderService", ["app"]]]);
+  });
+
+  it("places the unit once when a bare and a qualified ref resolve to it", () => {
+    // The parser keeps these two apart — they are different paths, and each
+    // carries its own range for the reference diagnostics — so the container
+    // is where the two have to become one membership.
+    expect(unitsOf("    realizes OrderService\n    realizes EC.OrderService")).toEqual([
+      ["OrderService", ["app"]],
+    ]);
+  });
+
+  it("still places one unit in each of the containers it realizes", () => {
+    const file = Parser.parse(`
+system EC {
+  service OrderService {}
+  service InventoryService {}
+}
+deploy prod {
+  oci monolith {
+    realizes OrderService
+    realizes InventoryService
+  }
+}
+`).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+    expect(slice.containers.map((c) => [c.serviceId, c.units.map((u) => u.id)])).toEqual([
+      ["OrderService", ["monolith"]],
+      ["InventoryService", ["monolith"]],
+    ]);
+  });
+});

@@ -2313,6 +2313,29 @@ deploy Production {
     expect(targets).toEqual(["Bx", "Cx"]);
   });
 
+  // #2552 — one mistyped target is one mistake. The repeat is dropped when the
+  // declaration is recorded, so the reader is told once rather than as many
+  // times as the line was written.
+  it("warns once for a target that is unresolved and named twice", () => {
+    const krs = `
+system S {
+  service ECommerce {}
+}
+deploy Production {
+  oci app {
+    runtime "Kubernetes"
+    realizes ECommrce
+    realizes ECommrce
+  }
+}
+    `;
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    expect(w.map((wn) => (wn.kind === "unresolved-realizes" ? wn.params.target : null))).toEqual([
+      "ECommrce",
+    ]);
+  });
+
   // #2167 — a comma list puts several targets on one line, so a node-level or
   // line-level range can no longer say which one failed.
   it("points at the offending identifier within a comma-separated list", () => {

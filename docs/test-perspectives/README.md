@@ -533,3 +533,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2658](TPL-2658-agent-write-scope-is-declared-not-prompted.md) | エージェントに任せる自動化の書き込み範囲は prompt の禁止文ではなく宣言（safe outputs・permission）で検証する。宣言だけが広がった状態は、prompt が「変更しません」と言い続けるためレビューでは安全に読める | build | #2658 |
 | [TPL-2536](TPL-2536-locale-source-chain-completeness.md) | 環境から生タグを取り出す consumer は、その環境が定める優先順位の鎖を全部辿る — 正規化が単一情報源でも、渡されなかった情報源については何も言えない。抜けるのは中間リンクなので、両端が読めているぶんテストは緑のまま通る | cli | #2536, ADR-1417 |
 | [TPL-2655](TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md) | 更新で延びる期限には、更新されない上限を併置する — ストアが強制できる期限は 1 つで、それは延びる側に使われるため、上限は読み取り時に確かめるしかない | project | #2655, sessions.ts |
+| [TPL-2552](TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) | 同じ相手を二度書ける参照リストは、件数を数える消費側と id で畳む消費側の両方に届く — 冪等を宣言側で閉じる。両者の食い違いは例外にならず「確保したのに誰も描かれない場所」として図に残る | parser | #2552, ADR-2167 |

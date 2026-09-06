@@ -276,6 +276,7 @@ flowchart TD
     ADR_2208["ADR-2208<br/>organization / team / member の positional label..."]
     ADR_2547["ADR-2547<br/>node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を..."]
     ADR_2550["ADR-2550<br/>nodePathIndex の多重判定を collect-then-decide にして宣言順..."]
+    ADR_2552["ADR-2552<br/>同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）"]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -885,6 +886,7 @@ flowchart TD
   class ADR_2535 accepted
   class ADR_2547 accepted
   class ADR_2550 accepted
+  class ADR_2552 accepted
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2578 accepted
