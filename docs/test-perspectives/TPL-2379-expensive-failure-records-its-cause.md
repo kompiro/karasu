@@ -8,16 +8,16 @@ applicable_to:
   - "外部サービスの応答を握りつぶす方針がある経路（機密・個人データ・他人のコード由来の文字列）"
   - "多段パイプラインで、成功したステップだけを記録する計測"
 known_consumers:
-  - karasu-nest-reverse
+  - chat-panel
 discovered_from:
   - issue: "#2379"
-  - root_cause_file: "packages/nest/src/reverse/llm.ts"
+  - root_cause_adr: "ADR-1990"
 related_to:
   - TPL-2374
 topic: project
 scope:
   packages:
-    - nest
+    - app
 ---
 
 # TPL-2379: 再現に実費がかかる処理の失敗記録は、再実行なしで原因が分かるだけの情報を持つ
@@ -53,3 +53,16 @@ scope:
 - エラー型の形を正規表現で検査してから載せる（`/^[a-z][a-z0-9_]{0,39}$/` 程度）。通らない値は「型名ではない＝散文」とみなして捨てる
 - 「試行中の段」を開始時に記録し、完了時に消す。失敗記録には消えなかったものが残る
 - 失敗した入力そのものを短い TTL で別ストアに置く（`failed/` prefix、24 時間）。ただし置ける対象は方針で決まる — 生成物は置けても、他人のソースは置けない
+
+## 起源と現在の適用先
+
+- **起源**: karasu-nest の server-side reverse（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)）が
+  1 ラン $3 超の推論の失敗を status だけで記録し、切り分けが再実行になった
+  （[#2379](https://github.com/kompiro/karasu/issues/2379)）。
+  <!-- absent-path-next-line: removed in #2590 when ADR-2578 retired server-side reverse, named as history -->
+  根本原因のあった `packages/nest/src/reverse/llm.ts` は [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)
+  が server-side reverse を廃止した際に削除された（不在が決定の実行を示す）。
+- **現在の適用先**: app の chat session の失敗経路（`packages/app/src/hooks/useChatSession/errors.ts`）。
+  `APIError` を status で `auth` / `rate_limit` / `server` の 3 つに畳み、固定語彙の `error.type` を捨てている。
+  1 回の実費は利用者の API key 持ちで小さいので観点の重みは弱いが、失敗モード 1 つ目（全種類が同じ見た目）
+  そのものなので、chat の失敗記録を厚くするときはここから始める。

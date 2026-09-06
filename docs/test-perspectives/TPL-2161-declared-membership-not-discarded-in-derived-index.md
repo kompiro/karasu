@@ -12,7 +12,7 @@ known_consumers:
 discovered_from:
   - issue: "#2161"
   - root_cause_adr: "ADR-1974"
-  - root_cause_file: "packages/core/src/parser/parser.ts:buildBoundaryIndex"
+  - root_cause_file: "packages/core/src/parser/reference-validation.ts:buildBoundaryMembership"
 related_to:
   - TPL-1032
   - TPL-999
@@ -36,7 +36,7 @@ scope:
 
 判定は 1 つ: **その index を作る関数が、入力に書かれていた事実のうち出力に現れないものを持つか**。持つなら、その事実を必要とする別の消費者（詳細パネル・legend・export・監査・将来のビュー）が構造的に作れない。
 
-karasu では `boundaryIndex`（`buildBoundaryIndex`）が実例である。[ADR-1974](../adr/1974-boundary-declaration-syntax.md) が記録した 1:1 の根拠は「開閉フレームの識別子は 1 ノード 1 値」= banded view の**配置**要件だったが、実装は所属そのものを 1 値に切り詰め、2 件目以降を `info` 診断に出すだけで捨てていた（[#2161](https://github.com/kompiro/karasu/issues/2161)）。`ownerIndex`（team 軸）も同じ形をしている。
+karasu では `boundaryIndex`（`buildBoundaryIndex`。[#2213](https://github.com/kompiro/karasu/pull/2213) で多値の `buildBoundaryMembership` に置き換え済みで、旧関数は現存しない）が実例である。[ADR-1974](../adr/1974-boundary-declaration-syntax.md) が記録した 1:1 の根拠は「開閉フレームの識別子は 1 ノード 1 値」= banded view の**配置**要件だったが、実装は所属そのものを 1 値に切り詰め、2 件目以降を `info` 診断に出すだけで捨てていた（[#2161](https://github.com/kompiro/karasu/issues/2161)）。`ownerIndex`（team 軸）も同じ形をしている。
 
 ## 想定される失敗モード
 

@@ -8,15 +8,15 @@ applicable_to:
   - "CDN・API gateway・リバースプロキシなど、こちらが設定していない中間層を経由する通信"
   - "ストリーミング（SSE・chunked・WebSocket）を選べるが非ストリーミングでも書ける API"
 known_consumers:
-  - karasu-nest-reverse
+  - chat-panel
 discovered_from:
   - issue: "#2374"
-  - root_cause_file: "packages/nest/src/reverse/llm.ts"
+  - root_cause_adr: "ADR-1990"
 related_to: []
 topic: project
 scope:
   packages:
-    - nest
+    - app
 ---
 
 # TPL-2374: 分単位になりうる外部呼び出しは、総所要時間ではなく無通信で打ち切る
@@ -52,3 +52,15 @@ scope:
 - ストリーミング受信 + idle timeout。チャンクが届くたびにタイマーを張り直せば、長さではなく沈黙で打ち切れる
 - リトライは**呼び出し 1 回**の層に置く。パイプライン全体の再実行は課金も所要時間も倍にするので、上流の一過性失敗に対する応答としては大きすぎる
 - 例外に載せるのは status と固定語彙の error type だけにする。中間層やプロバイダのメッセージは、こちらが送ったプロンプト（＝他人のコード由来）を引用しうる
+
+## 起源と現在の適用先
+
+- **起源**: karasu-nest の server-side reverse（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)）が
+  LLM を非ストリーミング・大きな `max_tokens` で呼び、こちらが設定していない gateway timeout で落ちた
+  （[#2374](https://github.com/kompiro/karasu/issues/2374)）。
+  <!-- absent-path-next-line: removed in #2590 when ADR-2578 retired server-side reverse, named as history -->
+  根本原因のあった `packages/nest/src/reverse/llm.ts` は [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)
+  が server-side reverse を廃止した際に削除された（不在が決定の実行を示す）。
+- **現在の適用先**: app の chat session（`packages/app/src/hooks/useChatSession.ts`）。ブラウザから
+  `messages.create` を非ストリーミング・`max_tokens: 4096` で直接呼ぶ。中間層は無いが、チェックリストの
+  1（要求している上限で判定する）・2（無通信で測る）・5（沈黙するストリームのテスト）はそのまま当てはまる。
