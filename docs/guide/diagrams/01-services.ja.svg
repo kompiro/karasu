@@ -11,20 +11,19 @@
 <g data-edge-from="OrderService" data-edge-to="CatalogService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;CatalogService" data-edge-label="商品情報を引く" class="krs-edge krs-edge--interactive"><line x1="422" y1="325" x2="166.66666666666666" y2="445" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="422" y1="325" x2="166.66666666666666" y2="445" stroke="#B45309" stroke-width="1.5" marker-end="url(#arrow-0)"/>
 <text x="294.3333333333333" y="379" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">商品情報を引く</text></g>
-<g data-edge-from="OrderService" data-edge-to="InventoryService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;InventoryService" data-edge-label="在庫を引き当てる" class="krs-edge krs-edge--interactive"><line x1="454" y1="325" x2="360" y2="445" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="454" y1="325" x2="360" y2="445" stroke="#B45309" stroke-width="1.5" marker-end="url(#arrow-0)"/>
-<text x="407" y="379" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">在庫を引き当てる</text></g>
+<g data-edge-from="OrderService" data-edge-to="InventoryService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;InventoryService" data-edge-label="在庫を引き当てる" class="krs-edge krs-edge--interactive"><line x1="486" y1="325" x2="360" y2="445" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 486 325 L 456.9 352.72 M 451.1 358.23 L 360 445" fill="none" stroke="#B45309" stroke-width="1.5" marker-end="url(#arrow-0)"/>
+<text x="401.7931034482758" y="378.48275862068965" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">在庫を引き当てる</text></g>
 <g data-edge-from="OrderService" data-edge-to="PaymentService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;PaymentService" data-edge-label="決済を依頼する" class="krs-edge krs-edge--interactive"><line x1="518" y1="325" x2="580" y2="445" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
 <line x1="518" y1="325" x2="580" y2="445" stroke="#B45309" stroke-width="1.5" marker-end="url(#arrow-0)"/>
 <text x="549" y="379" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">決済を依頼する</text></g>
-<g data-edge-from="OrderService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="OrderService--&gt;NotificationService" data-edge-label="注文確定を通知する" class="krs-edge krs-edge--interactive"><polyline points="486,325 486,571 333.3333333333333,571 333.3333333333333,631" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<path d="M 486 325 L 486 571 L 486 571 M 479.33 571 L 333.33 571 L 333.33 631" fill="none" stroke="#B45309" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
-<text x="486" y="427" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">注文確定を通知する</text></g>
+<g data-edge-from="OrderService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="OrderService--&gt;NotificationService" data-edge-label="注文確定を通知する" class="krs-edge krs-edge--interactive"><polyline points="454,325 454,571 333.3333333333333,571 333.3333333333333,631" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="454,325 454,571 333.3333333333333,571 333.3333333333333,631" fill="none" stroke="#B45309" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
+<text x="454" y="427" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">注文確定を通知する</text></g>
 <g data-edge-from="PaymentService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="PaymentService--&gt;NotificationService" data-edge-label="決済結果を通知する" class="krs-edge krs-edge--interactive"><line x1="580" y1="511" x2="386.66666666666663" y2="631" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<path d="M 580 511 L 489.4 567.24 M 482.6 571.45 L 386.67 631" fill="none" stroke="#B45309" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
-<text x="478.49917376703365" y="585.6550454196439" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>
-<g class="crossing-marks"><path d="M 482.6 571.45 A 4 4 -31.83 0 1 489.4 567.24" fill="none" stroke="#B45309" stroke-width="1.5"/>
-<path d="M 479.33 571 A 4 4 0 0 1 487.33 571" fill="none" stroke="#B45309" stroke-width="1.5"/></g>
+<line x1="580" y1="511" x2="386.66666666666663" y2="631" stroke="#B45309" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
+<text x="503.98837875297727" y="569.8341595662997" text-anchor="middle" fill="#B45309" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>
+<g class="crossing-marks"><path d="M 451.1 358.23 A 4 4 -43.6 0 1 456.9 352.72" fill="none" stroke="#B45309" stroke-width="1.5"/></g>
 <g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><rect x="280" y="73" width="160" height="66" rx="8" ry="8" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <circle cx="360" cy="73" r="13" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
 <circle cx="360" cy="69.5" r="3.4" fill="#1E3A8A"/>

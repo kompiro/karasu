@@ -2239,15 +2239,17 @@ ${calls}
 });
 
 describe("layout > channel capacity (#2608)", () => {
-  // Ten services fanning into three targets: thirty skip-layer edges share
-  // the inter-row channels, far more than the default gaps hold at one lane
-  // per `LANE_PITCH`. The same fixture fences overlap in routing-parity.
+  // Twelve services fanning into four targets: forty-eight skip-layer edges
+  // share the inter-row channels, more than the default gaps hold at one lane
+  // per `LANE_PITCH` even once the gutter routes spread over both sides
+  // (#2610). The smaller 10 x 3 fixture in routing-parity fences the overlap
+  // itself; this one has to be dense enough to need the second pass.
   const crowded = () => {
     const services = Array.from(
-      { length: 10 },
+      { length: 12 },
       (_s, i) => `  service S${i} { label "Service ${i}" }`,
     );
-    const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+    const targets = Array.from({ length: 4 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
     const edges = services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`));
     return `system Crowded {\n${[...services, ...targets, ...edges].join("\n")}\n}`;
   };
@@ -2269,13 +2271,13 @@ describe("layout > channel capacity (#2608)", () => {
   it("keeps the rows of the first pass: only the gaps between them grow", () => {
     // The rows are a function of the model and the budget alone; the second
     // pass reuses the budget, so its rows are the ones the demand was
-    // measured on. Wrapped 10 services (4 + 4 + 2) and the target row.
+    // measured on. Wrapped 12 services (4 + 4 + 4) and the target row.
     const result = layout(parseAndExtract(crowded()));
     expect(rowsOf(result)).toEqual([
       ["S0", "S1", "S2", "S3"],
       ["S4", "S5", "S6", "S7"],
-      ["S8", "S9"],
-      ["T0", "T1", "T2"],
+      ["S10", "S11", "S8", "S9"],
+      ["T0", "T1", "T2", "T3"],
     ]);
   });
 

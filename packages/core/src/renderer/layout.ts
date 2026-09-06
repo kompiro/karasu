@@ -1079,7 +1079,38 @@ function layoutMultipleSystems(
     // left side column (#1728) shifts the rect's own x leftwards, so measuring
     // from it would hand the next system less room than before and let the two
     // containers overlap.
-    let routedRight = offsetX + containerRect.width;
+    // A left gutter lane (#2610) runs *before* the system's left edge, into
+    // the strip the previous system's routes may already use. Slide this
+    // whole system right by that overhang so its routes start at `offsetX`:
+    // routing is translation-invariant, and the next system is placed after
+    // the routed extent below either way. Points can be shared between trunk
+    // siblings, so each is moved once.
+    let routedLeft = offsetX;
+    for (const e of systemEdges) {
+      for (const p of [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]) {
+        routedLeft = Math.min(routedLeft, p.x);
+      }
+    }
+    if (routedLeft < offsetX) {
+      const dx = offsetX - routedLeft;
+      for (const node of localNodes.values()) node.x += dx;
+      for (const c of [containerRect, ...allContainers.slice(frameStart)]) {
+        c.x += dx;
+        for (const piece of c.coverage ?? []) piece.x += dx;
+      }
+      const moved = new Set<{ x: number; y: number }>();
+      for (const e of systemEdges) {
+        for (const p of [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]) {
+          if (moved.has(p)) continue;
+          moved.add(p);
+          p.x += dx;
+        }
+      }
+    }
+    // The larger of the two bases: `offsetX + width` over-covers a rect whose
+    // x a left side column (#1728) pulled leftwards, and `x + width` covers a
+    // rect the slide above pushed further right than any route reaches.
+    let routedRight = Math.max(offsetX, containerRect.x) + containerRect.width;
     for (const e of systemEdges) {
       for (const p of [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]) {
         routedRight = Math.max(routedRight, p.x);
