@@ -60,7 +60,7 @@
     "@changesets/cli": "^2.31.0",
     "@karasu-tools/core": "workspace:*",
     "@kompiro/adr-tools": "^0.0.13",
-    "@kompiro/tpl-tools": "^0.0.7",
+    "@kompiro/tpl-tools": "^0.0.8",
     "@playwright/test": "^1.49.0",
     "@types/node": "^26.3.0",
     "knip": "^6.32.2",

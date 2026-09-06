@@ -47,8 +47,8 @@ importers:
         specifier: ^0.0.13
         version: 0.0.13(@karasu-tools/core@packages+core)
       '@kompiro/tpl-tools':
-        specifier: ^0.0.7
-        version: 0.0.7
+        specifier: ^0.0.8
+        version: 0.0.8
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.59.1
@@ -1205,8 +1205,8 @@ packages:
       '@karasu-tools/core':
         optional: true
 
-  '@kompiro/tpl-tools@0.0.7':
-    resolution: {integrity: sha512-NYZRdH83JvKae8bzHYyMBXaZVAnUHylBW71yN5/FJNOGCcvXlYrtkVza9WXr00ARDpaxGyucN26+a2A+B28o/g==}
+  '@kompiro/tpl-tools@0.0.8':
+    resolution: {integrity: sha512-pNcUrxy38PSBViVN08m9nzOIdlG9ltMsNLb7rQQk/PEhhSgAzn5ciFlNsct/00K4Ca9spK12buKt3booOiAVqA==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
@@ -7738,7 +7738,7 @@ snapshots:
     optionalDependencies:
       '@karasu-tools/core': link:packages/core
 
-  '@kompiro/tpl-tools@0.0.7':
+  '@kompiro/tpl-tools@0.0.8':
     dependencies:
       js-yaml: 4.3.1
 
