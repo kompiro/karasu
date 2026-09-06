@@ -26,6 +26,7 @@ import {
   buildOwnerIndex,
   buildBoundaryMembership,
   buildScopedBoundaryMembership,
+  buildNodePathIndex,
 } from "../parser/reference-validation.js";
 import { resolvePath } from "./path-utils.js";
 import {
@@ -42,9 +43,19 @@ interface ImportChain {
 import type { StyleSheet } from "../types/style.js";
 
 /**
- * Reference-existence diagnostics that are only decidable after the cross-file
- * merge. Their per-file verdict is dropped during Pass 1 and re-derived against
- * the merged id-space in `resolve()` (Issue #2032).
+ * Diagnostics that are only decidable after the cross-file merge: reference
+ * existence first (Issue #2032), and since #2221 the declaration-multiplicity
+ * verdicts too (`duplicate-*`, `node-id-multiple-locations`). Their per-file
+ * verdict is dropped during Pass 1 and re-derived against the merged model in
+ * `resolve()`.
+ *
+ * Adding a code here carries a precondition: the rebuild only sees declarations
+ * that reached `krsFile`. For a multiplicity verdict that means a collision
+ * confined to a file only some of which is named-imported is dropped and not
+ * re-derived — deliberately, since those declarations are not in the project's
+ * model at all (the editor still reports them per file, the LSP parsing each
+ * document on its own). A code whose verdict must survive for un-merged
+ * declarations does not belong in this set.
  *
  * Still load-bearing after #2410, though for a narrower set of files: a file that
  * *has* imports now produces no verdict to drop, because the validators decline
@@ -88,6 +99,13 @@ const MERGED_SPACE_REFERENCE_CODES = new Set<DiagnosticCode>([
   // carries its scoped `boundary` blocks across, so two files can now declare
   // the same id in one scope. Neither file sees the collision alone.
   "duplicate-boundary-id",
+  // Which ids are declared at more than one path is a merged-model fact for the
+  // same reason (#2596): `system Legacy { service Search }` in one file and
+  // `system Next { service Search }` in another collide in a way neither file
+  // can see, so the per-file verdict reported nothing at all while the index
+  // silently kept whichever file merged first. Re-derived below together with
+  // the index it explains.
+  "node-id-multiple-locations",
 ]);
 
 export interface ResolvedProject {
@@ -149,6 +167,25 @@ export class ImportResolver {
 
     // Pass 2: エントリから再帰的にマージ
     const krsFile = this.resolveKrsFromMap(fileMap, entryPath);
+
+    // The bare-id navigation index is rebuilt from the merged tree rather than
+    // unioned per file (#2596). The union could only ever answer within one
+    // file: `node-id-multiple-locations` went silent across files, the winner
+    // fell to whichever file merged first (so a cross-file `@migration_target`
+    // lost to the `@deprecated` node it was replacing), and a named import
+    // never carried an entry at all, leaving nodes that are in the merged tree
+    // unreachable by bare-id permalink. One derivation for the index and its
+    // diagnostic, as with ownership and boundary membership below (TPL-2221).
+    //
+    // Built here, before the checks below rather than beside them, so the
+    // window where `krsFile.nodePathIndex` is an empty Map closes with the
+    // merge. An empty index fails open — `.get(id)` is `undefined`, which reads
+    // as "no such node" — so a future check that consults it while it is still
+    // empty would silently resolve nothing rather than throw. That is exactly
+    // how `owns` broke in #2082.
+    const mergedNodePaths = buildNodePathIndex(krsFile);
+    krsFile.nodePathIndex = mergedNodePaths.membership;
+    this.diagnostics.push(...mergedNodePaths.diagnostics);
 
     // Reference-existence re-validation against the merged id-space. The
     // per-file pass suppressed these codes (see loadFileRecursive) because a
@@ -386,11 +423,12 @@ export class ImportResolver {
     // merge path (TPL-1032). That also makes it immune to a merge path
     // forgetting to carry it: `boundaries` / `boundaryIndex`, which do merge by
     // hand here, are silently dropped by `mergeWildcardResolved`.
-    for (const [nodeId, path] of file.nodePathIndex) {
-      if (!mergedFile.nodePathIndex.has(nodeId)) {
-        mergedFile.nodePathIndex.set(nodeId, path);
-      }
-    }
+    // `nodePathIndex` is not unioned here since #2596, for the same reason as
+    // `ownerIndex` above: `resolve()` rebuilds it from the merged tree. The
+    // first-wins union it replaces decided cross-file collisions by merge order,
+    // and it carried an entry only from this site (the file's own parse index)
+    // and from `mergeWildcardResolved` — never from `mergeNamedImport`, which is
+    // why a named-imported node was in the tree and absent from the index.
     // Record definition file for all nodes defined in this file (full recursive walk)
     const indexNode = (node: KrsNode): void => {
       if (!mergedFile.nodeFileIndex.has(node.id)) {
@@ -561,13 +599,9 @@ export class ImportResolver {
         mergedFile.boundaries.push(boundary);
       }
     }
-    // ownerIndex deliberately not unioned (#2548) — see the wildcard-merge
-    // comment above; `resolve()` rebuilds it from the merged model.
-    for (const [nodeId, path] of resolved.nodePathIndex) {
-      if (!mergedFile.nodePathIndex.has(nodeId)) {
-        mergedFile.nodePathIndex.set(nodeId, path);
-      }
-    }
+    // ownerIndex deliberately not unioned (#2548), and `nodePathIndex` not
+    // since #2596 — see the comment in `resolveKrsFromMap` where the file's own
+    // index used to be unioned; `resolve()` rebuilds both from the merged model.
     for (const [nodeId, filePath] of resolved.nodeFileIndex) {
       if (!mergedFile.nodeFileIndex.has(nodeId)) {
         mergedFile.nodeFileIndex.set(nodeId, filePath);

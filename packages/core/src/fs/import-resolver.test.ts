@@ -2129,6 +2129,254 @@ system Shop {
       expect(result.diagnostics.filter((d) => d.code === "duplicate-boundary-id")).toHaveLength(1);
     });
   });
+
+  // #2596: `nodePathIndex` was the last derived index still merged by a
+  // first-wins union, so #2550's order-independence stopped at the file
+  // boundary. Moving a block to another file flipped both the verdict and the
+  // deep-permalink target, and the failure was the silent kind (TPL-2221):
+  // cross-file collisions reported nothing at all. The index and its warning
+  // are now one derivation over the merged tree.
+  describe("node id multiplicity is decided on the merged model (#2596)", () => {
+    const multiLocation = (
+      ds: {
+        code: string;
+        severity: string;
+        params?: unknown;
+        loc?: { start: { line: number } };
+      }[],
+    ) => ds.filter((d) => d.code === "node-id-multiple-locations" && d.severity === "warning");
+
+    const LEGACY = `system Legacy {\n  service Search @deprecated {}\n}\n`;
+    const NEXT = `system Next {\n  service Search @migration_target {}\n}\n`;
+
+    it("resolves a cross-file migration pair to the @migration_target node", async () => {
+      // The dangerous direction: the entry file merged first, so the
+      // @deprecated node being migrated AWAY from kept the index entry, and
+      // bare-id navigation landed on it (TPL-1583's rule, cross-file).
+      await fs.writeFile("/p/index.krs", `import "./next.krs"\n${LEGACY}`);
+      await fs.writeFile("/p/next.krs", NEXT);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(result.krsFile.nodePathIndex.get("Search")).toEqual(["Next", "Search"]);
+      const found = multiLocation(result.diagnostics);
+      expect(found).toHaveLength(1);
+      expect(found[0].params).toEqual({ nodeId: "Search" });
+      // Anchored on the LOSER, which here lives in the entry file (line 3 of
+      // `import` + LEGACY). `loc` is the only handle a consumer has for finding
+      // the declaration that lost the index entry, so pin it rather than the
+      // count alone. Note a Diagnostic carries no file: when the loser sits in
+      // an imported file, these offsets are read against the entry document
+      // (tracked separately, see the PR discussion).
+      expect(found[0].loc?.start.line).toBe(3);
+    });
+
+    it("reports a plain cross-file duplicate that used to be silent", async () => {
+      await fs.writeFile("/p/index.krs", `import "./b.krs"\nsystem A {\n  service Search {}\n}\n`);
+      await fs.writeFile("/p/b.krs", `system B {\n  service Search {}\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(multiLocation(result.diagnostics)).toHaveLength(1);
+      expect(result.krsFile.nodePathIndex.get("Search")).toEqual(["A", "Search"]);
+    });
+
+    it("gives the same answer however the model is split across files", async () => {
+      // The migration pair, where priority — not position — decides: that answer
+      // holds whatever the file layout is. The equal-priority tie below is the
+      // part that does follow the layout.
+      await fs.writeFile("/p/one.krs", `${LEGACY}${NEXT}`);
+      await fs.writeFile("/p/split.krs", `import "./more.krs"\n${LEGACY}`);
+      await fs.writeFile("/p/more.krs", NEXT);
+
+      const together = await new ImportResolver(fs).resolve("/p/one.krs");
+      const apart = await new ImportResolver(fs).resolve("/p/split.krs");
+      // Pinned to the value, not just to each other: an index that answered
+      // `undefined` on both paths would satisfy equality alone.
+      expect(together.krsFile.nodePathIndex.get("Search")).toEqual(["Next", "Search"]);
+      expect(apart.krsFile.nodePathIndex.get("Search")).toEqual(
+        together.krsFile.nodePathIndex.get("Search"),
+      );
+      expect(multiLocation(together.diagnostics)).toHaveLength(1);
+      expect(multiLocation(apart.diagnostics).length).toBe(
+        multiLocation(together.diagnostics).length,
+      );
+    });
+
+    it("reports once — not twice — when both declarations are in one file", async () => {
+      // The per-file verdict is suppressed and re-derived, so the count must not
+      // double up on the path where the parser already had the answer.
+      await fs.writeFile("/p/index.krs", `${LEGACY}${NEXT}`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      expect(multiLocation(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("still reports it on the single-file compile path", async () => {
+      // The suppression lives in the resolver, so `compile()` — which the LSP
+      // shares by parsing directly — must keep the parser's verdict.
+      const result = compile(`${LEGACY}${NEXT}`, { diagramType: "system" });
+      expect(multiLocation(result.diagnostics)).toHaveLength(1);
+    });
+
+    it("breaks an equal-priority tie by the merged traversal order", async () => {
+      // What the merged model does NOT make layout-independent, pinned so the
+      // spec's claim stays honest. Priority decides first (the case above), and
+      // only when it ties does traversal order settle it — which across files is
+      // the entry file's own declarations before the imported ones. So the same
+      // two unannotated declarations swap winners when they swap files, while
+      // the warning is emitted either way. Narrowing this would need a
+      // layout-free tie-break rule, which ADR-2550 deliberately did not adopt
+      // (it rejected loc-order for the in-file case).
+      const A = `system A {\n  service Search {}\n}\n`;
+      const B = `system B {\n  service Search {}\n}\n`;
+      await fs.writeFile("/p/a-entry.krs", `import "./b.krs"\n${A}`);
+      await fs.writeFile("/p/b.krs", B);
+      await fs.writeFile("/p/b-entry.krs", `import "./a.krs"\n${B}`);
+      await fs.writeFile("/p/a.krs", A);
+
+      const fromA = await new ImportResolver(fs).resolve("/p/a-entry.krs");
+      const fromB = await new ImportResolver(fs).resolve("/p/b-entry.krs");
+      expect(fromA.krsFile.nodePathIndex.get("Search")).toEqual(["A", "Search"]);
+      expect(fromB.krsFile.nodePathIndex.get("Search")).toEqual(["B", "Search"]);
+      expect(multiLocation(fromA.diagnostics)).toHaveLength(1);
+      expect(multiLocation(fromB.diagnostics)).toHaveLength(1);
+    });
+
+    it("reports the wildcard stub collision, and leaves the named form silent", async () => {
+      // The one layout where the rebuild adds a warning to an existing model.
+      // A whole-file import does not fill a stub — only `resolveBareIdImport`
+      // does — so the merged tree really holds two logical `Payment` nodes: the
+      // childless stub drawn inside `EC`, and the parked definition carrying
+      // `domain Billing`. Bare-id navigation lands on the stub, which is the
+      // question the warning answers, and ADR-2550 already decided a parked
+      // service colliding with a walked one is logical multiplicity — this only
+      // extends that across files. The same import already draws
+      // `service-outside-system`, so the layout was never silent to begin with.
+      const DEFINITION = `service Payment {\n  domain Billing {}\n}\n`;
+      const STUB = `system EC {\n  service Payment\n}\n`;
+      await fs.writeFile("/p/wildcard.krs", `import "./payment.krs"\n${STUB}`);
+      await fs.writeFile("/p/named.krs", `import { Payment } from "./payment.krs"\n${STUB}`);
+      await fs.writeFile("/p/payment.krs", DEFINITION);
+
+      const wildcard = await new ImportResolver(fs).resolve("/p/wildcard.krs");
+      expect(multiLocation(wildcard.diagnostics)).toHaveLength(1);
+      expect(wildcard.krsFile.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
+      // Both nodes are really there — otherwise the warning would be a phantom.
+      expect(wildcard.krsFile.systems[0].children.map((c) => c.id)).toEqual(["Payment"]);
+      expect(wildcard.krsFile.services.map((s) => s.id)).toEqual(["Payment"]);
+
+      // The named form merges the definition INTO the stub, so there is one
+      // node and nothing to report. Unchanged by this PR.
+      const named = await new ImportResolver(fs).resolve("/p/named.krs");
+      expect(multiLocation(named.diagnostics)).toHaveLength(0);
+      expect(named.krsFile.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
+      expect(named.krsFile.services).toHaveLength(0);
+    });
+
+    it("counts one declaration once, however many merge paths reach it", async () => {
+      // Importing one file both wholesale and by name pushes the same
+      // ServiceNode into `services` twice — `mergeWildcardResolved` dedups by
+      // identity, `resolveBareIdImport` does not. Rebuilding on the merged tree
+      // would then see two candidates at the same path for a declaration the
+      // author wrote once, so the verdict counts declarations by node identity.
+      // It was also order-dependent: named-then-wildcard produced one entry.
+      await fs.writeFile("/p/b.krs", `service Payment {\n  domain Billing {}\n}\n`);
+      await fs.writeFile(
+        "/p/wildcard-first.krs",
+        `import "./b.krs"\nimport { Payment } from "./b.krs"\n`,
+      );
+      await fs.writeFile(
+        "/p/named-first.krs",
+        `import { Payment } from "./b.krs"\nimport "./b.krs"\n`,
+      );
+
+      for (const entry of ["/p/wildcard-first.krs", "/p/named-first.krs"]) {
+        const result = await new ImportResolver(fs).resolve(entry);
+        expect(multiLocation(result.diagnostics)).toHaveLength(0);
+        expect(result.krsFile.nodePathIndex.get("Payment")).toEqual(["Payment"]);
+      }
+    });
+
+    it("stays silent when one service is mounted into two systems by edge reference", async () => {
+      // `resolveBareIdImport` puts the same node into every system whose edges
+      // name it — a supported way to share a service. The node is then at two
+      // paths in the merged tree, but there is still one declaration and no
+      // rename that would resolve anything, so a warning would have no remedy.
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Payment } from "./b.krs"
+system A {
+  service Cart {}
+  Cart -> Payment
+}
+system B {
+  service Order {}
+  Order -> Payment
+}
+`,
+      );
+      await fs.writeFile("/p/b.krs", `service Payment {}\n`);
+
+      const result = await new ImportResolver(fs).resolve("/p/index.krs");
+      // Both systems really do carry it — the same object, which is the point.
+      expect(result.krsFile.systems[0].children[1]).toBe(result.krsFile.systems[1].children[1]);
+      expect(multiLocation(result.diagnostics)).toHaveLength(0);
+      expect(result.krsFile.nodePathIndex.get("Payment")).toEqual(["A", "Payment"]);
+    });
+
+    it("does not report a collision confined to the un-imported part of a file", async () => {
+      // The boundary of "decided on the merged model": a named import carries
+      // only what it names, so `Legacy.Search` / `Next.Search` never enter the
+      // project's model and nothing about them is reported there. Deliberate,
+      // not a gap — they are not drawn, not navigable, and the editor still
+      // reports them per file, since the LSP parses each document on its own.
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Web } from "./b.krs"\nsystem Host {\n  service Web\n}\n`,
+      );
+      await fs.writeFile(
+        "/p/b.krs",
+        `system Legacy {\n  service Search {}\n}\nsystem Next {\n  service Search {}\n}\nsystem Web {\n  service Foo {}\n}\n`,
+      );
+
+      const result = await new ImportResolver(fs).resolve("/p/index.krs");
+      expect(multiLocation(result.diagnostics)).toHaveLength(0);
+      expect(result.krsFile.nodePathIndex.get("Search")).toBeUndefined();
+      // The per-file verdict the editor shows is unchanged.
+      expect(
+        multiLocation(
+          compile(
+            `system Legacy {\n  service Search {}\n}\nsystem Next {\n  service Search {}\n}\n`,
+            { diagramType: "system" },
+          ).diagnostics,
+        ),
+      ).toHaveLength(1);
+    });
+
+    it("indexes a node that only a named import brought into the tree", async () => {
+      // `mergeNamedImport` never carried an index entry, so a node it merged was
+      // in the model and absent from the index: a bare-id permalink to `Ledger`
+      // resolved to nothing even though the node is drawn. The rebuild walks the
+      // merged tree, so reachability follows from being in it.
+      await fs.writeFile(
+        "/p/index.krs",
+        `import { Payments } from "./billing.krs"
+system Shop {
+  service Payments
+  service Orders {}
+}
+`,
+      );
+      await fs.writeFile("/p/billing.krs", `service Payments {\n  domain Ledger {}\n}\n`);
+
+      const result = await resolver.resolve("/p/index.krs");
+      // The node really is in the merged tree — otherwise the index entry below
+      // would prove nothing.
+      const payments = result.krsFile.systems[0].children.find((c) => c.id === "Payments");
+      expect(payments!.children.map((c) => c.id)).toEqual(["Ledger"]);
+      expect(result.krsFile.nodePathIndex.get("Ledger")).toEqual(["Shop", "Payments", "Ledger"]);
+      expect(multiLocation(result.diagnostics)).toHaveLength(0);
+    });
+  });
   // A reopened `system` (or infra block) is merged into one node, and only the
   // merged node is drawn — so a scoped `boundary` declared on the incoming copy
   // used to be dropped on the floor: parsed, labelled, framing nothing (#2246,

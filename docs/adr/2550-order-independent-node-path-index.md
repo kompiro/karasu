@@ -12,8 +12,8 @@ related_to:
 scope:
   packages: [core]
 assumptions:
-  - "symbol: packages/core/src/parser/parser.ts :: buildNodePathIndex"
-  - "grep: packages/core/src/parser/parser.ts :: PathCandidate"
+  - "symbol: packages/core/src/parser/reference-validation.ts :: buildNodePathIndex"
+  - "grep: packages/core/src/parser/reference-validation.ts :: PathCandidate"
   - "file: packages/core/src/parser/node-path-index.test.ts"
   - "file: docs/test-perspectives/TPL-1583-migration-priority-index-winner.md"
 ---
