@@ -127,15 +127,55 @@ export const LOGICAL_KEYWORDS = new Set<string>([
 
 // Infra block kinds that can appear as system-level children
 
-// Recognized parameter keys per builtin lifecycle annotation (#1568). A param
-// on any other annotation, or with another key, is dropped with an
-// `annotation-param-unsupported` warning. Custom annotations stay param-less.
-const ANNOTATION_PARAM_KEYS: Record<string, ReadonlySet<string>> = {
-  deprecated: new Set(["until"]),
-  experimental: new Set(["until"]),
-  migration_target: new Set(["from"]),
-  draft: new Set(["confidence"]),
-};
+/**
+ * How a recognized parameter value is spelled, which decides how the formatter
+ * quotes it on the way back out (#2571).
+ *
+ * - `"string"`: an opaque, display-only value (`until` / `confidence`). Kept
+ *   verbatim per ADR-1568 / ADR-1995, so it emits quoted like any string value.
+ * - `"ref"`: a node reference (`from`). It emits through `quoteId`, the rule
+ *   every other reference in the language follows.
+ */
+export type AnnotationParamKind = "string" | "ref";
+
+/**
+ * Recognized parameter keys per builtin lifecycle annotation (#1568). A param
+ * on any other annotation, or with another key, is dropped with an
+ * `annotation-param-unsupported` warning. Custom annotations stay param-less.
+ *
+ * Exported for the same reason as `DEPLOY_KEYWORDS`: the formatter has to emit
+ * these params back (#2571) and needs each value's kind to quote it. A
+ * hand-copied table there would silently stop matching whichever key was added
+ * last (TPL-1720), and the formatter dropping a param is exactly the
+ * round-trip break TPL-1101 forbids.
+ */
+export const ANNOTATION_PARAM_KEYS = {
+  deprecated: { until: "string" },
+  experimental: { until: "string" },
+  migration_target: { from: "ref" },
+  draft: { confidence: "string" },
+} as const satisfies Record<string, Record<string, AnnotationParamKind>>;
+
+/**
+ * The kind recorded for one annotation parameter, or `undefined` when the
+ * parser does not recognize the pair.
+ *
+ * The single reader of `ANNOTATION_PARAM_KEYS`. The parser asks it whether a
+ * key has an effect and the formatter asks it how to quote the value; letting
+ * each index the table itself would put the lookup rule in two places, which
+ * is the drift the table is exported to avoid. `Object.hasOwn` keeps a
+ * prototype-named annotation (`__proto__`, `constructor`) from resolving
+ * through `Object.prototype` and reporting inherited members as recognized.
+ */
+export function annotationParamKind(
+  annotation: string,
+  key: string,
+): AnnotationParamKind | undefined {
+  const table: Record<string, Record<string, AnnotationParamKind>> = ANNOTATION_PARAM_KEYS;
+  if (!Object.hasOwn(table, annotation)) return undefined;
+  const keys = table[annotation];
+  return Object.hasOwn(keys, key) ? keys[key] : undefined;
+}
 
 /**
  * The block keywords the parser accepts as deploy-unit declarations.
@@ -1826,13 +1866,30 @@ export class Parser {
           // Value may be a quoted string (`until: "2026-Q3"`) or a bare
           // identifier referencing a node (`from: LegacyMonolith`).
           const valueType = this.peek().type;
-          const value =
-            valueType === TokenType.StringLiteral || valueType === TokenType.Identifier
-              ? this.advance().value
-              : "";
-          const allowed = ANNOTATION_PARAM_KEYS[name];
-          if (allowed?.has(key)) {
-            (params[name] ??= {})[key] = value;
+          // A value the lexer produced as anything else (`until: 2026`, where
+          // `2026` is a Number) is unreadable here. Record nothing for it: the
+          // formatter emits what this map holds, so storing the `""` fallback
+          // would make `fmt` write a value the author never typed into their
+          // own file (#2571 review). Leaving the key out reproduces the bare
+          // `@deprecated` that a reader already gets today.
+          const readable =
+            valueType === TokenType.StringLiteral || valueType === TokenType.Identifier;
+          const value = readable ? this.advance().value : "";
+          if (!readable) {
+            // Consume the malformed value up to the next pair. Leaving it at
+            // the cursor made the loop read its tokens as the next key, so
+            // `from: system` reported `system` as an unsupported *key* — a
+            // diagnostic naming something the author never wrote as one.
+            while (
+              this.peek().type !== TokenType.Comma &&
+              this.peek().type !== TokenType.RightParen &&
+              this.peek().type !== TokenType.EOF
+            ) {
+              this.advance();
+            }
+          }
+          if (annotationParamKind(name, key) !== undefined) {
+            if (readable) (params[name] ??= {})[key] = value;
           } else {
             // Accepted-vocabulary rule (TPL-1503): a param with no
             // effect is warned, not silently kept. Only builtin keys have an
