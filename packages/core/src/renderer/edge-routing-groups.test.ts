@@ -1059,11 +1059,14 @@ organization Org {
     // corridor each gets — would depend on declaration order.
     const pair = (first: string, second: string) =>
       FAN.replace("  A -> Store\n", `  A ${first} Store\n  A ${second} Store\n`);
+    // Compared as a set of polylines: the bundle nudge (ADR-1185) offsets the
+    // pair by declaration index on purpose, so which kind sits on which side
+    // may swap, but the two routes themselves must be the same two routes.
     const routes = (res: LayoutResult) =>
       res.edges
         .filter((e) => e.from === "A" && e.to === "Store")
-        .sort((a, b) => (a.kind ?? "").localeCompare(b.kind ?? ""))
-        .map((e) => [e.kind, e.fromPoint, ...(e.waypoints ?? []), e.toPoint]);
+        .map((e) => JSON.stringify([e.fromPoint, ...(e.waypoints ?? []), e.toPoint]))
+        .sort();
     const a = layoutOf(pair("->", "-->"), FAN_OWNER, "team");
     const b = layoutOf(pair("-->", "->"), FAN_OWNER, "team");
     expect(routes(a)).toHaveLength(2);

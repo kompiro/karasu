@@ -1107,9 +1107,10 @@ function layoutMultipleSystems(
         }
       }
     }
-    // From the container where it now stands: the slide above may have moved
-    // it further right than any route reaches.
-    let routedRight = containerRect.x + containerRect.width;
+    // The larger of the two bases: `offsetX + width` over-covers a rect whose
+    // x a left side column (#1728) pulled leftwards, and `x + width` covers a
+    // rect the slide above pushed further right than any route reaches.
+    let routedRight = Math.max(offsetX, containerRect.x) + containerRect.width;
     for (const e of systemEdges) {
       for (const p of [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]) {
         routedRight = Math.max(routedRight, p.x);
