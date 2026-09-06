@@ -2,6 +2,7 @@ import {
   compileProject,
   compileOrgDiff,
   renderOrgTreeView,
+  renderTeamDependencyGraph,
   collectAllTeamIds,
   type Diagnostic,
   type Warning,
@@ -11,6 +12,7 @@ import {
   type DiagramTheme,
   type OrganizationBlock,
   type ResolvedStyles,
+  type TeamDependencyReport,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
@@ -30,7 +32,19 @@ interface OrgViewState {
   organizations: OrganizationBlock[];
   ownerIndex: Map<string, string>;
   styles: ResolvedStyles | undefined;
+  /**
+   * Team dependencies derived from `owns` × the logical edges (#2636). Comes
+   * off the same org compile as `organizations`, so the graph cannot show a
+   * different model than the tree beside it.
+   */
+  teamDependencies: TeamDependencyReport;
 }
+
+const EMPTY_TEAM_DEPENDENCIES: TeamDependencyReport = {
+  teams: [],
+  dependencies: [],
+  unowned: [],
+};
 
 export function useOrgView(
   entryPath: string | null,
@@ -46,6 +60,7 @@ export function useOrgView(
   toggleTeamExpand: (teamId: string) => void;
   orgTreeSvg: string;
   orgTreeExportSvg: string;
+  teamDependencySvg: string;
 } {
   const { set: expandedTeamIds, toggle: toggleTeamExpand } = useCollapsibleSet<string>();
 
@@ -103,6 +118,7 @@ export function useOrgView(
         organizations: prev.organizations,
         ownerIndex: prev.ownerIndex,
         styles: prev.styles,
+        teamDependencies: prev.teamDependencies,
       }),
       okState: () => ({
         orgSvg: svg,
@@ -112,6 +128,7 @@ export function useOrgView(
         organizations: orgBase.organizations,
         ownerIndex: orgBase.ownerIndex,
         styles: orgBase.styles,
+        teamDependencies: orgBase.teamDependencies,
       }),
       // Org names its state fields differently (orgSvg / orgDiagnostics); the
       // selectors bridge that, so the scaffold needs no per-view field names.
@@ -131,6 +148,7 @@ export function useOrgView(
       organizations: [],
       ownerIndex: new Map(),
       styles: undefined,
+      teamDependencies: EMPTY_TEAM_DEPENDENCIES,
     },
     compile,
     onError: (prev) => ({
@@ -170,5 +188,21 @@ export function useOrgView(
         })
       : "";
 
-  return { ...state, recompile, expandedTeamIds, toggleTeamExpand, orgTreeSvg, orgTreeExportSvg };
+  // Recomputed whenever the compiled report or the theme changes, and from
+  // nothing else — the report is the whole input, so there is no second source
+  // to leave stale (TPL-1032).
+  const teamDependencySvg =
+    state.teamDependencies.teams.length > 0
+      ? renderTeamDependencyGraph(state.teamDependencies, { theme, emptyStateLabels })
+      : "";
+
+  return {
+    ...state,
+    recompile,
+    expandedTeamIds,
+    toggleTeamExpand,
+    orgTreeSvg,
+    orgTreeExportSvg,
+    teamDependencySvg,
+  };
 }

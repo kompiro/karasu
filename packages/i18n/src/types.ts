@@ -165,6 +165,8 @@ export type Translations = {
   "emptyState.system.noNodes": string;
   "emptyState.org.placeholder": string;
   "emptyState.system.noDiagram": string;
+  "emptyState.teamDependency.none": string;
+  "emptyState.teamDependency.unowned": string;
 
   // Built-in annotation badge labels (rendered inside SVG by core renderers)
   "badge.deprecated": string;
@@ -207,6 +209,8 @@ export type Translations = {
   // Preview toolbar — view-state toggles and window-opening controls
   "preview.orgTree.label": string;
   "preview.orgTree.ariaLabel": string;
+  "preview.teamDependencies.label": string;
+  "preview.teamDependencies.ariaLabel": string;
   "preview.entities.label": string;
   "preview.entities.ariaLabel": string;
   "preview.allLayers.label": string;

@@ -70,6 +70,10 @@ import { extractView, type ViewPath } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView, type OrgViewPath } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
+import {
+  extractTeamDependencies,
+  type TeamDependencyReport,
+} from "../view/team-dependency-extract.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
@@ -292,6 +296,20 @@ export interface OrgCompileResult {
   ownerIndex: Map<string, string>;
   /** Resolved node/edge styles for use in tree view rendering. */
   styles: ResolvedStyles;
+  /**
+   * Team dependencies derived from `owns` × the logical edges (#2597).
+   *
+   * Carried on the **org** result because the org tab is where it is drawn
+   * (ADR-309's precedent: org modes live on the org tab), and computed here
+   * because this is the one place holding both halves of the join — the org
+   * result's `organizations` and the merged file's systems. Deriving it in the
+   * app would need a second resolve of the same project.
+   *
+   * Empty (`teams: []`) when the model declares no `organization`, which is
+   * what gates the mode in the app rather than a separate flag to drift
+   * against (TPL-1032).
+   */
+  teamDependencies: TeamDependencyReport;
 }
 
 /** Discriminated union of all compile result types. Narrow on `diagramType` to access type-specific fields. */
@@ -414,6 +432,7 @@ function _compileFromPreparedInput(
       organizations: krsFile.organizations,
       ownerIndex: krsFile.ownerIndex,
       styles,
+      teamDependencies: extractTeamDependencies(krsFile),
     };
   }
 
