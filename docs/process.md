@@ -178,22 +178,39 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
   上の表に従って人間へ回す
 - **閉じるのは読んだ thread だけ。** 判断基準はこの 1 つで、閉じ方はそれを守れる方を
   選ぶ。thread を名指しできるのは GraphQL の `resolveReviewThread` で、
-  `@coderabbitai resolve` は開いている thread を**全部**閉じる（名指しできない）
+  `@coderabbitai resolve` は開いている thread を**全部**閉じる（名指しできない）。
+  **一覧と本文読みは分ける** — 一覧に本文を混ぜると、`comments` を何件で切っても
+  その先を読まずに閉じられる形になる。一覧は件数だけ持たせ、本文は thread ごとに
+  全ページ読む
 
   ```
-  # 未解決 thread を id 付きで読む
+  # 1. 未解決 thread の索引（id・場所・コメント件数だけ）
   gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
     repository(owner: "kompiro", name: "karasu") {
       pullRequest(number: $n) {
         reviewThreads(first: 100, after: $endCursor) {
-          nodes { id isResolved path line comments(first: 10) { nodes { author { login } body } } }
+          nodes { id isResolved path line comments { totalCount } }
           pageInfo { hasNextPage endCursor }
         }
       }
     }
-  }' | jq '.[].data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
+  }' | jq -r '.[].data.repository.pullRequest.reviewThreads.nodes[]
+              | select(.isResolved == false)
+              | "\(.id) \(.path):\(.line) comments=\(.comments.totalCount)"'
 
-  # 読んで対応を決めた thread だけを閉じる
+  # 2. その thread を全件読む（totalCount と出力行数が一致することを確かめる）
+  gh api graphql --paginate --slurp -F id=<thread-id> -f query='query($id: ID!, $endCursor: String) {
+    node(id: $id) {
+      ... on PullRequestReviewThread {
+        comments(first: 100, after: $endCursor) {
+          nodes { author { login } body }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }' | jq -r '.[].data.node.comments.nodes[] | "[\(.author.login)] \(.body)"'
+
+  # 3. 読んで対応を決めた thread だけを閉じる
   gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<id>"}) { thread { isResolved } } }'
   ```
 
