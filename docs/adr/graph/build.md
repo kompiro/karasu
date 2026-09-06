@@ -93,6 +93,7 @@ flowchart TD
     ADR_2643["ADR-2643<br/>stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI ..."]
     ADR_2671["ADR-2671<br/>Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく..."]
     ADR_2693["ADR-2693<br/>Dependabot security alert 2026-09-03（`fast-uri`..."]
+    ADR_2716["ADR-2716<br/>CodeRabbit のレビューを request changes workflow に移す"]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -117,6 +118,7 @@ flowchart TD
   ADR_2184 --> ADR_2165
   ADR_2184 --> ADR_1314
   ADR_2209 --> ADR_1314
+  ADR_2716 -.supersedes.-> ADR_2640
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -207,10 +209,11 @@ flowchart TD
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2623 accepted
-  class ADR_2640 accepted
+  class ADR_2640 superseded
   class ADR_2643 accepted
   class ADR_2671 accepted
   class ADR_2693 accepted
+  class ADR_2716 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
