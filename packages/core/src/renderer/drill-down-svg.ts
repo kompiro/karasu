@@ -16,7 +16,7 @@ import {
 import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
-import { resolveStyles } from "../resolver/style-resolver.js";
+import { resolveStyles, styleDerivedEdges } from "../resolver/style-resolver.js";
 import { analyze } from "../resolver/warnings.js";
 import {
   extractSvgParts,
@@ -136,7 +136,7 @@ export function buildDrillDownSvg(
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(
     {
-      getSlice: (path) => extractView(effectiveSystems, path),
+      getSlice: (path) => styleDerivedEdges(extractView(effectiveSystems, path), styles, sheets),
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
       // At the multi-system root view we need every owning system's children
       // (real + synthesized "Unassigned" pseudo-system) so drill-down pages
@@ -596,7 +596,7 @@ export function buildAllViewsSvg(
     const ownerIndex = krsFile.ownerIndex ?? new Map();
     collectDrillDownLevelsWithDimensions(
       {
-        getSlice: (path) => extractView(effectiveSystems, path),
+        getSlice: (path) => styleDerivedEdges(extractView(effectiveSystems, path), styles, sheets),
         hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
         getChildren: (slice) =>
           slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,

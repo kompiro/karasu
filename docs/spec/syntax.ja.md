@@ -151,6 +151,58 @@ system ECPlatform {
 
 > Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。[TPL-2200](../test-perspectives/TPL-2200-render-claim-names-its-view-level.md) — 「描画される」と述べるときはどの view level で描画されるかまで書き、昇格する側と留まる側の両方をテストで固定する。上の未割当 `resource` の項は「孤立ノードとして描画」としか書いておらず、数ヶ月ドリフトしていた（#2200）。
 
+#### ストアスコープの ER ビュー（`database` キャンバスへの entity 関連の投影）
+
+`database` にドリルダウンすると `table` leaf が並ぶ。このキャンバスには **table 間の関連**も描かれる。
+描画時に `entity` 層から導出され、関連の**両端**が同じストアへの `table <ThisDb>.<leaf>` 対応を
+持つとき、そのストアのキャンバス上に leaf 間エッジとして描かれる。`.krs` には何も書き込まれない。
+投影エッジは関連のラベルと `->` / `-->` の種別を保ち、システム自動付与タグ `[projected]` を持つ
+（色で区別する。[tags-annotations.ja.md](./tags-annotations.ja.md#システム自動付与タグsystem-assigned-tags) 参照）。
+線種は `[sync]` / `[async]` が所有する。`table` leaf に手で書いたエッジ
+（`table orders { orders -> customers }`）は書かれたとおりに描かれ、同じ順序付きペアの投影を抑止する。
+
+端点の解決はエンティティビューと同じである。関連は宣言元 entity から始まっていなければならず、
+bare な参照先はドメイン内のみ、限定子付き `DomainId.EntityId` は所有 system 内で解決される。
+エンティティビューが落とす関連は投影もされない。
+
+**このビューは lossy であり、ストアの完全な ER 図ではない。** 両端が `table` 対応を通る関連だけを
+写す:
+
+- `table` 対応を持たない entity に触れる関連は現れない（tableless な entity は正当な状態なので
+  欠陥ではない。`coverage` が `tablelessEntities` として数える）
+- 両端が**別々の**ストアに対応する関連はどちらのキャンバスにも出ない（system 図の
+  `service → database` エッジとして既に見えている）
+- 多態参照（1 列で複数のテーブルを指す）は entity 層が選んだ書き方がそのまま写る
+
+```krs
+system Shop {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+        Order -> LineItem "has"                    // 投影される: orders -> line_items
+        Order --> Customers.Customer "placed by"   // 投影される（破線）: orders --> customers
+        Order -> AuditEntry "audited by"           // 投影されない: AuditEntry は tableless
+      }
+      entity LineItem  { table OrderDB.line_items }
+      entity AuditEntry {}
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer { table OrderDB.customers }
+    }
+  }
+  database OrderDB {
+    table orders {}
+    table line_items {}
+    table customers {}
+  }
+}
+```
+
+> Related TPLs: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — 任意の写像を通る派生ビューは写らなかった分を数え（`coverage`）、完全な図ではないと spec に書く。[TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` は色のみで、元の関連の `[sync]` / `[async]` 線種を保つ。[TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — 投影の端点解決はエンティティビューの規則に従い、bare な cross-domain id は投影されず、限定子付きは投影される。
+
 ### 組織構造（誰が所有するか）— 別図で表現
 
 論理・物理とは独立した軸として、サービス・ドメインの **オーナーシップ** を記述する。
