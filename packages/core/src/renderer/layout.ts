@@ -164,8 +164,10 @@ function channelReservations(
     const extra = channel.lanes * LANE_PITCH - (channel.lower - channel.upper);
     if (extra <= 0) continue;
     // The row the channel runs above: the first whose top is at or below the
-    // band's floor (a frame's top may sit between the two).
-    const rowBelow = rowTop.findIndex((top) => top >= channel.lower - 0.5);
+    // band's floor (a frame's top may sit between the two). A row every member
+    // of which left for a side column has no top (`Infinity`) and is not a
+    // row the channel can run above.
+    const rowBelow = rowTop.findIndex((top) => Number.isFinite(top) && top >= channel.lower - 0.5);
     if (rowBelow <= 0) continue;
     out.set(rowBelow, Math.max(out.get(rowBelow) ?? 0, extra));
   }

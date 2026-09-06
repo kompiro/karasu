@@ -102,4 +102,4 @@ type: product
 
 ## 手動確認
 
-N/A — 自動テストですべて覆っている。外部モデル（reverse-engineered dify）での before/after は PR 本文に実測を載せる（repo には入らないため柵にはしない）。
+N/A — 自動テストですべて覆っている。repo の外にあるモデルでの実測は柵にせず、記録は [#2608](https://github.com/kompiro/karasu/issues/2608) に寄せる。

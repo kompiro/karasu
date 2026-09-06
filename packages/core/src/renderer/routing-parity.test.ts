@@ -553,4 +553,40 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
   it("no lane spills into a card (TPL-1927 measures both axes together)", () => {
     expect(totalPenetrations(layoutOfSource(CROWDED))).toBe(0);
   });
+
+  it("reserves the right row when a whole row moved to the side columns", () => {
+    // Two hubs consuming externals put the externals in side columns (ADR-1728),
+    // which empties their row: the reservation must key on the rows that are
+    // still there, not on the empty one, and the crowded channel still opens.
+    const many = Array.from({ length: 12 }, (_s, i) => `  service S${i} { label "Service ${i}" }`);
+    const four = Array.from({ length: 4 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+    const fan = many.flatMap((_s, i) => four.map((_t, j) => `  S${i} -> T${j}`));
+    const externals = [
+      `  service E1 [external] { label "External 1" }`,
+      `  service E2 [external] { label "External 2" }`,
+      `  S0 -> E1`,
+      `  S3 -> E2`,
+    ];
+    const src = `system Crowded {\n${[...many, ...four, ...externals, ...fan].join("\n")}\n}`;
+    const res = layoutOfSource(src);
+    const inner = [...res.nodes.values()].filter(
+      (n) => n.id.startsWith("S") || n.id.startsWith("T"),
+    );
+    const left = Math.min(...inner.map((n) => n.x));
+    const right = Math.max(...inner.map((n) => n.x + n.width));
+    for (const id of ["E1", "E2"]) {
+      const e = res.nodes.get(id)!;
+      expect(e.x + e.width <= left || e.x >= right).toBe(true);
+    }
+    expect(res.placementPasses).toBe(2);
+    // The room opened above the target row, not above the empty externals
+    // row: the gap between the last service row and the targets is wider
+    // than the default layer gap.
+    const targets = inner.filter((n) => n.id.startsWith("T"));
+    const targetTop = Math.min(...targets.map((n) => n.y));
+    const above = inner.filter((n) => n.y + n.height <= targetTop);
+    const aboveBottom = Math.max(...above.map((n) => n.y + n.height));
+    expect(targetTop - aboveBottom).toBeGreaterThan(120);
+    expect(totalPenetrations(res)).toBe(0);
+  });
 });
