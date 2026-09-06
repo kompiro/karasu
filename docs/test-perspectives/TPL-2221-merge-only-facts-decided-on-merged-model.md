@@ -15,7 +15,7 @@ known_consumers:
 discovered_from:
   - issue: "#2221"
   - issue: "#2596"
-  - root_cause_file: "packages/core/src/parser/parser.ts:buildBoundaryMembership"
+  - root_cause_file: "packages/core/src/parser/reference-validation.ts:buildBoundaryMembership"
 related_to:
   - TPL-2032
   - TPL-2161

@@ -65,4 +65,4 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 
 - `docs/spec/syntax.md` §「Multi-file import semantics」 S4.5
 - ADR-1381（spec の根拠）
-- 設計 doc: `docs/design/karasu-position-on-style-prescriptions.md` (info severity 採用の経緯)
+- [ADR-1386](../adr/1386-style-prescription-stance.md)（info severity 採用の経緯。元の設計 doc は #1392 で ADR に昇格し削除済み）
