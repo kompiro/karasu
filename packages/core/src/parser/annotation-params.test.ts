@@ -44,11 +44,20 @@ describe("annotation parameters with an unreadable value", () => {
     expect(paramsOf(`system S { service A @deprecated(until: 2026) {} }`)).toEqual([]);
   });
 
-  it("still reads a following parameter, and still warns on a real unknown key", () => {
-    // Recovery stops at the comma, so the pair after a malformed one is read
-    // normally rather than swallowed.
-    const src = `system S { service A @deprecated(until: 2026, foo: "x") {} }`;
-    const { diagnostics } = Parser.parse(src);
+  it("still records a readable parameter that follows the malformed one", () => {
+    // Recovery stops at the comma, so the next pair is read normally rather
+    // than swallowed. Asserting a *supported* key here is the point: a parser
+    // that discarded every later readable value would still satisfy a test
+    // that only checked the warning on an unsupported one.
+    expect(
+      paramsOf(`system S { service A @deprecated(until: 2026, until: "2027-Q3") {} }`),
+    ).toEqual([{ deprecated: { until: "2027-Q3" } }]);
+  });
+
+  it("still warns on a genuinely unknown key that follows the malformed one", () => {
+    const { diagnostics } = Parser.parse(
+      `system S { service A @deprecated(until: 2026, foo: "x") {} }`,
+    );
 
     expect(
       diagnostics
