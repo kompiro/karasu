@@ -3654,3 +3654,25 @@ system S {
     expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
   });
 });
+
+describe("table edge crossing two database blocks (#2722)", () => {
+  it("reports edge-endpoint-not-at-scope on the leaf, the same verdict a cross-block bare edge gets anywhere", () => {
+    const file = Parser.parse(`
+system EC {
+  database OrderDB { table orders { orders -> ledger } }
+  database LedgerDB { table ledger {} }
+}
+`).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]).filter(
+      (w) => w.kind === "edge-endpoint-not-at-scope",
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      from: "orders",
+      to: "ledger",
+      endpointId: "ledger",
+      scopeId: "orders",
+      scopeKind: "table",
+    });
+  });
+});

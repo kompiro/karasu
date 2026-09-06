@@ -286,12 +286,43 @@ function inferAggregates(tables: Table[]): GroupDecision {
 
 // ─── Emission ─────────────────────────────────────────────────────────────────
 
-function emitFlatTable(t: Table): string {
-  return `  table ${toTableId(t.name)} { label ${quoteString(t.name)} }`;
+/**
+ * A `table -> table` edge recorded inside the emitted `database` block (#2722,
+ * slice B of #2585). The store canvas draws these as the **recorded** side of
+ * its ER view, so a schema dump with declared foreign keys — and no `entity`
+ * layer at all — gets a useful store canvas straight out of `translate`.
+ *
+ * Provenance is stamped the way the entity scaffold already stamps it
+ * (TPL-1944): a relation with at least one declared FK is untagged
+ * (confirmed), a relation made only of Soft FKs carries `[inferred]`. There is
+ * deliberately no marker separating a translated edge from a hand-written one —
+ * untagged means *someone confirmed it*, not *a tool wrote it*, and deleting
+ * the single `[inferred]` tag is the promotion.
+ */
+interface TableEdge {
+  /** Target `table` id. */
+  to: string;
+  hasExplicit: boolean;
 }
 
-function emitAggregateTable(root: Table, children: { table: Table; reason: string }[]): string[] {
-  if (children.length === 0) return [emitFlatTable(root)];
+function emitTableEdges(fromId: string, edges: readonly TableEdge[] | undefined): string[] {
+  if (!edges || edges.length === 0) return [];
+  return edges.map((e) => `    ${fromId} -> ${e.to}${e.hasExplicit ? "" : " [inferred]"}`);
+}
+
+function emitFlatTable(t: Table, edges?: readonly TableEdge[]): string[] {
+  const id = toTableId(t.name);
+  const edgeLines = emitTableEdges(id, edges);
+  if (edgeLines.length === 0) return [`  table ${id} { label ${quoteString(t.name)} }`];
+  return [`  table ${id} {`, `    label ${quoteString(t.name)}`, ...edgeLines, `  }`];
+}
+
+function emitAggregateTable(
+  root: Table,
+  children: { table: Table; reason: string }[],
+  edges?: readonly TableEdge[],
+): string[] {
+  if (children.length === 0) return emitFlatTable(root, edges);
   const lines: string[] = [];
   lines.push(`  table ${toTableId(root.name)} {`);
   lines.push(`    label ${quoteString(root.name)}`);
@@ -303,22 +334,66 @@ function emitAggregateTable(root: Table, children: { table: Table; reason: strin
     ...children.map((c) => `- ${c.table.name} — ${c.reason}`),
   ].join("\n");
   lines.push(...emitDescription(descriptionBody, "    ").split("\n"));
+  lines.push(...emitTableEdges(toTableId(root.name), edges));
   lines.push(`  }`);
   return lines;
 }
 
-// ─── Entity scaffold emission ──────────────────────────────────────────────────
-
-interface EntityRelation {
-  /** Target aggregate-root entity id. */
-  to: string;
-  /**
-   * True once any *explicit* FK contributes to this relation. Explicit wins:
-   * a relation derived purely from Soft FKs stays `[inferred]`, but a single
-   * declared `REFERENCES` promotes it to a confirmed (untagged) relation.
-   */
-  hasExplicit: boolean;
+/**
+ * Relations between aggregate roots, keyed `from root table name` → `to root
+ * table name`, with a child's FKs rolled up to its root and deduplicated by
+ * target (ADR-644 / ADR-1870 decision 7). A FK whose target folds into the
+ * same root (child → root, self-FK) is internal to the aggregate and dropped,
+ * so no self-edge is ever emitted. `hasExplicit` is the union over every FK
+ * contributing to the pair: one declared `REFERENCES` confirms the relation.
+ *
+ * Shared by the entity scaffold and the recorded table edges so both read one
+ * relation set — the table edge is the physical spelling of the same fact the
+ * entity relation asserts, and the two must not disagree.
+ */
+function collectRootRelations(
+  tables: Table[],
+  parentOf: Map<string, string>,
+): Map<string, Map<string, TableEdge>> {
+  const rootByLower = new Map<string, string>();
+  for (const t of tables) {
+    rootByLower.set(t.name.toLowerCase(), parentOf.get(t.name) ?? t.name);
+  }
+  const relationsByRoot = new Map<string, Map<string, TableEdge>>();
+  for (const t of tables) {
+    const fromRoot = rootByLower.get(t.name.toLowerCase());
+    if (fromRoot === undefined) continue;
+    for (const fk of t.foreignKeys) {
+      const toRoot = rootByLower.get(fk.refTable.toLowerCase());
+      if (toRoot === undefined) continue; // FK to a table outside this schema
+      if (toRoot === fromRoot) continue; // internal to the aggregate (child → root, self-FK)
+      let byTarget = relationsByRoot.get(fromRoot);
+      if (!byTarget) {
+        byTarget = new Map<string, TableEdge>();
+        relationsByRoot.set(fromRoot, byTarget);
+      }
+      const existing = byTarget.get(toRoot);
+      if (existing) {
+        existing.hasExplicit ||= fk.kind === "explicit";
+      } else {
+        byTarget.set(toRoot, { to: toRoot, hasExplicit: fk.kind === "explicit" });
+      }
+    }
+  }
+  return relationsByRoot;
 }
+
+/** The recorded `table -> table` edges of one root, sorted by target for a stable emission. */
+function tableEdgesOf(
+  relationsByRoot: Map<string, Map<string, TableEdge>>,
+  rootName: string,
+): TableEdge[] {
+  return Array.from(relationsByRoot.get(rootName)?.values() ?? [])
+    .map((rel) => ({ to: toTableId(rel.to), hasExplicit: rel.hasExplicit }))
+    .sort((a, b) => a.to.localeCompare(b.to));
+}
+
+// ─── Entity scaffold emission ──────────────────────────────────────────────────
 
 /**
  * Emit a provisional per-database `domain` block scaffolding conceptual
@@ -340,35 +415,9 @@ function emitEntityDomain(
   const rootTables = tables.filter((t) => !parentOf.has(t.name));
   if (rootTables.length === 0) return [];
 
-  // Resolve any table name to its aggregate root (a root maps to itself).
-  const rootByLower = new Map<string, string>();
-  for (const t of tables) {
-    rootByLower.set(t.name.toLowerCase(), parentOf.get(t.name) ?? t.name);
-  }
-
-  // Gather relations as fromRoot (table name) → (target entity id → relation).
-  const relationsByRoot = new Map<string, Map<string, EntityRelation>>();
-  for (const t of tables) {
-    const fromRoot = rootByLower.get(t.name.toLowerCase());
-    if (fromRoot === undefined) continue;
-    for (const fk of t.foreignKeys) {
-      const toRoot = rootByLower.get(fk.refTable.toLowerCase());
-      if (toRoot === undefined) continue; // FK to a table outside this schema
-      if (toRoot === fromRoot) continue; // internal to the aggregate (child → root, self-FK)
-      const toEntity = toEntityId(toRoot);
-      let byTarget = relationsByRoot.get(fromRoot);
-      if (!byTarget) {
-        byTarget = new Map<string, EntityRelation>();
-        relationsByRoot.set(fromRoot, byTarget);
-      }
-      const existing = byTarget.get(toEntity);
-      if (existing) {
-        existing.hasExplicit ||= fk.kind === "explicit";
-      } else {
-        byTarget.set(toEntity, { to: toEntity, hasExplicit: fk.kind === "explicit" });
-      }
-    }
-  }
+  // Root → root relations (a child's FKs rolled up, deduped by target); the
+  // same set the recorded table edges are emitted from.
+  const relationsByRoot = collectRootRelations(tables, parentOf);
 
   const lines: string[] = [];
   lines.push("");
@@ -380,9 +429,9 @@ function emitEntityDomain(
     const entityId = toEntityId(t.name);
     lines.push(`  entity ${entityId} {`);
     lines.push(`    table ${dbName}.${toTableId(t.name)}`);
-    const relations = Array.from(relationsByRoot.get(t.name)?.values() ?? []).sort((a, b) =>
-      a.to.localeCompare(b.to),
-    );
+    const relations = Array.from(relationsByRoot.get(t.name)?.values() ?? [])
+      .map((rel) => ({ to: toEntityId(rel.to), hasExplicit: rel.hasExplicit }))
+      .sort((a, b) => a.to.localeCompare(b.to));
     for (const rel of relations) {
       const tag = rel.hasExplicit ? "" : " [inferred]";
       lines.push(`    ${entityId} -> ${rel.to}${tag}`);
@@ -451,14 +500,20 @@ export class DbTranslator implements Translator {
     let aggregateParentOf: Map<string, string> | undefined;
 
     if (granularity === "table" || tables.length === 0) {
+      // Flat tables still record their foreign keys as `table -> table` edges
+      // (#2722): the ER view of a store is what this granularity is for, and a
+      // Soft FK is as much a relation here as in the aggregate branch.
+      augmentWithSoftForeignKeys(tables);
+      const relationsByRoot = collectRootRelations(tables, new Map());
       for (const t of tables) {
-        bodyLines.push(emitFlatTable(t));
+        bodyLines.push(...emitFlatTable(t, tableEdgesOf(relationsByRoot, t.name)));
         rootTables.push(t);
       }
     } else {
       augmentWithSoftForeignKeys(tables);
       const { parentOf, reasonOf } = inferAggregates(tables);
       aggregateParentOf = parentOf;
+      const relationsByRoot = collectRootRelations(tables, parentOf);
       const byName = new Map(tables.map((t) => [t.name, t]));
       const childrenOf = new Map<string, { table: Table; reason: string }[]>();
       for (const [child, parent] of parentOf) {
@@ -471,7 +526,7 @@ export class DbTranslator implements Translator {
       for (const t of tables) {
         if (parentOf.has(t.name)) continue;
         const children = childrenOf.get(t.name) ?? [];
-        for (const line of emitAggregateTable(t, children)) bodyLines.push(line);
+        bodyLines.push(...emitAggregateTable(t, children, tableEdgesOf(relationsByRoot, t.name)));
         rootTables.push(t);
       }
     }

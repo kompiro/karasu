@@ -332,7 +332,7 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 | `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線 |
 | `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合 | `stroke-width: 2`、ラベル `"W"` |
 | `[read]` | usecase→resource の合成エッジで read-only と分類される場合（write 動詞なし、または `operations` 省略） | `stroke-width: 1.5`、ラベル `"R"` |
-| `[inferred]` | `translate --from db` が **Soft FK**（`REFERENCES` / `FOREIGN KEY` 宣言の無い `<stem>_id` / `<stem>_code` 列）から導いた entity 関連。明示 FK 由来の関連は無タグ（確認済み） | 薄いグレー（dark `#94A3B8` / light `#64748B`）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
+| `[inferred]` | `translate --from db` が **Soft FK**（`REFERENCES` / `FOREIGN KEY` 宣言の無い `<stem>_id` / `<stem>_code` 列）から導いた entity 関連、または `table` → `table` エッジ（#2722）。明示 FK 由来の関連は無タグ（確認済み） | 薄いグレー（dark `#94A3B8` / light `#64748B`）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
 | `[projected]` | `database` キャンバスが、両端がそのストアへ対応する `entity` 関連から導いた `table` → `table` エッジ（[syntax.ja.md](./syntax.ja.md#ストアスコープの-er-ビューdatabase-キャンバスへの-entity-関連の投影) 参照） | スカイブルー（dark `#38BDF8` / light `#0369A1`）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
 
 > `[implicit]` は色（アンバー）で「派生」を表し、線種は同期/非同期の区別に使う。

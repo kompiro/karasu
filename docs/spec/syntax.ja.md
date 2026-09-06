@@ -158,8 +158,32 @@ system ECPlatform {
 持つとき、そのストアのキャンバス上に leaf 間エッジとして描かれる。`.krs` には何も書き込まれない。
 投影エッジは関連のラベルと `->` / `-->` の種別を保ち、システム自動付与タグ `[projected]` を持つ
 （色で区別する。[tags-annotations.ja.md](./tags-annotations.ja.md#システム自動付与タグsystem-assigned-tags) 参照）。
-線種は `[sync]` / `[async]` が所有する。`table` leaf に手で書いたエッジ
-（`table orders { orders -> customers }`）は書かれたとおりに描かれ、同じ順序付きペアの投影を抑止する。
+線種は `[sync]` / `[async]` が所有する。
+
+**記録側。** `table` leaf は自身のエッジを宣言でき（`table orders { orders -> customers }`）、
+`translate --from db` は見つけた外部キーごとに 1 本を出力 `database` ブロック内に書く。宣言された
+`REFERENCES` / `FOREIGN KEY` は無タグのエッジ、Soft FK（他テーブル名を含む `<stem>_id` /
+`<stem>_code` 列）は `orders -> products [inferred]` になる。既定の aggregate 粒度では畳んだ子の
+外部キーは root に畳み上がり、target で重複排除され、自己エッジは出ない。これが
+**`entity` 層が 1 つも無いモデル**でもこのビューを有用にする。スキーマダンプは `translate` 直後に
+ER ビューを得る。ダンプ内に無いテーブルへの外部キーは記録されない。
+
+したがってキャンバス上の印は 1 つの軸（**誰が確認したか**。どのツールが書いたかではない）の
+3 状態である:
+
+| 印 | 意味 | 出どころ |
+| --- | --- | --- |
+| 無タグ | 確認済み | 手書き、または宣言された外部キーからの出力 |
+| `[inferred]` | 列名規約からの推測 | `translate --from db`（Soft FK）。確認できたらタグを消す |
+| `[projected]` | entity 層の断定 | 描画時に付与。`.krs` には現れない |
+
+**union 規則。** 記録と投影が同じ順序付きペアを出したら、キャンバスは記録側の **1 本**を描き、
+足りないものだけを受け取る。記録にラベルが無ければ関連のラベルが移る（書かれたラベルが勝つ）が、
+記録の `->` / `-->` は常に立っているので、`->` の記録に `-->` の関連が重なっても実線のまま。
+方向が食い違う（記録 `A -> B`、投影 `B -> A`）ときは記録側だけを描き、ラベルは移さない
+（`"belongs to"` を逆向きに読むと嘘になる）。**別の** `database` の leaf を指す記録エッジは
+どちらのキャンバスにも描かれず、通常の `edge-endpoint-not-at-scope` 警告が出る
+（`table` の peer は自身のストアの leaf である）。
 
 端点の解決はエンティティビューと同じである。関連は宣言元 entity から始まっていなければならず、
 bare な参照先はドメイン内のみ、限定子付き `DomainId.EntityId` は所有 system 内で解決される。
@@ -201,7 +225,7 @@ system Shop {
 }
 ```
 
-> Related TPLs: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — 任意の写像を通る派生ビューは写らなかった分を数え（`coverage`）、完全な図ではないと spec に書く。[TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` は色のみで、元の関連の `[sync]` / `[async]` 線種を保つ。[TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — 投影の端点解決はエンティティビューの規則に従い、bare な cross-domain id は投影されず、限定子付きは投影される。
+> Related TPLs: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — 任意の写像を通る派生ビューは写らなかった分を数え（`coverage`）、完全な図ではないと spec に書く。[TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` は色のみで、元の関連の `[sync]` / `[async]` 線種を保つ。[TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — 投影の端点解決はエンティティビューの規則に従い、bare な cross-domain id は投影されず、限定子付きは投影される。[TPL-1944](../test-perspectives/TPL-1944-inferred-tag-only-soft-fk.md) — 記録された table エッジが `[inferred]` になるのは寄与する FK がすべて Soft FK のときだけで、宣言 FK が 1 本あれば無タグ。
 
 ### 組織構造（誰が所有するか）— 別図で表現
 
