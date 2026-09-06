@@ -431,17 +431,19 @@ function _compileFromPreparedInput(
       legendUsage: collectLegendUsage(krsFile),
       theme,
     });
-    return {
-      diagramType: "org",
-      svg,
-      diagnostics,
-      warnings,
-      nodePathIndex: krsFile.nodePathIndex,
-      organizations: krsFile.organizations,
-      ownerIndex: krsFile.ownerIndex,
-      styles,
-      ...lazyTeamDependencies(krsFile),
-    };
+    return withLazyTeamDependencies(
+      {
+        diagramType: "org" as const,
+        svg,
+        diagnostics,
+        warnings,
+        nodePathIndex: krsFile.nodePathIndex,
+        organizations: krsFile.organizations,
+        ownerIndex: krsFile.ownerIndex,
+        styles,
+      },
+      krsFile,
+    );
   }
 
   // system / deploy shared setup.
@@ -601,25 +603,27 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
 }
 
 /**
- * A `teamDependencies` property that derives on first read and caches after.
+ * Attach `teamDependencies` to `result` as an accessor that derives on first
+ * read and caches after.
  *
- * Spread into the org result so the field reads like any other, while callers
- * that never touch it (every non-app consumer) do no work. `configurable` and
- * `enumerable` keep the object shape a plain reader expects — spreading or
- * JSON-serializing the result still materializes it, which is the honest
- * behaviour for a field the type says is always there.
+ * Defined **on the result object**, never spread onto it: object spread reads
+ * every own enumerable property, so `{ ...carrier }` invokes the getter and
+ * copies a plain value — the derivation would run on every org compile and the
+ * laziness would be silently undone. `enumerable` and `configurable` keep the
+ * shape a plain reader expects; a later spread or `JSON.stringify` of the
+ * result does materialize it, which is the honest behaviour for a field the
+ * type says is always there.
  */
-function lazyTeamDependencies(krsFile: KrsFile): { teamDependencies: TeamDependencyReport } {
+function withLazyTeamDependencies<T extends object>(
+  result: T,
+  krsFile: KrsFile,
+): T & { teamDependencies: TeamDependencyReport } {
   let cached: TeamDependencyReport | undefined;
-  return Object.defineProperty(
-    {} as { teamDependencies: TeamDependencyReport },
-    "teamDependencies",
-    {
-      get: () => (cached ??= extractTeamDependencies(krsFile)),
-      enumerable: true,
-      configurable: true,
-    },
-  );
+  return Object.defineProperty(result, "teamDependencies", {
+    get: () => (cached ??= extractTeamDependencies(krsFile)),
+    enumerable: true,
+    configurable: true,
+  }) as T & { teamDependencies: TeamDependencyReport };
 }
 
 async function _compileProjectCore(

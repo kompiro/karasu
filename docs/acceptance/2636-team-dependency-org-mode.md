@@ -10,6 +10,7 @@ type: product
   - `packages/core/src/renderer/team-dependency-graph.ts`
   - `packages/core/src/renderer/team-dependency-graph.test.ts`
   - `packages/core/src/compile/compile.ts` (`OrgCompileResult.teamDependencies`)
+  - `packages/core/src/compile/team-dependencies-lazy.test.ts`
   - `packages/core/src/renderer/empty-state-labels.ts`
   - `packages/app/src/hooks/useOrgDisplayMode.ts`
   - `packages/app/src/hooks/useOrgDisplayMode.test.ts`
@@ -89,6 +90,9 @@ type: product
 
 - [x] AT-U: フッタが迂回曲線より下に置かれ、重ならない
   > ✅ Automated — `team-dependency-graph.test.ts` › `keeps the footer below every routed curve`
+
+- [x] AT-V: `OrgCompileResult.teamDependencies` が accessor として乗り、読まれない org コンパイルでは導出が走らない
+  > ✅ Automated — `packages/core/src/compile/team-dependencies-lazy.test.ts` › `is an accessor on the result, so an untouched compile does no work`
 
 ## 手動確認
 
