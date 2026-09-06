@@ -1,7 +1,7 @@
 # AT: 投稿者が自分の投稿をコンソールで管理できる
 
 - **日付**: 2026-08-23
-- **関連 Issue**: [#2589](https://github.com/kompiro/karasu/issues/2589)（a console where submitters manage their own models）／親 [#2578](https://github.com/kompiro/karasu/issues/2578)
+- **関連 Issue**: [#2589](https://github.com/kompiro/karasu/issues/2589)（a console where submitters manage their own models）／親 [#2578](https://github.com/kompiro/karasu/issues/2578)／[#2647](https://github.com/kompiro/karasu/issues/2647)（AT-B を `HEAD` まで広げた）
 - **関連 ADR**: [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)（決定 5: state は nest 側、コンソールは nest 自身が返す）
 - **関連 TPL**: [TPL-2226](../test-perspectives/TPL-2226-every-key-prefix-must-be-purgeable.md)（全 prefix が purge から到達できる）、[TPL-2587](../test-perspectives/TPL-2587-author-managed-content-has-no-ttl.md)
 - **対象ファイル**:
@@ -22,9 +22,9 @@
 
   > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `lists what the account owns` / `lists nobody else's`
 
-- [x] AT-B: 未サインインの `GET` はサインインへ転送し、`POST` は 401 で答える（フォーム本文を捨てない）
+- [x] AT-B: 未サインインの安全なメソッド（`GET` / `HEAD`）はサインインへ転送し、`POST` は 401 で答える（フォーム本文を捨てない）
 
-  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `sends a signed-out visitor to sign in` / `answers 401 rather than redirecting a form POST`
+  > ✅ Automated — `packages/nest/src/routes/console.test.ts` › `sends a signed-out visitor to sign in` / `sends a signed-out HEAD the same way it sends a GET` / `answers 401 rather than redirecting a form POST`
 
 - [x] AT-C: 素の form から `.krs` を投稿でき、ingest と同じ 2 つの検査が走る
 
