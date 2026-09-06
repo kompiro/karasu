@@ -646,6 +646,7 @@ karasu モデルの中で物理スキーマを **設計する**（entity から 
 ツールを使うべきである。
 
 > Related TPLs: [TPL-1882](test-perspectives/TPL-1882-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。この線を保つ。
+> [TPL-2585](test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — 本節が任意と定めた物理対応は派生ビューが通る経路そのものなので、その上に建てるビューは写らなかった分を数え、完全な ER 図であると主張しない。
 
 #### C4 互換は目標ではない
 
