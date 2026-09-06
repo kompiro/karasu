@@ -9,6 +9,7 @@ related_to:
   - ADR-1386
   - ADR-1566
   - ADR-2547
+  - ADR-2596
 scope:
   packages: [core]
 assumptions:

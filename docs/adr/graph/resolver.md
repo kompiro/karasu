@@ -18,6 +18,7 @@ flowchart TD
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
     ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
+    ADR_2596["ADR-2596<br/>nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う"]
   end
   ADR_351["ADR-351<br/>[renderer] resource shape 自動推論とインフラノード Icon Mode 対応"]
   ADR_496["ADR-496<br/>[parser] ブロック内エッジの暗黙 source 簡略記法"]
@@ -64,6 +65,7 @@ flowchart TD
   class ADR_2184 accepted
   class ADR_2410 accepted
   class ADR_2442 accepted
+  class ADR_2596 accepted
   class ADR_351 ghost
   class ADR_496 ghost
   class ADR_517 ghost
