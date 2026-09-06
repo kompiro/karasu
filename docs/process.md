@@ -108,28 +108,133 @@ ready → implementing → in-review → (close)
 9. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 10. Issue ラベルを status: in-review に更新する
 11. 手動検証チェックリストを実施する
-12. レビュー（CodeRabbit の所見 + 人間）→ マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
+12. CodeRabbit のレビューを収束させる（approve が付くまで指摘に対応する。記録済みの決定を変える指摘だけ人間に確認する）
+13. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
 
-### PR は CodeRabbit の所見を読んでからマージする
+### 人間のレビューは CodeRabbit が approve してから始める
 
-**到達状態**: PR に CodeRabbit の walkthrough とレビューコメントが付き、各所見の
-判断が済んでいる（直した、または採用しない理由を返信して解決した）。
+**到達状態**: 人間がレビューを開いた時点で、CodeRabbit の最新レビューが `APPROVED`、
+未解決の review thread が 0、そして人間の判断が要る論点は PR 上で質問済みになっている。
 
-- レビューは **advisory** — required check ではなく、CodeRabbit は approve も block も
-  しない。マージ判断は人間が持つ（[ADR-2640](adr/2640-coderabbit-pr-review.md)）
+2 本目は **`--paginate` で全ページ数える**。`reviewThreads` を 1 ページだけ読むと、
+古い未解決 thread が範囲外に落ちて `0` が返る。`--slurp` は `--jq` と併用できないので
+`jq` に繋ぐ。
+
+```
+gh pr view <n> --json reviews \
+  --jq '[.reviews[] | select(.author.login == "coderabbitai")] | last | .state'
+# => APPROVED
+
+gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
+  repository(owner: "kompiro", name: "karasu") {
+    pullRequest(number: $n) {
+      reviewThreads(first: 100, after: $endCursor) {
+        nodes { isResolved }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}' | jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]
+          | select(.isResolved == false)] | length'
+# => 0
+```
+
+CodeRabbit は actionable な指摘があるあいだ changes-requested を出し、未対応が
+なくなると approve する（`request_changes_workflow`、
+[ADR-2716](adr/2716-coderabbit-request-changes-workflow.md)）。
+**この approve は「自動レビューが収束した」印であって、マージ許可ではない。**
+required check ではなく、default branch の ruleset は approving review を要求しない
+ので、changes-requested はマージを止めず approve はマージを許可しない。マージ判断は
+人間が持つ。
+
+**PR を出した側が approve までのラウンドを回しきってから人間に渡す。** 人間の
+レビューを CodeRabbit のラウンドと並走させない。並走させると収束途中の差分を人間が
+読むことになり、次のラウンドで消える指摘に人間の時間を使う。
+
+#### 人間に確認する指摘の判定
+
+判断基準は 1 つ、**その指摘に従うと記録済みの決定が変わるかどうか**。記録済みの決定とは
+Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`、`.claude/rules/`、
+およびその PR で人間が明示した方針を指す。
+
+| 指摘 | どうするか |
+| --- | --- |
+| 記録済みの決定を変えない（実装の誤り・記述の同期漏れ・誤検知・好みの範囲） | 対応可否を自分で決めて、直すか却下して解決する |
+| 記録済みの決定を変える（スコープの拡縮、ADR / spec / rules の書き換え、別 ADR との衝突） | **直さずに人間へ確認する。** 指摘・該当する記録・取りうる選択肢を並べて聞く |
+
+確認が要る論点が出ても、**それ以外の指摘は先に収束させる**。人間を待つあいだ手を止めない。
+人間に渡すときは、残っている質問と、却下した指摘およびその理由をまとめて 1 回で伝える。
+
+#### ラウンドの回し方
+
 - 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
   `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
   他の bot を除外するには login を `.coderabbit.yaml` に足す
-- 採用しない指摘は**返信で理由を書いて解決する**。返信が learnings になるのは
-  `Learnings Added` が返ったときだけで、再発防止は次項の drift ガードで担保する
+- 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
+  到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、
+  上の表に従って人間へ回す
+- **閉じるのは読んだ thread だけ。** 判断基準はこの 1 つで、閉じ方はそれを守れる方を
+  選ぶ。thread を名指しできるのは GraphQL の `resolveReviewThread` で、
+  `@coderabbitai resolve` は開いている thread を**全部**閉じる（名指しできない）。
+  **一覧と本文読みは分ける** — 一覧に本文を混ぜると、`comments` を何件で切っても
+  その先を読まずに閉じられる形になる。一覧は件数だけ持たせ、本文は thread ごとに
+  全ページ読む
+
+  ```
+  # 1. 未解決 thread の索引（id・場所・コメント件数だけ）
+  gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
+    repository(owner: "kompiro", name: "karasu") {
+      pullRequest(number: $n) {
+        reviewThreads(first: 100, after: $endCursor) {
+          nodes { id isResolved path line comments { totalCount } }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }' | jq -r '.[].data.repository.pullRequest.reviewThreads.nodes[]
+              | select(.isResolved == false)
+              | "\(.id) \(.path):\(.line) comments=\(.comments.totalCount)"'
+
+  # 2. その thread を全件読む（totalCount と出力行数が一致することを確かめる）
+  gh api graphql --paginate --slurp -F id=<thread-id> -f query='query($id: ID!, $endCursor: String) {
+    node(id: $id) {
+      ... on PullRequestReviewThread {
+        comments(first: 100, after: $endCursor) {
+          nodes { author { login } body }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }' | jq -r '.[].data.node.comments.nodes[] | "[\(.author.login)] \(.body)"'
+
+  # 3. 読んで対応を決めた thread だけを閉じる
+  gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<id>"}) { thread { isResolved } } }'
+  ```
+
+- **一括の `@coderabbitai resolve` を使うなら、投げる前に未解決 thread を全件読む。**
+  投げてから処理されるまでに数分あり、**その間に届いたレビューの指摘も一緒に閉じられる**。
+  投げたあとは、resolve コメントより後に届いたレビューがないか確かめる。あれば、その
+  指摘は未読のまま閉じられている
+
+  ```
+  gh pr view <n> --json reviews \
+    --jq '[.reviews[] | select(.author.login == "coderabbitai")] | last | .submittedAt'
+  # resolve コメントの投稿時刻より後なら、その回の指摘を読み直す
+  ```
+
+- **`@coderabbitai resolve` は PR の top-level コメントとして投げる。** review thread
+  への返信の中に書いても効かない（CodeRabbit が「Post it as a new top-level PR
+  comment」と返して終わる）
+- 返信が learnings になるのは `Learnings Added` が返ったときだけで、再発防止は
+  次の 2 項で担保する
 - 同じ規約違反を繰り返し指摘されるなら、`scripts/lint/` + lefthook の drift ガードに
   落とす合図として扱う
-- 同じ**誤検知**を繰り返されるなら、`path_instructions` の glob が規約の適用範囲より
-  広い合図として扱う。返信で毎回閉じるのではなく、その規約が実際に及ぶパッケージまで
-  glob を絞る
+- 同じ**誤検知**を繰り返されるなら、`path_instructions` が規約の実態とずれている合図
+  として扱う。返信で毎回閉じるのではなく、glob を実際の適用範囲まで絞るか、例外を
+  instruction に書く
 - 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
 
 ### Stacked PR の進め方
@@ -147,10 +252,10 @@ ready → implementing → in-review → (close)
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
 | 1 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 2 | 先に `/code-review <n>` を当てる |
-| 3 | code-review と CodeRabbit の指摘を、人と一緒に対応可否まで決める |
+| 3 | code-review と CodeRabbit の指摘の対応可否を決める（記録済みの決定を変えるものだけ人に確認する） |
 | 4 | 対応すると決めた指摘を直す |
-| 5 | push すると CodeRabbit が再レビューする。3 に戻り、指摘が収束するまで繰り返す |
-| 6 | そのスライスで観測できることを人が確認し、マージ可否を決める |
+| 5 | push すると CodeRabbit が再レビューする。3 に戻り、CodeRabbit が approve するまで繰り返す |
+| 6 | CodeRabbit の approve が付いたら、そのスライスで観測できることを人が確認し、マージ可否を決める |
 | 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層の draft を外して 1 に戻る |
 
 - **`gh stack submit --auto --open` は使わない。** `--open` は新規 PR だけでなく

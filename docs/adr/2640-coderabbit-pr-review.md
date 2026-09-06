@@ -1,7 +1,8 @@
 ---
 id: ADR-2640
 title: PR の一次レビューに CodeRabbit を入れる（advisory 固定）
-status: accepted
+status: superseded
+superseded_by: ADR-2716
 date: 2026-08-28
 topic: build
 scope:
@@ -15,13 +16,13 @@ related_to:
 assumptions:
   - "file: .coderabbit.yaml"
   - "grep: .coderabbit.yaml :: language: en-US"
-  - "grep: .coderabbit.yaml :: request_changes_workflow: false"
+  - "request_changes_workflow はこの ADR の時点では false だった。ADR-2716 が true に変えたので現在の設定とは一致しない"
 ---
 
 # ADR-2640: PR の一次レビューに CodeRabbit を入れる（advisory 固定）
 
 - **日付**: 2026-08-28
-- **ステータス**: 決定済み
+- **ステータス**: Superseded by [ADR-2716](2716-coderabbit-request-changes-workflow.md)（advisory 固定の一点のみ。導入・設定の置き場・除外対象・運用ルールは引き継がれている）
 - **関連**:
   - Issue #2640
   - ADR-128（Dependabot による依存更新の自動化）

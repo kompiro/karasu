@@ -241,6 +241,7 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-1084](1084-skills-plugin-portability.md) — portable な開発スキルは `kompiro/hane` plugin に切り出し、karasu からは plugin 経由で読み込む
 - [ADR-1085](1085-agent-worktree-coexistence.md) — ユーザー作成 worktree は `.claude/worktrees/<branch>` 配下に置き、Claude Code Agent の自動 worktree と共存させる
 - [ADR-2640](2640-coderabbit-pr-review.md) — PR の一次レビューに CodeRabbit を入れる（advisory 固定）
+- [ADR-2716](2716-coderabbit-request-changes-workflow.md) — CodeRabbit のレビューを request changes workflow に移す（ADR-2640 を supersede）
 
 ### ADR 運用・ツール — `adr-tooling`
 
