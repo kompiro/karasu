@@ -54,6 +54,30 @@ type: product
 - [x] AT-I: 新しいツールバーラベルが `ja` ロケールで英語のまま出ない
   > ✅ Automated — `PreviewColumn.test.tsx` › `PreviewColumn — toolbar carries no English hardcodes under locale=ja`（`EN_TOOLBAR_STRINGS` に新ラベルを追加）
 
+- [x] AT-J: ツールバーのトグルが自分のハンドラに繋がっている（隣の Tree View のものを呼ばない）
+  > ✅ Automated — `PreviewColumn.test.tsx` › `wires the toggle to its own handler, not Tree View's`
+
+- [x] AT-K: 循環（相互依存）の 2 チームが別の列に置かれ、先頭に空列ができない
+  > ✅ Automated — `packages/core/src/renderer/team-dependency-graph.test.ts` › `puts the two teams of a cycle in different columns, with no blank leading column`
+
+- [x] AT-L: 循環の戻りエッジが、間のカードの下をくぐらない経路で描かれる
+  > ✅ Automated — `team-dependency-graph.test.ts` › `routes the return edge of a cycle clear of the cards it would cross`
+
+- [x] AT-M: 同一チーム対が sync と async の両方を持つとき、2 本が別経路に開かれる（実線が破線を隠さない）
+  > ✅ Automated — `team-dependency-graph.test.ts` › `fans sync and async apart when one team pair carries both`
+
+- [x] AT-N: 相互依存の 2 方向で、エッジ本数ラベルが重ならない
+  > ✅ Automated — `team-dependency-graph.test.ts` › `gives the two directions of a mutual pair distinct count positions`
+
+- [x] AT-O: カードに収まらない team ラベルが切り詰められる
+  > ✅ Automated — `team-dependency-graph.test.ts` › `truncates a team label that would overflow its card`
+
+- [x] AT-P: ローカライズされたフッタ行が viewBox に収まる（日本語で切れない）
+  > ✅ Automated — `team-dependency-graph.test.ts` › `widens the canvas so a localized footer line is not clipped`
+
+- [x] AT-Q: 履歴で org のプレーンな permalink に戻ると、依存モードではなくグリッドが描かれる（URL と表示が食い違わない）
+  > ✅ Automated — `packages/app/src/hooks/useOrgDisplayMode.test.ts` › `returns to the grid when a history restore addresses a plain org hash`
+
 ## 手動確認
 
 - [ ] 🧑 org タブで **チーム依存** を押すと導出グラフが描かれ、もう一度押すとグリッドに戻る。**ツリー表示** を押すとチーム依存が閉じる（<https://karasu.kompiro.dev/> で `examples/en/org` を開く）
@@ -63,4 +87,5 @@ type: product
 
 - 囲みを跨ぐ所有（structural overlap。slice C [#2637](https://github.com/kompiro/karasu/issues/2637)）はグラフに出ない
 - このモードは **permalink / 共有リンクに乗らない**。`#krs-org-tree` に相当するトークンを
-  持たないため、共有された URL は org タブのグリッドで開く
+  持たないため、共有された URL は org タブのグリッドで開き、履歴で戻ったときも
+  グリッドに復帰する（URL と表示が食い違わないことを AT-Q が固定している）

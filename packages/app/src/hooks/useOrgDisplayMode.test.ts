@@ -40,13 +40,13 @@ describe("useOrgDisplayMode", () => {
     expect(result.current.mode).toBe("grid");
   });
 
-  it("leaves the dependency graph alone when Tree View is set to false", () => {
-    // The permalink restore writes `false` on every navigation that is not a
-    // tree link; treating that as "close whatever is open" would knock the user
-    // out of the dependency mode on an unrelated drill.
+  it("returns to the grid when a history restore addresses a plain org hash", () => {
+    // The restore passes `false` for a hash with no `#krs-org-tree` token. The
+    // dependency mode has no token of its own, so leaving it drawn would make
+    // the address bar and the pane disagree.
     const { result } = renderHook(() => useOrgDisplayMode());
     act(() => result.current.toggleTeamDependencies());
     act(() => result.current.setOrgTreeView(false));
-    expect(result.current.mode).toBe("dependencies");
+    expect(result.current.mode).toBe("grid");
   });
 });

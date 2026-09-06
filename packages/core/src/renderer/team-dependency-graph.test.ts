@@ -112,3 +112,109 @@ organization O { team ta { owns A } team tb { owns B } }
     expect(aggregated).toMatch(/data-team-from="ta" data-team-to="tb"[\s\S]*?>2<\/text>/);
   });
 });
+
+describe("renderTeamDependencyGraph — layout under cycles and shared pairs", () => {
+  function attr(svg: string, re: RegExp): string[] {
+    return [...svg.matchAll(re)].map((m) => m[1]);
+  }
+
+  const MUTUAL = `
+system S {
+  service A { domain Da { Da -> Db "call" } }
+  service B { domain Db { Db -> Da "call back" } }
+}
+organization O { team ta { owns A } team tb { owns B } }
+`;
+
+  it("puts the two teams of a cycle in different columns, with no blank leading column", () => {
+    // A cap-based layering drives every member of a cycle to the same rightmost
+    // layer, leaving the columns to its left empty but still charged for width.
+    const svg = graphOf(MUTUAL);
+    const xs = attr(svg, /<rect x="(\d+(?:\.\d+)?)" y="\d/g).map(Number);
+    expect(new Set(xs).size).toBe(2);
+    // The first column starts at the canvas padding: nothing empty to its left.
+    expect(Math.min(...xs)).toBe(32);
+  });
+
+  it("routes the return edge of a cycle clear of the cards it would cross", () => {
+    const svg = graphOf(MUTUAL);
+    // Anchored on `<path d=` — a lazy `d="` also matches inside `data-edge-kind=`.
+    const back = svg.match(/data-team-from="tb" data-team-to="ta"[\s\S]*?<path d="([^"]+)"/)?.[1];
+    expect(back).toBeDefined();
+    // It leaves and arrives on the card tops and arcs above them, so it never
+    // runs underneath an opaque card fill (edges are painted before nodes).
+    const nums = [...back!.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
+    const ys = nums.filter((_, i) => i % 2 === 1);
+    // Card tops sit at y = 32 (the canvas padding); the control points lift the
+    // curve above that.
+    expect(Math.min(...ys)).toBeLessThan(32);
+    // And it starts on a card top rather than on a card side.
+    expect(ys[0]).toBe(32);
+  });
+
+  it("fans sync and async apart when one team pair carries both", () => {
+    // Drawn on one path the solid sync stroke hides the dashed async one, and
+    // the distinction this view exists to show becomes invisible.
+    const svg = graphOf(`
+system S {
+  service A { domain Da { Da -> Db "call"
+    Da --> Db2 "event" } }
+  service B { domain Db {} domain Db2 {} }
+}
+organization O { team ta { owns A } team tb { owns B } }
+`);
+    const paths = attr(svg, /data-team-from="ta" data-team-to="tb"[^>]*>\s*<path d="([^"]+)"/g);
+    expect(paths).toHaveLength(2);
+    expect(paths[0]).not.toBe(paths[1]);
+  });
+
+  it("gives the two directions of a mutual pair distinct count positions", () => {
+    const svg = graphOf(`
+system S {
+  service A { domain Da { Da -> Db "one"
+    Da -> Db2 "two" } }
+  service B { domain Db { Db -> Da "back one" }
+    domain Db2 { Db2 -> Da "back two" } }
+}
+organization O { team ta { owns A } team tb { owns B } }
+`);
+    const counts = [
+      ...svg.matchAll(
+        /data-team-from="(t[ab])" data-team-to="t[ab]"[\s\S]*?<text x="([^"]+)" y="([^"]+)"/g,
+      ),
+    ].map((m) => `${m[2]},${m[3]}`);
+    expect(counts).toHaveLength(2);
+    expect(counts[0]).not.toBe(counts[1]);
+  });
+
+  it("truncates a team label that would overflow its card", () => {
+    const svg = graphOf(
+      `system S { service A {} }\norganization O { team t { label "Platform Engineering Team" owns A } }`,
+    );
+    expect(svg).toContain("…");
+    expect(svg).not.toContain("Platform Engineering Team<");
+  });
+
+  it("widens the canvas so a localized footer line is not clipped", () => {
+    // Every model with no derived dependency puts all teams in one column, so
+    // the grid is at its narrowest exactly when the footer is longest.
+    const report = extractTeamDependencies(
+      Parser.parse(
+        `system S { service A {} service B {} A -> B }\norganization O { team t { owns A } }`,
+      ).value,
+    );
+    const svg = renderTeamDependencyGraph(report, {
+      emptyStateLabels: {
+        teamDependencyUnowned: "所有チームに解決しなかった端点が {count} 件あります",
+      },
+    });
+    const width = Number(svg.match(/viewBox="0 0 (\d+(?:\.\d+)?) /)?.[1]);
+    const footer =
+      [...svg.matchAll(/font-size="11">([^<]+)</g)]
+        .map((m) => m[1])
+        .find((l) => l.includes("端点")) ?? "";
+    expect(footer).toContain("端点");
+    // 11px CJK runs ~9.5px per glyph; the line must fit inside the canvas.
+    expect(width).toBeGreaterThan(footer.length * 9);
+  });
+});

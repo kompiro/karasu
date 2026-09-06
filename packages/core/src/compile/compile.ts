@@ -308,8 +308,16 @@ export interface OrgCompileResult {
    * Empty (`teams: []`) when the model declares no `organization`, which is
    * what gates the mode in the app rather than a separate flag to drift
    * against (TPL-1032).
+   *
+   * **Lazily derived, memoized on first read.** The join walks every edge of
+   * every container and builds two indices, and almost no org compile wants
+   * it: `karasu render --view org`, the docs-site example renderer and the
+   * VS Code webview never read this field, and the app reads it only while the
+   * dependency mode is open. Keeping it a property rather than a separate
+   * entry point preserves the "one resolve, one model" guarantee the org tab
+   * relies on; making it lazy stops every other caller paying for it.
    */
-  teamDependencies: TeamDependencyReport;
+  readonly teamDependencies: TeamDependencyReport;
 }
 
 /** Discriminated union of all compile result types. Narrow on `diagramType` to access type-specific fields. */
@@ -432,7 +440,7 @@ function _compileFromPreparedInput(
       organizations: krsFile.organizations,
       ownerIndex: krsFile.ownerIndex,
       styles,
-      teamDependencies: extractTeamDependencies(krsFile),
+      ...lazyTeamDependencies(krsFile),
     };
   }
 
@@ -589,6 +597,28 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   return _compileFromPreparedInput(
     { krsFile: parseResult.value, diagnostics, sheets, nodeFileIndex: new Map<string, string>() },
     opts,
+  );
+}
+
+/**
+ * A `teamDependencies` property that derives on first read and caches after.
+ *
+ * Spread into the org result so the field reads like any other, while callers
+ * that never touch it (every non-app consumer) do no work. `configurable` and
+ * `enumerable` keep the object shape a plain reader expects — spreading or
+ * JSON-serializing the result still materializes it, which is the honest
+ * behaviour for a field the type says is always there.
+ */
+function lazyTeamDependencies(krsFile: KrsFile): { teamDependencies: TeamDependencyReport } {
+  let cached: TeamDependencyReport | undefined;
+  return Object.defineProperty(
+    {} as { teamDependencies: TeamDependencyReport },
+    "teamDependencies",
+    {
+      get: () => (cached ??= extractTeamDependencies(krsFile)),
+      enumerable: true,
+      configurable: true,
+    },
   );
 }
 

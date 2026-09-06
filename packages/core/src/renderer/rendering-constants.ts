@@ -55,6 +55,16 @@ export function charDisplayWidth(ch: string, charWidth: number, cjkWidth?: numbe
 export const DESC_MAX_CONTENT_WIDTH = 260;
 export const DESC_MAX_LINES = 2;
 
+/**
+ * Font stack for diagram chrome (labels, table cells, footers).
+ *
+ * Shared so a change to the typeface reaches every renderer at once; it was
+ * spelled out privately in `matrix-svg.ts` and `team-dependency-graph.ts`
+ * before #2636, which is how one diagram ends up in a different face than the
+ * rest after an edit.
+ */
+export const CHROME_FONT_STACK = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+
 /** Gap between a meta glyph box and its text, px. */
 export const META_GLYPH_GAP = 3;
 

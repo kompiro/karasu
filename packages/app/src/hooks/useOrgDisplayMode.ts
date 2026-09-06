@@ -40,14 +40,15 @@ export function useOrgDisplayMode(): OrgDisplayModeControls {
 
   const setOrgTreeView = useCallback<Dispatch<SetStateAction<boolean>>>((action) => {
     setMode((prev) => {
-      const wasOpen = prev === "tree";
-      const next = typeof action === "function" ? action(wasOpen) : action;
-      if (next) return "tree";
-      // Turning Tree View off returns to the grid only if it was on. A `false`
-      // arriving while the dependency graph is drawn must not close that too —
-      // the permalink restore writes `false` on every navigation that is not a
-      // tree link.
-      return wasOpen ? "grid" : prev;
+      const next = typeof action === "function" ? action(prev === "tree") : action;
+      // `false` returns to the grid from *any* mode, not just from Tree View.
+      // The only caller that passes it is the history restore, which is an
+      // authoritative statement of what the URL addresses: a hash with no
+      // `#krs-org-tree` token means the grid. Leaving the dependency graph
+      // drawn there would put the address bar and the pane in disagreement
+      // with no way for the reader to reconcile them — and the dependency mode
+      // has no token of its own to be restored from (#2636).
+      return next ? "tree" : "grid";
     });
   }, []);
 

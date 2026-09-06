@@ -146,6 +146,7 @@ export function AppShell({
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
+    isTeamDependenciesOpen,
     isEntityViewOpen,
     setIsEntityViewOpen,
     compareSource,

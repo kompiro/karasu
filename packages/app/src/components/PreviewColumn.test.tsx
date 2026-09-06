@@ -1046,6 +1046,31 @@ describe("PreviewColumn — org tab team-dependency mode (#2636)", () => {
     expect(screen.getByRole("button", { name: "Toggle org tree view" })).toBeTruthy();
   });
 
+  it("wires the toggle to its own handler, not Tree View's", () => {
+    // The control sits directly below the Tree View button it was modelled on,
+    // so a copy-paste leaving `onOrgTreeViewToggle` on the click would toggle
+    // the wrong mode while every other assertion here stayed green.
+    const onTeamDependenciesToggle = vi.fn<() => void>();
+    const onOrgTreeViewToggle = vi.fn<() => void>();
+    const user = userEvent.setup();
+    renderPreview(orgProps({ onTeamDependenciesToggle, onOrgTreeViewToggle }));
+    return user
+      .click(screen.getByRole("button", { name: "Toggle derived team dependencies" }))
+      .then(() => {
+        expect(onTeamDependenciesToggle).toHaveBeenCalledTimes(1);
+        expect(onOrgTreeViewToggle).not.toHaveBeenCalled();
+      });
+  });
+
+  it("reports its pressed state to assistive tech", () => {
+    renderPreview(orgProps({ isTeamDependenciesOpen: true }));
+    expect(
+      screen
+        .getByRole("button", { name: "Toggle derived team dependencies" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
   it("does not offer the mode when the model declares no organization", () => {
     // ADR-766's stance on empty views: a control that can only draw a blank
     // canvas reads as a broken feature rather than as an empty model.

@@ -14,6 +14,7 @@ import {
   type ResolvedStyles,
   type TeamDependencyReport,
 } from "@karasu-tools/core";
+import { useMemo } from "react";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
@@ -54,6 +55,12 @@ export function useOrgView(
   compareEntryPath: string | null = null,
   compareFs: FileSystemProvider | null = null,
   theme?: DiagramTheme,
+  /**
+   * Whether the org tab's dependency mode is drawn. The SVG is built only then:
+   * `OrgCompileResult.teamDependencies` derives lazily, so leaving this false
+   * means the join never runs at all on a compile nobody is looking at.
+   */
+  teamDependenciesOpen = false,
 ): OrgViewState & {
   recompile: () => void;
   expandedTeamIds: ReadonlySet<string>;
@@ -190,11 +197,21 @@ export function useOrgView(
 
   // Recomputed whenever the compiled report or the theme changes, and from
   // nothing else — the report is the whole input, so there is no second source
-  // to leave stale (TPL-1032).
-  const teamDependencySvg =
-    state.teamDependencies.teams.length > 0
-      ? renderTeamDependencyGraph(state.teamDependencies, { theme, emptyStateLabels })
-      : "";
+  // to leave stale (TPL-1032). Memoized because this hook re-runs on every
+  // AppShell render (each keystroke, each panel resize), and rebuilding an SVG
+  // string for a tab the user may not even be on is work nothing asked for.
+  //
+  // The no-teams case is *not* gated here: the renderer owns it and draws the
+  // empty state. Two callers each deciding what "no teams" looks like is how
+  // they end up disagreeing (the toggle's own gate is a different question —
+  // whether to offer the mode at all — and stays in `PreviewViewControls`).
+  const teamDependencySvg = useMemo(
+    () =>
+      teamDependenciesOpen
+        ? renderTeamDependencyGraph(state.teamDependencies, { theme, emptyStateLabels })
+        : "",
+    [teamDependenciesOpen, state.teamDependencies, theme, emptyStateLabels],
+  );
 
   return {
     ...state,
