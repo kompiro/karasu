@@ -794,6 +794,55 @@ ${realizes}
   }
 });
 
+// #2713 — the same geometry from the other producer. #2552 closed the route
+// that let one unit reach a container twice; two units *sharing an id* reopened
+// it, because the grid still counted entries the placement loop would coalesce.
+// The fix grids what it keys, so this holds for any future producer of same-id
+// units rather than asking every upstream consumer to guarantee uniqueness.
+describe("units sharing an id reserve no empty cell (#2713)", () => {
+  const laidOut = (units: string) => {
+    const file = Parser.parse(`
+system EC {
+  service OrderService {}
+}
+deploy prod {
+${units}
+}
+`).value;
+    return layoutDeploy(extractDeployView(file.deploys, withUnassignedSystem(file)));
+  };
+
+  const unit = (id: string) =>
+    `  oci ${id} {\n    runtime "Kubernetes"\n    realizes OrderService\n  }`;
+  const control = laidOut(unit("app"));
+
+  it("is laid out exactly like a single unit", () => {
+    const result = laidOut(`${unit("app")}\n${unit("app")}`);
+    expect(result.nodes.size).toBe(1);
+    expect(result.containers).toHaveLength(1);
+    expect(result.containers[0].height).toBe(control.containers[0].height);
+    expect(result.height).toBe(control.height);
+  });
+
+  it("does not pay for the cell it will not draw", () => {
+    // The discriminating comparison: before the fix a same-id pair measured
+    // exactly like two distinct units, because the grid counted both and only
+    // the placement loop coalesced them. One node drawn must cost one cell.
+    const shared = laidOut(`${unit("app")}\n${unit("app")}`);
+    const distinct = laidOut(`${unit("app")}\n${unit("web")}`);
+    expect(shared.nodes.size).toBe(1);
+    expect(distinct.nodes.size).toBe(2);
+    expect(shared.containers[0].height).toBeLessThan(distinct.containers[0].height);
+  });
+
+  it("still gives two distinct ids two cells", () => {
+    // The dedupe must not swallow the normal case it sits next to.
+    const result = laidOut(`${unit("app")}\n${unit("web")}`);
+    expect(result.nodes.size).toBe(2);
+    expect(result.containers[0].height).toBeGreaterThan(control.containers[0].height);
+  });
+});
+
 describe("layoutDeploy routes container edges through the shared chain (#2609)", () => {
   const containersOf = (ids: string[]) =>
     ids.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] }));

@@ -742,21 +742,39 @@ export class ImportResolver {
     }
   }
 
+  /**
+   * Adds one unit to a deploy block, keeping unit ids unique within it.
+   *
+   * **Both merge paths go through here** (#2713). The wildcard path
+   * ({@link mergeDeployIntoExisting}) owned these two guards while the named
+   * path (`import { app } from …`) appended unconditionally, so the same
+   * collision was an error assembled one way and silent the other. One rule
+   * with two implementations is what drifted; keeping it in one place is what
+   * stops it drifting again (TPL-1720).
+   *
+   * The `includes` short-circuit is not the same check as the id conflict: it
+   * catches the *identical object* arriving twice, which `import { app, app }`
+   * does, and which would otherwise be reported as a conflict with itself.
+   */
+  private pushDeployNode(target: DeployBlock, node: DeployBlock["nodes"][number]): void {
+    if (target.nodes.includes(node)) return;
+    const idConflict = target.nodes.find((n) => n.id === node.id);
+    if (idConflict) {
+      this.diagnostics.push({
+        severity: "error",
+        code: "duplicate-node-in-deploy",
+        params: { nodeId: node.id, deployId: target.id },
+      });
+      return;
+    }
+    target.nodes.push(node);
+  }
+
   private mergeDeployIntoExisting(target: DeployBlock, source: DeployBlock): void {
     if (target === source) return;
     this.reconcileLabel(target, source, "deploy");
     for (const node of source.nodes) {
-      if (target.nodes.includes(node)) continue;
-      const idConflict = target.nodes.find((n) => n.id === node.id);
-      if (idConflict) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "duplicate-node-in-deploy",
-          params: { nodeId: node.id, deployId: target.id },
-        });
-      } else {
-        target.nodes.push(node);
-      }
+      this.pushDeployNode(target, node);
     }
   }
 
@@ -939,14 +957,16 @@ export class ImportResolver {
       if (matchingNodes.length > 0) {
         found = true;
         const existingDeploy = mergedFile.deploys.find((d) => d.id === deploy.id);
-        if (existingDeploy) {
-          existingDeploy.nodes.push(...matchingNodes);
-        } else {
-          mergedFile.deploys.push({
-            ...deploy,
-            nodes: [...matchingNodes],
-          });
+        // Both branches fill the block through `pushDeployNode` so the named
+        // path enforces unit-id uniqueness the way the wildcard path does
+        // (#2713). The new-block branch needs it too: `matchingNodes` comes
+        // from one file's `deploy.nodes`, which that file may itself have
+        // declared twice.
+        const target = existingDeploy ?? { ...deploy, nodes: [] };
+        for (const node of matchingNodes) {
+          this.pushDeployNode(target, node);
         }
+        if (!existingDeploy) mergedFile.deploys.push(target);
       }
     }
 

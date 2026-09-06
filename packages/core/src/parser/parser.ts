@@ -432,6 +432,16 @@ export class Parser {
     for (const domain of file.domains) {
       this.collectNodeIds(domain.children, new Set<string>());
     }
+    // Deploy units get their own code rather than `duplicate-node-id-parent`
+    // (#2713): `duplicate-node-in-deploy` names the block the collision is in,
+    // and docs/spec/diagnostics.md states its rule with no route qualifier —
+    // "A node id is duplicated within a `deploy` block". Until now the only
+    // emitter was the wildcard-import merge in import-resolver.ts, so a single
+    // file declaring `oci app` twice said nothing while the same collision
+    // assembled across files was an error.
+    for (const deploy of file.deploys) {
+      this.collectDeployNodeIds(deploy);
+    }
     // The index itself is a merge-only verdict, so it is built by the shared
     // function the ImportResolver re-runs on the merged model (#2596).
     const nodePaths = buildNodePathIndex(file);
@@ -2650,6 +2660,33 @@ export class Parser {
         seen.add(node.id);
       }
       this.collectNodeIds(node.children, new Set<string>());
+    }
+  }
+
+  /**
+   * Per-file half of `duplicate-node-in-deploy` (#2713). A deploy block's units
+   * are its immediate children and nothing nests below them, so this is one
+   * flat pass rather than the recursive walk `collectNodeIds` does.
+   *
+   * The verdict is reported on the *repeat*, not on the first declaration: the
+   * first spelling is the one every consumer keys, so the later one is what the
+   * author has to move or rename. Nothing is dropped here — the merge path
+   * drops because it has a target block to keep intact, while a parse keeps the
+   * file as written and lets `placeGroupBlock` collapse what it cannot key.
+   */
+  private collectDeployNodeIds(deploy: DeployBlock): void {
+    const seen = new Set<string>();
+    for (const node of deploy.nodes) {
+      if (seen.has(node.id)) {
+        this.diagnostics.push({
+          severity: "error",
+          code: "duplicate-node-in-deploy",
+          params: { nodeId: node.id, deployId: deploy.id },
+          loc: node.loc,
+        });
+      } else {
+        seen.add(node.id);
+      }
     }
   }
 

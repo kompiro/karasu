@@ -287,8 +287,25 @@ function placeGroupBlock(
   let subRowMaxHeight = 0;
   let maxRight = startX;
 
+  // The key a placement is stored under, below. Declared once so the grid is
+  // sized on exactly what the placement loop will key (#2713): sizing counted
+  // entries while `layoutNodes` coalesced them left a container holding a cell
+  // for a unit that is never drawn. Two same-id units are a
+  // `duplicate-node-in-deploy` error, but the mismatch belongs to whoever grids
+  // and keys the same list, not to the producers upstream of it — closing it
+  // here means the next producer of same-id units cannot reopen it (TPL-2552).
+  const nodeKeyOf = (group: Group, unit: DeployNode): string =>
+    bareNodeKeys ? unit.id : `${group.id}::${unit.id}`;
+
   for (const group of groups) {
-    const grid = layoutContainerUnits(group.units, group.label, widthBudget);
+    const griddedKeys = new Set<string>();
+    const griddedUnits = group.units.filter((unit) => {
+      const key = nodeKeyOf(group, unit);
+      if (griddedKeys.has(key)) return false;
+      griddedKeys.add(key);
+      return true;
+    });
+    const grid = layoutContainerUnits(griddedUnits, group.label, widthBudget);
     const containerW = grid.width;
     const containerH = grid.height;
 
@@ -321,7 +338,7 @@ function placeGroupBlock(
         const dims = measureDeployUnit(unit);
         // Key is "${containerId}::${unit.id}" so the same unit can appear in multiple
         // containers at different positions without overwriting its layout entry.
-        const nodeKey = bareNodeKeys ? unit.id : `${group.id}::${unit.id}`;
+        const nodeKey = nodeKeyOf(group, unit);
         layoutNodes.set(nodeKey, {
           kind: unit.kind,
           id: unit.id,

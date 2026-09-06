@@ -12,6 +12,7 @@ known_consumers:
   - deploy-layout
 discovered_from:
   - issue: "#2552"
+  - issue: "#2713"
   - root_cause_file: "packages/core/src/parser/parser.ts:parseRealizesList"
   - root_cause_file: "packages/core/src/renderer/deploy-layout.ts:placeGroupBlock"
 related_to:
@@ -96,6 +97,12 @@ TPL-2161 とは向きが逆に見えるが矛盾しない。TPL-2161 が捨て�
 - `packages/core/src/formatter/formatter.test.ts`（"collapses a target named twice to a single realizes line"）
 - `packages/core/src/resolver/warnings.test.ts`（"warns once for a target that is unresolved and named twice" — 誤りの報告回数も「数える側」の 1 つ）
 - `packages/core/src/compile/deploy-node-metadata.test.ts`（詳細パネルが読む metadata が 1 件、ただし解決先が同じ 2 参照は 2 件のまま）
+
+2 例目（[#2713](https://github.com/kompiro/karasu/issues/2713) — 同じ観点を、同じ相手の再掲ではなく **id を共有する 2 つのユニット**が踏んだ）:
+
+- `packages/core/src/parser/parser.test.ts`（`describe("duplicate deploy unit id within one file (#2713)")` — 単一ファイル内の id 重複を報告し、範囲は重複した側を指す）
+- `packages/core/src/fs/import-resolver.test.ts`（`describe("deploy unit id uniqueness on the named-import path (#2713)")` — named / wildcard の両経路が 1 つのガードを共有する）
+- `packages/core/src/renderer/deploy-layout.test.ts`（`describe("units sharing an id reserve no empty cell (#2713)")` — 同 id ペアのコンテナは、id が異なる 2 ユニットのコンテナより厳密に低い）
 
 ## 派生元 spec
 
