@@ -114,6 +114,17 @@ karasu のコアな語彙のクイックリファレンスです。karasu は
 - **role** — user がシステム内で何をするかの短い記述。アクターの類型であり、
   **認可の仕組みではない**（RBAC ではない）。
   [Syntax](syntax.ja.md#user-ノードの例)
+- **所有の継承（ownership inheritance）** — 自身に `owns` を持たないノードは、
+  直近の owned 祖先を所有する team に属するという規則。
+  [Syntax](syntax.ja.md#所有の継承--直近の-owned-祖先)
+- **team dependency（チーム依存）** — 2 つの team のあいだの**導出された**関係。
+  一方が所有するノードが、他方が所有するノードに依存している状態を指す。`.krs` に
+  これを宣言する構文は無く、`owns` と論理エッジの join として得られる。`sync` /
+  `async` は畳まず、一方が他方の祖先なら `nested` と印を付ける。読み出しは
+  `karasu team-dependencies`。上の **communication** とは別語 — communication は
+  ノード間エッジに束縛されている。
+
+> Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
 
 ## タグとアノテーション
 

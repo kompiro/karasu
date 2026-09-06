@@ -117,6 +117,7 @@ changes. Run `karasu <command> --help` for the full option list and examples.
 | `serve [dir]` | Serve `.krs` files from a directory with live preview |
 | `render <file>` | Render a `.krs` file to SVG or draw.io |
 | `matrix <file>` | Render a usecase × resource CRUD matrix (`md` / `csv` / `svg`) |
+| `team-dependencies <file>` | Derive which teams depend on which from `owns` × the logical edges (`md` / `csv`) |
 | `fmt [files...]` | Format `.krs` files in place (`--check` for CI, `--stdin` for pipes) |
 | `tidy-style [files...]` | Tidy `.krs.style` files: merge duplicate rules, group properties |
 | `lint-style [files...]` | Lint `.krs.style` property values against the schema |
