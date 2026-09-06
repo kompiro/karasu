@@ -582,8 +582,8 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
     // The room opened above the target row, not above the empty externals
     // row: the gap between the last service row and the targets is wider
     // than the default layer gap.
-    const targets = inner.filter((n) => n.id.startsWith("T"));
-    const targetTop = Math.min(...targets.map((n) => n.y));
+    const targetRow = inner.filter((n) => n.id.startsWith("T"));
+    const targetTop = Math.min(...targetRow.map((n) => n.y));
     const above = inner.filter((n) => n.y + n.height <= targetTop);
     const aboveBottom = Math.max(...above.map((n) => n.y + n.height));
     expect(targetTop - aboveBottom).toBeGreaterThan(120);
