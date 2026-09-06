@@ -321,7 +321,7 @@ karasu subtree Order arch.krs                    # 最小ラップ（ドメイ�
 karasu subtree Order arch.krs --with-ancestors   # system / service のコンテキストを保持
 ```
 
-`coverage` と `subtree` は、アーキテクチャリバースワークフローを支える構造プリミティブです。生成された `.krs` モデルを静的に解析し、`coverage` はドメインごとの深さ（usecase / entity / resource / edge）を計測して薄いドメインを定量的に検出し、`subtree` はモデルを 1 ノードに切り出して、focused な refinement のために再投入できるようにします。
+`coverage` と `subtree` は、アーキテクチャリバースワークフローを支える構造プリミティブです。生成された `.krs` モデルを静的に解析し、`coverage` はドメインごとの深さ（usecase / entity / resource / edge）を計測して薄いドメインを定量的に検出し、宣言された各ストアに論理モデルがどこまで届いているかを報告し、`database` に記録された table 間関連と entity 関連の投影との差分（entity 層に欠けている宣言 FK は `recorded-without-projection` のペアとして出ます）を示します。`subtree` はモデルを 1 ノードに切り出して、focused な refinement のために再投入できるようにします。
 
 ## VS Code 拡張
 
