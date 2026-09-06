@@ -3,6 +3,7 @@ import { layoutDeploy } from "./deploy-layout.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { Parser } from "../parser/parser.js";
+import { countPolylinePenetrations } from "./edge-geometry.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import type { DeployNodeKind } from "../types/ast.js";
 
@@ -791,4 +792,99 @@ ${realizes}
       expect(result.height).toBe(control.height);
     });
   }
+});
+
+describe("layoutDeploy routes container edges through the shared chain (#2609)", () => {
+  const containersOf = (ids: string[]) =>
+    ids.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] }));
+  const pointsOf = (e: { fromPoint: Point; toPoint: Point; waypoints?: Point[] }) => [
+    e.fromPoint,
+    ...(e.waypoints ?? []),
+    e.toPoint,
+  ];
+  type Point = { x: number; y: number };
+
+  it("fans the edges into one container out along its side", () => {
+    // Four sources in one layer, one target below: every edge used to end at
+    // the target's top-centre (12 of dify's 16 deploy edges shared one point).
+    const slice = makeSlice(
+      containersOf(["A", "B", "C", "D", "T"]),
+      [],
+      ["A", "B", "C", "D"].map((from) => ({ from, to: "T" })),
+    );
+    const res = layoutDeploy(slice);
+    expect(res.edges).toHaveLength(4);
+    const ends = new Set(res.edges.map((e) => `${e.toPoint.x},${e.toPoint.y}`));
+    expect(ends.size).toBe(4);
+  });
+
+  it("routes around a container that sits between the endpoints", () => {
+    // A over B over C, one per layer, so a straight A -> C pierces B.
+    const slice = makeSlice(
+      containersOf(["A", "B", "C"]),
+      [],
+      [
+        { from: "A", to: "B" },
+        { from: "B", to: "C" },
+        { from: "A", to: "C" },
+      ],
+    );
+    const res = layoutDeploy(slice);
+    const ac = res.edges.find((e) => e.from === "A" && e.to === "C")!;
+    const b = res.containers.find((c) => c.id === "B")!;
+    expect(countPolylinePenetrations(pointsOf(ac), [b])).toBe(0);
+    expect(ac.waypoints?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it("keeps every edge in the muted ghost group after routing", () => {
+    const slice = makeSlice(
+      containersOf(["A", "B", "C"]),
+      [],
+      [
+        { from: "A", to: "B" },
+        { from: "A", to: "C" },
+      ],
+    );
+    for (const e of layoutDeploy(slice).edges) expect(e.ghost).toBe(true);
+  });
+
+  it("keeps the canvas around a route that leaves the content", () => {
+    const slice = makeSlice(
+      containersOf(["A", "B", "C"]),
+      [],
+      [
+        { from: "A", to: "B" },
+        { from: "B", to: "C" },
+        { from: "A", to: "C" },
+      ],
+    );
+    const res = layoutDeploy(slice);
+    for (const e of res.edges) {
+      for (const p of pointsOf(e)) {
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(res.width).toBeGreaterThanOrEqual(p.x);
+        expect(res.height).toBeGreaterThanOrEqual(p.y);
+      }
+    }
+  });
+
+  it("is deterministic", () => {
+    const make = () =>
+      makeSlice(
+        containersOf(["A", "B", "C", "D", "T"]),
+        [],
+        [
+          { from: "A", to: "T" },
+          { from: "B", to: "T" },
+          { from: "C", to: "D" },
+          { from: "A", to: "D" },
+        ],
+      );
+    const a = layoutDeploy(make());
+    const b = layoutDeploy(make());
+    expect(a.edges.map(pointsOf)).toEqual(b.edges.map(pointsOf));
+    expect(a.width).toBe(b.width);
+    expect(a.height).toBe(b.height);
+  });
 });

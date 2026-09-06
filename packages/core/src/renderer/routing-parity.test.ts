@@ -34,6 +34,8 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { layout } from "./layout.js";
+import { layoutDeploy } from "./deploy-layout.js";
+import { extractDeployView } from "../view/deploy-view-extract.js";
 import "./shapes.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
@@ -588,5 +590,62 @@ describe("crowded inter-row channel — capacity fence (#2608, TPL-2598)", () =>
     const aboveBottom = Math.max(...above.map((n) => n.y + n.height));
     expect(targetTop - aboveBottom).toBeGreaterThan(120);
     expect(totalPenetrations(res)).toBe(0);
+  });
+});
+
+describe("deploy view routes through the shared chain (#2609, TPL-219)", () => {
+  // Bundled models whose deploy block carries at least one edge between
+  // containers. The deploy view never ran the chain until #2609: each edge
+  // went centre-to-centre and an edge into a container landed on one point.
+  const DEPLOY_MODELS = [
+    "en/getting-started/index.krs",
+    "en/payment-platform/system.krs",
+    "en/deploy/system.krs",
+  ] as const;
+
+  function deployLayoutOf(file: string): LayoutResult {
+    const krsFile = Parser.parse(readFileSync(resolve(EXAMPLES, file), "utf8")).value;
+    return layoutDeploy(extractDeployView(krsFile.deploys, krsFile.systems));
+  }
+
+  // Deploy edges carry `ghost` as a *style* (they render in the muted group).
+  // The shared metrics skip ghost edges, as the routing passes do, so measure
+  // them with the style flag cleared rather than through a second metric.
+  function routed(res: LayoutResult): LayoutResult {
+    return { ...res, edges: res.edges.map((e) => ({ ...e, ghost: false })) };
+  }
+
+  /** Penetrations of the containers an edge does not terminate on. */
+  function containerPenetrations(res: LayoutResult): number {
+    const boxes = res.containers.filter((c) => !c.ghost);
+    let total = 0;
+    for (const e of res.edges) {
+      const obstacles = boxes.filter((c) => c.id !== e.from && c.id !== e.to);
+      total += countPolylinePenetrations(pointsOf(e), obstacles);
+    }
+    return total;
+  }
+
+  it.each(DEPLOY_MODELS)("%s: the deploy view has edges to route", (file) => {
+    expect(deployLayoutOf(file).edges.length).toBeGreaterThan(0);
+  });
+
+  it.each(DEPLOY_MODELS)("%s: no edge pierces a container it does not terminate on", (file) => {
+    expect(containerPenetrations(deployLayoutOf(file))).toBe(0);
+  });
+
+  it.each(DEPLOY_MODELS)("%s: no two edges share a collinear corridor", (file) => {
+    const res = routed(deployLayoutOf(file));
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it.each(DEPLOY_MODELS)("%s: no two edges share an endpoint", (file) => {
+    const res = deployLayoutOf(file);
+    const key = (p: Point) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+    const starts = res.edges.map((e) => key(e.fromPoint));
+    const ends = res.edges.map((e) => key(e.toPoint));
+    expect(new Set(starts).size).toBe(starts.length);
+    expect(new Set(ends).size).toBe(ends.length);
   });
 });

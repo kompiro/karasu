@@ -19,6 +19,8 @@ import {
   GRID_COLUMN_CAP,
 } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
+import { runRoutingChain } from "./layout-edges.js";
+import { normalizeCoordinates } from "./layout-geometry.js";
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
 const CONTAINER_PADDING_X = 20;
@@ -537,17 +539,89 @@ function layoutDeployForBudget(
       label: edge.label,
       fromPoint,
       toPoint,
-      ghost: true,
     });
+  }
+
+  routeDeployEdges(containers, layoutEdges);
+
+  // A gutter route runs outside the containers, so the canvas has to reach
+  // around it: fold any point left of the margin back in, then size the
+  // canvas from the containers and the routed edges. A view whose edges all
+  // stay inside keeps the exact dimensions it had (`totalWidth` / `currentY`
+  // are the same maxima, computed the old way).
+  normalizeCoordinates(containers, layoutNodes, layoutEdges);
+  let width = totalWidth;
+  let height = currentY;
+  for (const c of containers) {
+    width = Math.max(width, c.x + c.width + OUTER_PADDING);
+    height = Math.max(height, c.y + c.height + OUTER_PADDING);
+  }
+  for (const e of layoutEdges) {
+    for (const p of [e.fromPoint, e.toPoint, ...(e.waypoints ?? [])]) {
+      width = Math.max(width, p.x + OUTER_PADDING);
+      height = Math.max(height, p.y + OUTER_PADDING);
+    }
   }
 
   return {
     nodes: layoutNodes,
     edges: layoutEdges,
     containers,
-    width: totalWidth,
-    height: currentY,
+    width,
+    height,
   };
+}
+
+/**
+ * Route the container edges through the shared routing chain (#2609).
+ *
+ * Until now the deploy view never ran the chain: each edge went straight from
+ * the centre of one container side to the centre of another, so every edge
+ * into a container landed on one point (12 of dify's 16 deploy edges ended at
+ * exactly the same coordinate) and an edge pierced whatever container lay
+ * between its endpoints. The system view has had ports, channels and gutters
+ * since ADR-968; this is the `runRoutingChain` parity gap of TPL-219.
+ *
+ * The routable boxes are the containers themselves. Each non-ghost container
+ * becomes a node-shaped box, so every pass sees the same obstacle set the
+ * system view sees — all boxes but the two the edge terminates on. Units sit
+ * inside their container's box and add nothing; the job band wrapper encloses
+ * real containers and is not an obstacle. No port resolver: a container is a
+ * plain rectangle, so its bounding box is its outline.
+ *
+ * Deploy edges render in the muted ghost group, and the chain skips ghost
+ * edges, so the flag goes on *after* routing. Here `ghost` is a style, not a
+ * routing gate — the explicit opt-in #2609 asked for.
+ */
+function routeDeployEdges(containers: ContainerRect[], edges: LayoutEdge[]): void {
+  const boxes = new Map<string, LayoutNode>();
+  for (const c of containers) {
+    if (c.ghost) continue;
+    boxes.set(c.id, {
+      kind: "service",
+      id: c.id,
+      label: c.label,
+      properties: { description: undefined, links: [] },
+      descriptionSummary: undefined,
+      linkCount: 0,
+      hasChildren: true,
+      hasDescription: false,
+      x: c.x,
+      y: c.y,
+      width: c.width,
+      height: c.height,
+    });
+  }
+  runRoutingChain(boxes, edges, [], {
+    // No in-place expansion on the deploy view.
+    expandedFrames: undefined,
+    // No band stack: trunk aggregation and backward dashing stay off, as on an
+    // ungrouped system canvas.
+    groupBands: null,
+    // Containers are rectangles; the bounding box is the outline.
+    ports: undefined,
+  });
+  for (const e of edges) e.ghost = true;
 }
 
 /**
