@@ -186,8 +186,10 @@ is required to contribute: a plain `git` / `pnpm` / `gh` workflow works.
 6. Bring that round to a close before asking for human review: the
    maintainer reviews once CodeRabbit approves, so their time goes to a
    converged diff. If a finding would change something already decided (the
-   Issue's scope, an accepted ADR, `docs/spec/`), do not just apply it.
-   Ask in the PR instead.
+   Issue's scope, an accepted ADR, `docs/spec/`, `.claude/rules/`), do not
+   just apply it. Ask in the PR instead. Only resolve a thread you have
+   read: `@coderabbitai resolve` closes every open thread at once, including
+   findings posted while it was queued.
 7. The maintainer reviews and merges. The squash subject is taken from
    the PR title — please make it a good Conventional Commit subject.
 
