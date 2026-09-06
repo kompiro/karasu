@@ -770,12 +770,32 @@ export class ImportResolver {
     target.nodes.push(node);
   }
 
+  /**
+   * Merges one source block's units into `target`, reporting only the
+   * collisions **the merge itself creates**.
+   *
+   * An id repeated inside one source block was already reported when that file
+   * was parsed (`collectDeployNodeIds`), so pushing both copies here would say
+   * it twice for one mistake. Folding the source-local repeat first leaves each
+   * collision reported by exactly one layer: the parser owns what one file can
+   * see, the merge owns what only the merged model can.
+   *
+   * Both merge paths call this, so a source-local repeat cannot start
+   * double-reporting through whichever path stops using it (TPL-1720).
+   */
+  private mergeDeployNodes(target: DeployBlock, sourceNodes: DeployBlock["nodes"]): void {
+    const seenInSource = new Set<string>();
+    for (const node of sourceNodes) {
+      if (seenInSource.has(node.id)) continue;
+      seenInSource.add(node.id);
+      this.pushDeployNode(target, node);
+    }
+  }
+
   private mergeDeployIntoExisting(target: DeployBlock, source: DeployBlock): void {
     if (target === source) return;
     this.reconcileLabel(target, source, "deploy");
-    for (const node of source.nodes) {
-      this.pushDeployNode(target, node);
-    }
+    this.mergeDeployNodes(target, source.nodes);
   }
 
   private mergeOrgIntoExisting(target: OrganizationBlock, source: OrganizationBlock): void {
@@ -957,15 +977,14 @@ export class ImportResolver {
       if (matchingNodes.length > 0) {
         found = true;
         const existingDeploy = mergedFile.deploys.find((d) => d.id === deploy.id);
-        // Both branches fill the block through `pushDeployNode` so the named
+        // Both branches fill the block through `mergeDeployNodes` so the named
         // path enforces unit-id uniqueness the way the wildcard path does
         // (#2713). The new-block branch needs it too: `matchingNodes` comes
         // from one file's `deploy.nodes`, which that file may itself have
-        // declared twice.
+        // declared twice — already reported by the parser, so folded here
+        // rather than reported again.
         const target = existingDeploy ?? { ...deploy, nodes: [] };
-        for (const node of matchingNodes) {
-          this.pushDeployNode(target, node);
-        }
+        this.mergeDeployNodes(target, matchingNodes);
         if (!existingDeploy) mergedFile.deploys.push(target);
       }
     }

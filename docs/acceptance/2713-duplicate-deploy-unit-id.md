@@ -48,9 +48,13 @@ type: product
 
   > ✅ Automated — `packages/core/src/fs/import-resolver.test.ts` › deploy unit id uniqueness on the named-import path (#2713) › takes one unit from an id listed twice in one import, without a diagnostic
 
-- [x] AT-H: named import がブロックを新規に開く場合も同じガードを通る（import 元のファイル自身が 2 回宣言していた場合）
+- [x] AT-H: named import がブロックを新規に開く場合も同じガードを通り、報告は 1 件（import 元のファイル自身が 2 回宣言していた場合）
 
-  > ✅ Automated — `packages/core/src/fs/import-resolver.test.ts` › deploy unit id uniqueness on the named-import path (#2713) › still reports the collision when the named import opens the block
+  > ✅ Automated — `packages/core/src/fs/import-resolver.test.ts` › deploy unit id uniqueness on the named-import path (#2713) › reports a source-local collision exactly once when the named import opens the block
+
+- [x] AT-H2: 1 つの誤りは 1 回だけ報告される。ファイル内の重複は parser が既に報告しているので、merge は畳むだけで再報告しない。wildcard / named の両経路で成り立つ
+
+  > ✅ Automated — `packages/core/src/fs/import-resolver.test.ts` › deploy unit id uniqueness on the named-import path (#2713) › reports a source-local collision once when a wildcard import merges into an open block ／ … when a named import merges into an open block
 
 - [x] AT-J: id が異なる named import はこれまでどおり両方入る
 

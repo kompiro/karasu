@@ -387,10 +387,9 @@ deploy Production {
         expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["app"]);
       });
 
-      it("still reports the collision when the named import opens the block", async () => {
-        // The new-block branch builds through the same guard: `matchingNodes`
-        // comes from one file's `deploy.nodes`, which that file may itself have
-        // declared twice.
+      it("reports a source-local collision exactly once when the named import opens the block", async () => {
+        // One mistake, one report. The parser already saw this collision inside
+        // `a.krs`, so the merge folds the repeat instead of saying it again.
         await fs.writeFile(
           "/p/a.krs",
           `deploy prod {\n  oci app { image "one" }\n  oci app { image "two" }\n}`,
@@ -399,10 +398,37 @@ deploy Production {
 
         const result = await resolver.resolve("/p/main.krs");
         expect(
-          result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy").length,
-        ).toBeGreaterThan(0);
+          result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy"),
+        ).toHaveLength(1);
         expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["app"]);
       });
+
+      it.each([
+        ["wildcard", `import "./a.krs"`],
+        ["named", `import { app } from "./a.krs"`],
+      ])(
+        "reports a source-local collision once when a %s import merges into an open block",
+        async (_name, importLine) => {
+          // Both merge paths fold through `mergeDeployNodes`. Before #2713 the
+          // parser said nothing here, so the merge's report was the only one;
+          // adding the per-file check would have made every such collision
+          // report twice had the merge not stopped repeating it.
+          await fs.writeFile(
+            "/p/a.krs",
+            `deploy prod {\n  oci app { image "one" }\n  oci app { image "two" }\n}`,
+          );
+          await fs.writeFile(
+            "/p/main.krs",
+            `${importLine}\ndeploy prod {\n  oci web { image "w" }\n}\n`,
+          );
+
+          const result = await resolver.resolve("/p/main.krs");
+          expect(
+            result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy"),
+          ).toHaveLength(1);
+          expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["web", "app"]);
+        },
+      );
 
       it("leaves distinct unit ids alone", async () => {
         await fs.writeFile("/p/a.krs", unitFile("app"));
