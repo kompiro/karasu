@@ -1,4 +1,5 @@
 import type { Diagnostic, KrsEdge, KrsFile, KrsNode } from "../types/ast.js";
+import { edgeArrow } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
 
 /**
@@ -7,7 +8,7 @@ import type { SourceRange } from "../types/tokens.js";
  * fallback canonical ID used when no `authorId` is set.
  */
 export function edgeBaseId(edge: KrsEdge): string {
-  const arrow = edge.kind === "async" ? "-->" : "->";
+  const arrow = edgeArrow(edge.kind);
   return `${edge.from}${arrow}${edge.to}`;
 }
 
@@ -55,7 +56,7 @@ export function assignEdgeCanonicalIds(edges: readonly KrsEdge[]): Diagnostic[] 
     const anyAuthored = group.some((e) => e.authorId !== undefined);
     if (!anyAuthored) {
       const sample = group[0];
-      const arrow: "->" | "-->" = sample.kind === "async" ? "-->" : "->";
+      const arrow = edgeArrow(sample.kind);
       for (const edge of group) {
         diagnostics.push({
           severity: "warning",

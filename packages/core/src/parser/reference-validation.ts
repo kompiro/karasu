@@ -31,7 +31,7 @@ import type {
   ResourceNode,
   TeamNode,
 } from "../types/ast.js";
-import { boundaryScopeKey, REALIZES_TARGET_KIND_SET } from "../types/ast.js";
+import { boundaryScopeKey, OWNS_TARGET_KIND_SET, REALIZES_TARGET_KIND_SET } from "../types/ast.js";
 import {
   ambiguousNodePathCandidates,
   nodePathKey,
@@ -821,6 +821,72 @@ export function buildOwnerIndex(file: KrsFile): MembershipResult<Map<string, str
     indexTeams(org.teams);
   }
   return { membership: index, diagnostics };
+}
+
+/**
+ * Build the **1:N** ownership relation — every team that declared `owns` over
+ * a node, keyed by the node's full path (`nodePathKey`) exactly like
+ * {@link buildOwnerIndex}.
+ *
+ * Deliberately a second index rather than a widening of `ownerIndex`, because
+ * the two answer different questions. `ownerIndex` answers "whose badge does
+ * this card wear" / "which frame does this node sit in", where one value is
+ * the correct answer and ADR-1583's migration priority picks it. This one
+ * answers "which teams have a stake in this node", where collapsing to a
+ * primary is a *loss*: during an inverse-Conway handoff the team being handed
+ * *away from* is the one that still has to be talked to, and it is exactly the
+ * one migration priority discards (TPL-2161). Team-dependency derivation
+ * (#2597) reads this; nothing reads both.
+ *
+ * Order is declaration order, and a team re-claiming a node it already owns
+ * (the bare and qualified spellings of one node) stays a single entry — the
+ * same idempotence {@link buildBoundaryMembership} has.
+ *
+ * No diagnostics: `duplicate-owner-assignment` is already emitted once per
+ * conflicting ref by {@link buildOwnerIndex}, which runs on the same file.
+ * A second emission here would double-report one fact.
+ */
+export function buildTeamOwnership(file: KrsFile): Map<string, string[]> {
+  const ownership = new Map<string, string[]>();
+  const declared = collectDeclaredNodePaths(file);
+
+  const indexTeams = (teams: readonly TeamNode[]): void => {
+    for (const team of teams) {
+      for (const ref of team.properties.owns) {
+        // Ownership units only. `resolveDeclaredRef` keeps systems in the pool
+        // so `owns <systemId>` can be reported as the kind refusal it is
+        // (ADR-2442 / `invalid-owns`), and the same refusal covers infra leaves
+        // and `capability`. A refused claim must not become an entry here: this
+        // relation is walked upward by consumers, so one stray key at a system
+        // path would hand that team every node in the system.
+        const matches = resolveDeclaredRef(declared, ref).filter((m) =>
+          OWNS_TARGET_KIND_SET.has(m.kind),
+        );
+        // An unresolved ref keeps its claim under the ref as written, for the
+        // reason buildOwnerIndex spells out: an org-only file has no tree to
+        // resolve against, and a declared fact must survive until the merged
+        // rebuild can decide (TPL-2161). A ref that resolved only to
+        // non-ownable nodes is a different case — it was decided, and refused.
+        const keys =
+          matches.length > 0
+            ? matches.map((m) => nodePathKey(m.path))
+            : resolveDeclaredRef(declared, ref).length === 0
+              ? [nodePathKey(ref)]
+              : [];
+        for (const key of keys) {
+          const owners = ownership.get(key);
+          if (owners === undefined) {
+            ownership.set(key, [team.id]);
+          } else if (!owners.includes(team.id)) {
+            owners.push(team.id);
+          }
+        }
+      }
+      indexTeams(team.children.filter((c): c is TeamNode => c.kind === "team"));
+    }
+  };
+  for (const org of file.organizations) indexTeams(org.teams);
+  return ownership;
 }
 
 // Build the 1:N boundaryMembership — since #2548 keyed by each member

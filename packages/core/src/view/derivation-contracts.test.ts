@@ -11,7 +11,7 @@
  * Mechanism: a curated `DERIVATION_CONTRACTS` table where each row pins
  * down one derivation function (`deriveImplicitServiceEdges`,
  * `deriveInfraEdges`, `deriveDeliversEdges`, `applyInferredTags`,
- * `buildInheritedAnnotations`). Each row declares:
+ * `buildInheritedAnnotations`, `extractTeamDependencies`). Each row declares:
  *
  *   - `preserves`: source attributes the derivation must carry through
  *     unchanged (e.g. `kind` for implicit service edges, since #510).
@@ -48,6 +48,7 @@ import { describe, it, expect } from "vitest";
 import { Parser } from "../parser/parser.js";
 import { extractView } from "./view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
+import { extractTeamDependencies } from "./team-dependency-extract.js";
 
 interface DerivationContract {
   /** Function name + short qualifier, used by `it.each` `$name`. */
@@ -233,6 +234,54 @@ system S {
       const node = view.childNodes.find((n) => n.id === "OrderDB.OrderTable");
       if (!node) throw new Error("expected promoted OrderDB.OrderTable resource node");
       return { id: node.id, kind: node.kind, tags: node.tags };
+    },
+  },
+  {
+    name: "extractTeamDependencies: cross-service domain edge (async) aggregated to a team pair",
+    preserves: {
+      // The distinction #510 was originally about, in its organizational
+      // projection: an async dependency is deliberate loose coupling and a
+      // weaker coordination requirement, so folding it into the sync path
+      // would tell two teams they are more tightly bound than they are.
+      kind: "async",
+      // The inducing edge stays retrievable, so a derived pair can be checked
+      // against the model rather than taken on trust.
+      viaLabel: "async event",
+    },
+    transforms: {
+      // Endpoints are rewritten from node paths up to the teams that own them,
+      // by way of the nearest owned ancestor.
+      fromTeam: "ta",
+      toTeam: "tb",
+      // Whether the pair crosses the org or sits inside one team's subtree.
+      relation: "cross-team",
+    },
+    observe: () => {
+      const file = Parser.parse(`
+system S {
+  service ServiceA {
+    domain DomainA {
+      DomainA --> DomainB "async event"
+    }
+  }
+  service ServiceB {
+    domain DomainB {}
+  }
+}
+organization O {
+  team ta { owns ServiceA }
+  team tb { owns ServiceB }
+}
+`).value;
+      const [dep] = extractTeamDependencies(file).dependencies;
+      if (!dep) throw new Error("expected a derived ta->tb dependency");
+      return {
+        kind: dep.kind,
+        viaLabel: dep.via[0]?.label,
+        fromTeam: dep.fromTeam,
+        toTeam: dep.toTeam,
+        relation: dep.relation,
+      };
     },
   },
   {

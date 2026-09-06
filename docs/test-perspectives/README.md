@@ -535,3 +535,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2655](TPL-2655-sliding-expiry-needs-an-unrenewable-cap.md) | 更新で延びる期限には、更新されない上限を併置する — ストアが強制できる期限は 1 つで、それは延びる側に使われるため、上限は読み取り時に確かめるしかない | project | #2655, sessions.ts |
 | [TPL-2552](TPL-2552-repeated-relation-is-idempotent-across-counting-and-keyed-consumers.md) | 同じ相手を二度書ける参照リストは、件数を数える消費側と id で畳む消費側の両方に届く — 冪等を宣言側で閉じる。両者の食い違いは例外にならず「確保したのに誰も描かれない場所」として図に残る | parser | #2552, ADR-2167 |
 | [TPL-2585](TPL-2585-partial-mapping-view-states-its-denominator.md) | 任意の写像を辿って別レベルへ写す派生ビューは、写らなかった分母を数える経路を持ち、完全な図であると主張しない。写像を持たない要素が落ちるのは正しいが、落ちた分が見えないと既存図法（ER 図など）に似た見た目のまま「これで全部」と誤読される | core-concepts | docs/concepts.md (DB schema non-goal), ADR-1870, #2585 |
+| [TPL-2635](TPL-2635-ownership-resolution-declares-its-walk.md) | 所有を読む側は「宣言だけか、直近の owned 祖先まで遡るか」を宣言し、その選択をテストで固定する — どちらも正しいので、宣言していない実装は混ざっても誰も気づかない | resolver | #2635, ADR-1566 |

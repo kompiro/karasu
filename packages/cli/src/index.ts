@@ -17,6 +17,7 @@ import { lintStyle } from "./lint-style.js";
 import { diff } from "./diff.js";
 import { matrix } from "./matrix.js";
 import { coverage } from "./coverage.js";
+import { teamDependencies } from "./team-dependencies.js";
 import { subtree } from "./subtree.js";
 import { versionText } from "./version.js";
 
@@ -497,6 +498,38 @@ Examples:
       output: options.output,
       format: options.format as "md" | "json" | undefined,
       threshold: options.threshold,
+    });
+  });
+
+interface TeamDependenciesRawOptions {
+  output?: string;
+  format?: string;
+}
+
+program
+  .command("team-dependencies <file>")
+  .description("Derive which teams depend on which, from `owns` × the logical edges")
+  .option("-o, --output <path>", "Write output to file (default: stdout)")
+  .option("--format <format>", "Output format: md | csv (default: md)", "md")
+  .addHelpText(
+    "after",
+    `
+Derived from the model as written — no .krs syntax declares a team dependency.
+A node with no \`owns\` of its own inherits its nearest owned ancestor's team,
+and endpoints that reach no team are listed as unowned rather than dropped, so
+the output states how much of the model the join actually covered.
+
+Examples:
+  # Team x team matrix plus provenance, to terminal (default)
+  $ karasu team-dependencies index.krs
+
+  # Tidy rows for a spreadsheet or a review document
+  $ karasu team-dependencies index.krs --format csv -o team-deps.csv`,
+  )
+  .action((file: string, options: TeamDependenciesRawOptions) => {
+    teamDependencies(file, {
+      output: options.output,
+      format: options.format as "md" | "csv" | undefined,
     });
   });
 

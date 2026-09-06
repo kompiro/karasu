@@ -126,6 +126,17 @@ the source wins — follow the link.
 - **Role** — a short description of what a user does in the system; an actor
   archetype, **not** an authorization primitive (no RBAC).
   [Syntax](syntax.md#user-node-example)
+- **Ownership inheritance** — the rule that a node with no `owns` of its own
+  belongs to the team owning its nearest owned ancestor.
+  [Syntax](syntax.md#ownership-inheritance--the-nearest-owned-ancestor)
+- **Team dependency** — a *derived* relation between two teams: one team owns a
+  node that depends on a node the other owns. Nothing declares it in `.krs`; it
+  is the join of `owns` against the logical edges, kept separate per `sync` /
+  `async` and marked `nested` when one team is the other's ancestor. Read it
+  with `karasu team-dependencies`. **Not** a synonym for *communication*, which
+  is bound to node-to-node edges above.
+
+> Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
 
 ## Tags & annotations
 

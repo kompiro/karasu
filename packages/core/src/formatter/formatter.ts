@@ -21,6 +21,7 @@ import type {
   LegendEntry,
   LegendRefTarget,
 } from "../types/ast.js";
+import { edgeArrow } from "../types/ast.js";
 
 export class FormatError extends Error {
   constructor(message: string) {
@@ -423,7 +424,7 @@ class Printer {
    * of one fact (TPL-1415, TPL-2542).
    */
   private renderEdge(edge: KrsEdge, parentKind?: string): string[] {
-    const arrow = edge.kind === "async" ? "-->" : "->";
+    const arrow = edgeArrow(edge.kind);
     const tags = edge.tags.length > 0 ? ` [${edge.tags.join(", ")}]` : "";
     // The author's `#<id>` is data, not decoration. Dropping it here silently
     // deleted an `edge#<id>` style selector's target (#2543).
