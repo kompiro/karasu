@@ -56,6 +56,10 @@ type: product
 
   > ✅ Automated — 同上 › `writes no value for a parameter the parser could not read`
 
+- [x] AT-O: 読めなかった値のトークンが次のキーとして再解釈されず、著者が書いていないキー名の診断が出ない
+
+  > ✅ Automated — `packages/core/src/parser/annotation-params.test.ts` › `reports no diagnostic naming a key the author never wrote`
+
 - [x] AT-M: 同名アノテーションが 2 回書かれたとき、AST が保たれる（パラメータの取りこぼしが起きない）
 
   > ✅ Automated — 同上 › `keeps a repeated annotation's parameter on every occurrence`
@@ -76,7 +80,7 @@ type: product
 
 - [x] AT-K: 修正を部分 revert するとガードが落ちる
 
-  > ✅ Automated — `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameters survive fmt (#2571)`。実装時に部分 revert して確認済み（パラメータ出力を外すと 17 件 fail、`renderTeam` の呼び出しを外すと 8 件 fail、どちらも復帰後は 20 件 pass）
+  > ✅ Automated — `packages/core/src/formatter/annotation-params-round-trip.test.ts` › `annotation parameters survive fmt (#2571)`。実装時に部分 revert して確認済み（パラメータ出力を外す / `renderTeam` の呼び出しを外す、のどちらでも fail し、復帰させると全件 pass）
 
 ## 手動確認
 

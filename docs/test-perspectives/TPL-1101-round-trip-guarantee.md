@@ -113,7 +113,7 @@ fixture を renderer ごとに回すのが対処になる（下記「既知の�
   - 型: fixture 表に `satisfies Record<ArrayKeys<KrsFile>, string>` を付け、キー欠落を `tsc` で落とす
 
   の二重にした。どちらも「新しい構文を足した人が formatter を触り忘れる」瞬間に落ちる（ADR-2076）
-- **emit を 1 箇所に畳み、host（emit 経路）の集合も型・ソースから導出する**。#2571 の対処では `renderAnnotations` を `renderNode` / `renderTeam` の共通ヘルパにしたうえで、fixture 表を (1) `ANNOTATION_PARAM_KEYS` から導いた `annotation.key` ペア集合と (2) `types/ast.ts` を走査して得た「`annotationParams` を宣言する interface」集合の両方に突き合わせた。新しいパラメータキーも、`annotationParams` を持つ 3 つ目の AST 型も、追加した瞬間に落ちる
+- **emit を 1 箇所に畳み、host（emit 経路）の集合も型・ソースから導出する**。#2571 の対処では `renderAnnotations` を `renderNode` / `renderTeam` の共通ヘルパにしたうえで、網羅性を 3 方向から固定した: (1) `ANNOTATION_PARAM_KEYS` から導いた `annotation.key` ペア集合、(2) `types/` 配下の全モジュールを走査して得た「`annotationParams` を宣言する型」集合（`interface` と `type` の両方を拾い、宣言は自身の `}` で閉じる）、(3) formatter のソース上でアノテーションの emit が `renderAnnotations` の外に 1 件も無いこと。(2) は**型が増えたとき**に落ち、(3) は**型が同じまま renderer が増えたとき**に落ちる。#2571 は後者だったので、型側の導出だけでは同じ回帰をもう一度通してしまう
 - **「生の補間が 1 つも残っていない」ことをソースレベルでアサートする**。emit site を列挙するテストは #2076 と同じ理由でドリフトするので、#2087 では formatter のソースに `` `"${` `` パターンが 0 件であることを検査した（値はすべて `quoteString()` / `quoteId()` 経由になる）。次に追加される emit site を自動で捕まえられる
 - **エスケープ規則は lexer のデコード規則と 1:1 で書き、両方向をテストする**。`escape(value)` の出力を lexer に食わせて元の値に戻るかを、hostile value 一覧（`"` / `\` / 末尾 `\` / 改行 / `"""` / CR / 空文字）で確認する
 - **ガードが空振りしていないことを負のテストで確かめる**。#2076 の型ガードは初版が `const FIXTURES: Record<string, string>` という注釈で、index signature のせいで**恒真**（何も検査していない）だった。ダミーのキーを型に足して `tsc` が落ちることを確認して初めてガードとして成立する。実行時ガードも同様に、修正を部分 revert して落ちることを確認する

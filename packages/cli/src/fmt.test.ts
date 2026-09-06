@@ -167,6 +167,10 @@ describe("fmt() with explicit files", () => {
     await fmt([file], {});
 
     const result = readFileSync(file, "utf8");
+    // The source already contains these annotation strings, so assert the
+    // rewrite happened first: without this, a `fmt` that wrote nothing at all
+    // would satisfy every assertion below.
+    expect(result).not.toBe(src);
     expect(result).toContain(`@draft(confidence: "low")`);
     expect(result).toContain(`@deprecated(until: "2026-12-31")`);
     expect(result).toContain(`team Platform @migration_target(from: Legacy) {`);

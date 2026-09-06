@@ -1870,6 +1870,19 @@ export class Parser {
           const readable =
             valueType === TokenType.StringLiteral || valueType === TokenType.Identifier;
           const value = readable ? this.advance().value : "";
+          if (!readable) {
+            // Consume the malformed value up to the next pair. Leaving it at
+            // the cursor made the loop read its tokens as the next key, so
+            // `from: system` reported `system` as an unsupported *key* — a
+            // diagnostic naming something the author never wrote as one.
+            while (
+              this.peek().type !== TokenType.Comma &&
+              this.peek().type !== TokenType.RightParen &&
+              this.peek().type !== TokenType.EOF
+            ) {
+              this.advance();
+            }
+          }
           if (annotationParamKind(name, key) !== undefined) {
             if (readable) (params[name] ??= {})[key] = value;
           } else {
