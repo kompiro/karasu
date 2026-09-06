@@ -1053,6 +1053,23 @@ organization Org {
     expect(sideOf(res, edge(res, "A", "Store"))).toBe("right");
   });
 
+  it("orders parallel edges between one pair by kind, whichever was declared first", () => {
+    // Two edges A -> Store (sync, async) share every geometric key and the ids;
+    // the kind tie-break has to be antisymmetric or the sort — and with it the
+    // corridor each gets — would depend on declaration order.
+    const pair = (first: string, second: string) =>
+      FAN.replace("  A -> Store\n", `  A ${first} Store\n  A ${second} Store\n`);
+    const routes = (res: LayoutResult) =>
+      res.edges
+        .filter((e) => e.from === "A" && e.to === "Store")
+        .sort((a, b) => (a.kind ?? "").localeCompare(b.kind ?? ""))
+        .map((e) => [e.kind, e.fromPoint, ...(e.waypoints ?? []), e.toPoint]);
+    const a = layoutOf(pair("->", "-->"), FAN_OWNER, "team");
+    const b = layoutOf(pair("-->", "->"), FAN_OWNER, "team");
+    expect(routes(a)).toHaveLength(2);
+    expect(routes(a)).toEqual(routes(b));
+  });
+
   it("does not depend on the order the edges were declared in", () => {
     const reversed = FAN.replace(
       /  A -> Store\n  B -> Store\n  C -> Store\n  D -> Store\n  E -> Store\n/,

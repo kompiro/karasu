@@ -324,10 +324,14 @@ function cheapestSide(
   return best;
 }
 
-/** The vertical corridor of a planned route: its interior pair sharing an x. */
+/**
+ * The vertical corridor of a planned route: its interior pair sharing an x. A
+ * zero-height pair (endpoints at one mid-height) is still the corridor — the
+ * lane passes treat it as a point, and the route is as clear as any other.
+ */
 function corridorOfPath(path: Point[]): YRange | null {
   for (let i = 1; i < path.length - 2; i++) {
-    if (path[i].x === path[i + 1].x && path[i].y !== path[i + 1].y) {
+    if (path[i].x === path[i + 1].x) {
       return { lo: Math.min(path[i].y, path[i + 1].y), hi: Math.max(path[i].y, path[i + 1].y) };
     }
   }
@@ -377,11 +381,13 @@ function cmpEdgeGeometry(
     const d = (ka[i] ?? 0) - (kb[i] ?? 0);
     if (d !== 0 && !Number.isNaN(d)) return d;
   }
-  return cmpEdgeId(a, b) || (a.kind ?? "") < (b.kind ?? "")
-    ? -1
-    : (a.kind ?? "") > (b.kind ?? "")
-      ? 1
-      : 0;
+  const byId = cmpEdgeId(a, b);
+  if (byId !== 0) return byId;
+  // Parallel edges between one pair of boxes share every key above and the
+  // ids; their kind (sync before async) settles the order.
+  const kindA = a.kind ?? "";
+  const kindB = b.kind ?? "";
+  return kindA < kindB ? -1 : kindA > kindB ? 1 : 0;
 }
 
 /**
