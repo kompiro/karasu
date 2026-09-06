@@ -196,7 +196,7 @@ async function indexPage(
         '<div class="card">',
         `<h2><a href="/console/s/${escapeHtml(id)}">${escapeHtml(submission.title)}</a></h2>`,
         `<p class="meta">${escapeHtml(submission.submittedAt.slice(0, 10))} · `,
-        `<span class="tag">${submission.visibility}</span></p>`,
+        `<span class="tag">${escapeHtml(submission.visibility)}</span></p>`,
         `<p class="actions"><a href="/g/${escapeHtml(id)}">View</a>`,
         `<a href="/console/s/${escapeHtml(id)}">Manage</a></p>`,
         "</div>",
@@ -282,7 +282,7 @@ function submissionPage(
       body: [
         `<h1>${escapeHtml(submission.title)}</h1>`,
         `<p class="meta">${escapeHtml(submission.submittedAt.slice(0, 10))} · `,
-        `<span class="tag">${submission.visibility}</span> · `,
+        `<span class="tag">${escapeHtml(submission.visibility)}</span> · `,
         `<a href="/g/${escapeHtml(id)}">View</a></p>`,
         // Unpublish before delete, and phrased as the state it produces
         // rather than as the verb, so the reversible option reads as the
