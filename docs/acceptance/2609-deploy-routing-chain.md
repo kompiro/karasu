@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-04
 - **関連 Issue**: [#2609](https://github.com/kompiro/karasu/issues/2609)（親: [#2598](https://github.com/kompiro/karasu/issues/2598) スライス B）、[#2490](https://github.com/kompiro/karasu/issues/2490)（親に統合された repro）
+- **設計 (ADR)**: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)
 - **Related TPLs**: [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数のパリティ）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通と重なりを同じテストで測る）, [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)（新しい route 形が overlap 回避パスを素通りしない）
 - **対象ファイル**:
   - `packages/core/src/renderer/deploy-layout.ts`（コンテナを box として共有チェーンへ渡す。`ghost` は配線後に付ける style flag）
