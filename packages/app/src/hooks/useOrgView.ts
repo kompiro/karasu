@@ -44,6 +44,7 @@ const EMPTY_TEAM_DEPENDENCIES: TeamDependencyReport = {
   teams: [],
   dependencies: [],
   unowned: [],
+  overlaps: [],
 };
 
 export function useOrgView(

@@ -80,6 +80,28 @@ export interface TeamDependency {
   via: TeamDependencyEdge[];
 }
 
+/**
+ * A node whose declared owner differs from the team owning the node it sits
+ * **inside** — ownership crossing containment rather than crossing a call.
+ *
+ * No edge crosses this boundary, so the edge join is blind to it, yet the two
+ * teams have to agree on the enclosing structure: the ownership split and the
+ * structural split disagree. That makes it arguably the stronger
+ * inverse-Conway smell of the two signals this module derives.
+ */
+export interface StructuralOverlap {
+  /** Full path (`nodePathKey`) of the node whose ownership crosses in. */
+  path: string;
+  kind: string;
+  /** Teams that declared `owns` on it. */
+  teams: string[];
+  /** Full path of the nearest ancestor that is itself declared-owned. */
+  insidePath: string;
+  insideKind: string;
+  /** Teams that declared `owns` on that ancestor. */
+  insideTeams: string[];
+}
+
 /** An endpoint that names a real node which no team owns, directly or by inheritance. */
 export interface UnownedEndpoint {
   /** Full path (`nodePathKey`) of the node. */
@@ -104,6 +126,16 @@ export interface TeamDependencyReport {
    * dependency. That is the specification, not a gap in the model.
    */
   unowned: UnownedEndpoint[];
+  /**
+   * Ownership that crosses containment (#2637).
+   *
+   * A separate list rather than another kind of `dependencies` entry, because
+   * it is a different kind of fact: a dependency says one team's node calls
+   * another's, an overlap says one team's node *lives inside* another's. Folding
+   * them into one channel would make the count of "team pairs that must
+   * coordinate" answer two questions at once.
+   */
+  overlaps: StructuralOverlap[];
 }
 
 /**
@@ -390,5 +422,67 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
     teams: tree.order,
     dependencies: ordered,
     unowned: [...unowned.values()].sort((a, b) => a.path.localeCompare(b.path)),
+    overlaps: findStructuralOverlaps(file, ownership),
   };
+}
+
+/**
+ * Find ownership that crosses containment: a node whose own `owns` names a
+ * different team than the nearest enclosing node that also has its own `owns`.
+ *
+ * Both ends must be **declared**, never inherited. An inherited owner is by
+ * definition the enclosing node's team, so admitting it would report every
+ * node under an owned service as overlapping with the service that owns it —
+ * which is the normal shape of a model, not a signal.
+ *
+ * The comparison is "some inner team is absent from the outer set" rather than
+ * set inequality, so a handover mid-flight (`oldPay` and `newPay` both owning
+ * the outer node, `oldPay` alone owning something inside) still reports:
+ * `oldPay` holds ground inside a boundary it is on its way out of.
+ */
+function findStructuralOverlaps(
+  file: KrsFile,
+  ownership: ReadonlyMap<string, string[]>,
+): StructuralOverlap[] {
+  const overlaps: StructuralOverlap[] = [];
+
+  const walk = (node: KrsNode, prefix: NodeIdPath, enclosing: EnclosingOwner | undefined): void => {
+    const path = [...prefix, node.id];
+    const declared = ownership.get(nodePathKey(path));
+    let next = enclosing;
+    if (declared !== undefined && declared.length > 0) {
+      if (enclosing !== undefined && declared.some((t) => !enclosing.teams.includes(t))) {
+        overlaps.push({
+          path: nodePathKey(path),
+          kind: node.kind,
+          teams: [...declared],
+          insidePath: nodePathKey(enclosing.path),
+          insideKind: enclosing.kind,
+          insideTeams: [...enclosing.teams],
+        });
+      }
+      next = { path, kind: node.kind, teams: declared };
+    }
+    for (const child of node.children) walk(child, path, next);
+  };
+
+  for (const system of file.systems) walk(system, [], undefined);
+  for (const node of [
+    ...file.services,
+    ...file.clients,
+    ...file.domains,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ]) {
+    walk(node, [], undefined);
+  }
+  return overlaps;
+}
+
+/** The nearest ancestor carrying its own `owns`, as the walk descends. */
+interface EnclosingOwner {
+  path: NodeIdPath;
+  kind: string;
+  teams: readonly string[];
 }

@@ -169,6 +169,7 @@ export const en: Translations = {
   "emptyState.system.noDiagram": "No diagram",
   "emptyState.teamDependency.none": "No team dependencies derived",
   "emptyState.teamDependency.unowned": "{count} endpoint(s) owned by no team",
+  "emptyState.teamDependency.overlap": "{count} node(s) owned across a containment boundary",
 
   // Built-in annotation badge labels (must match reference-data en labels)
   "badge.deprecated": "Deprecated",

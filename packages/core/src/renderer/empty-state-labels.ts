@@ -36,6 +36,13 @@ export interface EmptyStateLabels {
    * model (TPL-2075).
    */
   teamDependencyUnowned?: string;
+  /**
+   * Footer line naming how many nodes are owned by a team other than the one
+   * owning what encloses them, with `{count}` substituted (#2637). No edge
+   * crosses that boundary, so the graph cannot draw it — saying nothing would
+   * leave the stronger of the two signals invisible on the visual surface.
+   */
+  teamDependencyOverlap?: string;
 }
 
 export const DEFAULT_EMPTY_STATE_LABELS = {
@@ -49,4 +56,5 @@ export const DEFAULT_EMPTY_STATE_LABELS = {
   systemNoDiagram: "No diagram",
   teamDependencyNone: "No team dependencies derived",
   teamDependencyUnowned: "{count} endpoint(s) owned by no team",
+  teamDependencyOverlap: "{count} node(s) owned across a containment boundary",
 } as const satisfies Required<EmptyStateLabels>;
