@@ -64,15 +64,20 @@ interface Signed {
  * loses the body, so the submitter would come back signed in and find their
  * work gone. This one stays JSON where the rejections below do not — it is
  * answered before there is a page of theirs to put a message on.
+ *
+ * The line is between a safe method and a form post, so the test is written
+ * that way. `HEAD` reaches these handlers through the router's `GET` fallback
+ * with its own method intact, and it is the same visitor class as a `GET` — a
+ * link checker with no body to lose. Naming `GET` alone would answer it 401.
  */
 async function signedIn(context: RouteContext): Promise<Signed | Response> {
   const { request, env } = context;
   const store = new GalleryStore(requireBinding(env, "NEST_STORE"));
   const viewer = await currentViewer(request, env, store);
   if (viewer === undefined) {
-    return request.method === "GET"
-      ? redirect(SIGN_IN, { status: 302 })
-      : error(401, "sign_in_required", "Sign in at /auth/login.");
+    return request.method === "POST"
+      ? error(401, "sign_in_required", "Sign in at /auth/login.")
+      : redirect(SIGN_IN, { status: 302 });
   }
   return { store, viewer };
 }
@@ -196,7 +201,7 @@ async function indexPage(
         '<div class="card">',
         `<h2><a href="/console/s/${escapeHtml(id)}">${escapeHtml(submission.title)}</a></h2>`,
         `<p class="meta">${escapeHtml(submission.submittedAt.slice(0, 10))} · `,
-        `<span class="tag">${submission.visibility}</span></p>`,
+        `<span class="tag">${escapeHtml(submission.visibility)}</span></p>`,
         `<p class="actions"><a href="/g/${escapeHtml(id)}">View</a>`,
         `<a href="/console/s/${escapeHtml(id)}">Manage</a></p>`,
         "</div>",
@@ -282,7 +287,7 @@ function submissionPage(
       body: [
         `<h1>${escapeHtml(submission.title)}</h1>`,
         `<p class="meta">${escapeHtml(submission.submittedAt.slice(0, 10))} · `,
-        `<span class="tag">${submission.visibility}</span> · `,
+        `<span class="tag">${escapeHtml(submission.visibility)}</span> · `,
         `<a href="/g/${escapeHtml(id)}">View</a></p>`,
         // Unpublish before delete, and phrased as the state it produces
         // rather than as the verb, so the reversible option reads as the

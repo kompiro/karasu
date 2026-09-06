@@ -88,6 +88,19 @@ describe("GET /console", () => {
     expect(response.headers.get("Location")).toBe("/auth/login");
   });
 
+  it("sends a signed-out HEAD the same way it sends a GET", async () => {
+    // `HEAD` arrives at this handler through the router's `GET` fallback with
+    // its own method intact, so a branch naming `GET` alone answers a link
+    // checker 401 instead of pointing it at sign-in (#2647).
+    const response = await handleRequest(
+      new Request(`${ORIGIN}/console`, { method: "HEAD" }),
+      env(new MemoryKV()),
+      ctx,
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/auth/login");
+  });
+
   it("answers 401 rather than redirecting a form POST", async () => {
     // A redirect loses the body, so the submitter would come back signed in
     // and find their work gone.
