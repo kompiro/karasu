@@ -386,12 +386,16 @@ karasu translate --from db schema.sql --database BizDB --granularity table
 ```krs
 database BizDB {
   table ContractsTable { label "contracts" }
-  table ContractLineItemsTable { label "contract_line_items" }
+  table ContractLineItemsTable {
+    label "contract_line_items"
+    ContractLineItemsTable -> ContractsTable
+  }
 }
 ```
 
 > Use this when you want the raw per-table surface — for example, when
-> generating a full table-level ER view.
+> generating a full table-level ER view. Declared foreign keys are still
+> recorded as `table -> table` edges (#2722), which is what feeds that ER view.
 
 ---
 
@@ -420,7 +424,11 @@ karasu translate --from db schema.sql --database AuthDB
 database AuthDB {
   table UsersTable { label "users" }
   table RolesTable { label "roles" }
-  table UserRolesTable { label "user_roles" }
+  table UserRolesTable {
+    label "user_roles"
+    UserRolesTable -> RolesTable
+    UserRolesTable -> UsersTable
+  }
 }
 ```
 
@@ -585,7 +593,10 @@ karasu translate --from db schema.sql --database OrderDB --granularity table
 ```krs
 database OrderDB {
   table CustomersTable { label "customers" }
-  table OrdersTable { label "orders" }
+  table OrdersTable {
+    label "orders"
+    OrdersTable -> CustomersTable
+  }
 }
 ```
 

@@ -33,7 +33,10 @@ CREATE TABLE payments (
       });
       expect(result).toContain("database OrderDB {");
       expect(result).toContain('  table OrdersTable { label "orders" }');
-      expect(result).toContain('  table OrderItemsTable { label "order_items" }');
+      // `order_items.order_id` is a Soft FK to `orders`, recorded as a table edge (#2722).
+      expect(result).toContain(
+        '  table OrderItemsTable {\n    label "order_items"\n    OrderItemsTable -> OrdersTable [inferred]\n  }',
+      );
       expect(result).toContain('  table PaymentsTable { label "payments" }');
     });
 
@@ -226,7 +229,10 @@ CREATE TABLE user_roles (
       const result = await translator.translate(input, { ...ctx, database: "AuthDB" });
       expect(result).toContain('  table UsersTable { label "users" }');
       expect(result).toContain('  table RolesTable { label "roles" }');
-      expect(result).toContain('  table UserRolesTable { label "user_roles" }');
+      // Not folded — and its two declared FKs are recorded as confirmed edges (#2722).
+      expect(result).toContain(
+        '  table UserRolesTable {\n    label "user_roles"\n    UserRolesTable -> RolesTable\n    UserRolesTable -> UsersTable\n  }',
+      );
       expect(result).not.toContain("description");
     });
 
@@ -277,6 +283,93 @@ CREATE TABLE invoice_taxes (
       expect(result).toContain("      - invoice_taxes — composite PK with FK to invoices");
       expect(result).not.toContain("table InvoiceLinesTable");
       expect(result).not.toContain("table InvoiceTaxesTable");
+    });
+  });
+
+  describe("recorded table edges (#2722)", () => {
+    const SCHEMA = `
+CREATE TABLE customers ( id BIGINT PRIMARY KEY );
+CREATE TABLE products ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES customers(id),
+  product_id BIGINT NOT NULL,
+  warehouse_id BIGINT NOT NULL
+);
+CREATE TABLE order_items (
+  order_id BIGINT NOT NULL REFERENCES orders(id),
+  line_no INT NOT NULL,
+  product_id BIGINT NOT NULL,
+  PRIMARY KEY (order_id, line_no)
+);
+`;
+
+    it("records a declared FK as an untagged table edge and a Soft FK as [inferred], in flat mode (TC-B1, TPL-1944)", async () => {
+      const result = await translator.translate(SCHEMA, {
+        ...ctx,
+        database: "OrderDB",
+        granularity: "table",
+      });
+      expect(result).toContain("    OrdersTable -> CustomersTable\n");
+      expect(result).toContain("    OrdersTable -> ProductsTable [inferred]\n");
+      // `warehouse_id` names no table in the dump — no edge.
+      expect(result).not.toContain("WarehousesTable");
+      // Flat mode keeps the child table: its own FKs are recorded on it.
+      expect(result).toContain("    OrderItemsTable -> OrdersTable\n");
+      expect(result).toContain("    OrderItemsTable -> ProductsTable [inferred]\n");
+      // A table with no FK keeps the one-line form.
+      expect(result).toContain('  table CustomersTable { label "customers" }');
+      // No entity layer is emitted at this granularity — the store canvas is fed by the edges alone.
+      expect(result).not.toContain("entity ");
+    });
+
+    it("rolls a folded child's FK up to its root, dedups by target and emits no self-edge (TC-B3)", async () => {
+      const result = await translator.translate(SCHEMA, { ...ctx, database: "OrderDB" });
+      // order_items folds into orders; its product_id joins orders' own product_id
+      // on one edge, and its order_id (child → root) is internal to the aggregate.
+      expect(result).toContain("    OrdersTable -> CustomersTable\n");
+      expect(result).toContain("    OrdersTable -> ProductsTable [inferred]\n");
+      expect(result).not.toContain("OrdersTable -> OrdersTable");
+      expect(result).not.toContain("OrderItemsTable ->");
+      expect(result.match(/OrdersTable -> ProductsTable/g)).toHaveLength(1);
+      // The edges sit after the aggregate's description block, inside the leaf.
+      expect(result).toMatch(
+        /table OrdersTable \{[\s\S]*description[\s\S]*OrdersTable -> CustomersTable[\s\S]*\n  \}/,
+      );
+    });
+
+    it("promotes a pair to confirmed when any contributing FK is declared (TPL-1944)", async () => {
+      const input = `
+CREATE TABLE products ( id BIGINT PRIMARY KEY );
+CREATE TABLE orders ( id BIGINT PRIMARY KEY, product_id BIGINT NOT NULL );
+CREATE TABLE order_items (
+  order_id BIGINT NOT NULL REFERENCES orders(id),
+  line_no INT NOT NULL,
+  product_id BIGINT NOT NULL REFERENCES products(id),
+  PRIMARY KEY (order_id, line_no)
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "OrderDB" });
+      expect(result).toContain("    OrdersTable -> ProductsTable\n");
+      expect(result).not.toContain("OrdersTable -> ProductsTable [inferred]");
+    });
+
+    it("emits table edges the entity scaffold agrees with, and the file parses with no edge diagnostics (TC-B7)", async () => {
+      const result = await translator.translate(SCHEMA, { ...ctx, database: "OrderDB" });
+      const parsed = Parser.parse(result);
+      expect(parsed.diagnostics).toEqual([]);
+      const kinds = analyze(parsed.value, []).map((w) => w.kind);
+      expect(
+        kinds.filter((k) => k.startsWith("edge-") || k === "unresolved-edge-endpoint"),
+      ).toEqual([]);
+      // Same relation set on both faces: one physical edge per entity relation.
+      const tableEdges = [
+        ...result.matchAll(/^    (\w+)Table -> (\w+)Table( \[inferred\])?$/gm),
+      ].map((m) => `${m[1]}->${m[2]}${m[3] ?? ""}`);
+      const entityEdges = [...result.matchAll(/^    (\w+) -> (\w+)( \[inferred\])?$/gm)]
+        .filter((m) => !m[1].endsWith("Table"))
+        .map((m) => `${m[1]}->${m[2]}${m[3] ?? ""}`);
+      expect(tableEdges.sort()).toEqual(entityEdges.sort());
     });
   });
 

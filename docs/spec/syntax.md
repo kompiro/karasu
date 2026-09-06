@@ -166,9 +166,38 @@ canvas. Nothing is written to the `.krs` for this. The projected edge keeps the
 relation's label and its `->` / `-->` kind, and carries the system-assigned
 `[projected]` tag, which colours it (see
 [tags-annotations.md](./tags-annotations.md#system-assigned-tags)); line style
-stays owned by `[sync]` / `[async]`. An edge written by hand on a `table` leaf
-(`table orders { orders -> customers }`) is drawn as written and suppresses a
-projection for the same ordered pair.
+stays owned by `[sync]` / `[async]`.
+
+**The recorded side.** A `table` leaf may declare edges of its own
+(`table orders { orders -> customers }`), and `translate --from db` writes one
+per foreign key it finds, inside the emitted `database` block: a declared
+`REFERENCES` / `FOREIGN KEY` becomes an untagged edge, a Soft FK (a
+`<stem>_id` / `<stem>_code` column naming another table) becomes `orders ->
+products [inferred]`, and under the default aggregate granularity a folded
+child's foreign keys roll up to its root, deduplicated by target, with no
+self-edge. This is what makes the view useful with **no `entity` layer at
+all**: a schema dump gets an ER view straight out of `translate`. A foreign key
+whose target is not in the dump is not recorded.
+
+The marks on the canvas are therefore three states on one axis, *who confirmed
+the relation*, never *which tool wrote the line*:
+
+| Mark | Meaning | Where it comes from |
+| --- | --- | --- |
+| untagged | confirmed | written by hand, or emitted from a declared foreign key |
+| `[inferred]` | guessed from a column-name convention | `translate --from db` (Soft FK); delete the tag once confirmed |
+| `[projected]` | asserted by the entity layer | assigned at render time, never in `.krs` |
+
+**Union rule.** When the record and the projection produce the same ordered
+pair, the canvas draws **one** edge, the recorded one, and it takes only what it
+lacks: the relation's label transfers when the record has none (a written label
+wins), while the record's `->` / `-->` kind always stands, so a `-->` relation
+over a `->` record stays solid. When they disagree on direction (recorded
+`A -> B`, projected `B -> A`) only the recorded side is drawn and the label does
+not move, since `"belongs to"` read backwards would be false. A recorded edge
+whose target is a leaf of **another** `database` is not drawn on either canvas;
+it gets the ordinary `edge-endpoint-not-at-scope` warning, since a `table`'s
+peers are its own store's leaves.
 
 Endpoint resolution is the entity view's: the relation must start at the entity
 that declares it, a bare target is intra-domain only, and a qualified
@@ -214,7 +243,7 @@ system Shop {
 }
 ```
 
-> Related TPLs: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — a derived view that travels through an optional mapping counts what did not project (`coverage`) and states in the spec that it is not a complete diagram. [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` is colour only; the `[sync]` / `[async]` line style of the source relation is preserved. [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — the projection resolves endpoints with the entity view's rules, so a bare cross-domain id is not projected and a qualified one is.
+> Related TPLs: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — a derived view that travels through an optional mapping counts what did not project (`coverage`) and states in the spec that it is not a complete diagram. [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` is colour only; the `[sync]` / `[async]` line style of the source relation is preserved. [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — the projection resolves endpoints with the entity view's rules, so a bare cross-domain id is not projected and a qualified one is. [TPL-1944](../test-perspectives/TPL-1944-inferred-tag-only-soft-fk.md) — a recorded table edge is `[inferred]` only when every contributing FK is a Soft FK; one declared FK leaves it untagged.
 
 ### Organizational structure (who owns what) — rendered as a separate diagram
 

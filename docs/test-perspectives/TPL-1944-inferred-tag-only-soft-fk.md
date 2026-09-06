@@ -62,11 +62,19 @@ scope:
 - 集約内の child→root FK（内部リンク）→ 関連として出力しない（自己参照も同様）。
 - `edge[inferred]` 既定スタイルが色のみを設定し、`[sync]` / `[async]` の線種を
   上書きしない。
+- 同じ判定が **table 層にも**そのまま適用される（#2722）: `translate --from db` が
+  `database` ブロック内に記録する `TableA -> TableB` は、Explicit FK が 1 本でも寄与すれば
+  無タグ、Soft FK のみなら `[inferred]`。entity 関連と table エッジは同じ関連集合から
+  出るので、一方だけ `[inferred]` になる組み合わせは存在しない
+  （`packages/core/src/translate/db.test.ts` › recorded table edges (#2722)）。
 
 ## 派生元 spec
 
 - [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md) § Automatic tags on
   edges → `[inferred]` 行および注記（本 TPL への `> Related TPLs:` back-ref あり）。
+- [`docs/spec/syntax.md`](../spec/syntax.md#store-scoped-er-view-entity-relations-projected-onto-a-database-canvas)
+  § Store-scoped ER view → 記録側（`translate --from db` が吐く `table -> table` エッジ）の
+  3 状態の印（無タグ = 確認済み / `[inferred]` / `[projected]`）。
 - 設計経緯: [ADR-1870](../adr/1870-domain-entity-modeling.md) §7
   「translate --from db が entity + 関連スキャフォールドを吐く」および「却下した案」
   （translate-db-entity-scaffold design doc を #1910 で本 ADR に昇格）。

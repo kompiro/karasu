@@ -769,7 +769,10 @@ CREATE TABLE contract_line_items (
 
     const out = capture.stdout();
     expect(out).toContain('  table ContractsTable { label "contracts" }');
-    expect(out).toContain('  table ContractLineItemsTable { label "contract_line_items" }');
+    // Flat, but its declared FK is still recorded as a table edge (#2722).
+    expect(out).toContain(
+      '  table ContractLineItemsTable {\n    label "contract_line_items"\n    ContractLineItemsTable -> ContractsTable\n  }',
+    );
     expect(out).not.toContain("description");
   });
 
@@ -794,7 +797,10 @@ CREATE TABLE user_roles (
     const out = capture.stdout();
     expect(out).toContain('table UsersTable { label "users" }');
     expect(out).toContain('table RolesTable { label "roles" }');
-    expect(out).toContain('table UserRolesTable { label "user_roles" }');
+    // Not folded; its two declared FKs are recorded on it as confirmed edges (#2722).
+    expect(out).toContain(
+      'table UserRolesTable {\n    label "user_roles"\n    UserRolesTable -> RolesTable\n    UserRolesTable -> UsersTable\n  }',
+    );
   });
 
   it("AT-0053-15: aggregate output scaffolds entities + relations, soft FK tagged [inferred]", async () => {
@@ -873,7 +879,11 @@ CREATE TABLE orders (
     capture.restore();
 
     const out = capture.stdout();
-    expect(out).toContain('table OrdersTable { label "orders" }');
+    // Flat output still records the declared FK as a table edge (#2722) — the
+    // store canvas needs no entity layer to draw it.
+    expect(out).toContain(
+      'table OrdersTable {\n    label "orders"\n    OrdersTable -> CustomersTable\n  }',
+    );
     expect(out).not.toContain("domain OrderDB {");
     expect(out).not.toContain("entity");
   });
