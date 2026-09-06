@@ -34,6 +34,7 @@ flowchart TD
     ADR_2547["ADR-2547<br/>node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を..."]
     ADR_2550["ADR-2550<br/>nodePathIndex の多重判定を collect-then-decide にして宣言順..."]
     ADR_2552["ADR-2552<br/>同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）"]
+    ADR_2571["ADR-2571<br/>アノテーションのパラメータを emit 1 箇所に畳み、値の種類ごとに正準形を 1 つ決める"]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   ADR_285["ADR-285<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -127,6 +128,7 @@ flowchart TD
   class ADR_2547 accepted
   class ADR_2550 accepted
   class ADR_2552 accepted
+  class ADR_2571 accepted
   class ADR_9008 accepted
   class ADR_285 ghost
   class ADR_429 ghost
