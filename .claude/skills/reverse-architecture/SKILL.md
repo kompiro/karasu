@@ -782,10 +782,7 @@ Two authoring notes for that script, both learned the hard way:
   violation either, and it saves the roster pass work.
 - **Always `karasu fmt` after any machine generation or injection**, and
   keep `operations` verbs **comma-separated** — these are the two mechanical
-  slips that real runs hit most. Note one thing `fmt` does *not* preserve:
-  annotation parameters are dropped (`@draft(confidence: "low")` comes back as
-  `@draft`, #2571), so nothing load-bearing goes in a parameter. Drop this
-  caveat when #2571 lands.
+  slips that real runs hit most.
 - **Authoring gotchas that cost a build in a real run**: an unescaped `"` ends
   the string — write `\"` (one of exactly three escapes, with `\\` and `\n`;
   any other `\<char>` yields the bare character), and a `deploy` block accepts
