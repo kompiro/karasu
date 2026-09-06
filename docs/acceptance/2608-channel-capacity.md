@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-04
 - **関連 Issue**: [#2608](https://github.com/kompiro/karasu/issues/2608)（親: [#2598](https://github.com/kompiro/karasu/issues/2598) スライス A）
+- **設計 (ADR)**: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)
 - **Related TPLs**: [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（計測柵は資源の限界に達する入力を持って初めて柵になる）, [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)（新しい route 形が overlap 回避パスを素通りしない）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通と重なりを同じテストで測る）, [TPL-2593](../test-perspectives/TPL-2593-layout-feedback-is-floor-first-and-monotone.md)（配置へ測定値を返す経路の規律）, [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数のパリティ）
 - **対象ファイル**:
   - `packages/core/src/renderer/edge-routing-lanes.ts`（資源キーの run 列挙・固定ピッチのレーン割り当て）

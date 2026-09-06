@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-04
 - **関連 Issue**: [#2610](https://github.com/kompiro/karasu/issues/2610)（親: [#2598](https://github.com/kompiro/karasu/issues/2598) スライス C）
+- **設計 (ADR)**: [ADR-2598](../adr/2598-edge-routing-channel-capacity.md)
 - **Related TPLs**: [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（貫通と重なりを同じテストで測る）, [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)（新しい route 形が overlap 回避パスを素通りしない）, [TPL-1761](../test-perspectives/TPL-1761-external-side-placement-invariant.md)（external のサイド配置は決定的で他帯を侵さない）, [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（並列関数のパリティ）
 - **対象ファイル**:
   - `packages/core/src/renderer/edge-routing-groups.ts`（左右の候補を占有と経路長で価格づけして選ぶ。fan-out は辺に付く全エッジを対象にする）
