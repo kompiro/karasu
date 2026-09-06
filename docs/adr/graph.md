@@ -360,6 +360,7 @@ flowchart TD
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
     ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
+    ADR_2596["ADR-2596<br/>nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う"]
   end
   subgraph styling["styling"]
     ADR_8["ADR-8<br/>ビルトインスタイルの一元化と構造化リファレンス"]
@@ -889,6 +890,7 @@ flowchart TD
   class ADR_2578 accepted
   class ADR_2592 accepted
   class ADR_2593 accepted
+  class ADR_2596 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
   class ADR_2640 superseded

@@ -364,6 +364,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2184](2184-unassigned-domain-placement-parity.md) — 同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain にも `unassigned-domain` を発行する
 - [ADR-2410](2410-import-coupled-diagnostics-decline-and-invalid-owns-kind-only.md) — import 結合の存在検査は未解決 import が残る file では判定しない（invalid-owns は kind 専任にする）
 - [ADR-2442](2442-owns-existence-any-declared-node.md) — owns の存在検査は kind を問わない（system は kind 拒否として報告し、invalid-owns は拒否した kind を名指す）
+- [ADR-2596](2596-node-path-index-merged-model.md) — nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う
 
 ## styling
 
