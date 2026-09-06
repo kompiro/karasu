@@ -35,7 +35,7 @@ scope:
 
 判定は 1 つ: **その index を作る関数が、入力に書かれていた事実のうち出力に現れないものを持つか**。持つなら、その事実を必要とする別の消費者（詳細パネル・legend・export・監査・将来のビュー）が構造的に作れない。
 
-karasu では `boundaryIndex`（`buildBoundaryIndex`。[#2213](https://github.com/kompiro/karasu/pull/2213) で多値の `buildBoundaryMembership` に置き換え済みで、旧関数は現存しない）が実例である。[ADR-1974](../adr/1974-boundary-declaration-syntax.md) が記録した 1:1 の根拠は「開閉フレームの識別子は 1 ノード 1 値」= banded view の**配置**要件だったが、実装は所属そのものを 1 値に切り詰め、2 件目以降を `info` 診断に出すだけで捨てていた（[#2161](https://github.com/kompiro/karasu/issues/2161)）。`ownerIndex`（team 軸）も同じ形をしている。
+karasu では `boundaryIndex`（`buildBoundaryIndex`）が実例である。[ADR-1974](../adr/1974-boundary-declaration-syntax.md) が記録した 1:1 の根拠は「開閉フレームの識別子は 1 ノード 1 値」= banded view の**配置**要件だったが、実装は所属そのものを 1 値に切り詰め、2 件目以降を `info` 診断に出すだけで捨てていた（[#2161](https://github.com/kompiro/karasu/issues/2161)）。`ownerIndex`（team 軸）も同じ形をしている。
 
 ## 想定される失敗モード
 
@@ -82,6 +82,7 @@ team 軸（`ownerIndex`）は依然 1:1 first-wins であり、本観点の未�
 
 - `docs/spec/syntax.md` §「Grouping the system view (`boundary`)」 — 所属の多値性と banded view の解決規則。
 - 決定: [ADR-2161](../adr/2161-boundary-membership-1n.md)（[#2161](https://github.com/kompiro/karasu/issues/2161) / [#2178](https://github.com/kompiro/karasu/issues/2178)）— [ADR-1974](../adr/1974-boundary-declaration-syntax.md) 決定 2 を refine した昇格先。
+- 実装: `buildBoundaryIndex` は [#2213](https://github.com/kompiro/karasu/pull/2213) で多値の `buildBoundaryMembership` に置き換えられ（現在は `packages/core/src/parser/reference-validation.ts`、#2247 で移動）、旧関数は現存しない。
 - `docs/spec/syntax.md` §「Cross-cutting membership (`facet`)」— facet 所属は 1:N であり、
   `facetIndex`（`Map<nodeId, Set<facetId>>`）と全マージ経路がその多値性を保つ規定（#2173）。
   同節末尾に本 TPL への `> Related TPLs:` back-ref あり。

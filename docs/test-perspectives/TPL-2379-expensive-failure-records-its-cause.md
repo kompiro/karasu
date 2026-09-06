@@ -8,6 +8,7 @@ applicable_to:
   - "外部サービスの応答を握りつぶす方針がある経路（機密・個人データ・他人のコード由来の文字列）"
   - "多段パイプラインで、成功したステップだけを記録する計測"
 known_consumers:
+  - karasu-nest-reverse
   - chat-panel
 discovered_from:
   - issue: "#2379"
@@ -17,6 +18,7 @@ related_to:
 topic: project
 scope:
   packages:
+    - nest
     - app
 ---
 
@@ -54,15 +56,18 @@ scope:
 - 「試行中の段」を開始時に記録し、完了時に消す。失敗記録には消えなかったものが残る
 - 失敗した入力そのものを短い TTL で別ストアに置く（`failed/` prefix、24 時間）。ただし置ける対象は方針で決まる — 生成物は置けても、他人のソースは置けない
 
-## 起源と現在の適用先
+## 由来
 
-- **起源**: karasu-nest の server-side reverse（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)）が
+- karasu-nest の server-side reverse（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)）が
   1 ラン $3 超の推論の失敗を status だけで記録し、切り分けが再実行になった
   （[#2379](https://github.com/kompiro/karasu/issues/2379)）。
-  <!-- absent-path-next-line: removed in #2590 when ADR-2578 retired server-side reverse, named as history -->
-  根本原因のあった `packages/nest/src/reverse/llm.ts` は [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)
-  が server-side reverse を廃止した際に削除された（不在が決定の実行を示す）。
-- **現在の適用先**: app の chat session の失敗経路（`packages/app/src/hooks/useChatSession/errors.ts`）。
-  `APIError` を status で `auth` / `rate_limit` / `server` の 3 つに畳み、固定語彙の `error.type` を捨てている。
-  1 回の実費は利用者の API key 持ちで小さいので観点の重みは弱いが、失敗モード 1 つ目（全種類が同じ見た目）
-  そのものなので、chat の失敗記録を厚くするときはここから始める。
+  <!-- absent-path-next-line: deleted in #2604 (slice E of ADR-2578, tracked as #2590), named as history -->
+  当時の呼び出し元 `packages/nest/src/reverse/llm.ts` は、[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)
+  が server-side reverse を廃止した際に削除された。
+- 現在の適用先は app の chat session の失敗経路（`packages/app/src/hooks/useChatSession/errors.ts`）。
+  失敗記録（`ErrorChatMessage`）は `401 → auth`、`429 → rate_limit`、それ以外（他の `APIError`・接続エラー・
+  abort・`APIError` でない例外）をすべて `server` に畳み、固定語彙の `error.type` はどこからも読まれない。
+  一方 `console.error` には API error body（`error.type` を含む）と散文の `message` がそのまま流れる。線が
+  「固定語彙と自由文の間」ではなく「記録は status 3 分類だけ、console は全部」に引かれている。1 回の実費は
+  利用者の API key 持ちで小さいので観点の重みは弱いが、chat の失敗記録を厚くするときは `classifyError` で
+  `error.type` を形で検査して記録に載せ、console から散文を落とすところから始める。

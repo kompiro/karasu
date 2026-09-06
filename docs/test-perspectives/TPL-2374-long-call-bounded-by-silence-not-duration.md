@@ -8,6 +8,7 @@ applicable_to:
   - "CDN・API gateway・リバースプロキシなど、こちらが設定していない中間層を経由する通信"
   - "ストリーミング（SSE・chunked・WebSocket）を選べるが非ストリーミングでも書ける API"
 known_consumers:
+  - karasu-nest-reverse
   - chat-panel
 discovered_from:
   - issue: "#2374"
@@ -16,6 +17,7 @@ related_to: []
 topic: project
 scope:
   packages:
+    - nest
     - app
 ---
 
@@ -53,17 +55,21 @@ scope:
 - リトライは**呼び出し 1 回**の層に置く。パイプライン全体の再実行は課金も所要時間も倍にするので、上流の一過性失敗に対する応答としては大きすぎる
 - 例外に載せるのは status と固定語彙の error type だけにする。中間層やプロバイダのメッセージは、こちらが送ったプロンプト（＝他人のコード由来）を引用しうる
 
-## 起源と現在の適用先
+## 由来
 
-- **起源**: karasu-nest の server-side reverse（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)）が
-  LLM を非ストリーミング・大きな `max_tokens` で呼び、こちらが設定していない gateway timeout で落ちた
-  （[#2374](https://github.com/kompiro/karasu/issues/2374)）。
-  <!-- absent-path-next-line: removed in #2590 when ADR-2578 retired server-side reverse, named as history -->
-  根本原因のあった `packages/nest/src/reverse/llm.ts` は [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)
-  が server-side reverse を廃止した際に削除された（不在が決定の実行を示す）。
-- **現在の適用先**: app の chat session（`packages/app/src/hooks/useChatSession.ts`）。ブラウザから
-  `messages.create` を非ストリーミング・`max_tokens: 4096` で直接呼ぶ。中間層は無いが、チェックリストの
-  1（要求している上限で判定する）と 2（無通信で測る）はそのまま当てはまる。5（沈黙するストリームのテスト）は
-  観測できるストリームが無いので、**先にストリーミングへの transport 変更が要る**。現状の非ストリーミング
-  経路にあるのは reset / unmount 時の `AbortController` による中断だけで（#1533）、無通信を検出する
-  タイムアウトもそのテストも無い。
+- karasu-nest の server-side reverse（[ADR-1990](../adr/1990-karasu-nest-pivot-server-reverse.md)）が
+  `api.anthropic.com` を非ストリーミング・大きな `max_tokens` で直接呼び、Anthropic API の手前にある edge の
+  timeout（524）で落ちた（[#2374](https://github.com/kompiro/karasu/issues/2374)）。
+  <!-- absent-path-next-line: deleted in #2604 (slice E of ADR-2578, tracked as #2590), named as history -->
+  当時の呼び出し元 `packages/nest/src/reverse/llm.ts` は、[ADR-2578](../adr/2578-nest-retires-server-side-reverse.md)
+  が server-side reverse を廃止した際に削除された。
+- 現在の適用先は app の chat session（`packages/app/src/hooks/useChatSession.ts`）。ブラウザから同じ
+  `api.anthropic.com` を `messages.create` で非ストリーミング・`max_tokens: 4096` で呼ぶので、#2374 と同じ edge を
+  通る。`timeout` / `maxRetries` を渡していないため `@anthropic-ai/sdk` の既定が効き、`max_tokens` から算出した
+  **総所要時間**の timeout（4096 で 10 分）と 2 回の自動再試行が SDK 層にある。本観点が名指しする「総所要時間で
+  打ち切る」形が既定として生きており、沈黙した接続は最悪 timeout × 3 回のあいだ何も見せない。こちら側の中断は
+  `AbortController` だけで、reset / unmount に加えて新しい操作の開始時にも前の in-flight を abort する
+  （#1533、柵は `useChatSession.cancel.test.tsx`）。無通信を検出する timeout もそのテストも無い。
+- チェックリストとの対応: 1（要求している上限で判定する）と 2（無通信で測る）はそのまま当てはまる。
+  5（沈黙するストリームのテスト）は観測できるストリームが無いので、先にストリーミングへの transport 変更が要る。
+  idle timeout を足すときは SDK の duration timeout と retry を同時に設定し、テストでは retry を mock する。

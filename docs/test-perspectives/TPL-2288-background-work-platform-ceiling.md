@@ -65,3 +65,5 @@ karasu-nest の生成受付（[#2288](https://github.com/kompiro/karasu/issues/2
 コードレビューで指摘されるまで、型・単体テスト・lint のどれも異常を示していない。テストは `waitUntil` に渡された promise を直接 await しており、器そのものを消していた。同 PR で Workflow へ移し、stale 判定と決定的インスタンス id を併せて入れて閉じた（bug としては顕在化していないため proactive）。
 
 **実測値を持っていたのに器の上限と突き合わせなかった**ことが失敗の本体で、これは知識の欠如ではなく手順の欠落である。だから観点として残す価値がある。
+
+生成受付（`karasu-nest-generate`）は [ADR-2578](../adr/2578-nest-retires-server-side-reverse.md) が server-side reverse を廃止した #2604 で Workflow ごと削除され、nest には分単位の背景処理が無くなった。残った経路は `ctx.waitUntil` に預けず await する方針（`packages/nest/src/auth/current.ts`・`packages/nest/src/store/gallery-store.ts`）で、この面での適用対象は消えている。観点は次に背景処理を足す設計のためのものとして active のまま残す。
