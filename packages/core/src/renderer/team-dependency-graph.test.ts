@@ -218,3 +218,91 @@ organization O { team ta { owns A } team tb { owns B } }
     expect(width).toBeGreaterThan(footer.length * 9);
   });
 });
+
+describe("renderTeamDependencyGraph — every curve stays on the canvas and off the cards", () => {
+  // The shape of `examples/en/feature-samples/team-ownership.krs`: three teams
+  // where one dependency skips a column and another closes a cycle.
+  const SKIP_AND_CYCLE = `
+system Marketplace {
+  service Checkout {}
+  service Billing {}
+  service Search {}
+  service Inventory {}
+  service Gateway {}
+  service Notifications {}
+  database OrderDB {}
+
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Inventory "reserve"
+  Checkout -> OrderDB "persist"
+  Checkout --> Notifications "order placed"
+}
+organization MarketplaceOrg {
+  team "payments" { label "Payments" owns Checkout owns Billing }
+  team "catalog" { label "Catalog" owns Search owns Inventory }
+  team "platform" { label "Platform" owns Gateway owns Notifications }
+}
+`;
+
+  function curves(svg: string): { from: string; to: string; points: number[][] }[] {
+    return [
+      ...svg.matchAll(
+        /data-team-from="([^"]+)" data-team-to="([^"]+)"[\s\S]*?<path d="M ([^"]+)"/g,
+      ),
+    ].map((m) => {
+      const nums = [...m[3].matchAll(/-?\d+(?:\.\d+)?/g)].map((n) => Number(n[0]));
+      const points: number[][] = [];
+      for (let i = 0; i + 1 < nums.length; i += 2) points.push([nums[i], nums[i + 1]]);
+      return { from: m[1], to: m[2], points };
+    });
+  }
+
+  it("keeps every control point inside the viewBox", () => {
+    // A detour leaves the node grid, so a viewBox sized on the cards alone
+    // clips it — the reader is left with two dangling fragments and no way to
+    // tell which teams they joined.
+    const svg = graphOf(SKIP_AND_CYCLE);
+    const [vx, vy, vw, vh] = (svg.match(/viewBox="([^"]+)"/)?.[1] ?? "").split(" ").map(Number);
+    expect(vw).toBeGreaterThan(0);
+    for (const c of curves(svg)) {
+      for (const [x, y] of c.points) {
+        expect(x).toBeGreaterThanOrEqual(vx);
+        expect(x).toBeLessThanOrEqual(vx + vw);
+        expect(y).toBeGreaterThanOrEqual(vy);
+        expect(y).toBeLessThanOrEqual(vy + vh);
+      }
+    }
+  });
+
+  it("routes a dependency that skips a column clear of the card in between", () => {
+    // Straight across, the line runs under an opaque card painted after it, so
+    // that stretch is invisible and one long dependency reads as two short
+    // arrows between the wrong teams.
+    const svg = graphOf(SKIP_AND_CYCLE);
+    const skip = curves(svg).find((c) => c.from === "payments" && c.to === "catalog");
+    expect(skip).toBeDefined();
+    const cardTop = 32;
+    const cardBottom = 32 + 52;
+    // It leaves and arrives on the card bottoms and dips below the row.
+    expect(skip!.points[0][1]).toBe(cardBottom);
+    expect(Math.max(...skip!.points.map(([, y]) => y))).toBeGreaterThan(cardBottom);
+    expect(Math.min(...skip!.points.map(([, y]) => y))).toBeGreaterThanOrEqual(cardTop);
+  });
+
+  it("sends the skip-level and the back edge to opposite sides of the row", () => {
+    const svg = graphOf(SKIP_AND_CYCLE);
+    const found = curves(svg);
+    const skip = found.find((c) => c.from === "payments" && c.to === "catalog")!;
+    const back = found.find((c) => c.from === "platform" && c.to === "payments")!;
+    expect(Math.max(...skip.points.map(([, y]) => y))).toBeGreaterThan(84);
+    expect(Math.min(...back.points.map(([, y]) => y))).toBeLessThan(32);
+  });
+
+  it("keeps the footer below every routed curve", () => {
+    const svg = graphOf(SKIP_AND_CYCLE);
+    const footerY = Number(svg.match(/<text x="\d+" y="(\d+(?:\.\d+)?)"[^>]*font-size="11"/)?.[1]);
+    const lowest = Math.max(...curves(svg).flatMap((c) => c.points.map(([, y]) => y)));
+    expect(footerY).toBeGreaterThan(lowest);
+  });
+});

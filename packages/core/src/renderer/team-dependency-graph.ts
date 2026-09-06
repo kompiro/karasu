@@ -192,11 +192,18 @@ function placeTeams(report: TeamDependencyReport, backEdges: ReadonlySet<TeamDep
   };
 }
 
-/** A cubic Bézier, kept as points so the midpoint can be computed for the label. */
+/**
+ * A cubic Bézier, kept as points so the midpoint can be computed for the label
+ * and so the canvas can be sized around the curve.
+ *
+ * `points` is every control point: a cubic lies inside their convex hull, so
+ * their extent is a safe (if slightly generous) bound on where the curve goes.
+ */
 interface Curve {
   d: string;
   midX: number;
   midY: number;
+  points: readonly { x: number; y: number }[];
 }
 
 function cubic(
@@ -215,23 +222,35 @@ function cubic(
     // rather than on the straight line between the endpoints.
     midX: (x0 + 3 * x1 + 3 * x2 + x3) / 8,
     midY: (y0 + 3 * y1 + 3 * y2 + y3) / 8,
+    points: [
+      { x: x0, y: y0 },
+      { x: x1, y: y1 },
+      { x: x2, y: y2 },
+      { x: x3, y: y3 },
+    ],
   };
 }
 
 /**
  * Route one edge, fanned by `rank` so edges sharing a team pair stay apart.
  *
- * Two routes, chosen by direction rather than by kind:
+ * Three routes, chosen by how far apart the two columns are. The rule behind
+ * all of them is one thing: **a curve must never cross a card**. Cards are
+ * opaque and painted after the edges, so a line that runs under one is not
+ * merely ugly — that stretch of it is invisible, and the reader sees two short
+ * arrows where there is really one long dependency.
  *
- * - **Forward** (target is to the right): side to side, the reading direction.
- * - **Back edge** (a cycle, or a dependency onto an earlier column): out of the
- *   top of the source and into the top of the target, arcing above both. Going
- *   side to side here would run the curve straight through the opaque cards in
- *   between, which paint over it — the arrow would simply not be visible.
+ * - **Adjacent** (nothing in between): side to side, the reading direction.
+ * - **Skip-level** (at least one column in between): out of the bottom and
+ *   back up into the bottom, dipping below the row it would otherwise cross.
+ * - **Back edge** (a cycle, or a dependency onto an earlier column): the same
+ *   detour above the row. Above and below are used for opposite directions so
+ *   the two cases stay distinguishable at a glance.
  */
 function edgeCurve(from: Placed, to: Placed, rank: number): Curve {
   const fan = rank * EDGE_FAN;
-  if (to.x >= from.x + NODE_W) {
+  const gap = to.x - (from.x + NODE_W);
+  if (gap >= 0 && gap <= H_GAP) {
     const x0 = from.x + NODE_W;
     const y0 = from.y + NODE_H / 2 + fan;
     const x3 = to.x;
@@ -239,12 +258,19 @@ function edgeCurve(from: Placed, to: Placed, rank: number): Curve {
     const dx = Math.max(32, (x3 - x0) / 2);
     return cubic(x0, y0, x0 + dx, y0, x3 - dx, y3, x3, y3);
   }
+
+  const forward = gap > H_GAP;
   const x0 = from.x + NODE_W / 2;
-  const y0 = from.y;
   const x3 = to.x + NODE_W / 2;
+  const detour = NODE_H + V_GAP + fan;
+  if (forward) {
+    const y0 = from.y + NODE_H;
+    const y3 = to.y + NODE_H;
+    return cubic(x0, y0, x0, y0 + detour, x3, y3 + detour, x3, y3);
+  }
+  const y0 = from.y;
   const y3 = to.y;
-  const lift = NODE_H + V_GAP + fan;
-  return cubic(x0, y0, x0, y0 - lift, x3, y3 - lift, x3, y3);
+  return cubic(x0, y0, x0, y0 - detour, x3, y3 - detour, x3, y3);
 }
 
 function emptySvg(palette: DiagramPalette, message: string): string {
@@ -308,6 +334,26 @@ export function renderTeamDependencyGraph(
   const { placed, gridWidth, gridHeight } = placeTeams(report, backEdges);
   const byId = new Map(placed.map((p) => [p.id, p]));
 
+  // Geometry before markup: a detour route leaves the node grid, so the canvas
+  // has to be sized around the curves rather than around the cards alone. A
+  // viewBox that covers only the grid clips the detour, and the reader is left
+  // with two dangling fragments and no way to tell which teams they joined.
+  //
+  // Rank within a team pair, so `sync` and `async` between the same two teams
+  // are fanned onto separate curves instead of one hiding the other.
+  const rankOfPair = new Map<string, number>();
+  const routed = report.dependencies.flatMap((dep) => {
+    const from = byId.get(dep.fromTeam);
+    const to = byId.get(dep.toTeam);
+    // A dependency naming a team the org no longer declares cannot be placed;
+    // it also cannot happen, since both come from the same report.
+    if (!from || !to) return [];
+    const pair = JSON.stringify([dep.fromTeam, dep.toTeam]);
+    const rank = rankOfPair.get(pair) ?? 0;
+    rankOfPair.set(pair, rank + 1);
+    return [{ dep, curve: edgeCurve(from, to, rank) }];
+  });
+
   const footer: string[] = [];
   if (report.dependencies.length === 0) {
     footer.push(labels.teamDependencyNone ?? DEFAULT_EMPTY_STATE_LABELS.teamDependencyNone);
@@ -318,16 +364,31 @@ export function renderTeamDependencyGraph(
     footer.push(template.replace("{count}", String(report.unowned.length)));
   }
 
-  // The footer is localized, so it can be wider than the grid — most obviously
-  // when every team sits in one column, which is exactly the no-dependency case
-  // that always has a footer. Sizing on the grid alone clips it mid-sentence.
-  const footerWidth = Math.max(
-    0,
-    ...footer.map((line) => PADDING * 2 + textWidth(line, FOOTER_FONT_SIZE)),
-  );
-  const width = Math.max(gridWidth, footerWidth);
-  const totalHeight =
-    gridHeight + (footer.length > 0 ? footer.length * FOOTER_LINE_H + PADDING / 2 : 0);
+  let minX = 0;
+  let minY = 0;
+  let maxX = gridWidth;
+  let maxY = gridHeight;
+  for (const { curve } of routed) {
+    for (const point of curve.points) {
+      minX = Math.min(minX, point.x - PADDING);
+      minY = Math.min(minY, point.y - PADDING);
+      maxX = Math.max(maxX, point.x + PADDING);
+      maxY = Math.max(maxY, point.y + PADDING);
+    }
+  }
+
+  // The footer sits under everything drawn, detours included, and the canvas is
+  // wide enough for it: it is localized, so it can outrun a narrow grid — most
+  // obviously in the no-dependency case, which is both the narrowest grid and
+  // the one that always has a footer.
+  const footerTop = maxY;
+  for (const line of footer) {
+    maxX = Math.max(maxX, minX + PADDING * 2 + textWidth(line, FOOTER_FONT_SIZE));
+  }
+  if (footer.length > 0) maxY = footerTop + footer.length * FOOTER_LINE_H + PADDING / 2;
+
+  const width = maxX - minX;
+  const height = maxY - minY;
 
   const defs = el(
     "defs",
@@ -352,61 +413,46 @@ export function renderTeamDependencyGraph(
     ),
   );
 
-  // Rank within a team pair, so `sync` and `async` between the same two teams
-  // are fanned onto separate curves instead of one hiding the other.
-  const rankOfPair = new Map<string, number>();
-  const edges = report.dependencies.flatMap((dep) => {
-    const from = byId.get(dep.fromTeam);
-    const to = byId.get(dep.toTeam);
-    // A dependency naming a team the org no longer declares cannot be placed;
-    // it also cannot happen, since both come from the same report.
-    if (!from || !to) return [];
-    const pair = JSON.stringify([dep.fromTeam, dep.toTeam]);
-    const rank = rankOfPair.get(pair) ?? 0;
-    rankOfPair.set(pair, rank + 1);
-
-    const curve = edgeCurve(from, to, rank);
+  const edges = routed.map(({ dep, curve }) => {
     const muted = dep.relation === "nested";
     const stroke = muted ? palette.textSubtle : palette.textPrimary;
-    return [
-      el(
-        "g",
-        {
-          // Two attributes rather than one `a->b` string: an arrow in an
-          // attribute value is XML-escaped, so a selector would have to match
-          // `-&gt;` and every reader would have to know that.
-          "data-team-from": dep.fromTeam,
-          "data-team-to": dep.toTeam,
-          "data-edge-kind": dep.kind,
-          "data-relation": dep.relation,
-        },
-        el("path", {
-          d: curve.d,
-          fill: "none",
-          stroke,
-          "stroke-width": muted ? 1 : 1.5,
-          "stroke-dasharray": dep.kind === "async" ? "6 4" : undefined,
-          "marker-end": `url(#${muted ? ARROW_MUTED : ARROW_SYNC})`,
-        }),
-        // The inducing-edge count is the one number worth putting on the line:
-        // it says how much of the model stands behind this pair without
-        // ranking the pairs against each other.
-        dep.via.length > 1
-          ? el(
-              "text",
-              {
-                x: curve.midX,
-                y: curve.midY - 6,
-                "text-anchor": "middle",
-                fill: palette.textSubtle,
-                "font-family": FONT,
-                "font-size": 10,
-              },
-              String(dep.via.length),
-            )
-          : "",
-      ),
-    ];
+    return el(
+      "g",
+      {
+        // Two attributes rather than one `a->b` string: an arrow in an
+        // attribute value is XML-escaped, so a selector would have to match
+        // `-&gt;` and every reader would have to know that.
+        "data-team-from": dep.fromTeam,
+        "data-team-to": dep.toTeam,
+        "data-edge-kind": dep.kind,
+        "data-relation": dep.relation,
+      },
+      el("path", {
+        d: curve.d,
+        fill: "none",
+        stroke,
+        "stroke-width": muted ? 1 : 1.5,
+        "stroke-dasharray": dep.kind === "async" ? "6 4" : undefined,
+        "marker-end": `url(#${muted ? ARROW_MUTED : ARROW_SYNC})`,
+      }),
+      // The inducing-edge count is the one number worth putting on the line:
+      // it says how much of the model stands behind this pair without
+      // ranking the pairs against each other.
+      dep.via.length > 1
+        ? el(
+            "text",
+            {
+              x: curve.midX,
+              y: curve.midY - 6,
+              "text-anchor": "middle",
+              fill: palette.textSubtle,
+              "font-family": FONT,
+              "font-size": 10,
+            },
+            String(dep.via.length),
+          )
+        : "",
+    );
   });
 
   const nodes = placed.map((p) =>
@@ -445,8 +491,8 @@ export function renderTeamDependencyGraph(
     el(
       "text",
       {
-        x: PADDING,
-        y: gridHeight + PADDING / 4 + i * FOOTER_LINE_H,
+        x: minX + PADDING,
+        y: footerTop + PADDING / 4 + i * FOOTER_LINE_H,
         dy: DY_CENTER,
         fill: palette.textSubtle,
         "font-family": FONT,
@@ -460,12 +506,12 @@ export function renderTeamDependencyGraph(
     "svg",
     {
       xmlns: "http://www.w3.org/2000/svg",
-      viewBox: `0 0 ${width} ${totalHeight}`,
+      viewBox: `${minX} ${minY} ${width} ${height}`,
       width,
-      height: totalHeight,
+      height,
       "data-view": "team-dependencies",
     },
-    el("rect", { width, height: totalHeight, fill: palette.canvasBg }),
+    el("rect", { x: minX, y: minY, width, height, fill: palette.canvasBg }),
     defs,
     ...edges,
     ...nodes,

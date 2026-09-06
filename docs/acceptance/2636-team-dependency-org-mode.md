@@ -78,6 +78,18 @@ type: product
 - [x] AT-Q: 履歴で org のプレーンな permalink に戻ると、依存モードではなくグリッドが描かれる（URL と表示が食い違わない）
   > ✅ Automated — `packages/app/src/hooks/useOrgDisplayMode.test.ts` › `returns to the grid when a history restore addresses a plain org hash`
 
+- [x] AT-R: どの経路も viewBox の外に出ない（迂回した曲線が切れて宙に浮かない）
+  > ✅ Automated — `packages/core/src/renderer/team-dependency-graph.test.ts` › `keeps every control point inside the viewBox`
+
+- [x] AT-S: 列を飛び越す依存が、間のカードを貫かない経路で描かれる
+  > ✅ Automated — `team-dependency-graph.test.ts` › `routes a dependency that skips a column clear of the card in between`
+
+- [x] AT-T: 列飛ばしと循環の戻り経路が行の反対側に分かれる（見分けがつく）
+  > ✅ Automated — `team-dependency-graph.test.ts` › `sends the skip-level and the back edge to opposite sides of the row`
+
+- [x] AT-U: フッタが迂回曲線より下に置かれ、重ならない
+  > ✅ Automated — `team-dependency-graph.test.ts` › `keeps the footer below every routed curve`
+
 ## 手動確認
 
 - [ ] 🧑 org タブで **チーム依存** を押すと導出グラフが描かれ、もう一度押すとグリッドに戻る。**ツリー表示** を押すとチーム依存が閉じる（<https://karasu.kompiro.dev/> で `examples/en/org` を開く）
