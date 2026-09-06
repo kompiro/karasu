@@ -119,16 +119,25 @@ ready → implementing → in-review → (close)
 **到達状態**: 人間がレビューを開いた時点で、CodeRabbit の最新レビューが `APPROVED`、
 未解決の review thread が 0、そして人間の判断が要る論点は PR 上で質問済みになっている。
 
+2 本目は **`--paginate` で全ページ数える**。`reviewThreads` を 1 ページだけ読むと、
+古い未解決 thread が範囲外に落ちて `0` が返る。`--slurp` は `--jq` と併用できないので
+`jq` に繋ぐ。
+
 ```
 gh pr view <n> --json reviews \
   --jq '[.reviews[] | select(.author.login == "coderabbitai")] | last | .state'
 # => APPROVED
 
-gh api graphql -F n=<n> -f query='query($n: Int!) {
+gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
   repository(owner: "kompiro", name: "karasu") {
-    pullRequest(number: $n) { reviewThreads(last: 100) { nodes { isResolved } } }
+    pullRequest(number: $n) {
+      reviewThreads(first: 100, after: $endCursor) {
+        nodes { isResolved }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
   }
-}' --jq '[.data.repository.pullRequest.reviewThreads.nodes[]
+}' | jq '[.[].data.repository.pullRequest.reviewThreads.nodes[]
           | select(.isResolved == false)] | length'
 # => 0
 ```
@@ -164,12 +173,61 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - 対象外は draft PR と `dependabot[bot]` / `renovate[bot]` の PR（依存更新は
   `/hane:dependabot` が別途トリアージ）。`ignore_usernames` は完全一致なので、
   他の bot を除外するには login を `.coderabbit.yaml` に足す
-- 採用しない指摘は**返信で理由を書いたうえで `@coderabbitai resolve` で閉じる**。
-  approve は指摘に従わなくても到達できる。**approve を取ることを目的に指摘へ従わない**。
-  従うべきか迷うものは、上の表に従って人間へ回す
+- 採用しない指摘は**返信で理由を書いてから閉じる**。approve は指摘に従わなくても
+  到達できる。**approve を取ることを目的に指摘へ従わない**。従うべきか迷うものは、
+  上の表に従って人間へ回す
+- **閉じるのは読んだ thread だけ。** 判断基準はこの 1 つで、閉じ方はそれを守れる方を
+  選ぶ。thread を名指しできるのは GraphQL の `resolveReviewThread` で、
+  `@coderabbitai resolve` は開いている thread を**全部**閉じる（名指しできない）。
+  **一覧と本文読みは分ける** — 一覧に本文を混ぜると、`comments` を何件で切っても
+  その先を読まずに閉じられる形になる。一覧は件数だけ持たせ、本文は thread ごとに
+  全ページ読む
+
+  ```
+  # 1. 未解決 thread の索引（id・場所・コメント件数だけ）
+  gh api graphql --paginate --slurp -F n=<n> -f query='query($n: Int!, $endCursor: String) {
+    repository(owner: "kompiro", name: "karasu") {
+      pullRequest(number: $n) {
+        reviewThreads(first: 100, after: $endCursor) {
+          nodes { id isResolved path line comments { totalCount } }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }' | jq -r '.[].data.repository.pullRequest.reviewThreads.nodes[]
+              | select(.isResolved == false)
+              | "\(.id) \(.path):\(.line) comments=\(.comments.totalCount)"'
+
+  # 2. その thread を全件読む（totalCount と出力行数が一致することを確かめる）
+  gh api graphql --paginate --slurp -F id=<thread-id> -f query='query($id: ID!, $endCursor: String) {
+    node(id: $id) {
+      ... on PullRequestReviewThread {
+        comments(first: 100, after: $endCursor) {
+          nodes { author { login } body }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }' | jq -r '.[].data.node.comments.nodes[] | "[\(.author.login)] \(.body)"'
+
+  # 3. 読んで対応を決めた thread だけを閉じる
+  gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<id>"}) { thread { isResolved } } }'
+  ```
+
+- **一括の `@coderabbitai resolve` を使うなら、投げる前に未解決 thread を全件読む。**
+  投げてから処理されるまでに数分あり、**その間に届いたレビューの指摘も一緒に閉じられる**。
+  投げたあとは、resolve コメントより後に届いたレビューがないか確かめる。あれば、その
+  指摘は未読のまま閉じられている
+
+  ```
+  gh pr view <n> --json reviews \
+    --jq '[.reviews[] | select(.author.login == "coderabbitai")] | last | .submittedAt'
+  # resolve コメントの投稿時刻より後なら、その回の指摘を読み直す
+  ```
+
 - **`@coderabbitai resolve` は PR の top-level コメントとして投げる。** review thread
   への返信の中に書いても効かない（CodeRabbit が「Post it as a new top-level PR
-  comment」と返して終わる）。理由の返信は各 thread に、resolve は PR に 1 回
+  comment」と返して終わる）
 - 返信が learnings になるのは `Learnings Added` が返ったときだけで、再発防止は
   次の 2 項で担保する
 - 同じ規約違反を繰り返し指摘されるなら、`scripts/lint/` + lefthook の drift ガードに
