@@ -12,7 +12,7 @@ related_to:
 scope:
   packages: [core]
 assumptions:
-  - "symbol: packages/core/src/parser/parser.ts :: migrationPriority"
+  - "symbol: packages/core/src/parser/reference-validation.ts :: migrationPriority"
   - "grep: packages/core/src/types/ast.ts :: annotations: string\\[\\]"
   - "grep: packages/core/src/resolver/style-resolver.ts :: sel.annotations.every"
   - "file: docs/test-perspectives/TPL-1583-migration-priority-index-winner.md"

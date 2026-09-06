@@ -276,6 +276,7 @@ flowchart TD
     ADR_2208["ADR-2208<br/>organization / team / member の positional label..."]
     ADR_2547["ADR-2547<br/>node 参照の dotted path 読み取りを共有ヘルパーへ集約し、suffix 規則を..."]
     ADR_2550["ADR-2550<br/>nodePathIndex の多重判定を collect-then-decide にして宣言順..."]
+    ADR_2552["ADR-2552<br/>同じ `realizes` ターゲットの繰り返しは 1 つの関係を宣言する（冪等）"]
     ADR_9008["ADR-9008<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
   end
   subgraph project["project"]
@@ -360,6 +361,7 @@ flowchart TD
     ADR_2184["ADR-2184<br/>同じモデリング状態を表す配置には同じ診断を出す — `system` 直下の domain に..."]
     ADR_2410["ADR-2410<br/>import 結合の存在検査は未解決 import が残る file では判定しない（inva..."]
     ADR_2442["ADR-2442<br/>owns の存在検査は kind を問わない（system は kind 拒否として報告し、i..."]
+    ADR_2596["ADR-2596<br/>nodePathIndex はマージ後のモデルで再構築し、多重判定は宣言単位で行う"]
   end
   subgraph styling["styling"]
     ADR_8["ADR-8<br/>ビルトインスタイルの一元化と構造化リファレンス"]
@@ -884,11 +886,13 @@ flowchart TD
   class ADR_2535 accepted
   class ADR_2547 accepted
   class ADR_2550 accepted
+  class ADR_2552 accepted
   class ADR_2562 accepted
   class ADR_2564 accepted
   class ADR_2578 accepted
   class ADR_2592 accepted
   class ADR_2593 accepted
+  class ADR_2596 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted
   class ADR_2640 superseded

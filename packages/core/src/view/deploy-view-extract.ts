@@ -86,8 +86,12 @@ export function extractDeployView(
   }
   const groupedByRealizes = new Map<string, RealizesGroup>();
   const unclassifiedUnits: DeployNode[] = [];
+  // `${unit index}\u0000${container key}` for every membership already made,
+  // so the guard below costs one lookup instead of a scan of the container's
+  // units — the same shape `deriveDeliversEdges` uses for `service -> client`.
+  const seenMembership = new Set<string>();
 
-  for (const unit of deployBlock.nodes) {
+  for (const [unitIndex, unit] of deployBlock.nodes.entries()) {
     const realizes = unit.properties.realizes;
     if (realizes && realizes.length > 0) {
       for (const target of realizes) {
@@ -111,6 +115,16 @@ export function extractDeployView(
           };
           groupedByRealizes.set(key, group);
         }
+        // One unit joins one container once (#2552). The parser already drops
+        // a target spelled identically twice, but the key here is the node a
+        // ref RESOLVES to, so two refs it cannot collapse — `realizes Api` and
+        // `realizes Shop.Api`, each carrying its own range for
+        // `unresolved-realizes` / `realizes-target-ambiguous` — still arrive
+        // at one container. Membership is idempotent, the way
+        // `deriveDeliversEdges` keeps one `service -> client` edge per pair.
+        const membership = `${unitIndex}\u0000${key}`;
+        if (seenMembership.has(membership)) continue;
+        seenMembership.add(membership);
         group.units.push(unit);
       }
     } else {

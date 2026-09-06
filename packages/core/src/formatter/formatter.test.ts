@@ -288,6 +288,19 @@ describe("format()", () => {
     expectAstRoundTrip(commas);
   });
 
+  it("collapses a target named twice to a single realizes line", () => {
+    // #2552 — the repeat declares no second relation, so the canonical form
+    // has one line, and the two spellings of the mistake converge on it.
+    const lines = `deploy Prod {\n  oci monolith {\n    realizes OrderService\n    realizes OrderService\n  }\n}`;
+    const commas = `deploy Prod {\n  oci monolith {\n    realizes OrderService, OrderService\n  }\n}`;
+    const result = fmt(lines);
+    expect(result).toContain(`    realizes OrderService\n`);
+    expect(result).toBe(fmt(commas));
+    expect(result).toBe(fmt(`deploy Prod {\n  oci monolith {\n    realizes OrderService\n  }\n}`));
+    expectIdempotent(result);
+    expectAstRoundTrip(lines);
+  });
+
   it("formats deploy node with schedule property", () => {
     const src = `deploy Prod {\n  job Cron {\n    schedule "0 * * * *"\n  }\n}`;
     const result = fmt(src);

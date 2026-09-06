@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { layoutDeploy } from "./deploy-layout.js";
+import { extractDeployView } from "../view/deploy-view-extract.js";
+import { withUnassignedSystem } from "../view/unassigned-system.js";
+import { Parser } from "../parser/parser.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import type { DeployNodeKind } from "../types/ast.js";
 
@@ -744,4 +747,48 @@ describe("layoutDeploy > container units wrap into a grid (#2593)", () => {
       ].map((n) => [n.x, n.y]);
     expect(coords()).toEqual(coords());
   });
+});
+
+// #2552 — what a repeated `realizes` target actually produced was geometric.
+// The grid reserved one cell per entry while `nodes` keys placements by
+// `${containerId}::${unitId}`, so the second placement overwrote the first and
+// the container grew by one unit's height around a cell nothing was drawn in.
+// The fence runs the whole path (parse → extract → layout), because the fix
+// lives upstream of the layout and only the three together decide the shape.
+describe("a target realized twice reserves no empty cell (#2552)", () => {
+  const laidOut = (realizes: string) => {
+    const file = Parser.parse(`
+system EC {
+  service OrderService {}
+}
+deploy prod {
+  oci app {
+    runtime "Kubernetes"
+${realizes}
+  }
+}
+`).value;
+    return layoutDeploy(extractDeployView(file.deploys, withUnassignedSystem(file)));
+  };
+
+  const control = laidOut("    realizes OrderService");
+
+  const cases: [string, string][] = [
+    ["repeated on separate lines", "    realizes OrderService\n    realizes OrderService"],
+    ["repeated within one comma list", "    realizes OrderService, OrderService"],
+    [
+      "reached by a bare and a qualified ref",
+      "    realizes OrderService\n    realizes EC.OrderService",
+    ],
+  ];
+
+  for (const [name, realizes] of cases) {
+    it(`is laid out exactly like a single target when ${name}`, () => {
+      const result = laidOut(realizes);
+      expect(result.nodes.size).toBe(1);
+      expect(result.containers).toHaveLength(1);
+      expect(result.containers[0].height).toBe(control.containers[0].height);
+      expect(result.height).toBe(control.height);
+    });
+  }
 });

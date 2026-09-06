@@ -14,6 +14,7 @@ known_consumers:
   - facet
 discovered_from:
   - issue: "#2221"
+  - issue: "#2596"
   - root_cause_file: "packages/core/src/parser/parser.ts:buildBoundaryMembership"
 related_to:
   - TPL-2032
@@ -70,6 +71,16 @@ scope:
   the merged model (#2221)」— cross-file で **1 件**、単一ファイルで **1 件**（二重報告なし）、
   ファイルの分け方を変えても答えが同じであること、単一ファイル `compile()` 経路で従来どおり出ること、
   `duplicate-boundary-id` は per-file のままであること。
+- `packages/core/src/fs/import-resolver.test.ts` §「node id multiplicity is decided on the
+  merged model (#2596)」— `nodePathIndex` を merged model で再構築した回
+  （#2596）。cross-file の `@migration_target` / `@deprecated` ペアが移行先に解決すること、
+  cross-file の素の重複が **1 件**出ること、単一ファイルで **1 件**（二重報告なし）、
+  priority が決めるケースではファイルの分け方を変えても index の値と件数が同じであること、
+  priority 同点のときだけ勝者が import グラフに従うこと（保証の境界を明示して pin）、
+  `compile()` 経路では per-file の判定が残ること、named import で入ったノードが index に
+  載ること、1 つの宣言を運ぶ merge 経路が何本あっても 1 件と数えること
+  （wildcard + named の二重 import / edge 参照で 2 system に載る service）、
+  named import が持ち込まなかった部分に閉じた衝突は project では報告しないこと（判定空間の境界）。
 - 先例: `duplicate-facet-id` の cross-file 重複（#2173 / #2199）
 
 ## 派生元 spec
