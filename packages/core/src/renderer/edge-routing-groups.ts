@@ -19,13 +19,19 @@
  *
  *   sourcePort(side) → (gutterX, sourceY) → (gutterX, targetY) → targetPort(side)
  *
- * The candidate route is verified segment-by-segment against the obstacle set;
- * the right gutter is tried first, then the left. When a plain side stub is
- * blocked on *both* gutters — the endpoint's row has a sibling between it and the
- * gutter (a flanked infra target, or an actor whose row blocks the exit, #1954) —
- * the edge falls back to a **mixed route** (`tryMixedRoute`): keep the side stub
- * on whichever endpoint is clear and detour only the blocked endpoint out through
- * its adjacent inter-row channel via a top/bottom port. This completes the
+ * The candidate route is verified segment-by-segment against the obstacle set
+ * on both gutters, and the side is **chosen by capacity** (#2610): each clear
+ * candidate is priced by its length on the lane the side's occupancy predicts
+ * for it, and the cheaper side wins, the right on a tie. The gutter used to be
+ * a constant — right first, then left — so everything that could not take an
+ * interior corridor piled up on the right (204 of 460 waypoints in the right
+ * half of dify's `Knowledge` view, 58 beyond 85% of the width). When a plain
+ * side stub is blocked on *both* gutters — the endpoint's row has a sibling
+ * between it and the gutter (a flanked infra target, or an actor whose row
+ * blocks the exit, #1954) — the edge falls back to a **mixed route**
+ * (`planMixedRoute`): keep the side stub on whichever endpoint is clear and
+ * detour only the blocked endpoint out through its adjacent inter-row channel
+ * via a top/bottom port. This completes the
  * "inter-band channel" leg the P2c-A design specified but never shipped (the same
  * clear-band detour the ungrouped router uses, ADR-968). Only if nothing
  * is clear is the edge left straight — strictly monotonic, never worse (AC-1).
@@ -200,6 +206,10 @@ export function routeGroupedEdges(
   const { minLeft, maxRight } = contentBounds(nodes, frames);
   const rightGutter: Gutter = { x: maxRight + GUTTER_GAP, side: "right" };
   const leftGutter: Gutter = { x: minLeft - GUTTER_GAP, side: "left" };
+  // Corridors handed out so far on each side (#2610). The ones a candidate
+  // overlaps are the lanes `distributeGutterLanes` will have to put it beyond,
+  // which is what prices the side.
+  const occupancy: Record<Gutter["side"], YRange[]> = { left: [], right: [] };
   // Vertical corridors *between* columns, tried before the outer gutters (#2365).
   //
   // Ungrouped canvases only. P2c's side gutter is penetration-safe *by
@@ -217,7 +227,13 @@ export function routeGroupedEdges(
   // routing time — the interior equivalent of lane separation (TPL-1954).
   const claimed: { x: number; lo: number; hi: number }[] = [];
 
-  for (const edge of layoutEdges) {
+  // Canonical order (#2610): by the endpoints' geometry, then by id. Corridors
+  // and gutter lanes are handed out greedily, so the order decides who gets
+  // what; keyed on geometry it does not depend on where in the file an edge
+  // was declared.
+  const ordered = [...layoutEdges].sort((a, b) => cmpEdgeGeometry(a, b, boxOf));
+
+  for (const edge of ordered) {
     if (edge.ghost || edge.cyclic) continue;
     if (edge.waypoints && edge.waypoints.length > 0) continue;
 
@@ -249,20 +265,123 @@ export function routeGroupedEdges(
       .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, claimed));
     if (routedInner) continue;
 
-    // Try the right gutter, then the left, with plain side stubs (the common
-    // 2-waypoint route). If a full side route is blocked on both gutters, fall
-    // back to a **mixed route**: keep the side stub on whichever endpoint is
-    // clear and detour only the blocked endpoint through its adjacent inter-row
-    // channel (a top/bottom port). Whichever yields a fully obstacle-free
-    // orthogonal route wins.
-    const routed =
-      tryGutterRoute(edge, from, to, rightGutter, obstacles) ||
-      tryGutterRoute(edge, from, to, leftGutter, obstacles) ||
-      tryMixedRoute(edge, from, to, rightGutter, obstacles, nodes) ||
-      tryMixedRoute(edge, from, to, leftGutter, obstacles, nodes);
-    // If nothing is clear the edge stays straight (never worse).
-    void routed;
+    // A plain side route (the 2-waypoint route) on whichever gutter is
+    // cheaper; only when neither gutter clears one, a **mixed route**: keep
+    // the side stub on whichever endpoint is clear and detour only the blocked
+    // endpoint through its adjacent inter-row channel (a top/bottom port). If
+    // nothing is clear the edge stays straight (never worse).
+    const pick =
+      cheapestSide(
+        [rightGutter, leftGutter].map((g) => ({
+          gutter: g,
+          path: planGutterRoute(from, to, g, obstacles),
+        })),
+        occupancy,
+      ) ??
+      cheapestSide(
+        [rightGutter, leftGutter].map((g) => ({
+          gutter: g,
+          path: planMixedRoute(from, to, g, obstacles, nodes),
+        })),
+        occupancy,
+      );
+    if (!pick) continue;
+    applyPath(edge, pick.path);
+    occupancy[pick.gutter.side].push(pick.corridor);
   }
+}
+
+/** A vertical extent, as the lane passes see a corridor. */
+interface YRange {
+  lo: number;
+  hi: number;
+}
+
+/**
+ * Pick the cheaper of two gutter candidates (#2610). A candidate's price is
+ * the length of its route once the corridor sits on the lane its side's
+ * occupancy predicts — every corridor already there that overlaps it in y
+ * pushes it one `TRUNK_LANE_GAP` further out, and both stubs grow with it.
+ * The right gutter wins a tie, which is the order this pass had before
+ * capacity entered into it, so a canvas with room on both sides routes as it
+ * did. Null when neither candidate is clear.
+ */
+function cheapestSide(
+  candidates: { gutter: Gutter; path: Point[] | null }[],
+  occupancy: Record<Gutter["side"], YRange[]>,
+): { gutter: Gutter; path: Point[]; corridor: YRange } | null {
+  let best: { gutter: Gutter; path: Point[]; corridor: YRange; cost: number } | null = null;
+  for (const { gutter, path } of candidates) {
+    if (!path) continue;
+    const corridor = corridorOfPath(path);
+    if (!corridor) continue;
+    const lanes = occupancy[gutter.side].filter(
+      (r) => Math.min(r.hi, corridor.hi) - Math.max(r.lo, corridor.lo) > 1e-6,
+    ).length;
+    const cost = pathLength(path) + 2 * lanes * TRUNK_LANE_GAP;
+    if (best === null || cost < best.cost - 1e-9) best = { gutter, path, corridor, cost };
+  }
+  return best;
+}
+
+/** The vertical corridor of a planned route: its interior pair sharing an x. */
+function corridorOfPath(path: Point[]): YRange | null {
+  for (let i = 1; i < path.length - 2; i++) {
+    if (path[i].x === path[i + 1].x && path[i].y !== path[i + 1].y) {
+      return { lo: Math.min(path[i].y, path[i + 1].y), hi: Math.max(path[i].y, path[i + 1].y) };
+    }
+  }
+  return null;
+}
+
+/** Manhattan length of an orthogonal polyline. */
+function pathLength(path: Point[]): number {
+  let length = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    length += Math.abs(path[i + 1].x - path[i].x) + Math.abs(path[i + 1].y - path[i].y);
+  }
+  return length;
+}
+
+/** Write a planned route onto the edge: ports at the ends, bends in between. */
+function applyPath(edge: LayoutEdge, path: Point[]): void {
+  edge.fromPoint = path[0];
+  edge.toPoint = path[path.length - 1];
+  edge.waypoints = path.slice(1, -1);
+}
+
+/**
+ * Order edges by where they are, not by where they were written (#2610):
+ * top-most endpoint first, then the other endpoint, then x, then ids. Edges
+ * whose boxes are missing sort last and are skipped by the caller anyway.
+ */
+function cmpEdgeGeometry(
+  a: LayoutEdge,
+  b: LayoutEdge,
+  boxOf: (id: string) => EdgeBox | undefined,
+): number {
+  const key = (e: LayoutEdge): number[] => {
+    const from = boxOf(e.from);
+    const to = boxOf(e.to);
+    if (!from || !to) return [Infinity];
+    return [
+      Math.min(from.y, to.y),
+      Math.max(from.y, to.y),
+      Math.min(from.x, to.x),
+      Math.max(from.x, to.x),
+    ];
+  };
+  const ka = key(a);
+  const kb = key(b);
+  for (let i = 0; i < Math.max(ka.length, kb.length); i++) {
+    const d = (ka[i] ?? 0) - (kb[i] ?? 0);
+    if (d !== 0 && !Number.isNaN(d)) return d;
+  }
+  return cmpEdgeId(a, b) || (a.kind ?? "") < (b.kind ?? "")
+    ? -1
+    : (a.kind ?? "") > (b.kind ?? "")
+      ? 1
+      : 0;
 }
 
 /**
@@ -338,26 +457,26 @@ function mixedEnd(
 }
 
 /**
- * Attempt a **mixed route**: a plain side stub on each clear endpoint, a
+ * Plan a **mixed route**: a plain side stub on each clear endpoint, a
  * top/bottom channel stub on each blocked one, joined by one vertical gutter
  * corridor. Reduces to the 2-waypoint side route when both ends are clear (that
- * case is already taken by `tryGutterRoute`, so this only fires when at least
- * one side stub is blocked). Verified whole against the obstacle set; applied
- * only if fully clear (never worse — AC-1).
+ * case is already taken by `planGutterRoute`, so this only fires when at least
+ * one side stub is blocked). Verified whole against the obstacle set; returns
+ * the polyline only if fully clear, so the caller never applies a worse route
+ * (AC-1).
  */
-function tryMixedRoute(
-  edge: LayoutEdge,
+function planMixedRoute(
   from: EdgeBox,
   to: EdgeBox,
   gutter: Gutter,
   obstacles: Rect[],
   nodes: LayoutNode[],
-): boolean {
+): Point[] | null {
   const forward = to.y >= from.y + from.height;
   const backward = from.y >= to.y + to.height;
   // Endpoints that overlap vertically have no clear inter-row channel between
   // them; leave such an edge straight (it rarely penetrates in a band layout).
-  if (!forward && !backward) return false;
+  if (!forward && !backward) return null;
 
   const src = mixedEnd(from, gutter, obstacles, nodes, forward, true);
   const tgt = mixedEnd(to, gutter, obstacles, nodes, forward, false);
@@ -369,12 +488,7 @@ function tryMixedRoute(
     ...tgt.elbows,
     tgt.port,
   ];
-  if (!polylineClearOf(path, obstacles)) return false;
-
-  edge.fromPoint = path[0];
-  edge.toPoint = path[path.length - 1];
-  edge.waypoints = path.slice(1, -1);
-  return true;
+  return polylineClearOf(path, obstacles) ? path : null;
 }
 
 /** Midpoint between two boxes' centres on the x axis — the yardstick for "nearest corridor". */
@@ -463,18 +577,17 @@ function tryCorridorRoute(
 }
 
 /**
- * Attempt a side-gutter route. Attaches source/target ports to the gutter side
+ * Plan a side-gutter route. Attaches source/target ports to the gutter side
  * of each node, runs horizontally out to the gutter, vertically along it, then
- * horizontally into the target. Applies (and returns true) only if all three
+ * horizontally into the target. Returns the polyline only if all three
  * segments are obstacle-free.
  */
-function tryGutterRoute(
-  edge: LayoutEdge,
+function planGutterRoute(
   from: EdgeBox,
   to: EdgeBox,
   gutter: Gutter,
   obstacles: Rect[],
-): boolean {
+): Point[] | null {
   const sourcePort: Point = {
     x: gutter.side === "right" ? from.x + from.width : from.x,
     y: from.y + from.height / 2,
@@ -485,13 +598,8 @@ function tryGutterRoute(
   };
   const w0: Point = { x: gutter.x, y: sourcePort.y };
   const w1: Point = { x: gutter.x, y: targetPort.y };
-
-  if (!polylineClearOf([sourcePort, w0, w1, targetPort], obstacles)) return false;
-
-  edge.fromPoint = sourcePort;
-  edge.toPoint = targetPort;
-  edge.waypoints = [w0, w1];
-  return true;
+  const path = [sourcePort, w0, w1, targetPort];
+  return polylineClearOf(path, obstacles) ? path : null;
 }
 
 /**
@@ -709,32 +817,41 @@ interface GutterAttach {
 }
 
 /**
- * Fan out the anchors of gutter corridors that touch the same node on the same
- * side (Issue #1927). `routeGroupedEdges` / `aggregateGroupTrunks` attach *every*
- * gutter edge to the node's mid-edge port (`y + height/2`), so two edges leaving
- * **or entering** one node on one side share that point and their horizontal stubs
- * run **collinearly** — near the node they render as one line, not N. This
- * distributes every attachment on a node/side across the node's edge height so each
- * edge gets its own stub.
+ * Fan out the anchors of every edge that touches the same node on the same
+ * side (Issue #1927, generalised in #2610). `routeGroupedEdges` /
+ * `aggregateGroupTrunks` attach *every* gutter edge to the node's mid-edge
+ * port (`y + height/2`), so two edges leaving **or entering** one node on one
+ * side share that point and their horizontal stubs run **collinearly** — near
+ * the node they render as one line, not N. This distributes the attachments
+ * on a node/side across the side so each edge gets its own stub.
+ *
+ * **Every** attachment on the side takes part, not only the gutter corridors
+ * this pass began with (#2610): an interior L (`routeOrthogonalEdges`) or a
+ * straight edge keeps the port `distributePorts` gave it, and once the
+ * gutter edges are fanned over the same side independently of those, a fanned
+ * position lands on a port that is still in use — two edges into one card
+ * sharing the drop into it, which is exactly what the pass exists to prevent.
+ * One distribution per side, over everything attached there, cannot collide
+ * with itself. A side nothing rerouted comes out where `distributePorts` put
+ * it (same positions, same order), so untouched diagrams are unchanged.
  *
  * Trunk siblings (same `trunkId`) share ONE target entry by design (the P2c-B
  * merge) — they count as a single attachment and move together, staying merged.
  *
- * Generalised for **mixed routes** (`tryMixedRoute`): an endpoint may anchor on a
- * node's **top/bottom** border (a channel stub) rather than its left/right border
- * (a side stub). Left/right attachments fan out across the node *height* (vary y);
- * top/bottom attachments fan across the node *width* (vary x). A 2-waypoint side
- * route classifies exactly as before, so its result is byte-identical.
+ * Left/right attachments fan out across the node *height* (vary y);
+ * top/bottom attachments fan across the node *width* (vary x). Attachments
+ * are ordered by where the route goes next — the coordinate, along the side,
+ * of the first bend away from the port (for a straight edge, its far end) —
+ * so the fan nests and stubs do not cross each other at the card.
  *
- * Runs *after* `distributeGutterLanes` so the lane x's are final. Only a node/side
- * with >= 2 attachments moves; a lone one keeps its mid-edge port (no churn).
- * Attachments are ordered by corridor far-end y so the fan nests, minimising
- * stub/vertical crossings (crossings are right-angle and harmless; only penetration
- * is a hard fail).
+ * Runs *after* `distributeGutterLanes` so the lane x's are final. Only a
+ * node/side with >= 2 attachments moves; a lone one keeps its port (no churn).
  *
- * Penetration-safe: each restubbed route is verified against the obstacle set and a
- * move is applied only if every edge in the attachment stays clear, else the anchor
- * is left at mid-edge (never worse — AC-1 preserved).
+ * Penetration-safe: each restubbed route is verified against the obstacle set
+ * and a move is applied only if every edge in the attachment stays clear, else
+ * the anchor is left where it was (never worse — AC-1 preserved). A stub
+ * perpendicular to the side carries its adjacent bend along, so the route
+ * keeps its shape; a slanted first segment (a straight edge) just re-aims.
  *
  * The fan is spread over the side's **attachable spans** (#2608) — what the
  * shape's outline covers, minus the chrome keep-outs — through the same
@@ -779,29 +896,29 @@ export function fanOutGutterPorts(
 
   for (const e of layoutEdges) {
     if (e.ghost || e.cyclic) continue;
-    const corridor = gutterCorridor(e);
-    if (!corridor) continue;
     const from = boxOf(e.from);
     const to = boxOf(e.to);
     if (!from || !to) continue;
-    const wps = e.waypoints!;
-    // Corridor ends: `[corridor.i]` is toward the source, `[corridor.i + 1]`
-    // toward the target — so each end nests by the corridor's *far* y.
-    const srcFarY = wps[corridor.i + 1].y;
-    const tgtFarY = wps[corridor.i].y;
-    // Source end anchors wherever `fromPoint` sits (side or top/bottom).
-    push(from, attachSide(from, e.fromPoint), { edges: [e], end: "source", sortKey: srcFarY });
+    // Only an anchor that sits on a side can be fanned along it.
+    const srcSide = sideOf(from, e.fromPoint);
+    const tgtSide = sideOf(to, e.toPoint);
+    const pts = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+    if (srcSide) {
+      push(from, srcSide, { edges: [e], end: "source", sortKey: bendKey(pts, srcSide) });
+    }
+    if (!tgtSide) continue;
+    const tgtKey = bendKey([...pts].reverse(), tgtSide);
     // Target end: a trunk's siblings share one entry (unique per `trunkId`), so merge them.
     if (e.trunkId) {
       const slot = trunkSlot.get(e.trunkId);
       if (slot) slot.edges.push(e);
       else {
-        const a: GutterAttach = { edges: [e], end: "target", sortKey: tgtFarY };
+        const a: GutterAttach = { edges: [e], end: "target", sortKey: tgtKey };
         trunkSlot.set(e.trunkId, a);
-        push(to, attachSide(to, e.toPoint), a);
+        push(to, tgtSide, a);
       }
     } else {
-      push(to, attachSide(to, e.toPoint), { edges: [e], end: "target", sortKey: tgtFarY });
+      push(to, tgtSide, { edges: [e], end: "target", sortKey: tgtKey });
     }
   }
 
@@ -848,13 +965,19 @@ export function fanOutGutterPorts(
         const t = varyY ? node.y + node.height * along : node.x + node.width * along;
         const anchor: Point = varyY ? { x: fixed, y: t } : { x: t, y: fixed };
         // Restub every edge in the attachment, verify all clear, then apply
-        // atomically (a trunk moves all its siblings' shared entry together). The
-        // waypoint adjacent to the port keeps its far coordinate and takes the
-        // fanned one, so the stub stays orthogonal.
+        // atomically (a trunk moves all its siblings' shared entry together). A
+        // bend adjacent to the port that shares its coordinate along the side
+        // (a perpendicular stub) takes the fanned one too, so the stub stays
+        // orthogonal; a slanted first segment, or a straight edge, just re-aims.
         const moved = a.edges.map((e) => {
-          const wps = [...e.waypoints!];
+          const wps = [...(e.waypoints ?? [])];
+          const port = a.end === "source" ? e.fromPoint : e.toPoint;
           const idx = a.end === "source" ? 0 : wps.length - 1;
-          wps[idx] = varyY ? { x: wps[idx].x, y: t } : { x: t, y: wps[idx].y };
+          const bend = wps[idx];
+          const perpendicular =
+            bend !== undefined &&
+            (varyY ? Math.abs(bend.y - port.y) < 1e-6 : Math.abs(bend.x - port.x) < 1e-6);
+          if (perpendicular) wps[idx] = varyY ? { x: bend.x, y: t } : { x: t, y: bend.y };
           return a.end === "source"
             ? { e, fromPoint: anchor, toPoint: e.toPoint, waypoints: wps }
             : { e, fromPoint: e.fromPoint, toPoint: anchor, waypoints: wps };
@@ -866,7 +989,7 @@ export function fanOutGutterPorts(
           for (const m of moved) {
             m.e.fromPoint = m.fromPoint;
             m.e.toPoint = m.toPoint;
-            m.e.waypoints = m.waypoints;
+            m.e.waypoints = m.waypoints.length > 0 ? m.waypoints : m.e.waypoints;
           }
         }
       });
@@ -928,17 +1051,39 @@ function gutterCorridor(edge: LayoutEdge): GutterCorridor | null {
 }
 
 /**
- * Which edge of `node` a route's port anchors on. Side ports (a 2-waypoint route
- * or a mixed route's clear end) sit exactly on the left/right border; a mixed
- * route's channel end sits on the top/bottom border at the node's centre-x. Check
- * left/right first so a side port always classifies as such.
+ * Which edge of `node` a port sits on, or null when it sits on none (an
+ * endpoint seated inside a shape's outline, say). Check left/right first so a
+ * corner classifies as a side port, the way every gutter route anchors.
  */
-function attachSide(node: EdgeBox, port: Point): "left" | "right" | "top" | "bottom" {
-  const eps = 1e-6;
-  if (port.x <= node.x + eps) return "left";
-  if (port.x >= node.x + node.width - eps) return "right";
-  if (port.y <= node.y + eps) return "top";
-  return "bottom";
+function sideOf(node: EdgeBox, port: Point): NodeSide | null {
+  const eps = 0.5;
+  const withinY = port.y >= node.y - eps && port.y <= node.y + node.height + eps;
+  const withinX = port.x >= node.x - eps && port.x <= node.x + node.width + eps;
+  if (withinY && Math.abs(port.x - node.x) < eps) return "left";
+  if (withinY && Math.abs(port.x - (node.x + node.width)) < eps) return "right";
+  if (withinX && Math.abs(port.y - node.y) < eps) return "top";
+  if (withinX && Math.abs(port.y - (node.y + node.height)) < eps) return "bottom";
+  return null;
+}
+
+/**
+ * Where a route heads after leaving a port on `side`: the coordinate along the
+ * side of the first point that differs from the port along that axis — the
+ * corridor's far end for a gutter route, the channel's far end for an interior
+ * L, the other endpoint for a straight edge. Fans nest when ordered by it.
+ * `pts` starts at the port.
+ */
+function bendKey(pts: readonly Point[], side: NodeSide): number {
+  const varyY = side === "left" || side === "right";
+  const port = pts[0];
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i];
+    if (varyY ? Math.abs(p.y - port.y) > 1e-6 : Math.abs(p.x - port.x) > 1e-6) {
+      return varyY ? p.y : p.x;
+    }
+  }
+  const last = pts[pts.length - 1];
+  return varyY ? last.y : last.x;
 }
 
 /**

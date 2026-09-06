@@ -312,10 +312,14 @@ describe("routeGroupedEdges (#1859, P2c-A)", () => {
       const e = edge(res, from, to);
       expect(e.waypoints).toHaveLength(2);
       // Both waypoints share the gutter x (a vertical corridor), and it sits
-      // outside every node card.
+      // outside every node card — on whichever side is cheaper (#2610), so
+      // either gutter satisfies this.
       expect(e.waypoints![0].x).toBe(e.waypoints![1].x);
-      const maxRight = Math.max(...[...res.nodes.values()].map((n) => n.x + n.width));
-      expect(e.waypoints![0].x).toBeGreaterThan(maxRight);
+      const nodes = [...res.nodes.values()];
+      const maxRight = Math.max(...nodes.map((n) => n.x + n.width));
+      const minLeft = Math.min(...nodes.map((n) => n.x));
+      const x = e.waypoints![0].x;
+      expect(x > maxRight || x < minLeft).toBe(true);
     }
   });
 
@@ -454,15 +458,21 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
     const eCat = edge(res, "Billing", "Catalog");
     const eDb = edge(res, "Billing", "ShopDB");
     const eStr = edge(res, "Billing", "Stripe");
-    // Fanned: the three source anchors are now at distinct y (own stub each).
-    const ys = new Set([eCat.fromPoint.y, eDb.fromPoint.y, eStr.fromPoint.y]);
-    expect(ys.size).toBe(3);
+    // Fanned: no two anchors on one side of Billing share a y (own stub each).
+    // The side is chosen per edge since #2610, so key the check by side.
+    const from = res.nodes.get("Billing")!;
+    const bySide = new Map<number, number[]>();
+    for (const e of [eCat, eDb, eStr]) {
+      const list = bySide.get(e.fromPoint.x) ?? [];
+      list.push(e.fromPoint.y);
+      bySide.set(e.fromPoint.x, list);
+    }
+    for (const ys of bySide.values()) expect(new Set(ys).size).toBe(ys.length);
     // The corridor top elbow follows the anchor y (the stub is truly horizontal).
     for (const e of [eCat, eDb, eStr]) expect(e.waypoints![0].y).toBe(e.fromPoint.y);
-    // Anchors stay on Billing's right edge (same x), inside its height.
-    const from = res.nodes.get("Billing")!;
+    // Anchors stay on Billing's left or right edge, inside its height.
     for (const e of [eCat, eDb, eStr]) {
-      expect(e.fromPoint.x).toBe(from.x + from.width);
+      expect([from.x, from.x + from.width]).toContain(e.fromPoint.x);
       expect(e.fromPoint.y).toBeGreaterThan(from.y);
       expect(e.fromPoint.y).toBeLessThan(from.y + from.height);
     }
@@ -547,7 +557,12 @@ organization Org {
     // those legitimately merge at one point).
     let sawMixedNode = false;
     for (const n of res.nodes.values()) {
-      const attachYs: number[] = [];
+      // Anchors per side of n (#2610 routes on either gutter): a y may repeat
+      // across the two sides, never within one.
+      const attachYs = new Map<"left" | "right", number[]>([
+        ["left", []],
+        ["right", []],
+      ]);
       let hasIn = false;
       let hasOut = false;
       for (const e of res.edges) {
@@ -555,17 +570,18 @@ organization Org {
         if (e.waypoints[0].x !== e.waypoints[1].x) continue;
         const cx = e.waypoints[0].x;
         if (!(cx >= n.x + n.width || cx <= n.x)) continue; // gutter side of n
+        const side = cx >= n.x + n.width ? "right" : "left";
         if (e.from === n.id) {
-          attachYs.push(e.fromPoint.y);
+          attachYs.get(side)!.push(e.fromPoint.y);
           hasOut = true;
         }
         if (e.to === n.id && !e.trunkId) {
-          attachYs.push(e.toPoint.y);
+          attachYs.get(side)!.push(e.toPoint.y);
           hasIn = true;
         }
       }
       // Distinct anchors ⇒ no two stubs collinear at this node's edge.
-      expect(new Set(attachYs).size).toBe(attachYs.length);
+      for (const ys of attachYs.values()) expect(new Set(ys).size).toBe(ys.length);
       if (hasIn && hasOut) sawMixedNode = true;
     }
     // Guard that the collapsed fixture actually exercises the entry-vs-exit case.
@@ -945,5 +961,111 @@ describe("P2c routing after seam placement (#2176, TPL-1927)", () => {
     // its own edges, which is what keeps the count at zero above.
     expect(framesOfNode(shared, frames).size).toBeGreaterThanOrEqual(1);
     expect(totalPenetrations(res)).toBe(0);
+  });
+});
+
+describe("gutter side by capacity (#2610)", () => {
+  // Five sources in one band and one target two bands down, with a full-width
+  // band between them so every edge needs a gutter. Under right-first they all
+  // piled onto the right; priced by occupancy and length they spread.
+  const FAN = `
+system Shop {
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  service D { label "D" }
+  service E { label "E" }
+  service Wall1 { label "Wall 1" }
+  service Wall2 { label "Wall 2" }
+  service Wall3 { label "Wall 3" }
+  database Store { label "Store" }
+  A -> Store
+  B -> Store
+  C -> Store
+  D -> Store
+  E -> Store
+  A -> Wall1
+}
+organization Org {
+  team "src" { label "Sources" owns A owns B owns C owns D owns E }
+  team "wall" { label "Wall" owns Wall1 owns Wall2 owns Wall3 }
+}
+`;
+  const FAN_OWNER = shopOwner([
+    ["A", "src"],
+    ["B", "src"],
+    ["C", "src"],
+    ["D", "src"],
+    ["E", "src"],
+    ["Wall1", "wall"],
+    ["Wall2", "wall"],
+    ["Wall3", "wall"],
+  ]);
+  // Which gutter an edge's vertical corridor runs in: the pair of consecutive
+  // waypoints sharing an x, for a plain or a mixed route. Null for an interior
+  // L (its waypoints share a y) and for a straight edge.
+  const sideOf = (res: LayoutResult, e: LayoutEdge): "left" | "right" | null => {
+    const wps = e.waypoints ?? [];
+    const corridor = wps.findIndex(
+      (w, i) => i + 1 < wps.length && w.x === wps[i + 1].x && w.y !== wps[i + 1].y,
+    );
+    if (corridor === -1) return null;
+    const nodes = [...res.nodes.values()];
+    const maxRight = Math.max(...nodes.map((n) => n.x + n.width));
+    const minLeft = Math.min(...nodes.map((n) => n.x));
+    const x = wps[corridor].x;
+    return x > maxRight ? "right" : x < minLeft ? "left" : null;
+  };
+
+  it("spreads a fan-in over both gutters instead of piling it on the right", () => {
+    const res = layoutOf(FAN, FAN_OWNER, "team");
+    const sides = ["A", "B", "C", "D", "E"].map((from) => sideOf(res, edge(res, from, "Store")));
+    expect(sides).toContain("left");
+    expect(sides).toContain("right");
+    expect(totalPenetrations(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+  });
+
+  it("keeps the right gutter when both sides are equally free and equally far", () => {
+    // One centred source, one centred target, one wall between: the two
+    // candidates cost the same, and the tie keeps the side the pass always had.
+    const SINGLE = `
+system Shop {
+  service A { label "A" }
+  service Wall { label "Wall" }
+  database Store { label "Store" }
+  A -> Store
+}
+organization Org {
+  team "src" { label "Sources" owns A }
+  team "wall" { label "Wall" owns Wall }
+}
+`;
+    const res = layoutOf(
+      SINGLE,
+      shopOwner([
+        ["A", "src"],
+        ["Wall", "wall"],
+      ]),
+      "team",
+    );
+    expect(sideOf(res, edge(res, "A", "Store"))).toBe("right");
+  });
+
+  it("does not depend on the order the edges were declared in", () => {
+    const reversed = FAN.replace(
+      /  A -> Store\n  B -> Store\n  C -> Store\n  D -> Store\n  E -> Store\n/,
+      "  E -> Store\n  D -> Store\n  C -> Store\n  B -> Store\n  A -> Store\n",
+    );
+    expect(reversed).not.toBe(FAN);
+    const a = layoutOf(FAN, FAN_OWNER, "team");
+    const b = layoutOf(reversed, FAN_OWNER, "team");
+    const routes = (res: LayoutResult) =>
+      ["A", "B", "C", "D", "E"].map((from) => {
+        const e = edge(res, from, "Store");
+        return [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+      });
+    expect(routes(a)).toEqual(routes(b));
   });
 });

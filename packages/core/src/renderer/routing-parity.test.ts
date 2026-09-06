@@ -339,8 +339,11 @@ describe("shared routing chain — grouped output is unchanged (#2362, AC-5 repl
     // width) and taller (2-line description) cards shift the grouped layout;
     // penetration/overlap invariants above are what must not regress.
     ["en/getting-started/index.krs", "team", 5],
-    ["en/feature-samples/team-ownership.krs", "team", 3],
-    ["en/feature-samples/boundary-clusters.krs", "boundary", 7],
+    // Re-pinned 3 -> 2 and 7 -> 2 with #2610: the gutter side is chosen by
+    // occupancy and length instead of right-first, so a detour whose
+    // endpoints sit nearer the left takes the left gutter and crosses less.
+    ["en/feature-samples/team-ownership.krs", "team", 2],
+    ["en/feature-samples/boundary-clusters.krs", "boundary", 2],
     ["en/feature-samples/boundary-multi-membership.krs", "boundary", 0],
   ];
 
@@ -423,6 +426,45 @@ describe("multi-system root view routes its edges (#2363)", () => {
     // layer is reachable on this surface at all (TPL-1983: the same view state
     // must behave the same across surfaces).
     expect(layoutOf(MODEL).crossingMarks).toBeDefined();
+  });
+
+  it("keeps every system's routes inside its own strip, on either side (#2610)", () => {
+    // Two systems whose fan-ins need both gutters: a left lane of the second
+    // system must not run into the first system's right-side routes.
+    const fan = (sys: string) => {
+      const sources = ["A", "B", "C", "D", "E", "F"].map((id) => `  service ${sys}${id}`);
+      const walls = ["W1", "W2", "W3"].map((id) => `  service ${sys}${id}`);
+      const edges = ["A", "B", "C", "D", "E", "F"].map((id) => `  ${sys}${id} -> ${sys}Store`);
+      const walled = ["A", "B", "C"].map((id) => `  ${sys}${id} -> ${sys}W1`);
+      const body = [...sources, ...walls, `  database ${sys}Store`, ...edges, ...walled];
+      return `system ${sys} {\n${body.join("\n")}\n}`;
+    };
+    const res = layoutOfSource(`${fan("Left")}\n${fan("Right")}`);
+    const systems = res.containers.filter((c) => !c.group && !c.ghost).sort((a, b) => a.x - b.x);
+    expect(systems).toHaveLength(2);
+    expect(res.edges.some((e) => (e.waypoints?.length ?? 0) > 0)).toBe(true);
+    // A system's strip is its container plus everything its edges reach — a
+    // gutter route runs outside the container on either side. Strips must not
+    // overlap, or one system's lanes would be drawn across the other's.
+    const strips = systems.map((c) => {
+      const inside = (id: string) => {
+        const n = res.nodes.get(id)!;
+        return n.x >= c.x && n.x + n.width <= c.x + c.width;
+      };
+      let min = c.x;
+      let max = c.x + c.width;
+      for (const e of res.edges) {
+        if (e.ghost || e.cyclic || !inside(e.from)) continue;
+        for (const p of pointsOf(e)) {
+          min = Math.min(min, p.x);
+          max = Math.max(max, p.x);
+        }
+      }
+      return { min, max };
+    });
+    expect(strips[0].max).toBeLessThan(strips[1].min);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
   });
 
   it("routes each system against its own bounds, not the whole canvas", () => {
