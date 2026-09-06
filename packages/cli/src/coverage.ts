@@ -39,6 +39,24 @@ function formatAsMarkdown(report: CoverageReport): string {
         `| ${i.infraId} | ${i.kind} | ${i.leaves} | ${i.mappedByEntity} | ${i.referencedByResource} | ${i.unmappedButReferenced.join(", ") || "—"} | ${i.unreferenced.join(", ") || "—"} |`,
       );
     }
+    // Recorded-vs-projected table relations (#2723): only a `database` has a
+    // projection to diff, so the section follows the same "no layer, no table"
+    // rule as the physical table above.
+    const stores = report.physical.infra.filter((i) => i.kind === "database");
+    if (stores.length > 0) {
+      const pairs = (rels: readonly { from: string; to: string }[]): string =>
+        rels.map((r) => `${r.from}→${r.to}`).join(", ") || "—";
+      lines.push("");
+      lines.push(
+        "| database | recorded-without-projection | projection-without-recorded | direction-mismatch | kind-mismatch |",
+      );
+      lines.push("| --- | --- | --- | --- | --- |");
+      for (const s of stores) {
+        lines.push(
+          `| ${s.infraId} | ${pairs(s.recordedWithoutProjection)} | ${pairs(s.projectionWithoutRecorded)} | ${pairs(s.directionMismatch)} | ${pairs(s.kindMismatch)} |`,
+        );
+      }
+    }
     lines.push("");
     const tableless = report.physical.tablelessEntities;
     lines.push(

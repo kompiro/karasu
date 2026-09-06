@@ -317,8 +317,12 @@ karasu subtree Order arch.krs --with-ancestors   # keep the system/service conte
 `coverage` and `subtree` are the structural primitives behind the
 architecture-reverse workflow: they statically analyze the produced `.krs`
 model — `coverage` measures per-domain depth (usecases / entities / resources /
-edges) so a thin domain is detected quantitatively, and `subtree` slices the
-model to one node so it can be re-fed for focused refinement.
+edges) so a thin domain is detected quantitatively, reports how much of each
+declared store the logical model reaches, and diffs the table relations a
+`database` records against the entity relations projected onto it (a declared
+foreign key the entity layer is missing shows up as a `recorded-without-projection`
+pair), and `subtree` slices the model to one node so it can be re-fed for
+focused refinement.
 
 ## VS Code extension
 

@@ -91,6 +91,7 @@ export {
   type CoverageOptions,
   type PhysicalCoverage,
   type InfraCoverage,
+  type LeafRelation,
   type TablelessEntity,
 } from "./view/coverage-extract.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";

@@ -128,6 +128,67 @@ describe("coverage CLI", () => {
     expect(out).not.toContain("no table mapping");
   });
 
+  // Recorded vs projected table relations (#2723).
+  it("adds a table-relation diff per database, in the same pair shape as the JSON (TC-C5)", async () => {
+    const er = join(tmpDir, "er.krs");
+    await writeFile(
+      er,
+      `
+system EC {
+  database OrderDB {
+    table orders { orders -> customers  orders -> warehouses }
+    table customers {}
+    table warehouses {}
+    table audit {}
+  }
+  service Svc {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+        Order -> Customer "placed by"
+        Order -> AuditEntry "audited by"
+      }
+      entity Customer { table OrderDB.customers }
+      entity AuditEntry { table OrderDB.audit }
+    }
+  }
+}
+`,
+      "utf-8",
+    );
+    await coverage(er, {});
+    const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(out).toContain(
+      "| database | recorded-without-projection | projection-without-recorded | direction-mismatch | kind-mismatch |",
+    );
+    const row = out.split("\n").find((l: string) => l.startsWith("| OrderDB | orders"))!;
+    expect(row).toBe("| OrderDB | orders→warehouses | orders→audit | — | — |");
+
+    stdoutSpy.mockClear();
+    await coverage(er, { format: "json" });
+    const parsed = JSON.parse(stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join(""));
+    expect(parsed.physical.infra[0]).toMatchObject({
+      infraId: "OrderDB",
+      recordedWithoutProjection: [{ from: "orders", to: "warehouses" }],
+      projectionWithoutRecorded: [{ from: "orders", to: "audit" }],
+      directionMismatch: [],
+      kindMismatch: [],
+    });
+  });
+
+  it("omits the table-relation section for a model whose infra has no database", async () => {
+    const q = join(tmpDir, "queue.krs");
+    await writeFile(
+      q,
+      `system S { queue Jobs { queue reindex } service Svc { domain D { usecase U { resource Jobs.reindex { operations create } } } } }`,
+      "utf-8",
+    );
+    await coverage(q, {});
+    const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(out).toContain("| infra | kind |");
+    expect(out).not.toContain("recorded-without-projection");
+  });
+
   it("carries the physical section through --format json", async () => {
     await coverage(krsPath, { format: "json" });
     const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
@@ -141,6 +202,10 @@ describe("coverage CLI", () => {
         referencedByResource: 1,
         unmappedButReferenced: ["OrderTable"],
         unreferenced: [],
+        recordedWithoutProjection: [],
+        projectionWithoutRecorded: [],
+        directionMismatch: [],
+        kindMismatch: [],
       },
     ]);
     expect(parsed.physical.tablelessEntities).toEqual([

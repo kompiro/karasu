@@ -199,6 +199,17 @@ whose target is a leaf of **another** `database` is not drawn on either canvas;
 it gets the ordinary `edge-endpoint-not-at-scope` warning, since a `table`'s
 peers are its own store's leaves.
 
+**The diff is reported, not only drawn.** `karasu coverage` compares the two
+sets per `database` and reports four lists of ordered `{from, to}` leaf pairs
+(the same shape as `unmappedButReferenced`, in the physical section and in
+`--format json`): `recordedWithoutProjection` (the store states a relation the
+logical model lacks: mechanically repairable), `projectionWithoutRecorded`
+(application-level integrity: a fact, not a defect), `directionMismatch` and
+`kindMismatch` (the two disagreements the canvas resolves toward the recorded
+side, kept visible only here). The axis is recorded-vs-projected, so on a
+translated model the first list is exactly the declared foreign keys the entity
+layer is missing; the report does not compare against the DDL.
+
 Endpoint resolution is the entity view's: the relation must start at the entity
 that declares it, a bare target is intra-domain only, and a qualified
 `DomainId.EntityId` target resolves within the owning system. A relation the
