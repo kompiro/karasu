@@ -88,6 +88,7 @@ karasu の論理/物理分離では、レベルをまたぐ写像の多くが**�
 
 - `packages/core/src/view/coverage-extract.test.ts`（`tablelessEntities` / `unmappedButReferenced` の分離）
 - `packages/core/src/view/view-extract.test.ts` › store-scoped ER projection onto a database canvas (#2721) › does not project a relation to a tableless entity (TC-A4, TPL-2585) ／ puts a relation mapping into two different stores on neither canvas (TC-A5)（写らない分が写らないことの固定）
+- `packages/core/src/view/coverage-extract.test.ts` › recorded vs projected table relations (#2723)（記録側と投影側の差を数える経路。修復可能な欠落と事実としての欠落が別の一覧に出る）
 
 まだ書かれていない検証は、そのスライスと一緒に着地する（[#2585](https://github.com/kompiro/karasu/issues/2585)）。
 **未作成のファイルは本節に列挙しない** — 存在しない address を指す記録は、読み直したときに

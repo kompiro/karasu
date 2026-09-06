@@ -1284,23 +1284,16 @@ function extractSystemDrillDownView(
 
   // The last node in ancestorChain is the container; ancestors are everything before it
   const containerNode = ancestorChain.pop()!;
-  const childIds = new Set(containerNode.children.map(nodeId));
-  const ownEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
 
   // Edges anchored inside a child block draw on this canvas, where the
   // declaring block is a node: intra-service domain-to-domain edges on the
   // service view, and service-anchored edges when this container is the
-  // system (#2223).
-  const drawnKeys = new Set(ownEdges.map(drawnEdgeKey));
-  // A `database` canvas also draws the entity relations that land on its
-  // leaves, unioned with the edges the `.krs` records there (#2721, #2722).
-  // Every system is a resolution scope: an entity may map into a store
-  // declared in another system, and the `__unassigned__` pseudo-system is how
-  // a no-system file's orphan domains reach here.
+  // system (#2223). A `database` canvas also draws the entity relations that
+  // land on its leaves, unioned with the edges the `.krs` records there
+  // (#2721, #2722).
   const childEdges = unionProjectedRelations(
-    containerNode,
-    systems.map((s) => buildDomainEntityIndex(s)),
-    [...ownEdges, ...collectAnchoredPeerEdges(containerNode.children, drawnKeys)],
+    containerCanvasEdges(containerNode),
+    projectStoreRelations(containerNode, systems),
   );
 
   // Ghost users/systems/domains: only for service view.
@@ -1565,18 +1558,10 @@ const PROJECTED_TAG = "projected";
  * declaration order. Returns the whole edge list for the canvas.
  */
 function unionProjectedRelations(
-  store: KrsNode,
-  scopes: readonly (readonly DomainEntityEntry[])[],
   recorded: readonly KrsEdge[],
+  projected: readonly KrsEdge[],
 ): KrsEdge[] {
   const edges: KrsEdge[] = [...recorded];
-  if (store.kind !== "database") return edges;
-  const leafIds = new Set(store.children.map(nodeId));
-  const leafOf = (entity: KrsNode): string | undefined => {
-    const ref = entity.kind === "entity" ? entity.tableRef : undefined;
-    if (!ref || ref.parent !== store.id || !leafIds.has(ref.child)) return undefined;
-    return ref.child;
-  };
   const pairKey = (from: string, to: string): string => `${from}->${to}`;
   /** Ordered pair → index of the first recorded edge on it (label transfer target). */
   const recordedAt = new Map<string, number>();
@@ -1588,8 +1573,48 @@ function unionProjectedRelations(
     occupied.add(key);
     occupied.add(pairKey(e.to, e.from));
   });
-  const projectedPairs = new Set<string>();
-  for (const index of scopes) {
+  for (const edge of projected) {
+    const key = pairKey(edge.from, edge.to);
+    const at = recordedAt.get(key);
+    if (at !== undefined) {
+      // Same pair, same direction: the record survives; only a missing label
+      // is taken from the relation.
+      const rec = edges[at];
+      if (rec.label === undefined && edge.label !== undefined) {
+        edges[at] = { ...rec, label: edge.label };
+      }
+      continue;
+    }
+    if (occupied.has(key)) continue; // opposite direction recorded: record only, no label
+    edges.push(edge);
+  }
+  return edges;
+}
+
+/**
+ * The entity relations that land on `store`'s leaves, as `[projected]` edges —
+ * the projected side of the store canvas before the union above, one edge per
+ * ordered pair (first relation wins, in declaration order). Every system is a
+ * resolution scope: an entity may map into a store declared in another system,
+ * and the `__unassigned__` pseudo-system is how a no-system file's orphan
+ * domains reach here. Empty for anything but a `database`.
+ *
+ * Exported for `coverage`, which diffs this set against
+ * {@link containerCanvasEdges} (#2723) — the report and the canvas must read
+ * the same projection, or the report would describe edges nobody sees.
+ */
+export function projectStoreRelations(store: KrsNode, systems: readonly KrsNode[]): KrsEdge[] {
+  if (store.kind !== "database") return [];
+  const leafIds = new Set(store.children.map(nodeId));
+  const leafOf = (entity: KrsNode): string | undefined => {
+    const ref = entity.kind === "entity" ? entity.tableRef : undefined;
+    if (!ref || ref.parent !== store.id || !leafIds.has(ref.child)) return undefined;
+    return ref.child;
+  };
+  const seen = new Set<string>();
+  const projected: KrsEdge[] = [];
+  for (const system of systems) {
+    const index = buildDomainEntityIndex(system);
     for (const entry of index) {
       for (const entity of entry.entities.values()) {
         const from = leafOf(entity);
@@ -1602,26 +1627,30 @@ function unionProjectedRelations(
           if (!target) continue; // bare foreign id / unresolved — dropped, as in the entity view
           const to = leafOf(target);
           if (to === undefined) continue;
-          const key = pairKey(from, to);
-          const at = recordedAt.get(key);
-          if (at !== undefined) {
-            // Same pair, same direction: the record survives; only a missing
-            // label is taken from the relation.
-            const rec = edges[at];
-            if (rec.label === undefined && edge.label !== undefined) {
-              edges[at] = { ...rec, label: edge.label };
-            }
-            continue;
-          }
-          if (occupied.has(key)) continue; // opposite direction recorded: record only, no label
-          if (projectedPairs.has(key)) continue;
-          projectedPairs.add(key);
-          edges.push({ ...edge, from, to, tags: [...edge.tags, PROJECTED_TAG] });
+          const key = `${from}->${to}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          projected.push({ ...edge, from, to, tags: [...edge.tags, PROJECTED_TAG] });
         }
       }
     }
   }
-  return edges;
+  return projected;
+}
+
+/**
+ * The edges a container's own canvas draws between its children before any
+ * derivation: the edges declared at the container's scope whose endpoints are
+ * both children, plus the edges anchored inside a child block that the parent
+ * canvas may lift (#2223). For a `database` this is the **recorded** side of
+ * the store's ER view — hand-written `table` edges and the foreign keys
+ * `translate --from db` emitted — which is why `coverage` reads it (#2723).
+ */
+export function containerCanvasEdges(container: KrsNode): KrsEdge[] {
+  const childIds = new Set(container.children.map(nodeId));
+  const ownEdges = container.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+  const drawnKeys = new Set(ownEdges.map(drawnEdgeKey));
+  return [...ownEdges, ...collectAnchoredPeerEdges(container.children, drawnKeys)];
 }
 
 /**
