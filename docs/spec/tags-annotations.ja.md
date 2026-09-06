@@ -332,11 +332,19 @@ register を分ける理由は、所属のセマンティクスがアーキタ�
 | `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線 |
 | `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合 | `stroke-width: 2`、ラベル `"W"` |
 | `[read]` | usecase→resource の合成エッジで read-only と分類される場合（write 動詞なし、または `operations` 省略） | `stroke-width: 1.5`、ラベル `"R"` |
+| `[inferred]` | `translate --from db` が **Soft FK**（`REFERENCES` / `FOREIGN KEY` 宣言の無い `<stem>_id` / `<stem>_code` 列）から導いた entity 関連。明示 FK 由来の関連は無タグ（確認済み） | 薄いグレー（dark `#94A3B8` / light `#64748B`）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
+| `[projected]` | `database` キャンバスが、両端がそのストアへ対応する `entity` 関連から導いた `table` → `table` エッジ（[syntax.ja.md](./syntax.ja.md#ストアスコープの-er-ビューdatabase-キャンバスへの-entity-関連の投影) 参照） | スカイブルー（dark `#38BDF8` / light `#0369A1`）。**色のみ** — 線種は `[sync]` / `[async]` が所有する |
 
 > `[implicit]` は色（アンバー）で「派生」を表し、線種は同期/非同期の区別に使う。
 > 同一サービスペア間に sync と async の両方のドメインエッジがある場合は、kind ごとに別の暗黙エッジとして派生される。
 >
 > `[write]` / `[read]` は usecase→resource の合成エッジに対してのみ自動付与される。**明示的なエッジに手で書かないこと** — 構文上はパーサが受け付けるが、意味（対象 resource の `operations` を write-dominates 分類した結果）は合成エッジに対してしか成立しない。線幅の階層は意図的に `read (1.5) < write (2) < cyclic (2.5)` の順で、循環依存が最も目立つ軸として残るようにしている。
+>
+> `[inferred]` はこの表の他のタグと性質が異なる。`[implicit]` / `[read]` / `[write]` / `[cyclic]` / `[projected]` は描画時に付与され **`.krs` には現れない**が、`[inferred]` は `translate --from db` が**出力ソースに書き込み**、そのまま残る。関連が実在すると確認できたら `[inferred]` を 1 つ消せば確認済みのエッジになる。
+>
+> `[projected]` は `[implicit]` と同じ register（描画時付与）で、その鏡像である。`[implicit]` が domain エッジを service 水準へ畳み**上げる**のに対し、`[projected]` は entity 関連を対応先の `table` leaf へ畳み**下げる**。同じキャンバス上の無タグのエッジは `.krs` に記録されたもの（手書き、または宣言 FK からの出力）なので、無タグ = **確認済み**、`[projected]` = **entity 層の断定**と読む。軸は「誰が確認したか」であって「どのツールが書いたか」ではない。
+
+> Related TPLs: [TPL-1944](../test-perspectives/TPL-1944-inferred-tag-only-soft-fk.md) — `translate --from db` が `[inferred]` を付けるのは寄与する FK がすべて Soft FK のときだけで、明示 FK が 1 本あれば無タグ（確認済み）のまま。タグは描画上の効果を持たなければならない。[TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — 派生の自動タグは、自身が所有しない `kind`（`[sync]` / `[async]`）次元と直交していなければならない。[TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — `[projected]` が示す投影は任意の `table` 対応を通るので、そのビューは写らなかった分を数え、完全な ER 図であると主張しない。
 
 ### カスタマイズ例
 

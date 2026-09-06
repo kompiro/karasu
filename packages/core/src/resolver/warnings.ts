@@ -290,7 +290,14 @@ function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelector
  * source by `translate --from db` and persists until curated away —
  * warning on these would flag the tool's own vocabulary as foreign.
  */
-export const SYSTEM_ASSIGNED_TAGS = ["implicit", "cyclic", "read", "write", "inferred"];
+export const SYSTEM_ASSIGNED_TAGS = [
+  "implicit",
+  "cyclic",
+  "read",
+  "write",
+  "inferred",
+  "projected",
+];
 
 /**
  * A builtin tag written on a node kind outside its declared `appliesTo`

@@ -1293,6 +1293,17 @@ function extractSystemDrillDownView(
   // system (#2223).
   const drawnKeys = new Set(ownEdges.map(drawnEdgeKey));
   const childEdges = [...ownEdges, ...collectAnchoredPeerEdges(containerNode.children, drawnKeys)];
+  // A `database` canvas also draws the entity relations that land on its
+  // leaves (#2721). Every system is a resolution scope: an entity may map into
+  // a store declared in another system, and the `__unassigned__` pseudo-system
+  // is how a no-system file's orphan domains reach here.
+  childEdges.push(
+    ...projectEntityRelationsOntoStore(
+      containerNode,
+      systems.map((s) => buildDomainEntityIndex(s)),
+      childEdges,
+    ),
+  );
 
   // Ghost users/systems/domains: only for service view.
   // With system ID in path: path.length - startIndex === 1 (e.g. ["ECPlatform", "ECommerce"]).
@@ -1498,6 +1509,85 @@ function buildDomainEntityIndex(system: KrsNode): DomainEntityEntry[] {
   for (const child of system.children) walk(child, [system.id]);
   domainEntityIndexCache.set(system, index);
   return index;
+}
+
+/**
+ * The tag the store canvas stamps on an edge it derived from an `entity`
+ * relation (#2721). System-assigned, in the same register as `[implicit]`:
+ * never present in `.krs` source. `[implicit]` rolls domain edges **up** to
+ * the service level; `[projected]` rolls entity relations **down** onto the
+ * `table` leaves they map to. Colour only in the builtin sheet — line style
+ * stays owned by `[sync]` / `[async]` (TPL-510).
+ */
+const PROJECTED_TAG = "projected";
+
+/**
+ * Project `entity` relations onto a `database` canvas as `table` → `table`
+ * edges (#2721, slice A of #2585).
+ *
+ * A relation projects when **both** endpoints carry a `table <store>.<leaf>`
+ * mapping into `store`. Nothing is recorded in the `.krs`: the projection is
+ * a render-time derivation, so the store canvas — which drew its leaves with
+ * no relations at all — gains the edges with no edit to the model.
+ *
+ * Endpoint resolution is the entity view's, not a second copy of it: the
+ * relation must start at the entity that declares it ({@link isAnchoredAt},
+ * the direction rule), a bare target is intra-domain only, and a qualified
+ * `DomainId.EntityId` target goes through {@link resolveQualifiedEntity}
+ * within the same scope (TPL-1936). A relation the entity view would not draw
+ * is not projected either, so the two views cannot disagree about one edge.
+ *
+ * What does **not** project, by design (TPL-2585): a relation whose endpoint
+ * has no `table` mapping, and a relation whose endpoints map into two
+ * different stores (it appears on neither canvas). The view is therefore not
+ * a complete ER diagram of the entity layer; `coverage` counts the tableless
+ * remainder.
+ *
+ * `scopes` are the per-system domain indexes the model resolves relations in
+ * (a no-system file reaches this canvas through the `__unassigned__`
+ * pseudo-system, so its orphan domains are one such scope). An edge the
+ * canvas already draws for the same ordered leaf pair (an authored
+ * `table` edge) suppresses the projection; the union rule that transfers a
+ * label onto it is slice B (#2722). Within the projection the first relation
+ * per ordered pair wins, in declaration order.
+ */
+function projectEntityRelationsOntoStore(
+  store: KrsNode,
+  scopes: readonly (readonly DomainEntityEntry[])[],
+  drawn: readonly KrsEdge[],
+): KrsEdge[] {
+  if (store.kind !== "database") return [];
+  const leafIds = new Set(store.children.map(nodeId));
+  const leafOf = (entity: KrsNode): string | undefined => {
+    const ref = entity.kind === "entity" ? entity.tableRef : undefined;
+    if (!ref || ref.parent !== store.id || !leafIds.has(ref.child)) return undefined;
+    return ref.child;
+  };
+  const pairKey = (from: string, to: string): string => `${from}->${to}`;
+  const taken = new Set(drawn.map((e) => pairKey(e.from, e.to)));
+  const projected: KrsEdge[] = [];
+  for (const index of scopes) {
+    for (const entry of index) {
+      for (const entity of entry.entities.values()) {
+        const from = leafOf(entity);
+        if (from === undefined) continue;
+        for (const edge of entity.edges) {
+          if (!isAnchoredAt(entity, edge)) continue; // #2501: origin = reference holder
+          const target = edge.to.includes(".")
+            ? resolveQualifiedEntity(edge.to, index)?.entity
+            : entry.entities.get(edge.to);
+          if (!target) continue; // bare foreign id / unresolved — dropped, as in the entity view
+          const to = leafOf(target);
+          if (to === undefined) continue;
+          const key = pairKey(from, to);
+          if (taken.has(key)) continue;
+          taken.add(key);
+          projected.push({ ...edge, from, to, tags: [...edge.tags, PROJECTED_TAG] });
+        }
+      }
+    }
+  }
+  return projected;
 }
 
 /**

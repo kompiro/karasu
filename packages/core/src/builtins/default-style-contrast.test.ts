@@ -106,8 +106,8 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin badge colors (%s the
   );
 
   it("finds the edge label color rules", () => {
-    // base edge + cyclic / implicit / inferred / delivers = 5 as of #2366.
-    expect(edgeRules.length).toBe(5);
+    // base edge + cyclic / implicit / inferred / delivers / projected = 6 as of #2721.
+    expect(edgeRules.length).toBe(6);
   });
 
   it.each(edgeRules.map((r) => [ruleLabel(r), r.properties["color"]] as const))(

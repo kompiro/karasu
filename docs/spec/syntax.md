@@ -156,6 +156,66 @@ system ECPlatform {
 
 > Related TPLs: [TPL-1415](../test-perspectives/TPL-1415-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync. [TPL-2200](../test-perspectives/TPL-2200-render-claim-names-its-view-level.md) — a claim that something "is rendered" names the view level it is rendered at, and both sides (the level it is promoted to, the level it stays in) are fenced; the unassigned-`resource` bullet above said only "rendered as an orphan node" and drifted for months (#2200).
 
+#### Store-scoped ER view (entity relations projected onto a `database` canvas)
+
+Drilling into a `database` shows its `table` leaves. That canvas also draws the
+**relations between those tables**, derived at render time from the `entity`
+layer: an entity relation whose **both** endpoints carry a `table <ThisDb>.<leaf>`
+mapping into the same store is drawn as a leaf-to-leaf edge on that store's
+canvas. Nothing is written to the `.krs` for this. The projected edge keeps the
+relation's label and its `->` / `-->` kind, and carries the system-assigned
+`[projected]` tag, which colours it (see
+[tags-annotations.md](./tags-annotations.md#system-assigned-tags)); line style
+stays owned by `[sync]` / `[async]`. An edge written by hand on a `table` leaf
+(`table orders { orders -> customers }`) is drawn as written and suppresses a
+projection for the same ordered pair.
+
+Endpoint resolution is the entity view's: the relation must start at the entity
+that declares it, a bare target is intra-domain only, and a qualified
+`DomainId.EntityId` target resolves within the owning system. A relation the
+entity view drops is not projected either.
+
+**This view is lossy and is not a complete ER diagram of the store.** It shows
+exactly the relations that travel through a `table` mapping on both ends:
+
+- a relation touching an entity with **no** `table` mapping does not appear
+  (tableless entities are a legitimate state, so this is not a defect; `coverage`
+  reports them as `tablelessEntities`);
+- a relation whose endpoints map into **two different** stores appears on
+  neither canvas (it is already visible as a `service → database` edge on the
+  system view);
+- a polymorphic reference (one column, several possible target tables) is
+  whatever the entity layer chose to write.
+
+```krs
+system Shop {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+        Order -> LineItem "has"                    // projected: orders -> line_items
+        Order --> Customers.Customer "placed by"   // projected, dashed: orders --> customers
+        Order -> AuditEntry "audited by"           // not projected: AuditEntry is tableless
+      }
+      entity LineItem  { table OrderDB.line_items }
+      entity AuditEntry {}
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer { table OrderDB.customers }
+    }
+  }
+  database OrderDB {
+    table orders {}
+    table line_items {}
+    table customers {}
+  }
+}
+```
+
+> Related TPLs: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md) — a derived view that travels through an optional mapping counts what did not project (`coverage`) and states in the spec that it is not a complete diagram. [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md) — `[projected]` is colour only; the `[sync]` / `[async]` line style of the source relation is preserved. [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md) — the projection resolves endpoints with the entity view's rules, so a bare cross-domain id is not projected and a qualified one is.
+
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
 An independent axis from logical/physical, describing the **ownership** of services and domains.
