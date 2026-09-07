@@ -461,9 +461,29 @@ organization Shop {
 }
 `);
     expect(overlaps).toHaveLength(1);
-    expect(overlaps[0].teams).toEqual(["payments", "pci"]);
+    // `payments` owns on both sides, so it crosses nothing and is not named.
+    expect(overlaps[0].teams).toEqual(["pci"]);
     expect(overlaps[0].insideTeams).toEqual(["payments"]);
     expect(overlaps[0].relation).toBe("nested");
+  });
+
+  it("names only the owners that cross, not one that owns both sides", () => {
+    // Inner `[af, za]` inside `[af]`: only `za` crosses. Naming `af` would put
+    // it in the markdown row and emit an `af,af` csv pair, calling a team part
+    // of a breach it is not part of.
+    const { overlaps } = report(`
+system Shop {
+  service Outer { domain Inner {} }
+}
+organization Shop {
+  team af { owns Outer owns Inner }
+  team za { owns Inner }
+}
+`);
+    expect(overlaps).toHaveLength(1);
+    expect(overlaps[0].teams).toEqual(["za"]);
+    expect(overlaps[0].insideTeams).toEqual(["af"]);
+    expect(overlaps[0].relation).toBe("cross-team");
   });
 
   it("returns overlaps in a stable order regardless of declaration order", () => {

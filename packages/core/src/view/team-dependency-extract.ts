@@ -95,7 +95,15 @@ export interface StructuralOverlap {
   /** Full path (`nodePathKey`) of the node whose ownership crosses in. */
   path: string;
   kind: string;
-  /** Teams that declared `owns` on it. */
+  /**
+   * The teams whose ownership actually crosses — those that declared `owns` on
+   * this node and **not** on the enclosing one.
+   *
+   * A team on both sides owns something inside its own holdings, which is not
+   * an overlap at all (it is the case AT-C pins as unreported). Listing it here
+   * would put it in the markdown row and emit a `A,A` csv pair, naming a team
+   * as part of a breach it is not part of.
+   */
   teams: string[];
   /** Full path of the nearest ancestor that is itself declared-owned. */
   insidePath: string;
@@ -485,24 +493,22 @@ function findStructuralOverlaps(
     const declared = ownership.get(nodePathKey(path));
     let next = enclosing;
     if (declared !== undefined && declared.length > 0) {
-      if (enclosing !== undefined && declared.some((t) => !enclosing.teams.includes(t))) {
-        const outer = enclosing.teams;
+      const outer = enclosing?.teams ?? [];
+      const crossing = enclosing === undefined ? [] : declared.filter((t) => !outer.includes(t));
+      if (crossing.length > 0) {
         overlaps.push({
           path: nodePathKey(path),
           kind: node.kind,
-          teams: [...declared],
-          insidePath: nodePathKey(enclosing.path),
-          insideKind: enclosing.kind,
+          teams: crossing,
+          insidePath: nodePathKey(enclosing!.path),
+          insideKind: enclosing!.kind,
           insideTeams: [...outer],
-          // `nested` when every inner/outer pairing sits in one team's subtree.
-          // The same team on both sides counts: an outer node owned by
-          // `payments` and an inner one owned by `payments` + its child `pci`
-          // is a working group inside its parent, not a breach — but
-          // `isAncestorPair` is false for a team against itself, so the
-          // identity case has to be admitted explicitly.
-          relation: declared.every((inner) =>
-            outer.every((o) => inner === o || isAncestorPair(inner, o)),
-          )
+          // `nested` when every crossing/enclosing pairing sits in one team's
+          // subtree. Filtering above is what makes this read cleanly: a team
+          // owning on both sides is gone by now, so the only question left is
+          // whether the teams that really cross are ancestors of the ones they
+          // crossed into.
+          relation: crossing.every((inner) => outer.every((o) => isAncestorPair(inner, o)))
             ? "nested"
             : "cross-team",
         });

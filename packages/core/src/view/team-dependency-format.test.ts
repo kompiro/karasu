@@ -231,6 +231,33 @@ organization O {
     expect(rows.some((r) => r.startsWith("structural-overlap,plain,x|y,"))).toBe(true);
   });
 
+  it("keeps an owner of both sides out of the projections", () => {
+    // The overlap exists because `za` crosses; `af` owns both sides and so is
+    // part of no breach. It must appear in neither the markdown row nor as an
+    // `af,af` csv pair.
+    const shared = extractTeamDependencies(
+      Parser.parse(`
+system Shop {
+  service Outer { domain Inner {} }
+}
+organization Shop {
+  team af { owns Outer owns Inner }
+  team za { owns Inner }
+}
+`).value,
+    );
+    const rows = formatTeamDependenciesAsCsv(shared)
+      .trim()
+      .split("\n")
+      .filter((r) => r.startsWith("structural-overlap"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain("structural-overlap,za,af,");
+    expect(rows.some((r) => r.startsWith("structural-overlap,af,af,"))).toBe(false);
+    expect(formatTeamDependenciesAsMarkdown(shared)).toContain(
+      "| Shop.Outer.Inner | za | Shop.Outer | af | cross-team |",
+    );
+  });
+
   it("carries the nested / cross-team distinction into the markdown table", () => {
     const md = formatTeamDependenciesAsMarkdown(OVERLAP);
     expect(md).toContain("| node | owned by | inside | owned by | relation |");

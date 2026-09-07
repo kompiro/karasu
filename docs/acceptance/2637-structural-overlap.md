@@ -64,6 +64,9 @@ type: product
 - [x] AT-N: 新しい derivation が `DERIVATION_CONTRACTS` に登録され、`kind` と 1:N の owner 一覧の保存が固定される
   > ✅ Automated — `packages/core/src/view/derivation-contracts.test.ts` › `findStructuralOverlaps: node owned across a containment boundary`
 
+- [x] AT-O: 両側を所有する team は「跨いだ team」に数えず、md にも csv にも出さない
+  > ✅ Automated — `team-dependency-extract.test.ts` › `names only the owners that cross, not one that owns both sides` / `packages/core/src/view/team-dependency-format.test.ts` › `keeps an owner of both sides out of the projections`
+
 ## 手動確認
 
 N/A — 自動テストですべて覆っている。

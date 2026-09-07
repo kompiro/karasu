@@ -141,9 +141,11 @@ the source wins — follow the link.
   the enclosing node's team, so inheritance never reads as an overlap. No edge
   crosses that boundary, so a team dependency cannot express it, yet the two
   teams still have to agree on the enclosing structure. Reported alongside team
-  dependencies, in its own channel, and marked `nested` only when *every*
-  inner/enclosing team pairing sits in one team's subtree in the org tree — a
-  single foreign owner makes the whole overlap `cross-team`.
+  dependencies, in its own channel. Only the teams that actually cross are
+  named — a team owning on both sides is part of no breach — and the overlap is
+  marked `nested` only when *every* crossing/enclosing team pairing sits in one
+  team's subtree in the org tree; a single foreign owner makes the whole
+  overlap `cross-team`.
 
 > Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
 
