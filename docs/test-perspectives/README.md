@@ -99,11 +99,13 @@ deprecation の **トリガー** は月次の定期レビューで起こす。`a
 
 > なぜ月次か: 当初は週次で回していた（一括 backfill 直後で obsolescence を早く捕捉したかったため）。運用開始から実際に deprecate された TPL は 0 件、2026-W30 / W31 のレビューも全件 `keep` で、週次の Issue はキューのノイズになっていた。当初の「全件 `keep` が安定したら伸ばす」条件を満たしたので、#2094 / #2136 のレビューをもって月次へ緩めた。月次でも全件 `keep` が続くなら半年次を検討し、逆に 1 回のレビューで複数 deprecate が出たら週次へ戻す（cadence 自体も TPL のレビュー対象）。
 
-**Issue の中身**: `pnpm tpl:review:body` が生成する。`active` TPL ごとにチェックボックス + 3 つの観点が並ぶ:
+**Issue の中身**: `tpl review-body` が生成する。`active` TPL ごとにチェックボックス + 3 つの観点が並ぶ:
 
 1. 引用された `root_cause_file` / `root_cause_adr` は今も存在するか? 関数 / パターンは生き残っているか?
 2. アーキテクチャの前提が変わっていないか?（例: 「user stylesheet は常に最後」 → 「mode-locked properties は user sheet を bypass する」）
 3. この TPL を包含するより新しい TPL があるか?（あれば `superseded_by` として deprecate — ADR と同じ運用）
+
+> 見出しの期間名はワークフローが `--period-label` で渡す（タイトルと同じ暦月）。渡さないと生成器は ISO 週を書き、タイトルと本文が違う期間を名乗る（#2622 が実例。修正は [tpl-tools#20](https://github.com/kompiro/tpl-tools/issues/20)）。ローカルで中身だけ見たいときは `pnpm tpl:review:body`（見出しは ISO 週）で足りる。
 
 **処分（disposition）**:
 

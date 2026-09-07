@@ -43,17 +43,28 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Generate review Issue body
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: pnpm --silent tpl:review:body > /tmp/tpl-review-body.md
-
       - name: Compute period label
         id: period
         run: |
           # Calendar month, e.g. 2026-08 — one review Issue per month.
           label=$(date -u +%Y-%m)
           echo "label=${label}" >> "$GITHUB_OUTPUT"
+
+      # The label is computed before the body so the heading names the same
+      # period as the Issue title. Left to itself the generator writes an ISO
+      # week, which is what made the title and the body disagree
+      # (kompiro/tpl-tools#20). Invoked through `exec` rather than the
+      # `tpl:review:body` script: `pnpm run <script> -- <flag>` swallows the
+      # flag (TPL-2046). `--repo` is omitted because the CLI falls back to
+      # $GITHUB_REPOSITORY.
+      - name: Generate review Issue body
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PERIOD_LABEL: ${{ steps.period.outputs.label }}
+        run: |
+          pnpm --silent exec tpl review-body \
+            --period-label "$PERIOD_LABEL" \
+            > /tmp/tpl-review-body.md
 
       - name: Open review Issue
         env:
