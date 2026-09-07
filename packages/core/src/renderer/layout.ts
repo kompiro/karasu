@@ -122,6 +122,11 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       ? layoutInner(viewSlice, options, found.budget, reservations)
       : found.result;
   const result = run.result;
+  // Crossing marks decorate the routed edges and change neither the canvas
+  // nor the reservation, so only the surviving placement pays for them. A
+  // search that evaluated four candidates and re-placed once used to compute
+  // them five times for one drawing (#2761).
+  if (run.crossingMarksPending) result.crossingMarks = computeCrossingMarks(result.edges);
   result.widthBudget = found.budget;
   result.placementPasses = reservations.size > 0 ? 2 : 1;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
@@ -137,6 +142,15 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
 interface LayoutRun {
   result: LayoutResult;
   rows: readonly (readonly string[])[];
+  /**
+   * The run routed edges but did not compute their crossing marks. Marks are
+   * a pure function of the routed edges and feed nothing before the render
+   * (`computeTotalDimensions` and the channel reservation never read them),
+   * so `layout()` computes them once, on the placement that wins, instead of
+   * once per width-budget candidate (#2761). False on the empty-view path,
+   * which has never carried marks.
+   */
+  crossingMarksPending: boolean;
 }
 
 /**
@@ -223,7 +237,11 @@ function layoutInner(
     // Each system stacks its own rows side by side, so there is no canvas-wide
     // row ordinal to reserve channel capacity on: the root view keeps its
     // default gaps (#2608 slice A's stated limit; see the parent's Slice status).
-    return { result: layoutMultipleSystems(viewSlice, options, measureCtx, widthBudget), rows: [] };
+    return {
+      result: layoutMultipleSystems(viewSlice, options, measureCtx, widthBudget),
+      rows: [],
+      crossingMarksPending: true,
+    };
   }
 
   // The canvas being drawn is the container plus its ancestors — for the root
@@ -388,6 +406,7 @@ function layoutInner(
         widthBound: false,
       },
       rows: [],
+      crossingMarksPending: false,
     };
   }
 
@@ -720,8 +739,6 @@ function layoutInner(
   // arcs neutralise crossings ("not connected") so the default view's crossings
   // read unambiguously too. Junction dots stay grouped-only (the ungrouped view
   // has no aggregation trunks). See docs/design/system-view-grouping.md.
-  const crossingMarks = computeCrossingMarks(layoutEdges);
-
   return {
     result: {
       nodes: layoutNodes,
@@ -737,12 +754,12 @@ function layoutInner(
         options.facetMembership,
         options.facetOrder ?? [],
       ),
-      crossingMarks,
       degradedMemberships,
     },
     // A side-placed external (#1728) left its row for a side column, so its y
     // no longer says where the row is; the remaining members do.
     rows: placed.rows.map((row) => row.filter((id) => !sideExternals.has(id))),
+    crossingMarksPending: true,
   };
 }
 
@@ -1185,8 +1202,6 @@ function layoutMultipleSystems(
   // Hop marks for the root view too (#2363). Derived from final coordinates like
   // the single-system path, and computed over *all* edges so a cross-system line
   // crossing an intra-system one is marked as well.
-  const crossingMarks = computeCrossingMarks(allEdges);
-
   return {
     nodes: allLayoutNodes,
     edges: allEdges,
@@ -1194,7 +1209,6 @@ function layoutMultipleSystems(
     width: totalWidth,
     height: totalHeight,
     widthBound: anyWidthBound,
-    crossingMarks,
     foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
     degradedMemberships: allDegradedMemberships.length > 0 ? allDegradedMemberships : undefined,
   };

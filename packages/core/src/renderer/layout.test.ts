@@ -1,8 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { layout } from "./layout.js";
+import { computeCrossingMarks } from "./crossing-marks.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
+
+// Wrap, do not replace: every test below still gets the real marks, and the
+// deferral suite (#2761) counts how often the pass ran per `layout()` call.
+vi.mock("./crossing-marks.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./crossing-marks.js")>();
+  return {
+    ...actual,
+    computeCrossingMarks: vi.fn<typeof actual.computeCrossingMarks>(actual.computeCrossingMarks),
+  };
+});
 
 function parseAndExtract(krs: string, path: string[] = []) {
   const result = Parser.parse(krs);
@@ -2295,5 +2306,59 @@ describe("layout > channel capacity (#2608)", () => {
     expect(a.edges.map((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint])).toEqual(
       b.edges.map((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]),
     );
+  });
+});
+
+describe("layout > crossing marks are computed once, on the final placement (#2761)", () => {
+  // Same fixture as the channel-capacity suite: the width-budget search
+  // evaluates several candidates and the reservation pass places once more,
+  // so a per-run computation would have run the pass five or six times.
+  const crowded = () => {
+    const services = Array.from(
+      { length: 12 },
+      (_s, i) => `  service S${i} { label "Service ${i}" }`,
+    );
+    const targets = Array.from({ length: 4 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+    const edges = services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`));
+    return `system Crowded {\n${[...services, ...targets, ...edges].join("\n")}\n}`;
+  };
+  const marksSpy = vi.mocked(computeCrossingMarks);
+
+  beforeEach(() => {
+    marksSpy.mockClear();
+  });
+
+  it("runs the crossing pass once for a two-pass placement and marks the final edges", () => {
+    const result = layout(parseAndExtract(crowded()));
+    expect(result.placementPasses).toBe(2);
+    expect(marksSpy).toHaveBeenCalledTimes(1);
+    // The marks belong to the edges the renderer draws, not to a candidate.
+    expect(marksSpy.mock.calls[0][0]).toBe(result.edges);
+    expect(result.crossingMarks).toBeDefined();
+    marksSpy.mockClear();
+    expect(result.crossingMarks).toEqual(computeCrossingMarks(result.edges));
+  });
+
+  it("runs the crossing pass once on the multi-system root", () => {
+    const source = [
+      "system A {",
+      "  service S1",
+      "  service S2",
+      "  S1 -> S2",
+      "}",
+      "system B {",
+      "  service S3",
+      "}",
+    ].join("\n");
+    const result = layout(parseAndExtract(source));
+    expect(marksSpy).toHaveBeenCalledTimes(1);
+    expect(result.crossingMarks).toBeDefined();
+  });
+
+  it("leaves an empty view without marks, as before", () => {
+    const result = layout(parseAndExtract("system Empty {}"));
+    expect(result.edges).toEqual([]);
+    expect(result.crossingMarks).toBeUndefined();
+    expect(marksSpy).not.toHaveBeenCalled();
   });
 });
