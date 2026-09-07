@@ -878,7 +878,9 @@ function buildGhostDomains(
 /**
  * Shared context threaded through the {@link extractView} phase helpers:
  * model-wide maps and resolvers that don't vary across the orphan / root /
- * drill-down branches, computed once in {@link extractView}.
+ * drill-down branches, nor across the paths of one model. Built by
+ * {@link buildViewExtractContext} and shared by every {@link extractView}
+ * call on the same `systems` array through {@link viewExtractContextCache}.
  */
 interface ViewExtractContext {
   resourceLabelMap: Map<string, string>;
@@ -887,7 +889,7 @@ interface ViewExtractContext {
   entityResolver: EntityResolver;
   /**
    * Resolves a qualified endpoint to the node and the top-level system that
-   * frames it (#2577). Built once per extraction, like `entityResolver`: the
+   * frames it (#2577). Built once per model, like `entityResolver`: the
    * walk is over every system and each ghost lookup would otherwise repeat it.
    */
   ghostEndpoint: (ref: NodeIdPath) => GhostEndpointMatch | undefined;
@@ -1358,6 +1360,55 @@ function extractSystemDrillDownView(
   };
 }
 
+/**
+ * Build the model-wide part of an extraction: the resource maps, the empty
+ * slice every phase helper spreads, and the entity / ghost-endpoint resolvers.
+ */
+function buildViewExtractContext(systems: KrsNode[], orphans: KrsNode[]): ViewExtractContext {
+  const resourceLabelMap = buildResourceLabelMap(systems);
+  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
+  // Resolver over the whole model: a bare `resource <id>` in one domain may
+  // resolve to an `entity` declared in another domain / service, so this is
+  // built once from every root, not per-container.
+  const entityResolver = buildEntityResolver([...systems, ...orphans]);
+  return {
+    resourceLabelMap,
+    resourceInferredTagsMap,
+    empty: emptySlice(resourceLabelMap, resourceInferredTagsMap),
+    entityResolver,
+    ghostEndpoint: buildGhostEndpointResolver(systems),
+  };
+}
+
+/**
+ * The {@link ViewExtractContext} of each `systems` array, for calls that pass
+ * no orphans (#2759).
+ *
+ * The bundle builders (`buildDrillDownSvg`, `buildAllLayersSvg`,
+ * `buildAllViewsSvg`, `compile`, …) call {@link extractView} once per level
+ * and once per child probe, and each call used to rebuild the four
+ * whole-model structures: on a 1,800-node model that walked the tree about
+ * 2,000 times per bundle. Every one of those builders computes
+ * `withUnassignedSystem(krsFile)` once and passes that same array to each
+ * call, so keying on the array's identity turns every rebuild but the first
+ * into a lookup.
+ *
+ * The key cannot go stale (TPL-1032). A `systems` array is produced by a
+ * parse, or by the merge that assembles a multi-file model, and is never
+ * mutated once a view has been extracted from it: a new model is a new array,
+ * and the context derived from the old one is unreachable as soon as the old
+ * array is, since a `WeakMap` keeps nothing alive that the model does not.
+ * Sharing one instance is safe because nothing writes to the context after
+ * construction: the phase helpers spread `empty` (or return it as is) and only
+ * read the maps, and no consumer of a {@link ViewSlice} mutates one.
+ *
+ * Orphans are inputs the key does not see (the entity resolver walks them),
+ * so a call that passes any is built fresh, exactly as before. Neither is a
+ * no-system file cached: its content is all in the orphans, and an empty
+ * array names no model.
+ */
+const viewExtractContextCache = new WeakMap<KrsNode[], ViewExtractContext>();
+
 export function extractView(
   systems: KrsNode[],
   path: ViewPath,
@@ -1372,24 +1423,13 @@ export function extractView(
    */
   expandedContainers?: ReadonlySet<string>,
 ): ViewSlice {
-  const resourceLabelMap = buildResourceLabelMap(systems);
-  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
-
-  const empty = emptySlice(resourceLabelMap, resourceInferredTagsMap);
-
   const orphans = [...unassignedServices, ...unassignedDomains];
-
-  // Resolver over the whole model: a bare `resource <id>` in one domain may
-  // resolve to an `entity` declared in another domain / service, so this is
-  // built once from every root, not per-container.
-  const entityResolver = buildEntityResolver([...systems, ...orphans]);
-  const ctx: ViewExtractContext = {
-    resourceLabelMap,
-    resourceInferredTagsMap,
-    empty,
-    entityResolver,
-    ghostEndpoint: buildGhostEndpointResolver(systems),
-  };
+  const cacheable = orphans.length === 0 && systems.length > 0;
+  let ctx = cacheable ? viewExtractContextCache.get(systems) : undefined;
+  if (!ctx) {
+    ctx = buildViewExtractContext(systems, orphans);
+    if (cacheable) viewExtractContextCache.set(systems, ctx);
+  }
 
   // No-system file: render orphan services/domains as peer nodes with no container.
   // Drill-down walks from the orphan as path root.

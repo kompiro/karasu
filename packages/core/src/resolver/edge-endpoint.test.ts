@@ -240,4 +240,53 @@ describe("ghost endpoint resolution (#2577)", () => {
       buildGhostEndpointResolver(file.systems)(edgeEndpointRef("Checkout.Payment")),
     ).toBeUndefined();
   });
+
+  // #2759: the resolver buckets its entries by last path segment and scans
+  // only the reference's bucket. The cases below pin what that must not
+  // change: the match at every depth, first-declared-wins, and the two ways a
+  // lookup comes back empty.
+  it("resolves a two- and a three-segment reference from the last-segment bucket", () => {
+    const resolve = buildGhostEndpointResolver(parse(MODEL).systems);
+    expect(resolve(edgeEndpointRef("Shop.Storefront"))?.path).toEqual(["Shop", "Storefront"]);
+    const deep = resolve(edgeEndpointRef("Shop.Checkout.Payment"));
+    expect(deep?.system.id).toBe("Shop");
+    expect(deep?.path).toEqual(["Shop", "Checkout", "Payment"]);
+    expect(deep?.ancestors.map((a) => a.id)).toEqual(["Checkout"]);
+    expect(
+      resolve(edgeEndpointRef("Shop.Checkout.Payment.Settle"))?.ancestors.map((a) => a.id),
+    ).toEqual(["Checkout", "Payment"]);
+  });
+
+  it("keeps first-declared-wins when the last segment exists under two systems", () => {
+    // Both `Web`s share the "Web" bucket. Rooted at different systems they
+    // resolve apart; rooted at the same id (the same full path twice) the tie
+    // goes to whichever system comes first, as it always did.
+    const shop = parse('system Shop { service Web { label "shop" } }').systems;
+    const portal = parse('system Portal { service Web { label "portal" } }').systems;
+    const apart = buildGhostEndpointResolver([...shop, ...portal]);
+    expect(apart(edgeEndpointRef("Shop.Web"))?.node.label).toBe("shop");
+    expect(apart(edgeEndpointRef("Portal.Web"))?.node.label).toBe("portal");
+
+    const shopAgain = parse('system Shop { service Web { label "shop again" } }').systems;
+    const tied = buildGhostEndpointResolver([...shop, ...shopAgain]);
+    expect(tied(edgeEndpointRef("Shop.Web"))?.node.label).toBe("shop");
+    const reversed = buildGhostEndpointResolver([...shopAgain, ...shop]);
+    expect(reversed(edgeEndpointRef("Shop.Web"))?.node.label).toBe("shop again");
+  });
+
+  it("returns nothing for a last segment no node carries", () => {
+    const resolve = buildGhostEndpointResolver(parse(MODEL).systems);
+    expect(resolve(edgeEndpointRef("Shop.Missing"))).toBeUndefined();
+    expect(resolve(edgeEndpointRef("Missing"))).toBeUndefined();
+  });
+
+  it("returns nothing when the same-named entries all sit at another depth", () => {
+    // `Payment` is declared at depth 3 only: a bare spelling is a suffix match
+    // whose length differs, and a two-segment spelling under the wrong parent
+    // is no suffix match at all. Neither becomes a match through the bucket.
+    const resolve = buildGhostEndpointResolver(parse(MODEL).systems);
+    expect(resolve(edgeEndpointRef("Payment"))).toBeUndefined();
+    expect(resolve(edgeEndpointRef("Shop.Payment"))).toBeUndefined();
+    expect(resolve(edgeEndpointRef("Shop.Checkout.Payment.Settle.Payment"))).toBeUndefined();
+  });
 });
