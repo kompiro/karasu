@@ -371,6 +371,29 @@ CREATE TABLE order_items (
         .map((m) => `${m[1]}->${m[2]}${m[3] ?? ""}`);
       expect(tableEdges.sort()).toEqual(entityEdges.sort());
     });
+
+    it("rolls a folded child up when the DDL spells the parent in a different case (#2725 review)", async () => {
+      // `nameSuggestsParent` matches case-insensitively and returns the lowercased
+      // candidate, and a composite-PK match keeps the FK's spelling — so the parent
+      // name recorded for the child can differ from the declared table name. Both
+      // faces look the aggregate up by its declared name, so an uncanonicalised
+      // parent silently drops every relation the child contributed.
+      const input = `
+CREATE TABLE Products ( id BIGINT PRIMARY KEY );
+CREATE TABLE Orders ( id BIGINT PRIMARY KEY );
+CREATE TABLE order_items (
+  order_id BIGINT NOT NULL REFERENCES orders(id),
+  line_no INT NOT NULL,
+  product_id BIGINT NOT NULL REFERENCES Products(id),
+  PRIMARY KEY (order_id, line_no)
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "OrderDB" });
+      // The child folded away, and the relation it carried survives on the root.
+      expect(result).not.toContain("table OrderItemsTable");
+      expect(result).toContain("    OrdersTable -> ProductsTable\n");
+      expect(result).toContain("    Orders -> Products\n");
+    });
   });
 
   describe("entity scaffold (aggregate granularity)", () => {

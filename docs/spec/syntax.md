@@ -170,12 +170,15 @@ stays owned by `[sync]` / `[async]`.
 
 **The recorded side.** A `table` leaf may declare edges of its own
 (`table orders { orders -> customers }`), and `translate --from db` writes one
-per foreign key it finds, inside the emitted `database` block: a declared
-`REFERENCES` / `FOREIGN KEY` becomes an untagged edge, a Soft FK (a
-`<stem>_id` / `<stem>_code` column naming another table) becomes `orders ->
-products [inferred]`, and under the default aggregate granularity a folded
-child's foreign keys roll up to its root, deduplicated by target, with no
-self-edge. This is what makes the view useful with **no `entity` layer at
+edge **per distinct source-target pair** it finds, inside the emitted
+`database` block: a declared `REFERENCES` / `FOREIGN KEY` becomes an untagged
+edge, a Soft FK (a `<stem>_id` / `<stem>_code` column naming another table)
+becomes `orders -> products [inferred]`, and under the default aggregate
+granularity a folded child's foreign keys roll up to its root with no
+self-edge. Several foreign keys to the same target are one edge at either
+granularity (two `customer_id` columns on `orders` do not draw two arrows to
+`customers`), and the pair is untagged as soon as **one** contributing foreign
+key is declared. This is what makes the view useful with **no `entity` layer at
 all**: a schema dump gets an ER view straight out of `translate`. A foreign key
 whose target is not in the dump is not recorded.
 

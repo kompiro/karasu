@@ -239,6 +239,16 @@ interface GroupDecision {
  */
 function inferAggregates(tables: Table[]): GroupDecision {
   const known = new Set(tables.map((t) => t.name.toLowerCase()));
+  // Both matches below are case-insensitive, so the name they hand back is a
+  // spelling from the *reference* (an FK's `REFERENCES orders`, or the
+  // lowercased candidate `nameSuggestsParent` looks up) rather than the
+  // declared `CREATE TABLE Orders`. Every consumer keys the aggregate by its
+  // declared name, so store the declared spelling here: an uncanonicalised
+  // parent leaves the child's rolled-up relations filed under a root nobody
+  // looks up, and they are dropped from both the table edges and the entity
+  // scaffold with no diagnostic (#2725 review).
+  const declaredByLower = new Map(tables.map((t) => [t.name.toLowerCase(), t.name]));
+  const declared = (name: string): string => declaredByLower.get(name.toLowerCase()) ?? name;
   const parentOf = new Map<string, string>();
   const reasonOf = new Map<string, string>();
 
@@ -248,7 +258,7 @@ function inferAggregates(tables: Table[]): GroupDecision {
       const isJunction = pkFks.length === t.primaryKey.length;
       if (pkFks.length > 0 && !isJunction) {
         const pick = pkFks[0];
-        const parentName = pick.refTable;
+        const parentName = declared(pick.refTable);
         const parentLower = parentName.toLowerCase();
         if (known.has(parentLower) && parentLower !== t.name.toLowerCase()) {
           parentOf.set(t.name, parentName);
@@ -263,9 +273,10 @@ function inferAggregates(tables: Table[]): GroupDecision {
     if (parentByName) {
       const fk = t.foreignKeys.find((f) => f.refTable.toLowerCase() === parentByName);
       if (fk) {
-        parentOf.set(t.name, parentByName);
+        const parentName = declared(parentByName);
+        parentOf.set(t.name, parentName);
         const kind = fk.kind === "soft" ? "inferred FK column" : "FK";
-        reasonOf.set(t.name, `name suffix + ${kind} to ${parentByName}`);
+        reasonOf.set(t.name, `name suffix + ${kind} to ${parentName}`);
       }
     }
   }

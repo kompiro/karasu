@@ -113,4 +113,4 @@ type: product
 ### 手動確認
 
 - [ ] M-1: [https://karasu.kompiro.dev/](https://karasu.kompiro.dev/) で `entity … table` 対応を持つサンプル（`examples/` の ec-platform）を開き、`database` にドリルダウンすると table 間に投影エッジが出て、手書きの leaf エッジや `[inferred]` の灰色と一目で見分けられる（色の判別は実機でしか確かめられない）
-- [ ] M-2: `karasu translate --from db <schema.sql>` の出力をそのまま app で開き、`database` にドリルダウンすると `entity` 層を消しても（domain ブロックを削除しても）table 間のエッジが残り、`[inferred]` の灰色と無タグの既定色が見分けられる
+- [ ] M-2: `karasu translate --from db <schema.sql>` の出力をそのまま [https://karasu.kompiro.dev/](https://karasu.kompiro.dev/) に貼って開き、`database` にドリルダウンすると `entity` 層を消しても（domain ブロックを削除しても）table 間のエッジが残り、`[inferred]` の灰色と無タグの既定色が見分けられる

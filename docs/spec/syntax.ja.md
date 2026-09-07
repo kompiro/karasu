@@ -161,10 +161,12 @@ system ECPlatform {
 線種は `[sync]` / `[async]` が所有する。
 
 **記録側。** `table` leaf は自身のエッジを宣言でき（`table orders { orders -> customers }`）、
-`translate --from db` は見つけた外部キーごとに 1 本を出力 `database` ブロック内に書く。宣言された
-`REFERENCES` / `FOREIGN KEY` は無タグのエッジ、Soft FK（他テーブル名を含む `<stem>_id` /
-`<stem>_code` 列）は `orders -> products [inferred]` になる。既定の aggregate 粒度では畳んだ子の
-外部キーは root に畳み上がり、target で重複排除され、自己エッジは出ない。これが
+`translate --from db` は見つけた**始点と終点の組ごとに 1 本**を出力 `database` ブロック内に書く。
+宣言された `REFERENCES` / `FOREIGN KEY` は無タグのエッジ、Soft FK（他テーブル名を含む
+`<stem>_id` / `<stem>_code` 列）は `orders -> products [inferred]` になる。既定の aggregate 粒度では
+畳んだ子の外部キーが root に畳み上がり、自己エッジは出ない。同じ終点への外部キーが複数あっても
+エッジは 1 本で（`orders` に `customer_id` 列が 2 本あっても `customers` への矢印は 1 本）、これは
+どちらの粒度でも同じ。寄与した外部キーの **1 本でも**宣言されていればその組は無タグになる。これが
 **`entity` 層が 1 つも無いモデル**でもこのビューを有用にする。スキーマダンプは `translate` 直後に
 ER ビューを得る。ダンプ内に無いテーブルへの外部キーは記録されない。
 
