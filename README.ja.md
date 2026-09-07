@@ -53,11 +53,11 @@ Getting Started を含む `ec-platform` の段階別チュートリアルが初�
 
 karasu はアーキテクチャの記述を **アーキテクチャ専用リポジトリに集約し、チームの境界に沿ってファイルを分割・結合できる** ようにすることで、この問題に取り組みます。
 
-| 用途 | 使う人 | 求めていること |
-|------|--------|----------------|
-| システム設計・進化の議論 | アーキテクト | 全体構造の設計と選択肢の比較 |
-| オーナーシップの明示 | チームリード | どのチームが何を担当するかの公式な記述 |
-| オンボーディング | 新入社員 | 自チームのドメインと周辺サービスの把握 |
+| 用途                     | 使う人       | 求めていること                         |
+| ------------------------ | ------------ | -------------------------------------- |
+| システム設計・進化の議論 | アーキテクト | 全体構造の設計と選択肢の比較           |
+| オーナーシップの明示     | チームリード | どのチームが何を担当するかの公式な記述 |
+| オンボーディング         | 新入社員     | 自チームのドメインと周辺サービスの把握 |
 
 ## 設計上の前提
 
@@ -168,11 +168,11 @@ organization DevOrg {
 
 ## 図の種類
 
-| タブ | 内容 |
-|------|------|
+| タブ     | 内容                                                                        |
+| -------- | --------------------------------------------------------------------------- |
 | `System` | 論理図。ダブルクリックで system → service → domain → usecase へドリルダウン |
-| `Deploy` | 物理図。デプロイ単位と realizes による論理との対応 |
-| `Org` | 組織図。チームと所有サービスの関係。Tree View モードで全体俯瞰も可能 |
+| `Deploy` | 物理図。デプロイ単位と realizes による論理との対応                          |
+| `Org`    | 組織図。チームと所有サービスの関係。Tree View モードで全体俯瞰も可能        |
 
 ## Chat UI と AI アシスタント
 
@@ -258,12 +258,12 @@ cat service.krs | karasu fmt --stdin
 
 `karasu translate` は、**既存システムの構造を karasu の語彙に引き上げて俯瞰する** ためのコマンドです。対象の 4 つのフォーマットはそれぞれ、既存システムを別の角度から捉える入力として選んでいます:
 
-| 入力                 | 何を得られるか                                 |
-| -------------------- | ---------------------------------------------- |
-| Docker Compose       | サービスの実行トポロジとリソース境界           |
-| Kubernetes マニフェスト | コンテナ化された実行単位と間の依存関係       |
-| OpenAPI スキーマ     | サービスが公開する API の境界と責務（RESTful な操作は 1 つのリソース `usecase` にまとめられる） |
-| SQL DDL              | データ所有関係とドメインの候補（関連するテーブルは集約ルートの下にグルーピングされる） |
+| 入力                    | 何を得られるか                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| Docker Compose          | サービスの実行トポロジとリソース境界                                                            |
+| Kubernetes マニフェスト | コンテナ化された実行単位と間の依存関係                                                          |
+| OpenAPI スキーマ        | サービスが公開する API の境界と責務（RESTful な操作は 1 つのリソース `usecase` にまとめられる） |
+| SQL DDL                 | データ所有関係とドメインの候補（関連するテーブルは集約ルートの下にグルーピングされる）          |
 
 これらを `.krs` スキャフォールドに変換することで、現行システムを karasu の三面構造で描き、ドメイン境界の再整理やサービス分割の候補を検討しやすくなります。Unix パイプで `karasu apply` と組み合わせれば、インフラ側の更新を既存 `.krs` に差分反映できます。
 
@@ -321,7 +321,7 @@ karasu subtree Order arch.krs                    # 最小ラップ（ドメイ�
 karasu subtree Order arch.krs --with-ancestors   # system / service のコンテキストを保持
 ```
 
-`coverage` と `subtree` は、アーキテクチャリバースワークフローを支える構造プリミティブです。生成された `.krs` モデルを静的に解析し、`coverage` はドメインごとの深さ（usecase / entity / resource / edge）を計測して薄いドメインを定量的に検出し、`subtree` はモデルを 1 ノードに切り出して、focused な refinement のために再投入できるようにします。
+`coverage` と `subtree` は、アーキテクチャリバースワークフローを支える構造プリミティブです。生成された `.krs` モデルを静的に解析し、`coverage` はドメインごとの深さ（usecase / entity / resource / edge）を計測して薄いドメインを定量的に検出し、宣言された各ストアに論理モデルがどこまで届いているかを報告し、`database` に記録された table 間関連と entity 関連の投影との差分（entity 層に欠けている記録済みの table 関連は、宣言 FK でも `[inferred]` でも `recorded-without-projection` のペアとして出ます）を示します。`subtree` はモデルを 1 ノードに切り出して、focused な refinement のために再投入できるようにします。
 
 ## VS Code 拡張
 
@@ -364,19 +364,19 @@ CI で `.krs` ファイルから SVG を自動生成するワークフローテ�
 
 ## ドキュメント
 
-| 内容 | 場所 |
-|------|------|
-| .krs 構文リファレンス | `docs/spec/syntax.md` |
-| .krs.style 構文リファレンス | `docs/spec/style.md` |
-| タグ・アノテーション一覧 | `docs/spec/tags-annotations.md` |
-| コアコンセプト（論理／物理分離など） | `docs/concepts.md` |
-| 設計判断の経緯（ADR） | `docs/adr/` — `<issue-number>-*.md` 形式（起点の GitHub Issue 番号） |
-| 詳細技術設計（検討中のもの）| `docs/design/` |
-| 受け入れテスト基準 | `docs/acceptance/` |
-| 開発プロセス（ライフサイクル・PR フロー）| `docs/process.md` |
-| GitHub Actions 連携ガイド | `docs/github-actions.md` |
-| サンプル `.krs` ファイル | `examples/` |
-| AI が生成したコードベース wiki | [DeepWiki](https://deepwiki.com/kompiro/karasu) |
+| 内容                                      | 場所                                                                 |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| .krs 構文リファレンス                     | `docs/spec/syntax.md`                                                |
+| .krs.style 構文リファレンス               | `docs/spec/style.md`                                                 |
+| タグ・アノテーション一覧                  | `docs/spec/tags-annotations.md`                                      |
+| コアコンセプト（論理／物理分離など）      | `docs/concepts.md`                                                   |
+| 設計判断の経緯（ADR）                     | `docs/adr/` — `<issue-number>-*.md` 形式（起点の GitHub Issue 番号） |
+| 詳細技術設計（検討中のもの）              | `docs/design/`                                                       |
+| 受け入れテスト基準                        | `docs/acceptance/`                                                   |
+| 開発プロセス（ライフサイクル・PR フロー） | `docs/process.md`                                                    |
+| GitHub Actions 連携ガイド                 | `docs/github-actions.md`                                             |
+| サンプル `.krs` ファイル                  | `examples/`                                                          |
+| AI が生成したコードベース wiki            | [DeepWiki](https://deepwiki.com/kompiro/karasu)                      |
 
 ## リポジトリ構成
 
@@ -396,14 +396,14 @@ karasu/
 
 ## 技術スタック
 
-| 用途                   | 技術          |
-| ---------------------- | ------------- |
-| 言語                   | TypeScript    |
-| ビルド（app）          | Vite          |
-| UIフレームワーク       | React         |
-| エディタコンポーネント | Monaco Editor |
-| テスト                 | Vitest        |
-| CLI                    | commander     |
+| 用途                   | 技術                         |
+| ---------------------- | ---------------------------- |
+| 言語                   | TypeScript                   |
+| ビルド（app）          | Vite                         |
+| UIフレームワーク       | React                        |
+| エディタコンポーネント | Monaco Editor                |
+| テスト                 | Vitest                       |
+| CLI                    | commander                    |
 | 言語サーバー           | LSP（vscode-languageserver） |
 
 ## インスピレーション
