@@ -160,7 +160,10 @@ a second row at ordinary window widths.
   solid arrow is a `sync` dependency and a dashed one `async`; a muted arrow is
   a pair where one team sits inside the other in the org tree. The footer says
   how many endpoints resolved to no team, so a sparse graph reads as an
-  incomplete `owns` rather than as a loosely-coupled org.
+  incomplete `owns` rather than as a loosely-coupled org. A second footer line
+  counts nodes owned across a containment boundary — a node one team owns
+  living inside a node another owns. No edge crosses that boundary, so the
+  graph cannot draw it; `karasu team-dependencies` lists them in full.
 - **Show All Layers** — render every drill-down level stacked together.
 
 On a narrow window these wrap below the drill path rather than squeezing it.

@@ -35,7 +35,7 @@ type: product
   > ✅ Automated — `team-dependency-extract.test.ts` › `does not report a node that only inherits its owner`
 
 - [x] AT-E: 共同所有の途中でも、内側の team が外側の集合に含まれているなら報告しない
-  > ✅ Automated — `team-dependency-extract.test.ts` › `reports the outgoing side of a handover that still holds ground inside`
+  > ✅ Automated — `team-dependency-extract.test.ts` › `does not report a handover where the inner team already owns the boundary`
 
 - [x] AT-F: slice A が出す依存は本追加で一切変わらない（囲みから依存を作らない）
   > ✅ Automated — `team-dependency-extract.test.ts` › `leaves the edge-induced dependencies untouched`
@@ -49,6 +49,21 @@ type: product
 - [x] AT-I: org タブの依存グラフは、描けない事実を黙殺せず件数をフッタに出す
   > ✅ Automated — `packages/core/src/renderer/team-dependency-graph.test.ts` › `counts ownership crossing containment in the footer` / `says nothing about overlap when none crosses`
 
+- [x] AT-J: 親 team の内側を子 team が持つ場合が `nested` として、無関係な team 同士が `cross-team` として区別される
+  > ✅ Automated — `team-dependency-extract.test.ts` › `marks a sub-team inside its parent team's node as nested, not cross-team`
+
+- [x] AT-K: csv がチーム id を区切り文字で連結せず、(内側 team × 囲み team) の組ごとに 1 行になる
+  > ✅ Automated — `packages/core/src/view/team-dependency-format.test.ts` › `emits one csv row per team pair rather than joining ids with a separator`
+
+- [x] AT-L: overlap の並びが宣言順・import 順に依存せず安定している
+  > ✅ Automated — `team-dependency-extract.test.ts` › `returns overlaps in a stable order regardless of declaration order`
+
+- [x] AT-M: bare な `owns` の broadcast が overlap に現れ、参照を修飾すれば消える（宣言どおりの読み）
+  > ✅ Automated — `team-dependency-extract.test.ts` › `carries a bare \`owns\` broadcast into the overlap, as the ownership it declares`
+
+- [x] AT-N: 新しい derivation が `DERIVATION_CONTRACTS` に登録され、`kind` と 1:N の owner 一覧の保存が固定される
+  > ✅ Automated — `packages/core/src/view/derivation-contracts.test.ts` › `findStructuralOverlaps: node owned across a containment boundary`
+
 ## 手動確認
 
 N/A — 自動テストですべて覆っている。
@@ -57,4 +72,8 @@ N/A — 自動テストですべて覆っている。
 
 - 診断（diagnostic）にはしない。`owns` を隅々まで書いていない既存モデルすべてに
   ノイズが出るため、ビュー出力に留める判断は [#2637](https://github.com/kompiro/karasu/issues/2637) の Out of scope のまま
-- グラフ上では件数のみ。どのノードがどの囲みを跨いでいるかは md / csv 側で読む
+- グラフ上では件数のみ（`nested` と `cross-team` の内訳も出ない）。どのノードがどの囲みを
+  跨いでいるか、どちらの relation かは md / csv 側で読む
+- bare な `owns` は仕様どおり同名ノード全部に broadcast するため、別 system の同名ノードが
+  overlap として現れることがある。これは書かれた `owns` の忠実な読みであり、参照を
+  修飾すれば消える（AT-M）。診断としての警告は出さない

@@ -367,7 +367,11 @@ export function renderTeamDependencyGraph(
   // canvas that could carry it. Counting it in the footer is the honest
   // minimum: the graph says what it is not showing instead of leaving the
   // stronger inverse-Conway signal invisible here (#2637).
-  if (report.overlaps.length > 0) {
+  // `overlaps` post-dates the first published shape of `TeamDependencyReport`,
+  // and both the type and this renderer are public exports — a caller that
+  // built a report literal against the older shape would otherwise get a
+  // TypeError here instead of a graph without that footer line.
+  if ((report.overlaps?.length ?? 0) > 0) {
     const template =
       labels.teamDependencyOverlap ?? DEFAULT_EMPTY_STATE_LABELS.teamDependencyOverlap;
     footer.push(template.replace("{count}", String(report.overlaps.length)));

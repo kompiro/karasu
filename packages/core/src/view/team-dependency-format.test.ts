@@ -97,9 +97,11 @@ describe("formatTeamDependenciesAsCsv", () => {
   const rows = csv.trim().split("\n");
 
   it("is tidy data: one row per fact, discriminated by `relation`", () => {
-    expect(rows[0]).toBe("relation,from_team,to_team,edge_kind,node,node_kind,edges,via");
+    expect(rows[0]).toBe(
+      "relation,from_team,to_team,edge_kind,node,node_kind,inside_kind,edges,via",
+    );
     expect(rows).toContain(
-      `cross-team,checkout,payments,sync,,,1,"Shop.Checkout.Cart~ -> Shop.Payments.Authorization~ ""Authorize card"""`,
+      `cross-team,checkout,payments,sync,,,,1,"Shop.Checkout.Cart~ -> Shop.Payments.Authorization~ ""Authorize card"""`,
     );
   });
 
@@ -108,7 +110,7 @@ describe("formatTeamDependenciesAsCsv", () => {
   });
 
   it("carries unowned endpoints in the same table so one pass reads both facts", () => {
-    expect(rows.some((r) => r.startsWith("unowned,,,,Shop.Platform,service,"))).toBe(true);
+    expect(rows.some((r) => r.startsWith("unowned,,,,Shop.Platform,service,,"))).toBe(true);
   });
 
   it("quotes a field containing a comma", () => {
@@ -197,8 +199,43 @@ organization Shop {
     const rows = formatTeamDependenciesAsCsv(OVERLAP).trim().split("\n");
     expect(
       rows.some((r) =>
-        r.startsWith("structural-overlap,payments,checkout,,Shop.Checkout.Pricing,domain,,"),
+        r.startsWith(
+          "structural-overlap,payments,checkout,,Shop.Checkout.Pricing,domain,service,,",
+        ),
       ),
     ).toBe(true);
+  });
+
+  it("emits one csv row per team pair rather than joining ids with a separator", () => {
+    // A team id may contain `|` (`team "x|y"` parses), so a joined field cannot
+    // be split back — the hazard `dependencyKey` and `pairKey` already refuse.
+    const coOwned = extractTeamDependencies(
+      Parser.parse(`
+system S {
+  service A { domain Da {} }
+}
+organization O {
+  team "x|y" { owns A }
+  team "p,q" { owns Da }
+  team plain { owns Da }
+}
+`).value,
+    );
+    const rows = formatTeamDependenciesAsCsv(coOwned)
+      .trim()
+      .split("\n")
+      .filter((r) => r.startsWith("structural-overlap"));
+    // Two inner teams x one enclosing team = two rows, each carrying one id.
+    expect(rows).toHaveLength(2);
+    expect(rows.some((r) => r.startsWith(`structural-overlap,"p,q",x|y,`))).toBe(true);
+    expect(rows.some((r) => r.startsWith("structural-overlap,plain,x|y,"))).toBe(true);
+  });
+
+  it("carries the nested / cross-team distinction into the markdown table", () => {
+    const md = formatTeamDependenciesAsMarkdown(OVERLAP);
+    expect(md).toContain("| node | owned by | inside | owned by | relation |");
+    expect(md).toContain(
+      "| Shop.Checkout.Pricing | Payments Team | Shop.Checkout | Checkout Team | cross-team |",
+    );
   });
 });

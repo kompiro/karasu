@@ -154,14 +154,15 @@ export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): 
       "> A node owned by one team living inside a node owned by another. No edge crosses here, so the dependencies above cannot see it — but the two teams still have to agree on the enclosing structure.",
     );
     lines.push("");
-    lines.push("| node | owned by | inside | owned by |");
-    lines.push("| --- | --- | --- | --- |");
+    lines.push("| node | owned by | inside | owned by | relation |");
+    lines.push("| --- | --- | --- | --- | --- |");
     for (const overlap of report.overlaps) {
       const cells = [
         overlap.path,
         teamNames(labels, overlap.teams),
         overlap.insidePath,
         teamNames(labels, overlap.insideTeams),
+        overlap.relation,
       ];
       lines.push(`| ${cells.map(mdCell).join(" | ")} |`);
     }
@@ -176,6 +177,10 @@ export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): 
   return lines.join("\n") + "\n";
 }
 
+// One meaning per column: a reader should never have to know the row's
+// `relation` to type a field. `inside_kind` is therefore its own column rather
+// than sharing `edges`, and every row fills what applies and leaves the rest
+// empty.
 const CSV_HEADER = [
   "relation",
   "from_team",
@@ -183,6 +188,7 @@ const CSV_HEADER = [
   "edge_kind",
   "node",
   "node_kind",
+  "inside_kind",
   "edges",
   "via",
 ];
@@ -196,6 +202,7 @@ export function formatTeamDependenciesAsCsv(report: TeamDependencyReport): strin
         dep.fromTeam,
         dep.toTeam,
         dep.kind,
+        "",
         "",
         "",
         String(dep.via.length),
@@ -217,6 +224,7 @@ export function formatTeamDependenciesAsCsv(report: TeamDependencyReport): strin
         "",
         entry.path,
         entry.kind,
+        "",
         String(entry.via.length),
         entry.via.map(unownedViaLabel).join("|"),
       ]
@@ -226,21 +234,32 @@ export function formatTeamDependenciesAsCsv(report: TeamDependencyReport): strin
   }
   // Overlaps join the same table under their own `relation`, for the reason the
   // unowned rows do: one pass, one file.
+  //
+  // **One row per (inner team, enclosing team) pair**, never a `|`-joined list.
+  // A team id may contain `|` (`team "x|y"` parses), so a joined field cannot
+  // be split back — the same reason `dependencyKey` and `pairKey` refuse a
+  // printable separator. One row per pair also puts a single team id in each
+  // team column, matching every other row in this table.
   for (const overlap of report.overlaps) {
-    lines.push(
-      [
-        "structural-overlap",
-        overlap.teams.join("|"),
-        overlap.insideTeams.join("|"),
-        "",
-        overlap.path,
-        overlap.kind,
-        "",
-        overlapVia(overlap),
-      ]
-        .map(csvEscape)
-        .join(","),
-    );
+    for (const team of overlap.teams) {
+      for (const insideTeam of overlap.insideTeams) {
+        lines.push(
+          [
+            "structural-overlap",
+            team,
+            insideTeam,
+            "",
+            overlap.path,
+            overlap.kind,
+            overlap.insideKind,
+            "",
+            overlapVia(overlap),
+          ]
+            .map(csvEscape)
+            .join(","),
+        );
+      }
+    }
   }
   return lines.join("\n") + "\n";
 }

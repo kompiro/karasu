@@ -391,7 +391,7 @@ organization O { team t { owns A } }
     expect(overlaps).toEqual([]);
   });
 
-  it("reports the outgoing side of a handover that still holds ground inside", () => {
+  it("does not report a handover where the inner team already owns the boundary", () => {
     const { overlaps } = report(`
 system S {
   service Payments { domain Settlement {} }
@@ -415,5 +415,74 @@ organization O {
     // No edge is declared in the fixture at all, so overlap detection must not
     // manufacture a dependency out of containment.
     expect(dependencies).toEqual([]);
+  });
+});
+
+describe("extractTeamDependencies — structural overlap edges cases (#2637)", () => {
+  it("marks a sub-team inside its parent team's node as nested, not cross-team", () => {
+    // Same reasoning as on the dependency side: the coordination a nested pair
+    // implies is already covered by the reporting line, and counting it as a
+    // cross-org breach inflates the signal.
+    const { overlaps } = report(`
+system Shop {
+  service Checkout { domain Pricing {} }
+  service Payments { domain Settlement {} }
+}
+organization Shop {
+  team checkout { owns Checkout }
+  team payments {
+    owns Payments
+    owns Pricing
+    team pci { owns Settlement }
+  }
+}
+`);
+    const byPath = new Map(overlaps.map((o) => [o.path, o]));
+    expect(byPath.get("Shop.Payments.Settlement")!.relation).toBe("nested");
+    expect(byPath.get("Shop.Checkout.Pricing")!.relation).toBe("cross-team");
+  });
+
+  it("returns overlaps in a stable order regardless of declaration order", () => {
+    // Walk order follows the merge order of `KrsFile`'s top-level lists, which
+    // import order decides; an unsorted list would reshuffle a checked-in
+    // report on an import reorder that changed nothing about the model.
+    const { overlaps } = report(`
+system Shop {
+  service Zeta { domain Alpha {} }
+  service Alfa { domain Zulu {} }
+}
+organization Shop {
+  team za { owns Zeta owns Zulu }
+  team af { owns Alfa owns Alpha }
+}
+`);
+    expect(overlaps.map((o) => o.path)).toEqual([...overlaps.map((o) => o.path)].sort());
+  });
+
+  it("carries a bare `owns` broadcast into the overlap, as the ownership it declares", () => {
+    // `owns Pricing` with no path claims every node with that id (spec, § team
+    // node), so `billing` really does own the `Pricing` inside another system.
+    // Pinned rather than filtered: the report is a faithful reading of the
+    // `owns` written, and the author's remedy is to qualify the reference.
+    const { overlaps } = report(`
+system A { service Checkout { domain Pricing {} } }
+system B { service Billing { domain Pricing {} } }
+organization O {
+  team checkout { owns Checkout }
+  team billing { owns Billing owns Pricing }
+}
+`);
+    expect(overlaps.map((o) => o.path)).toContain("A.Checkout.Pricing");
+
+    // Qualifying the reference confines it, with no change to anything else.
+    const qualified = report(`
+system A { service Checkout { domain Pricing {} } }
+system B { service Billing { domain Pricing {} } }
+organization O {
+  team checkout { owns Checkout }
+  team billing { owns Billing owns B.Billing.Pricing }
+}
+`);
+    expect(qualified.overlaps.map((o) => o.path)).not.toContain("A.Checkout.Pricing");
   });
 });
