@@ -47,22 +47,26 @@ type: product
 
   > ✅ Automated — 同 describe › a container a rule paints keeps that rule's colours in both themes
 
+- [x] AT-H: ベース値と同じ色（`#F9FAFB` / `#4B5563`）を明示的に書いたルールも、両テーマでそのまま描かれる。判定は解決済みの値ではなくカスケードが適用したプロパティで行う
+
+  > ✅ Automated — 同 describe › keeps a rule that names the base colours themselves (dark|light theme)
+
 ### AC-3: タイトルが合成後もコントラストを満たす
 
-- [x] AT-H: frame タイトルを `MUTED_FRAME_TITLE_OPACITY` で合成した色が、両テーマで canvas に対し WCAG AA（4.5:1）以上
+- [x] AT-I: frame タイトルを `MUTED_FRAME_TITLE_OPACITY` で合成した色が、両テーマで canvas に対し WCAG AA（4.5:1）以上
 
   > ✅ Automated — `packages/core/src/builtins/default-style-contrast.test.ts` › group frame title (dark|light theme) › stays AA-legible on the bare canvas
 
-- [x] AT-I: boundary frame の tint が乗った canvas 上でも同じく 4.5:1 以上（team frame と boundary frame は同じセルを覆いうる）
+- [x] AT-J: boundary frame の tint が乗った canvas 上でも同じく 4.5:1 以上（team frame と boundary frame は同じセルを覆いうる）
 
   > ✅ Automated — 同 describe › stays AA-legible over the %s boundary tint
 
-- [x] AT-J: 「muted な要素だから muted な色」を選ぶと AA を割ることが固定されている（後日の整理で `textMuted` に倒す変更はここで落ちる）
+- [x] AT-K: 「muted な要素だから muted な色」を選ぶと AA を割ることが固定されている（後日の整理で `textMuted` に倒す変更はここで落ちる）
 
   > ✅ Automated — 同 describe › would not clear AA if the title took the muted text role instead
 
 ### AC-4: 実機での可読性
 
-- [ ] AT-K: app を light テーマにして *Group by: team* を有効にすると、frame のタイトルと破線 outline が白い canvas 上で読める（枠が主張しすぎず、カードより後退して見える）
+- [ ] AT-L: app を light テーマにして *Group by: team* を有効にすると、frame のタイトルと破線 outline が白い canvas 上で読める（枠が主張しすぎず、カードより後退して見える）
 
-- [ ] AT-L: 同じモデルを dark テーマで開くと、frame の見え方が従来と変わらない（タイトルの明るさ・outline の弱さが以前と同等）
+- [ ] AT-M: 同じモデルを dark テーマで開くと、frame の見え方が従来と変わらない（タイトルの明るさ・outline の弱さが以前と同等）

@@ -113,6 +113,26 @@ team#payments {
     },
   );
 
+  // The value the fallback replaces is also a value an author may name. The
+  // decision is made from what the cascade *said*, not from what it resolved
+  // to, so naming the base hex on purpose is honoured in both themes rather
+  // than being read as silence.
+  it.each(["dark", "light"] as DiagramTheme[])(
+    "keeps a rule that names the base colours themselves (%s theme)",
+    (theme) => {
+      const result = compile(MODEL, {
+        diagramType: "system",
+        viewPath: ["Shop", "Orders"],
+        theme,
+        styleSource: `#Shop { color: ${DARK_CARD_DEFAULT.title}; border-color: ${DARK_CARD_DEFAULT.outline}; }`,
+      });
+      if (result.diagramType !== "system") throw new Error("expected system view");
+      const frame = containerOf(result.svg, "Shop");
+      expect(frame).toContain(`fill="${DARK_CARD_DEFAULT.title}"`);
+      expect(frame).toContain(`stroke="${DARK_CARD_DEFAULT.outline}"`);
+    },
+  );
+
   it("a container a rule paints keeps that rule's colours in both themes", () => {
     // `Orders` is a service, which the built-in sheet paints per theme: the
     // fallback must not reach a container the cascade already answered for.

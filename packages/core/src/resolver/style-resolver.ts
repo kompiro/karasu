@@ -24,6 +24,7 @@ import type {
   ResolvedFrameStyle,
   ResolvedBoundaryFrames,
   ResolvedTeamFrames,
+  PaintedNodeColors,
   ResolvedStyles,
   ResolvedLayoutHints,
   ResolvedStyleWarning,
@@ -106,7 +107,19 @@ export function resolveStyles(
   const nodeStyles = new Map<string, ResolvedNodeStyle>();
   const edgeStyles = new Map<string, ResolvedEdgeStyle>();
   const layoutHints = new Map<string, ResolvedLayoutHints>();
+  const paintedColors = new Map<string, PaintedNodeColors>();
   const resolvedStyleWarnings: ResolvedStyleWarning[] = [];
+
+  /**
+   * Record which frame colours the cascade named for `id` (#2662). Read the
+   * same way `toResolvedNodeStyle` does, so "painted" means exactly "this
+   * property was applied" rather than "this property appeared".
+   */
+  function recordPaintedColors(id: string, props: Record<string, string>): void {
+    const color = Boolean(props["color"]);
+    const borderColor = Boolean(props["border-color"]);
+    if (color || borderColor) paintedColors.set(id, { color, borderColor });
+  }
 
   // Build inferred tag map so that dot-notation resource nodes (e.g. "OrderDB.OrderTable")
   // automatically match resource[table] / resource[queue] / resource[storage] selectors
@@ -144,6 +157,7 @@ export function resolveStyles(
       // Always store under the simple ID key for backward-compat lookups (e.g., container
       // rendering uses container.id directly).
       nodeStyles.set(node.id, style);
+      recordPaintedColors(node.id, merged);
       if (hints) layoutHints.set(node.id, hints);
       // Also store under the annotation-qualified key so that two nodes sharing the same
       // ID but carrying different annotations (migration coexistence) each get their own
@@ -152,6 +166,7 @@ export function resolveStyles(
       const qualifiedKey = nodeStyleKey(node.id, resolvedNode.annotations);
       if (qualifiedKey !== node.id) {
         nodeStyles.set(qualifiedKey, style);
+        recordPaintedColors(qualifiedKey, merged);
       }
       // Inheritance only starts at `service`. A `system` carrying annotations
       // does not propagate them to its services (YAGNI).
@@ -199,6 +214,7 @@ export function resolveStyles(
         });
       }
       nodeStyles.set(unit.id, toResolvedNodeStyle(merged));
+      recordPaintedColors(unit.id, merged);
     }
   }
 
@@ -217,6 +233,7 @@ export function resolveStyles(
         layoutHints.set(node.id, { gridColumns: hint.gridColumns });
       }
       nodeStyles.set(node.id, toResolvedNodeStyle(merged));
+      recordPaintedColors(node.id, merged);
     }
   }
 
@@ -225,6 +242,7 @@ export function resolveStyles(
     edges: edgeStyles,
     boundaryFrames: resolveBoundaryFrames(allRules),
     teamFrames: resolveTeamFrames(allRules),
+    paintedColors,
     defaultNodeStyle: { ...DEFAULT_NODE_STYLE },
     defaultEdgeStyle: resolveDefaultEdgeStyle(allRules),
     layoutHints,

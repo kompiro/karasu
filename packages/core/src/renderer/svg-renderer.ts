@@ -1380,13 +1380,13 @@ function resolveFramePaint(
 
 /**
  * A container's style, with the two colours its frame draws in taken from the
- * theme wherever the cascade did not name them (#2662).
+ * theme wherever no rule named them (#2662).
  *
  * The cascade's base is `DEFAULT_NODE_STYLE`, a *card* default: a light label on
  * a dark fill, hard-coded to the dark palette. A frame has no fill, so that pair
  * was never the right reference for one, and on the light theme it drew a
- * near-white title (`#F9FAFB`) on a white canvas. Both ways a frame can end up
- * on that base run through here:
+ * near-white title (`#F9FAFB`) on a white canvas. Two shapes of container end up
+ * on that base and both run through here:
  *
  * - a group frame's id is synthesized (`__group_<team>__`, collapse stubs), so
  *   `styles.nodes` cannot hold a key for it and the lookup misses outright;
@@ -1394,10 +1394,11 @@ function resolveFramePaint(
  *   entry is the base itself when no rule paints that kind (`system` is not
  *   painted by the built-in sheet).
  *
- * One condition covers both: a colour still equal to the base is a colour
- * nothing named. An author who writes the base hex verbatim is read as having
- * named nothing and gets the theme's colour instead, which is the shade they
- * asked for in dark and a legible one in light.
+ * `paintedColors` is what separates the two cases from a rule that named the
+ * base hex on purpose: `nodes` cannot, because every entry there is seeded from
+ * the base and a colour no rule set is indistinguishable by value from one a
+ * rule set to the same value. An explicit `color: #F9FAFB` is honoured in both
+ * themes, exactly as `.krs.style` documents.
  *
  * The two roles are the ones the org tree already paints a team card with
  * (`treeDefaults` in `org-tree-renderer.ts`): a team is one entity with two
@@ -1417,11 +1418,11 @@ function containerStyleOf(
   palette: DiagramPalette,
 ): ResolvedNodeStyle {
   const style = styles.nodes.get(containerId) ?? styles.defaultNodeStyle;
-  const base = styles.defaultNodeStyle;
+  const painted = styles.paintedColors.get(containerId);
   return {
     ...style,
-    color: style.color === base.color ? palette.textPrimary : style.color,
-    borderColor: style.borderColor === base.borderColor ? palette.mutedBorder : style.borderColor,
+    color: painted?.color ? style.color : palette.textPrimary,
+    borderColor: painted?.borderColor ? style.borderColor : palette.mutedBorder,
   };
 }
 
