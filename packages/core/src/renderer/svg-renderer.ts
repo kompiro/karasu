@@ -476,15 +476,14 @@ export function renderFromLayout(
   // Ghost ancestor containers (outermost first)
   for (const container of layoutResult.containers) {
     if (container.ghost) {
-      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
-      parts.push(renderContainer(container, containerStyle, true));
+      parts.push(renderContainer(container, containerStyleOf(styles, container.id, palette), true));
     }
   }
 
   // Focused container
   for (const container of layoutResult.containers) {
     if (!container.ghost) {
-      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      const containerStyle = containerStyleOf(styles, container.id, palette);
       const diffState = options?.containerDiffState?.get(container.id);
       parts.push(
         renderContainer(
@@ -1224,8 +1223,12 @@ const FRAME_FILL_OPACITY = String(BOUNDARY_TINT_ALPHA);
  * The muted strength a group frame's title is drawn at while no style sheet has
  * named a colour for it. The frame is a structural hint at that point, and a
  * full-strength title competes with the cards inside it (ADR-1858).
+ *
+ * Exported because it is half of what the title's legibility is: the colour is
+ * only ever seen composited at this alpha, so the contrast guard has to measure
+ * the composite rather than the palette entry (#2662).
  */
-const MUTED_FRAME_TITLE_OPACITY = 0.7;
+export const MUTED_FRAME_TITLE_OPACITY = 0.7;
 
 /**
  * The cycled default for a boundary, before any `.krs.style` rule is consulted.
@@ -1373,6 +1376,53 @@ function resolveFramePaint(
     return resolveTeamFramePaint(container.groupId, style, teamFrames);
   }
   return resolveBoundaryPaint(container.groupId, container.hueIndex, boundaryFrames, palette);
+}
+
+/**
+ * A container's style, with the two colours its frame draws in taken from the
+ * theme wherever the cascade did not name them (#2662).
+ *
+ * The cascade's base is `DEFAULT_NODE_STYLE`, a *card* default: a light label on
+ * a dark fill, hard-coded to the dark palette. A frame has no fill, so that pair
+ * was never the right reference for one, and on the light theme it drew a
+ * near-white title (`#F9FAFB`) on a white canvas. Both ways a frame can end up
+ * on that base run through here:
+ *
+ * - a group frame's id is synthesized (`__group_<team>__`, collapse stubs), so
+ *   `styles.nodes` cannot hold a key for it and the lookup misses outright;
+ * - a ghost ancestor container has a real id, so it *has* an entry, but the
+ *   entry is the base itself when no rule paints that kind (`system` is not
+ *   painted by the built-in sheet).
+ *
+ * One condition covers both: a colour still equal to the base is a colour
+ * nothing named. An author who writes the base hex verbatim is read as having
+ * named nothing and gets the theme's colour instead, which is the shade they
+ * asked for in dark and a legible one in light.
+ *
+ * The two roles are the ones the org tree already paints a team card with
+ * (`treeDefaults` in `org-tree-renderer.ts`): a team is one entity with two
+ * renderings (ADR-2269), so its frame and its card read the same colour from the
+ * same palette role rather than deriving it twice.
+ *
+ * `textPrimary` rather than `textMuted` because the muting is already done by
+ * {@link MUTED_FRAME_TITLE_OPACITY}: composited at 0.7 the muted role reaches
+ * only 2.5:1 on the dark canvas and 2.7:1 on the light one, while the primary
+ * role lands at 7.6:1 / 5.5:1, muted to the eye and still legible. The outline
+ * keeps `mutedBorder`, which is what makes it recede in either theme instead of
+ * turning into a hard dark rule on white.
+ */
+function containerStyleOf(
+  styles: ResolvedStyles,
+  containerId: string,
+  palette: DiagramPalette,
+): ResolvedNodeStyle {
+  const style = styles.nodes.get(containerId) ?? styles.defaultNodeStyle;
+  const base = styles.defaultNodeStyle;
+  return {
+    ...style,
+    color: style.color === base.color ? palette.textPrimary : style.color,
+    borderColor: style.borderColor === base.borderColor ? palette.mutedBorder : style.borderColor,
+  };
 }
 
 function renderContainer(
