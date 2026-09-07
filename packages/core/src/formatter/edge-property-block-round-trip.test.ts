@@ -167,11 +167,12 @@ describe("karasu fmt — edge property block (#2543)", () => {
       `      description "settles the basket"\n    }\n  }\n}\n`;
     expectAstRoundTrip(src);
     expectIdempotent(src);
-    // `quoteId` re-spells any dotted target as a string literal — behaviour
-    // older than both slices, and identical for the shorthand. What this case
-    // fences is that the block does not cost the target its depth.
+    // What this case fences is that the block does not cost the target its
+    // depth. The spelling it comes back in is `edge-endpoint-path-round-trip`'s
+    // business (#2650); pinned here as bare so a regression cannot pass this
+    // file by re-quoting the path.
     const formatted = format(src);
-    expect(formatted).toContain("Shop.Checkout.Payment");
+    expect(formatted).toContain("-> Shop.Checkout.Payment {");
     expect(formatted).toContain(`description "settles the basket"`);
   });
 

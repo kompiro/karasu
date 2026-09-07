@@ -423,6 +423,24 @@ export type KrsNode =
 export interface KrsEdge {
   from: string;
   to: string;
+  /**
+   * The target's segments as the author spelled them, set only when the target
+   * was written as a dotted path (`A -> Shop.Checkout.Payment`). `to` stays the
+   * joined string every consumer reads; this is the segment boundary that join
+   * destroys.
+   *
+   * The formatter needs it and cannot recover it: a segment may itself be a
+   * quoted id containing a dot, so splitting `to` back apart is guesswork. With
+   * the segments, an endpoint serialises the way every sibling reference site
+   * already does — `path.map(quoteId).join(".")` — instead of quoting the whole
+   * path into one string literal (#2650). Same shape as `ResourceNode.ref` and
+   * `EntityNode.tableRef`, which keep their segments for the same reason.
+   *
+   * There is no `fromPath`: `isEdgeStart` requires the arrow at the token right
+   * after the source, so an edge source is always a single token and `quoteId`
+   * is already right for it.
+   */
+  toPath?: NodeIdPath;
   label?: string;
   kind: EdgeKind;
   tags: string[];
