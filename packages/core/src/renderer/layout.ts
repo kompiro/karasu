@@ -799,7 +799,18 @@ function layoutMultipleSystems(
   // edges whose endpoint was folded into a collapsed team re-anchor onto the
   // stub instead of being dropped (#1884; mirrors the single-system ghost-edge
   // remap). Identity for un-collapsed endpoints.
+  // Keyed by `nodePathKey([<system id>, <child id>])`, not by the bare child id:
+  // two systems may each hold a child of the same name, and since #2646 they
+  // fold to *distinct* per-system stubs, so a bare key would let the last system
+  // laid out decide where every other system's edge lands.
   const crossSystemRemap = new Map<string, string>();
+  // Which system each cross-system edge starts in. `viewSlice.crossSystemEdges`
+  // is flattened across systems and does not carry that, and the source endpoint
+  // has to re-anchor onto *its own* system's stub. Keyed by edge identity, since
+  // `withChildAnchoredEdges` hands back the model's own edge objects rather than
+  // copies: `Alpha.Ext -> Gamma.Cli` and `Beta.Ext -> Gamma.Cli` are equal as
+  // text and belong to different systems.
+  const crossSystemSource = new Map<KrsEdge, string>();
   /** 縮退 fallbacks across every system frame (#2179), in system order. */
   const allDegradedMemberships: { nodeId: string; boundaryId: string }[] = [];
 
@@ -909,7 +920,10 @@ function layoutMultipleSystems(
     // exists cannot also be folded into a group stub.
     for (const n of systemNodes) {
       const mapped = groupRemap(sysCollapsedCat.remapEndpoint(n.id));
-      if (mapped !== n.id) crossSystemRemap.set(n.id, mapped);
+      if (mapped !== n.id) crossSystemRemap.set(nodePathKey([sys.id, n.id]), mapped);
+    }
+    for (const e of systemRawEdges) {
+      if (e.to.includes(".")) crossSystemSource.set(e, sys.id);
     }
 
     const nodeIds = workNodes.map((n) => n.id);
@@ -1152,15 +1166,19 @@ function layoutMultipleSystems(
   // absorb several), so authored parallel cross-system edges between two
   // expanded nodes are untouched and the un-collapsed path stays byte-identical.
   const seenCrossStub = new Set<string>();
+  /** Identity unless *that system's* copy of `id` was folded into a stub. */
+  const remapCrossEndpoint = (systemId: string | undefined, id: string): string =>
+    (systemId !== undefined ? crossSystemRemap.get(nodePathKey([systemId, id])) : undefined) ?? id;
   for (const edge of viewSlice.crossSystemEdges) {
-    const fromId = crossSystemRemap.get(edge.from) ?? edge.from;
+    const fromId = remapCrossEndpoint(crossSystemSource.get(edge), edge.from);
     // The root canvas draws a system's direct children only, so the target is
     // anchored on `path[1]` of the path view extraction resolved (#2577). For
     // the two-segment `Sys.Svc` that is the same id the first-dot split gave;
     // for a deeper target it is the service the target lives inside.
     const targetPath = viewSlice.crossSystemTargets.get(edge.to) ?? edge.to.split(".");
     const toService = targetPath[1] ?? targetPath[0];
-    const toServiceRemapped = crossSystemRemap.get(toService) ?? toService;
+    // The target system is `targetPath[0]`, so the qualified key is on hand.
+    const toServiceRemapped = remapCrossEndpoint(targetPath[0], toService);
     const retargeted = fromId !== edge.from || toServiceRemapped !== toService;
     const toField =
       toServiceRemapped !== toService ? `${targetPath[0]}.${toServiceRemapped}` : edge.to;

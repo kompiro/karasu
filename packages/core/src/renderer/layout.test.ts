@@ -2424,3 +2424,58 @@ system Beta {
     expect(inside(result.nodes.get("__collapsed_Beta_infra__")!, frameOf("Beta"))).toBe(true);
   });
 });
+
+// #2646. Child ids are scoped to their system, so two systems can each hold a
+// `Store`. Since each system's fold now yields its own stub, the endpoint remap
+// has to be keyed per system too: keyed by the bare id, the last system laid out
+// would decide where every other system's cross-system edge lands.
+describe("cross-system edges re-anchor onto their own system's category stub (#2646)", () => {
+  const DUPLICATE_CHILD_IDS = `
+system Alpha {
+  service Api
+  database Store
+}
+system Beta {
+  service Web
+  database Store
+}
+system Gamma {
+  service Cli
+  Cli -> Alpha.Store
+  Cli -> Beta.Store
+}
+`;
+
+  it("sends each edge to the stub of the system its target lives in", () => {
+    const result = layout(parseAndExtract(DUPLICATE_CHILD_IDS), {
+      collapsedCategories: new Set<"external" | "infra">(["infra"]),
+    });
+    expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
+      "Cli->Alpha.__collapsed_Alpha_infra__",
+      "Cli->Beta.__collapsed_Beta_infra__",
+    ]);
+  });
+
+  it("re-anchors a folded source onto its own system's stub, not another's", () => {
+    const krs = `
+system Alpha {
+  service Ext [external]
+  Ext -> Gamma.Cli
+}
+system Beta {
+  service Ext [external]
+  Ext -> Gamma.Cli
+}
+system Gamma {
+  service Cli
+}
+`;
+    const result = layout(parseAndExtract(krs), {
+      collapsedCategories: new Set<"external" | "infra">(["external"]),
+    });
+    expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
+      "__collapsed_Alpha_external__->Gamma.Cli",
+      "__collapsed_Beta_external__->Gamma.Cli",
+    ]);
+  });
+});
