@@ -70,6 +70,10 @@ import { extractView, type ViewPath } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView, type OrgViewPath } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
+import {
+  extractTeamDependencies,
+  type TeamDependencyReport,
+} from "../view/team-dependency-extract.js";
 import { ImportResolver } from "../fs/import-resolver.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
@@ -292,6 +296,28 @@ export interface OrgCompileResult {
   ownerIndex: Map<string, string>;
   /** Resolved node/edge styles for use in tree view rendering. */
   styles: ResolvedStyles;
+  /**
+   * Team dependencies derived from `owns` × the logical edges (#2597).
+   *
+   * Carried on the **org** result because the org tab is where it is drawn
+   * (ADR-309's precedent: org modes live on the org tab), and computed here
+   * because this is the one place holding both halves of the join — the org
+   * result's `organizations` and the merged file's systems. Deriving it in the
+   * app would need a second resolve of the same project.
+   *
+   * Empty (`teams: []`) when the model declares no `organization`, which is
+   * what gates the mode in the app rather than a separate flag to drift
+   * against (TPL-1032).
+   *
+   * **Lazily derived, memoized on first read.** The join walks every edge of
+   * every container and builds two indices, and almost no org compile wants
+   * it: `karasu render --view org`, the docs-site example renderer and the
+   * VS Code webview never read this field, and the app reads it only while the
+   * dependency mode is open. Keeping it a property rather than a separate
+   * entry point preserves the "one resolve, one model" guarantee the org tab
+   * relies on; making it lazy stops every other caller paying for it.
+   */
+  readonly teamDependencies: TeamDependencyReport;
 }
 
 /** Discriminated union of all compile result types. Narrow on `diagramType` to access type-specific fields. */
@@ -405,16 +431,19 @@ function _compileFromPreparedInput(
       legendUsage: collectLegendUsage(krsFile),
       theme,
     });
-    return {
-      diagramType: "org",
-      svg,
-      diagnostics,
-      warnings,
-      nodePathIndex: krsFile.nodePathIndex,
-      organizations: krsFile.organizations,
-      ownerIndex: krsFile.ownerIndex,
-      styles,
-    };
+    return withLazyTeamDependencies(
+      {
+        diagramType: "org" as const,
+        svg,
+        diagnostics,
+        warnings,
+        nodePathIndex: krsFile.nodePathIndex,
+        organizations: krsFile.organizations,
+        ownerIndex: krsFile.ownerIndex,
+        styles,
+      },
+      krsFile,
+    );
   }
 
   // system / deploy shared setup.
@@ -571,6 +600,30 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
     { krsFile: parseResult.value, diagnostics, sheets, nodeFileIndex: new Map<string, string>() },
     opts,
   );
+}
+
+/**
+ * Attach `teamDependencies` to `result` as an accessor that derives on first
+ * read and caches after.
+ *
+ * Defined **on the result object**, never spread onto it: object spread reads
+ * every own enumerable property, so `{ ...carrier }` invokes the getter and
+ * copies a plain value — the derivation would run on every org compile and the
+ * laziness would be silently undone. `enumerable` and `configurable` keep the
+ * shape a plain reader expects; a later spread or `JSON.stringify` of the
+ * result does materialize it, which is the honest behaviour for a field the
+ * type says is always there.
+ */
+function withLazyTeamDependencies<T extends object>(
+  result: T,
+  krsFile: KrsFile,
+): T & { teamDependencies: TeamDependencyReport } {
+  let cached: TeamDependencyReport | undefined;
+  return Object.defineProperty(result, "teamDependencies", {
+    get: () => (cached ??= extractTeamDependencies(krsFile)),
+    enumerable: true,
+    configurable: true,
+  }) as T & { teamDependencies: TeamDependencyReport };
 }
 
 async function _compileProjectCore(

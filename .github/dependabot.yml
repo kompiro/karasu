@@ -5,10 +5,11 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    # 既定の 5 だと月曜バッチで枠が埋まり、peer で結ばれた依存
-    # （vitest と @vitest/coverage-v8 など）の片方がオファーされないまま
-    # 残る。枠が空くのを待つ間に片方だけマージすると peer 不整合を
-    # lockfile に固定してしまうため 8 に引き上げる（ADR-2431）。
+    # 既定の 5 だと月曜バッチで枠が埋まり、peer で結ばれた依存の片方が
+    # オファーされないまま残る。枠が空くのを待つ間に片方だけマージすると
+    # peer 不整合を lockfile に固定してしまうため 8 に引き上げる（ADR-2447）。
+    # ただし枠をいくら広げても pair の同時到着は保証されない。相互に
+    # ブロックする組は枠ではなく下の groups: で結ぶ（ADR-2671）。
     open-pull-requests-limit: 8
     cooldown:
       default-days: 7
@@ -40,6 +41,17 @@ updates:
           - "vscode-languageserver-protocol"
           - "vscode-languageserver-textdocument"
           - "vscode-languageclient"
+      # @vitest/coverage-v8 は vitest を完全一致ピンの peer で持つ
+      # （4.1.11 の peer は "vitest": "4.1.11"）。片方だけマージすると
+      # upstream が支えない組み合わせが lockfile に固定されるが、pnpm は
+      # strict-peer-dependencies なしで走るので install も CI も通ってしまう。
+      # exact peer は react / lsp と同じクラスの制約なので同じ機構で結ぶ
+      # （ADR-2447 / ADR-2671 で 2 度発生し、どちらも差し替え PR で人手で
+      # 揃えた）。patterns は完全一致なので 1 行ずつ挙げる。
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/coverage-v8"
 
   - package-ecosystem: "github-actions"
     directory: "/"

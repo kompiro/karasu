@@ -27,6 +27,15 @@ export interface EmptyStateLabels {
    * the `.krs` file produces no system-side root content.
    */
   systemNoDiagram?: string;
+  /** Footer line for the team-dependency graph when the join produced no pair (#2636). */
+  teamDependencyNone?: string;
+  /**
+   * Footer line naming how many endpoints reached no team, with `{count}`
+   * substituted. Always shown when there are any: the derivation is only as
+   * complete as `owns`, and a graph without its remainder reads as the whole
+   * model (TPL-2075).
+   */
+  teamDependencyUnowned?: string;
 }
 
 export const DEFAULT_EMPTY_STATE_LABELS = {
@@ -38,4 +47,6 @@ export const DEFAULT_EMPTY_STATE_LABELS = {
   systemNoNodes: "No nodes to render",
   orgPlaceholder: "No org diagram",
   systemNoDiagram: "No diagram",
+  teamDependencyNone: "No team dependencies derived",
+  teamDependencyUnowned: "{count} endpoint(s) owned by no team",
 } as const satisfies Required<EmptyStateLabels>;

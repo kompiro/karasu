@@ -45,6 +45,9 @@ export function PreviewColumn() {
     orgTreeSvg,
     onTeamToggle,
     orgTreeExportSvg,
+    isTeamDependenciesOpen,
+    teamDependencySvg,
+    hasTeamDependencyView,
     isEntityViewOpen,
     entityViewSvg,
     hasEntityView,
@@ -134,6 +137,12 @@ export function PreviewColumn() {
     (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
   const showOrgTreeView = activeView === "org" && isOrgTreeViewOpen;
+  // The org tab's third mode. Gated on the model declaring an organization for
+  // the same reason the toggle is: with no team there is nothing to draw, and a
+  // mode that renders a blank canvas reads as a bug rather than as an empty
+  // model (ADR-766).
+  const showTeamDependencies =
+    activeView === "org" && isTeamDependenciesOpen && hasTeamDependencyView;
   // Entity sub-mode: only while drilled into a domain that actually has an
   // entity view (mirrors org Tree View, but scoped to the system view).
   const showEntityView = activeView === "system" && isEntityViewOpen && hasEntityView;
@@ -145,9 +154,11 @@ export function PreviewColumn() {
     ? !!entityViewSvg
     : showOrgTreeView
       ? !!orgTreeExportSvg
-      : showAllLayersIframe
-        ? !!activeAllLayersSvg
-        : !!svg;
+      : showTeamDependencies
+        ? !!teamDependencySvg
+        : showAllLayersIframe
+          ? !!activeAllLayersSvg
+          : !!svg;
 
   function handleExport() {
     if (showEntityView && entityViewSvg) {
@@ -156,6 +167,8 @@ export function PreviewColumn() {
     }
     if (showOrgTreeView && orgTreeExportSvg) {
       onExportSvg(orgTreeExportSvg, exportFilename.replace(/\.svg$/, "-tree.svg"));
+    } else if (showTeamDependencies && teamDependencySvg) {
+      onExportSvg(teamDependencySvg, exportFilename.replace(/\.svg$/, "-team-dependencies.svg"));
     } else if (showAllLayersIframe && activeAllLayersSvg) {
       onExportSvg(activeAllLayersSvg, exportFilename.replace(/\.svg$/, "-all-layers.svg"));
     } else {
@@ -269,7 +282,7 @@ export function PreviewColumn() {
             onNavigate={systemView.onBreadcrumbNavigate}
           />
         )}
-        {activeView === "org" && !showOrgTreeView && (
+        {activeView === "org" && !showOrgTreeView && !showTeamDependencies && (
           <BreadcrumbBar
             items={orgView.breadcrumbItems}
             onNavigate={orgView.onBreadcrumbNavigate}
@@ -293,6 +306,12 @@ export function PreviewColumn() {
             if (teamId && onTeamToggle) onTeamToggle(teamId);
           }}
           dangerouslySetInnerHTML={{ __html: orgTreeSvg ?? "" }}
+        />
+      ) : showTeamDependencies ? (
+        <div
+          className="preview-pane preview-pane--team-dependencies"
+          style={{ overflow: "auto", flex: 1 }}
+          dangerouslySetInnerHTML={{ __html: teamDependencySvg ?? "" }}
         />
       ) : showAllLayersIframe ? (
         <iframe
