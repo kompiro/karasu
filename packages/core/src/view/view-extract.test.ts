@@ -2295,4 +2295,98 @@ domain OrderDB {
     const slice = extractView(parseSystem(KRS), ["EC", "OrderService"]);
     expect(slice.childEdges.some((e) => e.tags.includes("projected"))).toBe(false);
   });
+
+  describe("union with the edges the .krs records (#2722)", () => {
+    // Recorded on the leaves, as `translate --from db` emits them; the same
+    // pairs are asserted by the entity layer with labels.
+    const RECORDED = (ordersBlock: string) => `
+system EC {
+  service S {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+        Order --> LineItem "has"
+        Order -> Customer "placed by"
+        Order -> Product "contains"
+      }
+      entity LineItem { table OrderDB.line_items }
+      entity Customer { table OrderDB.customers }
+      entity Product {
+        table OrderDB.products
+        Product -> Order "sold in"
+      }
+    }
+  }
+  database OrderDB {
+    table orders { ${ordersBlock} }
+    table line_items {}
+    table customers {}
+    table products {}
+  }
+}
+`;
+    const edgesOf = (krs: string) =>
+      extractView(parseSystem(krs), ["EC", "OrderDB"]).childEdges.map((e) => ({
+        pair: `${e.from}->${e.to}`,
+        kind: e.kind,
+        label: e.label,
+        projected: e.tags.includes("projected"),
+      }));
+
+    it("draws one edge per pair, as recorded, labelled from the relation (TC-B4)", () => {
+      const edges = edgesOf(RECORDED("orders -> customers"));
+      const cust = edges.filter((e) => e.pair === "orders->customers");
+      expect(cust).toEqual([
+        { pair: "orders->customers", kind: "sync", label: "placed by", projected: false },
+      ]);
+    });
+
+    it("keeps a written label over the relation's (TC-B4)", () => {
+      const edges = edgesOf(RECORDED('orders -> customers "fk"'));
+      expect(edges.find((e) => e.pair === "orders->customers")?.label).toBe("fk");
+    });
+
+    it("keeps the recorded kind when the relation's differs (TC-B5)", () => {
+      // `Order --> LineItem` over a recorded `orders -> line_items`: the record's
+      // `->` is a stated fact, so the surviving edge stays solid.
+      const edges = edgesOf(RECORDED("orders -> line_items"));
+      const li = edges.filter((e) => e.pair === "orders->line_items");
+      expect(li).toEqual([
+        { pair: "orders->line_items", kind: "sync", label: "has", projected: false },
+      ]);
+    });
+
+    it("draws only the recorded side of an opposite-direction pair and does not move the label (TC-B6)", () => {
+      // Recorded `products -> orders`, projected `orders -> products "contains"`
+      // and `products -> orders "sold in"` (same direction as the record).
+      const edges = edgesOf(
+        RECORDED("").replace("table products {", "table products { products -> orders"),
+      );
+      expect(edges.filter((e) => e.pair === "orders->products")).toEqual([]);
+      expect(edges.filter((e) => e.pair === "products->orders")).toEqual([
+        { pair: "products->orders", kind: "sync", label: "sold in", projected: false },
+      ]);
+    });
+
+    it("draws a hand-written untagged table edge exactly as a translated one — untagged, not [projected] (TC-B8)", () => {
+      const edges = edgesOf(RECORDED("orders -> customers [inferred]"));
+      const cust = edges.find((e) => e.pair === "orders->customers");
+      expect(cust?.projected).toBe(false);
+      const raw = extractView(parseSystem(RECORDED("orders -> customers [inferred]")), [
+        "EC",
+        "OrderDB",
+      ]);
+      expect(raw.childEdges.find((e) => e.to === "customers")?.tags).toEqual(["inferred"]);
+    });
+
+    it("does not draw a recorded table edge whose target is a leaf of another store (edge-endpoint-not-at-scope owns it)", () => {
+      const krs = `
+system EC {
+  database OrderDB { table orders { orders -> ledger } }
+  database LedgerDB { table ledger {} }
+}
+`;
+      expect(extractView(parseSystem(krs), ["EC", "OrderDB"]).childEdges).toEqual([]);
+    });
+  });
 });

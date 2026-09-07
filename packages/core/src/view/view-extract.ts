@@ -1292,17 +1292,15 @@ function extractSystemDrillDownView(
   // service view, and service-anchored edges when this container is the
   // system (#2223).
   const drawnKeys = new Set(ownEdges.map(drawnEdgeKey));
-  const childEdges = [...ownEdges, ...collectAnchoredPeerEdges(containerNode.children, drawnKeys)];
   // A `database` canvas also draws the entity relations that land on its
-  // leaves (#2721). Every system is a resolution scope: an entity may map into
-  // a store declared in another system, and the `__unassigned__` pseudo-system
-  // is how a no-system file's orphan domains reach here.
-  childEdges.push(
-    ...projectEntityRelationsOntoStore(
-      containerNode,
-      systems.map((s) => buildDomainEntityIndex(s)),
-      childEdges,
-    ),
+  // leaves, unioned with the edges the `.krs` records there (#2721, #2722).
+  // Every system is a resolution scope: an entity may map into a store
+  // declared in another system, and the `__unassigned__` pseudo-system is how
+  // a no-system file's orphan domains reach here.
+  const childEdges = unionProjectedRelations(
+    containerNode,
+    systems.map((s) => buildDomainEntityIndex(s)),
+    [...ownEdges, ...collectAnchoredPeerEdges(containerNode.children, drawnKeys)],
   );
 
   // Ghost users/systems/domains: only for service view.
@@ -1545,18 +1543,34 @@ const PROJECTED_TAG = "projected";
  *
  * `scopes` are the per-system domain indexes the model resolves relations in
  * (a no-system file reaches this canvas through the `__unassigned__`
- * pseudo-system, so its orphan domains are one such scope). An edge the
- * canvas already draws for the same ordered leaf pair (an authored
- * `table` edge) suppresses the projection; the union rule that transfers a
- * label onto it is slice B (#2722). Within the projection the first relation
- * per ordered pair wins, in declaration order.
+ * pseudo-system, so its orphan domains are one such scope).
+ *
+ * **Union with the recorded edges** (#2722): `recorded` are the edges the
+ * `.krs` states on the canvas — hand-written `table` edges, or the foreign
+ * keys `translate --from db` emitted. The recorded side is the confirmed
+ * one, so a surviving edge takes only the attributes it does not already
+ * have:
+ *
+ * - same ordered pair from both sources → **one** edge, the recorded one,
+ *   without `[projected]`; its **label** is taken from the relation only when
+ *   the record has none (a written label wins);
+ * - `edge.kind` never transfers — the record's `->` / `-->` is always stated,
+ *   so a `-->` relation over a `->` record stays solid (the record states a
+ *   different fact: a reference the store enforces);
+ * - opposite directions (recorded `A -> B`, projected `B -> A`) → the
+ *   recorded side only, and the label does **not** move: `"belongs to"` is
+ *   direction-dependent, so carrying it across would make it false.
+ *
+ * Within the projection the first relation per ordered pair wins, in
+ * declaration order. Returns the whole edge list for the canvas.
  */
-function projectEntityRelationsOntoStore(
+function unionProjectedRelations(
   store: KrsNode,
   scopes: readonly (readonly DomainEntityEntry[])[],
-  drawn: readonly KrsEdge[],
+  recorded: readonly KrsEdge[],
 ): KrsEdge[] {
-  if (store.kind !== "database") return [];
+  const edges: KrsEdge[] = [...recorded];
+  if (store.kind !== "database") return edges;
   const leafIds = new Set(store.children.map(nodeId));
   const leafOf = (entity: KrsNode): string | undefined => {
     const ref = entity.kind === "entity" ? entity.tableRef : undefined;
@@ -1564,8 +1578,17 @@ function projectEntityRelationsOntoStore(
     return ref.child;
   };
   const pairKey = (from: string, to: string): string => `${from}->${to}`;
-  const taken = new Set(drawn.map((e) => pairKey(e.from, e.to)));
-  const projected: KrsEdge[] = [];
+  /** Ordered pair → index of the first recorded edge on it (label transfer target). */
+  const recordedAt = new Map<string, number>();
+  /** Pairs a recorded edge occupies in either direction (projection is suppressed). */
+  const occupied = new Set<string>();
+  recorded.forEach((e, i) => {
+    const key = pairKey(e.from, e.to);
+    if (!recordedAt.has(key)) recordedAt.set(key, i);
+    occupied.add(key);
+    occupied.add(pairKey(e.to, e.from));
+  });
+  const projectedPairs = new Set<string>();
   for (const index of scopes) {
     for (const entry of index) {
       for (const entity of entry.entities.values()) {
@@ -1580,14 +1603,25 @@ function projectEntityRelationsOntoStore(
           const to = leafOf(target);
           if (to === undefined) continue;
           const key = pairKey(from, to);
-          if (taken.has(key)) continue;
-          taken.add(key);
-          projected.push({ ...edge, from, to, tags: [...edge.tags, PROJECTED_TAG] });
+          const at = recordedAt.get(key);
+          if (at !== undefined) {
+            // Same pair, same direction: the record survives; only a missing
+            // label is taken from the relation.
+            const rec = edges[at];
+            if (rec.label === undefined && edge.label !== undefined) {
+              edges[at] = { ...rec, label: edge.label };
+            }
+            continue;
+          }
+          if (occupied.has(key)) continue; // opposite direction recorded: record only, no label
+          if (projectedPairs.has(key)) continue;
+          projectedPairs.add(key);
+          edges.push({ ...edge, from, to, tags: [...edge.tags, PROJECTED_TAG] });
         }
       }
     }
   }
-  return projected;
+  return edges;
 }
 
 /**
