@@ -167,6 +167,7 @@ export const ja: Partial<Translations> = {
   "emptyState.system.noDiagram": "図がありません",
   "emptyState.teamDependency.none": "チーム依存は導出されませんでした",
   "emptyState.teamDependency.unowned": "所有チームに解決しなかった端点が {count} 件あります",
+  "emptyState.teamDependency.overlap": "囲みを跨いで所有されているノードが {count} 件あります",
 
   // Built-in annotation badge labels (must match reference-data ja labels)
   "badge.deprecated": "非推奨",

@@ -11,7 +11,8 @@
  * Mechanism: a curated `DERIVATION_CONTRACTS` table where each row pins
  * down one derivation function (`deriveImplicitServiceEdges`,
  * `deriveInfraEdges`, `deriveDeliversEdges`, `applyInferredTags`,
- * `buildInheritedAnnotations`, `extractTeamDependencies`). Each row declares:
+ * `buildInheritedAnnotations`, `extractTeamDependencies`,
+ * `findStructuralOverlaps`). Each row declares:
  *
  *   - `preserves`: source attributes the derivation must carry through
  *     unchanged (e.g. `kind` for implicit service edges, since #510).
@@ -281,6 +282,47 @@ organization O {
         fromTeam: dep.fromTeam,
         toTeam: dep.toTeam,
         relation: dep.relation,
+      };
+    },
+  },
+  {
+    name: "findStructuralOverlaps: node owned across a containment boundary",
+    preserves: {
+      // The node's own kind survives the projection — the overlap is reported
+      // about a `domain`, not about an anonymous path.
+      kind: "domain",
+      // The full 1:N owner list, never collapsed to a primary (TPL-2161): a
+      // node handed between two teams keeps both on the inner side.
+      teams: ["t2", "t3"],
+    },
+    transforms: {
+      // A node path becomes a (path, insidePath) pair naming the containment
+      // that ownership crosses.
+      path: "S.A.Da",
+      insidePath: "S.A",
+      // And the same nested / cross-team discriminator the dependency channel
+      // carries, so the two are not conflated in a count.
+      relation: "cross-team",
+    },
+    observe: () => {
+      const file = Parser.parse(`
+system S {
+  service A { domain Da {} }
+}
+organization O {
+  team t1 { owns A }
+  team t2 { owns Da }
+  team t3 { owns Da }
+}
+`).value;
+      const [overlap] = extractTeamDependencies(file).overlaps;
+      if (!overlap) throw new Error("expected a structural overlap");
+      return {
+        kind: overlap.kind,
+        teams: overlap.teams,
+        path: overlap.path,
+        insidePath: overlap.insidePath,
+        relation: overlap.relation,
       };
     },
   },

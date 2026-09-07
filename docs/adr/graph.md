@@ -210,6 +210,7 @@ flowchart TD
     ADR_2408["ADR-2408<br/>team は infra ブロックを owns できる（カードのチップは論理 kind のみ）"]
     ADR_2522["ADR-2522<br/>語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の r..."]
     ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
+    ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
@@ -901,6 +902,7 @@ flowchart TD
   class ADR_2592 accepted
   class ADR_2593 accepted
   class ADR_2596 accepted
+  class ADR_2597 accepted
   class ADR_2598 accepted
   class ADR_2623 accepted
   class ADR_2628 accepted

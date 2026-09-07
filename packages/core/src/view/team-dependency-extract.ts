@@ -80,6 +80,51 @@ export interface TeamDependency {
   via: TeamDependencyEdge[];
 }
 
+/**
+ * A node whose declared owner differs from the team owning the node it sits
+ * **inside** — ownership crossing containment rather than crossing a call.
+ *
+ * The edge join cannot see containment at all, so this is invisible to it
+ * whether or not an edge also happens to cross the same boundary — the two
+ * signals are independent, and a team pair can produce both. Either way the
+ * two teams have to agree on the enclosing structure: the ownership split and
+ * the structural split disagree. That makes it arguably the stronger
+ * inverse-Conway smell of the two signals this module derives.
+ */
+export interface StructuralOverlap {
+  /** Full path (`nodePathKey`) of the node whose ownership crosses in. */
+  path: string;
+  kind: string;
+  /**
+   * The teams whose ownership actually crosses — those that declared `owns` on
+   * this node and **not** on the enclosing one.
+   *
+   * A team on both sides owns something inside its own holdings, which is not
+   * an overlap at all (it is the case AT-C pins as unreported). Listing it here
+   * would put it in the markdown row and emit a `A,A` csv pair, naming a team
+   * as part of a breach it is not part of.
+   */
+  teams: string[];
+  /** Full path of the nearest ancestor that is itself declared-owned. */
+  insidePath: string;
+  insideKind: string;
+  /** Teams that declared `owns` on that ancestor. */
+  insideTeams: string[];
+  /**
+   * Whether the two sides sit in one team's subtree in the org tree, exactly as
+   * on {@link TeamDependency}.
+   *
+   * A working group owning something inside its parent team's node is a
+   * different fact from two unrelated teams interleaving, and for the same
+   * reason it is on the dependency side: the nested case is already covered by
+   * a reporting line, and counting it as a cross-org breach inflates the
+   * signal. `nested` when *every* pairing of an inner and an outer team is an
+   * ancestor pair — one genuinely foreign owner is enough to make the whole
+   * overlap cross-team.
+   */
+  relation: TeamDependencyRelation;
+}
+
 /** An endpoint that names a real node which no team owns, directly or by inheritance. */
 export interface UnownedEndpoint {
   /** Full path (`nodePathKey`) of the node. */
@@ -104,6 +149,16 @@ export interface TeamDependencyReport {
    * dependency. That is the specification, not a gap in the model.
    */
   unowned: UnownedEndpoint[];
+  /**
+   * Ownership that crosses containment (#2637).
+   *
+   * A separate list rather than another kind of `dependencies` entry, because
+   * it is a different kind of fact: a dependency says one team's node calls
+   * another's, an overlap says one team's node *lives inside* another's. Folding
+   * them into one channel would make the count of "team pairs that must
+   * coordinate" answer two questions at once.
+   */
+  overlaps: StructuralOverlap[];
 }
 
 /**
@@ -200,17 +255,27 @@ function collectEdgeContainers(file: KrsFile): KrsNode[] {
     for (const child of node.children) walk(child);
   };
   for (const system of file.systems) walk(system);
-  for (const node of [
+  for (const node of topLevelRoots(file)) walk(node);
+  return containers;
+}
+
+/**
+ * The nodes declared outside any `system`, in one place.
+ *
+ * Every walk over the model needs this list, and it was spelled out per walk.
+ * A seventh ownable top-level collection added to `KrsFile` would then reach
+ * some walks and not others — no type error, no failing test, just a kind that
+ * derives dependencies but never reports an overlap.
+ */
+function topLevelRoots(file: KrsFile): KrsNode[] {
+  return [
     ...file.services,
     ...file.clients,
     ...file.domains,
     ...file.databases,
     ...file.queues,
     ...file.storages,
-  ]) {
-    walk(node);
-  }
-  return containers;
+  ];
 }
 
 /**
@@ -390,5 +455,81 @@ export function extractTeamDependencies(file: KrsFile): TeamDependencyReport {
     teams: tree.order,
     dependencies: ordered,
     unowned: [...unowned.values()].sort((a, b) => a.path.localeCompare(b.path)),
+    overlaps: findStructuralOverlaps(file, ownership, isAncestorPair),
   };
+}
+
+/**
+ * Find ownership that crosses containment: a node whose own `owns` names a
+ * different team than the nearest enclosing node that also has its own `owns`.
+ *
+ * Both ends must be **declared**, never inherited. An inherited owner is by
+ * definition the enclosing node's team, so admitting it would report every
+ * node under an owned service as overlapping with the service that owns it —
+ * which is the normal shape of a model, not a signal.
+ *
+ * The comparison is "some inner team is absent from the outer set" rather than
+ * set inequality. A handover mid-flight — `oldPay` and `newPay` both owning the
+ * outer node, `oldPay` alone owning something inside — therefore reports
+ * **nothing**: `oldPay` is already one of the enclosing owners, so nothing
+ * crosses. Set inequality would report it, and would be wrong to: the inner
+ * owner has a claim on the boundary it sits in.
+ *
+ * A bare `owns` broadcasts to every node with that id (spec, § team node), so
+ * a same-named node in another system inherits that claim and can surface here
+ * as an overlap the author never wrote by hand. That is a faithful consequence
+ * of the ownership they declared rather than a fault in this walk — the fix is
+ * to qualify the `owns` — but it is surprising enough to be pinned by a test.
+ */
+function findStructuralOverlaps(
+  file: KrsFile,
+  ownership: ReadonlyMap<string, string[]>,
+  isAncestorPair: (a: string, b: string) => boolean,
+): StructuralOverlap[] {
+  const overlaps: StructuralOverlap[] = [];
+
+  const walk = (node: KrsNode, prefix: NodeIdPath, enclosing: EnclosingOwner | undefined): void => {
+    const path = [...prefix, node.id];
+    const declared = ownership.get(nodePathKey(path));
+    let next = enclosing;
+    if (declared !== undefined && declared.length > 0) {
+      const outer = enclosing?.teams ?? [];
+      const crossing = enclosing === undefined ? [] : declared.filter((t) => !outer.includes(t));
+      if (crossing.length > 0) {
+        overlaps.push({
+          path: nodePathKey(path),
+          kind: node.kind,
+          teams: crossing,
+          insidePath: nodePathKey(enclosing!.path),
+          insideKind: enclosing!.kind,
+          insideTeams: [...outer],
+          // `nested` when every crossing/enclosing pairing sits in one team's
+          // subtree. Filtering above is what makes this read cleanly: a team
+          // owning on both sides is gone by now, so the only question left is
+          // whether the teams that really cross are ancestors of the ones they
+          // crossed into.
+          relation: crossing.every((inner) => outer.every((o) => isAncestorPair(inner, o)))
+            ? "nested"
+            : "cross-team",
+        });
+      }
+      next = { path, kind: node.kind, teams: declared };
+    }
+    for (const child of node.children) walk(child, path, next);
+  };
+
+  for (const system of file.systems) walk(system, [], undefined);
+  for (const node of topLevelRoots(file)) walk(node, [], undefined);
+  // Sorted like `unowned`, so the projections are stable. Walk order follows
+  // the merge order of `KrsFile`'s top-level lists, which import order decides
+  // — an unsorted list would reshuffle a report on an import reorder that
+  // changed nothing about the model.
+  return overlaps.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+/** The nearest ancestor carrying its own `owns`, as the walk descends. */
+interface EnclosingOwner {
+  path: NodeIdPath;
+  kind: string;
+  teams: readonly string[];
 }
