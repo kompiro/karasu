@@ -1422,6 +1422,56 @@ system ECPlatform {
       expect(userDb.children.map((c) => c.id).sort()).toEqual(["orders", "users"]);
     });
 
+    it("S4.5: a reopened infra block unions its own edges, not only its leaves (#2754)", async () => {
+      // `mergeInfraBody` copied `children` and stopped, so an edge written in a
+      // `database` body survived only when it happened to sit in the entry that
+      // won. The leaves it connects were merged, so the block looked complete
+      // while the relation between them was gone — the same "a reopened
+      // database must not look like it lost something" line the leaf union
+      // already holds.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+         import "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users }`);
+      await fs.writeFile(
+        "/project/b.krs",
+        `database UserDB {
+           table sessions
+           sessions -> users
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.children.map((c) => c.id).sort()).toEqual(["sessions", "users"]);
+      expect(userDb.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["sessions->users"]);
+    });
+
+    it("S4.5: the same edge arriving from both entries is not duplicated (#2754)", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+         import "b.krs"
+         system X { }`,
+      );
+      const body = `database UserDB {
+           table users
+           table sessions
+           sessions -> users
+         }`;
+      await fs.writeFile("/project/a.krs", body);
+      await fs.writeFile("/project/b.krs", body);
+
+      const result = await resolver.resolve("/project/index.krs");
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["sessions->users"]);
+    });
+
     it("a same-id leaf arriving through a named import is not dropped silently (#2582 review)", async () => {
       await fs.writeFile(
         "/project/index.krs",

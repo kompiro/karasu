@@ -640,6 +640,19 @@ export class ImportResolver {
       }
       target.children.push(child);
     }
+    // A `database` body holds edges as well as leaves (`sessions -> users`),
+    // and the union owes them the same treatment it gives the leaves: merging
+    // the tables but dropping the relations between them leaves a block that
+    // looks complete and has quietly lost information (#2754). Deduped the
+    // same way the system merge above does it, so an edge arriving from both
+    // entries lands once.
+    for (const edge of source.edges) {
+      if (target.edges.includes(edge)) continue;
+      const exists = target.edges.some(
+        (e) => e.from === edge.from && e.to === edge.to && e.label === edge.label,
+      );
+      if (!exists) target.edges.push(edge);
+    }
   }
 
   /**
