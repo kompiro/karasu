@@ -25,6 +25,7 @@ export function useEmptyStateLabels(): EmptyStateLabels {
       systemNoDiagram: translate(locale, "emptyState.system.noDiagram"),
       teamDependencyNone: translate(locale, "emptyState.teamDependency.none"),
       teamDependencyUnowned: translate(locale, "emptyState.teamDependency.unowned"),
+      teamDependencyOverlap: translate(locale, "emptyState.teamDependency.overlap"),
     }),
     [locale],
   );

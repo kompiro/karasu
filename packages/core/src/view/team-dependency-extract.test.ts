@@ -328,3 +328,205 @@ organization O {
     expect(find(dependencies, "Team", "Team A", "sync")!.via).toHaveLength(1);
   });
 });
+
+describe("extractTeamDependencies — structural overlap (#2637)", () => {
+  const NESTED_OWNERSHIP = `
+system Shop {
+  service Checkout {
+    domain Cart {}
+    domain Pricing {}
+  }
+  service Payments {
+    domain Authorization {}
+    domain Settlement {}
+  }
+}
+organization Shop {
+  team checkout { owns Checkout }
+  team payments {
+    owns Payments
+    owns Pricing
+    team pci { owns Settlement }
+  }
+}
+`;
+
+  it("reports a node owned by one team living inside another team's node, once", () => {
+    const { overlaps } = report(NESTED_OWNERSHIP);
+    const pricing = overlaps.filter((o) => o.path === "Shop.Checkout.Pricing");
+    expect(pricing).toHaveLength(1);
+    expect(pricing[0].teams).toEqual(["payments"]);
+    expect(pricing[0].insidePath).toBe("Shop.Checkout");
+    expect(pricing[0].insideTeams).toEqual(["checkout"]);
+    expect(pricing[0].kind).toBe("domain");
+  });
+
+  it("reports a sub-team holding ground inside its parent team's node", () => {
+    const { overlaps } = report(NESTED_OWNERSHIP);
+    const settlement = overlaps.find((o) => o.path === "Shop.Payments.Settlement");
+    expect(settlement).toBeDefined();
+    expect(settlement!.teams).toEqual(["pci"]);
+    expect(settlement!.insideTeams).toEqual(["payments"]);
+  });
+
+  it("does not report a node whose own owner matches its enclosing owner", () => {
+    const { overlaps } = report(`
+system S {
+  service A { domain Da {} }
+}
+organization O { team t { owns A owns Da } }
+`);
+    expect(overlaps).toEqual([]);
+  });
+
+  it("does not report a node that only inherits its owner", () => {
+    // Inheritance means "the enclosing node's team", so treating it as an
+    // overlap would flag every node under an owned service.
+    const { overlaps } = report(`
+system S {
+  service A { domain Da { usecase U {} } }
+}
+organization O { team t { owns A } }
+`);
+    expect(overlaps).toEqual([]);
+  });
+
+  it("does not report a handover where the inner team already owns the boundary", () => {
+    const { overlaps } = report(`
+system S {
+  service Payments { domain Settlement {} }
+}
+organization O {
+  team oldPay { owns Payments owns Settlement }
+  team newPay @migration_target { owns Payments }
+}
+`);
+    // `oldPay` owns something inside a boundary it co-owns and is leaving; a
+    // set-equality test would call the outer set {oldPay, newPay} "different"
+    // and report, or call it "shared" and stay silent. Neither answers the
+    // question — the question is whether an inner team is absent outside.
+    expect(overlaps).toEqual([]);
+  });
+
+  it("leaves the edge-induced dependencies untouched", () => {
+    const withOverlap = report(NESTED_OWNERSHIP + `\n`);
+    const { dependencies } = report(NESTED_OWNERSHIP);
+    expect(dependencies).toEqual(withOverlap.dependencies);
+    // No edge is declared in the fixture at all, so overlap detection must not
+    // manufacture a dependency out of containment.
+    expect(dependencies).toEqual([]);
+  });
+});
+
+describe("extractTeamDependencies — structural overlap edges cases (#2637)", () => {
+  it("marks a sub-team inside its parent team's node as nested, not cross-team", () => {
+    // Same reasoning as on the dependency side: the coordination a nested pair
+    // implies is already covered by the reporting line, and counting it as a
+    // cross-org breach inflates the signal.
+    const { overlaps } = report(`
+system Shop {
+  service Checkout { domain Pricing {} }
+  service Payments { domain Settlement {} }
+}
+organization Shop {
+  team checkout { owns Checkout }
+  team payments {
+    owns Payments
+    owns Pricing
+    team pci { owns Settlement }
+  }
+}
+`);
+    const byPath = new Map(overlaps.map((o) => [o.path, o]));
+    expect(byPath.get("Shop.Payments.Settlement")!.relation).toBe("nested");
+    expect(byPath.get("Shop.Checkout.Pricing")!.relation).toBe("cross-team");
+  });
+
+  it("calls a shared owner nested, not a breach", () => {
+    // Outer owned by `payments`; inner owned by `payments` *and* its child
+    // `pci`. `pci` is absent from the outer set so an overlap fires, but the
+    // pairing is a working group inside its parent — `isAncestorPair` is false
+    // for a team against itself, so the identity case has to be admitted or
+    // this reads as a cross-org breach.
+    const { overlaps } = report(`
+system Shop {
+  service Payments { domain Settlement {} }
+}
+organization Shop {
+  team payments {
+    owns Payments
+    owns Settlement
+    team pci { owns Settlement }
+  }
+}
+`);
+    expect(overlaps).toHaveLength(1);
+    // `payments` owns on both sides, so it crosses nothing and is not named.
+    expect(overlaps[0].teams).toEqual(["pci"]);
+    expect(overlaps[0].insideTeams).toEqual(["payments"]);
+    expect(overlaps[0].relation).toBe("nested");
+  });
+
+  it("names only the owners that cross, not one that owns both sides", () => {
+    // Inner `[af, za]` inside `[af]`: only `za` crosses. Naming `af` would put
+    // it in the markdown row and emit an `af,af` csv pair, calling a team part
+    // of a breach it is not part of.
+    const { overlaps } = report(`
+system Shop {
+  service Outer { domain Inner {} }
+}
+organization Shop {
+  team af { owns Outer owns Inner }
+  team za { owns Inner }
+}
+`);
+    expect(overlaps).toHaveLength(1);
+    expect(overlaps[0].teams).toEqual(["za"]);
+    expect(overlaps[0].insideTeams).toEqual(["af"]);
+    expect(overlaps[0].relation).toBe("cross-team");
+  });
+
+  it("returns overlaps in a stable order regardless of declaration order", () => {
+    // Walk order follows the merge order of `KrsFile`'s top-level lists, which
+    // import order decides; an unsorted list would reshuffle a checked-in
+    // report on an import reorder that changed nothing about the model.
+    const { overlaps } = report(`
+system Shop {
+  service Zeta { domain Alpha {} }
+  service Alfa { domain Zulu {} }
+}
+organization Shop {
+  team za { owns Zeta owns Zulu }
+  team af { owns Alfa owns Alpha }
+}
+`);
+    expect(overlaps.map((o) => o.path)).toEqual([...overlaps.map((o) => o.path)].sort());
+  });
+
+  it("carries a bare `owns` broadcast into the overlap, as the ownership it declares", () => {
+    // `owns Pricing` with no path claims every node with that id (spec, § team
+    // node), so `billing` really does own the `Pricing` inside another system.
+    // Pinned rather than filtered: the report is a faithful reading of the
+    // `owns` written, and the author's remedy is to qualify the reference.
+    const { overlaps } = report(`
+system A { service Checkout { domain Pricing {} } }
+system B { service Billing { domain Pricing {} } }
+organization O {
+  team checkout { owns Checkout }
+  team billing { owns Billing owns Pricing }
+}
+`);
+    expect(overlaps.map((o) => o.path)).toContain("A.Checkout.Pricing");
+
+    // Qualifying the reference confines it, with no change to anything else.
+    const qualified = report(`
+system A { service Checkout { domain Pricing {} } }
+system B { service Billing { domain Pricing {} } }
+organization O {
+  team checkout { owns Checkout }
+  team billing { owns Billing owns B.Billing.Pricing }
+}
+`);
+    expect(qualified.overlaps.map((o) => o.path)).not.toContain("A.Checkout.Pricing");
+  });
+});
