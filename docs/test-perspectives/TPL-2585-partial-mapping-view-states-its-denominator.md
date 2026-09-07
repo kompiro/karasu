@@ -102,4 +102,4 @@ karasu の論理/物理分離では、レベルをまたぐ写像の多くが**�
   （投影が写すもの／写さないものと、完全な ER 図ではないという明言。章末に本 TPL への `> Related TPLs:` 注釈がある）
 - [ADR-1870](../adr/1870-domain-entity-modeling.md) 決定 3（`table` 対応は optional。対応の無い
   entity は論理的には解決するがストアエッジを導出しない）
-- Design Doc `docs/design/store-scoped-er-view.md`（本 TPL を起こした設計。ADR 昇格時に削除される）
+- [ADR-2585](../adr/2585-store-scoped-er-view.md)（本 TPL を起こした設計。ストアスコープの ER ビューは任意の `table` 対応を辿るので、写らなかった分母を示す義務を負う）
