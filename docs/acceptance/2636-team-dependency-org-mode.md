@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-04
 - **関連 Issue**: [#2636](https://github.com/kompiro/karasu/issues/2636)（slice B of [#2597](https://github.com/kompiro/karasu/issues/2597)）
+- **設計 (ADR)**: [ADR-2597](../adr/2597-team-dependencies.md)
 - **対象ファイル**:
   - `packages/core/src/renderer/team-dependency-graph.ts`
   - `packages/core/src/renderer/team-dependency-graph.test.ts`
