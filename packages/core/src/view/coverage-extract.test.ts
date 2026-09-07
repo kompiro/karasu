@@ -206,3 +206,101 @@ system S {
     expect(report.threshold).toBe(0.5 * ((0.75 + 0.125) / 2));
   });
 });
+
+describe("recorded vs projected table relations (#2723)", () => {
+  // Recorded on the leaves (as `translate --from db` emits them) and asserted
+  // by the entity layer; the four disagreements are each set up once.
+  const ER = `
+system EC {
+  database OrderDB {
+    table orders {
+      orders -> customers
+      orders -> line_items
+      orders -> warehouses
+      products -> orders
+    }
+    table customers {}
+    table line_items {}
+    table warehouses {}
+    table products {}
+    table audit {}
+  }
+  service Svc {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+        Order -> Customer "placed by"
+        Order --> LineItem "has"
+        Order -> Product "contains"
+        Order -> AuditEntry "audited by"
+      }
+      entity Customer { table OrderDB.customers }
+      entity LineItem { table OrderDB.line_items }
+      entity Product { table OrderDB.products }
+      entity AuditEntry {}
+    }
+  }
+}
+`;
+  const store = () =>
+    extractCoverage(parseSystems(ER)).physical.infra.find((i) => i.infraId === "OrderDB")!;
+
+  it("reports a recorded relation the logical model lacks, separately from the reverse (TC-C1, TPL-999)", () => {
+    // orders -> warehouses: recorded, no entity asserts it. The repairable one.
+    expect(store().recordedWithoutProjection).toEqual([{ from: "orders", to: "warehouses" }]);
+  });
+
+  it("reports a projected relation no record enforces, as a fact (TC-C2)", () => {
+    // Order -> AuditEntry is tableless (not projected at all); nothing else is
+    // projection-only here, so the fact list is empty — and stays a separate
+    // list from the repairable one.
+    expect(store().projectionWithoutRecorded).toEqual([]);
+    const withAppLevel = extractCoverage(
+      parseSystems(
+        ER.replace("      entity AuditEntry {}", "      entity AuditEntry { table OrderDB.audit }"),
+      ),
+    ).physical.infra.find((i) => i.infraId === "OrderDB")!;
+    expect(withAppLevel.projectionWithoutRecorded).toEqual([{ from: "orders", to: "audit" }]);
+    expect(withAppLevel.recordedWithoutProjection).toEqual([{ from: "orders", to: "warehouses" }]);
+  });
+
+  it("reports an opposite-direction pair in the recorded orientation, which the canvas resolves silently (TC-C3)", () => {
+    // Recorded products -> orders; projected orders -> products.
+    expect(store().directionMismatch).toEqual([{ from: "products", to: "orders" }]);
+    expect(store().projectionWithoutRecorded).not.toContainEqual({
+      from: "orders",
+      to: "products",
+    });
+  });
+
+  it("reports a same-pair kind mismatch the canvas keeps as recorded (TC-C4)", () => {
+    // Recorded orders -> line_items, projected orders --> line_items.
+    expect(store().kindMismatch).toEqual([{ from: "orders", to: "line_items" }]);
+    // A pair that agrees on both sides (orders -> customers) is in no list.
+    const all = [
+      ...store().recordedWithoutProjection,
+      ...store().projectionWithoutRecorded,
+      ...store().directionMismatch,
+      ...store().kindMismatch,
+    ];
+    expect(all).not.toContainEqual({ from: "orders", to: "customers" });
+  });
+
+  it("keeps the four lists empty for a queue / storage block and for a store with nothing recorded or projected", () => {
+    const { physical } = extractCoverage(
+      parseSystems(`
+system S {
+  queue Jobs { queue reindex }
+  database Empty { table t {} }
+  service Svc { domain D { usecase U { resource Jobs.reindex { operations create } } } }
+}
+`),
+    );
+    for (const block of physical.infra) {
+      expect(block.recordedWithoutProjection).toEqual([]);
+      expect(block.projectionWithoutRecorded).toEqual([]);
+      expect(block.directionMismatch).toEqual([]);
+      expect(block.kindMismatch).toEqual([]);
+    }
+  });
+});
