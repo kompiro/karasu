@@ -140,10 +140,11 @@ oxlint 1.80.0 をローカルで実行して規則名まで確認した。CI の
 
 `.oxlintrc.json` は `categories.correctness: "error"` / `suspicious: "warn"`、
 root の lint script は `oxlint --deny-warnings packages/ scripts/` なので、
-**新規規則は設定を一切変えなくても自動的に fatal になる**。指摘は `packages/app` の
-12 ファイルに散っている（`ProjectModeApp.tsx` / `AppShell.tsx` / `theme/index.tsx` /
-`FileTree.tsx` / `ProjectPicker.tsx` / `DiffModeBanner.tsx` / `useChatSession.ts` /
-`useStyleSource.ts` / `useLatestRef.ts` / `use-command.ts` ほか）。
+**新規規則は設定を一切変えなくても自動的に fatal になる**。診断 24 件は
+**21 の一意な箇所・17 ファイル**に散っており（`ProjectModeApp.tsx:37` だけが 4 回報告される
+ため診断数と箇所数が食い違う）、すべて `packages/app` 配下である。うち 2 件は test ファイルの
+`react(globals)` / `react(immutability)` で、module scope の束縛を書き換える test harness の
+定型なので、`.oxlintrc.json` の既存 `**/*.test.ts(x)` override を広げる形も選択肢に入る。
 
 内容は typo 級ではなく、React の実行時挙動に関わる指摘である（render 中の ref 参照、
 effect 内の同期 setState）。
@@ -271,6 +272,24 @@ bot PR を close し、3 箇所（`packages/vscode` の `engines.vscode` と `@t
 保留なので `@dependabot ignore` は設定せず、PR は open のまま残す。指摘の是正 Issue を
 別途起票し、是正 PR がマージされたら #2769 を rebase してマージする。
 
+#### 是正 PR の CI は是正を検証しない
+
+案 A を採るときに前提として書いておく必要がある点がある。**是正 PR の CI は oxlint 1.76 で
+走るので、新規規則を持たない linter が是正を検証することになる。** 是正 PR が緑になっても、
+それは「24 件を漏れなく直した」ことの根拠にならない。
+
+検証は起きるが、是正 PR ではなく bump PR 側で起きる:
+
+1. 是正 Issue を起票する
+2. 是正 PR を出す。**受け入れ基準は CI の緑ではなく、手元の
+   `pnpm dlx oxlint@1.80.0 --deny-warnings packages/ scripts/` が 0 件になること**
+3. マージ後 #2769 を rebase する。**#2769 の CI が漏れの有無を判定する** — 取りこぼしが
+   あれば #2769 は赤いまま残る
+
+取りこぼしが機械で捕まること自体は担保されるので、案 A はこの順序で成立する。是正 PR 自体の
+CI で検証したいなら bump を同梱する（案 B）ことになるが、それは上で退けたレビュー単位の
+混在を招く。
+
 枠を 1 つ占有する点は認識している。ただし飽和の主因は保留ではなく毎週の起票数なので、
 1 件の保留で構造が変わるわけではない。
 
@@ -305,7 +324,8 @@ Node.js 下限の引き上げ 1 点のみで、CI・devcontainer とも Node 24�
 2. [#2768](https://github.com/kompiro/karasu/pull/2768) を close し、差し替え PR で
    `engines.vscode` + `@types/vscode` ×2 を 1.134 へ同時に動かす。`@dependabot ignore` は設定しない。
 3. [#2769](https://github.com/kompiro/karasu/pull/2769) は open のまま残し、oxlint の
-   新規 React 規則 24 件を是正する Issue を起票する。
+   新規 React 規則の指摘を是正する Issue を起票する（[#2775](https://github.com/kompiro/karasu/issues/2775)）。
+   是正 PR → マージ → #2769 を rebase の順で、検証は #2769 の CI が担う（上記）。
 4. 本 Design Doc を ADR に昇格し、同じ PR で削除する。
 
 ## 影響範囲・マイグレーション
