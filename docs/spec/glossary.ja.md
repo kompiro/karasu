@@ -129,7 +129,8 @@ karasu のコアな語彙のクイックリファレンスです。karasu は
   継承した owner は定義上囲みのチームなので、継承は overlap にならない。この境界を
   エッジは跨がないので team dependency では表現できないが、両 team は囲みの構造に
   ついて合意が要る。チーム依存と並べて別のチャネルとして報告され、一方が他方の
-  org ツリー上の祖先なら `nested` と印が付く。
+  org ツリー上の祖先関係にある組み合わせ**だけ**で構成されるとき `nested` と印が付く
+  （祖先関係でない組が 1 つでもあれば `cross-team`）。
 
 > Related TPLs: [TPL-2635](../test-perspectives/TPL-2635-ownership-resolution-declares-its-walk.md) — 所有を読む側は宣言だけを読むのか nearest owned ancestor まで遡るのかを宣言する。[TPL-2161](../test-perspectives/TPL-2161-declared-membership-not-discarded-in-derived-index.md) — 宣言された多重所属（共同所有）を派生 index で捨てない。
 

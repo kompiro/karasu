@@ -162,8 +162,9 @@ a second row at ordinary window widths.
   how many endpoints resolved to no team, so a sparse graph reads as an
   incomplete `owns` rather than as a loosely-coupled org. A second footer line
   counts nodes owned across a containment boundary — a node one team owns
-  living inside a node another owns. No edge crosses that boundary, so the
-  graph cannot draw it; `karasu team-dependencies` lists them in full.
+  living inside a node another owns. That is a containment fact rather than a
+  call, so it is not drawn as an arrow here (a logical edge may cross the same
+  boundary, independently); `karasu team-dependencies` lists them in full.
 - **Show All Layers** — render every drill-down level stacked together.
 
 On a narrow window these wrap below the drill path rather than squeezing it.

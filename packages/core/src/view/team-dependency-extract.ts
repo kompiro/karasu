@@ -84,9 +84,11 @@ export interface TeamDependency {
  * A node whose declared owner differs from the team owning the node it sits
  * **inside** — ownership crossing containment rather than crossing a call.
  *
- * No edge crosses this boundary, so the edge join is blind to it, yet the two
- * teams have to agree on the enclosing structure: the ownership split and the
- * structural split disagree. That makes it arguably the stronger
+ * The edge join cannot see containment at all, so this is invisible to it
+ * whether or not an edge also happens to cross the same boundary — the two
+ * signals are independent, and a team pair can produce both. Either way the
+ * two teams have to agree on the enclosing structure: the ownership split and
+ * the structural split disagree. That makes it arguably the stronger
  * inverse-Conway smell of the two signals this module derives.
  */
 export interface StructuralOverlap {
@@ -492,7 +494,15 @@ function findStructuralOverlaps(
           insidePath: nodePathKey(enclosing.path),
           insideKind: enclosing.kind,
           insideTeams: [...outer],
-          relation: declared.every((inner) => outer.every((o) => isAncestorPair(inner, o)))
+          // `nested` when every inner/outer pairing sits in one team's subtree.
+          // The same team on both sides counts: an outer node owned by
+          // `payments` and an inner one owned by `payments` + its child `pci`
+          // is a working group inside its parent, not a breach — but
+          // `isAncestorPair` is false for a team against itself, so the
+          // identity case has to be admitted explicitly.
+          relation: declared.every((inner) =>
+            outer.every((o) => inner === o || isAncestorPair(inner, o)),
+          )
             ? "nested"
             : "cross-team",
         });

@@ -442,6 +442,30 @@ organization Shop {
     expect(byPath.get("Shop.Checkout.Pricing")!.relation).toBe("cross-team");
   });
 
+  it("calls a shared owner nested, not a breach", () => {
+    // Outer owned by `payments`; inner owned by `payments` *and* its child
+    // `pci`. `pci` is absent from the outer set so an overlap fires, but the
+    // pairing is a working group inside its parent — `isAncestorPair` is false
+    // for a team against itself, so the identity case has to be admitted or
+    // this reads as a cross-org breach.
+    const { overlaps } = report(`
+system Shop {
+  service Payments { domain Settlement {} }
+}
+organization Shop {
+  team payments {
+    owns Payments
+    owns Settlement
+    team pci { owns Settlement }
+  }
+}
+`);
+    expect(overlaps).toHaveLength(1);
+    expect(overlaps[0].teams).toEqual(["payments", "pci"]);
+    expect(overlaps[0].insideTeams).toEqual(["payments"]);
+    expect(overlaps[0].relation).toBe("nested");
+  });
+
   it("returns overlaps in a stable order regardless of declaration order", () => {
     // Walk order follows the merge order of `KrsFile`'s top-level lists, which
     // import order decides; an unsorted list would reshuffle a checked-in
