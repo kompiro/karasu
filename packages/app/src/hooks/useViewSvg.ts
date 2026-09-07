@@ -11,6 +11,8 @@ import {
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
+import { DEBOUNCE_MS } from "./useDebouncedCompile.js";
+import { useDebouncedValue } from "./useDebouncedValue.js";
 
 /**
  * Run an export builder, mapping any parse/render failure to `undefined` —
@@ -52,12 +54,32 @@ export function useViewSvg(
   // never contain newlines): ["a","bc"] and ["ab","c"] map to distinct keys.
   const viewPathKey = (viewPath ?? []).join("\n");
 
+  // #2758: every builder below walks the whole model (on a 10k-line model the
+  // three system bundles came to about 3 s per keystroke), and `fileContent`
+  // changes on every editor change. So the builders consume the *settled*
+  // content — unchanged for `DEBOUNCE_MS`, the same window `useDebouncedCompile`
+  // gives the visible view, shared rather than duplicated so the two can never
+  // drift — instead of the live value. Until the window fires the previous
+  // export stays, and the pending build is dropped whenever a newer edit
+  // arrives, so an older edit can never land over a newer one (#1534).
+  //
+  // The two content-derived inputs travel as one memoized pair so they never
+  // disagree (a `.krs.style` from the next edit paired with the previous
+  // `.krs`). Everything else — displayMode, theme, groupBy, selectedFacets,
+  // viewPath, labels — stays live: those are cheap toggles, and the export
+  // must show what the screen shows (TPL-219).
+  const liveContent = useMemo(() => ({ fileContent, styleSource }), [fileContent, styleSource]);
+  const { fileContent: settledContent, styleSource: settledStyleSource } = useDebouncedValue(
+    liveContent,
+    DEBOUNCE_MS,
+  );
+
   const drillDownResult = useMemo(() => {
-    if (!fileContent) return undefined;
+    if (!settledContent) return undefined;
     return safeBuild(() =>
       buildDrillDownSvg(
-        fileContent,
-        styleSource,
+        settledContent,
+        settledStyleSource,
         displayMode,
         emptyStateLabels,
         theme,
@@ -67,9 +89,9 @@ export function useViewSvg(
       ),
     );
   }, [
-    fileContent,
+    settledContent,
     displayMode,
-    styleSource,
+    settledStyleSource,
     emptyStateLabels,
     theme,
     badgeLabels,
@@ -78,11 +100,11 @@ export function useViewSvg(
   ]);
 
   const allLayersResult = useMemo(() => {
-    if (!fileContent) return undefined;
+    if (!settledContent) return undefined;
     return safeBuild(() =>
       buildAllLayersSvg(
-        fileContent,
-        styleSource,
+        settledContent,
+        settledStyleSource,
         displayMode,
         emptyStateLabels,
         theme,
@@ -92,9 +114,9 @@ export function useViewSvg(
       ),
     );
   }, [
-    fileContent,
+    settledContent,
     displayMode,
-    styleSource,
+    settledStyleSource,
     emptyStateLabels,
     theme,
     badgeLabels,
@@ -104,39 +126,39 @@ export function useViewSvg(
 
   // Org builders take no `groupBy` — grouping is a system-view concept.
   const orgAllLayersResult = useMemo(() => {
-    if (!fileContent) return undefined;
+    if (!settledContent) return undefined;
     return safeBuild(() =>
       buildAllLayersSvgOrg(
-        fileContent,
-        styleSource,
+        settledContent,
+        settledStyleSource,
         displayMode,
         emptyStateLabels,
         theme,
         badgeLabels,
       ),
     );
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
+  }, [settledContent, displayMode, settledStyleSource, emptyStateLabels, theme, badgeLabels]);
 
   const orgDrillDownResult = useMemo(() => {
-    if (!fileContent) return undefined;
+    if (!settledContent) return undefined;
     return safeBuild(() =>
       buildDrillDownSvgOrg(
-        fileContent,
-        styleSource,
+        settledContent,
+        settledStyleSource,
         displayMode,
         emptyStateLabels,
         theme,
         badgeLabels,
       ),
     );
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
+  }, [settledContent, displayMode, settledStyleSource, emptyStateLabels, theme, badgeLabels]);
 
   const allViewsResult = useMemo(() => {
-    if (!fileContent) return undefined;
+    if (!settledContent) return undefined;
     return safeBuild(() =>
       buildAllViewsSvg(
-        fileContent,
-        styleSource,
+        settledContent,
+        settledStyleSource,
         displayMode,
         emptyStateLabels,
         theme,
@@ -146,9 +168,9 @@ export function useViewSvg(
       ),
     );
   }, [
-    fileContent,
+    settledContent,
     displayMode,
-    styleSource,
+    settledStyleSource,
     emptyStateLabels,
     theme,
     badgeLabels,
@@ -162,13 +184,15 @@ export function useViewSvg(
   // placeholder when the path is not a domain that owns entities; we surface a
   // `hasEntityView` flag (real entity nodes present) so the UI can gate the
   // usecase/entity toggle to domains that actually have an entity view.
+  // Fed the settled content too, so it lands on the same edit as the compiled
+  // system view and the exports: the screen and the export stay in step.
   const entityViewResult = useMemo(() => {
-    if (!fileContent || (viewPath ?? []).length === 0) return undefined;
+    if (!settledContent || (viewPath ?? []).length === 0) return undefined;
     return safeBuild(() =>
       renderEntityView(
-        fileContent,
+        settledContent,
         viewPath ?? [],
-        styleSource,
+        settledStyleSource,
         displayMode,
         emptyStateLabels,
         theme,
@@ -179,10 +203,10 @@ export function useViewSvg(
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- viewPathKey stands in for the viewPath array identity
   }, [
-    fileContent,
+    settledContent,
     viewPathKey,
     displayMode,
-    styleSource,
+    settledStyleSource,
     emptyStateLabels,
     theme,
     badgeLabels,

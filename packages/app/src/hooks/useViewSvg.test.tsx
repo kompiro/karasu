@@ -1,7 +1,34 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
-import { renderHook, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { renderHook, act, cleanup } from "@testing-library/react";
+import {
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
+  buildAllViewsSvg,
+  buildDrillDownSvg,
+  buildDrillDownSvgOrg,
+  renderEntityView,
+} from "@karasu-tools/core";
 import { useViewSvg } from "./useViewSvg.js";
+import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
+
+// Wrap the model-walking builders in spies so the debounce tests (#2758, at
+// the bottom of this file) can assert how often, and with which content, they
+// run. `vi.fn(original)` keeps the real implementation, so every other test
+// here sees exactly the output it saw before.
+vi.mock("@karasu-tools/core", async (importOriginal) => {
+  const core = await importOriginal<typeof import("@karasu-tools/core")>();
+  return {
+    ...core,
+    buildDrillDownSvg: vi.fn<typeof core.buildDrillDownSvg>(core.buildDrillDownSvg),
+    buildDrillDownSvgOrg: vi.fn<typeof core.buildDrillDownSvgOrg>(core.buildDrillDownSvgOrg),
+    buildAllLayersSvg: vi.fn<typeof core.buildAllLayersSvg>(core.buildAllLayersSvg),
+    buildAllLayersSvgOrg: vi.fn<typeof core.buildAllLayersSvgOrg>(core.buildAllLayersSvgOrg),
+    buildAllViewsSvg: vi.fn<typeof core.buildAllViewsSvg>(core.buildAllViewsSvg),
+    renderEntityView: vi.fn<typeof core.renderEntityView>(core.renderEntityView),
+  };
+});
 
 afterEach(cleanup);
 
@@ -206,5 +233,177 @@ boundary cluster {
 
     rerender({ g: "boundary" });
     expect(result.current.entityViewSvg).toContain('data-container-id="__group_cluster__"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #2758: the export builders run behind the compile debounce, not per keystroke
+// ---------------------------------------------------------------------------
+
+// Edits of one model that differ only in a label, so each builds a different
+// SVG and "which edit was built" is visible in the output.
+const EDIT_A = `system EC {
+  service Frontend { label "Frontend A" }
+}`;
+const EDIT_B = EDIT_A.replace("Frontend A", "Frontend B");
+const EDIT_C = EDIT_A.replace("Frontend A", "Frontend C");
+
+/** The five whole-model export builders, in the order `useViewSvg` calls them. */
+const EXPORT_BUILDERS = [
+  buildDrillDownSvg,
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
+  buildDrillDownSvgOrg,
+  buildAllViewsSvg,
+] as const;
+
+/** Call count of each export builder since the last `vi.clearAllMocks()`. */
+function exportBuildCounts(): number[] {
+  return EXPORT_BUILDERS.map((builder) => vi.mocked(builder).mock.calls.length);
+}
+
+/** Every `.krs` source any export builder was handed since the last clear. */
+function builtSources(): string[] {
+  return EXPORT_BUILDERS.flatMap((builder) => vi.mocked(builder).mock.calls.map((call) => call[0]));
+}
+
+/**
+ * A fresh, undebounced `buildAllViewsSvg` of `source`, with the labels the
+ * hook itself passes (the i18n hooks fall back to English outside a provider,
+ * exactly as `useViewSvg` does in these tests). The expectation every settled
+ * export is compared against.
+ */
+function freshAllViewsSvg(source: string, displayMode: "icon" | "shape" = "shape"): string {
+  const { result: empty } = renderHook(() => useEmptyStateLabels());
+  const { result: badge } = renderHook(() => useAnnotationBadgeLabels());
+  return buildAllViewsSvg(source, undefined, displayMode, empty.current, undefined, badge.current)
+    .svg;
+}
+
+describe("useViewSvg > export builders run behind the compile debounce (#2758)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it("returns the export SVGs immediately on mount: the first value is not delayed (TC-A)", () => {
+    const fromA = freshAllViewsSvg(EDIT_A);
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+
+    const { result } = renderHook(() => useViewSvg(EDIT_A, "shape"));
+
+    // No timer has advanced, yet every export surface is already built from A.
+    expect(result.current.allViewsSvg).toBe(fromA);
+    expect(result.current.drillDownSvg).toBeDefined();
+    expect(result.current.allLayersSvg).toBeDefined();
+    expect(result.current.orgDrillDownSvg).toBeDefined();
+    expect(result.current.orgAllLayersSvg).toBeDefined();
+    expect(exportBuildCounts()).toEqual([1, 1, 1, 1, 1]);
+  });
+
+  it("keeps the previous export while typing, then settles on the last edit; the intermediate edit is never built (TC-B)", () => {
+    const fromA = freshAllViewsSvg(EDIT_A);
+    const fromB = freshAllViewsSvg(EDIT_B);
+    const fromC = freshAllViewsSvg(EDIT_C);
+    expect(new Set([fromA, fromB, fromC]).size).toBe(3); // the edits are distinguishable
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+
+    const { result, rerender } = renderHook(
+      ({ content }: { content: string }) => useViewSvg(content, "shape"),
+      { initialProps: { content: EDIT_A } },
+    );
+    expect(result.current.allViewsSvg).toBe(fromA);
+
+    // Two keystrokes inside one window.
+    rerender({ content: EDIT_B });
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.allViewsSvg).toBe(fromA);
+    rerender({ content: EDIT_C });
+    act(() => vi.advanceTimersByTime(299));
+    // C has not been still for a whole window yet: still A, and never B.
+    expect(result.current.allViewsSvg).toBe(fromA);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.allViewsSvg).toBe(fromC);
+    expect(builtSources()).not.toContain(EDIT_B);
+  });
+
+  it("runs each export builder at most once per window across a burst of edits (TC-C)", () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ content }: { content: string }) => useViewSvg(content, "shape"),
+      { initialProps: { content: EDIT_A } },
+    );
+    vi.clearAllMocks(); // the mount build is not typing
+
+    const seen = new Set<string | undefined>([result.current.allViewsSvg]);
+    const edits = Array.from({ length: 8 }, (_, i) =>
+      EDIT_A.replace("Frontend A", `Frontend ${i}`),
+    );
+    for (const content of edits) {
+      rerender({ content });
+      act(() => vi.advanceTimersByTime(50)); // 50 ms apart: every edit lands inside the window
+      seen.add(result.current.allViewsSvg);
+    }
+    expect(exportBuildCounts()).toEqual([0, 0, 0, 0, 0]);
+    expect(seen.size).toBe(1); // the output never moved while typing
+
+    act(() => vi.advanceTimersByTime(300));
+    expect(exportBuildCounts()).toEqual([1, 1, 1, 1, 1]);
+    const last = edits[edits.length - 1];
+    expect(builtSources()).toEqual([last, last, last, last, last]);
+    seen.add(result.current.allViewsSvg);
+    expect(seen.size).toBe(2); // exactly one change: the settled build
+  });
+
+  it("applies a display-mode flip without waiting for the window (TPL-219 parity) (TC-D)", () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ mode }: { mode: "icon" | "shape" }) => useViewSvg(EDIT_A, mode),
+      { initialProps: { mode: "shape" as "icon" | "shape" } },
+    );
+    const shape = result.current.allViewsSvg;
+
+    rerender({ mode: "icon" });
+    // No timer advance: a cheap toggle reaches the exports on the same render,
+    // so the export shows what the screen shows.
+    expect(result.current.allViewsSvg).not.toBe(shape);
+    expect(result.current.allViewsSvg).toBe(freshAllViewsSvg(EDIT_A, "icon"));
+  });
+
+  it("feeds the live entity view the same settled content, so the screen and the exports stay in step (TC-E)", () => {
+    const ENTITY_A = `system Shop {
+  service Orders {
+    domain OrderDomain {
+      entity Order {}
+    }
+  }
+}`;
+    const ENTITY_B = ENTITY_A.replace(
+      "entity Order {}",
+      "entity Order {}\n      entity Invoice {}",
+    );
+    const path = ["Shop", "Orders", "OrderDomain"];
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ content }: { content: string }) =>
+        useViewSvg(content, "shape", undefined, undefined, undefined, path),
+      { initialProps: { content: ENTITY_A } },
+    );
+    expect(result.current.hasEntityView).toBe(true);
+    const fromA = result.current.entityViewSvg;
+    expect(fromA).not.toContain("Invoice");
+    vi.clearAllMocks();
+
+    rerender({ content: ENTITY_B });
+    act(() => vi.advanceTimersByTime(299));
+    expect(vi.mocked(renderEntityView)).not.toHaveBeenCalled();
+    expect(result.current.entityViewSvg).toBe(fromA);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(vi.mocked(renderEntityView)).toHaveBeenCalledTimes(1);
+    expect(result.current.entityViewSvg).toContain("Invoice");
   });
 });
