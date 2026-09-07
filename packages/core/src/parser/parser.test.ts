@@ -791,6 +791,72 @@ ${lines}
     });
   });
 
+  describe("duplicate deploy unit id within one file (#2713)", () => {
+    const parseDeploy = (units: string) =>
+      Parser.parse(`
+system EC {
+  service OrderService {}
+}
+deploy prod {
+${units}
+}
+      `);
+
+    it("reports a unit id declared twice in one deploy block", () => {
+      const result = parseDeploy(
+        "  oci app { realizes OrderService }\n  oci app { realizes OrderService }",
+      );
+      const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy");
+      expect(dup).toHaveLength(1);
+      expect(dup[0].severity).toBe("error");
+      expect(dup[0].params).toEqual({ nodeId: "app", deployId: "prod" });
+    });
+
+    it("anchors the diagnostic on the repeat, not the first declaration", () => {
+      // The first spelling is the one every consumer keys, so the later one is
+      // what the author has to rename. Line 7 of the source above is the second
+      // `oci app`; line 6 is the first.
+      const result = parseDeploy(
+        "  oci app { realizes OrderService }\n  oci app { realizes OrderService }",
+      );
+      const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy");
+      expect(dup[0].loc?.start.line).toBe(7);
+    });
+
+    it("keeps both units in the AST — the file is recorded as written", () => {
+      const result = parseDeploy(
+        "  oci app { realizes OrderService }\n  oci app { realizes OrderService }",
+      );
+      expect(result.value.deploys[0].nodes.map((n) => n.id)).toEqual(["app", "app"]);
+    });
+
+    it("says nothing when the ids differ", () => {
+      const result = parseDeploy(
+        "  oci app { realizes OrderService }\n  oci web { realizes OrderService }",
+      );
+      expect(result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy")).toHaveLength(
+        0,
+      );
+    });
+
+    it("scopes the verdict to one block — the same id in two deploy blocks is fine", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {}
+}
+deploy prod {
+  oci app { realizes OrderService }
+}
+deploy staging {
+  oci app { realizes OrderService }
+}
+      `);
+      expect(result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy")).toHaveLength(
+        0,
+      );
+    });
+  });
+
   it("parses a complete file with imports, system, and deploy", () => {
     const result = Parser.parse(`
 @import "default.krs.style"

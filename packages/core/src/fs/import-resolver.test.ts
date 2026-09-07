@@ -349,6 +349,102 @@ deploy Production {
       expect(nodeIds).toContain("OrderService");
       expect(nodeIds).toContain("PaymentService");
     });
+
+    describe("deploy unit id uniqueness on the named-import path (#2713)", () => {
+      const unitFile = (id: string) =>
+        `deploy prod {\n  oci ${id} {\n    image "${id}:latest"\n  }\n}`;
+
+      it("reports the same unit id named from two files, keeping one unit", async () => {
+        // The wildcard path has always raised this; the named path appended
+        // unconditionally, so one collision was an error assembled one way and
+        // silent the other. Both now run the same guard.
+        await fs.writeFile("/p/a.krs", unitFile("app"));
+        await fs.writeFile("/p/b.krs", unitFile("app"));
+        await fs.writeFile(
+          "/p/main.krs",
+          `import { app } from "./a.krs"\nimport { app } from "./b.krs"\n`,
+        );
+
+        const result = await resolver.resolve("/p/main.krs");
+        const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy");
+        expect(dup).toHaveLength(1);
+        expect(dup[0].severity).toBe("error");
+        expect(dup[0].params).toEqual({ nodeId: "app", deployId: "prod" });
+        expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["app"]);
+      });
+
+      it("takes one unit from an id listed twice in one import, without a diagnostic", async () => {
+        // The identical object arriving twice is a redundant listing, not a
+        // collision — reporting it would be the unit conflicting with itself.
+        // Silent and idempotent, like re-listing one id in `facets`.
+        await fs.writeFile("/p/a.krs", unitFile("app"));
+        await fs.writeFile("/p/main.krs", `import { app, app } from "./a.krs"\n`);
+
+        const result = await resolver.resolve("/p/main.krs");
+        expect(
+          result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy"),
+        ).toHaveLength(0);
+        expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["app"]);
+      });
+
+      it("reports a source-local collision exactly once when the named import opens the block", async () => {
+        // One mistake, one report. The parser already saw this collision inside
+        // `a.krs`, so the merge folds the repeat instead of saying it again.
+        await fs.writeFile(
+          "/p/a.krs",
+          `deploy prod {\n  oci app { image "one" }\n  oci app { image "two" }\n}`,
+        );
+        await fs.writeFile("/p/main.krs", `import { app } from "./a.krs"\n`);
+
+        const result = await resolver.resolve("/p/main.krs");
+        expect(
+          result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy"),
+        ).toHaveLength(1);
+        expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["app"]);
+      });
+
+      it.each([
+        ["wildcard", `import "./a.krs"`],
+        ["named", `import { app } from "./a.krs"`],
+      ])(
+        "reports a source-local collision once when a %s import merges into an open block",
+        async (_name, importLine) => {
+          // Both merge paths fold through `mergeDeployNodes`. Before #2713 the
+          // parser said nothing here, so the merge's report was the only one;
+          // adding the per-file check would have made every such collision
+          // report twice had the merge not stopped repeating it.
+          await fs.writeFile(
+            "/p/a.krs",
+            `deploy prod {\n  oci app { image "one" }\n  oci app { image "two" }\n}`,
+          );
+          await fs.writeFile(
+            "/p/main.krs",
+            `${importLine}\ndeploy prod {\n  oci web { image "w" }\n}\n`,
+          );
+
+          const result = await resolver.resolve("/p/main.krs");
+          expect(
+            result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy"),
+          ).toHaveLength(1);
+          expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["web", "app"]);
+        },
+      );
+
+      it("leaves distinct unit ids alone", async () => {
+        await fs.writeFile("/p/a.krs", unitFile("app"));
+        await fs.writeFile("/p/b.krs", unitFile("web"));
+        await fs.writeFile(
+          "/p/main.krs",
+          `import { app } from "./a.krs"\nimport { web } from "./b.krs"\n`,
+        );
+
+        const result = await resolver.resolve("/p/main.krs");
+        expect(
+          result.diagnostics.filter((d) => d.code === "duplicate-node-in-deploy"),
+        ).toHaveLength(0);
+        expect(result.krsFile.deploys[0].nodes.map((n) => n.id)).toEqual(["app", "web"]);
+      });
+    });
   });
 
   describe("path syntax (Issue #927)", () => {
