@@ -192,8 +192,8 @@ ER ビューを得る。ダンプ内に無いテーブルへの外部キーは�
 physical 節と `--format json` の両方に出る）: `recordedWithoutProjection`（ストアが表明した関連を
 論理モデルが持たない。機械的に修復可能）、`projectionWithoutRecorded`（アプリ層整合性。欠陥ではなく
 事実）、`directionMismatch` と `kindMismatch`（キャンバスが記録側に寄せて解決する 2 つの不一致。
-ここにだけ残る）。軸は記録済み vs 投影なので、translate を通したモデルでは 1 つ目の一覧が
-そのまま「entity 層に欠けている宣言 FK」になる。DDL との照合は行わない。
+ここにだけ残る）。軸は記録済み vs 投影であって FK vs アプリ層ではない。1 つ目の一覧には entity 層が持たない
+記録済み関連がすべて入る（`[inferred]` の Soft FK エッジも含む）。DDL との照合は行わない。
 
 端点の解決はエンティティビューと同じである。関連は宣言元 entity から始まっていなければならず、
 bare な参照先はドメイン内のみ、限定子付き `DomainId.EntityId` は所有 system 内で解決される。

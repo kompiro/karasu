@@ -74,8 +74,9 @@ export interface InfraCoverage {
    * the foreign key `translate --from db` emitted) with no corresponding
    * entity relation projected onto the store (#2723). The **mechanically
    * repairable** one: the logical model is missing a relation the store
-   * states. On a translated model this is exactly "a declared FK the entity
-   * layer lacks", which turns the reverse harness's cross-domain relation
+   * states. Every recorded relation counts, `[inferred]` Soft-FK edges included:
+   * the axis is who recorded it, not whether the store enforces it. On a
+   * translated model this turns the reverse harness's cross-domain relation
    * reconciliation from guesswork into a checklist.
    *
    * The axis is recorded-vs-projected, deliberately not FK-vs-app-level: an

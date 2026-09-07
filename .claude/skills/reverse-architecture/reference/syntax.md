@@ -209,9 +209,9 @@ sets per `database` and reports four lists of ordered `{from, to}` leaf pairs
 logical model lacks: mechanically repairable), `projectionWithoutRecorded`
 (application-level integrity: a fact, not a defect), `directionMismatch` and
 `kindMismatch` (the two disagreements the canvas resolves toward the recorded
-side, kept visible only here). The axis is recorded-vs-projected, so on a
-translated model the first list is exactly the declared foreign keys the entity
-layer is missing; the report does not compare against the DDL.
+side, kept visible only here). The axis is recorded-vs-projected, not FK-vs-app-level: the
+first list holds every recorded relation the entity layer lacks, `[inferred]`
+Soft-FK edges included, and the report does not compare against the DDL.
 
 Endpoint resolution is the entity view's: the relation must start at the entity
 that declares it, a bare target is intra-domain only, and a qualified
