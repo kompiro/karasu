@@ -6,6 +6,7 @@ import {
   formatCell,
 } from "../view/crud-matrix-extract.js";
 import { escapeXml } from "./svg-builder.js";
+import { CHROME_FONT_STACK } from "./rendering-constants.js";
 
 export interface MatrixSvgOptions {
   showTotals?: boolean;
@@ -25,7 +26,7 @@ const MIN_LABEL_COL_WIDTH = 160;
 const MIN_TOTAL_COL_WIDTH = 56;
 const FONT_SIZE = 13;
 const HEADER_FONT_SIZE = 13;
-const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+const FONT = CHROME_FONT_STACK;
 const WRITE_FILL = "#FEF3C7";
 const UNDECLARED_FILL = "#F3F4F6";
 const BORDER = "#D1D5DB";
