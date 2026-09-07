@@ -2297,3 +2297,130 @@ describe("layout > channel capacity (#2608)", () => {
     );
   });
 });
+
+// #2646 / TPL-219. Category collapse is a single-system feature that the root
+// view silently lost: the multi-system path folded the *nodes* only, so every
+// edge touching a folded member fell out of the surviving-id filter and the
+// stub was drawn with nothing pointing at it. The ⊖ control is not gated on the
+// system count, so a reader could reach that state from the default view.
+describe("category collapse on the multi-system root view (#2646)", () => {
+  const INFRA_IN_TWO_SYSTEMS = `
+system Alpha {
+  service Api
+  database Store
+  Api -> Store
+}
+system Beta {
+  service Web
+}
+`;
+
+  it("re-targets an intra-system edge onto the stub, matching the single-system path", () => {
+    const collapsedCategories = new Set<"external" | "infra">(["infra"]);
+    const root = layout(parseAndExtract(INFRA_IN_TWO_SYSTEMS), { collapsedCategories });
+    const single = layout(
+      parseAndExtract("system Alpha {\n  service Api\n  database Store\n  Api -> Store\n}"),
+      {
+        collapsedCategories,
+      },
+    );
+
+    const trunk = (r: { edges: { from: string; to: string }[] }) =>
+      r.edges.map((e) => `${e.from}->${e.to}`).sort();
+    expect(trunk(single)).toEqual(["Api->__collapsed_infra__"]);
+    // The same trunk on the root view — it used to come back empty. The stub id
+    // carries the system scope here (#2646, mirroring `groupStubId`).
+    expect(trunk(root)).toEqual(["Api->__collapsed_Alpha_infra__"]);
+    expect(root.nodes.get("__collapsed_Alpha_infra__")).toBeDefined();
+    expect(root.nodes.get("Store")).toBeUndefined();
+    expect(root.nodes.get("Web")).toBeDefined();
+  });
+
+  it("leaves the root view untouched when no category is collapsed", () => {
+    const root = layout(parseAndExtract(INFRA_IN_TWO_SYSTEMS));
+    expect(root.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["Api->Store"]);
+    expect(root.nodes.get("Store")).toBeDefined();
+  });
+
+  it("re-anchors a cross-system edge whose target was folded into a category stub", () => {
+    const krs = `
+system Alpha {
+  service Api
+  database Store
+}
+system Beta {
+  service Web
+  Web -> Alpha.Store
+}
+`;
+    const root = layout(parseAndExtract(krs), {
+      collapsedCategories: new Set<"external" | "infra">(["infra"]),
+    });
+    // The cross-system list is not rewritten by the collapse, so without the
+    // endpoint remap `allLayoutNodes.get("Store")` misses and the edge vanishes.
+    expect(root.edges.map((e) => `${e.from}->${e.to}`)).toEqual([
+      "Web->Alpha.__collapsed_Alpha_infra__",
+    ]);
+  });
+
+  it("re-anchors a cross-system edge whose source was folded into a category stub", () => {
+    const krs = `
+system Alpha {
+  service Api
+  service Ext [external]
+  Ext -> Beta.Web
+}
+system Beta {
+  service Web
+}
+`;
+    const root = layout(parseAndExtract(krs), {
+      collapsedCategories: new Set<"external" | "infra">(["external"]),
+    });
+    expect(root.edges.map((e) => `${e.from}->${e.to}`)).toEqual([
+      "__collapsed_Alpha_external__->Beta.Web",
+    ]);
+  });
+});
+
+// #2646. The stub id is scoped by system on this path for the same reason the
+// group stub is (#1884): the layout returns one node map keyed by id, so two
+// systems folding the same category on one unscoped id would leave a single
+// stub and a trunk pointing at a card that is never drawn.
+describe("category stubs do not collide across systems (#2646)", () => {
+  const TWO_INFRA_SYSTEMS = `
+system Alpha {
+  service Api
+  database AStore
+  Api -> AStore
+}
+system Beta {
+  service Web
+  database BStore
+  Web -> BStore
+}
+`;
+
+  it("gives each system its own stub, and each trunk a stub that exists", () => {
+    const result = layout(parseAndExtract(TWO_INFRA_SYSTEMS), {
+      collapsedCategories: new Set<"external" | "infra">(["infra"]),
+    });
+    expect(result.nodes.get("__collapsed_Alpha_infra__")).toBeDefined();
+    expect(result.nodes.get("__collapsed_Beta_infra__")).toBeDefined();
+    expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
+      "Api->__collapsed_Alpha_infra__",
+      "Web->__collapsed_Beta_infra__",
+    ]);
+    // Every trunk endpoint resolves to a card the render actually draws.
+    for (const edge of result.edges) {
+      expect(result.nodes.get(edge.from)).toBeDefined();
+      expect(result.nodes.get(edge.to)).toBeDefined();
+    }
+    // Each stub sits inside its own system's frame.
+    const frameOf = (id: string) => result.containers.find((c) => c.id === id)!;
+    const inside = (n: { x: number }, c: { x: number; width: number }) =>
+      n.x >= c.x && n.x <= c.x + c.width;
+    expect(inside(result.nodes.get("__collapsed_Alpha_infra__")!, frameOf("Alpha"))).toBe(true);
+    expect(inside(result.nodes.get("__collapsed_Beta_infra__")!, frameOf("Beta"))).toBe(true);
+  });
+});

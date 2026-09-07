@@ -1,6 +1,6 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { displayGroupId } from "../types/ast.js";
-import { collapseNodeList, collapseCategories } from "./category-collapse.js";
+import { collapseCategories } from "./category-collapse.js";
 import { foldFacetMembership } from "./facet-overlay.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import { groupLabelsFor } from "./group-labels.js";
@@ -813,10 +813,31 @@ function layoutMultipleSystems(
     // For the primary system (si === 0), use viewSlice.childNodes which includes
     // unassigned top-level domains merged in by extractView (legacy back-compat
     // for direct callers that pre-date the "Unassigned" pseudo-system).
-    const rawNodes = collapseNodeList(
-      si === 0 ? viewSlice.childNodes : sys.children,
+    const systemNodes = si === 0 ? viewSlice.childNodes : sys.children;
+    // This path lays each system out from its own edges rather than from
+    // `viewSlice.childEdges`, so it lifts the child-anchored ones itself —
+    // otherwise `service S1 { S1 -> S2 }` survives extraction and is dropped
+    // here, on the multi-system and `__unassigned__` roots (#2223).
+    const systemRawEdges = withChildAnchoredEdges(sys);
+    // Category collapse (#1821), with the same edge re-targeting the
+    // single-system path applies (#1872, #2646): fold this system's
+    // external/infra tier to a `⊕ N` stub and re-anchor the edges that crossed
+    // the category boundary onto it. Folding the *nodes* alone left every such
+    // edge with an endpoint outside `idSet` below, so the root view silently
+    // dropped it and drew a stub nothing pointed at (TPL-219: the multi-system
+    // path must not quietly lose a feature the single-system path has).
+    // Scope the stub ids by system id, the way the group collapse does (#1884):
+    // two systems that each fold `infra` would otherwise both synthesize
+    // `__collapsed_infra__` and overwrite one another in `allLayoutNodes`,
+    // leaving one system's trunk pointing at a card that is never drawn.
+    const sysCollapsedCat = collapseCategories(
+      systemNodes,
+      systemRawEdges,
       collapsedCategories,
+      sys.id,
     );
+    const rawNodes = sysCollapsedCat.nodes;
+    const sysEdges = sysCollapsedCat.edges;
 
     // Group-by-team (#1884): apply the P2a grouping *inside this system's frame*
     // (per-(system, team) frames — a team that owns members in two systems shows
@@ -825,16 +846,14 @@ function layoutMultipleSystems(
     // fold collapsed teams to `<Team> (N)` stubs, then band nodes by team via
     // `assignGroupedLayers`. Gated on group-by so ungrouped output is unchanged.
     let workNodes = rawNodes;
-    // This path lays each system out from its own edges rather than from
-    // `viewSlice.childEdges`, so it lifts the child-anchored ones itself —
-    // otherwise `service S1 { S1 -> S2 }` survives extraction and is dropped
-    // here, on the multi-system and `__unassigned__` roots (#2223).
-    const sysEdges = withChildAnchoredEdges(sys);
     let workEdges: KrsEdge[] = sysEdges;
     let groupedLayers: Map<string, number> | null = null;
     let groupBandsS: Map<string, GroupBand> | null = null;
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
+    // Endpoint remap the group collapse applied, for the cross-system re-anchor
+    // below. Identity unless a team in this system actually collapsed.
+    let groupRemap: (id: string) => string = (id) => id;
     // Each system frame is its own canvas, so a scoped boundary declared in
     // `system X { … }` applies inside X's frame and nowhere else (#2036).
     // The synthesized "Unassigned" pseudo-system holds top-level orphans
@@ -879,12 +898,18 @@ function layoutMultipleSystems(
         // the stub instead of dropping (#1884). Only when a team actually
         // collapsed — `remapEndpoint` is identity otherwise.
         if (collapsedGroups && collapsedGroups.size > 0) {
-          for (const n of rawNodes) {
-            const mapped = collapsed.remapEndpoint(n.id);
-            if (mapped !== n.id) crossSystemRemap.set(n.id, mapped);
-          }
+          groupRemap = collapsed.remapEndpoint;
         }
       }
+    }
+    // Cross-system edges are a separate list that neither collapse pass
+    // rewrites, so record this system's folded members → stub for the re-anchor
+    // below (#1884 for groups, #2646 for categories). Composed category-first,
+    // matching the order the two folds ran in: a category member that no longer
+    // exists cannot also be folded into a group stub.
+    for (const n of systemNodes) {
+      const mapped = groupRemap(sysCollapsedCat.remapEndpoint(n.id));
+      if (mapped !== n.id) crossSystemRemap.set(n.id, mapped);
     }
 
     const nodeIds = workNodes.map((n) => n.id);
