@@ -80,9 +80,11 @@ describe("team-dependencies CLI", () => {
     const outPath = join(tmpDir, "team-deps.csv");
     await teamDependencies(krsPath, { format: "csv", output: outPath });
     const content = await readFile(outPath, "utf-8");
-    expect(content).toContain("relation,from_team,to_team,edge_kind,node,node_kind,edges,via");
+    expect(content).toContain(
+      "relation,from_team,to_team,edge_kind,node,node_kind,inside_kind,edges,via",
+    );
     expect(content).toContain("cross-team,checkout,fulfillment,async,");
-    expect(content).toContain("unowned,,,,Shop.Platform,service,");
+    expect(content).toContain("unowned,,,,Shop.Platform,service,,");
   });
 
   it("derives across a multi-file project whose organization is split over files", async () => {
@@ -130,5 +132,32 @@ describe("team-dependencies CLI", () => {
     await teamDependencies(join(tmpDir, "missing.krs"), {});
     expect(stderr()).toContain("File not found");
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("team-dependencies CLI — structural overlap (#2637)", () => {
+  it("reports ownership crossing containment beside the dependencies", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "karasu-team-deps-overlap-"));
+    try {
+      await writeFile(
+        join(dir, "index.krs"),
+        `system Shop {
+  service Checkout { domain Pricing {} }
+  service Payments {}
+}
+organization Shop {
+  team checkout { owns Checkout }
+  team payments { owns Payments owns Pricing }
+}
+`,
+        "utf-8",
+      );
+      await teamDependencies(join(dir, "index.krs"), {});
+      const out = stdout();
+      expect(out).toContain("## Structural overlap");
+      expect(out).toContain("| Shop.Checkout.Pricing | payments | Shop.Checkout | checkout |");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
