@@ -87,6 +87,40 @@ describe.each(["dark", "light"] as DiagramTheme[])(
   },
 );
 
+// An id is not unique across systems: the same name can be a service in one and
+// a system in another, and the later store overwrites the earlier. The record of
+// what was painted has to be overwritten with it, or the frame is drawn from one
+// pass's values under another pass's provenance.
+describe("a re-stored id carries its own provenance (#2662)", () => {
+  const SHADOWED = `
+system Other {
+  service Shop { label "Shop service" }
+}
+system Shop {
+  service Orders {
+    domain OrderDomain { usecase PlaceOrder }
+  }
+}
+`;
+
+  it.each(["dark", "light"] as DiagramTheme[])(
+    "draws the %s theme's chrome on a container whose id was also a painted service",
+    (theme) => {
+      const result = compile(SHADOWED, {
+        diagramType: "system",
+        viewPath: ["Shop", "Orders"],
+        theme,
+      });
+      if (result.diagramType !== "system") throw new Error("expected system view");
+      const frame = containerOf(result.svg, "Shop");
+      const palette = resolvePalette(theme);
+      expect(frame).toContain(`stroke="${palette.mutedBorder}"`);
+      expect(frame).toContain(`fill="${palette.textPrimary}"`);
+      expect(frame).not.toContain(DARK_CARD_DEFAULT.outline);
+    },
+  );
+});
+
 describe("the frame's theme colours are a fallback, not an override (#2662)", () => {
   const STYLE = `
 team#payments {

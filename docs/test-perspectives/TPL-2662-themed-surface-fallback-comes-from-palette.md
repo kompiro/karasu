@@ -80,9 +80,11 @@ scope:
   role に落ちる（`containerStyleOf` in `svg-renderer.ts`）。合成 id で lookup が外れる
   経路と実 id でベース値が残る経路の両方を、明示指定を潰さずに拾える。built-in シート
   も「塗った」に数える。問いは誰が塗ったかではなく塗られたかなので。
-- role は、同じエンティティを描く別 surface が既に使っているものに揃える
-  （#2662 は team カードを描く `treeDefaults` の `textPrimary` / `mutedBorder` に合わせた。
-  ADR-2269「1 エンティティ 1 見た目」／ TPL-2234 と同じ理由）。
+- role は、その surface と同じ役割に対して chrome palette が既に持っているものを取る
+  （#2662 は `org-tree-renderer.ts` の `treeDefaults` が同じ 2 つの用途に名指ししている
+  `textPrimary` / `mutedBorder`）。「同じエンティティだから別レンダリングの既定も同じ」
+  という揃え方ではない — 既定は各レンダリングが自分で持つ（ADR-2269）。揃うのは
+  作者が書いたルールの届き方であって、既定ではない。
 
 ## 関連テスト
 

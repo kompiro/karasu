@@ -1400,10 +1400,15 @@ function resolveFramePaint(
  * rule set to the same value. An explicit `color: #F9FAFB` is honoured in both
  * themes, exactly as `.krs.style` documents.
  *
- * The two roles are the ones the org tree already paints a team card with
- * (`treeDefaults` in `org-tree-renderer.ts`): a team is one entity with two
- * renderings (ADR-2269), so its frame and its card read the same colour from the
- * same palette role rather than deriving it twice.
+ * The roles come from the chrome palette rather than from the node cascade
+ * because a frame is chrome: the view draws it, and the built-in sheet is kept
+ * out of it on purpose so a team no sheet names keeps the muted dashed frame
+ * instead of the card's fill (ADR-2269, `docs/spec/style.md` -> Team frames).
+ * `treeDefaults` in `org-tree-renderer.ts` names the same two roles for the same
+ * two jobs, so this is the chrome vocabulary already in use rather than a new
+ * pairing. It is not an appeal to one entity, one appearance: that rule is about
+ * an author's selector reaching both renderings, and each rendering keeps its
+ * own default.
  *
  * `textPrimary` rather than `textMuted` because the muting is already done by
  * {@link MUTED_FRAME_TITLE_OPACITY}: composited at 0.7 the muted role reaches

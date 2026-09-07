@@ -118,7 +118,13 @@ export function resolveStyles(
   function recordPaintedColors(id: string, props: Record<string, string>): void {
     const color = Boolean(props["color"]);
     const borderColor = Boolean(props["border-color"]);
+    // Set or clear, never only set. `nodeStyles.set` overwrites unconditionally,
+    // and an id can be stored twice: the same name is a service in one system
+    // and a system in another. Leaving the first pass's flags standing against
+    // the second pass's values is how the two maps come to disagree, which
+    // reads as the frame keeping a colour nothing named for it.
     if (color || borderColor) paintedColors.set(id, { color, borderColor });
+    else paintedColors.delete(id);
   }
 
   // Build inferred tag map so that dot-notation resource nodes (e.g. "OrderDB.OrderTable")

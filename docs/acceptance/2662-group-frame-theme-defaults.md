@@ -11,7 +11,7 @@ type: product
   - `packages/core/src/renderer/svg-renderer.ts`（`containerStyleOf`）
   - `packages/core/src/renderer/palette.ts`（`textPrimary` / `mutedBorder` の role 定義）
 
-> どのルールも塗らなかったコンテナ枠は、カスケードのベース style（`DEFAULT_NODE_STYLE`）から色を取っていた。これは「暗い塗りの上の明るいラベル」というカード用の既定であり、dark palette 固定でもある。塗りの無いフレームにその前提は成立せず、light テーマでは白 canvas 上にほぼ白のタイトル（`#F9FAFB`、合成後 1.03:1）を描いていた。枠の色は palette の role（`textPrimary` / `mutedBorder`）から取る。role は team カードを描く `treeDefaults` と同じもので、ADR-2269「1 エンティティ 1 見た目」に揃う。
+> どのルールも塗らなかったコンテナ枠は、カスケードのベース style（`DEFAULT_NODE_STYLE`）から色を取っていた。これは「暗い塗りの上の明るいラベル」というカード用の既定であり、dark palette 固定でもある。塗りの無いフレームにその前提は成立せず、light テーマでは白 canvas 上にほぼ白のタイトル（`#F9FAFB`、合成後 1.03:1）を描いていた。枠の色は chrome palette の role（`textPrimary` / `mutedBorder`）から取る。フレームは chrome であり、built-in シートは意図的にそこへ届かない（ADR-2269 / `docs/spec/style.md` § Team frames「各レンダリングは自分の既定を持つ」）ため、既定はノードのカスケードではなく chrome 側にある。同じ 2 つの role は `org-tree-renderer.ts` の `treeDefaults` が同じ用途に名指ししており、新しい組み合わせではない。
 
 ## 受け入れ条件
 
