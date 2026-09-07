@@ -5,7 +5,7 @@ type: product
 # AT: ストアスコープの ER ビュー（`database` キャンバスへの entity 関連の投影）（#2721）
 
 - **日付**: 2026-09-06
-- **関連 Issue**: [#2721](https://github.com/kompiro/karasu/issues/2721)（slice A）, [#2722](https://github.com/kompiro/karasu/issues/2722)（slice B）（親: [#2585](https://github.com/kompiro/karasu/issues/2585)）
+- **関連 Issue**: [#2721](https://github.com/kompiro/karasu/issues/2721)（slice A）, [#2722](https://github.com/kompiro/karasu/issues/2722)（slice B）, [#2723](https://github.com/kompiro/karasu/issues/2723)（slice C）（親: [#2585](https://github.com/kompiro/karasu/issues/2585)）
 - **Related TPLs**: [TPL-2585](../test-perspectives/TPL-2585-partial-mapping-view-states-its-denominator.md)（部分的な写像を通した派生ビューは写らなかった分母を示す）, [TPL-510](../test-perspectives/TPL-510-derivation-tag-semantics.md)（派生タグは kind 次元と直交させる）, [TPL-1936](../test-perspectives/TPL-1936-cross-domain-entity-reference-qualified.md)（cross-domain の entity 参照は限定子付き）
 - **対象ファイル**:
   - `packages/core/src/view/view-extract.ts`（`projectEntityRelationsOntoStore`）
@@ -13,6 +13,7 @@ type: product
   - `packages/core/src/resolver/style-resolver.ts`（静的バンドルで派生エッジにスタイルを当てる `styleDerivedEdges`）
   - `docs/spec/syntax.md` / `syntax.ja.md`（§ Store-scoped ER view）、`docs/spec/tags-annotations.md` / `.ja.md`（`[projected]`）
   - `packages/core/src/translate/db.ts`（`collectRootRelations` / `emitTableEdges`。slice B）
+  - `packages/core/src/view/coverage-extract.ts`（`diffStoreRelations`）、`packages/cli/src/coverage.ts`（slice C）
 
 > `database` のドリルダウンは `table` leaf を関連ゼロで並べていた。両端が同じストアへ `table` 対応を持つ `entity` 関連を、描画時に leaf 間エッジとして投影する。`.krs` は変えない。投影エッジは `[projected]`（色のみ）で記録済みエッジと区別され、`[async]` の破線は保たれる。
 
@@ -109,6 +110,32 @@ type: product
 - [x] 別の `database` の leaf を指す記録エッジはどちらのキャンバスにも描かれず、`edge-endpoint-not-at-scope` が出る（ADR-2075 の既存判定をそのまま採用）
 
   > ✅ Automated — `packages/core/src/view/view-extract.test.ts` › union with the edges the .krs records (#2722) › does not draw a recorded table edge whose target is a leaf of another store (edge-endpoint-not-at-scope owns it) ／ `packages/core/src/resolver/warnings.test.ts` › table edge crossing two database blocks (#2722) › reports edge-endpoint-not-at-scope on the leaf, the same verdict a cross-block bare edge gets anywhere
+
+### AC-7: 記録済み table 関連と投影 entity 関連の差分が `coverage` に出る（slice C, #2723）
+
+- [x] TC-C1: 記録にあって投影に無い関連が `recordedWithoutProjection` に順序付き `{from, to}` で出る（論理モデルの欠落。修復可能な指摘）
+
+  > ✅ Automated — `packages/core/src/view/coverage-extract.test.ts` › recorded vs projected table relations (#2723) › reports a recorded relation the logical model lacks, separately from the reverse (TC-C1, TPL-999)
+
+- [x] TC-C2: 投影にあって記録に無い関連が `projectionWithoutRecorded` に出る。TC-C1 と別の一覧に保たれ、欠陥ではなく事実として報告される（TPL-999）
+
+  > ✅ Automated — `packages/core/src/view/coverage-extract.test.ts` › recorded vs projected table relations (#2723) › reports a projected relation no record enforces, as a fact (TC-C2)
+
+- [x] TC-C3: 逆向きの組（記録 `A -> B`、投影 `B -> A`）が `directionMismatch` に記録側の向きで出る。キャンバスは記録側に寄せて描くので、レポートだけが不一致を残す
+
+  > ✅ Automated — `packages/core/src/view/coverage-extract.test.ts` › recorded vs projected table relations (#2723) › reports an opposite-direction pair in the recorded orientation, which the canvas resolves silently (TC-C3)
+
+- [x] TC-C4: 同じ組で kind が割れたものが `kindMismatch` に出る。両側が一致する組はどの一覧にも出ない
+
+  > ✅ Automated — `packages/core/src/view/coverage-extract.test.ts` › recorded vs projected table relations (#2723) › reports a same-pair kind mismatch the canvas keeps as recorded (TC-C4)
+
+- [x] `queue` / `storage` と、記録も投影も無い `database` では 4 つの一覧が空
+
+  > ✅ Automated — `packages/core/src/view/coverage-extract.test.ts` › recorded vs projected table relations (#2723) › keeps the four lists empty for a queue / storage block and for a store with nothing recorded or projected
+
+- [x] TC-C5: CLI の `coverage` が `database` ごとの差分表（markdown）と `--format json` の 4 フィールドを出す。`database` の無いモデルでは表を出さない
+
+  > ✅ Automated — `packages/cli/src/coverage.test.ts` › coverage CLI › adds a table-relation diff per database, in the same pair shape as the JSON (TC-C5) ／ omits the table-relation section for a model whose infra has no database
 
 ### 手動確認
 

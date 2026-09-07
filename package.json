@@ -62,7 +62,7 @@
     "@kompiro/adr-tools": "^0.0.13",
     "@kompiro/tpl-tools": "^0.0.9",
     "@playwright/test": "^1.62.1",
-    "@types/node": "^26.3.0",
+    "@types/node": "^26.4.0",
     "knip": "^6.33.0",
     "lefthook": "^2.1.12",
     "madge": "^8.0.0",
