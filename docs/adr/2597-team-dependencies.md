@@ -163,7 +163,9 @@ csv は `relation` 列で判別する tidy data。
 
 ## 影響範囲
 
-- 既存ユーザーへの影響なし。`.krs` の構文も既存ビューの描画も変えない。
+- `.krs` の構文は変えない。既存ビュー（system / deploy / org のグリッドとツリー）の
+  描画も変えない。新設したチーム依存グラフのフッタには structural overlap の件数が
+  加わる — 描画が変わるのはこの新しいモードの中だけ。
 - ドキュメント: `docs/spec/syntax.md`（所有の継承）、`docs/spec/glossary.md`
   （team dependency / structural overlap）、`docs/tools/cli.md`・`docs/tools/app.md`
 - app の org タブは grid / tree / dependencies の 3 モードを 1 つの値で持つ
