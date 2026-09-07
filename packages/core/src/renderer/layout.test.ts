@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { layout } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
+import { diffSystemViewSlices } from "../diff/view-diff.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
 
 function parseAndExtract(krs: string, path: string[] = []) {
@@ -2476,6 +2477,41 @@ system Gamma {
     expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
       "__collapsed_Alpha_external__->Gamma.Cli",
       "__collapsed_Beta_external__->Gamma.Cli",
+    ]);
+  });
+});
+
+// #2646. Compare mode keeps a *removed* cross-system edge from the before
+// slice, while the merged `systems` carry the after node's edges — so that edge
+// belongs to no system's edge list on this path and its source system cannot be
+// established. It still has to re-anchor onto the stub its endpoint folded into.
+describe("a removed cross-system edge still re-anchors in compare mode (#2646)", () => {
+  const sliceOf = (krs: string) => extractView(Parser.parse(krs).value.systems, []);
+
+  it("re-targets the removed edge onto the stub its source folded into", () => {
+    const before = sliceOf(`
+system Shop {
+  service Ext [external]
+  Ext -> Gateway.PaymentService
+}
+system Gateway {
+  service PaymentService
+}
+`);
+    const after = sliceOf(`
+system Shop {
+  service Ext [external]
+}
+system Gateway {
+  service PaymentService
+}
+`);
+    const merged = diffSystemViewSlices(before, after);
+    const result = layout(merged.slice, {
+      collapsedCategories: new Set<"external" | "infra">(["external"]),
+    });
+    expect(result.edges.map((e) => `${e.from}->${e.to}`)).toEqual([
+      "__collapsed_Shop_external__->Gateway.PaymentService",
     ]);
   });
 });
