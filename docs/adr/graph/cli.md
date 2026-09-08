@@ -19,6 +19,7 @@ flowchart TD
     ADR_1935["ADR-1935<br/>--from wrangler translate adapter と「adapter を採る基準」"]
     ADR_9013["ADR-9013<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   end
+  ADR_2585["ADR-2585<br/>[core-concepts] ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
   ADR_9006["ADR-9006<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   ADR_9015["ADR-9015<br/>[renderer] 全ビュー統合バンドル SVG（buildAllViewsSvg）"]
   ADR_121 --> ADR_9015
@@ -28,6 +29,7 @@ flowchart TD
   ADR_643 --> ADR_355
   ADR_644 --> ADR_355
   ADR_9013 --> ADR_9006
+  ADR_2585 --> ADR_644
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -47,6 +49,7 @@ flowchart TD
   class ADR_1104 accepted
   class ADR_1935 accepted
   class ADR_9013 accepted
+  class ADR_2585 ghost
   class ADR_9006 ghost
   class ADR_9015 ghost
 ```

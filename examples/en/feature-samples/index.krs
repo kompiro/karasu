@@ -19,6 +19,7 @@
 //   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
+//   team-dependencies.krs     derived team dependencies — cross-team / nested / unowned / structural overlap
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
