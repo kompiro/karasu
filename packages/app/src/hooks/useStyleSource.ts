@@ -17,7 +17,14 @@ export function useStyleSource(
     return Parser.parse(fileContent).value.styleImports;
   }, [fileContent, currentFilePath]);
 
-  const [loaded, setLoaded] = useState<string | undefined>(undefined);
+  // Identifies which reads a loaded value came from. Without it, the value
+  // loaded for one import set would be served while a different set is still
+  // resolving — the entry dropping its import and then gaining another would
+  // show the first import's styling in between.
+  const importsKey =
+    imports.length === 0 ? "" : `${currentFilePath ?? ""}\u0000${imports.join("\u0000")}`;
+
+  const [loaded, setLoaded] = useState<{ key: string; value: string | undefined } | null>(null);
 
   useEffect(() => {
     if (imports.length === 0 || !currentFilePath) return;
@@ -32,16 +39,17 @@ export function useStyleSource(
     ).then((contents) => {
       if (!cancelled) {
         const combined = contents.filter(Boolean).join("\n");
-        setLoaded(combined || undefined);
+        setLoaded({ key: importsKey, value: combined || undefined });
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [imports, currentFilePath, fs]);
+  }, [imports, importsKey, currentFilePath, fs]);
 
-  // Masks the previous file's style for the render between "imports changed"
-  // and "the new contents resolved", which the synchronous clear used to do.
-  return imports.length === 0 ? undefined : loaded;
+  // Only the value that belongs to the current imports is served; anything
+  // else reads as "no style yet", which is what the synchronous clear did.
+  if (imports.length === 0 || loaded?.key !== importsKey) return undefined;
+  return loaded.value;
 }
