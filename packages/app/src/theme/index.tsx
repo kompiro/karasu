@@ -12,7 +12,15 @@
  *     is the concrete light/dark actually applied.
  */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { ReactNode } from "react";
 import {
   applyEffectiveTheme,
@@ -45,32 +53,48 @@ interface ThemeProviderProps {
   initialTheme?: ThemePreference;
 }
 
+/**
+ * `useSyncExternalStore` adapter over `prefers-color-scheme`.
+ *
+ * `getSystemTheme` must be referentially stable for equal states, which it is:
+ * it returns one of two string literals. The server snapshot mirrors
+ * `resolveEffectiveTheme`'s rule of defaulting to dark when the query cannot
+ * be read, so a render without `matchMedia` matches what the DOM would get.
+ */
+function subscribeToColorScheme(onStoreChange: () => void): () => void {
+  const query = colorSchemeQuery();
+  if (!query) return () => {};
+  query.addEventListener("change", onStoreChange);
+  return () => query.removeEventListener("change", onStoreChange);
+}
+
+function getSystemTheme(): EffectiveTheme {
+  return resolveEffectiveTheme("system");
+}
+
+function getSystemThemeOnServer(): EffectiveTheme {
+  return "dark";
+}
+
 export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<ThemePreference>(
     () => initialTheme ?? resolveThemePreference(),
   );
-  const [effectiveTheme, setEffectiveTheme] = useState<EffectiveTheme>(() =>
-    resolveEffectiveTheme(initialTheme ?? resolveThemePreference()),
+  // The OS setting is external state, so read it through the store API rather
+  // than mirroring it into `useState` from an effect: the effect form rendered
+  // once with the old value and corrected itself on the next commit, which is
+  // the cascading render `react(set-state-in-effect)` points at.
+  const systemTheme = useSyncExternalStore(
+    subscribeToColorScheme,
+    getSystemTheme,
+    getSystemThemeOnServer,
   );
+  const effectiveTheme: EffectiveTheme = theme === "system" ? systemTheme : theme;
 
-  // Apply the effective theme whenever the preference changes, and — when
-  // the preference is "system" — keep it in sync with the OS setting.
+  // Writing `<html data-theme>` is a real side effect and stays in an effect.
   useEffect(() => {
-    const next = resolveEffectiveTheme(theme);
-    setEffectiveTheme(next);
-    applyEffectiveTheme(next);
-
-    if (theme !== "system") return;
-    const query = colorSchemeQuery();
-    if (!query) return;
-    const onChange = () => {
-      const live = resolveEffectiveTheme("system");
-      setEffectiveTheme(live);
-      applyEffectiveTheme(live);
-    };
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, [theme]);
+    applyEffectiveTheme(effectiveTheme);
+  }, [effectiveTheme]);
 
   const setTheme = useCallback<SetTheme>((next) => {
     setStoredTheme(next);

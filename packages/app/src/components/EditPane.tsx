@@ -83,10 +83,14 @@ export function EditPane({
         />
       )}
       {activeTab === "chat" && (
+        // Switching projects resets the chat by remounting it, rather than by
+        // a prop the hook watches in an effect: the effect cleared the
+        // messages one commit after the switch, so the previous project's
+        // conversation was on screen for a frame.
         <ChatPane
+          key={currentProjectId ?? "no-project"}
           scopeLabel={scopeLabel}
           viewPath={viewPath}
-          sessionResetKey={currentProjectId}
           fileContent={value}
           currentFilePath={currentFilePath}
           resolvedSystems={resolvedSystems}

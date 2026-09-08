@@ -43,11 +43,10 @@ export function DiffModeBanner({
   const baseName = (p: string) => p.split("/").pop() ?? p;
   const [snapshotRecord, setSnapshotRecord] = useState<SnapshotRecord | null>(null);
 
+  const isSnapshotSource = source.kind === "snapshot" && Boolean(snapshotManager);
+
   useEffect(() => {
-    if (source.kind !== "snapshot" || !snapshotManager) {
-      setSnapshotRecord(null);
-      return;
-    }
+    if (source.kind !== "snapshot" || !snapshotManager) return;
     let cancelled = false;
     snapshotManager.list(source.filePath).then((records) => {
       if (cancelled) return;
@@ -58,13 +57,21 @@ export function DiffModeBanner({
     };
   }, [source, snapshotManager]);
 
+  // The "not a snapshot" case is a property of `source`, so it is read off
+  // `source` at render rather than pushed into state by the effect: clearing
+  // it there cost a commit and a second render, and left the previous
+  // snapshot's label on screen for that frame.
+  const activeSnapshotRecord = isSnapshotSource ? snapshotRecord : null;
+
   const isPasted = source.kind === "pasted";
 
   const compareLabel: ReactNode = isPasted ? (
     <span className="diff-mode-banner__pasted">pasted</span>
   ) : source.kind === "snapshot" ? (
     <span>
-      {snapshotRecord ? formatSnapshotLabel(snapshotRecord) : `${baseName(source.filePath)} @ ...`}
+      {activeSnapshotRecord
+        ? formatSnapshotLabel(activeSnapshotRecord)
+        : `${baseName(source.filePath)} @ ...`}
     </span>
   ) : (
     <span>{baseName(source.path)}</span>

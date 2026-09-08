@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -159,10 +160,17 @@ export function AppShell({
 
   useSnapshotAutoCapture(snapshotManager, projectRoot, currentFilePath, fileContent);
 
-  // Expose recompile to parent via ref (used by ServeModeApp for SSE-driven updates)
-  if (recompileRef) {
+  // Expose recompile to parent via ref (used by ServeModeApp for SSE-driven
+  // updates). Assigned after commit rather than during render: the ref belongs
+  // to the parent, and a render that React discards or replays must not leave
+  // the parent holding a callback from a tree that never mounted.
+  useEffect(() => {
+    if (!recompileRef) return;
     recompileRef.current = recompile;
-  }
+    return () => {
+      recompileRef.current = null;
+    };
+  }, [recompileRef, recompile]);
 
   const { breadcrumbItems, orgBreadcrumbItems, scopeLabel } = useBreadcrumbs({
     resolvedSystems: views.system.resolvedSystems,
