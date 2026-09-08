@@ -1472,6 +1472,40 @@ system ECPlatform {
       expect(userDb.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["sessions->users"]);
     });
 
+    it("S4.5: two edges over the same pair differing only in kind both survive (#2755 review)", async () => {
+      // The spec's dedup identity is (from, to, kind, label). Leaving `kind`
+      // out of it does not remove a duplicate, it erases the sync/async
+      // distinction: whichever entry merged first would decide the arrow.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+         import "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile(
+        "/project/a.krs",
+        `database UserDB {
+           table users
+           table sessions
+           sessions -> users
+         }`,
+      );
+      await fs.writeFile(
+        "/project/b.krs",
+        `database UserDB {
+           table sessions
+           sessions --> users
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const userDb = result.krsFile.databases.find((d) => d.id === "UserDB")!;
+      expect(userDb.edges.map((e) => `${e.from}-${e.kind}->${e.to}`).sort()).toEqual([
+        "sessions-async->users",
+        "sessions-sync->users",
+      ]);
+    });
+
     it("a same-id leaf arriving through a named import is not dropped silently (#2582 review)", async () => {
       await fs.writeFile(
         "/project/index.krs",

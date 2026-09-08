@@ -643,13 +643,24 @@ export class ImportResolver {
     // A `database` body holds edges as well as leaves (`sessions -> users`),
     // and the union owes them the same treatment it gives the leaves: merging
     // the tables but dropping the relations between them leaves a block that
-    // looks complete and has quietly lost information (#2754). Deduped the
-    // same way the system merge above does it, so an edge arriving from both
-    // entries lands once.
+    // looks complete and has quietly lost information (#2754).
+    //
+    // The identity is the one `docs/spec/syntax.md` § multi-file import
+    // semantics states — "Exact duplicates (same `from`, `to`, kind, label) are
+    // deduplicated; otherwise both are kept". `kind` is load-bearing: dropping
+    // it fuses `a -> b` and `a --> b` into whichever entry merged first, which
+    // is the sync/async distinction disappearing rather than a duplicate being
+    // removed. A true duplicate keeps the first entry's body properties, the
+    // same root-entry-wins reconcile the block's own `label` / `description`
+    // already use.
     for (const edge of source.edges) {
       if (target.edges.includes(edge)) continue;
       const exists = target.edges.some(
-        (e) => e.from === edge.from && e.to === edge.to && e.label === edge.label,
+        (e) =>
+          e.from === edge.from &&
+          e.to === edge.to &&
+          e.kind === edge.kind &&
+          e.label === edge.label,
       );
       if (!exists) target.edges.push(edge);
     }
