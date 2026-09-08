@@ -151,7 +151,7 @@ export function formatTeamDependenciesAsMarkdown(report: TeamDependencyReport): 
     lines.push("_(no ownership crosses containment)_");
   } else {
     lines.push(
-      "> A node owned by one team living inside a node owned by another. No edge crosses here, so the dependencies above cannot see it — but the two teams still have to agree on the enclosing structure.",
+      "> A node owned by one team living inside a node owned by another. The join above reads edges, which say nothing about containment, so it cannot see this whether or not an edge also crosses the same boundary — but the two teams still have to agree on the enclosing structure.",
     );
     lines.push("");
     lines.push("| node | owned by | inside | owned by | relation |");
