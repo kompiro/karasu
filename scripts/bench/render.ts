@@ -9,7 +9,7 @@
 // measures (the all-views bundle and the single system view) and the ten
 // slowest drill-down levels, with extraction and rendering timed separately.
 // The level walk mirrors `buildDrillDownSvg` (packages/core/src/renderer/
-// drill-down-svg.ts): `withUnassignedSystem` once, `extractView` per path, and
+// drill-down-svg.ts): `withUnassignedSystem` once, one extractor per walk, and
 // a child is a level when it has children and its slice has content; the
 // probe of each child is charged to the parent level's extraction, where the
 // bundle pays it.
@@ -43,7 +43,7 @@ import {
 } from "../../packages/core/src/resolver/style-resolver.ts";
 import type { KrsFile, KrsNode } from "../../packages/core/src/types/ast.ts";
 import { withUnassignedSystem } from "../../packages/core/src/view/unassigned-system.ts";
-import { extractView, type ViewSlice } from "../../packages/core/src/view/view-extract.ts";
+import { createViewExtractor, type ViewSlice } from "../../packages/core/src/view/view-extract.ts";
 
 const DEFAULT_FILE = "examples/en/getting-started/index.krs";
 const DEFAULT_RUNS = 5;
@@ -103,6 +103,9 @@ function countNodes(nodes: readonly KrsNode[]): number {
  */
 function walkLevels(krsFile: KrsFile): LevelTiming[] {
   const systems = withUnassignedSystem(krsFile);
+  // Built outside the timed calls, the way a bundle builder builds it once per
+  // build; the per-level numbers then cover extraction alone.
+  const extractSlice = createViewExtractor(systems);
   const { sheets } = buildStyles(undefined);
   const styles = resolveStyles(systems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map<string, string>();
@@ -116,7 +119,7 @@ function walkLevels(krsFile: KrsFile): LevelTiming[] {
   const childrenOf = (slice: ViewSlice): KrsNode[] =>
     slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes;
   const extract = (path: string[]): { value: ViewSlice; ms: number } =>
-    timed(() => styleDerivedEdges(extractView(systems, path), styles, sheets));
+    timed(() => styleDerivedEdges(extractSlice(path), styles, sheets));
 
   const levels: LevelTiming[] = [];
   const walk = (path: string[]): void => {

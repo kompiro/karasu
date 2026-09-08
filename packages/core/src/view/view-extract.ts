@@ -47,7 +47,7 @@ function collectResources(node: KrsNode): ResourceNode[] {
  */
 function deriveUsecaseResourceNodes(
   usecases: KrsNode[],
-  tagMap: Map<string, string>,
+  tagMap: ReadonlyMap<string, string>,
   resolver: EntityResolver,
 ): { resourceNodes: KrsNode[]; edges: KrsEdge[] } {
   const resourceMap = new Map<string, KrsNode>();
@@ -455,14 +455,14 @@ export interface ViewSlice {
    * resolved label of the referenced infra sub-resource (e.g. "注文テーブル").
    * Used to display the infra-defined label instead of the raw ID.
    */
-  resourceLabelMap: Map<string, string>;
+  resourceLabelMap: ReadonlyMap<string, string>;
   /**
    * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
    * inferred style tag (e.g. "table", "queue", "storage").
    * Used to automatically apply resource[table]/resource[queue]/resource[storage]
    * style rules to dot-notation resource nodes that have no explicit tags.
    */
-  resourceInferredTagsMap: Map<string, string>;
+  resourceInferredTagsMap: ReadonlyMap<string, string>;
   /**
    * Maps "fromServiceId->toServiceId" to the list of constituent domain edges
    * that were aggregated into a single "N domain edges" implicit service edge.
@@ -610,8 +610,8 @@ export function withChildAnchoredEdges(system: KrsNode): KrsEdge[] {
  * {@link extractEntityView} so a new field cannot be forgotten in one of them.
  */
 function emptySlice(
-  resourceLabelMap: Map<string, string> = new Map(),
-  resourceInferredTagsMap: Map<string, string> = new Map(),
+  resourceLabelMap: ReadonlyMap<string, string> = new Map(),
+  resourceInferredTagsMap: ReadonlyMap<string, string> = new Map(),
 ): ViewSlice {
   return {
     containerNode: null,
@@ -668,7 +668,7 @@ function buildResourceInferredTagsMap(systems: KrsNode[]): Map<string, string> {
  * dot-notation ref but no explicit tags. Explicit tags always take precedence.
  * Non-resource interior nodes are shallow-copied only when their children changed.
  */
-function applyInferredTagsDeep(node: KrsNode, tagMap: Map<string, string>): KrsNode {
+function applyInferredTagsDeep(node: KrsNode, tagMap: ReadonlyMap<string, string>): KrsNode {
   const patchedChildren =
     node.children.length > 0
       ? node.children.map((c) => applyInferredTagsDeep(c, tagMap))
@@ -694,7 +694,7 @@ function applyInferredTagsDeep(node: KrsNode, tagMap: Map<string, string>): KrsN
  * Apply inferred tags to all resource nodes (at any depth) that have a dot-notation ref
  * but no explicit tags. Nodes with explicit tags are returned unchanged.
  */
-function applyInferredTags(nodes: KrsNode[], tagMap: Map<string, string>): KrsNode[] {
+function applyInferredTags(nodes: KrsNode[], tagMap: ReadonlyMap<string, string>): KrsNode[] {
   if (tagMap.size === 0) return nodes;
   return nodes.map((node) => applyInferredTagsDeep(node, tagMap));
 }
@@ -878,13 +878,13 @@ function buildGhostDomains(
 /**
  * Shared context threaded through the {@link extractView} phase helpers:
  * model-wide maps and resolvers that don't vary across the orphan / root /
- * drill-down branches, nor across the paths of one model. Built by
- * {@link buildViewExtractContext} and shared by every {@link extractView}
- * call on the same `systems` array through {@link viewExtractContextCache}.
+ * drill-down branches, nor across the paths of one model. The shared part is
+ * built by {@link createViewExtractor} (or once per {@link extractView} call);
+ * `empty` is fresh per call.
  */
 interface ViewExtractContext {
-  resourceLabelMap: Map<string, string>;
-  resourceInferredTagsMap: Map<string, string>;
+  resourceLabelMap: ReadonlyMap<string, string>;
+  resourceInferredTagsMap: ReadonlyMap<string, string>;
   empty: ViewSlice;
   entityResolver: EntityResolver;
   /**
@@ -913,7 +913,7 @@ interface PromotedChildren {
 function collectPromotedChildren(
   container: KrsNode,
   edges: KrsEdge[],
-  resourceInferredTagsMap: Map<string, string>,
+  resourceInferredTagsMap: ReadonlyMap<string, string>,
   entityResolver: EntityResolver,
 ): PromotedChildren {
   const renderableChildren = container.children.filter((c) => c.kind !== "entity");
@@ -1058,7 +1058,7 @@ function resolveExpandedServices(
 function spliceExpandedFrames(
   allChildren: KrsNode[],
   expandedServices: Map<string, KrsNode>,
-  resourceInferredTagsMap: Map<string, string>,
+  resourceInferredTagsMap: ReadonlyMap<string, string>,
 ): { childNodes: KrsNode[]; expandedFrames: ExpandedFrame[] } {
   const expandedFrames: ExpandedFrame[] = [];
   const childNodes: KrsNode[] = [];
@@ -1354,10 +1354,20 @@ function extractSystemDrillDownView(
 }
 
 /**
- * Build the model-wide part of an extraction: the resource maps, the empty
- * slice every phase helper spreads, and the entity / ghost-endpoint resolvers.
+ * The model-wide part of an extraction, shared by every call of one
+ * {@link ViewExtractor}: the resource maps and the entity / ghost-endpoint
+ * resolvers. Read-only once built. The per-call `empty` slice is deliberately
+ * not here: a returned slice owns its arrays, so an unresolved path gets a
+ * fresh one each time.
  */
-function buildViewExtractContext(systems: KrsNode[], orphans: KrsNode[]): ViewExtractContext {
+interface SharedViewExtractContext {
+  resourceLabelMap: ReadonlyMap<string, string>;
+  resourceInferredTagsMap: ReadonlyMap<string, string>;
+  entityResolver: EntityResolver;
+  ghostEndpoint: (ref: NodeIdPath) => GhostEndpointMatch | undefined;
+}
+
+function buildSharedContext(systems: KrsNode[], orphans: KrsNode[]): SharedViewExtractContext {
   const resourceLabelMap = buildResourceLabelMap(systems);
   const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
   // Resolver over the whole model: a bare `resource <id>` in one domain may
@@ -1367,62 +1377,24 @@ function buildViewExtractContext(systems: KrsNode[], orphans: KrsNode[]): ViewEx
   return {
     resourceLabelMap,
     resourceInferredTagsMap,
-    empty: emptySlice(resourceLabelMap, resourceInferredTagsMap),
     entityResolver,
     ghostEndpoint: buildGhostEndpointResolver(systems),
   };
 }
 
-/**
- * The {@link ViewExtractContext} of each `systems` array, for calls that pass
- * no orphans (#2759).
- *
- * The bundle builders (`buildDrillDownSvg`, `buildAllLayersSvg`,
- * `buildAllViewsSvg`, `compile`, …) call {@link extractView} once per level
- * and once per child probe, and each call used to rebuild the four
- * whole-model structures: on a 1,800-node model that walked the tree about
- * 2,000 times per bundle. Every one of those builders computes
- * `withUnassignedSystem(krsFile)` once and passes that same array to each
- * call, so keying on the array's identity turns every rebuild but the first
- * into a lookup.
- *
- * The key cannot go stale (TPL-1032). A `systems` array is produced by a
- * parse, or by the merge that assembles a multi-file model, and is never
- * mutated once a view has been extracted from it: a new model is a new array,
- * and the context derived from the old one is unreachable as soon as the old
- * array is, since a `WeakMap` keeps nothing alive that the model does not.
- * Sharing one instance is safe because nothing writes to the context after
- * construction: the phase helpers spread `empty` (or return it as is) and only
- * read the maps, and no consumer of a {@link ViewSlice} mutates one.
- *
- * Orphans are inputs the key does not see (the entity resolver walks them),
- * so a call that passes any is built fresh, exactly as before. Neither is a
- * no-system file cached: its content is all in the orphans, and an empty
- * array names no model.
- */
-const viewExtractContextCache = new WeakMap<KrsNode[], ViewExtractContext>();
-
-export function extractView(
+function extractWithContext(
   systems: KrsNode[],
   path: ViewPath,
-  unassignedDomains: KrsNode[] = [],
-  unassignedServices: KrsNode[] = [],
-  /**
-   * Service ids to expand in place in the root system view (#1921). Each named
-   * service is replaced by its domain children (spliced as a boundary-frame
-   * band) while siblings stay collapsed; cross-boundary edges re-anchor to the
-   * exact internal domain. Only honoured on the root system view; ignored on
-   * drill-down levels and multi-system roots (Phase 1 scope).
-   */
-  expandedContainers?: ReadonlySet<string>,
+  unassignedDomains: KrsNode[],
+  unassignedServices: KrsNode[],
+  expandedContainers: ReadonlySet<string> | undefined,
+  shared: SharedViewExtractContext,
 ): ViewSlice {
   const orphans = [...unassignedServices, ...unassignedDomains];
-  const cacheable = orphans.length === 0 && systems.length > 0;
-  let ctx = cacheable ? viewExtractContextCache.get(systems) : undefined;
-  if (!ctx) {
-    ctx = buildViewExtractContext(systems, orphans);
-    if (cacheable) viewExtractContextCache.set(systems, ctx);
-  }
+  const ctx: ViewExtractContext = {
+    ...shared,
+    empty: emptySlice(shared.resourceLabelMap, shared.resourceInferredTagsMap),
+  };
 
   // No-system file: render orphan services/domains as peer nodes with no container.
   // Drill-down walks from the orphan as path root.
@@ -1443,6 +1415,72 @@ export function extractView(
 
   // Determine the active system and walk the path to the container.
   return extractSystemDrillDownView(systems, path, unassignedServices, unassignedDomains, ctx);
+}
+
+/** {@link extractView} bound to one model snapshot; see {@link createViewExtractor}. */
+export type ViewExtractor = (path: ViewPath, expandedContainers?: ReadonlySet<string>) => ViewSlice;
+
+/**
+ * An extractor over one model snapshot (#2759): every call shares the four
+ * whole-model structures {@link extractView} would otherwise rebuild (the
+ * resource maps, the entity resolver, the ghost-endpoint resolver).
+ *
+ * The bundle builders (`buildDrillDownSvg`, `buildAllLayersSvg`,
+ * `buildAllViewsSvg`) extract once per level and once per child probe; on a
+ * 1,800-node model that rebuilt the structures about 2,000 times per bundle.
+ * Each builder now creates one extractor per build, and a build's model is
+ * fixed by construction.
+ *
+ * The caller owns the snapshot: `systems` and the orphan lists must not change
+ * while the extractor is in use (TPL-1032). That is the whole contract, and it
+ * is why nothing is remembered across calls of {@link extractView} itself: a
+ * caller that edits a model in place and extracts again through
+ * `extractView` gets the edited model, because that function stays a pure
+ * function of its arguments.
+ *
+ * Every slice an extractor returns reads the shared maps (typed read-only) and
+ * owns everything else, exactly as a slice from `extractView` does.
+ */
+export function createViewExtractor(
+  systems: KrsNode[],
+  unassignedDomains: KrsNode[] = [],
+  unassignedServices: KrsNode[] = [],
+): ViewExtractor {
+  const shared = buildSharedContext(systems, [...unassignedServices, ...unassignedDomains]);
+  return (path, expandedContainers) =>
+    extractWithContext(
+      systems,
+      path,
+      unassignedDomains,
+      unassignedServices,
+      expandedContainers,
+      shared,
+    );
+}
+
+export function extractView(
+  systems: KrsNode[],
+  path: ViewPath,
+  unassignedDomains: KrsNode[] = [],
+  unassignedServices: KrsNode[] = [],
+  /**
+   * Service ids to expand in place in the root system view (#1921). Each named
+   * service is replaced by its domain children (spliced as a boundary-frame
+   * band) while siblings stay collapsed; cross-boundary edges re-anchor to the
+   * exact internal domain. Only honoured on the root system view; ignored on
+   * drill-down levels and multi-system roots (Phase 1 scope).
+   */
+  expandedContainers?: ReadonlySet<string>,
+): ViewSlice {
+  const shared = buildSharedContext(systems, [...unassignedServices, ...unassignedDomains]);
+  return extractWithContext(
+    systems,
+    path,
+    unassignedDomains,
+    unassignedServices,
+    expandedContainers,
+    shared,
+  );
 }
 
 /**
