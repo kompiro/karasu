@@ -119,21 +119,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const reservations = channelReservations(found.result.result, found.result.rows);
   // SPIKE (#2611 stage 2): columns for the edges the first pass sent to a
   // gutter although a straight corridor would have fitted between their rows.
-  const columns = process.env.KARASU_NO_COLUMNS
-    ? new Map<number, Map<string, number>>()
-    : columnReservations(found.result.result, found.result.rows);
-  if (process.env.KARASU_TRACE) {
-    let slots = 0;
-    let width = 0;
-    for (const m of columns.values())
-      for (const w of m.values()) {
-        slots++;
-        width += w;
-      }
-    console.log(
-      `[columns] rows=${columns.size} slots=${slots} width=${width} canvas=${Math.round(found.result.result.width)}`,
-    );
-  }
+  const columns = columnReservations(found.result.result, found.result.rows);
   const run =
     reservations.size > 0 || columns.size > 0
       ? layoutInner(viewSlice, options, found.budget, reservations, columns)

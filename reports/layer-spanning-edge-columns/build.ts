@@ -176,4 +176,7 @@ async function main() {
   writeFileSync(`${OUT}/artifact.html`, reportFragment(options));
   console.log(`wrote ${OUT}/index.html and artifact.html`);
 }
-await main();
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});

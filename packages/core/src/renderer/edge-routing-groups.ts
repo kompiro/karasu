@@ -759,9 +759,7 @@ function tryStaircaseRoute(
 }
 
 /** Rows of cards by y, each with its interior gaps, top to bottom. */
-function rowsOf(
-  nodes: LayoutNode[],
-): {
+function rowsOf(nodes: LayoutNode[]): {
   y: number;
   bottom: number;
   left: number;
