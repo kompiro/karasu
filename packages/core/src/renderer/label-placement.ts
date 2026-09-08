@@ -34,7 +34,8 @@ import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 import type { ResolvedEdgeStyle } from "../types/style.js";
 import { estimateTextWidth } from "./rendering-constants.js";
 import { labelAnchorWithSegment, resolveLabelPosition } from "./edge-routing.js";
-import { segmentCrossesAnyRect } from "./edge-geometry.js";
+import { segmentCrossesRect } from "./edge-geometry.js";
+import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
 
 /**
  * One edge label offered to the placement pass. `anchor` is the label's default
@@ -101,6 +102,14 @@ const DEFAULT_MAX_STEPS = 6;
  */
 const COLLISION_COST = 2;
 const AMBIGUITY_COST = 1;
+
+/**
+ * Tolerance the spatial prefilter adds around a query box. The exact tests are
+ * strict-interior with this same epsilon (`rectsOverlap`, `segmentCrossesRect`),
+ * so a box the grid is asked about is grown by it and the grid can only ever
+ * return a superset of what the exact tests accept.
+ */
+const GRID_EPS = 1e-6;
 
 /**
  * Sans-serif glyphs render at roughly 0.6× the font size wide. `estimateTextWidth`
@@ -205,6 +214,22 @@ function polylineBounds(points: Point[], pad: number): Rect {
   };
 }
 
+/** Axis-aligned bounds enclosing every rect; a zero rect at the origin when there are none. */
+function unionBounds(rects: Rect[]): Rect {
+  if (rects.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const r of rects) {
+    if (r.x < minX) minX = r.x;
+    if (r.y < minY) minY = r.y;
+    if (r.x + r.width > maxX) maxX = r.x + r.width;
+    if (r.y + r.height > maxY) maxY = r.y + r.height;
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
 /**
  * Axis-aligned bounding box of a label drawn at `anchor`. Mirrors how
  * `renderEdge` emits the text: `text-anchor="middle"` (centred on `anchor.x`)
@@ -269,19 +294,36 @@ function boundsIntersect(a: Rect, b: Rect): boolean {
  */
 function boxCrossedByLine(box: Rect, line: EdgeLine): boolean {
   if (!boundsIntersect(box, line.bounds)) return false;
-  const grown =
-    line.halfStroke === 0
-      ? box
-      : {
-          x: box.x - line.halfStroke,
-          y: box.y - line.halfStroke,
-          width: box.width + line.halfStroke * 2,
-          height: box.height + line.halfStroke * 2,
-        };
+  const grown = growBox(box, line.halfStroke);
   for (let i = 0; i < line.points.length - 1; i++) {
-    if (segmentCrossesAnyRect(line.points[i], line.points[i + 1], [grown])) return true;
+    if (segmentCrossesGrownBox(line.points[i], line.points[i + 1], grown)) return true;
   }
   return false;
+}
+
+/** `box` grown by `pad` on every side — the box itself when `pad` is 0. */
+function growBox(box: Rect, pad: number): Rect {
+  return pad === 0
+    ? box
+    : { x: box.x - pad, y: box.y - pad, width: box.width + pad * 2, height: box.height + pad * 2 };
+}
+
+/**
+ * One segment's share of `boxCrossedByLine`: does the segment `a`–`b` cross the
+ * interior of the (already grown) box? An inclusive bounds reject runs first —
+ * a segment whose bounds lie strictly outside the box has no point inside it,
+ * so the clip would return false anyway; this only skips its work (#2760).
+ */
+function segmentCrossesGrownBox(a: Point, b: Point, grown: Rect): boolean {
+  if (
+    Math.max(a.x, b.x) < grown.x ||
+    Math.min(a.x, b.x) > grown.x + grown.width ||
+    Math.max(a.y, b.y) < grown.y ||
+    Math.min(a.y, b.y) > grown.y + grown.height
+  ) {
+    return false;
+  }
+  return segmentCrossesRect(a, b, grown);
 }
 
 /**
@@ -369,39 +411,193 @@ function candidateCost(
   box: Rect,
   anchor: Point,
   label: LabelInput,
-  nodeRects: Rect[],
-  placed: Rect[],
-  edgeLines: EdgeLine[],
+  obstacles: ObstacleIndex,
+  lines: LineIndex,
+  reachable: EdgeLine[],
   ownLine: EdgeLine | undefined,
   cap: number,
 ): number {
+  // Both obstacle sets are queried through a spatial index (#2760), so only the
+  // rects / lines whose bounds can touch `box` reach the exact tests. The
+  // *order* the candidates come back in is not the order the old flat loops
+  // used, and that does not matter: every collision adds the same
+  // `COLLISION_COST`, so a candidate that survives the cap returns the same
+  // sum whatever the order, and one that trips it returns the same first
+  // multiple of `COLLISION_COST` at or above `cap` — the only two facts the
+  // caller reads.
   let cost = 0;
-  for (const o of nodeRects) {
-    if (rectsOverlap(box, o)) {
+  for (const rect of obstacles.near(box)) {
+    if (rectsOverlap(box, rect)) {
       cost += COLLISION_COST;
       if (cost >= cap) return cost;
     }
   }
-  for (const p of placed) {
-    if (rectsOverlap(box, p)) {
-      cost += COLLISION_COST;
-      if (cost >= cap) return cost;
-    }
+  // A label is meant to sit on the line it names, so its own polyline is never
+  // an obstacle (#2360): `crossing` leaves it out.
+  const crossed = lines.crossing(box, label.index).length;
+  for (let n = 0; n < crossed; n++) {
+    cost += COLLISION_COST;
+    if (cost >= cap) return cost;
   }
-  for (const line of edgeLines) {
-    // A label is meant to sit on the line it names, so its own polyline is never
-    // an obstacle (#2360). Skipped inline rather than by pre-filtering the array
-    // — the filter allocated a copy of every line for every label.
-    if (line.index === label.index) continue;
-    if (boxCrossedByLine(box, line)) {
-      cost += COLLISION_COST;
-      if (cost >= cap) return cost;
-    }
-  }
-  if (ownLine !== undefined && nearestLineIsForeign(anchor, label.index, edgeLines, ownLine)) {
+  if (ownLine !== undefined && nearestLineIsForeign(anchor, label.index, reachable, ownLine)) {
     cost += AMBIGUITY_COST;
   }
   return cost;
+}
+
+/**
+ * Node cards and committed label boxes, indexed by bounds (#2760). Boxes are
+ * appended as labels commit, so the grid supports insertion; cells are sized
+ * by `chooseCellSize` from the cards' longer sides.
+ */
+class ObstacleIndex {
+  private readonly rects: Rect[] = [];
+  private readonly grid: BoxGrid;
+  private readonly hits: number[] = [];
+  private readonly out: Rect[] = [];
+
+  constructor(rects: Rect[], extent: Rect) {
+    const sizes = rects.map((r) => Math.max(r.width, r.height));
+    const cell = chooseCellSize(sizes, extent.width, extent.height);
+    this.grid = new BoxGrid(
+      cell,
+      extent.x,
+      extent.y,
+      extent.x + extent.width,
+      extent.y + extent.height,
+    );
+    for (const r of rects) this.add(r);
+  }
+
+  add(rect: Rect): void {
+    this.grid.insert(this.rects.length, rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
+    this.rects.push(rect);
+  }
+
+  /** The obstacles whose bounds can overlap `box` — a superset of those `rectsOverlap` accepts. */
+  near(box: Rect): Rect[] {
+    this.grid.query(
+      box.x - GRID_EPS,
+      box.y - GRID_EPS,
+      box.x + box.width + GRID_EPS,
+      box.y + box.height + GRID_EPS,
+      this.hits,
+    );
+    this.out.length = 0;
+    for (const id of this.hits) this.out.push(this.rects[id]);
+    return this.out;
+  }
+}
+
+/**
+ * Edge polylines indexed **per segment**, each segment's bounds grown by its
+ * stroke half-width — the same growth `boxCrossedByLine` applies (#2760). A
+ * long route is then found only near the stretches it actually runs through,
+ * not across its whole bounding box. Cells are sized by `chooseCellSize` from
+ * the segment lengths. Every drawn line is inserted from the same list the
+ * pass reads, never a shape-specific subset (TPL-1954).
+ */
+class LineIndex {
+  private readonly grid: BoxGrid;
+  /** Segment id → position in `lines`. */
+  private readonly segLine: number[] = [];
+  /** Segment id → index of its first point in that line's `points`. */
+  private readonly segPoint: number[] = [];
+  /** Line → its position in `lines`, for `restrictTo`. */
+  private readonly posOf = new Map<EdgeLine, number>();
+  /** Per line position, whether the current label's bounded search can reach it (see `restrictTo`). */
+  private readonly reachable: Uint8Array;
+  /** Per line position, the query that settled it (crossed, excluded) so its other segments are skipped. */
+  private readonly settled: Uint32Array;
+  private queryId = 0;
+  private readonly hits: number[] = [];
+  private readonly out: EdgeLine[] = [];
+
+  constructor(private readonly lines: EdgeLine[]) {
+    this.reachable = new Uint8Array(lines.length);
+    this.settled = new Uint32Array(lines.length);
+    const boxes: number[] = [];
+    const sizes: number[] = [];
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    lines.forEach((line, pos) => {
+      this.posOf.set(line, pos);
+      const pad = line.halfStroke;
+      for (let i = 0; i < line.points.length - 1; i++) {
+        const a = line.points[i];
+        const b = line.points[i + 1];
+        const x0 = Math.min(a.x, b.x) - pad;
+        const y0 = Math.min(a.y, b.y) - pad;
+        const x1 = Math.max(a.x, b.x) + pad;
+        const y1 = Math.max(a.y, b.y) + pad;
+        boxes.push(x0, y0, x1, y1);
+        sizes.push(Math.hypot(b.x - a.x, b.y - a.y));
+        this.segLine.push(pos);
+        this.segPoint.push(i);
+        if (x0 < minX) minX = x0;
+        if (y0 < minY) minY = y0;
+        if (x1 > maxX) maxX = x1;
+        if (y1 > maxY) maxY = y1;
+      }
+    });
+    const cell = chooseCellSize(sizes, maxX - minX, maxY - minY);
+    this.grid = new BoxGrid(cell, minX, minY, maxX, maxY);
+    for (let id = 0; id < this.segLine.length; id++) {
+      const k = id * 4;
+      this.grid.insert(id, boxes[k], boxes[k + 1], boxes[k + 2], boxes[k + 3]);
+    }
+  }
+
+  /**
+   * Limit `crossing` to the given lines — the ones a label's bounded search
+   * can reach (`reachableLines`), so the set of lines examined for a candidate
+   * is exactly a subset of the set the unindexed pass examined.
+   */
+  restrictTo(reachable: EdgeLine[]): void {
+    this.reachable.fill(0);
+    for (const line of reachable) {
+      const pos = this.posOf.get(line);
+      if (pos !== undefined) this.reachable[pos] = 1;
+    }
+  }
+
+  /**
+   * The lines whose painted stroke crosses `box` — exactly the lines
+   * `boxCrossedByLine` accepts, each once, among those `restrictTo` allowed and
+   * excluding the line of edge `ownIndex`. Only the segments the grid found
+   * near the box are clipped: a segment whose grown bounds miss the box cannot
+   * cross it, so the OR over the near segments equals the OR over all of them.
+   */
+  crossing(box: Rect, ownIndex: number): EdgeLine[] {
+    this.grid.query(
+      box.x - GRID_EPS,
+      box.y - GRID_EPS,
+      box.x + box.width + GRID_EPS,
+      box.y + box.height + GRID_EPS,
+      this.hits,
+    );
+    const stamp = ++this.queryId;
+    this.out.length = 0;
+    for (const id of this.hits) {
+      const pos = this.segLine[id];
+      if (this.settled[pos] === stamp) continue;
+      const line = this.lines[pos];
+      if (this.reachable[pos] === 0 || line.index === ownIndex) {
+        this.settled[pos] = stamp;
+        continue;
+      }
+      const i = this.segPoint[id];
+      if (
+        segmentCrossesGrownBox(line.points[i], line.points[i + 1], growBox(box, line.halfStroke))
+      ) {
+        this.out.push(line);
+        this.settled[pos] = stamp;
+      }
+    }
+    return this.out;
+  }
 }
 
 /**
@@ -481,14 +677,23 @@ export function resolveLabelPlacements(
 
   // Obstacles that a moving label must avoid: node cards, plus the boxes of
   // labels already committed (fixed author labels first, then earlier auto ones).
-  const placed: Rect[] = [];
+  // Indexed by bounds so a candidate box is tested only against the obstacles
+  // near it (#2760); the index spans the cards and every label's default box.
+  const byIndex = [...labels].sort((a, b) => a.index - b.index);
+  const obstacles = new ObstacleIndex(
+    nodeRects,
+    unionBounds([
+      ...nodeRects,
+      ...byIndex.map((label) => labelBox(label.anchor, label.width, label.fontSize)),
+    ]),
+  );
+  const lines = new LineIndex(edgeLines);
 
   // Fixed (author-positioned) labels are immovable obstacles — commit them first
   // so eligible labels route around them, regardless of index order.
-  const byIndex = [...labels].sort((a, b) => a.index - b.index);
   for (const label of byIndex) {
     if (!label.eligible) {
-      placed.push(labelBox(label.anchor, label.width, label.fontSize));
+      obstacles.add(labelBox(label.anchor, label.width, label.fontSize));
     }
   }
 
@@ -510,6 +715,7 @@ export function resolveLabelPlacements(
     // of the ~169 candidates rescans every line in the diagram, which is
     // quadratic in edge count on a dense graph. See `searchReach`.
     const reachable = reachableLines(edgeLines, label, maxSteps * step);
+    lines.restrictTo(reachable);
 
     let bestAnchor = label.anchor;
     let bestBox = labelBox(label.anchor, label.width, label.fontSize);
@@ -527,8 +733,8 @@ export function resolveLabelPlacements(
         box,
         anchor,
         label,
-        nodeRects,
-        placed,
+        obstacles,
+        lines,
         reachable,
         ownLine,
         bestCost,
@@ -555,7 +761,7 @@ export function resolveLabelPlacements(
       }
     }
 
-    placed.push(bestBox);
+    obstacles.add(bestBox);
     if (bestDist !== 0) overrides.set(label.index, bestAnchor);
   }
 
