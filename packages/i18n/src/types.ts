@@ -167,6 +167,7 @@ export type Translations = {
   "emptyState.system.noDiagram": string;
   "emptyState.teamDependency.none": string;
   "emptyState.teamDependency.unowned": string;
+  "emptyState.teamDependency.overlap": string;
 
   // Built-in annotation badge labels (rendered inside SVG by core renderers)
   "badge.deprecated": string;

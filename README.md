@@ -47,11 +47,11 @@ When development is spread across many repositories, nobody ends up owning the b
 
 karasu addresses this by **concentrating the architecture description in a dedicated repository and letting teams split and compose files along their own boundaries**.
 
-| Use case | Who uses it | What they need |
-|----------|-------------|----------------|
-| Discussing system design and evolution | Architects | Design the whole and compare alternatives |
-| Making ownership explicit | Team leads | A formal record of who owns what |
-| Onboarding | New hires | Understanding their team's domain and neighboring services |
+| Use case                               | Who uses it | What they need                                             |
+| -------------------------------------- | ----------- | ---------------------------------------------------------- |
+| Discussing system design and evolution | Architects  | Design the whole and compare alternatives                  |
+| Making ownership explicit              | Team leads  | A formal record of who owns what                           |
+| Onboarding                             | New hires   | Understanding their team's domain and neighboring services |
 
 ## Design assumption
 
@@ -162,11 +162,11 @@ organization DevOrg {
 
 ## Diagram types
 
-| Tab | Content |
-|-----|---------|
-| `System` | Logical diagram. Double-click to drill down system → service → domain → usecase |
+| Tab      | Content                                                                                        |
+| -------- | ---------------------------------------------------------------------------------------------- |
+| `System` | Logical diagram. Double-click to drill down system → service → domain → usecase                |
 | `Deploy` | Physical diagram. Deployment units and their correspondence to logical services via `realizes` |
-| `Org` | Organization diagram. Team-to-service ownership. A Tree View mode gives the full overview |
+| `Org`    | Organization diagram. Team-to-service ownership. A Tree View mode gives the full overview      |
 
 ## Chat UI and the AI assistant
 
@@ -251,12 +251,12 @@ cat service.krs | karasu fmt --stdin
 
 `karasu translate` is a command for **lifting the structure of an existing system into karasu's vocabulary so you can survey it from above**. The four supported input formats were each chosen to capture an existing system from a different angle:
 
-| Input | What you get |
-|-------|--------------|
-| Docker Compose | Service execution topology and resource boundaries |
-| Kubernetes manifests | Containerized runtime units and their inter-dependencies |
-| OpenAPI schema | API boundaries and service responsibilities (RESTful operations are grouped into a single resource `usecase`) |
-| SQL DDL | Data ownership and domain candidates (related tables are grouped under their aggregate root) |
+| Input                | What you get                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Docker Compose       | Service execution topology and resource boundaries                                                            |
+| Kubernetes manifests | Containerized runtime units and their inter-dependencies                                                      |
+| OpenAPI schema       | API boundaries and service responsibilities (RESTful operations are grouped into a single resource `usecase`) |
+| SQL DDL              | Data ownership and domain candidates (related tables are grouped under their aggregate root)                  |
 
 Converting any of these into a `.krs` scaffold lets you model the current system in karasu's three-dimensional structure and then explore options for re-aligning domain boundaries or splitting services. Combined with `karasu apply` on a Unix pipe, you can also fold changes from the infrastructure side back into an existing `.krs`.
 
@@ -317,8 +317,12 @@ karasu subtree Order arch.krs --with-ancestors   # keep the system/service conte
 `coverage` and `subtree` are the structural primitives behind the
 architecture-reverse workflow: they statically analyze the produced `.krs`
 model — `coverage` measures per-domain depth (usecases / entities / resources /
-edges) so a thin domain is detected quantitatively, and `subtree` slices the
-model to one node so it can be re-fed for focused refinement.
+edges) so a thin domain is detected quantitatively, reports how much of each
+declared store the logical model reaches, and diffs the table relations a
+`database` records against the entity relations projected onto it (a recorded table
+relation the entity layer is missing, declared FK or `[inferred]`, shows up as a
+`recorded-without-projection` pair), and `subtree` slices the model to one node so it can be re-fed for
+focused refinement.
 
 ## VS Code extension
 
@@ -357,23 +361,23 @@ See [`examples/github-actions/`](examples/github-actions/) and [`docs/github-act
 
 ## Naming
 
-The name comes from Huginn and Muninn — the ravens of Odin in Norse mythology, whose names mean *thought* and *memory*. The image of a raven that surveys the world from above and descends where it needs to gather information matches karasu's drill-down model of understanding architecture.
+The name comes from Huginn and Muninn — the ravens of Odin in Norse mythology, whose names mean _thought_ and _memory_. The image of a raven that surveys the world from above and descends where it needs to gather information matches karasu's drill-down model of understanding architecture.
 
 ## Documentation
 
-| Topic | Location |
-|-------|----------|
-| `.krs` syntax reference | `docs/spec/syntax.md` |
-| `.krs.style` syntax reference | `docs/spec/style.md` |
-| Tags and annotations catalog | `docs/spec/tags-annotations.md` |
-| Core concepts (logical/physical/organizational separation, etc.) | `docs/concepts.md` |
-| Decision history (ADR) | `docs/adr/` — `<issue-number>-*.md`, keyed on the originating GitHub Issue |
-| Design documents (in progress) | `docs/design/` |
-| Acceptance test criteria | `docs/acceptance/` |
-| Development process (lifecycle / PR flow) | `docs/process.md` |
-| GitHub Actions integration guide | `docs/github-actions.md` |
-| Sample `.krs` files | `examples/` |
-| AI-generated codebase wiki | [DeepWiki](https://deepwiki.com/kompiro/karasu) |
+| Topic                                                            | Location                                                                   |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `.krs` syntax reference                                          | `docs/spec/syntax.md`                                                      |
+| `.krs.style` syntax reference                                    | `docs/spec/style.md`                                                       |
+| Tags and annotations catalog                                     | `docs/spec/tags-annotations.md`                                            |
+| Core concepts (logical/physical/organizational separation, etc.) | `docs/concepts.md`                                                         |
+| Decision history (ADR)                                           | `docs/adr/` — `<issue-number>-*.md`, keyed on the originating GitHub Issue |
+| Design documents (in progress)                                   | `docs/design/`                                                             |
+| Acceptance test criteria                                         | `docs/acceptance/`                                                         |
+| Development process (lifecycle / PR flow)                        | `docs/process.md`                                                          |
+| GitHub Actions integration guide                                 | `docs/github-actions.md`                                                   |
+| Sample `.krs` files                                              | `examples/`                                                                |
+| AI-generated codebase wiki                                       | [DeepWiki](https://deepwiki.com/kompiro/karasu)                            |
 
 ## Repository layout
 
@@ -393,15 +397,15 @@ karasu/
 
 ## Technology stack
 
-| Area | Technology |
-|------|------------|
-| Language | TypeScript |
-| App build | Vite |
-| UI framework | React |
-| Editor component | Monaco Editor |
-| Testing | Vitest |
-| CLI | commander |
-| Language server | LSP (vscode-languageserver) |
+| Area             | Technology                  |
+| ---------------- | --------------------------- |
+| Language         | TypeScript                  |
+| App build        | Vite                        |
+| UI framework     | React                       |
+| Editor component | Monaco Editor               |
+| Testing          | Vitest                      |
+| CLI              | commander                   |
+| Language server  | LSP (vscode-languageserver) |
 
 ## Inspiration
 
