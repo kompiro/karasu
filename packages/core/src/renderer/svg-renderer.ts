@@ -476,15 +476,14 @@ export function renderFromLayout(
   // Ghost ancestor containers (outermost first)
   for (const container of layoutResult.containers) {
     if (container.ghost) {
-      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
-      parts.push(renderContainer(container, containerStyle, true));
+      parts.push(renderContainer(container, containerStyleOf(styles, container.id, palette), true));
     }
   }
 
   // Focused container
   for (const container of layoutResult.containers) {
     if (!container.ghost) {
-      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      const containerStyle = containerStyleOf(styles, container.id, palette);
       const diffState = options?.containerDiffState?.get(container.id);
       parts.push(
         renderContainer(
@@ -1224,8 +1223,12 @@ const FRAME_FILL_OPACITY = String(BOUNDARY_TINT_ALPHA);
  * The muted strength a group frame's title is drawn at while no style sheet has
  * named a colour for it. The frame is a structural hint at that point, and a
  * full-strength title competes with the cards inside it (ADR-1858).
+ *
+ * Exported because it is half of what the title's legibility is: the colour is
+ * only ever seen composited at this alpha, so the contrast guard has to measure
+ * the composite rather than the palette entry (#2662).
  */
-const MUTED_FRAME_TITLE_OPACITY = 0.7;
+export const MUTED_FRAME_TITLE_OPACITY = 0.7;
 
 /**
  * The cycled default for a boundary, before any `.krs.style` rule is consulted.
@@ -1373,6 +1376,59 @@ function resolveFramePaint(
     return resolveTeamFramePaint(container.groupId, style, teamFrames);
   }
   return resolveBoundaryPaint(container.groupId, container.hueIndex, boundaryFrames, palette);
+}
+
+/**
+ * A container's style, with the two colours its frame draws in taken from the
+ * theme wherever no rule named them (#2662).
+ *
+ * The cascade's base is `DEFAULT_NODE_STYLE`, a *card* default: a light label on
+ * a dark fill, hard-coded to the dark palette. A frame has no fill, so that pair
+ * was never the right reference for one, and on the light theme it drew a
+ * near-white title (`#F9FAFB`) on a white canvas. Two shapes of container end up
+ * on that base and both run through here:
+ *
+ * - a group frame's id is synthesized (`__group_<team>__`, collapse stubs), so
+ *   `styles.nodes` cannot hold a key for it and the lookup misses outright;
+ * - a ghost ancestor container has a real id, so it *has* an entry, but the
+ *   entry is the base itself when no rule paints that kind (`system` is not
+ *   painted by the built-in sheet).
+ *
+ * `paintedColors` is what separates the two cases from a rule that named the
+ * base hex on purpose: `nodes` cannot, because every entry there is seeded from
+ * the base and a colour no rule set is indistinguishable by value from one a
+ * rule set to the same value. An explicit `color: #F9FAFB` is honoured in both
+ * themes, exactly as `.krs.style` documents.
+ *
+ * The roles come from the chrome palette rather than from the node cascade
+ * because a frame is chrome: the view draws it, and the built-in sheet is kept
+ * out of it on purpose so a team no sheet names keeps the muted dashed frame
+ * instead of the card's fill (ADR-2269, `docs/spec/style.md` -> Team frames).
+ * `treeDefaults` in `org-tree-renderer.ts` names the same two roles for the same
+ * two jobs, so this is the chrome vocabulary already in use rather than a new
+ * pairing. It is not an appeal to one entity, one appearance: that rule is about
+ * an author's selector reaching both renderings, and each rendering keeps its
+ * own default.
+ *
+ * `textPrimary` rather than `textMuted` because the muting is already done by
+ * {@link MUTED_FRAME_TITLE_OPACITY}: composited at 0.7 the muted role reaches
+ * only 2.5:1 on the dark canvas and 2.7:1 on the light one, while the primary
+ * role lands at 7.6:1 / 5.5:1, muted to the eye and still legible. The outline
+ * keeps `mutedBorder`, which is what makes it recede in either theme instead of
+ * turning into a hard dark rule on white.
+ */
+function containerStyleOf(
+  styles: ResolvedStyles,
+  containerId: string,
+  palette: DiagramPalette,
+): ResolvedNodeStyle {
+  const style = styles.nodes.get(containerId) ?? styles.defaultNodeStyle;
+  const painted = styles.paintedColors.get(containerId);
+  return {
+    ...style,
+    color: painted?.color ? style.color : palette.textPrimary,
+    borderColor: painted?.borderColor ? style.borderColor : palette.mutedBorder,
+  };
 }
 
 function renderContainer(
