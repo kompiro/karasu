@@ -7,7 +7,7 @@ topic: build
 scope:
   packages: [app, docs-site, vscode]
   concerns: [dependencies, ci]
-related_to: [ADR-2753, ADR-2562, ADR-2474, ADR-2401, ADR-2397, ADR-2152, ADR-784, ADR-128, ADR-2687]
+related_to: [ADR-2753, ADR-2562, ADR-2474, ADR-2401, ADR-2397, ADR-2333, ADR-2152, ADR-784, ADR-128, ADR-2687]
 assumptions:
   - "file: scripts/ci/vscode-version-policy.test.ts"
   - "grep: package.json :: oxlint --deny-warnings"
@@ -25,7 +25,9 @@ assumptions:
   - 対象 Dependabot PR: [#2763](https://github.com/kompiro/karasu/pull/2763) / [#2764](https://github.com/kompiro/karasu/pull/2764) / [#2765](https://github.com/kompiro/karasu/pull/2765) / [#2766](https://github.com/kompiro/karasu/pull/2766) / [#2767](https://github.com/kompiro/karasu/pull/2767) / [#2768](https://github.com/kompiro/karasu/pull/2768) / [#2769](https://github.com/kompiro/karasu/pull/2769) / [#2770](https://github.com/kompiro/karasu/pull/2770)
   - 保留に伴う follow-up Issue: [#2782](https://github.com/kompiro/karasu/issues/2782)（ExTester 8.26.0 が cooldown を満たす 2026-09-14 以降に floor 1.134 へ）
   - 取りやめた差し替え PR: [#2779](https://github.com/kompiro/karasu/pull/2779)（floor だけ上げたが ExTester の対応窓に阻まれ close）
-  - 保留に伴う follow-up Issue: [#2775](https://github.com/kompiro/karasu/issues/2775)（oxlint 1.80 の React 指摘を是正）
+  - #2769 の差し替え PR: [#2784](https://github.com/kompiro/karasu/pull/2784)（bump + React 指摘 21 箇所の処置）
+  - その起点 Issue: [#2775](https://github.com/kompiro/karasu/issues/2775)
+  - 同型の前例（見落としていた）: [ADR-2333](2333-dependabot-triage-2026-08-04.md)（oxlint の新規則を規則ごとに分類して収める）
   - 直前の triage: [ADR-2753](2753-dependabot-triage-2026-09-07.md)
   - `@types/vscode` ↔ `engines.vscode` 同値ポリシーと前例の差し替え PR: [ADR-2562](2562-dependabot-triage-2026-08-17.md)
   - Node baseline: [ADR-2397](2397-node-24-baseline.md)
@@ -53,11 +55,16 @@ lifecycle script の新規追加なし、cooldown 7 日は全件充足、既知 
 
 ## 決定
 
-**6 件を採用し、2 件を保留した。却下はゼロ。**
+**7 件を採用し、1 件を保留した。却下はゼロ。**
 
-[#2768](https://github.com/kompiro/karasu/pull/2768) は当初「採用・差し替え PR」で決め、
-差し替え PR [#2779](https://github.com/kompiro/karasu/pull/2779) まで出した。**反映作業の中で
-その判断を覆す制約が見つかったため保留に改めた**（下記「反映中に判明した制約」）。
+**2 件は反映作業の中で判断が変わった。どちらも triage 時に見えていなかった制約が、
+実装に着手して初めて出たためである。**
+
+- [#2768](https://github.com/kompiro/karasu/pull/2768): 採用（差し替え PR）→ **保留**。
+  差し替え PR [#2779](https://github.com/kompiro/karasu/pull/2779) まで出したが、
+  `engines.vscode` が ExTester の対応窓に縛られることが判明した（下記「反映中に判明した制約」）。
+- [#2769](https://github.com/kompiro/karasu/pull/2769): 保留 → **採用（差し替え PR）**。
+  是正に必要な設定を oxlint 1.76 が受け付けず、bump と同梱するしかなかった（下記）。
 
 | PR | 依存 | from → to | 種別 | 判断 | 反映 |
 | --- | --- | --- | --- | --- | --- |
@@ -68,7 +75,7 @@ lifecycle script の新規追加なし、cooldown 7 日は全件充足、既知 
 | [#2765](https://github.com/kompiro/karasu/pull/2765) | `astro` 7.2.9 → 7.2.10 | patch | 採用 | rebase 2 回の後マージ |
 | [#2763](https://github.com/kompiro/karasu/pull/2763) | `@vitejs/plugin-react` 6.1.0 → 6.1.1 | patch | 採用 | rebase 1 回の後マージ |
 | [#2768](https://github.com/kompiro/karasu/pull/2768) | `@types/vscode` 1.125.0 → 1.134.0 | minor ×9 | **保留** | bot PR は close。[#2782](https://github.com/kompiro/karasu/issues/2782) に畳む |
-| [#2769](https://github.com/kompiro/karasu/pull/2769) | `oxlint` 1.76.0 → 1.80.0 | minor ×4 | **保留** | open のまま。[#2775](https://github.com/kompiro/karasu/issues/2775) 待ち |
+| [#2769](https://github.com/kompiro/karasu/pull/2769) | `oxlint` 1.76.0 → 1.80.0 | minor ×4 | 保留 → **採用**（bot PR は close） | 差し替え PR [#2784](https://github.com/kompiro/karasu/pull/2784)。経緯は下記 |
 
 却下がゼロなので `@dependabot ignore` はどこにも設定していない。
 
@@ -214,28 +221,46 @@ oxlint は 1.76 → 1.80 の間に React 規則を追加し、その一部を `c
 `react(memo-dependencies)` 2。
 
 指摘は typo 級ではなく、render 中の ref 参照と effect 内の同期 setState という
-React の実行時挙動に関わるものである。**bump の diff に混ぜるとレビューで
-「lint を通すための変更」と「挙動を変える変更」を分離できず、規則を切ると
-是正されたかを CI が言わなくなる**（`.claude/rules/README.md` チェックリスト 8）。
-新しい規則が拾った信号を消さずに別 PR で受け止めるのが素直だと判断し、保留した。
+React の実行時挙動に関わるものである。そこで当初は **「bump は保留し、是正を別 PR で受ける」**
+と決め、是正 Issue [#2775](https://github.com/kompiro/karasu/issues/2775) を起票した。
 
-保留なので `@dependabot ignore` は設定せず、PR は open のまま残す。
+#### その順序は成立しなかった — 設定が bump より先に入らない
 
-#### 是正 PR の CI は是正を検証しない
+保留の前提として「是正 PR の CI は oxlint 1.76 で走るので検証にならず、検証は
+bump PR 側で起きる」ことは書いていた。しかし実装に着手して分かったのは、
+**そもそも是正 PR を単独で出せない**ということである。
 
-保留を選ぶうえで前提になる点がある。**是正 PR の CI は oxlint 1.76 で走るので、
-新規規則を持たない linter が是正を検証することになる。** 是正 PR が緑でも
-「24 件を漏れなく直した」ことの根拠にはならない。
+21 箇所のうち 3 件は test harness（`RegistryProbe`）由来で、解は `.oxlintrc.json` の
+test override である。ところが **oxlint 1.76 はその規則名を知らず、設定ごと拒否する**:
 
-検証は起きるが、是正 PR ではなく bump PR 側で起きる:
+```
+x Rule 'globals' not found in plugin 'react'
+x Rule 'immutability' not found in plugin 'react'
+```
 
-1. 是正 Issue を起票する（[#2775](https://github.com/kompiro/karasu/issues/2775)）
-2. 是正 PR を出す。**受け入れ基準は CI の緑ではなく、手元の
-   `pnpm dlx oxlint@1.80.0 --deny-warnings packages/ scripts/` が 0 件になること**
-3. マージ後 [#2769](https://github.com/kompiro/karasu/pull/2769) を rebase する。
-   **#2769 の CI が漏れの有無を判定する** — 取りこぼしがあれば赤いまま残る
+設定は bump より先に入れられず、bump は是正より先に入れられない。**同梱は好みではなく強制**で、
+判断は保留から **採用（差し替え PR [#2784](https://github.com/kompiro/karasu/pull/2784)）** に変わった。
+bot PR は close し、`@dependabot ignore` は設定していない。
 
-取りこぼしが機械で捕まること自体は担保されるので、この順序で保留は成立する。
+#### 前例を見落としていた
+
+この結論には [ADR-2333](2333-dependabot-triage-2026-08-04.md) が 1.61 → 1.76 の bump で
+既に到達していた（「修正が bump と同一コミットに載る必要がある」）。**本 ADR を書いた時点で
+ADR-2333 を参照せず、既存の前例に反する判断を根拠なしに書いた。** 過去決定の確認は
+`/hane:start-dev` のステップ 4.3 が拾ったが、それは triage が終わったあとだった。
+
+**triage の判断は、実装着手時と同じ強度で過去 ADR を確認してから書く。** 依存更新は
+ファイル編集を伴わないので `.claude/rules/` の `paths:` では発火せず、`.claude/rules/dependabot.md`
+の入口宣言も「本ファイルを読む」までしか言っていない。今回の見落としはその隙間で起きた。
+
+#### 処置は規則ごとに分けた
+
+[#2784](https://github.com/kompiro/karasu/pull/2784) は ADR-2333 の方法に従い、21 箇所を
+6 クラスに分けて処置を変えた。`react(refs)` は effect への移動と lazy state、
+`set-state-in-effect` 6 件は render での導出・`useSyncExternalStore`・`key` による remount・
+cancellation guard、依存配列は module scope への巻き上げと実参照化、
+残る 3 件のトリガー依存は理由付きの inline disable。**off にしたのは test harness 由来の
+3 件だけ**で、それが規則を殺していないことを ADR-2333 と同じ手法で逆検証した。
 
 ### #2766: major の breaking change は Node 下限 1 点だけだった
 
@@ -253,17 +278,43 @@ jsdom 30.0.0 の breaking change は Node.js の下限が
 
 ### #2769 の指摘是正を bump と同じ PR に同梱する（差し替え PR）
 
-CI が緑のまま 1 回で終わり、枠も空く。**却下した理由は、ツールチェーンの bump と
-17 ファイルの React 実装変更が同じ diff に混ざり、レビューで分離できなくなること。**
-ただし是正 PR 自身の CI で検証したい場合の退避先としては有効なので、
-[#2775](https://github.com/kompiro/karasu/issues/2775) に代替として書き残した。
+当初これを却下した。理由は「ツールチェーンの bump と 17 ファイルの React 実装変更が
+同じ diff に混ざり、レビューで分離できなくなること」である。
+
+**この却下は誤りだった。** 実装([#2784](https://github.com/kompiro/karasu/pull/2784))に
+着手して分かったのは、**同梱は選択肢ではなく強制だ**ということである。21 箇所のうち 3 件は
+test harness 由来で、解は `.oxlintrc.json` の test override だが、**oxlint 1.76 はその規則名を
+知らず設定ごと拒否する**:
+
+```
+x Rule 'globals' not found in plugin 'react'
+x Rule 'immutability' not found in plugin 'react'
+```
+
+設定は bump より先に入れられず、bump は是正より先に入れられない。1 コミットにしかならない。
+
+同じ結論に [ADR-2333](2333-dependabot-triage-2026-08-04.md) が 1.61 → 1.76 の bump で
+既に到達しており、そこでは「修正が bump と同一コミットに載る必要がある」ことを理由に
+差し替え PR を選んでいる。**本 ADR を書いた時点で ADR-2333 を参照しておらず、
+既存の前例に反する判断を根拠なしに書いた。** 着手前に過去決定を確認する手順
+（`/hane:start-dev` ステップ 4.3）が拾ったのは、この triage が終わったあとだった。
 
 ### #2769 の新規規則を `.oxlintrc.json` で off にして bump だけ入れる
 
-ツールチェーンが最新に保たれ枠も空く。`.oxlintrc.json` には既に `"off"` の前例がある
-（`react/react-in-jsx-scope` など）。**却下した理由は 2 つ。** 既存の `"off"` は恒久的な
-ポリシー判断であって期限付きの負債ではなく、同じ場所に性質の違うものを混ぜると次の読み手が
-区別できない。そして規則を切った状態は緑になるので、**是正されたかどうかを CI が言わなくなる**。
+**全件を一律に off にする案として却下した。** 理由は、規則を切った状態は緑になるので
+是正されたかを CI が言わなくなること。
+
+ただし当初この節は「off は期限付きの負債に使うべきでない」と一般論で書いており、
+これも [ADR-2333](2333-dependabot-triage-2026-08-04.md) を見落としていた。ADR-2333 は
+`no-underscore-dangle` 85 件を **off にし、「規約の緩和であり判断である」と明示する**形で
+収めている。**規則ごとに分類して、クラスごとに処置を変えるのが本 repo の確立した方法**であり、
+off はその選択肢の 1 つである。
+
+[#2784](https://github.com/kompiro/karasu/pull/2784) はその方法に従い、21 箇所を
+6 クラスに分けて処置を変えた。off にしたのは test harness 由来の 3 件だけで、
+**それが規則を殺していないことを ADR-2333 と同じ手法で逆検証した** — 外側の束縛を
+書き換える probe を置き、非 test ファイルでは今も error になり test ファイルでのみ
+沈黙することを確認した。
 
 ### #2768 を却下し `@types/vscode` を 1.125 に恒久的に据え置く
 
