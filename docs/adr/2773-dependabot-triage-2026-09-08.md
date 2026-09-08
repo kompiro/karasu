@@ -12,6 +12,7 @@ assumptions:
   - "file: scripts/ci/vscode-version-policy.test.ts"
   - "grep: package.json :: oxlint --deny-warnings"
   - "grep: .oxlintrc.json :: \"correctness\": \"error\""
+  - "grep: packages/vscode-e2e/extester-bootstrap.mjs :: downloadCode"
 ---
 
 # ADR-2773: Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
@@ -21,7 +22,8 @@ assumptions:
 - **関連**:
   - Design Doc PR: [#2773](https://github.com/kompiro/karasu/pull/2773)（本 ADR に昇格し削除）
   - 対象 Dependabot PR: [#2763](https://github.com/kompiro/karasu/pull/2763) / [#2764](https://github.com/kompiro/karasu/pull/2764) / [#2765](https://github.com/kompiro/karasu/pull/2765) / [#2766](https://github.com/kompiro/karasu/pull/2766) / [#2767](https://github.com/kompiro/karasu/pull/2767) / [#2768](https://github.com/kompiro/karasu/pull/2768) / [#2769](https://github.com/kompiro/karasu/pull/2769) / [#2770](https://github.com/kompiro/karasu/pull/2770)
-  - 差し替え PR: [#2779](https://github.com/kompiro/karasu/pull/2779)（`engines.vscode` + `@types/vscode` ×2 を 1.134 へ同時に）
+  - 保留に伴う follow-up Issue: [#2782](https://github.com/kompiro/karasu/issues/2782)（ExTester 8.26.0 が cooldown を満たす 2026-09-14 以降に floor 1.134 へ）
+  - 取りやめた差し替え PR: [#2779](https://github.com/kompiro/karasu/pull/2779)（floor だけ上げたが ExTester の対応窓に阻まれ close）
   - 保留に伴う follow-up Issue: [#2775](https://github.com/kompiro/karasu/issues/2775)（oxlint 1.80 の React 指摘を是正）
   - 直前の triage: [ADR-2753](2753-dependabot-triage-2026-09-07.md)
   - `@types/vscode` ↔ `engines.vscode` 同値ポリシーと前例の差し替え PR: [ADR-2562](2562-dependabot-triage-2026-08-17.md)
@@ -50,7 +52,11 @@ lifecycle script の新規追加なし、cooldown 7 日は全件充足、既知 
 
 ## 決定
 
-**7 件を採用（うち 1 件は差し替え PR）、1 件を保留した。却下はゼロ。**
+**6 件を採用し、2 件を保留した。却下はゼロ。**
+
+[#2768](https://github.com/kompiro/karasu/pull/2768) は当初「採用・差し替え PR」で決め、
+差し替え PR [#2779](https://github.com/kompiro/karasu/pull/2779) まで出した。**反映作業の中で
+その判断を覆す制約が見つかったため保留に改めた**（下記「反映中に判明した制約」）。
 
 | PR | 依存 | from → to | 種別 | 判断 | 反映 |
 | --- | --- | --- | --- | --- | --- |
@@ -60,7 +66,7 @@ lifecycle script の新規追加なし、cooldown 7 日は全件充足、既知 
 | [#2766](https://github.com/kompiro/karasu/pull/2766) | `jsdom` 29.0.2 → 30.0.1 | **major** | 採用 | rebase 1 回の後マージ |
 | [#2765](https://github.com/kompiro/karasu/pull/2765) | `astro` 7.2.9 → 7.2.10 | patch | 採用 | rebase 2 回の後マージ |
 | [#2763](https://github.com/kompiro/karasu/pull/2763) | `@vitejs/plugin-react` 6.1.0 → 6.1.1 | patch | 採用 | rebase 1 回の後マージ |
-| [#2768](https://github.com/kompiro/karasu/pull/2768) | `@types/vscode` 1.125.0 → 1.134.0 | minor ×9 | 採用（bot PR は close） | 差し替え PR [#2779](https://github.com/kompiro/karasu/pull/2779) |
+| [#2768](https://github.com/kompiro/karasu/pull/2768) | `@types/vscode` 1.125.0 → 1.134.0 | minor ×9 | **保留** | bot PR は close。[#2782](https://github.com/kompiro/karasu/issues/2782) に畳む |
 | [#2769](https://github.com/kompiro/karasu/pull/2769) | `oxlint` 1.76.0 → 1.80.0 | minor ×4 | **保留** | open のまま。[#2775](https://github.com/kompiro/karasu/issues/2775) 待ち |
 
 却下がゼロなので `@dependabot ignore` はどこにも設定していない。
@@ -111,10 +117,60 @@ VS Code WebView (ExTester)
 
 ただし **VS Code の要求バージョンが 1.125 → 1.134 に上がる（9 マイナー）点は
 プロダクト判断**なので、依存更新の副作用としてではなく明示的に採った。
-[#2779](https://github.com/kompiro/karasu/pull/2779) では未リリースの changeset
-（[#2563](https://github.com/kompiro/karasu/pull/2563) 由来、`karasu-vscode` は 0.1.3 のままで
-1.125 の floor は未公開）を 1.134 に書き換えた。新規 changeset を足すと同じリリースノートに
-「1.125 に上げる」「1.134 に上げる」が並んで矛盾して読めるためである。
+
+### 反映中に判明した制約 — floor は ExTester の対応窓にも縛られる
+
+差し替え PR [#2779](https://github.com/kompiro/karasu/pull/2779) を出したところ、
+WebView E2E が拡張のインストールで落ちた。
+
+```
+Unable to install extension 'karasu-tools.karasu-vscode' as it is not compatible with VS Code '1.131.0'.
+```
+
+`packages/vscode-e2e/extester-bootstrap.mjs` は `extester.downloadCode("max")` を呼んでおり、
+`max` は latest stable ではなく **インストールされている `vscode-extension-tester` が
+`supportedVersions` で宣言する最大の VS Code 版**に解決される。したがって:
+
+> **`engines.vscode` は、pin されている `vscode-extension-tester` の `vscode-max` を超えられない。**
+
+これは `scripts/ci/vscode-version-policy.test.ts` が見ている同値制約とは別の、
+floor に対する 2 本目の制約である。[ADR-2562](2562-dependabot-triage-2026-08-17.md) の
+「stable に追随させれば CI が floor 以上で検証する」という推論に穴があったわけではない。
+その推論が対象にしているのは `.vscode-test.mjs`（extension host ジョブ。`version: "stable"` を
+毎回取得し、同じコミットで 1.136.1 上を 11 passing で通った）であって、ExTester ジョブは
+そもそもその設定を読んでいない。
+
+### #2768 を保留に改めた理由 — 2 つのポリシーが衝突した
+
+floor を上げるには ExTester を上げる必要があるが、どちらの版もリポジトリのポリシーの
+片方を破る。
+
+| `vscode-extension-tester` | 公開 | cooldown 7 日 | `vscode-max` | advisory |
+| --- | --- | --- | --- | --- |
+| 8.24.0（現在） | 2026-08-03 | ○ | 1.131.0（floor 1.134 に届かない） | クリーン |
+| 8.25.0 | 2026-08-31 | ○ | 1.135.0 | **`extract-zip@2.0.1` を新規に連れてくる** |
+| 8.26.0 | 2026-09-07 | **×（1 日）** | 1.136.1 | クリーン（`unzipper@0.12.5` に回帰） |
+
+`extract-zip` は **CVE-2026-56876 / GHSA-jmr9-qjv8-65gv（high）が未修正**で、
+`vulnerable_version_range` が `<= 2.0.1`、`first_patched_version` は `null`、
+そして 2.0.1 が最新である。ExTester upstream 自身が 8.26.0 で `extract-zip` をやめて
+`unzipper` に戻しており、同じ結論に至ったと読める。
+
+8.25.0 を採れば未修正の high advisory を devDeps に取り込むことになり、8.26.0 を採れば
+公開 1 日の版をマージすることになる。後者は
+[ADR-784](784-update-dependencies-20260421.md) の cooldown が
+まさに捕まえようとしているもの（改ざん検知前の取り込み）である。
+
+**どちらも採らず、延期した。** 8.26.0 が 7 日を満たす **2026-09-14** 以降に、
+ExTester 8.26.0 と floor 1.134 を 1 つの PR で入れる（[#2782](https://github.com/kompiro/karasu/issues/2782)）。
+**代償は型定義が 6 日間 1 段古いままになることだけで、どちらのポリシーも破らない。**
+[#2779](https://github.com/kompiro/karasu/pull/2779) は close したが、manifest と changeset の
+編集はそのまま再利用できる。
+
+changeset について。[#2563](https://github.com/kompiro/karasu/pull/2563) 由来の
+`.changeset/vscode-engines-follow-types.md` は未リリースのまま「1.125 に上げる」と書いており
+（`karasu-vscode` は 0.1.3）、floor を動かす PR ではこれを書き換える。新規 changeset を足すと
+同じリリースノートに「1.125 に上げる」「1.134 に上げる」が並んで矛盾して読めるためである。
 
 ### #2769: 新しい規則が拾った信号は、消さずに別 PR で受ける
 
@@ -181,13 +237,36 @@ CI が緑のまま 1 回で終わり、枠も空く。**却下した理由は、
 ポリシー判断であって期限付きの負債ではなく、同じ場所に性質の違うものを混ぜると次の読み手が
 区別できない。そして規則を切った状態は緑になるので、**是正されたかどうかを CI が言わなくなる**。
 
-### #2768 を却下し `@types/vscode` を 1.125 に据え置く
+### #2768 を却下し `@types/vscode` を 1.125 に恒久的に据え置く
 
 VS Code の下限を上げずに済む。**却下した理由は、ポリシーが「同値」であって
-「古いまま維持」ではないこと。** 型定義が古いままだと 1.126 以降の API を型安全に使えず、
-据え置きは決定の先送りにしかならない。
+「古いまま維持」ではないこと。** 型定義が古いままだと 1.126 以降の API を型安全に使えない。
+今回の保留は 2026-09-14 という期日を持つ延期であって、この案とは別物である。
+
+### #2768 のために `vscode-extension-tester` 8.25.0 を入れる
+
+cooldown 7 日は満たす（公開 8 日）。**却下した理由は、未修正の high advisory
+（CVE-2026-56876、`extract-zip@2.0.1`、patched 版なし）を devDeps に取り込むこと。**
+`vscode-e2e` は公開しない package で、展開対象も Microsoft / Google のエンドポイントから
+取得するアーカイブなので実害は考えにくいが、**6 日待てば advisory を持たない 8.26.0 が
+使える以上、取り込む理由がない。**
+
+### #2768 のために `vscode-extension-tester` 8.26.0 を今すぐ入れる
+
+advisory はクリーンで対応窓も足りる。**却下した理由は公開 1 日であること。**
+cooldown 7 日（[ADR-784](784-update-dependencies-20260421.md)）は
+改ざんが検知される前に取り込むことを避けるための規定で、手動 bump だからといって
+免除される性質のものではない。Dependabot が同じ版を提案してきたら 7 日待つのに、
+人手なら待たなくてよい理由はない。
 
 ## 積み残し
+
+**floor に対する 2 本目の制約は機械で見られていない。** `engines.vscode` が
+`@types/vscode` と同値であることは `scripts/ci/vscode-version-policy.test.ts` が検査するが、
+それが ExTester の `supportedVersions` の窓に収まっているかは誰も見ていない。
+違反すると 90 秒の E2E ジョブが「拡張が非互換」と言って落ちるだけで、原因が floor 側にあると
+読み取れない。同値と同じく unit run で落ちてファイル名を名指しする形にできるが、
+[#2782](https://github.com/kompiro/karasu/issues/2782) を bump に絞るため今回は入れていない。
 
 **`--deny-warnings` と linter の自動 bump は相性が悪い。** upstream が `suspicious` や
 `correctness` に規則を足すたび、こちらのコードが 1 行も変わっていなくても CI が赤くなる。
