@@ -7,12 +7,13 @@ topic: build
 scope:
   packages: [app, docs-site, vscode]
   concerns: [dependencies, ci]
-related_to: [ADR-2753, ADR-2562, ADR-2474, ADR-2397, ADR-2152, ADR-784, ADR-128]
+related_to: [ADR-2753, ADR-2562, ADR-2474, ADR-2401, ADR-2397, ADR-2152, ADR-784, ADR-128, ADR-2687]
 assumptions:
   - "file: scripts/ci/vscode-version-policy.test.ts"
   - "grep: package.json :: oxlint --deny-warnings"
   - "grep: .oxlintrc.json :: \"correctness\": \"error\""
   - "grep: packages/vscode-e2e/extester-bootstrap.mjs :: downloadCode"
+  - "grep: pnpm-workspace.yaml :: overrides:"
 ---
 
 # ADR-2773: Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
@@ -84,8 +85,35 @@ advisory は直接依存に加えて `jsdom` が連れてくる要注意パッ�
 **移行先を脆弱範囲に含むものは 1 件も無い** — `tough-cookie` は 6.0.2（脆弱範囲 `< 4.1.3`）、
 `undici` は 7.29.0 据え置き（脆弱範囲 `>= 7.0.0, < 7.28.0`）、`astro` は 7.2.10（`< 6.1.10`）。
 
-`pnpm-workspace.yaml` の `overrides:` は空なので、`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` の
-失敗モードは起こり得ない。
+override との突き合わせは、**当初 `package.json` の `pnpm.overrides` を見て「空」と判断した
+のが誤り**だった。pnpm 11 はそのフィールドを読まず、正本は `pnpm-workspace.yaml` の
+`overrides:` である（[ADR-2401](2401-pnpm-11-migration.md)、`.claude/rules/dependabot.md`
+「override はどこにあるか」）。そこには 23 件の floor が並んでおり、うち 5 件が今回のバッチに
+関わる。改めて突き合わせた結果は下記のとおりで、**すべて floor を満たしており
+`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH` は発生しなかった**（CI の
+`pnpm install --frozen-lockfile` が全件 green だったことと整合する）。
+
+| override | 解決版 | 判定 |
+| --- | --- | --- |
+| `undici: ^7.28.0` | 7.29.0（`jsdom` 経由） | 満たす |
+| `sharp: ^0.35.0` | 0.35.4（`astro` 経由） | 満たす |
+| `js-yaml@4: ^4.3.1` | 4.3.2（`astro` 経由） | 満たす |
+| `vite@8: ^8.0.16` | 8.2.2 | 満たす |
+| `postcss: ^8.5.18` | 8.5.26 | 満たす |
+
+**同じ誤りが [ADR-2753](2753-dependabot-triage-2026-09-07.md) にもある。** 当該 ADR の
+「`pnpm-workspace.yaml` の `overrides:` は空」という記述は事実に反する。あちらのバッチで
+直接 bump した `svgo` は `svgo: ^4.0.2` として override に載っており、
+**`.claude/rules/dependabot.md`「override 付き直接依存」の形に当たっていた**。
+結果として解決版 4.1.0 は `^4.0.2` を満たすため mismatch は起きなかったが、
+「起こり得ない」と書いた根拠は誤りで、正しくは「floor を満たしたので起きなかった」である。
+ADR 本文は当時の記録として書き換えない（[ADR-2687](2687-adr-body-is-immutable.md)）ので、
+訂正を本 ADR に置く。
+
+再発防止として、override の突き合わせは `package.json` ではなく
+`pnpm-workspace.yaml` を見ること。`scripts/ci/pnpm-config-location.test.ts` は
+`package.json` に `pnpm` フィールドが復活していないことを検査するが、
+**読み手が誤った側を見ることは検査しない。**
 
 依存エッジは peer suffix を落として base とヘッドで突き合わせた。8 件すべてで
 **新規パッケージ名の追加はゼロ**。名前の増減は `jsdom` 30 が `@asamuzakjp/nwsapi` を
