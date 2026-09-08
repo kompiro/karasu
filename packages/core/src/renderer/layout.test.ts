@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { layout } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
+import { diffSystemViewSlices } from "../diff/view-diff.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
 
 function parseAndExtract(krs: string, path: string[] = []) {
@@ -2295,5 +2296,222 @@ describe("layout > channel capacity (#2608)", () => {
     expect(a.edges.map((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint])).toEqual(
       b.edges.map((e) => [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]),
     );
+  });
+});
+
+// #2646 / TPL-219. Category collapse is a single-system feature that the root
+// view silently lost: the multi-system path folded the *nodes* only, so every
+// edge touching a folded member fell out of the surviving-id filter and the
+// stub was drawn with nothing pointing at it. The ⊖ control is not gated on the
+// system count, so a reader could reach that state from the default view.
+describe("category collapse on the multi-system root view (#2646)", () => {
+  const INFRA_IN_TWO_SYSTEMS = `
+system Alpha {
+  service Api
+  database Store
+  Api -> Store
+}
+system Beta {
+  service Web
+}
+`;
+
+  it("re-targets an intra-system edge onto the stub, matching the single-system path", () => {
+    const collapsedCategories = new Set<"external" | "infra">(["infra"]);
+    const root = layout(parseAndExtract(INFRA_IN_TWO_SYSTEMS), { collapsedCategories });
+    const single = layout(
+      parseAndExtract("system Alpha {\n  service Api\n  database Store\n  Api -> Store\n}"),
+      {
+        collapsedCategories,
+      },
+    );
+
+    const trunk = (r: { edges: { from: string; to: string }[] }) =>
+      r.edges.map((e) => `${e.from}->${e.to}`).sort();
+    expect(trunk(single)).toEqual(["Api->__collapsed_infra__"]);
+    // The same trunk on the root view — it used to come back empty. The stub id
+    // carries the system scope here (#2646, mirroring `groupStubId`).
+    expect(trunk(root)).toEqual(["Api->__collapsed_Alpha_infra__"]);
+    expect(root.nodes.get("__collapsed_Alpha_infra__")).toBeDefined();
+    expect(root.nodes.get("Store")).toBeUndefined();
+    expect(root.nodes.get("Web")).toBeDefined();
+  });
+
+  it("leaves the root view untouched when no category is collapsed", () => {
+    const root = layout(parseAndExtract(INFRA_IN_TWO_SYSTEMS));
+    expect(root.edges.map((e) => `${e.from}->${e.to}`)).toEqual(["Api->Store"]);
+    expect(root.nodes.get("Store")).toBeDefined();
+  });
+
+  it("re-anchors a cross-system edge whose target was folded into a category stub", () => {
+    const krs = `
+system Alpha {
+  service Api
+  database Store
+}
+system Beta {
+  service Web
+  Web -> Alpha.Store
+}
+`;
+    const root = layout(parseAndExtract(krs), {
+      collapsedCategories: new Set<"external" | "infra">(["infra"]),
+    });
+    // The cross-system list is not rewritten by the collapse, so without the
+    // endpoint remap `allLayoutNodes.get("Store")` misses and the edge vanishes.
+    expect(root.edges.map((e) => `${e.from}->${e.to}`)).toEqual([
+      "Web->Alpha.__collapsed_Alpha_infra__",
+    ]);
+  });
+
+  it("re-anchors a cross-system edge whose source was folded into a category stub", () => {
+    const krs = `
+system Alpha {
+  service Api
+  service Ext [external]
+  Ext -> Beta.Web
+}
+system Beta {
+  service Web
+}
+`;
+    const root = layout(parseAndExtract(krs), {
+      collapsedCategories: new Set<"external" | "infra">(["external"]),
+    });
+    expect(root.edges.map((e) => `${e.from}->${e.to}`)).toEqual([
+      "__collapsed_Alpha_external__->Beta.Web",
+    ]);
+  });
+});
+
+// #2646. The stub id is scoped by system on this path for the same reason the
+// group stub is (#1884): the layout returns one node map keyed by id, so two
+// systems folding the same category on one unscoped id would leave a single
+// stub and a trunk pointing at a card that is never drawn.
+describe("category stubs do not collide across systems (#2646)", () => {
+  const TWO_INFRA_SYSTEMS = `
+system Alpha {
+  service Api
+  database AStore
+  Api -> AStore
+}
+system Beta {
+  service Web
+  database BStore
+  Web -> BStore
+}
+`;
+
+  it("gives each system its own stub, and each trunk a stub that exists", () => {
+    const result = layout(parseAndExtract(TWO_INFRA_SYSTEMS), {
+      collapsedCategories: new Set<"external" | "infra">(["infra"]),
+    });
+    expect(result.nodes.get("__collapsed_Alpha_infra__")).toBeDefined();
+    expect(result.nodes.get("__collapsed_Beta_infra__")).toBeDefined();
+    expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
+      "Api->__collapsed_Alpha_infra__",
+      "Web->__collapsed_Beta_infra__",
+    ]);
+    // Every trunk endpoint resolves to a card the render actually draws.
+    for (const edge of result.edges) {
+      expect(result.nodes.get(edge.from)).toBeDefined();
+      expect(result.nodes.get(edge.to)).toBeDefined();
+    }
+    // Each stub sits inside its own system's frame.
+    const frameOf = (id: string) => result.containers.find((c) => c.id === id)!;
+    const inside = (n: { x: number }, c: { x: number; width: number }) =>
+      n.x >= c.x && n.x <= c.x + c.width;
+    expect(inside(result.nodes.get("__collapsed_Alpha_infra__")!, frameOf("Alpha"))).toBe(true);
+    expect(inside(result.nodes.get("__collapsed_Beta_infra__")!, frameOf("Beta"))).toBe(true);
+  });
+});
+
+// #2646. Child ids are scoped to their system, so two systems can each hold a
+// `Store`. Since each system's fold now yields its own stub, the endpoint remap
+// has to be keyed per system too: keyed by the bare id, the last system laid out
+// would decide where every other system's cross-system edge lands.
+describe("cross-system edges re-anchor onto their own system's category stub (#2646)", () => {
+  const DUPLICATE_CHILD_IDS = `
+system Alpha {
+  service Api
+  database Store
+}
+system Beta {
+  service Web
+  database Store
+}
+system Gamma {
+  service Cli
+  Cli -> Alpha.Store
+  Cli -> Beta.Store
+}
+`;
+
+  it("sends each edge to the stub of the system its target lives in", () => {
+    const result = layout(parseAndExtract(DUPLICATE_CHILD_IDS), {
+      collapsedCategories: new Set<"external" | "infra">(["infra"]),
+    });
+    expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
+      "Cli->Alpha.__collapsed_Alpha_infra__",
+      "Cli->Beta.__collapsed_Beta_infra__",
+    ]);
+  });
+
+  it("re-anchors a folded source onto its own system's stub, not another's", () => {
+    const krs = `
+system Alpha {
+  service Ext [external]
+  Ext -> Gamma.Cli
+}
+system Beta {
+  service Ext [external]
+  Ext -> Gamma.Cli
+}
+system Gamma {
+  service Cli
+}
+`;
+    const result = layout(parseAndExtract(krs), {
+      collapsedCategories: new Set<"external" | "infra">(["external"]),
+    });
+    expect(result.edges.map((e) => `${e.from}->${e.to}`).sort()).toEqual([
+      "__collapsed_Alpha_external__->Gamma.Cli",
+      "__collapsed_Beta_external__->Gamma.Cli",
+    ]);
+  });
+});
+
+// #2646. Compare mode keeps a *removed* cross-system edge from the before
+// slice, while the merged `systems` carry the after node's edges — so that edge
+// belongs to no system's edge list on this path and its source system cannot be
+// established. It still has to re-anchor onto the stub its endpoint folded into.
+describe("a removed cross-system edge still re-anchors in compare mode (#2646)", () => {
+  const sliceOf = (krs: string) => extractView(Parser.parse(krs).value.systems, []);
+
+  it("re-targets the removed edge onto the stub its source folded into", () => {
+    const before = sliceOf(`
+system Shop {
+  service Ext [external]
+  Ext -> Gateway.PaymentService
+}
+system Gateway {
+  service PaymentService
+}
+`);
+    const after = sliceOf(`
+system Shop {
+  service Ext [external]
+}
+system Gateway {
+  service PaymentService
+}
+`);
+    const merged = diffSystemViewSlices(before, after);
+    const result = layout(merged.slice, {
+      collapsedCategories: new Set<"external" | "infra">(["external"]),
+    });
+    expect(result.edges.map((e) => `${e.from}->${e.to}`)).toEqual([
+      "__collapsed_Shop_external__->Gateway.PaymentService",
+    ]);
   });
 });

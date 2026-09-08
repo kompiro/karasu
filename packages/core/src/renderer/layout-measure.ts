@@ -80,9 +80,8 @@ export function makeOwnerResolver(
  * selector measures as a box and renders as a hexagon (found in the #2412
  * review's migration-coexistence trace). That is why layoutInner builds this
  * once — after inheritance is built — and hands the *same* object to
- * layoutMultipleSystems: the multi path measures with the inheritance-based
- * resolver even though its `LayoutNode.annotations` stay raw (#2515 tracks
- * that divergence).
+ * layoutMultipleSystems, which resolves both its measurement and its
+ * `LayoutNode.annotations` through this one context (#2515).
  */
 export interface MeasureContext {
   /** `undefined` is the meaningful "shape mode" default — name it explicitly. */
