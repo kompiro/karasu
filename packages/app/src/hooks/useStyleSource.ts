@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Parser, resolvePath, type FileSystemProvider } from "@karasu-tools/core";
 
 export function useStyleSource(
@@ -6,23 +6,23 @@ export function useStyleSource(
   currentFilePath: string | undefined,
   fs: FileSystemProvider,
 ): string | undefined {
-  const [styleSource, setStyleSource] = useState<string | undefined>(undefined);
+  // Which style files the entry imports is derivable from the source, so it is
+  // derived here instead of being pushed into state from the effect. The two
+  // "no style at all" branches used to be synchronous `setStyleSource` calls
+  // inside the effect — a render, a commit, then a second render to undo it.
+  // The parse runs at the same frequency it did in the effect (once per
+  // `fileContent` change), only now before the commit rather than after.
+  const imports = useMemo(() => {
+    if (!fileContent || !currentFilePath) return [];
+    return Parser.parse(fileContent).value.styleImports;
+  }, [fileContent, currentFilePath]);
+
+  const [loaded, setLoaded] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!fileContent || !currentFilePath) {
-      setStyleSource(undefined);
-      return;
-    }
+    if (imports.length === 0 || !currentFilePath) return;
 
     let cancelled = false;
-
-    const parseResult = Parser.parse(fileContent);
-    const imports = parseResult.value.styleImports;
-
-    if (imports.length === 0) {
-      setStyleSource(undefined);
-      return;
-    }
 
     Promise.all(
       imports.map((imp) => {
@@ -32,14 +32,16 @@ export function useStyleSource(
     ).then((contents) => {
       if (!cancelled) {
         const combined = contents.filter(Boolean).join("\n");
-        setStyleSource(combined || undefined);
+        setLoaded(combined || undefined);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [fileContent, currentFilePath, fs]);
+  }, [imports, currentFilePath, fs]);
 
-  return styleSource;
+  // Masks the previous file's style for the render between "imports changed"
+  // and "the new contents resolved", which the synchronous clear used to do.
+  return imports.length === 0 ? undefined : loaded;
 }

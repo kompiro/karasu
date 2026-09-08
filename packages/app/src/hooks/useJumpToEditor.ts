@@ -51,6 +51,10 @@ export function useJumpToEditor({
     ed.setPosition({ lineNumber: line, column: 1 });
     ed.revealLineInCenter(line);
     ed.focus();
+    // `fileContent` is a trigger, not a value this body reads: the pending
+    // jump targets a line in the newly loaded file, so it can only be applied
+    // once that content has reached the editor.
+    // eslint-disable-next-line react/exhaustive-effect-dependencies
   }, [fileContent]);
 
   const handleJumpToEditor = useCallback(

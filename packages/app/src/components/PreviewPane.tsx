@@ -453,6 +453,10 @@ export function PreviewPane({
       svgRef.current.querySelector(`[data-node-id="${CSS.escape(highlightedNodeId)}"]`) ??
       svgRef.current.querySelector(`[data-container-id="${CSS.escape(highlightedNodeId)}"]`);
     if (target) target.classList.add("karasu-highlighted");
+    // `svg` is a trigger, not a value this body reads: re-rendering the
+    // diagram replaces the DOM nodes, so the highlight has to be re-applied
+    // to the new ones. Dropping it would leave the class on a detached node.
+    // eslint-disable-next-line react/exhaustive-effect-dependencies
   }, [highlightedNodeId, svg]);
 
   const nodePanelMetadata =
