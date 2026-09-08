@@ -16,7 +16,7 @@ import { useDebouncedValue } from "./useDebouncedValue.js";
 
 /**
  * Run an export builder, mapping any parse/render failure to `undefined` —
- * the shared "best effort" contract of every memo in this hook: a broken
+ * the shared "best effort" contract of every builder in this hook: a broken
  * source simply yields no exported SVG.
  */
 function safeBuild<T>(fn: () => T): T | undefined {
@@ -27,6 +27,44 @@ function safeBuild<T>(fn: () => T): T | undefined {
   }
 }
 
+/** A builder's result, computed on the first call and remembered for the rest. */
+function lazy<T>(build: () => T): () => T | undefined {
+  let cached: { value: T | undefined } | null = null;
+  return () => (cached ??= { value: safeBuild(build) }).value;
+}
+
+/** A getter that never has anything to build (no content yet). */
+const NOTHING = (): undefined => undefined;
+
+export interface ViewSvgOptions {
+  /**
+   * The All-layers panel is open, so its SVG is on screen and has to exist:
+   * it is rebuilt whenever the settled content changes while the panel is
+   * open, and never while the panel is closed.
+   */
+  allLayersOpen?: boolean;
+}
+
+/**
+ * The export bundles and the live entity view of the current file.
+ *
+ * #2758: every whole-model bundle (drill-down, all-layers, all-views) walks
+ * every level of the model — on a 10k-line model each takes seconds in the
+ * browser — and nothing on screen needs one until the reader asks for it.
+ * So the bundles are **built on demand**: the hook returns getters that build
+ * on their first call and remember the result until an input changes. An
+ * export click pays for its own bundle once; typing pays nothing. The
+ * exception is the All-layers panel, whose SVG is on screen while it is open,
+ * so that one is built eagerly, and only, while `allLayersOpen` is true.
+ *
+ * Content-derived inputs are additionally *settled* first (unchanged for
+ * `DEBOUNCE_MS`, the window `useDebouncedCompile` gives the visible view), so
+ * an open All-layers panel and the live entity view follow the same edit the
+ * diagram compiled, not every keystroke, and a pending build is dropped when
+ * a newer edit arrives (#1534). Everything else — displayMode, theme, groupBy,
+ * selectedFacets, viewPath, labels — stays live: those are cheap toggles, and
+ * the export must show what the screen shows (TPL-219).
+ */
 export function useViewSvg(
   fileContent: string | undefined,
   displayMode: DisplayMode | undefined,
@@ -47,46 +85,40 @@ export function useViewSvg(
    * what caught it.
    */
   selectedFacets?: readonly string[],
+  options: ViewSvgOptions = {},
 ) {
+  const { allLayersOpen = false } = options;
   const emptyStateLabels = useEmptyStateLabels();
   const badgeLabels = useAnnotationBadgeLabels();
   // Newline-joined so it can't collide across segment boundaries (node ids
   // never contain newlines): ["a","bc"] and ["ab","c"] map to distinct keys.
   const viewPathKey = (viewPath ?? []).join("\n");
 
-  // #2758: every builder below walks the whole model (on a 10k-line model the
-  // three system bundles came to about 3 s per keystroke), and `fileContent`
-  // changes on every editor change. So the builders consume the *settled*
-  // content — unchanged for `DEBOUNCE_MS`, the same window `useDebouncedCompile`
-  // gives the visible view, shared rather than duplicated so the two can never
-  // drift — instead of the live value. Until the window fires the previous
-  // export stays, and the pending build is dropped whenever a newer edit
-  // arrives, so an older edit can never land over a newer one (#1534).
-  //
   // The two content-derived inputs travel as one memoized pair so they never
   // disagree (a `.krs.style` from the next edit paired with the previous
-  // `.krs`). Everything else — displayMode, theme, groupBy, selectedFacets,
-  // viewPath, labels — stays live: those are cheap toggles, and the export
-  // must show what the screen shows (TPL-219).
+  // `.krs`).
   const liveContent = useMemo(() => ({ fileContent, styleSource }), [fileContent, styleSource]);
   const { fileContent: settledContent, styleSource: settledStyleSource } = useDebouncedValue(
     liveContent,
     DEBOUNCE_MS,
   );
 
-  const drillDownResult = useMemo(() => {
-    if (!settledContent) return undefined;
-    return safeBuild(() =>
-      buildDrillDownSvg(
-        settledContent,
-        settledStyleSource,
-        displayMode,
-        emptyStateLabels,
-        theme,
-        badgeLabels,
-        groupBy,
-        selectedFacets,
-      ),
+  // On-demand bundles. Each getter is re-created when an input changes, which
+  // forgets the previous result; nothing runs until a caller asks.
+  const getDrillDownSvg = useMemo(() => {
+    if (!settledContent) return NOTHING;
+    return lazy(
+      () =>
+        buildDrillDownSvg(
+          settledContent,
+          settledStyleSource,
+          displayMode,
+          emptyStateLabels,
+          theme,
+          badgeLabels,
+          groupBy,
+          selectedFacets,
+        ).svg,
     );
   }, [
     settledContent,
@@ -99,19 +131,20 @@ export function useViewSvg(
     selectedFacets,
   ]);
 
-  const allLayersResult = useMemo(() => {
-    if (!settledContent) return undefined;
-    return safeBuild(() =>
-      buildAllLayersSvg(
-        settledContent,
-        settledStyleSource,
-        displayMode,
-        emptyStateLabels,
-        theme,
-        badgeLabels,
-        groupBy,
-        selectedFacets,
-      ),
+  const getAllViewsSvg = useMemo(() => {
+    if (!settledContent) return NOTHING;
+    return lazy(
+      () =>
+        buildAllViewsSvg(
+          settledContent,
+          settledStyleSource,
+          displayMode,
+          emptyStateLabels,
+          theme,
+          badgeLabels,
+          groupBy,
+          selectedFacets,
+        ).svg,
     );
   }, [
     settledContent,
@@ -125,38 +158,27 @@ export function useViewSvg(
   ]);
 
   // Org builders take no `groupBy` — grouping is a system-view concept.
-  const orgAllLayersResult = useMemo(() => {
-    if (!settledContent) return undefined;
-    return safeBuild(() =>
-      buildAllLayersSvgOrg(
-        settledContent,
-        settledStyleSource,
-        displayMode,
-        emptyStateLabels,
-        theme,
-        badgeLabels,
-      ),
+  const getOrgDrillDownSvg = useMemo(() => {
+    if (!settledContent) return NOTHING;
+    return lazy(
+      () =>
+        buildDrillDownSvgOrg(
+          settledContent,
+          settledStyleSource,
+          displayMode,
+          emptyStateLabels,
+          theme,
+          badgeLabels,
+        ).svg,
     );
   }, [settledContent, displayMode, settledStyleSource, emptyStateLabels, theme, badgeLabels]);
 
-  const orgDrillDownResult = useMemo(() => {
-    if (!settledContent) return undefined;
+  // The All-layers panel's content: built while the panel is open, on the
+  // settled content, and not at all while it is closed.
+  const allLayersResult = useMemo(() => {
+    if (!settledContent || !allLayersOpen) return undefined;
     return safeBuild(() =>
-      buildDrillDownSvgOrg(
-        settledContent,
-        settledStyleSource,
-        displayMode,
-        emptyStateLabels,
-        theme,
-        badgeLabels,
-      ),
-    );
-  }, [settledContent, displayMode, settledStyleSource, emptyStateLabels, theme, badgeLabels]);
-
-  const allViewsResult = useMemo(() => {
-    if (!settledContent) return undefined;
-    return safeBuild(() =>
-      buildAllViewsSvg(
+      buildAllLayersSvg(
         settledContent,
         settledStyleSource,
         displayMode,
@@ -168,6 +190,7 @@ export function useViewSvg(
       ),
     );
   }, [
+    allLayersOpen,
     settledContent,
     displayMode,
     settledStyleSource,
@@ -178,6 +201,28 @@ export function useViewSvg(
     selectedFacets,
   ]);
 
+  const orgAllLayersResult = useMemo(() => {
+    if (!settledContent || !allLayersOpen) return undefined;
+    return safeBuild(() =>
+      buildAllLayersSvgOrg(
+        settledContent,
+        settledStyleSource,
+        displayMode,
+        emptyStateLabels,
+        theme,
+        badgeLabels,
+      ),
+    );
+  }, [
+    allLayersOpen,
+    settledContent,
+    displayMode,
+    settledStyleSource,
+    emptyStateLabels,
+    theme,
+    badgeLabels,
+  ]);
+
   // The live, single-level entity view of the drilled domain. Scoped to the
   // current viewPath (unlike the whole-model export builders), so it recomputes
   // as the user drills. `renderEntityView` returns the empty-diagram
@@ -185,7 +230,7 @@ export function useViewSvg(
   // `hasEntityView` flag (real entity nodes present) so the UI can gate the
   // usecase/entity toggle to domains that actually have an entity view.
   // Fed the settled content too, so it lands on the same edit as the compiled
-  // system view and the exports: the screen and the export stay in step.
+  // system view: the screen and the export stay in step.
   const entityViewResult = useMemo(() => {
     if (!settledContent || (viewPath ?? []).length === 0) return undefined;
     return safeBuild(() =>
@@ -214,11 +259,20 @@ export function useViewSvg(
   ]);
 
   return {
-    drillDownSvg: drillDownResult?.svg,
+    /** Build (once per settled input set) and return the system drill-down bundle. */
+    getDrillDownSvg,
+    /** Build (once per settled input set) and return the org drill-down bundle. */
+    getOrgDrillDownSvg,
+    /** Build (once per settled input set) and return the all-views bundle. */
+    getAllViewsSvg,
+    /** Present while the All-layers panel is open; `undefined` while it is closed. */
     allLayersSvg: allLayersResult?.svg,
     orgAllLayersSvg: orgAllLayersResult?.svg,
-    orgDrillDownSvg: orgDrillDownResult?.svg,
-    allViewsSvg: allViewsResult?.svg,
+    /**
+     * There is settled content to build a bundle from. What the export
+     * controls enable on; the host may narrow it further (parse errors).
+     */
+    exportAvailable: !!settledContent,
     entityViewSvg: entityViewResult?.svg,
     // Structured signal from core: the path resolved to a domain that owns
     // entities (not the empty-diagram placeholder). Gates the usecase/entity

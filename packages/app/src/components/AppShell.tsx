@@ -223,11 +223,12 @@ export function AppShell({
   });
 
   const {
-    drillDownSvg,
+    getDrillDownSvg,
     allLayersSvg,
     orgAllLayersSvg,
-    orgDrillDownSvg,
-    allViewsSvg,
+    getOrgDrillDownSvg,
+    getAllViewsSvg,
+    exportAvailable,
     entityViewSvg,
     hasEntityView,
   } = useViewSvg(
@@ -246,6 +247,8 @@ export function AppShell({
     // Same reason, same trap: an export that silently drops the overlay shows a
     // different diagram than the one the reader is looking at (#2174).
     views.system.selectedFacets,
+    // The All-layers panel's SVG is built only while the panel is open (#2758).
+    { allLayersOpen: isAllLayersOpen },
   );
 
   const hasSidebar = !!(sidebarHeaderContent || sidebarContent);
@@ -326,11 +329,14 @@ export function AppShell({
     navigateViewPath,
     isAllLayersOpen,
     toggleAllLayers,
-    drillDownSvg,
+    getDrillDownSvg,
     allLayersSvg,
     orgAllLayersSvg,
-    orgDrillDownSvg,
-    allViewsSvg,
+    getOrgDrillDownSvg,
+    getAllViewsSvg,
+    // A bundle can be built: settled content that parses (a broken source has
+    // nothing to export, as before, when the eager build simply failed).
+    exportBundlesAvailable: exportAvailable && !hasParseErrors,
     previewFocused,
     togglePreviewFocus,
     onJumpToEditor: !hideEditor ? handleJumpToEditor : undefined,

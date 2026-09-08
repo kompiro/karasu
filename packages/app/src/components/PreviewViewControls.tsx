@@ -45,6 +45,7 @@ export function PreviewViewControls({
     activeView,
     isAllLayersOpen,
     onAllLayersToggle,
+    exportBundlesAvailable,
     isOrgTreeViewOpen,
     onOrgTreeViewToggle,
     isTeamDependenciesOpen,
@@ -57,7 +58,9 @@ export function PreviewViewControls({
   const view = useActiveViewData();
   const { t } = useTranslation();
   const groupByAxes = availableGroupByAxes(view);
-  const allLayersAvailable = activeView !== "deploy" && !!view.allLayersSvg;
+  // Built on demand once the panel opens (#2758), so the toggle asks whether a
+  // bundle *can* be built, not whether one already exists.
+  const allLayersAvailable = activeView !== "deploy" && exportBundlesAvailable;
 
   return (
     <div className="preview-view-controls">

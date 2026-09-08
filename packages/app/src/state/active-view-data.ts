@@ -31,7 +31,8 @@ export interface ActiveViewData {
   /** "Show All Layers" SVG for the active view — system / org only. */
   allLayersSvg?: string;
   /** Drill-down (CSS `:target`) export SVG for the active view — system / org only. */
-  drillDownSvg?: string;
+  /** Builds the drill-down bundle of this view on demand (#2758). */
+  getDrillDownSvg?: () => string | undefined;
   /** system: click a service's deploy badge → switch to deploy. */
   onDeployButtonClick?: (serviceId: string) => void;
   /** system: click a node's team badge → switch to org. */
@@ -107,7 +108,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         highlightedNodeId: orgView.highlightedNodeId,
         onClearHighlight: orgView.onClearHighlight,
         allLayersSvg: ctx.orgAllLayersSvg,
-        drillDownSvg: ctx.orgDrillDownSvg,
+        getDrillDownSvg: ctx.getOrgDrillDownSvg,
         onOwnedServiceClick: orgView.onOwnedServiceClick,
       };
     // system / matrix — explicit (no `default`) so a new ActiveView member
@@ -124,7 +125,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         highlightedNodeId: systemView.highlightedNodeId,
         onClearHighlight: systemView.onClearHighlight,
         allLayersSvg: ctx.allLayersSvg,
-        drillDownSvg: ctx.drillDownSvg,
+        getDrillDownSvg: ctx.getDrillDownSvg,
         onDeployButtonClick: systemView.onDeployButtonClick,
         onTeamButtonClick: systemView.onTeamButtonClick,
         onCategoryToggle: systemView.onCategoryToggle,
