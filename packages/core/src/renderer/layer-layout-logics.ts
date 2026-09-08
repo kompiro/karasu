@@ -256,6 +256,13 @@ interface PlaceNodesInput {
    * row, leaves the default gaps, and the placement is byte-identical.
    */
   extraGapBeforeRow?: ReadonlyMap<number, number>;
+  /**
+   * SPIKE (#2611 stage 2): extra horizontal room to open inside a row, by row
+   * ordinal → card id → width. The width is inserted before that card; the
+   * key `__end__` appends it after the row's last card. Applied after the
+   * rows are wrapped, so the row structure is the first pass's.
+   */
+  extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>;
   measure: (nodeId: string) => { width: number; height: number };
 }
 
@@ -289,7 +296,7 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
   const widthBudget = input.widthBudget ?? input.gaps.maxLayerWidth;
   const { sortedLayers, nodesByLayer, edges, edgeDirections, layers } = input;
   const { forcedLayers, layoutHints, gridHint, groupStartLayer, gaps, measure } = input;
-  const { extraGapBeforeRow } = input;
+  const { extraGapBeforeRow, extraGapBeforeCard } = input;
   const { layerGap, nodeGap, groupTitleGap } = gaps;
 
   // Predecessors within this canvas, for the barycenter pass.
@@ -356,9 +363,11 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
       const ordinal = placedRows.length;
       rowY += extraGapBeforeRow?.get(ordinal) ?? 0;
       placedRows.push(row);
+      const columnGaps = extraGapBeforeCard?.get(ordinal);
       let xOffset = nodeGap;
       let rowMaxHeight = 0;
       for (const nid of row) {
+        xOffset += columnGaps?.get(nid) ?? 0;
         const dims = dimsById.get(nid)!;
         placements.set(nid, { x: xOffset, y: rowY, width: dims.width, height: dims.height });
         nodeCenterX.set(nid, xOffset + dims.width / 2);
@@ -366,6 +375,8 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
         childMaxWidth = Math.max(childMaxWidth, xOffset);
         rowMaxHeight = Math.max(rowMaxHeight, dims.height);
       }
+      xOffset += columnGaps?.get("__end__") ?? 0;
+      childMaxWidth = Math.max(childMaxWidth, xOffset);
       layerBottom = rowY + rowMaxHeight;
       childMaxHeight = Math.max(childMaxHeight, layerBottom + nodeGap);
       rowY = layerBottom + nodeGap; // sub-row gap within the layer

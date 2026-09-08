@@ -117,13 +117,30 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // the placement is not monotone in the budget). Views whose channels fit
   // never take this branch, so their output is unchanged byte for byte.
   const reservations = channelReservations(found.result.result, found.result.rows);
+  // SPIKE (#2611 stage 2): columns for the edges the first pass sent to a
+  // gutter although a straight corridor would have fitted between their rows.
+  const columns = process.env.KARASU_NO_COLUMNS
+    ? new Map<number, Map<string, number>>()
+    : columnReservations(found.result.result, found.result.rows);
+  if (process.env.KARASU_TRACE) {
+    let slots = 0;
+    let width = 0;
+    for (const m of columns.values())
+      for (const w of m.values()) {
+        slots++;
+        width += w;
+      }
+    console.log(
+      `[columns] rows=${columns.size} slots=${slots} width=${width} canvas=${Math.round(found.result.result.width)}`,
+    );
+  }
   const run =
-    reservations.size > 0
-      ? layoutInner(viewSlice, options, found.budget, reservations)
+    reservations.size > 0 || columns.size > 0
+      ? layoutInner(viewSlice, options, found.budget, reservations, columns)
       : found.result;
   const result = run.result;
   result.widthBudget = found.budget;
-  result.placementPasses = reservations.size > 0 ? 2 : 1;
+  result.placementPasses = reservations.size > 0 || columns.size > 0 ? 2 : 1;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
   return result;
 }
@@ -174,6 +191,95 @@ function channelReservations(
   return out;
 }
 
+/** Horizontal pitch of one reserved column (SPIKE #2611 stage 2). */
+const COLUMN_PITCH = 24;
+
+/**
+ * SPIKE (#2611 stage 2): for every edge the first pass sent to an outer gutter
+ * whose endpoints sit in different rows, reserve a column through the rows
+ * between them, at the slot of each row where the edge's ideal x (midpoint of
+ * its endpoints) falls. Edges into one target share a column. Returns row
+ * ordinal → card id (or `__end__`) → width.
+ */
+function columnReservations(
+  result: LayoutResult,
+  rows: readonly (readonly string[])[],
+): Map<number, Map<string, number>> {
+  const out = new Map<number, Map<string, number>>();
+  if (rows.length < 3) return out;
+  const rowOf = new Map<string, number>();
+  rows.forEach((row, r) => row.forEach((id) => rowOf.set(id, r)));
+  const nodes = [...result.nodes.values()].filter((n) => !n.ghost);
+  const minLeft = Math.min(...nodes.map((n) => n.x));
+  const maxRight = Math.max(...nodes.map((n) => n.x + n.width));
+  // One column per target; its x is the mean of its members' ideal x.
+  const columns = new Map<string, { xs: number[]; lo: number; hi: number }>();
+  for (const e of result.edges) {
+    if (e.ghost || e.cyclic) continue;
+    const wps = e.waypoints ?? [];
+    const k = wps.findIndex((w, i) => i + 1 < wps.length && w.x === wps[i + 1].x);
+    if (k === -1) continue;
+    if (wps[k].x >= minLeft && wps[k].x <= maxRight) continue; // interior already
+    const from = result.nodes.get(e.from);
+    const to = result.nodes.get(e.to);
+    const rf = rowOf.get(e.from);
+    const rt = rowOf.get(e.to);
+    if (!from || !to || rf === undefined || rt === undefined || Math.abs(rf - rt) < 2) continue;
+    const ideal = (from.x + from.width / 2 + to.x + to.width / 2) / 2;
+    const lo = Math.min(rf, rt) + 1;
+    const hi = Math.max(rf, rt) - 1;
+    const col = columns.get(e.to);
+    if (col) {
+      col.xs.push(ideal);
+      col.lo = Math.min(col.lo, lo);
+      col.hi = Math.max(col.hi, hi);
+    } else columns.set(e.to, { xs: [ideal], lo, hi });
+  }
+  // Columns wanted per (row, slot); a slot is "before card b" or `__end__`.
+  const demand = new Map<number, Map<string, number>>();
+  for (const col of columns.values()) {
+    const x = col.xs.reduce((a, b) => a + b, 0) / col.xs.length;
+    for (let r = col.lo; r <= col.hi; r++) {
+      const cards = rows[r]
+        .map((id) => result.nodes.get(id))
+        .filter((n): n is LayoutNode => !!n)
+        .sort((a, b) => a.x - b.x);
+      if (cards.length === 0) continue;
+      const after = cards.find((n) => n.x >= x);
+      const key = after ? after.id : "__end__";
+      let slots = demand.get(r);
+      if (!slots) demand.set(r, (slots = new Map()));
+      slots.set(key, (slots.get(key) ?? 0) + 1);
+    }
+  }
+  // Reserve only what the slot cannot already hold: an existing gap of width g
+  // carries floor((g - GUTTER_GAP) / COLUMN_PITCH) + 1 lanes; an outer slot
+  // holds as many as the room between the row's end and the canvas edge.
+  const half = 14;
+  for (const [r, slots] of demand) {
+    const cards = rows[r]
+      .map((id) => result.nodes.get(id))
+      .filter((n): n is LayoutNode => !!n)
+      .sort((a, b) => a.x - b.x);
+    for (const [key, wanted] of slots) {
+      let room: number;
+      if (key === "__end__")
+        room = maxRight - (cards[cards.length - 1].x + cards[cards.length - 1].width);
+      else {
+        const i = cards.findIndex((n) => n.id === key);
+        room = i <= 0 ? cards[0].x - minLeft : cards[i].x - (cards[i - 1].x + cards[i - 1].width);
+      }
+      const existing = room >= 2 * half ? Math.floor((room - 2 * half) / COLUMN_PITCH) + 1 : 0;
+      const extra = Math.max(0, wanted - existing) * COLUMN_PITCH;
+      if (extra <= 0) continue;
+      let slot = out.get(r);
+      if (!slot) out.set(r, (slot = new Map()));
+      slot.set(key, extra);
+    }
+  }
+  return out;
+}
+
 function layoutInner(
   viewSlice: ViewSlice,
   options: LayoutOptions,
@@ -181,6 +287,8 @@ function layoutInner(
   widthBudget: number,
   /** Channel capacity to reserve above each row ordinal on a second pass (#2608). */
   extraGapBeforeRow?: ReadonlyMap<number, number>,
+  /** Column capacity to reserve inside rows on a second pass (SPIKE #2611). */
+  extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>,
 ): LayoutRun {
   const {
     ownerIndex,
@@ -445,6 +553,7 @@ function layoutInner(
     groupStartLayer,
     widthBudget,
     extraGapBeforeRow,
+    extraGapBeforeCard,
     gaps: {
       layerGap: LAYER_GAP,
       nodeGap: NODE_GAP,
@@ -476,7 +585,12 @@ function layoutInner(
 
   // Center each sub-row within the container so the grid reads as centered
   // columns.
-  centerRowsHorizontally(layoutNodes, childMaxWidth, NODE_GAP);
+  centerRowsHorizontally(
+    layoutNodes,
+    childMaxWidth,
+    NODE_GAP,
+    extraGapBeforeCard !== undefined && extraGapBeforeCard.size > 0,
+  );
 
   // Build containers (innermost first: focused container, then ancestors)
   const hasContainer =
