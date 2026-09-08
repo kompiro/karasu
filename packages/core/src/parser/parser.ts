@@ -1940,6 +1940,7 @@ export class Parser {
     // that resolves nowhere is what TPL-1503 forbids. Entity relations share
     // this reader, so deep qualifiers on them lift here too (#2575).
     let toValue = toToken.value;
+    let toPath: NodeIdPath | undefined;
     let toEnd = toToken.loc;
     if (this.peek().type === TokenType.Dot) {
       const tail = readNodeIdPathTail(toToken, this.cursor, {
@@ -1952,6 +1953,10 @@ export class Parser {
       }
       const segments = tail.dangling ? [...tail.segments, tail.dangling.value] : tail.segments;
       toValue = segments.join(".");
+      // Kept beside the joined value, from the same array, so the two cannot
+      // disagree. The join is lossy where a segment holds a dot of its own, and
+      // the formatter is what needs the boundary back (#2650).
+      toPath = segments;
       toEnd = (tail.dangling ?? tail.end).loc;
     }
 
@@ -1968,6 +1973,7 @@ export class Parser {
     return {
       from: fromValue,
       to: toValue,
+      ...(toPath !== undefined ? { toPath } : {}),
       label,
       kind: arrowToken.type === TokenType.DashedArrow ? "async" : "sync",
       tags,
