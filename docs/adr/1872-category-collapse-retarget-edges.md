@@ -9,7 +9,6 @@ scope:
   packages: [core, app]
 assumptions:
   - "symbol: packages/core/src/renderer/category-collapse.ts :: collapseCategories"
-  - "symbol: packages/core/src/renderer/category-collapse.ts :: collapseNodeList"
   - "symbol: packages/core/src/renderer/group-collapse.ts :: collapseGroups"
   - "file: packages/core/src/renderer/layout.ts"
 ---

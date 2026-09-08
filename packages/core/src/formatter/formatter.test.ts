@@ -369,11 +369,11 @@ describe("format()", () => {
     // — it must not truncate back to the two the parser used to read.
     const src = `system Portal {\n  service Web {\n    -> Shop.Checkout.Payment "settle"\n  }\n}`;
     const result = fmt(src);
-    // `quoteId` has always emitted a dotted edge target quoted, because
-    // `edge.to` is one joined string and a path is indistinguishable from a
-    // quoted id containing dots (the caveat `nodePathKey` carries). Depth does
-    // not change that: what matters is that re-parsing yields the same target.
-    expect(result).toContain(`    -> "Shop.Checkout.Payment" "settle"`);
+    // Bare, segment by segment, like every other reference site: the parser
+    // keeps the target's segments beside the joined `to`, so the formatter can
+    // tell a path from a quoted id containing dots (#2650, pinned across the
+    // forms in `edge-endpoint-path-round-trip.test.ts`).
+    expect(result).toContain(`    -> Shop.Checkout.Payment "settle"`);
     expect(Parser.parse(result).value.systems[0].children[0].edges[0].to).toBe(
       "Shop.Checkout.Payment",
     );
