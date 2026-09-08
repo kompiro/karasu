@@ -105,15 +105,28 @@ jobs:
             libnss3 libgbm1 libxshmfence1 libgtk-3-0 libasound2t64 \
             libxss1 libxkbfile1 libsecret-1-0 xvfb
 
+      # The cached `test-resources` holds the VS Code build ExTester downloaded on
+      # an earlier run. `engines.vscode` is the floor that build has to clear, so
+      # it belongs in the cache lineage: without it a floor bump restores a
+      # pre-bump VS Code through `restore-keys` and the extension refuses to
+      # install ("not compatible with VS Code '<old>'"), which reads as a broken
+      # extension rather than a stale cache. The extension-host job downloads
+      # `version: "stable"` fresh every run and so never had this hole.
+      - name: Resolve the VS Code floor for the cache key
+        id: vscode-floor
+        run: |
+          floor=$(jq -r '.engines.vscode | gsub("[^0-9.]";"")' packages/vscode/package.json)
+          echo "floor=$floor" >> "$GITHUB_OUTPUT"
+
       - name: Cache ExTester resources
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             packages/vscode-e2e/test-resources
             ~/.cache/extension-tester
-          key: ${{ runner.os }}-extester-${{ hashFiles('.github/workflows/vscode-e2e.yml', 'packages/vscode-e2e/package.json') }}
+          key: ${{ runner.os }}-extester-${{ steps.vscode-floor.outputs.floor }}-${{ hashFiles('.github/workflows/vscode-e2e.yml', 'packages/vscode-e2e/package.json') }}
           restore-keys: |
-            ${{ runner.os }}-extester-
+            ${{ runner.os }}-extester-${{ steps.vscode-floor.outputs.floor }}-
 
       - name: Run WebView E2E (ExTester)
         run: xvfb-run -a pnpm --filter @karasu-tools/vscode-e2e run test:webview
