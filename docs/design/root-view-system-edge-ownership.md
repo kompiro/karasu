@@ -2,6 +2,7 @@
 
 - **日付**: 2026-09-08
 - **ステータス**: 検討中
+- **PR**: [#2783](https://github.com/kompiro/karasu/pull/2783)
 - **関連**:
   - 引き金 Issue: [#2756](https://github.com/kompiro/karasu/issues/2756)
   - 発見の経緯: [#2646](https://github.com/kompiro/karasu/issues/2646) / PR [#2741](https://github.com/kompiro/karasu/pull/2741) のレビュー
