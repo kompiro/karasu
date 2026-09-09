@@ -3,7 +3,7 @@ import { resolveFacetOverlay } from "./facet-overlay.js";
 import type { StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
-import { extractView } from "../view/view-extract.js";
+import { createViewExtractor } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { render, legendScopeForLogicalSlice, type RenderOptions } from "./svg-renderer.js";
@@ -226,7 +226,9 @@ export function buildAllLayersSvg(
   selectedFacets?: readonly string[],
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
-  const rootSlice = extractView(effectiveSystems, []);
+  // One extractor per build: the model is fixed for the whole walk (#2759).
+  const extract = createViewExtractor(effectiveSystems);
+  const rootSlice = extract([]);
   if (rootSlice.childNodes.length === 0) {
     return {
       svg: buildNoDiagramSvg(emptyStateLabels, false, theme),
@@ -247,7 +249,7 @@ export function buildAllLayersSvg(
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
     {
-      getSlice: (path) => styleDerivedEdges(extractView(effectiveSystems, path), styles, sheets),
+      getSlice: (path) => styleDerivedEdges(extract(path), styles, sheets),
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
       getChildren: (slice) =>
         slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
