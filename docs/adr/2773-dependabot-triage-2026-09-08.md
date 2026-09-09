@@ -126,7 +126,7 @@ ADR 本文は当時の記録として書き換えない（[ADR-2687](2687-adr-bo
 **新規パッケージ名の追加はゼロ**。名前の増減は `jsdom` 30 が `@asamuzakjp/nwsapi` を
 落とす 1 件だけで、削除方向である。
 
-### #2768: 半移動はガードが設計どおり捕まえた
+### #2768: 半移動はガードが設計どおり捕まえた（当初は採用と判定）
 
 `packages/vscode/package.json` の `engines.vscode` は Dependabot が触れない 3 つ目の宣言で、
 `@types/vscode` だけが動くと 2 箇所で落ちる。
@@ -147,11 +147,14 @@ VS Code WebView (ExTester)
 > half-move (...) This guard fails first, in the unit run, naming the file.
 
 [ADR-2562](2562-dependabot-triage-2026-08-17.md) が「3 箇所を同時に動かす差し替え PR」を
-正解と決めているので、判断はその適用にすぎない。判定は**採用**であり `@dependabot ignore` は
-設定しない。
+正解と決めているので、**当初の判定は「採用・差し替え PR」**とし、`@dependabot ignore` は
+設定しない方針だった。**この判定は反映中に「保留」へ変わる**（下記「#2768 を保留に改めた理由」）。
+`@dependabot ignore` を設定しない点だけは、保留に変わったあとも変えていない。
 
-ただし **VS Code の要求バージョンが 1.125 → 1.134 に上がる（9 マイナー）点は
-プロダクト判断**なので、依存更新の副作用としてではなく明示的に採った。
+当初の判定では、**VS Code の要求バージョンが 1.125 → 1.134 に上がる（9 マイナー）点は
+プロダクト判断**として、依存更新の副作用ではなく明示的に採るつもりだった。この引き上げ自体は
+撤回していない — [#2782](https://github.com/kompiro/karasu/issues/2782) で行う前提で、
+時期だけを 2026-09-14 以降に送った。
 
 ### 反映中に判明した制約 — floor は ExTester の対応窓にも縛られる
 
@@ -207,7 +210,7 @@ changeset について。[#2563](https://github.com/kompiro/karasu/pull/2563) �
 （`karasu-vscode` は 0.1.3）、floor を動かす PR ではこれを書き換える。新規 changeset を足すと
 同じリリースノートに「1.125 に上げる」「1.134 に上げる」が並んで矛盾して読めるためである。
 
-### #2769: 新しい規則が拾った信号は、消さずに別 PR で受ける
+### #2769: 別 PR で受けるつもりが、同梱しかできなかった
 
 oxlint は 1.76 → 1.80 の間に React 規則を追加し、その一部を `correctness` に入れた。
 `.oxlintrc.json` は `categories.correctness: "error"` / `suspicious: "warn"`、root の lint script は
