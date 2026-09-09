@@ -79,8 +79,15 @@ function resolveGroupBoxes(
 
 /** Horizontal gap between the outermost frame/node edge and a routing gutter. */
 const GUTTER_GAP = 28;
-/** Horizontal spacing between distinct aggregation-trunk lanes (P2c-B). */
-const TRUNK_LANE_GAP = 24;
+/**
+ * Horizontal spacing between distinct aggregation-trunk lanes (P2c-B), and the
+ * pitch at which interior corridors share one gap between two cards (#2611).
+ * One constant for both because the column reservation in `layout()` has to
+ * size a gap in the same unit the router hands lanes out in — a reservation
+ * measured in a different pitch than the pass that consumes it buys either
+ * nothing or too much (the ADR-2598 lesson, on the horizontal axis).
+ */
+export const TRUNK_LANE_GAP = 24;
 
 interface Gutter {
   x: number;
@@ -225,7 +232,29 @@ export function routeGroupedEdges(
   // interior lane. `distributeGutterLanes` cannot fix this after the fact (it only
   // relocates corridors outside the content), so the collision is avoided here at
   // routing time — the interior equivalent of lane separation (TPL-1954).
-  const claimed: { x: number; lo: number; hi: number }[] = [];
+  const claimed: ClaimedSegment[] = [];
+  // The inter-row channels a claimed vertical may later be dragged across
+  // (#2611); see `verticalClaim`.
+  const bands = channelBandsOf(nodes);
+
+  // What is already on the canvas occupies its columns too (#2611). The first
+  // candidate in the chain (the interior channel-L, ADR-968) has routed some
+  // edges before this pass runs, and an edge whose straight line is clear
+  // keeps the ports `distributePorts` gave it. Neither goes through the
+  // arbitration below, so unless their segments are claimed up front, an
+  // interior corridor can be laid straight on top of one — which is what the
+  // measurements showed. Claiming them keys the arbitration on the resource
+  // rather than on which pass produced the route (TPL-1954).
+  for (const edge of layoutEdges) {
+    if (edge.ghost || edge.cyclic) continue;
+    if (!edge.waypoints || edge.waypoints.length === 0) continue;
+    const from = boxOf(edge.from);
+    const to = boxOf(edge.to);
+    if (!from || !to) continue;
+    claimed.push(
+      ...claimedSegmentsOf([edge.fromPoint, ...edge.waypoints, edge.toPoint], from, to, bands),
+    );
+  }
 
   // Canonical order (#2610): by the endpoints' geometry, then by id. Corridors
   // and gutter lanes are handed out greedily, so the order decides who gets
@@ -248,8 +277,14 @@ export function routeGroupedEdges(
     const obstacles = obstaclesFor(edge, nodes, frames, framesOfNode);
 
     // Leave clear edges (adjacent, intra-band) exactly as the shared pipeline
-    // placed them — keeps simple edges simple and snapshots minimal.
-    if (!segmentCrossesAnyRect(edge.fromPoint, edge.toPoint, obstacles)) continue;
+    // placed them — keeps simple edges simple and snapshots minimal. Their
+    // segment is claimed all the same: a straight drop from a card's bottom
+    // port is a column like any other, and a corridor laid on it would draw
+    // one line where the diagram means two.
+    if (!segmentCrossesAnyRect(edge.fromPoint, edge.toPoint, obstacles)) {
+      claimed.push(...claimedSegmentsOf([edge.fromPoint, edge.toPoint], from, to, bands));
+      continue;
+    }
 
     // Nearest clear corridor first: a vertical gap *between* columns beats
     // running out to the canvas edge, which is what made a detour stretch the
@@ -257,13 +292,37 @@ export function routeGroupedEdges(
     // the midpoint between the endpoints, so the shortest usable one wins; when
     // none is clear the outer gutters below still catch the edge, so this only
     // ever shortens a route it would otherwise have taken.
+    //
+    // Two candidates equidistant from the midpoint sit on opposite sides of it,
+    // and the tie used to fall to whichever node was visited first — so an edge
+    // could leave its source *away* from its target and swing back across it,
+    // crossing its own siblings for no gain (#2611). The target's column
+    // settles it: of two equally near corridors, the one nearer the target is
+    // the one the route was heading for anyway. `x` last, so the order never
+    // depends on map iteration.
     const mid = midX(from, to);
+    const toCentre = to.x + to.width / 2;
     const routedInner = innerCorridors
       .slice()
-      .sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid))
+      .sort(
+        (a, b) =>
+          Math.abs(a - mid) - Math.abs(b - mid) ||
+          Math.abs(a - toCentre) - Math.abs(b - toCentre) ||
+          a - b,
+      )
       .slice(0, MAX_CORRIDOR_TRIES)
-      .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, claimed));
+      .some((x) => tryCorridorRoute(edge, from, to, x, obstacles, nodes, claimed, bands));
     if (routedInner) continue;
+    // A **staircase**: through one gap of every row between the endpoints,
+    // shifting x in the inter-row channels in between (#2611). This is the
+    // route shape a Sugiyama dummy chain produces, reached without dummy
+    // nodes — the reason the chain is not worth its cost here is recorded in
+    // the ADR: karasu's in-layer order is fixed by kind tier and declaration,
+    // so dummies would take no part in ordering, and only their *space*
+    // matters. A long edge whose own row's gaps are all blocked still falls
+    // through to the gutters below (never worse, ADR-968).
+    if (frames.length === 0 && tryStaircaseRoute(edge, from, to, obstacles, nodes, claimed, bands))
+      continue;
 
     // A plain side route (the 2-waypoint route) on whichever gutter is
     // cheaper; only when neither gutter clears one, a **mixed route**: keep
@@ -281,7 +340,7 @@ export function routeGroupedEdges(
       cheapestSide(
         [rightGutter, leftGutter].map((g) => ({
           gutter: g,
-          path: planMixedRoute(from, to, g, obstacles, nodes),
+          path: planMixedRoute(from, to, g, obstacles, nodes, claimed, bands),
         })),
         occupancy,
       );
@@ -445,6 +504,8 @@ function mixedEnd(
   nodes: LayoutNode[],
   forward: boolean,
   isSource: boolean,
+  claimed: readonly ClaimedSegment[] = [],
+  bands: readonly { top: number; bottom: number }[] = [],
 ): MixedEnd {
   const sideX = gutter.side === "right" ? box.x + box.width : box.x;
   const midY = box.y + box.height / 2;
@@ -457,8 +518,23 @@ function mixedEnd(
   // Blocked → detour this end through the adjacent inter-row channel.
   const outward = isSource ? forward : !forward; // does this end leave/enter downward?
   const channelY = outward ? channelBelow(box, nodes) : channelAbove(box, nodes);
-  const cx = box.x + box.width / 2;
   const portY = outward ? box.y + box.height : box.y;
+  // The stub drops from the card's centre unless a corridor already claimed
+  // that x over the same band; then it steps sideways by whole lane pitches,
+  // staying on the card so the port remains attachable (#2611). Without this,
+  // a channel stub and an interior corridor that share a gap draw one line.
+  const centre = box.x + box.width / 2;
+  const lo = Math.min(portY, channelY);
+  const hi = Math.max(portY, channelY);
+  let cx = centre;
+  for (const dx of [0, -TRUNK_LANE_GAP, TRUNK_LANE_GAP, -2 * TRUNK_LANE_GAP, 2 * TRUNK_LANE_GAP]) {
+    const x = centre + dx;
+    if (x <= box.x || x >= box.x + box.width) continue;
+    if (!conflicts(claimed, verticalClaim(x, lo, hi, bands))) {
+      cx = x;
+      break;
+    }
+  }
   return { port: { x: cx, y: portY }, elbows: [{ x: cx, y: channelY }], cy: channelY };
 }
 
@@ -477,6 +553,8 @@ function planMixedRoute(
   gutter: Gutter,
   obstacles: Rect[],
   nodes: LayoutNode[],
+  claimed: readonly ClaimedSegment[] = [],
+  bands: readonly { top: number; bottom: number }[] = [],
 ): Point[] | null {
   const forward = to.y >= from.y + from.height;
   const backward = from.y >= to.y + to.height;
@@ -484,8 +562,8 @@ function planMixedRoute(
   // them; leave such an edge straight (it rarely penetrates in a band layout).
   if (!forward && !backward) return null;
 
-  const src = mixedEnd(from, gutter, obstacles, nodes, forward, true);
-  const tgt = mixedEnd(to, gutter, obstacles, nodes, forward, false);
+  const src = mixedEnd(from, gutter, obstacles, nodes, forward, true, claimed, bands);
+  const tgt = mixedEnd(to, gutter, obstacles, nodes, forward, false, claimed, bands);
   const path: Point[] = [
     src.port,
     ...src.elbows,
@@ -520,11 +598,31 @@ function midX(from: EdgeBox, to: EdgeBox): number {
  * are blocked and the grouped view keeps its gutter routes unchanged.
  */
 function corridorCandidates(nodes: LayoutNode[]): number[] {
+  // Beside every card (as before) and at the midpoint of every gap between two
+  // neighbouring cards of a row (#2611). A gap wide enough for a corridor is a
+  // lane whether or not a card border happens to sit at its edge; before this,
+  // a gap was only reachable through the ±half offsets of the cards flanking
+  // it, which land off-centre and lose to the card-border candidates in the
+  // nearest-first order. Two routes in one gap are kept apart by claiming every
+  // segment of a route, not by thinning the candidates.
   const half = GUTTER_GAP / 2;
   const xs = new Set<number>();
+  const rows = new Map<number, LayoutNode[]>();
   for (const n of nodes) {
     xs.add(n.x - half);
     xs.add(n.x + n.width + half);
+    const key = Math.round(n.y * 2) / 2;
+    const row = rows.get(key);
+    if (row) row.push(n);
+    else rows.set(key, [n]);
+  }
+  for (const row of rows.values()) {
+    row.sort((a, b) => a.x - b.x);
+    for (let i = 0; i + 1 < row.length; i++) {
+      const left = row[i].x + row[i].width;
+      const right = row[i + 1].x;
+      if (right - left >= 2 * half) xs.add((left + right) / 2);
+    }
   }
   return [...xs];
 }
@@ -552,34 +650,335 @@ function tryCorridorRoute(
   to: EdgeBox,
   corridorX: number,
   obstacles: Rect[],
-  claimed: { x: number; lo: number; hi: number }[],
+  nodes: LayoutNode[],
+  claimed: ClaimedSegment[],
+  bands: readonly { top: number; bottom: number }[],
 ): boolean {
-  const portFor = (b: EdgeBox): Point | null => {
-    const midY = b.y + b.height / 2;
-    if (corridorX >= b.x + b.width) return { x: b.x + b.width, y: midY };
-    if (corridorX <= b.x) return { x: b.x, y: midY };
-    return null;
-  };
-  const sourcePort = portFor(from);
-  const targetPort = portFor(to);
-  if (!sourcePort || !targetPort) return false;
-
-  const lo = Math.min(sourcePort.y, targetPort.y);
-  const hi = Math.max(sourcePort.y, targetPort.y);
-  const taken = claimed.some(
-    (c) => Math.abs(c.x - corridorX) < 1e-6 && Math.min(c.hi, hi) - Math.max(c.lo, lo) > 1e-6,
+  // Each end reaches the corridor the way a mixed gutter route reaches its
+  // gutter (#2611): a side stub at mid-height when that is clear, otherwise a
+  // top/bottom port and the adjacent inter-row channel. One sibling standing
+  // between the card and the corridor used to reject the whole column even
+  // when the column itself was free — measured as 243 of dify's 538
+  // gutter-routed edges. The entry rule lives in `mixedEnd` for both, so it
+  // cannot drift apart between gutter and corridor (TPL-219).
+  const sideFor = (b: EdgeBox): Gutter["side"] | null =>
+    corridorX >= b.x + b.width ? "right" : corridorX <= b.x ? "left" : null;
+  const srcSide = sideFor(from);
+  const tgtSide = sideFor(to);
+  if (!srcSide || !tgtSide) return false;
+  const forward = to.y >= from.y + from.height;
+  const backward = from.y >= to.y + to.height;
+  const src = corridorEnd(
+    from,
+    { x: corridorX, side: srcSide },
+    obstacles,
+    nodes,
+    forward,
+    backward,
+    true,
+    claimed,
+    bands,
   );
-  if (taken) return false;
+  const tgt = corridorEnd(
+    to,
+    { x: corridorX, side: tgtSide },
+    obstacles,
+    nodes,
+    forward,
+    backward,
+    false,
+    claimed,
+    bands,
+  );
+  if (!src || !tgt) return false;
 
-  const w0: Point = { x: corridorX, y: sourcePort.y };
-  const w1: Point = { x: corridorX, y: targetPort.y };
-  if (!polylineClearOf([sourcePort, w0, w1, targetPort], obstacles)) return false;
+  const path: Point[] = [
+    src.port,
+    ...src.elbows,
+    { x: corridorX, y: src.cy },
+    { x: corridorX, y: tgt.cy },
+    ...tgt.elbows,
+    tgt.port,
+  ];
+  // Every axis-aligned segment of the route is claimed — verticals as
+  // corridors, horizontals as stubs — and a route is rejected when any of
+  // its segments would lie collinear on a claimed one. Two edges may share a
+  // gap only where their segments never coincide: a channel stub dropping
+  // from a card's centre onto the gap below, or two mid-height stubs entering
+  // one gap from opposite cards, are exactly the cases this arbitrates.
+  const segments = claimedSegmentsOf(path, from, to, bands);
+  if (segments.some((v) => conflicts(claimed, v))) return false;
+  if (!polylineClearOf(path, obstacles)) return false;
 
-  edge.fromPoint = sourcePort;
-  edge.toPoint = targetPort;
-  edge.waypoints = [w0, w1];
-  claimed.push({ x: corridorX, lo, hi });
+  edge.fromPoint = path[0];
+  edge.toPoint = path[path.length - 1];
+  edge.waypoints = path.slice(1, -1);
+  claimed.push(...segments);
   return true;
+}
+
+/**
+ * Route an edge whose endpoints sit two or more rows
+ * apart through one gap of every row in between: a vertical through the gap,
+ * then a horizontal run in the channel below to the next row's gap, and so
+ * on. The gap for each row is the one nearest the previous x (nearest the
+ * ideal x — the midpoint of the endpoints — for the first), first free lane
+ * wins. Exits and enters through the ports `distributePorts` gave the edge
+ * (bottom of the source, top of the target, or mirrored for a reverse edge).
+ * Every vertical is claimed; the channel runs are laned by the lane pass.
+ */
+function tryStaircaseRoute(
+  edge: LayoutEdge,
+  from: EdgeBox,
+  to: EdgeBox,
+  obstacles: Rect[],
+  nodes: LayoutNode[],
+  claimed: ClaimedSegment[],
+  bands: readonly { top: number; bottom: number }[],
+): boolean {
+  const rows = rowsOf(nodes);
+  const real = nodes.filter((n) => !n.ghost);
+  const contentLeft = Math.min(...real.map((n) => n.x));
+  const contentRight = Math.max(...real.map((n) => n.x + n.width));
+  const rowIndex = (b: EdgeBox) => rows.findIndex((r) => Math.abs(r.y - b.y) < 0.5);
+  const rf = rowIndex(from);
+  const rt = rowIndex(to);
+  if (rf === -1 || rt === -1 || Math.abs(rf - rt) < 2) return false;
+  const down = rt > rf;
+  const step = down ? 1 : -1;
+  const half = GUTTER_GAP / 2;
+
+  // Ports: the distributed bottom/top ports when the edge still has them,
+  // else the card's centre on the facing side.
+  const fromOnBottom = Math.abs(edge.fromPoint.y - (from.y + from.height)) < 0.5;
+  const fromOnTop = Math.abs(edge.fromPoint.y - from.y) < 0.5;
+  const toOnTop = Math.abs(edge.toPoint.y - to.y) < 0.5;
+  const toOnBottom = Math.abs(edge.toPoint.y - (to.y + to.height)) < 0.5;
+  const srcPort: Point = down
+    ? fromOnBottom
+      ? edge.fromPoint
+      : { x: from.x + from.width / 2, y: from.y + from.height }
+    : fromOnTop
+      ? edge.fromPoint
+      : { x: from.x + from.width / 2, y: from.y };
+  const tgtPort: Point = down
+    ? toOnTop
+      ? edge.toPoint
+      : { x: to.x + to.width / 2, y: to.y }
+    : toOnBottom
+      ? edge.toPoint
+      : { x: to.x + to.width / 2, y: to.y + to.height };
+
+  const ideal = (from.x + from.width / 2 + to.x + to.width / 2) / 2;
+  const channelBetween = (a: number, b: number) => {
+    const upper = rows[Math.min(a, b)];
+    const lower = rows[Math.max(a, b)];
+    return (upper.bottom + lower.y) / 2;
+  };
+
+  const path: Point[] = [srcPort];
+  let x = srcPort.x;
+  let y = channelBetween(rf, rf + step);
+  path.push({ x, y });
+  for (let r = rf + step; r !== rt; r += step) {
+    const row = rows[r];
+    const above = channelBetween(r - step, r);
+    const below = channelBetween(r, r + step);
+    const lo = Math.min(above, below);
+    const hi = Math.max(above, below);
+    // Lanes inside each gap, nearest the current x first (ties toward the
+    // ideal), plus lanes in the room beside the row's outer cards — a narrow
+    // row in a wide canvas has most of its free space there.
+    const lanes: number[] = [];
+    for (const g of row.gaps) {
+      const n = Math.max(1, Math.floor((g.right - g.left - 2 * half) / TRUNK_LANE_GAP) + 1);
+      const centre = (g.left + g.right) / 2;
+      for (let k = 0; k < n; k++) lanes.push(centre + (k - (n - 1) / 2) * TRUNK_LANE_GAP);
+    }
+    for (let gx = row.left - half; gx >= contentLeft + half; gx -= TRUNK_LANE_GAP) lanes.push(gx);
+    for (let gx = row.right + half; gx <= contentRight - half; gx += TRUNK_LANE_GAP) lanes.push(gx);
+    lanes.sort(
+      (a, b) => Math.abs(a - x) - Math.abs(b - x) || Math.abs(a - ideal) - Math.abs(b - ideal),
+    );
+    const pick = lanes.find((gx) => !conflicts(claimed, verticalClaim(gx, lo, hi, bands)));
+    if (pick === undefined) return false;
+    if (pick !== x) path.push({ x: pick, y: above });
+    path.push({ x: pick, y: below });
+    x = pick;
+    y = below;
+  }
+  if (x !== tgtPort.x) path.push({ x: tgtPort.x, y });
+  path.push(tgtPort);
+
+  // Collapse duplicate consecutive points a same-x step can produce.
+  const cleaned = path.filter(
+    (p, i) =>
+      i === 0 || Math.abs(p.x - path[i - 1].x) > 1e-6 || Math.abs(p.y - path[i - 1].y) > 1e-6,
+  );
+  const segments = claimedSegmentsOf(cleaned, from, to, bands);
+  if (segments.some((v) => conflicts(claimed, v))) return false;
+  if (!polylineClearOf(cleaned, obstacles)) return false;
+  edge.fromPoint = cleaned[0];
+  edge.toPoint = cleaned[cleaned.length - 1];
+  edge.waypoints = cleaned.slice(1, -1);
+  claimed.push(...segments);
+  return true;
+}
+
+/** Rows of cards by y, each with its interior gaps, top to bottom. */
+function rowsOf(nodes: LayoutNode[]): {
+  y: number;
+  bottom: number;
+  left: number;
+  right: number;
+  gaps: { left: number; right: number }[];
+}[] {
+  const byY = new Map<number, LayoutNode[]>();
+  for (const n of nodes) {
+    if (n.ghost) continue;
+    const key = Math.round(n.y * 2) / 2;
+    const row = byY.get(key);
+    if (row) row.push(n);
+    else byY.set(key, [n]);
+  }
+  const half = GUTTER_GAP / 2;
+  return [...byY.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([y, cards]) => {
+      cards.sort((a, b) => a.x - b.x);
+      const gaps: { left: number; right: number }[] = [];
+      for (let i = 0; i + 1 < cards.length; i++) {
+        const left = cards[i].x + cards[i].width;
+        const right = cards[i + 1].x;
+        if (right - left >= 2 * half) gaps.push({ left, right });
+      }
+      return {
+        y,
+        bottom: Math.max(...cards.map((c) => c.y + c.height)),
+        left: cards[0].x,
+        right: cards[cards.length - 1].x + cards[cards.length - 1].width,
+        gaps,
+      };
+    });
+}
+
+/**
+ * A route's axis-aligned segment as a claim record: `at` is the fixed
+ * coordinate. `owner` names the card side a stub leaves from; two stubs of
+ * one card side are not a conflict, because `fanOutGutterPorts` spreads them
+ * apart later — only stubs from *different* cards meeting in one gap are.
+ */
+interface ClaimedSegment {
+  axis: "v" | "h";
+  at: number;
+  lo: number;
+  hi: number;
+  owner?: string;
+}
+
+function claimedSegmentsOf(
+  path: Point[],
+  from: EdgeBox,
+  to: EdgeBox,
+  bands: readonly { top: number; bottom: number }[],
+): ClaimedSegment[] {
+  const out: ClaimedSegment[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
+    const atPort = i === 0 || i === path.length - 2;
+    const owner = i === 0 ? from.id : i === path.length - 2 ? to.id : undefined;
+    if (Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) > 1e-6) {
+      out.push(verticalClaim(a.x, a.y, b.y, bands, owner));
+    } else if (atPort && Math.abs(a.y - b.y) < 1e-6 && Math.abs(a.x - b.x) > 1e-6) {
+      // Only a side stub is claimed horizontally. A run along an inter-row
+      // channel is not: the lane pass spreads those apart afterwards, and
+      // claiming them would refuse every second edge a channel it can share.
+      out.push({ axis: "h", at: a.y, lo: Math.min(a.x, b.x), hi: Math.max(a.x, b.x), owner });
+    }
+  }
+  return out;
+}
+
+/**
+ * The empty bands between consecutive rows of cards — the inter-row channels
+ * the lane pass later spreads horizontal runs across.
+ */
+function channelBandsOf(nodes: LayoutNode[]): { top: number; bottom: number }[] {
+  const rows = rowsOf(nodes);
+  const bands: { top: number; bottom: number }[] = [];
+  for (let i = 0; i + 1 < rows.length; i++) {
+    if (rows[i + 1].y > rows[i].bottom) bands.push({ top: rows[i].bottom, bottom: rows[i + 1].y });
+  }
+  return bands;
+}
+
+/**
+ * A vertical claim, extended to own its x across the whole of any inter-row
+ * channel it ends inside (#2611).
+ *
+ * A vertical that stops at a channel does not stop *where* it was routed:
+ * `distributeChannelLanes` moves the run it turns into to a lane of that
+ * channel, dragging the vertical's end with it. Two routes that took one x in
+ * adjacent bands, meeting exactly at the channel's midline, therefore came out
+ * overlapping by however far the lane pass had moved them apart — a collision
+ * created *after* the pass that checks for collisions. Claiming the whole
+ * channel makes the resource what it physically is: the x is occupied for
+ * every lane the run could later be given, so the next route picks another.
+ */
+function verticalClaim(
+  at: number,
+  y0: number,
+  y1: number,
+  bands: readonly { top: number; bottom: number }[],
+  owner?: string,
+): ClaimedSegment {
+  let lo = Math.min(y0, y1);
+  let hi = Math.max(y0, y1);
+  for (const band of bands) {
+    if (lo > band.top && lo < band.bottom) lo = band.top;
+    if (hi > band.top && hi < band.bottom) hi = band.bottom;
+  }
+  return { axis: "v", at, lo, hi, owner };
+}
+
+function conflicts(claimed: readonly ClaimedSegment[], v: ClaimedSegment): boolean {
+  return claimed.some(
+    (c) =>
+      c.axis === v.axis &&
+      Math.abs(c.at - v.at) < 1e-6 &&
+      Math.min(c.hi, v.hi) - Math.max(c.lo, v.lo) > 1e-6 &&
+      !(c.owner !== undefined && c.owner === v.owner),
+  );
+}
+
+/**
+ * One end of an interior corridor route (#2611): the side stub
+ * when it is clear; otherwise, for endpoints in different rows, the channel
+ * stub `mixedEnd` would give a gutter route. Endpoints that overlap vertically
+ * have no channel between them, so a blocked side stub ends the attempt.
+ */
+function corridorEnd(
+  box: EdgeBox,
+  corridor: Gutter,
+  obstacles: Rect[],
+  nodes: LayoutNode[],
+  forward: boolean,
+  backward: boolean,
+  isSource: boolean,
+  claimed: readonly ClaimedSegment[],
+  bands: readonly { top: number; bottom: number }[],
+): MixedEnd | null {
+  const sideX = corridor.side === "right" ? box.x + box.width : box.x;
+  const midY = box.y + box.height / 2;
+  const sideClear = !segmentCrossesAnyRect(
+    { x: sideX, y: midY },
+    { x: corridor.x, y: midY },
+    obstacles,
+  );
+  if (sideClear) return { port: { x: sideX, y: midY }, elbows: [], cy: midY };
+  if (!forward && !backward) return null;
+  return mixedEnd(box, corridor, obstacles, nodes, forward, isSource, claimed, bands);
 }
 
 /**
@@ -928,6 +1327,12 @@ export function fanOutGutterPorts(
     }
   }
 
+  // What every edge currently occupies, so a fanned anchor is not moved onto
+  // a column another edge already runs in (#2611). Kept up to date as moves
+  // are applied, so two fans in a row cannot land on each other either.
+  const bands = channelBandsOf(nodes);
+  const occupancy = buildSegmentIndex(layoutEdges, bands);
+
   // Obstacle sets depend only on an edge's endpoints/frames, not on the fanned
   // anchor, so compute each once and reuse across a node's attachments.
   const obstacleCache = new Map<LayoutEdge, Rect[]>();
@@ -967,32 +1372,93 @@ export function fanOutGutterPorts(
         resolved?.keepOuts ?? [],
       );
       attaches.forEach((a, i) => {
-        const along = mapToSpans(spans, (i + 1) / (n + 1));
-        const t = varyY ? node.y + node.height * along : node.x + node.width * along;
-        const anchor: Point = varyY ? { x: fixed, y: t } : { x: t, y: fixed };
-        // Restub every edge in the attachment, verify all clear, then apply
-        // atomically (a trunk moves all its siblings' shared entry together). A
-        // bend adjacent to the port that shares its coordinate along the side
-        // (a perpendicular stub) takes the fanned one too, so the stub stays
-        // orthogonal; a slanted first segment, or a straight edge, just re-aims.
-        const moved = a.edges.map((e) => {
-          const wps = [...(e.waypoints ?? [])];
-          const port = a.end === "source" ? e.fromPoint : e.toPoint;
-          const idx = a.end === "source" ? 0 : wps.length - 1;
-          const bend = wps[idx];
-          const perpendicular =
-            bend !== undefined &&
-            (varyY ? Math.abs(bend.y - port.y) < 1e-6 : Math.abs(bend.x - port.x) < 1e-6);
-          if (perpendicular) wps[idx] = varyY ? { x: bend.x, y: t } : { x: t, y: bend.y };
-          return a.end === "source"
-            ? { e, fromPoint: anchor, toPoint: e.toPoint, waypoints: wps }
-            : { e, fromPoint: e.fromPoint, toPoint: anchor, waypoints: wps };
-        });
-        const allClear = moved.every((m) =>
-          polylineClearOf([m.fromPoint, ...m.waypoints, m.toPoint], obstaclesOf(m.e)),
+        // Where this attachment sits in the fan, and the room it may shift
+        // within without ever passing its neighbours: a quarter and a half of
+        // its own slot to either side (#2611). The plain position is tried
+        // first, so a side with nothing in its way fans exactly as before.
+        const restub = (along: number) => {
+          const t = varyY ? node.y + node.height * along : node.x + node.width * along;
+          const anchor: Point = varyY ? { x: fixed, y: t } : { x: t, y: fixed };
+          // Restub every edge in the attachment, verify all clear, then apply
+          // atomically (a trunk moves all its siblings' shared entry
+          // together). A bend adjacent to the port that shares its coordinate
+          // along the side (a perpendicular stub) takes the fanned one too, so
+          // the stub stays orthogonal; a slanted first segment, or a straight
+          // edge, just re-aims.
+          return a.edges.map((e) => {
+            const wps = [...(e.waypoints ?? [])];
+            const port = a.end === "source" ? e.fromPoint : e.toPoint;
+            const step = a.end === "source" ? 1 : -1;
+            // Every bend the stub carries with it: the one next to the port
+            // when it shares the port's coordinate along the side, and each
+            // further bend that shares it too. A stub used to be a single
+            // segment, so moving one bend kept the polyline orthogonal —
+            // until a staircase ended in a run of bends on one x (#2611), and
+            // moving only the last of them bent that run into a diagonal.
+            // Whatever the shape, the invariant is the same: the whole
+            // collinear run moves, and the segment beyond it (perpendicular
+            // by construction) simply gets longer or shorter.
+            for (
+              let at = a.end === "source" ? 0 : wps.length - 1;
+              at >= 0 && at < wps.length;
+              at += step
+            ) {
+              const bend = wps[at];
+              const offAxis = varyY ? bend.y - port.y : bend.x - port.x;
+              if (Math.abs(offAxis) > 1e-6) break;
+              wps[at] = varyY ? { x: bend.x, y: t } : { x: t, y: bend.y };
+            }
+            return a.end === "source"
+              ? { e, fromPoint: anchor, toPoint: e.toPoint, waypoints: wps }
+              : { e, fromPoint: e.fromPoint, toPoint: anchor, waypoints: wps };
+          });
+        };
+        const siblings = new Set(a.edges);
+        const before = new Map(
+          a.edges.map((e) => [e, [e.fromPoint, ...(e.waypoints ?? []), e.toPoint]]),
         );
-        if (allClear) {
+        const clearOfCards = (moved: ReturnType<typeof restub>) =>
+          moved.every((m) =>
+            polylineClearOf([m.fromPoint, ...m.waypoints, m.toPoint], obstaclesOf(m.e)),
+          );
+        // A stub must also not land *on* another edge's run: the routing
+        // passes arbitrate the columns between themselves, and a fan that
+        // ignored them would re-create, two passes later, exactly the
+        // collinear overlap they avoided (#2611). Only what the re-stub moved
+        // is judged — a segment that stayed put was arbitrated when its route
+        // was chosen.
+        const clearOfEdges = (moved: ReturnType<typeof restub>) =>
+          moved.every(
+            (m) =>
+              !changedSegments(before.get(m.e)!, [m.fromPoint, ...m.waypoints, m.toPoint], bands)
+                // Verticals only. Every horizontal run still sits on its
+                // channel's midline at this point — `distributeChannelLanes`
+                // spreads them afterwards — so judging them here would call
+                // every candidate occupied and fan nothing.
+                .filter((seg) => seg.axis === "v")
+                .some((seg) => occupancy.occupied(seg, siblings)),
+          );
+        const slot = 1 / (n + 1);
+        let moved: ReturnType<typeof restub> | null = null;
+        for (const shift of [0, 0.25, -0.25, 0.5, -0.5]) {
+          const candidate = restub(mapToSpans(spans, (i + 1 + shift) * slot));
+          if (!clearOfCards(candidate)) continue;
+          if (!clearOfEdges(candidate)) continue;
+          moved = candidate;
+          break;
+        }
+        // Nothing free anywhere in this attachment's share: take the plain
+        // position if the cards allow it, exactly as this pass behaved before
+        // it knew about the other edges. Two edges apart on a shared column
+        // still read better than two stacked on one port.
+        if (!moved) {
+          const plain = restub(mapToSpans(spans, (i + 1) * slot));
+          if (clearOfCards(plain)) moved = plain;
+        }
+        if (moved) {
           for (const m of moved) {
+            const after = [m.fromPoint, ...m.waypoints, m.toPoint];
+            occupancy.replace(m.e, before.get(m.e)!, after);
             m.e.fromPoint = m.fromPoint;
             m.e.toPoint = m.toPoint;
             m.e.waypoints = m.waypoints.length > 0 ? m.waypoints : m.e.waypoints;
@@ -1001,6 +1467,123 @@ export function fanOutGutterPorts(
       });
     }
   }
+}
+
+
+/**
+ * The axis-aligned segments every edge currently occupies, bucketed by their
+ * fixed coordinate (#2611).
+ *
+ * `fanOutGutterPorts` moves a port along its side and drags the stub with it,
+ * verifying the result against cards and frames — but not against the other
+ * edges. With interior corridors in play that is no longer enough: a fanned
+ * port can land exactly on the column a different edge is already running in,
+ * re-creating the collinear overlap the routing passes had arbitrated away,
+ * two passes later. The index lets the fan ask the same question the router
+ * asks — "is this resource taken?" — about whatever the chain has produced so
+ * far, so it needs no knowledge of route shapes (TPL-1954).
+ */
+interface SegmentIndex {
+  /** Whether `seg` would lie collinear on a segment of an edge outside `exempt`. */
+  occupied(seg: OccupiedSegment, exempt: ReadonlySet<LayoutEdge>): boolean;
+  /** Swap an edge's recorded geometry for the one just applied to it. */
+  replace(edge: LayoutEdge, before: readonly Point[], after: readonly Point[]): void;
+}
+
+interface OccupiedSegment {
+  axis: "v" | "h";
+  at: number;
+  lo: number;
+  hi: number;
+}
+
+function segmentsOfPolyline(
+  pts: readonly Point[],
+  bands: readonly { top: number; bottom: number }[],
+): OccupiedSegment[] {
+  const out: OccupiedSegment[] = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if (Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) > 1e-6) {
+      // Same extension the router claims with: a vertical that ends inside a
+      // channel owns its x across the whole channel, because the lane pass
+      // will move that end to one of the channel's lanes (see `verticalClaim`).
+      const claim = verticalClaim(a.x, a.y, b.y, bands);
+      out.push({ axis: "v", at: claim.at, lo: claim.lo, hi: claim.hi });
+    } else if (Math.abs(a.y - b.y) < 1e-6 && Math.abs(a.x - b.x) > 1e-6) {
+      out.push({ axis: "h", at: a.y, lo: Math.min(a.x, b.x), hi: Math.max(a.x, b.x) });
+    }
+  }
+  return out;
+}
+
+/** Segments whose endpoints a re-stub actually moved — the only ones to re-check. */
+function changedSegments(
+  before: readonly Point[],
+  after: readonly Point[],
+  bands: readonly { top: number; bottom: number }[],
+): OccupiedSegment[] {
+  const same = (a: Point | undefined, b: Point | undefined) =>
+    a !== undefined && b !== undefined && Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
+  if (before.length !== after.length) return segmentsOfPolyline(after, bands);
+  const out: OccupiedSegment[] = [];
+  for (let i = 0; i + 1 < after.length; i++) {
+    if (same(before[i], after[i]) && same(before[i + 1], after[i + 1])) continue;
+    out.push(...segmentsOfPolyline([after[i], after[i + 1]], bands));
+  }
+  return out;
+}
+
+function buildSegmentIndex(
+  edges: readonly LayoutEdge[],
+  bands: readonly { top: number; bottom: number }[],
+): SegmentIndex {
+  const bucketKey = (seg: OccupiedSegment) => `${seg.axis}:${Math.round(seg.at * 2)}`;
+  const buckets = new Map<string, { edge: LayoutEdge; seg: OccupiedSegment }[]>();
+  const add = (edge: LayoutEdge, pts: readonly Point[]) => {
+    for (const seg of segmentsOfPolyline(pts, bands)) {
+      const key = bucketKey(seg);
+      const bucket = buckets.get(key);
+      if (bucket) bucket.push({ edge, seg });
+      else buckets.set(key, [{ edge, seg }]);
+    }
+  };
+  const remove = (edge: LayoutEdge, pts: readonly Point[]) => {
+    for (const seg of segmentsOfPolyline(pts, bands)) {
+      const bucket = buckets.get(bucketKey(seg));
+      if (!bucket) continue;
+      const at = bucket.findIndex(
+        (entry) =>
+          entry.edge === edge &&
+          Math.abs(entry.seg.at - seg.at) < 1e-6 &&
+          Math.abs(entry.seg.lo - seg.lo) < 1e-6 &&
+          Math.abs(entry.seg.hi - seg.hi) < 1e-6,
+      );
+      if (at >= 0) bucket.splice(at, 1);
+    }
+  };
+  for (const edge of edges) {
+    if (edge.ghost || edge.cyclic) continue;
+    add(edge, [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint]);
+  }
+  return {
+    occupied(seg, exempt) {
+      const bucket = buckets.get(bucketKey(seg));
+      if (!bucket) return false;
+      return bucket.some(
+        (entry) =>
+          !exempt.has(entry.edge) &&
+          entry.seg.axis === seg.axis &&
+          Math.abs(entry.seg.at - seg.at) < 1e-6 &&
+          Math.min(entry.seg.hi, seg.hi) - Math.max(entry.seg.lo, seg.lo) > 1e-6,
+      );
+    },
+    replace(edge, before, after) {
+      remove(edge, before);
+      add(edge, after);
+    },
+  };
 }
 
 /** The right-side trunk polyline for one source→target edge at column `x`. */

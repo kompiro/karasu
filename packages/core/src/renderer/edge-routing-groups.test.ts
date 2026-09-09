@@ -1089,3 +1089,94 @@ organization Org {
     expect(routes(a)).toEqual(routes(b));
   });
 });
+
+describe("layer-spanning edges reach the interior (#2611)", () => {
+  /**
+   * Eight sources fanning into three shared targets, with five mid-layer cards
+   * in between. Every S→T edge crosses two rows, and the mid row's cards cover
+   * the columns beside the sources — so the mid-height side stub an interior
+   * corridor used to require is blocked, and before #2611 ten of these edges
+   * ran out to a gutter with free columns sitting unused between the cards.
+   */
+  const CROWDED = (() => {
+    const services = Array.from({ length: 8 }, (_s, i) => `  service S${i} { label "Service ${i}" }`);
+    const mid = Array.from({ length: 5 }, (_m, i) => `  service M${i} { label "Mid ${i}" }`);
+    const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+    const edges = [
+      ...services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`)),
+      ...mid.map((_m, i) => `  S${i} -> M${i}`),
+      ...mid.map((_m, i) => `  M${i} -> T${i % 3}`),
+    ];
+    return `system Crowded {\n${[...services, ...mid, ...targets, ...edges].join("\n")}\n}`;
+  })();
+
+  /** Routes split by where their first vertical run sits: inside the content, or beyond it. */
+  function corridors(res: LayoutResult): { interior: number; gutter: number; straight: number } {
+    const nodes = [...res.nodes.values()].filter((n) => !n.ghost);
+    const minLeft = Math.min(...nodes.map((n) => n.x));
+    const maxRight = Math.max(...nodes.map((n) => n.x + n.width));
+    let interior = 0;
+    let gutter = 0;
+    let straight = 0;
+    for (const e of res.edges) {
+      const pts: Point[] = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+      const at = pts.findIndex(
+        (p, i) => i + 1 < pts.length && p.x === pts[i + 1].x && p.y !== pts[i + 1].y,
+      );
+      if (at === -1) straight++;
+      else if (pts[at].x < minLeft || pts[at].x > maxRight) gutter++;
+      else interior++;
+    }
+    return { interior, gutter, straight };
+  }
+
+  it("takes the columns between the cards instead of running out to a gutter", () => {
+    // Measured: main routed 18 of these through the interior and sent 10 out
+    // to a gutter. Pinned as a bound rather than an equality so a later pass
+    // that shortens a route further does not have to edit this line.
+    const res = layoutOf(CROWDED, new Map());
+    const { interior, gutter } = corridors(res);
+    expect(interior).toBeGreaterThanOrEqual(24);
+    expect(gutter).toBeLessThanOrEqual(4);
+  });
+
+  it("does not pay for the columns with width — the canvas gets narrower", () => {
+    // The columns were already there; using them keeps the gutter lanes from
+    // stacking outside the content, which is what made the canvas wide.
+    // Measured on main: 1628. The reservation opens at most one column in a
+    // row that has none, so this stays a saving rather than a cost.
+    expect(layoutOf(CROWDED, new Map()).width).toBeLessThanOrEqual(1500);
+  });
+
+  it("keeps penetration and collinear overlap at zero on both axes (TPL-1927)", () => {
+    const res = layoutOf(CROWDED, new Map());
+    expect(totalPenetrations(res)).toBe(0);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(collinearHorizontalOverlaps(res)).toBe(0);
+  });
+
+  it("re-places at most once, however crowded the view is (ADR-2598)", () => {
+    expect(layoutOf(CROWDED, new Map()).placementPasses).toBeLessThanOrEqual(2);
+  });
+
+  it("is deterministic — the same model gives the same points twice", () => {
+    const once = layoutOf(CROWDED, new Map());
+    const twice = layoutOf(CROWDED, new Map());
+    expect(twice.edges.map((e) => [e.fromPoint, e.waypoints, e.toPoint])).toEqual(
+      once.edges.map((e) => [e.fromPoint, e.waypoints, e.toPoint]),
+    );
+  });
+
+  it("leaves a diagram that needs no routing exactly where it was (never worse)", () => {
+    const PLAIN = `
+system Shop {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B
+}
+`;
+    const res = layoutOf(PLAIN, new Map());
+    expect(res.edges[0].waypoints ?? []).toHaveLength(0);
+    expect(res.placementPasses).toBe(1);
+  });
+});
