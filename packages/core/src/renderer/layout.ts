@@ -7,10 +7,10 @@ import { groupLabelsFor } from "./group-labels.js";
 import { withChildAnchoredEdges } from "../view/view-extract.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
-import { placeNodesInLayers } from "./layer-layout-logics.js";
+import { placeNodesInLayers, ROW_END_COLUMN } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
 import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
-import { framePieces } from "./edge-routing-groups.js";
+import { framePieces, TRUNK_LANE_GAP } from "./edge-routing-groups.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   CONTAINER_PADDING,
@@ -117,13 +117,21 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // the placement is not monotone in the budget). Views whose channels fit
   // never take this branch, so their output is unchanged byte for byte.
   const reservations = channelReservations(found.result.result, found.result.rows);
-  const run =
-    reservations.size > 0
-      ? layoutInner(viewSlice, options, found.budget, reservations)
-      : found.result;
+  // Column capacity (#2611): the same measurement on the horizontal axis. A
+  // long edge that found no free lane between the rows it crosses had to run
+  // out to a gutter; where a row carries more such columns than the gaps
+  // between its cards can hold at `TRUNK_LANE_GAP`, the missing width is
+  // opened inside that row. Joined to the channel reservation above so both
+  // are applied by **one** re-placement: `placementPasses` stays 1 or 2, the
+  // bound ADR-2598 set.
+  const columns = columnReservations(found.result.result, found.result.rows);
+  const reserved = reservations.size > 0 || columns.size > 0;
+  const run = reserved
+    ? layoutInner(viewSlice, options, found.budget, reservations, columns)
+    : found.result;
   const result = run.result;
   result.widthBudget = found.budget;
-  result.placementPasses = reservations.size > 0 ? 2 : 1;
+  result.placementPasses = reserved ? 2 : 1;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
   return result;
 }
@@ -174,6 +182,163 @@ function channelReservations(
   return out;
 }
 
+/**
+ * Extra width each row needs inside it so the columns crossing it have lanes
+ * to run in (#2611), keyed by row ordinal → the id of the card the width is
+ * opened before (or {@link ROW_END_COLUMN}). The horizontal counterpart of
+ * {@link channelReservations}, measured the same way: what the routing chain
+ * was observed to carry, against what the placement actually offers.
+ *
+ * **Traffic.** Every edge the chain sent out to an *outer* gutter although its
+ * endpoints sit two or more rows apart is a column the interior could not
+ * hold. Edges into one target share a column (the P2c-B trunk rule), so they
+ * are counted once — one per target is what the reservation has to fit, and
+ * counting one per edge measured +12% canvas on dify against +4% for the
+ * shared count.
+ *
+ * **Capacity.** A row offers a lane every `TRUNK_LANE_GAP` inside each gap
+ * between two neighbouring cards, plus the room beside its outer cards, minus
+ * the lanes routes already took there. Reserving against the *free* capacity
+ * rather than the total is what keeps a view that merely re-used its existing
+ * gaps from growing at all.
+ *
+ * Empty when every row's free capacity already covers its traffic, so a view
+ * that does not need a column is byte-identical — floor-first, as ADR-2593
+ * settled and ADR-2598 kept.
+ */
+function columnReservations(
+  result: LayoutResult,
+  rows: readonly (readonly string[])[],
+): Map<number, Map<string, number>> {
+  const out = new Map<number, Map<string, number>>();
+  // Two rows have no row *between* them, so no column can be reserved.
+  if (rows.length < 3) return out;
+  const cardsOfRow = rows.map((row) =>
+    row
+      .map((id) => result.nodes.get(id))
+      .filter((n): n is LayoutNode => !!n && !n.ghost)
+      .sort((a, b) => a.x - b.x),
+  );
+  if (cardsOfRow.some((cards) => cards.length === 0)) return out;
+  const rowOf = new Map<string, number>();
+  rows.forEach((row, r) => row.forEach((id) => rowOf.set(id, r)));
+  const nodes = [...result.nodes.values()].filter((n) => !n.ghost);
+  const minLeft = Math.min(...nodes.map((n) => n.x));
+  const maxRight = Math.max(...nodes.map((n) => n.x + n.width));
+
+  // Traffic: one column per target, spanning the rows strictly between the
+  // endpoints' rows. `xs` collects where each member would have liked to run,
+  // so the reservation is opened where the routes actually want it.
+  const columns = new Map<string, { xs: number[]; lo: number; hi: number }>();
+  for (const edge of result.edges) {
+    if (edge.ghost || edge.cyclic) continue;
+    if (!isOuterGutterRoute(edge, minLeft, maxRight)) continue;
+    const from = result.nodes.get(edge.from);
+    const to = result.nodes.get(edge.to);
+    const rf = rowOf.get(edge.from);
+    const rt = rowOf.get(edge.to);
+    if (!from || !to || rf === undefined || rt === undefined) continue;
+    if (Math.abs(rf - rt) < 2) continue;
+    const ideal = (from.x + from.width / 2 + to.x + to.width / 2) / 2;
+    const lo = Math.min(rf, rt) + 1;
+    const hi = Math.max(rf, rt) - 1;
+    const column = columns.get(edge.to);
+    if (column) {
+      column.xs.push(ideal);
+      column.lo = Math.min(column.lo, lo);
+      column.hi = Math.max(column.hi, hi);
+    } else columns.set(edge.to, { xs: [ideal], lo, hi });
+  }
+  if (columns.size === 0) return out;
+
+  for (let r = 1; r < rows.length - 1; r++) {
+    const wanted = [...columns.values()].filter((c) => c.lo <= r && r <= c.hi);
+    if (wanted.length === 0) continue;
+    const cards = cardsOfRow[r];
+    // **One** column per short row, not the whole shortfall. Measured on the
+    // dify corpus (21 views, 1,102 edges): opening one column where a row is
+    // short takes 39.5% of the gutter routes into the interior, with
+    // crossings −18.7%, route length −13.1% and canvas area −9.7% against
+    // main. Opening the full shortfall takes more of them off the gutters
+    // (51.6%) and is worse everywhere it counts — crossings −13.1%, length
+    // −8.3%, area −8.6% — because every extra column widens the row it is in,
+    // and each edge that follows it crosses the runs of the rows it now
+    // passes. The first column is the one that pays: it turns "no way
+    // through this row at all" into "a way through".
+    const free = freeLanesAcrossRow(result, cards, minLeft, maxRight);
+    const shortfall = Math.min(1, wanted.length - free);
+    if (shortfall <= 0) continue;
+    // Where: the mean of what the columns crossing this row were aiming at,
+    // resolved to the card that follows it. An id, not the x itself — the
+    // second pass re-centres every row, so an x measured on the first would
+    // point somewhere else by the time it were applied (TPL-2611).
+    const target =
+      wanted.reduce((sum, c) => sum + c.xs.reduce((a, b) => a + b, 0) / c.xs.length, 0) /
+      wanted.length;
+    const after = cards.find((n) => n.x >= target);
+    const slot = out.get(r) ?? new Map<string, number>();
+    slot.set(after ? after.id : ROW_END_COLUMN, shortfall * TRUNK_LANE_GAP);
+    out.set(r, slot);
+  }
+  return out;
+}
+
+/**
+ * Whether an edge runs along one of the outer gutters — its first vertical run
+ * sits beyond the content on either side. The interior corridors and the
+ * staircase routes both keep their verticals within the content, so this is
+ * "the chain could not place this edge inside", stated on the route rather
+ * than on the number of its waypoints (TPL-1954: a shape-counting test stops
+ * seeing a shape the moment a new one is added).
+ */
+function isOuterGutterRoute(edge: LayoutEdge, minLeft: number, maxRight: number): boolean {
+  const wps = edge.waypoints ?? [];
+  const run = wps.find((w, i) => i + 1 < wps.length && Math.abs(w.x - wps[i + 1].x) < 1e-6);
+  return run !== undefined && (run.x < minLeft || run.x > maxRight);
+}
+
+/**
+ * Lanes a row can still offer a column: one every `TRUNK_LANE_GAP` inside each
+ * gap between neighbouring cards and in the room beside the outer ones, less
+ * the ones routes already run in over this row's band. Counted on the band
+ * between the channels above and below the row, because that is the stretch a
+ * column crossing the row has to be free over.
+ */
+function freeLanesAcrossRow(
+  result: LayoutResult,
+  cards: readonly LayoutNode[],
+  minLeft: number,
+  maxRight: number,
+): number {
+  const top = Math.min(...cards.map((n) => n.y));
+  const bottom = Math.max(...cards.map((n) => n.y + n.height));
+  let lanes = 0;
+  const spans: [number, number][] = [];
+  for (let i = 0; i + 1 < cards.length; i++) {
+    spans.push([cards[i].x + cards[i].width, cards[i + 1].x]);
+  }
+  spans.push([minLeft, cards[0].x], [cards[cards.length - 1].x + cards[cards.length - 1].width, maxRight]);
+  for (const [left, right] of spans) {
+    if (right - left >= TRUNK_LANE_GAP) lanes += Math.floor((right - left) / TRUNK_LANE_GAP);
+  }
+  // Verticals already crossing this row's band, wherever they run inside the
+  // content: each one is a lane a new column cannot have.
+  const taken = new Set<number>();
+  for (const edge of result.edges) {
+    if (edge.ghost || edge.cyclic) continue;
+    const pts = [edge.fromPoint, ...(edge.waypoints ?? []), edge.toPoint];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      if (Math.abs(a.x - b.x) > 1e-6) continue;
+      if (a.x < minLeft || a.x > maxRight) continue;
+      if (Math.min(a.y, b.y) > bottom || Math.max(a.y, b.y) < top) continue;
+      taken.add(Math.round(a.x / TRUNK_LANE_GAP));
+    }
+  }
+  return Math.max(0, lanes - taken.size);
+}
+
 function layoutInner(
   viewSlice: ViewSlice,
   options: LayoutOptions,
@@ -181,6 +346,8 @@ function layoutInner(
   widthBudget: number,
   /** Channel capacity to reserve above each row ordinal on a second pass (#2608). */
   extraGapBeforeRow?: ReadonlyMap<number, number>,
+  /** Column capacity to reserve inside rows on that same second pass (#2611). */
+  extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>,
 ): LayoutRun {
   const {
     ownerIndex,
@@ -445,6 +612,7 @@ function layoutInner(
     groupStartLayer,
     widthBudget,
     extraGapBeforeRow,
+    extraGapBeforeCard,
     gaps: {
       layerGap: LAYER_GAP,
       nodeGap: NODE_GAP,
@@ -476,7 +644,15 @@ function layoutInner(
 
   // Center each sub-row within the container so the grid reads as centered
   // columns.
-  centerRowsHorizontally(layoutNodes, childMaxWidth, NODE_GAP);
+  // Rows with a reserved column keep the gaps the placement opened; centring
+  // them by re-packing at `NODE_GAP` would close the very width that was
+  // reserved (#2611).
+  centerRowsHorizontally(
+    layoutNodes,
+    childMaxWidth,
+    NODE_GAP,
+    extraGapBeforeCard !== undefined && extraGapBeforeCard.size > 0,
+  );
 
   // Build containers (innermost first: focused container, then ancestors)
   const hasContainer =

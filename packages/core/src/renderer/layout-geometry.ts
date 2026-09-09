@@ -100,6 +100,8 @@ export function centerRowsHorizontally(
   nodes: Map<string, LayoutNode>,
   childMaxWidth: number,
   nodeGap: number,
+  /** SPIKE (#2611 stage 2): keep the row's own gaps (a reserved column) instead of re-packing at `nodeGap`. */
+  preserveGaps = false,
 ): void {
   const rowGroups = new Map<number, string[]>();
   for (const [id, node] of nodes) {
@@ -108,6 +110,18 @@ export function centerRowsHorizontally(
   }
   for (const ids of rowGroups.values()) {
     ids.sort((a, b) => nodes.get(a)!.x - nodes.get(b)!.x);
+    if (preserveGaps) {
+      // Slide the row as a whole so a gap the placement widened for a
+      // reserved column survives.
+      const minX = nodes.get(ids[0])!.x;
+      const maxRight = Math.max(...ids.map((id) => nodes.get(id)!.x + nodes.get(id)!.width));
+      const offset = Math.max(0, (childMaxWidth - (maxRight - minX)) / 2);
+      for (const id of ids) {
+        const n = nodes.get(id)!;
+        n.x = n.x - minX + offset;
+      }
+      continue;
+    }
     const rowWidth = ids.reduce((sum, id) => {
       const n = nodes.get(id)!;
       return sum + n.width + nodeGap;

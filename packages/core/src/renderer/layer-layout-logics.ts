@@ -45,6 +45,15 @@ export function sortByBarycenter<T extends { id: string }>(
 export const GRID_COLUMN_CAP = 5;
 
 /**
+ * The slot after a row's last card, as a key of `extraGapBeforeCard` (#2611).
+ * A column whose x falls past every card of a row still has to be reserved
+ * somewhere, and the row has no card to name for it. NUL cannot occur in a
+ * node id (the parser builds ids from identifier characters), so this can
+ * never collide with a card a model actually declares.
+ */
+export const ROW_END_COLUMN = "\u0000row-end";
+
+/**
  * Resolve how many columns a layer of `n` sibling nodes should wrap into.
  *
  * When the author pins `grid-columns: N` (a positive integer hint) on the
@@ -256,6 +265,24 @@ interface PlaceNodesInput {
    * row, leaves the default gaps, and the placement is byte-identical.
    */
   extraGapBeforeRow?: ReadonlyMap<number, number>;
+  /**
+   * Extra horizontal room to open inside a row (#2611): the capacity the
+   * columns crossing that row were measured to need beyond the gaps the cards
+   * happen to leave. The horizontal counterpart of `extraGapBeforeRow`, and
+   * keyed the same way — by the row ordinal this function reports back — but
+   * within the row it names a **card id** rather than a card ordinal, because
+   * an ordinal is the output of the ordering pass and would point at a
+   * different card as soon as `sortByBarycenter` moves one (TPL-2611). The
+   * width is inserted before that card, or at the row's end for
+   * {@link ROW_END_COLUMN}.
+   *
+   * A reservation whose card is no longer in that row is silently dropped and
+   * the row keeps its default gaps — never worse (ADR-968). Applied *after*
+   * `wrapLayerIntoRows` has decided the rows, so the reserved width cannot
+   * change which cards share a row: the rows of the pass that measured the
+   * reservation are the rows it is applied to.
+   */
+  extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>;
   measure: (nodeId: string) => { width: number; height: number };
 }
 
@@ -289,7 +316,7 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
   const widthBudget = input.widthBudget ?? input.gaps.maxLayerWidth;
   const { sortedLayers, nodesByLayer, edges, edgeDirections, layers } = input;
   const { forcedLayers, layoutHints, gridHint, groupStartLayer, gaps, measure } = input;
-  const { extraGapBeforeRow } = input;
+  const { extraGapBeforeRow, extraGapBeforeCard } = input;
   const { layerGap, nodeGap, groupTitleGap } = gaps;
 
   // Predecessors within this canvas, for the barycenter pass.
@@ -356,9 +383,11 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
       const ordinal = placedRows.length;
       rowY += extraGapBeforeRow?.get(ordinal) ?? 0;
       placedRows.push(row);
+      const columnGaps = extraGapBeforeCard?.get(ordinal);
       let xOffset = nodeGap;
       let rowMaxHeight = 0;
       for (const nid of row) {
+        xOffset += columnGaps?.get(nid) ?? 0;
         const dims = dimsById.get(nid)!;
         placements.set(nid, { x: xOffset, y: rowY, width: dims.width, height: dims.height });
         nodeCenterX.set(nid, xOffset + dims.width / 2);
@@ -366,6 +395,8 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
         childMaxWidth = Math.max(childMaxWidth, xOffset);
         rowMaxHeight = Math.max(rowMaxHeight, dims.height);
       }
+      xOffset += columnGaps?.get(ROW_END_COLUMN) ?? 0;
+      childMaxWidth = Math.max(childMaxWidth, xOffset);
       layerBottom = rowY + rowMaxHeight;
       childMaxHeight = Math.max(childMaxHeight, layerBottom + nodeGap);
       rowY = layerBottom + nodeGap; // sub-row gap within the layer
