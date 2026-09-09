@@ -41,6 +41,7 @@ function renderPreview(
     onExportSvg: vi.fn<() => void>(),
     isAllLayersOpen: false,
     onAllLayersToggle: vi.fn<() => void>(),
+    exportBundlesAvailable: true,
     previewFocused: false,
     onPreviewFocusToggle: vi.fn<() => void>(),
     isOrgTreeViewOpen: false,

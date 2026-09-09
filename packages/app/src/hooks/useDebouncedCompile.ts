@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState, type DependencyList } from "r
 import type { Diagnostic } from "@karasu-tools/core";
 import { useLatestRef } from "./useLatestRef.js";
 
-const DEBOUNCE_MS = 300;
+/**
+ * The window an input must stay unchanged for before the visible view is
+ * compiled. Exported so `useViewSvg` (#2758) settles the export builders on
+ * the same edit the view compiles: one number, one meaning, and the export
+ * can never lag or lead the diagram by a window of its own.
+ */
+export const DEBOUNCE_MS = 300;
 
 /**
  * Normalized result of one compile, produced by a view hook's `compile`

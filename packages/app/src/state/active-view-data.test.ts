@@ -63,8 +63,9 @@ function makeCtx(activeView: ActiveView): PreviewContextValue {
     onAllLayersToggle: noop,
     allLayersSvg: "<sys-all/>",
     orgAllLayersSvg: "<org-all/>",
-    drillDownSvg: "<sys-drill/>",
-    orgDrillDownSvg: "<org-drill/>",
+    getDrillDownSvg: () => "<sys-drill/>",
+    getOrgDrillDownSvg: () => "<org-drill/>",
+    exportBundlesAvailable: true,
     previewFocused: false,
     onPreviewFocusToggle: noop,
     isOrgTreeViewOpen: false,
@@ -88,7 +89,7 @@ describe("selectActiveViewData", () => {
     expect(v.viewPath).toEqual(["S"]);
     expect(v.highlightedNodeId).toBe("sysNode");
     expect(v.allLayersSvg).toBe("<sys-all/>");
-    expect(v.drillDownSvg).toBe("<sys-drill/>");
+    expect(v.getDrillDownSvg?.()).toBe("<sys-drill/>");
     expect(v.onDeployButtonClick).toBe(noop);
     expect(v.onTeamButtonClick).toBe(noop);
     expect(v.nodeDiff).toBeInstanceOf(Map);
@@ -107,7 +108,7 @@ describe("selectActiveViewData", () => {
     expect(v.breadcrumbItems).toEqual([]);
     expect(v.onBreadcrumbNavigate).toBeUndefined();
     expect(v.allLayersSvg).toBeUndefined();
-    expect(v.drillDownSvg).toBeUndefined();
+    expect(v.getDrillDownSvg).toBeUndefined();
     expect(v.highlightedNodeId).toBe("depNode");
     expect(v.onContainerClick).toBe(noop);
     // not applicable to deploy:
@@ -124,7 +125,7 @@ describe("selectActiveViewData", () => {
     expect(v.viewPath).toEqual(["O"]);
     expect(v.breadcrumbItems).toEqual([{ id: "o", label: "O" }]);
     expect(v.allLayersSvg).toBe("<org-all/>");
-    expect(v.drillDownSvg).toBe("<org-drill/>");
+    expect(v.getDrillDownSvg?.()).toBe("<org-drill/>");
     expect(v.highlightedNodeId).toBe("orgNode");
     expect(v.onOwnedServiceClick).toBe(noop);
     // not applicable to org:

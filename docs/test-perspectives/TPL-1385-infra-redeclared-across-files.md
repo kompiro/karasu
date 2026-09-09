@@ -11,6 +11,7 @@ known_consumers:
 discovered_from:
   - root_cause_file: "docs/spec/syntax.md#multi-file-import-semantics"
   - issue: "#1385"
+  - issue: "#2754"
   - root_cause_adr: "ADR-1381"
 related_to:
   - TPL-1383
@@ -43,13 +44,11 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 
 新しい infra-style ノード種別を追加する / 既存 infra の merge 規則を変更するときに確認する:
 
-- [ ] **同一インスタンス**は黙って dedup される（DAG 経由）
-- [ ] **別インスタンス・同 id** は union merge + `infra-redeclared-across-files` (info) を発火する
-- [ ] **別インスタンス・別 id** はそれぞれ別ノードとしてマージ済みに並ぶ
-- [ ] infra body のリーフ（table / queue-item / bucket）で `(id, kind)` が衝突した場合、先勝ちで後を drop し `infra-leaf-redeclared-silently` (info) を発火する — 情報量が消える事実を silent にしない
-- [ ] 本体プロパティ（label / description）の衝突は silent root-entry-wins（S3 と非対称、warning は出さない）
-- [ ] 文言は事実先行（「複数ファイルで宣言されている」「merged」）— 「smell」「anti-pattern」「Database-per-Service」のような流派用語は文言から外す
-- [ ] LSP / App / CLI の表示パイプラインに `info` が通っており、`warning` より控えめに描画される
+- [ ] **同一性の判定**: 同一インスタンス（DAG 再到達）は黙って dedup、別インスタンス・同 id だけが union merge + `infra-redeclared-across-files` (info)、別 id はそれぞれ別ノードとして並ぶ
+- [ ] **body の構成要素が漏れなく union される**: リーフ（table / queue-item / bucket）と**エッジ**（`sessions -> users`）の両方。merge 関数は写す field を数え上げる形なので、後から増えた field が黙って漏れる — リーフだけ結合してエッジを落とすと、テーブルは揃っているのに関係だけ消えた block ができる（#2754）
+- [ ] **エッジの重複判定は spec と同じ identity** で行う: `docs/spec/syntax.md` § multi-file import semantics の「same `from`, `to`, kind, label」。`kind` を落とすと重複が消えるのではなく sync/async の区別が消える（#2755 レビュー）
+- [ ] **情報が消える場所の扱い**: リーフの `(id, kind)` 衝突は先勝ち + `infra-leaf-redeclared-silently` (info) で surface し、本体プロパティ（label / description）の衝突は silent root-entry-wins（S3 と非対称、warning は出さない）
+- [ ] **診断の register と文言**: 事実先行（「複数ファイルで宣言されている」「merged」。「smell」「anti-pattern」等の流派用語を外す）で、LSP / App / CLI の表示パイプラインに `info` が通り `warning` より控えめに描画される
 
 ## 既知の対処パターン
 
