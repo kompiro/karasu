@@ -88,6 +88,7 @@ karasu の論理/物理分離では、レベルをまたぐ写像の多くが**�
 
 - `packages/core/src/view/coverage-extract.test.ts`（`tablelessEntities` / `unmappedButReferenced` の分離）
 - `packages/core/src/view/view-extract.test.ts` › store-scoped ER projection onto a database canvas (#2721) › does not project a relation to a tableless entity (TC-A4, TPL-2585) ／ puts a relation mapping into two different stores on neither canvas (TC-A5)（写らない分が写らないことの固定）
+- `packages/core/src/view/coverage-extract.test.ts` › recorded vs projected table relations (#2723)（記録側と投影側の差を数える経路。修復可能な欠落と事実としての欠落が別の一覧に出る）
 
 まだ書かれていない検証は、そのスライスと一緒に着地する（[#2585](https://github.com/kompiro/karasu/issues/2585)）。
 **未作成のファイルは本節に列挙しない** — 存在しない address を指す記録は、読み直したときに
@@ -101,4 +102,4 @@ karasu の論理/物理分離では、レベルをまたぐ写像の多くが**�
   （投影が写すもの／写さないものと、完全な ER 図ではないという明言。章末に本 TPL への `> Related TPLs:` 注釈がある）
 - [ADR-1870](../adr/1870-domain-entity-modeling.md) 決定 3（`table` 対応は optional。対応の無い
   entity は論理的には解決するがストアエッジを導出しない）
-- Design Doc `docs/design/store-scoped-er-view.md`（本 TPL を起こした設計。ADR 昇格時に削除される）
+- [ADR-2585](../adr/2585-store-scoped-er-view.md)（本 TPL を起こした設計。ストアスコープの ER ビューは任意の `table` 対応を辿るので、写らなかった分母を示す義務を負う）

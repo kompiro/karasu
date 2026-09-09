@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-04
 - **関連 Issue**: [#2635](https://github.com/kompiro/karasu/issues/2635)（slice A of [#2597](https://github.com/kompiro/karasu/issues/2597)）
+- **設計 (ADR)**: [ADR-2597](../adr/2597-team-dependencies.md)
 - **対象ファイル**:
   - `packages/core/src/parser/reference-validation.ts` (`buildTeamOwnership`)
   - `packages/core/src/view/team-dependency-extract.ts`

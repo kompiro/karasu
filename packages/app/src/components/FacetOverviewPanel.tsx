@@ -21,6 +21,22 @@ const DRAG_MARGIN = 40;
  * `facetOverview` arrives in known-facet order, so a facet's colour here and its
  * ring in the diagram can never disagree.
  */
+/**
+ * The element the panel's `left` / `top` are measured against.
+ *
+ * `offsetParent` is the honest answer in a browser, but jsdom always reports
+ * `null`, which would make the whole gesture untestable. The parent element is
+ * the same node in practice (the panel is a direct child of the positioned
+ * `.preview-column`), so it is a sound fallback rather than a test-only hack.
+ *
+ * Lives at module scope so the drag callbacks can keep an empty dependency
+ * list honestly: defined inside the component it was a new function every
+ * render, captured by `useCallback(..., [])` closures that never saw it change.
+ */
+function containingBlock(panel: HTMLElement): HTMLElement | null {
+  return (panel.offsetParent as HTMLElement | null) ?? panel.parentElement;
+}
+
 export function FacetOverviewPanel({
   facets,
   selectedFacets,
@@ -40,17 +56,6 @@ export function FacetOverviewPanel({
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const grab = useRef<{ dx: number; dy: number } | null>(null);
-
-  /**
-   * The element the panel's `left` / `top` are measured against.
-   *
-   * `offsetParent` is the honest answer in a browser, but jsdom always reports
-   * `null`, which would make the whole gesture untestable. The parent element is
-   * the same node in practice (the panel is a direct child of the positioned
-   * `.preview-column`), so it is a sound fallback rather than a test-only hack.
-   */
-  const containingBlock = (panel: HTMLElement): HTMLElement | null =>
-    (panel.offsetParent as HTMLElement | null) ?? panel.parentElement;
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Let the close button (and any future header control) keep its click.

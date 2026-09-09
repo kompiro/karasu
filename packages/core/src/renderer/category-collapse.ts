@@ -32,9 +32,16 @@ export function categoryOf(node: { kind: string; tags?: readonly string[] }): Ca
   return null;
 }
 
-/** Stable id of the stub that stands in for a collapsed category. */
-export function stubId(category: CategoryId): string {
-  return `__collapsed_${category}__`;
+/**
+ * Stable id of the stub that stands in for a collapsed category. `scope` (the
+ * enclosing system id, in the multi-system root view) namespaces the id so two
+ * systems that each fold a category yield a distinct stub per system instead of
+ * colliding on one id and overwriting each other in the layout's node map
+ * (#2646; same reason `groupStubId` takes a scope, #1884). Omitted in the
+ * single-system view, whose stub ids stay `__collapsed_<category>__`.
+ */
+export function stubId(category: CategoryId, scope?: string): string {
+  return scope !== undefined ? `__collapsed_${scope}_${category}__` : `__collapsed_${category}__`;
 }
 
 /**
@@ -44,17 +51,17 @@ export function stubId(category: CategoryId): string {
  * for `external` — and carries `CATEGORY_STUB_TAG` so the renderer knows to draw
  * the ⊕ placeholder. The count is encoded in the label (e.g. `Infra (4)`).
  */
-function stubNode(category: CategoryId, count: number): KrsNode {
+function stubNode(category: CategoryId, count: number, scope?: string): KrsNode {
   if (category === "infra") {
     return makeStubNode({
-      id: stubId(category),
+      id: stubId(category, scope),
       kind: "database",
       label: `Infra (${count})`,
       tags: [CATEGORY_STUB_TAG],
     });
   }
   return makeStubNode({
-    id: stubId(category),
+    id: stubId(category, scope),
     kind: "service",
     label: `External (${count})`,
     tags: [CATEGORY_STUB_TAG, "external"],
@@ -89,6 +96,12 @@ export function collapseCategories(
   nodes: readonly KrsNode[],
   edges: readonly KrsEdge[],
   collapsed: ReadonlySet<CategoryId> | undefined,
+  /**
+   * Namespaces the synthesized stub ids (the enclosing system id in the
+   * multi-system root view) so each system's fold gets its own stub instead of
+   * one colliding id (#2646). Omitted in the single-system view.
+   */
+  stubScope?: string,
 ): CategoryCollapseResult {
   if (!collapsed || collapsed.size === 0) {
     return { nodes: nodes as KrsNode[], edges: edges as KrsEdge[], remapEndpoint: (id) => id };
@@ -107,12 +120,12 @@ export function collapseCategories(
   }
   for (const cat of collapsed) {
     const count = counts.get(cat) ?? 0;
-    if (count > 0) kept.push(stubNode(cat, count));
+    if (count > 0) kept.push(stubNode(cat, count, stubScope));
   }
 
   const remap = (id: string): string => {
     const cat = catOfId.get(id);
-    return cat !== undefined ? stubId(cat) : id;
+    return cat !== undefined ? stubId(cat, stubScope) : id;
   };
   const outEdges: KrsEdge[] = [];
   const stubEdges = new Map<string, KrsEdge>();
@@ -152,17 +165,4 @@ export function collapseCategories(
   }
 
   return { nodes: kept, edges: outEdges, remapEndpoint: remap };
-}
-
-/**
- * Node-only category collapse for call sites that lay out a node list without
- * needing edge re-targeting (per-system layering). Delegates the folding to
- * {@link collapseCategories}. Returns the input array unchanged when nothing
- * is collapsed.
- */
-export function collapseNodeList(
-  nodes: readonly KrsNode[],
-  collapsed: ReadonlySet<CategoryId> | undefined,
-): KrsNode[] {
-  return collapseCategories(nodes, [], collapsed).nodes;
 }

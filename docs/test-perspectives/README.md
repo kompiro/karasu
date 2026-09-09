@@ -539,3 +539,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2585](TPL-2585-partial-mapping-view-states-its-denominator.md) | 任意の写像を辿って別レベルへ写す派生ビューは、写らなかった分母を数える経路を持ち、完全な図であると主張しない。写像を持たない要素が落ちるのは正しいが、落ちた分が見えないと既存図法（ER 図など）に似た見た目のまま「これで全部」と誤読される | core-concepts | docs/concepts.md (DB schema non-goal), ADR-1870, #2585 |
 | [TPL-2635](TPL-2635-ownership-resolution-declares-its-walk.md) | 所有を読む側は「宣言だけか、直近の owned 祖先まで遡るか」を宣言し、その選択をテストで固定する — どちらも正しいので、宣言していない実装は混ざっても誰も気づかない | resolver | #2635, ADR-1566 |
 | [TPL-2611](TPL-2611-feedback-key-survives-the-next-pass.md) | 後段の測定値を前段に返すとき、適用先は 2 パス目が動かさない構造キー（順序・添字・所属）で指し、座標は 2 パス目の出力として読み直す — 1 回目の座標で場所を指すと、まさにその座標を動かす 2 回目に鍵が古くなり、予約は適用に成功したまま効かない | renderer | #2611, ADR-2598 |
+| [TPL-2662](TPL-2662-themed-surface-fallback-comes-from-palette.md) | テーマ付き surface の「誰も色を指定しなかったとき」の色は palette の role から取る。指定した色は両テーマで正しいので、既定のまま使う利用者だけが壊れ、レビューもテストも素通りする | renderer | #2662, ADR-1479, ADR-2269 |

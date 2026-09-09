@@ -54,9 +54,21 @@ export function FileTree({
     setTree(nodes);
   }, [rootPath, fs]);
 
+  // Loaded inside an async continuation with a cancellation guard rather than
+  // by calling `reload()` straight from the effect body. Two things follow:
+  // the setState is no longer synchronous with the effect, and a second
+  // `rootPath` change can no longer be overtaken by the first load resolving
+  // later and writing a tree for the directory we already left.
   useEffect(() => {
-    reload();
-  }, [reload]);
+    let cancelled = false;
+    void (async () => {
+      const nodes = await loadDir(rootPath, fs);
+      if (!cancelled) setTree(nodes);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rootPath, fs]);
 
   // Subscribe to fs change events so writes that bypass `useFileTreeOps`
   // (GUI style bootstrap, AI translate output, snapshot writes, …) still

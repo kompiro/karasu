@@ -44,6 +44,8 @@ interface UseAppViewsArgs {
   dispatch: Dispatch<AppAction>;
   isOrgTreeViewOpen: boolean;
   setIsOrgTreeViewOpen: Dispatch<SetStateAction<boolean>>;
+  /** Org tab's dependency mode (#2636); gates building the derived graph at all. */
+  isTeamDependenciesOpen: boolean;
   isEntityViewOpen: boolean;
   setIsEntityViewOpen: Dispatch<SetStateAction<boolean>>;
   /**
@@ -142,6 +144,9 @@ export interface OrgViewBundle {
   toggleTeamExpand: (teamId: string) => void;
   orgTreeSvg: string;
   orgTreeExportSvg: string;
+  teamDependencySvg: string;
+  /** Whether the model declares any team at all — gates the org tab's third mode. */
+  hasTeamDependencyView: boolean;
 }
 
 interface UseAppViewsResult {
@@ -185,6 +190,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
+    isTeamDependenciesOpen,
     isEntityViewOpen,
     setIsEntityViewOpen,
     compareSource = null,
@@ -282,6 +288,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,
+    teamDependencySvg,
   } = useOrgView(
     effEntryPath,
     effFs,
@@ -290,6 +297,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     effCompareEntryPath,
     effCompareFs,
     theme,
+    isTeamDependenciesOpen,
   );
 
   // One traversal builds both team-path maps: `teamPathIndex` maps a team to
@@ -410,6 +418,11 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       toggleTeamExpand,
       orgTreeSvg,
       orgTreeExportSvg,
+      teamDependencySvg,
+      // Read off the org blocks, not the derived report: whether to *offer* the
+      // mode is "does this model declare an organization", and asking the
+      // report would materialize the very derivation the gate exists to avoid.
+      hasTeamDependencyView: organizations.length > 0,
     },
     teamPathIndex,
     orgPathIndex,

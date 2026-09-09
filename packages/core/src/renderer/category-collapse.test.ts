@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { compile } from "../index.js";
-import {
-  CATEGORY_STUB_TAG,
-  categoryOf,
-  collapseCategories,
-  collapseNodeList,
-  stubId,
-} from "./category-collapse.js";
+import { CATEGORY_STUB_TAG, categoryOf, collapseCategories, stubId } from "./category-collapse.js";
 
-// categoryOf / collapseNodeList only read `kind` and `tags`.
+// categoryOf and the node fold below only read `kind` and `tags`.
 function node(kind: string, tags: string[] = []): KrsNode {
   return { kind, tags } as unknown as KrsNode;
 }
@@ -38,7 +32,9 @@ describe("categoryOf", () => {
   });
 });
 
-describe("collapseNodeList", () => {
+// The node fold on its own (no edges to re-target) — the shape every layout
+// path asks for before it lays a system's children out.
+describe("collapseCategories node folding", () => {
   const nodes = [
     node("service"),
     node("service", ["external"]),
@@ -47,12 +43,12 @@ describe("collapseNodeList", () => {
   ];
 
   it("returns the same array when nothing is collapsed", () => {
-    expect(collapseNodeList(nodes, undefined)).toBe(nodes);
-    expect(collapseNodeList(nodes, new Set())).toBe(nodes);
+    expect(collapseCategories(nodes, [], undefined).nodes).toBe(nodes);
+    expect(collapseCategories(nodes, [], new Set()).nodes).toBe(nodes);
   });
 
   it("replaces a collapsed category's nodes with one counted stub", () => {
-    const out = collapseNodeList(nodes, new Set(["external"]));
+    const out = collapseCategories(nodes, [], new Set(["external"])).nodes;
     expect(
       out.filter((n) => n.tags.includes("external") && !n.tags.includes(CATEGORY_STUB_TAG)),
     ).toHaveLength(0);
@@ -67,7 +63,7 @@ describe("collapseNodeList", () => {
   });
 
   it("collapses multiple categories independently", () => {
-    const out = collapseNodeList(nodes, new Set(["external", "infra"]));
+    const out = collapseCategories(nodes, [], new Set(["external", "infra"])).nodes;
     expect(out.find((n) => n.id === stubId("external"))?.label).toBe("External (2)");
     expect(out.find((n) => n.id === stubId("infra"))?.label).toBe("Infra (1)");
     expect(out.some((n) => n.kind === "database" && !n.tags.includes(CATEGORY_STUB_TAG))).toBe(

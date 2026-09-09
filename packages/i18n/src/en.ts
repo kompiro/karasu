@@ -167,6 +167,9 @@ export const en: Translations = {
   "emptyState.system.noNodes": "No nodes to render",
   "emptyState.org.placeholder": "No org diagram",
   "emptyState.system.noDiagram": "No diagram",
+  "emptyState.teamDependency.none": "No team dependencies derived",
+  "emptyState.teamDependency.unowned": "{count} endpoint(s) owned by no team",
+  "emptyState.teamDependency.overlap": "{count} node(s) owned across a containment boundary",
 
   // Built-in annotation badge labels (must match reference-data en labels)
   "badge.deprecated": "Deprecated",
@@ -213,6 +216,8 @@ export const en: Translations = {
   // View-state toggles and window-opening controls
   "preview.orgTree.label": "Tree View",
   "preview.orgTree.ariaLabel": "Toggle org tree view",
+  "preview.teamDependencies.label": "Dependencies",
+  "preview.teamDependencies.ariaLabel": "Toggle derived team dependencies",
   "preview.entities.label": "Entities",
   "preview.entities.ariaLabel": "Toggle entity view",
   "preview.allLayers.label": "Show All Layers",

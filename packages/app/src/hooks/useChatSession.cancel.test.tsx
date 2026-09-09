@@ -46,7 +46,6 @@ function setup() {
         apiKey: "test-key",
         onNavigateViewPath,
         onEditorChange,
-        sessionResetKey: "project-a",
       }),
     { wrapper },
   );

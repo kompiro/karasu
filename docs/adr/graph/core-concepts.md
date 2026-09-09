@@ -28,10 +28,13 @@ flowchart TD
     ADR_2161["ADR-2161<br/>boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974..."]
     ADR_2408["ADR-2408<br/>team は infra ブロックを owns できる（カードのチップは論理 kind のみ）"]
     ADR_2522["ADR-2522<br/>語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の r..."]
+    ADR_2585["ADR-2585<br/>ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどう..."]
+    ADR_2597["ADR-2597<br/>チーム間の依存を `owns` × 論理エッジから導出する"]
     ADR_9002["ADR-9002<br/>ツール名「karasu」の採用"]
     ADR_9003["ADR-9003<br/>論理構造と物理構造の分離"]
   end
   ADR_237["ADR-237<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
+  ADR_644["ADR-644<br/>[cli] `translate --from db` のデフォルトを集約ルート単位のテーブル集約に変更する"]
   ADR_1314["ADR-1314<br/>[build] .krs / .krs.style を v1.0 として凍結する（ハイブリッド版管理）"]
   ADR_1580["ADR-1580<br/>[chat-ai] 組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
   ADR_1819["ADR-1819<br/>[resolver] infra leaf のドメイン所有を entity から導出し cross-domain ス..."]
@@ -47,6 +50,8 @@ flowchart TD
   ADR_1583 --> ADR_1566
   ADR_2065 --> ADR_1314
   ADR_2065 --> ADR_1820
+  ADR_2585 --> ADR_1870
+  ADR_2585 --> ADR_644
   ADR_237 --> ADR_9003
   ADR_1580 --> ADR_1583
   ADR_1819 --> ADR_1870
@@ -85,9 +90,12 @@ flowchart TD
   class ADR_2161 accepted
   class ADR_2408 accepted
   class ADR_2522 accepted
+  class ADR_2585 accepted
+  class ADR_2597 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted
   class ADR_237 ghost
+  class ADR_644 ghost
   class ADR_1314 ghost
   class ADR_1580 ghost
   class ADR_1819 ghost

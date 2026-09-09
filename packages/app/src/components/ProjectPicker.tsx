@@ -36,12 +36,18 @@ export function ProjectPicker({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset the search box and selection each time the picker opens.
-  useEffect(() => {
-    if (!open) return;
-    setQuery("");
-    setSelectedIndex(0);
-  }, [open]);
+  // Reset the search box and selection each time the picker opens. Adjusted
+  // during render rather than in an effect: this is derived state following a
+  // prop, so an effect would commit the stale query first and re-render, and
+  // the user would see the previous search for a frame.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setQuery("");
+      setSelectedIndex(0);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

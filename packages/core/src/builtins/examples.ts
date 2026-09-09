@@ -2137,6 +2137,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
 //   team-ownership.krs        organization / team / owns — the Group by: team axis
+//   team-dependencies.krs     derived team dependencies — cross-team / nested / unowned / structural overlap
 //   boundary-clusters.krs     boundary / contains — the Group by: boundary axis (experimental)
 //   scoped-boundary.krs       boundary declared inside a node block — frames its own canvas (experimental)
 //   boundary-multi-membership.krs  a node listed in two boundaries — both frames enclose it (experimental)
@@ -2811,6 +2812,114 @@ organization MarketplaceOrg {
     label "Platform"
     owns Gateway
     owns Notifications
+  }
+}
+`,
+    },
+    {
+      path: "team-dependencies.krs",
+      content: `// feature-samples/team-dependencies.krs
+// Demonstrates: the team dependencies karasu *derives* from \`owns\` crossed with
+// the logical edges (#2597). Nothing below declares a team-to-team relation —
+// there is no syntax for one. Every signal here falls out of ownership and the
+// edges that were already written.
+//
+// Four signals, all present in this file:
+//
+//   cross-team          Checkout Team -> Payments Team (sync, 2 inducing edges)
+//                       Checkout Team --> Fulfillment Team (async, kept separate:
+//                       an async dependency is deliberate loose coupling)
+//   nested              Payments Team -> PCI Working Group — real, but the two
+//                       already share a reporting line, so it is not a path
+//                       *across* the org
+//   unowned endpoint    Order DB belongs to no team, so the derivation says how
+//                       much of the model it could not cover
+//   structural overlap  Pricing is owned by the Payments Team but sits inside
+//                       the Checkout Team's service; Settlement likewise sits
+//                       inside its parent team's service. No edge crosses those
+//                       boundaries, yet both pairs must agree on the structure
+//
+// Read it two ways:
+//   - Org tab -> Dependencies draws the graph (solid sync, dashed async, muted
+//     nested). Containment has no arrow, so overlap appears there as a count.
+//   - \`karasu team-dependencies team-dependencies.krs\` prints the full table,
+//     including which node sits inside which.
+
+system Shop {
+  label "Shop"
+
+  service Checkout {
+    label "Checkout"
+
+    domain Cart {
+      label "Cart"
+
+      Cart -> Authorization "Authorize card"
+      Cart --> Picking "Reserve stock"
+      Cart -> Pricing "Quote line items"
+    }
+
+    // Inside Checkout's service, owned by the Payments Team below — this is
+    // the structural overlap. Pricing rules follow the money, the surface it
+    // renders on follows the cart.
+    domain Pricing {
+      label "Pricing"
+    }
+  }
+
+  service Payments {
+    label "Payments"
+
+    domain Authorization {
+      label "Authorization"
+
+      Authorization -> Settlement "Post entry"
+    }
+
+    domain Settlement {
+      label "Settlement"
+    }
+  }
+
+  service Fulfillment {
+    label "Fulfillment"
+
+    domain Picking {
+      label "Picking"
+    }
+  }
+
+  // No team owns this, so every edge reaching it is reported as an unowned
+  // endpoint rather than silently dropped.
+  database OrderDB {
+    label "Order DB"
+  }
+
+  Checkout -> OrderDB "Persist orders"
+}
+
+organization ShopOrg {
+  label "Shop Engineering"
+
+  team "checkout" {
+    label "Checkout Team"
+    owns Checkout
+  }
+
+  team "payments" {
+    label "Payments Team"
+    owns Payments
+    owns Pricing
+
+    team "pci" {
+      label "PCI Working Group"
+      owns Settlement
+    }
+  }
+
+  team "fulfillment" {
+    label "Fulfillment Team"
+    owns Fulfillment
   }
 }
 `,

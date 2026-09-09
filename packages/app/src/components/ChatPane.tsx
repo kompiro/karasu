@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 interface ChatPaneProps {
   scopeLabel: string;
   viewPath: string[];
-  sessionResetKey: string | null;
   fileContent: string;
   currentFilePath: string | null;
   resolvedSystems: SystemNode[];
@@ -25,7 +24,6 @@ interface ChatPaneProps {
 export function ChatPane({
   scopeLabel,
   viewPath,
-  sessionResetKey,
   fileContent,
   currentFilePath,
   resolvedSystems,
@@ -58,13 +56,15 @@ export function ChatPane({
     apiKey,
     onNavigateViewPath,
     onEditorChange,
-    sessionResetKey,
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
 
   useEffect(() => {
+    // Reads `messages.length` so the dependency is one the body actually uses:
+    // there is nothing to scroll to on an empty transcript.
+    if (messages.length === 0) return;
     messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
 

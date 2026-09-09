@@ -54,7 +54,6 @@ function makeMockSession(overrides?: object) {
 const defaultProps = {
   scopeLabel: "Root",
   viewPath: [] as string[],
-  sessionResetKey: null,
   fileContent: "",
   currentFilePath: null,
   resolvedSystems: [],

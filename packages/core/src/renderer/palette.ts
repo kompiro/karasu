@@ -42,9 +42,17 @@ export interface DiagramPalette {
   legendMuted: string;
   /** Card / connector border (drill-down back-button + active tab, org-tree member stroke). */
   border: string;
-  /** Muted border / disabled state (drill-down disabled tab text, org-tree team stroke). */
+  /**
+   * Muted border / disabled state (drill-down disabled tab text, org-tree team
+   * stroke, and the outline of a group frame no style sheet has painted).
+   */
   mutedBorder: string;
-  /** Primary chrome text (drill-down tab / back-button text, breadcrumb current crumb, org-tree text). */
+  /**
+   * Primary chrome text (drill-down tab / back-button text, breadcrumb current
+   * crumb, org-tree text, and the title of a group frame no style sheet has
+   * painted). The frame title is muted by its own title opacity rather than by
+   * a dimmer colour, which is what keeps it legible in both themes (#2662).
+   */
   textPrimary: string;
   /** Muted text (diagram title, info button, drill-down tab text, all-layers section label). */
   textMuted: string;

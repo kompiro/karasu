@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { SwitchProjectCommand } from "./components/SwitchProjectCommand.js";
 import { FileTree } from "./components/FileTree.js";
@@ -33,8 +33,11 @@ const ACTION_ERROR_DISMISS_MS = 6000;
 export function ProjectModeApp() {
   const { state, dispatch, fs } = useAppContext();
   const { t } = useTranslation();
-  const pmRef = useRef(new ProjectManager(fs));
-  const pm = pmRef.current;
+  // `useState` with an initializer, not `useRef`: the ref form both built a
+  // throwaway ProjectManager on every render and read `.current` while
+  // rendering, which `react(refs)` forbids. The initializer runs once and
+  // the value is stable for the life of the component.
+  const [pm] = useState(() => new ProjectManager(fs));
 
   const {
     currentProject,

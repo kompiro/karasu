@@ -9,7 +9,6 @@ scope:
   packages: [core, app]
 assumptions:
   - "file: packages/core/src/renderer/category-collapse.ts"
-  - "symbol: packages/core/src/renderer/category-collapse.ts :: collapseNodeList"
   - "symbol: packages/core/src/renderer/category-collapse.ts :: categoryOf"
   - "symbol: packages/core/src/renderer/svg-renderer.ts :: renderCategoryControls"
   - "file: packages/app/src/hooks/useSystemView.ts"

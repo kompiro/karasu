@@ -90,6 +90,7 @@ export {
   type TeamDependencyEdge,
   type TeamDependencyRelation,
   type TeamDependencyReport,
+  type StructuralOverlap,
   type UnownedEndpoint,
 } from "./view/team-dependency-extract.js";
 export {
@@ -97,12 +98,17 @@ export {
   formatTeamDependenciesAsCsv,
 } from "./view/team-dependency-format.js";
 export {
+  renderTeamDependencyGraph,
+  type TeamDependencyGraphOptions,
+} from "./renderer/team-dependency-graph.js";
+export {
   extractCoverage,
   type CoverageReport,
   type DomainCoverage,
   type CoverageOptions,
   type PhysicalCoverage,
   type InfraCoverage,
+  type LeafRelation,
   type TablelessEntity,
 } from "./view/coverage-extract.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";

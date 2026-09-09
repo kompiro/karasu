@@ -432,7 +432,12 @@ class Printer {
     // Use implicit-source shorthand for service/domain blocks (from is always parentId)
     const from =
       parentKind === "service" || parentKind === "domain" ? "" : `${quoteId(edge.from)} `;
-    const head = `${from}${arrow} ${quoteId(edge.to)}`;
+    // A qualified target prints segment by segment, like every other reference
+    // site, so the author's `Shop.Checkout.Payment` does not come back as one
+    // quoted literal (#2650). Only `toPath` can say where the segments were:
+    // `to` has already joined them, and a segment may hold a dot of its own.
+    const to = edge.toPath ? edge.toPath.map(quoteId).join(".") : quoteId(edge.to);
+    const head = `${from}${arrow} ${to}`;
 
     const hasBlockOnlyProperty =
       edge.description !== undefined ||
