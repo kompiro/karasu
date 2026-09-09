@@ -1099,7 +1099,10 @@ describe("layer-spanning edges reach the interior (#2611)", () => {
    * ran out to a gutter with free columns sitting unused between the cards.
    */
   const CROWDED = (() => {
-    const services = Array.from({ length: 8 }, (_s, i) => `  service S${i} { label "Service ${i}" }`);
+    const services = Array.from(
+      { length: 8 },
+      (_s, i) => `  service S${i} { label "Service ${i}" }`,
+    );
     const mid = Array.from({ length: 5 }, (_m, i) => `  service M${i} { label "Mid ${i}" }`);
     const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
     const edges = [

@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-09-09
 - **関連 Issue**: [#2611](https://github.com/kompiro/karasu/issues/2611)（slice D。親: [#2598](https://github.com/kompiro/karasu/issues/2598)）
-- **設計**: `docs/design/layer-spanning-edge-columns.md`（実装完了後に ADR-2611 へ昇格予定）
+- **設計**: [#2611](https://github.com/kompiro/karasu/issues/2611) の Design Doc（実装完了後に ADR-2611 へ昇格し、本欄をその ADR に差し替える）
 - **Related TPLs**: [TPL-2611](../test-perspectives/TPL-2611-feedback-key-survives-the-next-pass.md)（フィードバックの鍵は次のパスで動かない構造キーで持つ）, [TPL-1954](../test-perspectives/TPL-1954-new-route-shape-participates-in-overlap-passes.md)（新しい経路形が重なり回避に参加する）, [TPL-1927](../test-perspectives/TPL-1927-routing-measures-crossings-and-penetrations.md)（交差と貫通を両方測る）, [TPL-2598](../test-perspectives/TPL-2598-fence-corpus-must-reach-the-limit.md)（柵の corpus は限界に達していること）, [TPL-219](../test-perspectives/TPL-219-parallel-function-parity.md)（同じ規則を 2 箇所に書き分けない）
 - **対象ファイル**:
   - `packages/core/src/renderer/edge-routing-groups.ts`（回廊への進入 / staircase / 資源キーの claim / fan-out の裁定）

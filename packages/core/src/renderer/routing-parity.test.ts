@@ -701,10 +701,7 @@ describe("exhausted interior corridors — column fence (#2611, TPL-2598)", () =
   // which is why their overlap fence stayed green while a 10k-line model
   // showed thousands of collinear pairs (TPL-2598: a fence on a finite
   // resource needs an input that saturates it).
-  const services = Array.from(
-    { length: 8 },
-    (_s, i) => `  service S${i} { label "Service ${i}" }`,
-  );
+  const services = Array.from({ length: 8 }, (_s, i) => `  service S${i} { label "Service ${i}" }`);
   const mid = Array.from({ length: 5 }, (_m, i) => `  service M${i} { label "Mid ${i}" }`);
   const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
   const edges = [

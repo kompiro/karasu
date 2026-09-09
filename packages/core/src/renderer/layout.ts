@@ -317,7 +317,10 @@ function freeLanesAcrossRow(
   for (let i = 0; i + 1 < cards.length; i++) {
     spans.push([cards[i].x + cards[i].width, cards[i + 1].x]);
   }
-  spans.push([minLeft, cards[0].x], [cards[cards.length - 1].x + cards[cards.length - 1].width, maxRight]);
+  spans.push(
+    [minLeft, cards[0].x],
+    [cards[cards.length - 1].x + cards[cards.length - 1].width, maxRight],
+  );
   for (const [left, right] of spans) {
     if (right - left >= TRUNK_LANE_GAP) lanes += Math.floor((right - left) / TRUNK_LANE_GAP);
   }

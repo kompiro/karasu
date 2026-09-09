@@ -1469,7 +1469,6 @@ export function fanOutGutterPorts(
   }
 }
 
-
 /**
  * The axis-aligned segments every edge currently occupies, bucketed by their
  * fixed coordinate (#2611).
