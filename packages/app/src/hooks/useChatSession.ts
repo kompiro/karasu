@@ -43,7 +43,6 @@ interface UseChatSessionParams {
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
   onEditorChange: (value: string) => void;
-  sessionResetKey: string | null;
 }
 
 // Controls how each call site handles tool_use blocks in the response, so that
@@ -143,7 +142,6 @@ export function useChatSession({
   apiKey,
   onNavigateViewPath,
   onEditorChange,
-  sessionResetKey,
 }: UseChatSessionParams) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<SessionPhase>({ kind: "idle" });
@@ -201,10 +199,6 @@ export function useChatSession({
     setMessages([]);
     setPhase({ kind: "idle" });
   }, []);
-
-  useEffect(() => {
-    resetSession();
-  }, [sessionResetKey, resetSession]);
 
   // Abort any in-flight request when the hook unmounts — ChatPane is unmounted
   // when the user switches to the Editor tab, and without this the request runs

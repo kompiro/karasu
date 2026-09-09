@@ -1,9 +1,48 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
-import { renderHook, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { renderHook, act, cleanup } from "@testing-library/react";
+import {
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
+  buildAllViewsSvg,
+  buildDrillDownSvg,
+  buildDrillDownSvgOrg,
+  renderEntityView,
+} from "@karasu-tools/core";
 import { useViewSvg } from "./useViewSvg.js";
+import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
+
+// Wrap the model-walking builders in spies so the debounce tests (#2758, at
+// the bottom of this file) can assert how often, and with which content, they
+// run. `vi.fn(original)` keeps the real implementation, so every other test
+// here sees exactly the output it saw before.
+vi.mock("@karasu-tools/core", async (importOriginal) => {
+  const core = await importOriginal<typeof import("@karasu-tools/core")>();
+  return {
+    ...core,
+    buildDrillDownSvg: vi.fn<typeof core.buildDrillDownSvg>(core.buildDrillDownSvg),
+    buildDrillDownSvgOrg: vi.fn<typeof core.buildDrillDownSvgOrg>(core.buildDrillDownSvgOrg),
+    buildAllLayersSvg: vi.fn<typeof core.buildAllLayersSvg>(core.buildAllLayersSvg),
+    buildAllLayersSvgOrg: vi.fn<typeof core.buildAllLayersSvgOrg>(core.buildAllLayersSvgOrg),
+    buildAllViewsSvg: vi.fn<typeof core.buildAllViewsSvg>(core.buildAllViewsSvg),
+    renderEntityView: vi.fn<typeof core.renderEntityView>(core.renderEntityView),
+  };
+});
 
 afterEach(cleanup);
+
+/**
+ * `useViewSvg` with the All-layers panel open, so `allLayersSvg` is built:
+ * every bundle is on demand otherwise (#2758), and these suites read the
+ * bundles as values.
+ */
+function useViewSvgOpen(...args: Parameters<typeof useViewSvg>) {
+  const [content, mode, style, theme, groupBy, viewPath, facets] = args;
+  return useViewSvg(content, mode, style, theme, groupBy, viewPath, facets, {
+    allLayersOpen: true,
+  });
+}
 
 // Source must have at least one child node so the All Layers SVG renders
 // something. `displayMode: "icon"` switches `service` (and other kinds) to
@@ -21,8 +60,8 @@ const SOURCE = `system EC {
 
 describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
   it("returns an All Layers SVG that differs between icon and shape modes (regression for #183)", () => {
-    const { result: iconResult } = renderHook(() => useViewSvg(SOURCE, "icon"));
-    const { result: shapeResult } = renderHook(() => useViewSvg(SOURCE, "shape"));
+    const { result: iconResult } = renderHook(() => useViewSvgOpen(SOURCE, "icon"));
+    const { result: shapeResult } = renderHook(() => useViewSvgOpen(SOURCE, "shape"));
 
     expect(iconResult.current.allLayersSvg).toBeDefined();
     expect(shapeResult.current.allLayersSvg).toBeDefined();
@@ -36,8 +75,8 @@ describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
     // default service node (no custom icon registered) this surfaces as
     // two consecutive identical `<rect>` elements inside the node group —
     // a marker that does not appear in shape mode.
-    const { result: icon } = renderHook(() => useViewSvg(SOURCE, "icon"));
-    const { result: shape } = renderHook(() => useViewSvg(SOURCE, "shape"));
+    const { result: icon } = renderHook(() => useViewSvgOpen(SOURCE, "icon"));
+    const { result: shape } = renderHook(() => useViewSvgOpen(SOURCE, "shape"));
 
     const iconSvg = icon.current.allLayersSvg!;
     const shapeSvg = shape.current.allLayersSvg!;
@@ -51,7 +90,7 @@ describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
 
   it("reactively re-renders All Layers SVG when displayMode flips", () => {
     const { result, rerender } = renderHook(
-      ({ mode }: { mode: "icon" | "shape" }) => useViewSvg(SOURCE, mode),
+      ({ mode }: { mode: "icon" | "shape" }) => useViewSvgOpen(SOURCE, mode),
       { initialProps: { mode: "shape" as "icon" | "shape" } },
     );
 
@@ -70,12 +109,12 @@ describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
     // useViewSvg covers drill-down, all-layers, and org variants. Cover
     // both system surfaces here so a future refactor that drops
     // displayMode from one but not the other is caught.
-    const { result: icon } = renderHook(() => useViewSvg(SOURCE, "icon"));
-    const { result: shape } = renderHook(() => useViewSvg(SOURCE, "shape"));
+    const { result: icon } = renderHook(() => useViewSvgOpen(SOURCE, "icon"));
+    const { result: shape } = renderHook(() => useViewSvgOpen(SOURCE, "shape"));
 
-    expect(icon.current.drillDownSvg).toBeDefined();
-    expect(shape.current.drillDownSvg).toBeDefined();
-    expect(icon.current.drillDownSvg).not.toBe(shape.current.drillDownSvg);
+    expect(icon.current.getDrillDownSvg()).toBeDefined();
+    expect(shape.current.getDrillDownSvg()).toBeDefined();
+    expect(icon.current.getDrillDownSvg()).not.toBe(shape.current.getDrillDownSvg());
   });
 });
 
@@ -94,25 +133,25 @@ organization Org {
 
 describe("useViewSvg > groupBy threading to export SVGs (#1879)", () => {
   it("threads groupBy: team into the All Layers / drill-down / all-views SVGs", () => {
-    const { result: plain } = renderHook(() => useViewSvg(GROUPED_SOURCE, "shape"));
+    const { result: plain } = renderHook(() => useViewSvgOpen(GROUPED_SOURCE, "shape"));
     const { result: grouped } = renderHook(() =>
-      useViewSvg(GROUPED_SOURCE, "shape", undefined, undefined, "team"),
+      useViewSvgOpen(GROUPED_SOURCE, "shape", undefined, undefined, "team"),
     );
 
     // Without groupBy the exports carry no team frames…
     expect(plain.current.allLayersSvg).not.toContain('data-group="true"');
-    expect(plain.current.drillDownSvg).not.toContain('data-group="true"');
-    expect(plain.current.allViewsSvg).not.toContain('data-group="true"');
+    expect(plain.current.getDrillDownSvg()).not.toContain('data-group="true"');
+    expect(plain.current.getAllViewsSvg()).not.toContain('data-group="true"');
 
     // …and with groupBy: team every system-view export surface gains them.
     expect(grouped.current.allLayersSvg).toContain('data-group="true"');
-    expect(grouped.current.drillDownSvg).toContain('data-group="true"');
-    expect(grouped.current.allViewsSvg).toContain('data-group="true"');
+    expect(grouped.current.getDrillDownSvg()).toContain('data-group="true"');
+    expect(grouped.current.getAllViewsSvg()).toContain('data-group="true"');
   });
 
   it("reactively re-renders the export SVGs when groupBy flips", () => {
     const { result, rerender } = renderHook(
-      ({ g }: { g?: "team" }) => useViewSvg(GROUPED_SOURCE, "shape", undefined, undefined, g),
+      ({ g }: { g?: "team" }) => useViewSvgOpen(GROUPED_SOURCE, "shape", undefined, undefined, g),
       { initialProps: { g: undefined as "team" | undefined } },
     );
 
@@ -134,15 +173,15 @@ boundary money {
   label "Money"
   contains Billing
 }`;
-    const { result: plain } = renderHook(() => useViewSvg(BOUNDARY_SOURCE, "shape"));
+    const { result: plain } = renderHook(() => useViewSvgOpen(BOUNDARY_SOURCE, "shape"));
     const { result: grouped } = renderHook(() =>
-      useViewSvg(BOUNDARY_SOURCE, "shape", undefined, undefined, "boundary"),
+      useViewSvgOpen(BOUNDARY_SOURCE, "shape", undefined, undefined, "boundary"),
     );
 
     expect(plain.current.allLayersSvg).not.toContain('data-group="true"');
     expect(grouped.current.allLayersSvg).toContain('data-container-id="__group_money__"');
-    expect(grouped.current.drillDownSvg).toContain('data-container-id="__group_money__"');
-    expect(grouped.current.allViewsSvg).toContain('data-container-id="__group_money__"');
+    expect(grouped.current.getDrillDownSvg()).toContain('data-container-id="__group_money__"');
+    expect(grouped.current.getAllViewsSvg()).toContain('data-container-id="__group_money__"');
   });
 
   it("threads groupBy into the live entity view of the drilled domain (#1983)", () => {
@@ -163,10 +202,10 @@ boundary cluster {
 }`;
     const path = ["Shop", "Orders", "OrderDomain"];
     const { result: plain } = renderHook(() =>
-      useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, undefined, path),
+      useViewSvgOpen(ENTITY_SOURCE, "shape", undefined, undefined, undefined, path),
     );
     const { result: grouped } = renderHook(() =>
-      useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, "boundary", path),
+      useViewSvgOpen(ENTITY_SOURCE, "shape", undefined, undefined, "boundary", path),
     );
 
     expect(plain.current.hasEntityView).toBe(true);
@@ -197,7 +236,7 @@ boundary cluster {
     const path = ["Shop", "Orders", "OrderDomain"];
     const { result, rerender } = renderHook(
       ({ g }: { g?: "boundary" }) =>
-        useViewSvg(ENTITY_SOURCE, "shape", undefined, undefined, g, path),
+        useViewSvgOpen(ENTITY_SOURCE, "shape", undefined, undefined, g, path),
       { initialProps: { g: undefined as "boundary" | undefined } },
     );
 
@@ -206,5 +245,201 @@ boundary cluster {
 
     rerender({ g: "boundary" });
     expect(result.current.entityViewSvg).toContain('data-container-id="__group_cluster__"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #2758: the export bundles are built on demand, from settled content
+// ---------------------------------------------------------------------------
+
+// Edits of one model that differ only in a label, so each builds a different
+// SVG and "which edit was built" is visible in the output.
+const EDIT_A = `system EC {
+  service Frontend { label "Frontend A" }
+}`;
+const EDIT_B = EDIT_A.replace("Frontend A", "Frontend B");
+const EDIT_C = EDIT_A.replace("Frontend A", "Frontend C");
+
+/** The five whole-model export builders: drill-down, all-layers, org all-layers, org drill-down, all-views. */
+const EXPORT_BUILDERS = [
+  buildDrillDownSvg,
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
+  buildDrillDownSvgOrg,
+  buildAllViewsSvg,
+] as const;
+
+/** Call count of each export builder since the last `vi.clearAllMocks()`. */
+function exportBuildCounts(): number[] {
+  return EXPORT_BUILDERS.map((builder) => vi.mocked(builder).mock.calls.length);
+}
+
+/** Every `.krs` source any export builder was handed since the last clear. */
+function builtSources(): string[] {
+  return EXPORT_BUILDERS.flatMap((builder) => vi.mocked(builder).mock.calls.map((call) => call[0]));
+}
+
+/**
+ * A fresh `buildAllViewsSvg` of `source`, with the labels the hook itself
+ * passes (the i18n hooks fall back to English outside a provider, exactly as
+ * `useViewSvg` does in these tests). The expectation every export is
+ * compared against.
+ */
+function freshAllViewsSvg(source: string, displayMode: "icon" | "shape" = "shape"): string {
+  const { result: empty } = renderHook(() => useEmptyStateLabels());
+  const { result: badge } = renderHook(() => useAnnotationBadgeLabels());
+  return buildAllViewsSvg(source, undefined, displayMode, empty.current, undefined, badge.current)
+    .svg;
+}
+
+describe("useViewSvg > export bundles are built on demand, from settled content (#2758)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it("builds nothing on mount and nothing while typing: a getter is the only trigger (TC-A)", () => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    const { result, rerender } = renderHook(
+      ({ content }: { content: string }) => useViewSvg(content, "shape"),
+      { initialProps: { content: EDIT_A } },
+    );
+    expect(result.current.exportAvailable).toBe(true);
+    expect(result.current.allLayersSvg).toBeUndefined(); // the panel is closed
+    expect(exportBuildCounts()).toEqual([0, 0, 0, 0, 0]);
+
+    const edits = Array.from({ length: 8 }, (_, i) =>
+      EDIT_A.replace("Frontend A", `Frontend ${i}`),
+    );
+    for (const content of edits) {
+      rerender({ content });
+      act(() => vi.advanceTimersByTime(50)); // 50 ms apart: every edit lands inside the window
+    }
+    act(() => vi.advanceTimersByTime(300)); // and the window settles
+    expect(exportBuildCounts()).toEqual([0, 0, 0, 0, 0]);
+  });
+
+  it("a getter builds its own bundle once and hands the same result back afterwards (TC-B)", () => {
+    const fromA = freshAllViewsSvg(EDIT_A);
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    const { result } = renderHook(() => useViewSvg(EDIT_A, "shape"));
+
+    expect(result.current.getAllViewsSvg()).toBe(fromA);
+    expect(result.current.getAllViewsSvg()).toBe(fromA);
+    // Only the bundle that was asked for, once.
+    expect(exportBuildCounts()).toEqual([0, 0, 0, 0, 1]);
+    expect(result.current.getDrillDownSvg()).toBeDefined();
+    expect(result.current.getOrgDrillDownSvg()).toBeDefined();
+    expect(exportBuildCounts()).toEqual([1, 0, 0, 1, 1]);
+  });
+
+  it("serves the settled edit: the previous export while typing, the last edit after the window, never the intermediate one (TC-C)", () => {
+    const fromA = freshAllViewsSvg(EDIT_A);
+    const fromB = freshAllViewsSvg(EDIT_B);
+    const fromC = freshAllViewsSvg(EDIT_C);
+    expect(new Set([fromA, fromB, fromC]).size).toBe(3); // the edits are distinguishable
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    const { result, rerender } = renderHook(
+      ({ content }: { content: string }) => useViewSvg(content, "shape"),
+      { initialProps: { content: EDIT_A } },
+    );
+    expect(result.current.getAllViewsSvg()).toBe(fromA);
+
+    // Two keystrokes inside one window.
+    rerender({ content: EDIT_B });
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.getAllViewsSvg()).toBe(fromA);
+    rerender({ content: EDIT_C });
+    act(() => vi.advanceTimersByTime(299));
+    // C has not been still for a whole window yet: still A, and never B.
+    expect(result.current.getAllViewsSvg()).toBe(fromA);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.getAllViewsSvg()).toBe(fromC);
+    expect(builtSources()).not.toContain(EDIT_B);
+  });
+
+  it("applies a display-mode flip without waiting for the window (TPL-219 parity) (TC-D)", () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ mode }: { mode: "icon" | "shape" }) => useViewSvg(EDIT_A, mode),
+      { initialProps: { mode: "shape" as "icon" | "shape" } },
+    );
+    const shape = result.current.getAllViewsSvg();
+
+    rerender({ mode: "icon" });
+    // No timer advance: a cheap toggle reaches the export on the same render,
+    // so the export shows what the screen shows.
+    expect(result.current.getAllViewsSvg()).not.toBe(shape);
+    expect(result.current.getAllViewsSvg()).toBe(freshAllViewsSvg(EDIT_A, "icon"));
+  });
+
+  it("builds the All-layers SVG only while the panel is open, from the settled content (TC-E)", () => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    const allLayers = vi.mocked(buildAllLayersSvg);
+    const { result, rerender } = renderHook(
+      ({ content, open }: { content: string; open: boolean }) =>
+        useViewSvg(content, "shape", undefined, undefined, undefined, undefined, undefined, {
+          allLayersOpen: open,
+        }),
+      { initialProps: { content: EDIT_A, open: false } },
+    );
+    expect(result.current.allLayersSvg).toBeUndefined();
+    expect(allLayers).not.toHaveBeenCalled();
+
+    rerender({ content: EDIT_A, open: true });
+    expect(result.current.allLayersSvg).toBeDefined();
+    expect(allLayers).toHaveBeenCalledTimes(1);
+
+    // Typing while the panel is open: rebuilt once, after the window, from the last edit.
+    rerender({ content: EDIT_B, open: true });
+    act(() => vi.advanceTimersByTime(100));
+    rerender({ content: EDIT_C, open: true });
+    act(() => vi.advanceTimersByTime(299));
+    expect(allLayers).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(1));
+    expect(allLayers).toHaveBeenCalledTimes(2);
+    expect(allLayers.mock.calls[1][0]).toBe(EDIT_C);
+
+    rerender({ content: EDIT_C, open: false });
+    expect(result.current.allLayersSvg).toBeUndefined();
+  });
+
+  it("feeds the live entity view the settled content, so the screen and the exports stay in step (TC-F)", () => {
+    const ENTITY_A = `system Shop {
+  service Orders {
+    domain OrderDomain {
+      entity Order {}
+    }
+  }
+}`;
+    const ENTITY_B = ENTITY_A.replace(
+      "entity Order {}",
+      "entity Order {}\n      entity Invoice {}",
+    );
+    const path = ["Shop", "Orders", "OrderDomain"];
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(
+      ({ content }: { content: string }) =>
+        useViewSvg(content, "shape", undefined, undefined, undefined, path),
+      { initialProps: { content: ENTITY_A } },
+    );
+    expect(result.current.hasEntityView).toBe(true);
+    const fromA = result.current.entityViewSvg;
+    expect(fromA).not.toContain("Invoice");
+    vi.clearAllMocks();
+
+    rerender({ content: ENTITY_B });
+    act(() => vi.advanceTimersByTime(299));
+    expect(vi.mocked(renderEntityView)).not.toHaveBeenCalled();
+    expect(result.current.entityViewSvg).toBe(fromA);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(vi.mocked(renderEntityView)).toHaveBeenCalledTimes(1);
+    expect(result.current.entityViewSvg).toContain("Invoice");
   });
 });

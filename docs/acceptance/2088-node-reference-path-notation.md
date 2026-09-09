@@ -130,7 +130,7 @@ bare id は長さ 1 の接尾辞（broadcast、後方互換）で、より長い
   > ✅ Automated — packages/core/src/parser/node-path.test.ts › edge target with a dangling dot reports once and joins the bad token's value
 - [x] cap 解除で entity 関連の深い qualifier も解決される（#2575 の out-of-scope 注記が閉じる）
   > ✅ Automated — packages/core/src/parser/node-reference-paths.test.ts › lifting the cap unlocks deep qualifiers on entity relations too (#2575)
-- [x] `karasu fmt` が深い path の全セグメントを保つ（TPL-1101。dotted target が quoted で出るのは `quoteId` の従来挙動で、深さでは変わらない）
+- [x] `karasu fmt` が深い path の全セグメントを、著者の書いた綴りのまま保つ（TPL-1101。dotted target を quoted に書き換えていた従来挙動は #2650 で修正 — [AT-2650](2650-fmt-edge-endpoint-path.md)）
   > ✅ Automated — packages/core/src/formatter/formatter.test.ts › round-trips a deep edge endpoint path (#2577)
 
 ## 手動確認

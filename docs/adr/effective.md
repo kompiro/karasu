@@ -157,6 +157,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2693](2693-dependabot-security-2026-09-03.md) — Dependabot security alert 2026-09-03（`fast-uri` / `qs` の override floor が脆弱範囲の内側だった。floor は「選ばれない」ではなく「届かない」を作る道具である）
 - [ADR-2716](2716-coderabbit-request-changes-workflow.md) — CodeRabbit のレビューを request changes workflow に移す
 - [ADR-2753](2753-dependabot-triage-2026-09-07.md) — Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む
+- [ADR-2773](2773-dependabot-triage-2026-09-08.md) — Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -213,6 +214,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2161](2161-boundary-membership-1n.md) — boundary 所属を model 層で 1:N にし、多重包含を描く — ADR-1974 決定 2 の refine
 - [ADR-2408](2408-owns-infra-target-and-chip-gate.md) — team は infra ブロックを owns できる（カードのチップは論理 kind のみ）
 - [ADR-2522](2522-vocabulary-census-drift.md) — 語彙センサスが見つけた drift の閉鎖 — kebab-case 字句規則・読解確度の register・閉鎖前提条件の再スコープ
+- [ADR-2585](2585-store-scoped-er-view.md) — ストアスコープの ER ビュー — FK は記録し、entity 関連は投影し、確認済みかどうかで描き分ける
 - [ADR-2597](2597-team-dependencies.md) — チーム間の依存を `owns` × 論理エッジから導出する
 - [ADR-9002](9002-karasu-naming.md) — ツール名「karasu」の採用
 - [ADR-9003](9003-logical-physical-separation.md) — 論理構造と物理構造の分離

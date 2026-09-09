@@ -21,7 +21,9 @@
     {
       "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
       "rules": {
-        "react/no-object-type-as-default-prop": "off"
+        "react/no-object-type-as-default-prop": "off",
+        "react/globals": "off",
+        "react/immutability": "off"
       }
     },
     {

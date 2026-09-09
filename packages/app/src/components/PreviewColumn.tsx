@@ -39,7 +39,8 @@ export function PreviewColumn() {
     onDeployBlockChange,
     onExportSvg,
     isAllLayersOpen,
-    allViewsSvg,
+    getAllViewsSvg,
+    exportBundlesAvailable,
     onJumpToEditor,
     isOrgTreeViewOpen,
     orgTreeSvg,
@@ -130,12 +131,14 @@ export function PreviewColumn() {
     selectedDeployBlockId,
   });
 
+  // The bundles are built on demand (#2758): availability is "there is settled
+  // content to build from", not "a bundle exists". The All-layers SVG is the
+  // one bundle kept while its panel is open, because it is the panel's content.
   const activeAllLayersSvg = view.allLayersSvg;
-  const allLayersAvailable = activeView !== "deploy" && !!activeAllLayersSvg;
-  const activedrillDownSvg = view.drillDownSvg;
+  const allLayersAvailable = activeView !== "deploy" && exportBundlesAvailable;
   const drillDownAvailable =
-    (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
-  const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
+    (activeView === "system" || activeView === "org") && exportBundlesAvailable;
+  const showAllLayersIframe = isAllLayersOpen && allLayersAvailable && !!activeAllLayersSvg;
   const showOrgTreeView = activeView === "org" && isOrgTreeViewOpen;
   // The org tab's third mode. Gated on the model declaring an organization for
   // the same reason the toggle is: with no team there is nothing to draw, and a
@@ -179,12 +182,14 @@ export function PreviewColumn() {
   // The export menu is a shadcn DropdownMenu — Radix closes it on select, so
   // these handlers no longer manage open state.
   function handleExportDrillDown() {
-    if (activedrillDownSvg) {
-      onExportSvg(activedrillDownSvg, exportFilename.replace(/\.svg$/, "-drilldown.svg"));
+    const drillDownSvg = view.getDrillDownSvg?.();
+    if (drillDownSvg) {
+      onExportSvg(drillDownSvg, exportFilename.replace(/\.svg$/, "-drilldown.svg"));
     }
   }
 
   function handleExportAllDiagrams() {
+    const allViewsSvg = getAllViewsSvg?.();
     if (allViewsSvg) {
       onExportSvg(allViewsSvg, "all-diagrams.svg");
     }
@@ -203,6 +208,7 @@ export function PreviewColumn() {
   }
 
   function handleOpenAllViews() {
+    const allViewsSvg = getAllViewsSvg?.();
     if (!allViewsSvg) return;
     const blob = new Blob([allViewsSvg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
@@ -240,7 +246,7 @@ export function PreviewColumn() {
         <PreviewToolbar
           exportAvailable={exportAvailable}
           drillDownAvailable={drillDownAvailable}
-          allViewsAvailable={!!allViewsSvg}
+          allViewsAvailable={exportBundlesAvailable}
           shareAvailable={shareAvailable}
           onExport={handleExport}
           onExportDrillDown={handleExportDrillDown}

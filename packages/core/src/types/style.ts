@@ -265,6 +265,14 @@ export interface ResolvedFrameStyle {
   borderStyle?: "solid" | "dashed" | "dotted";
 }
 
+/** The frame colours a rule named for one node. See `ResolvedStyles.paintedColors`. */
+export interface PaintedNodeColors {
+  /** A rule set `color`, so the node's resolved `color` is a painted one. */
+  color: boolean;
+  /** A rule set `border-color`, likewise for `borderColor`. */
+  borderColor: boolean;
+}
+
 /** Boundary frame styles, in the two tiers `boundary` / `boundary#<id>` produce. */
 export interface ResolvedBoundaryFrames {
   /** From bare `boundary { }` rules. Applies to every frame. */
@@ -312,6 +320,22 @@ export interface ResolvedStyles {
    * the muted dashed frame instead of taking the card's fill.
    */
   teamFrames: ResolvedTeamFrames;
+  /**
+   * Which of a node's two frame colours some rule in the cascade actually named
+   * (#2662). Only nodes with at least one are present.
+   *
+   * `nodes` cannot answer this: every entry there is seeded from
+   * `DEFAULT_NODE_STYLE`, so a property no rule set is indistinguishable by
+   * value from one a rule set to the same hex. A surface whose default is not
+   * the card default has to know which it is looking at, and a container frame
+   * is that surface: it has no fill, so the card base's "light label on a dark
+   * fill" pair is the wrong reference for it, and following it drew a near-white
+   * title on the light theme's white canvas.
+   *
+   * The built-in sheet counts, the same as an author's: the question is whether
+   * anything painted this node, not who did.
+   */
+  paintedColors: Map<string, PaintedNodeColors>;
   defaultNodeStyle: ResolvedNodeStyle;
   defaultEdgeStyle: ResolvedEdgeStyle;
   /**

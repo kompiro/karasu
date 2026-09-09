@@ -83,4 +83,30 @@ system S { service Svc { label "Svc" } }
 
     expect(result.current).toBe("service { color: #AAA; }\nservice { color: #BBB; }");
   });
+
+  it("does not serve the previous import's style while a new one is resolving", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/project/a.krs.style", "service { color: #AAA; }");
+    await fs.writeFile("/project/b.krs.style", "service { color: #BBB; }");
+
+    const withA = `@import "a.krs.style"\n\nsystem S { service Svc { label "Svc" } }\n`;
+    const withB = `@import "b.krs.style"\n\nsystem S { service Svc { label "Svc" } }\n`;
+
+    const { result, rerender } = renderHook(({ krs }) => useStyleSource(krs, ENTRY, fs), {
+      initialProps: { krs: withA },
+    });
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(result.current).toBe("service { color: #AAA; }");
+
+    // Drop the import, then pick up a different one. The style loaded for `a`
+    // must not be served for `b` in the renders before `b` resolves.
+    rerender({ krs: KRS_WITHOUT_IMPORT });
+    expect(result.current).toBeUndefined();
+
+    rerender({ krs: withB });
+    expect(result.current).toBeUndefined();
+
+    await act(() => new Promise((r) => setTimeout(r, 0)));
+    expect(result.current).toBe("service { color: #BBB; }");
+  });
 });

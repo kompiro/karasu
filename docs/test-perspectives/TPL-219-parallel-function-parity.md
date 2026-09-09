@@ -21,6 +21,7 @@ discovered_from:
   - issue: "#1273"
   - issue: "#1884"
   - issue: "#2033"
+  - issue: "#2646"
   - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts"
   - root_cause_file: "packages/core/src/index.ts:480"
   - root_cause_file: "packages/core/src/renderer/org-tree-renderer.ts:544"

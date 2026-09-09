@@ -12,14 +12,21 @@ import type { Command } from "./command-types.js";
 export function useCommand(command: Command): void {
   const registry = useOptionalCommandRegistry();
   const ref = useRef(command);
-  ref.current = command;
+  // Mirrored after commit, not during render: a discarded render must not
+  // leave the registry forwarding to a command no tree ever showed. The
+  // effect below is declared after this one, so it reads the fresh value.
+  useEffect(() => {
+    ref.current = command;
+  });
 
   useEffect(() => {
     if (!registry) return;
     // A stable entry that forwards to the latest command via the ref, so the
     // command need not be re-registered when `run` changes between renders.
     const entry: Command = {
-      id: ref.current.id,
+      // Read from `command`, not the ref: this is the one field the effect keys
+      // on, so referencing it directly is what makes the dependency genuine.
+      id: command.id,
       get title() {
         return ref.current.title;
       },

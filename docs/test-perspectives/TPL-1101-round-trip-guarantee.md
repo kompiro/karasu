@@ -15,7 +15,9 @@ discovered_from:
   - issue: "#2076"
   - issue: "#2087"
   - issue: "#2571"
+  - issue: "#2650"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:203"
+  - root_cause_file: "packages/core/src/types/ast.ts :: KrsEdge.to"
   - root_cause_file: "packages/core/src/formatter/quote-id.ts:14"
   - root_cause_file: "packages/core/src/formatter/formatter.ts:124"
 related_to: []
@@ -78,8 +80,30 @@ fixture を renderer ごとに回すのが対処になる（下記「既知の�
 
 `"""` は verbatim Markdown のために raw（エスケープ機構なし）と決めた（ADR-9008）。その結果、`"""` を含む値は triple-quote 形式では**表現不能**であり、そのまま出力するとブロックが途中で終了する。この種の「その表現形式では書けない値」は、構文を拡張する（= spec 変更）か、別の表現形式に fallback するかの二択になる。#2087 では後者（`\n` escape 付きの単一行形式へ落とす）を選んだ。表現形式を複数持つプロパティを実装するときは、**各形式で表現できない値の集合**を洗い出し、fallback 経路をテストする。
 
+### AST 等価は綴りの保存を意味しない（#2650）
+
+round-trip を AST 等価だけで測ると、**書き換えても AST が変わらない綴り**が検査の
+外に落ちる。#2650 では `karasu fmt` が `-> Shop.Checkout.Payment` を
+`-> "Shop.Checkout.Payment"` に書き換えていた。引用符つきの target は同一の
+`edge.to` に parse し戻るので、`parse(format(x)) ≡ parse(x)` は成立したままである。
+2 年近く誰も気づかず、round-trip のテストも 1 件も落ちなかった。
+
+根の原因は #1101 と同じ形で、対処だけが 1 サイト取り残されていた。`resource` /
+`table` / `realizes` / `owns` / `contains` は AST にセグメントを保持して
+`path.map(quoteId).join(".")` で出すのに、`KrsEdge.to` だけが join 済みの 1 本の
+文字列で、`quoteId` にはドットが「裸にできない文字」としてしか見えない。
+**AST がセグメント境界を捨てていると、formatter はどう書いても復元できない**
+（セグメント自身がドットを含む quoted id かもしれない）ので、対処は formatter では
+なく AST 側に入る（`KrsEdge.toPath`）。
+
+したがって round-trip テストは、AST 等価に加えて **出力テキストの綴りそのものを
+pin する**。とくにドット記法・引用符・省略形のように「複数の綴りが同じ AST に
+なる」箇所は、AST 比較が構造的に見えない領域である。
+
 ## 想定される失敗モード
 
+- **AST は等価なのに綴りが変わる**（#2650。`fmt` をかけた PR の diff に、author が
+  書いていない行が出る。AST 比較のテストでは原理的に捕まらない）
 - **parser が受理する構文が出力に現れず、`fmt` が黙って削除する**（#2076。`--write` / pre-commit hook 経由だと author が気づく機会がない）
 - `karasu fmt` を実行するたびに少しずつ AST が変質し、最終的に意味が変わる
 - `--check` モードで idempotent でない（2回 format すると差分が出る）
@@ -92,6 +116,7 @@ fixture を renderer ごとに回すのが対処になる（下記「既知の�
 
 - [ ] 入力 `.krs` を parse → 変換 → format → 再 parse した AST が、元の AST と構造的に等価か（structural equality をテストで確認）
 - [ ] AST に複数の表現フィールドがある場合（例: `resource` の `ref.parent` / `ref.child` と `id`）、formatter は適切なフィールドを参照しているか
+- [ ] **同じ AST になる綴りが複数あるとき、出力テキストの綴りを pin したか**（#2650。AST 等価のテストはこの領域を見ない。前提として、その綴りを復元できる情報が AST に残っている必要がある — 上記「AST 等価は綴りの保存を意味しない」節）
 - [ ] `--check` / dry-run モードで idempotent か（同じ入力に 2 回かけて差分が出ないか）
 - [ ] 元のコードで使われていた構文の variations すべてに対して動作するか（quoted ID / bare ID / dot-notation / 特殊文字を含む ID / 予約語と衝突する ID）
 - [ ] **parser が受理する構文を漏れなく出力するか**。変換層が AST のプロパティを手で列挙している箇所（`printFile` の top-level リストなど）は、期待集合を型・スキーマから導出したテストで網羅性を固定したか（#2076）
@@ -128,6 +153,7 @@ fixture を renderer ごとに回すのが対処になる（下記「既知の�
 - `packages/core/src/formatter/annotation-params-round-trip.test.ts`（アノテーションのパラメータ。パラメータキー集合と emit 経路集合の二重の網羅性ガード）
 - `packages/core/src/translate/escape-hostile-input.test.ts`（translate の外部入力 round-trip）
 - `packages/cli/src/fmt.test.ts`（`--write` がファイルを破壊しないこと）
+- `packages/core/src/formatter/edge-endpoint-path-round-trip.test.ts`（修飾された edge endpoint の綴り。AST 等価では見えない領域をテキストで pin する — #2650）
 
 ## 派生元 spec
 

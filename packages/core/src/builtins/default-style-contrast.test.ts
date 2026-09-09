@@ -7,7 +7,7 @@ import {
   WCAG_AA_LARGE_TEXT,
   WCAG_AA_NORMAL_TEXT,
 } from "../renderer/contrast.js";
-import { BOUNDARY_TINT_ALPHA } from "../renderer/svg-renderer.js";
+import { BOUNDARY_TINT_ALPHA, MUTED_FRAME_TITLE_OPACITY } from "../renderer/svg-renderer.js";
 import { chipInk } from "../renderer/corner-lane.js";
 import type { StyleRule } from "../types/style.js";
 
@@ -267,4 +267,57 @@ describe.each(["dark", "light"] as DiagramTheme[])("builtin kind colors (%s them
       }
     },
   );
+});
+
+/**
+ * A group frame with no style sheet behind it takes its title and outline from
+ * the palette, and the title is the only text on that frame. It is drawn at
+ * MUTED_FRAME_TITLE_OPACITY over whatever the frame sits on, so what has to
+ * clear AA is the composite, not the palette entry.
+ *
+ * The guard exists because the fallback used to come from `defaultNodeStyle`
+ * instead, which is hard-coded to the dark palette: on the light theme that put
+ * a near-white title (#F9FAFB, 1.03:1 composited) on a white canvas (#2662).
+ * TPL-2662 / TPL-2366 sibling perspective.
+ */
+describe.each(["dark", "light"] as DiagramTheme[])("group frame title (%s theme)", (theme) => {
+  const palette = resolvePalette(theme);
+  const canvasBg = palette.canvasBg;
+
+  /** The title as a viewer sees it on `surface`, with its muting applied. */
+  function composited(surface: string): string {
+    return compositeOver(palette.textPrimary, surface, MUTED_FRAME_TITLE_OPACITY)!;
+  }
+
+  it("stays AA-legible on the bare canvas", () => {
+    const ink = composited(canvasBg);
+    expect(
+      contrastRatio(ink, canvasBg)!,
+      `frame title ${palette.textPrimary} at ${MUTED_FRAME_TITLE_OPACITY} reads as ${ink} on ${canvasBg}`,
+    ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+  });
+
+  // A team frame and a boundary frame can cover the same cells, so the muted
+  // title can land on a tinted canvas rather than the bare one.
+  it.each(palette.boundaryHues.map((hue) => [hue] as const))(
+    "stays AA-legible over the %s boundary tint",
+    (hue) => {
+      const surface = compositeOver(hue, canvasBg, BOUNDARY_TINT_ALPHA)!;
+      const ink = composited(surface);
+      expect(
+        contrastRatio(ink, surface)!,
+        `frame title reads as ${ink} over tint ${surface}`,
+      ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+    },
+  );
+
+  // The muted role is the tempting choice for a surface that is meant to
+  // recede, and it is the one that cannot carry this text: at 0.7 it reaches
+  // 2.48:1 on the dark canvas and 2.71:1 on the light one. Pinned so a later
+  // "use the muted colour for the muted thing" tidy-up fails here rather than
+  // in a viewer's eye.
+  it("would not clear AA if the title took the muted text role instead", () => {
+    const ink = compositeOver(palette.textMuted, canvasBg, MUTED_FRAME_TITLE_OPACITY)!;
+    expect(contrastRatio(ink, canvasBg)!).toBeLessThan(WCAG_AA_NORMAL_TEXT);
+  });
 });

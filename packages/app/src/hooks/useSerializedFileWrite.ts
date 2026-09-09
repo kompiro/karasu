@@ -46,6 +46,9 @@ export function useSerializedFileWrite(
   // writes to the file currently being watched (#1535 review).
   useEffect(() => {
     recentRef.current.clear();
+    // `currentFilePath` is a trigger, not a value this body reads: the echo
+    // set is per-file, so it is emptied when the watched file changes.
+    // eslint-disable-next-line react/exhaustive-effect-dependencies
   }, [currentFilePath]);
 
   const write = useCallback(
