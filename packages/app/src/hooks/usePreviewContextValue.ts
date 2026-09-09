@@ -63,11 +63,12 @@ interface UsePreviewContextValueArgs {
 
   isAllLayersOpen: boolean;
   toggleAllLayers: () => void;
-  drillDownSvg?: string;
+  getDrillDownSvg?: () => string | undefined;
   allLayersSvg?: string;
   orgAllLayersSvg?: string;
-  orgDrillDownSvg?: string;
-  allViewsSvg?: string;
+  getOrgDrillDownSvg?: () => string | undefined;
+  getAllViewsSvg?: () => string | undefined;
+  exportBundlesAvailable: boolean;
 
   previewFocused: boolean;
   togglePreviewFocus: () => void;
@@ -119,11 +120,12 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     navigateViewPath,
     isAllLayersOpen,
     toggleAllLayers,
-    drillDownSvg,
+    getDrillDownSvg,
     allLayersSvg,
     orgAllLayersSvg,
-    orgDrillDownSvg,
-    allViewsSvg,
+    getOrgDrillDownSvg,
+    getAllViewsSvg,
+    exportBundlesAvailable,
     previewFocused,
     togglePreviewFocus,
     onJumpToEditor,
@@ -204,11 +206,12 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       onExportDrawio,
       isAllLayersOpen,
       onAllLayersToggle: toggleAllLayers,
-      drillDownSvg,
+      getDrillDownSvg,
       allLayersSvg,
       orgAllLayersSvg,
-      orgDrillDownSvg,
-      allViewsSvg,
+      getOrgDrillDownSvg,
+      getAllViewsSvg,
+      exportBundlesAvailable,
       previewFocused,
       onPreviewFocusToggle: togglePreviewFocus,
       onJumpToEditor,
@@ -278,11 +281,12 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       nav,
       isAllLayersOpen,
       toggleAllLayers,
-      drillDownSvg,
+      getDrillDownSvg,
       allLayersSvg,
       orgAllLayersSvg,
-      orgDrillDownSvg,
-      allViewsSvg,
+      getOrgDrillDownSvg,
+      getAllViewsSvg,
+      exportBundlesAvailable,
       previewFocused,
       togglePreviewFocus,
       onJumpToEditor,

@@ -153,11 +153,14 @@ export interface PreviewContextValue {
   /** SVG with all org levels stacked vertically (Show All Layers on org tab) */
   orgAllLayersSvg?: string;
   /** SVG with CSS :target navigation for system drill-down export */
-  drillDownSvg?: string;
+  /** Built on demand (#2758): the bundles are not kept in state. */
+  getDrillDownSvg?: () => string | undefined;
   /** SVG with CSS :target navigation for org drill-down export */
-  orgDrillDownSvg?: string;
+  getOrgDrillDownSvg?: () => string | undefined;
   /** Bundled SVG with all views (system/deploy/org) and CSS-only tab navigation */
-  allViewsSvg?: string;
+  getAllViewsSvg?: () => string | undefined;
+  /** Settled content exists and parses, so an export bundle can be built on demand. */
+  exportBundlesAvailable: boolean;
 
   previewFocused: boolean;
   onPreviewFocusToggle: () => void;

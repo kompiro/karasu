@@ -93,10 +93,14 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
     onExportSvg: vi.fn<() => void>(),
     isAllLayersOpen: false,
     onAllLayersToggle: vi.fn<() => void>(),
-    drillDownSvg: undefined,
-    orgDrillDownSvg: undefined,
+    getDrillDownSvg: undefined,
+    getOrgDrillDownSvg: undefined,
+    getAllViewsSvg: undefined,
     allLayersSvg: undefined,
     orgAllLayersSvg: undefined,
+    // The bundles are built on demand (#2758); this flag is what the export
+    // controls enable on. Tests that exercise an export turn it on.
+    exportBundlesAvailable: false,
     previewFocused: false,
     onPreviewFocusToggle: vi.fn<() => void>(),
     isOrgTreeViewOpen: false,
@@ -606,25 +610,37 @@ describe("PreviewColumn", () => {
 
   describe("Show All Layers button", () => {
     it("shows Show All Layers button on system tab", () => {
-      const props = makeProps({ activeView: "system", allLayersSvg: "<svg>full</svg>" });
+      const props = makeProps({
+        activeView: "system",
+        allLayersSvg: "<svg>full</svg>",
+        exportBundlesAvailable: true,
+      });
       const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toBeTruthy();
     });
 
-    it("Show All Layers button is disabled when allLayersSvg is absent", () => {
-      const props = makeProps({ activeView: "system", allLayersSvg: undefined });
+    it("Show All Layers button is disabled when no export bundle can be built", () => {
+      const props = makeProps({ activeView: "system", exportBundlesAvailable: false });
       const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", true);
     });
 
     it("Show All Layers button is disabled on deploy tab", () => {
-      const props = makeProps({ activeView: "deploy", allLayersSvg: "<svg>full</svg>" });
+      const props = makeProps({
+        activeView: "deploy",
+        allLayersSvg: "<svg>full</svg>",
+        exportBundlesAvailable: true,
+      });
       const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", true);
     });
 
     it("Show All Layers button is enabled on org tab when orgAllLayersSvg is set", () => {
-      const props = makeProps({ activeView: "org", orgAllLayersSvg: "<svg>org-full</svg>" });
+      const props = makeProps({
+        activeView: "org",
+        orgAllLayersSvg: "<svg>org-full</svg>",
+        exportBundlesAvailable: true,
+      });
       const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", false);
     });
@@ -634,6 +650,7 @@ describe("PreviewColumn", () => {
         activeView: "org",
         isAllLayersOpen: true,
         orgAllLayersSvg: "<svg>org-full</svg>",
+        exportBundlesAvailable: true,
       });
       const { container } = renderPreview(props);
       const iframe = container.querySelector("iframe");
@@ -646,6 +663,7 @@ describe("PreviewColumn", () => {
       const props = makeProps({
         activeView: "system",
         allLayersSvg: "<svg>full</svg>",
+        exportBundlesAvailable: true,
         onAllLayersToggle,
       });
       const { getByRole } = renderPreview(props);
@@ -658,6 +676,7 @@ describe("PreviewColumn", () => {
         activeView: "system",
         isAllLayersOpen: true,
         allLayersSvg: "<svg>full</svg>",
+        exportBundlesAvailable: true,
       });
       const { container } = renderPreview(props);
       const iframe = container.querySelector("iframe");
@@ -670,6 +689,7 @@ describe("PreviewColumn", () => {
         activeView: "system",
         isAllLayersOpen: false,
         allLayersSvg: "<svg>full</svg>",
+        exportBundlesAvailable: true,
       });
       const { container } = renderPreview(props);
       expect(container.querySelector("iframe")).toBeNull();
@@ -732,6 +752,7 @@ describe("PreviewColumn", () => {
         activeView: "system",
         isAllLayersOpen: true,
         allLayersSvg,
+        exportBundlesAvailable: true,
         onExportSvg,
       });
       const { getByRole } = renderPreview(props);
@@ -755,14 +776,27 @@ describe("PreviewColumn", () => {
     it("Export Drill-down SVG calls onExportSvg with -drilldown suffix", async () => {
       const onExportSvg = vi.fn<() => void>();
       const drillDownSvg = "<svg>drilldown</svg>";
-      renderPreview(makeProps({ activeView: "system", drillDownSvg, onExportSvg }));
+      renderPreview(
+        makeProps({
+          activeView: "system",
+          getDrillDownSvg: () => drillDownSvg,
+          exportBundlesAvailable: true,
+          onExportSvg,
+        }),
+      );
       await openMenu();
       await userEvent.click(menuItem("Export Drill-down SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(drillDownSvg, expect.stringContaining("drilldown"));
     });
 
     it("Export Drill-down SVG is disabled on deploy tab", async () => {
-      renderPreview(makeProps({ activeView: "deploy", drillDownSvg: "<svg>drilldown</svg>" }));
+      renderPreview(
+        makeProps({
+          activeView: "deploy",
+          getDrillDownSvg: () => "<svg>drilldown</svg>",
+          exportBundlesAvailable: true,
+        }),
+      );
       await openMenu();
       expect(menuItem("Export Drill-down SVG").getAttribute("aria-disabled")).toBe("true");
     });
@@ -770,7 +804,14 @@ describe("PreviewColumn", () => {
     it("Export Drill-down SVG calls onExportSvg with -drilldown suffix on org tab", async () => {
       const onExportSvg = vi.fn<() => void>();
       const orgDrillDownSvg = "<svg>org-drilldown</svg>";
-      renderPreview(makeProps({ activeView: "org", orgDrillDownSvg, onExportSvg }));
+      renderPreview(
+        makeProps({
+          activeView: "org",
+          getOrgDrillDownSvg: () => orgDrillDownSvg,
+          exportBundlesAvailable: true,
+          onExportSvg,
+        }),
+      );
       await openMenu();
       await userEvent.click(menuItem("Export Drill-down SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(
@@ -779,8 +820,8 @@ describe("PreviewColumn", () => {
       );
     });
 
-    it("Export All Diagrams SVG is disabled when allViewsSvg is undefined", async () => {
-      renderPreview(makeProps({ activeView: "system", allViewsSvg: undefined }));
+    it("Export All Diagrams SVG is disabled when no export bundle can be built", async () => {
+      renderPreview(makeProps({ activeView: "system", exportBundlesAvailable: false }));
       await openMenu();
       expect(menuItem("Export All Diagrams SVG").getAttribute("aria-disabled")).toBe("true");
     });
@@ -788,7 +829,14 @@ describe("PreviewColumn", () => {
     it("Export All Diagrams SVG calls onExportSvg with all-diagrams.svg filename", async () => {
       const onExportSvg = vi.fn<() => void>();
       const allViewsSvg = "<svg>all-views</svg>";
-      renderPreview(makeProps({ activeView: "system", allViewsSvg, onExportSvg }));
+      renderPreview(
+        makeProps({
+          activeView: "system",
+          getAllViewsSvg: () => allViewsSvg,
+          exportBundlesAvailable: true,
+          onExportSvg,
+        }),
+      );
       await openMenu();
       await userEvent.click(menuItem("Export All Diagrams SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
@@ -848,14 +896,16 @@ describe("PreviewColumn", () => {
       expect(openAllViewsItem()).toBeTruthy();
     });
 
-    it("is disabled when allViewsSvg is undefined", async () => {
-      renderPreview(makeProps({ allViewsSvg: undefined }));
+    it("is disabled when no export bundle can be built", async () => {
+      renderPreview(makeProps({ exportBundlesAvailable: false }));
       await openExportMenu();
       expect(openAllViewsItem().getAttribute("aria-disabled")).toBe("true");
     });
 
-    it("is enabled when allViewsSvg is set", async () => {
-      renderPreview(makeProps({ allViewsSvg: "<svg>all-views</svg>" }));
+    it("is enabled when an export bundle can be built", async () => {
+      renderPreview(
+        makeProps({ getAllViewsSvg: () => "<svg>all-views</svg>", exportBundlesAvailable: true }),
+      );
       await openExportMenu();
       expect(openAllViewsItem().getAttribute("aria-disabled")).not.toBe("true");
     });
@@ -863,7 +913,9 @@ describe("PreviewColumn", () => {
     it("calls window.open with a blob URL and noopener when clicked (#1529)", async () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
       vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
-      renderPreview(makeProps({ allViewsSvg: "<svg>all-views</svg>" }));
+      renderPreview(
+        makeProps({ getAllViewsSvg: () => "<svg>all-views</svg>", exportBundlesAvailable: true }),
+      );
       await openExportMenu();
       await userEvent.click(openAllViewsItem());
       expect(URL.createObjectURL).toHaveBeenCalled();
@@ -877,7 +929,9 @@ describe("PreviewColumn", () => {
       const createSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
       const revokeSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
       try {
-        renderPreview(makeProps({ allViewsSvg: "<svg>all-views</svg>" }));
+        renderPreview(
+          makeProps({ getAllViewsSvg: () => "<svg>all-views</svg>", exportBundlesAvailable: true }),
+        );
         // Open the menu on real timers — Radix's pointer sequence needs them —
         // then switch before the click that schedules the revoke, so the fake
         // clock owns that timer.
@@ -896,9 +950,9 @@ describe("PreviewColumn", () => {
       }
     });
 
-    it("does not call window.open when allViewsSvg is undefined", async () => {
+    it("does not call window.open when no export bundle can be built", async () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
-      renderPreview(makeProps({ allViewsSvg: undefined }));
+      renderPreview(makeProps({ exportBundlesAvailable: false }));
       await openExportMenu();
       // The item is disabled; activating it anyway must stay a no-op, so this
       // fires the event directly rather than going through the pointer path
