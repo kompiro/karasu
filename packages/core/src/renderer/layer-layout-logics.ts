@@ -45,15 +45,6 @@ export function sortByBarycenter<T extends { id: string }>(
 export const GRID_COLUMN_CAP = 5;
 
 /**
- * The slot after a row's last card, as a key of `extraGapBeforeCard` (#2611).
- * A column whose x falls past every card of a row still has to be reserved
- * somewhere, and the row has no card to name for it. NUL cannot occur in a
- * node id (the parser builds ids from identifier characters), so this can
- * never collide with a card a model actually declares.
- */
-export const ROW_END_COLUMN = "\u0000row-end";
-
-/**
  * Resolve how many columns a layer of `n` sibling nodes should wrap into.
  *
  * When the author pins `grid-columns: N` (a positive integer hint) on the
@@ -273,8 +264,9 @@ interface PlaceNodesInput {
    * within the row it names a **card id** rather than a card ordinal, because
    * an ordinal is the output of the ordering pass and would point at a
    * different card as soon as `sortByBarycenter` moves one (TPL-2611). The
-   * width is inserted before that card, or at the row's end for
-   * {@link ROW_END_COLUMN}.
+   * width is inserted before that card. Only a gap between two cards can be
+   * widened: a row's outer edges are the caller's to leave alone, because the
+   * centring that follows reads the cards and would undo them.
    *
    * A reservation whose card is no longer in that row is silently dropped and
    * the row keeps its default gaps — never worse (ADR-968). Applied *after*
@@ -395,8 +387,6 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
         childMaxWidth = Math.max(childMaxWidth, xOffset);
         rowMaxHeight = Math.max(rowMaxHeight, dims.height);
       }
-      xOffset += columnGaps?.get(ROW_END_COLUMN) ?? 0;
-      childMaxWidth = Math.max(childMaxWidth, xOffset);
       layerBottom = rowY + rowMaxHeight;
       childMaxHeight = Math.max(childMaxHeight, layerBottom + nodeGap);
       rowY = layerBottom + nodeGap; // sub-row gap within the layer

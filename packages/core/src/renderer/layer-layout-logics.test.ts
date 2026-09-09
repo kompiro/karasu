@@ -7,7 +7,6 @@ import {
   wrapLayerIntoRows,
   GRID_COLUMN_CAP,
   placeNodesInLayers,
-  ROW_END_COLUMN,
 } from "./layer-layout-logics.js";
 
 const loc: SourceRange = {
@@ -389,18 +388,6 @@ describe("placeNodesInLayers > column reservation (#2611, TPL-2611)", () => {
     const plain = place();
     const reserved = place(new Map([[1, new Map([["e", 240]])]]));
     expect(reserved.rows).toEqual(plain.rows);
-  });
-
-  it("appends at the row end for ROW_END_COLUMN", () => {
-    const plain = place();
-    const reserved = place(new Map([[1, new Map([[ROW_END_COLUMN, 24]])]]));
-    for (const [id, box] of plain.placements) {
-      expect(reserved.placements.get(id)!.x).toBe(box.x);
-    }
-    // The row is wider by the reservation even though no card moved, so the
-    // column beyond the last card is real space rather than a coincidence of
-    // how wide the widest row happens to be.
-    expect(reserved.childMaxWidth - plain.childMaxWidth).toBe(24);
   });
 
   it("drops a reservation whose card is not in that row — never worse", () => {

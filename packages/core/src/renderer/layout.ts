@@ -7,7 +7,7 @@ import { groupLabelsFor } from "./group-labels.js";
 import { withChildAnchoredEdges } from "../view/view-extract.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
-import { placeNodesInLayers, ROW_END_COLUMN } from "./layer-layout-logics.js";
+import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
 import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
 import { framePieces, TRUNK_LANE_GAP } from "./edge-routing-groups.js";
@@ -185,9 +185,10 @@ function channelReservations(
 /**
  * Extra width each row needs inside it so the columns crossing it have lanes
  * to run in (#2611), keyed by row ordinal → the id of the card the width is
- * opened before (or {@link ROW_END_COLUMN}). The horizontal counterpart of
+ * opened before. The horizontal counterpart of
  * {@link channelReservations}, measured the same way: what the routing chain
- * was observed to carry, against what the placement actually offers.
+ * was observed to carry, against what the placement actually offers. Only the
+ * gaps *between* two cards are widened, never a row's outer edges.
  *
  * **Traffic.** Every edge the chain sent out to an *outer* gutter although its
  * endpoints sit two or more rows apart is a column the interior could not
@@ -213,6 +214,12 @@ function columnReservations(
   const out = new Map<number, Map<string, number>>();
   // Two rows have no row *between* them, so no column can be reserved.
   if (rows.length < 3) return out;
+  // Grouped canvases are not offered interior corridors at all (the
+  // `frames.length === 0` gate in `edge-routing-groups.ts` keeps ADR-1859's
+  // guarantee), so a column opened here could never be used — and the second
+  // placement pass it triggers would re-run the whole layout to produce the
+  // same bytes.
+  if (result.containers.some((c) => c.group)) return out;
   const cardsOfRow = rows.map((row) =>
     row
       .map((id) => result.nodes.get(id))
@@ -275,9 +282,14 @@ function columnReservations(
     const target =
       wanted.reduce((sum, c) => sum + c.xs.reduce((a, b) => a + b, 0) / c.xs.length, 0) /
       wanted.length;
+    // Only *between* two cards. A column past either end of the row is not
+    // reserved: the room beside a row's outer cards is already open to the
+    // routing (it lanes there out to the content bounds), and widening a row
+    // at its edge would be undone by the centring, which reads the cards.
     const after = cards.find((n) => n.x >= target);
+    if (!after || after === cards[0]) continue;
     const slot = out.get(r) ?? new Map<string, number>();
-    slot.set(after ? after.id : ROW_END_COLUMN, shortfall * TRUNK_LANE_GAP);
+    slot.set(after.id, shortfall * TRUNK_LANE_GAP);
     out.set(r, slot);
   }
   return out;
