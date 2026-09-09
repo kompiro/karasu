@@ -26,7 +26,7 @@ export interface Point {
  * treated as crossings (they're legitimate from/to anchors or a stub running
  * along a side).
  */
-function segmentCrossesRect(a: Point, b: Point, r: Rect): boolean {
+export function segmentCrossesRect(a: Point, b: Point, r: Rect): boolean {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   let t0 = 0;

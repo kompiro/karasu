@@ -14,7 +14,7 @@ import {
   type EdgeLine,
   type LabelInput,
 } from "./label-placement.js";
-import type { Rect } from "./edge-geometry.js";
+import { segmentCrossesAnyRect, type Rect } from "./edge-geometry.js";
 import type { LayoutEdge } from "./layout-types.js";
 import type { EdgeDirection } from "../types/style.js";
 import { layout } from "./layout.js";
@@ -576,5 +576,360 @@ describe("real sample fence — hr-tool system top view (#2360)", () => {
     const after = boxesAfter(inputs, overrides);
     expect(countLabelPenetrations(after, nodeRects)).toBe(0);
     expect(countLabelOverlaps(after)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spatial-prefilter parity (#2760). `resolveLabelPlacements` now tests each
+// candidate box only against the node rects, committed labels and edge
+// segments a grid finds near it. The reference below is the pre-#2760 resolver,
+// copied verbatim (flat loops over every rect, every placed box and every
+// reachable line, with the same cost cap), so this file stays self-contained:
+// whatever the index does, every label must land on the same anchor.
+// ---------------------------------------------------------------------------
+
+/** Small seeded PRNG (mulberry32) so a failing case is reproducible from its seed. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type Pt = { x: number; y: number };
+
+function referenceResolveLabelPlacements(
+  labels: LabelInput[],
+  nodeRects: Rect[],
+  edgeLines: EdgeLine[],
+  maxSteps: number,
+): Map<number, Pt> {
+  const COLLISION_COST = 2;
+  const AMBIGUITY_COST = 1;
+  const rectsOverlap = (a: Rect, b: Rect): boolean =>
+    a.x < b.x + b.width - 1e-6 &&
+    a.x + a.width > b.x + 1e-6 &&
+    a.y < b.y + b.height - 1e-6 &&
+    a.y + a.height > b.y + 1e-6;
+  const boundsIntersect = (a: Rect, b: Rect): boolean =>
+    a.x <= b.x + b.width && a.x + a.width >= b.x && a.y <= b.y + b.height && a.y + a.height >= b.y;
+  const boxCrossedByLine = (box: Rect, line: EdgeLine): boolean => {
+    if (!boundsIntersect(box, line.bounds)) return false;
+    const grown =
+      line.halfStroke === 0
+        ? box
+        : {
+            x: box.x - line.halfStroke,
+            y: box.y - line.halfStroke,
+            width: box.width + line.halfStroke * 2,
+            height: box.height + line.halfStroke * 2,
+          };
+    for (let i = 0; i < line.points.length - 1; i++) {
+      if (segmentCrossesAnyRect(line.points[i], line.points[i + 1], [grown])) return true;
+    }
+    return false;
+  };
+  const pointToRectDistance = (p: Pt, r: Rect): number => {
+    const dx = Math.max(r.x - p.x, 0, p.x - (r.x + r.width));
+    const dy = Math.max(r.y - p.y, 0, p.y - (r.y + r.height));
+    return Math.hypot(dx, dy);
+  };
+  const pointToSegmentDistance = (p: Pt, a: Pt, b: Pt): number => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-12) return Math.hypot(p.x - a.x, p.y - a.y);
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  };
+  const pointToPolylineDistance = (p: Pt, line: EdgeLine): number => {
+    let best = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < line.points.length - 1; i++) {
+      const d = pointToSegmentDistance(p, line.points[i], line.points[i + 1]);
+      if (d < best) best = d;
+    }
+    return Math.max(0, best - line.halfStroke);
+  };
+  const nearestLineIsForeign = (
+    anchor: Pt,
+    ownIndex: number,
+    lines: EdgeLine[],
+    ownLine: EdgeLine,
+  ): boolean => {
+    const ownDist = pointToPolylineDistance(anchor, ownLine);
+    for (const line of lines) {
+      if (line.index === ownIndex) continue;
+      if (pointToRectDistance(anchor, line.bounds) >= ownDist) continue;
+      if (pointToPolylineDistance(anchor, line) < ownDist) return true;
+    }
+    return false;
+  };
+  const reachableLines = (lines: EdgeLine[], input: LabelInput, maxShift: number): EdgeLine[] => {
+    if (lines.length === 0) return lines;
+    const box = labelBox(input.anchor, input.width, input.fontSize);
+    const halfDiagonal = Math.hypot(box.width, box.height) / 2;
+    const reach = 2 * maxShift * Math.SQRT2 + halfDiagonal;
+    return lines.filter(
+      (line) =>
+        line.index === input.index || pointToRectDistance(input.anchor, line.bounds) <= reach,
+    );
+  };
+  const candidateCost = (
+    box: Rect,
+    anchor: Pt,
+    input: LabelInput,
+    rects: Rect[],
+    placed: Rect[],
+    lines: EdgeLine[],
+    ownLine: EdgeLine | undefined,
+    cap: number,
+  ): number => {
+    let cost = 0;
+    for (const o of rects) {
+      if (rectsOverlap(box, o)) {
+        cost += COLLISION_COST;
+        if (cost >= cap) return cost;
+      }
+    }
+    for (const p of placed) {
+      if (rectsOverlap(box, p)) {
+        cost += COLLISION_COST;
+        if (cost >= cap) return cost;
+      }
+    }
+    for (const line of lines) {
+      if (line.index === input.index) continue;
+      if (boxCrossedByLine(box, line)) {
+        cost += COLLISION_COST;
+        if (cost >= cap) return cost;
+      }
+    }
+    if (ownLine !== undefined && nearestLineIsForeign(anchor, input.index, lines, ownLine)) {
+      cost += AMBIGUITY_COST;
+    }
+    return cost;
+  };
+  const perpendicular = (dir: Pt): Pt => {
+    const len = Math.hypot(dir.x, dir.y);
+    if (len < 1e-6) return { x: 0, y: -1 };
+    return { x: -dir.y / len, y: dir.x / len };
+  };
+  const normalize = (dir: Pt): Pt => {
+    const len = Math.hypot(dir.x, dir.y);
+    if (len < 1e-6) return { x: 1, y: 0 };
+    return { x: dir.x / len, y: dir.y / len };
+  };
+  const candidateOffsets = (steps: number): [number, number][] => {
+    const offsets: [number, number][] = [];
+    for (let i = -steps; i <= steps; i++) {
+      for (let j = -steps; j <= steps; j++) offsets.push([i, j]);
+    }
+    offsets.sort((a, b) => {
+      const da = a[0] * a[0] + a[1] * a[1];
+      const db = b[0] * b[0] + b[1] * b[1];
+      if (da !== db) return da - db;
+      if (Math.abs(a[1]) !== Math.abs(b[1])) return Math.abs(a[1]) - Math.abs(b[1]);
+      if (a[0] !== b[0]) return a[0] - b[0];
+      return a[1] - b[1];
+    });
+    return offsets;
+  };
+
+  const overrides = new Map<number, Pt>();
+  const placed: Rect[] = [];
+  const byIndex = [...labels].sort((a, b) => a.index - b.index);
+  for (const input of byIndex) {
+    if (!input.eligible) placed.push(labelBox(input.anchor, input.width, input.fontSize));
+  }
+  for (const input of byIndex) {
+    if (!input.eligible) continue;
+    const step = input.fontSize + 4;
+    const perp = perpendicular(input.dir);
+    const tang = normalize(input.dir);
+    const candidates = candidateOffsets(maxSteps);
+    const ownLine = edgeLines.find((line) => line.index === input.index);
+    const reachable = reachableLines(edgeLines, input, maxSteps * step);
+    let bestAnchor = input.anchor;
+    let bestBox = labelBox(input.anchor, input.width, input.fontSize);
+    let bestCost = Number.POSITIVE_INFINITY;
+    let bestDist = 0;
+    for (const [i, j] of candidates) {
+      const dp = i * step;
+      const dt = j * step;
+      const anchor: Pt = {
+        x: input.anchor.x + perp.x * dp + tang.x * dt,
+        y: input.anchor.y + perp.y * dp + tang.y * dt,
+      };
+      const box = labelBox(anchor, input.width, input.fontSize);
+      const cost = candidateCost(
+        box,
+        anchor,
+        input,
+        nodeRects,
+        placed,
+        reachable,
+        ownLine,
+        bestCost,
+      );
+      if (cost === 0) {
+        bestAnchor = anchor;
+        bestBox = box;
+        bestCost = 0;
+        bestDist = i * i + j * j;
+        break;
+      }
+      const dist = i * i + j * j;
+      if (cost < bestCost) {
+        bestCost = cost;
+        bestAnchor = anchor;
+        bestBox = box;
+        bestDist = dist;
+      }
+    }
+    placed.push(bestBox);
+    if (bestDist !== 0) overrides.set(input.index, bestAnchor);
+  }
+  return overrides;
+}
+
+/**
+ * Random placement scene biased towards what a prefilter can get wrong: a
+ * coarse lattice (boxes and lines touching exactly, sitting on grid-cell
+ * boundaries, collinear runs), a dense core so most labels collide and the
+ * search runs deep, axis-aligned and diagonal chords, zero-length chords,
+ * hairline and thick strokes, unlabelled lines, and immovable author labels.
+ */
+function randomScene(rnd: () => number): {
+  labels: LabelInput[];
+  nodeRects: Rect[];
+  edgeLines: EdgeLine[];
+  maxSteps: number;
+} {
+  const span = 120 + Math.floor(rnd() * 300);
+  const lattice = [5, 10, 16, 25][Math.floor(rnd() * 4)];
+  const coord = (): number =>
+    rnd() < 0.6 ? Math.floor(rnd() * (span / lattice + 1)) * lattice : rnd() * span;
+  const nodeRects: Rect[] = [];
+  const rectCount = Math.floor(rnd() * 10);
+  for (let r = 0; r < rectCount; r++) {
+    nodeRects.push({
+      x: coord(),
+      y: coord(),
+      width: lattice * (1 + Math.floor(rnd() * 8)),
+      height: lattice * (1 + Math.floor(rnd() * 5)),
+    });
+  }
+  const labels: LabelInput[] = [];
+  const edgeLines: EdgeLine[] = [];
+  const edgeCount = 1 + Math.floor(rnd() * 14);
+  for (let index = 0; index < edgeCount; index++) {
+    const pointCount = 2 + Math.floor(rnd() * 3);
+    const points: Pt[] = [];
+    let x = coord();
+    let y = coord();
+    points.push({ x, y });
+    for (let k = 1; k < pointCount; k++) {
+      const kind = rnd();
+      if (kind < 0.4) x = coord();
+      else if (kind < 0.8) y = coord();
+      else {
+        x = coord();
+        y = coord();
+      }
+      points.push({ x, y });
+    }
+    const strokeWidth = [0, 1, 1.5, 2, 3][Math.floor(rnd() * 5)];
+    edgeLines.push(edgeLine(index, points, strokeWidth));
+    if (rnd() < 0.2) continue; // unlabelled line: obstacle only
+    // Anchor on the polyline's first segment (where `renderEdge` would put it)
+    // or, sometimes, anywhere (an author-offset label).
+    const a = points[0];
+    const b = points[1];
+    const t = rnd();
+    const onLine = rnd() < 0.8;
+    const anchor: Pt = onLine
+      ? { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+      : { x: coord(), y: coord() };
+    const dirKind = rnd();
+    const dir: Pt =
+      dirKind < 0.7
+        ? { x: b.x - a.x, y: b.y - a.y }
+        : dirKind < 0.85
+          ? { x: 0, y: 0 }
+          : { x: rnd() * 2 - 1, y: rnd() * 2 - 1 };
+    labels.push({
+      index,
+      anchor,
+      dir,
+      width: 10 + Math.floor(rnd() * 70),
+      fontSize: [8, 10, 11, 12, 14][Math.floor(rnd() * 5)],
+      eligible: rnd() < 0.85,
+    });
+  }
+  const maxSteps = rnd() < 0.25 ? 6 : 1 + Math.floor(rnd() * 3);
+  return { labels, nodeRects, edgeLines, maxSteps };
+}
+
+describe("resolveLabelPlacements spatial prefilter parity (#2760)", () => {
+  it("picks exactly the anchors the flat-loop resolver picks on random scenes", () => {
+    const CASES = 300;
+    for (let seed = 1; seed <= CASES; seed++) {
+      const { labels, nodeRects, edgeLines, maxSteps } = randomScene(mulberry32(seed));
+      const actual = resolveLabelPlacements(labels, nodeRects, edgeLines, { maxSteps });
+      const expected = referenceResolveLabelPlacements(labels, nodeRects, edgeLines, maxSteps);
+      expect([...actual.entries()], `seed ${seed}`).toStrictEqual([...expected.entries()]);
+    }
+  });
+
+  it("matches the reference on degenerate scenes", () => {
+    const one = label(0, { x: 50, y: 50 }, 40);
+    const scenes: [LabelInput[], Rect[], EdgeLine[]][] = [
+      [[], [], []],
+      [[one], [], []],
+      [[one], [{ x: 0, y: 0, width: 0, height: 0 }], []],
+      [
+        [one],
+        [],
+        [
+          edgeLine(
+            0,
+            [
+              { x: 50, y: 50 },
+              { x: 50, y: 50 },
+            ],
+            HAIRLINE,
+          ),
+        ],
+      ],
+      [
+        [one],
+        [{ x: 1e9, y: 1e9, width: 10, height: 10 }],
+        [
+          edgeLine(
+            1,
+            [
+              { x: -1e9, y: 0 },
+              { x: 1e9, y: 0 },
+            ],
+            2,
+          ),
+        ],
+      ],
+      [
+        [label(0, { x: 1e7, y: 1e7 }, 30), label(1, { x: 1e7 + 5, y: 1e7 }, 30)],
+        [{ x: 1e7 - 20, y: 1e7 - 20, width: 40, height: 40 }],
+        [],
+      ],
+    ];
+    for (const [labels, rects, lines] of scenes) {
+      expect([...resolveLabelPlacements(labels, rects, lines).entries()]).toStrictEqual([
+        ...referenceResolveLabelPlacements(labels, rects, lines, 6).entries(),
+      ]);
+    }
   });
 });
