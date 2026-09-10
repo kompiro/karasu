@@ -36,13 +36,19 @@
 
   > 🧑 Manual — https://github.com/kompiro/karasu/actions で workflow を dispatch し、実行後に `gh pr list --author "app/dependabot" --state open` の各 PR を見る。判定には実際の Actions 実行とエージェントの出力が要る。マージ・close が起きないことは AT-A の宣言検査が受け持つので、ここでは観測しない
 
-- [ ] AT-F（manual）: `Dependabot security alert sweep` を `workflow_dispatch` で実行すると alert 一覧を取得できる（`403` が返るなら `Dependabot alerts: read` を持つ GitHub App のトークンを `DEPENDABOT_ALERTS_TOKEN` に置いて再実行する）
+- [ ] AT-F（manual）: `Dependabot security alert sweep` を `workflow_dispatch` で実行すると alert 一覧を取得できる
 
-  > 🧑 Manual — `GITHUB_TOKEN` + `vulnerability-alerts: read` で Dependabot alerts を読めるかは実行するまで確定しない。この項目がその検証を兼ねる
+  > 🧑 Manual — 2026-09-03 の実行で、遮断しているのはトークンではなく gh-aw の MCP gateway だと判明した
+  > （[#2690](https://github.com/kompiro/karasu/issues/2690)、[ADR-2658](../adr/2658-gh-aw-dependency-automation.md)）。
+  > `list_dependabot_alerts` は `403` ではなく secrecy policy で空になって返り、public リポジトリの safe output は
+  > public sink なので private ラベルの alert が流れない。したがって `Dependabot alerts: read` を持つ GitHub App の
+  > トークンを渡しても本項目は満たされない。満たすには `tools.github.private-to-public-flows` の宣言が要り、
+  > それは未修正の脆弱性を public Issue に載せる判断になる
 
 - [ ] AT-G（manual）: 実行 1 回あたりの credit 消費を確認し、`max-ai-credits` の上限を置くかを判断する
 
-  > 🧑 Manual — `gh aw logs` / `gh aw audit <run-id>` で消費を読む。W1 の upstream 追跡は fetch が多く、上限値は実測してからでないと決められない
+  > 🧑 Manual — `gh aw logs` / `gh aw audit <run-id>` で消費を読む。W1 の upstream 追跡は fetch が多く、上限値は実測してからでないと決められない。
+  > 2026-09-07 の実行（PR 8 件）は 46 AIC（`GH_AW_AGENT_AIC: 45.977`）で、この水準なら上限を置かずに様子を見る（ADR-2658）
 
 ## 手動確認
 
