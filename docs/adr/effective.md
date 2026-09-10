@@ -153,6 +153,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2564](2564-dependabot-security-2026-08-18.md) — Dependabot security alert 2026-08-18（auto-dismiss された 2 件が脆弱版のままだった。floor を上げ、収集クエリの前提を改める）
 - [ADR-2623](2623-dependabot-triage-2026-08-25.md) — Dependabot トリアージ 2026-08-25 — ADR の assumptions に書いたリテラル依存版を緩める
 - [ADR-2643](2643-stacked-pr-workflow.md) — stacked PR は最下層 1 本だけをレビュー対象にし、draft では分単位の CI を止める
+- [ADR-2658](2658-gh-aw-dependency-automation.md) — 依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる
 - [ADR-2671](2671-dependabot-triage-2026-08-31.md) — Dependabot トリアージ 2026-08-31 — exact peer は枠ではなく group で結ぶ
 - [ADR-2693](2693-dependabot-security-2026-09-03.md) — Dependabot security alert 2026-09-03（`fast-uri` / `qs` の override floor が脆弱範囲の内側だった。floor は「選ばれない」ではなく「届かない」を作る道具である）
 - [ADR-2716](2716-coderabbit-request-changes-workflow.md) — CodeRabbit のレビューを request changes workflow に移す
