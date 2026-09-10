@@ -51,14 +51,20 @@ system Beta {
 
 ### 各エッジ族の出どころ
 
-| 族 | 由来 | 現在 root view に届くか |
-| --- | --- | --- |
-| explicit（`system` スコープ） | `sys.edges` | ○ |
-| anchored（`service S1 { S1 -> S2 }`, [ADR-2223](../adr/2223-service-anchored-edge-renders-on-parent-canvas.md)） | `withChildAnchoredEdges` が持ち上げ | ○（layout 側で個別対応済み） |
-| infra 派生（`resource` / `usecase`） | `deriveInfraEdges` | ✗ |
-| implicit service（domain 間依存の集約） | `deriveImplicitServiceEdges` | ✗ |
-| internal（in-place 展開した service の内部 domain 間） | 同上 | ✗ |
-| delivers（`delivers` → `client`） | `deriveDeliversEdges` | ✗ |
+欠落が 2 段階で起きている以上、「届くか」を 1 列で書くと段階が混ざる。抽出（`ViewSlice.childEdges` に載るか）と描画（`layout().edges` に出るか）を分けて示す。
+
+| 族 | 由来 | 抽出: primary（`si === 0`） | 抽出: 2 番目以降 | 描画 |
+| --- | --- | --- | --- | --- |
+| explicit（`system` スコープ） | `sys.edges` | ○ | ✗ | ○ |
+| anchored（`service S1 { S1 -> S2 }`, [ADR-2223](../adr/2223-service-anchored-edge-renders-on-parent-canvas.md)） | `collectAnchoredPeerEdges` / `withChildAnchoredEdges` | ○ | ✗ | ○ |
+| infra 派生（`resource` / `usecase`） | `deriveInfraEdges` | ○ | ✗ | ✗ |
+| implicit service（domain 間依存の集約） | `deriveImplicitServiceEdges` | ○ | ✗ | ✗ |
+| internal（in-place 展開した service の内部 domain 間） | 同上 | ○ | ✗ | ✗ |
+| delivers（`delivers` → `client`） | `deriveDeliversEdges` | ○ | ✗ | ✗ |
+
+上 2 行が「抽出 ✗ なのに描画 ○」になっているのは、抽出を通ったからではない。`layoutMultipleSystems` が `withChildAnchoredEdges(sys)` から**作り直している**からである（`extractRootSystemView` の `explicitEdges` は `systems[0]` の分しか組まない）。逆に派生 4 族は、抽出が primary 用に作った集合をレイアウトが読まないので、抽出を通っても描画で落ちる。
+
+この非対称、すなわち「下流が上流の成果物を使わず自前で作り直す」構図が本 Issue の芯であり、案4 の評価にも直結する。
 
 ### ADR-2223 は同じ罠を既に記録している
 
@@ -82,12 +88,25 @@ ADR-2223 の「実装上の落とし穴」節:
 
 **この制約が案の良し悪しを分ける主要因である。**
 
+### `implicitEdgeDetails` は bare id キーで、multi 経路ではそもそも引かれていない
+
+implicit service エッジが束ねた構成要素（[ADR-463](../adr/463-implicit-edge-detail-panel.md) の詳細パネルが出す「どの domain 間依存を集約した線か」）は `ViewSlice.implicitEdgeDetails` に載る。キーは `deriveImplicitServiceEdges` の `` `${fromEndpoint}->${toEndpoint}#${edge.kind}` `` で、**system 名を含まない**。
+
+lookup は `layout-edges.ts` の `computeLayoutEdges` だけが行い、そこは single system 経路（`layout.ts:661`）からしか呼ばれない。multi 経路（`layout.ts:1096`）は `computeEdgePoints` を直に呼ぶので、`domainEdges` を付ける処理を通らない。
+
+ここから 2 つの帰結がある。どちらも案1 の実装計画に効く。
+
+1. **lookup を multi 経路にも足さないと、詳細パネルが空になる。** 2 番目以降の system に implicit service エッジを描けるようにしても、エッジは出るが中身が無いという別の半端な状態で終わる
+2. **全 system の details を 1 枚のマップに無修飾キーでマージすると混線する。** `Alpha` と `Beta` がどちらも `Api` と `Store` を持つとき、両者の `Api->Store#implicit` は同一キーになり、後勝ちで一方の構成要素がもう一方の線の詳細として出る
+
+つまり bare id の問題は node map と案2 のフィルタだけでなく、**details のキーにも同じ形で存在する**。案1 は system ごとにエッジ集合を閉じるので線そのものは誤爆しないが、details のキーは別途 system で修飾しない限りこの穴が残る。
+
 ## 制約・前提
 
 - **`.krs` の構文は変えない**（[ADR-1314](../adr/1314-krs-spec-v1-freeze.md) の v1.0 freeze）。描画対象が増えるだけの追加的変更に留める。
 - **single system 経路の出力は 1 バイトも変えない**。今回動かすのは root view だけ。
 - **cross-system エッジの provenance を壊さない**。#2646（PR #2741）で `layoutMultipleSystems` は「どの system が cross-system エッジの起点か」を `withChildAnchoredEdges(sys)` からエッジ同一性で記録するようになった。限定子付き target（`Alpha.Store`）を除外した集合をそこに渡すと、折り畳んだ端点の再アンカーが壊れる。
-- **root view の node map は bare id キー**（`allLayoutNodes.set(id, node)`）。system をまたいで同名の子 id が存在しうるという事実は、どの案でも前提として扱う。
+- **root view の node map は bare id キー**（`allLayoutNodes.set(id, node)`）。system をまたいで同名の子 id が存在しうるという事実は、どの案でも前提として扱う。`implicitEdgeDetails` のキーも同じく bare id なので、同名 id 耐性はエッジ集合と details の**両方**で示す必要がある（前節）。
 - **out of scope**: root view の node map を path キーに正規化すること（同名 id の根本解決）。今回のエッジ問題とは独立に大きく、別 Issue に値する。
 - **out of scope**: in-place 展開（#1921）を 2 番目以降の system にも広げること。展開は root view の primary system 限定という現状を維持する。
 
@@ -126,6 +145,7 @@ const systemRawEdges = viewSlice.systemEdges?.get(sys.id) ?? withChildAnchoredEd
 - `ViewSlice` に「canvas 軸」（`childNodes` / `childEdges`）と「system 軸」（`systems` / `systemEdges`）が同居する。root view だけ 2 軸になる歪みは残る
 - `diffSystemViewSlices` に map のマージ（system ごとの `diffEdgeArray`）が要る
 - `childEdges` の意味が root view で「primary canvas のエッジ」から「root view 全体のエッジ」に変わる。ドキュメントされた契約ではないが、直接呼び出しの読み手には変化
+- `implicitEdgeDetails` のキー形を system 修飾に変える必要がある。書き込み（`view-extract.ts`）と lookup（`layout-edges.ts`）の 2 箇所を同時に直す変更で、single 経路の既存キーも動く（[TPL-1666](../test-perspectives/TPL-1666-style-lookup-matches-layout-id-form.md) が言う「lookup の id 形を layout に一致させる」がそのまま効く）
 
 ### 案2: `childEdges` を root canvas 全体の union にするだけ（新フィールドなし）
 
@@ -192,7 +212,7 @@ root view のレイアウトが、各 system について drill-down 相当の s
 | 変更量 | 中（3 ファイル + テスト） | 小 | 大（19 ファイルが型参照） | 小 | 中 |
 | 導出が 1 本か | ○ | ○ | ○ | ✗（2 箇所） | ○ |
 | style / canonical id の到達 | ○（union で自動） | ○ | ○ | ✗（別途配線） | △ |
-| 同名 id 耐性 | ○（system ごとに集合が閉じる） | ✗（誤爆する） | ◎ | ○ | ○ |
+| 同名 id 耐性 | ○（エッジは system ごとに閉じる。details はキー修飾が要る） | ✗（誤爆する） | ◎ | ○ | ○ |
 | single 経路への影響 | なし | なし | あり（型変更） | なし | なし |
 | compare モードのコスト | map の diff 1 箇所 | なし | 大 | なし | 大 |
 | 将来の path キー化への橋 | △ | ✗ | ◎ | ✗ | △ |
@@ -230,21 +250,25 @@ ADR-2223 と本 Issue は同じ形で 2 回続いている（抽出が用意し�
 ### 実装の指針
 
 1. `view-extract.ts` の `extractRootSystemView` から、systems[0] 用の導出（explicit + anchored + infra + implicit + internal + delivers）を `deriveCanvasEdges()` に切り出す
-2. 全 system に対して `deriveCanvasEdges()` を呼び、`systemEdges: Map<string, KrsEdge[]>` を組む。systems[0] のエントリは現在の `childEdges` と同一。各 system の `implicitEdgeDetails` は slice の 1 枚のマップにマージする
-3. `childEdges` を `systemEdges` 全エントリの union にする（in-place 展開の `internalEdges` は primary のみ）
-4. `ViewSlice` に `systemEdges` を追加し、`emptySlice` に既定値を置く
-5. `layout.ts` の `systemRawEdges` を `viewSlice.systemEdges?.get(sys.id) ?? withChildAnchoredEdges(sys)` にする。**cross-system の provenance（`crossSystemSource`）は従来どおり `withChildAnchoredEdges(sys)` から登録する** — 新しい集合は限定子付き target を除外するので、そこから取ると #2646 の再アンカーが壊れる
-6. `diff/view-diff.ts` で `systemEdges` を system ごとに `diffEdgeArray` でマージする
-7. テスト:
+2. 全 system に対して `deriveCanvasEdges()` を呼び、`systemEdges: Map<string, KrsEdge[]>` を組む。systems[0] のエントリは現在の `childEdges` と同一
+3. `implicitEdgeDetails` のキーを **system で修飾する**。無修飾のままマージすると同名 id の system 同士で details が上書きし合う（「`implicitEdgeDetails` は bare id キー」節）。修飾は**接尾**（`` `${from}->${to}#${kind}@${sys.id}` ``）にする。`diffImplicitEdgeDetails` が `key.indexOf("#")` より前を bare pair として `edgeDiff` の lookup に使っているので、接頭に付けると compare モードの `changes.domainEdges` が黙って当たらなくなる。書き込み（`deriveImplicitServiceEdges` の呼び出し側で修飾）と lookup（`layout-edges.ts`）を同じ形にそろえ、single 経路も同じ形に移す（single は system が 1 つなので出力は不変）
+4. `childEdges` を `systemEdges` 全エントリの union にする（in-place 展開の `internalEdges` は primary のみ）
+5. `ViewSlice` に `systemEdges` を追加し、`emptySlice` に既定値を置く
+6. `layout.ts` の `systemRawEdges` を `viewSlice.systemEdges?.get(sys.id) ?? withChildAnchoredEdges(sys)` にする。**cross-system の provenance（`crossSystemSource`）は従来どおり `withChildAnchoredEdges(sys)` から登録する**。新しい集合は限定子付き target を除外するので、そこから取ると #2646 の再アンカーが壊れる。なお `layoutMultipleSystems` には既に `systemEdges: LayoutEdge[]` というローカル変数があるので、slice 側は別名（`systemRawEdges` に代入するだけで新しい変数を作らない）にして取り違えを避ける
+7. multi 経路の `computeEdgePoints` 呼び出しでも `implicitEdgeDetails` を引いて `domainEdges` を付ける。single 経路の `computeLayoutEdges` と同じ扱いにしないと、描かれた implicit エッジの詳細パネルが空になる
+8. `diff/view-diff.ts` で `systemEdges` を system ごとに `diffEdgeArray` でマージする
+9. テスト:
    - `layout.test.ts`: 3 族（infra 派生 / implicit service / delivers）× 3 位置（single / `si === 0` / `si >= 1`）で single と root が同じエッジ集合を出す parity 表
    - `layout.test.ts`: 同名 id を持つ 2 system で、片方だけに宣言したエッジが他方のフレームに漏れないこと（案2 の失敗モードを柵にする）
+   - `layout.test.ts`: 同名 id を持つ 2 system が**それぞれ** implicit service エッジを持つとき、各線の `domainEdges` が自分の system の構成要素だけを持つこと（details キー混線の柵）
+   - `layout.test.ts`: root view の implicit service エッジに `domainEdges` が付くこと（single 経路にしか無い lookup の柵）
    - `layout.test.ts`: 派生エッジ + cross-system エッジ + カテゴリ折り畳みの同居（#2646 の再アンカーが生きていることの柵）
    - `view-extract.test.ts`: `systemEdges` が全 system 分そろい、`childEdges` がその union であること
    - compare モードで削除された派生エッジが残ること
    - 新たに描かれる派生エッジがスタイル解決を受けること（`[implicit]` の色 / `[async]` の破線）
-8. AT: 自動テストで閉じるため新規 AT は起こさない（手動でしか確認できない項目が無い）
-9. changeset: `@karasu-tools/core` + `karasu`, patch（描画が変わる）
-10. ADR 昇格: 実装完了後に `docs/adr/2756-root-view-system-edge-ownership.md` として昇格し、本 Design Doc は同じ PR で削除する
+10. AT: 自動テストで閉じるため新規 AT は起こさない（手動でしか確認できない項目が無い）
+11. changeset: `@karasu-tools/core` + `karasu`, patch（描画が変わる）
+12. ADR 昇格: 実装完了後に `docs/adr/2756-root-view-system-edge-ownership.md` として昇格し、本 Design Doc は同じ PR で削除する
 
 ### 影響範囲・マイグレーション
 
@@ -252,3 +276,5 @@ ADR-2223 と本 Issue は同じ形で 2 回続いている（抽出が用意し�
 - **ドキュメント更新**: 仕様の変更ではないので `docs/spec/` は変更なし。`docs/concepts.md` も変更なし
 - **テスト・examples への影響**: `examples.test.ts` の drift ガードと、root view のエッジ本数に依存する既存テストが動く可能性がある。全スイートで確認する
 - **`ViewSlice` の直接利用者**: `systemEdges` は optional + layout 側 fallback 付きなので、slice を手組みする呼び出しは無変更で動く
+- **`implicitEdgeDetails` のキー形**: system 修飾に変えるので、このマップを直接引く利用者は追随が要る。consumer は `layout-edges.ts`（キーを組み立てて get）と `diff/view-diff.ts`（`#` の前を切り出して `edgeDiff` を引く）の 2 箇所。後者がキーを**解析している**ため、修飾は接尾に置いて bare pair の前置きを保つ（実装の指針 3）
+- **`edgeDiff` は bare pair キーのまま残る**: `diffEdgeArray` は `` `${from}->${to}` `` で before/after を突き合わせる。`childEdges` を全 system の union にすると、`Alpha` と `Beta` がどちらも `Api->Store`（宣言でも派生でも）を持つケースで 2 本が 1 エントリに畳まれ、片方だけの追加・削除が正しく分類されない。キー形が bare なのは今回始まったことではない（`crossSystemEdges` も同じ map に入る）が、**union にする分だけ露出面は広がる**。`edgeDiff` を per-system キーに移すのは案3 と同じ「bare id キーの正規化」に属する残件なので、ここでは直さず ADR 昇格時に既知の限界として書き残す
