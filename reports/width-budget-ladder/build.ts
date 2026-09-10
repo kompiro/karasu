@@ -473,6 +473,12 @@ ${changedSections || "<p>どの設定でも変化なし。</p>"}`,
 同じ 188 ms は <a href="https://github.com/kompiro/karasu/issues/2790">#2790</a>（routing の障害物を索引化）と
 #2760 が<strong>出力を 1 バイトも変えずに</strong>削りにいく対象そのもの。回数を減らす前に単価を下げる方が、
 ADR も snapshot churn も要らない。</p>
+<p><strong>そもそも親 Issue の目標はほぼ達成済み。</strong> #2757 の受け入れ条件は
+「all-views を約 600 ms（Aug 27 水準）まで戻す」で、slice B (#2759) と slice C (#2760) が入った
+現在の main は <strong>${n1(benchOf("today").allViews)} ms</strong>（<code>pnpm bench:render</code>）/
+${n1(base.profile.totalMs)} ms（本 spike の計測）。slice D に手を付けなくても、そのラインには届いている。
+<em>注意</em>: 親 Issue の 1365 ms は別の機械・別セッションの数字で、この spike では再計測していない。
+比較するなら同じ機械で取り直すこと。</p>
 <p><strong>逆に、どの数字なら見合うか。</strong> #2790 が入って 1 候補あたりの原価が半分になれば、
 はしごの残り賞金は 90 ms 前後になり、ADR を 1 本書く価値は無くなる。逆に #2790 が入らず、
 親 Issue の受け入れ条件（all-views を約 600 ms 以下）を今すぐ満たす必要があるなら、
