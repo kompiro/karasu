@@ -3,6 +3,8 @@ paths:
   - ".github/dependabot.yml"
   - "docs/adr/*dependabot*.md"
   - "docs/adr/*update-dependencies*.md"
+  - ".github/workflows/*.lock.yml"
+  - ".github/aw/actions-lock.json"
 ---
 
 # Dependabot Operational Rules
@@ -171,3 +173,28 @@ PR を close → 人間 PR で再提出 など）を行った場合は、その�
 所見は判定ではない。workflow は宣言上マージも close もできない
 （`scripts/ci/agentic-workflow-safety.test.ts`）。採用 / 保留 / 却下は本ファイルの
 判定語彙に従って人が決める。
+
+## gh-aw の `.lock.yml` は bot PR ではなく再生成で上げる
+
+`github/gh-aw-actions/setup` を bump する Dependabot PR は **却下**し、
+`gh aw compile` による再生成 PR で入れる。`.lock.yml` は生成物であり、Dependabot は
+`uses:` 行だけを書き換えて同じファイル内の `gh-aw-manifest` / `gh-aw-metadata` と
+`.github/aw/actions-lock.json` を据え置くため、生成物とコンパイラのバージョンが
+食い違ったままマージされる（`ADR-2753`、再生成は `#2762`）。
+
+到達状態は「3 つの版が揃い、再コンパイルしても差分が出ない」こと。
+
+```bash
+gh extension upgrade gh-aw
+gh aw compile
+# compiler_version / actions-lock.json / uses: が同じ版を指す
+grep -o '"compiler_version":"[^"]*"' .github/workflows/*.lock.yml
+grep -o '"version": "[^"]*"' .github/aw/actions-lock.json
+# 宣言された write scope が広がっていないことを機械で確認する
+npx vitest run scripts/ci/agentic-workflow-safety.test.ts
+```
+
+再生成の diff は数百行になるが、読む場所は決まっている: `permissions:` ブロック、
+`GH_AW_INFO_ALLOWED_DOMAINS`、`ghcr.io/...` のイメージ版。ここが動いていなければ
+残りはコンパイラの出力形式の変化である。`gh aw lint` は docker を必要とするため
+devcontainer では実行できない（CI で担保する）。
