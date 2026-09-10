@@ -184,7 +184,14 @@ reviews:
         Design docs are Japanese drafts and transient by design: once the
         decision lands, the content is promoted into `docs/adr/` and the file is
         deleted. Do not comment on the wording, structure or completeness of the
-        document itself. Report only:
+        document itself.
+        `- **ステータス**: 検討中` alongside a `## 現時点の方針` section that picks an
+        option (「案N を採用する」) is the register `docs/design/TEMPLATE.md`
+        prescribes, not a contradiction: the status field tracks ADR promotion,
+        which happens after the implementation is reviewed (`.claude/rules/adr.md`),
+        while the section records the direction the draft is arguing for. Never
+        ask for the adoption sentence to be removed, or for the ADR to be written
+        before the implementation PR. Report only:
         - a statement that contradicts an ADR still in force (`docs/adr/*.md`
           with `status: accepted`) or `docs/spec/`
         - an assumption the design depends on but never states
@@ -242,9 +249,12 @@ reviews:
       mode: warning
       requirements: |
         English, Conventional Commits: `type(scope): subject`. Type is one of
-        feat / fix / docs / chore / refactor / test / perf / build / ci; scope is
-        the package or area (core, app, cli, lsp, vscode, nest, i18n, adr, ci).
-        Imperative mood, no trailing period.
+        feat / fix / docs / chore / refactor / test / perf / build / ci. Scope is
+        the package (core, app, cli, lsp, vscode, nest, i18n, e2e, docs-site) or,
+        for `docs`, the doc area the file lives in (design, adr, spec, guide,
+        acceptance, test-perspectives, prd, roadmap, process, concepts). A
+        `docs/design/**` change is `docs(design)`. Imperative mood, no trailing
+        period.
     description:
       mode: warning
     issue_assessment:
