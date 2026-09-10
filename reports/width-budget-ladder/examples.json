@@ -1,0 +1,223 @@
+{
+  "files": [
+    "examples/en/client-mcp/index.krs",
+    "examples/en/deploy-only/index.krs",
+    "examples/en/deploy-org/index.krs",
+    "examples/en/facet-styling/index.krs",
+    "examples/en/feature-samples/index.krs",
+    "examples/en/getting-started/index.krs",
+    "examples/en/hato/index.krs",
+    "examples/en/multi-file-system/index.krs",
+    "examples/en/org-only/index.krs",
+    "examples/ja/deploy-only/index.krs",
+    "examples/ja/deploy-org/index.krs",
+    "examples/ja/facet-styling/index.krs",
+    "examples/ja/getting-started/index.krs",
+    "examples/ja/multi-file-system/index.krs",
+    "examples/ja/org-only/index.krs"
+  ],
+  "totalLevels": 40,
+  "nondeterministic": 0,
+  "rows": [
+    {
+      "id": "today",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "steps8",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "steps6",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "steps4",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "steps3",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "steps6m2",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "floor",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "patience1",
+      "changed": 0,
+      "filesChanged": 0
+    },
+    {
+      "id": "patience2",
+      "changed": 0,
+      "filesChanged": 0
+    }
+  ],
+  "perFile": {
+    "today": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "steps8": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "steps6": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "steps4": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "steps3": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "steps6m2": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "floor": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "patience1": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    },
+    "patience2": {
+      "examples/en/client-mcp/index.krs": 0,
+      "examples/en/deploy-only/index.krs": 0,
+      "examples/en/deploy-org/index.krs": 0,
+      "examples/en/facet-styling/index.krs": 0,
+      "examples/en/feature-samples/index.krs": 0,
+      "examples/en/getting-started/index.krs": 0,
+      "examples/en/hato/index.krs": 0,
+      "examples/en/multi-file-system/index.krs": 0,
+      "examples/en/org-only/index.krs": 0,
+      "examples/ja/deploy-only/index.krs": 0,
+      "examples/ja/deploy-org/index.krs": 0,
+      "examples/ja/facet-styling/index.krs": 0,
+      "examples/ja/getting-started/index.krs": 0,
+      "examples/ja/multi-file-system/index.krs": 0,
+      "examples/ja/org-only/index.krs": 0
+    }
+  }
+}

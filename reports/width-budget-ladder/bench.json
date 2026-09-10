@@ -1,0 +1,51 @@
+{
+  "file": "/workspaces/dify/index.krs",
+  "rounds": 3,
+  "rows": [
+    {
+      "id": "today",
+      "allViews": 607.1,
+      "system": 31.2
+    },
+    {
+      "id": "steps8",
+      "allViews": 565.5,
+      "system": 30.5
+    },
+    {
+      "id": "steps6",
+      "allViews": 535.1,
+      "system": 32.3
+    },
+    {
+      "id": "steps4",
+      "allViews": 459.5,
+      "system": 31.1
+    },
+    {
+      "id": "steps3",
+      "allViews": 483,
+      "system": 34.6
+    },
+    {
+      "id": "steps6m2",
+      "allViews": 649.2,
+      "system": 31.4
+    },
+    {
+      "id": "floor",
+      "allViews": 458.7,
+      "system": 34.1
+    },
+    {
+      "id": "patience1",
+      "allViews": 606.5,
+      "system": 31.1
+    },
+    {
+      "id": "patience2",
+      "allViews": 614.8,
+      "system": 31.2
+    }
+  ]
+}

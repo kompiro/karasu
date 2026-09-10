@@ -38,6 +38,11 @@
  * evaluates every candidate unless `exhausted` says the result cannot move.
  */
 
+// SPIKE (#2761 option 3): the ladder's shape and an alternative stopping rule
+// come from `spike-instrument.ts` so a harness can vary them. NOT FOR MERGE.
+import { performance } from "node:perf_hooks";
+import { counters, ladder } from "./spike-instrument.js";
+
 /**
  * Aspect band the canvas must land inside: from portrait 16:9 to landscape
  * 16:9. A canvas inside this band fits a screen-shaped viewport without a
@@ -66,8 +71,8 @@ const BUDGET_STEPS = 12;
  */
 export function candidateWidthBudgets(
   floor: number,
-  maxMultiple: number = MAX_BUDGET_MULTIPLE,
-  steps: number = BUDGET_STEPS,
+  maxMultiple: number = ladder.maxMultiple ?? MAX_BUDGET_MULTIPLE,
+  steps: number = ladder.steps ?? BUDGET_STEPS,
 ): number[] {
   if (!(floor > 0) || steps < 1) return [floor];
   const ratio = Math.pow(maxMultiple, 1 / Math.max(1, steps - 1));
@@ -138,6 +143,9 @@ export function searchWidthBudget<T>(
   },
 ): BudgetSearchResult<T> {
   const candidates = candidateWidthBudgets(opts.floor, opts.maxMultiple, opts.steps);
+  counters.searches++;
+  // SPIKE: consecutive candidates that failed to improve the incumbent.
+  let misses = 0;
 
   let best: BudgetSearchResult<T> | null = null;
   let bestArea = Infinity;
@@ -145,12 +153,23 @@ export function searchWidthBudget<T>(
   let fallback: BudgetSearchResult<T> | null = null;
   let fallbackSquareness = Infinity;
 
+  let index = 0;
   for (const budget of candidates) {
+    const started = performance.now();
     const result = place(budget);
+    const elapsed = performance.now() - started;
+    if (index === 0) counters.firstCandidateMs += elapsed;
+    else {
+      counters.extraCandidateMs += elapsed;
+      if (index === 1) counters.searchesBeyondFirst++;
+    }
+    index++;
+    counters.candidates++;
     const { width, height, exhausted } = size(result);
     const found: BudgetSearchResult<T> = { result, budget };
     const shape = squareness(width, height);
 
+    let improved = false;
     if (withinAspectBand(width, height)) {
       const area = width * height;
       // Strictly smaller only. An equal-area candidate has merely rearranged
@@ -160,6 +179,7 @@ export function searchWidthBudget<T>(
       if (area < bestArea - 1e-9) {
         best = found;
         bestArea = area;
+        improved = true;
       }
     } else if (fallback === null || shape < fallbackSquareness) {
       // Also covers the degenerate canvas (an empty view measures 0 x 0):
@@ -167,6 +187,17 @@ export function searchWidthBudget<T>(
       // the caller gets a result instead of a crash.
       fallback = found;
       fallbackSquareness = shape;
+      // SPIKE: while nothing is inside the band there is no area to improve,
+      // so getting closer to square counts as progress for the patience rule.
+      if (best === null) improved = true;
+    }
+
+    // SPIKE (#2761 option 3): "stop once the area has failed to improve for k
+    // consecutive candidates". Unsound in the ADR-2593 sense — the canvas is
+    // not monotone in the budget — and measured here for exactly that reason.
+    if (ladder.patience !== null) {
+      misses = improved ? 0 : misses + 1;
+      if (misses >= ladder.patience) break;
     }
 
     // Nothing left to try: the caller has told us this result is insensitive

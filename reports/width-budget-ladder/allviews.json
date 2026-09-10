@@ -1,0 +1,132 @@
+{
+  "file": "/workspaces/dify/index.krs",
+  "rounds": 5,
+  "rows": [
+    {
+      "id": "today",
+      "totalMs": 628.1125000000002,
+      "extraCandidateMs": 187.9978349999983,
+      "firstCandidateMs": 61.595025000002806,
+      "candidates": 602,
+      "spread": [
+        634.7,
+        646.2,
+        701.1,
+        628.1,
+        651.9
+      ]
+    },
+    {
+      "id": "steps8",
+      "totalMs": 568.068542,
+      "extraCandidateMs": 133.8872109999984,
+      "firstCandidateMs": 62.894046999996135,
+      "candidates": 560,
+      "spread": [
+        568.1,
+        601,
+        607.5,
+        618.9,
+        627.1
+      ]
+    },
+    {
+      "id": "steps6",
+      "totalMs": 542.88375,
+      "extraCandidateMs": 89.46858799999882,
+      "firstCandidateMs": 64.99182900000733,
+      "candidates": 531,
+      "spread": [
+        544.1,
+        542.9,
+        555,
+        560.9,
+        560
+      ]
+    },
+    {
+      "id": "steps4",
+      "totalMs": 485.23666600000024,
+      "extraCandidateMs": 57.90207799999689,
+      "firstCandidateMs": 65.61678799999481,
+      "candidates": 507,
+      "spread": [
+        520.8,
+        520.3,
+        499.7,
+        485.2,
+        526.2
+      ]
+    },
+    {
+      "id": "steps3",
+      "totalMs": 481.4097090000005,
+      "extraCandidateMs": 55.44945999999891,
+      "firstCandidateMs": 67.77433700000347,
+      "candidates": 505,
+      "spread": [
+        514.9,
+        481.4,
+        503.3,
+        522,
+        516.5
+      ]
+    },
+    {
+      "id": "steps6m2",
+      "totalMs": 652.416792,
+      "extraCandidateMs": 204.57266199999776,
+      "firstCandidateMs": 68.14741700000286,
+      "candidates": 622,
+      "spread": [
+        742.8,
+        652.4,
+        667,
+        709.8,
+        708.1
+      ]
+    },
+    {
+      "id": "floor",
+      "totalMs": 418.5738749999996,
+      "extraCandidateMs": 0,
+      "firstCandidateMs": 64.93276000000014,
+      "candidates": 425,
+      "spread": [
+        484.5,
+        465.2,
+        418.6,
+        448.6,
+        452.8
+      ]
+    },
+    {
+      "id": "patience1",
+      "totalMs": 587.7700419999996,
+      "extraCandidateMs": 139.46225500000037,
+      "firstCandidateMs": 65.22236899999234,
+      "candidates": 538,
+      "spread": [
+        596.2,
+        646.2,
+        588.5,
+        626.4,
+        587.8
+      ]
+    },
+    {
+      "id": "patience2",
+      "totalMs": 605.2690419999999,
+      "extraCandidateMs": 169.0396260000025,
+      "firstCandidateMs": 63.41150500000367,
+      "candidates": 581,
+      "spread": [
+        630.5,
+        740.5,
+        605.3,
+        724.9,
+        611.5
+      ]
+    }
+  ]
+}

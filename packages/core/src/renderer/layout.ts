@@ -9,6 +9,8 @@ import type { ViewSlice } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
+// SPIKE (#2761 option 3) — NOT FOR MERGE.
+import { counters, lastLayout } from "./spike-instrument.js";
 import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
 import { framePieces } from "./edge-routing-groups.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
@@ -117,6 +119,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // the placement is not monotone in the budget). Views whose channels fit
   // never take this branch, so their output is unchanged byte for byte.
   const reservations = channelReservations(found.result.result, found.result.rows);
+  if (reservations.size > 0) counters.replacements++;
   const run =
     reservations.size > 0
       ? layoutInner(viewSlice, options, found.budget, reservations)
@@ -129,6 +132,9 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   if (run.crossingMarksPending) result.crossingMarks = computeCrossingMarks(result.edges);
   result.widthBudget = found.budget;
   result.placementPasses = reservations.size > 0 ? 2 : 1;
+  lastLayout.width = result.width;
+  lastLayout.height = result.height;
+  lastLayout.budget = found.budget;
   result.shapeInsetsApplied = !!options.shapeForNode && options.displayMode !== "icon";
   return result;
 }
