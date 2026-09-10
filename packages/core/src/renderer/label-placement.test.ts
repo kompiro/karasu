@@ -14,7 +14,7 @@ import {
   type EdgeLine,
   type LabelInput,
 } from "./label-placement.js";
-import { segmentCrossesAnyRect, type Rect } from "./edge-geometry.js";
+import { segmentCrossesRect, type Rect } from "./edge-geometry.js";
 import type { LayoutEdge } from "./layout-types.js";
 import type { EdgeDirection } from "../types/style.js";
 import { layout } from "./layout.js";
@@ -629,7 +629,7 @@ function referenceResolveLabelPlacements(
             height: box.height + line.halfStroke * 2,
           };
     for (let i = 0; i < line.points.length - 1; i++) {
-      if (segmentCrossesAnyRect(line.points[i], line.points[i + 1], [grown])) return true;
+      if (segmentCrossesRect(line.points[i], line.points[i + 1], grown)) return true;
     }
     return false;
   };

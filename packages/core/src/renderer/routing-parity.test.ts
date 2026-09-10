@@ -44,6 +44,7 @@ import { Parser } from "../parser/parser.js";
 import { declaredGroupOrderOf, buildGroupLabelIndex } from "./group-labels.js";
 import { countPolylinePenetrations, type Rect, type Point } from "./edge-geometry.js";
 import { collectChannels } from "./edge-routing-lanes.js";
+import { ObstacleIndex } from "./obstacle-index.js";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "./layout-types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -744,5 +745,85 @@ describe("exhausted interior corridors — column fence (#2611, TPL-2598)", () =
     expect([...twice.nodes.values()].map((n) => [n.id, n.x, n.y])).toEqual(
       [...once.nodes.values()].map((n) => [n.id, n.x, n.y]),
     );
+  });
+});
+
+/**
+ * The measures above are taken with a flat scan over the whole obstacle set,
+ * while the router now decides with the spatial index (#2790). The two have to
+ * be the same measure, or a penetration could be zero on the fence's reckoning
+ * and non-zero on the router's — TPL-1927's dual metric would then be measuring
+ * a diagram the chain never saw.
+ *
+ * So, edge for edge on the real models: the boolean the router decides with
+ * (`ObstacleQuery.polylineClear`) equals `countPolylinePenetrations(...) === 0`,
+ * the counter these fences assert on. Probed both on each edge's actual route
+ * (where the answer must be "clear", which is what penetration == 0 means) and
+ * on the straight centre-to-centre line for the same edge, which pierces on
+ * these models and so supplies the "not clear" half.
+ */
+describe("the obstacle index measures what the fences measure (#2790, TPL-1927)", () => {
+  /** The grouped models the fences above pin, so frames take part in the exemption too. */
+  const GROUPED_MODELS: [string, GroupBy][] = [
+    ["en/getting-started/index.krs", "team"],
+    ["en/feature-samples/team-ownership.krs", "team"],
+    ["en/feature-samples/boundary-clusters.krs", "boundary"],
+    ["en/feature-samples/boundary-multi-membership.krs", "boundary"],
+  ];
+
+  /** [agreements, disagreements, times a probe was blocked] for one layout. */
+  function indexVsCounter(res: LayoutResult): { checked: number; blocked: number } {
+    const frames = framesOf(res);
+    const nodes = [...res.nodes.values()];
+    const index = ObstacleIndex.build(
+      nodes,
+      res.containers.filter((c) => c.group),
+    );
+    const centre = (n: LayoutNode): Point => ({ x: n.x + n.width / 2, y: n.y + n.height / 2 });
+    let checked = 0;
+    let blocked = 0;
+    for (const e of res.edges) {
+      if (e.ghost || e.cyclic) continue;
+      const from = res.nodes.get(e.from);
+      const to = res.nodes.get(e.to);
+      if (!from || !to) continue;
+      const obstacles = obstaclesForEdge(
+        e,
+        nodes,
+        frames,
+        framesOfNode(from, frames),
+        framesOfNode(to, frames),
+      );
+      const query = index.forEdge(e.from, e.to);
+      for (const path of [pointsOf(e), [centre(from), centre(to)]]) {
+        const counted = countPolylinePenetrations(path, obstacles) === 0;
+        expect(query.polylineClear(path), `${e.from} -> ${e.to}`).toBe(counted);
+        checked++;
+        if (!counted) blocked++;
+      }
+    }
+    return { checked, blocked };
+  }
+
+  it.each(UNGROUPED_MODELS)("%s: the router's decision equals the counter", (file) => {
+    expect(indexVsCounter(layoutOf(file)).checked).toBeGreaterThan(0);
+  });
+
+  it.each(GROUPED_MODELS)(
+    "%s (group by %s): the router's decision equals the counter",
+    (file, groupBy) => {
+      expect(indexVsCounter(layoutOf(file, groupBy)).checked).toBeGreaterThan(0);
+    },
+  );
+
+  it("the probes include blocked ones, so the agreement is not vacuous", () => {
+    // A suite in which every probe is clear would agree trivially. The straight
+    // centre-to-centre lines pierce on these models, which is the whole reason
+    // the router exists.
+    const blocked = [...UNGROUPED_MODELS].reduce(
+      (sum, file) => sum + indexVsCounter(layoutOf(file)).blocked,
+      0,
+    );
+    expect(blocked).toBeGreaterThan(0);
   });
 });
