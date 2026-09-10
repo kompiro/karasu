@@ -254,19 +254,36 @@ export interface GhostEndpointMatch {
  * Ties keep the first declaration, the same first-wins the ghost lookup has
  * always had; a genuinely ambiguous reference is reported by
  * {@link resolveEdgeEndpoint} rather than silently picked here.
+ *
+ * The entries are bucketed by the last segment of their path, and a lookup
+ * scans only the bucket of the reference's last segment (#2759). A suffix
+ * match requires the two last segments to be equal, so the bucket holds every
+ * entry a scan of the whole model would have matched and nothing it would
+ * not; and the walk fills each bucket in declaration order, so first-wins
+ * picks the same entry. That keeps a bundle's thousands of endpoint lookups
+ * a scan of the same-named nodes rather than of the whole model, now that
+ * the resolver is built once per model (view-extract's context cache).
  */
 export function buildGhostEndpointResolver(
   systems: readonly KrsNode[],
 ): (ref: NodeIdPath) => GhostEndpointMatch | undefined {
-  const entries: GhostEndpointMatch[] = [];
+  const byLastSegment = new Map<string, GhostEndpointMatch[]>();
   for (const system of systems) {
     const walk = (node: KrsNode, prefix: NodeIdPath, ancestors: KrsNode[]): void => {
       const path = [...prefix, node.id];
-      entries.push({ system, node, path, ancestors });
+      const entry: GhostEndpointMatch = { system, node, path, ancestors };
+      const last = path[path.length - 1];
+      const bucket = byLastSegment.get(last);
+      if (bucket) bucket.push(entry);
+      else byLastSegment.set(last, [entry]);
       const inner = [...ancestors, node];
       for (const child of node.children) walk(child, path, inner);
     };
     for (const child of system.children) walk(child, [system.id], []);
   }
-  return (ref) => resolveNodePathBySuffix(ref, entries).find((m) => m.path.length === ref.length);
+  return (ref) => {
+    const candidates = byLastSegment.get(ref[ref.length - 1]);
+    if (!candidates) return undefined;
+    return resolveNodePathBySuffix(ref, candidates).find((m) => m.path.length === ref.length);
+  };
 }

@@ -1,7 +1,7 @@
 import type { Diagnostic, KrsFile, KrsNode, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout-types.js";
-import { extractView, extractEntityView } from "../view/view-extract.js";
+import { createViewExtractor, extractEntityView } from "../view/view-extract.js";
 import type { ViewPath } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
@@ -117,7 +117,9 @@ export function buildDrillDownSvg(
   selectedFacets?: readonly string[],
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
-  const rootSlice = extractView(effectiveSystems, []);
+  // One extractor per build: the model is fixed for the whole walk (#2759).
+  const extract = createViewExtractor(effectiveSystems);
+  const rootSlice = extract([]);
   if (rootSlice.childNodes.length === 0) {
     return {
       svg: buildNoDiagramSvg(emptyStateLabels, true, theme),
@@ -136,7 +138,7 @@ export function buildDrillDownSvg(
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(
     {
-      getSlice: (path) => styleDerivedEdges(extractView(effectiveSystems, path), styles, sheets),
+      getSlice: (path) => styleDerivedEdges(extract(path), styles, sheets),
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
       // At the multi-system root view we need every owning system's children
       // (real + synthesized "Unassigned" pseudo-system) so drill-down pages
@@ -590,13 +592,15 @@ export function buildAllViewsSvg(
   const facetOverlay = resolveFacetOverlay(krsFile, selectedFacets);
   const teamLabels = buildTeamLabelIndex(krsFile);
   const systemLevels: BundledLevel[] = [];
-  const systemRootSlice = extractView(effectiveSystems, []);
+  // One extractor per build: the model is fixed for the whole walk (#2759).
+  const extract = createViewExtractor(effectiveSystems);
+  const systemRootSlice = extract([]);
   if (systemRootSlice.childNodes.length > 0) {
     const styles = resolveStyles(effectiveSystems, sheets, []);
     const ownerIndex = krsFile.ownerIndex ?? new Map();
     collectDrillDownLevelsWithDimensions(
       {
-        getSlice: (path) => styleDerivedEdges(extractView(effectiveSystems, path), styles, sheets),
+        getSlice: (path) => styleDerivedEdges(extract(path), styles, sheets),
         hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
         getChildren: (slice) =>
           slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,

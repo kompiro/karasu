@@ -28,6 +28,7 @@
 
 import type { CrossingMarks, HopMark, JunctionMark, LayoutEdge } from "./layout-types.js";
 import type { Point } from "./edge-geometry.js";
+import { BoxGrid, chooseCellSize } from "./spatial-grid.js";
 
 /** Radius of a single hop arc's bump (px). */
 export const HOP_RADIUS = 4;
@@ -54,6 +55,13 @@ interface Seg {
   edge: number;
   ux: number;
   uy: number;
+  /** `Math.hypot(b.x - a.x, b.y - a.y)`, the value `segIntersection` needs for its endpoint test. */
+  len: number;
+  /** Closed axis-aligned bounds — the grid key and the exact AABB reject share these values. */
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
 }
 
 /**
@@ -75,8 +83,8 @@ function segIntersection(s1: Seg, s2: Seg): Point | null {
   const qpy = s2.a.y - s1.a.y;
   const t = (qpx * sy - qpy * sx) / denom;
   const u = (qpx * ry - qpy * rx) / denom;
-  const len1 = Math.hypot(rx, ry);
-  const len2 = Math.hypot(sx, sy);
+  const len1 = s1.len;
+  const len2 = s2.len;
   // Distance from the crossing to each endpoint = t·len / (1−t)·len etc. A
   // negative value (out-of-segment) is also ≤ EPS, so this rejects both
   // endpoint-touches and off-segment intersections in one test.
@@ -84,6 +92,32 @@ function segIntersection(s1: Seg, s2: Seg): Point | null {
     return null;
   }
   return { x: s1.a.x + t * rx, y: s1.a.y + t * ry };
+}
+
+/**
+ * Broad-phase index over the segment bounds, spanning the extent of all
+ * segments with cells sized by `chooseCellSize` from the segment lengths (a
+ * typical segment covers about one cell; a long spine covers a row of them).
+ * Every segment is inserted from the same list the pair loop reads, never a
+ * shape-specific subset (TPL-1954).
+ */
+function segmentGrid(segs: Seg[]): BoxGrid {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  const lengths = new Float64Array(segs.length);
+  segs.forEach((s, i) => {
+    if (s.minX < minX) minX = s.minX;
+    if (s.minY < minY) minY = s.minY;
+    if (s.maxX > maxX) maxX = s.maxX;
+    if (s.maxY > maxY) maxY = s.maxY;
+    lengths[i] = Math.hypot(s.maxX - s.minX, s.maxY - s.minY);
+  });
+  const cell = chooseCellSize(lengths, maxX - minX, maxY - minY);
+  const grid = new BoxGrid(cell, minX, minY, maxX, maxY);
+  segs.forEach((s, i) => grid.insert(i, s.minX, s.minY, s.maxX, s.maxY));
+  return grid;
 }
 
 /**
@@ -117,7 +151,18 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
         ux = -ux;
         uy = -uy;
       }
-      segs.push({ a, b, edge: edgeIdx, ux, uy });
+      segs.push({
+        a,
+        b,
+        edge: edgeIdx,
+        ux,
+        uy,
+        len,
+        minX: Math.min(a.x, b.x),
+        minY: Math.min(a.y, b.y),
+        maxX: Math.max(a.x, b.x),
+        maxY: Math.max(a.y, b.y),
+      });
     }
 
     // Junction candidate: the elbow where a trunked edge's stub joins the spine.
@@ -134,20 +179,31 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   // segments (larger |ux|; tie → smaller edge index, then segment order), so the
   // arc rides the flatter line and steep spines stay clean. `coord` is the
   // crossing's 1-D position along the host's canonical direction, for clustering.
+  //
+  // Pairs come from a uniform grid over the segment bounds instead of the full
+  // `i < j` double loop (#2760): only segments sharing a grid cell can have
+  // overlapping bounds, so the exact AABB reject below sees a small superset of
+  // the pairs it used to accept and rejects exactly the same ones. The visiting
+  // order is preserved — `i` ascending, then each `i`'s candidates ascending —
+  // because it is observable: it fixes the insertion order of `crossingsPerHost`
+  // (hence the hop-dedupe tie-break in `addHop`) and of each host's list.
   const crossingsPerHost = new Map<Seg, { coord: number; point: Point }[]>();
+  const grid = segmentGrid(segs);
+  const candidates: number[] = [];
   for (let i = 0; i < segs.length; i++) {
-    for (let j = i + 1; j < segs.length; j++) {
-      const s1 = segs[i];
+    const s1 = segs[i];
+    grid.query(s1.minX, s1.minY, s1.maxX, s1.maxY, candidates);
+    let n = 0;
+    for (const j of candidates) if (j > i) candidates[n++] = j;
+    candidates.length = n;
+    candidates.sort((a, b) => a - b);
+    for (const j of candidates) {
       const s2 = segs[j];
       if (s1.edge === s2.edge) continue;
-      // Cheap AABB reject before the intersection maths: segments whose bounding
-      // boxes don't overlap can't cross. Prunes most of the O(n²) pairs.
-      if (
-        Math.min(s1.a.x, s1.b.x) > Math.max(s2.a.x, s2.b.x) ||
-        Math.max(s1.a.x, s1.b.x) < Math.min(s2.a.x, s2.b.x) ||
-        Math.min(s1.a.y, s1.b.y) > Math.max(s2.a.y, s2.b.y) ||
-        Math.max(s1.a.y, s1.b.y) < Math.min(s2.a.y, s2.b.y)
-      ) {
+      // Exact AABB reject before the intersection maths: segments whose bounding
+      // boxes don't overlap can't cross. Strict, so touching boxes still reach
+      // `segIntersection` — the grid's closed-interval cells never drop those.
+      if (s1.minX > s2.maxX || s1.maxX < s2.minX || s1.minY > s2.maxY || s1.maxY < s2.minY) {
         continue;
       }
       const p = segIntersection(s1, s2);
@@ -165,11 +221,21 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
   // hop, oriented along the host. Dedup by **point** (not point+angle), keeping
   // the widest: collinear hosts crossing at the same spot, and 3+ edges
   // concurrent at one point, collapse to a single arc instead of stacking.
-  const hopByKey = new Map<string, HopMark>();
+  // Keyed by the exact (x, y) doubles, x then y — a dense canvas produces
+  // hundreds of thousands of hops per render, and a string key per hop was the
+  // pass's single largest cost once the pair loop was indexed (#2760). Number
+  // keys compare by value exactly as the `${x},${y}` strings did.
+  const hopByX = new Map<number, Map<number, HopMark>>();
+  let hopCount = 0;
   const addHop = (mark: HopMark) => {
-    const key = `${mark.x},${mark.y}`;
-    const existing = hopByKey.get(key);
-    if (!existing || mark.halfWidth > existing.halfWidth) hopByKey.set(key, mark);
+    let byY = hopByX.get(mark.x);
+    if (!byY) {
+      byY = new Map<number, HopMark>();
+      hopByX.set(mark.x, byY);
+    }
+    const existing = byY.get(mark.y);
+    if (!existing) hopCount++;
+    if (!existing || mark.halfWidth > existing.halfWidth) byY.set(mark.y, mark);
   };
   // Round away 1e-14 float noise from the intersection maths so marks are stable
   // and, for clean axis-aligned inputs, byte-identical to the pre-#1939 values.
@@ -197,7 +263,11 @@ export function computeCrossingMarks(edges: LayoutEdge[]): CrossingMarks {
     }
     flush(crossings.length - 1);
   }
-  const hops = [...hopByKey.values()];
+  // Collection order is irrelevant: the sort below is a total order on the
+  // distinct (x, y) keys.
+  const hops: HopMark[] = new Array(hopCount);
+  let h = 0;
+  for (const byY of hopByX.values()) for (const mark of byY.values()) hops[h++] = mark;
 
   // Junction dots: a dot belongs only where the shared spine actually *continues
   // past* the elbow — a T/＋ where another stub joins above (circuit convention).
