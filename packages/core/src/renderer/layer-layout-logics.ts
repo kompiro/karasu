@@ -377,12 +377,23 @@ export function placeNodesInLayers(input: PlaceNodesInput): {
       placedRows.push(row);
       const columnGaps = extraGapBeforeCard?.get(ordinal);
       let xOffset = nodeGap;
+      // How much of `xOffset` is reserved column, so the barycenter of the
+      // layers below can be told without it. Feeding a reservation into
+      // `sortByBarycenter` would let it reorder a later layer, and the rows
+      // that came out of *that* order are not the rows the reservation was
+      // measured on — the key would be pointing at a card that has moved
+      // (TPL-2611: the decision that makes the key must not be fed the
+      // feedback). Every card's own position still includes the reservation;
+      // only the ordering input is kept at what the first pass saw.
+      let reserved = 0;
       let rowMaxHeight = 0;
       for (const nid of row) {
-        xOffset += columnGaps?.get(nid) ?? 0;
+        const columnGap = columnGaps?.get(nid) ?? 0;
+        xOffset += columnGap;
+        reserved += columnGap;
         const dims = dimsById.get(nid)!;
         placements.set(nid, { x: xOffset, y: rowY, width: dims.width, height: dims.height });
-        nodeCenterX.set(nid, xOffset + dims.width / 2);
+        nodeCenterX.set(nid, xOffset + dims.width / 2 - reserved);
         xOffset += dims.width + nodeGap;
         childMaxWidth = Math.max(childMaxWidth, xOffset);
         rowMaxHeight = Math.max(rowMaxHeight, dims.height);

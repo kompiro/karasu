@@ -263,12 +263,12 @@ function columnReservations(
     if (wanted.length === 0) continue;
     const cards = cardsOfRow[r];
     // **One** column per short row, not the whole shortfall. Measured on the
-    // dify corpus (21 views, 1,102 edges): opening one column where a row is
-    // short takes 39.5% of the gutter routes into the interior, with
-    // crossings −18.7%, route length −13.1% and canvas area −9.7% against
+    // dify corpus (20 views, 1,102 edges): opening one column where a row is
+    // short takes 40.0% of the gutter routes into the interior, with
+    // crossings −17.3%, route length −12.8% and canvas area −9.7% against
     // main. Opening the full shortfall takes more of them off the gutters
-    // (51.6%) and is worse everywhere it counts — crossings −13.1%, length
-    // −8.3%, area −8.6% — because every extra column widens the row it is in,
+    // (51.8%) and is worse everywhere it counts — crossings −16.1%, length
+    // −9.5%, area −9.2% — because every extra column widens the row it is in,
     // and each edge that follows it crosses the runs of the rows it now
     // passes. The first column is the one that pays: it turns "no way
     // through this row at all" into "a way through".

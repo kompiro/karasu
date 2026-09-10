@@ -1663,7 +1663,13 @@ function buildSegmentIndex(
   edges: readonly LayoutEdge[],
   bands: readonly { top: number; bottom: number }[],
 ): SegmentIndex {
-  const bucketKey = (seg: OccupiedSegment) => `${seg.axis}:${Math.round(seg.at * 2)}`;
+  // Bucketed like the router's claim register, and read with its neighbours
+  // for the same reason: two coordinates within the comparison epsilon of a
+  // bucket edge would otherwise be filed one bucket apart and never compared.
+  // The fan works in fractional coordinates (a slot is a fraction of a card's
+  // side), so those are the values that land near an edge.
+  const bucketKey = (seg: OccupiedSegment, offset = 0) =>
+    `${seg.axis}:${Math.round(seg.at * 2) + offset}`;
   const buckets = new Map<string, { edge: LayoutEdge; seg: OccupiedSegment }[]>();
   const add = (edge: LayoutEdge, pts: readonly Point[]) => {
     for (const seg of segmentsOfPolyline(pts, bands)) {
@@ -1693,15 +1699,19 @@ function buildSegmentIndex(
   }
   return {
     occupied(seg, exempt) {
-      const bucket = buckets.get(bucketKey(seg));
-      if (!bucket) return false;
-      return bucket.some(
-        (entry) =>
-          !exempt.has(entry.edge) &&
-          entry.seg.axis === seg.axis &&
-          Math.abs(entry.seg.at - seg.at) < 1e-6 &&
-          Math.min(entry.seg.hi, seg.hi) - Math.max(entry.seg.lo, seg.lo) > 1e-6,
-      );
+      for (const offset of [-1, 0, 1]) {
+        const bucket = buckets.get(bucketKey(seg, offset));
+        if (!bucket) continue;
+        const hit = bucket.some(
+          (entry) =>
+            !exempt.has(entry.edge) &&
+            entry.seg.axis === seg.axis &&
+            Math.abs(entry.seg.at - seg.at) < 1e-6 &&
+            Math.min(entry.seg.hi, seg.hi) - Math.max(entry.seg.lo, seg.lo) > 1e-6,
+        );
+        if (hit) return true;
+      }
+      return false;
     },
     replace(edge, before, after) {
       remove(edge, before);

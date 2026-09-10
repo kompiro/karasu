@@ -401,6 +401,45 @@ describe("placeNodesInLayers > column reservation (#2611, TPL-2611)", () => {
     }
   });
 
+  it("keeps the rows when the order comes from the barycenter, not from a tier", () => {
+    // The dangerous shape (TPL-2611): with `forcedLayers === null` the layers
+    // below are ordered by `sortByBarycenter`, which reads the centres this
+    // very function writes. `u` follows `b` and `v` follows `f`, and those two
+    // predecessors sit at the same centre — so a reservation that pushed `b`
+    // right would reorder the last layer, and the rows the reservation was
+    // keyed on would no longer be the rows it lands in.
+    const placeChain = (extraGapBeforeCard?: ReadonlyMap<number, ReadonlyMap<string, number>>) =>
+      placeNodesInLayers({
+        sortedLayers: [0, 1, 2],
+        nodesByLayer: new Map([
+          [0, ["a", "b"]],
+          [1, ["e", "f"]],
+          [2, ["u", "v"]],
+        ]),
+        edges: [edge("a", "e"), edge("b", "f"), edge("b", "u"), edge("f", "v")],
+        edgeDirections: undefined,
+        layers: new Map(),
+        forcedLayers: null,
+        layoutHints: undefined,
+        gridHint: undefined,
+        groupStartLayer: new Map(),
+        gaps: GAPS,
+        extraGapBeforeCard,
+        measure: () => ({ width: 100, height: 80 }),
+      });
+    const plain = placeChain();
+    const reserved = placeChain(new Map([[0, new Map([["b", 600]])]]));
+    expect(plain.rows).toEqual([
+      ["a", "b"],
+      ["e", "f"],
+      ["u", "v"],
+    ]);
+    expect(reserved.rows).toEqual(plain.rows);
+    // The reservation still moved the card it names — the ordering input is
+    // what is held back, not the placement.
+    expect(reserved.placements.get("b")!.x - plain.placements.get("b")!.x).toBe(600);
+  });
+
   it("leaves the placement byte-identical without a reservation", () => {
     expect(place(new Map()).placements).toEqual(place().placements);
   });
