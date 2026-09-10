@@ -2356,11 +2356,24 @@ describe("layout > crossing marks are computed once, on the final placement (#27
     expect(result.crossingMarks).toBeDefined();
   });
 
-  it("leaves an empty view without marks, as before", () => {
+  it("leaves an empty single-system view without marks, as before", () => {
     const result = layout(parseAndExtract("system Empty {}"));
     expect(result.edges).toEqual([]);
     expect(result.crossingMarks).toBeUndefined();
     expect(marksSpy).not.toHaveBeenCalled();
+  });
+
+  // The two empty views answer differently, and did before this change: the
+  // single-system early return has never carried marks, while the multi-system
+  // path has produced an empty marks object since #2369. Deferring the pass
+  // keeps each as it was — aligning them would be a behaviour change, and the
+  // renderer cannot tell the two apart anyway (it skips empty hops/junctions).
+  it("keeps the multi-system root's empty marks object for an edgeless root", () => {
+    const result = layout(parseAndExtract("system A {}\nsystem B {}"));
+    expect(result.nodes.size).toBe(0);
+    expect(result.edges).toEqual([]);
+    expect(result.crossingMarks).toEqual({ hops: [], junctions: [] });
+    expect(marksSpy).toHaveBeenCalledTimes(1);
   });
 });
 
