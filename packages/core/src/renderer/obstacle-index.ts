@@ -57,6 +57,11 @@ export interface ObstacleQuery {
  * share one; a re-placement such as the width-budget search calls the chain
  * again and builds a new one.
  */
+/** Both coordinates are finite, so the grid can place the point in a cell. */
+function isFinitePoint(p: Point): boolean {
+  return Number.isFinite(p.x) && Number.isFinite(p.y);
+}
+
 export class ObstacleIndex {
   /** The obstacle rects themselves, in insertion order: cards first, then frame pieces. */
   private readonly rects: Rect[] = [];
@@ -175,15 +180,17 @@ export class ObstacleIndex {
     framesFrom: ReadonlySet<string> | undefined,
     framesTo: ReadonlySet<string> | undefined,
   ): boolean {
-    const found = this.grid.query(
-      a.x < b.x ? a.x : b.x,
-      a.y < b.y ? a.y : b.y,
-      a.x < b.x ? b.x : a.x,
-      a.y < b.y ? b.y : a.y,
-      this.candidates,
-    );
-    for (let i = 0; i < found.length; i++) {
-      const id = found[i];
+    // A non-finite coordinate cannot be placed in a cell: `col` / `row` clamp on
+    // `< 0` and `>= cols`, and NaN fails both, so the query would walk no cells
+    // and report a clear segment. The flat scan this replaced reported the
+    // opposite, because `segmentCrossesRect`'s comparisons against a NaN slope
+    // all fail and leave the span at its full extent. Degenerate geometry is a
+    // bug upstream either way, but it must not be the one answer that lets a
+    // route through unchecked, so the exact clip decides it over every
+    // obstacle, exactly as it used to.
+    const candidates = isFinitePoint(a) && isFinitePoint(b) ? this.near(a, b) : this.allIds();
+    for (let i = 0; i < candidates.length; i++) {
+      const id = candidates[i];
       const owner = this.owner[id];
       if (this.isFramePiece[id]) {
         if (framesFrom?.has(owner) || framesTo?.has(owner)) continue;
@@ -193,5 +200,23 @@ export class ObstacleIndex {
       if (segmentCrossesRect(a, b, this.rects[id])) return true;
     }
     return false;
+  }
+
+  /** Ids the grid offers for the segment's bounding box. */
+  private near(a: Point, b: Point): number[] {
+    return this.grid.query(
+      a.x < b.x ? a.x : b.x,
+      a.y < b.y ? a.y : b.y,
+      a.x < b.x ? b.x : a.x,
+      a.y < b.y ? b.y : a.y,
+      this.candidates,
+    );
+  }
+
+  /** Every id, for the degenerate query the grid cannot place. */
+  private allIds(): number[] {
+    this.candidates.length = 0;
+    for (let i = 0; i < this.rects.length; i++) this.candidates.push(i);
+    return this.candidates;
   }
 }

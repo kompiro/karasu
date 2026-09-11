@@ -771,7 +771,11 @@ describe("the obstacle index measures what the fences measure (#2790, TPL-1927)"
     ["en/feature-samples/boundary-multi-membership.krs", "boundary"],
   ];
 
-  /** [agreements, disagreements, times a probe was blocked] for one layout. */
+  /**
+   * Probes one layout: how many edges were checked, and how many of those the
+   * counter called blocked. A disagreement fails inline rather than being
+   * counted, so a returned pair always describes agreeing probes.
+   */
   function indexVsCounter(res: LayoutResult): { checked: number; blocked: number } {
     const frames = framesOf(res);
     const nodes = [...res.nodes.values()];
@@ -822,6 +826,17 @@ describe("the obstacle index measures what the fences measure (#2790, TPL-1927)"
     // the router exists.
     const blocked = [...UNGROUPED_MODELS].reduce(
       (sum, file) => sum + indexVsCounter(layoutOf(file)).blocked,
+      0,
+    );
+    expect(blocked).toBeGreaterThan(0);
+  });
+
+  it("the grouped probes include blocked ones too, so the frames are load-bearing", () => {
+    // The grouped models are here because frames take part in the exemption.
+    // Counting them separately means an empty frame set cannot leave these
+    // cases agreeing on nothing while the ungrouped total carries the guard.
+    const blocked = GROUPED_MODELS.reduce(
+      (sum, [file, groupBy]) => sum + indexVsCounter(layoutOf(file, groupBy)).blocked,
       0,
     );
     expect(blocked).toBeGreaterThan(0);

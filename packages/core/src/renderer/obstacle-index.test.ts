@@ -343,6 +343,46 @@ describe("ObstacleIndex parity with the flat scan (#2790)", () => {
     }
   });
 
+  it("agrees when a coordinate is not finite, where the grid can place nothing", () => {
+    // A NaN or an infinity cannot be put in a cell: the clamps in `col` / `row`
+    // test `< 0` and `>= cols`, and NaN fails both. Left to the grid the query
+    // would walk no cells and call the segment clear, while the flat scan calls
+    // it crossed, so a degenerate coordinate would be the one input that lets a
+    // route through unchecked. Parity is the assertion, so this stays true if
+    // the fallback is ever rewritten.
+    const nodes = [node("a", 0, 0, 100, 60), node("b", 400, 0, 100, 60), node("c", 200, 0, 80, 60)];
+    const index = ObstacleIndex.build(nodes, []);
+    const query = index.forEdge("a", "b");
+    const flat = flatObstaclesFor("a", "b", nodes, [], buildFramesOfNode(nodes, []));
+    const degenerate: [Point, Point][] = [
+      [
+        { x: NaN, y: 30 },
+        { x: 500, y: 30 },
+      ],
+      [
+        { x: -50, y: 30 },
+        { x: NaN, y: 30 },
+      ],
+      [
+        { x: -50, y: NaN },
+        { x: 500, y: 30 },
+      ],
+      [
+        { x: Number.POSITIVE_INFINITY, y: 30 },
+        { x: 500, y: 30 },
+      ],
+      [
+        { x: -50, y: 30 },
+        { x: Number.NEGATIVE_INFINITY, y: 30 },
+      ],
+    ];
+    for (const [a, b] of degenerate) {
+      expect(query.segmentCrosses(a, b), `${a.x},${a.y} -> ${b.x},${b.y}`).toBe(
+        flatSegmentCrosses(a, b, flat),
+      );
+    }
+  });
+
   it("agrees on whole polylines, not only single segments", () => {
     const r = rng(99);
     const nodes = Array.from({ length: 25 }, (_, i) =>

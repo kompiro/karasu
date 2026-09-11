@@ -9,8 +9,9 @@
  * band. A straight service→infra edge then pierces every intermediate team
  * frame and card between its endpoints (measured: 11 penetrations on the
  * canonical 2-team fixture). The default skip-layer router
- * (`edge-routing-channels.ts`) only treats *node cards* as obstacles, not the
- * frames, so it cannot fix this.
+ * (`edge-routing-channels.ts`) could not fix this when it saw only node cards;
+ * both passes now take the same `ObstacleQuery`, which answers for cards and
+ * frame pieces alike (#2790).
  *
  * This pass adds the group frames to the obstacle set and, for any edge whose
  * straight path crosses a non-endpoint node or frame, reroutes it orthogonally
@@ -1362,7 +1363,6 @@ interface GutterAttach {
 export function fanOutGutterPorts(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
-  frames: ContainerRect[],
   /** The chain's shared obstacle index (#2790). */
   obstacleIndex: ObstacleIndex,
   expandedFrames?: Map<string, ContainerRect>,

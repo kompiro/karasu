@@ -445,7 +445,7 @@ export function runRoutingChain(
   // shape the chain can produce takes part in the overlap passes (TPL-1954)
   // in both modes.
   distributeGutterLanes(nodes, edges, groupFrames);
-  fanOutGutterPorts(nodes, edges, groupFrames, obstacleIndex, expandedFrames, ports);
+  fanOutGutterPorts(nodes, edges, obstacleIndex, expandedFrames, ports);
   // Stagger the horizontal runs that share an inter-row channel across
   // distinct lanes at a fixed pitch (#2608). Keyed on the channel rather than
   // on the route shape, so every route's runs take part (TPL-1954); the room
