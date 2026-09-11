@@ -2,6 +2,7 @@
 
 - **日付**: 2026-09-11
 - **ステータス**: 検討中
+- **PR**: [#2794](https://github.com/kompiro/karasu/pull/2794)
 - **関連**:
   - 引き金 Issue: [#2715](https://github.com/kompiro/karasu/issues/2715)
   - 派生元: [#2596](https://github.com/kompiro/karasu/issues/2596)（`node-id-multiple-locations` を cross-file 判定にした PR の手動確認で踏んだ）
