@@ -1,0 +1,353 @@
+<!doctype html><meta charset="utf-8"><style>
+           body { margin: 0; background: #0d1117; }
+           .preview-container svg { display: block; width: 100%; height: auto; }
+           
+.preview-container svg .krs-edge--interactive { cursor: context-menu; }
+.preview-container svg .krs-edge--interactive:hover line:not(.krs-edge__hitline),
+.preview-container svg .krs-edge--interactive:hover polyline:not(.krs-edge__hitline) {
+  stroke-width: 3; filter: brightness(1.4);
+}
+.preview-container svg .krs-edge--interactive:hover text { filter: brightness(1.4); }
+.preview-container svg .krs-edge { transition: opacity 0.15s ease; }
+.preview-container svg .krs-edge--interactive:hover { opacity: 1 !important; }
+.preview-container svg:has(.krs-edge--interactive:hover) .krs-edge:not(:hover) {
+  opacity: 0.25 !important;
+}
+</style><div class="preview-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1567.9600000000003 2292" width="1567.9600000000003" height="2292"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94A3B8"/></marker>
+<marker id="arrow-0" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#EF4444"/></marker></defs>
+<rect width="1567.9600000000003" height="2292" fill="#0F172A" rx="0"/>
+<text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Docker Compose</text>
+<g data-container-id="FileStore"><rect x="212" y="40" width="364.8000000000001" height="240" fill="transparent" stroke="#1D4ED8" stroke-width="2" rx="8"/>
+<text x="224" y="58" fill="#93C5FD" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">オブジェクトストレージ</text></g>
+<g data-container-id="DifyDB"><rect x="624.8000000000002" y="40" width="230.16000000000003" height="240" fill="transparent" stroke="#166534" stroke-width="2" rx="8"/>
+<text x="636.8000000000002" y="58" fill="#86EFAC" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">Dify DB</text></g>
+<g data-container-id="RedisCache"><rect x="902.9600000000002" y="40" width="205.68" height="140" fill="transparent" stroke="#166534" stroke-width="2" rx="8"/>
+<text x="914.9600000000002" y="58" fill="#86EFAC" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">Redis</text></g>
+<g data-container-id="CodeSandbox"><rect x="212" y="328" width="303.6000000000001" height="140" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="224" y="346" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">コードサンドボックス</text></g>
+<g data-container-id="AgentSandbox"><rect x="563.6000000000001" y="328" width="377.04000000000013" height="140" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="575.6000000000001" y="346" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">エージェントサンドボックス</text></g>
+<g data-container-id="PluginDaemon"><rect x="988.6400000000002" y="328" width="377.04000000000013" height="140" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="1000.6400000000002" y="346" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">プラグインデーモン</text></g>
+<g data-container-id="AgentBackend"><rect x="212" y="516" width="340.3200000000001" height="140" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="224" y="534" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">エージェントバックエンド</text></g>
+<g data-container-id="SsrfProxy"><rect x="600.3200000000002" y="516" width="236.28000000000003" height="240" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="612.3200000000002" y="534" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">SSRF プロキシ</text></g>
+<g data-container-id="Gateway"><rect x="884.6000000000001" y="516" width="211.8" height="240" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="896.6000000000001" y="534" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">ゲートウェイ</text></g>
+<g data-container-id="VectorStore"><rect x="212" y="804" width="1175.9600000000003" height="694" fill="transparent" stroke="#166534" stroke-width="2" rx="8"/>
+<text x="224" y="822" fill="#86EFAC" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">ベクトルストア</text></g>
+<g data-container-id="Unstructured"><rect x="212" y="1546" width="380" height="158" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="224" y="1564" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">Unstructured</text></g>
+<g data-container-id="WebFrontend"><rect x="212" y="1768" width="279.12000000000006" height="140" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="224" y="1786" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">Web フロントエンド</text></g>
+<g data-container-id="ApiBackend"><rect x="212" y="1972" width="534.2400000000001" height="240" fill="transparent" stroke="#075985" stroke-width="2" rx="8"/>
+<text x="224" y="1990" fill="#FFFFFF" font-size="12px" font-family="sans-serif" font-weight="bold" opacity="0.7">API バックエンド</text></g>
+<g class="ghost-edges" opacity="0.3"><g data-edge-from="Gateway" data-edge-to="WebFrontend" class="krs-edge"><polyline points="1096.4,596 1415.9600000000003,596 1415.9600000000003,1838 491.12000000000006,1838" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="1096.4,596 1415.9600000000003,596 1415.9600000000003,1838 491.12000000000006,1838" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="Gateway" data-edge-to="ApiBackend" class="krs-edge"><polyline points="1096.4,676 1487.9600000000003,676 1487.9600000000003,2152 746.2400000000001,2152" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="1096.4,676 1487.9600000000003,676 1487.9600000000003,2152 746.2400000000001,2152" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="WebFrontend" data-edge-to="ApiBackend" class="krs-edge"><line x1="351.56000000000006" y1="1908" x2="390.08000000000004" y2="1972" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="351.56000000000006" y1="1908" x2="390.08000000000004" y2="1972" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="PluginDaemon" class="krs-edge"><polyline points="746.2400000000001,2092 1463.9600000000003,2092 1463.9600000000003,398 1365.6800000000003,398" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="746.2400000000001,2092 1463.9600000000003,2092 1463.9600000000003,398 1365.6800000000003,398" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="CodeSandbox" class="krs-edge"><polyline points="212,2062 136,2062 136,398 212,398" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="212,2062 136,2062 136,398 212,398" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="SsrfProxy" class="krs-edge"><polyline points="212,2152 64,2152 64,780 718.4600000000002,780 718.4600000000002,756" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="212,2152 64,2152 64,780 718.4600000000002,780 718.4600000000002,756" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="Unstructured" class="krs-edge"><polyline points="212,2182 40,2182 40,1625 212,1625" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="212,2182 40,2182 40,1625 212,1625" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="AgentBackend" class="krs-edge"><polyline points="212,2122 88,2122 88,609.3333333333334 212,609.3333333333334" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="212,2122 88,2122 88,609.3333333333334 212,609.3333333333334" fill="none" stroke="#EF4444" stroke-width="2.5" marker-end="url(#arrow-0)"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="ApiBackend" class="krs-edge"><polyline points="212,562.6666666666666 112,562.6666666666666 112,2092 212,2092" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="212,562.6666666666666 112,562.6666666666666 112,2092 212,2092" fill="none" stroke="#EF4444" stroke-width="2.5" marker-end="url(#arrow-0)"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="PluginDaemon" class="krs-edge"><line x1="382.1600000000001" y1="516" x2="1114.3200000000002" y2="468" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="382.1600000000001" y1="516" x2="1114.3200000000002" y2="468" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="AgentSandbox" class="krs-edge"><line x1="297.08000000000004" y1="516" x2="752.1200000000001" y2="468" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="297.08000000000004" y1="516" x2="752.1200000000001" y2="468" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="DifyDB" class="krs-edge"><polyline points="212,2032 160,2032 160,304 739.8800000000001,304 739.8800000000001,280" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="212,2032 160,2032 160,304 739.8800000000001,304 739.8800000000001,280" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="RedisCache" class="krs-edge"><polyline points="746.2400000000001,2032 1439.9600000000003,2032 1439.9600000000003,133.33333333333331 1108.64,133.33333333333331" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="746.2400000000001,2032 1439.9600000000003,2032 1439.9600000000003,133.33333333333331 1108.64,133.33333333333331" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="FileStore" class="krs-edge"><polyline points="212,2002 184,2002 184,160 212,160" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="212,2002 184,2002 184,160 212,160" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="VectorStore" class="krs-edge"><line x1="568.1600000000001" y1="1972" x2="799.9800000000001" y2="1498" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="568.1600000000001" y1="1972" x2="799.9800000000001" y2="1498" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="RedisCache" class="krs-edge"><polyline points="467.24000000000007,516 467.24000000000007,492 1415.9600000000003,492 1415.9600000000003,86.66666666666666 1108.64,86.66666666666666" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="467.24000000000007,516 467.24000000000007,492 1415.9600000000003,492 1415.9600000000003,86.66666666666666 1108.64,86.66666666666666" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g></g>
+<g class="edges"/>
+<g class="nodes"><g data-node-id="FileStore::init_permissions" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="76" width="195.20000000000005" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="329.6" y="109.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">init_permissions</text>
+<text x="329.6" y="126.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">busybox:latest</text>
+<g data-node-badge="FileStore::init_permissions"><rect x="373.00000000000006" y="84" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="378.00000000000006" y="92" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="FileStore::init_permissions" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="411.20000000000005" cy="92" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="411.20000000000005" y="92" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="FileStore::minio" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="176" width="324.8000000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="394.4000000000001" y="209.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">minio</text>
+<text x="394.4000000000001" y="226.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">minio/minio:RELEASE.2023-03-20T20-16-18Z</text>
+<g data-node-badge="FileStore::minio"><rect x="502.6000000000002" y="184" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="507.6000000000002" y="192" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="FileStore::minio" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="540.8000000000002" cy="192" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="540.8000000000002" y="192" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="DifyDB::db_postgres" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="644.8000000000002" y="76" width="190.16000000000003" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="739.8800000000002" y="109.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">db_postgres</text>
+<text x="739.8800000000002" y="126.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">postgres:15-alpine</text>
+<g data-node-badge="DifyDB::db_postgres"><rect x="780.7600000000002" y="84" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="785.7600000000002" y="92" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="DifyDB::db_postgres" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="818.9600000000003" cy="92" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="818.9600000000003" y="92" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="DifyDB::db_mysql" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="644.8000000000002" y="176" width="160" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="724.8000000000002" y="209.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">db_mysql</text>
+<text x="724.8000000000002" y="226.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">mysql:8.0</text>
+<g data-node-badge="DifyDB::db_mysql"><rect x="750.6000000000001" y="184" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="755.6000000000001" y="192" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="DifyDB::db_mysql" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="788.8000000000002" cy="192" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="788.8000000000002" y="192" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="RedisCache::redis" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="922.9600000000002" y="76" width="165.68" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="1005.8000000000002" y="109.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">redis</text>
+<text x="1005.8000000000002" y="126.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">redis:6-alpine</text>
+<g data-node-badge="RedisCache::redis"><rect x="1034.44" y="84" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1039.44" y="92" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="RedisCache::redis" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1072.64" cy="92" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1072.64" y="92" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="CodeSandbox::sandbox" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="364" width="263.6000000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="363.80000000000007" y="397.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">sandbox</text>
+<text x="363.80000000000007" y="414.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-sandbox:0.2.15</text>
+<g data-node-badge="CodeSandbox::sandbox"><rect x="441.4000000000001" y="372" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="446.4000000000001" y="380" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="CodeSandbox::sandbox" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="479.6000000000001" cy="380" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="479.6000000000001" y="380" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="AgentSandbox::local_sandbox" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="583.6000000000001" y="364" width="337.04000000000013" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="752.1200000000002" y="397.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">local_sandbox</text>
+<text x="752.1200000000002" y="414.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-agent-local-sandbox:1.16.1</text>
+<g data-node-badge="AgentSandbox::local_sandbox"><rect x="866.4400000000003" y="372" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="871.4400000000003" y="380" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="AgentSandbox::local_sandbox" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="904.6400000000003" cy="380" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="904.6400000000003" y="380" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="PluginDaemon::plugin_daemon" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="1008.6400000000002" y="364" width="337.04000000000013" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="1177.1600000000003" y="397.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">plugin_daemon</text>
+<text x="1177.1600000000003" y="414.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-plugin-daemon:0.6.10-local</text>
+<g data-node-badge="PluginDaemon::plugin_daemon"><rect x="1291.4800000000002" y="372" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1296.4800000000002" y="380" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="PluginDaemon::plugin_daemon" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1329.6800000000003" cy="380" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1329.6800000000003" y="380" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="AgentBackend::agent_backend" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="552" width="300.3200000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="382.1600000000001" y="585.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">agent_backend</text>
+<text x="382.1600000000001" y="602.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-agent-backend:1.16.1</text>
+<g data-node-badge="AgentBackend::agent_backend"><rect x="478.1200000000002" y="560" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="483.1200000000002" y="568" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="AgentBackend::agent_backend" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="516.3200000000002" cy="568" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="516.3200000000002" y="568" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="SsrfProxy::agent_ssrf_proxy" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="620.3200000000002" y="552" width="196.28000000000003" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="718.4600000000002" y="585.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">agent_ssrf_proxy</text>
+<text x="718.4600000000002" y="602.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">ubuntu/squid:latest</text>
+<g data-node-badge="SsrfProxy::agent_ssrf_proxy"><rect x="762.4000000000001" y="560" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="767.4000000000001" y="568" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="SsrfProxy::agent_ssrf_proxy" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="800.6000000000001" cy="568" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="800.6000000000001" y="568" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="SsrfProxy::ssrf_proxy" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="620.3200000000002" y="652" width="196.28000000000003" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="718.4600000000002" y="685.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">ssrf_proxy</text>
+<text x="718.4600000000002" y="702.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">ubuntu/squid:latest</text>
+<g data-node-badge="SsrfProxy::ssrf_proxy"><rect x="762.4000000000001" y="660" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="767.4000000000001" y="668" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="SsrfProxy::ssrf_proxy" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="800.6000000000001" cy="668" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="800.6000000000001" y="668" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="Gateway::certbot" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="904.6000000000001" y="552" width="171.8" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="990.5000000000001" y="585.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">certbot</text>
+<text x="990.5000000000001" y="602.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">certbot/certbot</text>
+<g data-node-badge="Gateway::certbot"><rect x="1022.2" y="560" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1027.2" y="568" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="Gateway::certbot" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1060.4" cy="568" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1060.4" y="568" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="Gateway::nginx" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="904.6000000000001" y="652" width="160" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="984.6000000000001" y="685.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">nginx</text>
+<text x="984.6000000000001" y="702.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">nginx:latest</text>
+<g data-node-badge="Gateway::nginx"><rect x="1010.4000000000001" y="660" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1015.4000000000001" y="668" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="Gateway::nginx" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1048.6000000000001" cy="668" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1048.6000000000001" y="668" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::weaviate" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="840" width="275.8400000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="369.9200000000001" y="873.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">weaviate</text>
+<text x="369.9200000000001" y="890.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">semitechnologies/weaviate:1.27.0</text>
+<g data-node-badge="VectorStore::weaviate"><rect x="453.6400000000001" y="848" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="458.6400000000001" y="856" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::weaviate" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="491.8400000000001" cy="856" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="491.8400000000001" y="856" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::oceanbase" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="523.8400000000001" y="840" width="275.8400000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="661.7600000000002" y="873.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">oceanbase</text>
+<text x="661.7600000000002" y="890.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">oceanbase/oceanbase-ce:4.3.5-lts</text>
+<g data-node-badge="VectorStore::oceanbase"><rect x="745.4800000000002" y="848" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="750.4800000000002" y="856" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::oceanbase" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="783.6800000000003" cy="856" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="783.6800000000003" y="856" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::seekdb" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="815.6800000000002" y="840" width="220.76000000000005" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="926.0600000000002" y="873.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">seekdb</text>
+<text x="926.0600000000002" y="890.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">oceanbase/seekdb:latest</text>
+<g data-node-badge="VectorStore::seekdb"><rect x="982.2400000000002" y="848" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="987.2400000000002" y="856" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::seekdb" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1020.4400000000003" cy="856" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1020.4400000000003" y="856" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::qdrant" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="1052.4400000000003" y="840" width="226.88000000000005" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="1165.8800000000003" y="873.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">qdrant</text>
+<text x="1165.8800000000003" y="890.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/qdrant:v1.8.3</text>
+<g data-node-badge="VectorStore::qdrant"><rect x="1225.1200000000003" y="848" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1230.1200000000003" y="856" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::qdrant" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1263.3200000000004" cy="856" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1263.3200000000004" y="856" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::couchbase_server" data-node-kind="oci" data-has-children="false" data-has-description="false"><rect x="232" y="940" width="195.20000000000005" height="66" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="329.6" y="973" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">couchbase_server</text>
+<g data-node-badge="VectorStore::couchbase_server"><rect x="393.00000000000006" y="948" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="398.00000000000006" y="956" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g></g>
+<g data-node-id="VectorStore::pgvector" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="443.20000000000005" y="940" width="214.64000000000004" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="550.5200000000001" y="973.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">pgvector</text>
+<text x="550.5200000000001" y="990.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">pgvector/pgvector:pg16</text>
+<g data-node-badge="VectorStore::pgvector"><rect x="603.6400000000001" y="948" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="608.6400000000001" y="956" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::pgvector" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="641.8400000000001" cy="956" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="641.8400000000001" y="956" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::vastbase" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="673.8400000000001" y="940" width="226.88000000000005" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="787.2800000000002" y="973.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">vastbase</text>
+<text x="787.2800000000002" y="990.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">vastdata/vastbase-vector</text>
+<g data-node-badge="VectorStore::vastbase"><rect x="846.5200000000002" y="948" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="851.5200000000002" y="956" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::vastbase" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="884.7200000000003" cy="956" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="884.7200000000003" y="956" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::pgvecto_rs" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="916.7200000000001" y="940" width="288.0800000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="1060.7600000000002" y="973.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">pgvecto_rs</text>
+<text x="1060.7600000000002" y="990.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">tensorchord/pgvecto-rs:pg16-v0.3.0</text>
+<g data-node-badge="VectorStore::pgvecto_rs"><rect x="1150.6000000000001" y="948" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1155.6000000000001" y="956" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::pgvecto_rs" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1188.8000000000002" cy="956" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1188.8000000000002" y="956" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::chroma" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="1040" width="281.9600000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="372.98" y="1073.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">chroma</text>
+<text x="372.98" y="1090.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">ghcr.io/chroma-core/chroma:0.5.20</text>
+<g data-node-badge="VectorStore::chroma"><rect x="459.76000000000005" y="1048" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="464.76000000000005" y="1056" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::chroma" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="497.96000000000004" cy="1056" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="497.96000000000004" y="1056" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::iris" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="529.96" y="1040" width="340" height="102" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="699.96" y="1074" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">iris</text>
+<text x="699.96" y="1091" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">containers.intersystems.com/intersystems/i</text>
+<text x="699.96" y="1108" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">ris-community:2025.3</text>
+<g data-node-badge="VectorStore::iris"><rect x="815.76" y="1048" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="820.76" y="1056" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::iris" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="853.96" cy="1056" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="853.96" y="1056" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::oracle" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="885.96" y="1040" width="340" height="102" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="1055.96" y="1074" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">oracle</text>
+<text x="1055.96" y="1091" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">container-registry.oracle.com/database/fre</text>
+<text x="1055.96" y="1108" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">e:latest</text>
+<g data-node-badge="VectorStore::oracle"><rect x="1171.76" y="1048" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1176.76" y="1056" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::oracle" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1209.96" cy="1056" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1209.96" y="1056" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::etcd" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="1158" width="239.12000000000006" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="351.56000000000006" y="1191.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">etcd</text>
+<text x="351.56000000000006" y="1208.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">quay.io/coreos/etcd:v3.5.5</text>
+<g data-node-badge="VectorStore::etcd"><rect x="416.9200000000001" y="1166" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="421.9200000000001" y="1174" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::etcd" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="455.12000000000006" cy="1174" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="455.12000000000006" y="1174" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::milvus_standalone" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="487.12000000000006" y="1158" width="214.64000000000004" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="594.4400000000002" y="1191.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">milvus_standalone</text>
+<text x="594.4400000000002" y="1208.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">milvusdb/milvus:v2.6.3</text>
+<g data-node-badge="VectorStore::milvus_standalone"><rect x="647.5600000000001" y="1166" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="652.5600000000001" y="1174" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::milvus_standalone" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="685.7600000000001" cy="1174" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="685.7600000000001" y="1174" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::opensearch" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="717.7600000000001" y="1158" width="294.2000000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="864.8600000000001" y="1191.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">opensearch</text>
+<text x="864.8600000000001" y="1208.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">opensearchproject/opensearch:latest</text>
+<g data-node-badge="VectorStore::opensearch"><rect x="957.7600000000002" y="1166" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="962.7600000000002" y="1174" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::opensearch" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="995.9600000000003" cy="1174" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="995.9600000000003" y="1174" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::opensearch_dashboards" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="1027.9600000000003" y="1158" width="340" height="102" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="1197.9600000000003" y="1192" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">opensearch_dashboards</text>
+<text x="1197.9600000000003" y="1209" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">opensearchproject/opensearch-dashboards:la</text>
+<text x="1197.9600000000003" y="1226" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">test</text>
+<g data-node-badge="VectorStore::opensearch_dashboards"><rect x="1313.7600000000002" y="1166" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1318.7600000000002" y="1174" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::opensearch_dashboards" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1351.9600000000003" cy="1174" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1351.9600000000003" y="1174" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::opengauss" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="1276" width="257.4800000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="360.74" y="1309.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">opengauss</text>
+<text x="360.74" y="1326.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">opengauss/opengauss:7.0.0-RC1</text>
+<g data-node-badge="VectorStore::opengauss"><rect x="435.2800000000001" y="1284" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="440.2800000000001" y="1292" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::opengauss" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="473.4800000000001" cy="1292" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="473.4800000000001" y="1292" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::myscale" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="505.4800000000001" y="1276" width="220.76000000000005" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="615.86" y="1309.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">myscale</text>
+<text x="615.86" y="1326.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">myscale/myscaledb:1.6.4</text>
+<g data-node-badge="VectorStore::myscale"><rect x="672.0400000000001" y="1284" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="677.0400000000001" y="1292" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::myscale" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="710.2400000000001" cy="1292" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="710.2400000000001" y="1292" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::matrixone" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="742.2400000000001" y="1276" width="251.36000000000007" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="867.9200000000002" y="1309.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">matrixone</text>
+<text x="867.9200000000002" y="1326.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">matrixorigin/matrixone:2.1.1</text>
+<g data-node-badge="VectorStore::matrixone"><rect x="939.4000000000001" y="1284" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="944.4000000000001" y="1292" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::matrixone" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="977.6000000000001" cy="1292" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="977.6000000000001" y="1292" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::elasticsearch" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="1009.6000000000001" y="1276" width="340" height="102" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="1179.6000000000001" y="1310" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">elasticsearch</text>
+<text x="1179.6000000000001" y="1327" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">docker.elastic.co/elasticsearch/elasticsea</text>
+<text x="1179.6000000000001" y="1344" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">rch:8.14.3</text>
+<g data-node-badge="VectorStore::elasticsearch"><rect x="1295.4" y="1284" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="1300.4" y="1292" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::elasticsearch" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1333.6000000000001" cy="1292" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1333.6000000000001" y="1292" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore::kibana" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="1394" width="312.5600000000001" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="388.2800000000001" y="1427.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">kibana</text>
+<text x="388.2800000000001" y="1444.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">docker.elastic.co/kibana/kibana:8.14.3</text>
+<g data-node-badge="VectorStore::kibana"><rect x="490.3600000000002" y="1402" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="495.3600000000002" y="1410" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="VectorStore::kibana" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="528.5600000000002" cy="1410" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="528.5600000000002" y="1410" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="Unstructured::unstructured" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="1582" width="340" height="102" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="402" y="1616" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">unstructured</text>
+<text x="402" y="1633" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">downloads.unstructured.io/unstructured-io/</text>
+<text x="402" y="1650" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">unstructured-api:latest</text>
+<g data-node-badge="Unstructured::unstructured"><rect x="517.8" y="1590" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="522.8" y="1598" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="Unstructured::unstructured" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="556" cy="1598" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="556" y="1598" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="WebFrontend::web" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="1804" width="239.12000000000006" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="351.56000000000006" y="1837.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">web</text>
+<text x="351.56000000000006" y="1854.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-web:1.16.1</text>
+<g data-node-badge="WebFrontend::web"><rect x="416.9200000000001" y="1812" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="421.9200000000001" y="1820" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="WebFrontend::web" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="455.12000000000006" cy="1820" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="455.12000000000006" y="1820" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ApiBackend::api" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="2008" width="239.12000000000006" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="351.56000000000006" y="2041.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">api</text>
+<text x="351.56000000000006" y="2058.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-api:1.16.1</text>
+<g data-node-badge="ApiBackend::api"><rect x="416.9200000000001" y="2016" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="421.9200000000001" y="2024" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="ApiBackend::api" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="455.12000000000006" cy="2024" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="455.12000000000006" y="2024" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ApiBackend::api_websocket" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="487.12000000000006" y="2008" width="239.12000000000006" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="606.6800000000002" y="2041.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">api_websocket</text>
+<text x="606.6800000000002" y="2058.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-api:1.16.1</text>
+<g data-node-badge="ApiBackend::api_websocket"><rect x="672.0400000000001" y="2016" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="677.0400000000001" y="2024" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="ApiBackend::api_websocket" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="710.2400000000001" cy="2024" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="710.2400000000001" y="2024" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ApiBackend::worker" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="232" y="2108" width="239.12000000000006" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="351.56000000000006" y="2141.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">worker</text>
+<text x="351.56000000000006" y="2158.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-api:1.16.1</text>
+<g data-node-badge="ApiBackend::worker"><rect x="416.9200000000001" y="2116" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="421.9200000000001" y="2124" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="ApiBackend::worker" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="455.12000000000006" cy="2124" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="455.12000000000006" y="2124" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ApiBackend::worker_beat" data-node-kind="oci" data-has-children="false" data-has-description="true"><rect x="487.12000000000006" y="2108" width="239.12000000000006" height="84" rx="8" ry="8" fill="#16294D" stroke="#3B82F6" stroke-width="2"/>
+<text x="606.6800000000002" y="2141.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">worker_beat</text>
+<text x="606.6800000000002" y="2158.5" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-api:1.16.1</text>
+<g data-node-badge="ApiBackend::worker_beat"><rect x="672.0400000000001" y="2116" width="26.200000000000003" height="16" rx="8" fill="#3B82F6"/>
+<text x="677.0400000000001" y="2124" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">oci</text></g>
+<g data-info-button="ApiBackend::worker_beat" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="710.2400000000001" cy="2124" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="710.2400000000001" y="2124" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g></g></svg></div>

@@ -177,13 +177,14 @@
   cursor: context-menu;
 }
 
-.preview-container svg .krs-edge--interactive:hover line:not(.krs-edge__hitline),
-.preview-container svg .krs-edge--interactive:hover polyline:not(.krs-edge__hitline) {
+.preview-container svg .krs-edge:hover line:not(.krs-edge__hitline),
+.preview-container svg .krs-edge:hover polyline:not(.krs-edge__hitline),
+.preview-container svg .krs-edge:hover path:not(.krs-edge__hitline) {
   stroke-width: 3;
   filter: brightness(1.4);
 }
 
-.preview-container svg .krs-edge--interactive:hover text {
+.preview-container svg .krs-edge:hover text {
   filter: brightness(1.4);
 }
 
@@ -207,12 +208,21 @@
   transition: opacity 0.15s ease;
 }
 
-.preview-container svg .krs-edge--interactive:hover {
+.preview-container svg .krs-edge:hover {
   opacity: 1 !important;
 }
 
-.preview-container svg:has(.krs-edge--interactive:hover) .krs-edge:not(:hover) {
+.preview-container svg:has(.krs-edge:hover) .krs-edge:not(:hover) {
   opacity: 0.25 !important;
+}
+
+/* SPIKE #2632: a hovered edge inside the muted ghost group cannot lift itself.
+   Group opacity composites, so `opacity: 1` on the child still renders at
+   0.3 — the deploy view's every edge, and the cross-service ghost edges on a
+   drilled-in service view. Lift the *group* while it hosts the hover, and the
+   child rules above then apply on a full-strength ground. */
+.preview-container svg .ghost-edges:has(.krs-edge:hover) {
+  opacity: 1;
 }
 /* ── Preview Toolbar ────────────────────────────────────────────── */
 .preview-toolbar {

@@ -1,0 +1,477 @@
+<!doctype html><meta charset="utf-8"><style>
+    body { margin: 0; background: #0d1117; }
+    .preview-container { display: block; }
+    /* Fit the canvas to the page so every edge is reachable by the pointer:
+       the dify deploy view is several thousand px wide at natural size. */
+    .preview-container svg { display: block; width: 100%; height: auto; }
+    /* ── Edge hover affordance ─────────────────────────────────────────
+   Edges with a canonical id are right-clickable. The renderer adds a
+   wide transparent hit-line behind the visible stroke; the cursor and
+   hover-tinted stroke advertise the interactive surface.
+
+   The class tracks right-clickability only. The hit-line is emitted on a
+   wider condition (#2543): an edge carrying a property block is
+   left-clickable for its detail panel even when a base collision cleared
+   its id, and such an edge gets the hit-line without this class, since no
+   direction menu can open for it.
+
+   Only the SVG-internal `g.krs-edge--interactive` is targeted so the
+   styling is scoped to the rendered diagram. The hit-line itself
+   stays transparent — only its stroke widens the click target. */
+.preview-container svg .krs-edge--interactive {
+  cursor: context-menu;
+}
+
+.preview-container svg .krs-edge:hover line:not(.krs-edge__hitline),
+.preview-container svg .krs-edge:hover polyline:not(.krs-edge__hitline),
+.preview-container svg .krs-edge:hover path:not(.krs-edge__hitline) {
+  stroke-width: 3;
+  filter: brightness(1.4);
+}
+
+.preview-container svg .krs-edge:hover text {
+  filter: brightness(1.4);
+}
+
+/* Progressive disclosure (#1186): when an interactive edge is hovered, dim
+   the other edges so the focused one stands out. Pure CSS — no React state,
+   no DOM mutation — so it survives SVG re-renders and does not race with
+   useSystemView debouncing (see #1171).
+
+   Trigger is gated to `.krs-edge--interactive:hover` so hovering a
+   non-interactive edge (one without a canonical id, e.g. system-internal
+   edges with no domain meaning) does not dim its peers.
+
+   `!important` is used on both the focused-edge lift and the peer-dim so
+   the rules win against the diff-mode opacity rules below
+   (`[data-diff-state="unchanged"] { opacity: 0.55 }` and
+   `[data-diff-state="added"|"removed"|"changed"] { opacity: 1 !important }`).
+   Without this, hovering an unchanged edge in diff mode would leave it at
+   0.55 (focused edge fails to stand out), and added/removed/changed peers
+   would resist dimming — the focus effect would only partially work. */
+.preview-container svg .krs-edge {
+  transition: opacity 0.15s ease;
+}
+
+.preview-container svg .krs-edge:hover {
+  opacity: 1 !important;
+}
+
+.preview-container svg:has(.krs-edge:hover) .krs-edge:not(:hover) {
+  opacity: 0.25 !important;
+}
+
+/* SPIKE #2632: a hovered edge inside the muted ghost group cannot lift itself.
+   Group opacity composites, so `opacity: 1` on the child still renders at
+   0.3 — the deploy view's every edge, and the cross-service ghost edges on a
+   drilled-in service view. Lift the *group* while it hosts the hover, and the
+   child rules above then apply on a full-strength ground. */
+.preview-container svg .ghost-edges:has(.krs-edge:hover) {
+  opacity: 1;
+}
+
+  </style><div class="preview-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1896 1880" width="1896" height="1880"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94A3B8"/></marker>
+<marker id="arrow-0" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#EF4444"/></marker>
+<marker id="arrow-1" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#A78BFA"/></marker></defs>
+<rect width="1896" height="1880" fill="#0F172A" rx="0"/>
+<text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Dify</text>
+<g class="edges"><g data-edge-from="ThirdPartyEventSource" data-edge-to="Gateway" data-edge-kind="sync" data-edge-canonical-id="ThirdPartyEventSource-&gt;Gateway" class="krs-edge krs-edge--interactive"><line x1="1720" y1="1729" x2="1380" y2="1639.4285714285713" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="1720" y1="1729" x2="1380" y2="1639.4285714285713" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="Console" data-edge-to="Gateway" data-edge-kind="sync" data-edge-canonical-id="Console-&gt;Gateway" class="krs-edge krs-edge--interactive"><line x1="468" y1="501.2445280000002" x2="1380" y2="1581.142857142857" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 468 501.24 L 1143.21 1300.76 M 1148.37 1306.87 L 1274.88 1456.67 M 1280.04 1462.78 L 1375.72 1576.08 M 1380 1581.14 L 1380 1581.14" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="PublishedApp" data-edge-to="Gateway" data-edge-kind="sync" data-edge-canonical-id="PublishedApp-&gt;Gateway" class="krs-edge krs-edge--interactive"><line x1="868" y1="492.2445280000002" x2="1380" y2="1566.5714285714287" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 868 492.24 L 912.28 585.16 M 915.72 592.38 L 924.28 610.33 M 927.72 617.56 L 1144.07 1071.52 M 1147.51 1078.74 L 1275.74 1347.8 M 1279.18 1355.02 L 1374.48 1554.99 M 1377.92 1562.21 L 1380 1566.57" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="DifyCli" data-edge-to="Gateway" data-edge-kind="sync" data-edge-canonical-id="DifyCli-&gt;Gateway" class="krs-edge krs-edge--interactive"><line x1="1268" y1="501.2445280000002" x2="1380" y2="1595.7142857142858" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 1268 501.24 L 1281.59 634.07 M 1282.41 642.03 L 1293.59 751.34 M 1294.41 759.3 L 1380 1595.71" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="Gateway" data-edge-to="WebFrontend" data-edge-kind="sync" data-edge-canonical-id="Gateway-&gt;WebFrontend" class="krs-edge krs-edge--interactive"><line x1="1380" y1="1610.2857142857142" x2="456" y2="741.2445280000002" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 1380 1610.29 L 1280.37 1516.59 M 1274.55 1511.1 L 1148.7 1392.75 M 1142.87 1387.26 L 456 741.24" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="Gateway" data-edge-to="ApiBackend" data-edge-kind="sync" data-edge-canonical-id="Gateway-&gt;ApiBackend" class="krs-edge krs-edge--interactive"><polyline points="1380,1624.857142857143 1277.46,1624.857142857143 1277.46,1035.7899825454547 880,1035.7899825454547" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 1380 1624.86 L 1277.46 1624.86 L 1277.46 1035.79 L 1149.79 1035.79 M 1141.79 1035.79 L 1131.04 1035.79 M 1123.04 1035.79 L 1116.54 1035.79 M 1108.54 1035.79 L 1038.87 1035.79 M 1030.87 1035.79 L 929.43 1035.79 M 915.44 1035.79 L 880 1035.79" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="WebFrontend" data-edge-to="ApiBackend" data-edge-kind="sync" data-edge-canonical-id="WebFrontend-&gt;ApiBackend" class="krs-edge krs-edge--interactive"><line x1="286" y1="801.2445280000002" x2="597" y2="925.2445280000002" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="286" y1="801.2445280000002" x2="597" y2="925.2445280000002" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="PluginDaemon" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;PluginDaemon" class="krs-edge krs-edge--interactive"><polyline points="880,950.6990734545457 1282,950.6990734545457 1282,108 1380,108" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 950.7 L 905.46 950.7 M 913.46 950.7 L 922 950.7 M 930 950.7 L 1009.62 950.7 M 1017.62 950.7 L 1036.33 950.7 M 1044.33 950.7 L 1082.49 950.7 M 1090.49 950.7 L 1282 950.7 L 1282 108 L 1380 108" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="CodeSandbox" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;CodeSandbox" class="krs-edge krs-edge--interactive"><polyline points="880,960.153618909091 1294,960.153618909091 1294,217 1380,217" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 960.15 L 905.46 960.15 M 913.46 960.15 L 922 960.15 M 930 960.15 L 976.21 960.15 M 984.21 960.15 L 1044.36 960.15 M 1052.36 960.15 L 1086.99 960.15 M 1094.99 960.15 L 1294 960.15 L 1294 217 L 1380 217" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="SsrfProxy" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;SsrfProxy" class="krs-edge krs-edge--interactive"><polyline points="880,969.6081643636365 926,969.6081643636365 926,343 1380,343" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 969.61 L 905.46 969.61 M 913.46 969.61 L 926 969.61 L 926 343 L 1278 343 M 1286 343 L 1290 343 M 1298 343 L 1380 343" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="Marketplace" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;Marketplace" class="krs-edge krs-edge--interactive"><polyline points="880,1026.3354370909092 1145.788200804352,1026.3354370909092 1145.788200804352,1477 1380,1477" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 1026.34 L 898.71 1026.34 M 906.71 1026.34 L 907.45 1026.34 M 915.45 1026.34 L 979.25 1026.34 M 987.25 1026.34 L 1100.51 1026.34 M 1108.51 1026.34 L 1118.54 1026.34 M 1126.54 1026.34 L 1145.79 1026.34 L 1145.79 1477 L 1234.29 1477 M 1242.29 1477 L 1273.46 1477 M 1281.46 1477 L 1288.05 1477 M 1296.05 1477 L 1333.31 1477 M 1341.31 1477 L 1363.85 1477 M 1371.85 1477 L 1380 1477" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="KnowledgeFs" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;KnowledgeFs" class="krs-edge krs-edge--interactive"><polyline points="759,925.2445280000002 759,916 1772,916 1772,721 1720,721" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 759 925.24 L 759 916 L 814.27 916 M 822.27 916 L 905.46 916 M 913.46 916 L 922 916 M 930 916 L 1006.89 916 M 1014.89 916 L 1065.95 916 M 1073.95 916 L 1132.21 916 M 1140.21 916 L 1278 916 M 1286 916 L 1290 916 M 1298 916 L 1306.44 916 M 1314.44 916 L 1772 916 L 1772 721 L 1752 721 M 1744 721 L 1720 721" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="BillingApi" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;BillingApi" class="krs-edge krs-edge--interactive"><line x1="880" y1="988.5172552727274" x2="1380" y2="847" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 988.52 L 1031.31 945.69 M 1039.01 943.51 L 1073.98 933.61 M 1081.68 931.44 L 1278.15 875.83 M 1285.85 873.65 L 1290.15 872.43 M 1297.85 870.25 L 1301.69 869.16 M 1309.39 866.99 L 1380 847" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="DifyEnterprise" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;DifyEnterprise" class="krs-edge krs-edge--interactive"><line x1="880" y1="997.9718007272729" x2="1380" y2="973" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 997.97 L 883.2 997.81 M 891.19 997.41 L 1068.3 988.57 M 1076.29 988.17 L 1099.7 987 M 1107.69 986.6 L 1312.6 976.37 M 1320.6 975.97 L 1380 973" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="ObservabilityBackends" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;ObservabilityBackends" class="krs-edge krs-edge--interactive"><line x1="880" y1="1007.4263461818183" x2="1380" y2="1099" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 1007.43 L 894.38 1010.06 M 902.25 1011.5 L 1122.89 1051.91 M 1130.76 1053.35 L 1131.92 1053.57 M 1139.79 1055.01 L 1141.85 1055.38 M 1149.72 1056.83 L 1273.53 1079.5 M 1281.39 1080.94 L 1324.26 1088.79 M 1332.13 1090.23 L 1380 1099" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="WebCrawlers" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;WebCrawlers" class="krs-edge krs-edge--interactive"><line x1="880" y1="1016.8808916363638" x2="1380" y2="1225" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 1016.88 L 912.5 1030.41 M 919.88 1033.48 L 1142.1 1125.97 M 1149.48 1129.05 L 1173.24 1138.94 M 1180.63 1142.01 L 1211.01 1154.66 M 1218.4 1157.73 L 1273.77 1180.78 M 1281.15 1183.86 L 1336.68 1206.97 M 1344.07 1210.04 L 1380 1225" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="TenantExtensionEndpoints" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;TenantExtensionEndpoints" class="krs-edge krs-edge--interactive"><polyline points="880,979.062709818182 909.46,979.062709818182 909.46,595 1380,595" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 979.06 L 909.46 979.06 L 909.46 595 L 910 595 M 920.97 595 L 922 595 M 930 595 L 1273.59 595 M 1286 595 L 1290 595 M 1298 595 L 1380 595" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="Unstructured" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;Unstructured" class="krs-edge krs-edge--interactive"><polyline points="678,925.2445280000002 678,904 1748,904 1748,469 1720,469" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 678 925.24 L 678 904 L 804.14 904 M 812.14 904 L 905.46 904 M 913.46 904 L 922 904 M 930 904 L 996.71 904 M 1004.71 904 L 1060.23 904 M 1068.23 904 L 1174.61 904 M 1182.61 904 L 1278 904 M 1286 904 L 1290 904 M 1298 904 L 1305.22 904 M 1313.22 904 L 1748 904 L 1748 469 L 1720 469" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="AgentBackend" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;AgentBackend" class="krs-edge krs-edge--interactive"><line x1="698" y1="925.2445280000002" x2="698" y2="783.2445280000002" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="698" y1="925.2445280000002" x2="698" y2="783.2445280000002" stroke="#EF4444" stroke-width="2.5" marker-end="url(#arrow-0)" class="krs-edge--cyclic"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="ApiBackend" data-edge-kind="sync" data-edge-canonical-id="AgentBackend-&gt;ApiBackend" class="krs-edge krs-edge--interactive"><line x1="698" y1="783.2445280000002" x2="698" y2="925.2445280000002" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="698" y1="783.2445280000002" x2="698" y2="925.2445280000002" stroke="#EF4444" stroke-width="2.5" marker-end="url(#arrow-0)" class="krs-edge--cyclic"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="PluginDaemon" data-edge-kind="sync" data-edge-canonical-id="AgentBackend-&gt;PluginDaemon" class="krs-edge krs-edge--interactive"><polyline points="880,718.7445280000002 914,718.7445280000002 914,74 1380,74" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 718.74 L 905.46 718.74 M 913.46 718.74 L 914 718.74 L 914 74 L 1380 74" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="AgentSandbox" data-edge-kind="sync" data-edge-canonical-id="AgentBackend-&gt;AgentSandbox" class="krs-edge krs-edge--interactive"><line x1="880" y1="740.2445280000002" x2="940" y2="732.2445280000002" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 740.24 L 905.5 736.85 M 913.42 735.79 L 922.04 734.64 M 929.96 733.58 L 940 732.24" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="E2bSandbox" data-edge-kind="sync" data-edge-canonical-id="AgentBackend-&gt;E2bSandbox" class="krs-edge krs-edge--interactive"><line x1="880" y1="761.7445280000002" x2="1380" y2="1351" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 880 761.74 L 906.87 793.41 M 912.05 799.51 L 923.41 812.91 M 928.59 819.01 L 1143.04 1071.74 M 1148.38 1078.03 L 1274.87 1227.11 M 1280.05 1233.21 L 1348.94 1314.39 M 1354.11 1320.49 L 1380 1351" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="DifyDB" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;DifyDB" class="krs-edge krs-edge--interactive"><line x1="637.3333333333334" y1="1045.2445280000002" x2="486" y2="1165.748176" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="637.3333333333334" y1="1045.2445280000002" x2="486" y2="1165.748176" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="RedisCache" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;RedisCache" class="krs-edge krs-edge--interactive"><line x1="758.6666666666666" y1="1045.2445280000002" x2="842.6666666666666" y2="1166.7103386682493" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="758.6666666666666" y1="1045.2445280000002" x2="842.6666666666666" y2="1166.7103386682493" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="CeleryQueue" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;CeleryQueue" class="krs-edge krs-edge--interactive"><polyline points="516,1015.2445280000002 40,1015.2445280000002 40,1562.7554719999998 546,1562.7554719999998" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 516 1015.24 L 92 1015.24 M 84 1015.24 L 68 1015.24 M 60 1015.24 L 40 1015.24 L 40 1562.76 L 546 1562.76" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="FileStore" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;FileStore" class="krs-edge krs-edge--interactive"><polyline points="516,955.2445280000002 88,955.2445280000002 88,1308.751824 910,1308.751824 910,1354.5624770132927" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="516,955.2445280000002 88,955.2445280000002 88,1308.751824 910,1308.751824 910,1354.5624770132927" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="ApiBackend" data-edge-to="VectorStore" data-edge-kind="sync" data-edge-canonical-id="ApiBackend-&gt;VectorStore" class="krs-edge krs-edge--interactive"><polyline points="516,985.2445280000002 64,985.2445280000002 64,1395.2536479999999 264.211799195648,1395.2536479999999" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 516 985.24 L 92 985.24 M 84 985.24 L 64 985.24 L 64 1395.25 L 264.21 1395.25" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="AgentBackend" data-edge-to="RedisCache" data-edge-kind="sync" data-edge-canonical-id="AgentBackend-&gt;RedisCache" class="krs-edge krs-edge--interactive"><polyline points="698,783.2445280000002 698,789.6222640000001 1796,789.6222640000001 1796,1157.874088 957.3333333333333,1157.874088 957.3333333333333,1166.214805751195" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 698 783.24 L 698 789.62 L 707.54 789.62 M 715.54 789.62 L 899.66 789.62 M 913.46 789.62 L 922 789.62 M 930 789.62 L 1005.72 789.62 M 1013.72 789.62 L 1278 789.62 M 1286 789.62 L 1290 789.62 M 1301.51 789.62 L 1744 789.62 M 1752 789.62 L 1768 789.62 M 1776 789.62 L 1796 789.62 L 1796 1157.87 L 1339.19 1157.87 M 1331.19 1157.87 L 1281.46 1157.87 M 1273.46 1157.87 L 1222.73 1157.87 M 1212.13 1157.87 L 1189.22 1157.87 M 1181.22 1157.87 L 1149.79 1157.87 M 1141.79 1157.87 L 1026.54 1157.87 M 1018.54 1157.87 L 957.33 1157.87 L 957.33 1166.21" fill="none" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/></g>
+<g data-edge-from="WebFrontend" data-edge-to="Console" data-edge-kind="sync" data-edge-canonical-id="WebFrontend-&gt;Console" class="krs-edge krs-edge--interactive"><line x1="216" y1="681.2445280000002" x2="298" y2="561.2445280000002" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="216" y1="681.2445280000002" x2="298" y2="561.2445280000002" stroke="#A78BFA" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-1)"/></g>
+<g data-edge-from="WebFrontend" data-edge-to="PublishedApp" data-edge-kind="sync" data-edge-canonical-id="WebFrontend-&gt;PublishedApp" class="krs-edge krs-edge--interactive"><line x1="316" y1="681.2445280000002" x2="698" y2="543.2445280000002" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<path d="M 316 681.24 L 545.18 598.45 M 552.71 595.73 L 698 543.24" fill="none" stroke="#A78BFA" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-1)"/></g></g>
+<g class="crossing-marks"><path d="M 1278 343 A 4 4 0 0 1 1286 343" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1290 343 A 4 4 0 0 1 1298 343" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 912.28 585.16 A 4 4 64.52 0 1 915.72 592.38" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 910 595 A 5.49 4 0 0 1 920.97 595" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 922 595 A 4 4 0 0 1 930 595" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1273.59 595 A 6.2 4 0 0 1 1286 595" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1290 595 A 4 4 0 0 1 1298 595" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 545.18 598.45 A 4 4 -19.86 0 1 552.71 595.73" fill="none" stroke="#A78BFA" stroke-width="1.5"/>
+<path d="M 924.28 610.33 A 4 4 64.52 0 1 927.72 617.56" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1281.59 634.07 A 4 4 84.16 0 1 1282.41 642.03" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 905.46 718.74 A 4 4 0 0 1 913.46 718.74" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1744 721 A 4 4 0 0 1 1752 721" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 922.04 734.64 A 4 4 -7.59 0 1 929.96 733.58" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 905.5 736.85 A 4 4 -7.59 0 1 913.42 735.79" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1293.59 751.34 A 4 4 84.16 0 1 1294.41 759.3" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 707.54 789.62 A 4 4 0 0 1 715.54 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 899.66 789.62 A 6.9 4 0 0 1 913.46 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 922 789.62 A 4 4 0 0 1 930 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1005.72 789.62 A 4 4 0 0 1 1013.72 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1278 789.62 A 4 4 0 0 1 1286 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1290 789.62 A 5.76 4 0 0 1 1301.51 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1744 789.62 A 4 4 0 0 1 1752 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1768 789.62 A 4 4 0 0 1 1776 789.62" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 906.87 793.41 A 4 4 49.68 0 1 912.05 799.51" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 923.41 812.91 A 4 4 49.68 0 1 928.59 819.01" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1301.69 869.16 A 4 4 -15.8 0 1 1309.39 866.99" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1290.15 872.43 A 4 4 -15.8 0 1 1297.85 870.25" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1278.15 875.83 A 4 4 -15.8 0 1 1285.85 873.65" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 804.14 904 A 4 4 0 0 1 812.14 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 905.46 904 A 4 4 0 0 1 913.46 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 922 904 A 4 4 0 0 1 930 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 996.71 904 A 4 4 0 0 1 1004.71 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1060.23 904 A 4 4 0 0 1 1068.23 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1174.61 904 A 4 4 0 0 1 1182.61 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1278 904 A 4 4 0 0 1 1286 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1290 904 A 4 4 0 0 1 1298 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1305.22 904 A 4 4 0 0 1 1313.22 904" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 814.27 916 A 4 4 0 0 1 822.27 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 905.46 916 A 4 4 0 0 1 913.46 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 922 916 A 4 4 0 0 1 930 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1006.89 916 A 4 4 0 0 1 1014.89 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1065.95 916 A 4 4 0 0 1 1073.95 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1132.21 916 A 4 4 0 0 1 1140.21 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1278 916 A 4 4 0 0 1 1286 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1290 916 A 4 4 0 0 1 1298 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1306.44 916 A 4 4 0 0 1 1314.44 916" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1073.98 933.61 A 4 4 -15.8 0 1 1081.68 931.44" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1031.31 945.69 A 4 4 -15.8 0 1 1039.01 943.51" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 905.46 950.7 A 4 4 0 0 1 913.46 950.7" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 922 950.7 A 4 4 0 0 1 930 950.7" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1009.62 950.7 A 4 4 0 0 1 1017.62 950.7" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1036.33 950.7 A 4 4 0 0 1 1044.33 950.7" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1082.49 950.7 A 4 4 0 0 1 1090.49 950.7" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 905.46 960.15 A 4 4 0 0 1 913.46 960.15" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 922 960.15 A 4 4 0 0 1 930 960.15" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 976.21 960.15 A 4 4 0 0 1 984.21 960.15" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1044.36 960.15 A 4 4 0 0 1 1052.36 960.15" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1086.99 960.15 A 4 4 0 0 1 1094.99 960.15" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 905.46 969.61 A 4 4 0 0 1 913.46 969.61" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1312.6 976.37 A 4 4 -2.86 0 1 1320.6 975.97" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 84 985.24 A 4 4 0 0 1 92 985.24" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1099.7 987 A 4 4 -2.86 0 1 1107.69 986.6" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1068.3 988.57 A 4 4 -2.86 0 1 1076.29 988.17" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 883.2 997.81 A 4 4 -2.86 0 1 891.19 997.41" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 894.38 1010.06 A 4 4 10.38 0 1 902.25 1011.5" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 60 1015.24 A 4 4 0 0 1 68 1015.24" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 84 1015.24 A 4 4 0 0 1 92 1015.24" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 898.71 1026.34 A 4 4 0 0 1 906.71 1026.34" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 907.45 1026.34 A 4 4 0 0 1 915.45 1026.34" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 979.25 1026.34 A 4 4 0 0 1 987.25 1026.34" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1100.51 1026.34 A 4 4 0 0 1 1108.51 1026.34" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1118.54 1026.34 A 4 4 0 0 1 1126.54 1026.34" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 912.5 1030.41 A 4 4 22.6 0 1 919.88 1033.48" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 915.44 1035.79 A 7 4 0 0 1 929.43 1035.79" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1030.87 1035.79 A 4 4 0 0 1 1038.87 1035.79" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1108.54 1035.79 A 4 4 0 0 1 1116.54 1035.79" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1123.04 1035.79 A 4 4 0 0 1 1131.04 1035.79" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1141.79 1035.79 A 4 4 0 0 1 1149.79 1035.79" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1122.89 1051.91 A 4 4 10.38 0 1 1130.76 1053.35" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1131.92 1053.57 A 4 4 10.38 0 1 1139.79 1055.01" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1141.85 1055.38 A 4 4 10.38 0 1 1149.72 1056.83" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1143.04 1071.74 A 4.12 4 49.68 0 1 1148.38 1078.03" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1144.07 1071.52 A 4 4 64.52 0 1 1147.51 1078.74" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1273.53 1079.5 A 4 4 10.38 0 1 1281.39 1080.94" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1324.26 1088.79 A 4 4 10.38 0 1 1332.13 1090.23" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1142.1 1125.97 A 4 4 22.6 0 1 1149.48 1129.05" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1173.24 1138.94 A 4 4 22.6 0 1 1180.63 1142.01" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1211.01 1154.66 A 4 4 22.6 0 1 1218.4 1157.73" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1018.54 1157.87 A 4 4 0 0 1 1026.54 1157.87" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1141.79 1157.87 A 4 4 0 0 1 1149.79 1157.87" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1181.22 1157.87 A 4 4 0 0 1 1189.22 1157.87" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1212.13 1157.87 A 5.3 4 0 0 1 1222.73 1157.87" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1273.46 1157.87 A 4 4 0 0 1 1281.46 1157.87" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1331.19 1157.87 A 4 4 0 0 1 1339.19 1157.87" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1273.77 1180.78 A 4 4 22.6 0 1 1281.15 1183.86" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1336.68 1206.97 A 4 4 22.6 0 1 1344.07 1210.04" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1274.87 1227.11 A 4 4 49.68 0 1 1280.05 1233.21" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1143.21 1300.76 A 4 4 49.82 0 1 1148.37 1306.87" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1348.94 1314.39 A 4 4 49.68 0 1 1354.11 1320.49" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1275.74 1347.8 A 4 4 64.52 0 1 1279.18 1355.02" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1142.87 1387.26 A 4 4 43.24 0 1 1148.7 1392.75" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1274.88 1456.67 A 4 4 49.82 0 1 1280.04 1462.78" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1234.29 1477 A 4 4 0 0 1 1242.29 1477" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1273.46 1477 A 4 4 0 0 1 1281.46 1477" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1288.05 1477 A 4 4 0 0 1 1296.05 1477" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1333.31 1477 A 4 4 0 0 1 1341.31 1477" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1363.85 1477 A 4 4 0 0 1 1371.85 1477" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1274.55 1511.1 A 4 4 43.24 0 1 1280.37 1516.59" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1374.48 1554.99 A 4 4 64.52 0 1 1377.92 1562.21" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<path d="M 1375.72 1576.08 A 4 4 49.82 0 1 1380.88 1582.19" fill="none" stroke="#94A3B8" stroke-width="1.5"/></g>
+<g class="nodes"><g data-node-id="Builder" data-node-kind="user" data-has-children="false" data-has-description="true"><rect x="132.53999999999996" y="219.24452800000017" width="340" height="102" rx="8" ry="8" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<circle cx="302.53999999999996" cy="219.24452800000017" r="13" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<circle cx="302.53999999999996" cy="215.74452800000017" r="3.4" fill="#FFFFFF"/>
+<path d="M296.53999999999996 227.74452800000017 a6 6.5 0 0 1 12 0 Z" fill="#FFFFFF"/>
+<text x="302.53999999999996" y="253.24452800000017" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">アプリ開発者</text>
+<text x="302.53999999999996" y="270.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Builds apps, workflows and knowledge bases</text>
+<text x="302.53999999999996" y="287.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">in the …</text>
+<g data-info-button="Builder" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="456.53999999999996" cy="235.24452800000017" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="456.53999999999996" y="235.24452800000017" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="AppUser" data-node-kind="user" data-has-children="false" data-has-description="true"><rect x="532.54" y="219.24452800000017" width="330.92000000000013" height="84" rx="8" ry="8" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<circle cx="698" cy="219.24452800000017" r="13" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<circle cx="698" cy="215.74452800000017" r="3.4" fill="#FFFFFF"/>
+<path d="M692 227.74452800000017 a6 6.5 0 0 1 12 0 Z" fill="#FFFFFF"/>
+<text x="698" y="252.74452800000017" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">アプリ利用者</text>
+<text x="698" y="269.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Uses a published web app or embedded chat</text>
+<g data-info-button="AppUser" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="847.46" cy="235.24452800000017" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="847.46" y="235.24452800000017" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ApiConsumer" data-node-kind="user" data-has-children="false" data-has-description="true"><rect x="923.46" y="219.24452800000017" width="340" height="102" rx="8" ry="8" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<circle cx="1093.46" cy="219.24452800000017" r="13" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<circle cx="1093.46" cy="215.74452800000017" r="3.4" fill="#FFFFFF"/>
+<path d="M1087.46 227.74452800000017 a6 6.5 0 0 1 12 0 Z" fill="#FFFFFF"/>
+<text x="1093.46" y="253.24452800000017" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">API 利用者</text>
+<text x="1093.46" y="270.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Third-party application or agent calling</text>
+<text x="1093.46" y="287.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">the Servi…</text>
+<g data-info-button="ApiConsumer" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1247.46" cy="235.24452800000017" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1247.46" y="235.24452800000017" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="Console" data-node-kind="client" data-has-children="false" data-has-description="true"><rect x="128" y="441.2445280000002" width="340" height="120" rx="8" ry="8" fill="#6D28D9" stroke="#5B21B6" stroke-width="2"/>
+<text x="298" y="475.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">コンソール</text>
+<text x="298" y="492.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Next.js console for building and operating</text>
+<text x="298" y="509.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">apps</text>
+<g data-team-button="frontend-platform" style="cursor: pointer" pointer-events="all" opacity="0.85"><g transform="translate(249.68 520.2445280000002) scale(0.5416666666666666)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" data-meta-glyph="team"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></g>
+<text x="265.68" y="526.7445280000002" dy="0.35em" fill="#FFFFFF" font-size="9px" font-family="sans-serif">Frontend Platfo…</text></g>
+<g data-info-button="Console" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="452" cy="457.2445280000002" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="452" y="457.2445280000002" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="PublishedApp" data-node-kind="client" data-has-children="false" data-has-description="true"><rect x="528" y="441.2445280000002" width="340" height="102" rx="8" ry="8" fill="#6D28D9" stroke="#5B21B6" stroke-width="2"/>
+<text x="698" y="475.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">公開アプリ</text>
+<text x="698" y="492.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Published chat / completion / workflow web</text>
+<text x="698" y="509.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">app</text>
+<g data-info-button="PublishedApp" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="852" cy="457.2445280000002" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="852" y="457.2445280000002" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="DifyCli" data-node-kind="client" data-has-children="false" data-has-description="true"><rect x="928" y="441.2445280000002" width="340" height="120" rx="8" ry="8" fill="#6D28D9" stroke="#5B21B6" stroke-width="2"/>
+<text x="1098" y="475.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">Dify CLI</text>
+<text x="1098" y="492.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">cli/ — command line tool for plugin and</text>
+<text x="1098" y="509.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">app author…</text>
+<g data-team-button="enterprise" style="cursor: pointer" pointer-events="all" opacity="0.85"><g transform="translate(1049.68 520.2445280000002) scale(0.5416666666666666)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" data-meta-glyph="team"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></g>
+<text x="1065.68" y="526.7445280000002" dy="0.35em" fill="#FFFFFF" font-size="9px" font-family="sans-serif">Enterprise / CL…</text></g>
+<g data-info-button="DifyCli" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1252" cy="457.2445280000002" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1252" y="457.2445280000002" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="WebFrontend" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="116" y="681.2445280000002" width="340" height="120" rx="8" ry="8" fill="#0369A1" stroke="#075985" stroke-width="2"/>
+<text x="286" y="715.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">Web フロントエンド</text>
+<text x="286" y="732.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">web/ — Next.js server rendering the</text>
+<text x="286" y="749.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">console and pu…</text>
+<g data-team-button="frontend" style="cursor: pointer" pointer-events="all" opacity="0.85"><g transform="translate(257.84 760.2445280000002) scale(0.5416666666666666)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" data-meta-glyph="team"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></g>
+<text x="273.84" y="766.7445280000002" dy="0.35em" fill="#FFFFFF" font-size="9px" font-family="sans-serif">Frontend</text></g>
+<g data-info-button="WebFrontend" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="440" cy="697.2445280000002" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="440" y="697.2445280000002" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="WebFrontend" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="420" cy="697.2445280000002" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="420" y="697.2445280000002" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="AgentBackend" data-node-kind="service" data-has-children="true" data-has-description="true" style="cursor: pointer"><rect x="516" y="681.2445280000002" width="364" height="102" rx="8" ry="8" fill="#0369A1" stroke="#075985" stroke-width="2"/>
+<text x="698" y="715.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">エージェントバックエンド</text>
+<text x="698" y="732.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">dify-agent/ — standalone Python agent runtime</text>
+<text x="698" y="749.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">serv…</text>
+<g data-info-button="AgentBackend" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="864" cy="697.2445280000002" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="864" y="697.2445280000002" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="AgentBackend" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="844" cy="697.2445280000002" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="844" y="697.2445280000002" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="AgentSandbox" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="940" y="681.2445280000002" width="340" height="102" rx="8" ry="8" fill="#0369A1" stroke="#075985" stroke-width="2"/>
+<text x="1110" y="715.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">エージェントサンドボックス</text>
+<text x="1110" y="732.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">dify-agent-runtime/ — Go supervisor</text>
+<text x="1110" y="749.2445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">running agent …</text>
+<g data-info-button="AgentSandbox" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1264" cy="697.2445280000002" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1264" y="697.2445280000002" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="AgentSandbox" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1244" cy="697.2445280000002" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="1244" y="697.2445280000002" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="ApiBackend" data-node-kind="service" data-has-children="true" data-has-description="true" style="cursor: pointer"><rect x="516" y="925.2445280000002" width="364" height="120" rx="8" ry="8" fill="#0369A1" stroke="#075985" stroke-width="2"/>
+<text x="698" y="959.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">API バックエンド</text>
+<text x="698" y="976.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">api/ — Flask API, Celery worker and beat</text>
+<text x="698" y="993.7445280000002" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">scheduler</text>
+<g data-team-button="backend-core" style="cursor: pointer" pointer-events="all" opacity="0.85"><g transform="translate(659.76 1004.2445280000002) scale(0.5416666666666666)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" data-meta-glyph="team"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></g>
+<text x="675.76" y="1010.7445280000002" dy="0.35em" fill="#FFFFFF" font-size="9px" font-family="sans-serif">Backend Core</text></g>
+<g data-info-button="ApiBackend" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="864" cy="941.2445280000002" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="864" y="941.2445280000002" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="ApiBackend" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="844" cy="941.2445280000002" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="844" y="941.2445280000002" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="DifyDB" data-node-kind="database" data-has-children="true" data-has-description="true" style="cursor: pointer"><path d="M304 1179.30861376 L304 1265.1913862400002 A182 13.56043776 0 0 0 668 1265.1913862400002 L668 1179.30861376 A182 13.56043776 0 0 1 304 1179.30861376" fill="#1C3A2E" stroke="#166534" stroke-width="2"/>
+<ellipse cx="486" cy="1179.30861376" rx="182" ry="13.56043776" fill="#1C3A2E" stroke="#166534" stroke-width="2"/>
+<text x="486" y="1210.81043776" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="13px" font-weight="bold" font-family="sans-serif">Dify DB</text>
+<text x="486" y="1227.81043776" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="11px" font-family="sans-serif" opacity="0.9">PostgreSQL (MySQL alternative) system of</text>
+<text x="486" y="1244.81043776" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="11px" font-family="sans-serif" opacity="0.9">record — …</text>
+<g data-info-button="DifyDB" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="652" cy="1192.86905152" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="652" y="1192.86905152" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="RedisCache" data-node-kind="database" data-has-children="true" data-has-description="true" style="cursor: pointer"><path d="M728 1179.30861376 L728 1265.1913862400002 A182 13.56043776 0 0 0 1092 1265.1913862400002 L1092 1179.30861376 A182 13.56043776 0 0 1 728 1179.30861376" fill="#1C3A2E" stroke="#166534" stroke-width="2"/>
+<ellipse cx="910" cy="1179.30861376" rx="182" ry="13.56043776" fill="#1C3A2E" stroke="#166534" stroke-width="2"/>
+<text x="910" y="1210.81043776" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="13px" font-weight="bold" font-family="sans-serif">Redis</text>
+<text x="910" y="1227.81043776" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="11px" font-family="sans-serif" opacity="0.9">Cache, distributed locks, rate limiting and</text>
+<text x="910" y="1244.81043776" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="11px" font-family="sans-serif" opacity="0.9">Celery…</text>
+<g data-info-button="RedisCache" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1076" cy="1192.86905152" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1076" y="1192.86905152" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="VectorStore" data-node-kind="database" data-has-children="true" data-has-description="true" style="cursor: pointer"><path d="M264.211799195648 1352.31226176 L264.211799195648 1438.19503424 A182 13.56043776 0 0 0 628.2117991956479 1438.19503424 L628.2117991956479 1352.31226176 A182 13.56043776 0 0 1 264.211799195648 1352.31226176" fill="#1C3A2E" stroke="#166534" stroke-width="2"/>
+<ellipse cx="446.211799195648" cy="1352.31226176" rx="182" ry="13.56043776" fill="#1C3A2E" stroke="#166534" stroke-width="2"/>
+<text x="446.211799195648" y="1383.81408576" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="13px" font-weight="bold" font-family="sans-serif">ベクトルストア</text>
+<text x="446.211799195648" y="1400.81408576" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="11px" font-family="sans-serif" opacity="0.9">Pluggable vector index for knowledge retrieval</text>
+<text x="446.211799195648" y="1417.81408576" text-anchor="middle" dy="0.35em" fill="#86EFAC" font-size="11px" font-family="sans-serif" opacity="0.9">(We…</text>
+<g data-node-badge="VectorStore"><rect x="563.2117991956479" y="1357.87269952" width="37" height="16" rx="8" fill="#F59E0B"/>
+<text x="568.2117991956479" y="1365.87269952" dy="0.35em" fill="#0F172A" font-size="9px" font-weight="bold" font-family="sans-serif">index</text></g>
+<g data-info-button="VectorStore" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="612.2117991956479" cy="1365.87269952" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="612.2117991956479" y="1365.87269952" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="FileStore" data-node-kind="storage" data-has-children="true" data-has-description="true" style="cursor: pointer"><path d="M754.7482594369535 1407.2646537242688 C666.0329791152127 1433.6157420797567, 710.3906192760832 1444.156177421952, 910 1428.3455244086592 C976.5364602413056 1444.156177421952, 1153.9670208847872 1423.0753067375615, 1087.4305606434816 1391.4540007109758 C1153.9670208847872 1365.102912355488, 1020.8941004021759 1338.751824, 910 1354.5624770132927 C843.4635397586943 1344.0220416710974, 666.0329791152127 1375.643347697683, 754.7482594369535 1407.2646537242688 Z" fill="#1E2A3B" stroke="#1D4ED8" stroke-width="2"/>
+<text x="918.871528032174" y="1376.1565666558297" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="13px" font-weight="bold" font-family="sans-serif">オブジェクトストレージ</text>
+<text x="918.871528032174" y="1393.1565666558297" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">Uploaded files, workflow node offload payloads</text>
+<text x="918.871528032174" y="1410.1565666558297" text-anchor="middle" dy="0.35em" fill="#93C5FD" font-size="11px" font-family="sans-serif" opacity="0.9">and…</text>
+<g data-info-button="FileStore" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1052.8159765469595" cy="1358.1569558897074" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1052.8159765469595" y="1358.1569558897074" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="CeleryQueue" data-node-kind="queue" data-has-children="true" data-has-description="true" style="cursor: pointer"><path d="M531 1511.7554719999998 L865 1511.7554719999998 A15 51 0 0 1 865 1613.7554719999998 L531 1613.7554719999998 A15 51 0 0 0 531 1511.7554719999998" fill="#2D2310" stroke="#92400E" stroke-width="2"/>
+<ellipse cx="865" cy="1562.7554719999998" rx="15" ry="51" fill="#2D2310" stroke="#92400E" stroke-width="2"/>
+<text x="698" y="1545.7554719999998" text-anchor="middle" dy="0.35em" fill="#FCD34D" font-size="13px" font-weight="bold" font-family="sans-serif">Celery キュー</text>
+<text x="698" y="1562.7554719999998" text-anchor="middle" dy="0.35em" fill="#FCD34D" font-size="11px" font-family="sans-serif" opacity="0.9">Async task queues. Declared across api/tasks,</text>
+<text x="698" y="1579.7554719999998" text-anchor="middle" dy="0.35em" fill="#FCD34D" font-size="11px" font-family="sans-serif" opacity="0.9">api/…</text>
+<g data-info-button="CeleryQueue" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="842" cy="1527.7554719999998" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="842" y="1527.7554719999998" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="PluginDaemon" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="40" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="74" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">プラグインデーモン</text>
+<text x="1550" y="91" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-plugin-daemon — hosts</text>
+<text x="1550" y="108" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">installed pl…</text>
+<g data-info-button="PluginDaemon" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="56" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="56" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="PluginDaemon" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1684" cy="56" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="1684" y="56" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="CodeSandbox" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="166" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="200" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">コードサンドボックス</text>
+<text x="1550" y="217" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">langgenius/dify-sandbox — isolated</text>
+<text x="1550" y="234" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">execution of us…</text>
+<g data-info-button="CodeSandbox" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="182" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="182" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="CodeSandbox" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1684" cy="182" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="1684" y="182" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="SsrfProxy" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="292" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="326" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">SSRF プロキシ</text>
+<text x="1550" y="343" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Squid forward proxy constraining outbound</text>
+<text x="1550" y="360" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">requests</text>
+<g data-info-button="SsrfProxy" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="308" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="308" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="SsrfProxy" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1684" cy="308" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="1684" y="308" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="Unstructured" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="418" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="452" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">Unstructured</text>
+<text x="1550" y="469" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Document parsing API used by knowledge</text>
+<text x="1550" y="486" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">ingestion</text>
+<g data-info-button="Unstructured" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="434" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="434" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="Unstructured" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1684" cy="434" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="1684" y="434" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="TenantExtensionEndpoints" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="544" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="578" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">テナント登録エンドポイント</text>
+<text x="1550" y="595" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Arbitrary HTTP endpoints a tenant</text>
+<text x="1550" y="612" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">registers as a C…</text>
+<g data-info-button="TenantExtensionEndpoints" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="560" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="560" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ThirdPartyEventSource" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="1678" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="1712" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">外部イベント送信元</text>
+<text x="1550" y="1729" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">GitHub / Slack / any subscribed provider</text>
+<text x="1550" y="1746" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">calling a…</text>
+<g data-info-button="ThirdPartyEventSource" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="1694" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="1694" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="KnowledgeFs" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="670" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="704" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">KnowledgeFS</text>
+<text x="1550" y="721" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Knowledge-spaces backend reached over HTTP</text>
+<text x="1550" y="738" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">by api/…</text>
+<g data-info-button="KnowledgeFs" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="686" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="686" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="BillingApi" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="796" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="830" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">Billing API</text>
+<text x="1550" y="847" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Dify billing SaaS (BILLINGAPIURL /</text>
+<text x="1550" y="864" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">BILLINGQUOTAAPI…</text>
+<g data-info-button="BillingApi" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="812" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="812" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="DifyEnterprise" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="922" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="956" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">dify-enterprise</text>
+<text x="1550" y="973" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Enterprise control plane (ENTERPRISEAPIURL</text>
+<text x="1550" y="990" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">/ ENTER…</text>
+<g data-info-button="DifyEnterprise" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="938" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="938" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ObservabilityBackends" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="1048" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="1082" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">トレースバックエンド</text>
+<text x="1550" y="1099" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Trace vendors loaded lazily as out-of-tree</text>
+<text x="1550" y="1116" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">difytra…</text>
+<g data-info-button="ObservabilityBackends" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="1064" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="1064" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="WebCrawlers" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="1174" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="1208" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">クローラ / コネクタ</text>
+<text x="1550" y="1225" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Document sources reached directly: Notion,</text>
+<text x="1550" y="1242" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Firecra…</text>
+<g data-info-button="WebCrawlers" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="1190" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="1190" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="E2bSandbox" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="1300" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="1334" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">E2B</text>
+<text x="1550" y="1351" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Hosted sandbox backend for the agent</text>
+<text x="1550" y="1368" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">runtime (DIFY…</text>
+<g data-info-button="E2bSandbox" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="1316" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="1316" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="Marketplace" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="1426" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="1460" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">マーケットプレイス</text>
+<text x="1550" y="1477" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">Dify plugin marketplace consumed when</text>
+<text x="1550" y="1494" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">installing p…</text>
+<g data-info-button="Marketplace" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="1442" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="1442" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="Gateway" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1380" y="1552" width="340" height="102" rx="8" ry="8" fill="#1F2937" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1550" y="1586" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">ゲートウェイ</text>
+<text x="1550" y="1603" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">nginx reverse proxy and certbot TLS</text>
+<text x="1550" y="1620" text-anchor="middle" dy="0.35em" fill="#FFFFFF" font-size="11px" font-family="sans-serif" opacity="0.9">issuance</text>
+<g data-info-button="Gateway" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1704" cy="1568" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1704" y="1568" text-anchor="middle" dy="0.35em" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="Gateway" class="krs-node-controls" style="cursor: pointer" pointer-events="all"><circle cx="1684" cy="1568" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="1684" y="1568" text-anchor="middle" dy="0.35em" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g></g>
+<g class="krs-category-controls"><style>.krs-cat-frame{opacity:0;transition:opacity .1s}.krs-cat-group:hover .krs-cat-frame{opacity:1}.krs-cat-collapse,.krs-category-stub{cursor:pointer}</style>
+<g class="krs-cat-group" data-category-group="infra"><rect class="krs-cat-frame" x="256.211799195648" y="1157.748176" width="883.5764016087041" height="464.00729599999977" rx="10" fill="transparent" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>
+<g class="krs-cat-collapse" data-collapse-category="infra" role="button" tabindex="0" transform="translate(1137.788200804352,1159.748176)"><circle cx="0" cy="0" r="9" fill="#1E293B" stroke="#3B82F6" stroke-width="1.5"/>
+<line x1="-4" y1="0" x2="4" y2="0" stroke="#3B82F6" stroke-width="1.5"/></g></g>
+<g class="krs-cat-group" data-category-group="external"><rect class="krs-cat-frame" x="1372" y="32" width="356" height="1756" rx="10" fill="transparent" stroke="#3B82F6" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>
+<g class="krs-cat-collapse" data-collapse-category="external" role="button" tabindex="0" transform="translate(1726,34)"><circle cx="0" cy="0" r="9" fill="#1E293B" stroke="#3B82F6" stroke-width="1.5"/>
+<line x1="-4" y1="0" x2="4" y2="0" stroke="#3B82F6" stroke-width="1.5"/></g></g></g>
+<g class="krs-expand-controls"><style>.krs-expand-control{cursor:pointer}</style>
+<g class="krs-expand-control" data-expand-node="AgentBackend" role="button" tabindex="0" transform="translate(878,683.2445280000002)"><circle cx="0" cy="0" r="9" fill="#1E293B" stroke="#3B82F6" stroke-width="1.5"/>
+<line x1="-4" y1="0" x2="4" y2="0" stroke="#3B82F6" stroke-width="1.5"/>
+<line x1="0" y1="-4" x2="0" y2="4" stroke="#3B82F6" stroke-width="1.5"/></g>
+<g class="krs-expand-control" data-expand-node="ApiBackend" role="button" tabindex="0" transform="translate(878,927.2445280000002)"><circle cx="0" cy="0" r="9" fill="#1E293B" stroke="#3B82F6" stroke-width="1.5"/>
+<line x1="-4" y1="0" x2="4" y2="0" stroke="#3B82F6" stroke-width="1.5"/>
+<line x1="0" y1="-4" x2="0" y2="4" stroke="#3B82F6" stroke-width="1.5"/></g></g></svg></div>
