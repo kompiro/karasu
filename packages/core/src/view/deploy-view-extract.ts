@@ -10,6 +10,18 @@ import {
 export interface DeployContainer {
   /** The service id that these units realize */
   serviceId: string;
+  /**
+   * The realized node's own id, set when no other container answers to it.
+   *
+   * A consumer that matches a container against the node it realizes — the
+   * system view's deploy-jump button, the draw.io metadata lookup — keys on
+   * this, not on {@link serviceId}. `serviceId` is the container's identity,
+   * and identity can need spelling a node's own id space has no word for: a
+   * qualified path when two containers share the bare id (#2549), quotes when
+   * a segment carries the separator (#2714). Left unset exactly when the id
+   * was qualified, because then no bare id names this container alone.
+   */
+  nodeId?: string;
   /** Human-readable label resolved from the system hierarchy */
   serviceLabel: string;
   units: DeployNode[];
@@ -153,10 +165,12 @@ export function extractDeployView(
   for (const group of groupedByRealizes.values()) {
     groupsByBareId.set(group.bareId, (groupsByBareId.get(group.bareId) ?? 0) + 1);
   }
+  const qualifyingPathOf = (group: RealizesGroup): NodeIdPath | undefined =>
+    group.path !== undefined && (groupsByBareId.get(group.bareId) ?? 0) > 1
+      ? group.path
+      : undefined;
   const containerIdOf = (group: RealizesGroup): string =>
-    nodePathRefId(
-      group.path && (groupsByBareId.get(group.bareId) ?? 0) > 1 ? group.path : [group.bareId],
-    );
+    nodePathRefId(qualifyingPathOf(group) ?? [group.bareId]);
 
   // Build containers
   const containers: DeployContainer[] = [];
@@ -172,6 +186,7 @@ export function extractDeployView(
     const isJobOnly = group.units.length > 0 && group.units.every((u) => u.kind === "job");
     containers.push({
       serviceId,
+      ...(qualifyingPathOf(group) === undefined ? { nodeId: group.bareId } : {}),
       serviceLabel: group.label ?? labelByBareId.get(group.bareId) ?? group.bareId,
       units: group.units,
       ...(isJobOnly ? { kindBand: "job" as const } : {}),
@@ -205,7 +220,9 @@ export function extractDeployView(
     const from = containerIdFor(edge.from, systemId);
     const to = containerIdFor(edge.to, systemId);
     if (from === undefined || to === undefined) return;
-    const key = `${from}->${to}`;
+    // `\u0000` and not `->`: both halves are author-chosen ids, and an id may
+    // contain the arrow (`service "b->c"` needs no quoting, holding no `.`).
+    const key = `${from}\u0000${to}`;
     if (seenGhost.has(key)) return;
     seenGhost.add(key);
     ghostEdges.push({ from, to, label: edge.label, kind: edge.kind });

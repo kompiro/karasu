@@ -165,14 +165,18 @@ export function nodePathIdentityKey(segments: readonly string[]): string {
  * `["Weird", "Shop.Api"]` and `["Shop", "Api"]` collapse onto one string. That
  * is harmless where the join is only text, but a deploy container emits it as
  * its id (#2714): two containers answered to `Shop.Api`, the later one won
- * `containerCenterX`, and the SVG carried the id twice. A segment that carries
- * the `.` separator (or the quoting characters themselves) is therefore
- * written as a `.krs` string literal, which is how the same id is written in
- * the source it came from. The result parses one way only, so the encoding is
- * injective.
+ * `containerCenterX`, and the SVG carried the id twice. A segment that would
+ * make the join ambiguous is therefore wrapped in the `.krs` string-literal
+ * form, which restores the boundary the join lost. The result decodes one way
+ * only, so the encoding is injective.
  *
- * Nothing else changes: a segment with no dot in it is emitted bare, so a
- * model without dotted ids keeps every id it had.
+ * It quotes strictly less than the formatter does. `quoteId` asks whether a
+ * `.krs` token can carry the id bare, so it also quotes kebab ids and reserved
+ * keywords; the question here is only whether the join stays readable, and
+ * quoting more would rename container ids that have never been ambiguous. The
+ * result is therefore NOT a `.krs` reference to re-parse — it is an id whose
+ * separators happen to be unambiguous. A segment with no dot in it is emitted
+ * bare, so a model without dotted ids keeps every id it had.
  */
 export function nodePathRefId(segments: readonly string[]): string {
   return segments.map(quoteNodePathSegment).join(".");
@@ -182,10 +186,11 @@ export function nodePathRefId(segments: readonly string[]): string {
  * A segment is quoted exactly when leaving it bare would make the join
  * ambiguous: it carries the `.` separator, or one of the characters the quoted
  * form is built from (`"` / `\`), which a decoder would otherwise read as the
- * start of a literal or as an escape.
+ * start of a literal or as an escape. The empty segment is quoted too — a
+ * `service ""` parses, and bare it would vanish from the join entirely.
  */
 function quoteNodePathSegment(segment: string): string {
-  return /["\\.]/.test(segment) ? quotedIdLiteral(segment) : segment;
+  return segment === "" || /["\\.]/.test(segment) ? quotedIdLiteral(segment) : segment;
 }
 
 /** A resolved match that knows the kind of the node it points at. */

@@ -585,7 +585,7 @@ deploy prod {
   oci a { realizes Shop.Api }
   oci b { realizes Admin.Api }
   oci c { realizes "Shop.Api" }
-  job w { realizes Worker }
+  oci w { realizes Worker }
 }
 `;
 

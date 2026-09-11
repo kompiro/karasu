@@ -125,3 +125,34 @@ describe("buildDrawio — view:all", () => {
     expect(ids).toContain("org");
   });
 });
+
+describe("buildDrawio — deploy container metadata (#2714)", () => {
+  // The exporter looks metadata up by the container's id, and the metadata map
+  // is keyed by the node's own id. A container id is quoted when a segment
+  // carries the path separator, so the two id spaces have to be bridged where
+  // the page is built or the cell silently loses its tags and annotations.
+  const deployXml = (serviceDecl: string, realizes: string) =>
+    buildDrawio(
+      parse(`
+system Weird {
+  ${serviceDecl} [external] @deprecated {}
+}
+deploy prod {
+  oci c { realizes ${realizes} }
+}
+`),
+      { view: "deploy" },
+    );
+
+  it("keeps the annotations and tags of a node whose own id contains a dot", () => {
+    const xml = deployXml('service "Shop.Api"', '"Shop.Api"');
+    expect(xml).toContain("@deprecated");
+    expect(xml).toContain("#external");
+  });
+
+  it("keeps them for an ordinary id too", () => {
+    const xml = deployXml("service Api", "Api");
+    expect(xml).toContain("@deprecated");
+    expect(xml).toContain("#external");
+  });
+});

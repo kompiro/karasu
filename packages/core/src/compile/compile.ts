@@ -468,12 +468,17 @@ function _compileFromPreparedInput(
   // for a model whose only boundaries are scoped.
   const hasBoundaries = krsFile.boundaries.length > 0 || krsFile.scopedBoundaryMembership.size > 0;
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
-  // Container ids, which the system view matches against its own node ids —
-  // a bare id in the common case. When two systems' same-named services each
-  // have a container the ids are qualified (#2549), so neither bare-id node
-  // lights the deploy-jump button; the button's own id space cannot tell the
-  // two apart, and lighting both was the previous, wrong answer.
-  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
+  // The node ids the system view matches its own nodes against. A container
+  // contributes its realized node's id, which is not always the container's
+  // id: identity can need spelling this id space has no word for — a
+  // qualified path (#2549) or quotes around a dot-carrying segment (#2714).
+  // A container whose bare id is shared contributes nothing, so neither
+  // bare-id node lights the deploy-jump button; the button's own id space
+  // cannot tell the two apart, and lighting both was the previous, wrong
+  // answer.
+  const serviceIdsWithDeploy = new Set(
+    deploySliceForStyle.containers.flatMap((c) => (c.nodeId === undefined ? [] : [c.nodeId])),
+  );
   const ownerIndex = krsFile.ownerIndex;
   const teamLabels = buildTeamLabelIndex(krsFile);
 

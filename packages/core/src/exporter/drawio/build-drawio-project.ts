@@ -147,6 +147,16 @@ function buildDeployPage(krsFile: KrsFile): DrawioPage | null {
   // Deploy containers are keyed by the realized service id, so the logical
   // tree provides their tags/annotations.
   collectLogicalMeta(effectiveSystems, metadata);
+  // The exporter looks metadata up by the container's id, which is not always
+  // the realized node's id — it is quoted when a segment carries the path
+  // separator (#2714) and qualified when two containers share a bare id
+  // (#2549). Alias each container's entry onto the id the lookup will use, so
+  // the cell keeps the tags and annotations it carried before.
+  for (const container of slice.containers) {
+    if (container.nodeId === undefined || container.nodeId === container.serviceId) continue;
+    const meta = metadata.get(container.nodeId);
+    if (meta) metadata.set(container.serviceId, meta);
+  }
   return { id: "deploy", name: "Deploy", layout: layoutResult, metadata };
 }
 

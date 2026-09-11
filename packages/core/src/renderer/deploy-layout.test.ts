@@ -840,6 +840,7 @@ deploy prod {
     const unitA = result.nodes.get("Shop.Api::a")!;
     expect(unitA).toBeDefined();
     const rect = result.containers.find((c) => c.id === "Shop.Api")!;
+    expect(rect).toBeDefined();
     expect(unitA.x).toBeGreaterThanOrEqual(rect.x);
     expect(unitA.x + unitA.width).toBeLessThanOrEqual(rect.x + rect.width);
     expect(edge.fromPoint.x).toBe(rect.x + rect.width / 2);

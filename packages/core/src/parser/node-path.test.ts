@@ -225,6 +225,15 @@ describe("nodePathRefId (#2714)", () => {
     expect(nodePathRefId(["Shop.Api"])).not.toBe(nodePathRefId(["Shop", "Api"]));
   });
 
+  it("quotes the empty segment, which would otherwise vanish from the join", () => {
+    // `service ""` parses, so the id reaches here; bare, it would leave the
+    // join and make `[]`, `[""]` and `["", ""]` all spell nothing.
+    expect(nodePathRefId([""])).toBe('""');
+    expect(nodePathRefId(["Weird", ""])).toBe('Weird.""');
+    expect(nodePathRefId([])).toBe("");
+    expect(nodePathRefId([])).not.toBe(nodePathRefId([""]));
+  });
+
   it("keeps distinct paths distinct across the shapes that could alias", () => {
     const paths = [
       ["Api"],
@@ -234,6 +243,8 @@ describe("nodePathRefId (#2714)", () => {
       ['"Shop.Api"'],
       ["Shop", "Api", "Inner"],
       ["Shop.Api", "Inner"],
+      [""],
+      ["Shop", ""],
     ];
     expect(new Set(paths.map(nodePathRefId)).size).toBe(paths.length);
   });
