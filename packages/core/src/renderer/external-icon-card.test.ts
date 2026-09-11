@@ -50,6 +50,15 @@ function renderService(style: string, displayMode?: DisplayMode, label = LONG_LA
   return renderFromSource(`system S { service Svc { label "${label}" } }`, style, displayMode);
 }
 
+/** The same node with a description, so the icon's second text slot is filled. */
+function renderDescribedService(style: string, displayMode?: DisplayMode): string {
+  return renderFromSource(
+    `system S { service Svc { label "${LONG_LABEL}" description "Placement and tracking" } }`,
+    style,
+    displayMode,
+  );
+}
+
 /** Everything the renderer emitted for one node. */
 function nodeGroup(svg: string, id = "Svc"): string {
   const start = svg.indexOf(`data-node-id="${id}"`);
@@ -154,15 +163,22 @@ describe("external icon card (#2696)", () => {
       expect(card.width / card.height).not.toBeCloseTo(160 / 100, 2);
     });
 
-    it("puts the icon's text slots on the body they belong to", () => {
-      const group = nodeGroup(renderService(FRAMED));
+    it("puts both of the icon's text slots on the body they belong to", () => {
+      const group = nodeGroup(renderDescribedService(FRAMED));
       const body = bodyBox(group, { w: 160, h: 100 });
-      const { scaleX } = bodyPlacement(group);
-      const label = /<text[^>]*\bx="([\d.]+)"/.exec(group);
-      expect(label).not.toBeNull();
+      const { scaleX, scaleY } = bodyPlacement(group);
+      // Both slots, because they move independently of each other: the label
+      // sits at (30, 19) and the description at (8, 44) of the icon's own
+      // 160×100 coordinate system, and either can be left behind on its own.
+      const texts = [...group.matchAll(/<text[^>]*\bx="([\d.]+)"[^>]*\by="([\d.]+)"/g)].map(
+        (m) => ({ x: Number(m[1]), y: Number(m[2]) }),
+      );
+      expect(texts.length).toBeGreaterThanOrEqual(2);
 
-      // krs-label sits at x=30 of the icon's own 160-wide coordinate system.
-      expect(Number(label![1])).toBeCloseTo(body.x + 30 * scaleX, 1);
+      expect(texts[0].x).toBeCloseTo(body.x + 30 * scaleX, 1);
+      expect(texts[0].y).toBeCloseTo(body.y + 19 * scaleY, 1);
+      expect(texts[1].x).toBeCloseTo(body.x + 8 * scaleX, 1);
+      expect(texts[1].y).toBeCloseTo(body.y + 44 * scaleY, 1);
     });
 
     it("centres a slot-less icon, which has no layout of its own to line up", () => {
