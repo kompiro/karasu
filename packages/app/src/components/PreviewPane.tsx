@@ -56,6 +56,12 @@ interface PreviewPaneProps {
    * forwards intent.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+  /**
+   * Extra class on the pane root, for a sub-mode that swaps the drawn diagram
+   * but keeps this pane (the entity view's `preview-pane--entity`, #2800).
+   * The base `preview-pane` class is always applied.
+   */
+  className?: string;
 }
 
 interface EdgeContextMenuState {
@@ -96,6 +102,7 @@ export function PreviewPane({
   nodeDiff,
   styleTargetPath,
   onPickEdgeDirection,
+  className,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -463,7 +470,11 @@ export function PreviewPane({
     detailPanel?.kind === "node" ? nodeMetadata.get(detailPanel.nodeId) : undefined;
 
   return (
-    <div className={`preview-pane${hasErrors ? " preview-pane--has-errors" : ""}`}>
+    <div
+      className={`preview-pane${hasErrors ? " preview-pane--has-errors" : ""}${
+        className ? ` ${className}` : ""
+      }`}
+    >
       <div
         ref={containerRef}
         className="preview-container"

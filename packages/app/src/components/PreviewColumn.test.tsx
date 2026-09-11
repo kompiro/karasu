@@ -111,6 +111,7 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
     isEntityViewOpen: false,
     onEntityViewToggle: vi.fn<() => void>(),
     hasEntityView: false,
+    entityViewDiagnostics: emptyDiagnostics,
     orgTreeSvg: undefined,
     onTeamToggle: vi.fn<() => void>(),
     orgTreeExportSvg: undefined,
@@ -344,6 +345,46 @@ describe("PreviewColumn", () => {
       const { container } = renderPreview(props);
       expect(container.querySelector('[data-testid="sys"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="entity"]')).toBeNull();
+    });
+
+    // #2800: the entity pane used to inject its SVG into a bare
+    // `overflow: auto` div, which is why it was the one diagram with no
+    // fit-to-pane and no zoom (#2799). The structural fence is that the SVG
+    // sits inside `.preview-container` — the element the zoom listener is
+    // attached to and the one `max-width/max-height: 100%` is scoped to.
+    it("renders the entity SVG inside the shared preview container, keeping the pane marker", () => {
+      const props = makeProps({
+        activeView: "system",
+        isEntityViewOpen: true,
+        hasEntityView: true,
+        entityViewSvg: entitySvg,
+      });
+      const { container } = renderPreview(props);
+      const pane = container.querySelector(".preview-pane--entity");
+      expect(pane).toBeTruthy();
+      expect(pane?.classList.contains("preview-pane")).toBe(true);
+      expect(pane?.querySelector('.preview-container [data-testid="entity"]')).toBeTruthy();
+    });
+
+    it("shows the entity view's own diagnostics in the pane's banner", () => {
+      const props = makeProps({
+        activeView: "system",
+        isEntityViewOpen: true,
+        hasEntityView: true,
+        entityViewSvg: entitySvg,
+        // The real #2179 report `renderEntityView` feeds its diagnostic sink.
+        entityViewDiagnostics: [
+          {
+            severity: "info",
+            code: "boundary-membership-not-drawn",
+            params: { nodeId: "Order", boundaryId: "core_data" },
+          },
+        ],
+      });
+      const { container } = renderPreview(props);
+      const banner = container.querySelector(".preview-pane--entity .diagnostic-banner");
+      expect(banner?.textContent).toContain("core_data");
+      expect(banner?.textContent).toContain("Order");
     });
   });
 
