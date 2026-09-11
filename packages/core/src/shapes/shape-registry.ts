@@ -184,6 +184,8 @@ export function renderPictogram(iconName: string, color: string, size = 20): str
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="${size}" height="${size}">${body}</svg>`;
 }
 
+const round4 = (n: number): number => Number(n.toFixed(4));
+
 /**
  * Register an SVG icon as a shape.
  * The icon body is scaled/translated to fit the node's bounding box.
@@ -195,8 +197,11 @@ export function registerIcon(def: SvgIconDef): void {
   iconDefRegistry.set(def.name, def);
 
   registerShape(def.name, (ctx) => {
-    const scaleX = ctx.width / vw;
-    const scaleY = ctx.height / vh;
+    // Rounded: the ratio is a division, so an exact fit still lands on
+    // `0.6599999999999999` half the time. Four decimals is sub-pixel at any
+    // node size and keeps the emitted transform readable and assertable.
+    const scaleX = round4(ctx.width / vw);
+    const scaleY = round4(ctx.height / vh);
     let body = def.body;
     if (def.builtIn) {
       body = body
