@@ -33,7 +33,17 @@ type Pin = { readonly workflow: string; readonly sha: string; readonly version: 
 
 const lock: LockFile = JSON.parse(readFileSync(ACTIONS_LOCK, "utf8"));
 
-const lockedRepos = Object.values(lock.entries);
+// Keyed `repo@version`, so one repository may hold several entries at once:
+// gh-aw does not prune the lock when a pin moves. A pin is therefore correct
+// when it matches *some* entry exactly, not when it matches the first entry
+// carrying its repository.
+const lockEntries = Object.values(lock.entries);
+
+const lockedRepoNames = [...new Set(lockEntries.map((entry) => entry.repo))].sort();
+
+function entriesFor(repo: string): LockEntry[] {
+  return lockEntries.filter((entry) => entry.repo === repo);
+}
 
 const workflowFiles = readdirSync(WORKFLOW_DIR)
   .filter((name) => name.endsWith(".lock.yml"))
@@ -71,41 +81,54 @@ describe("gh-aw lock files", () => {
   it("has a lock entry for the setup action", () => {
     // Without it nothing below can be checked at all, so fail loudly here
     // rather than letting the other cases pass vacuously.
-    expect(lockedRepos.map((entry) => entry.repo)).toContain(SETUP_REPO);
+    expect(lockedRepoNames).toContain(SETUP_REPO);
   });
 
-  it("pins every locked action at the sha and version recorded in the actions lock", () => {
-    const mismatches = lockedRepos.flatMap((entry) =>
-      pinsOf(entry.repo)
-        .filter((pin) => pin.sha !== entry.sha || pin.version !== entry.version)
+  it("pins every locked action at a sha and version recorded in the actions lock", () => {
+    const unlocked = lockedRepoNames.flatMap((repo) => {
+      const entries = entriesFor(repo);
+      return pinsOf(repo)
+        .filter((pin) => !entries.some((e) => e.sha === pin.sha && e.version === pin.version))
         .map(
           (pin) =>
-            `${pin.workflow}: ${entry.repo}@${pin.sha} # ${pin.version} ` +
-            `(actions-lock.json: ${entry.sha} # ${entry.version})`,
-        ),
-    );
-    // A `uses:` bump that was not produced by `gh aw compile` lands here.
-    // The fix is to regenerate, never to edit either side by hand.
-    expect(mismatches).toEqual([]);
+            `${pin.workflow}: ${repo}@${pin.sha} # ${pin.version} (actions-lock.json: ` +
+            `${entries.map((e) => `${e.sha} # ${e.version}`).join(", ")})`,
+        );
+    });
+    // A `uses:` bump that was not produced by `gh aw compile` lands here: its
+    // sha and version pair is in no entry, because nothing wrote one. The fix
+    // is to regenerate, never to edit either side by hand.
+    expect(unlocked).toEqual([]);
   });
 
   it("references the setup action from every compiled workflow", () => {
     // Guards the regex above: a compiler output format change that stopped
     // matching would otherwise make the comparison silently trivial.
+    const setupPins = pinsOf(SETUP_REPO);
     const withoutSetup = workflows
-      .filter((workflow) => !pinsOf(SETUP_REPO).some((pin) => pin.workflow === workflow.name))
+      .filter((workflow) => !setupPins.some((pin) => pin.workflow === workflow.name))
       .map((workflow) => workflow.name);
     expect(withoutSetup).toEqual([]);
   });
 
-  it("records the compiler version that matches the locked setup version", () => {
-    const locked = lockedRepos.find((entry) => entry.repo === SETUP_REPO);
-    const mismatches = workflows
-      .map((workflow) => ({ name: workflow.name, version: compilerVersion(workflow.text) }))
-      .filter((workflow) => workflow.version !== locked?.version)
-      .map((workflow) => `${workflow.name}: compiler_version=${workflow.version ?? "(absent)"}`);
-    // The compiler stamps its own version here, so a mismatch means the lock
-    // file and the compiler that wrote it are different releases.
+  it("compiles each workflow with the setup version that workflow pins", () => {
+    // Per workflow rather than against the lock as a whole: the compiler stamps
+    // its own version here, so this is what says the compiler that wrote the
+    // file and the setup action it installs are one release. Comparing against
+    // a single lock entry would go wrong the moment the lock carries two.
+    const mismatches = workflows.flatMap((workflow) => {
+      const compiled = compilerVersion(workflow.text) ?? "(absent)";
+      const pinned = [
+        ...new Set(
+          pinsOf(SETUP_REPO)
+            .filter((pin) => pin.workflow === workflow.name)
+            .map((pin) => pin.version),
+        ),
+      ];
+      return pinned.every((version) => version === compiled)
+        ? []
+        : [`${workflow.name}: compiler_version=${compiled}, setup=${pinned.join(", ")}`];
+    });
     expect(mismatches).toEqual([]);
   });
 });
