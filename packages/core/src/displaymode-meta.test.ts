@@ -167,12 +167,17 @@ const ICON_CARD = { width: 160, height: 56 };
 
 /**
  * Geometry of the card drawn for the fixture's `Frontend` service, read back
- * from the emitted SVG — the node group's own first `<rect>`.
+ * from the emitted SVG — the first `<rect>` inside that node's own group.
+ * Scoped to the group so the marker cannot silently drift onto a badge or the
+ * next node's card if `service` ever stops being drawn as a rect.
  */
 function frontendCard(svg: string): { width: number; height: number } {
-  const group = svg.indexOf('data-node-id="Frontend"');
-  expect(group).toBeGreaterThan(-1);
-  const rect = /<rect\s[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/.exec(svg.slice(group));
+  const start = svg.indexOf('data-node-id="Frontend"');
+  expect(start).toBeGreaterThan(-1);
+  const rest = svg.slice(start);
+  const next = rest.indexOf("data-node-id=", 1);
+  const group = next === -1 ? rest : rest.slice(0, next);
+  const rect = /<rect\s[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/.exec(group);
   expect(rect).not.toBeNull();
   return { width: Number(rect![1]), height: Number(rect![2]) };
 }

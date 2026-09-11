@@ -44,7 +44,7 @@ import {
   truncateToWidth,
   wrapToWidth,
 } from "./svg-builder.js";
-import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
+import { getIconDef, iconViewBox, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   NODE_PADDING_X,
@@ -101,6 +101,8 @@ const ICON_DESC_FONT_SIZE = 11;
 
 /** Two decimals — enough for SVG geometry, and it keeps float noise out of the output. */
 const round2 = (n: number): number => Number(n.toFixed(2));
+/** Four decimals, never upwards — for a scale that has to stay within a bound. */
+const floor4 = (n: number): number => Math.floor(n * 1e4) / 1e4;
 
 /**
  * Sanitizes a node ID for use in a CSS fragment identifier (e.g. href="#krs-view-X").
@@ -1610,7 +1612,7 @@ function renderNode(
   // Resolve the icon body (an external `shape: url(...)`) before anything is
   // drawn: the card frame, the body itself and the body's text slots all sit
   // in the same placement (see `iconBodyBox`).
-  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
+  const shapeName = shapeNameOf(style.shape);
   const iconDef = getIconDef(shapeName);
   const isIconShape = typeof style.shape !== "string" && iconDef !== undefined;
   const bodyBox = isIconShape ? iconBodyBox(node, iconDef, displayMode) : node;
@@ -1618,8 +1620,7 @@ function renderNode(
   // An icon body paints no background of its own, so the card frame draws the
   // declared fill/border behind it. Built-in shapes already include fill/stroke
   // in their own rendering.
-  const iconFrame = isIconShape ? renderIconFrame(node, style) : undefined;
-  if (iconFrame) children.push(iconFrame);
+  if (isIconShape) children.push(renderIconFrame(node, style));
 
   // Shape
   children.push(renderShape(bodyBox.x, bodyBox.y, bodyBox.width, bodyBox.height, style));
@@ -1836,14 +1837,17 @@ function iconBodyBox(
   iconDef: SvgIconDef,
   displayMode: DisplayMode | undefined,
 ): Rect {
-  const vw = iconDef.viewBoxWidth ?? 24;
-  const vh = iconDef.viewBoxHeight ?? 24;
+  const { width: vw, height: vh } = iconViewBox(iconDef);
   // A malformed viewBox (non-finite or degenerate) has no ratio to preserve.
   if (displayMode === "icon" || !(vw > 0) || !(vh > 0)) return node;
 
-  const scale = Math.min(node.width / vw, node.height / vh);
-  const width = round2(vw * scale);
-  const height = round2(vh * scale);
+  // One scale, floored to the precision the transform is emitted at, and both
+  // sides derived from it: rounding each side on its own would put the two
+  // axes on subtly different scales, which is the distortion being fixed here,
+  // and rounding up would put the drawing outside the box it was fitted into.
+  const scale = floor4(Math.min(node.width / vw, node.height / vh));
+  const width = vw * scale;
+  const height = vh * scale;
   // An icon that declares text slots is a card design, laid out from its own
   // top-left: anchoring it there keeps the pictogram in the card's corner and
   // the label beside it, the way icon mode draws it, with the leftover width
@@ -1868,19 +1872,9 @@ function iconBodyBox(
  * same rect itself.
  */
 function renderIconFrame(node: LayoutNode, style: ResolvedNodeStyle): string {
-  return el("rect", {
-    x: node.x,
-    y: node.y,
-    width: node.width,
-    height: node.height,
-    rx: style.borderRadius,
-    ry: style.borderRadius,
-    fill: style.backgroundColor,
-    stroke: style.borderColor,
-    "stroke-width": style.borderWidth,
-    "stroke-dasharray":
-      style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : undefined,
-  });
+  // The frame *is* a `box`, so it is drawn by the box shape rather than by a
+  // second copy of its rect — the two would otherwise have to be kept in step.
+  return renderShape(node.x, node.y, node.width, node.height, { ...style, shape: "box" });
 }
 
 /**
@@ -1905,8 +1899,7 @@ function renderSlottedText(
   if (!labelSlot) return [];
 
   const children: string[] = [];
-  const vw = iconDef.viewBoxWidth ?? 24;
-  const vh = iconDef.viewBoxHeight ?? 24;
+  const { width: vw, height: vh } = iconViewBox(iconDef);
   const scaleX = bodyBox.width / vw;
   const scaleY = bodyBox.height / vh;
 

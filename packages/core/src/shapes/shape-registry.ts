@@ -187,12 +187,21 @@ export function renderPictogram(iconName: string, color: string, size = 20): str
 const round4 = (n: number): number => Number(n.toFixed(4));
 
 /**
+ * The icon's coordinate system, with the default applied. Every placement of an
+ * icon — its body here, the box the renderer fits that body into, the text
+ * slots positioned on it — has to read the same viewBox, or the drawing and its
+ * text come apart. That is why the default lives in one place.
+ */
+export function iconViewBox(def: SvgIconDef): { width: number; height: number } {
+  return { width: def.viewBoxWidth ?? 24, height: def.viewBoxHeight ?? 24 };
+}
+
+/**
  * Register an SVG icon as a shape.
  * The icon body is scaled/translated to fit the node's bounding box.
  */
 export function registerIcon(def: SvgIconDef): void {
-  const vw = def.viewBoxWidth ?? 24;
-  const vh = def.viewBoxHeight ?? 24;
+  const { width: vw, height: vh } = iconViewBox(def);
 
   iconDefRegistry.set(def.name, def);
 

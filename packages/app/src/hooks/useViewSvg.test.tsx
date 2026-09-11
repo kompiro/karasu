@@ -77,10 +77,15 @@ describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
     const { result: icon } = renderHook(() => useViewSvgOpen(SOURCE, "icon"));
     const { result: shape } = renderHook(() => useViewSvgOpen(SOURCE, "shape"));
 
+    // Scoped to the node's own group so the marker cannot drift onto a badge
+    // or the next node's card if `service` ever stops being drawn as a rect.
     const cardOf = (svg: string): { width: number; height: number } => {
-      const group = svg.indexOf('data-node-id="Frontend"');
-      expect(group).toBeGreaterThan(-1);
-      const rect = /<rect\s[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/.exec(svg.slice(group));
+      const start = svg.indexOf('data-node-id="Frontend"');
+      expect(start).toBeGreaterThan(-1);
+      const rest = svg.slice(start);
+      const next = rest.indexOf("data-node-id=", 1);
+      const group = next === -1 ? rest : rest.slice(0, next);
+      const rect = /<rect\s[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/.exec(group);
       expect(rect).not.toBeNull();
       return { width: Number(rect![1]), height: Number(rect![2]) };
     };

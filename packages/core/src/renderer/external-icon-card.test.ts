@@ -127,14 +127,18 @@ describe("external icon card (#2696)", () => {
       const group = nodeGroup(renderService(FRAMED));
       const card = cardRect(group);
       const body = bodyBox(group, { w: 160, h: 100 });
+      // Both the fitted size and the emitted scale are rounded for legibility,
+      // so containment is asserted to the precision they are written at rather
+      // than exactly. A tenth of a pixel is far below anything visible.
+      const slack = 0.1;
 
       // The card is the outline; the body is fitted inside it.
-      expect(body.width).toBeLessThanOrEqual(card.width);
-      expect(body.height).toBeLessThanOrEqual(card.height);
-      expect(body.x).toBeGreaterThanOrEqual(card.x);
-      expect(body.y).toBeGreaterThanOrEqual(card.y);
-      expect(body.x + body.width).toBeLessThanOrEqual(card.x + card.width);
-      expect(body.y + body.height).toBeLessThanOrEqual(card.y + card.height);
+      expect(body.width).toBeLessThanOrEqual(card.width + slack);
+      expect(body.height).toBeLessThanOrEqual(card.height + slack);
+      expect(body.x).toBeGreaterThanOrEqual(card.x - slack);
+      expect(body.y).toBeGreaterThanOrEqual(card.y - slack);
+      expect(body.x + body.width).toBeLessThanOrEqual(card.x + card.width + slack);
+      expect(body.y + body.height).toBeLessThanOrEqual(card.y + card.height + slack);
     });
 
     it("keeps the icon body's viewBox ratio instead of stretching it to the card", () => {
@@ -142,7 +146,9 @@ describe("external icon card (#2696)", () => {
       const { scaleX, scaleY } = bodyPlacement(group);
       const card = cardRect(group);
 
-      expect(scaleX).toBeCloseTo(scaleY, 4);
+      // Exactly equal, not merely close: both axes are emitted from the one
+      // scale the fit computed, so a difference means something re-derived it.
+      expect(scaleX).toBe(scaleY);
       // The card really is off-aspect — without the fit this would have been
       // the 2.13× stretch #2696 measured.
       expect(card.width / card.height).not.toBeCloseTo(160 / 100, 2);
