@@ -323,6 +323,37 @@ service[external] {
 }
 ```
 
+### `url()` アイコンの描かれ方
+
+アイコン本体は絵であってカードではないため、ノードが宣言した
+`background-color` / `border-color` / `border-width` / `border-radius` を
+使う先を持ちません。これらはノードのカードとして本体の背後に描かれます
+（**どちらの表示モードでも**）。キャンバス上に絵だけを置きたい場合は、
+カードを宣言で消します。
+
+```css
+service[external] {
+  shape: url("shapes/cloud.svg");
+  background-color: transparent;
+  border-width: 0;
+}
+```
+
+本体はそのカードに内接し、`viewBox` の縦横比を保ちます — ノードのテキストから
+測ったカードに合わせて引き伸ばされることはありません。余った領域のどこに置かれる
+かはアイコンの宣言で決まります。テキストスロット（`krs-label` /
+`krs-description`）を持つアイコンはカードのデザインなのでカードの左上に揃え、
+スロットの文字も本体と一緒に動きます。スロットを持たないアイコンは揃える相手が
+無いので中央に置かれます。
+
+> Related TPLs:
+> [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)
+> — カード枠はノードの箱に置かれたままなので、本体を内接させてもエッジや
+> クロームは描かれた輪郭に付く。
+> [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
+> — 表示モードは全描画面で点検する。枠はどちらのモードでも描かれ、モード間で
+> 違うのはカードの寸法だけ。
+
 ---
 
 ## kind の色語彙

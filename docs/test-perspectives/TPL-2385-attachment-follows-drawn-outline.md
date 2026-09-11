@@ -102,3 +102,12 @@ ADR-2366（#2412 / #2420 / #2422）で採った形:
   宣言そのもの（非長方形すべてが宣言を持つことの網羅チェックを含む）
 - `packages/core/src/renderer/shape-content-inset.test.ts` — テキスト側の対の宣言
 - `packages/core/src/renderer/corner-lane.test.ts` — レーン住人の矩形が重ならないこと
+- `packages/core/src/renderer/external-icon-card.test.ts` — 外部アイコン
+  （`shape: url()`）の本体をカードに内接させたときも、輪郭（カード枠）は
+  ノードの箱に残ることを emit した SVG から読む（#2696）
+
+## 派生元 spec
+
+- [`docs/spec/style.md`](../spec/style.md) — 「shape property」節
+  「How a `url()` icon is drawn」（アイコン本体は箱に内接させ、輪郭となるカード枠は
+  箱に置いたままにする。エッジ・クロームが付く先を描かれたものに保つため）
