@@ -63,9 +63,26 @@ function flatPolylineClear(path: readonly Point[], rects: readonly Rect[]): bool
 // Scene helpers.
 // ---------------------------------------------------------------------------
 
-/** Deterministic PRNG, so a failing seed is reproducible. */
+/**
+ * Endpoint ids no node on a canvas carries, so a query exempts nothing. Plain
+ * ASCII on purpose: a raw NUL in a source file makes grep and rg treat the
+ * whole file as binary and skip it (#2216).
+ */
+const NO_SUCH_FROM = "no-such-node-from";
+const NO_SUCH_TO = "no-such-node-to";
+
+/**
+ * Deterministic PRNG, so a failing seed is reproducible.
+ *
+ * The seed goes through a multiplicative hash first. This LCG's first output is
+ * dominated by its additive constant, so seeding it with 1, 2, 3 ... produced
+ * first draws of 0.2365, 0.2368, 0.2372 and so on: every scene came out with 11
+ * or 12 nodes where the generator reads as 2 to 41, and two thirds of them held
+ * no frame at all. Hashing the seed spreads the scenes over the range the
+ * generator describes.
+ */
 function rng(seed: number): () => number {
-  let s = seed >>> 0;
+  let s = Math.imul(seed, 2654435761) >>> 0;
   return () => {
     s = (s * 1664525 + 1013904223) >>> 0;
     return s / 0x100000000;
@@ -149,7 +166,10 @@ describe("ObstacleIndex parity with the flat scan (#2790)", () => {
       // frame reaches into another row, so its pieces are wide and flat and a
       // node lands inside one of them.
       const frames: ContainerRect[] = [];
-      for (let f = 0; f < Math.floor(r() * 4); f++) {
+      // Drawn once: as a loop condition it would be re-evaluated, and each
+      // iteration would be compared against a fresh number.
+      const frameCount = Math.floor(r() * 4);
+      for (let f = 0; f < frameCount; f++) {
         const x = Math.round(r() * 800);
         const y = Math.round(r() * 1000);
         const w = Math.round(400 + r() * 1400);
@@ -455,8 +475,7 @@ describe("the index holds the whole obstacle set, not a route-shape subset (TPL-
     node(`n${i}`, (i % 4) * 220, Math.floor(i / 4) * 120, 160, 80),
   );
   const index = ObstacleIndex.build(nodes, frames);
-  // Endpoint ids that match nothing on the canvas, so nothing is exempt.
-  const all = index.forEdge(" none-from", " none-to");
+  const all = index.forEdge(NO_SUCH_FROM, NO_SUCH_TO);
 
   it.each(nodes.map((n) => [n.id, n] as const))("card %s is indexed", (_id, n) => {
     expect(
@@ -485,7 +504,7 @@ describe("the index holds the whole obstacle set, not a route-shape subset (TPL-
     // the flat scan over the unfiltered canvas, so no shape is measured against
     // a smaller set than another.
     const framesOfNode = buildFramesOfNode(nodes, frames);
-    const flat = flatObstaclesFor(" none-from", " none-to", nodes, frames, framesOfNode);
+    const flat = flatObstaclesFor(NO_SUCH_FROM, NO_SUCH_TO, nodes, frames, framesOfNode);
     expect(flat).toHaveLength(nodes.length + frames.flatMap(framePieces).length);
     const shapes: Point[][] = [
       [
