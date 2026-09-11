@@ -77,6 +77,11 @@ function compilerVersion(text: string): string | undefined {
   return /"compiler_version":"([^"]*)"/.exec(text)?.[1];
 }
 
+/** Every `uses:` reference in a compiled workflow, in file order. */
+function usesRefs(text: string): string[] {
+  return [...text.matchAll(/^\s*uses:\s*(\S+)/gm)].map((match) => match[1]);
+}
+
 describe("gh-aw lock files", () => {
   it("has a lock entry for the setup action", () => {
     // Without it nothing below can be checked at all, so fail loudly here
@@ -99,6 +104,22 @@ describe("gh-aw lock files", () => {
     // sha and version pair is in no entry, because nothing wrote one. The fix
     // is to regenerate, never to edit either side by hand.
     expect(unlocked).toEqual([]);
+  });
+
+  it("pins every action to a commit sha, lock entry or not", () => {
+    // `actions-lock.json` records only the actions gh-aw resolved for this
+    // repository; the `actions/*` steps come from the compiler's own defaults
+    // and have no entry here by design. So "has a lock entry" cannot be the
+    // rule for every pin. What does hold for all of them is the pin itself:
+    // a compiled workflow never carries a floating tag, whoever wrote the line.
+    const floating = workflows.flatMap((workflow) =>
+      usesRefs(workflow.text)
+        // Local actions (`./.github/actions/...`) are the repository's own
+        // tree and are not pinned by sha.
+        .filter((ref) => !ref.startsWith("./") && !/@[0-9a-f]{40}$/.test(ref))
+        .map((ref) => `${workflow.name}: ${ref}`),
+    );
+    expect(floating).toEqual([]);
   });
 
   it("references the setup action from every compiled workflow", () => {
