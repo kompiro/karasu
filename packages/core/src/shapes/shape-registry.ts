@@ -184,7 +184,20 @@ export function renderPictogram(iconName: string, color: string, size = 20): str
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="${size}" height="${size}">${body}</svg>`;
 }
 
-const round4 = (n: number): number => Number(n.toFixed(4));
+/**
+ * Snap a scale to four decimals *only* when it already is one, to within
+ * floating-point slop — an exact fit computed as `(vw * 0.66) / vw` comes back
+ * as `0.6599999999999999` and would be written out that way.
+ *
+ * A quotient that genuinely repeats (a 24×24 icon in a 160×100 card scales by
+ * `6.666…`) is left exactly as it was, so no transform this registry has ever
+ * emitted changes value — only the noise introduced by re-deriving a scale
+ * from a box does (#2696).
+ */
+function snapScale(n: number): number {
+  const snapped = Number(n.toFixed(4));
+  return Math.abs(n - snapped) < 1e-9 ? snapped : n;
+}
 
 /**
  * The icon's coordinate system, with the default applied. Every placement of an
@@ -206,11 +219,8 @@ export function registerIcon(def: SvgIconDef): void {
   iconDefRegistry.set(def.name, def);
 
   registerShape(def.name, (ctx) => {
-    // Rounded: the ratio is a division, so an exact fit still lands on
-    // `0.6599999999999999` half the time. Four decimals is sub-pixel at any
-    // node size and keeps the emitted transform readable and assertable.
-    const scaleX = round4(ctx.width / vw);
-    const scaleY = round4(ctx.height / vh);
+    const scaleX = snapScale(ctx.width / vw);
+    const scaleY = snapScale(ctx.height / vh);
     let body = def.body;
     if (def.builtIn) {
       body = body

@@ -191,6 +191,17 @@ describe("external icon card (#2696)", () => {
       expect(bodyPlacement(group)).toMatchObject({ x: card.x, y: card.y, scaleX: 1 });
     });
 
+    it("leaves a transform that genuinely repeats exactly as it was", () => {
+      // The fit snaps a scale to four decimals when it already is one, which is
+      // how `(160 * 0.66) / 160` stops being written as `0.6599999999999999`.
+      // An icon whose viewBox does not divide the fixed card scales by a
+      // repeating quotient in icon mode, and that is emitted untouched — the
+      // snap must never be a rounding of values this registry already emitted.
+      const group = nodeGroup(renderService(`service { shape: url("dot-icon"); }`, "icon"));
+
+      expect(group).toContain("scale(6.666666666666667, 2.3333333333333335)");
+    });
+
     it("paints the same declared frame as shape mode", () => {
       const iconGroup = nodeGroup(renderService(FRAMED, "icon"));
       const shapeGroup = nodeGroup(renderService(FRAMED, "shape"));
