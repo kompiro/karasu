@@ -15,6 +15,7 @@ known_consumers:
 discovered_from:
   - issue: "#2385"
   - issue: "#2366"
+  - issue: "#2696"
   - root_cause_adr: "ADR-2366"
 related_to:
   - TPL-2179
