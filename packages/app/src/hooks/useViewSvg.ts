@@ -8,6 +8,7 @@ import {
   renderEntityView,
   type DisplayMode,
   type DiagramTheme,
+  type Diagnostic,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
@@ -35,6 +36,9 @@ function lazy<T>(build: () => T): () => T | undefined {
 
 /** A getter that never has anything to build (no content yet). */
 const NOTHING = (): undefined => undefined;
+
+/** Stable identity for "no diagnostics", so consumers can memoize on it. */
+const EMPTY_DIAGNOSTICS: Diagnostic[] = [];
 
 export interface ViewSvgOptions {
   /**
@@ -274,6 +278,13 @@ export function useViewSvg(
      */
     exportAvailable: !!settledContent,
     entityViewSvg: entityViewResult?.svg,
+    /**
+     * The entity view's own diagnostics — parse errors plus the boundary
+     * memberships this view could not draw (#2179). They used to be dropped
+     * here, which left the entity pane the one diagram surface that showed a
+     * stale SVG with no banner explaining why (#2800).
+     */
+    entityViewDiagnostics: entityViewResult?.diagnostics ?? EMPTY_DIAGNOSTICS,
     // Structured signal from core: the path resolved to a domain that owns
     // entities (not the empty-diagram placeholder). Gates the usecase/entity
     // toggle without scanning the rendered SVG text.
