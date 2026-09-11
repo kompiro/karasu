@@ -1,7 +1,11 @@
 import type { DeployBlock, DeployNode, NodeIdPath, SystemNode } from "../types/ast.js";
 import type { EdgeKind } from "../types/ast.js";
 import { deriveInfraEdges } from "./view-extract.js";
-import { nodePathIdentityKey, nodePathKey, resolveNodePathBySuffix } from "../parser/node-path.js";
+import {
+  nodePathIdentityKey,
+  nodePathRefId,
+  resolveNodePathBySuffix,
+} from "../parser/node-path.js";
 
 export interface DeployContainer {
   /** The service id that these units realize */
@@ -136,14 +140,23 @@ export function extractDeployView(
   // always drawn and what its anchors are built from. Only when two containers
   // would answer to the same bare id does the qualified path take over, and
   // only for those two: an unqualified model keeps every id it had.
+  //
+  // Both forms are emitted through `nodePathRefId`, not a plain join: the id
+  // is what tells two containers apart (`containerCenterX`, the SVG's
+  // `data-container-id`, the diff's per-container key), so the way a path is
+  // flattened into it has to be injective. A plain join is not — a quoted id
+  // that itself contains a dot spells the same string as a qualified path, and
+  // `realizes "Shop.Api"` then landed on the container `realizes Shop.Api`
+  // built (#2714). Quoting a dot-carrying segment costs nothing anywhere else:
+  // every id without a dot in it is emitted exactly as before.
   const groupsByBareId = new Map<string, number>();
   for (const group of groupedByRealizes.values()) {
     groupsByBareId.set(group.bareId, (groupsByBareId.get(group.bareId) ?? 0) + 1);
   }
   const containerIdOf = (group: RealizesGroup): string =>
-    group.path && (groupsByBareId.get(group.bareId) ?? 0) > 1
-      ? nodePathKey(group.path)
-      : group.bareId;
+    nodePathRefId(
+      group.path && (groupsByBareId.get(group.bareId) ?? 0) > 1 ? group.path : [group.bareId],
+    );
 
   // Build containers
   const containers: DeployContainer[] = [];

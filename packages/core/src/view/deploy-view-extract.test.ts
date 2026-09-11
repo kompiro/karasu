@@ -568,6 +568,76 @@ deploy prod {
   });
 });
 
+describe("a dotted id cannot claim a qualified container's id (#2714)", () => {
+  const DOTTED_AND_QUALIFIED = `
+system Shop {
+  service Api {}
+  service Worker {}
+  Api -> Worker "queues"
+}
+system Admin {
+  service Api {}
+}
+system Weird {
+  service "Shop.Api" {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+  oci b { realizes Admin.Api }
+  oci c { realizes "Shop.Api" }
+  job w { realizes Worker }
+}
+`;
+
+  it("gives the qualified path and the dotted id two different container ids", () => {
+    const file = Parser.parse(DOTTED_AND_QUALIFIED).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    // Before #2714 the first and third answered to one id, `Shop.Api`: the
+    // grouping key was injective but the id emitted for them was a plain join.
+    expect(slice.containers.map((c) => [c.serviceId, c.units.map((u) => u.id)])).toEqual([
+      ["Shop.Api", ["a"]],
+      ["Admin.Api", ["b"]],
+      ['"Shop.Api"', ["c"]],
+      ["Worker", ["w"]],
+    ]);
+    expect(new Set(slice.containers.map((c) => c.serviceId)).size).toBe(slice.containers.length);
+  });
+
+  it("routes the ghost edge to the container the qualified path built", () => {
+    const file = Parser.parse(DOTTED_AND_QUALIFIED).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    expect(slice.ghostEdges).toEqual([
+      { from: "Shop.Api", to: "Worker", label: "queues", kind: "sync" },
+    ]);
+    // The endpoint names Shop's service, so it has to reach the unit that
+    // realizes it — and exactly one container may answer to that id, or which
+    // rect the edge lands on is decided by placement order downstream.
+    const addressed = slice.containers.filter((c) => c.serviceId === "Shop.Api");
+    expect(addressed.map((c) => c.units.map((u) => u.id))).toEqual([["a"]]);
+  });
+
+  it("quotes a dotted id even when no other container claims it", () => {
+    // The rule is unconditional: a dot inside a segment is always quoted, so
+    // the id does not depend on which other containers happen to exist. The
+    // cost is this model — the container id is no longer the bare node id.
+    const file = Parser.parse(`
+system Weird {
+  service "Shop.Api" { label "Odd one" }
+}
+deploy prod {
+  oci c { realizes "Shop.Api" }
+}
+`).value;
+    const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+
+    expect(slice.containers.map((c) => [c.serviceId, c.serviceLabel])).toEqual([
+      ['"Shop.Api"', "Odd one"],
+    ]);
+  });
+});
+
 describe("a unit joins one container once (#2552)", () => {
   const model = (realizes: string) =>
     Parser.parse(`

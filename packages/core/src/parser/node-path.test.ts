@@ -2,7 +2,13 @@ import { describe, it, expect } from "vitest";
 import { Lexer } from "../lexer/lexer.js";
 import { TokenType, type Token } from "../types/tokens.js";
 import type { TokenCursor } from "./kebab-name.js";
-import { readNodeIdPathTail, nodePathMatchesSuffix, resolveNodePathBySuffix } from "./node-path.js";
+import {
+  readNodeIdPathTail,
+  nodePathKey,
+  nodePathMatchesSuffix,
+  nodePathRefId,
+  resolveNodePathBySuffix,
+} from "./node-path.js";
 import { Parser } from "./parser.js";
 import type { KrsNode } from "../types/ast.js";
 
@@ -189,5 +195,46 @@ describe("dotted-path site recovery (pinned behavior)", () => {
     const entity = result.value.systems[0]?.children?.[0]?.children?.[0]?.children?.[0] as KrsNode;
     expect(entity.id).toBe("Order");
     expect((entity.properties as { tableRef?: unknown }).tableRef).toBeUndefined();
+  });
+});
+
+describe("nodePathRefId (#2714)", () => {
+  it("joins segments that carry no separator exactly as a plain join does", () => {
+    expect(nodePathRefId(["Api"])).toBe("Api");
+    expect(nodePathRefId(["Shop", "Api"])).toBe("Shop.Api");
+    // The formatter would quote these to keep `.krs` parseable; an id is not
+    // `.krs` source, so only the join's own ambiguity is worth quoting for.
+    expect(nodePathRefId(["order-service"])).toBe("order-service");
+    expect(nodePathRefId(["table"])).toBe("table");
+  });
+
+  it("quotes a segment that carries the separator, on its own and inside a path", () => {
+    expect(nodePathRefId(["Shop.Api"])).toBe('"Shop.Api"');
+    expect(nodePathRefId(["Weird", "Shop.Api"])).toBe('Weird."Shop.Api"');
+  });
+
+  it("escapes the characters the quoted form is built from", () => {
+    expect(nodePathRefId(['say "hi"'])).toBe('"say \\"hi\\""');
+    expect(nodePathRefId(["back\\slash"])).toBe('"back\\\\slash"');
+  });
+
+  it("tells apart the paths a plain join collapses", () => {
+    // `nodePathKey` answers "Shop.Api" for both, which is what let two deploy
+    // containers claim one id (#2714).
+    expect(nodePathKey(["Shop.Api"])).toBe(nodePathKey(["Shop", "Api"]));
+    expect(nodePathRefId(["Shop.Api"])).not.toBe(nodePathRefId(["Shop", "Api"]));
+  });
+
+  it("keeps distinct paths distinct across the shapes that could alias", () => {
+    const paths = [
+      ["Api"],
+      ["Shop", "Api"],
+      ["Shop.Api"],
+      ["Weird", "Shop.Api"],
+      ['"Shop.Api"'],
+      ["Shop", "Api", "Inner"],
+      ["Shop.Api", "Inner"],
+    ];
+    expect(new Set(paths.map(nodePathRefId)).size).toBe(paths.length);
   });
 });

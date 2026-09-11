@@ -1,4 +1,5 @@
 import { TokenType, type Token } from "../types/tokens.js";
+import { quotedIdLiteral } from "../formatter/quote-id.js";
 import type { TokenCursor } from "./kebab-name.js";
 import type { NodeIdPath } from "../types/ast.js";
 
@@ -136,7 +137,8 @@ export function resolveNodePathBySuffix<T extends { path: NodeIdPath }>(
  *
  * Use it for TEXT — index keys a consumer reads back as a qualified id, and
  * diagnostic params. For a key whose only job is identity, reach for
- * {@link nodePathIdentityKey} instead.
+ * {@link nodePathIdentityKey} instead; for TEXT that is *also* an identity —
+ * an id two elements must not share — reach for {@link nodePathRefId}.
  */
 export function nodePathKey(segments: readonly string[]): string {
   return segments.join(".");
@@ -153,6 +155,37 @@ export function nodePathKey(segments: readonly string[]): string {
  */
 export function nodePathIdentityKey(segments: readonly string[]): string {
   return JSON.stringify(segments);
+}
+
+/**
+ * Injective TEXT form of a node path: the id a consumer both reads back as a
+ * qualified id and relies on to name exactly one element.
+ *
+ * {@link nodePathKey}'s plain join loses the segment boundaries, so
+ * `["Weird", "Shop.Api"]` and `["Shop", "Api"]` collapse onto one string. That
+ * is harmless where the join is only text, but a deploy container emits it as
+ * its id (#2714): two containers answered to `Shop.Api`, the later one won
+ * `containerCenterX`, and the SVG carried the id twice. A segment that carries
+ * the `.` separator (or the quoting characters themselves) is therefore
+ * written as a `.krs` string literal, which is how the same id is written in
+ * the source it came from. The result parses one way only, so the encoding is
+ * injective.
+ *
+ * Nothing else changes: a segment with no dot in it is emitted bare, so a
+ * model without dotted ids keeps every id it had.
+ */
+export function nodePathRefId(segments: readonly string[]): string {
+  return segments.map(quoteNodePathSegment).join(".");
+}
+
+/**
+ * A segment is quoted exactly when leaving it bare would make the join
+ * ambiguous: it carries the `.` separator, or one of the characters the quoted
+ * form is built from (`"` / `\`), which a decoder would otherwise read as the
+ * start of a literal or as an escape.
+ */
+function quoteNodePathSegment(segment: string): string {
+  return /["\\.]/.test(segment) ? quotedIdLiteral(segment) : segment;
 }
 
 /** A resolved match that knows the kind of the node it points at. */

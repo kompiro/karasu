@@ -240,3 +240,33 @@ describe("renderDeploy", () => {
     });
   });
 });
+
+describe("container ids in the SVG (#2714)", () => {
+  it("emits one element per container when a dotted id meets a qualified path", () => {
+    const styles = makeStyles();
+    const slice: DeployViewSlice = {
+      deployLabel: "prod",
+      containers: [
+        {
+          serviceId: "Shop.Api",
+          serviceLabel: "Shop's API",
+          units: [{ kind: "oci", id: "a", properties: {}, loc: LOC }],
+        },
+        {
+          serviceId: '"Shop.Api"',
+          serviceLabel: "Odd one",
+          units: [{ kind: "oci", id: "c", properties: {}, loc: LOC }],
+        },
+      ],
+      unclassifiedUnits: [],
+      ghostEdges: [],
+    };
+    const svg = renderDeploy(slice, styles);
+
+    // The attribute carries the id verbatim (XML-escaped), so the two
+    // containers stay addressable apart in the DOM the app clicks through.
+    expect(svg).toContain('data-container-id="Shop.Api"');
+    expect(svg).toContain('data-container-id="&quot;Shop.Api&quot;"');
+    expect(svg.match(/data-container-id="/g)).toHaveLength(2);
+  });
+});
