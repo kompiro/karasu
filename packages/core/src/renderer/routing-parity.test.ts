@@ -691,3 +691,58 @@ describe("deploy view routes through the shared chain (#2609, TPL-219)", () => {
     expect(new Set(ends).size).toBe(ends.length);
   });
 });
+
+describe("exhausted interior corridors — column fence (#2611, TPL-2598)", () => {
+  // The channel fence above saturates a *horizontal* resource; this one
+  // saturates the vertical resource next to it. Eight sources fan into three
+  // shared targets across a mid layer whose cards cover the columns beside
+  // the sources, so every S→T edge needs a column between cards that a
+  // sibling is not standing in. The bundled models never run out of columns —
+  // which is why their overlap fence stayed green while a 10k-line model
+  // showed thousands of collinear pairs (TPL-2598: a fence on a finite
+  // resource needs an input that saturates it).
+  const services = Array.from({ length: 8 }, (_s, i) => `  service S${i} { label "Service ${i}" }`);
+  const mid = Array.from({ length: 5 }, (_m, i) => `  service M${i} { label "Mid ${i}" }`);
+  const targets = Array.from({ length: 3 }, (_t, i) => `  service T${i} { label "Target ${i}" }`);
+  const edges = [
+    ...services.flatMap((_s, i) => targets.map((_t, j) => `  S${i} -> T${j}`)),
+    ...mid.map((_m, i) => `  S${i} -> M${i}`),
+    ...mid.map((_m, i) => `  M${i} -> T${i % 3}`),
+  ];
+  const CROWDED = `system Crowded {\n${[...services, ...mid, ...targets, ...edges].join("\n")}\n}`;
+
+  it("the fixture actually runs the columns out", () => {
+    // More long edges than the rows between them have gaps: with 34 edges over
+    // three rows, the interior cannot hold them all on the gaps the cards
+    // happen to leave, which is the state the reservation answers.
+    const res = layoutOfSource(CROWDED);
+    expect(res.edges).toHaveLength(34);
+    const routed = res.edges.filter((e) => (e.waypoints?.length ?? 0) > 0);
+    expect(routed.length).toBeGreaterThanOrEqual(25);
+    expect(res.placementPasses).toBe(2);
+  });
+
+  it("no two edges share a collinear corridor on either axis", () => {
+    const res = layoutOfSource(CROWDED);
+    expect(collinearOverlaps(res, "v")).toBe(0);
+    expect(collinearOverlaps(res, "h")).toBe(0);
+  });
+
+  it("no column spills into a card (TPL-1927 measures both axes together)", () => {
+    expect(totalPenetrations(layoutOfSource(CROWDED))).toBe(0);
+  });
+
+  it("re-places at most once (ADR-2598's bound holds on the other axis)", () => {
+    expect(layoutOfSource(CROWDED).placementPasses).toBeLessThanOrEqual(2);
+  });
+
+  it("gives the same canvas twice — the reservation is deterministic", () => {
+    const once = layoutOfSource(CROWDED);
+    const twice = layoutOfSource(CROWDED);
+    expect([twice.width, twice.height]).toEqual([once.width, once.height]);
+    expect(twice.edges.map((e) => pointsOf(e))).toEqual(once.edges.map((e) => pointsOf(e)));
+    expect([...twice.nodes.values()].map((n) => [n.id, n.x, n.y])).toEqual(
+      [...once.nodes.values()].map((n) => [n.id, n.x, n.y]),
+    );
+  });
+});
