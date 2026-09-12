@@ -57,17 +57,10 @@ workflow の `types:` に `ready_for_review` を足す。** job-level の `if:` 
 job は Required check に success を報告するので、片方だけだと「draft を外した瞬間に、
 一度も走っていない green」になる（[TPL-2643](../../docs/test-perspectives/TPL-2643-skip-reports-success-without-running.md)）。
 
-テスト suite を走らせる job では、「suite がハングした」を意味する境界はテスト
-ステップの `timeout-minutes` にあり、job の `timeout-minutes` はその上に setup 分を
-足した上位予算になっている（[ADR-2805](../../docs/adr/2805-suite-timeout-bounds-the-test-step.md)）。
-job 側にしか境界が無いと、境界のない `apt-get` の遅さが「1 件も落ちていない suite の
-赤」として報告される。どちらかの値を変えたら、`scripts/ci/workflow-timeout-policy.test.ts`
-の `SUITE_JOBS` と ADR-2805 の表を同じ PR で更新する。テストは値の drift を落とすが、
-ADR の散文が古くなったことは落とせない。
+timeout の置き方は [.claude/rules/workflow-timeouts.md](workflow-timeouts.md) に分けてある。
 
 検証:
 
 ```
-pnpm test:scripts   # workflow-draft-gate.test.ts が skip と trigger のズレを、
-                    # workflow-timeout-policy.test.ts が step / job 予算のズレを落とす
+pnpm test:scripts   # workflow-draft-gate.test.ts が skip と trigger のズレを落とす
 ```

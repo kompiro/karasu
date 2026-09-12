@@ -38,12 +38,12 @@ jobs:
     # Ubicloud runner (ADR-1890). Playwright installs its own browsers + deps
     # below, so the runner image only needs a standard Ubuntu base.
     runs-on: ubicloud-standard-4-ubuntu-2404
-    # Setup plus the suite (ADR-2805). The deps install below is an unbounded
-    # `apt-get` against whatever mirror the runner draws, observed at 13m28s,
-    # so this budget has to clear that on top of the test step's own bound. It
-    # is not the bound that means "the suite hung" — that one is on `Run E2E
-    # tests` and fires first.
-    timeout-minutes: 30
+    # Setup plus the suite (ADR-2807). The deps install below is an unbounded
+    # `apt-get` against whatever mirror the runner draws, so this budget has to
+    # clear the worst install observed on this runner class (1013s) on top of
+    # the test step's own bound. It is not the bound that means "the suite
+    # hung" — that one is on `Run E2E tests` and fires first.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -72,9 +72,12 @@ jobs:
         run: pnpm --filter @karasu-tools/e2e exec playwright install-deps chromium
 
       - name: Run E2E tests
-        # The bound that means "the suite hung" (ADR-2805): it covers the tests
+        # The bound that means "the suite hung" (ADR-2807): it covers the tests
         # alone, so a slow OS package install delays this job instead of
-        # cancelling a suite that is passing. The suite runs 7.0-9.5 minutes.
+        # cancelling a suite that is passing. This is a hang bound, not a
+        # headroom estimate — the suite has been measured at 7.0-10.0 minutes,
+        # and a regression that fails every spec is cut here rather than
+        # reported case by case.
         timeout-minutes: 15
         run: pnpm --filter @karasu-tools/e2e test
 

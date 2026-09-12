@@ -25,10 +25,10 @@ jobs:
     # Ubicloud runner (ADR-1890) — same suite / same runner as the PR-side
     # `e2e.yml` run, so a nightly failure is comparable to the PR result.
     runs-on: ubicloud-standard-4-ubuntu-2404
-    # Setup plus the suite, mirroring `e2e.yml` (ADR-2805). A slow OS package
-    # install here would otherwise open a "Nightly E2E failing on main" Issue
-    # with no test having failed.
-    timeout-minutes: 30
+    # Setup plus the suite, mirroring `e2e.yml` (ADR-2807). The install path is
+    # the same one that has been observed at 1013s on this runner class, so the
+    # budget is the same even though the nightly has not drawn a slow mirror yet.
+    timeout-minutes: 35
     outputs:
       result: ${{ steps.run-tests.outcome }}
     steps:
@@ -60,7 +60,9 @@ jobs:
 
       - name: Run E2E tests
         id: run-tests
-        # The bound that means "the suite hung" (ADR-2805).
+        # The bound that means "the suite hung" (ADR-2807). `notify` below reads
+        # this step outcome, so a job cancelled during setup is not reported as
+        # a test failure.
         timeout-minutes: 15
         run: pnpm --filter @karasu-tools/e2e test
 
@@ -100,11 +102,30 @@ jobs:
       - name: Open / update / close tracking issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          # The job result answers "did the job finish"; the step outcome
+          # answers "did the suite reach a verdict". A job cancelled by its own
+          # budget during setup has result `cancelled` and no step outcome, and
+          # must not be reported as a failing suite (ADR-2807).
           OUTCOME: ${{ needs.e2e.result }}
+          TEST_OUTCOME: ${{ needs.e2e.outputs.result }}
         with:
           script: |
             const label = "ci: nightly-e2e";
             const outcome = process.env.OUTCOME;
+            const testOutcome = process.env.TEST_OUTCOME;
+
+            // Neither green nor a failing suite: the job ended before the tests
+            // reached a verdict (its budget ran out in setup, or the runner went
+            // away). Leave the tracker alone — opening it here would report a
+            // test failure when no test ran (#2807).
+            if (outcome !== "success" && testOutcome !== "failure") {
+              core.notice(
+                `Nightly E2E ended with no suite verdict (job: ${outcome}, tests: ${testOutcome || "never ran"}). ` +
+                  "Tracking issue left untouched.",
+              );
+              return;
+            }
+
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const sha = context.sha;
             const shortSha = sha.slice(0, 7);
