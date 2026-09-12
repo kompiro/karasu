@@ -25,7 +25,10 @@ jobs:
     # Ubicloud runner (ADR-1890) — same suite / same runner as the PR-side
     # `e2e.yml` run, so a nightly failure is comparable to the PR result.
     runs-on: ubicloud-standard-4-ubuntu-2404
-    timeout-minutes: 20
+    # Setup plus the suite, mirroring `e2e.yml` (ADR-2805). A slow OS package
+    # install here would otherwise open a "Nightly E2E failing on main" Issue
+    # with no test having failed.
+    timeout-minutes: 30
     outputs:
       result: ${{ steps.run-tests.outcome }}
     steps:
@@ -57,6 +60,8 @@ jobs:
 
       - name: Run E2E tests
         id: run-tests
+        # The bound that means "the suite hung" (ADR-2805).
+        timeout-minutes: 15
         run: pnpm --filter @karasu-tools/e2e test
 
       # Informative-only — surfaces tests that failed once then passed on
