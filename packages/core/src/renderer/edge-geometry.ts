@@ -53,27 +53,6 @@ export function segmentCrossesRect(a: Point, b: Point, r: Rect): boolean {
   return t1 - t0 > 1e-6;
 }
 
-export function segmentCrossesAnyRect(a: Point, b: Point, rects: Rect[]): boolean {
-  for (const r of rects) {
-    if (segmentCrossesRect(a, b, r)) return true;
-  }
-  return false;
-}
-
-/**
- * True if no segment of the polyline crosses any obstacle's interior — the
- * early-exit boolean companion to `countPolylinePenetrations`. Both share the
- * one strict-interior test (`segmentCrossesRect`), so the routers that decide a
- * route with this and the tests that assert penetration == 0 with the counter
- * can never disagree (TPL-1927).
- */
-export function polylineClearOf(path: Point[], obstacles: Rect[]): boolean {
-  for (let i = 0; i < path.length - 1; i++) {
-    if (segmentCrossesAnyRect(path[i], path[i + 1], obstacles)) return false;
-  }
-  return true;
-}
-
 /**
  * Count strict-interior crossings of a polyline against a set of obstacle
  * rectangles. Shared by the routers' tests to assert **penetration == 0**

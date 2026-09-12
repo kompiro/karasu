@@ -540,4 +540,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-2635](TPL-2635-ownership-resolution-declares-its-walk.md) | 所有を読む側は「宣言だけか、直近の owned 祖先まで遡るか」を宣言し、その選択をテストで固定する — どちらも正しいので、宣言していない実装は混ざっても誰も気づかない | resolver | #2635, ADR-1566 |
 | [TPL-2611](TPL-2611-feedback-key-survives-the-next-pass.md) | 後段の測定値を前段に返すとき、適用先は 2 パス目が動かさない構造キー（順序・添字・所属）で指し、座標は 2 パス目の出力として読み直す — 1 回目の座標で場所を指すと、まさにその座標を動かす 2 回目に鍵が古くなり、予約は適用に成功したまま効かない | renderer | #2611, ADR-2598 |
 | [TPL-2662](TPL-2662-themed-surface-fallback-comes-from-palette.md) | テーマ付き surface の「誰も色を指定しなかったとき」の色は palette の role から取る。指定した色は両テーマで正しいので、既定のまま使う利用者だけが壊れ、レビューもテストも素通りする | renderer | #2662, ADR-1479, ADR-2269 |
+| [TPL-2805](TPL-2805-budget-bounds-the-work-it-names.md) | 予算はその名前が指す仕事だけを覆う位置に置く — 境界のない準備と同じ timeout に入れると、準備の遅さが本命の失敗として報告され、本物の失敗と区別できない | build | #2805, ADR-2805 |
 | [TPL-2715](TPL-2715-source-position-carries-its-document.md) | 位置情報は、それが指す文書の識別と対でしか運べない。行・列だけを渡して受け手に「たぶんエントリファイル」と補完させると、マージ後に判定した診断がどのファイルにも無い位置を指す。単一ファイルのテストでは常に正しく見えるので破れが映らない | resolver | #2715, ADR-2596 |
