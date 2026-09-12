@@ -72,6 +72,29 @@ const TEARDOWN_MINUTES = 2;
 type Step = { name: string | null; timeoutMinutes: number | null };
 type Job = { readonly key: string; timeoutMinutes: number | null; readonly steps: Step[] };
 
+/**
+ * Drops a YAML inline comment. A `#` only opens one when it follows whitespace
+ * outside a quoted scalar, so `name: Run E2E tests # the suite` loses the
+ * comment while `name: "Run #1"` keeps its hash.
+ */
+function stripInlineComment(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("#")) return "";
+  const quote = trimmed[0];
+  if (quote === '"' || quote === "'") {
+    for (let index = 1; index < trimmed.length; index += 1) {
+      const char = trimmed[index];
+      // Double quotes escape with a backslash, single quotes by doubling.
+      if (quote === '"' && char === "\\") index += 1;
+      else if (char === quote && !(quote === "'" && trimmed[index + 1] === "'")) {
+        return trimmed.slice(0, index + 1);
+      } else if (char === quote) index += 1;
+    }
+    return trimmed;
+  }
+  return trimmed.replace(/\s+#.*$/, "").trim();
+}
+
 /** Strips one layer of matching YAML quotes from a scalar. */
 function unquote(value: string): string {
   const match = /^(["'])(.*)\1$/.exec(value.trim());
@@ -135,7 +158,8 @@ function parseJobs(text: string, file: string): Job[] {
       currentJob.steps.push(currentStep);
       const keyed = /^ {6}- ([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line);
       if (keyed) {
-        const [, key, value] = keyed;
+        const [, key, raw] = keyed;
+        const value = stripInlineComment(raw);
         if (key === "name") currentStep.name = unquote(value);
         // The key of a `- run: |` entry sits at column 8, so its body does too.
         if (opensBlockScalar(value)) blockScalarIndent = 8;
@@ -145,7 +169,8 @@ function parseJobs(text: string, file: string): Job[] {
 
     const jobKey = /^ {4}([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line);
     if (jobKey) {
-      const [, key, value] = jobKey;
+      const [, key, raw] = jobKey;
+      const value = stripInlineComment(raw);
       if (key === "timeout-minutes" && /^\d+$/.test(value.trim())) {
         currentJob.timeoutMinutes = Number(value.trim());
       }
@@ -156,7 +181,8 @@ function parseJobs(text: string, file: string): Job[] {
 
     const stepKey = /^ {8}([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line);
     if (stepKey) {
-      const [, key, value] = stepKey;
+      const [, key, raw] = stepKey;
+      const value = stripInlineComment(raw);
       // `name:` need not be the step's first key — `- id: x` / `name: y` is the
       // same step to Actions, and reordering must not fail this guard.
       if (key === "name" && currentStep.name === null) currentStep.name = unquote(value);
@@ -307,6 +333,28 @@ describe("parseJobs", () => {
       { name: "Run E2E tests", timeoutMinutes: 15 },
       { name: null, timeoutMinutes: null },
     ]);
+  });
+
+  it("reads values that carry a YAML inline comment", () => {
+    // The workflows annotate heavily; a comment on one of these keys must not
+    // hide a name or a budget from the guard.
+    const [job] = parse(`  e2e:
+    timeout-minutes: 35 # cleared by ADR-2807
+    steps:
+      - name: Run E2E tests # the suite itself
+        timeout-minutes: 15 # the bound that means "hung"
+`);
+    expect(job.timeoutMinutes).toBe(35);
+    expect(job.steps).toEqual([{ name: "Run E2E tests", timeoutMinutes: 15 }]);
+  });
+
+  it("keeps a hash that belongs to a quoted name", () => {
+    const [job] = parse(`  e2e:
+    steps:
+      - name: "Run E2E tests #1" # the first shard
+        timeout-minutes: 15
+`);
+    expect(job.steps[0].name).toBe("Run E2E tests #1");
   });
 
   it("separates jobs and reads each job's own budget", () => {

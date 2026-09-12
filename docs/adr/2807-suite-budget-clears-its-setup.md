@@ -108,13 +108,14 @@ upload が並ぶからである。job 予算が `step 境界 + setup` ちょう�
   判定が無い場合を一律に無視しないのは、`pnpm install` やブラウザの取得が壊れた夜も
   同じ形になるからである。そちらは main が未検証のまま残るので、報告は要る。
 - **guard は不変条件そのものを固定する。** `scripts/ci/workflow-timeout-policy.test.ts`
-  が `job ≧ step + OBSERVED_SETUP_MINUTES` を YAML から読んだ値で検査し、step 境界が
-  消えた場合に空振りしないことと、`*e2e*.yml` が無登録で増えないことも見る。
+  が `job ≧ step + OBSERVED_SETUP_MINUTES + TEARDOWN_MINUTES` を YAML から読んだ値で
+  検査し、step 境界が消えた場合に空振りしないことと、`*e2e*.yml` が無登録で増えない
+  ことも見る。
 
 ## 理由
 
-- **不変条件を数字で満たす**: 35 ≧ 15 + 18、30 ≧ 10 + 18。どの job でも step 境界が
-  必ず先に発火するので、赤の意味が「suite がハングした」に一致する。
+- **不変条件を数字で満たす**: 35 ≧ 15 + 18 + 2、30 ≧ 10 + 18 + 2。どの job でも
+  step 境界が必ず先に発火するので、赤の意味が「suite がハングした」に一致する。
 - **共有の許容にすると標本の薄さで判断を誤らない**: mirror は job ごとに選べない。
   per-job の観測値を使うと、たまたま速い日ばかり引いた job だけ予算が薄くなる。
 - **guard が ADR の文と同じことを言う**: 5 分のマージンは「job kill と step kill が
