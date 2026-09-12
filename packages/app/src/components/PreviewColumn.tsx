@@ -325,21 +325,42 @@ export function PreviewColumn() {
           nodeMetadata={NO_NODE_METADATA}
         />
       ) : showOrgTreeView ? (
-        <div
-          className="preview-pane preview-pane--org-tree"
-          style={{ overflow: "auto", flex: 1 }}
-          onClick={(e) => {
-            const target = (e.target as Element).closest("[data-team-id]");
-            const teamId = target?.getAttribute("data-team-id");
-            if (teamId && onTeamToggle) onTeamToggle(teamId);
-          }}
-          dangerouslySetInnerHTML={{ __html: orgTreeSvg ?? "" }}
+        /* The org tab's two sub-modes follow the entity view onto `PreviewPane`
+           (#2799). Both were bare `overflow: auto` divs, so neither could be
+           fitted, zoomed or panned — the failure ADR-309 left open as "大規模
+           組織での SVG サイズ上限": a wide org tree could only ever be read
+           through a scrollbar.
+
+           `diagnostics` is the org view's own: all three org modes are drawn
+           from the same compiled report, so a parse error that dims the grid
+           has to reach these panes too rather than leaving them silently
+           stale.
+
+           `nodeMetadata` is empty for the reason the entity pane's is — a team
+           id and a system node id live in different id spaces, and the map is
+           the system/org node index, so passing it could answer a click on
+           team `X` with an unrelated node's detail panel. With it empty,
+           `PreviewPane` opens no panel, which is what clicking a member-less
+           team card did before.
+
+           Each sub-mode is its own `PreviewPane` instance, so switching modes
+           resets the zoom to 1. That is deliberate (#2799 point 2): the three
+           diagrams have different coordinate systems and extents, and a scale
+           and offset carried over from one lands the reader off-canvas in the
+           next. */
+        <PreviewPane
+          className="preview-pane--org-tree"
+          svg={orgTreeSvg ?? ""}
+          diagnostics={diagnostics}
+          nodeMetadata={NO_NODE_METADATA}
+          onTeamToggle={onTeamToggle}
         />
       ) : showTeamDependencies ? (
-        <div
-          className="preview-pane preview-pane--team-dependencies"
-          style={{ overflow: "auto", flex: 1 }}
-          dangerouslySetInnerHTML={{ __html: teamDependencySvg ?? "" }}
+        <PreviewPane
+          className="preview-pane--team-dependencies"
+          svg={teamDependencySvg ?? ""}
+          diagnostics={diagnostics}
+          nodeMetadata={NO_NODE_METADATA}
         />
       ) : showAllLayersIframe ? (
         <iframe
