@@ -170,7 +170,8 @@ lint / typecheck / build / test をスキップするという ADR-953 の目的
 
 **ADR-953 の本文は書き換えない。** [ADR-2687](../adr/2687-adr-body-is-immutable.md) と
 `.claude/rules/adr.md` が「frontmatter より下の行は触らない」と規定している。
-また本案は ADR-953 を**覆していない**: paired stub パターンも補集合の運用ルールも
+また本案は ADR-953 を**覆していない**: paired stub パターンも「両ファイルの path リストを
+同じ集合に保つ」運用ルールも
 そのまま有効で、「stub の中身は空」という記述に条件付きの例外が 1 つ加わるだけなので、
 `supersedes` は過剰であり、ADR-953 を `effective.md` から落としてしまう。
 参照は frontmatter で張る（新 ADR と ADR-953 の `related_to`）。
@@ -180,8 +181,9 @@ lint / typecheck / build / test をスキップするという ADR-953 の目的
 - `ci-skip.yml` の Check が現状の約 5 秒から 15 秒前後に増える。
 - `node` 直実行と `tsx` 実行の 2 経路ができる。スクリプトが erasable syntax を
   外れると `node` 側だけ壊れるので、**vitest でどちらの経路も実行できることを縛る**。
-- `ci.yml` と `ci-skip.yml` の path 補集合性は ADR-953 時点から手で保守されており、
-  機械チェックがない。本案の「全 PR を覆う」はこの手保守に乗っている。
+- `ci.yml` の `paths-ignore` と `ci-skip.yml` の `paths` が同じリストであることは
+  ADR-953 時点から手で保守されており、機械チェックがない。本案の「和集合が全 PR を
+  覆う」はこの手保守に乗っている。
 
 #### 案 2-C: `secret-scan.yml` に相乗りする
 
@@ -325,10 +327,12 @@ ruleset も触らずに全 PR を覆える。
 
 ## 未解決の問い / 決めないこと
 
-- **`ci.yml` と `ci-skip.yml` の補集合性に機械チェックがない。** ADR-953 以来「必ず同じ集合を
-  表すように保守する」という運用ルールと相互参照コメントだけで支えられている。案 2-B の
-  「Required な `Check` が全 PR を覆う」はこの手保守に乗っている。本 doc では**決めない**:
-  補集合性のガードは [TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md)
+- **`ci.yml` と `ci-skip.yml` の path リスト一致に機械チェックがない。** ADR-953 以来
+  「必ず同じ集合を表すように保守する」という運用ルールと相互参照コメントだけで支えられている。
+  片側に追加し忘れると、そのパスだけを触る PR は `Check` をどちらからも受け取らないか、
+  逆に stub だけで緑になる。案 2-B の「和集合が全 PR を覆う」はこの手保守に乗っている。
+  本 doc では**決めない**: このガードは
+  [TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md)
   の領域で、NUL byte とは独立した関心事なので別 Issue に切る。
 - **deny-list の粒度は拡張子に固定する。** 「このディレクトリ配下はまるごと binary fixture」
   という単位が将来必要になる可能性はあるが、現時点で該当がないので拡張子だけにする。
