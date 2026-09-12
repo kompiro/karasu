@@ -98,6 +98,7 @@ flowchart TD
     ADR_2753["ADR-2753<br/>Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む"]
     ADR_2773["ADR-2773<br/>Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届..."]
     ADR_2805["ADR-2805<br/>テスト suite の timeout はテストステップに置き、job 予算は setup を..."]
+    ADR_2813["ADR-2813<br/>Dependabot security alert 2026-09-12（`js-yaml` ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -222,6 +223,7 @@ flowchart TD
   class ADR_2753 accepted
   class ADR_2773 accepted
   class ADR_2805 accepted
+  class ADR_2813 accepted
   class ADR_9001 accepted
   class ADR_9020 accepted
   class ADR_8 ghost
