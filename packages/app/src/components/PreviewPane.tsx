@@ -57,6 +57,14 @@ interface PreviewPaneProps {
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
   /**
+   * Called when the user clicks a team card in the org Tree View, to expand or
+   * collapse its members (#2799). Its own prop rather than a reuse of
+   * `onGroupToggle`: the org tree's expansion is a different state (which
+   * teams show their member grid) from the system view's collapsed group
+   * frames, and the two are never on screen at the same time.
+   */
+  onTeamToggle?: (teamId: string) => void;
+  /**
    * Extra class on the pane root, for a sub-mode that swaps the drawn diagram
    * but keeps this pane (the entity view's `preview-pane--entity`, #2800).
    * The base `preview-pane` class is always applied.
@@ -102,6 +110,7 @@ export function PreviewPane({
   nodeDiff,
   styleTargetPath,
   onPickEdgeDirection,
+  onTeamToggle,
   className,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
@@ -372,6 +381,19 @@ export function PreviewPane({
         }
       }
 
+      // Org Tree View team card (#2799): clicking it expands or collapses the
+      // team's member grid. Deliberately ahead of the `[data-node-id]`
+      // fallback below — the tree's team card carries both attributes
+      // (`org-tree-renderer.ts`), and the toggle is what that click means.
+      const teamCard = target.closest("[data-team-id]");
+      if (teamCard && onTeamToggle) {
+        const teamId = teamCard.getAttribute("data-team-id");
+        if (teamId) {
+          onTeamToggle(teamId);
+          return;
+        }
+      }
+
       // Explicitly non-interactive elements (e.g. "+N more" overflow label)
       if (target.closest("[data-noop]")) return;
 
@@ -436,6 +458,7 @@ export function PreviewPane({
       onGroupToggle,
       onExpandToggle,
       onOwnedServiceClick,
+      onTeamToggle,
       onClearHighlight,
     ],
   );

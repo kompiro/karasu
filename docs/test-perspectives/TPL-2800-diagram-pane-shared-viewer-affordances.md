@@ -81,6 +81,22 @@ scope:
   — entity は system スライスから除外される一方、usecase view に昇格した
   `resource X` が entity の id を持つため、渡すと entity クリックに resource の
   詳細パネルが答えてしまう（面が違えば id 空間も違う）
+- **素の `<div>` が持っていた操作は、共有コンポーネント側の prop として移す。**
+  #2799 の org Tree View はペイン自身の `onClick` でチーム展開を受けていたので、
+  `PreviewPane` に `onTeamToggle` を足し、`[data-team-id]` の分岐を末尾の
+  `[data-node-id]` フォールバックより前に置いた（チームカードは両方の属性を持つ）。
+  クリックの受け口が mouseup ディスパッチへ移る＝ドラッグ判定が挟まるので、
+  移設そのものを守るテストを別に置く
+
+## 到達状態
+
+`packages/app` の `dangerouslySetInnerHTML` を検索して、**図を描く面は
+`PreviewPane` の 1 箇所だけ**である（残りは Markdown / アウトライン / チャットの
+テキスト描画）。#2799 のマージ時点でこの状態に到達した。
+
+```
+grep -rn "dangerouslySetInnerHTML" packages/app/src --include=*.tsx
+```
 
 ## 関連テスト
 
@@ -88,3 +104,9 @@ scope:
   `.preview-container` の中にあり、ペイン幅に収まり、ホイールでズームすること
 - `packages/app/src/components/PreviewColumn.test.tsx` › `Entity view sub-mode (#1907)`
   — 共有コンテナ経由のレンダリングと、entity view 自身の診断バナー
+- `packages/e2e/tests/at-2799-org-tab-pane-layout.spec.ts` — org Tree View と
+  Team Dependencies の同じ 3 点（共有コンテナ・フィット・ホイールズーム）と、
+  移設後もチームカードのクリックで展開できること
+- `packages/app/src/components/PreviewColumn.test.tsx` ›
+  `org tab panes go through the shared preview pane (#2799)` — 両ペインの構造、
+  `onTeamToggle` の発火、org ビューの診断が両モードのバナーに出ること
