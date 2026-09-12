@@ -148,8 +148,13 @@ bot PR、fork PR、Web UI 編集、`--no-verify` だけ。
 
 #### 案 2-B: `Check` の両側に明示ステップを置く（推奨）
 
-`ci.yml` の Check job と `ci-skip.yml` の Check job の両方で走らせる。両者の
-`paths-ignore` / `paths` は補集合なので、Required な `Check` が **全 PR を覆う**。
+`ci.yml` の Check job と `ci-skip.yml` の Check job の両方で走らせる。両者は厳密な
+補集合ではない: `paths-ignore` は**変更が全部**無視対象のときだけ除外し、`paths` は
+**1 つでも**該当すれば起動するので、コードと docs が混ざった PR では両方が発火する。
+必要なのは補集合性ではなく**和集合が全 PR を覆うこと**で、それは満たされる。重複した
+ぶんは branch protection が同名チェックを AND するので害がなく、`ci-skip.yml` が
+concurrency group を `ci.yml` と分けているのはまさにこの重複時に stub が実 Check に
+キャンセルされないためである（同ファイルのコメントに経緯がある）。
 
 `ci-skip.yml` には node も pnpm も入っていない。ただし Node 24 は `.ts` を
 そのまま実行できる（type stripping が既定）ので、`actions/checkout` と
@@ -264,8 +269,9 @@ ruleset も触らずに全 PR を覆える。
      export された関数にし、`git ls-files` を呼ぶのは `main()` だけにする
      （`record-source-paths.ts` の `checkMarkdown(file, content, repoRoot)` と同じ形）。
      これで fixture テストが実リポジトリにも一時 git repository にも依存しない。
-   - 入口は `git ls-files -s` を使い、**mode も一緒に受け取る**（untracked / ignored は
-     構造的に対象外）。
+   - 入口は `git ls-files -s -z` を使い、**mode も一緒に受け取る**（untracked / ignored は
+     構造的に対象外）。レコードは `<mode> <sha> <stage>\t<path>\0` で、`-z` が無いと
+     NUL 終端にならずパスも quote されるので、`-s` と `-z` は必ず対で使う。
    - **symlink（mode `120000`）は読まずに skip する。** `readFileSync` は symlink を
      追跡するので、そのまま読むと作業ツリー外のファイルを読み、その NUL を symlink 側の
      finding として報告してしまう。git が tracked symlink に持たせている内容はリンク先の
@@ -282,10 +288,11 @@ ruleset も触らずに全 PR を覆える。
 2. `scripts/lint/no-nul-bytes.test.ts` を新規作成する。
    - **fixture テストは純関数に直接バイト列を渡す**（実リポジトリにも git にも触らない）:
      raw NUL が落ちる / `\0` escape が通る / png・ttf・otf が通る / stale な deny
-     エントリが落ちる / symlink が skip される。fixture 内の NUL は
-     `String.fromCharCode(0)` で組み立てる（テストファイル自身を binary にしないため）。
-   - **入口テストは別立てにする**: `git ls-files -s` の出力（mode 付き、NUL 区切り）の
-     パースと、symlink mode の除外。
+     エントリが落ちる。fixture 内の NUL は `String.fromCharCode(0)` で組み立てる
+     （テストファイル自身を binary にしないため）。
+   - **入口テストは別立てにする**: `git ls-files -s -z` の出力のパースと、mode `120000`
+     の除外。純関数は mode を受け取らない（パスとバイト列だけ）ので、symlink の除外は
+     こちら側でしか検証できない。
    - リポジトリ全体が finding ゼロ（AC-4、CI mirror を兼ねる）。ここだけが実リポジトリを見る。
    - **`node` 直実行の経路**が `tsx` 経路と同じ結果を返すこと（案 2-B の 2 経路対策）。
 3. `package.json` に `lint:no-nul-bytes` を足す。
