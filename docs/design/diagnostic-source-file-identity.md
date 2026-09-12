@@ -253,10 +253,17 @@ resolver のテストで「`loc` を持つ診断は全件 `file` を持つ」を
 
 | 消費者 | 変更後 |
 | --- | --- |
-| CLI `formatDiagLoc` | `+1` をやめる。`loc.file` がエントリと同じなら**ユーザーが打った綴り**をそのまま使い、違うなら cwd からの相対パスにする |
+| CLI `formatDiagLoc` | `+1` をやめる。`loc.file` がエントリと同じなら**ユーザーが打った綴り**をそのまま使い、違うなら cwd からの相対パスにする（同一判定は下記の正規化を経る） |
 | CLI `diff.ts` | `+1` をやめる。ファイル名は before / after の 2 系統があるので本 Issue では足さない（`loc.file` を出す形は follow-up） |
 | app `PreviewPane` | 開いている文書の診断は `Line <n>: <message>` のまま。別ファイルの診断は `<相対パス>:<n>: <message>` にする（新しい訳語を増やさない書式を選ぶ） |
 | LSP | 変更なし。単一文書 parse にパスを渡さないので `file` は付かない |
+
+**同一ファイルかどうかは正規化してから比べる。** `loc.file` は絶対パスだが、ユーザーが打つ
+エントリは `./index.krs` のような相対形でも symlink 越しでもありうる。生の文字列比較だと
+同じファイルが別扱いになり、エントリ自身の診断にまで cwd 相対パスが前置される。
+比較には両者を `realpath`（`fs.realpath`。失敗したら `path.resolve` に退避）で畳んだ形を使い、
+**表示にはユーザーが打った綴りを残す**。この「正規化して比べ、綴りは保つ」の分離が
+`formatDiagLoc` の責務である。
 
 ### 実装の指針
 
@@ -270,7 +277,10 @@ resolver のテストで「`loc` を持つ診断は全件 `file` を持つ」を
    別ファイルの診断にはパスを前置する
 7. `docs/spec/diagnostics.md` / `diagnostics.ja.md`: 「Source locations」節を新設し、
    位置が 1-based であること・`file` の意味・無いときの解釈を規定する。
-   spec に新規節を足すので proactive TPL を同 PR で起こす（`.claude/rules/spec-audit.md`）
+   spec に新規節を足す PR なので、同 PR で節末に `> Related TPLs: TPL-2715` を置き、
+   TPL-2715 の本文末尾に「## 派生元 spec」節を足して相互リンクする
+   （`.claude/rules/spec-audit.md`）。**本 Design Doc の PR では spec 節を書かない**。
+   まだ存在しない挙動を spec が約束する形になるため、節と両方向のリンクは実装 PR で揃える
 8. AT: `docs/acceptance/diagnostic-source-file-identity.md`。TC は:
    - 2 ファイルモデルで `karasu render` が import 先の宣言を**そのファイルのパスと行**で印字する
    - 印字された行番号がそのファイルの実テキストと一致する（1 ずれの回帰ガード）

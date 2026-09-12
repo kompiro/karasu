@@ -88,9 +88,9 @@ scope:
 
 - `packages/core/src/fs/import-resolver.test.ts`: resolver が返す診断のファイル識別
 - `packages/cli/src/render.test.ts`: cross-file 診断の印字（ファイル・行・列）
-- `packages/lsp/src/lsp-position.ts` の利用箇所: 1-based / 0-based 変換
+- `packages/lsp/src/server.test.ts` › `range start is 0-based`: 1-based の core range を
+  0-based の LSP range に畳む変換
 
-## 派生元 spec
-
-- `docs/spec/diagnostics.md` の「Source locations」節: 位置が 1-based であること、
-  `file` の意味、無いときの解釈を規定する
+> 位置の base と `file` の意味を規定する `docs/spec/diagnostics.md` の「Source locations」節は
+> 実装 PR で新設する。その PR で節末の `> Related TPLs:` 注釈と本 TPL の「## 派生元 spec」節を
+> 同時に置き、相互リンクを揃える（`.claude/rules/spec-audit.md`）。
