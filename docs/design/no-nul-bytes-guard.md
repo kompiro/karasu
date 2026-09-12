@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#2804](https://github.com/kompiro/karasu/issues/2804)
   - 先行事例: [#2216](https://github.com/kompiro/karasu/pull/2216)（1 回目、escape して修正・ガードなし）、[#2793](https://github.com/kompiro/karasu/pull/2793)（2 回目、6 週間後）
-  - 関連 ADR: [ADR-953](../adr/953-ci-docs-only-paired-stub-workflow.md)（paired stub。本 doc で一部改訂を提案）、[ADR-2648](../adr/2648-record-source-path-guard.md)（同型ガードの先例）、[ADR-2125](../adr/2125-retire-adr-id-migration-map.md)（lint のためだけに存在する維持物を退役）
+  - 関連 ADR: [ADR-953](../adr/953-ci-docs-only-paired-stub-workflow.md)（paired stub。本 doc で条件付きの例外を提案）、[ADR-2648](../adr/2648-record-source-path-guard.md)（同型ガードの先例）、[ADR-2125](../adr/2125-retire-adr-id-migration-map.md)（lint のためだけに存在する維持物を退役）、[ADR-2687](../adr/2687-adr-body-is-immutable.md)（ADR 本文は書き換えない）
   - 関連 TPL: [TPL-2446](../test-perspectives/TPL-2446-gate-side-check-runs-over-the-whole-set.md), [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md), [TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md), [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md), [TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)
   <!-- absent-path-next-line: 本 doc が作成を提案するガード本体。実装 PR で実在させる -->
   - コード: `scripts/lint/no-nul-bytes.ts`（新規）
@@ -44,6 +44,19 @@ tracked file 全体（2287 ファイル / 26.0MB）を読んで NUL 保有を数
 Required status check は `Check` / `Validate` / `Reference docs` / `Playwright` の 4 つ。
 `secret-scan.yml` は唯一 path filter を持たない PR workflow だが **Required ではない**。
 
+`Check` という名前は 1 つの workflow のものではなく、**複数の workflow の fan-in** に
+なっている。branch protection は同名のチェックを AND するので、`ci.yml`（コード変更時）、
+`ci-skip.yml`（docs-only の stub）、`at-check-coverage.yml`（`docs/acceptance` /
+`docs/test-perspectives` / `docs/design` / `scripts/acceptance` 変更時）がいずれも
+`name: Check` の job を出す。うち `at-check-coverage.yml` は **docs-only PR でありながら
+`pnpm install` を行い、`lint:krs-fences` と `lint:record-source-paths` を実行している**
+（「`ci.yml` の `paths-ignore` が、dead reference を持ち込みうる docs-only PR を
+まさにスキップするから」という理由がファイルに書かれている）。本 doc 自身の PR
+[#2809](https://github.com/kompiro/karasu/pull/2809) でその `Check` は 39 秒で緑になった。
+
+つまり「docs-only PR に実検査を持たせるために `Check` をもう 1 本生やす」のは
+本 doc が持ち込む新機軸ではなく、**すでに採られている形**である。
+
 ## 制約・前提
 
 - **escape 表記は通らなければならない。** `"\0"` はディスク上では `0x5C 0x30` の 2 バイトで、
@@ -52,6 +65,10 @@ Required status check は `Check` / `Validate` / `Reference docs` / `Playwright`
 - **binary asset は正当に NUL を持つ。** png / ttf / otf を finding にしてはいけない。
 - **リポジトリは着地時点で緑でなければならない**（AC-4）。
 - 対象は tracked file のみ。untracked なビルド成果物や `node_modules` は構造的に対象外にする。
+- **symlink は追跡しない。** `readFileSync` は symlink を追跡するので、tracked symlink を
+  そのまま読むと作業ツリー外のファイルの中身を、symlink 側のパスの finding として
+  報告しうる。現時点で tracked symlink は 0 件だが、走査対象の定義はその偶然に
+  依存させない。
 
 ## 検討した選択肢
 
@@ -145,11 +162,17 @@ bot PR、fork PR、Web UI 編集、`--no-verify` だけ。
 大して減らない」。本案は `pnpm install` を伴わないため、その却下理由には当たらない。
 lint / typecheck / build / test をスキップするという ADR-953 の目的は保たれ、
 **path filter する意味がない全 tree バイトスキャン 1 本だけ**が stub に加わる。
-ADR 昇格時に ADR-953 の運用ルールを改訂する。
+
+**ADR-953 の本文は書き換えない。** [ADR-2687](../adr/2687-adr-body-is-immutable.md) と
+`.claude/rules/adr.md` が「frontmatter より下の行は触らない」と規定している。
+また本案は ADR-953 を**覆していない**: paired stub パターンも補集合の運用ルールも
+そのまま有効で、「stub の中身は空」という記述に条件付きの例外が 1 つ加わるだけなので、
+`supersedes` は過剰であり、ADR-953 を `effective.md` から落としてしまう。
+参照は frontmatter で張る（新 ADR と ADR-953 の `related_to`）。
 
 **デメリット**
 
-- docs-only PR の Check が現状の約 5 秒から 15 秒前後に増える。
+- `ci-skip.yml` の Check が現状の約 5 秒から 15 秒前後に増える。
 - `node` 直実行と `tsx` 実行の 2 経路ができる。スクリプトが erasable syntax を
   外れると `node` 側だけ壊れるので、**vitest でどちらの経路も実行できることを縛る**。
 - `ci.yml` と `ci-skip.yml` の path 補集合性は ADR-953 時点から手で保守されており、
@@ -237,7 +260,17 @@ ruleset も触らずに全 PR を覆える。
 
 <!-- absent-path-next-line: 本 doc が作成を提案するガード本体。実装 PR で実在させる -->
 1. `scripts/lint/no-nul-bytes.ts` を新規作成する。
-   - `git ls-files -z` で tracked file を得る（untracked / ignored は構造的に対象外）。
+   - **純関数と入口を分ける。** 判定本体は「ファイルパスとバイト列の列」を受け取る
+     export された関数にし、`git ls-files` を呼ぶのは `main()` だけにする
+     （`record-source-paths.ts` の `checkMarkdown(file, content, repoRoot)` と同じ形）。
+     これで fixture テストが実リポジトリにも一時 git repository にも依存しない。
+   - 入口は `git ls-files -s` を使い、**mode も一緒に受け取る**（untracked / ignored は
+     構造的に対象外）。
+   - **symlink（mode `120000`）は読まずに skip する。** `readFileSync` は symlink を
+     追跡するので、そのまま読むと作業ツリー外のファイルを読み、その NUL を symlink 側の
+     finding として報告してしまう。git が tracked symlink に持たせている内容はリンク先の
+     パス文字列で、そもそも NUL を含みえない。mode で判別すれば `lstat` の追加 syscall も要らない。
+     現時点で tracked symlink は 0 件だが、判定を「今たまたま無いから」に依存させない。
    - 各ファイルを Buffer で読み、`indexOf(0)` で判定する。バイトを見るので
      `"\0"` の escape 表記は定義上そのまま通る。
    - finding は `nul-byte-in-text-file`（file / 1-based line / byte offset）と
@@ -247,10 +280,13 @@ ruleset も触らずに全 PR を覆える。
    - erasable syntax のみで書く（`node` 直実行の経路があるため）。
    <!-- absent-path-next-line: 本 doc が作成を提案する vitest mirror。実装 PR で実在させる -->
 2. `scripts/lint/no-nul-bytes.test.ts` を新規作成する。
-   - fixture 単位: raw NUL が落ちる / `\0` escape が通る / png・ttf・otf が通る /
-     stale な deny エントリが落ちる。fixture 内の NUL は `String.fromCharCode(0)` で
-     組み立てる（テストファイル自身を binary にしないため）。
-   - リポジトリ全体が finding ゼロ（AC-4、CI mirror を兼ねる）。
+   - **fixture テストは純関数に直接バイト列を渡す**（実リポジトリにも git にも触らない）:
+     raw NUL が落ちる / `\0` escape が通る / png・ttf・otf が通る / stale な deny
+     エントリが落ちる / symlink が skip される。fixture 内の NUL は
+     `String.fromCharCode(0)` で組み立てる（テストファイル自身を binary にしないため）。
+   - **入口テストは別立てにする**: `git ls-files -s` の出力（mode 付き、NUL 区切り）の
+     パースと、symlink mode の除外。
+   - リポジトリ全体が finding ゼロ（AC-4、CI mirror を兼ねる）。ここだけが実リポジトリを見る。
    - **`node` 直実行の経路**が `tsx` 経路と同じ結果を返すこと（案 2-B の 2 経路対策）。
 3. `package.json` に `lint:no-nul-bytes` を足す。
 4. `lefthook.yml` に pre-push job を足す。**`glob` は置かない**（TPL-1480 と
@@ -262,8 +298,10 @@ ruleset も触らずに全 PR を覆える。
 7. AT: `docs/acceptance/2804-no-nul-bytes-guard.md`。TC は AC 4 件に加えて
    deny-list の staleness と 2 経路一致。全件自動化できるので `## 手動確認` は N/A。
 8. ADR 昇格: 実装完了後に `docs/adr/2804-no-nul-bytes-guard.md` として昇格し、
-   本 Design Doc は同 PR で削除する。昇格時に **ADR-953 の運用ルール節を改訂**し、
-   stub が空でなくなったこととその条件（`pnpm install` を伴わない全 tree 検査に限る）を書く。
+   本 Design Doc は同 PR で削除する。stub が空でなくなったこととその条件
+   （`pnpm install` を伴わない全 tree 検査に限る）は**新 ADR の本文に書く**。
+   ADR-953 側は本文を触らず、frontmatter の `related_to` に新 ADR を足すだけにする
+   （[ADR-2687](../adr/2687-adr-body-is-immutable.md)）。
 
 ### 影響範囲・マイグレーション
 
@@ -271,8 +309,12 @@ ruleset も触らずに全 PR を覆える。
 - リポジトリの現状: 着地時点で finding ゼロ。main の tracked file 2287 件のうち NUL 保有は
   png / ttf / otf の 12 件のみ（実測）。open PR 8 本が変更するファイルも全件 NUL なし
   （#2793 の `obstacle-index.test.ts` はレビュー中に修正済みで、マージされても緑を壊さない）。
-- CI 時間: docs-only PR の `Check` が約 5 秒から約 15 秒に増える。他は変わらない。
-- ドキュメント更新: ADR 昇格時に ADR-953 の運用ルール節。
+- CI 時間: `ci-skip.yml` が出す `Check` が約 5 秒から約 15 秒に増える
+  （checkout と setup-node の分。`pnpm install` は行わない）。`docs/acceptance` /
+  `docs/test-perspectives` / `docs/design` を触る PR は `at-check-coverage.yml` の
+  `Check`（約 39 秒）も並行して出しているので、体感の待ち時間は変わらない。
+- ドキュメント更新: ADR 昇格時に ADR-953 の **frontmatter の `related_to` のみ**。
+  本文は触らない（ADR-2687）。
 
 ## 未解決の問い / 決めないこと
 
