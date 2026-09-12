@@ -114,13 +114,17 @@ jobs:
             const outcome = process.env.OUTCOME;
             const testOutcome = process.env.TEST_OUTCOME;
 
-            // Neither green nor a failing suite: the job ended before the tests
-            // reached a verdict (its budget ran out in setup, or the runner went
-            // away). Leave the tracker alone — opening it here would report a
-            // test failure when no test ran (#2807).
-            if (outcome !== "success" && testOutcome !== "failure") {
+            // The suite reaches a verdict, or it does not. A job cancelled by
+            // its own budget during setup reaches none, and reporting that as a
+            // failing test is what #2807 removes — but a job that *failed*
+            // before the suite ran (install broke, browsers would not download)
+            // still leaves main unverified and has to be reported (#2807).
+            const verdict =
+              testOutcome === "success" || testOutcome === "failure" ? testOutcome : null;
+
+            if (verdict === null && outcome !== "failure") {
               core.notice(
-                `Nightly E2E ended with no suite verdict (job: ${outcome}, tests: ${testOutcome || "never ran"}). ` +
+                `Nightly E2E reached no suite verdict (job: ${outcome}, tests: ${testOutcome || "never ran"}). ` +
                   "Tracking issue left untouched.",
               );
               return;
@@ -138,7 +142,10 @@ jobs:
               per_page: 10,
             });
 
-            if (outcome === "success") {
+            // Green suite closes the tracker even if a later `if: always()` step
+            // (flake summary, artifact upload) failed: the tracker is about the
+            // suite, and its own run stays red in Actions either way.
+            if (verdict === "success") {
               for (const issue of openIssues) {
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
@@ -157,9 +164,15 @@ jobs:
               return;
             }
 
-            // Failure path — open or update the rolling tracker.
+            // Failure path — open or update the rolling tracker. A job that
+            // failed before the suite ran says so, rather than claiming a test
+            // failed.
+            const headline =
+              verdict === "failure"
+                ? `Nightly E2E failed on \`${shortSha}\`.`
+                : `Nightly E2E could not run on \`${shortSha}\` — the job failed before the suite reported (job: ${outcome}).`;
             const body = [
-              `Nightly E2E failed on \`${shortSha}\`.`,
+              headline,
               ``,
               `- Run: ${runUrl}`,
               `- Commit: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${sha}`,

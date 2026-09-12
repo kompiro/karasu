@@ -71,9 +71,10 @@ suite の判定を持つ `steps.run-tests.outcome` は job の `outputs` に宣�
 
 ## 決定
 
-**suite を走らせる job の予算は、`step 境界 + OBSERVED_SETUP_MINUTES` 以上とする。
-`OBSERVED_SETUP_MINUTES` は 18 分で、出所は run 34600028141 の OS パッケージ
-インストール 1013s。**
+**suite を走らせる job の予算は、`step 境界 + OBSERVED_SETUP_MINUTES + TEARDOWN_MINUTES`
+以上とする。** `OBSERVED_SETUP_MINUTES` は 18 分（run 34600028141 の setup 実測 1030s
+= job 開始から test step 開始まで。うち `apt-get` が 1013s）、`TEARDOWN_MINUTES` は
+2 分（test step 後の artifact upload 実測 6〜20s）。
 
 | job | test step | step 境界 | job 予算 |
 | --- | --- | --- | --- |
@@ -82,17 +83,30 @@ suite の判定を持つ `steps.run-tests.outcome` は job の `outputs` に宣�
 | `vscode-e2e.yml#vscode-e2e` | `Run extension host smoke tests` | 10 分 | 30 分 |
 | `vscode-e2e.yml#vscode-webview-e2e` | `Run WebView E2E (ExTester)` | 15 分 | 35 分 |
 
-**この許容は job ごとの観測値ではなく、全 job 共通の 1 つの値にする。** これらは
+teardown を項として明示するのは、test step の後ろに `if: always()` の artifact
+upload が並ぶからである。job 予算が `step 境界 + setup` ちょうどだと、遅い mirror を
+引いた日にハングした suite の report がアップロード途中で切れる。tracking Issue の
+本文が「artefacts は run に付いている」と案内している以上、その分も予算に入れる。
+
+**setup の許容は job ごとの観測値ではなく、全 job 共通の 1 つの値にする。** これらは
 同じランナークラスで同じ mirror から OS パッケージを引くので、遅い mirror は
 共有のリスクである。速い mirror しか引いていない job は安全なのではなく、
 標本が無いだけである（nightly の 55s がその例）。
 
 あわせて 2 つ:
 
-- **nightly の tracking Issue は、suite が判定に達したときだけ動かす。** `notify` は
-  `needs.e2e.outputs.result`（= `steps.run-tests.outcome`）を読み、`failure` の
-  ときだけ起票・更新する。job が setup 中に打ち切られた場合は Issue に触れず、
-  run summary に notice を残す。
+- **nightly の tracking Issue は job の result ではなく suite の判定で動かす。**
+  `notify` は `needs.e2e.outputs.result`（= `steps.run-tests.outcome`）を読む。
+
+  | suite の判定 | job result | tracking Issue |
+  | --- | --- | --- |
+  | `failure` | 何であれ | 起票・更新する（従来どおり） |
+  | `success` | 何であれ | close する。test step の後ろの `if: always()` ステップが落ちて job が赤でも、tracker が扱うのは suite である |
+  | 無し | `cancelled` | **触れない。** notice を run summary に残す。予算が setup で尽きた形がこれ |
+  | 無し | `failure` | 起票・更新する。ただし本文は「suite が報告する前に job が落ちた」と書き、テストが落ちたとは書かない |
+
+  判定が無い場合を一律に無視しないのは、`pnpm install` やブラウザの取得が壊れた夜も
+  同じ形になるからである。そちらは main が未検証のまま残るので、報告は要る。
 - **guard は不変条件そのものを固定する。** `scripts/ci/workflow-timeout-policy.test.ts`
   が `job ≧ step + OBSERVED_SETUP_MINUTES` を YAML から読んだ値で検査し、step 境界が
   消えた場合に空振りしないことと、`*e2e*.yml` が無登録で増えないことも見る。
@@ -121,6 +135,15 @@ per-job の値は「サンプルが薄い job ほど予算が薄い」という�
 [ADR-2687](2687-adr-body-is-immutable.md) が ADR 本文の編集を禁じている。同じ日の
 訂正であっても例外にしない。値の履歴が追えることが、そもそも ADR を置く理由である。
 
+### `apt-get` にリトライやキャッシュを入れて setup の分散そのものを潰す
+
+観測の最大値に予算を合わせる限り、次にもっと遅い mirror を引けば同じ作業が再発する。
+根本は「再試行もキャッシュも無い `apt-get` が任意の mirror を引く」ことなので、
+そこを抑えれば setup 項は定数に近づく。今回入れないのは、`playwright install-deps`
+が内部で `apt-get` を呼ぶため karasu 側からオプションを渡せず、vscode-e2e 側だけ
+直せても不揃いになるため。setup 時間の短縮は #2807 の受け入れ条件（予算が setup を
+吸収すること）とは別の目的なので、別 Issue に切る。
+
 ### setup 自体に timeout を置いて予算を小さく保つ
 
 観測済みの 1013s より短い値は正常な run を殺し、長い値は job 予算とほぼ同義になる。
@@ -140,3 +163,5 @@ ADR-2805 で却下した理由がそのまま当てはまる。
   持っている。共通化は 3 本の guard を同時に触るので、この PR では行わない。
 - **cache-miss 経路（`playwright install --with-deps`）の観測が薄い**。実測 23〜31s の
   サンプルしかなく、遅い mirror を引いた例をまだ見ていない。
+- **`apt-get` の分散そのものは手つかず**。上の却下した案のとおり、リトライ・キャッシュ・
+  イメージ同梱のいずれも別 Issue。観測最大が伸びたら本 ADR の値を見直すことになる。
