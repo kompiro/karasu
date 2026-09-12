@@ -243,6 +243,7 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-2640](2640-coderabbit-pr-review.md) — PR の一次レビューに CodeRabbit を入れる（advisory 固定）
 - [ADR-2716](2716-coderabbit-request-changes-workflow.md) — CodeRabbit のレビューを request changes workflow に移す（ADR-2640 を supersede）
 - [ADR-2658](2658-gh-aw-dependency-automation.md) — 依存更新トリアージの下ごしらえを gh-aw の scheduled workflow に任せる
+- [ADR-2805](2805-suite-timeout-bounds-the-test-step.md) — テスト suite の timeout はテストステップに置き、job 予算は setup を吸収する側に回す
 
 ### ADR 運用・ツール — `adr-tooling`
 
