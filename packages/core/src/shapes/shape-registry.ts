@@ -185,18 +185,42 @@ export function renderPictogram(iconName: string, color: string, size = 20): str
 }
 
 /**
+ * Snap a scale to four decimals *only* when it already is one, to within
+ * floating-point slop — an exact fit computed as `(vw * 0.66) / vw` comes back
+ * as `0.6599999999999999` and would be written out that way.
+ *
+ * A quotient that genuinely repeats (a 24×24 icon in a 160×100 card scales by
+ * `6.666…`) is left exactly as it was, so no transform this registry has ever
+ * emitted changes value — only the noise introduced by re-deriving a scale
+ * from a box does (#2696).
+ */
+function snapScale(n: number): number {
+  const snapped = Number(n.toFixed(4));
+  return Math.abs(n - snapped) < 1e-9 ? snapped : n;
+}
+
+/**
+ * The icon's coordinate system, with the default applied. Every placement of an
+ * icon — its body here, the box the renderer fits that body into, the text
+ * slots positioned on it — has to read the same viewBox, or the drawing and its
+ * text come apart. That is why the default lives in one place.
+ */
+export function iconViewBox(def: SvgIconDef): { width: number; height: number } {
+  return { width: def.viewBoxWidth ?? 24, height: def.viewBoxHeight ?? 24 };
+}
+
+/**
  * Register an SVG icon as a shape.
  * The icon body is scaled/translated to fit the node's bounding box.
  */
 export function registerIcon(def: SvgIconDef): void {
-  const vw = def.viewBoxWidth ?? 24;
-  const vh = def.viewBoxHeight ?? 24;
+  const { width: vw, height: vh } = iconViewBox(def);
 
   iconDefRegistry.set(def.name, def);
 
   registerShape(def.name, (ctx) => {
-    const scaleX = ctx.width / vw;
-    const scaleY = ctx.height / vh;
+    const scaleX = snapScale(ctx.width / vw);
+    const scaleY = snapScale(ctx.height / vh);
     let body = def.body;
     if (def.builtIn) {
       body = body

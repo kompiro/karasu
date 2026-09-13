@@ -331,13 +331,49 @@ On nodes, `border-style` is the only line-style property —
 | `cloud` | Cloud | external cloud services |
 <!-- /gen:reference:shapes -->
 
-Custom shapes (SVG file reference):
+Custom shapes — an SVG icon, named by `url(...)`:
 
 ```css
 service[external] {
-  shape: url("shapes/cloud.svg");
+  shape: url("cloud-node");
 }
 ```
+
+The argument is the **name of a registered icon**, not a path to a file. Names
+come from the icon set the host registers; the built-in set is the manifest at
+`packages/core/icons/icons.json` (`service`, `database`, `cloud-node`,
+`client-web`, `table`, `oci`, … — the same icons icon mode draws). A `url()`
+that names no registered icon falls back to `box`.
+
+### How a `url()` icon is drawn
+
+An icon body is a drawing, not a card: it has nowhere to spend the node's
+`background-color` / `border-color` / `border-width` / `border-radius`. Those
+are painted behind it as the node's card instead, in **both display modes**.
+For an icon that should stand on the canvas alone, declare the card away:
+
+```css
+service[external] {
+  shape: url("cloud-node");
+  background-color: transparent;
+  border-width: 0;
+}
+```
+
+The body is then fitted inside that card and keeps its `viewBox` ratio — it is
+never stretched to a card measured from the node's text. Where it sits in the
+leftover space depends on what the icon declares: an icon carrying text slots
+(`krs-label` / `krs-description`) is a card design, so it is anchored at the
+card's top-left and its slot text moves with it; an icon with no slots has no
+layout of its own to line up and is centred.
+
+> Related TPLs:
+> [TPL-2385](../test-perspectives/TPL-2385-attachment-follows-drawn-outline.md)
+> — the card frame stays on the node's box, so edges and chrome attach to what
+> is drawn while the body is fitted inside it.
+> [TPL-1001](../test-perspectives/TPL-1001-display-mode-cross-surface.md)
+> — both display modes are checked on every drawing surface; the frame is
+> painted in both, and only the card's size differs between them.
 
 ---
 

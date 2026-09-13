@@ -44,7 +44,7 @@ import {
   truncateToWidth,
   wrapToWidth,
 } from "./svg-builder.js";
-import { getIconDef, type SvgIconDef } from "../shapes/shape-registry.js";
+import { getIconDef, iconViewBox, type SvgIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   NODE_PADDING_X,
@@ -98,6 +98,11 @@ const ICON_CARD_TEXT_INSET = 8;
 /** Type sizes the ICON_*_CHAR_WIDTH estimates are calibrated for. */
 const ICON_LABEL_FONT_SIZE = 13;
 const ICON_DESC_FONT_SIZE = 11;
+
+/** Two decimals — enough for SVG geometry, and it keeps float noise out of the output. */
+const round2 = (n: number): number => Number(n.toFixed(2));
+/** Four decimals, never upwards — for a scale that has to stay within a bound. */
+const floor4 = (n: number): number => Math.floor(n * 1e4) / 1e4;
 
 /**
  * Sanitizes a node ID for use in a CSS fragment identifier (e.g. href="#krs-view-X").
@@ -835,7 +840,7 @@ function renderCrossingMarks(
   edgeStroke: { color: string; strokeWidth: number }[],
   fallback: { color: string; strokeWidth: number },
 ): string {
-  const r = (n: number): number => Number(n.toFixed(2));
+  const r = round2;
   const strokeOf = (edge: number) => edgeStroke[edge] ?? fallback;
   const parts: string[] = [];
   for (const hop of marks.hops) {
@@ -1604,17 +1609,21 @@ function renderNode(
 ): string {
   const children: string[] = [];
 
-  // For icon-mode nodes, render card frame (background + border) before the icon body.
-  // Built-in shapes already include fill/stroke in their own rendering.
-  const iconFrame = renderIconFrame(node, style, displayMode);
-  if (iconFrame) children.push(iconFrame);
+  // Resolve the icon body (an external `shape: url(...)`) before anything is
+  // drawn: the card frame, the body itself and the body's text slots all sit
+  // in the same placement (see `iconBodyBox`).
+  const shapeName = shapeNameOf(style.shape);
+  const iconDef = getIconDef(shapeName);
+  const isIconShape = typeof style.shape !== "string" && iconDef !== undefined;
+  const bodyBox = isIconShape ? iconBodyBox(node, iconDef, displayMode) : node;
+
+  // An icon body paints no background of its own, so the card frame draws the
+  // declared fill/border behind it. Built-in shapes already include fill/stroke
+  // in their own rendering.
+  if (isIconShape) children.push(renderIconFrame(node, style));
 
   // Shape
-  children.push(renderShape(node.x, node.y, node.width, node.height, style));
-
-  // Resolve text positions
-  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
-  const iconDef = getIconDef(shapeName);
+  children.push(renderShape(bodyBox.x, bodyBox.y, bodyBox.width, bodyBox.height, style));
 
   const textColor = style.color;
   const fontSize = style.fontSize;
@@ -1623,7 +1632,16 @@ function renderNode(
 
   if (iconDef?.labelSlot) {
     children.push(
-      ...renderSlottedText(node, style, iconDef, displayMode, textColor, fontSize, displayDesc),
+      ...renderSlottedText(
+        node,
+        bodyBox,
+        style,
+        iconDef,
+        displayMode,
+        textColor,
+        fontSize,
+        displayDesc,
+      ),
     );
   } else {
     children.push(
@@ -1801,31 +1819,62 @@ function renderFacetRings(
 }
 
 /**
- * Icon-mode card frame — the background + border rect drawn before the icon
- * body. Built-in shapes already paint their own fill/stroke, so this only
- * applies when the resolved shape is an external icon (`style.shape` is an
- * object, not a built-in shape name) and the view is in icon display mode.
+ * The box an external icon's body is drawn into.
+ *
+ * In icon mode the node box *is* the icon card the icon was drawn for (the
+ * fixed 160×100 / 160×56 of `measureNode`), so the body fills it. In shape
+ * mode the box is measured from the text, so filling it stretches the drawing
+ * off-aspect — a 160×100 viewBox landed in a 286×84 card at `scale(1.79, 0.84)`
+ * (#2696). There the body is fitted inside the box instead, keeping its
+ * viewBox ratio, and the leftover space goes where the icon has least to say
+ * about it (see below).
+ *
+ * The card frame stays on the full node box either way, so the outline edges
+ * and chrome attach to is the one that is drawn (TPL-2385).
  */
-function renderIconFrame(
+function iconBodyBox(
   node: LayoutNode,
-  style: ResolvedNodeStyle,
+  iconDef: SvgIconDef,
   displayMode: DisplayMode | undefined,
-): string | undefined {
-  const isIconShape = typeof style.shape !== "string";
-  if (displayMode !== "icon" || !isIconShape) return undefined;
-  return el("rect", {
-    x: node.x,
-    y: node.y,
-    width: node.width,
-    height: node.height,
-    rx: style.borderRadius,
-    ry: style.borderRadius,
-    fill: style.backgroundColor,
-    stroke: style.borderColor,
-    "stroke-width": style.borderWidth,
-    "stroke-dasharray":
-      style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : undefined,
-  });
+): Rect {
+  const { width: vw, height: vh } = iconViewBox(iconDef);
+  // A malformed viewBox (non-finite or degenerate) has no ratio to preserve.
+  if (displayMode === "icon" || !(vw > 0) || !(vh > 0)) return node;
+
+  // One scale, floored to the precision the transform is emitted at, and both
+  // sides derived from it: rounding each side on its own would put the two
+  // axes on subtly different scales, which is the distortion being fixed here,
+  // and rounding up would put the drawing outside the box it was fitted into.
+  const scale = floor4(Math.min(node.width / vw, node.height / vh));
+  const width = vw * scale;
+  const height = vh * scale;
+  // An icon that declares text slots is a card design, laid out from its own
+  // top-left: anchoring it there keeps the pictogram in the card's corner and
+  // the label beside it, the way icon mode draws it, with the leftover width
+  // showing card. An icon with no slots is a standalone drawing with nothing
+  // to line up against, so it is centred.
+  const anchored = iconDef.labelSlot !== undefined;
+  return {
+    x: anchored ? node.x : round2(node.x + (node.width - width) / 2),
+    y: anchored ? node.y : round2(node.y + (node.height - height) / 2),
+    width,
+    height,
+  };
+}
+
+/**
+ * Card frame for an external icon — the background + border rect drawn before
+ * the icon body. An icon body is a pictogram: it has nothing to spend the
+ * declared `background-color` / `border-color` / `border-width` on, so without
+ * this rect those declarations are silently dropped (#2696). Built-in shapes
+ * paint their own fill/stroke and never reach here, and neither does a `url()`
+ * whose icon is not registered — that one falls back to `box`, which draws the
+ * same rect itself.
+ */
+function renderIconFrame(node: LayoutNode, style: ResolvedNodeStyle): string {
+  // The frame *is* a `box`, so it is drawn by the box shape rather than by a
+  // second copy of its rect — the two would otherwise have to be kept in step.
+  return renderShape(node.x, node.y, node.width, node.height, { ...style, shape: "box" });
 }
 
 /**
@@ -1837,6 +1886,8 @@ function renderIconFrame(
  */
 function renderSlottedText(
   node: LayoutNode,
+  /** Where the icon body was drawn — the slots are positions on that body. */
+  bodyBox: Rect,
   style: ResolvedNodeStyle,
   iconDef: SvgIconDef,
   displayMode: DisplayMode | undefined,
@@ -1848,13 +1899,12 @@ function renderSlottedText(
   if (!labelSlot) return [];
 
   const children: string[] = [];
-  const vw = iconDef.viewBoxWidth ?? 24;
-  const vh = iconDef.viewBoxHeight ?? 24;
-  const scaleX = node.width / vw;
-  const scaleY = node.height / vh;
+  const { width: vw, height: vh } = iconViewBox(iconDef);
+  const scaleX = bodyBox.width / vw;
+  const scaleY = bodyBox.height / vh;
 
-  const labelX = node.x + labelSlot.x * scaleX;
-  const labelY = node.y + labelSlot.y * scaleY;
+  const labelX = bodyBox.x + labelSlot.x * scaleX;
+  const labelY = bodyBox.y + labelSlot.y * scaleY;
   const labelAnchor = labelSlot.textAnchor ?? "middle";
 
   // Icon-mode label truncation
@@ -1882,8 +1932,8 @@ function renderSlottedText(
   );
 
   if (displayDesc && iconDef.descriptionSlot) {
-    const descX = node.x + iconDef.descriptionSlot.x * scaleX;
-    const descY = node.y + iconDef.descriptionSlot.y * scaleY;
+    const descX = bodyBox.x + iconDef.descriptionSlot.x * scaleX;
+    const descY = bodyBox.y + iconDef.descriptionSlot.y * scaleY;
     const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
     const descFontSize = iconMode ? 11 : Math.round(fontSize * RENDERED_DESC_FONT_RATIO);
 
