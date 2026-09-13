@@ -331,13 +331,19 @@ On nodes, `border-style` is the only line-style property —
 | `cloud` | Cloud | external cloud services |
 <!-- /gen:reference:shapes -->
 
-Custom shapes (SVG file reference):
+Custom shapes — an SVG icon, named by `url(...)`:
 
 ```css
 service[external] {
-  shape: url("shapes/cloud.svg");
+  shape: url("cloud-node");
 }
 ```
+
+The argument is the **name of a registered icon**, not a path to a file. Names
+come from the icon set the host registers; the built-in set is the manifest at
+`packages/core/icons/icons.json` (`service`, `database`, `cloud-node`,
+`client-web`, `table`, `oci`, … — the same icons icon mode draws). A `url()`
+that names no registered icon falls back to `box`.
 
 ### How a `url()` icon is drawn
 
@@ -348,7 +354,7 @@ For an icon that should stand on the canvas alone, declare the card away:
 
 ```css
 service[external] {
-  shape: url("shapes/cloud.svg");
+  shape: url("cloud-node");
   background-color: transparent;
   border-width: 0;
 }

@@ -315,13 +315,19 @@ edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
 | `cloud` | 雲形 | 外部クラウド |
 <!-- /gen:reference:shapes -->
 
-カスタム形状（SVGファイル参照）：
+カスタム形状 — `url(...)` で名前を指定する SVG アイコン：
 
 ```css
 service[external] {
-  shape: url("shapes/cloud.svg");
+  shape: url("cloud-node");
 }
 ```
+
+引数はファイルへのパスではなく、**登録済みアイコンの名前**です。名前はホストが
+登録したアイコンセットに由来し、組み込みのセットはマニフェスト
+`packages/core/icons/icons.json` にあります（`service`、`database`、`cloud-node`、
+`client-web`、`table`、`oci` など。アイコンモードが描くものと同じアイコンです）。
+どの登録済みアイコンにも一致しない `url()` は `box` にフォールバックします。
 
 ### `url()` アイコンの描かれ方
 
@@ -333,7 +339,7 @@ service[external] {
 
 ```css
 service[external] {
-  shape: url("shapes/cloud.svg");
+  shape: url("cloud-node");
   background-color: transparent;
   border-width: 0;
 }
