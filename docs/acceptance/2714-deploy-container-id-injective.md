@@ -6,6 +6,7 @@ type: product
 
 - **日付**: 2026-09-11
 - **関連 Issue**: [#2714](https://github.com/kompiro/karasu/issues/2714)
+- **設計 (ADR)**: [ADR-2714](../adr/2714-deploy-container-id-injective.md)
 - **Related TPLs**: [TPL-1352](../test-perspectives/TPL-1352-composite-key-must-cover-all-distinguishing-dimensions.md)（識別に要る次元をキーに含める。本 Issue は「次元は揃っていたが畳み方が非可逆だった」側の consumer）
 - **対象ファイル**:
   - `packages/core/src/view/deploy-view-extract.ts`（`extractDeployView` の `containerIdOf`）
@@ -14,7 +15,7 @@ type: product
   - `packages/core/src/compile/compile.ts`（`serviceIdsWithDeploy`）
   - `packages/core/src/exporter/drawio/build-drawio-project.ts`（deploy ページの metadata）
 
-> deploy コンテナのグルーピングは injective な `nodePathIdentityKey` で行う一方、コンテナの id は `nodePathKey`（素の `join(".")`）で出していた。ドットを含む quoted id（`service "Shop.Api"`）は修飾パス `Shop.Api` と同じ文字列に畳まれるため、2 つのコンテナが 1 つの id を名乗る。id はコンテナの identity そのもの（`containerCenterX` / `containerById` / SVG の `data-container-id` / diff のコンテナキー）なので、後から置かれた方が前を上書きし、ghost edge は宛先と違う矩形に着いていた。畳み方を injective にする — セパレータ `.`（および quoted 形を構成する `"` / `\`）を含むセグメントを `.krs` の文字列リテラルとして書く。
+> deploy コンテナのグルーピングは injective な `nodePathIdentityKey` で行う一方、コンテナの id は `nodePathKey`（素の `join(".")`）で出していた。ドットを含む quoted id（`service "Shop.Api"`）は修飾パス `Shop.Api` と同じ文字列に畳まれるため、2 つのコンテナが 1 つの id を名乗る。id はコンテナの identity そのもの（`containerCenterX` / `containerById` / SVG の `data-container-id` / diff のコンテナキー）なので、後から置かれた方が前を上書きし、ghost edge は宛先と違う矩形に着いていた。畳み方を injective にする。セパレータ `.`（および引用符付きの形を構成する `"` / `\`）を含むセグメントを `.krs` の文字列リテラルとして書く。
 
 ## 受け入れ条件
 
@@ -46,7 +47,7 @@ type: product
 
   > ✅ Automated — `packages/core/src/view/deploy-view-extract.test.ts` › qualified realizes narrows the container (#2549, PR #2579 review) › leaves an unqualified model's container ids exactly as they were
 
-- [x] AT-G: ドットを含む id は、他に衝突相手がいなくても quote される（規則は無条件 — id が他のコンテナの有無で変わらない）
+- [x] AT-G: ドットを含む id は、他に衝突相手がいなくても引用符で囲まれる（規則は無条件で、id が他のコンテナの有無で変わらない）
 
   > ✅ Automated — `packages/core/src/view/deploy-view-extract.test.ts` › a dotted id cannot claim a qualified container's id (#2714) › quotes a dotted id even when no other container claims it
 
@@ -74,7 +75,7 @@ type: product
 
   > ✅ Automated — `packages/core/src/compile/deploy-affordance-node-id.test.ts` › deploy affordance matches the node, not the container id (#2714) › lights the button for a node whose own id contains a dot ／ … › still lights the button for an ordinary id
 
-- [x] AT-L: bare id が realize したノード以外にも届くときはボタンが点かない — 2 つのコンテナが bare id を共有する場合（#2549）と、参照が同名ノードの 1 つに narrow した場合（相手が未デプロイでも）。逆に bare 参照が同名ノード全部に解決する broadcast では全部に点く
+- [x] AT-L: bare id が realize したノード以外にも届くときはボタンが点かない。2 つのコンテナが bare id を共有する場合（#2549）と、参照が同名ノードの 1 つに絞り込んだ場合（相手が未デプロイでも）が該当する。逆に bare 参照が同名ノード全部に解決する broadcast では全部に点く
 
   > ✅ Automated — `packages/core/src/compile/deploy-affordance-node-id.test.ts` › deploy affordance matches the node, not the container id (#2714) › lights neither node when two containers share the bare id (#2549) ／ … › lights neither node when the ref narrowed to one of two same-named nodes ／ … › lights both nodes for a bare ref that resolves to them all (broadcast)
 

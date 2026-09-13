@@ -173,8 +173,9 @@ export function extractDeployView(
   // flattened into it has to be injective. A plain join is not — a quoted id
   // that itself contains a dot spells the same string as a qualified path, and
   // `realizes "Shop.Api"` then landed on the container `realizes Shop.Api`
-  // built (#2714). Quoting a dot-carrying segment costs nothing anywhere else:
-  // every id without a dot in it is emitted exactly as before.
+  // built (#2714). Quoting only the segments that would make the join
+  // ambiguous costs nothing anywhere else: a non-empty id with no `.`, `"` or
+  // `\` in it is emitted exactly as before.
   const groupsByBareId = new Map<string, number>();
   for (const group of groupedByRealizes.values()) {
     groupsByBareId.set(group.bareId, (groupsByBareId.get(group.bareId) ?? 0) + 1);

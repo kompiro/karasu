@@ -175,8 +175,8 @@ export function nodePathIdentityKey(segments: readonly string[]): string {
  * keywords; the question here is only whether the join stays readable, and
  * quoting more would rename container ids that have never been ambiguous. The
  * result is therefore NOT a `.krs` reference to re-parse — it is an id whose
- * separators happen to be unambiguous. A segment with no dot in it is emitted
- * bare, so a model without dotted ids keeps every id it had.
+ * separators happen to be unambiguous. A non-empty segment with no `.`, `"` or
+ * `\` in it is emitted bare, so every such id keeps the spelling it had.
  */
 export function nodePathRefId(segments: readonly string[]): string {
   return segments.map(quoteNodePathSegment).join(".");
