@@ -267,13 +267,21 @@ ruleset も触らずに全 PR を覆える。
 
 <!-- absent-path-next-line: 本 doc が作成を提案するガード本体。実装 PR で実在させる -->
 1. `scripts/lint/no-nul-bytes.ts` を新規作成する。
-   - **純関数と入口を分ける。** 判定本体は「ファイルパスとバイト列の列」を受け取る
-     export された関数にし、`git ls-files` を呼ぶのは `main()` だけにする
+   - **層を 3 つに分け、副作用を `main()` に閉じる。** どちらの純関数も実リポジトリにも
+     一時 git repository にも触らないので、テストが現在の checkout の中身に依存しない
      （`record-source-paths.ts` の `checkMarkdown(file, content, repoRoot)` と同じ形）。
-     これで fixture テストが実リポジトリにも一時 git repository にも依存しない。
+     1. `parseLsFiles(stdout: string)`: `git ls-files -s -z` の**出力文字列**を受け取り、
+        `{ mode, path }` の列を返す純関数。
+     2. 判定本体: 「ファイルパスとバイト列」の列を受け取る純関数。
+     3. `main()`: `git ls-files` を実行し、ファイルを読み、1 と 2 を繋ぐ。
    - 入口は `git ls-files -s -z` を使い、**mode も一緒に受け取る**（untracked / ignored は
-     構造的に対象外）。レコードは `<mode> <sha> <stage>\t<path>\0` で、`-z` が無いと
-     NUL 終端にならずパスも quote されるので、`-s` と `-z` は必ず対で使う。
+     構造的に対象外）。`-z` が無いと NUL 終端にならずパスも quote されるので、
+     `-s` と `-z` は必ず対で使う。
+   - **レコードは最初のタブでだけ分割する。** 形式は `<mode> <sha> <stage>\t<path>\0` だが、
+     **パスにタブが入りうる**。`-z` は quoting を無効にするので、タブはそのまま
+     バイトとして出てくる（実測: `100644 <sha> 0\thas\ttab.txt\0`）。全タブで split すると
+     パスが切れるので、最初のタブより前を `<mode> <sha> <stage>` ヘッダとして空白区切りで
+     読み、**それより後ろは NUL までを verbatim なパスとして扱う**（タブを含む）。
    - **symlink（mode `120000`）は読まずに skip する。** `readFileSync` は symlink を
      追跡するので、そのまま読むと作業ツリー外のファイルを読み、その NUL を symlink 側の
      finding として報告してしまう。git が tracked symlink に持たせている内容はリンク先の
@@ -292,9 +300,13 @@ ruleset も触らずに全 PR を覆える。
      raw NUL が落ちる / `\0` escape が通る / png・ttf・otf が通る / stale な deny
      エントリが落ちる。fixture 内の NUL は `String.fromCharCode(0)` で組み立てる
      （テストファイル自身を binary にしないため）。
-   - **入口テストは別立てにする**: `git ls-files -s -z` の出力のパースと、mode `120000`
-     の除外。純関数は mode を受け取らない（パスとバイト列だけ）ので、symlink の除外は
-     こちら側でしか検証できない。
+   - **入口テストは `parseLsFiles` に合成した出力文字列を渡す。** git も一時 repository も
+     使わない。判定本体は mode を受け取らない（パスとバイト列だけ）ので、symlink の除外は
+     こちら側でしか検証できず、かつ現在の checkout には tracked symlink が 0 件なので、
+     実リポジトリを読むテストでは**何も検証できない**。合成入力に入れるレコード:
+     - mode `120000` のエントリが結果から落ちること
+     - パスにタブを含む `100644` のエントリが、タブごと 1 本のパスとして復元されること
+     - NUL 終端が末尾にも付くこと（末尾の空要素を空パスとして拾わないこと）
    - リポジトリ全体が finding ゼロ（AC-4、CI mirror を兼ねる）。ここだけが実リポジトリを見る。
    - **`node` 直実行の経路**が `tsx` 経路と同じ結果を返すこと（案 2-B の 2 経路対策）。
 3. `package.json` に `lint:no-nul-bytes` を足す。
