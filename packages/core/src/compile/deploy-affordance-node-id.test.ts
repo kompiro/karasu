@@ -41,6 +41,43 @@ deploy prod {
     expect(svg).toContain('data-deploy-button="Api"');
   });
 
+  it("lights neither node when the ref narrowed to one of two same-named nodes", () => {
+    // Only Shop's Api is deployed, so there is one container and the id is not
+    // qualified — but `Api` still reaches Admin's node, and lighting a button
+    // on an undeployed node is worse than lighting none (#2549's rationale,
+    // which counted containers and so missed this shape).
+    const source = `
+system Shop {
+  service Api {}
+}
+system Admin {
+  service Api {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+}
+`;
+    expect(systemSvg(source)).not.toContain("data-deploy-button");
+  });
+
+  it("lights both nodes for a bare ref that resolves to them all (broadcast)", () => {
+    // `realizes Api` names every node with that id (ADR-927 / ADR-1566), so the
+    // container really does realize both and the bare id answers for exactly
+    // the set it covers.
+    const svg = systemSvg(`
+system Shop {
+  service Api {}
+}
+system Admin {
+  service Api {}
+}
+deploy prod {
+  oci a { realizes Api }
+}
+`);
+    expect(svg).toContain('data-deploy-button="Api"');
+  });
+
   it("lights neither node when two containers share the bare id (#2549)", () => {
     // The qualified ids exist precisely because one bare id cannot tell the
     // two apart, so neither `Api` node may claim the button.

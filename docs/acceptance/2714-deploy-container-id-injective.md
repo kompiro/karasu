@@ -70,13 +70,21 @@ type: product
 
 コンテナ id は identity なので、修飾（#2549）や quote（#2714）でノード自身の id 空間に無い綴りになりうる。ノードと突き合わせる consumer は id ではなく、コンテナが realize したノードの id（`DeployContainer.nodeId`）を見る。
 
-- [x] AT-K: ドットを含む id のノードに deploy ジャンプボタン（`data-deploy-button`）が点く。通常の id でも点き、bare id を 2 つのコンテナが共有するときは（#2549 の決定どおり）どちらにも点かない
+- [x] AT-K: ドットを含む id のノードに deploy ジャンプボタン（`data-deploy-button`）が点く。通常の id でも点く
 
-  > ✅ Automated — `packages/core/src/compile/deploy-affordance-node-id.test.ts` › deploy affordance matches the node, not the container id (#2714) › lights the button for a node whose own id contains a dot ／ … › still lights the button for an ordinary id ／ … › lights neither node when two containers share the bare id (#2549)
+  > ✅ Automated — `packages/core/src/compile/deploy-affordance-node-id.test.ts` › deploy affordance matches the node, not the container id (#2714) › lights the button for a node whose own id contains a dot ／ … › still lights the button for an ordinary id
 
-- [x] AT-L: draw.io の deploy ページで、ドットを含む id のコンテナがタグとアノテーションを保つ
+- [x] AT-L: bare id が realize したノード以外にも届くときはボタンが点かない — 2 つのコンテナが bare id を共有する場合（#2549）と、参照が同名ノードの 1 つに narrow した場合（相手が未デプロイでも）。逆に bare 参照が同名ノード全部に解決する broadcast では全部に点く
+
+  > ✅ Automated — `packages/core/src/compile/deploy-affordance-node-id.test.ts` › deploy affordance matches the node, not the container id (#2714) › lights neither node when two containers share the bare id (#2549) ／ … › lights neither node when the ref narrowed to one of two same-named nodes ／ … › lights both nodes for a bare ref that resolves to them all (broadcast)
+
+- [x] AT-M: draw.io の deploy ページで、ドットを含む id のコンテナがタグとアノテーションを保つ
 
   > ✅ Automated — `packages/core/src/exporter/drawio/build-drawio-project.test.ts` › buildDrawio — deploy container metadata (#2714) › keeps the annotations and tags of a node whose own id contains a dot ／ … › keeps them for an ordinary id too
+
+- [x] AT-N: 同名 service が 2 つあって id が修飾されるとき、各コンテナの draw.io セルが自分のノードのタグ／アノテーションを持つ（bare id キーの map では後勝ちで混ざる）
+
+  > ✅ Automated — `packages/core/src/exporter/drawio/build-drawio-project.test.ts` › buildDrawio — deploy container metadata (#2714) › gives each of two same-named services its own tags when the ids qualify
 
 ## 手動確認
 

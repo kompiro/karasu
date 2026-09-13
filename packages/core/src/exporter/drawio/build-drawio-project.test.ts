@@ -155,4 +155,35 @@ deploy prod {
     expect(xml).toContain("@deprecated");
     expect(xml).toContain("#external");
   });
+
+  it("gives each of two same-named services its own tags when the ids qualify", () => {
+    // The container ids are `Shop.Api` / `Admin.Api` here (#2549). A bare-id
+    // metadata map holds one entry for `Api`, so both cells would carry
+    // whichever node was walked last; keying by path is what separates them.
+    const xml = buildDrawio(
+      parse(`
+system Shop {
+  service Api [external] {}
+}
+system Admin {
+  service Api @deprecated {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+  oci b { realizes Admin.Api }
+}
+`),
+      { view: "deploy" },
+    );
+    // Cell ids are sanitized (`.` → `_`) and values XML-escaped, so match the
+    // emitted shapes rather than the raw container id.
+    const cellOf = (sanitizedId: string) =>
+      [...xml.matchAll(/<mxCell id="([^"]+)" value="([^"]*)"/g)].find(
+        (m) => m[1] === `deploy-${sanitizedId}`,
+      )?.[2] ?? "";
+    expect(cellOf("Shop_Api")).toContain("#external");
+    expect(cellOf("Shop_Api")).not.toContain("@deprecated");
+    expect(cellOf("Admin_Api")).toContain("@deprecated");
+    expect(cellOf("Admin_Api")).not.toContain("#external");
+  });
 });
