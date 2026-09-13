@@ -69,9 +69,21 @@ export function needsQuotes(id: string): boolean {
   return false;
 }
 
-export function quoteId(id: string): string {
-  if (!needsQuotes(id)) return id;
-  // Escape backslashes first, then embedded double quotes.
+/**
+ * Wrap a string in the `.krs` string-literal form, escaping backslashes first
+ * and then embedded double quotes.
+ *
+ * Split out from {@link quoteId} because a caller can have its own reason to
+ * quote: `nodePathRefId` (#2714) quotes a path segment that carries the `.`
+ * separator, which is a narrower trigger than "cannot be emitted bare". The
+ * escaping itself must stay one rule, so both go through here.
+ */
+export function quotedIdLiteral(id: string): string {
   const escaped = id.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   return `"${escaped}"`;
+}
+
+export function quoteId(id: string): string {
+  if (!needsQuotes(id)) return id;
+  return quotedIdLiteral(id);
 }

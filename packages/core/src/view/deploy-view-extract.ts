@@ -1,11 +1,37 @@
 import type { DeployBlock, DeployNode, NodeIdPath, SystemNode } from "../types/ast.js";
 import type { EdgeKind } from "../types/ast.js";
 import { deriveInfraEdges } from "./view-extract.js";
-import { nodePathIdentityKey, nodePathKey, resolveNodePathBySuffix } from "../parser/node-path.js";
+import {
+  nodePathIdentityKey,
+  nodePathRefId,
+  resolveNodePathBySuffix,
+} from "../parser/node-path.js";
 
 export interface DeployContainer {
   /** The service id that these units realize */
   serviceId: string;
+  /**
+   * The realized node's own id, set only when that id names this container's
+   * nodes and nothing else.
+   *
+   * A consumer that matches a container against the node it realizes — the
+   * system view's deploy-jump button, the draw.io metadata lookup — keys on
+   * this, not on {@link serviceId}. `serviceId` is the container's identity,
+   * and identity can need spelling a node's own id space has no word for: a
+   * qualified path when two containers share the bare id (#2549), quotes when
+   * a segment carries the separator (#2714).
+   *
+   * Unset in the two cases where a bare id would over-answer:
+   *
+   * - another container answers to the same bare id (the case #2549 qualified),
+   * - the ref **narrowed** to one of several same-named nodes
+   *   (`realizes Shop.Api` while an `Admin.Api` also exists), whether or not
+   *   that other node is deployed. Matching on the bare id would light both.
+   *
+   * A bare ref that resolves to several same-named nodes keeps its id: that is
+   * broadcast (ADR-927 / ADR-1566), and the container does realize them all.
+   */
+  nodeId?: string;
   /** Human-readable label resolved from the system hierarchy */
   serviceLabel: string;
   units: DeployNode[];
@@ -68,10 +94,14 @@ export function extractDeployView(
   // nodes here, which is what lets a qualified ref pick one of them.
   const candidates: { path: NodeIdPath; label: string }[] = [];
   const labelByBareId = new Map<string, string>();
+  // How many of them answer to each bare id — what decides whether a bare id
+  // can be handed to a consumer that matches nodes by it (see `nodeId`).
+  const candidatesByBareId = new Map<string, number>();
   for (const system of systems) {
     for (const child of system.children) {
       candidates.push({ path: [system.id, child.id], label: child.label ?? child.id });
       labelByBareId.set(child.id, child.label ?? child.id);
+      candidatesByBareId.set(child.id, (candidatesByBareId.get(child.id) ?? 0) + 1);
     }
   }
 
@@ -136,14 +166,36 @@ export function extractDeployView(
   // always drawn and what its anchors are built from. Only when two containers
   // would answer to the same bare id does the qualified path take over, and
   // only for those two: an unqualified model keeps every id it had.
+  //
+  // Both forms are emitted through `nodePathRefId`, not a plain join: the id
+  // is what tells two containers apart (`containerCenterX`, the SVG's
+  // `data-container-id`, the diff's per-container key), so the way a path is
+  // flattened into it has to be injective. A plain join is not — a quoted id
+  // that itself contains a dot spells the same string as a qualified path, and
+  // `realizes "Shop.Api"` then landed on the container `realizes Shop.Api`
+  // built (#2714). Quoting a dot-carrying segment costs nothing anywhere else:
+  // every id without a dot in it is emitted exactly as before.
   const groupsByBareId = new Map<string, number>();
   for (const group of groupedByRealizes.values()) {
     groupsByBareId.set(group.bareId, (groupsByBareId.get(group.bareId) ?? 0) + 1);
   }
+  const qualifyingPathOf = (group: RealizesGroup): NodeIdPath | undefined =>
+    group.path !== undefined && (groupsByBareId.get(group.bareId) ?? 0) > 1
+      ? group.path
+      : undefined;
   const containerIdOf = (group: RealizesGroup): string =>
-    group.path && (groupsByBareId.get(group.bareId) ?? 0) > 1
-      ? nodePathKey(group.path)
-      : group.bareId;
+    nodePathRefId(qualifyingPathOf(group) ?? [group.bareId]);
+  // The bare id a consumer may match a *node* by, or undefined when it would
+  // answer for more nodes than this container realizes. A narrowing ref is the
+  // case counting containers misses: `realizes Shop.Api` with no `Admin.Api`
+  // container still must not light `Admin.Api`'s deploy button, because the id
+  // `Api` reaches both nodes and only one of them is deployed.
+  const matchableNodeIdOf = (group: RealizesGroup): string | undefined => {
+    if (qualifyingPathOf(group) !== undefined) return undefined;
+    const narrowsToOneOfSeveral =
+      group.path !== undefined && (candidatesByBareId.get(group.bareId) ?? 0) > 1;
+    return narrowsToOneOfSeveral ? undefined : group.bareId;
+  };
 
   // Build containers
   const containers: DeployContainer[] = [];
@@ -159,6 +211,7 @@ export function extractDeployView(
     const isJobOnly = group.units.length > 0 && group.units.every((u) => u.kind === "job");
     containers.push({
       serviceId,
+      ...(matchableNodeIdOf(group) === undefined ? {} : { nodeId: group.bareId }),
       serviceLabel: group.label ?? labelByBareId.get(group.bareId) ?? group.bareId,
       units: group.units,
       ...(isJobOnly ? { kindBand: "job" as const } : {}),
@@ -192,7 +245,9 @@ export function extractDeployView(
     const from = containerIdFor(edge.from, systemId);
     const to = containerIdFor(edge.to, systemId);
     if (from === undefined || to === undefined) return;
-    const key = `${from}->${to}`;
+    // `\u0000` and not `->`: both halves are author-chosen ids, and an id may
+    // contain the arrow (`service "b->c"` needs no quoting, holding no `.`).
+    const key = `${from}\u0000${to}`;
     if (seenGhost.has(key)) return;
     seenGhost.add(key);
     ghostEdges.push({ from, to, label: edge.label, kind: edge.kind });

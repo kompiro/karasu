@@ -794,6 +794,59 @@ ${realizes}
   }
 });
 
+// #2714 — the deploy canvas indexes its containers by id
+// (`containerById`, `containerCenterX`), so two containers answering to one id
+// meant the second silently replaced the first and every ghost edge addressed
+// to that id landed on the wrong rect. The fence runs parse → extract → layout
+// because the id is decided upstream and only the geometry shows who it reached.
+describe("a dotted id and a qualified path get their own rect (#2714)", () => {
+  const laidOut = () => {
+    const file = Parser.parse(`
+system Shop {
+  service Api {}
+  service Worker {}
+  Api -> Worker "queues"
+}
+system Admin {
+  service Api {}
+}
+system Weird {
+  service "Shop.Api" {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+  oci b { realizes Admin.Api }
+  oci c { realizes "Shop.Api" }
+  oci w { realizes Worker }
+}
+`).value;
+    return layoutDeploy(extractDeployView(file.deploys, withUnassignedSystem(file)));
+  };
+
+  it("places four containers, no two sharing an id", () => {
+    const { containers } = laidOut();
+    const ids = containers.map((c) => c.id);
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("starts the ghost edge at the rect holding the unit its endpoint realizes", () => {
+    const result = laidOut();
+    const edge = result.edges.find((e) => e.from === "Shop.Api" && e.to === "Worker")!;
+    expect(edge).toBeDefined();
+
+    // `Shop.Api` is Shop's service, so the edge has to leave the rect around
+    // unit `a` — not the one the dotted id built around unit `c`.
+    const unitA = result.nodes.get("Shop.Api::a")!;
+    expect(unitA).toBeDefined();
+    const rect = result.containers.find((c) => c.id === "Shop.Api")!;
+    expect(rect).toBeDefined();
+    expect(unitA.x).toBeGreaterThanOrEqual(rect.x);
+    expect(unitA.x + unitA.width).toBeLessThanOrEqual(rect.x + rect.width);
+    expect(edge.fromPoint.x).toBe(rect.x + rect.width / 2);
+  });
+});
+
 // #2713 — the same geometry from the other producer. #2552 closed the route
 // that let one unit reach a container twice; two units *sharing an id* reopened
 // it, because the grid still counted entries the placement loop would coalesce.

@@ -125,3 +125,65 @@ describe("buildDrawio — view:all", () => {
     expect(ids).toContain("org");
   });
 });
+
+describe("buildDrawio — deploy container metadata (#2714)", () => {
+  // The exporter looks metadata up by the container's id, and the metadata map
+  // is keyed by the node's own id. A container id is quoted when a segment
+  // carries the path separator, so the two id spaces have to be bridged where
+  // the page is built or the cell silently loses its tags and annotations.
+  const deployXml = (serviceDecl: string, realizes: string) =>
+    buildDrawio(
+      parse(`
+system Weird {
+  ${serviceDecl} [external] @deprecated {}
+}
+deploy prod {
+  oci c { realizes ${realizes} }
+}
+`),
+      { view: "deploy" },
+    );
+
+  it("keeps the annotations and tags of a node whose own id contains a dot", () => {
+    const xml = deployXml('service "Shop.Api"', '"Shop.Api"');
+    expect(xml).toContain("@deprecated");
+    expect(xml).toContain("#external");
+  });
+
+  it("keeps them for an ordinary id too", () => {
+    const xml = deployXml("service Api", "Api");
+    expect(xml).toContain("@deprecated");
+    expect(xml).toContain("#external");
+  });
+
+  it("gives each of two same-named services its own tags when the ids qualify", () => {
+    // The container ids are `Shop.Api` / `Admin.Api` here (#2549). A bare-id
+    // metadata map holds one entry for `Api`, so both cells would carry
+    // whichever node was walked last; keying by path is what separates them.
+    const xml = buildDrawio(
+      parse(`
+system Shop {
+  service Api [external] {}
+}
+system Admin {
+  service Api @deprecated {}
+}
+deploy prod {
+  oci a { realizes Shop.Api }
+  oci b { realizes Admin.Api }
+}
+`),
+      { view: "deploy" },
+    );
+    // Cell ids are sanitized (`.` → `_`) and values XML-escaped, so match the
+    // emitted shapes rather than the raw container id.
+    const cellOf = (sanitizedId: string) =>
+      [...xml.matchAll(/<mxCell id="([^"]+)" value="([^"]*)"/g)].find(
+        (m) => m[1] === `deploy-${sanitizedId}`,
+      )?.[2] ?? "";
+    expect(cellOf("Shop_Api")).toContain("#external");
+    expect(cellOf("Shop_Api")).not.toContain("@deprecated");
+    expect(cellOf("Admin_Api")).toContain("@deprecated");
+    expect(cellOf("Admin_Api")).not.toContain("#external");
+  });
+});
