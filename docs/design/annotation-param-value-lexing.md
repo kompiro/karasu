@@ -45,6 +45,8 @@ lexer はその文字列を黙って削除する。TPL-1101 が root cause と�
 | `@migration_target(from: system)` | パラメータなし | **なし** | `@migration_target` |
 | `service A [2026]` | `tags: []`（タグ消滅） | **なし** | タグごと消える |
 | `service A [team-1]` | `tags: ["team", "-"]` | `tag-not-builtin` × 2（断片名について） | 断片 2 つに割れる |
+| `service A @phase-2` | `annotations: ["phase"]` | error `unexpected-token-in-block` × 2 + `unexpected-token-root` | （error のため `fmt` 不可） |
+| `client C { capability p2p-2 }` | `capabilities[].name: "p2p"` | error `unexpected-token-in-block` | （error のため `fmt` 不可） |
 | `service 2Foo` | `id: "Foo"` | **なし** | `service Foo` |
 | `A -> 2B`（`service B` が存在する） | edge `A -> B` | **なし** | `A -> B` |
 | `@deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3")` | `{deprecated:{until:"2027-Q3"}}` | **なし** | 両方が `"2027-Q3"` |
@@ -90,7 +92,7 @@ examples 85 本 + `docs/**` の ` ```krs ` fence 361 本、計 446 ソースを�
 | タグ | `[2026]` | `tags: ["2026"]`（**記録される**） | `tag-not-builtin` |
 | タグ（kebab 断片） | `[team-1]` | `tags: ["team-1"]` | `tag-not-builtin`（1 件、書いた名前について） |
 | アノテーション名（kebab 断片） | `@phase-2` | `annotations: ["phase-2"]` | `annotation-not-builtin` |
-| capability 名（kebab 断片） | `capability p2p-2` | （未確認） | なし（縫合しない場合は error `unexpected-token-in-block`） |
+| capability 名（kebab 断片） | `capability p2p-2` | `capabilities[].name: "p2p-2"` | なし |
 | エッジ終端 | `A -> 2B` | edge `A -> 2B`（**記録される**） | error `expected-id-or-string` + `unresolved-edge-endpoint` |
 | アノテーション名（先頭） | `@2026` | 記録されない | error `unexpected-token-in-block` ほか |
 | ノード id | `service 2Foo` | 記録されない | error `expected-node-id` + recovery cascade 3 件 |
@@ -166,6 +168,7 @@ lexer の `default` 節に digit 始まりの分岐を足し、`[0-9][\p{L}\p{N}
 
 - `service 2Foo` が黙って `service Foo` になっていたのが 4 件のエラー（うち 3 件は既存の recovery cascade）になる。壊れた入力に対する挙動の変化であり、正しい方向ではあるが diff は出る
 - `[2026]` が「消えるタグ」から「記録されるタグ」に変わり、タグの受理集合が広がる。resolver が `tag-not-builtin` 警告を出す（実測確認済み）ので、TPL-1503 の禁じる沈黙にはならない
+- 数字を含む kebab 名が、タグ以外の名前ポジションでも通るようになる。`@phase-2` は `phase` + error 3 件から `phase-2` + `annotation-not-builtin` に、`capability p2p-2` は `p2p` + error から `p2p-2`（診断なし）に変わる。spec が約束する kebab-case への適合だが、error だった入力が通るので受理集合としては広がる
 - 新しい TokenType が 1 つ増える。`unexpected-token-*` の診断文に `Number` が出るようになる
 
 #### 案1-B: lexer は触らず、parser 側だけで「完全な 1 トークン」を要求する
@@ -292,7 +295,7 @@ error にすると `fmt` は既存の parse-error ゲート（`Cannot format: so
 | `A -> 2B` の付け替え | ○ 解決（error） | × 残る | × 残る |
 | `[2026]` / `service 2Foo` の黙殺 | ○ 解決（警告 / エラー化） | × 残る | × 残る |
 | `[team-1]` の分裂（TPL-2509） | ○ 解決（縫合の 1 行と対で） | × 残る | × 残る |
-| 受理する言語の変化 | タグのみ広がる（`tag-not-builtin` 付き） | 変わらない | 値ポジションが**広がる**（spec 変更） |
+| 受理する言語の変化 | 名前ポジションで広がる: 数字始まりのタグ値（`[2026]`、`tag-not-builtin` 付き）と、数字を含む kebab 名（タグ / アノテーション名 / capability 名。spec の kebab-case への適合） | 変わらない | 値ポジションが**広がる**（spec 変更） |
 | `fmt` との整合 | `needsQuotes()` 1 つに収束 | 同左（1 ポジションのみ） | 受理直後に書き換えが起きる |
 | 変更量 | lexer 小 + parser 小 | parser 小 | parser 小 + spec |
 
@@ -333,8 +336,10 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
    `// Skip unknown character` のコメントを、**何を捨てていて何を捨てなくなったか**（`=` / `;` は黙認継続、
    数字は捨てない）を述べる形に書き換える。
    同じ変更で `kebab-name.ts` の `isWordToken` が `Number` を先頭以外の断片として受ける。
-   `[team-1]` / `@phase-2` / `capability p2p-2` の parser テストと、`[team-1]` に `.krs.style` の同綴りセレクタが
-   当たる resolver テストを足す（TPL-2509 のテストの書き方）。
+   parser テストで次の結果を固定する（TPL-2509 のテストの書き方）:
+   `[team-1]` → `tags: ["team-1"]`、`@phase-2` → `annotations: ["phase-2"]`、
+   `capability p2p-2` → `capabilities[].name: "p2p-2"`。3 件とも parse 診断ゼロ。
+   あわせて `[team-1]` に `.krs.style` の同綴りセレクタが当たる resolver テストを足す。
 2. **lexer のドリフトガード**: examples と `docs/**` の `krs` fence をトークン化し、
    どのトークンにも覆われない非空白文字が `TOLERATED_DISCARDS = { "=", ";", "<", ">" }` の外に無いことを
    assert するテストを足す。数字が再び捨てられたらこのテストが落ちる。負のテスト（数字分岐を外すと落ちること）で
@@ -366,6 +371,8 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
      ファイルを書き換えずエラー終了すること
    - `service A [2026]` が `tag-not-builtin` 警告つきでタグとして残ること
    - `service A [team-1]` が 1 つのタグ `team-1` になり、`.krs.style` の `[team-1]` セレクタが当たること
+   - `service A @phase-2` が 1 つのアノテーション名 `phase-2`（`annotation-not-builtin` 付き）になり、parse エラーが出ないこと
+   - `client C { capability p2p-2 }` の capability 名が `p2p-2` になり、診断が出ないこと
    - `A -> 2B` が既存の `B` へのエッジにならず、error が出ること
 9. **changeset**: `@karasu-tools/core` / `karasu` の patch。
 10. **ADR 昇格**: 実装完了後に `docs/adr/2707-annotation-param-value-lexing.md` として昇格し、
@@ -381,6 +388,10 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
 - **壊れた入力に対する診断の増加**: `service 2Foo` / `A -> 2B` が沈黙からエラーに、`[2026]` が消滅から
   警告つきのタグに変わる。`A -> 2B` は今日「正しく見える図」を描いていたので、error が出て初めて
   誤りに気づくファイルがありうる。examples とドキュメントには 1 件も該当がないことを実測済み。
+- **error だった入力が通るようになる**: 数字を含む kebab 名は、タグ以外の名前ポジションでも挙動が変わる。
+  `@phase-2` は `phase` + error 3 件から `phase-2` + `annotation-not-builtin` に、`capability p2p-2` は
+  `p2p` + error から `p2p-2`（診断なし）になる。どちらも今日は error で `fmt` できなかった入力なので、
+  既存ファイルの `fmt` 出力が変わることはない。
 - **ドキュメント更新**: `docs/spec/tags-annotations.md`（en/ja）、`docs/spec/diagnostics.md`（en/ja）、
   skill バンドルのコピー 2 ファイル。
 - **テスト・examples への影響**: なし（数字のトークン化と縫合の 1 行を当てた状態で core 4409 テストが無改変で pass）。
