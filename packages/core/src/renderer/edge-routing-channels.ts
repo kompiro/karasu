@@ -12,9 +12,10 @@
  * happens to align with an intermediate node card), routing is skipped and
  * the edge stays straight. Strictly monotonic — never makes a diagram worse.
  *
- * Performance: O(E · N²) — for each edge, intersection-test against every
- * other node. Adequate for karasu's typical diagrams (N < ~50). If we ever
- * import very large systems, switch to a row-indexed obstacle structure.
+ * Performance: the obstacle set arrives as an `ObstacleQuery` (#2790), i.e. the
+ * canvas indexed once per routing pass and asked for the obstacles near a
+ * segment, rather than as a fresh `Rect[]` per edge walked in full. The exact
+ * clip is unchanged, so the routes are.
  *
  * See docs/design/auto-layout-edge-routing-orthogonal.md for the full design
  * (Phase 2). Phase 3 — port distribution and lane allocation when many edges
@@ -26,18 +27,22 @@
  * anchor logic are not disturbed.
  */
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
-import { type Point, type Rect, segmentCrossesAnyRect } from "./edge-geometry.js";
+import type { Point } from "./edge-geometry.js";
+import type { ObstacleQuery } from "./obstacle-index.js";
 
 export function routeOrthogonalEdges(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   /**
-   * Extra obstacles this edge must not cross, beyond the node cards — the group
-   * frames neither endpoint belongs to (#2362). Supplied by the caller because
-   * the frame exemption is per-endpoint, and this module has no frame concept
-   * of its own. Omitted, the pass behaves exactly as ADR-968 shipped it.
+   * The obstacles this edge must not cross: every card but its own two
+   * endpoints, plus the group frames neither endpoint belongs to (#2362).
+   * Required rather than optional (#2790): the frame exemption is per-endpoint
+   * and this module has no frame concept of its own, so a caller that forgot to
+   * supply the set would silently route through frames (TPL-219). An ungrouped
+   * canvas passes a query over the cards alone, which is exactly the ADR-968
+   * behaviour.
    */
-  extraObstaclesFor?: (edge: LayoutEdge) => Rect[],
+  obstaclesFor: (edge: LayoutEdge) => ObstacleQuery,
 ): void {
   const nodes = [...layoutNodes.values()];
 
@@ -53,11 +58,8 @@ export function routeOrthogonalEdges(
     // edges already use side anchors via computeEdgePoints.
     if (!isDownwardEdge(edge.fromPoint, edge.toPoint, from, to)) continue;
 
-    const obstacles: Rect[] = [
-      ...nodes.filter((n) => n.id !== edge.from && n.id !== edge.to),
-      ...(extraObstaclesFor?.(edge) ?? []),
-    ];
-    if (!segmentCrossesAnyRect(edge.fromPoint, edge.toPoint, obstacles)) continue;
+    const obstacles = obstaclesFor(edge);
+    if (!obstacles.segmentCrosses(edge.fromPoint, edge.toPoint)) continue;
 
     // Channel sits in the gap between the previous row and the target row.
     // Use the upper edge of the target's bounding box and back off by half
@@ -75,14 +77,7 @@ export function routeOrthogonalEdges(
     // The vertical stubs at src.x / to.x can still hit an intermediate node
     // when columns line up — in that case keep the original straight line.
     const path = [edge.fromPoint, ...waypoints, edge.toPoint];
-    let blocked = false;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (segmentCrossesAnyRect(path[i], path[i + 1], obstacles)) {
-        blocked = true;
-        break;
-      }
-    }
-    if (blocked) continue;
+    if (!obstacles.polylineClear(path)) continue;
 
     edge.waypoints = waypoints;
   }

@@ -9,8 +9,9 @@
  * band. A straight service→infra edge then pierces every intermediate team
  * frame and card between its endpoints (measured: 11 penetrations on the
  * canonical 2-team fixture). The default skip-layer router
- * (`edge-routing-channels.ts`) only treats *node cards* as obstacles, not the
- * frames, so it cannot fix this.
+ * (`edge-routing-channels.ts`) could not fix this when it saw only node cards;
+ * both passes now take the same `ObstacleQuery`, which answers for cards and
+ * frame pieces alike (#2790).
  *
  * This pass adds the group frames to the obstacle set and, for any edge whose
  * straight path crosses a non-endpoint node or frame, reroutes it orthogonally
@@ -46,7 +47,9 @@
  * or DOM input, so snapshots stay stable.
  */
 import type { LayoutEdge, LayoutNode, ContainerRect } from "./layout-types.js";
-import { type Point, type Rect, segmentCrossesAnyRect, polylineClearOf } from "./edge-geometry.js";
+import type { Point } from "./edge-geometry.js";
+import { framePieces } from "./frame-geometry.js";
+import type { ObstacleIndex, ObstacleQuery } from "./obstacle-index.js";
 import { attachableSpans, BBOX_PORT_FRAME, mapToSpans, type PortResolver } from "./port-frame.js";
 
 /**
@@ -58,23 +61,20 @@ import { attachableSpans, BBOX_PORT_FRAME, mapToSpans, type PortResolver } from 
 type EdgeBox = { id: string; x: number; y: number; width: number; height: number };
 
 /**
- * Resolve edge endpoints to boxes and containing frames, treating each in-place-
- * expanded container (#1923) as its own box (the frame) that belongs to its own
- * frame. Shared by all group-routing passes so a service-level edge whose
- * endpoint is an expanded container is handled the same everywhere — routed,
- * lane-separated, fanned out, and trunked — not just by `routeGroupedEdges`.
+ * Resolve edge endpoints to boxes, treating each in-place-expanded container
+ * (#1923) as its own box (the frame). Shared by all group-routing passes so a
+ * service-level edge whose endpoint is an expanded container is handled the
+ * same everywhere — routed, lane-separated, fanned out, and trunked — not just
+ * by `routeGroupedEdges`.
+ *
+ * The matching frame-membership map the exemption is keyed on is no longer cut
+ * here: `ObstacleIndex` holds it, built once for the whole chain (#2790).
  */
 function resolveGroupBoxes(
   layoutNodes: Map<string, LayoutNode>,
-  frames: ContainerRect[],
   expandedFrames?: Map<string, ContainerRect>,
-): { boxOf: (id: string) => EdgeBox | undefined; framesOfNode: Map<string, Set<string>> } {
-  const boxOf = (id: string): EdgeBox | undefined => layoutNodes.get(id) ?? expandedFrames?.get(id);
-  const framesOfNode = buildFramesOfNode(layoutNodes, frames);
-  if (expandedFrames) {
-    for (const [cid, rect] of expandedFrames) framesOfNode.set(cid, new Set([rect.id]));
-  }
-  return { boxOf, framesOfNode };
+): (id: string) => EdgeBox | undefined {
+  return (id: string): EdgeBox | undefined => layoutNodes.get(id) ?? expandedFrames?.get(id);
 }
 
 /** Horizontal gap between the outermost frame/node edge and a routing gutter. */
@@ -105,19 +105,12 @@ interface Gutter {
  * members of the same boundary is exempt from that boundary's frame everywhere,
  * including the widened part, so running through an overlap is not a
  * penetration. A frame neither endpoint belongs to still blocks the whole of it.
+ *
+ * The set itself lives in `ObstacleIndex` (#2790), built once per routing chain
+ * and queried per segment, so this is only the per-edge lookup.
  */
-function obstaclesFor(
-  edge: LayoutEdge,
-  nodes: LayoutNode[],
-  frames: ContainerRect[],
-  framesOfNode: Map<string, Set<string>>,
-): Rect[] {
-  const fFrom = framesOfNode.get(edge.from);
-  const fTo = framesOfNode.get(edge.to);
-  return [
-    ...nodes.filter((n) => n.id !== edge.from && n.id !== edge.to),
-    ...frames.filter((f) => !fFrom?.has(f.id) && !fTo?.has(f.id)).flatMap((f) => framePieces(f)),
-  ];
+function obstaclesFor(edge: LayoutEdge, obstacles: ObstacleIndex): ObstacleQuery {
+  return obstacles.forEdge(edge.from, edge.to);
 }
 
 /** Right-side anchor point (mid-height) of a node. */
@@ -161,36 +154,17 @@ function contentBounds(
   return { minLeft, maxRight };
 }
 
-/**
- * The frame obstacles an edge must not cross, with the same per-endpoint
- * exemption `obstaclesFor` applies — but without the node cards, which the
- * interior channel-L pass (`edge-routing-channels.ts`) already collects itself.
- * Supplied to that pass so the first candidate in the shared chain cannot bend
- * an edge straight through a frame it does not belong to (#2362).
- *
- * Returns an empty set on an ungrouped canvas, which is exactly what makes the
- * shared chain degrade to the ADR-968 behaviour there.
- */
-export function frameObstaclesFor(
-  layoutNodes: Map<string, LayoutNode>,
-  frames: ContainerRect[],
-  expandedFrames?: Map<string, ContainerRect>,
-): (edge: LayoutEdge) => Rect[] {
-  if (frames.length === 0) return () => [];
-  const { framesOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
-  return (edge) => {
-    const fFrom = framesOfNode.get(edge.from);
-    const fTo = framesOfNode.get(edge.to);
-    return frames
-      .filter((f) => !fFrom?.has(f.id) && !fTo?.has(f.id))
-      .flatMap((f) => framePieces(f));
-  };
-}
-
 export function routeGroupedEdges(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
+  /**
+   * The canvas's obstacles, indexed once per routing chain (#2790). Required,
+   * not optional: every pass has to test against the same set, and one that
+   * built its own from a subset would be the TPL-1954 drift this parameter
+   * exists to prevent.
+   */
+  obstacleIndex: ObstacleIndex,
   /**
    * In-place-expanded container frames keyed by container id (#1923). Lets an
    * edge whose endpoint is an expanded service anchor on the frame border and
@@ -207,7 +181,7 @@ export function routeGroupedEdges(
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
-  const { boxOf, framesOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
+  const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
 
   // Content bounds → gutter x on each side, outside every frame and card.
   const { minLeft, maxRight } = contentBounds(nodes, frames);
@@ -292,14 +266,14 @@ export function routeGroupedEdges(
     // the edge needs rerouting; a clear backward edge is still dashed.
     if (markBackward && to.y + to.height <= from.y) edge.groupBackward = true;
 
-    const obstacles = obstaclesFor(edge, nodes, frames, framesOfNode);
+    const obstacles = obstaclesFor(edge, obstacleIndex);
 
     // Leave clear edges (adjacent, intra-band) exactly as the shared pipeline
     // placed them — keeps simple edges simple and snapshots minimal. Their
     // segment is claimed all the same: a straight drop from a card's bottom
     // port is a column like any other, and a corridor laid on it would draw
     // one line where the diagram means two.
-    if (!segmentCrossesAnyRect(edge.fromPoint, edge.toPoint, obstacles)) {
+    if (!obstacles.segmentCrosses(edge.fromPoint, edge.toPoint)) {
       claimed.add(claimedSegmentsOf([edge.fromPoint, edge.toPoint], from, to, bands));
       continue;
     }
@@ -536,7 +510,7 @@ interface MixedEnd {
 function mixedEnd(
   box: EdgeBox,
   gutter: Gutter,
-  obstacles: Rect[],
+  obstacles: ObstacleQuery,
   nodes: LayoutNode[],
   forward: boolean,
   isSource: boolean,
@@ -545,11 +519,7 @@ function mixedEnd(
 ): MixedEnd {
   const sideX = gutter.side === "right" ? box.x + box.width : box.x;
   const midY = box.y + box.height / 2;
-  const sideClear = !segmentCrossesAnyRect(
-    { x: sideX, y: midY },
-    { x: gutter.x, y: midY },
-    obstacles,
-  );
+  const sideClear = !obstacles.segmentCrosses({ x: sideX, y: midY }, { x: gutter.x, y: midY });
   if (sideClear) return { port: { x: sideX, y: midY }, elbows: [], cy: midY };
   // Blocked → detour this end through the adjacent inter-row channel.
   const outward = isSource ? forward : !forward; // does this end leave/enter downward?
@@ -587,7 +557,7 @@ function planMixedRoute(
   from: EdgeBox,
   to: EdgeBox,
   gutter: Gutter,
-  obstacles: Rect[],
+  obstacles: ObstacleQuery,
   nodes: LayoutNode[],
   claimed: ClaimRegister = createClaimRegister(),
   bands: readonly { top: number; bottom: number }[] = [],
@@ -608,7 +578,7 @@ function planMixedRoute(
     ...tgt.elbows,
     tgt.port,
   ];
-  return polylineClearOf(path, obstacles) ? path : null;
+  return obstacles.polylineClear(path) ? path : null;
 }
 
 /** Midpoint between two boxes' centres on the x axis — the yardstick for "nearest corridor". */
@@ -685,7 +655,7 @@ function tryCorridorRoute(
   from: EdgeBox,
   to: EdgeBox,
   corridorX: number,
-  obstacles: Rect[],
+  obstacles: ObstacleQuery,
   nodes: LayoutNode[],
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
@@ -744,7 +714,7 @@ function tryCorridorRoute(
   // one gap from opposite cards, are exactly the cases this arbitrates.
   const segments = claimedSegmentsOf(path, from, to, bands);
   if (segments.some((v) => claimed.conflicts(v))) return false;
-  if (!polylineClearOf(path, obstacles)) return false;
+  if (!obstacles.polylineClear(path)) return false;
 
   edge.fromPoint = path[0];
   edge.toPoint = path[path.length - 1];
@@ -767,7 +737,7 @@ function tryStaircaseRoute(
   edge: LayoutEdge,
   from: EdgeBox,
   to: EdgeBox,
-  obstacles: Rect[],
+  obstacles: ObstacleQuery,
   grid: RowGrid,
   claimed: ClaimRegister,
   bands: readonly { top: number; bottom: number }[],
@@ -840,7 +810,7 @@ function tryStaircaseRoute(
   );
   const segments = claimedSegmentsOf(cleaned, from, to, bands);
   if (segments.some((v) => claimed.conflicts(v))) return false;
-  if (!polylineClearOf(cleaned, obstacles)) return false;
+  if (!obstacles.polylineClear(cleaned)) return false;
   edge.fromPoint = cleaned[0];
   edge.toPoint = cleaned[cleaned.length - 1];
   edge.waypoints = cleaned.slice(1, -1);
@@ -1085,7 +1055,7 @@ function createClaimRegister(): ClaimRegister {
 function corridorEnd(
   box: EdgeBox,
   corridor: Gutter,
-  obstacles: Rect[],
+  obstacles: ObstacleQuery,
   nodes: LayoutNode[],
   forward: boolean,
   backward: boolean,
@@ -1095,11 +1065,7 @@ function corridorEnd(
 ): MixedEnd | null {
   const sideX = corridor.side === "right" ? box.x + box.width : box.x;
   const midY = box.y + box.height / 2;
-  const sideClear = !segmentCrossesAnyRect(
-    { x: sideX, y: midY },
-    { x: corridor.x, y: midY },
-    obstacles,
-  );
+  const sideClear = !obstacles.segmentCrosses({ x: sideX, y: midY }, { x: corridor.x, y: midY });
   if (sideClear) return { port: { x: sideX, y: midY }, elbows: [], cy: midY };
   if (!forward && !backward) return null;
   return mixedEnd(box, corridor, obstacles, nodes, forward, isSource, claimed, bands);
@@ -1115,7 +1081,7 @@ function planGutterRoute(
   from: EdgeBox,
   to: EdgeBox,
   gutter: Gutter,
-  obstacles: Rect[],
+  obstacles: ObstacleQuery,
 ): Point[] | null {
   const sourcePort: Point = {
     x: gutter.side === "right" ? from.x + from.width : from.x,
@@ -1128,7 +1094,7 @@ function planGutterRoute(
   const w0: Point = { x: gutter.x, y: sourcePort.y };
   const w1: Point = { x: gutter.x, y: targetPort.y };
   const path = [sourcePort, w0, w1, targetPort];
-  return polylineClearOf(path, obstacles) ? path : null;
+  return obstacles.polylineClear(path) ? path : null;
 }
 
 /**
@@ -1154,6 +1120,8 @@ export function aggregateGroupTrunks(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
   frames: ContainerRect[],
+  /** The chain's shared obstacle index (#2790). */
+  obstacleIndex: ObstacleIndex,
   expandedFrames?: Map<string, ContainerRect>,
 ): void {
   const nodes = [...layoutNodes.values()];
@@ -1161,7 +1129,7 @@ export function aggregateGroupTrunks(
 
   const { maxRight } = contentBounds(nodes, frames);
 
-  const { boxOf, framesOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
+  const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
 
   // Group the gutter-routed edges (set by routeGroupedEdges) by their target.
   const byTarget = new Map<string, LayoutEdge[]>();
@@ -1190,7 +1158,7 @@ export function aggregateGroupTrunks(
       const from = boxOf(e.from);
       if (!from) return false;
       const path = trunkPath(from, target, nominalX);
-      return polylineClearOf(path, obstaclesFor(e, nodes, frames, framesOfNode));
+      return obstaclesFor(e, obstacleIndex).polylineClear(path);
     });
     if (clear.length >= 2) eligible.push({ target, edges: clear });
   }
@@ -1395,13 +1363,14 @@ interface GutterAttach {
 export function fanOutGutterPorts(
   layoutNodes: Map<string, LayoutNode>,
   layoutEdges: LayoutEdge[],
-  frames: ContainerRect[],
+  /** The chain's shared obstacle index (#2790). */
+  obstacleIndex: ObstacleIndex,
   expandedFrames?: Map<string, ContainerRect>,
   ports?: PortResolver,
 ): void {
   const nodes = [...layoutNodes.values()];
   if (nodes.length === 0) return;
-  const { boxOf, framesOfNode } = resolveGroupBoxes(layoutNodes, frames, expandedFrames);
+  const boxOf = resolveGroupBoxes(layoutNodes, expandedFrames);
 
   // Collect attachments per (box, side). A box is a node card or an expanded
   // container frame (#1923), so several service-level edges leaving one frame on
@@ -1458,11 +1427,11 @@ export function fanOutGutterPorts(
   const occupancy = buildSegmentIndex(layoutEdges, bands);
 
   // Obstacle sets depend only on an edge's endpoints/frames, not on the fanned
-  // anchor, so compute each once and reuse across a node's attachments.
-  const obstacleCache = new Map<LayoutEdge, Rect[]>();
-  const obstaclesOf = (e: LayoutEdge): Rect[] => {
+  // anchor, so resolve each once and reuse across a node's attachments.
+  const obstacleCache = new Map<LayoutEdge, ObstacleQuery>();
+  const obstaclesOf = (e: LayoutEdge): ObstacleQuery => {
     let o = obstacleCache.get(e);
-    if (!o) obstacleCache.set(e, (o = obstaclesFor(e, nodes, frames, framesOfNode)));
+    if (!o) obstacleCache.set(e, (o = obstaclesFor(e, obstacleIndex)));
     return o;
   };
 
@@ -1544,7 +1513,7 @@ export function fanOutGutterPorts(
         );
         const clearOfCards = (moved: ReturnType<typeof restub>) =>
           moved.every((m) =>
-            polylineClearOf([m.fromPoint, ...m.waypoints, m.toPoint], obstaclesOf(m.e)),
+            obstaclesOf(m.e).polylineClear([m.fromPoint, ...m.waypoints, m.toPoint]),
           );
         // A stub must also not land *on* another edge's run: the routing
         // passes arbitrate the columns between themselves, and a fan that
@@ -1807,49 +1776,4 @@ function bendKey(pts: readonly Point[], side: NodeSide): number {
   }
   const last = pts[pts.length - 1];
   return varyY ? last.y : last.x;
-}
-
-/**
- * Map each node id to the ids of the group frames that enclose it.
- *
- * A **set**, not one id: since #2179 a boundary frame can be widened to reach a
- * member placed in another band, so a shared card genuinely sits inside two
- * frames at once. The old "frames are disjoint by construction, so stop at the
- * first match" would have picked whichever came first in the container list and
- * then treated the other frame as an obstacle for that card's own edges.
- *
- * Containment is tested against {@link framePieces} — the rects the frame really
- * covers — so a card that merely falls inside an L-shaped frame's bounding box
- * is not counted as enclosed.
- */
-function buildFramesOfNode(
-  layoutNodes: Map<string, LayoutNode>,
-  frames: ContainerRect[],
-): Map<string, Set<string>> {
-  const out = new Map<string, Set<string>>();
-  for (const n of layoutNodes.values()) {
-    const ids = new Set<string>();
-    for (const f of frames) {
-      const inside = framePieces(f).some(
-        (p) =>
-          n.x >= p.x &&
-          n.x + n.width <= p.x + p.width &&
-          n.y >= p.y &&
-          n.y + n.height <= p.y + p.height,
-      );
-      if (inside) ids.add(f.id);
-    }
-    out.set(n.id, ids);
-  }
-  return out;
-}
-
-/**
- * The rects a frame occupies: its `coverage` when it was widened (#2179), else
- * the recorded rect. Routing must use these — an L-shaped frame's bounding box
- * spans rows it does not enclose, and treating that box as an obstacle would
- * push edges around empty space.
- */
-export function framePieces(frame: ContainerRect): readonly Rect[] {
-  return frame.coverage ?? [frame];
 }
