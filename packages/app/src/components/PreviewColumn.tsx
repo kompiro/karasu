@@ -55,8 +55,8 @@ export function PreviewColumn() {
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
-    currentFilePath = null,
-    projectRoot = null,
+    currentFilePath,
+    displayRoot,
   } = usePreview();
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
@@ -349,10 +349,14 @@ export function PreviewColumn() {
           styleTargetPath={view.styleTargetPath}
           onPickEdgeDirection={view.onPickEdgeDirection}
           currentFilePath={currentFilePath}
-          projectRoot={projectRoot}
+          displayRoot={displayRoot}
         />
       )}
-      <WarningPanel warnings={view.warnings} />
+      <WarningPanel
+        warnings={view.warnings}
+        currentFilePath={currentFilePath}
+        displayRoot={displayRoot}
+      />
       <ShareDialog {...shareDialogProps} />
     </div>
   );

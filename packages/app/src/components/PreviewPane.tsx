@@ -11,7 +11,7 @@ import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
-import { diagnosticLocationLabel } from "../utils/diagnostic-location.js";
+import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -58,11 +58,12 @@ interface PreviewPaneProps {
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
   /**
-   * The open document and its project, so the diagnostic banner can tell a
-   * position in the open document from one in an imported file (#2715).
+   * The open document and the directory other files are shown relative to, so
+   * the diagnostic banner can tell a position in the open document from one in
+   * an imported file (#2715). Omitted, positions read as the open document's.
    */
   currentFilePath?: string | null;
-  projectRoot?: string | null;
+  displayRoot?: string | null;
 }
 
 interface EdgeContextMenuState {
@@ -104,7 +105,7 @@ export function PreviewPane({
   styleTargetPath,
   onPickEdgeDirection,
   currentFilePath = null,
-  projectRoot = null,
+  displayRoot = null,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -153,6 +154,14 @@ export function PreviewPane({
     (d) => d.severity === "error" || d.severity === "warning" || d.severity === "info",
   );
   const hasErrors = diagnostics.some((d) => d.severity === "error");
+  const diagnosticMessages = visibleDiagnostics.map((d) => formatDiagnostic(d));
+  const diagnosticKeys = findingKeys(visibleDiagnostics, diagnosticMessages);
+  const diagnosticBannerItems = visibleDiagnostics.map((d, i) => ({
+    d,
+    message: diagnosticMessages[i],
+    location: diagnosticLocationLabel(d.loc, { currentFilePath, displayRoot }),
+    key: diagnosticKeys[i],
+  }));
 
   // Attach the zoom handler as a native, non-passive wheel listener. React's
   // synthetic onWheel is registered passively (React 17+), so a preventDefault
@@ -540,18 +549,14 @@ export function PreviewPane({
       )}
       {visibleDiagnostics.length > 0 && (
         <div className="diagnostic-banner">
-          {visibleDiagnostics.map((d) => {
-            const message = formatDiagnostic(d);
-            const location = diagnosticLocationLabel(d.loc, { currentFilePath, projectRoot });
-            return (
-              <div
-                key={location ? `${location}:${message}` : message}
-                className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
-              >
-                {location ? `${location}: ${message}` : message}
-              </div>
-            );
-          })}
+          {diagnosticBannerItems.map(({ d, message, location, key }) => (
+            <div
+              key={key}
+              className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
+            >
+              {location ? `${location}: ${message}` : message}
+            </div>
+          ))}
         </div>
       )}
     </div>

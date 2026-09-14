@@ -302,3 +302,54 @@ describe("WarningPanel — localization (Phase D.1)", () => {
     expect(jaContainer.textContent).toContain("runtime が指定されていません");
   });
 });
+
+// #2715: a warning decided on the merged model can sit in an imported file.
+describe("WarningPanel location", () => {
+  const located = (line: number, file: string): Warning => ({
+    ...makeWarning("domain-dispersal"),
+    loc: { start: { line, column: 3, offset: 0 }, end: { line, column: 3, offset: 0 }, file },
+  });
+
+  it("keeps `Line N` for a warning in the open document", () => {
+    const { container } = render(
+      <WarningPanel
+        warnings={[located(12, "/projects/shop/index.krs")]}
+        currentFilePath="/projects/shop/index.krs"
+        displayRoot="/projects/shop"
+      />,
+    );
+
+    expect(container.querySelector(".warning-item")?.textContent).toContain("Line 12: ");
+  });
+
+  it("names the file for a warning in another one", () => {
+    const { container } = render(
+      <WarningPanel
+        warnings={[located(12, "/projects/shop/slices/legacy.krs")]}
+        currentFilePath="/projects/shop/index.krs"
+        displayRoot="/projects/shop"
+      />,
+    );
+
+    const text = container.querySelector(".warning-item")?.textContent ?? "";
+    expect(text).toContain("slices/legacy.krs:12: ");
+    expect(text).not.toContain("Line 12");
+  });
+
+  // Same kind, same message, same offset, two files: the old offset key
+  // collided, and the location is what tells a reader which is which.
+  it("lists same-offset warnings from two files as two items", () => {
+    const { container } = render(
+      <WarningPanel
+        warnings={[located(3, "/projects/shop/a.krs"), located(3, "/projects/shop/b.krs")]}
+        currentFilePath="/projects/shop/index.krs"
+        displayRoot="/projects/shop"
+      />,
+    );
+
+    const items = [...container.querySelectorAll(".warning-item")].map((el) => el.textContent);
+    expect(items).toHaveLength(2);
+    expect(items[0]).toContain("a.krs:3: ");
+    expect(items[1]).toContain("b.krs:3: ");
+  });
+});

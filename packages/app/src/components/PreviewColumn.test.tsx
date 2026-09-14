@@ -114,6 +114,8 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
     orgTreeSvg: undefined,
     onTeamToggle: vi.fn<() => void>(),
     orgTreeExportSvg: undefined,
+    currentFilePath: null,
+    displayRoot: null,
     ...overrides,
   };
 }

@@ -453,7 +453,7 @@ describe("PreviewPane", () => {
           {...baseProps()}
           diagnostics={[located(4, "/projects/shop/index.krs")]}
           currentFilePath="/projects/shop/index.krs"
-          projectRoot="/projects/shop"
+          displayRoot="/projects/shop"
         />,
       );
 
@@ -466,7 +466,7 @@ describe("PreviewPane", () => {
           {...baseProps()}
           diagnostics={[located(12, "/projects/shop/slices/legacy.krs")]}
           currentFilePath="/projects/shop/index.krs"
-          projectRoot="/projects/shop"
+          displayRoot="/projects/shop"
         />,
       );
 
@@ -484,7 +484,7 @@ describe("PreviewPane", () => {
           {...baseProps()}
           diagnostics={[located(3, "/projects/shop/a.krs"), located(3, "/projects/shop/b.krs")]}
           currentFilePath="/projects/shop/index.krs"
-          projectRoot="/projects/shop"
+          displayRoot="/projects/shop"
         />,
       );
 

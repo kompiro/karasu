@@ -78,6 +78,8 @@ function makeCtx(activeView: ActiveView): PreviewContextValue {
     hasEntityView: false,
     styleTargetPath: "/theme.krs.style",
     onPickEdgeDirection: noop,
+    currentFilePath: null,
+    displayRoot: null,
   };
 }
 
