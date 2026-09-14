@@ -110,6 +110,13 @@ const opensBlockScalar = (value: string): boolean => /^[|>][-+0-9]*$/.test(value
  * step entries at 6, step keys at 8), so a line scan is enough and keeps this
  * guard dependency-free, matching `workflow-runner-policy.test.ts`.
  *
+ * The contract is block-style YAML at those indentations — the only style the
+ * workflows here are written in. Within it, spelling variants that YAML treats
+ * as equivalent (trailing comments, quoted names, whitespace before a colon,
+ * key order) must parse the same. Flow-style mappings, anchors and other
+ * indentations are outside the contract: they are not parsed, and the job and
+ * step lookups below then fail loudly rather than pass on a misread.
+ *
  * Two shapes this has to get right, both covered by the `parseJobs` tests
  * below: a step entry is collected even when its first key opens a block scalar
  * (`- run: |`), so a later 8-space key cannot land on the previous step; and
@@ -134,7 +141,7 @@ function parseJobs(text: string, file: string): Job[] {
 
     // A mapping key may carry a trailing comment (`jobs: # …`, `  e2e: # …`);
     // missing one would put a job's budget and steps on the job above it.
-    if (/^jobs:(?:\s+#.*)?\s*$/.test(line)) {
+    if (/^jobs\s*:(?:\s+#.*)?\s*$/.test(line)) {
       inJobs = true;
       continue;
     }
@@ -144,7 +151,7 @@ function parseJobs(text: string, file: string): Job[] {
       continue;
     }
 
-    const jobId = /^ {2}([A-Za-z0-9_-]+):(?:\s+#.*)?\s*$/.exec(line);
+    const jobId = /^ {2}([A-Za-z0-9_-]+)\s*:(?:\s+#.*)?\s*$/.exec(line);
     if (jobId) {
       currentJob = { key: `${file}#${jobId[1]}`, timeoutMinutes: null, steps: [] };
       currentStep = null;
@@ -158,7 +165,7 @@ function parseJobs(text: string, file: string): Job[] {
     if (/^ {6}- /.test(line)) {
       currentStep = { name: null, timeoutMinutes: null };
       currentJob.steps.push(currentStep);
-      const keyed = /^ {6}- ([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line);
+      const keyed = /^ {6}- ([A-Za-z0-9_.-]+)\s*:\s*(.*)$/.exec(line);
       if (keyed) {
         const [, key, raw] = keyed;
         const value = stripInlineComment(raw);
@@ -169,7 +176,7 @@ function parseJobs(text: string, file: string): Job[] {
       continue;
     }
 
-    const jobKey = /^ {4}([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line);
+    const jobKey = /^ {4}([A-Za-z0-9_.-]+)\s*:\s*(.*)$/.exec(line);
     if (jobKey) {
       const [, key, raw] = jobKey;
       const value = stripInlineComment(raw);
@@ -181,7 +188,7 @@ function parseJobs(text: string, file: string): Job[] {
     }
     if (currentStep === null) continue;
 
-    const stepKey = /^ {8}([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line);
+    const stepKey = /^ {8}([A-Za-z0-9_.-]+)\s*:\s*(.*)$/.exec(line);
     if (stepKey) {
       const [, key, raw] = stepKey;
       const value = stripInlineComment(raw);
@@ -381,6 +388,21 @@ describe("parseJobs", () => {
       ["f.yml#first", 35, 1],
       ["f.yml#second", 5, 1],
     ]);
+  });
+
+  it("reads mapping keys written with whitespace before the colon", () => {
+    const jobs = parseJobs(
+      `jobs :
+  e2e :
+    timeout-minutes : 35
+    steps:
+      - name : Run E2E tests
+        timeout-minutes : 15
+`,
+      "f.yml",
+    );
+    expect(jobs.map((job) => [job.key, job.timeoutMinutes])).toEqual([["f.yml#e2e", 35]]);
+    expect(jobs[0].steps).toEqual([{ name: "Run E2E tests", timeoutMinutes: 15 }]);
   });
 
   it("separates jobs and reads each job's own budget", () => {
