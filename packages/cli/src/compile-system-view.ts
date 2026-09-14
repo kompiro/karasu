@@ -11,11 +11,11 @@ import { formatDiagnostic } from "./i18n.js";
 import { NodeFileSystemProvider } from "./node-fs.js";
 
 /**
- * Format a diagnostic's source location for CLI stderr output:
- * `<file>:<line>:<column>` when the diagnostic carries a `loc`, otherwise just
- * `filePath`. Shared by every command that prints `Diagnostic[]` to stderr
- * (matrix / coverage / subtree via {@link compileSystemViewOrExit}, and render
- * directly).
+ * A formatter for diagnostic source locations in CLI stderr output, for one
+ * report against the entry `filePath`: `<file>:<line>:<column>` when the
+ * diagnostic carries a `loc`, otherwise just `filePath`. Shared by every command
+ * that prints `Diagnostic[]` to stderr (matrix / coverage / subtree via
+ * {@link compileSystemViewOrExit}, and render directly).
  *
  * `<file>` is the document the position indexes into (#2715). A project spans
  * files, and a diagnostic from an imported file, or one decided on the merged
@@ -32,19 +32,35 @@ import { NodeFileSystemProvider } from "./node-fs.js";
  *
  * Core positions are already 1-based (`packages/lsp/src/lsp-position.ts`), so
  * they print as they are. Adding 1 here once made a 4-line file report line 5.
+ *
+ * The entry's canonical path is resolved once per formatter, and each other
+ * file's once, rather than twice per diagnostic. Create one per printed list;
+ * the cache lives only as long as that report, so a later run never reads a
+ * stale answer.
  */
-export function formatDiagLoc(filePath: string, d: Diagnostic): string {
-  if (!d.loc) return filePath;
-  const file =
-    d.loc.file === undefined || canonicalPath(d.loc.file) === canonicalPath(filePath)
-      ? filePath
-      : relative(process.cwd(), d.loc.file);
-  return `${file}:${d.loc.start.line}:${d.loc.start.column}`;
+export function diagLocFormatter(filePath: string): (d: Diagnostic) => string {
+  const canonical = new Map<string, string>();
+  const canonicalOf = (path: string): string => {
+    let hit = canonical.get(path);
+    if (hit === undefined) {
+      hit = canonicalPath(path);
+      canonical.set(path, hit);
+    }
+    return hit;
+  };
+  return (d) => {
+    if (!d.loc) return filePath;
+    const file =
+      d.loc.file === undefined || canonicalOf(d.loc.file) === canonicalOf(filePath)
+        ? filePath
+        : relative(process.cwd(), d.loc.file);
+    return `${file}:${d.loc.start.line}:${d.loc.start.column}`;
+  };
 }
 
 /**
  * One spelling per file, so `./index.krs`, its absolute form and a symlink to it
- * compare equal. Synchronous because {@link formatDiagLoc} returns a string its
+ * compare equal. Synchronous because {@link diagLocFormatter} returns strings its
  * callers hand straight to `process.stderr.write`. Falls back to lexical
  * resolution when the path cannot be stat'ed (it was deleted mid-run, say),
  * which still folds the relative and absolute spellings together.
@@ -125,8 +141,9 @@ export async function compileSystemViewOrExit(
  */
 function reportErrorsOrExit(diagnostics: readonly Diagnostic[], filePath: string): boolean {
   const errors = diagnostics.filter((d) => d.severity === "error");
+  const locOf = diagLocFormatter(filePath);
   for (const d of errors) {
-    process.stderr.write(`Error: ${formatDiagLoc(filePath, d)}: ${formatDiagnostic(d)}\n`);
+    process.stderr.write(`Error: ${locOf(d)}: ${formatDiagnostic(d)}\n`);
   }
   if (errors.length > 0) {
     process.exit(1);

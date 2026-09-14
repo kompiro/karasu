@@ -3,14 +3,14 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Diagnostic } from "@karasu-tools/core";
-import { formatDiagLoc } from "./compile-system-view.js";
+import { diagLocFormatter } from "./compile-system-view.js";
 
 /**
- * `formatDiagLoc` decides which document a printed position names (#2715,
+ * `diagLocFormatter` decides which document a printed position names (#2715,
  * TPL-2715). The end-to-end form, over a real multi-file project, lives in
  * `render.e2e.test.ts`; these pin each branch of the display rule.
  */
-describe("formatDiagLoc", () => {
+describe("diagLocFormatter", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -20,6 +20,8 @@ describe("formatDiagLoc", () => {
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
+
+  const formatDiagLoc = (filePath: string, d: Diagnostic) => diagLocFormatter(filePath)(d);
 
   const at = (line: number, column: number, file?: string): Diagnostic => ({
     severity: "error",
@@ -66,6 +68,25 @@ describe("formatDiagLoc", () => {
     expect(formatDiagLoc("./not-on-disk/index.krs", at(1, 1, absolute))).toBe(
       "./not-on-disk/index.krs:1:1",
     );
+  });
+
+  // One formatter serves a whole report and caches canonical paths; the cache
+  // must not blur the entry and another file together.
+  it("keeps the entry and other files apart across one report", () => {
+    const locOf = diagLocFormatter("index.krs");
+    const imported = join(process.cwd(), "slices", "legacy.krs");
+
+    expect([
+      locOf(at(1, 1, join(process.cwd(), "index.krs"))),
+      locOf(at(12, 3, imported)),
+      locOf(at(2, 1)),
+      locOf(at(13, 3, imported)),
+    ]).toEqual([
+      "index.krs:1:1",
+      `${join("slices", "legacy.krs")}:12:3`,
+      "index.krs:2:1",
+      `${join("slices", "legacy.krs")}:13:3`,
+    ]);
   });
 
   it("names any other file relative to the working directory", () => {
