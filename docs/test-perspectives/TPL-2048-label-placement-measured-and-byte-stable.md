@@ -57,7 +57,7 @@ scope:
 
 エッジラベル（ノード外テキスト）の自動配置・衝突回避を実装/変更する PR で確認する:
 
-- [ ] label↔node 貫通数・label↔label オーバーラップ数・label↔line 貫通数を**数値で測るヘルパー**（`countLabelPenetrations` / `countLabelOverlaps` / `countLabelLinePenetrations`）を用意し、本体と test が**同じ箱推定**と**同じ strict-interior 線分判定**（`segmentCrossesAnyRect`）を共有する。
+- [ ] label↔node 貫通数・label↔label オーバーラップ数・label↔line 貫通数を**数値で測るヘルパー**（`countLabelPenetrations` / `countLabelOverlaps` / `countLabelLinePenetrations`）を用意し、本体と test が**同じ箱推定**と**同じ strict-interior 線分判定**（`segmentCrossesRect`）を共有する。
 - [ ] 衝突する合成 fixture で pass 後に該当計測が **0（または削減）** になることを assert した。
 - [ ] **自分のエッジの線の上に居るだけのラベルは動かない**（override が空）ことを assert した。
 - [ ] 実サンプルの柵で **3 軸すべてを同時に 0** と assert した（1 つの読めなさを別の読めなさと交換していないことの担保）。

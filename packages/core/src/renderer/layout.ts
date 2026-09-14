@@ -10,7 +10,8 @@ import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js"
 import { placeNodesInLayers } from "./layer-layout-logics.js";
 import { searchWidthBudget } from "./aspect-search.js";
 import { collectChannels, LANE_PITCH } from "./edge-routing-lanes.js";
-import { framePieces, TRUNK_LANE_GAP } from "./edge-routing-groups.js";
+import { TRUNK_LANE_GAP } from "./edge-routing-groups.js";
+import { framePieces } from "./frame-geometry.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
 import {
   CONTAINER_PADDING,

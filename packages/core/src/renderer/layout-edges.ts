@@ -12,9 +12,9 @@ import {
   aggregateGroupTrunks,
   distributeGutterLanes,
   fanOutGutterPorts,
-  frameObstaclesFor,
-  framePieces,
 } from "./edge-routing-groups.js";
+import { framePieces } from "./frame-geometry.js";
+import { ObstacleIndex, type ObstacleQuery } from "./obstacle-index.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { BBOX_PORT_FRAME, seatPortsOnOutline, type PortResolver } from "./port-frame.js";
@@ -400,6 +400,22 @@ export function runRoutingChain(
 ): void {
   const { expandedFrames, ports } = opts;
   const grouped = opts.groupBands !== null;
+  // Index the canvas's obstacles once for the whole chain (#2790).
+  //
+  // Every pass below asks the same question, "does this candidate cross a card
+  // that is not one of my endpoints, or a frame that encloses neither?", and
+  // used to answer it by rebuilding that set as an array per edge and walking
+  // it per segment. Nodes and frames do not move while the chain runs, so one
+  // index serves all five passes, including the frame-membership map the
+  // per-endpoint exemption is keyed on; `layout()` calls the chain again for
+  // each placement it tries, and each of those builds its own index.
+  //
+  // Built from the whole canvas, never from the subset a particular candidate
+  // would touch: the obstacle set an edge is tested against must not depend on
+  // which route shape is being tried (TPL-1954).
+  const obstacleIndex = ObstacleIndex.build([...nodes.values()], groupFrames, expandedFrames);
+  const obstaclesFor = (edge: LayoutEdge): ObstacleQuery =>
+    obstacleIndex.forEdge(edge.from, edge.to);
   // Distribute ports across each node side that hosts ≥ 2 edges, so labels
   // separate horizontally / vertically instead of stacking, and put every
   // port on the shape's drawn outline rather than its bounding box (#2422).
@@ -408,11 +424,11 @@ export function runRoutingChain(
   distributePorts(nodes, edges, ports);
   // Candidate 1: interior channel-L. Frames become obstacles (per-endpoint
   // exemption) so the near route cannot be bent through a frame it is not in.
-  routeOrthogonalEdges(nodes, edges, frameObstaclesFor(nodes, groupFrames, expandedFrames));
+  routeOrthogonalEdges(nodes, edges, obstaclesFor);
   // Candidate 2: side gutter, then mixed channel, for whatever is still
   // blocked. `groupBackward` dashing stays band-gated — "against the flow" is
   // only defined where there is a band stack.
-  routeGroupedEdges(nodes, edges, groupFrames, expandedFrames, grouped);
+  routeGroupedEdges(nodes, edges, groupFrames, obstacleIndex, expandedFrames, grouped);
   // Merge edges sharing an infra/external target onto one trunk lane per
   // target so distinct targets' spines no longer overlap (#1859 P2c-B).
   // Grouped only: trunk lanes live in the right gutter, so on an ungrouped
@@ -420,7 +436,7 @@ export function runRoutingChain(
   // interior corridors (#2365) those edges would otherwise take. Measured and
   // rejected in #2364.
   if (grouped) {
-    aggregateGroupTrunks(nodes, edges, groupFrames, expandedFrames);
+    aggregateGroupTrunks(nodes, edges, groupFrames, obstacleIndex, expandedFrames);
   }
   // Give the remaining non-trunked gutter corridors distinct lanes so two
   // single-incoming edges no longer share a collinear vertical segment
@@ -429,7 +445,7 @@ export function runRoutingChain(
   // shape the chain can produce takes part in the overlap passes (TPL-1954)
   // in both modes.
   distributeGutterLanes(nodes, edges, groupFrames);
-  fanOutGutterPorts(nodes, edges, groupFrames, expandedFrames, ports);
+  fanOutGutterPorts(nodes, edges, obstacleIndex, expandedFrames, ports);
   // Stagger the horizontal runs that share an inter-row channel across
   // distinct lanes at a fixed pitch (#2608). Keyed on the channel rather than
   // on the route shape, so every route's runs take part (TPL-1954); the room
@@ -443,12 +459,9 @@ export function runRoutingChain(
   // made — moving inward always, and along the side only when the polyline
   // stays clear.
   if (ports) {
-    const frameObstacles = frameObstaclesFor(nodes, groupFrames, expandedFrames);
-    seatPortsOnOutline(nodes, edges, ports, (edge) => [
-      // The same obstacle set the chain checks against: every card but the
-      // two this edge terminates on, plus the frames it does not belong to.
-      ...[...nodes.values()].filter((n) => n.id !== edge.from && n.id !== edge.to),
-      ...frameObstacles(edge),
-    ]);
+    // The same obstacle set the chain checks against: every card but the two
+    // this edge terminates on, plus the frames it does not belong to, which is
+    // exactly what the shared index answers.
+    seatPortsOnOutline(nodes, edges, ports, obstaclesFor);
   }
 }

@@ -158,6 +158,8 @@ flowchart TD
     ADR_2716["ADR-2716<br/>CodeRabbit のレビューを request changes workflow に移す"]
     ADR_2753["ADR-2753<br/>Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む"]
     ADR_2773["ADR-2773<br/>Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届..."]
+    ADR_2805["ADR-2805<br/>テスト suite の timeout はテストステップに置き、job 予算は setup を..."]
+    ADR_2813["ADR-2813<br/>Dependabot security alert 2026-09-12（`js-yaml` ..."]
     ADR_9001["ADR-9001<br/>モノレポ構成の採用"]
     ADR_9020["ADR-9020<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
@@ -351,6 +353,7 @@ flowchart TD
     ADR_2521["ADR-2521<br/>multi-system ルートビューは single-system パイプラインの計算に合わせる"]
     ADR_2593["ADR-2593<br/>キャンバスの空き空間を目的関数にして行幅予算を選ぶ"]
     ADR_2598["ADR-2598<br/>層間チャネルに容量を持たせ、配線の需要を配置へ返す"]
+    ADR_2714["ADR-2714<br/>deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の i..."]
     ADR_9005["ADR-9005<br/>SVGアイコンファイルの外部インポート方式"]
     ADR_9007["ADR-9007<br/>インタラクティブ SVG レンダリングと NodeDetailPanel"]
     ADR_9015["ADR-9015<br/>全ビュー統合バンドル SVG（buildAllViewsSvg）"]
@@ -916,9 +919,12 @@ flowchart TD
   class ADR_2671 accepted
   class ADR_2687 accepted
   class ADR_2693 accepted
+  class ADR_2714 accepted
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2773 accepted
+  class ADR_2805 accepted
+  class ADR_2813 accepted
   class ADR_9001 accepted
   class ADR_9002 accepted
   class ADR_9003 accepted

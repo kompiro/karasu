@@ -159,6 +159,8 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2716](2716-coderabbit-request-changes-workflow.md) — CodeRabbit のレビューを request changes workflow に移す
 - [ADR-2753](2753-dependabot-triage-2026-09-07.md) — Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む
 - [ADR-2773](2773-dependabot-triage-2026-09-08.md) — Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届かない所にある 2 件
+- [ADR-2805](2805-suite-timeout-bounds-the-test-step.md) — テスト suite の timeout はテストステップに置き、job 予算は setup を吸収する側に回す
+- [ADR-2813](2813-dependabot-security-2026-09-12.md) — Dependabot security alert 2026-09-12（`js-yaml` の floor が 2 度続けて脆弱範囲の内側だった。同じ key での再発は「その時点の patched 版」を書く運用の帰結である）
 - [ADR-9001](9001-monorepo.md) — モノレポ構成の採用
 - [ADR-9020](9020-npm-trusted-publishing-oidc.md) — npm publish を Trusted Publishing（GitHub OIDC）に移行し `NPM_TOKEN` を廃止する
 
@@ -355,6 +357,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-2521](2521-multi-system-pipeline-convergence.md) — multi-system ルートビューは single-system パイプラインの計算に合わせる
 - [ADR-2593](2593-canvas-space-objective.md) — キャンバスの空き空間を目的関数にして行幅予算を選ぶ
 - [ADR-2598](2598-edge-routing-channel-capacity.md) — 層間チャネルに容量を持たせ、配線の需要を配置へ返す
+- [ADR-2714](2714-deploy-container-id-injective.md) — deploy コンテナの id を injective に畳み、ノードとの突き合わせは別の id で行う
 - [ADR-9005](9005-svg-icon-file-import.md) — SVGアイコンファイルの外部インポート方式
 - [ADR-9007](9007-interactive-svg-rendering.md) — インタラクティブ SVG レンダリングと NodeDetailPanel
 - [ADR-9015](9015-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG（buildAllViewsSvg）

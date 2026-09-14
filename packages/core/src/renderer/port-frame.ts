@@ -14,7 +14,7 @@
 // and the spacing, this decides what the resulting fraction means in space.
 
 import type { LayoutEdge, LayoutNode, Rect } from "./layout-types.js";
-import { polylineClearOf } from "./edge-geometry.js";
+import type { ObstacleQuery } from "./obstacle-index.js";
 import type { ShapePortFrame, ShapePortSide } from "../shapes/shape-registry.js";
 
 export type Side = "top" | "bottom" | "left" | "right";
@@ -228,7 +228,7 @@ export function seatPortsOnOutline(
   nodes: Map<string, LayoutNode>,
   edges: LayoutEdge[],
   resolve: PortResolver,
-  obstaclesFor: (edge: LayoutEdge) => Rect[],
+  obstaclesFor: (edge: LayoutEdge) => ObstacleQuery,
 ): void {
   for (const edge of edges) {
     if (edge.ghost || edge.cyclic) continue;
@@ -243,7 +243,7 @@ function seatEndpoint(
   isFrom: boolean,
   nodes: Map<string, LayoutNode>,
   resolve: PortResolver,
-  obstacles: readonly Rect[],
+  obstacles: ObstacleQuery,
 ): void {
   const node = nodes.get(isFrom ? edge.from : edge.to);
   if (!node) return;
@@ -304,7 +304,7 @@ function planSlide(
   along: number,
   target: number,
   length: number,
-  obstacles: readonly Rect[],
+  obstacles: ObstacleQuery,
   allowTilt: boolean,
 ): { target: number; apply: () => void } | null {
   const delta = (target - along) * length;
@@ -325,7 +325,7 @@ function planSlide(
     // that looks, it still has to clear what it crosses.
     const other = isFrom ? edge.toPoint : edge.fromPoint;
     const path = isFrom ? [movedPoint, other] : [other, movedPoint];
-    if (!polylineClearOf(path, obstacles as Rect[])) return null;
+    if (!obstacles.polylineClear(path)) return null;
     return {
       target,
       apply: () => {
@@ -343,7 +343,7 @@ function planSlide(
   const path = isFrom
     ? [movedPoint, movedNeighbour, ...rest.slice(1), edge.toPoint]
     : [edge.fromPoint, ...rest.slice(0, -1), movedNeighbour, movedPoint];
-  if (!polylineClearOf(path, obstacles as Rect[])) return null;
+  if (!obstacles.polylineClear(path)) return null;
 
   return {
     target,

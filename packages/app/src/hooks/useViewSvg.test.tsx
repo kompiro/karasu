@@ -68,24 +68,31 @@ describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
     expect(iconResult.current.allLayersSvg).not.toBe(shapeResult.current.allLayersSvg);
   });
 
-  it("emits the icon-mode card frame in All Layers SVG (extra <rect> before the shape body)", () => {
-    // In icon mode, svg-renderer prepends a card-frame `<rect>` before
-    // the shape's own rect (see `packages/core/src/renderer/svg-renderer.ts`
-    // around the `displayMode === "icon" && isIconShape` branch). For a
-    // default service node (no custom icon registered) this surfaces as
-    // two consecutive identical `<rect>` elements inside the node group —
-    // a marker that does not appear in shape mode.
+  it("draws the fixed icon card in All Layers SVG, and a measured card in shape mode", () => {
+    // Icon mode sizes every card to the fixed icon card (160×56 without a
+    // description); shape mode measures the card from its text. Reading the
+    // card back from the emitted SVG keeps the marker on what is drawn
+    // (TPL-2385). The card frame itself no longer tells the modes apart —
+    // since #2696 a `url()` icon paints its declared frame in both.
     const { result: icon } = renderHook(() => useViewSvgOpen(SOURCE, "icon"));
     const { result: shape } = renderHook(() => useViewSvgOpen(SOURCE, "shape"));
 
-    const iconSvg = icon.current.allLayersSvg!;
-    const shapeSvg = shape.current.allLayersSvg!;
+    // Scoped to the node's own group so the marker cannot drift onto a badge
+    // or the next node's card if `service` ever stops being drawn as a rect.
+    const cardOf = (svg: string): { width: number; height: number } => {
+      const start = svg.indexOf('data-node-id="Frontend"');
+      expect(start).toBeGreaterThan(-1);
+      const rest = svg.slice(start);
+      const next = rest.indexOf("data-node-id=", 1);
+      const group = next === -1 ? rest : rest.slice(0, next);
+      const rect = /<rect\s[^>]*\bwidth="([\d.]+)"[^>]*\bheight="([\d.]+)"/.exec(group);
+      expect(rect).not.toBeNull();
+      return { width: Number(rect![1]), height: Number(rect![2]) };
+    };
 
-    // Count <rect> occurrences inside the .nodes group. The structural
-    // diff between modes is a single extra rect per icon-shape node.
-    const iconRects = (iconSvg.match(/<rect /g) ?? []).length;
-    const shapeRects = (shapeSvg.match(/<rect /g) ?? []).length;
-    expect(iconRects).toBeGreaterThan(shapeRects);
+    const iconCard = cardOf(icon.current.allLayersSvg!);
+    expect(iconCard).toEqual({ width: 160, height: 56 });
+    expect(cardOf(shape.current.allLayersSvg!)).not.toEqual(iconCard);
   });
 
   it("reactively re-renders All Layers SVG when displayMode flips", () => {

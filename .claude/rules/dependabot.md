@@ -3,6 +3,8 @@ paths:
   - ".github/dependabot.yml"
   - "docs/adr/*dependabot*.md"
   - "docs/adr/*update-dependencies*.md"
+  - ".github/workflows/*.lock.yml"
+  - ".github/aw/actions-lock.json"
 ---
 
 # Dependabot Operational Rules
@@ -171,3 +173,42 @@ PR を close → 人間 PR で再提出 など）を行った場合は、その�
 所見は判定ではない。workflow は宣言上マージも close もできない
 （`scripts/ci/agentic-workflow-safety.test.ts`）。採用 / 保留 / 却下は本ファイルの
 判定語彙に従って人が決める。
+
+## gh-aw の `.lock.yml` は bot PR ではなく再生成で上げる
+
+`github/gh-aw-actions/setup` を bump する Dependabot PR は **却下**し、
+`gh aw compile` による再生成 PR で入れる。`.lock.yml` は生成物であり、Dependabot は
+`uses:` 行だけを書き換えて同じファイル内の `gh-aw-manifest` / `gh-aw-metadata` と
+`.github/aw/actions-lock.json` を据え置くため、生成物とコンパイラのバージョンが
+食い違ったままマージされる（`ADR-2753`、再生成は `#2762`）。
+
+到達状態は「3 つの版が揃い、再コンパイルしても差分が出ない」こと。版が揃ったかの
+判定は目視ではなく `scripts/ci/gh-aw-lock-consistency.test.ts` で行う（`uses:` の
+sha / 版コメント / `compiler_version` を `actions-lock.json` と突き合わせて不一致で
+落ちる。`pnpm test` 経由で CI も回す）。
+
+```bash
+# 入れる版を決めて固定する。gh aw version が返す文字列が PR に書く版になる
+gh extension install github/gh-aw --force --pin <version>   # 例: v0.88.7
+gh aw version
+
+# 2 回コンパイルし、2 回目で差分が出ないことを確認する
+gh aw compile
+git add .github                   # 1 回目の出力を index に固定する
+gh aw compile
+git diff --quiet -- .github && echo "idempotent" || echo "NOT idempotent: 2 回目で差分"
+
+# 3 つの版が揃っていること / 宣言された write scope が広がっていないこと
+npx vitest run --config scripts/vitest.config.ts ci/gh-aw-lock-consistency.test.ts ci/agentic-workflow-safety.test.ts
+```
+
+`<version>` は Dependabot が要求した版とは限らない。要求版が既により新しい版に
+置き換わっているなら、その新しい版を入れてよい（`#2762` は v0.87.x を要求したが、
+実際に入れたのは v0.88.7）。守るのは「入れた版を `gh aw version` で確認し、PR 本文に
+その版を書く」ことで、Dependabot の要求版と違うならその理由も書く。無指定の
+`gh extension upgrade` は、入った版が事後にしか分からないので使わない。
+
+再生成の diff は数百行になるが、読む場所は決まっている: `permissions:` ブロック、
+`GH_AW_INFO_ALLOWED_DOMAINS`、`ghcr.io/...` のイメージ版。ここが動いていなければ
+残りはコンパイラの出力形式の変化である。`gh aw lint` は docker を必要とするため
+devcontainer では実行できない（CI で担保する）。

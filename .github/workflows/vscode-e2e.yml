@@ -37,7 +37,11 @@ jobs:
     # chrome-for-testing ship no linux-arm64 chromedriver, so the `-arm`
     # Ubicloud labels are not an option for these jobs.
     runs-on: ubicloud-standard-4-ubuntu-2404
-    timeout-minutes: 15
+    # Setup plus the smoke tests (ADR-2805). The Electron deps install below is
+    # an unbounded `apt-get`, observed at 586s, while the tests themselves run
+    # in seconds — so nearly all of this budget exists for setup. The bound that
+    # means "the tests hung" is the one on the test step.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -66,6 +70,9 @@ jobs:
             ${{ runner.os }}-vscode-test-
 
       - name: Run extension host smoke tests
+        # The bound that means "the tests hung" (ADR-2805). They run in ~20s;
+        # the margin is for a cold VS Code download inside the step.
+        timeout-minutes: 10
         run: xvfb-run -a pnpm --filter @karasu-tools/vscode-e2e test
 
       - name: Upload test artifacts
@@ -85,6 +92,9 @@ jobs:
     # Ubicloud runner (ADR-1890). The job installs its own Electron / Chromium
     # system deps below, so it does not lean on runner-image preinstalls.
     runs-on: ubicloud-standard-4-ubuntu-2404
+    # Setup plus the WebView suite (ADR-2805): the deps install below is an
+    # unbounded `apt-get`, so the bound that means "the suite hung" sits on the
+    # test step instead of here.
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -116,6 +126,10 @@ jobs:
             ${{ runner.os }}-extester-
 
       - name: Run WebView E2E (ExTester)
+        # The bound that means "the suite hung" (ADR-2805). Runs in ~45s with a
+        # warm cache; the margin covers a cold ExTester / chromedriver download
+        # and the retry attempts in the WebView specs.
+        timeout-minutes: 15
         run: xvfb-run -a pnpm --filter @karasu-tools/vscode-e2e run test:webview
 
       - name: Upload ExTester artifacts
