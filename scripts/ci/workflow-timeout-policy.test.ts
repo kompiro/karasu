@@ -132,7 +132,9 @@ function parseJobs(text: string, file: string): Job[] {
       blockScalarIndent = null;
     }
 
-    if (/^jobs:\s*$/.test(line)) {
+    // A mapping key may carry a trailing comment (`jobs: # …`, `  e2e: # …`);
+    // missing one would put a job's budget and steps on the job above it.
+    if (/^jobs:(?:\s+#.*)?\s*$/.test(line)) {
       inJobs = true;
       continue;
     }
@@ -142,7 +144,7 @@ function parseJobs(text: string, file: string): Job[] {
       continue;
     }
 
-    const jobId = /^ {2}([A-Za-z0-9_-]+):\s*$/.exec(line);
+    const jobId = /^ {2}([A-Za-z0-9_-]+):(?:\s+#.*)?\s*$/.exec(line);
     if (jobId) {
       currentJob = { key: `${file}#${jobId[1]}`, timeoutMinutes: null, steps: [] };
       currentStep = null;
@@ -355,6 +357,30 @@ describe("parseJobs", () => {
         timeout-minutes: 15
 `);
     expect(job.steps[0].name).toBe("Run E2E tests #1");
+  });
+
+  it("reads a job whose key carries a YAML inline comment", () => {
+    // Missing the key would leave `second`'s budget and steps on `first`: the
+    // earlier job's bound would be overwritten by a job the guard never saw.
+    const jobs = parseJobs(
+      `jobs: # every suite
+  first:
+    timeout-minutes: 35
+    steps:
+      - name: Run E2E tests
+        timeout-minutes: 15
+  second: # a later suite
+    timeout-minutes: 5
+    steps:
+      - name: Other tests
+        timeout-minutes: 3
+`,
+      "f.yml",
+    );
+    expect(jobs.map((job) => [job.key, job.timeoutMinutes, job.steps.length])).toEqual([
+      ["f.yml#first", 35, 1],
+      ["f.yml#second", 5, 1],
+    ]);
   });
 
   it("separates jobs and reads each job's own budget", () => {
