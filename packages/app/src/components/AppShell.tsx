@@ -238,6 +238,7 @@ export function AppShell({
     getAllViewsSvg,
     exportAvailable,
     entityViewSvg,
+    entityViewDiagnostics,
     hasEntityView,
   } = useViewSvg(
     fileContent,
@@ -355,6 +356,7 @@ export function AppShell({
     isEntityViewOpen,
     toggleEntityView,
     entityViewSvg,
+    entityViewDiagnostics,
     hasEntityView,
     styleTargetPath,
     onPickEdgeDirection,
