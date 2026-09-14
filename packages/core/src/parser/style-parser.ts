@@ -23,7 +23,11 @@ export class StyleParser {
   private diagnostics: Diagnostic[] = [];
   private ruleIndex = 0;
   private sheetId: string;
-  /** Stamped onto every range this parse builds; see {@link SourceRange.file}. */
+  /**
+   * Stamped onto every range the parser builds; see {@link SourceRange.file}.
+   * Trivia ranges come from the lexer and carry none: nothing anchors a
+   * diagnostic on a comment.
+   */
   private readonly filePath: string | undefined;
 
   constructor(tokens: Token[], sheetId: string = ANONYMOUS_SHEET_ID, filePath?: string) {
@@ -538,14 +542,33 @@ function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode 
 /**
  * Attach the sheet's file to a range when the parse was given one, omitting
  * the key otherwise, so a sheet parsed without a path compares equal to the
- * shape it had before (#2715, TPL-2715).
+ * shape it had before (#2715, TPL-2715). Every caller hands in a range it has
+ * just built, so assigning in place is safe and spares a copy per range.
  *
  * The free range helpers below take `file` as a required parameter rather than
  * an optional one: a range built without it would silently lose the sheet's
  * identity, and this way a new call site cannot forget to pass it.
  */
 function inFile(range: SourceRange, file: string | undefined): SourceRange {
-  return file === undefined ? range : { ...range, file };
+  if (file !== undefined) range.file = file;
+  return range;
+}
+
+/**
+ * The parse diagnostics of a sheet handed in as a string next to a `.krs`
+ * string, with their positions removed. Such a compile has two documents and a
+ * path for neither, so a position could only be read against the `.krs`,
+ * which is exactly the misreading #2715 removed; the rule that an absent
+ * `file` means the consumer's own document holds only for one document. The
+ * message still says what is wrong. Callers with paths go through the
+ * ImportResolver, where the sheet is named.
+ */
+export function unplacedStyleDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  return diagnostics.map((d) => {
+    if (d.loc === undefined) return d;
+    const { loc: _loc, ...rest } = d;
+    return rest as Diagnostic;
+  });
 }
 
 function tokenLoc(token: Token, file: string | undefined): SourceRange {

@@ -217,7 +217,11 @@ export class Parser {
     advance: () => this.advance(),
   };
 
-  /** Stamped onto every range this parse builds; see {@link SourceRange.file}. */
+  /**
+   * Stamped onto every range the parser builds; see {@link SourceRange.file}.
+   * Trivia ranges come from the lexer and carry none: nothing anchors a
+   * diagnostic on a comment.
+   */
   private readonly filePath: string | undefined;
 
   constructor(tokens: Token[], filePath?: string) {
@@ -297,13 +301,18 @@ export class Parser {
    * file identity is attached here and nowhere else: every node and diagnostic
    * inherits it without its author doing anything (TPL-2715). The key is
    * omitted rather than set to `undefined` when no path was given.
+   *
+   * Assigned rather than spread in: this runs for every node, edge, property
+   * and diagnostic on each re-parse, and a spread allocates a throwaway object
+   * per call.
    */
   private range(start: Token["loc"], end?: Token["loc"]): SourceRange {
-    return {
+    const range: SourceRange = {
       start: { ...start },
       end: end ? { ...end } : { ...start },
-      ...(this.filePath !== undefined ? { file: this.filePath } : {}),
     };
+    if (this.filePath !== undefined) range.file = this.filePath;
+    return range;
   }
 
   parseFile(): ParseResult<KrsFile> {
