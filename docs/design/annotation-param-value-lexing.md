@@ -351,9 +351,23 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
    property テストで固定する（formatter が裸で出す値は parser が同じ値として読み戻せる）。
 4. **parser（Part 3）**: 同一ホストのアノテーション名の重複を検出して `duplicate-annotation`（warning）。
    同名 occurrence が同じキーに異なる値を与えたら `annotation-param-conflict`（error）。
-5. **診断カタログ**: `types/ast.ts` の code union、`packages/i18n` の `en.ts` / `ja.ts` /
-   `render-diagnostic.ts`、`docs/spec/diagnostics.md` / `diagnostics.ja.md` の
-   「Annotation & lifecycle」表に 3 行を足す。
+5. **診断カタログ**: 3 コードとも parser の `parseAnnotations` が発行するので、登録先は
+   `types/ast.ts` の `DiagnosticParamsByCode` に揃える。登録先を決めるのは重大度ではなく**発行する層**である。
+   parser が出す診断は warning でもこちらに入る（既存の `annotation-param-unsupported` は parser が出す
+   warning でここにあり、`duplicate-boundary-id` などの `duplicate-*` 系も大半がここにある）。
+   resolver の `analyze()` が出す `WarningKind` / `WarningParamsByKind`（`types/warnings.ts`）には入れない。
+   Part 2 の register を案2-A / 案2-B のどちらにしても登録先は変わらず、発行時の `severity` だけが変わる。
+   `annotation-param-conflict` は occurrence ごとの値を持つ parser でしか検出できないので、`duplicate-annotation` も
+   同じ場所で検出して発行する層を揃える。コードごとに次を足す:
+   - `DiagnosticParamsByCode` にパラメータ型
+   - `packages/i18n` の `render-diagnostic.ts` に分岐、`en.ts` / `ja.ts` にメッセージ
+   - `render-diagnostic.test.ts` の `SAMPLES`（`DiagnosticCode` 上の mapped type）と
+     `IDENTIFIERS`（`Record<DiagnosticCode, string[]>`）にサンプル。どちらも足し忘れると typecheck が落ちる
+   - `docs/spec/diagnostics.md` / `diagnostics.ja.md` の「Annotation & lifecycle」表に行
+
+   検証は `packages/core/src/types/diagnostics-catalog.test.ts`（`DiagnosticParamsByCode` と `WarningKind` の
+   全メンバーが en/ja 両カタログにあること、およびカタログの行に発行されないコードが残っていないことの双方向）と、
+   `packages/i18n` の typecheck + `render-diagnostic.test.ts` で行う。
 6. **spec**: `docs/spec/tags-annotations.md`（en/ja）§ Annotation parameters に
    「裸で書ける値の形」（`needsQuotes()` と同じ集合）と、重複アノテーションの扱いを書く。
    拒否される綴りは、案2-B なら ` ```krs invalid `（lint が error のまま保たれることを検証する）、
