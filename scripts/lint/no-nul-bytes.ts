@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Fails when a tracked text file contains a raw NUL byte (Issue #2804).
@@ -22,9 +22,12 @@ import { join } from "node:path";
 // escape in a source is a backslash and a zero on disk; #2216's fix was exactly
 // that substitution, and it has to keep passing.
 //
-// SYMLINKS ARE NOT READ. `readFileSync` follows a link, so a tracked symlink
-// would report a NUL from outside the working tree against its own path. Git
-// stores a link as its target path string, which cannot hold a NUL anyway.
+// SYMLINKS ARE NOT READ, at either layer. `readFileSync` follows a link, so a
+// link would report a NUL from outside the working tree against its own path,
+// or hang on a FIFO. The index mode drops tracked links (git stores a link as
+// its target path string, which cannot hold a NUL anyway), and `lstatSync`
+// drops anything that is not a plain file on disk now, which catches a tracked
+// regular file replaced by a link before it was staged.
 //
 // WHERE IT RUNS: lefthook pre-push, and both jobs that report the Required
 // `Check`: `ci.yml` (code changes) and `ci-skip.yml` (docs-only). The stub has
@@ -192,20 +195,37 @@ function trackedEntries(repoRoot: string): TrackedEntry[] {
 }
 
 /**
- * Reads every readable tracked file under `repoRoot`. A file deleted from the
- * working tree but still in the index is skipped: there is no content to scan.
+ * Reads the given entries from the working tree under `repoRoot`, keeping only
+ * what is a regular file on disk right now.
+ *
+ * The index mode alone is not enough: the working tree can disagree with it.
+ * A tracked regular file replaced by a symlink before staging is still `100644`
+ * in the index, and `readFileSync` would follow the link, reading a file outside
+ * the tree, blocking forever on a FIFO, or never finishing on `/dev/zero`.
+ * `lstatSync` does not follow links, so anything that is not a plain file here
+ * (a link, a directory, a device) is skipped. A path deleted from the working
+ * tree but still in the index is skipped too: there is no content to scan.
  */
-export function scanRepository(repoRoot: string): { findings: Finding[]; scanned: number } {
+export function readRegularFiles(
+  repoRoot: string,
+  entries: readonly TrackedEntry[],
+): ScannedFile[] {
   const files: ScannedFile[] = [];
-  for (const { path } of readableEntries(trackedEntries(repoRoot))) {
-    let bytes: Uint8Array;
+  for (const { path } of entries) {
+    const abs = join(repoRoot, path);
     try {
-      bytes = readFileSync(join(repoRoot, path));
+      if (!lstatSync(abs).isFile()) continue;
+      files.push({ path, bytes: readFileSync(abs) });
     } catch {
       continue;
     }
-    files.push({ path, bytes });
   }
+  return files;
+}
+
+/** Scans every readable tracked file under `repoRoot`. */
+export function scanRepository(repoRoot: string): { findings: Finding[]; scanned: number } {
+  const files = readRegularFiles(repoRoot, readableEntries(trackedEntries(repoRoot)));
   return { findings: check(files), scanned: files.length };
 }
 

@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   BINARY_EXTENSIONS,
   check,
@@ -10,6 +11,7 @@ import {
   HOW_TO_FIX,
   parseLsFiles,
   readableEntries,
+  readRegularFiles,
   scanRepository,
   type ScannedFile,
 } from "./no-nul-bytes.ts";
@@ -136,6 +138,38 @@ describe("parseLsFiles and readableEntries", () => {
     const stdout =
       record("100644", "c.ts", "1") + record("100644", "c.ts", "2") + record("100644", "c.ts", "3");
     expect(readableEntries(parseLsFiles(stdout))).toEqual([{ mode: "100644", path: "c.ts" }]);
+  });
+});
+
+describe("readRegularFiles", () => {
+  // A real directory, because the point is what the working tree holds when it
+  // disagrees with the index. Every entry claims `100644`, as an unstaged
+  // replacement would still show in `git ls-files -s`.
+  const root = mkdtempSync(join(tmpdir(), "no-nul-bytes-tree-"));
+  const outside = mkdtempSync(join(tmpdir(), "no-nul-bytes-outside-"));
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  writeFileSync(join(root, "plain.ts"), "export const ok = 1;\n");
+  writeFileSync(join(outside, "secret.bin"), `outside${NUL}the tree`);
+  symlinkSync(join(outside, "secret.bin"), join(root, "was-a-file.ts"));
+  mkdirSync(join(root, "now-a-dir.ts"));
+
+  const asIndexed = (...paths: string[]) => paths.map((path) => ({ mode: "100644", path }));
+
+  it("does not follow a symlink that replaced a tracked regular file", () => {
+    // Following it would report the outside file's NUL against `was-a-file.ts`,
+    // and a link to a FIFO or `/dev/zero` would hang or exhaust memory.
+    const files = readRegularFiles(root, asIndexed("plain.ts", "was-a-file.ts"));
+    expect(files.map((f) => f.path)).toEqual(["plain.ts"]);
+    expect(check([...BACKING, ...files])).toEqual([]);
+  });
+
+  it("skips a directory standing where a file was, and a path gone from disk", () => {
+    const files = readRegularFiles(root, asIndexed("plain.ts", "now-a-dir.ts", "deleted.ts"));
+    expect(files.map((f) => f.path)).toEqual(["plain.ts"]);
   });
 });
 
