@@ -217,13 +217,22 @@ export class Parser {
     advance: () => this.advance(),
   };
 
-  constructor(tokens: Token[]) {
+  /** Stamped onto every range this parse builds; see {@link SourceRange.file}. */
+  private readonly filePath: string | undefined;
+
+  constructor(tokens: Token[], filePath?: string) {
     this.tokens = tokens;
+    this.filePath = filePath;
   }
 
-  static parse(source: string): ParseResult<KrsFile> {
+  /**
+   * @param filePath The document's absolute path, when known. Every `loc` the
+   *   parse produces (on nodes and on diagnostics alike) then carries it, so
+   *   a diagnostic re-derived on a merged model still names its file.
+   */
+  static parse(source: string, filePath?: string): ParseResult<KrsFile> {
     const tokens = new Lexer(source).tokenize();
-    const parser = new Parser(tokens);
+    const parser = new Parser(tokens, filePath);
     return parser.parseFile();
   }
 
@@ -283,10 +292,17 @@ export class Parser {
     } as Diagnostic);
   }
 
+  /**
+   * The only place a `.krs` {@link SourceRange} is built, which is why the
+   * file identity is attached here and nowhere else: every node and diagnostic
+   * inherits it without its author doing anything (TPL-2715). The key is
+   * omitted rather than set to `undefined` when no path was given.
+   */
   private range(start: Token["loc"], end?: Token["loc"]): SourceRange {
     return {
       start: { ...start },
       end: end ? { ...end } : { ...start },
+      ...(this.filePath !== undefined ? { file: this.filePath } : {}),
     };
   }
 
