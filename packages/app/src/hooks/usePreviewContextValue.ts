@@ -96,6 +96,9 @@ interface UsePreviewContextValueArgs {
   hasKrsSource?: boolean;
   /** Flattens the project into a share payload (PreviewColumn's Share button). */
   getShareBundle?: () => Promise<SharePayload>;
+  /** Names the document a diagnostic's position is in (the banner, #2715). */
+  currentFilePath?: string | null;
+  projectRoot?: string | null;
 }
 
 /**
@@ -143,6 +146,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
+    currentFilePath,
+    projectRoot,
   } = args;
 
   return useMemo<PreviewContextValue>(
@@ -232,6 +237,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       onPickEdgeDirection,
       hasKrsSource,
       getShareBundle,
+      currentFilePath,
+      projectRoot,
     }),
     [
       activeView,
@@ -302,6 +309,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       onExportDrawio,
       hasKrsSource,
       getShareBundle,
+      currentFilePath,
+      projectRoot,
     ],
   );
 }

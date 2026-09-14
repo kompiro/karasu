@@ -11,6 +11,7 @@ import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
+import { diagnosticLocationLabel } from "../utils/diagnostic-location.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -56,6 +57,12 @@ interface PreviewPaneProps {
    * forwards intent.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+  /**
+   * The open document and its project, so the diagnostic banner can tell a
+   * position in the open document from one in an imported file (#2715).
+   */
+  currentFilePath?: string | null;
+  projectRoot?: string | null;
 }
 
 interface EdgeContextMenuState {
@@ -96,6 +103,8 @@ export function PreviewPane({
   nodeDiff,
   styleTargetPath,
   onPickEdgeDirection,
+  currentFilePath = null,
+  projectRoot = null,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -533,12 +542,13 @@ export function PreviewPane({
         <div className="diagnostic-banner">
           {visibleDiagnostics.map((d) => {
             const message = formatDiagnostic(d);
+            const location = diagnosticLocationLabel(d.loc, { currentFilePath, projectRoot });
             return (
               <div
-                key={d.loc ? `${d.loc.start.line}:${message}` : message}
+                key={location ? `${location}:${message}` : message}
                 className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
               >
-                {d.loc ? `Line ${d.loc.start.line}: ${message}` : message}
+                {location ? `${location}: ${message}` : message}
               </div>
             );
           })}

@@ -206,6 +206,15 @@ export interface PreviewContextValue {
    * GUI style writes.
    */
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+
+  /**
+   * The document open in the editor and the project it belongs to. The
+   * diagnostic banner compares a diagnostic's `loc.file` against the first to
+   * tell the open document's positions from an imported file's, and shortens
+   * the latter against the second (#2715). `null` when there is none.
+   */
+  currentFilePath?: string | null;
+  projectRoot?: string | null;
 }
 
 const PreviewContext = createContext<PreviewContextValue | null>(null);

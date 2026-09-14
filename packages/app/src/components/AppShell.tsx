@@ -362,6 +362,8 @@ export function AppShell({
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
+    currentFilePath,
+    projectRoot,
   });
 
   return (
