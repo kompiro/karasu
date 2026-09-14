@@ -111,6 +111,7 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
     isEntityViewOpen: false,
     onEntityViewToggle: vi.fn<() => void>(),
     hasEntityView: false,
+    entityViewDiagnostics: emptyDiagnostics,
     orgTreeSvg: undefined,
     onTeamToggle: vi.fn<() => void>(),
     orgTreeExportSvg: undefined,
@@ -346,6 +347,82 @@ describe("PreviewColumn", () => {
       const { container } = renderPreview(props);
       expect(container.querySelector('[data-testid="sys"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="entity"]')).toBeNull();
+    });
+
+    // #2800: the entity pane used to inject its SVG into a bare
+    // `overflow: auto` div, which is why it was the one diagram with no
+    // fit-to-pane and no zoom (#2799). The structural fence is that the SVG
+    // sits inside `.preview-container` — the element the zoom listener is
+    // attached to and the one `max-width/max-height: 100%` is scoped to.
+    it("renders the entity SVG inside the shared preview container, keeping the pane marker", () => {
+      const props = makeProps({
+        activeView: "system",
+        isEntityViewOpen: true,
+        hasEntityView: true,
+        entityViewSvg: entitySvg,
+      });
+      const { container } = renderPreview(props);
+      const pane = container.querySelector(".preview-pane--entity");
+      expect(pane).toBeTruthy();
+      expect(pane?.classList.contains("preview-pane")).toBe(true);
+      expect(pane?.querySelector('.preview-container [data-testid="entity"]')).toBeTruthy();
+    });
+
+    // CodeRabbit on #2801: both panes sit in the same child slot, so an
+    // unkeyed pair shares one PreviewPane instance and the entity view's zoom
+    // leaks into the usecase view. Wheel-zoom one mode, flip the toggle, and
+    // the other mode must start at scale(1) — in both directions.
+    it("does not carry zoom across the usecase / entity toggle", () => {
+      const sysSvg = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="sys"></svg>';
+      const base = {
+        activeView: "system" as const,
+        hasEntityView: true,
+        entityViewSvg: entitySvg,
+        systemView: { ...makeProps().systemView, svg: sysSvg },
+      };
+      const tree = (isEntityViewOpen: boolean) => (
+        <LocaleProvider initialLocale="en">
+          <PreviewProvider value={makeProps({ ...base, isEntityViewOpen })}>
+            <PreviewColumn />
+          </PreviewProvider>
+        </LocaleProvider>
+      );
+      const zoomLayer = (container: HTMLElement) =>
+        container.querySelector<HTMLElement>(".preview-container > div");
+
+      const { container, rerender } = rtlRender(tree(true));
+      fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+      rerender(tree(false));
+      expect(container.querySelector('[data-testid="sys"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+
+      fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+      rerender(tree(true));
+      expect(container.querySelector('[data-testid="entity"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+    });
+
+    it("shows the entity view's own diagnostics in the pane's banner", () => {
+      const props = makeProps({
+        activeView: "system",
+        isEntityViewOpen: true,
+        hasEntityView: true,
+        entityViewSvg: entitySvg,
+        // The real #2179 report `renderEntityView` feeds its diagnostic sink.
+        entityViewDiagnostics: [
+          {
+            severity: "info",
+            code: "boundary-membership-not-drawn",
+            params: { nodeId: "Order", boundaryId: "core_data" },
+          },
+        ],
+      });
+      const { container } = renderPreview(props);
+      const banner = container.querySelector(".preview-pane--entity .diagnostic-banner");
+      expect(banner?.textContent).toContain("core_data");
+      expect(banner?.textContent).toContain("Order");
     });
   });
 

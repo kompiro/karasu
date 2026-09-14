@@ -27,6 +27,8 @@ function baseProps() {
     svg: "",
     diagnostics: [],
     nodeMetadata: new Map(),
+    currentFilePath: null,
+    displayRoot: null,
   };
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { NodeMetadata } from "@karasu-tools/core";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
@@ -16,6 +17,11 @@ import { Button } from "@/components/ui/button";
 import { FacetOverviewPanel } from "./FacetOverviewPanel.js";
 import { PreviewToolbar } from "./PreviewToolbar.js";
 import { PreviewViewControls } from "./PreviewViewControls.js";
+
+// Stable identity for "this pane has no node metadata" — an inline `new Map()`
+// would be a fresh object on every render and break PreviewPane's memoized
+// click handler.
+const NO_NODE_METADATA: Map<string, NodeMetadata> = new Map();
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
@@ -51,6 +57,7 @@ export function PreviewColumn() {
     hasTeamDependencyView,
     isEntityViewOpen,
     entityViewSvg,
+    entityViewDiagnostics,
     hasEntityView,
     onExportDrawio,
     hasKrsSource,
@@ -299,10 +306,37 @@ export function PreviewColumn() {
         <PreviewViewControls onOpenFacetOverview={() => setFacetOverviewOpen(true)} />
       </div>
       {showEntityView ? (
-        <div
-          className="preview-pane preview-pane--entity"
-          style={{ overflow: "auto", flex: 1 }}
-          dangerouslySetInnerHTML={{ __html: entityViewSvg ?? "" }}
+        /* The entity sub-mode goes through `PreviewPane` like every other
+           diagram (#2800). It used to inject its SVG into a bare
+           `overflow: auto` div, which left it the one view with no
+           `.preview-container` — so no fit-to-pane, and no zoom or pan
+           (#2799). A domain's ER diagram is the surface where "show me the
+           whole shape" matters most, and on a real model it is far wider than
+           any pane (36,053px for Dify's IdentityAccess).
+
+           `nodeMetadata` is deliberately empty rather than the system view's
+           map: entities are filtered out of the system slice
+           (`view-extract.ts`), so the map holds no entity — but a bare
+           `resource X` promoted into the usecase view carries the *entity's*
+           id, so passing it would answer a click on entity `X` with the
+           resource's detail panel.
+
+           The two `PreviewPane`s share this child slot, so without distinct
+           keys React keeps one instance across the toggle and the entity
+           view's zoom, pan and any open detail panel or edge menu carry into
+           the usecase view (and back), anchored to a diagram that is no longer
+           drawn. A scale fitted to a 36k-px ER diagram means nothing on a
+           usecase canvas, so each mode starts fresh — which is also what the
+           usecase view did before #2800, when the entity pane was a `<div>`
+           and toggling unmounted it. Keeping a zoom per mode instead is #2799. */
+        <PreviewPane
+          key="entity-view"
+          className="preview-pane--entity"
+          svg={entityViewSvg ?? ""}
+          diagnostics={entityViewDiagnostics}
+          nodeMetadata={NO_NODE_METADATA}
+          currentFilePath={currentFilePath}
+          displayRoot={displayRoot}
         />
       ) : showOrgTreeView ? (
         <div
@@ -330,6 +364,7 @@ export function PreviewColumn() {
         />
       ) : (
         <PreviewPane
+          key="diagram"
           svg={svg}
           diagnostics={diagnostics}
           viewPath={viewPath}

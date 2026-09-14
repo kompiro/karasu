@@ -60,10 +60,17 @@ interface PreviewPaneProps {
   /**
    * The open document and the directory other files are shown relative to, so
    * the diagnostic banner can tell a position in the open document from one in
-   * an imported file (#2715). Omitted, positions read as the open document's.
+   * an imported file (#2715). Required: a second pane added without them (the
+   * entity view's, #2800) would otherwise compile and quietly show full paths.
    */
-  currentFilePath?: string | null;
-  displayRoot?: string | null;
+  currentFilePath: string | null;
+  displayRoot: string | null;
+  /**
+   * Extra class on the pane root, for a sub-mode that swaps the drawn diagram
+   * but keeps this pane (the entity view's `preview-pane--entity`, #2800).
+   * The base `preview-pane` class is always applied.
+   */
+  className?: string;
 }
 
 interface EdgeContextMenuState {
@@ -104,8 +111,9 @@ export function PreviewPane({
   nodeDiff,
   styleTargetPath,
   onPickEdgeDirection,
-  currentFilePath = null,
-  displayRoot = null,
+  currentFilePath,
+  displayRoot,
+  className,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -481,7 +489,11 @@ export function PreviewPane({
     detailPanel?.kind === "node" ? nodeMetadata.get(detailPanel.nodeId) : undefined;
 
   return (
-    <div className={`preview-pane${hasErrors ? " preview-pane--has-errors" : ""}`}>
+    <div
+      className={`preview-pane${hasErrors ? " preview-pane--has-errors" : ""}${
+        className ? ` ${className}` : ""
+      }`}
+    >
       <div
         ref={containerRef}
         className="preview-container"

@@ -188,12 +188,20 @@ function makeWarning(kind: Warning["kind"]): Warning {
 
 describe("WarningPanel", () => {
   it("renders nothing when warnings list is empty", () => {
-    const { container } = render(<WarningPanel warnings={[]} />);
+    const { container } = render(
+      <WarningPanel currentFilePath={null} displayRoot={null} warnings={[]} />,
+    );
     expect(container.firstChild).toBeNull();
   });
 
   it("clicking the header collapses the warning list", () => {
-    const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />);
+    const { container } = render(
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("domain-dispersal")]}
+      />,
+    );
     const header = container.querySelector(".warning-panel-header")!;
     expect(container.querySelector(".warning-list")).not.toBeNull();
     fireEvent.click(header);
@@ -201,7 +209,13 @@ describe("WarningPanel", () => {
   });
 
   it("clicking the header again expands the warning list", () => {
-    const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />);
+    const { container } = render(
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("domain-dispersal")]}
+      />,
+    );
     const header = container.querySelector(".warning-panel-header")!;
     fireEvent.click(header);
     fireEvent.click(header);
@@ -210,30 +224,62 @@ describe("WarningPanel", () => {
 
   it("warning-severity kinds (style-conflict, invalid-owns) show the ⚠ icon (U+26A0)", () => {
     const { container, rerender } = render(
-      <WarningPanel warnings={[makeWarning("style-conflict")]} />,
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("style-conflict")]}
+      />,
     );
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u26A0");
 
-    rerender(<WarningPanel warnings={[makeWarning("invalid-owns")]} />);
+    rerender(
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("invalid-owns")]}
+      />,
+    );
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u26A0");
   });
 
   it("info-severity kinds (domain-dispersal, missing-runtime, missing-realizes) show the ℹ icon (U+2139)", () => {
     const { container, rerender } = render(
-      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("domain-dispersal")]}
+      />,
     );
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u2139");
     expect(container.querySelector(".warning-item")?.className).toContain("warning-item--info");
 
-    rerender(<WarningPanel warnings={[makeWarning("missing-runtime")]} />);
+    rerender(
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("missing-runtime")]}
+      />,
+    );
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u2139");
 
-    rerender(<WarningPanel warnings={[makeWarning("missing-realizes")]} />);
+    rerender(
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("missing-realizes")]}
+      />,
+    );
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u2139");
   });
 
   it("renders the formatted message (via compat bridge) without prefix when loc is absent", () => {
-    const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />);
+    const { container } = render(
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("domain-dispersal")]}
+      />,
+    );
     const item = container.querySelector(".warning-item")!;
     expect(item.textContent).toContain("test-domain");
     expect(item.textContent).not.toContain("Line");
@@ -248,7 +294,9 @@ describe("WarningPanel", () => {
         end: { line: 12, column: 20, offset: 19 },
       },
     };
-    const { container } = render(<WarningPanel warnings={[warning]} />);
+    const { container } = render(
+      <WarningPanel currentFilePath={null} displayRoot={null} warnings={[warning]} />,
+    );
     const item = container.querySelector(".warning-item")!;
     // English translation capitalizes "Domain"; verify the Line-prefix path.
     expect(item.textContent).toContain('Line 12: Domain "payments"');
@@ -256,7 +304,13 @@ describe("WarningPanel", () => {
 
   it("renders details from the compat bridge when the warning kind has them", () => {
     // domain-dispersal emits detail lines (the dispersed services + a cohesion note)
-    const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />);
+    const { container } = render(
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("domain-dispersal")]}
+      />,
+    );
     const details = container.querySelectorAll(".warning-details > div");
     expect(details.length).toBeGreaterThan(0);
   });
@@ -265,7 +319,11 @@ describe("WarningPanel", () => {
 describe("WarningPanel — localization (Phase D.1)", () => {
   it("renders domain-dispersal in English when locale is 'en'", () => {
     const { container } = render(
-      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("domain-dispersal")]}
+      />,
       "en",
     );
     const item = container.querySelector(".warning-item");
@@ -278,7 +336,11 @@ describe("WarningPanel — localization (Phase D.1)", () => {
 
   it("renders domain-dispersal in Japanese when locale is 'ja'", () => {
     const { container } = render(
-      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("domain-dispersal")]}
+      />,
       "ja",
     );
     const item = container.querySelector(".warning-item");
@@ -290,13 +352,21 @@ describe("WarningPanel — localization (Phase D.1)", () => {
 
   it("renders missing-runtime in the active locale", () => {
     const { container: enContainer } = render(
-      <WarningPanel warnings={[makeWarning("missing-runtime")]} />,
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("missing-runtime")]}
+      />,
       "en",
     );
     expect(enContainer.textContent).toContain("has no runtime specified");
 
     const { container: jaContainer } = render(
-      <WarningPanel warnings={[makeWarning("missing-runtime")]} />,
+      <WarningPanel
+        currentFilePath={null}
+        displayRoot={null}
+        warnings={[makeWarning("missing-runtime")]}
+      />,
       "ja",
     );
     expect(jaContainer.textContent).toContain("runtime が指定されていません");

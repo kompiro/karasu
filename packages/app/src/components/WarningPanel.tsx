@@ -9,10 +9,11 @@ interface WarningPanelProps {
   /**
    * The open document and the directory other files are shown relative to. A
    * warning decided on the merged model can sit in an imported file, and
-   * `Line N` alone would read it as the open document's (#2715).
+   * `Line N` alone would read it as the open document's (#2715). Required, like
+   * the banner's, so a new mount point cannot leave them out silently.
    */
-  currentFilePath?: string | null;
-  displayRoot?: string | null;
+  currentFilePath: string | null;
+  displayRoot: string | null;
 }
 
 const SEVERITY_ICON = {
@@ -20,11 +21,7 @@ const SEVERITY_ICON = {
   info: "\u2139",
 } as const;
 
-export function WarningPanel({
-  warnings,
-  currentFilePath = null,
-  displayRoot = null,
-}: WarningPanelProps) {
+export function WarningPanel({ warnings, currentFilePath, displayRoot }: WarningPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
   const formatWarning = useFormattedWarning();
 

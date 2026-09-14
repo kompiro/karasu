@@ -189,6 +189,11 @@ export interface PreviewContextValue {
   onEntityViewToggle: () => void;
   /** Rendered entity view SVG for the currently drilled domain. */
   entityViewSvg?: string;
+  /**
+   * Diagnostics from rendering that entity view — the entity pane shows its
+   * own banner now that it goes through `PreviewPane` (#2800).
+   */
+  entityViewDiagnostics: Diagnostic[];
   /** Whether the drilled domain has an entity view (gates the toggle). */
   hasEntityView: boolean;
 
