@@ -44,6 +44,42 @@ karasu also follows **warn-don't-error** for unresolved references (spec §S6):
 an unresolved relation is dropped while the node it points from is preserved,
 and the drop is reported as a warning rather than failing the whole render.
 
+## Source locations
+
+A diagnostic may carry a source location (`loc`): a start and an end position,
+and the document they index into.
+
+- **Positions are 1-based.** `line` and `column` count from 1, as an author sees
+  them in an editor. A surface that needs another base converts once, at its own
+  boundary (the LSP's 0-based ranges); a tool that prints a location prints the
+  numbers as they are.
+- **`file` names the document a position indexes into.** A project spans files.
+  A diagnostic from an imported file, or a verdict decided on the merged model
+  (the cross-file multiplicity checks under *Identifier uniqueness*, the
+  reference checks under *Cross-reference resolution*), anchors on whichever
+  file declared the construct, which is not necessarily the entry. Every
+  diagnostic produced while resolving a project sets `file`, as an absolute
+  path, whenever it sets `loc`. A `.krs.style` diagnostic names the sheet.
+- **An absent `file` means the consumer's own document.** Only a
+  single-document context produces one: the LSP parses each open document by
+  itself, and so does `karasu lint-style`.
+- **A diagnostic without `loc` names no position.** One that concerns a missing
+  file carries the path in its message instead (`file-not-found`,
+  `style-file-not-found`). Merge-time facts that name ids rather than
+  declarations (`infra-redeclared-across-files`, `system-property-conflict`, and
+  the like) carry neither.
+
+Each surface prints a location as follows.
+
+| Surface | Location shown |
+| --- | --- |
+| CLI (`karasu render`, and the commands that share its error report) | `<file>:<line>:<column>`. `<file>` is the entry, in the spelling the user typed, when the position has no `file` or its `file` is the entry (compared as canonical paths); otherwise the file, relative to the working directory. |
+| CLI (`karasu diff`) | `<line>:<column>`, with no file: the command compiles two inputs. |
+| App preview banner | `Line <line>` for a position in the open document or with no `file`; `<path>:<line>` for any other file, relative to the project root when inside it. |
+| LSP | The document's own range, 0-based. The LSP is single-document, so no `file` arises. |
+
+> Related TPLs: [TPL-2715](../test-perspectives/TPL-2715-source-position-carries-its-document.md) (a position is an address only together with the document it indexes, so the parse attaches the file where ranges are built and every surface reads it from there).
+
 ## Rule families
 
 ### Declaration, edge placement & structure
