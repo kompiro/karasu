@@ -57,6 +57,9 @@ NUL を持つファイルを、ファイル・行・オフセット付きで報�
 - [x] symlink（mode `120000`）は読まない。conflict 中のパスは stage ごとではなく 1 回だけ読む
 > ✅ Automated — `scripts/lint/no-nul-bytes.test.ts` › `drops a symlink, whose content would be read from the link's target` / `reads an unmerged path once, not once per conflict stage`
 
+- [x] 作業ツリーが index と食い違っていても、ディスク上で通常ファイルでないものは読まない。stage 前に symlink へ置き換えた tracked file（index 上は `100644`）の link 先を追わず、ディレクトリや消えたパスも飛ばす（FIFO や `/dev/zero` を指す link で pre-push が止まらない）
+> ✅ Automated — `scripts/lint/no-nul-bytes.test.ts` › `does not follow a symlink that replaced a tracked regular file` / `skips a directory standing where a file was, and a path gone from disk`
+
 ### AC-4: lefthook と CI の両方で、全 PR に対して走る（Issue の AC 3）
 
 - [x] `package.json` の `lint:no-nul-bytes` として呼べる
