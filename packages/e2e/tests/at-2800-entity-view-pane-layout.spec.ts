@@ -91,24 +91,33 @@ test.describe("AT-2800 Entity view pane layout", () => {
       .not.toEqual(before);
   });
 
-  test("the usecase view keeps its own zoom when the sub-mode is toggled off", async ({
-    page,
-    opfs,
-  }) => {
+  // CodeRabbit on #2801: the two panes share one child slot, so without
+  // per-mode keys the entity view's zoom leaked into the usecase view. Each
+  // mode starts at scale(1), and the usecase view still zooms afterwards.
+  test("zoom does not carry from the entity view into the usecase view", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, WIDE_ENTITY_KRS);
     await drillIntoOrderingDomain(page);
 
     await entityToggle(page).click();
-    await expect(page.locator(".preview-pane--entity")).toBeVisible();
+    const entityLayer = page.locator(".preview-pane--entity .preview-container > div").first();
+    await page.locator(".preview-pane--entity .preview-container").hover();
+    await page.mouse.wheel(0, -200);
+    await expect
+      .poll(() => entityLayer.evaluate((el) => (el as HTMLElement).style.transform))
+      .toContain("scale(1.1)");
+
     await entityToggle(page).click();
     await expect(page.locator(".preview-pane--entity")).toHaveCount(0);
 
-    const zoomLayer = page.locator(".preview-container > div").first();
-    const before = await zoomLayer.evaluate((el) => (el as HTMLElement).style.transform);
+    const usecaseLayer = page.locator(".preview-container > div").first();
+    await expect
+      .poll(() => usecaseLayer.evaluate((el) => (el as HTMLElement).style.transform))
+      .toBe("translate(0px, 0px) scale(1)");
+
     await page.locator(".preview-container").hover();
     await page.mouse.wheel(0, -200);
     await expect
-      .poll(() => zoomLayer.evaluate((el) => (el as HTMLElement).style.transform))
-      .not.toEqual(before);
+      .poll(() => usecaseLayer.evaluate((el) => (el as HTMLElement).style.transform))
+      .toContain("scale(1.1)");
   });
 });

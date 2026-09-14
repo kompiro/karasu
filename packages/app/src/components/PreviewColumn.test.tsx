@@ -366,6 +366,42 @@ describe("PreviewColumn", () => {
       expect(pane?.querySelector('.preview-container [data-testid="entity"]')).toBeTruthy();
     });
 
+    // CodeRabbit on #2801: both panes sit in the same child slot, so an
+    // unkeyed pair shares one PreviewPane instance and the entity view's zoom
+    // leaks into the usecase view. Wheel-zoom one mode, flip the toggle, and
+    // the other mode must start at scale(1) — in both directions.
+    it("does not carry zoom across the usecase / entity toggle", () => {
+      const sysSvg = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="sys"></svg>';
+      const base = {
+        activeView: "system" as const,
+        hasEntityView: true,
+        entityViewSvg: entitySvg,
+        systemView: { ...makeProps().systemView, svg: sysSvg },
+      };
+      const tree = (isEntityViewOpen: boolean) => (
+        <LocaleProvider initialLocale="en">
+          <PreviewProvider value={makeProps({ ...base, isEntityViewOpen })}>
+            <PreviewColumn />
+          </PreviewProvider>
+        </LocaleProvider>
+      );
+      const zoomLayer = (container: HTMLElement) =>
+        container.querySelector<HTMLElement>(".preview-container > div");
+
+      const { container, rerender } = rtlRender(tree(true));
+      fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+      rerender(tree(false));
+      expect(container.querySelector('[data-testid="sys"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+
+      fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+      rerender(tree(true));
+      expect(container.querySelector('[data-testid="entity"]')).toBeTruthy();
+      expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+    });
+
     it("shows the entity view's own diagnostics in the pane's banner", () => {
       const props = makeProps({
         activeView: "system",

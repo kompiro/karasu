@@ -32,9 +32,11 @@ type: product
 
   > ✅ Automated — `packages/e2e/tests/at-2800-entity-view-pane-layout.spec.ts` › `wheel over the entity view zooms it (#2799)`
 
-- [x] TC-4: サブモードを戻した usecase ビューのズームは従来どおり効く（非退行）
+- [x] TC-4: ズーム・パン・開いていた詳細パネルは usecase ↔ entity の切り替えで持ち越されず、各モードが `scale(1)` から始まる。戻した usecase ビューのズームは従来どおり効く
 
-  > ✅ Automated — `packages/e2e/tests/at-2800-entity-view-pane-layout.spec.ts` › `the usecase view keeps its own zoom when the sub-mode is toggled off`
+  > 2 つの `PreviewPane` は同じ子スロットに置かれるため、key が無いと React が 1 つのインスタンスを使い回し、entity ビューで拡大した倍率が usecase ビューに残っていた（#2801 の CodeRabbit 指摘。push 時点のコードで `scale(1.21)` の持ち越しを再現）。モードごとに key を分けてリセットする。モードごとに倍率を保持する案は #2799 の論点 2 で扱う
+  >
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `Entity view sub-mode (#1907)` › `does not carry zoom across the usecase / entity toggle`（両方向） / `packages/e2e/tests/at-2800-entity-view-pane-layout.spec.ts` › `zoom does not carry from the entity view into the usecase view`。どちらも key を外すと落ちることを確認済み
 
 ### AC-2: entity ビュー自身の診断が出る
 

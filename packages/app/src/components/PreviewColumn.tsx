@@ -317,8 +317,18 @@ export function PreviewColumn() {
            (`view-extract.ts`), so the map holds no entity — but a bare
            `resource X` promoted into the usecase view carries the *entity's*
            id, so passing it would answer a click on entity `X` with the
-           resource's detail panel. */
+           resource's detail panel.
+
+           The two `PreviewPane`s share this child slot, so without distinct
+           keys React keeps one instance across the toggle and the entity
+           view's zoom, pan and any open detail panel or edge menu carry into
+           the usecase view (and back), anchored to a diagram that is no longer
+           drawn. A scale fitted to a 36k-px ER diagram means nothing on a
+           usecase canvas, so each mode starts fresh — which is also what the
+           usecase view did before #2800, when the entity pane was a `<div>`
+           and toggling unmounted it. Keeping a zoom per mode instead is #2799. */
         <PreviewPane
+          key="entity-view"
           className="preview-pane--entity"
           svg={entityViewSvg ?? ""}
           diagnostics={entityViewDiagnostics}
@@ -350,6 +360,7 @@ export function PreviewColumn() {
         />
       ) : (
         <PreviewPane
+          key="diagram"
           svg={svg}
           diagnostics={diagnostics}
           viewPath={viewPath}
