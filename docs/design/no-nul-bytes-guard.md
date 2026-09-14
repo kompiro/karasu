@@ -7,7 +7,6 @@
   - 先行事例: [#2216](https://github.com/kompiro/karasu/pull/2216)（1 回目、escape して修正・ガードなし）、[#2793](https://github.com/kompiro/karasu/pull/2793)（2 回目、6 週間後）
   - 関連 ADR: [ADR-953](../adr/953-ci-docs-only-paired-stub-workflow.md)（paired stub。本 doc で条件付きの例外を提案）、[ADR-2648](../adr/2648-record-source-path-guard.md)（同型ガードの先例）、[ADR-2125](../adr/2125-retire-adr-id-migration-map.md)（lint のためだけに存在する維持物を退役）、[ADR-2687](../adr/2687-adr-body-is-immutable.md)（ADR 本文は書き換えない）
   - 関連 TPL: [TPL-2446](../test-perspectives/TPL-2446-gate-side-check-runs-over-the-whole-set.md), [TPL-1720](../test-perspectives/TPL-1720-validation-target-set-enumerates-all-kinds.md), [TPL-2643](../test-perspectives/TPL-2643-skip-reports-success-without-running.md), [TPL-1480](../test-perspectives/TPL-1480-consistency-check-triggers-on-both-sides.md), [TPL-2253](../test-perspectives/TPL-2253-removal-sweep-needs-a-search-not-a-file-list.md)
-  <!-- absent-path-next-line: 本 doc が作成を提案するガード本体。実装 PR で実在させる -->
   - コード: `scripts/lint/no-nul-bytes.ts`（新規）
 
 ## 背景・課題
@@ -135,7 +134,6 @@ bot PR、fork PR、Web UI 編集、`--no-verify` だけ。
 
 #### 案 2-A: vitest mirror のみ（他のガードと同じ配線）
 
-<!-- absent-path-next-line: 本 doc が作成を提案する vitest mirror。実装 PR で実在させる -->
 `scripts/lint/no-nul-bytes.test.ts` を `test:scripts` 経由で `ci.yml` が実行する。
 
 **デメリット**
@@ -265,7 +263,6 @@ ruleset も触らずに全 PR を覆える。
 
 ### 実装の指針
 
-<!-- absent-path-next-line: 本 doc が作成を提案するガード本体。実装 PR で実在させる -->
 1. `scripts/lint/no-nul-bytes.ts` を新規作成する。
    - **層を 3 つに分け、副作用を `main()` に閉じる。** どちらの純関数も実リポジトリにも
      一時 git repository にも触らないので、テストが現在の checkout の中身に依存しない
@@ -294,7 +291,6 @@ ruleset も触らずに全 PR を覆える。
    - 失敗メッセージに直し方（escape 表記に置換する / deny-list に足す）を書く。
      `record-source-paths.ts` と同じく、`.claude/rules/` に同じことを書かない。
    - erasable syntax のみで書く（`node` 直実行の経路があるため）。
-   <!-- absent-path-next-line: 本 doc が作成を提案する vitest mirror。実装 PR で実在させる -->
 2. `scripts/lint/no-nul-bytes.test.ts` を新規作成する。
    - **fixture テストは純関数に直接バイト列を渡す**（実リポジトリにも git にも触らない）:
      raw NUL が落ちる / `\0` escape が通る / png・ttf・otf が通る / stale な deny

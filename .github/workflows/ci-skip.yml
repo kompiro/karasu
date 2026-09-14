@@ -1,9 +1,11 @@
 name: CI (docs-only)
 
 # Companion of `ci.yml`. Triggered ONLY on docs-only PRs (the inverse of
-# `ci.yml`'s `paths-ignore`) and emits a job named `Check` that just exits
-# 0 so the Required status configured in branch protection stays green
-# without paying for a full lint / typecheck / build / test cycle.
+# `ci.yml`'s `paths-ignore`) and emits a job named `Check` so the Required
+# status configured in branch protection stays green without paying for a
+# full lint / typecheck / build / test cycle. The job skips all of those and
+# runs exactly one dependency-free check, the raw NUL byte scan (Issue #2804),
+# because that one means the same thing for a docs file as for a source.
 #
 # Keep the path lists below in sync with `ci.yml`'s `paths-ignore`. If a
 # new docs-only path is added there, mirror it under `paths:` here.
@@ -39,3 +41,21 @@ jobs:
           echo "Docs-only PR. Lint / typecheck / build / test are skipped."
           echo "If your change touches code as well, ensure paths fall outside"
           echo "ci.yml's paths-ignore so the real Check runs."
+
+      # The one check this stub does run (Issue #2804). A raw NUL byte makes a
+      # file invisible to grep, and a Markdown or `.claude/**` file can acquire
+      # one as easily as a source can, so a path filter has nothing to decide
+      # here: skipping it on docs-only PRs would leave the scan in lefthook
+      # alone, which TPL-2446 counts as no check at all. `ci.yml` runs the same
+      # script. The script is erasable TypeScript run by plain `node`, so this
+      # job needs no `pnpm install`, the cost ADR-953 rejected always-on CI for.
+      # `scripts/lint/no-nul-bytes.test.ts` fails if either side loses the step
+      # or this job starts installing dependencies.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: No raw NUL bytes in tracked text files
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lint/no-nul-bytes.ts
