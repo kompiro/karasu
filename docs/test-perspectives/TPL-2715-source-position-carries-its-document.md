@@ -91,9 +91,14 @@ scope:
   compile 段階の判定と `.krs.style` の診断を含む
 - `packages/cli/src/render.e2e.test.ts` › `karasu render: diagnostic locations name their file (#2715)`:
   stderr から印字された位置を読み戻し、そのファイルの該当行に宣言があることを確かめる（1 ずれの回帰ガード）
-- `packages/cli/src/compile-system-view.test.ts` › `formatDiagLoc`: エントリの綴りの保持、正規化した比較、
+- `packages/cli/src/compile-system-view.test.ts` › `diagLocFormatter`: エントリの綴りの保持、正規化した比較、
   ほかのファイルの相対表示
-- `packages/app/src/utils/diagnostic-location.test.ts`: プレビューバナーの位置表記
+- `packages/cli/src/diff.e2e.test.ts` › `karasu diff: printed positions are not shifted (#2715)`: `karasu diff` の
+  1 ずれの回帰ガード
+- `packages/app/src/utils/diagnostic-location.test.ts`: プレビューバナーと warning パネルの位置表記
+  （スナップショットの mount やプロジェクトの無いモードのパスを含む）
+- `packages/app/src/components/WarningPanel.test.tsx` › `WarningPanel location`: warning も診断と同じ規則で
+  ファイルを名指す（片方の消費者だけ直す形の回帰ガード）
 - `packages/lsp/src/server.test.ts` › `range start is 0-based`: 1 始まりの core range を 0 始まりの
   LSP range に畳む変換
 

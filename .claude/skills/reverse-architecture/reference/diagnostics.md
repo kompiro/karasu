@@ -62,7 +62,10 @@ and the document they index into.
   path, whenever it sets `loc`. A `.krs.style` diagnostic names the sheet.
 - **An absent `file` means the consumer's own document.** Only a
   single-document context produces one: the LSP parses each open document by
-  itself, and so does `karasu lint-style`.
+  itself, `karasu lint-style` reads one sheet, and `compile` takes its model as
+  source text. When such a compile is also handed a style sheet as text, it has
+  a path for neither document, so the sheet's parse diagnostics carry no `loc`
+  there rather than a position that would read as the model's.
 - **A diagnostic without `loc` names no position.** One that concerns a missing
   file carries the path in its message instead (`file-not-found`,
   `style-file-not-found`). Merge-time facts that name ids rather than
@@ -75,7 +78,7 @@ Each surface prints a location as follows.
 | --- | --- |
 | CLI (`karasu render`, and the commands that share its error report) | `<file>:<line>:<column>`. `<file>` is the entry, in the spelling the user typed, when the position has no `file` or its `file` is the entry (compared as canonical paths); otherwise the file, relative to the working directory. |
 | CLI (`karasu diff`) | `<line>:<column>`, with no file: the command compiles two inputs. |
-| App preview banner | `Line <line>` for a position in the open document or with no `file`; `<path>:<line>` for any other file, relative to the project root when inside it. |
+| App preview banner and warning panel | `Line <line>` for a position in the open document or with no `file`; `<path>:<line>` for any other file. The path is relative to the project root, or to the entry's directory in a mode without a project; a snapshot being compared is named by the project path it was taken of. |
 | LSP | The document's own range, 0-based. The LSP is single-document, so no `file` arises. |
 
 > Related TPLs: [TPL-2715](../test-perspectives/TPL-2715-source-position-carries-its-document.md) (a position is an address only together with the document it indexes, so the parse attaches the file where ranges are built and every surface reads it from there).
