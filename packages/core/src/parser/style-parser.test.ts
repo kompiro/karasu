@@ -576,3 +576,67 @@ describe("StyleParser ValueNode AST (Phase 3 / step 1)", () => {
     expect(rule.properties.opacity).toBe("0.6");
   });
 });
+
+// #2715: the parse diagnostics used to carry no position at all, so a sheet's
+// syntax error could only be reported against whichever `.krs` imported it.
+describe("StyleParser source positions", () => {
+  const FILE = "/project/theme.krs.style";
+
+  const cases: { code: string; source: string; line: number; column: number }[] = [
+    // The stray closing brace on line 4.
+    {
+      code: "style-token-type-mismatch",
+      source: `service {\n  fill: #fff;\n}\n}\n`,
+      line: 4,
+      column: 1,
+    },
+    {
+      code: "unknown-edge-selector-attribute",
+      source: `edge[\n  via=Api] {\n}\n`,
+      line: 2,
+      column: 3,
+    },
+    {
+      code: "expected-style-property-name",
+      source: `service {\n  fill: #fff;\n  ;\n}\n`,
+      line: 3,
+      column: 3,
+    },
+    {
+      code: "expected-semicolon-between-properties",
+      source: `service {\n  fill: #fff, stroke: #000;\n}\n`,
+      line: 2,
+      column: 13,
+    },
+  ];
+
+  for (const { code, source, line, column } of cases) {
+    it(`locates ${code} at the offending token, in the sheet's file`, () => {
+      const result = StyleParser.parse(source, "sheet", FILE);
+      const diagnostic = result.diagnostics.find((d) => d.code === code);
+
+      expect(diagnostic?.loc?.start).toMatchObject({ line, column });
+      expect(diagnostic?.loc?.file).toBe(FILE);
+    });
+  }
+
+  it("stamps the file onto rule, declaration and value ranges", () => {
+    const result = StyleParser.parse(`service {\n  fill: #fff, #000;\n}\n`, "sheet", FILE);
+    const rule = result.value.rules[0];
+
+    expect(rule.loc.file).toBe(FILE);
+    expect(rule.selector.loc.file).toBe(FILE);
+    expect(rule.declarationLocs.fill.file).toBe(FILE);
+    expect(rule.valueNodes?.fill.loc.file).toBe(FILE);
+  });
+
+  // A sheet id is not a path: the built-in sheets pass synthetic ids, and
+  // treating one as a file would name a document that does not exist.
+  it("never takes the sheet id for a file", () => {
+    const result = StyleParser.parse(`service {\n  fill: #fff;\n}\n}\n`, "/looks/like/a/path");
+
+    expect(result.value.rules[0].loc.file).toBeUndefined();
+    const mismatch = result.diagnostics.find((d) => d.code === "style-token-type-mismatch");
+    expect(mismatch?.loc && Object.keys(mismatch.loc)).toEqual(["start", "end"]);
+  });
+});
