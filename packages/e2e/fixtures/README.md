@@ -254,3 +254,23 @@ Vite preview origin; AT-0050 additionally runs `serial` due to prior OPFS
 flake (see the comment at the top of that spec) — this fixture only
 extracts the driving choreography, it does not restructure either
 `describe` block.
+
+## `preview-pane.ts` — diagram pane structural fence
+
+The checks TPL-2800 asks of every diagram pane that goes through
+`PreviewPane`, in one place so the entity, org tree and team dependencies
+specs cannot drift apart. `paneSelector` names one pane (e.g.
+`.preview-pane--org-tree`).
+
+- `expectInSharedContainer(page, paneSelector)` — the SVG sits inside
+  `.preview-container`, which carries both the fit rules and the wheel/drag
+  handlers. "The diagram is drawn" does not detect a pane that bypasses
+  `PreviewPane`; this does.
+- `expectFitsPane(page, paneSelector)` — the diagram is intrinsically wider
+  than the pane _and_ drawn no wider than it. The first half is what makes the
+  second non-trivial, so boot a model that is wide on purpose.
+- `expectWheelZooms(page, paneSelector)` — wheel over the pane changes the zoom
+  layer's `transform`.
+- `expectDragPans(page, paneSelector)` — a press that moves past the click
+  threshold changes the `transform`. The move is stepped so it lands after the
+  mousedown's drag state has rendered.

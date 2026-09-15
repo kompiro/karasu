@@ -87,26 +87,48 @@ scope:
   `[data-node-id]` フォールバックより前に置いた（チームカードは両方の属性を持つ）。
   クリックの受け口が mouseup ディスパッチへ移る＝ドラッグ判定が挟まるので、
   移設そのものを守るテストを別に置く
+- **同じ子スロットを分け合うペインには、モードごとに別の `key` を付ける。**
+  `showA ? <PreviewPane/> : showB ? <PreviewPane/> : …` の分岐は React から見て
+  同じ位置の同じ型なので、key が無いと 1 つのインスタンスが使い回され、ズーム・
+  パン・開いた詳細パネルが別の図へ持ち越される。#2800 はレビューでこれに気づいて
+  `key="entity-view"` / `key="diagram"` を足し、その前に切った #2799 のブランチが
+  org の 2 ペインで同じ漏れを再現した。**テストはキーの無い同士の直接切替で書く** —
+  key 付きのペインを経由する切替（grid → tree など）では再マウントが起きて漏れが
+  隠れる（#2799 では Tree View → Dependencies）
 
 ## 到達状態
 
-`packages/app` の `dangerouslySetInnerHTML` を検索して、**図を描く面は
-`PreviewPane` の 1 箇所だけ**である（残りは Markdown / アウトライン / チャットの
-テキスト描画）。#2799 のマージ時点でこの状態に到達した。
+アプリ内で図を描く面は 2 経路だけで、どちらも理由が記録されている:
+
+- **`PreviewPane`** — system / deploy / org の各ビューと、entity・org tree・
+  team dependencies の 3 サブモード。#2799 のマージ時点で、サブモードが素の
+  `<div>` に SVG を流し込む経路は無くなった
+- **All Layers の `<iframe srcDoc>`** — 意図的な例外。全階層を縦積みした SVG 文書の
+  ハッシュリンクを親ページの URL に漏らさず、表示とエクスポートを同じ文字列にする
+  ために iframe で隔離している（[ADR-22](../adr/22-svg-export-two-phase.md)）
+
+確認は両方の注入経路を検索する。`dangerouslySetInnerHTML` だけを検索すると
+`srcDoc` の面を見落とす。残りのヒットは詳細パネル・アウトライン・チャットの
+テキストとアイコン（pictogram）で、図ではない。
 
 ```
-grep -rn "dangerouslySetInnerHTML" packages/app/src --include=*.tsx
+grep -rn "dangerouslySetInnerHTML\|srcDoc" packages/app/src --include=*.tsx
 ```
 
 ## 関連テスト
 
-- `packages/e2e/tests/at-2800-entity-view-pane-layout.spec.ts` — entity ペインが
-  `.preview-container` の中にあり、ペイン幅に収まり、ホイールでズームすること
+- `packages/e2e/fixtures/preview-pane.ts` — 上の構造フェンス（共有コンテナ・
+  フィット・ホイールズーム・ドラッグパン）を 1 箇所にまとめた helper。新しい
+  ペインはこれを呼べば同じ観点で守られる
+- `packages/e2e/tests/at-2800-entity-view-pane-layout.spec.ts` — entity ペインの
+  共有コンテナ・フィット・ホイールズーム、usecase ↔ entity でズームを持ち越さないこと
 - `packages/app/src/components/PreviewColumn.test.tsx` › `Entity view sub-mode (#1907)`
   — 共有コンテナ経由のレンダリングと、entity view 自身の診断バナー
 - `packages/e2e/tests/at-2799-org-tab-pane-layout.spec.ts` — org Tree View と
-  Team Dependencies の同じ 3 点（共有コンテナ・フィット・ホイールズーム）と、
-  移設後もチームカードのクリックで展開できること
+  Team Dependencies の共有コンテナ・フィット・ホイールズーム・ドラッグパン、
+  Tree View → Dependencies でズームを持ち越さないこと、移設後もチームカードの
+  クリックで展開できること
 - `packages/app/src/components/PreviewColumn.test.tsx` ›
   `org tab panes go through the shared preview pane (#2799)` — 両ペインの構造、
-  `onTeamToggle` の発火、org ビューの診断が両モードのバナーに出ること
+  `onTeamToggle` の発火、org ビューの診断が両モードのバナーに出ること、
+  2 サブモード間でズームを持ち越さないこと

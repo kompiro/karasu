@@ -1319,6 +1319,41 @@ describe("PreviewColumn — org tab panes go through the shared preview pane (#2
     expect(onTeamToggle).toHaveBeenCalledWith("Backend");
   });
 
+  it("does not carry zoom between Tree View and Dependencies", () => {
+    // The two panes share one child slot and `useOrgDisplayMode` switches
+    // "tree" -> "dependencies" in a single update, so without distinct keys
+    // React keeps one PreviewPane and its transform. Every other test here
+    // renders one mode at a time, or switches from the keyed grid pane, so
+    // only a direct switch between the two sub-modes exposes a missing key.
+    const tree = (mode: "tree" | "dependencies") => (
+      <LocaleProvider initialLocale="en">
+        <PreviewProvider
+          value={orgProps({
+            isOrgTreeViewOpen: mode === "tree",
+            isTeamDependenciesOpen: mode === "dependencies",
+          })}
+        >
+          <PreviewColumn />
+        </PreviewProvider>
+      </LocaleProvider>
+    );
+    const zoomLayer = (container: HTMLElement) =>
+      container.querySelector<HTMLElement>(".preview-container > div");
+
+    const { container, rerender } = rtlRender(tree("tree"));
+    fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+    expect(zoomLayer(container)?.style.transform).toContain("scale(1.1)");
+
+    rerender(tree("dependencies"));
+    expect(container.querySelector(".preview-pane--team-dependencies")).toBeTruthy();
+    expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+
+    fireEvent.wheel(container.querySelector(".preview-container")!, { deltaY: -100 });
+    rerender(tree("tree"));
+    expect(container.querySelector(".preview-pane--org-tree")).toBeTruthy();
+    expect(zoomLayer(container)?.style.transform).toContain("scale(1)");
+  });
+
   it("shows the org view's diagnostics in each sub-mode's banner", () => {
     const withOrgDiagnostics = (overrides: Partial<PreviewContextValue>) =>
       orgProps({

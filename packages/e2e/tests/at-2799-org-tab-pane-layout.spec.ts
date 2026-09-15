@@ -2,20 +2,25 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures/opfs.js";
 import { bootMemoryApp } from "../fixtures/boot.js";
 import { openViewTab } from "../fixtures/tabs.js";
+import { expectDragPans, expectFitsPane, expectWheelZooms } from "../fixtures/preview-pane.js";
 
 /**
  * AT-2799: the org tab's two sub-modes read through the shared preview pane.
  *
- * Org Tree View and Team Dependencies were the last diagram surfaces outside
- * `PreviewPane` — bare `overflow: auto` divs, so neither got
+ * Org Tree View and Team Dependencies were the last sub-mode panes outside
+ * `PreviewPane`: bare `overflow: auto` divs, so neither got
  * `max-width/max-height: 100%` (no fit-to-pane) and neither reached the
  * wheel/drag handlers (no zoom, no pan). For the tree that is the failure
  * ADR-309 left open as "大規模組織での SVG サイズ上限": a deep org could only
  * be read through a scrollbar, never seen whole.
  *
- * The org tree here is deliberately four levels deep (x grows by
- * `TEAM_W + H_GAP` per level, so ~960px of intrinsic width) so "fits the pane"
- * is a real assertion rather than a trivially-true one.
+ * Both diagrams are wide on purpose, so "fits the pane" is a real assertion
+ * rather than a trivially-true one:
+ *  - the org tree is four levels deep (x grows by `TEAM_W + H_GAP` = 240px per
+ *    level, so ~960px of intrinsic width)
+ *  - the team dependencies form a four-team chain — Storefront -> Billing ->
+ *    Accounting -> Compliance — which the graph lays out as four columns
+ *    (`NODE_W + H_GAP` = 256px each)
  */
 const ORG_KRS = `system Shop {
   service Checkout {
@@ -25,7 +30,19 @@ const ORG_KRS = `system Shop {
   }
 
   service Payments {
-    domain Authorization {}
+    domain Authorization {
+      Authorization -> Posting "Post entry"
+    }
+  }
+
+  service Ledger {
+    domain Posting {
+      Posting -> Trail "Record posting"
+    }
+  }
+
+  service Audit {
+    domain Trail {}
   }
 }
 
@@ -44,56 +61,29 @@ organization ShopOrg {
       owns Payments
       member bob { label "Bob" }
     }
+
+    team Accounting {
+      owns Ledger
+    }
+
+    team Compliance {
+      owns Audit
+    }
   }
 }
 `;
 
-const treeToggle = (page: Page) => page.getByRole("button", { name: "Toggle org tree view" });
-const dependenciesToggle = (page: Page) =>
-  page.getByRole("button", { name: "Toggle derived team dependencies" });
+const TREE_PANE = ".preview-pane--org-tree";
+const DEPENDENCIES_PANE = ".preview-pane--team-dependencies";
 
-/** Both sub-modes live on the Org tab, behind their own toolbar toggle. */
-async function openOrgTab(page: Page) {
+async function openTreeView(page: Page) {
   await openViewTab(page, "Org");
+  await page.getByRole("button", { name: "Toggle org tree view" }).click();
 }
 
-/**
- * The structural fence shared by both panes: the SVG sits inside
- * `.preview-container` — the element the wheel listener is bound to and the one
- * the fit rules are scoped to — and the diagram is drawn no wider than the pane.
- */
-async function expectFittedInSharedContainer(page: Page, paneSelector: string) {
-  const pane = page.locator(paneSelector);
-  await expect(pane).toBeVisible();
-
-  const container = pane.locator(".preview-container");
-  await expect(container).toHaveCount(1);
-  await expect(container.locator("svg")).toBeVisible();
-
-  const { intrinsic, drawn, paneWidth } = await pane.evaluate((el) => {
-    const svg = el.querySelector("svg") as SVGSVGElement;
-    const vb = svg.getAttribute("viewBox")?.split(/\s+/) ?? [];
-    return {
-      intrinsic: Number(vb[2] ?? 0),
-      drawn: svg.getBoundingClientRect().width,
-      paneWidth: el.getBoundingClientRect().width,
-    };
-  });
-  return { intrinsic, drawn, paneWidth };
-}
-
-/** Wheel over the pane changes the zoom layer's transform. */
-async function expectWheelZooms(page: Page, paneSelector: string) {
-  const zoomLayer = page.locator(`${paneSelector} .preview-container > div`).first();
-  await expect(zoomLayer).toBeVisible();
-  const before = await zoomLayer.evaluate((el) => (el as HTMLElement).style.transform);
-
-  await page.locator(`${paneSelector} .preview-container`).hover();
-  await page.mouse.wheel(0, -200);
-
-  await expect
-    .poll(() => zoomLayer.evaluate((el) => (el as HTMLElement).style.transform))
-    .not.toEqual(before);
+async function openDependencies(page: Page) {
+  await openViewTab(page, "Org");
+  await page.getByRole("button", { name: "Toggle derived team dependencies" }).click();
 }
 
 test.describe("AT-2799 Org tab sub-mode pane layout", () => {
@@ -102,23 +92,15 @@ test.describe("AT-2799 Org tab sub-mode pane layout", () => {
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openOrgTab(page);
-    await treeToggle(page).click();
-
-    const { intrinsic, drawn, paneWidth } = await expectFittedInSharedContainer(
-      page,
-      ".preview-pane--org-tree",
-    );
-    expect(intrinsic).toBeGreaterThan(paneWidth);
-    expect(drawn).toBeLessThanOrEqual(paneWidth + 1);
+    await openTreeView(page);
+    await expectFitsPane(page, TREE_PANE);
   });
 
-  test("wheel over the org tree zooms it", async ({ page, opfs }) => {
+  test("the org tree zooms on wheel and pans on drag", async ({ page, opfs }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openOrgTab(page);
-    await treeToggle(page).click();
-
-    await expectWheelZooms(page, ".preview-pane--org-tree");
+    await openTreeView(page);
+    await expectWheelZooms(page, TREE_PANE);
+    await expectDragPans(page, TREE_PANE);
   });
 
   test("clicking a team card still expands its members through the pane", async ({
@@ -131,25 +113,50 @@ test.describe("AT-2799 Org tab sub-mode pane layout", () => {
     // run on this same path and cover it in full; this asserts it once here so
     // the re-parent's own spec shows the affordance survived.
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openOrgTab(page);
-    await treeToggle(page).click();
+    await openTreeView(page);
 
-    const treePane = page.locator(".preview-pane--org-tree");
+    const treePane = page.locator(TREE_PANE);
     await expect(treePane.locator('[data-node-id="bob"]')).toHaveCount(0);
 
     await treePane.locator('[data-team-id="Billing"]').click();
     await expect(treePane.locator('[data-node-id="bob"]')).toBeVisible();
   });
 
-  test("the team dependency graph sits in .preview-container and is zoomable", async ({
+  test("the team dependency graph sits in .preview-container and is scaled to fit the pane", async ({
     page,
     opfs,
   }) => {
     await bootMemoryApp(page, opfs, ORG_KRS);
-    await openOrgTab(page);
-    await dependenciesToggle(page).click();
+    await openDependencies(page);
+    await expectFitsPane(page, DEPENDENCIES_PANE);
+  });
 
-    await expectFittedInSharedContainer(page, ".preview-pane--team-dependencies");
-    await expectWheelZooms(page, ".preview-pane--team-dependencies");
+  test("the team dependency graph zooms on wheel and pans on drag", async ({ page, opfs }) => {
+    await bootMemoryApp(page, opfs, ORG_KRS);
+    await openDependencies(page);
+    await expectWheelZooms(page, DEPENDENCIES_PANE);
+    await expectDragPans(page, DEPENDENCIES_PANE);
+  });
+
+  test("zoom does not carry from Tree View into Dependencies", async ({ page, opfs }) => {
+    // Pressing Dependencies while Tree View is on switches "tree" ->
+    // "dependencies" in one update. The two panes share a child slot, so this
+    // is the switch a missing per-mode `key` shows up on (#2811 review); the
+    // grid pane is keyed separately and would hide it.
+    await bootMemoryApp(page, opfs, ORG_KRS);
+    await openTreeView(page);
+
+    const layer = (pane: string) => page.locator(`${pane} .preview-container > div`).first();
+    await page.locator(`${TREE_PANE} .preview-container`).hover();
+    await page.mouse.wheel(0, -200);
+    await expect
+      .poll(() => layer(TREE_PANE).evaluate((el) => (el as HTMLElement).style.transform))
+      .toContain("scale(1.1)");
+
+    await page.getByRole("button", { name: "Toggle derived team dependencies" }).click();
+    await expect(page.locator(TREE_PANE)).toHaveCount(0);
+    await expect
+      .poll(() => layer(DEPENDENCIES_PANE).evaluate((el) => (el as HTMLElement).style.transform))
+      .toBe("translate(0px, 0px) scale(1)");
   });
 });
