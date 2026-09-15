@@ -54,6 +54,9 @@ NUL を持つファイルを、ファイル・行・オフセット付きで報�
 - [x] パスに含まれるタブを保つ（レコードを最初のタブでだけ分割する）
 > ✅ Automated — `scripts/lint/no-nul-bytes.test.ts` › `keeps a tab inside a path, splitting the record at the first tab only`
 
+- [x] UTF-8 として正しくない名前の tracked file も走査する。パスはバイト列のまま `lstat` / 読み込みまで渡し、表示用にだけ非 ASCII バイトを `\xNN` で綴る。表示が同じになる別名の 2 ファイルも別々に扱う
+> ✅ Automated — `scripts/lint/no-nul-bytes.test.ts` › `keeps a path that is not valid UTF-8 byte for byte, escaping it only for display` / `keeps two different paths that happen to display alike` / `spells each non-ASCII byte of an invalid name as \xNN` / `scans a tracked file whose name is not valid UTF-8`
+
 - [x] symlink（mode `120000`）は読まない。conflict 中のパスは stage ごとではなく 1 回だけ読む
 > ✅ Automated — `scripts/lint/no-nul-bytes.test.ts` › `drops a symlink, whose content would be read from the link's target` / `reads an unmerged path once, not once per conflict stage`
 
