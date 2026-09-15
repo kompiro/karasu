@@ -169,6 +169,9 @@ tag / annotation 語彙の v1.x deprecation（構文 v2.0 はツール語彙の�
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `annotation-param-unsupported` | warning | annotation のパラメータ key がその annotation で認識されない。 |
+| `annotation-param-value-unreadable` | warning | 認識される annotation パラメータの値が、文字列リテラル 1 つでも裸の語 1 つでもない（`until: 2026-12-31`、`from: system`、`from: Shop.Legacy`）。何も記録しない。描画は止まらない。AST を出力すると値が消えるため、`karasu fmt` はファイルを書き換えない。 |
+| `annotation-param-conflict` | warning | 1 つの要素が同じ annotation パラメータに異なる 2 つの値を与えている（アノテーションを繰り返した場合も、1 つの中で繰り返した場合も）。最初の値を保ち、`karasu fmt` は最初の値を後の値に上書きして出力せず、ファイルを書き換えない。 |
+| `duplicate-annotation` | warning | 同じ annotation が 1 つの要素に複数回書かれている。2 回目以降は効果を持たない。 |
 | `annotation-possible-typo` | info | annotation 名が builtin の near-match（typo の示唆）。 |
 | `tag-not-builtin` | warning | tag 名がツール語彙（builtin + system-assigned tag）の外にある。v1.x で非推奨。抑制条件なし。 |
 | `tag-not-applicable` | warning | 組み込み tag が適用範囲外の kind に書かれている（例: `service Api [index]` — `[index]` は `database` に適用）。その場所では効果を持たない。`tag-not-builtin` と同時には発火しない（builtin 外の名前には違反する適用範囲が無いため）。 |

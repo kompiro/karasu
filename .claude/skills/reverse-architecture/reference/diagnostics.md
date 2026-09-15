@@ -176,6 +176,9 @@ tool vocabulary only — see [tags-annotations.md](./tags-annotations.md)).
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `annotation-param-unsupported` | warning | An annotation parameter key is not recognised for that annotation. |
+| `annotation-param-value-unreadable` | warning | A recognised annotation parameter's value is not one string literal or bare word (`until: 2026-12-31`, `from: system`, `from: Shop.Legacy`). Nothing is recorded. Rendering is unaffected; `karasu fmt` refuses to rewrite the file, because printing the AST would drop the value. |
+| `annotation-param-conflict` | warning | One element gives the same annotation parameter two different values, across repeated annotations or inside one. The first value is kept, and `karasu fmt` refuses to rewrite the file rather than print the first over the second. |
+| `duplicate-annotation` | warning | The same annotation is written more than once on one element. The repeat has no effect. |
 | `annotation-possible-typo` | info | An annotation name is a near-match to a builtin (typo hint). |
 | `tag-not-builtin` | warning | A tag name is outside the tool vocabulary (builtin + system-assigned tags). Deprecated in v1.x; no suppression condition. |
 | `tag-not-applicable` | warning | A builtin tag is written on a node kind outside its applicability (e.g. `service Api [index]` — `[index]` applies to `database`). The tag has no effect there. Never fires together with `tag-not-builtin`: a non-builtin name has no applicability to violate. |

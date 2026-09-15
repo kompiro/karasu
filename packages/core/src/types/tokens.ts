@@ -90,6 +90,12 @@ export enum TokenType {
   // Literals
   StringLiteral = "StringLiteral",
   Identifier = "Identifier",
+  // A word that starts with a digit (`2026`, `2026abc`). No position accepts it
+  // silently: most report it and record nothing, a tag keeps it and is warned
+  // as non-builtin, and kebab-name stitching takes it as a non-leading fragment
+  // (`team-1`). The lexer used to discard the digits outright, which left the
+  // parser nothing to refuse (#2707).
+  Number = "Number",
 
   // Annotations
   At = "At", // @
