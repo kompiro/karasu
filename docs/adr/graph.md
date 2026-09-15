@@ -158,6 +158,7 @@ flowchart TD
     ADR_2716["ADR-2716<br/>CodeRabbit のレビューを request changes workflow に移す"]
     ADR_2753["ADR-2753<br/>Dependabot トリアージ 2026-09-07 — 生成物への部分編集は却下し、再生成に畳む"]
     ADR_2773["ADR-2773<br/>Dependabot トリアージ 2026-09-08 — repo 側の宣言が bot の届..."]
+    ADR_2804["ADR-2804<br/>raw NUL byte を含む tracked file を除外リスト方式の全走査で検出し、..."]
     ADR_2805["ADR-2805<br/>テスト suite の timeout はテストステップに置き、job 予算は setup を..."]
     ADR_2807["ADR-2807<br/>suite の job 予算は、共有の setup 観測最大を step 境界の上に載せて確保する"]
     ADR_2813["ADR-2813<br/>Dependabot security alert 2026-09-12（`js-yaml` ..."]
@@ -926,6 +927,7 @@ flowchart TD
   class ADR_2716 accepted
   class ADR_2753 accepted
   class ADR_2773 accepted
+  class ADR_2804 accepted
   class ADR_2805 superseded
   class ADR_2807 accepted
   class ADR_2813 accepted
