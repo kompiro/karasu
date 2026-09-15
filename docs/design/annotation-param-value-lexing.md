@@ -125,13 +125,13 @@ parse エラーがあっても図は描かれる（上の全ケースで SVG が
 - **`=` と `;` の黙認は本設計の範囲外**。ドキュメント（acceptance 記録を含む）が使っており、トークン化すると既存の doc fence と fixture が壊れる。数字だけを扱う。
 - **新しい診断コードはカタログ 4 箇所に触る**: `types/ast.ts` の code union、`packages/i18n` の en/ja、`docs/spec/diagnostics.md` の en/ja。TPL-1623 のカタログ網羅テストが drift を落とす。
 - **spec を触ると skill バンドルの同期が要る**: `docs/spec/{syntax,tags-annotations,diagnostics}.md` は reverse-architecture skill が同梱しており、`pnpm run lint:skill-reference-bundle-sync --write` を同じコミットで走らせる（`.claude/rules/spec-audit.md`）。
-- **ドキュメントの `.krs` fence は実際に parse される**。`krs invalid` fence は「今も parse **エラー**が出ること」を検証する。拒否形を `krs invalid` で示せるのは、その診断が error のときだけで、warning なら `krs fragment` か表で書く（Part 2 の register 次第）。
+- **ドキュメントの `.krs` fence は実際に parse される**。`krs invalid` fence は「今も parse **エラー**が出ること」を検証する。拒否形を `krs invalid` で示せるのは、その診断が error のときだけで、warning なら `krs fragment` か表で書く。
 
 ## 検討した選択肢
 
 ### Part 1: 引用符なしの値が壊れる問題
 
-#### 案1-A: lexer が数字を捨てるのをやめ、parser は「完全な 1 トークン」だけを値として受ける（推奨）
+#### 案1-A: lexer が数字を捨てるのをやめ、parser は「完全な 1 トークン」だけを値として受ける（採用）
 
 lexer の `default` 節に digit 始まりの分岐を足し、`[0-9][\p{L}\p{N}_]*` の run を 1 つの
 `TokenType.Number` として emit する。
@@ -208,12 +208,12 @@ tag / annotation 名と同じく `stitchKebabTail` を値ポジションにも�
 キー自体は著者が書いたものなので名指ししてよい。名指ししてはいけないのは、ADR-2571 が直した
 「値をキーとして報告する」形である。
 
-#### register: 要判断
+#### register: error（PR #2795 のレビューで確定）
 
 どちらの register でも、読めない値は記録しない（ADR-2571 決定 4）。違いは `karasu fmt --write` の挙動に出る。
 parse エラーがあっても図は描かれる（実測）ので、register が変えるのは実質 `fmt` だけである。
 
-| | 案2-A: warning | 案2-B: error（推奨） |
+| | 案2-A: warning（却下） | 案2-B: error（採用） |
 | --- | --- | --- |
 | `fmt --write` | **著者の値を消して** `@deprecated` と書き込む | 書き込みを拒否し、ファイルはそのまま残る |
 | 図の描画 | 描かれる | 描かれる |
@@ -221,7 +221,7 @@ parse エラーがあっても図は描かれる（実測）ので、register �
 | 記録済みの前提との関係 | Issue 本文の「warning, most likely」と一致。ADR-2571 決定 4 の「`fmt` は裸の `@deprecated` に戻す」とも一致 | 上の 2 つから外れる |
 | 拒否形を spec に示す fence | `krs fragment` か表 | `krs invalid`（lint が error のまま保たれることを検証する） |
 
-**案2-B を推奨する**。根拠は 2 つある。
+**案2-B を採用する**。根拠は 2 つある。
 
 1. **Part 3 と同じ論理が当てはまる**。案3-A を「警告は `fmt` を止めない。データ損失を告知するだけ」として却下するなら、
    案2-A はまさにその形である。`@deprecated(until: 2026-12-31)` に `fmt --write` をかけると、著者が書いた日付が消える。
@@ -238,9 +238,12 @@ parse エラーがあっても図は描かれる（実測）ので、register �
    | 冗長（同じ名前が 2 回） | `@deprecated @deprecated` | warning |
    | 読めるが効果がない | `@deprecated(reason: "x")` | warning（既存） |
 
-**ただし案2-B は記録済みの前提（Issue 本文の register の見込みと、ADR-2571 決定 4 が述べた `fmt` の帰結）を変えるので、
-メンテナの判断を要する**。案2-A を選ぶ場合は、`fmt --write` が読めない値を消すことを spec に明記し、
-案3-A を却下した理由とどう両立するかを ADR に書く。
+案2-B は記録済みの前提を 2 つ変える。Issue 本文は register を「`annotation-param-unsupported` と揃えて warning」と
+見込んでいた。ADR-2571 決定 4 は、読めない値に対して `fmt` が裸の `@deprecated` を書くことを帰結として述べていた。
+メンテナがこの変更を承知のうえで PR #2795 のレビューで確定した。決定 4 の本体（読めない値は記録せず、次の区切りまで
+消費する）は維持するので、ADR-2571 は supersede しない。昇格 ADR の背景に「専用診断を足したことで `fmt` の帰結が
+書き込み拒否に変わる」と書き、frontmatter の `related_to` で ADR-2571 を指す（ADR-2571 は専用診断の追加と register の
+選択を #2707 に送っていた）。
 
 なお未対応キーも `fmt --write` で消える（`@deprecated(reason: "x")` は `@deprecated` になる）。これは ADR-1568 の
 「警告して破棄する」に基づく既存の挙動で、本設計の範囲外とする。
@@ -254,7 +257,7 @@ parse エラーがあっても図は描かれる（実測）ので、register �
 **デメリット**: 警告は `fmt` を止めない。`karasu fmt --write` は今日どおり著者の `2026-Q3` を
 `2027-Q3` で上書きする。**データ損失を告知するだけで、止めない。**
 
-#### 案3-B: 名前の重複は warning、同じキーに異なる値が来たら error（推奨）
+#### 案3-B: 名前の重複は warning、同じキーに異なる値が来たら error（採用）
 
 - `duplicate-annotation`（warning）: 同じアノテーション名を同一ホストに 2 回以上書いた。2 つ目は効果を持たない。
 - `annotation-param-conflict`（error）: 同名アノテーションの 2 つの occurrence が同じキーに**異なる値**を与えた。AST は両方を保持できない。
@@ -271,7 +274,7 @@ error にすると `fmt` は既存の parse-error ゲート（`Cannot format: so
 **デメリット**
 
 - 新規コードが 2 つ増える（Part 2 と合わせて計 3 つ）
-- Part 2 の register と論理を揃える必要がある（案2-A を選ぶと、同じ「告知か停止か」の問いに Part 2 と Part 3 で逆の答えを出すことになる）
+- Part 2 と同じ「告知ではなく停止」の論理に立つ。片方の register だけを後から変えると、同じ問いに Part 2 と Part 3 で逆の答えを出すことになる
 - 矛盾を「表現できないから error」と言っているので、将来 AST が表現できるようになったら register を下げることになる
 
 #### 案3-C: `annotationParams` を per-occurrence 表現に変える
@@ -308,7 +311,10 @@ error にすると `fmt` は既存の parse-error ゲート（`Cannot format: so
 
 ## 現時点の方針
 
-**案1-A（kebab 断片の縫合を含む）+ Part 2 の新規診断（register は案2-B を推奨、要判断）+ 案3-B を採用する。**
+**案1-A（kebab 断片の縫合を含む）+ Part 2 の新規診断（error、案2-B）+ 案3-B を採用する。**
+
+Part 2 の register、kebab 断片の縫合をこの Issue に含めること、Part 3 の方針の 3 点は、PR #2795 のレビューで
+メンテナが確定した。
 
 Part 1 を lexer で直すのは、`needsQuotes()` と lexer の不一致こそが TPL-1101 の記録する root cause だからである。
 縫合の 1 行を同じ変更に含めるのは、lexer だけを変えると `[team-1]` の分裂が悪化するためである。
@@ -322,7 +328,7 @@ parser 側だけの案1-B は headline を消すが、`until: 2026abc` が `"abc
 Part 3 で案3-C（per-occurrence AST）を今回採らないのは、実需要が観測されていない一方で
 スキーマ移行のコストが確定しているためである。ただし TPL-1101 の #2650 パターンに照らせば
 **最終的な対処は AST 側**であることを ADR に明記し、後継 Issue として残す。案3-B はその間、
-データ損失を告知ではなく停止で防ぐ。Part 2 で案2-B を推奨するのも同じ理由である。
+データ損失を告知ではなく停止で防ぐ。Part 2 で案2-B を採るのも同じ理由である。
 
 スライスには割らず 1 PR で出す。Part 1 と Part 2 は `parseAnnotations` の同じ数行を触り、
 Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/spec/tags-annotations.md`
@@ -345,8 +351,8 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
    assert するテストを足す。数字が再び捨てられたらこのテストが落ちる。負のテスト（数字分岐を外すと落ちること）で
    空振りしていないことを確認する。
 3. **parser**: `parseAnnotations` の値読みを「1 トークンで読み切れ、次が `,` / `)` / EOF」に変える。
-   満たさないものは `annotation-param-value-unreadable`（register は本 PR のレビューで決める。推奨は error）を
-   1 件出し、次の区切りまで消費し、何も記録しない。誤ったキー名の `annotation-param-unsupported` は出さない。
+   満たさないものは `annotation-param-value-unreadable`（error）を 1 件出し、次の区切りまで消費し、
+   何も記録しない。誤ったキー名の `annotation-param-unsupported` は出さない。
    受理条件が `needsQuotes()` の裏返しであることをコメントで明示し、両者が同じ集合を指すことを
    property テストで固定する（formatter が裸で出す値は parser が同じ値として読み戻せる）。
 4. **parser（Part 3）**: 同一ホストのアノテーション名の重複を検出して `duplicate-annotation`（warning）。
@@ -356,7 +362,8 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
    parser が出す診断は warning でもこちらに入る（既存の `annotation-param-unsupported` は parser が出す
    warning でここにあり、`duplicate-boundary-id` などの `duplicate-*` 系も大半がここにある）。
    resolver の `analyze()` が出す `WarningKind` / `WarningParamsByKind`（`types/warnings.ts`）には入れない。
-   Part 2 の register を案2-A / 案2-B のどちらにしても登録先は変わらず、発行時の `severity` だけが変わる。
+   `annotation-param-value-unreadable` と `annotation-param-conflict` は `severity: "error"`、`duplicate-annotation` は
+   `severity: "warning"` で発行するが、登録先は 3 つとも同じである。
    `annotation-param-conflict` は occurrence ごとの値を持つ parser でしか検出できないので、`duplicate-annotation` も
    同じ場所で検出して発行する層を揃える。コードごとに次を足す:
    - `DiagnosticParamsByCode` にパラメータ型
@@ -370,16 +377,16 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
    `packages/i18n` の typecheck + `render-diagnostic.test.ts` で行う。
 6. **spec**: `docs/spec/tags-annotations.md`（en/ja）§ Annotation parameters に
    「裸で書ける値の形」（`needsQuotes()` と同じ集合）と、重複アノテーションの扱いを書く。
-   拒否される綴りは、案2-B なら ` ```krs invalid `（lint が error のまま保たれることを検証する）、
-   案2-A なら ` ```krs fragment ` か表で示す。
+   拒否される綴り（`until: 2026-12-31` と、同じキーに異なる値を与える重複）は ` ```krs invalid ` で示す。
+   `lint:krs-fences` が、その fence が今も parse エラーを出すことを検証する。
    同じコミットで `pnpm run lint:skill-reference-bundle-sync --write`。
 7. **TPL**: 既存 TPL への back-ref で足りるか、proactive TPL を 1 件起こすかを実装時に判断する。
    候補の観点は「**lexer が入力文字を黙って捨てると、下流には拒否する手がかりが残らない**」で、
    TPL-1101（formatter との一致）・TPL-1503（受理と効果）のどちらにも完全には含まれていない。
 8. **AT**: `docs/acceptance/2707-annotation-param-value.md`。TC は:
    - `@deprecated(until: 2026-12-31)` に `annotation-param-value-unreadable` が 1 件だけ出て、`annotation-param-unsupported` が出ないこと
-   - 同じ入力に `karasu fmt --write` をかけたとき、`until: "-"` が書き込まれないこと。
-     案2-B なら**ファイルがそのまま残り、エラー終了する**こと（案2-A なら `@deprecated` が書き込まれること）
+   - 同じ入力に `karasu fmt --write` をかけたとき、**ファイルが 1 バイトも変わらず、非ゼロでエラー終了する**こと
+     （`until: "-"` も裸の `@deprecated` も書き込まれない）
    - `until: "2026-12-31"`（引用符あり）は無警告で round-trip すること
    - `@deprecated(until: "2026-Q3") @deprecated(until: "2027-Q3")` に対し `karasu fmt --write` が
      ファイルを書き換えずエラー終了すること
@@ -391,12 +398,13 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
 9. **changeset**: `@karasu-tools/core` / `karasu` の patch。
 10. **ADR 昇格**: 実装完了後に `docs/adr/2707-annotation-param-value-lexing.md` として昇格し、
     本 Design Doc を同じ PR で削除する。ADR には「per-occurrence AST が最終的な対処である」ことと
-    その後継 Issue を記録する。
+    その後継 Issue を記録する。ADR-2571 は supersede せず `related_to` で指し、読めない値に対する `fmt` の帰結が
+    「裸の `@deprecated` を書く」から「書き込みを拒否する」に変わったことを背景に書く（Part 2 の register 節）。
 
 ### 影響範囲・マイグレーション
 
 - **既存ユーザーへの影響**: 引用符なしの `until: 2026-12-31` を書いたまま `fmt` をかけていないファイルは、
-  修正後に `fmt --write` をかけると、案2-B では書き込みが拒否され、案2-A では `@deprecated` になる。
+  修正後に `fmt --write` をかけると書き込みが拒否される（引用符で囲めば通る）。図の描画は止まらない。
   すでに `until: "-"` が焼き込まれたファイルは引用符つき文字列なので、そのまま `"-"` という opaque な値として残る。
   自動マイグレーションは行わない（診断が出ない形なので検出できない）。
 - **壊れた入力に対する診断の増加**: `service 2Foo` / `A -> 2B` が沈黙からエラーに、`[2026]` が消滅から
@@ -412,8 +420,6 @@ Part 3 も同じ関数の外側ループに入る。spec の同じ節（`docs/sp
 
 ## 未解決の問い / 決めないこと
 
-- **`annotation-param-value-unreadable` の register（案2-A / 案2-B）** は本 PR のレビューで決める。
-  推奨は案2-B（error）だが、Issue 本文の見込みと ADR-2571 決定 4 の帰結から外れるため、メンテナの判断を要する。
 - **`=` と `;` の黙認をどうするか**は決めない。ドキュメント（`docs/spec/syntax.md:131` と acceptance 記録）が
   使っており、トークン化すると doc fence と古い fixture が壊れる。本設計のドリフトガードは
   この 2 文字を明示的な許容リストに置くので、**新しく黙殺される文字が増えたときには落ちる**。
