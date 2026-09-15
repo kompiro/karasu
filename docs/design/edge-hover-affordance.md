@@ -68,6 +68,14 @@ dify で shape tag 別に計測した結果（`main` = 現状のスタイルシ�
 | deploy | main | `polyline` | 12 | **0/12** | **0/12** | **0/12** |
 | deploy | main | `line` | 2 | **0/2** | **0/2** | **0/2** |
 
+列の意味（`packages/app/src/styles/components/preview.css` の hover 規則に対応）:
+
+- **太線化**: 焦点のエッジの線に `stroke-width: 3` と `filter: brightness(1.4)` が効く。
+  brightening はこの列に含まれる。
+- **全強度**: 焦点のエッジのグループに `opacity: 1 !important` が効く。線の太さや明るさは
+  変えない。
+- **peer dim**: 焦点以外のエッジが `opacity: 0.25` に落ちる。
+
 ここから 3 つの gate が読み取れる。
 
 1. **グループの class**（#2632 が指摘したもの）。`.krs-edge--interactive` は id gate なので、
@@ -75,8 +83,8 @@ dify で shape tag 別に計測した結果（`main` = 現状のスタイルシ�
 2. **shape tag**。stroke 規則は `line` と `polyline` しか名指ししていない。hop mark を持つ
    エッジ（#1859 P2c-C）は `gappedStrokePath` により `<path>` で描かれるため、どちらにも
    マッチしない。**dify の system view では計測可能な 24 本中 18 本が今日すでに太線化も
-   brightening もされていない。** canonical id を持つエッジで、報告された症状が system view
-   側ですでに起きている。
+   brightening もされていない。** グループ単位の全強度と peer dim は効くが、線そのものは
+   変わらない。canonical id を持つエッジで、報告された症状が system view 側ですでに起きている。
 3. **祖先グループの opacity**。deploy エッジは `<g class="ghost-edges" opacity="0.3">` の中に
    描かれる。group opacity は乗算合成されるので、hover した子に `opacity: 1 !important` を
    当てても持ち上がらない。セレクタを広げるだけだと `{focused: 0.3, peer: 0.075}` になり、
@@ -169,8 +177,8 @@ deploy ghost edge にも走らせる。
 
 **メリット**
 
-- affordance に加えて addressability も直る。`edge#<id>` selector が multi-system root で
-  効くようになる。
+- 132 本すべてが hover 規則にマッチするようになり、addressability も直る。
+  `edge#<id>` selector が multi-system root で効くようになる。
 
 **デメリット**
 
@@ -186,7 +194,7 @@ deploy ghost edge にも走らせる。
 
 | 観点 | 案1 | 案2 | 案3 |
 | --- | --- | --- | --- |
-| 直る drawn edge | 132/132 | 20/132 | 132/132（affordance）|
+| hover 規則にマッチする drawn edge | 132/132 | 20/132 | 132/132 |
 | `path` の太線化（system 18 本）| 直る | 残る | 残る |
 | ghost group の opacity | 直る | 残る | 残る |
 | 変更量 | core 1 箇所 + CSS 4 規則 | core 1 箇所 | core 複数経路 |
