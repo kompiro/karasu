@@ -32,7 +32,20 @@ import {
 
 const REPO = "kompiro/karasu";
 const POLL_MS = 60_000;
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+const ISO_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * An ISO 8601 instant with a time and a zone, on a real calendar day. `Date.parse`
+ * also takes "September 15, 2026" (local midnight) and rolls 2026-02-30 over to
+ * March 2; either silently moves the round boundary.
+ */
+function isIsoInstant(value: string): boolean {
+  const m = ISO_INSTANT.exec(value);
+  if (!m || Number.isNaN(Date.parse(value))) return false;
+  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const calendar = new Date(Date.UTC(year, month - 1, day));
+  return calendar.getUTCMonth() === month - 1 && calendar.getUTCDate() === day;
+}
 
 function gh(args: string[]): string {
   return execFileSync("gh", args, { encoding: "utf-8", maxBuffer: 64 * 1024 * 1024 });
@@ -197,12 +210,7 @@ function parseArgs(argv: string[]): Args {
   }
   if (!Number.isInteger(args.pr))
     throw new Error("usage: await-review.ts <pr> [--once] [--since <iso>] ...");
-  // ISO 8601 with a time and a zone only: `Date.parse` also takes "September 15,
-  // 2026", which silently means local midnight and moves the round boundary.
-  if (
-    args.since !== undefined &&
-    (!ISO_INSTANT.test(args.since) || Number.isNaN(Date.parse(args.since)))
-  ) {
+  if (args.since !== undefined && !isIsoInstant(args.since)) {
     throw new Error(
       `--since needs an ISO 8601 timestamp such as 2026-09-15T15:31:13Z: ${args.since}`,
     );

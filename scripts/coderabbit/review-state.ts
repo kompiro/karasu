@@ -200,13 +200,16 @@ const BODY_FINDING_SECTIONS = [
 /** Body-only findings in the reviews of the head filed since the last action. */
 export function bodyFindingCount(s: Snapshot): number {
   const since = ms(s.since);
-  return s.reviews
-    .filter((r) => r.commitId === s.headSha && ms(r.submittedAt) >= since)
-    .reduce(
-      (n, r) =>
-        n + BODY_FINDING_SECTIONS.reduce((m, re) => m + Number(re.exec(r.body)?.[1] ?? 0), 0),
-      0,
-    );
+  return (
+    s.reviews
+      // A dismissed review's findings were set aside by whoever dismissed it.
+      .filter((r) => isCommitReview(r) && r.commitId === s.headSha && ms(r.submittedAt) >= since)
+      .reduce(
+        (n, r) =>
+          n + BODY_FINDING_SECTIONS.reduce((m, re) => m + Number(re.exec(r.body)?.[1] ?? 0), 0),
+        0,
+      )
+  );
 }
 
 export function classify(

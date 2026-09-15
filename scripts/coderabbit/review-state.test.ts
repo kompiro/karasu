@@ -409,6 +409,12 @@ describe("bodyFindingCount", () => {
           submittedAt: "2026-09-15T16:12:50Z",
           body: "**⚠️ Outside diff range comments (2)**\n<summary>🧹 Nitpick comments (1)</summary>",
         },
+        {
+          state: "DISMISSED",
+          commitId: HEAD,
+          submittedAt: "2026-09-15T16:11:00Z",
+          body: "**⚠️ Outside diff range comments (4)**",
+        },
         { state: "APPROVED", commitId: HEAD, submittedAt: "2026-09-15T16:12:55Z", body: "" },
       ],
     });
