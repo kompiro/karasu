@@ -49,7 +49,7 @@ export interface CodeRabbitReview {
  * `APPROVED`, or `COMMENTED` with a body (findings outside the diff only).
  * `DISMISSED` is an approval GitHub withdrew when a later push arrived.
  */
-export function isCommitReview(r: CodeRabbitReview): boolean {
+function isCommitReview(r: CodeRabbitReview): boolean {
   if (r.state === "DISMISSED") return false;
   return !(r.state === "COMMENTED" && r.body.trim() === "");
 }
