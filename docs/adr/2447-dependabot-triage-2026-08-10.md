@@ -16,7 +16,7 @@ assumptions:
   # （後続の bump のたびに assumption が壊れるのを避ける。ADR-2115 が
   # ADR-1338 に対して行ったのと同じ緩和）。
   - "grep: package.json :: \"oxfmt\": \"\\^0\\."
-  - "grep: package.json :: \"vitest\": \"\\^4\\."
+  - "grep: package.json :: \"vitest\": \"\\^5\\."
 ---
 
 # ADR-2447: Dependabot トリアージ 2026-08-10 — PR 枠を 8 に広げ、peer で結ばれた依存は差し替え PR で対に戻す
