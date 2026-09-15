@@ -59,6 +59,13 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
+      # A raw NUL byte makes a file invisible to grep (Issue #2804). Also run by
+      # `ci-skip.yml`, the docs-only stub for this same Required `Check`, so the
+      # scan reaches every PR rather than only the ones this workflow's
+      # `paths-ignore` lets through (TPL-2446).
+      - name: No raw NUL bytes in tracked text files
+        run: pnpm run lint:no-nul-bytes
+
       - name: Knip
         run: pnpm run knip
 
