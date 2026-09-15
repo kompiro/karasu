@@ -108,7 +108,7 @@ ready → implementing → in-review → (close)
 9. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 10. Issue ラベルを status: in-review に更新する
 11. 手動検証チェックリストを実施する
-12. CodeRabbit のレビューを収束させる（approve が付くまで指摘に対応する。記録済みの決定を変える指摘だけ人間に確認する）
+12. CodeRabbit のレビューを収束させる（`/coderabbit-converge` で approve まで回す。記録済みの決定を変える指摘だけ人間に確認する）
 13. 人間のレビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
@@ -153,6 +153,9 @@ required check ではなく、default branch の ruleset は approving review �
 **PR を出した側が approve までのラウンドを回しきってから人間に渡す。** 人間の
 レビューを CodeRabbit のラウンドと並走させない。並走させると収束途中の差分を人間が
 読むことになり、次のラウンドで消える指摘に人間の時間を使う。
+ラウンドは `/coderabbit-converge` で回す。CodeRabbit の応答を待つ・rate limit 明けに
+再依頼する・指摘に対応して push する、を人間の取り次ぎなしで繰り返し、人間に渡せる
+状態か人間の判断が要る状態になったら通知して止まる。
 
 #### 人間に確認する指摘の判定
 
@@ -235,6 +238,12 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 - 同じ**誤検知**を繰り返されるなら、`path_instructions` が規約の実態とずれている合図
   として扱う。返信で毎回閉じるのではなく、glob を実際の適用範囲まで絞るか、例外を
   instruction に書く
+- **review 枠は org 全体で共有され、上限は直近の利用量で変わる。** 上限に当たると
+  サマリーコメントに「Next included review available in N minutes」が出るが、
+  **CodeRabbit は明けても自分では再レビューしない。** 告知時刻を過ぎてから
+  `@coderabbitai review` を 1 回投げる。それより前に投げても「Review rate limited.」で
+  弾かれ、枠の試行回数を増やすだけになる。1 ラウンドの修正はまとめて 1 回の push にする。
+  状態の判定は `pnpm exec tsx scripts/coderabbit/await-review.ts <n> --once`
 - 設定は `.coderabbit.yaml`（レビュー言語・除外パス・path ごとの規約）
 
 ### Stacked PR の進め方
@@ -252,9 +261,9 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
 | 1 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 2 | 先に `/code-review <n>` を当てる |
-| 3 | code-review と CodeRabbit の指摘の対応可否を決める（記録済みの決定を変えるものだけ人に確認する） |
-| 4 | 対応すると決めた指摘を直す |
-| 5 | push すると CodeRabbit が再レビューする。3 に戻り、CodeRabbit が approve するまで繰り返す |
+| 3 | code-review の指摘の対応可否を決め、対応すると決めたものを直す（記録済みの決定を変えるものだけ人に確認する） |
+| 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 3 と同じ） |
+| 5 | CodeRabbit が approve するか、人の判断待ちで止まるまで 4 が繰り返す |
 | 6 | CodeRabbit の approve が付いたら、そのスライスで観測できることを人が確認し、マージ可否を決める |
 | 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層の draft を外して 1 に戻る |
 
@@ -386,7 +395,7 @@ plugin にバンドルされる skill とその karasu 内での主な用途:
 | `/hane:review-docs` | リンク切れ・ドキュメント整合性レビュー |
 | `/hane:sync-docs` | コード現状に合わせてリファレンス系ドキュメントを更新 |
 
-karasu 専用の skill（`/svg-icon`, `/update-examples`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
+karasu 専用の skill（`/svg-icon`, `/update-examples`, `/coderabbit-converge`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
 
 ### Sibling repo の clone（`adr-tools`, `tpl-tools`, `hane` 等）
 
