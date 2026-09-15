@@ -326,7 +326,8 @@ export function PreviewColumn() {
            drawn. A scale fitted to a 36k-px ER diagram means nothing on a
            usecase canvas, so each mode starts fresh — which is also what the
            usecase view did before #2800, when the entity pane was a `<div>`
-           and toggling unmounted it. Keeping a zoom per mode instead is #2799. */
+           and toggling unmounted it. #2799 weighed keeping a zoom per mode
+           and kept the reset. */
         <PreviewPane
           key="entity-view"
           className="preview-pane--entity"
@@ -335,21 +336,48 @@ export function PreviewColumn() {
           nodeMetadata={NO_NODE_METADATA}
         />
       ) : showOrgTreeView ? (
-        <div
-          className="preview-pane preview-pane--org-tree"
-          style={{ overflow: "auto", flex: 1 }}
-          onClick={(e) => {
-            const target = (e.target as Element).closest("[data-team-id]");
-            const teamId = target?.getAttribute("data-team-id");
-            if (teamId && onTeamToggle) onTeamToggle(teamId);
-          }}
-          dangerouslySetInnerHTML={{ __html: orgTreeSvg ?? "" }}
+        /* The org tab's two sub-modes follow the entity view onto `PreviewPane`
+           (#2799). Both were bare `overflow: auto` divs, so neither could be
+           fitted, zoomed or panned — the failure ADR-309 left open as "大規模
+           組織での SVG サイズ上限": a wide org tree could only ever be read
+           through a scrollbar.
+
+           `diagnostics` is the org view's own: all three org modes are drawn
+           from the same compiled report, so a parse error that dims the grid
+           has to reach these panes too rather than leaving them silently
+           stale.
+
+           `nodeMetadata` is empty for the reason the entity pane's is: the map
+           is keyed by another view's ids. A team card never reaches it — its
+           click is taken by `onTeamToggle` first — but a member card carries
+           only `data-node-id`, so it falls through to the node lookup, and a
+           member id that collides with a system node id would open that
+           node's detail panel. With the map empty, a member click opens
+           nothing, as it did before.
+
+           Each sub-mode gets its own `key`, like the entity and diagram panes:
+           these branches share one child slot, so without distinct keys React
+           would keep a single instance when Dependencies is pressed straight
+           from Tree View (or back) and carry its zoom, pan and open panel
+           across. Starting each mode at scale 1 is deliberate (#2799 point 2):
+           the diagrams have different coordinate systems and extents, and a
+           scale and offset carried over from one lands the reader off-canvas
+           in the next. */
+        <PreviewPane
+          key="org-tree"
+          className="preview-pane--org-tree"
+          svg={orgTreeSvg ?? ""}
+          diagnostics={diagnostics}
+          nodeMetadata={NO_NODE_METADATA}
+          onTeamToggle={onTeamToggle}
         />
       ) : showTeamDependencies ? (
-        <div
-          className="preview-pane preview-pane--team-dependencies"
-          style={{ overflow: "auto", flex: 1 }}
-          dangerouslySetInnerHTML={{ __html: teamDependencySvg ?? "" }}
+        <PreviewPane
+          key="team-dependencies"
+          className="preview-pane--team-dependencies"
+          svg={teamDependencySvg ?? ""}
+          diagnostics={diagnostics}
+          nodeMetadata={NO_NODE_METADATA}
         />
       ) : showAllLayersIframe ? (
         <iframe
