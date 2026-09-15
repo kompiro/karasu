@@ -12,6 +12,7 @@ known_consumers:
   - playwright-tests
 related_to:
   - TPL-1032
+  - TPL-2789
   - TPL-976
 discovered_from:
   - issue: "#1171"
@@ -63,6 +64,7 @@ E2E で UI 状態の assertion / 連鎖操作を書くとき、以下を確認�
 - Monaco に対しては `replaceEditorContent(page, content)` のような **fixture helper** を導入し、内部で「editor が ready」「値が反映された」を待つ。各 spec が個別に Ctrl+A → Delete → insertText を書かない
 - transient state を直接 assert したい場合は、**それが stable に維持される条件を作ってから** 観測する（例: 連続した nav の途中ではなく、最終的に止まった位置で highlight を見る）
 - flake が出たテストは `test.fixme()` でロックし、**根本原因 issue を立てて hypothesis を 2-3 個書く**（#1171 のスタイル）。`fixme` を雑に外さない
+- trace の URL（state を反映する hash）と DOM スナップショットを突き合わせる。state が正しく DOM だけ違うなら待機の問題ではない。#1171 と同じアサーションの再発（#2789）は、無関係な再レンダリングが SVG を流し込み直してハイライトを消していた（TPL-2789）
 - `retries` を絞ったときに落ちるテストは、retry の数だけ「stable 待ちを忘れている」サインなので、retry を増やして治すのではなく fixture / helper を直す
 
 ## 関連テスト
