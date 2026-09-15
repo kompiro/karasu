@@ -22,7 +22,7 @@ export interface DiagnosticDocumentContext {
  * often is not. So:
  *
  * - no `loc.file` (a single-document compile), or the open document's own
- *   path: `Line N`, as before
+ *   path: `lineLabel(N)`, the locale's `Line N`, as before
  * - any other file: `<path>:N`. This spelling adds no word to translate.
  *
  * The path is the one a reader knows the file by: relative to the display root
@@ -36,10 +36,11 @@ export interface DiagnosticDocumentContext {
 export function diagnosticLocationLabel(
   loc: Diagnostic["loc"],
   { currentFilePath, displayRoot }: DiagnosticDocumentContext,
+  lineLabel: (line: number) => string,
 ): string | null {
   if (!loc) return null;
   if (loc.file === undefined || loc.file === currentFilePath) {
-    return `Line ${loc.start.line}`;
+    return lineLabel(loc.start.line);
   }
   return `${displayPath(loc.file, displayRoot)}:${loc.start.line}`;
 }

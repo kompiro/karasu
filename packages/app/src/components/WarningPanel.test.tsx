@@ -392,6 +392,21 @@ describe("WarningPanel location", () => {
     expect(container.querySelector(".warning-item")?.textContent).toContain("Line 12: ");
   });
 
+  it("spells the line label in the UI locale", () => {
+    const { container } = render(
+      <WarningPanel
+        warnings={[located(12, "/projects/shop/index.krs")]}
+        currentFilePath="/projects/shop/index.krs"
+        displayRoot="/projects/shop"
+      />,
+      "ja",
+    );
+
+    const text = container.querySelector(".warning-item")?.textContent ?? "";
+    expect(text).toContain("12 行目: ");
+    expect(text).not.toContain("Line 12");
+  });
+
   it("names the file for a warning in another one", () => {
     const { container } = render(
       <WarningPanel

@@ -462,6 +462,20 @@ describe("PreviewPane", () => {
       expect(container.querySelector(".diagnostic-banner__item")?.textContent).toMatch(/^Line 4: /);
     });
 
+    it("spells the line label in the UI locale", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[located(4, "/projects/shop/index.krs")]}
+          currentFilePath="/projects/shop/index.krs"
+          displayRoot="/projects/shop"
+        />,
+        "ja",
+      );
+
+      expect(container.querySelector(".diagnostic-banner__item")?.textContent).toMatch(/^4 行目: /);
+    });
+
     it("names the file when the position is in another one", () => {
       const { container } = render(
         <PreviewPane

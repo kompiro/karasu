@@ -78,7 +78,7 @@ Each surface prints a location as follows.
 | --- | --- |
 | CLI (`karasu render`, and the commands that share its error report) | `<file>:<line>:<column>`. `<file>` is the entry, in the spelling the user typed, when the position has no `file` or its `file` is the entry (compared as canonical paths); otherwise the file, relative to the working directory. |
 | CLI (`karasu diff`) | `<line>:<column>`, with no file: the command compiles two inputs. |
-| App preview banner and warning panel | `Line <line>` for a position in the open document or with no `file`; `<path>:<line>` for any other file. The path is relative to the project root, or to the entry's directory in a mode without a project; a snapshot being compared is named by the project path it was taken of. |
+| App preview banner and warning panel | The UI locale's line label (`Line <line>` in English, `<line> 行目` in Japanese) for a position in the open document or with no `file`; `<path>:<line>` for any other file. The path is relative to the project root, or to the entry's directory in a mode without a project; a snapshot being compared is named by the project path it was taken of. |
 | LSP | The document's own range, 0-based. The LSP is single-document, so no `file` arises. |
 
 > Related TPLs: [TPL-2715](../test-perspectives/TPL-2715-source-position-carries-its-document.md) (a position is an address only together with the document it indexes, so the parse attaches the file where ranges are built and every surface reads it from there).

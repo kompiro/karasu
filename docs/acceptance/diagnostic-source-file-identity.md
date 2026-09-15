@@ -90,9 +90,9 @@ type: product
 
 ### AC-4: app のプレビューバナーが、開いている文書以外の位置にファイル名を付ける
 
-- [x] TC-D1: 開いている文書の位置は `Line N`、別ファイルの位置は `<プロジェクト相対パス>:N` と表示する
+- [x] TC-D1: 開いている文書の位置は `Line N`（日本語 UI では `N 行目`）、別ファイルの位置は `<プロジェクト相対パス>:N` と表示する
 
-  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › PreviewPane > diagnostic banner location › shows the open document's positions as a line of it / names the file when the position is in another one (TC-D1)
+  > ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › PreviewPane > diagnostic banner location › shows the open document's positions as a line of it / spells the line label in the UI locale / names the file when the position is in another one (TC-D1)
 
 - [x] TC-D2: 同じ行・同じメッセージの診断が 2 ファイルにあっても、ファイル名で区別される
 
@@ -104,7 +104,7 @@ type: product
 
 - [x] TC-D4: warning パネルも同じ規則で表示する（開いている文書は `Line N`、別ファイルはパス付き、2 ファイルの同じ offset の warning を別項目にする）
 
-  > ✅ Automated — `packages/app/src/components/WarningPanel.test.tsx` › WarningPanel location › keeps `Line N` for a warning in the open document / names the file for a warning in another one / lists same-offset warnings from two files as two items (TC-D4)
+  > ✅ Automated — `packages/app/src/components/WarningPanel.test.tsx` › WarningPanel location › keeps `Line N` for a warning in the open document / spells the line label in the UI locale / names the file for a warning in another one / lists same-offset warnings from two files as two items (TC-D4)
 
 - [x] TC-D5: 比較中のスナップショットは撮影元のプロジェクト上のパスで、プロジェクトの無いモード（memory / serve）はエントリのディレクトリからの相対パスで示す
 

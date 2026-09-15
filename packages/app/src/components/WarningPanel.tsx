@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import type { Warning } from "@karasu-tools/core";
 import { warningSeverity } from "@karasu-tools/core";
 import { useFormattedWarning } from "../i18n/format-warning.js";
+import { useTranslation } from "../i18n/index.js";
 import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
 
 interface WarningPanelProps {
@@ -24,6 +25,7 @@ const SEVERITY_ICON = {
 export function WarningPanel({ warnings, currentFilePath, displayRoot }: WarningPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
   const formatWarning = useFormattedWarning();
+  const { t } = useTranslation();
 
   const toggle = useCallback(() => setCollapsed((c) => !c), []);
 
@@ -46,7 +48,11 @@ export function WarningPanel({ warnings, currentFilePath, displayRoot }: Warning
         <ul className="warning-list">
           {warnings.map((w, i) => {
             const { message, details } = formatted[i];
-            const location = diagnosticLocationLabel(w.loc, { currentFilePath, displayRoot });
+            const location = diagnosticLocationLabel(
+              w.loc,
+              { currentFilePath, displayRoot },
+              (line) => t("preview.location.line", { line }),
+            );
             const severity = warningSeverity(w.kind);
             return (
               <li key={keys[i]} className={`warning-item warning-item--${severity}`}>

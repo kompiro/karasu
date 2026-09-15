@@ -11,6 +11,7 @@ import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel, type SingleEdgeDetail } from "./EdgeDetailPanel.js";
 import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
+import { useTranslation } from "../i18n/index.js";
 import { diagnosticLocationLabel, findingKeys } from "../utils/diagnostic-location.js";
 
 interface PreviewPaneProps {
@@ -116,6 +117,7 @@ export function PreviewPane({
   className,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
@@ -167,7 +169,9 @@ export function PreviewPane({
   const diagnosticBannerItems = visibleDiagnostics.map((d, i) => ({
     d,
     message: diagnosticMessages[i],
-    location: diagnosticLocationLabel(d.loc, { currentFilePath, displayRoot }),
+    location: diagnosticLocationLabel(d.loc, { currentFilePath, displayRoot }, (line) =>
+      t("preview.location.line", { line }),
+    ),
     key: diagnosticKeys[i],
   }));
 
