@@ -502,6 +502,17 @@ export type Translations = {
     annotation: string;
     key: string;
   }) => string;
+  "diagnostic.annotationParamValueUnreadable.message": (params: {
+    annotation: string;
+    key: string;
+  }) => string;
+  "diagnostic.annotationParamConflict.message": (params: {
+    annotation: string;
+    key: string;
+    existing: string;
+    value: string;
+  }) => string;
+  "diagnostic.duplicateAnnotation.message": (params: { annotation: string }) => string;
   "diagnostic.linkUrlSchemeNotAllowed.message": (params: { url: string; scheme: string }) => string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
   "diagnostic.clientResourceInvalidKind.message": (params: {

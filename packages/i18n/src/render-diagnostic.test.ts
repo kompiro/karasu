@@ -117,6 +117,21 @@ const SAMPLES: SamplesByCode = {
     code: "annotation-param-unsupported",
     params: { annotation: "deprecated", key: "reason" },
   },
+  "annotation-param-value-unreadable": {
+    severity: "error",
+    code: "annotation-param-value-unreadable",
+    params: { annotation: "deprecated", key: "until" },
+  },
+  "annotation-param-conflict": {
+    severity: "error",
+    code: "annotation-param-conflict",
+    params: { annotation: "deprecated", key: "until", existing: "2026-Q3", value: "2027-Q3" },
+  },
+  "duplicate-annotation": {
+    severity: "warning",
+    code: "duplicate-annotation",
+    params: { annotation: "deprecated" },
+  },
   "link-url-scheme-not-allowed": {
     severity: "warning",
     code: "link-url-scheme-not-allowed",
@@ -472,6 +487,9 @@ const IDENTIFIERS: Record<DiagnosticCode, string[]> = {
   "expected-id-after": ["owns"],
   "team-property-removed": [],
   "annotation-param-unsupported": ["@deprecated", "reason"],
+  "annotation-param-value-unreadable": ["@deprecated", "until"],
+  "annotation-param-conflict": ["@deprecated", "until", "2026-Q3", "2027-Q3"],
+  "duplicate-annotation": ["@deprecated"],
   "link-url-scheme-not-allowed": ["javascript:alert(1)", '"javascript"'],
   "edge-source-mismatch": ["PaymentService", "OrderService"],
   "client-resource-invalid-kind": ["cookies", "SessionCache"],
