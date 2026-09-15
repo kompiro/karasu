@@ -46,11 +46,16 @@ export function stitchKebabTail(first: Token, cursor: TokenCursor): { name: stri
   return { name, end };
 }
 
-/** A token that can serve as a kebab-name fragment: an identifier that is an
- * actual word (not a stray `-` / `--`), or any keyword token. */
+/** A token that can serve as a non-leading kebab-name fragment: an identifier
+ * that is an actual word (not a stray `-` / `--`), a keyword token, or a word
+ * starting with a digit. The last lets `team-1` / `phase-2` stitch the way the
+ * `.krs.style` lexer already reads them (TPL-2509). It only ever follows a `-`;
+ * whether a name may *start* with a digit stays the call site's decision
+ * (`parseTags` takes any token, the annotation reader refuses `@2026`) (#2707). */
 function isWordToken(token: Token): boolean {
   if (token.type === TokenType.Identifier) {
     return token.value !== "-" && token.value !== "--";
   }
+  if (token.type === TokenType.Number) return true;
   return KRS_KEYWORD_TOKEN_TYPES.has(token.type);
 }

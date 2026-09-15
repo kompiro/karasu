@@ -68,6 +68,21 @@ export const KRS_KEYWORD_NAMES = Object.keys(KEYWORDS);
  */
 export const KRS_KEYWORD_TOKEN_TYPES: ReadonlySet<TokenType> = new Set(Object.values(KEYWORDS));
 
+/**
+ * Whether `value` has the shape the lexer reads as a single identifier word
+ * (`[\p{L}_][\p{L}\p{N}_]*`), from the same character tests `readToken` uses.
+ * Keyword spellings pass this check; they arrive as keyword tokens, so a caller
+ * that also needs "not a keyword" tests the token type.
+ */
+export function isBareWord(value: string): boolean {
+  if (value.length === 0 || !isIdentStart(value[0])) return false;
+  // Index by UTF-16 unit, as `readToken` does, so both agree on every string.
+  for (let i = 1; i < value.length; i++) {
+    if (!isIdentPart(value[i])) return false;
+  }
+  return true;
+}
+
 export class Lexer {
   private source: string;
   private pos = 0;
@@ -283,7 +298,15 @@ export class Lexer {
         if (isIdentStart(ch)) {
           return this.readIdentifierOrKeyword(loc);
         }
-        // Skip unknown character
+        if (isDigit(ch)) {
+          return this.readNumber(loc);
+        }
+        // Skip any other character. The parser never learns it was there, so
+        // it cannot refuse it. Committed `.krs` relies on this only for `=`
+        // and `;` (`label = "x"`, `runtime "n"; realizes X`), and
+        // `lexer-discard.test.ts` pins the whole dropped set, so a character
+        // that starts landing here is a visible change. Digits used to land
+        // here too, which turned `until: 2026-12-31` into `until: "-"` (#2707).
         this.advance();
         return null;
     }
@@ -393,6 +416,19 @@ export class Lexer {
   }
 
   /**
+   * Read a word that starts with a digit (`2026`, `2026abc`) as one Number
+   * token. The run continues through identifier characters so a diagnostic
+   * covers the whole word the author wrote, not just its leading digits.
+   */
+  private readNumber(loc: SourceLocation): Token {
+    let value = "";
+    while (this.pos < this.source.length && isIdentPart(this.peek())) {
+      value += this.advance();
+    }
+    return { type: TokenType.Number, value, loc };
+  }
+
+  /**
    * Read `#<hex-or-ident>+` as a single Identifier (e.g. `#2563EB`,
    * `#NodeId`). Used for legend swatch colors and ref id-selector targets.
    */
@@ -404,6 +440,11 @@ export class Lexer {
     }
     return { type: TokenType.Identifier, value, loc };
   }
+}
+
+/** Any numeric character, matching the `\p{N}` that `isIdentPart` accepts. */
+function isDigit(ch: string): boolean {
+  return /\p{N}/u.test(ch);
 }
 
 function isIdentStart(ch: string): boolean {
