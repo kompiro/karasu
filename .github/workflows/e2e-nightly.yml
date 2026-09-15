@@ -25,10 +25,10 @@ jobs:
     # Ubicloud runner (ADR-1890) — same suite / same runner as the PR-side
     # `e2e.yml` run, so a nightly failure is comparable to the PR result.
     runs-on: ubicloud-standard-4-ubuntu-2404
-    # Setup plus the suite, mirroring `e2e.yml` (ADR-2805). A slow OS package
-    # install here would otherwise open a "Nightly E2E failing on main" Issue
-    # with no test having failed.
-    timeout-minutes: 30
+    # Setup plus the suite, mirroring `e2e.yml` (ADR-2807). The install path is
+    # the same one that has been observed at 1013s on this runner class, so the
+    # budget is the same even though the nightly has not drawn a slow mirror yet.
+    timeout-minutes: 35
     outputs:
       result: ${{ steps.run-tests.outcome }}
     steps:
@@ -60,7 +60,9 @@ jobs:
 
       - name: Run E2E tests
         id: run-tests
-        # The bound that means "the suite hung" (ADR-2805).
+        # The bound that means "the suite hung" (ADR-2807). `notify` below reads
+        # this step outcome, so a job cancelled during setup is not reported as
+        # a test failure.
         timeout-minutes: 15
         run: pnpm --filter @karasu-tools/e2e test
 
@@ -100,11 +102,34 @@ jobs:
       - name: Open / update / close tracking issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          # The job result answers "did the job finish"; the step outcome
+          # answers "did the suite reach a verdict". A job cancelled by its own
+          # budget during setup has result `cancelled` and no step outcome, and
+          # must not be reported as a failing suite (ADR-2807).
           OUTCOME: ${{ needs.e2e.result }}
+          TEST_OUTCOME: ${{ needs.e2e.outputs.result }}
         with:
           script: |
             const label = "ci: nightly-e2e";
             const outcome = process.env.OUTCOME;
+            const testOutcome = process.env.TEST_OUTCOME;
+
+            // The suite reaches a verdict, or it does not. A job cancelled by
+            // its own budget during setup reaches none, and reporting that as a
+            // failing test is what #2807 removes — but a job that *failed*
+            // before the suite ran (install broke, browsers would not download)
+            // still leaves main unverified and has to be reported (#2807).
+            const verdict =
+              testOutcome === "success" || testOutcome === "failure" ? testOutcome : null;
+
+            if (verdict === null && outcome !== "failure") {
+              core.notice(
+                `Nightly E2E reached no suite verdict (job: ${outcome}, tests: ${testOutcome || "never ran"}). ` +
+                  "Tracking issue left untouched.",
+              );
+              return;
+            }
+
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const sha = context.sha;
             const shortSha = sha.slice(0, 7);
@@ -117,7 +142,10 @@ jobs:
               per_page: 10,
             });
 
-            if (outcome === "success") {
+            // Green suite closes the tracker even if a later `if: always()` step
+            // (flake summary, artifact upload) failed: the tracker is about the
+            // suite, and its own run stays red in Actions either way.
+            if (verdict === "success") {
               for (const issue of openIssues) {
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
@@ -136,9 +164,15 @@ jobs:
               return;
             }
 
-            // Failure path — open or update the rolling tracker.
+            // Failure path — open or update the rolling tracker. A job that
+            // failed before the suite ran says so, rather than claiming a test
+            // failed.
+            const headline =
+              verdict === "failure"
+                ? `Nightly E2E failed on \`${shortSha}\`.`
+                : `Nightly E2E could not run on \`${shortSha}\` — the job failed before the suite reported (job: ${outcome}).`;
             const body = [
-              `Nightly E2E failed on \`${shortSha}\`.`,
+              headline,
               ``,
               `- Run: ${runUrl}`,
               `- Commit: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${sha}`,
