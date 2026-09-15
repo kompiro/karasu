@@ -12,6 +12,7 @@ related_to:
   - ADR-2419
   - ADR-2693
   - ADR-2753
+  - ADR-2839
 scope:
   concerns: [ci, dependencies, security]
 assumptions:
