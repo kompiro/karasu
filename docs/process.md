@@ -261,9 +261,9 @@ Issue に書いたスコープ、`docs/adr/` の accepted な ADR、`docs/spec/`
 | 0 | 最下層以外を draft にする（`gh pr ready <n> --undo`） |
 | 1 | 最下層の draft を外す（`gh pr ready <n>`）。CodeRabbit と分単位の CI はここで動き出す |
 | 2 | 先に `/code-review <n>` を当てる |
-| 3 | code-review と CodeRabbit の指摘の対応可否を決める（記録済みの決定を変えるものだけ人に確認する） |
-| 4 | 対応すると決めた指摘を直す |
-| 5 | push すると CodeRabbit が再レビューする。3 に戻り、CodeRabbit が approve するまで繰り返す |
+| 3 | code-review の指摘の対応可否を決め、対応すると決めたものを直す（記録済みの決定を変えるものだけ人に確認する） |
+| 4 | `/coderabbit-converge` で CodeRabbit のラウンドを回す（判定基準は 3 と同じ） |
+| 5 | CodeRabbit が approve するか、人の判断待ちで止まるまで 4 が繰り返す |
 | 6 | CodeRabbit の approve が付いたら、そのスライスで観測できることを人が確認し、マージ可否を決める |
 | 7 | `gh stack merge <n> --yes --squash` → `gh stack sync --prune` → 新しい最下層の draft を外して 1 に戻る |
 

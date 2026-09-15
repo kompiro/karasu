@@ -40,9 +40,12 @@ pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --once
 
 ### 1. 待つ
 
-直前の自分の行動（push・thread への返信・コマンド投稿）を**始める直前**に
-`date -u +%Y-%m-%dT%H:%M:%SZ` で記録した時刻を `since` にする。初回は省略してよい
-（HEAD commit の時刻が使われる）。
+`since` は、次のレビューを起こす**最後の行動の直前**に `date -u +%Y-%m-%dT%H:%M:%SZ` で
+記録した時刻にする。push があるラウンドは push の直前、ないラウンドは最後の返信か
+コマンド投稿の直前。初回は省略してよい（HEAD commit の時刻が使われる）。
+
+それより前に記録すると、push 前に投げた返信への CodeRabbit の応答だけで「応答あり」と
+判定され、push のレビューを待たずにループが進む。
 
 ```
 pnpm exec tsx scripts/coderabbit/await-review.ts <pr> --since <since>
@@ -78,10 +81,12 @@ stdout の JSON の `outcome` で分岐する。
    - **却下する:** thread に理由を返信し、その thread だけを `resolveReviewThread` で閉じる
    - **記録済みの決定が変わる:** 直さない。thread に、指摘・該当する記録・取りうる選択肢を並べた
      質問を maintainer 宛てに返信し、未解決のまま「質問済み」として覚えておく
-3. 返信やコミットを始める直前の時刻を次の `since` にする
-4. コミットがあれば**このラウンドの修正をまとめて 1 回だけ push する**（pre-push hook は回避しない）。
-   push のたびに review 枠を 1 回使う
-5. 1 へ戻る
+3. 返信を先に済ませ、コミットがあれば最後に**このラウンドの修正をまとめて 1 回だけ push する**
+   （pre-push hook は回避しない）。push のたびに review 枠を 1 回使う
+4. その最後の行動の直前の時刻を次の `since` にして 1 へ戻る（1 の `since` の説明）
+
+差分の範囲外の指摘（review 本文の「Outside diff range comments」）は thread を持たない。
+対応を決めたら、PR の top-level コメントに対応内容か却下の理由を書く。
 
 次のどれかに当たったら、ループを続けずに通知して終了する。
 

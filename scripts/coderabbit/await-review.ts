@@ -159,14 +159,23 @@ interface Args {
   limitBudgetMin: number;
 }
 
+/** A budget in minutes. NaN would never compare as spent, so polling would not end. */
+function minutes(flag: string, value: string | undefined): number {
+  const n = Number(value);
+  if (value === undefined || value.trim() === "" || !Number.isFinite(n) || n < 0) {
+    throw new Error(`${flag} needs a non-negative number of minutes, got: ${value ?? "(missing)"}`);
+  }
+  return n;
+}
+
 function parseArgs(argv: string[]): Args {
   const args: Args = { pr: Number.NaN, once: false, timeoutMin: 30, limitBudgetMin: 120 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--once") args.once = true;
     else if (a === "--since") args.since = argv[++i];
-    else if (a === "--timeout-min") args.timeoutMin = Number(argv[++i]);
-    else if (a === "--limit-budget-min") args.limitBudgetMin = Number(argv[++i]);
+    else if (a === "--timeout-min") args.timeoutMin = minutes(a, argv[++i]);
+    else if (a === "--limit-budget-min") args.limitBudgetMin = minutes(a, argv[++i]);
     else if (/^\d+$/.test(a)) args.pr = Number(a);
     else throw new Error(`unknown argument: ${a}`);
   }
@@ -204,12 +213,13 @@ async function main(): Promise<void> {
     if (args.once || ACTIONABLE_KINDS.has(state.kind)) return report(snap, state, state.kind);
 
     if (state.kind === "rate_limited") {
-      if (limitWaitedMs >= args.limitBudgetMin * 60_000)
-        return report(snap, state, "limit_budget_exceeded");
+      const budgetLeft = args.limitBudgetMin * 60_000 - limitWaitedMs;
+      if (budgetLeft <= 0) return report(snap, state, "limit_budget_exceeded");
       // Sleep to the announced time rather than polling through it; re-check a
-      // little early in case the review is re-requested from elsewhere.
+      // little early in case the review is re-requested from elsewhere, and
+      // never past the budget.
       const untilReady = Math.max(Date.parse(state.readyAt) - Date.now(), 0);
-      const step = Math.min(untilReady + 5_000, 10 * POLL_MS);
+      const step = Math.min(untilReady + 5_000, 10 * POLL_MS, budgetLeft);
       console.error(
         `#${args.pr} rate limited until ${state.readyAt}; sleeping ${Math.round(step / 1000)}s`,
       );
