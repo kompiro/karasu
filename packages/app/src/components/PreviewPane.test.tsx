@@ -32,9 +32,10 @@ function baseProps() {
 
 /**
  * Simulate a click: mouseDown on the container sets isDraggingRef.current=true (via the
- * component's handleMouseDown). After mouseDown, React re-renders (isDragging state changes),
- * which re-sets dangerouslySetInnerHTML children — so the target element must be re-queried
- * from the DOM AFTER mouseDown. We accept a function `getTarget` for lazy re-querying.
+ * component's handleMouseDown). After mouseDown, React re-renders (isDragging state changes).
+ * The injected diagram is kept across that re-render now that its `{ __html }` object is
+ * memoized on `svg` (#2789), but `getTarget` still queries lazily so a test does not
+ * depend on it.
  * Both events use the same coordinates (dx=dy=0 < CLICK_THRESHOLD=3).
  */
 function click(container: HTMLElement, getTarget: () => Element) {
@@ -145,6 +146,26 @@ describe("PreviewPane", () => {
 
       const node = container.querySelector("[data-node-id='svc']");
       expect(node?.classList.contains("karasu-highlighted")).toBe(true);
+    });
+
+    it("keeps .karasu-highlighted across a re-render that leaves the diagram unchanged (#2789)", () => {
+      const svg = `<div data-node-id="svc"></div>`;
+
+      const { container, rerender } = render(
+        <PreviewPane {...baseProps()} svg={svg} highlightedNodeId="svc" />,
+      );
+      const before = container.querySelector("[data-node-id='svc']");
+      expect(before?.classList.contains("karasu-highlighted")).toBe(true);
+
+      // Same svg and highlight, fresh objects for everything else: what a
+      // parent re-render for an unrelated reason hands down. Neither of the
+      // highlight effect's dependencies changes, so it does not run again,
+      // and the class survives only if the diagram was not re-injected.
+      rerender(<PreviewPane {...baseProps()} svg={svg} highlightedNodeId="svc" />);
+
+      const after = container.querySelector("[data-node-id='svc']");
+      expect(after).toBe(before);
+      expect(after?.classList.contains("karasu-highlighted")).toBe(true);
     });
 
     it("removes .karasu-highlighted when highlightedNodeId becomes null", () => {

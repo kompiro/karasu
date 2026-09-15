@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, type MouseEvent } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo, type MouseEvent } from "react";
 import type {
   Diagnostic,
   EdgeDirection,
@@ -445,6 +445,15 @@ export function PreviewPane({
     setIsDragging(false);
   }, []);
 
+  // One `{ __html }` object per distinct `svg`, not one per render. React 19
+  // compares `dangerouslySetInnerHTML` by object identity and, when it differs,
+  // re-assigns `innerHTML` without comparing the string, so an inline literal
+  // re-parses the diagram on every render. That would throw away the highlight
+  // applied below while leaving its effect's dependencies unchanged, and the
+  // class would not come back until the diagram itself changed (#2789).
+  // Keeping this identity tied to `svg` is what makes the two move together.
+  const svgHtml = useMemo(() => ({ __html: svg }), [svg]);
+
   // Apply highlight to the target node or container after SVG injection
   useEffect(() => {
     if (!svgRef.current) return;
@@ -491,7 +500,7 @@ export function PreviewPane({
             transformOrigin: "center center",
           }}
           ref={svgRef}
-          dangerouslySetInnerHTML={{ __html: svg }}
+          dangerouslySetInnerHTML={svgHtml}
         />
         {edgeMenu && (
           <EdgeContextMenu
