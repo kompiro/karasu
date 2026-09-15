@@ -33,7 +33,7 @@ interface PreviewPaneProps {
   onOwnedServiceClick?: (serviceId: string) => void;
   /** Node or container id to highlight after cross-navigation */
   highlightedNodeId?: string | null;
-  /** Called when a node interaction clears the cross-navigation highlight */
+  /** Called when a node interaction or a click on the diagram background clears the cross-navigation highlight */
   onClearHighlight?: () => void;
   /** Called when user clicks "Jump to editor" in the detail panel */
   onJumpToEditor?: (nodeId: string) => void;
